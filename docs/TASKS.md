@@ -3028,7 +3028,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F284 — tar extract-selected matches entry names as patterns: "a[1].txt" extracts "a1.txt" (P2)
 
-- [ ] **Status:** open — confirmed 2026-09-29 with `tar.exe` directly (bsdtar 3.8.8): a tar holding
+- [x] **Status:** done 2026-10-01 (22148af): `TarSandboxScope.EscapeMemberPattern` puts `[`, `*`, `?` into a one-character class at both member sites. Device (dev 1.6.0.1, App browse of `glob.tar` holding `a[1].txt` and `a1.txt`): Extract Selected on `a[1].txt` wrote only `a[1].txt` ("bracket"). See `docs/DECISIONS.md`'s wave 2 entry.
+  Report as filed: open — confirmed 2026-09-29 with `tar.exe` directly (bsdtar 3.8.8): a tar holding
   `a[1].txt` and `a1.txt`, `tar -xf g.tar -C out -- "a[1].txt"` exits 0 and writes only `a1.txt`.
   bsdtar reads extract member arguments as wildcard patterns, so the Archive Browser's Extract
   Selected / preview / nested drill-in on a tar-family entry whose name holds `[`, `*` or `?` can
@@ -3074,7 +3075,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F286 — a crash during tar creation can leave a junction to the user's folder in `%TEMP%` (P3)
 
-- [ ] **Status:** open — found in T-F171's closing review, 2026-09-29. A colliding folder source is
+- [x] **Status:** done 2026-10-01 (338f9dd): staging folders are named `PakkoTarStage_<pid>_<guid>` and each tar creation first sweeps those whose process no longer runs (links first, then the folder). Device (dev 1.6.0.1): a planted `PakkoTarStage_999999_*` with a junction to a user folder was gone after Explorer-style `--archive --format tar`, the user file intact; one named after a running process stayed.
+  Report as filed: open — found in T-F171's closing review, 2026-09-29. A colliding folder source is
   staged as a junction in `%TEMP%\PakkoTarStage_<guid>\`, removed in `CompressToArchiveAsync`'s
   `finally`. If the process is killed or crashes while tar.exe runs, `finally` never runs and the
   junction stays. A tool that deletes `%TEMP%` recursively and follows junctions (Windows
@@ -3403,7 +3405,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F306 — App: a mixed ZIP + tar extraction shows 100% for the whole tar part (P2)
 
-- [ ] **Status:** open. Found in G6 pass 4, 2026-09-30 (1.5.0.13, App). Extract of `big.zip` (540 MB) +
+- [x] **Status:** done 2026-10-01 (7da1517): `ExtractionRouter` gives each engine a slice of one climb, tar's bytes continue after ZIP's. Device (dev 1.6.0.1, App, `big.zip` 384 MB + `big.tar.bz2` 193 MB): 66% after the ZIP, then 66 -> 97% with a live speed through tar's extraction, "Видобуто за 43 с". The 29 s the bar waits at 66% are tar's listing passes (T-F307).
+  Report as filed: open. Found in G6 pass 4, 2026-09-30 (1.5.0.13, App). Extract of `big.zip` (540 MB) +
   `big.tar.bz2` (200 MB) from the list: the bar reaches 100% at 3.2 s after the ZIP and stays at 100%
   with the speed frozen ("178,5 MB/s") until "Видобуто за 43 с" — about 93% of the run looks finished.
   `ExtractionRouter.ExtractAsync` passes `progress: null` to tar whenever ZIP also ran (T-F142's guard
@@ -3417,7 +3420,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F307 — tar-family extraction sits at 0% with no status through the listing passes (P3)
 
-- [ ] **Status:** open. Found in G6 pass 4, 2026-09-30 (1.5.0.13). A 200 MB `.tar.bz2`: the App shows
+- [ ] **Status:** open, moved to wave 5 (2026-10-01): needs a phase in `ProgressReport` and a localized status in the App, the operation window and the Win32 dialog, so it goes with T-F268 step 6. Seen again in T-F306's device check (29 s at 66%).
+  Report as filed: open. Found in G6 pass 4, 2026-09-30 (1.5.0.13). A 200 MB `.tar.bz2`: the App shows
   "Видобування... (архівів: 1)" at 0% with no speed for 24.7 s of 38 s, the Explorer window "Архів 2 з 2 ·
   big.tar.bz2" at 0% for 26 s; a 316 MB `.tar.bz2` Extract Selected: 39 s at 0% of 58 s. That time is the
   `-t`/`-tv` listing passes (each decompresses the whole archive; T-F239 kept the pass count). Browse
@@ -3449,7 +3453,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F309 — A cancelled or refused extraction leaves the empty destination folder Pakko created (P3)
 
-- [ ] **Status:** open. Found in G6 pass 5, 2026-09-30 (1.5.0.13). Explorer "Extract to big\" (`--extract-folder`)
+- [x] **Status:** done 2026-10-01 (338f9dd): tar extraction follows ZIP's T-F230 rule. Device (dev 1.6.0.1): `--extract-folder` of a tar the pre-scan refuses shows the refusal and leaves no `evil\` folder.
+  Report as filed: open. Found in G6 pass 5, 2026-09-30 (1.5.0.13). Explorer "Extract to big\" (`--extract-folder`)
   of a 200 MB `big.tar.bz2` with `big\` already present, cancelled during the listing phase (Esc or
   "Скасувати"): no files, quarantine empty, but an empty `big (1)\` stays (it exists 3 s into the run). Same
   shape seen in G6 pass 4: `pakko x -o<new dir>` of an archive the pre-scan refuses leaves the empty `-o` folder.
@@ -3470,7 +3475,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F310 — A compressed GNU-format tar with OEM (cp866) names is still refused (P2)
 
-- [ ] **Status:** open. Found fixing T-F305, 2026-09-30. `C:\g6\p4\cp866.tar` gzipped (`cp866.tar.gz`):
+- [x] **Status:** done 2026-10-01 (29895a2), user decision: gzip only, in-process. Device (dev 1.6.0.1): `--extract-here` of a GNU-magic cp866 `.tar.gz` wrote `Док.txt`. bzip2/xz/zstd keep the refusal by design. See `SECURITY.md` and `docs/DECISIONS.md`'s wave 2 entry.
+  Report as filed: open. Found fixing T-F305, 2026-09-30. `C:\g6\p4\cp866.tar` gzipped (`cp866.tar.gz`):
   `pakko l` refuses it with the "cannot represent on this system (code page 1251)" message. T-F305's
   header check reads only an uncompressed tar, so for `.tar.gz`/`.bz2`/`.xz`/`.zst` libarchive's wording
   still decides and cannot tell invalid UTF-8 under GNU magic from a valid name the code page cannot show;
