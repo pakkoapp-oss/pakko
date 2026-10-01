@@ -117,6 +117,11 @@ Two bounded metadata reads run in-process, neither extracting anything: the RAR5
 tar.exe's own error text cannot tell. It reads names only, verifies every header checksum, skips
 file content by offset, and on anything it cannot read keeps the refusal; it only chooses between
 two sandboxed tar.exe readings, and the security pre-scan still runs on tar.exe's own listing.
+For a gzip-compressed tar the same walk reads through .NET's own `GZipStream` (T-F310) — the
+Deflate decoder Pakko already uses for ZIP, no new parser. The decompressed bytes are read forward
+and dropped, never kept or written, so memory stays flat; the walk stops undecided once it has read
+1000 times the archive's size. bzip2, xz and zstd have no decoder in .NET, so such a tar is not
+read in-process and keeps the refusal.
 
 **ZIP extraction: staged, checked per entry, verified (v1.5.0)**
 - **Integrity.** Every extracted entry's content CRC-32 is checked against its header (AE-2

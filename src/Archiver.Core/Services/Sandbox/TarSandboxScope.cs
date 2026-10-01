@@ -200,11 +200,11 @@ internal sealed partial class TarSandboxScope : IDisposable
         // a tar.exe (another Windows build's bsdtar) that rejects the option or words its errors
         // differently — falls back to the plain reading used before fix phase 4.
         // T-F305: under GNU magic ("ustar  \0", 7-Zip's and GNU tar's default) invalid UTF-8 gives
-        // only "unreadable filename" too, so an uncompressed tar's own header bytes decide; a
-        // compressed one stays refused rather than risk mojibake.
+        // only "unreadable filename" too, so the tar's own header bytes decide — read directly, or
+        // through gzip (T-F310). Under bzip2, xz or zstd it stays refused rather than risk mojibake.
         if (result.StdErr.Contains(UnreadableNameMessage, StringComparison.Ordinal)
             && !result.StdErr.Contains(NotUtf8HeaderMessage, StringComparison.Ordinal)
-            && TarHeaderNames.AreAllUtf8(_archive.SafeFileHandle, cancellationToken) != false)
+            && await Task.Run(() => AreHeaderNamesUtf8(cancellationToken), cancellationToken).ConfigureAwait(false) != false)
             return result;
 
         _utf8Headers = false;
@@ -319,6 +319,21 @@ internal sealed partial class TarSandboxScope : IDisposable
             $"tar.exe used more processor time than Pakko's sandbox allows ({(cpuTimeLimit ?? CpuTimeLimitFor(0)).TotalMinutes:0} minutes). ",
         _ => string.Empty,
     };
+
+    // Null when the header bytes cannot decide. A gzip stream is decompressed here, in Pakko's own
+    // process, only to read the tar headers inside; nothing of it is kept or written. The bound is
+    // the compression-bomb ratio: a longer expansion is left undecided, which keeps the refusal.
+    private bool? AreHeaderNamesUtf8(CancellationToken cancellationToken)
+    {
+        Span<byte> magic = stackalloc byte[2];
+        bool isGzip = RandomAccess.Read(_archive.SafeFileHandle, magic, 0) == magic.Length && magic[0] == 0x1F && magic[1] == 0x8B;
+        if (!isGzip)
+            return TarHeaderNames.AreAllUtf8(_archive.SafeFileHandle, cancellationToken);
+
+        using var compressed = new FileStream(ReopenArchive(), FileAccess.Read);
+        long maxDecompressedBytes = Math.Min(long.MaxValue / ArchiveEntrySecurity.MaxCompressionRatio, _archive.Length) * ArchiveEntrySecurity.MaxCompressionRatio;
+        return TarHeaderNames.AreAllUtf8InGzip(compressed, maxDecompressedBytes, cancellationToken);
+    }
 
     // A second handle to the same open file (not a new lookup by path), starting at offset 0 and
     // synchronous — the C runtime's stdin reads in tar.exe expect a non-overlapped handle.

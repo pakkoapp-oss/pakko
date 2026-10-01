@@ -158,6 +158,74 @@ public sealed class TarHeaderNamesTests
         act.Should().Throw<OperationCanceledException>();
     }
 
+    // T-F310: the same walk over a gzip-compressed tar, decompressed in-process as a forward stream.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Gzip_Utf8Name_True(bool gnu)
+        => WalkGzip(Gzip(Tar(Entry(Utf8Name, gnu: gnu)))).Should().BeTrue();
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Gzip_OemName_False(bool gnu)
+        => WalkGzip(Gzip(Tar(Entry(OemName, gnu: gnu)))).Should().BeFalse();
+
+    [Fact]
+    public void Gzip_OemNameAfterLargeContent_False()
+        => WalkGzip(Gzip(Tar(Entry("a.bin"u8.ToArray(), content: new byte[300_000]), Entry(OemName, gnu: true)))).Should().BeFalse();
+
+    [Fact]
+    public void Gzip_LongNameRecord_Oem_False()
+        => WalkGzip(Gzip(Tar(Entry("././@LongLink"u8.ToArray(), type: 'L', gnu: true, content: [.. OemName, 0]), Entry("x"u8.ToArray(), gnu: true))))
+            .Should().BeFalse();
+
+    // The OEM name lies past the limit: undecided, never "all UTF-8".
+    [Fact]
+    public void Gzip_DecompressedSizeOverTheLimit_Unknown()
+        => WalkGzip(Gzip(Tar(Entry("a.bin"u8.ToArray(), content: new byte[300_000]), Entry(OemName, gnu: true))), maxDecompressedBytes: 100_000)
+            .Should().BeNull();
+
+    [Fact]
+    public void Gzip_CorruptStream_Unknown()
+    {
+        byte[] gzip = Gzip(Tar(Entry("a.bin"u8.ToArray(), content: RandomBytes(50_000)), Entry(OemName, gnu: true)));
+        Array.Fill(gzip, (byte)0xFF, 2000, 2000);
+        WalkGzip(gzip).Should().BeNull();
+    }
+
+    [Fact]
+    public void Gzip_NotATarInside_Unknown()
+        => WalkGzip(Gzip(RandomBytes(4096))).Should().BeNull();
+
+    [Fact]
+    public void Gzip_Cancelled_Throws()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        byte[] gzip = Gzip(Tar(Entry(Utf8Name)));
+        Action act = () => TarHeaderNames.AreAllUtf8InGzip(new MemoryStream(gzip), long.MaxValue, cts.Token);
+        act.Should().Throw<OperationCanceledException>();
+    }
+
+    private static bool? WalkGzip(byte[] gzip, long maxDecompressedBytes = long.MaxValue)
+        => TarHeaderNames.AreAllUtf8InGzip(new MemoryStream(gzip), maxDecompressedBytes, CancellationToken.None);
+
+    private static byte[] Gzip(byte[] data)
+    {
+        using var output = new MemoryStream();
+        using (var gzip = new System.IO.Compression.GZipStream(output, System.IO.Compression.CompressionLevel.Fastest))
+            gzip.Write(data);
+        return output.ToArray();
+    }
+
+    private static byte[] RandomBytes(int count)
+    {
+        byte[] bytes = new byte[count];
+        new Random(310).NextBytes(bytes);
+        return bytes;
+    }
+
     private static bool? Walk(byte[] tar)
         => TarHeaderNames.AreAllUtf8((buffer, offset) => Read(tar, buffer, offset), CancellationToken.None);
 

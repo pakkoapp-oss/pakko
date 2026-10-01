@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Text.Unicode;
 using Microsoft.Win32.SafeHandles;
 
@@ -22,6 +23,60 @@ internal static class TarHeaderNames
     /// </summary>
     internal static bool? AreAllUtf8(SafeFileHandle archive, CancellationToken cancellationToken)
         => AreAllUtf8((buffer, offset) => RandomAccess.Read(archive, buffer, offset), cancellationToken);
+
+    /// <summary>
+    /// T-F310: the same answer for a gzip-compressed tar. Null too when the stream is not valid
+    /// gzip, or the tar inside is longer than <paramref name="maxDecompressedBytes"/>.
+    /// </summary>
+    internal static bool? AreAllUtf8InGzip(Stream compressed, long maxDecompressedBytes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var gzip = new GZipStream(compressed, CompressionMode.Decompress, leaveOpen: true);
+            var forward = new ForwardReader(gzip, maxDecompressedBytes, cancellationToken);
+            bool? allUtf8 = AreAllUtf8(forward.ReadAt, cancellationToken);
+            return forward.LimitExceeded ? null : allUtf8;
+        }
+        catch (InvalidDataException)
+        {
+            return null; // not a gzip stream, or a damaged one
+        }
+    }
+
+    // The walk only moves forward (a header, its long-name content, the next header), so a
+    // decompressing stream serves it: the bytes between two reads are decompressed and dropped.
+    // Nothing is kept, so memory stays flat however far the archive expands; the limit bounds time.
+    private sealed class ForwardReader(Stream stream, long maxBytes, CancellationToken cancellationToken)
+    {
+        private readonly byte[] _discard = new byte[64 * 1024];
+        private long _position;
+
+        public bool LimitExceeded { get; private set; }
+
+        public int ReadAt(Span<byte> buffer, long offset)
+        {
+            while (_position < offset)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                int skipped = ReadWithinLimit(_discard.AsSpan(0, (int)Math.Min(_discard.Length, offset - _position)));
+                if (skipped == 0)
+                    return 0;
+            }
+            return _position == offset ? ReadWithinLimit(buffer) : 0;
+        }
+
+        private int ReadWithinLimit(Span<byte> buffer)
+        {
+            if (_position >= maxBytes)
+            {
+                LimitExceeded = true;
+                return 0;
+            }
+            int n = stream.Read(buffer[..(int)Math.Min(buffer.Length, maxBytes - _position)]);
+            _position += n;
+            return n;
+        }
+    }
 
     /// <inheritdoc cref="AreAllUtf8(SafeFileHandle, CancellationToken)"/>
     internal static bool? AreAllUtf8(ReadAt read, CancellationToken cancellationToken)
