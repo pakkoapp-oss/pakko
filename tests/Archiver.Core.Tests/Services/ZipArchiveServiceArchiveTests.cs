@@ -412,8 +412,10 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             .Select(i => _temp.CreateFile($"file{i}.txt"))
             .ToList();
 
+        // T-F162's pattern (failed once in a full-suite run, 2026-10-01); SeparateArchives reports
+        // from several workers, so the list is locked.
         var reports = new List<ProgressReport>();
-        var progress = new Progress<ProgressReport>(r => reports.Add(r));
+        var progress = new SynchronousProgress<ProgressReport>(r => { lock (reports) reports.Add(r); });
 
         var options = new ArchiveOptions
         {
@@ -423,7 +425,6 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         };
 
         await _sut.ArchiveAsync(options, progress);
-        await Task.Delay(50); // let Progress<ProgressReport> callbacks fire
 
         reports.Should().NotBeEmpty();
         reports.Last().Percent.Should().Be(100);
