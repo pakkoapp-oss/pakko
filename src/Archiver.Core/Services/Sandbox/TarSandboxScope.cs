@@ -220,7 +220,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         if (_utf8Headers is null)
             await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
         // T-F283: "--" ends tar's options, so an entry name starting with "-" is a member, not an option.
-        string[] memberArguments = members is { Count: > 0 } ? ["--", .. members] : [];
+        string[] memberArguments = members is { Count: > 0 } ? ["--", .. members.Select(EscapeMemberPattern)] : [];
         return await RunAsync("-x", ["-C", OutputFolderName, .. memberArguments], cancellationToken).ConfigureAwait(false);
     }
 
@@ -253,8 +253,27 @@ internal sealed partial class TarSandboxScope : IDisposable
                 Directory.CreateDirectory(Path.Combine(firstDir, parent));
         }
         (int exitCode, _, string stdErr) = await RunAsync(
-            "-x", ["-q", "-C", FirstCopyFolderName, "--", .. members], cancellationToken).ConfigureAwait(false);
+            "-x", ["-q", "-C", FirstCopyFolderName, "--", .. members.Select(EscapeMemberPattern)], cancellationToken).ConfigureAwait(false);
         return (firstDir, exitCode, stdErr);
+    }
+
+    /// <summary>
+    /// T-F284: tar.exe reads an extract member as a wildcard pattern, so the name "a[1].txt" selected
+    /// "a1.txt". Each wildcard character goes into a one-character class, which matches only itself.
+    /// </summary>
+    internal static string EscapeMemberPattern(string entryName)
+    {
+        if (entryName.AsSpan().IndexOfAny('[', '*', '?') < 0)
+            return entryName;
+        var escaped = new System.Text.StringBuilder(entryName.Length + 8);
+        foreach (char c in entryName)
+        {
+            if (c is '[' or '*' or '?')
+                escaped.Append('[').Append(c).Append(']');
+            else
+                escaped.Append(c);
+        }
+        return escaped.ToString();
     }
 
     // One tar.exe run inside this scope's AppContainer, under a fresh Job Object (ActiveProcessLimit

@@ -144,22 +144,23 @@ public sealed class TarSandboxedServiceDuplicateNamesTests : IDisposable
         });
     }
 
-    // T-F284: a member is a pattern, so "a[1].txt" in the first-copy pass matches "a1.txt". Only a
-    // file at the exact expected path with the first copy's size is taken; otherwise the last copy
-    // alone is kept and reported, never another entry's content under the duplicate's name.
+    // T-F284: tar.exe reads a member as a pattern, so an unescaped "a[1].txt" in the first-copy
+    // pass ("-q", first match) took "a1.txt". The escaped member matches only the entry of that name.
     [Integration]
-    public async Task ExtractAsync_DuplicateNameThatIsAlsoAPattern_NeverTakesAnotherEntrysContent()
+    public async Task ExtractAsync_DuplicateNameThatIsAlsoAPattern_FirstCopyIsThatEntry()
     {
         string archive = WriteArchive(("a1.txt", "decoy"), ("a[1].txt", "first"), ("a[1].txt", "second"));
 
         (ArchiveResult result, string dest) = await ExtractAsync(archive, ConflictBehavior.Rename);
 
         result.Errors.Should().BeEmpty();
-        Dictionary<string, string> tree = ReadTree(dest);
-        tree["a1.txt"].Should().Be("decoy");
-        tree.Where(kv => kv.Key != "a1.txt").Select(kv => kv.Value).Should().NotContain("decoy");
-        tree["a[1].txt"].Should().Be("second");
-        result.SkippedFiles.Should().ContainSingle(s => s.Text != null && s.Text.Code == MessageCode.TarDuplicateCopiesNotExtracted);
+        result.SkippedFiles.Should().BeEmpty();
+        ReadTree(dest).Should().BeEquivalentTo(new Dictionary<string, string>
+        {
+            ["a1.txt"] = "decoy",
+            ["a[1].txt"] = "first",
+            ["a[1] (1).txt"] = "second",
+        });
     }
 
     [Integration]
