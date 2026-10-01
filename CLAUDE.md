@@ -394,9 +394,8 @@ footer with the primary action rightmost ("Compress to {format}"), inline encryp
 browse badge/Test/Close archive, footer result line (T-F211); every App key in 37 locales
 (`AppResourceKeysTests`). Structure: `docs/XAML.md`; decisions: `docs/DECISIONS.md`'s wave 4 entry.
 **v1.6.0** released 2026-09-30 (tag on 61376bf; G1-G7 in `docs/TASKS.md`'s batch index). The Store
-got **1.6.1.0**: the same code, branch `store/1.6.1.0` bumps only the manifest, since Partner Center
-had already claimed the 1.6.0.0 name; a later Store version must be above 1.6.1.0 (see
-`docs/DECISIONS.md`).
+serves the same code as **1.6.0.0 (x64)** and **1.6.1.0 (ARM64)**, smoke-checked 2026-10-01; the
+next Store upload is the combined bundle, above 1.6.1.0 (see `docs/DECISIONS.md`).
 
 ## Roadmap Summary
 

@@ -10536,6 +10536,20 @@ code: branch `store/1.6.1.0` (commit 6e4b352, pushed) changes only `Package.appx
   option.
 - **Consequence:** `main`'s manifest stays 1.6.0.0. The next Store upload must be above 1.6.1.0
   (1.7.0.0 is fine). The branch is not merged back; it is the record of what the Store build was.
+- **Correction (2026-10-01, checked after publication):** the Store serves two single-architecture
+  bundles, not one 1.6.1.0 bundle: **1.6.0.0 for x64** and **1.6.1.0 for ARM64** (public catalog,
+  `displaycatalog.mp.microsoft.com/v7.0/products/9P5MW010D8PR`; 1.4.x entries there list both
+  architectures in one bundle). The per-architecture bundles were uploaded instead of the combined
+  `pakko-store-msixbundle` artifact, and two single-architecture bundles of one version share a
+  full name (T-F129) — the likely reason the first upload failed part-way. Same code on both, so no
+  resubmission. `winget install --id 9P5MW010D8PR --source msstore` on x64 installed 1.6.0.0 with
+  `SignatureKind: Store`; an agent-driven smoke on it passed (ZIP test/extract/create, 7z/rar/tar.gz
+  through the sandbox, AMSI scan with EICAR, password prompt, App browse of an AES archive). The
+  next Store upload is the combined bundle, above 1.6.1.0.
+- **Local gotcha:** a CI Store bundle sideloaded earlier under the same full name blocks the Store
+  install with `0x80073CFB` until it is removed for all users (elevated
+  `Remove-AppxPackage -AllUsers`); the first install attempt after that still fails once while
+  Windows finishes the cleanup.
 
 ---
 
