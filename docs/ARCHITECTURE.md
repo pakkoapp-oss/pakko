@@ -1118,7 +1118,10 @@ reports real `BytesTransferred`/`TotalBytes`/`CurrentFile` — not just `Percent
 single-archive extraction, via a poll of the sandboxed quarantine output directory rather than a
 streamed subprocess channel (see `DECISIONS.md`'s T-F142 entry for why: tar.exe runs inside the
 AppContainer for extraction, unlike `CompressAsync`'s unsandboxed launch, so there is no per-entry
-stderr line to hook the way T-F140 did for archiving).
+stderr line to hook the way T-F140 did for archiving). **T-F306 (2026-10-01):** with ZIP and tar-family archives in one selection,
+`ExtractionRouter` wraps `progress` per engine: each gets a slice of the percent sized by the
+archives' sizes on disk, and tar's bytes continue after ZIP's total; a selection of one kind
+passes through untouched.
 
 Implementation: `TarProcessService` in `Archiver.Core/Services/`.
 

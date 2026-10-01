@@ -14,6 +14,8 @@ file sealed class FakeArchiveService : IArchiveService
     public ExtractOptions? LastExtractOptions;
     public int ExtractCallCount;
     public ArchiveResult ExtractResult = new();
+    // T-F306: what the engine reports while it runs.
+    public IReadOnlyList<ProgressReport> ExtractProgressScript = [];
     // T-F142: records whether ExtractionRouter passed a real progress sink through, so tests can
     // assert the mixed-selection real-byte-progress suppression without needing an actual
     // IProgress<T> implementation.
@@ -27,6 +29,8 @@ file sealed class FakeArchiveService : IArchiveService
         ExtractCallCount++;
         LastExtractOptions = options;
         LastExtractReceivedNonNullProgress = progress != null;
+        foreach (ProgressReport report in ExtractProgressScript)
+            progress?.Report(report);
         return Task.FromResult(ExtractResult);
     }
 
@@ -53,6 +57,8 @@ file sealed class FakeTarService : ITarService
     public ExtractOptions? LastExtractOptions;
     public int ExtractCallCount;
     public ArchiveResult ExtractResult = new();
+    // T-F306: what the engine reports while it runs.
+    public IReadOnlyList<ProgressReport> ExtractProgressScript = [];
     public bool LastExtractReceivedNonNullProgress;
 
     public Task<TarCapabilities> DetectCapabilitiesAsync() => Task.FromResult(new TarCapabilities());
@@ -62,6 +68,8 @@ file sealed class FakeTarService : ITarService
         ExtractCallCount++;
         LastExtractOptions = options;
         LastExtractReceivedNonNullProgress = progress != null;
+        foreach (ProgressReport report in ExtractProgressScript)
+            progress?.Report(report);
         return Task.FromResult(ExtractResult);
     }
 
@@ -176,34 +184,82 @@ public sealed class ExtractionRouterTests : IDisposable
         result.Outcome.Should().Be(OperationOutcome.Failed, "an error from either engine fails the merged result");
     }
 
-    // T-F142 regression: found via advisor review before this shipped. TarSandboxedService now
-    // gives real byte-level progress to a single-archive extraction (tarPaths.Count == 1) — but a
-    // MIXED selection of exactly one zip + one tar means BOTH services independently believe
-    // themselves "the sole archive" (each only sees its own bucket's count). Since zip always runs
-    // first and already used real progress before this task, letting tar ALSO believe itself alone
-    // would restart a second real 0->100 climb after zip's had already finished — a visible dip
-    // back down in the dialog. ExtractionRouter must suppress tar's real progress whenever zip also
-    // ran (zipPaths non-empty), while leaving zip's own (pre-existing, unconditional) progress
-    // pass-through untouched.
+    // T-F306: a mixed selection is one climb. ZIP runs first and tar second, each in its own
+    // slice of the percent, sized by the archives' sizes on disk; tar's bytes continue from where
+    // ZIP's ended, so neither the bar nor the byte count ever goes back. (T-F142 had left tar with
+    // no progress at all here: the bar sat at 100% for the whole tar part.)
     [Fact]
-    public async Task ExtractAsync_MixedSelectionOfExactlyOneZipAndOneTar_SuppressesTarRealProgressNotZips()
+    public async Task ExtractAsync_MixedSelection_OneClimbAcrossBothEngines()
     {
-        string zip = WriteZip("a.zip");
-        string tar = WriteTar("b.tar");
-
-        var zipService = new FakeArchiveService();
-        var tarService = new FakeTarService();
+        string zip = WriteBytes("a.zip", [0x50, 0x4B, 0x03, 0x04, .. new byte[1532]]); // 1536 bytes: 75%
+        string tar = WriteTar("b.tar"); // 512 bytes: 25%
+        var zipService = new FakeArchiveService
+        {
+            ExtractProgressScript =
+            [
+                new ProgressReport { Percent = 50, BytesTransferred = 150, TotalBytes = 300, CurrentFile = "z.txt" },
+                new ProgressReport { Percent = 100, BytesTransferred = 300, TotalBytes = 300 },
+            ],
+        };
+        var tarService = new FakeTarService
+        {
+            ExtractProgressScript =
+            [
+                new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = 80 },
+                new ProgressReport { Percent = 50, BytesTransferred = 40, TotalBytes = 80, CurrentFile = "t.txt" },
+                new ProgressReport { Percent = 100, BytesTransferred = 80, TotalBytes = 80 },
+            ],
+        };
         var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
+        var reports = new List<ProgressReport>();
 
-        var progress = new Progress<ProgressReport>(_ => { });
         await router.ExtractAsync(
-            new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path }, progress);
+            new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path },
+            new SynchronousProgress(reports.Add));
 
-        zipService.LastExtractReceivedNonNullProgress.Should().BeTrue(
-            "zip's own progress pass-through is unconditional and pre-existing — this task must not change it");
-        tarService.LastExtractReceivedNonNullProgress.Should().BeFalse(
-            "tar must not receive real progress when zip also ran in the same mixed selection, or its own " +
-            "single-archive real-byte climb would restart and visibly dip the dialog after zip already reached 100%");
+        reports.Select(r => (r.Percent, r.BytesTransferred, r.TotalBytes)).Should().Equal(
+            (37, 150L, 300L), (75, 300L, 300L), (75, 300L, 380L), (87, 340L, 380L), (100, 380L, 380L));
+        reports.Select(r => r.CurrentFile).Should().Equal("z.txt", null, null, "t.txt", null);
+    }
+
+    // Several archives of one kind report percent only (no byte total): the slice maps the percent
+    // and keeps the report byte-less.
+    [Fact]
+    public async Task ExtractAsync_MixedSelection_PercentOnlyReportsStayByteless()
+    {
+        string zip = WriteBytes("a.zip", [0x50, 0x4B, 0x03, 0x04, .. new byte[508]]);
+        string tar = WriteTar("b.tar");
+        var zipService = new FakeArchiveService { ExtractProgressScript = [new ProgressReport { Percent = 100 }] };
+        var tarService = new FakeTarService { ExtractProgressScript = [new ProgressReport { Percent = 50 }, new ProgressReport { Percent = 100 }] };
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
+        var reports = new List<ProgressReport>();
+
+        await router.ExtractAsync(
+            new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path },
+            new SynchronousProgress(reports.Add));
+
+        reports.Select(r => (r.Percent, r.BytesTransferred, r.TotalBytes)).Should().Equal((50, 0L, 0L), (75, 0L, 0L), (100, 0L, 0L));
+    }
+
+    // One kind only: the engine's reports pass through untouched.
+    [Fact]
+    public async Task ExtractAsync_PureTarSelection_ReportsPassThroughUnchanged()
+    {
+        string tar = WriteTar("b.tar");
+        var report = new ProgressReport { Percent = 40, BytesTransferred = 4, TotalBytes = 10, CurrentFile = "t.txt" };
+        var tarService = new FakeTarService { ExtractProgressScript = [report] };
+        var router = new ExtractionRouter(new FakeArchiveService(), tarService, AllSupported, new GroupPolicyOptions());
+        var reports = new List<ProgressReport>();
+
+        await router.ExtractAsync(
+            new ExtractOptions { ArchivePaths = [tar], DestinationFolder = _temp.Path }, new SynchronousProgress(reports.Add));
+
+        reports.Should().Equal(report);
+    }
+
+    private sealed class SynchronousProgress(Action<ProgressReport> onReport) : IProgress<ProgressReport>
+    {
+        public void Report(ProgressReport value) => onReport(value);
     }
 
     // T-F142: the flip side of the mixed-selection test above — a PURE tar-only selection (no zip

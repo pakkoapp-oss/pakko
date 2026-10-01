@@ -26,25 +26,22 @@ public sealed class ExtractionRouter(
         IReadOnlyList<string> tarPaths = classification.TarPaths;
         IReadOnlyList<SkippedFile> unsupported = classification.Unsupported;
 
+        // T-F306: with both kinds selected, ZIP runs first and tar second, each in its own slice of
+        // one climb. T-F142 had given tar no progress at all here (a second 0->100 climb would have
+        // dropped the bar), so the bar sat at 100% through the whole tar part.
+        bool mixed = progress is not null && zipPaths.Count > 0 && tarPaths.Count > 0;
+        int zipSliceEnd = mixed ? ZipSharePercent(zipPaths, tarPaths) : 100;
+        SliceProgress? zipSlice = mixed ? new SliceProgress(progress!, 0, zipSliceEnd, bytesBefore: 0) : null;
+
         ArchiveResult zipResult = zipPaths.Count > 0
             ? await archiveService.ExtractAsync(
                 options with { ArchivePaths = zipPaths, OpenDestinationFolder = false },
-                progress, cancellationToken).ConfigureAwait(false)
+                zipSlice ?? progress, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
 
-        // T-F142: real byte-level progress for tar-family extraction is only granted when tar
-        // handles the WHOLE selection alone (zipPaths is empty) — not just when tarPaths.Count == 1.
-        // TarSandboxedService.ExtractAsync decides "am I extracting a single archive?" purely from
-        // its OWN subset's count, with no visibility into whether ZIP also ran first in this same
-        // call. In a mixed selection (e.g. one .zip + one .tar.gz), zipResult above already ran
-        // its own real per-byte climb to 100% (zip always runs before tar here, unconditionally,
-        // matching its pre-existing behavior) — if tar then also believed itself "alone" (its own
-        // bucket count == 1) it would restart a second real 0->100 climb, visibly dropping the
-        // dialog back down after it had already reached 100%. Suppressing tar's real reporting
-        // whenever zip also ran keeps the existing (pre-T-F142) percent-only per-archive-slice
-        // shape for that case — no worse than before this task, just not improved for a mixed
-        // selection specifically.
-        IProgress<ProgressReport>? tarProgress = zipPaths.Count == 0 ? progress : null;
+        IProgress<ProgressReport>? tarProgress = mixed
+            ? new SliceProgress(progress!, zipSliceEnd, 100, bytesBefore: zipSlice!.LastTotalBytes)
+            : progress;
         ArchiveResult tarResult = tarPaths.Count > 0
             ? await tarService.ExtractAsync(
                 options with { ArchivePaths = tarPaths, OpenDestinationFolder = false },
@@ -90,4 +87,55 @@ public sealed class ExtractionRouter(
     }
 
     private static ArchiveResult EmptyResult() => new();
+
+    // The ZIP part's share of the climb, by the archives' sizes on disk — the only measure both
+    // kinds have before either runs. By count when no size can be read.
+    private static int ZipSharePercent(IReadOnlyList<string> zipPaths, IReadOnlyList<string> tarPaths)
+    {
+        long zipBytes = TotalLength(zipPaths);
+        long tarBytes = TotalLength(tarPaths);
+        return zipBytes > 0 && tarBytes > 0
+            ? (int)(zipBytes * 100.0 / ((double)zipBytes + tarBytes))
+            : zipPaths.Count * 100 / (zipPaths.Count + tarPaths.Count);
+    }
+
+    private static long TotalLength(IReadOnlyList<string> paths)
+    {
+        long total = 0;
+        foreach (string path in paths)
+        {
+            try
+            {
+                total += new FileInfo(path).Length;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // best-effort: an unreadable size only changes how the bar is divided
+            }
+        }
+        return total;
+    }
+
+    // Maps one engine's 0-100 onto its slice. Bytes continue after the engine that ran before:
+    // a byte count that went back down would be ignored by ProgressSpeedSampler. A report with
+    // no byte total (several archives of one kind) stays without one.
+    private sealed class SliceProgress(IProgress<ProgressReport> inner, int startPercent, int endPercent, long bytesBefore)
+        : IProgress<ProgressReport>
+    {
+        public long LastTotalBytes { get; private set; }
+
+        public void Report(ProgressReport value)
+        {
+            bool hasBytes = value.TotalBytes > 0;
+            if (hasBytes)
+                LastTotalBytes = value.TotalBytes;
+            inner.Report(new ProgressReport
+            {
+                Percent = startPercent + Math.Clamp(value.Percent, 0, 100) * (endPercent - startPercent) / 100,
+                BytesTransferred = hasBytes ? bytesBefore + value.BytesTransferred : 0,
+                TotalBytes = hasBytes ? bytesBefore + value.TotalBytes : 0,
+                CurrentFile = value.CurrentFile,
+            });
+        }
+    }
 }
