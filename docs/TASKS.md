@@ -3453,7 +3453,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F309 — A cancelled or refused extraction leaves the empty destination folder Pakko created (P3)
 
-- [x] **Status:** done 2026-10-01 (338f9dd): tar extraction follows ZIP's T-F230 rule. Device (dev 1.6.0.1): `--extract-folder` of a tar the pre-scan refuses shows the refusal and leaves no `evil\` folder.
+- [x] **Status:** done 2026-10-01 (338f9dd): tar extraction follows ZIP's T-F230 rule. Device (dev 1.6.0.1): `--extract-folder` of a tar the pre-scan refuses shows the refusal and leaves no `evil\` folder. The filed case too: `--extract-folder` of `big.tar.bz2` next to an existing `big\`, cancelled in the operation window during the listing phase: `big (1)\` was there 5 s in and gone after the cancel, `big\` stayed.
   Report as filed: open. Found in G6 pass 5, 2026-09-30 (1.5.0.13). Explorer "Extract to big\" (`--extract-folder`)
   of a 200 MB `big.tar.bz2` with `big\` already present, cancelled during the listing phase (Esc or
   "Скасувати"): no files, quarantine empty, but an empty `big (1)\` stays (it exists 3 s into the run). Same

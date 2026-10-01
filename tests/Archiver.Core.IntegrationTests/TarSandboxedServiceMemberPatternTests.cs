@@ -55,6 +55,22 @@ public sealed class TarSandboxedServiceMemberPatternTests : IDisposable
         tree.Should().BeEquivalentTo(new Dictionary<string, string> { ["a[1].txt"] = "bracket" });
     }
 
+    // A backslash escapes the next pattern character. tar.exe lists a stored backslash doubled, and
+    // the listed name is what a selection passes back, so it already reads as a literal one.
+    [Integration]
+    public async Task ExtractAsync_SelectedNameWithABackslash_ExtractsThatEntryNotItsPatternMatch()
+    {
+        string archive = WriteArchive(("a\\b.txt", "backslash"), ("ab.txt", "plain"), ("c\\[d.txt", "both"), ("c[d.txt", "bracket"));
+        ArchiveListResult listing = await _sut.ListEntriesAsync(archive);
+        string[] listed = [.. listing.Entries.Where(e => !e.IsDirectory).Select(e => e.Path)];
+        listed.Should().HaveCount(4, string.Join(" | ", listing.Entries.Select(e => e.Path)));
+
+        (ArchiveResult result, Dictionary<string, string> tree) = await ExtractAsync(archive, [listed[0], listed[2]]);
+
+        result.Errors.Should().BeEmpty();
+        tree.Values.Should().BeEquivalentTo(["backslash", "both"], string.Join(" | ", listed) + " -> " + string.Join(" | ", tree.Keys));
+    }
+
     [Integration]
     public async Task ExtractAsync_SelectedFileInBracketFolder_ExtractsThatEntryNotItsPatternMatch()
     {

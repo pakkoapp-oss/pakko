@@ -10659,7 +10659,9 @@ the closing review checked what the default and Slow suites do not reach:
   needs no assumption about how libarchive treats it. `TarSandboxScope.EscapeMemberPattern` is
   applied at both member sites (the main extraction and T-F171's first-copy pass), so Extract
   Selected, preview, nested drill-in and the scan all get it. The T-F171 test that pinned the old
-  degraded result (last copy only, reported) now expects the real one.
+  degraded result (last copy only, reported) now expects the real one. A backslash needs nothing:
+  it is an escape in the pattern, but tar.exe lists a stored backslash doubled and a selection
+  passes the listed name back (probed and covered: `a\b.txt` next to `ab.txt`).
 - **T-F286, stale staging folders are swept by owner process id.** The collision staging folder is
   now `PakkoTarStage_<pid>_<guid>`; each tar creation first removes the folders whose process no
   longer runs: every reparse point inside is deleted as a link, then the folder. A lock file was
@@ -10675,6 +10677,10 @@ the closing review checked what the default and Slow suites do not reach:
   archive's size — the existing compression-bomb ratio — or on any gzip error. It runs
   only in the already-ambiguous branch (tar.exe failed with "unreadable filename" alone), costs one
   more pass over the archive there, and still only chooses between two sandboxed tar.exe readings.
+  The ratio bound is nominal for gzip (Deflate tops out near 1032:1): a gzip that reaches the check
+  is decompressed once in full, in Pakko's process, cancellable, memory flat. Measured: 7 GiB of
+  zeros behind a 32 MB archive walks in 0.9 s; `pakko l` on it answers in 1.6 s. Real data costs
+  about what tar.exe's own listing pass over the same archive costs. No absolute cap was added.
   bzip2, xz and zstd have no BCL decoder and keep the refusal; a second sandboxed run that exposes
   raw names was not pursued (no known tar.exe option gives them).
 - **T-F306, a mixed ZIP + tar extraction is one climb; this reverses T-F142's router rule.** T-F142

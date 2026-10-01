@@ -119,8 +119,10 @@ file content by offset, and on anything it cannot read keeps the refusal; it onl
 two sandboxed tar.exe readings, and the security pre-scan still runs on tar.exe's own listing.
 For a gzip-compressed tar the same walk reads through .NET's own `GZipStream` (T-F310) — the
 Deflate decoder Pakko already uses for ZIP, no new parser. The decompressed bytes are read forward
-and dropped, never kept or written, so memory stays flat; the walk stops undecided once it has read
-1000 times the archive's size. bzip2, xz and zstd have no decoder in .NET, so such a tar is not
+and dropped, never kept or written, so memory stays flat. The walk can be cancelled and stops
+undecided at 1000 times the archive's size; Deflate itself expands at most about 1000 times, so in
+practice a gzip that reaches this check is decompressed once in full, outside the sandbox's memory
+and processor limits (7 GiB of zeros behind a 32 MB archive: 0.9 s). bzip2, xz and zstd have no decoder in .NET, so such a tar is not
 read in-process and keeps the refusal.
 
 **ZIP extraction: staged, checked per entry, verified (v1.5.0)**
