@@ -57,15 +57,22 @@ internal static partial class DirectoryJunction
             using SafeFileHandle handle = CreateFileW(junctionPath, GenericWrite, 0, IntPtr.Zero, OpenExisting,
                 FileFlagBackupSemantics | FileFlagOpenReparsePoint, IntPtr.Zero);
             if (handle.IsInvalid)
-                throw new IOException(new Win32Exception(Marshal.GetLastWin32Error()).Message);
+                throw LastWin32Error();
             if (!DeviceIoControl(handle, FsctlSetReparsePoint, reparseData, reparseData.Length, IntPtr.Zero, 0, out _, IntPtr.Zero))
-                throw new IOException(new Win32Exception(Marshal.GetLastWin32Error()).Message);
+                throw LastWin32Error();
         }
         catch
         {
             try { Directory.Delete(junctionPath, recursive: false); } catch { /* best-effort: the folder is still empty */ }
             throw;
         }
+    }
+
+    // T-F297: keeps the Windows code (as an HRESULT) so the error detail can show it.
+    private static IOException LastWin32Error()
+    {
+        int error = Marshal.GetLastWin32Error();
+        return new IOException(new Win32Exception(error).Message, unchecked((int)(0x80070000u | ((uint)error & 0xFFFFu))));
     }
 
     // REPARSE_DATA_BUFFER for IO_REPARSE_TAG_MOUNT_POINT: tag, data length, reserved, then the

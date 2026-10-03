@@ -52,6 +52,26 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
         Directory.GetDirectories(dest, ".pakko-x-*").Should().BeEmpty();
     }
 
+    // T-F297: the OS text stays English in every UI language; its Windows code goes with it.
+    [Fact]
+    public async Task ExtractAsync_InvalidNameEntry_ErrorCarriesTheWindowsCode()
+    {
+        string zip = CreateZip("qmark.zip", "What?.txt");
+        string dest = Path.Combine(_temp.Path, "q");
+        Directory.CreateDirectory(dest);
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        ArchiveError error = result.Errors.Should().ContainSingle().Subject;
+        error.Message.Should().EndWith("(0x8007007B)").And.NotContain(".pakko-x");
+        ((CoreText)error.Text!.Arguments[1]).Code.Should().Be(MessageCode.SystemInvalidName);
+    }
+
     // T-F237: a 20,000-level name fails only itself (over MaxEntryDepth), and the error stays
     // readable - it used to carry the whole 40,000-character path twice (80 KB).
     [Fact]

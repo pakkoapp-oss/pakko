@@ -1,5 +1,7 @@
 using System.Text;
 using Archiver.Core.IO;
+using Archiver.Core.Models;
+using Archiver.Core.Services;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.IO;
@@ -41,6 +43,19 @@ public sealed class VerifyingReadStreamTests
         await using var s = new VerifyingReadStream(new MemoryStream(Data), Data.Length, DataCrc ^ 1);
         Func<Task> act = () => s.CopyToAsync(Stream.Null);
         await act.Should().ThrowAsync<InvalidDataException>().WithMessage("*CRC-32*");
+    }
+
+    // T-F297: Core's own text carries its code, so a frontend can add a translation.
+    [Fact]
+    public void Read_WrongCrc_ErrorCarriesItsCode()
+    {
+        using var s = new VerifyingReadStream(new MemoryStream(Data), Data.Length, DataCrc ^ 1);
+        Action act = () => s.CopyTo(Stream.Null);
+
+        InvalidDataException ex = act.Should().Throw<InvalidDataException>().Which;
+        CoreText detail = CoreMessages.Detail(ex);
+        detail.Code.Should().Be(MessageCode.ContentCrcMismatch);
+        detail.English.Should().Be($"Content failed CRC-32 check (expected {DataCrc ^ 1:X8}, got {DataCrc:X8}).");
     }
 
     [Fact]

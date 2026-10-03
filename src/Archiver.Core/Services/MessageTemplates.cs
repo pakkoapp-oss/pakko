@@ -123,6 +123,13 @@ public static class MessageTemplates
         [MessageCode.ScanEntryUnsupportedMethod] = "Entry uses an unsupported compression method under encryption and was not scanned.",
         [MessageCode.ScanEntryAuthenticationFailed] = "Entry failed decryption authentication (corrupted or tampered) and was not scanned.",
         [MessageCode.ScanEntryTooLarge] = "Entry is larger than {0} MiB and was not scanned.",
+
+        // T-F297: {0} is the text as Windows wrote it, {1} its code ("0x8007007B").
+        [MessageCode.SystemInvalidName] = "{0} ({1})",
+        [MessageCode.SystemAccessDenied] = "{0} ({1})",
+        [MessageCode.SystemSharingViolation] = "{0} ({1})",
+        [MessageCode.SystemDiskFull] = "{0} ({1})",
+        [MessageCode.ContentCrcMismatch] = "Content failed CRC-32 check (expected {0}, got {1}).",
     };
 
     /// <summary>Every code with a template — all of <see cref="MessageCode"/> except <see cref="MessageCode.None"/>.</summary>

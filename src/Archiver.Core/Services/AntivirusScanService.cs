@@ -137,7 +137,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         {
             foreach (string path in classification.ZipPaths.Concat(classification.TarPaths))
             {
-                findings.Add(CoreMessages.Inconclusive(path, null, CoreMessages.Text(MessageCode.ScanSessionFailed, ex.Message)));
+                findings.Add(CoreMessages.Inconclusive(path, null, CoreMessages.Text(MessageCode.ScanSessionFailed, CoreMessages.Detail(ex))));
             }
             return BuildResult(findings);
         }
@@ -349,7 +349,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 }
                 catch (InvalidOperationException ex)
                 {
-                    return CoreMessages.Inconclusive(archivePath, entryPath, CoreMessages.Text(MessageCode.ScanEntryFailed, ex.Message));
+                    return CoreMessages.Inconclusive(archivePath, entryPath, CoreMessages.Text(MessageCode.ScanEntryFailed, CoreMessages.Detail(ex)));
                 }
             }
 

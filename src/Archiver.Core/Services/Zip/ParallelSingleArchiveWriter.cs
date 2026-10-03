@@ -421,11 +421,11 @@ internal static class ParallelSingleArchiveWriter
             }
             catch (IOException ex)
             {
-                return WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, ex.Message), ex);
+                return WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, CoreMessages.Detail(ex)), ex);
             }
             catch (UnauthorizedAccessException ex)
             {
-                return WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.AccessDenied, ex.Message), ex);
+                return WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.AccessDenied, CoreMessages.Detail(ex)), ex);
             }
         }, cancellationToken);
 
@@ -503,12 +503,12 @@ internal static class ParallelSingleArchiveWriter
             catch (IOException ex)
             {
                 TryDeleteTempFile(tempFilePath, pendingTempFiles: null);
-                return WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, ex.Message), ex);
+                return WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, CoreMessages.Detail(ex)), ex);
             }
             catch (UnauthorizedAccessException ex)
             {
                 TryDeleteTempFile(tempFilePath, pendingTempFiles: null);
-                return WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.AccessDenied, ex.Message), ex);
+                return WorkResult.ForError(item.SourcePath, CoreMessages.Text(MessageCode.AccessDenied, CoreMessages.Detail(ex)), ex);
             }
             catch
             {

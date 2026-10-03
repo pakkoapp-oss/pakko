@@ -3292,6 +3292,13 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F297 — Error details from the OS or Core stay English in localized windows (P3)
 
+- **Decision (user, 2026-10-03):** code + English text everywhere, and for Ukrainian only a
+  Ukrainian translation added in front ("Додай до англійської українську і тільки її"). Mapped:
+  invalid name, access denied, sharing violation, disk full, and Core's CRC-32 mismatch; any other
+  Windows error shows its English text and code. The other 35 locales get no translation.
+- [~] **Progress (2026-10-03, v1.7.0 wave 4):** done in code, tests first (`CoreMessages.Detail`,
+  five codes, uk-only entries; see `docs/DECISIONS.md`'s wave 4 entry). Device check of the uk
+  operation window and App pending.
 - [ ] **Status:** open. Found in G6 pass 2, 2026-09-30, uk-UA, Explorer operation window:
   Test of `bad.zip` shows "Елемент «doc.txt»: Content failed CRC-32 check (expected 73DCA397, got
   A43E23CF)."; `--extract-folder qmark.zip` shows "Не вдалося видобути «What?.txt»: The filename,

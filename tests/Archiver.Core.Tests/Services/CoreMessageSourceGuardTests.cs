@@ -26,7 +26,8 @@ public sealed partial class CoreMessageSourceGuardTests
             string[] lines = File.ReadAllLines(file);
             for (int i = 0; i < lines.Length; i++)
             {
-                if (MessageAssignment().IsMatch(lines[i]) || HashEntryWithError().IsMatch(lines[i]))
+                if (MessageAssignment().IsMatch(lines[i]) || HashEntryWithError().IsMatch(lines[i])
+                    || RawExceptionTextArgument().IsMatch(lines[i]))
                     offenders.Add($"{relative}:{i + 1}: {lines[i].Trim()}");
             }
         }
@@ -70,10 +71,72 @@ public sealed partial class CoreMessageSourceGuardTests
         foreign.English.Should().Be("disk says no");
     }
 
+    // T-F297: a Windows error (facility 7) keeps its English text and gets its code; the common
+    // ones get a code of their own so a frontend can add a translation.
+    [Theory]
+    [InlineData(unchecked((int)0x8007007B), MessageCode.SystemInvalidName)]
+    [InlineData(unchecked((int)0x80070005), MessageCode.SystemAccessDenied)]
+    [InlineData(unchecked((int)0x80070020), MessageCode.SystemSharingViolation)]
+    [InlineData(unchecked((int)0x80070021), MessageCode.SystemSharingViolation)]
+    [InlineData(unchecked((int)0x80070070), MessageCode.SystemDiskFull)]
+    [InlineData(unchecked((int)0x80070027), MessageCode.SystemDiskFull)]
+    public void Detail_CommonWindowsError_HasItsCodeAndKeepsTheEnglishText(int hResult, MessageCode expected)
+    {
+        CoreText detail = CoreMessages.Detail(new IOException("os text", hResult));
+
+        detail.Code.Should().Be(expected);
+        detail.English.Should().Be($"os text (0x{hResult:X8})");
+    }
+
+    [Fact]
+    public void Detail_WindowsErrorOnAnInnerException_IsFound()
+    {
+        CoreText detail = CoreMessages.Detail(new IOException("wrapped", new UnauthorizedAccessException("denied")));
+
+        detail.Code.Should().Be(MessageCode.SystemAccessDenied);
+        detail.English.Should().Be("wrapped (0x80070005)");
+    }
+
+    [Fact]
+    public void Detail_OtherWindowsError_IsTextAndCodeWithoutAMessageCode()
+    {
+        CoreText detail = CoreMessages.Detail(new IOException("not found", unchecked((int)0x80070002)));
+
+        detail.Code.Should().Be(MessageCode.None);
+        detail.English.Should().Be("not found (0x80070002)");
+    }
+
+    [Fact]
+    public void Detail_NoWindowsError_KeepsTheTextAsIs()
+    {
+        CoreMessages.Detail(new InvalidDataException("bad data")).English.Should().Be("bad data");
+        CoreMessages.Detail(new IOException("plain")).English.Should().Be("plain");
+    }
+
+    [Fact]
+    public void Detail_Rewrite_ChangesOnlyTheEnglishText()
+    {
+        CoreText detail = CoreMessages.Detail(new IOException(@"C:\stage\x", unchecked((int)0x8007007B)),
+            text => text.Replace(@"C:\stage", @"C:\dest", StringComparison.Ordinal));
+
+        detail.English.Should().Be(@"C:\dest\x (0x8007007B)");
+    }
+
+    [Fact]
+    public void FromException_ForeignWindowsError_CarriesTheCode()
+    {
+        CoreMessages.FromException(new IOException("disk says no", unchecked((int)0x80070070)))
+            .English.Should().Be("disk says no (0x80070070)");
+    }
+
     // "Message = ", "Reason = ", "ErrorMessage = " as an object-initializer or with-expression
     // member; comparisons ("==") and reads ("= ex.Message") do not match.
     [GeneratedRegex(@"(?<![\w.])(Message|Reason|ErrorMessage)\s*=(?!=)")]
     private static partial Regex MessageAssignment();
+
+    // T-F297: an exception's text goes into a message only through CoreMessages.Detail.
+    [GeneratedRegex(@"CoreMessages\.Text\(.*\bex\.Message\b")]
+    private static partial Regex RawExceptionTextArgument();
 
     [GeneratedRegex(@"new HashEntry\([^,]+,\s*null,\s*(?!null\))")]
     private static partial Regex HashEntryWithError();

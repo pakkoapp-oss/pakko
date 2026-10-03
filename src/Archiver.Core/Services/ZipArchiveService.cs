@@ -259,12 +259,12 @@ public sealed class ZipArchiveService : IArchiveService
         catch (UnauthorizedAccessException ex)
         {
             TryDeleteBestEffort(tempPath);
-            errors.Add(CoreMessages.Error(destPath, CoreMessages.Text(MessageCode.AccessDeniedCreatingArchive, ex.Message), ex));
+            errors.Add(CoreMessages.Error(destPath, CoreMessages.Text(MessageCode.AccessDeniedCreatingArchive, CoreMessages.Detail(ex)), ex));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             TryDeleteBestEffort(tempPath);
-            errors.Add(CoreMessages.Error(destPath, CoreMessages.Text(MessageCode.UnexpectedError, ex.Message), ex));
+            errors.Add(CoreMessages.Error(destPath, CoreMessages.Text(MessageCode.UnexpectedError, CoreMessages.Detail(ex)), ex));
         }
 
         return null;
@@ -339,11 +339,11 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (IOException ex)
         {
-            sink.Errors.Add(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, ex.Message), ex));
+            sink.Errors.Add(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, CoreMessages.Detail(ex)), ex));
         }
         catch (UnauthorizedAccessException ex)
         {
-            sink.Errors.Add(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.AccessDenied, ex.Message), ex));
+            sink.Errors.Add(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.AccessDenied, CoreMessages.Detail(ex)), ex));
         }
 
         return pathSize;
@@ -573,17 +573,17 @@ public sealed class ZipArchiveService : IArchiveService
         catch (IOException ex)
         {
             TryDeleteBestEffort(separateTempPath);
-            AddError(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, ex.Message), ex));
+            AddError(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.CannotAccessFile, CoreMessages.Detail(ex)), ex));
         }
         catch (UnauthorizedAccessException ex)
         {
             TryDeleteBestEffort(separateTempPath);
-            AddError(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.AccessDenied, ex.Message), ex));
+            AddError(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.AccessDenied, CoreMessages.Detail(ex)), ex));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             TryDeleteBestEffort(separateTempPath);
-            AddError(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.UnexpectedError, ex.Message), ex));
+            AddError(CoreMessages.Error(sourcePath, CoreMessages.Text(MessageCode.UnexpectedError, CoreMessages.Detail(ex)), ex));
         }
 
         Interlocked.Add(ref completedBytesBox[0], pathSize);
@@ -901,7 +901,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (UnauthorizedAccessException ex)
         {
-            sink.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.AccessDeniedExtractingArchive, ex.Message), ex));
+            sink.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.AccessDeniedExtractingArchive, CoreMessages.Detail(ex)), ex));
         }
         catch (InvalidDataException ex)
         {
@@ -1548,11 +1548,11 @@ public sealed class ZipArchiveService : IArchiveService
             // locked/denied path) fails only itself — as does corrupt content (T-F246: CRC-32,
             // T-F231: longer than declared). The message names the destination, never the
             // internal staging folder.
-            string message = ex.Message.Replace(
+            CoreText detail = CoreMessages.Detail(ex, text => text.Replace(
                 Path.TrimEndingDirectorySeparator(plan.FullTempDest),
                 Path.TrimEndingDirectorySeparator(Path.GetFullPath(plan.ActualDest)),
-                StringComparison.OrdinalIgnoreCase);
-            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotExtractEntry, named.FullName, message), ex));
+                StringComparison.OrdinalIgnoreCase));
+            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotExtractEntry, named.FullName, detail), ex));
             return (false, named.Entry.Length);
         }
     }
@@ -1888,11 +1888,11 @@ public sealed class ZipArchiveService : IArchiveService
         }
         catch (IOException ex)
         {
-            context.ReportError(CoreMessages.Error(filePath, CoreMessages.Text(MessageCode.CannotAccessFile, ex.Message), ex));
+            context.ReportError(CoreMessages.Error(filePath, CoreMessages.Text(MessageCode.CannotAccessFile, CoreMessages.Detail(ex)), ex));
         }
         catch (UnauthorizedAccessException ex)
         {
-            context.ReportError(CoreMessages.Error(filePath, CoreMessages.Text(MessageCode.AccessDenied, ex.Message), ex));
+            context.ReportError(CoreMessages.Error(filePath, CoreMessages.Text(MessageCode.AccessDenied, CoreMessages.Detail(ex)), ex));
         }
 
         return startOffset + fileSize;
@@ -1915,7 +1915,7 @@ public sealed class ZipArchiveService : IArchiveService
     // T-F236: a subfolder that cannot be listed — one error; the rest of the tree is archived.
     internal static ArchiveError UnreadableDirectoryError(string directory, Exception ex) =>
         CoreMessages.Error(directory,
-            CoreMessages.Text(ex is UnauthorizedAccessException ? MessageCode.AccessDenied : MessageCode.CannotAccessFile, ex.Message), ex);
+            CoreMessages.Text(ex is UnauthorizedAccessException ? MessageCode.AccessDenied : MessageCode.CannotAccessFile, CoreMessages.Detail(ex)), ex);
 
     // Size of one source for progress offsets; 0 when it is missing or unreadable.
     private static long ComputeSourceBytesBestEffort(string sourcePath)

@@ -14,6 +14,20 @@ public static class MessageText
     private static readonly ResourceManager Resources =
         new("Archiver.Messages.Resources.CoreMessages", typeof(MessageText).Assembly);
 
+    /// <summary>
+    /// T-F297 (user decision, 2026-10-03): error details as Windows or Core wrote them stay English
+    /// with their code; only the Ukrainian table puts a translation in front. Every other language
+    /// has no entry for these codes and falls back to the English template.
+    /// </summary>
+    public static IReadOnlySet<MessageCode> UkrainianOnlyCodes { get; } = new HashSet<MessageCode>
+    {
+        MessageCode.SystemInvalidName,
+        MessageCode.SystemAccessDenied,
+        MessageCode.SystemSharingViolation,
+        MessageCode.SystemDiskFull,
+        MessageCode.ContentCrcMismatch,
+    };
+
     /// <summary><paramref name="text"/> in <paramref name="culture"/> (resolved with
     /// <see cref="UiCulture.Resolve"/>); <paramref name="english"/> when there is no code.</summary>
     public static string Render(CoreText? text, string english, CultureInfo culture)

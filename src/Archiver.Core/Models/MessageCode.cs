@@ -104,4 +104,11 @@ public enum MessageCode
     ScanEntryAuthenticationFailed,
     ScanEntryTooLarge,
     LocalHeaderMismatch,
+
+    // Error details (T-F297): the English text Windows or Core wrote, kept in every language
+    SystemInvalidName,
+    SystemAccessDenied,
+    SystemSharingViolation,
+    SystemDiskFull,
+    ContentCrcMismatch,
 }

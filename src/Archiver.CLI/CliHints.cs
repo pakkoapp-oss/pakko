@@ -63,6 +63,8 @@ public static class CliHints
         MessageCode.ScanCannotReadArchive, MessageCode.ScanCannotReadEntry, MessageCode.ScanCannotExtract, MessageCode.ScanRemovedOrBlocked,
         MessageCode.ScanEntryFailed, MessageCode.ScanEntryIntegrityFailed, MessageCode.ScanEntryPasswordProtected, MessageCode.ScanEntryWrongPassword,
         MessageCode.ScanEntryUnsupportedMethod, MessageCode.ScanEntryAuthenticationFailed, MessageCode.ScanEntryTooLarge, MessageCode.LocalHeaderMismatch,
+        MessageCode.SystemInvalidName, MessageCode.SystemAccessDenied, MessageCode.SystemSharingViolation, MessageCode.SystemDiskFull,
+        MessageCode.ContentCrcMismatch,
     ];
 
     /// <summary>Every code and its hint; <see cref="CliHint.None"/> is a decision too.</summary>

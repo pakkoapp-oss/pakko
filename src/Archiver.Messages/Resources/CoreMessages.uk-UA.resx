@@ -276,4 +276,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Локальний заголовок не збігається з центральним каталогом у {0} елементів (перший: «{1}»). Інші програми можуть видобути з цього архіву інші імена чи дані.</value>
   </data>
+  <data name="SystemInvalidName" xml:space="preserve">
+    <value>Неприпустимий синтаксис імені файлу, папки або мітки тому — {0} ({1})</value>
+  </data>
+  <data name="SystemAccessDenied" xml:space="preserve">
+    <value>Windows відмовила в доступі — {0} ({1})</value>
+  </data>
+  <data name="SystemSharingViolation" xml:space="preserve">
+    <value>Файл використовується іншим процесом — {0} ({1})</value>
+  </data>
+  <data name="SystemDiskFull" xml:space="preserve">
+    <value>На диску недостатньо місця — {0} ({1})</value>
+  </data>
+  <data name="ContentCrcMismatch" xml:space="preserve">
+    <value>Вміст не пройшов перевірку CRC-32 (очікувалося {0}, отримано {1}) — Content failed CRC-32 check (expected {0}, got {1}).</value>
+  </data>
 </root>

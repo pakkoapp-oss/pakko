@@ -262,7 +262,7 @@ public sealed class TarSandboxedService : ITarService
         }
         catch (UnauthorizedAccessException ex)
         {
-            sink.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.AccessDeniedExtractingArchive, ex.Message), ex));
+            sink.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.AccessDeniedExtractingArchive, CoreMessages.Detail(ex)), ex));
         }
     }
 
@@ -768,7 +768,7 @@ public sealed class TarSandboxedService : ITarService
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotExtractEntry, relativePath, ex.Message), ex));
+            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotExtractEntry, relativePath, CoreMessages.Detail(ex)), ex));
             return (false, relativePath);
         }
 
@@ -1333,7 +1333,7 @@ public sealed class TarSandboxedService : ITarService
             catch (UnauthorizedAccessException ex)
             {
                 TryDeleteBestEffort(tempPath);
-                errors.Add(CoreMessages.Error(destPath, CoreMessages.Text(MessageCode.AccessDeniedCreatingArchive, ex.Message), ex));
+                errors.Add(CoreMessages.Error(destPath, CoreMessages.Text(MessageCode.AccessDeniedCreatingArchive, CoreMessages.Detail(ex)), ex));
             }
         }
         finally

@@ -10736,3 +10736,27 @@ the closing review checked what the default and Slow suites do not reach:
 - **T-F300.** The conflict-prompt tests delete their folder with retries for up to five seconds. Not
   `IAsyncDisposable`: xUnit 2.5 does not call it on a test class (17 folders left in a check run), so
   the class deletes from `IAsyncLifetime`.
+
+## v1.7.0 wave 4 — App keyboard, accessibility and wording (2026-10-03)
+
+### T-F297 — error details: the English text and its code, Ukrainian added in front
+
+**User decision (2026-10-03):** first "code + English text"; minutes later "Додай до англійської
+українську і тільки її" — so the detail Windows or Core wrote stays English with its code in every
+language, and only the Ukrainian table puts a translation in front of it. The other 35 tables get
+no entry for these codes and fall back to the English template.
+
+- `CoreMessages.Detail(exception, rewrite)` is the only way an exception's text becomes part of a
+  message (`CoreMessageSourceGuardTests` fails on a raw `ex.Message` inside `CoreMessages.Text(`).
+  It returns Core's own `CoreText` when the exception carries one; otherwise the English text plus
+  the code of the first Windows (facility 7) HRESULT on the exception or an inner one.
+- Five codes of their own (`MessageCode.System*`, template `{0} ({1})`, and `ContentCrcMismatch`):
+  invalid name, access denied, sharing/lock violation, disk full (both codes), and the CRC-32
+  mismatch. Any other Windows error is uncoded text plus its code; a non-Windows HRESULT (e.g.
+  `COR_E_IO`) adds nothing, since its number means nothing to a user.
+- `InvalidDataException` is sealed, so the CRC error carries its `CoreText` on an inner
+  `CoreTextCarrier` (`CoreMessages.InvalidData`); every existing `catch (InvalidDataException)` still
+  applies. `DirectoryJunction` now keeps the Win32 code as the `IOException`'s HRESULT.
+- The CLI stays English and now prints the code too ("... is incorrect. (0x8007007B)").
+- `MessageText.UkrainianOnlyCodes` names the set; the parity test exempts it by name and a test
+  checks the other tables do not contain it.

@@ -37,9 +37,11 @@ public sealed partial class MessageTextTests
     public void EveryCode_IsTranslated_WithTheSamePlaceholders(string culture)
     {
         Dictionary<string, string> local = Read(CultureInfo.GetCultureInfo(culture));
+        // T-F297: the OS-error details are translated into Ukrainian only.
+        MessageCode[] expected = [.. MessageTemplates.Codes.Where(c => culture == "uk-UA" || !MessageText.UkrainianOnlyCodes.Contains(c))];
 
-        local.Keys.Should().BeEquivalentTo(MessageTemplates.Codes.Select(c => c.ToString()));
-        foreach (MessageCode code in MessageTemplates.Codes)
+        local.Keys.Should().BeEquivalentTo(expected.Select(c => c.ToString()));
+        foreach (MessageCode code in expected)
         {
             string translated = local[code.ToString()];
             translated.Should().NotBeNullOrWhiteSpace(code.ToString());
@@ -120,6 +122,45 @@ public sealed partial class MessageTextTests
         CoreText text = CoreTextFor(MessageCode.CannotReadArchive, CoreTextFor(MessageCode.None, "tar: {weird} output"));
 
         MessageText.Render(text, "fallback", CultureInfo.GetCultureInfo("uk-UA")).Should().Contain("tar: {weird} output");
+    }
+
+    // T-F297 (user, 2026-10-03): the English text and code everywhere, Ukrainian added in front
+    // for Ukrainian only.
+    [Fact]
+    public void Render_Ukrainian_AddsTheTranslationToTheEnglishOsText()
+    {
+        CoreText detail = CoreMessages.Detail(new IOException("The filename is incorrect.", unchecked((int)0x8007007B)));
+
+        string text = MessageText.Render(detail, "fallback", CultureInfo.GetCultureInfo("uk-UA"));
+
+        text.Should().Be(string.Format(CultureInfo.InvariantCulture, Uk(MessageCode.SystemInvalidName), "The filename is incorrect.", "0x8007007B"));
+        text.Should().MatchRegex(@"\p{IsCyrillic}").And.EndWith("The filename is incorrect. (0x8007007B)");
+    }
+
+    [Fact]
+    public void Render_OtherLanguage_ShowsTheEnglishOsTextAndCode()
+    {
+        CoreText detail = CoreMessages.Detail(new IOException("The filename is incorrect.", unchecked((int)0x8007007B)));
+
+        MessageText.Render(detail, "fallback", CultureInfo.GetCultureInfo("de-DE"))
+            .Should().Be("The filename is incorrect. (0x8007007B)");
+    }
+
+    [Fact]
+    public void UkrainianOnlyCodes_AreAbsentFromEveryOtherTable()
+    {
+        foreach (string culture in UiCulture.Supported.Where(c => c != "uk-UA"))
+            Read(CultureInfo.GetCultureInfo(culture)).Keys.Should().NotContain(MessageText.UkrainianOnlyCodes.Select(c => c.ToString()), culture);
+    }
+
+    [Fact]
+    public void UkrainianOnlyCodes_KeepTheEnglishText()
+    {
+        foreach (MessageCode code in MessageText.UkrainianOnlyCodes)
+        {
+            string english = MessageTemplates.English(code);
+            Uk(code).Should().EndWith(english.EndsWith("({1})", StringComparison.Ordinal) ? "{0} ({1})" : english, code.ToString());
+        }
     }
 
     private static string Uk(MessageCode code) => Read(CultureInfo.GetCultureInfo("uk-UA"))[code.ToString()];

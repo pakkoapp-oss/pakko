@@ -276,4 +276,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>{0} entries have a local header that does not match the central directory (first: '{1}'). Other programs may extract different names or data from this archive.</value>
   </data>
+  <data name="SystemInvalidName" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="SystemAccessDenied" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="SystemSharingViolation" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="SystemDiskFull" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="ContentCrcMismatch" xml:space="preserve">
+    <value>Content failed CRC-32 check (expected {0}, got {1}).</value>
+  </data>
 </root>

@@ -153,7 +153,7 @@ internal sealed partial class TarSandboxScope : IDisposable
             // blocking profile creation) — fail closed as an ordinary per-archive error, never
             // an unhandled crash. Callers catch this the same way as TarSignatureVerificationException.
             if (ex is InvalidOperationException)
-                throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, ex.Message), ex);
+                throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
             throw;
         }
     }
@@ -173,7 +173,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         }
         catch (UnauthorizedAccessException ex)
         {
-            throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotOpenArchive, ex.Message), ex);
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotOpenArchive, CoreMessages.Detail(ex)), ex);
         }
     }
 
@@ -243,7 +243,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         }
         catch (InvalidOperationException ex)
         {
-            throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, ex.Message), ex);
+            throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
         }
         // T-F52: libarchive cannot create a missing parent folder inside the AppContainer.
         foreach (string member in members)
@@ -289,7 +289,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         }
         catch (InvalidOperationException ex)
         {
-            throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, ex.Message), ex);
+            throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
         }
 
         using (job)

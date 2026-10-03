@@ -1,3 +1,7 @@
+using System.Globalization;
+using Archiver.Core.Models;
+using Archiver.Core.Services;
+
 namespace Archiver.Core.IO;
 
 /// <summary>
@@ -50,8 +54,8 @@ internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uin
         _finished = true;
         uint computed = _accumulator.Finish();
         if (computed != expected)
-            throw new InvalidDataException(
-                $"Content failed CRC-32 check (expected {expected:X8}, got {computed:X8}).");
+            throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentCrcMismatch,
+                expected.ToString("X8", CultureInfo.InvariantCulture), computed.ToString("X8", CultureInfo.InvariantCulture)));
     }
 
     public override bool CanRead => true;
