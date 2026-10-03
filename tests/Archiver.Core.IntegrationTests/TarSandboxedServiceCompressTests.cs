@@ -108,7 +108,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         {
             foreach (string created in results[run].CreatedFiles)
             {
-                using var tar = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(@"C:\Windows\System32\tar.exe")
+                using System.Diagnostics.Process tar = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(@"C:\Windows\System32\tar.exe")
                 {
                     ArgumentList = { "-tf", created },
                     RedirectStandardOutput = true,
