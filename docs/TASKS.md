@@ -245,6 +245,8 @@ tables in both files; `CLI.md` is the canonical owner per `CLAUDE.md`'s Document
 ---
 
 ### T-F119 — Archiver.CLI PATH Distribution (winget/scoop manifest)
+- **Folded into T-F317 (2026-10-03, user):** the winget part is T-F317's first half; `scoop` stays
+  out of scope until asked for. The text below is kept as background.
 - [ ] **Status:** future — flagged 2026-07-18 during T-F116's naming/distribution discussion. See
       `CLI.md`'s Distribution section and `DECISIONS.md`'s T-F116 follow-up entry.
 - **Depends on:** T-F09 (CLI Core)
@@ -3746,3 +3748,36 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   (T-F284's pattern escaping) or a temp file outside the tree on the same volume. Tests first, both
   engines, both modes.
 - **Reported by:** v1.7.0 wave 6 closing review (advisor + agent device run), 2026-10-03.
+
+### T-F317 — `pakko` in the terminal for Store and winget users (P2, user-requested)
+
+- [ ] **Status:** open. Requested by the user 2026-10-03; folds in T-F119's winget part. Today a
+  Store install gives no `pakko` command, and the CLI zip from GitHub Releases needs a manual `PATH`
+  edit (`docs/CLI.md`, Distribution).
+- **Part A — winget (CLI zip).** A manifest in `microsoft/winget-pkgs` for the existing per-arch
+  zips (`win-x64`, `win-arm64`): `InstallerType: zip`, `NestedInstallerType: portable`,
+  `pakko.exe`, `PortableCommandAlias: pakko`, SHA256 from the release's `SHA256SUMS`. Id to be
+  checked for availability (e.g. `PakkoApp.Pakko.CLI`); the GUI is already in winget through the
+  `msstore` source (9P5MW010D8PR). First version with `wingetcreate new`, validated with
+  `winget validate` and a real `winget install --manifest`; later versions from `build.yml` after
+  each release (`wingetcreate update` or a pinned action, SHA-pinned per CLAUDE.md). Opening the PR
+  to `microsoft/winget-pkgs` publishes under the project's name — only on the user's go. Risk: the
+  binaries are not code-signed yet (T-F10); winget accepts that, but its antivirus check may delay a
+  submission.
+- **Part B — Store package alias.** `pakko.exe` inside the MSIX as its own `<Application>`
+  (`EntryPoint="Windows.FullTrustApplication"`, console subsystem `desktop4:Subsystem="console"`)
+  with `uap5:AppExecutionAlias` `pakko.exe`, as `Archiver.Shell.exe` is packaged today (`Content
+  Include`, self-contained — check first whether it can use the package's own .NET instead of a
+  second runtime copy, and measure the size cost). Check before the Store upload that a second hidden
+  application does not trip the headless-app check again (T-F129's waiver). Verify inside the
+  package identity: `x`/`t`/`l`/`a`, tar through the AppContainer sandbox, `-si`/`-so` staging,
+  Ctrl+C, exit codes, from pwsh 7, Windows PowerShell and cmd.
+- **Both installed:** a bare `pakko` runs whichever folder comes first in `PATH`
+  (`%LOCALAPPDATA%\Microsoft\WindowsApps` vs winget's `Links`). Document it in `docs/CLI.md`; `pakko
+  -v` shows which one ran.
+- **Docs:** `docs/CLI.md` Distribution (replace "not added to PATH"), `scripts/README.md` (the
+  per-release winget step), `README.md` + both `index.html` install lines, DECISIONS entry.
+- **Tests first:** a manifest check that the packaged `pakko.exe` has an alias and console subsystem
+  (the compiled `AppxManifest.xml`, not the source file), and the CLI Subprocess layer run against the
+  packaged exe where it can be.
+- **Reported by:** the user, 2026-10-03.
