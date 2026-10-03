@@ -9,6 +9,9 @@ namespace Archiver.Core.Services;
 /// </summary>
 public static class MessageTemplates
 {
+    // T-F297: {0} is the text as Windows wrote it, {1} its code ("0x8007007B").
+    private const string SystemErrorTemplate = "{0} ({1})";
+
     private static readonly Dictionary<MessageCode, string> Templates = new()
     {
         [MessageCode.None] = "{0}",
@@ -124,11 +127,10 @@ public static class MessageTemplates
         [MessageCode.ScanEntryAuthenticationFailed] = "Entry failed decryption authentication (corrupted or tampered) and was not scanned.",
         [MessageCode.ScanEntryTooLarge] = "Entry is larger than {0} MiB and was not scanned.",
 
-        // T-F297: {0} is the text as Windows wrote it, {1} its code ("0x8007007B").
-        [MessageCode.SystemInvalidName] = "{0} ({1})",
-        [MessageCode.SystemAccessDenied] = "{0} ({1})",
-        [MessageCode.SystemSharingViolation] = "{0} ({1})",
-        [MessageCode.SystemDiskFull] = "{0} ({1})",
+        [MessageCode.SystemInvalidName] = SystemErrorTemplate,
+        [MessageCode.SystemAccessDenied] = SystemErrorTemplate,
+        [MessageCode.SystemSharingViolation] = SystemErrorTemplate,
+        [MessageCode.SystemDiskFull] = SystemErrorTemplate,
         [MessageCode.ContentCrcMismatch] = "Content failed CRC-32 check (expected {0}, got {1}).",
     };
 

@@ -3164,7 +3164,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F282 — Main window: option cards clip below ~600 px height (P3)
 
-- [x] **Status:** closed 2026-10-03 (v1.7.0 wave 4) — fixed by T-F224's `OptionsScroll`. Device (Deploy 1.6.0.3-1.6.0.5, App title build 2026-10-03 06:30-06:39, uk-UA, dark, 2026-10-03): at 900x520 the options area is a vertically scrollable pane; Name and Format are on screen, the destination box and the conflict combo come into view when focused (Tab or UIA focus). Earlier status: Split out of T-F224 (closed 2026-09-29). `PreferredMinimumHeight` is 520,
+- [x] **Status:** closed 2026-10-03 (v1.7.0 wave 4) — fixed by T-F224's `OptionsScroll`. Device (Deploy 1.6.0.3-1.6.0.5, App title build 2026-10-03 06:30-06:39, uk-UA, dark, 2026-10-03): at 900x520 (window rect 100,100-1000,620, 96 DPI, screenshots) the options pane shows the card down to Format; keyboard Tab from Compression goes Encrypt -> destination Up -> destination box -> "..." and the pane scrolls with it (the "..." button on screen with its focus ring, scroll bar shown). A UIA SetFocus alone does not scroll it into view. Earlier status: Split out of T-F224 (closed 2026-09-29). `PreferredMinimumHeight` is 520,
   and below about 600 px the create-mode cards ("Новий архів", "Куди і що після") are cut off with
   no scrolling — Name, Format and the destination become unreachable (886x513 on 1.5.0.34); the
   footer and primary actions stay visible. Either scroll the options area or raise the minimum to

@@ -14,6 +14,10 @@ public static class SortIndicator
     public static readonly string Descending = ((char)0xE70D).ToString();
 
     /// <summary>The glyph for <paramref name="column"/>; empty unless the list is sorted by it.</summary>
-    public static string Glyph(string column, string? sortedColumn, bool ascending) =>
-        column == sortedColumn ? (ascending ? Ascending : Descending) : string.Empty;
+    public static string Glyph(string column, string? sortedColumn, bool ascending)
+    {
+        if (column != sortedColumn)
+            return string.Empty;
+        return ascending ? Ascending : Descending;
+    }
 }
