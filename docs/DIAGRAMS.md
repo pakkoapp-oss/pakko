@@ -733,7 +733,7 @@ stateDiagram-v2
     PendingListMode --> ArchiveBrowseMode: EnterBrowseModeAsync — pending row double-tap, DecidePendingRow is OpenArchive<br/>or a File activation of one archive (FileActivationRouter Browse, App.xaml.cs EnterBrowseSafelyAsync)<br/>IsBrowsingArchive=true, BrowseScope=Archive, nested stack reset, DeleteAfterOperation=false
     ArchiveBrowseMode --> PendingListMode: listing fails — ListArchiveWithProgressAsync threw (null, its own error dialog)<br/>or result.Success==false (error dialog) — IsBrowsingArchive=false
     ArchiveBrowseMode --> PendingListMode: CloseArchive — button or Esc, CanCloseArchive is IsBrowsingArchive and not IsBusy and no listing or drill-in in flight
-    ArchiveBrowseMode --> PendingListMode: Extract from the browser with delete-after, and the archive file is gone afterwards (closeBrowser, CloseArchiveCore)
+    ArchiveBrowseMode --> PendingListMode: browser Extract with DeleteAfterOperation and allowDeleteAfter (a top-level archive), and after RunCleanupAsync the archive file no longer exists (closeBrowser, CloseArchiveCore)
 
     state ArchiveBrowseMode {
         [*] --> InsideArchive

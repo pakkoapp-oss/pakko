@@ -1357,7 +1357,7 @@ branch couldn't be exercised end-to-end this time.
 - [x] **Status:** done 2026-10-03 (v1.7.0 wave 7). Scope chosen: extend diagram 6 (same subject). The
   dispatch already lived in App.Core (`BrowserEntryRouting`, T-F242); diagram 6 now has its flowchart and
   a `check:row-open` table checked by `DiagramSixTests`, and its DoD row names the App.Core decision types.
-  Device (Deploy 1.6.0.8, build 19:18:24, windows MCP, 2026-10-03): `outer.zip` with `docs/2026` and a nested `inner.zip` — OpenFolder, Up to the archive root, Enter drills into `inner.zip` (no delete-after there), Up pops back (delete-after returns), Backspace climbs to `C:\w7` (Test, options and Extract hidden), Up to `C:\`, Up to This PC (Up disabled), Esc back to the create list.
+  Device (Deploy 1.6.0.8, build 19:18:24, windows MCP, 2026-10-03): `outer.zip` with `docs/2026` and a nested `inner.zip` — double-click opens `docs`, Up to the archive root, double-click drills into `inner.zip` (no delete-after there), Up pops back (delete-after returns), Backspace climbs to `C:\w7` (Test, options and Extract hidden), Up to `C:\`, Up to This PC (Up disabled), Esc back to the create list. Re-run the same day on the same build: with a row focused and the list unchanged, Enter opens `docs` and drills into `inner.zip`; Alt+Up goes up.
   Original stub: future, flagged 2026-07-17 during a `DIAGRAMS.md` audit.
 
 **What:** `MainWindow.xaml.cs`'s `ArchiveBrowserList_DoubleTapped`/`PendingList_DoubleTapped` have
@@ -1384,7 +1384,7 @@ changes.
   5 document edits, all red. **Not covered:** entry, exit, breadcrumb and drill-in transitions
   stay in the WinUI view model and are checked by reading and on device. Diagrams 3 and 5 are
   activity diagrams and were not attempted.
-  Device (Deploy 1.6.0.8, build 19:18:24, windows MCP, 2026-10-03): `outer.zip` with `docs/2026` and a nested `inner.zip` — OpenFolder, Up to the archive root, Enter drills into `inner.zip` (no delete-after there), Up pops back (delete-after returns), Backspace climbs to `C:\w7` (Test, options and Extract hidden), Up to `C:\`, Up to This PC (Up disabled), Esc back to the create list.
+  Device (Deploy 1.6.0.8, build 19:18:24, windows MCP, 2026-10-03): `outer.zip` with `docs/2026` and a nested `inner.zip` — double-click opens `docs`, Up to the archive root, double-click drills into `inner.zip` (no delete-after there), Up pops back (delete-after returns), Backspace climbs to `C:\w7` (Test, options and Extract hidden), Up to `C:\`, Up to This PC (Up disabled), Esc back to the create list. Re-run the same day on the same build: with a row focused and the list unchanged, Enter opens `docs` and drills into `inner.zip`; Alt+Up goes up.
   Original: future, proposed 2026-07-17.
 
 **What:** `DIAGRAMS.md`'s mermaid blocks are prose/diagram-only — nothing in the repo parses or
@@ -3244,7 +3244,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - [x] **Status:** done 2026-10-03 (v1.7.0 wave 7). Diagram 6 was redrawn from the current XAML, view
   model and App.Core, element-keyed instead of row-keyed. It adds the Close archive and delete-after
   exits, and corrects the stale "no error state" claim; mmdc ran on all 10 blocks. Finding:
-  T-F319. Device (Deploy 1.6.0.8, build 19:18:24, windows MCP, 2026-10-03): `outer.zip` with `docs/2026` and a nested `inner.zip` — OpenFolder, Up to the archive root, Enter drills into `inner.zip` (no delete-after there), Up pops back (delete-after returns), Backspace climbs to `C:\w7` (Test, options and Extract hidden), Up to `C:\`, Up to This PC (Up disabled), Esc back to the create list.
+  T-F319. Device (Deploy 1.6.0.8, build 19:18:24, windows MCP, 2026-10-03): `outer.zip` with `docs/2026` and a nested `inner.zip` — double-click opens `docs`, Up to the archive root, double-click drills into `inner.zip` (no delete-after there), Up pops back (delete-after returns), Backspace climbs to `C:\w7` (Test, options and Extract hidden), Up to `C:\`, Up to This PC (Up disabled), Esc back to the create list. Re-run the same day on the same build: with a row focused and the list unchanged, Enter opens `docs` and drills into `inner.zip`; Alt+Up goes up.
   Report as filed: open. Diagram 6's per-row visibility table still lists the pre-redesign rows
   (Row 0 buttons, Row 6 conflict combo and checkboxes). Since wave 4 (T-F199) the window is
   `AppTitleBar` + `ContentGrid` with mode-gated rows, the option cards (`NewArchiveCard`,

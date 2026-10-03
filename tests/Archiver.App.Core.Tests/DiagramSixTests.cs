@@ -11,7 +11,7 @@ public sealed class DiagramSixTests
     [Fact]
     public void BrowseLocationTable_MatchesCode_AndCoversTheWholeDomain()
     {
-        var rows = Table("browse-location");
+        List<string[]> rows = Table("browse-location");
         var seen = new List<(bool, bool, bool)>();
         foreach (string[] row in rows)
         {
@@ -31,7 +31,7 @@ public sealed class DiagramSixTests
     [Fact]
     public void RowOpenTable_MatchesCode_AndUsesEveryAction()
     {
-        var rows = Table("row-open");
+        List<string[]> rows = Table("row-open");
         foreach (string[] row in rows)
         {
             bool isBusy = YesNo(row[1]);
@@ -65,14 +65,14 @@ public sealed class DiagramSixTests
         string stateDiagram = Section[Section.IndexOf("stateDiagram-v2", StringComparison.Ordinal)..];
         stateDiagram = stateDiagram[..stateDiagram.IndexOf("```", StringComparison.Ordinal)];
 
-        var rows = Table("browse-up");
+        List<string[]> rows = Table("browse-up");
         foreach (string[] row in rows)
         {
-            var scope = Enum.Parse<ArchiveBrowseScope>(row[0]);
-            var step = Enum.Parse<BrowseUpStep>(row[4]);
+            ArchiveBrowseScope scope = Enum.Parse<ArchiveBrowseScope>(row[0]);
+            BrowseUpStep step = Enum.Parse<BrowseUpStep>(row[4]);
             string? archive = row[3] == "-" ? null : row[3];
 
-            BrowseNavigation.DecideUp(scope, row[1], int.Parse(row[2]), archive)
+            BrowseNavigation.DecideUp(scope, row[1], int.Parse(row[2], System.Globalization.CultureInfo.InvariantCulture), archive)
                 .Should().Be(step, "row {0}", string.Join(" | ", row));
             row[5].Should().Be(stateOf[scope], "From is the state of the row's scope");
             stateDiagram.Should().MatchRegex(
