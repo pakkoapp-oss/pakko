@@ -87,4 +87,7 @@
   <data name="BombExtract" xml:space="preserve">
     <value>Paki lahti</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Arhiivi sisu kontrollimine...</value>
+  </data>
 </root>

@@ -551,4 +551,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>Összes megszakítása</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Az archívum tartalmának ellenőrzése...</value>
+  </data>
 </root>

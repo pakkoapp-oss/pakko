@@ -87,4 +87,7 @@
   <data name="BombExtract" xml:space="preserve">
     <value>展開</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>アーカイブの内容を確認中...</value>
+  </data>
 </root>

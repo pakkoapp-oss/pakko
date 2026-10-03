@@ -551,4 +551,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>Batalkan semua</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Memeriksa isi arsip...</value>
+  </data>
 </root>

@@ -31,11 +31,15 @@ public static class ProgressText
     /// The time left estimated from the time so far and the percent done; empty before the first
     /// second, before any progress, and when under four seconds are left.
     /// </summary>
-    public static string Remaining(TimeSpan elapsed, int percent)
+    public static string Remaining(TimeSpan elapsed, int percent) => Remaining(elapsed, percent, 0);
+
+    /// <summary>As <see cref="Remaining(TimeSpan, int)"/>, with <paramref name="elapsed"/> measured
+    /// from the moment the bar stood at <paramref name="startPercent"/> (T-F307).</summary>
+    public static string Remaining(TimeSpan elapsed, int percent, int startPercent)
     {
-        if (elapsed.TotalSeconds < 1.0 || percent <= 0)
+        if (elapsed.TotalSeconds < 1.0 || percent <= startPercent)
             return string.Empty;
-        double remaining = elapsed.TotalSeconds / (percent / 100.0) - elapsed.TotalSeconds;
+        double remaining = elapsed.TotalSeconds * (100 - percent) / (percent - startPercent);
         return remaining switch
         {
             < 4 => string.Empty,

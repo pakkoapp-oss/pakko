@@ -551,4 +551,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>Ακύρωση όλων</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Έλεγχος περιεχομένων αρχειοθήκης...</value>
+  </data>
 </root>

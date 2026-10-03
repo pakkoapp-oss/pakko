@@ -551,4 +551,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>سب منسوخ کریں</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>آرکائیو کے مندرجات کی جانچ ہو رہی ہے...</value>
+  </data>
 </root>

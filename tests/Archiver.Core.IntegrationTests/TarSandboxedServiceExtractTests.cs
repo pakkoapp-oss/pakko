@@ -843,7 +843,8 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         File.Exists(Path.Combine(destDir, "big.bin")).Should().BeFalse();
 
         reports.Should().NotBeEmpty();
-        reports.Should().OnlyContain(r => r.TotalBytes == smallContent.Length,
+        // T-F307: the checking-phase report comes before any total is known.
+        reports.Where(r => r.Phase == ProgressPhase.Transferring).Should().OnlyContain(r => r.TotalBytes == smallContent.Length,
             "the progress total must be the SELECTED subset's byte size, not the whole archive's (which includes the much larger, unselected big.bin)");
         reports[^1].BytesTransferred.Should().Be(smallContent.Length);
     }
@@ -947,5 +948,49 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         reports[^1].Percent.Should().Be(100, "the operation must end with an explicit terminal 100% report");
         reports[^1].BytesTransferred.Should().Be(content.Length);
         reports[^1].TotalBytes.Should().Be(content.Length);
+    }
+
+    // T-F307: the listing passes before -xf read the whole archive (seconds to minutes for a large
+    // .tar.bz2); they are reported as their own phase first, and its end is reported explicitly —
+    // the byte poll does not run for an archive with no file bytes, which would otherwise keep
+    // "checking" on screen through the whole extraction.
+    [Integration]
+    public async Task ExtractAsync_SingleArchive_ReportsCheckingFirstThenTransferring()
+    {
+        string archivePath = Path.Combine(_temp.Path, "sized.tar");
+        TarBuilder.WriteTar(archivePath, [new TarBuilder.Entry { Name = "a.bin", Content = new byte[4096] }]);
+        var reports = new List<ProgressReport>();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = Path.Combine(_temp.Path, "out"),
+            Mode = ExtractMode.SingleFolder,
+        }, new SynchronousProgress<ProgressReport>(reports.Add));
+
+        result.Success.Should().BeTrue();
+        reports[0].Should().BeEquivalentTo(new ProgressReport { Percent = 0, Phase = ProgressPhase.CheckingArchive });
+        reports.Skip(1).Should().OnlyContain(r => r.Phase == ProgressPhase.Transferring);
+        reports[1].Should().BeEquivalentTo(new ProgressReport { Percent = 0, TotalBytes = 4096 });
+    }
+
+    [Integration]
+    public async Task ExtractAsync_ArchiveWithNoFileBytes_StillEndsTheCheckingPhaseBeforeTheResult()
+    {
+        string archivePath = Path.Combine(_temp.Path, "folders.tar");
+        TarBuilder.WriteTar(archivePath, [new TarBuilder.Entry { Name = "empty.txt", Content = [] }]);
+        var reports = new List<ProgressReport>();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = Path.Combine(_temp.Path, "out"),
+            Mode = ExtractMode.SingleFolder,
+        }, new SynchronousProgress<ProgressReport>(reports.Add));
+
+        result.Success.Should().BeTrue();
+        reports.Take(2).Select(r => (r.Phase, r.Percent)).Should().Equal(
+            (ProgressPhase.CheckingArchive, 0), (ProgressPhase.Transferring, 0));
+        reports.Skip(1).Should().OnlyContain(r => r.Phase == ProgressPhase.Transferring);
     }
 }

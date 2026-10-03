@@ -551,4 +551,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>모두 취소</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>압축 파일 내용 확인 중...</value>
+  </data>
 </root>

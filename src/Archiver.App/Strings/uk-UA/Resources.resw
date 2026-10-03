@@ -552,4 +552,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>Скасувати все</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Перевірка вмісту архіву...</value>
+  </data>
 </root>

@@ -154,7 +154,7 @@ src/
 │   │   └── HashDigestAccumulator.cs    ← T-F128: NanaZip-compatible folder DataSum/NamesSum combine
 │   └── Models/
 │       ├── ArchiveOptions.cs / ExtractOptions.cs / ArchiveResult.cs
-│       ├── ArchiveError.cs / SkippedFile.cs / ProgressReport.cs
+│       ├── ArchiveError.cs / SkippedFile.cs / ProgressReport.cs / ProgressPhase.cs
 │       ├── MessageCode.cs / CoreText.cs   ← T-F209: every user-visible Core message as a code + arguments
 │       ├── OperationOutcome.cs             ← T-F260: what a whole operation achieved
 │       ├── ArchiveFormat.cs / ArchiveContainerFormat.cs   ← detection vs. creation enums
@@ -679,7 +679,10 @@ public interface IArchiveService
 }
 ```
 
-`ProgressReport` carries `Percent`, `BytesTransferred`, `TotalBytes`, and `CurrentFile` (T-F16).
+`ProgressReport` carries `Percent`, `BytesTransferred`, `TotalBytes`, and `CurrentFile` (T-F16),
+plus `Phase` (`ProgressPhase`, T-F307): `CheckingArchive` while tar-family extraction runs its
+whole-archive listing passes (one report before them, a `Transferring` report right after), else
+`Transferring`. Frontends show a localized "checking" status instead of a standing 0%.
 
 ---
 

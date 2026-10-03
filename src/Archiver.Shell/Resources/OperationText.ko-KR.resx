@@ -87,4 +87,7 @@
   <data name="BombExtract" xml:space="preserve">
     <value>압축 풀기</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>압축 파일 내용 확인 중...</value>
+  </data>
 </root>

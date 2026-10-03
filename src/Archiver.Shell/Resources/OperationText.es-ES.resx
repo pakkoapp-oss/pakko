@@ -87,4 +87,7 @@
   <data name="BombExtract" xml:space="preserve">
     <value>Extraer</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Comprobando el contenido del archivo...</value>
+  </data>
 </root>

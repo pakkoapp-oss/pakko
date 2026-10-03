@@ -87,4 +87,7 @@
   <data name="BombExtract" xml:space="preserve">
     <value>Toa</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Inakagua yaliyomo kwenye kumbukumbu...</value>
+  </data>
 </root>

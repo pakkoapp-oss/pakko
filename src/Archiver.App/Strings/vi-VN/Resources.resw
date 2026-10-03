@@ -551,4 +551,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>Hủy tất cả</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Đang kiểm tra nội dung kho lưu trữ...</value>
+  </data>
 </root>

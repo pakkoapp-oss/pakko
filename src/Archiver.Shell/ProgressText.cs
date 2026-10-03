@@ -12,6 +12,8 @@ internal static class ProgressText
     // Reset()). No speed or byte total is shown while TotalBytes is unknown (<= 0).
     public static string FormatStatus(ProgressReport r, ProgressSpeedSampler? speedSampler)
     {
+        if (r.Phase == ProgressPhase.CheckingArchive)
+            return OperationTextLocalizer.Get("StatusCheckingArchive");
         if (r.TotalBytes <= 0)
             return $"{r.Percent}%";
 

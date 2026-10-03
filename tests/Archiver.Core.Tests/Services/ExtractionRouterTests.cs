@@ -241,6 +241,30 @@ public sealed class ExtractionRouterTests : IDisposable
         reports.Select(r => (r.Percent, r.BytesTransferred, r.TotalBytes)).Should().Equal((50, 0L, 0L), (75, 0L, 0L), (100, 0L, 0L));
     }
 
+    // T-F307: tar's "checking the archive" phase survives the slice in a mixed selection.
+    [Fact]
+    public async Task ExtractAsync_MixedSelection_KeepsThePhase()
+    {
+        string zip = WriteZip("a.zip");
+        string tar = WriteTar("b.tar");
+        var tarService = new FakeTarService
+        {
+            ExtractProgressScript =
+            [
+                new ProgressReport { Percent = 0, Phase = ProgressPhase.CheckingArchive },
+                new ProgressReport { Percent = 0, TotalBytes = 80 },
+            ],
+        };
+        var router = new ExtractionRouter(new FakeArchiveService(), tarService, AllSupported, new GroupPolicyOptions());
+        var reports = new List<ProgressReport>();
+
+        await router.ExtractAsync(
+            new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path },
+            new SynchronousProgress(reports.Add));
+
+        reports.Select(r => r.Phase).Should().Equal(ProgressPhase.CheckingArchive, ProgressPhase.Transferring);
+    }
+
     // One kind only: the engine's reports pass through untouched.
     [Fact]
     public async Task ExtractAsync_PureTarSelection_ReportsPassThroughUnchanged()

@@ -551,4 +551,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>すべてキャンセル</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>アーカイブの内容を確認中...</value>
+  </data>
 </root>

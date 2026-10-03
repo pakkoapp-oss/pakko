@@ -36,4 +36,16 @@ public sealed class ProgressTextTests : IDisposable
 
         ProgressText.FormatSpeed(2_097_152).Should().Be("2,0 МБ/с");
     }
+
+    // T-F307: the tar listing passes report no bytes; the status says what is going on instead of "0%".
+    [Theory]
+    [InlineData("en-US", "Checking the archive's contents...")]
+    [InlineData("uk-UA", "Перевірка вмісту архіву...")]
+    public void FormatStatus_CheckingArchive_SaysSoInTheLanguage(string culture, string expected)
+    {
+        CultureInfo.CurrentUICulture = CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+
+        ProgressText.FormatStatus(new Archiver.Core.Models.ProgressReport { Phase = Archiver.Core.Models.ProgressPhase.CheckingArchive }, null)
+            .Should().Be(expected);
+    }
 }

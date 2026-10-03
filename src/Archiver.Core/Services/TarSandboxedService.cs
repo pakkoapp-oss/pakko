@@ -306,6 +306,8 @@ public sealed class TarSandboxedService : ITarService
         // subset will be extracted (see T-F49's exploit finding in DECISIONS.md: a symlink entry
         // can escape quarantine before any per-entry check runs, so the whole archive must be
         // validated regardless of what subset the caller eventually asks tar.exe to extract).
+        // T-F307: each listing pass decompresses the whole archive, so it gets its own phase.
+        progress?.Report(new ProgressReport { Percent = 0, Phase = ProgressPhase.CheckingArchive });
         (long declaredUncompressedSize, string[]? allNames, Dictionary<string, long>? sizeByName, List<(string Name, long Size)> fileEntries) = await ScanForUnsafeEntriesAsync(scope, cancellationToken)
             .ConfigureAwait(false);
 
@@ -335,6 +337,8 @@ public sealed class TarSandboxedService : ITarService
         long progressTotalBytes = expandedSelection != null
             ? expandedSelection.Sum(n => sizeByName.GetValueOrDefault(n, 0L))
             : declaredUncompressedSize;
+        // Ended here, not by the byte poll: the poll does not run for an archive with no file bytes.
+        progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = progressTotalBytes });
 
         bool isSingleRootFolder = !isSelectedSubset
             && rootNames.Count > 0

@@ -93,6 +93,11 @@ public sealed partial class MainViewModel : ObservableObject
     // design (see that class's own doc comment for why there is no Reset() method instead).
     private ProgressSpeedSampler? _speedSampler;
     private string _operationStatusPrefix = string.Empty;
+    // T-F307: where the time-left estimate starts counting; moved to the end of a tar archive's
+    // listing passes, which take time at a standing bar.
+    private TimeSpan _estimateStart;
+    private int _estimateStartPercent;
+    private bool _checkingArchive;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ArchiveCommand))]
@@ -850,6 +855,7 @@ public sealed partial class MainViewModel : ObservableObject
             StatusMessage = _operationStatusPrefix;
             _operationStopwatch = System.Diagnostics.Stopwatch.StartNew();
             _speedSampler = new ProgressSpeedSampler();
+            (_estimateStart, _estimateStartPercent, _checkingArchive) = (TimeSpan.Zero, 0, false);
 
             var progress = new Progress<ProgressReport>(r =>
             {
@@ -966,6 +972,7 @@ public sealed partial class MainViewModel : ObservableObject
             StatusMessage = _operationStatusPrefix;
             _operationStopwatch = System.Diagnostics.Stopwatch.StartNew();
             _speedSampler = new ProgressSpeedSampler();
+            (_estimateStart, _estimateStartPercent, _checkingArchive) = (TimeSpan.Zero, 0, false);
 
             var progress = new Progress<ProgressReport>(r =>
             {
@@ -1753,6 +1760,19 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (_operationStopwatch is null) return;
 
+        if (report.Phase == ProgressPhase.CheckingArchive)
+        {
+            _checkingArchive = true;
+            StatusMessage = $"{_operationStatusPrefix}  ·  {_res.GetString("StatusCheckingArchive")}";
+            return;
+        }
+        if (_checkingArchive)
+        {
+            _checkingArchive = false;
+            _estimateStart = _operationStopwatch.Elapsed;
+            _estimateStartPercent = report.Percent;
+        }
+
         string speedPart = string.Empty;
         string etaPart = string.Empty;
 
@@ -1761,7 +1781,7 @@ public sealed partial class MainViewModel : ObservableObject
             double smoothedBytesPerSec = _speedSampler?.Sample(report.BytesTransferred, DateTime.UtcNow) ?? 0;
             if (smoothedBytesPerSec >= 1)
                 speedPart = ProgressText.Speed(smoothedBytesPerSec);
-            etaPart = ProgressText.Remaining(_operationStopwatch.Elapsed, report.Percent);
+            etaPart = ProgressText.Remaining(_operationStopwatch.Elapsed - _estimateStart, report.Percent, _estimateStartPercent);
         }
 
         var sb = new System.Text.StringBuilder(_operationStatusPrefix);

@@ -551,4 +551,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>Cancelar tudo</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>A verificar o conteúdo do arquivo...</value>
+  </data>
 </root>

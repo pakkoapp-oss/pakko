@@ -40,6 +40,18 @@ public sealed class ProgressTextTests
         ProgressText.Remaining(TimeSpan.FromSeconds(elapsedSeconds), percent).Should().Be(expected);
     }
 
+    // T-F307: after a tar archive's listing passes, the estimate counts only the time and percent
+    // since they ended — 25 s of listing at 0% would otherwise inflate it — also when the tar part
+    // starts partway up the bar (a mixed zip+tar selection).
+    [Theory]
+    [InlineData(10, 50, 0, "~10 sec remaining")]
+    [InlineData(10, 75, 50, "~10 sec remaining")]
+    [InlineData(10, 50, 50, "")]       // nothing done since the start point: no estimate
+    public void Remaining_FromAStartPercent_UsesOnlyTheProgressSinceThen(double elapsedSeconds, int percent, int startPercent, string expected)
+    {
+        ProgressText.Remaining(TimeSpan.FromSeconds(elapsedSeconds), percent, startPercent).Should().Be(expected);
+    }
+
     private sealed class CultureScope : IDisposable
     {
         private readonly CultureInfo _previous = CultureInfo.CurrentCulture;

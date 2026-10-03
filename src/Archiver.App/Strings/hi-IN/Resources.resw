@@ -551,4 +551,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>सभी रद्द करें</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>संग्रह की सामग्री जाँची जा रही है...</value>
+  </data>
 </root>

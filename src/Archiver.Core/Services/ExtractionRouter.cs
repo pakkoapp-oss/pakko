@@ -135,6 +135,7 @@ public sealed class ExtractionRouter(
                 BytesTransferred = hasBytes ? bytesBefore + value.BytesTransferred : 0,
                 TotalBytes = hasBytes ? bytesBefore + value.TotalBytes : 0,
                 CurrentFile = value.CurrentFile,
+                Phase = value.Phase,
             });
         }
     }

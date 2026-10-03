@@ -87,4 +87,7 @@
   <data name="BombExtract" xml:space="preserve">
     <value>Išskleisti</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Tikrinamas archyvo turinys...</value>
+  </data>
 </root>

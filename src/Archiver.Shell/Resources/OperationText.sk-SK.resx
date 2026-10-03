@@ -87,4 +87,7 @@
   <data name="BombExtract" xml:space="preserve">
     <value>Rozbaliť</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Kontrola obsahu archívu...</value>
+  </data>
 </root>

@@ -551,4 +551,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>Ghairi zote</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Inakagua yaliyomo kwenye kumbukumbu...</value>
+  </data>
 </root>

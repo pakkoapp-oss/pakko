@@ -87,4 +87,7 @@
   <data name="BombExtract" xml:space="preserve">
     <value>निकालें</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>संग्रह की सामग्री जाँची जा रही है...</value>
+  </data>
 </root>

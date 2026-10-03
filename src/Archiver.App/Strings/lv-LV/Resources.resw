@@ -551,4 +551,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>Atcelt visu</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Pārbauda arhīva saturu...</value>
+  </data>
 </root>

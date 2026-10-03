@@ -16,4 +16,7 @@ public sealed class ProgressReport
 
     /// <summary>Name of the file currently being read/written, if known.</summary>
     public string? CurrentFile { get; init; }
+
+    /// <summary>What the operation is doing; <see cref="ProgressPhase.Transferring"/> unless stated.</summary>
+    public ProgressPhase Phase { get; init; }
 }

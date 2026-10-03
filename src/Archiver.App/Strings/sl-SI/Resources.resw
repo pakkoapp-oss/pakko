@@ -551,4 +551,7 @@
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>Prekliči vse</value>
   </data>
+  <data name="StatusCheckingArchive" xml:space="preserve">
+    <value>Preverjanje vsebine arhiva...</value>
+  </data>
 </root>
