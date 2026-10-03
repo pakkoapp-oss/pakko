@@ -75,7 +75,7 @@ public sealed class TarSandboxedServiceProgressPollingTests
         // A fixed Task.Delay(400) raced CI scheduling jitter (the first 250ms tick landing after
         // the delay had already ended). Ending on the first report removes the race; the delay is
         // only a cap so a poller that never reports fails instead of hanging.
-        var extractionTask = Task.WhenAny(firstReport.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+        Task<Task> extractionTask = Task.WhenAny(firstReport.Task, Task.Delay(TimeSpan.FromSeconds(10)));
 
         await TarSandboxedService.PollExtractionProgressAsync(
             temp.Path, totalBytes: 100, progress, extractionTask, CancellationToken.None);
@@ -93,12 +93,16 @@ public sealed class TarSandboxedServiceProgressPollingTests
         // underestimate; the real clamp should still cap percent at 94, never reach 100.
         temp.CreateFile("overshoot.bin", new string('a', 500));
         var reports = new List<ProgressReport>();
-        var progress = new SynchronousProgress<ProgressReport>(r => reports.Add(r));
+        var firstReport = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var progress = new SynchronousProgress<ProgressReport>(r =>
+        {
+            reports.Add(r);
+            firstReport.TrySetResult();
+        });
 
-        // Wide margin over the 250ms poll interval -- a tight margin here raced against CI
-        // scheduling jitter (the first poll tick landing late enough that the "extraction" had
-        // already completed), producing zero reports intermittently on GitHub Actions runners.
-        var extractionTask = Task.Delay(1500);
+        // Ends on the first report, not after a fixed margin: a fixed Task.Delay raced CI
+        // scheduling jitter (zero reports intermittently on GitHub Actions runners).
+        Task<Task> extractionTask = Task.WhenAny(firstReport.Task, Task.Delay(TimeSpan.FromSeconds(10)));
 
         await TarSandboxedService.PollExtractionProgressAsync(
             temp.Path, totalBytes: 100, progress, extractionTask, CancellationToken.None);
