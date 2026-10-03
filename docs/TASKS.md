@@ -3071,8 +3071,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F288 — `[ComImport]` interfaces to `[GeneratedComInterface]` (SYSLIB1096, P3)
 
-- [ ] **Status:** open — split out of T-F287, 2026-09-29 (that task was about `DllImport`; this is
-  a different mechanism, info-level in Sonar, never a build error). Not scheduled in G2.
+- [~] **Status (2026-10-03, v1.7.0 wave 6):** done in code, device check (progress, Cancel, Open in
+  Pakko) pending. Both classes are `ThreadingModel=Both` and Shell's threads are MTA, so no
+  marshalling change (DECISIONS, wave 6). Earlier: open — split out of T-F287, 2026-09-29 (that task
+  was about `DllImport`; this is a different mechanism, info-level in Sonar, never a build error).
 - **Scope:** `Archiver.Shell/AppLauncher.cs` (`IApplicationActivationManager`, coclass `new`) and
   `Archiver.Shell/NativeProgressDialog.cs` (`IProgressDialog`) to `[GeneratedComInterface]` +
   `StrategyBasedComWrappers`, created with a `CoCreateInstance` `[LibraryImport]` instead of `new`

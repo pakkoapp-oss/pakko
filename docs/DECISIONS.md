@@ -10843,3 +10843,14 @@ held on the device; stopped per the three-attempts rule.
   command sums the rows' totals instead of walking every folder again on the UI thread, which froze
   the window for a large folder; it waits for rows still measuring, and Cancel stops that wait. A CRC-32
   read already running finishes; one still queued gives up its place.
+- **T-F288, the two Shell COM objects through `[GeneratedComInterface]`.** `IProgressDialog` and
+  `IApplicationActivationManager` are source-generated and created by `ShellCom.Create`
+  (`CoCreateInstance` + `StrategyBasedComWrappers`, a unique instance) and released by
+  `ComObject.FinalRelease` — the progress dialog was never released before. Apartments: Shell's
+  entry has no `[STAThread]`, so its threads are MTA, and both classes are registered
+  `ThreadingModel=Both` (checked in the registry, 2026-10-03): they are called directly, with no
+  proxy, before and after the change. Calls from the cancel-poll timer and the progress callbacks
+  stay serialized by `Win32OperationUi`'s lock. `HasUserCancelled` keeps `[PreserveSig]` with a
+  `BOOL` return. The unit tests create both objects and call methods that need no window; a wrong
+  vtable order is not visible there (a reordered `SetAnimation` survived), so the device check of
+  progress and Cancel stays the acceptance gate.

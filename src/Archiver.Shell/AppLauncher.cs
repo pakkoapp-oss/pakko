@@ -29,6 +29,9 @@ public static partial class AppLauncher
     private const int AppModelErrorNoPackage = 15700;
     private const int ErrorInsufficientBuffer = 122;
 
+    /// <summary>CLSID_ApplicationActivationManager.</summary>
+    internal static readonly Guid ActivationManagerClassId = new("45BA127D-10A8-46EA-8AB7-56EA9078943C");
+
     /// <summary>
     /// Builds the argument string, or returns false when it is longer than
     /// <see cref="LaunchArguments.MaxLength"/> — past the command-line limit ActivateApplication blocks
@@ -50,7 +53,7 @@ public static partial class AppLauncher
         if (familyName is null)
             return AppLaunchResult.NoPackage;
 
-        var manager = (IApplicationActivationManager)new ApplicationActivationManager();
+        IApplicationActivationManager manager = ShellCom.Create<IApplicationActivationManager>(ActivationManagerClassId);
         try
         {
             int hr = manager.ActivateApplication(familyName + "!App", arguments, ActivateOptions.None, out _);
@@ -58,7 +61,7 @@ public static partial class AppLauncher
         }
         finally
         {
-            Marshal.ReleaseComObject(manager);
+            ShellCom.Release(manager);
         }
     }
 
@@ -74,33 +77,6 @@ public static partial class AppLauncher
         return rc == 0 ? new string(buffer, 0, (int)length - 1) : null;
     }
 
-    private enum ActivateOptions
-    {
-        None = 0,
-    }
-
-    // Declared from ShObjIdl_core.h (SDK 10.0.26100): every method returns HRESULT, so
-    // [PreserveSig] keeps the HRESULT visible instead of the marshaller throwing. Only the first
-    // vtable slot is called; the two after it are declared so the layout matches the header.
-    [ComImport, Guid("2e941141-7f97-4756-ba1d-9decde894a3d"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IApplicationActivationManager
-    {
-        [PreserveSig]
-        int ActivateApplication([MarshalAs(UnmanagedType.LPWStr)] string appUserModelId,
-            [MarshalAs(UnmanagedType.LPWStr)] string arguments, ActivateOptions options, out uint processId);
-
-        [PreserveSig]
-        int ActivateForFile([MarshalAs(UnmanagedType.LPWStr)] string appUserModelId, IntPtr itemArray,
-            [MarshalAs(UnmanagedType.LPWStr)] string verb, out uint processId);
-
-        [PreserveSig]
-        int ActivateForProtocol([MarshalAs(UnmanagedType.LPWStr)] string appUserModelId, IntPtr itemArray, out uint processId);
-    }
-
-    [ComImport, Guid("45BA127D-10A8-46EA-8AB7-56EA9078943C")]
-    private class ApplicationActivationManager // NOSONAR: S3260 — a [ComImport] coclass stays unsealed: the cast to its interface is a runtime QueryInterface, which C# rejects at compile time for a sealed class (CS0030)
-    {
-    }
 
     private static partial class NativeMethods
     {

@@ -949,6 +949,11 @@ cancelled walk) and `FileItemTests` in `Archiver.App.Core.Tests` (a folder's tot
 file's, disposing the item stops the walk and its totals still complete). Mutants killed: the token
 ignored, `Dispose` not cancelling. The queued CRC-32 read's cancel is enforced by CA2016, not a test.
 
+T-F288: `Archiver.Shell.Tests/ShellComTests` creates the progress dialog and the activation
+manager through `ShellCom` (title, line, `HasUserCancelled` before start; an unknown AUMID returns a
+failure HRESULT; an unregistered class throws `COMException`). It cannot see a wrong vtable order;
+progress and Cancel are checked on the device.
+
 ---
 
 ## Rules
