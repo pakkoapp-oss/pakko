@@ -15,14 +15,15 @@ namespace Archiver.CLI.Tests;
 /// the Subprocess/ layer always redirects the child's stdin, so the real prompt is unreachable
 /// end-to-end (same constraint as CliPasswordPromptTests).
 /// </summary>
-public sealed class CliConflictPromptTests : IDisposable
+public sealed class CliConflictPromptTests : IAsyncLifetime
 {
-    private readonly string _temp = Directory.CreateTempSubdirectory("pakko-cli-conflict-").FullName;
+    private readonly TestTempFolder _folder = new("pakko-cli-conflict-");
 
-    public void Dispose()
-    {
-        try { Directory.Delete(_temp, recursive: true); } catch (IOException) { /* best-effort */ }
-    }
+    private string _temp => _folder.Path;
+
+    public Task InitializeAsync() => Task.CompletedTask;
+
+    public Task DisposeAsync() => _folder.DeleteAsync();
 
     private static Func<string?> Lines(params string?[] lines)
     {
