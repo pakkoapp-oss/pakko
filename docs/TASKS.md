@@ -158,7 +158,7 @@ Click ZIP in list → read-only tree view of contents via `ZipFile.OpenRead`. No
 ---
 
 ### T-F09 — CLI Core (Archiver.CLI, 7z-Familiar Syntax)
-- [~] **Status:** implementation complete 2026-07-18, on-device verification pending. Scope
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): every command (`a`, `x`, `t`, `l`, `i`, `h`) on ZIP and the tar family, plus the error cases (unknown command exit 7, missing file 2, not an archive 2) in a real console; masked `-p` prompt, Y/N/A/S/U/Q prompt (U gave `big (1).bin`), Ctrl+C exit 255. Earlier status: implementation complete 2026-07-18, on-device verification pending. Scope
       pivoted 2026-07-12 from the original GNU-style `--src/--dest` sketch (kept below the divider,
       per the "never silently deprecate" rule) to a `7z`-*familiar* command syntax, per user
       request. Advisor-reviewed before writing this. `CLI.md`'s `a`/`l`/`-t{type}` rows were found
@@ -2261,7 +2261,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   into the current directory; `--help` and `docs/CLI.md` updated. Subprocess test red before the
   fix. Stays `[~]` until a real-console check.
 
-- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open. `Archiver.CLI/Program.cs` defaults the destination to
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): `pakko x valid_multiple_files.zip` in an empty folder without `-o` put the 4 files in the current folder. Earlier status: fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open. `Archiver.CLI/Program.cs` defaults the destination to
   `Path.GetDirectoryName(archive)`; 7-Zip extracts into the current directory. Repro: from an empty
   folder, `pakko x ..\out.zip` -> nothing in the current folder; files land beside `out.zip`
   (and, with T-F205, without their root folder). Undocumented in `docs/CLI.md`. Either adopt cwd
@@ -2277,7 +2277,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   repro (a second Extract all with Rename) still reads as a clean "Видобуто" — that part stays open.
   Device 1.5.0.31.
 - **Device (G6 pass 3, 1.5.0.13):** clean runs show "Стиснуто/Видобуто за N с — архівів: 1 · Показати в папці" (opens the folder); a run with a problem shows "Завершено з проблемами: N · Деталі...", which reopens the summary. The rename case still reads clean (Rename + apply to all on a second Extract gave three `(1)` copies and "Видобуто за 13 с — архівів: 1"), so this stays `[~]`.
-- [~] **Status:** fixed, see progress. Original: On success with no errors/skips, `MainViewModel` sets "Розпаковано за N с
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): the App footer after an extraction reads "Видобуто за 3 с — архівів: 2" with "Показати в папці". Earlier status: fixed, see progress. Original: On success with no errors/skips, `MainViewModel` sets "Розпаковано за N с
   — файлів: M" and then, a few lines later, unconditionally resets `StatusMessage` to
   "Готово" (`MainViewModel.cs` ~line 702, and the matching reset in `ArchiveAsync` ~line 603);
   `ShowOperationSummaryAsync` returns early when there is nothing to report. Net effect: the user
@@ -2312,7 +2312,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F221 — CLI error and help messages (P2)
 
-- [~] **Status:** partial — every item fixed in code (see Progress). Left: the console-only branches (progress on stderr, the `-so` refusal, `l` on an encrypted ZIP) in a real terminal — v1.7.0 wave 3 (CLI).
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): in conhost: `0%` progress on stderr during `a`; `a -so` to the terminal refused with exit 7; `l` of an AES ZIP lists `AES-256`; Ctrl+C prints "operation stopped by user". Earlier status: partial — every item fixed in code (see Progress). Left: the console-only branches (progress on stderr, the `-so` refusal, `l` on an encrypted ZIP) in a real terminal — v1.7.0 wave 3 (CLI).
 - [~] **Progress (2026-09-28, fix phase 7):** fixed in d7bf2e8 — items 1-6, 9, 10 (not found, -p hint and one wrong-password line, -aoa/-aou hint, empty stdin and "(stdin)", `a -so` to a terminal refused, explicit name written as typed — 7-Zip's rule, user decision; progress percentage only on a console stderr; `h <folder>` relative names). Item 8 was already fixed by T-F261. Item 7 moves to wave 4 with T-F199's encryption flag. Console-only branches (progress, -so refusal) need a real terminal check.
 - [~] **Progress (2026-09-28, wave 4, T-F199 step 1):** item 7 fixed in aa9cf8f/13bd543 — `l` has a new `Encrypted` column (`-`, `ZipCrypto`, `AES-128/192/256`, `+` unnamed method, `?` format cannot say) inserted before `Path`. **Output contract change:** `Path` moves from column 6 to column 7 (still last) — for CHANGELOG v1.6.0 and DECISIONS. Include `l` on an encrypted ZIP in the carried real-terminal check.
 
@@ -2349,7 +2349,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   (7-Zip follows them), unreadable subfolders not counted as items, 7-Zip hides the names line for
   a contents-only single file. Stays `[~]` until the device check.
 
-- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open. DataSum matches the vendored `7za.exe h` exactly, but NamesSum differs for
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): `pakko h -scrcSHA256` and Explorer's SHA-256 of a 3-file tree with a Cyrillic name give the same data and data-and-names sums as `7za h`. Earlier status: fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open. DataSum matches the vendored `7za.exe h` exactly, but NamesSum differs for
   every folder tried — including a folder holding a single ASCII file with no subfolders:
   `one\a.txt` -> Pakko `CRC32 for data and names: 680B36C2`, 7za `FBAAC368-00000000`; two files
   -> `A2D28CEB-00000000` vs `44372226-00000002`; a real 27-file CD folder (SHA-256) ->
@@ -2413,7 +2413,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   extract, Test and Scan alike. Confirmed .NET does not cap the unencrypted stored path either (it
   returns all stored bytes); T-F246's wrapper covers that. Agent-verified on device 2026-09-25 (Deploy 1.4.12.11): covered by unit/service tests (AE-2 larger than declared); no separate device scenario.
 
-- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — code-confirmed by the T-F226 reviewer agent, exploit not yet reproduced.
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): the decrypt path is the same one T-F246's checks ran through; the cap itself stays covered by the AE-2 service tests (no realistic hostile fixture). Earlier status: fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — code-confirmed by the T-F226 reviewer agent, exploit not yet reproduced.
   The compression-bomb and free-space gate uses declared sizes; the decrypting path wraps the
   plaintext in an unbounded `DeflateStream` (`EncryptedZipEntryReader.cs:~229`), so a
   password-protected archive can declare tiny sizes and expand far beyond them (a password shared
@@ -2442,7 +2442,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   Remaining real triggers (MTP phone, other shell namespaces) need that hardware/namespace; covered
   by the C++ `GetSelectionPaths` test with a Control Panel item.
 
-- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — symptom confirmed on device 2026-09-24, cause likely (not isolated). The
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): Explorer's "Add to X.zip" with 1000 long paths over `--paths-stdin` made a ZIP with 1000 entries. Earlier status: fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — symptom confirmed on device 2026-09-24, cause likely (not isolated). The
   extension passes the whole selection as one `CreateProcessW` command line
   (`ShellExtUtils.cpp:228-253`, `Build*Args`), whose documented limit is 32,767 characters. When it
   fails, `Invoke` returns the HRESULT (`ExplorerCommands.cpp:125` and siblings), which Explorer
@@ -2516,7 +2516,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   characterization test: Test and Extract share names and readers); item 6 fixed (1110af2 —
   over-long names are a per-entry error on both write paths). Covered by T-F234's device check
   (same read path); items 2/3/6 are test-only (no realistic on-device fixture needed beyond it).
-- [~] **Status:** fixed except item 5 (not reproduced), awaiting user check. Original report: open, from the T-F226 review (reviewer agent + own reading); items marked
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): `t` on `corrupted_entry_data.zip`/`corrupted_central_directory.zip` reports a corrupted ZIP, `zipslip_traversal.zip` refuses both unsafe entries and writes nothing outside; item 5 stays not reproduced. Earlier status: fixed except item 5 (not reproduced), awaiting user check. Original report: open, from the T-F226 review (reviewer agent + own reading); items marked
   hypothesis need a repro first.
   1. `ZipArchiveService.cs:1229-1236`: `\` in an entry name is not normalized when classifying
      the root shape (hypothesis).
@@ -2534,7 +2534,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F244 — Sandbox launcher, crypto and CLI staging hygiene (P2)
 
-- [~] **Status:** partial — items 1, 2, 3, 5 fixed; item 4 fixed in code. Left: a real-console Ctrl+C and kill check of the `-si` staging — v1.7.0 wave 3 (CLI).
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): Ctrl+C during `x -si` exits 255 with `%TEMP%\Archiver.CLI.Stdin` empty; a `taskkill` mid-run left one staging folder and the next `l -si` swept it. Earlier status: partial — items 1, 2, 3, 5 fixed; item 4 fixed in code. Left: a real-console Ctrl+C and kill check of the `-si` staging — v1.7.0 wave 3 (CLI).
 - **Progress (2026-09-27, fix phase 8):** item 4 fixed in 7a6f236 + cd593d5 — `CliStagingFolder`
   (`<pid>-<guid>`, owned from creation), Ctrl+C for `x`/`t`/`l`/`a` (exit 255, second press ends
   the process), startup sweep of dead runs' folders with PID-reuse detection. Real-console Ctrl+C
@@ -2580,7 +2580,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Progress (2026-09-25, fix phase 1):** Core fixed — both engines throw
   `OperationCanceledException` on cancel, including between archives/sources (T-F260 entry in
   `docs/DECISIONS.md`); App consumer + device check still to come in the same phase.
-- [~] **Status:** fixed in fix phase 1 (2026-09-25), agent-verified on device (App: cancelled 335 MB `.tar.gz` -> archive kept, no partial output, no tar.exe, status "Скасовано"; Shell `--extract-here` of a 200 MB `.tar.bz2` cancelled -> exits 0 in ~1 s, no output, no tar.exe); stays `[~]` until the user's own check. Details: `docs/DECISIONS.md` T-F260 entry.
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): App: cancel during a 256 MB `.tar.bz2` extraction with the Recycle Bin option ticked kept the archive, no tar.exe left, footer "Скасовано". Earlier status: fixed in fix phase 1 (2026-09-25), agent-verified on device (App: cancelled 335 MB `.tar.gz` -> archive kept, no partial output, no tar.exe, status "Скасовано"; Shell `--extract-here` of a 200 MB `.tar.bz2` cancelled -> exits 0 in ~1 s, no output, no tar.exe); stays `[~]` until the user's own check. Details: `docs/DECISIONS.md` T-F260 entry.
 - **Original report:** open — Core behavior confirmed 2026-09-25 with a scratch probe calling
   `TarSandboxedService.ExtractAsync` directly on a 600 MB `.tar.bz2` (bomb prompt answered yes):
   no cancel -> `Success=True created=1` after 10.7 s; cancel at 1.5 s / 4 s / 8 s -> returns
@@ -2623,7 +2623,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   the CRC-32 error for `doc.txt`; only `ok.txt` is written and no viewer opens. `TestAsync` now uses
   the same check (closing review).
 
-- [~] **Status:** fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — confirmed 2026-09-25. `pakko a c.zip doc.txt -mx=0`, flip one byte
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): `t`/`x` on `corrupted_crc_stored.zip` report the CRC-32 mismatch with both values and write no file; Explorer Test shows the same error. Earlier status: fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — confirmed 2026-09-25. `pakko a c.zip doc.txt -mx=0`, flip one byte
   inside the stored data: `pakko t bad.zip` -> `Entry 'doc.txt' failed CRC-32 check (expected
   FFF2F885, got E6BC4A3F)`, exit 2; `pakko x bad.zip` -> exit 0, `doc.txt` written and differs from
   the original; `7za x` -> `ERROR: CRC Failed : doc.txt`. `TestAsync` computes CRC-32 itself
@@ -2680,7 +2680,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   are skipped with their own entry (no loops, no foreign files); the parallel CRC-32 path fails a
   file that shrank while hashed. Stays `[~]` until the device check.
 
-- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — confirmed 2026-09-25. `FileHashService.ComputeFolderAsync` enumerates
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): `pakko h` and Explorer's hash of a folder with a denied subfolder name it and hash the rest; a junction loop is skipped ("not followed"). Earlier status: fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — confirmed 2026-09-25. `FileHashService.ComputeFolderAsync` enumerates
   with `new DirectoryInfo(root).EnumerateFiles("*", SearchOption.AllDirectories).ToList()`
   (`FileHashService.cs:128`) outside any try, with the default options: inaccessible folders
   throw and reparse points are followed.
@@ -2747,7 +2747,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Progress (2026-09-25, fix phase 1):** slice done in Core — `ArchiveResult.Sources` /
   `FullyProcessedSources` (fail-closed) and the cancellation rule; the general outcome and the
   frontend mapping stay for phase 7 (`docs/DECISIONS.md`, T-F260 entry).
-- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — code-confirmed 2026-09-25. `ArchiveResult` is `Success` plus three string
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): exit codes 0 (done), 1 (tar test skipped), 2 (errors), 7 (usage); the App and the operation window show the same outcomes. Earlier status: fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — code-confirmed 2026-09-25. `ArchiveResult` is `Success` plus three string
   lists (`ArchiveResult.cs`); it cannot say "cancelled" or "partly done", `SkippedFile.Path` does
   not say whether a source or an entry was skipped, and `CreatedFiles` holds output folders for
   extraction but archives for creation (the App status line still calls them "file(s)").
@@ -2894,7 +2894,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 - **Device check (2026-09-26, Deploy 1.4.12.13, title build 2026-09-25 23:58:24, agent via Shell/`windows` MCP):** Explorer "Add to X.tar" on `r＂ --version ＂.txt` shows the refusal (code page 1251, use ZIP); no .tar created. Stays `[~]`.
 
-- [~] **Status:** fixed in fix phase 4 (2026-09-25), device check at phase end. Found during the
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): `pakko a -ttar` and Explorer's "Add to X.tar" on `r＂ --version ＂.txt` refuse with the code-page message; no .tar written. Earlier status: fixed in fix phase 4 (2026-09-25), device check at phase end. Found during the
   phase-4 T-F204 spike: tar.exe (bsdtar) reads its command line through the ANSI code page, and
   the C runtime converts it with best-fit mapping. A fullwidth quote (U+FF02) becomes `"` and
   splits a quoted argument: `tar -tf "x＂ --version ＂"` ran `--version` (exit 0, ACP 1251).
