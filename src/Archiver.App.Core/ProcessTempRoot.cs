@@ -25,8 +25,9 @@ public sealed class ProcessTempRoot
     /// <summary>This process's subfolder.</summary>
     public string OwnRoot { get; }
 
-    /// <summary>This process's owner tag (<see cref="TempOwner.CurrentTag"/>, T-F263).</summary>
-    public static string CurrentOwnerName => TempOwner.CurrentTag;
+    /// <summary>This process's subfolder name (<see cref="TempOwner.ProcessTag"/>, T-F263): the
+    /// v1.6.0 shape, so a v1.6.0 window still open next to this one sees a live owner.</summary>
+    public static string CurrentOwnerName => TempOwner.ProcessTag;
 
     /// <summary>True when the named process still runs here (<see cref="TempOwner.IsRunningHere"/>).</summary>
     public static bool IsOwnerAlive(string ownerName) => TempOwner.IsRunningHere(ownerName);

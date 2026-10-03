@@ -1052,6 +1052,34 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
     }
 
+    // T-F312 closing review: with the up-front delete gone, Overwrite of an archive that lies inside
+    // the folder being archived packed the old archive into the new one.
+    [Theory]
+    [InlineData(ArchiveMode.SingleArchive)]
+    [InlineData(ArchiveMode.SeparateArchives)]
+    public async Task ArchiveAsync_OverwriteArchiveInsideTheSourceFolder_OldArchiveNotPacked(ArchiveMode mode)
+    {
+        string folder = Path.Combine(_temp.Path, "folder");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "a.txt"), "a");
+        string destPath = Path.Combine(folder, "folder.zip");
+        File.WriteAllText(destPath, "old archive");
+
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [folder],
+            DestinationFolder = folder,
+            ArchiveName = mode == ArchiveMode.SingleArchive ? "folder" : null,
+            Mode = mode,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.CreatedFiles.Should().Equal(destPath);
+        using ZipArchive archive = ZipFile.OpenRead(destPath);
+        archive.Entries.Select(e => e.Name).Should().NotContain("folder.zip");
+        archive.Entries.Select(e => e.Name).Should().Contain("a.txt");
+    }
+
     [Fact]
     public async Task ArchiveAsync_LongArchiveName_Works()
     {

@@ -209,6 +209,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         try
         {
+            ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, sortedSourcePaths);
             if (useParallelPipeline)
             {
                 var callbacks = new Zip.ParallelSingleArchiveWriter.ReportCallbacks(skippedFiles.Add, errors.Add);
@@ -512,6 +513,7 @@ public sealed class ZipArchiveService : IArchiveService
         void AddError(ArchiveError e) { Interlocked.Increment(ref issues); sink.Errors.Add(e); }
         try
         {
+            ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, [sourcePath]);
             if (settings.RequiresHandRolledWriter && (Directory.Exists(sourcePath) || File.Exists(sourcePath)))
             {
                 // T-F193/T-F299: the only writer that can encrypt or store an entry Deflate grew. A

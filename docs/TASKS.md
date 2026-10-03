@@ -2848,7 +2848,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   folders (phase 9) — a killed process still leaves its hidden staging folder behind until then
   (seen on device when a run was killed at its conflict dialog), and owner-only ACLs.
 
-- [ ] **Status:** open — code-confirmed 2026-09-25. Seven staging mechanisms, each with its own
+- **Original report:** open — code-confirmed 2026-09-25. Seven staging mechanisms, each with its own
   naming, ACL and cleanup, and none with a startup sweep of leftovers: ZIP extraction's fixed
   `<dest>_tmp` (`ZipArchiveService.cs:1290` — the only fixed name, the root of T-F227/T-F228),
   tar's `PakkoTarStage_<guid>` (`TarSandboxedService.cs:1221`), the sandbox quarantine
@@ -3547,8 +3547,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - [x] **Status (2026-10-03, v1.7.0 wave 6):** done. Device (2026-10-03, Deploy 1.6.0.7, App title build 2026-10-03 18:08:52, Release `pakko.exe` from 95e3f0c, agent): `pakko a big3.zip big.bin` killed after
   1.5 s left `.pakko-a-mc2e5513b-20112-….tmp` (not hidden); with an old `big3.zip.tmp` held open
   (`FileShare.None`) the next run exited 0, removed the leftover and left `big3.zip.tmp` alone. `pakko
-  a -y held.zip` with `held.zip` held open until 0.8 s after the temp file reached full size: exit 0,
-  the new 629 MB archive in place, not hidden. App: a 608 MB folder compressed to a non-hidden
+  a -y held.zip small.txt` with `held.zip` held open (`FileShare.None`) and released at 700 ms: exit 0
+  after 1016 ms, the new archive in place, not hidden — the commit waited; held for 2.5 s: exit 2,
+  "Access denied creating archive", the old archive kept. Overwrite of `out.zip`/`out.tar` inside the
+  folder being archived (`pakko a -y out.zip .`): the old archive is not packed into the new one. App: a 608 MB folder compressed to a non-hidden
   `src.zip`. Earlier text: fixed in code. ZIP and tar
   creation write to `ArchiveTempFile` (`.pakko-a-<owner>-<guid>.tmp`, unique per run, not hidden);
   a dead run's file is swept, an old fixed `.tmp` is left alone and no longer blocks; the commit
@@ -3732,3 +3734,15 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 - **Depends on:** T-F188 (done), T-F189.
 
 ---
+
+### T-F316 — Archiving a folder that holds its own destination reads the run's temp file (P3)
+
+- [ ] **Status:** open. Found in the v1.7.0 wave 6 closing review, 2026-10-03; pre-existing (the old
+  fixed `<archive>.tmp` sat in the same place). `pakko a out.zip .` (the archive written inside the
+  folder being archived) walks the run's own temp file: ZIP reports "Cannot access file: …
+  .pakko-a-….tmp … being used by another process" and exits 2 although the archive is written; tar
+  packs it as a 0-byte entry. 7-Zip skips its output archive. Fix direction: the ZIP walkers skip the
+  destination and the run's temp file; for tar (tar.exe walks folders itself) an escaped `--exclude`
+  (T-F284's pattern escaping) or a temp file outside the tree on the same volume. Tests first, both
+  engines, both modes.
+- **Reported by:** v1.7.0 wave 6 closing review (advisor + agent device run), 2026-10-03.

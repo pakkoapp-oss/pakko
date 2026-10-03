@@ -28,6 +28,32 @@ internal static class ArchiveTempFile
         return Path.Combine(folder, TempOwner.NewName(Prefix, Suffix));
     }
 
+    /// <summary>
+    /// Overwrite keeps the old archive until the commit replaces it — except when the archive lies
+    /// inside a folder being archived: the walk would pack the old archive into the new one, so it is
+    /// deleted first, as before T-F312. Throws <see cref="IOException"/> or
+    /// <see cref="UnauthorizedAccessException"/> when it cannot be deleted; the callers' catches report it.
+    /// </summary>
+    public static void RemoveOldArchiveInsideSources(string destPath, IEnumerable<string> sourcePaths)
+    {
+        if (!File.Exists(destPath))
+            return;
+        string dest = Path.GetFullPath(destPath);
+        foreach (string source in sourcePaths)
+        {
+            if (!Directory.Exists(source))
+                continue;
+            string folder = Path.GetFullPath(source);
+            if (!Path.EndsInDirectorySeparator(folder))
+                folder += Path.DirectorySeparatorChar; // a drive root already ends in one
+            if (dest.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Delete(destPath);
+                return;
+            }
+        }
+    }
+
     /// <summary>Renames <paramref name="tempPath"/> onto <paramref name="destPath"/>, retrying
     /// briefly while either file is held by another process.</summary>
     public static async Task CommitAsync(string tempPath, string destPath, CancellationToken cancellationToken)

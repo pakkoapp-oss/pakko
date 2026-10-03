@@ -140,6 +140,42 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
     }
 
+    // T-F312 closing review: Overwrite of an archive inside the folder being archived must not pack
+    // the old archive into the new one (tar.exe walks the folder itself).
+    [Integration]
+    public async Task CompressAsync_OverwriteArchiveInsideTheSourceFolder_OldArchiveNotPacked()
+    {
+        string folder = Path.Combine(_temp.Path, "folder");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "a.txt"), "a");
+        string destPath = Path.Combine(folder, "folder.tar");
+        File.WriteAllText(destPath, "old archive");
+
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [folder],
+            DestinationFolder = folder,
+            ArchiveName = "folder",
+            Format = ArchiveContainerFormat.Tar,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.CreatedFiles.Should().Equal(destPath);
+        string listing = await ListAsync(destPath);
+        listing.Should().Contain("a.txt").And.NotContain("folder.tar");
+    }
+
+    private static async Task<string> ListAsync(string archivePath)
+    {
+        var tar = new System.Diagnostics.ProcessStartInfo(@"C:\Windows\System32\tar.exe") { RedirectStandardOutput = true, UseShellExecute = false };
+        tar.ArgumentList.Add("-tf");
+        tar.ArgumentList.Add(archivePath);
+        using var process = System.Diagnostics.Process.Start(tar)!;
+        string output = await process.StandardOutput.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        return output;
+    }
+
     // T-F168: mirrors ZipArchiveServiceArchiveTests.ArchiveAsync_TwoSourceFilesShareBasename_
     // SecondRenamedWithSuffix — bsdtar has no --transform on this bundled build (confirmed via a
     // Phase 0 spike, see DECISIONS.md's T-F168 entry), so AppendSourcesToNameList stages the

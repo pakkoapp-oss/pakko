@@ -1306,6 +1306,7 @@ public sealed class TarSandboxedService : ITarService
 
             try
             {
+                ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, options.SourcePaths);
                 byte[] nameListBytes = TarCommandLineEncoding.EncodeLines(nameList);
                 (int exitCode, _, string? stdErr) = await RunUnsandboxedTarAsync(tarArgs, nameListBytes, OnVerboseLine, cancellationToken).ConfigureAwait(false);
 

@@ -10854,3 +10854,14 @@ held on the device; stopped per the three-attempts rule.
   `BOOL` return. The unit tests create both objects and call methods that need no window; a wrong
   vtable order is not visible there (a reordered `SetAnimation` survived), so the device check of
   progress and Cancel stays the acceptance gate.
+- **Overwrite of an archive inside the folder being archived still deletes it first (closing
+  review).** With the old archive kept until the commit, `pakko a -y out.zip .` packed the old
+  `out.zip` into the new one, ZIP and tar alike (tar.exe walks the folder itself, so the walk cannot
+  skip it). `ArchiveTempFile.RemoveOldArchiveInsideSources` deletes it first in that one case, inside
+  the callers' try, so a held old archive is an ordinary error, never a throw. Pre-existing and filed
+  separately: the run's own temp file inside the tree is read by the walk (ZIP: a per-file "cannot
+  access" error; tar: a 0-byte entry) — T-F316.
+- **`%TEMP%` roots keep v1.6.0's `<pid>-<start ticks>` folder name (closing review).** v1.6.0 reads
+  only that shape and deletes any other name as a dead owner's, so with the machine tag a running
+  v1.6.0 window would have deleted a newer window's preview folder. `%TEMP%` is this machine's alone;
+  the machine tag is kept for names next to a destination.

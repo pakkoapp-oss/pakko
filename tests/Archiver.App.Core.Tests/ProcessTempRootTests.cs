@@ -81,6 +81,13 @@ public sealed class ProcessTempRootTests : IDisposable
         act.Should().NotThrow();
     }
 
+    // T-F263: v1.6.0 reads only "<pid>-<ticks>" and deletes any other name as a dead owner's.
+    [Fact]
+    public void CurrentOwnerName_IsTheV160Shape()
+    {
+        ProcessTempRoot.CurrentOwnerName.Should().MatchRegex("^[0-9]+-[0-9]+$");
+    }
+
     [Fact]
     public void IsOwnerAlive_CurrentProcess_True()
     {
@@ -93,7 +100,7 @@ public sealed class ProcessTempRootTests : IDisposable
         using var current = Process.GetCurrentProcess();
         long otherTicks = current.StartTime.ToUniversalTime().Ticks - TimeSpan.TicksPerHour;
 
-        string machine = ProcessTempRoot.CurrentOwnerName.Split('-')[0];
+        string machine = Archiver.Core.IO.TempOwner.CurrentTag.Split('-')[0];
 
         ProcessTempRoot.IsOwnerAlive($"{machine}-{Environment.ProcessId}-{otherTicks}").Should().BeFalse();
         ProcessTempRoot.IsOwnerAlive($"{Environment.ProcessId}-{otherTicks}").Should().BeFalse();

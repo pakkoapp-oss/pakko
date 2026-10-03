@@ -33,9 +33,13 @@ public static class TempOwner
 {
     private static readonly string MachineHash = HashMachineName(Environment.MachineName);
 
+    /// <summary>"&lt;pid&gt;-&lt;start ticks&gt;" — v1.6.0's owner name, still used under %TEMP%, where
+    /// the machine adds nothing and a v1.6.0 window would take a longer name for a dead owner's.</summary>
+    public static string ProcessTag { get; } = string.Create(CultureInfo.InvariantCulture,
+        $"{Environment.ProcessId}-{CurrentStartTicks()}");
+
     /// <summary>This process's owner tag.</summary>
-    public static string CurrentTag { get; } = string.Create(CultureInfo.InvariantCulture,
-        $"m{MachineHash}-{Environment.ProcessId}-{CurrentStartTicks()}");
+    public static string CurrentTag { get; } = "m" + MachineHash + "-" + ProcessTag;
 
     /// <summary>A new name owned by this process: prefix, tag, a unique part, suffix.</summary>
     public static string NewName(string prefix, string suffix = "") =>

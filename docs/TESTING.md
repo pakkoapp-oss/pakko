@@ -939,8 +939,9 @@ held, the archive name taken by a folder, a ~240-character archive name, Overwri
 held briefly and throughout), `TarSandboxedServiceCompressTests` (the same old `.tmp` and held
 Overwrite cases through real tar.exe), `ZipArchiveServiceExtractStagingTests`,
 `ParallelSingleArchiveWriterTests` and `TarSandboxScopeTests` (a dead run's staging, chunk folder
-and quarantine swept). The dead owner is the current pid with another start time
-(`Helpers/DeadOwner`). Mutants killed: liveness always false, the machine check removed, link
+and quarantine swept). Overwrite of an archive inside the folder being archived, ZIP (both
+modes) and tar: the old archive is not packed. `ProcessTempRootTests.CurrentOwnerName_IsTheV160Shape`.
+The dead owner is the current pid with another start time (`Helpers/DeadOwner`). Mutants killed: liveness always false, the machine check removed, link
 removal removed, each of the four sweeps removed, the fixed `.tmp` name, the narrow retry predicate,
 the delete-first Overwrite in tar.
 
