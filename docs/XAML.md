@@ -93,6 +93,17 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
 - Window: default 1100x720, floor 900x520 (`OverlappedPresenter.PreferredMinimum*`, T-F224).
 - A `PasswordBox` has no bindable `Password`: `PasswordChanged` hands the text to the view model,
   which returns it without refused characters (PIN-box behavior).
+- Keyboard (T-F308): `FileListView.PreviewKeyDown` (Delete removes the focused row, focus moves to
+  the next) and `ContextRequested` (Shift+F10 shows the row template Grid's own `ContextFlyout` at the
+  `ListViewItem`, which a keyboard request never reaches); `ArchiveBrowserListView.PreviewKeyDown`
+  (Enter opens the row ahead of the Multiple-mode selection toggle, Backspace/Alt+Up go up) - list
+  handlers, not window `KeyboardAccelerator`s, so typing in a TextBox never navigates.
+  `FooterGrid` has `TabFocusNavigation="Local"` and a `TabIndex` on every button; the two primary
+  buttons bind theirs to the same `*ButtonColumn` as their column, so Tab follows the screen order.
+  The toolbar's About uses `AboutCommand`, which gives focus back to the button (the tray keeps
+  `TrayAboutCommand`).
+- Header sort arrows (T-F220 item 4) are `FontIcon` siblings in the header columns, not part of the
+  header Button's `Content` - `x:Uid` sets `.Content` and would overwrite it.
 
 **Two distinct "Up" buttons, easy to conflate:** browse mode's Up button (`NavigateUpCommand`)
 climbs *inside* the archive/real-filesystem browse stack (T-F98/T-F107). The destination card's Up

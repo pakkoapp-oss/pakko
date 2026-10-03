@@ -2277,7 +2277,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F220 — UI wording and small UX inconsistencies (P2)
 
-- [ ] **Status:** open. Each sub-item is small; split when fixing if preferred.
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 4). Earlier status: Each sub-item is small; split when fixing if preferred.
   1. Terminology: Explorer says "Видобути…"/"Стиснути…"/"Тестувати архів"; the App says
      "Розпакувати"/"Архів". Pick one vocabulary.
   2. Conflict dialogs (Shell and App): "Застосувати до всіх решти конфліктів" is ungrammatical
@@ -2295,7 +2295,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   Explorer window's 37 locales) and a "Скасувати все" link that cancels the operation; item 4 — the
   sorted header shows an arrow (`SortIndicator`; the list keeps its order until the first click);
   item 5 — the scan status line names the chain (`NestedDisplayPath`); the dialogs already showed
-  only the file name. Device check pending.
+  only the file name. Device (Deploy 1.6.0.3-1.6.0.5, App title build 2026-10-03 06:30-06:39, uk-UA, dark, 2026-10-03): App extract of `conf.zip` with "Запитувати": the dialog shows "Наявний файл: 10 Б · змінено 03.10.2026 6:34" and "З архіву: 600 Б · змінено 03.10.2026 6:31"; "Скасувати все" closes it and the footer reads "Скасовано" (the existing file untouched, no staging left; a Core test pins a cancelled prompt on the last entry); the size header shows a down arrow after the second click and the list is in descending size order; scanning `outer2.zip > l3.zip` reads "Перевірити на загрози — outer2.zip > l3.zip". Light theme not exercised (a registry switch did not reach the running App).
 - **Reported by:** T-F202, 2026-09-24.
 
 ### T-F221 — CLI error and help messages (P2)
@@ -3164,7 +3164,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F282 — Main window: option cards clip below ~600 px height (P3)
 
-- [ ] **Status:** open. Split out of T-F224 (closed 2026-09-29). `PreferredMinimumHeight` is 520,
+- [x] **Status:** closed 2026-10-03 (v1.7.0 wave 4) — fixed by T-F224's `OptionsScroll`. Device (Deploy 1.6.0.3-1.6.0.5, App title build 2026-10-03 06:30-06:39, uk-UA, dark, 2026-10-03): at 900x520 the options area is a vertically scrollable pane; Name and Format are on screen, the destination box and the conflict combo come into view when focused (Tab or UIA focus). Earlier status: Split out of T-F224 (closed 2026-09-29). `PreferredMinimumHeight` is 520,
   and below about 600 px the create-mode cards ("Новий архів", "Куди і що після") are cut off with
   no scrolling — Name, Format and the destination become unreachable (886x513 on 1.5.0.34); the
   footer and primary actions stay visible. Either scroll the options area or raise the minimum to
@@ -3305,9 +3305,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   invalid name, access denied, sharing violation, disk full, and Core's CRC-32 mismatch; any other
   Windows error shows its English text and code. The other 35 locales get no translation.
 - [~] **Progress (2026-10-03, v1.7.0 wave 4):** done in code, tests first (`CoreMessages.Detail`,
-  five codes, uk-only entries; see `docs/DECISIONS.md`'s wave 4 entry). Device check of the uk
-  operation window and App pending.
-- [ ] **Status:** open. Found in G6 pass 2, 2026-09-30, uk-UA, Explorer operation window:
+  five codes, uk-only entries; see `docs/DECISIONS.md`'s wave 4 entry). Device evidence below.
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 4). Earlier status: Found in G6 pass 2, 2026-09-30, uk-UA, Explorer operation window:
   Test of `bad.zip` shows "Елемент «doc.txt»: Content failed CRC-32 check (expected 73DCA397, got
   A43E23CF)."; `--extract-folder qmark.zip` shows "Не вдалося видобути «What?.txt»: The filename,
   directory name, or volume label syntax is incorrect. : '...'". The frame is localized (T-F209);
@@ -3317,7 +3316,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   denied, sharing violation, disk full) to codes and keep the raw text only as a fallback.
   Tests first (`Archiver.Messages.Tests` parity + a Core test that the CRC error carries the code).
 - **Reported by:** G6 device campaign, 2026-09-30.
-
+- Device (Deploy 1.6.0.3-1.6.0.5, App title build 2026-10-03 06:30-06:39, uk-UA, dark, 2026-10-03), Explorer operation window: `--extract-folder qmark.zip` shows "Не вдалося видобути «What?.txt»: Неприпустимий синтаксис імені файлу, папки або мітки тому — The filename, directory name, or volume label syntax is incorrect. : '...\What?.txt'. (0x8007007B)"; `--test badcrc.zip` shows "Вміст не пройшов перевірку CRC-32 (очікувалося 73DCA397, отримано A43E23CF) — Content failed CRC-32 check (...)".
 ### T-F298 — ZIP extraction does not restore the entries' modification times (P2)
 
 - **Decision (user, 2026-09-30):** files and folders, as 7-Zip: the time from the NTFS extra field
@@ -3414,7 +3413,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F302 — Items moved to the Recycle Bin stay in the App's list (P3)
 
-- [ ] **Status:** open. Found in G6 pass 3, 2026-09-30 (1.5.0.13). App compress `victim-p3.txt` with "Після
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 4). Earlier status: Found in G6 pass 3, 2026-09-30 (1.5.0.13). App compress `victim-p3.txt` with "Після
   успішного стиснення перемістити вихідні файли в Кошик": the file goes to the Recycle Bin but its row stays
   in the list; a second "Стиснути" first asks about the existing `victim-p3.zip`, then ends with "Шлях
   джерела не існує". Same after Extract All of a browsed archive with the box ticked: browse closes
@@ -3428,24 +3427,24 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - [~] **Progress (2026-10-03, v1.7.0 wave 4):** `SourceRecycler.DeleteAsync` returns
   `RecycleResult` (Deleted + NotDeleted, tests first, mutation-checked); the App drops the rows of
   the deleted sources (a declined or failed one keeps its row). Decided (agent): the tick resets
-  after any run that cleaned up and on "Очистити". Device check pending.
+  after any run that cleaned up and on "Очистити". Device (Deploy 1.6.0.3-1.6.0.5, App title build 2026-10-03 06:30-06:39, uk-UA, dark, 2026-10-03): App compress of `victim.txt` with the Recycle Bin tick: the file went to the Recycle Bin, its row left the list, the tick was off afterwards, footer "Стиснуто за 1 с — архівів: 1".
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ### T-F303 — App speed readout units are English (P3)
 
-- [ ] **Status:** open. Found in G6 pass 3, 2026-09-30 (1.5.0.13): under uk-UA the footer reads
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 4). Earlier status: Found in G6 pass 3, 2026-09-30 (1.5.0.13): under uk-UA the footer reads
   "Стиснення... (файлів: 1, 512,0 МБ) · 54,5 MB/s". `MainViewModel.cs` (the speed `switch`, ~line 1744)
   hardcodes `GB/s`/`MB/s`/`KB/s`/`B/s` while sizes go through the localized units. Use the localized size
   unit plus a per-second format from `.resw` (37 locales); check the operation window's speed text too.
 - **G6 pass 4:** the App's ETA is English too ("· 140 KB/s · ~40:37 remaining" during a tar.bz2 extraction). The Explorer operation window is already localized ("155,1 МБ/с").
 - [~] **Progress (2026-10-03, v1.7.0 wave 4):** App.Core `ProgressText` (speed in `DisplayText`'s
   units + per second, time left), tests first; new keys `SpeedPerSecond` (copied per locale from
-  Shell's `UnitPerSecond`), `RemainingSeconds`, `RemainingMinutes` in 37 locales. Device check pending.
+  Shell's `UnitPerSecond`), `RemainingSeconds`, `RemainingMinutes` in 37 locales. Device (Deploy 1.6.0.3-1.6.0.5, App title build 2026-10-03 06:30-06:39, uk-UA, dark, 2026-10-03): App compress of a 768 MB file reads "Стиснення... (файлів: 1, 768,0 МБ)  ·  79,1 МБ/с  ·  Залишилось ~7 с".
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ### T-F304 — Two App controls have no UIA name (P3)
 
-- [ ] **Status:** open. Found in G6 pass 3, 2026-09-30 (1.5.0.13), `windows` MCP `ui_find`: the read-only
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 4). Device (Deploy 1.6.0.3-1.6.0.5, App title build 2026-10-03 06:30-06:39, uk-UA, dark, 2026-10-03), PowerShell UIA: the card toggle is "Новий архів", the name box "Назва:" (not its placeholder), the destination box "Зберегти в:" / "Видобути в:", the `...` button "Вибрати папку" (new key `DestinationBrowseButtonName`, 37 locales); every control in both modes has a name. Earlier status: Found in G6 pass 3, 2026-09-30 (1.5.0.13), `windows` MCP `ui_find`: the read-only
   destination path TextBox ("Зберегти в" / "Видобути в") and, in extract mode, the collapsed "Новий
   архів" card header Button both expose an empty name (the pass 2 carry-over "Button with empty UIA name"
   is the second one). Narrator reads nothing useful. Fix: `AutomationProperties.LabeledBy` to the row's
@@ -3483,7 +3482,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F308 — App: keyboard-only gaps in the lists and the footer (P2)
 
-- [ ] **Status:** open. Found in G6 pass 5, 2026-09-30 (1.5.0.13, E6, keyboard only):
+- [~] **Status:** fixed except one focus case, 2026-10-03 (v1.7.0 wave 4). Device (Deploy 1.6.0.3-1.6.0.5, App title build 2026-10-03 06:30-06:39, uk-UA, dark, 2026-10-03), keys sent with SendKeys: create list Delete removes the focused row and focus moves to the next one; Shift+F10 opens "Прибрати зі списку"; extract-mode footer Tab goes Очистити -> Стиснути в ZIP -> Видобути (screen order); About (Enter, then Esc) gives focus back to "Про програму"; browse Enter opens a folder (focus on its first row) and a nested archive, Backspace and Alt+Up go up when the list has focus. **Left:** after Enter drills into a nested archive, focus lands on the Up button, so the next Backspace does nothing until the list is focused again (three fixes tried: a deferred focus, bounded retries, a live-container check — none held; stopped per the three-attempts rule). Item 5 (faint check mark) not changed. Earlier status: Found in G6 pass 5, 2026-09-30 (1.5.0.13, E6, keyboard only):
   1. Archive browser: Enter on a folder (`src` of `plain.zip`) only toggles its selection ("Вибрано 1 з 1")
      and does not open it; Backspace and Alt+Up leave the list as it is (the Up button works). Files and
      nested archives were not pressed, but only `DoubleTapped` is wired (no `KeyDown`/`ItemClick` on

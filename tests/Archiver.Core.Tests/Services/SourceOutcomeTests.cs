@@ -131,6 +131,36 @@ public sealed class SourceOutcomeTests : IDisposable
         File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("old");
     }
 
+    // T-F220 item 2: the App's "cancel all" ends the conflict prompt as cancelled — on the last
+    // entry too, where nothing would look at the token again.
+    [Fact]
+    public async Task ExtractAsync_ConflictPromptCancelledOnTheLastEntry_ThrowsAndCommitsNothing()
+    {
+        string zip = WriteZip("last.zip", "0.txt", "a.txt");
+        string dest = Dest("out");
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(Path.Combine(dest, "a.txt"), "old");
+        using var cts = new CancellationTokenSource();
+
+        Func<Task<ArchiveResult>> act = () => _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ =>
+            {
+                cts.Cancel();
+                return Task.FromCanceled<ConflictDecision>(cts.Token);
+            },
+        }, null, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        File.Exists(Path.Combine(dest, "0.txt")).Should().BeFalse();
+        File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("old");
+        Directory.GetDirectories(dest, ".pakko-x-*").Should().BeEmpty();
+    }
+
     [Fact]
     public async Task ArchiveAsync_SingleArchive_CancelledBetweenSources_ThrowsAndCommitsNothing()
     {

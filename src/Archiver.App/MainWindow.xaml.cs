@@ -49,7 +49,9 @@ public sealed partial class MainWindow : Window
         {
             var opener = FocusManager.GetFocusedElement(Content.XamlRoot) as Control;
             await App.Services.GetRequiredService<IDialogService>().ShowAboutAsync();
-            opener?.Focus(FocusState.Keyboard);
+            // After the dialog's own focus handling, which runs once ShowAsync has returned.
+            if (opener is not null)
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () => opener.Focus(FocusState.Keyboard));
         });
         TrayExitCommand = new RelayCommand(() => Application.Current.Exit());
         TrayLeftClickCommand = new RelayCommand(() =>

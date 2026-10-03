@@ -189,19 +189,24 @@ public sealed class DialogService : IDialogService
                 };
                 shown = dialog;
                 ContentDialogResult result = await dialog.ShowAsync();
+                // Cancelled: the operation ends here as a cancel (T-F260), even when this was its
+                // last conflict and Core would not look at the token again.
+                if (cancelled)
+                {
+                    tcs.SetCanceled();
+                    return;
+                }
 
                 ConflictResolution resolution = result switch
                 {
-                    _ when cancelled => ConflictResolution.Skip,
                     ContentDialogResult.Primary => ConflictResolution.Overwrite,
                     ContentDialogResult.Secondary => ConflictResolution.Rename,
                     _ => ConflictResolution.Skip
                 };
-                // Cancelled: skip this one and ask nothing more before Core sees the token.
                 tcs.SetResult(new ConflictDecision
                 {
                     Resolution = resolution,
-                    ApplyToAll = cancelled || applyToAllCheck.IsChecked == true
+                    ApplyToAll = applyToAllCheck.IsChecked == true
                 });
             }
             catch (Exception ex)

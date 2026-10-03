@@ -10768,3 +10768,18 @@ drops exactly the rows whose sources are gone — not "requested minus not delet
 drop a source whose permanent delete the user declined (that one is in neither list). The
 "move to the Recycle Bin" tick resets after a run that cleaned up and on "Очистити" (agent decision;
 T-F207's reasoning: a destructive tick given for one list must not silently apply to the next).
+
+### T-F220 item 2 - "cancel all" in the App's conflict dialog ends the prompt as cancelled
+
+A `ContentDialog` has three buttons, all taken (Overwrite/Rename/Skip), so "Скасувати все" is a link
+in the content. It cancels the operation's token and completes the prompt as cancelled
+(`TaskCompletionSource.SetCanceled`), not as Skip: on the device a Skip on the last conflict let the
+extraction finish as "Видобуто ... архівів: 0", since nothing looked at the token again. Core already
+lets that `OperationCanceledException` through (T-F260); `SourceOutcomeTests` pins it.
+
+### T-F308 - one focus case left open
+
+After Enter drills into a nested archive, keyboard focus ends on the browse Up button instead of the
+first row (folder Enter and Delete keep it on a row). Tried: one deferred `Focus` at Low priority,
+bounded retries, and accepting only a loaded container whose `Content` is the current item - none
+held on the device; stopped per the three-attempts rule.
