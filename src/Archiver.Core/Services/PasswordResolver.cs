@@ -16,6 +16,12 @@ internal sealed class PasswordResolver(
     private string? _sticky;
 
     /// <summary>
+    /// True when the last <see cref="ResolveAsync"/> returned null because a password the frontend
+    /// remembered from an earlier archive did not fit (T-F301) — not a cancel, not a wrong typing.
+    /// </summary>
+    public bool RememberedPasswordRejected { get; private set; }
+
+    /// <summary>
     /// Returns the resolved password, or null when the user cancelled, no resolver is wired, or
     /// every attempt was rejected by <paramref name="verify"/> — every null case maps to today's
     /// unchanged "password-protected" rejection message at the call site.
@@ -32,6 +38,7 @@ internal sealed class PasswordResolver(
         if (_sticky is { } sticky)
             return sticky;
 
+        RememberedPasswordRejected = false;
         if (resolvePasswordAsync is null)
             return null;
 
@@ -54,6 +61,13 @@ internal sealed class PasswordResolver(
                 if (decision.ApplyToRemaining)
                     _sticky = decision.Password;
                 return decision.Password;
+            }
+
+            // T-F301: asking again would only hand back the same remembered password.
+            if (decision.Remembered)
+            {
+                RememberedPasswordRejected = true;
+                return null;
             }
 
             previousAttemptWasWrong = true;

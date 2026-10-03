@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Ta arhiv je zaščiten z geslom in ga ni mogoče preskusiti.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Geslo, uporabljeno za preostale arhive, se ne ujema s tem arhivom.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Ta arhiv je zaščiten z geslom in ga ni mogoče brskati.</value>
   </data>

@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Ez az archívum jelszóval védett, ezért nem tesztelhető.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>A többi archívumra alkalmazott jelszó nem illik ehhez az archívumhoz.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Ez az archívum jelszóval védett, ezért nem tallózható.</value>
   </data>

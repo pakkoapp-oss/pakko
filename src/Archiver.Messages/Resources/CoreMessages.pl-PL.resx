@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>To archiwum jest chronione hasłem i nie można go przetestować.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Hasło zastosowane do pozostałych archiwów nie pasuje do tego archiwum.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>To archiwum jest chronione hasłem i nie można go przeglądać.</value>
   </data>

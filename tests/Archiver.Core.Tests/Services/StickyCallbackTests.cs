@@ -87,4 +87,22 @@ public sealed class StickyCallbackTests
 
         calls.Should().Be(2);
     }
+
+    // T-F301: a reused answer can be marked, so Core can tell it from one given for this archive.
+    [Fact]
+    public async Task ResolveAsync_WhenReused_MarksOnlyTheReusedAnswers()
+    {
+        var sticky = new StickyCallback<PasswordPromptInfo, PasswordDecision>(
+            _ => Task.FromResult(new PasswordDecision { Password = "p", ApplyToRemaining = true }),
+            d => d.ApplyToRemaining,
+            whenReused: d => d with { Remembered = true });
+        var info = new PasswordPromptInfo { ArchiveName = "a.zip", Purpose = PasswordPurpose.Decrypt };
+
+        PasswordDecision first = await sticky.ResolveAsync(info);
+        PasswordDecision second = await sticky.ResolveAsync(info with { ArchiveName = "b.zip" });
+
+        first.Remembered.Should().BeFalse();
+        second.Remembered.Should().BeTrue();
+        second.Password.Should().Be("p");
+    }
 }

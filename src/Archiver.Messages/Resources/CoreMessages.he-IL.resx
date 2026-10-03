@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>ארכיון זה מוגן בסיסמה ולא ניתן לבדוק אותו.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>הסיסמה שהוחלה על שאר הארכיונים אינה מתאימה לארכיון זה.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>ארכיון זה מוגן בסיסמה ולא ניתן לעיין בו.</value>
   </data>

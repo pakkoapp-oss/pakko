@@ -758,7 +758,8 @@ public sealed class ZipArchiveService : IArchiveService
             if (password is not null)
                 return (false, password);
 
-            errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.PasswordProtectedExtract)));
+            errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(passwordResolver.RememberedPasswordRejected
+                ? MessageCode.RememberedPasswordDoesNotFit : MessageCode.PasswordProtectedExtract)));
             return (true, null);
         }
 
@@ -974,7 +975,8 @@ public sealed class ZipArchiveService : IArchiveService
             password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages).ConfigureAwait(false);
             if (password is null)
             {
-                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.PasswordProtectedTest)));
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(passwordResolver.RememberedPasswordRejected
+                    ? MessageCode.RememberedPasswordDoesNotFit : MessageCode.PasswordProtectedTest)));
                 return;
             }
         }

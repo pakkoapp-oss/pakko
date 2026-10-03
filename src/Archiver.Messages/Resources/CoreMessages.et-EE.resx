@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>See arhiiv on parooliga kaitstud ja seda ei saa testida.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Ülejäänud arhiividele rakendatud parool sellele arhiivile ei sobi.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>See arhiiv on parooliga kaitstud ja seda ei saa sirvida.</value>
   </data>

@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Šis arhīvs ir aizsargāts ar paroli, un to nevar pārbaudīt.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Atlikušajiem arhīviem piemērotā parole neder šim arhīvam.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Šis arhīvs ir aizsargāts ar paroli, un to nevar pārlūkot.</value>
   </data>

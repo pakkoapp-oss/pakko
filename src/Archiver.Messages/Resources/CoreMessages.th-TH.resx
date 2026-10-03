@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>ไฟล์บีบอัดนี้ป้องกันด้วยรหัสผ่านและไม่สามารถทดสอบได้</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>รหัสผ่านที่ใช้กับไฟล์เก็บถาวรที่เหลือไม่ตรงกับไฟล์เก็บถาวรนี้</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>ไฟล์บีบอัดนี้ป้องกันด้วยรหัสผ่านและไม่สามารถเรียกดูได้</value>
   </data>

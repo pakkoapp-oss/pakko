@@ -41,4 +41,11 @@ public sealed record PasswordDecision
     /// <see cref="ConflictDecision.ApplyToAll"/>.
     /// </summary>
     public bool ApplyToRemaining { get; init; }
+
+    /// <summary>
+    /// True when the frontend did not ask for this archive but reused an earlier "apply to remaining"
+    /// answer (T-F301). A remembered password that does not fit is reported as
+    /// <see cref="MessageCode.RememberedPasswordDoesNotFit"/> and not retried.
+    /// </summary>
+    public bool Remembered { get; init; }
 }

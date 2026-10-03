@@ -10,9 +10,14 @@ namespace Archiver.Core.Services;
 /// </summary>
 /// <typeparam name="TInfo">What the prompt is asked about (e.g. a conflict or a password prompt).</typeparam>
 /// <typeparam name="TDecision">The prompt's answer.</typeparam>
+/// <param name="inner">Asks the user.</param>
+/// <param name="isSticky">Whether an answer is remembered for the later calls.</param>
+/// <param name="whenReused">Applied to a remembered answer each time it is handed out again, so the
+/// receiver can tell it from one given for this call (T-F301); null hands it out unchanged.</param>
 public sealed class StickyCallback<TInfo, TDecision>(
     Func<TInfo, Task<TDecision>> inner,
-    Func<TDecision, bool> isSticky)
+    Func<TDecision, bool> isSticky,
+    Func<TDecision, TDecision>? whenReused = null)
     where TDecision : class
 {
     private TDecision? _sticky;
@@ -22,7 +27,7 @@ public sealed class StickyCallback<TInfo, TDecision>(
     public async Task<TDecision> ResolveAsync(TInfo info)
     {
         if (_sticky is { } sticky)
-            return sticky;
+            return whenReused is null ? sticky : whenReused(sticky);
 
         TDecision decision = await inner(info).ConfigureAwait(false);
         if (isSticky(decision))

@@ -57,6 +57,7 @@ public static class MessageTemplates
         [MessageCode.NoTestCapability] = "tar-family archives have no test capability",
         [MessageCode.PasswordProtectedExtract] = "This archive is password-protected and cannot be extracted.",
         [MessageCode.PasswordProtectedTest] = "This archive is password-protected and cannot be tested.",
+        [MessageCode.RememberedPasswordDoesNotFit] = "The password applied to the remaining archives does not fit this archive.",
         [MessageCode.PasswordProtectedBrowse] = "This archive is password-protected and cannot be browsed.",
         [MessageCode.ZipCorrupted] = "File has ZIP signature but appears corrupted or incomplete.",
         [MessageCode.CannotExtractArchive] = "Cannot extract archive: {0}",

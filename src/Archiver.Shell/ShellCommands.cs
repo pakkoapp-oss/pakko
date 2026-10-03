@@ -319,7 +319,8 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             Conflict = new StickyCallback<ConflictInfo, ConflictDecision>(
                 info => CurrentSession.AskConflictAsync(info), d => d.ApplyToAll);
             Password = new StickyCallback<PasswordPromptInfo, PasswordDecision>(
-                info => CurrentSession.AskPasswordAsync(info, canApplyToRemaining: archiveCount > 1), d => d.ApplyToRemaining);
+                info => CurrentSession.AskPasswordAsync(info, canApplyToRemaining: archiveCount > 1), d => d.ApplyToRemaining,
+                whenReused: d => d with { Remembered = true }); // T-F301: Core then says it did not fit
         }
 
         public IOperationSession? Current { get; set; }

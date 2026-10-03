@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Цей архів захищено паролем, тому його не можна перевірити.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Пароль, застосований до решти архівів, не підходить до цього архіву.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Цей архів захищено паролем, тому його не можна переглянути.</value>
   </data>

@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Această arhivă este protejată prin parolă și nu poate fi testată.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Parola aplicată arhivelor rămase nu se potrivește cu această arhivă.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Această arhivă este protejată prin parolă și nu poate fi răsfoită.</value>
   </data>

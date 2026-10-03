@@ -50,7 +50,7 @@ public static class CliHints
         MessageCode.TarCreationDisabled, MessageCode.TarCreationFailed, MessageCode.TarNameNotRepresentable, MessageCode.TarSignatureInvalid,
         MessageCode.TarSignatureVerificationFailed, MessageCode.NotAnArchiveExtract, MessageCode.NotAnArchiveTest, MessageCode.NotAnArchiveList,
         MessageCode.UnsupportedByZipEngine, MessageCode.FormatBlocked, MessageCode.TarExtractionDisabled, MessageCode.FormatNeedsNewerTar,
-        MessageCode.FormatNotSupportedByTar, MessageCode.ArchiveFormatNotSupportedByTar, MessageCode.NoTestCapability, MessageCode.PasswordProtectedBrowse,
+        MessageCode.FormatNotSupportedByTar, MessageCode.ArchiveFormatNotSupportedByTar, MessageCode.NoTestCapability, MessageCode.PasswordProtectedBrowse, MessageCode.RememberedPasswordDoesNotFit,
         MessageCode.ZipCorrupted, MessageCode.CannotExtractArchive, MessageCode.AccessDeniedExtractingArchive, MessageCode.CannotReadArchive,
         MessageCode.EntryNameCollision, MessageCode.EntryFailed, MessageCode.EntryWrongPassword, MessageCode.EntryAuthenticationFailed,
         MessageCode.EntryUnsupportedEncryptedMethod, MessageCode.InsufficientDiskSpace, MessageCode.ZipBombDeclined, MessageCode.TarBombDeclined,

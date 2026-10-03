@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>یہ آرکائیو پاس ورڈ سے محفوظ ہے اور جانچا نہیں جا سکتا۔</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>باقی آرکائیوز پر لاگو کیا گیا پاس ورڈ اس آرکائیو سے مطابقت نہیں رکھتا۔</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>یہ آرکائیو پاس ورڈ سے محفوظ ہے اور براؤز نہیں کیا جا سکتا۔</value>
   </data>

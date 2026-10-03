@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Dette arkiv er beskyttet med adgangskode og kan ikke testes.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Adgangskoden, der blev anvendt på de resterende arkiver, passer ikke til dette arkiv.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Dette arkiv er beskyttet med adgangskode og kan ikke gennemses.</value>
   </data>

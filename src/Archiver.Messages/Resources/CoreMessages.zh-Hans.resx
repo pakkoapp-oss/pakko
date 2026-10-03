@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>此压缩包受密码保护，无法测试。</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>应用于其余存档的密码与此存档不匹配。</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>此压缩包受密码保护，无法浏览。</value>
   </data>

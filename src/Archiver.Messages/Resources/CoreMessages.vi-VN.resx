@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Kho lưu trữ này được bảo vệ bằng mật khẩu và không thể kiểm tra.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Mật khẩu đã áp dụng cho các kho lưu trữ còn lại không khớp với kho lưu trữ này.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Kho lưu trữ này được bảo vệ bằng mật khẩu và không thể duyệt.</value>
   </data>

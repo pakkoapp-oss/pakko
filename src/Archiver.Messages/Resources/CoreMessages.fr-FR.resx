@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Cette archive est protégée par mot de passe et ne peut pas être testée.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Le mot de passe appliqué aux archives restantes ne correspond pas à cette archive.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Cette archive est protégée par mot de passe et ne peut pas être parcourue.</value>
   </data>

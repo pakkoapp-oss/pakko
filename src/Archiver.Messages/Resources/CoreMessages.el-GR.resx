@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Αυτό το αρχείο προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να ελεγχθεί.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Ο κωδικός πρόσβασης που εφαρμόστηκε στα υπόλοιπα αρχεία δεν ταιριάζει σε αυτό το αρχείο.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Αυτό το αρχείο προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να προβληθεί.</value>
   </data>

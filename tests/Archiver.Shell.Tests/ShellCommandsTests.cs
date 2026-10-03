@@ -311,6 +311,26 @@ public sealed class ShellCommandsTests : IDisposable
         ui.Messages.Should().BeEmpty();
     }
 
+    // T-F301: the remembered password does not fit the second archive — said as such (not "this
+    // archive is password-protected"), and no second prompt (user decision 2026-10-03).
+    [Fact]
+    public async Task ExtractHereFlat_RememberedPasswordDoesNotFitSecondArchive_SaysSoWithoutAskingAgain()
+    {
+        string first = await MakeEncryptedZipAsync("one", "a.txt", "A");
+        string second = await MakeEncryptedZipAsync("two", "b.txt", "B", password: "another password");
+        var ui = new FakeOperationUi
+        {
+            PasswordAnswer = _ => new PasswordDecision { Password = Password, ApplyToRemaining = true },
+        };
+
+        await Create(ui).ExtractHereFlatAsync([first, second]);
+
+        ui.PasswordPrompts.Should().ContainSingle();
+        File.ReadAllText(Path.Combine(_root, "a.txt")).Should().Be("A");
+        File.Exists(Path.Combine(_root, "b.txt")).Should().BeFalse();
+        string text = ui.Messages.Should().ContainSingle().Subject.Text;
+        text.Should().Contain("two.zip").And.Contain("applied to the remaining archives").And.NotContain("password-protected");
+    }
     [Fact]
     public async Task ExtractHereFlat_SingleEncryptedArchive_DoesNotOfferApplyToRemaining()
     {
@@ -655,7 +675,7 @@ public sealed class ShellCommandsTests : IDisposable
         return path;
     }
 
-    private async Task<string> MakeEncryptedZipAsync(string archiveName, string entryName, string content)
+    private async Task<string> MakeEncryptedZipAsync(string archiveName, string entryName, string content, string password = Password)
     {
         string source = Path.Combine(_root, "src-" + archiveName);
         Directory.CreateDirectory(source);
@@ -667,7 +687,7 @@ public sealed class ShellCommandsTests : IDisposable
             SourcePaths = [file],
             DestinationFolder = _root,
             ArchiveName = archiveName,
-            ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = Password }),
+            ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = password }),
         });
         result.Success.Should().BeTrue();
 

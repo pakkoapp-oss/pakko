@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>هذا الأرشيف محمي بكلمة مرور ولا يمكن اختباره.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>كلمة المرور المطبَّقة على الأرشيفات المتبقية لا تناسب هذا الأرشيف.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>هذا الأرشيف محمي بكلمة مرور ولا يمكن استعراضه.</value>
   </data>

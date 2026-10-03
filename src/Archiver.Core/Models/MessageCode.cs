@@ -48,6 +48,7 @@ public enum MessageCode
     NoTestCapability,
     PasswordProtectedExtract,
     PasswordProtectedTest,
+    RememberedPasswordDoesNotFit,
     PasswordProtectedBrowse,
     ZipCorrupted,
     CannotExtractArchive,

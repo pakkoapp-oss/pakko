@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Arsip ini dilindungi kata sandi dan tidak dapat diuji.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Kata sandi yang diterapkan ke arsip lainnya tidak cocok untuk arsip ini.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Arsip ini dilindungi kata sandi dan tidak dapat ditelusuri.</value>
   </data>

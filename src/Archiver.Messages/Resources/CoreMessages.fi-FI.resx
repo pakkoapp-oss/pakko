@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Tämä arkisto on suojattu salasanalla, eikä sitä voi testata.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Jäljellä oleviin arkistoihin käytetty salasana ei sovi tähän arkistoon.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Tämä arkisto on suojattu salasanalla, eikä sitä voi selata.</value>
   </data>

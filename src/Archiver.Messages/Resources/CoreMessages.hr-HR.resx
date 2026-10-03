@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Ova je arhiva zaštićena lozinkom i ne može se testirati.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Lozinka primijenjena na preostale arhive ne odgovara ovoj arhivi.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Ova je arhiva zaštićena lozinkom i ne može se pregledavati.</value>
   </data>

@@ -378,6 +378,7 @@ public sealed record PasswordDecision
 {
     public string? Password { get; init; }        // null = user cancelled
     public bool ApplyToRemaining { get; init; }    // mirrors ConflictDecision.ApplyToAll
+    public bool Remembered { get; init; }          // T-F301: an earlier answer reused, not asked for this archive
 }
 ```
 
@@ -395,6 +396,9 @@ internal sealed class PasswordResolver(
 {
     public Task<string?> ResolveAsync(
         string archiveName, PasswordPurpose purpose, Func<string, bool> verify);
+    // T-F301: a Remembered password that fails verify is not retried; the caller then reports
+    // RememberedPasswordDoesNotFit instead of PasswordProtectedExtract/Test.
+    public bool RememberedPasswordRejected { get; }
 }
 ```
 
@@ -418,6 +422,8 @@ public static class EncryptionPasswordRule
 public sealed record ConflictInfo
 {
     public required string ExistingPath { get; init; }
+    public long? IncomingSize { get; init; }               // null when not known yet (a new archive)
+    public DateTimeOffset? IncomingModified { get; init; }
 }
 
 // Models/ConflictDecision.cs
@@ -436,8 +442,11 @@ public sealed record ConflictDecision
 // ExtractAsync/TestAsync call. A frontend making several calls for one user action (Archiver.Shell's
 // per-archive loop, Archiver.CLI's zip/tar split through ExtractionRouter) wraps its prompt in one
 // instance, created per user action, and passes ResolveAsync as the Core callback.
+// whenReused marks a remembered answer each time it is handed out again (Shell: Remembered = true,
+// T-F301).
 public sealed class StickyCallback<TInfo, TDecision>(
-    Func<TInfo, Task<TDecision>> inner, Func<TDecision, bool> isSticky) where TDecision : class
+    Func<TInfo, Task<TDecision>> inner, Func<TDecision, bool> isSticky,
+    Func<TDecision, TDecision>? whenReused = null) where TDecision : class
 {
     public Task<TDecision> ResolveAsync(TInfo info);
 }

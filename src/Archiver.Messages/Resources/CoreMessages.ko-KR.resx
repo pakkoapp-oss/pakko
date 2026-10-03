@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>이 보관 파일은 암호로 보호되어 있어 테스트할 수 없습니다.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>나머지 아카이브에 적용한 암호가 이 아카이브와 맞지 않습니다.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>이 보관 파일은 암호로 보호되어 있어 찾아볼 수 없습니다.</value>
   </data>

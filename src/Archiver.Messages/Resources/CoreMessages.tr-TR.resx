@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Bu arşiv parola korumalı ve test edilemiyor.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Kalan arşivlere uygulanan parola bu arşive uymuyor.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Bu arşiv parola korumalı ve göz atılamıyor.</value>
   </data>

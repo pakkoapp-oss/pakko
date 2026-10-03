@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>यह संग्रह पासवर्ड से सुरक्षित है और जाँचा नहीं जा सकता।</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>शेष संग्रहों पर लागू किया गया पासवर्ड इस संग्रह पर ठीक नहीं बैठता।</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>यह संग्रह पासवर्ड से सुरक्षित है और ब्राउज़ नहीं किया जा सकता।</value>
   </data>

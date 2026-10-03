@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Kumbukumbu hii imelindwa kwa nenosiri na haiwezi kujaribiwa.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Nenosiri lililotumika kwa kumbukumbu zilizosalia halilingani na kumbukumbu hii.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Kumbukumbu hii imelindwa kwa nenosiri na haiwezi kuvinjariwa.</value>
   </data>

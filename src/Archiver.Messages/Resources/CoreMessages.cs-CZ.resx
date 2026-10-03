@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Tento archiv je chráněn heslem a nelze jej otestovat.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Heslo použité pro zbývající archivy k tomuto archivu nepasuje.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Tento archiv je chráněn heslem a nelze jej procházet.</value>
   </data>

@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Dit archief is met een wachtwoord beveiligd en kan niet worden getest.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Het wachtwoord dat op de resterende archieven is toegepast, past niet bij dit archief.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Dit archief is met een wachtwoord beveiligd en kan niet worden bekeken.</value>
   </data>

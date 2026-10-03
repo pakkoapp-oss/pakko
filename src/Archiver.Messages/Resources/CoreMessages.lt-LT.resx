@@ -120,6 +120,9 @@
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>Šis archyvas apsaugotas slaptažodžiu ir jo negalima patikrinti.</value>
   </data>
+  <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
+    <value>Likusiems archyvams pritaikytas slaptažodis netinka šiam archyvui.</value>
+  </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Šis archyvas apsaugotas slaptažodžiu ir jo negalima naršyti.</value>
   </data>

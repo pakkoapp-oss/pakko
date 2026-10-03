@@ -151,6 +151,43 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         Directory.EnumerateFileSystemEntries(_temp.Path).Should().NotContain(p => Path.GetFileName(p).StartsWith(".pakko-x-"));
     }
 
+    // T-F301: a password remembered from an earlier archive ("apply to remaining") that does not
+    // fit this one is said as such, once, without asking again (no re-prompt: user decision).
+    [Fact]
+    public async Task ExtractAsync_RememberedPasswordDoesNotFit_SaysSoAndDoesNotRetry()
+    {
+        int promptCount = 0;
+        string destDir = Path.Combine(_temp.Path, "out");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
+            DestinationFolder = destDir,
+            ResolvePasswordAsync = _ =>
+            {
+                promptCount++;
+                return Task.FromResult(new PasswordDecision { Password = "from-another-archive", ApplyToRemaining = true, Remembered = true });
+            },
+        });
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.RememberedPasswordDoesNotFit);
+        promptCount.Should().Be(1);
+        Directory.Exists(destDir).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_RememberedPasswordFits_Extracts()
+    {
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [FixtureHelper.Archive("encrypted_aes256.zip")],
+            DestinationFolder = Path.Combine(_temp.Path, "out"),
+            ResolvePasswordAsync = _ => Task.FromResult(new PasswordDecision { Password = RealPassword, ApplyToRemaining = true, Remembered = true }),
+        });
+
+        result.Errors.Should().BeEmpty();
+        result.Success.Should().BeTrue();
+    }
     [Fact]
     public async Task ExtractAsync_UserCancelsPasswordPrompt_RejectsWithUnchangedMessage()
     {
@@ -309,6 +346,22 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         result.Errors.Should().ContainSingle(e => e.Message == "This archive is password-protected and cannot be tested.");
     }
 
+    [Fact]
+    public async Task TestAsync_RememberedPasswordDoesNotFit_SaysSoAndDoesNotRetry()
+    {
+        int promptCount = 0;
+
+        ArchiveResult result = await _sut.TestAsync(
+            [FixtureHelper.Archive("encrypted_aes256.zip")],
+            resolvePasswordAsync: _ =>
+            {
+                promptCount++;
+                return Task.FromResult(new PasswordDecision { Password = "from-another-archive", Remembered = true });
+            });
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.RememberedPasswordDoesNotFit);
+        promptCount.Should().Be(1);
+    }
     [Fact]
     public async Task TestAsync_NoResolverWired_MatchesPreT189Message()
     {
