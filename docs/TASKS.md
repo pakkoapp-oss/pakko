@@ -2444,7 +2444,11 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F236 — One unreadable subfolder aborts creating the whole archive (P1)
 
-- [~] **Status (2026-10-03, v1.7.0 wave 6):** fixed in code, device check pending. The App's two
+- [x] **Status (2026-10-03, v1.7.0 wave 6):** done. Device (2026-10-03, Deploy 1.6.0.7, App title build 2026-10-03 18:08:52, Release `pakko.exe` from 95e3f0c, agent): the App opened on `C:\Windows`
+  (`--open-ui --archive`) answered UIA in 22 ms while measuring it (~420-520 ms CPU per second, Size
+  "..."); Delete on the row removed it and the App's CPU fell to 0 ms/s at once. Compressing a 9-file
+  608 MB folder showed "Стиснення... (файлів: 9, 608,0 МБ)" from the rows' totals. Earlier text: fixed
+  in code. The App's two
   walks are gone: a pending-list row measures its folder with `FolderTotals` (the engines' walk),
   cancelled when the row is removed or the list cleared; the archive command sums the rows instead of
   walking again on the UI thread. Earlier: partial — Core part fixed (see Progress).
@@ -2821,7 +2825,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F263 — Staging and temporary folders have no single owner; the two extraction commit paths are synced by hand (P1, root, decision)
 
-- [~] **Status (2026-10-03, v1.7.0 wave 6):** fixed in code, device check pending. The per-process
+- [x] **Status (2026-10-03, v1.7.0 wave 6):** done. Device (2026-10-03, Deploy 1.6.0.7, App title build 2026-10-03 18:08:52, Release `pakko.exe` from 95e3f0c, agent): a `pakko x` of a 600 MB ZIP killed
+  mid-run left `.pakko-x-mc2e5513b-21372-…` (Hidden) in the destination; the next `pakko x` there removed it.
+  A `pakko x` of a `.tar` killed while tar.exe ran left `%TEMP%\PakkoTarSandbox\mc2e5513b-4520-…`; the
+  next `pakko l` of a tar removed it. Earlier text: fixed in code. The per-process
   caches and their startup sweep were already done by T-F252, and both engines already commit
   through `ExtractionStaging`. This wave added the one owner of temporary names, `Core/IO/TempOwner`
   (machine, pid and start time in every name; the sweep of dead runs' leftovers, by age where the
@@ -3071,8 +3078,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F288 — `[ComImport]` interfaces to `[GeneratedComInterface]` (SYSLIB1096, P3)
 
-- [~] **Status (2026-10-03, v1.7.0 wave 6):** done in code, device check (progress, Cancel, Open in
-  Pakko) pending. Both classes are `ThreadingModel=Both` and Shell's threads are MTA, so no
+- [x] **Status (2026-10-03, v1.7.0 wave 6):** done. Device (2026-10-03, Deploy 1.6.0.7, App title build 2026-10-03 18:08:52, Release `pakko.exe` from 95e3f0c, agent): Open in Pakko (`--open-ui --archive`)
+  activated the App through `AppLauncher`; with the operation window killed, `--extract-folder` of a
+  30,000-file ZIP fell over to the Win32 progress dialog, which showed title, file name, percent and
+  speed; a real mouse click on Скасувати (dialog moved clear of the terminal) ended Archiver.Shell
+  within 2 s with no destination folder and no staging left. Both classes are `ThreadingModel=Both` and Shell's threads are MTA, so no
   marshalling change (DECISIONS, wave 6). Earlier: open — split out of T-F287, 2026-09-29 (that task
   was about `DllImport`; this is a different mechanism, info-level in Sonar, never a build error).
 - **Scope:** `Archiver.Shell/AppLauncher.cs` (`IApplicationActivationManager`, coclass `new`) and
@@ -3534,7 +3544,12 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F312 — A leftover or locked `<name>.zip.tmp` makes the next archive creation fail (P2)
 
-- [~] **Status (2026-10-03, v1.7.0 wave 6):** fixed in code, device check pending. ZIP and tar
+- [x] **Status (2026-10-03, v1.7.0 wave 6):** done. Device (2026-10-03, Deploy 1.6.0.7, App title build 2026-10-03 18:08:52, Release `pakko.exe` from 95e3f0c, agent): `pakko a big3.zip big.bin` killed after
+  1.5 s left `.pakko-a-mc2e5513b-20112-….tmp` (not hidden); with an old `big3.zip.tmp` held open
+  (`FileShare.None`) the next run exited 0, removed the leftover and left `big3.zip.tmp` alone. `pakko
+  a -y held.zip` with `held.zip` held open until 0.8 s after the temp file reached full size: exit 0,
+  the new 629 MB archive in place, not hidden. App: a 608 MB folder compressed to a non-hidden
+  `src.zip`. Earlier text: fixed in code. ZIP and tar
   creation write to `ArchiveTempFile` (`.pakko-a-<owner>-<guid>.tmp`, unique per run, not hidden);
   a dead run's file is swept, an old fixed `.tmp` is left alone and no longer blocks; the commit
   retries ~1.5 s while either file is held. Also fixed: Overwrite deleted the old archive first and
