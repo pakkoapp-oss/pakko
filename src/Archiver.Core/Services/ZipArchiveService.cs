@@ -1978,19 +1978,8 @@ public sealed class ZipArchiveService : IArchiveService
     // Best-effort: an unreadable folder or file adds nothing here; the writers report it.
     private static (long TotalBytes, int FileCount) ComputeDirectoryTotals(string dir)
     {
-        long totalBytes = 0;
-        int fileCount = 0;
-        foreach (WalkEntry entry in DirectoryWalker.Walk(dir))
-        {
-            if (entry.Kind != WalkEntryKind.File) continue;
-            try
-            {
-                totalBytes += ((FileInfo)entry.Info).Length;
-                fileCount++;
-            }
-            catch { /* best-effort */ }
-        }
-        return (totalBytes, fileCount);
+        FolderTotals totals = FolderTotals.Measure(dir);
+        return (totals.Bytes, totals.Files);
     }
 
     private static bool IsZipFile(string path)

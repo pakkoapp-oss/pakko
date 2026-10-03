@@ -944,6 +944,11 @@ and quarantine swept). The dead owner is the current pid with another start time
 removal removed, each of the four sweeps removed, the fixed `.tmp` name, the narrow retry predicate,
 the delete-first Overwrite in tar.
 
+T-F236: `IO/FolderTotalsTests` (bytes and count, a link not followed, an unreadable subfolder, a
+cancelled walk) and `FileItemTests` in `Archiver.App.Core.Tests` (a folder's totals with a link, a
+file's, disposing the item stops the walk and its totals still complete). Mutants killed: the token
+ignored, `Dispose` not cancelling. The queued CRC-32 read's cancel is enforced by CA2016, not a test.
+
 ---
 
 ## Rules

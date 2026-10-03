@@ -2,12 +2,14 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Archiver.Core.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Archiver.App.Core;
 
-/// <summary>One top-level path in the pending archive-creation/extraction list, with its size and CRC-32 computed in the background.</summary>
-public sealed partial class FileItem : ObservableObject
+/// <summary>One top-level path in the pending archive-creation/extraction list, with its size and
+/// CRC-32 computed in the background. Disposing it (the row was removed) stops that work.</summary>
+public sealed partial class FileItem : ObservableObject, IDisposable
 {
     // Caps concurrent CRC-32 reads across every FileItem, not per-instance — reading a file's
     // full content is real disk I/O, and adding many/large files at once (e.g. a folder full of
@@ -16,6 +18,8 @@ public sealed partial class FileItem : ObservableObject
     // concurrency throttling isn't the kind of mutable service state CLAUDE.md's "no static
     // mutable fields" rule targets — it holds no data, only a fixed synchronization primitive.
     private static readonly SemaphoreSlim _crc32Throttle = new(4);
+
+    private readonly CancellationTokenSource _cts = new();
 
     public string FullPath { get; }
     public string Name { get; }
@@ -44,6 +48,14 @@ public sealed partial class FileItem : ObservableObject
     [ObservableProperty]
     private uint? _crc32;
 
+    /// <summary>Files in this item: 1 for a file, the folder's file count once <see cref="TotalsReady"/>
+    /// completes (0 when it could not be measured).</summary>
+    public int FileCount { get; private set; }
+
+    /// <summary>Completes when <see cref="SizeBytes"/> and <see cref="FileCount"/> are final. Never
+    /// faults: a failed or stopped walk leaves <see cref="SizeBytes"/> at -1.</summary>
+    public Task TotalsReady { get; }
+
     /// <summary>Creates the item, or returns null when <paramref name="path"/> cannot be read.</summary>
     public static FileItem? TryCreate(string path)
     {
@@ -69,7 +81,7 @@ public sealed partial class FileItem : ObservableObject
             IsFolder = true;
             Type = DisplayText.Folder;
             Modified = Directory.GetLastWriteTime(path);
-            _ = LoadFolderSizeAsync(path);
+            TotalsReady = LoadFolderSizeAsync(path, _cts.Token);
         }
         else
         {
@@ -79,36 +91,56 @@ public sealed partial class FileItem : ObservableObject
             Modified = fi.LastWriteTime;
             SizeBytes = fi.Length;
             Size = FormatSize(fi.Length);
+            FileCount = 1;
+            TotalsReady = Task.CompletedTask;
             Crc32Display = "...";
-            _ = LoadCrc32Async(path);
+            _ = LoadCrc32Async(path, _cts.Token);
         }
     }
 
-    private async Task LoadFolderSizeAsync(string path)
+    /// <summary>Stops the size walk and a CRC-32 read that has not started yet.</summary>
+    public void Dispose()
     {
-        long bytes = await Task.Run(() =>
-        {
-            try
-            {
-                long total = 0;
-                foreach (string f in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
-                    try { total += new FileInfo(f).Length; } catch { /* best-effort */ }
-                return total;
-            }
-            catch { return -1L; }
-        });
-        SizeBytes = bytes;
-        Size = bytes >= 0 ? FormatSize(bytes) : "?";
+        _cts.Cancel();
+        _cts.Dispose();
     }
 
-    // Async and throttled, not lazy — starts immediately for every file (matching
-    // LoadFolderSizeAsync's existing pattern) but never more than _crc32Throttle's limit run
-    // concurrently, so queuing many/large files can't turn into an unbounded disk-I/O storm. No
-    // cancellation if the item is later removed/cleared — same tradeoff LoadFolderSizeAsync
-    // already accepts; a removed item's read still finishes and holds a throttle slot until then.
-    private async Task LoadCrc32Async(string path)
+    // T-F236: the engines' walk (links not followed, an unreadable subfolder adds nothing), stopped
+    // when the row is removed — adding C:\ used to walk the whole drive to the end regardless.
+    private async Task LoadFolderSizeAsync(string path, CancellationToken cancellationToken)
     {
-        await _crc32Throttle.WaitAsync();
+        FolderTotals? totals;
+        try
+        {
+            totals = await Task.Run(() => FolderTotals.Measure(path, cancellationToken), cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return; // the row is gone
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            totals = null;
+        }
+        SizeBytes = totals?.Bytes ?? -1;
+        FileCount = totals?.Files ?? 0;
+        Size = totals is { } t ? FormatSize(t.Bytes) : "?";
+    }
+
+    // Async and throttled, not lazy — starts immediately for every file but never more than
+    // _crc32Throttle's limit run concurrently, so queuing many/large files can't turn into an
+    // unbounded disk-I/O storm. A removed item gives up its place in the queue; a read already
+    // running finishes.
+    private async Task LoadCrc32Async(string path, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _crc32Throttle.WaitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return; // the row is gone
+        }
         try
         {
             uint? crc = await Task.Run(() =>

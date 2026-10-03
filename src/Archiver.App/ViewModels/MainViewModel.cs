@@ -827,27 +827,12 @@ public sealed partial class MainViewModel : ObservableObject
                 ResolveConflictAsync = conflict => _dialogService.ShowConflictDialogAsync(conflict, () => _cts?.Cancel()),
             };
 
-            long totalBytes = 0;
-            int fileCount = 0;
-            foreach (string p in options.SourcePaths)
-            {
-                try
-                {
-                    if (File.Exists(p))
-                    {
-                        totalBytes += new FileInfo(p).Length;
-                        fileCount++;
-                    }
-                    else if (Directory.Exists(p))
-                    {
-                        foreach (string f in Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories))
-                        {
-                            try { totalBytes += new FileInfo(f).Length; fileCount++; } catch { /* best-effort */ }
-                        }
-                    }
-                }
-                catch { /* best-effort */ }
-            }
+            // T-F236: the rows measured themselves when they were added; this used to walk every
+            // folder again, on the UI thread.
+            FileItem[] items = [.. FileItems];
+            await Task.WhenAll(items.Select(i => i.TotalsReady)).WaitAsync(_cts.Token);
+            long totalBytes = items.Sum(i => Math.Max(i.SizeBytes, 0));
+            int fileCount = items.Sum(i => i.FileCount);
 
             string sizeStr = DisplayText.FormatSize(totalBytes);
 
@@ -1816,6 +1801,8 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanOperate))]
     private void Clear()
     {
+        foreach (FileItem item in FileItems)
+            item.Dispose();
         FileItems.Clear();
         DeleteAfterOperation = false;
     }
@@ -1824,7 +1811,10 @@ public sealed partial class MainViewModel : ObservableObject
     {
         FileItem? item = FileItems.FirstOrDefault(x => string.Equals(x.FullPath, path, StringComparison.OrdinalIgnoreCase));
         if (item is not null)
+        {
             FileItems.Remove(item);
+            item.Dispose();
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanOperate))]

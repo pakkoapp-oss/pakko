@@ -10837,3 +10837,9 @@ held on the device; stopped per the three-attempts rule.
   path moves the staging folder into place with `Directory.Move`, which keeps an explicit DACL: the
   user's extracted folder would end up owner-only and not inheriting. `%TEMP%` roots sit in the
   user's profile already; the quarantine has its own ACL (T-F52).
+- **T-F236, the App measures each folder once.** A pending-list row measures its folder with
+  `FolderTotals` (the engines' walk: links not followed, an unreadable subfolder adds nothing) and
+  stops when the row is removed or the list cleared (`FileItem` is `IDisposable`). The archive
+  command sums the rows' totals instead of walking every folder again on the UI thread, which froze
+  the window for a large folder; it waits for rows still measuring, and Cancel stops that wait. A CRC-32
+  read already running finishes; one still queued gives up its place.

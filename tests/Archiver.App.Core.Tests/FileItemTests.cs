@@ -48,6 +48,74 @@ public sealed class FileItemTests : IDisposable
         FileItem.TryCreate(_dir)!.ToString().Should().Be(Path.GetFileName(_dir));
     }
 
+    // T-F236: the folder's size and file count come from the engines' walk; the archive command sums
+    // them instead of walking every folder again on the UI thread.
+    [Fact]
+    public async Task TotalsReady_Folder_GivesBytesAndFileCount_LinkNotFollowed()
+    {
+        Directory.CreateDirectory(Path.Combine(_dir, "sub"));
+        File.WriteAllBytes(Path.Combine(_dir, "a.bin"), new byte[10]);
+        File.WriteAllBytes(Path.Combine(_dir, "sub", "b.bin"), new byte[20]);
+        string outside = _dir + "_outside";
+        Directory.CreateDirectory(outside);
+        File.WriteAllBytes(Path.Combine(outside, "big.bin"), new byte[1000]);
+        Archiver.Core.Services.DirectoryJunction.Create(Path.Combine(_dir, "link"), outside);
+        try
+        {
+            using FileItem item = FileItem.TryCreate(_dir)!;
+            await item.TotalsReady;
+
+            item.SizeBytes.Should().Be(30);
+            item.FileCount.Should().Be(2);
+        }
+        finally
+        {
+            Directory.Delete(Path.Combine(_dir, "link"), recursive: false);
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task TotalsReady_File_IsOneFile()
+    {
+        string path = Path.Combine(_dir, "a.bin");
+        File.WriteAllBytes(path, new byte[7]);
+
+        using FileItem item = FileItem.TryCreate(path)!;
+        await item.TotalsReady;
+
+        item.SizeBytes.Should().Be(7);
+        item.FileCount.Should().Be(1);
+        await WaitForCrcAsync(item);
+    }
+
+    // Removing a row (or Clear) disposes its item: a walk of a whole drive used to run on after the
+    // row was gone. A disposed item's totals still complete, never fault.
+    [Fact]
+    public async Task Dispose_StopsTheFolderWalk_TotalsCompleteWithoutFault()
+    {
+        for (int i = 0; i < 300; i++)
+        {
+            string sub = Path.Combine(_dir, $"d{i}");
+            Directory.CreateDirectory(sub);
+            File.WriteAllBytes(Path.Combine(sub, "f.bin"), new byte[1]);
+        }
+
+        FileItem item = FileItem.TryCreate(_dir)!;
+        item.Dispose();
+        Func<Task> wait = () => item.TotalsReady.WaitAsync(TimeSpan.FromSeconds(10));
+
+        await wait.Should().NotThrowAsync();
+        item.FileCount.Should().BeLessThan(300, "the walk stopped before it finished");
+    }
+
+    private static async Task WaitForCrcAsync(FileItem item)
+    {
+        DateTime deadline = DateTime.UtcNow.AddSeconds(10);
+        while (item.Crc32 is null && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+    }
+
     [Fact]
     public void TryCreate_MissingPath_ReturnsNull()
     {

@@ -144,6 +144,9 @@ src/
 │   │   │                                  tag m<machine>-<pid>-<start ticks>, the sweep of entries
 │   │   │                                  dead runs left (by process here, by age next to a
 │   │   │                                  destination for anything not provably this machine's)
+│   │   ├── FolderTotals.cs             ← T-F236: public; a folder's bytes and file count over
+│   │   │                                  DirectoryWalker, cancellable — the App's pending list and
+│   │   │                                  ZipArchiveService's totals both use it
 │   │   ├── Crc32.cs                    ← public (T-F110); slice-by-8 (T-F128 follow-up, was
 │   │   │                                  byte-at-a-time — real ~9x perf gap vs. 7-Zip found via
 │   │   │                                  HashPerformanceTests), reused by pending-list CRC too.

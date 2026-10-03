@@ -2444,7 +2444,10 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F236 — One unreadable subfolder aborts creating the whole archive (P1)
 
-- [~] **Status:** partial — Core part fixed (see Progress). Left: the App's own folder walks (`FileItem.LoadFolderSizeAsync`, the size pre-count) — v1.7.0 wave 6.
+- [~] **Status (2026-10-03, v1.7.0 wave 6):** fixed in code, device check pending. The App's two
+  walks are gone: a pending-list row measures its folder with `FolderTotals` (the engines' walk),
+  cancelled when the row is removed or the list cleared; the archive command sums the rows instead of
+  walking again on the UI thread. Earlier: partial — Core part fixed (see Progress).
 - **Progress (2026-09-27, fix phase 6, wave 1 track B):** Core part fixed in 6fdac82 — new
   iterative `DirectoryWalker` (`Archiver.Core/IO`) used by both ZIP creation walks; an unreadable
   subfolder is one `ArchiveError`, every readable file is archived, the source is not `Completed`
