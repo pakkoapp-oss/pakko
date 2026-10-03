@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Vybrat složku</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Existující soubor</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>Z archivu</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>změněno {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Zrušit vše</value>
+  </data>
 </root>

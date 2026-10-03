@@ -15,7 +15,8 @@ public interface IDialogService
     Task ShowAboutAsync();
     Task ShowFileHashAsync(IReadOnlyList<string> listed);
     Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning);
-    Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict);
+    // T-F220 item 2: cancelOperation, when given, adds "cancel all" to the dialog.
+    Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict, Action? cancelOperation = null);
     Task<bool> OpenFileWithDefaultAppAsync(string filePath);
 
     // T-F190: canApplyToRemaining is a caller/frontend decision (batch shape), not something

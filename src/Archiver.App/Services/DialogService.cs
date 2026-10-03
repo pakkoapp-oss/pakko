@@ -134,7 +134,7 @@ public sealed class DialogService : IDialogService
 
     // T-F06: same DispatcherQueue-marshaling need as ShowCompressionBombConfirmAsync above — the
     // extraction/archive services call ResolveConflictAsync from a background thread.
-    public Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict)
+    public Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict, Action? cancelOperation = null)
     {
         var tcs = new TaskCompletionSource<ConflictDecision>();
 
@@ -155,7 +155,27 @@ public sealed class DialogService : IDialogService
                         .Replace("{0}", Path.GetFileName(conflict.ExistingPath)),
                     TextWrapping = TextWrapping.Wrap
                 });
+                // T-F220 item 2: both files' size and date, as the Explorer window shows them.
+                (long? existingSize, DateTimeOffset? existingModified) = ConflictText.Existing(conflict.ExistingPath);
+                AddDetailsLine(panel, "ConflictExistingFile", ConflictText.Details(existingSize, existingModified));
+                AddDetailsLine(panel, "ConflictIncomingFile", ConflictText.Details(conflict.IncomingSize, conflict.IncomingModified));
                 panel.Children.Add(applyToAllCheck);
+
+                ContentDialog? shown = null;
+                bool cancelled = false;
+                if (cancelOperation is not null)
+                {
+                    // A ContentDialog has three buttons, all taken; "cancel the whole operation"
+                    // is a link under them.
+                    var cancelAll = new HyperlinkButton { Content = _res.GetString("ConflictCancelAll"), Padding = new Thickness(0) };
+                    cancelAll.Click += (_, _) =>
+                    {
+                        cancelled = true;
+                        cancelOperation();
+                        shown?.Hide();
+                    };
+                    panel.Children.Add(cancelAll);
+                }
 
                 var dialog = new ContentDialog
                 {
@@ -167,18 +187,21 @@ public sealed class DialogService : IDialogService
                     DefaultButton = ContentDialogButton.Close, // Enter resolves to Skip, not Overwrite
                     XamlRoot = _window!.Content.XamlRoot
                 };
+                shown = dialog;
                 ContentDialogResult result = await dialog.ShowAsync();
 
                 ConflictResolution resolution = result switch
                 {
+                    _ when cancelled => ConflictResolution.Skip,
                     ContentDialogResult.Primary => ConflictResolution.Overwrite,
                     ContentDialogResult.Secondary => ConflictResolution.Rename,
                     _ => ConflictResolution.Skip
                 };
+                // Cancelled: skip this one and ask nothing more before Core sees the token.
                 tcs.SetResult(new ConflictDecision
                 {
                     Resolution = resolution,
-                    ApplyToAll = applyToAllCheck.IsChecked == true
+                    ApplyToAll = cancelled || applyToAllCheck.IsChecked == true
                 });
             }
             catch (Exception ex)
@@ -191,6 +214,18 @@ public sealed class DialogService : IDialogService
             tcs.SetResult(new ConflictDecision { Resolution = ConflictResolution.Skip });
 
         return tcs.Task;
+    }
+
+    private static void AddDetailsLine(StackPanel panel, string labelKey, string? details)
+    {
+        if (details is null)
+            return;
+        panel.Children.Add(new TextBlock
+        {
+            Text = $"{_res.GetString(labelKey)}: {details}",
+            TextWrapping = TextWrapping.Wrap,
+            Opacity = 0.8,
+        });
     }
 
     // T-F190: same DispatcherQueue-marshaling need as ShowConflictDialogAsync above — ZipArchiveService

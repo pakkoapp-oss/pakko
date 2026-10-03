@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Klasör seç</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Mevcut dosya</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>Arşivden</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>değiştirilme: {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Tümünü iptal et</value>
+  </data>
 </root>

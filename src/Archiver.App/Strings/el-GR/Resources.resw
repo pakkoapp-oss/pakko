@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Επιλογή φακέλου</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Υπάρχον αρχείο</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>Από το αρχείο συμπίεσης</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>τροποποιήθηκε {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Ακύρωση όλων</value>
+  </data>
 </root>

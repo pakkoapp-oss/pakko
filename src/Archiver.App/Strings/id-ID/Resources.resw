@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Pilih folder</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>File yang ada</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>Dari arsip</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>diubah {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Batalkan semua</value>
+  </data>
 </root>

@@ -806,7 +806,7 @@ public sealed partial class MainViewModel : ObservableObject
                 OpenDestinationFolder = OpenDestinationFolder,
                 CompressionLevel = SelectedCompressionLevel,
                 Format = SelectedContainerFormat,
-                ResolveConflictAsync = _dialogService.ShowConflictDialogAsync,
+                ResolveConflictAsync = conflict => _dialogService.ShowConflictDialogAsync(conflict, () => _cts?.Cancel()),
             };
 
             long totalBytes = 0;
@@ -942,7 +942,7 @@ public sealed partial class MainViewModel : ObservableObject
                 OnConflict = OnConflict,
                 OpenDestinationFolder = OpenDestinationFolder,
                 ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
-                ResolveConflictAsync = _dialogService.ShowConflictDialogAsync,
+                ResolveConflictAsync = conflict => _dialogService.ShowConflictDialogAsync(conflict, () => _cts?.Cancel()),
                 ResolvePasswordAsync = fromBrowser
                     ? BrowsePasswordResolver(archivePaths[0])
                     : info => _dialogService.ShowPasswordPromptAsync(info, archivePaths.Count > 1),

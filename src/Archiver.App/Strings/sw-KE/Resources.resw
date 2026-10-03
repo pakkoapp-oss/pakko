@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Chagua folda</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Faili lililopo</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>Kutoka kwenye kumbukumbu</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>tarehe ya mabadiliko: {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Ghairi zote</value>
+  </data>
 </root>

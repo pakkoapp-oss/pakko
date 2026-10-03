@@ -62,6 +62,7 @@ public partial class App : Application
         DisplayText.Configure(res.GetString("TypeFolder"), res.GetString("TypeFile"), res.GetString("SizeBytes"),
             res.GetString("SizeKB"), res.GetString("SizeMB"), res.GetString("SizeGB"));
         ProgressText.Configure(res.GetString("SpeedPerSecond"), res.GetString("RemainingSeconds"), res.GetString("RemainingMinutes"));
+        ConflictText.Configure(res.GetString("ConflictModified"));
 
         // T-F252: previews and nested archives a crashed or killed Pakko left in %TEMP%.
         _ = Task.Run(() =>

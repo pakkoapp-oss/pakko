@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Valitse kansio</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Olemassa oleva tiedosto</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>Arkistosta</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>muokattu {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Peruuta kaikki</value>
+  </data>
 </root>

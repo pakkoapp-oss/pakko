@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Mappa kiválasztása</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Meglévő fájl</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>Az archívumból</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>módosítva: {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Összes megszakítása</value>
+  </data>
 </root>

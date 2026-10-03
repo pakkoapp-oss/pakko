@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>เลือกโฟลเดอร์</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>ไฟล์ที่มีอยู่</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>จากไฟล์บีบอัด</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>แก้ไขเมื่อ {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>ยกเลิกทั้งหมด</value>
+  </data>
 </root>

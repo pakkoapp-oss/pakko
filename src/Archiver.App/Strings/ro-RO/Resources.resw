@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Alegeți folderul</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Fișier existent</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>Din arhivă</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>modificat la {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Anulează tot</value>
+  </data>
 </root>

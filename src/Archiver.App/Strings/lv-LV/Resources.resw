@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Izvēlēties mapi</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Esošais fails</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>No arhīva</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>mainīts {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Atcelt visu</value>
+  </data>
 </root>

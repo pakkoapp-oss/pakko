@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Choisir un dossier</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Fichier existant</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>Depuis l'archive</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>modifié le {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Tout annuler</value>
+  </data>
 </root>

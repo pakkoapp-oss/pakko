@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Vali kaust</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Olemasolev fail</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>Arhiivist</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>muudetud {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Tühista kõik</value>
+  </data>
 </root>

@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Velg mappe</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Eksisterende fil</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>Fra arkivet</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>endret {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Avbryt alle</value>
+  </data>
 </root>

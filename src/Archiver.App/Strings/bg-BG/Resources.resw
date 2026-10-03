@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Избор на папка</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Съществуващ файл</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>От архива</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>променен на {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Отмени всички</value>
+  </data>
 </root>

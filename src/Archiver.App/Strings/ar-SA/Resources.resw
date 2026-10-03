@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>اختيار مجلد</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>الملف الموجود</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>من الأرشيف</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>تاريخ التعديل: {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>إلغاء الكل</value>
+  </data>
 </root>

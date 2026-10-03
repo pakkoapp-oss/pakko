@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Välj mapp</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>Befintlig fil</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>Från arkivet</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>ändrad {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>Avbryt alla</value>
+  </data>
 </root>

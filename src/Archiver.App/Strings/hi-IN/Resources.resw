@@ -539,4 +539,16 @@
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>फ़ोल्डर चुनें</value>
   </data>
+  <data name="ConflictExistingFile" xml:space="preserve">
+    <value>मौजूदा फ़ाइल</value>
+  </data>
+  <data name="ConflictIncomingFile" xml:space="preserve">
+    <value>संग्रह से</value>
+  </data>
+  <data name="ConflictModified" xml:space="preserve">
+    <value>संशोधित: {0}</value>
+  </data>
+  <data name="ConflictCancelAll" xml:space="preserve">
+    <value>सभी रद्द करें</value>
+  </data>
 </root>
