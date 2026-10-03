@@ -10783,3 +10783,24 @@ After Enter drills into a nested archive, keyboard focus ends on the browse Up b
 first row (folder Enter and Delete keep it on a row). Tried: one deferred `Focus` at Low priority,
 bounded retries, and accepting only a loaded container whose `Content` is the current item - none
 held on the device; stopped per the three-attempts rule.
+
+## v1.7.0 wave 5 — Explorer and Shell (2026-10-03)
+
+- **T-F307, a phase on `ProgressReport`, not a second callback.** `ProgressPhase` (`Transferring`
+  by default, `CheckingArchive`) rides the existing `IProgress<ProgressReport>`, so no engine or
+  frontend signature changed and `ExtractionRouter.SliceProgress` only forwards one more field. tar
+  reports `CheckingArchive` before its whole-archive pre-scan and ends it with an explicit 0-byte
+  `Transferring` report: the quarantine byte poll never reports for an archive with no file bytes,
+  so the check could otherwise stay on until the result. Shell's helper window receives the
+  formatted status string, so the pipe protocol is unchanged. The App counts its time left from
+  the first report after the check (`ProgressText.Remaining` with a start percent), since the check
+  can take most of the elapsed time. Accepted gap: a helper crash during the check leaves the
+  Win32 dialog without a status until the transfer starts; the last status is not replayed.
+- **T-F291, failed entries under the folder summary.** Named relative to the folder's parent, the
+  same names `pakko h` prints, and capped at 10 lines like the file list, so one unreadable tree
+  cannot grow the message without bound.
+- **T-F268 closed; its black-window item (f) is T-F315.** (f) never reproduced through the real
+  Explorer flow and was not seen 4 of 4 on 1.5.0.34; it keeps its own task instead of holding the
+  operation window open. (g) and the non-Ukrainian layouts join T-F91's release-time check.
+- **T-F48 closed with its last criterion not applicable.** Extraction auto-detects the format and
+  reports an unsupported one per archive; there is no selector to grey out.

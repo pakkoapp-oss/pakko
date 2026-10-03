@@ -356,7 +356,7 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
 ---
 
 ### T-F128 — Explorer context-menu hash commands (CRC-32/SHA-256, files and folders)
-- [~] **Status:** implementation complete 2026-07-20, on-device verification pending (down to the
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5). Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): "Хеш-суми: CRC-32" on two files gave `plain.zip` 4250BFFA and `valid.7z` 3973ECAC, both equal to zlib's CRC-32; the folder hash lists its failed entries since T-F291. Earlier status: implementation complete 2026-07-20, on-device verification pending (down to the
       user's own personal click-through only — the AI-driven pass below is now a full,
       not partial, end-to-end confirmation).
       **Re-scoped three times this session, all user-driven — kept per the "never silently
@@ -934,7 +934,7 @@ Format: [ ZIP ▾]   ZIP / TAR / TAR.GZ
 ---
 
 ### T-F91 — Multi-Language Localization (OS-Language Auto-Match, English Fallback)
-- [~] **Status:** partial — first batch (all 24 European locales) implemented 2026-07-07;
+- [~] **Status:** (2026-10-03) all 37 locales ship in every frontend: the App's `.resw`, Shell's `OperationText.resx`, the Explorer menu table and `Archiver.Messages` (App and Messages key parity are test-enforced). Left for the release: a native-speaker review and an on-screen layout check per language, RTL (he/ar/ur) included, plus T-F268 (g)'s caption-button tooltips. Earlier status: partial — first batch (all 24 European locales) implemented 2026-07-07;
       Arabic/Japanese/Chinese/etc. (the non-European half of the target list) not started;
       on-device verification, layout-corruption check, and native-speaker translation review
       still outstanding for the European batch. See `DECISIONS.md`'s T-F91 entry.
@@ -1151,7 +1151,7 @@ deprecate" rule; do not re-implement them as new work.
 ## v1.3 — tar.exe Integration
 
 ### T-F48 — tar.exe Capability Detection
-- [~] **Status:** partial (v1.3) — detection logic complete (all other criteria `[x]`). The one
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5): closed with the last criterion not applicable — extraction auto-detects the format (see below), and a creation format selector belongs to T-F36. Earlier status: partial (v1.3) — detection logic complete (all other criteria `[x]`). The one
       remaining criterion (grey out unsupported formats in a tar format selector) is reassessed
       as of 2026-07-07: not "blocked on T-F36" so much as **not applicable to extraction at
       all** — `IExtractionRouter` (T-F85) auto-detects format and reports unsupported ones via a
@@ -1197,7 +1197,7 @@ must not hang app launch indefinitely.
 ---
 
 ### T-F89 — Cosmetic: Operation Summary Dialog Mislabels Every Skip Reason as "Unsupported Format"
-- [~] **Status:** partial — fix applied, compile-checked, and on-device verified for the
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5): the unsupported-format case needs no device trigger, since the header no longer names a reason (`SkippedSectionHeader` is "Skipped" / "Пропущено", checked in the `.resw` files); the reason is in each row. Earlier status: partial — fix applied, compile-checked, and on-device verified for the
       conflict-skip case (2026-07-07, AI-driven); the unsupported-format case still can't be
       triggered on this machine — this system's tar.exe/bsdtar 3.8.4 supports every format
       `TarCapabilities` tracks, same known limitation already noted on T-F85/T-F86
@@ -1628,7 +1628,7 @@ fixture).
 
 ### T-F115 — Shell-extension context-menu localization (37 locales) + Extract-here split
 
-- [~] **Status:** implementation complete 2026-07-18, all automated tests green (.NET + C++).
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5). Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): every Pakko menu item reads in Ukrainian, including the separate "(Інтелектуально)" Extract-here item, and each item used in this wave ran its command. Earlier status: implementation complete 2026-07-18, all automated tests green (.NET + C++).
       Stays `[~]` — not graduated to `[x]` — pending the required `Deploy.ps1` build+sign+install
       and on-device Explorer check per this project's workflow rule (shell-triggered/UI change,
       never graduated on `dotnet test`/`Archiver.ShellExtension.Tests.exe` alone).
@@ -1907,7 +1907,7 @@ robustness to future change"* — today that rule has no analyzer feeding it in 
 
 - ~~Blocked from graduating by T-F247~~ — T-F247 fixed 2026-09-27 (1b0f824/c4fe0d4); pending
   its device check.
-- [~] **Status:** implementation complete 2026-08-07 (Core service + tests, `Archiver.Shell`
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5). Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): "Перевірити на загрози" on `eicar.zip` reports a threat, on `plain.zip` "загроз не виявлено" (real Defender). The no-provider `Inconclusive` path is covered by tests only (it needs Defender off). Earlier status: implementation complete 2026-08-07 (Core service + tests, `Archiver.Shell`
       CLI/dialog, `Archiver.ShellExtension` context-menu entry, `Archiver.App` Archive Browser
       entry, full 37-locale localization across all three frontends) — on-device verification
       still pending (see acceptance criteria below), per this project's standing rule that
@@ -2890,7 +2890,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F268 — Explorer operations: one UI interface, then a WinUI 3 operation window (P2, design + spike)
 
-- [~] **Status:** partial — steps 1-5 done and shipped in v1.6.0 (the tag smoke used the window and the Win32 fallback). Left: step 6, polish — v1.7.0 wave 5.
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5): step 6 done — polish (a)-(e) 2026-09-27, the checking-archive status (T-F307) and the folder-hash failures (T-F291) in wave 5. (f), the black window, is now T-F315; (g) and the non-Ukrainian layouts go to T-F91's release check. Earlier status: partial — steps 1-5 done and shipped in v1.6.0 (the tag smoke used the window and the Win32 fallback). Left: step 6, polish — v1.7.0 wave 5.
 - **Device (G6 pass 5, 1.5.0.13, light theme, temporary until G7 - `OperationWindow` is G2-changed):** the conflict, password, progress and result states read correctly in the light theme. Keyboard: the conflict prompt opens with focus on "Пропустити" and cycles checkbox -> Перезаписати -> Перейменувати -> Пропустити; Space ticks "apply to all", Enter answers, Esc skips the one file; the password prompt opens in the field, Esc = "Пропустити архів"; Esc on a running extraction cancels it, Esc on the result closes the window. The window sizes itself per state (522 wide; 394/288/232 tall) and has no sizing frame, so the narrow-window check (E5) does not apply. Found T-F309 (a cancelled "Extract to X\" leaves its empty folder).
 
 - [~] **Progress:** step 1 done 2026-09-26 — `IOperationUi`/`IOperationSession` + `Win32OperationUi`,
@@ -3195,7 +3195,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F291 — Explorer's folder hash hides which entries failed (P2)
 
-- [ ] **Status:** open. Found redrawing diagram 1 (T-F258). For a single-folder selection
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5, 4063136). The summary is followed by a blank line and the failed entries, named relative to the folder's parent like `pakko h`, capped at 10 lines plus "and N more" (tests first in `OperationMessagesTests`). Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): a folder with a junction and an access-denied subfolder lists `hashdir\jn` and `hashdir\locked` in the operation window and in the Win32 failover. Report as filed: open. Found redrawing diagram 1 (T-F258). For a single-folder selection
   `OperationMessages.ForHash` shows only the Files/Size/DataSum/NamesSum lines; the error entries
   `FileHashService` adds since T-F251 (an unreadable subfolder, a skipped junction or symlink, a file
   that shrank) only turn the icon into a warning. The user cannot tell what the sums leave out.
@@ -3470,7 +3470,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F307 — tar-family extraction sits at 0% with no status through the listing passes (P3)
 
-- [ ] **Status:** open, moved to wave 5 (2026-10-01): needs a phase in `ProgressReport` and a localized status in the App, the operation window and the Win32 dialog, so it goes with T-F268 step 6. Seen again in T-F306's device check (29 s at 66%).
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5, 2cf07ab). `ProgressReport.Phase` (`ProgressPhase.CheckingArchive`) is reported before tar's pre-scan and ended by a 0-byte Transferring report; the operation window, the Win32 dialog and the App show "Перевірка вмісту архіву..." (37 locales), and the App's ETA starts after the check. Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): a 200 MB `.tar.bz2` showed the checking status for ~7 s in the operation window and 0-8 s in the App footer, then byte progress with no inflated ETA; the Win32 dialog's text is not UIA-readable, so its status is covered by the `ProgressText` test. Known gap, accepted: a failover during the check leaves the Win32 dialog without a status until the transfer starts (the last status is not replayed). Earlier status: open, moved to wave 5 (2026-10-01): needs a phase in `ProgressReport` and a localized status in the App, the operation window and the Win32 dialog, so it goes with T-F268 step 6. Seen again in T-F306's device check (29 s at 66%).
   Report as filed: open. Found in G6 pass 4, 2026-09-30 (1.5.0.13). A 200 MB `.tar.bz2`: the App shows
   "Видобування... (архівів: 1)" at 0% with no speed for 24.7 s of 38 s, the Explorer window "Архів 2 з 2 ·
   big.tar.bz2" at 0% for 26 s; a 316 MB `.tar.bz2` Extract Selected: 39 s at 0% of 58 s. That time is the
@@ -3563,6 +3563,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   busy).
 - **Reported by:** v1.7.0 wave 4 device pass, 2026-10-03.
 
+### T-F315 — Operation window sometimes renders all black until activated (P3)
+
+- [ ] **Status:** open. Split out of T-F268 step 6 item (f) on its closing, 2026-10-03. The window fades in black (caption buttons only) when it never gets the foreground; one real activation fixes it for good. Reproduced 16 of 16 on 1.5.0.12/13 (`Start-Process` from a background shell), not reproduced 4 of 4 on 1.5.0.34; the real Explorer flow passes the foreground right and was never seen black. Full trail, the tries that failed and the next ideas: T-F268's (f) note. Reproduce before fixing.
+- **Reported by:** T-F268 Explorer smoke (agent and user), 2026-09-27.
+
 ### T-F310 — A compressed GNU-format tar with OEM (cp866) names is still refused (P2)
 
 - [x] **Status:** done 2026-10-01 (29895a2), user decision: gzip only, in-process. Device (dev 1.6.0.1): `--extract-here` of a GNU-magic cp866 `.tar.gz` wrote `Док.txt`. bzip2/xz/zstd keep the refusal by design. See `SECURITY.md` and `docs/DECISIONS.md`'s wave 2 entry.
@@ -3618,7 +3623,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F192 — `Archiver.Shell`: native password prompt for Explorer extract commands
 
-- [~] **Status:** implementation complete, 2026-09-18 — stays `[~]` until the user's own on-device
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5). Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): Explorer extract of the encrypted ZIP with the operation window killed at its password prompt: the Win32 "Потрібен пароль" dialog took over and `secret1` extracted the archive. Earlier status: implementation complete, 2026-09-18 — stays `[~]` until the user's own on-device
   Explorer click-through, per this project's UI-graduation convention (same as T-F190).
 - **Context:** `ShellConflictDialog.cs`'s `TaskDialogIndirect` has no text-input capability, so it
   cannot be reused as-is for a masked password field.
@@ -3661,7 +3666,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F194 — AMSI scan (T-F146) currently can't see inside a password-protected ZIP entry at all
 
-- [~] **Status:** implementation complete, 2026-09-24 — agent-driven on-device verification via
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5). Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): Explorer "Перевірити на загрози" on the encrypted EICAR ZIP asked for the password and, with `testpassword`, reported "виявлено загрозу". Earlier status: implementation complete, 2026-09-24 — agent-driven on-device verification via
   `windows` MCP passed (Shell `--scan` — the Explorer command's target — and the App's Archive
   Browser scan, both against real Defender and the real encrypted EICAR fixture, plus Shell `--test`); stays
   `[~]` until the user's own click-through (`SECURITY.md` updated 2026-09-24 with permission). Full design + four advisor-caught defects in `docs/DECISIONS.md`'s T-F194 entry.

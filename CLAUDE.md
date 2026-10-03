@@ -217,7 +217,7 @@ zip already reached 100%; a selected-subset extraction would have reported the w
 byte total instead of the subset's. Both fixed. The visible speed-readout rendering itself still
 needs the user's own on-device look.
 
-**T-F146** (`[~]` **implementation complete, on-device verification pending**) — AMSI-based "Scan
+**T-F146** (`[x]`, device-closed 2026-10-03) — AMSI-based "Scan
 for threats" for archives (Explorer context menu + Archive Browser). New standalone
 `IAntivirusScanService`/`AntivirusScanService` (deliberately not folded into
 `IArchiveService`/`ITarService`), a real P/Invoke `amsi.dll` wrapper, and `AmsiProviderCheck`
@@ -228,8 +228,7 @@ original design assumption that AMSI never quarantines anything — Defender's o
 on-access scanner intercepted the file independently of AMSI; see `docs/DECISIONS.md`. New entry
 points across all three frontends, full 37-locale localization. A same-day follow-up fixed
 progress reporting from one-report-per-archive to real per-entry progress at zero extra I/O
-cost. Stays `[~]` until the user's own on-device verification (a real EICAR-in-archive detection
-through both entry points, plus the no-AMSI-provider `Inconclusive` path).
+cost. The no-AMSI-provider `Inconclusive` path is covered by tests only.
 
 **T-F147** (`[x]` done) — SonarCloud triage of the findings backlog (134 -> 44), including
 splitting `ZipArchiveService.ArchiveAsync` (cognitive complexity 132, the highest in the report)
@@ -356,7 +355,7 @@ a fake key source since the Subprocess test layer always redirects stdin) when n
 console; a CLI-specific "incorrect password" line added on top of Core's generic message, since
 `PasswordResolver` itself collapses never-wired/cancelled/exhausted-attempts into the same null
 result. Agent-verified in a real console (`docs/DECISIONS.md`'s T-F191 entry). **T-F192** (`Archiver.Shell` native password prompt)
-is `[~]` implementation complete, 2026-09-18 — a custom in-memory `DLGTEMPLATEEX` dialog via
+is `[x]` (device-closed 2026-10-03) — a custom in-memory `DLGTEMPLATEEX` dialog via
 `DialogBoxIndirectParamW` (NOT `CredUIPromptForCredentialsW`, confirmed by fetching NanaZip's real
 `PasswordDialog.rc`/`.cpp`, which use exactly this custom-dialog shape), wired into all 3 extract
 commands (sticky via `StickyCallback`), 37 locales. A Phase 0 spike
@@ -365,8 +364,7 @@ Archiver.Shell's own `IProgressDialog` already showing) — fixed via `SetWindow
 ...)`. Agent-driven on-device verification via `windows` MCP against the real installed MSIX
 (all 3 extract commands, real Ukrainian OS UI, including a genuine occlusion test against a
 restored foreground terminal) confirmed every branch; Shell `--test` got the same prompt
-2026-09-24. Stays `[~]` until the user's own Explorer click-through (`docs/DECISIONS.md`'s T-F192
-entry). **T-F194** (`[~]`, 2026-09-24) — "Scan for threats" now decrypts password-protected ZIP
+2026-09-24 (`docs/DECISIONS.md`'s T-F192 entry). **T-F194** (`[x]`, device-closed 2026-10-03) — "Scan for threats" now decrypts password-protected ZIP
 entries in memory and hands the plaintext to AMSI (all 3 frontends prompt); no password stays
 `Inconclusive`, never `Clean`. Four advisor-caught defects fixed test-first, incl. a fail-open
 `Clean` on a ZipCrypto check-byte collision and several hostile-header escapes from the "never
@@ -376,10 +374,10 @@ same day with user permission. **T-F193** (`[x]`, 2026-09-24) — creating encry
 Encrypt dialog, `pakko a -p`/bare `-p`/`-mem`; public `EncryptionPasswordRule` (printable ASCII,
 <= 99 — 7-Zip's rule, user-confirmed); read side lifted first (Zip64 locator, streaming two-pass
 reader, no size limit). See `docs/DECISIONS.md`'s T-F193 entry. T-F197-T-F201 from the same batch are done; **T-F202** (full UI + every-menu smoke test) stays open.
-**T-F268** (`[~]`, fix phase 4b) — Explorer commands show a code-only WinUI 3 operation window
+**T-F268** (`[x]`, 2026-10-03) — Explorer commands show a code-only WinUI 3 operation window
 (`Archiver.OperationUi`, started by Shell over anonymous pipes; logic in `Archiver.OperationUi.Core`)
-with `Win32OperationUi` as fallback and failover. Steps 1-5 done (step 5, 2026-09-27: conflict
-and password prompts inside the window); next: step 6, polish (`docs/TASKS.md`, `docs/DECISIONS.md`). **T-F270** (`[x]`, 2026-09-26) — all projects on .NET 10 LTS (Build Commands' toolchain note);
+with `Win32OperationUi` as fallback and failover. Steps 1-6 done (step 5: prompts inside the
+window; step 6: 37 locales and polish); the black-window case is T-F315 (`docs/DECISIONS.md`). **T-F270** (`[x]`, 2026-09-26) — all projects on .NET 10 LTS (Build Commands' toolchain note);
 small-files ZIP slowdown fixed where possible in T-F271 (dotnet/runtime#134700).
 **Fix phase 5** (2026-09-28): one Group Policy owner (T-F261/T-F250 — `GroupPolicyOptions`
 required everywhere, `PakkoServices.Create`, listing gated), Explorer selection over stdin (T-F235,
