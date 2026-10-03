@@ -10,7 +10,7 @@ public sealed class TestTempFolderTests
         var folder = new TestTempFolder("pakko-cli-temptest-");
         string held = Path.Combine(folder.Path, "two.tar");
         var handle = new FileStream(held, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
-        Task release = Task.Run(async () =>
+        var release = Task.Run(async () =>
         {
             await Task.Delay(300);
             await handle.DisposeAsync();
