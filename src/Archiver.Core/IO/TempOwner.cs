@@ -33,6 +33,8 @@ public static class TempOwner
 {
     private static readonly string MachineHash = HashMachineName(Environment.MachineName);
 
+    private static readonly char[] NameSeparators = ['-', '_'];
+
     /// <summary>"&lt;pid&gt;-&lt;start ticks&gt;" — v1.6.0's owner name, still used under %TEMP%, where
     /// the machine adds nothing and a v1.6.0 window would take a longer name for a dead owner's.</summary>
     public static string ProcessTag { get; } = string.Create(CultureInfo.InvariantCulture,
@@ -139,7 +141,7 @@ public static class TempOwner
     // staging); "<32 hex>" (no owner). Anything else is unparsable.
     private static Owner? Parse(string text, bool requireUnique)
     {
-        string[] parts = text.Split(['-', '_']);
+        string[] parts = text.Split(NameSeparators);
         if (parts.Length >= 3 && IsMachine(parts[0]))
             return ParseTagged(parts, requireUnique);
         if (parts.Length == 2)
