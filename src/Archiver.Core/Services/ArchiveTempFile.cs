@@ -88,18 +88,20 @@ internal static class ArchiveTempFile
         }
 
         string target = destPath;
-        for (int attempt = 1; ; attempt++)
+        for (int attempt = 1; attempt < MaxFreeNameAttempts; attempt++)
         {
             try
             {
                 File.Move(tempPath, target, overwrite: false);
                 return target;
             }
-            catch (IOException ex) when (attempt < MaxFreeNameAttempts && IsAlreadyExists(ex) && File.Exists(target) && File.Exists(tempPath))
+            catch (IOException ex) when (IsAlreadyExists(ex) && File.Exists(target) && File.Exists(tempPath))
             {
                 target = ArchiveNaming.GetUniqueFilePath(destPath);
             }
         }
+        File.Move(tempPath, target, overwrite: false);
+        return target;
     }
 
     // File.Move(overwrite: true) onto a file another process holds throws UnauthorizedAccessException,
