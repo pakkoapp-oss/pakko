@@ -117,30 +117,45 @@
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="Transparent" BorderThickness="0"
                                 Padding="0,6,0,6" FontWeight="SemiBold"/>
+                        <FontIcon Grid.Column="0" Glyph="{x:Bind ViewModel.NameSortGlyph, Mode=OneWay}"
+                                  FontFamily="Segoe MDL2 Assets" FontSize="10" Margin="0,0,6,0"
+                                  HorizontalAlignment="Right" IsHitTestVisible="False" Opacity="0.7"/>
                         <Button Grid.Column="1" x:Uid="TypeColumnHeader"
                                 Command="{x:Bind ViewModel.SortByCommand, Mode=OneWay}"
                                 CommandParameter="Type"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="Transparent" BorderThickness="0"
                                 Padding="0,6,0,6" FontWeight="SemiBold"/>
+                        <FontIcon Grid.Column="1" Glyph="{x:Bind ViewModel.TypeSortGlyph, Mode=OneWay}"
+                                  FontFamily="Segoe MDL2 Assets" FontSize="10" Margin="0,0,6,0"
+                                  HorizontalAlignment="Right" IsHitTestVisible="False" Opacity="0.7"/>
                         <Button Grid.Column="2" x:Uid="SizeColumnHeader"
                                 Command="{x:Bind ViewModel.SortByCommand, Mode=OneWay}"
                                 CommandParameter="Size"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="Transparent" BorderThickness="0"
                                 Padding="0,6,0,6" FontWeight="SemiBold"/>
+                        <FontIcon Grid.Column="2" Glyph="{x:Bind ViewModel.SizeSortGlyph, Mode=OneWay}"
+                                  FontFamily="Segoe MDL2 Assets" FontSize="10" Margin="0,0,6,0"
+                                  HorizontalAlignment="Right" IsHitTestVisible="False" Opacity="0.7"/>
                         <Button Grid.Column="3" x:Uid="CrcColumnHeader"
                                 Command="{x:Bind ViewModel.SortByCommand, Mode=OneWay}"
                                 CommandParameter="Crc"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="Transparent" BorderThickness="0"
                                 Padding="0,6,0,6" FontWeight="SemiBold"/>
+                        <FontIcon Grid.Column="3" Glyph="{x:Bind ViewModel.CrcSortGlyph, Mode=OneWay}"
+                                  FontFamily="Segoe MDL2 Assets" FontSize="10" Margin="0,0,6,0"
+                                  HorizontalAlignment="Right" IsHitTestVisible="False" Opacity="0.7"/>
                         <Button Grid.Column="4" x:Uid="ModifiedColumnHeader"
                                 Command="{x:Bind ViewModel.SortByCommand, Mode=OneWay}"
                                 CommandParameter="Modified"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Background="Transparent" BorderThickness="0"
                                 Padding="0,6,0,6" FontWeight="SemiBold"/>
+                        <FontIcon Grid.Column="4" Glyph="{x:Bind ViewModel.ModifiedSortGlyph, Mode=OneWay}"
+                                  FontFamily="Segoe MDL2 Assets" FontSize="10" Margin="0,0,6,0"
+                                  HorizontalAlignment="Right" IsHitTestVisible="False" Opacity="0.7"/>
                     </Grid>
                 </Border>
 

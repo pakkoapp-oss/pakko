@@ -648,8 +648,16 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
     private IReadOnlyList<ArchiveEntryViewModel> _selectedBrowserEntries = [];
 
-    private string _sortColumn = "Name";
+    // Null until the first header click: the list keeps the order items were added in.
+    private string? _sortColumn;
     private bool _sortAscending = true;
+
+    // T-F220 item 4: the header arrow of the sorted column.
+    public string NameSortGlyph => SortIndicator.Glyph("Name", _sortColumn, _sortAscending);
+    public string TypeSortGlyph => SortIndicator.Glyph("Type", _sortColumn, _sortAscending);
+    public string SizeSortGlyph => SortIndicator.Glyph("Size", _sortColumn, _sortAscending);
+    public string CrcSortGlyph => SortIndicator.Glyph("Crc", _sortColumn, _sortAscending);
+    public string ModifiedSortGlyph => SortIndicator.Glyph("Modified", _sortColumn, _sortAscending);
 
     public MainViewModel(
         IArchiveCreationRouter archiveCreationRouter,
@@ -727,6 +735,11 @@ public sealed partial class MainViewModel : ObservableObject
             _sortAscending = true;
         }
         ApplySort();
+        OnPropertyChanged(nameof(NameSortGlyph));
+        OnPropertyChanged(nameof(TypeSortGlyph));
+        OnPropertyChanged(nameof(SizeSortGlyph));
+        OnPropertyChanged(nameof(CrcSortGlyph));
+        OnPropertyChanged(nameof(ModifiedSortGlyph));
     }
 
     private void ApplySort()
