@@ -356,7 +356,7 @@ for the same reason (also PATH-shim-based, no admin rights needed) but lower pri
 ---
 
 ### T-F128 — Explorer context-menu hash commands (CRC-32/SHA-256, files and folders)
-- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5). Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): "Хеш-суми: CRC-32" on two files gave `plain.zip` 4250BFFA and `valid.7z` 3973ECAC, both equal to zlib's CRC-32; the folder hash lists its failed entries since T-F291. Earlier status: implementation complete 2026-07-20, on-device verification pending (down to the
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5). Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): "Хеш-суми: CRC-32" on two files gave `plain.zip` 4250BFFA and `valid.7z` 3973ECAC, both equal to zlib's CRC-32; the folder hash lists its failed entries since T-F291 (checked on a folder this wave). SHA-256 was device-checked on 3 files (2026-09-26) and on a folder's one-line DataSum (1.5.0.12), both in T-F268's notes. Earlier status: implementation complete 2026-07-20, on-device verification pending (down to the
       user's own personal click-through only — the AI-driven pass below is now a full,
       not partial, end-to-end confirmation).
       **Re-scoped three times this session, all user-driven — kept per the "never silently
@@ -934,7 +934,7 @@ Format: [ ZIP ▾]   ZIP / TAR / TAR.GZ
 ---
 
 ### T-F91 — Multi-Language Localization (OS-Language Auto-Match, English Fallback)
-- [~] **Status:** (2026-10-03) all 37 locales ship in every frontend: the App's `.resw`, Shell's `OperationText.resx`, the Explorer menu table and `Archiver.Messages` (App and Messages key parity are test-enforced). Left for the release: a native-speaker review and an on-screen layout check per language, RTL (he/ar/ur) included, plus T-F268 (g)'s caption-button tooltips. Earlier status: partial — first batch (all 24 European locales) implemented 2026-07-07;
+- [~] **Status:** (2026-10-03) all 37 locales ship in every localized frontend (the CLI stays English by design, T-F209): the App's `.resw`, Shell's `OperationText.resx`, the Explorer menu table and `Archiver.Messages` (App and Messages key parity are test-enforced). Left for the release: a native-speaker review and an on-screen layout check per language, RTL (he/ar/ur) included, plus T-F268 (g)'s caption-button tooltips. Earlier status: partial — first batch (all 24 European locales) implemented 2026-07-07;
       Arabic/Japanese/Chinese/etc. (the non-European half of the target list) not started;
       on-device verification, layout-corruption check, and native-speaker translation review
       still outstanding for the European batch. See `DECISIONS.md`'s T-F91 entry.
@@ -1187,7 +1187,7 @@ must not hang app launch indefinitely.
 - [x] Returns sensible defaults if tar.exe absent or probe fails
 - [x] Result cached — detection runs once at startup (`App.xaml.cs` forces resolution explicitly;
       see note above — a bare DI registration alone does not run it)
-- [ ] UI greys out formats not supported by detected tar.exe — no tar format selector exists for
+- [x] (not applicable, closed 2026-10-03) UI greys out formats not supported by detected tar.exe — no tar format selector exists for
       extraction (not needed — see T-F36's 2026-07-07 note: `IExtractionRouter` already handles
       unsupported formats without a selector); applies once T-F36's v1.5 archive-creation format
       selector is built instead
@@ -1245,7 +1245,7 @@ unchanged.
       with default `OnConflict=Skip` — summary dialog showed the exact text "⊘ Skipped (1)" (not
       the old "Skipped — unsupported format"), with the specific per-item reason ("No entries were
       extracted from this archive — every entry was skipped.") intact underneath
-- [ ] Unsupported-format case: still not triggerable on this machine (see Status above)
+- [x] Unsupported-format case: no longer needs a trigger, the header names no reason (2026-10-03)
 
 ---
 
@@ -1686,7 +1686,7 @@ current folder without creating some destination folder first.
       escapes. See `DECISIONS.md`'s T-F115 entry — this is very likely the actual mechanism behind
       the three prior mojibake incidents (T-F64/T-F76/T-F63) that were previously only worked
       around, never root-caused
-- [ ] `Deploy.ps1` build+sign+install + on-device Explorer check (Ukrainian and, if switchable,
+- [x] (2026-10-03, 1.6.0.6, uk-UA: the three extract items read in Ukrainian; "Видобути до поточної папки" on a two-file ZIP wrote both files next to it with no wrapper folder) `Deploy.ps1` build+sign+install + on-device Explorer check (Ukrainian and, if switchable,
       en-US) confirming the three extract items render correctly localized and the new flat
       command truly extracts without creating a wrapper folder — **not yet done this session**
 
@@ -1905,9 +1905,7 @@ robustness to future change"* — today that rule has no analyzer feeding it in 
 
 ### T-F146 — AMSI-based "Scan for threats" for archives (Explorer context menu + Archive Browser)
 
-- ~~Blocked from graduating by T-F247~~ — T-F247 fixed 2026-09-27 (1b0f824/c4fe0d4); pending
-  its device check.
-- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5). Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): "Перевірити на загрози" on `eicar.zip` reports a threat, on `plain.zip` "загроз не виявлено" (real Defender). The no-provider `Inconclusive` path is covered by tests only (it needs Defender off). Earlier status: implementation complete 2026-08-07 (Core service + tests, `Archiver.Shell`
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5). Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): "Перевірити на загрози" on `eicar.zip` reports a threat, on `plain.zip` "загроз не виявлено" (real Defender). The no-provider `Inconclusive` path is covered by tests only (it needs Defender off). The App's Archive Browser scan was device-checked 2026-09-24 against real Defender (T-F194's pass), and T-F247's empty-entry crash is closed. Earlier status: implementation complete 2026-08-07 (Core service + tests, `Archiver.Shell`
       CLI/dialog, `Archiver.ShellExtension` context-menu entry, `Archiver.App` Archive Browser
       entry, full 37-locale localization across all three frontends) — on-device verification
       still pending (see acceptance criteria below), per this project's standing rule that
@@ -2027,7 +2025,7 @@ robustness to future change"* — today that rule has no analyzer feeding it in 
   - [x] `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` green repo-wide (Core service
         tests, tar-family integration tests, `ShellArgumentParser` `--scan` tests), plus the C++
         `Archiver.ShellExtension.Tests.exe` suite (`BuildScanArgs` cases) — all green.
-  - [ ] On-device verification per this project's standing rule (shell-triggered/UI behavior is
+  - [x] (2026-10-03; `Inconclusive` by tests only, see Status) On-device verification per this project's standing rule (shell-triggered/UI behavior is
         not graduated on `dotnet test` alone) — including a real EICAR-file detection case
         through both entry points, not just a clean-archive happy path, and a check of the
         `Inconclusive` path (e.g. with Defender's real-time protection temporarily disabled/no
@@ -2631,10 +2629,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Progress (2026-09-27, fix phase 6, wave 1 track B):** fixed in 1b0f824/c4fe0d4 — an entry
   with declared length 0 is Clean without an AMSI call; a failing AMSI call is `Inconclusive` for
   that entry and the rest are still scanned. Tests: zero-byte ZIP entry (fake and real AMSI),
-  zero-byte tar entry, one failing entry. Known gap (older): a short read is still scanned. Stays
-  `[~]` until the device check.
+  zero-byte tar entry, one failing entry. Known gap (older): a short read is still scanned.
 
-- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — confirmed 2026-09-25. A plain ZIP made by `pakko a` from `a.txt` +
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5). Device (1.6.0.6, uk-UA): `Archiver.Shell.exe --scan` (the Explorer command's target) on a ZIP and a plain tar, each holding `a.txt` and a zero-byte `empty.txt`, showed "У вибраних архівах загроз не виявлено." in the operation window; no `.NET Runtime`/`Application Error` events. Earlier status: fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — confirmed 2026-09-25. A plain ZIP made by `pakko a` from `a.txt` +
   a zero-byte `empty.txt`, and a plain `tar -cf` of the same two files: `AntivirusScanService.
   ScanAsync` throws `System.InvalidOperationException: AmsiScanBuffer failed (HRESULT 0x80070057)`
   for both. `AmsiScanBuffer` rejects a zero-length buffer with `E_INVALIDARG`; `AmsiScanner`
@@ -2893,7 +2890,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - [x] **Status:** done 2026-10-03 (v1.7.0 wave 5): step 6 done — polish (a)-(e) 2026-09-27, the checking-archive status (T-F307) and the folder-hash failures (T-F291) in wave 5. (f), the black window, is now T-F315; (g) and the non-Ukrainian layouts go to T-F91's release check. Earlier status: partial — steps 1-5 done and shipped in v1.6.0 (the tag smoke used the window and the Win32 fallback). Left: step 6, polish — v1.7.0 wave 5.
 - **Device (G6 pass 5, 1.5.0.13, light theme, temporary until G7 - `OperationWindow` is G2-changed):** the conflict, password, progress and result states read correctly in the light theme. Keyboard: the conflict prompt opens with focus on "Пропустити" and cycles checkbox -> Перезаписати -> Перейменувати -> Пропустити; Space ticks "apply to all", Enter answers, Esc skips the one file; the password prompt opens in the field, Esc = "Пропустити архів"; Esc on a running extraction cancels it, Esc on the result closes the window. The window sizes itself per state (522 wide; 394/288/232 tall) and has no sizing frame, so the narrow-window check (E5) does not apply. Found T-F309 (a cancelled "Extract to X\" leaves its empty folder).
 
-- [~] **Progress:** step 1 done 2026-09-26 — `IOperationUi`/`IOperationSession` + `Win32OperationUi`,
+- **Progress:** step 1 done 2026-09-26 — `IOperationUi`/`IOperationSession` + `Win32OperationUi`,
   `ShellCommands`, `OperationMessages`, `ShellServices`; `Program.cs` only parses and dispatches.
   Same windows as before, except T-F216's double box is now one, and results show even without a
   progress window. Also fixed: a cancelled `TestAsync` reported success (Core). Tests first,
@@ -3623,7 +3620,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F192 — `Archiver.Shell`: native password prompt for Explorer extract commands
 
-- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5). Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): Explorer extract of the encrypted ZIP with the operation window killed at its password prompt: the Win32 "Потрібен пароль" dialog took over and `secret1` extracted the archive. Earlier status: implementation complete, 2026-09-18 — stays `[~]` until the user's own on-device
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 5). Device (Deploy 1.6.0.6, uk-UA, real Explorer menu via `windows` MCP, 2026-10-03): Explorer extract of the encrypted ZIP with the operation window killed at its password prompt: the Win32 "Потрібен пароль" dialog took over and `secret1` extracted the archive. All 3 extract commands were device-checked with the prompt on 2026-09-18 (below). Earlier status: implementation complete, 2026-09-18 — stays `[~]` until the user's own on-device
   Explorer click-through, per this project's UI-graduation convention (same as T-F190).
 - **Context:** `ShellConflictDialog.cs`'s `TaskDialogIndirect` has no text-input capability, so it
   cannot be reused as-is for a masked password field.

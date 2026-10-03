@@ -228,7 +228,7 @@ original design assumption that AMSI never quarantines anything — Defender's o
 on-access scanner intercepted the file independently of AMSI; see `docs/DECISIONS.md`. New entry
 points across all three frontends, full 37-locale localization. A same-day follow-up fixed
 progress reporting from one-report-per-archive to real per-entry progress at zero extra I/O
-cost. The no-AMSI-provider `Inconclusive` path is covered by tests only.
+cost. Detection was device-checked through both entry points; the no-AMSI-provider `Inconclusive` path is covered by tests only.
 
 **T-F147** (`[x]` done) — SonarCloud triage of the findings backlog (134 -> 44), including
 splitting `ZipArchiveService.ArchiveAsync` (cognitive complexity 132, the highest in the report)
