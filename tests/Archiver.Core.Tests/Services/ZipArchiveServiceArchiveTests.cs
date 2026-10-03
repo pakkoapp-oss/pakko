@@ -1036,6 +1036,40 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         }
     }
 
+    // T-F321: the SeparateArchives commit — two runs each archiving a folder named "x" from
+    // different parents into one destination folder both target x.zip.
+    [Fact]
+    public async Task ArchiveAsync_SeparateArchives_TwoRunsCreateTheSameNameAtOnce_NeitherReportedArchiveIsLost()
+    {
+        string[] parents = ["first", "second"];
+        string destination = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destination);
+        foreach (string parent in parents)
+        {
+            Directory.CreateDirectory(Path.Combine(_temp.Path, parent, "x"));
+            for (int i = 0; i < 200; i++)
+                _temp.CreateFile(Path.Combine(parent, "x", $"{parent}_{i}.txt"), parent);
+        }
+
+        ArchiveResult[] results = await Task.WhenAll(parents.Select(parent => Task.Run(() => _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [Path.Combine(_temp.Path, parent, "x")],
+            DestinationFolder = destination,
+            Mode = ArchiveMode.SeparateArchives,
+            OnConflict = ConflictBehavior.Skip,
+        }))));
+
+        for (int run = 0; run < results.Length; run++)
+        {
+            foreach (string created in results[run].CreatedFiles)
+            {
+                using ZipArchive zip = ZipFile.OpenRead(created);
+                zip.Entries.Should().Contain(e => e.Name.StartsWith(parents[run] + "_"),
+                    because: $"run '{parents[run]}' reported {Path.GetFileName(created)} as its archive");
+            }
+        }
+    }
+
     // T-F312: Overwrite onto an archive a sync client holds for a moment — the old archive stays
     // until the new one is complete, and the rename waits for the holder.
     [Fact]

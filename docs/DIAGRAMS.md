@@ -1118,7 +1118,7 @@ flowchart TD
     S4 --> S6
     S5 --> S6{"cancelled? then: any entry in the .tmp?"}
     S6 -- "cancelled" --> SX["delete .tmp, rethrow OperationCanceledException"]
-    S6 -- "entries" --> S7["ArchiveTempFile.CommitAsync .tmp → name.zip — retries ~1.5 s<br/>while either file is held (T-F312), CreatedFiles += it"]
+    S6 -- "entries" --> S7["ArchiveTempFile.CommitAsync .tmp → name.zip — retries ~1.5 s<br/>while either file is held (T-F312). Replaces only an archive that existed<br/>at the start (Overwrite); one that appeared during the run is kept and<br/>this one takes name (N).zip (T-F321). CreatedFiles += the path it landed at"]
     S6 -- "none" --> S8["delete .tmp — no empty archive (T-F60)"]
     S4 & S5 -. "IOException / UnauthorizedAccessException / any other exception" .-> S9["delete .tmp, Errors += CannotCreateArchive /<br/>AccessDeniedCreatingArchive / UnexpectedError — never thrown"]
 
@@ -1146,7 +1146,7 @@ flowchart TD
     T6 -- no --> T8["tar.exe -v -cf name.tmp -T - — the name list on stdin (T-F273/T-F283), SandboxedProcessLauncher with no AppContainer and<br/>no Job Object, stderr a-lines drive progress"]
     T8 --> T9{"exit code 0 and .tmp exists?"}
     T9 -- no --> TE3["delete .tmp, Errors += TarCreationFailed"]
-    T9 -- yes --> T10["ArchiveTempFile.CommitAsync .tmp → name.ext, CreatedFiles += it"]
+    T9 -- yes --> T10["ArchiveTempFile.CommitAsync .tmp → name.ext — same rule as S7 (T-F321),<br/>CreatedFiles += the path it landed at"]
 ```
 
 **What this catches:** the two engines are not symmetric, and a change that assumes they are will

@@ -82,6 +82,45 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
     }
 
+    // T-F321: two runs creating the same tar at once both found the name free, and the later commit
+    // replaced the earlier archive. Whatever the timing, every archive a run reports holds its entries.
+    [Integration]
+    public async Task CompressAsync_TwoRunsCreateTheSameNameAtOnce_NeitherReportedArchiveIsLost()
+    {
+        string[] folders = ["first", "second"];
+        foreach (string folder in folders)
+        {
+            Directory.CreateDirectory(Path.Combine(_temp.Path, folder));
+            for (int i = 0; i < 200; i++)
+                File.WriteAllText(Path.Combine(_temp.Path, folder, $"{folder}_{i}.txt"), folder);
+        }
+
+        ArchiveResult[] results = await Task.WhenAll(folders.Select(folder => Task.Run(() => _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [Path.Combine(_temp.Path, folder)],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "same",
+            Format = ArchiveContainerFormat.Tar,
+            OnConflict = ConflictBehavior.Skip,
+        }))));
+
+        for (int run = 0; run < results.Length; run++)
+        {
+            foreach (string created in results[run].CreatedFiles)
+            {
+                using var tar = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(@"C:\Windows\System32\tar.exe")
+                {
+                    ArgumentList = { "-tf", created },
+                    RedirectStandardOutput = true,
+                })!;
+                string listing = await tar.StandardOutput.ReadToEndAsync();
+                await tar.WaitForExitAsync();
+                listing.Should().Contain(folders[run] + "/",
+                    because: $"run '{folders[run]}' reported {Path.GetFileName(created)} as its archive");
+            }
+        }
+    }
+
     // T-F312: "<archive>.tmp" left by a killed run, or held by a sync client, failed every later run.
     [Integration]
     public async Task CompressAsync_OlderFixedTempNameHeld_StillCreatesArchiveNotHidden()

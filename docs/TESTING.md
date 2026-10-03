@@ -969,6 +969,13 @@ The dead owner is the current pid with another start time (`Helpers/DeadOwner`).
 removal removed, each of the four sweeps removed, the fixed `.tmp` name, the narrow retry predicate,
 the delete-first Overwrite in tar.
 
+T-F321 (wave 9): `ArchiveTempFileTests` (an archive that appeared during the run is kept and the
+commit takes `a (1).zip`; a free name commits there; Overwrite replaces the archive that existed at
+the start) and two runs creating one name at once, every reported archive holding its own entries:
+`ZipArchiveServiceArchiveTests` (SingleArchive and SeparateArchives) and
+`TarSandboxedServiceCompressTests` (real tar.exe). Mutants killed: `replacesExisting = true` at each
+of the three commit sites.
+
 T-F236: `IO/FolderTotalsTests` (bytes and count, a link not followed, an unreadable subfolder, a
 cancelled walk) and `FileItemTests` in `Archiver.App.Core.Tests` (a folder's totals with a link, a
 file's, disposing the item stops the walk and its totals still complete). Mutants killed: the token

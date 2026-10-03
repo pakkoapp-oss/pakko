@@ -75,7 +75,8 @@ stderr message and in `--help`'s own `USAGE:` line.
   folder directly under* `%LOCALAPPDATA%` or `%APPDATA%` (e.g. `-o%LOCALAPPDATA%\NewFolder`) lands in
   the package's private `LocalCache` instead, invisible to other programs. Existing folders under
   them, their new subfolders, `%TEMP%` and every other location are written normally. Use the zip
-  or winget copy for that one shape until T-F320 is decided.
+  or winget copy for that one shape. Kept for v1.7.0 (decision 2026-10-03, `docs/DECISIONS.md`'s
+  wave 9 entry); T-F320 stays open.
 
 **Naming note:** `pakko` is the terminal program everywhere — the same convention as 7-Zip (`7z`
 console, `7zFM`/`7zG` GUI) and NanaZip (`NanaZipC` console). The GUI has no execution alias; it is
@@ -232,6 +233,9 @@ Never silently ignore an unrecognized token or switch and proceed as if it wasn'
   rule, user decision 2026-09-28). The automatic name (T-F264) is unchanged. A name whose
   extension is an archive type Pakko writes must agree with `-t` (T-F296, user decision
   2026-10-03).
+- `a` onto a name another run creates at the same moment (T-F321): the other archive is kept and
+  this one is written as `name (1).ext`, exit 0, with no line saying so yet (T-F325). A name that
+  already exists when `a` starts is still skipped (exit 1) unless `-y` overwrites it.
 - **PowerShell splits `-name.rest`** into two arguments before pakko sees them: `-ttar.gz` arrives
   as `-ttar` `.gz`, `-pSecret.1` as `-pSecret` `.1` (checked in pwsh 7; `-oC:\out.d` and
   `-mx=1` are not split). A `-p`, `-o` or `-t` switch made only of letters, digits and `_` followed

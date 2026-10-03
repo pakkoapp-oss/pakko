@@ -2413,7 +2413,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   extract, Test and Scan alike. Confirmed .NET does not cap the unencrypted stored path either (it
   returns all stored bytes); T-F246's wrapper covers that. Agent-verified on device 2026-09-25 (Deploy 1.4.12.11): covered by unit/service tests (AE-2 larger than declared); no separate device scenario.
 
-- [x] **Status:** done 2026-10-03 (v1.7.0 wave 9 device campaign, agent, on CI build 7c54f27: MSIX 1.6.0.0 x64, `pakko` through the Store alias, uk-UA, conhost/cmd for console rows): the decrypt path is the same one T-F246's checks ran through; the cap itself stays covered by the AE-2 service tests (no realistic hostile fixture). Earlier status: fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — code-confirmed by the T-F226 reviewer agent, exploit not yet reproduced.
+- [~] **Status:** stays `[~]` (wave 9, 2026-10-03): the decrypt path ran on device through T-F246's checks, but the size cap itself has no realistic hostile fixture and is covered only by the AE-2 service tests; closing it needs a crafted AE-2 entry larger than its declared size, extracted on device. Earlier status: fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — code-confirmed by the T-F226 reviewer agent, exploit not yet reproduced.
   The compression-bomb and free-space gate uses declared sizes; the decrypting path wraps the
   plaintext in an unbounded `DeflateStream` (`EncryptedZipEntryReader.cs:~229`), so a
   password-protected archive can declare tiny sizes and expand far beyond them (a password shared
@@ -3871,6 +3871,9 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   `desktop6:FileSystemWriteVirtualization` disabled. A restricted capability needs a justification
   in the Store submission, so decide it with the next Store upload (v1.7.0 wave 9). Until then
   documented in `docs/CLI.md` (Distribution).
+- **Decision (2026-10-03, wave 9, agent):** not fixed for v1.7.0 — the restricted capability can
+  delay Store certification and the shape is rare with a workaround; a known issue of the release
+  (`docs/DECISIONS.md`'s wave 9 entry). Revisit with a Store upload that has time for a review round.
 - **Reported by:** T-F317 device check, 2026-10-03.
 
 ### T-F321 — Two runs creating the same archive name at once: the later one replaces the earlier archive (P2)
@@ -3919,3 +3922,12 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   system entries that Explorer hides by default. Decide: follow Explorer's "show hidden items"
   setting, or always hide Hidden+System entries in `FileSystemBrowser` (T-F107).
 - **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-03.
+
+### T-F325 — `pakko a` says nothing when the name was taken during the run (P3)
+
+- [ ] **Status:** open. Since T-F321, an archive another run created under the same name while
+  this one was writing is kept and this run's archive lands at `name (1).ext` — exit 0, no line on
+  stdout or stderr, so a script that uses the name it passed does not find its archive. Print the
+  path it landed at (a `pakko: created 'name (1).ext' (the name was taken while compressing)`
+  line on stderr), or document it as is; App and Explorer already show the created path.
+- **Reported by:** wave 9 closing review, 2026-10-03.

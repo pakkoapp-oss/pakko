@@ -10827,7 +10827,8 @@ held on the device; stopped per the three-attempts rule.
 - **The commit retries.** `ArchiveTempFile.CommitAsync` retries for about 1.5 s on a sharing or lock
   violation and on `UnauthorizedAccessException` when the destination exists — the exception
   `File.Move(overwrite: true)` really throws onto a held file (T-F170; a test against the narrower
-  predicate failed). Any other failure is reported at once.
+  predicate failed). Any other failure is reported at once. Narrowed in wave 9 (T-F321): only an
+  archive that existed when the run started is replaced.
 - **Overwrite no longer deletes the old archive first.** Found while testing T-F312: with Overwrite
   on an archive another process held, the up-front `File.Delete` threw out of `ArchiveAsync`/
   `CompressAsync` (breaking the never-throw rule), and a failed creation had already lost the old
@@ -10941,3 +10942,37 @@ T-F292, T-F111, T-F112.
   capability, so it is decided with the next Store upload.
 - **Naming:** `pakko` is the terminal program in every install, as `7z` is 7-Zip's console and
   `NanaZipC` NanaZip's. The GUI has no alias; if it gets one, it gets its own name.
+
+## v1.7.0 wave 9 — release campaign on the CI build (2026-10-03)
+
+Device campaign on CI build 7c54f27 (MSIX 1.6.0.0 x64 plus the `pakko` alias, uk-UA): coverage
+table and results outside the repo (`pakko-v170-smoke/SCENARIO.md`); the real Explorer menu was
+driven too (Pakko submenu on an archive and a file, "Test archive" and "Add to one.zip" ran from
+it). Every row passed except the findings below.
+
+- **T-F321 — the commit replaces only what existed at the start.** Two `pakko a same.zip` runs
+  started together both exited 0 and the later rename (`overwrite: true`) replaced the earlier
+  archive — a regression of wave 6's per-run temp name (the old fixed `.tmp` made the second run
+  fail instead). `ArchiveTempFile.CommitAsync(..., replaceExisting, ...)`: true only when the
+  archive existed when the run started (the conflict was resolved to Overwrite, i.e.
+  `ProceedReplacingExisting`); otherwise `File.Move(overwrite: false)`, and an archive that
+  appeared meanwhile is kept while this run's archive takes the next free name (`same (1).zip`,
+  reported in `CreatedFiles`). Rejected: re-running the conflict policy at commit time (Ask cannot
+  prompt again from inside the commit, and Skip would throw away a finished archive the user asked
+  for); failing the second run (it loses work the first run did not need). `replaceExisting` is
+  taken from `File.Exists(destPath)` right before `ArchiveTempFile.Create`, which runs straight
+  after the conflict decision — no new parameter through the engines. A folder at the archive's name
+  is still an error, not renamed around.
+- **The CLI does not say when it took a free name (T-F325, P3).** Rare (only a race), and the App
+  and Explorer show the created path; documented in `docs/CLI.md`.
+- **T-F320 (MSIX write virtualization) is not fixed for v1.7.0.** The opt-out is the restricted
+  capability `unvirtualizedResources`, which needs a justification in the Store submission and
+  can delay certification; the affected shape (a new folder directly under `%LOCALAPPDATA%` or
+  `%APPDATA%` from the Store alias) is rare and has a workaround (the zip or winget copy). Listed
+  under the release's known issues; revisit with a Store upload that has time for a review round.
+- **Not defects:** the uk-UA CRC message ends in the English text by design (T-F297: OS and
+  integrity details keep English, Ukrainian in front — `UkrainianOnlyCodes_KeepTheEnglishText`
+  caught an attempted "fix"); the App's destination box is read-only by design (picker and Up).
+- **Filed:** T-F322 (`-p` hint for 7z/RAR), T-F323 (count before a plural noun), T-F324 (hidden
+  system folders in the browser), T-F325 (above).
+
