@@ -536,4 +536,7 @@
   <data name="RemainingMinutes" xml:space="preserve">
     <value>Nog ~{0}</value>
   </data>
+  <data name="DestinationBrowseButtonName" xml:space="preserve">
+    <value>Map kiezen</value>
+  </data>
 </root>

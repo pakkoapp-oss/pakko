@@ -536,4 +536,7 @@
   <data name="RemainingMinutes" xml:space="preserve">
     <value>متبقٍ ~{0}</value>
   </data>
+  <data name="DestinationBrowseButtonName" xml:space="preserve">
+    <value>اختيار مجلد</value>
+  </data>
 </root>

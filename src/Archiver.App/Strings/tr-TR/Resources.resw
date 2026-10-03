@@ -536,4 +536,7 @@
   <data name="RemainingMinutes" xml:space="preserve">
     <value>~{0} kaldı</value>
   </data>
+  <data name="DestinationBrowseButtonName" xml:space="preserve">
+    <value>Klasör seç</value>
+  </data>
 </root>

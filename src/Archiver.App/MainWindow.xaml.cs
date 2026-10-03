@@ -25,6 +25,7 @@ public sealed partial class MainWindow : Window
 
     public ICommand TrayOpenCommand { get; }
     public ICommand TrayAboutCommand { get; }
+    public ICommand AboutCommand { get; }
     public ICommand TrayExitCommand { get; }
     public ICommand TrayLeftClickCommand { get; }
     public ICommand HashFilesCommand { get; }
@@ -41,6 +42,14 @@ public sealed partial class MainWindow : Window
         {
             this.Activate();
             await App.Services.GetRequiredService<IDialogService>().ShowAboutAsync();
+        });
+        // T-F308 item 4: the toolbar's About gives focus back to the button that opened it (the
+        // dialog left it on "Add files"); from the tray there is nothing to give it back to.
+        AboutCommand = new AsyncRelayCommand(async () =>
+        {
+            var opener = FocusManager.GetFocusedElement(Content.XamlRoot) as Control;
+            await App.Services.GetRequiredService<IDialogService>().ShowAboutAsync();
+            opener?.Focus(FocusState.Keyboard);
         });
         TrayExitCommand = new RelayCommand(() => Application.Current.Exit());
         TrayLeftClickCommand = new RelayCommand(() =>
@@ -299,8 +308,73 @@ public sealed partial class MainWindow : Window
 
     private void RemoveItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuFlyoutItem item && item.DataContext is FileItem fileItem)
+        if (sender is MenuFlyoutItem item && item.DataContext is FileItem fileItem && ViewModel.ClearCommand.CanExecute(null))
             ViewModel.RemovePath(fileItem.FullPath);
+    }
+
+    // T-F308 item 2: Delete removes the focused row (not during an operation) and moves focus to
+    // the row that took its place, so a second Delete works.
+    private void PendingList_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key != Windows.System.VirtualKey.Delete || e.OriginalSource is not ListViewItem { Content: FileItem item }
+            || !ViewModel.ClearCommand.CanExecute(null))
+            return;
+        e.Handled = true;
+        int index = ViewModel.FileItems.IndexOf(item);
+        ViewModel.RemovePath(item.FullPath);
+        FocusRowLater(FileListView, System.Math.Min(index, ViewModel.FileItems.Count - 1));
+    }
+
+    // Shift+F10 / the menu key on a focused row: the row's own menu sits on the template's Grid,
+    // which a keyboard request on the ListViewItem never reaches.
+    private void PendingList_ContextRequested(UIElement sender, ContextRequestedEventArgs args)
+    {
+        if (args.OriginalSource is ListViewItem { ContentTemplateRoot: FrameworkElement { ContextFlyout: { } flyout } } row
+            && ViewModel.ClearCommand.CanExecute(null))
+        {
+            args.Handled = true;
+            flyout.ShowAt(row);
+        }
+    }
+
+    // T-F308 item 1: Enter opens the focused row like a double-click (ahead of the Multiple-mode
+    // selection toggle); Backspace and Alt+Up go up one level. Focus-scoped to the list, so typing
+    // in a TextBox never navigates.
+    private async void ArchiveBrowserList_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        bool up = e.Key == Windows.System.VirtualKey.Back
+            || (e.Key == Windows.System.VirtualKey.Up && IsAltDown());
+        if (up)
+        {
+            e.Handled = true;
+            if (ViewModel.NavigateUpCommand.CanExecute(null))
+            {
+                ViewModel.NavigateUpCommand.Execute(null);
+                FocusRowLater(ArchiveBrowserListView, 0);
+            }
+        }
+        else if (e.Key == Windows.System.VirtualKey.Enter && e.OriginalSource is ListViewItem { Content: ArchiveEntryViewModel entry })
+        {
+            e.Handled = true;
+            await ViewModel.OpenBrowserRowAsync(entry);
+            FocusRowLater(ArchiveBrowserListView, 0);
+        }
+    }
+
+    private static bool IsAltDown() =>
+        Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+    // After the list's items change, its containers exist only after the next layout pass.
+    private void FocusRowLater(ListView list, int index)
+    {
+        if (index < 0)
+            return;
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            if (list.ContainerFromIndex(index) is ListViewItem row)
+                row.Focus(FocusState.Keyboard);
+        });
     }
 
     private async void PendingList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)

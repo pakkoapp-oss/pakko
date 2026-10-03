@@ -536,4 +536,7 @@
   <data name="RemainingMinutes" xml:space="preserve">
     <value>약 {0} 남음</value>
   </data>
+  <data name="DestinationBrowseButtonName" xml:space="preserve">
+    <value>폴더 선택</value>
+  </data>
 </root>

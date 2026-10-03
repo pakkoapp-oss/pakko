@@ -536,4 +536,7 @@
   <data name="RemainingMinutes" xml:space="preserve">
     <value>Zbývá ~{0}</value>
   </data>
+  <data name="DestinationBrowseButtonName" xml:space="preserve">
+    <value>Vybrat složku</value>
+  </data>
 </root>

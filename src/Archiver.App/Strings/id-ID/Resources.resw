@@ -536,4 +536,7 @@
   <data name="RemainingMinutes" xml:space="preserve">
     <value>Sisa ~{0}</value>
   </data>
+  <data name="DestinationBrowseButtonName" xml:space="preserve">
+    <value>Pilih folder</value>
+  </data>
 </root>

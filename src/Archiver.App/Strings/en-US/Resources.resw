@@ -549,4 +549,7 @@
   <data name="RemainingMinutes" xml:space="preserve">
     <value>~{0} remaining</value>
   </data>
+  <data name="DestinationBrowseButtonName" xml:space="preserve">
+    <value>Choose folder</value>
+  </data>
 </root>

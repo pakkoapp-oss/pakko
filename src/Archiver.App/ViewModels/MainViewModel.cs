@@ -464,6 +464,7 @@ public sealed partial class MainViewModel : ObservableObject
     public static string CancelButtonName => _res.GetString("PasswordDialogCancelButton");
     public static string BrowseUpButtonName => _res.GetString("BrowseUpButtonName");
     public static string DestinationUpButtonName => _res.GetString("DestinationUpButtonName");
+    public static string DestinationBrowseButtonName => _res.GetString("DestinationBrowseButtonName");
     public static string EncryptedEntryIconName => _res.GetString("BrowseEncryptedBadgeUnknown");
     public static string DragAddCaption => _res.GetString("DragAddCaption");
     public static string EncryptPasswordConfirmPlaceholder => _res.GetString("EncryptPasswordConfirmPlaceholder");

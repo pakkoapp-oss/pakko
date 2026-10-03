@@ -72,7 +72,7 @@
                     x:Uid="AboutButton"
                     Margin="8,0,0,0"
                     HorizontalAlignment="Right"
-                    Command="{x:Bind TrayAboutCommand, Mode=OneTime}"/>
+                    Command="{x:Bind AboutCommand, Mode=OneTime}"/>
             </Grid>
 
             <!-- T-F199 step 6: Test (ZIP only, T-F241), Scan, Close archive with Esc (T-F210). -->
@@ -98,7 +98,7 @@
                 <Button
                     Grid.Column="4"
                     x:Uid="AboutButton"
-                    Command="{x:Bind TrayAboutCommand, Mode=OneTime}"/>
+                    Command="{x:Bind AboutCommand, Mode=OneTime}"/>
             </Grid>
 
             <Grid Grid.Row="1" RowDefinitions="Auto,*"
@@ -154,7 +154,9 @@
                         AllowDrop="True"
                         DragOver="FileList_DragOver"
                         Drop="FileList_Drop"
-                        DoubleTapped="PendingList_DoubleTapped">
+                        DoubleTapped="PendingList_DoubleTapped"
+                        PreviewKeyDown="PendingList_PreviewKeyDown"
+                        ContextRequested="PendingList_ContextRequested">
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem">
                                 <Setter Property="Padding" Value="12,4,12,4"/>
@@ -302,7 +304,8 @@
                     MinHeight="80"
                     IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"
                     SelectionChanged="ArchiveBrowserList_SelectionChanged"
-                    DoubleTapped="ArchiveBrowserList_DoubleTapped">
+                    DoubleTapped="ArchiveBrowserList_DoubleTapped"
+                    PreviewKeyDown="ArchiveBrowserList_PreviewKeyDown">
                     <ListView.ItemsPanel>
                         <ItemsPanelTemplate>
                             <VirtualizingStackPanel Orientation="Vertical" VirtualizationMode="Recycling"/>
@@ -388,11 +391,12 @@
                     HorizontalAlignment="Stretch"
                     HorizontalContentAlignment="Stretch"
                     VerticalAlignment="Top"
+                    AutomationProperties.LabeledBy="{x:Bind NewArchiveCardTitleText}"
                     IsExpanded="{x:Bind ViewModel.IsNewArchiveCardExpanded, Mode=TwoWay}"
                     Visibility="{x:Bind ViewModel.NewArchiveCardVisibility, Mode=OneWay}">
                     <Expander.Header>
                         <StackPanel Orientation="Horizontal" Spacing="12">
-                            <TextBlock x:Uid="NewArchiveCardTitle" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="NewArchiveCardTitleText" x:Uid="NewArchiveCardTitle" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <TextBlock
                                 Text="{x:Bind ViewModel.NewArchiveSummary, Mode=OneWay}"
                                 Visibility="{x:Bind ViewModel.NewArchiveSummaryVisibility, Mode=OneWay}"
@@ -429,11 +433,12 @@
                                 IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
                         </StackPanel>
 
-                        <TextBlock x:Uid="ArchiveNameLabel" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
+                        <TextBlock x:Name="ArchiveNameLabelText" x:Uid="ArchiveNameLabel" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
                         <!-- T-F264: the placeholder is the name Core writes when the box is blank. -->
                         <TextBox
                             Grid.Row="1"
                             Grid.Column="1"
+                            AutomationProperties.LabeledBy="{x:Bind ArchiveNameLabelText}"
                             PlaceholderText="{x:Bind ViewModel.ArchiveNamePlaceholder, Mode=OneWay}"
                             Text="{x:Bind ViewModel.ArchiveName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             IsEnabled="{x:Bind ViewModel.IsArchiveNameAndNotBusy, Mode=OneWay}"/>
@@ -548,6 +553,7 @@
                         <TextBlock x:Uid="DestinationCardTitle" Grid.Row="0" Grid.ColumnSpan="2" FontWeight="SemiBold"/>
 
                         <TextBlock
+                            x:Name="DestinationLabelText"
                             Grid.Row="1" Grid.Column="0"
                             Text="{x:Bind ViewModel.DestinationLabel, Mode=OneWay}"
                             VerticalAlignment="Center"
@@ -566,11 +572,14 @@
                             <TextBox
                                 Grid.Column="1"
                                 Text="{x:Bind ViewModel.DestinationPath, Mode=OneWay}"
+                                AutomationProperties.LabeledBy="{x:Bind DestinationLabelText}"
                                 IsReadOnly="True"
                                 VerticalAlignment="Center"/>
                             <Button
                                 Grid.Column="2"
                                 Content="..."
+                                ToolTipService.ToolTip="{x:Bind viewmodels:MainViewModel.DestinationBrowseButtonName}"
+                                AutomationProperties.Name="{x:Bind viewmodels:MainViewModel.DestinationBrowseButtonName}"
                                 Command="{x:Bind ViewModel.BrowseDestinationCommand, Mode=OneWay}"
                                 IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
                         </Grid>
@@ -610,7 +619,8 @@
             </ScrollViewer>
 
             <!-- Footer: status or progress on the left, the action buttons on the right, primary last. -->
-            <Grid x:Name="FooterGrid" Grid.Row="3" ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="8" MinHeight="40">
+            <Grid x:Name="FooterGrid" Grid.Row="3" ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="8" MinHeight="40"
+                  TabFocusNavigation="Local">
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="4">
                     <ProgressBar
                         Value="{x:Bind ViewModel.Progress, Mode=OneWay}"
@@ -629,6 +639,7 @@
                         <HyperlinkButton
                             x:Uid="OutcomeShowInFolderButton"
                             Grid.Column="1"
+                            TabIndex="0"
                             Padding="4,0"
                             FontSize="12"
                             Command="{x:Bind ViewModel.ShowOutcomeInFolderCommand}"
@@ -636,6 +647,7 @@
                         <HyperlinkButton
                             x:Uid="OutcomeDetailsButton"
                             Grid.Column="2"
+                            TabIndex="0"
                             Padding="4,0"
                             FontSize="12"
                             Command="{x:Bind ViewModel.ShowOutcomeDetailsCommand}"
@@ -651,6 +663,7 @@
                 <Button
                     x:Uid="CancelButton"
                     Grid.Column="1"
+                    TabIndex="1"
                     AutomationProperties.Name="{x:Bind viewmodels:MainViewModel.CancelButtonName}"
                     VerticalAlignment="Center"
                     Command="{x:Bind ViewModel.CancelCommand, Mode=OneWay}"
@@ -659,6 +672,7 @@
                 <Button
                     x:Uid="ClearButton"
                     Grid.Column="2"
+                    TabIndex="2"
                     VerticalAlignment="Center"
                     Command="{x:Bind ViewModel.ClearCommand, Mode=OneWay}"
                     Visibility="{x:Bind ViewModel.IsPendingListVisibility, Mode=OneWay}"/>
@@ -673,6 +687,7 @@
                     Visibility="{x:Bind ViewModel.IsPendingListVisibility, Mode=OneWay}">
                     <Button
                         MinWidth="120"
+                        TabIndex="{x:Bind ViewModel.ExtractButtonColumn, Mode=OneWay}"
                         AutomationProperties.HelpText="{x:Bind ViewModel.ExtractUnavailableHint, Mode=OneWay}"
                         Content="{x:Bind ViewModel.ExtractButtonText, Mode=OneWay}"
                         Command="{x:Bind ViewModel.ExtractCommand, Mode=OneWay}"
@@ -680,6 +695,7 @@
                 </Border>
                 <Button
                     Grid.Column="{x:Bind ViewModel.ArchiveButtonColumn, Mode=OneWay}"
+                    TabIndex="{x:Bind ViewModel.ArchiveButtonColumn, Mode=OneWay}"
                     MinWidth="120"
                     VerticalAlignment="Center"
                     Content="{x:Bind ViewModel.ArchiveButtonText, Mode=OneWay}"
@@ -689,6 +705,7 @@
 
                 <Button
                     Grid.Column="3"
+                    TabIndex="3"
                     x:Uid="ExtractSelectedButton"
                     MinWidth="120"
                     VerticalAlignment="Center"
@@ -696,6 +713,7 @@
                     Visibility="{x:Bind ViewModel.BrowseExtractActionsVisibility, Mode=OneWay}"/>
                 <Button
                     Grid.Column="4"
+                    TabIndex="4"
                     x:Uid="ExtractAllButton"
                     MinWidth="120"
                     VerticalAlignment="Center"

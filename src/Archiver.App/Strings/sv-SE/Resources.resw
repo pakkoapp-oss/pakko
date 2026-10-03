@@ -536,4 +536,7 @@
   <data name="RemainingMinutes" xml:space="preserve">
     <value>~{0} kvar</value>
   </data>
+  <data name="DestinationBrowseButtonName" xml:space="preserve">
+    <value>Välj mapp</value>
+  </data>
 </root>
