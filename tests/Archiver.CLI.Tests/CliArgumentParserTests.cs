@@ -909,6 +909,9 @@ public sealed class CliArgumentParserTests
     [InlineData("x", "-y", "./a.zip")]
     [InlineData("x", @"-oC:\out.d", "a.zip")]
     [InlineData("a", "-ttar", @".\.gz", "src")]
+    [InlineData("h", "-scrcSHA256", ".gitignore")]   // a complete switch, then a dotfile: cmd passes this
+    [InlineData("x", "-y", ".hidden.zip")]
+    [InlineData("a", "-y", ".backup.zip", "src")]
     public void DotLeadingPathThatIsNotASplitPiece_IsAccepted(params string[] args)
     {
         CliArgumentParser.Parse(args).Type.Should().NotBe(CliCommandType.Invalid);
@@ -926,12 +929,26 @@ public sealed class CliArgumentParserTests
         result.ArchiveFormat.Should().Be(expected);
     }
 
+    // "-oout.d" in PowerShell: the destination would silently be "out".
+    [Fact]
+    public void SplitOutputDirectory_IsACommandLineError()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", "-oout", ".d", "a.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("'-oout'").And.Contain("'.d'");
+    }
+
     // --- T-F294/T-F296: the archive type and the name's own extension must agree ---
 
     [Theory]
     [InlineData("out.tar.gz")]
     [InlineData("out.tar")]
     [InlineData("OUT.TAR.XZ")]
+    [InlineData("backup.tgz")]
+    [InlineData("backup.tbz2")]
+    [InlineData("backup.txz")]
+    [InlineData("backup.tzst")]
     public void Archive_TarNameWithoutTypeSwitch_IsACommandLineError(string name)
     {
         ParsedCliCommand result = CliArgumentParser.Parse(["a", name, "file1.txt"]);
@@ -945,6 +962,7 @@ public sealed class CliArgumentParserTests
     [InlineData("-ttar.gz", "out.tar")]
     [InlineData("-tzip", "out.tar.gz")]
     [InlineData("-ttgz", "out.tar.bz2")]
+    [InlineData("-ttar", "out.tgz")]
     public void Archive_TypeSwitchContradictsName_IsACommandLineError(string typeSwitch, string name)
     {
         ParsedCliCommand result = CliArgumentParser.Parse(["a", typeSwitch, name, "file1.txt"]);
@@ -956,6 +974,9 @@ public sealed class CliArgumentParserTests
     [Theory]
     [InlineData("-ttar.gz", "out.tar.gz")]
     [InlineData("-ttgz", "OUT.TAR.GZ")]
+    [InlineData("-ttgz", "out.tgz")]
+    [InlineData("-ttar.gz", "out.tgz")]
+    [InlineData("-ttxz", "out.txz")]
     [InlineData("-ttar", "out.tar")]
     [InlineData("-ttar", "out.gz")]      // T-F221 item 6: a name that is no archive type is written as typed
     [InlineData("-tzip", "backup.out")]

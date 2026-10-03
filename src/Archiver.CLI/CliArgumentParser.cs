@@ -68,8 +68,10 @@ public static class CliArgumentParser
 
     // T-F294: PowerShell passes "-name.rest" to a native program as two arguments, "-name" and
     // ".rest" ("-ttar.gz" became "-ttar" and ".gz"; "-pSecret.1" became "-pSecret" and ".1").
-    // A switch made of name characters followed by such a piece is refused, whatever the command.
-    // A path that really starts with a dot is written .\name, which never looks like a piece.
+    // Refused for the switches whose value a split silently changes: -p (a shorter password), -o
+    // (another folder), -t (another type). A complete switch such as -y or -scrcSHA256 followed by
+    // a dotfile is what cmd passes too, so it is left alone. A path that really starts with a dot
+    // can always be written .\name, which never looks like a piece.
     private static string? ShellSplitReason(string[] rest)
     {
         for (int i = 0; i + 1 < rest.Length; i++)
@@ -90,7 +92,8 @@ public static class CliArgumentParser
     }
 
     private static bool LooksLikeSplitSwitch(string token) =>
-        token.Length >= 2 && token[0] == '-' && token.AsSpan(1).IndexOfAnyExcept(NameCharacters) < 0;
+        token.Length >= 2 && token[0] == '-' && token[1] is 'p' or 'o' or 't'
+        && token.AsSpan(1).IndexOfAnyExcept(NameCharacters) < 0;
 
     private static readonly System.Buffers.SearchValues<char> NameCharacters =
         System.Buffers.SearchValues.Create("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");

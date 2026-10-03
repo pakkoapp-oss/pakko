@@ -3230,6 +3230,12 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   `'.gz'`; `'-ttar.gz'` quoted and `-ttgz` write a real gzip (`1F 8B`); `-pSecret.1` is exit 7 without
   printing the password; `a t6.tar.gz src` (no `-t`) is exit 7; `-ttar .\.gz` writes `.gz`. In cmd
   the same `-pSecret.1` passes whole and `t` opens the archive with it. See `docs/DECISIONS.md`'s wave 3 entry.
+  After the closing review: `a backup.tgz src` is exit 7 too, `-oout.d` (pwsh) is exit 7, and
+  `h -scrcSHA256 .gitignore` is accepted. **CHANGELOG v1.7.0 (changes script behaviour):**
+  `pakko a out.tar.gz src` without `-t` used to write a ZIP under that name and now stops with exit 7
+  asking for `-ttar.gz`; a `-p`/`-o`/`-t` value that PowerShell split at a dot (`-ttar.gz`,
+  `-pSecret.1`, `-oout.d`) is exit 7 instead of a wrong type, a shorter password or another folder;
+  new dot-free `-ttgz`/`-ttbz2`/`-ttxz`/`-ttzst`; an archive named `.gz` keeps that name.
   Report as filed: open. Found in G6, 2026-09-30, pwsh 7. PowerShell passes `-ttar.gz` to a native
   exe as two arguments, `-ttar` and `.gz` (a known PowerShell parser rule for `-name.suffix`
   tokens). Results: `pakko a -ttar.gz t.tar.gz src` -> "Source path does not exist: t.tar.gz"
@@ -3378,7 +3384,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   Device (Deploy 1.6.0.2, uk-UA): `--extract-folder enc2.zip enc.zip` in the operation window, the
   prompt answered `Passw0rd` with "Застосувати до решти архівів" ticked: one prompt, `enc2\a.txt`
   extracted, then "enc.zip: Пароль, застосований до решти архівів, не підходить до цього архіву."
-  and no `enc\` folder.
+  and no `enc\` folder. **CHANGELOG v1.7.0:** Explorer says when the password applied to the
+  remaining archives does not fit one of them, instead of calling it password-protected.
   Report as filed: open. Found in G6 pass 2, 2026-09-30, Explorer "Extract each to its own folder" on
   `enc2.zip` (Passw0rd) + `enc.zip` (secret1): the prompt for `enc2.zip` with "Apply to remaining
   archives" ticked -> `enc2\` extracted; `enc.zip` then fails with "Цей архів захищено паролем, тому
@@ -3510,6 +3517,18 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   it; retry the final rename briefly on a sharing violation. Check tar creation's temp naming the
   same way. Tests first: a stale `.tmp` and an open handle on it, each followed by a successful run.
 - **Reported by:** v1.7.0 wave 3 device check (agent) and the user, 2026-10-03.
+
+### T-F313 — `pakko x` onto partly existing files exits 1 with no line and no hint (P3)
+
+- [ ] **Status:** open. Found in the v1.7.0 wave 3 closing review, 2026-10-03. ZIP keeps its
+  per-file conflict skips out of `SkippedFiles` (`ZipArchiveService`, the `conflictSkipped` list: they
+  only make the archive partial, so the App's summary stays as it was). When some entries of an
+  archive already exist and others are extracted, `pakko x` without `-ao`/`-y` exits 1 and prints
+  nothing — neither the kept files nor the `-aoa` hint. Not a regression (the pre-T-F296 hints were
+  silent too); same class as T-F293. Tar lists `FileExistsAtDestination` per file and is fine. Fix
+  direction: expose the count (or the list) of conflict skips on the result so the CLI can print the
+  hint, without changing the App's summary. Tests first in `Archiver.CLI.Tests`.
+- **Reported by:** v1.7.0 wave 3 closing review (agent), 2026-10-03.
 
 ### T-F310 — A compressed GNU-format tar with OEM (cp866) names is still refused (P2)
 

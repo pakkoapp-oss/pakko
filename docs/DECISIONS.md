@@ -10709,15 +10709,19 @@ the closing review checked what the default and Slow suites do not reach:
   App show it too.
 - **T-F294 (user decision 2026-10-03: an error plus dot-free aliases).** Checked in pwsh 7:
   `-ttar.gz` arrives as `-ttar` `.gz` and `-pSecret.1` as `-pSecret` `.1` (a password silently cut
-  short, worse than a wrong format); `-oC:\out.d`, `-mx=1`, `-scrcSHA256` arrive whole. Rule: a
-  switch made only of letters, digits and `_` followed by an argument that starts with a dot (not
-  `.\`, `./` or `..`) is exit 7 for every command, and the message never prints either half of a
-  password. A path that really starts with a dot is written `.\name`. Aliases: `-ttgz`, `-ttbz2`,
+  short, worse than a wrong format); `-oC:\out.d`, `-mx=1`, `-scrcSHA256` arrive whole, `-oout.d`
+  does not. Rule: a `-p`, `-o` or `-t` switch made only of letters, digits and `_` followed by an
+  argument that starts with a dot (not `.\`, `./` or `..`) is exit 7 for every command, and the
+  message never prints either half of a password. Only those three, because a split changes their
+  value silently; the first version took every switch, and the closing review found it refused
+  `h -scrcSHA256 .gitignore` in cmd, where nothing was split. A path that really starts with a dot is written `.\name`. Aliases: `-ttgz`, `-ttbz2`,
   `-ttxz`, `-ttzst`. Name against type: only a name ending in an archive type Pakko writes counts
   (`.zip`, `.tar`, `.tar.gz`, ...; Core's `ArchiveNaming.GetExtension`), so T-F221 item 6 stands
   (`-ttar out.gz` writes `out.gz`). No `-t` means zip: `a out.tar.gz src` used to write a ZIP under
   that name and is now exit 7 asking for `-ttar.gz` — inferring the type from the name would be a new
-  feature. `.tgz` is not one of Core's extensions and is not checked. An explicit name `.gz` is
+  feature. The dot-free names `.tgz`/`.tbz2`/`.txz`/`.tzst` are checked too (CLI spellings, kept in
+  `CliCommandValidator`, not Core): with `-ttgz` advertised, `a backup.tgz src` writing a ZIP was
+  the same bug. An explicit name `.gz` is
   written as typed (it became `.gz.tar`).
 - **T-F295.** Ctrl+C in `a`/`t` clears the percentage first (the progress object was declared inside
   the `try`); the new-password prompt says "input is masked"; the overwrite prompt shows both files'

@@ -33,14 +33,30 @@ public static class CliCommandValidator
         if (named is not { } nameFormat || nameFormat == command.ArchiveFormat)
             return null;
 
-        string extension = ArchiveNaming.GetExtension(nameFormat);
+        string fullExtension = ArchiveNaming.GetExtension(nameFormat);
+        string extension = name.EndsWith(fullExtension, StringComparison.OrdinalIgnoreCase) ? fullExtension : Path.GetExtension(name);
         return command.ArchiveTypeSwitch is { } typeSwitch
             ? $"the archive name '{name}' ends in {extension}, but {typeSwitch} asks for {ArchiveNaming.GetExtension(command.ArchiveFormat)}; make the name and the type agree"
             : $"the archive name '{name}' ends in {extension}, but no -t was given, so it would be a ZIP; add {SwitchFor(nameFormat)}";
     }
 
+    // The dot-free spellings of the -t aliases, as tar users name such files.
+    private static readonly (string Extension, ArchiveContainerFormat Format)[] ShortExtensions =
+    [
+        (".tgz", ArchiveContainerFormat.TarGz),
+        (".tbz2", ArchiveContainerFormat.TarBz2),
+        (".txz", ArchiveContainerFormat.TarXz),
+        (".tzst", ArchiveContainerFormat.TarZst),
+    ];
+
     private static ArchiveContainerFormat? FormatOfName(string name)
     {
+        foreach ((string extension, ArchiveContainerFormat format) in ShortExtensions)
+        {
+            if (name.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+                return format;
+        }
+
         ArchiveContainerFormat? best = null;
         int bestLength = 0;
         foreach (ArchiveContainerFormat format in Enum.GetValues<ArchiveContainerFormat>())

@@ -46,9 +46,9 @@ public static class CliHelpText
           -ao{a|s|u}       Overwrite mode: a=overwrite, s=skip, u=auto-rename   (x)
           -t<type>         Archive type: zip (default), tar, tar.gz, tar.bz2,
                            tar.xz, tar.zst, tar.lzma; or tgz, tbz2, txz, tzst   (a)
-                           A name ending in one of these types must match it
-                           (out.tar.gz needs -ttar.gz); any other extension is
-                           written as typed
+                           A name ending in one of these types, or in .tgz,
+                           .tbz2, .txz, .tzst, must match it (out.tar.gz needs
+                           -ttar.gz); any other extension is written as typed
           -mx=<0-9>        Compression level — see table below                 (a)
           -scrc<method>    Hash method: CRC32 (default) or SHA256              (h)
           -si              Read the archive from stdin instead of a path       (x, t, l, h)
@@ -88,8 +88,8 @@ public static class CliHelpText
         POWERSHELL:
           PowerShell passes '-name.rest' as two arguments: '-ttar.gz' arrives as
           '-ttar' '.gz', '-pSecret.1' as '-pSecret' '.1'. Pakko refuses such a pair
-          (exit 7). Quote the switch ('-ttar.gz', '-p<pwd>') or use -ttgz; write a
-          path that starts with a dot as .\name.
+          after -p, -o or -t (exit 7). Quote the switch ('-ttar.gz', '-p<pwd>') or
+          use -ttgz; write a path that starts with a dot as .\name.
 
         NOT IMPLEMENTED (real 7z commands; run one to see the specific reason):
           u (update)   d (delete)   rn (rename)   b (benchmark)   e (extract, flat)

@@ -19,7 +19,7 @@ public sealed class CliConflictPromptTests : IAsyncLifetime
 {
     private readonly TestTempFolder _folder = new("pakko-cli-conflict-");
 
-    private string _temp => _folder.Path;
+    private string Temp => _folder.Path;
 
     public Task InitializeAsync() => Task.CompletedTask;
 
@@ -86,7 +86,7 @@ public sealed class CliConflictPromptTests : IAsyncLifetime
     [Fact]
     public void Ask_ShowsSizeAndTimeOfBothFiles()
     {
-        string existing = Path.Combine(_temp, "report.txt");
+        string existing = Path.Combine(Temp, "report.txt");
         File.WriteAllText(existing, "12345");
         File.SetLastWriteTime(existing, new DateTime(2025, 3, 4, 5, 6, 7));
         var written = new List<string>();
@@ -131,15 +131,15 @@ public sealed class CliConflictPromptTests : IAsyncLifetime
     [RequiresTarExe]
     public async Task CreateResolver_AlwaysAcrossZipAndTar_PromptsOnceAndOverwritesBoth()
     {
-        string zipPath = Path.Combine(_temp, "one.zip");
+        string zipPath = Path.Combine(Temp, "one.zip");
         using (ZipArchive zip = ZipFile.Open(zipPath, ZipArchiveMode.Create))
         using (var writer = new StreamWriter(zip.CreateEntry("from-zip.txt").Open()))
             writer.Write("zip content");
 
-        string tarSource = Path.Combine(_temp, "tar-src");
+        string tarSource = Path.Combine(Temp, "tar-src");
         Directory.CreateDirectory(tarSource);
         File.WriteAllText(Path.Combine(tarSource, "from-tar.txt"), "tar content");
-        string tarPath = Path.Combine(_temp, "two.tar");
+        string tarPath = Path.Combine(Temp, "two.tar");
         using (Process tar = Process.Start(new ProcessStartInfo(@"C:\Windows\System32\tar.exe")
         {
             ArgumentList = { "-cf", tarPath, "-C", tarSource, "from-tar.txt" },
@@ -151,7 +151,7 @@ public sealed class CliConflictPromptTests : IAsyncLifetime
             tar.ExitCode.Should().Be(0);
         }
 
-        string dest = Path.Combine(_temp, "dest");
+        string dest = Path.Combine(Temp, "dest");
         Directory.CreateDirectory(dest);
         File.WriteAllText(Path.Combine(dest, "from-zip.txt"), "old");
         File.WriteAllText(Path.Combine(dest, "from-tar.txt"), "old");
@@ -179,7 +179,7 @@ public sealed class CliConflictPromptTests : IAsyncLifetime
 
     private string MakeZip(string name, params (string Name, string Content)[] entries)
     {
-        string path = Path.Combine(_temp, name);
+        string path = Path.Combine(Temp, name);
         using ZipArchive zip = ZipFile.Open(path, ZipArchiveMode.Create);
         foreach ((string? entryName, string? content) in entries)
         {
@@ -191,10 +191,10 @@ public sealed class CliConflictPromptTests : IAsyncLifetime
 
     private async Task<string> MakeTarAsync(string name, params (string Name, string Content)[] entries)
     {
-        string source = Path.Combine(_temp, name + "-src");
+        string source = Path.Combine(Temp, name + "-src");
         Directory.CreateDirectory(source);
         var startInfo = new ProcessStartInfo(@"C:\Windows\System32\tar.exe") { UseShellExecute = false, CreateNoWindow = true };
-        string path = Path.Combine(_temp, name);
+        string path = Path.Combine(Temp, name);
         startInfo.ArgumentList.Add("-cf");
         startInfo.ArgumentList.Add(path);
         startInfo.ArgumentList.Add("-C");
@@ -237,7 +237,7 @@ public sealed class CliConflictPromptTests : IAsyncLifetime
 
     private string DestWithExisting(string name)
     {
-        string dest = Path.Combine(_temp, "dest-" + Guid.NewGuid().ToString("N"));
+        string dest = Path.Combine(Temp, "dest-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dest);
         File.WriteAllText(Path.Combine(dest, name), "old");
         return dest;

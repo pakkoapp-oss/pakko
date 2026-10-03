@@ -642,8 +642,9 @@ as raw BOM-free UTF-8 bytes, the dev-version `-v` pattern, and a sweep of a dead
 Not automated: real-console Ctrl+C and the cp866 loss itself.
 
 **v1.7.0 wave 3 additions (2026-10-03):** `CliArgumentParserTests` covers PowerShell-split pairs
-(`-ttar` `.gz`, `-pSecret` `.1` — the password never in the message), dot-leading paths that are no
-split piece, the dot-free `-t` aliases and `-t` against the name's own archive type (T-F294/T-F296).
+(`-ttar` `.gz`, `-pSecret` `.1`, `-oout` `.d` — the password never in the message), dot-leading paths that are no
+split piece (`h -scrcSHA256 .gitignore`), the dot-free `-t` aliases and `-t` against the name's own archive type,
+`.tgz`-style names included (T-F294/T-F296).
 `CliHintsTests` checks the cause table names every `MessageCode` and the `-aoa`/`-p` hint rules
 (T-F293). `CliMessagesSubprocessTests` adds a CRC failure with no `-aoa` hint, a tar conflict with
 it, `a out.tar.gz` without `-t` (exit 7, nothing written) and the name `.gz` written as typed.
