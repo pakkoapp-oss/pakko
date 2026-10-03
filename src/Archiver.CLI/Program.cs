@@ -619,15 +619,14 @@ static async Task PrintHashFolderSummaryAsync(FolderHashSummary folder, string l
 // Shared: prints errors/skipped files to stderr, maps ArchiveResult onto the exit-code table
 // (0 clean success, 1 success with warnings, 2 operation failed).
 // -------------------------------------------------------------------------
-// T-F221 items 2-3: the way forward, not only what went wrong.
+// T-F221 items 2-3: the way forward, not only what went wrong. T-F296: keyed on each cause code.
 static void PrintHints(ArchiveResult result, CliReportContext report)
 {
-    if (!report.PasswordGiven
-        && result.Errors.Any(e => e.Text?.Code is MessageCode.PasswordProtectedExtract or MessageCode.PasswordProtectedTest))
-        Console.Error.WriteLine("pakko: hint: give the password with -p<password>");
-    if (report.KeptExistingByDefault
-        && result.SkippedFiles.Any(s => s.Text?.Code is MessageCode.AllEntriesSkipped or MessageCode.FileExistsAtDestination))
-        Console.Error.WriteLine("pakko: hint: existing files were kept; -aoa overwrites them, -aou renames the extracted ones");
+    IReadOnlyList<string> hints = CliHints.For(
+        [.. result.Errors.Select(e => e.Text?.Code)], [.. result.SkippedFiles.Select(s => s.Text?.Code)],
+        report.PasswordGiven, report.KeptExistingByDefault);
+    foreach (string hint in hints)
+        Console.Error.WriteLine(hint);
 }
 
 static int ReportResult(ArchiveResult result, CliReportContext report)

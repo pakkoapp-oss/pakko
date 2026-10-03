@@ -65,6 +65,38 @@ public sealed class CliMessagesSubprocessTests
         stdErr.Should().Contain("-aoa");
     }
 
+    // T-F293: a CRC failure is not a conflict, so the overwrite switches would not help.
+    [Fact]
+    public void Extract_CrcFailure_NoOverwriteHint()
+    {
+        string dir = CliFixtureFiles.CreateScratchDir();
+        string zipPath = Path.Combine(dir, "bad.zip");
+        using (ZipArchive zip = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        using (var writer = new StreamWriter(zip.CreateEntry("doc.txt", CompressionLevel.NoCompression).Open()))
+            writer.Write("plain stored content");
+        byte[] bytes = File.ReadAllBytes(zipPath);
+        int data = bytes.AsSpan().IndexOf("plain stored content"u8);
+        bytes[data] ^= 0xFF;
+        File.WriteAllBytes(zipPath, bytes);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", $"-o{Path.Combine(dir, "out")}", zipPath);
+
+        exitCode.Should().Be(2, stdErr);
+        stdErr.Should().Contain("CRC").And.NotContain("-aoa");
+    }
+
+    [RequiresTarExe]
+    public void Extract_TarOntoExistingFilesWhenPiped_HintsAtOverwriteSwitches()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        CliProcessRunner.Run("x", $"-o{destDir}", CliFixtureFiles.ValidTarGz!).ExitCode.Should().Be(0);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", $"-o{destDir}", CliFixtureFiles.ValidTarGz!);
+
+        exitCode.Should().Be(1, stdErr);
+        stdErr.Should().Contain("-aoa");
+    }
+
     [Theory]
     [InlineData("l")]
     [InlineData("t")]
