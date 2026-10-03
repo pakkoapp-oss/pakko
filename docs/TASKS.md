@@ -3886,7 +3886,9 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   created. All three commit sites (ZIP single and separate, tar). Tests first:
   `ArchiveTempFileTests.CommitAsync_ArchiveAppearedDuringTheRun_KeepsItAndCommitsUnderAFreeName`
   and `ZipArchiveServiceArchiveTests.ArchiveAsync_TwoRunsCreateTheSameNameAtOnce_NeitherReportedArchiveIsLost`
-  (both red before the fix).
+  (both red before the fix). Device (CI `pakko.exe` 0.0.0-dev+039955a, 2026-10-03): two `pakko a
+  C:\g9\cc\same.zip` runs started together (300 and 1000 files), three rounds: both exit 0, `same.zip`
+  holds one run's entries and `same (1).zip` the other's.
 - **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-03.
 
 ### T-F322 — `pakko x`/`t` suggests `-p` for an encrypted 7z or RAR it cannot decrypt (P3)
