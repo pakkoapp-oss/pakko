@@ -15,6 +15,10 @@ internal static class ArchiveTempFile
     private const string Suffix = ".tmp";
     private const int SharingViolation = 0x20;
     private const int LockViolation = 0x21;
+    private const int FileExists = 0x50;
+    private const int AlreadyExists = 0xB7;
+    // Each attempt takes the next free "name (N)"; another run would have to claim every one first.
+    private const int MaxFreeNameAttempts = 10;
 
     // About 1.5 s in all: long enough for a scanner or sync client that opened the file for a moment.
     private static readonly int[] RetryDelaysMs = [100, 200, 400, 800];
@@ -55,22 +59,47 @@ internal static class ArchiveTempFile
     }
 
     /// <summary>Renames <paramref name="tempPath"/> onto <paramref name="destPath"/>, retrying
-    /// briefly while either file is held by another process.</summary>
-    public static async Task CommitAsync(string tempPath, string destPath, CancellationToken cancellationToken)
+    /// briefly while either file is held by another process. Returns the path the archive landed at.
+    /// <paramref name="replaceExisting"/> is true only when the archive existed when the run started
+    /// and the caller chose to overwrite it. Otherwise an archive that appeared during the run (T-F321:
+    /// a second run creating the same name at once) is kept, and this one takes the next free name.</summary>
+    public static async Task<string> CommitAsync(string tempPath, string destPath, bool replaceExisting, CancellationToken cancellationToken)
     {
         foreach (int delayMs in RetryDelaysMs)
         {
             try
             {
-                File.Move(tempPath, destPath, overwrite: true);
-                return;
+                return Move(tempPath, destPath, replaceExisting);
             }
             catch (Exception ex) when (IsHeld(ex, destPath))
             {
                 await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
             }
         }
-        File.Move(tempPath, destPath, overwrite: true);
+        return Move(tempPath, destPath, replaceExisting);
+    }
+
+    private static string Move(string tempPath, string destPath, bool replaceExisting)
+    {
+        if (replaceExisting)
+        {
+            File.Move(tempPath, destPath, overwrite: true);
+            return destPath;
+        }
+
+        string target = destPath;
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(tempPath, target, overwrite: false);
+                return target;
+            }
+            catch (IOException ex) when (attempt < MaxFreeNameAttempts && IsAlreadyExists(ex) && File.Exists(target) && File.Exists(tempPath))
+            {
+                target = ArchiveNaming.GetUniqueFilePath(destPath);
+            }
+        }
     }
 
     // File.Move(overwrite: true) onto a file another process holds throws UnauthorizedAccessException,
@@ -81,4 +110,6 @@ internal static class ArchiveTempFile
         IOException io => (io.HResult & 0xFFFF) is SharingViolation or LockViolation,
         _ => false,
     };
+
+    private static bool IsAlreadyExists(IOException ex) => (ex.HResult & 0xFFFF) is FileExists or AlreadyExists;
 }

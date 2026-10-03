@@ -3872,3 +3872,48 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   in the Store submission, so decide it with the next Store upload (v1.7.0 wave 9). Until then
   documented in `docs/CLI.md` (Distribution).
 - **Reported by:** T-F317 device check, 2026-10-03.
+
+### T-F321 — Two runs creating the same archive name at once: the later one replaces the earlier archive (P2)
+
+- [x] **Status:** fixed 2026-10-03 (v1.7.0 wave 9, before the release). Found in the wave 9 device
+  campaign on CI build 7c54f27 (MSIX 1.6.0.0, `pakko` through the Store alias): two `pakko a
+  C:\g9\cc\same.zip <folder>` started together both exited 0, but `same.zip` held only one run's
+  entries — the other archive was silently replaced. A regression from T-F312 (wave 6): the old
+  fixed `<archive>.tmp` made the second run fail at once; the per-run temp name lets both finish,
+  and the commit renamed with `overwrite: true`. Fix: `ArchiveTempFile.CommitAsync` replaces only
+  an archive that existed when the run started (the Overwrite choice); one that appeared during
+  the run is kept and this run's archive takes the next free name (`same (1).zip`), reported as
+  created. All three commit sites (ZIP single and separate, tar). Tests first:
+  `ArchiveTempFileTests.CommitAsync_ArchiveAppearedDuringTheRun_KeepsItAndCommitsUnderAFreeName`
+  and `ZipArchiveServiceArchiveTests.ArchiveAsync_TwoRunsCreateTheSameNameAtOnce_NeitherReportedArchiveIsLost`
+  (both red before the fix).
+- **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-03.
+
+### T-F322 — `pakko x`/`t` suggests `-p` for an encrypted 7z or RAR it cannot decrypt (P3)
+
+- [ ] **Status:** open. Found in the wave 9 device campaign (2026-10-03): `pakko x encrypted.7z`
+  prints "This archive is password-protected and cannot be extracted." plus "pakko: hint: give the
+  password with -p<password>"; with `-p` the same error repeats — tar.exe cannot decrypt 7z or RAR
+  at all. Both engines report `MessageCode.PasswordProtectedExtract`/`Test`, so `CliHints` cannot
+  tell them apart. Fix direction: a tar-family code (e.g. "password-protected 7z/RAR is not
+  supported; use 7-Zip") in `Archiver.Messages` (37 locales), mapped to no hint. Check the App and
+  Shell wording at the same time.
+- **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-03.
+
+### T-F323 — Count before a plural noun in Core messages: "у 1 елементів", "1 entries have" (P3)
+
+- [ ] **Status:** open. Found in the wave 9 device campaign (2026-10-03): Explorer Test on a ZIP
+  with one local-header mismatch shows "Локальний заголовок не збігається з центральним каталогом
+  у 1 елементів"; the CLI line reads "1 entries have a local header ...". `LocalHeaderMismatch`
+  puts `{0}` before a noun, which no resx template can inflect. Fix direction: count after a
+  colon ("Entries whose local header differs from the central directory: {0} (first: '{1}')"), in
+  all 37 locales; grep `MessageTemplates` for other `{0} <noun>` shapes.
+- **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-03.
+
+### T-F324 — Archive Browser lists hidden system folders at a drive root (P3, UX)
+
+- [ ] **Status:** open. Found in the wave 9 device campaign (2026-10-03): browsing up to `C:\`
+  lists `$Recycle.Bin`, `Config.Msi`, `Documents and Settings` (a junction) and other hidden or
+  system entries that Explorer hides by default. Decide: follow Explorer's "show hidden items"
+  setting, or always hide Hidden+System entries in `FileSystemBrowser` (T-F107).
+- **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-03.

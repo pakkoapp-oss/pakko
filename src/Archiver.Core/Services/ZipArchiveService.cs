@@ -186,6 +186,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
         destPath = resolvedDestPath;
 
+        bool replacesExisting = File.Exists(destPath);
         string tempPath = ArchiveTempFile.Create(destPath);
 
         // T-F35 profiling (2026-07-18) found ComputeTotalBytes and the gate's file count used to
@@ -237,8 +238,7 @@ public sealed class ZipArchiveService : IArchiveService
             cancellationToken.ThrowIfCancellationRequested();
             if (HasTempEntries(tempPath))
             {
-                await ArchiveTempFile.CommitAsync(tempPath, destPath, cancellationToken).ConfigureAwait(false);
-                createdFiles.Add(destPath);
+                createdFiles.Add(await ArchiveTempFile.CommitAsync(tempPath, destPath, replacesExisting, cancellationToken).ConfigureAwait(false));
             }
             else
             {
@@ -503,6 +503,7 @@ public sealed class ZipArchiveService : IArchiveService
         long pathSize = ComputeSourceBytesBestEffort(sourcePath);
 
         long baseOffset = Interlocked.Read(ref completedBytesBox[0]);
+        bool replacesExisting = File.Exists(destPath);
         string separateTempPath = ArchiveTempFile.Create(destPath);
         CompressionLevel compressionLevel = settings.Level;
         // T-F260: this worker's own issue count — the shared bags are written by every worker at
@@ -553,8 +554,7 @@ public sealed class ZipArchiveService : IArchiveService
             cancellationToken.ThrowIfCancellationRequested();
             if (HasTempEntries(separateTempPath))
             {
-                await ArchiveTempFile.CommitAsync(separateTempPath, destPath, cancellationToken).ConfigureAwait(false);
-                sink.CreatedFiles.Add(destPath);
+                sink.CreatedFiles.Add(await ArchiveTempFile.CommitAsync(separateTempPath, destPath, replacesExisting, cancellationToken).ConfigureAwait(false));
                 committed = true;
             }
             else

@@ -1003,6 +1003,39 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
     }
 
+    // T-F321: two runs creating the same archive name at once (two Explorer clicks, two `pakko a`)
+    // both found the name free; the later commit replaced the earlier archive and both reported
+    // success. Whatever the timing, every archive a run reports must be on disk with its own entries.
+    [Fact]
+    public async Task ArchiveAsync_TwoRunsCreateTheSameNameAtOnce_NeitherReportedArchiveIsLost()
+    {
+        string[] folders = ["first", "second"];
+        foreach (string folder in folders)
+            Directory.CreateDirectory(Path.Combine(_temp.Path, folder));
+        foreach (string folder in folders)
+            for (int i = 0; i < 200; i++)
+                _temp.CreateFile(Path.Combine(folder, $"{folder}_{i}.txt"), folder);
+
+        ArchiveResult[] results = await Task.WhenAll(folders.Select(folder => Task.Run(() => _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [Path.Combine(_temp.Path, folder)],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "same",
+            Mode = ArchiveMode.SingleArchive,
+            OnConflict = ConflictBehavior.Skip,
+        }))));
+
+        for (int run = 0; run < results.Length; run++)
+        {
+            foreach (string created in results[run].CreatedFiles)
+            {
+                using ZipArchive zip = ZipFile.OpenRead(created);
+                zip.Entries.Should().Contain(e => e.FullName.StartsWith(folders[run] + "/"),
+                    because: $"run '{folders[run]}' reported {Path.GetFileName(created)} as its archive");
+            }
+        }
+    }
+
     // T-F312: Overwrite onto an archive a sync client holds for a moment — the old archive stays
     // until the new one is complete, and the rename waits for the holder.
     [Fact]

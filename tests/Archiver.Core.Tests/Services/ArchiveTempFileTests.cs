@@ -47,7 +47,7 @@ public sealed class ArchiveTempFileTests : IDisposable
         var held = new FileStream(dest, FileMode.Open, FileAccess.Read, FileShare.None);
         _ = Task.Delay(300).ContinueWith(_ => held.Dispose(), TaskScheduler.Default);
 
-        await ArchiveTempFile.CommitAsync(temp, dest, CancellationToken.None);
+        await ArchiveTempFile.CommitAsync(temp, dest, replaceExisting: true, CancellationToken.None);
 
         File.ReadAllText(dest).Should().Be("new archive");
         File.Exists(temp).Should().BeFalse();
@@ -61,7 +61,7 @@ public sealed class ArchiveTempFileTests : IDisposable
         var held = new FileStream(temp, FileMode.Open, FileAccess.Read, FileShare.Read);
         _ = Task.Delay(300).ContinueWith(_ => held.Dispose(), TaskScheduler.Default);
 
-        await ArchiveTempFile.CommitAsync(temp, dest, CancellationToken.None);
+        await ArchiveTempFile.CommitAsync(temp, dest, replaceExisting: false, CancellationToken.None);
 
         File.ReadAllText(dest).Should().Be("new archive");
     }
@@ -73,7 +73,7 @@ public sealed class ArchiveTempFileTests : IDisposable
         string dest = _temp.CreateFile("a.zip", "old archive");
         using var held = new FileStream(dest, FileMode.Open, FileAccess.Read, FileShare.None);
 
-        Func<Task> act = () => ArchiveTempFile.CommitAsync(temp, dest, CancellationToken.None);
+        Func<Task> act = () => ArchiveTempFile.CommitAsync(temp, dest, replaceExisting: true, CancellationToken.None);
 
         await act.Should().ThrowAsync<Exception>().Where(e => e is IOException || e is UnauthorizedAccessException);
         File.Exists(temp).Should().BeTrue("the caller removes the temporary file");
@@ -85,7 +85,7 @@ public sealed class ArchiveTempFileTests : IDisposable
         string dest = Path.Combine(_temp.Path, "a.zip");
         DateTime started = DateTime.UtcNow;
 
-        Func<Task> act = () => ArchiveTempFile.CommitAsync(Path.Combine(_temp.Path, "none.tmp"), dest, CancellationToken.None);
+        Func<Task> act = () => ArchiveTempFile.CommitAsync(Path.Combine(_temp.Path, "none.tmp"), dest, replaceExisting: false, CancellationToken.None);
 
         await act.Should().ThrowAsync<FileNotFoundException>();
         (DateTime.UtcNow - started).Should().BeLessThan(TimeSpan.FromMilliseconds(90), "only a held file is worth waiting for");
@@ -97,8 +97,50 @@ public sealed class ArchiveTempFileTests : IDisposable
         string temp = _temp.CreateFile("t.tmp", "new archive");
         string dest = _temp.CreateFile("a.zip", "old archive");
         using var held = new FileStream(dest, FileMode.Open, FileAccess.Read, FileShare.None);
-        Func<Task> act = () => ArchiveTempFile.CommitAsync(temp, dest, new CancellationToken(canceled: true));
+        Func<Task> act = () => ArchiveTempFile.CommitAsync(temp, dest, replaceExisting: true, new CancellationToken(canceled: true));
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    // T-F321: two runs creating the same archive name at once both found the name free, and the
+    // later commit silently replaced the earlier run's archive while both reported it as created.
+    // Only an archive that existed when the run started (the Overwrite choice) may be replaced.
+    [Fact]
+    public async Task CommitAsync_ArchiveAppearedDuringTheRun_KeepsItAndCommitsUnderAFreeName()
+    {
+        string temp = _temp.CreateFile("t.tmp", "new archive");
+        string dest = _temp.CreateFile("a.zip", "another run's archive");
+
+        string committed = await ArchiveTempFile.CommitAsync(temp, dest, replaceExisting: false, CancellationToken.None);
+
+        committed.Should().Be(Path.Combine(_temp.Path, "a (1).zip"));
+        File.ReadAllText(dest).Should().Be("another run's archive");
+        File.ReadAllText(committed).Should().Be("new archive");
+        File.Exists(temp).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CommitAsync_NameStillFree_CommitsAtThatName()
+    {
+        string temp = _temp.CreateFile("t.tmp", "new archive");
+        string dest = Path.Combine(_temp.Path, "a.zip");
+
+        string committed = await ArchiveTempFile.CommitAsync(temp, dest, replaceExisting: false, CancellationToken.None);
+
+        committed.Should().Be(dest);
+        File.ReadAllText(dest).Should().Be("new archive");
+    }
+
+    [Fact]
+    public async Task CommitAsync_ReplacingTheArchiveThatExistedAtTheStart_ReplacesIt()
+    {
+        string temp = _temp.CreateFile("t.tmp", "new archive");
+        string dest = _temp.CreateFile("a.zip", "old archive");
+
+        string committed = await ArchiveTempFile.CommitAsync(temp, dest, replaceExisting: true, CancellationToken.None);
+
+        committed.Should().Be(dest);
+        File.ReadAllText(dest).Should().Be("new archive");
+        File.Exists(Path.Combine(_temp.Path, "a (1).zip")).Should().BeFalse();
     }
 }

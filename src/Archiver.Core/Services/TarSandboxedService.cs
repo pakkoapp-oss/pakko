@@ -1259,6 +1259,7 @@ public sealed class TarSandboxedService : ITarService
         IProgress<ProgressReport>? progress,
         CancellationToken cancellationToken)
     {
+        bool replacesExisting = File.Exists(destPath);
         string tempPath = ArchiveTempFile.Create(destPath);
         // T-F171: decided here, created only on the first collision, so the finally below cleans it
         // up even when staging stops partway through.
@@ -1317,8 +1318,7 @@ public sealed class TarSandboxedService : ITarService
                     return;
                 }
 
-                await ArchiveTempFile.CommitAsync(tempPath, destPath, cancellationToken).ConfigureAwait(false);
-                createdFiles.Add(destPath);
+                createdFiles.Add(await ArchiveTempFile.CommitAsync(tempPath, destPath, replacesExisting, cancellationToken).ConfigureAwait(false));
                 progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = totalBytesForProgress, TotalBytes = totalBytesForProgress });
             }
             catch (OperationCanceledException)
