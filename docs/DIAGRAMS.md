@@ -507,7 +507,8 @@ now with less duplication risk behind it, not more. See `DECISIONS.md`'s T-F158 
 ## 4. Component/Deployment — MSIX package & process boundaries
 
 Sources read for this diagram (re-derived 2026-09-29, T-F258): `src/Archiver.App/Package.appxmanifest`
-(Identity, both `<Application>` entries, the two `uap:FileTypeAssociation`s, `com:SurrogateServer`,
+(Identity, the three `<Application>` entries — T-F317 added `Cli` with the `pakko.exe` alias,
+re-read 2026-10-03 — the two `uap:FileTypeAssociation`s, `com:SurrogateServer`,
 the `desktop4/5/10` verbs), the `ProjectReference`s of `Archiver.App`, `Archiver.Shell`,
 `Archiver.CLI` (`AssemblyName` `pakko`) and `Archiver.OperationUi`,
 `src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs` (`CreateAsync`, `RunAsync`), and
@@ -522,13 +523,16 @@ flowchart TB
         subgraph AppShell["Application Id=ShellHelper<br/>EntryPoint=Windows.FullTrustApplication<br/>AppListEntry=none"]
             Shell[Archiver.Shell.exe]
         end
+        subgraph AppCliPkg["Application Id=Cli (T-F317)<br/>EntryPoint=Windows.FullTrustApplication<br/>AppListEntry=none<br/>uap3 appExecutionAlias pakko.exe"]
+            CliPkg["pakko.exe (Archiver.CLI)<br/>shares the App's runtime at the package root"]
+        end
         OpUi["Archiver.OperationUi.exe (T-F268)<br/>no Application entry of its own —<br/>a child of Shell keeps the package identity<br/>references no Archiver.Core"]
         subgraph ComReg["com:Extension windows.comServer → com:SurrogateServer<br/>verbs for ItemType * / Directory / Drive"]
             Dll["Archiver.ShellExtension.dll<br/>com:Class Id=1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A<br/>ThreadingModel=STA"]
         end
     end
 
-    Cli["pakko.exe (Archiver.CLI, T-F09)<br/>standalone self-contained download,<br/>NOT in the MSIX — no package identity"]
+    Cli["pakko.exe (Archiver.CLI, T-F09)<br/>standalone self-contained zip or winget<br/>(install folder on PATH, T-F317), outside the MSIX — no package identity"]
     Core["Archiver.Core — in-process library<br/>(ZipArchiveService, TarSandboxedService,<br/>AntivirusScanService → amsi.dll in-process)"]
 
     subgraph Sandbox["per archive operation: TarSandboxScope"]
@@ -545,6 +549,9 @@ flowchart TB
     Shell --> Core
     App --> Core
     Cli --> Core
+    Terminal["terminal: cmd / PowerShell / pwsh"] -->|"bare pakko: first match on PATH<br/>(WindowsApps alias, usually ahead of winget's folder)"| CliPkg
+    Terminal -.->|"pakko when only the zip/winget copy is installed"| Cli
+    CliPkg --> Core
     Core -->|"extract, list, scan, pre-scan (T-F49/T-F52)<br/>signature checked first"| TarBox
     Core -->|"create a tar-family archive (T-F105)<br/>and the one-shot --version probe"| TarPlain
 ```
@@ -554,6 +561,11 @@ child of whichever process hosts `Archiver.Core` (App, Shell or `pakko.exe`), sa
 run that reads an untrusted archive and unsandboxed for creation and the version probe (see
 `SECURITY.md`); `pakko.exe` outside the package; the file associations and File activation; the
 stdin path hand-off. `pakko://` is not drawn: T-F232 removed it.
+
+**T-F317 (2026-10-03):** the package now also carries `pakko.exe` as `Application Id=Cli` with the
+`pakko.exe` execution alias (shape from NanaZip's real manifest), so a terminal reaches the CLI
+inside the package identity; the zip/winget copy stays outside it. Like every new `<Application>`,
+it exists because an exe in the package must be declared to be launchable from outside.
 
 **What this catches:** any satellite EXE added later that is *not* given its own `<Application>`
 entry with `EntryPoint="Windows.FullTrustApplication"` will build and run fine from Visual Studio

@@ -10898,3 +10898,42 @@ T-F292, T-F111, T-F112.
   late async properties.
 - **Finding filed, not fixed (T-F319):** an archive opened from a real folder in the browser that
   then fails to list drops the user into the pending list instead of back into the folder.
+
+## v1.7.0 wave 8 — `pakko` in the terminal: Store alias and winget (T-F317, 2026-10-03)
+
+- **The MSIX carries `pakko.exe` behind a `pakko.exe` execution alias.** Shape taken from
+  NanaZip's real `NanaZipPackage/Package.appxmanifest` (fetched 2026-10-03): a hidden
+  `<Application EntryPoint="Windows.FullTrustApplication" AppListEntry="none">` with
+  `uap3:Extension Category="windows.appExecutionAlias"` → `desktop:ExecutionAlias`. No
+  `desktop4:Subsystem="console"` — T-F317's first draft named it, but NanaZip's console exe has
+  none; the exe's console PE subsystem is what attaches it to the terminal (confirmed on device from
+  cmd, Windows PowerShell and pwsh 7).
+- **Shared runtime, not a second one.** Same pattern as `Archiver.Shell.exe`: a self-contained
+  apphost plus `pakko.dll`/`deps.json`/`runtimeconfig.json` via `Content Include`; the runtime and
+  `Archiver.Core.dll` come from the App's publish at the package root. Cost ~300 KB instead of the
+  CLI zip's ~80 MB.
+- **`pakko -v` names the package** (`GetCurrentPackageFullName`) instead of printing the package
+  version: the package version is not the release (the Store shipped 1.6.0.0 x64 and 1.6.1.0 ARM64
+  for v1.6.0), and T-F222's rule that only a release prints a bare version stays. `CI-Build-Msix.ps1
+  -CliVersion` stamps the tag into the packaged CLI on tag builds, as `Publish-Cli.ps1 -Version`
+  does for the zip.
+- **Built-package check.** `CI-Build-Msix.ps1` opens the produced package (and the inner app
+  package of a bundle) and fails if `pakko.exe`, its three files or the alias are missing — the
+  source checks (`PackagingManifestTests`) cannot see what the packaging pipeline produced.
+- **winget: a script, not `wingetcreate`.** `scripts/New-WingetManifest.ps1` writes the three
+  files from the release's `SHA256SUMS`; no new tool to pin. Identifier `PavloRybchenko.PakkoCLI`
+  (publisher as on the Store), name "Pakko CLI", moniker `pakko-cli`.
+- **`ArchiveBinariesDependOnPath: true`, not the default `Links` symlink.** Measured: the symlinked
+  `pakko.exe` fails with "The application to execute does not exist: ...\WinGet\Links\pakko.dll" —
+  the .NET apphost resolves its app next to the path it was started from. With the flag winget puts
+  the install folder on the user `PATH`. Rejected: a single-file publish just for winget (a second
+  build flavor of the same release; the zip would no longer be what winget installs).
+- **The winget-pkgs PR stays manual.** The tag build uploads the manifest as an artifact; opening
+  the PR publishes under the project's name, and automating it needs a PAT secret — a separate
+  decision, not taken here.
+- **Found, filed (T-F320):** MSIX write virtualization redirects a *new top-level* folder under
+  `%LOCALAPPDATA%`/`%APPDATA%` into the package's `LocalCache`. NanaZip opts out
+  (`rescap:unvirtualizedResources` + `desktop6:FileSystemWriteVirtualization` disabled); a restricted
+  capability, so it is decided with the next Store upload.
+- **Naming:** `pakko` is the terminal program in every install, as `7z` is 7-Zip's console and
+  `NanaZipC` NanaZip's. The GUI has no alias; if it gets one, it gets its own name.

@@ -3769,7 +3769,29 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F317 — `pakko` in the terminal for Store and winget users (P2, user-requested)
 
-- [ ] **Status:** open. Requested by the user 2026-10-03; folds in T-F119's winget part. Today a
+- [~] **Status:** done in v1.7.0 wave 8 (2026-10-03) except the outward steps. Left: the first
+  `microsoft/winget-pkgs` PR (only on the user's go), the headless-app check at the next Store
+  upload (wave 9), an ARM64 device run of the packaged alias, and both `index.html` install lines
+  (they describe the released v1.6.0, so they change with the v1.7.0 release and the merged winget
+  PR, not before). **CHANGELOG v1.7.0:** a Store or
+  MSIX install now gives the `pakko` command in any terminal; the CLI zip can be installed with
+  winget (`winget install pakko-cli`).
+  - **Part B evidence** (Deploy 1.6.0.9 x64, 2026-10-03): `where pakko` →
+    `%LOCALAPPDATA%\Microsoft\WindowsApps\pakko.exe` from cmd, Windows PowerShell and pwsh 7;
+    `pakko -v` → `pakko 0.0.0-dev+ce95850 (package PavloRybchenko.Pakko_1.6.0.9_x64__9hkd8feqeqbr4)`;
+    the whole Subprocess layer (68 tests) green against the alias (`PAKKO_CLI_EXE`); by hand: `a`
+    zip and `-ttar.gz`, `t`, `l` and `x` of a `.tar.gz`, `x` of a `.7z` (tar through the
+    AppContainer sandbox from the package identity), `-si` and `-so` through cmd pipes, Ctrl+C in a
+    real Windows Terminal during a 1.5 GB `a` → exit 255, "operation stopped by user", no partial
+    archive or temp folder left. Size cost: four files, ~300 KB (shares the App's runtime).
+    Found: MSIX write virtualization of a new top-level `%LOCALAPPDATA%`/`%APPDATA%` folder — T-F320.
+  - **Part A evidence:** `scripts/New-WingetManifest.ps1` for v1.6.0 → `winget validate` OK →
+    `winget install --manifest` → `pakko 1.6.0`, `a`/`t`/`l`/`x` OK → `winget uninstall`. The
+    symlink mode failed (the .NET apphost looks for `pakko.dll` next to `WinGet\Links\pakko.exe`:
+    "The application to execute does not exist"), so the manifest uses
+    `ArchiveBinariesDependOnPath: true` (install folder on PATH; the symlink mode is not used).
+    `winget uninstall` removed the folder but left its PATH entry (winget's behavior; documented).
+- **Earlier status:** open. Requested by the user 2026-10-03; folds in T-F119's winget part. Today a
   Store install gives no `pakko` command, and the CLI zip from GitHub Releases needs a manual `PATH`
   edit (`docs/CLI.md`, Distribution).
 - **Part A — winget (CLI zip).** A manifest in `microsoft/winget-pkgs` for the existing per-arch
@@ -3783,8 +3805,9 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   binaries are not code-signed yet (T-F10); winget accepts that, but its antivirus check may delay a
   submission.
 - **Part B — Store package alias.** `pakko.exe` inside the MSIX as its own `<Application>`
-  (`EntryPoint="Windows.FullTrustApplication"`, console subsystem `desktop4:Subsystem="console"`)
-  with `uap5:AppExecutionAlias` `pakko.exe`, as `Archiver.Shell.exe` is packaged today (`Content
+  (`EntryPoint="Windows.FullTrustApplication"`) with a `uap3:AppExecutionAlias` `pakko.exe`
+  (corrected 2026-10-03: no `desktop4:Subsystem` — NanaZip's real manifest declares its console exe
+  without it; the exe's own console PE subsystem attaches it to the terminal), as `Archiver.Shell.exe` is packaged today (`Content
   Include`, self-contained — check first whether it can use the package's own .NET instead of a
   second runtime copy, and measure the size cost). Check before the Store upload that a second hidden
   application does not trip the headless-app check again (T-F129's waiver). Verify inside the
@@ -3795,6 +3818,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   -v` shows which one ran.
 - **Naming:** the winget package is named "Pakko CLI" with moniker `pakko-cli`, so `winget install
   pakko` keeps finding only the GUI (msstore) and never asks which one; the command is still `pakko`.
+  Unverified until the package is listed: winget's name matching might still offer both — check
+  `winget install pakko` once the PR is merged, and soften `docs/CLI.md` if it asks.
 - **Docs:** `docs/CLI.md` Distribution (replace "not added to PATH"), `scripts/README.md` (the
   per-release winget step), `README.md` + both `index.html` install lines, DECISIONS entry.
 - **Tests first:** a manifest check that the packaged `pakko.exe` has an alias and console subsystem
@@ -3826,3 +3851,20 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   diagram 6's exit arrow in the same commit. Check on device with a corrupt `.zip` in a browsed
   folder.
 - **Reported by:** T-F292 redraw of diagram 6, 2026-10-03.
+
+### T-F320 — MSIX write virtualization hides new top-level AppData folders (P3)
+
+- [ ] **Status:** open. Found while checking T-F317 on device (2026-10-03). A packaged process
+  (the `pakko` alias, and so also App and Shell) that creates a **new folder directly under**
+  `%LOCALAPPDATA%` or `%APPDATA%` gets it redirected to
+  `%LOCALAPPDATA%\Packages\PavloRybchenko.Pakko_<hash>\LocalCache\...`; nothing unpackaged sees it.
+  Measured: `pakko x t.zip -o%LOCALAPPDATA%\New` → files only in `LocalCache\Local\New`; the same
+  into `%APPDATA%\New` → not visible; into an existing `%LOCALAPPDATA%` folder or a new subfolder
+  of one → real location; `%TEMP%` → real location; Shell `--extract-here` next to an archive in an
+  existing `%LOCALAPPDATA%` folder → real location. So only the "new top-level AppData folder"
+  shape is affected — rare from Explorer, more reachable from scripts.
+- **Fix to evaluate:** what NanaZip ships — `rescap:Capability Name="unvirtualizedResources"` plus
+  `desktop6:FileSystemWriteVirtualization` disabled. A restricted capability needs a justification
+  in the Store submission, so decide it with the next Store upload (v1.7.0 wave 9). Until then
+  documented in `docs/CLI.md` (Distribution).
+- **Reported by:** T-F317 device check, 2026-10-03.

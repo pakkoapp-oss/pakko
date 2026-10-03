@@ -95,6 +95,12 @@ internal static class CliProcessRunner
     // Release without hardcoding either.
     private static string Resolve()
     {
+        // T-F317: run the same suite against another copy, e.g. the packaged one through the alias
+        // (%LOCALAPPDATA%\Microsoft\WindowsApps\pakko.exe).
+        string? overridePath = Environment.GetEnvironmentVariable("PAKKO_CLI_EXE");
+        if (!string.IsNullOrEmpty(overridePath))
+            return overridePath;
+
         var testBinDir = new DirectoryInfo(AppContext.BaseDirectory);
         string tfm = testBinDir.Name;
         string configuration = testBinDir.Parent?.Name

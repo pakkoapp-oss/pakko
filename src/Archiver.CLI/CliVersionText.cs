@@ -25,4 +25,9 @@ public static class CliVersionText
             return $"pakko {core}";
         return $"pakko {core}+{metadata[..Math.Min(ShortShaLength, metadata.Length)]}";
     }
+
+    /// <summary>T-F317: appends the package full name when this copy runs from the MSIX (the
+    /// Store's <c>pakko</c> alias), so <c>pakko -v</c> tells it apart from the winget/zip copy.</summary>
+    public static string WithPackage(string line, string? packageFullName) =>
+        string.IsNullOrEmpty(packageFullName) ? line : $"{line} (package {packageFullName})";
 }

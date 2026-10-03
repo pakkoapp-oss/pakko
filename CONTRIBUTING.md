@@ -124,7 +124,7 @@ T-F232.)
 | `Archiver.App` | WinUI 3 main application |
 | `Archiver.Shell` | Shell-triggered operation entry point (silent CLI, launched by the shell extension); shows progress via the Windows Shell's built-in `IProgressDialog`, in-process |
 | `Archiver.ShellExtension` | C++ COM DLL implementing `IExplorerCommand` (the actual right-click context menu) — built via MSBuild, not `dotnet build`; see `CLAUDE.md` Build Commands |
-| `Archiver.CLI` | Standalone console frontend (T-F09), built as `pakko.exe` — no WinUI, no MSIX, ships as its own self-contained per-architecture download via `scripts/Publish-Cli.ps1`; see `docs/CLI.md` |
+| `Archiver.CLI` | Standalone console frontend (T-F09), built as `pakko.exe` — no WinUI; ships as its own self-contained per-architecture download via `scripts/Publish-Cli.ps1` (and winget), and since T-F317 also inside the MSIX behind the `pakko` execution alias; see `docs/CLI.md` |
 | `Archiver.Messages` | Core's error/skip messages in 37 languages, shared by `Archiver.Shell` and `Archiver.App` (T-F209) |
 | `Archiver.Core.Tests` | Unit tests for core compression/extraction logic |
 | `Archiver.Core.IntegrationTests` | Tests that shell out to the real `C:\Windows\System32\tar.exe` (tagged `[Integration]`) |

@@ -105,6 +105,13 @@ if (-not $DeployOnly) {
     & dotnet build $operationUiProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
     $operationUiBuildExitCode = $LASTEXITCODE
     if ($operationUiBuildExitCode -ne 0) { Write-Error "Archiver.OperationUi build failed (exit $operationUiBuildExitCode)."; exit $operationUiBuildExitCode }
+    # T-F317: pakko.exe for the "pakko" execution alias; self-contained for the same reason.
+    $cliProj = Join-Path $repoRoot 'src\Archiver.CLI\Archiver.CLI.csproj'
+    & dotnet build $cliProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
+    $cliBuildExitCode = $LASTEXITCODE
+    if ($cliBuildExitCode -ne 0) { Write-Error "Archiver.CLI build failed (exit $cliBuildExitCode)."; exit $cliBuildExitCode }
+    $cliDllSourcePath = Join-Path $repoRoot "src\Archiver.CLI\bin\$platform\Release\net10.0\$rid\pakko.dll"
+
     # The managed .dll, not the apphost: the apphost barely changes between builds (T-F128).
     $operationUiDllSourcePath = Join-Path $repoRoot "src\Archiver.OperationUi\bin\$platform\Release\net10.0-windows10.0.17763.0\$rid\Archiver.OperationUi.dll"
 
@@ -218,7 +225,8 @@ if (-not $DeployOnly) {
                 foreach ($check in @(
                     @{ Name = 'Archiver.Shell.exe'; SourcePath = $shellExeSourcePath },
                     @{ Name = 'Archiver.ShellExtension.dll'; SourcePath = $shellExtDllSourcePath },
-                    @{ Name = 'Archiver.OperationUi.dll'; SourcePath = $operationUiDllSourcePath }
+                    @{ Name = 'Archiver.OperationUi.dll'; SourcePath = $operationUiDllSourcePath },
+                    @{ Name = 'pakko.dll'; SourcePath = $cliDllSourcePath }
                 )) {
                     $entry = $zip.Entries | Where-Object { $_.Name -eq $check.Name } | Select-Object -First 1
                     if (-not $entry) {

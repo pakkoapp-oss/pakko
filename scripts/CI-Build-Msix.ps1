@@ -18,6 +18,8 @@
 .PARAMETER MsBuildPath
     Path to msbuild.exe. Defaults to the newest Visual Studio with MSBuild (vswhere -latest), the
     same way Deploy.ps1 does; pass this to use whatever microsoft/setup-msbuild resolved instead.
+.PARAMETER CliVersion
+    Release version for the packaged pakko.exe (T-F317), e.g. 1.7.0. Omit outside a release.
 .EXAMPLE
     .\CI-Build-Msix.ps1 -Architecture x64 -Thumbprint D2EC5F2C451ED0EBE94B8168A68E5B813954CC75
 #>
@@ -27,7 +29,8 @@ param(
     [string] $Architecture = 'x64',
     [Parameter(Mandatory = $true)]
     [string] $Thumbprint,
-    [string] $MsBuildPath
+    [string] $MsBuildPath,
+    [string] $CliVersion
 )
 
 Set-StrictMode -Version Latest
@@ -62,6 +65,17 @@ Write-Host "Building Archiver.OperationUi ($Architecture)..." -ForegroundColor C
 $operationUiProj = Join-Path $repoRoot 'src\Archiver.OperationUi\Archiver.OperationUi.csproj'
 & dotnet build $operationUiProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
 if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.OperationUi build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
+
+# ── Build Archiver.CLI (pakko.exe for the "pakko" execution alias, T-F317) ─────
+# Self-contained like Archiver.Shell. A release passes -CliVersion (the tag without "v") so the
+# packaged pakko -v prints the release, as Publish-Cli.ps1 -Version does for the zip; otherwise
+# the csproj's 0.0.0-dev marker stays (T-F222).
+Write-Host "Building Archiver.CLI ($Architecture)..." -ForegroundColor Cyan
+$cliProj = Join-Path $repoRoot 'src\Archiver.CLI\Archiver.CLI.csproj'
+$cliArgs = @($cliProj, '/p:Configuration=Release', "/p:Platform=$platform", "/p:RuntimeIdentifier=$rid", '--self-contained')
+if ($CliVersion) { $cliArgs += "/p:Version=$CliVersion" }
+& dotnet build @cliArgs
+if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.CLI build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
 
 # ── Build Archiver.ShellExtension (C++ COM DLL) ────────────────────────────────
 Write-Host ""
@@ -115,6 +129,50 @@ $msix = Get-ChildItem -Path $pkgOutDir -Recurse -Include '*.msix', '*.msixbundle
 
 if (-not $msix) {
     Write-Error "No .msix or .msixbundle file found under $pkgOutDir."
+    exit 1
+}
+
+# ── T-F317: check the built package itself carries pakko.exe and its alias ────
+# The source manifest and Archiver.App.csproj are checked by PackagingManifestTests; this checks
+# what the packaging pipeline actually produced. A .msixbundle holds the app package as an inner
+# .msix next to the resource packages, so look inside every inner package for the one with pakko.
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+function Test-PakkoInPackage([System.IO.Compression.ZipArchive] $package) {
+    $names = @($package.Entries | ForEach-Object { $_.FullName })
+    $required = @('pakko.exe', 'pakko.dll', 'pakko.deps.json', 'pakko.runtimeconfig.json', 'AppxManifest.xml')
+    foreach ($name in $required) {
+        if ($names -notcontains $name) { return $false }
+    }
+    $reader = New-Object System.IO.StreamReader(($package.GetEntry('AppxManifest.xml')).Open())
+    try { $manifestText = $reader.ReadToEnd() } finally { $reader.Dispose() }
+    return $manifestText.Contains('Alias="pakko.exe"')
+}
+
+$outer = [System.IO.Compression.ZipFile]::OpenRead($msix.FullName)
+try {
+    $pakkoFound = $false
+    if ($msix.Extension -eq '.msix') {
+        $pakkoFound = Test-PakkoInPackage $outer
+    } else {
+        foreach ($inner in @($outer.Entries | Where-Object { $_.FullName -like '*.msix' })) {
+            $buffer = New-Object System.IO.MemoryStream
+            try {
+                $innerStream = $inner.Open()
+                try { $innerStream.CopyTo($buffer) } finally { $innerStream.Dispose() }
+                $buffer.Position = 0
+                $innerZip = New-Object System.IO.Compression.ZipArchive($buffer, [System.IO.Compression.ZipArchiveMode]::Read)
+                try {
+                    if (Test-PakkoInPackage $innerZip) { $pakkoFound = $true; break }
+                } finally { $innerZip.Dispose() }
+            } finally { $buffer.Dispose() }
+        }
+    }
+} finally {
+    $outer.Dispose()
+}
+if (-not $pakkoFound) {
+    Write-Error "The built package has no pakko.exe with its four files and the pakko.exe execution alias (T-F317)."
     exit 1
 }
 

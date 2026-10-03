@@ -939,6 +939,18 @@ Ukrainian UI, CI an English one.
   both ways (2026-10-03): 2 code mutants and 5 document edits, all red. Entry, exit, breadcrumb and
   drill-in transitions stay in the WinUI view model and are checked on device.
 
+## `pakko` in the Package (v1.7.0 wave 8, T-F317)
+
+- `PackagingManifestTests` (Core.Tests, tests first): the source `Package.appxmanifest` has one
+  hidden FullTrust `<Application>` for `pakko.exe` with the only `ExecutionAlias` (`pakko.exe`), and
+  `Archiver.App.csproj` packages exactly `pakko.exe`/`.dll`/`.deps.json`/`.runtimeconfig.json` from
+  `Archiver.CLI`'s output. Mutation-checked (2026-10-03): alias removed, `pakko.dll` item removed —
+  both red. `CI-Build-Msix.ps1` checks the same in the built package.
+- `CliVersionTextTests.WithPackage_*`: `pakko -v` appends `(package <full name>)` only when packaged.
+- `PAKKO_CLI_EXE` points `CliProcessRunner` at another `pakko.exe`; set it to
+  `%LOCALAPPDATA%\Microsoft\WindowsApps\pakko.exe` to run the whole `Subprocess/` layer against the
+  installed package (68/68 on 2026-10-03). The `-v` pattern accepts the package suffix.
+
 ## Temporary Names and Commits (v1.7.0 wave 6, T-F263/T-F312)
 
 `IO/TempOwnerTests` (tag and name shape, `IsRunningHere` incl. a reused pid and v1.6.0's

@@ -348,7 +348,8 @@ public sealed class CliSubprocessTests
 
     // T-F222: tests build without Publish-Cli.ps1's /p:Version, so this is always a dev build — it
     // printed a stale "pakko 1.4.2", indistinguishable from the real v1.4.2 release.
-    private const string DevBuildVersionPattern = @"^pakko \d+\.\d+\.\d+-dev(\+[0-9a-f]{7})?$";
+    // T-F317: the packaged copy (PAKKO_CLI_EXE pointing at the alias) appends its package name.
+    private const string DevBuildVersionPattern = @"^pakko \d+\.\d+\.\d+-dev(\+[0-9a-f]{7})?( \(package PavloRybchenko\.Pakko_[^ )]+\))?$";
 
     [Fact]
     public void DashDashVersion_ExitsZeroAndPrintsPakkoPrefixedVersion()

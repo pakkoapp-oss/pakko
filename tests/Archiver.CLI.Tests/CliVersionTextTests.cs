@@ -18,4 +18,16 @@ public sealed class CliVersionTextTests
     {
         CliVersionText.Format(informationalVersion).Should().Be(expected);
     }
+
+    // T-F317: the copy inside the MSIX (the "pakko" alias) names its package, so with both the
+    // Store alias and the winget/zip copy on PATH, -v shows which one ran.
+    [Theory]
+    [InlineData("pakko 1.7.0", "PavloRybchenko.Pakko_1.7.0.0_x64__8wekyb3d8bbwe", "pakko 1.7.0 (package PavloRybchenko.Pakko_1.7.0.0_x64__8wekyb3d8bbwe)")]
+    [InlineData("pakko 0.0.0-dev+0e379cc", "PavloRybchenko.Pakko_1.6.0.9_x64__abc", "pakko 0.0.0-dev+0e379cc (package PavloRybchenko.Pakko_1.6.0.9_x64__abc)")]
+    [InlineData("pakko 1.7.0", null, "pakko 1.7.0")]
+    [InlineData("pakko 1.7.0", "", "pakko 1.7.0")]
+    public void WithPackage_AppendsThePackageFullNameOnlyWhenPackaged(string line, string? packageFullName, string expected)
+    {
+        CliVersionText.WithPackage(line, packageFullName).Should().Be(expected);
+    }
 }

@@ -261,8 +261,10 @@ src/
 │       └── PasswordMessages.resx / PasswordMessages.<locale>.resx  ← 36 locales, same reuse pattern
 │
 ├── Archiver.CLI/                ← standalone console frontend (T-F09); net10.0; Exe (real console,
-│   │                                not WinExe); no WinUI; built as pakko.exe; ships independently
-│   │                                of the MSIX (scripts/Publish-Cli.ps1)
+│   │                                not WinExe); no WinUI; built as pakko.exe; ships as its own zip
+│   │                                (scripts/Publish-Cli.ps1, winget) and, since T-F317, also inside
+│   │                                the MSIX behind the "pakko" execution alias
+│   ├── CliPackageIdentity.cs           ← T-F317: package full name for pakko -v (GetCurrentPackageFullName)
 │   ├── Program.cs
 │   ├── CliArgumentParser.cs
 │   ├── CliStreamStaging.cs             ← T-F116: -si/-so buffer-then-proceed staging, zero Core changes
@@ -1704,8 +1706,10 @@ sees it.
 A fourth thin frontend over `Archiver.Core`, alongside App/Shell/ShellExtension — 7z-familiar
 single-letter commands (`x`/`t`/`i`/`a`/`l`), specified in full in `CLI.md`. Ships as a separate,
 standalone, self-contained downloadable artifact (see `CLI.md`'s "Distribution" section and
-`scripts/README.md`) — it does not require the MSIX/GUI to be installed and is never packaged
-into it.
+`scripts/README.md`) — it does not require the MSIX/GUI to be installed. Since T-F317 (v1.7.0)
+the MSIX also carries the same `pakko.exe` as a hidden `<Application Id="Cli">` with the `pakko.exe`
+execution alias, sharing the App's runtime at the package root (`Archiver.App.csproj`'s
+`Content Include`, built by `Deploy.ps1`/`CI-Build-Msix.ps1`).
 
 **No DI container** — mirrors `Archiver.Shell/Program.cs`'s pattern exactly (T-F261: every
 command takes its services from Core's `PakkoServices`, built once with the loaded policy), not

@@ -98,8 +98,11 @@ Archive Browser.
 
 ## Publishing the standalone CLI (Archiver.CLI, T-F09)
 
-`Publish-Cli.ps1` is **independent of everything above** — `Archiver.CLI` is never packaged into
-the MSIX, needs no dev-signing certificate, and `Deploy.ps1` never touches it.
+`Publish-Cli.ps1` is **independent of everything above** — the zip needs no dev-signing
+certificate. (Separately, since T-F317 `Deploy.ps1` and `CI-Build-Msix.ps1` also build
+`Archiver.CLI` self-contained and package its `pakko.exe` into the MSIX for the `pakko` execution
+alias; `CI-Build-Msix.ps1 -CliVersion X.Y.Z` stamps a release version, and the script fails if the
+built package lacks `pakko.exe` or the alias.)
 
 ```powershell
 .\scripts\Publish-Cli.ps1                    # both architectures (default)
@@ -115,6 +118,22 @@ copy is bundled alongside it.
 `-OutputRoot <dir>` publishes elsewhere. The folder is wiped first, so the script accepts only a
 new or empty folder, the default, or one it created before (it leaves a `.pakko-cli-output`
 marker); any other non-empty folder is refused (T-F259).
+
+### winget manifest for the CLI zip (T-F317)
+
+`New-WingetManifest.ps1 -Version X.Y.Z [-Sha256SumsPath <release SHA256SUMS>] [-ReleaseDate
+yyyy-MM-dd]` writes the three manifest files for `PavloRybchenko.PakkoCLI` (moniker `pakko-cli`)
+into `artifacts/winget/<version>/`. A tag build's `release` job runs it too and uploads the result
+as the `pakko-winget-manifest` artifact. Per release, by hand (it publishes under the project's
+name):
+
+1. `winget validate --manifest <folder>`; optionally `winget install --manifest <folder>` (needs
+   `winget settings --enable LocalManifestFiles`, admin) and `pakko -v` in a new terminal.
+2. Open a PR to `microsoft/winget-pkgs` adding the folder under
+   `manifests/p/PavloRybchenko/PakkoCLI/<version>/` (from the `pakkoapp-oss` account).
+
+The manifest uses `ArchiveBinariesDependOnPath: true` — winget's `Links` symlink breaks the .NET
+apphost (see `docs/CLI.md`, Distribution).
 
 ---
 

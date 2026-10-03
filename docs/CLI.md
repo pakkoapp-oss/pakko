@@ -38,8 +38,9 @@ plus the two-character `rn` (rename) special case, and the real switch-prefix ta
 
 ## Distribution
 
-`Archiver.CLI` ships as a separate, standalone downloadable artifact — not bundled inside the
-MSIX, and does not require Pakko's GUI to be installed. Published self-contained per architecture
+`Archiver.CLI` ships as a separate, standalone downloadable artifact that does not require Pakko's
+GUI to be installed; since T-F317 (v1.7.0) the MSIX carries the same `pakko.exe` too (see the
+table below). Published self-contained per architecture
 (`win-x64`/`win-arm64`, matching the solution's existing platform set) via GitHub Releases — the
 same channel already used for v1.1+ — each build accompanied by a `SHA256SUMS` file so a script or
 a user can verify the download before running it. This is a packaging/release-engineering concern
@@ -51,22 +52,35 @@ is named `pakko.exe` (`Archiver.CLI.csproj`'s `AssemblyName`, distinct from the 
 name) — short, matches the product name, and matches the `pakko:` prefix already used in every
 stderr message and in `--help`'s own `USAGE:` line.
 
-**Not added to `PATH` automatically.** Same as ripgrep/fd/bat's own zip distributions — the user
-extracts the zip and either adds that folder to `PATH` themselves (System Properties → Environment
-Variables, or `$env:PATH` in a PowerShell profile) or invokes it by full path. No installer/MSI is
-shipped for the CLI (only the GUI is MSIX-packaged), so there is no automatic PATH step today; a
-future package-manager listing (`winget`/`scoop`) would be the natural way to get real "install
-once, available everywhere" behavior without hand-writing a PATH-mutating installer — tracked as a
-possible follow-up, not yet scheduled.
+**Three ways to get the `pakko` command (T-F317, v1.7.0):**
 
-**Naming note (why not something that could collide with the GUI):** Windows adds
-`%LOCALAPPDATA%\Microsoft\WindowsApps` to every user's `PATH` automatically, and any MSIX
-`AppExecutionAlias` registered there resolves before most user-added `PATH` entries — this is the
-same mechanism that makes a Microsoft Store Python stub silently shadow a real `python.exe`
-installed elsewhere. Pakko's own `Package.appxmanifest` registers no `AppExecutionAlias` today, so
-there is no live collision — but if the GUI is ever given a terminal alias, it must not reuse
-`pakko` while this CLI also claims that name, or resolution order (not either binary's own code)
-would decide which one actually runs from a bare `pakko` invocation.
+| Install | How `pakko` gets on `PATH` | `pakko -v` prints |
+|---|---|---|
+| Pakko from the Microsoft Store or an MSIX | The package's execution alias `pakko.exe` in `%LOCALAPPDATA%\Microsoft\WindowsApps` (on every user's `PATH`) | `pakko X.Y.Z (package PavloRybchenko.Pakko_...)` |
+| `winget install pakko-cli` (package `PavloRybchenko.PakkoCLI`, the CLI zip) | winget adds its install folder to the user `PATH` (`ArchiveBinariesDependOnPath`) | `pakko X.Y.Z` |
+| The zip from GitHub Releases | Not added — extract it and add the folder to `PATH` yourself, or call it by full path (like ripgrep/fd/bat zips) | `pakko X.Y.Z` |
+
+- **Inside the MSIX** `pakko.exe` is its own hidden `<Application Id="Cli">` with a `uap3`
+  execution alias, the same shape as NanaZip's console exe (`NanaZipC.exe`). It is the same
+  program as the zip, built from the same project; it shares the App's .NET runtime at the package
+  root (four files, ~300 KB) and runs with the package identity — tar.exe still goes through the
+  same AppContainer sandbox.
+- **winget does not use a `WinGet\Links` symlink here:** the .NET apphost resolves `pakko.dll`
+  next to the path it was started from, so a symlinked `pakko.exe` fails with "The application to
+  execute does not exist". `winget uninstall` removes the folder but (winget's behavior) leaves the
+  `PATH` entry; it points nowhere and is harmless.
+- **Both installed:** a bare `pakko` runs whichever folder comes first in `PATH`. `WindowsApps` is
+  usually ahead of user entries, so the Store copy wins; `pakko -v` shows which one ran.
+- **Known difference of the packaged copy (T-F320):** MSIX write virtualization. Creating a *new
+  folder directly under* `%LOCALAPPDATA%` or `%APPDATA%` (e.g. `-o%LOCALAPPDATA%\NewFolder`) lands in
+  the package's private `LocalCache` instead, invisible to other programs. Existing folders under
+  them, their new subfolders, `%TEMP%` and every other location are written normally. Use the zip
+  or winget copy for that one shape until T-F320 is decided.
+
+**Naming note:** `pakko` is the terminal program everywhere — the same convention as 7-Zip (`7z`
+console, `7zFM`/`7zG` GUI) and NanaZip (`NanaZipC` console). The GUI has no execution alias; it is
+started from the Start menu, Explorer or a file association. If it ever gets one, it needs its own
+name (e.g. `pakkofm`), never `pakko`.
 
 **`tar.exe` is not bundled.** `Archiver.CLI` calls the OS-provided
 `C:\Windows\System32\tar.exe` via the existing `TarSandboxedService`, exactly like every other

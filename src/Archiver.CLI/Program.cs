@@ -49,7 +49,8 @@ static int RunVersion()
     // the 4-segment AssemblyVersion drops.
     string? informationalVersion = Assembly.GetExecutingAssembly()
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-    Console.Out.WriteLine(CliVersionText.Format(informationalVersion));
+    Console.Out.WriteLine(CliVersionText.WithPackage(
+        CliVersionText.Format(informationalVersion), CliPackageIdentity.CurrentPackageFullName()));
     return 0;
 }
 

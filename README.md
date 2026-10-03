@@ -116,8 +116,9 @@ compression tools — to read RAR/7z/tar/gz/bz2/xz/zst/lzma, and to create tar-f
 [`docs/CLI.md`](docs/CLI.md) for the full command/switch specification. Download it as its own
 per-architecture zip (with a `SHA256SUMS` file for verification) from the
 [project's GitHub Releases page](https://github.com/pakkoapp-oss/pakko/releases) — every version
-tag is built and published there automatically. It is not automatically added to `PATH` — see
-`docs/CLI.md`'s "Distribution" section for how to make it available from any terminal.
+tag is built and published there automatically. The zip is not added to `PATH`; from v1.7.0 the
+Microsoft Store/MSIX install also gives the `pakko` command in any terminal, and the zip can be
+installed with winget — see `docs/CLI.md`'s "Distribution" section.
 
 ---
 

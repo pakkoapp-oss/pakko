@@ -246,7 +246,10 @@ jobs:
 
       - name: Build and sign MSIX
         shell: pwsh
-        run: .\scripts\CI-Build-Msix.ps1 -Architecture ${{ matrix.architecture }} -Thumbprint $env:PAKKO_DEV_CERT_THUMBPRINT -MsBuildPath msbuild
+        run: |
+          # T-F317: the packaged pakko.exe prints the release on a tag, like build-cli's zip.
+          $cliVersion = if ("${{ github.ref }}".StartsWith("refs/tags/v")) { "${{ github.ref_name }}".TrimStart('v') } else { '' }
+          .\scripts\CI-Build-Msix.ps1 -Architecture ${{ matrix.architecture }} -Thumbprint $env:PAKKO_DEV_CERT_THUMBPRINT -MsBuildPath msbuild -CliVersion $cliVersion
 
       - name: Attest build provenance (SLSA, T-F125)
         uses: actions/attest-build-provenance@v4
@@ -306,7 +309,10 @@ jobs:
 
       - name: Build and sign Store MSIX
         shell: pwsh
-        run: .\scripts\CI-Build-Msix.ps1 -Architecture ${{ matrix.architecture }} -Thumbprint $env:PAKKO_STORE_CERT_THUMBPRINT -MsBuildPath msbuild
+        run: |
+          # T-F317: the packaged pakko.exe prints the release on a tag, like build-cli's zip.
+          $cliVersion = if ("${{ github.ref }}".StartsWith("refs/tags/v")) { "${{ github.ref_name }}".TrimStart('v') } else { '' }
+          .\scripts\CI-Build-Msix.ps1 -Architecture ${{ matrix.architecture }} -Thumbprint $env:PAKKO_STORE_CERT_THUMBPRINT -MsBuildPath msbuild -CliVersion $cliVersion
 
       - uses: actions/upload-artifact@v7
         with:
@@ -519,6 +525,20 @@ jobs:
           gh release create "${{ github.ref_name }}" @assets `
             --title "${{ github.ref_name }}" `
             --notes-file $env:NOTES_PATH
+
+      # T-F317: the winget manifest for this release's CLI zips, from the same SHA256SUMS. Kept as
+      # an artifact only -- submitting it to microsoft/winget-pkgs is a manual step
+      # (scripts/README.md), since it publishes under the project's name.
+      - name: Write winget manifest
+        shell: pwsh
+        run: |
+          $date = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')
+          .\scripts\New-WingetManifest.ps1 -Version "${{ github.ref_name }}".TrimStart('v') -Sha256SumsPath artifacts/cli/SHA256SUMS -ReleaseDate $date -OutputRoot artifacts/winget
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pakko-winget-manifest
+          path: artifacts/winget/
 
   # DocFX developer/API docs site (docfx.json at repo root -- see index.md/toc.yml/api/index.md
   # for the book+API structure). runs-on: ubuntu-latest, unlike every other job in this file --

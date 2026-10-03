@@ -7,10 +7,11 @@
   xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
   xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
   xmlns:desktop10="http://schemas.microsoft.com/appx/manifest/desktop/windows10/10"
-  IgnorableNamespaces="uap uap3 rescap com desktop4 desktop5 desktop10">
+  IgnorableNamespaces="uap uap3 rescap com desktop desktop4 desktop5 desktop10">
 
   <Identity
     Name="PavloRybchenko.Pakko"
@@ -161,6 +162,36 @@
         Square44x44Logo="Assets\Square44x44Logo.png"
         AppListEntry="none">
       </uap:VisualElements>
+    </Application>
+
+    <!--
+      T-F317: pakko.exe (Archiver.CLI) as the "pakko" command for Store installs. Same shape as
+      NanaZip's console application (its real Package.appxmanifest: a hidden FullTrust
+      Application with a uap3/desktop execution alias, no desktop4:Subsystem - the exe's own
+      console PE subsystem attaches it to the calling terminal). Shares the App's runtime at the
+      package root, like Archiver.Shell.exe.
+    -->
+    <Application Id="Cli"
+      Executable="pakko.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Pakko CLI"
+        Description="Pakko command line"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png"
+        AppListEntry="none">
+      </uap:VisualElements>
+      <Extensions>
+        <uap3:Extension
+          Category="windows.appExecutionAlias"
+          Executable="pakko.exe"
+          EntryPoint="Windows.FullTrustApplication">
+          <uap3:AppExecutionAlias>
+            <desktop:ExecutionAlias Alias="pakko.exe" />
+          </uap3:AppExecutionAlias>
+        </uap3:Extension>
+      </Extensions>
     </Application>
   </Applications>
 
