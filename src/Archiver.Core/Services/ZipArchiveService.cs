@@ -1980,7 +1980,7 @@ public sealed class ZipArchiveService : IArchiveService
     // Best-effort: an unreadable folder or file adds nothing here; the writers report it.
     private static (long TotalBytes, int FileCount) ComputeDirectoryTotals(string dir)
     {
-        FolderTotals totals = FolderTotals.Measure(dir);
+        var totals = FolderTotals.Measure(dir);
         return (totals.Bytes, totals.Files);
     }
 

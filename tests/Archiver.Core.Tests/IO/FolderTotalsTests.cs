@@ -40,7 +40,7 @@ public sealed class FolderTotalsTests : IDisposable
         File.WriteAllBytes(Path.Combine(outside, "big.bin"), new byte[1000]);
         DirectoryJunction.Create(Path.Combine(root, "link"), outside);
 
-        FolderTotals totals = FolderTotals.Measure(root);
+        var totals = FolderTotals.Measure(root);
 
         Directory.Delete(Path.Combine(root, "link"), recursive: false);
         totals.Should().Be(new FolderTotals(60, 3));

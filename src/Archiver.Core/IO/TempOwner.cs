@@ -139,25 +139,31 @@ public static class TempOwner
     // staging); "<32 hex>" (no owner). Anything else is unparsable.
     private static Owner? Parse(string text, bool requireUnique)
     {
-        string[] parts = text.Split('-', '_');
+        string[] parts = text.Split(['-', '_']);
         if (parts.Length >= 3 && IsMachine(parts[0]))
-        {
-            bool shapeOk = requireUnique ? parts.Length == 4 && IsHex(parts[3]) : parts.Length == 3;
-            if (shapeOk && TryInt(parts[1], out int pid) && TryLong(parts[2], out long ticks))
-                return new Owner(parts[0][1..], pid, ticks);
-            return null;
-        }
-        if (parts.Length == 2 && TryInt(parts[0], out int olderPid))
-        {
-            if (parts[1].Length != 32 && TryLong(parts[1], out long olderTicks))
-                return new Owner(null, olderPid, olderTicks);
-            if (requireUnique && IsHex(parts[1]))
-                return new Owner(null, olderPid, null);
-            return null;
-        }
+            return ParseTagged(parts, requireUnique);
+        if (parts.Length == 2)
+            return ParseOlder(parts, requireUnique);
         if (parts.Length == 1 && parts[0].Length == 32 && IsHex(parts[0]))
             return new Owner(null, null, null);
         return null;
+    }
+
+    private static Owner? ParseTagged(string[] parts, bool requireUnique)
+    {
+        bool shapeOk = requireUnique ? parts.Length == 4 && IsHex(parts[3]) : parts.Length == 3;
+        return shapeOk && TryInt(parts[1], out int pid) && TryLong(parts[2], out long ticks)
+            ? new Owner(parts[0][1..], pid, ticks)
+            : null;
+    }
+
+    private static Owner? ParseOlder(string[] parts, bool requireUnique)
+    {
+        if (!TryInt(parts[0], out int pid))
+            return null;
+        if (parts[1].Length != 32 && TryLong(parts[1], out long ticks))
+            return new Owner(null, pid, ticks);
+        return requireUnique && IsHex(parts[1]) ? new Owner(null, pid, null) : null;
     }
 
     private static bool IsMachine(string part) => part.Length == 9 && part[0] == 'm' && IsHex(part[1..]);

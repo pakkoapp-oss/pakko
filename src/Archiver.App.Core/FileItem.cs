@@ -151,9 +151,13 @@ public sealed partial class FileItem : ObservableObject, IDisposable
                     return (uint?)Archiver.Core.IO.Crc32.Compute(stream);
                 }
                 catch { return null; }
-            });
+            }, cancellationToken);
             Crc32 = crc;
             Crc32Display = crc is { } value ? $"{value:X8}" : "?";
+        }
+        catch (OperationCanceledException)
+        {
+            // the row is gone before its read started
         }
         finally
         {

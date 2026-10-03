@@ -83,7 +83,7 @@ public sealed class ArchiveTempFileTests : IDisposable
     public async Task CommitAsync_MissingTemp_ThrowsAtOnce()
     {
         string dest = Path.Combine(_temp.Path, "a.zip");
-        var started = DateTime.UtcNow;
+        DateTime started = DateTime.UtcNow;
 
         Func<Task> act = () => ArchiveTempFile.CommitAsync(Path.Combine(_temp.Path, "none.tmp"), dest, CancellationToken.None);
 

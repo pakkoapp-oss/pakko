@@ -167,10 +167,10 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
 
     private static async Task<string> ListAsync(string archivePath)
     {
-        var tar = new System.Diagnostics.ProcessStartInfo(@"C:\Windows\System32\tar.exe") { RedirectStandardOutput = true, UseShellExecute = false };
+        System.Diagnostics.ProcessStartInfo tar = new(@"C:\Windows\System32\tar.exe") { RedirectStandardOutput = true, UseShellExecute = false };
         tar.ArgumentList.Add("-tf");
         tar.ArgumentList.Add(archivePath);
-        using var process = System.Diagnostics.Process.Start(tar)!;
+        using System.Diagnostics.Process process = System.Diagnostics.Process.Start(tar)!;
         string output = await process.StandardOutput.ReadToEndAsync();
         await process.WaitForExitAsync();
         return output;
