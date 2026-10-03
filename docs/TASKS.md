@@ -3482,7 +3482,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F308 — App: keyboard-only gaps in the lists and the footer (P2)
 
-- [~] **Status:** fixed except one focus case, 2026-10-03 (v1.7.0 wave 4). Device (Deploy 1.6.0.3-1.6.0.5, App title build 2026-10-03 06:30-06:39, uk-UA, dark, 2026-10-03), keys sent with SendKeys: create list Delete removes the focused row and focus moves to the next one; Shift+F10 opens "Прибрати зі списку"; extract-mode footer Tab goes Очистити -> Стиснути в ZIP -> Видобути (screen order); About (Enter, then Esc) gives focus back to "Про програму"; browse Enter opens a folder (focus on its first row) and a nested archive, Backspace and Alt+Up go up when the list has focus. **Left:** after Enter drills into a nested archive, focus lands on the Up button, so the next Backspace does nothing until the list is focused again (three fixes tried: a deferred focus, bounded retries, a live-container check — none held; stopped per the three-attempts rule). Item 5 (faint check mark) not changed. Earlier status: Found in G6 pass 5, 2026-09-30 (1.5.0.13, E6, keyboard only):
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 4); the one focus case left is T-F314 (user, 2026-10-03). Device (Deploy 1.6.0.3-1.6.0.5, App title build 2026-10-03 06:30-06:39, uk-UA, dark, 2026-10-03), keys sent with SendKeys: create list Delete removes the focused row and focus moves to the next one; Shift+F10 opens "Прибрати зі списку"; extract-mode footer Tab goes Очистити -> Стиснути в ZIP -> Видобути (screen order); About (Enter, then Esc) gives focus back to "Про програму"; browse Enter opens a folder (focus on its first row) and a nested archive, Backspace and Alt+Up go up when the list has focus. **Left:** after Enter drills into a nested archive, focus lands on the Up button, so the next Backspace does nothing until the list is focused again (three fixes tried: a deferred focus, bounded retries, a live-container check — none held; stopped per the three-attempts rule). Item 5 (faint check mark) not changed. Earlier status: Found in G6 pass 5, 2026-09-30 (1.5.0.13, E6, keyboard only):
   1. Archive browser: Enter on a folder (`src` of `plain.zip`) only toggles its selection ("Вибрано 1 з 1")
      and does not open it; Backspace and Alt+Up leave the list as it is (the Up button works). Files and
      nested archives were not pressed, but only `DoubleTapped` is wired (no `KeyDown`/`ItemClick` on
@@ -3550,6 +3550,18 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   direction: expose the count (or the list) of conflict skips on the result so the CLI can print the
   hint, without changing the App's summary. Tests first in `Archiver.CLI.Tests`.
 - **Reported by:** v1.7.0 wave 3 closing review (agent), 2026-10-03.
+
+### T-F314 — App: focus lands on the Up button after Enter opens a nested archive (P3)
+
+- [ ] **Status:** open. Split out of T-F308 (user, 2026-10-03). In the Archive Browser, Enter on a
+  nested archive opens it, but keyboard focus ends on the browse Up button instead of the first row,
+  so the next Backspace/Alt+Up does nothing until the list is focused again (Enter on a folder keeps
+  focus on a row). Three fixes in `MainWindow.xaml.cs` did not hold on the device (a deferred `Focus`
+  at Low priority, bounded retries, a live-container check) — see `docs/DECISIONS.md`'s T-F308 entry.
+  Next idea, not tried: handle Backspace/Alt+Up for the whole browse area (the Up button included),
+  or find what moves focus to the Up button while the nested level loads (the list is disabled while
+  busy).
+- **Reported by:** v1.7.0 wave 4 device pass, 2026-10-03.
 
 ### T-F310 — A compressed GNU-format tar with OEM (cp866) names is still refused (P2)
 
