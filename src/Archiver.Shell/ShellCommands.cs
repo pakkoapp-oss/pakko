@@ -193,7 +193,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         if (session.Cancellation.IsCancellationRequested)
             return;
 
-        session.Complete(OperationMessages.ForHash(title, result));
+        session.Complete(OperationMessages.ForHash(title, result, paths));
     }
 
     // -------------------------------------------------------------------------

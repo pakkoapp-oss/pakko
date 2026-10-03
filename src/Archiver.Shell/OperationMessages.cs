@@ -56,31 +56,33 @@ internal static class OperationMessages
             : message;
     }
 
-    public static OperationMessage ForHash(string title, HashResult result)
+    public static OperationMessage ForHash(string title, HashResult result, IReadOnlyList<string> paths)
     {
         // T-F128 follow-up: a folder result shows only the aggregate Files/Size/DataSum/NamesSum,
         // matching NanaZip's own folder-hash summary; single files keep one line each. Labels are
         // localized; file names and hex hashes are data, not translated.
+        // T-F291: under a folder's summary, the entries the sums leave out, named relative to the
+        // folder's parent as pakko h names them (T-F221 item 10).
         string[] lines;
         if (result.Folder is { } folder)
         {
+            string? folderParent = paths.Count == 1
+                ? Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(paths[0])))
+                : null;
+            HashEntry[] failed = [.. result.Entries.Where(e => e.Error is not null)];
             lines =
             [
                 HashResultLocalizer.Get("HashResultFilesLine", folder.FileCount),
                 HashResultLocalizer.Get("HashResultSizeLine", ExactSize(folder.TotalBytes)),
                 HashResultLocalizer.Get("HashResultDataSumLine", folder.DataSum),
-                HashResultLocalizer.Get("HashResultNamesSumLine", folder.NamesSum)
+                HashResultLocalizer.Get("HashResultNamesSumLine", folder.NamesSum),
+                .. failed.Length > 0 ? [string.Empty] : Array.Empty<string>(),
+                .. CappedEntryLines(failed, e => folderParent is null ? e.SourcePath : Path.GetRelativePath(folderParent, e.SourcePath))
             ];
         }
         else
         {
-            IEnumerable<string> entryLines = result.Entries.Take(MaxLinesShown)
-                .Select(e => e.Error is null
-                    ? $"{Path.GetFileName(e.SourcePath)}: {e.Hash}"
-                    : $"{Path.GetFileName(e.SourcePath)}: {MessageText.Render(e.ErrorText, e.Error, CultureInfo.CurrentUICulture)}");
-            lines = result.Entries.Count > MaxLinesShown
-                ? [.. entryLines, HashResultLocalizer.Get("HashResultAndMoreLine", result.Entries.Count - MaxLinesShown)]
-                : [.. entryLines];
+            lines = CappedEntryLines(result.Entries, e => Path.GetFileName(e.SourcePath));
         }
 
         bool anyErrors = result.Entries.Any(e => e.Error is not null);
@@ -117,6 +119,17 @@ internal static class OperationMessages
         bool anyThreat = problems.Any(f => f.Verdict == ThreatVerdict.ThreatDetected);
         return new OperationMessage(title, anyThreat ? MessageSeverity.Error : MessageSeverity.Warning,
             string.Join(Environment.NewLine, lines));
+    }
+
+    private static string[] CappedEntryLines(IReadOnlyList<HashEntry> entries, Func<HashEntry, string> name)
+    {
+        IEnumerable<string> entryLines = entries.Take(MaxLinesShown)
+            .Select(e => e.Error is null
+                ? $"{name(e)}: {e.Hash}"
+                : $"{name(e)}: {MessageText.Render(e.ErrorText, e.Error, CultureInfo.CurrentUICulture)}");
+        return entries.Count > MaxLinesShown
+            ? [.. entryLines, HashResultLocalizer.Get("HashResultAndMoreLine", entries.Count - MaxLinesShown)]
+            : [.. entryLines];
     }
 
     // "2 KB (2,048 B)": the rounded size plus the exact count in the same unit, which needs no plural.

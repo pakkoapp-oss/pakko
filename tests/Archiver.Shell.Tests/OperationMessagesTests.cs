@@ -145,11 +145,51 @@ public sealed class OperationMessagesTests : IDisposable
     {
         var result = new HashResult { Folder = new FolderHashSummary("AAAA", "BBBB", 3, 2048) };
 
-        OperationMessage message = OperationMessages.ForHash("T", result);
+        OperationMessage message = OperationMessages.ForHash("T", result, []);
 
         message.Severity.Should().Be(MessageSeverity.Information);
         message.Text.Split(Environment.NewLine).Should().Equal(
             "Files: 3", "Size: 2 KB (2,048 B)", "DataSum: AAAA", "NamesSum: BBBB");
+    }
+
+    // T-F291: the folder sums leave out what could not be read; the window lists it, as pakko h does,
+    // named relative to the folder's parent (the names NamesSum covers), capped like the file list.
+    [Fact]
+    public void ForHash_FolderWithFailedEntries_ListsThemUnderTheSummary()
+    {
+        var result = new HashResult
+        {
+            Folder = new FolderHashSummary("AAAA", "BBBB", 1, 6),
+            Entries =
+            [
+                new HashEntry(@"C:\data\docs\ok.txt", "00", null),
+                new HashEntry(@"C:\data\docs\a\x.bin", null, "Access denied"),
+                new HashEntry(@"C:\data\docs\b\x.bin", null, "Skipped junction"),
+            ],
+        };
+
+        OperationMessage message = OperationMessages.ForHash("T", result, [@"C:\data\docs\"]);
+
+        message.Severity.Should().Be(MessageSeverity.Warning);
+        message.Text.Split(Environment.NewLine).Should().Equal(
+            "Files: 1", "Size: 6 B", "DataSum: AAAA", "NamesSum: BBBB", "",
+            @"docs\a\x.bin: Access denied", @"docs\b\x.bin: Skipped junction");
+    }
+
+    [Fact]
+    public void ForHash_FolderWithTwelveFailedEntries_ShowsTenAndTheRestCount()
+    {
+        var result = new HashResult
+        {
+            Folder = new FolderHashSummary("AAAA", "BBBB", 0, 0),
+            Entries = [.. Enumerable.Range(1, 12).Select(i => new HashEntry($@"C:\d\f{i}", null, "x"))],
+        };
+
+        string[] lines = OperationMessages.ForHash("T", result, [@"C:\d"]).Text.Split(Environment.NewLine);
+
+        lines.Should().HaveCount(4 + 1 + 11);
+        lines[14].Should().Be(@"d\f10: x");
+        lines[15].Should().Be("…and 2 more");
     }
 
     // T-F208: "(2,048 bytes)" had no plural form for other languages; the byte unit has none.
@@ -158,7 +198,7 @@ public sealed class OperationMessagesTests : IDisposable
     {
         var result = new HashResult { Folder = new FolderHashSummary("AAAA", "BBBB", 1, 6) };
 
-        OperationMessages.ForHash("T", result).Text.Split(Environment.NewLine)[1].Should().Be("Size: 6 B");
+        OperationMessages.ForHash("T", result, []).Text.Split(Environment.NewLine)[1].Should().Be("Size: 6 B");
     }
 
     [Fact]
@@ -166,7 +206,7 @@ public sealed class OperationMessagesTests : IDisposable
     {
         var result = new HashResult { Entries = [new HashEntry(@"C:\a.txt", null, "Access denied")] };
 
-        OperationMessage message = OperationMessages.ForHash("T", result);
+        OperationMessage message = OperationMessages.ForHash("T", result, []);
 
         message.Severity.Should().Be(MessageSeverity.Warning);
         message.Text.Should().Be("a.txt: Access denied");
@@ -177,7 +217,7 @@ public sealed class OperationMessagesTests : IDisposable
     {
         var result = new HashResult { Entries = [.. Enumerable.Range(1, 12).Select(i => new HashEntry($"f{i}", "00", null))] };
 
-        string[] lines = OperationMessages.ForHash("T", result).Text.Split(Environment.NewLine);
+        string[] lines = OperationMessages.ForHash("T", result, []).Text.Split(Environment.NewLine);
 
         lines.Should().HaveCount(11);
         lines[10].Should().Be("…and 2 more");
@@ -187,8 +227,8 @@ public sealed class OperationMessagesTests : IDisposable
     [Fact]
     public void ForHash_IsPreformattedForBothFilesAndFolders()
     {
-        OperationMessages.ForHash("T", new HashResult { Entries = [new HashEntry(@"C:.txt", "00", null)] }).Preformatted.Should().BeTrue();
-        OperationMessages.ForHash("T", new HashResult { Folder = new FolderHashSummary("AAAA", "BBBB", 1, 6) }).Preformatted.Should().BeTrue();
+        OperationMessages.ForHash("T", new HashResult { Entries = [new HashEntry(@"C:.txt", "00", null)] }, []).Preformatted.Should().BeTrue();
+        OperationMessages.ForHash("T", new HashResult { Folder = new FolderHashSummary("AAAA", "BBBB", 1, 6) }, []).Preformatted.Should().BeTrue();
     }
 
     [Fact]
