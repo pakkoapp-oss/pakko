@@ -125,6 +125,7 @@ public sealed class CliMessagesSubprocessTests
     [Theory]
     [InlineData("-ttar", "out.gz", "out.gz")]
     [InlineData("-ttar", "out", "out.tar")]
+    [InlineData("-ttar", ".gz", ".gz")]       // T-F294: a leading dot is an extension too, as in 7-Zip
     [InlineData("-tzip", "backup.out", "backup.out")]
     [InlineData("-tzip", "plain", "plain.zip")]
     public void Archive_ExplicitName_IsWrittenThe7ZipWay(string type, string name, string expectedFile)
@@ -137,6 +138,18 @@ public sealed class CliMessagesSubprocessTests
         Directory.GetFiles(dir).Select(Path.GetFileName).Should().Equal(expectedFile);
     }
 
+    // T-F294/T-F296: the name says tar.gz but no -t was given — a ZIP under that name is refused.
+    [Fact]
+    public void Archive_TarNameWithoutType_IsACommandLineErrorAndWritesNothing()
+    {
+        string dir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("a", Path.Combine(dir, "out.tar.gz"), CliFixtureFiles.SourceFileA);
+
+        exitCode.Should().Be(7);
+        stdErr.Should().Contain("-ttar.gz");
+        Directory.GetFiles(dir).Should().BeEmpty();
+    }
     [Fact]
     public void Hash_Folder_PrintsPathsRelativeToTheFoldersParent()
     {

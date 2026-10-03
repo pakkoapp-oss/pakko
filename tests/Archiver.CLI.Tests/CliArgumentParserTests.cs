@@ -876,4 +876,99 @@ public sealed class CliArgumentParserTests
         result.Type.Should().Be(CliCommandType.Invalid);
         result.ErrorMessage.Should().Contain("UTF-8").And.Contain("WIN").And.Contain("DOS");
     }
+
+    // --- T-F294/T-F296: PowerShell splits "-name.rest" into "-name" and ".rest" ---
+
+    [Theory]
+    [InlineData("a", "-ttar", ".gz", "t.tar.gz", "src")]
+    [InlineData("a", "t2.tar.gz", "-ttar", ".gz", "src")]
+    [InlineData("a", "-ttar", ".gz", "t3.tar.gz", "a.txt")]
+    public void SplitTypeSwitch_IsACommandLineError(params string[] args)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(args);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("'-ttar'").And.Contain("'.gz'").And.Contain("'-ttar.gz'").And.Contain(@".\.gz");
+    }
+
+    [Theory]
+    [InlineData("x", "-pSecret", ".1", "a.zip")]
+    [InlineData("a", "-pSecret", ".1", "out.zip", "src")]
+    [InlineData("t", "-pZq9", ".b.c", "a.zip")]
+    public void SplitPassword_IsACommandLineErrorThatDoesNotEchoThePassword(params string[] args)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(args);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("-p<password>").And.NotContain(args[1][2..]).And.NotContain(args[2]);
+    }
+
+    [Theory]
+    [InlineData("x", "-y", @".\a.zip")]
+    [InlineData("x", "-y", @"..\a.zip")]
+    [InlineData("x", "-y", "./a.zip")]
+    [InlineData("x", @"-oC:\out.d", "a.zip")]
+    [InlineData("a", "-ttar", @".\.gz", "src")]
+    public void DotLeadingPathThatIsNotASplitPiece_IsAccepted(params string[] args)
+    {
+        CliArgumentParser.Parse(args).Type.Should().NotBe(CliCommandType.Invalid);
+    }
+
+    [Theory]
+    [InlineData("-ttgz", ArchiveContainerFormat.TarGz)]
+    [InlineData("-ttbz2", ArchiveContainerFormat.TarBz2)]
+    [InlineData("-ttxz", ArchiveContainerFormat.TarXz)]
+    [InlineData("-ttzst", ArchiveContainerFormat.TarZst)]
+    public void Archive_DotFreeTypeAlias_MapsToContainerFormat(string switchToken, ArchiveContainerFormat expected)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", switchToken, "out", "file1.txt"]);
+
+        result.ArchiveFormat.Should().Be(expected);
+    }
+
+    // --- T-F294/T-F296: the archive type and the name's own extension must agree ---
+
+    [Theory]
+    [InlineData("out.tar.gz")]
+    [InlineData("out.tar")]
+    [InlineData("OUT.TAR.XZ")]
+    public void Archive_TarNameWithoutTypeSwitch_IsACommandLineError(string name)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", name, "file1.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain(name).And.Contain("no -t");
+    }
+
+    [Theory]
+    [InlineData("-ttar", "out.zip")]
+    [InlineData("-ttar.gz", "out.tar")]
+    [InlineData("-tzip", "out.tar.gz")]
+    [InlineData("-ttgz", "out.tar.bz2")]
+    public void Archive_TypeSwitchContradictsName_IsACommandLineError(string typeSwitch, string name)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", typeSwitch, name, "file1.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain(name).And.Contain(typeSwitch);
+    }
+
+    [Theory]
+    [InlineData("-ttar.gz", "out.tar.gz")]
+    [InlineData("-ttgz", "OUT.TAR.GZ")]
+    [InlineData("-ttar", "out.tar")]
+    [InlineData("-ttar", "out.gz")]      // T-F221 item 6: a name that is no archive type is written as typed
+    [InlineData("-tzip", "backup.out")]
+    [InlineData("-tzip", "out.zip")]
+    [InlineData("-ttar", "out")]
+    public void Archive_TypeSwitchAgreesWithNameOrNameHasNoArchiveType_IsAccepted(string typeSwitch, string name)
+    {
+        CliArgumentParser.Parse(["a", typeSwitch, name, "file1.txt"]).Type.Should().Be(CliCommandType.Archive);
+    }
+
+    [Fact]
+    public void Archive_ZipNameWithoutTypeSwitch_IsAccepted()
+    {
+        CliArgumentParser.Parse(["a", "out.zip", "file1.txt"]).Type.Should().Be(CliCommandType.Archive);
+    }
 }

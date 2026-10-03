@@ -445,7 +445,7 @@ static ArchiveOptions BuildArchiveOptions(
     ParsedCliCommand command, string destFolder, StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt)
 {
     string fileName = Path.GetFileName(command.ArchivePathArg!);
-    bool hasExtension = fileName.LastIndexOf('.') > 0;
+    bool hasExtension = fileName.Contains('.'); // T-F294: ".gz" too, as 7-Zip writes it
     return new()
     {
         SourcePaths = command.SourcePaths,

@@ -28,6 +28,7 @@ public sealed record ParsedCliCommand
     public bool AssumeYes { get; init; }                              // -y
     public ConflictBehavior? OverwriteMode { get; init; }             // -ao{a|s|u}, x only
     public ArchiveContainerFormat ArchiveFormat { get; init; } = ArchiveContainerFormat.Zip; // -t{type}, a only
+    public string? ArchiveTypeSwitch { get; init; }                   // the -t token as typed; null when no -t (T-F296)
     public CompressionLevel? CompressionLevel { get; init; }          // -mx=N, a only (null = default Optimal)
     public HashAlgorithmKind HashAlgorithm { get; init; } = HashAlgorithmKind.Crc32; // -scrc{method}, h only (T-F128/T-F09 follow-up); Crc32 matches real 7z's own default hash method
     public bool ReadFromStdin { get; init; }                          // -si, x/t/l/h only (T-F116)
@@ -56,12 +57,46 @@ public static class CliArgumentParser
             return new ParsedCliCommand { Type = CliCommandType.Version };
 
         string[] rest = args[1..];
+        if (ShellSplitReason(rest) is { } splitError)
+            return Invalid(splitError);
         if (!TryTakeConsoleCharset(ref rest, out int? consoleCodePage, out string? charsetError))
             return Invalid(charsetError!);
 
-        ParsedCliCommand command = ParseCommand(args[0], rest);
+        ParsedCliCommand command = CliCommandValidator.Validate(ParseCommand(args[0], rest));
         return command.Type == CliCommandType.Invalid ? command : command with { ConsoleCodePage = consoleCodePage };
     }
+
+    // T-F294: PowerShell passes "-name.rest" to a native program as two arguments, "-name" and
+    // ".rest" ("-ttar.gz" became "-ttar" and ".gz"; "-pSecret.1" became "-pSecret" and ".1").
+    // A switch made of name characters followed by such a piece is refused, whatever the command.
+    // A path that really starts with a dot is written .\name, which never looks like a piece.
+    private static string? ShellSplitReason(string[] rest)
+    {
+        for (int i = 0; i + 1 < rest.Length; i++)
+        {
+            if (!LooksLikeSplitSwitch(rest[i]) || !LooksLikeSplitPiece(rest[i + 1]))
+                continue;
+
+            // Neither half of a password is ever printed.
+            if (rest[i].StartsWith("-p", StringComparison.Ordinal))
+                return "'-p<password>' was cut at its first dot: PowerShell passes '-name.rest' as two arguments. "
+                    + "Quote the switch ('-p<password>')";
+
+            string piece = rest[i + 1];
+            return $"'{rest[i]}' is followed by '{piece}': PowerShell passes '-name.rest' as two arguments. "
+                + $"Quote the switch ('{rest[i]}{piece}'), or write a path that starts with a dot as .\\{piece}";
+        }
+        return null;
+    }
+
+    private static bool LooksLikeSplitSwitch(string token) =>
+        token.Length >= 2 && token[0] == '-' && token.AsSpan(1).IndexOfAnyExcept(NameCharacters) < 0;
+
+    private static readonly System.Buffers.SearchValues<char> NameCharacters =
+        System.Buffers.SearchValues.Create("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_");
+
+    private static bool LooksLikeSplitPiece(string token) =>
+        token.Length >= 2 && token[0] == '.' && token[1] is not ('.' or '\\' or '/');
 
     private static ParsedCliCommand ParseCommand(string commandName, string[] rest) =>
         commandName switch
@@ -315,6 +350,7 @@ public static class CliArgumentParser
         public List<string> SourcePaths { get; } = [];
         public bool AssumeYes { get; set; }
         public ArchiveContainerFormat ArchiveFormat { get; set; } = ArchiveContainerFormat.Zip;
+        public string? ArchiveTypeSwitch { get; set; }
         public CompressionLevel? CompressionLevel { get; set; }
         public bool WriteToStdout { get; set; }
         public string? Password { get; set; }
@@ -334,9 +370,6 @@ public static class CliArgumentParser
 
         if (state.ArchivePathArg is null || state.SourcePaths.Count == 0)
             return Invalid("'a' requires an archive name and at least one source file");
-        // Checked after the loop because -t may come after -p.
-        if ((state.Password is not null || state.PromptForPassword) && state.ArchiveFormat != ArchiveContainerFormat.Zip)
-            return Invalid("not supported by Pakko: -p on a tar-family archive — only ZIP archives can be password-protected");
 
         return new ParsedCliCommand
         {
@@ -345,6 +378,7 @@ public static class CliArgumentParser
             SourcePaths = state.SourcePaths,
             AssumeYes = state.AssumeYes,
             ArchiveFormat = state.ArchiveFormat,
+            ArchiveTypeSwitch = state.ArchiveTypeSwitch,
             CompressionLevel = state.CompressionLevel,
             WriteToStdout = state.WriteToStdout,
             Password = state.Password,
@@ -379,6 +413,7 @@ public static class CliArgumentParser
             if (!TryParseArchiveFormat(token, out ArchiveContainerFormat? format, out string? error))
                 return error;
             state.ArchiveFormat = format!.Value;
+            state.ArchiveTypeSwitch = token;
             return null;
         }
 
@@ -467,11 +502,16 @@ public static class CliArgumentParser
             "tar.xz" => ArchiveContainerFormat.TarXz,
             "tar.zst" => ArchiveContainerFormat.TarZst,
             "tar.lzma" => ArchiveContainerFormat.TarLzma,
+            // T-F294: dot-free spellings PowerShell cannot split.
+            "tgz" => ArchiveContainerFormat.TarGz,
+            "tbz2" => ArchiveContainerFormat.TarBz2,
+            "txz" => ArchiveContainerFormat.TarXz,
+            "tzst" => ArchiveContainerFormat.TarZst,
             _ => null,
         };
         if (format is null)
         {
-            error = $"unknown -t value: '{typeValue}' (expected zip, tar, tar.gz, tar.bz2, tar.xz, tar.zst, or tar.lzma)";
+            error = $"unknown -t value: '{typeValue}' (expected zip, tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma, or tgz, tbz2, txz, tzst)";
             return false;
         }
 
