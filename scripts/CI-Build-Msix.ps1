@@ -69,11 +69,13 @@ if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.OperationUi build failed (exit 
 # ── Build Archiver.CLI (pakko.exe for the "pakko" execution alias, T-F317) ─────
 # Self-contained like Archiver.Shell. A release passes -CliVersion (the tag without "v") so the
 # packaged pakko -v prints the release, as Publish-Cli.ps1 -Version does for the zip; otherwise
-# the csproj's 0.0.0-dev marker stays (T-F222).
+# the csproj's 0.0.0-dev marker stays (T-F222). Only InformationalVersion, never Version: a global
+# Version also flows to Archiver.Core, so pakko.dll would reference Core X.Y.Z.0 while the package
+# root holds the App's Core 1.0.0.0, and the binder refuses an older assembly (FileLoadException).
 Write-Host "Building Archiver.CLI ($Architecture)..." -ForegroundColor Cyan
 $cliProj = Join-Path $repoRoot 'src\Archiver.CLI\Archiver.CLI.csproj'
 $cliArgs = @($cliProj, '/p:Configuration=Release', "/p:Platform=$platform", "/p:RuntimeIdentifier=$rid", '--self-contained')
-if ($CliVersion) { $cliArgs += "/p:Version=$CliVersion" }
+if ($CliVersion) { $cliArgs += "/p:InformationalVersion=$CliVersion" }
 & dotnet build @cliArgs
 if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.CLI build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
 
@@ -172,7 +174,7 @@ try {
     $outer.Dispose()
 }
 if (-not $pakkoFound) {
-    Write-Error "The built package has no pakko.exe with its four files and the pakko.exe execution alias (T-F317)."
+    Write-Error "The built package $($msix.Name) has no pakko.exe with its four files and the pakko.exe execution alias (T-F317)."
     exit 1
 }
 

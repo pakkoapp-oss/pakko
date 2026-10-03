@@ -10915,8 +10915,12 @@ T-F292, T-F111, T-F112.
 - **`pakko -v` names the package** (`GetCurrentPackageFullName`) instead of printing the package
   version: the package version is not the release (the Store shipped 1.6.0.0 x64 and 1.6.1.0 ARM64
   for v1.6.0), and T-F222's rule that only a release prints a bare version stays. `CI-Build-Msix.ps1
-  -CliVersion` stamps the tag into the packaged CLI on tag builds, as `Publish-Cli.ps1 -Version`
-  does for the zip.
+  -CliVersion` stamps the tag into the packaged CLI on tag builds as `/p:InformationalVersion`,
+  **not** `/p:Version` (which `Publish-Cli.ps1 -Version` uses for the zip): a global `Version` also
+  flows to `Archiver.Core`, so `pakko.dll` would reference Core `X.Y.Z.0` while the package root
+  holds the App's Core `1.0.0.0` — measured (v1.6.0 zip's Core is `1.6.0.0`, the package's
+  `1.0.0.0`), and the binder refuses an older assembly. Proven with a local `CI-Build-Msix.ps1
+  -CliVersion 9.9.9` package: `pakko 9.9.9 (package ...)`, `l` and `x` work.
 - **Built-package check.** `CI-Build-Msix.ps1` opens the produced package (and the inner app
   package of a bundle) and fails if `pakko.exe`, its three files or the alias are missing — the
   source checks (`PackagingManifestTests`) cannot see what the packaging pipeline produced.

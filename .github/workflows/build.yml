@@ -528,14 +528,17 @@ jobs:
 
       # T-F317: the winget manifest for this release's CLI zips, from the same SHA256SUMS. Kept as
       # an artifact only -- submitting it to microsoft/winget-pkgs is a manual step
-      # (scripts/README.md), since it publishes under the project's name.
+      # (scripts/README.md), since it publishes under the project's name. Not for a prerelease tag
+      # (vX.Y.Z-rc.N): winget-pkgs takes releases only, and the script accepts X.Y.Z only.
       - name: Write winget manifest
+        if: ${{ !contains(github.ref_name, '-') }}
         shell: pwsh
         run: |
           $date = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')
           .\scripts\New-WingetManifest.ps1 -Version "${{ github.ref_name }}".TrimStart('v') -Sha256SumsPath artifacts/cli/SHA256SUMS -ReleaseDate $date -OutputRoot artifacts/winget
 
       - uses: actions/upload-artifact@v7
+        if: ${{ !contains(github.ref_name, '-') }}
         with:
           name: pakko-winget-manifest
           path: artifacts/winget/
