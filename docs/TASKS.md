@@ -3769,8 +3769,12 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F317 — `pakko` in the terminal for Store and winget users (P2, user-requested)
 
-- [~] **Status:** done in v1.7.0 wave 8 (2026-10-03) except the outward steps. Left: the first
-  `microsoft/winget-pkgs` PR (only on the user's go), the headless-app check at the next Store
+- [~] **Status:** done in v1.7.0 wave 8 (2026-10-03) except the outward steps. The first
+  `microsoft/winget-pkgs` PR is open (user's go and identifier `PavloRybchenko.PakkoCLI`,
+  2026-10-03; from `pakkoapp-oss`, manifest schema 1.12.0):
+  https://github.com/microsoft/winget-pkgs/pull/446296 — the Microsoft CLA is for the user to sign
+  through the bot's comment. Left: that PR merged and `winget install pakko-cli` checked from the
+  community source, the headless-app check at the next Store
   upload (wave 9), an ARM64 device run of the packaged alias, and both `index.html` install lines
   (they describe the released v1.6.0, so they change with the v1.7.0 release and the merged winget
   PR, not before). **CHANGELOG v1.7.0:** a Store or

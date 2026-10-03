@@ -40,7 +40,7 @@ if (-not $Sha256SumsPath) { $Sha256SumsPath = Join-Path $repoRoot 'artifacts\cli
 if (-not $OutputRoot) { $OutputRoot = Join-Path $repoRoot "artifacts\winget\$Version" }
 
 $identifier = 'PavloRybchenko.PakkoCLI'
-$manifestVersion = '1.9.0'
+$manifestVersion = '1.12.0'
 $releaseUrl = "https://github.com/pakkoapp-oss/pakko/releases/download/v$Version"
 
 # SHA256SUMS lines: "<64 hex>  <file name>"
@@ -85,8 +85,6 @@ $installerYaml = @(
     'ArchiveBinariesDependOnPath: true',
     'Commands:',
     '- pakko',
-    'FileExtensions:',
-    '- zip',
     "ReleaseDate: $ReleaseDate",
     'Installers:'
 )
