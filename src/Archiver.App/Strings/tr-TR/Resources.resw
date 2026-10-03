@@ -527,4 +527,13 @@
   <data name="HashCopyButton" xml:space="preserve">
     <value>Kopyala</value>
   </data>
+  <data name="SpeedPerSecond" xml:space="preserve">
+    <value>{0}/sn</value>
+  </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>~{0} sn kaldı</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>~{0} kaldı</value>
+  </data>
 </root>

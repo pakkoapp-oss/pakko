@@ -61,6 +61,7 @@ public partial class App : Application
         var res = Windows.ApplicationModel.Resources.ResourceLoader.GetForViewIndependentUse();
         DisplayText.Configure(res.GetString("TypeFolder"), res.GetString("TypeFile"), res.GetString("SizeBytes"),
             res.GetString("SizeKB"), res.GetString("SizeMB"), res.GetString("SizeGB"));
+        ProgressText.Configure(res.GetString("SpeedPerSecond"), res.GetString("RemainingSeconds"), res.GetString("RemainingMinutes"));
 
         // T-F252: previews and nested archives a crashed or killed Pakko left in %TEMP%.
         _ = Task.Run(() =>

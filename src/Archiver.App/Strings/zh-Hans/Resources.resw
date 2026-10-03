@@ -527,4 +527,13 @@
   <data name="HashCopyButton" xml:space="preserve">
     <value>复制</value>
   </data>
+  <data name="SpeedPerSecond" xml:space="preserve">
+    <value>{0}/秒</value>
+  </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>剩余约 {0} 秒</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>剩余约 {0}</value>
+  </data>
 </root>

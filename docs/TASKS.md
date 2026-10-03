@@ -3426,6 +3426,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   hardcodes `GB/s`/`MB/s`/`KB/s`/`B/s` while sizes go through the localized units. Use the localized size
   unit plus a per-second format from `.resw` (37 locales); check the operation window's speed text too.
 - **G6 pass 4:** the App's ETA is English too ("· 140 KB/s · ~40:37 remaining" during a tar.bz2 extraction). The Explorer operation window is already localized ("155,1 МБ/с").
+- [~] **Progress (2026-10-03, v1.7.0 wave 4):** App.Core `ProgressText` (speed in `DisplayText`'s
+  units + per second, time left), tests first; new keys `SpeedPerSecond` (copied per locale from
+  Shell's `UnitPerSecond`), `RemainingSeconds`, `RemainingMinutes` in 37 locales. Device check pending.
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ### T-F304 — Two App controls have no UIA name (P3)

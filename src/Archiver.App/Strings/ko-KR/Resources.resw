@@ -527,4 +527,13 @@
   <data name="HashCopyButton" xml:space="preserve">
     <value>복사</value>
   </data>
+  <data name="SpeedPerSecond" xml:space="preserve">
+    <value>{0}/초</value>
+  </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>약 {0}초 남음</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>약 {0} 남음</value>
+  </data>
 </root>

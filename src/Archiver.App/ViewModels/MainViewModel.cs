@@ -1727,38 +1727,15 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (_operationStopwatch is null) return;
 
-        DateTime now = DateTime.UtcNow;
-        TimeSpan elapsed = _operationStopwatch.Elapsed;
-
         string speedPart = string.Empty;
         string etaPart = string.Empty;
 
         if (report.TotalBytes > 0)
         {
-            double smoothedBytesPerSec = _speedSampler?.Sample(report.BytesTransferred, now) ?? 0;
-
+            double smoothedBytesPerSec = _speedSampler?.Sample(report.BytesTransferred, DateTime.UtcNow) ?? 0;
             if (smoothedBytesPerSec >= 1)
-            {
-                speedPart = smoothedBytesPerSec switch
-                {
-                    >= 1_073_741_824 => $"{smoothedBytesPerSec / 1_073_741_824:F1} GB/s",
-                    >= 1_048_576     => $"{smoothedBytesPerSec / 1_048_576:F1} MB/s",
-                    >= 1_024         => $"{smoothedBytesPerSec / 1_024:F0} KB/s",
-                    _                => $"{smoothedBytesPerSec:F0} B/s"
-                };
-            }
-
-            if (elapsed.TotalSeconds >= 1.0 && report.Percent > 0)
-            {
-                double estimatedTotal = elapsed.TotalSeconds / (report.Percent / 100.0);
-                double remaining = estimatedTotal - elapsed.TotalSeconds;
-                etaPart = remaining switch
-                {
-                    < 4  => string.Empty,
-                    < 60 => $"~{(int)remaining} sec remaining",
-                    _    => $"~{(int)(remaining / 60)}:{(int)(remaining % 60):D2} remaining"
-                };
-            }
+                speedPart = ProgressText.Speed(smoothedBytesPerSec);
+            etaPart = ProgressText.Remaining(_operationStopwatch.Elapsed, report.Percent);
         }
 
         var sb = new System.Text.StringBuilder(_operationStatusPrefix);

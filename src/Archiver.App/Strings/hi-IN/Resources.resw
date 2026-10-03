@@ -527,4 +527,13 @@
   <data name="HashCopyButton" xml:space="preserve">
     <value>कॉपी करें</value>
   </data>
+  <data name="SpeedPerSecond" xml:space="preserve">
+    <value>{0}/s</value>
+  </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>~{0} सेकंड शेष</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>~{0} शेष</value>
+  </data>
 </root>
