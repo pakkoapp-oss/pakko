@@ -321,6 +321,8 @@ static async Task<int> ReportAndStreamAsync(
 static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices services)
 {
     using var cancellation = CliCancellation.ListenToConsole();
+    // T-F295 item 1: declared outside the try, so a cancel clears the percentage first.
+    var progress = CliProgress.ForConsole();
     try
     {
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
@@ -328,7 +330,6 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
             return emptyStdin;
         IReadOnlyList<string> archivePaths = ArchivePathsFor(command, stdinFolder);
 
-        var progress = CliProgress.ForConsole();
         var report = new CliReportContext
         {
             StdinPath = StdinPathFor(stdinFolder),
@@ -345,6 +346,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
+        progress?.Clear();
         return ReportUserStopped();
     }
 }
@@ -399,6 +401,9 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
         return commandLineError;
 
     using var cancellation = CliCancellation.ListenToConsole();
+    // T-F295 item 1: declared outside the try, so a cancel clears the percentage first. The
+    // encryption password is asked before any work starts, so no percentage is on screen then.
+    var progress = CliProgress.ForConsole();
     try
     {
         IArchiveCreationRouter router = services.CreationRouter;
@@ -407,8 +412,6 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
         StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt = new();
         ArchiveOptions options = BuildArchiveOptions(command, ResolveArchiveDestination(command, stdoutFolder), prompt);
 
-        // The encryption password is asked before any work starts, so no progress is on screen yet.
-        var progress = CliProgress.ForConsole();
         ArchiveResult result = await router.ArchiveAsync(options, progress, cancellation.Token).ConfigureAwait(false);
         progress?.Clear();
         if (ReportNewPasswordPromptOutcome(prompt.Value) is { } promptExitCode)
@@ -417,6 +420,7 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
+        progress?.Clear();
         return ReportUserStopped();
     }
 }

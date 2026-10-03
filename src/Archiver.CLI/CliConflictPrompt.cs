@@ -1,3 +1,4 @@
+using System.Globalization;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 
@@ -19,9 +20,14 @@ public static class CliConflictPrompt
     /// <summary>Asks once (re-asking on invalid input). Returns null for Quit or end of input.</summary>
     public static ConflictDecision? Ask(ConflictInfo conflict, Func<string?> readLine, Action<string> write)
     {
-        write(Environment.NewLine + "Would you like to replace the existing file:" + Environment.NewLine
-              + "  " + conflict.ExistingPath + Environment.NewLine
-              + "with the file from the archive?" + Environment.NewLine);
+        // T-F295: both files' size and time, as 7-Zip's AskOverwrite shows them.
+        var existing = new FileInfo(conflict.ExistingPath);
+        string nl = Environment.NewLine;
+        write(nl + "Would you like to replace the existing file:" + nl
+              + "  " + conflict.ExistingPath + nl
+              + (existing.Exists ? Details(existing.Length, existing.LastWriteTime) : "")
+              + "with the file from the archive?" + nl
+              + Details(conflict.IncomingSize, conflict.IncomingModified?.LocalDateTime));
 
         while (true)
         {
@@ -46,6 +52,9 @@ public static class CliConflictPrompt
         }
     }
 
+    private static string Details(long? size, DateTime? modified) =>
+        (size is { } bytes ? "  Size:     " + bytes.ToString("N0", CultureInfo.InvariantCulture) + " bytes" + Environment.NewLine : "")
+        + (modified is { } time ? "  Modified: " + time.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) + Environment.NewLine : "");
     /// <summary>
     /// The resolver `pakko x` wires into ExtractOptions.ResolveConflictAsync: one sticky instance per
     /// command, so "Always"/"Skip all"/"Auto rename all" also span ExtractionRouter's separate zip

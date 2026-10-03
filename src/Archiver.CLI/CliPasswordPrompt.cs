@@ -49,7 +49,7 @@ public static class CliPasswordPrompt
         string? ReadFiltered() =>
             CliLineInput.Read(readKey, echo, mask: true, EncryptionPasswordRule.IsAllowed, () => refusedKey = true);
 
-        write("Enter password (will not be echoed): ");
+        write("Enter password (input is masked): ");
         string? first = ReadFiltered();
         write(Environment.NewLine);
         if (first is null)

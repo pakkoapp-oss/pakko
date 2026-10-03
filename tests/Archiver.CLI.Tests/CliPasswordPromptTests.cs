@@ -138,6 +138,16 @@ public sealed class CliPasswordPromptTests
             .And.Contain(w => w.Contains("Reenter password"));
     }
 
+    // T-F295 item 2: a '*' appears for each character, so the prompt must not promise no echo.
+    [Fact]
+    public void ReadNewPassword_PromptSaysTheInputIsMasked()
+    {
+        var written = new List<string>();
+
+        CliPasswordPrompt.ReadNewPassword(QueueOf([.. Typed("Secret1"), .. Typed("Secret1")]), written.Add);
+
+        string.Concat(written).Should().Contain("input is masked").And.NotContain("will not be echoed");
+    }
     [Fact]
     public void ReadNewPassword_Mismatch_ReturnsErrorAndNoPassword()
     {

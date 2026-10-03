@@ -82,6 +82,37 @@ public sealed class CliConflictPromptTests : IAsyncLifetime
             .And.Contain(@"C:\out\report.txt");
     }
 
+    // T-F295 item 3: like 7-Zip's AskOverwrite, both files' size and time, to answer Y/N on.
+    [Fact]
+    public void Ask_ShowsSizeAndTimeOfBothFiles()
+    {
+        string existing = Path.Combine(_temp, "report.txt");
+        File.WriteAllText(existing, "12345");
+        File.SetLastWriteTime(existing, new DateTime(2025, 3, 4, 5, 6, 7));
+        var written = new List<string>();
+
+        CliConflictPrompt.Ask(new ConflictInfo
+        {
+            ExistingPath = existing,
+            IncomingSize = 1234567,
+            IncomingModified = new DateTimeOffset(new DateTime(2026, 9, 30, 2, 7, 36)),
+        }, Lines("n"), written.Add);
+
+        string text = string.Concat(written);
+        text.Should().Contain("5 bytes").And.Contain("2025-03-04 05:06:07")
+            .And.Contain("1,234,567 bytes").And.Contain("2026-09-30 02:07:36");
+        text.IndexOf("2025-03-04", StringComparison.Ordinal).Should().BeLessThan(text.IndexOf("2026-09-30", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Ask_SizeAndTimeUnknown_ShowsOnlyThePath()
+    {
+        var written = new List<string>();
+
+        CliConflictPrompt.Ask(Conflict(@"C:\nowhere\missing.txt"), Lines("n"), written.Add);
+
+        string.Concat(written).Should().Contain(@"C:\nowhere\missing.txt").And.NotContain("bytes").And.NotContain("Modified");
+    }
     [Fact]
     public async Task CreateResolver_Quit_CancelsTheOperationAndDeclinesTheCurrentFile()
     {
