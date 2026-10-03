@@ -45,7 +45,7 @@ documentation that lies.
 | New branch in `ZipArchiveService` validation/conflict/smart-folder logic | **3. Activity** | Catches silently-dropped entries: a new `continue`/skip path that isn't reflected in `ArchiveResult` (see Finding 2 below for why this matters). |
 | MSIX manifest `<Application>` entries, `com:ComServer` registration, packaging of a new satellite EXE | **4. Component** | Catches "works in VS, `ERROR_ACCESS_DENIED` when packaged" — an EXE that isn't its own declared `Application` entry. |
 | New branch in `TarSandboxedService`'s pre-scan/extraction/conflict pipeline | **5. Activity (tar.exe)** | Whole-archive-reject means a single scan gap silently lets an entire class of unsafe entries through — there's no per-entry fallback the way ZIP has, so a missed branch here is higher-severity, not lower. |
-| `MainWindow.xaml` row added/removed, or any row's `Visibility` binding changed; new `IsBrowsingArchive`-gated (or should-be-gated) UI element | **6. State (UI mode)** | Exactly the category that missed Row 0 never hiding in browse mode (found 2026-07-13 by manual comparison, not by this table) — a per-row visibility table is the only thing that would have caught it before shipping. |
+| `MainWindow.xaml` element added/removed, or any `Visibility` binding changed; new `IsBrowsingArchive`-gated (or should-be-gated) UI element; `BrowseLocationState`, `BrowserEntryRouting`, `BrowseNavigation`, or `MainViewModel`'s browse methods (enter, Up, breadcrumb, drill-in, close) | **6. State (UI mode)** — its three `check:` tables are verified by `DiagramSixTests` | Exactly the category that missed Row 0 never hiding in browse mode (found 2026-07-13 by manual comparison, not by this table) — a per-row visibility table is the only thing that would have caught it before shipping. |
 | `HelperOperationUi`'s failover/close handling, `OperationWindowModel`'s states, or a new protocol message | **8. Sequence (operation window helper)** | Close, clean end and crash differ only by the last frame on the pipe — a missed case either loses the result or shows it twice. |
 | New branch in `AntivirusScanService`'s ZIP-vs-tar-family dispatch, or either scan path's error handling | **7. Sequence (AMSI scan)** | A scan silently returning `Clean` for a path it never actually examined (unsupported format, no provider, oversized entry, a vanished tar quarantine file) is the exact failure class this feature exists to prevent — a missed branch here is a false negative, the highest-severity outcome this diagram category can catch. |
 | `ArchiveCreationRouter`, either engine's `ArchiveAsync`/`CompressAsync` branching (mode, parallel threshold, encryption, conflict pre-pass, tar argument building) | **9. Activity (archive creation)** | The two engines differ on purpose (password, parallelism, command line) — a change that treats them as mirror images breaks the one it did not look at. |
@@ -700,168 +700,182 @@ flowchart TD
 
 ---
 
-## 6. State — MainWindow UI Mode & Per-Row Element Visibility (T-F05 inline mode-swap)
+## 6. State — MainWindow UI Mode, Element Visibility and Row Dispatch (T-F05, T-F199, T-F111, T-F112)
 
-Source read for this diagram: `src/Archiver.App/MainWindow.xaml` (all 8 grid rows, in full),
-`src/Archiver.App/MainWindow.xaml.cs` (window-size/`OverlappedPresenter` setup), and
-`src/Archiver.App/ViewModels/MainViewModel.cs` (`IsBrowsingArchive`, `IsPendingListVisibility`,
-`IsBrowsingArchiveVisibility`, `ArchiveOptionsVisibility`, `OperationOutcomeVisibility`,
-`EnterBrowseModeAsync`, `ArchiveBrowseScope`, `NavigateUp`/`CanNavigateUp`,
-`NavigateIntoNestedArchiveAsync`, `_browseStack`) plus
-`src/Archiver.App.Core/NestedArchivePolicy.cs`. Did not exist before
-2026-07-13 — no diagram category in the table above covers a WinUI window's own row-visibility
-state machine (the closest, diagram 2, is scoped specifically to `IsBusy`/operation lifecycle);
-added after a real bug in this exact area (Row 0 never hiding in browse mode) was found by manual
-UI comparison against NanaZip, not by this diagram — this file's standing gap is exactly why.
+Redrawn 2026-10-03 (T-F292) from the current source, read in full this session:
+`src/Archiver.App/MainWindow.xaml` (`AppTitleBar` + the four `ContentGrid` rows),
+`src/Archiver.App/MainWindow.xaml.cs` (row double-tap and key handlers), `src/Archiver.App/App.xaml.cs`
+(file activation), `src/Archiver.App/ViewModels/MainViewModel.cs` (every `*Visibility` property,
+`EnterBrowseModeAsync`, `ListArchiveWithProgressAsync`, `NavigateIntoNestedArchiveAsync`,
+`OpenPendingRowAsync`/`OpenBrowserRowAsync`, `NavigateIntoFolder`, `NavigateToBreadcrumbSegment`,
+`NavigateUp`, `CloseArchive`, `RunExtractAsync`'s `closeBrowser`) and App.Core's
+`BrowseLocationState`, `BrowserEntryRouting`, `BrowseNavigation`, `NestedArchivePolicy`.
 
-**Updated same day, after a design-review pass (advisor: `frontend-design` skill) acted on the
-finding below:** Row 0 now has two mode-gated sibling `Grid`s, same pattern as Rows 1/3. The
-Archive Browser's `Info`/`Close` buttons also moved from Row 3 into the new browse-mode Row 0 —
-a deliberate design decision (not just a bug fix): they're non-committing/navigational actions
-(view metadata, leave the browser) versus `Extract Selected`/`Extract All`, which stay in Row 3
-because they consume the destination-path/conflict-behavior options in Rows 2/6 below them —
-moving *those* to the top would create a "configure below, commit above" backwards flow that
-WinRAR/7-Zip/NanaZip's own top toolbars avoid by opening a self-contained dialog per click, which
-Pakko's inline-always-visible-options model doesn't have. The window's initial size also changed
-from `800x700` to `1100x650` (`MainWindow.xaml.cs`) — a file/archive listing is tabular and wants
-width more than height, matching every reference file manager's own proportions.
+History, in short (detail in `docs/DECISIONS.md`'s T-F05 follow-ups, T-F106, T-F107, T-F98 and wave 4
+entries): the browser started as an inline mode swap of sibling rows (T-F05, 2026-07-13, after Row 0
+never hid in browse mode); Up climbs out of the archive into real folders and "This PC" instead of
+leaving the browser (T-F107); nested archives drill in up to `NestedArchivePolicy.MaxDepth` (T-F98);
+the T-F199 redesign replaced the 8-row grid with a title bar, option cards and a footer, and Close
+archive (button and Esc, T-F210) came back as the way out; the row decisions moved from code-behind
+into App.Core (T-F242, T-F112).
 
-**Updated again (T-F106, 2026-07-16/17) — window size and a hard minimum, re-tuned twice.**
-`1100x650` proved too short: the pending-list mode's Archive Options panel (grew to 4 rows once
-T-F105 added a Format row) plus Shared Options/action buttons/status bar could collectively demand
-more height than the window had, clamping Row 1's Star-sized file-table row to 0 (every `ListView`
-item then measured within zero height — a real bug, not a rendering glitch; see `DECISIONS.md`'s
-T-F106 entries). Fixed by giving Row 1's `RowDefinition` its own `MinHeight` (not just the
-`ListView` child, which doesn't force the row to grow) and raising the window size — first to
-`1100x900` with an enforced `PreferredMinimumWidth="900"`/`PreferredMinimumHeight="850"` floor via
-`OverlappedPresenter`, then re-tuned down a second time the same week (user felt 900x850 still
-read as needlessly large/near-square) to the current, empirically re-verified values: default
-`1100x780`, floor `900x780`, table `MinHeight="140"`. Both tunings were confirmed on-device via
-`ui_find` bounds-checking every row (table, options, checkboxes, status bar, and in Archive
-Browser mode the entry rows/breadcrumb too) at the enforced floor in both UI modes — not by
-arithmetic estimate alone, which undershot the real tuned value once already.
-
-**Updated again same day — Info button removed entirely, its fields folded into the table.**
-User feedback on the change above: the `Info`+`Close` pair sitting together in Row 0 read as a
-confusing combination, not an improvement. Resolution: Info's dialog (Name/Path/Type/Size/
-Compressed size/Modified) was redundant with what the browse-mode entry table (Row 1) already
-shows or could trivially show — Name/tooltip-path/folder-vs-file icon/Modified were already
-columns, so the fix was adding the two that weren't (`Size`, `Packed`) as real columns and
-deleting `ShowSelectedEntryInfoCommand`/`IDialogService.ShowEntryInfoAsync` outright rather than
-leaving a now-redundant dialog reachable another way. This also resolves the "combination" — Row
-0 (browse) now holds only `Close` + `About`, no pairing. Row 1 (browse)'s column set is now
-`Auto,*,100,100,90,140` (icon / Name / Size / Packed / CRC-32 / Modified); the header `Grid`'s
-columns were widened to match (previously `*,100,140` with no icon or CRC-32 column, silently
-misaligned against the row template — fixed as part of this same change since both were being
-touched). `Packed` reads blank for every tar-routed format (RAR/7z/tar.*) — `TarSandboxedService`
-never populates `CompressedSize` per-entry (the underlying gzip/xz stream is whole-archive) — so
-this column is ZIP-only in practice; see `ARCHITECTURE.md`'s `IDialogService` note.
-
-**Updated a third time same round — Close button removed too; up-arrow added in two places.**
-User feedback established the standalone Close button (kept alone after Info's removal above)
-should also go — but Close was the *only* way back to the pending list from the browser (the
-window's own "X" closes the whole app). Resolution: a small icon-only "up" `Button` (Segoe MDL2
-Assets glyph U+E74A, "Up") was added directly in front of the `BreadcrumbBar` (still Row 1 browse, now itself a
-nested `Grid` of `[UpButton, BreadcrumbBar]` rather than the `BreadcrumbBar` alone). Its command,
-`MainViewModel.NavigateUpOrExitBrowser`, steps up one archive folder level when
-`CurrentFolderPath` is non-empty; at the archive's own root it falls through to the same reset
-`ExitBrowseMode` always did (kept as a plain private method, no longer its own `[RelayCommand]`).
-Row 0 (browse) now holds only `About`. A second, textually similar but functionally unrelated
-up-arrow was added to Row 2 (Destination Path, shared by both modes) per the same user request —
-`MainViewModel.NavigateDestinationUpCommand` sets
-`DestinationPath = Path.GetDirectoryName(DestinationPath)`, disabled via `CanExecute` when that's
-`null` (a drive root or unrooted path). The two up-arrows look identical but serve different
-targets (archive-internal navigation + exit vs. real filesystem navigation) — noted here since a
-future reader could otherwise assume one implementation covers both.
-
-**Correction — this round's first real on-device launch crashed; root cause was in the `.resw`
-changes, not this row-structure change.** See `DECISIONS.md`'s second T-F05 follow-up "Correction"
-entry for the full root cause (a shared `x:Uid` applying a mismatched `.Content`/`.Text` pair to
-elements that only have one of the two, and an unverified `.[ToolTipService.ToolTip]` bracket-key
-syntax). Both header rows above are accurate as fixed; flagging here only because this diagram's
-own row-visibility claims were verified *after* the crash fix, not before — an earlier version of
-this section (written right after the row-restructure, before the first real launch) would have
-been describing a build that could not actually start.
-
-**Updated a fourth time (T-F107, 2026-07-16) — the up-arrow no longer exits the browser at all.**
-User feedback: falling through to `ExitBrowseMode` at the archive root (reopening the pending
-list) was confusing on-device — it looked like an unrelated screen appeared. Redirected to a
-NanaZip-like design instead: climbing past the archive root now keeps navigating, into the
-archive's real containing folder, up through real parent folders, up to a drive root, and up to a
-synthetic "This PC" node listing all drives — only disabling (`CanNavigateUp()==false`) at "This
-PC". A new `ArchiveBrowseScope` enum (`Archive`/`RealFileSystem`/`ThisPc`) tracks which of the
-three the browser is currently showing; `ExitBrowseMode` was deleted outright (no callers left —
-the user confirmed the window's own close button already covers leaving the browser, no
-"return to pending list" affordance is needed). See `DECISIONS.md`'s T-F107 entry for the
-NanaZip-precedent research behind this (it is NOT free Explorer shell-namespace behavior — even
-NanaZip hand-codes its own equivalent).
-
-**Updated a fifth time (T-F98, 2026-07-17) — `InsideArchive` gained its own nesting-depth
-dimension, orthogonal to `ArchiveBrowseScope`.** Double-clicking a recognized archive *found
-inside* the currently-browsed archive no longer just sits there as an inert file — it drills in
-transparently via `NavigateIntoNestedArchiveAsync` (`MainViewModel.cs:765`): extracts just that
-entry to a fresh `NestedArchiveCache` scope, re-detects its real format, and re-enters
-`InsideArchive` one level deeper, pushing a `NestedBrowseLevel` onto a private `_browseStack`.
-Gated by `NestedArchivePolicy.ExceedsMaxDepth(_browseStack.Count)` (`:769`, `MaxDepth`=4) — at the
-limit, shows an error dialog and **stays exactly where it was** (no state change at all, a real
-blocked-transition case, not an omission). The Up-button's actual branch order
-(`MainViewModel.cs:977-1013`) checks the nesting stack *before* the T-F107 real-filesystem climb
-this diagram already draws: at an archive's own root, if `_browseStack.Count > 0` it pops back to
-the parent nested level (restoring the parent's path/index, deleting the child's
-`NestedArchiveCache` scope) — only once the stack is empty does `InsideArchive → RealFolder` (the
-transition already drawn below) actually fire. `ArchiveBrowseScope` (which of Archive/
-RealFileSystem/ThisPc) and nesting depth (`_browseStack.Count`, 0–4) are two independent
-dimensions collapsed into the single `InsideArchive` box below for readability — the self-loop and
-the blocked-transition note capture the depth dimension without drawing 5 parallel copies of the
-same state.
+**Three tables below are a contract checked by a test.** `DiagramSixTests`
+(`tests/Archiver.App.Core.Tests`) reads every row between a `check:` marker pair and compares it with
+`BrowseLocationState.For`, `BrowserEntryRouting` and `BrowseNavigation.DecideUp`; it also requires
+the full domain of `For`, every `RowOpenAction` and every `BrowseUpStep`, and a matching
+`From --> To` arrow in the state diagram for each Up row. Edit a table and the code together, or the
+test goes red. The rest of this section (entry, exit, breadcrumb, drill-in) lives in the WinUI view
+model and is checked by reading, not by the test.
 
 ```mermaid
 stateDiagram-v2
     [*] --> PendingListMode
-    PendingListMode --> ArchiveBrowseMode: EnterBrowseModeAsync(path) succeeds<br/>(double-click a recognized archive in the pending list,<br/>or a single-archive File/Launch activation, T-F100/T-F232)<br/>IsBrowsingArchive=true, BrowseScope=Archive
-    ArchiveBrowseMode --> PendingListMode: EnterBrowseModeAsync's own listing fails<br/>(result.Success==false) — same reset, no error state<br/>IsBrowsingArchive=false
+    PendingListMode --> ArchiveBrowseMode: EnterBrowseModeAsync — pending row double-tap, DecidePendingRow is OpenArchive<br/>or a File activation of one archive (FileActivationRouter Browse, App.xaml.cs EnterBrowseSafelyAsync)<br/>IsBrowsingArchive=true, BrowseScope=Archive, nested stack reset, DeleteAfterOperation=false
+    ArchiveBrowseMode --> PendingListMode: listing fails — ListArchiveWithProgressAsync threw (null, its own error dialog)<br/>or result.Success==false (error dialog) — IsBrowsingArchive=false
+    ArchiveBrowseMode --> PendingListMode: CloseArchive — button or Esc, CanCloseArchive is IsBrowsingArchive and not IsBusy and no listing or drill-in in flight
+    ArchiveBrowseMode --> PendingListMode: Extract from the browser with delete-after, and the archive file is gone afterwards (closeBrowser, CloseArchiveCore)
 
     state ArchiveBrowseMode {
         [*] --> InsideArchive
-        InsideArchive --> InsideArchive: NavigateIntoFolder / NavigateToBreadcrumbSegment (archive-internal, unchanged)
-        InsideArchive --> InsideArchive: NavigateIntoNestedArchiveAsync (T-F98)<br/>double-tap a recognized nested archive, depth under MaxDepth(4)<br/>pushes _browseStack, drills one level deeper<br/>BLOCKED (no state change) if depth already at MaxDepth — error dialog only
-        InsideArchive --> InsideArchive: NavigateUp with _browseStack.Count greater than 0 (T-F98)<br/>pops one nested level, deletes its NestedArchiveCache scope
-        InsideArchive --> RealFolder: NavigateUp at archive root AND _browseStack empty (T-F107)<br/>BrowseScope=RealFileSystem, CurrentFolderPath=real containing folder,<br/>BrowsedArchivePath=null (disables Extract Selected/All)
-        RealFolder --> RealFolder: NavigateUp / NavigateIntoFolder (Path.GetDirectoryName walk)
-        RealFolder --> ThisPcState: NavigateUp at a drive root (Path.GetDirectoryName returns null)
-        ThisPcState --> RealFolder: NavigateIntoFolder(drive)
-        RealFolder --> InsideArchive: double-tap a recognized archive file (EnterBrowseModeAsync re-enters fresh, _browseStack reset to empty)
-        ThisPcState --> ThisPcState: NavigateUp is a no-op — CanNavigateUp()==false, button disabled
+        InsideArchive --> InsideArchive: Up — ArchiveParentFolder (breadcrumb one segment up)
+        InsideArchive --> InsideArchive: Up — PopNestedLevel (restore the parent level, delete the child NestedArchiveCache scope)
+        InsideArchive --> RealFolder: Up — ContainingFolder (BrowseScope=RealFileSystem, BrowsedArchivePath=null)
+        InsideArchive --> ThisPcState: Up — ThisPc (archive path has no parent folder, defensive)
+        RealFolder --> RealFolder: Up — RealParentFolder
+        RealFolder --> ThisPcState: Up — ThisPc (at a drive root)
+        ThisPcState --> ThisPcState: Up — None (CanNavigateUp false, button disabled)
+        InsideArchive --> InsideArchive: OpenFolder — NavigateIntoFolder, or a breadcrumb segment of this level
+        InsideArchive --> InsideArchive: DrillIntoNestedArchive — depth below MaxDepth, extracted entry is a real archive and lists<br/>pushes _browseStack — depth already at MaxDepth: error dialog only<br/>a failed extract, detect or list: the new scope is deleted, error dialog, nothing else changes
+        InsideArchive --> InsideArchive: breadcrumb segment of an enclosing nested level — no-op (Up pops one level at a time)
+        RealFolder --> RealFolder: OpenFolder or a breadcrumb folder segment
+        RealFolder --> ThisPcState: breadcrumb segment 0 (This PC)
+        ThisPcState --> RealFolder: OpenFolder on a drive (NavigateIntoFolder sets RealFileSystem)
+        ThisPcState --> ThisPcState: breadcrumb — no-op (one segment only)
+        RealFolder --> InsideArchive: OpenArchive — a real archive on disk, EnterBrowseModeAsync re-enters fresh
     }
 ```
 
-**Per-row visibility, verified directly against `MainWindow.xaml`'s 8 rows — not inferred:**
+**Finding (T-F319, not fixed):** `RealFolder --> InsideArchive` goes through `EnterBrowseModeAsync`,
+so an archive opened from a real folder that then fails to list takes the first exit above — the
+user lands in the pending list, not back in the folder they were browsing.
 
-| Row | Elements | Visibility rule | Correct? |
-|---|---|---|---|
-| 0 (pending) | Add Files, Add Folder, Hash…, About | `IsPendingListVisibility` | Yes (fixed 2026-07-13 — see Finding) |
-| 0 (browse) | About | `IsBrowsingArchiveVisibility` | Yes (Info, then Close, both removed same round — see notes above) |
-| 1 (pending) | File table (Name/Type/Size/CRC-32/Modified), drop-zone hint | `IsPendingListVisibility` | Yes |
-| 1 (browse) | Up-arrow + Breadcrumb, icon/Name/Size/Packed/CRC-32/Modified header (T-F110's icon column), entry `ListView` | `IsBrowsingArchiveVisibility` | Yes |
-| 2 | Up-arrow + Destination path + "…" browse button | none (deliberately shared — see code comment at `MainViewModel.cs:209-212`) | Yes, by design |
-| 3 (pending) | Archive/Extract/Clear buttons | `IsPendingListVisibility` | Yes |
-| 3 (browse) | Extract Selected, Extract All, Scan for threats (T-F146) | `IsBrowsingArchiveVisibility` | Yes (Info/Close moved out to Row 0, then both removed — see notes above; Scan added 2026-08-07 as a 3rd column, same row) |
-| 4 | Operation-outcome subtitle | `OperationOutcomeVisibility` = `!IsBrowsingArchive && FileItems.Count>0` | Yes |
-| 5 | Mode (One/Separate archive), Archive Name, **Формат** (Format, T-F105 — 7 items: Zip + 6 tar variants), Compression (`IsCompressionLevelEnabled` greys it out only for plain Tar) | `ArchiveOptionsVisibility` = `!IsBrowsingArchive && !IsExtractOnlySelection` | Yes |
-| 6 | Conflict combo, Open-destination checkbox, Delete-after checkbox | none (deliberately shared — same comment as Row 2) | Yes, by design |
-| 7 | Progress bar, Cancel, status text | none (busy-state driven, not mode-driven — diagram 2's concern) | Yes, out of scope here |
+### Where the user is — what the browser offers (`BrowseLocationState.For`)
 
-**Finding (fixed 2026-07-13) — Row 0 was a real, unaddressed gap, not a documented design choice.**
-The code comment at `MainViewModel.cs:209-212` explicitly lists which elements are *intentionally*
-shared across both modes: "destination path, OnConflict, Open/Delete-after checkboxes all stay live
-in both modes, per the design in `TASKS.md`'s T-F05 entry" — Row 0's Add Files/Add Folder/Hash
-buttons were conspicuously **absent** from that list. They bind to
-`BrowseFilesCommand`/`BrowseFolderCommand`/`HashFilesCommand` — all three are pending-list/archive-
-creation actions with no meaning while browsing a read-only archive's contents — yet rendered
-unconditionally in both modes, confirmed both by reading the XAML (no `Visibility` attribute on the
-Row 0 `Grid`) and by an on-device screenshot of Pakko browsing a real `.7z` (2026-07-13, side-by-side
-with NanaZip's equivalent view). Fixed by splitting Row 0 into two mode-gated sibling `Grid`s, same
-pattern as Rows 1/3; "About" stays in both variants (matches NanaZip's own always-visible "?" icon).
+`insideArchive` is `IsBrowsingArchive && BrowseScope == Archive`; `nested` is `_browseStack.Count > 0`;
+`isZip` is the magic-byte check of the level being browsed. Outside an archive `isZip` is always
+false (`SetBrowseLevel(null, false)`) and the stack is always empty, so those rows are unreachable but
+still pinned.
+
+<!-- check:browse-location -->
+| insideArchive | nested | isZip | Extract selected/all | Options cards | Test | Delete-after | Outside-archive info | Where |
+|---|---|---|---|---|---|---|---|---|
+| yes | no | yes | yes | yes | yes | yes | no | top-level ZIP |
+| yes | no | no | yes | yes | no | yes | no | top-level tar family |
+| yes | yes | yes | yes | yes | yes | no | no | nested ZIP (a temp copy) |
+| yes | yes | no | yes | yes | no | no | no | nested tar family |
+| no | no | no | no | no | no | no | yes | real folder or This PC |
+| no | no | yes | no | no | no | no | yes | unreachable |
+| no | yes | no | no | no | no | no | yes | unreachable |
+| no | yes | yes | no | no | no | no | yes | unreachable |
+<!-- /check -->
+
+### What a double-click on a row does (`BrowserEntryRouting`, T-F111)
+
+The pending list calls `DecidePendingRow` (double-tap only; its keys are Delete and the menu key),
+the browser `DecideBrowserRow`; Enter on a browser row
+(`ArchiveBrowserList_PreviewKeyDown`) is the same `OpenBrowserRowAsync`. "Archive on disk" is the
+magic-byte probe, run off the UI thread; `-` means the probe must not run. A row name ending in `/`
+is a folder.
+
+<!-- check:row-open -->
+| List | isBusy | insideArchive | Row | Archive on disk | Action |
+|---|---|---|---|---|---|
+| pending | yes | - | report.zip | - | None |
+| pending | no | - | docs/ | - | None |
+| pending | no | - | report.dat | no | None |
+| pending | no | - | report.zip | yes | OpenArchive |
+| browser | yes | yes | inner.zip | - | None |
+| browser | no | yes | docs/ | - | OpenFolder |
+| browser | no | no | docs/ | - | OpenFolder |
+| browser | no | no | report.dat | yes | OpenArchive |
+| browser | no | no | report.dat | no | None |
+| browser | no | yes | inner.zip | - | DrillIntoNestedArchive |
+| browser | no | yes | photo.jpg | - | Preview |
+| browser | no | yes | setup.exe | - | ExtractWithWarning |
+<!-- /check -->
+
+```mermaid
+flowchart TD
+    DT["double-tap a row, or Enter on a browser row"] --> L{"which list"}
+    L -- pending --> PB{"IsBusy or a folder"}
+    PB -- yes --> N1["None"]
+    PB -- no --> PA{"magic bytes say archive"}
+    PA -- yes --> OA1["OpenArchive — EnterBrowseModeAsync"]
+    PA -- no --> N1
+    L -- browser --> BB{"IsBusy"}
+    BB -- yes --> N2["None"]
+    BB -- no --> BF{"folder"}
+    BF -- yes --> OF["OpenFolder — NavigateIntoFolder"]
+    BF -- no --> BI{"inside an archive"}
+    BI -- no --> BA{"magic bytes say archive"}
+    BA -- yes --> OA2["OpenArchive — EnterBrowseModeAsync"]
+    BA -- no --> N2
+    BI -- yes --> BE{"recognized archive extension"}
+    BE -- yes --> DR["DrillIntoNestedArchive — NavigateIntoNestedArchiveAsync"]
+    BE -- no --> BP{"PreviewPolicy.IsPreviewable"}
+    BP -- yes --> PV["Preview — PreviewBrowserEntryAsync"]
+    BP -- no --> EW["ExtractWithWarning — ExtractSingleBrowserEntryWithWarningAsync"]
+```
+
+### Where Up goes (`BrowseNavigation.DecideUp`, T-F112)
+
+The button, Backspace and Alt+Up all run `NavigateUpCommand`. `-` in the archive column means no
+archive path (null).
+
+<!-- check:browse-up -->
+| Scope | Folder path | Nested depth | Archive path | Step | From | To |
+|---|---|---|---|---|---|---|
+| Archive | docs/2026 | 0 | C:\a\b.zip | ArchiveParentFolder | InsideArchive | InsideArchive |
+| Archive | docs | 2 | C:\Temp\inner.zip | ArchiveParentFolder | InsideArchive | InsideArchive |
+| Archive |  | 1 | C:\Temp\inner.zip | PopNestedLevel | InsideArchive | InsideArchive |
+| Archive |  | 0 | C:\a\b.zip | ContainingFolder | InsideArchive | RealFolder |
+| Archive |  | 0 | C:\b.zip | ContainingFolder | InsideArchive | RealFolder |
+| Archive |  | 0 | - | ThisPc | InsideArchive | ThisPcState |
+| RealFileSystem | C:\a\b | 0 | - | RealParentFolder | RealFolder | RealFolder |
+| RealFileSystem | C:\ | 0 | - | ThisPc | RealFolder | ThisPcState |
+| ThisPc |  | 0 | - | None | ThisPcState | ThisPcState |
+<!-- /check -->
+
+### Element visibility (keyed by element, not by grid row)
+
+| Element (`MainWindow.xaml`) | Shown when (`MainViewModel`) |
+|---|---|
+| `AppTitleBar` | always |
+| Row 0, create toolbar: Add files, Add folder, Hash, About | `IsPendingListVisibility` = not `IsBrowsingArchive` |
+| Row 0, browse toolbar: Scan, Close archive (Esc), About | `IsBrowsingArchiveVisibility`; Scan enabled when not busy and `BrowsedArchivePath` set (inside an archive) |
+| Row 0, browse toolbar: Test | `TestArchiveVisibility` = browsing and `ShowsTest` (table above) |
+| Row 1, `FileListView` with sortable header | `IsPendingListVisibility` |
+| Row 1, empty drop zone (own Add buttons) | inside the pending grid, `IsFileListEmptyVisibility` = `FileItems.Count == 0` |
+| Row 1, `BrowseBreadcrumbRow` (Up, `BreadcrumbBar`), `BrowseHeader`, `ArchiveBrowserListView` | `IsBrowsingArchiveVisibility`; the list is disabled while busy |
+| Encryption badge in `BrowseBreadcrumbRow` | `EncryptionBadgeVisibility` = browsing, scope Archive, `_browseEncryption.IsEncrypted` |
+| `BrowseInfoBar` | `IsBrowseInfoOpen` = browsing and (outside-archive info or the encryption badge) |
+| Row 2, `OptionsScroll` | `OptionsVisibility` = not browsing, or `ShowsOptions`; `OptionsOpacity` 0.55 on an empty create list |
+| `NewArchiveCard` | `NewArchiveCardVisibility` = not browsing; collapsed (summary shown) when the list turns archives-only, reopened when it stops |
+| Tar format items in Format | `TarFormatVisibility` = not `DisableTarExtraction` (policy, fixed per run) |
+| Encrypt checkbox / "ZIP only" note | `EncryptCheckVisibility` = Zip, `EncryptZipOnlyVisibility` = not Zip |
+| Inline password panel | `EncryptionPanelVisibility` = `InlinePasswordState.Applies` (ticked and Zip) |
+| `DestinationCard` (destination, conflict, open folder) | whenever `OptionsScroll` is |
+| Delete-after checkbox and Recycle Bin note | `DeleteAfterVisibility` = not browsing, or `OffersDeleteAfter` |
+| Footer progress bar and Cancel | `IsOperationRunningVisibility` = `IsBusy` (diagram 2's concern) |
+| Footer result/selection/preview line | `FooterTextVisibility` = `FooterLine.Pick` is not None; Show in folder and Details only on an outcome |
+| Footer status line | `StatusLineVisibility` = not an outcome line |
+| Footer Clear, Extract, Compress | `IsPendingListVisibility`; Extract and Compress swap columns 3 and 4 so the accent action is rightmost |
+| Footer Extract selected, Extract all | `BrowseExtractActionsVisibility` = browsing and `ShowsExtractActions` |
+
+Checked against the code with no finding: every element named in the old diagram's 8-row table has a
+place above; nothing visible in browse mode calls a create-only command; the browse-mode `ListView`'s
+explicit `VirtualizingStackPanel` is the deliberate exception recorded in `docs/DECISIONS.md`'s T-F05
+entry (its rows have no late async properties).
 
 ---
 

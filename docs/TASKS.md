@@ -1354,8 +1354,11 @@ branch couldn't be exercised end-to-end this time.
 ## v1.4 — GPO + Low IL Sandbox
 
 ### T-F111 — Archive Browser double-click dispatch: no diagram coverage (stub, not scoped)
-- [ ] **Status:** future — stub only, flagged 2026-07-17 during a `DIAGRAMS.md` audit, not
-      implemented or scoped this round.
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 7). Scope chosen: extend diagram 6 (same subject). The
+  dispatch already lived in App.Core (`BrowserEntryRouting`, T-F242); diagram 6 now has its flowchart and
+  a `check:row-open` table checked by `DiagramSixTests`, and its DoD row names the App.Core decision types.
+  Device (Deploy 1.6.0.8, build 19:18:24, windows MCP, 2026-10-03): `outer.zip` with `docs/2026` and a nested `inner.zip` — OpenFolder, Up to the archive root, Enter drills into `inner.zip` (no delete-after there), Up pops back (delete-after returns), Backspace climbs to `C:\w7` (Test, options and Extract hidden), Up to `C:\`, Up to This PC (Up disabled), Esc back to the create list.
+  Original stub: future, flagged 2026-07-17 during a `DIAGRAMS.md` audit.
 
 **What:** `MainWindow.xaml.cs`'s `ArchiveBrowserList_DoubleTapped`/`PendingList_DoubleTapped` have
 grown real branching complexity across T-F97/98/107/109/110 (folder vs. real-filesystem-scope
@@ -1373,7 +1376,16 @@ changes.
 ---
 
 ### T-F112 — Generate state-transition tests from DIAGRAMS.md's mermaid state diagram (stub, not scoped)
-- [ ] **Status:** future — proposed 2026-07-17, not implemented or scoped this round.
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 7), narrowed on purpose (`docs/DECISIONS.md`'s wave 7
+  entry). No generator. Diagram 6's three `check:` tables (where-you-are flags, row dispatch, Up) are
+  read by `DiagramSixTests` and compared with the code, with full-domain and every-enum-value
+  coverage. Up's decision moved into App.Core (`BrowseNavigation.DecideUp`), and each Up row must
+  match a `From --> To` arrow of the state diagram. Mutation-checked both ways: 2 code mutants and
+  5 document edits, all red. **Not covered:** entry, exit, breadcrumb and drill-in transitions
+  stay in the WinUI view model and are checked by reading and on device. Diagrams 3 and 5 are
+  activity diagrams and were not attempted.
+  Device (Deploy 1.6.0.8, build 19:18:24, windows MCP, 2026-10-03): `outer.zip` with `docs/2026` and a nested `inner.zip` — OpenFolder, Up to the archive root, Enter drills into `inner.zip` (no delete-after there), Up pops back (delete-after returns), Backspace climbs to `C:\w7` (Test, options and Extract hidden), Up to `C:\`, Up to This PC (Up disabled), Esc back to the create list.
+  Original: future, proposed 2026-07-17.
 
 **What:** `DIAGRAMS.md`'s mermaid blocks are prose/diagram-only — nothing in the repo parses or
 executes them, so a diagram can silently drift from the real UI state machine between audits (this
@@ -2366,7 +2378,9 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   deferred until the fixes for T-F227/T-F228/T-F233/T-F236 rewrite those diagrams (with T-F165/
   T-F223) — the review's exit criterion is not met for that cell. **2026-09-29 (G5):** the ritual
   ran for diagrams 1, 2, 3 (password gate), 4 and 7 (T-F258) and the new diagram 9 (T-F223);
-  T-F165 was already done 2026-08-12. Diagram 6 is still unchecked — now T-F292.
+  T-F165 was already done 2026-08-12. Diagram 6 is still unchecked — now T-F292. **2026-10-03:**
+  T-F292 redrew diagram 6 per the ritual. The cell is still not closed: diagrams 5 and 8, and
+  diagram 3 beyond the password gate, have not had the per-arrow ritual since the fixes.
   Checked with no finding: the fire-and-forget calls and `async void` (event handlers only),
   `static` mutable state (`FileHashService._threadPoolWarmed` is a process-wide one-shot latch around
   a process-wide setting), `ArchiveTreeIndex` recursion (iterative; memory issue is T-F237),
@@ -3227,7 +3241,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F292 — Diagram 6 (MainWindow UI mode) predates the T-F199 redesign (P2, docs)
 
-- [ ] **Status:** open. Diagram 6's per-row visibility table still lists the pre-redesign rows
+- [x] **Status:** done 2026-10-03 (v1.7.0 wave 7). Diagram 6 was redrawn from the current XAML, view
+  model and App.Core, element-keyed instead of row-keyed. It adds the Close archive and delete-after
+  exits, and corrects the stale "no error state" claim; mmdc ran on all 10 blocks. Finding:
+  T-F319. Device (Deploy 1.6.0.8, build 19:18:24, windows MCP, 2026-10-03): `outer.zip` with `docs/2026` and a nested `inner.zip` — OpenFolder, Up to the archive root, Enter drills into `inner.zip` (no delete-after there), Up pops back (delete-after returns), Backspace climbs to `C:\w7` (Test, options and Extract hidden), Up to `C:\`, Up to This PC (Up disabled), Esc back to the create list.
+  Report as filed: open. Diagram 6's per-row visibility table still lists the pre-redesign rows
   (Row 0 buttons, Row 6 conflict combo and checkboxes). Since wave 4 (T-F199) the window is
   `AppTitleBar` + `ContentGrid` with mode-gated rows, the option cards (`NewArchiveCard`,
   `DestinationCard`) in `OptionsScroll`, and a footer. No `docs/DIAGRAMS.md` commit touched diagram
@@ -3775,9 +3793,36 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 - **Both installed:** a bare `pakko` runs whichever folder comes first in `PATH`
   (`%LOCALAPPDATA%\Microsoft\WindowsApps` vs winget's `Links`). Document it in `docs/CLI.md`; `pakko
   -v` shows which one ran.
+- **Naming:** the winget package is named "Pakko CLI" with moniker `pakko-cli`, so `winget install
+  pakko` keeps finding only the GUI (msstore) and never asks which one; the command is still `pakko`.
 - **Docs:** `docs/CLI.md` Distribution (replace "not added to PATH"), `scripts/README.md` (the
   per-release winget step), `README.md` + both `index.html` install lines, DECISIONS entry.
 - **Tests first:** a manifest check that the packaged `pakko.exe` has an alias and console subsystem
   (the compiled `AppxManifest.xml`, not the source file), and the CLI Subprocess layer run against the
   packaged exe where it can be.
 - **Reported by:** the user, 2026-10-03.
+
+### T-F318 — Reusable deflate compressor for the parallel ZIP writer (P3, future)
+
+- [ ] **Status:** future, waits for the target .NET. Upstream answer to T-F271's report
+  (dotnet/runtime#134700, milestone Future, 2026-10-01): .NET 11 adds `DeflateEncoder` with
+  `Reset()`, so one compressor per worker can produce independent deflate streams instead of a new
+  `DeflateStream` (and new zlib-ng state) per entry. The project is on .NET 10 LTS (T-F270); .NET 11
+  is an STS release. Decide when the target moves: then switch `ZipEntryCompressor`'s small-file
+  path to a per-worker `DeflateEncoder`, measured with T-F114's `Archive/ManySmallFiles` against
+  .NET 8's ~0.86 ratio. Check that an empty entry still writes `Store` (CLAUDE.md, zero-byte rule)
+  and that 7za reads the result.
+  Our reply (user-approved, from `pakkoapp-oss`, 2026-10-03):
+  https://github.com/dotnet/runtime/issues/134700#issuecomment-5970925304 — promises the numbers.
+- **Reported by:** upstream reply to dotnet/runtime#134700, 2026-10-01.
+
+### T-F319 — A real archive that fails to list from a browsed folder drops the browser (P3, UX)
+
+- [ ] **Status:** open. In the Archive Browser outside an archive (T-F107), double-clicking a real
+  archive runs `EnterBrowseModeAsync`. When that listing fails (an error dialog, or `!Success`), it
+  sets `IsBrowsingArchive=false`. The user lands in the pending list, not back in the folder they
+  were browsing, and the folder location is lost. Expected: stay in `RealFolder` after the error
+  dialog. Fix in the view model, with the decision extracted to App.Core so it is testable. Update
+  diagram 6's exit arrow in the same commit. Check on device with a corrupt `.zip` in a browsed
+  folder.
+- **Reported by:** T-F292 redraw of diagram 6, 2026-10-03.

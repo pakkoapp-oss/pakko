@@ -213,6 +213,7 @@ src/
 │   ├── OutcomeLine.cs                                   ← T-F211: footer result line; FooterLine.Pick chooses the footer text
 │   ├── SessionPasswordMemory.cs                         ← T-F200: browse-session password, memory only
 │   ├── BrowserEntryRouting.cs                           ← T-F242: what a row double-click does
+│   ├── BrowseNavigation.cs                              ← T-F112: ArchiveBrowseScope + where Up goes (BrowseUpStep)
 │   ├── DisplayText.cs                                   ← T-F198: list words/size units, set by the App at startup
 │   ├── ProgressText.cs / ConflictText.cs                ← T-F303: footer speed + time left; T-F220: conflict dialog size/date lines
 │   ├── SortIndicator.cs / NestedDisplayPath.cs          ← T-F220: header sort arrow; nested archive shown as "outer.zip > ... > l4.zip"

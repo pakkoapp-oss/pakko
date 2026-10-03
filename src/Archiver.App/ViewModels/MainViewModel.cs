@@ -18,18 +18,6 @@ using Windows.ApplicationModel.Resources;
 
 namespace Archiver.App.ViewModels;
 
-// T-F107: what CurrentFolderPath/CurrentFolderEntries/the breadcrumb mean, and where "Up" goes
-// next. Archive = browsing inside the currently open archive (CurrentFolderPath is '/'-separated,
-// archive-relative). RealFileSystem = browsing a real Windows folder (CurrentFolderPath is an
-// absolute Windows path). ThisPc = the synthetic drives-list root; CurrentFolderPath is unused.
-// Public (not nested-private) so MainWindow.xaml.cs's double-tap handler can dispatch on it too.
-public enum ArchiveBrowseScope
-{
-    Archive,
-    RealFileSystem,
-    ThisPc,
-}
-
 // CA1001 (owns disposable field '_cts', isn't itself disposable): reviewed T-F137, re-reviewed
 // T-F150 — every use already disposes _cts in a finally block; the only real leak window is the
 // ViewModel itself being torn down mid-operation, which this app's single-window WinUI lifecycle
@@ -1413,70 +1401,56 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanNavigateUp))]
     private void NavigateUp()
     {
-        switch (BrowseScope)
+        // T-F98: a nested level's own root pops back to its parent level before the outermost
+        // (real, on-disk) archive's root climbs into real folders (T-F107) — BrowseNavigation.
+        switch (BrowseNavigation.DecideUp(BrowseScope, CurrentFolderPath, _browseStack.Count, BrowsedArchivePath))
         {
-            case ArchiveBrowseScope.Archive:
-                if (CurrentFolderPath.Length == 0)
-                {
-                    // T-F98: a nested level's own root pops back to its parent level instead of
-                    // falling through to the real-filesystem climb — only once every nested level
-                    // has been popped does the outermost (real, on-disk) archive's own root reach
-                    // the RealFileSystem/ThisPc climb below, unchanged from T-F107.
-                    if (_browseStack.Count > 0)
-                    {
-                        string? childScopeDir = _currentNestedScopeDir;
-                        NestedBrowseLevel parentLevel = _browseStack.Pop();
-                        BrowsedArchivePath = parentLevel.ArchivePath;
-                        CurrentFolderPath = parentLevel.CurrentFolderPath;
-                        _currentLevelDisplayName = parentLevel.DisplayName;
-                        _archiveIndex = parentLevel.ArchiveIndex;
-                        _nestedBreadcrumbAncestry = parentLevel.BreadcrumbAncestry;
-                        _currentNestedScopeDir = parentLevel.ScopeDir;
-                        SetBrowseLevel(parentLevel.Encryption, parentLevel.IsZip);
-                        RefreshCurrentFolder();
-                        if (childScopeDir is not null)
-                            NestedArchiveCache.DeleteScope(childScopeDir);
-                    }
-                    else
-                    {
-                        string? containingFolder = Path.GetDirectoryName(BrowsedArchivePath);
-                        BrowsedArchivePath = null;
-                        SetBrowseLevel(null, isZip: false);
-                        if (containingFolder is not null)
-                        {
-                            BrowseScope = ArchiveBrowseScope.RealFileSystem;
-                            CurrentFolderPath = containingFolder;
-                        }
-                        else
-                        {
-                            BrowseScope = ArchiveBrowseScope.ThisPc;
-                            CurrentFolderPath = string.Empty;
-                        }
-                        RefreshCurrentFolder();
-                    }
-                }
-                else
-                {
-                    NavigateToBreadcrumbSegment(BreadcrumbSegments.Count - 2);
-                }
+            case BrowseUpStep.ArchiveParentFolder:
+                NavigateToBreadcrumbSegment(BreadcrumbSegments.Count - 2);
                 break;
 
-            case ArchiveBrowseScope.RealFileSystem:
-                string? parent = Path.GetDirectoryName(CurrentFolderPath);
-                if (parent is not null)
-                {
-                    CurrentFolderPath = parent;
-                }
-                else
-                {
-                    BrowseScope = ArchiveBrowseScope.ThisPc;
-                    CurrentFolderPath = string.Empty;
-                }
+            case BrowseUpStep.PopNestedLevel:
+                string? childScopeDir = _currentNestedScopeDir;
+                NestedBrowseLevel parentLevel = _browseStack.Pop();
+                BrowsedArchivePath = parentLevel.ArchivePath;
+                CurrentFolderPath = parentLevel.CurrentFolderPath;
+                _currentLevelDisplayName = parentLevel.DisplayName;
+                _archiveIndex = parentLevel.ArchiveIndex;
+                _nestedBreadcrumbAncestry = parentLevel.BreadcrumbAncestry;
+                _currentNestedScopeDir = parentLevel.ScopeDir;
+                SetBrowseLevel(parentLevel.Encryption, parentLevel.IsZip);
+                RefreshCurrentFolder();
+                if (childScopeDir is not null)
+                    NestedArchiveCache.DeleteScope(childScopeDir);
+                break;
+
+            case BrowseUpStep.ContainingFolder:
+                string containingFolder = Path.GetDirectoryName(BrowsedArchivePath)!;
+                BrowsedArchivePath = null;
+                SetBrowseLevel(null, isZip: false);
+                BrowseScope = ArchiveBrowseScope.RealFileSystem;
+                CurrentFolderPath = containingFolder;
                 RefreshCurrentFolder();
                 break;
 
-            case ArchiveBrowseScope.ThisPc:
-                break; // CanNavigateUp() is false here — unreachable in practice.
+            case BrowseUpStep.RealParentFolder:
+                CurrentFolderPath = Path.GetDirectoryName(CurrentFolderPath)!;
+                RefreshCurrentFolder();
+                break;
+
+            case BrowseUpStep.ThisPc:
+                if (BrowseScope == ArchiveBrowseScope.Archive)
+                {
+                    BrowsedArchivePath = null;
+                    SetBrowseLevel(null, isZip: false);
+                }
+                BrowseScope = ArchiveBrowseScope.ThisPc;
+                CurrentFolderPath = string.Empty;
+                RefreshCurrentFolder();
+                break;
+
+            case BrowseUpStep.None:
+                break; // CanNavigateUp() is false at "This PC" — unreachable in practice.
         }
     }
 

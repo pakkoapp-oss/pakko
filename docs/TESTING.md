@@ -927,6 +927,18 @@ Ukrainian UI, CI an English one.
   `pakko l`'s Encrypted column. The window layout itself (cards, scroll fit, 900x520 floor) is
   checked on device, not by tests.
 
+## Diagram 6 as a Checked Contract (v1.7.0 wave 7, T-F112)
+
+- `BrowseNavigationTests` (App.Core, tests first): every `BrowseUpStep` of `DecideUp`, a drive
+  root, no archive path.
+- `DiagramSixTests` reads `docs/DIAGRAMS.md`'s diagram 6 and checks its three `check:` tables
+  (`browse-location`, `row-open`, `browse-up`) against `BrowseLocationState.For`,
+  `BrowserEntryRouting` and `BrowseNavigation.DecideUp`. It requires the full 2x2x2 domain of
+  `For` exactly once, every `RowOpenAction` and `BrowseUpStep`, that the probe runs exactly when the
+  table gives it a value, and an `Up` arrow in the state diagram for each Up row. Mutation-checked
+  both ways (2026-10-03): 2 code mutants and 5 document edits, all red. Entry, exit, breadcrumb and
+  drill-in transitions stay in the WinUI view model and are checked on device.
+
 ## Temporary Names and Commits (v1.7.0 wave 6, T-F263/T-F312)
 
 `IO/TempOwnerTests` (tag and name shape, `IsRunningHere` incl. a reused pid and v1.6.0's

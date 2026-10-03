@@ -10865,3 +10865,36 @@ held on the device; stopped per the three-attempts rule.
   only that shape and deletes any other name as a dead owner's, so with the machine tag a running
   v1.6.0 window would have deleted a newer window's preview folder. `%TEMP%` is this machine's alone;
   the machine tag is kept for names next to a destination.
+
+## v1.7.0 wave 7 — diagram 6 as a checked contract (2026-10-03)
+
+T-F292, T-F111, T-F112.
+
+- **Diagram 6 redrawn from the code (T-F292).** It still described the 8-row grid from before
+  T-F199. The new one keys visibility by element and view-model property, not by grid row: row
+  numbers moved once and would move again. The old text also said a failed listing has "no error
+  state"; both failure branches show a dialog now. It also lacked two exits from the browser: Close
+  archive (button and Esc) and Extract with delete-after once the archive is gone.
+- **Double-click dispatch is drawn, not re-designed (T-F111).** T-F242 had already moved the
+  decision into App.Core's `BrowserEntryRouting` with tests. T-F111 added the flowchart and widened
+  diagram 6's Definition-of-Done row to the App.Core decision types and `MainViewModel`'s browse
+  methods.
+- **T-F112: the diagram's decision tables are executable; the state arrows mostly are not.**
+  - Mermaid has no runner. A one-off generator that emits test skeletons (the original proposal)
+    still needs a person to write each assertion, and it drifts as soon as the diagram changes.
+  - Instead, three markdown tables in diagram 6 sit between `<!-- check:name -->` markers.
+    `DiagramSixTests` compares every row with the code, and requires both the full input domain and
+    every enum value. A table edit without the code change, or the reverse, turns it red.
+  - To bring Up's transitions into reach, option (a) was chosen over shipping tables only: the Up
+    decision moved out of `MainViewModel.NavigateUp` into App.Core's `BrowseNavigation.DecideUp`, a
+    pure function, with `ArchiveBrowseScope` moved alongside. The branch bodies in the view model
+    are unchanged.
+  - The test also requires a matching `From --> To: Up <step>` arrow for each Up row, so those
+    arrows are checked too.
+  - **Not checked by the test:** entry, exit, breadcrumb and drill-in transitions. They depend on
+    WinUI state and dialogs, and stay checked by reading and on device.
+- **Not a finding:** the Archive Browser's explicit `VirtualizingStackPanel` contradicts the
+  CLAUDE.md warning only on its face. The T-F05 entry records why it is safe there: the rows have no
+  late async properties.
+- **Finding filed, not fixed (T-F319):** an archive opened from a real folder in the browser that
+  then fails to list drops the user into the pending list instead of back into the folder.
