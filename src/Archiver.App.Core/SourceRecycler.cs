@@ -22,31 +22,37 @@ public interface ISourceDeleteOperations
     bool Exists(string path);
 }
 
+/// <summary>What <see cref="SourceRecycler.DeleteAsync"/> did, by the paths given (T-F302).</summary>
+/// <param name="Deleted">Recycled or permanently deleted — gone from disk.</param>
+/// <param name="NotDeleted">Should have been deleted but are still on disk; a source the user chose
+/// to keep is in neither list.</param>
+public sealed record RecycleResult(IReadOnlyList<string> Deleted, IReadOnlyList<string> NotDeleted);
+
 /// <summary>"Delete after operation" (T-F207): recycles sources on a fixed local volume, asks
 /// before permanently deleting anything else, and reports what is still on disk.</summary>
 public sealed class SourceRecycler(ISourceDeleteOperations ops)
 {
-    /// <summary>Deletes <paramref name="sources"/>; returns the ones that should have been deleted
-    /// but are still on disk (by the path given) — not the ones the user chose to keep.
+    /// <summary>Deletes <paramref name="sources"/>; see <see cref="RecycleResult"/>.
     /// <paramref name="confirmPermanentDeleteAsync"/> gets the sources that cannot go to the
     /// Recycle Bin and returns whether to delete them permanently; it is awaited on the caller's
     /// context, so it may show UI.</summary>
-    public async Task<IReadOnlyList<string>> DeleteAsync(
+    public async Task<RecycleResult> DeleteAsync(
         IEnumerable<string> sources, Func<IReadOnlyList<string>, Task<bool>> confirmPermanentDeleteAsync)
     {
-        (List<string>? notDeleted, List<(string Source, string Final)>? permanent) = await Task.Run(() => RecycleLocalSources(sources));
+        var deleted = new List<string>();
+        (List<string>? notDeleted, List<(string Source, string Final)>? permanent) = await Task.Run(() => RecycleLocalSources(sources, deleted));
 
         // Declined items are the user's own choice, not a failure — they are not reported.
         if (permanent.Count > 0 && await confirmPermanentDeleteAsync([.. permanent.Select(p => p.Source)]))
-            notDeleted.AddRange(await Task.Run(() => DeletePermanently(permanent)));
+            notDeleted.AddRange(await Task.Run(() => DeletePermanently(permanent, deleted)));
 
-        return notDeleted;
+        return new RecycleResult(deleted, notDeleted);
     }
 
     // Recycles what can be recycled; returns what is still on disk plus what needs a permanent
     // delete.
     private (List<string> NotDeleted, List<(string Source, string Final)> Permanent) RecycleLocalSources(
-        IEnumerable<string> sources)
+        IEnumerable<string> sources, List<string> deleted)
     {
         var notDeleted = new List<string>();
         var recycle = new List<(string Source, string Final)>();
@@ -70,21 +76,21 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
         {
             try { ops.MoveToRecycleBin([.. recycle.Select(r => r.Final)]); }
             catch { /* reported below: whatever is still on disk */ }
-            notDeleted.AddRange(recycle.Where(r => ops.Exists(r.Final)).Select(r => r.Source));
+            foreach ((string source, string final) in recycle)
+                (ops.Exists(final) ? notDeleted : deleted).Add(source);
         }
 
         return (notDeleted, permanent);
     }
 
-    private List<string> DeletePermanently(List<(string Source, string Final)> permanent)
+    private List<string> DeletePermanently(List<(string Source, string Final)> permanent, List<string> deleted)
     {
         var notDeleted = new List<string>();
         foreach ((string? source, string? final) in permanent)
         {
             try { ops.DeletePermanently(final); }
             catch { /* reported below: still on disk */ }
-            if (ops.Exists(final))
-                notDeleted.Add(source);
+            (ops.Exists(final) ? notDeleted : deleted).Add(source);
         }
         return notDeleted;
     }

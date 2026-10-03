@@ -3417,6 +3417,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   entering or leaving browse), so a tick given for "sources after compression" carries into a later
   list of archives, where the label becomes "archives after extraction". Decide whether a run or a clear
   should reset it (T-F207 history argues for yes).
+- [~] **Progress (2026-10-03, v1.7.0 wave 4):** `SourceRecycler.DeleteAsync` returns
+  `RecycleResult` (Deleted + NotDeleted, tests first, mutation-checked); the App drops the rows of
+  the deleted sources (a declined or failed one keeps its row). Decided (agent): the tick resets
+  after any run that cleaned up and on "Очистити". Device check pending.
 - **Reported by:** G6 device campaign, 2026-09-30.
 
 ### T-F303 — App speed readout units are English (P3)

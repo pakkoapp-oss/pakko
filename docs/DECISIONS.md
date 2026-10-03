@@ -10760,3 +10760,11 @@ no entry for these codes and fall back to the English template.
 - The CLI stays English and now prints the code too ("... is incorrect. (0x8007007B)").
 - `MessageText.UkrainianOnlyCodes` names the set; the parity test exempts it by name and a test
   checks the other tables do not contain it.
+
+### T-F302 — rows of recycled sources leave the list; the tick resets
+
+`SourceRecycler.DeleteAsync` now returns what it deleted as well as what it could not, so the App
+drops exactly the rows whose sources are gone — not "requested minus not deleted", which would also
+drop a source whose permanent delete the user declined (that one is in neither list). The
+"move to the Recycle Bin" tick resets after a run that cleaned up and on "Очистити" (agent decision;
+T-F207's reasoning: a destructive tick given for one list must not silently apply to the next).

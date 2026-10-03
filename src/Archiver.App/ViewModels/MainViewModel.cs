@@ -1715,12 +1715,17 @@ public sealed partial class MainViewModel : ObservableObject
         StatusMessage = _res.GetString("StatusCleaningUp");
         // T-F207/T-F242: Recycle Bin where the volume has one, an explicit confirmation before
         // anything is deleted permanently, and every source still on disk is reported.
-        IReadOnlyList<string> notDeleted = await _sourceRecycler.DeleteAsync(paths, _dialogService.ShowPermanentDeleteConfirmAsync);
-        if (notDeleted.Count == 0)
+        RecycleResult recycled = await _sourceRecycler.DeleteAsync(paths, _dialogService.ShowPermanentDeleteConfirmAsync);
+        // T-F302: a row whose source is gone would only fail the next run ("source does not
+        // exist"); the tick, given for this run's sources, does not carry into the next list.
+        foreach (string path in recycled.Deleted)
+            RemovePath(path);
+        DeleteAfterOperation = false;
+        if (recycled.NotDeleted.Count == 0)
             return;
-        foreach (string path in notDeleted)
+        foreach (string path in recycled.NotDeleted)
             _logService.Warn($"Not deleted after operation: {path}");
-        await _dialogService.ShowNotDeletedAsync(notDeleted);
+        await _dialogService.ShowNotDeletedAsync(recycled.NotDeleted);
     }
 
     private void UpdateOperationStatus(ProgressReport report)
@@ -1768,11 +1773,15 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(CanOperate))]
-    private void Clear() => FileItems.Clear();
+    private void Clear()
+    {
+        FileItems.Clear();
+        DeleteAfterOperation = false;
+    }
 
     public void RemovePath(string path)
     {
-        FileItem? item = FileItems.FirstOrDefault(x => x.FullPath == path);
+        FileItem? item = FileItems.FirstOrDefault(x => string.Equals(x.FullPath, path, StringComparison.OrdinalIgnoreCase));
         if (item is not null)
             FileItems.Remove(item);
     }
