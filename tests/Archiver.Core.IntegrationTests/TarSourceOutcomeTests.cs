@@ -127,6 +127,63 @@ public sealed class TarSourceOutcomeTests : IDisposable
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    // T-F220 item 2: the App's "cancel all" ends the prompt as a cancelled task.
+    [Integration]
+    public async Task ExtractAsync_ConflictPromptCancelled_Throws()
+    {
+        string tar = WriteTar("last.tar", "a.txt");
+        string dest = Dest("out");
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(Path.Combine(dest, "a.txt"), "existing");
+        using var cts = new CancellationTokenSource();
+
+        Func<Task<ArchiveResult>> act = () => _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [tar],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ =>
+            {
+                cts.Cancel();
+                return Task.FromCanceled<ConflictDecision>(cts.Token);
+            },
+        }, null, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("existing");
+    }
+
+    [Integration]
+    public async Task CompressAsync_ConflictPromptCancelled_ThrowsAndLeavesTheExistingArchive()
+    {
+        string a = Path.Combine(_temp.Path, "a.txt");
+        File.WriteAllText(a, "a");
+        string dest = Dest("out");
+        Directory.CreateDirectory(dest);
+        string existing = Path.Combine(dest, "one.tar");
+        File.WriteAllText(existing, "old");
+        using var cts = new CancellationTokenSource();
+
+        Func<Task<ArchiveResult>> act = () => _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [a],
+            DestinationFolder = dest,
+            ArchiveName = "one",
+            Format = ArchiveContainerFormat.Tar,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ =>
+            {
+                cts.Cancel();
+                return Task.FromCanceled<ConflictDecision>(cts.Token);
+            },
+        }, null, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        File.ReadAllText(existing).Should().Be("old");
+        Directory.GetFiles(dest).Should().ContainSingle();
+    }
+
     [Integration]
     public async Task CompressAsync_SeparateArchives_EverySourceCompleted()
     {

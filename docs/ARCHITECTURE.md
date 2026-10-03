@@ -192,7 +192,8 @@ src/
 │   ├── NestedArchiveCache.cs / NestedArchivePolicy.cs   ← T-F98: nested-archive drill-down
 │   ├── PreviewCache.cs                                  ← T-F97: preview extraction cache
 │   ├── DeferredActionGate.cs                            ← T-F106: defers activation past first layout pass
-│   ├── SourceRecycler.cs                                ← T-F207: "Delete after operation" — Recycle Bin / confirm / report
+│   ├── SourceRecycler.cs                                ← T-F207: "Delete after operation" — Recycle Bin / confirm / report;
+│   │                                                       T-F302: DeleteAsync returns RecycleResult (Deleted, NotDeleted)
 │   ├── Win32SourceDeleteOperations.cs                   ← T-F207: final-path + volume-type + SHFileOperationW P/Invoke
 │   ├── PrimaryActionPolicy.cs                           ← T-F199: Compress/Extract availability + which one is primary
 │   ├── CreateModeText.cs                                ← T-F199: create-mode resource keys (card summary, delete-after words)
@@ -203,6 +204,8 @@ src/
 │   ├── SessionPasswordMemory.cs                         ← T-F200: browse-session password, memory only
 │   ├── BrowserEntryRouting.cs                           ← T-F242: what a row double-click does
 │   ├── DisplayText.cs                                   ← T-F198: list words/size units, set by the App at startup
+│   ├── ProgressText.cs / ConflictText.cs                ← T-F303: footer speed + time left; T-F220: conflict dialog size/date lines
+│   ├── SortIndicator.cs / NestedDisplayPath.cs          ← T-F220: header sort arrow; nested archive shown as "outer.zip > ... > l4.zip"
 │   ├── BuildStamp.cs                                    ← T-F218: title-bar build stamp from assembly metadata
 │   ├── WindowCascade.cs / Win32PakkoWindows.cs          ← T-F201: cascade a new window off other Pakko windows
 │   └── ProcessTempRoot.cs                               ← T-F252: per-process %TEMP% subfolder, stale sweep
@@ -632,6 +635,9 @@ is the one English table; `ArchiveListResult.ErrorText`, `ThreatFinding.ReasonTe
 `HashEntry.ErrorText` carry the same `CoreText`. `Archiver.Messages` (net10.0 -> Core) renders a
 `CoreText` in a UI language (`MessageText.Render`, `UiCulture.Resolve`/`ResolveFirst`) from
 `Resources/CoreMessages.resx` (37 locales); Shell and the App use it, the CLI prints English.
+T-F297: an exception's text enters a message only through `CoreMessages.Detail`, which keeps the
+English text and adds the Windows error code; five codes of their own (`System*`,
+`ContentCrcMismatch`) are translated in the Ukrainian table only (`MessageText.UkrainianOnlyCodes`).
 `ArchiveOptions.ExactFileName` (T-F221) names a single archive exactly, no extension added.
 
 ---
@@ -698,7 +704,7 @@ public interface IDialogService
     Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning);
 
     // T-F06: same DispatcherQueue-marshaling requirement as ShowCompressionBombConfirmAsync above.
-    Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict);
+    Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict, Action? cancelOperation = null);
 
     // T-F97: opens a previewed/extracted file with the OS default handler. Process.Start
     // (UseShellExecute:true), not StorageFile/Launcher — the latter silently fails for an

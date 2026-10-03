@@ -346,6 +346,37 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         }
     }
 
+    // T-F220 item 2: the App's "cancel all" ends the prompt as a cancelled task; creation stops
+    // there as a cancel (T-F260) and the existing archive stays as it was.
+    [Theory]
+    [InlineData(ArchiveMode.SingleArchive)]
+    [InlineData(ArchiveMode.SeparateArchives)]
+    public async Task ArchiveAsync_ConflictPromptCancelled_ThrowsAndLeavesTheExistingArchive(ArchiveMode mode)
+    {
+        string file = _temp.CreateFile("source.txt");
+        string existingZip = Path.Combine(_temp.Path, mode == ArchiveMode.SingleArchive ? "output.zip" : "source.zip");
+        File.WriteAllText(existingZip, "old");
+        using var cts = new CancellationTokenSource();
+
+        Func<Task<ArchiveResult>> act = () => _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = mode == ArchiveMode.SingleArchive ? "output" : null,
+            Mode = mode,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ =>
+            {
+                cts.Cancel();
+                return Task.FromCanceled<ConflictDecision>(cts.Token);
+            },
+        }, null, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        File.ReadAllText(existingZip).Should().Be("old");
+        Directory.GetFiles(_temp.Path, "*.zip").Should().ContainSingle();
+    }
+
     // T-F268 step 5: a new archive has no size or time yet, so the prompt shows only the existing one.
     [Fact]
     public async Task ArchiveAsync_ConflictAsk_HasNoIncomingSizeOrTime()

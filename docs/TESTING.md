@@ -874,6 +874,15 @@ Ukrainian UI, CI an English one.
 
 ## Core Messages, Outcome and CLI Messages (fix phase 7, 2026-09-28)
 
+- v1.7.0 wave 4 (2026-10-03): `CoreMessageSourceGuardTests` also fails on a raw `ex.Message` inside
+  `CoreMessages.Text(` and covers `CoreMessages.Detail` (each mapped Windows code, inner exception,
+  unmapped code, non-Windows HRESULT, rewrite); `MessageTextTests` checks the Ukrainian-only codes
+  (uk has them and keeps the English text, the other 35 do not, de-DE renders English + code);
+  `VerifyingReadStreamTests` pins the CRC code; a real `What?.txt` extraction ends in
+  `(0x8007007B)`. A cancelled conflict prompt throws `OperationCanceledException` on ZIP extract
+  (`SourceOutcomeTests`), ZIP create in both modes (`ZipArchiveServiceArchiveTests`) and tar
+  extract/create (`TarSourceOutcomeTests`). App.Core: `ProgressTextTests`, `ConflictTextTests`,
+  `SortIndicatorTests`, `NestedDisplayPathTests`, and `SourceRecyclerTests`' `Deleted` list.
 - `CoreMessageSourceGuardTests` (Core) reads `src/Archiver.Core` and fails on any `Message =`/
   `Reason =`/`ErrorMessage =` outside `CoreMessages` (red on the unconverted code: 113 sites);
   `CoreMessageCodeTests` pins the codes users meet (corrupted ZIP, GZip, not an archive, missing
