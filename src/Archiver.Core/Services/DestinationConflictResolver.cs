@@ -7,15 +7,17 @@ namespace Archiver.Core.Services;
 // copies of the same "does this destination archive path already exist / collide with another
 // source in this same batch" decision, the archive-creation-side analogue of T-F157's
 // ExtractionDestinationPlanner.
-internal enum DestinationConflictOutcome { Proceed, ProceedAfterDeletingExisting, Skip }
+internal enum DestinationConflictOutcome { Proceed, ProceedReplacingExisting, Skip }
 
 internal static class DestinationConflictResolver
 {
     // Pure aside from awaiting conflictResolver (which may prompt the user — a genuine query, not
     // an action taken on its own) and calling renameCandidate (ArchiveNaming.GetUniqueFilePath,
     // shared by both engines since T-F159). Deliberately does no File.Exists/File.Delete itself —
-    // callers already know how to compute onDiskConflict/sameRunConflict in their own context, and
-    // act on ProceedAfterDeletingExisting themselves. Keeping I/O out of this function is what
+    // callers already know how to compute onDiskConflict/sameRunConflict in their own context.
+    // ProceedReplacingExisting needs no action of its own: the commit's rename replaces the old
+    // archive, which stays until the new one is complete (T-F312 — deleting it first threw on an
+    // archive a sync client held, and lost it when the new one failed). Keeping I/O out of this function is what
     // makes it unit-testable the way ExtractionDestinationPlanner.Resolve is (T-F157) — Tar's
     // original ResolveDestinationConflictAsync had File.Delete inside it and was never directly
     // unit-tested for exactly that reason.
@@ -34,7 +36,7 @@ internal static class DestinationConflictResolver
             // worker owns creating it), so there is nothing safe to delete; matches
             // ZipArchiveService.ResolveSeparateArchivePlansAsync's pre-T-F158 behavior exactly.
             ConflictBehavior.Overwrite => onDiskConflict && !sameRunConflict
-                ? (DestinationConflictOutcome.ProceedAfterDeletingExisting, destPath)
+                ? (DestinationConflictOutcome.ProceedReplacingExisting, destPath)
                 : (DestinationConflictOutcome.Proceed, renameCandidate(destPath)),
             _ => (DestinationConflictOutcome.Proceed, renameCandidate(destPath)), // Rename, or any
                 // future ConflictBehavior value — matches ArchiveNaming.GetExtension's existing

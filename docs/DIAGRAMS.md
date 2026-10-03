@@ -353,7 +353,7 @@ flowchart TD
     A2 --> A3B["ExtractionDestinationPlanner.Resolve(alreadyIsolated, shape, destDir,<br/>unisolatedDestDir, rootDuplicatesArchiveName)<br/>→ (actualDest, stripRootPrefix). T-F205: SingleFolder keeps the root<br/>unless EliminateDuplicateRootFolder is set and the root is named like the archive"]
     A3 --> A3B
     A3B --> A4["Compression-bomb check sums allFileEntries (whole archive),<br/>never the filtered subset — T-F05/T-F94"]
-    A4 --> ST["using staging = ExtractionStaging.Create(DestinationFolder)<br/>fresh hidden .pakko-x-pid-guid, never reused, disposed on every exit (T-F227)"]
+    A4 --> ST["using staging = ExtractionStaging.Create(DestinationFolder)<br/>sweeps .pakko-x-* of dead runs (T-F263), fresh hidden .pakko-x-owner-guid,<br/>never reused, disposed on every exit (T-F227)"]
     ST --> A["For each entry in entries"] --> CL{"CollidesAfterDecoding: other raw bytes,<br/>same decoded name as an earlier entry? (T-F234)"}
     CL -- yes --> E0["Errors += same name once decoded, entry not extracted"]
     CL -- no --> U{"HasUnsafePath: a .. segment (either separator)<br/>or a rooted / drive-relative name? (T-F228)"}
@@ -532,7 +532,7 @@ flowchart TB
     Core["Archiver.Core — in-process library<br/>(ZipArchiveService, TarSandboxedService,<br/>AntivirusScanService → amsi.dll in-process)"]
 
     subgraph Sandbox["per archive operation: TarSandboxScope"]
-        TarBox["C:\Windows\System32\tar.exe<br/>AppContainer Pakko.TarSandbox + Job Object<br/>(1 process, RAM/CPU limits), archive as stdin (T-F233),<br/>writes only %TEMP%\PakkoTarSandbox\guid\out"]
+        TarBox["C:\Windows\System32\tar.exe<br/>AppContainer Pakko.TarSandbox + Job Object<br/>(1 process, RAM/CPU limits), archive as stdin (T-F233),<br/>writes only %TEMP%\PakkoTarSandbox\owner-guid\out"]
     end
     TarPlain["C:\Windows\System32\tar.exe<br/>unsandboxed: no AppContainer, no Job Object"]
 
@@ -580,7 +580,7 @@ fix phase 4, 2026-09-25).
 
 ```mermaid
 flowchart TD
-    A0["ExtractSingleArchiveAsync per archivePath:<br/>scope = TarSandboxScope.CreateAsync(archivePath, needsOutputDir:true)<br/>— verifies tar.exe's Authenticode signature once,<br/>opens archivePath read-only, sharing read only, for the whole scope (T-F233),<br/>ensures the AppContainer profile, creates %TEMP%\PakkoTarSandbox\&lt;guid&gt;\out<br/>with ACEs — no ACE, link or copy of the user's archive"]
+    A0["ExtractSingleArchiveAsync per archivePath:<br/>scope = TarSandboxScope.CreateAsync(archivePath, needsOutputDir:true)<br/>— verifies tar.exe's Authenticode signature once,<br/>opens archivePath read-only, sharing read only, for the whole scope (T-F233),<br/>ensures the AppContainer profile, sweeps quarantines of dead runs (T-F263), creates %TEMP%\PakkoTarSandbox\&lt;owner-guid&gt;\out<br/>with ACEs — no ACE, link or copy of the user's archive"]
     A0 -- "signature check fails, or the archive is open for writing elsewhere ('in use')" --> RejSig["throw TarSignatureVerificationException / IOException<br/>caught in ExtractAsync as ArchiveError — fail-closed,<br/>never a silent unsandboxed fallback"]
     A0 -- "signature OK" --> A[ExtractSingleArchiveAsync continues] --> B["scope.ListAsync(verbose:false) = tar -t -f - (archive as inherited stdin)<br/>first with --options tar:hdrcharset=UTF-8, again without it if tar.exe<br/>reports non-UTF-8 names (T-F204) — INSIDE the AppContainer + a fresh Job Object"]
     B -- "exit != 0" --> RejIO1["throw IOException(DescribeFailure(stdErr))<br/>→ finally still runs: scope disposed —<br/>caught in ExtractAsync as ArchiveError"]
@@ -1085,14 +1085,14 @@ flowchart TD
 
     ZM -- SingleArchive --> S1["DestinationConflictResolver on name.zip<br/>(Ask → the frontend's conflict prompt, T-F158)"]
     S1 -- Skip --> S1S["return: every source SkippedFiles (ArchiveAlreadyExists)"]
-    S1 -- "Overwrite / Rename" --> S2["one walk: total bytes and file count (T-F35)"]
+    S1 -- "Overwrite / Rename" --> S2["temp = ArchiveTempFile.Create: sweep .pakko-a-* of dead runs,<br/>new .pakko-a-owner-guid.tmp — not hidden, the old archive stays (T-F312)<br/>one walk: total bytes and file count (T-F35)"]
     S2 --> S3{"password set, OR level Fastest, OR file count over 64?<br/>(CompressionSettings.RequiresHandRolledWriter, T-F299)"}
     S3 -- yes --> S4["ParallelSingleArchiveWriter — hand-rolled writer,<br/>the only one that encrypts (AES-256 AE-2), T-F35/T-F193,<br/>and stores an entry Deflate did not shrink (T-F299)"]
     S3 -- no --> S5["sequential ZipArchive writer"]
     S4 --> S6
     S5 --> S6{"cancelled? then: any entry in the .tmp?"}
     S6 -- "cancelled" --> SX["delete .tmp, rethrow OperationCanceledException"]
-    S6 -- "entries" --> S7["File.Move .tmp → name.zip, CreatedFiles += it"]
+    S6 -- "entries" --> S7["ArchiveTempFile.CommitAsync .tmp → name.zip — retries ~1.5 s<br/>while either file is held (T-F312), CreatedFiles += it"]
     S6 -- "none" --> S8["delete .tmp — no empty archive (T-F60)"]
     S4 & S5 -. "IOException / UnauthorizedAccessException / any other exception" .-> S9["delete .tmp, Errors += CannotCreateArchive /<br/>AccessDeniedCreatingArchive / UnexpectedError — never thrown"]
 
@@ -1112,14 +1112,15 @@ flowchart TD
     T2 -- yes --> TM{"Mode"}
     TM -- SingleArchive --> T3["DestinationConflictResolver on name.ext, Skip returns every source skipped"]
     TM -- SeparateArchives --> T4["SEQUENTIAL loop, sorted: missing → SourceNotFound,<br/>conflict per source, then one tar.exe per source"]
-    T3 --> T5
-    T4 --> T5["T-F286: first sweep the staging folders a killed creation left (owner process gone, links removed first).<br/>AppendSourcesToNameList, per source: reparse point skipped, missing → error,<br/>a name the ANSI code page cannot hold anywhere in the tree → error (T-F266/T-F204),<br/>a clashing name: file staged as a renamed copy, folder as a junction (T-F168, T-F171),<br/>a clashing folder on a network share → error, then lines -C, parent, name (exact -C → ./-C, T-F283)"]
+    T3 --> T3T["temp = ArchiveTempFile.Create (T-F312)"]
+    T3T --> T5
+    T4 --> T5["temp = ArchiveTempFile.Create per source (T-F312).<br/>T-F286: first sweep the staging folders a killed creation left (owner process gone, links removed first).<br/>AppendSourcesToNameList, per source: reparse point skipped, missing → error,<br/>a name the ANSI code page cannot hold anywhere in the tree → error (T-F266/T-F204),<br/>a clashing name: file staged as a renamed copy, folder as a junction (T-F168, T-F171),<br/>a clashing folder on a network share → error, then lines -C, parent, name (exact -C → ./-C, T-F283)"]
     T5 --> T6{"no source left?"}
     T6 -- yes --> T7["no tar.exe run"]
     T6 -- no --> T8["tar.exe -v -cf name.tmp -T - — the name list on stdin (T-F273/T-F283), SandboxedProcessLauncher with no AppContainer and<br/>no Job Object, stderr a-lines drive progress"]
     T8 --> T9{"exit code 0 and .tmp exists?"}
     T9 -- no --> TE3["delete .tmp, Errors += TarCreationFailed"]
-    T9 -- yes --> T10["File.Move .tmp → name.ext, CreatedFiles += it"]
+    T9 -- yes --> T10["ArchiveTempFile.CommitAsync .tmp → name.ext, CreatedFiles += it"]
 ```
 
 **What this catches:** the two engines are not symmetric, and a change that assumes they are will

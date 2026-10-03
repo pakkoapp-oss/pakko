@@ -118,6 +118,30 @@ public sealed class ZipArchiveServiceExtractStagingTests : IDisposable
         Directory.Exists(Path.Combine(_temp.Path, "multi")).Should().BeFalse();
     }
 
+    // T-F263: a run killed mid-extraction left its staging folder (the archive's plaintext) next to
+    // the destination for good. The next extraction there removes it; v1.6.0's name without a
+    // machine is removed only once old (the folder may be synced from another machine).
+    [Fact]
+    public async Task ExtractAsync_StagingOfADeadRun_IsSwept_OlderNameKeptWhileRecent()
+    {
+        string zip = CreateZip("multi.zip", "a.txt", "b.txt");
+        string dead = Path.Combine(_temp.Path, DeadOwner.Name(".pakko-x-"));
+        CreateUserFile(Path.Combine(dead, "a.txt"), "plaintext");
+        string older = Path.Combine(_temp.Path, $".pakko-x-{Environment.ProcessId + 1}-{DeadOwner.Unique}");
+        CreateUserFile(Path.Combine(older, "a.txt"), "plaintext");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = _temp.Path,
+            Mode = ExtractMode.SeparateFolders,
+        });
+
+        result.Success.Should().BeTrue();
+        Directory.Exists(dead).Should().BeFalse();
+        Directory.Exists(older).Should().BeTrue();
+    }
+
     // The fast path renames the staging folder into place — a Hidden staging folder must not
     // turn the user's extracted folder hidden.
     [Fact]

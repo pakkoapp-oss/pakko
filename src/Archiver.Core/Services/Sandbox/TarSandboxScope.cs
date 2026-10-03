@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
+using Archiver.Core.IO;
 using Archiver.Core.Models;
 using Microsoft.Win32.SafeHandles;
 
@@ -127,7 +128,10 @@ internal sealed partial class TarSandboxScope : IDisposable
             Directory.CreateDirectory(SandboxParentDirectory);
             QuarantineAcl.EnsureSharedParentTraverse(SandboxParentDirectory, sid);
 
-            quarantineRoot = Path.Combine(SandboxParentDirectory, Guid.NewGuid().ToString("N"));
+            // T-F263: a killed run's quarantine holds the archive's plaintext; the next one removes it.
+            // Older quarantines are named by a GUID alone, so only their age can tell.
+            TempOwner.SweepStale(SandboxParentDirectory, "", "", TempScope.LocalTemp(TimeSpan.FromDays(1)));
+            quarantineRoot = Path.Combine(SandboxParentDirectory, TempOwner.NewName(""));
             Directory.CreateDirectory(quarantineRoot);
             QuarantineAcl.GrantTraverseListReadAttributes(quarantineRoot, sid);
 

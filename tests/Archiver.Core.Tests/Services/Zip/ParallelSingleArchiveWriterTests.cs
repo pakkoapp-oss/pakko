@@ -416,6 +416,26 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
 
         await task;
         FindChunkDirectories().Should().BeEmpty("the folder must be gone once archiving completes");
+        Path.GetFileName(chunkDir).Should().StartWith(".pakko-tmp-" + Archiver.Core.IO.TempOwner.CurrentTag + "-");
+    }
+
+    // T-F263: a killed run's chunk folder (big compressed chunks) used to stay next to the archive
+    // for good.
+    [Fact]
+    public async Task WriteAsync_ChunkFolderOfADeadRun_IsSwept()
+    {
+        string leftover = Path.Combine(_tempDir, Helpers.DeadOwner.Name(".pakko-tmp-"));
+        Directory.CreateDirectory(leftover);
+        File.WriteAllBytes(Path.Combine(leftover, "chunk-1.tmp"), BuildContent(1024));
+        string sourceDir = Path.Combine(_tempDir, "source");
+        Directory.CreateDirectory(sourceDir);
+        File.WriteAllText(Path.Combine(sourceDir, "a.txt"), "a");
+
+        await ParallelSingleArchiveWriter.WriteAsync(
+            TempArchivePath, [sourceDir], CompressionLevel.Optimal, totalBytes: 1,
+            new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, CancellationToken.None);
+
+        Directory.Exists(leftover).Should().BeFalse();
     }
 
     // T-F140 regression: CompressToTempFileAsync's two ZipEntryWriter.CopyWithCrcAsync calls used

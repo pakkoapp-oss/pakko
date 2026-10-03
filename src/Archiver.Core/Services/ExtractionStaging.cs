@@ -1,3 +1,5 @@
+using Archiver.Core.IO;
+
 namespace Archiver.Core.Services;
 
 /// <summary>
@@ -7,8 +9,6 @@ namespace Archiver.Core.Services;
 /// </summary>
 internal sealed class ExtractionStaging : IDisposable
 {
-    // The PID lets a later startup sweep (rest of T-F263) tell a dead process's leftover from a
-    // live run's folder.
     private const string NamePrefix = ".pakko-x-";
 
     private ExtractionStaging(string path)
@@ -33,14 +33,15 @@ internal sealed class ExtractionStaging : IDisposable
     public void RecordFolderTime(string relativePath, DateTime utc) => _folderTimes[relativePath] = utc;
 
     /// <summary>Creates a new staging folder inside <paramref name="stagingRoot"/>, which must be
-    /// on the same volume as the destination so the commit can rename instead of copy.</summary>
+    /// on the same volume as the destination so the commit can rename instead of copy. Staging
+    /// folders a killed run left there go first (T-F263).</summary>
     public static ExtractionStaging Create(string stagingRoot)
     {
+        TempOwner.SweepStale(stagingRoot, NamePrefix, "", TempScope.Destination);
         string path;
         do
         {
-            path = System.IO.Path.Combine(stagingRoot,
-                $"{NamePrefix}{Environment.ProcessId}-{Guid.NewGuid():N}");
+            path = System.IO.Path.Combine(stagingRoot, TempOwner.NewName(NamePrefix));
         } while (Directory.Exists(path) || File.Exists(path));
 
         DirectoryInfo info = Directory.CreateDirectory(path);

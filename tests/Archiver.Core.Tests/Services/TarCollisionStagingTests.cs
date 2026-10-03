@@ -57,7 +57,7 @@ public sealed class TarCollisionStagingTests : IDisposable
         string path = TarCollisionStaging.NewDirectoryPath(TempRoot);
 
         Path.GetDirectoryName(path).Should().Be(TempRoot);
-        Path.GetFileName(path).Should().StartWith($"PakkoTarStage_{Environment.ProcessId}_");
+        Path.GetFileName(path).Should().StartWith($"PakkoTarStage_{Archiver.Core.IO.TempOwner.CurrentTag}-");
         Directory.Exists(path).Should().BeFalse();
     }
 

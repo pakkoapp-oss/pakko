@@ -39,6 +39,25 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         File.ReadAllText(Path.Combine(scope.OutputDirectory!, "a.txt")).Should().Be("scope test content");
     }
 
+    // T-F263: a killed run's quarantine (the archive's extracted plaintext) stayed in %TEMP% for
+    // good. The next scope removes it; one whose process still runs stays.
+    [Fact]
+    public async Task CreateAsync_QuarantineOfADeadRun_IsSwept_OwnIsNamedForThisProcess()
+    {
+        string archivePath = Path.Combine(_temp.Path, "fixture.tar");
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "x")]);
+        string parent = Path.Combine(Path.GetTempPath(), "PakkoTarSandbox");
+        string machine = Archiver.Core.IO.TempOwner.CurrentTag.Split('-')[0];
+        string dead = Path.Combine(parent, $"{machine}-{Environment.ProcessId}-1-0123456789abcdef0123456789abcdef");
+        Directory.CreateDirectory(Path.Combine(dead, "out"));
+        File.WriteAllText(Path.Combine(dead, "out", "plain.txt"), "plaintext");
+
+        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
+
+        Directory.Exists(dead).Should().BeFalse();
+        Path.GetFileName(scope.QuarantineRoot).Should().StartWith(Archiver.Core.IO.TempOwner.CurrentTag + "-");
+    }
+
     // Found 2026-09-24: every full test run left one empty "<guid>\in\" under %TEMP%\PakkoTarSandbox
     // — CreateAsync created the quarantine folders, then staging threw (here: the archive is gone),
     // and nothing owned the half-built folder yet, since the scope object is only constructed at

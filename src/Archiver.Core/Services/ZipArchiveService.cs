@@ -184,11 +184,9 @@ public sealed class ZipArchiveService : IArchiveService
                 SkippedFiles = [.. options.SourcePaths.Select(p => CoreMessages.Skip(p, CoreMessages.Text(MessageCode.ArchiveAlreadyExists, Path.GetFileName(destPath))))],
             };
         }
-        if (outcome == DestinationConflictOutcome.ProceedAfterDeletingExisting)
-            File.Delete(destPath);
         destPath = resolvedDestPath;
 
-        string tempPath = destPath + ".tmp";
+        string tempPath = ArchiveTempFile.Create(destPath);
 
         // T-F35 profiling (2026-07-18) found ComputeTotalBytes and the gate's file count used to
         // walk the same directory tree in two separate passes (~193ms combined against a
@@ -238,7 +236,7 @@ public sealed class ZipArchiveService : IArchiveService
             cancellationToken.ThrowIfCancellationRequested();
             if (HasTempEntries(tempPath))
             {
-                File.Move(tempPath, destPath, overwrite: true);
+                await ArchiveTempFile.CommitAsync(tempPath, destPath, cancellationToken).ConfigureAwait(false);
                 createdFiles.Add(destPath);
             }
             else
@@ -452,8 +450,6 @@ public sealed class ZipArchiveService : IArchiveService
                 plans.Add((sourcePath, null));
                 continue;
             }
-            if (outcome == DestinationConflictOutcome.ProceedAfterDeletingExisting)
-                File.Delete(destPath);
             destPath = resolvedDestPath;
 
             claimedDestPaths.Add(destPath);
@@ -506,7 +502,7 @@ public sealed class ZipArchiveService : IArchiveService
         long pathSize = ComputeSourceBytesBestEffort(sourcePath);
 
         long baseOffset = Interlocked.Read(ref completedBytesBox[0]);
-        string separateTempPath = destPath + ".tmp";
+        string separateTempPath = ArchiveTempFile.Create(destPath);
         CompressionLevel compressionLevel = settings.Level;
         // T-F260: this worker's own issue count — the shared bags are written by every worker at
         // once, so a before/after delta on them would not attribute issues to this source.
@@ -555,7 +551,7 @@ public sealed class ZipArchiveService : IArchiveService
             cancellationToken.ThrowIfCancellationRequested();
             if (HasTempEntries(separateTempPath))
             {
-                File.Move(separateTempPath, destPath, overwrite: true);
+                await ArchiveTempFile.CommitAsync(separateTempPath, destPath, cancellationToken).ConfigureAwait(false);
                 sink.CreatedFiles.Add(destPath);
                 committed = true;
             }

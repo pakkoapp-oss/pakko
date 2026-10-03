@@ -10804,3 +10804,36 @@ held on the device; stopped per the three-attempts rule.
   operation window open. (g) and the non-Ukrainian layouts join T-F91's release-time check.
 - **T-F48 closed with its last criterion not applicable.** Extraction auto-detects the format and
   reports an unsupported one per archive; there is no selector to grey out.
+
+## v1.7.0 wave 6 — architecture roots (2026-10-03)
+
+- **T-F263/T-F312, one owner for temporary names (`Core/IO/TempOwner`).** Every temporary file or
+  folder Pakko creates carries its owner as `m<8 hex of the machine name>-<pid>-<process start
+  ticks>` plus a GUID: the archive temp file (`.pakko-a-…tmp`), extraction staging (`.pakko-x-`),
+  the parallel writer's chunk folder (`.pakko-tmp-`), the tar quarantine (`%TEMP%\PakkoTarSandbox\…`),
+  tar creation's collision staging (`PakkoTarStage_`) and, through `ProcessTempRoot`, the App's
+  preview and nested caches. The operation that next creates one in the same folder first removes
+  those whose owner is gone. The rule differs by place: under `%TEMP%` (this machine's alone) the
+  process decides, older v1.6.0 names included (a v1.6.0 window may still be open next to a newer
+  one); next to a destination, which a sync client or a share can show to another machine, the
+  process decides only for this machine's names — another machine's, v1.6.0's pid-only and
+  owner-less names go by age (one day). Removal deletes every link on its own first, then the tree.
+  `CliStreamStaging` keeps its own working pid + creation-time check (local, tested in T-F244).
+- **The old fixed `<archive>.tmp` is never deleted.** Its owner cannot be proved (it may be the
+  user's file); with a unique name it no longer blocks creation, so it is simply left.
+- **The archive temp file is not hidden and does not repeat the archive's name.** The rename
+  carries Hidden to the finished archive, and tar.exe cannot overwrite a hidden file; the archive's
+  name would add up to 255 characters to a name that must stay under the component limit.
+- **The commit retries.** `ArchiveTempFile.CommitAsync` retries for about 1.5 s on a sharing or lock
+  violation and on `UnauthorizedAccessException` when the destination exists — the exception
+  `File.Move(overwrite: true)` really throws onto a held file (T-F170; a test against the narrower
+  predicate failed). Any other failure is reported at once.
+- **Overwrite no longer deletes the old archive first.** Found while testing T-F312: with Overwrite
+  on an archive another process held, the up-front `File.Delete` threw out of `ArchiveAsync`/
+  `CompressAsync` (breaking the never-throw rule), and a failed creation had already lost the old
+  archive. The commit's rename replaces it; `DestinationConflictOutcome.ProceedAfterDeletingExisting`
+  is now `ProceedReplacingExisting`.
+- **No owner-only ACL on destination-side staging (T-F263's ACL item, closed by decision).** The fast
+  path moves the staging folder into place with `Directory.Move`, which keeps an explicit DACL: the
+  user's extracted folder would end up owner-only and not inheriting. `%TEMP%` roots sit in the
+  user's profile already; the quarantine has its own ACL (T-F52).

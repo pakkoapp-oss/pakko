@@ -93,7 +93,20 @@ public sealed class ProcessTempRootTests : IDisposable
         using var current = Process.GetCurrentProcess();
         long otherTicks = current.StartTime.ToUniversalTime().Ticks - TimeSpan.TicksPerHour;
 
-        ProcessTempRoot.IsOwnerAlive(ProcessTempRoot.OwnerName(Environment.ProcessId, otherTicks)).Should().BeFalse();
+        string machine = ProcessTempRoot.CurrentOwnerName.Split('-')[0];
+
+        ProcessTempRoot.IsOwnerAlive($"{machine}-{Environment.ProcessId}-{otherTicks}").Should().BeFalse();
+        ProcessTempRoot.IsOwnerAlive($"{Environment.ProcessId}-{otherTicks}").Should().BeFalse();
+    }
+
+    // T-F263: v1.6.0 named its folder "<pid>-<start ticks>"; a v1.6.0 window still open next to a
+    // newer one keeps its previewed files.
+    [Fact]
+    public void IsOwnerAlive_OlderNameOfARunningProcess_True()
+    {
+        using var current = Process.GetCurrentProcess();
+
+        ProcessTempRoot.IsOwnerAlive($"{Environment.ProcessId}-{current.StartTime.ToUniversalTime().Ticks}").Should().BeTrue();
     }
 
     [Theory]

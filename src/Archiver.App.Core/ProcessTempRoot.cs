@@ -1,5 +1,4 @@
-using System.Diagnostics;
-using System.Globalization;
+using Archiver.Core.IO;
 
 namespace Archiver.App.Core;
 
@@ -26,39 +25,11 @@ public sealed class ProcessTempRoot
     /// <summary>This process's subfolder.</summary>
     public string OwnRoot { get; }
 
-    /// <summary>"&lt;pid&gt;-&lt;start time ticks, UTC&gt;" — the start time guards against a reused PID.</summary>
-    public static string CurrentOwnerName { get; } = OwnerName(Environment.ProcessId, CurrentStartTicks());
+    /// <summary>This process's owner tag (<see cref="TempOwner.CurrentTag"/>, T-F263).</summary>
+    public static string CurrentOwnerName => TempOwner.CurrentTag;
 
-    /// <summary>Formats an owner name.</summary>
-    public static string OwnerName(int processId, long startTicksUtc) =>
-        string.Create(CultureInfo.InvariantCulture, $"{processId}-{startTicksUtc}");
-
-    /// <summary>
-    /// True when the named process still runs. A name that does not parse is a leftover from an
-    /// older Pakko and counts as gone; a process whose start time cannot be read counts as alive,
-    /// so nothing is deleted on a guess.
-    /// </summary>
-    public static bool IsOwnerAlive(string ownerName)
-    {
-        string[] parts = ownerName.Split('-');
-        if (parts.Length != 2
-            || !int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out int pid)
-            || !long.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out long ticks))
-            return false;
-        try
-        {
-            using var process = Process.GetProcessById(pid);
-            return process.StartTime.ToUniversalTime().Ticks == ticks;
-        }
-        catch (ArgumentException)
-        {
-            return false; // no process with that id
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException)
-        {
-            return true;
-        }
-    }
+    /// <summary>True when the named process still runs here (<see cref="TempOwner.IsRunningHere"/>).</summary>
+    public static bool IsOwnerAlive(string ownerName) => TempOwner.IsRunningHere(ownerName);
 
     /// <summary>Creates a fresh scope directory under <see cref="OwnRoot"/> and returns its path.</summary>
     public string CreateScope()
@@ -111,11 +82,5 @@ public sealed class ProcessTempRoot
         {
             // best-effort — a file still open in the previewing app blocks it; SweepStale retries
         }
-    }
-
-    private static long CurrentStartTicks()
-    {
-        using var current = Process.GetCurrentProcess();
-        return current.StartTime.ToUniversalTime().Ticks;
     }
 }

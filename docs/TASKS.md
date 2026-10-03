@@ -2818,6 +2818,13 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F263 — Staging and temporary folders have no single owner; the two extraction commit paths are synced by hand (P1, root, decision)
 
+- [~] **Status (2026-10-03, v1.7.0 wave 6):** fixed in code, device check pending. The per-process
+  caches and their startup sweep were already done by T-F252, and both engines already commit
+  through `ExtractionStaging`. This wave added the one owner of temporary names, `Core/IO/TempOwner`
+  (machine, pid and start time in every name; the sweep of dead runs' leftovers, by age where the
+  owner cannot be checked) and put extraction staging, the chunk folder, the tar quarantine, tar's
+  collision staging and `ProcessTempRoot` on it. Owner-only ACLs: closed by decision (DECISIONS,
+  wave 6). The `[ ] open` status line below is the original report.
 - **Progress (2026-09-27, fix phase 8):** CLI slice done with T-F244 item 4 (per-run staging
   folders named by PID, sweep of dead runs). App preview/nested cache roots remain (phase 9).
 
@@ -3522,7 +3529,12 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F312 — A leftover or locked `<name>.zip.tmp` makes the next archive creation fail (P2)
 
-- [ ] **Status:** open. Found in the v1.7.0 wave 3 device check, 2026-10-03: a `pakko a big3.zip
+- [~] **Status (2026-10-03, v1.7.0 wave 6):** fixed in code, device check pending. ZIP and tar
+  creation write to `ArchiveTempFile` (`.pakko-a-<owner>-<guid>.tmp`, unique per run, not hidden);
+  a dead run's file is swept, an old fixed `.tmp` is left alone and no longer blocks; the commit
+  retries ~1.5 s while either file is held. Also fixed: Overwrite deleted the old archive first and
+  threw out of `ArchiveAsync`/`CompressAsync` when another process held it (DECISIONS, wave 6).
+- **Original report:** open. Found in the v1.7.0 wave 3 device check, 2026-10-03: a `pakko a big3.zip
   big.bin` killed mid-run (`taskkill /F`) left `big3.zip.tmp` next to the destination; the next
   `pakko a big3.zip big.bin` failed at once with "Cannot create archive: The file '...big3.zip.tmp'
   already exists." `ZipArchiveService` uses one fixed temp name, `destPath + ".tmp"` (`:191`, and

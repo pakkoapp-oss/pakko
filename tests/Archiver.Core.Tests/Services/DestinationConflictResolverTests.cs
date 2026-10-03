@@ -40,7 +40,7 @@ public sealed class DestinationConflictResolverTests
     public async Task ResolveAsync_OnDiskOnly_Overwrite_DeletesExisting()
     {
         await AssertResolveAsync(onDiskConflict: true, sameRunConflict: false, ConflictBehavior.Overwrite,
-            DestinationConflictOutcome.ProceedAfterDeletingExisting, DestPath);
+            DestinationConflictOutcome.ProceedReplacingExisting, DestPath);
     }
 
     [Fact]

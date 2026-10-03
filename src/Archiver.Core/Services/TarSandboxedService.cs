@@ -1170,8 +1170,6 @@ public sealed class TarSandboxedService : ITarService
                     SkippedFiles = [.. options.SourcePaths.Select(p => CoreMessages.Skip(p, MessageCode.ArchiveAlreadyExists, Path.GetFileName(destPath)))],
                 };
             }
-            if (outcome == DestinationConflictOutcome.ProceedAfterDeletingExisting)
-                File.Delete(destPath);
 
             await CompressToArchiveAsync(options, resolvedDestPath, createdFiles, errors, skippedFiles, progress, cancellationToken)
                 .ConfigureAwait(false);
@@ -1234,8 +1232,6 @@ public sealed class TarSandboxedService : ITarService
                 sink.SkippedFiles.Add(CoreMessages.Skip(sourcePath, MessageCode.ArchiveAlreadyExists, Path.GetFileName(destPath)));
                 continue;
             }
-            if (outcome == DestinationConflictOutcome.ProceedAfterDeletingExisting)
-                File.Delete(destPath);
 
             ArchiveOptions singleOptions = options with { SourcePaths = [sourcePath] };
             int errorsBefore = sink.Errors.Count, skippedBefore = sink.SkippedFiles.Count, createdBefore = sink.CreatedFiles.Count;
@@ -1249,7 +1245,7 @@ public sealed class TarSandboxedService : ITarService
         return sources;
     }
 
-    // Runs one tar.exe -cf invocation writing to a ".tmp" path, then atomically moves it to
+    // Runs one tar.exe -cf invocation writing to an ArchiveTempFile path, then moves it to
     // destPath only if at least one entry was actually written — mirrors ZipArchiveService's
     // temp-then-commit pattern (no partial files on cancel or failure, CLAUDE.md hard
     // constraint). Reparse-point sources are skipped (T-F23 precedent); missing sources are
@@ -1263,7 +1259,7 @@ public sealed class TarSandboxedService : ITarService
         IProgress<ProgressReport>? progress,
         CancellationToken cancellationToken)
     {
-        string tempPath = destPath + ".tmp";
+        string tempPath = ArchiveTempFile.Create(destPath);
         // T-F171: decided here, created only on the first collision, so the finally below cleans it
         // up even when staging stops partway through.
         TarCollisionStaging.SweepStale();
@@ -1320,7 +1316,7 @@ public sealed class TarSandboxedService : ITarService
                     return;
                 }
 
-                File.Move(tempPath, destPath, overwrite: true);
+                await ArchiveTempFile.CommitAsync(tempPath, destPath, cancellationToken).ConfigureAwait(false);
                 createdFiles.Add(destPath);
                 progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = totalBytesForProgress, TotalBytes = totalBytesForProgress });
             }

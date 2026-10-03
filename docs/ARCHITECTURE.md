@@ -108,9 +108,12 @@ src/
 │   │   ├── ExtractionDestinationPlanner.cs ← T-F157: shared actualDest/StripRootPrefix decision,
 │   │   │                                  was hand-kept-in-sync between ZipArchiveService and
 │   │   │                                  TarSandboxedService (T-F118)
-│   │   ├── ExtractionStaging.cs        ← T-F227 (T-F263 slice): fresh owned hidden
-│   │   │                                  .pakko-x-<pid>-<guid> staging folder + the T-F161/T-F170
-│   │   │                                  commit (CommitInto); ZIP only until fix phase 4
+│   │   ├── ExtractionStaging.cs        ← T-F227/T-F263: fresh owned hidden .pakko-x-<owner>-<guid>
+│   │   │                                  staging folder (dead runs' ones swept first) + the
+│   │   │                                  T-F161/T-F170 commit (CommitInto); ZIP and tar
+│   │   ├── ArchiveTempFile.cs          ← T-F312: the temp file a new archive is written to
+│   │   │                                  (.pakko-a-<owner>-<guid>.tmp, not hidden) and its commit,
+│   │   │                                  retried ~1.5 s while either file is held; ZIP and tar
 │   │   ├── DestinationConflictResolver.cs ← T-F158: archive-creation-side analogue of T-F157 —
 │   │   │                                  shared Skip/Overwrite/Rename decision for a candidate
 │   │   │                                  archive destination path
@@ -137,6 +140,10 @@ src/
 │   │       └── Decryption/              ← T-F188/T-F189: RawZipEntryLocator (central directory +
 │   │                                          local headers), EncryptedZipEntryReader, ZipCrypto, WinZip AES
 │   ├── IO/
+│   │   ├── TempOwner.cs                ← T-F263/T-F312: public; the one owner of temp names —
+│   │   │                                  tag m<machine>-<pid>-<start ticks>, the sweep of entries
+│   │   │                                  dead runs left (by process here, by age next to a
+│   │   │                                  destination for anything not provably this machine's)
 │   │   ├── Crc32.cs                    ← public (T-F110); slice-by-8 (T-F128 follow-up, was
 │   │   │                                  byte-at-a-time — real ~9x perf gap vs. 7-Zip found via
 │   │   │                                  HashPerformanceTests), reused by pending-list CRC too.
@@ -502,9 +509,9 @@ internal static class ExtractionDestinationPlanner
 // ZipArchiveService.ResolveSeparateArchivePlansAsync (with an extra same-run-collision wrinkle,
 // see DECISIONS.md's T-F158 entry), and TarSandboxedService's own private
 // ResolveDestinationConflictAsync (deleted). Deliberately pure aside from awaiting
-// conflictResolver — no File.Exists/File.Delete inside; ProceedAfterDeletingExisting leaves the
-// actual delete to the caller.
-internal enum DestinationConflictOutcome { Proceed, ProceedAfterDeletingExisting, Skip }
+// conflictResolver — no File.Exists/File.Delete inside; on ProceedReplacingExisting the commit's
+// rename replaces the old archive (T-F312), so nothing is deleted before the new one exists.
+internal enum DestinationConflictOutcome { Proceed, ProceedReplacingExisting, Skip }
 
 internal static class DestinationConflictResolver
 {

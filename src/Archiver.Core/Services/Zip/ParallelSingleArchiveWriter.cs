@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Threading.Channels;
+using Archiver.Core.IO;
 using Archiver.Core.Models;
 
 namespace Archiver.Core.Services.Zip;
@@ -40,6 +41,7 @@ internal static class ParallelSingleArchiveWriter
     // T-F35 follow-up entry.
     public const long InMemoryCompressByteThreshold = 1L * 1024 * 1024;
 
+    private const string ChunkFolderPrefix = ".pakko-tmp-";
     private const int FileReadBufferSize = 65536;
     private const int CopyBufferSize = 81920;
 
@@ -163,10 +165,12 @@ internal static class ParallelSingleArchiveWriter
         // A per-operation hidden subfolder next to the destination archive — not loose files
         // scattered in that folder (confusing, per on-device verification), and not the system
         // %TEMP% either (a different, possibly smaller/fuller volume than the destination, which
-        // matters now that there's no per-file size ceiling). The GUID suffix keeps two concurrent
-        // archive operations targeting the same destination folder from colliding.
+        // matters now that there's no per-file size ceiling). The unique part keeps two concurrent
+        // archive operations targeting the same destination folder from colliding; the owner tag
+        // lets the next run remove a folder a killed run left (T-F263).
         string destinationDir = Path.GetDirectoryName(tempPath) is { Length: > 0 } dir ? dir : ".";
-        string chunkDirectory = Path.Combine(destinationDir, $".pakko-tmp-{Guid.NewGuid():N}");
+        TempOwner.SweepStale(destinationDir, ChunkFolderPrefix, "", TempScope.Destination);
+        string chunkDirectory = Path.Combine(destinationDir, TempOwner.NewName(ChunkFolderPrefix));
         Directory.CreateDirectory(chunkDirectory);
         File.SetAttributes(chunkDirectory, File.GetAttributes(chunkDirectory) | FileAttributes.Hidden);
 

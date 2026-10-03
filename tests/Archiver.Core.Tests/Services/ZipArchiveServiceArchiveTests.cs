@@ -953,19 +953,16 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     }
 
     [Fact]
-    public async Task ArchiveAsync_SingleArchiveMode_DestinationTempFileLocked_RecordsIOExceptionError()
+    public async Task ArchiveAsync_SingleArchiveMode_OlderFixedTempNameHeld_StillCreatesArchive()
     {
-        // T-F143: covers ArchiveAsync's SingleArchive-mode OUTER IOException catch, which is only
-        // reached when ZipFile.Open(tempPath, Create) itself fails -- distinct from the per-file
-        // catch inside AddDirectoryToArchiveAsync that
-        // ArchiveAsync_FileLockedDuringDirectoryTraversal_PerFileErrorRemainingFilesArchived above
-        // already covers.
+        // T-F312: "<archive>.tmp" left by a killed run, or held by a sync client, failed every later
+        // run. It is not Pakko's to delete (its owner cannot be proved), so it is left as it is.
         string file = _temp.CreateFile("document.txt");
         string destPath = Path.Combine(_temp.Path, "locked_archive.zip");
-        string tempPath = destPath + ".tmp";
+        string olderTempPath = destPath + ".tmp";
 
         ArchiveResult result;
-        using (new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        using (new FileStream(olderTempPath, FileMode.Create, FileAccess.Write, FileShare.None))
         {
             result = await _sut.ArchiveAsync(new ArchiveOptions
             {
@@ -976,24 +973,117 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             });
         }
 
-        result.Success.Should().BeFalse();
-        result.Errors.Should().ContainSingle(e => e.SourcePath == destPath);
-        result.CreatedFiles.Should().BeEmpty();
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().Equal(destPath);
+        File.Exists(olderTempPath).Should().BeTrue();
+        (File.GetAttributes(destPath) & FileAttributes.Hidden).Should().Be((FileAttributes)0);
+        Directory.GetFiles(_temp.Path, ".pakko-a-*").Should().BeEmpty();
     }
 
     [Fact]
-    public async Task ArchiveAsync_SeparateArchivesMode_DestinationTempFileLocked_RecordsIOExceptionError()
+    public async Task ArchiveAsync_SingleArchiveMode_ArchiveNameIsAFolder_RecordsErrorAndLeavesNoTemp()
     {
-        // T-F143: mirrors the SingleArchive-mode test above, but for
-        // ArchiveSingleSeparatePathAsync's own outer IOException catch (separateTempPath).
+        // T-F143: covers ArchiveAsync's SingleArchive-mode OUTER IOException catch — the commit
+        // cannot replace a folder, and a folder is not a held file worth retrying for.
+        string file = _temp.CreateFile("document.txt");
+        string destPath = Path.Combine(_temp.Path, "folder_archive.zip");
+        Directory.CreateDirectory(destPath);
+
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "folder_archive",
+            Mode = ArchiveMode.SingleArchive
+        });
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.SourcePath == destPath);
+        result.CreatedFiles.Should().BeEmpty();
+        Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
+    }
+
+    // T-F312: Overwrite onto an archive a sync client holds for a moment — the old archive stays
+    // until the new one is complete, and the rename waits for the holder.
+    [Fact]
+    public async Task ArchiveAsync_OverwriteArchiveHeldBriefly_ReplacesIt()
+    {
+        string file = _temp.CreateFile("document.txt", "new");
+        string destPath = _temp.CreateFile("held.zip", "old archive");
+        var held = new FileStream(destPath, FileMode.Open, FileAccess.Read, FileShare.None);
+        _ = Task.Delay(300).ContinueWith(_ => held.Dispose(), TaskScheduler.Default);
+
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "held",
+            Mode = ArchiveMode.SingleArchive,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+        using ZipArchive archive = ZipFile.OpenRead(destPath);
+        archive.Entries.Should().ContainSingle(e => e.Name == "document.txt");
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_OverwriteArchiveHeldThroughout_RecordsErrorKeepsOldArchive()
+    {
+        string file = _temp.CreateFile("document.txt", "new");
+        string destPath = _temp.CreateFile("held.zip", "old archive");
+
+        ArchiveResult result;
+        using (new FileStream(destPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            result = await _sut.ArchiveAsync(new ArchiveOptions
+            {
+                SourcePaths = [file],
+                DestinationFolder = _temp.Path,
+                ArchiveName = "held",
+                Mode = ArchiveMode.SingleArchive,
+                OnConflict = ConflictBehavior.Overwrite,
+            });
+        }
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.SourcePath == destPath);
+        File.ReadAllText(destPath).Should().Be("old archive");
+        Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_LongArchiveName_Works()
+    {
+        // T-F312: the temporary name does not repeat the archive's name, so a name near the
+        // 255-character limit still fits.
+        string file = _temp.CreateFile("document.txt");
+        string name = new('n', 240);
+
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = name,
+            Mode = ArchiveMode.SingleArchive
+        });
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(_temp.Path, name + ".zip")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_SeparateArchivesMode_OlderFixedTempNameHeld_StillCreatesArchive()
+    {
+        // T-F312: mirrors the SingleArchive-mode test above for ArchiveSingleSeparatePathAsync.
         string sourceDir = Path.Combine(_temp.Path, "source_dir");
         Directory.CreateDirectory(sourceDir);
         File.WriteAllText(Path.Combine(sourceDir, "inner.txt"), "content");
         string destPath = Path.Combine(_temp.Path, "source_dir.zip");
-        string separateTempPath = destPath + ".tmp";
+        string olderTempPath = destPath + ".tmp";
 
         ArchiveResult result;
-        using (new FileStream(separateTempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        using (new FileStream(olderTempPath, FileMode.Create, FileAccess.Write, FileShare.None))
         {
             result = await _sut.ArchiveAsync(new ArchiveOptions
             {
@@ -1003,9 +1093,32 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             });
         }
 
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().Equal(destPath);
+        File.Exists(olderTempPath).Should().BeTrue();
+        Directory.GetFiles(_temp.Path, ".pakko-a-*").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_SeparateArchivesMode_ArchiveNameIsAFolder_RecordsErrorAndLeavesNoTemp()
+    {
+        // T-F143: ArchiveSingleSeparatePathAsync's own outer IOException catch.
+        string sourceDir = Path.Combine(_temp.Path, "source_dir");
+        Directory.CreateDirectory(sourceDir);
+        File.WriteAllText(Path.Combine(sourceDir, "inner.txt"), "content");
+        Directory.CreateDirectory(Path.Combine(_temp.Path, "source_dir.zip"));
+
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [sourceDir],
+            DestinationFolder = _temp.Path,
+            Mode = ArchiveMode.SeparateArchives
+        });
+
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.SourcePath == sourceDir);
         result.CreatedFiles.Should().BeEmpty();
+        Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
     }
 
     [Fact]

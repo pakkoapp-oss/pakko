@@ -79,7 +79,65 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         }
 
         result?.Errors.Should().BeEmpty();
-        File.Exists(Path.Combine(_temp.Path, "cancel_test.tar.tmp")).Should().BeFalse();
+        Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
+    }
+
+    // T-F312: "<archive>.tmp" left by a killed run, or held by a sync client, failed every later run.
+    [Integration]
+    public async Task CompressAsync_OlderFixedTempNameHeld_StillCreatesArchiveNotHidden()
+    {
+        string srcFile = Path.Combine(_temp.Path, "a.txt");
+        File.WriteAllText(srcFile, "content");
+        string destPath = Path.Combine(_temp.Path, "held.tar");
+        string olderTempPath = destPath + ".tmp";
+
+        ArchiveResult result;
+        using (new FileStream(olderTempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            result = await _sut.CompressAsync(new ArchiveOptions
+            {
+                SourcePaths = [srcFile],
+                DestinationFolder = _temp.Path,
+                ArchiveName = "held",
+                Format = ArchiveContainerFormat.Tar,
+            });
+        }
+
+        result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+        result.CreatedFiles.Should().Equal(destPath);
+        File.Exists(olderTempPath).Should().BeTrue();
+        (File.GetAttributes(destPath) & FileAttributes.Hidden).Should().Be((FileAttributes)0);
+        Directory.GetFiles(_temp.Path, ".pakko-a-*").Should().BeEmpty();
+        (await ExtractAndReadAsync(destPath, "a.txt")).Should().Be("content");
+    }
+
+    // T-F312: Overwrite deleted the old archive first, which threw out of CompressAsync when another
+    // process held it. The old archive now stays until the new one replaces it.
+    [Integration]
+    public async Task CompressAsync_OverwriteArchiveHeldThroughout_RecordsErrorKeepsOldArchive()
+    {
+        string srcFile = Path.Combine(_temp.Path, "a.txt");
+        File.WriteAllText(srcFile, "content");
+        string destPath = Path.Combine(_temp.Path, "held.tar");
+        File.WriteAllText(destPath, "old archive");
+
+        ArchiveResult result;
+        using (new FileStream(destPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            result = await _sut.CompressAsync(new ArchiveOptions
+            {
+                SourcePaths = [srcFile],
+                DestinationFolder = _temp.Path,
+                ArchiveName = "held",
+                Format = ArchiveContainerFormat.Tar,
+                OnConflict = ConflictBehavior.Overwrite,
+            });
+        }
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e => e.SourcePath == destPath);
+        File.ReadAllText(destPath).Should().Be("old archive");
+        Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
     }
 
     // T-F168: mirrors ZipArchiveServiceArchiveTests.ArchiveAsync_TwoSourceFilesShareBasename_
@@ -148,7 +206,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle().Which.Message.Should().Contain("code page");
         File.Exists(Path.Combine(_temp.Path, "injected.tar")).Should().BeFalse();
-        File.Exists(Path.Combine(_temp.Path, "injected.tar.tmp")).Should().BeFalse();
+        Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
     }
 
     // T-F266/T-F204: tar.exe walks folders itself, so a name deep inside a selected folder goes
@@ -505,7 +563,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         result.Success.Should().BeFalse();
         result.Errors.Should().ContainSingle(e => e.SourcePath == missing);
         File.Exists(Path.Combine(_temp.Path, "out.tar")).Should().BeFalse();
-        File.Exists(Path.Combine(_temp.Path, "out.tar.tmp")).Should().BeFalse();
+        Directory.GetFiles(_temp.Path, "*.tmp").Should().BeEmpty();
     }
 
     // Confirms the --options <filter>:compression-level=N mapping (T-F105's Phase 0 finding) has

@@ -927,6 +927,23 @@ Ukrainian UI, CI an English one.
   `pakko l`'s Encrypted column. The window layout itself (cards, scroll fit, 900x520 floor) is
   checked on device, not by tests.
 
+## Temporary Names and Commits (v1.7.0 wave 6, T-F263/T-F312)
+
+`IO/TempOwnerTests` (tag and name shape, `IsRunningHere` incl. a reused pid and v1.6.0's
+`<pid>-<ticks>`, the sweep by place: this machine's dead/live/reused owners, another machine's and
+v1.6.0's pid-only names by age next to a destination but by process under `%TEMP%`, owner-less
+names by age, a held entry, a junction deep inside, a read-only file), `ArchiveTempFileTests`
+(the name, a dead run's file swept, the commit with either file held briefly, held throughout,
+missing, cancelled). Through the engines: `ZipArchiveServiceArchiveTests` (an old fixed `.tmp`
+held, the archive name taken by a folder, a ~240-character archive name, Overwrite onto an archive
+held briefly and throughout), `TarSandboxedServiceCompressTests` (the same old `.tmp` and held
+Overwrite cases through real tar.exe), `ZipArchiveServiceExtractStagingTests`,
+`ParallelSingleArchiveWriterTests` and `TarSandboxScopeTests` (a dead run's staging, chunk folder
+and quarantine swept). The dead owner is the current pid with another start time
+(`Helpers/DeadOwner`). Mutants killed: liveness always false, the machine check removed, link
+removal removed, each of the four sweeps removed, the fixed `.tmp` name, the narrow retry predicate,
+the delete-first Overwrite in tar.
+
 ---
 
 ## Rules
