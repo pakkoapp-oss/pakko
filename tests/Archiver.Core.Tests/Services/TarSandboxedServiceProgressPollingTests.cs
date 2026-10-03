@@ -65,10 +65,17 @@ public sealed class TarSandboxedServiceProgressPollingTests
         using var temp = new TempDirectory();
         temp.CreateFile("partial.bin", new string('a', 40));
         var reports = new List<ProgressReport>();
-        var progress = new SynchronousProgress<ProgressReport>(r => reports.Add(r));
+        var firstReport = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var progress = new SynchronousProgress<ProgressReport>(r =>
+        {
+            reports.Add(r);
+            firstReport.TrySetResult();
+        });
 
-        // Long enough to survive at least one 250ms poll tick, short enough to keep the test fast.
-        var extractionTask = Task.Delay(400);
+        // A fixed Task.Delay(400) raced CI scheduling jitter (the first 250ms tick landing after
+        // the delay had already ended). Ending on the first report removes the race; the delay is
+        // only a cap so a poller that never reports fails instead of hanging.
+        var extractionTask = Task.WhenAny(firstReport.Task, Task.Delay(TimeSpan.FromSeconds(10)));
 
         await TarSandboxedService.PollExtractionProgressAsync(
             temp.Path, totalBytes: 100, progress, extractionTask, CancellationToken.None);
