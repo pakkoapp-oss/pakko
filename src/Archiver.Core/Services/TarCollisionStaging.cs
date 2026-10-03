@@ -75,7 +75,7 @@ internal static class TarCollisionStaging
     {
         try
         {
-            using Process process = Process.GetProcessById(processId);
+            using var process = Process.GetProcessById(processId);
             return true;
         }
         catch (ArgumentException)
