@@ -2288,6 +2288,14 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   4. Column sorting works but shows no direction indicator.
   5. The status line for a nested-archive scan shows the internal temp path
      (`%TEMP%\PakkoNestedArchive\<guid>\l4.zip`) instead of `outer.zip > ... > l4.zip`.
+- [~] **Progress (2026-10-03, v1.7.0 wave 4):** items 1 and 3 and the grammar of item 2 were done
+  by T-F199 (App says "Видобути"/"Стиснути в {0}"/"Тестувати архів" like Explorer; the row menu
+  says "Прибрати зі списку"; "Застосувати до всіх наступних конфліктів"). Now: item 2 — the App's
+  conflict dialog shows both files' size and date (App.Core `ConflictText`, words copied from the
+  Explorer window's 37 locales) and a "Скасувати все" link that cancels the operation; item 4 — the
+  sorted header shows an arrow (`SortIndicator`; the list keeps its order until the first click);
+  item 5 — the scan status line names the chain (`NestedDisplayPath`); the dialogs already showed
+  only the file name. Device check pending.
 - **Reported by:** T-F202, 2026-09-24.
 
 ### T-F221 — CLI error and help messages (P2)

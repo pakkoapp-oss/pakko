@@ -1261,6 +1261,13 @@ public sealed partial class MainViewModel : ObservableObject
         RebuildBreadcrumb();
     }
 
+    // T-F220 item 5: a nested level's BrowsedArchivePath is its temp copy; shown text names the
+    // chain instead (the breadcrumb's own segments up to this level's root).
+    private string ForDisplay(string text) => _currentNestedScopeDir is null
+        ? text
+        : NestedDisplayPath.Map(text, BrowsedArchivePath,
+            NestedDisplayPath.Chain([.. _nestedBreadcrumbAncestry, _currentLevelDisplayName ?? Path.GetFileName(BrowsedArchivePath ?? string.Empty)]));
+
     private void RebuildBreadcrumb()
     {
         var segments = new List<string>();
@@ -1610,7 +1617,7 @@ public sealed partial class MainViewModel : ObservableObject
             var progress = new Progress<ProgressReport>(r =>
             {
                 Progress = r.Percent;
-                StatusMessage = r.CurrentFile is null ? scanningLabel : $"{scanningLabel} — {r.CurrentFile}";
+                StatusMessage = r.CurrentFile is null ? scanningLabel : $"{scanningLabel} — {ForDisplay(r.CurrentFile)}";
             });
 
             ThreatScanResult result = await _antivirusScanService.ScanAsync(options, progress, _cts.Token);
