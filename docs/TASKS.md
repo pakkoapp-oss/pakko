@@ -3208,7 +3208,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F293 — `pakko x` suggests `-aoa` after a CRC failure (P2)
 
-- [ ] **Status:** open. Found in G6 (CI build af43cae, `pakko.exe` 0.0.0-dev+af43cae, 2026-09-30).
+- [x] **Status:** done 2026-10-03 (b841f86, v1.7.0 wave 3), through T-F296's `CliHints`. Device (Release `pakko.exe` from 6ce6574/acd212a, 2026-10-03), cmd
+  `chcp 866`: a second `pakko x -oout c1.tar.gz` onto the first one's files prints the `-aoa` hint;
+  `Extract_CrcFailure_NoOverwriteHint` (red before the fix) pins the CRC case.
+  Report as filed: open. Found in G6 (CI build af43cae, `pakko.exe` 0.0.0-dev+af43cae, 2026-09-30).
   `bad.zip` = one stored entry with one flipped data byte; `pakko x bad.zip -obad` prints the CRC
   error, then "skipped: No entries were extracted from this archive — every entry was skipped" and
   "hint: existing files were kept; -aoa overwrites them, -aou renames the extracted ones" (exit 2).
@@ -3222,7 +3225,12 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F294 — PowerShell splits `-ttar.gz`; pakko then writes a plain tar silently (P2)
 
-- [ ] **Status:** open. Found in G6, 2026-09-30, pwsh 7. PowerShell passes `-ttar.gz` to a native
+- [x] **Status:** done 2026-10-03 (6ce6574, v1.7.0 wave 3), user decision: an error plus dot-free
+  aliases. Device (Release `pakko.exe` from 6ce6574/acd212a, 2026-10-03), pwsh 7: the three commands below each exit 7 naming `'-ttar'` and
+  `'.gz'`; `'-ttar.gz'` quoted and `-ttgz` write a real gzip (`1F 8B`); `-pSecret.1` is exit 7 without
+  printing the password; `a t6.tar.gz src` (no `-t`) is exit 7; `-ttar .\.gz` writes `.gz`. In cmd
+  the same `-pSecret.1` passes whole and `t` opens the archive with it. See `docs/DECISIONS.md`'s wave 3 entry.
+  Report as filed: open. Found in G6, 2026-09-30, pwsh 7. PowerShell passes `-ttar.gz` to a native
   exe as two arguments, `-ttar` and `.gz` (a known PowerShell parser rule for `-name.suffix`
   tokens). Results: `pakko a -ttar.gz t.tar.gz src` -> "Source path does not exist: t.tar.gz"
   (`.gz` became the archive name); `pakko a t2.tar.gz -ttar.gz src` -> exit 0 and an
@@ -3239,7 +3247,12 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F295 — CLI console polish from the real-terminal pass (P3)
 
-- [ ] **Status:** open. Found in G6, 2026-09-30, Windows Terminal + cmd, code page 866:
+- [x] **Status:** done 2026-10-03 (acd212a, v1.7.0 wave 3). Device (Release `pakko.exe` from 6ce6574/acd212a, 2026-10-03), a real conhost
+  console driven through `WriteConsoleInput`/`GenerateConsoleCtrlEvent`, screen read back: Ctrl+C at
+  13% of `a` and during `t` of a 3 GB archive leave `pakko: operation stopped by user` on a clean
+  line; `a -p` shows `Enter password (input is masked): ***`; the overwrite prompt shows `Size:` and
+  `Modified:` of both files.
+  Report as filed: open. Found in G6, 2026-09-30, Windows Terminal + cmd, code page 866:
   1. Ctrl+C during `a big.zip big.bin` prints `" 57%pakko: operation stopped by user"` on the
      progress line — clear the progress line (or print a newline) before the message.
   2. The masked prompt says "Enter password (will not be echoed):" but echoes `*` per character
@@ -3250,7 +3263,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F296 — CLI: a semantic validation phase and a cause-keyed hint table (P2)
 
-- [ ] **Status:** open. Filed 2026-09-30 from G6 pass 1 (user decision: one task, next batch).
+- [x] **Status:** done 2026-10-03 (b841f86, 6ce6574, v1.7.0 wave 3): `CliCommandValidator` and
+  `CliHints` with its exhaustiveness test; evidence under T-F293 and T-F294.
+  Report as filed: open. Filed 2026-09-30 from G6 pass 1 (user decision: one task, next batch).
   `Archiver.CLI` today has two phases that matter here: `CliArgumentParser` checks each switch on
   its own, and `ReportResult`/`PrintHints` (`Program.cs` ~line 623) guesses hints from symptom codes.
   Two findings came from that gap: T-F293 (the `-aoa` hint after a CRC failure, because
@@ -3345,7 +3360,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F300 — `CliConflictPromptTests` leaves its temp folders behind (P3)
 
-- [ ] **Status:** open. Found in G6 pass 2, 2026-09-30: 133 `%TEMP%\pakko-cli-conflict-*` folders
+- [x] **Status:** done 2026-10-03 (bfc5d43, v1.7.0 wave 3): `TestTempFolder` retries the delete; a
+  run of the class leaves 0 folders (52 old ones removed by hand).
+  Report as filed: open. Found in G6 pass 2, 2026-09-30: 133 `%TEMP%\pakko-cli-conflict-*` folders
   (2026-09-25 to 2026-09-29), each still holding `two.tar`. `Dispose` catches `IOException` and gives
   up; the tar leg (`CreateResolver_AlwaysAcrossZipAndTar_PromptsOnceAndOverwritesBoth`) runs through
   the sandbox, and the file is still in use when the test ends. By the time of the check they
@@ -3357,7 +3374,12 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 ### T-F301 — A remembered password that does not fit reads as "no password given" (P3)
 
 - **App (G6 pass 3):** the same case in the App reads "Не вдалося розшифрувати елемент «a.txt»: неправильний пароль." — only Shell's wording is affected.
-- [ ] **Status:** open. Found in G6 pass 2, 2026-09-30, Explorer "Extract each to its own folder" on
+- [x] **Status:** done 2026-10-03 (198386e, v1.7.0 wave 3), user decision: the text, no re-prompt.
+  Device (Deploy 1.6.0.2, uk-UA): `--extract-folder enc2.zip enc.zip` in the operation window, the
+  prompt answered `Passw0rd` with "Застосувати до решти архівів" ticked: one prompt, `enc2\a.txt`
+  extracted, then "enc.zip: Пароль, застосований до решти архівів, не підходить до цього архіву."
+  and no `enc\` folder.
+  Report as filed: open. Found in G6 pass 2, 2026-09-30, Explorer "Extract each to its own folder" on
   `enc2.zip` (Passw0rd) + `enc.zip` (secret1): the prompt for `enc2.zip` with "Apply to remaining
   archives" ticked -> `enc2\` extracted; `enc.zip` then fails with "Цей архів захищено паролем, тому
   його не можна видобути." No re-prompt is by design (`docs/DECISIONS.md`, T-F192's
@@ -3472,6 +3494,22 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   (the real Recycle Bin; an async CRC load) and make the tests deterministic, as T-F162 did for
   `Progress<T>`.
 - **Reported by:** v1.7.0 wave 1 (agent), 2026-09-30.
+
+### T-F312 — A leftover or locked `<name>.zip.tmp` makes the next archive creation fail (P2)
+
+- [ ] **Status:** open. Found in the v1.7.0 wave 3 device check, 2026-10-03: a `pakko a big3.zip
+  big.bin` killed mid-run (`taskkill /F`) left `big3.zip.tmp` next to the destination; the next
+  `pakko a big3.zip big.bin` failed at once with "Cannot create archive: The file '...big3.zip.tmp'
+  already exists." `ZipArchiveService` uses one fixed temp name, `destPath + ".tmp"` (`:191`, and
+  `:509` for separate archives). The user points out the same file can stay or be held without a
+  kill: a sync client (Google Drive) or a backup program may pick up the `.tmp` while it is being
+  written, keep it open (locked), or bring it back after Pakko removed it. Then the next run fails,
+  and the final rename onto the archive can fail with a sharing violation, like T-F141's chunk files.
+  Fix direction: a temp name unique to the run (as the parallel writer's chunk files already are),
+  hidden like T-F35's chunk folder; remove an old `.tmp` of the same archive only when nothing holds
+  it; retry the final rename briefly on a sharing violation. Check tar creation's temp naming the
+  same way. Tests first: a stale `.tmp` and an open handle on it, each followed by a successful run.
+- **Reported by:** v1.7.0 wave 3 device check (agent) and the user, 2026-10-03.
 
 ### T-F310 — A compressed GNU-format tar with OEM (cp866) names is still refused (P2)
 

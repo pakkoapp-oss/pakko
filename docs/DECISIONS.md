@@ -10693,3 +10693,42 @@ the closing review checked what the default and Slow suites do not reach:
 - **T-F307 moved to wave 5.** A "checking the archive" phase for tar's listing passes needs a phase
   in `ProgressReport` and a localized status in the App, the operation window and the Win32 dialog
   (37 locales each) — operation-window work, done together with T-F268 step 6.
+
+## v1.7.0 wave 3 — CLI validation, hints, console, remembered password (2026-10-03)
+
+- **T-F296, two phases added, no parsing library.** `CliArgumentParser.Parse` now (1) refuses a
+  switch PowerShell split in two before any command parser runs, and (2) passes the parsed command
+  through `CliCommandValidator`, the one place for rules across switches. The existing `-p` on a
+  tar-family rule moved there with its message unchanged. Hints come from `CliHints`, a table that
+  names every `MessageCode` as having a hint or not; a test compares it with the enum, so a new code
+  fails until someone decides.
+- **T-F293, the `-aoa` hint follows a conflict only.** ZIP does not list its per-file conflict skips
+  (they only make the archive partial), so `AllEntriesSkipped` is read as a conflict only when the
+  result holds no other error or skip; `FileExistsAtDestination` (tar) always is. A CRC failure no
+  longer suggests `-aoa`. Core's `AllEntriesSkipped` after a failed entry is unchanged — Shell and the
+  App show it too.
+- **T-F294 (user decision 2026-10-03: an error plus dot-free aliases).** Checked in pwsh 7:
+  `-ttar.gz` arrives as `-ttar` `.gz` and `-pSecret.1` as `-pSecret` `.1` (a password silently cut
+  short, worse than a wrong format); `-oC:\out.d`, `-mx=1`, `-scrcSHA256` arrive whole. Rule: a
+  switch made only of letters, digits and `_` followed by an argument that starts with a dot (not
+  `.\`, `./` or `..`) is exit 7 for every command, and the message never prints either half of a
+  password. A path that really starts with a dot is written `.\name`. Aliases: `-ttgz`, `-ttbz2`,
+  `-ttxz`, `-ttzst`. Name against type: only a name ending in an archive type Pakko writes counts
+  (`.zip`, `.tar`, `.tar.gz`, ...; Core's `ArchiveNaming.GetExtension`), so T-F221 item 6 stands
+  (`-ttar out.gz` writes `out.gz`). No `-t` means zip: `a out.tar.gz src` used to write a ZIP under
+  that name and is now exit 7 asking for `-ttar.gz` — inferring the type from the name would be a new
+  feature. `.tgz` is not one of Core's extensions and is not checked. An explicit name `.gz` is
+  written as typed (it became `.gz.tar`).
+- **T-F295.** Ctrl+C in `a`/`t` clears the percentage first (the progress object was declared inside
+  the `try`); the new-password prompt says "input is masked"; the overwrite prompt shows both files'
+  size and time from the existing `ConflictInfo.IncomingSize`/`IncomingModified`, so no Core change.
+- **T-F301 (user decision 2026-10-03: the text, no re-prompt).** Only Shell's wording was wrong: its
+  per-archive `StickyCallback` handed the remembered password to a fresh Core resolver, which tried
+  it three times and reported "password-protected". `StickyCallback` gained `whenReused`; Shell marks
+  a reused answer `PasswordDecision.Remembered`, `PasswordResolver` does not retry it, and ZIP
+  extract/test report the new `RememberedPasswordDoesNotFit` ("The password applied to the remaining
+  archives does not fit this archive.", 37 locales). The App (one Core call, Core's own sticky) and
+  the CLI (no "apply to remaining"; a wrong `-p` already says "incorrect password") were right.
+- **T-F300.** The conflict-prompt tests delete their folder with retries for up to five seconds. Not
+  `IAsyncDisposable`: xUnit 2.5 does not call it on a test class (17 folders left in a check run), so
+  the class deletes from `IAsyncLifetime`.
