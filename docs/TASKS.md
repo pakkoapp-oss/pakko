@@ -2707,7 +2707,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F254 — Explorer menu stays English for Chinese and regional-variant Windows languages (P2)
 
-- [~] **Status:** partial — fixed in code (see Progress). Left: a device with a regional language (e.g. de-AT) — the E7 language check with the user.
+- [~] **Status:** partial — fixed in code (see Progress). App device-checked 2026-10-04 (v1.7.0 wave 9, CI build of 039955a): with de-AT first in the user language list (no German display pack), the App window comes up in German ("Dateien hinzufügen", "Komprimieren als ZIP"). Left: the Explorer menu and Shell on a machine whose display language is regional (needs the language pack and a sign-out; user chose not to do it for v1.7.0) — covered by `LocalizationTests`/`UiCulture` tests only.
 - [~] **Progress (2026-09-28, fix phase 7):** fixed in 4795bfb (C++ menu) and eb5876e (Shell `.resx`): exact tag (case-insensitive), zh-CN/zh-SG/zh-Hans-* -> zh-Hans, Traditional stays English, else the same language's row. Same rule in `Archiver.Messages.UiCulture`; the App picks the first of `ApplicationLanguages` Pakko translates. Needs a device with a regional language (e.g. de-AT) to confirm.
 
 - **Earlier status:** open — code-confirmed 2026-09-25. `Localization.cpp` looks the UI language up by
@@ -3931,3 +3931,25 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   path it landed at (a `pakko: created 'name (1).ext' (the name was taken while compressing)`
   line on stderr), or document it as is; App and Explorer already show the created path.
 - **Reported by:** wave 9 closing review, 2026-10-03.
+
+### T-F326 — Tar-creation policy refusal names the destination folder as the item (P3)
+
+- [ ] **Status:** open. Found in the wave 9 device campaign (2026-10-04, B9) with
+  `DisableTarExtraction=1`: a `pakko a -ttar` run with its output in `C:\g9` prints
+  `pakko: error: g9: tar.exe-based archive creation is disabled by Group Policy.`. The refusal is
+  about the format, not about a file or folder, but `ArchiveCreationRouter` and
+  `TarSandboxedService.CompressAsync` both build it as `CoreMessages.Error(options.DestinationFolder,
+  TarCreationDisabled)`, so the folder reads like the item that failed. Fix direction: name the
+  archive being created (or no item at all) in both places; check how App and Explorer show the
+  same error.
+- **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-04.
+
+### T-F327 — Switching the Windows app theme while the App is open leaves the window background in the old theme (P3)
+
+- [ ] **Status:** open. Found while taking the v1.7.0 screenshots (2026-10-04, CI build of 039955a):
+  with the App open in the dark theme, setting Windows to the light app theme turned the cards,
+  buttons and text light, but the window background and the list area stayed dark (dark text on a
+  dark background in the list). A fresh start in either theme is correct. Check what paints the
+  window background (`RootGrid`, the backdrop, the title bar colours set in `MainWindow.xaml.cs`)
+  and whether it follows `ActualThemeChanged`; check the Explorer operation window too.
+- **Reported by:** v1.7.0 screenshot session, 2026-10-04.

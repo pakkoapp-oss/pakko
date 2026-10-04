@@ -23,7 +23,10 @@
   <a href="README.uk.md">🇺🇦 Українською</a>
 </p>
 
-![Pakko — main window and Archive Browser](docs/assets/screenshot-en.png)
+![Pakko in Explorer's context menu](docs/assets/store/01-explorer-menu-archive.png)
+![Pakko — main window, light theme](docs/assets/screenshot-en-light.png)
+![Pakko — main window, dark theme](docs/assets/screenshot-en.png)
+![Pakko — browsing inside an archive](docs/assets/screenshot-en-browser.png)
 
 ---
 

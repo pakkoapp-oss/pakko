@@ -23,7 +23,7 @@
   <a href="README.md">🇬🇧 English</a>
 </p>
 
-![Pakko — головне вікно та Archive Browser](docs/assets/screenshot-uk.png)
+![Pakko — головне вікно](docs/assets/screenshot-uk.png)
 
 ---
 
