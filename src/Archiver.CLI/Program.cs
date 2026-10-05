@@ -417,7 +417,14 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
         progress?.Clear();
         if (ReportNewPasswordPromptOutcome(prompt.Value) is { } promptExitCode)
             return promptExitCode;
-        return await ReportAndStreamAsync(result, stdoutFolder, new CliReportContext(), cancellation.Token).ConfigureAwait(false);
+        int code = await ReportAndStreamAsync(result, stdoutFolder, new CliReportContext(), cancellation.Token).ConfigureAwait(false);
+
+        // T-F325: the archive is complete but not where the caller will look for it - exit 1.
+        string requestedPath = Path.Combine(options.DestinationFolder, ArchiveNaming.SingleArchiveFileName(options));
+        if (stdoutFolder is not null || CliCreatedName.TakenLine(requestedPath, result.CreatedFiles) is not { } nameTaken)
+            return code;
+        await Console.Error.WriteLineAsync(nameTaken).ConfigureAwait(false);
+        return Math.Max(code, 1);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
