@@ -69,7 +69,7 @@ public static class MessageTemplates
         [MessageCode.EntryNameCollision] =
             "Entry '{0}' has the same name as another entry once decoded; it is not extracted, since one would overwrite the other.",
         [MessageCode.LocalHeaderMismatch] =
-            "{0} entries have a local header that does not match the central directory (first: '{1}'). Other programs may extract different names or data from this archive.",
+            "Entries whose local header does not match the central directory: {0} (first: '{1}'). Other programs may extract different names or data from this archive.",
         [MessageCode.EntryFailed] = "Entry '{0}': {1}",
         [MessageCode.EntryWrongPassword] = "Entry '{0}' could not be decrypted: wrong password.",
         [MessageCode.EntryAuthenticationFailed] = "Entry '{0}' could not be decrypted: authentication failed (corrupted or tampered).",
@@ -96,7 +96,7 @@ public static class MessageTemplates
         [MessageCode.TarSpecialEntry] =
             "Archive contains a symlink, hardlink, device, or other special entry and cannot be safely extracted.",
         [MessageCode.TarDuplicateCopiesNotExtracted] =
-            "{0} more copies with this name were not extracted: only the first and the last copy can be taken out of this archive.",
+            "More copies with this name were not extracted ({0}): only the first and the last copy can be taken out of this archive.",
         [MessageCode.TarSourceNameCollisionNotAdded] =
             "Another selected item has the same name, and this folder could not be added under a new name. Rename one of them and try again.",
         [MessageCode.ListingInconsistent] = "Archive listing is inconsistent.",

@@ -202,7 +202,7 @@
     <value>Archive contains a symlink, hardlink, device, or other special entry and cannot be safely extracted.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>{0} more copies with this name were not extracted: only the first and the last copy can be taken out of this archive.</value>
+    <value>More copies with this name were not extracted ({0}): only the first and the last copy can be taken out of this archive.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Another selected item has the same name, and this folder could not be added under a new name. Rename one of them and try again.</value>
@@ -274,7 +274,7 @@
     <value>Entry is larger than {0} MiB and was not scanned.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} entries have a local header that does not match the central directory (first: '{1}'). Other programs may extract different names or data from this archive.</value>
+    <value>Entries whose local header does not match the central directory: {0} (first: '{1}'). Other programs may extract different names or data from this archive.</value>
   </data>
   <data name="SystemInvalidName" xml:space="preserve">
     <value>{0} ({1})</value>

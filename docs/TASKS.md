@@ -3907,15 +3907,18 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F323 — Count before a plural noun in Core messages: "у 1 елементів", "1 entries have" (P3)
 
-- [ ] **Status:** open. Found in the wave 9 device campaign (2026-10-03): Explorer Test on a ZIP
+- [x] **Status:** done 2026-10-05. Found in the wave 9 device campaign (2026-10-03): Explorer Test on a ZIP
   with one local-header mismatch shows "Локальний заголовок не збігається з центральним каталогом
   у 1 елементів"; the CLI line reads "1 entries have a local header ...". `LocalHeaderMismatch`
   puts `{0}` before a noun, which no resx template can inflect. Fix direction: count after a
   colon ("Entries whose local header differs from the central directory: {0} (first: '{1}')"), in
   all 37 locales; grep `MessageTemplates` for other `{0} <noun>` shapes.
 - **2026-10-05:** T-F329 rewrote the 36 translations of this message and of
-  `TarDuplicateCopiesNotExtracted`. What is left is the English text, which is also the CLI's
-  output: change it only on the user's word.
+  `TarDuplicateCopiesNotExtracted`. The English text, which is also the CLI's output, was
+  changed the same day on the user's word: "Entries whose local header does not match the
+  central directory: {0} (first: '{1}')." and "More copies with this name were not extracted
+  ({0}): ...". `CountTemplateTests` now covers Core's English too. Goes into the v1.7.0
+  changelog as a change in `pakko.exe`'s output.
 - **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-03.
 
 ### T-F324 — Archive Browser lists hidden system folders at a drive root (P3, UX)
@@ -4015,7 +4018,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F329 — Localization process: glossary, one home for shared strings, counts, translator context (P2)
 
-- [~] **Status:** done except the English text of two Core messages (see Part 3), 2026-10-05.
+- [~] **Status:** done except the five "{0} bytes" messages (Part 3) and the screenshots (Part 5),
+  2026-10-05.
   T-F328 fixed about 600 translated values; nearly all came from four gaps around the loading
   mechanisms, not from the mechanisms themselves. The three mechanisms stay as they are (`.resw`
   for WinUI, `.resx` for Shell and `Archiver.Messages`, the compiled table in `Localization.cpp`).
@@ -4037,10 +4041,9 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     the operation window (locales already had the colon form)
   - [x] translations only: `TarDuplicateCopiesNotExtracted` (27 locales) and `LocalHeaderMismatch`
     (30 locales) now put the count after the noun phrase
-  - [ ] the English of those two Core messages still reads "{0} more copies", "{0} entries have":
-    it is `pakko.exe`'s output, which scripts may parse, so changing it is the user's call.
-    T-F323 stays open for exactly this
-  - [x] `CountTemplateTests` for the English UI text; a line in `docs/CONVENTIONS.md`
+  - [x] the English of those two Core messages, which is `pakko.exe`'s output: changed on the
+    user's word (2026-10-05), T-F323 closed
+  - [x] `CountTemplateTests` for all English text; a line in `docs/CONVENTIONS.md`
   - [ ] not done: the five Core messages with "{0} bytes" (`EntryNameTooLong`,
     `NotEnoughSpaceToCompress`, `InsufficientDiskSpace`, `ZipBombDeclined`, `TarBombDeclined`). In
     the inflecting locales the noun still disagrees with some numbers; the same locale-only
@@ -4077,7 +4080,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 - **Acceptance:**
   - [x] the glossary test and the shared-string test are in the default `dotnet test` run and green
   - [x] no UI template has a count directly before the thing counted
-  - [ ] the same for the English Core text (user decision, see Part 3)
+  - [x] the same for the English Core text (the "{0} bytes" messages apart, see Part 3)
   - [x] a file type registered by Pakko shows a localized name in Explorer
 - **Reported by:** localization audit follow-up, 2026-10-05.
 

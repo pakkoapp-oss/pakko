@@ -7,11 +7,10 @@ namespace Archiver.Messages.Tests;
 // forms in most of the 36 locales), so a count goes after a colon: "archives: {0}".
 public sealed partial class CountTemplateTests
 {
-    // Core's English is the CLI's output and stays as it is; its translations are not bound by it.
     [Fact]
-    public void EnglishUiText_PutsNoCountBeforeTheThingCounted() =>
+    public void EnglishText_PutsNoCountBeforeTheThingCounted() =>
         LocalizedSources.Read(LocalizedSources.English)
-            .Where(s => !s.Key.StartsWith("CoreMessages/", StringComparison.Ordinal) && CountBeforeNoun().IsMatch(s.Value))
+            .Where(s => CountBeforeNoun().IsMatch(s.Value))
             .Select(s => $"{s.Key}: {s.Value}")
             .Should().BeEmpty();
 
@@ -25,9 +24,10 @@ public sealed partial class CountTemplateTests
     [InlineData("{0} of {1} selected", false)]
     [InlineData("…and {0} more", false)]
     [InlineData("up to {0} characters", false)]
+    [InlineData("Creating a {0} archive is blocked", false)]
     public void TheRule_KnowsACountFromALabel(string template, bool isCount) =>
         CountBeforeNoun().IsMatch(template).Should().Be(isCount);
 
-    [GeneratedRegex(@"\{\d\} (?:more )?(?:archive|item|file|folder|entr|cop|threat|error)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\{\d\} (?:more )?(?:archive\(s\)|item\(s\)|archives|items|files|folders|entries|copies|threats|errors)", RegexOptions.IgnoreCase)]
     private static partial Regex CountBeforeNoun();
 }

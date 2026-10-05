@@ -11047,9 +11047,10 @@ groups is kept: a new copy is covered on the day it is added. `App/TestResultTit
 the button is a verb) and the four `{0} ({1})` OS-error wrappers are the only exclusions.
 
 **Counts.** A count goes after a colon or in brackets after the noun phrase; no plural engine.
-English UI text follows it (`CountTemplateTests`). Core's English is the CLI's output and was left
-alone; its translations are not bound by the English syntax, so `LocalHeaderMismatch` and
-`TarDuplicateCopiesNotExtracted` were rewritten in the locales only. Locales whose nouns do not
+English text follows it (`CountTemplateTests`). Core's English is the CLI's output, so
+`LocalHeaderMismatch` and `TarDuplicateCopiesNotExtracted` were first rewritten in the locales
+only (translations are not bound by the English syntax); the user then approved changing the
+English of both, the same day (T-F323). Locales whose nouns do not
 change after a number (ja, ko, zh-Hans, th, vi, tr, hu, id) kept their wording. The five
 "{0} bytes" messages were not rewritten and are still wrong for some numbers in the inflecting
 locales; that is unfinished work listed in the task, not a judgement that the form is fine.
