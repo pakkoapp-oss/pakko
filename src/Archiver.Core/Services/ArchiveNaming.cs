@@ -91,6 +91,16 @@ public static class ArchiveNaming
     public static string SingleArchiveFileName(ArchiveOptions options) =>
         options.ExactFileName ?? ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths) + GetExtension(options.Format);
 
+    /// <summary>
+    /// The item a refusal to create anything at all is about (T-F326): the archive that was to be
+    /// written, or the first source when every source would get its own archive. Never the
+    /// destination folder - it reads as the thing that failed.
+    /// </summary>
+    internal static string RefusedArchivePath(ArchiveOptions options) =>
+        options.Mode == ArchiveMode.SeparateArchives && options.SourcePaths.Count > 0
+            ? options.SourcePaths[0]
+            : Path.Combine(options.DestinationFolder, SingleArchiveFileName(options));
+
     /// <summary>Strips an archive's extension, compound tar extensions included (see class remarks).</summary>
     public static string GetBaseName(string archivePath)
     {

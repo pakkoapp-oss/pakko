@@ -1117,7 +1117,7 @@ public sealed class TarSandboxedService : ITarService
         if (_policy.DisableTarExtraction)
             return new ArchiveResult
             {
-                Errors = [CoreMessages.Error(options.DestinationFolder, MessageCode.TarCreationDisabled)],
+                Errors = [CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.TarCreationDisabled)],
             };
 
         // T-F153: see ZipArchiveService.ArchiveAsync's identical normalization for the full
@@ -1137,13 +1137,13 @@ public sealed class TarSandboxedService : ITarService
         // prompt — rather than silently writing an unencrypted archive the user asked to protect.
         if (options.ResolvePasswordAsync is not null)
         {
-            errors.Add(CoreMessages.Error(options.DestinationFolder, MessageCode.PasswordOnlyForZip));
+            errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.PasswordOnlyForZip));
             return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 
         if (!TarSignatureVerifier.Verify(TarExecutablePath))
         {
-            errors.Add(CoreMessages.Error(options.DestinationFolder, MessageCode.TarSignatureInvalid));
+            errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.TarSignatureInvalid));
             return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 

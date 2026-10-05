@@ -126,6 +126,18 @@ public sealed class PolicyOwnershipTests : IDisposable
         }
     }
 
+    // T-F326: the tar engine's own refusal names the archive too, not the destination folder.
+    [Fact]
+    public async Task TarEngine_CreationDisabled_NamesTheArchive()
+    {
+        ArchiveResult result = await new TarSandboxedService(TarDisabled).CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [@"C:\data\a.txt"], DestinationFolder = @"C:\g9", ExactFileName = "out.tar", Format = ArchiveContainerFormat.Tar,
+        });
+
+        result.Errors.Should().ContainSingle().Which.SourcePath.Should().Be(@"C:\g9\out.tar");
+    }
+
     [Fact]
     public void TarEngine_NullPolicy_Throws()
     {

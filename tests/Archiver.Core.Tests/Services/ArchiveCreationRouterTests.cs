@@ -143,6 +143,48 @@ public sealed class ArchiveCreationRouterTests
         zipService.ArchiveCallCount.Should().Be(1);
     }
 
+    // T-F326: a policy refusal is about the archive that was to be created; it named the
+    // destination folder, which read as the item that failed.
+    [Fact]
+    public async Task ArchiveAsync_TarCreationDisabled_NamesTheArchiveNotTheDestinationFolder()
+    {
+        var router = new ArchiveCreationRouter(new FakeArchiveService(), new FakeTarService(), new GroupPolicyOptions { DisableTarExtraction = true });
+
+        ArchiveResult result = await router.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [@"C:\data\a.txt"], DestinationFolder = @"C:\g9", ExactFileName = "out.tar", Format = ArchiveContainerFormat.Tar,
+        });
+
+        result.Errors.Should().ContainSingle().Which.SourcePath.Should().Be(@"C:\g9\out.tar");
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_FormatBlockedByPolicy_NamesTheArchiveNotTheDestinationFolder()
+    {
+        var router = new ArchiveCreationRouter(new FakeArchiveService(), new FakeTarService(), new GroupPolicyOptions { BlockedFormats = ["zip"] });
+
+        ArchiveResult result = await router.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [@"C:\data\docs"], DestinationFolder = @"C:\g9", Format = ArchiveContainerFormat.Zip,
+        });
+
+        result.Errors.Should().ContainSingle().Which.SourcePath.Should().Be(@"C:\g9\docs.zip");
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_SeparateArchivesRefused_NamesTheFirstSource()
+    {
+        var router = new ArchiveCreationRouter(new FakeArchiveService(), new FakeTarService(), new GroupPolicyOptions { DisableTarExtraction = true });
+
+        ArchiveResult result = await router.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [@"C:\data\one", @"C:\data\two"], DestinationFolder = @"C:\g9",
+            Mode = ArchiveMode.SeparateArchives, Format = ArchiveContainerFormat.Tar,
+        });
+
+        result.Errors.Should().ContainSingle().Which.SourcePath.Should().Be(@"C:\data\one");
+    }
+
     [Fact]
     public async Task ArchiveAsync_TarGzMapsToGzipRegistryNameForPolicyCheck()
     {

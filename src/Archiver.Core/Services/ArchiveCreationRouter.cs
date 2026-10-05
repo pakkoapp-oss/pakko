@@ -24,7 +24,7 @@ public sealed class ArchiveCreationRouter(
         {
             return Task.FromResult(new ArchiveResult
             {
-                Errors = [CoreMessages.Error(options.DestinationFolder, MessageCode.CreationFormatBlocked, registryName)],
+                Errors = [CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.CreationFormatBlocked, registryName)],
             });
         }
 
@@ -34,7 +34,7 @@ public sealed class ArchiveCreationRouter(
         {
             return Task.FromResult(new ArchiveResult
             {
-                Errors = [CoreMessages.Error(options.DestinationFolder, MessageCode.TarCreationDisabled)],
+                Errors = [CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.TarCreationDisabled)],
             });
         }
 

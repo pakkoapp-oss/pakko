@@ -147,7 +147,7 @@ public sealed class ZipArchiveService : IArchiveService
             };
         return failure is null
             ? (password, null)
-            : (null, CoreMessages.Error(options.DestinationFolder, failure));
+            : (null, CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), failure));
     }
 
     // Returns non-null only for the already-exists+Skip conflict case, which the caller must
