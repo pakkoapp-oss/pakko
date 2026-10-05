@@ -308,8 +308,8 @@ example no real interface followed.
 **Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
 truth; never trust a count written in a doc.
 
-**Next work:** v1.7.0 in waves 0-9 (plan outside the repo; one wave = 3-5 related open tasks in
-`docs/TASKS.md`, pushed per wave). Completed tasks graduated to `docs/TASKS_DONE.md` 2026-09-30.
+**Next work:** the open tasks in `docs/TASKS.md` (v1.7.0 went out in waves 0-9: one wave = 3-5
+related tasks, pushed per wave). Completed tasks graduated to `docs/TASKS_DONE.md` 2026-10-05.
 **T-F187** (canary CI build for toolchain-drift detection) is `[x]` done — a real triggered
 `workflow_dispatch` run confirmed both build jobs green on the current `windows-latest` image.
 **T-F188** (ZIP password decrypt engine — ZipCrypto + WinZip AE, internal only) is `[x]` done —
@@ -374,7 +374,7 @@ messages, 7-Zip naming), T-F198 items 1 and 7. See `docs/DECISIONS.md`'s fix pha
 footer with the primary action rightmost ("Compress to {format}"), inline encryption password,
 browse badge/Test/Close archive, footer result line (T-F211); every App key in 37 locales
 (`AppResourceKeysTests`). Structure: `docs/XAML.md`; decisions: `docs/DECISIONS.md`'s wave 4 entry.
-**v1.7.0** release commit 2026-10-05 (what shipped: `CHANGELOG.md`; v1.6.0 was tagged 2026-09-30).
+**v1.7.0** tagged 2026-10-05 on a3b367e (what shipped: `CHANGELOG.md`; v1.6.0 was tagged 2026-09-30).
 The Store serves v1.6.0 as **1.6.0.0 (x64)** and **1.6.1.0 (ARM64)**; the next Store upload is the
 combined bundle **1.7.0.0** (see `docs/DECISIONS.md`).
 
