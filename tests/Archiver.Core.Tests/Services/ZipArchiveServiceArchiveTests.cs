@@ -1076,6 +1076,8 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_SeparateArchives_ArchiveAppearsAfterTheNamesWereChosen_IsNotReplaced()
     {
+        (Environment.ProcessorCount / Archiver.Core.Services.Zip.ParallelSingleArchiveWriter.ComputeWindowCapacity())
+            .Should().BeLessThanOrEqualTo(1, "the trigger needs the sources archived one after another");
         string a = _temp.CreateFile("a.txt", new string('a', 200_000));
         string b = _temp.CreateFile("b.txt", "b");
         string destination = Path.Combine(_temp.Path, "out");

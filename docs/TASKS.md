@@ -3899,7 +3899,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   in separate-archives mode the second look comes after the names of every source are chosen and
   the source is measured, so a run that finished in between was overwritten. Now the flag is the
   decision itself (`DestinationConflictOutcome.ProceedReplacingExisting`). Test first, red on the
-  old code every time: `ArchiveAsync_SeparateArchives_ArchiveAppearsAfterTheNamesWereChosen_IsNotReplaced`
+  old code in five runs of five: `ArchiveAsync_SeparateArchives_ArchiveAppearsAfterTheNamesWereChosen_IsNotReplaced`
   (Fastest runs the sources one after another; a foreign `b.zip` is written during `a`'s progress).
 - **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-03.
 
