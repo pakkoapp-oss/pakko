@@ -4061,8 +4061,9 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     `build-store-msix` (x64, ARM64) and `bundle-store-msix` green; each `.msix` inside the Store
     bundle lists 37 languages, keeps the three `ms-resource:` references and has `resources.pri`
   - [ ] `docs/assets/store/02-main-window-light.png` and its dark and Ukrainian twins show the old
-    English footer line ("Will compress 7 item(s) to the folder above"); retake at the release
-    step. Since T-F330 the English shots (`01`, `07`, `08` and the main window) need English
+    English footer line ("Will compress 7 item(s) to the folder above"). One line differs, so
+    the user decided (2026-10-05) not to retake them now; not a release gate. When they are next
+    retaken: since T-F330 the English shots (`01`, `07`, `08` and the main window) need English
     first in the Windows language list, or Pakko's items come out in the listed language
 - **Out of scope:** merging the three mechanisms; converting the two escaped fields of
   `Localization.cpp` to literal characters; the style points T-F328 left out.
