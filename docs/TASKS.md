@@ -2293,8 +2293,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   reorder or drop entries, but cannot put chosen content into a file or read one. The opposite
   change (stored to deflate) fails in the inflater or, since this fix, on the size (a one-byte
   stored entry read as deflate gave zero bytes and passed before).
-  - [ ] `SECURITY.md`'s "Password-Protected ZIP" section says what is secret, not what is
-    authenticated; a sentence on the above needs the user's permission for that file
+  - [x] `SECURITY.md`'s "Password-Protected ZIP" section said what is secret, not what is
+    authenticated; a paragraph on the above added with the user's permission, 2026-10-05
   - [ ] the two size messages are bare English text, not a `MessageCode`, so Shell and App show
     them untranslated
 - **Found by:** a byte-level review of the release build's output, asked for by the user,

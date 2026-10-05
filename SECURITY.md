@@ -405,8 +405,17 @@ one-click and unencrypted.
   twice, not holding it in memory — entry size is not limited.
   ZipCrypto has no authentication — its one-byte password check accepts ~1 in 256 wrong
   passwords — so its content CRC-32 is always checked (as for every unencrypted entry, T-F246),
-  and a mismatch fails the entry. Every decrypted entry is also capped at its declared size
-  (T-F231) — AE-2 has no CRC, so the cap is its only length check.
+  and a mismatch fails the entry. Every decrypted entry must also be exactly its declared size:
+  longer fails (T-F231), and so does shorter (T-F333; v1.7.0 and earlier accepted shorter) —
+  AE-2 has no CRC, so this is its only length check.
+- **What WinZip AES authenticates, and what it does not.** The HMAC covers each entry's
+  ciphertext and nothing else. An entry's real compression method, its declared sizes, its name
+  and date, and the list of entries are outside it. Without the password someone can therefore
+  rename, reorder or remove entries, or change an entry's method and size together so that a
+  file extracts as its own compressed bytes; 7-Zip accepts such an archive too. They cannot read
+  a file or put chosen content into one. This is a limit of the format, not of Pakko: a
+  password-protected ZIP keeps content secret and detects changed content, but "Test archive"
+  passing does not prove the archive is the one its author made.
 - **Hostile headers fail closed.** Sizes and extra fields read from local headers are
   attacker-controlled; the parser bounds every allocation by the archive file's real size and
   rejects malformed WinZip AES extra records as a normal per-archive error, never an unhandled
