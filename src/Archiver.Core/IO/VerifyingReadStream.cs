@@ -42,8 +42,8 @@ internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uin
         {
             _totalRead += data.Length;
             if (_totalRead > declaredLength)
-                throw new InvalidDataException(
-                    $"Content is larger than its declared size ({declaredLength:N0} bytes).");
+                throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentLargerThanDeclared,
+                    declaredLength.ToString("N0", CultureInfo.CurrentCulture)));
             if (expectedCrc32 is not null)
                 _accumulator.Update(data);
             return;
@@ -55,8 +55,8 @@ internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uin
         // An AE-2 entry has no CRC-32 and its real compression method is outside the HMAC, so the
         // declared size is the only check that the decrypted bytes were read the way they were written.
         if (_totalRead < declaredLength)
-            throw new InvalidDataException(
-                $"Content is smaller than its declared size ({declaredLength:N0} bytes).");
+            throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentSmallerThanDeclared,
+                declaredLength.ToString("N0", CultureInfo.CurrentCulture)));
         if (expectedCrc32 is not { } expected)
             return;
         uint computed = _accumulator.Finish();

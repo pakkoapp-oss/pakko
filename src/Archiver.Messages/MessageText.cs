@@ -26,6 +26,9 @@ public static class MessageText
         MessageCode.SystemSharingViolation,
         MessageCode.SystemDiskFull,
         MessageCode.ContentCrcMismatch,
+        MessageCode.ContentLargerThanDeclared,
+        MessageCode.ContentSmallerThanDeclared,
+        MessageCode.EntryDataTruncated,
     };
 
     /// <summary><paramref name="text"/> in <paramref name="culture"/> (resolved with

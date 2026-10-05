@@ -291,4 +291,13 @@
   <data name="ContentCrcMismatch" xml:space="preserve">
     <value>Content failed CRC-32 check (expected {0}, got {1}).</value>
   </data>
+  <data name="ContentLargerThanDeclared" xml:space="preserve">
+    <value>Content is larger than its declared size ({0} bytes).</value>
+  </data>
+  <data name="ContentSmallerThanDeclared" xml:space="preserve">
+    <value>Content is smaller than its declared size ({0} bytes).</value>
+  </data>
+  <data name="EntryDataTruncated" xml:space="preserve">
+    <value>ZIP entry data ends before its declared size.</value>
+  </data>
 </root>

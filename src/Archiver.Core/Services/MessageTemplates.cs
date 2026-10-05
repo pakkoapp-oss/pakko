@@ -132,6 +132,9 @@ public static class MessageTemplates
         [MessageCode.SystemSharingViolation] = SystemErrorTemplate,
         [MessageCode.SystemDiskFull] = SystemErrorTemplate,
         [MessageCode.ContentCrcMismatch] = "Content failed CRC-32 check (expected {0}, got {1}).",
+        [MessageCode.ContentLargerThanDeclared] = "Content is larger than its declared size ({0} bytes).",
+        [MessageCode.ContentSmallerThanDeclared] = "Content is smaller than its declared size ({0} bytes).",
+        [MessageCode.EntryDataTruncated] = "ZIP entry data ends before its declared size.",
     };
 
     /// <summary>Every code with a template — all of <see cref="MessageCode"/> except <see cref="MessageCode.None"/>.</summary>

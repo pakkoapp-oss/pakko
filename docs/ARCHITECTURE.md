@@ -649,8 +649,9 @@ is the one English table; `ArchiveListResult.ErrorText`, `ThreatFinding.ReasonTe
 `CoreText` in a UI language (`MessageText.Render`, `UiCulture.Resolve`/`ResolveFirst`) from
 `Resources/CoreMessages.resx` (37 locales); Shell and the App use it, the CLI prints English.
 T-F297: an exception's text enters a message only through `CoreMessages.Detail`, which keeps the
-English text and adds the Windows error code; five codes of their own (`System*`,
-`ContentCrcMismatch`) are translated in the Ukrainian table only (`MessageText.UkrainianOnlyCodes`).
+English text and adds the Windows error code; eight codes of their own (`System*`,
+`ContentCrcMismatch`, T-F333's `ContentLargerThanDeclared`, `ContentSmallerThanDeclared` and
+`EntryDataTruncated`) are translated in the Ukrainian table only (`MessageText.UkrainianOnlyCodes`).
 `ArchiveOptions.ExactFileName` (T-F221) names a single archive exactly, no extension added.
 
 ---

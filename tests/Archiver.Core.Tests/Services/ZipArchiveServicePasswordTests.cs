@@ -357,6 +357,9 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         return path;
     }
 
+    private static bool HasCode(CoreText? text, MessageCode code) =>
+        text is not null && (text.Code == code || text.Arguments.OfType<CoreText>().Any(nested => HasCode(nested, code)));
+
     [Fact]
     public async Task TestAsync_AesRealMethodChangedToStored_FailsOnDeclaredSize()
     {
@@ -366,6 +369,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
 
         result.Success.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Message.Contains("smaller than its declared size"));
+        result.Errors.Should().Contain(e => HasCode(e.Text, MessageCode.ContentSmallerThanDeclared), "Shell and App translate by code");
     }
 
     [Fact]
@@ -383,6 +387,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
 
         result.Success.Should().BeFalse();
         result.Errors.Should().Contain(e => e.Message.Contains("smaller than its declared size"));
+        result.Errors.Should().Contain(e => HasCode(e.Text, MessageCode.ContentSmallerThanDeclared), "Shell and App translate by code");
         if (Directory.Exists(destDir))
             Directory.EnumerateFiles(destDir, "*", SearchOption.AllDirectories).Should().BeEmpty();
     }

@@ -291,4 +291,13 @@
   <data name="ContentCrcMismatch" xml:space="preserve">
     <value>Вміст не пройшов перевірку CRC-32 (очікувалося {0}, отримано {1}) — Content failed CRC-32 check (expected {0}, got {1}).</value>
   </data>
+  <data name="ContentLargerThanDeclared" xml:space="preserve">
+    <value>Вміст більший за заявлений розмір (байтів: {0}) — Content is larger than its declared size ({0} bytes).</value>
+  </data>
+  <data name="ContentSmallerThanDeclared" xml:space="preserve">
+    <value>Вміст менший за заявлений розмір (байтів: {0}) — Content is smaller than its declared size ({0} bytes).</value>
+  </data>
+  <data name="EntryDataTruncated" xml:space="preserve">
+    <value>Дані елемента ZIP обриваються раніше заявленого розміру — ZIP entry data ends before its declared size.</value>
+  </data>
 </root>

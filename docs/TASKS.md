@@ -2299,8 +2299,12 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   stored entry read as deflate gave zero bytes and passed before).
   - [x] `SECURITY.md`'s "Password-Protected ZIP" section said what is secret, not what is
     authenticated; a paragraph on the above added with the user's permission, 2026-10-05
-  - [ ] the two size messages are bare English text, not a `MessageCode`, so Shell and App show
-    them untranslated
+  - [x] the two size messages were bare English text, not a `MessageCode`: now
+    `ContentLargerThanDeclared` and `ContentSmallerThanDeclared`, and the truncated-entry text of
+    `EntryRegionStream` is `EntryDataTruncated` (2026-10-05, wave 1). They are error details of
+    the same kind as `ContentCrcMismatch`, so they follow T-F297's rule (English everywhere,
+    Ukrainian in front for uk-UA only) rather than getting 37 translations; `pakko` output is
+    unchanged. Mutation-checked (each throw site back to bare text)
 - **Found by:** a byte-level review of the release build's output, asked for by the user,
   2026-10-05.
 

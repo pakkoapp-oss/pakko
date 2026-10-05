@@ -40,6 +40,9 @@ internal static class CoreMessages
     /// <see cref="InvalidDataException"/>, so every existing catch of corrupt content applies.</summary>
     internal static InvalidDataException InvalidData(CoreText text) => new(text.English, new CoreTextCarrier(text));
 
+    /// <summary>T-F333: archive data that ends early, with a message Core wrote.</summary>
+    internal static EndOfStreamException EndOfStream(CoreText text) => new(text.English, new CoreTextCarrier(text));
+
     /// <summary>
     /// T-F297: an exception's text as a message detail — its own code when Core threw it; otherwise
     /// the text as Windows or .NET wrote it (English, after <paramref name="rewrite"/>), plus the

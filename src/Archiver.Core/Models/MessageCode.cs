@@ -111,4 +111,7 @@ public enum MessageCode
     SystemSharingViolation,
     SystemDiskFull,
     ContentCrcMismatch,
+    ContentLargerThanDeclared,
+    ContentSmallerThanDeclared,
+    EntryDataTruncated,
 }

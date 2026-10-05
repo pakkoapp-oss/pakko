@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Archiver.Core.IO;
 using Archiver.Core.Models;
@@ -56,6 +57,23 @@ public sealed class VerifyingReadStreamTests
         CoreText detail = CoreMessages.Detail(ex);
         detail.Code.Should().Be(MessageCode.ContentCrcMismatch);
         detail.English.Should().Be($"Content failed CRC-32 check (expected {DataCrc ^ 1:X8}, got {DataCrc:X8}).");
+    }
+
+    // T-F333: the two size errors carry a code too, so Shell and App do not show bare English.
+    [Theory]
+    [InlineData(-1, MessageCode.ContentLargerThanDeclared, "Content is larger than its declared size ({0} bytes).")]
+    [InlineData(1, MessageCode.ContentSmallerThanDeclared, "Content is smaller than its declared size ({0} bytes).")]
+    public void Read_ContentNotOfDeclaredSize_ErrorCarriesItsCode(int declaredDelta, MessageCode expectedCode, string expectedEnglish)
+    {
+        long declared = Data.Length + declaredDelta;
+        using var s = new VerifyingReadStream(new MemoryStream(Data), declared, expectedCrc32: null);
+        Action act = () => s.CopyTo(Stream.Null);
+
+        InvalidDataException ex = act.Should().Throw<InvalidDataException>().Which;
+        CoreText detail = CoreMessages.Detail(ex);
+        detail.Code.Should().Be(expectedCode);
+        detail.English.Should().Be(string.Format(CultureInfo.InvariantCulture, expectedEnglish, declared));
+        ex.Message.Should().Be(detail.English);
     }
 
     [Fact]

@@ -1,3 +1,5 @@
+using Archiver.Core.Models;
+
 namespace Archiver.Core.Services.Zip.Decryption;
 
 /// <summary>
@@ -22,7 +24,7 @@ internal sealed class EntryRegionStream(Stream source, long start, long length, 
         source.Seek(start + _position, SeekOrigin.Begin);
         int read = source.Read(buffer[..toRead]);
         if (read == 0)
-            throw new EndOfStreamException("ZIP entry data ends before its declared size.");
+            throw CoreMessages.EndOfStream(CoreMessages.Text(MessageCode.EntryDataTruncated));
         _position += read;
         return read;
     }
