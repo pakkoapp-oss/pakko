@@ -57,7 +57,7 @@ stderr message and in `--help`'s own `USAGE:` line.
 | Install | How `pakko` gets on `PATH` | `pakko -v` prints |
 |---|---|---|
 | Pakko from the Microsoft Store or an MSIX | The package's execution alias `pakko.exe` in `%LOCALAPPDATA%\Microsoft\WindowsApps` (on every user's `PATH`) | `pakko X.Y.Z (package PavloRybchenko.Pakko_...)` |
-| `winget install pakko-cli` (package `PavloRybchenko.PakkoCLI`, the CLI zip) | winget adds its install folder to the user `PATH` (`ArchiveBinariesDependOnPath`) | `pakko X.Y.Z` |
+| `winget install pakko-cli` (package `PavloRybchenko.PakkoCLI`, the CLI zip; available once the winget catalog accepts the package) | winget adds its install folder to the user `PATH` (`ArchiveBinariesDependOnPath`) | `pakko X.Y.Z` |
 | The zip from GitHub Releases | Not added — extract it and add the folder to `PATH` yourself, or call it by full path (like ripgrep/fd/bat zips) | `pakko X.Y.Z` |
 
 - **Inside the MSIX** `pakko.exe` is its own hidden `<Application Id="Cli">` with a `uap3`

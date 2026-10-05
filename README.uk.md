@@ -132,7 +132,7 @@ Windows 11 23H2+ включає `tar.exe` (bsdtar, підписаний Microsof
 [сторінці GitHub Releases проєкту](https://github.com/pakkoapp-oss/pakko/releases) — кожен
 тег версії автоматично збирається й публікується там. Архів не додається в `PATH`; починаючи
 з v1.7.0 встановлення з Microsoft Store/MSIX також дає команду `pakko` в будь-якому терміналі, а
-архів можна встановити через winget — див. розділ "Distribution" у `docs/CLI.md`.
+архів можна буде встановити через winget, щойно каталог winget прийме пакет, — див. розділ "Distribution" у `docs/CLI.md`.
 
 ---
 

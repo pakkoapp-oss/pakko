@@ -125,7 +125,7 @@ per-architecture zip (with a `SHA256SUMS` file for verification) from the
 [project's GitHub Releases page](https://github.com/pakkoapp-oss/pakko/releases) — every version
 tag is built and published there automatically. The zip is not added to `PATH`; from v1.7.0 the
 Microsoft Store/MSIX install also gives the `pakko` command in any terminal, and the zip can be
-installed with winget — see `docs/CLI.md`'s "Distribution" section.
+installed with winget once the winget catalog accepts the package — see `docs/CLI.md`'s "Distribution" section.
 
 ---
 
