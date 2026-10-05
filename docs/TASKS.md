@@ -1614,7 +1614,12 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
   extract, Test and Scan alike. Confirmed .NET does not cap the unencrypted stored path either (it
   returns all stored bytes); T-F246's wrapper covers that. Agent-verified on device 2026-09-25 (Deploy 1.4.12.11): covered by unit/service tests (AE-2 larger than declared); no separate device scenario.
 
-- [~] **Status:** stays `[~]` (wave 9, 2026-10-03): the decrypt path ran on device through T-F246's checks, but the size cap itself has no realistic hostile fixture and is covered only by the AE-2 service tests; closing it needs a crafted AE-2 entry larger than its declared size, extracted on device. Earlier status: fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — code-confirmed by the T-F226 reviewer agent, exploit not yet reproduced.
+- [x] **Status:** closed on device 2026-10-05 (wave 1 after v1.7.0; Deploy from 3aef1e7, `pakko -v` = `0.0.0-dev+3aef1e7`, App title build 2026-10-05 19:04:41, uk-UA): an AE-2
+  entry of 60,000 bytes whose declared size was lowered to 100 in both headers (no password is
+  needed for that: the sizes are outside the HMAC) - `pakko t` and `pakko x` exit 2 with "Content
+  is larger than its declared size (100 bytes)", nothing is written. The released v1.7.0 gives
+  the same. Fixture script: `make_fixtures.py` (kept outside the repo with the wave's notes).
+- **Earlier status:** stays `[~]` (wave 9, 2026-10-03): the decrypt path ran on device through T-F246's checks, but the size cap itself has no realistic hostile fixture and is covered only by the AE-2 service tests; closing it needs a crafted AE-2 entry larger than its declared size, extracted on device. Earlier status: fixed in fix phase 2, stays `[~]` until the user's own check. Original: open — code-confirmed by the T-F226 reviewer agent, exploit not yet reproduced.
   The compression-bomb and free-space gate uses declared sizes; the decrypting path wraps the
   plaintext in an unbounded `DeflateStream` (`EncryptedZipEntryReader.cs:~229`), so a
   password-protected archive can declare tiny sizes and expand far beyond them (a password shared
@@ -1785,11 +1790,15 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Decision (user, 2026-09-30):** Test reports a local/central header mismatch as an error
   ("Headers Error", as `7za t`); extraction carries on from the central directory and adds a
   warning to the summary.
-- [~] **Status:** extraction half done in code 2026-10-05 (wave 1 after v1.7.0): the warning
+- [x] **Status:** extraction half done 2026-10-05 (wave 1 after v1.7.0): the warning
   channel `ArchiveResult.Warnings` + `OperationOutcome.CompletedWithWarnings`; extraction adds one
   warning per archive with the same message as Test; `pakko` prints `pakko: warning:` and exits 1;
   Explorer shows a warning message; the App a "Warnings" section and the footer count. See
-  `docs/DECISIONS.md`'s second T-F280 entry. Left: the device pass (Explorer, App, a real console).
+  `docs/DECISIONS.md`'s second T-F280 entry. Device (Deploy from 3aef1e7, `pakko -v` = `0.0.0-dev+3aef1e7`, App title build 2026-10-05 19:04:41, uk-UA), a ZIP with one
+  local name changed: `pakko x` extracts by the central name, prints the warning, exits 1 (`pakko t`
+  exits 2; the released v1.7.0 extracted it silently with 0); Explorer's "Extract to folder" ends
+  with the warning in Ukrainian in the operation window, files in place; the App shows "Completed
+  with issues" with a "Warnings (1)" section and the footer count 1; an untouched ZIP exits 0.
   **CHANGELOG v1.7.1:** extracting a ZIP whose local file headers disagree with its central
   directory now warns (`pakko x` exits 1).
 - **Earlier status:** Test half done 2026-09-30 (v1.7.0 wave 1; Device (Deploy 1.6.0.0 from 480cb74, App title build 2026-09-30 22:47:15, uk-UA, 2026-09-30): a ZIP with one local CRC
@@ -1911,8 +1920,9 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F316 — Archiving a folder that holds its own destination reads the run's temp file (P3)
 
-- [~] **Status:** fixed in code 2026-10-05 (wave 1); the `pakko a out.zip .` run on the installed
-  build is left for the wave's device pass. ZIP: both walkers (`WorkItemEnumerator`,
+- [x] **Status:** fixed 2026-10-05 (wave 1). Device (Deploy from 3aef1e7, `pakko -v` = `0.0.0-dev+3aef1e7`, App title build 2026-10-05 19:04:41, uk-UA): `pakko a out.zip .` exits 0
+  with the two user files only and no `.pakko-*` left; `pakko a -ttar out.tar .` packs the folder
+  and the `out.zip` already there, not its own temporary file. ZIP: both walkers (`WorkItemEnumerator`,
   `AddDirectoryToArchiveAsync`) leave out anything below the source root whose name carries this
   process's `TempOwner` tag (`TempOwner.IsOwnBelow`) - the run's temporary file, the chunk folder
   of the hand-rolled writer, and those of the other archives of a Separate-archives run. Chosen
@@ -2325,7 +2335,10 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     `EntryRegionStream` is `EntryDataTruncated` (2026-10-05, wave 1). They are error details of
     the same kind as `ContentCrcMismatch`, so they follow T-F297's rule (English everywhere,
     Ukrainian in front for uk-UA only) rather than getting 37 translations; `pakko` output is
-    unchanged. Mutation-checked (each throw site back to bare text)
+    unchanged. Mutation-checked (each throw site back to bare text). Device (Deploy from 3aef1e7, `pakko -v` = `0.0.0-dev+3aef1e7`, App title build 2026-10-05 19:04:41, uk-UA):
+    the tampered AE-2 archive (real method set to stored) fails in `pakko t`/`x` with exit 2 (the
+    released v1.7.0 exits 0), and Explorer's operation window shows the Ukrainian text in front
+    of the English one
 - **Found by:** a byte-level review of the release build's output, asked for by the user,
   2026-10-05.
 
@@ -2380,3 +2393,16 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   The vendored `7za.exe` reading the same archives stays as the second, fully independent
   reader. No new packages.
 - **Reported by:** the crypto review asked for by the user, 2026-10-05.
+
+### T-F338 — `pakko a out.zip .` names its entries `./a.txt` (P3)
+
+- [ ] **Status:** open. Seen in the device pass of wave 1, 2026-10-05; not new (this wave did not
+  touch entry naming). With `.` as the source, the ZIP engine takes `.` as the folder's name:
+  entries are `./a.txt`, `./sub/b.txt` (7-Zip lists them as `.\a.txt`). Pakko extracts them
+  correctly; 7-Zip stores `a.txt` for the same command, and tar.exe through Pakko names the
+  folder (`self/a.txt`). Resolve the source to its full path before taking its name, in the CLI
+  or in Core (`..` and a drive-relative `C:` are the same case). Tests first.
+- **Also seen there:** the byte counts in Core's English messages are formatted with the current
+  culture (`60 000` with a no-break space under uk-UA), which a console in code page 866 cannot
+  show; belongs with T-F328's "{0} bytes" tail.
+- **Reported by:** wave 1 device pass, 2026-10-05.
