@@ -657,12 +657,13 @@ static int ReportResult(ArchiveResult result, CliReportContext report)
         Console.Error.WriteLine($"pakko: warning: {report.DisplayName(warning.SourcePath)}: {warning.Message}");
 
     PrintHints(result, report);
-
-    return result.Outcome switch
-    {
-        OperationOutcome.Completed => result.KeptExistingFiles.Count > 0 ? 1 : 0,
-        OperationOutcome.Failed => 2,
-        OperationOutcome.CompletedWithWarnings or OperationOutcome.CompletedWithSkips or OperationOutcome.NothingDone => 1,
-        _ => 1,
-    };
+    return ExitCodeFor(result);
 }
+
+static int ExitCodeFor(ArchiveResult result) => result.Outcome switch
+{
+    OperationOutcome.Completed => result.KeptExistingFiles.Count > 0 ? 1 : 0,
+    OperationOutcome.Failed => 2,
+    OperationOutcome.CompletedWithWarnings or OperationOutcome.CompletedWithSkips or OperationOutcome.NothingDone => 1,
+    _ => 1,
+};
