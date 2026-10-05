@@ -1850,7 +1850,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F313 — `pakko x` onto partly existing files exits 1 with no line and no hint (P3)
 
-- [ ] **Status:** open. Found in the v1.7.0 wave 3 closing review, 2026-10-03. ZIP keeps its
+- [x] **Status:** done 2026-10-05 (post-v1.7.0 wave 2, 27b4ec6). The ZIP engine names its automatic conflict skips on `ArchiveResult.KeptExistingFiles` (outside `SkippedFiles`, so `Outcome` and the App summary do not change; a Skip the user answered at the prompt is left out, T-F216); `pakko x` prints each as `pakko: skipped: <name>: File already exists at destination.`, adds the `-aoa` hint when nothing was chosen, and exits 1, as for tar. The entry below said "exits 1"; a subprocess test pinned the real code first: 0. Device-checked 2026-10-05 on the dev package 1.7.0.1 (2016f07) with the installed `pakko` alias: default = line + hint + exit 1, file kept; `-aos` = lines, no hint, exit 1; `-aoa` = exit 0, file replaced.
+- **Earlier status:** open. Found in the v1.7.0 wave 3 closing review, 2026-10-03. ZIP keeps its
   per-file conflict skips out of `SkippedFiles` (`ZipArchiveService`, the `conflictSkipped` list: they
   only make the archive partial, so the App's summary stays as it was). When some entries of an
   archive already exist and others are extracted, `pakko x` without `-ao`/`-y` exits 1 and prints
@@ -2057,7 +2058,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F322 — `pakko x`/`t` suggests `-p` for an encrypted 7z or RAR it cannot decrypt (P3)
 
-- [ ] **Status:** open. Found in the wave 9 device campaign (2026-10-03): `pakko x encrypted.7z`
+- [x] **Status:** done 2026-10-05 (post-v1.7.0 wave 2, a135d44). New code `PasswordProtectedFormatNotSupported` ("This archive is password-protected. Passwords are supported for ZIP archives only.", 37 languages) from the tar engine's four sites, extract and browse; `CliHints` maps it to no hint. Device-checked 2026-10-05 on the dev package 1.7.0.1 (2016f07) with the installed `pakko` alias: `pakko x encrypted.7z`, the same with `-p`, `encrypted.rar` and `pakko l encrypted_headers.7z` each print the one error line, exit 2, no hint; Explorer's Extract here on the 7z shows the Ukrainian text in the operation window.
+- **Earlier status:** open. Found in the wave 9 device campaign (2026-10-03): `pakko x encrypted.7z`
   prints "This archive is password-protected and cannot be extracted." plus "pakko: hint: give the
   password with -p<password>"; with `-p` the same error repeats — tar.exe cannot decrypt 7z or RAR
   at all. Both engines report `MessageCode.PasswordProtectedExtract`/`Test`, so `CliHints` cannot
@@ -2076,7 +2078,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F325 — `pakko a` says nothing when the name was taken during the run (P3)
 
-- [ ] **Status:** open. Since T-F321, an archive another run created under the same name while
+- [x] **Status:** done 2026-10-05 (post-v1.7.0 wave 2, 2016f07). Decided in the CLI (`CliCreatedName`): `a` never renames on its own, so a created path other than the one asked for is T-F321's. stderr gets `pakko: warning: created 'name (1).ext': the name 'name.ext' was taken while compressing`, exit 1. Device-checked 2026-10-05 on the dev package 1.7.0.1 (2016f07) with the installed `pakko` alias: two runs for `same.zip` at once - exit 0 and exit 1 with the line, both archives present.
+- **Earlier status:** open. Since T-F321, an archive another run created under the same name while
   this one was writing is kept and this run's archive lands at `name (1).ext` — exit 0, no line on
   stdout or stderr, so a script that uses the name it passed does not find its archive. Print the
   path it landed at (a `pakko: created 'name (1).ext' (the name was taken while compressing)`
@@ -2085,7 +2088,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F326 — Tar-creation policy refusal names the destination folder as the item (P3)
 
-- [ ] **Status:** open. Found in the wave 9 device campaign (2026-10-04, B9) with
+- [~] **Status:** fixed in code 2026-10-05 (post-v1.7.0 wave 2, d42a676), by tests: every whole-operation refusal (Group Policy, a password with a tar format, an unusable password, a failed tar.exe signature check) names the archive that was to be written (`ArchiveNaming.RefusedArchivePath`), or the first source in Separate-archives mode. Left: one `pakko a -ttar` run under `DisableTarExtraction=1` on a device (needs UAC; goes with the pre-release visit).
+- **Earlier status:** open. Found in the wave 9 device campaign (2026-10-04, B9) with
   `DisableTarExtraction=1`: a `pakko a -ttar` run with its output in `C:\g9` prints
   `pakko: error: g9: tar.exe-based archive creation is disabled by Group Policy.`. The refusal is
   about the format, not about a file or folder, but `ArchiveCreationRouter` and
@@ -2354,7 +2358,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F335 — `pakko l` on a tar archive shows midnight for an older entry (P3)
 
-- [ ] **Status:** open, cause not looked at. `pakko l plain.tar` on a file last written
+- [x] **Status:** done 2026-10-05 (post-v1.7.0 wave 2, 9944e31). Cause confirmed: bsdtar 3.8.8 prints the year in place of the time for an entry older than about half a year and refuses `--full-time`. `ArchiveEntryInfo.ModifiedHasTime` is false for such an entry; `pakko l` and the App's Modified column show the date alone. Device-checked 2026-10-05 on the dev package 1.7.0.1 (2016f07) with the installed `pakko` alias: `pakko l dates.tar` = `2020-02-03` and `2026-10-05T23:22:00`; the App browser shows `2020-02-03` and `2026-10-05 23:22`.
+- **Earlier status:** open, cause not looked at. `pakko l plain.tar` on a file last written
   2020-02-03 04:05:06 prints `2020-02-03T00:00:00`; the same file in a ZIP prints the full time,
   and extraction from the tar restores the full time. Likely `tar -tv` prints a year instead of a
   time for entries older than about six months; check that first, then either read the time
@@ -2397,7 +2402,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F338 — `pakko a out.zip .` names its entries `./a.txt` (P3)
 
-- [ ] **Status:** open. Seen in the device pass of wave 1, 2026-10-05; not new (this wave did not
+- [x] **Status:** done 2026-10-05 (post-v1.7.0 wave 2, 16eb8e6). `SourcePathNormalizer` (both creation engines) resolves a relative or dot-named source to the folder it stands for; a fully qualified ordinary path is unchanged. Device-checked 2026-10-05 on the dev package 1.7.0.1 (2016f07) with the installed `pakko` alias: `pakko a out.zip .` and `..` store `proj/a.txt`, `proj/sub/b.txt`; tar the same. The culture-formatted byte counts noted below stay with T-F328.
+- **Earlier status:** open. Seen in the device pass of wave 1, 2026-10-05; not new (this wave did not
   touch entry naming). With `.` as the source, the ZIP engine takes `.` as the folder's name:
   entries are `./a.txt`, `./sub/b.txt` (7-Zip lists them as `.\a.txt`). Pakko extracts them
   correctly; 7-Zip stores `a.txt` for the same command, and tar.exe through Pakko names the

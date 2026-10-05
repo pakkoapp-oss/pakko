@@ -104,7 +104,7 @@ Rejected 2026-07-18; see `DECISIONS.md`'s T-F09 "Distribution" entry.
 | `t` | Test (verify integrity) | Partial — ZIP via existing `TestAsync` (T-F62); tar-family has no test capability (`ITarService` has no Test method, per T-F86's finding). Since T-F261 `t` goes through `IExtractionRouter.TestAsync`: each path is classified once (Group Policy, then format), a tar-family or refused path is skipped with the router's reason, and tar.exe is never started |
 | `e` | Extract, flattened (no directory structure) | Not supported — Pakko's extraction always preserves the archive's folder structure; no flatten mode exists |
 | `x` | Extract with full paths | Supported — `ExtractMode.SingleFolder`; since T-F205 an archive's single root folder is kept, as `7z x` does. Without `-o`, extracts into the **current directory**, as `7z x` does (T-F206; before it, next to the archive) |
-| `l` | List contents | Supported — consumes `IArchiveListingRouter` (T-F05, shipped), looped once per archive path given. Tab-separated columns `Size`, `Compressed`, `Crc32`, `Modified`, `Type`, `Encrypted`, `Path` (Path always last). `Compressed` and `Crc32` are `-` for tar-family, 7z and RAR (no per-entry value; T-F214, was `0` for `Compressed`); `Modified` is local time, for those formats read from tar.exe's listing (to the minute within half a year, else the date at 00:00), `-` when unreadable. `Encrypted` (T-F221 item 7, 2026-09-28) is `-`, `ZipCrypto`, `AES-128`/`AES-192`/`AES-256`, `+` (encrypted by a method Pakko cannot name) or `?` (the format cannot say without extracting: tar-family, 7z, RAR) |
+| `l` | List contents | Supported — consumes `IArchiveListingRouter` (T-F05, shipped), looped once per archive path given. Tab-separated columns `Size`, `Compressed`, `Crc32`, `Modified`, `Type`, `Encrypted`, `Path` (Path always last). `Compressed` and `Crc32` are `-` for tar-family, 7z and RAR (no per-entry value; T-F214, was `0` for `Compressed`); `Modified` is local time, for those formats read from tar.exe's listing (to the minute within half a year; an older entry shows the date alone, `2020-02-03`, because tar.exe prints its year in place of the time and has no option for both, T-F335), `-` when unreadable. `Encrypted` (T-F221 item 7, 2026-09-28) is `-`, `ZipCrypto`, `AES-128`/`AES-192`/`AES-256`, `+` (encrypted by a method Pakko cannot name) or `?` (the format cannot say without extracting: tar-family, 7z, RAR) |
 | `b` | Benchmark | Not supported, deliberately out of scope (same reasoning as T-F05's NanaZip-toolbar scope cuts) |
 | `i` | Info (list supported archive formats/codecs) | Supported — prints ZIP and tar/tar.gz (always) plus each tar.exe-backed format (tar.bz2/xz/zst/lzma, 7z, rar) with its live `TarCapabilities` result, and the tar.exe version. Since T-F261 each format's status comes from Core's `ArchiveFormatPolicy` and the loaded Group Policy: "supported", "not supported" or "blocked by Group Policy"; under `DisableTarExtraction` the tar.exe line reads "disabled by Group Policy" and no version probe runs. Takes no arguments (only `-scc`) |
 | `h` | Hash | **Supported (added 2026-07-20, T-F128/T-F09 follow-up).** Real 7z `h` hashes files on disk, not archive entries — the original row here predated T-F128 and described the wrong thing. Maps onto `FileHashService.ComputeAsync` (same engine as the Explorer context menu's CRC-32/SHA-256 commands, flattened out of the old "Хеш-суми" submenu by T-F128): one or more files hashed independently, or exactly one folder recursed with a combined DataSum/NamesSum printed (NanaZip-compatible, verified against the vendored `7za.exe`) |
@@ -225,6 +225,12 @@ Never silently ignore an unrecognized token or switch and proceed as if it wasn'
   was refused with no password given; `pakko: hint: existing files were kept; -aoa overwrites
   them, -aou renames the extracted ones` when `x` kept existing files because nothing else was
   chosen. A wrong `-p` is one line (`incorrect password (-p)`), not followed by Core's generic one.
+  An encrypted 7z or RAR gets no `-p` hint (T-F322): tar.exe cannot decrypt either, and the error
+  says that passwords are supported for ZIP archives only.
+- `x` over files that already exist (T-F313): each file kept by the default or by `-aos` is one
+  `pakko: skipped: <name>: File already exists at destination.` line and the exit code is **1**,
+  for ZIP as for tar-family (a ZIP used to exit 0 with no line). A file the user skipped at the
+  interactive prompt is not reported (T-F216).
 - `-si`: an empty stdin is `stdin was empty, so there is no archive to read` (exit 2); the staged
   archive is always shown as `(stdin)`, never its temporary path.
 - `a -so` with stdout on a terminal is refused (exit 7), like 7-Zip, gzip and zstd.
@@ -234,8 +240,14 @@ Never silently ignore an unrecognized token or switch and proceed as if it wasn'
   extension is an archive type Pakko writes must agree with `-t` (T-F296, user decision
   2026-10-03).
 - `a` onto a name another run creates at the same moment (T-F321): the other archive is kept and
-  this one is written as `name (1).ext`, exit 0, with no line saying so yet (T-F325). A name that
+  this one is written as `name (1).ext`; stderr says `pakko: warning: created 'name (1).ext': the
+  name 'name.ext' was taken while compressing` and the exit code is **1** (T-F325; it was exit 0
+  and no line), so a script that goes on to use the name it passed is stopped. A name that
   already exists when `a` starts is still skipped (exit 1) unless `-y` overwrites it.
+- `a` with `.` or `..` as a source archives that folder under its own name (`pakko a out.zip .`
+  in `proj` stores `proj/a.txt`, T-F338; a ZIP used to store `./a.txt`).
+- A refusal to create anything (Group Policy, a password with a tar format) names the archive
+  that was to be written, not the output folder (T-F326).
 - **PowerShell splits `-name.rest`** into two arguments before pakko sees them: `-ttar.gz` arrives
   as `-ttar` `.gz`, `-pSecret.1` as `-pSecret` `.1` (checked in pwsh 7; `-oC:\out.d` and
   `-mx=1` are not split). A `-p`, `-o` or `-t` switch made only of letters, digits and `_` followed
@@ -259,7 +271,8 @@ See `TASKS.md`'s T-F09 entry for acceptance criteria, test-layer requirements, a
 
 A warning is something to know about a command that still did what was asked. It is one line on
 stderr, `pakko: warning: <archive>: <text>`, and the exit code is **1** (7-Zip's code for a
-warning) unless an error makes it 2. The one warning so far: `x` on a ZIP whose local file
+warning) unless an error makes it 2. `a` has one of its own, the name taken during the run (see
+"Messages and naming"). From Core there is one so far: `x` on a ZIP whose local file
 headers disagree with its central directory. Pakko extracts by the central directory; another
 program may extract other names or data from the same archive. `t` reports the same archive as
 an error (exit 2), as `7z t` does.

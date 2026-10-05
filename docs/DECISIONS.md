@@ -11134,3 +11134,39 @@ ZIP whose local file headers disagree with its central directory (the user's dec
 - **T-F337: an independent reader in the test suite.** The byte-level check uses BCL primitives
   only; its counter-starts-at-0 mutant sits in `AesCtrKeystream`, which Pakko's reader shares, so a
   round trip keeps passing on it.
+
+## Wave 2 after v1.7.0 — what `pakko` says (2026-10-05)
+
+- **T-F313: kept files get a list of their own, not the warning channel.** A file left alone
+  because it already existed is a skip, and `ArchiveWarning` means nothing was left out; putting it
+  there would also turn the App and Explorer summaries into "completed with warnings". So
+  `ArchiveResult.KeptExistingFiles` carries the ZIP engine's automatic conflict skips and leaves
+  `Outcome` alone. `pakko x` prints them like any skip and exits 1 — what a tar archive already
+  did; a ZIP exited 0 in silence (the TASKS entry said 1, written before T-F280 changed the exit
+  mapping; a subprocess test pinned 0 first). A Skip the user answered at the prompt is still not
+  reported (T-F216): the engine records who decided each skip.
+- **T-F325: decided in the CLI, exit 1.** `a` never renames on its own (a taken name is an error
+  or `-y` replaces it), so an archive that landed under another name can only be T-F321's. The
+  CLI compares the created path with the one it asked for; no Core change, and no new warning
+  state in the App or Explorer, which show the created path anyway. Exit 1 because the archive is
+  complete but not where the caller will look. Checked with a real race of two runs.
+- **T-F322: a code of its own, not a guess in the CLI.** Encrypted 7z and RAR now report
+  `PasswordProtectedFormatNotSupported` ("Passwords are supported for ZIP archives only", 37
+  languages) from all four tar-engine sites, extract and browse; `CliHints` maps it to no hint.
+  No pointer to another program in the text. `PasswordProtectedBrowse` has no producer left (an
+  encrypted ZIP lists without a password) and stays in the tables.
+- **T-F335: the time is unknown, so it is not shown.** bsdtar prints the year in place of the time
+  for an entry older than about half a year and has no full-time option (`--full-time` is refused
+  by the 3.8.8 build). Reading tar headers in-process would be a second parser for an untrusted
+  format. `ArchiveEntryInfo.ModifiedHasTime` is false for such an entry; `pakko l` prints
+  `2020-02-03`, the App's Modified column the same.
+- **T-F338: resolved in Core, only where it changes something.** `SourcePathNormalizer` resolves
+  a source that is relative or whose last segment is `.`/`..`; a fully qualified ordinary path is
+  left byte for byte as it was (`GetFullPath` would drop a trailing dot from a name that exists
+  through `\?\`). Both creation engines use it, so the recorded `SourceResult.Path` of a relative
+  source is now the full path.
+- **T-F326: one rule for every whole-operation refusal.** Group Policy, a password with a tar
+  format, an unusable password and a failed tar.exe signature check all named
+  `options.DestinationFolder`. They name the archive that was to be written
+  (`ArchiveNaming.RefusedArchivePath`), or the first source when every source gets its own
+  archive.

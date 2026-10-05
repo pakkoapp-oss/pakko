@@ -95,6 +95,7 @@ src/
 │   │   ├── ArchiveEntrySecurity.cs     ← ADS/reserved-name/reparse-point/bomb checks, shared
 │   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based
 │   │   ├── ArchiveNaming.cs            ← compound-extension-aware naming (T-F103)
+│   │   ├── SourcePathNormalizer.cs     ← a creation source as entries are named from it: no trailing separator, "."/".."/relative resolved (T-F153, T-F338)
 │   │   ├── ConflictResolver.cs         ← T-F06: resolves ConflictBehavior.Ask
 │   │   ├── EncryptionPasswordRule.cs   ← T-F193: public; which passwords a NEW encrypted ZIP accepts
 │   │   │                                  (printable ASCII, <= 99) — shared by App/CLI prompts and
@@ -603,6 +604,11 @@ public sealed record ArchiveResult
     // operation, never makes a source undeletable; built only by CoreMessages.Warning. Every
     // frontend shows them whatever the outcome (under the errors or skips when there are any).
     public IReadOnlyList<ArchiveWarning> Warnings { get; init; } = [];   // SourcePath, Message, Text
+    // T-F313: entries the ZIP engine left alone because the file existed and the automatic
+    // conflict choice was Skip (not a Skip the user answered, T-F216). Outside SkippedFiles, so
+    // Outcome and the App/Explorer summaries do not change; pakko prints them and exits 1. The
+    // tar engine lists the same case in SkippedFiles.
+    public IReadOnlyList<SkippedFile> KeptExistingFiles { get; init; } = [];
     // T-F260: one entry per source the engine finished; no entry = not processed (fail-closed).
     public IReadOnlyList<SourceResult> Sources { get; init; } = [];
     // The only input to "Delete after operation": sources whose Outcome is Completed.
@@ -1324,6 +1330,7 @@ public sealed record ArchiveEntryInfo
     public long? CompressedSize { get; init; }   // null for tar-routed formats: no per-entry packed size (T-F214)
     public uint? Crc32 { get; init; }            // null for tar-routed formats — no per-entry CRC
     public DateTime? Modified { get; init; }     // tar: parsed from "-tv" by TarListingDate (T-F214), minute or date only; null if unreadable
+    public bool ModifiedHasTime { get; init; } = true; // T-F335: false when tar.exe listed the year in place of the time (shown as a date alone)
     public bool IsDirectory { get; init; }
     public EntryEncryption? Encryption { get; init; } // T-F199: ZIP only, read without a password; null = format can't say
     public int? AesVersion { get; init; }            // WinZip AE-1/AE-2, null unless AES
@@ -1404,6 +1411,7 @@ public sealed record ArchiveEntryViewModel
     public long? CompressedSize { get; init; }
     public uint? Crc32 { get; init; }
     public DateTime? Modified { get; init; }
+    public bool ModifiedHasTime { get; init; } = true; // T-F335: false -> ModifiedDisplay is the date alone
 
     // T-F98: true only for a nested-archive row where drilling in would exceed
     // NestedArchivePolicy.MaxDepth — the one case where double-clicking an archive entry does
@@ -1778,7 +1786,7 @@ callback delegates are null — the CLI needs to do nothing special in `-y`'s *a
 | Code | Meaning |
 |---|---|
 | `0` | Success, nothing skipped |
-| `1` | Success, but `SkippedFiles` were present (e.g. a conflict/bomb declined without `-y`, or `t` hit a tar-family archive), or a warning was printed (`pakko: warning: <archive>: <text>` on stderr, T-F280 — 7-Zip's code for a warning) |
+| `1` | Success, but `SkippedFiles` or `KeptExistingFiles` were present (e.g. a conflict/bomb declined without `-y`, or `t` hit a tar-family archive), `a` landed under another name than asked (T-F325), or a warning was printed (`pakko: warning: <archive>: <text>` on stderr, T-F280 — 7-Zip's code for a warning) |
 | `2` | Operation failed (`ArchiveResult.Success == false`, listing failed, or real Test corruption) |
 | `7` | Command-line error — any of the three three-way-rule categories, distinguished by stderr text, not exit code |
 

@@ -2,7 +2,7 @@ namespace Archiver.Core.Services;
 
 /// <summary>
 /// The form of a source path every archive-creation engine names entries from: no trailing
-/// separator (T-F153), and a relative or dot-named path ("." , "..", "C:") resolved to the folder
+/// separator (T-F153), and a relative or dot-named path (".", "..", "C:") resolved to the folder
 /// it stands for (T-F338) - its last segment is otherwise "." and becomes the entry root.
 /// </summary>
 internal static class SourcePathNormalizer
