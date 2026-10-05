@@ -4156,6 +4156,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     and 29 locales failed it before the text changed
   - [x] copyright line, the same in every language: `Copyright © 2026 Pakko Contributors`, the
     notice in `LICENSE`; kept in `docs/store-listing/README.md`, not in the 37 files
+  - [ ] the fill script has run three times and is still outside the repo (its paths are this
+    machine's); it moves to `scripts/` with the paths as parameters before the next listing change
   - [ ] the user imports `listingData-9P5MW010D8PR-filled-3.csv` (built from the export of
     2026-10-05 in which sv-se still had the old text; it carries the Swedish text too)
 - **Images, uploaded by hand:**
