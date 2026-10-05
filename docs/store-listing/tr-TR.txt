@@ -15,7 +15,7 @@ ZIP: .NET'in kendi sıkıştırma kitaplığıyla oluşturma ve ayıklama
 Parolalı ZIP: ZipCrypto ve WinZip AES arşivlerini açar, AES-256 arşivleri oluşturur
 TAR, GZ, BZ2, XZ, ZST, LZMA: Windows'un yerleşik tar.exe aracıyla ayıklama ve oluşturma
 RAR ve 7-Zip: yalnızca ayıklama, Windows'un yerleşik tar.exe aracıyla
-Dosya Gezgini sağ tık menüsü: Aç, Buraya ayıkla, Arşive ekle, Arşivi test et, Tehditleri tara, Karma
+Dosya Gezgini sağ tık menüsü: Aç, Buraya ayıkla, Sıkıştır, Arşivi test et, Tehditleri tara, Karma
 Arşiv tarayıcısı: arşivin içine bakın, resimleri ve metinleri önizleyin, yalnızca seçtiklerinizi ayıklayın
 Tehdit taraması: arşivin içeriğini yüklü virüsten koruma programınız denetler
 Korumalı alanda ayıklama: RAR, 7-Zip ve TAR, ağ erişimi olmayan yalıtılmış bir AppContainer içinde okunur
@@ -36,6 +36,6 @@ açık kaynak
 [What's new in this version]
 • pakko komutu, kurulumdan hemen sonra her terminalde çalışır: betikler için 7-Zip tarzı bir komut satırı.
 • Ayıklanan dosyalar ve klasörler, arşivde kayıtlı tarihleri korur.
-• Uygulama baştan sona klavyeyle kullanılabilir; "dosya zaten var" penceresi iki dosyanın da boyutunu ve tarihini gösterir.
+• Uygulama klavyeyle daha rahat kullanılıyor; "Dosya zaten var" penceresi iki dosyanın da boyutunu ve tarihini gösteriyor.
 • En hızlı sıkıştırma düzeyi, önceden sıkıştırılmış dosyaları artık büyütmüyor.
 • İngilizce dışındaki 36 dilin tümünde çeviriler gözden geçirildi; Dosya Gezgini menüsü artık Windows dil listenizi izliyor.

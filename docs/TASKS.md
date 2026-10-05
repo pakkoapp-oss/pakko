@@ -4131,7 +4131,9 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   - [ ] the user pastes the text into Partner Center (or exports the listing CSV, which a script
     can fill from these files) and adds the five missing languages
   - [ ] screenshot captions (`docs/assets/store/CAPTIONS.md`) are English only
-- **Not changed:** `README.md` and `README.uk.md` still say that Explorer does not propagate the
-  Mark-of-the-Web; the listing no longer does (the site pages never did). To be settled with the feature-text refresh before
+- **Not changed:** `README.md`, `README.uk.md` and `SECURITY.md` ("Explorer's Gap") still say
+  that Explorer does not propagate the Mark-of-the-Web; the listing no longer does. A test on
+  this machine (Windows 11 build 26300, Explorer's ZIP folder) showed that it does for ZIP;
+  details in `docs/store-listing/README.md`. Changing those three files is the user's call. To be settled with the feature-text refresh before
   the release commit.
 - **Reported by:** user, 2026-10-05.

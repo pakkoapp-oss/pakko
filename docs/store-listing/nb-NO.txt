@@ -15,7 +15,7 @@ ZIP: oppretting og utpakking med .NETs eget komprimeringsbibliotek
 ZIP med passord: åpner ZipCrypto og WinZip AES, oppretter AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: utpakking og oppretting via det innebygde tar.exe i Windows
 RAR og 7-Zip: bare utpakking, via det innebygde tar.exe i Windows
-Hurtigmenyen i Filutforsker: Åpne, Pakk ut her, Legg til i arkiv, Test arkiv, Se etter trusler, Hash
+Hurtigmenyen i Filutforsker: Åpne, Pakk ut her, Komprimer, Test arkiv, Se etter trusler, Hash
 Arkivutforsker: se inn i et arkiv, forhåndsvis bilder og tekst, pakk ut bare det du velger
 Se etter trusler: innholdet i arkivet kontrolleres av det installerte antivirusprogrammet ditt
 Utpakking i sandkasse: RAR, 7-Zip og TAR leses i en isolert AppContainer uten nettverkstilgang
@@ -36,6 +36,6 @@ zip med passord
 [What's new in this version]
 • Kommandoen pakko virker i alle terminaler rett etter installasjonen: en kommandolinje i 7-Zip-stil for skript.
 • Utpakkede filer og mapper beholder datoene som er lagret i arkivet.
-• Appen kan brukes fullt ut fra tastaturet; dialogboksen «filen finnes allerede» viser størrelse og dato for begge filene.
+• Appen fungerer bedre med tastaturet; dialogboksen «Filen finnes allerede» viser størrelse og dato for begge filene.
 • Det raskeste komprimeringsnivået gjør ikke lenger allerede komprimerte filer større.
 • Oversettelsene er gjennomgått på alle 36 språk utenom engelsk; menyen i Filutforsker følger nå listen din over Windows-språk.

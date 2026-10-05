@@ -15,7 +15,7 @@ ZIP: tạo và giải nén bằng thư viện nén của chính .NET
 ZIP có mật khẩu: mở ZipCrypto và WinZip AES, tạo AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: giải nén và tạo bằng tar.exe tích hợp sẵn trong Windows
 RAR và 7-Zip: chỉ giải nén, bằng tar.exe tích hợp sẵn trong Windows
-Menu chuột phải của File Explorer: Mở, Giải nén tại đây, Thêm vào tệp nén, Kiểm tra tệp nén, Quét mối đe dọa, Mã băm
+Menu chuột phải của File Explorer: Mở, Giải nén tại đây, Nén, Kiểm tra tệp nén, Quét mối đe dọa, Mã băm
 Trình duyệt tệp nén: xem bên trong tệp nén, xem trước ảnh và văn bản, chỉ giải nén những gì bạn chọn
 Quét mối đe dọa: nội dung tệp nén được phần mềm diệt vi-rút đã cài của bạn kiểm tra
 Giải nén trong hộp cát: RAR, 7-Zip và TAR được đọc trong AppContainer cô lập, không có quyền truy cập mạng
@@ -36,6 +36,6 @@ mã nguồn mở
 [What's new in this version]
 • Lệnh pakko dùng được trong mọi cửa sổ dòng lệnh ngay sau khi cài đặt: một dòng lệnh kiểu 7-Zip dành cho tập lệnh.
 • Tệp và thư mục được giải nén giữ nguyên ngày tháng lưu trong tệp nén.
-• Có thể dùng toàn bộ ứng dụng bằng bàn phím; cửa sổ "tệp đã tồn tại" hiển thị kích thước và ngày của cả hai tệp.
+• Ứng dụng dễ dùng bằng bàn phím hơn; cửa sổ "Tệp đã tồn tại" hiển thị kích thước và ngày của cả hai tệp.
 • Mức nén nhanh nhất không còn làm các tệp đã nén sẵn lớn thêm.
 • Đã rà soát bản dịch ở tất cả 36 ngôn ngữ ngoài tiếng Anh; menu của File Explorer giờ tuân theo danh sách ngôn ngữ Windows của bạn.

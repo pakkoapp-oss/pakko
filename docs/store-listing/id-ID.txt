@@ -15,7 +15,7 @@ ZIP: membuat dan mengekstrak dengan pustaka kompresi milik .NET sendiri
 ZIP berkata sandi: membuka ZipCrypto dan WinZip AES, membuat AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: mengekstrak dan membuat, melalui tar.exe bawaan Windows
 RAR dan 7-Zip: hanya mengekstrak, melalui tar.exe bawaan Windows
-Menu klik kanan File Explorer: Buka, Ekstrak di sini, Tambahkan ke arsip, Uji arsip, Pindai ancaman, Hash
+Menu klik kanan File Explorer: Buka, Ekstrak di sini, Kompres, Uji arsip, Pindai ancaman, Hash
 Penjelajah arsip: lihat isi arsip, pratinjau gambar dan teks, ekstrak hanya yang Anda pilih
 Pindai ancaman: isi arsip diperiksa oleh antivirus yang terpasang di komputer Anda
 Ekstraksi dalam sandbox: RAR, 7-Zip, dan TAR dibaca di dalam AppContainer terisolasi tanpa akses jaringan
@@ -36,6 +36,6 @@ sumber terbuka
 [What's new in this version]
 • Perintah pakko berfungsi di terminal mana pun segera setelah pemasangan: baris perintah bergaya 7-Zip untuk skrip.
 • File dan folder yang diekstrak mempertahankan tanggal yang tersimpan di dalam arsip.
-• Aplikasi dapat digunakan sepenuhnya dengan keyboard; jendela "file sudah ada" menampilkan ukuran dan tanggal kedua file.
+• Aplikasi kini lebih nyaman digunakan dengan keyboard; jendela "File sudah ada" menampilkan ukuran dan tanggal kedua file.
 • Tingkat kompresi tercepat tidak lagi memperbesar file yang sudah terkompresi.
 • Terjemahan ditinjau ulang dalam semua 36 bahasa selain bahasa Inggris; menu File Explorer kini mengikuti daftar bahasa Windows Anda.

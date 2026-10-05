@@ -15,7 +15,7 @@ ZIP: maken en uitpakken met de eigen compressiebibliotheek van .NET
 ZIP met wachtwoord: opent ZipCrypto en WinZip AES, maakt AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: uitpakken en maken via de in Windows ingebouwde tar.exe
 RAR en 7-Zip: alleen uitpakken, via de in Windows ingebouwde tar.exe
-Contextmenu van Verkenner: Openen, Hier uitpakken, Toevoegen aan archief, Archief testen, Scannen op bedreigingen, Hash
+Contextmenu van Verkenner: Openen, Hier uitpakken, Comprimeren, Archief testen, Scannen op bedreigingen, Hash
 Archiefverkenner: kijk in een archief, bekijk voorbeelden van afbeeldingen en tekst, pak alleen uit wat u selecteert
 Scannen op bedreigingen: de inhoud van het archief wordt gecontroleerd door uw geïnstalleerde antivirusprogramma
 Uitpakken in een sandbox: RAR, 7-Zip en TAR worden gelezen in een geïsoleerde AppContainer zonder netwerktoegang
@@ -36,6 +36,6 @@ zip met wachtwoord
 [What's new in this version]
 • De opdracht pakko werkt direct na de installatie in elke terminal: een opdrachtregel in de stijl van 7-Zip voor scripts.
 • Uitgepakte bestanden en mappen behouden de datums die in het archief zijn opgeslagen.
-• De app is volledig met het toetsenbord te bedienen; het venster 'bestand bestaat al' toont de grootte en datum van beide bestanden.
+• De app is beter met het toetsenbord te bedienen; het venster 'Bestand bestaat al' toont de grootte en datum van beide bestanden.
 • Het snelste compressieniveau maakt reeds gecomprimeerde bestanden niet meer groter.
 • Vertalingen herzien in alle 36 talen behalve Engels; het menu van Verkenner volgt nu uw lijst met Windows-talen.

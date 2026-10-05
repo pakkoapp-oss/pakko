@@ -15,7 +15,7 @@ ZIP: create and extract with .NET's own compression library
 Password-protected ZIP: opens ZipCrypto and WinZip AES, creates AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: extract and create, via Windows' built-in tar.exe
 RAR and 7-Zip: extract only, via Windows' built-in tar.exe
-File Explorer right-click menu: Open, Extract here, Add to archive, Test archive, Scan for threats, Hash
+File Explorer right-click menu: Open, Extract here, Compress, Test archive, Scan for threats, Hash
 Archive browser: look inside an archive, preview pictures and text, extract only what you select
 Scan for threats: the archive's contents are checked by your installed antivirus
 Sandboxed extraction: RAR, 7-Zip and TAR are read inside an isolated AppContainer with no network access
@@ -36,6 +36,6 @@ open source
 [What's new in this version]
 • The pakko command works in any terminal right after installation: a 7-Zip-style command line for scripts.
 • Extracted files and folders keep the dates stored in the archive.
-• The app can be used from the keyboard throughout; the "file already exists" dialog shows the size and date of both files.
+• The app works better from the keyboard; the "File already exists" dialog shows the size and date of both files.
 • The fastest compression level no longer makes already compressed files larger.
 • Translations revised in all 36 non-English languages; Explorer's menu now follows your Windows language list.

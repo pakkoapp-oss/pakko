@@ -15,7 +15,7 @@ ZIP: creazione ed estrazione con la libreria di compressione propria di .NET
 ZIP con password: apre ZipCrypto e WinZip AES, crea AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: estrazione e creazione, tramite il tar.exe integrato in Windows
 RAR e 7-Zip: sola estrazione, tramite il tar.exe integrato in Windows
-Menu contestuale di Esplora file: Apri, Estrai qui, Aggiungi all'archivio, Testa archivio, Verifica minacce, Hash
+Menu contestuale di Esplora file: Apri, Estrai qui, Comprimi, Testa archivio, Verifica minacce, Hash
 Browser degli archivi: guarda dentro un archivio, visualizza in anteprima immagini e testo, estrai solo ciò che selezioni
 Verifica minacce: il contenuto dell'archivio viene controllato dal tuo antivirus installato
 Estrazione in sandbox: RAR, 7-Zip e TAR vengono letti in un AppContainer isolato, senza accesso alla rete
@@ -36,6 +36,6 @@ open source
 [What's new in this version]
 • Il comando pakko funziona in qualsiasi terminale subito dopo l'installazione: una riga di comando in stile 7-Zip per gli script.
 • I file e le cartelle estratti conservano le date salvate nell'archivio.
-• L'app si può usare interamente da tastiera; la finestra «il file esiste già» mostra dimensione e data di entrambi i file.
+• L'app si usa meglio da tastiera; la finestra «Il file esiste già» mostra dimensione e data di entrambi i file.
 • Il livello di compressione più veloce non ingrandisce più i file già compressi.
 • Traduzioni riviste in tutte le 36 lingue diverse dall'inglese; il menu di Esplora file ora segue l'elenco delle lingue di Windows.

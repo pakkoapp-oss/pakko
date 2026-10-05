@@ -15,7 +15,7 @@ ZIP: kūrimas ir išskleidimas pačios .NET suspaudimo biblioteka
 ZIP su slaptažodžiu: atveria „ZipCrypto“ ir „WinZip AES“, kuria AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: išskleidimas ir kūrimas „Windows“ įtaisytuoju įrankiu tar.exe
 RAR ir 7-Zip: tik išskleidimas, „Windows“ įtaisytuoju įrankiu tar.exe
-Failų naršyklės kontekstinis meniu: Atverti, Išskleisti čia, Pridėti į archyvą, Testuoti archyvą, Tikrinti grėsmes, Maiša
+Failų naršyklės kontekstinis meniu: Atverti, Išskleisti čia, Suspausti, Testuoti archyvą, Tikrinti grėsmes, Maiša
 Archyvų naršyklė: pažvelkite į archyvo vidų, peržiūrėkite paveikslėlius ir tekstą, išskleiskite tik tai, ką pažymėjote
 Grėsmių tikrinimas: archyvo turinį patikrina jūsų įdiegta antivirusinė programa
 Išskleidimas smėlio dėžėje: RAR, 7-Zip ir TAR skaitomi izoliuotame „AppContainer“ be prieigos prie tinklo
@@ -36,6 +36,6 @@ zip su slaptažodžiu
 [What's new in this version]
 • Komanda pakko veikia bet kuriame terminale iškart po įdiegimo: „7-Zip“ stiliaus komandų eilutė scenarijams.
 • Išskleisti failai ir aplankai išlaiko archyve įrašytas datas.
-• Programą galima visiškai valdyti klaviatūra; langas „failas jau yra“ rodo abiejų failų dydį ir datą.
+• Programą patogiau valdyti klaviatūra; langas „Failas jau egzistuoja“ rodo abiejų failų dydį ir datą.
 • Greičiausias suspaudimo lygis nebepadidina jau suspaustų failų.
 • Peržiūrėti vertimai visomis 36 kalbomis, išskyrus anglų; failų naršyklės meniu dabar atsižvelgia į jūsų „Windows“ kalbų sąrašą.

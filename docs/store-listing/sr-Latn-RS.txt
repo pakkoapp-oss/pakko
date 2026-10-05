@@ -15,7 +15,7 @@ ZIP: pravljenje i raspakivanje sopstvenom bibliotekom platforme .NET za kompresi
 ZIP sa lozinkom: otvara ZipCrypto i WinZip AES, pravi AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: raspakivanje i pravljenje alatkom tar.exe ugrađenom u Windows
 RAR i 7-Zip: samo raspakivanje, alatkom tar.exe ugrađenom u Windows
-Kontekstualni meni Istraživača datoteka: Otvori, Raspakuj ovde, Dodaj u arhivu, Testiraj arhivu, Proveri pretnje, Heš
+Kontekstualni meni Istraživača datoteka: Otvori, Raspakuj ovde, Kompresuj, Testiraj arhivu, Proveri pretnje, Heš
 Pregledač arhiva: zavirite u arhivu, pregledajte slike i tekst, raspakujte samo ono što izaberete
 Provera pretnji: sadržaj arhive proverava vaš instalirani antivirusni program
 Raspakivanje u sandbox okruženju: RAR, 7-Zip i TAR čitaju se u izolovanom AppContaineru bez pristupa mreži
@@ -36,6 +36,6 @@ otvoreni kod
 [What's new in this version]
 • Komanda pakko radi u svakom terminalu odmah posle instalacije: komandna linija u stilu 7-Zipa za skripte.
 • Raspakovane datoteke i fascikle zadržavaju datume sačuvane u arhivi.
-• Aplikacija može u potpunosti da se koristi sa tastature; prozor „datoteka već postoji“ prikazuje veličinu i datum obe datoteke.
+• Aplikacija se lakše koristi sa tastature; prozor „Datoteka već postoji“ prikazuje veličinu i datum obe datoteke.
 • Najbrži nivo kompresije više ne povećava već kompresovane datoteke.
 • Prevodi su pregledani na svih 36 jezika osim engleskog; meni Istraživača datoteka sada prati vašu listu jezika u operativnom sistemu Windows.

@@ -11,7 +11,7 @@ public sealed class StoreListingTests
         ["Description", "Short description", "Product features", "Search terms", "What's new in this version"];
 
     private static readonly string[] MenuItemsNamed =
-        ["browseArchive", "extractHereFlat", "archiveFallback", "testArchive", "scanArchive", "hashSubmenu"];
+        ["browseArchive", "extractHereFlat", "compressDialog", "testArchive", "scanArchive", "hashSubmenu"];
 
     public static TheoryData<string> Locales()
     {

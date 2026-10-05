@@ -15,7 +15,7 @@ ZIP: stvaranje i raspakiravanje vlastitom bibliotekom platforme .NET za komprimi
 ZIP s lozinkom: otvara ZipCrypto i WinZip AES, stvara AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: raspakiravanje i stvaranje alatom tar.exe ugrađenim u Windows
 RAR i 7-Zip: samo raspakiravanje, alatom tar.exe ugrađenim u Windows
-Kontekstni izbornik Eksplorera za datoteke: Otvori, Raspakiraj ovdje, Dodaj u arhivu, Testiraj arhivu, Provjeri prijetnje, Sažetak
+Kontekstni izbornik Eksplorera za datoteke: Otvori, Raspakiraj ovdje, Komprimiraj, Testiraj arhivu, Provjeri prijetnje, Sažetak
 Preglednik arhiva: zavirite u arhivu, pretpregledajte slike i tekst, raspakirajte samo ono što odaberete
 Provjera prijetnji: sadržaj arhive provjerava vaš instalirani antivirusni program
 Raspakiravanje u sandboxu: RAR, 7-Zip i TAR čitaju se u izoliranom AppContaineru bez pristupa mreži
@@ -36,6 +36,6 @@ otvoreni kod
 [What's new in this version]
 • Naredba pakko radi u svakom terminalu odmah nakon instalacije: naredbeni redak u stilu 7-Zipa za skripte.
 • Raspakirane datoteke i mape zadržavaju datume spremljene u arhivi.
-• Aplikacija se može u potpunosti koristiti tipkovnicom; prozor „datoteka već postoji” prikazuje veličinu i datum obiju datoteka.
+• Aplikacija se bolje koristi tipkovnicom; prozor „Datoteka već postoji” prikazuje veličinu i datum obiju datoteka.
 • Najbrža razina komprimiranja više ne povećava već komprimirane datoteke.
 • Prijevodi su pregledani na svih 36 jezika osim engleskog; izbornik Eksplorera sada slijedi vaš popis jezika sustava Windows.

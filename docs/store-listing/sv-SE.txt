@@ -15,7 +15,7 @@ ZIP: skapa och extrahera med .NET:s eget komprimeringsbibliotek
 ZIP med lösenord: öppnar ZipCrypto och WinZip AES, skapar AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: extrahera och skapa via det tar.exe som är inbyggt i Windows
 RAR och 7-Zip: endast extrahering, via det tar.exe som är inbyggt i Windows
-Utforskarens snabbmeny: Öppna, Extrahera hit, Lägg till i arkiv, Testa arkiv, Sök efter hot, Hash
+Utforskarens snabbmeny: Öppna, Extrahera hit, Komprimera, Testa arkiv, Sök efter hot, Hash
 Arkivbläddrare: titta in i ett arkiv, förhandsgranska bilder och text, extrahera bara det du markerar
 Sök efter hot: arkivets innehåll kontrolleras av ditt installerade antivirusprogram
 Extrahering i sandlåda: RAR, 7-Zip och TAR läses i en isolerad AppContainer utan nätverksåtkomst
@@ -36,6 +36,6 @@ zip med lösenord
 [What's new in this version]
 • Kommandot pakko fungerar i alla terminaler direkt efter installationen: en kommandorad i 7-Zip-stil för skript.
 • Extraherade filer och mappar behåller de datum som finns sparade i arkivet.
-• Appen kan användas helt och hållet från tangentbordet; dialogrutan ”filen finns redan” visar storlek och datum för båda filerna.
+• Appen fungerar bättre med tangentbordet; dialogrutan ”Filen finns redan” visar storlek och datum för båda filerna.
 • Den snabbaste komprimeringsnivån gör inte längre redan komprimerade filer större.
 • Översättningarna har setts över på alla 36 språk utöver engelska; Utforskarens meny följer nu din lista över Windows-språk.

@@ -15,7 +15,7 @@ ZIP: vytváření a extrahování pomocí vlastní kompresní knihovny .NET
 ZIP s heslem: otevírá ZipCrypto a WinZip AES, vytváří AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: extrahování a vytváření pomocí nástroje tar.exe vestavěného ve Windows
 RAR a 7-Zip: pouze extrahování, pomocí nástroje tar.exe vestavěného ve Windows
-Kontextová nabídka Průzkumníka souborů: Otevřít, Extrahovat sem, Přidat do archivu, Otestovat archiv, Zkontrolovat hrozby, Hash
+Kontextová nabídka Průzkumníka souborů: Otevřít, Extrahovat sem, Komprimovat, Otestovat archiv, Zkontrolovat hrozby, Hash
 Prohlížeč archivů: nahlédněte do archivu, zobrazte náhled obrázků a textu, extrahujte jen to, co vyberete
 Kontrola hrozeb: obsah archivu zkontroluje váš nainstalovaný antivirový program
 Extrahování v sandboxu: RAR, 7-Zip a TAR se čtou v izolovaném kontejneru AppContainer bez přístupu k síti
@@ -36,6 +36,6 @@ ZIP kompresní nástroj
 [What's new in this version]
 • Příkaz pakko funguje v každém terminálu hned po instalaci: příkazový řádek ve stylu 7-Zipu pro skripty.
 • Extrahované soubory a složky si zachovají data uložená v archivu.
-• Aplikaci lze celou ovládat z klávesnice; okno „soubor už existuje“ ukazuje velikost a datum obou souborů.
+• Aplikace se lépe ovládá z klávesnice; okno „Soubor již existuje“ ukazuje velikost a datum obou souborů.
 • Nejrychlejší úroveň komprese už nezvětšuje soubory, které už komprimované byly.
 • Překlady byly zrevidovány ve všech 36 jazycích kromě angličtiny; nabídka Průzkumníka se nyní řídí vaším seznamem jazyků Windows.

@@ -15,7 +15,7 @@ ZIP: létrehozás és kibontás a .NET saját tömörítési könyvtárával
 Jelszóval védett ZIP: megnyitja a ZipCrypto és a WinZip AES archívumokat, AES-256 archívumot hoz létre
 TAR, GZ, BZ2, XZ, ZST, LZMA: kibontás és létrehozás a Windows beépített tar.exe eszközével
 RAR és 7-Zip: csak kibontás, a Windows beépített tar.exe eszközével
-A Fájlkezelő helyi menüje: Megnyitás, Kibontás ide, Hozzáadás az archívumhoz, Archívum tesztelése, Fenyegetések keresése, Hash
+A Fájlkezelő helyi menüje: Megnyitás, Kibontás ide, Tömörítés, Archívum tesztelése, Fenyegetések keresése, Hash
 Archívumböngésző: nézzen bele az archívumba, tekintse meg a képek és szövegek előnézetét, és csak a kijelölt elemeket bontsa ki
 Fenyegetések keresése: az archívum tartalmát a telepített víruskeresője ellenőrzi
 Kibontás sandboxban: a RAR-, 7-Zip- és TAR-archívumok olvasása elszigetelt AppContainerben történik, hálózati hozzáférés nélkül
@@ -36,6 +36,6 @@ jelszavas zip
 [What's new in this version]
 • A pakko parancs közvetlenül a telepítés után bármely terminálban működik: 7-Zip stílusú parancssor szkriptekhez.
 • A kibontott fájlok és mappák megőrzik az archívumban tárolt dátumokat.
-• Az alkalmazás teljes egészében billentyűzetről is használható; „a fájl már létezik” ablak mindkét fájl méretét és dátumát megjeleníti.
+• Az alkalmazás jobban használható billentyűzetről; az ütközési ablak („A fájl már létezik”) mindkét fájl méretét és dátumát megjeleníti.
 • A leggyorsabb tömörítési szint már nem növeli meg a korábban tömörített fájlokat.
 • A fordításokat mind a 36 nem angol nyelven átnéztük; a Fájlkezelő menüje mostantól a Windows nyelvi listáját követi.

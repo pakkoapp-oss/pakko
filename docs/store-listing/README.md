@@ -34,13 +34,20 @@ right-to-left run, so that it does not display as `NET.`.
   `CHANGELOG.md` before adding it.
 - Words for actions are the app's words: `tests/Archiver.Messages.Tests/Glossary.tsv`.
 - The menu items named in feature 5 are the labels in `src/Archiver.ShellExtension/Localization.cpp`
-  (Open, Extract here, Add to archive, Test archive, Scan for threats, Hash).
+  (Open, Extract here, Compress, Test archive, Scan for threats, Hash). "Add to archive" is not
+  named: it is the fallback title of the item that normally reads `Add to "name.zip"`.
+- A window or dialog named in the text carries the title it has in that locale's
+  `Resources.resw` (the conflict dialog is `ConflictDialogTitle`).
+- Search terms keep the words people type into a search box ("rar extractor", "розпакувати
+  rar"), even where the app's own word for the action is another.
 - File Explorer has Microsoft's name for that language (support.microsoft.com, "File Explorer in
   Windows"): bg Файлов мениджър, ro Explorer, uk Файловий провідник, sk Prieskumník,
   sl Raziskovalec, hr Eksplorer za datoteke, sr Istraživač datoteka; et, hi, id, th, vi and sw
   keep "File Explorer".
 - No comparison with what Explorer does or does not do. The old text said Explorer does not pass
-  the Mark-of-the-Web on; its own ZIP extraction does.
+  the Mark-of-the-Web on. Tested 2026-10-05 on Windows 11 build 26300: a ZIP marked `ZoneId=3`,
+  extracted by Explorer's own ZIP folder (`Shell.Application`, `CopyHere`), gave both extracted
+  files `ZoneId=3`. Explorer's handling of 7z, RAR and tar was not tested.
 
 ## Review of the published listing, 2026-10-05
 
@@ -51,7 +58,7 @@ In every language:
 
 | What | Was | Now |
 |---|---|---|
-| Features of v1.5-v1.7 | not mentioned: password-protected ZIP, Scan for threats, Hash, the `pakko` command in the package, 37 languages; the menu list stopped at Test archive | in the description, short description and features |
+| Features of v1.5-v1.7 | not mentioned: password-protected ZIP, Scan for threats, Hash, the `pakko` command in the package, 37 languages; the menu list was "Extract, Add to archive, Test archive" | in the description, short description and features |
 | Mark-of-the-Web | "that Explorer itself doesn't propagate" | "keeps the tag of the archive it came from" |
 | Product features | en, uk: 9 short lines; others: the 9 "key features" bullets; en, uk repeated them inside the description | one list of 12 in every language, none inside the description |
 | Short description | empty in en, cs, es, it, uk; elsewhere a 9-line list | one paragraph |

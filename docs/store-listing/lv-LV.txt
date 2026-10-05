@@ -15,7 +15,7 @@ ZIP: izveide un izvilkšana ar .NET pašas saspiešanas bibliotēku
 ZIP ar paroli: atver ZipCrypto un WinZip AES, izveido AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: izvilkšana un izveide ar Windows iebūvēto rīku tar.exe
 RAR un 7-Zip: tikai izvilkšana, ar Windows iebūvēto rīku tar.exe
-Failu pārlūka kontekstizvēlne: Atvērt, Izvilkt šeit, Pievienot arhīvam, Testēt arhīvu, Pārbaudīt draudus, Kontrolsumma
+Failu pārlūka kontekstizvēlne: Atvērt, Izvilkt šeit, Saspiest, Testēt arhīvu, Pārbaudīt draudus, Kontrolsumma
 Arhīvu pārlūks: ieskatieties arhīvā, priekšskatiet attēlus un tekstu, izvelciet tikai atlasīto
 Draudu pārbaude: arhīva saturu pārbauda jūsu instalētā pretvīrusu programma
 Izvilkšana smilškastē: RAR, 7-Zip un TAR tiek lasīti izolētā AppContainer bez piekļuves tīklam
@@ -36,6 +36,6 @@ atvērtais pirmkods
 [What's new in this version]
 • Komanda pakko darbojas jebkurā terminālī uzreiz pēc instalēšanas: 7-Zip stila komandrinda skriptiem.
 • Izvilktie faili un mapes saglabā arhīvā ierakstītos datumus.
-• Lietotni var pilnībā lietot ar tastatūru; logs “fails jau pastāv” rāda abu failu lielumu un datumu.
+• Lietotni ir ērtāk lietot ar tastatūru; logs “Fails jau pastāv” rāda abu failu lielumu un datumu.
 • Ātrākais saspiešanas līmenis vairs nepalielina jau saspiestus failus.
 • Tulkojumi pārskatīti visās 36 valodās, izņemot angļu; failu pārlūka izvēlne tagad ievēro jūsu Windows valodu sarakstu.

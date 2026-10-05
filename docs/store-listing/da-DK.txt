@@ -15,7 +15,7 @@ ZIP: oprettelse og udpakning med .NET's eget komprimeringsbibliotek
 ZIP med adgangskode: åbner ZipCrypto og WinZip AES, opretter AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: udpakning og oprettelse via Windows' indbyggede tar.exe
 RAR og 7-Zip: kun udpakning, via Windows' indbyggede tar.exe
-Stifinders genvejsmenu: Åbn, Udpak her, Føj til arkiv, Test arkiv, Scan for trusler, Hash
+Stifinders genvejsmenu: Åbn, Udpak her, Komprimer, Test arkiv, Scan for trusler, Hash
 Arkivbrowser: kig ind i et arkiv, se eksempler på billeder og tekst, udpak kun det, du vælger
 Scan for trusler: arkivets indhold kontrolleres af dit installerede antivirusprogram
 Udpakning i sandkasse: RAR, 7-Zip og TAR læses i en isoleret AppContainer uden netværksadgang
@@ -36,6 +36,6 @@ open source
 [What's new in this version]
 • Kommandoen pakko virker i enhver terminal lige efter installationen: en kommandolinje i 7-Zip-stil til scripts.
 • Udpakkede filer og mapper beholder de datoer, der er gemt i arkivet.
-• Appen kan betjenes helt fra tastaturet; dialogen "filen findes allerede" viser størrelse og dato for begge filer.
+• Appen fungerer bedre med tastaturet; dialogen "Filen findes allerede" viser størrelse og dato for begge filer.
 • Det hurtigste komprimeringsniveau gør ikke længere allerede komprimerede filer større.
 • Oversættelserne er gennemgået på alle 36 sprog ud over engelsk; Stifinders menu følger nu din liste over Windows-sprog.

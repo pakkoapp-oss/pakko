@@ -15,7 +15,7 @@ ZIP: luonti ja purku .NETin omalla pakkauskirjastolla
 Salasanalla suojattu ZIP: avaa ZipCrypto- ja WinZip AES -arkistot, luo AES-256-arkistoja
 TAR, GZ, BZ2, XZ, ZST, LZMA: purku ja luonti Windowsin sisäänrakennetulla tar.exe-työkalulla
 RAR ja 7-Zip: vain purku, Windowsin sisäänrakennetulla tar.exe-työkalulla
-Resurssienhallinnan pikavalikko: Avaa, Pura tähän, Lisää arkistoon, Testaa arkisto, Tarkista uhat, Tiiviste
+Resurssienhallinnan pikavalikko: Avaa, Pura tähän, Pakkaa, Testaa arkisto, Tarkista uhat, Tiiviste
 Arkistoselain: katso arkiston sisään, esikatsele kuvia ja tekstiä, pura vain valitsemasi kohteet
 Uhkien tarkistus: asennettu virustorjuntaohjelmasi tarkistaa arkiston sisällön
 Purku hiekkalaatikossa: RAR, 7-Zip ja TAR luetaan eristetyssä AppContainerissa ilman verkkoyhteyttä
@@ -36,6 +36,6 @@ avoin lähdekoodi
 [What's new in this version]
 • pakko-komento toimii missä tahansa päätteessä heti asennuksen jälkeen: 7-Zipin tyylinen komentorivi komentosarjoille.
 • Puretut tiedostot ja kansiot säilyttävät arkistoon tallennetut päivämäärät.
-• Sovellusta voi käyttää kokonaan näppäimistöllä; "tiedosto on jo olemassa" -ikkuna näyttää molempien tiedostojen koon ja päivämäärän.
+• Sovellus toimii paremmin näppäimistöllä; ikkuna "Tiedosto on jo olemassa" näyttää molempien tiedostojen koon ja päivämäärän.
 • Nopein pakkaustaso ei enää suurenna jo pakattuja tiedostoja.
 • Käännökset on tarkistettu kaikilla 36 muulla kielellä kuin englannilla; Resurssienhallinnan valikko noudattaa nyt Windowsin kieliluetteloasi.

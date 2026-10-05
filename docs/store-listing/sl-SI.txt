@@ -15,7 +15,7 @@ ZIP: ustvarjanje in razširjanje z lastno knjižnico okolja .NET za stiskanje
 ZIP z geslom: odpira ZipCrypto in WinZip AES, ustvarja AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: razširjanje in ustvarjanje z orodjem tar.exe, vgrajenim v Windows
 RAR in 7-Zip: samo razširjanje, z orodjem tar.exe, vgrajenim v Windows
-Priročni meni Raziskovalca: Odpri, Razširi tukaj, Dodaj v arhiv, Preizkusi arhiv, Preveri grožnje, Zgoščena vrednost
+Priročni meni Raziskovalca: Odpri, Razširi tukaj, Stisni, Preizkusi arhiv, Preveri grožnje, Zgoščena vrednost
 Brskalnik po arhivih: poglejte v arhiv, predoglejte si slike in besedilo, razširite samo izbrano
 Preverjanje groženj: vsebino arhiva preveri vaš nameščeni protivirusni program
 Razširjanje v peskovniku: RAR, 7-Zip in TAR se berejo v izoliranem vsebniku AppContainer brez dostopa do omrežja
@@ -36,6 +36,6 @@ odprta koda
 [What's new in this version]
 • Ukaz pakko deluje v vsakem terminalu takoj po namestitvi: ukazna vrstica v slogu 7-Zipa za skripte.
 • Razširjene datoteke in mape ohranijo datume, shranjene v arhivu.
-• Aplikacijo je mogoče v celoti uporabljati s tipkovnico; okno »datoteka že obstaja« prikaže velikost in datum obeh datotek.
+• Aplikacijo je lažje uporabljati s tipkovnico; okno »Datoteka že obstaja« prikaže velikost in datum obeh datotek.
 • Najhitrejša raven stiskanja ne poveča več datotek, ki so že stisnjene.
 • Prevodi so pregledani v vseh 36 jezikih razen angleščine; meni Raziskovalca zdaj upošteva vaš seznam jezikov sistema Windows.

@@ -15,7 +15,7 @@ ZIP: kuunda na kutoa kwa maktaba ya kubana ya .NET yenyewe
 ZIP yenye nenosiri: hufungua ZipCrypto na WinZip AES, huunda AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: kutoa na kuunda, kupitia zana ya tar.exe iliyo ndani ya Windows
 RAR na 7-Zip: kutoa tu, kupitia zana ya tar.exe iliyo ndani ya Windows
-Menyu ya kubofya kulia ya File Explorer: Fungua, Toa hapa, Ongeza kwenye kumbukumbu, Jaribu kumbukumbu, Chunguza vitisho, Heshi
+Menyu ya kubofya kulia ya File Explorer: Fungua, Toa hapa, Bana, Jaribu kumbukumbu, Chunguza vitisho, Heshi
 Kivinjari cha kumbukumbu: tazama ndani ya kumbukumbu, hakiki picha na maandishi, toa tu unachochagua
 Chunguza vitisho: maudhui ya kumbukumbu hukaguliwa na programu ya kingavirusi uliyosakinisha
 Kutoa ndani ya sanduku la mchanga: RAR, 7-Zip na TAR husomwa ndani ya AppContainer iliyotengwa, bila ufikiaji wa mtandao
@@ -36,6 +36,6 @@ chanzo huria
 [What's new in this version]
 • Amri ya pakko hufanya kazi katika temino yoyote mara tu baada ya kusakinisha: mstari wa amri wa mtindo wa 7-Zip kwa ajili ya hati.
 • Faili na folda zilizotolewa hubaki na tarehe zilizohifadhiwa ndani ya kumbukumbu.
-• Programu inaweza kutumiwa yote kwa kibodi; dirisha la "faili tayari ipo" linaonyesha ukubwa na tarehe ya faili zote mbili.
+• Programu inatumika kwa urahisi zaidi kwa kibodi; dirisha la "Faili tayari lipo" linaonyesha ukubwa na tarehe ya faili zote mbili.
 • Kiwango cha haraka zaidi cha kubana hakiongezi tena ukubwa wa faili zilizokwisha kubanwa.
 • Tafsiri zimepitiwa upya katika lugha zote 36 zisizo Kiingereza; menyu ya File Explorer sasa inafuata orodha yako ya lugha za Windows.
