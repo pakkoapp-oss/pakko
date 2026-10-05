@@ -67,10 +67,18 @@ public sealed class VerifyingReadStreamTests
     }
 
     [Fact]
-    public void Read_NoExpectedCrc_ShorterContentIsAccepted()
+    public void Read_ContentShorterThanDeclared_ThrowsAtEndOfStream()
     {
         using var s = new VerifyingReadStream(new MemoryStream(Data), Data.Length + 100, expectedCrc32: null);
         Action act = () => s.CopyTo(Stream.Null);
-        act.Should().NotThrow();
+        act.Should().Throw<InvalidDataException>().WithMessage("*smaller than its declared size*");
+    }
+
+    [Fact]
+    public async Task ReadAsync_ContentShorterThanDeclared_ThrowsAtEndOfStream()
+    {
+        await using var s = new VerifyingReadStream(new MemoryStream(Data), Data.Length + 1, DataCrc);
+        Func<Task> act = () => s.CopyToAsync(Stream.Null);
+        await act.Should().ThrowAsync<InvalidDataException>().WithMessage("*smaller than its declared size*");
     }
 }

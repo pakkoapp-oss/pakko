@@ -335,6 +335,58 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         result.Errors.Should().Contain(e => e.Message.Contains("authentication failed"));
     }
 
+    // The AES extra's "real method" is outside the HMAC, and AE-2 has no CRC-32: someone without the
+    // password can turn deflate into stored, and the entry then decrypts to the deflate stream
+    // itself — shorter than the declared size, which is the only thing left to catch it.
+    private string AesFixtureWithRealMethodChangedToStored()
+    {
+        byte[] zip = File.ReadAllBytes(FixtureHelper.Archive("encrypted_aes256.zip"));
+        byte[] aesExtraDeflate = [0x01, 0x99, 0x07, 0x00, 0x02, 0x00, (byte)'A', (byte)'E', 0x03, 0x08, 0x00];
+        int patched = 0;
+        for (int i = zip.AsSpan().IndexOf(aesExtraDeflate); i >= 0;)
+        {
+            zip[i + 9] = 0;
+            patched++;
+            int next = zip.AsSpan(i + 1).IndexOf(aesExtraDeflate);
+            i = next < 0 ? -1 : i + 1 + next;
+        }
+        patched.Should().Be(2, "the local and the central header each carry the AES extra");
+
+        string path = Path.Combine(_temp.Path, "real_method_stored.zip");
+        File.WriteAllBytes(path, zip);
+        return path;
+    }
+
+    [Fact]
+    public async Task TestAsync_AesRealMethodChangedToStored_FailsOnDeclaredSize()
+    {
+        ArchiveResult result = await _sut.TestAsync(
+            [AesFixtureWithRealMethodChangedToStored()],
+            resolvePasswordAsync: FixedPassword(RealPassword));
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Message.Contains("smaller than its declared size"));
+    }
+
+    [Fact]
+    public async Task ExtractAsync_AesRealMethodChangedToStored_FailsAndWritesNothing()
+    {
+        string destDir = Path.Combine(_temp.Path, "out");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [AesFixtureWithRealMethodChangedToStored()],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            ResolvePasswordAsync = FixedPassword(RealPassword),
+        });
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.Message.Contains("smaller than its declared size"));
+        if (Directory.Exists(destDir))
+            Directory.EnumerateFiles(destDir, "*", SearchOption.AllDirectories).Should().BeEmpty();
+    }
+
     [Fact]
     public async Task TestAsync_WrongPassword_ReportsUnchangedRejectionMessage()
     {

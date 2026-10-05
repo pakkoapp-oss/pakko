@@ -7,8 +7,8 @@ namespace Archiver.Core.IO;
 /// <summary>
 /// Wraps an archive entry's decompressed content: fails with <see cref="InvalidDataException"/>
 /// as soon as more than the entry's declared size has been read (T-F231 — the compression-bomb
-/// and free-space gates trust declared sizes), and, when an expected CRC-32 is given, at end of
-/// stream if the content's CRC-32 differs (T-F246 — .NET does not check it on read). Streams;
+/// and free-space gates trust declared sizes), at end of stream if less than the declared size was
+/// read, and, when an expected CRC-32 is given, at end of stream if the content's CRC-32 differs (T-F246 — .NET does not check it on read). Streams;
 /// nothing is buffered.
 /// </summary>
 internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uint? expectedCrc32) : Stream
@@ -49,9 +49,16 @@ internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uin
             return;
         }
 
-        if (_finished || expectedCrc32 is not { } expected)
+        if (_finished)
             return;
         _finished = true;
+        // An AE-2 entry has no CRC-32 and its real compression method is outside the HMAC, so the
+        // declared size is the only check that the decrypted bytes were read the way they were written.
+        if (_totalRead < declaredLength)
+            throw new InvalidDataException(
+                $"Content is smaller than its declared size ({declaredLength:N0} bytes).");
+        if (expectedCrc32 is not { } expected)
+            return;
         uint computed = _accumulator.Finish();
         if (computed != expected)
             throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentCrcMismatch,

@@ -2265,3 +2265,29 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 - **Sources:** Microsoft Learn, "Add and edit Store listing info for MSIX app", "App screenshots,
   images, and trailers for MSIX app", "Import and export store listings for your MSIX app".
 - **Reported by:** user, 2026-10-05.
+
+### T-F333 — An AES-encrypted entry that decrypts to less than its declared size passes (P1)
+
+- [x] **Status:** fixed 2026-10-05, after the v1.7.0 tag (v1.7.0 and earlier have it; goes out
+  with the next release).
+- **What was wrong:** in a WinZip AE-2 entry the HMAC covers the ciphertext only. The entry's
+  real compression method sits in the `0x9901` extra field, outside the HMAC, and AE-2 stores no
+  CRC-32. Someone without the password can change that field from deflate (8) to stored (0):
+  the password still verifies, the HMAC still matches, and the entry decrypts to the deflate
+  stream itself. `VerifyingReadStream` refused content longer than the declared size but accepted
+  shorter content, so `pakko t` and "Test archive" reported no errors and extraction wrote the
+  deflate bytes as the file, with exit code 0. 7-Zip reports "Unexpected end of data" for the
+  same archive. No plaintext or key is exposed; the damage is a tampered archive that tests as
+  intact.
+- **Fix:** `VerifyingReadStream` fails at end of stream when less than the declared size was
+  read (every caller: plain entries, ZipCrypto, AE-1, AE-2, the scan).
+- **Tests (red before the fix):** `TestAsync_AesRealMethodChangedToStored_FailsOnDeclaredSize`,
+  `ExtractAsync_AesRealMethodChangedToStored_FailsAndWritesNothing`, two in
+  `VerifyingReadStreamTests` (one replaces `Read_NoExpectedCrc_ShorterContentIsAccepted`, which
+  asserted the old behaviour).
+- **Not closed by this, a limit of the format:** the opposite change (stored to deflate) fails
+  in the inflater or on the size; a change that keeps the size right is not possible without the
+  password. Entry names, sizes, dates and the list of entries are outside the HMAC in every
+  WinZip AES archive (`SECURITY.md`, "Password-Protected ZIP").
+- **Found by:** a byte-level review of the release build's output, asked for by the user,
+  2026-10-05.
