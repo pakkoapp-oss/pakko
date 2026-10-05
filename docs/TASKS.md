@@ -2303,3 +2303,51 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     them untranslated
 - **Found by:** a byte-level review of the release build's output, asked for by the user,
   2026-10-05.
+
+### T-F334 — Two checks from the v1.7.0 release that only a person can do (P3)
+
+- [ ] **Status:** open. Left unchecked at the v1.7.0 tag and again in the smoke pass of the
+  release bundle (2026-10-05): dragging files from Explorer onto the App's file list (one
+  attempt through `windows` MCP's synthetic drag did not register, which says nothing about the
+  feature), and the Exit item of the tray menu. Both go into the one visit with the user before
+  the next release (rule of 2026-09-30); a failure becomes its own task.
+- **Reported by:** the v1.7.0 smoke pass, 2026-10-05.
+
+### T-F335 — `pakko l` on a tar archive shows midnight for an older entry (P3)
+
+- [ ] **Status:** open, cause not looked at. `pakko l plain.tar` on a file last written
+  2020-02-03 04:05:06 prints `2020-02-03T00:00:00`; the same file in a ZIP prints the full time,
+  and extraction from the tar restores the full time. Likely `tar -tv` prints a year instead of a
+  time for entries older than about six months; check that first, then either read the time
+  another way or show such a date without a time (in the App's "Modified" column too). Tests
+  first.
+- **Reported by:** the v1.7.0 smoke pass, 2026-10-05.
+
+### T-F336 — `TASKS.md`: entries that look open but are cancelled, superseded or done (P3)
+
+- [ ] **Status:** open. Their `Status` line starts with `[ ]` although the text says cancelled,
+  superseded or shipped: T-F01, T-F04, T-F07, T-F08, T-F13, T-F15, T-F33, T-F34, T-F41, T-F42,
+  T-F43; check T-F36, T-F96, T-F114 and T-F226 the same way. Move them to `docs/TASKS_DONE.md`
+  by script with the text unchanged (line-multiset check, as on 2026-10-05), so that a scan of
+  open tasks lists only open tasks.
+- **Reported by:** the backlog review, 2026-10-05.
+
+### T-F337 — A permanent byte-level test of the encrypted ZIPs Pakko writes (P2)
+
+- [ ] **Status:** open. On 2026-10-05 the release build's AES-256 output was checked by a
+  throwaway script that shares no code with Pakko (T-F333 came out of it); nothing in the test
+  suite repeats that. Wanted, in `Archiver.Core.Tests`, over archives made by `ArchiveAsync`
+  through both the in-memory and the temp-file path (more than 64 files) and with stored and
+  deflated entries:
+  - headers parsed by the test itself: method 99, encrypted flag, no data descriptor, CRC-32
+    zero, version needed 51, the `0x9901` extra (AE-2, "AE", strength 3, real method), local
+    equal to central;
+  - per entry: 16-byte salt, unique within the archive and between two runs; the
+    password-verification value and the 10-byte HMAC recomputed in the test from BCL primitives
+    (`Rfc2898DeriveBytes`, `HMACSHA1`), not through `WinZipAesReader`; the ciphertext decrypted
+    with a counter loop written in the test and compared with the source bytes, at sizes 0, 1,
+    15, 16, 17, 65536 and 65537;
+  - no source bytes of a marker file anywhere in the archive.
+  The vendored `7za.exe` reading the same archives stays as the second, fully independent
+  reader. No new packages.
+- **Reported by:** the crypto review asked for by the user, 2026-10-05.
