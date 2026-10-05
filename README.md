@@ -96,13 +96,17 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 
 Pakko closes gaps in Windows Explorer:
 
-- **Native context menu** — Extract Here, Extract to `<folder>`, Add to archive, Add to `X.tar`,
-  Test archive (both the modern `IExplorerCommand` menu and the classic "Show more options" menu)
+- **Native context menu** — Open, Extract here, Extract to folder, Add to `X.zip`, Add to `X.tar`,
+  Compress…, Test archive, Scan for threats, Hash: CRC-32 / SHA-256 (both the modern
+  `IExplorerCommand` menu and the classic "Show more options" menu); each command runs in a Pakko
+  window with progress, a password prompt and a conflict dialog
 - **File type associations** — double-click any supported archive format opens directly into
   Pakko's Archive Browser, not just `.zip`
 - **Archive Browser** — navigate an archive's folder structure without extracting everything
   first, extract a selection or the whole archive, then climb past the archive root into the real
   filesystem (drives, "This PC") the same way NanaZip's classic file manager does
+- **Scan for threats** — hands an archive's contents to the antivirus installed on the machine
+  (through Windows' AMSI interface), password-protected ZIP entries included
 - **Group Policy / ADMX** — administrators can disable tar-family extraction and other
   risk-relevant features fleet-wide via a real ADMX template; see [`docs/POLICIES.md`](docs/POLICIES.md)
 
@@ -127,10 +131,11 @@ installed with winget — see `docs/CLI.md`'s "Distribution" section.
 
 ## Project Status
 
-**v1.1–v1.4 complete** — ZIP archive/extract, the native shell extension (context menu, file
+ZIP archive/extract (with passwords), the native shell extension (context menu, file
 associations, MOTW propagation), sandboxed RAR/7z/tar-family read + tar-family create via
-`tar.exe`, the Archive Browser, and Group Policy/ADMX support are all implemented and on-device
-verified.
+`tar.exe`, the Archive Browser, antivirus scan, the `pakko` command line and Group Policy/ADMX
+support are all implemented and on-device verified. Per-release history:
+[`CHANGELOG.md`](CHANGELOG.md).
 
 - ✅ Archive (single / separate) with compression level selector, ZIP or any tar-family format
 - ✅ Extract with smart folder logic, ZIP slip protection, and a per-conflict Ask/Overwrite/
@@ -147,8 +152,11 @@ verified.
 - ✅ Compression-ratio bomb detection (1000:1 threshold), confirm-and-extract if the destination
   has room, for ZIP and every tar-family format
 - ✅ UTF-8 filenames — Cyrillic and emoji round-trip verified
-- ✅ Native right-click context menu — Extract here, Extract to folder, Add to archive/`X.tar`,
-  Test archive
+- ✅ Native right-click context menu — Open, Extract here, Extract to folder, Add to
+  `X.zip`/`X.tar`, Compress…, Test archive, Scan for threats, Hash (CRC-32, SHA-256)
+- ✅ Scan for threats — archive contents checked by the installed antivirus through AMSI
+- ✅ Extracted files and folders keep the dates stored in the archive
+- ✅ `pakko` command line — in any terminal after a Store install, or as a standalone zip
 - ✅ File type association (every readable format). No URI protocol is registered (the former
   `pakko://` scheme was removed), so a web page cannot launch Pakko through a link of its own
 - ✅ MOTW propagation on every extracted file, including Archive Browser previews

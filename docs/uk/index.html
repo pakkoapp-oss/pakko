@@ -76,7 +76,7 @@
         <p class="eyebrow">Архіватор для Windows з відкритим кодом</p>
         <h1>ZIP-інструмент, якому нічого приховувати.</h1>
         <p class="lede">
-          Pakko розпаковує та створює архіви ZIP, TAR, RAR і 7-Zip, використовуючи лише власні
+          Pakko видобуває та створює архіви ZIP, TAR, RAR і 7-Zip, використовуючи лише власні
           API стиснення Windows та вбудований, ізольований у пісочниці <code>tar.exe</code> —
           жодного 7-Zip, WinRAR чи стороннього коду стиснення в застосунку.
         </p>
@@ -100,7 +100,7 @@
             <div><span class="term-prompt">$</span> pakko --help</div>
             <div class="term-cmds">
               <div class="term-cmd"><b>a</b><span class="name">Archive</span><span class="desc">створити архів ZIP або одного з форматів TAR</span></div>
-              <div class="term-cmd"><b>x</b><span class="name">Extract</span><span class="desc">розпакувати зі збереженням шляхів</span></div>
+              <div class="term-cmd"><b>x</b><span class="name">Extract</span><span class="desc">видобути зі збереженням шляхів</span></div>
               <div class="term-cmd"><b>t</b><span class="name">Test</span><span class="desc">перевірити цілісність архіву</span></div>
               <div class="term-cmd"><b>l</b><span class="name">List</span><span class="desc">показати вміст архіву</span></div>
             </div>
@@ -140,7 +140,7 @@
           <p>Стиснення працює через <code>System.IO.Compression</code> — жодного стороннього коду 7-Zip, WinRAR чи libarchive у застосунку.</p>
         </div>
         <div class="pillar">
-          <h3>Ізоляція під час розпакування</h3>
+          <h3>Ізоляція під час видобування</h3>
           <p>Архіви RAR, 7-Zip і TAR читаються через підписаний Windows <code>tar.exe</code>, запущений в AppContainer без мережевих можливостей і з обмеженням процесів через Job Object.</p>
         </div>
         <div class="pillar">
@@ -176,17 +176,19 @@
         <div class="manifest-group">
           <h3>Інтеграція з Windows</h3>
           <ul class="manifest-list">
-            <li><span class="check">✓</span><span>Нативне контекстне меню — Розпакувати, Додати до архіву, Перевірити архів</span></li>
+            <li><span class="check">✓</span><span>Нативне контекстне меню — Відкрити, Видобути, Стиснути, Тестувати архів, Перевірити на загрози, Хеш-суми</span></li>
             <li><span class="check">✓</span><span>Прив'язка типів файлів — одразу відкриває переглядач архівів</span></li>
-            <li><span class="check">✓</span><span>Переглядач архівів — навігація, розпакування вибраного, перегляд файлів</span></li>
-            <li><span class="check">✓</span><span>Мітка Mark-of-the-Web поширюється на кожен розпакований файл</span></li>
+            <li><span class="check">✓</span><span>Переглядач архівів — навігація, видобування вибраного, перегляд файлів</span></li>
+            <li><span class="check">✓</span><span>Перевірка на загрози — вміст архіву перевіряє встановлений у вас антивірус</span></li>
+            <li><span class="check">✓</span><span>Видобуті файли зберігають мітку Mark-of-the-Web і дати, записані в архіві</span></li>
             <li><span class="check">✓</span><span>Адміністративні політики Group Policy / ADMX</span></li>
+            <li><span class="check">✓</span><span>37 мов, світла й темна теми</span></li>
           </ul>
         </div>
         <div class="manifest-group">
           <h3>Командний рядок</h3>
           <ul class="manifest-list">
-            <li><span class="check">✓</span><span><code>pakko.exe</code> — окремий, самодостатній, без встановлення</span></li>
+            <li><span class="check">✓</span><span><code>pakko</code> у будь-якому терміналі після встановлення зі Store або <code>pakko.exe</code> окремим архівом — самодостатній, без встановлення</span></li>
             <li><span class="check">✓</span><span>Команди у стилі 7-Zip — <code>a</code> / <code>x</code> / <code>t</code> / <code>l</code></span></li>
             <li><span class="check">✓</span><span>Кожен реліз супроводжується файлом <code>SHA256SUMS</code></span></li>
           </ul>
