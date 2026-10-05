@@ -43,10 +43,10 @@
     <value>Saspiešana: {0}</value>
   </data>
   <data name="TitleExtracting" xml:space="preserve">
-    <value>Atarhivēšana: {0}</value>
+    <value>Izvilkšana: {0}</value>
   </data>
   <data name="TitleExtractingMany" xml:space="preserve">
-    <value>Arhīvu atarhivēšana: {0}</value>
+    <value>Arhīvu izvilkšana: {0}</value>
   </data>
   <data name="TitleTesting" xml:space="preserve">
     <value>Testēšana: {0}</value>
@@ -82,10 +82,10 @@
     <value>Aizdomīgs arhīvs</value>
   </data>
   <data name="BombMessage" xml:space="preserve">
-    <value>Šis arhīvs apgalvo, ka satur {0} datu, saspiešanas attiecība {1}:1. Tas ir neparasti augsts un var liecināt par atarhivēšanas bumbu. Vai tomēr atarhivēt?</value>
+    <value>Šis arhīvs apgalvo, ka satur {0} datu, saspiešanas attiecība {1}:1. Tas ir neparasti augsts un var liecināt par atspiešanas bumbu. Vai tomēr izvilkt?</value>
   </data>
   <data name="BombExtract" xml:space="preserve">
-    <value>Atarhivēt</value>
+    <value>Izvilkt</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Pārbauda arhīva saturu...</value>

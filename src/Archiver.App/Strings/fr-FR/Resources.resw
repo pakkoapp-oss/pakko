@@ -129,7 +129,7 @@
     <value>Normale</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>Optimale</value>
+    <value>Maximale</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
     <value>Aucune</value>
@@ -366,10 +366,10 @@
     <value>{0} Go</value>
   </data>
   <data name="StatusArchivingCount" xml:space="preserve">
-    <value>Compression... (fichiers: {0}, {1})</value>
+    <value>Compression... (fichiers : {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
-    <value>Extraction... (archives: {0})</value>
+    <value>Extraction... (archives : {0})</value>
   </data>
   <data name="StatusOpening" xml:space="preserve">
     <value>Ouverture...</value>

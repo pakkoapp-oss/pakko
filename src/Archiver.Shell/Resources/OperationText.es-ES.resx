@@ -19,7 +19,7 @@
     <value>Cerrar</value>
   </data>
   <data name="WindowItemOfCount" xml:space="preserve">
-    <value>Archivo {0} de {1}  ·  {2}</value>
+    <value>Archivo comprimido {0} de {1}  ·  {2}</value>
   </data>
   <data name="WindowExistingFile" xml:space="preserve">
     <value>Archivo existente</value>
@@ -37,7 +37,7 @@
     <value>Contraseña</value>
   </data>
   <data name="WindowSkipArchive" xml:space="preserve">
-    <value>Omitir archivo</value>
+    <value>Omitir archivo comprimido</value>
   </data>
   <data name="TitleArchiving" xml:space="preserve">
     <value>Comprimiendo: {0}</value>
@@ -46,19 +46,19 @@
     <value>Extrayendo: {0}</value>
   </data>
   <data name="TitleExtractingMany" xml:space="preserve">
-    <value>Extrayendo archivos: {0}</value>
+    <value>Extrayendo archivos comprimidos: {0}</value>
   </data>
   <data name="TitleTesting" xml:space="preserve">
     <value>Probando: {0}</value>
   </data>
   <data name="TitleTestingMany" xml:space="preserve">
-    <value>Probando archivos: {0}</value>
+    <value>Probando archivos comprimidos: {0}</value>
   </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>Buscando amenazas: {0}</value>
   </data>
   <data name="TitleScanningMany" xml:space="preserve">
-    <value>Analizando archivos: {0}</value>
+    <value>Analizando archivos comprimidos: {0}</value>
   </data>
   <data name="TitleHashMany" xml:space="preserve">
     <value>{0} (archivos: {1})</value>
@@ -79,15 +79,15 @@
     <value>{0}/s</value>
   </data>
   <data name="BombTitle" xml:space="preserve">
-    <value>Archivo sospechoso</value>
+    <value>Archivo comprimido sospechoso</value>
   </data>
   <data name="BombMessage" xml:space="preserve">
-    <value>Este archivo afirma contener {0} de datos, una relación de compresión de {1}:1. Esto es inusualmente alto y puede indicar una bomba de descompresión. ¿Extraer de todos modos?</value>
+    <value>Este archivo comprimido afirma contener {0} de datos, una relación de compresión de {1}:1. Esto es inusualmente alto y puede indicar una bomba de descompresión. ¿Extraer de todos modos?</value>
   </data>
   <data name="BombExtract" xml:space="preserve">
     <value>Extraer</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
-    <value>Comprobando el contenido del archivo...</value>
+    <value>Comprobando el contenido del archivo comprimido...</value>
   </data>
 </root>

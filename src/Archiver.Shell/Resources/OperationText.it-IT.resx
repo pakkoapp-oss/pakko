@@ -49,10 +49,10 @@
     <value>Estrazione archivi: {0}</value>
   </data>
   <data name="TitleTesting" xml:space="preserve">
-    <value>Verifica: {0}</value>
+    <value>Test: {0}</value>
   </data>
   <data name="TitleTestingMany" xml:space="preserve">
-    <value>Verifica archivi: {0}</value>
+    <value>Test archivi: {0}</value>
   </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>Verifica minacce: {0}</value>

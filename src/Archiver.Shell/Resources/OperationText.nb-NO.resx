@@ -82,7 +82,7 @@
     <value>Mistenkelig arkiv</value>
   </data>
   <data name="BombMessage" xml:space="preserve">
-    <value>Dette arkivet hevder å inneholde {0} data, et komprimeringsforhold på {1}:1. Dette er uvanlig høyt og kan tyde på en utpakkingsbombe. Pakk ut likevel?</value>
+    <value>Dette arkivet hevder å inneholde {0} data, et komprimeringsforhold på {1}:1. Dette er uvanlig høyt og kan tyde på en dekomprimeringsbombe. Pakk ut likevel?</value>
   </data>
   <data name="BombExtract" xml:space="preserve">
     <value>Pakk ut</value>

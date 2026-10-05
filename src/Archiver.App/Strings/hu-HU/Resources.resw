@@ -21,7 +21,7 @@
     <value>Kibontás</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
-    <value>Törlés</value>
+    <value>Lista ürítése</value>
   </data>
   <data name="AddFilesButton.Content" xml:space="preserve">
     <value>Fájlok hozzáadása</value>
@@ -241,7 +241,7 @@
     <value>Jelszó szükséges</value>
   </data>
   <data name="PasswordDialogMessage" xml:space="preserve">
-    <value>"{0}" jelszóval védett. Adja meg a jelszót a folytatáshoz.</value>
+    <value>A(z) "{0}" jelszóval védett. Adja meg a jelszót a folytatáshoz.</value>
   </data>
   <data name="PasswordDialogWrongPasswordHint" xml:space="preserve">
     <value>Hibás jelszó. Próbálja újra.</value>

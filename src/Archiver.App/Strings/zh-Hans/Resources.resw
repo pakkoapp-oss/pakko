@@ -96,7 +96,7 @@
     <value>单个压缩包</value>
   </data>
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
-    <value>分别压缩</value>
+    <value>多个独立压缩包</value>
   </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>格式:</value>
@@ -126,7 +126,7 @@
     <value>快速</value>
   </data>
   <data name="CompressionNormalItem.Content" xml:space="preserve">
-    <value>普通</value>
+    <value>标准</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
     <value>最佳</value>
@@ -552,6 +552,6 @@
     <value>全部取消</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
-    <value>正在检查存档内容...</value>
+    <value>正在检查压缩包内容...</value>
   </data>
 </root>

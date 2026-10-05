@@ -49,10 +49,10 @@
     <value>Išskleidžiami archyvai: {0}</value>
   </data>
   <data name="TitleTesting" xml:space="preserve">
-    <value>Tikrinama: {0}</value>
+    <value>Testuojama: {0}</value>
   </data>
   <data name="TitleTestingMany" xml:space="preserve">
-    <value>Tikrinami archyvai: {0}</value>
+    <value>Testuojami archyvai: {0}</value>
   </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>Ieškoma grėsmių: {0}</value>

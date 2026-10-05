@@ -52,19 +52,19 @@
     <value>Nicht genügend freier Speicherplatz, um diese Datei zu komprimieren: Sie ist {0} Bytes groß, aber nur {1} Bytes sind frei.</value>
   </data>
   <data name="PasswordNotEntered" xml:space="preserve">
-    <value>Archiv wurde nicht erstellt: Es wurde kein Kennwort eingegeben.</value>
+    <value>Archiv wurde nicht erstellt: Es wurde kein Passwort eingegeben.</value>
   </data>
   <data name="PasswordEmpty" xml:space="preserve">
-    <value>Archiv wurde nicht erstellt: Das Kennwort ist leer.</value>
+    <value>Archiv wurde nicht erstellt: Das Passwort ist leer.</value>
   </data>
   <data name="PasswordUnsupportedCharacters" xml:space="preserve">
-    <value>Archiv wurde nicht erstellt: Das Kennwort darf nur englische Buchstaben, Ziffern, Leerzeichen und ASCII-Satzzeichen enthalten; andere ZIP-Programme wie 7-Zip können ein mit anderen Zeichen geschütztes Archiv nicht öffnen.</value>
+    <value>Archiv wurde nicht erstellt: Das Passwort darf nur englische Buchstaben, Ziffern, Leerzeichen und ASCII-Satzzeichen enthalten; andere ZIP-Programme wie 7-Zip können ein mit anderen Zeichen geschütztes Archiv nicht öffnen.</value>
   </data>
   <data name="PasswordTooLong" xml:space="preserve">
-    <value>Archiv wurde nicht erstellt: Das Kennwort ist länger als {0} Zeichen – das Maximum, das 7-Zip für ein AES-verschlüsseltes ZIP akzeptiert.</value>
+    <value>Archiv wurde nicht erstellt: Das Passwort ist länger als {0} Zeichen – das Maximum, das 7-Zip für ein AES-verschlüsseltes ZIP akzeptiert.</value>
   </data>
   <data name="PasswordOnlyForZip" xml:space="preserve">
-    <value>Kennwortschutz ist nur für ZIP-Archive verfügbar.</value>
+    <value>Passwortschutz ist nur für ZIP-Archive verfügbar.</value>
   </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Das Erstellen eines {0}-Archivs ist durch eine Gruppenrichtlinie blockiert.</value>
@@ -115,16 +115,16 @@
     <value>Archive der tar-Familie können nicht getestet werden</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
-    <value>Dieses Archiv ist kennwortgeschützt und kann nicht extrahiert werden.</value>
+    <value>Dieses Archiv ist passwortgeschützt und kann nicht extrahiert werden.</value>
   </data>
   <data name="PasswordProtectedTest" xml:space="preserve">
-    <value>Dieses Archiv ist kennwortgeschützt und kann nicht getestet werden.</value>
+    <value>Dieses Archiv ist passwortgeschützt und kann nicht getestet werden.</value>
   </data>
   <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
-    <value>Das für die übrigen Archive übernommene Kennwort passt nicht zu diesem Archiv.</value>
+    <value>Das für die übrigen Archive übernommene Passwort passt nicht zu diesem Archiv.</value>
   </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
-    <value>Dieses Archiv ist kennwortgeschützt und kann nicht durchsucht werden.</value>
+    <value>Dieses Archiv ist passwortgeschützt und kann nicht geöffnet werden.</value>
   </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Die Datei hat eine ZIP-Signatur, scheint aber beschädigt oder unvollständig zu sein.</value>
@@ -145,7 +145,7 @@
     <value>Eintrag „{0}“: {1}</value>
   </data>
   <data name="EntryWrongPassword" xml:space="preserve">
-    <value>Der Eintrag „{0}“ konnte nicht entschlüsselt werden: falsches Kennwort.</value>
+    <value>Der Eintrag „{0}“ konnte nicht entschlüsselt werden: falsches Passwort.</value>
   </data>
   <data name="EntryAuthenticationFailed" xml:space="preserve">
     <value>Der Eintrag „{0}“ konnte nicht entschlüsselt werden: Authentifizierung fehlgeschlagen (beschädigt oder manipuliert).</value>
@@ -256,13 +256,13 @@
     <value>Die Virenprüfung dieses Eintrags ist fehlgeschlagen: {0}</value>
   </data>
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
-    <value>Der entschlüsselte Inhalt hat die Integritätsprüfung nicht bestanden (falsches Kennwort oder beschädigter Eintrag) und wurde nicht als sauber gemeldet.</value>
+    <value>Der entschlüsselte Inhalt hat die Integritätsprüfung nicht bestanden (falsches Passwort oder beschädigter Eintrag) und wurde nicht als sauber gemeldet.</value>
   </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
-    <value>Der Eintrag ist kennwortgeschützt und wurde nicht überprüft.</value>
+    <value>Der Eintrag ist passwortgeschützt und wurde nicht überprüft.</value>
   </data>
   <data name="ScanEntryWrongPassword" xml:space="preserve">
-    <value>Der Eintrag ist mit einem anderen Kennwort geschützt und wurde nicht überprüft.</value>
+    <value>Der Eintrag ist mit einem anderen Passwort geschützt und wurde nicht überprüft.</value>
   </data>
   <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
     <value>Der Eintrag verwendet eine nicht unterstützte Komprimierungsmethode mit Verschlüsselung und wurde nicht überprüft.</value>

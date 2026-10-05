@@ -37,7 +37,7 @@
     <value>پاس ورڈ</value>
   </data>
   <data name="WindowSkipArchive" xml:space="preserve">
-    <value>آرکائیو چھوڑیں</value>
+    <value>آرکائیو نظرانداز کریں</value>
   </data>
   <data name="TitleArchiving" xml:space="preserve">
     <value>کمپریس کیا جا رہا ہے: {0}</value>

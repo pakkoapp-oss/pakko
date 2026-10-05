@@ -58,10 +58,10 @@
     <value>O arquivo não foi criado: a palavra-passe está vazia.</value>
   </data>
   <data name="PasswordUnsupportedCharacters" xml:space="preserve">
-    <value>O arquivo não foi criado: a palavra-passe só pode conter letras inglesas, dígitos, espaços e pontuação ASCII; outras ferramentas ZIP, como o 7-Zip, não conseguem abrir um arquivo protegido com outros caracteres.</value>
+    <value>O arquivo não foi criado: a palavra-passe só pode conter letras inglesas, algarismos, espaços e pontuação ASCII; outras ferramentas ZIP, como o 7-Zip, não conseguem abrir um arquivo protegido com outros carateres.</value>
   </data>
   <data name="PasswordTooLong" xml:space="preserve">
-    <value>O arquivo não foi criado: a palavra-passe tem mais de {0} caracteres, o máximo que o 7-Zip aceita para um ZIP cifrado com AES.</value>
+    <value>O arquivo não foi criado: a palavra-passe tem mais de {0} carateres, o máximo que o 7-Zip aceita para um ZIP encriptado com AES.</value>
   </data>
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>A proteção por palavra-passe só está disponível para arquivos ZIP.</value>
@@ -196,7 +196,7 @@
     <value>O arquivo contém um caminho de entrada inseguro («{0}») e não pode ser extraído em segurança.</value>
   </data>
   <data name="TarListingInconsistent" xml:space="preserve">
-    <value>A listagem do conteúdo do arquivo é inconsistente e não pode ser extraída em segurança.</value>
+    <value>A listagem do conteúdo do arquivo é inconsistente; o arquivo não pode ser extraído em segurança.</value>
   </data>
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>O arquivo contém uma ligação simbólica, uma ligação física, um dispositivo ou outra entrada especial e não pode ser extraído em segurança.</value>

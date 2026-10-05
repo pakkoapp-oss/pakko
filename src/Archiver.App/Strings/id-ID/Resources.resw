@@ -85,7 +85,7 @@
     <value>Keluar</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Hapus dari daftar</value>
+    <value>Keluarkan dari daftar</value>
   </data>
 
   <!-- Archive options -->
@@ -327,7 +327,7 @@
     <value>Hapus permanen</value>
   </data>
   <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
-    <value>Simpan</value>
+    <value>Pertahankan</value>
   </data>
   <data name="NotDeletedDialogTitle" xml:space="preserve">
     <value>Beberapa item tidak dihapus</value>
@@ -423,7 +423,7 @@
     <value>Enkripsi kata sandi hanya tersedia untuk ZIP</value>
   </data>
   <data name="RecycleBinNote.Text" xml:space="preserve">
-    <value>Pada drive jaringan dan drive yang dapat dilepas, yang tidak memiliki Recycle Bin, Pakko bertanya terlebih dahulu.</value>
+    <value>Pada drive jaringan dan drive yang dapat dilepas, yang tidak memiliki Keranjang Sampah, Pakko bertanya terlebih dahulu.</value>
   </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Tambah file</value>
@@ -438,10 +438,10 @@
     <value>Ekstrak ke:</value>
   </data>
   <data name="DeleteAfterCompressLabel" xml:space="preserve">
-    <value>Setelah kompresi berhasil, pindahkan file sumber ke Recycle Bin</value>
+    <value>Setelah kompresi berhasil, pindahkan file sumber ke Keranjang Sampah</value>
   </data>
   <data name="DeleteAfterExtractLabel" xml:space="preserve">
-    <value>Setelah ekstraksi berhasil, pindahkan arsip ke Recycle Bin</value>
+    <value>Setelah ekstraksi berhasil, pindahkan arsip ke Keranjang Sampah</value>
   </data>
   <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
     <value>{0} (otomatis)</value>
@@ -474,7 +474,7 @@
     <value>Daftar tidak berisi arsip, tidak ada yang diekstrak</value>
   </data>
   <data name="DeleteAfterEitherLabel" xml:space="preserve">
-    <value>Setelah operasi berhasil, pindahkan yang digunakannya ke Recycle Bin: file sumber setelah Kompres, arsip setelah Ekstrak</value>
+    <value>Setelah operasi berhasil, pindahkan yang digunakannya ke Keranjang Sampah: file sumber setelah Kompres, arsip setelah Ekstrak</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
     <value>Uji arsip</value>

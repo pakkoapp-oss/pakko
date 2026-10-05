@@ -88,7 +88,7 @@
     <value>Файл не є архівом відомого формату, тому його не можна видобути.</value>
   </data>
   <data name="NotAnArchiveTest" xml:space="preserve">
-    <value>Файл не є архівом відомого формату, тому його не можна перевірити.</value>
+    <value>Файл не є архівом відомого формату, тому його не можна протестувати.</value>
   </data>
   <data name="NotAnArchiveList" xml:space="preserve">
     <value>Файл не є архівом відомого формату, тому його вміст не можна показати.</value>
@@ -112,13 +112,13 @@
     <value>Цей формат архіву не підтримується tar.exe цієї системи (версія {0}).</value>
   </data>
   <data name="NoTestCapability" xml:space="preserve">
-    <value>архіви сімейства tar не можна перевірити</value>
+    <value>архіви сімейства tar не можна протестувати</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Цей архів захищено паролем, тому його не можна видобути.</value>
   </data>
   <data name="PasswordProtectedTest" xml:space="preserve">
-    <value>Цей архів захищено паролем, тому його не можна перевірити.</value>
+    <value>Цей архів захищено паролем, тому його не можна протестувати.</value>
   </data>
   <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
     <value>Пароль, застосований до решти архівів, не підходить до цього архіву.</value>

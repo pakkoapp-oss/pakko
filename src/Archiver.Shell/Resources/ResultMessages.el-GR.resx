@@ -19,7 +19,7 @@
     <value>…και {0} ακόμη</value>
   </data>
   <data name="ResultNoErrorsDetected" xml:space="preserve">
-    <value>Δεν εντοπίστηκαν σφάλματα στο αρχείο (αρχεία).</value>
+    <value>Δεν εντοπίστηκαν σφάλματα στο αρχείο συμπίεσης (αρχεία συμπίεσης).</value>
   </data>
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>Η λειτουργία απέτυχε.</value>

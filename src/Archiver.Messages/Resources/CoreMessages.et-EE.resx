@@ -85,7 +85,7 @@
     <value>„{0}” ei läbinud Authenticode'i allkirja kontrolli.</value>
   </data>
   <data name="NotAnArchiveExtract" xml:space="preserve">
-    <value>Fail pole tuvastatud arhiivivormingus ja seda ei saa ekstraktida.</value>
+    <value>Fail pole tuvastatud arhiivivormingus ja seda ei saa lahti pakkida.</value>
   </data>
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Fail pole tuvastatud arhiivivormingus ja seda ei saa testida.</value>
@@ -100,7 +100,7 @@
     <value>See arhiivivorming ({0}) on rühmapoliitikaga blokeeritud.</value>
   </data>
   <data name="TarExtractionDisabled" xml:space="preserve">
-    <value>Ekstraktimine tar.exe abil on rühmapoliitikaga keelatud.</value>
+    <value>Lahtipakkimine tar.exe abil on rühmapoliitikaga keelatud.</value>
   </data>
   <data name="FormatNeedsNewerTar" xml:space="preserve">
     <value>{0} nõuab tar.exe-d, milles on libarchive &gt;= 3.7.0 (Windows 11 23H2+); selle süsteemi tar.exe (versioon {1}) seda ei toeta.</value>
@@ -115,7 +115,7 @@
     <value>tar-perekonna arhiive ei saa testida</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
-    <value>See arhiiv on parooliga kaitstud ja seda ei saa ekstraktida.</value>
+    <value>See arhiiv on parooliga kaitstud ja seda ei saa lahti pakkida.</value>
   </data>
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>See arhiiv on parooliga kaitstud ja seda ei saa testida.</value>
@@ -130,16 +130,16 @@
     <value>Failil on ZIP-allkiri, kuid see näib olevat rikutud või mittetäielik.</value>
   </data>
   <data name="CannotExtractArchive" xml:space="preserve">
-    <value>Arhiivi ei saa ekstraktida: {0}</value>
+    <value>Arhiivi ei saa lahti pakkida: {0}</value>
   </data>
   <data name="AccessDeniedExtractingArchive" xml:space="preserve">
-    <value>Juurdepääs keelati arhiivi ekstraktimisel: {0}</value>
+    <value>Juurdepääs keelati arhiivi lahtipakkimisel: {0}</value>
   </data>
   <data name="CannotReadArchive" xml:space="preserve">
     <value>Arhiivi ei saa lugeda: {0}</value>
   </data>
   <data name="EntryNameCollision" xml:space="preserve">
-    <value>Pärast dekodeerimist on kirjel „{0}” sama nimi kui teisel kirjel; seda ei ekstraktita, sest üks kirjutaks teise üle.</value>
+    <value>Pärast dekodeerimist on kirjel „{0}” sama nimi kui teisel kirjel; seda ei pakita lahti, sest üks kirjutaks teise üle.</value>
   </data>
   <data name="EntryFailed" xml:space="preserve">
     <value>Kirje „{0}”: {1}</value>
@@ -154,22 +154,22 @@
     <value>Kirje „{0}” kasutab krüptimisega tihendusmeetodit, mida ei toetata.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Arhiiv deklareerib {0} baiti tihendamata kujul, kuid sihtkohas on vaba ainult {1} baiti. Ekstraktimine blokeeriti.</value>
+    <value>Arhiiv deklareerib {0} baiti tihendamata kujul, kuid sihtkohas on vaba ainult {1} baiti. Lahtipakkimine blokeeriti.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
-    <value>Kahtlane tihendussuhe ({0}:1, deklareeritud {1} baiti). Ekstraktimisest keelduti ettevaatusabinõuna ZIP-pommide vastu.</value>
+    <value>Kahtlane tihendussuhe ({0}:1, deklareeritud {1} baiti). Lahtipakkimisest keelduti ettevaatusabinõuna ZIP-pommide vastu.</value>
   </data>
   <data name="TarBombDeclined" xml:space="preserve">
-    <value>Kahtlane tihendussuhe ({0}:1, deklareeritud {1} baiti) kogu arhiivi ulatuses. Ekstraktimisest keelduti ettevaatusabinõuna lahtipakkimispommide vastu.</value>
+    <value>Kahtlane tihendussuhe ({0}:1, deklareeritud {1} baiti) kogu arhiivi ulatuses. Lahtipakkimisest keelduti ettevaatusabinõuna lahtipakkimispommide vastu.</value>
   </data>
   <data name="DestinationFileLocked" xml:space="preserve">
     <value>„{0}” ei saa kirjutada: sihtfaili on lukustanud teine protsess.</value>
   </data>
   <data name="AllEntriesSkipped" xml:space="preserve">
-    <value>Sellest arhiivist ei ekstraktitud midagi – kõik kirjed jäeti vahele.</value>
+    <value>Sellest arhiivist ei pakitud midagi lahti – kõik kirjed jäeti vahele.</value>
   </data>
   <data name="UnsafeEntryPath" xml:space="preserve">
-    <value>Kirjel „{0}” on ohtlik tee ja seda ei ekstraktitud.</value>
+    <value>Kirjel „{0}” on ohtlik tee ja seda ei pakitud lahti.</value>
   </data>
   <data name="EntryAlternateDataStream" xml:space="preserve">
     <value>Alternatiivse andmevooga kirje lükati turvakaalutlustel tagasi.</value>
@@ -181,7 +181,7 @@
     <value>Kirje nimi sisaldab juhtmärke ja jäeti vahele.</value>
   </data>
   <data name="CannotExtractEntry" xml:space="preserve">
-    <value>„{0}” ei saa ekstraktida: {1}</value>
+    <value>„{0}” ei saa lahti pakkida: {1}</value>
   </data>
   <data name="EntryThroughReparsePoint" xml:space="preserve">
     <value>Kirje tee läbib ümbersuunamispunkti (sümbolilink või ühenduspunkt) ja jäeti vahele.</value>
@@ -190,19 +190,19 @@
     <value>Fail on sihtkohas juba olemas.</value>
   </data>
   <data name="TarExtractionFailed" xml:space="preserve">
-    <value>Ekstraktimine tar.exe abil nurjus: {0}</value>
+    <value>Lahtipakkimine tar.exe abil nurjus: {0}</value>
   </data>
   <data name="TarUnsafeEntryPath" xml:space="preserve">
-    <value>Arhiiv sisaldab ohtlikku kirjeteed („{0}”) ja seda ei saa turvaliselt ekstraktida.</value>
+    <value>Arhiiv sisaldab ohtlikku kirjeteed („{0}”) ja seda ei saa turvaliselt lahti pakkida.</value>
   </data>
   <data name="TarListingInconsistent" xml:space="preserve">
-    <value>Arhiivi sisuloend on vastuoluline ja arhiivi ei saa turvaliselt ekstraktida.</value>
+    <value>Arhiivi sisuloend on vastuoluline ja arhiivi ei saa turvaliselt lahti pakkida.</value>
   </data>
   <data name="TarSpecialEntry" xml:space="preserve">
-    <value>Arhiiv sisaldab sümbolilinki, püsilinki, seadet või muud erikirjet ja seda ei saa turvaliselt ekstraktida.</value>
+    <value>Arhiiv sisaldab sümbolilinki, püsilinki, seadet või muud erikirjet ja seda ei saa turvaliselt lahti pakkida.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Veel {0} selle nimega koopiat jäi välja pakkimata: sellest arhiivist saab võtta ainult esimese ja viimase koopia.</value>
+    <value>Veel {0} selle nimega koopiat jäi lahti pakkimata: sellest arhiivist saab võtta ainult esimese ja viimase koopia.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Teisel valitud üksusel on sama nimi ja seda kausta ei saanud uue nimega lisada. Nimetage üks neist ümber ja proovige uuesti.</value>
@@ -247,7 +247,7 @@
     <value>Kirjet ei saanud lugeda: {0}</value>
   </data>
   <data name="ScanCannotExtract" xml:space="preserve">
-    <value>Arhiivi ei saanud skannimiseks ekstraktida: {0}</value>
+    <value>Arhiivi ei saanud skannimiseks lahti pakkida: {0}</value>
   </data>
   <data name="ScanRemovedOrBlocked" xml:space="preserve">
     <value>Eemaldati või blokeeriti enne, kui Pakko jõudis seda otse skannida.</value>

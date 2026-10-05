@@ -49,7 +49,7 @@
     <value>Naziv stavke je predugačak za ZIP arhivu ({0} bajtova u UTF-8; najviše {1}).</value>
   </data>
   <data name="NotEnoughSpaceToCompress" xml:space="preserve">
-    <value>Nema dovoljno slobodnog prostora na disku za komprimovanje ove datoteke: ima {0} bajtova, a slobodno je samo {1} bajtova.</value>
+    <value>Nema dovoljno slobodnog prostora na disku za kompresovanje ove datoteke: ima {0} bajtova, a slobodno je samo {1} bajtova.</value>
   </data>
   <data name="PasswordNotEntered" xml:space="preserve">
     <value>Arhiva nije kreirana: lozinka nije uneta.</value>
@@ -151,16 +151,16 @@
     <value>Stavku „{0}” nije moguće dešifrovati: provera autentičnosti nije uspela (oštećena ili izmenjena).</value>
   </data>
   <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
-    <value>Stavka „{0}” koristi nepodržan metod komprimovanja sa šifrovanjem.</value>
+    <value>Stavka „{0}” koristi nepodržan metod kompresije sa šifrovanjem.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Arhiva navodi {0} bajtova nekomprimovano, ali na odredištu je slobodno samo {1} bajtova. Raspakivanje je blokirano.</value>
+    <value>Arhiva navodi {0} bajtova nekompresovano, ali na odredištu je slobodno samo {1} bajtova. Raspakivanje je blokirano.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
-    <value>Sumnjiv odnos komprimovanja ({0}:1, navedeno {1} bajtova). Raspakivanje je odbijeno iz predostrožnosti od ZIP bombi.</value>
+    <value>Sumnjiv odnos kompresije ({0}:1, navedeno {1} bajtova). Raspakivanje je odbijeno iz predostrožnosti od ZIP bombi.</value>
   </data>
   <data name="TarBombDeclined" xml:space="preserve">
-    <value>Sumnjiv odnos komprimovanja ({0}:1, navedeno {1} bajtova) za celu arhivu. Raspakivanje je odbijeno iz predostrožnosti od bombi za raspakivanje.</value>
+    <value>Sumnjiv odnos kompresije ({0}:1, navedeno {1} bajtova) za celu arhivu. Raspakivanje je odbijeno iz predostrožnosti od bombi za raspakivanje.</value>
   </data>
   <data name="DestinationFileLocked" xml:space="preserve">
     <value>Nije moguće upisati „{0}”: odredišnu datoteku je zaključao drugi proces.</value>
@@ -265,7 +265,7 @@
     <value>Stavka je zaštićena drugom lozinkom i nije skenirana.</value>
   </data>
   <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
-    <value>Stavka koristi nepodržan metod komprimovanja sa šifrovanjem i nije skenirana.</value>
+    <value>Stavka koristi nepodržan metod kompresije sa šifrovanjem i nije skenirana.</value>
   </data>
   <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
     <value>Stavka nije prošla proveru autentičnosti pri dešifrovanju (oštećena ili izmenjena) i nije skenirana.</value>

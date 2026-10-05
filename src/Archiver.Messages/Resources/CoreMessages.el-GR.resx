@@ -31,13 +31,13 @@
     <value>Οι συμβολικές συνδέσεις και τα σημεία επανανάλυσης δεν αρχειοθετούνται.</value>
   </data>
   <data name="ArchiveAlreadyExists" xml:space="preserve">
-    <value>Το αρχείο «{0}» υπάρχει ήδη στον προορισμό και παραλείφθηκε.</value>
+    <value>Το αρχείο συμπίεσης «{0}» υπάρχει ήδη στον προορισμό και παραλείφθηκε.</value>
   </data>
   <data name="CannotCreateArchive" xml:space="preserve">
-    <value>Δεν είναι δυνατή η δημιουργία του αρχείου: {0}</value>
+    <value>Δεν είναι δυνατή η δημιουργία του αρχείου συμπίεσης: {0}</value>
   </data>
   <data name="AccessDeniedCreatingArchive" xml:space="preserve">
-    <value>Άρνηση πρόσβασης κατά τη δημιουργία του αρχείου: {0}</value>
+    <value>Άρνηση πρόσβασης κατά τη δημιουργία του αρχείου συμπίεσης: {0}</value>
   </data>
   <data name="UnexpectedError" xml:space="preserve">
     <value>Μη αναμενόμενο σφάλμα: {0}</value>
@@ -52,16 +52,16 @@
     <value>Δεν υπάρχει αρκετός ελεύθερος χώρος στον δίσκο για τη συμπίεση αυτού του αρχείου: είναι {0} byte, αλλά ελεύθερα είναι μόνο {1} byte.</value>
   </data>
   <data name="PasswordNotEntered" xml:space="preserve">
-    <value>Το αρχείο δεν δημιουργήθηκε: δεν εισήχθη κωδικός πρόσβασης.</value>
+    <value>Το αρχείο συμπίεσης δεν δημιουργήθηκε: δεν εισήχθη κωδικός πρόσβασης.</value>
   </data>
   <data name="PasswordEmpty" xml:space="preserve">
-    <value>Το αρχείο δεν δημιουργήθηκε: ο κωδικός πρόσβασης είναι κενός.</value>
+    <value>Το αρχείο συμπίεσης δεν δημιουργήθηκε: ο κωδικός πρόσβασης είναι κενός.</value>
   </data>
   <data name="PasswordUnsupportedCharacters" xml:space="preserve">
-    <value>Το αρχείο δεν δημιουργήθηκε: ο κωδικός πρόσβασης μπορεί να περιέχει μόνο αγγλικά γράμματα, ψηφία, κενά και σημεία στίξης ASCII· άλλα εργαλεία ZIP, όπως το 7-Zip, δεν μπορούν να ανοίξουν αρχείο που προστατεύεται με άλλους χαρακτήρες.</value>
+    <value>Το αρχείο συμπίεσης δεν δημιουργήθηκε: ο κωδικός πρόσβασης μπορεί να περιέχει μόνο αγγλικά γράμματα, ψηφία, κενά και σημεία στίξης ASCII· άλλα εργαλεία ZIP, όπως το 7-Zip, δεν μπορούν να ανοίξουν αρχείο που προστατεύεται με άλλους χαρακτήρες.</value>
   </data>
   <data name="PasswordTooLong" xml:space="preserve">
-    <value>Το αρχείο δεν δημιουργήθηκε: ο κωδικός πρόσβασης υπερβαίνει τους {0} χαρακτήρες, το μέγιστο που δέχεται το 7-Zip για ZIP κρυπτογραφημένο με AES.</value>
+    <value>Το αρχείο συμπίεσης δεν δημιουργήθηκε: ο κωδικός πρόσβασης υπερβαίνει τους {0} χαρακτήρες, το μέγιστο που δέχεται το 7-Zip για ZIP κρυπτογραφημένο με AES.</value>
   </data>
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Η προστασία με κωδικό πρόσβασης είναι διαθέσιμη μόνο για αρχεία ZIP.</value>
@@ -70,10 +70,10 @@
     <value>Η δημιουργία αρχείου {0} αποκλείεται από πολιτική ομάδας.</value>
   </data>
   <data name="TarCreationDisabled" xml:space="preserve">
-    <value>Η δημιουργία αρχείων με το tar.exe έχει απενεργοποιηθεί από πολιτική ομάδας.</value>
+    <value>Η δημιουργία αρχείων συμπίεσης με το tar.exe έχει απενεργοποιηθεί από πολιτική ομάδας.</value>
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
-    <value>Το tar.exe δεν μπόρεσε να δημιουργήσει το αρχείο: {0}</value>
+    <value>Το tar.exe δεν μπόρεσε να δημιουργήσει το αρχείο συμπίεσης: {0}</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Το όνομα «{0}» περιέχει χαρακτήρες που το tar.exe δεν μπορεί να χειριστεί με ασφάλεια σε αυτό το σύστημα (κωδικοσελίδα ANSI {1}). Χρησιμοποιήστε ZIP για αυτό το περιεχόμενο.</value>
@@ -85,13 +85,13 @@
     <value>Το «{0}» απέτυχε στον έλεγχο της υπογραφής Authenticode.</value>
   </data>
   <data name="NotAnArchiveExtract" xml:space="preserve">
-    <value>Το αρχείο δεν έχει αναγνωρισμένη μορφή αρχειοθήκης και δεν μπορεί να εξαχθεί.</value>
+    <value>Το αρχείο δεν έχει αναγνωρισμένη μορφή αρχείου συμπίεσης και δεν μπορεί να εξαχθεί.</value>
   </data>
   <data name="NotAnArchiveTest" xml:space="preserve">
-    <value>Το αρχείο δεν έχει αναγνωρισμένη μορφή αρχειοθήκης και δεν μπορεί να ελεγχθεί.</value>
+    <value>Το αρχείο δεν έχει αναγνωρισμένη μορφή αρχείου συμπίεσης και δεν μπορεί να δοκιμαστεί.</value>
   </data>
   <data name="NotAnArchiveList" xml:space="preserve">
-    <value>Το αρχείο δεν έχει αναγνωρισμένη μορφή αρχειοθήκης και τα περιεχόμενά του δεν μπορούν να εμφανιστούν.</value>
+    <value>Το αρχείο δεν έχει αναγνωρισμένη μορφή αρχείου συμπίεσης και τα περιεχόμενά του δεν μπορούν να εμφανιστούν.</value>
   </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Η μορφή {0} δεν υποστηρίζεται. Υποστηρίζονται μόνο μορφές που βασίζονται σε ZIP.</value>
@@ -112,31 +112,31 @@
     <value>Αυτή η μορφή αρχείου δεν υποστηρίζεται από το tar.exe αυτού του συστήματος (έκδοση {0}).</value>
   </data>
   <data name="NoTestCapability" xml:space="preserve">
-    <value>τα αρχεία της οικογένειας tar δεν μπορούν να ελεγχθούν</value>
+    <value>τα αρχεία συμπίεσης της οικογένειας tar δεν μπορούν να δοκιμαστούν</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
-    <value>Αυτό το αρχείο προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να εξαχθεί.</value>
+    <value>Αυτό το αρχείο συμπίεσης προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να εξαχθεί.</value>
   </data>
   <data name="PasswordProtectedTest" xml:space="preserve">
-    <value>Αυτό το αρχείο προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να ελεγχθεί.</value>
+    <value>Αυτό το αρχείο συμπίεσης προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να δοκιμαστεί.</value>
   </data>
   <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
-    <value>Ο κωδικός πρόσβασης που εφαρμόστηκε στα υπόλοιπα αρχεία δεν ταιριάζει σε αυτό το αρχείο.</value>
+    <value>Ο κωδικός πρόσβασης που εφαρμόστηκε στα υπόλοιπα αρχεία συμπίεσης δεν ταιριάζει σε αυτό το αρχείο συμπίεσης.</value>
   </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
-    <value>Αυτό το αρχείο προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να προβληθεί.</value>
+    <value>Αυτό το αρχείο συμπίεσης προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να προβληθεί.</value>
   </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Το αρχείο έχει υπογραφή ZIP, αλλά φαίνεται κατεστραμμένο ή ελλιπές.</value>
   </data>
   <data name="CannotExtractArchive" xml:space="preserve">
-    <value>Δεν είναι δυνατή η εξαγωγή του αρχείου: {0}</value>
+    <value>Δεν είναι δυνατή η εξαγωγή του αρχείου συμπίεσης: {0}</value>
   </data>
   <data name="AccessDeniedExtractingArchive" xml:space="preserve">
-    <value>Άρνηση πρόσβασης κατά την εξαγωγή του αρχείου: {0}</value>
+    <value>Άρνηση πρόσβασης κατά την εξαγωγή του αρχείου συμπίεσης: {0}</value>
   </data>
   <data name="CannotReadArchive" xml:space="preserve">
-    <value>Δεν είναι δυνατή η ανάγνωση του αρχείου: {0}</value>
+    <value>Δεν είναι δυνατή η ανάγνωση του αρχείου συμπίεσης: {0}</value>
   </data>
   <data name="EntryNameCollision" xml:space="preserve">
     <value>Μετά την αποκωδικοποίηση, η καταχώρηση «{0}» έχει το ίδιο όνομα με άλλη καταχώρηση· δεν εξάγεται, επειδή η μία θα αντικαθιστούσε την άλλη.</value>
@@ -154,19 +154,19 @@
     <value>Η καταχώρηση «{0}» χρησιμοποιεί μη υποστηριζόμενη μέθοδο συμπίεσης με κρυπτογράφηση.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Το αρχείο δηλώνει {0} byte χωρίς συμπίεση, αλλά ο προορισμός έχει μόνο {1} byte ελεύθερα. Η εξαγωγή αποκλείστηκε.</value>
+    <value>Το αρχείο συμπίεσης δηλώνει {0} byte χωρίς συμπίεση, αλλά ο προορισμός έχει μόνο {1} byte ελεύθερα. Η εξαγωγή αποκλείστηκε.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
     <value>Ύποπτος λόγος συμπίεσης ({0}:1, δηλωμένα {1} byte). Η εξαγωγή απορρίφθηκε προληπτικά για προστασία από βόμβες ZIP.</value>
   </data>
   <data name="TarBombDeclined" xml:space="preserve">
-    <value>Ύποπτος λόγος συμπίεσης ({0}:1, δηλωμένα {1} byte) για ολόκληρο το αρχείο. Η εξαγωγή απορρίφθηκε προληπτικά για προστασία από βόμβες αποσυμπίεσης.</value>
+    <value>Ύποπτος λόγος συμπίεσης ({0}:1, δηλωμένα {1} byte) για ολόκληρο το αρχείο συμπίεσης. Η εξαγωγή απορρίφθηκε προληπτικά για προστασία από βόμβες αποσυμπίεσης.</value>
   </data>
   <data name="DestinationFileLocked" xml:space="preserve">
     <value>Δεν είναι δυνατή η εγγραφή του «{0}»: το αρχείο προορισμού είναι κλειδωμένο από άλλη διεργασία.</value>
   </data>
   <data name="AllEntriesSkipped" xml:space="preserve">
-    <value>Δεν εξήχθη τίποτα από αυτό το αρχείο — όλες οι καταχωρήσεις παραλείφθηκαν.</value>
+    <value>Δεν εξήχθη τίποτα από αυτό το αρχείο συμπίεσης — όλες οι καταχωρήσεις παραλείφθηκαν.</value>
   </data>
   <data name="UnsafeEntryPath" xml:space="preserve">
     <value>Η καταχώρηση «{0}» έχει μη ασφαλή διαδρομή και δεν εξήχθη.</value>
@@ -193,37 +193,37 @@
     <value>Η εξαγωγή με το tar.exe απέτυχε: {0}</value>
   </data>
   <data name="TarUnsafeEntryPath" xml:space="preserve">
-    <value>Το αρχείο περιέχει μη ασφαλή διαδρομή καταχώρησης («{0}») και δεν μπορεί να εξαχθεί με ασφάλεια.</value>
+    <value>Το αρχείο συμπίεσης περιέχει μη ασφαλή διαδρομή καταχώρησης («{0}») και δεν μπορεί να εξαχθεί με ασφάλεια.</value>
   </data>
   <data name="TarListingInconsistent" xml:space="preserve">
-    <value>Η λίστα περιεχομένων του αρχείου είναι ασυνεπής και το αρχείο δεν μπορεί να εξαχθεί με ασφάλεια.</value>
+    <value>Η λίστα περιεχομένων του αρχείου συμπίεσης είναι ασυνεπής και το αρχείο συμπίεσης δεν μπορεί να εξαχθεί με ασφάλεια.</value>
   </data>
   <data name="TarSpecialEntry" xml:space="preserve">
-    <value>Το αρχείο περιέχει συμβολική σύνδεση, σταθερή σύνδεση, συσκευή ή άλλη ειδική καταχώρηση και δεν μπορεί να εξαχθεί με ασφάλεια.</value>
+    <value>Το αρχείο συμπίεσης περιέχει συμβολική σύνδεση, σταθερή σύνδεση, συσκευή ή άλλη ειδική καταχώρηση και δεν μπορεί να εξαχθεί με ασφάλεια.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Δεν εξήχθησαν άλλα {0} αντίγραφα με αυτό το όνομα: από αυτό το αρχείο μπορούν να ληφθούν μόνο το πρώτο και το τελευταίο αντίγραφο.</value>
+    <value>Δεν εξήχθησαν άλλα {0} αντίγραφα με αυτό το όνομα: από αυτό το αρχείο συμπίεσης μπορούν να ληφθούν μόνο το πρώτο και το τελευταίο αντίγραφο.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Ένα άλλο επιλεγμένο στοιχείο έχει το ίδιο όνομα και αυτός ο φάκελος δεν ήταν δυνατό να προστεθεί με νέο όνομα. Μετονομάστε ένα από αυτά και δοκιμάστε ξανά.</value>
   </data>
   <data name="ListingInconsistent" xml:space="preserve">
-    <value>Η λίστα περιεχομένων του αρχείου είναι ασυνεπής.</value>
+    <value>Η λίστα περιεχομένων του αρχείου συμπίεσης είναι ασυνεπής.</value>
   </data>
   <data name="TarUnreadableNames" xml:space="preserve">
-    <value>Το αρχείο περιέχει ονόματα αρχείων που το tar.exe δεν μπορεί να αναπαραστήσει σε αυτό το σύστημα (κωδικοσελίδα {0}), επομένως δεν μπορεί να διαβαστεί εδώ με το tar.exe. Λεπτομέρειες: {1}</value>
+    <value>Το αρχείο συμπίεσης περιέχει ονόματα αρχείων που το tar.exe δεν μπορεί να αναπαραστήσει σε αυτό το σύστημα (κωδικοσελίδα {0}), επομένως δεν μπορεί να διαβαστεί εδώ με το tar.exe. Λεπτομέρειες: {1}</value>
   </data>
   <data name="SandboxSetupFailed" xml:space="preserve">
     <value>Η ρύθμιση του απομονωμένου περιβάλλοντος απέτυχε: {0}</value>
   </data>
   <data name="ArchiveInUse" xml:space="preserve">
-    <value>Το αρχείο χρησιμοποιείται από άλλο πρόγραμμα: {0}</value>
+    <value>Το αρχείο συμπίεσης χρησιμοποιείται από άλλο πρόγραμμα: {0}</value>
   </data>
   <data name="CannotOpenArchive" xml:space="preserve">
-    <value>Δεν είναι δυνατό το άνοιγμα του αρχείου: {0}</value>
+    <value>Δεν είναι δυνατό το άνοιγμα του αρχείου συμπίεσης: {0}</value>
   </data>
   <data name="CannotReopenArchive" xml:space="preserve">
-    <value>Δεν είναι δυνατό το εκ νέου άνοιγμα του αρχείου (σφάλμα Win32 {0}).</value>
+    <value>Δεν είναι δυνατό το εκ νέου άνοιγμα του αρχείου συμπίεσης (σφάλμα Win32 {0}).</value>
   </data>
   <data name="HashFolderSkipped" xml:space="preserve">
     <value>Παραλείφθηκε: φάκελος (υποστηρίζεται μόνο όταν είναι επιλεγμένος ένας μόνο φάκελος)</value>
@@ -241,13 +241,13 @@
     <value>Δεν ήταν δυνατή η έναρξη περιόδου σάρωσης για ιούς: {0}</value>
   </data>
   <data name="ScanCannotReadArchive" xml:space="preserve">
-    <value>Δεν ήταν δυνατή η ανάγνωση του αρχείου: {0}</value>
+    <value>Δεν ήταν δυνατή η ανάγνωση του αρχείου συμπίεσης: {0}</value>
   </data>
   <data name="ScanCannotReadEntry" xml:space="preserve">
     <value>Δεν ήταν δυνατή η ανάγνωση της καταχώρησης: {0}</value>
   </data>
   <data name="ScanCannotExtract" xml:space="preserve">
-    <value>Δεν ήταν δυνατή η εξαγωγή του αρχείου για σάρωση: {0}</value>
+    <value>Δεν ήταν δυνατή η εξαγωγή του αρχείου συμπίεσης για σάρωση: {0}</value>
   </data>
   <data name="ScanRemovedOrBlocked" xml:space="preserve">
     <value>Καταργήθηκε ή αποκλείστηκε πριν το Pakko μπορέσει να το σαρώσει απευθείας.</value>

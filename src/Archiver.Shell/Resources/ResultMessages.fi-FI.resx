@@ -25,7 +25,7 @@
     <value>Toiminto epäonnistui.</value>
   </data>
   <data name="OpenUiTooManyFiles" xml:space="preserve">
-    <value>Pakkossa avattavaksi on valittu liian monta tiedostoa. Valitse vähemmän tiedostoja ja yritä uudelleen.</value>
+    <value>Pakko-sovelluksessa avattavaksi on valittu liian monta tiedostoa. Valitse vähemmän tiedostoja ja yritä uudelleen.</value>
   </data>
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakkoa ei voitu avata. Asenna Pakko uudelleen ja yritä uudelleen.</value>

@@ -18,7 +18,7 @@
     <value>Saspiest formātā {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
-    <value>Atarhivēt</value>
+    <value>Izvilkt</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
     <value>Notīrīt</value>
@@ -36,10 +36,10 @@
     <value>Par programmu</value>
   </data>
   <data name="ExtractSelectedButton.Content" xml:space="preserve">
-    <value>Atarhivēt atlasīto</value>
+    <value>Izvilkt atlasīto</value>
   </data>
   <data name="ExtractAllButton.Content" xml:space="preserve">
-    <value>Atarhivēt visu</value>
+    <value>Izvilkt visu</value>
   </data>
 
   <!-- Table headers -->
@@ -126,7 +126,7 @@
     <value>Ātra</value>
   </data>
   <data name="CompressionNormalItem.Content" xml:space="preserve">
-    <value>Normāla</value>
+    <value>Parasta</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
     <value>Labākā</value>
@@ -155,7 +155,7 @@
     <value>Ievelciet failus vai mapes šeit</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arhīvus var atarhivēt; viss pārējais tiek saspiests</value>
+    <value>Arhīvus var izvilkt; viss pārējais tiek saspiests</value>
   </data>
 
   <!-- Labels -->
@@ -182,7 +182,7 @@
     <value>Notiek saspiešana...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
-    <value>Notiek atarhivēšana...</value>
+    <value>Notiek izvilkšana...</value>
   </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Pabeigts ar problēmām.</value>
@@ -197,7 +197,7 @@
     <value>Notiek pabeigšana...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Tiks atarhivēti {0} arhīvi augstāk norādītajā mapē</value>
+    <value>Tiks izvilkti {0} arhīvi augstāk norādītajā mapē</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
     <value>Tiks saspiesti {0} vienumi augstāk norādītajā mapē</value>
@@ -217,7 +217,7 @@
     <value>Aizdomīgs arhīvs</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Šis arhīvs apgalvo, ka satur {0} datu, saspiešanas attiecība {1}:1. Tas ir neparasti augsts un var liecināt par atarhivēšanas bumbu. Vai tomēr atarhivēt?</value>
+    <value>Šis arhīvs apgalvo, ka satur {0} datu, saspiešanas attiecība {1}:1. Tas ir neparasti augsts un var liecināt par atspiešanas bumbu. Vai tomēr izvilkt?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>Fails jau pastāv</value>
@@ -369,7 +369,7 @@
     <value>Notiek saspiešana... (faili: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
-    <value>Notiek atarhivēšana... (arhīvi: {0})</value>
+    <value>Notiek izvilkšana... (arhīvi: {0})</value>
   </data>
   <data name="StatusOpening" xml:space="preserve">
     <value>Notiek atvēršana...</value>
@@ -384,13 +384,13 @@
     <value>Priekšskatījums nav pieejams</value>
   </data>
   <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
-    <value>"{0}" nevar droši atvērt tieši. Vai tā vietā atarhivēt to mapē blakus arhīvam?</value>
+    <value>"{0}" nevar droši atvērt tieši. Vai tā vietā izvilkt to mapē blakus arhīvam?</value>
   </data>
   <data name="OutcomeCompressed" xml:space="preserve">
     <value>Saspiests {0} s laikā — arhīvi: {1}</value>
   </data>
   <data name="OutcomeExtracted" xml:space="preserve">
-    <value>Atarhivēts {0} s laikā — arhīvi: {1}</value>
+    <value>Izvilkts {0} s laikā — arhīvi: {1}</value>
   </data>
   <data name="OutcomeProblems" xml:space="preserve">
     <value>Pabeigts ar problēmām: {0}</value>
@@ -432,16 +432,16 @@
     <value>Pievienot mapi</value>
   </data>
   <data name="DestinationSaveLabel" xml:space="preserve">
-    <value>Saglabāt:</value>
+    <value>Saglabāt mapē:</value>
   </data>
   <data name="DestinationExtractLabel" xml:space="preserve">
-    <value>Atarhivēt uz:</value>
+    <value>Izvilkt uz:</value>
   </data>
   <data name="DeleteAfterCompressLabel" xml:space="preserve">
     <value>Pēc veiksmīgas saspiešanas pārvietot avota failus uz atkritni</value>
   </data>
   <data name="DeleteAfterExtractLabel" xml:space="preserve">
-    <value>Pēc veiksmīgas atarhivēšanas pārvietot arhīvus uz atkritni</value>
+    <value>Pēc veiksmīgas izvilkšanas pārvietot arhīvus uz atkritni</value>
   </data>
   <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
     <value>{0} (automātiski)</value>
@@ -471,10 +471,10 @@
     <value>sakļauts, sarakstā ir tikai arhīvi</value>
   </data>
   <data name="ExtractUnavailableHint" xml:space="preserve">
-    <value>Sarakstā nav arhīvu, nav ko atarhivēt</value>
+    <value>Sarakstā nav arhīvu, nav ko izvilkt</value>
   </data>
   <data name="DeleteAfterEitherLabel" xml:space="preserve">
-    <value>Pēc veiksmīgas darbības pārvietot uz atkritni to, ko tā izmantoja: avota failus pēc saspiešanas, arhīvus pēc atarhivēšanas</value>
+    <value>Pēc veiksmīgas darbības pārvietot uz atkritni to, ko tā izmantoja: avota failus pēc saspiešanas, arhīvus pēc izvilkšanas</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
     <value>Testēt arhīvu</value>
@@ -501,7 +501,7 @@
     <value>Šifrēti faili ({0}): {1} no {2}.</value>
   </data>
   <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
-    <value>Pakko pieprasa paroli, kad atarhivējat vai atverat failu. Failu nosaukumi nav šifrēti, un šifrēšana katram failam pievieno dažus baitus.</value>
+    <value>Pakko pieprasa paroli, kad izvelkat vai atverat failu. Failu nosaukumi nav šifrēti, un šifrēšana katram failam pievieno dažus baitus.</value>
   </data>
   <data name="BrowseEncryptedAe2Note" xml:space="preserve">
     <value>AES (AE-2) failiem CRC-32 ir tukšs: tos pārbauda autentifikācija, nevis kontrolsumma.</value>

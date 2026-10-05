@@ -121,7 +121,7 @@
     <value>此压缩包受密码保护，无法测试。</value>
   </data>
   <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
-    <value>应用于其余存档的密码与此存档不匹配。</value>
+    <value>应用于其余压缩包的密码与此压缩包不匹配。</value>
   </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>此压缩包受密码保护，无法浏览。</value>
@@ -202,7 +202,7 @@
     <value>压缩包包含符号链接、硬链接、设备或其他特殊条目，无法安全解压。</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>另有 {0} 个同名副本未被解压：此存档只能取出第一个和最后一个副本。</value>
+    <value>另有 {0} 个同名副本未被解压：此压缩包只能取出第一个和最后一个副本。</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>另一个选定项目的名称相同，无法以新名称添加此文件夹。请重命名其中一个，然后重试。</value>

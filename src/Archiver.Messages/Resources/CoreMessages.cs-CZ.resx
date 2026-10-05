@@ -25,7 +25,7 @@
     <value>Symbolické odkazy a spojení NTFS se nearchivují.</value>
   </data>
   <data name="FolderLinkNotFollowed" xml:space="preserve">
-    <value>Při komprimaci se nesleduje spojení NTFS ani symbolické odkazy na složky.</value>
+    <value>Při komprimaci se nesledují spojení NTFS ani symbolické odkazy na složky.</value>
   </data>
   <data name="ReparsePointNotArchived" xml:space="preserve">
     <value>Symbolické odkazy a body opětovné analýzy se nearchivují.</value>

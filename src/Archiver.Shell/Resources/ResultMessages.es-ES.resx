@@ -19,7 +19,7 @@
     <value>…y {0} más</value>
   </data>
   <data name="ResultNoErrorsDetected" xml:space="preserve">
-    <value>No se detectaron errores en el archivo (o archivos).</value>
+    <value>No se detectaron errores en el archivo comprimido (o archivos comprimidos).</value>
   </data>
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>La operación falló.</value>

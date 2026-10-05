@@ -106,10 +106,10 @@
     <value>{0} vyžaduje tar.exe s libarchive &gt;= 3.7.0 (Windows 11 23H2+); tar.exe tohto systému (verzia {1}) ho nepodporuje.</value>
   </data>
   <data name="FormatNotSupportedByTar" xml:space="preserve">
-    <value>{0} nepodporuje tar.exe tohto systému (verzia {1}).</value>
+    <value>{0} nie je podporovaný programom tar.exe tohto systému (verzia {1}).</value>
   </data>
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
-    <value>Tento formát archívu nepodporuje tar.exe tohto systému (verzia {0}).</value>
+    <value>Tento formát archívu nie je podporovaný programom tar.exe tohto systému (verzia {0}).</value>
   </data>
   <data name="NoTestCapability" xml:space="preserve">
     <value>archívy rodiny tar nie je možné testovať</value>

@@ -88,6 +88,6 @@
     <value>解压</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
-    <value>正在检查存档内容...</value>
+    <value>正在检查压缩包内容...</value>
   </data>
 </root>

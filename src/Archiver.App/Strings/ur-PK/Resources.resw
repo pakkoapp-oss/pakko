@@ -477,7 +477,7 @@
     <value>کامیاب کارروائی کے بعد، جو کچھ استعمال ہوا اسے ری سائیکل بن میں منتقل کریں: کمپریشن کے بعد ماخذ فائلیں، نکالنے کے بعد آرکائیوز</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
-    <value>آرکائو کی جانچ کریں</value>
+    <value>آرکائیو کی جانچ کریں</value>
   </data>
   <data name="CloseArchiveButton.Content" xml:space="preserve">
     <value>آرکائیو بند کریں</value>
@@ -486,7 +486,7 @@
     <value>جانچ ہو رہی ہے...</value>
   </data>
   <data name="TestResultTitle" xml:space="preserve">
-    <value>آرکائو کی جانچ</value>
+    <value>آرکائیو کی جانچ</value>
   </data>
   <data name="TestNoErrorsFound" xml:space="preserve">
     <value>کوئی خرابی نہیں ملی۔</value>

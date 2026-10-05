@@ -93,10 +93,10 @@
     <value>Modo:</value>
   </data>
   <data name="OneArchiveRadio.Content" xml:space="preserve">
-    <value>Un archivo</value>
+    <value>Un archivo comprimido</value>
   </data>
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
-    <value>Archivos separados</value>
+    <value>Archivos comprimidos separados</value>
   </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>Formato:</value>
@@ -129,7 +129,7 @@
     <value>Normal</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>Óptima</value>
+    <value>Máxima</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
     <value>Ninguna</value>
@@ -152,7 +152,7 @@
 
   <!-- Drop zone -->
   <data name="DropZoneHint.Text" xml:space="preserve">
-    <value>Suelta archivos o carpetas aquí</value>
+    <value>Suelte archivos o carpetas aquí</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
     <value>Los archivos comprimidos se pueden extraer; todo lo demás se comprime</value>
@@ -214,10 +214,10 @@
     <value>Omitidos</value>
   </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
-    <value>Archivo sospechoso</value>
+    <value>Archivo comprimido sospechoso</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Este archivo afirma contener {0} de datos, una relación de compresión de {1}:1. Esto es inusualmente alto y puede indicar una bomba de descompresión. ¿Extraer de todos modos?</value>
+    <value>Este archivo comprimido afirma contener {0} de datos, una relación de compresión de {1}:1. Esto es inusualmente alto y puede indicar una bomba de descompresión. ¿Extraer de todos modos?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>El archivo ya existe</value>
@@ -247,7 +247,7 @@
     <value>Contraseña incorrecta. Inténtelo de nuevo.</value>
   </data>
   <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
-    <value>Aplicar a los archivos restantes</value>
+    <value>Aplicar a los archivos comprimidos restantes</value>
   </data>
   <data name="PasswordDialogOkButton" xml:space="preserve">
     <value>Aceptar</value>
@@ -279,7 +279,7 @@
     <value>Buscar amenazas</value>
   </data>
   <data name="ScanNoThreatsFound" xml:space="preserve">
-    <value>No se encontraron amenazas en este archivo.</value>
+    <value>No se encontraron amenazas en este archivo comprimido.</value>
   </data>
   <data name="ScanThreatDetectedGeneric" xml:space="preserve">
     <value>amenaza detectada</value>
@@ -303,7 +303,7 @@
     <value>Confirmar contraseña</value>
   </data>
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
-    <value>Use solo letras inglesas, dígitos, espacios y signos de puntuación, hasta {0} caracteres, para que 7-Zip y otras herramientas ZIP puedan abrir el archivo.</value>
+    <value>Use solo letras inglesas, dígitos, espacios y signos de puntuación, hasta {0} caracteres, para que 7-Zip y otras herramientas ZIP puedan abrir el archivo comprimido.</value>
   </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>La contraseña tiene más de {0} caracteres.</value>
@@ -393,7 +393,7 @@
     <value>Extraído en {0} s — archivos comprimidos: {1}</value>
   </data>
   <data name="OutcomeProblems" xml:space="preserve">
-    <value>Finalizado con incidencias: {0}</value>
+    <value>Completado con incidencias: {0}</value>
   </data>
   <data name="OutcomeNothingDone" xml:space="preserve">
     <value>No se hizo nada — omitidos: {0}</value>
@@ -408,10 +408,10 @@
     <value>Detalles...</value>
   </data>
   <data name="EncryptPasswordLayoutHint" xml:space="preserve">
-    <value>Las letras que no son de la distribución de teclado inglesa no se pueden usar y no se han añadido. Cambia la distribución a inglés, borra el campo y vuelve a escribir la contraseña.</value>
+    <value>Las letras que no son de la distribución de teclado inglesa no se pueden usar y no se han añadido. Cambie la distribución a inglés, borre el campo y vuelva a escribir la contraseña.</value>
   </data>
   <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
-    <value>Ese carácter no se puede usar y no se ha añadido. Borra el campo y vuelve a escribir la contraseña usando solo letras inglesas, dígitos, espacios y signos de puntuación.</value>
+    <value>Ese carácter no se puede usar y no se ha añadido. Borre el campo y vuelva a escribir la contraseña usando solo letras inglesas, dígitos, espacios y signos de puntuación.</value>
   </data>
   <data name="NewArchiveCardTitle.Text" xml:space="preserve">
     <value>Nuevo archivo comprimido</value>
@@ -477,16 +477,16 @@
     <value>Tras una operación correcta, mover a la Papelera de reciclaje lo que usó: los archivos de origen tras comprimir, los archivos comprimidos tras extraer</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
-    <value>Probar archivo</value>
+    <value>Probar archivo comprimido</value>
   </data>
   <data name="CloseArchiveButton.Content" xml:space="preserve">
-    <value>Cerrar archivo</value>
+    <value>Cerrar archivo comprimido</value>
   </data>
   <data name="StatusTesting" xml:space="preserve">
     <value>Probando...</value>
   </data>
   <data name="TestResultTitle" xml:space="preserve">
-    <value>Probar archivo</value>
+    <value>Probar archivo comprimido</value>
   </data>
   <data name="TestNoErrorsFound" xml:space="preserve">
     <value>No se encontraron errores.</value>
@@ -507,10 +507,10 @@
     <value>El CRC-32 está vacío en los archivos AES (AE-2): los verifica la autenticación, no una suma de comprobación.</value>
   </data>
   <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
-    <value>ZipCrypto es un cifrado débil: los archivos se pueden recuperar sin la contraseña. Usa AES-256 para cualquier dato confidencial.</value>
+    <value>ZipCrypto es un cifrado débil: los archivos se pueden recuperar sin la contraseña. Use AES-256 para cualquier dato confidencial.</value>
   </data>
   <data name="BrowseOutsideInfo" xml:space="preserve">
-    <value>Esta es una carpeta del disco, no un archivo comprimido. Haz doble clic en un archivo comprimido para abrirlo o pulsa "Cerrar archivo" (Esc) para volver a crear archivos comprimidos.</value>
+    <value>Esta es una carpeta del disco, no un archivo comprimido. Haga doble clic en un archivo comprimido para abrirlo o pulse "Cerrar archivo comprimido" (Esc) para volver a crear archivos comprimidos.</value>
   </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Subir un nivel</value>
@@ -552,6 +552,6 @@
     <value>Cancelar todo</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
-    <value>Comprobando el contenido del archivo...</value>
+    <value>Comprobando el contenido del archivo comprimido...</value>
   </data>
 </root>

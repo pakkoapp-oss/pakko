@@ -58,7 +58,7 @@
     <value>संग्रह नहीं बनाया गया: पासवर्ड खाली है।</value>
   </data>
   <data name="PasswordUnsupportedCharacters" xml:space="preserve">
-    <value>संग्रह नहीं बनाया गया: पासवर्ड में केवल अंग्रेज़ी अक्षर, अंक, रिक्त स्थान और ASCII विराम चिह्न हो सकते हैं; 7-Zip जैसे अन्य ZIP टूल किसी अन्य वर्ण से सुरक्षित संग्रह नहीं खोल सकते।</value>
+    <value>संग्रह नहीं बनाया गया: पासवर्ड में केवल अंग्रेज़ी अक्षर, अंक, स्पेस और ASCII विराम चिह्न हो सकते हैं; 7-Zip जैसे अन्य ZIP टूल किसी अन्य वर्ण से सुरक्षित संग्रह नहीं खोल सकते।</value>
   </data>
   <data name="PasswordTooLong" xml:space="preserve">
     <value>संग्रह नहीं बनाया गया: पासवर्ड {0} वर्णों से लंबा है, जो AES-एन्क्रिप्टेड ZIP के लिए 7-Zip द्वारा स्वीकार्य अधिकतम है।</value>
@@ -88,7 +88,7 @@
     <value>फ़ाइल किसी पहचाने गए संग्रह प्रारूप में नहीं है और निकाली नहीं जा सकती।</value>
   </data>
   <data name="NotAnArchiveTest" xml:space="preserve">
-    <value>फ़ाइल किसी पहचाने गए संग्रह प्रारूप में नहीं है और जाँची नहीं जा सकती।</value>
+    <value>फ़ाइल किसी पहचाने गए संग्रह प्रारूप में नहीं है और इसका परीक्षण नहीं किया जा सकता।</value>
   </data>
   <data name="NotAnArchiveList" xml:space="preserve">
     <value>फ़ाइल किसी पहचाने गए संग्रह प्रारूप में नहीं है और इसकी सामग्री नहीं दिखाई जा सकती।</value>
@@ -112,13 +112,13 @@
     <value>यह संग्रह प्रारूप इस सिस्टम के tar.exe (संस्करण {0}) द्वारा समर्थित नहीं है।</value>
   </data>
   <data name="NoTestCapability" xml:space="preserve">
-    <value>tar परिवार के संग्रह जाँचे नहीं जा सकते</value>
+    <value>tar परिवार के संग्रहों का परीक्षण नहीं किया जा सकता</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>यह संग्रह पासवर्ड से सुरक्षित है और निकाला नहीं जा सकता।</value>
   </data>
   <data name="PasswordProtectedTest" xml:space="preserve">
-    <value>यह संग्रह पासवर्ड से सुरक्षित है और जाँचा नहीं जा सकता।</value>
+    <value>यह संग्रह पासवर्ड से सुरक्षित है और इसका परीक्षण नहीं किया जा सकता।</value>
   </data>
   <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
     <value>शेष संग्रहों पर लागू किया गया पासवर्ड इस संग्रह पर ठीक नहीं बैठता।</value>

@@ -18,7 +18,7 @@
     <value>Komprimovat do {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
-    <value>Rozbalit</value>
+    <value>Extrahovat</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
     <value>Vymazat</value>
@@ -36,10 +36,10 @@
     <value>O aplikaci</value>
   </data>
   <data name="ExtractSelectedButton.Content" xml:space="preserve">
-    <value>Rozbalit vybrané</value>
+    <value>Extrahovat vybrané</value>
   </data>
   <data name="ExtractAllButton.Content" xml:space="preserve">
-    <value>Rozbalit vše</value>
+    <value>Extrahovat vše</value>
   </data>
 
   <!-- Table headers -->
@@ -155,7 +155,7 @@
     <value>Přetáhněte sem soubory nebo složky</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Archivy lze rozbalit; vše ostatní bude komprimováno</value>
+    <value>Archivy lze extrahovat; vše ostatní bude komprimováno</value>
   </data>
 
   <!-- Labels -->
@@ -182,7 +182,7 @@
     <value>Komprimace...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
-    <value>Rozbalování...</value>
+    <value>Extrahování...</value>
   </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Dokončeno s problémy.</value>
@@ -197,7 +197,7 @@
     <value>Dokončování...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Bude rozbaleno archivů: {0} — do složky výše</value>
+    <value>Bude extrahováno archivů: {0} — do složky výše</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
     <value>Bude komprimováno položek: {0} — do složky výše</value>
@@ -217,7 +217,7 @@
     <value>Podezřelý archiv</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Tento archiv deklaruje {0} dat, kompresní poměr {1}:1. To je neobvykle vysoké a může jít o dekompresní bombu. Přesto rozbalit?</value>
+    <value>Tento archiv deklaruje {0} dat, kompresní poměr {1}:1. To je neobvykle vysoké a může jít o dekompresní bombu. Přesto extrahovat?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>Soubor již existuje</value>
@@ -369,7 +369,7 @@
     <value>Komprimace... (soubory: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
-    <value>Rozbalování... (archivy: {0})</value>
+    <value>Extrahování... (archivy: {0})</value>
   </data>
   <data name="StatusOpening" xml:space="preserve">
     <value>Otevírání...</value>
@@ -384,13 +384,13 @@
     <value>Náhled není k dispozici</value>
   </data>
   <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
-    <value>"{0}" nelze bezpečně otevřít přímo. Rozbalit jej místo toho do složky vedle archivu?</value>
+    <value>"{0}" nelze bezpečně otevřít přímo. Extrahovat jej místo toho do složky vedle archivu?</value>
   </data>
   <data name="OutcomeCompressed" xml:space="preserve">
     <value>Komprimováno za {0} s — archivy: {1}</value>
   </data>
   <data name="OutcomeExtracted" xml:space="preserve">
-    <value>Rozbaleno za {0} s — archivy: {1}</value>
+    <value>Extrahováno za {0} s — archivy: {1}</value>
   </data>
   <data name="OutcomeProblems" xml:space="preserve">
     <value>Dokončeno s problémy: {0}</value>
@@ -435,13 +435,13 @@
     <value>Uložit do:</value>
   </data>
   <data name="DestinationExtractLabel" xml:space="preserve">
-    <value>Rozbalit do:</value>
+    <value>Extrahovat do:</value>
   </data>
   <data name="DeleteAfterCompressLabel" xml:space="preserve">
     <value>Po úspěšné komprimaci přesunout zdrojové soubory do Koše</value>
   </data>
   <data name="DeleteAfterExtractLabel" xml:space="preserve">
-    <value>Po úspěšném rozbalení přesunout archivy do Koše</value>
+    <value>Po úspěšné extrakci přesunout archivy do Koše</value>
   </data>
   <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
     <value>{0} (automaticky)</value>
@@ -471,10 +471,10 @@
     <value>sbaleno, seznam obsahuje jen archivy</value>
   </data>
   <data name="ExtractUnavailableHint" xml:space="preserve">
-    <value>Seznam neobsahuje žádné archivy, není co rozbalit</value>
+    <value>Seznam neobsahuje žádné archivy, není co extrahovat</value>
   </data>
   <data name="DeleteAfterEitherLabel" xml:space="preserve">
-    <value>Po úspěšné operaci přesunout do Koše to, s čím pracovala: zdrojové soubory po komprimaci, archivy po rozbalení</value>
+    <value>Po úspěšné operaci přesunout do Koše to, s čím pracovala: zdrojové soubory po komprimaci, archivy po extrakci</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
     <value>Otestovat archiv</value>
@@ -501,7 +501,7 @@
     <value>Šifrované soubory ({0}): {1} z {2}.</value>
   </data>
   <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
-    <value>Pakko se zeptá na heslo, když soubor rozbalíte nebo otevřete. Názvy souborů nejsou šifrované a šifrování přidá ke každému souboru několik bajtů.</value>
+    <value>Pakko se zeptá na heslo, když soubor extrahujete nebo otevřete. Názvy souborů nejsou šifrované a šifrování přidá ke každému souboru několik bajtů.</value>
   </data>
   <data name="BrowseEncryptedAe2Note" xml:space="preserve">
     <value>CRC-32 je u souborů AES (AE-2) prázdné: ověřuje je autentizace, ne kontrolní součet.</value>

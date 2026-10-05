@@ -13,7 +13,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="ScanNoThreatsFound" xml:space="preserve">
-    <value>Không tìm thấy mối đe dọa nào trong tệp lưu trữ này.</value>
+    <value>Không tìm thấy mối đe dọa nào trong tệp nén này.</value>
   </data>
   <data name="ScanThreatDetectedGeneric" xml:space="preserve">
     <value>đã phát hiện mối đe dọa</value>
@@ -22,6 +22,6 @@
     <value>…và {0} mục nữa</value>
   </data>
   <data name="ScanNoThreatsFoundMany" xml:space="preserve">
-    <value>Không tìm thấy mối đe dọa nào trong các tệp lưu trữ đã chọn.</value>
+    <value>Không tìm thấy mối đe dọa nào trong các tệp nén đã chọn.</value>
   </data>
 </root>

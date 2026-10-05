@@ -79,15 +79,15 @@
     <value>{0}/s</value>
   </data>
   <data name="BombTitle" xml:space="preserve">
-    <value>Ύποπτο αρχείο</value>
+    <value>Ύποπτο αρχείο συμπίεσης</value>
   </data>
   <data name="BombMessage" xml:space="preserve">
-    <value>Αυτό το αρχείο δηλώνει ότι περιέχει {0} δεδομένων, με λόγο συμπίεσης {1}:1. Αυτό είναι ασυνήθιστα υψηλό και ενδέχεται να υποδεικνύει βόμβα αποσυμπίεσης. Εξαγωγή ούτως ή άλλως;</value>
+    <value>Αυτό το αρχείο συμπίεσης δηλώνει ότι περιέχει {0} δεδομένων, με λόγο συμπίεσης {1}:1. Αυτό είναι ασυνήθιστα υψηλό και ενδέχεται να υποδεικνύει βόμβα αποσυμπίεσης. Εξαγωγή ούτως ή άλλως;</value>
   </data>
   <data name="BombExtract" xml:space="preserve">
     <value>Εξαγωγή</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
-    <value>Έλεγχος περιεχομένων αρχειοθήκης...</value>
+    <value>Έλεγχος περιεχομένων αρχείου συμπίεσης...</value>
   </data>
 </root>

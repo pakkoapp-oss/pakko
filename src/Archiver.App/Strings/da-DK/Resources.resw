@@ -303,7 +303,7 @@
     <value>Bekræft adgangskode</value>
   </data>
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
-    <value>Brug kun engelske bogstaver, tal, mellemrum og tegnsætning, højst {0} tegn, så 7-Zip og andre ZIP-værktøjer kan åbne arkivet.</value>
+    <value>Brug kun engelske bogstaver, cifre, mellemrum og tegnsætning, højst {0} tegn, så 7-Zip og andre ZIP-værktøjer kan åbne arkivet.</value>
   </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Adgangskoden er længere end {0} tegn.</value>
@@ -393,7 +393,7 @@
     <value>Udpakket på {0} s — arkiver: {1}</value>
   </data>
   <data name="OutcomeProblems" xml:space="preserve">
-    <value>Afsluttet med problemer: {0}</value>
+    <value>Fuldført med problemer: {0}</value>
   </data>
   <data name="OutcomeNothingDone" xml:space="preserve">
     <value>Intet blev udført — sprunget over: {0}</value>
@@ -411,7 +411,7 @@
     <value>Bogstaver uden for det engelske tastaturlayout kan ikke bruges og blev ikke tilføjet. Skift layoutet til engelsk, ryd feltet, og skriv adgangskoden igen.</value>
   </data>
   <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
-    <value>Det tegn kan ikke bruges og blev ikke tilføjet. Ryd feltet, og skriv adgangskoden igen med kun engelske bogstaver, tal, mellemrum og tegnsætning.</value>
+    <value>Det tegn kan ikke bruges og blev ikke tilføjet. Ryd feltet, og skriv adgangskoden igen med kun engelske bogstaver, cifre, mellemrum og tegnsætning.</value>
   </data>
   <data name="NewArchiveCardTitle.Text" xml:space="preserve">
     <value>Nyt arkiv</value>

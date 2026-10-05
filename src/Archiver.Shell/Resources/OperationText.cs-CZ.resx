@@ -43,10 +43,10 @@
     <value>Komprimace: {0}</value>
   </data>
   <data name="TitleExtracting" xml:space="preserve">
-    <value>Rozbalování: {0}</value>
+    <value>Extrahování: {0}</value>
   </data>
   <data name="TitleExtractingMany" xml:space="preserve">
-    <value>Rozbalování archivů: {0}</value>
+    <value>Extrahování archivů: {0}</value>
   </data>
   <data name="TitleTesting" xml:space="preserve">
     <value>Testování: {0}</value>
@@ -82,10 +82,10 @@
     <value>Podezřelý archiv</value>
   </data>
   <data name="BombMessage" xml:space="preserve">
-    <value>Tento archiv deklaruje {0} dat, kompresní poměr {1}:1. To je neobvykle vysoké a může jít o dekompresní bombu. Přesto rozbalit?</value>
+    <value>Tento archiv deklaruje {0} dat, kompresní poměr {1}:1. To je neobvykle vysoké a může jít o dekompresní bombu. Přesto extrahovat?</value>
   </data>
   <data name="BombExtract" xml:space="preserve">
-    <value>Rozbalit</value>
+    <value>Extrahovat</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Kontrola obsahu archivu...</value>

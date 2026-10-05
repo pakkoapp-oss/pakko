@@ -88,13 +88,13 @@
     <value>Fails nav atpazītā arhīva formātā, un to nevar izvilkt.</value>
   </data>
   <data name="NotAnArchiveTest" xml:space="preserve">
-    <value>Fails nav atpazītā arhīva formātā, un to nevar pārbaudīt.</value>
+    <value>Fails nav atpazītā arhīva formātā, un to nevar testēt.</value>
   </data>
   <data name="NotAnArchiveList" xml:space="preserve">
     <value>Fails nav atpazītā arhīva formātā, un tā saturu nevar parādīt.</value>
   </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
-    <value>Formāts {0} netiek atbalstīts. Tiek atbalstīti tikai ZIP formāti.</value>
+    <value>Formāts {0} netiek atbalstīts. Tiek atbalstīti tikai uz ZIP balstīti formāti.</value>
   </data>
   <data name="FormatBlocked" xml:space="preserve">
     <value>Šis arhīva formāts ({0}) ir bloķēts ar grupas politiku.</value>
@@ -112,13 +112,13 @@
     <value>Šīs sistēmas tar.exe (versija {0}) neatbalsta šo arhīva formātu.</value>
   </data>
   <data name="NoTestCapability" xml:space="preserve">
-    <value>tar saimes arhīvus nevar pārbaudīt</value>
+    <value>tar saimes arhīvus nevar testēt</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Šis arhīvs ir aizsargāts ar paroli, un to nevar izvilkt.</value>
   </data>
   <data name="PasswordProtectedTest" xml:space="preserve">
-    <value>Šis arhīvs ir aizsargāts ar paroli, un to nevar pārbaudīt.</value>
+    <value>Šis arhīvs ir aizsargāts ar paroli, un to nevar testēt.</value>
   </data>
   <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
     <value>Atlikušajiem arhīviem piemērotā parole neder šim arhīvam.</value>
@@ -232,7 +232,7 @@
     <value>Izlaists: simboliskā saite vai savienojums (neseko)</value>
   </data>
   <data name="HashFileChanged" xml:space="preserve">
-    <value>Faila izmērs mainījās jaucējkoda aprēķināšanas laikā: {0}</value>
+    <value>Faila izmērs mainījās kontrolsummas aprēķināšanas laikā: {0}</value>
   </data>
   <data name="NoAntivirusRegistered" xml:space="preserve">
     <value>Skenēšanai nav reģistrēta neviena pretvīrusu programma.</value>

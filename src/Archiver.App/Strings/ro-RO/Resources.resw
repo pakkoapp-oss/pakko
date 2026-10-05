@@ -129,7 +129,7 @@
     <value>Normală</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>Cea mai bună</value>
+    <value>Maximă</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
     <value>Fără</value>
@@ -217,7 +217,7 @@
     <value>Arhivă suspectă</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Această arhivă declară că conține {0} de date, un raport de compresie de {1}:1. Aceasta este neobișnuit de ridicat și poate indica o bombă de decompresie. Extrageți oricum?</value>
+    <value>Această arhivă afirmă că ar conține {0} de date, un raport de compresie de {1}:1. Aceasta este neobișnuit de ridicat și poate indica o bombă de decompresie. Extrageți oricum?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>Fișierul există deja</value>
@@ -253,7 +253,7 @@
     <value>OK</value>
   </data>
   <data name="PasswordDialogCancelButton" xml:space="preserve">
-    <value>Anulare</value>
+    <value>Anulează</value>
   </data>
 
   <!-- About dialog -->
@@ -303,10 +303,10 @@
     <value>Confirmați parola</value>
   </data>
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
-    <value>Folosiți doar litere englezești, cifre, spații și semne de punctuație, cel mult {0} caractere, pentru ca 7-Zip și alte instrumente ZIP să poată deschide arhiva.</value>
+    <value>Folosiți doar litere englezești, cifre, spații și semne de punctuație, cel mult {0} de caractere, pentru ca 7-Zip și alte instrumente ZIP să poată deschide arhiva.</value>
   </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
-    <value>Parola depășește {0} caractere.</value>
+    <value>Parola depășește {0} de caractere.</value>
   </data>
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>Parolele nu se potrivesc.</value>

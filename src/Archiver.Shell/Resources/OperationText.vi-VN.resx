@@ -19,13 +19,13 @@
     <value>Đóng</value>
   </data>
   <data name="WindowItemOfCount" xml:space="preserve">
-    <value>Tệp lưu trữ {0}/{1}  ·  {2}</value>
+    <value>Tệp nén {0}/{1}  ·  {2}</value>
   </data>
   <data name="WindowExistingFile" xml:space="preserve">
     <value>Tệp hiện có</value>
   </data>
   <data name="WindowIncomingFile" xml:space="preserve">
-    <value>Từ tệp lưu trữ</value>
+    <value>Từ tệp nén</value>
   </data>
   <data name="WindowNewer" xml:space="preserve">
     <value>mới hơn</value>
@@ -37,7 +37,7 @@
     <value>Mật khẩu</value>
   </data>
   <data name="WindowSkipArchive" xml:space="preserve">
-    <value>Bỏ qua tệp lưu trữ</value>
+    <value>Bỏ qua tệp nén</value>
   </data>
   <data name="TitleArchiving" xml:space="preserve">
     <value>Đang nén: {0}</value>
@@ -46,19 +46,19 @@
     <value>Đang giải nén: {0}</value>
   </data>
   <data name="TitleExtractingMany" xml:space="preserve">
-    <value>Đang giải nén các tệp lưu trữ: {0}</value>
+    <value>Đang giải nén các tệp nén: {0}</value>
   </data>
   <data name="TitleTesting" xml:space="preserve">
     <value>Đang kiểm tra: {0}</value>
   </data>
   <data name="TitleTestingMany" xml:space="preserve">
-    <value>Đang kiểm tra các tệp lưu trữ: {0}</value>
+    <value>Đang kiểm tra các tệp nén: {0}</value>
   </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>Đang quét mối đe dọa: {0}</value>
   </data>
   <data name="TitleScanningMany" xml:space="preserve">
-    <value>Đang quét các tệp lưu trữ: {0}</value>
+    <value>Đang quét các tệp nén: {0}</value>
   </data>
   <data name="TitleHashMany" xml:space="preserve">
     <value>{0} (số tệp: {1})</value>
@@ -88,6 +88,6 @@
     <value>Giải nén</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
-    <value>Đang kiểm tra nội dung kho lưu trữ...</value>
+    <value>Đang kiểm tra nội dung tệp nén...</value>
   </data>
 </root>

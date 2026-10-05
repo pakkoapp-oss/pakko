@@ -82,10 +82,10 @@
     <value>Şüpheli arşiv</value>
   </data>
   <data name="BombMessage" xml:space="preserve">
-    <value>Bu arşivin {0} veri içerdiği belirtiliyor, sıkıştırma oranı {1}:1. Bu alışılmadık derecede yüksek ve bir sıkıştırma bombasına işaret edebilir. Yine de çıkartılsın mı?</value>
+    <value>Bu arşivin {0} veri içerdiği belirtiliyor, sıkıştırma oranı {1}:1. Bu alışılmadık derecede yüksek ve bir açma bombasına işaret edebilir. Yine de ayıklansın mı?</value>
   </data>
   <data name="BombExtract" xml:space="preserve">
-    <value>Çıkart</value>
+    <value>Ayıkla</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Arşivin içeriği denetleniyor...</value>

@@ -49,7 +49,7 @@
     <value>Nama entri terlalu panjang untuk arsip ZIP ({0} byte dalam UTF-8; maksimum {1}).</value>
   </data>
   <data name="NotEnoughSpaceToCompress" xml:space="preserve">
-    <value>Ruang disk kosong tidak cukup untuk mengompresi file ini: ukurannya {0} byte, tetapi hanya {1} byte yang kosong.</value>
+    <value>Ruang disk kosong tidak cukup untuk mengompres file ini: ukurannya {0} byte, tetapi hanya {1} byte yang kosong.</value>
   </data>
   <data name="PasswordNotEntered" xml:space="preserve">
     <value>Arsip tidak dibuat: kata sandi tidak dimasukkan.</value>

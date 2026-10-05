@@ -16,7 +16,7 @@
     <value>スキップ ({0}):</value>
   </data>
   <data name="ResultAndMoreLine" xml:space="preserve">
-    <value>…他{0}件</value>
+    <value>…他 {0} 件</value>
   </data>
   <data name="ResultNoErrorsDetected" xml:space="preserve">
     <value>アーカイブにエラーは検出されませんでした。</value>

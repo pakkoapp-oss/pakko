@@ -10976,3 +10976,53 @@ it). Every row passed except the findings below.
 - **Filed:** T-F322 (`-p` hint for 7z/RAR), T-F323 (count before a plural noun), T-F324 (hidden
   system folders in the browser), T-F325 (above).
 
+## T-F328 — one term per action inside each locale (2026-10-05)
+
+A read-through of all 36 translations found that one action often had two or three words in one
+locale, because `CoreMessages`, the App strings and the Explorer menu were translated at different
+times with no glossary. T-F328 makes each locale use one.
+
+**Rule.** The word the Explorer menu and the main window already share wins, and the other
+surfaces follow. Where the menu and the main window differ, the word used in more strings wins.
+The rule is about consistency only; it does not claim that the winning word is the better
+translation. Windows' own wording was not checked for it.
+
+**Choices.**
+
+| Action | Locale | Kept | Replaced | Surfaces changed |
+|---|---|---|---|---|
+| extract | pl-PL | wypakować | wyodrębnić | Core |
+| extract | et-EE | lahti pakkida | ekstraktida, välja pakkida | Core |
+| extract | cs-CZ | extrahovat | rozbalit | App, operation window |
+| extract | sk-SK | extrahovať | rozbaliť | App, operation window |
+| extract | bg-BG | извличане | разархивиране | App, operation window |
+| extract | lv-LV | izvilkt | atarhivēt | App, operation window |
+| extract | tr-TR | ayıkla | çıkart | App, operation window |
+| compress | hr-HR | komprimiranje, kompresija | sažimanje | Core |
+| compress | sr-Latn-RS | kompresovanje, kompresija | komprimovanje | Core, menu message |
+| compress | lt-LT | suspausti | glaudinti | Core, menu message |
+| password | de-DE | Passwort | Kennwort | Core, one App string |
+| archive | es-ES | archivo comprimido | bare "archivo" where it means the archive | all |
+| archive | el-GR | αρχείο συμπίεσης | bare "αρχείο", αρχειοθήκη | all |
+| archive | ko-KR | 압축 파일 | 보관 파일, 아카이브 | Core, two App strings |
+| archive | vi-VN | tệp nén | kho lưu trữ, tệp lưu trữ | all |
+| archive | ja-JP | アーカイブ | 書庫 | menu, Test button |
+| archive | zh-Hans | 压缩包 | 存档 | four strings |
+| archive | th-TH | ไฟล์บีบอัด | ไฟล์เก็บถาวร | four strings |
+| archive | sw-KE | kumbukumbu | hifadhi (kept only for Save) | App, operation window |
+| test | uk-UA, lv-LV, el-GR | the Test button's verb | the verb also used for Scan | three Core messages each |
+| test | hi-IN | the Test button's noun (परीक्षण) | जाँच, which the App uses for "checking the contents" | three Core messages |
+| test | it-IT | Testa / Test | Verifica (kept for Scan) | App, menu, operation window |
+| test | lt-LT | Testuoti | Tikrinti (kept for Scan) | App, menu, operation window, Core |
+| hash | pl-PL, ro-RO, lv-LV, hr-HR, sl-SI | the main window button's word | "Hash" in the menu | menu; Core in pl, ro, lv |
+| hash | fi-FI, vi-VN | the menu's word | the button's | App |
+| skip | ur-PK | نظرانداز | چھوڑ | Core, operation window |
+
+**Not changed on purpose.** `extractHereIntelligent` keeps the capital in brackets in every
+locale: it copies NanaZip's item text (T-F115), and the audit's proposal to lower-case it was
+dropped once that was seen. `LocalHeaderMismatch` waits for T-F323. The English source is
+untouched.
+
+**No native review.** The user has no native readers for this many languages (2026-10-05), so
+these translations rest on the audit alone. sw-KE, ur-PK and th-TH are the least certain; a
+report from a native user outranks any choice in the table above.

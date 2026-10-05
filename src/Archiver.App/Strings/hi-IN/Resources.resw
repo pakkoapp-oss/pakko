@@ -129,7 +129,7 @@
     <value>सामान्य</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>सर्वश्रेष्ठ</value>
+    <value>सर्वोत्तम</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
     <value>कोई नहीं</value>
@@ -294,7 +294,7 @@
     <value>पासवर्ड से एन्क्रिप्ट करें (AES-256)</value>
   </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
-    <value>फ़ाइलों की सामग्री AES-256 से एन्क्रिप्ट की जाएगी। आर्काइव के अंदर फ़ाइलों और फ़ोल्डरों के नाम पासवर्ड के बिना भी दिखाई देते रहेंगे।</value>
+    <value>फ़ाइलों की सामग्री AES-256 से एन्क्रिप्ट की जाएगी। संग्रह के अंदर फ़ाइलों और फ़ोल्डरों के नाम पासवर्ड के बिना भी दिखाई देते रहेंगे।</value>
   </data>
   <data name="EncryptPasswordPlaceholder" xml:space="preserve">
     <value>पासवर्ड</value>
@@ -303,7 +303,7 @@
     <value>पासवर्ड की पुष्टि करें</value>
   </data>
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
-    <value>केवल अंग्रेज़ी अक्षर, अंक, स्पेस और विराम चिह्न इस्तेमाल करें, अधिकतम {0} वर्ण, ताकि 7-Zip और अन्य ZIP टूल आर्काइव खोल सकें।</value>
+    <value>केवल अंग्रेज़ी अक्षर, अंक, स्पेस और विराम चिह्न इस्तेमाल करें, अधिकतम {0} वर्ण, ताकि 7-Zip और अन्य ZIP टूल संग्रह खोल सकें।</value>
   </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>पासवर्ड {0} वर्णों से लंबा है।</value>
@@ -411,7 +411,7 @@
     <value>अंग्रेज़ी कीबोर्ड लेआउट के बाहर के अक्षर उपयोग नहीं किए जा सकते और जोड़े नहीं गए। लेआउट को अंग्रेज़ी में बदलें, फ़ील्ड साफ़ करें और पासवर्ड फिर से लिखें।</value>
   </data>
   <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
-    <value>यह वर्ण उपयोग नहीं किया जा सकता और जोड़ा नहीं गया। फ़ील्ड साफ़ करें और केवल अंग्रेज़ी अक्षरों, अंकों, रिक्त स्थानों और विराम चिह्नों का उपयोग करके पासवर्ड फिर से लिखें।</value>
+    <value>यह वर्ण उपयोग नहीं किया जा सकता और जोड़ा नहीं गया। फ़ील्ड साफ़ करें और केवल अंग्रेज़ी अक्षरों, अंकों, स्पेस और विराम चिह्नों का उपयोग करके पासवर्ड फिर से लिखें।</value>
   </data>
   <data name="NewArchiveCardTitle.Text" xml:space="preserve">
     <value>नया संग्रह</value>
@@ -468,7 +468,7 @@
     <value>बिना पासवर्ड</value>
   </data>
   <data name="NewArchiveCollapsedReason" xml:space="preserve">
-    <value>संकुचित, सूची में केवल संग्रह हैं</value>
+    <value>संक्षिप्त किया गया, सूची में केवल संग्रह हैं</value>
   </data>
   <data name="ExtractUnavailableHint" xml:space="preserve">
     <value>सूची में कोई संग्रह नहीं है, निकालने के लिए कुछ नहीं</value>

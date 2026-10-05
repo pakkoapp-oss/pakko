@@ -214,7 +214,7 @@
     <value>Az archívum olyan fájlneveket tartalmaz, amelyeket a tar.exe ezen a rendszeren nem tud megjeleníteni ({0} kódlap), ezért itt nem olvasható tar.exe-vel. Részletek: {1}</value>
   </data>
   <data name="SandboxSetupFailed" xml:space="preserve">
-    <value>A védőfal (sandbox) beállítása sikertelen: {0}</value>
+    <value>A tesztkörnyezet (sandbox) beállítása sikertelen: {0}</value>
   </data>
   <data name="ArchiveInUse" xml:space="preserve">
     <value>Az archívumot egy másik program használja: {0}</value>

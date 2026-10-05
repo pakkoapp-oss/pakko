@@ -471,7 +471,7 @@
     <value>strnjeno, seznam vsebuje samo arhive</value>
   </data>
   <data name="ExtractUnavailableHint" xml:space="preserve">
-    <value>Seznam ne vsebuje arhivov, ničesar ni za razširiti</value>
+    <value>Seznam ne vsebuje arhivov, ni česa razširiti</value>
   </data>
   <data name="DeleteAfterEitherLabel" xml:space="preserve">
     <value>Po uspešni operaciji premakni v koš tisto, kar je uporabila: izvorne datoteke po stiskanju, arhive po razširitvi</value>
@@ -495,7 +495,7 @@
     <value>Šifrirano</value>
   </data>
   <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
-    <value>neznan način</value>
+    <value>neznana metoda</value>
   </data>
   <data name="BrowseEncryptedCount" xml:space="preserve">
     <value>Šifrirane datoteke ({0}): {1} od {2}.</value>

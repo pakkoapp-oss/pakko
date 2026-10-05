@@ -124,7 +124,7 @@
     <value>TAR.LZMA</value>
   </data>
   <data name="CompressionFastItem.Content" xml:space="preserve">
-    <value>Швидко</value>
+    <value>Швидке</value>
   </data>
   <data name="CompressionNormalItem.Content" xml:space="preserve">
     <value>Звичайне</value>
@@ -204,7 +204,7 @@
     <value>Цей комп'ютер</value>
   </data>
   <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
-    <value>Неможливо відкрити - цей архів вкладений занадто глибоко.</value>
+    <value>Неможливо відкрити — цей архів вкладений занадто глибоко.</value>
   </data>
   <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
     <value>Перегляд недоступний</value>
@@ -254,7 +254,7 @@
     <value>Підозрілий архів</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Цей архів заявляє про {0} даних, коефіцієнт стиснення {1}:1. Це незвично високо і може вказувати на "архівну бомбу". Видобути попри це?</value>
+    <value>Цей архів заявляє про {0} даних, коефіцієнт стиснення {1}:1. Це незвично високо і може вказувати на «архівну бомбу». Видобути попри це?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>Файл вже існує</value>
@@ -331,7 +331,7 @@
     <value>Зашифрувати паролем (AES-256)</value>
   </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
-    <value>Вміст файлів буде зашифровано AES-256. Імена файлів і тек в архіві залишаться видимими без пароля.</value>
+    <value>Вміст файлів буде зашифровано AES-256. Імена файлів і папок в архіві залишаться видимими без пароля.</value>
   </data>
   <data name="EncryptPasswordPlaceholder" xml:space="preserve">
     <value>Пароль</value>

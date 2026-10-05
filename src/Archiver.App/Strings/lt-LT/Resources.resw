@@ -126,13 +126,13 @@
     <value>Greitas</value>
   </data>
   <data name="CompressionNormalItem.Content" xml:space="preserve">
-    <value>Normalus</value>
+    <value>Įprastas</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
     <value>Geriausias</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
-    <value>Joks</value>
+    <value>Be suspaudimo</value>
   </data>
   <data name="ConflictOverwriteItem.Content" xml:space="preserve">
     <value>Perrašyti</value>
@@ -477,16 +477,16 @@
     <value>Sėkmingai atlikus operaciją, perkelti į šiukšlinę tai, ką ji naudojo: šaltinio failus po suspaudimo, archyvus po išskleidimo</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
-    <value>Tikrinti archyvą</value>
+    <value>Testuoti archyvą</value>
   </data>
   <data name="CloseArchiveButton.Content" xml:space="preserve">
     <value>Uždaryti archyvą</value>
   </data>
   <data name="StatusTesting" xml:space="preserve">
-    <value>Tikrinama...</value>
+    <value>Testuojama...</value>
   </data>
   <data name="TestResultTitle" xml:space="preserve">
-    <value>Archyvo tikrinimas</value>
+    <value>Archyvo testavimas</value>
   </data>
   <data name="TestNoErrorsFound" xml:space="preserve">
     <value>Klaidų nerasta.</value>

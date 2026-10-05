@@ -85,7 +85,7 @@
     <value>„{0}” nie przeszedł weryfikacji podpisu Authenticode.</value>
   </data>
   <data name="NotAnArchiveExtract" xml:space="preserve">
-    <value>Plik nie ma rozpoznawanego formatu archiwum i nie można go wyodrębnić.</value>
+    <value>Plik nie ma rozpoznawanego formatu archiwum i nie można go wypakować.</value>
   </data>
   <data name="NotAnArchiveTest" xml:space="preserve">
     <value>Plik nie ma rozpoznawanego formatu archiwum i nie można go przetestować.</value>
@@ -100,7 +100,7 @@
     <value>Ten format archiwum ({0}) jest zablokowany przez zasady grupy.</value>
   </data>
   <data name="TarExtractionDisabled" xml:space="preserve">
-    <value>Wyodrębnianie za pomocą tar.exe jest wyłączone przez zasady grupy.</value>
+    <value>Wypakowywanie za pomocą tar.exe jest wyłączone przez zasady grupy.</value>
   </data>
   <data name="FormatNeedsNewerTar" xml:space="preserve">
     <value>{0} wymaga tar.exe z libarchive &gt;= 3.7.0 (Windows 11 23H2+); tar.exe w tym systemie (wersja {1}) go nie obsługuje.</value>
@@ -115,7 +115,7 @@
     <value>archiwów z rodziny tar nie można testować</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
-    <value>To archiwum jest chronione hasłem i nie można go wyodrębnić.</value>
+    <value>To archiwum jest chronione hasłem i nie można go wypakować.</value>
   </data>
   <data name="PasswordProtectedTest" xml:space="preserve">
     <value>To archiwum jest chronione hasłem i nie można go przetestować.</value>
@@ -130,16 +130,16 @@
     <value>Plik ma sygnaturę ZIP, ale wygląda na uszkodzony lub niekompletny.</value>
   </data>
   <data name="CannotExtractArchive" xml:space="preserve">
-    <value>Nie można wyodrębnić archiwum: {0}</value>
+    <value>Nie można wypakować archiwum: {0}</value>
   </data>
   <data name="AccessDeniedExtractingArchive" xml:space="preserve">
-    <value>Odmowa dostępu podczas wyodrębniania archiwum: {0}</value>
+    <value>Odmowa dostępu podczas wypakowywania archiwum: {0}</value>
   </data>
   <data name="CannotReadArchive" xml:space="preserve">
     <value>Nie można odczytać archiwum: {0}</value>
   </data>
   <data name="EntryNameCollision" xml:space="preserve">
-    <value>Po zdekodowaniu element „{0}” ma taką samą nazwę jak inny element; nie jest wyodrębniany, ponieważ jeden zastąpiłby drugi.</value>
+    <value>Po zdekodowaniu element „{0}” ma taką samą nazwę jak inny element; nie jest wypakowywany, ponieważ jeden zastąpiłby drugi.</value>
   </data>
   <data name="EntryFailed" xml:space="preserve">
     <value>Element „{0}”: {1}</value>
@@ -154,22 +154,22 @@
     <value>Element „{0}” używa nieobsługiwanej metody kompresji z szyfrowaniem.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Archiwum deklaruje {0} bajtów po rozpakowaniu, ale w miejscu docelowym jest wolnych tylko {1} bajtów. Wyodrębnianie zostało zablokowane.</value>
+    <value>Archiwum deklaruje {0} bajtów po rozpakowaniu, ale w miejscu docelowym jest wolnych tylko {1} bajtów. Wypakowywanie zostało zablokowane.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
-    <value>Podejrzany współczynnik kompresji ({0}:1, zadeklarowano {1} bajtów). Wyodrębnianie odrzucono jako zabezpieczenie przed bombami ZIP.</value>
+    <value>Podejrzany współczynnik kompresji ({0}:1, zadeklarowano {1} bajtów). Wypakowywanie odrzucono jako zabezpieczenie przed bombami ZIP.</value>
   </data>
   <data name="TarBombDeclined" xml:space="preserve">
-    <value>Podejrzany współczynnik kompresji ({0}:1, zadeklarowano {1} bajtów) dla całego archiwum. Wyodrębnianie odrzucono jako zabezpieczenie przed bombami dekompresyjnymi.</value>
+    <value>Podejrzany współczynnik kompresji ({0}:1, zadeklarowano {1} bajtów) dla całego archiwum. Wypakowywanie odrzucono jako zabezpieczenie przed bombami dekompresyjnymi.</value>
   </data>
   <data name="DestinationFileLocked" xml:space="preserve">
     <value>Nie można zapisać „{0}”: plik docelowy jest zablokowany przez inny proces.</value>
   </data>
   <data name="AllEntriesSkipped" xml:space="preserve">
-    <value>Z tego archiwum nic nie wyodrębniono — wszystkie elementy zostały pominięte.</value>
+    <value>Z tego archiwum nic nie wypakowano — wszystkie elementy zostały pominięte.</value>
   </data>
   <data name="UnsafeEntryPath" xml:space="preserve">
-    <value>Element „{0}” ma niebezpieczną ścieżkę i nie został wyodrębniony.</value>
+    <value>Element „{0}” ma niebezpieczną ścieżkę i nie został wypakowany.</value>
   </data>
   <data name="EntryAlternateDataStream" xml:space="preserve">
     <value>Element z alternatywnym strumieniem danych odrzucono ze względów bezpieczeństwa.</value>
@@ -181,7 +181,7 @@
     <value>Nazwa elementu zawiera znaki sterujące i została pominięta.</value>
   </data>
   <data name="CannotExtractEntry" xml:space="preserve">
-    <value>Nie można wyodrębnić „{0}”: {1}</value>
+    <value>Nie można wypakować „{0}”: {1}</value>
   </data>
   <data name="EntryThroughReparsePoint" xml:space="preserve">
     <value>Ścieżka elementu prowadzi przez punkt ponownej analizy (łącze symboliczne lub punkt połączenia) i została pominięta.</value>
@@ -190,19 +190,19 @@
     <value>Plik już istnieje w miejscu docelowym.</value>
   </data>
   <data name="TarExtractionFailed" xml:space="preserve">
-    <value>Wyodrębnianie za pomocą tar.exe nie powiodło się: {0}</value>
+    <value>Wypakowywanie za pomocą tar.exe nie powiodło się: {0}</value>
   </data>
   <data name="TarUnsafeEntryPath" xml:space="preserve">
-    <value>Archiwum zawiera niebezpieczną ścieżkę elementu („{0}”) i nie można go bezpiecznie wyodrębnić.</value>
+    <value>Archiwum zawiera niebezpieczną ścieżkę elementu („{0}”) i nie można go bezpiecznie wypakować.</value>
   </data>
   <data name="TarListingInconsistent" xml:space="preserve">
-    <value>Lista zawartości archiwum jest niespójna; nie można go bezpiecznie wyodrębnić.</value>
+    <value>Lista zawartości archiwum jest niespójna; nie można go bezpiecznie wypakować.</value>
   </data>
   <data name="TarSpecialEntry" xml:space="preserve">
-    <value>Archiwum zawiera łącze symboliczne, łącze twarde, urządzenie lub inny specjalny element i nie można go bezpiecznie wyodrębnić.</value>
+    <value>Archiwum zawiera łącze symboliczne, łącze twarde, urządzenie lub inny specjalny element i nie można go bezpiecznie wypakować.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Nie wyodrębniono kolejnych kopii o tej nazwie ({0}): z tego archiwum można wyjąć tylko pierwszą i ostatnią kopię.</value>
+    <value>Nie wypakowano kolejnych kopii o tej nazwie ({0}): z tego archiwum można wyjąć tylko pierwszą i ostatnią kopię.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Inny zaznaczony element ma taką samą nazwę, a tego folderu nie udało się dodać pod nową nazwą. Zmień nazwę jednego z nich i spróbuj ponownie.</value>
@@ -232,7 +232,7 @@
     <value>Pominięto: łącze symboliczne lub punkt połączenia (nieśledzone)</value>
   </data>
   <data name="HashFileChanged" xml:space="preserve">
-    <value>Rozmiar pliku zmienił się podczas obliczania skrótu: {0}</value>
+    <value>Rozmiar pliku zmienił się podczas obliczania sumy kontrolnej: {0}</value>
   </data>
   <data name="NoAntivirusRegistered" xml:space="preserve">
     <value>Nie zarejestrowano żadnego programu antywirusowego do skanowania.</value>
@@ -247,7 +247,7 @@
     <value>Nie można odczytać elementu: {0}</value>
   </data>
   <data name="ScanCannotExtract" xml:space="preserve">
-    <value>Nie można wyodrębnić archiwum do skanowania: {0}</value>
+    <value>Nie można wypakować archiwum do skanowania: {0}</value>
   </data>
   <data name="ScanRemovedOrBlocked" xml:space="preserve">
     <value>Usunięto lub zablokowano, zanim Pakko mógł to bezpośrednio przeskanować.</value>

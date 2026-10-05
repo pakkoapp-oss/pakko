@@ -291,10 +291,10 @@
     <value>Ebaselge</value>
   </data>
   <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
-    <value>Krüpteeri parooliga (AES-256)</value>
+    <value>Krüpti parooliga (AES-256)</value>
   </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
-    <value>Failide sisu krüpteeritakse AES-256-ga. Arhiivis olevate failide ja kaustade nimed jäävad ilma paroolita nähtavaks.</value>
+    <value>Failide sisu krüptitakse AES-256-ga. Arhiivis olevate failide ja kaustade nimed jäävad ilma paroolita nähtavaks.</value>
   </data>
   <data name="EncryptPasswordPlaceholder" xml:space="preserve">
     <value>Parool</value>

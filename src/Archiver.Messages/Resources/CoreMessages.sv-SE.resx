@@ -100,7 +100,7 @@
     <value>Det här arkivformatet ({0}) blockeras av en grupprincip.</value>
   </data>
   <data name="TarExtractionDisabled" xml:space="preserve">
-    <value>Extrahering med tar.exe är inaktiverat av en grupprincip.</value>
+    <value>Extrahering med tar.exe är inaktiverad av en grupprincip.</value>
   </data>
   <data name="FormatNeedsNewerTar" xml:space="preserve">
     <value>{0} kräver tar.exe med libarchive &gt;= 3.7.0 (Windows 11 23H2+); systemets tar.exe (version {1}) stöder det inte.</value>
@@ -124,7 +124,7 @@
     <value>Lösenordet som användes för de återstående arkiven passar inte det här arkivet.</value>
   </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
-    <value>Det här arkivet är lösenordsskyddat och kan inte bläddras.</value>
+    <value>Det här arkivet är lösenordsskyddat och kan inte öppnas.</value>
   </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Filen har en ZIP-signatur men verkar vara skadad eller ofullständig.</value>
@@ -211,7 +211,7 @@
     <value>Arkivets innehållslista är inkonsekvent.</value>
   </data>
   <data name="TarUnreadableNames" xml:space="preserve">
-    <value>Arkivet innehåller filnamn som tar.exe inte kan visa på det här systemet (teckentabell {0}), så det kan inte läsas här med tar.exe. Information: {1}</value>
+    <value>Arkivet innehåller filnamn som tar.exe inte kan visa på det här systemet (teckentabell {0}), så det kan inte läsas här med tar.exe. Detaljer: {1}</value>
   </data>
   <data name="SandboxSetupFailed" xml:space="preserve">
     <value>Det gick inte att konfigurera sandlådan: {0}</value>

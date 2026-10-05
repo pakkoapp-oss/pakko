@@ -309,7 +309,7 @@
     <value>Das Passwort ist länger als {0} Zeichen.</value>
   </data>
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
-    <value>Die Kennwörter stimmen nicht überein.</value>
+    <value>Die Passwörter stimmen nicht überein.</value>
   </data>
   <data name="EncryptShowPasswordCheck.Content" xml:space="preserve">
     <value>Passwort anzeigen</value>

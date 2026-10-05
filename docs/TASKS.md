@@ -3953,3 +3953,58 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   window background (`RootGrid`, the backdrop, the title bar colours set in `MainWindow.xaml.cs`)
   and whether it follows `ActualThemeChanged`; check the Explorer operation window too.
 - **Reported by:** v1.7.0 screenshot session, 2026-10-04.
+
+### T-F328 — Localization audit fixes: wrong meanings and one term per action in 36 locales (P2)
+
+- [~] **Status:** in progress. A read-through of every translated string (339 keys, 36 locales,
+  2026-10-05) found 10 strings with a wrong meaning, 68 with a wrong or inconsistent term and
+  ~226 style points. Root cause of most: `CoreMessages` was translated apart from the App and the
+  Explorer menu, with no glossary, so one action has two or three words depending on the surface.
+  The full per-locale list (key, current text, problem, proposed text) is outside the repo, next
+  to the v1.7.0 plan (`pakko-localization-audit-2026-10-05.md`).
+- **Phase 1 — wrong meaning (10):**
+  - [x] es-ES, el-GR: "one archive / separate archives / new archive" read as "one file / new file"
+  - [x] it-IT, sv-SE, hi-IN: `NewArchiveCollapsedReason` says "compressed", not "collapsed"
+  - [x] et-EE, lv-LV: menu `Add to "{0}"` lost the "to" (`archiveNamedTemplate`)
+  - [x] ar-SA: `AboutTagline` calls the app an archive, not an archiver
+  - [x] sw-KE: one word for archive, drive, Save and Keep
+  - [x] ur-PK: "inconsistent" translated as "temporary" (`TarListingInconsistent`, `ListingInconsistent`)
+- **Phase 2 — one term per action inside each locale (B items):**
+  - [x] extract: pl, cs, sk, bg, lv, et, tr; compress: hr, sr-Latn, lt; password: de
+  - [x] archive: es, el, ko, vi, ja, zh-Hans, hi, th, sw
+  - [x] Test must not read as Scan: uk, lv, el, hi (Core), it, lt (buttons)
+  - [x] Clear / Remove from list must not use the word for Delete: hu, vi, sw, id, sk
+  - [x] the single-string B items: fi tray menu and MiB unit, hash naming (pl, ro, lv, hr, sl, fi, vi), de/sv/sl
+    "cannot be browsed", sk tar.exe word order, es/it/pt `TarListingInconsistent`, he and bg taglines, he
+    and sr-Latn list gender, he format term, hu sandbox, ja punctuation word, id Recycle Bin, ur spelling
+- **Phase 4 — the audit's concrete style points (96 values):**
+  - [x] the compression-level list and its summary line use one word (fr, es, it, pt, ro, el, ko, hi, lt,
+    lv, zh-Hans); the decompression-bomb term matches Core (nb, tr, ko, ar, he); grammar and agreement
+    fixes (it, sv, cs, sl, ro, nb, fi, et, he, pl, nl); single words that differed between surfaces
+    (pt, da, bg, hr, sr-Latn, hu, id, vi, sw, th, hi, uk, ja)
+  - [ ] left out: quote, dash and apostrophe normalisation; one grammatical form on buttons in bg and
+    he; el junction word; zh-Hans full-width punctuation; hu "hibák" for "issues". None changes a
+    meaning; each touches many strings
+- **Phase 3 — dropped:** the audit proposed lower-casing the word in brackets of `extractHereIntelligent`.
+  That capital is deliberate: the item copies NanaZip's own text (see T-F115's entry and
+  `LocalizationTests.cpp`), so nothing changes there.
+- **Tie-break for "one term":** the variant the Explorer menu and the main window already share
+  wins; where they differ, the more frequent one. Choices: `docs/DECISIONS.md`'s T-F328 entry.
+- **Done (2026-10-05):** 609 values in all 36 locales, all through a script that checks the
+  current value before it writes.
+- **No native review:** none is available for this many languages (user, 2026-10-05), so the
+  translations stand on this audit alone; sw-KE, ur-PK and th-TH are the least certain.
+- **Out of scope:** `LocalHeaderMismatch` (T-F323 rewrites it in all locales); any change to the
+  English source text (it mirrors `MessageTemplates.cs`, the CLI's output); quote, dash and
+  apostrophe normalisation and the other style points (a later pass); the file-type names in
+  `Package.appxmanifest`, which are not localized at all (own task when wanted).
+- **Acceptance:**
+  - [x] every edit applied by a script that asserts the current value first
+  - [x] `dotnet test` default filter green; `Archiver.ShellExtension.Tests.exe` green; the
+    ShellExtension DLL builds
+  - [ ] one on-device look at a non-English locale (menu, main window, one Core error)
+    — needs a non-English Windows session, so it goes with the release-time checks. Look for
+    cut-off labels where the text grew: es and el Test/Close archive buttons, radio buttons and
+    the menu's "Add to archive…", hu and vi Clear
+  - [x] `Archiver.App` builds with the changed `.resw` files
+- **Reported by:** localization audit, 2026-10-05.

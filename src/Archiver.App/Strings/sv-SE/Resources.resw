@@ -468,7 +468,7 @@
     <value>utan lösenord</value>
   </data>
   <data name="NewArchiveCollapsedReason" xml:space="preserve">
-    <value>komprimerad vy, listan innehåller bara arkiv</value>
+    <value>dold, listan innehåller bara arkiv</value>
   </data>
   <data name="ExtractUnavailableHint" xml:space="preserve">
     <value>Listan innehåller inga arkiv, inget att extrahera</value>

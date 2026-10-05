@@ -176,7 +176,7 @@
 
   <!-- Status messages -->
   <data name="StatusReady" xml:space="preserve">
-    <value>Gotowy</value>
+    <value>Gotowe</value>
   </data>
   <data name="StatusArchiving" xml:space="preserve">
     <value>Kompresowanie...</value>
@@ -288,7 +288,7 @@
     <value>Wykryte zagrożenia</value>
   </data>
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
-    <value>Nierozstrzygające</value>
+    <value>Nierozstrzygnięte</value>
   </data>
   <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
     <value>Szyfruj hasłem (AES-256)</value>
@@ -399,7 +399,7 @@
     <value>Nic nie zrobiono — pominięto: {0}</value>
   </data>
   <data name="BrowseSelectionLine" xml:space="preserve">
-    <value>Wybrano {0} z {1}</value>
+    <value>Zaznaczono {0} z {1}</value>
   </data>
   <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
     <value>Pokaż w folderze</value>

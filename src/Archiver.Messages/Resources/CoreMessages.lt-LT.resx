@@ -49,7 +49,7 @@
     <value>Elemento pavadinimas per ilgas ZIP archyvui ({0} baitų UTF-8; daugiausia {1}).</value>
   </data>
   <data name="NotEnoughSpaceToCompress" xml:space="preserve">
-    <value>Diske nepakanka laisvos vietos šiam failui suglaudinti: jis užima {0} baitų, bet laisva tik {1} baitų.</value>
+    <value>Diske nepakanka laisvos vietos šiam failui suspausti: jis užima {0} baitų, bet laisva tik {1} baitų.</value>
   </data>
   <data name="PasswordNotEntered" xml:space="preserve">
     <value>Archyvas nesukurtas: slaptažodis neįvestas.</value>
@@ -88,7 +88,7 @@
     <value>Failas nėra atpažinto archyvo formato ir jo negalima išskleisti.</value>
   </data>
   <data name="NotAnArchiveTest" xml:space="preserve">
-    <value>Failas nėra atpažinto archyvo formato ir jo negalima patikrinti.</value>
+    <value>Failas nėra atpažinto archyvo formato ir jo negalima testuoti.</value>
   </data>
   <data name="NotAnArchiveList" xml:space="preserve">
     <value>Failas nėra atpažinto archyvo formato, todėl jo turinio negalima parodyti.</value>
@@ -112,13 +112,13 @@
     <value>Šios sistemos tar.exe (versija {0}) nepalaiko šio archyvo formato.</value>
   </data>
   <data name="NoTestCapability" xml:space="preserve">
-    <value>tar šeimos archyvų negalima patikrinti</value>
+    <value>tar šeimos archyvų negalima testuoti</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Šis archyvas apsaugotas slaptažodžiu ir jo negalima išskleisti.</value>
   </data>
   <data name="PasswordProtectedTest" xml:space="preserve">
-    <value>Šis archyvas apsaugotas slaptažodžiu ir jo negalima patikrinti.</value>
+    <value>Šis archyvas apsaugotas slaptažodžiu ir jo negalima testuoti.</value>
   </data>
   <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
     <value>Likusiems archyvams pritaikytas slaptažodis netinka šiam archyvui.</value>
@@ -151,16 +151,16 @@
     <value>Nepavyko iššifruoti elemento „{0}“: autentifikavimas nepavyko (sugadintas arba pakeistas).</value>
   </data>
   <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
-    <value>Elementas „{0}“ naudoja nepalaikomą glaudinimo su šifravimu metodą.</value>
+    <value>Elementas „{0}“ naudoja nepalaikomą suspaudimo su šifravimu metodą.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Archyvas nurodo {0} baitų neglaudinta forma, bet paskirties vietoje laisva tik {1} baitų. Išskleidimas užblokuotas.</value>
+    <value>Archyvas nurodo {0} baitų nesuspausta forma, bet paskirties vietoje laisva tik {1} baitų. Išskleidimas užblokuotas.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
-    <value>Įtartinas glaudinimo santykis ({0}:1, nurodyta {1} baitų). Išskleidimo atsisakyta atsargumo sumetimais dėl ZIP bombų.</value>
+    <value>Įtartinas suspaudimo santykis ({0}:1, nurodyta {1} baitų). Išskleidimo atsisakyta atsargumo sumetimais dėl ZIP bombų.</value>
   </data>
   <data name="TarBombDeclined" xml:space="preserve">
-    <value>Įtartinas glaudinimo santykis ({0}:1, nurodyta {1} baitų) visam archyvui. Išskleidimo atsisakyta atsargumo sumetimais dėl išskleidimo bombų.</value>
+    <value>Įtartinas suspaudimo santykis ({0}:1, nurodyta {1} baitų) visam archyvui. Išskleidimo atsisakyta atsargumo sumetimais dėl išskleidimo bombų.</value>
   </data>
   <data name="DestinationFileLocked" xml:space="preserve">
     <value>Nepavyksta įrašyti „{0}“: paskirties failą užrakino kitas procesas.</value>
@@ -205,7 +205,7 @@
     <value>Dar {0} kopijos šiuo pavadinimu nebuvo išskleistos: iš šio archyvo galima paimti tik pirmąją ir paskutinę kopiją.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
-    <value>Kitas pasirinktas elementas turi tą patį pavadinimą, o šio aplanko nepavyko pridėti nauju pavadinimu. Pervardykite vieną iš jų ir bandykite dar kartą.</value>
+    <value>Kitas pasirinktas elementas turi tą patį pavadinimą, o šio aplanko nepavyko pridėti nauju pavadinimu. Pervadinkite vieną iš jų ir bandykite dar kartą.</value>
   </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Archyvo turinio sąrašas prieštaringas.</value>
@@ -265,7 +265,7 @@
     <value>Elementas apsaugotas kitu slaptažodžiu ir nebuvo nuskaitytas.</value>
   </data>
   <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
-    <value>Elementas naudoja nepalaikomą glaudinimo su šifravimu metodą ir nebuvo nuskaitytas.</value>
+    <value>Elementas naudoja nepalaikomą suspaudimo su šifravimu metodą ir nebuvo nuskaitytas.</value>
   </data>
   <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
     <value>Elementas nepraėjo iššifravimo autentifikavimo (sugadintas arba pakeistas) ir nebuvo nuskaitytas.</value>

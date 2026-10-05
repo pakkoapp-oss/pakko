@@ -76,7 +76,7 @@
     <value>tar.exe non è riuscito a creare l’archivio: {0}</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
-    <value>Il nome «{0}» contiene caratteri che tar.exe non può gestire in sicurezza su questo sistema (tabella codici ANSI {1}). Usare ZIP per questo contenuto.</value>
+    <value>Il nome «{0}» contiene caratteri che tar.exe non può gestire in sicurezza su questo sistema (tabella codici ANSI {1}). Usa ZIP per questo contenuto.</value>
   </data>
   <data name="TarSignatureInvalid" xml:space="preserve">
     <value>tar.exe non ha superato la verifica della firma Authenticode e non verrà eseguito.</value>
@@ -175,16 +175,16 @@
     <value>Voce con flusso di dati alternativo rifiutata per motivi di sicurezza.</value>
   </data>
   <data name="EntryReservedName" xml:space="preserve">
-    <value>Il nome della voce corrisponde a un nome di dispositivo riservato di Windows ed è stata ignorata.</value>
+    <value>Il nome della voce corrisponde a un nome di dispositivo riservato di Windows e la voce è stata ignorata.</value>
   </data>
   <data name="EntryControlCharacters" xml:space="preserve">
-    <value>Il nome della voce contiene caratteri di controllo ed è stata ignorata.</value>
+    <value>Il nome della voce contiene caratteri di controllo e la voce è stata ignorata.</value>
   </data>
   <data name="CannotExtractEntry" xml:space="preserve">
     <value>Impossibile estrarre «{0}»: {1}</value>
   </data>
   <data name="EntryThroughReparsePoint" xml:space="preserve">
-    <value>Il percorso della voce attraversa un reparse point (collegamento simbolico o giunzione) ed è stata ignorata.</value>
+    <value>Il percorso della voce attraversa un reparse point (collegamento simbolico o giunzione) e la voce è stata ignorata.</value>
   </data>
   <data name="FileExistsAtDestination" xml:space="preserve">
     <value>Il file esiste già nella destinazione.</value>
@@ -196,7 +196,7 @@
     <value>L’archivio contiene un percorso di voce non sicuro («{0}») e non può essere estratto in sicurezza.</value>
   </data>
   <data name="TarListingInconsistent" xml:space="preserve">
-    <value>L’elenco del contenuto dell’archivio è incoerente e non può essere estratto in sicurezza.</value>
+    <value>L’elenco del contenuto dell’archivio è incoerente; l’archivio non può essere estratto in sicurezza.</value>
   </data>
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>L’archivio contiene un collegamento simbolico, un collegamento fisico, un dispositivo o un’altra voce speciale e non può essere estratto in sicurezza.</value>

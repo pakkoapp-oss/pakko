@@ -43,10 +43,10 @@
     <value>Компресиране: {0}</value>
   </data>
   <data name="TitleExtracting" xml:space="preserve">
-    <value>Разархивиране: {0}</value>
+    <value>Извличане: {0}</value>
   </data>
   <data name="TitleExtractingMany" xml:space="preserve">
-    <value>Разархивиране на архиви: {0}</value>
+    <value>Извличане на архиви: {0}</value>
   </data>
   <data name="TitleTesting" xml:space="preserve">
     <value>Тестване: {0}</value>
@@ -82,10 +82,10 @@
     <value>Подозрителен архив</value>
   </data>
   <data name="BombMessage" xml:space="preserve">
-    <value>Този архив твърди, че съдържа {0} данни, коефициент на компресия {1}:1. Това е необичайно високо и може да показва декомпресионна бомба. Да се разархивира ли въпреки това?</value>
+    <value>Този архив твърди, че съдържа {0} данни, коефициент на компресия {1}:1. Това е необичайно високо и може да показва декомпресионна бомба. Да се извлече ли въпреки това?</value>
   </data>
   <data name="BombExtract" xml:space="preserve">
-    <value>Разархивиране</value>
+    <value>Извличане</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Проверка на съдържанието на архива...</value>

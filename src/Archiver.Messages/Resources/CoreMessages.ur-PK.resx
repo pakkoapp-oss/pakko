@@ -31,7 +31,7 @@
     <value>علامتی لنکس اور ری پارس پوائنٹس آرکائیو نہیں کیے جاتے۔</value>
   </data>
   <data name="ArchiveAlreadyExists" xml:space="preserve">
-    <value>آرکائیو "{0}" منزل پر پہلے سے موجود ہے اور چھوڑ دیا گیا۔</value>
+    <value>آرکائیو "{0}" منزل پر پہلے سے موجود ہے اور نظرانداز کر دیا گیا۔</value>
   </data>
   <data name="CannotCreateArchive" xml:space="preserve">
     <value>آرکائیو نہیں بنایا جا سکتا: {0}</value>
@@ -166,7 +166,7 @@
     <value>"{0}" نہیں لکھا جا سکتا: منزل کی فائل کسی دوسرے عمل نے مقفل کر رکھی ہے۔</value>
   </data>
   <data name="AllEntriesSkipped" xml:space="preserve">
-    <value>اس آرکائیو سے کچھ بھی نہیں نکالا گیا — تمام اندراجات چھوڑ دیے گئے۔</value>
+    <value>اس آرکائیو سے کچھ بھی نہیں نکالا گیا — تمام اندراجات نظرانداز کر دیے گئے۔</value>
   </data>
   <data name="UnsafeEntryPath" xml:space="preserve">
     <value>اندراج "{0}" کا راستہ غیر محفوظ ہے اور اسے نہیں نکالا گیا۔</value>
@@ -175,16 +175,16 @@
     <value>متبادل ڈیٹا اسٹریم والا اندراج سیکیورٹی کی وجہ سے مسترد کر دیا گیا۔</value>
   </data>
   <data name="EntryReservedName" xml:space="preserve">
-    <value>اندراج کا نام Windows کے محفوظ آلے کے نام سے ملتا ہے اور چھوڑ دیا گیا۔</value>
+    <value>اندراج کا نام Windows کے محفوظ آلے کے نام سے ملتا ہے اور نظرانداز کر دیا گیا۔</value>
   </data>
   <data name="EntryControlCharacters" xml:space="preserve">
-    <value>اندراج کے نام میں کنٹرول حروف ہیں اور چھوڑ دیا گیا۔</value>
+    <value>اندراج کے نام میں کنٹرول حروف ہیں اور نظرانداز کر دیا گیا۔</value>
   </data>
   <data name="CannotExtractEntry" xml:space="preserve">
     <value>"{0}" نہیں نکالا جا سکتا: {1}</value>
   </data>
   <data name="EntryThroughReparsePoint" xml:space="preserve">
-    <value>اندراج کا راستہ ری پارس پوائنٹ (علامتی لنک یا جنکشن) سے گزرتا ہے اور چھوڑ دیا گیا۔</value>
+    <value>اندراج کا راستہ ری پارس پوائنٹ (علامتی لنک یا جنکشن) سے گزرتا ہے اور نظرانداز کر دیا گیا۔</value>
   </data>
   <data name="FileExistsAtDestination" xml:space="preserve">
     <value>فائل منزل پر پہلے سے موجود ہے۔</value>
@@ -196,7 +196,7 @@
     <value>آرکائیو میں غیر محفوظ اندراج کا راستہ ("{0}") ہے اور اسے محفوظ طریقے سے نہیں نکالا جا سکتا۔</value>
   </data>
   <data name="TarListingInconsistent" xml:space="preserve">
-    <value>آرکائیو کے مواد کی فہرست غیر مستقل ہے اور اسے محفوظ طریقے سے نہیں نکالا جا سکتا۔</value>
+    <value>آرکائیو کے مواد کی فہرست میں تضاد ہے اور اسے محفوظ طریقے سے نہیں نکالا جا سکتا۔</value>
   </data>
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>آرکائیو میں علامتی لنک، ہارڈ لنک، آلہ یا کوئی اور خاص اندراج ہے اور اسے محفوظ طریقے سے نہیں نکالا جا سکتا۔</value>
@@ -208,7 +208,7 @@
     <value>کسی اور منتخب آئٹم کا نام بھی یہی ہے، اور یہ فولڈر نئے نام سے شامل نہیں کیا جا سکا۔ ان میں سے ایک کا نام تبدیل کریں اور دوبارہ کوشش کریں۔</value>
   </data>
   <data name="ListingInconsistent" xml:space="preserve">
-    <value>آرکائیو کے مواد کی فہرست غیر مستقل ہے۔</value>
+    <value>آرکائیو کے مواد کی فہرست میں تضاد ہے۔</value>
   </data>
   <data name="TarUnreadableNames" xml:space="preserve">
     <value>آرکائیو میں ایسے فائل نام ہیں جنہیں tar.exe اس سسٹم پر ظاہر نہیں کر سکتا (کوڈ پیج {0})، اس لیے اسے یہاں tar.exe سے نہیں پڑھا جا سکتا۔ تفصیلات: {1}</value>
@@ -226,10 +226,10 @@
     <value>آرکائیو دوبارہ نہیں کھولا جا سکتا (Win32 خرابی {0})۔</value>
   </data>
   <data name="HashFolderSkipped" xml:space="preserve">
-    <value>چھوڑ دیا گیا: فولڈر (صرف اس وقت تعاون یافتہ جب ایک ہی فولڈر اکیلا منتخب ہو)</value>
+    <value>نظرانداز کر دیا گیا: فولڈر (صرف اس وقت تعاون یافتہ جب ایک ہی فولڈر اکیلا منتخب ہو)</value>
   </data>
   <data name="HashLinkSkipped" xml:space="preserve">
-    <value>چھوڑ دیا گیا: علامتی لنک یا جنکشن (پیروی نہیں کی جاتی)</value>
+    <value>نظرانداز کر دیا گیا: علامتی لنک یا جنکشن (پیروی نہیں کی جاتی)</value>
   </data>
   <data name="HashFileChanged" xml:space="preserve">
     <value>ہیش کا حساب لگاتے وقت فائل کا سائز بدل گیا: {0}</value>

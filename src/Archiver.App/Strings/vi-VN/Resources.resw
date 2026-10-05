@@ -21,7 +21,7 @@
     <value>Giải nén</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
-    <value>Xóa hết</value>
+    <value>Làm trống danh sách</value>
   </data>
   <data name="AddFilesButton.Content" xml:space="preserve">
     <value>Thêm tệp</value>
@@ -30,7 +30,7 @@
     <value>Thêm thư mục</value>
   </data>
   <data name="HashButton.Content" xml:space="preserve">
-    <value>Hash...</value>
+    <value>Mã băm...</value>
   </data>
   <data name="AboutButton.Content" xml:space="preserve">
     <value>Giới thiệu</value>
@@ -85,7 +85,7 @@
     <value>Thoát</value>
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
-    <value>Xóa khỏi danh sách</value>
+    <value>Gỡ khỏi danh sách</value>
   </data>
 
   <!-- Archive options -->
@@ -247,7 +247,7 @@
     <value>Sai mật khẩu. Vui lòng thử lại.</value>
   </data>
   <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
-    <value>Áp dụng cho các tệp lưu trữ còn lại</value>
+    <value>Áp dụng cho các tệp nén còn lại</value>
   </data>
   <data name="PasswordDialogOkButton" xml:space="preserve">
     <value>OK</value>
@@ -279,7 +279,7 @@
     <value>Quét mối đe dọa</value>
   </data>
   <data name="ScanNoThreatsFound" xml:space="preserve">
-    <value>Không tìm thấy mối đe dọa nào trong tệp lưu trữ này.</value>
+    <value>Không tìm thấy mối đe dọa nào trong tệp nén này.</value>
   </data>
   <data name="ScanThreatDetectedGeneric" xml:space="preserve">
     <value>đã phát hiện mối đe dọa</value>
@@ -294,7 +294,7 @@
     <value>Mã hóa bằng mật khẩu (AES-256)</value>
   </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
-    <value>Nội dung tệp sẽ được mã hóa bằng AES-256. Tên tệp và thư mục trong kho lưu trữ vẫn hiển thị mà không cần mật khẩu.</value>
+    <value>Nội dung tệp sẽ được mã hóa bằng AES-256. Tên tệp và thư mục trong tệp nén vẫn hiển thị mà không cần mật khẩu.</value>
   </data>
   <data name="EncryptPasswordPlaceholder" xml:space="preserve">
     <value>Mật khẩu</value>
@@ -303,7 +303,7 @@
     <value>Xác nhận mật khẩu</value>
   </data>
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
-    <value>Chỉ dùng chữ cái tiếng Anh, chữ số, dấu cách và dấu câu, tối đa {0} ký tự, để 7-Zip và các công cụ ZIP khác có thể mở kho lưu trữ.</value>
+    <value>Chỉ dùng chữ cái tiếng Anh, chữ số, dấu cách và dấu câu, tối đa {0} ký tự, để 7-Zip và các công cụ ZIP khác có thể mở tệp nén.</value>
   </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Mật khẩu dài hơn {0} ký tự.</value>
@@ -369,7 +369,7 @@
     <value>Đang nén... (tệp: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
-    <value>Đang giải nén... (kho lưu trữ: {0})</value>
+    <value>Đang giải nén... (tệp nén: {0})</value>
   </data>
   <data name="StatusOpening" xml:space="preserve">
     <value>Đang mở...</value>
@@ -393,7 +393,7 @@
     <value>Đã giải nén trong {0} giây — tệp nén: {1}</value>
   </data>
   <data name="OutcomeProblems" xml:space="preserve">
-    <value>Hoàn tất với sự cố: {0}</value>
+    <value>Hoàn tất với một số vấn đề: {0}</value>
   </data>
   <data name="OutcomeNothingDone" xml:space="preserve">
     <value>Không có gì được thực hiện — đã bỏ qua: {0}</value>
@@ -477,7 +477,7 @@
     <value>Sau khi thao tác thành công, chuyển những gì đã dùng vào Thùng rác: tệp nguồn sau khi nén, tệp nén sau khi giải nén</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
-    <value>Kiểm tra kho lưu trữ</value>
+    <value>Kiểm tra tệp nén</value>
   </data>
   <data name="CloseArchiveButton.Content" xml:space="preserve">
     <value>Đóng tệp nén</value>
@@ -486,7 +486,7 @@
     <value>Đang kiểm tra...</value>
   </data>
   <data name="TestResultTitle" xml:space="preserve">
-    <value>Kiểm tra kho lưu trữ</value>
+    <value>Kiểm tra tệp nén</value>
   </data>
   <data name="TestNoErrorsFound" xml:space="preserve">
     <value>Không tìm thấy lỗi.</value>
@@ -495,7 +495,7 @@
     <value>Đã mã hóa</value>
   </data>
   <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
-    <value>phương thức không xác định</value>
+    <value>phương pháp không xác định</value>
   </data>
   <data name="BrowseEncryptedCount" xml:space="preserve">
     <value>Tệp đã mã hóa ({0}): {1} trên {2}.</value>
@@ -543,7 +543,7 @@
     <value>Tệp hiện có</value>
   </data>
   <data name="ConflictIncomingFile" xml:space="preserve">
-    <value>Từ tệp lưu trữ</value>
+    <value>Từ tệp nén</value>
   </data>
   <data name="ConflictModified" xml:space="preserve">
     <value>sửa đổi {0}</value>
@@ -552,6 +552,6 @@
     <value>Hủy tất cả</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
-    <value>Đang kiểm tra nội dung kho lưu trữ...</value>
+    <value>Đang kiểm tra nội dung tệp nén...</value>
   </data>
 </root>

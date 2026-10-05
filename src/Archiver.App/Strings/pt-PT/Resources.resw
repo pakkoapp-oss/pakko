@@ -129,7 +129,7 @@
     <value>Normal</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>Melhor</value>
+    <value>Máxima</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
     <value>Nenhuma</value>
@@ -258,10 +258,10 @@
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">
-    <value>Sobre o Pakko</value>
+    <value>Acerca do Pakko</value>
   </data>
   <data name="AboutTagline" xml:space="preserve">
-    <value>Compactador nativo e leve para Windows</value>
+    <value>Arquivador nativo e leve para Windows</value>
   </data>
   <data name="AboutLicense" xml:space="preserve">
     <value>Licença: Apache 2.0</value>
@@ -468,7 +468,7 @@
     <value>sem palavra-passe</value>
   </data>
   <data name="NewArchiveCollapsedReason" xml:space="preserve">
-    <value>fechado, a lista só contém arquivos</value>
+    <value>recolhido, a lista só contém arquivos</value>
   </data>
   <data name="ExtractUnavailableHint" xml:space="preserve">
     <value>A lista não contém arquivos, não há nada para extrair</value>

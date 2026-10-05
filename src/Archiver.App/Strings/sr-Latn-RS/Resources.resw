@@ -123,13 +123,13 @@
     <value>TAR.LZMA</value>
   </data>
   <data name="CompressionFastItem.Content" xml:space="preserve">
-    <value>Brzo</value>
+    <value>Brza</value>
   </data>
   <data name="CompressionNormalItem.Content" xml:space="preserve">
-    <value>Normalno</value>
+    <value>Normalna</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>Najbolje</value>
+    <value>Najbolja</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
     <value>Bez kompresije</value>
@@ -504,7 +504,7 @@
     <value>Pakko traži lozinku kada raspakujete ili otvorite datoteku. Nazivi datoteka nisu šifrovani, a šifrovanje svakoj datoteci dodaje nekoliko bajtova.</value>
   </data>
   <data name="BrowseEncryptedAe2Note" xml:space="preserve">
-    <value>CRC-32 je prazan za AES datoteke (AE-2): proverava ih potvrda identiteta, a ne kontrolni zbir.</value>
+    <value>CRC-32 je prazan za AES datoteke (AE-2): potvrđuje ih provera autentičnosti, a ne kontrolni zbir.</value>
   </data>
   <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
     <value>ZipCrypto je slabo šifrovanje: datoteke se mogu vratiti bez lozinke. Za sve što je osetljivo koristite AES-256.</value>

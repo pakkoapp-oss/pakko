@@ -129,7 +129,7 @@
     <value>Normale</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>Ottima</value>
+    <value>Massima</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
     <value>Nessuna</value>
@@ -468,7 +468,7 @@
     <value>senza password</value>
   </data>
   <data name="NewArchiveCollapsedReason" xml:space="preserve">
-    <value>compresso, l'elenco contiene solo archivi</value>
+    <value>ridotto, l'elenco contiene solo archivi</value>
   </data>
   <data name="ExtractUnavailableHint" xml:space="preserve">
     <value>L'elenco non contiene archivi, niente da estrarre</value>
@@ -477,16 +477,16 @@
     <value>Dopo un'operazione riuscita, sposta nel Cestino ciò che ha usato: i file di origine dopo la compressione, gli archivi dopo l'estrazione</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
-    <value>Verifica archivio</value>
+    <value>Testa archivio</value>
   </data>
   <data name="CloseArchiveButton.Content" xml:space="preserve">
     <value>Chiudi archivio</value>
   </data>
   <data name="StatusTesting" xml:space="preserve">
-    <value>Verifica...</value>
+    <value>Test in corso...</value>
   </data>
   <data name="TestResultTitle" xml:space="preserve">
-    <value>Verifica archivio</value>
+    <value>Test archivio</value>
   </data>
   <data name="TestNoErrorsFound" xml:space="preserve">
     <value>Nessun errore trovato.</value>

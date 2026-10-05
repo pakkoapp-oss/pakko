@@ -18,7 +18,7 @@
     <value>{0} olarak sıkıştır</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
-    <value>Çıkart</value>
+    <value>Ayıkla</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
     <value>Temizle</value>
@@ -36,10 +36,10 @@
     <value>Hakkında</value>
   </data>
   <data name="ExtractSelectedButton.Content" xml:space="preserve">
-    <value>Seçilenleri Çıkart</value>
+    <value>Seçilenleri ayıkla</value>
   </data>
   <data name="ExtractAllButton.Content" xml:space="preserve">
-    <value>Tümünü Çıkart</value>
+    <value>Tümünü ayıkla</value>
   </data>
 
   <!-- Table headers -->
@@ -76,7 +76,7 @@
 
   <!-- Tray menu -->
   <data name="TrayOpenMenuItem.Text" xml:space="preserve">
-    <value>Pakko'yu Aç</value>
+    <value>Pakko'yu aç</value>
   </data>
   <data name="TrayAboutMenuItem.Text" xml:space="preserve">
     <value>Pakko Hakkında</value>
@@ -155,7 +155,7 @@
     <value>Dosyaları veya klasörleri buraya bırakın</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Arşivler çıkartılabilir; diğer her şey sıkıştırılır</value>
+    <value>Arşivler ayıklanabilir; diğer her şey sıkıştırılır</value>
   </data>
 
   <!-- Labels -->
@@ -182,7 +182,7 @@
     <value>Sıkıştırılıyor...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
-    <value>Çıkartılıyor...</value>
+    <value>Ayıklanıyor...</value>
   </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Sorunlarla tamamlandı.</value>
@@ -197,7 +197,7 @@
     <value>Sonlandırılıyor...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Yukarıdaki klasöre {0} arşiv çıkartılacak</value>
+    <value>Yukarıdaki klasöre {0} arşiv ayıklanacak</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
     <value>Yukarıdaki klasöre {0} öğe sıkıştırılacak</value>
@@ -217,7 +217,7 @@
     <value>Şüpheli arşiv</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Bu arşivin {0} veri içerdiği belirtiliyor, sıkıştırma oranı {1}:1. Bu alışılmadık derecede yüksek ve bir sıkıştırma bombasına işaret edebilir. Yine de çıkartılsın mı?</value>
+    <value>Bu arşivin {0} veri içerdiği belirtiliyor, sıkıştırma oranı {1}:1. Bu alışılmadık derecede yüksek ve bir açma bombasına işaret edebilir. Yine de ayıklansın mı?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>Dosya zaten var</value>
@@ -369,7 +369,7 @@
     <value>Sıkıştırılıyor... (dosya: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
-    <value>Çıkartılıyor... (arşiv: {0})</value>
+    <value>Ayıklanıyor... (arşiv: {0})</value>
   </data>
   <data name="StatusOpening" xml:space="preserve">
     <value>Açılıyor...</value>
@@ -384,13 +384,13 @@
     <value>Önizlenemiyor</value>
   </data>
   <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
-    <value>"{0}" doğrudan güvenli şekilde açılamıyor. Bunun yerine arşivin yanındaki bir klasöre çıkartılsın mı?</value>
+    <value>"{0}" doğrudan güvenli şekilde açılamıyor. Bunun yerine arşivin yanındaki bir klasöre ayıklansın mı?</value>
   </data>
   <data name="OutcomeCompressed" xml:space="preserve">
     <value>{0} sn içinde sıkıştırıldı — arşiv: {1}</value>
   </data>
   <data name="OutcomeExtracted" xml:space="preserve">
-    <value>{0} sn içinde çıkartıldı — arşiv: {1}</value>
+    <value>{0} sn içinde ayıklandı — arşiv: {1}</value>
   </data>
   <data name="OutcomeProblems" xml:space="preserve">
     <value>Sorunlarla tamamlandı: {0}</value>
@@ -435,13 +435,13 @@
     <value>Kaydetme yeri:</value>
   </data>
   <data name="DestinationExtractLabel" xml:space="preserve">
-    <value>Çıkartma yeri:</value>
+    <value>Ayıklama yeri:</value>
   </data>
   <data name="DeleteAfterCompressLabel" xml:space="preserve">
     <value>Başarılı sıkıştırmadan sonra kaynak dosyaları Geri Dönüşüm Kutusu'na taşı</value>
   </data>
   <data name="DeleteAfterExtractLabel" xml:space="preserve">
-    <value>Başarılı çıkartmadan sonra arşivleri Geri Dönüşüm Kutusu'na taşı</value>
+    <value>Başarılı ayıklamadan sonra arşivleri Geri Dönüşüm Kutusu'na taşı</value>
   </data>
   <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
     <value>{0} (otomatik)</value>
@@ -471,10 +471,10 @@
     <value>daraltıldı, listede yalnızca arşivler var</value>
   </data>
   <data name="ExtractUnavailableHint" xml:space="preserve">
-    <value>Listede arşiv yok, çıkartılacak bir şey yok</value>
+    <value>Listede arşiv yok, ayıklanacak bir şey yok</value>
   </data>
   <data name="DeleteAfterEitherLabel" xml:space="preserve">
-    <value>Başarılı bir işlemden sonra kullandığı öğeleri Geri Dönüşüm Kutusu'na taşı: sıkıştırmadan sonra kaynak dosyaları, çıkartmadan sonra arşivleri</value>
+    <value>Başarılı bir işlemden sonra kullandığı öğeleri Geri Dönüşüm Kutusu'na taşı: sıkıştırmadan sonra kaynak dosyaları, ayıklamadan sonra arşivleri</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
     <value>Arşivi test et</value>
@@ -501,7 +501,7 @@
     <value>Şifreli dosyalar ({0}): {2} dosyadan {1} tanesi.</value>
   </data>
   <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
-    <value>Pakko, bir dosyayı çıkarttığınızda veya açtığınızda parolayı sorar. Dosya adları şifrelenmez ve şifreleme her dosyaya birkaç bayt ekler.</value>
+    <value>Pakko, bir dosyayı ayıkladığınızda veya açtığınızda parolayı sorar. Dosya adları şifrelenmez ve şifreleme her dosyaya birkaç bayt ekler.</value>
   </data>
   <data name="BrowseEncryptedAe2Note" xml:space="preserve">
     <value>AES (AE-2) dosyalarında CRC-32 boştur: bu dosyalar sağlama toplamıyla değil, kimlik doğrulamayla doğrulanır.</value>

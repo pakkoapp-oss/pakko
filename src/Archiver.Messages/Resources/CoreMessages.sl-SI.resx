@@ -88,7 +88,7 @@
     <value>Datoteka nima prepoznane oblike arhiva in je ni mogoče razširiti.</value>
   </data>
   <data name="NotAnArchiveTest" xml:space="preserve">
-    <value>Datoteka nima prepoznane oblike arhiva in je ni mogoče preskusiti.</value>
+    <value>Datoteka nima prepoznane oblike arhiva in je ni mogoče preizkusiti.</value>
   </data>
   <data name="NotAnArchiveList" xml:space="preserve">
     <value>Datoteka nima prepoznane oblike arhiva, zato njene vsebine ni mogoče prikazati.</value>
@@ -112,19 +112,19 @@
     <value>Ta oblika arhiva ni podprta v tar.exe tega sistema (različica {0}).</value>
   </data>
   <data name="NoTestCapability" xml:space="preserve">
-    <value>arhivov družine tar ni mogoče preskusiti</value>
+    <value>arhivov družine tar ni mogoče preizkusiti</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Ta arhiv je zaščiten z geslom in ga ni mogoče razširiti.</value>
   </data>
   <data name="PasswordProtectedTest" xml:space="preserve">
-    <value>Ta arhiv je zaščiten z geslom in ga ni mogoče preskusiti.</value>
+    <value>Ta arhiv je zaščiten z geslom in ga ni mogoče preizkusiti.</value>
   </data>
   <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
     <value>Geslo, uporabljeno za preostale arhive, se ne ujema s tem arhivom.</value>
   </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
-    <value>Ta arhiv je zaščiten z geslom in ga ni mogoče brskati.</value>
+    <value>Ta arhiv je zaščiten z geslom in ga ni mogoče odpreti.</value>
   </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Datoteka ima podpis ZIP, vendar je videti poškodovana ali nepopolna.</value>

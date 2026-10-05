@@ -93,10 +93,10 @@
     <value>Λειτουργία:</value>
   </data>
   <data name="OneArchiveRadio.Content" xml:space="preserve">
-    <value>Ένα αρχείο</value>
+    <value>Ένα αρχείο συμπίεσης</value>
   </data>
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
-    <value>Ξεχωριστά αρχεία</value>
+    <value>Ξεχωριστά αρχεία συμπίεσης</value>
   </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>Μορφή:</value>
@@ -129,7 +129,7 @@
     <value>Κανονική</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>Καλύτερη</value>
+    <value>Βέλτιστη</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
     <value>Καμία</value>
@@ -197,7 +197,7 @@
     <value>Οριστικοποίηση...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Θα εξαχθούν {0} αρχείο/α στον παραπάνω φάκελο</value>
+    <value>Θα εξαχθούν {0} αρχείο/α συμπίεσης στον παραπάνω φάκελο</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
     <value>Θα συμπιεστούν {0} στοιχείο/α στον παραπάνω φάκελο</value>
@@ -214,10 +214,10 @@
     <value>Παραλείφθηκαν</value>
   </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
-    <value>Ύποπτο αρχείο</value>
+    <value>Ύποπτο αρχείο συμπίεσης</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Αυτό το αρχείο δηλώνει ότι περιέχει {0} δεδομένων, με λόγο συμπίεσης {1}:1. Αυτό είναι ασυνήθιστα υψηλό και ενδέχεται να υποδεικνύει βόμβα αποσυμπίεσης. Εξαγωγή ούτως ή άλλως;</value>
+    <value>Αυτό το αρχείο συμπίεσης δηλώνει ότι περιέχει {0} δεδομένων, με λόγο συμπίεσης {1}:1. Αυτό είναι ασυνήθιστα υψηλό και ενδέχεται να υποδεικνύει βόμβα αποσυμπίεσης. Εξαγωγή ούτως ή άλλως;</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>Το αρχείο υπάρχει ήδη</value>
@@ -247,7 +247,7 @@
     <value>Λανθασμένος κωδικός πρόσβασης. Δοκιμάστε ξανά.</value>
   </data>
   <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
-    <value>Εφαρμογή στα υπόλοιπα αρχεία</value>
+    <value>Εφαρμογή στα υπόλοιπα αρχεία συμπίεσης</value>
   </data>
   <data name="PasswordDialogOkButton" xml:space="preserve">
     <value>OK</value>
@@ -279,7 +279,7 @@
     <value>Έλεγχος για απειλές</value>
   </data>
   <data name="ScanNoThreatsFound" xml:space="preserve">
-    <value>Δεν εντοπίστηκαν απειλές σε αυτό το αρχείο.</value>
+    <value>Δεν εντοπίστηκαν απειλές σε αυτό το αρχείο συμπίεσης.</value>
   </data>
   <data name="ScanThreatDetectedGeneric" xml:space="preserve">
     <value>εντοπίστηκε απειλή</value>
@@ -294,7 +294,7 @@
     <value>Κρυπτογράφηση με κωδικό πρόσβασης (AES-256)</value>
   </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
-    <value>Τα περιεχόμενα των αρχείων θα κρυπτογραφηθούν με AES-256. Τα ονόματα αρχείων και φακέλων μέσα στο αρχείο παραμένουν ορατά χωρίς τον κωδικό.</value>
+    <value>Τα περιεχόμενα των αρχείων θα κρυπτογραφηθούν με AES-256. Τα ονόματα αρχείων και φακέλων μέσα στο αρχείο συμπίεσης παραμένουν ορατά χωρίς τον κωδικό.</value>
   </data>
   <data name="EncryptPasswordPlaceholder" xml:space="preserve">
     <value>Κωδικός πρόσβασης</value>
@@ -303,7 +303,7 @@
     <value>Επιβεβαίωση κωδικού</value>
   </data>
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
-    <value>Χρησιμοποιήστε μόνο αγγλικά γράμματα, ψηφία, κενά και σημεία στίξης, έως {0} χαρακτήρες, ώστε το 7-Zip και άλλα εργαλεία ZIP να μπορούν να ανοίξουν το αρχείο.</value>
+    <value>Χρησιμοποιήστε μόνο αγγλικά γράμματα, ψηφία, κενά και σημεία στίξης, έως {0} χαρακτήρες, ώστε το 7-Zip και άλλα εργαλεία ZIP να μπορούν να ανοίξουν το αρχείο συμπίεσης.</value>
   </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Ο κωδικός είναι μεγαλύτερος από {0} χαρακτήρες.</value>
@@ -369,7 +369,7 @@
     <value>Συμπίεση σε εξέλιξη... (αρχεία: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
-    <value>Εξαγωγή σε εξέλιξη... (αρχειοθήκες: {0})</value>
+    <value>Εξαγωγή σε εξέλιξη... (αρχεία συμπίεσης: {0})</value>
   </data>
   <data name="StatusOpening" xml:space="preserve">
     <value>Άνοιγμα...</value>
@@ -378,19 +378,19 @@
     <value>Αυτός ο υπολογιστής</value>
   </data>
   <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
-    <value>Δεν είναι δυνατό το άνοιγμα — αυτό το αρχείο είναι ενσωματωμένο σε υπερβολικό βάθος.</value>
+    <value>Δεν είναι δυνατό το άνοιγμα — αυτό το αρχείο συμπίεσης είναι ενσωματωμένο σε υπερβολικό βάθος.</value>
   </data>
   <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
     <value>Δεν είναι δυνατή η προεπισκόπηση</value>
   </data>
   <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
-    <value>Το "{0}" δεν μπορεί να ανοιχτεί με ασφάλεια απευθείας. Να εξαχθεί σε φάκελο δίπλα στο αρχείο;</value>
+    <value>Το "{0}" δεν μπορεί να ανοιχτεί με ασφάλεια απευθείας. Να εξαχθεί σε φάκελο δίπλα στο αρχείο συμπίεσης;</value>
   </data>
   <data name="OutcomeCompressed" xml:space="preserve">
-    <value>Συμπιέστηκαν σε {0} δευτ. — αρχεία: {1}</value>
+    <value>Συμπιέστηκαν σε {0} δευτ. — αρχεία συμπίεσης: {1}</value>
   </data>
   <data name="OutcomeExtracted" xml:space="preserve">
-    <value>Εξήχθησαν σε {0} δευτ. — αρχεία: {1}</value>
+    <value>Εξήχθησαν σε {0} δευτ. — αρχεία συμπίεσης: {1}</value>
   </data>
   <data name="OutcomeProblems" xml:space="preserve">
     <value>Ολοκληρώθηκε με προβλήματα: {0}</value>
@@ -414,7 +414,7 @@
     <value>Αυτός ο χαρακτήρας δεν μπορεί να χρησιμοποιηθεί και δεν προστέθηκε. Καθαρίστε το πεδίο και πληκτρολογήστε ξανά τον κωδικό πρόσβασης μόνο με αγγλικά γράμματα, ψηφία, κενά και σημεία στίξης.</value>
   </data>
   <data name="NewArchiveCardTitle.Text" xml:space="preserve">
-    <value>Νέο αρχείο</value>
+    <value>Νέο αρχείο συμπίεσης</value>
   </data>
   <data name="DestinationCardTitle.Text" xml:space="preserve">
     <value>Πού, και τι μετά</value>
@@ -447,7 +447,7 @@
     <value>{0} (αυτόματα)</value>
   </data>
   <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
-    <value>{0}, ... (ένα αρχείο ανά στοιχείο)</value>
+    <value>{0}, ... (ένα αρχείο συμπίεσης ανά στοιχείο)</value>
   </data>
   <data name="SummaryCompressionFast" xml:space="preserve">
     <value>Γρήγορη</value>
@@ -477,16 +477,16 @@
     <value>Μετά από επιτυχή λειτουργία, μετακίνηση στον Κάδο Ανακύκλωσης όσων χρησιμοποίησε: των αρχικών αρχείων μετά τη συμπίεση, των αρχείων συμπίεσης μετά την εξαγωγή</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
-    <value>Δοκιμή αρχείου</value>
+    <value>Δοκιμή αρχείου συμπίεσης</value>
   </data>
   <data name="CloseArchiveButton.Content" xml:space="preserve">
-    <value>Κλείσιμο αρχείου</value>
+    <value>Κλείσιμο αρχείου συμπίεσης</value>
   </data>
   <data name="StatusTesting" xml:space="preserve">
     <value>Δοκιμή σε εξέλιξη...</value>
   </data>
   <data name="TestResultTitle" xml:space="preserve">
-    <value>Δοκιμή αρχείου</value>
+    <value>Δοκιμή αρχείου συμπίεσης</value>
   </data>
   <data name="TestNoErrorsFound" xml:space="preserve">
     <value>Δεν βρέθηκαν σφάλματα.</value>
@@ -510,7 +510,7 @@
     <value>Το ZipCrypto είναι αδύναμη κρυπτογράφηση: τα αρχεία μπορούν να ανακτηθούν χωρίς τον κωδικό πρόσβασης. Χρησιμοποιήστε AES-256 για οτιδήποτε ευαίσθητο.</value>
   </data>
   <data name="BrowseOutsideInfo" xml:space="preserve">
-    <value>Αυτός είναι φάκελος στον δίσκο, όχι αρχείο συμπίεσης. Κάντε διπλό κλικ σε ένα αρχείο συμπίεσης για να το ανοίξετε ή πατήστε "Κλείσιμο αρχείου" (Esc) για να επιστρέψετε στη δημιουργία αρχείων.</value>
+    <value>Αυτός είναι φάκελος στον δίσκο, όχι αρχείο συμπίεσης. Κάντε διπλό κλικ σε ένα αρχείο συμπίεσης για να το ανοίξετε ή πατήστε "Κλείσιμο αρχείου συμπίεσης" (Esc) για να επιστρέψετε στη δημιουργία αρχείων συμπίεσης.</value>
   </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Ένα επίπεδο επάνω</value>
@@ -552,6 +552,6 @@
     <value>Ακύρωση όλων</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
-    <value>Έλεγχος περιεχομένων αρχειοθήκης...</value>
+    <value>Έλεγχος περιεχομένων αρχείου συμπίεσης...</value>
   </data>
 </root>

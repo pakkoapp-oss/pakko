@@ -82,7 +82,7 @@
     <value>ארכיון חשוד</value>
   </data>
   <data name="BombMessage" xml:space="preserve">
-    <value>ארכיון זה טוען שהוא מכיל {0} נתונים, ביחס דחיסה של {1}:1. זהו יחס גבוה באופן חריג ועשוי להעיד על פצצת דחיסה. לחלץ בכל זאת?</value>
+    <value>ארכיון זה טוען שהוא מכיל {0} נתונים, ביחס דחיסה של {1}:1. זהו יחס גבוה באופן חריג ועשוי להעיד על פצצת פריסה. לחלץ בכל זאת?</value>
   </data>
   <data name="BombExtract" xml:space="preserve">
     <value>חילוץ</value>

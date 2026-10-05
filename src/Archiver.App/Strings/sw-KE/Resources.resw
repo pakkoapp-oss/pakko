@@ -21,7 +21,7 @@
     <value>Toa</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
-    <value>Futa</value>
+    <value>Ondoa zote</value>
   </data>
   <data name="AddFilesButton.Content" xml:space="preserve">
     <value>Ongeza faili</value>
@@ -30,7 +30,7 @@
     <value>Ongeza folda</value>
   </data>
   <data name="HashButton.Content" xml:space="preserve">
-    <value>Hashi...</value>
+    <value>Heshi...</value>
   </data>
   <data name="AboutButton.Content" xml:space="preserve">
     <value>Kuhusu</value>
@@ -93,10 +93,10 @@
     <value>Hali:</value>
   </data>
   <data name="OneArchiveRadio.Content" xml:space="preserve">
-    <value>Hifadhi moja</value>
+    <value>Kumbukumbu moja</value>
   </data>
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
-    <value>Hifadhi tofauti</value>
+    <value>Kumbukumbu tofauti</value>
   </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>Muundo:</value>
@@ -155,7 +155,7 @@
     <value>Dondosha faili au folda hapa</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Hifadhi zinaweza kutolewa; kingine chochote kinabanwa</value>
+    <value>Kumbukumbu zinaweza kutolewa; kingine chochote kinabanwa</value>
   </data>
 
   <!-- Labels -->
@@ -197,7 +197,7 @@
     <value>Inakamilisha...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Itatoa hifadhi {0} kwenye folda iliyo hapo juu</value>
+    <value>Itatoa kumbukumbu {0} kwenye folda iliyo hapo juu</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
     <value>Itabana vitu {0} kwenye folda iliyo hapo juu</value>
@@ -208,16 +208,16 @@
     <value>Imekamilika na matatizo</value>
   </data>
   <data name="ErrorSectionHeader" xml:space="preserve">
-    <value>Makosa</value>
+    <value>Hitilafu</value>
   </data>
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Zilizorukwa</value>
   </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
-    <value>Hifadhi ya kutiliwa shaka</value>
+    <value>Kumbukumbu ya kutiliwa shaka</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Hifadhi hii inadai kuwa na data {0}, na uwiano wa ubanaji wa {1}:1. Hii ni juu isivyo kawaida na inaweza kuashiria bomu la kufungua ubanaji. Endelea kutoa?</value>
+    <value>Kumbukumbu hii inadai kuwa na data {0}, na uwiano wa ubanaji wa {1}:1. Hii ni juu isivyo kawaida na inaweza kuashiria bomu la kufungua ubanaji. Endelea kutoa?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>Faili tayari lipo</value>
@@ -288,7 +288,7 @@
     <value>Vitisho vilivyogunduliwa</value>
   </data>
   <data name="ScanInconclusiveSectionHeader" xml:space="preserve">
-    <value>Haielekei</value>
+    <value>Haijabainika</value>
   </data>
   <data name="EncryptWithPasswordCheck.Content" xml:space="preserve">
     <value>Simba kwa nenosiri (AES-256)</value>
@@ -321,13 +321,13 @@
     <value>Futa kabisa?</value>
   </data>
   <data name="PermanentDeleteDialogMessage" xml:space="preserve">
-    <value>Vipengee hivi viko kwenye hifadhi isiyo na Pipa la Taka (hifadhi ya mtandao, inayoondolewa au iliyopangwa). Kufuta hakuwezi kutenduliwa.</value>
+    <value>Vipengee hivi viko kwenye kiendeshi kisicho na Pipa la Kuchakata (kiendeshi cha mtandao, kinachoondolewa au kilichopangwa). Kufuta hakuwezi kutenduliwa.</value>
   </data>
   <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
     <value>Futa kabisa</value>
   </data>
   <data name="PermanentDeleteDialogKeepButton" xml:space="preserve">
-    <value>Hifadhi</value>
+    <value>Bakiza</value>
   </data>
   <data name="NotDeletedDialogTitle" xml:space="preserve">
     <value>Baadhi ya vipengee havikufutwa</value>
@@ -378,19 +378,19 @@
     <value>PC Hii</value>
   </data>
   <data name="NestedArchiveDepthLimitReached" xml:space="preserve">
-    <value>Haiwezi kufungua — hifadhi hii imewekwa ndani kwa kina kupita kiasi.</value>
+    <value>Haiwezi kufungua — kumbukumbu hii imewekwa ndani kwa kina kupita kiasi.</value>
   </data>
   <data name="UnsafePreviewConfirmTitle" xml:space="preserve">
     <value>Haiwezi kuhakikiwa</value>
   </data>
   <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
-    <value>"{0}" haiwezi kufunguliwa moja kwa moja kwa usalama. Badala yake itoe kwenye folda iliyo kando ya hifadhi?</value>
+    <value>"{0}" haiwezi kufunguliwa moja kwa moja kwa usalama. Badala yake itoe kwenye folda iliyo kando ya kumbukumbu?</value>
   </data>
   <data name="OutcomeCompressed" xml:space="preserve">
-    <value>Imebanwa kwa sekunde {0} — hifadhi: {1}</value>
+    <value>Imebanwa kwa sekunde {0} — kumbukumbu: {1}</value>
   </data>
   <data name="OutcomeExtracted" xml:space="preserve">
-    <value>Imetolewa kwa sekunde {0} — hifadhi: {1}</value>
+    <value>Imetolewa kwa sekunde {0} — kumbukumbu: {1}</value>
   </data>
   <data name="OutcomeProblems" xml:space="preserve">
     <value>Imekamilika na matatizo: {0}</value>
@@ -414,7 +414,7 @@
     <value>Herufi hiyo haiwezi kutumika na haikuongezwa. Futa sehemu hiyo, kisha andika nenosiri tena ukitumia herufi za Kiingereza, tarakimu, nafasi na alama za uakifishaji pekee.</value>
   </data>
   <data name="NewArchiveCardTitle.Text" xml:space="preserve">
-    <value>Hifadhi mpya</value>
+    <value>Kumbukumbu mpya</value>
   </data>
   <data name="DestinationCardTitle.Text" xml:space="preserve">
     <value>Wapi, na nini baadaye</value>
@@ -423,7 +423,7 @@
     <value>Usimbaji fiche kwa nenosiri unapatikana kwa ZIP pekee</value>
   </data>
   <data name="RecycleBinNote.Text" xml:space="preserve">
-    <value>Kwenye hifadhi za mtandao na zinazoondolewa, ambazo hazina Pipa la Kuchakata, Pakko huuliza kwanza.</value>
+    <value>Kwenye viendeshi vya mtandao na vinavyoondolewa, ambavyo havina Pipa la Kuchakata, Pakko huuliza kwanza.</value>
   </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Ongeza faili</value>
@@ -441,13 +441,13 @@
     <value>Baada ya kubana kwa mafanikio, hamishia faili chanzo kwenye Pipa la Kuchakata</value>
   </data>
   <data name="DeleteAfterExtractLabel" xml:space="preserve">
-    <value>Baada ya kutoa kwa mafanikio, hamishia hifadhi kwenye Pipa la Kuchakata</value>
+    <value>Baada ya kutoa kwa mafanikio, hamishia kumbukumbu kwenye Pipa la Kuchakata</value>
   </data>
   <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
     <value>{0} (otomatiki)</value>
   </data>
   <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
-    <value>{0}, ... (hifadhi moja kwa kila kipengee)</value>
+    <value>{0}, ... (kumbukumbu moja kwa kila kipengee)</value>
   </data>
   <data name="SummaryCompressionFast" xml:space="preserve">
     <value>Haraka</value>
@@ -468,19 +468,19 @@
     <value>bila nenosiri</value>
   </data>
   <data name="NewArchiveCollapsedReason" xml:space="preserve">
-    <value>imekunjwa, orodha ina hifadhi pekee</value>
+    <value>imekunjwa, orodha ina kumbukumbu pekee</value>
   </data>
   <data name="ExtractUnavailableHint" xml:space="preserve">
-    <value>Orodha haina hifadhi, hakuna cha kutoa</value>
+    <value>Orodha haina kumbukumbu, hakuna cha kutoa</value>
   </data>
   <data name="DeleteAfterEitherLabel" xml:space="preserve">
-    <value>Baada ya operesheni kufanikiwa, hamishia kwenye Pipa la Kuchakata kile ilichotumia: faili chanzo baada ya kubana, hifadhi baada ya kutoa</value>
+    <value>Baada ya operesheni kufanikiwa, hamishia kwenye Pipa la Kuchakata kile ilichotumia: faili chanzo baada ya kubana, kumbukumbu baada ya kutoa</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
     <value>Jaribu kumbukumbu</value>
   </data>
   <data name="CloseArchiveButton.Content" xml:space="preserve">
-    <value>Funga hifadhi</value>
+    <value>Funga kumbukumbu</value>
   </data>
   <data name="StatusTesting" xml:space="preserve">
     <value>Inajaribu...</value>
@@ -510,7 +510,7 @@
     <value>ZipCrypto ni usimbaji fiche dhaifu: faili zinaweza kurejeshwa bila nenosiri. Tumia AES-256 kwa chochote nyeti.</value>
   </data>
   <data name="BrowseOutsideInfo" xml:space="preserve">
-    <value>Hii ni folda kwenye diski, si hifadhi. Bofya mara mbili hifadhi ili kuifungua, au bonyeza "Funga hifadhi" (Esc) ili kurudi kwenye kuunda hifadhi.</value>
+    <value>Hii ni folda kwenye diski, si kumbukumbu. Bofya mara mbili kumbukumbu ili kuifungua, au bonyeza "Funga kumbukumbu" (Esc) ili kurudi kwenye kuunda kumbukumbu.</value>
   </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Juu ngazi moja</value>

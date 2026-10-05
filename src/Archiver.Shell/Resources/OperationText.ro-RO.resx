@@ -82,7 +82,7 @@
     <value>Arhivă suspectă</value>
   </data>
   <data name="BombMessage" xml:space="preserve">
-    <value>Această arhivă declară că conține {0} de date, un raport de compresie de {1}:1. Aceasta este neobișnuit de ridicat și poate indica o bombă de decompresie. Extrageți oricum?</value>
+    <value>Această arhivă afirmă că ar conține {0} de date, un raport de compresie de {1}:1. Aceasta este neobișnuit de ridicat și poate indica o bombă de decompresie. Extrageți oricum?</value>
   </data>
   <data name="BombExtract" xml:space="preserve">
     <value>Extrage</value>

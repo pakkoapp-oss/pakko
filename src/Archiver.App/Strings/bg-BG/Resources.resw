@@ -18,7 +18,7 @@
     <value>Компресиране в {0}</value>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
-    <value>Разархивиране</value>
+    <value>Извличане</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
     <value>Изчистване</value>
@@ -36,10 +36,10 @@
     <value>Относно</value>
   </data>
   <data name="ExtractSelectedButton.Content" xml:space="preserve">
-    <value>Разархивиране на избраните</value>
+    <value>Извличане на избраните</value>
   </data>
   <data name="ExtractAllButton.Content" xml:space="preserve">
-    <value>Разархивиране на всички</value>
+    <value>Извличане на всички</value>
   </data>
 
   <!-- Table headers -->
@@ -155,7 +155,7 @@
     <value>Пуснете файлове или папки тук</value>
   </data>
   <data name="DropZoneModeHint.Text" xml:space="preserve">
-    <value>Архивите могат да бъдат разархивирани; всичко останало се компресира</value>
+    <value>Архивите могат да бъдат извлечени; всичко останало се компресира</value>
   </data>
 
   <!-- Labels -->
@@ -182,7 +182,7 @@
     <value>Компресиране...</value>
   </data>
   <data name="StatusExtracting" xml:space="preserve">
-    <value>Разархивиране...</value>
+    <value>Извличане...</value>
   </data>
   <data name="StatusIssues" xml:space="preserve">
     <value>Завършено с проблеми.</value>
@@ -197,7 +197,7 @@
     <value>Финализиране...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Ще бъдат разархивирани {0} архив(а) в папката по-горе</value>
+    <value>Ще бъдат извлечени {0} архив(а) в папката по-горе</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
     <value>Ще бъдат компресирани {0} елемент(а) в папката по-горе</value>
@@ -217,7 +217,7 @@
     <value>Подозрителен архив</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Този архив твърди, че съдържа {0} данни, коефициент на компресия {1}:1. Това е необичайно високо и може да показва декомпресионна бомба. Да се разархивира ли въпреки това?</value>
+    <value>Този архив твърди, че съдържа {0} данни, коефициент на компресия {1}:1. Това е необичайно високо и може да показва декомпресионна бомба. Да се извлече ли въпреки това?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>Файлът вече съществува</value>
@@ -261,7 +261,7 @@
     <value>Относно Pakko</value>
   </data>
   <data name="AboutTagline" xml:space="preserve">
-    <value>Лек, роден Windows архиватор</value>
+    <value>Лек архиватор, създаден за Windows</value>
   </data>
   <data name="AboutLicense" xml:space="preserve">
     <value>Лиценз: Apache 2.0</value>
@@ -303,7 +303,7 @@
     <value>Потвърдете паролата</value>
   </data>
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
-    <value>Използвайте само английски букви, цифри, интервали и пунктуация, до {0} знака, за да могат 7-Zip и други ZIP програми да отварят архива.</value>
+    <value>Използвайте само английски букви, цифри, интервали и препинателни знаци, до {0} знака, за да могат 7-Zip и други ZIP програми да отварят архива.</value>
   </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>Паролата е по-дълга от {0} знака.</value>
@@ -321,7 +321,7 @@
     <value>Изтриване окончателно?</value>
   </data>
   <data name="PermanentDeleteDialogMessage" xml:space="preserve">
-    <value>Тези елементи са на устройство без кошче (мрежово, преносимо или свързано устройство). Изтриването им не може да бъде отменено.</value>
+    <value>Тези елементи са на устройство без кошче (мрежово, преносимо или назначено устройство). Изтриването им не може да бъде отменено.</value>
   </data>
   <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
     <value>Изтрий окончателно</value>
@@ -369,7 +369,7 @@
     <value>Компресиране... (файлове: {0}, {1})</value>
   </data>
   <data name="StatusExtractingCount" xml:space="preserve">
-    <value>Разархивиране... (архиви: {0})</value>
+    <value>Извличане... (архиви: {0})</value>
   </data>
   <data name="StatusOpening" xml:space="preserve">
     <value>Отваряне...</value>
@@ -384,13 +384,13 @@
     <value>Не може да се прегледа</value>
   </data>
   <data name="UnsafePreviewConfirmMessage" xml:space="preserve">
-    <value>"{0}" не може да бъде отворен безопасно директно. Да се разархивира ли в папка до архива?</value>
+    <value>"{0}" не може да бъде отворен безопасно директно. Да се извлече ли в папка до архива?</value>
   </data>
   <data name="OutcomeCompressed" xml:space="preserve">
     <value>Компресирано за {0} с — архиви: {1}</value>
   </data>
   <data name="OutcomeExtracted" xml:space="preserve">
-    <value>Разархивирано за {0} с — архиви: {1}</value>
+    <value>Извлечено за {0} с — архиви: {1}</value>
   </data>
   <data name="OutcomeProblems" xml:space="preserve">
     <value>Завършено с проблеми: {0}</value>
@@ -435,13 +435,13 @@
     <value>Запис в:</value>
   </data>
   <data name="DestinationExtractLabel" xml:space="preserve">
-    <value>Разархивиране в:</value>
+    <value>Извличане в:</value>
   </data>
   <data name="DeleteAfterCompressLabel" xml:space="preserve">
     <value>След успешно компресиране преместване на изходните файлове в кошчето</value>
   </data>
   <data name="DeleteAfterExtractLabel" xml:space="preserve">
-    <value>След успешно разархивиране преместване на архивите в кошчето</value>
+    <value>След успешно извличане преместване на архивите в кошчето</value>
   </data>
   <data name="ArchiveNameAutoPlaceholder" xml:space="preserve">
     <value>{0} (автоматично)</value>
@@ -471,10 +471,10 @@
     <value>свито, в списъка има само архиви</value>
   </data>
   <data name="ExtractUnavailableHint" xml:space="preserve">
-    <value>В списъка няма архиви, няма какво да се разархивира</value>
+    <value>В списъка няма архиви, няма какво да се извлече</value>
   </data>
   <data name="DeleteAfterEitherLabel" xml:space="preserve">
-    <value>След успешна операция преместване в кошчето на използваното: изходните файлове след компресиране, архивите след разархивиране</value>
+    <value>След успешна операция преместване в кошчето на използваното: изходните файлове след компресиране, архивите след извличане</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
     <value>Тестване на архива</value>
@@ -501,7 +501,7 @@
     <value>Шифровани файлове ({0}): {1} от {2}.</value>
   </data>
   <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
-    <value>Pakko пита за паролата, когато разархивирате или отваряте файл. Имената на файловете не са шифровани, а шифроването добавя няколко байта към всеки файл.</value>
+    <value>Pakko пита за паролата, когато извличате или отваряте файл. Имената на файловете не са шифровани, а шифроването добавя няколко байта към всеки файл.</value>
   </data>
   <data name="BrowseEncryptedAe2Note" xml:space="preserve">
     <value>CRC-32 е празна за файлове AES (AE-2): те се проверяват чрез удостоверяване, а не чрез контролна сума.</value>

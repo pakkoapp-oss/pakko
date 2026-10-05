@@ -31,13 +31,13 @@
     <value>Liên kết tượng trưng và điểm phân tích lại không được lưu trữ.</value>
   </data>
   <data name="ArchiveAlreadyExists" xml:space="preserve">
-    <value>Kho lưu trữ "{0}" đã tồn tại ở đích và đã được bỏ qua.</value>
+    <value>Tệp nén "{0}" đã tồn tại ở đích và đã được bỏ qua.</value>
   </data>
   <data name="CannotCreateArchive" xml:space="preserve">
-    <value>Không thể tạo kho lưu trữ: {0}</value>
+    <value>Không thể tạo tệp nén: {0}</value>
   </data>
   <data name="AccessDeniedCreatingArchive" xml:space="preserve">
-    <value>Truy cập bị từ chối khi tạo kho lưu trữ: {0}</value>
+    <value>Truy cập bị từ chối khi tạo tệp nén: {0}</value>
   </data>
   <data name="UnexpectedError" xml:space="preserve">
     <value>Lỗi không mong muốn: {0}</value>
@@ -46,34 +46,34 @@
     <value>Lỗi không xác định khi nén.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
-    <value>Tên mục quá dài cho kho lưu trữ ZIP ({0} byte theo UTF-8; tối đa {1}).</value>
+    <value>Tên mục quá dài cho tệp nén ZIP ({0} byte theo UTF-8; tối đa {1}).</value>
   </data>
   <data name="NotEnoughSpaceToCompress" xml:space="preserve">
     <value>Không đủ dung lượng đĩa trống để nén tệp này: tệp có {0} byte nhưng chỉ còn trống {1} byte.</value>
   </data>
   <data name="PasswordNotEntered" xml:space="preserve">
-    <value>Không tạo kho lưu trữ: chưa nhập mật khẩu.</value>
+    <value>Không tạo tệp nén: chưa nhập mật khẩu.</value>
   </data>
   <data name="PasswordEmpty" xml:space="preserve">
-    <value>Không tạo kho lưu trữ: mật khẩu trống.</value>
+    <value>Không tạo tệp nén: mật khẩu trống.</value>
   </data>
   <data name="PasswordUnsupportedCharacters" xml:space="preserve">
-    <value>Không tạo kho lưu trữ: mật khẩu chỉ được chứa chữ cái tiếng Anh, chữ số, dấu cách và dấu câu ASCII; các công cụ ZIP khác như 7-Zip không thể mở kho lưu trữ được bảo vệ bằng ký tự khác.</value>
+    <value>Không tạo tệp nén: mật khẩu chỉ được chứa chữ cái tiếng Anh, chữ số, dấu cách và dấu câu ASCII; các công cụ ZIP khác như 7-Zip không thể mở tệp nén được bảo vệ bằng ký tự khác.</value>
   </data>
   <data name="PasswordTooLong" xml:space="preserve">
-    <value>Không tạo kho lưu trữ: mật khẩu dài hơn {0} ký tự, mức tối đa mà 7-Zip chấp nhận cho ZIP mã hóa AES.</value>
+    <value>Không tạo tệp nén: mật khẩu dài hơn {0} ký tự, mức tối đa mà 7-Zip chấp nhận cho ZIP mã hóa AES.</value>
   </data>
   <data name="PasswordOnlyForZip" xml:space="preserve">
-    <value>Bảo vệ bằng mật khẩu chỉ khả dụng cho kho lưu trữ ZIP.</value>
+    <value>Bảo vệ bằng mật khẩu chỉ khả dụng cho tệp nén ZIP.</value>
   </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
-    <value>Việc tạo kho lưu trữ {0} bị Chính sách Nhóm chặn.</value>
+    <value>Việc tạo tệp nén {0} bị Chính sách Nhóm chặn.</value>
   </data>
   <data name="TarCreationDisabled" xml:space="preserve">
-    <value>Việc tạo kho lưu trữ bằng tar.exe bị Chính sách Nhóm tắt.</value>
+    <value>Việc tạo tệp nén bằng tar.exe bị Chính sách Nhóm tắt.</value>
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
-    <value>tar.exe không thể tạo kho lưu trữ: {0}</value>
+    <value>tar.exe không thể tạo tệp nén: {0}</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Tên "{0}" chứa ký tự mà tar.exe không thể xử lý an toàn trên hệ thống này (trang mã ANSI {1}). Hãy dùng ZIP cho nội dung này.</value>
@@ -85,19 +85,19 @@
     <value>"{0}" không vượt qua kiểm tra chữ ký Authenticode.</value>
   </data>
   <data name="NotAnArchiveExtract" xml:space="preserve">
-    <value>Tệp không có định dạng kho lưu trữ được nhận dạng và không thể giải nén.</value>
+    <value>Tệp không có định dạng tệp nén được nhận dạng và không thể giải nén.</value>
   </data>
   <data name="NotAnArchiveTest" xml:space="preserve">
-    <value>Tệp không có định dạng kho lưu trữ được nhận dạng và không thể kiểm tra.</value>
+    <value>Tệp không có định dạng tệp nén được nhận dạng và không thể kiểm tra.</value>
   </data>
   <data name="NotAnArchiveList" xml:space="preserve">
-    <value>Tệp không có định dạng kho lưu trữ được nhận dạng và không thể hiển thị nội dung.</value>
+    <value>Tệp không có định dạng tệp nén được nhận dạng và không thể hiển thị nội dung.</value>
   </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
     <value>Định dạng {0} không được hỗ trợ. Chỉ hỗ trợ các định dạng dựa trên ZIP.</value>
   </data>
   <data name="FormatBlocked" xml:space="preserve">
-    <value>Định dạng kho lưu trữ này ({0}) bị Chính sách Nhóm chặn.</value>
+    <value>Định dạng tệp nén này ({0}) bị Chính sách Nhóm chặn.</value>
   </data>
   <data name="TarExtractionDisabled" xml:space="preserve">
     <value>Việc giải nén bằng tar.exe bị Chính sách Nhóm tắt.</value>
@@ -109,34 +109,34 @@
     <value>{0} không được tar.exe của hệ thống này (phiên bản {1}) hỗ trợ.</value>
   </data>
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
-    <value>Định dạng kho lưu trữ này không được tar.exe của hệ thống này (phiên bản {0}) hỗ trợ.</value>
+    <value>Định dạng tệp nén này không được tar.exe của hệ thống này (phiên bản {0}) hỗ trợ.</value>
   </data>
   <data name="NoTestCapability" xml:space="preserve">
-    <value>không thể kiểm tra kho lưu trữ họ tar</value>
+    <value>không thể kiểm tra tệp nén họ tar</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
-    <value>Kho lưu trữ này được bảo vệ bằng mật khẩu và không thể giải nén.</value>
+    <value>Tệp nén này được bảo vệ bằng mật khẩu và không thể giải nén.</value>
   </data>
   <data name="PasswordProtectedTest" xml:space="preserve">
-    <value>Kho lưu trữ này được bảo vệ bằng mật khẩu và không thể kiểm tra.</value>
+    <value>Tệp nén này được bảo vệ bằng mật khẩu và không thể kiểm tra.</value>
   </data>
   <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
-    <value>Mật khẩu đã áp dụng cho các kho lưu trữ còn lại không khớp với kho lưu trữ này.</value>
+    <value>Mật khẩu đã áp dụng cho các tệp nén còn lại không khớp với tệp nén này.</value>
   </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
-    <value>Kho lưu trữ này được bảo vệ bằng mật khẩu và không thể duyệt.</value>
+    <value>Tệp nén này được bảo vệ bằng mật khẩu và không thể duyệt.</value>
   </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Tệp có chữ ký ZIP nhưng có vẻ bị hỏng hoặc không đầy đủ.</value>
   </data>
   <data name="CannotExtractArchive" xml:space="preserve">
-    <value>Không thể giải nén kho lưu trữ: {0}</value>
+    <value>Không thể giải nén tệp nén: {0}</value>
   </data>
   <data name="AccessDeniedExtractingArchive" xml:space="preserve">
-    <value>Truy cập bị từ chối khi giải nén kho lưu trữ: {0}</value>
+    <value>Truy cập bị từ chối khi giải nén tệp nén: {0}</value>
   </data>
   <data name="CannotReadArchive" xml:space="preserve">
-    <value>Không thể đọc kho lưu trữ: {0}</value>
+    <value>Không thể đọc tệp nén: {0}</value>
   </data>
   <data name="EntryNameCollision" xml:space="preserve">
     <value>Sau khi giải mã, mục "{0}" có cùng tên với một mục khác; mục này không được giải nén vì mục này sẽ ghi đè mục kia.</value>
@@ -154,19 +154,19 @@
     <value>Mục "{0}" dùng phương pháp nén kèm mã hóa không được hỗ trợ.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Kho lưu trữ khai báo {0} byte khi chưa nén, nhưng đích chỉ còn trống {1} byte. Đã chặn giải nén.</value>
+    <value>Tệp nén khai báo {0} byte khi chưa nén, nhưng đích chỉ còn trống {1} byte. Đã chặn giải nén.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
     <value>Tỷ lệ nén đáng ngờ ({0}:1, khai báo {1} byte). Đã từ chối giải nén để đề phòng bom ZIP.</value>
   </data>
   <data name="TarBombDeclined" xml:space="preserve">
-    <value>Tỷ lệ nén đáng ngờ ({0}:1, khai báo {1} byte) trên toàn bộ kho lưu trữ. Đã từ chối giải nén để đề phòng bom giải nén.</value>
+    <value>Tỷ lệ nén đáng ngờ ({0}:1, khai báo {1} byte) trên toàn bộ tệp nén. Đã từ chối giải nén để đề phòng bom giải nén.</value>
   </data>
   <data name="DestinationFileLocked" xml:space="preserve">
     <value>Không thể ghi "{0}": tệp đích đang bị một tiến trình khác khóa.</value>
   </data>
   <data name="AllEntriesSkipped" xml:space="preserve">
-    <value>Không có gì được giải nén từ kho lưu trữ này — tất cả các mục đều bị bỏ qua.</value>
+    <value>Không có gì được giải nén từ tệp nén này — tất cả các mục đều bị bỏ qua.</value>
   </data>
   <data name="UnsafeEntryPath" xml:space="preserve">
     <value>Mục "{0}" có đường dẫn không an toàn và không được giải nén.</value>
@@ -193,37 +193,37 @@
     <value>Giải nén bằng tar.exe không thành công: {0}</value>
   </data>
   <data name="TarUnsafeEntryPath" xml:space="preserve">
-    <value>Kho lưu trữ chứa đường dẫn mục không an toàn ("{0}") và không thể giải nén an toàn.</value>
+    <value>Tệp nén chứa đường dẫn mục không an toàn ("{0}") và không thể giải nén an toàn.</value>
   </data>
   <data name="TarListingInconsistent" xml:space="preserve">
-    <value>Danh sách nội dung kho lưu trữ không nhất quán nên không thể giải nén an toàn.</value>
+    <value>Danh sách nội dung tệp nén không nhất quán nên không thể giải nén an toàn.</value>
   </data>
   <data name="TarSpecialEntry" xml:space="preserve">
-    <value>Kho lưu trữ chứa liên kết tượng trưng, liên kết cứng, thiết bị hoặc mục đặc biệt khác và không thể giải nén an toàn.</value>
+    <value>Tệp nén chứa liên kết tượng trưng, liên kết cứng, thiết bị hoặc mục đặc biệt khác và không thể giải nén an toàn.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>{0} bản sao khác có tên này chưa được giải nén: chỉ có thể lấy bản sao đầu tiên và cuối cùng ra khỏi kho lưu trữ này.</value>
+    <value>{0} bản sao khác có tên này chưa được giải nén: chỉ có thể lấy bản sao đầu tiên và cuối cùng ra khỏi tệp nén này.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Một mục được chọn khác có cùng tên và không thể thêm thư mục này với tên mới. Hãy đổi tên một trong hai rồi thử lại.</value>
   </data>
   <data name="ListingInconsistent" xml:space="preserve">
-    <value>Danh sách nội dung kho lưu trữ không nhất quán.</value>
+    <value>Danh sách nội dung tệp nén không nhất quán.</value>
   </data>
   <data name="TarUnreadableNames" xml:space="preserve">
-    <value>Kho lưu trữ chứa tên tệp mà tar.exe không thể biểu diễn trên hệ thống này (trang mã {0}), vì vậy không thể đọc tại đây bằng tar.exe. Chi tiết: {1}</value>
+    <value>Tệp nén chứa tên tệp mà tar.exe không thể biểu diễn trên hệ thống này (trang mã {0}), vì vậy không thể đọc tại đây bằng tar.exe. Chi tiết: {1}</value>
   </data>
   <data name="SandboxSetupFailed" xml:space="preserve">
     <value>Thiết lập hộp cát không thành công: {0}</value>
   </data>
   <data name="ArchiveInUse" xml:space="preserve">
-    <value>Kho lưu trữ đang được chương trình khác sử dụng: {0}</value>
+    <value>Tệp nén đang được chương trình khác sử dụng: {0}</value>
   </data>
   <data name="CannotOpenArchive" xml:space="preserve">
-    <value>Không thể mở kho lưu trữ: {0}</value>
+    <value>Không thể mở tệp nén: {0}</value>
   </data>
   <data name="CannotReopenArchive" xml:space="preserve">
-    <value>Không thể mở lại kho lưu trữ (lỗi Win32 {0}).</value>
+    <value>Không thể mở lại tệp nén (lỗi Win32 {0}).</value>
   </data>
   <data name="HashFolderSkipped" xml:space="preserve">
     <value>Đã bỏ qua: thư mục (chỉ hỗ trợ khi chọn riêng một thư mục)</value>
@@ -241,13 +241,13 @@
     <value>Không thể bắt đầu phiên quét vi-rút: {0}</value>
   </data>
   <data name="ScanCannotReadArchive" xml:space="preserve">
-    <value>Không thể đọc kho lưu trữ: {0}</value>
+    <value>Không thể đọc tệp nén: {0}</value>
   </data>
   <data name="ScanCannotReadEntry" xml:space="preserve">
     <value>Không thể đọc mục: {0}</value>
   </data>
   <data name="ScanCannotExtract" xml:space="preserve">
-    <value>Không thể giải nén kho lưu trữ để quét: {0}</value>
+    <value>Không thể giải nén tệp nén để quét: {0}</value>
   </data>
   <data name="ScanRemovedOrBlocked" xml:space="preserve">
     <value>Đã bị xóa hoặc chặn trước khi Pakko có thể quét trực tiếp.</value>

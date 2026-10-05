@@ -96,7 +96,7 @@
     <value>ไฟล์บีบอัดเดียว</value>
   </data>
   <data name="SeparateArchivesRadio.Content" xml:space="preserve">
-    <value>แยกไฟล์บีบอัด</value>
+    <value>ไฟล์บีบอัดแยกกัน</value>
   </data>
   <data name="FormatLabel.Text" xml:space="preserve">
     <value>รูปแบบ:</value>
@@ -247,7 +247,7 @@
     <value>รหัสผ่านไม่ถูกต้อง กรุณาลองอีกครั้ง</value>
   </data>
   <data name="PasswordDialogApplyToRemainingCheck" xml:space="preserve">
-    <value>ใช้กับไฟล์ที่เหลือ</value>
+    <value>ใช้กับไฟล์บีบอัดที่เหลือ</value>
   </data>
   <data name="PasswordDialogOkButton" xml:space="preserve">
     <value>ตกลง</value>
@@ -294,7 +294,7 @@
     <value>เข้ารหัสด้วยรหัสผ่าน (AES-256)</value>
   </data>
   <data name="EncryptPasswordDialogMessage" xml:space="preserve">
-    <value>เนื้อหาของไฟล์จะถูกเข้ารหัสด้วย AES-256 ชื่อไฟล์และโฟลเดอร์ในไฟล์เก็บถาวรจะยังมองเห็นได้โดยไม่ต้องใช้รหัสผ่าน</value>
+    <value>เนื้อหาของไฟล์จะถูกเข้ารหัสด้วย AES-256 ชื่อไฟล์และโฟลเดอร์ในไฟล์บีบอัดจะยังมองเห็นได้โดยไม่ต้องใช้รหัสผ่าน</value>
   </data>
   <data name="EncryptPasswordPlaceholder" xml:space="preserve">
     <value>รหัสผ่าน</value>
@@ -303,7 +303,7 @@
     <value>ยืนยันรหัสผ่าน</value>
   </data>
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
-    <value>ใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง และเครื่องหมายวรรคตอน ไม่เกิน {0} อักขระ เพื่อให้ 7-Zip และเครื่องมือ ZIP อื่นๆ เปิดไฟล์เก็บถาวรได้</value>
+    <value>ใช้เฉพาะตัวอักษรภาษาอังกฤษ ตัวเลข ช่องว่าง และเครื่องหมายวรรคตอน ไม่เกิน {0} อักขระ เพื่อให้ 7-Zip และเครื่องมือ ZIP อื่นๆ เปิดไฟล์บีบอัดได้</value>
   </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>รหัสผ่านยาวเกิน {0} อักขระ</value>
@@ -504,7 +504,7 @@
     <value>Pakko จะขอรหัสผ่านเมื่อคุณแตกไฟล์หรือเปิดไฟล์ ชื่อไฟล์ไม่ได้เข้ารหัส และการเข้ารหัสจะเพิ่มข้อมูลสองสามไบต์ให้กับทุกไฟล์</value>
   </data>
   <data name="BrowseEncryptedAe2Note" xml:space="preserve">
-    <value>CRC-32 ว่างเปล่าสำหรับไฟล์ AES (AE-2): ไฟล์เหล่านี้ได้รับการตรวจสอบด้วยการยืนยันตัวตน ไม่ใช่ผลรวมตรวจสอบ</value>
+    <value>CRC-32 ว่างเปล่าสำหรับไฟล์ AES (AE-2): ไฟล์เหล่านี้ได้รับการตรวจสอบด้วยการรับรองความถูกต้อง ไม่ใช่ผลรวมตรวจสอบ</value>
   </data>
   <data name="BrowseZipCryptoWeakNote" xml:space="preserve">
     <value>ZipCrypto เป็นการเข้ารหัสที่อ่อนแอ: สามารถกู้คืนไฟล์ได้โดยไม่ต้องใช้รหัสผ่าน ใช้ AES-256 สำหรับข้อมูลที่ละเอียดอ่อน</value>

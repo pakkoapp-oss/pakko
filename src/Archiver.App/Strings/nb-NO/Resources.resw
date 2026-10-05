@@ -200,7 +200,7 @@
     <value>{0} arkiv vil bli pakket ut til mappen ovenfor</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>{0} element vil bli komprimert til mappen ovenfor</value>
+    <value>{0} element(er) vil bli komprimert til mappen ovenfor</value>
   </data>
 
   <!-- Dialog strings -->
@@ -217,7 +217,7 @@
     <value>Mistenkelig arkiv</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>Dette arkivet hevder å inneholde {0} data, et komprimeringsforhold på {1}:1. Dette er uvanlig høyt og kan tyde på en utpakkingsbombe. Pakk ut likevel?</value>
+    <value>Dette arkivet hevder å inneholde {0} data, et komprimeringsforhold på {1}:1. Dette er uvanlig høyt og kan tyde på en dekomprimeringsbombe. Pakk ut likevel?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>Filen finnes allerede</value>

@@ -19,7 +19,7 @@
     <value>…và {0} mục nữa</value>
   </data>
   <data name="ResultNoErrorsDetected" xml:space="preserve">
-    <value>Không phát hiện lỗi nào trong tệp lưu trữ.</value>
+    <value>Không phát hiện lỗi nào trong tệp nén.</value>
   </data>
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>Thao tác không thành công.</value>

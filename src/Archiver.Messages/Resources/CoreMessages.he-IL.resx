@@ -85,19 +85,19 @@
     <value>"{0}" נכשל באימות חתימת Authenticode.</value>
   </data>
   <data name="NotAnArchiveExtract" xml:space="preserve">
-    <value>הקובץ אינו בתבנית ארכיון מוכרת ולא ניתן לחלץ אותו.</value>
+    <value>הקובץ אינו בפורמט ארכיון מוכר ולא ניתן לחלץ אותו.</value>
   </data>
   <data name="NotAnArchiveTest" xml:space="preserve">
-    <value>הקובץ אינו בתבנית ארכיון מוכרת ולא ניתן לבדוק אותו.</value>
+    <value>הקובץ אינו בפורמט ארכיון מוכר ולא ניתן לבדוק אותו.</value>
   </data>
   <data name="NotAnArchiveList" xml:space="preserve">
-    <value>הקובץ אינו בתבנית ארכיון מוכרת ולא ניתן להציג את תוכנו.</value>
+    <value>הקובץ אינו בפורמט ארכיון מוכר ולא ניתן להציג את תוכנו.</value>
   </data>
   <data name="UnsupportedByZipEngine" xml:space="preserve">
-    <value>התבנית {0} אינה נתמכת. רק תבניות המבוססות על ZIP נתמכות.</value>
+    <value>הפורמט {0} אינו נתמך. רק פורמטים המבוססים על ZIP נתמכים.</value>
   </data>
   <data name="FormatBlocked" xml:space="preserve">
-    <value>תבנית ארכיון זו ({0}) חסומה על-ידי מדיניות קבוצתית.</value>
+    <value>פורמט ארכיון זה ({0}) חסום על-ידי מדיניות קבוצתית.</value>
   </data>
   <data name="TarExtractionDisabled" xml:space="preserve">
     <value>חילוץ באמצעות tar.exe מושבת על-ידי מדיניות קבוצתית.</value>
@@ -109,7 +109,7 @@
     <value>{0} אינו נתמך על-ידי tar.exe של מערכת זו (גרסה {1}).</value>
   </data>
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
-    <value>תבנית ארכיון זו אינה נתמכת על-ידי tar.exe של מערכת זו (גרסה {0}).</value>
+    <value>פורמט ארכיון זה אינו נתמך על-ידי tar.exe של מערכת זו (גרסה {0}).</value>
   </data>
   <data name="NoTestCapability" xml:space="preserve">
     <value>לא ניתן לבדוק ארכיונים ממשפחת tar</value>

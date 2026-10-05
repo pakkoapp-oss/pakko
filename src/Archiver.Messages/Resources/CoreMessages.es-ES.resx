@@ -58,7 +58,7 @@
     <value>No se creó el archivo comprimido: la contraseña está vacía.</value>
   </data>
   <data name="PasswordUnsupportedCharacters" xml:space="preserve">
-    <value>No se creó el archivo comprimido: la contraseña solo puede contener letras inglesas, dígitos, espacios y signos de puntuación ASCII; otras herramientas ZIP como 7-Zip no pueden abrir un archivo protegido con otros caracteres.</value>
+    <value>No se creó el archivo comprimido: la contraseña solo puede contener letras inglesas, dígitos, espacios y signos de puntuación ASCII; otras herramientas ZIP como 7-Zip no pueden abrir un archivo comprimido protegido con otros caracteres.</value>
   </data>
   <data name="PasswordTooLong" xml:space="preserve">
     <value>No se creó el archivo comprimido: la contraseña supera los {0} caracteres, el máximo que 7-Zip acepta para un ZIP cifrado con AES.</value>
@@ -70,7 +70,7 @@
     <value>La creación de un archivo {0} está bloqueada por una directiva de grupo.</value>
   </data>
   <data name="TarCreationDisabled" xml:space="preserve">
-    <value>La creación de archivos con tar.exe está deshabilitada por una directiva de grupo.</value>
+    <value>La creación de archivos comprimidos con tar.exe está deshabilitada por una directiva de grupo.</value>
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe no pudo crear el archivo comprimido: {0}</value>
@@ -121,7 +121,7 @@
     <value>Este archivo comprimido está protegido con contraseña y no se puede probar.</value>
   </data>
   <data name="RememberedPasswordDoesNotFit" xml:space="preserve">
-    <value>La contraseña aplicada a los archivos restantes no corresponde a este archivo.</value>
+    <value>La contraseña aplicada a los archivos comprimidos restantes no corresponde a este archivo comprimido.</value>
   </data>
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Este archivo comprimido está protegido con contraseña y no se puede examinar.</value>
@@ -151,7 +151,7 @@
     <value>No se pudo descifrar la entrada «{0}»: error de autenticación (dañada o manipulada).</value>
   </data>
   <data name="EntryUnsupportedEncryptedMethod" xml:space="preserve">
-    <value>La entrada «{0}» usa un método de compresión no compatible con cifrado.</value>
+    <value>La entrada «{0}» usa un método de compresión no admitido junto con el cifrado.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
     <value>El archivo comprimido declara {0} bytes sin comprimir, pero el destino solo tiene {1} bytes libres. Se bloqueó la extracción.</value>
@@ -196,16 +196,16 @@
     <value>El archivo comprimido contiene una ruta de entrada no segura («{0}») y no se puede extraer de forma segura.</value>
   </data>
   <data name="TarListingInconsistent" xml:space="preserve">
-    <value>La lista de contenido del archivo comprimido es incoherente y no se puede extraer de forma segura.</value>
+    <value>La lista de contenido del archivo comprimido es incoherente; el archivo comprimido no se puede extraer de forma segura.</value>
   </data>
   <data name="TarSpecialEntry" xml:space="preserve">
     <value>El archivo comprimido contiene un vínculo simbólico, un vínculo físico, un dispositivo u otra entrada especial y no se puede extraer de forma segura.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>No se extrajeron otras {0} copias con este nombre: de este archivo solo se pueden sacar la primera y la última copia.</value>
+    <value>No se extrajeron otras {0} copias con este nombre: de este archivo comprimido solo se pueden sacar la primera y la última copia.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
-    <value>Otro elemento seleccionado tiene el mismo nombre y no se pudo agregar esta carpeta con un nombre nuevo. Cambie el nombre de uno de ellos e inténtelo de nuevo.</value>
+    <value>Otro elemento seleccionado tiene el mismo nombre y no se pudo añadir esta carpeta con un nombre nuevo. Cambie el nombre de uno de ellos e inténtelo de nuevo.</value>
   </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>La lista de contenido del archivo comprimido es incoherente.</value>
@@ -265,7 +265,7 @@
     <value>La entrada está protegida con otra contraseña y no se analizó.</value>
   </data>
   <data name="ScanEntryUnsupportedMethod" xml:space="preserve">
-    <value>La entrada usa un método de compresión no compatible con cifrado y no se analizó.</value>
+    <value>La entrada usa un método de compresión no admitido junto con el cifrado y no se analizó.</value>
   </data>
   <data name="ScanEntryAuthenticationFailed" xml:space="preserve">
     <value>La entrada no superó la autenticación de descifrado (dañada o manipulada) y no se analizó.</value>

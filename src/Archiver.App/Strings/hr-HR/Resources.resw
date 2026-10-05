@@ -258,7 +258,7 @@
 
   <!-- About dialog -->
   <data name="AboutDialogTitle" xml:space="preserve">
-    <value>O programu Pakko</value>
+    <value>O aplikaciji Pakko</value>
   </data>
   <data name="AboutTagline" xml:space="preserve">
     <value>Lagani izvorni arhiver za Windows</value>
@@ -468,7 +468,7 @@
     <value>bez lozinke</value>
   </data>
   <data name="NewArchiveCollapsedReason" xml:space="preserve">
-    <value>sažeto, popis sadrži samo arhive</value>
+    <value>skupljeno, popis sadrži samo arhive</value>
   </data>
   <data name="ExtractUnavailableHint" xml:space="preserve">
     <value>Popis ne sadrži arhive, nema se što raspakirati</value>

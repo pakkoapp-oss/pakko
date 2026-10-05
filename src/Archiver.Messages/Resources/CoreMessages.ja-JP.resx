@@ -58,7 +58,7 @@
     <value>アーカイブは作成されませんでした: パスワードが空です。</value>
   </data>
   <data name="PasswordUnsupportedCharacters" xml:space="preserve">
-    <value>アーカイブは作成されませんでした: パスワードに使用できるのは英字、数字、スペース、ASCII の句読点のみです。7-Zip などの他の ZIP ツールでは、それ以外の文字で保護されたアーカイブを開けません。</value>
+    <value>アーカイブは作成されませんでした: パスワードに使用できるのは英字、数字、スペース、ASCII 記号のみです。7-Zip などの他の ZIP ツールでは、それ以外の文字で保護されたアーカイブを開けません。</value>
   </data>
   <data name="PasswordTooLong" xml:space="preserve">
     <value>アーカイブは作成されませんでした: パスワードが {0} 文字を超えています。これは 7-Zip が AES 暗号化 ZIP で受け付ける最大長です。</value>

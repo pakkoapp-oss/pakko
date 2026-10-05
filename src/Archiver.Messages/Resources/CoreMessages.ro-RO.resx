@@ -232,7 +232,7 @@
     <value>Omis: legătură simbolică sau joncțiune (nu este urmată)</value>
   </data>
   <data name="HashFileChanged" xml:space="preserve">
-    <value>Dimensiunea fișierului s-a modificat în timpul calculării hash-ului: {0}</value>
+    <value>Dimensiunea fișierului s-a modificat în timpul calculării sumei de control: {0}</value>
   </data>
   <data name="NoAntivirusRegistered" xml:space="preserve">
     <value>Nu este înregistrat niciun antivirus pentru scanare.</value>

@@ -411,7 +411,7 @@
     <value>英語キーボード配列以外の文字は使用できないため、追加されませんでした。入力を英語に切り替え、フィールドをクリアして、パスワードをもう一度入力してください。</value>
   </data>
   <data name="EncryptPasswordRefusedCharacter" xml:space="preserve">
-    <value>その文字は使用できないため、追加されませんでした。フィールドをクリアし、英字、数字、スペース、句読点のみでパスワードをもう一度入力してください。</value>
+    <value>その文字は使用できないため、追加されませんでした。フィールドをクリアし、英字、数字、スペース、記号のみでパスワードをもう一度入力してください。</value>
   </data>
   <data name="NewArchiveCardTitle.Text" xml:space="preserve">
     <value>新しいアーカイブ</value>
@@ -477,7 +477,7 @@
     <value>操作が成功したら、使用したものをごみ箱に移動する: 圧縮後は元のファイル、展開後はアーカイブ</value>
   </data>
   <data name="TestArchiveButton.Content" xml:space="preserve">
-    <value>書庫をテスト</value>
+    <value>アーカイブをテスト</value>
   </data>
   <data name="CloseArchiveButton.Content" xml:space="preserve">
     <value>アーカイブを閉じる</value>
@@ -486,7 +486,7 @@
     <value>テスト中...</value>
   </data>
   <data name="TestResultTitle" xml:space="preserve">
-    <value>書庫をテスト</value>
+    <value>アーカイブをテスト</value>
   </data>
   <data name="TestNoErrorsFound" xml:space="preserve">
     <value>エラーは見つかりませんでした。</value>

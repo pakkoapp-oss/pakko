@@ -13,7 +13,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="ScanNoThreatsFound" xml:space="preserve">
-    <value>No se encontraron amenazas en este archivo.</value>
+    <value>No se encontraron amenazas en este archivo comprimido.</value>
   </data>
   <data name="ScanThreatDetectedGeneric" xml:space="preserve">
     <value>amenaza detectada</value>
@@ -22,6 +22,6 @@
     <value>…y {0} más</value>
   </data>
   <data name="ScanNoThreatsFoundMany" xml:space="preserve">
-    <value>No se encontraron amenazas en los archivos seleccionados.</value>
+    <value>No se encontraron amenazas en los archivos comprimidos seleccionados.</value>
   </data>
 </root>

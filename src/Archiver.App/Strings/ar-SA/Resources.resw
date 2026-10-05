@@ -188,7 +188,7 @@
     <value>اكتمل مع وجود مشكلات.</value>
   </data>
   <data name="StatusCancelled" xml:space="preserve">
-    <value>ألغيت</value>
+    <value>تم الإلغاء</value>
   </data>
   <data name="StatusCleaningUp" xml:space="preserve">
     <value>جارٍ التنظيف...</value>
@@ -217,7 +217,7 @@
     <value>أرشيف مشبوه</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>يزعم هذا الأرشيف أنه يحتوي على {0} من البيانات، بنسبة ضغط {1}:1. هذا مرتفع بشكل غير معتاد وقد يشير إلى قنبلة ضغط. هل تريد الاستخراج على أي حال؟</value>
+    <value>يزعم هذا الأرشيف أنه يحتوي على {0} من البيانات، بنسبة ضغط {1}:1. هذا مرتفع بشكل غير معتاد وقد يشير إلى قنبلة فك ضغط. هل تريد الاستخراج على أي حال؟</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>الملف موجود بالفعل</value>
@@ -261,7 +261,7 @@
     <value>حول Pakko</value>
   </data>
   <data name="AboutTagline" xml:space="preserve">
-    <value>أرشيف Windows أصلي وخفيف الوزن</value>
+    <value>برنامج أرشفة خفيف مصمَّم لنظام Windows</value>
   </data>
   <data name="AboutLicense" xml:space="preserve">
     <value>الترخيص: Apache 2.0</value>

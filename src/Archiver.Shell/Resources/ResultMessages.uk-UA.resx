@@ -19,7 +19,7 @@
     <value>…і ще {0}</value>
   </data>
   <data name="ResultNoErrorsDetected" xml:space="preserve">
-    <value>У архіві (архівах) не виявлено помилок.</value>
+    <value>В архіві (архівах) не виявлено помилок.</value>
   </data>
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>Операція не вдалася.</value>

@@ -123,13 +123,13 @@
     <value>TAR.LZMA</value>
   </data>
   <data name="CompressionFastItem.Content" xml:space="preserve">
-    <value>מהיר</value>
+    <value>מהירה</value>
   </data>
   <data name="CompressionNormalItem.Content" xml:space="preserve">
-    <value>רגיל</value>
+    <value>רגילה</value>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
-    <value>הטוב ביותר</value>
+    <value>מיטבית</value>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
     <value>ללא</value>
@@ -217,7 +217,7 @@
     <value>ארכיון חשוד</value>
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
-    <value>ארכיון זה טוען שהוא מכיל {0} נתונים, ביחס דחיסה של {1}:1. זהו יחס גבוה באופן חריג ועשוי להעיד על פצצת דחיסה. לחלץ בכל זאת?</value>
+    <value>ארכיון זה טוען שהוא מכיל {0} נתונים, ביחס דחיסה של {1}:1. זהו יחס גבוה באופן חריג ועשוי להעיד על פצצת פריסה. לחלץ בכל זאת?</value>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>הקובץ כבר קיים</value>
@@ -261,7 +261,7 @@
     <value>אודות Pakko</value>
   </data>
   <data name="AboutTagline" xml:space="preserve">
-    <value>כלי ארכוב קליל וילידי ל-Windows</value>
+    <value>כלי ארכוב קליל ומקורי ל-Windows</value>
   </data>
   <data name="AboutLicense" xml:space="preserve">
     <value>רישיון: Apache 2.0</value>
@@ -303,7 +303,7 @@
     <value>אישור סיסמה</value>
   </data>
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
-    <value>השתמשו רק באותיות אנגליות, ספרות, רווחים וסימני פיסוק, עד {0} תווים, כדי ש-7-Zip וכלי ZIP אחרים יוכלו לפתוח את הארכיון.</value>
+    <value>השתמש רק באותיות אנגליות, ספרות, רווחים וסימני פיסוק, עד {0} תווים, כדי ש-7-Zip וכלי ZIP אחרים יוכלו לפתוח את הארכיון.</value>
   </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>הסיסמה ארוכה מ-{0} תווים.</value>
@@ -321,7 +321,7 @@
     <value>למחוק לצמיתות?</value>
   </data>
   <data name="PermanentDeleteDialogMessage" xml:space="preserve">
-    <value>פריטים אלה נמצאים בכונן ללא סל מחזור (כונן רשת, נשלף או ממופה). לא ניתן לבטל את המחיקה.</value>
+    <value>פריטים אלה נמצאים בכונן ללא סל מיחזור (כונן רשת, נשלף או ממופה). לא ניתן לבטל את המחיקה.</value>
   </data>
   <data name="PermanentDeleteDialogDeleteButton" xml:space="preserve">
     <value>מחק לצמיתות</value>
@@ -393,7 +393,7 @@
     <value>חולץ תוך {0} שנ' — ארכיונים: {1}</value>
   </data>
   <data name="OutcomeProblems" xml:space="preserve">
-    <value>הסתיים עם בעיות: {0}</value>
+    <value>הושלם עם בעיות: {0}</value>
   </data>
   <data name="OutcomeNothingDone" xml:space="preserve">
     <value>לא בוצע דבר — דולגו: {0}</value>
