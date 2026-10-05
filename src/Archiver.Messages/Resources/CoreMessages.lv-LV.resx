@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Šis arhīvs ir aizsargāts ar paroli, un to nevar pārlūkot.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Šis arhīvs ir aizsargāts ar paroli. Paroles tiek atbalstītas tikai ZIP arhīviem.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Failam ir ZIP paraksts, taču tas šķiet bojāts vai nepilnīgs.</value>
   </data>

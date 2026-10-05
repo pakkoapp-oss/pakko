@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Arsip ini dilindungi kata sandi dan tidak dapat ditelusuri.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Arsip ini dilindungi kata sandi. Kata sandi hanya didukung untuk arsip ZIP.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>File memiliki tanda tangan ZIP tetapi tampaknya rusak atau tidak lengkap.</value>
   </data>

@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>यह संग्रह पासवर्ड से सुरक्षित है और ब्राउज़ नहीं किया जा सकता।</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>यह संग्रह पासवर्ड से सुरक्षित है। पासवर्ड केवल ZIP संग्रहों के लिए समर्थित हैं।</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>फ़ाइल में ZIP हस्ताक्षर है लेकिन यह क्षतिग्रस्त या अपूर्ण लगती है।</value>
   </data>

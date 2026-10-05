@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>このアーカイブはパスワードで保護されているため、参照できません。</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>このアーカイブはパスワードで保護されています。パスワードがサポートされるのは ZIP アーカイブのみです。</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>ファイルには ZIP 署名がありますが、破損しているか不完全なようです。</value>
   </data>

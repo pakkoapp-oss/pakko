@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Цей архів захищено паролем, тому його не можна переглянути.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Цей архів захищено паролем. Паролі підтримуються лише для архівів ZIP.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Файл має підпис ZIP, але, схоже, пошкоджений або неповний.</value>
   </data>

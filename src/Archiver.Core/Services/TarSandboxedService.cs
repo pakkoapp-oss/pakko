@@ -190,7 +190,7 @@ public sealed class TarSandboxedService : ITarService
         // IsLikelyEncryptionFailure once tar.exe actually fails.
         if (IsKnownEncryptedRar(archivePath))
         {
-            sink.Errors.Add(CoreMessages.Error(archivePath, MessageCode.PasswordProtectedExtract));
+            sink.Errors.Add(CoreMessages.Error(archivePath, MessageCode.PasswordProtectedFormatNotSupported));
         }
         else
         {
@@ -256,7 +256,7 @@ public sealed class TarSandboxedService : ITarService
             // even begins.
             sink.Errors.Add(CoreMessages.Error(archivePath,
                 IsLikelyEncryptionFailure(ex.Message)
-                    ? CoreMessages.Text(MessageCode.PasswordProtectedExtract)
+                    ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
                     : CoreMessages.Wrap(MessageCode.CannotExtractArchive, ex),
                 ex));
         }
@@ -1018,7 +1018,7 @@ public sealed class TarSandboxedService : ITarService
         // 7z's own parity (only extraction refuses for data-only encryption, not browsing).
         if (IsHeaderEncryptedRar(archivePath))
         {
-            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.PasswordProtectedBrowse));
+            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported));
         }
 
         try
@@ -1067,7 +1067,7 @@ public sealed class TarSandboxedService : ITarService
         if (exitCode != 0)
         {
             return ([], CoreMessages.ListFailure(IsLikelyEncryptionFailure(stdErr)
-                ? CoreMessages.Text(MessageCode.PasswordProtectedBrowse)
+                ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
                 : DescribeFailure(stdErr)));
         }
 

@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Tento archiv je chráněn heslem a nelze jej procházet.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Tento archiv je chráněn heslem. Hesla jsou podporována jen u archivů ZIP.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Soubor má podpis ZIP, ale zdá se být poškozený nebo neúplný.</value>
   </data>

@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>ไฟล์บีบอัดนี้ป้องกันด้วยรหัสผ่านและไม่สามารถเรียกดูได้</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>ไฟล์บีบอัดนี้ป้องกันด้วยรหัสผ่าน รองรับรหัสผ่านเฉพาะไฟล์บีบอัด ZIP เท่านั้น</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>ไฟล์มีลายเซ็น ZIP แต่ดูเหมือนจะเสียหายหรือไม่สมบูรณ์</value>
   </data>

@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>ארכיון זה מוגן בסיסמה ולא ניתן לעיין בו.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>ארכיון זה מוגן בסיסמה. סיסמאות נתמכות רק בארכיוני ZIP.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>לקובץ יש חתימת ZIP, אך נראה שהוא פגום או חלקי.</value>
   </data>

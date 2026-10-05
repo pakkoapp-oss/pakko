@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>هذا الأرشيف محمي بكلمة مرور ولا يمكن استعراضه.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>هذا الأرشيف محمي بكلمة مرور. كلمات المرور مدعومة لأرشيفات ZIP فقط.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>يحتوي الملف على توقيع ZIP لكنه يبدو تالفًا أو غير مكتمل.</value>
   </data>

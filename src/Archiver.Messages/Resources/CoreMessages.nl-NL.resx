@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Dit archief is met een wachtwoord beveiligd en kan niet worden bekeken.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Dit archief is met een wachtwoord beveiligd. Wachtwoorden worden alleen voor ZIP-archieven ondersteund.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Het bestand heeft een ZIP-handtekening, maar lijkt beschadigd of onvolledig.</value>
   </data>

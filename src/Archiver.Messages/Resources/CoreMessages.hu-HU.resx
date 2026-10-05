@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Ez az archívum jelszóval védett, ezért nem tallózható.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Ez az archívum jelszóval védett. A jelszavak csak ZIP-archívumoknál támogatottak.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>A fájl ZIP-aláírással rendelkezik, de sérültnek vagy hiányosnak tűnik.</value>
   </data>

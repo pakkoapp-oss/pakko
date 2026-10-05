@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>یہ آرکائیو پاس ورڈ سے محفوظ ہے اور براؤز نہیں کیا جا سکتا۔</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>یہ آرکائیو پاس ورڈ سے محفوظ ہے۔ پاس ورڈ صرف ZIP آرکائیوز کے لیے تعاون یافتہ ہیں۔</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>فائل میں ZIP دستخط ہے لیکن یہ خراب یا نامکمل لگتی ہے۔</value>
   </data>

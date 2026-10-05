@@ -15,8 +15,8 @@ namespace Archiver.Core.IntegrationTests;
 [Collection("TarSandbox")]
 public sealed class TarSandboxedServiceEncryptedFormatsTests : IDisposable
 {
-    private const string ExpectedExtractMessage = "This archive is password-protected and cannot be extracted.";
-    private const string ExpectedBrowseMessage = "This archive is password-protected and cannot be browsed.";
+    private const string ExpectedExtractMessage = "This archive is password-protected. Passwords are supported for ZIP archives only.";
+    private const string ExpectedBrowseMessage = ExpectedExtractMessage;
 
     private readonly TarSandboxedService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();

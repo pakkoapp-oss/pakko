@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>See arhiiv on parooliga kaitstud ja seda ei saa sirvida.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>See arhiiv on parooliga kaitstud. Paroole toetatakse ainult ZIP-arhiivide puhul.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Failil on ZIP-allkiri, kuid see näib olevat rikutud või mittetäielik.</value>
   </data>

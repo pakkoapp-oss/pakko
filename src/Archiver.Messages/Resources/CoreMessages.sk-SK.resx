@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Tento archív je chránený heslom a nie je možné ho prehľadávať.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Tento archív je chránený heslom. Heslá sú podporované len pri archívoch ZIP.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Súbor má podpis ZIP, ale zdá sa, že je poškodený alebo neúplný.</value>
   </data>

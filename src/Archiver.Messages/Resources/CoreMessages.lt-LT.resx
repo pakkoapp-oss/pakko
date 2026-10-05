@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Šis archyvas apsaugotas slaptažodžiu ir jo negalima naršyti.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Šis archyvas apsaugotas slaptažodžiu. Slaptažodžiai palaikomi tik ZIP archyvams.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Failas turi ZIP parašą, bet atrodo sugadintas arba nepilnas.</value>
   </data>

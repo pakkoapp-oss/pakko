@@ -62,6 +62,8 @@ public static class MessageTemplates
         [MessageCode.PasswordProtectedTest] = "This archive is password-protected and cannot be tested.",
         [MessageCode.RememberedPasswordDoesNotFit] = "The password applied to the remaining archives does not fit this archive.",
         [MessageCode.PasswordProtectedBrowse] = "This archive is password-protected and cannot be browsed.",
+        [MessageCode.PasswordProtectedFormatNotSupported] =
+            "This archive is password-protected. Passwords are supported for ZIP archives only.",
         [MessageCode.ZipCorrupted] = "File has ZIP signature but appears corrupted or incomplete.",
         [MessageCode.CannotExtractArchive] = "Cannot extract archive: {0}",
         [MessageCode.AccessDeniedExtractingArchive] = "Access denied extracting archive: {0}",

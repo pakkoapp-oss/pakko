@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Kumbukumbu hii imelindwa kwa nenosiri na haiwezi kuvinjariwa.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Kumbukumbu hii imelindwa kwa nenosiri. Manenosiri yanatumika kwa kumbukumbu za ZIP pekee.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Faili ina sahihi ya ZIP lakini inaonekana kuharibika au haijakamilika.</value>
   </data>

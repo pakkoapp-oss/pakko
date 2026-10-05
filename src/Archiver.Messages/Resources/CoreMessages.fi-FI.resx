@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Tämä arkisto on suojattu salasanalla, eikä sitä voi selata.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Tämä arkisto on suojattu salasanalla. Salasanoja tuetaan vain ZIP-arkistoissa.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Tiedostossa on ZIP-allekirjoitus, mutta se näyttää vioittuneelta tai vajaalta.</value>
   </data>

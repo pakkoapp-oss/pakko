@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Този архив е защитен с парола и не може да бъде разгледан.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Този архив е защитен с парола. Пароли се поддържат само за ZIP архиви.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Файлът има ZIP подпис, но изглежда повреден или непълен.</value>
   </data>

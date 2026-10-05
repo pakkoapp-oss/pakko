@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Questo archivio è protetto da password e non può essere sfogliato.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Questo archivio è protetto da password. Le password sono supportate solo per gli archivi ZIP.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Il file ha una firma ZIP ma sembra danneggiato o incompleto.</value>
   </data>

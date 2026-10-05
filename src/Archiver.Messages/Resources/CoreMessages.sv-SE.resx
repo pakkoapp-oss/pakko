@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Det här arkivet är lösenordsskyddat och kan inte öppnas.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Det här arkivet är lösenordsskyddat. Lösenord stöds endast för ZIP-arkiv.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Filen har en ZIP-signatur men verkar vara skadad eller ofullständig.</value>
   </data>

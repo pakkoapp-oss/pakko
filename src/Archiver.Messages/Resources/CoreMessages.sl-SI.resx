@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Ta arhiv je zaščiten z geslom in ga ni mogoče odpreti.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Ta arhiv je zaščiten z geslom. Gesla so podprta le za arhive ZIP.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Datoteka ima podpis ZIP, vendar je videti poškodovana ali nepopolna.</value>
   </data>

@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Αυτό το αρχείο συμπίεσης προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να προβληθεί.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Αυτό το αρχείο συμπίεσης προστατεύεται με κωδικό πρόσβασης. Οι κωδικοί πρόσβασης υποστηρίζονται μόνο για αρχεία ZIP.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Το αρχείο έχει υπογραφή ZIP, αλλά φαίνεται κατεστραμμένο ή ελλιπές.</value>
   </data>

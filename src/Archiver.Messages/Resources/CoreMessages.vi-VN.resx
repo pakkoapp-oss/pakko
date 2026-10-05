@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Tệp nén này được bảo vệ bằng mật khẩu và không thể duyệt.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Tệp nén này được bảo vệ bằng mật khẩu. Mật khẩu chỉ được hỗ trợ cho tệp nén ZIP.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Tệp có chữ ký ZIP nhưng có vẻ bị hỏng hoặc không đầy đủ.</value>
   </data>

@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Bu arşiv parola korumalı ve göz atılamıyor.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Bu arşiv parola korumalı. Parolalar yalnızca ZIP arşivlerinde desteklenir.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Dosyanın ZIP imzası var, ancak bozuk veya eksik görünüyor.</value>
   </data>

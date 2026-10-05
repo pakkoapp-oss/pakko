@@ -63,6 +63,13 @@ public sealed class CliHintsTests
         Hints([code], []).Should().ContainSingle(h => h.Contains(PasswordHint));
     }
 
+    // T-F322: tar.exe cannot decrypt a 7z or RAR at all, so -p is no way forward.
+    [Fact]
+    public void PasswordProtectedFormatPakkoCannotDecrypt_NoPasswordHint()
+    {
+        Hints([MessageCode.PasswordProtectedFormatNotSupported], []).Should().BeEmpty();
+    }
+
     [Fact]
     public void PasswordProtectedWithPasswordGiven_NoPasswordHint()
     {

@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>Această arhivă este protejată prin parolă și nu poate fi răsfoită.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>Această arhivă este protejată prin parolă. Parolele sunt acceptate doar pentru arhivele ZIP.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Fișierul are semnătură ZIP, dar pare deteriorat sau incomplet.</value>
   </data>

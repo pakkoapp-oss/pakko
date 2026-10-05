@@ -126,6 +126,9 @@
   <data name="PasswordProtectedBrowse" xml:space="preserve">
     <value>To archiwum jest chronione hasłem i nie można go przeglądać.</value>
   </data>
+  <data name="PasswordProtectedFormatNotSupported" xml:space="preserve">
+    <value>To archiwum jest chronione hasłem. Hasła są obsługiwane tylko dla archiwów ZIP.</value>
+  </data>
   <data name="ZipCorrupted" xml:space="preserve">
     <value>Plik ma sygnaturę ZIP, ale wygląda na uszkodzony lub niekompletny.</value>
   </data>
