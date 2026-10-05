@@ -1070,6 +1070,36 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         }
     }
 
+    // T-F321: an archive that appears after the run chose its names, and before the worker of that
+    // name starts, was taken for one the user had agreed to overwrite. Fastest runs the sources one
+    // after another, so the foreign b.zip written during a's progress is there when b's turn comes.
+    [Fact]
+    public async Task ArchiveAsync_SeparateArchives_ArchiveAppearsAfterTheNamesWereChosen_IsNotReplaced()
+    {
+        string a = _temp.CreateFile("a.txt", new string('a', 200_000));
+        string b = _temp.CreateFile("b.txt", "b");
+        string destination = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destination);
+        string foreign = Path.Combine(destination, "b.zip");
+        var progress = new SynchronousProgress<ProgressReport>(r =>
+        {
+            if (r.BytesTransferred > 0 && !File.Exists(foreign))
+                File.WriteAllText(foreign, "another run's archive");
+        });
+
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [a, b],
+            DestinationFolder = destination,
+            Mode = ArchiveMode.SeparateArchives,
+            CompressionLevel = CompressionLevel.Fastest,
+            OnConflict = ConflictBehavior.Skip,
+        }, progress);
+
+        File.ReadAllText(foreign).Should().Be("another run's archive");
+        result.CreatedFiles.Should().HaveCount(2).And.NotContain(foreign);
+    }
+
     // T-F312: Overwrite onto an archive a sync client holds for a moment — the old archive stays
     // until the new one is complete, and the rename waits for the holder.
     [Fact]

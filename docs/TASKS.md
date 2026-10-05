@@ -3892,6 +3892,15 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   (both red before the fix). Device (CI `pakko.exe` 0.0.0-dev+039955a, 2026-10-03): two `pakko a
   C:\g9\cc\same.zip` runs started together (300 and 1000 files), three rounds: both exit 0, `same.zip`
   holds one run's entries and `same (1).zip` the other's.
+- **2026-10-05, a gap left by that fix:** CI on the release commit failed
+  `ArchiveAsync_SeparateArchives_TwoRunsCreateTheSameNameAtOnce_NeitherReportedArchiveIsLost` once:
+  one run's `x.zip` held the other run's entries. "Existed when the run started" was read from
+  the disk a second time (`File.Exists`) after the conflict decision, at all three commit sites;
+  in separate-archives mode the second look comes after the names of every source are chosen and
+  the source is measured, so a run that finished in between was overwritten. Now the flag is the
+  decision itself (`DestinationConflictOutcome.ProceedReplacingExisting`). Test first, red on the
+  old code every time: `ArchiveAsync_SeparateArchives_ArchiveAppearsAfterTheNamesWereChosen_IsNotReplaced`
+  (Fastest runs the sources one after another; a foreign `b.zip` is written during `a`'s progress).
 - **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-03.
 
 ### T-F322 — `pakko x`/`t` suggests `-p` for an encrypted 7z or RAR it cannot decrypt (P3)

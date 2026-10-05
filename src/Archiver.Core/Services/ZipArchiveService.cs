@@ -186,7 +186,9 @@ public sealed class ZipArchiveService : IArchiveService
         }
         destPath = resolvedDestPath;
 
-        bool replacesExisting = File.Exists(destPath);
+        // T-F321: from the conflict decision, not a second look at the disk - an archive that
+        // appeared since then is another run's, and the commit must not replace it.
+        bool replacesExisting = outcome == DestinationConflictOutcome.ProceedReplacingExisting;
         string tempPath = ArchiveTempFile.Create(destPath);
 
         // T-F35 profiling (2026-07-18) found ComputeTotalBytes and the gate's file count used to
@@ -367,7 +369,7 @@ public sealed class ZipArchiveService : IArchiveService
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        List<(string SourcePath, string? DestPath)> plans = await ResolveSeparateArchivePlansAsync(
+        List<(string SourcePath, string? DestPath, bool ReplacesExisting)> plans = await ResolveSeparateArchivePlansAsync(
             sortedSourcePaths, options.DestinationFolder, run.ConflictResolver, skippedFiles).ConfigureAwait(false);
 
         var concurrentSink = new ArchiveResultSink([], [], [], []);
@@ -385,7 +387,7 @@ public sealed class ZipArchiveService : IArchiveService
             plans.Where(p => p.DestPath is not null),
             new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism, CancellationToken = cancellationToken },
             async (plan, token) => await ArchiveSingleSeparatePathAsync(
-                plan.SourcePath, plan.DestPath!, settings,
+                plan.SourcePath, plan.DestPath!, plan.ReplacesExisting, settings,
                 concurrentSink, progressContext, token).ConfigureAwait(false)
         ).ConfigureAwait(false);
 
@@ -413,11 +415,11 @@ public sealed class ZipArchiveService : IArchiveService
     // using an in-memory claimedDestPaths set alongside the on-disk check — reproduces the same
     // outcome deterministically before any parallel work starts. See DECISIONS.md's T-F12 entry
     // for the one behavior change this introduces (Overwrite + same-run collision).
-    private static async Task<List<(string SourcePath, string? DestPath)>> ResolveSeparateArchivePlansAsync(
+    private static async Task<List<(string SourcePath, string? DestPath, bool ReplacesExisting)>> ResolveSeparateArchivePlansAsync(
         List<string> sortedSourcePaths, string destinationFolder, ConflictResolver conflictResolver, List<SkippedFile> skippedFiles)
     {
         var claimedDestPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var plans = new List<(string SourcePath, string? DestPath)>();
+        var plans = new List<(string SourcePath, string? DestPath, bool ReplacesExisting)>();
 
         foreach (string sourcePath in sortedSourcePaths)
         {
@@ -425,7 +427,7 @@ public sealed class ZipArchiveService : IArchiveService
             if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
             {
                 skippedFiles.Add(CoreMessages.Skip(sourcePath, CoreMessages.Text(MessageCode.LinkNotArchived)));
-                plans.Add((sourcePath, null));
+                plans.Add((sourcePath, null, false));
                 continue;
             }
 
@@ -448,13 +450,15 @@ public sealed class ZipArchiveService : IArchiveService
                 // T-F87: record the skip so DeleteAfterOperation cleanup (keyed off
                 // SkippedFiles) doesn't delete a source that was never archived.
                 skippedFiles.Add(CoreMessages.Skip(sourcePath, CoreMessages.Text(MessageCode.ArchiveAlreadyExists, Path.GetFileName(destPath))));
-                plans.Add((sourcePath, null));
+                plans.Add((sourcePath, null, false));
                 continue;
             }
             destPath = resolvedDestPath;
 
             claimedDestPaths.Add(destPath);
-            plans.Add((sourcePath, destPath));
+            // T-F321: from the conflict decision, not a second look at the disk - an archive that
+            // appeared since then is another run's, and the commit must not replace it.
+            plans.Add((sourcePath, destPath, outcome == DestinationConflictOutcome.ProceedReplacingExisting));
         }
 
         return plans;
@@ -491,6 +495,7 @@ public sealed class ZipArchiveService : IArchiveService
     private static async Task ArchiveSingleSeparatePathAsync(
         string sourcePath,
         string destPath,
+        bool replacesExisting,
         Zip.ParallelSingleArchiveWriter.CompressionSettings settings,
         ArchiveResultSink sink,
         SeparateArchiveProgressContext progressContext,
@@ -503,7 +508,6 @@ public sealed class ZipArchiveService : IArchiveService
         long pathSize = ComputeSourceBytesBestEffort(sourcePath);
 
         long baseOffset = Interlocked.Read(ref completedBytesBox[0]);
-        bool replacesExisting = File.Exists(destPath);
         string separateTempPath = ArchiveTempFile.Create(destPath);
         CompressionLevel compressionLevel = settings.Level;
         // T-F260: this worker's own issue count — the shared bags are written by every worker at

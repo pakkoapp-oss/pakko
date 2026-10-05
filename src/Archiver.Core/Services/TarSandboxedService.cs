@@ -1171,7 +1171,7 @@ public sealed class TarSandboxedService : ITarService
                 };
             }
 
-            await CompressToArchiveAsync(options, resolvedDestPath, createdFiles, errors, skippedFiles, progress, cancellationToken)
+            await CompressToArchiveAsync(options, (resolvedDestPath, outcome == DestinationConflictOutcome.ProceedReplacingExisting), createdFiles, errors, skippedFiles, progress, cancellationToken)
                 .ConfigureAwait(false);
 
             // T-F260: one archive for every source — see ZipArchiveService.ArchiveAsync's same rule.
@@ -1235,7 +1235,7 @@ public sealed class TarSandboxedService : ITarService
 
             ArchiveOptions singleOptions = options with { SourcePaths = [sourcePath] };
             int errorsBefore = sink.Errors.Count, skippedBefore = sink.SkippedFiles.Count, createdBefore = sink.CreatedFiles.Count;
-            await CompressToArchiveAsync(singleOptions, resolvedDestPath, sink.CreatedFiles, sink.Errors, sink.SkippedFiles, progress, cancellationToken)
+            await CompressToArchiveAsync(singleOptions, (resolvedDestPath, outcome == DestinationConflictOutcome.ProceedReplacingExisting), sink.CreatedFiles, sink.Errors, sink.SkippedFiles, progress, cancellationToken)
                 .ConfigureAwait(false);
             sources.Add(SourceOutcomeRules.Classify(sourcePath,
                 produced: sink.CreatedFiles.Count > createdBefore,
@@ -1252,14 +1252,16 @@ public sealed class TarSandboxedService : ITarService
     // reported as ArchiveError, matching ZipArchiveService.ArchiveAsync's per-item handling.
     private static async Task CompressToArchiveAsync(
         ArchiveOptions options,
-        string destPath,
+        (string Path, bool ReplacesExisting) destination,
         List<string> createdFiles,
         List<ArchiveError> errors,
         List<SkippedFile> skippedFiles,
         IProgress<ProgressReport>? progress,
         CancellationToken cancellationToken)
     {
-        bool replacesExisting = File.Exists(destPath);
+        // T-F321: from the conflict decision, not a second look at the disk - an archive that
+        // appeared since then is another run's, and the commit must not replace it.
+        (string destPath, bool replacesExisting) = destination;
         string tempPath = ArchiveTempFile.Create(destPath);
         // T-F171: decided here, created only on the first collision, so the finally below cleans it
         // up even when staging stops partway through.
