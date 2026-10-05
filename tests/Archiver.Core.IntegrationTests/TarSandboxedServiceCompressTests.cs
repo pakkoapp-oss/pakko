@@ -204,6 +204,43 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         listing.Should().Contain("a.txt").And.NotContain("folder.tar");
     }
 
+    // T-F316: tar.exe walks the folder itself, so it met the run's own temporary file and packed it
+    // as an entry.
+    [Integration]
+    public Task CompressAsync_DestinationInsideTheSourceFolder_PacksOnlyTheUsersFiles() =>
+        AssertDestinationInsideSourcePacksOnlyUsersFilesAsync(ArchiveMode.SingleArchive, ArchiveContainerFormat.Tar);
+
+    [Integration]
+    public Task CompressAsync_SeparateArchivesDestinationInsideTheSourceFolder_PacksOnlyTheUsersFiles() =>
+        AssertDestinationInsideSourcePacksOnlyUsersFilesAsync(ArchiveMode.SeparateArchives, ArchiveContainerFormat.Tar);
+
+    [Integration]
+    public Task CompressAsync_TarGzDestinationInsideTheSourceFolder_PacksOnlyTheUsersFiles() =>
+        AssertDestinationInsideSourcePacksOnlyUsersFilesAsync(ArchiveMode.SingleArchive, ArchiveContainerFormat.TarGz);
+
+    private async Task AssertDestinationInsideSourcePacksOnlyUsersFilesAsync(ArchiveMode mode, ArchiveContainerFormat format)
+    {
+        string folder = Path.Combine(_temp.Path, "folder");
+        Directory.CreateDirectory(Path.Combine(folder, "sub"));
+        File.WriteAllText(Path.Combine(folder, "a.txt"), "a");
+        File.WriteAllText(Path.Combine(folder, "sub", "b.txt"), "b");
+
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [folder],
+            DestinationFolder = folder,
+            ArchiveName = mode == ArchiveMode.SingleArchive ? "out" : null,
+            Mode = mode,
+            Format = format,
+        });
+
+        result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+        string archive = result.CreatedFiles.Should().ContainSingle().Subject;
+        Path.GetDirectoryName(archive).Should().Be(folder);
+        string[] entries = (await ListAsync(archive)).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        entries.Should().BeEquivalentTo("folder/", "folder/a.txt", "folder/sub/", "folder/sub/b.txt");
+    }
+
     private static async Task<string> ListAsync(string archivePath)
     {
         System.Diagnostics.ProcessStartInfo tar = new(@"C:\Windows\System32\tar.exe") { RedirectStandardOutput = true, UseShellExecute = false };

@@ -1273,6 +1273,11 @@ public sealed class TarSandboxedService : ITarService
         {
             var tarArgs = new List<string>();
             AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel);
+            // T-F316: tar.exe walks a source folder itself, and when the destination lies inside
+            // one it would pack this run's own temporary file. The name is Pakko's own (ASCII, no
+            // pattern characters), and tar.exe matches it at any depth.
+            tarArgs.Add("--exclude");
+            tarArgs.Add(Path.GetFileName(tempPath));
             tarArgs.Add("-v");
             tarArgs.Add("-cf");
             tarArgs.Add(tempPath);

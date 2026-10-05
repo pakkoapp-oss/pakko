@@ -65,8 +65,12 @@ internal static class WorkItemEnumerator
     private static IEnumerable<FileWorkItem> EnumerateDirectory(
         string rootDir, string entryPrefix, Action<SkippedFile> reportSkipped, Action<ArchiveError> reportError)
     {
+        string fullRoot = Path.GetFullPath(rootDir);
         foreach (WalkEntry entry in DirectoryWalker.Walk(rootDir))
         {
+            if (TempOwner.IsOwnBelow(fullRoot, entry.Info.FullName))
+                continue;
+
             switch (entry.Kind)
             {
                 case WalkEntryKind.Directory when entry.IsEmptyDirectory:

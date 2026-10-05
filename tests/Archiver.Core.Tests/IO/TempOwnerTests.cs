@@ -232,4 +232,26 @@ public sealed class TempOwnerTests : IDisposable
 
         File.Exists(dead).Should().BeTrue();
     }
+
+    // T-F316: what a walk of a folder holding the run's destination must leave out.
+    [Fact]
+    public void IsOwnBelow_ThisProcessNamesBelowTheRoot_AreOwn()
+    {
+        const string root = @"C:\data\src";
+
+        TempOwner.IsOwnBelow(root, Path.Combine(root, TempOwner.NewName(".pakko-a-", ".tmp"))).Should().BeTrue();
+        TempOwner.IsOwnBelow(root, Path.Combine(root, "sub", TempOwner.NewName(".pakko-tmp-"), "chunk.bin")).Should().BeTrue();
+        TempOwner.IsOwnBelow(root, Path.Combine(root, "a.txt")).Should().BeFalse();
+        TempOwner.IsOwnBelow(root, Path.Combine(root, $".pakko-a-{Here}-{DeadPid}-1-{Guid32}.tmp"))
+            .Should().BeFalse("another process's file is not this run's to hide");
+    }
+
+    [Fact]
+    public void IsOwnBelow_RootItselfCarriesTheTag_ItsContentIsNotOwn()
+    {
+        string root = Path.Combine(@"C:\Temp", TempOwner.NewName(".pakko-x-"));
+
+        TempOwner.IsOwnBelow(root, root).Should().BeFalse();
+        TempOwner.IsOwnBelow(root, Path.Combine(root, "a.txt")).Should().BeFalse();
+    }
 }

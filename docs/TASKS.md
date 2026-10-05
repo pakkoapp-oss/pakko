@@ -1904,7 +1904,21 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F316 — Archiving a folder that holds its own destination reads the run's temp file (P3)
 
-- [ ] **Status:** open. Found in the v1.7.0 wave 6 closing review, 2026-10-03; pre-existing (the old
+- [~] **Status:** fixed in code 2026-10-05 (wave 1); the `pakko a out.zip .` run on the installed
+  build is left for the wave's device pass. ZIP: both walkers (`WorkItemEnumerator`,
+  `AddDirectoryToArchiveAsync`) leave out anything below the source root whose name carries this
+  process's `TempOwner` tag (`TempOwner.IsOwnBelow`) - the run's temporary file, the chunk folder
+  of the hand-rolled writer, and those of the other archives of a Separate-archives run. Chosen
+  over passing the run's paths down: one check covers both writers and both modes with no new
+  parameters, and a name with this process's id and start time is nobody else's. tar: `--exclude
+  <temp file name>` (the name is Pakko's own: ASCII, no pattern characters; checked by hand that
+  tar.exe matches it at any depth, also for a drive-letter path). Not changed: the destination
+  itself needs no skip (Overwrite removes an old archive inside the source first, T-F312; under
+  Rename the old archive is the user's file and is packed), and another Pakko process's temporary
+  file inside the tree is still read. Tests: `ZipArchiveServiceDestinationInsideSourceTests`
+  (four writers x two modes, red before), three in `TarSandboxedServiceCompressTests`, two in
+  `TempOwnerTests`; four mutants killed.
+- **Earlier status:** open. Found in the v1.7.0 wave 6 closing review, 2026-10-03; pre-existing (the old
   fixed `<archive>.tmp` sat in the same place). `pakko a out.zip .` (the archive written inside the
   folder being archived) walks the run's own temp file: ZIP reports "Cannot access file: …
   .pakko-a-….tmp … being used by another process" and exits 2 although the archive is written; tar

@@ -1829,10 +1829,13 @@ public sealed class ZipArchiveService : IArchiveService
         long startOffset = 0,
         CancellationToken cancellationToken = default)
     {
+        string fullRoot = Path.GetFullPath(sourceDir);
         foreach (WalkEntry entry in DirectoryWalker.Walk(sourceDir))
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
+            if (TempOwner.IsOwnBelow(fullRoot, entry.Info.FullName))
+                continue;
 
             switch (entry.Kind)
             {

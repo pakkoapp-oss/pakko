@@ -48,6 +48,15 @@ public static class TempOwner
         string.Create(CultureInfo.InvariantCulture, $"{prefix}{CurrentTag}-{Guid.NewGuid():N}{suffix}");
 
     /// <summary>
+    /// T-F316: true when <paramref name="fullPath"/>, below <paramref name="fullRoot"/>, is or lies
+    /// inside something this process named with <see cref="NewName"/>. A walk of a folder that holds
+    /// the run's destination meets the run's own temporary file and chunk folder; they are not the
+    /// user's content.
+    /// </summary>
+    internal static bool IsOwnBelow(string fullRoot, string fullPath) =>
+        fullPath.Length > fullRoot.Length && fullPath.AsSpan(fullRoot.Length).Contains(CurrentTag, StringComparison.Ordinal);
+
+    /// <summary>
     /// True when the process a bare tag names runs on this machine. Also reads v1.6.0's
     /// "&lt;pid&gt;-&lt;start ticks&gt;". A name that does not parse is a leftover and counts as gone;
     /// a process whose start time cannot be read counts as running, so nothing is deleted on a guess.
