@@ -223,7 +223,7 @@ public sealed class ZipEncryptionByteLevelTests : IDisposable
         byte[] zip = await ArchiveAsync(source, "out", level);
 
         List<RawEntry> entries = ParseArchive(zip);
-        List<RawEntry> files = entries.Where(e => !e.Name.EndsWith('/')).ToList();
+        RawEntry[] files = [.. entries.Where(e => !e.Name.EndsWith('/'))];
         files.Should().HaveCount(BoundarySizes.Length + 1 + SmallFileCount);
         foreach (RawEntry folder in entries.Where(e => e.Name.EndsWith('/')))
         {
