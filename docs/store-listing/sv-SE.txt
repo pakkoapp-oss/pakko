@@ -29,7 +29,7 @@ zip-program öppen källkod
 packa upp zip
 packa upp rar
 packa upp 7z
-öppna tar.gz filer
+packa upp tar gz
 zip med lösenord
 7zip-alternativ
 

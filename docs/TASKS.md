@@ -4116,7 +4116,9 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F331 — Store listing text: errors in the published text, v1.7.0 features, a copy in the repo (P2)
 
-- [~] **Status:** text done 2026-10-05; pasting it into Partner Center is the user's step.
+- [~] **Status:** text done 2026-10-05 and imported into Partner Center submission 6 from the
+  listing CSV the same day: 36 of 37 languages equal the files, the five missing languages were
+  added. Swedish was refused with no reason given; its second import is the user's step.
 - **Found:** the published listing (read from the public Store catalog, equal to the user's
   export of 32 languages) had Arabic and Hebrew stored back to front, a sentence cut in the
   middle in nine languages (cs, da, el, lt, nb, pl, ro, sv, th), words that differ from the app's
@@ -4128,11 +4130,46 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     features, 7 search terms, "What's new" for v1.7.0
   - [x] `StoreListingTests` (field limits, menu items named as the menu shows them, no word the
     glossary replaced); mutation-checked on all three
-  - [ ] the user pastes the text into Partner Center (or exports the listing CSV, which a script
-    can fill from these files) and adds the five missing languages
-  - [ ] screenshot captions (`docs/assets/store/CAPTIONS.md`) are English only
+  - [x] imported from the exported listing CSV (a script fills the text rows from these files and
+    leaves the image rows alone); hr, sl, sr-Latn, ur, vi added as new columns, with the English
+    screenshots
+  - [ ] sv-SE: the only listing with a full stop in a search term ("tar.gz"), now "packa upp tar
+    gz"; whether that was the cause is known once the user imports the second CSV
+  - [ ] screenshot captions (`docs/assets/store/CAPTIONS.md`) are English only: T-F332
 - [x] `README.md`, `README.uk.md`, `SECURITY.md` and `docs/SPEC.md` said that Explorer does not
   propagate the Mark-of-the-Web. A test on this machine (Windows 11 build 26300, Explorer's ZIP
   folder) showed that it does for ZIP; corrected with the user's permission, 2026-10-05. To be settled with the feature-text refresh before
   the release commit.
+- **Reported by:** user, 2026-10-05.
+
+### T-F332 — Store listing: the optional fields worth filling (P2)
+
+- [ ] **Status:** open, 2026-10-05. Follows T-F331; the listing CSV has every field, and these
+  are empty in all 37 languages.
+- **Text, through the listing CSV** (Partner Center, submission overview, "Export listing" /
+  "Import listings"; rows `DesktopScreenshotCaption1..`, `ShortDescription`,
+  `CopyrightTrademarkInformation`):
+  - [ ] screenshot captions in 37 languages, 200 characters each: a `[Screenshot captions]`
+    section in `docs/store-listing/<locale>.txt`, English from `docs/assets/store/CAPTIONS.md`,
+    menu items and dialog titles as the app names them. First match the captions to the
+    screenshots that are in the listing (seven per language, six in uk-UA; the caption file lists
+    nine files) — ask the user for the order, the CSV has only URLs
+  - [ ] short description at most 270 characters in every language (Microsoft: some views show
+    only the first 270); the test limit goes from 1,000 to 270
+  - [ ] copyright line, the same in every language; the user gives the name to show
+  - [ ] `StoreListingTests` covers the new section and limits, mutation-checked; the fill script
+    (kept outside the repo for now) moves to `scripts/` if it is to be used again
+- **Images, uploaded by hand:**
+  - [ ] 1:1 app tile icon, 300 x 300, from `src/Archiver.App/Assets/pakko-icon.svg` ("strongly
+    recommended" for apps; without it the Store uses the package's icon)
+  - [ ] 16:9 super hero art, 1920 x 1080: no text, no title, no app UI. Needed to be considered
+    for the Store's featured layouts. The user decides whether it is worth drawing
+- **Decided against:** short title, voice title, Xbox images (Xbox only); 2:3 poster and 1:1 box
+  art (games); hardware requirements (none beyond the package's); "Developed by".
+- **The user's call, not started:** sort title ("Pako"), additional license terms (Apache 2.0),
+  a trailer; uk-UA has six screenshots where the others have seven.
+- **Watch:** a Microsoft Q&A report says a submission with all seven search terms would not
+  publish and one with six did (seen only as a search summary, not read).
+- **Sources:** Microsoft Learn, "Add and edit Store listing info for MSIX app", "App screenshots,
+  images, and trailers for MSIX app", "Import and export store listings for your MSIX app".
 - **Reported by:** user, 2026-10-05.
