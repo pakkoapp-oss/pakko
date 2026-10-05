@@ -372,7 +372,7 @@ flowchart TD
     G -- ok --> J{"file exists at finalFilePath, built from the path<br/>as resolved inside staging (T-F228), or already claimed?"}
     J -- no --> K
     J -- yes --> J0["T-F06: conflictResolver.ResolveAsync(finalFilePath)<br/>Ask → options.ResolveConflictAsync, else configured value"]
-    J0 -- "Skip" --> S6["ConflictSkippedEntries += path (T-F260: archive Partial)"]
+    J0 -- "Skip" --> S6["ConflictSkippedEntries += path, by the user or automatic (T-F260: archive Partial)<br/>the automatic ones become ArchiveResult.KeptExistingFiles (T-F313)"]
     J0 -- "Rename" --> K2["unique name via GetUniqueFilePath"]
     J0 -- "Overwrite" --> K
     K2 --> K

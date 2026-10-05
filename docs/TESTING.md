@@ -669,6 +669,17 @@ without `-o` into the working directory (`CliProcessRunner.RunIn`, T-F206), `l -
 as raw BOM-free UTF-8 bytes, the dev-version `-v` pattern, and a sweep of a dead run's folder.
 Not automated: real-console Ctrl+C and the cp866 loss itself.
 
+**Post-v1.7.0 wave 2 additions (2026-10-05):** `SourcePathNormalizerTests` (Core: a fully qualified
+path unchanged, `.`/`..`/relative resolved, a drive root keeps its separator, an unresolvable path
+left as typed; T-F338) with `ArchiveAsync_SourceNamedByDots_*` and two subprocess tests that run
+`pakko a <out> .` in a chosen directory (ZIP and tar). `TarListingDateTests` and one real-tar.exe
+listing test say whether the time is known (T-F335). `ArchiveCreationRouterTests`/`PolicyOwnershipTests`
+check the item a refusal names (T-F326). `ZipArchiveServiceExtractTests` and `ExtractionRouterTests`
+cover `KeptExistingFiles` (automatic skip listed, the user's own answer not, merge), and the
+subprocess layer pins `pakko x` over existing files: default (line, hint, exit 1), `-aos`, `-aoa`
+(T-F313). `CliCreatedNameTests` covers the taken-name line (T-F325); its wiring in `Program.cs` is
+checked only by a real two-run race on a device, since a test cannot stage that race reliably.
+
 **v1.7.0 wave 3 additions (2026-10-03):** `CliArgumentParserTests` covers PowerShell-split pairs
 (`-ttar` `.gz`, `-pSecret` `.1`, `-oout` `.d` — the password never in the message), dot-leading paths that are no
 split piece (`h -scrcSHA256 .gitignore`), the dot-free `-t` aliases and `-t` against the name's own archive type,
