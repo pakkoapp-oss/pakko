@@ -1,0 +1,41 @@
+[Description]
+Pakko es un archivador ZIP gratuito y de código abierto para Windows, construido íntegramente sobre las API de compresión propias de .NET: sin 7-Zip, sin WinRAR y sin código de compresión de terceros en ningún lugar de la aplicación.
+
+Crea y extrae archivos comprimidos ZIP directamente mediante System.IO.Compression, con o sin contraseña: Pakko abre archivos comprimidos ZipCrypto y WinZip AES y los crea cifrados con AES-256, legibles por 7-Zip y otras herramientas ZIP. Los archivos comprimidos RAR, 7-Zip y de la familia TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) se leen con el tar.exe integrado en Windows, ejecutado dentro de un espacio aislado AppContainer sin acceso a la red.
+
+Pakko se integra de forma nativa con el Explorador de archivos: haz clic derecho para extraer, comprimir, probar un archivo comprimido, buscar amenazas en él con tu antivirus o calcular su hash SHA-256, y haz doble clic en cualquier archivo comprimido compatible para explorar su contenido sin extraerlo todo primero. Cada archivo extraído conserva la etiqueta de seguridad Mark-of-the-Web del archivo comprimido del que procede.
+
+Creado para quienes quieren ver exactamente qué comprime sus archivos: todo el código fuente es público en GitHub bajo la licencia Apache 2.0. Sin telemetría, sin analíticas, sin solicitudes de red de ningún tipo. La interfaz está disponible en 37 idiomas.
+
+[Short description]
+Un archivador gratuito y de código abierto que solo se apoya en el código de compresión integrado en .NET y Windows. Crea y extrae ZIP (también con contraseña AES-256), extrae RAR, 7-Zip y TAR en un espacio aislado y añade sus comandos al menú contextual del Explorador de archivos. Sin telemetría.
+
+[Product features]
+ZIP: creación y extracción con la biblioteca de compresión propia de .NET
+ZIP con contraseña: abre ZipCrypto y WinZip AES, crea AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: extracción y creación, mediante el tar.exe integrado en Windows
+RAR y 7-Zip: solo extracción, mediante el tar.exe integrado en Windows
+Menú contextual del Explorador de archivos: Abrir, Extraer aquí, Añadir al archivo comprimido, Probar archivo comprimido, Buscar amenazas, Hash
+Explorador de archivos comprimidos: mira dentro, previsualiza imágenes y texto, extrae solo lo que selecciones
+Búsqueda de amenazas: tu antivirus instalado analiza el contenido del archivo comprimido
+Extracción en espacio aislado: RAR, 7-Zip y TAR se leen dentro de un AppContainer aislado, sin acceso a la red
+Los archivos extraídos conservan la etiqueta Mark-of-the-Web y sus fechas originales
+Línea de comandos incluida: el comando pakko, con comandos al estilo de 7-Zip
+37 idiomas, temas claro y oscuro
+Sin telemetría ni solicitudes de red; código abierto (Apache 2.0)
+
+[Search terms]
+archivador zip gratuito
+extractor archivos zip
+extractor archivos rar
+extractor archivos 7-zip
+tar gz
+zip con contraseña
+código abierto
+
+[What's new in this version]
+• El comando pakko funciona en cualquier terminal nada más instalar la aplicación: una línea de comandos al estilo de 7-Zip para tus scripts.
+• Los archivos y carpetas extraídos conservan las fechas guardadas en el archivo comprimido.
+• La aplicación puede usarse por completo con el teclado; el cuadro «el archivo ya existe» muestra el tamaño y la fecha de ambos.
+• El nivel de compresión más rápido ya no hace más grandes los archivos que ya estaban comprimidos.
+• Traducciones revisadas en los 36 idiomas distintos del inglés; el menú del Explorador sigue ahora tu lista de idiomas de Windows.

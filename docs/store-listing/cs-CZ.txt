@@ -1,0 +1,41 @@
+[Description]
+Pakko je bezplatný archivátor ZIP s otevřeným zdrojovým kódem pro Windows, postavený zcela na vlastních kompresních rozhraních API platformy .NET — bez 7-Zipu, bez WinRARu a bez jakéhokoli kompresního kódu třetích stran kdekoli v aplikaci.
+
+Vytvářejte a extrahujte archivy ZIP přímo pomocí System.IO.Compression, s heslem i bez něj: Pakko otevírá archivy ZipCrypto a WinZip AES a vytváří archivy šifrované pomocí AES-256, které přečte 7-Zip i další programy pro ZIP. Archivy RAR, 7-Zip a archivy rodiny TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) se čtou pomocí nástroje tar.exe vestavěného ve Windows, spuštěného v izolovaném sandboxu AppContainer bez přístupu k síti.
+
+Pakko se nativně integruje s Průzkumníkem souborů: kliknutím pravým tlačítkem můžete extrahovat, komprimovat, otestovat archiv, nechat ho antivirovým programem zkontrolovat na hrozby nebo vypočítat jeho hash SHA-256 a dvojitým kliknutím na jakýkoli podporovaný archiv procházet jeho obsah, aniž byste museli nejprve všechno extrahovat. Každý extrahovaný soubor si zachová bezpečnostní značku Mark-of-the-Web archivu, ze kterého pochází.
+
+Vytvořeno pro každého, kdo chce přesně vědět, co komprimuje jeho soubory — celý zdrojový kód je veřejně dostupný na GitHubu pod licencí Apache 2.0. Žádná telemetrie, žádná analytika, žádné síťové požadavky jakéhokoli druhu. Rozhraní je dostupné ve 37 jazycích.
+
+[Short description]
+Bezplatný archivátor s otevřeným zdrojovým kódem, který spoléhá pouze na kompresní kód vestavěný v .NET a ve Windows. Vytváří a extrahuje archivy ZIP (i s heslem AES-256), extrahuje RAR, 7-Zip a TAR v sandboxu a přidává své příkazy do kontextové nabídky Průzkumníka souborů. Žádná telemetrie.
+
+[Product features]
+ZIP: vytváření a extrahování pomocí vlastní kompresní knihovny .NET
+ZIP s heslem: otevírá ZipCrypto a WinZip AES, vytváří AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: extrahování a vytváření pomocí nástroje tar.exe vestavěného ve Windows
+RAR a 7-Zip: pouze extrahování, pomocí nástroje tar.exe vestavěného ve Windows
+Kontextová nabídka Průzkumníka souborů: Otevřít, Extrahovat sem, Přidat do archivu, Otestovat archiv, Zkontrolovat hrozby, Hash
+Prohlížeč archivů: nahlédněte do archivu, zobrazte náhled obrázků a textu, extrahujte jen to, co vyberete
+Kontrola hrozeb: obsah archivu zkontroluje váš nainstalovaný antivirový program
+Extrahování v sandboxu: RAR, 7-Zip a TAR se čtou v izolovaném kontejneru AppContainer bez přístupu k síti
+Extrahované soubory si zachovají značku Mark-of-the-Web a původní data
+Příkazový řádek v balíčku: příkaz pakko s příkazy ve stylu 7-Zipu
+37 jazyků, světlý a tmavý motiv
+Žádná telemetrie ani síťové požadavky; otevřený zdrojový kód (Apache 2.0)
+
+[Search terms]
+bezplatný archivátor ZIP
+open source archivátor
+extrahovat RAR
+extrahovat 7z
+tar gz
+ZIP s heslem
+ZIP kompresní nástroj
+
+[What's new in this version]
+• Příkaz pakko funguje v každém terminálu hned po instalaci: příkazový řádek ve stylu 7-Zipu pro skripty.
+• Extrahované soubory a složky si zachovají data uložená v archivu.
+• Aplikaci lze celou ovládat z klávesnice; okno „soubor už existuje“ ukazuje velikost a datum obou souborů.
+• Nejrychlejší úroveň komprese už nezvětšuje soubory, které už komprimované byly.
+• Překlady byly zrevidovány ve všech 36 jazycích kromě angličtiny; nabídka Průzkumníka se nyní řídí vaším seznamem jazyků Windows.

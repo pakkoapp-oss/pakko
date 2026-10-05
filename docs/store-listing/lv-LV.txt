@@ -1,0 +1,41 @@
+[Description]
+Pakko ir bezmaksas atvērtā pirmkoda ZIP arhivators operētājsistēmai Windows, kas pilnībā balstīts uz .NET pašas saspiešanas API — bez 7-Zip, bez WinRAR un bez jebkāda trešo pušu saspiešanas koda lietotnē.
+
+Izveidojiet un izvelciet ZIP arhīvus tieši, izmantojot System.IO.Compression, ar paroli vai bez tās: Pakko atver ZipCrypto un WinZip AES arhīvus un izveido ar AES-256 šifrētus arhīvus, kurus var nolasīt 7-Zip un citas ZIP programmas. RAR, 7-Zip un TAR saimes arhīvi (TAR, GZ, BZ2, XZ, ZST, LZMA) tiek lasīti ar Windows iebūvēto rīku tar.exe, kas tiek palaists izolētā AppContainer smilškastē bez piekļuves tīklam.
+
+Pakko ir integrēts failu pārlūkā: noklikšķiniet ar peles labo pogu, lai izvilktu vai saspiestu failus, testētu arhīvu, ar savu pretvīrusu programmu pārbaudītu, vai tajā nav draudu, vai aprēķinātu tā SHA-256 kontrolsummu, un veiciet dubultklikšķi uz jebkura atbalstīta arhīva, lai pārlūkotu tā saturu, vispirms neizvelkot visu. Katrs izvilktais fails saglabā tā arhīva Mark-of-the-Web drošības atzīmi, no kura tas nācis.
+
+Izveidots ikvienam, kurš vēlas precīzi redzēt, kas saspiež viņa failus — viss pirmkods ir publiski pieejams vietnē GitHub saskaņā ar Apache 2.0 licenci. Bez telemetrijas, bez lietošanas analītikas, bez jebkādiem tīkla pieprasījumiem. Saskarne ir pieejama 37 valodās.
+
+[Short description]
+Bezmaksas atvērtā pirmkoda arhivators, kas izmanto tikai .NET un Windows iebūvēto saspiešanas kodu. Izveido un izvelk ZIP arhīvus (arī ar AES-256 paroli), izvelk RAR, 7-Zip un TAR arhīvus smilškastē un pievieno savas komandas failu pārlūka kontekstizvēlnei. Bez telemetrijas.
+
+[Product features]
+ZIP: izveide un izvilkšana ar .NET pašas saspiešanas bibliotēku
+ZIP ar paroli: atver ZipCrypto un WinZip AES, izveido AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: izvilkšana un izveide ar Windows iebūvēto rīku tar.exe
+RAR un 7-Zip: tikai izvilkšana, ar Windows iebūvēto rīku tar.exe
+Failu pārlūka kontekstizvēlne: Atvērt, Izvilkt šeit, Pievienot arhīvam, Testēt arhīvu, Pārbaudīt draudus, Kontrolsumma
+Arhīvu pārlūks: ieskatieties arhīvā, priekšskatiet attēlus un tekstu, izvelciet tikai atlasīto
+Draudu pārbaude: arhīva saturu pārbauda jūsu instalētā pretvīrusu programma
+Izvilkšana smilškastē: RAR, 7-Zip un TAR tiek lasīti izolētā AppContainer bez piekļuves tīklam
+Izvilktie faili saglabā Mark-of-the-Web atzīmi un sākotnējos datumus
+Komandrinda komplektā: komanda pakko ar 7-Zip stila komandām
+37 valodas, gaišais un tumšais dizains
+Bez telemetrijas un tīkla pieprasījumiem; atvērtais pirmkods (Apache 2.0)
+
+[Search terms]
+bezmaksas zip arhivators
+Pakko zip arhivators
+rar izpakotājs
+7z izpakotājs
+tar gz
+zip ar paroli
+atvērtais pirmkods
+
+[What's new in this version]
+• Komanda pakko darbojas jebkurā terminālī uzreiz pēc instalēšanas: 7-Zip stila komandrinda skriptiem.
+• Izvilktie faili un mapes saglabā arhīvā ierakstītos datumus.
+• Lietotni var pilnībā lietot ar tastatūru; logs “fails jau pastāv” rāda abu failu lielumu un datumu.
+• Ātrākais saspiešanas līmenis vairs nepalielina jau saspiestus failus.
+• Tulkojumi pārskatīti visās 36 valodās, izņemot angļu; failu pārlūka izvēlne tagad ievēro jūsu Windows valodu sarakstu.

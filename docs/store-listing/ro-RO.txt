@@ -1,0 +1,41 @@
+[Description]
+Pakko este un arhivator ZIP gratuit și open source pentru Windows, construit în întregime pe API-urile de compresie proprii ale .NET — fără 7-Zip, fără WinRAR și fără niciun cod de compresie de la terți nicăieri în aplicație.
+
+Creați și extrageți arhive ZIP direct prin System.IO.Compression, cu sau fără parolă: Pakko deschide arhive ZipCrypto și WinZip AES și creează arhive criptate cu AES-256, pe care 7-Zip și alte programe ZIP le pot citi. Arhivele RAR, 7-Zip și cele din familia TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) sunt citite prin instrumentul tar.exe integrat în Windows, lansat într-un sandbox AppContainer izolat, fără acces la rețea.
+
+Pakko se integrează nativ în Explorer: faceți clic dreapta pentru a extrage, a comprima, a testa o arhivă, a verifica dacă are amenințări cu antivirusul dvs. sau a-i calcula suma de control SHA-256 și faceți dublu clic pe orice arhivă acceptată pentru a-i răsfoi conținutul fără a fi nevoie să extrageți totul mai întâi. Fiecare fișier extras păstrează eticheta de securitate Mark-of-the-Web a arhivei din care provine.
+
+Creat pentru oricine dorește să vadă exact ce îi comprimă fișierele — întregul cod sursă este public pe GitHub sub licența Apache 2.0. Fără telemetrie, fără analize de utilizare, fără nicio solicitare de rețea. Interfața este disponibilă în 37 de limbi.
+
+[Short description]
+Un arhivator gratuit și open source care se bazează numai pe codul de compresie integrat în .NET și în Windows. Creează și extrage arhive ZIP (inclusiv cu parolă AES-256), extrage RAR, 7-Zip și TAR într-un sandbox și își adaugă comenzile în meniul contextual din Explorer. Fără telemetrie.
+
+[Product features]
+ZIP: creare și extragere cu biblioteca de compresie proprie a .NET
+ZIP cu parolă: deschide ZipCrypto și WinZip AES, creează AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: extragere și creare, prin instrumentul tar.exe integrat în Windows
+RAR și 7-Zip: numai extragere, prin instrumentul tar.exe integrat în Windows
+Meniul contextual din Explorer: Deschide, Extrage aici, Adaugă la arhivă, Testează arhiva, Verifică amenințările, Sumă de control
+Exploratorul de arhive: priviți în interiorul unei arhive, previzualizați imagini și text, extrageți doar ce selectați
+Verificarea amenințărilor: conținutul arhivei este verificat de antivirusul instalat
+Extragere în sandbox: RAR, 7-Zip și TAR sunt citite într-un AppContainer izolat, fără acces la rețea
+Fișierele extrase păstrează eticheta Mark-of-the-Web și datele lor inițiale
+Linie de comandă inclusă: comanda pakko, cu comenzi în stilul 7-Zip
+37 de limbi, temă deschisă și întunecată
+Fără telemetrie și fără solicitări de rețea; open source (Apache 2.0)
+
+[Search terms]
+arhivator zip gratuit
+Pakko arhivator zip
+extractor rar
+extractor 7z
+tar gz
+zip cu parolă
+open source
+
+[What's new in this version]
+• Comanda pakko funcționează în orice terminal imediat după instalare: o linie de comandă în stilul 7-Zip pentru scripturi.
+• Fișierele și folderele extrase păstrează datele salvate în arhivă.
+• Aplicația poate fi folosită în întregime de la tastatură; fereastra „fișierul există deja” arată dimensiunea și data ambelor fișiere.
+• Cel mai rapid nivel de compresie nu mai mărește fișierele deja comprimate.
+• Traduceri revizuite în toate cele 36 de limbi în afară de engleză; meniul din Explorer urmează acum lista dvs. de limbi din Windows.

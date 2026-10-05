@@ -1,0 +1,41 @@
+[Description]
+Pakko je besplatan ZIP arhiver otvorenog koda za Windows, u cijelosti izgrađen na vlastitim API-jima platforme .NET za komprimiranje — bez 7-Zipa, bez WinRAR-a i bez ikakvog koda za komprimiranje trećih strana igdje u aplikaciji.
+
+Stvarajte i raspakirajte ZIP arhive izravno putem System.IO.Compression, s lozinkom ili bez nje: Pakko otvara arhive ZipCrypto i WinZip AES te stvara arhive šifrirane algoritmom AES-256 koje mogu čitati 7-Zip i drugi ZIP programi. Arhive RAR, 7-Zip i arhive iz obitelji TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) čitaju se alatom tar.exe ugrađenim u Windows, pokrenutim u izoliranom sandboxu AppContainer bez pristupa mreži.
+
+Pakko se ugrađuje u Eksplorer za datoteke: kliknite desnom tipkom miša da biste raspakirali ili komprimirali datoteke, testirali arhivu, provjerili ima li u njoj prijetnji svojim antivirusnim programom ili izračunali njezin SHA-256 sažetak, a dvoklikom na bilo koju podržanu arhivu pregledajte njezin sadržaj bez prethodnog raspakiravanja svega. Svaka raspakirana datoteka zadržava sigurnosnu oznaku Mark-of-the-Web arhive iz koje potječe.
+
+Napravljen za sve koji žele točno vidjeti što komprimira njihove datoteke — cijeli izvorni kod javno je dostupan na GitHubu pod licencom Apache 2.0. Bez telemetrije, bez analitike korištenja, bez ikakvih mrežnih zahtjeva. Sučelje je dostupno na 37 jezika.
+
+[Short description]
+Besplatan arhiver otvorenog koda koji se oslanja samo na kod za komprimiranje ugrađen u .NET i Windows. Stvara i raspakirava ZIP arhive (i s lozinkom AES-256), raspakirava RAR, 7-Zip i TAR u sandboxu te dodaje svoje naredbe u kontekstni izbornik Eksplorera za datoteke. Bez telemetrije.
+
+[Product features]
+ZIP: stvaranje i raspakiravanje vlastitom bibliotekom platforme .NET za komprimiranje
+ZIP s lozinkom: otvara ZipCrypto i WinZip AES, stvara AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: raspakiravanje i stvaranje alatom tar.exe ugrađenim u Windows
+RAR i 7-Zip: samo raspakiravanje, alatom tar.exe ugrađenim u Windows
+Kontekstni izbornik Eksplorera za datoteke: Otvori, Raspakiraj ovdje, Dodaj u arhivu, Testiraj arhivu, Provjeri prijetnje, Sažetak
+Preglednik arhiva: zavirite u arhivu, pretpregledajte slike i tekst, raspakirajte samo ono što odaberete
+Provjera prijetnji: sadržaj arhive provjerava vaš instalirani antivirusni program
+Raspakiravanje u sandboxu: RAR, 7-Zip i TAR čitaju se u izoliranom AppContaineru bez pristupa mreži
+Raspakirane datoteke zadržavaju oznaku Mark-of-the-Web i izvorne datume
+Naredbeni redak uključen: naredba pakko s naredbama u stilu 7-Zipa
+37 jezika, svijetla i tamna tema
+Bez telemetrije i mrežnih zahtjeva; otvoreni kod (Apache 2.0)
+
+[Search terms]
+besplatni zip arhiver
+Pakko zip arhiver
+raspakirati rar
+raspakirati 7z
+tar gz
+zip s lozinkom
+otvoreni kod
+
+[What's new in this version]
+• Naredba pakko radi u svakom terminalu odmah nakon instalacije: naredbeni redak u stilu 7-Zipa za skripte.
+• Raspakirane datoteke i mape zadržavaju datume spremljene u arhivi.
+• Aplikacija se može u potpunosti koristiti tipkovnicom; prozor „datoteka već postoji” prikazuje veličinu i datum obiju datoteka.
+• Najbrža razina komprimiranja više ne povećava već komprimirane datoteke.
+• Prijevodi su pregledani na svih 36 jezika osim engleskog; izbornik Eksplorera sada slijedi vaš popis jezika sustava Windows.

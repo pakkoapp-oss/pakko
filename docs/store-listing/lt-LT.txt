@@ -1,0 +1,41 @@
+[Description]
+„Pakko“ yra nemokamas atvirojo kodo ZIP archyvatorius, skirtas „Windows“, sukurtas remiantis vien pačios .NET suspaudimo API — be „7-Zip“, be „WinRAR“ ir be jokio trečiųjų šalių suspaudimo kodo programoje.
+
+Kurkite ir išskleiskite ZIP archyvus tiesiogiai per „System.IO.Compression“, su slaptažodžiu arba be jo: „Pakko“ atveria „ZipCrypto“ ir „WinZip AES“ archyvus ir kuria AES-256 šifruotus archyvus, kuriuos perskaito „7-Zip“ ir kitos ZIP programos. RAR, 7-Zip ir TAR šeimos archyvai (TAR, GZ, BZ2, XZ, ZST, LZMA) skaitomi „Windows“ įtaisytuoju įrankiu tar.exe, paleidžiamu izoliuotoje „AppContainer“ smėlio dėžėje be prieigos prie tinklo.
+
+„Pakko“ integruota į failų naršyklę: spustelėkite dešiniuoju pelės mygtuku, kad išskleistumėte ar suspaustumėte failus, testuotumėte archyvą, antivirusine programa patikrintumėte, ar jame nėra grėsmių, arba apskaičiuotumėte jo SHA-256 maišą, o dukart spustelėję bet kurį palaikomą archyvą naršykite jo turinį iš pradžių visko neišskleidę. Kiekvienas išskleistas failas išlaiko archyvo, iš kurio jis paimtas, saugos žymą „Mark-of-the-Web“.
+
+Sukurta visiems, kurie nori tiksliai matyti, kas suspaudžia jų failus — visas išeitinis kodas viešai prieinamas „GitHub“ pagal „Apache 2.0“ licenciją. Jokios telemetrijos, jokios naudojimo analizės, jokių tinklo užklausų. Sąsaja pateikiama 37 kalbomis.
+
+[Short description]
+Nemokamas atvirojo kodo archyvatorius, kuris remiasi tik .NET ir „Windows“ įtaisytu suspaudimo kodu. Kuria ir išskleidžia ZIP archyvus (taip pat su AES-256 slaptažodžiu), smėlio dėžėje išskleidžia RAR, 7-Zip ir TAR archyvus ir prideda savo komandas į failų naršyklės kontekstinį meniu. Jokios telemetrijos.
+
+[Product features]
+ZIP: kūrimas ir išskleidimas pačios .NET suspaudimo biblioteka
+ZIP su slaptažodžiu: atveria „ZipCrypto“ ir „WinZip AES“, kuria AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: išskleidimas ir kūrimas „Windows“ įtaisytuoju įrankiu tar.exe
+RAR ir 7-Zip: tik išskleidimas, „Windows“ įtaisytuoju įrankiu tar.exe
+Failų naršyklės kontekstinis meniu: Atverti, Išskleisti čia, Pridėti į archyvą, Testuoti archyvą, Tikrinti grėsmes, Maiša
+Archyvų naršyklė: pažvelkite į archyvo vidų, peržiūrėkite paveikslėlius ir tekstą, išskleiskite tik tai, ką pažymėjote
+Grėsmių tikrinimas: archyvo turinį patikrina jūsų įdiegta antivirusinė programa
+Išskleidimas smėlio dėžėje: RAR, 7-Zip ir TAR skaitomi izoliuotame „AppContainer“ be prieigos prie tinklo
+Išskleisti failai išlaiko žymą „Mark-of-the-Web“ ir pradines datas
+Komandų eilutė komplekte: komanda pakko su „7-Zip“ stiliaus komandomis
+37 kalbos, šviesi ir tamsi tema
+Jokios telemetrijos ir tinklo užklausų; atvirasis kodas („Apache 2.0“)
+
+[Search terms]
+ZIP archyvatorius
+nemokamas archyvatorius
+atvirojo kodo archyvatorius
+išskleisti rar
+išskleisti 7z
+tar gz
+zip su slaptažodžiu
+
+[What's new in this version]
+• Komanda pakko veikia bet kuriame terminale iškart po įdiegimo: „7-Zip“ stiliaus komandų eilutė scenarijams.
+• Išskleisti failai ir aplankai išlaiko archyve įrašytas datas.
+• Programą galima visiškai valdyti klaviatūra; langas „failas jau yra“ rodo abiejų failų dydį ir datą.
+• Greičiausias suspaudimo lygis nebepadidina jau suspaustų failų.
+• Peržiūrėti vertimai visomis 36 kalbomis, išskyrus anglų; failų naršyklės meniu dabar atsižvelgia į jūsų „Windows“ kalbų sąrašą.

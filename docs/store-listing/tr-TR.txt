@@ -1,0 +1,41 @@
+[Description]
+Pakko, Windows için ücretsiz ve açık kaynaklı bir ZIP arşivleyicisidir; tamamen .NET'in kendi sıkıştırma API'leri üzerine kurulmuştur — uygulamanın hiçbir yerinde 7-Zip, WinRAR veya üçüncü taraf sıkıştırma kodu yoktur.
+
+ZIP arşivlerini doğrudan System.IO.Compression üzerinden, parolalı veya parolasız oluşturun ve ayıklayın: Pakko, ZipCrypto ve WinZip AES arşivlerini açar ve 7-Zip ile diğer ZIP programlarının okuyabildiği AES-256 şifreli arşivler oluşturur. RAR, 7-Zip ve TAR ailesi arşivleri (TAR, GZ, BZ2, XZ, ZST, LZMA), Windows'un yerleşik tar.exe aracıyla okunur; bu araç, ağ erişimi olmayan yalıtılmış bir AppContainer korumalı alanında çalıştırılır.
+
+Pakko, Dosya Gezgini ile bütünleşir: dosyaları ayıklamak, sıkıştırmak, bir arşivi test etmek, virüsten koruma programınızla tehditlere karşı taratmak veya SHA-256 karmasını hesaplamak için sağ tıklayın; desteklenen herhangi bir arşive çift tıklayarak her şeyi önceden ayıklamadan içeriğine göz atın. Ayıklanan her dosya, geldiği arşivin Mark-of-the-Web güvenlik etiketini korur.
+
+Dosyalarını tam olarak neyin sıkıştırdığını görmek isteyen herkes için tasarlanmıştır — tüm kaynak kodu Apache 2.0 lisansıyla GitHub'da herkese açıktır. Telemetri yok, kullanım analizi yok, hiçbir türde ağ isteği yok. Arayüz 37 dilde kullanılabilir.
+
+[Short description]
+Yalnızca .NET ve Windows'ta yerleşik sıkıştırma koduna dayanan, ücretsiz ve açık kaynaklı bir arşivleyici. ZIP arşivleri oluşturur ve ayıklar (AES-256 parolasıyla da), RAR, 7-Zip ve TAR arşivlerini korumalı alanda ayıklar ve komutlarını Dosya Gezgini'nin sağ tık menüsüne ekler. Telemetri yok.
+
+[Product features]
+ZIP: .NET'in kendi sıkıştırma kitaplığıyla oluşturma ve ayıklama
+Parolalı ZIP: ZipCrypto ve WinZip AES arşivlerini açar, AES-256 arşivleri oluşturur
+TAR, GZ, BZ2, XZ, ZST, LZMA: Windows'un yerleşik tar.exe aracıyla ayıklama ve oluşturma
+RAR ve 7-Zip: yalnızca ayıklama, Windows'un yerleşik tar.exe aracıyla
+Dosya Gezgini sağ tık menüsü: Aç, Buraya ayıkla, Arşive ekle, Arşivi test et, Tehditleri tara, Karma
+Arşiv tarayıcısı: arşivin içine bakın, resimleri ve metinleri önizleyin, yalnızca seçtiklerinizi ayıklayın
+Tehdit taraması: arşivin içeriğini yüklü virüsten koruma programınız denetler
+Korumalı alanda ayıklama: RAR, 7-Zip ve TAR, ağ erişimi olmayan yalıtılmış bir AppContainer içinde okunur
+Ayıklanan dosyalar Mark-of-the-Web etiketini ve özgün tarihlerini korur
+Komut satırı dahil: 7-Zip tarzı komutlara sahip pakko komutu
+37 dil, açık ve koyu tema
+Telemetri yok, ağ isteği yok; açık kaynak (Apache 2.0)
+
+[Search terms]
+ücretsiz zip arşivleyici
+zip dosyası açma
+rar açma
+7z açma
+tar gz
+parolalı zip
+açık kaynak
+
+[What's new in this version]
+• pakko komutu, kurulumdan hemen sonra her terminalde çalışır: betikler için 7-Zip tarzı bir komut satırı.
+• Ayıklanan dosyalar ve klasörler, arşivde kayıtlı tarihleri korur.
+• Uygulama baştan sona klavyeyle kullanılabilir; "dosya zaten var" penceresi iki dosyanın da boyutunu ve tarihini gösterir.
+• En hızlı sıkıştırma düzeyi, önceden sıkıştırılmış dosyaları artık büyütmüyor.
+• İngilizce dışındaki 36 dilin tümünde çeviriler gözden geçirildi; Dosya Gezgini menüsü artık Windows dil listenizi izliyor.

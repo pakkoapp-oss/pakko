@@ -1,0 +1,41 @@
+[Description]
+Pakko är ett kostnadsfritt ZIP-arkiveringsprogram med öppen källkod för Windows, byggt helt och hållet på .NET:s egna komprimerings-API:er — ingen 7-Zip, ingen WinRAR och ingen komprimeringskod från tredje part någonstans i appen.
+
+Skapa och extrahera ZIP-arkiv direkt via System.IO.Compression, med eller utan lösenord: Pakko öppnar ZipCrypto- och WinZip AES-arkiv och skapar AES-256-krypterade arkiv som 7-Zip och andra ZIP-program kan läsa. RAR-, 7-Zip- och TAR-arkiv (TAR, GZ, BZ2, XZ, ZST, LZMA) läses via det tar.exe som är inbyggt i Windows och som körs i en isolerad AppContainer-sandlåda utan nätverksåtkomst.
+
+Pakko är integrerat i Utforskaren: högerklicka för att extrahera, komprimera, testa ett arkiv, låta ditt antivirusprogram söka efter hot i det eller beräkna dess SHA-256-hash, och dubbelklicka på ett arkiv som stöds för att bläddra i innehållet utan att först behöva extrahera allt. Varje extraherad fil behåller säkerhetsmärkningen Mark-of-the-Web från arkivet den kommer ifrån.
+
+Byggt för alla som vill se exakt vad som komprimerar deras filer — hela källkoden finns offentligt på GitHub under Apache 2.0-licensen. Ingen telemetri, ingen användningsanalys, inga nätverksförfrågningar av något slag. Gränssnittet finns på 37 språk.
+
+[Short description]
+Ett kostnadsfritt arkiveringsprogram med öppen källkod som bara förlitar sig på den komprimeringskod som är inbyggd i .NET och Windows. Skapar och extraherar ZIP (även med AES-256-lösenord), extraherar RAR, 7-Zip och TAR i en sandlåda och lägger till sina kommandon i Utforskarens snabbmeny. Ingen telemetri.
+
+[Product features]
+ZIP: skapa och extrahera med .NET:s eget komprimeringsbibliotek
+ZIP med lösenord: öppnar ZipCrypto och WinZip AES, skapar AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: extrahera och skapa via det tar.exe som är inbyggt i Windows
+RAR och 7-Zip: endast extrahering, via det tar.exe som är inbyggt i Windows
+Utforskarens snabbmeny: Öppna, Extrahera hit, Lägg till i arkiv, Testa arkiv, Sök efter hot, Hash
+Arkivbläddrare: titta in i ett arkiv, förhandsgranska bilder och text, extrahera bara det du markerar
+Sök efter hot: arkivets innehåll kontrolleras av ditt installerade antivirusprogram
+Extrahering i sandlåda: RAR, 7-Zip och TAR läses i en isolerad AppContainer utan nätverksåtkomst
+Extraherade filer behåller Mark-of-the-Web-märkningen och sina ursprungliga datum
+Kommandorad ingår: kommandot pakko med kommandon i 7-Zip-stil
+37 språk, ljust och mörkt tema
+Ingen telemetri, inga nätverksförfrågningar; öppen källkod (Apache 2.0)
+
+[Search terms]
+zip-program öppen källkod
+packa upp zip
+packa upp rar
+packa upp 7z
+öppna tar.gz filer
+zip med lösenord
+7zip-alternativ
+
+[What's new in this version]
+• Kommandot pakko fungerar i alla terminaler direkt efter installationen: en kommandorad i 7-Zip-stil för skript.
+• Extraherade filer och mappar behåller de datum som finns sparade i arkivet.
+• Appen kan användas helt och hållet från tangentbordet; dialogrutan ”filen finns redan” visar storlek och datum för båda filerna.
+• Den snabbaste komprimeringsnivån gör inte längre redan komprimerade filer större.
+• Översättningarna har setts över på alla 36 språk utöver engelska; Utforskarens meny följer nu din lista över Windows-språk.

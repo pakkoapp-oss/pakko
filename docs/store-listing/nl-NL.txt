@@ -1,0 +1,41 @@
+[Description]
+Pakko is een gratis, opensource ZIP-archiveerprogramma voor Windows, volledig gebouwd op de eigen compressie-API's van .NET — geen 7-Zip, geen WinRAR en nergens in de app compressiecode van derden.
+
+Maak ZIP-archieven en pak ze uit, rechtstreeks via System.IO.Compression, met of zonder wachtwoord: Pakko opent ZipCrypto- en WinZip AES-archieven en maakt met AES-256 versleutelde archieven die 7-Zip en andere ZIP-programma's kunnen lezen. RAR-, 7-Zip- en TAR-archieven (TAR, GZ, BZ2, XZ, ZST, LZMA) worden gelezen via de in Windows ingebouwde tar.exe, uitgevoerd in een geïsoleerde AppContainer-sandbox zonder netwerktoegang.
+
+Pakko is geïntegreerd in Verkenner: klik met de rechtermuisknop om uit te pakken, te comprimeren, een archief te testen, het met uw antivirusprogramma op bedreigingen te scannen of de SHA-256-hash te berekenen, en dubbelklik op een ondersteund archief om door de inhoud te bladeren zonder eerst alles uit te pakken. Elk uitgepakt bestand behoudt het Mark-of-the-Web-beveiligingslabel van het archief waaruit het komt.
+
+Gebouwd voor iedereen die precies wil zien wat zijn bestanden comprimeert — de volledige broncode staat openbaar op GitHub onder de Apache 2.0-licentie. Geen telemetrie, geen gebruiksanalyse, geen enkele netwerkaanvraag. De interface is beschikbaar in 37 talen.
+
+[Short description]
+Een gratis, opensource archiveerprogramma dat alleen steunt op de compressiecode die in .NET en Windows is ingebouwd. Maakt ZIP-archieven en pakt ze uit (ook met AES-256-wachtwoord), pakt RAR, 7-Zip en TAR uit in een sandbox en voegt zijn opdrachten toe aan het contextmenu van Verkenner. Geen telemetrie.
+
+[Product features]
+ZIP: maken en uitpakken met de eigen compressiebibliotheek van .NET
+ZIP met wachtwoord: opent ZipCrypto en WinZip AES, maakt AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: uitpakken en maken via de in Windows ingebouwde tar.exe
+RAR en 7-Zip: alleen uitpakken, via de in Windows ingebouwde tar.exe
+Contextmenu van Verkenner: Openen, Hier uitpakken, Toevoegen aan archief, Archief testen, Scannen op bedreigingen, Hash
+Archiefverkenner: kijk in een archief, bekijk voorbeelden van afbeeldingen en tekst, pak alleen uit wat u selecteert
+Scannen op bedreigingen: de inhoud van het archief wordt gecontroleerd door uw geïnstalleerde antivirusprogramma
+Uitpakken in een sandbox: RAR, 7-Zip en TAR worden gelezen in een geïsoleerde AppContainer zonder netwerktoegang
+Uitgepakte bestanden behouden het Mark-of-the-Web-label en hun oorspronkelijke datums
+Opdrachtregel inbegrepen: de opdracht pakko, met opdrachten in de stijl van 7-Zip
+37 talen, licht en donker thema
+Geen telemetrie, geen netwerkaanvragen; opensource (Apache 2.0)
+
+[Search terms]
+Pakko zip programma
+zip archief maken
+zip archief uitpakken
+rar-uitpakker
+7z-uitpakker
+tar gz
+zip met wachtwoord
+
+[What's new in this version]
+• De opdracht pakko werkt direct na de installatie in elke terminal: een opdrachtregel in de stijl van 7-Zip voor scripts.
+• Uitgepakte bestanden en mappen behouden de datums die in het archief zijn opgeslagen.
+• De app is volledig met het toetsenbord te bedienen; het venster 'bestand bestaat al' toont de grootte en datum van beide bestanden.
+• Het snelste compressieniveau maakt reeds gecomprimeerde bestanden niet meer groter.
+• Vertalingen herzien in alle 36 talen behalve Engels; het menu van Verkenner volgt nu uw lijst met Windows-talen.

@@ -4113,3 +4113,25 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   machine had `Get-WinUILanguageOverride` = `uk` with an English display language, a state that
   may not survive a sign-out.
 - **Reported by:** T-F329 device check, 2026-10-05.
+
+### T-F331 — Store listing text: errors in the published text, v1.7.0 features, a copy in the repo (P2)
+
+- [~] **Status:** text done 2026-10-05; pasting it into Partner Center is the user's step.
+- **Found:** the published listing (read from the public Store catalog, equal to the user's
+  export of 32 languages) had Arabic and Hebrew stored back to front, a sentence cut in the
+  middle in nine languages (cs, da, el, lt, nb, pl, ro, sv, th), words that differ from the app's
+  own in thirteen, a stray search term in Spanish, and no mention of anything added since v1.4.
+  Five app languages (hr, sl, sr-Latn, ur, vi) have no listing. Full table:
+  `docs/store-listing/README.md`.
+- **Done:**
+  - [x] `docs/store-listing/<locale>.txt` for all 37 locales: description, short description, 12
+    features, 7 search terms, "What's new" for v1.7.0
+  - [x] `StoreListingTests` (field limits, menu items named as the menu shows them, no word the
+    glossary replaced); mutation-checked on all three
+  - [ ] the user pastes the text into Partner Center (or exports the listing CSV, which a script
+    can fill from these files) and adds the five missing languages
+  - [ ] screenshot captions (`docs/assets/store/CAPTIONS.md`) are English only
+- **Not changed:** `README.md` and `README.uk.md` still say that Explorer does not propagate the
+  Mark-of-the-Web; the listing no longer does (the site pages never did). To be settled with the feature-text refresh before
+  the release commit.
+- **Reported by:** user, 2026-10-05.

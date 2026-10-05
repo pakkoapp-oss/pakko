@@ -1,0 +1,41 @@
+[Description]
+Pakko là trình nén ZIP miễn phí, mã nguồn mở dành cho Windows, được xây dựng hoàn toàn trên các API nén của chính .NET — không có 7-Zip, không có WinRAR và không có mã nén của bên thứ ba ở bất kỳ đâu trong ứng dụng.
+
+Tạo và giải nén tệp nén ZIP trực tiếp qua System.IO.Compression, có hoặc không có mật khẩu: Pakko mở được tệp nén ZipCrypto và WinZip AES, đồng thời tạo tệp nén mã hóa AES-256 mà 7-Zip và các công cụ ZIP khác đọc được. Tệp nén RAR, 7-Zip và họ TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) được đọc bằng tar.exe tích hợp sẵn trong Windows, chạy trong hộp cát AppContainer cô lập, không có quyền truy cập mạng.
+
+Pakko tích hợp vào File Explorer: bấm chuột phải để giải nén, nén, kiểm tra tệp nén, quét mối đe dọa bằng phần mềm diệt vi-rút của bạn hoặc tính mã băm SHA-256, và bấm đúp vào bất kỳ tệp nén nào được hỗ trợ để duyệt nội dung mà không cần giải nén toàn bộ trước. Mỗi tệp được giải nén đều giữ thẻ bảo mật Mark-of-the-Web của tệp nén chứa nó.
+
+Dành cho bất kỳ ai muốn biết chính xác thứ gì đang nén tệp của mình — toàn bộ mã nguồn được công khai trên GitHub theo giấy phép Apache 2.0. Không đo từ xa, không phân tích việc sử dụng, không có bất kỳ yêu cầu mạng nào. Giao diện có 37 ngôn ngữ.
+
+[Short description]
+Trình nén miễn phí, mã nguồn mở, chỉ dựa vào mã nén có sẵn trong .NET và Windows. Tạo và giải nén ZIP (cả với mật khẩu AES-256), giải nén RAR, 7-Zip và TAR trong hộp cát, đồng thời thêm các lệnh của mình vào menu chuột phải của File Explorer. Không đo từ xa.
+
+[Product features]
+ZIP: tạo và giải nén bằng thư viện nén của chính .NET
+ZIP có mật khẩu: mở ZipCrypto và WinZip AES, tạo AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: giải nén và tạo bằng tar.exe tích hợp sẵn trong Windows
+RAR và 7-Zip: chỉ giải nén, bằng tar.exe tích hợp sẵn trong Windows
+Menu chuột phải của File Explorer: Mở, Giải nén tại đây, Thêm vào tệp nén, Kiểm tra tệp nén, Quét mối đe dọa, Mã băm
+Trình duyệt tệp nén: xem bên trong tệp nén, xem trước ảnh và văn bản, chỉ giải nén những gì bạn chọn
+Quét mối đe dọa: nội dung tệp nén được phần mềm diệt vi-rút đã cài của bạn kiểm tra
+Giải nén trong hộp cát: RAR, 7-Zip và TAR được đọc trong AppContainer cô lập, không có quyền truy cập mạng
+Tệp được giải nén giữ thẻ Mark-of-the-Web và ngày tháng gốc
+Kèm dòng lệnh: lệnh pakko với các lệnh theo kiểu 7-Zip
+37 ngôn ngữ, giao diện sáng và tối
+Không đo từ xa, không có yêu cầu mạng; mã nguồn mở (Apache 2.0)
+
+[Search terms]
+trình nén zip
+nén tệp miễn phí
+giải nén rar
+giải nén 7z
+tar gz
+zip mật khẩu
+mã nguồn mở
+
+[What's new in this version]
+• Lệnh pakko dùng được trong mọi cửa sổ dòng lệnh ngay sau khi cài đặt: một dòng lệnh kiểu 7-Zip dành cho tập lệnh.
+• Tệp và thư mục được giải nén giữ nguyên ngày tháng lưu trong tệp nén.
+• Có thể dùng toàn bộ ứng dụng bằng bàn phím; cửa sổ "tệp đã tồn tại" hiển thị kích thước và ngày của cả hai tệp.
+• Mức nén nhanh nhất không còn làm các tệp đã nén sẵn lớn thêm.
+• Đã rà soát bản dịch ở tất cả 36 ngôn ngữ ngoài tiếng Anh; menu của File Explorer giờ tuân theo danh sách ngôn ngữ Windows của bạn.

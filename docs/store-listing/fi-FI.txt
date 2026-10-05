@@ -1,0 +1,41 @@
+[Description]
+Pakko on ilmainen, avoimen lähdekoodin ZIP-arkistointiohjelma Windowsille, joka perustuu kokonaan .NETin omiin pakkausrajapintoihin — ei 7-Zipiä, ei WinRARia eikä minkäänlaista kolmannen osapuolen pakkauskoodia missään sovelluksessa.
+
+Luo ja pura ZIP-arkistoja suoraan System.IO.Compression-rajapinnalla, salasanalla tai ilman: Pakko avaa ZipCrypto- ja WinZip AES -arkistot ja luo AES-256-salattuja arkistoja, joita 7-Zip ja muut ZIP-ohjelmat osaavat lukea. RAR-, 7-Zip- ja TAR-perheen arkistot (TAR, GZ, BZ2, XZ, ZST, LZMA) luetaan Windowsin sisäänrakennetulla tar.exe-työkalulla, joka käynnistetään eristetyssä AppContainer-hiekkalaatikossa ilman verkkoyhteyttä.
+
+Pakko on osa Resurssienhallintaa: napsauta hiiren kakkospainikkeella, kun haluat purkaa tai pakata tiedostoja, testata arkiston, tarkistaa sen uhkien varalta virustorjuntaohjelmallasi tai laskea sen SHA-256-tiivisteen, ja kaksoisnapsauta mitä tahansa tuettua arkistoa, kun haluat selata sen sisältöä purkamatta ensin kaikkea. Jokainen purettu tiedosto säilyttää sen arkiston Mark-of-the-Web-turvamerkinnän, josta se on peräisin.
+
+Tehty kaikille, jotka haluavat nähdä tarkalleen, mikä heidän tiedostonsa pakkaa — koko lähdekoodi on julkisesti saatavilla GitHubissa Apache 2.0 -lisenssillä. Ei telemetriaa, ei käyttöanalytiikkaa, ei minkäänlaisia verkkopyyntöjä. Käyttöliittymä on saatavilla 37 kielellä.
+
+[Short description]
+Ilmainen, avoimen lähdekoodin arkistointiohjelma, joka nojaa vain .NETiin ja Windowsiin sisäänrakennettuun pakkauskoodiin. Luo ja purkaa ZIP-arkistoja (myös AES-256-salasanalla), purkaa RAR-, 7-Zip- ja TAR-arkistot hiekkalaatikossa ja lisää komentonsa Resurssienhallinnan pikavalikkoon. Ei telemetriaa.
+
+[Product features]
+ZIP: luonti ja purku .NETin omalla pakkauskirjastolla
+Salasanalla suojattu ZIP: avaa ZipCrypto- ja WinZip AES -arkistot, luo AES-256-arkistoja
+TAR, GZ, BZ2, XZ, ZST, LZMA: purku ja luonti Windowsin sisäänrakennetulla tar.exe-työkalulla
+RAR ja 7-Zip: vain purku, Windowsin sisäänrakennetulla tar.exe-työkalulla
+Resurssienhallinnan pikavalikko: Avaa, Pura tähän, Lisää arkistoon, Testaa arkisto, Tarkista uhat, Tiiviste
+Arkistoselain: katso arkiston sisään, esikatsele kuvia ja tekstiä, pura vain valitsemasi kohteet
+Uhkien tarkistus: asennettu virustorjuntaohjelmasi tarkistaa arkiston sisällön
+Purku hiekkalaatikossa: RAR, 7-Zip ja TAR luetaan eristetyssä AppContainerissa ilman verkkoyhteyttä
+Puretut tiedostot säilyttävät Mark-of-the-Web-merkinnän ja alkuperäiset päivämääränsä
+Komentorivi mukana: pakko-komento, jonka komennot ovat 7-Zipin tyylisiä
+37 kieltä, vaalea ja tumma teema
+Ei telemetriaa eikä verkkopyyntöjä; avointa lähdekoodia (Apache 2.0)
+
+[Search terms]
+Pakko zip-arkistointiohjelma
+zip-purkuohjelma
+rar-purkaja
+7z-purkaja
+tar gz
+zip salasanalla
+avoin lähdekoodi
+
+[What's new in this version]
+• pakko-komento toimii missä tahansa päätteessä heti asennuksen jälkeen: 7-Zipin tyylinen komentorivi komentosarjoille.
+• Puretut tiedostot ja kansiot säilyttävät arkistoon tallennetut päivämäärät.
+• Sovellusta voi käyttää kokonaan näppäimistöllä; "tiedosto on jo olemassa" -ikkuna näyttää molempien tiedostojen koon ja päivämäärän.
+• Nopein pakkaustaso ei enää suurenna jo pakattuja tiedostoja.
+• Käännökset on tarkistettu kaikilla 36 muulla kielellä kuin englannilla; Resurssienhallinnan valikko noudattaa nyt Windowsin kieliluetteloasi.

@@ -1,0 +1,41 @@
+[Description]
+Pakko ni programu ya bure na ya chanzo huria ya kubana faili za ZIP kwa Windows, iliyojengwa kabisa juu ya API za kubana za .NET yenyewe — hakuna 7-Zip, hakuna WinRAR, na hakuna msimbo wowote wa kubana wa wahusika wengine popote katika programu.
+
+Unda na utoe kumbukumbu za ZIP moja kwa moja kupitia System.IO.Compression, ukiwa na nenosiri au bila nenosiri: Pakko hufungua kumbukumbu za ZipCrypto na WinZip AES na huunda kumbukumbu zilizosimbwa kwa AES-256 ambazo 7-Zip na programu nyingine za ZIP zinaweza kuzisoma. Kumbukumbu za RAR, 7-Zip na za familia ya TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) husomwa kupitia zana ya tar.exe iliyo ndani ya Windows, inayoendeshwa ndani ya sanduku la mchanga la AppContainer lililotengwa na lisilo na ufikiaji wa mtandao.
+
+Pakko huungana na File Explorer: bofya kulia ili kutoa faili, kubana, kujaribu kumbukumbu, kuichunguza vitisho kwa programu yako ya kingavirusi au kukokotoa heshi yake ya SHA-256, na bofya mara mbili kumbukumbu yoyote inayotumika ili kuvinjari maudhui yake bila kulazimika kutoa kila kitu kwanza. Kila faili iliyotolewa hubaki na lebo ya usalama ya Mark-of-the-Web ya kumbukumbu ilikotoka.
+
+Imejengwa kwa yeyote anayetaka kuona hasa ni nini kinachobana faili zake — msimbo wote wa chanzo uko wazi kwa umma kwenye GitHub chini ya leseni ya Apache 2.0. Hakuna telemetri, hakuna uchambuzi wa matumizi, hakuna maombi ya mtandao ya aina yoyote. Kiolesura kinapatikana katika lugha 37.
+
+[Short description]
+Programu ya bure na ya chanzo huria ya kubana faili inayotegemea tu msimbo wa kubana uliomo ndani ya .NET na Windows. Huunda na kutoa kumbukumbu za ZIP (pia kwa nenosiri la AES-256), hutoa RAR, 7-Zip na TAR ndani ya sanduku la mchanga, na huongeza amri zake kwenye menyu ya kubofya kulia ya File Explorer. Hakuna telemetri.
+
+[Product features]
+ZIP: kuunda na kutoa kwa maktaba ya kubana ya .NET yenyewe
+ZIP yenye nenosiri: hufungua ZipCrypto na WinZip AES, huunda AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: kutoa na kuunda, kupitia zana ya tar.exe iliyo ndani ya Windows
+RAR na 7-Zip: kutoa tu, kupitia zana ya tar.exe iliyo ndani ya Windows
+Menyu ya kubofya kulia ya File Explorer: Fungua, Toa hapa, Ongeza kwenye kumbukumbu, Jaribu kumbukumbu, Chunguza vitisho, Heshi
+Kivinjari cha kumbukumbu: tazama ndani ya kumbukumbu, hakiki picha na maandishi, toa tu unachochagua
+Chunguza vitisho: maudhui ya kumbukumbu hukaguliwa na programu ya kingavirusi uliyosakinisha
+Kutoa ndani ya sanduku la mchanga: RAR, 7-Zip na TAR husomwa ndani ya AppContainer iliyotengwa, bila ufikiaji wa mtandao
+Faili zilizotolewa hubaki na lebo ya Mark-of-the-Web na tarehe zake za awali
+Mstari wa amri umejumuishwa: amri ya pakko yenye amri za mtindo wa 7-Zip
+Lugha 37, mandhari meupe na meusi
+Hakuna telemetri wala maombi ya mtandao; chanzo huria (Apache 2.0)
+
+[Search terms]
+programu ya kubana faili
+Pakko zip
+kufungua rar
+kufungua 7z
+tar gz
+zip yenye nenosiri
+chanzo huria
+
+[What's new in this version]
+• Amri ya pakko hufanya kazi katika temino yoyote mara tu baada ya kusakinisha: mstari wa amri wa mtindo wa 7-Zip kwa ajili ya hati.
+• Faili na folda zilizotolewa hubaki na tarehe zilizohifadhiwa ndani ya kumbukumbu.
+• Programu inaweza kutumiwa yote kwa kibodi; dirisha la "faili tayari ipo" linaonyesha ukubwa na tarehe ya faili zote mbili.
+• Kiwango cha haraka zaidi cha kubana hakiongezi tena ukubwa wa faili zilizokwisha kubanwa.
+• Tafsiri zimepitiwa upya katika lugha zote 36 zisizo Kiingereza; menyu ya File Explorer sasa inafuata orodha yako ya lugha za Windows.

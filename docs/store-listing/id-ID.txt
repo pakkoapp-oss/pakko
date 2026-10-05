@@ -1,0 +1,41 @@
+[Description]
+Pakko adalah pengarsip ZIP gratis dan sumber terbuka untuk Windows, dibangun sepenuhnya di atas API kompresi milik .NET sendiri — tanpa 7-Zip, tanpa WinRAR, dan tanpa kode kompresi pihak ketiga di mana pun dalam aplikasi.
+
+Buat dan ekstrak arsip ZIP langsung melalui System.IO.Compression, dengan atau tanpa kata sandi: Pakko membuka arsip ZipCrypto dan WinZip AES serta membuat arsip terenkripsi AES-256 yang dapat dibaca 7-Zip dan program ZIP lainnya. Arsip RAR, 7-Zip, dan keluarga TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) dibaca melalui tar.exe bawaan Windows, yang dijalankan di dalam sandbox AppContainer terisolasi tanpa akses jaringan.
+
+Pakko menyatu dengan File Explorer: klik kanan untuk mengekstrak, mengompres, menguji arsip, memindainya dari ancaman dengan antivirus Anda, atau menghitung hash SHA-256-nya, dan klik dua kali arsip apa pun yang didukung untuk menelusuri isinya tanpa harus mengekstrak semuanya terlebih dahulu. Setiap file yang diekstrak mempertahankan tag keamanan Mark-of-the-Web dari arsip asalnya.
+
+Dibuat untuk siapa saja yang ingin melihat dengan tepat apa yang mengompres file mereka — seluruh kode sumber tersedia untuk umum di GitHub di bawah lisensi Apache 2.0. Tanpa telemetri, tanpa analitik penggunaan, tanpa permintaan jaringan dalam bentuk apa pun. Antarmuka tersedia dalam 37 bahasa.
+
+[Short description]
+Pengarsip gratis dan sumber terbuka yang hanya mengandalkan kode kompresi bawaan .NET dan Windows. Membuat dan mengekstrak arsip ZIP (juga dengan kata sandi AES-256), mengekstrak RAR, 7-Zip, dan TAR di dalam sandbox, serta menambahkan perintahnya ke menu klik kanan File Explorer. Tanpa telemetri.
+
+[Product features]
+ZIP: membuat dan mengekstrak dengan pustaka kompresi milik .NET sendiri
+ZIP berkata sandi: membuka ZipCrypto dan WinZip AES, membuat AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: mengekstrak dan membuat, melalui tar.exe bawaan Windows
+RAR dan 7-Zip: hanya mengekstrak, melalui tar.exe bawaan Windows
+Menu klik kanan File Explorer: Buka, Ekstrak di sini, Tambahkan ke arsip, Uji arsip, Pindai ancaman, Hash
+Penjelajah arsip: lihat isi arsip, pratinjau gambar dan teks, ekstrak hanya yang Anda pilih
+Pindai ancaman: isi arsip diperiksa oleh antivirus yang terpasang di komputer Anda
+Ekstraksi dalam sandbox: RAR, 7-Zip, dan TAR dibaca di dalam AppContainer terisolasi tanpa akses jaringan
+File yang diekstrak mempertahankan tag Mark-of-the-Web dan tanggal aslinya
+Baris perintah disertakan: perintah pakko dengan perintah bergaya 7-Zip
+37 bahasa, tema terang dan gelap
+Tanpa telemetri, tanpa permintaan jaringan; sumber terbuka (Apache 2.0)
+
+[Search terms]
+Pakko pengarsip zip
+pengarsip zip gratis
+pengekstrak rar
+pengekstrak 7z
+tar gz
+zip dengan kata sandi
+sumber terbuka
+
+[What's new in this version]
+• Perintah pakko berfungsi di terminal mana pun segera setelah pemasangan: baris perintah bergaya 7-Zip untuk skrip.
+• File dan folder yang diekstrak mempertahankan tanggal yang tersimpan di dalam arsip.
+• Aplikasi dapat digunakan sepenuhnya dengan keyboard; jendela "file sudah ada" menampilkan ukuran dan tanggal kedua file.
+• Tingkat kompresi tercepat tidak lagi memperbesar file yang sudah terkompresi.
+• Terjemahan ditinjau ulang dalam semua 36 bahasa selain bahasa Inggris; menu File Explorer kini mengikuti daftar bahasa Windows Anda.

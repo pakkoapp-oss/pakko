@@ -1,0 +1,41 @@
+[Description]
+A Pakko ingyenes, nyílt forráskódú ZIP-archiváló Windowsra, amely teljes egészében a .NET saját tömörítési API-jaira épül — nincs benne 7-Zip, nincs WinRAR, és sehol az alkalmazásban nincs harmadik féltől származó tömörítő kód.
+
+Hozzon létre és bontson ki ZIP-archívumokat közvetlenül a System.IO.Compression segítségével, jelszóval vagy anélkül: a Pakko megnyitja a ZipCrypto és a WinZip AES archívumokat, és AES-256 titkosítású archívumokat hoz létre, amelyeket a 7-Zip és más ZIP-programok is olvasnak. A RAR-, 7-Zip- és a TAR-családba tartozó archívumokat (TAR, GZ, BZ2, XZ, ZST, LZMA) a Windows beépített tar.exe eszköze olvassa, amely elszigetelt, hálózati hozzáférés nélküli AppContainer sandboxban fut.
+
+A Pakko natívan beépül a Fájlkezelőbe: jobb gombbal kattintva kibonthat, tömöríthet, tesztelhet egy archívumot, a víruskeresőjével fenyegetéseket kereshet benne, vagy kiszámíthatja az SHA-256 hashét, bármely támogatott archívumra duplán kattintva pedig böngészheti annak tartalmát anélkül, hogy előbb mindent ki kellene bontania. Minden kibontott fájl megőrzi annak az archívumnak a Mark-of-the-Web biztonsági jelölését, amelyből származik.
+
+Azoknak készült, akik pontosan látni akarják, mi tömöríti a fájljaikat — a teljes forráskód nyilvánosan elérhető a GitHubon, Apache 2.0 licenc alatt. Nincs telemetria, nincs használati elemzés, nincs semmilyen hálózati kérés. A felület 37 nyelven érhető el.
+
+[Short description]
+Ingyenes, nyílt forráskódú archiváló, amely kizárólag a .NET-be és a Windowsba beépített tömörítő kódra támaszkodik. ZIP-archívumokat hoz létre és bont ki (AES-256 jelszóval is), a RAR-, 7-Zip- és TAR-archívumokat sandboxban bontja ki, parancsait pedig hozzáadja a Fájlkezelő helyi menüjéhez. Nincs telemetria.
+
+[Product features]
+ZIP: létrehozás és kibontás a .NET saját tömörítési könyvtárával
+Jelszóval védett ZIP: megnyitja a ZipCrypto és a WinZip AES archívumokat, AES-256 archívumot hoz létre
+TAR, GZ, BZ2, XZ, ZST, LZMA: kibontás és létrehozás a Windows beépített tar.exe eszközével
+RAR és 7-Zip: csak kibontás, a Windows beépített tar.exe eszközével
+A Fájlkezelő helyi menüje: Megnyitás, Kibontás ide, Hozzáadás az archívumhoz, Archívum tesztelése, Fenyegetések keresése, Hash
+Archívumböngésző: nézzen bele az archívumba, tekintse meg a képek és szövegek előnézetét, és csak a kijelölt elemeket bontsa ki
+Fenyegetések keresése: az archívum tartalmát a telepített víruskeresője ellenőrzi
+Kibontás sandboxban: a RAR-, 7-Zip- és TAR-archívumok olvasása elszigetelt AppContainerben történik, hálózati hozzáférés nélkül
+A kibontott fájlok megőrzik a Mark-of-the-Web jelölést és eredeti dátumukat
+Parancssor is jár hozzá: a pakko parancs, 7-Zip stílusú parancsokkal
+37 nyelv, világos és sötét téma
+Nincs telemetria, nincs hálózati kérés; nyílt forráskód (Apache 2.0)
+
+[Search terms]
+ingyenes zip archiváló
+Pakko zip archiváló
+nyílt forráskódú tömörítő
+rar kibontó
+7z kibontó
+tar gz
+jelszavas zip
+
+[What's new in this version]
+• A pakko parancs közvetlenül a telepítés után bármely terminálban működik: 7-Zip stílusú parancssor szkriptekhez.
+• A kibontott fájlok és mappák megőrzik az archívumban tárolt dátumokat.
+• Az alkalmazás teljes egészében billentyűzetről is használható; „a fájl már létezik” ablak mindkét fájl méretét és dátumát megjeleníti.
+• A leggyorsabb tömörítési szint már nem növeli meg a korábban tömörített fájlokat.
+• A fordításokat mind a 36 nem angol nyelven átnéztük; a Fájlkezelő menüje mostantól a Windows nyelvi listáját követi.

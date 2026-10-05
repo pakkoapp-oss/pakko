@@ -1,0 +1,41 @@
+[Description]
+Pakko je brezplačen odprtokodni arhivator ZIP za Windows, v celoti zgrajen na lastnih API-jih okolja .NET za stiskanje — brez 7-Zipa, brez WinRAR-ja in brez kakršne koli kode za stiskanje drugih proizvajalcev kjer koli v aplikaciji.
+
+Ustvarjajte in razširjajte arhive ZIP neposredno prek System.IO.Compression, z geslom ali brez njega: Pakko odpira arhive ZipCrypto in WinZip AES ter ustvarja arhive, šifrirane z AES-256, ki jih berejo 7-Zip in drugi programi za ZIP. Arhivi RAR, 7-Zip in arhivi družine TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) se berejo z orodjem tar.exe, vgrajenim v Windows, ki se zažene v izoliranem peskovniku AppContainer brez dostopa do omrežja.
+
+Pakko je vgrajen v Raziskovalca: z desno tipko miške kliknite, če želite razširiti ali stisniti datoteke, preizkusiti arhiv, s protivirusnim programom preveriti, ali so v njem grožnje, ali izračunati njegovo zgoščeno vrednost SHA-256, z dvoklikom katerega koli podprtega arhiva pa prebrskajte njegovo vsebino, ne da bi morali najprej vse razširiti. Vsaka razširjena datoteka ohrani varnostno oznako Mark-of-the-Web arhiva, iz katerega izvira.
+
+Narejen za vse, ki želijo natančno videti, kaj stiska njihove datoteke — celotna izvorna koda je javno dostopna v GitHubu pod licenco Apache 2.0. Brez telemetrije, brez analitike uporabe, brez kakršnih koli omrežnih zahtev. Vmesnik je na voljo v 37 jezikih.
+
+[Short description]
+Brezplačen odprtokodni arhivator, ki se zanaša samo na kodo za stiskanje, vgrajeno v .NET in Windows. Ustvarja in razširja arhive ZIP (tudi z geslom AES-256), v peskovniku razširja arhive RAR, 7-Zip in TAR ter doda svoje ukaze v priročni meni Raziskovalca. Brez telemetrije.
+
+[Product features]
+ZIP: ustvarjanje in razširjanje z lastno knjižnico okolja .NET za stiskanje
+ZIP z geslom: odpira ZipCrypto in WinZip AES, ustvarja AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: razširjanje in ustvarjanje z orodjem tar.exe, vgrajenim v Windows
+RAR in 7-Zip: samo razširjanje, z orodjem tar.exe, vgrajenim v Windows
+Priročni meni Raziskovalca: Odpri, Razširi tukaj, Dodaj v arhiv, Preizkusi arhiv, Preveri grožnje, Zgoščena vrednost
+Brskalnik po arhivih: poglejte v arhiv, predoglejte si slike in besedilo, razširite samo izbrano
+Preverjanje groženj: vsebino arhiva preveri vaš nameščeni protivirusni program
+Razširjanje v peskovniku: RAR, 7-Zip in TAR se berejo v izoliranem vsebniku AppContainer brez dostopa do omrežja
+Razširjene datoteke ohranijo oznako Mark-of-the-Web in izvirne datume
+Ukazna vrstica je priložena: ukaz pakko z ukazi v slogu 7-Zipa
+37 jezikov, svetla in temna tema
+Brez telemetrije in omrežnih zahtev; odprta koda (Apache 2.0)
+
+[Search terms]
+brezplačen arhivator zip
+Pakko arhivator zip
+razširi rar
+razširi 7z
+tar gz
+zip z geslom
+odprta koda
+
+[What's new in this version]
+• Ukaz pakko deluje v vsakem terminalu takoj po namestitvi: ukazna vrstica v slogu 7-Zipa za skripte.
+• Razširjene datoteke in mape ohranijo datume, shranjene v arhivu.
+• Aplikacijo je mogoče v celoti uporabljati s tipkovnico; okno »datoteka že obstaja« prikaže velikost in datum obeh datotek.
+• Najhitrejša raven stiskanja ne poveča več datotek, ki so že stisnjene.
+• Prevodi so pregledani v vseh 36 jezikih razen angleščine; meni Raziskovalca zdaj upošteva vaš seznam jezikov sistema Windows.

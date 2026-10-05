@@ -1,0 +1,41 @@
+[Description]
+Pakko est un archiveur ZIP gratuit et open source pour Windows, entièrement construit sur les API de compression propres à .NET — sans 7-Zip, sans WinRAR et sans aucun code de compression tiers dans l'application.
+
+Créez et extrayez des archives ZIP directement via System.IO.Compression, avec ou sans mot de passe : Pakko ouvre les archives ZipCrypto et WinZip AES et crée des archives chiffrées en AES-256, lisibles par 7-Zip et les autres outils ZIP. Les archives RAR, 7-Zip et de la famille TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) sont lues par l'outil tar.exe intégré à Windows, lancé dans un bac à sable AppContainer isolé, sans accès réseau.
+
+Pakko s'intègre nativement à l'Explorateur de fichiers : un clic droit pour extraire, compresser, tester une archive, y rechercher des menaces avec votre antivirus ou calculer son hachage SHA-256, et un double-clic sur toute archive prise en charge pour parcourir son contenu sans tout extraire d'abord. Chaque fichier extrait conserve l'étiquette de sécurité Mark-of-the-Web de l'archive dont il provient.
+
+Conçu pour quiconque veut voir exactement ce qui compresse ses fichiers — l'intégralité du code source est publique sur GitHub sous licence Apache 2.0. Aucune télémétrie, aucune analyse d'usage, aucune requête réseau d'aucune sorte. L'interface est disponible en 37 langues.
+
+[Short description]
+Un archiveur gratuit et open source qui ne s'appuie que sur le code de compression intégré à .NET et à Windows. Il crée et extrait des ZIP (y compris avec mot de passe AES-256), extrait RAR, 7-Zip et TAR dans un bac à sable et ajoute ses commandes au menu contextuel de l'Explorateur de fichiers. Aucune télémétrie.
+
+[Product features]
+ZIP : création et extraction avec la bibliothèque de compression propre à .NET
+ZIP avec mot de passe : ouvre ZipCrypto et WinZip AES, crée de l'AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA : extraction et création, via l'outil tar.exe intégré à Windows
+RAR et 7-Zip : extraction seule, via l'outil tar.exe intégré à Windows
+Menu contextuel de l'Explorateur de fichiers : Ouvrir, Extraire ici, Ajouter à l'archive, Tester l'archive, Rechercher des menaces, Hachage
+Explorateur d'archives : regardez dans une archive, prévisualisez images et textes, n'extrayez que votre sélection
+Recherche de menaces : le contenu de l'archive est vérifié par votre antivirus installé
+Extraction en bac à sable : RAR, 7-Zip et TAR sont lus dans un AppContainer isolé, sans accès réseau
+Les fichiers extraits conservent l'étiquette Mark-of-the-Web et leurs dates d'origine
+Ligne de commande incluse : la commande pakko, avec des commandes dans le style de 7-Zip
+37 langues, thèmes clair et sombre
+Aucune télémétrie, aucune requête réseau ; open source (Apache 2.0)
+
+[Search terms]
+archiveur zip gratuit
+extracteur rar
+extracteur 7z
+tar gz
+zip mot de passe
+extraction fichiers sécurisée
+open source
+
+[What's new in this version]
+• La commande pakko fonctionne dans n'importe quel terminal dès l'installation : une ligne de commande dans le style de 7-Zip pour vos scripts.
+• Les fichiers et dossiers extraits conservent les dates enregistrées dans l'archive.
+• L'application s'utilise entièrement au clavier ; la boîte de dialogue « le fichier existe déjà » affiche la taille et la date des deux fichiers.
+• Le niveau de compression le plus rapide ne grossit plus les fichiers déjà compressés.
+• Traductions révisées dans les 36 langues autres que l'anglais ; le menu de l'Explorateur suit désormais votre liste de langues Windows.

@@ -1,0 +1,41 @@
+[Description]
+Pakko is a free, open-source ZIP archiver for Windows built entirely on .NET's own compression APIs — no 7-Zip, no WinRAR, and no third-party compression code anywhere in the app.
+
+Create and extract ZIP archives directly through System.IO.Compression, with or without a password: Pakko opens ZipCrypto and WinZip AES archives and creates AES-256 encrypted ones that 7-Zip and other ZIP tools can read. RAR, 7-Zip and TAR-family archives (TAR, GZ, BZ2, XZ, ZST, LZMA) are read through Windows' own built-in tar.exe, launched inside an isolated AppContainer sandbox with no network access.
+
+Pakko integrates natively with File Explorer: right-click to extract, compress, test an archive, scan it for threats with your antivirus or compute its SHA-256 hash, and double-click any supported archive to browse its contents without extracting everything first. Every extracted file keeps the Mark-of-the-Web security tag of the archive it came from.
+
+Built for anyone who wants to see exactly what's compressing their files — the entire source code is public on GitHub under the Apache 2.0 license. No telemetry, no analytics, no network requests of any kind. The interface is available in 37 languages.
+
+[Short description]
+A free, open-source archiver that relies only on the compression code built into .NET and Windows. Creates and extracts ZIP (with AES-256 passwords too), extracts RAR, 7-Zip and TAR in a sandbox, and adds its commands to File Explorer's right-click menu. No telemetry.
+
+[Product features]
+ZIP: create and extract with .NET's own compression library
+Password-protected ZIP: opens ZipCrypto and WinZip AES, creates AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: extract and create, via Windows' built-in tar.exe
+RAR and 7-Zip: extract only, via Windows' built-in tar.exe
+File Explorer right-click menu: Open, Extract here, Add to archive, Test archive, Scan for threats, Hash
+Archive browser: look inside an archive, preview pictures and text, extract only what you select
+Scan for threats: the archive's contents are checked by your installed antivirus
+Sandboxed extraction: RAR, 7-Zip and TAR are read inside an isolated AppContainer with no network access
+Extracted files keep the Mark-of-the-Web tag and their original dates
+Command line included: the pakko command with 7-Zip-style commands
+37 languages, light and dark theme
+No telemetry, no network requests; open source (Apache 2.0)
+
+[Search terms]
+Pakko zip archiver
+rar extractor
+7z extractor
+tar gz
+zip password aes-256
+sandboxed archive extraction
+open source
+
+[What's new in this version]
+• The pakko command works in any terminal right after installation: a 7-Zip-style command line for scripts.
+• Extracted files and folders keep the dates stored in the archive.
+• The app can be used from the keyboard throughout; the "file already exists" dialog shows the size and date of both files.
+• The fastest compression level no longer makes already compressed files larger.
+• Translations revised in all 36 non-English languages; Explorer's menu now follows your Windows language list.

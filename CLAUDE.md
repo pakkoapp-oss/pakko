@@ -77,15 +77,6 @@ a personal click-through) plus a 4th bug found via advisor review post-Step-13: 
 one-click "Add to X.tar" `IExplorerCommand`, and a `--format zip|tar` CLI switch. On-device
 verification (via `windows` MCP) confirmed all three entry points.
 
-**T-F106** (pending-list `ListView` rows rendering blank at window-activation time) is `[x]`
-resolved — root cause was never a WinUI rendering bug: `RootGrid`'s file-table row had no
-`MinHeight` on its own `RowDefinition` (only the `ListView` child did, which doesn't force the
-row to grow), so at a fixed window height the other rows' `Auto` sizing clamped the table's Star
-row to 0. Fixed via a larger default window (`1100x900`), an explicit `MinHeight="200"` on the
-row, and `PreferredMinimumWidth`/`Height` via `OverlappedPresenter`. Same session: the title bar
-now shows `Pakko - build <timestamp>` (the compile time since T-F218; see this file's Build
-Commands section for why this matters).
-
 **T-F107** (Archive Browser's "Up" button now climbs past the archive root into the real
 containing folder, up to a drive root, and up to a synthetic "This PC" node) is `[x]` done — new
 `ArchiveBrowseScope` + `FileSystemBrowser` helper. **T-F97** (double-clicking an image/text file
@@ -437,6 +428,7 @@ history narrative below, which predates the move and was not mechanically rewrit
 | `docs/index.html` + `docs/uk/index.html` | Public project website — bilingual EN/UK landing page: trust model, what's implemented, download links. **Deployment changed T-F172 (2026-08-13):** GitHub Pages is no longer served directly from the `/docs` branch path; `.github/workflows/build.yml`'s `docs`/`deploy-pages` jobs assemble these files (copied verbatim via an explicit allowlist) plus the DocFX site into one Pages artifact on every push to `main` — content and authoring are unchanged, only the delivery mechanism | User-facing — not an agent instruction source | Supported-format list changes, a major feature ships, download/release mechanics change, or roadmap/version-status changes — keep both language versions in sync with each other and with `README.md`'s "Project Status"/"Supported Formats" |
 | `docfx.json` + `toc.yml` + `index.md` + `api/index.md` (repo root) | DocFX config for the generated developer/API docs site (T-F172) — book content is the *existing* curated `docs/*.md`/root `*.md` files read in place (no duplication), API reference is generated from `Archiver.Core`/`Archiver.App.Core`'s own XML `///` comments. Live at `https://pakkoapp-oss.github.io/pakko/dev/` | Adding a new conceptual doc that should appear in the site's nav, or a new class library whose XML comments should be included in the API reference | The curated article list changes, or a new project's API should be included — remember to add its `.csproj` to `docfx.json`'s `metadata[0].src.files` too |
 | `tests/Archiver.Messages.Tests/Glossary.tsv` | The word each of 37 locales uses for ten concepts, and the words it replaced (T-F329); test data for `GlossaryTests` | Writing or changing any translated string | A term is chosen or replaced — same commit as the strings |
+| `docs/store-listing/<locale>.txt` + `README.md` | The Microsoft Store listing text in 37 languages (T-F331): description, short description, features, search terms, "What's new"; the README has the field limits and the rules | Changing what the listing says, or cutting a release | A listed feature changes, a menu item is renamed, or a release needs new "What's new" lines — `en-US.txt` first, then every locale |
 | `.github/workflows/canary.yml` | Nightly canary on floating toolchain versions (T-F187) plus the checks too slow for every push (T-F240: `Category=Slow` without the 7za timing ratios, ARM64 tests, C++ tests under ASan) — 3-day-streak escalation to a tracking GitHub Issue; `canary-fuzz` is outside it and fails red at once | Investigating a canary failure or its tracking Issue | Escalation logic, schedule, or build scope changes |
 
 **Canonical topic owners — do not duplicate, link instead:**

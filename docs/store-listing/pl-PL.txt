@@ -1,0 +1,41 @@
+[Description]
+Pakko to bezpłatny archiwizator ZIP o otwartym kodzie źródłowym dla systemu Windows, zbudowany wyłącznie na własnych interfejsach API kompresji platformy .NET — bez 7-Zip, bez WinRAR i bez jakiegokolwiek kodu kompresji innych firm w aplikacji.
+
+Twórz i wypakowuj archiwa ZIP bezpośrednio przez System.IO.Compression, z hasłem lub bez: Pakko otwiera archiwa ZipCrypto i WinZip AES oraz tworzy archiwa szyfrowane AES-256, które odczytują 7-Zip i inne programy do ZIP. Archiwa RAR, 7-Zip i z rodziny TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) są odczytywane przez wbudowane w Windows narzędzie tar.exe, uruchamiane w izolowanej piaskownicy AppContainer bez dostępu do sieci.
+
+Pakko integruje się natywnie z Eksploratorem plików: kliknij prawym przyciskiem myszy, aby wypakować pliki, skompresować je, przetestować archiwum, przeskanować je programem antywirusowym w poszukiwaniu zagrożeń albo obliczyć jego sumę kontrolną SHA-256, a kliknij dwukrotnie dowolne obsługiwane archiwum, aby przejrzeć jego zawartość bez wypakowywania wszystkiego. Każdy wypakowany plik zachowuje znacznik bezpieczeństwa Mark-of-the-Web archiwum, z którego pochodzi.
+
+Stworzony dla każdego, kto chce dokładnie wiedzieć, co kompresuje jego pliki — cały kod źródłowy jest publicznie dostępny w serwisie GitHub na licencji Apache 2.0. Żadnej telemetrii, żadnej analityki, żadnych żądań sieciowych. Interfejs jest dostępny w 37 językach.
+
+[Short description]
+Bezpłatny archiwizator o otwartym kodzie źródłowym, który korzysta wyłącznie z kodu kompresji wbudowanego w .NET i Windows. Tworzy i wypakowuje archiwa ZIP (także z hasłem AES-256), wypakowuje RAR, 7-Zip i TAR w piaskownicy oraz dodaje swoje polecenia do menu kontekstowego Eksploratora plików. Bez telemetrii.
+
+[Product features]
+ZIP: tworzenie i wypakowywanie za pomocą własnej biblioteki kompresji .NET
+ZIP z hasłem: otwiera ZipCrypto i WinZip AES, tworzy AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: wypakowywanie i tworzenie za pomocą wbudowanego w Windows narzędzia tar.exe
+RAR i 7-Zip: tylko wypakowywanie, za pomocą wbudowanego w Windows narzędzia tar.exe
+Menu kontekstowe Eksploratora plików: Otwórz, Wypakuj tutaj, Dodaj do archiwum, Testuj archiwum, Skanuj w poszukiwaniu zagrożeń, Suma kontrolna
+Przeglądarka archiwów: zajrzyj do archiwum, wyświetl podgląd obrazów i tekstu, wypakuj tylko to, co zaznaczysz
+Skanowanie w poszukiwaniu zagrożeń: zawartość archiwum sprawdza zainstalowany program antywirusowy
+Wypakowywanie w piaskownicy: RAR, 7-Zip i TAR są odczytywane w izolowanym kontenerze AppContainer bez dostępu do sieci
+Wypakowane pliki zachowują znacznik Mark-of-the-Web i swoje pierwotne daty
+Wiersz polecenia w zestawie: polecenie pakko z poleceniami w stylu 7-Zip
+37 języków, motyw jasny i ciemny
+Bez telemetrii i żądań sieciowych; otwarty kod źródłowy (Apache 2.0)
+
+[Search terms]
+archiwizator zip
+darmowy archiwizator zip
+wypakuj rar
+wypakuj 7z
+tar gz
+zip z hasłem
+otwarty kod źródłowy
+
+[What's new in this version]
+• Polecenie pakko działa w każdym terminalu od razu po instalacji: wiersz polecenia w stylu 7-Zip do skryptów.
+• Wypakowane pliki i foldery zachowują daty zapisane w archiwum.
+• Aplikację można w całości obsługiwać z klawiatury; okno „plik już istnieje” pokazuje rozmiar i datę obu plików.
+• Najszybszy poziom kompresji nie powiększa już plików, które były wcześniej skompresowane.
+• Poprawiono tłumaczenia we wszystkich 36 językach poza angielskim; menu Eksploratora uwzględnia teraz listę języków systemu Windows.

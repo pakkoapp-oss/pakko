@@ -1,0 +1,41 @@
+[Description]
+Pakko er en gratis open source-app til ZIP-arkivering på Windows, bygget udelukkende på .NET's egne komprimerings-API'er — ingen 7-Zip, ingen WinRAR og ingen tredjeparts komprimeringskode nogen steder i appen.
+
+Opret og udpak ZIP-arkiver direkte via System.IO.Compression, med eller uden adgangskode: Pakko åbner ZipCrypto- og WinZip AES-arkiver og opretter AES-256-krypterede arkiver, som 7-Zip og andre ZIP-programmer kan læse. RAR-, 7-Zip- og TAR-arkiver (TAR, GZ, BZ2, XZ, ZST, LZMA) læses via Windows' indbyggede tar.exe, som køres i en isoleret AppContainer-sandkasse uden netværksadgang.
+
+Pakko er integreret i Stifinder: højreklik for at udpakke, komprimere, teste et arkiv, scanne det for trusler med dit antivirusprogram eller beregne dets SHA-256-hash, og dobbeltklik på et understøttet arkiv for at gennemse indholdet uden først at udpakke det hele. Hver udpakket fil beholder Mark-of-the-Web-sikkerhedsmærket fra det arkiv, den kommer fra.
+
+Bygget til alle, der vil se præcis, hvad der komprimerer deres filer — hele kildekoden ligger offentligt på GitHub under Apache 2.0-licensen. Ingen telemetri, ingen brugsanalyse, ingen netværksanmodninger af nogen art. Brugerfladen findes på 37 sprog.
+
+[Short description]
+En gratis open source-arkiveringsapp, der kun bygger på den komprimeringskode, som er indbygget i .NET og Windows. Opretter og udpakker ZIP (også med AES-256-adgangskode), udpakker RAR, 7-Zip og TAR i en sandkasse og føjer sine kommandoer til Stifinders genvejsmenu. Ingen telemetri.
+
+[Product features]
+ZIP: oprettelse og udpakning med .NET's eget komprimeringsbibliotek
+ZIP med adgangskode: åbner ZipCrypto og WinZip AES, opretter AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: udpakning og oprettelse via Windows' indbyggede tar.exe
+RAR og 7-Zip: kun udpakning, via Windows' indbyggede tar.exe
+Stifinders genvejsmenu: Åbn, Udpak her, Føj til arkiv, Test arkiv, Scan for trusler, Hash
+Arkivbrowser: kig ind i et arkiv, se eksempler på billeder og tekst, udpak kun det, du vælger
+Scan for trusler: arkivets indhold kontrolleres af dit installerede antivirusprogram
+Udpakning i sandkasse: RAR, 7-Zip og TAR læses i en isoleret AppContainer uden netværksadgang
+Udpakkede filer beholder Mark-of-the-Web-mærket og deres oprindelige datoer
+Kommandolinje medfølger: kommandoen pakko med kommandoer i 7-Zip-stil
+37 sprog, lyst og mørkt tema
+Ingen telemetri, ingen netværksanmodninger; open source (Apache 2.0)
+
+[Search terms]
+zip arkiveringsapp
+zip filudpakker
+rar-udpakker
+7z-udpakker
+tar gz
+zip med adgangskode
+open source
+
+[What's new in this version]
+• Kommandoen pakko virker i enhver terminal lige efter installationen: en kommandolinje i 7-Zip-stil til scripts.
+• Udpakkede filer og mapper beholder de datoer, der er gemt i arkivet.
+• Appen kan betjenes helt fra tastaturet; dialogen "filen findes allerede" viser størrelse og dato for begge filer.
+• Det hurtigste komprimeringsniveau gør ikke længere allerede komprimerede filer større.
+• Oversættelserne er gennemgået på alle 36 sprog ud over engelsk; Stifinders menu følger nu din liste over Windows-sprog.

@@ -895,6 +895,9 @@ Ukrainian UI, CI an English one.
   `GlossaryTests` (one word per concept per locale, from `Glossary.tsv`), `SharedStringTests`
   (one English string, one translation), `CountTemplateTests` (no count before a noun in
   English UI text).
+- T-F331, same project: `StoreListingTests` reads `docs/store-listing/<locale>.txt`: every field
+  within Partner Center's limits, the menu items named as `Localization.cpp` has them, no word
+  that `Glossary.tsv` lists as replaced.
 - T-F330: `ShellUiLanguageTests` (Shell) and four `PickLanguageTag` tests (C++): the first
   language of the user's list that Pakko ships wins over the display language.
 - `OperationOutcomeTests` (Core): each `OperationOutcome` from real ZIP/router runs, including a Test

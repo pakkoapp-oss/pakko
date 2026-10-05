@@ -1,0 +1,41 @@
+[Description]
+Pakko ist ein kostenloser, quelloffener ZIP-Archivierer für Windows, der vollständig auf den eigenen Komprimierungs-APIs von .NET aufbaut – kein 7-Zip, kein WinRAR und nirgends in der App Komprimierungscode von Drittanbietern.
+
+Erstellen und extrahieren Sie ZIP-Archive direkt über System.IO.Compression, mit oder ohne Passwort: Pakko öffnet ZipCrypto- und WinZip-AES-Archive und erstellt AES-256-verschlüsselte Archive, die 7-Zip und andere ZIP-Programme lesen können. RAR-, 7-Zip- und TAR-Archive (TAR, GZ, BZ2, XZ, ZST, LZMA) werden über das in Windows integrierte tar.exe gelesen, das in einer isolierten AppContainer-Sandbox ohne Netzwerkzugriff läuft.
+
+Pakko fügt sich nativ in den Datei-Explorer ein: Per Rechtsklick können Sie extrahieren, komprimieren, ein Archiv testen, es von Ihrem Virenschutz auf Bedrohungen prüfen lassen oder seinen SHA-256-Hash berechnen; ein Doppelklick auf ein unterstütztes Archiv zeigt dessen Inhalt, ohne dass Sie erst alles extrahieren müssen. Jede extrahierte Datei behält die Mark-of-the-Web-Sicherheitskennzeichnung des Archivs, aus dem sie stammt.
+
+Entwickelt für alle, die genau sehen wollen, was ihre Dateien komprimiert – der gesamte Quellcode ist auf GitHub unter der Apache-2.0-Lizenz öffentlich. Keine Telemetrie, keine Analysen, keinerlei Netzwerkanfragen. Die Oberfläche gibt es in 37 Sprachen.
+
+[Short description]
+Ein kostenloser, quelloffener Archivierer, der nur den in .NET und Windows enthaltenen Komprimierungscode nutzt. Erstellt und extrahiert ZIP (auch mit AES-256-Passwort), extrahiert RAR, 7-Zip und TAR in einer Sandbox und fügt seine Befehle dem Kontextmenü des Datei-Explorers hinzu. Keine Telemetrie.
+
+[Product features]
+ZIP: Erstellen und Extrahieren mit der eigenen Komprimierungsbibliothek von .NET
+ZIP mit Passwort: öffnet ZipCrypto und WinZip AES, erstellt AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: Extrahieren und Erstellen über das in Windows integrierte tar.exe
+RAR und 7-Zip: nur Extrahieren, über das in Windows integrierte tar.exe
+Kontextmenü des Datei-Explorers: Öffnen, Hier extrahieren, Zu Archiv hinzufügen, Archiv testen, Auf Bedrohungen prüfen, Hash
+Archiv-Browser: in ein Archiv hineinsehen, Bilder und Text in der Vorschau öffnen, nur das Ausgewählte extrahieren
+Auf Bedrohungen prüfen: Ihr installierter Virenschutz prüft den Inhalt des Archivs
+Extrahieren in einer Sandbox: RAR, 7-Zip und TAR werden in einem isolierten AppContainer ohne Netzwerkzugriff gelesen
+Extrahierte Dateien behalten die Mark-of-the-Web-Kennzeichnung und ihr ursprüngliches Datum
+Kommandozeile inklusive: der Befehl pakko mit Befehlen im Stil von 7-Zip
+37 Sprachen, helles und dunkles Design
+Keine Telemetrie, keine Netzwerkanfragen; quelloffen (Apache 2.0)
+
+[Search terms]
+Pakko Zip Archivierer
+kostenloser Zip Komprimierer
+RAR-Extraktor
+7z-Extraktor
+tar gz
+Zip mit Passwort
+Open Source
+
+[What's new in this version]
+• Der Befehl pakko funktioniert direkt nach der Installation in jedem Terminal: eine Kommandozeile im Stil von 7-Zip für Skripte.
+• Extrahierte Dateien und Ordner behalten das im Archiv gespeicherte Datum.
+• Die App lässt sich vollständig mit der Tastatur bedienen; der Dialog „Datei ist bereits vorhanden“ zeigt Größe und Datum beider Dateien.
+• Die schnellste Komprimierungsstufe macht bereits komprimierte Dateien nicht mehr größer.
+• Übersetzungen in allen 36 Sprachen außer Englisch überarbeitet; das Explorer-Menü richtet sich jetzt nach Ihrer Windows-Sprachliste.

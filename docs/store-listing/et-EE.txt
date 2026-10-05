@@ -1,0 +1,41 @@
+[Description]
+Pakko on tasuta avatud lähtekoodiga ZIP-arhiveerija Windowsile, mis põhineb täielikult .NET-i enda tihendus-API-del — ei 7-Zipi, ei WinRARi ega ühtegi kolmanda osapoole tihenduskoodi kusagil rakenduses.
+
+Loo ja paki lahti ZIP-arhiive otse System.IO.Compressioni kaudu, parooliga või ilma: Pakko avab ZipCrypto ja WinZip AES-i arhiive ning loob AES-256-ga krüptitud arhiive, mida loevad 7-Zip ja teised ZIP-programmid. RAR-, 7-Zip- ja TAR-perekonna arhiive (TAR, GZ, BZ2, XZ, ZST, LZMA) loetakse Windowsi sisseehitatud tööriistaga tar.exe, mis käivitatakse isoleeritud AppContaineri liivakastis ilma võrguühenduseta.
+
+Pakko lõimub File Exploreriga: paremklõpsa, et faile lahti pakkida või tihendada, arhiivi testida, lasta viirusetõrjel seda ohtude suhtes kontrollida või arvutada selle SHA-256 räsi, ning topeltklõpsa mis tahes toetatud arhiivi, et sirvida selle sisu ilma kõike enne lahti pakkimata. Iga lahtipakitud fail säilitab selle arhiivi Mark-of-the-Web turvamärgise, millest ta pärineb.
+
+Loodud kõigile, kes tahavad täpselt näha, mis nende faile tihendab — kogu lähtekood on avalikult saadaval GitHubis Apache 2.0 litsentsi all. Ei telemeetriat, ei kasutusanalüütikat, mitte mingeid võrgupäringuid. Kasutajaliides on saadaval 37 keeles.
+
+[Short description]
+Tasuta avatud lähtekoodiga arhiveerija, mis toetub ainult .NET-i ja Windowsi sisseehitatud tihenduskoodile. Loob ja pakib lahti ZIP-arhiive (ka AES-256 parooliga), pakib RAR-, 7-Zip- ja TAR-arhiive lahti liivakastis ning lisab oma käsud File Exploreri kontekstimenüüsse. Ei mingit telemeetriat.
+
+[Product features]
+ZIP: loomine ja lahtipakkimine .NET-i enda tihendusteegiga
+Parooliga ZIP: avab ZipCrypto ja WinZip AES-i, loob AES-256
+TAR, GZ, BZ2, XZ, ZST, LZMA: lahtipakkimine ja loomine Windowsi sisseehitatud tööriistaga tar.exe
+RAR ja 7-Zip: ainult lahtipakkimine, Windowsi sisseehitatud tööriistaga tar.exe
+File Exploreri kontekstimenüü: Ava, Paki lahti siia, Lisa arhiivi, Testi arhiivi, Kontrolli ohte, Räsi
+Arhiivisirvija: vaata arhiivi sisse, kuva piltide ja teksti eelvaadet, paki lahti ainult valitu
+Ohtude kontroll: arhiivi sisu kontrollib sinu arvutisse installitud viirusetõrje
+Lahtipakkimine liivakastis: RAR, 7-Zip ja TAR loetakse isoleeritud AppContaineris ilma võrguühenduseta
+Lahtipakitud failid säilitavad Mark-of-the-Web märgise ja oma algsed kuupäevad
+Käsurida on kaasas: käsk pakko 7-Zipi stiilis käskudega
+37 keelt, hele ja tume kujundus
+Ei telemeetriat ega võrgupäringuid; avatud lähtekood (Apache 2.0)
+
+[Search terms]
+Pakko zip-arhiveerija
+tasuta zip-arhiveerija
+rar-lahtipakkija
+7z-lahtipakkija
+tar gz
+parooliga zip
+avatud lähtekood
+
+[What's new in this version]
+• Käsk pakko töötab igas terminalis kohe pärast installimist: 7-Zipi stiilis käsurida skriptide jaoks.
+• Lahtipakitud failid ja kaustad säilitavad arhiivi salvestatud kuupäevad.
+• Rakendust saab täielikult kasutada klaviatuurilt; aken „fail on juba olemas“ näitab mõlema faili suurust ja kuupäeva.
+• Kiireim tihendustase ei tee enam juba tihendatud faile suuremaks.
+• Tõlked on üle vaadatud kõigis 36 keeles peale inglise keele; File Exploreri menüü järgib nüüd sinu Windowsi keelte loendit.
