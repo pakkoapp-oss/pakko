@@ -60,7 +60,7 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 - **Open source** — full codebase auditable
 - **Minimal permissions** — no network access, no background services
 - **No telemetry** — no data leaves the machine
-- **Mark of the Web (MOTW) propagation** — extracted files inherit `Zone.Identifier` from the archive by default; prevents macro execution in extracted Office docs (Explorer does not propagate MOTW)
+- **Mark of the Web (MOTW) propagation** — extracted files inherit `Zone.Identifier` from the archive by default; prevents macro execution in extracted Office docs (7-Zip does not do this by default)
 - **No libarchive in-process** — tar/RAR/7z extraction via isolated `tar.exe` subprocess, sandboxed in an AppContainer with no network capability, not an in-process parser
 - **Group Policy / ADMX support** — administrators can lock down risky features (e.g. tar-family extraction) fleet-wide; see [`docs/POLICIES.md`](docs/POLICIES.md)
 

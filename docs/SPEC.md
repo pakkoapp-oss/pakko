@@ -156,9 +156,9 @@ MOTW (Zone.Identifier ADS) signals to Windows and Office that a file originated 
 - Office opens documents in **edit mode** instead of Protected View — macro execution is not blocked
 - Windows does not prompt before executing downloaded scripts
 
-### Explorer's Gap
+### What Other Extractors Do
 
-Windows Explorer does **not** propagate MOTW to extracted files. 7-Zip (default settings) also does not propagate MOTW. NanaZip 6.0 (Feb 2026) added MOTW propagation as a default.
+Windows Explorer's own ZIP folder propagates MOTW (see `SECURITY.md`). 7-Zip (default settings) does not propagate MOTW. NanaZip 6.0 (Feb 2026) added MOTW propagation as a default.
 
 ### Pakko's Behavior (v1.2+)
 

@@ -183,9 +183,11 @@ When a user downloads a ZIP archive from the internet, the archive receives MOTW
 
 This is a documented exploitation technique: deliver a macro-containing document inside a ZIP, knowing the extractor will strip MOTW on extraction.
 
-### Explorer's Gap — and 7-Zip's Default
+### What Other Extractors Do
 
-- Windows Explorer **does not propagate** MOTW to extracted files
+- Windows Explorer's own ZIP folder **does propagate** MOTW: tested 2026-10-05 on Windows 11
+  build 26300, a ZIP marked `ZoneId=3` gave `ZoneId=3` on every extracted file. Earlier versions
+  of this document said it does not. Explorer's handling of 7z, RAR and tar was not tested
 - 7-Zip **does not propagate** MOTW by default (added as an option in 7-Zip 23.01, off by default)
 - NanaZip 6.0 (Feb 2026) propagates MOTW by default
 
