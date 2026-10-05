@@ -93,10 +93,39 @@ public sealed class CliSubprocessTests
 
         (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("x", $"-o{destDir}", CliFixtureFiles.ValidZip);
 
-        exitCode.Should().Be(0, because: stdErr);
+        // T-F313: the kept file is named, the way forward is offered, and the exit code says
+        // not everything was extracted - what a tar archive already did. It was exit 0 and silence.
+        exitCode.Should().Be(1, because: stdErr);
+        stdErr.Should().Contain("pakko: skipped: a.txt: File already exists at destination.").And.Contain("-aoa");
         File.ReadAllText(preExistingFile).Should().Be("pre-existing content that must survive a Skip",
             "today's real, observed default (no -ao/-y switch) is Skip — the archive's own " +
             "\"hello world\" content for a.txt must NOT overwrite what was already there");
+        File.Exists(Path.Combine(destDir, "b.txt")).Should().BeTrue();
+    }
+
+    // T-F313: -aos is the user's own choice to keep existing files - named, but no hint.
+    [Fact]
+    public void Extract_OverlappingFileWithSkipSwitch_NamesTheKeptFileWithoutAHint()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        File.WriteAllText(Path.Combine(destDir, "a.txt"), "kept");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", "-aos", $"-o{destDir}", CliFixtureFiles.ValidZip);
+
+        exitCode.Should().Be(1, because: stdErr);
+        stdErr.Should().Contain("pakko: skipped: a.txt: File already exists at destination.").And.NotContain("hint");
+    }
+
+    [Fact]
+    public void Extract_OverlappingFileWithOverwriteSwitch_ExitsZeroAndSaysNothing()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        File.WriteAllText(Path.Combine(destDir, "a.txt"), "old");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", "-aoa", $"-o{destDir}", CliFixtureFiles.ValidZip);
+
+        exitCode.Should().Be(0, because: stdErr);
+        stdErr.Should().BeEmpty();
     }
 
     [RequiresTarExe]

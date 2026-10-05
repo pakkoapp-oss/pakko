@@ -628,7 +628,8 @@ static async Task PrintHashFolderSummaryAsync(FolderHashSummary folder, string l
 static void PrintHints(ArchiveResult result, CliReportContext report)
 {
     IReadOnlyList<string> hints = CliHints.For(
-        [.. result.Errors.Select(e => e.Text?.Code)], [.. result.SkippedFiles.Select(s => s.Text?.Code)],
+        [.. result.Errors.Select(e => e.Text?.Code)],
+        [.. result.SkippedFiles.Concat(result.KeptExistingFiles).Select(s => s.Text?.Code)],
         report.PasswordGiven, report.KeptExistingByDefault);
     foreach (string hint in hints)
         Console.Error.WriteLine(hint);
@@ -638,7 +639,8 @@ static int ReportResult(ArchiveResult result, CliReportContext report)
 {
     foreach (ArchiveError error in result.Errors.Where(e => !report.IsAlreadyReported(e)))
         Console.Error.WriteLine($"pakko: error: {report.DisplayName(error.SourcePath)}: {error.Message}");
-    foreach (SkippedFile skipped in result.SkippedFiles)
+    // T-F313: a ZIP names the files it kept apart from its skips; pakko reports both alike.
+    foreach (SkippedFile skipped in result.SkippedFiles.Concat(result.KeptExistingFiles))
     {
         string name = report.StdinPath is not null && skipped.Path == report.StdinPath ? "(stdin)" : skipped.Path;
         Console.Error.WriteLine($"pakko: skipped: {name}: {skipped.Reason}");
@@ -651,7 +653,7 @@ static int ReportResult(ArchiveResult result, CliReportContext report)
 
     return result.Outcome switch
     {
-        OperationOutcome.Completed => 0,
+        OperationOutcome.Completed => result.KeptExistingFiles.Count > 0 ? 1 : 0,
         OperationOutcome.Failed => 2,
         OperationOutcome.CompletedWithWarnings or OperationOutcome.CompletedWithSkips or OperationOutcome.NothingDone => 1,
         _ => 1,

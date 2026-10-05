@@ -9,6 +9,11 @@ public sealed record ArchiveResult
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
 
+    /// <summary>Entries not extracted because the file already existed and the conflict choice
+    /// was to keep it (T-F313). The ZIP engine names them here and not in <see cref="SkippedFiles"/>,
+    /// so they do not change <see cref="Outcome"/>; the tar engine lists the same case as a skip.</summary>
+    public IReadOnlyList<SkippedFile> KeptExistingFiles { get; init; } = [];
+
     /// <summary>What the user should know although everything asked was done (T-F280). A warning
     /// never fails the operation and never makes a source undeletable.</summary>
     public IReadOnlyList<ArchiveWarning> Warnings { get; init; } = [];

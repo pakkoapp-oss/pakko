@@ -214,6 +214,28 @@ public sealed class ExtractionRouterTests : IDisposable
         result.Outcome.Should().Be(OperationOutcome.Failed);
     }
 
+    // T-F313: the files an engine kept survive the merge too.
+    [Fact]
+    public async Task ExtractAsync_MixedSelection_KeepsTheKeptExistingFiles()
+    {
+        string zip = WriteZip("a.zip");
+        string tar = WriteTar("b.tar");
+        var zipService = new FakeArchiveService
+        {
+            ExtractResult = new ArchiveResult
+            {
+                CreatedFiles = ["zip-out"],
+                KeptExistingFiles = [new SkippedFile { Path = "kept.txt", Reason = "exists" }],
+            }
+        };
+        var tarService = new FakeTarService { ExtractResult = new ArchiveResult { CreatedFiles = ["tar-out"] } };
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
+
+        ArchiveResult result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path });
+
+        result.KeptExistingFiles.Select(k => k.Path).Should().Equal("kept.txt");
+    }
+
     // T-F306: a mixed selection is one climb. ZIP runs first and tar second, each in its own
     // slice of the percent, sized by the archives' sizes on disk; tar's bytes continue from where
     // ZIP's ended, so neither the bar nor the byte count ever goes back. (T-F142 had left tar with

@@ -558,6 +558,71 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         result.SkippedFiles.Should().Contain(s => s.Path == zip);
     }
 
+    // T-F313: a file kept because it already existed is named on the result, apart from
+    // SkippedFiles - the outcome and the App's summary stay as they were, a frontend that wants
+    // to say so (pakko) can.
+    [Fact]
+    public async Task ExtractAsync_SomeEntriesConflictSkipped_ListsThemAsKeptExistingFiles()
+    {
+        string zip = CreateTestZip("archive.zip", "file.txt", "other.txt");
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "file.txt"), "original content");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip,
+        });
+
+        SkippedFile kept = result.KeptExistingFiles.Should().ContainSingle().Subject;
+        kept.Path.Should().Be("file.txt");
+        kept.Text!.Code.Should().Be(MessageCode.FileExistsAtDestination);
+        result.SkippedFiles.Should().BeEmpty();
+        result.Outcome.Should().Be(OperationOutcome.Completed);
+        File.Exists(Path.Combine(destDir, "other.txt")).Should().BeTrue();
+    }
+
+    // T-F216: the user's own Skip answer is their decision, not something to report back.
+    [Fact]
+    public async Task ExtractAsync_UserAnsweredSkip_IsNotAKeptExistingFile()
+    {
+        string zip = CreateTestZip("archive.zip", "file.txt", "other.txt");
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "file.txt"), "original content");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ => Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip }),
+        });
+
+        result.KeptExistingFiles.Should().BeEmpty();
+        File.ReadAllText(Path.Combine(destDir, "file.txt")).Should().Be("original content");
+    }
+
+    [Fact]
+    public async Task ExtractAsync_NoConflict_KeptExistingFilesIsEmpty()
+    {
+        string zip = CreateTestZip("archive.zip", "file.txt");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = Path.Combine(_temp.Path, "out"),
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip,
+        });
+
+        result.KeptExistingFiles.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task ExtractAsync_ConflictRename_CreatesNumberedFileWhenDestinationExists()
     {
