@@ -11114,7 +11114,8 @@ ZIP whose local file headers disagree with its central directory (the user's dec
 - **Explorer:** the warning lines are the message (severity Warning) with no heading, so no new
   Shell string. **App:** a third section in the summary dialog (one new string,
   `WarningSectionHeader`, 37 locales) and the footer's problem count includes warnings. The file
-  preview and the drill into a nested archive gate on `Success` and show no warning.
+  preview and the drill into a nested archive gate on `Success`, show no warning and write it to
+  the log (`MainViewModel.LogWarnings`); they still pay the header pass.
 - **Cost.** The check is one more pass over the local headers: 0.07-0.2 s for 100,000 entries on
   this machine, against 240 s to extract them. No reason to fold it into the per-entry reads.
 - **For wave 2:** T-F325 (the archive landed at another name) fits the same list; whether that

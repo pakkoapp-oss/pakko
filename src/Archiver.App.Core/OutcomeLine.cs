@@ -25,6 +25,7 @@ public sealed record OutcomeLine(
     {
         OperationOutcome.Completed => Extract ? "OutcomeExtracted" : "OutcomeCompressed",
         OperationOutcome.NothingDone => "OutcomeNothingDone",
+        OperationOutcome.CompletedWithWarnings or OperationOutcome.CompletedWithSkips or OperationOutcome.Failed => "OutcomeProblems",
         _ => "OutcomeProblems",
     };
 

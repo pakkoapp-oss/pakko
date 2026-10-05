@@ -285,6 +285,14 @@ public sealed partial class MainViewModel : ObservableObject
         RaiseFooter();
     }
 
+    // T-F280: the summary dialog shows warnings; a file preview and a drill into a nested archive
+    // have no summary, so there the log is the only place a warning lands.
+    private void LogWarnings(ArchiveResult result)
+    {
+        foreach (ArchiveWarning warning in result.Warnings)
+            _logService.Warn($"{warning.SourcePath}: {warning.Message}");
+    }
+
     private static string RenderOutcome(OutcomeLine line) => string.Format(System.Globalization.CultureInfo.CurrentCulture,
         _res.GetString(line.TextKey), [.. line.TextArgs.Cast<object>()]);
 
@@ -966,6 +974,7 @@ public sealed partial class MainViewModel : ObservableObject
                 _logService.Warn($"Skipped {skipped.Path} — {skipped.Reason}");
             foreach (ArchiveError error in result.Errors)
                 _logService.Error($"{error.SourcePath} — {error.Message}");
+            LogWarnings(result);
             await _dialogService.ShowOperationSummaryAsync("Extract", result);
             // T-F260/T-F229/T-F265: see ArchiveAsync — a subset extraction is never deletable.
             if (DeleteAfterOperation && allowDeleteAfter)
@@ -1156,6 +1165,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             result = await _extractionRouter.ExtractAsync(options);
             _browsePasswords.Complete(options.ArchivePaths[0], result);
+            LogWarnings(result);
         }
         finally
         {
@@ -1664,6 +1674,7 @@ public sealed partial class MainViewModel : ObservableObject
 
             ArchiveResult result = await _extractionRouter.ExtractAsync(options);
             _browsePasswords.Complete(BrowsedArchivePath, result);
+            LogWarnings(result);
             if (!result.Success || result.CreatedFiles.Count == 0)
             {
                 await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"),
