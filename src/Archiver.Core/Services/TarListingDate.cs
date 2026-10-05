@@ -10,6 +10,10 @@ namespace Archiver.Core.Services;
 /// source the C runtime uses — .NET's CultureInfo is ICU-backed and differs (e.g. "вер" for
 /// tar.exe's "Вер"). A date that cannot be read is null, never a guess.
 /// </summary>
+/// <summary>A date read from a listing line; <paramref name="HasTime"/> is false when tar.exe
+/// printed the year in place of the time (T-F335).</summary>
+internal readonly record struct TarListedDate(DateTime Value, bool HasTime);
+
 internal static partial class TarListingDate
 {
     // Mode, link count, owner, group, size — then the date columns.
@@ -24,7 +28,7 @@ internal static partial class TarListingDate
     /// <summary>The user locale's twelve month abbreviations, or none when Windows cannot say.</summary>
     public static IReadOnlyList<string> UserMonthNames { get; } = ReadUserMonthNames();
 
-    public static DateTime? Parse(string line, IReadOnlyList<string> monthNames, DateTime now)
+    public static TarListedDate? Parse(string line, IReadOnlyList<string> monthNames, DateTime now)
     {
         string[] fields = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         for (int month = 1; month <= monthNames.Count; month++)
@@ -40,7 +44,7 @@ internal static partial class TarListingDate
         return null;
     }
 
-    private static DateTime? ParseDayAndTime(int month, string dayText, string timeOrYear, DateTime now)
+    private static TarListedDate? ParseDayAndTime(int month, string dayText, string timeOrYear, DateTime now)
     {
         if (!int.TryParse(dayText, NumberStyles.None, CultureInfo.InvariantCulture, out int day))
             return null;
@@ -49,7 +53,8 @@ internal static partial class TarListingDate
         {
             // An entry with no stored time (7z -mtm=off) lists as the local Unix epoch.
             DateTime? date = TryCreate(year, month, day, 0, 0);
-            return date == UnixEpochEast || date == UnixEpochWest ? null : date;
+            return date is not { } dateOnly || dateOnly == UnixEpochEast || dateOnly == UnixEpochWest
+                ? null : new TarListedDate(dateOnly, HasTime: false);
         }
 
         if (!TimeOnly.TryParseExact(timeOrYear, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out TimeOnly time))
@@ -63,7 +68,7 @@ internal static partial class TarListingDate
             if (candidate is { } value && (nearest is null || (value - now).Duration() < (nearest.Value - now).Duration()))
                 nearest = value;
         }
-        return nearest;
+        return nearest is { } withTime ? new TarListedDate(withTime, HasTime: true) : null;
     }
 
     private static DateTime? TryCreate(int year, int month, int day, int hour, int minute) =>

@@ -19,6 +19,23 @@ public sealed class ArchiveTreeIndexTests
     };
 
     [Fact]
+    public void Build_EntryWithoutAKnownTime_ShowsTheDateOnly()
+    {
+        // T-F335: an older tar entry lists with a year and no time.
+        ArchiveEntryInfo[] flat = [File("old.txt") with { Modified = new DateTime(2020, 2, 3), ModifiedHasTime = false }];
+
+        ArchiveTreeIndex.Build(flat).At("").Single().ModifiedDisplay.Should().Be("2020-02-03");
+    }
+
+    [Fact]
+    public void Build_EntryWithAKnownTime_ShowsDateAndTime()
+    {
+        ArchiveEntryInfo[] flat = [File("new.txt") with { Modified = new DateTime(2026, 9, 3) }];
+
+        ArchiveTreeIndex.Build(flat).At("").Single().ModifiedDisplay.Should().Be("2026-09-03 00:00");
+    }
+
+    [Fact]
     public void Build_ZipShapedInput_NoExplicitDirEntries_SynthesizesImpliedFolders()
     {
         // Mirrors valid_nested_folders.zip: no explicit directory entries, folders implied by '/'.

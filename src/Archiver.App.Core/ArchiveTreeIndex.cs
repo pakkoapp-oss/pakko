@@ -125,6 +125,7 @@ public sealed class ArchiveTree
                 CompressedSize = entry.CompressedSize,
                 Crc32 = entry.Crc32,
                 Modified = entry.Modified,
+                ModifiedHasTime = entry.ModifiedHasTime,
                 Encryption = entry.Encryption,
             }
             : new ArchiveEntryViewModel { FullPath = pathSource[..pathLength], Name = name, IsFolder = true };

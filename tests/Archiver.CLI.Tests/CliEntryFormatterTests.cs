@@ -52,6 +52,15 @@ public sealed class CliEntryFormatterTests
     }
 
     [Fact]
+    public void FormatRow_ModifiedWithoutAKnownTime_RendersTheDateOnly()
+    {
+        // T-F335: an older tar entry lists with a year and no time.
+        var entry = new ArchiveEntryInfo { Path = "a.txt", Modified = new DateTime(2020, 2, 3), ModifiedHasTime = false };
+
+        CliEntryFormatter.FormatRow(entry).Split('\t')[3].Should().Be("2020-02-03");
+    }
+
+    [Fact]
     public void Header_HasSevenTabSeparatedColumnsWithPathLast()
     {
         CliEntryFormatter.Header.Split('\t').Should().HaveCount(7).And.EndWith("Path");

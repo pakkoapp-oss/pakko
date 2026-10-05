@@ -80,6 +80,29 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
     public async Task ExtractAsync_DotRootSingleFile_MatchesPlainArchiveTree()
         => await AssertDotRootParityAsync([("only.txt", "hello")]);
 
+    // T-F335: tar.exe lists an older entry with its year and no time; the listing must say so
+    // instead of passing midnight off as the time.
+    [Integration]
+    public async Task ListEntriesAsync_OldAndRecentEntries_SayWhetherTheTimeIsKnown()
+    {
+        var old = new DateTime(2020, 2, 3, 12, 0, 0, DateTimeKind.Local);
+        DateTime recent = DateTime.Now.AddDays(-1);
+        string archivePath = Path.Combine(_temp.Path, "dates.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "old.txt", Content = [1], ModifiedUnixSeconds = new DateTimeOffset(old).ToUnixTimeSeconds() },
+            new TarBuilder.Entry { Name = "recent.txt", Content = [1], ModifiedUnixSeconds = new DateTimeOffset(recent).ToUnixTimeSeconds() },
+        ]);
+
+        ArchiveListResult listing = await _sut.ListEntriesAsync(archivePath);
+
+        listing.Success.Should().BeTrue();
+        ArchiveEntryInfo oldEntry = listing.Entries.Single(e => e.Path == "old.txt");
+        oldEntry.Modified.Should().Be(old.Date);
+        oldEntry.ModifiedHasTime.Should().BeFalse();
+        listing.Entries.Single(e => e.Path == "recent.txt").ModifiedHasTime.Should().BeTrue();
+    }
+
     // T-F196: the Archive Browser path. Listing used to report tar's own "./"-prefixed names
     // verbatim, so the browser's root showed a lone folder named "." (confirmed on device). The
     // listing now reports the same paths as the plain archive, and a subset extraction using

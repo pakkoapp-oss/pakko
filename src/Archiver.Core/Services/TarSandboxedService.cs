@@ -1088,11 +1088,13 @@ public sealed class TarSandboxedService : ITarService
                 continue;
 
             char typeChar = typeLines[i].Length > 0 ? typeLines[i][0] : '?';
+            TarListedDate? modified = TarListingDate.Parse(typeLines[i], TarListingDate.UserMonthNames, now);
             entries.Add(new ArchiveEntryInfo
             {
                 Path = path,
                 Size = typeChar == '-' ? ParseTarListingSize(typeLines[i]) : 0,
-                Modified = TarListingDate.Parse(typeLines[i], TarListingDate.UserMonthNames, now),
+                Modified = modified?.Value,
+                ModifiedHasTime = modified?.HasTime ?? true,
                 IsDirectory = typeChar == 'd',
             });
         }

@@ -18,6 +18,9 @@ public sealed record ArchiveEntryViewModel
     public uint? Crc32 { get; init; }
     public DateTime? Modified { get; init; }
 
+    // T-F335: false for an older tar-family entry, listed with a year and no time.
+    public bool ModifiedHasTime { get; init; } = true;
+
     // T-F199 step 6: null for folders and tar-family listings (the format cannot say).
     public EntryEncryption? Encryption { get; init; }
 
@@ -26,7 +29,7 @@ public sealed record ArchiveEntryViewModel
     // T-F198 item 2: a list row's accessible name is its item's ToString().
     public override string ToString() => Name;
 
-    public string ModifiedDisplay => Modified?.ToString("yyyy-MM-dd HH:mm") ?? "—";
+    public string ModifiedDisplay => Modified?.ToString(ModifiedHasTime ? "yyyy-MM-dd HH:mm" : "yyyy-MM-dd") ?? "—";
     public string SizeDisplay => IsFolder ? string.Empty : FormatSize(Size);
 
     // CompressedSize is null for every tar-routed format (the gzip/xz/etc. stream is

@@ -18,7 +18,7 @@ public static class CliEntryFormatter
     {
         string crc = entry.Crc32 is { } crc32 ? crc32.ToString("x8", CultureInfo.InvariantCulture) : "-";
         string modifiedText = entry.Modified is { } modified
-            ? modified.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture)
+            ? modified.ToString(entry.ModifiedHasTime ? "yyyy-MM-ddTHH:mm:ss" : "yyyy-MM-dd", CultureInfo.InvariantCulture)
             : "-";
         string compressed = entry.CompressedSize is { } packed ? packed.ToString(CultureInfo.InvariantCulture) : "-";
         string type = entry.IsDirectory ? "d" : "f";

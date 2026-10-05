@@ -20,9 +20,12 @@ public sealed record ArchiveEntryInfo
     public uint? Crc32 { get; init; }
 
     /// <summary>Local time, as the archive's own listing shows it. Tar-family (T-F214): to the
-    /// minute within half a year of now, else the date only (00:00); null when tar.exe's date
-    /// columns cannot be read.</summary>
+    /// minute within half a year of now, else the date only (00:00, <see cref="ModifiedHasTime"/>
+    /// false); null when tar.exe's date columns cannot be read.</summary>
     public DateTime? Modified { get; init; }
+
+    /// <summary>False when the listing gave <see cref="Modified"/> as a date with no time (T-F335).</summary>
+    public bool ModifiedHasTime { get; init; } = true;
 
     public bool IsDirectory { get; init; }
 

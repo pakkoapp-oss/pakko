@@ -20,7 +20,7 @@ public sealed class TarListingDateTests
     [Fact]
     public void Parse_RecentEntry_ReturnsDateAndMinuteInThisYear()
     {
-        DateTime? result = TarListingDate.Parse("-rw-rw-rw-  0 0      0           1 Вер 03 07:05 m9.txt", Ukrainian, Now);
+        DateTime? result = ParseValue("-rw-rw-rw-  0 0      0           1 Вер 03 07:05 m9.txt", Ukrainian, Now);
 
         result.Should().Be(new DateTime(2026, 9, 3, 7, 5, 0));
     }
@@ -28,7 +28,7 @@ public sealed class TarListingDateTests
     [Fact]
     public void Parse_OldEntry_ReturnsDateWithTheListedYear()
     {
-        DateTime? result = TarListingDate.Parse("-rw-rw-rw-  0 0      0           1 Січ 03  2025 m1.txt", Ukrainian, Now);
+        DateTime? result = ParseValue("-rw-rw-rw-  0 0      0           1 Січ 03  2025 m1.txt", Ukrainian, Now);
 
         result.Should().Be(new DateTime(2025, 1, 3));
     }
@@ -36,7 +36,7 @@ public sealed class TarListingDateTests
     [Fact]
     public void Parse_RecentEntryFromLastDecember_InJanuary_ReturnsLastYear()
     {
-        DateTime? result = TarListingDate.Parse("-rw-r--r--  0 0 0 5 Dec 20 10:00 a.txt", English, new DateTime(2026, 1, 10));
+        DateTime? result = ParseValue("-rw-r--r--  0 0 0 5 Dec 20 10:00 a.txt", English, new DateTime(2026, 1, 10));
 
         result.Should().Be(new DateTime(2025, 12, 20, 10, 0, 0));
     }
@@ -44,7 +44,7 @@ public sealed class TarListingDateTests
     [Fact]
     public void Parse_RecentEntryFromNextJanuary_InDecember_ReturnsNextYear()
     {
-        DateTime? result = TarListingDate.Parse("-rw-r--r--  0 0 0 5 Jan 05 08:00 a.txt", English, new DateTime(2026, 12, 20));
+        DateTime? result = ParseValue("-rw-r--r--  0 0 0 5 Jan 05 08:00 a.txt", English, new DateTime(2026, 12, 20));
 
         result.Should().Be(new DateTime(2027, 1, 5, 8, 0, 0));
     }
@@ -52,9 +52,9 @@ public sealed class TarListingDateTests
     [Fact]
     public void Parse_DirectoryAndSymlinkLines_ReadTheSameColumns()
     {
-        TarListingDate.Parse("drwxrwxrwx  0 0      0           0 Вер 29 16:46 src/", Ukrainian, Now)
+        ParseValue("drwxrwxrwx  0 0      0           0 Вер 29 16:46 src/", Ukrainian, Now)
             .Should().Be(new DateTime(2026, 9, 29, 16, 46, 0));
-        TarListingDate.Parse("lrwxrwxrwx  0 user group 0 Mar 07  2021 link -> target", English, Now)
+        ParseValue("lrwxrwxrwx  0 user group 0 Mar 07  2021 link -> target", English, Now)
             .Should().Be(new DateTime(2021, 3, 7));
     }
 
@@ -63,14 +63,14 @@ public sealed class TarListingDateTests
     {
         string[] spaced = ["Thg 1", "Thg 2", "Thg 3", "Thg 4", "Thg 5", "Thg 6", "Thg 7", "Thg 8", "Thg 9", "Thg 10", "Thg 11", "Thg 12"];
 
-        TarListingDate.Parse("-rw-r--r--  0 0 0 5 Thg 11 02  2024 a.txt", spaced, Now)
+        ParseValue("-rw-r--r--  0 0 0 5 Thg 11 02  2024 a.txt", spaced, Now)
             .Should().Be(new DateTime(2024, 11, 2));
     }
 
     [Fact]
     public void Parse_NameThatLooksLikeADate_DoesNotChangeTheResult()
     {
-        TarListingDate.Parse("-rw-r--r--  0 0 0 5 Feb 01  2020 Mar 09 12:00 x", English, Now)
+        ParseValue("-rw-r--r--  0 0 0 5 Feb 01  2020 Mar 09 12:00 x", English, Now)
             .Should().Be(new DateTime(2020, 2, 1));
     }
 
@@ -84,7 +84,7 @@ public sealed class TarListingDateTests
     [InlineData("")]
     public void Parse_UnreadableDate_ReturnsNull(string line)
     {
-        TarListingDate.Parse(line, English, Now).Should().BeNull();
+        ParseValue(line, English, Now).Should().BeNull();
     }
 
     [Theory]
@@ -93,13 +93,32 @@ public sealed class TarListingDateTests
     public void Parse_NoStoredTime_ReturnsNull(string line)
     {
         // A 7z made with -mtm=off stores no time; tar.exe prints the local Unix epoch for it.
-        TarListingDate.Parse(line, English, Now).Should().BeNull();
+        ParseValue(line, English, Now).Should().BeNull();
     }
+
+    // T-F335: tar.exe prints the year instead of the time for an older entry, so the time is not
+    // known - midnight must not be shown as if it were.
+    [Fact]
+    public void Parse_OldEntry_SaysTheTimeIsNotKnown()
+    {
+        TarListingDate.Parse("-rw-r--r--  0 0 0 5 Feb 03  2020 a.txt", English, Now)
+            .Should().Be(new TarListedDate(new DateTime(2020, 2, 3), HasTime: false));
+    }
+
+    [Fact]
+    public void Parse_RecentEntryAtMidnight_SaysTheTimeIsKnown()
+    {
+        TarListingDate.Parse("-rw-r--r--  0 0 0 5 Sep 03 00:00 a.txt", English, Now)
+            .Should().Be(new TarListedDate(new DateTime(2026, 9, 3), HasTime: true));
+    }
+
+    private static DateTime? ParseValue(string line, IReadOnlyList<string> monthNames, DateTime now) =>
+        TarListingDate.Parse(line, monthNames, now)?.Value;
 
     [Fact]
     public void Parse_NoMonthNames_ReturnsNull()
     {
-        TarListingDate.Parse("-rw-r--r--  0 0 0 5 Feb 03 07:05 a.txt", [], Now).Should().BeNull();
+        ParseValue("-rw-r--r--  0 0 0 5 Feb 03 07:05 a.txt", [], Now).Should().BeNull();
     }
 
     [Fact]
