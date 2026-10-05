@@ -2285,9 +2285,17 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   `ExtractAsync_AesRealMethodChangedToStored_FailsAndWritesNothing`, two in
   `VerifyingReadStreamTests` (one replaces `Read_NoExpectedCrc_ShorterContentIsAccepted`, which
   asserted the old behaviour).
-- **Not closed by this, a limit of the format:** the opposite change (stored to deflate) fails
-  in the inflater or on the size; a change that keeps the size right is not possible without the
-  password. Entry names, sizes, dates and the list of entries are outside the HMAC in every
-  WinZip AES archive (`SECURITY.md`, "Password-Protected ZIP").
+- **Narrowed, not closed — a limit of the format:** the declared size is outside the HMAC too.
+  With the method set to stored *and* the declared size set to the deflate stream's length, the
+  archive still tests as intact and extracts the deflate bytes, in Pakko and in 7-Zip alike
+  (checked 2026-10-05). A WinZip AE-2 archive authenticates each entry's ciphertext and nothing
+  else: without the password someone can turn a file into its own compressed bytes, or rename,
+  reorder or drop entries, but cannot put chosen content into a file or read one. The opposite
+  change (stored to deflate) fails in the inflater or, since this fix, on the size (a one-byte
+  stored entry read as deflate gave zero bytes and passed before).
+  - [ ] `SECURITY.md`'s "Password-Protected ZIP" section says what is secret, not what is
+    authenticated; a sentence on the above needs the user's permission for that file
+  - [ ] the two size messages are bare English text, not a `MessageCode`, so Shell and App show
+    them untranslated
 - **Found by:** a byte-level review of the release build's output, asked for by the user,
   2026-10-05.
