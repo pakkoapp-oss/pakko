@@ -4003,7 +4003,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   - [x] `dotnet test` default filter green; `Archiver.ShellExtension.Tests.exe` green; the
     ShellExtension DLL builds
   - [ ] one on-device look at a non-English locale (menu, main window, one Core error)
-    — needs a non-English Windows session, so it goes with the release-time checks. Look for
+    — needs a non-English Windows session; put in the backlog with no date (user, 2026-10-05), not
+    a release gate. Look for
     cut-off labels where the text grew: es and el Test/Close archive buttons, radio buttons and
     the menu's "Add to archive…", hu and vi Clear
   - [x] `Archiver.App` builds with the changed `.resw` files
