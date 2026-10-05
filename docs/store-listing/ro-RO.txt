@@ -8,7 +8,7 @@ Pakko se integrează nativ în Explorer: faceți clic dreapta pentru a extrage, 
 Creat pentru oricine dorește să vadă exact ce îi comprimă fișierele — întregul cod sursă este public pe GitHub sub licența Apache 2.0. Fără telemetrie, fără analize de utilizare, fără nicio solicitare de rețea. Interfața este disponibilă în 37 de limbi.
 
 [Short description]
-Un arhivator gratuit și open source care se bazează numai pe codul de compresie integrat în .NET și în Windows. Creează și extrage arhive ZIP (inclusiv cu parolă AES-256), extrage RAR, 7-Zip și TAR într-un sandbox și își adaugă comenzile în meniul contextual din Explorer. Fără telemetrie.
+Un arhivator gratuit și open source care se bazează numai pe codul de compresie integrat în .NET și în Windows. Creează și extrage arhive ZIP (inclusiv cu parolă AES-256) și extrage RAR, 7-Zip și TAR într-un sandbox. Fără telemetrie.
 
 [Product features]
 ZIP: creare și extragere cu biblioteca de compresie proprie a .NET

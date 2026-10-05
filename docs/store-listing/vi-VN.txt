@@ -8,7 +8,7 @@ Pakko tích hợp vào File Explorer: bấm chuột phải để giải nén, n�
 Dành cho bất kỳ ai muốn biết chính xác thứ gì đang nén tệp của mình — toàn bộ mã nguồn được công khai trên GitHub theo giấy phép Apache 2.0. Không đo từ xa, không phân tích việc sử dụng, không có bất kỳ yêu cầu mạng nào. Giao diện có 37 ngôn ngữ.
 
 [Short description]
-Trình nén miễn phí, mã nguồn mở, chỉ dựa vào mã nén có sẵn trong .NET và Windows. Tạo và giải nén ZIP (cả với mật khẩu AES-256), giải nén RAR, 7-Zip và TAR trong hộp cát, đồng thời thêm các lệnh của mình vào menu chuột phải của File Explorer. Không đo từ xa.
+Trình nén miễn phí, mã nguồn mở, chỉ dựa vào mã nén có sẵn trong .NET và Windows. Tạo và giải nén ZIP (cả với mật khẩu AES-256) và giải nén RAR, 7-Zip và TAR trong hộp cát. Không đo từ xa.
 
 [Product features]
 ZIP: tạo và giải nén bằng thư viện nén của chính .NET

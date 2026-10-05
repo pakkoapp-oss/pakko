@@ -4135,7 +4135,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     screenshots
   - [ ] sv-SE: the only listing with a full stop in a search term ("tar.gz"), now "packa upp tar
     gz"; whether that was the cause is known once the user imports the second CSV
-  - [ ] screenshot captions (`docs/assets/store/CAPTIONS.md`) are English only: T-F332
+  - [x] screenshot captions (`docs/assets/store/CAPTIONS.md`): not added, see T-F332
 - [x] `README.md`, `README.uk.md`, `SECURITY.md` and `docs/SPEC.md` said that Explorer does not
   propagate the Mark-of-the-Web. A test on this machine (Windows 11 build 26300, Explorer's ZIP
   folder) showed that it does for ZIP; corrected with the user's permission, 2026-10-05. To be settled with the feature-text refresh before
@@ -4144,30 +4144,35 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F332 — Store listing: the optional fields worth filling (P2)
 
-- [ ] **Status:** open, 2026-10-05. Follows T-F331; the listing CSV has every field, and these
+- [ ] **Status:** text done 2026-10-05, the import and the image uploads are open. Follows
+  T-F331; the listing CSV has every field, and these
   are empty in all 37 languages.
 - **Text, through the listing CSV** (Partner Center, submission overview, "Export listing" /
-  "Import listings"; rows `DesktopScreenshotCaption1..`, `ShortDescription`,
+  "Import listings"; rows `ShortDescription`,
   `CopyrightTrademarkInformation`):
-  - [ ] screenshot captions in 37 languages, 200 characters each: a `[Screenshot captions]`
-    section in `docs/store-listing/<locale>.txt`, English from `docs/assets/store/CAPTIONS.md`,
-    menu items and dialog titles as the app names them. First match the captions to the
-    screenshots that are in the listing (seven per language, six in uk-UA; the caption file lists
-    nine files) — ask the user for the order, the CSV has only URLs
-  - [ ] short description at most 270 characters in every language (Microsoft: some views show
-    only the first 270); the test limit goes from 1,000 to 270
-  - [ ] copyright line, the same in every language; the user gives the name to show
-  - [ ] `StoreListingTests` covers the new section and limits, mutation-checked; the fill script
-    (kept outside the repo for now) moves to `scripts/` if it is to be used again
+  - [x] short description at most 270 characters in every language (Microsoft: some views show
+    only the first 270): the clause about the right-click menu is gone from all 37 (feature 5 and
+    the description have it), the longest is el-GR at 270; the test limit went from 1,000 to 270
+    and 29 locales failed it before the text changed
+  - [x] copyright line, the same in every language: `Copyright © 2026 Pakko Contributors`, the
+    notice in `LICENSE`; kept in `docs/store-listing/README.md`, not in the 37 files
+  - [ ] the user imports `listingData-9P5MW010D8PR-filled-3.csv` (built from the export of
+    2026-10-05 in which sv-se still had the old text; it carries the Swedish text too)
 - **Images, uploaded by hand:**
-  - [ ] 1:1 app tile icon, 300 x 300, from `src/Archiver.App/Assets/pakko-icon.svg` ("strongly
-    recommended" for apps; without it the Store uses the package's icon)
+  - [ ] 1:1 app tile icon, 300 x 300 ("strongly recommended" for apps; without it the Store uses
+    the package's icon): drawn from the rectangles of `src/Archiver.App/Assets/pakko-icon.svg` as
+    `docs/assets/store/app-tile-icon-300.png`, 2026-10-05; the user uploads it
   - [ ] 16:9 super hero art, 1920 x 1080: no text, no title, no app UI. Needed to be considered
     for the Store's featured layouts. The user decides whether it is worth drawing
-- **Decided against:** short title, voice title, Xbox images (Xbox only); 2:3 poster and 1:1 box
-  art (games); hardware requirements (none beyond the package's); "Developed by".
+- **Decided against:** screenshot captions (the user, 2026-10-05: the seven screenshots were
+  uploaded in one order for every language — 03, 04, 05, 01, 08, 02, 09 of
+  `docs/assets/store/CAPTIONS.md` — and Partner Center shows them in a different order from
+  language to language, so caption N would sit under a different picture in each; the CSV has
+  only URLs, the order cannot be read or set from it); short title, voice title, Xbox images
+  (Xbox only); 2:3 poster and 1:1 box art (games); hardware requirements (none beyond the
+  package's); "Developed by".
 - **The user's call, not started:** sort title ("Pako"), additional license terms (Apache 2.0),
-  a trailer; uk-UA has six screenshots where the others have seven.
+  a trailer.
 - **Watch:** a Microsoft Q&A report says a submission with all seven search terms would not
   publish and one with six did (seen only as a search summary, not read).
 - **Sources:** Microsoft Learn, "Add and edit Store listing info for MSIX app", "App screenshots,

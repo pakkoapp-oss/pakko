@@ -8,7 +8,7 @@ Pakko er integrert i Filutforsker: høyreklikk for å pakke ut, komprimere, test
 Bygget for alle som vil se nøyaktig hva som komprimerer filene deres — hele kildekoden ligger offentlig på GitHub under Apache 2.0-lisensen. Ingen telemetri, ingen bruksanalyse, ingen nettverksforespørsler av noe slag. Grensesnittet finnes på 37 språk.
 
 [Short description]
-Et gratis arkiveringsprogram med åpen kildekode som bare bygger på komprimeringskoden som er innebygd i .NET og Windows. Oppretter og pakker ut ZIP (også med AES-256-passord), pakker ut RAR, 7-Zip og TAR i en sandkasse og legger kommandoene sine til i hurtigmenyen i Filutforsker. Ingen telemetri.
+Et gratis arkiveringsprogram med åpen kildekode som bare bygger på komprimeringskoden som er innebygd i .NET og Windows. Oppretter og pakker ut ZIP (også med AES-256-passord) og pakker ut RAR, 7-Zip og TAR i en sandkasse. Ingen telemetri.
 
 [Product features]
 ZIP: oppretting og utpakking med .NETs eget komprimeringsbibliotek

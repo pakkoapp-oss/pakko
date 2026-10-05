@@ -8,7 +8,7 @@ Pakko ir integrēts failu pārlūkā: noklikšķiniet ar peles labo pogu, lai iz
 Izveidots ikvienam, kurš vēlas precīzi redzēt, kas saspiež viņa failus — viss pirmkods ir publiski pieejams vietnē GitHub saskaņā ar Apache 2.0 licenci. Bez telemetrijas, bez lietošanas analītikas, bez jebkādiem tīkla pieprasījumiem. Saskarne ir pieejama 37 valodās.
 
 [Short description]
-Bezmaksas atvērtā pirmkoda arhivators, kas izmanto tikai .NET un Windows iebūvēto saspiešanas kodu. Izveido un izvelk ZIP arhīvus (arī ar AES-256 paroli), izvelk RAR, 7-Zip un TAR arhīvus smilškastē un pievieno savas komandas failu pārlūka kontekstizvēlnei. Bez telemetrijas.
+Bezmaksas atvērtā pirmkoda arhivators, kas izmanto tikai .NET un Windows iebūvēto saspiešanas kodu. Izveido un izvelk ZIP arhīvus (arī ar AES-256 paroli) un izvelk RAR, 7-Zip un TAR arhīvus smilškastē. Bez telemetrijas.
 
 [Product features]
 ZIP: izveide un izvilkšana ar .NET pašas saspiešanas bibliotēku

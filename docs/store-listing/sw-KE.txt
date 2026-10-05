@@ -8,7 +8,7 @@ Pakko huungana na File Explorer: bofya kulia ili kutoa faili, kubana, kujaribu k
 Imejengwa kwa yeyote anayetaka kuona hasa ni nini kinachobana faili zake — msimbo wote wa chanzo uko wazi kwa umma kwenye GitHub chini ya leseni ya Apache 2.0. Hakuna telemetri, hakuna uchambuzi wa matumizi, hakuna maombi ya mtandao ya aina yoyote. Kiolesura kinapatikana katika lugha 37.
 
 [Short description]
-Programu ya bure na ya chanzo huria ya kubana faili inayotegemea tu msimbo wa kubana uliomo ndani ya .NET na Windows. Huunda na kutoa kumbukumbu za ZIP (pia kwa nenosiri la AES-256), hutoa RAR, 7-Zip na TAR ndani ya sanduku la mchanga, na huongeza amri zake kwenye menyu ya kubofya kulia ya File Explorer. Hakuna telemetri.
+Programu ya bure na ya chanzo huria ya kubana faili inayotegemea tu msimbo wa kubana uliomo ndani ya .NET na Windows. Huunda na kutoa kumbukumbu za ZIP (pia kwa nenosiri la AES-256), na hutoa RAR, 7-Zip na TAR ndani ya sanduku la mchanga. Hakuna telemetri.
 
 [Product features]
 ZIP: kuunda na kutoa kwa maktaba ya kubana ya .NET yenyewe

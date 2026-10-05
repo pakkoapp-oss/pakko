@@ -8,7 +8,7 @@ Pakko är integrerat i Utforskaren: högerklicka för att extrahera, komprimera,
 Byggt för alla som vill se exakt vad som komprimerar deras filer — hela källkoden finns offentligt på GitHub under Apache 2.0-licensen. Ingen telemetri, ingen användningsanalys, inga nätverksförfrågningar av något slag. Gränssnittet finns på 37 språk.
 
 [Short description]
-Ett kostnadsfritt arkiveringsprogram med öppen källkod som bara förlitar sig på den komprimeringskod som är inbyggd i .NET och Windows. Skapar och extraherar ZIP (även med AES-256-lösenord), extraherar RAR, 7-Zip och TAR i en sandlåda och lägger till sina kommandon i Utforskarens snabbmeny. Ingen telemetri.
+Ett kostnadsfritt arkiveringsprogram med öppen källkod som bara förlitar sig på den komprimeringskod som är inbyggd i .NET och Windows. Skapar och extraherar ZIP (även med AES-256-lösenord) och extraherar RAR, 7-Zip och TAR i en sandlåda. Ingen telemetri.
 
 [Product features]
 ZIP: skapa och extrahera med .NET:s eget komprimeringsbibliotek

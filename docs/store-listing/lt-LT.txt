@@ -8,7 +8,7 @@ Kurkite ir išskleiskite ZIP archyvus tiesiogiai per „System.IO.Compression“
 Sukurta visiems, kurie nori tiksliai matyti, kas suspaudžia jų failus — visas išeitinis kodas viešai prieinamas „GitHub“ pagal „Apache 2.0“ licenciją. Jokios telemetrijos, jokios naudojimo analizės, jokių tinklo užklausų. Sąsaja pateikiama 37 kalbomis.
 
 [Short description]
-Nemokamas atvirojo kodo archyvatorius, kuris remiasi tik .NET ir „Windows“ įtaisytu suspaudimo kodu. Kuria ir išskleidžia ZIP archyvus (taip pat su AES-256 slaptažodžiu), smėlio dėžėje išskleidžia RAR, 7-Zip ir TAR archyvus ir prideda savo komandas į failų naršyklės kontekstinį meniu. Jokios telemetrijos.
+Nemokamas atvirojo kodo archyvatorius, kuris remiasi tik .NET ir „Windows“ įtaisytu suspaudimo kodu. Kuria ir išskleidžia ZIP archyvus (taip pat su AES-256 slaptažodžiu) ir smėlio dėžėje išskleidžia RAR, 7-Zip ir TAR archyvus. Jokios telemetrijos.
 
 [Product features]
 ZIP: kūrimas ir išskleidimas pačios .NET suspaudimo biblioteka

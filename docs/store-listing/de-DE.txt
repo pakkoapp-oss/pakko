@@ -8,7 +8,7 @@ Pakko fügt sich nativ in den Datei-Explorer ein: Per Rechtsklick können Sie ex
 Entwickelt für alle, die genau sehen wollen, was ihre Dateien komprimiert – der gesamte Quellcode ist auf GitHub unter der Apache-2.0-Lizenz öffentlich. Keine Telemetrie, keine Analysen, keinerlei Netzwerkanfragen. Die Oberfläche gibt es in 37 Sprachen.
 
 [Short description]
-Ein kostenloser, quelloffener Archivierer, der nur den in .NET und Windows enthaltenen Komprimierungscode nutzt. Erstellt und extrahiert ZIP (auch mit AES-256-Passwort), extrahiert RAR, 7-Zip und TAR in einer Sandbox und fügt seine Befehle dem Kontextmenü des Datei-Explorers hinzu. Keine Telemetrie.
+Ein kostenloser, quelloffener Archivierer, der nur den in .NET und Windows enthaltenen Komprimierungscode nutzt. Erstellt und extrahiert ZIP (auch mit AES-256-Passwort) und extrahiert RAR, 7-Zip und TAR in einer Sandbox. Keine Telemetrie.
 
 [Product features]
 ZIP: Erstellen und Extrahieren mit der eigenen Komprimierungsbibliothek von .NET

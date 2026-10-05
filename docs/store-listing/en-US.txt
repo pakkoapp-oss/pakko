@@ -8,7 +8,7 @@ Pakko integrates natively with File Explorer: right-click to extract, compress, 
 Built for anyone who wants to see exactly what's compressing their files — the entire source code is public on GitHub under the Apache 2.0 license. No telemetry, no analytics, no network requests of any kind. The interface is available in 37 languages.
 
 [Short description]
-A free, open-source archiver that relies only on the compression code built into .NET and Windows. Creates and extracts ZIP (with AES-256 passwords too), extracts RAR, 7-Zip and TAR in a sandbox, and adds its commands to File Explorer's right-click menu. No telemetry.
+A free, open-source archiver that relies only on the compression code built into .NET and Windows. Creates and extracts ZIP (with AES-256 passwords too) and extracts RAR, 7-Zip and TAR in a sandbox. No telemetry.
 
 [Product features]
 ZIP: create and extract with .NET's own compression library

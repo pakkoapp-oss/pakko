@@ -8,7 +8,7 @@ Pakko se integra de forma nativa con el Explorador de archivos: haz clic derecho
 Creado para quienes quieren ver exactamente qué comprime sus archivos: todo el código fuente es público en GitHub bajo la licencia Apache 2.0. Sin telemetría, sin analíticas, sin solicitudes de red de ningún tipo. La interfaz está disponible en 37 idiomas.
 
 [Short description]
-Un archivador gratuito y de código abierto que solo se apoya en el código de compresión integrado en .NET y Windows. Crea y extrae ZIP (también con contraseña AES-256), extrae RAR, 7-Zip y TAR en un espacio aislado y añade sus comandos al menú contextual del Explorador de archivos. Sin telemetría.
+Un archivador gratuito y de código abierto que solo se apoya en el código de compresión integrado en .NET y Windows. Crea y extrae ZIP (también con contraseña AES-256) y extrae RAR, 7-Zip y TAR en un espacio aislado. Sin telemetría.
 
 [Product features]
 ZIP: creación y extracción con la biblioteca de compresión propia de .NET

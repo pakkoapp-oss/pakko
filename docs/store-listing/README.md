@@ -17,13 +17,17 @@ each pasted into the Partner Center field of the same name:
 | Section | Partner Center limit | In the file |
 |---|---|---|
 | `[Description]` | 10,000 characters | four paragraphs |
-| `[Short description]` | 1,000; some views show only the first 270 | one paragraph |
+| `[Short description]` | 1,000; some views show only the first 270 | one paragraph, at most 270 characters |
 | `[Product features]` | 20 items, 200 characters each | 12 lines, one feature per line |
 | `[Search terms]` | 7 terms | 7 lines, each at most 30 characters, 21 words in all |
 | `[What's new in this version]` | 1,500 characters | 5 lines, each starting with a bullet |
 
 The first four limits are from Microsoft's "Add and edit Store listing info" page; the limits on
 search terms are the ones the files were checked against, not read from that page.
+
+Two fields are the same in every language and are not in the files: the copyright line is
+`Copyright © 2026 Pakko Contributors` (the notice in `LICENSE`), and screenshot captions are left
+empty, because Partner Center does not keep the screenshots in the same order in every language.
 
 `ar-SA`, `he-IL` and `ur-PK` have a left-to-right mark (U+200E) before `.NET` where it starts a
 right-to-left run, so that it does not display as `NET.`.

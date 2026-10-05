@@ -8,7 +8,7 @@ A Pakko natívan beépül a Fájlkezelőbe: jobb gombbal kattintva kibonthat, t�
 Azoknak készült, akik pontosan látni akarják, mi tömöríti a fájljaikat — a teljes forráskód nyilvánosan elérhető a GitHubon, Apache 2.0 licenc alatt. Nincs telemetria, nincs használati elemzés, nincs semmilyen hálózati kérés. A felület 37 nyelven érhető el.
 
 [Short description]
-Ingyenes, nyílt forráskódú archiváló, amely kizárólag a .NET-be és a Windowsba beépített tömörítő kódra támaszkodik. ZIP-archívumokat hoz létre és bont ki (AES-256 jelszóval is), a RAR-, 7-Zip- és TAR-archívumokat sandboxban bontja ki, parancsait pedig hozzáadja a Fájlkezelő helyi menüjéhez. Nincs telemetria.
+Ingyenes, nyílt forráskódú archiváló, amely kizárólag a .NET-be és a Windowsba beépített tömörítő kódra támaszkodik. ZIP-archívumokat hoz létre és bont ki (AES-256 jelszóval is), a RAR-, 7-Zip- és TAR-archívumokat pedig sandboxban bontja ki. Nincs telemetria.
 
 [Product features]
 ZIP: létrehozás és kibontás a .NET saját tömörítési könyvtárával

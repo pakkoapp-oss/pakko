@@ -8,7 +8,7 @@ Pakko se nativně integruje s Průzkumníkem souborů: kliknutím pravým tlač�
 Vytvořeno pro každého, kdo chce přesně vědět, co komprimuje jeho soubory — celý zdrojový kód je veřejně dostupný na GitHubu pod licencí Apache 2.0. Žádná telemetrie, žádná analytika, žádné síťové požadavky jakéhokoli druhu. Rozhraní je dostupné ve 37 jazycích.
 
 [Short description]
-Bezplatný archivátor s otevřeným zdrojovým kódem, který spoléhá pouze na kompresní kód vestavěný v .NET a ve Windows. Vytváří a extrahuje archivy ZIP (i s heslem AES-256), extrahuje RAR, 7-Zip a TAR v sandboxu a přidává své příkazy do kontextové nabídky Průzkumníka souborů. Žádná telemetrie.
+Bezplatný archivátor s otevřeným zdrojovým kódem, který spoléhá pouze na kompresní kód vestavěný v .NET a ve Windows. Vytváří a extrahuje archivy ZIP (i s heslem AES-256) a extrahuje RAR, 7-Zip a TAR v sandboxu. Žádná telemetrie.
 
 [Product features]
 ZIP: vytváření a extrahování pomocí vlastní kompresní knihovny .NET

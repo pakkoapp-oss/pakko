@@ -8,7 +8,7 @@ Pakko, Dosya Gezgini ile bütünleşir: dosyaları ayıklamak, sıkıştırmak, 
 Dosyalarını tam olarak neyin sıkıştırdığını görmek isteyen herkes için tasarlanmıştır — tüm kaynak kodu Apache 2.0 lisansıyla GitHub'da herkese açıktır. Telemetri yok, kullanım analizi yok, hiçbir türde ağ isteği yok. Arayüz 37 dilde kullanılabilir.
 
 [Short description]
-Yalnızca .NET ve Windows'ta yerleşik sıkıştırma koduna dayanan, ücretsiz ve açık kaynaklı bir arşivleyici. ZIP arşivleri oluşturur ve ayıklar (AES-256 parolasıyla da), RAR, 7-Zip ve TAR arşivlerini korumalı alanda ayıklar ve komutlarını Dosya Gezgini'nin sağ tık menüsüne ekler. Telemetri yok.
+Yalnızca .NET ve Windows'ta yerleşik sıkıştırma koduna dayanan, ücretsiz ve açık kaynaklı bir arşivleyici. ZIP arşivleri oluşturur ve ayıklar (AES-256 parolasıyla da), RAR, 7-Zip ve TAR arşivlerini ise korumalı alanda ayıklar. Telemetri yok.
 
 [Product features]
 ZIP: .NET'in kendi sıkıştırma kitaplığıyla oluşturma ve ayıklama

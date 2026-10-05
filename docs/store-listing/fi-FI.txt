@@ -8,7 +8,7 @@ Pakko on osa Resurssienhallintaa: napsauta hiiren kakkospainikkeella, kun haluat
 Tehty kaikille, jotka haluavat nähdä tarkalleen, mikä heidän tiedostonsa pakkaa — koko lähdekoodi on julkisesti saatavilla GitHubissa Apache 2.0 -lisenssillä. Ei telemetriaa, ei käyttöanalytiikkaa, ei minkäänlaisia verkkopyyntöjä. Käyttöliittymä on saatavilla 37 kielellä.
 
 [Short description]
-Ilmainen, avoimen lähdekoodin arkistointiohjelma, joka nojaa vain .NETiin ja Windowsiin sisäänrakennettuun pakkauskoodiin. Luo ja purkaa ZIP-arkistoja (myös AES-256-salasanalla), purkaa RAR-, 7-Zip- ja TAR-arkistot hiekkalaatikossa ja lisää komentonsa Resurssienhallinnan pikavalikkoon. Ei telemetriaa.
+Ilmainen, avoimen lähdekoodin arkistointiohjelma, joka nojaa vain .NETiin ja Windowsiin sisäänrakennettuun pakkauskoodiin. Luo ja purkaa ZIP-arkistoja (myös AES-256-salasanalla) ja purkaa RAR-, 7-Zip- ja TAR-arkistot hiekkalaatikossa. Ei telemetriaa.
 
 [Product features]
 ZIP: luonti ja purku .NETin omalla pakkauskirjastolla

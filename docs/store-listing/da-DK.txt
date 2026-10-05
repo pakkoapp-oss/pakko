@@ -8,7 +8,7 @@ Pakko er integreret i Stifinder: højreklik for at udpakke, komprimere, teste et
 Bygget til alle, der vil se præcis, hvad der komprimerer deres filer — hele kildekoden ligger offentligt på GitHub under Apache 2.0-licensen. Ingen telemetri, ingen brugsanalyse, ingen netværksanmodninger af nogen art. Brugerfladen findes på 37 sprog.
 
 [Short description]
-En gratis open source-arkiveringsapp, der kun bygger på den komprimeringskode, som er indbygget i .NET og Windows. Opretter og udpakker ZIP (også med AES-256-adgangskode), udpakker RAR, 7-Zip og TAR i en sandkasse og føjer sine kommandoer til Stifinders genvejsmenu. Ingen telemetri.
+En gratis open source-arkiveringsapp, der kun bygger på den komprimeringskode, som er indbygget i .NET og Windows. Opretter og udpakker ZIP (også med AES-256-adgangskode) og udpakker RAR, 7-Zip og TAR i en sandkasse. Ingen telemetri.
 
 [Product features]
 ZIP: oprettelse og udpakning med .NET's eget komprimeringsbibliotek

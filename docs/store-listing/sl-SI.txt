@@ -8,7 +8,7 @@ Pakko je vgrajen v Raziskovalca: z desno tipko miške kliknite, če želite raz�
 Narejen za vse, ki želijo natančno videti, kaj stiska njihove datoteke — celotna izvorna koda je javno dostopna v GitHubu pod licenco Apache 2.0. Brez telemetrije, brez analitike uporabe, brez kakršnih koli omrežnih zahtev. Vmesnik je na voljo v 37 jezikih.
 
 [Short description]
-Brezplačen odprtokodni arhivator, ki se zanaša samo na kodo za stiskanje, vgrajeno v .NET in Windows. Ustvarja in razširja arhive ZIP (tudi z geslom AES-256), v peskovniku razširja arhive RAR, 7-Zip in TAR ter doda svoje ukaze v priročni meni Raziskovalca. Brez telemetrije.
+Brezplačen odprtokodni arhivator, ki se zanaša samo na kodo za stiskanje, vgrajeno v .NET in Windows. Ustvarja in razširja arhive ZIP (tudi z geslom AES-256) ter v peskovniku razširja arhive RAR, 7-Zip in TAR. Brez telemetrije.
 
 [Product features]
 ZIP: ustvarjanje in razširjanje z lastno knjižnico okolja .NET za stiskanje

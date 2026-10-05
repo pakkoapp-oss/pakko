@@ -30,7 +30,7 @@ public sealed class StoreListingTests
         listing.Keys.Should().Equal(Sections);
         listing["Description"].Length.Should().BeLessThanOrEqualTo(10000);
         listing["Description"].Split("\n\n").Should().HaveCount(4);
-        listing["Short description"].Length.Should().BeLessThanOrEqualTo(1000);
+        listing["Short description"].Length.Should().BeLessThanOrEqualTo(270);
         listing["Short description"].Should().NotContain("\n");
         listing["What's new in this version"].Length.Should().BeLessThanOrEqualTo(1500);
         Lines(listing, "Product features").Should().HaveCount(12).And.OnlyContain(f => f.Length <= 200);

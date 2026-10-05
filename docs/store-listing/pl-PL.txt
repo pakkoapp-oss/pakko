@@ -8,7 +8,7 @@ Pakko integruje się natywnie z Eksploratorem plików: kliknij prawym przyciskie
 Stworzony dla każdego, kto chce dokładnie wiedzieć, co kompresuje jego pliki — cały kod źródłowy jest publicznie dostępny w serwisie GitHub na licencji Apache 2.0. Żadnej telemetrii, żadnej analityki, żadnych żądań sieciowych. Interfejs jest dostępny w 37 językach.
 
 [Short description]
-Bezpłatny archiwizator o otwartym kodzie źródłowym, który korzysta wyłącznie z kodu kompresji wbudowanego w .NET i Windows. Tworzy i wypakowuje archiwa ZIP (także z hasłem AES-256), wypakowuje RAR, 7-Zip i TAR w piaskownicy oraz dodaje swoje polecenia do menu kontekstowego Eksploratora plików. Bez telemetrii.
+Bezpłatny archiwizator o otwartym kodzie źródłowym, który korzysta wyłącznie z kodu kompresji wbudowanego w .NET i Windows. Tworzy i wypakowuje archiwa ZIP (także z hasłem AES-256) oraz wypakowuje RAR, 7-Zip i TAR w piaskownicy. Bez telemetrii.
 
 [Product features]
 ZIP: tworzenie i wypakowywanie za pomocą własnej biblioteki kompresji .NET

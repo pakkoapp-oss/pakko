@@ -8,7 +8,7 @@ Pakko is geïntegreerd in Verkenner: klik met de rechtermuisknop om uit te pakke
 Gebouwd voor iedereen die precies wil zien wat zijn bestanden comprimeert — de volledige broncode staat openbaar op GitHub onder de Apache 2.0-licentie. Geen telemetrie, geen gebruiksanalyse, geen enkele netwerkaanvraag. De interface is beschikbaar in 37 talen.
 
 [Short description]
-Een gratis, opensource archiveerprogramma dat alleen steunt op de compressiecode die in .NET en Windows is ingebouwd. Maakt ZIP-archieven en pakt ze uit (ook met AES-256-wachtwoord), pakt RAR, 7-Zip en TAR uit in een sandbox en voegt zijn opdrachten toe aan het contextmenu van Verkenner. Geen telemetrie.
+Een gratis, opensource archiveerprogramma dat alleen steunt op de compressiecode die in .NET en Windows is ingebouwd. Maakt ZIP-archieven en pakt ze uit (ook met AES-256-wachtwoord) en pakt RAR, 7-Zip en TAR uit in een sandbox. Geen telemetrie.
 
 [Product features]
 ZIP: maken en uitpakken met de eigen compressiebibliotheek van .NET

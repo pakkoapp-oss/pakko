@@ -8,7 +8,7 @@ Pakko lõimub File Exploreriga: paremklõpsa, et faile lahti pakkida või tihend
 Loodud kõigile, kes tahavad täpselt näha, mis nende faile tihendab — kogu lähtekood on avalikult saadaval GitHubis Apache 2.0 litsentsi all. Ei telemeetriat, ei kasutusanalüütikat, mitte mingeid võrgupäringuid. Kasutajaliides on saadaval 37 keeles.
 
 [Short description]
-Tasuta avatud lähtekoodiga arhiveerija, mis toetub ainult .NET-i ja Windowsi sisseehitatud tihenduskoodile. Loob ja pakib lahti ZIP-arhiive (ka AES-256 parooliga), pakib RAR-, 7-Zip- ja TAR-arhiive lahti liivakastis ning lisab oma käsud File Exploreri kontekstimenüüsse. Ei mingit telemeetriat.
+Tasuta avatud lähtekoodiga arhiveerija, mis toetub ainult .NET-i ja Windowsi sisseehitatud tihenduskoodile. Loob ja pakib lahti ZIP-arhiive (ka AES-256 parooliga) ning pakib RAR-, 7-Zip- ja TAR-arhiive lahti liivakastis. Ei mingit telemeetriat.
 
 [Product features]
 ZIP: loomine ja lahtipakkimine .NET-i enda tihendusteegiga

@@ -8,7 +8,7 @@ Pakko se ugrađuje u Eksplorer za datoteke: kliknite desnom tipkom miša da bist
 Napravljen za sve koji žele točno vidjeti što komprimira njihove datoteke — cijeli izvorni kod javno je dostupan na GitHubu pod licencom Apache 2.0. Bez telemetrije, bez analitike korištenja, bez ikakvih mrežnih zahtjeva. Sučelje je dostupno na 37 jezika.
 
 [Short description]
-Besplatan arhiver otvorenog koda koji se oslanja samo na kod za komprimiranje ugrađen u .NET i Windows. Stvara i raspakirava ZIP arhive (i s lozinkom AES-256), raspakirava RAR, 7-Zip i TAR u sandboxu te dodaje svoje naredbe u kontekstni izbornik Eksplorera za datoteke. Bez telemetrije.
+Besplatan arhiver otvorenog koda koji se oslanja samo na kod za komprimiranje ugrađen u .NET i Windows. Stvara i raspakirava ZIP arhive (i s lozinkom AES-256) te raspakirava RAR, 7-Zip i TAR u sandboxu. Bez telemetrije.
 
 [Product features]
 ZIP: stvaranje i raspakiravanje vlastitom bibliotekom platforme .NET za komprimiranje
