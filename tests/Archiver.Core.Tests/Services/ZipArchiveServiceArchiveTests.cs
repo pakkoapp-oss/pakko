@@ -139,6 +139,32 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         archive.Entries.Should().ContainSingle(e => e.FullName == "my_folder/inner.txt");
     }
 
+    // T-F338: "." or ".." as a source (pakko a out.zip .) names the folder it stands for; the
+    // entries were written as "./inner.txt".
+    [Theory]
+    [InlineData(".")]
+    [InlineData(@"sub\..")]
+    [InlineData(@".\")]
+    public async Task ArchiveAsync_SourceNamedByDots_EntriesAreRootedUnderTheRealFolderName(string dots)
+    {
+        string dir = Path.Combine(_temp.Path, "my_folder");
+        Directory.CreateDirectory(Path.Combine(dir, "sub"));
+        File.WriteAllText(Path.Combine(dir, "inner.txt"), "content");
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [Path.Combine(dir, dots)],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "output"
+        };
+
+        ArchiveResult result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        using ZipArchive archive = System.IO.Compression.ZipFile.OpenRead(result.CreatedFiles[0]);
+        archive.Entries.Select(e => e.FullName).Should().Contain("my_folder/inner.txt")
+            .And.OnlyContain(name => name.StartsWith("my_folder/"));
+    }
+
     [Fact]
     public async Task ArchiveAsync_MultipleFiles_SingleArchiveMode_CreatesOneZip()
     {

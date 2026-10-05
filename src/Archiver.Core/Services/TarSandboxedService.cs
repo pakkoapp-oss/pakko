@@ -1126,7 +1126,7 @@ public sealed class TarSandboxedService : ITarService
         // treats as the drive-root case (tar.exe strips the drive letter itself) even for an
         // ordinary folder like "src\" — silently misrouting it through the wrong tar.exe argument
         // shape instead of the normal "-C <parent> <name>" one.
-        options = options with { SourcePaths = [.. options.SourcePaths.Select(Path.TrimEndingDirectorySeparator)] };
+        options = options with { SourcePaths = [.. options.SourcePaths.Select(SourcePathNormalizer.Normalize)] };
 
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();

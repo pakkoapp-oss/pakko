@@ -62,7 +62,7 @@ public sealed class ZipArchiveService : IArchiveService
         // leaves a true drive root ("C:\") untouched — see ArchiveNaming's own drive-root handling
         // for why that distinction matters (T-F99). Normalized once here, at the top, so every
         // downstream Path.GetFileName call in this class already sees a clean path.
-        options = options with { SourcePaths = [.. options.SourcePaths.Select(Path.TrimEndingDirectorySeparator)] };
+        options = options with { SourcePaths = [.. options.SourcePaths.Select(SourcePathNormalizer.Normalize)] };
 
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();

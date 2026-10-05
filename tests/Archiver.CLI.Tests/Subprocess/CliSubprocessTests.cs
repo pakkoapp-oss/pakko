@@ -390,6 +390,40 @@ public sealed class CliSubprocessTests
         archive.Entries.Select(e => e.Name).Should().BeEquivalentTo("a.txt", "b.txt");
     }
 
+    // T-F338: "." is the current folder, archived under its own name as 7-Zip does - the entries
+    // were "./a.txt".
+    [Fact]
+    public void Archive_DotAsSource_NamesEntriesByTheCurrentFolder()
+    {
+        string sourceDir = Path.Combine(CliFixtureFiles.CreateScratchDir(), "proj");
+        Directory.CreateDirectory(Path.Combine(sourceDir, "sub"));
+        File.WriteAllText(Path.Combine(sourceDir, "a.txt"), "a");
+        File.WriteAllText(Path.Combine(sourceDir, "sub", "b.txt"), "b");
+        string outputZip = Path.Combine(CliFixtureFiles.CreateScratchDir(), "out.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(sourceDir, "a", outputZip, ".");
+
+        exitCode.Should().Be(0, stdErr);
+        using ZipArchive archive = ZipFile.OpenRead(outputZip);
+        archive.Entries.Select(e => e.FullName).Should().BeEquivalentTo("proj/a.txt", "proj/sub/b.txt");
+    }
+
+    [RequiresTarExe]
+    public void Archive_DotAsSourceToTar_NamesEntriesByTheCurrentFolder()
+    {
+        string sourceDir = Path.Combine(CliFixtureFiles.CreateScratchDir(), "proj");
+        Directory.CreateDirectory(sourceDir);
+        File.WriteAllText(Path.Combine(sourceDir, "a.txt"), "a");
+        string outputTar = Path.Combine(CliFixtureFiles.CreateScratchDir(), "out.tar");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(sourceDir, "a", "-ttar", outputTar, ".");
+
+        exitCode.Should().Be(0, stdErr);
+        (_, string tarStdOut, _) = RunTarExe("-tf", outputTar);
+        tarStdOut.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Should().Contain("proj/a.txt").And.OnlyContain(name => name.StartsWith("proj/"));
+    }
+
     [RequiresTarExe]
     public void Archive_TarGzType_CreatesRealGzipCompressedTar()
     {
