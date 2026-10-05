@@ -1634,7 +1634,8 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 - **Progress (2026-09-27, fix phase 8):** CLI half recorded — no `pakko` scan, reasons in
   `docs/CLI.md`'s command table and DECISIONS "Fix phase 8". App "Test archive" stays for phase 9.
 
-- [ ] **Status:** open. `pakko` has no threat scan (T-F146 added it to the App, Shell and
+- [x] **Status:** closed 2026-10-05: both halves were already decided and recorded - no scan in `pakko` (`docs/CLI.md` command table, 2026-09-25) and "Test archive" in the App (T-F199 step 6); only this line still said open.
+- **Earlier status:** open. `pakko` has no threat scan (T-F146 added it to the App, Shell and
   Explorer only); the App has no "Test archive" (Explorer, Shell and CLI have it). Neither is
   recorded in `docs/DECISIONS.md` or `docs/CLI.md`. Decide: add, or document why not.
 - **Reported by:** T-F226 review, 2026-09-24.

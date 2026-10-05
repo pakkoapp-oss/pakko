@@ -139,6 +139,11 @@ read in-process and keeps the refusal.
   deep chain from a small archive costs minutes of CPU (a 60 KB ZIP with 4,000 levels: 91 s).
 - **Owned staging.** Extraction stages into a fresh, uniquely named folder the run creates and
   removes itself, never a fixed `<dest>_tmp` name that could be a user's own folder (T-F227).
+- **Local headers that disagree with the central directory.** Pakko reads names, sizes and CRC-32
+  from the central directory only, so its own result is consistent; another program may take them
+  from the local headers and extract different names or data from the same archive. "Test
+  archive" reports such an archive as an error, and extraction warns about it while extracting by
+  the central directory (T-F280; before v1.7.1 extraction said nothing).
 
 **Minimal MSIX capabilities**
 `Package.appxmanifest` declares only `runFullTrust`. No `broadFileSystemAccess`, no `internetClient`, no device capabilities.
