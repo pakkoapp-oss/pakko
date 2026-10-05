@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Kihagyva</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Figyelmeztetések</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Gyanús archívum</value>
   </data>

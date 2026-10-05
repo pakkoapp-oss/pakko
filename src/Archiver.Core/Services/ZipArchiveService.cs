@@ -674,6 +674,7 @@ public sealed class ZipArchiveService : IArchiveService
         // Entries skipped because they already exist at the destination — not reported in
         // SkippedFiles (the summary dialog stays as it was), but they make the archive Partial.
         var conflictSkipped = new List<string>();
+        var warnings = new List<ArchiveWarning>();
 
         for (int i = 0; i < total; i++)
         {
@@ -690,7 +691,7 @@ public sealed class ZipArchiveService : IArchiveService
             if (!rejected)
             {
                 IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
-                var sink = new ZipExtractResultSink(errors, createdFiles, skippedFiles, conflictSkipped);
+                var sink = new ZipExtractResultSink(errors, createdFiles, skippedFiles, conflictSkipped, warnings);
                 await ExtractOneZipWithErrorMappingAsync(
                     archivePath, options, conflictResolver, password, sink, archiveProgress, cancellationToken).ConfigureAwait(false);
             }
@@ -709,6 +710,7 @@ public sealed class ZipArchiveService : IArchiveService
             CreatedFiles = createdFiles,
             Errors = errors,
             SkippedFiles = skippedFiles,
+            Warnings = warnings,
             Sources = sources,
         };
 
@@ -869,7 +871,8 @@ public sealed class ZipArchiveService : IArchiveService
         List<ArchiveError> Errors,
         List<string> CreatedFiles,
         List<SkippedFile> SkippedFiles,
-        List<string> ConflictSkippedEntries);
+        List<string> ConflictSkippedEntries,
+        List<ArchiveWarning> Warnings);
 
     private async Task ExtractOneZipWithErrorMappingAsync(
         string archivePath, ExtractOptions options, ConflictResolver conflictResolver,
@@ -884,7 +887,7 @@ public sealed class ZipArchiveService : IArchiveService
                 : options.DestinationFolder;
             var context = new ZipExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors,
-                sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder);
+                sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder, sink.Warnings);
             (string? actualDest, bool anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
@@ -1113,6 +1116,21 @@ public sealed class ZipArchiveService : IArchiveService
         };
     }
 
+    // T-F280: local file headers that disagree with the central directory, as one message per
+    // archive (a hostile archive must not flood the summary): how many entries, and the first one.
+    // Test reports it as an error; extraction, which reads by the central directory, as a warning.
+    private static CoreText? DescribeLocalHeaderMismatch(string archivePath, IReadOnlyList<NamedZipEntry> entries)
+    {
+        List<int> mismatched;
+        using (FileStream headerStream = File.OpenRead(archivePath))
+            mismatched = RawZipEntryLocator.FindLocalHeaderMismatches(headerStream);
+        if (mismatched.Count == 0)
+            return null;
+
+        string first = mismatched[0] < entries.Count ? entries[mismatched[0]].FullName : "?";
+        return CoreMessages.Text(MessageCode.LocalHeaderMismatch, mismatched.Count.ToString(CultureInfo.InvariantCulture), first);
+    }
+
     // Reads every entry's decompressed bytes and compares a freshly computed CRC-32 against
     // the value declared in the entry's header — System.IO.Compression never validates this
     // itself on read, so a bit-flipped-but-structurally-valid entry would otherwise extract
@@ -1126,17 +1144,9 @@ public sealed class ZipArchiveService : IArchiveService
         using var reader = ZipArchiveReader.Open(archivePath, codePages);
         ZipArchive archive = reader.Archive;
 
-        // T-F280: one error per archive (a hostile archive must not flood the summary), naming how
-        // many entries disagree and the first one — as 7-Zip's Test reports "Headers Error".
-        List<int> mismatched;
-        using (FileStream headerStream = File.OpenRead(archivePath))
-            mismatched = RawZipEntryLocator.FindLocalHeaderMismatches(headerStream);
-        if (mismatched.Count > 0)
-        {
-            string first = mismatched[0] < reader.Entries.Count ? reader.Entries[mismatched[0]].FullName : "?";
-            errors.Add(CoreMessages.Error(archivePath, MessageCode.LocalHeaderMismatch,
-                mismatched.Count.ToString(CultureInfo.InvariantCulture), first));
-        }
+        // T-F280: as 7-Zip's Test reports "Headers Error".
+        if (DescribeLocalHeaderMismatch(archivePath, reader.Entries) is { } mismatch)
+            errors.Add(CoreMessages.Error(archivePath, mismatch));
 
         using FileStream? rawArchiveStream = password is not null ? File.OpenRead(archivePath) : null;
         Dictionary<ZipArchiveEntry, LocatedZipEntry>? encryptedEntryMap =
@@ -1265,9 +1275,17 @@ public sealed class ZipArchiveService : IArchiveService
 
         try
         {
-            return await ExtractWithSmartFolderingCoreAsync(
+            (string ActualDest, bool AnyExtracted) extracted = await ExtractWithSmartFolderingCoreAsync(
                 reader.Entries, archivePath, destDir, alreadyIsolated, unisolatedDestDir, selectedEntryPaths,
                 context, encryptedEntryMap, rawArchiveStream, cancellationToken).ConfigureAwait(false);
+
+            // T-F280: everything above read by the central directory. When the local headers say
+            // something else, another program may extract other names or data from this archive;
+            // the user is told, and the extraction stands. Nothing extracted: the errors speak.
+            if (extracted.AnyExtracted && context.Warnings is not null
+                && DescribeLocalHeaderMismatch(archivePath, reader.Entries) is { } mismatch)
+                context.Warnings.Add(CoreMessages.Warning(archivePath, mismatch));
+            return extracted;
         }
         finally
         {
@@ -1469,7 +1487,9 @@ public sealed class ZipArchiveService : IArchiveService
         // password was already resolved once, upfront, in TryRejectUnsupportedOrEncryptedZipAsync.
         ResolvedZipPassword? Password = null,
         // T-F205: ExtractOptions.EliminateDuplicateRootFolder.
-        bool EliminateDuplicateRootFolder = false);
+        bool EliminateDuplicateRootFolder = false,
+        // T-F280: null where the caller has nowhere to show a warning.
+        List<ArchiveWarning>? Warnings = null);
 
     // The per-call setup ExtractWithSmartFolderingAsync computes once and every entry of its loop
     // reads unchanged — cut into its own type alongside ZipExtractionContext so

@@ -280,13 +280,14 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         session.Complete(OperationMessages.ForArchiveResult(title, Combine(results)));
     }
 
-    private static ArchiveResult Combine(List<ArchiveResult> results) => results.Count == 1
+    internal static ArchiveResult Combine(List<ArchiveResult> results) => results.Count == 1
         ? results[0]
         : new ArchiveResult
         {
             CreatedFiles = [.. results.SelectMany(r => r.CreatedFiles)],
             Errors = [.. results.SelectMany(r => r.Errors)],
             SkippedFiles = [.. results.SelectMany(r => r.SkippedFiles)],
+            Warnings = [.. results.SelectMany(r => r.Warnings)],
             Sources = [.. results.SelectMany(r => r.Sources)],
         };
 

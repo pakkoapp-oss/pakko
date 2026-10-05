@@ -19,5 +19,7 @@ internal static class CoreMessageText
 
     public static string Of(SkippedFile skipped) => MessageText.Render(skipped, Culture.Value);
 
+    public static string Of(ArchiveWarning warning) => MessageText.Render(warning, Culture.Value);
+
     public static string Of(CoreText? text, string english) => MessageText.Render(text, english, Culture.Value);
 }

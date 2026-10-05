@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>ข้ามไป</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>คำเตือน</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>ไฟล์บีบอัดที่น่าสงสัย</value>
   </data>

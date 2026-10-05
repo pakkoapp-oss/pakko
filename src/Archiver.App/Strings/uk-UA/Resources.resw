@@ -250,6 +250,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Пропущено</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Попередження</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Підозрілий архів</value>
   </data>

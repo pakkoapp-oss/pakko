@@ -10,7 +10,7 @@ namespace Archiver.App.Core;
 /// <param name="Extract">True for an extraction, false for compression.</param>
 /// <param name="CreatedCount">Archives created (compress), or result folders — one per extracted
 /// archive (extract).</param>
-/// <param name="ProblemCount">Errors plus skipped items.</param>
+/// <param name="ProblemCount">Errors plus skipped items plus warnings.</param>
 /// <param name="Seconds">Elapsed whole seconds, at least 1 so the line never says "0 s".</param>
 /// <param name="ShowInFolderPath">What "Show in folder" points at, or null when nothing was created.</param>
 /// <param name="DestinationFolder">The folder the operation wrote into.</param>
@@ -54,7 +54,7 @@ public sealed record OutcomeLine(
         result.Outcome,
         extract,
         result.CreatedFiles.Count,
-        result.Errors.Count + result.SkippedFiles.Count,
+        result.Errors.Count + result.SkippedFiles.Count + result.Warnings.Count,
         Math.Max(1, (int)Math.Round(elapsed.TotalSeconds)),
         result.CreatedFiles.Count > 0 ? result.CreatedFiles[0] : null,
         destinationFolder);

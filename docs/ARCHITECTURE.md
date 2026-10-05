@@ -595,10 +595,14 @@ public sealed record CompressionBombWarning
 public sealed record ArchiveResult
 {
     public bool Success { get; }                      // T-F260: derived — no errors
-    public OperationOutcome Outcome { get; }          // Completed / CompletedWithSkips / NothingDone / Failed
+    public OperationOutcome Outcome { get; }          // Completed / CompletedWithWarnings / CompletedWithSkips / NothingDone / Failed
     public IReadOnlyList<string> CreatedFiles { get; init; } = [];
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
+    // T-F280: what the user should know although everything asked was done. Never fails the
+    // operation, never makes a source undeletable; built only by CoreMessages.Warning. Every
+    // frontend shows them whatever the outcome (under the errors or skips when there are any).
+    public IReadOnlyList<ArchiveWarning> Warnings { get; init; } = [];   // SourcePath, Message, Text
     // T-F260: one entry per source the engine finished; no entry = not processed (fail-closed).
     public IReadOnlyList<SourceResult> Sources { get; init; } = [];
     // The only input to "Delete after operation": sources whose Outcome is Completed.
@@ -1774,7 +1778,7 @@ callback delegates are null — the CLI needs to do nothing special in `-y`'s *a
 | Code | Meaning |
 |---|---|
 | `0` | Success, nothing skipped |
-| `1` | Success, but `SkippedFiles` were present (e.g. a conflict/bomb declined without `-y`, or `t` hit a tar-family archive) |
+| `1` | Success, but `SkippedFiles` were present (e.g. a conflict/bomb declined without `-y`, or `t` hit a tar-family archive), or a warning was printed (`pakko: warning: <archive>: <text>` on stderr, T-F280 — 7-Zip's code for a warning) |
 | `2` | Operation failed (`ArchiveResult.Success == false`, listing failed, or real Test corruption) |
 | `7` | Command-line error — any of the three three-way-rule categories, distinguished by stderr text, not exit code |
 

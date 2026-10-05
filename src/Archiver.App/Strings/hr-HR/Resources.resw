@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Preskočeno</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Upozorenja</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Sumnjiva arhiva</value>
   </data>

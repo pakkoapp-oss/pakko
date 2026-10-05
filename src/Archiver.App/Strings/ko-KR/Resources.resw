@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>건너뜀</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>경고</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>의심스러운 압축 파일</value>
   </data>

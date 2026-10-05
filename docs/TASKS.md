@@ -1785,7 +1785,14 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Decision (user, 2026-09-30):** Test reports a local/central header mismatch as an error
   ("Headers Error", as `7za t`); extraction carries on from the central directory and adds a
   warning to the summary.
-- [~] **Status:** Test half done 2026-09-30 (v1.7.0 wave 1; Device (Deploy 1.6.0.0 from 480cb74, App title build 2026-09-30 22:47:15, uk-UA, 2026-09-30): a ZIP with one local CRC
+- [~] **Status:** extraction half done in code 2026-10-05 (wave 1 after v1.7.0): the warning
+  channel `ArchiveResult.Warnings` + `OperationOutcome.CompletedWithWarnings`; extraction adds one
+  warning per archive with the same message as Test; `pakko` prints `pakko: warning:` and exits 1;
+  Explorer shows a warning message; the App a "Warnings" section and the footer count. See
+  `docs/DECISIONS.md`'s second T-F280 entry. Left: the device pass (Explorer, App, a real console).
+  **CHANGELOG v1.7.1:** extracting a ZIP whose local file headers disagree with its central
+  directory now warns (`pakko x` exits 1).
+- **Earlier status:** Test half done 2026-09-30 (v1.7.0 wave 1; Device (Deploy 1.6.0.0 from 480cb74, App title build 2026-09-30 22:47:15, uk-UA, 2026-09-30): a ZIP with one local CRC
   flipped -> `pakko t` exit 2 with the English message, Explorer Test window in Ukrainian). Left: the extraction
   warning, which needs a warning channel in `ArchiveResult` — v1.7.0 wave 6 (see
   `docs/DECISIONS.md`'s T-F280 entry). **CHANGELOG v1.7.0:** Test reports a ZIP whose local file

@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>דולגו</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>אזהרות</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>ארכיון חשוד</value>
   </data>

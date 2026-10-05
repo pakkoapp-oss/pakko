@@ -15,6 +15,7 @@ public sealed class OperationOutcomeTests : IDisposable
 
     private static readonly ArchiveError AnError = new() { SourcePath = "a", Message = "boom" };
     private static readonly SkippedFile ASkip = new() { Path = "a", Reason = "skipped" };
+    private static readonly ArchiveWarning AWarning = new() { SourcePath = "a", Message = "look at this" };
 
     [Fact]
     public void Empty_IsCompleted() =>
@@ -28,6 +29,36 @@ public sealed class OperationOutcomeTests : IDisposable
         result.Outcome.Should().Be(OperationOutcome.Failed);
         result.Success.Should().BeFalse();
     }
+
+    // T-F280: a warning is shown, but the operation did everything it was asked to.
+    [Fact]
+    public void OnlyWarnings_IsCompletedWithWarnings_SuccessAndTheSourceStaysDeletable()
+    {
+        var result = new ArchiveResult
+        {
+            Warnings = [AWarning],
+            CreatedFiles = ["out"],
+            Sources = [new SourceResult { Path = "t.zip", Outcome = SourceOutcome.Completed }],
+        };
+
+        result.Outcome.Should().Be(OperationOutcome.CompletedWithWarnings);
+        result.Success.Should().BeTrue();
+        result.FullyProcessedSources.Should().Equal("t.zip");
+    }
+
+    [Fact]
+    public void WarningsWithSkips_IsCompletedWithSkips() =>
+        new ArchiveResult { Warnings = [AWarning], SkippedFiles = [ASkip], CreatedFiles = ["out"] }
+            .Outcome.Should().Be(OperationOutcome.CompletedWithSkips);
+
+    [Fact]
+    public void WarningsWithOnlySkips_IsNothingDone() =>
+        new ArchiveResult { Warnings = [AWarning], SkippedFiles = [ASkip] }
+            .Outcome.Should().Be(OperationOutcome.NothingDone);
+
+    [Fact]
+    public void WarningsWithAnError_IsFailed() =>
+        new ArchiveResult { Warnings = [AWarning], Errors = [AnError] }.Outcome.Should().Be(OperationOutcome.Failed);
 
     [Fact]
     public void SkipsWithOutput_IsCompletedWithSkips()

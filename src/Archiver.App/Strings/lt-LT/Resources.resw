@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Praleista</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Įspėjimai</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Įtartinas archyvas</value>
   </data>

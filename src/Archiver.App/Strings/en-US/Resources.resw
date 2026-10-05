@@ -295,6 +295,10 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Skipped</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Warnings</value>
+    <comment>Heading in the result details, above the list of warnings: things the user should know although the operation finished.</comment>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Suspicious archive</value>
   </data>

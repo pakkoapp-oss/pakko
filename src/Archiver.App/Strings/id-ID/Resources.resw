@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Dilewati</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Peringatan</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Arsip mencurigakan</value>
   </data>

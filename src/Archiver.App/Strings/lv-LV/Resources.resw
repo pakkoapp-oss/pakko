@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Izlaisti</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Brīdinājumi</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Aizdomīgs arhīvs</value>
   </data>

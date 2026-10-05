@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Hoppet over</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Advarsler</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Mistenkelig arkiv</value>
   </data>

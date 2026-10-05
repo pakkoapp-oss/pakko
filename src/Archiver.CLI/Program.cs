@@ -643,6 +643,9 @@ static int ReportResult(ArchiveResult result, CliReportContext report)
         string name = report.StdinPath is not null && skipped.Path == report.StdinPath ? "(stdin)" : skipped.Path;
         Console.Error.WriteLine($"pakko: skipped: {name}: {skipped.Reason}");
     }
+    // T-F280: the operation did what was asked; the exit code is 1, as 7-Zip's for a warning.
+    foreach (ArchiveWarning warning in result.Warnings)
+        Console.Error.WriteLine($"pakko: warning: {report.DisplayName(warning.SourcePath)}: {warning.Message}");
 
     PrintHints(result, report);
 
@@ -650,6 +653,7 @@ static int ReportResult(ArchiveResult result, CliReportContext report)
     {
         OperationOutcome.Completed => 0,
         OperationOutcome.Failed => 2,
+        OperationOutcome.CompletedWithWarnings or OperationOutcome.CompletedWithSkips or OperationOutcome.NothingDone => 1,
         _ => 1,
     };
 }

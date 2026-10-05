@@ -7,8 +7,12 @@ namespace Archiver.Core.Models;
 /// </summary>
 public enum OperationOutcome
 {
-    /// <summary>Everything requested was done: no errors, nothing skipped.</summary>
+    /// <summary>Everything requested was done: no errors, nothing skipped, nothing to tell the user.</summary>
     Completed,
+
+    /// <summary>Everything requested was done, and <see cref="ArchiveResult.Warnings"/> holds
+    /// something the user should see (T-F280); no errors, nothing skipped.</summary>
+    CompletedWithWarnings,
 
     /// <summary>Something was done and something was skipped; no errors.</summary>
     CompletedWithSkips,

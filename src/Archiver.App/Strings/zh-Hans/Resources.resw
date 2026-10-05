@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>已跳过</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>警告</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>可疑的压缩包</value>
   </data>

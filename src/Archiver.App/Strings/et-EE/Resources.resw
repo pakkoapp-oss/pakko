@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Vahele jäetud</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Hoiatused</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Kahtlane arhiiv</value>
   </data>

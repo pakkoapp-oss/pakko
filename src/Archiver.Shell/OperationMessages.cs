@@ -15,14 +15,34 @@ internal static class OperationMessages
     public const int MaxLinesShown = 10;
 
     /// <summary>Null for a clean success: Extract/Archive leave their result on disk.</summary>
-    public static OperationMessage? ForArchiveResult(string title, ArchiveResult result) =>
-        result.Outcome switch
+    public static OperationMessage? ForArchiveResult(string title, ArchiveResult result)
+    {
+        OperationMessage? message = result.Outcome switch
         {
             OperationOutcome.Failed => ForErrors(title, result.Errors),
             OperationOutcome.CompletedWithSkips or OperationOutcome.NothingDone => new OperationMessage(
                 title, MessageSeverity.Warning, ShellResultPresenter.BuildSkippedMessage(result.SkippedFiles, MaxLinesShown)),
+            OperationOutcome.Completed or OperationOutcome.CompletedWithWarnings => null,
             _ => null,
         };
+
+        // T-F280: warnings show whatever the outcome - on their own, or under the errors or skips.
+        if (result.Warnings.Count == 0)
+            return message;
+        string warnings = CappedLines(
+            result.Warnings, w => $"{Path.GetFileName(w.SourcePath)}: {MessageText.Render(w, CultureInfo.CurrentUICulture)}");
+        return message is null
+            ? new OperationMessage(title, MessageSeverity.Warning, warnings)
+            : message with { Text = message.Text + Environment.NewLine + Environment.NewLine + warnings };
+    }
+
+    private static string CappedLines<T>(IReadOnlyList<T> items, Func<T, string> line)
+    {
+        string text = string.Join(Environment.NewLine, items.Take(MaxLinesShown).Select(line));
+        if (items.Count > MaxLinesShown)
+            text += $"{Environment.NewLine}{ResultMessagesLocalizer.Get("ResultAndMoreLine", items.Count - MaxLinesShown)}";
+        return text;
+    }
 
     /// <summary>
     /// T-F217: the question before extracting an archive whose declared size is suspiciously large
@@ -166,11 +186,7 @@ internal static class OperationMessages
         if (errors.Count == 0)
             return new OperationMessage(title, MessageSeverity.Error, ResultMessagesLocalizer.Get("ResultOperationFailed"));
 
-        string text = string.Join(Environment.NewLine,
-            errors.Take(MaxLinesShown).Select(e => $"{Path.GetFileName(e.SourcePath)}: {MessageText.Render(e, CultureInfo.CurrentUICulture)}"));
-        if (errors.Count > MaxLinesShown)
-            text += $"{Environment.NewLine}{ResultMessagesLocalizer.Get("ResultAndMoreLine", errors.Count - MaxLinesShown)}";
-
-        return new OperationMessage(title, MessageSeverity.Error, text);
+        return new OperationMessage(title, MessageSeverity.Error,
+            CappedLines(errors, e => $"{Path.GetFileName(e.SourcePath)}: {MessageText.Render(e, CultureInfo.CurrentUICulture)}"));
     }
 }

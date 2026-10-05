@@ -184,6 +184,36 @@ public sealed class ExtractionRouterTests : IDisposable
         result.Outcome.Should().Be(OperationOutcome.Failed, "an error from either engine fails the merged result");
     }
 
+    // T-F280: a warning from either engine survives the merge, whatever the other engine reports.
+    [Fact]
+    public async Task ExtractAsync_MixedSelection_KeepsWarningsNextToTheOtherEnginesError()
+    {
+        string zip = WriteZip("a.zip");
+        string tar = WriteTar("b.tar");
+        var zipService = new FakeArchiveService
+        {
+            ExtractResult = new ArchiveResult
+            {
+                CreatedFiles = ["zip-out"],
+                Warnings = [new ArchiveWarning { SourcePath = zip, Message = "zip warning" }],
+            }
+        };
+        var tarService = new FakeTarService
+        {
+            ExtractResult = new ArchiveResult
+            {
+                Errors = [new ArchiveError { SourcePath = tar, Message = "tar error" }],
+                Warnings = [new ArchiveWarning { SourcePath = tar, Message = "tar warning" }],
+            }
+        };
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
+
+        ArchiveResult result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path });
+
+        result.Warnings.Select(w => w.Message).Should().Equal("zip warning", "tar warning");
+        result.Outcome.Should().Be(OperationOutcome.Failed);
+    }
+
     // T-F306: a mixed selection is one climb. ZIP runs first and tar second, each in its own
     // slice of the percent, sized by the archives' sizes on disk; tar's bytes continue from where
     // ZIP's ended, so neither the bar nor the byte count ever goes back. (T-F142 had left tar with

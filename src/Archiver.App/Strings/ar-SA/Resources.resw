@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>تم تخطيه</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>التحذيرات</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>أرشيف مشبوه</value>
   </data>

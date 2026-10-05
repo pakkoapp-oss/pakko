@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Παραλείφθηκαν</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Προειδοποιήσεις</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Ύποπτο αρχείο συμπίεσης</value>
   </data>

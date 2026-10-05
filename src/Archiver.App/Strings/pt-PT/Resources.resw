@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Ignorados</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Avisos</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Arquivo suspeito</value>
   </data>

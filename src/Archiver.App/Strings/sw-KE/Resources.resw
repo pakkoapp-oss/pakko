@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Zilizorukwa</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Maonyo</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Kumbukumbu ya kutiliwa shaka</value>
   </data>

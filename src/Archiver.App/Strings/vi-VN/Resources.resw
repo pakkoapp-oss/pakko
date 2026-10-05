@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Đã bỏ qua</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Cảnh báo</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Tệp nén đáng ngờ</value>
   </data>

@@ -17,6 +17,9 @@ internal static class CoreMessages
     internal static ArchiveError Error(string sourcePath, MessageCode code, params object[] arguments) =>
         Error(sourcePath, Text(code, arguments));
 
+    internal static ArchiveWarning Warning(string sourcePath, CoreText text) =>
+        new() { SourcePath = sourcePath, Message = text.English, Text = text };
+
     internal static SkippedFile Skip(string path, CoreText text) =>
         new() { Path = path, Reason = text.English, Text = text };
 

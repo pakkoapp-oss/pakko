@@ -432,6 +432,33 @@ public sealed class DialogService : IDialogService
             }
         }
 
+        // T-F280: shown whatever the outcome - a warning never replaces the errors or the skips.
+        if (result.Warnings.Count > 0)
+        {
+            panel.Children.Add(new TextBlock
+            {
+                Text = $"\u26A0 {_res.GetString("WarningSectionHeader")} ({result.Warnings.Count})",
+                FontWeight = FontWeights.SemiBold
+            });
+
+            foreach (ArchiveWarning warning in result.Warnings)
+            {
+                var itemPanel = new StackPanel { Margin = new Thickness(12, 0, 0, 4) };
+                itemPanel.Children.Add(new TextBlock
+                {
+                    Text = Path.GetFileName(warning.SourcePath),
+                    FontWeight = FontWeights.SemiBold
+                });
+                itemPanel.Children.Add(new TextBlock
+                {
+                    Text = CoreMessageText.Of(warning),
+                    TextWrapping = TextWrapping.Wrap,
+                    Opacity = 0.7
+                });
+                panel.Children.Add(itemPanel);
+            }
+        }
+
         var dialog = new ContentDialog
         {
             Title = _res.GetString("ErrorDialogTitle"),

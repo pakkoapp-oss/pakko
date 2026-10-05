@@ -9,6 +9,10 @@ public sealed record ArchiveResult
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
 
+    /// <summary>What the user should know although everything asked was done (T-F280). A warning
+    /// never fails the operation and never makes a source undeletable.</summary>
+    public IReadOnlyList<ArchiveWarning> Warnings { get; init; } = [];
+
     /// <summary>One entry per source the engine finished looking at (T-F260). A source with no
     /// entry here was not processed — the list is fail-closed by construction.</summary>
     public IReadOnlyList<SourceResult> Sources { get; init; } = [];
@@ -19,7 +23,8 @@ public sealed record ArchiveResult
         Sources.Where(s => s.Outcome == SourceOutcome.Completed).Select(s => s.Path);
 
     /// <summary>What the operation achieved (T-F260): errors win, then whether anything at all was
-    /// done — an output was created or a source was processed — decides between skips and nothing.</summary>
+    /// done — an output was created or a source was processed — decides between skips and nothing.
+    /// Warnings only tell a clean run from one with something to show (T-F280).</summary>
     public OperationOutcome Outcome
     {
         get
@@ -27,7 +32,7 @@ public sealed record ArchiveResult
             if (Errors.Count > 0)
                 return OperationOutcome.Failed;
             if (SkippedFiles.Count == 0)
-                return OperationOutcome.Completed;
+                return Warnings.Count > 0 ? OperationOutcome.CompletedWithWarnings : OperationOutcome.Completed;
             bool anythingDone = CreatedFiles.Count > 0 || Sources.Any(s => s.Outcome != SourceOutcome.NotProcessed);
             return anythingDone ? OperationOutcome.CompletedWithSkips : OperationOutcome.NothingDone;
         }

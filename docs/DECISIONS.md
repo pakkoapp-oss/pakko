@@ -11085,3 +11085,51 @@ plain `net10.0-windows` without the WinRT projection, and moving its target fram
 T-F128 trap (the framework name is written into `Content Include` paths and `Deploy.ps1`). One
 registry read in each process keeps the two on the same rule. Cost: the value is undocumented, and
 the per-app language override is not seen. A missing value falls back to the display language.
+
+---
+
+## T-F280 — the warning channel, and the extraction warning that waited for it (2026-10-05)
+
+`ArchiveResult.Warnings` (`ArchiveWarning`: source path, English message, `CoreText`) holds what the
+user should know about an operation that did everything it was asked. First use: extraction of a
+ZIP whose local file headers disagree with its central directory (the user's decision of
+2026-09-30: Test reports an error, extraction carries on and warns).
+
+- **A new outcome, `CompletedWithWarnings`, instead of a check each frontend adds.** `Completed`
+  keeps meaning "nothing to tell the user". Every place that already asks `Outcome == Completed`
+  (the App's summary dialog, Shell's result message, the CLI's exit code) shows the warning without
+  remembering to; a frontend that forgets cannot report a warned run as a clean one. Each `switch`
+  over the outcome names the new value, and each site has a test, because a `_ =>` arm gives no
+  compiler check (T-F157).
+- **What a warning does not change:** `Success`, the archive's `SourceOutcome` (it stays deletable
+  by "Delete after operation"), opening the destination folder. With skips the outcome stays
+  `CompletedWithSkips`, with errors `Failed`; the warnings are still listed, under them.
+- **The same message code as Test** (`LocalHeaderMismatch`). Its text is true for both, it exists
+  in 37 locales, and one helper (`DescribeLocalHeaderMismatch`) builds it for both, so Test and
+  Extract cannot count differently. One warning per archive, like Test's one error.
+- **Only when something was extracted.** If nothing came out, the errors or skips say why; a
+  header warning on top would be noise.
+- **`pakko`: exit code 1.** `docs/CLI.md` already called 1 "success with warnings" and 7-Zip
+  returns 1 for a warning. The line is `pakko: warning: <archive>: <text>` on stderr.
+- **Explorer:** the warning lines are the message (severity Warning) with no heading, so no new
+  Shell string. **App:** a third section in the summary dialog (one new string,
+  `WarningSectionHeader`, 37 locales) and the footer's problem count includes warnings. The file
+  preview and the drill into a nested archive gate on `Success` and show no warning.
+- **Cost.** The check is one more pass over the local headers: 0.07-0.2 s for 100,000 entries on
+  this machine, against 240 s to extract them. No reason to fold it into the per-entry reads.
+- **For wave 2:** T-F325 (the archive landed at another name) fits the same list; whether that
+  should also exit 1 is decided there.
+
+## Wave 1 after v1.7.0 — smaller decisions (2026-10-05)
+
+- **T-F333's size messages follow T-F297, not the wave plan's "37 translations".** They are error
+  details of the same kind as `ContentCrcMismatch` (they appear inside "Entry '{0}': {1}"), so:
+  English everywhere, Ukrainian in front for uk-UA only. `EntryDataTruncated` joined them (a third
+  bare text on the same path).
+- **T-F316: the walkers skip by owner tag, not by a list of paths.** `TempOwner.IsOwnBelow` leaves
+  out whatever this process named below the source root. One check covers both ZIP writers, both
+  modes, the chunk folder and the sibling archives of a Separate-archives run, with no new
+  parameters. tar.exe walks folders itself and gets `--exclude <temp file name>`.
+- **T-F337: an independent reader in the test suite.** The byte-level check uses BCL primitives
+  only; its counter-starts-at-0 mutant sits in `AesCtrKeystream`, which Pakko's reader shares, so a
+  round trip keeps passing on it.

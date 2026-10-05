@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>छोड़े गए</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>चेतावनियां</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>संदिग्ध संग्रह</value>
   </data>

@@ -61,6 +61,18 @@ public sealed partial class CoreMessageSourceGuardTests
         error.Message.Should().Be("File has ZIP signature but appears corrupted or incomplete.");
     }
 
+    // T-F280: the guard above reads ArchiveWarning's Message like every other message field.
+    [Fact]
+    public void Warning_SetsMessageFromTheSameText()
+    {
+        ArchiveWarning warning = CoreMessages.Warning("a.zip", CoreMessages.Text(MessageCode.LocalHeaderMismatch, "2", "b.txt"));
+
+        warning.SourcePath.Should().Be("a.zip");
+        warning.Text!.Code.Should().Be(MessageCode.LocalHeaderMismatch);
+        warning.Message.Should().Be(warning.Text.English);
+        MessageAssignment().IsMatch("new ArchiveWarning { SourcePath = p, Message = \"bare\" }").Should().BeTrue();
+    }
+
     [Fact]
     public void FromException_KeepsCoreCodeAndWrapsForeignText()
     {

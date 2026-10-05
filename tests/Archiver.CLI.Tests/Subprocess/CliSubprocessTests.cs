@@ -730,6 +730,54 @@ public sealed class CliSubprocessTests
         File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("hello world");
     }
 
+    // --- x: warnings (T-F280) ---
+
+    // b.txt's local header is renamed to x.txt; the central directory still says b.txt.
+    private static string ZipWithALocalNameThatDisagrees(string scratchDir)
+    {
+        string zipPath = Path.Combine(scratchDir, "tampered.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            using var writer = new StreamWriter(archive.CreateEntry("b.txt").Open());
+            writer.Write("bravo");
+        }
+        byte[] bytes = File.ReadAllBytes(zipPath);
+        int local = bytes.AsSpan().IndexOf("PK\u0003\u0004"u8);
+        bytes[local + 30] = (byte)'x';
+        File.WriteAllBytes(zipPath, bytes);
+        return zipPath;
+    }
+
+    [Fact]
+    public void Extract_LocalHeadersDisagreeWithCentralDirectory_ExtractsWarnsAndExitsOne()
+    {
+        string zipPath = ZipWithALocalNameThatDisagrees(CliFixtureFiles.CreateScratchDir());
+        string destDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", $"-o{destDir}", zipPath);
+
+        exitCode.Should().Be(1, "7-Zip's code for a warning; nothing failed and nothing was skipped");
+        stdErr.Should().Contain("pakko: warning: tampered.zip: Entries whose local header does not match the central directory: 1 (first: 'b.txt').");
+        stdErr.Should().NotContain("pakko: error:").And.NotContain("pakko: skipped:");
+        File.ReadAllText(Path.Combine(destDir, "b.txt")).Should().Be("bravo");
+        File.Exists(Path.Combine(destDir, "x.txt")).Should().BeFalse();
+    }
+
+    // A failed archive next to a warned one: both lines, and the error decides the exit code.
+    [Fact]
+    public void Extract_OneArchiveWarnsAndOneFails_PrintsBothAndExitsTwo()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string zipPath = ZipWithALocalNameThatDisagrees(scratchDir);
+        string missing = Path.Combine(scratchDir, "missing.zip");
+        string destDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", $"-o{destDir}", zipPath, missing);
+
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("pakko: error:").And.Contain("pakko: warning: tampered.zip:");
+    }
+
     private static (int ExitCode, string StdOut, string StdErr) RunTarExe(params string[] args)
     {
         var startInfo = new System.Diagnostics.ProcessStartInfo(@"C:\Windows\System32\tar.exe")

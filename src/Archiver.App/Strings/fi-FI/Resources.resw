@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>Ohitettu</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>Varoitukset</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>Epäilyttävä arkisto</value>
   </data>

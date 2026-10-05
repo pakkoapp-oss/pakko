@@ -61,6 +61,39 @@ public sealed class OutcomeAndEncryptionSummaryTests
         line.TextArgs.Should().Equal(2);
     }
 
+    // T-F280: a warning is something to show, so the line offers Details instead of plain success.
+    [Fact]
+    public void Outcome_OnlyAWarning_IsAProblemLineWithDetails()
+    {
+        var result = new ArchiveResult
+        {
+            CreatedFiles = [@"C:\out\a"],
+            Warnings = [CoreMessages.Warning("a.zip", CoreMessages.Text(MessageCode.LocalHeaderMismatch, "1", "b.txt"))],
+        };
+
+        var line = OutcomeLine.From(result, TimeSpan.FromSeconds(1), extract: true, Dest);
+
+        line.Outcome.Should().Be(OperationOutcome.CompletedWithWarnings);
+        line.ProblemCount.Should().Be(1);
+        line.HasDetails.Should().BeTrue();
+        line.TextKey.Should().Be("OutcomeProblems");
+        line.TextArgs.Should().Equal(1);
+        line.ShowInFolderPath.Should().Be(@"C:\out\a", "the extraction is there to be shown");
+    }
+
+    [Fact]
+    public void Outcome_ErrorSkipAndWarning_CountsAllThree()
+    {
+        var result = new ArchiveResult
+        {
+            Errors = [CoreMessages.Error("x", MessageCode.SourceNotFound, "x")],
+            SkippedFiles = [CoreMessages.Skip("y", MessageCode.SourceNotFound, "y")],
+            Warnings = [CoreMessages.Warning("a.zip", CoreMessages.Text(MessageCode.LocalHeaderMismatch, "1", "b.txt"))],
+        };
+
+        OutcomeLine.From(result, TimeSpan.FromSeconds(1), extract: true, Dest).ProblemCount.Should().Be(3);
+    }
+
     [Fact]
     public void Outcome_SomeSkipped_IsAProblemLineNotSuccess()
     {

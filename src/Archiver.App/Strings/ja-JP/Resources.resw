@@ -213,6 +213,9 @@
   <data name="SkippedSectionHeader" xml:space="preserve">
     <value>スキップ</value>
   </data>
+  <data name="WarningSectionHeader" xml:space="preserve">
+    <value>警告</value>
+  </data>
   <data name="CompressionBombDialogTitle" xml:space="preserve">
     <value>不審なアーカイブ</value>
   </data>

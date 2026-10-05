@@ -582,6 +582,23 @@ a local header whose signature is gone; and reports nothing for every repo fixtu
 archive and Pakko's own writers (Optimal, Fastest, Stored, AES). `ZipHeaderCheckCorpusTests`
 (`Archiver.Core.PerformanceTests`, vendored 7za) — 7-Zip's plain, AES-256 and `-si` archives report
 nothing.
+Extraction half (warning channel): `ZipArchiveServiceExtractHeaderWarningTests` — the same tampered
+archive extracts by the central directory with one `ArchiveWarning` (`Success`, outcome
+`CompletedWithWarnings`, the archive still deletable), a selection warns too, nothing extracted
+means no warning, and the same false-positive corpus as Test extracts with no warning.
+`OperationOutcomeTests` (warnings against errors and skips), `ExtractionRouterTests` (merge keeps
+both engines' warnings), `OperationMessagesWarningTests` in `Archiver.Shell.Tests` (alone, under an
+error, under the skipped list, capped at ten, `Combine`, and a real extraction rendered in
+Ukrainian), two `Subprocess/` tests of `pakko x` (warning line and exit 1; with a failed archive,
+both lines and exit 2), `OutcomeAndEncryptionSummaryTests` (the App's footer line counts warnings).
+Ten mutants killed. The App's summary dialog section has no automated test (WinUI).
+
+**Wave 1 after v1.7.0 (2026-10-05).** `EntryRegionStreamTests` and two cases in
+`VerifyingReadStreamTests`: the size and truncated-entry errors carry their codes (T-F333), also
+checked through `TestAsync`/`ExtractAsync` in `ZipArchiveServicePasswordTests`.
+`ZipArchiveServiceDestinationInsideSourceTests` (four writers x two modes), three tests in
+`TarSandboxedServiceCompressTests` and two in `TempOwnerTests` (`IsOwnBelow`): an archive created
+inside its own source folder holds only the user's files (T-F316).
 
 ---
 

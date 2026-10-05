@@ -254,3 +254,12 @@ Never silently ignore an unrecognized token or switch and proceed as if it wasn'
 ---
 
 See `TASKS.md`'s T-F09 entry for acceptance criteria, test-layer requirements, and current status.
+
+## Warnings (T-F280)
+
+A warning is something to know about a command that still did what was asked. It is one line on
+stderr, `pakko: warning: <archive>: <text>`, and the exit code is **1** (7-Zip's code for a
+warning) unless an error makes it 2. The one warning so far: `x` on a ZIP whose local file
+headers disagree with its central directory. Pakko extracts by the central directory; another
+program may extract other names or data from the same archive. `t` reports the same archive as
+an error (exit 2), as `7z t` does.

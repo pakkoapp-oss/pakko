@@ -392,7 +392,14 @@ flowchart TD
     N2 -- no --> O
     N3 --> O
     N4 --> O["T-F260: one SourceResult per archive — Completed only with no error,<br/>skip or conflict-skip and no selection. ExtractAsync removes a<br/>DestinationFolder it created when nothing was produced (T-F230)"]
+    O --> W{"extractedCount > 0 and local headers<br/>disagree with the central directory? (T-F280)"}
+    W -- yes --> W1["Warnings += one per archive: how many entries, the first one.<br/>Not an error, not a skip: Success and the SourceResult stay as they are"]
+    W -- no --> W2["no warning"]
 ```
+
+**T-F280 (2026-10-05).** Extraction reads by the central directory; when the local headers say
+something else the result carries one `ArchiveWarning` per archive (W/W1). Test reports the same
+finding as an error.
 
 **Fix phase 5 (2026-09-28).** A blocked `zip` is refused per archive before the reader opens it
 (P0/P1, T-F250; `TestAsync` and `ListEntriesAsync` refuse the same way; T-F221: all three report a missing file as `SourceNotFound` first, and listing a file that is not a ZIP gives `NotAnArchiveList`). When nothing was extracted

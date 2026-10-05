@@ -45,6 +45,9 @@ public static class MessageText
     /// <summary>An error's message in <paramref name="culture"/>.</summary>
     public static string Render(ArchiveError error, CultureInfo culture) => Render(error.Text, error.Message, culture);
 
+    /// <summary>A warning's message in <paramref name="culture"/>.</summary>
+    public static string Render(ArchiveWarning warning, CultureInfo culture) => Render(warning.Text, warning.Message, culture);
+
     /// <summary>A skip's reason in <paramref name="culture"/>.</summary>
     public static string Render(SkippedFile skipped, CultureInfo culture) => Render(skipped.Text, skipped.Reason, culture);
 }
