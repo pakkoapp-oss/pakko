@@ -10,6 +10,115 @@ the technical account of any task named here.
 
 ---
 
+## v1.7.0 — 2026-10-05
+
+`pakko` in the terminal right after a Store install (and through winget), extracted files keep
+their dates, and a long list of fixes from the v1.6.0 device campaign: keyboard use of the App,
+the command line's error messages, tar archives with Cyrillic names, and temporary files that a
+sync client or a crash used to leave in the way. The translations were read through in all 36
+non-English languages.
+
+### New
+
+- **T-F317** — `pakko` works in any terminal (cmd, PowerShell, Windows Terminal) as soon as Pakko
+  is installed from the Microsoft Store: the package now carries the command-line program and a
+  `pakko` command alias, sharing the app's .NET runtime (about 300 KB more). `pakko -v` names the
+  installed package. The standalone command-line zip can also be installed with
+  `winget install pakko-cli` (once the winget catalog accepts the package) — no manual PATH edit.
+- **T-F298** — extracting a ZIP or tar-family archive restores every file's and folder's
+  modified date from the archive, as 7-Zip does (NTFS or Unix time when the ZIP has one, else the
+  DOS time). Earlier versions set the time of extraction.
+- **T-F280** — Test reports a ZIP whose local headers disagree with its central directory (other
+  programs may extract different names or data from such a file), as `7z t` does.
+- **T-F307** — a tar, 7z or RAR extraction shows "Checking the archive's contents..." while Pakko lists it
+  before extracting, instead of a progress bar that seems stuck at 0%.
+- **T-F291** — Explorer's folder hash lists the entries it could not read.
+
+### Changed behavior
+
+- **T-F281** — compressing a whole drive names the archive after its letter (`D.zip`), not
+  `archive.zip`.
+- **T-F296 / T-F294 / T-F293** — `pakko` checks the meaning of its switches before it starts:
+  `-ttar` with a `.zip` name, or a switch PowerShell split in two (`-ttar.gz` unquoted becomes
+  `-ttar` `.gz`), is refused with the fix spelled out (exit 7); dot-free aliases such as `-ttgz`
+  avoid the quoting. Hints are keyed on the cause, so a CRC failure no longer suggests `-aoa`.
+- **T-F297** — an error that comes from Windows keeps its English text and code
+  (`... (0x80070005)`) in every language, so it can be searched for; the Ukrainian interface adds
+  a translation in front of it.
+- **T-F301** — a password applied to the remaining archives that does not fit the next one says
+  so, instead of reading as "no password given".
+
+- **T-F330** — Explorer's menu and the operation window take the first language of your Windows
+  language list that Pakko has, as the main window already did. Before, they followed the
+  Windows display language, so a machine with an English display language and Ukrainian first
+  in the list showed a Ukrainian app and an English menu. `pakko` stays English.
+- **T-F323** — two messages give the count after a colon instead of before a noun ("Entries
+  whose local header does not match the central directory: 1 (first: ...)", "More copies with
+  this name were not extracted (2): ..."), so that every language can say them correctly. This
+  changes `pakko`'s output in these two cases; a script that matches the old text needs
+  updating.
+
+### Fixed
+
+- **T-F328 / T-F329** — about 600 translated strings corrected across the 36 non-English
+  languages: ten that meant something else (Spanish and Greek said "one file" for "one
+  archive"), and one word per action (extract, compress, test, scan) in the main window,
+  Explorer's menu and the messages, where the three used to differ.
+- **T-F299** — "Fastest" compression (the App's default, `pakko a -mx=1`) no longer makes
+  already-compressed files about 5% larger: an entry that compression would grow is stored as is.
+  This was a known issue of v1.6.0.
+- **T-F310** — a gzip-compressed GNU tar with Cyrillic names in code page 866 lists and extracts
+  with the right names.
+- **T-F284** — extracting selected entries of a tar archive no longer treats names with `[`, `*`
+  or `?` as patterns (`a[1].txt` used to extract `a1.txt`).
+- **T-F312 / T-F263** — a temporary file left by a killed run, or held by Google Drive or a
+  backup program, no longer makes the next archive creation fail; each run writes its own
+  temporary file, and leftovers of dead runs are swept. Overwrite keeps the old archive until the
+  new one is complete.
+- **T-F286 / T-F309** — a crashed tar creation no longer leaves a link to your folder in `%TEMP%`;
+  a refused or cancelled extraction leaves no empty destination folder behind.
+- **T-F306** — extracting a mix of ZIP and tar-family archives in the App shows one progress bar
+  across both.
+- **T-F236** — removing a large folder from the App's list stops measuring its size at once.
+- **T-F308 / T-F304** — the App works from the keyboard: Enter and Backspace in the archive view,
+  Delete and Shift+F10 in the list, Tab through the footer in screen order, focus back on "About"
+  after its dialog; two controls gained screen-reader names.
+- **T-F220 / T-F303 / T-F302 / T-F282** — smaller App fixes: the conflict dialog shows both
+  files' size and date and can cancel the whole operation; the sorted column shows its direction;
+  speed and time left follow the interface language; files moved to the Recycle Bin leave the
+  list; the option cards scroll instead of being cut off in a low window.
+- **T-F295** — console polish: Ctrl+C prints its message on a clean line, the password prompt
+  says the input is masked, the overwrite prompt shows both files' size and date.
+
+### Known issues
+
+- **T-F320** — a command run from the Store alias that creates a *new folder directly under*
+  `%LOCALAPPDATA%` or `%APPDATA%` (e.g. `pakko x a.zip -o%LOCALAPPDATA%\New`) writes into the
+  package's private copy of that folder, which other programs do not see. Existing folders,
+  their subfolders, `%TEMP%` and every other location are not affected; the standalone zip is not
+  affected.
+- **T-F322** — for a password-protected 7z or RAR archive, `pakko` suggests `-p`, but Pakko cannot
+  decrypt 7z or RAR archives at all (only ZIP).
+- **T-F315** — Explorer's operation window sometimes shows all black until it is clicked.
+- **T-F254** — the Explorer menu and Explorer's dialogs for a regional Windows language
+  (e.g. German (Austria), Chinese (China)) are fixed in code and covered by tests, but were not
+  checked on such a Windows; the main window was checked.
+- **T-F330** — the language a user sets for Pakko alone in Windows 11 Settings is followed by the
+  main window, but not by Explorer's menu or the operation window.
+
+### Under the hood
+
+- **T-F329** — a glossary of ten terms per language, checked by tests against every translated
+  string.
+- **T-F331 / T-F332** — the Microsoft Store listing text is kept in the repository
+  (`docs/store-listing`, 37 languages) and checked by tests; the listing gains Croatian, Serbian
+  (Latin), Slovenian, Urdu and Vietnamese.
+- **T-F288** — the last two COM interfaces moved to source-generated COM (`GeneratedComInterface`).
+- **T-F292 / T-F111 / T-F112** — the main window's mode diagram is redrawn and checked by tests,
+  and the Archive Browser's "Up" decision moved into a tested class.
+
+---
+
 ## v1.6.0 — 2026-09-30
 
 A redesigned main window, a Pakko window for Explorer's commands, messages in all 37 languages, a

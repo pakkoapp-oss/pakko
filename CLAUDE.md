@@ -374,9 +374,9 @@ messages, 7-Zip naming), T-F198 items 1 and 7. See `docs/DECISIONS.md`'s fix pha
 footer with the primary action rightmost ("Compress to {format}"), inline encryption password,
 browse badge/Test/Close archive, footer result line (T-F211); every App key in 37 locales
 (`AppResourceKeysTests`). Structure: `docs/XAML.md`; decisions: `docs/DECISIONS.md`'s wave 4 entry.
-**v1.6.0** released 2026-09-30 (tag on 61376bf; G1-G7 in `docs/TASKS.md`'s batch index). The Store
-serves the same code as **1.6.0.0 (x64)** and **1.6.1.0 (ARM64)**, smoke-checked 2026-10-01; the
-next Store upload is the combined bundle, above 1.6.1.0 (see `docs/DECISIONS.md`).
+**v1.7.0** release commit 2026-10-05 (what shipped: `CHANGELOG.md`; v1.6.0 was tagged 2026-09-30).
+The Store serves v1.6.0 as **1.6.0.0 (x64)** and **1.6.1.0 (ARM64)**; the next Store upload is the
+combined bundle **1.7.0.0** (see `docs/DECISIONS.md`).
 
 ## Roadmap Summary
 
