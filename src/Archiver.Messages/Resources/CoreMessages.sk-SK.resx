@@ -154,7 +154,7 @@
     <value>Položka „{0}“ používa nepodporovanú metódu kompresie so šifrovaním.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Archív uvádza {0} bajtov po rozbalení, ale v cieli je voľných len {1} bajtov. Extrakcia bola zablokovaná.</value>
+    <value>Archív uvádza {0} bajtov po extrakcii, ale v cieli je voľných len {1} bajtov. Extrakcia bola zablokovaná.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
     <value>Podozrivý kompresný pomer ({0}:1, uvedených {1} bajtov). Extrakcia bola preventívne odmietnutá kvôli ochrane pred bombami ZIP.</value>
@@ -202,7 +202,7 @@
     <value>Archív obsahuje symbolické prepojenie, pevné prepojenie, zariadenie alebo inú špeciálnu položku a nie je možné ho bezpečne extrahovať.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Ďalších {0} kópií s týmto názvom nebolo extrahovaných: z tohto archívu možno získať iba prvú a poslednú kópiu.</value>
+    <value>Ďalšie kópie s týmto názvom neboli extrahované ({0}): z tohto archívu možno získať iba prvú a poslednú kópiu.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Iná vybratá položka má rovnaký názov a tento priečinok sa nepodarilo pridať pod novým názvom. Premenujte jednu z nich a skúste to znova.</value>
@@ -274,6 +274,6 @@
     <value>Položka je väčšia ako {0} MiB a nebola skontrolovaná.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} položiek má miestnu hlavičku, ktorá nezodpovedá centrálnemu adresáru (prvá: „{1}“). Iné programy môžu z tohto archívu rozbaliť iné názvy alebo údaje.</value>
+    <value>Položky, ktorých miestna hlavička nezodpovedá centrálnemu adresáru: {0} (prvá: „{1}“). Iné programy môžu z tohto archívu extrahovať iné názvy alebo údaje.</value>
   </data>
 </root>

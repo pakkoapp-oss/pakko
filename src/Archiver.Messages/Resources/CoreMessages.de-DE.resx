@@ -202,7 +202,7 @@
     <value>Das Archiv enthält einen symbolischen Link, einen Hardlink, ein Gerät oder einen anderen Sondereintrag und kann nicht sicher extrahiert werden.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>{0} weitere Kopien mit diesem Namen wurden nicht extrahiert: Aus diesem Archiv können nur die erste und die letzte Kopie entnommen werden.</value>
+    <value>Weitere Kopien mit diesem Namen wurden nicht extrahiert ({0}): Aus diesem Archiv können nur die erste und die letzte Kopie entnommen werden.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Ein anderes ausgewähltes Element hat denselben Namen, und dieser Ordner konnte nicht unter einem neuen Namen hinzugefügt werden. Benennen Sie eines davon um und versuchen Sie es erneut.</value>
@@ -274,6 +274,6 @@
     <value>Der Eintrag ist größer als {0} MiB und wurde nicht überprüft.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>Bei {0} Einträgen stimmt der lokale Header nicht mit dem zentralen Verzeichnis überein (erster: „{1}“). Andere Programme extrahieren aus diesem Archiv möglicherweise andere Namen oder Daten.</value>
+    <value>Einträge, deren lokaler Header nicht mit dem zentralen Verzeichnis übereinstimmt: {0} (erster: „{1}“). Andere Programme extrahieren aus diesem Archiv möglicherweise andere Namen oder Daten.</value>
   </data>
 </root>

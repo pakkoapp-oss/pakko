@@ -20,6 +20,7 @@
   </data>
   <data name="WindowItemOfCount" xml:space="preserve">
     <value>Archive {0} of {1}  ·  {2}</value>
+    <comment>{0} is the number of the archive being processed, {1} how many there are, {2} its file name.</comment>
   </data>
   <data name="WindowExistingFile" xml:space="preserve">
     <value>Existing file</value>
@@ -32,6 +33,7 @@
   </data>
   <data name="WindowModified" xml:space="preserve">
     <value>modified {0}</value>
+    <comment>Lower-case, in the conflict view under a file name. {0} is the file's date and time.</comment>
   </data>
   <data name="WindowPasswordLabel" xml:space="preserve">
     <value>Password</value>
@@ -46,22 +48,26 @@
     <value>Extracting: {0}</value>
   </data>
   <data name="TitleExtractingMany" xml:space="preserve">
-    <value>Extracting {0} archives</value>
+    <value>Extracting archives: {0}</value>
+    <comment>Title of Explorer's operation window. {0} is a count. Keep it after a colon: no noun can agree with a number inside a template.</comment>
   </data>
   <data name="TitleTesting" xml:space="preserve">
     <value>Testing: {0}</value>
   </data>
   <data name="TitleTestingMany" xml:space="preserve">
-    <value>Testing {0} archives</value>
+    <value>Testing archives: {0}</value>
+    <comment>Title of Explorer's operation window. {0} is a count. Keep it after a colon: no noun can agree with a number inside a template.</comment>
   </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>Scanning: {0}</value>
   </data>
   <data name="TitleScanningMany" xml:space="preserve">
-    <value>Scanning {0} archives</value>
+    <value>Scanning archives: {0}</value>
+    <comment>Title of Explorer's operation window. {0} is a count. Keep it after a colon: no noun can agree with a number inside a template.</comment>
   </data>
   <data name="TitleHashMany" xml:space="preserve">
-    <value>{0}: {1} files</value>
+    <value>{0} (files: {1})</value>
+    <comment>Title of Explorer's operation window. {0} is the algorithm, CRC-32 or SHA-256; {1} is the number of files.</comment>
   </data>
   <data name="UnitB" xml:space="preserve">
     <value>{0} B</value>
@@ -83,6 +89,7 @@
   </data>
   <data name="BombMessage" xml:space="preserve">
     <value>This archive claims to contain {0} of data, a compression ratio of {1}:1. This is unusually high and may indicate a decompression bomb. Extract anyway?</value>
+    <comment>{0} is a size with its unit, for example 12 GB; {1} is the compression ratio as a whole number.</comment>
   </data>
   <data name="BombExtract" xml:space="preserve">
     <value>Extract</value>

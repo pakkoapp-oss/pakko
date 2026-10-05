@@ -197,10 +197,10 @@
     <value>Inakamilisha...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Itatoa kumbukumbu {0} kwenye folda iliyo hapo juu</value>
+    <value>Itatoa kwenye folda iliyo hapo juu — kumbukumbu: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Itabana vitu {0} kwenye folda iliyo hapo juu</value>
+    <value>Itabana kwenye folda iliyo hapo juu — vitu: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Inakagua yaliyomo kwenye kumbukumbu...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Kumbukumbu ya ZIP ya Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Kumbukumbu ya Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Programu ya kisasa ya kubana faili za ZIP kwa Windows</value>
   </data>
 </root>

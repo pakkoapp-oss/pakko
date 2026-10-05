@@ -197,10 +197,10 @@
     <value>Viimeistellään...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Puretaan {0} arkisto(a) yllä olevaan kansioon</value>
+    <value>Puretaan yllä olevaan kansioon — arkistoja: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Pakataan {0} kohde(tta) yllä olevaan kansioon</value>
+    <value>Pakataan yllä olevaan kansioon — kohteita: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Tarkistetaan arkiston sisältöä...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko-ZIP-arkisto</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko-arkisto</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Moderni ZIP-pakkausohjelma Windowsille</value>
   </data>
 </root>

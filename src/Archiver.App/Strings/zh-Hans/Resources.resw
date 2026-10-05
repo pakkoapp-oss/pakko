@@ -554,4 +554,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>正在检查压缩包内容...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP 压缩包</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko 压缩包</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>适用于 Windows 的现代 ZIP 压缩软件</value>
+  </data>
 </root>

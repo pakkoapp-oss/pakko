@@ -64,7 +64,7 @@ public sealed class ShellCommandsTests : IDisposable
         await RunExtract(Create(ui), command, [first, second]);
 
         FakeOperationSession session = ui.Sessions.Should().ContainSingle().Subject;
-        session.Title.Should().Be("Extracting 2 archives");
+        session.Title.Should().Be("Extracting archives: 2");
         session.Items.Should().Equal(("one.zip", 1, 2), ("two.zip", 2, 2));
         session.Completed.Should().BeTrue();
         session.Disposed.Should().BeTrue();
@@ -169,7 +169,7 @@ public sealed class ShellCommandsTests : IDisposable
 
         OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Warning);
-        message.Title.Should().Be("Testing 2 archives");
+        message.Title.Should().Be("Testing archives: 2");
         message.Text.Should().StartWith("Skipped (1):").And.Contain("notes.tar.gz")
             .And.EndWith("No errors detected in the archive(s).");
     }
@@ -517,7 +517,7 @@ public sealed class ShellCommandsTests : IDisposable
 
         OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Error);
-        message.Title.Should().Be("Extracting 2 archives");
+        message.Title.Should().Be("Extracting archives: 2");
         message.Text.Should().Contain("broken1.zip").And.Contain("broken2.zip");
     }
 

@@ -197,10 +197,10 @@
     <value>משלים...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>יחולצו {0} ארכיונים לתיקייה שלמעלה</value>
+    <value>החילוץ יתבצע לתיקייה שלמעלה — ארכיונים: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>יידחסו {0} פריטים לתיקייה שלמעלה</value>
+    <value>הדחיסה תתבצע לתיקייה שלמעלה — פריטים: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>בודק את תוכן הארכיון...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>ארכיון ZIP של Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>ארכיון של Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>כלי ארכוב ZIP מודרני ל-Windows</value>
   </data>
 </root>

@@ -274,6 +274,6 @@
     <value>Mục lớn hơn {0} MiB và chưa được quét.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} mục có tiêu đề cục bộ không khớp với thư mục trung tâm (mục đầu tiên: "{1}"). Các chương trình khác có thể giải nén tên hoặc dữ liệu khác từ kho lưu trữ này.</value>
+    <value>{0} mục có tiêu đề cục bộ không khớp với thư mục trung tâm (mục đầu tiên: "{1}"). Các chương trình khác có thể giải nén tên hoặc dữ liệu khác từ tệp nén này.</value>
   </data>
 </root>

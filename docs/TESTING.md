@@ -891,6 +891,10 @@ Ukrainian UI, CI an English one.
   every one of 36 locales translates every code with the same placeholders; nested rendering;
   `UiCulture` table (zh-CN/SG -> zh-Hans, zh-TW -> English, de-AT -> de-DE, English listed first
   wins).
+- T-F329, same project: `LocalizedSources` reads all nine string sources from the files;
+  `GlossaryTests` (one word per concept per locale, from `Glossary.tsv`), `SharedStringTests`
+  (one English string, one translation), `CountTemplateTests` (no count before a noun in
+  English UI text).
 - `OperationOutcomeTests` (Core): each `OperationOutcome` from real ZIP/router runs, including a Test
   that read nothing (T-F274). Shell `OperationMessagesTests.ForTestResult_*` and
   `ShellCommandsTests.Test_NothingTested_DoesNotClaimNoErrors` (red before the fix).

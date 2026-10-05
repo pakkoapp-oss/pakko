@@ -202,7 +202,7 @@
     <value>Arhiva conține o legătură simbolică, o legătură fizică, un dispozitiv sau alt element special și nu poate fi extrasă în siguranță.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Încă {0} copii cu acest nume nu au fost extrase: din această arhivă se pot lua doar prima și ultima copie.</value>
+    <value>Alte copii cu acest nume nu au fost extrase ({0}): din această arhivă se pot lua doar prima și ultima copie.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Un alt element selectat are același nume, iar acest folder nu a putut fi adăugat cu un nume nou. Redenumiți unul dintre ele și încercați din nou.</value>
@@ -274,6 +274,6 @@
     <value>Elementul depășește {0} MiB și nu a fost scanat.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} intrări au un antet local care nu corespunde directorului central (prima: „{1}”). Alte programe pot extrage din această arhivă alte nume sau date.</value>
+    <value>Elemente al căror antet local nu corespunde directorului central: {0} (primul: „{1}”). Alte programe pot extrage din această arhivă alte nume sau date.</value>
   </data>
 </root>

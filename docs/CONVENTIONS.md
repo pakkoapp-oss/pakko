@@ -98,6 +98,11 @@ File.WriteAllBytes(path, data);
   `MessageTemplates` + all 36 translations in `Archiver.Messages/Resources/CoreMessages.*.resx`
   (`MessageTextTests` checks the placeholders). Text Core did not write (an OS or tar.exe message)
   goes in as an argument or `MessageCode.None`, never translated.
+- **T-F329: a count never stands before the thing counted** ("archives: {0}", not "{0} archives"):
+  no template can inflect a noun after a number, and there is no plural engine. A word used for
+  an action must be the one in `tests/Archiver.Messages.Tests/Glossary.tsv`; a string kept in two
+  sources has one translation (`GlossaryTests`, `SharedStringTests`, `CountTemplateTests`). A
+  string whose meaning depends on where it shows gets a `<comment>` in the English file.
 
 ```csharp
 // Correct pattern in ZipArchiveService

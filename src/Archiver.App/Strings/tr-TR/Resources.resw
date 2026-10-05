@@ -554,4 +554,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Arşivin içeriği denetleniyor...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP arşivi</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko arşivi</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Windows için modern ZIP arşivleyicisi</value>
+  </data>
 </root>

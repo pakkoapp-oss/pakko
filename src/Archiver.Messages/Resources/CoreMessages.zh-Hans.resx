@@ -274,6 +274,6 @@
     <value>条目大于 {0} MiB，未扫描。</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} 个条目的本地文件头与中央目录不一致（第一个：“{1}”）。其他程序可能会从此存档中解压出不同的名称或数据。</value>
+    <value>{0} 个条目的本地文件头与中央目录不一致（第一个：“{1}”）。其他程序可能会从此压缩包中解压出不同的名称或数据。</value>
   </data>
 </root>

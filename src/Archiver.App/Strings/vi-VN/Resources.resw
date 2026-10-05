@@ -554,4 +554,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Đang kiểm tra nội dung tệp nén...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Tệp nén ZIP của Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Tệp nén của Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Trình nén ZIP hiện đại cho Windows</value>
+  </data>
 </root>

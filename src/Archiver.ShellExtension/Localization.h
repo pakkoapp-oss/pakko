@@ -17,9 +17,11 @@ enum class StringId
     ExtractHereIntelligent,
     ExtractFolderFallback,
     ExtractFolderMultiFallback,
+    // "{0}" is the folder the archive goes into, named after the archive: Extract to "photos".
     ExtractFolderNamedTemplate,
     CompressDialog,
     ArchiveFallback,
+    // "{0}" is the file name of the archive that will be created: Add to "photos.zip".
     ArchiveNamedTemplate,
     TestArchive,
     // T-F146: "Scan for threats" — plain verb, no ellipsis (same reasoning as TestArchive: never

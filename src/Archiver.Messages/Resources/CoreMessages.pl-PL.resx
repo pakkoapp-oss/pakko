@@ -274,6 +274,6 @@
     <value>Element jest większy niż {0} MiB i nie został przeskanowany.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} wpisów ma nagłówek lokalny niezgodny z katalogiem centralnym (pierwszy: „{1}”). Inne programy mogą wyodrębnić z tego archiwum inne nazwy lub dane.</value>
+    <value>Elementy z nagłówkiem lokalnym niezgodnym z katalogiem centralnym: {0} (pierwszy: „{1}”). Inne programy mogą wypakować z tego archiwum inne nazwy lub dane.</value>
   </data>
 </root>

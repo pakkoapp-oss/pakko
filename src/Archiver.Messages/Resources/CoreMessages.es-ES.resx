@@ -202,7 +202,7 @@
     <value>El archivo comprimido contiene un vínculo simbólico, un vínculo físico, un dispositivo u otra entrada especial y no se puede extraer de forma segura.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>No se extrajeron otras {0} copias con este nombre: de este archivo comprimido solo se pueden sacar la primera y la última copia.</value>
+    <value>No se extrajeron otras copias con este nombre ({0}): de este archivo comprimido solo se pueden sacar la primera y la última copia.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Otro elemento seleccionado tiene el mismo nombre y no se pudo añadir esta carpeta con un nombre nuevo. Cambie el nombre de uno de ellos e inténtelo de nuevo.</value>
@@ -274,6 +274,6 @@
     <value>La entrada supera los {0} MiB y no se analizó.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} entradas tienen un encabezado local que no coincide con el directorio central (la primera: «{1}»). Otros programas pueden extraer nombres o datos distintos de este archivo.</value>
+    <value>Entradas cuyo encabezado local no coincide con el directorio central: {0} (la primera: «{1}»). Otros programas pueden extraer nombres o datos distintos de este archivo comprimido.</value>
   </data>
 </root>

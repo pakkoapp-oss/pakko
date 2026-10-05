@@ -554,4 +554,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Az archívum tartalmának ellenőrzése...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP-archívum</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko-archívum</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Modern ZIP-tömörítő Windowshoz</value>
+  </data>
 </root>

@@ -16,12 +16,14 @@
   <!-- Buttons -->
   <data name="ArchiveButtonLabel" xml:space="preserve">
     <value>Compress to {0}</value>
+    <comment>The main button. {0} is a format name such as ZIP or TAR.GZ.</comment>
   </data>
   <data name="ExtractButtonLabel" xml:space="preserve">
     <value>Extract</value>
   </data>
   <data name="ClearButton.Content" xml:space="preserve">
     <value>Clear</value>
+    <comment>Button above the file list. Empties the list of items waiting to be compressed or extracted; nothing is deleted from disk.</comment>
   </data>
   <data name="AddFilesButton.Content" xml:space="preserve">
     <value>Add files</value>
@@ -31,6 +33,7 @@
   </data>
   <data name="HashButton.Content" xml:space="preserve">
     <value>Hash...</value>
+    <comment>Button that opens the checksum dialog (CRC-32, SHA-256). The same word as the Hash item of Explorer's menu.</comment>
   </data>
   <data name="AboutButton.Content" xml:space="preserve">
     <value>About</value>
@@ -70,6 +73,7 @@
   </data>
   <data name="PackedColumnHeader.Text" xml:space="preserve">
     <value>Packed</value>
+    <comment>Column header in the archive browser: the compressed size of an entry, next to Size (its real size).</comment>
   </data>
   <data name="BrowseCrcColumnHeader.Text" xml:space="preserve">
     <value>CRC-32</value>
@@ -90,6 +94,7 @@
   </data>
   <data name="RemoveMenuItem.Text" xml:space="preserve">
     <value>Remove from list</value>
+    <comment>Right-click menu of a row in the file list. Takes the row out of the list; the file itself stays on disk.</comment>
   </data>
 
   <!-- Archive options -->
@@ -128,15 +133,19 @@
   </data>
   <data name="CompressionFastItem.Content" xml:space="preserve">
     <value>Fast</value>
+    <comment>Compression level in the Compression drop-down; an adjective describing the compression, not an adverb.</comment>
   </data>
   <data name="CompressionNormalItem.Content" xml:space="preserve">
     <value>Normal</value>
+    <comment>Compression level in the Compression drop-down; an adjective describing the compression, not an adverb.</comment>
   </data>
   <data name="CompressionBestItem.Content" xml:space="preserve">
     <value>Best</value>
+    <comment>Compression level in the Compression drop-down; an adjective describing the compression, not an adverb. Means the strongest compression, not the best quality.</comment>
   </data>
   <data name="CompressionNoneItem.Content" xml:space="preserve">
     <value>None</value>
+    <comment>Compression level in the Compression drop-down; an adjective describing the compression, not an adverb. Files are stored without compression; it does not mean 'nothing'.</comment>
   </data>
   <data name="ConflictOverwriteItem.Content" xml:space="preserve">
     <value>Overwrite</value>
@@ -216,25 +225,31 @@
     <value>"{0}" cannot be safely opened directly. Extract it to a folder next to the archive instead?</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Will extract {0} archive(s) to the folder above</value>
+    <value>Will extract to the folder above — archives: {0}</value>
+    <comment>Footer line shown before the operation starts. {0} is a count. Keep it after a colon: no noun can agree with a number inside a template.</comment>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Will compress {0} item(s) to the folder above</value>
+    <value>Will compress to the folder above — items: {0}</value>
+    <comment>Footer line shown before the operation starts. {0} is a count. Keep it after a colon: no noun can agree with a number inside a template.</comment>
   </data>
   <data name="OutcomeCompressed" xml:space="preserve">
     <value>Compressed in {0} s — archives: {1}</value>
+    <comment>Footer line after a clean run. {0} is whole seconds, {1} the number of archives created.</comment>
   </data>
   <data name="OutcomeExtracted" xml:space="preserve">
     <value>Extracted in {0} s — archives: {1}</value>
+    <comment>Footer line after a clean run. {0} is whole seconds, {1} the number of archives extracted.</comment>
   </data>
   <data name="OutcomeProblems" xml:space="preserve">
     <value>Finished with problems: {0}</value>
+    <comment>Footer line after a run with errors or skipped items. {0} is how many there were.</comment>
   </data>
   <data name="OutcomeNothingDone" xml:space="preserve">
     <value>Nothing was done — skipped: {0}</value>
   </data>
   <data name="BrowseSelectionLine" xml:space="preserve">
     <value>{0} of {1} selected</value>
+    <comment>Footer line in the archive browser. {0} is the number of selected rows, {1} the number of rows in the open folder.</comment>
   </data>
   <data name="OutcomeShowInFolderButton.Content" xml:space="preserve">
     <value>Show in folder</value>
@@ -258,6 +273,7 @@
   </data>
   <data name="AboutTagline" xml:space="preserve">
     <value>Lightweight native Windows archiver</value>
+    <comment>One line under the app name in the About dialog. 'Native' means built on what Windows itself provides, not 'born in Windows'.</comment>
   </data>
   <data name="AboutLicense" xml:space="preserve">
     <value>License: Apache 2.0</value>
@@ -284,6 +300,7 @@
   </data>
   <data name="CompressionBombDialogMessage" xml:space="preserve">
     <value>This archive claims to contain {0} of data, a compression ratio of {1}:1. This is unusually high and may indicate a decompression bomb. Extract anyway?</value>
+    <comment>{0} is a size with its unit, for example 12 GB; {1} is the compression ratio as a whole number.</comment>
   </data>
   <data name="ConflictDialogTitle" xml:space="preserve">
     <value>File already exists</value>
@@ -332,6 +349,7 @@
   </data>
   <data name="ScanThreatDetectedGeneric" xml:space="preserve">
     <value>threat detected</value>
+    <comment>Lower-case. Shown after a file name and a colon when the antivirus reports a threat without a name.</comment>
   </data>
   <data name="ScanThreatSectionHeader" xml:space="preserve">
     <value>Threats detected</value>
@@ -353,9 +371,11 @@
   </data>
   <data name="EncryptPasswordRuleHint" xml:space="preserve">
     <value>Use only English letters, digits, spaces and punctuation, up to {0} characters, so 7-Zip and other ZIP tools can open the archive.</value>
+    <comment>Hint under the password box. {0} is always 99, so the noun takes the form that goes with 99.</comment>
   </data>
   <data name="EncryptPasswordErrorTooLong" xml:space="preserve">
     <value>The password is longer than {0} characters.</value>
+    <comment>Shown under the password box. {0} is always 99, so the noun takes the form that goes with 99.</comment>
   </data>
   <data name="EncryptPasswordErrorMismatch" xml:space="preserve">
     <value>The passwords do not match.</value>
@@ -461,15 +481,19 @@
   </data>
   <data name="ArchiveNamePerItemPlaceholder" xml:space="preserve">
     <value>{0}, ... (one archive per item)</value>
+    <comment>Greyed text in the archive name box in Separate archives mode. {0} is the name of the first archive that will be created.</comment>
   </data>
   <data name="SummaryCompressionFast" xml:space="preserve">
     <value>Fast</value>
+    <comment>The same compression level, shown lower in the collapsed summary of the New archive card.</comment>
   </data>
   <data name="SummaryCompressionNormal" xml:space="preserve">
     <value>Normal</value>
+    <comment>The same compression level, shown lower in the collapsed summary of the New archive card.</comment>
   </data>
   <data name="SummaryCompressionBest" xml:space="preserve">
     <value>Best</value>
+    <comment>The same compression level, shown lower in the collapsed summary of the New archive card.</comment>
   </data>
   <data name="SummaryCompressionNone" xml:space="preserve">
     <value>No compression</value>
@@ -482,6 +506,7 @@
   </data>
   <data name="NewArchiveCollapsedReason" xml:space="preserve">
     <value>collapsed, the list holds only archives</value>
+    <comment>Lower-case fragment added after a dash to the summary of the collapsed New archive card. It says why the card is collapsed: every item in the list is already an archive.</comment>
   </data>
   <data name="ExtractUnavailableHint" xml:space="preserve">
     <value>The list holds no archives, nothing to extract</value>
@@ -500,6 +525,7 @@
   </data>
   <data name="TestResultTitle" xml:space="preserve">
     <value>Test archive</value>
+    <comment>Title of the dialog with the result of Test archive: a noun phrase, where the button of the same English text is a command.</comment>
   </data>
   <data name="TestNoErrorsFound" xml:space="preserve">
     <value>No errors found.</value>
@@ -509,9 +535,11 @@
   </data>
   <data name="BrowseEncryptedUnknownMethod" xml:space="preserve">
     <value>unknown method</value>
+    <comment>Lower-case. Fills {0} of BrowseEncryptedCount when the encryption method is not recognized.</comment>
   </data>
   <data name="BrowseEncryptedCount" xml:space="preserve">
     <value>Encrypted files ({0}): {1} of {2}.</value>
+    <comment>{0} is the encryption method (for example AES-256), {1} the number of encrypted files, {2} the number of files in the archive.</comment>
   </data>
   <data name="BrowseEncryptedPasswordNote" xml:space="preserve">
     <value>Pakko asks for the password when you extract or open a file. File names are not encrypted, and encryption adds a few bytes to every file.</value>
@@ -545,9 +573,11 @@
   </data>
   <data name="RemainingSeconds" xml:space="preserve">
     <value>~{0} sec remaining</value>
+    <comment>Progress line. {0} is whole seconds, below 60.</comment>
   </data>
   <data name="RemainingMinutes" xml:space="preserve">
     <value>~{0} remaining</value>
+    <comment>Progress line. {0} is a time already written as minutes:seconds, for example 3:20.</comment>
   </data>
   <data name="DestinationBrowseButtonName" xml:space="preserve">
     <value>Choose folder</value>
@@ -560,11 +590,24 @@
   </data>
   <data name="ConflictModified" xml:space="preserve">
     <value>modified {0}</value>
+    <comment>Lower-case, in the conflict dialog under a file name. {0} is the file's date and time.</comment>
   </data>
   <data name="ConflictCancelAll" xml:space="preserve">
     <value>Cancel all</value>
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Checking the archive's contents...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP Archive</value>
+    <comment>File type name in Explorer's Type column for .zip files opened by Pakko.</comment>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko Archive</value>
+    <comment>File type name in Explorer's Type column for the other archive formats Pakko opens.</comment>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Modern ZIP archiver for Windows</value>
+    <comment>One-line description of the app that Windows shows next to its name.</comment>
   </data>
 </root>

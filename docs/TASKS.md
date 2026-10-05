@@ -3913,6 +3913,9 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   puts `{0}` before a noun, which no resx template can inflect. Fix direction: count after a
   colon ("Entries whose local header differs from the central directory: {0} (first: '{1}')"), in
   all 37 locales; grep `MessageTemplates` for other `{0} <noun>` shapes.
+- **2026-10-05:** T-F329 rewrote the 36 translations of this message and of
+  `TarDuplicateCopiesNotExtracted`. What is left is the English text, which is also the CLI's
+  output: change it only on the user's word.
 - **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-03.
 
 ### T-F324 — Archive Browser lists hidden system folders at a drive root (P3, UX)
@@ -4009,3 +4012,79 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     the menu's "Add to archive…", hu and vi Clear
   - [x] `Archiver.App` builds with the changed `.resw` files
 - **Reported by:** localization audit, 2026-10-05.
+
+### T-F329 — Localization process: glossary, one home for shared strings, counts, translator context (P2)
+
+- [~] **Status:** done except the English text of two Core messages (see Part 3), 2026-10-05.
+  T-F328 fixed about 600 translated values; nearly all came from four gaps around the loading
+  mechanisms, not from the mechanisms themselves. The three mechanisms stay as they are (`.resw`
+  for WinUI, `.resx` for Shell and `Archiver.Messages`, the compiled table in `Localization.cpp`).
+  Decisions: `docs/DECISIONS.md`'s T-F329 entry.
+- **Part 1 — glossary with a test:**
+  - [x] `tests/Archiver.Messages.Tests/Glossary.tsv`: 10 concepts x 37 locales (extract, compress,
+    archive, password, test, scan, hash, skip, entry, folder), each with the key that shows the
+    word and the words T-F328 replaced
+  - [x] `GlossaryTests` reads every source through `LocalizedSources` (App `.resw`, `CoreMessages`,
+    the six Shell `.resx` families, `Localization.cpp`) and fails on a replaced word. Mutation-
+    checked on one `.resw`, one `.resx` and the C++ table. Its first run found 8 leftovers in six
+    locales (`LocalHeaderMismatch`, which T-F328 had skipped, and cs/sk `InsufficientDiskSpace`); fixed
+- **Part 2 — shared strings:**
+  - [x] kept the copies; `SharedStringTests` fails when one English string has two translations
+    in one locale. About 40 groups, all already equal. Mutation-checked on all three kinds of source
+- **Part 3 — counts before nouns:**
+  - [x] English and locales: `OutcomeWillExtract`, `OutcomeWillArchive` (21 locales rewritten; the
+    rest had the colon form or do not inflect after a number), the four `Title...Many` titles of
+    the operation window (locales already had the colon form)
+  - [x] translations only: `TarDuplicateCopiesNotExtracted` (27 locales) and `LocalHeaderMismatch`
+    (30 locales) now put the count after the noun phrase
+  - [ ] the English of those two Core messages still reads "{0} more copies", "{0} entries have":
+    it is `pakko.exe`'s output, which scripts may parse, so changing it is the user's call.
+    T-F323 stays open for exactly this
+  - [x] `CountTemplateTests` for the English UI text; a line in `docs/CONVENTIONS.md`
+  - [ ] not done: the five Core messages with "{0} bytes" (`EntryNameTooLong`,
+    `NotEnoughSpaceToCompress`, `InsufficientDiskSpace`, `ZipBombDeclined`, `TarBombDeclined`). In
+    the inflecting locales the noun still disagrees with some numbers; the same locale-only
+    rewrite would fix it. Left out to keep this change reviewable, not because the form is right
+  - Not changed: "up to {0} characters" and "longer than {0} characters": `{0}` is always 99, the
+    `<comment>` now says so
+- **Part 4 — context for whoever translates:**
+  - [x] `<comment>` on 42 English strings (App, `OperationText`, `ScanMessages`) and on the two
+    menu templates in `Localization.h`: where the string shows and what each `{n}` is
+- **Part 5 — what the manifest showed in English only:**
+  - [x] `Package.appxmanifest` takes the two file-type names and the app description from
+    `ms-resource:` keys (`FileTypeZipName`, `FileTypeArchiveName`, `AppDescription`), translated
+    in 37 locales; `AppResourceKeysTests` checks it and counts a manifest reference as a use
+  - [ ] the dev build was a flat `.msix`; the bundle path (T-F139's failure class) is unproven.
+    After the push: read the packaging job, then `gh workflow run build.yml --ref main` so
+    `build-store-msix` and `bundle-store-msix` build this manifest
+  - [ ] `docs/assets/store/02-main-window-light.png` and its dark and Ukrainian twins show the old
+    English footer line ("Will compress 7 item(s) to the folder above"); retake at the release step
+- **Out of scope:** merging the three mechanisms; converting the two escaped fields of
+  `Localization.cpp` to literal characters; the style points T-F328 left out.
+- **Device check (2026-10-05, dev package 1.6.0.10, agent-driven):** the installed
+  `AppxManifest.xml` keeps the three `ms-resource:` references and lists 37 languages; Explorer's
+  Type column shows "Архів Pakko" for `.tar` (the display language is English, Ukrainian is first
+  in the preferred-language list; the packaged App and the manifest strings follow that list, the
+  Shell helper follows the display language, T-F330); Test on three archives, Extract here on two, Compress, Scan on two and Hash on two files
+  ran through the installed `Archiver.Shell.exe` with the new titles ("Testing archives: 3",
+  "Scanning archives: 2", "SHA-256 (files: 2)") and a Core error line; the main window (fresh
+  build time in the title) queued an archive, showed the footer line and extracted it. Not
+  checked on device: a non-English display language, or any locale other than Ukrainian
+  (T-F328's deferred look).
+- **Acceptance:**
+  - [x] the glossary test and the shared-string test are in the default `dotnet test` run and green
+  - [x] no UI template has a count directly before the thing counted
+  - [ ] the same for the English Core text (user decision, see Part 3)
+  - [x] a file type registered by Pakko shows a localized name in Explorer
+- **Reported by:** localization audit follow-up, 2026-10-05.
+
+### T-F330 — One machine, two languages: the App follows the language list, Explorer's window the display language (P3)
+
+- [ ] **Status:** open. Seen in T-F329's device check (2026-10-05): with English as the Windows
+  display language and Ukrainian first in the preferred-language list, the main window and the
+  file-type names are Ukrainian (packaged resources follow the list), while the operation window
+  and its Core messages are English (`Archiver.Shell` reads `CultureInfo.CurrentUICulture`). Not
+  new in T-F329. Decide which of the two Pakko follows, and make `UiCulture` and the `.resw`
+  lookup agree; check what `Localization.cpp`'s `GetThreadPreferredUILanguages` returns in the
+  same setup.
+- **Reported by:** T-F329 device check, 2026-10-05.

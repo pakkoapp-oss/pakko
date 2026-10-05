@@ -41,7 +41,7 @@
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
         DisplayName="Pakko"
-        Description="Modern ZIP archiver for Windows"
+        Description="ms-resource:AppDescription"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
@@ -54,7 +54,7 @@
             <uap:SupportedFileTypes>
               <uap:FileType>.zip</uap:FileType>
             </uap:SupportedFileTypes>
-            <uap:DisplayName>Pakko ZIP Archive</uap:DisplayName>
+            <uap:DisplayName>ms-resource:FileTypeZipName</uap:DisplayName>
             <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
           </uap:FileTypeAssociation>
         </uap:Extension>
@@ -96,7 +96,7 @@
               <uap:FileType>.asics</uap:FileType>
               <uap:FileType>.bdoc</uap:FileType>
             </uap:SupportedFileTypes>
-            <uap:DisplayName>Pakko Archive</uap:DisplayName>
+            <uap:DisplayName>ms-resource:FileTypeArchiveName</uap:DisplayName>
             <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
           </uap:FileTypeAssociation>
         </uap:Extension>

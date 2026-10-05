@@ -197,10 +197,10 @@
     <value>Slutför...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>{0} arkiv kommer att extraheras till mappen ovan</value>
+    <value>Extraheras till mappen ovan — arkiv: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>{0} objekt kommer att komprimeras till mappen ovan</value>
+    <value>Komprimeras till mappen ovan — objekt: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Kontrollerar arkivets innehåll...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP-arkiv</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko-arkiv</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Modernt ZIP-arkiveringsprogram för Windows</value>
   </data>
 </root>

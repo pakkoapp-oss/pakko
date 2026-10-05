@@ -197,10 +197,10 @@
     <value>Fullfører...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>{0} arkiv vil bli pakket ut til mappen ovenfor</value>
+    <value>Pakkes ut til mappen ovenfor — arkiver: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>{0} element(er) vil bli komprimert til mappen ovenfor</value>
+    <value>Komprimeres til mappen ovenfor — elementer: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Kontrollerer arkivets innhold...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP-arkiv</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko-arkiv</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Moderne ZIP-arkiveringsprogram for Windows</value>
   </data>
 </root>

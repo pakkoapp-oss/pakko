@@ -63,6 +63,7 @@
   </data>
   <data name="ScanThreatDetectedGeneric" xml:space="preserve">
     <value>threat detected</value>
+    <comment>Lower-case. Shown after a file name and a colon when the antivirus reports a threat without a name.</comment>
   </data>
   <data name="ScanAndMoreLine" xml:space="preserve">
     <value>…and {0} more</value>

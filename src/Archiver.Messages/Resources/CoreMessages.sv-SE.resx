@@ -202,7 +202,7 @@
     <value>Arkivet innehåller en symbolisk länk, hård länk, enhet eller annan specialpost och kan inte extraheras säkert.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>{0} fler kopior med det här namnet extraherades inte: bara den första och den sista kopian kan tas ut ur det här arkivet.</value>
+    <value>Fler kopior med det här namnet extraherades inte ({0}): bara den första och den sista kopian kan tas ut ur det här arkivet.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Ett annat markerat objekt har samma namn och den här mappen kunde inte läggas till med ett nytt namn. Byt namn på ett av dem och försök igen.</value>
@@ -274,6 +274,6 @@
     <value>Posten är större än {0} MiB och genomsöktes inte.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} poster har ett lokalt huvud som inte stämmer med den centrala katalogen (första: ”{1}”). Andra program kan extrahera andra namn eller data ur det här arkivet.</value>
+    <value>Poster vars lokala huvud inte stämmer med den centrala katalogen: {0} (första: ”{1}”). Andra program kan extrahera andra namn eller data ur det här arkivet.</value>
   </data>
 </root>

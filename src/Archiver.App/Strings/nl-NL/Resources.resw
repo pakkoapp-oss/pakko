@@ -197,10 +197,10 @@
     <value>Afronden...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Er worden {0} archief(en) uitgepakt naar de map hierboven</value>
+    <value>Wordt uitgepakt naar de map hierboven — archieven: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Er worden {0} item(s) gecomprimeerd naar de map hierboven</value>
+    <value>Wordt gecomprimeerd naar de map hierboven — items: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Inhoud van het archief controleren...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP-archief</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko-archief</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Modern ZIP-archiveerprogramma voor Windows</value>
   </data>
 </root>

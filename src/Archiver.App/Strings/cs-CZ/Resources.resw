@@ -554,4 +554,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Kontrola obsahu archivu...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Archiv ZIP aplikace Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Archiv aplikace Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Moderní archivátor ZIP pro Windows</value>
+  </data>
 </root>

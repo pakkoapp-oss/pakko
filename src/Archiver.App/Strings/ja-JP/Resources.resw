@@ -554,4 +554,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>アーカイブの内容を確認中...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP アーカイブ</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko アーカイブ</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Windows 向けのモダンな ZIP アーカイバー</value>
+  </data>
 </root>

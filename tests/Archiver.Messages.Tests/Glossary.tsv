@@ -1,0 +1,371 @@
+concept	key	locale	term	replaced	except
+extract	App/ExtractButtonLabel	en-US	Extract		
+extract	App/ExtractButtonLabel	ar-SA	استخراج		
+extract	App/ExtractButtonLabel	bg-BG	Извличане	азархив	
+extract	App/ExtractButtonLabel	cs-CZ	Extrahovat	ozbal	
+extract	App/ExtractButtonLabel	da-DK	Udpak		
+extract	App/ExtractButtonLabel	de-DE	Extrahieren		
+extract	App/ExtractButtonLabel	el-GR	Εξαγωγή		
+extract	App/ExtractButtonLabel	es-ES	Extraer		
+extract	App/ExtractButtonLabel	et-EE	Paki lahti	kstrak	
+extract	App/ExtractButtonLabel	fi-FI	Pura		
+extract	App/ExtractButtonLabel	fr-FR	Extraire		
+extract	App/ExtractButtonLabel	he-IL	חילוץ		
+extract	App/ExtractButtonLabel	hi-IN	निकालें		
+extract	App/ExtractButtonLabel	hr-HR	Raspakiraj		
+extract	App/ExtractButtonLabel	hu-HU	Kibontás		
+extract	App/ExtractButtonLabel	id-ID	Ekstrak		
+extract	App/ExtractButtonLabel	it-IT	Estrai		
+extract	App/ExtractButtonLabel	ja-JP	展開		
+extract	App/ExtractButtonLabel	ko-KR	압축 풀기		
+extract	App/ExtractButtonLabel	lt-LT	Išskleisti		
+extract	App/ExtractButtonLabel	lv-LV	Izvilkt	tarhiv	
+extract	App/ExtractButtonLabel	nb-NO	Pakk ut		
+extract	App/ExtractButtonLabel	nl-NL	Uitpakken		
+extract	App/ExtractButtonLabel	pl-PL	Wypakuj	odrębn	
+extract	App/ExtractButtonLabel	pt-PT	Extrair		
+extract	App/ExtractButtonLabel	ro-RO	Extrage		
+extract	App/ExtractButtonLabel	sk-SK	Extrahovať	ozbal;ozbaľ	
+extract	App/ExtractButtonLabel	sl-SI	Razširi		
+extract	App/ExtractButtonLabel	sr-Latn-RS	Raspakuj		
+extract	App/ExtractButtonLabel	sv-SE	Extrahera		
+extract	App/ExtractButtonLabel	sw-KE	Toa		
+extract	App/ExtractButtonLabel	th-TH	แตกไฟล์		
+extract	App/ExtractButtonLabel	tr-TR	Ayıkla	ıkart	
+extract	App/ExtractButtonLabel	uk-UA	Видобути		
+extract	App/ExtractButtonLabel	ur-PK	نکالیں		
+extract	App/ExtractButtonLabel	vi-VN	Giải nén		
+extract	App/ExtractButtonLabel	zh-Hans	解压		
+compress	ShellExt/compressDialog	en-US	Compress		
+compress	ShellExt/compressDialog	ar-SA	ضغط		
+compress	ShellExt/compressDialog	bg-BG	Компресиране		
+compress	ShellExt/compressDialog	cs-CZ	Komprimovat		
+compress	ShellExt/compressDialog	da-DK	Komprimer		
+compress	ShellExt/compressDialog	de-DE	Komprimieren		
+compress	ShellExt/compressDialog	el-GR	Συμπίεση		
+compress	ShellExt/compressDialog	es-ES	Comprimir		
+compress	ShellExt/compressDialog	et-EE	Tihenda		
+compress	ShellExt/compressDialog	fi-FI	Pakkaa		
+compress	ShellExt/compressDialog	fr-FR	Compresser		
+compress	ShellExt/compressDialog	he-IL	דחיסה		
+compress	ShellExt/compressDialog	hi-IN	संपीड़ित करें		
+compress	ShellExt/compressDialog	hr-HR	Komprimiraj	sažim;nesaž	
+compress	ShellExt/compressDialog	hu-HU	Tömörítés		
+compress	ShellExt/compressDialog	id-ID	Kompres		
+compress	ShellExt/compressDialog	it-IT	Comprimi		
+compress	ShellExt/compressDialog	ja-JP	圧縮		
+compress	ShellExt/compressDialog	ko-KR	압축		
+compress	ShellExt/compressDialog	lt-LT	Suspausti	glaud	
+compress	ShellExt/compressDialog	lv-LV	Saspiest		
+compress	ShellExt/compressDialog	nb-NO	Komprimer		
+compress	ShellExt/compressDialog	nl-NL	Comprimeren		
+compress	ShellExt/compressDialog	pl-PL	Kompresuj		
+compress	ShellExt/compressDialog	pt-PT	Comprimir		
+compress	ShellExt/compressDialog	ro-RO	Comprimă		
+compress	ShellExt/compressDialog	sk-SK	Komprimovať		
+compress	ShellExt/compressDialog	sl-SI	Stisni		
+compress	ShellExt/compressDialog	sr-Latn-RS	Kompresuj	komprim	
+compress	ShellExt/compressDialog	sv-SE	Komprimera		
+compress	ShellExt/compressDialog	sw-KE	Bana		
+compress	ShellExt/compressDialog	th-TH	บีบอัด		
+compress	ShellExt/compressDialog	tr-TR	Sıkıştır		
+compress	ShellExt/compressDialog	uk-UA	Стиснути		
+compress	ShellExt/compressDialog	ur-PK	کمپریس کریں		
+compress	ShellExt/compressDialog	vi-VN	Nén		
+compress	ShellExt/compressDialog	zh-Hans	压缩		
+archive	App/OneArchiveRadio.Content	en-US	One archive		
+archive	App/OneArchiveRadio.Content	ar-SA	أرشيف واحد		
+archive	App/OneArchiveRadio.Content	bg-BG	Един архив		
+archive	App/OneArchiveRadio.Content	cs-CZ	Jeden archiv		
+archive	App/OneArchiveRadio.Content	da-DK	Ét arkiv		
+archive	App/OneArchiveRadio.Content	de-DE	Ein Archiv		
+archive	App/OneArchiveRadio.Content	el-GR	Ένα αρχείο συμπίεσης	αρχειοθήκ	
+archive	App/OneArchiveRadio.Content	es-ES	Un archivo comprimido		
+archive	App/OneArchiveRadio.Content	et-EE	Üks arhiiv		
+archive	App/OneArchiveRadio.Content	fi-FI	Yksi arkisto		
+archive	App/OneArchiveRadio.Content	fr-FR	Une archive		
+archive	App/OneArchiveRadio.Content	he-IL	ארכיון אחד		
+archive	App/OneArchiveRadio.Content	hi-IN	एक संग्रह		
+archive	App/OneArchiveRadio.Content	hr-HR	Jedna arhiva		
+archive	App/OneArchiveRadio.Content	hu-HU	Egy archívum		
+archive	App/OneArchiveRadio.Content	id-ID	Satu arsip		
+archive	App/OneArchiveRadio.Content	it-IT	Un archivio		
+archive	App/OneArchiveRadio.Content	ja-JP	1つのアーカイブ	書庫	
+archive	App/OneArchiveRadio.Content	ko-KR	단일 압축 파일	보관;아카이브	
+archive	App/OneArchiveRadio.Content	lt-LT	Vienas archyvas		
+archive	App/OneArchiveRadio.Content	lv-LV	Viens arhīvs		
+archive	App/OneArchiveRadio.Content	nb-NO	Ett arkiv		
+archive	App/OneArchiveRadio.Content	nl-NL	Eén archief		
+archive	App/OneArchiveRadio.Content	pl-PL	Jedno archiwum		
+archive	App/OneArchiveRadio.Content	pt-PT	Um arquivo		
+archive	App/OneArchiveRadio.Content	ro-RO	O arhivă		
+archive	App/OneArchiveRadio.Content	sk-SK	Jeden archív		
+archive	App/OneArchiveRadio.Content	sl-SI	En arhiv		
+archive	App/OneArchiveRadio.Content	sr-Latn-RS	Jedna arhiva		
+archive	App/OneArchiveRadio.Content	sv-SE	Ett arkiv		
+archive	App/OneArchiveRadio.Content	sw-KE	Kumbukumbu moja		
+archive	App/OneArchiveRadio.Content	th-TH	ไฟล์บีบอัดเดียว	เก็บถาวร	
+archive	App/OneArchiveRadio.Content	tr-TR	Tek arşiv		
+archive	App/OneArchiveRadio.Content	uk-UA	Один архів		
+archive	App/OneArchiveRadio.Content	ur-PK	ایک آرکائیو	آرکائو	
+archive	App/OneArchiveRadio.Content	vi-VN	Một tệp nén	ho lưu trữ;ệp lưu trữ	
+archive	App/OneArchiveRadio.Content	zh-Hans	单个压缩包	存档	
+password	OperationText/WindowPasswordLabel	en-US	Password		
+password	OperationText/WindowPasswordLabel	ar-SA	كلمة المرور		
+password	OperationText/WindowPasswordLabel	bg-BG	Парола		
+password	OperationText/WindowPasswordLabel	cs-CZ	Heslo		
+password	OperationText/WindowPasswordLabel	da-DK	Adgangskode		
+password	OperationText/WindowPasswordLabel	de-DE	Passwort	ennw	
+password	OperationText/WindowPasswordLabel	el-GR	Κωδικός πρόσβασης		
+password	OperationText/WindowPasswordLabel	es-ES	Contraseña		
+password	OperationText/WindowPasswordLabel	et-EE	Parool		
+password	OperationText/WindowPasswordLabel	fi-FI	Salasana		
+password	OperationText/WindowPasswordLabel	fr-FR	Mot de passe		
+password	OperationText/WindowPasswordLabel	he-IL	סיסמה		
+password	OperationText/WindowPasswordLabel	hi-IN	पासवर्ड		
+password	OperationText/WindowPasswordLabel	hr-HR	Lozinka		
+password	OperationText/WindowPasswordLabel	hu-HU	Jelszó		
+password	OperationText/WindowPasswordLabel	id-ID	Kata sandi		
+password	OperationText/WindowPasswordLabel	it-IT	Password		
+password	OperationText/WindowPasswordLabel	ja-JP	パスワード		
+password	OperationText/WindowPasswordLabel	ko-KR	암호		
+password	OperationText/WindowPasswordLabel	lt-LT	Slaptažodis		
+password	OperationText/WindowPasswordLabel	lv-LV	Parole		
+password	OperationText/WindowPasswordLabel	nb-NO	Passord		
+password	OperationText/WindowPasswordLabel	nl-NL	Wachtwoord		
+password	OperationText/WindowPasswordLabel	pl-PL	Hasło		
+password	OperationText/WindowPasswordLabel	pt-PT	Palavra-passe		
+password	OperationText/WindowPasswordLabel	ro-RO	Parolă		
+password	OperationText/WindowPasswordLabel	sk-SK	Heslo		
+password	OperationText/WindowPasswordLabel	sl-SI	Geslo		
+password	OperationText/WindowPasswordLabel	sr-Latn-RS	Lozinka		
+password	OperationText/WindowPasswordLabel	sv-SE	Lösenord		
+password	OperationText/WindowPasswordLabel	sw-KE	Nenosiri		
+password	OperationText/WindowPasswordLabel	th-TH	รหัสผ่าน		
+password	OperationText/WindowPasswordLabel	tr-TR	Parola		
+password	OperationText/WindowPasswordLabel	uk-UA	Пароль		
+password	OperationText/WindowPasswordLabel	ur-PK	پاس ورڈ		
+password	OperationText/WindowPasswordLabel	vi-VN	Mật khẩu		
+password	OperationText/WindowPasswordLabel	zh-Hans	密码		
+test	App/TestArchiveButton.Content	en-US	Test archive		
+test	App/TestArchiveButton.Content	ar-SA	اختبار الأرشيف		
+test	App/TestArchiveButton.Content	bg-BG	Тестване на архива		
+test	App/TestArchiveButton.Content	cs-CZ	Otestovat archiv		
+test	App/TestArchiveButton.Content	da-DK	Test arkiv		
+test	App/TestArchiveButton.Content	de-DE	Archiv testen		
+test	App/TestArchiveButton.Content	el-GR	Δοκιμή αρχείου συμπίεσης		
+test	App/TestArchiveButton.Content	es-ES	Probar archivo comprimido		
+test	App/TestArchiveButton.Content	et-EE	Testi arhiivi		
+test	App/TestArchiveButton.Content	fi-FI	Testaa arkisto		
+test	App/TestArchiveButton.Content	fr-FR	Tester l'archive		
+test	App/TestArchiveButton.Content	he-IL	בדיקת ארכיון		
+test	App/TestArchiveButton.Content	hi-IN	संग्रह का परीक्षण करें		
+test	App/TestArchiveButton.Content	hr-HR	Testiraj arhivu		
+test	App/TestArchiveButton.Content	hu-HU	Archívum tesztelése		
+test	App/TestArchiveButton.Content	id-ID	Uji arsip		
+test	App/TestArchiveButton.Content	it-IT	Testa archivio		
+test	App/TestArchiveButton.Content	ja-JP	アーカイブをテスト		
+test	App/TestArchiveButton.Content	ko-KR	압축 파일 테스트		
+test	App/TestArchiveButton.Content	lt-LT	Testuoti archyvą		
+test	App/TestArchiveButton.Content	lv-LV	Testēt arhīvu		
+test	App/TestArchiveButton.Content	nb-NO	Test arkiv		
+test	App/TestArchiveButton.Content	nl-NL	Archief testen		
+test	App/TestArchiveButton.Content	pl-PL	Testuj archiwum		
+test	App/TestArchiveButton.Content	pt-PT	Testar arquivo		
+test	App/TestArchiveButton.Content	ro-RO	Testează arhiva		
+test	App/TestArchiveButton.Content	sk-SK	Otestovať archív		
+test	App/TestArchiveButton.Content	sl-SI	Preizkusi arhiv		
+test	App/TestArchiveButton.Content	sr-Latn-RS	Testiraj arhivu		
+test	App/TestArchiveButton.Content	sv-SE	Testa arkiv		
+test	App/TestArchiveButton.Content	sw-KE	Jaribu kumbukumbu		
+test	App/TestArchiveButton.Content	th-TH	ทดสอบไฟล์บีบอัด		
+test	App/TestArchiveButton.Content	tr-TR	Arşivi test et		
+test	App/TestArchiveButton.Content	uk-UA	Тестувати архів		
+test	App/TestArchiveButton.Content	ur-PK	آرکائیو کی جانچ کریں		
+test	App/TestArchiveButton.Content	vi-VN	Kiểm tra tệp nén		
+test	App/TestArchiveButton.Content	zh-Hans	测试压缩包		
+scan	App/ScanButton.Content	en-US	Scan for threats		
+scan	App/ScanButton.Content	ar-SA	فحص التهديدات		
+scan	App/ScanButton.Content	bg-BG	Сканиране за заплахи		
+scan	App/ScanButton.Content	cs-CZ	Zkontrolovat hrozby		
+scan	App/ScanButton.Content	da-DK	Scan for trusler		
+scan	App/ScanButton.Content	de-DE	Auf Bedrohungen prüfen		
+scan	App/ScanButton.Content	el-GR	Έλεγχος για απειλές		
+scan	App/ScanButton.Content	es-ES	Buscar amenazas		
+scan	App/ScanButton.Content	et-EE	Kontrolli ohte		
+scan	App/ScanButton.Content	fi-FI	Tarkista uhat		
+scan	App/ScanButton.Content	fr-FR	Rechercher des menaces		
+scan	App/ScanButton.Content	he-IL	סריקה לאיתור איומים		
+scan	App/ScanButton.Content	hi-IN	खतरों के लिए स्कैन करें		
+scan	App/ScanButton.Content	hr-HR	Provjeri prijetnje		
+scan	App/ScanButton.Content	hu-HU	Fenyegetések keresése		
+scan	App/ScanButton.Content	id-ID	Pindai ancaman		
+scan	App/ScanButton.Content	it-IT	Verifica minacce		
+scan	App/ScanButton.Content	ja-JP	脅威をスキャン		
+scan	App/ScanButton.Content	ko-KR	위협 검사		
+scan	App/ScanButton.Content	lt-LT	Tikrinti grėsmes		
+scan	App/ScanButton.Content	lv-LV	Pārbaudīt draudus		
+scan	App/ScanButton.Content	nb-NO	Se etter trusler		
+scan	App/ScanButton.Content	nl-NL	Scannen op bedreigingen		
+scan	App/ScanButton.Content	pl-PL	Skanuj w poszukiwaniu zagrożeń		
+scan	App/ScanButton.Content	pt-PT	Procurar ameaças		
+scan	App/ScanButton.Content	ro-RO	Verifică amenințările		
+scan	App/ScanButton.Content	sk-SK	Skontrolovať hrozby		
+scan	App/ScanButton.Content	sl-SI	Preveri grožnje		
+scan	App/ScanButton.Content	sr-Latn-RS	Proveri pretnje		
+scan	App/ScanButton.Content	sv-SE	Sök efter hot		
+scan	App/ScanButton.Content	sw-KE	Chunguza vitisho		
+scan	App/ScanButton.Content	th-TH	สแกนหาภัยคุกคาม		
+scan	App/ScanButton.Content	tr-TR	Tehditleri tara		
+scan	App/ScanButton.Content	uk-UA	Перевірити на загрози		
+scan	App/ScanButton.Content	ur-PK	خطرات کے لیے اسکین کریں		
+scan	App/ScanButton.Content	vi-VN	Quét mối đe dọa		
+scan	App/ScanButton.Content	zh-Hans	扫描威胁		
+hash	ShellExt/hashSubmenu	en-US	Hash		
+hash	ShellExt/hashSubmenu	ar-SA	تجزئة		
+hash	ShellExt/hashSubmenu	bg-BG	Хеш		
+hash	ShellExt/hashSubmenu	cs-CZ	Hash		
+hash	ShellExt/hashSubmenu	da-DK	Hash		
+hash	ShellExt/hashSubmenu	de-DE	Hash		
+hash	ShellExt/hashSubmenu	el-GR	Κατακερματισμός		
+hash	ShellExt/hashSubmenu	es-ES	Hash		
+hash	ShellExt/hashSubmenu	et-EE	Räsi		
+hash	ShellExt/hashSubmenu	fi-FI	Tiiviste		
+hash	ShellExt/hashSubmenu	fr-FR	Hachage		
+hash	ShellExt/hashSubmenu	he-IL	גיבוב		
+hash	ShellExt/hashSubmenu	hi-IN	हैश		
+hash	ShellExt/hashSubmenu	hr-HR	Sažetak		
+hash	ShellExt/hashSubmenu	hu-HU	Hash		
+hash	ShellExt/hashSubmenu	id-ID	Hash		
+hash	ShellExt/hashSubmenu	it-IT	Hash		
+hash	ShellExt/hashSubmenu	ja-JP	ハッシュ		
+hash	ShellExt/hashSubmenu	ko-KR	해시		
+hash	ShellExt/hashSubmenu	lt-LT	Maiša		
+hash	ShellExt/hashSubmenu	lv-LV	Kontrolsumma		
+hash	ShellExt/hashSubmenu	nb-NO	Hash		
+hash	ShellExt/hashSubmenu	nl-NL	Hash		
+hash	ShellExt/hashSubmenu	pl-PL	Suma kontrolna		
+hash	ShellExt/hashSubmenu	pt-PT	Hash		
+hash	ShellExt/hashSubmenu	ro-RO	Sumă de control		
+hash	ShellExt/hashSubmenu	sk-SK	Hash		
+hash	ShellExt/hashSubmenu	sl-SI	Zgoščena vrednost		
+hash	ShellExt/hashSubmenu	sr-Latn-RS	Heš		
+hash	ShellExt/hashSubmenu	sv-SE	Hash		
+hash	ShellExt/hashSubmenu	sw-KE	Heshi		
+hash	ShellExt/hashSubmenu	th-TH	แฮช		
+hash	ShellExt/hashSubmenu	tr-TR	Karma		
+hash	ShellExt/hashSubmenu	uk-UA	Хеш-суми		
+hash	ShellExt/hashSubmenu	ur-PK	ہیش		
+hash	ShellExt/hashSubmenu	vi-VN	Mã băm		
+hash	ShellExt/hashSubmenu	zh-Hans	哈希		
+skip	App/ConflictSkipItem.Content	en-US	Skip		
+skip	App/ConflictSkipItem.Content	ar-SA	تخطي		
+skip	App/ConflictSkipItem.Content	bg-BG	Пропускане		
+skip	App/ConflictSkipItem.Content	cs-CZ	Přeskočit		
+skip	App/ConflictSkipItem.Content	da-DK	Spring over		
+skip	App/ConflictSkipItem.Content	de-DE	Überspringen		
+skip	App/ConflictSkipItem.Content	el-GR	Παράλειψη		
+skip	App/ConflictSkipItem.Content	es-ES	Omitir		
+skip	App/ConflictSkipItem.Content	et-EE	Jäta vahele		
+skip	App/ConflictSkipItem.Content	fi-FI	Ohita		
+skip	App/ConflictSkipItem.Content	fr-FR	Ignorer		
+skip	App/ConflictSkipItem.Content	he-IL	דלג		
+skip	App/ConflictSkipItem.Content	hi-IN	छोड़ें		
+skip	App/ConflictSkipItem.Content	hr-HR	Preskoči		
+skip	App/ConflictSkipItem.Content	hu-HU	Kihagyás		
+skip	App/ConflictSkipItem.Content	id-ID	Lewati		
+skip	App/ConflictSkipItem.Content	it-IT	Ignora		
+skip	App/ConflictSkipItem.Content	ja-JP	スキップ		
+skip	App/ConflictSkipItem.Content	ko-KR	건너뛰기		
+skip	App/ConflictSkipItem.Content	lt-LT	Praleisti		
+skip	App/ConflictSkipItem.Content	lv-LV	Izlaist		
+skip	App/ConflictSkipItem.Content	nb-NO	Hopp over		
+skip	App/ConflictSkipItem.Content	nl-NL	Overslaan		
+skip	App/ConflictSkipItem.Content	pl-PL	Pomiń		
+skip	App/ConflictSkipItem.Content	pt-PT	Ignorar		
+skip	App/ConflictSkipItem.Content	ro-RO	Omite		
+skip	App/ConflictSkipItem.Content	sk-SK	Preskočiť		
+skip	App/ConflictSkipItem.Content	sl-SI	Preskoči		
+skip	App/ConflictSkipItem.Content	sr-Latn-RS	Preskoči		
+skip	App/ConflictSkipItem.Content	sv-SE	Hoppa över		
+skip	App/ConflictSkipItem.Content	sw-KE	Ruka		
+skip	App/ConflictSkipItem.Content	th-TH	ข้าม		
+skip	App/ConflictSkipItem.Content	tr-TR	Atla		
+skip	App/ConflictSkipItem.Content	uk-UA	Пропустити		
+skip	App/ConflictSkipItem.Content	ur-PK	نظرانداز کریں	چھوڑ	App/DropZoneHint.Text
+skip	App/ConflictSkipItem.Content	vi-VN	Bỏ qua		
+skip	App/ConflictSkipItem.Content	zh-Hans	跳过		
+entry	CoreMessages/ScanEntryPasswordProtected	en-US	Entry		
+entry	CoreMessages/ScanEntryPasswordProtected	ar-SA	العنصر		
+entry	CoreMessages/ScanEntryPasswordProtected	bg-BG	Елемент		
+entry	CoreMessages/ScanEntryPasswordProtected	cs-CZ	Položka		
+entry	CoreMessages/ScanEntryPasswordProtected	da-DK	Element		
+entry	CoreMessages/ScanEntryPasswordProtected	de-DE	Eintrag		
+entry	CoreMessages/ScanEntryPasswordProtected	el-GR	καταχώρηση		
+entry	CoreMessages/ScanEntryPasswordProtected	es-ES	entrada		
+entry	CoreMessages/ScanEntryPasswordProtected	et-EE	Kirje		
+entry	CoreMessages/ScanEntryPasswordProtected	fi-FI	Kohde		
+entry	CoreMessages/ScanEntryPasswordProtected	fr-FR	entrée		
+entry	CoreMessages/ScanEntryPasswordProtected	he-IL	פריט		
+entry	CoreMessages/ScanEntryPasswordProtected	hi-IN	प्रविष्टि		
+entry	CoreMessages/ScanEntryPasswordProtected	hr-HR	Stavka		
+entry	CoreMessages/ScanEntryPasswordProtected	hu-HU	elem		
+entry	CoreMessages/ScanEntryPasswordProtected	id-ID	Entri		
+entry	CoreMessages/ScanEntryPasswordProtected	it-IT	voce		
+entry	CoreMessages/ScanEntryPasswordProtected	ja-JP	エントリ		
+entry	CoreMessages/ScanEntryPasswordProtected	ko-KR	항목		
+entry	CoreMessages/ScanEntryPasswordProtected	lt-LT	Elementas		
+entry	CoreMessages/ScanEntryPasswordProtected	lv-LV	Vienums		
+entry	CoreMessages/ScanEntryPasswordProtected	nb-NO	Oppføring		
+entry	CoreMessages/ScanEntryPasswordProtected	nl-NL	item		
+entry	CoreMessages/ScanEntryPasswordProtected	pl-PL	Element		
+entry	CoreMessages/ScanEntryPasswordProtected	pt-PT	entrada		
+entry	CoreMessages/ScanEntryPasswordProtected	ro-RO	Element		
+entry	CoreMessages/ScanEntryPasswordProtected	sk-SK	Položka		
+entry	CoreMessages/ScanEntryPasswordProtected	sl-SI	Vnos		
+entry	CoreMessages/ScanEntryPasswordProtected	sr-Latn-RS	Stavka		
+entry	CoreMessages/ScanEntryPasswordProtected	sv-SE	Post		
+entry	CoreMessages/ScanEntryPasswordProtected	sw-KE	Kipengee		
+entry	CoreMessages/ScanEntryPasswordProtected	th-TH	รายการ		
+entry	CoreMessages/ScanEntryPasswordProtected	tr-TR	Öğe		
+entry	CoreMessages/ScanEntryPasswordProtected	uk-UA	Елемент		
+entry	CoreMessages/ScanEntryPasswordProtected	ur-PK	اندراج		
+entry	CoreMessages/ScanEntryPasswordProtected	vi-VN	Mục		
+entry	CoreMessages/ScanEntryPasswordProtected	zh-Hans	条目		
+folder	App/AddFolderButton.Content	en-US	Add folder		
+folder	App/AddFolderButton.Content	ar-SA	إضافة مجلد		
+folder	App/AddFolderButton.Content	bg-BG	Добавяне на папка		
+folder	App/AddFolderButton.Content	cs-CZ	Přidat složku		
+folder	App/AddFolderButton.Content	da-DK	Tilføj mappe		
+folder	App/AddFolderButton.Content	de-DE	Ordner hinzufügen		
+folder	App/AddFolderButton.Content	el-GR	Προσθήκη φακέλου		
+folder	App/AddFolderButton.Content	es-ES	Añadir carpeta		
+folder	App/AddFolderButton.Content	et-EE	Lisa kaust		
+folder	App/AddFolderButton.Content	fi-FI	Lisää kansio		
+folder	App/AddFolderButton.Content	fr-FR	Ajouter un dossier		
+folder	App/AddFolderButton.Content	he-IL	הוסף תיקייה		
+folder	App/AddFolderButton.Content	hi-IN	फ़ोल्डर जोड़ें		
+folder	App/AddFolderButton.Content	hr-HR	Dodaj mapu		
+folder	App/AddFolderButton.Content	hu-HU	Mappa hozzáadása		
+folder	App/AddFolderButton.Content	id-ID	Tambah folder		
+folder	App/AddFolderButton.Content	it-IT	Aggiungi cartella		
+folder	App/AddFolderButton.Content	ja-JP	フォルダーを追加		
+folder	App/AddFolderButton.Content	ko-KR	폴더 추가		
+folder	App/AddFolderButton.Content	lt-LT	Pridėti aplanką		
+folder	App/AddFolderButton.Content	lv-LV	Pievienot mapi		
+folder	App/AddFolderButton.Content	nb-NO	Legg til mappe		
+folder	App/AddFolderButton.Content	nl-NL	Map toevoegen		
+folder	App/AddFolderButton.Content	pl-PL	Dodaj folder		
+folder	App/AddFolderButton.Content	pt-PT	Adicionar pasta		
+folder	App/AddFolderButton.Content	ro-RO	Adaugă folder		
+folder	App/AddFolderButton.Content	sk-SK	Pridať priečinok		
+folder	App/AddFolderButton.Content	sl-SI	Dodaj mapo		
+folder	App/AddFolderButton.Content	sr-Latn-RS	Dodaj fasciklu		
+folder	App/AddFolderButton.Content	sv-SE	Lägg till mapp		
+folder	App/AddFolderButton.Content	sw-KE	Ongeza folda		
+folder	App/AddFolderButton.Content	th-TH	เพิ่มโฟลเดอร์		
+folder	App/AddFolderButton.Content	tr-TR	Klasör ekle		
+folder	App/AddFolderButton.Content	uk-UA	Додати папку		
+folder	App/AddFolderButton.Content	ur-PK	فولڈر شامل کریں		
+folder	App/AddFolderButton.Content	vi-VN	Thêm thư mục		
+folder	App/AddFolderButton.Content	zh-Hans	添加文件夹		

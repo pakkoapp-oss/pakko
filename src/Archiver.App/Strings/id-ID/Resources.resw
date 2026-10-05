@@ -554,4 +554,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Memeriksa isi arsip...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Arsip ZIP Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Arsip Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Pengarsip ZIP modern untuk Windows</value>
+  </data>
 </root>

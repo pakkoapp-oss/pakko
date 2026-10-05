@@ -202,7 +202,7 @@
     <value>O arquivo contém uma ligação simbólica, uma ligação física, um dispositivo ou outra entrada especial e não pode ser extraído em segurança.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Não foram extraídas mais {0} cópias com este nome: deste arquivo só é possível retirar a primeira e a última cópia.</value>
+    <value>Não foram extraídas outras cópias com este nome ({0}): deste arquivo só é possível retirar a primeira e a última cópia.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Outro item selecionado tem o mesmo nome e não foi possível adicionar esta pasta com um nome novo. Mude o nome de um deles e tente novamente.</value>
@@ -274,6 +274,6 @@
     <value>A entrada tem mais de {0} MiB e não foi analisada.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} entradas têm um cabeçalho local que não corresponde ao diretório central (a primeira: «{1}»). Outros programas podem extrair deste arquivo nomes ou dados diferentes.</value>
+    <value>Entradas cujo cabeçalho local não corresponde ao diretório central: {0} (a primeira: «{1}»). Outros programas podem extrair deste arquivo nomes ou dados diferentes.</value>
   </data>
 </root>

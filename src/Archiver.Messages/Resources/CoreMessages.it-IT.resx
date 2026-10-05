@@ -202,7 +202,7 @@
     <value>L’archivio contiene un collegamento simbolico, un collegamento fisico, un dispositivo o un’altra voce speciale e non può essere estratto in sicurezza.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Altre {0} copie con questo nome non sono state estratte: da questo archivio è possibile estrarre solo la prima e l'ultima copia.</value>
+    <value>Altre copie con questo nome non sono state estratte ({0}): da questo archivio è possibile estrarre solo la prima e l'ultima copia.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Un altro elemento selezionato ha lo stesso nome e non è stato possibile aggiungere questa cartella con un nuovo nome. Rinomina uno dei due e riprova.</value>
@@ -274,6 +274,6 @@
     <value>La voce supera {0} MiB e non è stata analizzata.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} voci hanno un'intestazione locale che non corrisponde alla directory centrale (la prima: «{1}»). Altri programmi potrebbero estrarre da questo archivio nomi o dati diversi.</value>
+    <value>Voci la cui intestazione locale non corrisponde alla directory centrale: {0} (la prima: «{1}»). Altri programmi potrebbero estrarre da questo archivio nomi o dati diversi.</value>
   </data>
 </root>

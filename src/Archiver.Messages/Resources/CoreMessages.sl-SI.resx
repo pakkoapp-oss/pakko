@@ -202,7 +202,7 @@
     <value>Arhiv vsebuje simbolno povezavo, trdo povezavo, napravo ali drug poseben vnos in ga ni mogoče varno razširiti.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Še {0} kopij s tem imenom ni bilo razširjenih: iz tega arhiva je mogoče vzeti le prvo in zadnjo kopijo.</value>
+    <value>Druge kopije s tem imenom niso bile razširjene ({0}): iz tega arhiva je mogoče vzeti le prvo in zadnjo kopijo.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Drug izbrani element ima enako ime in te mape ni bilo mogoče dodati pod novim imenom. Preimenujte enega od njiju in poskusite znova.</value>
@@ -274,6 +274,6 @@
     <value>Vnos je večji od {0} MiB in ni bil pregledan.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} vnosov ima lokalno glavo, ki se ne ujema s centralnim imenikom (prvi: »{1}«). Drugi programi lahko iz tega arhiva razširijo drugačna imena ali podatke.</value>
+    <value>Vnosi, katerih lokalna glava se ne ujema s centralnim imenikom: {0} (prvi: »{1}«). Drugi programi lahko iz tega arhiva razširijo drugačna imena ali podatke.</value>
   </data>
 </root>

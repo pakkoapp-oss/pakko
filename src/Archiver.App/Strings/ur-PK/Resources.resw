@@ -197,10 +197,10 @@
     <value>تکمیل ہو رہی ہے...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>اوپر دیے گئے فولڈر میں {0} آرکائیو(ز) نکالے جائیں گے</value>
+    <value>اوپر دیے گئے فولڈر میں نکالا جائے گا — آرکائیوز: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>اوپر دیے گئے فولڈر میں {0} آئٹم(ز) کمپریس کیے جائیں گے</value>
+    <value>اوپر دیے گئے فولڈر میں کمپریس کیا جائے گا — آئٹمز: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>آرکائیو کے مندرجات کی جانچ ہو رہی ہے...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP آرکائیو</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko آرکائیو</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Windows کے لیے جدید ZIP آرکائیور</value>
   </data>
 </root>

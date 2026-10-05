@@ -554,4 +554,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Sprawdzanie zawartości archiwum...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Archiwum ZIP Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Archiwum Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Nowoczesny archiwizator ZIP dla systemu Windows</value>
+  </data>
 </root>

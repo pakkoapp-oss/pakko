@@ -274,6 +274,6 @@
     <value>Öğe {0} MiB'tan büyük ve taranmadı.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} girdinin yerel üst bilgisi merkezi dizinle eşleşmiyor (ilki: “{1}”). Diğer programlar bu arşivden farklı adlar veya veriler çıkarabilir.</value>
+    <value>{0} girdinin yerel üst bilgisi merkezi dizinle eşleşmiyor (ilki: “{1}”). Diğer programlar bu arşivden farklı adlar veya veriler ayıklayabilir.</value>
   </data>
 </root>

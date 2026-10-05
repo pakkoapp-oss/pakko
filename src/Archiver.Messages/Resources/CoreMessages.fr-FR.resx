@@ -202,7 +202,7 @@
     <value>L’archive contient un lien symbolique, un lien physique, un périphérique ou une autre entrée spéciale et ne peut pas être extraite en toute sécurité.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>{0} autres copies portant ce nom n'ont pas été extraites : seules la première et la dernière copie peuvent être extraites de cette archive.</value>
+    <value>D'autres copies portant ce nom n'ont pas été extraites ({0}) : seules la première et la dernière copie peuvent être extraites de cette archive.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Un autre élément sélectionné porte le même nom, et ce dossier n'a pas pu être ajouté sous un nouveau nom. Renommez l'un d'eux et réessayez.</value>
@@ -274,6 +274,6 @@
     <value>L’entrée dépasse {0} Mio et n’a pas été analysée.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} entrées ont un en-tête local qui ne correspond pas au répertoire central (la première : '{1}'). D'autres programmes peuvent extraire de cette archive des noms ou des données différents.</value>
+    <value>Entrées dont l'en-tête local ne correspond pas au répertoire central : {0} (la première : '{1}'). D'autres programmes peuvent extraire de cette archive des noms ou des données différents.</value>
   </data>
 </root>

@@ -197,10 +197,10 @@
     <value>Notiek pabeigšana...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Tiks izvilkti {0} arhīvi augstāk norādītajā mapē</value>
+    <value>Tiks izvilkts augstāk norādītajā mapē — arhīvi: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Tiks saspiesti {0} vienumi augstāk norādītajā mapē</value>
+    <value>Tiks saspiests augstāk norādītajā mapē — vienumi: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Pārbauda arhīva saturu...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP arhīvs</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko arhīvs</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Mūsdienīgs ZIP arhivators operētājsistēmai Windows</value>
   </data>
 </root>

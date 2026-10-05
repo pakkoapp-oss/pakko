@@ -202,7 +202,7 @@
     <value>Arhiiv sisaldab sümbolilinki, püsilinki, seadet või muud erikirjet ja seda ei saa turvaliselt lahti pakkida.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Veel {0} selle nimega koopiat jäi lahti pakkimata: sellest arhiivist saab võtta ainult esimese ja viimase koopia.</value>
+    <value>Teised selle nimega koopiad jäid lahti pakkimata ({0}): sellest arhiivist saab võtta ainult esimese ja viimase koopia.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Teisel valitud üksusel on sama nimi ja seda kausta ei saanud uue nimega lisada. Nimetage üks neist ümber ja proovige uuesti.</value>
@@ -274,6 +274,6 @@
     <value>Kirje on suurem kui {0} MiB ja seda ei skannitud.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} kirje kohalik päis ei vasta kesksele kataloogile (esimene: „{1}”). Teised programmid võivad sellest arhiivist välja pakkida teistsuguseid nimesid või andmeid.</value>
+    <value>Kirjeid, mille kohalik päis ei vasta kesksele kataloogile: {0} (esimene: „{1}”). Teised programmid võivad sellest arhiivist lahti pakkida teistsuguseid nimesid või andmeid.</value>
   </data>
 </root>

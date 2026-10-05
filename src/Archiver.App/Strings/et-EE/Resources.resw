@@ -197,10 +197,10 @@
     <value>Lõpetamine...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Lahti pakitakse {0} arhiivi ülal olevasse kausta</value>
+    <value>Lahti pakitakse ülal olevasse kausta — arhiive: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Tihendatakse {0} elementi ülal olevasse kausta</value>
+    <value>Tihendatakse ülal olevasse kausta — elemente: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Arhiivi sisu kontrollimine...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP-arhiiv</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko arhiiv</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Kaasaegne ZIP-arhiveerija Windowsile</value>
   </data>
 </root>

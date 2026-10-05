@@ -197,10 +197,10 @@
     <value>جارٍ الإنهاء...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>سيتم استخراج {0} أرشيف(ات) إلى المجلد أعلاه</value>
+    <value>سيتم الاستخراج إلى المجلد أعلاه — الأرشيفات: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>سيتم ضغط {0} عنصر(عناصر) إلى المجلد أعلاه</value>
+    <value>سيتم الضغط إلى المجلد أعلاه — العناصر: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>جارٍ فحص محتويات الأرشيف...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>أرشيف ZIP لـ Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>أرشيف Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>برنامج أرشفة ZIP حديث لنظام Windows</value>
   </data>
 </root>

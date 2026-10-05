@@ -197,10 +197,10 @@
     <value>Zaključevanje...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Razširjenih bo {0} arhiv(ov) v zgornjo mapo</value>
+    <value>Razširjeno bo v zgornjo mapo — arhivi: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Stisnjenih bo {0} predmet(ov) v zgornjo mapo</value>
+    <value>Stisnjeno bo v zgornjo mapo — predmeti: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Preverjanje vsebine arhiva...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Arhiv ZIP Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Arhiv Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Sodoben arhivator ZIP za Windows</value>
   </data>
 </root>

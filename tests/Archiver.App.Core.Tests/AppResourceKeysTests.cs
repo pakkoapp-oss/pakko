@@ -53,12 +53,14 @@ public sealed partial class AppResourceKeysTests
             .SelectMany(d => Directory.EnumerateFiles(d, "*.cs", SearchOption.AllDirectories))
             .Where(IsSource).Select(File.ReadAllText));
 
+        string manifest = File.ReadAllText(ManifestPath);
+
         string[] unused = Read("en-US").Keys.Where(key =>
         {
             int dot = key.IndexOf('.');
             return dot > 0
                 ? !xaml.Contains($"x:Uid=\"{key[..dot]}\"", StringComparison.Ordinal)
-                : !code.Contains($"\"{key}\"", StringComparison.Ordinal);
+                : !code.Contains($"\"{key}\"", StringComparison.Ordinal) && !ManifestKeys(manifest).Contains(key);
         }).ToArray();
 
         unused.Should().BeEmpty();
@@ -76,6 +78,31 @@ public sealed partial class AppResourceKeysTests
 
         orphans.Should().BeEmpty();
     }
+
+    // T-F329: Explorer's Type column and the Open with list show these names; written as plain
+    // text in the manifest they are English in every language.
+    [Fact]
+    public void Manifest_TakesItsFileTypeNamesAndDescription_FromTheResources()
+    {
+        XNamespace uap = "http://schemas.microsoft.com/appx/manifest/uap/windows10";
+        XElement root = XDocument.Load(ManifestPath).Root!;
+        string[] shown =
+        [
+            .. root.Descendants(uap + "FileTypeAssociation").Select(a => (string)a.Element(uap + "DisplayName")!),
+            (string)root.Descendants(uap + "VisualElements").First().Attribute("Description")!,
+        ];
+
+        shown.Should().HaveCount(3).And.OnlyContain(v => v.StartsWith("ms-resource:", StringComparison.Ordinal));
+        ManifestKeys(File.ReadAllText(ManifestPath)).Should().BeSubsetOf(Read("en-US").Keys);
+    }
+
+    private static readonly string ManifestPath = Path.Combine(FindRepoRoot(), "src", "Archiver.App", "Package.appxmanifest");
+
+    private static HashSet<string> ManifestKeys(string manifest) =>
+        ManifestResourcePattern().Matches(manifest).Select(m => m.Groups[1].Value).ToHashSet();
+
+    [GeneratedRegex("ms-resource:([A-Za-z0-9]+)")]
+    private static partial Regex ManifestResourcePattern();
 
     [Theory]
     [MemberData(nameof(Locales))]

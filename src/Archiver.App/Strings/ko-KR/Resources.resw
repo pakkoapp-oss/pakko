@@ -554,4 +554,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>압축 파일 내용 확인 중...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP 압축 파일</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko 압축 파일</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Windows용 최신 ZIP 압축 프로그램</value>
+  </data>
 </root>

@@ -11026,3 +11026,35 @@ untouched.
 **No native review.** The user has no native readers for this many languages (2026-10-05), so
 these translations rest on the audit alone. sw-KE, ur-PK and th-TH are the least certain; a
 report from a native user outranks any choice in the table above.
+
+## T-F329 — localization process: what keeps the translations in step (2026-10-05)
+
+**Glossary as test data.** The word each locale uses for ten concepts is in
+`tests/Archiver.Messages.Tests/Glossary.tsv`, next to the test that reads it, so there is one copy.
+Each row names a key that shows the word (`GlossaryTests` checks the key still contains it) and
+the words T-F328 replaced, as stems; a stem found in any of the nine sources fails. Replaced words
+that are ordinary words elsewhere are not listed, because a ban would be wrong: es `archivo` and
+el `αρχείο` also mean "file", it `Verifica` and lt `Tikrinti` stay for Scan, sw `hifadhi` for
+Save, hi `जाँच` for checking contents. The `except` column holds a key pattern where a stem is
+a different word (ur-PK: "drop files here").
+
+**Shared strings: a test, not a move.** About 40 English strings live in two or three sources.
+Moving them into `Archiver.Messages` was rejected: the App's dotted keys resolve only through
+`x:Uid` in its own `.resw`, and `Localization.cpp` cannot read `.resx`, so a move would cover part
+of them and change the runtime lookup in two frontends. `SharedStringTests` instead groups every
+string by its English text and requires one translation per group in each locale. No list of
+groups is kept: a new copy is covered on the day it is added. `App/TestResultTitle` (a noun where
+the button is a verb) and the four `{0} ({1})` OS-error wrappers are the only exclusions.
+
+**Counts.** A count goes after a colon or in brackets after the noun phrase; no plural engine.
+English UI text follows it (`CountTemplateTests`). Core's English is the CLI's output and was left
+alone; its translations are not bound by the English syntax, so `LocalHeaderMismatch` and
+`TarDuplicateCopiesNotExtracted` were rewritten in the locales only. Locales whose nouns do not
+change after a number (ja, ko, zh-Hans, th, vi, tr, hu, id) kept their wording. The five
+"{0} bytes" messages were not rewritten and are still wrong for some numbers in the inflecting
+locales; that is unfinished work listed in the task, not a judgement that the form is fine.
+
+**Manifest names.** `ms-resource:` in `uap:DisplayName` and in `Description` resolves from the
+App's own `Resources.resw`; no manifest-only resource file. NanaZip's manifest has literal names,
+so there was no working example to copy; verified on the installed package instead
+(`SHLoadIndirectString` on the three keys, Explorer's Type column).

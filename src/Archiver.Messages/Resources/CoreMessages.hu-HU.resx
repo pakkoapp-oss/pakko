@@ -274,6 +274,6 @@
     <value>Az elem nagyobb {0} MiB-nál, ezért nem lett megvizsgálva.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} bejegyzés helyi fejléce nem egyezik a központi könyvtárral (az első: „{1}”). Más programok eltérő neveket vagy adatokat bonthatnak ki ebből az archívumból.</value>
+    <value>{0} elem helyi fejléce nem egyezik a központi könyvtárral (az első: „{1}”). Más programok eltérő neveket vagy adatokat bonthatnak ki ebből az archívumból.</value>
   </data>
 </root>

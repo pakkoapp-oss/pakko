@@ -554,4 +554,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Provjera sadržaja arhive...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP arhiva</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko arhiva</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Moderni ZIP arhiver za Windows</value>
+  </data>
 </root>

@@ -202,7 +202,7 @@
     <value>Arhiva sadrži simboličku vezu, čvrstu vezu, uređaj ili drugu posebnu stavku i ne može se bezbedno raspakovati.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Još {0} kopija sa ovim imenom nije raspakovano: iz ove arhive mogu se uzeti samo prva i poslednja kopija.</value>
+    <value>Ostale kopije sa ovim imenom nisu raspakovane ({0}): iz ove arhive mogu se uzeti samo prva i poslednja kopija.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Druga izabrana stavka ima isto ime, a ova fascikla nije mogla da se doda pod novim imenom. Preimenujte jednu od njih i pokušajte ponovo.</value>
@@ -274,6 +274,6 @@
     <value>Stavka je veća od {0} MiB i nije skenirana.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} stavki ima lokalno zaglavlje koje se ne poklapa sa centralnim direktorijumom (prva: „{1}”). Drugi programi mogu iz ove arhive da izdvoje drugačija imena ili podatke.</value>
+    <value>Stavke čije se lokalno zaglavlje ne poklapa sa centralnim direktorijumom: {0} (prva: „{1}”). Drugi programi mogu iz ove arhive da raspakuju drugačija imena ili podatke.</value>
   </data>
 </root>

@@ -202,7 +202,7 @@
     <value>Arkisto sisältää symbolisen linkin, kovan linkin, laitteen tai muun erikoiskohteen, eikä sitä voi purkaa turvallisesti.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>{0} muuta tämännimistä kopiota jäi purkamatta: tästä arkistosta voidaan ottaa vain ensimmäinen ja viimeinen kopio.</value>
+    <value>Muita tämännimisiä kopioita jäi purkamatta ({0}): tästä arkistosta voidaan ottaa vain ensimmäinen ja viimeinen kopio.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Toisella valitulla kohteella on sama nimi, eikä tätä kansiota voitu lisätä uudella nimellä. Nimeä toinen niistä uudelleen ja yritä uudelleen.</value>
@@ -274,6 +274,6 @@
     <value>Kohde on suurempi kuin {0} MiB, eikä sitä tarkistettu.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} kohteen paikallinen otsake ei vastaa keskushakemistoa (ensimmäinen: ”{1}”). Muut ohjelmat voivat purkaa tästä arkistosta eri nimiä tai tietoja.</value>
+    <value>Kohteita, joiden paikallinen otsake ei vastaa keskushakemistoa: {0} (ensimmäinen: ”{1}”). Muut ohjelmat voivat purkaa tästä arkistosta eri nimiä tai tietoja.</value>
   </data>
 </root>

@@ -154,7 +154,7 @@
     <value>Položka „{0}“ používá nepodporovanou metodu komprese se šifrováním.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Archiv uvádí {0} bajtů po rozbalení, ale v cíli je volných jen {1} bajtů. Extrakce byla zablokována.</value>
+    <value>Archiv uvádí {0} bajtů po extrakci, ale v cíli je volných jen {1} bajtů. Extrakce byla zablokována.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
     <value>Podezřelý kompresní poměr ({0}:1, uvedeno {1} bajtů). Extrakce byla preventivně odmítnuta kvůli ochraně před bombami ZIP.</value>
@@ -202,7 +202,7 @@
     <value>Archiv obsahuje symbolický odkaz, pevný odkaz, zařízení nebo jinou zvláštní položku a nelze jej bezpečně extrahovat.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Dalších {0} kopií s tímto názvem nebylo extrahováno: z tohoto archivu lze získat pouze první a poslední kopii.</value>
+    <value>Další kopie s tímto názvem nebyly extrahovány ({0}): z tohoto archivu lze získat pouze první a poslední kopii.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Jiná vybraná položka má stejný název a tuto složku nebylo možné přidat pod novým názvem. Přejmenujte jednu z nich a zkuste to znovu.</value>
@@ -274,6 +274,6 @@
     <value>Položka je větší než {0} MiB a nebyla zkontrolována.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} položek má místní hlavičku, která neodpovídá centrálnímu adresáři (první: „{1}“). Jiné programy mohou z tohoto archivu rozbalit jiné názvy nebo data.</value>
+    <value>Položky, jejichž místní hlavička neodpovídá centrálnímu adresáři: {0} (první: „{1}“). Jiné programy mohou z tohoto archivu extrahovat jiné názvy nebo data.</value>
   </data>
 </root>

@@ -554,4 +554,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>กำลังตรวจสอบเนื้อหาของไฟล์บีบอัด...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>ไฟล์บีบอัด ZIP ของ Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>ไฟล์บีบอัดของ Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>โปรแกรมบีบอัดไฟล์ ZIP สมัยใหม่สำหรับ Windows</value>
+  </data>
 </root>

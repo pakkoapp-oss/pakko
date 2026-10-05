@@ -555,4 +555,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Перевірка вмісту архіву...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>ZIP-архів Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Архів Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Сучасний ZIP-архіватор для Windows</value>
+  </data>
 </root>

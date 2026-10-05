@@ -554,4 +554,13 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Tikrinamas archyvo turinys...</value>
   </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>„Pakko“ ZIP archyvas</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>„Pakko“ archyvas</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Šiuolaikiškas ZIP archyvatorius, skirtas „Windows“</value>
+  </data>
 </root>

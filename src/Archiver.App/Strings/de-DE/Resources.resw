@@ -197,10 +197,10 @@
     <value>Abschließen...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Es werden {0} Archiv(e) in den obigen Ordner extrahiert</value>
+    <value>Extrahiert wird in den obigen Ordner — Archive: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Es werden {0} Element(e) in den obigen Ordner komprimiert</value>
+    <value>Komprimiert wird in den obigen Ordner — Elemente: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Archivinhalt wird geprüft...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko-ZIP-Archiv</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko-Archiv</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Modernes ZIP-Archivierungsprogramm für Windows</value>
   </data>
 </root>

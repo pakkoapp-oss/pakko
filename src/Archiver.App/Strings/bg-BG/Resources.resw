@@ -197,10 +197,10 @@
     <value>Финализиране...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Ще бъдат извлечени {0} архив(а) в папката по-горе</value>
+    <value>Ще се извлече в папката по-горе — архиви: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Ще бъдат компресирани {0} елемент(а) в папката по-горе</value>
+    <value>Ще се компресира в папката по-горе — елементи: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Проверка на съдържанието на архива...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>ZIP архив на Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Архив на Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Модерен ZIP архиватор за Windows</value>
   </data>
 </root>

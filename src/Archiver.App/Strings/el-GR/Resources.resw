@@ -197,10 +197,10 @@
     <value>Οριστικοποίηση...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Θα εξαχθούν {0} αρχείο/α συμπίεσης στον παραπάνω φάκελο</value>
+    <value>Θα γίνει εξαγωγή στον παραπάνω φάκελο — αρχεία συμπίεσης: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Θα συμπιεστούν {0} στοιχείο/α στον παραπάνω φάκελο</value>
+    <value>Θα γίνει συμπίεση στον παραπάνω φάκελο — στοιχεία: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Έλεγχος περιεχομένων αρχείου συμπίεσης...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Αρχείο συμπίεσης ZIP του Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Αρχείο συμπίεσης του Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Σύγχρονο πρόγραμμα συμπίεσης ZIP για Windows</value>
   </data>
 </root>

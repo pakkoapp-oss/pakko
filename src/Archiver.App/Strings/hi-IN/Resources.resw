@@ -197,10 +197,10 @@
     <value>अंतिम रूप दिया जा रहा है...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>ऊपर दिए गए फ़ोल्डर में {0} संग्रह निकाले जाएंगे</value>
+    <value>ऊपर दिए गए फ़ोल्डर में निकाला जाएगा — संग्रह: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>ऊपर दिए गए फ़ोल्डर में {0} आइटम संपीड़ित किए जाएंगे</value>
+    <value>ऊपर दिए गए फ़ोल्डर में संपीड़ित किया जाएगा — आइटम: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>संग्रह की सामग्री जाँची जा रही है...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Pakko ZIP संग्रह</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Pakko संग्रह</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Windows के लिए आधुनिक ZIP आर्काइवर</value>
   </data>
 </root>

@@ -202,7 +202,7 @@
     <value>Archyve yra simbolinė nuoroda, griežtoji nuoroda, įrenginys ar kitas specialus elementas, todėl jo negalima saugiai išskleisti.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Dar {0} kopijos šiuo pavadinimu nebuvo išskleistos: iš šio archyvo galima paimti tik pirmąją ir paskutinę kopiją.</value>
+    <value>Kitos kopijos šiuo pavadinimu nebuvo išskleistos ({0}): iš šio archyvo galima paimti tik pirmąją ir paskutinę kopiją.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Kitas pasirinktas elementas turi tą patį pavadinimą, o šio aplanko nepavyko pridėti nauju pavadinimu. Pervadinkite vieną iš jų ir bandykite dar kartą.</value>
@@ -274,6 +274,6 @@
     <value>Elementas didesnis nei {0} MiB ir nebuvo nuskaitytas.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} įrašų vietinė antraštė nesutampa su centriniu katalogu (pirmasis: „{1}“). Kitos programos iš šio archyvo gali išskleisti kitus pavadinimus ar duomenis.</value>
+    <value>Elementai, kurių vietinė antraštė nesutampa su centriniu katalogu: {0} (pirmasis: „{1}“). Kitos programos iš šio archyvo gali išskleisti kitus pavadinimus ar duomenis.</value>
   </data>
 </root>

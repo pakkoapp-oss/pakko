@@ -197,10 +197,10 @@
     <value>Se finalizează...</value>
   </data>
   <data name="OutcomeWillExtract" xml:space="preserve">
-    <value>Vor fi extrase {0} arhivă/arhive în folderul de mai sus</value>
+    <value>Se va extrage în folderul de mai sus — arhive: {0}</value>
   </data>
   <data name="OutcomeWillArchive" xml:space="preserve">
-    <value>Vor fi comprimate {0} element(e) în folderul de mai sus</value>
+    <value>Se va comprima în folderul de mai sus — elemente: {0}</value>
   </data>
 
   <!-- Dialog strings -->
@@ -553,5 +553,14 @@
   </data>
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Se verifică conținutul arhivei...</value>
+  </data>
+  <data name="FileTypeZipName" xml:space="preserve">
+    <value>Arhivă ZIP Pakko</value>
+  </data>
+  <data name="FileTypeArchiveName" xml:space="preserve">
+    <value>Arhivă Pakko</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Arhivator ZIP modern pentru Windows</value>
   </data>
 </root>

@@ -202,7 +202,7 @@
     <value>Arhīvā ir simboliskā saite, cietā saite, ierīce vai cits īpašs vienums, un to nevar droši izvilkt.</value>
   </data>
   <data name="TarDuplicateCopiesNotExtracted" xml:space="preserve">
-    <value>Vēl {0} kopijas ar šo nosaukumu netika izvilktas: no šī arhīva var paņemt tikai pirmo un pēdējo kopiju.</value>
+    <value>Citas kopijas ar šo nosaukumu netika izvilktas ({0}): no šī arhīva var paņemt tikai pirmo un pēdējo kopiju.</value>
   </data>
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Citam atlasītam vienumam ir tāds pats nosaukums, un šo mapi nevarēja pievienot ar jaunu nosaukumu. Pārdēvējiet vienu no tiem un mēģiniet vēlreiz.</value>
@@ -274,6 +274,6 @@
     <value>Vienums ir lielāks par {0} MiB un netika skenēts.</value>
   </data>
   <data name="LocalHeaderMismatch" xml:space="preserve">
-    <value>{0} ierakstiem lokālā galvene neatbilst centrālajam direktorijam (pirmais: “{1}”). Citas programmas no šī arhīva var izvilkt citus nosaukumus vai datus.</value>
+    <value>Vienumi, kuru lokālā galvene neatbilst centrālajam direktorijam: {0} (pirmais: “{1}”). Citas programmas no šī arhīva var izvilkt citus nosaukumus vai datus.</value>
   </data>
 </root>
