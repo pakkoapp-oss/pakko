@@ -895,6 +895,8 @@ Ukrainian UI, CI an English one.
   `GlossaryTests` (one word per concept per locale, from `Glossary.tsv`), `SharedStringTests`
   (one English string, one translation), `CountTemplateTests` (no count before a noun in
   English UI text).
+- T-F330: `ShellUiLanguageTests` (Shell) and four `PickLanguageTag` tests (C++): the first
+  language of the user's list that Pakko ships wins over the display language.
 - `OperationOutcomeTests` (Core): each `OperationOutcome` from real ZIP/router runs, including a Test
   that read nothing (T-F274). Shell `OperationMessagesTests.ForTestResult_*` and
   `ShellCommandsTests.Test_NothingTested_DoesNotClaimNoErrors` (red before the fix).

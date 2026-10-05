@@ -4054,18 +4054,21 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   - [x] `Package.appxmanifest` takes the two file-type names and the app description from
     `ms-resource:` keys (`FileTypeZipName`, `FileTypeArchiveName`, `AppDescription`), translated
     in 37 locales; `AppResourceKeysTests` checks it and counts a manifest reference as a use
-  - [ ] the dev build was a flat `.msix`; the bundle path (T-F139's failure class) is unproven.
-    After the push: read the packaging job, then `gh workflow run build.yml --ref main` so
-    `build-store-msix` and `bundle-store-msix` build this manifest
+  - [x] bundle path (T-F139's failure class): dispatch run 37265510577 on `503eacd` built
+    `build-store-msix` (x64, ARM64) and `bundle-store-msix` green; each `.msix` inside the Store
+    bundle lists 37 languages, keeps the three `ms-resource:` references and has `resources.pri`
   - [ ] `docs/assets/store/02-main-window-light.png` and its dark and Ukrainian twins show the old
-    English footer line ("Will compress 7 item(s) to the folder above"); retake at the release step
+    English footer line ("Will compress 7 item(s) to the folder above"); retake at the release
+    step. Since T-F330 the English shots (`01`, `07`, `08` and the main window) need English
+    first in the Windows language list, or Pakko's items come out in the listed language
 - **Out of scope:** merging the three mechanisms; converting the two escaped fields of
   `Localization.cpp` to literal characters; the style points T-F328 left out.
 - **Device check (2026-10-05, dev package 1.6.0.10, agent-driven):** the installed
   `AppxManifest.xml` keeps the three `ms-resource:` references and lists 37 languages; Explorer's
   Type column shows "Архів Pakko" for `.tar` (the display language is English, Ukrainian is first
-  in the preferred-language list; the packaged App and the manifest strings follow that list, the
-  Shell helper follows the display language, T-F330); Test on three archives, Extract here on two, Compress, Scan on two and Hash on two files
+  in the preferred-language list; the packaged App and the manifest strings follow that list, and
+  at the time of this check the Shell helper still followed the display language, fixed since in
+  T-F330); Test on three archives, Extract here on two, Compress, Scan on two and Hash on two files
   ran through the installed `Archiver.Shell.exe` with the new titles ("Testing archives: 3",
   "Scanning archives: 2", "SHA-256 (files: 2)") and a Core error line; the main window (fresh
   build time in the title) queued an archive, showed the footer line and extracted it. Not
@@ -4080,11 +4083,29 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F330 — One machine, two languages: the App follows the language list, Explorer's window the display language (P3)
 
-- [ ] **Status:** open. Seen in T-F329's device check (2026-10-05): with English as the Windows
+- [x] **Status:** done 2026-10-05. Seen in T-F329's device check: with English as the Windows
   display language and Ukrainian first in the preferred-language list, the main window and the
-  file-type names are Ukrainian (packaged resources follow the list), while the operation window
-  and its Core messages are English (`Archiver.Shell` reads `CultureInfo.CurrentUICulture`). Not
-  new in T-F329. Decide which of the two Pakko follows, and make `UiCulture` and the `.resw`
-  lookup agree; check what `Localization.cpp`'s `GetThreadPreferredUILanguages` returns in the
-  same setup.
+  file-type names were Ukrainian, while Explorer's menu, the operation window and its Core
+  messages were English.
+- **Measured before the fix (same machine):** App strings and the file-type names: Ukrainian
+  (Windows resource matching over the language list); the App's Core messages follow the same
+  list by code (`CoreMessageText`), not looked at on the device. Pakko's Explorer
+  menu, `Archiver.Shell` and its operation window: English (display language). The menu items of
+  NanaZip and Windows Terminal, both packaged: Ukrainian, inside an otherwise English menu.
+- **Fix:** Explorer's menu (`PickLanguageTag` in `Localization.cpp`) and `Archiver.Shell`
+  (`ShellUiLanguage.Pick`) take the first language of the user's list that Pakko ships, English
+  when English is listed first or nothing listed is shipped; with no list they fall back to the
+  display language as before. The list is read from `HKCU\Control Panel\International\User
+  Profile\Languages`. `pakko.exe` stays English. Why this direction: `docs/DECISIONS.md`.
+- **Tests:** `ShellUiLanguageTests` (red on the old rule first), four `PickLanguageTag` C++ tests
+  (mutation-checked).
+- **Device check (dev packages 1.6.0.11 and 1.6.0.12, agent-driven):** the real Explorer menu shows the Pakko
+  items in Ukrainian; "Add to cc.zip" from that menu ran in a Ukrainian operation window and
+  wrote the archive; Test on three archives showed a Ukrainian title, Core error line and Close
+  button.
+- **Known limits:** the registry value is not a documented API (an empty or missing value falls
+  back to the display language); the per-app language a user can set for a packaged app in
+  Windows 11 Settings is honoured by the App but not by the menu or the operation window. This
+  machine had `Get-WinUILanguageOverride` = `uk` with an English display language, a state that
+  may not survive a sign-out.
 - **Reported by:** T-F329 device check, 2026-10-05.

@@ -189,6 +189,30 @@ TEST(ApplyTemplate, NoPlaceholderReturnsTemplateUnchanged)
 // GetCurrentUILanguageTag
 // ---------------------------------------------------------------------------
 
+// T-F330: the menu follows the user's language list, as the App's own strings do.
+TEST(PickLanguageTag, ListedLanguageWinsOverTheDisplayLanguage)
+{
+    EXPECT_EQ(PickLanguageTag({ L"uk", L"en-US" }, L"en-US"), L"uk");
+    EXPECT_EQ(GetLocalizedString(StringId::TestArchive, PickLanguageTag({ L"uk", L"en-US" }, L"en-US")),
+        GetLocalizedString(StringId::TestArchive, L"uk-UA"));
+}
+
+TEST(PickLanguageTag, EnglishListedFirstStaysEnglish)
+{
+    EXPECT_EQ(PickLanguageTag({ L"en-GB", L"de-DE" }, L"de-DE"), L"en-US");
+}
+
+TEST(PickLanguageTag, SkipsLanguagesWithoutARow)
+{
+    EXPECT_EQ(PickLanguageTag({ L"ga-IE", L"zh-Hant-TW", L"de-AT", L"uk" }, L"en-US"), L"de-AT");
+    EXPECT_EQ(PickLanguageTag({ L"ga-IE" }, L"uk-UA"), L"en-US");
+}
+
+TEST(PickLanguageTag, EmptyListFollowsTheDisplayLanguage)
+{
+    EXPECT_EQ(PickLanguageTag({}, L"uk-UA"), L"uk-UA");
+}
+
 TEST(GetCurrentUILanguageTag, ReturnsNonEmptyTag)
 {
     // Whatever the test-runner machine's actual UI language is, this must never come back empty -

@@ -11,8 +11,8 @@ GroupPolicyOptions policy = GroupPolicyService.Load();
 
 // T-F254: every Shell text resource is per region (de-DE); .NET's own fallback walks only the
 // parent chain (de-AT -> de -> English), so map the user's language onto the one Pakko ships.
-if (UiCulture.ResolveName(CultureInfo.CurrentUICulture.Name) is { } shippedCulture)
-    CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(shippedCulture);
+// T-F330: the language comes from the user's language list, as the App's own strings do.
+CultureInfo.CurrentUICulture = ShellUiLanguage.Pick(ShellUiLanguage.ReadUserLanguages(), CultureInfo.CurrentUICulture);
 
 ParsedCommand command = ShellArgumentParser.Parse(args);
 

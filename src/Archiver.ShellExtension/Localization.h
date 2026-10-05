@@ -41,10 +41,15 @@ enum class StringId
     LaunchFailedTemplate,
 };
 
-// Resolves the calling thread's preferred UI language as a BCP-47 tag (e.g. L"uk-UA"), matching
-// the same tag convention as Archiver.App/Strings/<locale>/. Falls back to L"en-US" if
-// GetThreadPreferredUILanguages fails or returns no languages.
+// The language the menu speaks, as a BCP-47 tag (e.g. L"uk-UA"): PickLanguageTag over the user's
+// language list and the calling thread's preferred UI language.
 std::wstring GetCurrentUILanguageTag();
+
+// T-F330: Windows picks a packaged app's own strings (the main window, the file-type names) from
+// the user's language list, not from the display language, and so do other packaged apps' menu
+// items. Returns the first listed tag the table has a row for, L"en-US" when English is listed
+// before any such tag or none is; with an empty list, `displayTag`.
+std::wstring PickLanguageTag(const std::vector<std::wstring>& userLanguages, const std::wstring& displayTag);
 
 // Pure, testable lookup: returns the localized text for `id` under `localeTag`. Falls back to
 // the en-US entry for `id` if `localeTag` isn't one of the supported locales - the same

@@ -95,7 +95,43 @@ namespace
     }
 }
 
+namespace
+{
+    // The user's language list in order of preference; empty when Windows has none recorded.
+    std::vector<std::wstring> ReadUserLanguages()
+    {
+        const wchar_t* const subKey = L"Control Panel\\International\\User Profile";
+        DWORD bytes = 0;
+        if (RegGetValueW(HKEY_CURRENT_USER, subKey, L"Languages", RRF_RT_REG_MULTI_SZ, nullptr, nullptr, &bytes) != ERROR_SUCCESS
+            || bytes < sizeof(wchar_t))
+            return {};
+
+        std::vector<wchar_t> buffer(bytes / sizeof(wchar_t) + 2, L'\0');
+        if (RegGetValueW(HKEY_CURRENT_USER, subKey, L"Languages", RRF_RT_REG_MULTI_SZ, nullptr, buffer.data(), &bytes) != ERROR_SUCCESS)
+            return {};
+
+        std::vector<std::wstring> languages;
+        const wchar_t* const end = buffer.data() + buffer.size();
+        for (const wchar_t* entry = buffer.data(); entry < end && *entry != L'\0';)
+        {
+            const size_t length = wcsnlen(entry, static_cast<size_t>(end - entry));
+            languages.emplace_back(entry, length);
+            entry += length + 1;
+        }
+        return languages;
+    }
+
+    std::wstring GetDisplayLanguageTag();
+}
+
 std::wstring GetCurrentUILanguageTag()
+{
+    return PickLanguageTag(ReadUserLanguages(), GetDisplayLanguageTag());
+}
+
+namespace
+{
+std::wstring GetDisplayLanguageTag()
 {
     ULONG numLanguages = 0;
     ULONG bufferSize = 0;
@@ -111,6 +147,7 @@ std::wstring GetCurrentUILanguageTag()
         }
     }
     return L"en-US";
+}
 }
 
 namespace
@@ -132,13 +169,14 @@ namespace
     // T-F254: same rule as Archiver.Messages' UiCulture — exact tag, then Simplified Chinese for
     // zh-CN/zh-SG/zh-Hans-*, then the table's row for the same language (de-AT -> de-DE), else
     // en-US. Traditional Chinese has no row and must not get the Simplified one.
-    const LocalizedStrings& ResolveRow(const std::wstring& localeTag)
+    // nullptr when the table has no row for the tag's language (it then shows en-US).
+    const LocalizedStrings* FindRow(const std::wstring& localeTag)
     {
         const auto& table = GetTable();
         for (const auto& [key, row] : table)
         {
             if (EqualsIgnoreCase(key, localeTag))
-                return row;
+                return &row;
         }
 
         std::wstring language = LanguageOf(localeTag);
@@ -148,7 +186,7 @@ namespace
             const std::wstring script = rest.substr(0, rest.find(L'-'));
             const bool simplified = rest.empty() || EqualsIgnoreCase(script, L"Hans")
                 || EqualsIgnoreCase(script, L"CN") || EqualsIgnoreCase(script, L"SG");
-            return table.at(simplified ? L"zh-Hans" : L"en-US");
+            return simplified ? &table.at(L"zh-Hans") : nullptr;
         }
         if (language == L"no")
             language = L"nb";
@@ -156,10 +194,31 @@ namespace
         for (const auto& [key, row] : table)
         {
             if (LanguageOf(key) == language)
-                return row;
+                return &row;
         }
-        return table.at(L"en-US");
+        return nullptr;
     }
+
+    const LocalizedStrings& ResolveRow(const std::wstring& localeTag)
+    {
+        const LocalizedStrings* row = FindRow(localeTag);
+        return row != nullptr ? *row : GetTable().at(L"en-US");
+    }
+}
+
+std::wstring PickLanguageTag(const std::vector<std::wstring>& userLanguages, const std::wstring& displayTag)
+{
+    if (userLanguages.empty())
+        return displayTag;
+
+    for (const std::wstring& tag : userLanguages)
+    {
+        if (LanguageOf(tag) == L"en")
+            return L"en-US";
+        if (FindRow(tag) != nullptr)
+            return tag;
+    }
+    return L"en-US";
 }
 
 std::wstring GetLocalizedString(StringId id, const std::wstring& localeTag)

@@ -11058,3 +11058,29 @@ locales; that is unfinished work listed in the task, not a judgement that the fo
 App's own `Resources.resw`; no manifest-only resource file. NanaZip's manifest has literal names,
 so there was no working example to copy; verified on the installed package instead
 (`SHLoadIndirectString` on the three keys, Explorer's Type column).
+
+## T-F330 — every surface follows the user's language list (2026-10-05)
+
+Windows has two settings that can disagree: the display language and the ordered list of
+preferred languages. A packaged app's own resources are matched against the list. So with an
+English display language and Ukrainian first in the list, Pakko's main window and its file-type
+names were Ukrainian while its Explorer menu and operation window, which read the display
+language (`GetThreadPreferredUILanguages`, `CultureInfo.CurrentUICulture`), were English.
+
+**Chosen: the list.** The file-type names are resolved by Windows and cannot be moved to the
+display language, so the list is the only rule under which all surfaces agree. It is also what the
+App already does on purpose (`CoreMessageText`, `UiCulture.ResolveFirst`), and what other packaged
+apps' menu items do: on the same machine NanaZip's and Windows Terminal's items were Ukrainian in
+an English Explorer menu.
+
+**Rejected: the display language everywhere.** It needs `ApplicationLanguages.
+PrimaryLanguageOverride` in the App, which persists and overrides the language a user may have
+set for the app in Windows Settings, and still leaves the file-type names on the list.
+
+**Source of the list.** `HKCU\Control Panel\International\User Profile\Languages` (`REG_MULTI_SZ`),
+read by both `Archiver.Shell` and the menu DLL. The documented API is WinRT
+(`GlobalizationPreferences.Languages`, `ApplicationLanguages.Languages`); `Archiver.Shell` targets
+plain `net10.0-windows` without the WinRT projection, and moving its target framework is the
+T-F128 trap (the framework name is written into `Content Include` paths and `Deploy.ps1`). One
+registry read in each process keeps the two on the same rule. Cost: the value is undocumented, and
+the per-app language override is not seen. A missing value falls back to the display language.
