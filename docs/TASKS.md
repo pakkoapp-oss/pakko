@@ -1744,9 +1744,13 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   message. The archive name for a drive root is T-F281.
 - **Reported by:** T-F283 device pass, 2026-09-29.
 
-### T-F275 — Recovery data for archives: PAR2 files next to the archive (P3, future)
+### T-F275 — Recovery data for archives: PAR2 files next to the archive (P3)
 
-- [ ] **Status:** open, future — not scheduled; needs a `docs/SPEC.md` scope decision before work.
+- [ ] **Status:** open — scheduled by the user 2026-10-05 as a wave of its own, after the
+  post-v1.7.0 fix waves (T-F333's tail and T-F280, the `pakko` messages, the App window items,
+  the localization and listing tails, the infrastructure items). It starts with the
+  `docs/SPEC.md` scope entry and the two open questions below; then write-side (create +
+  par2cmdline accepts it), then verify, then repair, each shippable alone.
   Option to write PAR2 (Reed-Solomon) recovery files next to a created archive, with a chosen
   redundancy (e.g. 5%), and to verify/repair an archive from them. Use: archives kept on flash
   drives or optical media or carried offline, where bad sectors or a truncated copy are the
