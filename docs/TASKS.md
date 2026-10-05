@@ -2334,7 +2334,11 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F337 — A permanent byte-level test of the encrypted ZIPs Pakko writes (P2)
 
-- [ ] **Status:** open. On 2026-10-05 the release build's AES-256 output was checked by a
+- [x] **Status:** done 2026-10-05 (wave 1): `ZipEncryptionByteLevelTests` in
+  `Archiver.Core.Tests`; five mutants killed (see `docs/TESTING.md`). With a password every
+  archive goes through the hand-rolled writer whatever the file count, so the two paths are the
+  in-memory one (up to 1 MiB) and the temp-file one (above it), both covered.
+- **Earlier status:** open. On 2026-10-05 the release build's AES-256 output was checked by a
   throwaway script that shares no code with Pakko (T-F333 came out of it); nothing in the test
   suite repeats that. Wanted, in `Archiver.Core.Tests`, over archives made by `ArchiveAsync`
   through both the in-memory and the temp-file path (more than 64 files) and with stored and

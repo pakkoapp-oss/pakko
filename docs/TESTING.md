@@ -199,6 +199,17 @@ independent reader: `7za.exe t`/`x` on Pakko archives byte-exact, and Pakko on 7
 a TAR-plus-password rejection in `TarSandboxedServiceCompressTests`. Mutation-checked: fixed salt,
 HMAC over plaintext, the 99 clamp, the TAR guard, both rule boundaries.
 
+**T-F337 (byte-level check of encrypted ZIPs).** `ZipEncryptionByteLevelTests` reads the archives
+`ArchiveAsync` writes with a ZIP and AE-2 reader written in the test (BCL `Rfc2898DeriveBytes`,
+`HMACSHA1`, AES-ECB over its own counter blocks; no `Archiver.Core.Services.Zip` type), so a bug
+shared by Pakko's writer and reader cannot pass as a round trip. Per entry: both headers, the
+`0x9901` field, salt, verification value, authentication code, decrypted content against the
+source; sizes 0, 1, 15, 16, 17, 65536, 65537, a file above the in-memory limit, 70 small files,
+at Optimal and NoCompression; no salt shared inside an archive or between two runs; no source
+marker readable in the archive. Mutation-checked: counter starting at 0 (in the keystream class
+the reader shares, so a round trip keeps passing), HMAC over plaintext, fixed salt, strength
+code, real method.
+
 **Tests with missing manual fixtures are skipped (yellow), not failed.**
 `dotnet test` returns success even with skipped tests.
 
