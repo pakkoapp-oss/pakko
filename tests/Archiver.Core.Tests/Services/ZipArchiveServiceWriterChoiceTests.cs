@@ -223,6 +223,95 @@ public sealed class ZipArchiveServiceWriterChoiceTests : IDisposable
         percents.Should().Contain(p => p > 0 && p < 100, "the bar moves while the files are compressed");
     }
 
+    // T-F359: one question per folder the sources sit in, not one per path - an Explorer selection
+    // can be thousands of files, and each question opens the volume.
+    [Fact]
+    public void AnyDiskHasSeekPenalty_ManySourcesInOneFolder_AsksOncePerFolder()
+    {
+        var asked = new List<string>();
+        string[] sources = [.. Enumerable.Range(0, 500).Select(i => $@"C:\data\f{i}.bin"), @"D:\other\g.bin"];
+
+        bool any = ZipArchiveService.AnyDiskHasSeekPenalty(path => { asked.Add(path); return false; }, @"E:\out", sources);
+
+        any.Should().BeFalse();
+        asked.Should().BeEquivalentTo(@"E:\out", @"C:\data", @"D:\other");
+    }
+
+    [Theory]
+    [InlineData(@"E:\out")]
+    [InlineData(@"D:\other")]
+    public void AnyDiskHasSeekPenalty_DestinationOrAnySource_IsEnough(string slow)
+    {
+        ZipArchiveService.AnyDiskHasSeekPenalty(path => path == slow, @"E:\out", [@"C:\data\a.bin", @"D:\other\g.bin"])
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void AnyDiskHasSeekPenalty_DriveRootAsASource_IsAskedAboutItself()
+    {
+        var asked = new List<string>();
+
+        ZipArchiveService.AnyDiskHasSeekPenalty(path => { asked.Add(path); return false; }, @"E:\out", [@"C:\"]);
+
+        asked.Should().BeEquivalentTo(@"E:\out", @"C:\");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ArchiveAsync_ManyFilesOnADiskWithASeekPenalty_LargeFilesTakeTurnsAndTheArchiveIsTheSame(bool singleArchive)
+    {
+        string folder = Path.Combine(_temp.Path, "many");
+        for (int i = 0; i < 70; i++)
+            CreateFileIn("many", $"s{i:D2}.txt", [(byte)i]);
+        foreach (int i in Enumerable.Range(0, 4))
+            CreateCompressibleFile("many", $"large{i}.log", i);
+        // The first large file to report holds its worker inside the report; any other large file
+        // that reports meanwhile was being compressed beside it.
+        string? held = null;
+        using var anotherLargeFileReported = new ManualResetEventSlim();
+        bool overlapped = false;
+        var progress = new SynchronousProgress(report =>
+        {
+            if (report.CurrentFile is not { } file || !file.Contains("large", StringComparison.Ordinal))
+                return;
+            if (Interlocked.CompareExchange(ref held, file, null) is null)
+                overlapped = anotherLargeFileReported.Wait(TimeSpan.FromSeconds(1));
+            else if (held != file)
+                anotherLargeFileReported.Set();
+        });
+        var slow = new ZipArchiveService(new GroupPolicyOptions()) { HasSeekPenalty = _ => true };
+        var fast = new ZipArchiveService(new GroupPolicyOptions()) { HasSeekPenalty = _ => false };
+        ArchiveOptions Options(string outFolder) => new()
+        {
+            SourcePaths = [folder], DestinationFolder = Path.Combine(_temp.Path, outFolder), ArchiveName = "many",
+            Mode = singleArchive ? ArchiveMode.SingleArchive : ArchiveMode.SeparateArchives,
+            // SeparateArchives takes the parallel writer only where ZipArchive cannot write the archive.
+            ResolvePasswordAsync = singleArchive ? null : _ => Task.FromResult(new PasswordDecision { Password = "secret" }),
+        };
+
+        ArchiveResult onSlow = await slow.ArchiveAsync(Options("slow"), progress);
+        ArchiveResult onFast = await fast.ArchiveAsync(Options("fast"));
+
+        held.Should().NotBeNull("a large file reports progress");
+        overlapped.Should().BeFalse();
+        // An encrypted archive has a random salt per entry, so only the plain one can be compared.
+        if (singleArchive)
+            File.ReadAllBytes(onSlow.CreatedFiles.Single()).Should().Equal(File.ReadAllBytes(onFast.CreatedFiles.Single()));
+        else
+            new FileInfo(onSlow.CreatedFiles.Single()).Length.Should().Be(new FileInfo(onFast.CreatedFiles.Single()).Length);
+    }
+
+    private string CreateCompressibleFile(string folder, string name, int seed)
+    {
+        // Text-like: Deflate has real work to do, so the files stay open long enough to overlap.
+        var random = new Random(seed);
+        byte[] content = new byte[LargeFileBytes];
+        for (int i = 0; i < content.Length; i++)
+            content[i] = (byte)('a' + random.Next(0, 16));
+        return CreateFileIn(folder, name, content);
+    }
+
     private Task<ArchiveResult> ArchiveAsync(string[] sources, string name) =>
         _sut.ArchiveAsync(new ArchiveOptions
         {

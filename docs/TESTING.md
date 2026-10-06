@@ -504,7 +504,12 @@ tests caught before shipping):
   The service's disk answer is pinned in these tests (`HasNoSeekPenalty`), since a runner's
   virtual disk may not answer. `DiskSeekPenaltyTests` (`IO/`): a network path, a missing drive and
   a non-path are false and never throw; what a real disk answers is machine-dependent and was
-  checked by hand (NVMe: true, `\\localhost\C$`: false).
+  checked by hand (NVMe: true, `\\localhost\C$`: false). T-F359, same classes:
+  `AnyDiskHasSeekPenalty` asks once per folder and about the destination; with a pinned "has a
+  penalty" (`HasSeekPenalty`) the first large file to report holds its worker for a second and no
+  other large file may report meanwhile, in both archive modes, and the plain archive is
+  byte-identical to the one made without it; `OneAtATime_*` (writer) - never two at once, a
+  failure or a cancel while waiting does not block the next.
   `ArchiveAsync_FewLargeFiles_WithinToleranceOfSevenZipReference` (`Category=Slow`) adds `7za t`
   and the timing ratio. `ParallelSingleArchiveWriterTests.RunPipelineAsync_CancelledWhileChunks
   AreCopiedIntoTheArchive_...` pins Cancel in the copy phase (the bar at 99%), which a few large

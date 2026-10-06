@@ -58,6 +58,10 @@ public sealed class ZipArchiveService : IArchiveService
     // runner's virtual disk may not answer.
     internal Func<string, bool> HasNoSeekPenalty { get; init; } = DiskSeekPenalty.IsKnownAbsent;
 
+    // T-F359: whether the disk under a path is known to have one. Not the opposite of the above:
+    // a share or a disk that does not answer is neither.
+    internal Func<string, bool> HasSeekPenalty { get; init; } = DiskSeekPenalty.IsKnownPresent;
+
     /// <inheritdoc/>
     public async Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
@@ -90,7 +94,7 @@ public sealed class ZipArchiveService : IArchiveService
             if (passwordError is not null)
                 return new ArchiveResult { CreatedFiles = [], Errors = [passwordError], SkippedFiles = [] };
         }
-        var run = new ArchiveRunContext(conflictResolver, password, HasNoSeekPenalty);
+        var run = new ArchiveRunContext(conflictResolver, password, HasNoSeekPenalty, HasSeekPenalty);
         IEnumerable<SourceResult> sources;
 
         if (options.Mode == ArchiveMode.SingleArchive)
@@ -132,7 +136,8 @@ public sealed class ZipArchiveService : IArchiveService
 
     // The per-call state both archive modes share — bundled to keep S107's parameter count down.
     // Password is null for an ordinary unencrypted archive (T-F193).
-    private sealed record ArchiveRunContext(ConflictResolver ConflictResolver, string? Password, Func<string, bool> HasNoSeekPenalty);
+    private sealed record ArchiveRunContext(
+        ConflictResolver ConflictResolver, string? Password, Func<string, bool> HasNoSeekPenalty, Func<string, bool> HasSeekPenalty);
 
     // T-F193: one prompt per ArchiveAsync call, never retried — there is nothing to verify a new
     // password against, so a wrong attempt cannot exist (maxAttempts: 1). The App/CLI prompts ask
@@ -224,6 +229,10 @@ public sealed class ZipArchiveService : IArchiveService
             ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, sortedSourcePaths);
             if (useParallelPipeline)
             {
+                settings = settings with
+                {
+                    OneLargeFileAtATime = AnyDiskHasSeekPenalty(run.HasSeekPenalty, options.DestinationFolder, sortedSourcePaths),
+                };
                 var callbacks = new Zip.ParallelSingleArchiveWriter.ReportCallbacks(skippedFiles.Add, errors.Add);
                 await Zip.ParallelSingleArchiveWriter.WriteAsync(
                     tempPath, sortedSourcePaths, settings,
@@ -388,6 +397,13 @@ public sealed class ZipArchiveService : IArchiveService
         // up to ComputeWindowCapacity() workers of its own — divide the outer parallelism so the
         // two levels together stay near the core count instead of multiplying.
         var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password);
+        if (settings.RequiresHandRolledWriter)
+        {
+            settings = settings with
+            {
+                OneLargeFileAtATime = AnyDiskHasSeekPenalty(run.HasSeekPenalty, options.DestinationFolder, sortedSourcePaths),
+            };
+        }
         int degreeOfParallelism = settings.RequiresHandRolledWriter
             ? Math.Max(1, Environment.ProcessorCount / Zip.ParallelSingleArchiveWriter.ComputeWindowCapacity())
             : Environment.ProcessorCount;
@@ -2065,6 +2081,16 @@ public sealed class ZipArchiveService : IArchiveService
     // T-F35: gate the parallel pipeline behind a file-count threshold - see the constant's own
     // comment. T-F193/T-F299: a password or Fastest always takes the hand-rolled writer,
     // regardless of file count (see CompressionSettings.RequiresHandRolledWriter).
+    // T-F359: asked once per folder the sources sit in - an Explorer selection can be thousands of
+    // files, and each question opens the volume. A drive root has no parent and is asked itself.
+    internal static bool AnyDiskHasSeekPenalty(
+        Func<string, bool> hasSeekPenalty, string destinationFolder, IEnumerable<string> sourcePaths) =>
+        sourcePaths
+            .Select(path => Path.GetDirectoryName(path) is { Length: > 0 } parent ? parent : path)
+            .Prepend(destinationFolder)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Any(hasSeekPenalty);
+
     internal static bool UsesParallelWriter(
         Zip.ParallelSingleArchiveWriter.CompressionSettings settings, int fileCount, long totalBytes, long largestFileBytes,
         long freeBytes, Func<bool> disksHaveNoSeekPenalty)

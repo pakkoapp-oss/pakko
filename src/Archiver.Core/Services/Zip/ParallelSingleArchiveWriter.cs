@@ -62,6 +62,13 @@ internal static class ParallelSingleArchiveWriter
         /// incompressible data grows by ~5.5% (T-F299).
         /// </summary>
         public bool RequiresHandRolledWriter => Password is not null || Level == CompressionLevel.Fastest;
+
+        /// <summary>
+        /// T-F359: files that go through a chunk file are compressed one at a time - for a disk
+        /// with a seek penalty, where several read and written side by side cost head movement.
+        /// Files compressed in memory stay parallel, and the archive's bytes do not depend on this.
+        /// </summary>
+        public bool OneLargeFileAtATime { get; init; }
     }
 
     /// <summary>
@@ -176,12 +183,19 @@ internal static class ParallelSingleArchiveWriter
 
         var tracker = new ProgressTracker(progress, totalBytes);
 
+        // Disposed only after RunPipelineAsync, which waits for every compression it started.
+        using SemaphoreSlim? largeFileGate = settings.OneLargeFileAtATime ? new SemaphoreSlim(1, 1) : null;
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressToTempFile =
+            (item, ct) => CompressToTempFileAsync(item, chunkDirectory, settings, tracker, ct);
+        if (largeFileGate is not null)
+            compressToTempFile = OneAtATime(compressToTempFile, largeFileGate);
+
         try
         {
             await RunPipelineAsync(
                     tempPath, items,
                     (item, ct) => CompressEligibleFileAsync(item, settings, tracker, ct),
-                    (item, ct) => CompressToTempFileAsync(item, chunkDirectory, settings, tracker, ct),
+                    compressToTempFile,
                     ComputeWindowCapacity(), totalBytes, progress, callbacks.ReportError, cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -193,6 +207,21 @@ internal static class ParallelSingleArchiveWriter
             await TryDeleteEmptyDirectoryWithRetryAsync(chunkDirectory).ConfigureAwait(false);
         }
     }
+
+    internal static Func<FileWorkItem, CancellationToken, Task<WorkResult>> OneAtATime(
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compress, SemaphoreSlim gate) =>
+        async (item, cancellationToken) =>
+        {
+            await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                return await compress(item, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        };
 
     // A single-attempt Directory.Delete here regularly left an empty ".pakko-tmp-..." folder
     // behind next to the destination archive (real on-device report, 2026-08-08) — the same class

@@ -11294,3 +11294,31 @@ progress bar stays at 99% while the chunks are copied into the archive: 0.5 s at
 
 **Rejected.** A total-size threshold (above). Splitting one large file into blocks compressed in
 parallel: a different writer, not this task.
+
+## T-F359 — on a disk with a seek penalty the parallel writer's large files take turns (2026-10-06)
+
+**Decision (the user's: "put the check there too").** Where `ParallelSingleArchiveWriter` runs and
+the destination or a source is on a disk that reports a seek penalty, the files that go through a
+chunk file (over 1 MiB) are compressed one at a time; files compressed in memory stay parallel.
+`CompressionSettings.OneLargeFileAtATime`, set by `ZipArchiveService.AnyDiskHasSeekPenalty`.
+
+**Why this shape, not "use the sequential writer there".** (1) A password and Fastest cannot go
+to `ZipArchive` at all. (2) The two writers differ in output (T-F352's entry), so the archive
+would depend on the disk it was made on; here its bytes are the same on any disk, which a test
+compares. (3) What costs a spinning disk head movement is several large files read and several
+chunk files written at once; a small file is read whole, compressed in memory and written once
+into the archive, and T-F35's gain for thousands of small files is CPU work.
+
+**Three answers, not two.** `DiskSeekPenalty.IsKnownPresent` is true only for an explicit "has a
+penalty". A share, a USB enclosure or a virtual disk that does not answer is neither "present" nor
+"absent": T-F352 (which needs "absent" to switch a path on) keeps them sequential, this task
+(which needs "present" to slow a path down) leaves them as they were. Each caller's unknown case
+is what shipped before it.
+
+**Cost of asking.** ~1 ms and a volume handle per question, and an Explorer selection can be
+thousands of paths: asked once per distinct parent folder of the sources plus the destination. A
+selected folder that is itself the mount point of another disk is therefore answered for its
+parent's disk - a miss leaves today's behaviour.
+
+**Not measured.** No spinning disk on the dev machine; the task stays `[~]` for that. Not covered:
+`SeparateArchives` runs several archives at once on any disk, as it did.

@@ -53,4 +53,22 @@ public sealed class DiskSeekPenaltyTests : IDisposable
     {
         DiskSeekPenalty.IsKnownAbsent(path).Should().BeFalse();
     }
+
+    // T-F359: no answer is neither "absent" nor "present" - each caller keeps what it did before.
+    [Theory]
+    [InlineData(@"\\no-such-server-pakko\share\file.bin")]
+    [InlineData(@"\\?\Volume{00000000-0000-0000-0000-000000000000}\file.bin")]
+    [InlineData("")]
+    [InlineData("a\0b")]
+    [InlineData("::::")]
+    public void IsKnownPresent_NoAnswer_IsFalseAndDoesNotThrow(string path)
+    {
+        DiskSeekPenalty.IsKnownPresent(path).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsKnownPresent_RealDisk_NeverAgreesWithIsKnownAbsent()
+    {
+        (DiskSeekPenalty.IsKnownPresent(_temp.Path) && DiskSeekPenalty.IsKnownAbsent(_temp.Path)).Should().BeFalse();
+    }
 }

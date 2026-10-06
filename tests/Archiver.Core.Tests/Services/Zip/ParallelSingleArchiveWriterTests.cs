@@ -39,6 +39,73 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         allocated.Should().BeLessThan(32 * 1024);
     }
 
+    // T-F359: on a disk with a seek penalty the files that go through a chunk file take turns.
+    [Fact]
+    public async Task OneAtATime_FiveCompressionsStartedTogether_NeverOverlap()
+    {
+        int running = 0, most = 0;
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compress = async (item, ct) =>
+        {
+            int now = Interlocked.Increment(ref running);
+            InterlockedMax(ref most, now);
+            await Task.Delay(20, ct);
+            Interlocked.Decrement(ref running);
+            return WorkResult.ForDirectoryPlaceholder(item.EntryName, item.LastWriteTime);
+        };
+        using var gate = new SemaphoreSlim(1, 1);
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> gated = ParallelSingleArchiveWriter.OneAtATime(compress, gate);
+
+        WorkResult[] results = await Task.WhenAll(Enumerable.Range(0, 5).Select(i =>
+            Task.Run(() => gated(new FileWorkItem($"s{i}", $"e{i}", FileWorkKind.File, 1, DateTime.Now), CancellationToken.None))));
+
+        most.Should().Be(1);
+        results.Select(r => r.EntryName).Should().BeEquivalentTo("e0", "e1", "e2", "e3", "e4");
+    }
+
+    [Fact]
+    public async Task OneAtATime_CompressionThrows_TheNextOneStillRuns()
+    {
+        using var gate = new SemaphoreSlim(1, 1);
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> gated = ParallelSingleArchiveWriter.OneAtATime(
+            (item, _) => item.EntryName == "bad"
+                ? throw new IOException("boom")
+                : Task.FromResult(WorkResult.ForDirectoryPlaceholder(item.EntryName, item.LastWriteTime)),
+            gate);
+
+        Func<Task> bad = () => gated(new FileWorkItem("s", "bad", FileWorkKind.File, 1, DateTime.Now), CancellationToken.None);
+        await bad.Should().ThrowAsync<IOException>();
+
+        WorkResult next = await gated(new FileWorkItem("s", "good", FileWorkKind.File, 1, DateTime.Now), CancellationToken.None);
+        next.EntryName.Should().Be("good");
+    }
+
+    [Fact]
+    public async Task OneAtATime_CancelledWhileWaitingForItsTurn_ThrowsAndDoesNotCompress()
+    {
+        using var gate = new SemaphoreSlim(0, 1);
+        using var cts = new CancellationTokenSource();
+        bool compressed = false;
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> gated = ParallelSingleArchiveWriter.OneAtATime(
+            (item, _) => { compressed = true; return Task.FromResult(WorkResult.ForDirectoryPlaceholder(item.EntryName, item.LastWriteTime)); },
+            gate);
+
+        Task<WorkResult> waiting = gated(new FileWorkItem("s", "e", FileWorkKind.File, 1, DateTime.Now), cts.Token);
+        cts.Cancel();
+
+        Func<Task> act = () => waiting;
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        compressed.Should().BeFalse();
+    }
+
+    private static void InterlockedMax(ref int target, int value)
+    {
+        int seen;
+        while ((seen = Volatile.Read(ref target)) < value && Interlocked.CompareExchange(ref target, value, seen) != seen)
+        {
+            // another thread moved it; look again
+        }
+    }
+
     [Fact]
     public async Task RunPipelineAsync_WritesEntries_InEnqueueOrderNotCompletionOrder()
     {

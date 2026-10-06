@@ -1843,7 +1843,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   tar.exe.
 - **Reported by:** the user, 2026-10-06.
 
-## Performance wave (T-F346–T-F358)
+## Performance wave (T-F346–T-F359)
 
 Opened 2026-10-06 from a measured study of start-up and resource use (installed dev 1.7.1.1 x64,
 warm starts, 12 cores, Defender on; EventPipe profiles, A/B through environment variables, 7za on
@@ -1954,9 +1954,8 @@ re-measured with T-F346's script before and after.
   into a chunk file, rewritten there as Stored (T-F299), then copied into the archive: 3 x 100 MB
   writes ~900 MB for a 300 MB archive; a compressible file is written twice. On an SSD that is
   wear and time, on a spinning disk more. Leads: decide Stored from the first block(s) before
-  writing a chunk; write the largest pending entry straight into the archive. Also open: whether
-  the path for more than 64 files should ask `DiskSeekPenalty` too (unmeasured on a spinning
-  disk - no such disk on the dev machine). Plan mode; the writer's output must not change.
+  writing a chunk; write the largest pending entry straight into the archive. (The disk question
+  for the path of more than 64 files is T-F359.) Plan mode; the writer's output must not change.
 - **Reported by:** the user's question on disk types, 2026-10-06 (T-F352).
 
 ### T-F358 — ZIP extraction of small files costs twice 7za's time, and the mark nearly doubles it again (P2, measure first)
@@ -1969,6 +1968,22 @@ re-measured with T-F346's script before and after.
   file; one write instead of open/copy/close). Profile first; any change to the MOTW path needs
   the user's word and `SECURITY.md`'s owner rule.
 - **Reported by:** T-F353's measurement, 2026-10-06.
+
+### T-F359 — The parallel ZIP writer on a disk with a seek penalty: large files take turns (P2)
+
+- [~] **Status:** code done 2026-10-06, **not measured** - the dev machine has no spinning disk.
+  When the destination or a source is on a disk that reports a seek penalty
+  (`DiskSeekPenalty.IsKnownPresent`), `ParallelSingleArchiveWriter` compresses the files that go
+  through a chunk file (over 1 MiB) one at a time (`CompressionSettings.OneLargeFileAtATime`);
+  files compressed in memory stay parallel. Applies wherever that writer runs (more than 64
+  files, a password, Fastest; both archive modes). The archive's bytes are the same on any disk.
+  A share or a disk that does not answer changes nothing - only an explicit "has a penalty" does.
+  The disk is asked once per folder the sources sit in, not once per path. Not covered:
+  `SeparateArchives` still writes several archives side by side on such a disk, as before. Tests
+  first (`ZipArchiveServiceWriterChoiceTests`, `ParallelSingleArchiveWriterTests.OneAtATime_*`,
+  `DiskSeekPenaltyTests`); eight mutants, all caught. Stays `[~]` until measured on a spinning
+  disk (before/after on a few large files beside many small ones).
+- **Reported by:** the user's decision, 2026-10-06.
 
 ### T-F354 — App: load the hidden parts of `MainWindow.xaml` on first use (P3, measure first)
 

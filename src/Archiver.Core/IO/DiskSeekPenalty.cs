@@ -22,18 +22,27 @@ internal static partial class DiskSeekPenalty
     /// that does not answer (many USB enclosures, RAID controllers, virtual disks), a network
     /// share and any failure give false - the caller then keeps its sequential path. Never throws.
     /// </summary>
-    public static bool IsKnownAbsent(string path)
+    public static bool IsKnownAbsent(string path) => Query(path) == false;
+
+    /// <summary>
+    /// T-F359: true only when the volume holding <paramref name="path"/> reports a seek penalty.
+    /// No answer is false here too - a caller that slows down for a spinning disk must not slow
+    /// down for a share or a disk that says nothing. Never throws.
+    /// </summary>
+    public static bool IsKnownPresent(string path) => Query(path) == true;
+
+    private static bool? Query(string path)
     {
         try
         {
             string? volume = VolumeDevicePath(path);
             if (volume is null)
-                return false;
+                return null;
 
             // No access rights: reading a storage property needs none, and so no elevation.
             using SafeFileHandle handle = CreateFileW(volume, 0, FileShareReadWrite, IntPtr.Zero, OpenExisting, 0, IntPtr.Zero);
             if (handle.IsInvalid)
-                return false;
+                return null;
 
             // STORAGE_PROPERTY_QUERY { PropertyId, QueryType = PropertyStandardQuery, 1 byte + padding }
             byte[] query = new byte[12];
@@ -44,13 +53,13 @@ internal static partial class DiskSeekPenalty
             if (!DeviceIoControl(handle, IoctlStorageQueryProperty, query, query.Length, descriptor, descriptor.Length, out int returned, IntPtr.Zero)
                 || returned < 9)
             {
-                return false;
+                return null;
             }
-            return descriptor[8] == 0;
+            return descriptor[8] != 0;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            return false;
+            return null;
         }
     }
 
