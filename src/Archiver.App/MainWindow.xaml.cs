@@ -365,12 +365,15 @@ public sealed partial class MainWindow : Window
             .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
     // After the list's items change, its containers exist only after the next layout pass.
+    // T-F314: that pass is forced here. After Enter into a nested archive the queued call ran
+    // before it, found no container, and focus fell to the Up button when the old row went away.
     private void FocusRowLater(ListView list, int index)
     {
         if (index < 0)
             return;
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
+            list.UpdateLayout();
             if (list.ContainerFromIndex(index) is ListViewItem row)
                 row.Focus(FocusState.Keyboard);
         });
