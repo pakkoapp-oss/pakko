@@ -331,7 +331,8 @@ now.
 Times the **installed** package (run `Deploy.ps1` first): App start to visible window with its
 memory, threads and CPU; Explorer's "Open" (`Archiver.Shell.exe --open-ui --browse`) to visible
 App window; Explorer's "Extract here" on a generated 200-file ZIP (files written, Shell exit);
-`pakko --help` and `pakko l`. Prints median, minimum and maximum; the first launch of each
+`pakko --help` and `pakko l`; the operation window on a generated 4000-file ZIP and on a conflict
+prompt (Shell start to visible `Archiver.OperationUi` window). Prints median, minimum and maximum; the first launch of each
 scenario is dropped. There is no pass/fail threshold — the numbers depend on the machine, so
 compare a run before a change with a run after it on the same machine. It opens and closes Pakko
 windows on the desktop while it runs.

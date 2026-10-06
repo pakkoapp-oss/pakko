@@ -16,6 +16,10 @@
       ExtractHere  Archiver.Shell.exe --extract-here on a 200-file ZIP: last file written, and
                    Shell exit.
       Cli          pakko --help and pakko l <zip> from the package.
+      LongExtract  Archiver.Shell.exe --extract-here on a 4000-file ZIP -> the operation window
+                   (Archiver.OperationUi) visible.
+      Conflict     Archiver.Shell.exe --extract-here onto an existing file -> the conflict prompt
+                   visible.
 
     Windows are opened and closed on the desktop while it runs; do not use the machine meanwhile.
 .PARAMETER Runs
@@ -32,8 +36,8 @@ param(
     [ValidateRange(3, 100)]
     [int]$Runs = 8,
 
-    [ValidateSet('App', 'Open', 'ExtractHere', 'Cli')]
-    [string[]]$Scenario = @('App', 'Open', 'ExtractHere', 'Cli')
+    [ValidateSet('App', 'Open', 'ExtractHere', 'Cli', 'LongExtract', 'Conflict')]
+    [string[]]$Scenario = @('App', 'Open', 'ExtractHere', 'Cli', 'LongExtract', 'Conflict')
 )
 
 Set-StrictMode -Version Latest
@@ -72,9 +76,9 @@ function Get-Summary {
 }
 
 function Get-NewAppProcess {
-    param([int[]]$KnownIds)
+    param([int[]]$KnownIds, [string]$Name = 'Archiver.App')
 
-    Get-Process -Name 'Archiver.App' -ErrorAction SilentlyContinue |
+    Get-Process -Name $Name -ErrorAction SilentlyContinue |
         Where-Object { $KnownIds -notcontains $_.Id } |
         Select-Object -First 1
 }
@@ -114,6 +118,74 @@ function Initialize-SampleZip {
     $zip = Join-Path $workDir 't.zip'
     Compress-Archive -Path (Join-Path $source 'f*.txt') -DestinationPath $zip -Force
     $zip
+}
+
+function Initialize-EntriesZip {
+    param([string]$Name, [int]$Entries)
+
+    Add-Type -AssemblyName System.IO.Compression
+    $bytes = [Text.Encoding]::ASCII.GetBytes(('line of sample text ' * 800))
+    $zip = Join-Path $workDir $Name
+    $file = [IO.File]::Create($zip)
+    try {
+        $archive = New-Object IO.Compression.ZipArchive($file, [IO.Compression.ZipArchiveMode]::Create)
+        try {
+            foreach ($i in 1..$Entries) {
+                $stream = $archive.CreateEntry("f$i.txt", [IO.Compression.CompressionLevel]::Fastest).Open()
+                try { $stream.Write($bytes, 0, $bytes.Length) } finally { $stream.Dispose() }
+            }
+        }
+        finally { $archive.Dispose() }
+    }
+    finally { $file.Dispose() }
+    $zip
+}
+
+function Measure-OperationWindow {
+    param([string]$Zip, [int]$Count, [string]$Label, [switch]$Conflict)
+
+    $window = @()
+    foreach ($run in 1..$Count) {
+        $folder = Join-Path $workDir "$Label$run"
+        $null = New-Item -ItemType Directory -Force -Path $folder
+        $copy = Join-Path $folder 't.zip'
+        Copy-Item -LiteralPath $Zip -Destination $copy
+        if ($Conflict) {
+            # A one-file archive lands next to itself, so this file is the conflict.
+            [IO.File]::WriteAllText((Join-Path $folder 'f1.txt'), 'already here')
+        }
+
+        $known = @(Get-Process -Name 'Archiver.OperationUi' -ErrorAction SilentlyContinue | ForEach-Object { $_.Id })
+        $watch = [System.Diagnostics.Stopwatch]::StartNew()
+        $shell = Start-Process -FilePath $shellExe -ArgumentList @('--extract-here', "`"$copy`"") -PassThru
+        $shownAt = $null
+        $helper = $null
+        while ($null -eq $shownAt -and -not $shell.HasExited -and $watch.ElapsedMilliseconds -lt $timeoutMs) {
+            if (-not $helper) { $helper = Get-NewAppProcess -KnownIds $known -Name 'Archiver.OperationUi' }
+            if ($helper) {
+                $helper.Refresh()
+                if (-not $helper.HasExited -and $helper.MainWindowHandle -ne [IntPtr]::Zero -and
+                    [PakkoMeasure.Native]::IsWindowVisible($helper.MainWindowHandle)) {
+                    $shownAt = $watch.Elapsed.TotalMilliseconds
+                }
+            }
+            if ($null -eq $shownAt) { Start-Sleep -Milliseconds 5 }
+        }
+
+        if ($Conflict) {
+            # Shell first: with the helper gone first it would fall back to a Win32 prompt.
+            if (-not $shell.HasExited) { Stop-Process -Id $shell.Id -Force }
+            if ($helper -and -not $helper.WaitForExit(3000)) { Stop-Process -Id $helper.Id -Force }
+        }
+        elseif (-not $shell.WaitForExit($timeoutMs)) {
+            Stop-Process -Id $shell.Id -Force
+            throw "Archiver.Shell did not exit within $timeoutMs ms."
+        }
+        if ($null -eq $shownAt) { throw "$Label`: the operation window never became visible." }
+        $window += $shownAt
+        Start-Sleep -Milliseconds 500
+    }
+    Get-Summary -Name "$Label`: Shell start -> operation window visible, ms" -Values $window
 }
 
 function Measure-App {
@@ -225,6 +297,12 @@ try {
     if ($Scenario -contains 'Open') { $rows += Measure-Open -Zip $zip -Count $Runs }
     if ($Scenario -contains 'ExtractHere') { $rows += Measure-ExtractHere -Zip $zip -Count $Runs }
     if ($Scenario -contains 'Cli') { $rows += Measure-Cli -Zip $zip -Count $Runs }
+    if ($Scenario -contains 'LongExtract') {
+        $rows += Measure-OperationWindow -Zip (Initialize-EntriesZip -Name 'long.zip' -Entries 4000) -Count $Runs -Label 'Long extraction'
+    }
+    if ($Scenario -contains 'Conflict') {
+        $rows += Measure-OperationWindow -Zip (Initialize-EntriesZip -Name 'one.zip' -Entries 1) -Count $Runs -Label 'Conflict prompt' -Conflict
+    }
 
     Write-Output "Package: $($package.PackageFullName)"
     Write-Output "App build: $((Get-Item -LiteralPath (Join-Path $installDir 'Archiver.App.dll')).LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss'))"
