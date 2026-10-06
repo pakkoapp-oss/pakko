@@ -118,9 +118,6 @@ public sealed partial class MainWindow : Window
         // T-F199: content extends into the title bar; TitleText shows AppWindow.Title (the build stamp).
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
-        // No Mica: dropped when captures came back black (2026-09-28), later traced to the monitor
-        // being off rather than the backdrop; not re-tested since (DECISIONS.md, wave 4).
-        RootGrid.Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["SolidBackgroundFillColorBaseBrush"];
         RootGrid.Loaded += (_, _) => ApplyCaptionColors();
         RootGrid.ActualThemeChanged += (_, _) => ApplyCaptionColors();
         // On-device verification relies on a fresh Deploy.ps1 having actually replaced the

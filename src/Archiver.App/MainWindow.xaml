@@ -13,8 +13,12 @@
          the content: toolbar, table, options, footer. T-F106/T-F224: the table's Star row carries
          the MinHeight on the RowDefinition itself (a child's MinHeight does not grow a Star row),
          and the options scroll instead of forcing a tall window — OptionsScroll's MaxHeight is set
-         in code-behind from the space the table's minimum leaves (an Auto row never scrolls). -->
-    <Grid x:Name="RootGrid">
+         in code-behind from the space the table's minimum leaves (an Auto row never scrolls).
+         The background is a ThemeResource so that it follows a theme change while the window is
+         open (T-F327; a brush read from Application.Resources in code stays in the start theme).
+         No Mica: dropped when captures came back black (2026-09-28), later traced to the monitor
+         being off rather than the backdrop; not re-tested since (DECISIONS.md, wave 4). -->
+    <Grid x:Name="RootGrid" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="32"/>
             <RowDefinition Height="*"/>
