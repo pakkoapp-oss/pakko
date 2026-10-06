@@ -21,7 +21,7 @@ internal static partial class SubstDrive
         if (fullPath.Length < 3 || !char.IsAsciiLetter(fullPath[0]) || fullPath[1] != ':' || fullPath[2] != '\\')
             return fullPath;
 
-        var device = new char[DeviceNameCapacity];
+        char[] device = new char[DeviceNameCapacity];
         if (QueryDosDeviceW(fullPath[..2], device, (uint)device.Length) == 0)
             return fullPath;
         int end = Array.IndexOf(device, '\0');

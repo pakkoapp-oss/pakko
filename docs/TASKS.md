@@ -766,7 +766,7 @@ but if ever revisited, `PublishReadyToRun`/a persistent pre-warmed worker is now
 question, not just AppContainer/Job-Object setup cost (which this spike shows is already cheap).
 
 ### T-F135 — SonarCloud Static Analysis Integration (CI)
-- [~] **Status:** partial — 2026-07-27. `build.yml`'s `test` job runs JDK setup →
+- [x] **Status:** done; closed 2026-10-06 (wave 5 after v1.7.0). The criterion left open below - a real analysed commit on the dashboard - has held for months: every push to `main` is analysed (`api/project_analyses/search` lists revision 9e513f6, 2026-10-06), the quality gate is `OK`, and the open findings are the two documented `S1135` TODO markers (`docs/CONVENTIONS.md`). The rest of the backlog went in the same wave: S4136, S3398 and SYSLIB1092 fixed, S6966 documented as deliberate. C++ stays out of SonarCloud; MSVC `/analyze` covers it (T-F150). **Earlier status:** partial — 2026-07-27. `build.yml`'s `test` job runs JDK setup →
       `dotnet-sonarscanner begin` → the existing `dotnet test` → `dotnet-sonarscanner end`, guarded
       to skip cleanly (not fail) on fork-originated PRs that have no `SONAR_TOKEN` available. Real
       SonarCloud org/project now exist and are confirmed reachable via SonarCloud's public API
