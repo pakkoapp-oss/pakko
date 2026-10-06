@@ -11157,3 +11157,445 @@ current folder without creating some destination folder first.
   culture (`60 000` with a no-break space under uk-UA), which a console in code page 866 cannot
   show; belongs with T-F328's "{0} bytes" tail.
 - **Reported by:** wave 1 device pass, 2026-10-05.
+
+## Graduated 2026-10-06 (T-F336)
+
+### T-F01 — Explorer Context Menu Integration
+- [ ] **Status:** SUPERSEDED by T-F53–T-F57 — kept for historical reference
+- **Depends on:** T-F09 (CLI Core)
+
+**What:** Right-click context menu in Windows Explorer for archiving and extracting without opening the main UI window.
+
+**User experience:**
+
+Right-click on any files/folders (non-ZIP or mixed):
+```
+Pakko ►
+  ├── Add to "first_item.zip"    ← immediate, no window, single archive
+  ├── Add to separate ZIPs       ← immediate, no window, one ZIP per item
+  └── Archive with Pakko...      ← opens main window with items pre-loaded
+```
+
+Right-click on one or more ZIP files:
+```
+Pakko ►
+  ├── Extract here               ← immediate, no window, extract next to archive
+  ├── Extract here (new folder)  ← immediate, subfolder per archive
+  └── Extract with Pakko...      ← opens main window with archives pre-loaded
+```
+
+Right-click on mixed selection (ZIP + non-ZIP):
+```
+Pakko ►
+  ├── Add to "first_item.zip"
+  ├── Extract ZIPs here
+  └── Open with Pakko...
+```
+
+**Technical approach — two components:**
+
+**1. `Archiver.Shell` project** (new, `src/Archiver.Shell/`)
+Lightweight console exe invoked by the context menu with arguments:
+```
+Archiver.Shell.exe --archive --dest same "file1" "file2" "file3"
+Archiver.Shell.exe --archive --separate --dest same "file1" "file2"
+Archiver.Shell.exe --extract --dest same "archive1.zip" "archive2.zip"
+Archiver.Shell.exe --open-ui --archive "file1" "file2"
+```
+Uses `Archiver.Core` directly — no WinUI dependency. Runs silently (`<OutputType>WinExe</OutputType>`, no console window).
+
+**2. Shell extension registration**
+Windows 11 (build 22621+): sparse package manifest — no COM DLL needed.
+Windows 10 fallback: classic COM `IContextMenu` shell extension DLL.
+
+Declared in `Package.appxmanifest` for MSIX distribution.
+
+**Silent operation — no window flicker:**
+- `Archiver.Shell.exe` runs with `CreateNoWindow = true`
+- Progress shown via Windows Toast notification on completion:
+  ```
+  Pakko
+  Archived 3 files → backup.zip
+  ```
+- Errors shown via Toast, not dialog
+
+**Acceptance criteria (when implemented):**
+- [ ] `Archiver.Shell` project added to solution, references `Archiver.Core`
+- [ ] `--archive` flag: archives all passed paths into single ZIP next to first item
+- [ ] `--archive --separate` flag: one ZIP per item
+- [ ] `--extract` flag: extracts all passed ZIPs next to each archive (T-14 smart folder logic)
+- [ ] `--open-ui` flag: launches `Archiver.App` with items pre-loaded
+- [ ] No console window shown during silent operations
+- [ ] Toast notification on completion — success and error
+- [ ] Context menu appears for ZIP files with Extract options
+- [ ] Context menu appears for non-ZIP files/folders with Archive options
+- [ ] Multi-selection works — all selected items passed in single invocation
+- [ ] Works on Windows 10 1809+ and Windows 11
+- [ ] Registered via MSIX manifest — no manual registry editing
+- [ ] Uninstall removes all context menu entries cleanly
+- [ ] `dotnet test` passes — basic invocation tests for Archiver.Shell
+
+### T-F04 — TAR/GZip/BZip2/XZ Support via Windows tar.exe
+- [ ] **Status:** future
+
+Uses Windows built-in `tar.exe` (available since Windows 10 1803, based on libarchive).
+No third-party binaries — `tar.exe` is part of the OS.
+Invoke via `System.Diagnostics.Process`.
+
+### T-F07 — Optional 7-Zip Extraction Support
+- [ ] **Status:** CANCELLED — replaced by tar.exe integration (T-F47/T-F49). Windows built-in `tar.exe` (Microsoft-signed) supports 7z extraction on Windows 11 23H2+ without requiring a third-party binary.
+
+### T-F08 — Optional RAR Extraction Support
+- [ ] **Status:** CANCELLED — covered by tar.exe integration (T-F47/T-F49). Windows built-in `tar.exe` supports RAR extraction on Windows 11 23H2+, eliminating the need for `unrar.exe`.
+
+### T-F13 — Process Sandbox Isolation for External Binaries
+- [ ] **Status:** SUPERSEDED by T-F52 — reassessed 2026-07-14. Written when the project still
+      planned to bundle optional third-party binaries (`7z.exe`/`unrar.exe`, T-F07/T-F08); both
+      of those tasks were cancelled 2026-07-12 when the project pivoted entirely to Windows'
+      built-in `tar.exe` (T-F47–T-F49), so this task's `Depends on` target no longer exists and
+      its threat model ("binary passes SHA-256 but is compromised") doesn't fit a Microsoft-
+      signed OS component nobody downloads or hash-verifies. T-F52 (AppContainer Sandbox for
+      tar.exe — retitled 2026-07-14 when the mechanism moved from a Low-IL token to an
+      AppContainer, see `DECISIONS.md`) is this task's tar.exe-specific descendant, already
+      planned for v1.4 per `SPEC.md`. Layers 1/3/6 below (restricted token, filesystem restriction
+      via IL labeling, staging validation) are superseded outright by T-F52's flow (filesystem
+      restriction now via AppContainer SID ACLs, not IL labeling). Layers 2 and 4/5 (Job Object
+      resource limits; network isolation) are real additional hardening not covered by T-F52 as
+      originally scoped — folded into T-F52's acceptance criteria below rather than implemented as
+      a second, separate sandboxing task; network isolation is now AppContainer-native (empty
+      capability list), not a WFP firewall rule — Layer 5's firewall-rule approach is dropped, not
+      carried forward. Kept per the "never silently deprecate" rule instead of deleted.
+- **Depends on:** T-F07 or T-F08 (both cancelled — see Status)
+
+**Threat model:** binary passes SHA-256 but has undiscovered vulnerability, or is compromised between verification and execution, or attempts network exfiltration or filesystem traversal.
+
+**Layer 1 — Restricted token:**
+- Create process with restricted token: no debug privileges, no driver privileges
+- Drops all unnecessary privilege groups before `Process.Start`
+
+**Layer 2 — Windows Job Object (P/Invoke):**
+- `ActiveProcessLimit = 1` — cannot spawn child processes
+- RAM limit 512 MB — prevent resource exhaustion
+- CPU time limit — maximum runtime enforced
+- UI restrictions — no clipboard, no desktop manipulation
+
+**Layer 3 — Filesystem restriction:**
+- Filesystem access limited to two directories: sandbox/input (read-only) and sandbox/output (write-only)
+- All other filesystem paths denied via DACL or AppContainer policy
+
+**Layer 4 — Network isolation:**
+- Network access completely disabled for worker process
+- No outbound or inbound connections permitted
+
+**Layer 5 — WFP firewall rule:**
+Added at optional component install time (requires elevation once):
+```powershell
+New-NetFirewallRule -DisplayName "Pakko — block 7z.exe outbound" `
+    -Direction Outbound -Program "$env:LOCALAPPDATA\Pakko\tools\7z.exe" -Action Block
+```
+Rule removed on uninstall.
+
+**Layer 6 — Staging directory validation:**
+- Files extracted to staging directory first
+- Staging output validated (path traversal check, no reparse points) before move to final destination
+- TOCTOU mitigation: resolve real paths immediately before file creation
+- Staging directory cleaned up on both success and failure
+
+**Acceptance criteria (when implemented):**
+- [ ] External binary process assigned to Job Object before execution
+- [ ] Worker process runs with restricted token (no debug, no driver privileges)
+- [ ] `ActiveProcessLimit = 1`
+- [ ] RAM limit enforced (512 MB)
+- [ ] CPU time limit enforced — maximum runtime applied
+- [ ] UI restrictions applied
+- [ ] Filesystem access limited to sandbox/input and sandbox/output only
+- [ ] Network access completely disabled for worker process
+- [ ] Firewall rule added at install, removed at uninstall
+- [ ] Files extracted to staging directory first, validated, then moved to final destination
+- [ ] TOCTOU mitigation: real paths resolved immediately before file creation
+- [ ] Staging directory cleaned up on success and failure
+- [ ] Job Object handle closed after process exits — no leak
+- [ ] `dotnet test` passes
+- [ ] Verified: spawning child process from sandboxed binary fails
+
+### T-F15 — Microsoft Store Publication
+- [ ] **Status:** future
+
+**What:** Publish Pakko to Microsoft Store via Partner Center. Store handles MSIX signing, hosting, distribution, and automatic updates.
+
+**Cost:** $0 for individual developers (as of September 2025).
+
+**Prerequisites before submission:**
+- Proper app icon in all required sizes
+- About dialog with version and links (T-F14) ✓ done
+- Store listing assets: screenshots, description, privacy policy URL
+
+**Required icon sizes for Store:**
+| File | Size |
+|------|------|
+| `StoreLogo.png` | 50×50 |
+| `Square44x44Logo.png` | 44×44 |
+| `Square150x150Logo.png` | 150×150 |
+| `Wide310x150Logo.png` | 310×150 |
+| `Square71x71Logo.png` | 71×71 |
+| `Square310x310Logo.png` | 310×310 |
+
+**Submission process:**
+1. Register at storedeveloper.microsoft.com (individual, free, ID verification)
+2. Create app reservation — reserve "Pakko" name
+3. Build MSIX bundle (x64, optionally + arm64 per T-F11)
+4. Upload to Partner Center
+5. Fill Store listing: description, screenshots, category (Utilities), privacy policy
+6. Submit for certification (1–3 business days)
+7. Store signs the package — no separate code signing certificate needed
+
+**Privacy policy note:**
+Store requires a privacy policy URL even for apps that collect no data.
+Acceptable: simple GitHub Pages page stating "Pakko collects no data."
+
+**Automatic updates:**
+Once published, Store delivers updates automatically when new version is submitted.
+Version bump: increment `Package.appxmanifest` `Version` attribute before each submission.
+
+**Acceptance criteria (when implemented):**
+- [ ] Partner Center account registered (individual, free)
+- [ ] App name "Pakko" reserved in Store
+- [ ] All required icon sizes present in `Assets/`
+- [ ] Privacy policy page published (GitHub Pages or similar)
+- [ ] MSIX bundle built and uploaded
+- [ ] Store listing complete: description (EN), screenshots, category
+- [ ] App passes Store certification
+- [ ] Published app installs and runs correctly from Store
+- [ ] Version update flow tested — submit new version, confirm auto-update delivers
+
+### T-F33 — Archive Verify Command
+- [ ] **Status:** cancelled — integrity manifest removed; ZIP CRC-32 is sufficient
+
+**What:** CLI command to verify archive integrity without extraction.
+Checks ZIP structure and PAKKO-INTEGRITY-V1 manifest if present.
+
+**Acceptance criteria:**
+- [ ] verify command reads ZIP structure — reports corrupted entries
+- [ ] If PAKKO-INTEGRITY-V1 manifest present — verifies SHA-256 per entry
+- [ ] Exit code 0 = valid, 1 = invalid
+- [ ] Human-readable output: per-entry status
+- [ ] dotnet test passes
+
+### T-F34 — Archive Metadata in ZIP Comment
+- [ ] **Status:** cancelled — integrity manifest removed; ZIP CRC-32 is sufficient
+
+**What:** Store Pakko version and creation timestamp in ZIP comment
+alongside existing PAKKO-INTEGRITY-V1 manifest.
+
+**File:** `src/Archiver.Core/Services/ZipArchiveService.cs`
+
+**Acceptance criteria:**
+- [ ] PAKKO-VERSION written to ZIP comment on archive creation
+- [ ] PAKKO-CREATED (UTC ISO 8601) written to ZIP comment
+- [ ] Existing PAKKO-INTEGRITY-V1 format unchanged — new fields appended
+- [ ] dotnet test passes — existing integrity tests unchanged
+
+### T-F36 — Pluggable Archive Engine Interface
+- [ ] **Status:** SUPERSEDED (partially) / deferred to v1.5 — reassessed 2026-07-07, see note below.
+      Kept per the "never silently deprecate" rule, not deleted.
+- **Priority:** low
+- **Depends on:** T-F04 (superseded — see below)
+
+> **2026-07-07 reassessment:** this task predates T-F47–T-F50/T-F85's actual tar.exe
+> integration and no longer matches the shipped architecture or `SPEC.md`'s roadmap. Two
+> separate things were conflated under one task:
+> 1. **Multi-format *extraction*** — the motivation this task and T-F48's blocked criterion
+>    both cite. Already solved, differently: `ArchiveFormatDetector` + `IExtractionRouter`
+>    (T-F85) auto-detect format and route to `IArchiveService`/`ITarService`, surfacing a
+>    specific `SkippedFiles` message for anything `TarCapabilities` reports unsupported. No
+>    format *selector* exists or is needed for extraction — nothing here to unblock.
+> 2. **Multi-format *archive creation*** (the literal "Format: ZIP/TAR/TAR.GZ" dropdown next to
+>    the Archive button) — this is real, unbuilt work, but `SPEC.md`'s roadmap table places
+>    "TAR creation via tar.exe" at **v1.5**, not now. Building a full `IArchiveEngine`
+>    abstraction today for one real engine (`ZipEngine`) plus a `TarEngine` *stub* would be a
+>    premature abstraction for a feature nobody has asked to pull forward — confirmed with user
+>    2026-07-07, who chose to defer rather than build it now.
+>
+> T-F04 (the "Depends on") is equally stale — its generic "TAR/GZip/BZip2/XZ Support" scope was
+> superseded by the actual T-F47–T-F50 tar.exe integration long ago; T-F36's dependency line
+> should be read as "the tar.exe subprocess plumbing already exists" (true today), not as a
+> pointer to unfinished work.
+>
+> **When this becomes real work (v1.5):** re-scope as "add archive creation to `ITarService`"
+> rather than a from-scratch `IArchiveEngine` interface — `ITarService`/`TarCapabilities`
+> already exist and are the natural place to add a `CompressAsync`-shaped method, with the UI
+> format selector wired to `TarCapabilities` the same way `TASKS.md`'s original text intended.
+
+**What (original, pre-reassessment text — see note above for current status):** Introduce IArchiveEngine abstraction to decouple core logic from ZIP-specific implementation. Enables TAR, tar.gz, and future formats without UI changes.
+
+**Architecture:**
+```
+Archiver.Core
+  IArchiveEngine
+    ZipEngine       ← current ZipArchiveService refactored
+    TarEngine       ← T-F04
+    FutureEngines
+```
+
+**UI impact:** Archive Format dropdown added to UI:
+```
+Format: [ ZIP ▾]   ZIP / TAR / TAR.GZ
+```
+
+**File:** `src/Archiver.Core/Interfaces/IArchiveEngine.cs` (new)
+
+**Acceptance criteria:**
+- [ ] IArchiveEngine interface defined with ArchiveAsync and ExtractAsync
+- [ ] ZipArchiveService refactored to implement IArchiveEngine
+- [ ] IArchiveService updated or replaced — no breaking changes to existing callers
+- [ ] TarEngine stub created — ready for T-F04 implementation
+- [ ] Format selector in UI — ZIP default, extensible
+- [ ] DI registration updated — engine selected based on format choice
+- [ ] dotnet test passes — existing 45 tests unchanged
+- [ ] Adding new engine requires: new class + DI registration — no other changes
+
+### T-F41 — Context Menu: Extract Here
+- [ ] **Status:** future (v1.2) — **superseded by T-F61, see the NanaZip Parity Review note above**; already
+      implemented as `ExtractHereCommand` and smoke-tested. Do not re-implement.
+- **Depends on:** T-F53, T-F54, T-F55
+
+**What:** "Extract here" command on ZIP files — extracts to same folder as archive. Runs silently via `Archiver.Shell.exe --extract-here`; progress shown in `Archiver.ProgressWindow`.
+
+**Acceptance criteria:**
+- [ ] Appears in Pakko submenu on right-click of `.zip` files
+- [ ] Invokes `Archiver.Shell.exe --extract-here "<path>"` for each selected ZIP
+- [ ] Extraction runs silently — `Archiver.ProgressWindow` shows progress (T-F54)
+- [ ] Extracts to same directory as archive (T-14 smart folder logic)
+- [ ] Multi-selection: all selected ZIPs extracted in a single `Archiver.Shell` invocation
+- [ ] `Archiver.ProgressWindow` auto-closes 1.5 sec after success
+- [ ] Error shown in `Archiver.ProgressWindow` dialog on failure
+
+### T-F42 — Context Menu: Extract to Folder
+- [ ] **Status:** future (v1.2) — **superseded by T-F61, see the NanaZip Parity Review note above**; already
+      implemented as `ExtractFolderCommand` and smoke-tested. Do not re-implement.
+- **Depends on:** T-F53, T-F54, T-F55
+
+**What:** "Extract to `<folder_name>`" on ZIP files — creates a named subfolder automatically. Runs silently via `Archiver.Shell.exe --extract-folder`; progress shown in `Archiver.ProgressWindow`.
+
+**Acceptance criteria:**
+- [ ] Appears in Pakko submenu on right-click of `.zip` files
+- [ ] Invokes `Archiver.Shell.exe --extract-folder "<path>"` for each selected ZIP
+- [ ] Creates `<archive_name>\` subfolder next to archive; extracts into it
+- [ ] Multi-selection: each ZIP gets its own named subfolder
+- [ ] `Archiver.ProgressWindow` shows progress, auto-closes 1.5 sec after success
+- [ ] Error shown in `Archiver.ProgressWindow` dialog on failure
+
+### T-F43 — Context Menu: Archive with Pakko
+- [ ] **Status:** future (v1.2) — **superseded by T-F61, see the NanaZip Parity Review note above**; already
+      implemented as `ArchiveCommand` and smoke-tested (label/naming gap tracked separately
+      as T-F64). Do not re-implement.
+- **Depends on:** T-F53, T-F54, T-F55
+
+**What:** "Add to `<name>.zip`" on any files/folders — single archive, Fast compression, destination = source folder. Runs silently via `Archiver.Shell.exe --archive`; progress shown in `Archiver.ProgressWindow`.
+
+**Acceptance criteria:**
+- [ ] Appears in Pakko submenu on right-click of any files/folders
+- [ ] Invokes `Archiver.Shell.exe --archive "file1" "file2" ...`
+- [ ] Creates single `.zip` archive next to the first selected item
+- [ ] Uses Fast compression level
+- [ ] Supports multi-selection (all selected items passed in one invocation)
+- [ ] `Archiver.ProgressWindow` shows progress, auto-closes 1.5 sec after success
+- [ ] Error shown in `Archiver.ProgressWindow` dialog on failure
+
+### T-F96 — Bug: `Deploy.ps1`/`dotnet publish` Fails Cleaning Up PackageLayout After a Valid `.msix` Is Written
+- [~] **Status:** closed as non-blocking, not on active investigation — the tolerance mitigation
+      (2026-07-07) has now absorbed the race live on at least two separate occasions (2026-07-15's
+      T-F52 deploy, and again during this same T-F107 session's `Deploy.ps1` run on 2026-07-16,
+      producing 1.2.0.35) without ever failing a build. Root cause is still genuinely unconfirmed
+      (none of the four ranked scenarios below have been tested), so this stays `[~]`, not `[x]`,
+      per this project's completion rules — but since the workaround has proven reliable across
+      multiple real recurrences and isn't costing any deploy time, it's not worth further
+      investigation right now. Re-open (resume the `Stop-Service WSearch` test, etc.) only if the
+      tolerance guard itself ever fails to catch a real recurrence, or if deploy reliability
+      becomes a problem again.
+- **Depends on:** none
+
+**Diagnostic update (this round, advisor session):** the earlier `ExtractAssociatedIcon`-adjacent
+theory that this was a *wedged/stale* directory (per the "Deploy.ps1 Failed After T-F91" entry in
+`DECISIONS.md`) does not fit here — every manual `rm -rf` on the "locked" path succeeded
+immediately (`exit=0`) moments after MSBuild's own `RemoveDir` failed on the identical path. A
+wedged directory or DACL problem would block a manual delete too; a handle that's gone by retry
+time means a **transient live handle held during the build**, not stale state. `RemoveDirectory`
+also returns `ACCESS_DENIED` (not `SHARING_VIOLATION`) when a *child file* still has an open
+handle — the earlier "ACCESS_DENIED must mean wedged, not a live handle" heuristic was based on
+reasoning about opening a single file, which doesn't transfer to removing its parent directory.
+
+**What:** `dotnet publish` (both directly and via `Deploy.ps1`) reliably fails with
+`MSB3231: Unable to remove directory "..."` — `Access to the path '...' is denied` — on a
+just-created `AppPackages\Archiver.App_<version>_Test\` or `obj\...\PackageLayout\` folder,
+**after** the `.msix` inside it has already been written successfully. Reproduced identically
+across three clean-state attempts in one session (`dotnet build-server shutdown` + targeted folder
+removal; `obj\...\PackageLayout` clean; full `obj`+`AppPackages` clean plus a version bump to get
+a guaranteed-fresh folder name) and independently by the user running `Deploy.ps1` themselves.
+Windows Defender was ruled out — the user has a project-wide exclusion already in place, and the
+error is `ACCESS_DENIED` on a delete, not a sharing-violation shape typical of AV scanning a file
+mid-write.
+
+**Workaround used this session (not a fix):** since the `.msix` is valid and complete by the time
+the error fires, uninstall the old package and `Add-AppxPackage` the freshly-built `.msix`
+directly, bypassing `Deploy.ps1`'s own install step for that one run.
+
+**Leading hypothesis, not yet tested:** a parallel-MSBuild-node race between the 25-locale
+resource-generation work (T-F91 added 24 locale folders) and the packaging pipeline's own
+directory cleanup — more parallel work in that stage than before T-F91, and the folder implicated
+differs run to run (`cs-CZ` resources one run, `Assets` another), consistent with a timing race
+rather than a fixed permissions problem.
+
+**Root-cause scenarios (ranked, from an advisor-built menu — not yet individually tested against
+a live recurrence, since the race didn't reproduce during this round's two follow-up `Deploy.ps1`
+runs):**
+1. **Windows Search Indexer** (top suspect) — the failing subpaths seen so far (`cs-CZ` text
+   resources, `Assets` images) both fall under content types the indexer touches. Decisive test:
+   `Stop-Service WSearch` (elevated) before a `Deploy.ps1` run; if the failure stops recurring,
+   confirmed — permanent fix is excluding the build output folders from indexing.
+2. **Third-party EDR/AV beyond Defender** — plausible given the project's government/defense
+   target audience (a managed dev machine could run an endpoint agent that ignores a Defender-only
+   exclusion). Check: `Get-MpPreference | Select -ExpandProperty ExclusionPath` (confirm the
+   exclusion actually covers this path, not just assumed), and look for other running
+   protection/EDR services.
+3. **`/m:1 /nodeReuse:false` on the `dotnet publish`** — cheap test for an MSBuild-node-level race;
+   inconclusive if negative, since MakeAppx/PRI-generation may parallelize internally regardless
+   of `/m`.
+4. **Suppress the `_Test\Add-AppDevPackage.resources\<locale>` sideload artifacts entirely** —
+   `Deploy.ps1` never uses them (it `Add-AppxPackage`s the `.msix`/`.msixbundle` directly); if an
+   MSBuild property gates their generation, disabling it removes one whole class of files this
+   race could be racing against. Needs reading the real
+   `Microsoft.Windows.SDK.BuildTools.MSIX.Packaging.targets` lines involved (1831, 3140), not
+   guessing a property name.
+
+**Mitigation implemented now (unblocks deploys regardless of which theory above is correct):**
+`Deploy.ps1` captures `dotnet publish`'s combined output and, only on failure, checks whether (a)
+the captured output matches `MSB3231.*Unable to remove directory.*(AppPackages|PackageLayout)` and
+(b) a `.msix`/`.msixbundle` newer than the publish start time actually exists under
+`AppPackages\`. Only when both hold does it `Write-Warning` and continue to the existing
+uninstall/install steps instead of aborting — any other publish failure (real compile/sign errors)
+still fails hard, unchanged. Verified: the regex matches both real historical error variants
+captured this session (`AppPackages\..._Test\` and `obj\...\PackageLayout\`) and correctly does
+**not** match an unrelated real C# compile error (negative control) — tested in isolation since the
+race itself didn't reproduce live in this round's two clean `Deploy.ps1` runs, so the "continue"
+branch couldn't be exercised end-to-end this time.
+
+**Acceptance criteria:**
+- [x] `Deploy.ps1` tolerates the specific MSB3231-after-valid-package failure shape instead of
+      aborting a successful build; any other failure still fails hard (narrow regex + freshness
+      check, not a blanket try/continue)
+- [x] Tolerance logic verified against real captured historical error text (positive) and a real
+      unrelated compile error (negative control) — isolated regex test, not yet exercised via a
+      live recurrence of the race in this round
+- [x] Two clean-state `Deploy.ps1` end-to-end runs completed successfully this round (neither hit
+      the race — expected, since it's confirmed intermittent, not deterministic)
+- [x] **Live recurrence exercised end-to-end, 2026-07-15** (T-F52 deploy run): the exact MSB3231
+      shape recurred for real (`dotnet publish exited 1 ... Archiver.App_1.2.0.31_x64.msix`) and
+      the tolerance guard correctly caught it, printed the warning, and continued to a successful
+      install — the "continue" branch is no longer only isolated-regex-tested, it has now run for
+      real. Root cause still unconfirmed (see below); this only confirms the mitigation itself
+      works live, not which of the four ranked scenarios is the actual cause
+- [ ] Root cause identified (not just tolerated) — none of the four ranked scenarios above tested
+      yet; next step is the `Stop-Service WSearch` test the next time the race recurs
+- [ ] `CLAUDE.md`'s Build Commands section updated once a root cause (not just the tolerance
+      guard) is confirmed, if it implies a standing environmental fix (e.g. an indexing exclusion)

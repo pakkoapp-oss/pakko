@@ -37,7 +37,7 @@ and Tar) stay in sync. T-F95 (root context-menu icon missing — `Archiver.App.c
 `<ApplicationIcon>`) fixed. **T-F96** (`Deploy.ps1`/`dotnet publish` intermittent `MSB3231` on its
 own `AppPackages`/`obj` cleanup) is `[~]` **closed as non-blocking** — root cause unconfirmed
 (leading suspect: Search Indexer race), but `Deploy.ps1`'s own tolerance mitigation has absorbed
-every recurrence since 2026-07-07; see `docs/TASKS.md`'s T-F96 entry if this needs revisiting.
+every recurrence since 2026-07-07; see `docs/TASKS_DONE.md`'s T-F96 entry if this needs revisiting.
 
 **T-F05 (Archive Browser) is `[x]` done** (G6 device pass, 2026-09-30) — all implementation done (Core
 `ListEntriesAsync`/`IArchiveListingRouter`, `ExtractOptions.SelectedEntryPaths`, the
@@ -1107,7 +1107,7 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > `dotnet publish` fails on that same path, it's a transient live handle (Search Indexer is the
 > top suspect), not a wedged folder — a version bump won't reliably fix this variant.
 > `Deploy.ps1` now tolerates this specific shape (MSB3231 on `AppPackages`/`PackageLayout` with a
-> valid `.msix` already written) instead of aborting a good build — see T-F96 in `docs/TASKS.md`.
+> valid `.msix` already written) instead of aborting a good build — see T-F96 in `docs/TASKS_DONE.md`.
 
 ---
 
