@@ -497,11 +497,9 @@ files.
   after SonarCloud (S4036) caught 5 `Process.Start("explorer.exe", ...)` call sites doing exactly
   the relative-name thing the tar.exe rule was meant to prevent. See
   `Archiver.Core/Services/ExplorerLauncher.cs` for the shared helper (T-F136).
-- **tar.exe format support:** can *create* tar/gz/bz2/xz/zst/lzma (compression filters on a
-  ustar/pax/cpio/shar writer) but can only *read* 7z/rar — libarchive has no writer for either
-  (`tar --help`'s `--format` lists only `ustar|pax|cpio|shar`). Confirmed empirically while
-  building T-F50's fixtures — don't assume `tar -cf out.7z ...` produces real 7z (it silently
-  writes a plain ustar tar under that filename instead).
+- **tar.exe format support:** creates tar/gz/bz2/xz/zst/lzma, and on a new enough Windows also
+  real 7z, but only with `--format=7zip` or `-a` (measured on build 26300, libarchive 3.8.8;
+  T-F342). A plain `tar -cf out.7z` silently writes ustar under that name. RAR is read-only.
 - **MOTW:** always propagate `Zone.Identifier` ADS on extracted files (v1.2+)
 - **Shell extension:** `IExplorerCommand` only — no legacy `IContextMenu` COM shell extensions
 - **Context-menu ordering:** primary action commands (Extract/Archive) always precede

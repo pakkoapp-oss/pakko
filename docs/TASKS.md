@@ -2224,3 +2224,40 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   (`ArchiveListResult.ErrorText` is null and `ErrorMessage` is the raw text). Give
   `ListEntriesAsync` the same code the Test path uses; check `pakko l` on the same file.
 - **Reported by:** wave 3 device pass, 2026-10-06.
+
+### T-F342 — Create 7z archives through tar.exe (v1.9, user-requested)
+
+- [ ] **Status:** open. Requested by the user 2026-10-06: Windows now writes 7z by default, so
+  Pakko should offer it next to ZIP and the tar family (App Format list, Explorer "Add to X.7z",
+  `pakko a -t7z`).
+- **Measured 2026-10-06 on Windows build 26300** (`C:\Windows\System32\tar.exe`, bsdtar 3.8.8 /
+  libarchive 3.8.8): `tar --format=7zip -cf out.7z a.txt` and `tar -a -cf out.7z a.txt` both write
+  a real 7z (signature `37 7A BC AF 27 1C`, method LZMA:23; the vendored `7za t` says "Everything
+  is Ok"). A plain `tar -cf out.7z` still writes ustar under that name. This replaces the
+  hard constraint in `CLAUDE.md` ("libarchive has no writer for 7z"), which was true for the
+  tar.exe checked for T-F50 — correct that line in the same commit as the feature.
+- **Open before design (Plan mode + advisor):** which Windows builds ship a tar.exe with the 7zip
+  writer (the manifest's minimum is 17763) — detect it in `TarCapabilities` and hide the format
+  where it is missing; compression level and method options tar.exe accepts for 7zip; no password
+  (libarchive's 7zip writer has no encryption — confirm, and keep "ZIP only" for encryption);
+  RAR stays read-only. Creation runs unsandboxed like T-F105 (trusted local input).
+- **Reported by:** the user, 2026-10-06.
+
+### T-F343 — `pakko` in place of 7-Zip's console program: measure how compatible it is (v2.0, user-requested)
+
+- [ ] **Status:** open. Requested by the user 2026-10-06. One of the project's goals is a console
+  replacement for 7-Zip that is as close to the original as it can be in commands and abilities.
+  This task measures the distance instead of guessing it: put `pakko.exe` where a real caller
+  expects `7z.exe` / `NanaZipC.exe` (NanaZip's own front ends and scripts first, then common
+  third-party callers), run them, and record every command, switch, exit code and output line
+  that differs.
+- **Outcome:** a compatibility table in `docs/CLI.md` (works / differs / missing, per command and
+  switch), and a follow-up task for each gap worth closing. `docs/CLI.md` today says "familiar but
+  distinct, not a drop-in" on purpose; this task is where that position is re-decided with
+  numbers. T-F342 (7z creation) removes the largest known gap first.
+- **Method to settle in Plan mode:** NanaZip's GUI loads its backend in-process (the 7-Zip DLL
+  interface), so substituting an exe may only be possible for callers that spawn the console
+  program — read NanaZip's real source before choosing the callers. Pakko's rules stay: no
+  third-party compression code, extraction of tar-family/7z/RAR only through the sandboxed
+  tar.exe.
+- **Reported by:** the user, 2026-10-06.
