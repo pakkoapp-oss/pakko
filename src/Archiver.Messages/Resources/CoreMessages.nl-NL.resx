@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Bronpad bestaat niet: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Niets om te comprimeren: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Geen toegang tot bestand: {0}</value>
   </data>

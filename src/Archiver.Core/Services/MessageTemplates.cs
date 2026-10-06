@@ -17,6 +17,7 @@ public static class MessageTemplates
         [MessageCode.None] = "{0}",
 
         [MessageCode.SourceNotFound] = "Source path does not exist: {0}",
+        [MessageCode.NothingToArchive] = "Nothing to compress: {0}",
         [MessageCode.CannotAccessFile] = "Cannot access file: {0}",
         [MessageCode.AccessDenied] = "Access denied: {0}",
         [MessageCode.LinkNotArchived] = "Symbolic links and NTFS junctions are not archived.",

@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Izvorni put ne postoji: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Nema ničega za komprimiranje: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Nije moguće pristupiti datoteci: {0}</value>
   </data>

@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>A forrás elérési útja nem létezik: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Nincs mit tömöríteni: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>A fájl nem érhető el: {0}</value>
   </data>

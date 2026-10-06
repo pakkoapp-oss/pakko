@@ -1488,11 +1488,16 @@ public sealed class TarSandboxedService : ITarService
             }
 
             HashSet<string> own = new(ownPaths.Select(path => SubstDrive.Resolve(Path.GetFullPath(path))), StringComparer.OrdinalIgnoreCase);
+            children = [.. children.Where(child => (child.Attributes & OsOwned) != OsOwned && !own.Contains(child.FullName))];
+            if (children.Length == 0)
+            {
+                result.SkippedFiles.Add(CoreMessages.Skip(sourcePath, MessageCode.NothingToArchive, sourcePath));
+                return false;
+            }
+
             bool any = false;
             foreach (FileSystemInfo child in children)
             {
-                if ((child.Attributes & OsOwned) == OsOwned || own.Contains(child.FullName))
-                    continue;
                 if (child.Attributes.HasFlag(FileAttributes.ReparsePoint))
                 {
                     result.SkippedFiles.Add(CoreMessages.Skip(child.FullName, MessageCode.LinkNotArchived));

@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>源路径不存在: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>没有可压缩的内容: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>无法访问文件: {0}</value>
   </data>

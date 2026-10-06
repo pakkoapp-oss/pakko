@@ -142,6 +142,75 @@ public sealed class DriveRootSourceTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "sub", "s.txt")).Should().Be("sub file");
     }
 
+    // T-F345: the ZIP walk gets the rule TAR creation has at a root. Only the root's own level:
+    // a Hidden+System file deeper down is the user's (a desktop.ini, say).
+    [Theory]
+    [InlineData(0)]
+    [InlineData(70)]
+    public async Task ZipArchiveAsync_DriveRoot_LeavesOutHiddenSystemEntriesOfTheRootOnly(int extraFiles)
+    {
+        for (int i = 0; i < extraFiles; i++)
+            File.WriteAllText(Path.Combine(_content, "sub", $"f{i}.txt"), "x");
+        MakeOsOwned(WriteFile(Path.Combine(_content, "pagefile.sys")));
+        WriteFile(Path.Combine(_content, "System Volume Information", "tracking.log"));
+        MakeOsOwned(Path.Combine(_content, "System Volume Information"));
+        MakeOsOwned(WriteFile(Path.Combine(_content, "sub", "desktop.ini")));
+        File.SetAttributes(WriteFile(Path.Combine(_content, "hidden.txt")), FileAttributes.Hidden);
+
+        ArchiveResult created = await new ZipArchiveService(new GroupPolicyOptions()).ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [_drive + @"\"],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "out",
+        });
+
+        created.Errors.Should().BeEmpty();
+        using System.IO.Compression.ZipArchive archive = System.IO.Compression.ZipFile.OpenRead(created.CreatedFiles.Single());
+        string[] names = [.. archive.Entries.Select(e => e.FullName)];
+        names.Should().Contain(["r.txt", "hidden.txt", "sub/desktop.ini"]);
+        names.Should().NotContain(name => name.StartsWith("pagefile", StringComparison.Ordinal)
+            || name.StartsWith("System Volume Information", StringComparison.Ordinal));
+    }
+
+    // A new USB stick holds only "System Volume Information": nothing to pack, and that is said -
+    // not an archive with one entry named "/", and not silence.
+    [Theory]
+    [InlineData(ArchiveContainerFormat.Zip)]
+    [InlineData(ArchiveContainerFormat.Tar)]
+    public async Task EmptyDriveRoot_SaysThereIsNothingToCompress(ArchiveContainerFormat format)
+    {
+        Directory.Delete(Path.Combine(_content, "sub"), recursive: true);
+        File.Delete(Path.Combine(_content, "r.txt"));
+        WriteFile(Path.Combine(_content, "System Volume Information", "tracking.log"));
+        MakeOsOwned(Path.Combine(_content, "System Volume Information"));
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [_drive + @"\"],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "out",
+            Format = format,
+        };
+
+        ArchiveResult result = format == ArchiveContainerFormat.Zip
+            ? await new ZipArchiveService(new GroupPolicyOptions()).ArchiveAsync(options)
+            : await _sut.CompressAsync(options);
+
+        result.CreatedFiles.Should().BeEmpty();
+        result.Errors.Should().BeEmpty();
+        result.SkippedFiles.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.NothingToArchive);
+        result.Outcome.Should().Be(OperationOutcome.NothingDone);
+    }
+
+    private static string WriteFile(string path)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, "x");
+        return path;
+    }
+
+    private static void MakeOsOwned(string path) =>
+        File.SetAttributes(path, File.GetAttributes(path) | FileAttributes.Hidden | FileAttributes.System);
+
     private Task<ArchiveResult> CompressAsync(string source, string? destinationFolder = null) => _sut.CompressAsync(new ArchiveOptions
     {
         SourcePaths = [source],

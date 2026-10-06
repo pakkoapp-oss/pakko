@@ -1873,6 +1873,11 @@ public sealed class ZipArchiveService : IArchiveService
                 // no output file. An explicit directory entry preserves the folder.
                 case WalkEntryKind.Directory when entry.IsEmptyDirectory:
                     string emptyEntryName = EmptyDirectoryEntryName(context.RootDir, entry.Info.FullName, context.EntryPrefix);
+                    if (emptyEntryName.Length == 0)
+                    {
+                        context.ReportSkipped(CoreMessages.Skip(context.RootDir, MessageCode.NothingToArchive, context.RootDir));
+                        break;
+                    }
                     if (ZipEntryWriter.NameFitsHeader(emptyEntryName))
                         archive.CreateEntry(emptyEntryName);
                     else
@@ -1936,9 +1941,10 @@ public sealed class ZipArchiveService : IArchiveService
     internal static string EmptyDirectoryEntryName(string rootDir, string directory, string entryPrefix)
     {
         string relativeDir = Path.GetRelativePath(rootDir, directory);
-        return relativeDir == "."
-            ? entryPrefix + "/"
-            : EntryNameUnder(entryPrefix, relativeDir.Replace('\\', '/')) + "/";
+        // An empty drive root has no name to write: "" tells the caller to write nothing (T-F345).
+        if (relativeDir == ".")
+            return entryPrefix.Length == 0 ? string.Empty : entryPrefix + "/";
+        return EntryNameUnder(entryPrefix, relativeDir.Replace('\\', '/')) + "/";
     }
 
     // T-F344: a drive root has no name, so its entries have no prefix - and no leading "/", which

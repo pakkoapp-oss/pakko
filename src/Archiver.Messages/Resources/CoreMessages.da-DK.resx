@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Kildestien findes ikke: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Der er intet at komprimere: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Der er ikke adgang til filen: {0}</value>
   </data>

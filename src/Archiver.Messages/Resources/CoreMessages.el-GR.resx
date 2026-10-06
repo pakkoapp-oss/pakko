@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Η διαδρομή προέλευσης δεν υπάρχει: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Δεν υπάρχει τίποτα για συμπίεση: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Δεν είναι δυνατή η πρόσβαση στο αρχείο: {0}</value>
   </data>

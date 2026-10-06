@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Calea sursă nu există: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Nu există nimic de comprimat: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Fișierul nu poate fi accesat: {0}</value>
   </data>

@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Đường dẫn nguồn không tồn tại: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Không có gì để nén: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Không thể truy cập tệp: {0}</value>
   </data>

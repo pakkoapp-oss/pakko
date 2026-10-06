@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Изходният път не съществува: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Няма нищо за компресиране: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Няма достъп до файла: {0}</value>
   </data>

@@ -39,13 +39,23 @@ internal readonly record struct WalkEntry(
 /// complete before the next sibling. The sequence is lazy, so a consumer can start working on the
 /// first files while the rest of the tree is still unlisted.
 /// </para>
+/// <para>
+/// T-F345: when <c>root</c> is a drive or share root, its own entries that are both Hidden and
+/// System are left out ("System Volume Information", "$Recycle.Bin", "pagefile.sys": the OS's,
+/// mostly unreadable, and on every NTFS volume). The same rule as the App's browser (T-F324) and
+/// TAR creation (T-F285). Deeper down such an entry is the user's and is walked.
+/// </para>
 /// </summary>
 internal static class DirectoryWalker
 {
+    private const FileAttributes OsOwned = FileAttributes.Hidden | FileAttributes.System;
+
     public static IEnumerable<WalkEntry> Walk(string root)
     {
+        var rootDir = new DirectoryInfo(root);
+        bool isDriveRoot = rootDir.Parent is null;
         var pending = new Stack<(DirectoryInfo Dir, bool IsReparsePoint)>();
-        pending.Push((new DirectoryInfo(root), false));
+        pending.Push((rootDir, false));
 
         while (pending.Count > 0)
         {
@@ -63,6 +73,8 @@ internal static class DirectoryWalker
                 // Compatible options (hidden and system entries included), same as the per-type
                 // DirectoryInfo overloads this replaces.
                 children = dir.EnumerateFileSystemInfos().ToArray();
+                if (isDriveRoot && ReferenceEquals(dir, rootDir))
+                    children = [.. children.Where(child => (child.Attributes & OsOwned) != OsOwned)];
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {

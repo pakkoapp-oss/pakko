@@ -74,9 +74,11 @@ internal static class WorkItemEnumerator
             switch (entry.Kind)
             {
                 case WalkEntryKind.Directory when entry.IsEmptyDirectory:
-                    yield return new FileWorkItem(
-                        string.Empty, ZipArchiveService.EmptyDirectoryEntryName(rootDir, entry.Info.FullName, entryPrefix),
-                        FileWorkKind.DirectoryPlaceholder, 0, DateTime.Now);
+                    string emptyEntryName = ZipArchiveService.EmptyDirectoryEntryName(rootDir, entry.Info.FullName, entryPrefix);
+                    if (emptyEntryName.Length > 0)
+                        yield return new FileWorkItem(string.Empty, emptyEntryName, FileWorkKind.DirectoryPlaceholder, 0, DateTime.Now);
+                    else
+                        reportSkipped(CoreMessages.Skip(rootDir, MessageCode.NothingToArchive, rootDir));
                     break;
                 case WalkEntryKind.File:
                     string relativePath = Path.GetRelativePath(rootDir, entry.Info.FullName).Replace('\\', '/');

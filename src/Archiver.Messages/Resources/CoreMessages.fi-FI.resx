@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Lähdepolkua ei ole: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Ei mitään pakattavaa: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Tiedostoon ei päästä käsiksi: {0}</value>
   </data>

@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Šaltinio kelias neegzistuoja: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Nėra ko suspausti: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Nepavyksta pasiekti failo: {0}</value>
   </data>

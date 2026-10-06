@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>ソースのパスが存在しません: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>圧縮するものがありません: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>ファイルにアクセスできません: {0}</value>
   </data>

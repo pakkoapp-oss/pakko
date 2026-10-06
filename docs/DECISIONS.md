@@ -11244,3 +11244,12 @@ ZIP whose local file headers disagree with its central directory (the user's dec
   read in code is fixed to the theme of that moment; that is true of the brush object, and a
   second read of `Application.Current.Resources` after `ActualThemeChanged` returns the other
   theme's. Measured on the conflict prompt with and without the re-read.
+- **T-F345: the rule lives in `DirectoryWalker`, and an empty root is said, not written.** One
+  place gives it to both ZIP writers, the hash of a drive, the size shown for it and the count TAR
+  creation uses for progress; a second copy in each consumer would drift. Only the root's own
+  level: below it a Hidden+System entry is the user's. An empty root (a new USB stick, once
+  `System Volume Information` is left out) had three candidates: the entry "/" ZIP wrote before
+  (a rooted name), an empty archive (tar.exe cannot write one from no names, so ZIP and TAR
+  would differ), or no archive and a message. The message is a skip, so the outcome is "nothing
+  done" and `pakko` exits 1; an operation that made nothing and said nothing counted as
+  completed.

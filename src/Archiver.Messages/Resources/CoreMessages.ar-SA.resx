@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>مسار المصدر غير موجود: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>لا يوجد ما يمكن ضغطه: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>تعذر الوصول إلى الملف: {0}</value>
   </data>

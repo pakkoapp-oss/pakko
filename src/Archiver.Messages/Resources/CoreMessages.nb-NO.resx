@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Kildebanen finnes ikke: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Ingenting å komprimere: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Får ikke tilgang til filen: {0}</value>
   </data>

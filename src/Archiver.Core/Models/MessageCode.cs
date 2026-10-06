@@ -11,6 +11,7 @@ public enum MessageCode
 
     // Sources being archived
     SourceNotFound,
+    NothingToArchive,
     CannotAccessFile,
     AccessDenied,
     LinkNotArchived,

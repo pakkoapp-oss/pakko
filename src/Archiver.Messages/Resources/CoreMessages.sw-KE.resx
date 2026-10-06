@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Njia ya chanzo haipo: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Hakuna cha kubana: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Haiwezi kufikia faili: {0}</value>
   </data>

@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Källsökvägen finns inte: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Det finns inget att komprimera: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Det går inte att komma åt filen: {0}</value>
   </data>

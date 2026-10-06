@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Ścieżka źródłowa nie istnieje: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Nie ma nic do skompresowania: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Brak dostępu do pliku: {0}</value>
   </data>

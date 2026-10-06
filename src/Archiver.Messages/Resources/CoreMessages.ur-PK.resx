@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>ماخذ کا راستہ موجود نہیں ہے: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>کمپریس کرنے کے لیے کچھ نہیں ہے: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>فائل تک رسائی نہیں ہو سکتی: {0}</value>
   </data>

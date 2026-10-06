@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Zdrojová cesta neexistuje: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Nie je čo komprimovať: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>K súboru nie je možné získať prístup: {0}</value>
   </data>

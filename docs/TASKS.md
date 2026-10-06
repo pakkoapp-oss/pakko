@@ -1662,7 +1662,9 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 - [~] **Status:** text done 2026-10-05 and imported into Partner Center submission 6 from the
   listing CSV the same day: 36 of 37 languages equal the files, the five missing languages were
-  added. Swedish was refused with no reason given; its second import is the user's step.
+  added. Swedish was refused with no reason given; the user imported it later, with the v1.7.1
+  submission (the user's word, 2026-10-06; to be compared with the public catalog once that
+  submission is live).
 - **Found:** the published listing (read from the public Store catalog, equal to the user's
   export of 32 languages) had Arabic and Hebrew stored back to front, a sentence cut in the
   middle in nine languages (cs, da, el, lt, nb, pl, ro, sv, th), words that differ from the app's
@@ -1677,7 +1679,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   - [x] imported from the exported listing CSV (a script fills the text rows from these files and
     leaves the image rows alone); hr, sl, sr-Latn, ur, vi added as new columns, with the English
     screenshots
-  - [ ] sv-SE: refused a second time (third CSV, export of 2026-10-05), the whole language, even
+  - [x] sv-SE: imported by the user with the v1.7.1 submission (the user's word, 2026-10-06). Before that: refused a second time (third CSV, export of 2026-10-05), the whole language, even
     the copyright line, so the full stop in the search term "tar.gz" was not the cause. The fourth
     CSV gives sv-se only the description, short description, "What's new" and copyright line and
     leaves its features and search terms as published: the next export shows which half is
@@ -1691,7 +1693,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F332 — Store listing: the optional fields worth filling (P2)
 
-- [ ] **Status:** text done 2026-10-05, the import and the image uploads are open. Follows
+- [~] **Status:** text done 2026-10-05; the CSV import and the 300 x 300 icon went in with the v1.7.1 submission (the user's word, 2026-10-06). Open: the super hero art, if wanted. Follows
   T-F331; the listing CSV has every field, and these
   are empty in all 37 languages.
 - **Text, through the listing CSV** (Partner Center, submission overview, "Export listing" /
@@ -1709,10 +1711,10 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     byte-identical file. Described in `scripts/README.md`
   - [x] the third CSV imported: the next export has the 270-character short description and the
     copyright line in 36 languages (not sv-se, see T-F331)
-  - [ ] the user imports `listingData-9P5MW010D8PR-filled-4.csv`: the icon URL copied from uk-ua,
+  - [x] the user imported `listingData-9P5MW010D8PR-filled-4.csv` (the user's word, 2026-10-06): the icon URL copied from uk-ua,
     where it was uploaded, to all 37 languages
 - **Images, uploaded by hand:**
-  - [ ] 1:1 app tile icon, 300 x 300 ("strongly recommended" for apps; without it the Store uses
+  - [x] (uploaded by the user, 2026-10-06 word) 1:1 app tile icon, 300 x 300 ("strongly recommended" for apps; without it the Store uses
     the package's icon): drawn from the rectangles of `src/Archiver.App/Assets/pakko-icon.svg` as
     `docs/assets/store/app-tile-icon-300.png`, 2026-10-05; the user uploads it
   - [ ] 16:9 super hero art, 1920 x 1080: no text, no title, no app UI. Needed to be considered
@@ -1796,7 +1798,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F345 — ZIP from a drive root packs the OS's own entries and reports their errors (P3)
 
-- [ ] **Status:** open. A ZIP made from a drive root walks `System Volume Information`,
+- [x] **Status:** done 2026-10-06 (wave 5 after v1.7.0; goes into v1.7.2 on the user's word). `DirectoryWalker` leaves out a drive or share root's own entries that are both Hidden and System, so ZIP creation, the hash of a drive and the size shown for it follow the rule TAR creation and the App's browser have; deeper down such an entry is walked (a `desktop.ini`). An empty root - a new USB stick holds only `System Volume Information` - writes no archive and says so: new message `NothingToArchive` ("Nothing to compress: {0}", 37 locales), a skip, so the outcome is "nothing done" (`pakko` exits 1); before, ZIP wrote one entry named "/" and TAR did nothing in silence. Tests first (`DriveRootSourceTests`: both ZIP writers, and the empty root in ZIP and TAR). Device (dev 1.7.1.1, uk-UA, `subst` drive): `pakko a` of a root with `pagefile.sys` and `System Volume Information` writes `r.txt`, `sub\s.txt`; `pakko h` lists the same two; an empty root gives `pakko: skipped: P:\: Nothing to compress: P:\`, exit 1, no file, in ZIP and TAR; Explorer's helper shows "Пропущено (1): ... Немає чого стискати: P:\". Seen there: the line starts with an empty name, since a root has no file name (any skip of a root shows so; not changed). **Earlier status:** open. A ZIP made from a drive root walks `System Volume Information`,
   `$Recycle.Bin`, `pagefile.sys` and the other entries marked Hidden and System: unreadable ones
   become errors on every NTFS drive, readable ones are packed. TAR creation leaves them out at a
   root since T-F285, and the App's browser hides them (T-F324). Give the ZIP walk the same rule

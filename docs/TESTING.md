@@ -321,7 +321,8 @@ repo's convention), every assertion is against real OS behavior:
   `DriveRootSourceTests.cs` (T-F285, T-F344: a `subst` drive over a temp folder, made and removed
   by the test. TAR: its root and a file directly in the root are archived and read back; a
   Hidden+System entry, a junction and the run's own archive in the root are left out. ZIP: both
-  writers name a root's entries with no leading "/").
+  writers name a root's entries with no leading "/", and leave out Hidden+System entries of the
+  root's own level only (T-F345); an empty root says `NothingToArchive` in ZIP and TAR).
   Pure parts (`FindDuplicateGroups`, `DirectoryJunction`) are in
   `Archiver.Core.Tests/Services/TarDuplicateNamesTests.cs`.
 

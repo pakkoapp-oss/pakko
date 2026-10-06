@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>La ruta de origen no existe: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>No hay nada que comprimir: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>No se puede acceder al archivo: {0}</value>
   </data>

@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Шлях джерела не існує: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Немає чого стискати: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Немає доступу до файлу: {0}</value>
   </data>

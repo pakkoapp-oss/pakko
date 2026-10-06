@@ -15,6 +15,9 @@
   <data name="SourceNotFound" xml:space="preserve">
     <value>Jalur sumber tidak ada: {0}</value>
   </data>
+  <data name="NothingToArchive" xml:space="preserve">
+    <value>Tidak ada yang dapat dikompres: {0}</value>
+  </data>
   <data name="CannotAccessFile" xml:space="preserve">
     <value>Tidak dapat mengakses file: {0}</value>
   </data>
