@@ -141,6 +141,43 @@ function Initialize-EntriesZip {
     $zip
 }
 
+function Test-WindowVisible {
+    param([System.Diagnostics.Process]$Process)
+
+    $Process.Refresh()
+    -not $Process.HasExited -and $Process.MainWindowHandle -ne [IntPtr]::Zero -and
+        [PakkoMeasure.Native]::IsWindowVisible($Process.MainWindowHandle)
+}
+
+# The helper process and the time its window became visible; At stays $null when Shell ended first.
+function Wait-HelperWindow {
+    param([System.Diagnostics.Process]$Shell, [int[]]$KnownIds, [System.Diagnostics.Stopwatch]$Watch)
+
+    $helper = $null
+    while (-not $Shell.HasExited -and $Watch.ElapsedMilliseconds -lt $timeoutMs) {
+        if (-not $helper) { $helper = Get-NewAppProcess -KnownIds $KnownIds -Name 'Archiver.OperationUi' }
+        if ($helper -and (Test-WindowVisible -Process $helper)) {
+            return @{ Helper = $helper; At = $Watch.Elapsed.TotalMilliseconds }
+        }
+        Start-Sleep -Milliseconds 5
+    }
+    @{ Helper = $helper; At = $null }
+}
+
+function Close-OperationRun {
+    param([System.Diagnostics.Process]$Shell, [System.Diagnostics.Process]$Helper, [switch]$Conflict)
+
+    if ($Conflict) {
+        # Shell first: with the helper gone first it would fall back to a Win32 prompt.
+        if (-not $Shell.HasExited) { Stop-Process -Id $Shell.Id -Force }
+        if ($Helper -and -not $Helper.WaitForExit(3000)) { Stop-Process -Id $Helper.Id -Force }
+    }
+    elseif (-not $Shell.WaitForExit($timeoutMs)) {
+        Stop-Process -Id $Shell.Id -Force
+        throw "Archiver.Shell did not exit within $timeoutMs ms."
+    }
+}
+
 function Measure-OperationWindow {
     param([string]$Zip, [int]$Count, [string]$Label, [switch]$Conflict)
 
@@ -158,31 +195,10 @@ function Measure-OperationWindow {
         $known = @(Get-Process -Name 'Archiver.OperationUi' -ErrorAction SilentlyContinue | ForEach-Object { $_.Id })
         $watch = [System.Diagnostics.Stopwatch]::StartNew()
         $shell = Start-Process -FilePath $shellExe -ArgumentList @('--extract-here', "`"$copy`"") -PassThru
-        $shownAt = $null
-        $helper = $null
-        while ($null -eq $shownAt -and -not $shell.HasExited -and $watch.ElapsedMilliseconds -lt $timeoutMs) {
-            if (-not $helper) { $helper = Get-NewAppProcess -KnownIds $known -Name 'Archiver.OperationUi' }
-            if ($helper) {
-                $helper.Refresh()
-                if (-not $helper.HasExited -and $helper.MainWindowHandle -ne [IntPtr]::Zero -and
-                    [PakkoMeasure.Native]::IsWindowVisible($helper.MainWindowHandle)) {
-                    $shownAt = $watch.Elapsed.TotalMilliseconds
-                }
-            }
-            if ($null -eq $shownAt) { Start-Sleep -Milliseconds 5 }
-        }
-
-        if ($Conflict) {
-            # Shell first: with the helper gone first it would fall back to a Win32 prompt.
-            if (-not $shell.HasExited) { Stop-Process -Id $shell.Id -Force }
-            if ($helper -and -not $helper.WaitForExit(3000)) { Stop-Process -Id $helper.Id -Force }
-        }
-        elseif (-not $shell.WaitForExit($timeoutMs)) {
-            Stop-Process -Id $shell.Id -Force
-            throw "Archiver.Shell did not exit within $timeoutMs ms."
-        }
-        if ($null -eq $shownAt) { throw "$Label`: the operation window never became visible." }
-        $window += $shownAt
+        $shown = Wait-HelperWindow -Shell $shell -KnownIds $known -Watch $watch
+        Close-OperationRun -Shell $shell -Helper $shown.Helper -Conflict:$Conflict
+        if ($null -eq $shown.At) { throw "$Label`: the operation window never became visible." }
+        $window += $shown.At
         Start-Sleep -Milliseconds 500
     }
     Get-Summary -Name "$Label`: Shell start -> operation window visible, ms" -Values $window
