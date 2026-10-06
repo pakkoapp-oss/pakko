@@ -1736,7 +1736,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F334 — Two checks from the v1.7.0 release that only a person can do (P3)
 
-- [ ] **Status:** open. Left unchecked at the v1.7.0 tag and again in the smoke pass of the
+- [x] **Status:** done 2026-10-06, checked by the user on dev 1.7.1.1 built from 42bd2f6 (installed 08:01, binaries compared by hash with the build): dragging from Explorer onto the App's list works, and the tray menu's Exit works. This is the check before v1.7.2. **Earlier status:** open. Left unchecked at the v1.7.0 tag and again in the smoke pass of the
   release bundle (2026-10-05): dragging files from Explorer onto the App's file list (one
   attempt through `windows` MCP's synthetic drag did not register, which says nothing about the
   feature), and the Exit item of the tray menu. Both go into the one visit with the user before
