@@ -1419,6 +1419,8 @@ public sealed class TarSandboxedService : ITarService
             }
 
             string fullSource = Path.GetFullPath(sourcePath);
+            bool isDriveRoot = Path.GetDirectoryName(fullSource) is null;
+            fullSource = SubstDrive.Resolve(fullSource);
 
             // T-F266/T-F204: tar.exe receives this path and walks the folder itself, so every
             // name it will touch must survive its ANSI command line / path conversion. Refused
@@ -1430,7 +1432,10 @@ public sealed class TarSandboxedService : ITarService
                 continue;
             }
 
-            if (!claims.TryAppendLines(nameList, sourcePath, fullSource, errors))
+            bool appended = isDriveRoot
+                ? claims.TryAppendDriveRootLines(nameList, sourcePath, fullSource, errors)
+                : claims.TryAppendLines(nameList, sourcePath, fullSource, errors);
+            if (!appended)
                 continue;
 
             entryCount++;
@@ -1451,25 +1456,45 @@ public sealed class TarSandboxedService : ITarService
         // False when the source was refused (its error is recorded).
         public bool TryAppendLines(List<string> nameList, string sourcePath, string fullSource, List<ArchiveError> errors)
         {
-            string name = Path.GetFileName(fullSource);
-            if (string.IsNullOrEmpty(name))
-            {
-                // Drive-root source (e.g. "Z:\") — GetFileName returns "" and GetDirectoryName
-                // returns null. tar.exe strips the drive letter from a rooted absolute-path
-                // argument on its own (see IsDangerousEntryName's comment above) — pass it
-                // through directly rather than via -C. Same edge case T-F99 already handles for
-                // ZipArchiveService; needs its own on-device confirmation in Phase C/D.
-                nameList.Add(fullSource);
-                return true;
-            }
-
-            if (Claim(sourcePath, fullSource, Path.GetDirectoryName(fullSource)!, name, errors) is not { } claimed)
+            if (Claim(sourcePath, fullSource, Path.GetDirectoryName(fullSource)!, Path.GetFileName(fullSource), errors) is not { } claimed)
                 return false;
 
+            AppendClaimed(nameList, claimed);
+            return true;
+        }
+
+        // T-F285: tar.exe (bsdtar 3.8.8) cannot visit a drive root, as an argument or as "." under
+        // "-C X:\" ("Couldn't visit directory"), on a real volume, a network drive and a subst drive
+        // alike. What the root holds is listed name by name instead; the entries come out the same.
+        public bool TryAppendDriveRootLines(List<string> nameList, string sourcePath, string root, List<ArchiveError> errors)
+        {
+            string[] children;
+            try
+            {
+                children = Directory.GetFileSystemEntries(root);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                errors.Add(CoreMessages.Error(sourcePath, CoreMessages.Wrap(MessageCode.CannotCreateArchive, ex), ex));
+                return false;
+            }
+
+            bool any = false;
+            foreach (string child in children)
+            {
+                if (Claim(sourcePath, child, root, Path.GetFileName(child), errors) is not { } claimed)
+                    continue;
+                AppendClaimed(nameList, claimed);
+                any = true;
+            }
+            return any;
+        }
+
+        private static void AppendClaimed(List<string> nameList, (string Parent, string Name) claimed)
+        {
             nameList.Add("-C");
             nameList.Add(claimed.Parent);
             nameList.Add(claimed.Name == "-C" ? "./-C" : claimed.Name);
-            return true;
         }
 
         private (string Parent, string Name)? Claim(string sourcePath, string fullSource, string parent, string name, List<ArchiveError> errors)

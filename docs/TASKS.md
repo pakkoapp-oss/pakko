@@ -1250,7 +1250,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F285 — tar creation from a `subst` drive root fails inside tar.exe (P3)
 
-- [ ] **Status:** open — found 2026-09-29 in the T-F283 device pass. Shell `--archive --format tar
+- [x] **Status:** done 2026-10-06 (wave 5 after v1.7.0). Wider than first filed: tar.exe (bsdtar 3.8.8) cannot visit a drive root at all - real volume (`tar -cf o.tar -n C:\`), mapped network drive and `subst` alike - and on a `subst` drive it also fails for a file directly in the root. Fix: a root source is listed as one `-C root` + name pair per top-level entry, and a `subst` drive is replaced by its folder (`SubstDrive`). Tests first (`TarSandboxedServiceDriveRootTests`, a `subst` drive over a temp folder; both failed with "GetVolumePathName failed: 123"). Device (Release `pakko.exe`, `pakko a -ttar`): `subst` root -> `r.txt, sub/, sub/s.txt`; file in the `subst` root; folder on it; mapped network drive root (`net use` to a localhost share) -> the same three entries; UNC folder and plain folder unchanged (wrapped in the folder's name). Not run: a whole real volume root. Decision: `docs/DECISIONS.md`, waves 4 and 5. **Earlier status:** open — found 2026-09-29 in the T-F283 device pass. Shell `--archive --format tar
   P:\` (P: = `subst` of a small folder) shows "tar.exe не зміг створити архів: ... Couldn't visit
   directory" with a garbled path. `tar.exe` alone fails the same way with `P:\` as an argument
   (the pre-T-F283 form), as a `-T -` list line, as `P:/`, and as `-C P:\` + `.`; `-C P:\` +

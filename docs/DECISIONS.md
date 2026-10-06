@@ -11202,3 +11202,33 @@ ZIP whose local file headers disagree with its central directory (the user's dec
   `Archiver.Shell.exe` from the package's `InstallLocation`; a bare name shows a Windows "not
   found" dialog to the user and the call hangs. The App is one process per launch, so each
   `--open-ui` run has its own window handle.
+
+## After v1.7.0, waves 4 and 5 — smaller decisions (2026-10-06)
+
+- **T-F285: tar.exe cannot visit any drive root, so Pakko lists what the root holds.** Measured on
+  bsdtar 3.8.8 (Windows build 26300): a drive root fails as an argument (`X:\`) and as `.` under
+  `-C X:\` with "Couldn't visit directory" and bytes of unrelated memory in the message. That is so
+  on a real volume (`tar -cf o.tar -n C:\`), on a mapped network drive and on a `subst` drive; a
+  folder with a trailing backslash fails the same way, and `-C X:\ name` works. On a `subst` drive
+  a *file* directly in the root fails too ("GetVolumePathName failed: 123"), a folder there does
+  not. So: a root source becomes one `-C root` + name pair per top-level entry (the entries come
+  out as tar.exe wrote them when a root still worked, with no wrapper folder), and a `subst`
+  drive is replaced by the folder it stands for (`SubstDrive.Resolve`, `QueryDosDevice`: only
+  `subst` answers with a DOS path). Rejected: refusing with a message (a new string in 37
+  languages for something that can simply work); resolving every path through
+  `GetFinalPathNameByHandle` (it would also rewrite mapped network drives to UNC, which tar.exe
+  did not need). Not run: a whole real volume (this machine has one 475 GB drive); the same
+  `-C C:\ name` lines were run by hand for one folder and one file.
+- **T-F329: the unit, not a plural engine, for byte counts.** In pl, hr, sr-Latn, sl, lt, lv and
+  ro the word for "bytes" changes with the last digits of the number, and a template cannot do
+  that. The colon form used for counts ("archives: {0}") reads badly for a size inside a
+  sentence, and those locales' size columns already show "B". English keeps "{0} bytes": it is
+  `pakko.exe`'s output and only "1 bytes" is wrong there.
+- **T-F311: a task for "the CRC is final", not a longer wait.** `FileItem` sets `Crc32` and then
+  `Crc32Display` from a pool thread; a reader that polls the first can see the second stale. The
+  UI binds each property on its own and is not affected, so the two assignments stay as they
+  are and `Crc32Ready` (like `TotalsReady`) says when both are done.
+- **T-F340: a new lookup does give the new theme's brush.** The wave 3 note above said a brush
+  read in code is fixed to the theme of that moment; that is true of the brush object, and a
+  second read of `Application.Current.Resources` after `ActualThemeChanged` returns the other
+  theme's. Measured on the conflict prompt with and without the re-read.
