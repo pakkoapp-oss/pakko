@@ -1866,7 +1866,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F347 — App: the tar.exe probe blocks the UI thread before the window exists (P2)
 
-- [ ] **Status:** open. `App.ConfigureServices` runs `DetectCapabilitiesAsync().GetAwaiter()
+- [x] **Status:** done 2026-10-06. `Measure-Startup.ps1` on the installed package, before -> after (medians of 7): App start to visible window 668 -> 591 ms; CPU, memory unchanged (one more thread while the probe runs). No App test host exists, so the checks are the full default suite (green), and on device (dev 1.7.1.1, uk-UA): a .7z in a folder with a space and Cyrillic opens in the browser with its three entries (Explorer Open route), the same .7z plus a .zip in the pending list give Extract as the primary action, Shell extract-here on .zip/.7z/.tar.gz and `pakko l/t/x/a/i` work. `TarSandboxedService` is built by hand before the container so the probe can start at once (`docs/ARCHITECTURE.md`). **Was:** `App.ConfigureServices` runs `DetectCapabilitiesAsync().GetAwaiter()
   .GetResult()`: `WinVerifyTrust` on tar.exe (~47 ms) plus `tar.exe --version` (~30 ms) plus
   first-call costs, ~95-108 ms of the ~600 ms start, with a 5 s worst case (the probe's timeout).
   Start the probe on the thread pool at the top of `ConfigureServices` and let the
@@ -1879,7 +1879,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F348 — `LaunchArguments`: reflection JSON costs ~37 ms in Shell on every "Open" (P3)
 
-- [ ] **Status:** open. `LaunchArguments.Format`/`TryParse` use reflection-based `JsonSerializer`
+- [x] **Status:** done 2026-10-06. Tests first, green on the old code: the payload pinned character for character (spaces, Cyrillic, quotes, `<&'+>`, tab, U+00A0, an emoji, a trailing backslash), strict-JSON refusals, escaped and raw non-ASCII parse alike; mutation (encoder dropped) fails two tests. Explorer Open, Shell start to visible App window: 873 -> 753 ms together with T-F347 (~77 ms of it is T-F347's). **Was:** `LaunchArguments.Format`/`TryParse` use reflection-based `JsonSerializer`
   for a string list; the first call builds the reflection metadata (37 ms in Shell's profile; the
   App's `TryParse` side not measured). Use a source-generated `JsonSerializerContext`, as
   `Archiver.OperationUi.Protocol` does. The argument string must stay byte-identical (a test
@@ -1890,7 +1890,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F349 — Shell, the operation window and `pakko` ship without ReadyToRun (P2)
 
-- [ ] **Status:** open. Checked in the installed package by PE header: `Archiver.Shell.dll`,
+- [~] **Status:** standalone `pakko.exe` done 2026-10-06 (`Publish-Cli.ps1` passes `PublishReadyToRun`; `pakko.dll` and `Archiver.Core.dll` carry R2R code for win-x64 and win-arm64, checked by PE header on a local publish - check the CI zips too). The five DLLs in the package are still open (step 2, Plan mode). **Was:** Checked in the installed package by PE header: `Archiver.Shell.dll`,
   `pakko.dll`, `Archiver.OperationUi.dll`, `.Core.dll`, `.Protocol.dll` have no R2R code
   (`Deploy.ps1`/`CI-Build-Msix.ps1` build them with `dotnet build`; R2R runs only in publish);
   `Publish-Cli.ps1`'s standalone `pakko.exe` has none either, Core included. Measured: standalone
