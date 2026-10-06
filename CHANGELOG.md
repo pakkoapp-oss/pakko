@@ -10,6 +10,51 @@ the technical account of any task named here.
 
 ---
 
+## v1.7.1 — 2026-10-06
+
+A data-integrity fix for password-protected ZIPs, and the command line says what it did: files it
+kept, an archive that landed under another name, an encrypted 7z or RAR it cannot open.
+
+### Fixed
+
+- **T-F333** — a password-protected ZIP entry that decrypts to fewer bytes than its declared size
+  is an error in Test and Extract. In v1.7.0 such a tampered or truncated entry tested as intact.
+  The size and truncated-entry errors show in Ukrainian in Explorer and the App.
+- **T-F316** — creating an archive inside the folder being archived (`pakko a out.zip .`) no
+  longer reports an error about Pakko's own temporary file (ZIP) or packs it as an entry (tar).
+- **T-F338** — `pakko a out.zip .` stores the folder under its own name (`proj/a.txt`), as 7-Zip
+  does, not as `./a.txt`.
+- **T-F322** — an encrypted 7z or RAR says that passwords are supported for ZIP archives only, in
+  every language; `pakko` no longer suggests `-p` for it.
+- **T-F335** — `pakko l` and the App's Modified column show an older entry of a tar, 7z or RAR
+  archive as a date alone (`2020-02-03`): tar.exe gives no time for it, and midnight was shown.
+- **T-F326** — a Group Policy or password refusal to create an archive names the archive, not the
+  output folder.
+
+### Changed behavior
+
+- **T-F280** — extracting a ZIP whose local file headers disagree with its central directory
+  warns: the files are extracted by the central directory, Explorer and the App show the warning,
+  and `pakko x` prints `pakko: warning:` and exits **1** (was 0). Test already reported such an
+  archive as an error.
+- **T-F313** — `pakko x` of a ZIP over files that already exist names each file it kept, offers
+  `-aoa`/`-aou` and exits **1**, as it already did for tar archives (was exit 0 and no output).
+- **T-F325** — `pakko a` whose archive name was taken by another run during the write says where
+  the archive landed (`pakko: warning: created 'name (1).zip': ...`) and exits **1** (was exit 0
+  and no output).
+
+### Tests
+
+- **T-F337** — the encrypted ZIPs Pakko writes are checked byte by byte by a reader that shares no
+  code with Pakko's own.
+
+### Known issues
+
+- **T-F326** — the corrected Group Policy refusal text was checked by tests only, not on a device
+  with the policy set.
+
+---
+
 ## v1.7.0 — 2026-10-05
 
 `pakko` in the terminal right after a Store install (and through winget), extracted files keep
