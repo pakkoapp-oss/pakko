@@ -148,7 +148,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             ? OperationTextLocalizer.Get("TitleTesting", Path.GetFileName(archivePaths[0]))
             : OperationTextLocalizer.Get("TitleTestingMany", archivePaths.Count);
 
-        using IOperationSession session = ui.Begin(title, ProgressStyle.Bytes);
+        using IOperationSession session = ui.Begin(title, ProgressStyle.Bytes, endsWithResult: true);
         ArchiveResult result;
         try
         {
@@ -179,7 +179,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             ? $"{label}: {Path.GetFileName(Path.TrimEndingDirectorySeparator(paths[0]))}"
             : OperationTextLocalizer.Get("TitleHashMany", label, paths.Count);
 
-        using IOperationSession session = ui.Begin(title, ProgressStyle.Bytes);
+        using IOperationSession session = ui.Begin(title, ProgressStyle.Bytes, endsWithResult: true);
         HashResult result;
         try
         {
@@ -208,7 +208,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             : OperationTextLocalizer.Get("TitleScanningMany", archivePaths.Count);
 
         IAntivirusScanService service = await services.CreateScanServiceAsync().ConfigureAwait(false);
-        using IOperationSession session = ui.Begin(title, ProgressStyle.Percent);
+        using IOperationSession session = ui.Begin(title, ProgressStyle.Percent, endsWithResult: true);
         var options = new AntivirusScanOptions
         {
             ArchivePaths = archivePaths,

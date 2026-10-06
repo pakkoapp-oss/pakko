@@ -57,7 +57,7 @@ internal sealed partial class HelperApp : Application, IXamlMetadataProvider, ID
         }
 
         if (message is Begin)
-            _window!.StartShowTimer(OperationWindowModel.ShowDelay);
+            _window!.StartShowTimer(OperationWindowModel.ShowDelayFor((Begin)message));
         Execute(_model.Receive(message));
     }
 

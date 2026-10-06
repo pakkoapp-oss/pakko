@@ -64,6 +64,19 @@ public sealed class OperationWindowModel
     /// <summary>Gate 0: shown 1 s after the operation starts, a clean operation under that shows nothing.</summary>
     public static readonly TimeSpan ShowDelay = TimeSpan.FromSeconds(1);
 
+    /// <summary>
+    /// T-F356: Shell may start the helper only after the operation has run a while; that time
+    /// comes off the delay, so the window shows when it would have with a helper started at once.
+    /// </summary>
+    public static TimeSpan ShowDelayFor(Begin begin)
+    {
+        TimeSpan left = ShowDelay - TimeSpan.FromMilliseconds(Math.Max(0, begin.ElapsedMs));
+        return left > MinimumShowDelay ? left : MinimumShowDelay;
+    }
+
+    // A dispatcher timer needs a positive interval.
+    private static readonly TimeSpan MinimumShowDelay = TimeSpan.FromMilliseconds(1);
+
     private IReadOnlyDictionary<string, string> _strings = new Dictionary<string, string>();
     private readonly Queue<ProtocolMessage> _prompts = new();
     private int _itemCount;

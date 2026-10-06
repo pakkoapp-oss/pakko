@@ -2006,7 +2006,20 @@ re-measured with T-F346's script before and after.
 
 ### T-F356 — Start the operation-window helper only when the operation is not fast (decision needed)
 
-- [ ] **Status:** open, outside the wave. Split from T-F351: starting `Archiver.OperationUi` only
+- [x] **Status:** done 2026-10-06. Extract and Archive start the helper after 0.5 s, or at once
+  for a prompt or a result; Test, Scan and Hash at once, as before
+  (`DeferredOperationSession`). Measured on the installed package: Extract here (200 files) files
+  written 451 -> 401 ms, Shell exit 464 -> 403 ms; on two cores 761 -> ~380 ms (20 files: 489 ->
+  ~210 ms). The window on a long extraction shows when it did (1774 -> 1785 ms: `Begin` carries
+  the elapsed time and the helper's 1 s show delay is shortened by it). Cost: a conflict prompt in
+  the first half second 676 -> 731 ms. Condition (1) below: the helper is started with a handle
+  list (`HandleListProcess`), so it cannot take a `tar.exe` pipe. On device (dev 1.7.1.7): fast
+  extract and archive start no helper process; 6000 files from a ZIP and from a .7z (tar.exe
+  running while the helper starts) show the window and finish; Cancel leaves only the archive;
+  conflict Skip and Overwrite, password prompt then result, Test result and Close - each through
+  the window's own buttons; no helper process is left after Shell exits. Not checked on device:
+  the helper failing to start (tests only). Tests first, twelve mutants caught. Details:
+  `docs/DECISIONS.md`'s T-F356 entry. **Was:** open, outside the wave. Split from T-F351: starting `Archiver.OperationUi` only
   after ~0.5 s (or at once for a prompt or a result) would save a whole WinUI process on every
   fast Explorer command. Two conditions before it can be done, each with numbers: (1) a helper
   started in the middle of the work can coincide with a `tar.exe` launch — the pipe handles are

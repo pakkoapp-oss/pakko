@@ -40,6 +40,8 @@ public sealed class HelperOperationUiTests : IDisposable
             ReadyTimeout = readyTimeout ?? WaitLimit,
             CloseTimeout = closeTimeout ?? ShortClose,
             ProgressInterval = TimeSpan.Zero,
+            // These tests are about a started helper; when it starts is DeferredOperationSessionTests'.
+            StartDelay = TimeSpan.Zero,
             HelperBecameReady = () => readySeen.TrySetResult(),
         };
     }
@@ -68,6 +70,80 @@ public sealed class HelperOperationUiTests : IDisposable
                 throw new TimeoutException("The condition never became true.");
             await Task.Delay(20);
         }
+    }
+
+    // --- T-F356: the helper starts only when the operation is not fast ---
+
+    private HelperOperationUi CreateDeferredUi(TimeSpan startDelay) => new(_helper, _fallback)
+    {
+        ReadyTimeout = WaitLimit,
+        CloseTimeout = ShortClose,
+        ProgressInterval = TimeSpan.Zero,
+        StartDelay = startDelay,
+    };
+
+    [Fact]
+    public void FastCleanOperation_NeverStartsTheHelper()
+    {
+        using (IOperationSession session = CreateDeferredUi(TimeSpan.FromMinutes(10)).Begin("Extracting: a.zip", ProgressStyle.Bytes))
+        {
+            session.BeginItem("a.zip", 1, 1);
+            session.Progress!.Report(new ProgressReport { Percent = 100 });
+            session.Complete(null);
+        }
+
+        _helper.Launches.Should().Be(0);
+        _fallback.Sessions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task OperationLongerThanTheDelay_StartsTheHelperAndTellsItHowLongTheOperationHasRun()
+    {
+        using IOperationSession session = CreateDeferredUi(TimeSpan.FromMilliseconds(200)).Begin("Extracting: a.zip", ProgressStyle.Bytes);
+        session.BeginItem("a.zip", 1, 1);
+        await WaitUntilAsync(() => _helper.Launches == 1);
+
+        Begin begin = await _helper.ReadUntilAsync<Begin>();
+        Item item = await _helper.ReadUntilAsync<Item>();
+
+        begin.Title.Should().Be("Extracting: a.zip");
+        begin.ElapsedMs.Should().BeInRange(150, 5000);
+        item.Should().Be(new Item("a.zip", 1, 1));
+    }
+
+    [Fact]
+    public async Task PromptBeforeTheDelay_StartsTheHelperAtOnceAndItsAnswerComesBack()
+    {
+        using IOperationSession session = CreateDeferredUi(TimeSpan.FromMinutes(10)).Begin("Extracting: a.zip", ProgressStyle.Bytes);
+
+        Task<bool> answer = session.ConfirmAsync(new ConfirmPrompt("t", "m", "yes", "no"));
+        await _helper.SendReadyAsync();
+        AskConfirm ask = await _helper.ReadUntilAsync<AskConfirm>();
+        await _helper.SendAsync(new ConfirmAnswer(ask.RequestId, true));
+
+        (await answer.WaitAsync(WaitLimit)).Should().BeTrue();
+        _helper.Launches.Should().Be(1);
+    }
+
+    [Fact]
+    public void OperationThatEndsWithAResult_StartsTheHelperAtOnce()
+    {
+        using IOperationSession session = CreateDeferredUi(TimeSpan.FromMinutes(10))
+            .Begin("Testing: a.zip", ProgressStyle.Bytes, endsWithResult: true);
+
+        _helper.Launches.Should().Be(1);
+    }
+
+    [Fact]
+    public void HelperCannotStartWhenItIsNeeded_TheResultIsShownByTheFallback()
+    {
+        _helper.FailToLaunch = true;
+        using IOperationSession session = CreateDeferredUi(TimeSpan.FromMinutes(10)).Begin("Extracting: a.zip", ProgressStyle.Bytes);
+
+        session.Complete(Warning);
+
+        _fallback.Sessions.Should().ContainSingle();
+        _fallback.Messages.Should().Equal(Warning);
     }
 
     // --- Happy path ---

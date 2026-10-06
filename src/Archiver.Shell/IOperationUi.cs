@@ -36,8 +36,12 @@ internal sealed record ConfirmPrompt(string Title, string Message, string Confir
 /// </summary>
 internal interface IOperationUi
 {
-    /// <summary>Starts one operation's window. Dispose the session when the operation ends.</summary>
-    IOperationSession Begin(string title, ProgressStyle style);
+    /// <summary>
+    /// Starts one operation's window. Dispose the session when the operation ends.
+    /// <paramref name="endsWithResult"/>: the operation always shows a result (a test, a scan, a
+    /// hash), so its window is wanted however fast it is (T-F356).
+    /// </summary>
+    IOperationSession Begin(string title, ProgressStyle style, bool endsWithResult = false);
 
     /// <summary>A message with no operation behind it (the open-in-Pakko hand-off failing).</summary>
     void ShowMessage(OperationMessage message);

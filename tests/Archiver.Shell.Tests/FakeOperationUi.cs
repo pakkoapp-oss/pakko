@@ -30,8 +30,11 @@ internal sealed class FakeOperationUi : IOperationUi
     /// <summary>Cancels only the first window opened (T-F269: a later archive must not start).</summary>
     public bool CancelFirstSessionOnBegin { get; set; }
 
-    public IOperationSession Begin(string title, ProgressStyle style)
+    public List<bool> EndsWithResult { get; } = [];
+
+    public IOperationSession Begin(string title, ProgressStyle style, bool endsWithResult = false)
     {
+        EndsWithResult.Add(endsWithResult);
         var session = new FakeOperationSession(this, title, style);
         if (CancelOnBegin || (CancelFirstSessionOnBegin && Sessions.Count == 0))
             session.Cancel();

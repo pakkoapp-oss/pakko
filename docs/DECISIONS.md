@@ -11322,3 +11322,35 @@ parent's disk - a miss leaves today's behaviour.
 
 **Not measured.** No spinning disk on the dev machine; the task stays `[~]` for that. Not covered:
 `SeparateArchives` runs several archives at once on any disk, as it did.
+
+## T-F356 — the operation window helper starts only when the operation is not fast (2026-10-06)
+
+**Decision.** Extract and Archive from Explorer start `Archiver.OperationUi` only once the
+operation has run 0.5 s, or at once for a prompt or a result message
+(`DeferredOperationSession`, `HelperOperationUi.StartDelay`). Test, Scan and Hash always end with
+a result and start it at once, as before (`IOperationUi.Begin(..., endsWithResult)`).
+
+**Measured first** (a temporary switch that never started the helper; installed package, 10 pairs,
+medians): Extract here on 200 small files 462 -> 370 ms, on two cores (process affinity) 761 ->
+388 ms; on 20 files 247 -> 198 and 489 -> 213 ms. After the change, `Measure-Startup.ps1`: files
+written 451 -> 401 ms, Shell exit 464 -> 403 ms; two cores 761 -> ~380 ms.
+
+**The window shows when it did.** The helper hides its window for 1 s after `Begin`
+(`OperationWindowModel.ShowDelay`). `Begin` now carries how long the operation had run when the
+helper was started, and the helper takes that off (`ShowDelayFor`): long extraction, Shell start
+to visible window 1774 -> 1785 ms. **Cost:** a prompt in the first half second now waits for a
+helper that starts when the prompt is asked, not at the start: conflict prompt 676 -> 731 ms.
+
+**Why the helper is no longer started with `Process.Start`.** It hands a child every inheritable
+handle open at that moment. Started at the beginning of a command that was harmless; started in
+the middle it can coincide with a `tar.exe` launch, whose pipe ends are inheritable until the
+launcher closes its copies - the helper would hold tar's write end and the read of tar's output
+would not end until the helper did, which is after the operation. (tar itself was already safe:
+`SandboxedProcessLauncher` names its handles, sandboxed or not.) `HandleListProcess` starts the
+helper through `CreateProcessW` with `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` naming its two pipes; a
+test with a real child and a second inheritable pipe fails without the list.
+
+**Rejected.** A lock shared by Core's launcher and Shell's: a public Core member for one caller,
+and it protects only launches that take it. `InternalsVisibleTo` Shell for Core's
+`LaunchAttributeList`: that grant is for tests. Changing the protocol version for `ElapsedMs`: the
+field is optional and both ends ship in one package.

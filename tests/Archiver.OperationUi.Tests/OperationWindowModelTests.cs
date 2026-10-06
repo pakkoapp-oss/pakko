@@ -27,6 +27,20 @@ public sealed class OperationWindowModelTests
 
     // --- Happy path ---
 
+    // T-F356: a helper started late shows its window when one started at once would have.
+    [Theory]
+    [InlineData(0, 1000)]
+    [InlineData(500, 500)]
+    [InlineData(999, 1)]
+    [InlineData(1000, 1)]      // a timer needs a positive interval
+    [InlineData(60_000, 1)]
+    [InlineData(-5, 1000)]     // not a time; the full delay
+    public void ShowDelayFor_TakesOffTheTimeTheOperationHasAlreadyRun(int elapsedMs, int expectedMs)
+    {
+        OperationWindowModel.ShowDelayFor(new Begin("t", ProgressKind.Bytes, elapsedMs))
+            .Should().Be(TimeSpan.FromMilliseconds(expectedMs));
+    }
+
     [Fact]
     public void Begin_StaysHiddenUntilTheShowDelay()
     {

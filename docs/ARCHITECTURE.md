@@ -231,6 +231,8 @@ src/
 │   │                                      T-F261: built from Core's PakkoServices
 │   ├── IOperationUi.cs                 ← T-F268: IOperationUi/IOperationSession/OperationMessage
 │   ├── Win32OperationUi.cs             ← T-F268: IOperationUi on IProgressDialog/TaskDialog/MessageBoxW
+│   ├── DeferredOperationSession.cs     ← T-F356: the window starts after 0.5 s, or at once for a prompt or a result
+│   ├── HandleListProcess.cs            ← T-F356: a child that inherits only the handles named for it (the helper)
 │   ├── OperationMessages.cs            ← T-F268: pure result-text builder (errors, skips, hash, scan)
 │   ├── ProgressText.cs                 ← progress status, byte and speed text
 │   ├── AppLauncher.cs                  ← T-F232: opens Archiver.App via IApplicationActivationManager::

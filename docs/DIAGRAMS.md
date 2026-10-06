@@ -1015,6 +1015,7 @@ at a time.
 
 Sources read for this diagram: `src/Archiver.Shell/Program.cs`, `src/Archiver.Shell/HelperOperationUi.cs`,
 `src/Archiver.Shell/HelperProcessLauncher.cs`, `src/Archiver.Shell/OperationWindowText.cs`,
+`src/Archiver.Shell/DeferredOperationSession.cs`, `src/Archiver.Shell/HandleListProcess.cs` (T-F356),
 `src/Archiver.OperationUi/HelperApp.cs`, `src/Archiver.OperationUi/ShellPipe.cs`,
 `src/Archiver.OperationUi/OperationWindow.cs`, `src/Archiver.OperationUi.Core/OperationWindowModel.cs`,
 `src/Archiver.OperationUi.Protocol/Messages.cs`.
@@ -1031,12 +1032,15 @@ sequenceDiagram
     participant W as Win32OperationUi (fallback)
     actor User
 
-    Cmd->>HUI: Begin(title, style)
+    Cmd->>HUI: Begin(title, style, endsWithResult)
+    opt not endsWithResult (Extract, Archive) — T-F356
+        Note over HUI: DeferredOperationSession keeps the archive name and the latest progress.<br/>Nothing below starts until 0.5 s have passed, a prompt is asked or a result is to be shown —<br/>a clean operation that ends first never starts the helper
+    end
     alt launcher throws — exe missing or CreateProcess failed
         HUI->>W: Begin(title, style) — the whole operation uses the Win32 windows
     else helper started
-        HUI->>H: Process.Start(absolute path, --in handle --out handle)<br/>two anonymous pipes, Shell's client copies disposed at once, AllowSetForegroundWindow(pid)
-        HUI->>H: Hello(culture, RTL, labels), Begin(title, kind) — queued, a pump task writes every frame
+        HUI->>H: CreateProcessW with a handle list (absolute path, --in handle --out handle)<br/>two anonymous pipes and no other handle inherited, Shell's client copies disposed at once, AllowSetForegroundWindow(pid)
+        HUI->>H: Hello(culture, RTL, labels), Begin(title, kind, elapsed ms) — queued, a pump task writes every frame
         H->>H: OperationWindowModel, window built hidden
         H-->>HUI: HelperReady(version)
         opt no ready within 5 s, or another protocol version
@@ -1047,7 +1051,7 @@ sequenceDiagram
             Cmd->>HUI: BeginItem(name, i, n) / Progress.Report
             HUI->>H: Item, Progress — progress coalesced into one pending slot, at most every 50 ms
         end
-        Note over H: shown 1 s after Begin, or at once for a result —<br/>a clean operation faster than that shows nothing
+        Note over H: shown 1 s after Begin less the elapsed time it carries, or at once for a result —<br/>a clean operation faster than that shows nothing
         alt user presses Cancel, Esc or the title bar X
             H-->>HUI: CancelRequested, then WindowClosed — the window closes, the helper exits
             HUI->>Cmd: session.Cancellation cancelled → OperationCanceledException → Dispose — no failover

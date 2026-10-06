@@ -16,7 +16,7 @@ internal sealed partial class Win32OperationUi : IOperationUi
     private const uint MbIconWarning = 0x30;
     private const uint MbIconInformation = 0x40;
 
-    public IOperationSession Begin(string title, ProgressStyle style) => new Session(title, style);
+    public IOperationSession Begin(string title, ProgressStyle style, bool endsWithResult = false) => new Session(title, style);
 
     public void ShowMessage(OperationMessage message) => Show(message);
 

@@ -521,6 +521,17 @@ tests caught before shipping):
   (9 formats by magic bytes x 4 policies x 2 capability sets, captured before the change).
   `HelperOperationUiTests.*BeforeTheHelperIsReady*` (T-F351): a clean end before `HelperReady`
   ends the helper without waiting; a result still waits for the window.
+  T-F356: `DeferredOperationSessionTests` (the window is `FakeOperationUi`'s) - a fast clean
+  operation starts no window, a longer one starts it once with the current archive and the latest
+  progress, a prompt or a result starts it at once, Cancel in the window cancels the operation,
+  nothing starts after the end, eight prompts racing the timer share one window;
+  `HelperOperationUiTests` - the helper is not launched for a fast operation, `Begin` carries the
+  elapsed time, `endsWithResult` launches at once, a launch that fails when needed goes to the
+  fallback (the 37 older tests pin `StartDelay = 0`); `ShellCommandsTests.Begin_OnlyTestAndHash...`;
+  `OperationWindowModelTests.ShowDelayFor_*`; `HandleListProcessTests` - a real child (`ping.exe`)
+  on real pipes does not hold an inheritable handle it was not given (fails when the handle list
+  is dropped), holds the one it was given, and the command line reads back through
+  `CommandLineToArgvW`. Twelve mutants, all caught.
 - `PolicyOwnershipTests` (`Archiver.Core.Tests/Services/`, T-F261/T-F250) — Group Policy has one
   owner: every engine/router constructor requires a non-null `GroupPolicyOptions` (reflection);
   `TarSandboxedService` refuses Extract/List/Compress under `DisableTarExtraction` and never runs

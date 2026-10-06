@@ -52,8 +52,11 @@ public enum ConflictChoice
 /// <summary>First message. <paramref name="Strings"/> holds every label the window draws.</summary>
 public sealed record Hello(int ProtocolVersion, string Culture, bool RightToLeft, IReadOnlyDictionary<string, string> Strings) : ProtocolMessage;
 
-/// <summary>Starts the one window of an Explorer command.</summary>
-public sealed record Begin(string Title, ProgressKind Kind) : ProtocolMessage;
+/// <summary>
+/// Starts the one window of an Explorer command. <paramref name="ElapsedMs"/>: how long the
+/// operation had already run when the helper was started (T-F356).
+/// </summary>
+public sealed record Begin(string Title, ProgressKind Kind, int ElapsedMs = 0) : ProtocolMessage;
 
 /// <summary>The archive now being processed, <paramref name="Index"/> of <paramref name="Count"/> (1-based).</summary>
 public sealed record Item(string Name, int Index, int Count) : ProtocolMessage;

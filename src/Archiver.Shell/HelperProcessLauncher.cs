@@ -1,5 +1,3 @@
-using System.ComponentModel;
-using System.Diagnostics;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 
@@ -8,6 +6,7 @@ namespace Archiver.Shell;
 /// <summary>
 /// Starts Archiver.OperationUi.exe from Shell's own folder (an absolute path, never PATH) over two
 /// anonymous pipes. The handles go on the command line as numbers; nothing secret ever does.
+/// The helper inherits those two handles and no others (<see cref="HandleListProcess"/>, T-F356).
 /// </summary>
 internal sealed partial class HelperProcessLauncher : IHelperLauncher
 {
@@ -21,15 +20,13 @@ internal sealed partial class HelperProcessLauncher : IHelperLauncher
 
         var toHelper = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
         var fromHelper = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
-        Process? process = null;
+        HandleListProcess? process = null;
         try
         {
-            var start = new ProcessStartInfo(exe) { UseShellExecute = false };
-            start.ArgumentList.Add("--in");
-            start.ArgumentList.Add(toHelper.GetClientHandleAsString());
-            start.ArgumentList.Add("--out");
-            start.ArgumentList.Add(fromHelper.GetClientHandleAsString());
-            process = Process.Start(start) ?? throw new InvalidOperationException("The operation window helper did not start.");
+            process = HandleListProcess.Start(
+                exe,
+                ["--in", toHelper.GetClientHandleAsString(), "--out", fromHelper.GetClientHandleAsString()],
+                [toHelper.ClientSafePipeHandle, fromHelper.ClientSafePipeHandle]);
         }
         finally
         {
@@ -46,23 +43,7 @@ internal sealed partial class HelperProcessLauncher : IHelperLauncher
 
         // T-F253: Shell was started by the user's click, so it may hand the foreground on.
         _ = AllowSetForegroundWindow(process.Id);
-        return new HelperConnection(toHelper, fromHelper, () => Kill(process), process);
-    }
-
-    private static void Kill(Process process)
-    {
-        try
-        {
-            process.Kill();
-        }
-        catch (InvalidOperationException)
-        {
-            // Already exited.
-        }
-        catch (Win32Exception)
-        {
-            // Exiting right now; nothing left to end.
-        }
+        return new HelperConnection(toHelper, fromHelper, process.Kill, process);
     }
 
     [LibraryImport("user32.dll")]

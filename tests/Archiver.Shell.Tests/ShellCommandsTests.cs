@@ -30,6 +30,22 @@ public sealed class ShellCommandsTests : IDisposable
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { /* best-effort temp cleanup */ }
     }
 
+    // T-F356: only a command that always shows a result asks for its window at once.
+    [Fact]
+    public async Task Begin_OnlyTestAndHashSayTheyEndWithAResult()
+    {
+        string zip = MakeZip("kinds.zip", ("a.txt", "A"));
+        var ui = new FakeOperationUi();
+        ShellCommands commands = Create(ui);
+
+        await commands.ExtractHereAsync([zip]);
+        await commands.ArchiveAsync([Path.Combine(_root, "kinds", "a.txt")], ArchiveContainerFormat.Zip);
+        await commands.TestAsync([zip]);
+        await commands.HashAsync([zip], HashAlgorithmKind.Crc32);
+
+        ui.EndsWithResult.Should().Equal(false, false, true, true);
+    }
+
     // --- Happy path ---
 
     [Fact]
