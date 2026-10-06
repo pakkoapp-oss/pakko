@@ -2196,7 +2196,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F339 — Operation window: UI Automation lists the result text twice (P3, accessibility)
 
-- [ ] **Status:** open. Found in wave 3 after v1.7.0 (2026-10-06, dev 1.7.1.0 build 05:26): after
+- [x] **Status:** done 2026-10-06 (wave 3 tail, e93939b). The scroll viewer is out of the control view (`AccessibilityView.Raw`). Device (dev 1.7.1.1, uk-UA, `--test plain.zip`): the control-view dump has the result text once (Text), the scroll bar and the Close button are still there; the raw view still has the named pane. **Earlier status:** open. Found in wave 3 after v1.7.0 (2026-10-06, dev 1.7.1.0 build 05:26): after
   `--extract-here` of an encrypted `.7z` the window's UIA tree has the message once as the name of the
   `ScrollViewer` pane and once as the `TextBlock` inside it, so a screen reader can read it twice.
   It is drawn once (region capture). Give the scroll viewer no name of its own, or take it out of
@@ -2205,7 +2205,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F340 — Operation window: brushes read in code do not follow a live theme change (P3)
 
-- [ ] **Status:** open. Same cause as T-F327: `OperationWindow.Brush(key)` reads
+- [x] **Status:** done 2026-10-06 (wave 3 tail, e93939b). Every brush set in code is read again on `ActualThemeChanged` (`ApplyThemeBrushes`); a new lookup in `Application.Current.Resources` does give the new theme's brush. Device (dev 1.7.1.1, conflict prompt open, app theme switched dark to light by the registry value plus the `ImmersiveColorSet` broadcast, pixels sampled from a screen capture): card fill 2F2A26 to FDFBF8, secondary labels from light grey to dark grey, text and Mica background followed. The non-Mica background was checked in a local build with Mica forced off: 202020 to F3F3F3, cards 2B2B2B to FBFBFB. With the re-read taken out of the handler (same build otherwise) the cards stayed a dark-theme fill over the light window (F9F3EA) and the two card labels became unreadable (pixel brightness 242..252 on a light card), so the fault was real in the conflict prompt. Not checked: Windows 10 itself. **Earlier status:** open. Same cause as T-F327: `OperationWindow.Brush(key)` reads
   `Application.Current.Resources` once, so the secondary text, the card and the status colours keep
   the start theme, and so does the background where Mica is not supported (Windows 10; the code
   path could not be run on this Windows 11 machine). Not seen as a fault on the device: the result
@@ -2216,7 +2216,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F341 — App: a ZIP that fails to list shows the .NET exception text, not a translated message (P3)
 
-- [ ] **Status:** open. Found in wave 3 after v1.7.0 (2026-10-06, uk-UA): opening a `.zip` with a
+- [x] **Status:** done 2026-10-06 (wave 3 tail, e8d6532). `ListEntriesAsync` returns `ZipCorrupted` for a reader failure that carries no code of Core's own (tests fail with the new catch disabled: a ZIP signature with no central directory, and a real ZIP cut at 1/2 and at 9/10). Device (dev 1.7.1.1, uk-UA): the Archive Browser's error dialog on that file reads the Ukrainian text Test shows; `pakko l` and `pakko t` both print "File has ZIP signature but appears corrupted or incomplete.", exit 2. **Earlier status:** open. Found in wave 3 after v1.7.0 (2026-10-06, uk-UA): opening a `.zip` with a
   valid signature and no central directory in the Archive Browser shows the error dialog with
   "End of Central Directory record could not be found." (English, from .NET). The Explorer "Test"
   command on the same file says it in Ukrainian ("the file has a ZIP signature but looks damaged
