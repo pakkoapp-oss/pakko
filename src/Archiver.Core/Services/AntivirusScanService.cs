@@ -52,6 +52,13 @@ public sealed class AntivirusScanService : IAntivirusScanService
     /// <summary>Creates a scanner wired to the real AMSI provider.</summary>
     [SupportedOSPlatform("windows")]
     public AntivirusScanService(TarCapabilities tarCapabilities, GroupPolicyOptions groupPolicyOptions)
+        : this(() => Task.FromResult(tarCapabilities), groupPolicyOptions)
+    {
+    }
+
+    // T-F350: PakkoServices' entry - the one place the real AMSI provider is wired in.
+    [SupportedOSPlatform("windows")]
+    internal AntivirusScanService(Func<Task<TarCapabilities>> tarCapabilities, GroupPolicyOptions groupPolicyOptions)
         : this(tarCapabilities, groupPolicyOptions, () => new AmsiScanner("Pakko"), AmsiProviderCheck.IsAnyProviderRegistered)
     {
     }

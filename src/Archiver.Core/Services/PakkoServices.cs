@@ -1,7 +1,6 @@
 using System.Runtime.Versioning;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
-using Archiver.Core.Services.Antivirus;
 
 namespace Archiver.Core.Services;
 
@@ -61,6 +60,5 @@ public sealed class PakkoServices
     /// <summary>AMSI scanning, wired to the real AMSI provider.</summary>
     [SupportedOSPlatform("windows")]
     public Task<IAntivirusScanService> CreateScanServiceAsync() =>
-        Task.FromResult<IAntivirusScanService>(new AntivirusScanService(
-            GetTarCapabilitiesAsync, Policy, () => new AmsiScanner("Pakko"), AmsiProviderCheck.IsAnyProviderRegistered));
+        Task.FromResult<IAntivirusScanService>(new AntivirusScanService(GetTarCapabilitiesAsync, Policy));
 }
