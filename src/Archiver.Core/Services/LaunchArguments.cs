@@ -38,8 +38,8 @@ public static class LaunchArguments
 
     // The default encoder writes every non-ASCII character as \uXXXX (6 bytes where UTF-8 needs 2
     // for Cyrillic), cutting a non-Latin selection's capacity roughly threefold.
-    private static readonly JsonSerializerOptions PayloadOptions =
-        new() { Encoder = JavaScriptEncoder.Create(UnicodeRanges.All) };
+    private static readonly LaunchArgumentsJsonContext Json =
+        new(new JsonSerializerOptions { Encoder = JavaScriptEncoder.Create(UnicodeRanges.All) });
 
     /// <summary>Builds the argument string for <paramref name="operation"/> on <paramref name="files"/>.</summary>
     /// <exception cref="ArgumentException"><paramref name="files"/> is empty.</exception>
@@ -48,7 +48,7 @@ public static class LaunchArguments
         if (files.Count == 0)
             throw new ArgumentException("At least one file is required.", nameof(files));
 
-        string payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(files, PayloadOptions)));
+        string payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(files, Json.IReadOnlyListString)));
         return $"{SwitchFor(operation)} {payload}";
     }
 
@@ -72,7 +72,7 @@ public static class LaunchArguments
         string?[]? decoded;
         try
         {
-            decoded = JsonSerializer.Deserialize<string?[]>(Encoding.UTF8.GetString(Convert.FromBase64String(parts[1])));
+            decoded = JsonSerializer.Deserialize(Encoding.UTF8.GetString(Convert.FromBase64String(parts[1])), Json.StringArray);
         }
         catch (Exception ex) when (ex is FormatException or JsonException)
         {

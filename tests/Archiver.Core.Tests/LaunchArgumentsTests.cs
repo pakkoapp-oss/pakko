@@ -115,6 +115,49 @@ public sealed class LaunchArgumentsTests
         parsed.Should().Equal(files);
     }
 
+    // T-F348: the payload is a contract between two processes of possibly different builds (a
+    // running App, a newer Shell) — pinned character for character before the serializer changed.
+    [Fact]
+    public void Format_Payload_IsPinnedJson()
+    {
+        string[] files = [@"C:\a b\x.zip", @"\\сервер\спільна\Архів.tar", "q\"<&'+>\t\u00A0.zip", "\U0001F600.zip", @"C:\"];
+
+        string arguments = LaunchArguments.Format(LaunchOperation.Extract, files);
+
+        string[] parts = arguments.Split(' ');
+        parts[0].Should().Be("--extract");
+        Encoding.UTF8.GetString(Convert.FromBase64String(parts[1])).Should().Be(PinnedPayload);
+    }
+
+    private const string PinnedPayload =
+        """["C:\\a b\\x.zip","\\\\сервер\\спільна\\Архів.tar","q\u0022\u003C\u0026\u0027\u002B\u003E\t\u00A0.zip","\uD83D\uDE00.zip","C:\\"]""";
+
+    [Theory]
+    [InlineData("[\"C:\\\\a.zip\",]")]
+    [InlineData("/*c*/[\"C:\\\\a.zip\"]")]
+    [InlineData("[\"C:\\\\a.zip\"] x")]
+    [InlineData("[[\"C:\\\\a.zip\"]]")]
+    [InlineData("[\"C:\\\\a.zip\",true]")]
+    public void TryParse_PayloadOutsideStrictJsonStringArray_ReturnsFalse(string json)
+    {
+        string arguments = "--extract " + Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+
+        LaunchArguments.TryParse(arguments, out _, out IReadOnlyList<string>? files).Should().BeFalse();
+        files.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void TryParse_EscapedAndRawNonAscii_GiveTheSameFiles()
+    {
+        string escaped = "--browse " + Convert.ToBase64String(Encoding.UTF8.GetBytes("[\"C:\\\\\\u0410.zip\"]"));
+        string raw = "--browse " + Convert.ToBase64String(Encoding.UTF8.GetBytes("[\"C:\\\\\u0410.zip\"]"));
+
+        LaunchArguments.TryParse(escaped, out _, out IReadOnlyList<string>? fromEscaped).Should().BeTrue();
+        LaunchArguments.TryParse(raw, out _, out IReadOnlyList<string>? fromRaw).Should().BeTrue();
+        fromEscaped.Should().Equal("C:\\\u0410.zip");
+        fromRaw.Should().Equal(fromEscaped);
+    }
+
     [Fact]
     public void Format_EmptyFileList_Throws()
     {
