@@ -135,6 +135,17 @@ name):
 The manifest uses `ArchiveBinariesDependOnPath: true` — winget's `Links` symlink breaks the .NET
 apphost (see `docs/CLI.md`, Distribution).
 
+### Store listing text into a Partner Center export (T-F332)
+
+`py -3 scripts\Fill-StoreListing.py <export.csv>` checks a listing CSV exported from Partner
+Center (submission overview, "Export listing") against `docs/store-listing/<locale>.txt`: every
+language column has a file and every file a column. With `--write --output <filled.csv>` it writes
+the description, short description, features, search terms, "What's new" and the copyright line
+from the files, copies the 300 x 300 icon's URL to every language, leaves every other row as
+exported, then reads the result back and compares it. `--add-locale <tag>` adds a language the
+export lacks (title and image rows of `en-us`); `--keep-lists <tag>` leaves one language's
+features and search terms as exported. The import itself ("Import listings") is done by hand.
+
 ---
 
 ## Continuous Integration (T-F122)

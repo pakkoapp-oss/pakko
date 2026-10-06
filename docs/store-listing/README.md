@@ -32,6 +32,11 @@ empty, because Partner Center does not keep the screenshots in the same order in
 `ar-SA`, `he-IL` and `ur-PK` have a left-to-right mark (U+200E) before `.NET` where it starts a
 right-to-left run, so that it does not display as `NET.`.
 
+## Getting the text into Partner Center
+
+`scripts/Fill-StoreListing.py` fills a listing CSV exported from Partner Center from these files
+(`scripts/README.md` has the options); the CSV is then imported by hand.
+
 ## Rules for the text
 
 - The same facts in every language; `en-US.txt` is the source. Check a claim against the code or
