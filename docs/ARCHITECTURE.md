@@ -794,7 +794,9 @@ public interface ILogService
 Gated inside `ZipArchiveService.ArchiveAsync`'s `SingleArchive` branch: below
 `ParallelPipelineFileCountThreshold` (64 files), the original always-sequential
 `ZipFile.Open`/`AddDirectoryToArchiveAsync`/`AddEntryFromFileAsync` code runs completely
-unchanged. Above it, archiving routes into this subsystem instead — see `DECISIONS.md`'s T-F35
+unchanged - unless the selection is a few large files (T-F352, `ZipArchiveService.UsesParallelWriter`:
+at least 8 MiB beside the largest file and at least a quarter of it, a level other than
+NoCompression, free space for twice the sources). Above it, archiving routes into this subsystem instead — see `DECISIONS.md`'s T-F35
 entry (and its follow-up entries) for the full design rationale (why `ZipArchive` can't be
 reused for the write side once gated, the Option A/B trade-off, the temp-file-compression
 redesign that removed the original design's file-size ceiling, and the real bugs the test suite

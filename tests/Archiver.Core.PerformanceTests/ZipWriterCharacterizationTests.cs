@@ -9,7 +9,7 @@ namespace Archiver.Core.PerformanceTests;
 
 /// <summary>
 /// T-F270: pins the on-disk shape of archives Pakko writes, through both writer paths — the
-/// sequential <c>ZipArchive</c> path (at most 64 files) and the parallel hand-rolled path (more than
+/// sequential <c>ZipArchive</c> path (at most 64 small files) and the parallel hand-rolled path (more than
 /// 64) — before the .NET 8 -> 10 move. .NET 9 swapped zlib for zlib-ng and changed which
 /// general-purpose bits <c>ZipArchive</c> sets, so these are written on .NET 8 first: a behavior
 /// change then shows up as an already-committed test going red, not as a test fitted to the new

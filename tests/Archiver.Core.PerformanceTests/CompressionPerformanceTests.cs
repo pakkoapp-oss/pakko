@@ -44,7 +44,8 @@ public sealed class CompressionPerformanceTests : IDisposable
         // temp-file-compression redesign that removed the size ceiling entirely (1.18) — a single
         // large file's total FILE COUNT (1) never crosses ArchiveAsync's own 64-file gate, so it
         // always stays on the completely untouched original sequential path regardless of anything
-        // done inside the parallel pipeline itself, by design.
+        // done inside the parallel pipeline itself, by design. T-F352 keeps it there: one file has
+        // nothing beside it to compress in parallel.
         const double calibratedBaselineRatio = 1.22;
         ReleaseBuildGuard.RequireOptimizedCore();
         string sourceDir = PerformanceFixtures.CreateOneLargeFileFolder(_temp.Path);
@@ -123,6 +124,32 @@ public sealed class CompressionPerformanceTests : IDisposable
         File.Exists(pakkoZip).Should().BeTrue();
         new FileInfo(pakkoZip).Length.Should().BeGreaterThan(0);
         AssertRatio("Archive/ManySmallFiles", pakkoElapsed, referenceElapsed, calibratedBaselineRatio);
+    }
+
+    [Fact]
+    [Trait("Category", "Slow")]
+    public async Task ArchiveAsync_FewLargeFiles_WithinToleranceOfSevenZipReference()
+    {
+        // T-F352 (3 x 32 MiB; the fixture's repeating 64 KiB block is incompressible for Deflate's
+        // 32 KiB window, so every entry also takes T-F299's second, Stored pass):
+        //   ~2.9  on the sequential writer, before T-F352 (one core; measured at 3 x 100 MB)
+        //   ~1.2  on the parallel writer (1.20, 1.17; Release)
+        const double calibratedBaselineRatio = 1.2;
+        string sourceDir = PerformanceFixtures.CreateFewLargeFilesFolder(_temp.Path);
+
+        await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"));
+        SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "warmup_7za.zip"));
+
+        string pakkoZip = Path.Combine(_temp.Path, "pakko.zip");
+        TimeSpan pakkoElapsed = await ArchiveWithPakkoTimed(sourceDir, pakkoZip);
+        TimeSpan referenceElapsed = SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "reference.zip"));
+
+        Action integrityCheck = () => SevenZipRunner.Test(pakkoZip);
+        integrityCheck.Should().NotThrow();
+        new FileInfo(pakkoZip).Length.Should().BeLessThan(
+            PerformanceFixtures.FewLargeFilesCount * PerformanceFixtures.FewLargeFileBytes + 4096,
+            "incompressible entries are stored, which only the parallel writer does");
+        AssertRatio("Archive/FewLargeFiles", pakkoElapsed, referenceElapsed, calibratedBaselineRatio);
     }
 
     [Fact]

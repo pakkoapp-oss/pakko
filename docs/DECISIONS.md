@@ -11253,3 +11253,30 @@ ZIP whose local file headers disagree with its central directory (the user's dec
   would differ), or no archive and a message. The message is a skip, so the outcome is "nothing
   done" and `pakko` exits 1; an operation that made nothing and said nothing counted as
   completed.
+
+## T-F352 — a few large files take the parallel ZIP writer (2026-10-06)
+
+**Decision.** `SingleArchive` creation also takes `ParallelSingleArchiveWriter` when the level is
+not NoCompression, the bytes beside the largest file are at least 8 MiB and at least a quarter of
+that file, and the destination volume has free space for twice the sources
+(`ZipArchiveService.UsesParallelWriter`). The writer itself is unchanged.
+
+**Why not "total size".** The writer compresses whole files side by side, so one file gains
+nothing and pays for a chunk file and a second copy. Measured (12 cores, SSD, Release, medians,
+sequential -> parallel): 3 x 100 MB text 4.06 -> 1.73 s, incompressible 8.61 -> 3.59 s; 2 x 50 MB
+1.34 -> 0.77 s and 2.85 -> 1.68 s; 2 x 8 MB 0.23 -> 0.14 s; 100 + 16 MB 3.33 -> 3.10 s; 100 + 4 MB
+2.97 -> 3.06 s; 300 MB + 1 KB 8.61 -> 9.12 s. The quarter rule is stricter than this SSD needs
+(100 + 16 MB gained 7%): the second copy costs more on a slow disk, and that was **not measured**.
+
+**What differs in the archive.** Such a selection used to be written by `ZipArchive`; it now gets
+the output every archive of more than 64 files, with a password or at Fastest already gets. Read
+with `7za l -slt` on the same two files through both writers: an entry Deflate did not shrink is
+stored (T-F299; the archive is the same size or smaller), each entry has the Archive attribute
+set, and a Deflate stream is 12 bytes longer. Names, order, CRC, version, flags are the same.
+
+**Costs.** Chunk files next to the destination, up to the size of the sources, during the run
+(hence the free-space condition: with less room the sequential writer runs, as before). The
+progress bar stays at 99% while the chunks are copied into the archive: 0.5 s at 3 x 100 MB.
+
+**Rejected.** A total-size threshold (above). Splitting one large file into blocks compressed in
+parallel: a different writer, not this task.

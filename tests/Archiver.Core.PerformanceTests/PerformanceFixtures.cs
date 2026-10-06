@@ -24,6 +24,10 @@ public static class PerformanceFixtures
     public const long HybridMediumFileMinBytes = 5L * 1024 * 1024;
     public const long HybridMediumFileMaxBytes = 20L * 1024 * 1024;
 
+    // T-F352: a few files large enough to take the parallel writer without crossing its 64-file gate.
+    public const int FewLargeFilesCount = 3;
+    public const long FewLargeFileBytes = 32L * 1024 * 1024;
+
     // T-F128 follow-up: unlike the three fixtures above (all flat, no subfolders), this one has
     // real nested subfolders — scaled down from the real-world 993-folder/14049-file case that
     // surfaced the folder-hash performance question, but still large enough to exercise real
@@ -52,6 +56,16 @@ public static class PerformanceFixtures
         Directory.CreateDirectory(dir);
         var rng = new Random(Seed);
         WriteSemiCompressibleFile(Path.Combine(dir, "large.dat"), LargeFileBytes, rng);
+        return dir;
+    }
+
+    public static string CreateFewLargeFilesFolder(string rootDir)
+    {
+        string dir = Path.Combine(rootDir, "few_large_files");
+        Directory.CreateDirectory(dir);
+        var rng = new Random(Seed);
+        for (int i = 0; i < FewLargeFilesCount; i++)
+            WriteSemiCompressibleFile(Path.Combine(dir, $"large_{i}.dat"), FewLargeFileBytes, rng);
         return dir;
     }
 

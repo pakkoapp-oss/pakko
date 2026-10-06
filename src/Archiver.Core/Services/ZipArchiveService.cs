@@ -28,6 +28,12 @@ public sealed class ZipArchiveService : IArchiveService
     // regression against a 7z reference. See DECISIONS.md's T-F35 entry.
     private const int ParallelPipelineFileCountThreshold = 64;
 
+    // T-F352: measured 2026-10-06 (12 cores, SSD, Release, sequential -> parallel writer): 3 x 100
+    // MB of text 4.1 -> 1.7 s, of incompressible data 8.6 -> 3.6 s; 2 x 8 MB 0.23 -> 0.14 s;
+    // 100 MB + 16 MB 3.3 -> 3.1 s; 100 MB + 4 MB and 300 MB + 1 KB 3-6% slower. Below 8 MiB beside
+    // the largest file the gain is under 0.1 s.
+    private const long ParallelPipelineBesideLargestBytesThreshold = 8L * 1024 * 1024;
+
     private readonly GroupPolicyOptions _policy;
 
     /// <summary>Creates the service under the given Group Policy (T-F261: required, never defaulted).</summary>
@@ -194,7 +200,7 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F35 profiling (2026-07-18) found ComputeTotalBytes and the gate's file count used to
         // walk the same directory tree in two separate passes (~193ms combined against a
         // 5,000-file fixture, ~20-25% of total archiving time) — merged into one combined walk.
-        (long totalSourceBytes, int totalFileCount) = ComputeSingleArchiveTotals(options.SourcePaths);
+        (long totalSourceBytes, int totalFileCount, long largestFileBytes) = ComputeSingleArchiveTotals(options.SourcePaths);
         progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = totalSourceBytes });
 
         // T-F31/T-F32: Sort source paths for deterministic archive entry order (ordinal, case-insensitive).
@@ -204,11 +210,9 @@ public sealed class ZipArchiveService : IArchiveService
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        // T-F35: gate the parallel pipeline behind a file-count threshold — see the constant's
-        // own comment. T-F193/T-F299: a password or Fastest always takes the hand-rolled writer,
-        // regardless of file count (see CompressionSettings.RequiresHandRolledWriter).
         var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password);
-        bool useParallelPipeline = settings.RequiresHandRolledWriter || totalFileCount > ParallelPipelineFileCountThreshold;
+        bool useParallelPipeline = UsesParallelWriter(settings, totalFileCount, totalSourceBytes, largestFileBytes,
+            ArchiveEntrySecurity.GetAvailableFreeSpace(options.DestinationFolder));
 
         try
         {
@@ -1997,10 +2001,11 @@ public sealed class ZipArchiveService : IArchiveService
     // pass (profiling found the previous two-separate-walks approach cost ~193ms combined
     // against a 5,000-file fixture). Size and attributes come from the directory listing itself
     // (DirectoryWalker's FileInfo objects), not separate per-file stat calls.
-    private static (long TotalBytes, int FileCount) ComputeSingleArchiveTotals(IReadOnlyList<string> paths)
+    private static (long TotalBytes, int FileCount, long LargestFileBytes) ComputeSingleArchiveTotals(IReadOnlyList<string> paths)
     {
         long totalBytes = 0;
         int fileCount = 0;
+        long largest = 0;
         foreach (string p in paths)
         {
             try
@@ -2008,26 +2013,68 @@ public sealed class ZipArchiveService : IArchiveService
                 if (ArchiveEntrySecurity.IsReparsePoint(p)) continue;
                 if (File.Exists(p))
                 {
-                    totalBytes += new FileInfo(p).Length;
+                    long length = new FileInfo(p).Length;
+                    totalBytes += length;
                     fileCount++;
+                    largest = Math.Max(largest, length);
                 }
                 else if (Directory.Exists(p))
                 {
-                    (long bytes, int count) = ComputeDirectoryTotals(p);
+                    (long bytes, int count, long largestInside) = ComputeDirectoryTotals(p);
                     totalBytes += bytes;
                     fileCount += count;
+                    largest = Math.Max(largest, largestInside);
                 }
             }
             catch { /* best-effort */ }
         }
-        return (totalBytes, fileCount);
+        return (totalBytes, fileCount, largest);
     }
 
-    // Best-effort: an unreadable folder or file adds nothing here; the writers report it.
-    private static (long TotalBytes, int FileCount) ComputeDirectoryTotals(string dir)
+    // Best-effort: an unreadable folder or file adds nothing here; the writers report it. The same
+    // walk as FolderTotals.Measure, which does not track the largest file (T-F352).
+    private static (long TotalBytes, int FileCount, long LargestFileBytes) ComputeDirectoryTotals(string dir)
     {
-        var totals = FolderTotals.Measure(dir);
-        return (totals.Bytes, totals.Files);
+        long bytes = 0;
+        int files = 0;
+        long largest = 0;
+        foreach (WalkEntry entry in DirectoryWalker.Walk(dir))
+        {
+            if (entry.Kind != WalkEntryKind.File)
+                continue;
+            try
+            {
+                long length = ((FileInfo)entry.Info).Length;
+                bytes += length;
+                files++;
+                largest = Math.Max(largest, length);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // best-effort: a file gone since its folder was listed adds nothing
+            }
+        }
+        return (bytes, files, largest);
+    }
+
+    // T-F35: gate the parallel pipeline behind a file-count threshold - see the constant's own
+    // comment. T-F193/T-F299: a password or Fastest always takes the hand-rolled writer,
+    // regardless of file count (see CompressionSettings.RequiresHandRolledWriter).
+    internal static bool UsesParallelWriter(
+        Zip.ParallelSingleArchiveWriter.CompressionSettings settings, int fileCount, long totalBytes, long largestFileBytes, long freeBytes)
+    {
+        if (settings.RequiresHandRolledWriter || fileCount > ParallelPipelineFileCountThreshold)
+            return true;
+
+        // T-F352: a few large files. The parallel writer compresses whole files side by side, so
+        // what it can gain is the work beside the largest file; it pays with chunk files as large
+        // as the sources and a second copy into the archive. Stored-only archives gain nothing.
+        if (settings.Level == CompressionLevel.NoCompression)
+            return false;
+        long besideLargest = totalBytes - largestFileBytes;
+        return besideLargest >= ParallelPipelineBesideLargestBytesThreshold
+            && besideLargest >= largestFileBytes / 4
+            && freeBytes / 2 >= totalBytes;
     }
 
     private static bool IsZipFile(string path)

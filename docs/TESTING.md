@@ -495,6 +495,13 @@ tests caught before shipping):
   process: hashing (CRC-32, SHA-256) and sequential archiving of 40 x 4 KiB files stay under 64 KiB
   allocated per file. Hashing failed at ~264 KiB per file before `ReadAndDigestAsync` pooled its
   buffer; the archive case is a guard (it passed before the change).
+- `ZipArchiveServiceWriterChoiceTests` (`Archiver.Core.Tests/Services/`, T-F352) - the rule that
+  picks the writer, on its boundaries (`UsesParallelWriter`), and 9 MiB random files through
+  `ArchiveAsync`: two of them take the parallel writer (entries stored, content round-trips),
+  one beside a small file stays sequential (as files and inside a folder); same-name sources, a
+  locked file and a link give what the sequential writer gives; Cancel leaves nothing; progress
+  never goes back. `ArchiveAsync_FewLargeFiles_WithinToleranceOfSevenZipReference` (`Category=Slow`)
+  adds `7za t` and the timing ratio.
 - `LazyTarProbeTests` (`Archiver.Core.Tests/Services/`, T-F350) - through `PakkoServices` with a
   probe-counting `ITarService`: extract/test/list of a ZIP or of a format policy refuses never
   probe, a tar-family archive probes once across operations, Cancel ends the wait for a probe

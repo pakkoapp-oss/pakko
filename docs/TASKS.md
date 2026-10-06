@@ -1928,7 +1928,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F352 — ZIP creation of a few large files runs on one core (P2)
 
-- [ ] **Status:** open. The parallel writer starts at 64 files
+- [x] **Status:** done 2026-10-06 (device pass: see the wave's closing note). A `SingleArchive` run also takes the parallel writer when the level is not NoCompression, at least 8 MiB lie beside the largest file and at least a quarter of it, and the volume has room for twice the sources (`ZipArchiveService.UsesParallelWriter`); the writer is unchanged. Not a total-size rule: one large file gains nothing and pays for a second copy. Measured, sequential -> parallel: 3 x 100 MB text 4.1 -> 1.7 s, incompressible 8.6 -> 3.6 s (7za 2.9 s); 300 MB + 1 KB stays sequential. Such archives now have what archives of more than 64 files already have: an entry Deflate did not shrink is stored, entries carry the Archive attribute. The bar waits at 99% for 0.5 s at 3 x 100 MB. Not measured on a slow disk. Tests first (`ZipArchiveServiceWriterChoiceTests`, 6 red before; five mutants killed), `ArchiveAsync_FewLargeFiles` vs 7za ratio 1.2. Details: `docs/DECISIONS.md`'s T-F352 entry. **Was:** The parallel writer starts at 64 files
   (`ParallelPipelineFileCountThreshold`). 3 x 100 MB: Pakko 7.7 s wall / 8.3 s CPU (11 MB
   private), 7za 6.6 s wall / 19.4 s CPU. Add a total-size criterion so a few large files take the
   parallel path (T-F35, proven by T-F114). Plan mode: the threshold, temp-file disk space (the
