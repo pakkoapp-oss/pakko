@@ -19,6 +19,8 @@ public static class FileSystemBrowser
             foreach (string dir in Directory.EnumerateDirectories(path))
             {
                 var info = new DirectoryInfo(dir);
+                if (IsProtectedSystemEntry(info.Attributes))
+                    continue;
                 result.Add(new ArchiveEntryViewModel
                 {
                     FullPath = dir,
@@ -31,6 +33,8 @@ public static class FileSystemBrowser
             foreach (string file in Directory.EnumerateFiles(path))
             {
                 var info = new FileInfo(file);
+                if (IsProtectedSystemEntry(info.Attributes))
+                    continue;
                 result.Add(new ArchiveEntryViewModel
                 {
                     FullPath = file,
@@ -59,6 +63,15 @@ public static class FileSystemBrowser
             // every permission-denied system folder encountered while browsing.
             return [];
         }
+    }
+
+    // T-F324: Hidden and System together is what Explorer hides as "protected operating system
+    // files" ($Recycle.Bin, pagefile.sys). Hidden alone stays listed: Up from an archive under
+    // %TEMP% climbs through AppData, and the folder just left must be in its parent's list.
+    private static bool IsProtectedSystemEntry(FileAttributes attributes)
+    {
+        const FileAttributes Protected = FileAttributes.Hidden | FileAttributes.System;
+        return (attributes & Protected) == Protected;
     }
 
     /// <summary>Lists every ready drive as browser rows for the synthetic "This PC" node.</summary>

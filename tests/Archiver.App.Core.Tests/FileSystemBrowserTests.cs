@@ -70,6 +70,42 @@ public sealed class FileSystemBrowserTests : IDisposable
         entries.Should().BeEmpty();
     }
 
+    // T-F324: what Explorer hides as "protected operating system files" ($Recycle.Bin,
+    // pagefile.sys). A Hidden-only folder stays: Up from an archive under %TEMP% climbs through
+    // AppData, which is Hidden only.
+    [Fact]
+    public void ListFolder_HiddenAndSystemEntries_AreLeftOut()
+    {
+        string folder = Path.Combine(_root, "protected_folder");
+        Directory.CreateDirectory(folder);
+        File.SetAttributes(folder, FileAttributes.Directory | FileAttributes.Hidden | FileAttributes.System);
+        string file = Path.Combine(_root, "protected.sys");
+        File.WriteAllText(file, "x");
+        File.SetAttributes(file, FileAttributes.Hidden | FileAttributes.System);
+        File.WriteAllText(Path.Combine(_root, "plain.txt"), "x");
+
+        IReadOnlyList<ArchiveEntryViewModel> entries = FileSystemBrowser.ListFolder(_root);
+
+        entries.Select(e => e.Name).Should().Equal("plain.txt");
+    }
+
+    [Theory]
+    [InlineData(FileAttributes.Hidden)]
+    [InlineData(FileAttributes.System)]
+    public void ListFolder_HiddenOnlyOrSystemOnlyEntries_AreListed(FileAttributes attribute)
+    {
+        string folder = Path.Combine(_root, "folder");
+        Directory.CreateDirectory(folder);
+        File.SetAttributes(folder, FileAttributes.Directory | attribute);
+        string file = Path.Combine(_root, "file.txt");
+        File.WriteAllText(file, "x");
+        File.SetAttributes(file, attribute);
+
+        IReadOnlyList<ArchiveEntryViewModel> entries = FileSystemBrowser.ListFolder(_root);
+
+        entries.Select(e => e.Name).Should().Equal("folder", "file.txt");
+    }
+
     [Fact]
     public void ListDrives_ReturnsAtLeastOneReadyDriveAsAFolder()
     {
