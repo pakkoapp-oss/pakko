@@ -1842,3 +1842,127 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   third-party compression code, extraction of tar-family/7z/RAR only through the sandboxed
   tar.exe.
 - **Reported by:** the user, 2026-10-06.
+
+## Performance wave (T-F346–T-F355)
+
+Opened 2026-10-06 from a measured study of start-up and resource use (installed dev 1.7.1.1 x64,
+warm starts, 12 cores, Defender on; EventPipe profiles, A/B through environment variables, 7za on
+the same data). Baseline: App process start to visible window ~600 ms (CPU ~1000 ms, 138 MB
+working set, 60 MB private, 38 threads); Explorer "Open" ~860 ms; Explorer "Extract here" of 200
+small files: files written at ~550 ms, Shell exits at ~780 ms. Runtime switches (TieredPGO,
+gcConcurrent, gen0size, ConserveMemory) change neither time nor memory and are not tasks. Rule
+for every task here: behaviour does not change, only when the work happens; the numbers above are
+re-measured with T-F346's script before and after.
+
+### T-F346 — A script that measures start-up, so a change can be compared (P2)
+
+- [ ] **Status:** open. `scripts/Measure-Startup.ps1`: N warm launches of the installed package,
+  median and minimum of (a) App start to visible window, (b) `Archiver.Shell.exe --open-ui
+  --browse` to visible App window, (c) `--extract-here` of a generated 200-file ZIP: files written
+  and Shell exit, (d) `pakko --help` and `pakko l`; plus working set, private bytes, threads and
+  CPU of the App two seconds after the window shows. Prints one table; no pass/fail threshold
+  (machine-dependent). Used before and after every task in this section.
+- **Reported by:** performance study, 2026-10-06.
+
+### T-F347 — App: the tar.exe probe blocks the UI thread before the window exists (P2)
+
+- [ ] **Status:** open. `App.ConfigureServices` runs `DetectCapabilitiesAsync().GetAwaiter()
+  .GetResult()`: `WinVerifyTrust` on tar.exe (~47 ms) plus `tar.exe --version` (~30 ms) plus
+  first-call costs, ~95-108 ms of the ~600 ms start, with a 5 s worst case (the probe's timeout).
+  Start the probe on the thread pool at the top of `ConfigureServices` and let the
+  `TarCapabilities` singleton factory take its result; `MainViewModel` is first built ~380 ms
+  later, after `LoadComponent`, so the value is ready. Types stay synchronous, the signature check
+  stays, the worst case equals today's.
+- **Must not change:** what `TarCapabilities` holds; `DisableTarExtraction` never starts tar.exe
+  (T-F261); a cold-start activation with a .7z/.rar still classifies it (T-F100, T-F03).
+- **Reported by:** performance study, 2026-10-06.
+
+### T-F348 — `LaunchArguments`: reflection JSON costs ~37 ms in Shell on every "Open" (P3)
+
+- [ ] **Status:** open. `LaunchArguments.Format`/`TryParse` use reflection-based `JsonSerializer`
+  for a string list; the first call builds the reflection metadata (37 ms in Shell's profile; the
+  App's `TryParse` side not measured). Use a source-generated `JsonSerializerContext`, as
+  `Archiver.OperationUi.Protocol` does. The argument string must stay byte-identical (a test
+  pins today's output for ASCII, Cyrillic, quotes and backslashes before the change), and
+  `TryParse` must accept everything it accepts today and still never throw. Also a precondition
+  for Native AOT (T-F355).
+- **Reported by:** performance study, 2026-10-06.
+
+### T-F349 — Shell, the operation window and `pakko` ship without ReadyToRun (P2)
+
+- [ ] **Status:** open. Checked in the installed package by PE header: `Archiver.Shell.dll`,
+  `pakko.dll`, `Archiver.OperationUi.dll`, `.Core.dll`, `.Protocol.dll` have no R2R code
+  (`Deploy.ps1`/`CI-Build-Msix.ps1` build them with `dotnet build`; R2R runs only in publish);
+  `Publish-Cli.ps1`'s standalone `pakko.exe` has none either, Core included. Measured: standalone
+  `pakko l` 304 -> 259 ms and `t` 248 -> 213 ms with R2R; `FrameCodec..cctor` in Shell ~110 ms
+  jitted. Standalone CLI: `PublishReadyToRun` in `Publish-Cli.ps1`. Package: get R2R images of the
+  five assemblies without moving the paths `Archiver.App.csproj`'s `Content Include` items and
+  the two scripts name (T-F128's stale-DLL trap) — how is settled in Plan mode.
+- **Verify:** R2R header of each DLL inside the installed package and inside a CI-built MSIX, not
+  file times; every Explorer command and `pakko` from the package still run.
+- **Reported by:** performance study, 2026-10-06.
+
+### T-F350 — Shell and `pakko` probe tar.exe for a ZIP (P2)
+
+- [ ] **Status:** open. `PakkoServices.CreateExtractionRouterAsync`/`CreateListingRouterAsync`/
+  `CreateScanServiceAsync` await the tar.exe probe before any work, so a ZIP-only command pays
+  ~70-100 ms for nothing (`pakko l x.zip` 300 ms against `--help` 90 ms; "Extract here" 73 ms).
+  Probe only when an input is not a ZIP. Touches public constructors in `Archiver.Core`
+  (routers take `TarCapabilities`) — Plan mode + advisor before and after.
+- **Must not change:** which formats are accepted or refused and with which message; the probe
+  runs at most once per process (T-F85) and never under `DisableTarExtraction` (T-F261); a file
+  whose content is not what its extension says is still routed where it is today.
+- **Reported by:** performance study, 2026-10-06.
+
+### T-F351 — Explorer commands start the WinUI operation window even when it is never shown (P2)
+
+- [ ] **Status:** open. The helper process starts at `Begin`; the window shows only after 1 s
+  (`OperationWindowModel.ShowDelay`), a prompt or a result. On a fast operation Shell then waits
+  ~160-230 ms in `Session.Complete` for a helper that is still starting, only to close it, and a
+  whole WinUI process (~300 ms CPU) is spent beside the extraction. Start the helper after a
+  short delay, or at once when a prompt or a result message is due. Plan mode + advisor.
+- **Must not change:** the window still appears no later than today on a long operation; prompts
+  (conflict, password, bomb), the result text, cancel, the Win32 fallback and failover (T-F268),
+  foreground hand-over (T-F253).
+- **Reported by:** performance study, 2026-10-06.
+
+### T-F352 — ZIP creation of a few large files runs on one core (P2)
+
+- [ ] **Status:** open. The parallel writer starts at 64 files
+  (`ParallelPipelineFileCountThreshold`). 3 x 100 MB: Pakko 7.7 s wall / 8.3 s CPU (11 MB
+  private), 7za 6.6 s wall / 19.4 s CPU. Add a total-size criterion so a few large files take the
+  parallel path (T-F35, proven by T-F114). Plan mode: the threshold, temp-file disk space (the
+  pre-check exists), progress.
+- **Verify:** `Category=Slow` and `Category=VeryLarge` (T-F114 ratios), archives checked with
+  `7za t`, entry data identical to the sequential writer's.
+- **Reported by:** performance study, 2026-10-06.
+
+### T-F353 — ZIP extraction of many small files: per-entry overhead (P3, measure first)
+
+- [ ] **Status:** open. 3000 small files: Pakko 5.1-5.2 s wall / 5.8 s CPU, 7za 4.1-5.5 s /
+  3.9-4.6 s — wall time is Defender and the disk, so the headroom is small. Leads from the
+  profile, none measured alone: `TryPropagateMotw` opens `archive:Zone.Identifier` once per entry
+  (an exception per entry when the archive has none); the destination `FileStream` has its own
+  80 KB buffer and `useAsync: true` under `CopyToAsync`'s buffer; `FileTimes.TrySetFile` reopens
+  the file by path. A/B each against 7za in the same run; keep only what shows. T-F298's order
+  (ADS first, time last) and T-F45 stay.
+- **Reported by:** performance study, 2026-10-06.
+
+### T-F354 — App: load the hidden parts of `MainWindow.xaml` on first use (P3, measure first)
+
+- [ ] **Status:** open. `LoadComponent` is ~148 ms of the start; browse mode and the password
+  panel are hidden then. `x:Load` could defer them — estimate 30-60 ms, not measured. Risk: the
+  layout history of T-F106/T-F05 (blank rows) and `x:Bind` targets inside deferred elements. Do
+  only with an on-device A/B that shows the gain; otherwise close as not worth it.
+- **Reported by:** performance study, 2026-10-06.
+
+### T-F355 — Native AOT: a spike for `pakko`, Shell and the App (decision needed)
+
+- [ ] **Status:** open, outside the wave. Windows App SDK supports Native AOT for WinUI 3 since
+  1.6 (Microsoft's sample: start time -50%, self-contained package ~2x smaller) — the only large
+  lever left for App start and memory; it conflicts with the `PublishTrimmed=false` hard
+  constraint in `CLAUDE.md`, which predates that support. `pakko.exe` and Shell are the realistic
+  first step (Core is on `LibraryImport`, Shell on generated COM; T-F348 removes the reflection
+  JSON). Spike on a branch: does it build, do all tests pass, what the start and size numbers are,
+  what H.NotifyIcon and `x:Bind` do. The user decides after the numbers.
+- **Reported by:** performance study, 2026-10-06.
