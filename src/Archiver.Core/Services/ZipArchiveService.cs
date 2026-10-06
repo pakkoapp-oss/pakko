@@ -1057,6 +1057,11 @@ public sealed class ZipArchiveService : IArchiveService
             // empty or garbage stdin, a text file) said nothing useful.
             return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.NotAnArchiveList));
         }
+        catch (InvalidDataException ex) when (CoreMessages.FromException(ex).Code == MessageCode.None)
+        {
+            // T-F341: .NET's own reader text is English only; say what Test and Extract say.
+            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ZipCorrupted));
+        }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
         {
             return CoreMessages.ListFailure(CoreMessages.FromException(ex));

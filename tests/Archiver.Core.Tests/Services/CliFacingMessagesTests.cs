@@ -61,6 +61,36 @@ public sealed class CliFacingMessagesTests : IDisposable
         result.ErrorText!.Code.Should().Be(MessageCode.NotAnArchiveList);
     }
 
+    // T-F341: the Archive Browser showed .NET's "End of Central Directory record could not be found."
+    [Fact]
+    public async Task List_ZipSignatureWithoutCentralDirectory_SaysCorruptedLikeTest()
+    {
+        string damaged = Path.Combine(_temp.Path, "damaged.zip");
+        File.WriteAllBytes(damaged, [0x50, 0x4B, 0x03, 0x04, .. new byte[64]]);
+
+        ArchiveListResult listed = await _sut.ListEntriesAsync(damaged);
+        ArchiveResult tested = await _sut.TestAsync([damaged]);
+
+        listed.Success.Should().BeFalse();
+        listed.ErrorText!.Code.Should().Be(MessageCode.ZipCorrupted);
+        tested.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.ZipCorrupted);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(10)]
+    public async Task List_TruncatedZip_SaysCorrupted(int keptFraction)
+    {
+        byte[] whole = File.ReadAllBytes(FixtureHelper.Archive("valid_nested_folders.zip"));
+        string cut = Path.Combine(_temp.Path, "cut.zip");
+        File.WriteAllBytes(cut, whole[..(whole.Length * (keptFraction - 1) / keptFraction)]);
+
+        ArchiveListResult listed = await _sut.ListEntriesAsync(cut);
+
+        listed.Success.Should().BeFalse();
+        listed.ErrorText!.Code.Should().Be(MessageCode.ZipCorrupted);
+    }
+
     [Fact]
     public async Task Hash_MissingFile_SaysNotFound()
     {
