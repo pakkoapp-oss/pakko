@@ -1701,6 +1701,12 @@ public sealed class PakkoServices
 }
 ```
 
+**The tar.exe probe is lazy (T-F350):** the three `Create*Async` methods no longer run it. They
+hand `GetTarCapabilitiesAsync` to an `internal` constructor of each router, and
+`ArchiveFormatPolicy.ClassifyAsync` awaits it only when a selection holds a tar-family archive
+that Group Policy allows — a ZIP-only Explorer command or `pakko` call never starts tar.exe. The
+public constructors with a ready `TarCapabilities` (the App's DI) are unchanged.
+
 **Correction (T-F250, decided 2026-09-25):** listing *is* gated by Group Policy. The original
 T-F51 text here said `ArchiveListingRouter` and the CLI's `i`/`l` were deliberately left without a
 policy, citing `ITarService.ListEntriesAsync`'s doc comment — but that comment is about the

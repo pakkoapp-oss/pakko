@@ -38,7 +38,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
     // basis. See docs/DECISIONS.md's T-F151 entry for the full spike account.
     internal const long MaxScannableEntryBytes = 256L * 1024 * 1024;
 
-    private readonly TarCapabilities _tarCapabilities;
+    private readonly Func<Task<TarCapabilities>> _tarCapabilities;
     private readonly GroupPolicyOptions _policy;
     private readonly Func<IAmsiScanner> _scannerFactory;
     private readonly Func<bool> _isProviderRegistered;
@@ -66,6 +66,16 @@ public sealed class AntivirusScanService : IAntivirusScanService
         GroupPolicyOptions groupPolicyOptions,
         Func<IAmsiScanner> scannerFactory,
         Func<bool> isProviderRegistered)
+        : this(() => Task.FromResult(tarCapabilities), groupPolicyOptions, scannerFactory, isProviderRegistered)
+    {
+    }
+
+    // T-F350: the capabilities are asked for only when a selection holds a tar-family archive.
+    internal AntivirusScanService(
+        Func<Task<TarCapabilities>> tarCapabilities,
+        GroupPolicyOptions groupPolicyOptions,
+        Func<IAmsiScanner> scannerFactory,
+        Func<bool> isProviderRegistered)
     {
         ArgumentNullException.ThrowIfNull(groupPolicyOptions);
         _tarCapabilities = tarCapabilities;
@@ -84,7 +94,8 @@ public sealed class AntivirusScanService : IAntivirusScanService
         CancellationToken cancellationToken = default)
     {
         var findings = new List<ThreatFinding>();
-        ArchiveFormatPolicy.Classification classification = ArchiveFormatPolicy.Classify(options.ArchivePaths, _tarCapabilities, _policy);
+        ArchiveFormatPolicy.Classification classification = await ArchiveFormatPolicy
+            .ClassifyAsync(options.ArchivePaths, _tarCapabilities, _policy, cancellationToken).ConfigureAwait(false);
 
         // T-F250: scan reads ZIPs itself, not through ZipArchiveService, so a blocked "zip" is
         // refused here too — the ZIP bucket also holds Unknown paths, which include ZIPs the

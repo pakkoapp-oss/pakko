@@ -27,15 +27,45 @@ public static class ArchiveFormatPolicy
 
     /// <summary>Splits <paramref name="paths"/> by engine, refusing what policy or tar.exe cannot allow.</summary>
     public static Classification Classify(
-        IReadOnlyList<string> paths, TarCapabilities tarCapabilities, GroupPolicyOptions policy)
+        IReadOnlyList<string> paths, TarCapabilities tarCapabilities, GroupPolicyOptions policy) =>
+        Classify(paths, DetectFormats(paths), tarCapabilities, policy);
+
+    // T-F350: as Classify, but tar.exe is asked what it can read only when a verdict depends on
+    // it - never for a ZIP-only selection or for formats Group Policy already refuses.
+    internal static async Task<Classification> ClassifyAsync(
+        IReadOnlyList<string> paths,
+        Func<Task<TarCapabilities>> tarCapabilities,
+        GroupPolicyOptions policy,
+        CancellationToken cancellationToken)
+    {
+        ArchiveFormat[] formats = DetectFormats(paths);
+        // The capabilities are read only for a format the policy leaves open, so the empty value is never looked at.
+        TarCapabilities capabilities = Array.Exists(formats, format => !TryDecideByPolicy(format, policy, out _))
+            ? await tarCapabilities().WaitAsync(cancellationToken).ConfigureAwait(false)
+            : new TarCapabilities();
+        return Classify(paths, formats, capabilities, policy);
+    }
+
+    // Each file is read once: the verdicts and the "needs tar.exe" question use the same formats.
+    private static ArchiveFormat[] DetectFormats(IReadOnlyList<string> paths)
+    {
+        var formats = new ArchiveFormat[paths.Count];
+        for (int i = 0; i < formats.Length; i++)
+            formats[i] = ArchiveFormatDetector.Detect(paths[i]);
+        return formats;
+    }
+
+    private static Classification Classify(
+        IReadOnlyList<string> paths, ArchiveFormat[] formats, TarCapabilities tarCapabilities, GroupPolicyOptions policy)
     {
         var zipPaths = new List<string>();
         var tarPaths = new List<string>();
         var unsupported = new List<SkippedFile>();
 
-        foreach (string path in paths)
+        for (int i = 0; i < formats.Length; i++)
         {
-            ArchiveFormat format = ArchiveFormatDetector.Detect(path);
+            string path = paths[i];
+            ArchiveFormat format = formats[i];
             if (GetRefusalReason(format, tarCapabilities, policy) is { } reason)
                 unsupported.Add(CoreMessages.Skip(path, reason));
             else if (IsZipEngineFormat(format))
@@ -55,21 +85,38 @@ public static class ArchiveFormatPolicy
     /// </summary>
     public static CoreText? GetRefusalReason(ArchiveFormat format, TarCapabilities tarCapabilities, GroupPolicyOptions policy)
     {
+        if (TryDecideByPolicy(format, policy, out CoreText? refusal))
+            return refusal;
+
+        return IsSupportedByTar(format, tarCapabilities) ? null : BuildUnsupportedReason(format, tarCapabilities);
+    }
+
+    // True when the verdict needs no tar.exe capabilities: the ZIP engine takes the format, or
+    // policy refuses it. False leaves the verdict to what tar.exe can read.
+    private static bool TryDecideByPolicy(ArchiveFormat format, GroupPolicyOptions policy, out CoreText? refusal)
+    {
+        refusal = null;
         if (format == ArchiveFormat.Unknown)
-            return null;
+            return true;
 
         if (!policy.IsFormatAllowed(ArchiveFormatRegistryNames.ToRegistryName(format)))
-            return BlockedFormatReason(format);
+        {
+            refusal = BlockedFormatReason(format);
+            return true;
+        }
 
         if (IsZipEngineFormat(format))
-            return null;
+            return true;
 
         // DisableTarExtraction is a separate kill switch from BlockedFormats: tar.exe is never
         // started at all, not just refused per format.
         if (policy.DisableTarExtraction)
-            return CoreMessages.Text(MessageCode.TarExtractionDisabled);
+        {
+            refusal = CoreMessages.Text(MessageCode.TarExtractionDisabled);
+            return true;
+        }
 
-        return IsSupportedByTar(format, tarCapabilities) ? null : BuildUnsupportedReason(format, tarCapabilities);
+        return false;
     }
 
     /// <summary>

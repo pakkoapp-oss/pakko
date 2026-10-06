@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
+using Archiver.Core.Services.Antivirus;
 
 namespace Archiver.Core.Services;
 
@@ -8,8 +9,9 @@ namespace Archiver.Core.Services;
 /// The one place a frontend without a DI container (Archiver.Shell, Archiver.CLI) gets its Core
 /// services from (T-F261), so every service is built with the same Group Policy — a hand-built
 /// composition root per command is how the CLI once shipped a policy-less listing. The tar.exe
-/// capability probe runs at most once per instance (T-F85), and not at all when Group Policy
-/// disables tar.exe.
+/// capability probe runs at most once per instance (T-F85), only when an operation meets a
+/// tar-family archive that policy allows (T-F350), and not at all when Group Policy disables
+/// tar.exe.
 /// </summary>
 public sealed class PakkoServices
 {
@@ -49,15 +51,16 @@ public sealed class PakkoServices
     public Task<TarCapabilities> GetTarCapabilitiesAsync() => _tarCapabilities.Value;
 
     /// <summary>Extraction and testing.</summary>
-    public async Task<IExtractionRouter> CreateExtractionRouterAsync() =>
-        new ExtractionRouter(ArchiveService, TarService, await GetTarCapabilitiesAsync().ConfigureAwait(false), Policy);
+    public Task<IExtractionRouter> CreateExtractionRouterAsync() =>
+        Task.FromResult<IExtractionRouter>(new ExtractionRouter(ArchiveService, TarService, GetTarCapabilitiesAsync, Policy));
 
     /// <summary>Listing one archive at a time.</summary>
-    public async Task<IArchiveListingRouter> CreateListingRouterAsync() =>
-        new ArchiveListingRouter(ArchiveService, TarService, await GetTarCapabilitiesAsync().ConfigureAwait(false), Policy);
+    public Task<IArchiveListingRouter> CreateListingRouterAsync() =>
+        Task.FromResult<IArchiveListingRouter>(new ArchiveListingRouter(ArchiveService, TarService, GetTarCapabilitiesAsync, Policy));
 
     /// <summary>AMSI scanning, wired to the real AMSI provider.</summary>
     [SupportedOSPlatform("windows")]
-    public async Task<IAntivirusScanService> CreateScanServiceAsync() =>
-        new AntivirusScanService(await GetTarCapabilitiesAsync().ConfigureAwait(false), Policy);
+    public Task<IAntivirusScanService> CreateScanServiceAsync() =>
+        Task.FromResult<IAntivirusScanService>(new AntivirusScanService(
+            GetTarCapabilitiesAsync, Policy, () => new AmsiScanner("Pakko"), AmsiProviderCheck.IsAnyProviderRegistered));
 }

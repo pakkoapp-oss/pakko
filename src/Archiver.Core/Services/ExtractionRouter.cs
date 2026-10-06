@@ -4,13 +4,35 @@ using Archiver.Core.Models;
 namespace Archiver.Core.Services;
 
 /// <inheritdoc cref="IExtractionRouter"/>
-public sealed class ExtractionRouter(
-    IArchiveService archiveService,
-    ITarService tarService,
-    TarCapabilities tarCapabilities,
-    GroupPolicyOptions groupPolicyOptions) : IExtractionRouter
+public sealed class ExtractionRouter : IExtractionRouter
 {
-    private readonly GroupPolicyOptions _policy = groupPolicyOptions ?? throw new ArgumentNullException(nameof(groupPolicyOptions));
+    private readonly IArchiveService _archiveService;
+    private readonly ITarService _tarService;
+    private readonly Func<Task<TarCapabilities>> _tarCapabilities;
+    private readonly GroupPolicyOptions _policy;
+
+    /// <summary>Creates the router over both engines, with the capabilities of tar.exe already known.</summary>
+    public ExtractionRouter(
+        IArchiveService archiveService,
+        ITarService tarService,
+        TarCapabilities tarCapabilities,
+        GroupPolicyOptions groupPolicyOptions)
+        : this(archiveService, tarService, () => Task.FromResult(tarCapabilities), groupPolicyOptions)
+    {
+    }
+
+    // T-F350: the capabilities are asked for only when a tar-family archive is met.
+    internal ExtractionRouter(
+        IArchiveService archiveService,
+        ITarService tarService,
+        Func<Task<TarCapabilities>> tarCapabilities,
+        GroupPolicyOptions groupPolicyOptions)
+    {
+        _archiveService = archiveService;
+        _tarService = tarService;
+        _tarCapabilities = tarCapabilities;
+        _policy = groupPolicyOptions ?? throw new ArgumentNullException(nameof(groupPolicyOptions));
+    }
 
     /// <inheritdoc/>
     public async Task<ArchiveResult> ExtractAsync(
@@ -21,7 +43,8 @@ public sealed class ExtractionRouter(
         // T-F146: classification (zip/tar/unsupported split + Group Policy gating) is now shared
         // with AntivirusScanService via ArchiveFormatPolicy, so a scan can never silently drift
         // from what real extraction would allow/refuse. Behavior here is unchanged.
-        ArchiveFormatPolicy.Classification classification = ArchiveFormatPolicy.Classify(options.ArchivePaths, tarCapabilities, _policy);
+        ArchiveFormatPolicy.Classification classification = await ArchiveFormatPolicy
+            .ClassifyAsync(options.ArchivePaths, _tarCapabilities, _policy, cancellationToken).ConfigureAwait(false);
         IReadOnlyList<string> zipPaths = classification.ZipPaths;
         IReadOnlyList<string> tarPaths = classification.TarPaths;
         IReadOnlyList<SkippedFile> unsupported = classification.Unsupported;
@@ -34,7 +57,7 @@ public sealed class ExtractionRouter(
         SliceProgress? zipSlice = mixed ? new SliceProgress(progress!, 0, zipSliceEnd, bytesBefore: 0) : null;
 
         ArchiveResult zipResult = zipPaths.Count > 0
-            ? await archiveService.ExtractAsync(
+            ? await _archiveService.ExtractAsync(
                 options with { ArchivePaths = zipPaths, OpenDestinationFolder = false },
                 zipSlice ?? progress, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
@@ -43,7 +66,7 @@ public sealed class ExtractionRouter(
             ? new SliceProgress(progress!, zipSliceEnd, 100, bytesBefore: zipSlice!.LastTotalBytes)
             : progress;
         ArchiveResult tarResult = tarPaths.Count > 0
-            ? await tarService.ExtractAsync(
+            ? await _tarService.ExtractAsync(
                 options with { ArchivePaths = tarPaths, OpenDestinationFolder = false },
                 tarProgress, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
@@ -77,10 +100,11 @@ public sealed class ExtractionRouter(
     {
         // T-F261: same classifier as extraction. tar.exe has no test mode, so a tar-family path
         // that policy and capabilities would allow is still only reported, never opened.
-        ArchiveFormatPolicy.Classification classification = ArchiveFormatPolicy.Classify(archivePaths, tarCapabilities, _policy);
+        ArchiveFormatPolicy.Classification classification = await ArchiveFormatPolicy
+            .ClassifyAsync(archivePaths, _tarCapabilities, _policy, cancellationToken).ConfigureAwait(false);
 
         ArchiveResult zipResult = classification.ZipPaths.Count > 0
-            ? await archiveService.TestAsync(classification.ZipPaths, progress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false)
+            ? await _archiveService.TestAsync(classification.ZipPaths, progress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
 
         IEnumerable<SkippedFile> untestable = classification.TarPaths
