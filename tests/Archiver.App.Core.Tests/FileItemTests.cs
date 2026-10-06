@@ -25,10 +25,8 @@ public sealed class FileItemTests : IDisposable
         item.SizeBytes.Should().Be(5);
         item.Type.Should().Be("TXT");
 
-        // The CRC read runs in the background with the file open; wait for it so Dispose can delete.
-        DateTime deadline = DateTime.UtcNow.AddSeconds(10);
-        while (item.Crc32 is null && DateTime.UtcNow < deadline)
-            await Task.Delay(10);
+        // T-F311: Crc32 is set before Crc32Display, so a wait on Crc32 could read the display too early.
+        await item.Crc32Ready;
         item.Crc32Display.Should().Be("CBF53A1C");
     }
 
@@ -86,7 +84,7 @@ public sealed class FileItemTests : IDisposable
 
         item.SizeBytes.Should().Be(7);
         item.FileCount.Should().Be(1);
-        await WaitForCrcAsync(item);
+        await item.Crc32Ready;
     }
 
     // Removing a row (or Clear) disposes its item: a walk of a whole drive used to run on after the
@@ -107,13 +105,6 @@ public sealed class FileItemTests : IDisposable
 
         await wait.Should().NotThrowAsync();
         item.FileCount.Should().BeLessThan(300, "the walk stopped before it finished");
-    }
-
-    private static async Task WaitForCrcAsync(FileItem item)
-    {
-        DateTime deadline = DateTime.UtcNow.AddSeconds(10);
-        while (item.Crc32 is null && DateTime.UtcNow < deadline)
-            await Task.Delay(10);
     }
 
     [Fact]

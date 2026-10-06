@@ -245,8 +245,10 @@ public sealed class SourceRecyclerTests
         ops.MoveToRecycleBin([ops.ResolveFinalPath(file)!]);
 
         File.Exists(file).Should().BeFalse();
+        // T-F311: the bin is the user's real one; another process can add or purge its own records
+        // while this reads them.
         string[] info = Directory.EnumerateFiles(bin, "$I*")
-            .Where(i => System.Text.Encoding.Unicode.GetString(File.ReadAllBytes(i)).Contains(unique, StringComparison.OrdinalIgnoreCase))
+            .Where(i => RecordNames(i, unique))
             .ToArray();
         foreach (string i in info)
         {
@@ -254,6 +256,18 @@ public sealed class SourceRecyclerTests
             File.Delete(i);
         }
         info.Should().ContainSingle("the file must be in the Recycle Bin, not deleted permanently");
+    }
+
+    private static bool RecordNames(string infoFile, string name)
+    {
+        try
+        {
+            return System.Text.Encoding.Unicode.GetString(File.ReadAllBytes(infoFile)).Contains(name, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false; // someone else's record, gone or held
+        }
     }
 
     [Fact]

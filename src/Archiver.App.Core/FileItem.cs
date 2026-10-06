@@ -56,6 +56,10 @@ public sealed partial class FileItem : ObservableObject, IDisposable
     /// faults: a failed or stopped walk leaves <see cref="SizeBytes"/> at -1.</summary>
     public Task TotalsReady { get; }
 
+    /// <summary>Completes when <see cref="Crc32"/> and <see cref="Crc32Display"/> are final (at once
+    /// for a folder). Never faults: an unreadable file leaves <see cref="Crc32"/> null.</summary>
+    public Task Crc32Ready { get; }
+
     /// <summary>Creates the item, or returns null when <paramref name="path"/> cannot be read.</summary>
     public static FileItem? TryCreate(string path)
     {
@@ -82,6 +86,7 @@ public sealed partial class FileItem : ObservableObject, IDisposable
             Type = DisplayText.Folder;
             Modified = Directory.GetLastWriteTime(path);
             TotalsReady = LoadFolderSizeAsync(path, _cts.Token);
+            Crc32Ready = Task.CompletedTask;
         }
         else
         {
@@ -94,7 +99,7 @@ public sealed partial class FileItem : ObservableObject, IDisposable
             FileCount = 1;
             TotalsReady = Task.CompletedTask;
             Crc32Display = "...";
-            _ = LoadCrc32Async(path, _cts.Token);
+            Crc32Ready = LoadCrc32Async(path, _cts.Token);
         }
     }
 

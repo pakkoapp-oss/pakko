@@ -1320,7 +1320,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F311 — `Archiver.App.Core.Tests` fail once in a while under a full-suite run (P3)
 
-- [ ] **Status:** open. Seen 2026-09-30 in wave 1, in different full `dotnet test` runs:
+- [x] **Status:** done 2026-10-06 (wave 5 after v1.7.0). `FileItemTests`: cause found - `FileItem` sets `Crc32` and then `Crc32Display`, and the test waited on the first and read the second; a probe that read the display the moment `Crc32` appeared saw the old text in 2,989 of 3,000 tries. `FileItem.Crc32Ready` (a task, like `TotalsReady`) completes after both, and the tests await it instead of polling for 10 s. `SourceRecyclerTests`: the failure was not reproduced; the test read every `$I` record of the user's real Recycle Bin and failed if one belonging to another process vanished or was held between the listing and the read - such a record is now skipped. If it fails again, the message will show which assertion. **Earlier status:** open. Seen 2026-09-30 in wave 1, in different full `dotnet test` runs:
   `SourceRecyclerTests.Win32_MoveToRecycleBin_FileLandsInRecycleBinNotDeleted` and
   `FileItemTests.TryCreate_ExistingFile_ReturnsItemWithSizeAndCrc`, each once; both pass alone and
   in three reruns of the project. Code the wave did not touch. Find the shared resource or timing
