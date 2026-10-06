@@ -80,6 +80,7 @@ foreach ($arch in $architectures) {
         "/p:Platform=$platform",
         "/p:RuntimeIdentifier=$rid",
         "/p:SelfContained=true",
+        "/p:PublishReadyToRun=true",
         "/p:PublishDir=$publishDir"
     )
     if ($Version) {
