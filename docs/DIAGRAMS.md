@@ -1066,10 +1066,13 @@ sequenceDiagram
             end
         else operation finishes
             Cmd->>HUI: Complete(message)
-            HUI->>H: Complete(result, or null for a clean Extract/Archive)
-            alt null
+            alt null (a clean Extract/Archive) before HelperReady — nothing can be on screen yet
+                HUI->>H: Kill — no Complete is sent and nothing is waited for (T-F351)
+            else null
+                HUI->>H: Complete(null)
                 H-->>HUI: WindowClosed — waited for up to 3 s, then the helper is killed
             else result
+                HUI->>H: Complete(result)
                 User->>H: Close
                 H-->>HUI: WindowClosed — Complete blocks until then, as MessageBoxW did
                 opt pipe ended before WindowClosed

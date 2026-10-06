@@ -495,6 +495,13 @@ tests caught before shipping):
   process: hashing (CRC-32, SHA-256) and sequential archiving of 40 x 4 KiB files stay under 64 KiB
   allocated per file. Hashing failed at ~264 KiB per file before `ReadAndDigestAsync` pooled its
   buffer; the archive case is a guard (it passed before the change).
+- `LazyTarProbeTests` (`Archiver.Core.Tests/Services/`, T-F350) - through `PakkoServices` with a
+  probe-counting `ITarService`: extract/test/list of a ZIP or of a format policy refuses never
+  probe, a tar-family archive probes once across operations, Cancel ends the wait for a probe
+  still running; `Classify` and `ClassifyAsync` against 72 pinned verdicts with their texts
+  (9 formats by magic bytes x 4 policies x 2 capability sets, captured before the change).
+  `HelperOperationUiTests.*BeforeTheHelperIsReady*` (T-F351): a clean end before `HelperReady`
+  ends the helper without waiting; a result still waits for the window.
 - `PolicyOwnershipTests` (`Archiver.Core.Tests/Services/`, T-F261/T-F250) — Group Policy has one
   owner: every engine/router constructor requires a non-null `GroupPolicyOptions` (reflection);
   `TarSandboxedService` refuses Extract/List/Compress under `DisableTarExtraction` and never runs
