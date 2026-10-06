@@ -84,6 +84,8 @@ internal sealed partial class OperationWindow
     private readonly Button _decline = new() { MinWidth = 120 };
     private ProtocolMessage? _renderedPrompt;
     private bool _renderedResult;
+    private readonly List<Border> _cards = [];
+    private bool _solidBackground;
     private DispatcherQueueTimer? _showTimer;
     private bool _closing;
 
@@ -146,12 +148,13 @@ internal sealed partial class OperationWindow
             _resultText.TextWrapping = r.Preformatted ? TextWrapping.NoWrap : TextWrapping.Wrap;
             _resultScroll.HorizontalScrollMode = r.Preformatted ? ScrollMode.Enabled : ScrollMode.Disabled;
             _resultScroll.HorizontalScrollBarVisibility = r.Preformatted ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
-            (_severityIcon.Glyph, _severityIcon.Foreground) = r.Severity switch
+            _severityIcon.Glyph = r.Severity switch
             {
-                ResultSeverity.Error => (ErrorGlyph, Brush("SystemFillColorCriticalBrush")),
-                ResultSeverity.Warning => (WarningGlyph, Brush("SystemFillColorCautionBrush")),
-                _ => (SuccessGlyph, Brush("SystemFillColorSuccessBrush")),
+                ResultSeverity.Error => ErrorGlyph,
+                ResultSeverity.Warning => WarningGlyph,
+                _ => SuccessGlyph,
             };
+            _severityIcon.Foreground = SeverityBrush(r.Severity);
             _close.Content = _model.CloseLabel;
         }
         else if (prompt is not null)
@@ -289,7 +292,6 @@ internal sealed partial class OperationWindow
 
     private void BuildPasswordPanel()
     {
-        _wrongPassword.Foreground = Brush("SystemFillColorCriticalBrush");
         _passwordPanel.Children.Add(_passwordMessage);
         _passwordPanel.Children.Add(_passwordBox);
         _passwordPanel.Children.Add(_wrongPassword);
@@ -310,22 +312,47 @@ internal sealed partial class OperationWindow
         _passwordOk.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
     }
 
-    private static Border Card(TextBlock label, TextBlock details)
+    private Border Card(TextBlock label, TextBlock details)
     {
-        label.Foreground = Brush("TextFillColorSecondaryBrush");
         var content = new StackPanel { Spacing = 2 };
         content.Children.Add(label);
         content.Children.Add(details);
-        return new Border
+        var card = new Border
         {
             Child = content,
             Padding = new Thickness(12, 8, 12, 8),
             CornerRadius = new CornerRadius(4),
             BorderThickness = new Thickness(1),
-            BorderBrush = Brush("CardStrokeColorDefaultBrush"),
-            Background = Brush("CardBackgroundFillColorDefaultBrush"),
         };
+        _cards.Add(card);
+        return card;
     }
+
+    // T-F340: a brush read from Application.Resources belongs to the theme of that moment, so
+    // every one set in code is read again when the theme changes.
+    private void ApplyThemeBrushes()
+    {
+        Brush secondary = Brush("TextFillColorSecondaryBrush");
+        foreach (TextBlock text in new[] { _itemLine, _status, _existingLabel, _incomingLabel })
+            text.Foreground = secondary;
+        _wrongPassword.Foreground = Brush("SystemFillColorCriticalBrush");
+        foreach (Border card in _cards)
+        {
+            card.BorderBrush = Brush("CardStrokeColorDefaultBrush");
+            card.Background = Brush("CardBackgroundFillColorDefaultBrush");
+        }
+        if (_solidBackground)
+            _root.Background = Brush("SolidBackgroundFillColorBaseBrush");
+        if (_renderedResult)
+            _severityIcon.Foreground = SeverityBrush(_model.Result!.Severity);
+    }
+
+    private static Brush SeverityBrush(ResultSeverity severity) => Brush(severity switch
+    {
+        ResultSeverity.Error => "SystemFillColorCriticalBrush",
+        ResultSeverity.Warning => "SystemFillColorCautionBrush",
+        _ => "SystemFillColorSuccessBrush",
+    });
 
     private void BuildLayout()
     {
@@ -340,9 +367,10 @@ internal sealed partial class OperationWindow
         heading.Children.Add(_severityIcon);
         heading.Children.Add(_heading);
 
-        _itemLine.Foreground = Brush("TextFillColorSecondaryBrush");
-        _status.Foreground = Brush("TextFillColorSecondaryBrush");
         _resultScroll.Content = _resultText;
+        // T-F339: the viewer took its content's text as its own name, so UI Automation had the
+        // result twice; only the text itself stays in the control view.
+        AutomationProperties.SetAccessibilityView(_resultScroll, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
         _close.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
         _cancel.Click += (_, _) => _execute(_model.UserClosed());
         _close.Click += (_, _) => _execute(_model.UserClosed());
@@ -414,13 +442,18 @@ internal sealed partial class OperationWindow
         if (MicaController.IsSupported())
             _window.SystemBackdrop = new MicaBackdrop();
         else
-            _root.Background = Brush("SolidBackgroundFillColorBaseBrush");
+            _solidBackground = true;
+        ApplyThemeBrushes();
 
         // Content extends into the title bar, so its caption buttons follow the theme by hand.
         // ActualTheme is only settled once the content has loaded (the window loads while hidden).
         ApplyCaptionColors();
         _root.Loaded += (_, _) => ApplyCaptionColors();
-        _root.ActualThemeChanged += (_, _) => ApplyCaptionColors();
+        _root.ActualThemeChanged += (_, _) =>
+        {
+            ApplyCaptionColors();
+            ApplyThemeBrushes();
+        };
 
         // The title bar's X is the same as Cancel while the operation runs (T-F269), and Close after.
         appWindow.Closing += (_, e) =>
