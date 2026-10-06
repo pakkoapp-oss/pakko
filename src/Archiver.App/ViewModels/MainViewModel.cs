@@ -1027,6 +1027,8 @@ public sealed partial class MainViewModel : ObservableObject
     public async Task EnterBrowseModeAsync(string archivePath)
     {
         using IDisposable work = _browseWork.Begin();
+        BrowseListFailureStep onListFailure = BrowseNavigation.DecideListFailure(IsBrowsingArchive, BrowseScope);
+        string priorFolderPath = CurrentFolderPath;
         ClearOutcome();
         SetBrowseLevel(null, isZip: false);
         // "Delete after" means sources in create mode and the archive here: a tick never carries
@@ -1040,17 +1042,6 @@ public sealed partial class MainViewModel : ObservableObject
         ResetNestedBrowseStack();
         _browsePasswords.Clear();
 
-        // Bug found 2026-07-17: entering browse mode via file activation (T-F100) or by
-        // double-clicking a real archive found while browsing real folders (T-F107) never goes
-        // through AddPaths, so FileItems stays empty and UpdateDefaultDestination() (only wired
-        // to FileItems.CollectionChanged) never fires — DestinationPath then silently stays at
-        // its Desktop default regardless of where the archive actually lives. Only apply this
-        // when FileItems is empty — the pending-list double-click entry point (T-F05's original
-        // flow) already got a correct destination from UpdateDefaultDestination() when the
-        // archive was added, and a user may have since picked a different one deliberately.
-        if (FileItems.Count == 0)
-            DestinationPath = Path.GetDirectoryName(archivePath) ?? DestinationPath;
-
         // T-F106: this is awaited un-awaited (fire-and-forget) from App.xaml.cs's deferred
         // activation path — a thrown exception there would otherwise leave IsBrowsingArchive
         // stuck true with no archive index and no visible error (found via code-review advisor
@@ -1060,22 +1051,47 @@ public sealed partial class MainViewModel : ObservableObject
         ArchiveListResult? result = await ListArchiveWithProgressAsync(archivePath);
         if (result is null)
         {
-            IsBrowsingArchive = false;
-            BrowsedArchivePath = null;
+            LeaveFailedListing(onListFailure, priorFolderPath);
             return;
         }
 
         if (!result.Success)
         {
-            IsBrowsingArchive = false;
-            BrowsedArchivePath = null;
+            LeaveFailedListing(onListFailure, priorFolderPath);
             await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), CoreMessageText.Of(result.ErrorText, result.ErrorMessage ?? "Failed to read archive."));
             return;
         }
 
+        // Bug found 2026-07-17: entering browse mode via file activation (T-F100) or by
+        // double-clicking a real archive found while browsing real folders (T-F107) never goes
+        // through AddPaths, so FileItems stays empty and UpdateDefaultDestination() (only wired
+        // to FileItems.CollectionChanged) never fires — DestinationPath then silently stays at
+        // its Desktop default regardless of where the archive actually lives. Only apply this
+        // when FileItems is empty — the pending-list double-click entry point (T-F05's original
+        // flow) already got a correct destination from UpdateDefaultDestination() when the
+        // archive was added, and a user may have since picked a different one deliberately.
+        // Set only once the archive lists (T-F319): a failed open changes nothing.
+        if (FileItems.Count == 0)
+            DestinationPath = Path.GetDirectoryName(archivePath) ?? DestinationPath;
+
         _archiveIndex = ArchiveTreeIndex.Build(result.Entries);
         SetBrowseLevel(EncryptionSummary.Of(result.Entries), IsZipOnDisk(archivePath));
         RefreshCurrentFolder();
+    }
+
+    // T-F319: an archive opened from a browsed real folder leaves the user in that folder.
+    private void LeaveFailedListing(BrowseListFailureStep step, string priorFolderPath)
+    {
+        BrowsedArchivePath = null;
+        if (step == BrowseListFailureStep.BackToRealFolder)
+        {
+            BrowseScope = ArchiveBrowseScope.RealFileSystem;
+            CurrentFolderPath = priorFolderPath;
+            RefreshCurrentFolder();
+            return;
+        }
+
+        IsBrowsingArchive = false;
     }
 
     private static bool IsZipOnDisk(string archivePath) => ArchiveFormatDetector.Detect(archivePath) == ArchiveFormat.Zip;

@@ -39,6 +39,16 @@ public enum BrowseUpStep
     ThisPc,
 }
 
+/// <summary>T-F319: where the browser goes when an archive that was just opened fails to list.</summary>
+public enum BrowseListFailureStep
+{
+    /// <summary>Leave the browser for the pending list.</summary>
+    PendingList,
+
+    /// <summary>Stay in the real folder the archive was opened from.</summary>
+    BackToRealFolder,
+}
+
 /// <summary>T-F112: the Archive Browser's Up decision, out of the WinUI view model so it is testable.</summary>
 public static class BrowseNavigation
 {
@@ -55,4 +65,13 @@ public static class BrowseNavigation
             ArchiveBrowseScope.RealFileSystem => Path.GetDirectoryName(currentFolderPath) is null ? BrowseUpStep.ThisPc : BrowseUpStep.RealParentFolder,
             _ => BrowseUpStep.None,
         };
+
+    /// <summary>
+    /// T-F319: an archive opened from a browsed real folder keeps that folder when its listing
+    /// fails. The state is the one from before the open.
+    /// </summary>
+    public static BrowseListFailureStep DecideListFailure(bool wasBrowsing, ArchiveBrowseScope priorScope) =>
+        wasBrowsing && priorScope == ArchiveBrowseScope.RealFileSystem
+            ? BrowseListFailureStep.BackToRealFolder
+            : BrowseListFailureStep.PendingList;
 }

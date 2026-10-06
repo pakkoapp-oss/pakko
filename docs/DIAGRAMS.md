@@ -750,7 +750,7 @@ model and is checked by reading, not by the test.
 stateDiagram-v2
     [*] --> PendingListMode
     PendingListMode --> ArchiveBrowseMode: EnterBrowseModeAsync — pending row double-tap, DecidePendingRow is OpenArchive<br/>or a File activation of one archive (FileActivationRouter Browse, App.xaml.cs EnterBrowseSafelyAsync)<br/>IsBrowsingArchive=true, BrowseScope=Archive, nested stack reset, DeleteAfterOperation=false
-    ArchiveBrowseMode --> PendingListMode: listing fails — ListArchiveWithProgressAsync threw (null, its own error dialog)<br/>or result.Success==false (error dialog) — IsBrowsingArchive=false
+    ArchiveBrowseMode --> PendingListMode: listing fails for an archive opened from the pending list or by a File activation (DecideListFailure PendingList) — ListArchiveWithProgressAsync threw (null, its own error dialog)<br/>or result.Success==false (error dialog) — IsBrowsingArchive=false
     ArchiveBrowseMode --> PendingListMode: CloseArchive — button or Esc, CanCloseArchive is IsBrowsingArchive and not IsBusy and no listing or drill-in in flight
     ArchiveBrowseMode --> PendingListMode: browser Extract with DeleteAfterOperation and allowDeleteAfter (a top-level archive), and after RunCleanupAsync the archive file no longer exists (closeBrowser, CloseArchiveCore)
 
@@ -771,12 +771,13 @@ stateDiagram-v2
         ThisPcState --> RealFolder: OpenFolder on a drive (NavigateIntoFolder sets RealFileSystem)
         ThisPcState --> ThisPcState: breadcrumb — no-op (one segment only)
         RealFolder --> InsideArchive: OpenArchive — a real archive on disk, EnterBrowseModeAsync re-enters fresh
+        InsideArchive --> RealFolder: listing fails for an archive opened from a real folder (DecideListFailure BackToRealFolder, T-F319) — LeaveFailedListing restores the folder, then the error dialog
     }
 ```
 
-**Finding (T-F319, not fixed):** `RealFolder --> InsideArchive` goes through `EnterBrowseModeAsync`,
-so an archive opened from a real folder that then fails to list takes the first exit above — the
-user lands in the pending list, not back in the folder they were browsing.
+**T-F319 (fixed 2026-10-06):** `EnterBrowseModeAsync` reads where the user was before it changes
+anything; `BrowseNavigation.DecideListFailure` (`BrowseNavigationTests`) picks the exit when the listing
+fails. The destination folder is set only after the archive lists.
 
 ### Where the user is — what the browser offers (`BrowseLocationState.For`)
 
