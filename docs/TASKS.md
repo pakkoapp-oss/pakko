@@ -1843,7 +1843,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   tar.exe.
 - **Reported by:** the user, 2026-10-06.
 
-## Performance wave (T-F346–T-F355)
+## Performance wave (T-F346–T-F356)
 
 Opened 2026-10-06 from a measured study of start-up and resource use (installed dev 1.7.1.1 x64,
 warm starts, 12 cores, Defender on; EventPipe profiles, A/B through environment variables, 7za on
@@ -1965,4 +1965,17 @@ re-measured with T-F346's script before and after.
   first step (Core is on `LibraryImport`, Shell on generated COM; T-F348 removes the reflection
   JSON). Spike on a branch: does it build, do all tests pass, what the start and size numbers are,
   what H.NotifyIcon and `x:Bind` do. The user decides after the numbers.
+- **Reported by:** performance study, 2026-10-06.
+
+### T-F356 — Start the operation-window helper only when the operation is not fast (decision needed)
+
+- [ ] **Status:** open, outside the wave. Split from T-F351: starting `Archiver.OperationUi` only
+  after ~0.5 s (or at once for a prompt or a result) would save a whole WinUI process on every
+  fast Explorer command. Two conditions before it can be done, each with numbers: (1) a helper
+  started in the middle of the work can coincide with a `tar.exe` launch — the pipe handles are
+  inheritable at that moment, so the two launches must be serialized or the handles listed
+  explicitly; (2) an operation of 0.5-0.9 s would get its window later than today (helper start
+  ~0.8 s on top of the delay) — measure with `Measure-Startup.ps1`'s operation-window scenarios
+  (baseline: window at ~1.9 s on a long extraction, conflict prompt at ~0.8 s). Plan mode +
+  advisor.
 - **Reported by:** performance study, 2026-10-06.
