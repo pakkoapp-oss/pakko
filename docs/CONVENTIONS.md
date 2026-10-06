@@ -413,7 +413,7 @@ Won't-fix categories recorded so far:
   a local tool whose whole input is the files its operator names; nothing else supplies the
   arguments. Marked `# NOSONAR S8707` on each `open`.
 - **S6966 ("await OpenAsync instead") on `ZipArchiveService.cs`'s `ZipFile.Open`/`entry.Open`**:
-  those calls already run on a pool thread inside `Task.Run`, and the ZIP streams are synchronous
+  those calls already run on a pool thread (`Task.Run` or a `Parallel.ForEachAsync` worker), and the ZIP streams are synchronous
   on purpose (`useAsync: false`, faster on local disks; see "Current State" in `CLAUDE.md`).
   Marked `// NOSONAR: S6966` on each call.
 - **S1135 (complete this TODO) on `ArchiveEntrySecurity.cs:56` and `.github/workflows/build.yml`**:

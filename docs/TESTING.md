@@ -318,8 +318,10 @@ repo's convention), every assertion is against real OS behavior:
   the destination it created, never one that existed). `TarCollisionStagingTests.cs` (T-F286: the
   stale-staging sweep over real junctions, with a fake process-alive check).
   `TarSandboxedServiceNameEncodingTests.cs` also runs its GNU-magic layouts under gzip (T-F310).
-  `TarSandboxedServiceDriveRootTests.cs` (T-F285: a `subst` drive over a temp folder, made and
-  removed by the test; its root and a file directly in the root are archived and read back).
+  `DriveRootSourceTests.cs` (T-F285, T-F344: a `subst` drive over a temp folder, made and removed
+  by the test. TAR: its root and a file directly in the root are archived and read back; a
+  Hidden+System entry, a junction and the run's own archive in the root are left out. ZIP: both
+  writers name a root's entries with no leading "/").
   Pure parts (`FindDuplicateGroups`, `DirectoryJunction`) are in
   `Archiver.Core.Tests/Services/TarDuplicateNamesTests.cs`.
 

@@ -1250,7 +1250,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F285 — tar creation from a `subst` drive root fails inside tar.exe (P3)
 
-- [x] **Status:** done 2026-10-06 (wave 5 after v1.7.0). Wider than first filed: tar.exe (bsdtar 3.8.8) cannot visit a drive root at all - real volume (`tar -cf o.tar -n C:\`), mapped network drive and `subst` alike - and on a `subst` drive it also fails for a file directly in the root. Fix: a root source is listed as one `-C root` + name pair per top-level entry, and a `subst` drive is replaced by its folder (`SubstDrive`). Tests first (`TarSandboxedServiceDriveRootTests`, a `subst` drive over a temp folder; both failed with "GetVolumePathName failed: 123"). Device (Release `pakko.exe`, `pakko a -ttar`): `subst` root -> `r.txt, sub/, sub/s.txt`; file in the `subst` root; folder on it; mapped network drive root (`net use` to a localhost share) -> the same three entries; UNC folder and plain folder unchanged (wrapped in the folder's name). Not run: a whole real volume root. Decision: `docs/DECISIONS.md`, waves 4 and 5. **Earlier status:** open — found 2026-09-29 in the T-F283 device pass. Shell `--archive --format tar
+- [x] **Status:** done 2026-10-06 (wave 5 after v1.7.0). Wider than first filed: tar.exe (bsdtar 3.8.8) cannot visit a drive root at all - real volume (`tar -cf o.tar -n C:\`), mapped network drive and `subst` alike - and on a `subst` drive it also fails for a file directly in the root. Fix: a root source is listed as one `-C root` + name pair per top-level entry, and a `subst` drive is replaced by its folder (`SubstDrive`). Tests first (`TarSandboxedServiceDriveRootTests`, a `subst` drive over a temp folder; both failed with "GetVolumePathName failed: 123"). Device (Release `pakko.exe`, `pakko a -ttar`): `subst` root -> `r.txt, sub/, sub/s.txt`; file in the `subst` root; folder on it; mapped network drive root (`net use` to a localhost share) -> the same three entries; UNC folder and plain folder unchanged (wrapped in the folder's name). Closing review added what a real root holds (tests first, three red): entries both Hidden and System are left out (`tar -C C:\ "System Volume Information"` exits 1, so every NTFS drive would fail), a junction in the root is skipped with the message a selected link gets, and with the archive written into the root (`pakko a -ttar P:\out.tar P:\`) neither it nor its temporary file is packed. Shell `--archive --format tar P:\` wrote `P.tar` to the Desktop (a root has no parent; T-F99's rule) with `r.txt, sub/, sub/s.txt` and no `pagefile.sys`. Not run: a whole real volume root. Decision: `docs/DECISIONS.md`, waves 4 and 5. **Earlier status:** open — found 2026-09-29 in the T-F283 device pass. Shell `--archive --format tar
   P:\` (P: = `subst` of a small folder) shows "tar.exe не зміг створити архів: ... Couldn't visit
   directory" with a garbled path. `tar.exe` alone fails the same way with `P:\` as an argument
   (the pre-T-F283 form), as a `-T -` list line, as `P:/`, and as `-C P:\` + `.`; `-C P:\` +
@@ -1780,6 +1780,29 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   (`ArchiveListResult.ErrorText` is null and `ErrorMessage` is the raw text). Give
   `ListEntriesAsync` the same code the Test path uses; check `pakko l` on the same file.
 - **Reported by:** wave 3 device pass, 2026-10-06.
+
+### T-F344 — A ZIP created from a drive root has entry names Pakko refuses to extract (P1)
+
+- [x] **Status:** done 2026-10-06 (wave 5 after v1.7.0). Found in T-F285's device pass:
+  `pakko a out.zip P:\` wrote `/r.txt`, `/sub/s.txt` (7za shows `\r.txt`); `pakko t` said the
+  archive was fine and `pakko x` refused every entry ("has an unsafe path"), so a whole-drive ZIP
+  made by Pakko could not be opened by Pakko. Cause: a root has no name, the entry prefix is
+  empty, and both ZIP writers joined prefix and path with "/". Fix: `EntryNameUnder`. Tests first
+  (`DriveRootSourceTests`, 3 files for the sequential writer and 73 for the parallel one, both
+  red), then extraction of the result. Device (Release `pakko.exe`, `subst` drive): `pakko a`
+  writes `r.txt`, `sub\s.txt` (7za `l -slt`), `pakko x` exits 0 with the files out; the archive the
+  earlier build wrote extracts with 7za. Shipped in every release with drive-root support (T-F99).
+- **Reported by:** wave 5 device pass, 2026-10-06.
+
+### T-F345 — ZIP from a drive root packs the OS's own entries and reports their errors (P3)
+
+- [ ] **Status:** open. A ZIP made from a drive root walks `System Volume Information`,
+  `$Recycle.Bin`, `pagefile.sys` and the other entries marked Hidden and System: unreadable ones
+  become errors on every NTFS drive, readable ones are packed. TAR creation leaves them out at a
+  root since T-F285, and the App's browser hides them (T-F324). Give the ZIP walk the same rule
+  for the top level of a root (`DirectoryWalker` has to skip the folder, not only its entry), and
+  decide whether an empty drive root should write the single entry "/" it writes now.
+- **Reported by:** wave 5 device pass, 2026-10-06.
 
 ### T-F342 — Create 7z archives through tar.exe (v1.9, user-requested)
 

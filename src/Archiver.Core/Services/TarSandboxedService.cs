@@ -1292,7 +1292,8 @@ public sealed class TarSandboxedService : ITarService
             var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
             var nameList = new List<string>();
             (int entryCount, long totalEntriesForProgress, long totalBytesForProgress) =
-                AppendSourcesToNameList(nameList, sortedSourcePaths, errors, skippedFiles, collisionStagingDir, stagedJunctions);
+                AppendSourcesToNameList(nameList, sortedSourcePaths, errors, skippedFiles, collisionStagingDir, stagedJunctions,
+                    ownPaths: [tempPath, destPath]);
 
             if (entryCount == 0)
                 return;
@@ -1397,7 +1398,7 @@ public sealed class TarSandboxedService : ITarService
     // is special (the next line is the folder to change to); no other line is read as an option.
     private static (int EntryCount, long TotalEntriesForProgress, long TotalBytesForProgress) AppendSourcesToNameList(
         List<string> nameList, IReadOnlyList<string> sortedSourcePaths, List<ArchiveError> errors, List<SkippedFile> skippedFiles,
-        string collisionStagingDir, List<string> stagedJunctions)
+        string collisionStagingDir, List<string> stagedJunctions, string[] ownPaths)
     {
         int entryCount = 0;
         long totalEntriesForProgress = 0;
@@ -1433,7 +1434,7 @@ public sealed class TarSandboxedService : ITarService
             }
 
             bool appended = isDriveRoot
-                ? claims.TryAppendDriveRootLines(nameList, sourcePath, fullSource, errors)
+                ? claims.TryAppendDriveRootLines(nameList, sourcePath, fullSource, ownPaths, new ArchiveResultLists(errors, skippedFiles))
                 : claims.TryAppendLines(nameList, sourcePath, fullSource, errors);
             if (!appended)
                 continue;
@@ -1445,6 +1446,8 @@ public sealed class TarSandboxedService : ITarService
 
         return (entryCount, totalEntriesForProgress, totalBytesForProgress);
     }
+
+    private sealed record ArchiveResultLists(List<ArchiveError> Errors, List<SkippedFile> SkippedFiles);
 
     // T-F171: every source claims its name, file or folder. A clashing file is staged as a renamed
     // copy, a clashing folder as a junction under the new name; a clashing folder on a network share
@@ -1466,23 +1469,36 @@ public sealed class TarSandboxedService : ITarService
         // T-F285: tar.exe (bsdtar 3.8.8) cannot visit a drive root, as an argument or as "." under
         // "-C X:\" ("Couldn't visit directory"), on a real volume, a network drive and a subst drive
         // alike. What the root holds is listed name by name instead; the entries come out the same.
-        public bool TryAppendDriveRootLines(List<string> nameList, string sourcePath, string root, List<ArchiveError> errors)
+        // Each name is then a source of its own, so three kinds are left out: the OS's own entries
+        // (Hidden and System, as in the App's browser, T-F324: tar.exe cannot read "System Volume
+        // Information" and would fail the whole run), this run's archive and temporary file when
+        // the destination is the root itself, and links, as for any selected source.
+        public bool TryAppendDriveRootLines(List<string> nameList, string sourcePath, string root, string[] ownPaths, ArchiveResultLists result)
         {
-            string[] children;
+            const FileAttributes OsOwned = FileAttributes.Hidden | FileAttributes.System;
+            FileSystemInfo[] children;
             try
             {
-                children = Directory.GetFileSystemEntries(root);
+                children = new DirectoryInfo(root).GetFileSystemInfos();
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                errors.Add(CoreMessages.Error(sourcePath, CoreMessages.Wrap(MessageCode.CannotCreateArchive, ex), ex));
+                result.Errors.Add(CoreMessages.Error(sourcePath, CoreMessages.Wrap(MessageCode.CannotCreateArchive, ex), ex));
                 return false;
             }
 
+            HashSet<string> own = new(ownPaths.Select(path => SubstDrive.Resolve(Path.GetFullPath(path))), StringComparer.OrdinalIgnoreCase);
             bool any = false;
-            foreach (string child in children)
+            foreach (FileSystemInfo child in children)
             {
-                if (Claim(sourcePath, child, root, Path.GetFileName(child), errors) is not { } claimed)
+                if ((child.Attributes & OsOwned) == OsOwned || own.Contains(child.FullName))
+                    continue;
+                if (child.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                {
+                    result.SkippedFiles.Add(CoreMessages.Skip(child.FullName, MessageCode.LinkNotArchived));
+                    continue;
+                }
+                if (Claim(sourcePath, child.FullName, root, child.Name, result.Errors) is not { } claimed)
                     continue;
                 AppendClaimed(nameList, claimed);
                 any = true;

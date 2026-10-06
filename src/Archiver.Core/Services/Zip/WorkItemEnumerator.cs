@@ -80,7 +80,7 @@ internal static class WorkItemEnumerator
                     break;
                 case WalkEntryKind.File:
                     string relativePath = Path.GetRelativePath(rootDir, entry.Info.FullName).Replace('\\', '/');
-                    yield return BuildFileItem((FileInfo)entry.Info, entryPrefix + "/" + relativePath);
+                    yield return BuildFileItem((FileInfo)entry.Info, ZipArchiveService.EntryNameUnder(entryPrefix, relativePath));
                     break;
                 case WalkEntryKind.ReparsePoint:
                     reportSkipped(ZipArchiveService.ReparsePointSkipped(entry.Info));

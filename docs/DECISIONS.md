@@ -11219,6 +11219,18 @@ ZIP whose local file headers disagree with its central directory (the user's dec
   `GetFinalPathNameByHandle` (it would also rewrite mapped network drives to UNC, which tar.exe
   did not need). Not run: a whole real volume (this machine has one 475 GB drive); the same
   `-C C:\ name` lines were run by hand for one folder and one file.
+  Naming the root's entries makes each of them a source, which a walk by tar.exe did not, so
+  three kinds are left out at a root: entries that are both Hidden and System (the rule of the
+  App's browser, T-F324 - `tar -C C:\ "System Volume Information"` exits 1 with "Cannot stat:
+  Permission denied", and so would every NTFS data drive), the run's own archive and temporary
+  file when the archive is written into the root, and links, reported as for a selected link.
+  Nothing shows that a drive root ever worked with an earlier tar.exe; T-F99's device pass was
+  ZIP.
+- **T-F344: a ZIP made from a drive root could not be extracted by Pakko.** Found while checking
+  T-F285 on the device: the root has no name, the entry prefix was empty, and both writers
+  joined prefix and path with "/" - `/r.txt`. `pakko t` passed and `pakko x` refused every entry
+  as an unsafe path. One `EntryNameUnder` for the three places. T-F153 had fixed the same shape
+  for a trailing separator by trimming the path, which a root keeps.
 - **T-F329: the unit, not a plural engine, for byte counts.** In pl, hr, sr-Latn, sl, lt, lv and
   ro the word for "bytes" changes with the last digits of the number, and a template cannot do
   that. The colon form used for counts ("archives: {0}") reads badly for a size inside a
