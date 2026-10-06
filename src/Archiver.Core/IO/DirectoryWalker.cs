@@ -66,21 +66,7 @@ internal static class DirectoryWalker
                 continue;
             }
 
-            FileSystemInfo[]? children = null;
-            Exception? listingError = null;
-            try
-            {
-                // Compatible options (hidden and system entries included), same as the per-type
-                // DirectoryInfo overloads this replaces.
-                children = dir.EnumerateFileSystemInfos().ToArray();
-                if (isDriveRoot && ReferenceEquals(dir, rootDir))
-                    children = [.. children.Where(child => (child.Attributes & OsOwned) != OsOwned)];
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                listingError = ex;
-            }
-
+            FileSystemInfo[]? children = List(dir, leaveOutOsOwned: isDriveRoot && ReferenceEquals(dir, rootDir), out Exception? listingError);
             if (children is null)
             {
                 yield return new WalkEntry(WalkEntryKind.UnreadableDirectory, dir, Error: listingError);
@@ -99,6 +85,26 @@ internal static class DirectoryWalker
             DirectoryInfo[] subDirs = [.. children.OfType<DirectoryInfo>().OrderBy(d => d.FullName, StringComparer.OrdinalIgnoreCase)];
             for (int i = subDirs.Length - 1; i >= 0; i--)
                 pending.Push((subDirs[i], IsReparsePoint(subDirs[i])));
+        }
+    }
+
+    // Null when the listing failed; listingError then says why.
+    private static FileSystemInfo[]? List(DirectoryInfo dir, bool leaveOutOsOwned, out Exception? listingError)
+    {
+        listingError = null;
+        try
+        {
+            // Compatible options (hidden and system entries included), same as the per-type
+            // DirectoryInfo overloads this replaces.
+            IEnumerable<FileSystemInfo> children = dir.EnumerateFileSystemInfos();
+            return leaveOutOsOwned
+                ? [.. children.Where(child => (child.Attributes & OsOwned) != OsOwned)]
+                : [.. children];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            listingError = ex;
+            return null;
         }
     }
 
