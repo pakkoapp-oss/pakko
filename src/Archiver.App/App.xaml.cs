@@ -29,13 +29,19 @@ public partial class App : Application
 
         // T-F51: eager, synchronous registry read — registered before every consumer below so
         // ActivatorUtilities can inject it into their optional GroupPolicyOptions? ctor params.
-        services.AddSingleton(GroupPolicyService.Load());
+        GroupPolicyOptions policy = GroupPolicyService.Load();
+        services.AddSingleton(policy);
         services.AddSingleton<ILogService, LogService>();
         services.AddSingleton<IArchiveService, ZipArchiveService>();
         services.AddSingleton<IDialogService, DialogService>();
-        services.AddSingleton<ITarService, TarSandboxedService>();
-        services.AddSingleton<TarCapabilities>(sp =>
-            sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
+
+        // T-F347: the tar.exe probe (signature check + tar.exe --version, ~100 ms) starts here on
+        // the thread pool and runs beside XAML loading; the first consumer (MainViewModel, built
+        // after the window's LoadComponent) takes its result, waiting only if it is not ready yet.
+        var tarService = new TarSandboxedService(policy);
+        Task<TarCapabilities> tarProbe = Task.Run(tarService.DetectCapabilitiesAsync);
+        services.AddSingleton<ITarService>(tarService);
+        services.AddSingleton<TarCapabilities>(_ => tarProbe.GetAwaiter().GetResult());
         services.AddSingleton<IExtractionRouter, ExtractionRouter>();
         services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
         services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>();
@@ -46,13 +52,7 @@ public partial class App : Application
             () => sp.GetRequiredService<IDialogService>().OwnerWindowHandle)));
         services.AddTransient<MainViewModel>();
 
-        ServiceProvider provider = services.BuildServiceProvider();
-
-        // T-F48: force tar.exe capability detection now — a factory-registered singleton only
-        // runs on first resolution, and nothing else currently injects TarCapabilities.
-        provider.GetRequiredService<TarCapabilities>();
-
-        return provider;
+        return services.BuildServiceProvider();
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)

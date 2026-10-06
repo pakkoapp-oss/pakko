@@ -986,13 +986,15 @@ skipped `HashEntry`, not summed.
 
 ```csharp
 // App.xaml.cs — ConfigureServices()
-services.AddSingleton(GroupPolicyService.Load());
+GroupPolicyOptions policy = GroupPolicyService.Load();
+services.AddSingleton(policy);
 services.AddSingleton<ILogService, LogService>();
 services.AddSingleton<IArchiveService, ZipArchiveService>();
 services.AddSingleton<IDialogService, DialogService>();
-services.AddSingleton<ITarService, TarSandboxedService>();
-services.AddSingleton<TarCapabilities>(sp =>
-    sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
+var tarService = new TarSandboxedService(policy);
+Task<TarCapabilities> tarProbe = Task.Run(tarService.DetectCapabilitiesAsync);
+services.AddSingleton<ITarService>(tarService);
+services.AddSingleton<TarCapabilities>(_ => tarProbe.GetAwaiter().GetResult());
 services.AddSingleton<IExtractionRouter, ExtractionRouter>();
 services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
 services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>();
@@ -1001,8 +1003,9 @@ services.AddSingleton<IAntivirusScanService, AntivirusScanService>();
 services.AddSingleton(sp => new SourceRecycler(new Win32SourceDeleteOperations(
     () => sp.GetRequiredService<IDialogService>().OwnerWindowHandle)));
 services.AddTransient<MainViewModel>();
-// T-F48: TarCapabilities is force-resolved once right after BuildServiceProvider() — a
-// factory-registered singleton only runs on first resolution, and nothing else injects it eagerly.
+// T-F347: the tar.exe probe starts on the thread pool here and runs beside XAML loading; the
+// first consumer (MainViewModel, built in MainWindow's constructor) takes its result and waits
+// only if the probe is not done. Before, it ran on the UI thread (~100 ms) before any window.
 // T-F51: GroupPolicyOptions is registered first so ActivatorUtilities can inject it into every
 // consumer below. T-F261: the policy is a required ctor param on every engine/router — there is
 // no "allow everything" default to fall back to if a registration is missing.
@@ -1014,8 +1017,8 @@ services.AddTransient<MainViewModel>();
 | `LogService` | Singleton | Holds file path, lock object |
 | `ZipArchiveService` | Singleton | Stateless (besides the injected `GroupPolicyOptions`) |
 | `DialogService` | Singleton | Holds window reference |
-| `TarSandboxedService` | Singleton | Stateless (per-call sandbox scope, not per-instance state) |
-| `TarCapabilities` | Singleton, factory-resolved | Probed once at startup (T-F48), never changes at runtime |
+| `TarSandboxedService` | Singleton, built by hand | Stateless (per-call sandbox scope, not per-instance state); built before the container so the probe can start at once (T-F347) |
+| `TarCapabilities` | Singleton, factory-resolved | Probed once at startup on the thread pool (T-F48, T-F347), never changes at runtime |
 | `ExtractionRouter` / `ArchiveListingRouter` / `ArchiveCreationRouter` | Singleton | Stateless — route by detected/requested format only |
 | `MainViewModel` | Transient | Fresh state per window |
 
@@ -1187,9 +1190,8 @@ gated on libarchive >= 3.7.0.
 DI registration:
 
 ```csharp
-services.AddSingleton<ITarService, TarProcessService>();
-services.AddSingleton<TarCapabilities>(sp =>
-    sp.GetRequiredService<ITarService>().DetectCapabilitiesAsync().GetAwaiter().GetResult());
+services.AddSingleton<ITarService>(tarService);   // TarSandboxedService, see "Dependency Injection & Startup"
+services.AddSingleton<TarCapabilities>(_ => tarProbe.GetAwaiter().GetResult());
 services.AddSingleton<IExtractionRouter, ExtractionRouter>();
 services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>(); // T-F05
 services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>(); // T-F105

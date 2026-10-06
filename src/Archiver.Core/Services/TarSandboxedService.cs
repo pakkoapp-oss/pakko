@@ -18,8 +18,8 @@ public sealed class TarSandboxedService : ITarService
 {
     private const string TarExecutablePath = @"C:\Windows\System32\tar.exe"; // NOSONAR: S1075 — CLAUDE.md's Hard Constraints mandate this exact absolute path, never PATH-resolved (PATH-hijack resistance); moving it to config would reopen that risk
 
-    // DetectCapabilitiesAsync runs synchronously on app startup (App.xaml.cs forces eager
-    // resolution) — a hung tar.exe --version must not hang app launch indefinitely.
+    // The App's first window waits for DetectCapabilitiesAsync (App.xaml.cs starts it on the
+    // thread pool, T-F347) — a hung tar.exe --version must not hang app launch indefinitely.
     private static readonly TimeSpan DetectionTimeout = TimeSpan.FromSeconds(5);
 
     private readonly GroupPolicyOptions _policy;
