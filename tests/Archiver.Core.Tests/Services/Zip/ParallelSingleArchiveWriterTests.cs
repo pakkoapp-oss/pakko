@@ -264,6 +264,39 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         maxActiveObserved.Should().BeLessOrEqualTo(3);
     }
 
+    // T-F352: with a few large files the writer spends seconds copying finished chunk files into
+    // the archive (the bar stands at 99%). Cancel in that phase must end the run and leave no chunk.
+    [Fact]
+    public async Task RunPipelineAsync_CancelledWhileChunksAreCopiedIntoTheArchive_ThrowsAndLeavesNoChunkFile()
+    {
+        const int chunkBytes = 8 * 1024 * 1024;
+        string chunkDir = Path.Combine(_tempDir, "chunks");
+        Directory.CreateDirectory(chunkDir);
+        FileWorkItem[] items = Enumerable.Range(0, 3)
+            .Select(i => new FileWorkItem($"f{i}", $"f{i}.bin", FileWorkKind.File,
+                ParallelSingleArchiveWriter.InMemoryCompressByteThreshold + 1, DateTime.Now))
+            .ToArray();
+        using var cts = new CancellationTokenSource();
+        int finished = 0;
+
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressToChunk = (item, _) => Task.Run(() =>
+        {
+            string chunkPath = Path.Combine(chunkDir, item.EntryName + ".tmp");
+            File.WriteAllBytes(chunkPath, new byte[chunkBytes]);
+            // Every chunk is on disk: from here on the pipeline only copies.
+            if (Interlocked.Increment(ref finished) == items.Length)
+                cts.Cancel();
+            return WorkResult.ForTempFileCompressed(item.EntryName, chunkPath, 0, chunkBytes, chunkBytes, method: 0, item.LastWriteTime);
+        });
+
+        Func<Task> act = () => ParallelSingleArchiveWriter.RunPipelineAsync(
+            TempArchivePath, items, NeverCalledTempFileCompressor, compressToChunk, windowCapacity: 3,
+            totalBytes: 3L * chunkBytes, progress: null, reportError: _ => { }, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        Directory.GetFiles(chunkDir).Should().BeEmpty();
+    }
+
     [Fact]
     public async Task CompressToTempFileAsync_DeclaredSizeExceedsFreeSpace_ReturnsErrorWithoutTouchingDisk()
     {

@@ -506,7 +506,9 @@ tests caught before shipping):
   a non-path are false and never throw; what a real disk answers is machine-dependent and was
   checked by hand (NVMe: true, `\\localhost\C$`: false).
   `ArchiveAsync_FewLargeFiles_WithinToleranceOfSevenZipReference` (`Category=Slow`) adds `7za t`
-  and the timing ratio.
+  and the timing ratio. `ParallelSingleArchiveWriterTests.RunPipelineAsync_CancelledWhileChunks
+  AreCopiedIntoTheArchive_...` pins Cancel in the copy phase (the bar at 99%), which a few large
+  files make seconds long.
 - `LazyTarProbeTests` (`Archiver.Core.Tests/Services/`, T-F350) - through `PakkoServices` with a
   probe-counting `ITarService`: extract/test/list of a ZIP or of a format policy refuses never
   probe, a tar-family archive probes once across operations, Cancel ends the wait for a probe
