@@ -24,6 +24,27 @@ internal static class TarHeaderNames
     internal static bool? AreAllUtf8(SafeFileHandle archive, CancellationToken cancellationToken)
         => AreAllUtf8((buffer, offset) => RandomAccess.Read(archive, buffer, offset), cancellationToken);
 
+    /// <inheritdoc cref="AreAllUtf8(SafeFileHandle, CancellationToken)"/>
+    internal static bool? AreAllUtf8(ReadAt read, CancellationToken cancellationToken)
+    {
+        byte[] header = new byte[BlockSize];
+        var walk = new NameWalk(read);
+        long offset = 0;
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int n = ReadFully(read, header, offset);
+            if (n == 0 || (n == BlockSize && header.AsSpan().IndexOfAnyExcept((byte)0) < 0))
+                return offset == 0 ? null : walk.AllUtf8;
+            if (n < BlockSize)
+                return null;
+            long? size = ParseHeader(header, out bool gnu);
+            if (size is null || !walk.Visit(header, gnu, size.Value, offset + BlockSize))
+                return null;
+            offset += BlockSize + (size.Value + BlockSize - 1) / BlockSize * BlockSize;
+        }
+    }
+
     /// <summary>
     /// T-F310: the same answer for a gzip-compressed tar. Null too when the stream is not valid
     /// gzip, or the tar inside is longer than <paramref name="maxDecompressedBytes"/>.
@@ -75,27 +96,6 @@ internal static class TarHeaderNames
             int n = stream.Read(buffer[..(int)Math.Min(buffer.Length, maxBytes - _position)]);
             _position += n;
             return n;
-        }
-    }
-
-    /// <inheritdoc cref="AreAllUtf8(SafeFileHandle, CancellationToken)"/>
-    internal static bool? AreAllUtf8(ReadAt read, CancellationToken cancellationToken)
-    {
-        byte[] header = new byte[BlockSize];
-        var walk = new NameWalk(read);
-        long offset = 0;
-        while (true)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            int n = ReadFully(read, header, offset);
-            if (n == 0 || (n == BlockSize && header.AsSpan().IndexOfAnyExcept((byte)0) < 0))
-                return offset == 0 ? null : walk.AllUtf8;
-            if (n < BlockSize)
-                return null;
-            long? size = ParseHeader(header, out bool gnu);
-            if (size is null || !walk.Visit(header, gnu, size.Value, offset + BlockSize))
-                return null;
-            offset += BlockSize + (size.Value + BlockSize - 1) / BlockSize * BlockSize;
         }
     }
 

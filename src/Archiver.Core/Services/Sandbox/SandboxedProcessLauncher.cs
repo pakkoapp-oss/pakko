@@ -445,7 +445,7 @@ internal static partial class SandboxedProcessLauncher
         [return: MarshalAs(UnmanagedType.Bool)]
         public static partial bool CreateProcessW(
             string? lpApplicationName,
-            char[] lpCommandLine,
+            [In] char[] lpCommandLine,
             IntPtr lpProcessAttributes,
             IntPtr lpThreadAttributes,
             [MarshalAs(UnmanagedType.Bool)] bool bInheritHandles,

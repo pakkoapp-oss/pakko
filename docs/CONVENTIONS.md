@@ -412,6 +412,10 @@ Won't-fix categories recorded so far:
 - **`pythonsecurity:S8707` (path taken from a command-line argument) on `scripts/Fill-StoreListing.py`**:
   a local tool whose whole input is the files its operator names; nothing else supplies the
   arguments. Marked `# NOSONAR S8707` on each `open`.
+- **S6966 ("await OpenAsync instead") on `ZipArchiveService.cs`'s `ZipFile.Open`/`entry.Open`**:
+  those calls already run on a pool thread inside `Task.Run`, and the ZIP streams are synchronous
+  on purpose (`useAsync: false`, faster on local disks; see "Current State" in `CLAUDE.md`).
+  Marked `// NOSONAR: S6966` on each call.
 - **S1135 (complete this TODO) on `ArchiveEntrySecurity.cs:56` and `.github/workflows/build.yml`**:
   both TODOs are legitimate, already-tracked future work (not abandoned placeholders) — left as
   plain TODOs, not suppressed. Don't "fix" these by deleting the comment or completing the task

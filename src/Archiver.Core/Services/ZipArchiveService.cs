@@ -281,7 +281,7 @@ public sealed class ZipArchiveService : IArchiveService
     {
         await Task.Run(async () =>
         {
-            using ZipArchive archive = ZipFile.Open(tempPath, ZipArchiveMode.Create);
+            using ZipArchive archive = ZipFile.Open(tempPath, ZipArchiveMode.Create); // NOSONAR: S6966 — runs inside Task.Run; synchronous I/O on purpose (docs/CONVENTIONS.md)
             int total = sortedSourcePaths.Count;
             long byteOffset = 0;
             // T-F30: multiple top-level SourcePaths can share a basename (e.g. two selected
@@ -532,7 +532,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             else if (Directory.Exists(sourcePath))
             {
-                using ZipArchive archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
+                using ZipArchive archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create); // NOSONAR: S6966 — runs inside Task.Run; synchronous I/O on purpose (docs/CONVENTIONS.md)
                 var context = new DirectoryArchiveContext(
                     sourcePath, Path.GetFileName(sourcePath), compressionLevel, AddSkipped, AddError, totalSourceBytes, progress);
                 await AddDirectoryToArchiveAsync(archive, sourcePath, context, baseOffset, cancellationToken)
@@ -540,7 +540,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             else if (File.Exists(sourcePath))
             {
-                using ZipArchive archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create);
+                using ZipArchive archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create); // NOSONAR: S6966 — runs inside Task.Run; synchronous I/O on purpose (docs/CONVENTIONS.md)
                 await AddEntryFromFileAsync(archive, sourcePath, Path.GetFileName(sourcePath),
                     compressionLevel, new EntryWriteProgress(totalSourceBytes, baseOffset, progress), cancellationToken)
                     .ConfigureAwait(false);
@@ -1821,13 +1821,13 @@ public sealed class ZipArchiveService : IArchiveService
 
         if (progressInfo.Progress != null && progressInfo.TotalBytes > 0)
         {
-            Stream entryStream = entry.Open();
+            Stream entryStream = entry.Open(); // NOSONAR: S6966 — runs inside Task.Run; synchronous I/O on purpose (docs/CONVENTIONS.md)
             await using var ps = new ProgressStream(entryStream, progressInfo.TotalBytes, progressInfo.StartOffset, progressInfo.Progress, entryName);
             await fileStream.CopyToAsync(ps, CopyBufferSize, cancellationToken).ConfigureAwait(false);
         }
         else
         {
-            using Stream entryStream = entry.Open();
+            using Stream entryStream = entry.Open(); // NOSONAR: S6966 — runs inside Task.Run; synchronous I/O on purpose (docs/CONVENTIONS.md)
             await fileStream.CopyToAsync(entryStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
         }
     }
