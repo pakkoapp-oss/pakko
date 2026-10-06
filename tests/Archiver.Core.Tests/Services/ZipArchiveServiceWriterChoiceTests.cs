@@ -20,7 +20,8 @@ public sealed class ZipArchiveServiceWriterChoiceTests : IDisposable
 
     private static readonly ParallelSingleArchiveWriter.CompressionSettings Optimal = new(CompressionLevel.Optimal);
 
-    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
+    // The disk answer is pinned: these tests are about the rule, not about the machine's disk.
+    private readonly ZipArchiveService _sut = new(new GroupPolicyOptions()) { HasNoSeekPenalty = _ => true };
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();
@@ -37,22 +38,28 @@ public sealed class ZipArchiveServiceWriterChoiceTests : IDisposable
     public void UsesParallelWriter_FewFiles_DependsOnTheBytesBesideTheLargest(
         int fileCount, long totalMiB, long largestMiB, bool expected)
     {
-        ZipArchiveService.UsesParallelWriter(Optimal, fileCount, totalMiB * MiB, largestMiB * MiB, freeBytes: long.MaxValue)
+        ZipArchiveService.UsesParallelWriter(Optimal, fileCount, totalMiB * MiB, largestMiB * MiB, freeBytes: long.MaxValue, () => true)
             .Should().Be(expected);
     }
 
     [Fact]
     public void UsesParallelWriter_NotEnoughRoomForTheChunkFiles_StaysSequential()
     {
-        ZipArchiveService.UsesParallelWriter(Optimal, 3, 300 * MiB, 100 * MiB, freeBytes: 600 * MiB).Should().BeTrue();
-        ZipArchiveService.UsesParallelWriter(Optimal, 3, 300 * MiB, 100 * MiB, freeBytes: 600 * MiB - 1).Should().BeFalse();
+        ZipArchiveService.UsesParallelWriter(Optimal, 3, 300 * MiB, 100 * MiB, freeBytes: 600 * MiB, () => true).Should().BeTrue();
+        ZipArchiveService.UsesParallelWriter(Optimal, 3, 300 * MiB, 100 * MiB, freeBytes: 600 * MiB - 1, () => true).Should().BeFalse();
+    }
+
+    [Fact]
+    public void UsesParallelWriter_DiskWithASeekPenaltyOrUnknown_StaysSequential()
+    {
+        ZipArchiveService.UsesParallelWriter(Optimal, 3, 300 * MiB, 100 * MiB, long.MaxValue, () => false).Should().BeFalse();
     }
 
     [Fact]
     public void UsesParallelWriter_NoCompression_StaysSequential()
     {
         // Nothing to compute in parallel; the chunk files would only add a second copy.
-        ZipArchiveService.UsesParallelWriter(new(CompressionLevel.NoCompression), 3, 300 * MiB, 100 * MiB, long.MaxValue)
+        ZipArchiveService.UsesParallelWriter(new(CompressionLevel.NoCompression), 3, 300 * MiB, 100 * MiB, long.MaxValue, () => true)
             .Should().BeFalse();
     }
 
@@ -63,7 +70,30 @@ public sealed class ZipArchiveServiceWriterChoiceTests : IDisposable
     [InlineData(1, CompressionLevel.Optimal, "secret")]
     public void UsesParallelWriter_ManyFilesPasswordOrFastest_AlwaysParallel(int fileCount, CompressionLevel level, string? password)
     {
-        ZipArchiveService.UsesParallelWriter(new(level, password), fileCount, 1024, 1024, freeBytes: 0).Should().BeTrue();
+        // What shipped before T-F352 does not depend on the disk, and does not ask about it.
+        ZipArchiveService.UsesParallelWriter(new(level, password), fileCount, 1024, 1024, freeBytes: 0,
+            () => throw new InvalidOperationException("the disk must not be asked")).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("out")]    // the destination
+    [InlineData("large")]  // the sources
+    public async Task ArchiveAsync_TwoLargeFilesOnADiskWithASeekPenalty_StaysOnTheSequentialWriter(string slowFolder)
+    {
+        string[] sources = [CreateRandomFile("a.bin", 1), CreateRandomFile("b.bin", 2)];
+        string slowRoot = Path.Combine(_temp.Path, slowFolder);
+        var sut = new ZipArchiveService(new GroupPolicyOptions())
+        {
+            HasNoSeekPenalty = path => !path.StartsWith(slowRoot, StringComparison.OrdinalIgnoreCase),
+        };
+
+        ArchiveResult result = await sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = sources, DestinationFolder = Path.Combine(_temp.Path, "out"), ArchiveName = "slow",
+        });
+
+        using ZipArchive zip = ZipFile.OpenRead(result.CreatedFiles.Single());
+        zip.Entries.Should().HaveCount(2).And.OnlyContain(e => e.CompressedLength > e.Length, "ZipArchive wrote them");
     }
 
     [Fact]

@@ -11258,8 +11258,20 @@ ZIP whose local file headers disagree with its central directory (the user's dec
 
 **Decision.** `SingleArchive` creation also takes `ParallelSingleArchiveWriter` when the level is
 not NoCompression, the bytes beside the largest file are at least 8 MiB and at least a quarter of
-that file, and the destination volume has free space for twice the sources
-(`ZipArchiveService.UsesParallelWriter`). The writer itself is unchanged.
+that file, the destination volume has free space for twice the sources, and the disks under the
+sources and the destination report no seek penalty (`ZipArchiveService.UsesParallelWriter`). The
+writer itself is unchanged.
+
+**Disk type (the user's requirement, same day).** The writer reads several files and writes
+several chunk files at once - head movement on a spinning disk, and the only disk measured was an
+NVMe SSD. `IO/DiskSeekPenalty` asks the volume (`IOCTL_STORAGE_QUERY_PROPERTY`,
+`StorageDeviceSeekPenaltyProperty`; a handle with no access rights, so no elevation; the volume is
+resolved through `GetVolumePathNameW`, so a folder that mounts another disk is answered for that
+disk; ~1 ms). True only for an explicit "no penalty": a spinning disk, a network share, and a disk
+that does not answer (USB enclosures, RAID, virtual disks) keep the sequential writer, which is
+what they had before. The path that shipped with T-F35 (more than 64 files, a password, Fastest)
+does not ask: changing it on a spinning disk is a separate decision, and it was never measured
+there either.
 
 **Why not "total size".** The writer compresses whole files side by side, so one file gains
 nothing and pays for a chunk file and a second copy. Measured (12 cores, SSD, Release, medians,
@@ -11274,7 +11286,9 @@ with `7za l -slt` on the same two files through both writers: an entry Deflate d
 stored (T-F299; the archive is the same size or smaller), each entry has the Archive attribute
 set, and a Deflate stream is 12 bytes longer. Names, order, CRC, version, flags are the same.
 
-**Costs.** Chunk files next to the destination, up to the size of the sources, during the run
+**Costs.** Bytes written: a compressible file is written twice (chunk, then archive), an
+incompressible one three times (Deflate chunk, Stored chunk, archive) - T-F357 is the task for
+that. Chunk files next to the destination, up to the size of the sources, during the run
 (hence the free-space condition: with less room the sequential writer runs, as before). The
 progress bar stays at 99% while the chunks are copied into the archive: 0.5 s at 3 x 100 MB.
 

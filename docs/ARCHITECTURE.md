@@ -796,7 +796,9 @@ Gated inside `ZipArchiveService.ArchiveAsync`'s `SingleArchive` branch: below
 `ZipFile.Open`/`AddDirectoryToArchiveAsync`/`AddEntryFromFileAsync` code runs completely
 unchanged - unless the selection is a few large files (T-F352, `ZipArchiveService.UsesParallelWriter`:
 at least 8 MiB beside the largest file and at least a quarter of it, a level other than
-NoCompression, free space for twice the sources). Above it, archiving routes into this subsystem instead — see `DECISIONS.md`'s T-F35
+NoCompression, free space for twice the sources, and source and destination disks that report
+no seek penalty - `IO/DiskSeekPenalty`, which answers false for a spinning disk, a network share
+and a disk that does not answer). Above it, archiving routes into this subsystem instead — see `DECISIONS.md`'s T-F35
 entry (and its follow-up entries) for the full design rationale (why `ZipArchive` can't be
 reused for the write side once gated, the Option A/B trade-off, the temp-file-compression
 redesign that removed the original design's file-size ceiling, and the real bugs the test suite

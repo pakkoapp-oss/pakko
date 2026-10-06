@@ -1843,7 +1843,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   tar.exe.
 - **Reported by:** the user, 2026-10-06.
 
-## Performance wave (T-F346–T-F356)
+## Performance wave (T-F346–T-F357)
 
 Opened 2026-10-06 from a measured study of start-up and resource use (installed dev 1.7.1.1 x64,
 warm starts, 12 cores, Defender on; EventPipe profiles, A/B through environment variables, 7za on
@@ -1928,7 +1928,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F352 — ZIP creation of a few large files runs on one core (P2)
 
-- [x] **Status:** done 2026-10-06 (device pass: see the wave's closing note). A `SingleArchive` run also takes the parallel writer when the level is not NoCompression, at least 8 MiB lie beside the largest file and at least a quarter of it, and the volume has room for twice the sources (`ZipArchiveService.UsesParallelWriter`); the writer is unchanged. Not a total-size rule: one large file gains nothing and pays for a second copy. Measured, sequential -> parallel: 3 x 100 MB text 4.1 -> 1.7 s, incompressible 8.6 -> 3.6 s (7za 2.9 s); 300 MB + 1 KB stays sequential. Such archives now have what archives of more than 64 files already have: an entry Deflate did not shrink is stored, entries carry the Archive attribute. The bar waits at 99% for 0.5 s at 3 x 100 MB. Not measured on a slow disk. Tests first (`ZipArchiveServiceWriterChoiceTests`, 6 red before; five mutants killed), `ArchiveAsync_FewLargeFiles` vs 7za ratio 1.2. Details: `docs/DECISIONS.md`'s T-F352 entry. **Was:** The parallel writer starts at 64 files
+- [x] **Status:** done 2026-10-06 (device pass: see the wave's closing note). A `SingleArchive` run also takes the parallel writer when the level is not NoCompression, at least 8 MiB lie beside the largest file and at least a quarter of it, and the volume has room for twice the sources, and the source and destination disks report no seek penalty (`IO/DiskSeekPenalty`: a spinning disk, a share or a disk that does not answer keeps the sequential writer) (`ZipArchiveService.UsesParallelWriter`); the writer is unchanged. Not a total-size rule: one large file gains nothing and pays for a second copy. Measured, sequential -> parallel: 3 x 100 MB text 4.1 -> 1.7 s, incompressible 8.6 -> 3.6 s (7za 2.9 s); 300 MB + 1 KB stays sequential. Such archives now have what archives of more than 64 files already have: an entry Deflate did not shrink is stored, entries carry the Archive attribute. The bar waits at 99% for 0.5 s at 3 x 100 MB. Tests first (`ZipArchiveServiceWriterChoiceTests`, 6 red before; five mutants killed), `ArchiveAsync_FewLargeFiles` vs 7za ratio 1.2. Details: `docs/DECISIONS.md`'s T-F352 entry. **Was:** The parallel writer starts at 64 files
   (`ParallelPipelineFileCountThreshold`). 3 x 100 MB: Pakko 7.7 s wall / 8.3 s CPU (11 MB
   private), 7za 6.6 s wall / 19.4 s CPU. Add a total-size criterion so a few large files take the
   parallel path (T-F35, proven by T-F114). Plan mode: the threshold, temp-file disk space (the
@@ -1939,7 +1939,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F353 — ZIP extraction of many small files: per-entry overhead (P3, measure first)
 
-- [ ] **Status:** open. 3000 small files: Pakko 5.1-5.2 s wall / 5.8 s CPU, 7za 4.1-5.5 s /
+- [x] **Status:** closed 2026-10-06 without a code change: no lead reaches the 5% set as the bar. Measured through temporary switches, 5000 small files, Release, 7 rounds alternating with 7za, Defender on (medians; spread within a variant 3-6%). Archive without `Zone.Identifier`: baseline 12.80 s; mark read once per archive 12.59 (-1.6%); synchronous destination stream 12.77 (-0.3%); time set through the open handle 12.49 (-2.4%); all three 11.88 (-7%); 7za 6.20. Archive with the mark: 22.36 / 21.59 / 21.80 / 21.89 / 21.27 s (-5% for all three, inside the spread); 7za 6.30, which writes no mark. What the numbers do show: a file costs ~2.5 ms here against 7za's ~1.2 ms, and writing the mark adds ~1.9 ms per file (a second stream created and closed under Defender) - neither is one of the three leads. A profile of where the 2.5 ms goes (staging and commit, per-entry checks) would be a new task. **Was:** 3000 small files: Pakko 5.1-5.2 s wall / 5.8 s CPU, 7za 4.1-5.5 s /
   3.9-4.6 s — wall time is Defender and the disk, so the headroom is small. Leads from the
   profile, none measured alone: `TryPropagateMotw` opens `archive:Zone.Identifier` once per entry
   (an exception per entry when the archive has none); the destination `FileStream` has its own
@@ -1947,6 +1947,17 @@ re-measured with T-F346's script before and after.
   the file by path. A/B each against 7za in the same run; keep only what shows. T-F298's order
   (ADS first, time last) and T-F45 stay.
 - **Reported by:** performance study, 2026-10-06.
+
+### T-F357 — The parallel ZIP writer writes an incompressible file three times (P3)
+
+- [ ] **Status:** open. A file Deflate does not shrink (video, photos, archives) is compressed
+  into a chunk file, rewritten there as Stored (T-F299), then copied into the archive: 3 x 100 MB
+  writes ~900 MB for a 300 MB archive; a compressible file is written twice. On an SSD that is
+  wear and time, on a spinning disk more. Leads: decide Stored from the first block(s) before
+  writing a chunk; write the largest pending entry straight into the archive. Also open: whether
+  the path for more than 64 files should ask `DiskSeekPenalty` too (unmeasured on a spinning
+  disk - no such disk on the dev machine). Plan mode; the writer's output must not change.
+- **Reported by:** the user's question on disk types, 2026-10-06 (T-F352).
 
 ### T-F354 — App: load the hidden parts of `MainWindow.xaml` on first use (P3, measure first)
 

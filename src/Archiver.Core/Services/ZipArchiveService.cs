@@ -54,6 +54,10 @@ public sealed class ZipArchiveService : IArchiveService
     // them so expectations hold on a machine with other pages (the en-US CI runner).
     internal ZipNameCodePages NameCodePages { get; init; } = ZipNameCodePages.System;
 
+    // T-F352: whether the disk under a path is known to have no seek penalty. Tests pin it: a CI
+    // runner's virtual disk may not answer.
+    internal Func<string, bool> HasNoSeekPenalty { get; init; } = DiskSeekPenalty.IsKnownAbsent;
+
     /// <inheritdoc/>
     public async Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
@@ -86,7 +90,7 @@ public sealed class ZipArchiveService : IArchiveService
             if (passwordError is not null)
                 return new ArchiveResult { CreatedFiles = [], Errors = [passwordError], SkippedFiles = [] };
         }
-        var run = new ArchiveRunContext(conflictResolver, password);
+        var run = new ArchiveRunContext(conflictResolver, password, HasNoSeekPenalty);
         IEnumerable<SourceResult> sources;
 
         if (options.Mode == ArchiveMode.SingleArchive)
@@ -128,7 +132,7 @@ public sealed class ZipArchiveService : IArchiveService
 
     // The per-call state both archive modes share — bundled to keep S107's parameter count down.
     // Password is null for an ordinary unencrypted archive (T-F193).
-    private sealed record ArchiveRunContext(ConflictResolver ConflictResolver, string? Password);
+    private sealed record ArchiveRunContext(ConflictResolver ConflictResolver, string? Password, Func<string, bool> HasNoSeekPenalty);
 
     // T-F193: one prompt per ArchiveAsync call, never retried — there is nothing to verify a new
     // password against, so a wrong attempt cannot exist (maxAttempts: 1). The App/CLI prompts ask
@@ -212,7 +216,8 @@ public sealed class ZipArchiveService : IArchiveService
 
         var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password);
         bool useParallelPipeline = UsesParallelWriter(settings, totalFileCount, totalSourceBytes, largestFileBytes,
-            ArchiveEntrySecurity.GetAvailableFreeSpace(options.DestinationFolder));
+            ArchiveEntrySecurity.GetAvailableFreeSpace(options.DestinationFolder),
+            () => run.HasNoSeekPenalty(options.DestinationFolder) && sortedSourcePaths.TrueForAll(p => run.HasNoSeekPenalty(p)));
 
         try
         {
@@ -2061,7 +2066,8 @@ public sealed class ZipArchiveService : IArchiveService
     // comment. T-F193/T-F299: a password or Fastest always takes the hand-rolled writer,
     // regardless of file count (see CompressionSettings.RequiresHandRolledWriter).
     internal static bool UsesParallelWriter(
-        Zip.ParallelSingleArchiveWriter.CompressionSettings settings, int fileCount, long totalBytes, long largestFileBytes, long freeBytes)
+        Zip.ParallelSingleArchiveWriter.CompressionSettings settings, int fileCount, long totalBytes, long largestFileBytes,
+        long freeBytes, Func<bool> disksHaveNoSeekPenalty)
     {
         if (settings.RequiresHandRolledWriter || fileCount > ParallelPipelineFileCountThreshold)
             return true;
@@ -2069,12 +2075,15 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F352: a few large files. The parallel writer compresses whole files side by side, so
         // what it can gain is the work beside the largest file; it pays with chunk files as large
         // as the sources and a second copy into the archive. Stored-only archives gain nothing.
+        // Only on disks known to have no seek penalty: several files read and written side by
+        // side move a spinning disk's head, and that case was not measured.
         if (settings.Level == CompressionLevel.NoCompression)
             return false;
         long besideLargest = totalBytes - largestFileBytes;
         return besideLargest >= ParallelPipelineBesideLargestBytesThreshold
             && besideLargest >= largestFileBytes / 4
-            && freeBytes / 2 >= totalBytes;
+            && freeBytes / 2 >= totalBytes
+            && disksHaveNoSeekPenalty();
     }
 
     private static bool IsZipFile(string path)

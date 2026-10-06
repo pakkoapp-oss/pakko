@@ -136,12 +136,14 @@ public sealed class CompressionPerformanceTests : IDisposable
         //   ~1.2  on the parallel writer (1.20, 1.17; Release)
         const double calibratedBaselineRatio = 1.2;
         string sourceDir = PerformanceFixtures.CreateFewLargeFilesFolder(_temp.Path);
+        // The disk answer is pinned: a runner's virtual disk may not report "no seek penalty".
+        var sut = new ZipArchiveService(new GroupPolicyOptions()) { HasNoSeekPenalty = _ => true };
 
-        await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"));
+        await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"), sut);
         SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "warmup_7za.zip"));
 
         string pakkoZip = Path.Combine(_temp.Path, "pakko.zip");
-        TimeSpan pakkoElapsed = await ArchiveWithPakkoTimed(sourceDir, pakkoZip);
+        TimeSpan pakkoElapsed = await ArchiveWithPakkoTimed(sourceDir, pakkoZip, sut);
         TimeSpan referenceElapsed = SevenZipRunner.Archive(sourceDir, Path.Combine(_temp.Path, "reference.zip"));
 
         Action integrityCheck = () => SevenZipRunner.Test(pakkoZip);
@@ -226,11 +228,11 @@ public sealed class CompressionPerformanceTests : IDisposable
         AssertRatio("Extract/Hybrid", pakkoElapsed, referenceElapsed, calibratedBaselineRatio);
     }
 
-    private async Task<TimeSpan> ArchiveWithPakkoTimed(string sourceDir, string destinationZipPath)
+    private async Task<TimeSpan> ArchiveWithPakkoTimed(string sourceDir, string destinationZipPath, ZipArchiveService? sut = null)
     {
         return await TimeAsync(async () =>
         {
-            ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
+            ArchiveResult result = await (sut ?? _sut).ArchiveAsync(new ArchiveOptions
             {
                 SourcePaths = [sourceDir],
                 DestinationFolder = Path.GetDirectoryName(destinationZipPath)!,

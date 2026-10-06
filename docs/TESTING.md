@@ -500,8 +500,13 @@ tests caught before shipping):
   `ArchiveAsync`: two of them take the parallel writer (entries stored, content round-trips),
   one beside a small file stays sequential (as files and inside a folder); same-name sources, a
   locked file and a link give what the sequential writer gives; Cancel leaves nothing; progress
-  never goes back. `ArchiveAsync_FewLargeFiles_WithinToleranceOfSevenZipReference` (`Category=Slow`)
-  adds `7za t` and the timing ratio.
+  never goes back; a source or destination disk with a seek penalty keeps the sequential writer.
+  The service's disk answer is pinned in these tests (`HasNoSeekPenalty`), since a runner's
+  virtual disk may not answer. `DiskSeekPenaltyTests` (`IO/`): a network path, a missing drive and
+  a non-path are false and never throw; what a real disk answers is machine-dependent and was
+  checked by hand (NVMe: true, `\\localhost\C$`: false).
+  `ArchiveAsync_FewLargeFiles_WithinToleranceOfSevenZipReference` (`Category=Slow`) adds `7za t`
+  and the timing ratio.
 - `LazyTarProbeTests` (`Archiver.Core.Tests/Services/`, T-F350) - through `PakkoServices` with a
   probe-counting `ITarService`: extract/test/list of a ZIP or of a format policy refuses never
   probe, a tar-family archive probes once across operations, Cancel ends the wait for a probe
