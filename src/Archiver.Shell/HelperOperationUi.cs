@@ -36,6 +36,9 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
     /// <summary>Progress is sent at most this often; the latest report wins.</summary>
     public TimeSpan ProgressInterval { get; init; } = TimeSpan.FromMilliseconds(50);
 
+    // Test seam: HelperReady is read on another thread, and a test must know it was taken in.
+    internal Action? HelperBecameReady { get; init; }
+
     public IOperationSession Begin(string title, ProgressStyle style)
     {
         HelperConnection connection;
@@ -188,11 +191,13 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
         {
             IOperationSession? fallback;
             bool helperGone;
+            bool helperStarting;
             lock (_lock)
             {
                 _completing = true;
                 fallback = _fallback;
                 helperGone = _failed || _windowClosed;
+                helperStarting = !_ready;
             }
 
             if (fallback is not null)
@@ -205,6 +210,14 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
                 // Closed by the user as the operation finished, or failed before any takeover.
                 if (message is not null)
                     _owner._fallbackUi.ShowMessage(message);
+                return;
+            }
+
+            if (message is null && helperStarting)
+            {
+                // T-F351: the helper reads nothing before it sends HelperReady, so no window is up
+                // yet - a fast operation does not wait for the helper to finish starting.
+                _connection.Kill();
                 return;
             }
 
@@ -232,7 +245,8 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
                 if (_disposed)
                     return;
                 open = TakePromptsLocked();
-                closeWindow = !_completing && !_failed && !_windowClosed;
+                // T-F351: before HelperReady there is no window to close; the helper is ended below.
+                closeWindow = !_completing && !_failed && !_windowClosed && _ready;
                 _completing = true;
             }
             AnswerSafely(open);
@@ -451,6 +465,7 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
                         case HelperReady ready when ready.ProtocolVersion == FrameCodec.ProtocolVersion:
                             lock (_lock)
                                 _ready = true;
+                            _owner.HelperBecameReady?.Invoke();
                             break;
 
                         case HelperReady:

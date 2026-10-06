@@ -18,6 +18,7 @@ public sealed class HelperOperationUiTests : IDisposable
 
     private readonly FakeHelper _helper = new();
     private readonly FakeOperationUi _fallback = new();
+    private TaskCompletionSource _readySeen = new();
     private readonly DirectoryInfo _temp = Directory.CreateTempSubdirectory("PakkoHelperUiTests");
     private readonly CultureInfo _originalUiCulture = CultureInfo.CurrentUICulture;
 
@@ -30,13 +31,18 @@ public sealed class HelperOperationUiTests : IDisposable
         _temp.Delete(recursive: true);
     }
 
-    private HelperOperationUi CreateUi(TimeSpan? readyTimeout = null, TimeSpan? closeTimeout = null) =>
-        new(_helper, _fallback)
+    private HelperOperationUi CreateUi(TimeSpan? readyTimeout = null, TimeSpan? closeTimeout = null)
+    {
+        var readySeen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _readySeen = readySeen;
+        return new(_helper, _fallback)
         {
             ReadyTimeout = readyTimeout ?? WaitLimit,
             CloseTimeout = closeTimeout ?? ShortClose,
             ProgressInterval = TimeSpan.Zero,
+            HelperBecameReady = () => readySeen.TrySetResult(),
         };
+    }
 
     private async Task<IOperationSession> BeginReadyAsync(
         string title = "Extracting: a.zip", ProgressStyle style = ProgressStyle.Bytes, TimeSpan? closeTimeout = null)
@@ -44,6 +50,8 @@ public sealed class HelperOperationUiTests : IDisposable
         IOperationSession session = CreateUi(closeTimeout: closeTimeout).Begin(title, style);
         await _helper.ReadUntilAsync<Begin>();
         await _helper.SendReadyAsync();
+        // T-F351: a clean end before HelperReady was taken in ends the helper instead of closing its window.
+        await _readySeen.Task.WaitAsync(WaitLimit);
         return session;
     }
 
@@ -140,6 +148,50 @@ public sealed class HelperOperationUiTests : IDisposable
 
         await complete.WaitAsync(WaitLimit);
         _fallback.Sessions.Should().BeEmpty();
+        _fallback.Messages.Should().BeEmpty();
+    }
+
+    // T-F351: before HelperReady nothing is on screen, so a clean end has no window to wait for.
+    [Fact]
+    public async Task CleanCompleteBeforeTheHelperIsReady_EndsItWithoutWaiting()
+    {
+        using IOperationSession session = CreateUi(readyTimeout: WaitLimit * 3, closeTimeout: WaitLimit * 3).Begin("t", ProgressStyle.Bytes);
+        await _helper.ReadUntilAsync<Begin>();
+
+        await Task.Run(() => session.Complete(null)).WaitAsync(WaitLimit);
+
+        _helper.Killed.Should().BeTrue();
+        _fallback.Sessions.Should().BeEmpty();
+        _fallback.Messages.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task DisposeWithoutCompleteBeforeTheHelperIsReady_EndsItWithoutWaiting()
+    {
+        IOperationSession session = CreateUi(readyTimeout: WaitLimit * 3, closeTimeout: WaitLimit * 3).Begin("t", ProgressStyle.Bytes);
+        await _helper.ReadUntilAsync<Begin>();
+
+        await Task.Run(session.Dispose).WaitAsync(WaitLimit);
+
+        _helper.Killed.Should().BeTrue();
+        _fallback.Sessions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ResultBeforeTheHelperIsReady_StillWaitsForTheWindow()
+    {
+        using IOperationSession session = CreateUi(closeTimeout: WaitLimit).Begin("t", ProgressStyle.Bytes);
+        await _helper.ReadUntilAsync<Begin>();
+
+        var complete = Task.Run(() => session.Complete(Warning));
+        (await _helper.ReadUntilAsync<Complete>()).Result.Should().NotBeNull();
+        await Task.Delay(100);
+        complete.IsCompleted.Should().BeFalse("the result is shown once the helper is up");
+        _helper.Killed.Should().BeFalse();
+        await _helper.SendReadyAsync();
+        await _helper.SendAsync(new WindowClosed());
+
+        await complete.WaitAsync(WaitLimit);
         _fallback.Messages.Should().BeEmpty();
     }
 
