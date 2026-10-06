@@ -977,6 +977,7 @@ Ukrainian UI, CI an English one.
 
 ## Diagram 6 as a Checked Contract (v1.7.0 wave 7, T-F112)
 
+- Wave 3 after v1.7.0 (2026-10-06): `BrowseNavigationTests` also covers `DecideListFailure` (T-F319: back to the real folder only when one was browsed before the open; five other prior states go to the pending list); `FileSystemBrowserTests` covers T-F324 (a Hidden+System folder and file are left out; Hidden-only and System-only ones are listed).
 - `BrowseNavigationTests` (App.Core, tests first): every `BrowseUpStep` of `DecideUp`, a drive
   root, no archive path.
 - `DiagramSixTests` reads `docs/DIAGRAMS.md`'s diagram 6 and checks its three `check:` tables

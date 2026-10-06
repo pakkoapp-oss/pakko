@@ -11190,11 +11190,14 @@ ZIP whose local file headers disagree with its central directory (the user's dec
 - **T-F327: a brush taken from `Application.Current.Resources` in code is fixed to the theme at
   that moment.** A window background belongs in XAML as a `ThemeResource`. The operation window
   builds its UI in code with the same lookup for text and card brushes; it uses Mica for the
-  background and lives for one operation, and it followed a theme change on the device, so it is
-  left as it is.
+  background and lives for one operation. Its result view followed a theme change on the device,
+  but that view uses none of the code-assigned brushes, and the non-Mica background could not be
+  run on Windows 11; both are T-F340, not fixed blind.
 - **T-F315 closed without a code change**, on 11 clean launches (evidence and the launcher caveat
-  in its task entry). The operation window's error line that UI Automation listed twice is drawn
-  once (region capture); nothing to file.
+  in its task entry).
+- **Found on the way, filed:** the operation window's result text is drawn once but listed twice
+  by UI Automation (T-F339); a ZIP that fails to list shows the .NET text in the App while Test
+  shows a translated message (T-F341).
 - **Device launcher:** `Invoke-CommandInDesktopPackage -Command` needs the full path of
   `Archiver.Shell.exe` from the package's `InstallLocation`; a bare name shows a Windows "not
   found" dialog to the user and the call hangs. The App is one process per launch, so each

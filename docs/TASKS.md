@@ -1919,7 +1919,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F319 — A real archive that fails to list from a browsed folder drops the browser (P3, UX)
 
-- [x] **Status:** done 2026-10-06 (post-v1.7.0 wave 3, a9b3bfb). `EnterBrowseModeAsync` reads the scope from before the open and `BrowseNavigation.DecideListFailure` (App.Core, `BrowseNavigationTests`, two mutants killed) picks the exit: back to the real folder, or the pending list for every other way in. The destination folder is set only after the archive lists. Diagram 6 updated. Device (dev 1.7.1.1): Enter on a corrupt `.zip` in `C:\tmp\w3` shows the error dialog over the same folder, and focus returns to the row when it closes. **Earlier status:** open. In the Archive Browser outside an archive (T-F107), double-clicking a real
+- [x] **Status:** done 2026-10-06 (post-v1.7.0 wave 3, a9b3bfb). `EnterBrowseModeAsync` reads the scope from before the open and `BrowseNavigation.DecideListFailure` (App.Core, `BrowseNavigationTests`, two mutants killed) picks the exit: back to the real folder, or the pending list for every other way in. The destination folder is set only after the archive lists. Diagram 6 updated. Device (dev 1.7.1.1): Enter on a corrupt `.zip` in `C:\tmp\w3` shows the error dialog over the same folder, and focus returns to the row when it closes. Only the `Success == false` exit was run on the device; when the listing throws, its own error dialog shows before the folder is restored (Core does not throw there). **Earlier status:** open. In the Archive Browser outside an archive (T-F107), double-clicking a real
   archive runs `EnterBrowseModeAsync`. When that listing fails (an error dialog, or `!Success`), it
   sets `IsBrowsingArchive=false`. The user lands in the pending list, not back in the folder they
   were browsing, and the folder location is lost. Expected: stay in `RealFolder` after the error
@@ -1971,7 +1971,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F327 — Switching the Windows app theme while the App is open leaves the window background in the old theme (P3)
 
-- [x] **Status:** done 2026-10-06 (post-v1.7.0 wave 3, b8ddab6). Cause: `RootGrid.Background` was read once in code from `Application.Current.Resources`, which gives the start theme's brush; it is a `ThemeResource` in XAML now. Device (dev 1.7.1.1): dark to light and back with the App open in the browser — the whole window follows both ways; the operation window (Mica) followed light to dark as well. **Earlier status:** open. Found while taking the v1.7.0 screenshots (2026-10-04, CI build of 039955a):
+- [x] **Status:** done 2026-10-06 (post-v1.7.0 wave 3, b8ddab6). Cause: `RootGrid.Background` was read once in code from `Application.Current.Resources`, which gives the start theme's brush; it is a `ThemeResource` in XAML now. Device (dev 1.7.1.1): dark to light and back with the App open in the browser — dark to light seen on the whole window, light to dark on the part not covered by another window. The operation window's result view (Mica background, default-styled text) followed light to dark; its code-assigned brushes and its non-Mica background are T-F340. **Earlier status:** open. Found while taking the v1.7.0 screenshots (2026-10-04, CI build of 039955a):
   with the App open in the dark theme, setting Windows to the light app theme turned the cards,
   buttons and text light, but the window background and the list area stayed dark (dark text on a
   dark background in the list). A fresh start in either theme is correct. Check what paints the
@@ -2194,3 +2194,33 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   open tasks lists only open tasks.
 - **Reported by:** the backlog review, 2026-10-05.
 
+### T-F339 — Operation window: UI Automation lists the result text twice (P3, accessibility)
+
+- [ ] **Status:** open. Found in wave 3 after v1.7.0 (2026-10-06, dev 1.7.1.0 build 05:26): after
+  `--extract-here` of an encrypted `.7z` the window's UIA tree has the message once as the name of the
+  `ScrollViewer` pane and once as the `TextBlock` inside it, so a screen reader can read it twice.
+  It is drawn once (region capture). Give the scroll viewer no name of its own, or take it out of
+  the control view, and check with a UIA dump. Same class as T-F304.
+- **Reported by:** wave 3 device pass, 2026-10-06.
+
+### T-F340 — Operation window: brushes read in code do not follow a live theme change (P3)
+
+- [ ] **Status:** open. Same cause as T-F327: `OperationWindow.Brush(key)` reads
+  `Application.Current.Resources` once, so the secondary text, the card and the status colours keep
+  the start theme, and so does the background where Mica is not supported (Windows 10; the code
+  path could not be run on this Windows 11 machine). Not seen as a fault on the device: the result
+  view checked in wave 3 uses none of those brushes. The window lives for one operation, so the
+  theme has to change during it. Fix by re-applying the brushes on `ActualThemeChanged`; check on
+  Windows 10 or with Mica forced off.
+- **Reported by:** wave 3 closing review, 2026-10-06.
+
+### T-F341 — App: a ZIP that fails to list shows the .NET exception text, not a translated message (P3)
+
+- [ ] **Status:** open. Found in wave 3 after v1.7.0 (2026-10-06, uk-UA): opening a `.zip` with a
+  valid signature and no central directory in the Archive Browser shows the error dialog with
+  "End of Central Directory record could not be found." (English, from .NET). The Explorer "Test"
+  command on the same file says it in Ukrainian ("the file has a ZIP signature but looks damaged
+  or incomplete"). So the listing failure reaches the App with no `MessageCode`
+  (`ArchiveListResult.ErrorText` is null and `ErrorMessage` is the raw text). Give
+  `ListEntriesAsync` the same code the Test path uses; check `pakko l` on the same file.
+- **Reported by:** wave 3 device pass, 2026-10-06.
