@@ -583,7 +583,7 @@ jobs:
           cp -r docs/assets/. _pages/assets/
           cp -r _site/. _pages/dev/
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _pages
 
