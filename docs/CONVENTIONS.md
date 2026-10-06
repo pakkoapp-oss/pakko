@@ -409,6 +409,9 @@ Won't-fix categories recorded so far:
   mechanism note above). SonarCloud's own `csharpsquid:S5344` (PBKDF2 iterations) and `S4790`
   (weak hash) flag the same two lines for the same spec-mandated reason and carry `// NOSONAR`
   markers instead, per the same mechanism note — T-F193's AES writer follows both conventions.
+- **`pythonsecurity:S8707` (path taken from a command-line argument) on `scripts/Fill-StoreListing.py`**:
+  a local tool whose whole input is the files its operator names; nothing else supplies the
+  arguments. Marked `# NOSONAR S8707` on each `open`.
 - **S1135 (complete this TODO) on `ArchiveEntrySecurity.cs:56` and `.github/workflows/build.yml`**:
   both TODOs are legitimate, already-tracked future work (not abandoned placeholders) — left as
   plain TODOs, not suppressed. Don't "fix" these by deleting the comment or completing the task
