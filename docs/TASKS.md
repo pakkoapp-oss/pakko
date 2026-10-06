@@ -1664,7 +1664,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   T-F262. Found: T-F274 (Test says "no errors" when nothing was tested); the App's error box is
   English ("Error" + Core reason) in the uk-UA UI, T-F209.
 
-- [~] **Status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — code-confirmed 2026-09-25. Extract, Create and List have routers; Test
+- [x] **Status:** done; status line corrected 2026-10-06. The device check with real policy values is the 2026-09-28 entry above, and it was repeated on the v1.7.0 release candidate 2026-10-04 (`DisableTarExtraction=1` through an elevated `reg add`: `pakko i`/`l`/`x`/`a` and Shell extract refuse with the policy reason, ZIP still works, no tar.exe started, the Explorer menu drops the tar item; policy removed after). **Earlier status:** fixed in code (see Progress above); device check pending (G6/G7). Status line synced 2026-09-30. Original: open — code-confirmed 2026-09-25. Extract, Create and List have routers; Test
   has none (`IExtractionRouter.cs:10-17` has only `ExtractAsync`, although
   `docs/ARCHITECTURE.md:73` says it routes `TestAsync`): Shell sends every path to the ZIP engine
   (`Archiver.Shell/Program.cs:292-299`, the root of T-F216), the CLI re-runs format detection
@@ -2037,8 +2037,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F329 — Localization process: glossary, one home for shared strings, counts, translator context (P2)
 
-- [~] **Status:** done except the five "{0} bytes" messages (Part 3) and the screenshots (Part 5),
-  2026-10-05.
+- [~] **Status:** done except the screenshots (Part 5), which wait for the next retake;
+  the five "{0} bytes" messages were done 2026-10-06.
   T-F328 fixed about 600 translated values; nearly all came from four gaps around the loading
   mechanisms, not from the mechanisms themselves. The three mechanisms stay as they are (`.resw`
   for WinUI, `.resx` for Shell and `Archiver.Messages`, the compiled table in `Localization.cpp`).
@@ -2063,10 +2063,16 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   - [x] the English of those two Core messages, which is `pakko.exe`'s output: changed on the
     user's word (2026-10-05), T-F323 closed
   - [x] `CountTemplateTests` for all English text; a line in `docs/CONVENTIONS.md`
-  - [ ] not done: the five Core messages with "{0} bytes" (`EntryNameTooLong`,
-    `NotEnoughSpaceToCompress`, `InsufficientDiskSpace`, `ZipBombDeclined`, `TarBombDeclined`). In
-    the inflecting locales the noun still disagrees with some numbers; the same locale-only
-    rewrite would fix it. Left out to keep this change reviewable, not because the form is right
+  - [x] the five Core messages with "{0} bytes" (`EntryNameTooLong`,
+    `NotEnoughSpaceToCompress`, `InsufficientDiskSpace`, `ZipBombDeclined`, `TarBombDeclined`),
+    2026-10-06: in pl, hr, sr-Latn, sl, lt, lv and ro the size is written "{0} B", the unit those
+    locales' size columns use (35 values, by script with the old value asserted;
+    `CountTemplateTests.ByteCounts_UseTheUnitWhereTheNounInflects` failed for all seven first).
+    Why these seven: the noun there changes with the number's last digits (pl "22 bajty", lt
+    "21 baitas", ro "20 de octeți"). Left as they are: cs and sk (the genitive plural is right
+    from 5 up, and these are sizes), bg (count form), uk ("байт" as a unit), et and fi
+    (partitive), ar (the unit word is the usual form), and the locales where only "1" disagrees.
+    English is unchanged, so `pakko.exe`'s output is too
   - Not changed: "up to {0} characters" and "longer than {0} characters": `{0}` is always 99, the
     `<comment>` now says so
 - **Part 4 — context for whoever translates:**
@@ -2100,7 +2106,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 - **Acceptance:**
   - [x] the glossary test and the shared-string test are in the default `dotnet test` run and green
   - [x] no UI template has a count directly before the thing counted
-  - [x] the same for the English Core text (the "{0} bytes" messages apart, see Part 3)
+  - [x] the same for the English Core text ("{0} bytes" stays in English, see Part 3)
   - [x] a file type registered by Pakko shows a localized name in Explorer
 - **Reported by:** localization audit follow-up, 2026-10-05.
 
@@ -2149,8 +2155,10 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     and 29 locales failed it before the text changed
   - [x] copyright line, the same in every language: `Copyright © 2026 Pakko Contributors`, the
     notice in `LICENSE`; kept in `docs/store-listing/README.md`, not in the 37 files
-  - [ ] the fill script has run three times and is still outside the repo (its paths are this
-    machine's); it moves to `scripts/` with the paths as parameters before the next listing change
+  - [x] the fill script is `scripts/Fill-StoreListing.py` (2026-10-06): the export, the output
+    and the listing folder are parameters, `--add-locale` and `--keep-lists` replace the edited
+    constants. Run on `listingData-9P5MW010D8PR-filled-4.csv` with `--keep-lists sv-SE` it wrote a
+    byte-identical file. Described in `scripts/README.md`
   - [x] the third CSV imported: the next export has the 270-character short description and the
     copyright line in 36 languages (not sv-se, see T-F331)
   - [ ] the user imports `listingData-9P5MW010D8PR-filled-4.csv`: the icon URL copied from uk-ua,
