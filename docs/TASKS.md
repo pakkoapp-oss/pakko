@@ -1890,7 +1890,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F349 — Shell, the operation window and `pakko` ship without ReadyToRun (P2)
 
-- [~] **Status:** standalone `pakko.exe` done 2026-10-06 (`Publish-Cli.ps1` passes `PublishReadyToRun`; `pakko.dll` and `Archiver.Core.dll` carry R2R code for win-x64 and win-arm64, checked by PE header on a local publish - check the CI zips too). The five DLLs in the package are still open (step 2, Plan mode). **Was:** Checked in the installed package by PE header: `Archiver.Shell.dll`,
+- [x] **Status:** closed 2026-10-06. Standalone `pakko.exe`: done (`Publish-Cli.ps1` passes `PublishReadyToRun`; `pakko.dll` and `Archiver.Core.dll` carry R2R code in the CI zips for win-x64 and win-arm64, checked by PE header). The five DLLs in the package: **not done, the gain is too small.** Measured after T-F348/T-F350/T-F351 in two unpackaged copies of the installed package, one with R2R-published `Archiver.Shell.dll`, `Archiver.OperationUi.Protocol.dll` and `pakko.dll` (two alternating rounds of 15): `pakko l` 157/163 -> 149/162 ms, Shell extract-here 430/508 -> 416/501 ms - 1-14 ms, inside the spread between rounds and under the 20 ms set as the bar for changing three build files. The helper's own three DLLs could not be compared this way (it does not start outside the package); they are 145 KB of IL beside the App's already-R2R WinUI assemblies. **Was:** Checked in the installed package by PE header: `Archiver.Shell.dll`,
   `pakko.dll`, `Archiver.OperationUi.dll`, `.Core.dll`, `.Protocol.dll` have no R2R code
   (`Deploy.ps1`/`CI-Build-Msix.ps1` build them with `dotnet build`; R2R runs only in publish);
   `Publish-Cli.ps1`'s standalone `pakko.exe` has none either, Core included. Measured: standalone
@@ -1904,7 +1904,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F350 — Shell and `pakko` probe tar.exe for a ZIP (P2)
 
-- [ ] **Status:** open. `PakkoServices.CreateExtractionRouterAsync`/`CreateListingRouterAsync`/
+- [x] **Status:** done 2026-10-06. `PakkoServices` hands the probe to an `internal` constructor of each router; `ArchiveFormatPolicy.ClassifyAsync` detects each path once and awaits the probe only for a tar-family format that policy leaves open (one predicate, shared with `GetRefusalReason`). Public constructors and the App's DI are unchanged. Tests first (`LazyTarProbeTests`): no probe for ZIP or for a policy-refused format (red before), one probe across operations, Cancel ends the wait, and 72 verdicts with their texts (9 formats x 4 policies x 2 capability sets) pinned on the old code. Installed package, before -> after: Extract here files written 582 -> 459 ms, `pakko l` 314 -> 197 ms, conflict prompt 781 -> 691 ms, operation window on a long extraction 1929 -> 1775 ms. **Was:** `PakkoServices.CreateExtractionRouterAsync`/`CreateListingRouterAsync`/
   `CreateScanServiceAsync` await the tar.exe probe before any work, so a ZIP-only command pays
   ~70-100 ms for nothing (`pakko l x.zip` 300 ms against `--help` 90 ms; "Extract here" 73 ms).
   Probe only when an input is not a ZIP. Touches public constructors in `Archiver.Core`
@@ -1916,7 +1916,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F351 — Explorer commands start the WinUI operation window even when it is never shown (P2)
 
-- [ ] **Status:** open. The helper process starts at `Begin`; the window shows only after 1 s
+- [x] **Status:** done 2026-10-06, narrowed: the helper still starts at `Begin` (starting it later is T-F356). A clean end (`Complete(null)`, or `Dispose` without `Complete`) that comes before `HelperReady` ends the helper at once instead of waiting for it to start and close - the helper reads nothing before it sends `HelperReady`, so no window can be up. A result, a prompt and a ready helper take the old path. Tests first (both red before). Installed package: Extract here, Shell exit 697 -> 455 ms (files written 451); conflict prompt and the long-extraction window unchanged (679, 1763 ms). On device: results after a fast operation (Test, a damaged ZIP), password and conflict prompts, Cancel on a long extraction (nothing left behind), helper killed mid-operation -> Win32 window finishes the work, real Explorer menu on ZIP and .7z. **Was:** The helper process starts at `Begin`; the window shows only after 1 s
   (`OperationWindowModel.ShowDelay`), a prompt or a result. On a fast operation Shell then waits
   ~160-230 ms in `Session.Complete` for a helper that is still starting, only to close it, and a
   whole WinUI process (~300 ms CPU) is spent beside the extraction. Start the helper after a
