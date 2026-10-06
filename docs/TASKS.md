@@ -1782,7 +1782,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F314 — App: focus lands on the Up button after Enter opens a nested archive (P3)
 
-- [ ] **Status:** open. Split out of T-F308 (user, 2026-10-03). In the Archive Browser, Enter on a
+- [x] **Status:** done 2026-10-06 (post-v1.7.0 wave 3, 070c649). A focus log on the device showed the cause: the queued focus call ran 6 ms after the open, before the list's layout pass (`no container, items=2`), so `Focus` was never called, and 160 ms later the old row went away and focus fell to the Up button. `FocusRowLater` now forces the layout pass first. Device (dev 1.7.1.1): Enter on `inner.zip` puts focus on the first row, the next Backspace pops the level and focuses a row, Backspace again reaches the real folder. **Earlier status:** open. Split out of T-F308 (user, 2026-10-03). In the Archive Browser, Enter on a
   nested archive opens it, but keyboard focus ends on the browse Up button instead of the first row,
   so the next Backspace/Alt+Up does nothing until the list is focused again (Enter on a folder keeps
   focus on a row). Three fixes in `MainWindow.xaml.cs` did not hold on the device (a deferred `Focus`
@@ -1794,7 +1794,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F315 — Operation window sometimes renders all black until activated (P3)
 
-- [ ] **Status:** open. Split out of T-F268 step 6 item (f) on its closing, 2026-10-03. The window fades in black (caption buttons only) when it never gets the foreground; one real activation fixes it for good. Reproduced 16 of 16 on 1.5.0.12/13 (`Start-Process` from a background shell), not reproduced 4 of 4 on 1.5.0.34; the real Explorer flow passes the foreground right and was never seen black. Full trail, the tries that failed and the next ideas: T-F268's (f) note. Reproduce before fixing.
+- [x] **Status:** closed 2026-10-06 (post-v1.7.0 wave 3) as not reproducible. Dev 1.7.1.1, `--test <corrupt.zip>` started in the package identity (`Invoke-CommandInDesktopPackage`; a direct `Start-Process` of the installed Shell no longer runs): 11 of 11 windows never had the foreground and were fully drawn (10 in the light theme by pixel sampling of the screen region, 1 in the dark theme by a region capture), raised with `SWP_NOACTIVATE` only so that the region could be read. With the 4 of 4 on 1.5.0.34 that is 15 launches without the fault since 1.5.0.13. The launcher differs from the one that reproduced it, so this is weaker than a same-launcher run; reopen if a black window is seen again. **Earlier status:** open. Split out of T-F268 step 6 item (f) on its closing, 2026-10-03. The window fades in black (caption buttons only) when it never gets the foreground; one real activation fixes it for good. Reproduced 16 of 16 on 1.5.0.12/13 (`Start-Process` from a background shell), not reproduced 4 of 4 on 1.5.0.34; the real Explorer flow passes the foreground right and was never seen black. Full trail, the tries that failed and the next ideas: T-F268's (f) note. Reproduce before fixing.
 - **Reported by:** T-F268 Explorer smoke (agent and user), 2026-09-27.
 
 ## Test-Coverage Audit Follow-Ups (T-F174–T-F186)
@@ -1919,7 +1919,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F319 — A real archive that fails to list from a browsed folder drops the browser (P3, UX)
 
-- [ ] **Status:** open. In the Archive Browser outside an archive (T-F107), double-clicking a real
+- [x] **Status:** done 2026-10-06 (post-v1.7.0 wave 3, a9b3bfb). `EnterBrowseModeAsync` reads the scope from before the open and `BrowseNavigation.DecideListFailure` (App.Core, `BrowseNavigationTests`, two mutants killed) picks the exit: back to the real folder, or the pending list for every other way in. The destination folder is set only after the archive lists. Diagram 6 updated. Device (dev 1.7.1.1): Enter on a corrupt `.zip` in `C:\tmp\w3` shows the error dialog over the same folder, and focus returns to the row when it closes. **Earlier status:** open. In the Archive Browser outside an archive (T-F107), double-clicking a real
   archive runs `EnterBrowseModeAsync`. When that listing fails (an error dialog, or `!Success`), it
   sets `IsBrowsingArchive=false`. The user lands in the pending list, not back in the folder they
   were browsing, and the folder location is lost. Expected: stay in `RealFolder` after the error
@@ -1950,7 +1950,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F324 — Archive Browser lists hidden system folders at a drive root (P3, UX)
 
-- [ ] **Status:** open. Found in the wave 9 device campaign (2026-10-03): browsing up to `C:\`
+- [x] **Status:** done 2026-10-06 (post-v1.7.0 wave 3, 1fff1c1). Decision (agent): always leave out entries that are both Hidden and System, files and folders — what Explorer hides as protected operating system files, whatever its "show hidden items" setting. Hidden-only entries stay: Up from an archive under `%TEMP%` climbs through `AppData`, and the folder just left must be in its parent's list. Device (dev 1.7.1.1): `C:\` lists no `$Recycle.Bin`, `Config.Msi`, `Documents and Settings`, `Recovery`, `System Volume Information`, `pagefile.sys`; `ProgramData` is listed. **Earlier status:** open. Found in the wave 9 device campaign (2026-10-03): browsing up to `C:\`
   lists `$Recycle.Bin`, `Config.Msi`, `Documents and Settings` (a junction) and other hidden or
   system entries that Explorer hides by default. Decide: follow Explorer's "show hidden items"
   setting, or always hide Hidden+System entries in `FileSystemBrowser` (T-F107).
@@ -1971,7 +1971,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F327 — Switching the Windows app theme while the App is open leaves the window background in the old theme (P3)
 
-- [ ] **Status:** open. Found while taking the v1.7.0 screenshots (2026-10-04, CI build of 039955a):
+- [x] **Status:** done 2026-10-06 (post-v1.7.0 wave 3, b8ddab6). Cause: `RootGrid.Background` was read once in code from `Application.Current.Resources`, which gives the start theme's brush; it is a `ThemeResource` in XAML now. Device (dev 1.7.1.1): dark to light and back with the App open in the browser — the whole window follows both ways; the operation window (Mica) followed light to dark as well. **Earlier status:** open. Found while taking the v1.7.0 screenshots (2026-10-04, CI build of 039955a):
   with the App open in the dark theme, setting Windows to the light app theme turned the cards,
   buttons and text light, but the window background and the list area stayed dark (dark text on a
   dark background in the list). A fresh start in either theme is correct. Check what paints the

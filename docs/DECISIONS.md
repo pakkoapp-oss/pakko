@@ -11170,3 +11170,32 @@ ZIP whose local file headers disagree with its central directory (the user's dec
   `options.DestinationFolder`. They name the archive that was to be written
   (`ArchiveNaming.RefusedArchivePath`), or the first source when every source gets its own
   archive.
+
+## After v1.7.0, wave 3 — App window and operation window (2026-10-06)
+
+- **T-F314: diagnose, then one fix.** Three timing variants had failed in T-F308. A temporary log
+  of `FocusManager.GotFocus`/`LosingFocus` and of `FocusRowLater` itself showed that the queued
+  call ran before the list's layout pass and found no container, so `Focus` was never called; the
+  move to the Up button came 160 ms later, when the old row's container went away. The list was
+  never disabled in between, which was the earlier guess. `list.UpdateLayout()` before
+  `ContainerFromIndex` fixes it. The log was removed before the commit.
+- **T-F324: Hidden and System together, not Explorer's setting.** Hiding every Hidden entry would
+  remove `AppData` from its parent's list right after Up climbed out of it. Reading Explorer's
+  "show hidden items" would add a registry read for a rare wish. Not
+  `EnumerationOptions`: its default skips an entry with either attribute and ignores
+  inaccessible folders, which would change the existing catch-and-return-empty rule.
+- **T-F319: the decision reads the state from before the open.** A file activation that arrives
+  while a real folder is browsed and then fails to list also stays in that folder; only the
+  state decides, not the caller. `DestinationPath` moves only after a successful listing.
+- **T-F327: a brush taken from `Application.Current.Resources` in code is fixed to the theme at
+  that moment.** A window background belongs in XAML as a `ThemeResource`. The operation window
+  builds its UI in code with the same lookup for text and card brushes; it uses Mica for the
+  background and lives for one operation, and it followed a theme change on the device, so it is
+  left as it is.
+- **T-F315 closed without a code change**, on 11 clean launches (evidence and the launcher caveat
+  in its task entry). The operation window's error line that UI Automation listed twice is drawn
+  once (region capture); nothing to file.
+- **Device launcher:** `Invoke-CommandInDesktopPackage -Command` needs the full path of
+  `Archiver.Shell.exe` from the package's `InstallLocation`; a bare name shows a Windows "not
+  found" dialog to the user and the call hangs. The App is one process per launch, so each
+  `--open-ui` run has its own window handle.

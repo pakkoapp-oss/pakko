@@ -15,7 +15,7 @@
 
 ```
 Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECISIONS.md wave 4)
-└── RootGrid (RowDefinitions="32,*")
+└── RootGrid (RowDefinitions="32,*"; Background is a ThemeResource so it follows a live theme change, T-F327)
     ├── [tb:TaskbarIcon] — system tray (not in grid flow)
     │
     ├── Row 0: AppTitleBar — Grid (Auto,Auto,*): 16 px app icon + TitleText (AppWindow.Title, the
