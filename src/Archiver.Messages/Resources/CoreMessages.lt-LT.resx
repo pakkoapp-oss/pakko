@@ -46,10 +46,10 @@
     <value>Nežinoma klaida suspaudžiant.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
-    <value>Elemento pavadinimas per ilgas ZIP archyvui ({0} baitų UTF-8; daugiausia {1}).</value>
+    <value>Elemento pavadinimas per ilgas ZIP archyvui ({0} B UTF-8; daugiausia {1}).</value>
   </data>
   <data name="NotEnoughSpaceToCompress" xml:space="preserve">
-    <value>Diske nepakanka laisvos vietos šiam failui suspausti: jis užima {0} baitų, bet laisva tik {1} baitų.</value>
+    <value>Diske nepakanka laisvos vietos šiam failui suspausti: jo dydis {0} B, bet laisva tik {1} B.</value>
   </data>
   <data name="PasswordNotEntered" xml:space="preserve">
     <value>Archyvas nesukurtas: slaptažodis neįvestas.</value>
@@ -157,13 +157,13 @@
     <value>Elementas „{0}“ naudoja nepalaikomą suspaudimo su šifravimu metodą.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Archyvas nurodo {0} baitų nesuspausta forma, bet paskirties vietoje laisva tik {1} baitų. Išskleidimas užblokuotas.</value>
+    <value>Archyvas nurodo {0} B nesuspausta forma, bet paskirties vietoje laisva tik {1} B. Išskleidimas užblokuotas.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
-    <value>Įtartinas suspaudimo santykis ({0}:1, nurodyta {1} baitų). Išskleidimo atsisakyta atsargumo sumetimais dėl ZIP bombų.</value>
+    <value>Įtartinas suspaudimo santykis ({0}:1, nurodytas dydis: {1} B). Išskleidimo atsisakyta atsargumo sumetimais dėl ZIP bombų.</value>
   </data>
   <data name="TarBombDeclined" xml:space="preserve">
-    <value>Įtartinas suspaudimo santykis ({0}:1, nurodyta {1} baitų) visam archyvui. Išskleidimo atsisakyta atsargumo sumetimais dėl išskleidimo bombų.</value>
+    <value>Įtartinas suspaudimo santykis ({0}:1, nurodytas dydis: {1} B) visam archyvui. Išskleidimo atsisakyta atsargumo sumetimais dėl išskleidimo bombų.</value>
   </data>
   <data name="DestinationFileLocked" xml:space="preserve">
     <value>Nepavyksta įrašyti „{0}“: paskirties failą užrakino kitas procesas.</value>

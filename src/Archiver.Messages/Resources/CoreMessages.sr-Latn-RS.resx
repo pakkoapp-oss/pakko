@@ -46,10 +46,10 @@
     <value>Nepoznata greška pri kompresovanju.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
-    <value>Naziv stavke je predugačak za ZIP arhivu ({0} bajtova u UTF-8; najviše {1}).</value>
+    <value>Naziv stavke je predugačak za ZIP arhivu ({0} B u UTF-8; najviše {1}).</value>
   </data>
   <data name="NotEnoughSpaceToCompress" xml:space="preserve">
-    <value>Nema dovoljno slobodnog prostora na disku za kompresovanje ove datoteke: ima {0} bajtova, a slobodno je samo {1} bajtova.</value>
+    <value>Nema dovoljno slobodnog prostora na disku za kompresovanje ove datoteke: veličina joj je {0} B, a slobodno je samo {1} B.</value>
   </data>
   <data name="PasswordNotEntered" xml:space="preserve">
     <value>Arhiva nije kreirana: lozinka nije uneta.</value>
@@ -157,13 +157,13 @@
     <value>Stavka „{0}” koristi nepodržan metod kompresije sa šifrovanjem.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Arhiva navodi {0} bajtova nekompresovano, ali na odredištu je slobodno samo {1} bajtova. Raspakivanje je blokirano.</value>
+    <value>Arhiva navodi {0} B nekompresovano, ali na odredištu je slobodno samo {1} B. Raspakivanje je blokirano.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
-    <value>Sumnjiv odnos kompresije ({0}:1, navedeno {1} bajtova). Raspakivanje je odbijeno iz predostrožnosti od ZIP bombi.</value>
+    <value>Sumnjiv odnos kompresije ({0}:1, navedena veličina: {1} B). Raspakivanje je odbijeno iz predostrožnosti od ZIP bombi.</value>
   </data>
   <data name="TarBombDeclined" xml:space="preserve">
-    <value>Sumnjiv odnos kompresije ({0}:1, navedeno {1} bajtova) za celu arhivu. Raspakivanje je odbijeno iz predostrožnosti od bombi za raspakivanje.</value>
+    <value>Sumnjiv odnos kompresije ({0}:1, navedena veličina: {1} B) za celu arhivu. Raspakivanje je odbijeno iz predostrožnosti od bombi za raspakivanje.</value>
   </data>
   <data name="DestinationFileLocked" xml:space="preserve">
     <value>Nije moguće upisati „{0}”: odredišnu datoteku je zaključao drugi proces.</value>

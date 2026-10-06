@@ -46,10 +46,10 @@
     <value>Neznana napaka med stiskanjem.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
-    <value>Ime vnosa je predolgo za arhiv ZIP ({0} bajtov v UTF-8; največ {1}).</value>
+    <value>Ime vnosa je predolgo za arhiv ZIP ({0} B v UTF-8; največ {1}).</value>
   </data>
   <data name="NotEnoughSpaceToCompress" xml:space="preserve">
-    <value>Na disku ni dovolj prostora za stiskanje te datoteke: ima {0} bajtov, prostih pa je le {1} bajtov.</value>
+    <value>Na disku ni dovolj prostora za stiskanje te datoteke: velika je {0} B, prostega pa je le {1} B.</value>
   </data>
   <data name="PasswordNotEntered" xml:space="preserve">
     <value>Arhiv ni bil ustvarjen: geslo ni bilo vneseno.</value>
@@ -157,13 +157,13 @@
     <value>Vnos »{0}« uporablja nepodprto metodo stiskanja s šifriranjem.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Arhiv navaja {0} bajtov nestisnjeno, na cilju pa je prostih le {1} bajtov. Razširjanje je bilo blokirano.</value>
+    <value>Arhiv navaja {0} B nestisnjeno, na cilju pa je prostega le {1} B. Razširjanje je bilo blokirano.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
-    <value>Sumljivo razmerje stiskanja ({0}:1, navedenih {1} bajtov). Razširjanje je bilo zavrnjeno kot previdnostni ukrep proti bombam ZIP.</value>
+    <value>Sumljivo razmerje stiskanja ({0}:1, navedena velikost: {1} B). Razširjanje je bilo zavrnjeno kot previdnostni ukrep proti bombam ZIP.</value>
   </data>
   <data name="TarBombDeclined" xml:space="preserve">
-    <value>Sumljivo razmerje stiskanja ({0}:1, navedenih {1} bajtov) za celoten arhiv. Razširjanje je bilo zavrnjeno kot previdnostni ukrep proti bombam za razširjanje.</value>
+    <value>Sumljivo razmerje stiskanja ({0}:1, navedena velikost: {1} B) za celoten arhiv. Razširjanje je bilo zavrnjeno kot previdnostni ukrep proti bombam za razširjanje.</value>
   </data>
   <data name="DestinationFileLocked" xml:space="preserve">
     <value>»{0}« ni mogoče zapisati: ciljno datoteko je zaklenil drug proces.</value>

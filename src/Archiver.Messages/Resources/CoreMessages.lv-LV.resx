@@ -46,10 +46,10 @@
     <value>Nezināma kļūda saspiešanas laikā.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
-    <value>Vienuma nosaukums ir pārāk garš ZIP arhīvam ({0} baiti UTF-8; maksimums ir {1}).</value>
+    <value>Vienuma nosaukums ir pārāk garš ZIP arhīvam ({0} B UTF-8; maksimums ir {1}).</value>
   </data>
   <data name="NotEnoughSpaceToCompress" xml:space="preserve">
-    <value>Nepietiek brīvas vietas diskā, lai saspiestu šo failu: tā izmērs ir {0} baiti, bet brīvi ir tikai {1} baiti.</value>
+    <value>Nepietiek brīvas vietas diskā, lai saspiestu šo failu: tā izmērs ir {0} B, bet brīvi ir tikai {1} B.</value>
   </data>
   <data name="PasswordNotEntered" xml:space="preserve">
     <value>Arhīvs netika izveidots: parole netika ievadīta.</value>
@@ -157,13 +157,13 @@
     <value>Vienums “{0}” izmanto neatbalstītu saspiešanas metodi ar šifrēšanu.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Arhīvs deklarē {0} baitus nesaspiestā veidā, bet mērķī ir brīvi tikai {1} baiti. Izvilkšana tika bloķēta.</value>
+    <value>Arhīvs deklarē {0} B nesaspiestā veidā, bet mērķī ir brīvi tikai {1} B. Izvilkšana tika bloķēta.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
-    <value>Aizdomīga saspiešanas attiecība ({0}:1, deklarēti {1} baiti). Izvilkšana tika noraidīta piesardzības nolūkos pret ZIP bumbām.</value>
+    <value>Aizdomīga saspiešanas attiecība ({0}:1, deklarētais izmērs: {1} B). Izvilkšana tika noraidīta piesardzības nolūkos pret ZIP bumbām.</value>
   </data>
   <data name="TarBombDeclined" xml:space="preserve">
-    <value>Aizdomīga saspiešanas attiecība ({0}:1, deklarēti {1} baiti) visam arhīvam. Izvilkšana tika noraidīta piesardzības nolūkos pret atspiešanas bumbām.</value>
+    <value>Aizdomīga saspiešanas attiecība ({0}:1, deklarētais izmērs: {1} B) visam arhīvam. Izvilkšana tika noraidīta piesardzības nolūkos pret atspiešanas bumbām.</value>
   </data>
   <data name="DestinationFileLocked" xml:space="preserve">
     <value>Nevar ierakstīt “{0}”: mērķa failu ir bloķējis cits process.</value>

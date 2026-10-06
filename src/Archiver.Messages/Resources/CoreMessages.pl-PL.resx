@@ -46,10 +46,10 @@
     <value>Nieznany błąd podczas kompresji.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
-    <value>Nazwa elementu jest za długa dla archiwum ZIP ({0} bajtów w UTF-8; maksimum to {1}).</value>
+    <value>Nazwa elementu jest za długa dla archiwum ZIP ({0} B w UTF-8; maksimum to {1}).</value>
   </data>
   <data name="NotEnoughSpaceToCompress" xml:space="preserve">
-    <value>Za mało wolnego miejsca na dysku, aby skompresować ten plik: ma {0} bajtów, a wolnych jest tylko {1} bajtów.</value>
+    <value>Za mało wolnego miejsca na dysku, aby skompresować ten plik: ma {0} B, a wolne jest tylko {1} B.</value>
   </data>
   <data name="PasswordNotEntered" xml:space="preserve">
     <value>Nie utworzono archiwum: nie wprowadzono hasła.</value>
@@ -157,13 +157,13 @@
     <value>Element „{0}” używa nieobsługiwanej metody kompresji z szyfrowaniem.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Archiwum deklaruje {0} bajtów po rozpakowaniu, ale w miejscu docelowym jest wolnych tylko {1} bajtów. Wypakowywanie zostało zablokowane.</value>
+    <value>Archiwum deklaruje {0} B po rozpakowaniu, ale w miejscu docelowym wolne jest tylko {1} B. Wypakowywanie zostało zablokowane.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
-    <value>Podejrzany współczynnik kompresji ({0}:1, zadeklarowano {1} bajtów). Wypakowywanie odrzucono jako zabezpieczenie przed bombami ZIP.</value>
+    <value>Podejrzany współczynnik kompresji ({0}:1, zadeklarowany rozmiar: {1} B). Wypakowywanie odrzucono jako zabezpieczenie przed bombami ZIP.</value>
   </data>
   <data name="TarBombDeclined" xml:space="preserve">
-    <value>Podejrzany współczynnik kompresji ({0}:1, zadeklarowano {1} bajtów) dla całego archiwum. Wypakowywanie odrzucono jako zabezpieczenie przed bombami dekompresyjnymi.</value>
+    <value>Podejrzany współczynnik kompresji ({0}:1, zadeklarowany rozmiar: {1} B) dla całego archiwum. Wypakowywanie odrzucono jako zabezpieczenie przed bombami dekompresyjnymi.</value>
   </data>
   <data name="DestinationFileLocked" xml:space="preserve">
     <value>Nie można zapisać „{0}”: plik docelowy jest zablokowany przez inny proces.</value>

@@ -102,6 +102,8 @@ File.WriteAllBytes(path, data);
   no template can inflect a noun after a number, and there is no plural engine. A word used for
   an action must be the one in `tests/Archiver.Messages.Tests/Glossary.tsv`; a string kept in two
   sources has one translation (`GlossaryTests`, `SharedStringTests`, `CountTemplateTests`). A
+  size in bytes inside a sentence is written with the unit ("{0} B") in the locales where the
+  noun changes with the number beyond the one-byte case (pl, hr, sr-Latn, sl, lt, lv, ro). A
   string whose meaning depends on where it shows gets a `<comment>` in the English file.
 
 ```csharp

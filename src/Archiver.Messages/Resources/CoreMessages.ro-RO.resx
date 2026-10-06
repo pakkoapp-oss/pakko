@@ -46,10 +46,10 @@
     <value>Eroare necunoscută la comprimare.</value>
   </data>
   <data name="EntryNameTooLong" xml:space="preserve">
-    <value>Numele elementului este prea lung pentru o arhivă ZIP ({0} octeți în UTF-8; maximul este {1}).</value>
+    <value>Numele elementului este prea lung pentru o arhivă ZIP ({0} B în UTF-8; maximul este {1}).</value>
   </data>
   <data name="NotEnoughSpaceToCompress" xml:space="preserve">
-    <value>Spațiu liber insuficient pe disc pentru comprimarea acestui fișier: are {0} octeți, dar sunt liberi doar {1} octeți.</value>
+    <value>Spațiu liber insuficient pe disc pentru comprimarea acestui fișier: are {0} B, dar spațiul liber este de doar {1} B.</value>
   </data>
   <data name="PasswordNotEntered" xml:space="preserve">
     <value>Arhiva nu a fost creată: nu s-a introdus nicio parolă.</value>
@@ -157,13 +157,13 @@
     <value>Elementul „{0}” folosește o metodă de comprimare cu criptare neacceptată.</value>
   </data>
   <data name="InsufficientDiskSpace" xml:space="preserve">
-    <value>Arhiva declară {0} octeți necomprimați, dar destinația are doar {1} octeți liberi. Extragerea a fost blocată.</value>
+    <value>Arhiva declară o dimensiune necomprimată de {0} B, dar la destinație spațiul liber este de doar {1} B. Extragerea a fost blocată.</value>
   </data>
   <data name="ZipBombDeclined" xml:space="preserve">
-    <value>Raport de comprimare suspect ({0}:1, {1} octeți declarați). Extragerea a fost refuzată ca măsură de precauție împotriva bombelor ZIP.</value>
+    <value>Raport de comprimare suspect ({0}:1, dimensiune declarată: {1} B). Extragerea a fost refuzată ca măsură de precauție împotriva bombelor ZIP.</value>
   </data>
   <data name="TarBombDeclined" xml:space="preserve">
-    <value>Raport de comprimare suspect ({0}:1, {1} octeți declarați) pentru întreaga arhivă. Extragerea a fost refuzată ca măsură de precauție împotriva bombelor de decomprimare.</value>
+    <value>Raport de comprimare suspect ({0}:1, dimensiune declarată: {1} B) pentru întreaga arhivă. Extragerea a fost refuzată ca măsură de precauție împotriva bombelor de decomprimare.</value>
   </data>
   <data name="DestinationFileLocked" xml:space="preserve">
     <value>„{0}” nu poate fi scris: fișierul de destinație este blocat de alt proces.</value>
