@@ -160,7 +160,7 @@ jobs:
         run: .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="$env:SONAR_TOKEN"
 
       - name: Set up MSBuild
-        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
+        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
 
       - name: Set up NuGet
         uses: nuget/setup-nuget@b26b823c478ee115be5c9403e62c90b0bf943843 # v3.1.0
@@ -227,7 +227,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Set up MSBuild
-        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
+        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
 
       - name: Import signing certificate
         shell: pwsh
@@ -290,7 +290,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Set up MSBuild
-        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2.0.0
+        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
 
       - name: Import Store signing certificate
         shell: pwsh
