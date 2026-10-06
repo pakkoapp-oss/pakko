@@ -30,9 +30,10 @@ public sealed class ShellCommandsTests : IDisposable
         try { Directory.Delete(_root, recursive: true); } catch (IOException) { /* best-effort temp cleanup */ }
     }
 
-    // T-F356: only a command that always shows a result asks for its window at once.
+    // T-F356: a command that always shows a result asks for its window at once. Scan does too,
+    // but no test here runs a scan (it needs an AMSI provider).
     [Fact]
-    public async Task Begin_OnlyTestAndHashSayTheyEndWithAResult()
+    public async Task Begin_ExtractAndArchiveCanWait_TestAndHashEndWithAResult()
     {
         string zip = MakeZip("kinds.zip", ("a.txt", "A"));
         var ui = new FakeOperationUi();

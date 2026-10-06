@@ -1978,7 +1978,8 @@ re-measured with T-F346's script before and after.
   files compressed in memory stay parallel. Applies wherever that writer runs (more than 64
   files, a password, Fastest; both archive modes). The archive's bytes are the same on any disk.
   A share or a disk that does not answer changes nothing - only an explicit "has a penalty" does.
-  The disk is asked once per folder the sources sit in, not once per path. Not covered:
+  The disk is asked once per folder the sources sit in, not once per path (T-F352's own
+  question still asks per source: it is reached only with 64 files or fewer). Not covered:
   `SeparateArchives` still writes several archives side by side on such a disk, as before. Tests
   first (`ZipArchiveServiceWriterChoiceTests`, `ParallelSingleArchiveWriterTests.OneAtATime_*`,
   `DiskSeekPenaltyTests`); eight mutants, all caught. Stays `[~]` until measured on a spinning
@@ -2014,8 +2015,11 @@ re-measured with T-F346's script before and after.
   the elapsed time and the helper's 1 s show delay is shortened by it). Cost: a conflict prompt in
   the first half second 676 -> 731 ms. Condition (1) below: the helper is started with a handle
   list (`HandleListProcess`), so it cannot take a `tar.exe` pipe. On device (dev 1.7.1.7): fast
-  extract and archive start no helper process; 6000 files from a ZIP and from a .7z (tar.exe
-  running while the helper starts) show the window and finish; Cancel leaves only the archive;
+  extract and archive start no helper process; 6000 files from a ZIP and from a .7z show the
+  window and finish (the .7z run alone, by parent process: the helper appeared at 0.8 s with
+  `tar.exe` alive from 0.4 to 4.4 s); from Explorer's real context menu the window of a long
+  extraction and the conflict prompt are the foreground window when they show
+  (`GetForegroundWindow`, T-F253); Cancel leaves only the archive;
   conflict Skip and Overwrite, password prompt then result, Test result and Close - each through
   the window's own buttons; no helper process is left after Shell exits. Not checked on device:
   the helper failing to start (tests only). Tests first, twelve mutants caught. Details:

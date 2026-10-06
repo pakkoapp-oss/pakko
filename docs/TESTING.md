@@ -527,7 +527,7 @@ tests caught before shipping):
   nothing starts after the end, eight prompts racing the timer share one window;
   `HelperOperationUiTests` - the helper is not launched for a fast operation, `Begin` carries the
   elapsed time, `endsWithResult` launches at once, a launch that fails when needed goes to the
-  fallback (the 37 older tests pin `StartDelay = 0`); `ShellCommandsTests.Begin_OnlyTestAndHash...`;
+  fallback (the 37 older tests pin `StartDelay = 0`); `ShellCommandsTests.Begin_ExtractAndArchiveCanWait_...` (Scan's flag has no test);
   `OperationWindowModelTests.ShowDelayFor_*`; `HandleListProcessTests` - a real child (`ping.exe`)
   on real pipes does not hold an inheritable handle it was not given (fails when the handle list
   is dropped), holds the one it was given, and the command line reads back through
