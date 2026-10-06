@@ -1856,7 +1856,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F346 — A script that measures start-up, so a change can be compared (P2)
 
-- [ ] **Status:** open. `scripts/Measure-Startup.ps1`: N warm launches of the installed package,
+- [x] **Status:** done 2026-10-06. Baseline on dev 1.7.1.1 (medians, 7 counted launches): App window 668 ms, CPU 1047 ms, working set 138 MB, private 61 MB, 38 threads; Explorer Open 873 ms; Extract here: files 577 ms, Shell exit 843 ms; `pakko --help` 166 ms, `pakko l` 311 ms. Run under Windows PowerShell 5.1; PSScriptAnalyzer clean. **Was:** `scripts/Measure-Startup.ps1`: N warm launches of the installed package,
   median and minimum of (a) App start to visible window, (b) `Archiver.Shell.exe --open-ui
   --browse` to visible App window, (c) `--extract-here` of a generated 200-file ZIP: files written
   and Shell exit, (d) `pakko --help` and `pakko l`; plus working set, private bytes, threads and
