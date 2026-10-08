@@ -2015,6 +2015,19 @@ re-measured with T-F346's script before and after.
   disk (before/after on a few large files beside many small ones).
 - **Reported by:** the user's decision, 2026-10-06.
 
+### T-F360 — Extract: an "apply the download mark" checkbox, on by default (P2)
+
+- [ ] **Status:** open, decided 2026-10-08, plan first. The user's idea: a checkbox, on by
+  default, that applies the archive's `Zone.Identifier` to the extracted files; unchecking it
+  shows the risk under it. The user's decisions: unchecked means no mark at all (not
+  `UnsafeExtensionsOnly`, whose list has no Office, PDF or ISO types); Group Policy's `MotwMode`
+  (T-F51) wins - when set, the checkbox is locked and says so; in the App's Extract wizard, the
+  Shell's "Extract..." dialog and a `pakko x` switch ("Extract here" has no dialog and keeps the
+  mark); shown only for an archive that carries the mark. The mark costs ~1.5 ms per file (T-F358),
+  ~15 s per 10,000 small files - the text may say so. All 37 locales. Changes the MOTW hard
+  constraint in `CLAUDE.md` and `SECURITY.md` - the user gave permission for this task.
+- **Reported by:** the user, 2026-10-08.
+
 ### T-F354 — App: load the hidden parts of `MainWindow.xaml` on first use (P3, measure first)
 
 - [ ] **Status:** open. `LoadComponent` is ~148 ms of the start; browse mode and the password
