@@ -532,6 +532,15 @@ tests caught before shipping):
   on real pipes does not hold an inheritable handle it was not given (fails when the handle list
   is dropped), holds the one it was given, and the command line reads back through
   `CommandLineToArgvW`. Twelve mutants, all caught.
+- `ArchiveEntrySecurityMotwTests` (`Archiver.Core.Tests/Services/`, T-F358) - `ReadMotw` returns
+  the archive's mark, null for `Disabled`, an unmarked archive or a path that cannot be read;
+  `TryWriteMotw` marks any file under `AllFiles` and only the listed extensions under
+  `UnsafeExtensionsOnly`, replaces a mark already there, works while the file is still open for
+  writing, never throws; `TryPropagateMotw` (tar's path) still keeps the file's time.
+  `ZipArchiveServiceExtractTimesTests.ExtractAsync_WithOrWithoutProgressAndMark_...` covers both
+  copy branches with and without the mark. Ten of eleven mutants caught; the one that survives
+  drops the flush before the time is set - NTFS keeps a time set through a handle when that handle
+  writes later, so no test on this machine can see it (kept for a share).
 - `PolicyOwnershipTests` (`Archiver.Core.Tests/Services/`, T-F261/T-F250) — Group Policy has one
   owner: every engine/router constructor requires a non-null `GroupPolicyOptions` (reflection);
   `TarSandboxedService` refuses Extract/List/Compress under `DisableTarExtraction` and never runs

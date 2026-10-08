@@ -170,6 +170,35 @@ public sealed class ZipArchiveServiceExtractTimesTests : IDisposable
         File.GetLastWriteTimeUtc(file).Should().Be(NtfsUtc);
     }
 
+    // T-F358: the mark and the time are set before the file's one close; both copy paths (with a
+    // progress reporter and without) must leave what T-F298 fixed.
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public async Task ExtractAsync_WithOrWithoutProgressAndMark_FileHasTheEntryTimeAndItsContent(bool withProgress, bool marked)
+    {
+        string archive = Zip("both.zip", FileEntry("a.txt", LegacyZipBuilder.NtfsTimeExtra(NtfsUtc.ToFileTimeUtc())), FileEntry("b.txt"));
+        if (marked)
+            File.WriteAllText(archive + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n");
+        string dest = Path.Combine(_temp.Path, "out-both");
+
+        ArchiveResult result = await _sut.ExtractAsync(
+            new ExtractOptions { ArchivePaths = [archive], DestinationFolder = dest, Mode = ExtractMode.SingleFolder },
+            withProgress ? new Progress<ProgressReport>() : null);
+
+        result.Success.Should().BeTrue();
+        string a = Path.Combine(dest, "a.txt"), b = Path.Combine(dest, "b.txt");
+        File.GetLastWriteTimeUtc(a).Should().Be(NtfsUtc);
+        File.GetLastWriteTime(b).Should().Be(DosLocal);
+        File.ReadAllText(a).Should().Be("content of a.txt");
+        File.Exists(a + ":Zone.Identifier").Should().Be(marked);
+        File.Exists(b + ":Zone.Identifier").Should().Be(marked);
+        if (marked)
+            File.ReadAllText(b + ":Zone.Identifier").Should().Contain("ZoneId=3");
+    }
+
     [Fact]
     public async Task ExtractAsync_EncryptedEntry_FileGetsTheEntryTime()
     {

@@ -11354,3 +11354,30 @@ test with a real child and a second inheritable pipe fails without the list.
 and it protects only launches that take it. `InternalsVisibleTo` Shell for Core's
 `LaunchAttributeList`: that grant is for tests. Changing the protocol version for `ElapsedMs`: the
 field is optional and both ends ship in one package.
+
+## T-F358 — the mark and the time are set before the extracted file's one close (2026-10-08)
+
+**Decision (the user's: "yes, including the MOTW write").** `ZipArchiveService` reads the archive's
+`Zone.Identifier` once per archive (`ExtractionPlan.Motw`), and for every extracted file writes
+the mark and sets the entry's time while the content's `FileStream` is still open: flush, the
+mark through the path's `:Zone.Identifier`, the time through the stream's handle, then the close.
+Before, each file was opened three times - content, mark, time.
+
+**Why.** Profiled, not guessed: under Defender's filter an open and a close cost a small file
+more than its content does (create ~350 us, close ~280), and an archive without a mark paid a
+failed open and an exception per file. Result in TASKS.md's T-F358 entry (-12% / -11%; an
+unmarked archive now as fast as 7za).
+
+**What stays.** The order content -> mark -> time (T-F45, T-F298): the mark is written through
+another handle and changes the file's time, so the time still goes last. Writing the mark before
+the content measured 5% faster on a marked archive and was not taken for that reason. The mark is
+still written on every file `MotwMode` covers - `SECURITY.md` describes behaviour, which did not
+change. Tar's path still calls `TryPropagateMotw` after its own move (rewritten on the same two
+helpers).
+
+**The flush.** NTFS keeps a time set through a handle even when that handle writes later, so on
+this machine the flush changes nothing a test can see; it is there for a file system that does
+not (a share), where the buffered tail written at the close would otherwise replace the time.
+
+**Not taken (yet).** `CreateDirectory` once per folder instead of once per file measured ~3% more
+and was left out of this change.

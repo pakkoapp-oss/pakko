@@ -1960,7 +1960,20 @@ re-measured with T-F346's script before and after.
 
 ### T-F358 — ZIP extraction of small files costs twice 7za's time, and the mark nearly doubles it again (P2, measure first)
 
-- [ ] **Status:** open. From T-F353's measurement (5000 small files, Release, Defender on): 12.8 s
+- [x] **Status:** done 2026-10-08. Profiled first (2000 small files, Release, per file): the
+  file was opened three times - content, mark, time - and every open and close goes through
+  Defender's filter (create ~350 us, close ~280, mark ~2200, time by path 130-185); for an archive
+  without the mark each file also paid a failed open and an exception. Now the archive's mark is
+  read once (`ArchiveEntrySecurity.ReadMotw`), and the mark and the entry's time are set before the
+  file's one close (`ZipArchiveService.MarkAndSetTime`: flush, mark, time through the handle); the
+  order content -> mark -> time (T-F45, T-F298) is kept, `SECURITY.md` is unchanged. Same session,
+  medians of 7 rounds alternating with 7za: archive without the mark 1116 -> 987 us per file (7za
+  1006 -> 993), with the mark 2780 -> 2481 (7za writes none). The mark itself (~1.5 ms, Defender
+  scanning the new stream) stays; writing it before the content was faster still (-5%) and was
+  not taken, since it changes the order. Checked on device (1.7.1.8, Explorer's "Extract to
+  folder" path): a marked ZIP, .7z and .tar.gz give every file the mark and the entry's time, an
+  unmarked ZIP gives none and the time.
+- **Was:** open. From T-F353's measurement (5000 small files, Release, Defender on): 12.8 s
   against 7za's 6.2 s - ~2.5 ms per file against ~1.2 ms; an archive carrying `Zone.Identifier`
   (every downloaded one) takes 22.4 s, ~1.9 ms more per file for the second stream. Not profiled:
   where the 2.5 ms goes (staging folder and commit, per-entry path checks, the stream stack),

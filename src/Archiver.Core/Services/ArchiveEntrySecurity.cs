@@ -135,30 +135,15 @@ internal static partial class ArchiveEntrySecurity
     // UnsafeExtensionsOnly, T-F51) if destFilePath's extension isn't in the unsafe-extension list.
     public static void TryPropagateMotw(string archivePath, string destFilePath, MotwMode mode = MotwMode.AllFiles)
     {
-        if (mode == MotwMode.Disabled)
-            return;
-
-        if (mode == MotwMode.UnsafeExtensionsOnly && !_unsafeExtensions.Contains(Path.GetExtension(destFilePath)))
+        if (ReadMotw(archivePath, mode) is not { } mark || !MotwAppliesTo(destFilePath, mode))
             return;
 
         try
         {
-            using var source = new FileStream(
-                archivePath + ":Zone.Identifier",
-                FileMode.Open,
-                FileAccess.Read,
-                FileShare.Read);
             // T-F298: writing the stream updates the file's own modification time — confirmed on
             // device — which lost the archive's time for every downloaded archive, tar included.
             DateTime modifiedUtc = File.GetLastWriteTimeUtc(destFilePath);
-            using (var dest = new FileStream(
-                destFilePath + ":Zone.Identifier",
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.None))
-            {
-                source.CopyTo(dest);
-            }
+            TryWriteMotw(mark, destFilePath, mode);
             FileTimes.TrySetFile(destFilePath, modifiedUtc);
         }
         catch
@@ -166,6 +151,46 @@ internal static partial class ArchiveEntrySecurity
             // MOTW propagation is best-effort — never surfaces to caller
         }
     }
+
+    // T-F358: the archive's Zone.Identifier, read once per archive instead of once per extracted
+    // file (for an archive without one that was a failed open and an exception per file). Null
+    // when the mode is Disabled, the archive has none, or it cannot be read. Never throws.
+    public static byte[]? ReadMotw(string archivePath, MotwMode mode)
+    {
+        if (mode == MotwMode.Disabled)
+            return null;
+
+        try
+        {
+            return File.ReadAllBytes(archivePath + ":Zone.Identifier");
+        }
+        catch
+        {
+            // MOTW propagation is best-effort — never surfaces to caller
+            return null;
+        }
+    }
+
+    // T-F358: writes the mark on one extracted file - the stream only. It changes the file's
+    // modification time (T-F298), so the caller sets the time after it. Best-effort, never throws.
+    public static void TryWriteMotw(byte[] mark, string destFilePath, MotwMode mode)
+    {
+        if (!MotwAppliesTo(destFilePath, mode))
+            return;
+
+        try
+        {
+            File.WriteAllBytes(destFilePath + ":Zone.Identifier", mark);
+        }
+        catch
+        {
+            // MOTW propagation is best-effort — never surfaces to caller
+        }
+    }
+
+    private static bool MotwAppliesTo(string destFilePath, MotwMode mode) =>
+        mode == MotwMode.AllFiles
+        || (mode == MotwMode.UnsafeExtensionsOnly && _unsafeExtensions.Contains(Path.GetExtension(destFilePath)));
 
     // T-F94: replaces the old auto-reject-only model. An archive whose declared uncompressed
     // size exceeds MaxCompressionRatio against its compressed size is no longer always rejected —

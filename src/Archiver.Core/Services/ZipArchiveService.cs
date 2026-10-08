@@ -1451,7 +1451,10 @@ public sealed class ZipArchiveService : IArchiveService
         var claimedFinalPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         var plan = new ExtractionPlan(staging, tempDest, fullTempDest, actualDest, stripRootPrefix, totalUncompressedBytes, claimedFinalPaths,
-            encryptedEntryMap, rawArchiveStream);
+            encryptedEntryMap, rawArchiveStream)
+        {
+            Motw = ArchiveEntrySecurity.ReadMotw(archivePath, context.MotwMode),
+        };
 
         // T-F216: what this archive's loop adds, to tell "the user skipped everything" apart.
         int userSkipsBefore = context.ConflictResolver.UserSkipCount;
@@ -1535,7 +1538,11 @@ public sealed class ZipArchiveService : IArchiveService
         HashSet<string> ClaimedFinalPaths,
         // T-F189: both null unless context.Password is set — see ExtractWithSmartFolderingAsync.
         Dictionary<ZipArchiveEntry, LocatedZipEntry>? EncryptedEntryMap = null,
-        Stream? RawArchiveStream = null);
+        Stream? RawArchiveStream = null)
+    {
+        // T-F358: the archive's Zone.Identifier, read once; null when there is none to write.
+        public byte[]? Motw { get; init; }
+    }
 
     // One entry of ExtractWithSmartFolderingAsync's loop — every one of the 6 skip-gates below is
     // already commented with its own T-Fxx tag and is self-contained. Returns whether the entry
@@ -1699,14 +1706,8 @@ public sealed class ZipArchiveService : IArchiveService
             return (false, named.Entry.Length);
         }
 
-        await CopyEntryToDestinationAsync(named, entryStream!, destFilePath, plan.TotalUncompressedBytes,
+        await CopyEntryToDestinationAsync(named, entryStream!, destFilePath, plan,
             bytesReadSoFar, context, cancellationToken).ConfigureAwait(false);
-
-        // T-F45: Propagate Zone.Identifier ADS from archive to extracted file
-        ArchiveEntrySecurity.TryPropagateMotw(archivePath, destFilePath, context.MotwMode);
-
-        // T-F298: the entry's own time, as 7-Zip restores it; the commit's moves keep it.
-        FileTimes.TrySetFile(destFilePath, named.ModifiedUtc);
 
         return (true, named.Entry.Length);
     }
@@ -1766,12 +1767,12 @@ public sealed class ZipArchiveService : IArchiveService
     // identically either way. This is what gives an encrypted entry real byte-accurate T-F16
     // progress with no special-casing (see docs/DECISIONS.md's T-F189 streaming design point).
     private static async Task CopyEntryToDestinationAsync(
-        NamedZipEntry named, Stream entryStream, string destFilePath, long totalUncompressedBytes,
+        NamedZipEntry named, Stream entryStream, string destFilePath, ExtractionPlan plan,
         long bytesReadSoFar, ZipExtractionContext context, CancellationToken cancellationToken)
     {
         try
         {
-            await CopyEntryStreamAsync(named, entryStream, destFilePath, totalUncompressedBytes, bytesReadSoFar, context, cancellationToken)
+            await CopyEntryStreamAsync(named, entryStream, destFilePath, plan, bytesReadSoFar, context, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch
@@ -1783,9 +1784,10 @@ public sealed class ZipArchiveService : IArchiveService
     }
 
     private static async Task CopyEntryStreamAsync(
-        NamedZipEntry named, Stream entryStream, string destFilePath, long totalUncompressedBytes,
+        NamedZipEntry named, Stream entryStream, string destFilePath, ExtractionPlan plan,
         long bytesReadSoFar, ZipExtractionContext context, CancellationToken cancellationToken)
     {
+        long totalUncompressedBytes = plan.TotalUncompressedBytes;
         if (context.Progress != null && totalUncompressedBytes > 0)
         {
             await using var ps = new ProgressStream(entryStream, totalUncompressedBytes, bytesReadSoFar, context.Progress, Path.GetFileName(named.FullName));
@@ -1797,6 +1799,7 @@ public sealed class ZipArchiveService : IArchiveService
                 bufferSize: CopyBufferSize,
                 useAsync: true);
             await ps.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
+            MarkAndSetTime(fileStream, destFilePath, named.ModifiedUtc, plan.Motw, context.MotwMode);
         }
         else
         {
@@ -1810,8 +1813,23 @@ public sealed class ZipArchiveService : IArchiveService
                     bufferSize: CopyBufferSize,
                     useAsync: true);
                 await entryStream.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
+                MarkAndSetTime(fileStream, destFilePath, named.ModifiedUtc, plan.Motw, context.MotwMode);
             }
         }
+    }
+
+    // T-F45, T-F298: the archive's mark, then the entry's own time, as 7-Zip restores it - the
+    // mark changes the time, so the time goes last; the commit's moves keep both. T-F358: both
+    // before the file's one close. Each file used to be opened three times (content, mark, time),
+    // and under an antivirus filter the opens and closes are most of a small file's cost.
+    private static void MarkAndSetTime(FileStream fileStream, string destFilePath, DateTime modifiedUtc, byte[]? motw, MotwMode motwMode)
+    {
+        // NTFS keeps a time set through a handle when that handle writes later; a file system that
+        // does not (a share) would take the time of the buffered tail written at the close.
+        fileStream.Flush();
+        if (motw is not null)
+            ArchiveEntrySecurity.TryWriteMotw(motw, destFilePath, motwMode);
+        FileTimes.TrySetFile(fileStream.SafeFileHandle, modifiedUtc);
     }
 
     // The progress-tracking trio AddEntryFromFileAsync's 3 call sites all pass explicitly —
