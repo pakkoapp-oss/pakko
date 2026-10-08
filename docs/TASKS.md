@@ -2052,7 +2052,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F355 — Native AOT: a spike for `pakko`, Shell and the App (decision needed)
 
-- [~] **Status:** implemented and smoke-tested 2026-10-08; `[x]` after the merge's CI artifact check. Spike (branch
+- [x] **Status:** done 2026-10-09 (implemented and smoke-tested 2026-10-08). Spike (branch
   `spike/native-aot`) numbers, x64 medians: `pakko x` (ZIP) 133 -> 34 ms, Shell "Extract here"
   (ZIP) 151-192 -> 32 ms, App window 587 -> ~430 ms, App working set 139 -> 105 MB, MSIX 62.9 ->
   14.8 MB (346 -> 27 files), CLI zip 37.8 -> 2.8 MB. **User decision 2026-10-08: the whole project
@@ -2069,8 +2069,11 @@ re-measured with T-F346's script before and after.
   About, Recycle Bin, light theme; CLI pipes, `h -si`, `-snz0`, Ctrl+C -> 255; no Pakko crash in
   the event log. The canary on the branch ran the AOT `pakko.exe` 77/77 natively on an ARM64
   runner too. Not done here: Group Policy (HKLM needs UAC), keyboard/narrow window, WACK, the
-  ARM64 package on a device (no hardware). Before `[x]`: the CI-built MSIX and CLI zip after the
-  merge (native exes, contents, Subprocess layer).
+  ARM64 package on a device (no hardware); Group Policy, WACK, drag-drop and the language change
+  wait for the pre-release checks. **CI artifacts after the merge** (run 37841989204, 4cbd691):
+  both bundles one inner package, 24 files, 14.1/13.7 MB, 37 languages, no `coreclr.dll` and no
+  managed `.dll`, all four exes native with the same icons and versions as the local build; the
+  CLI zips hold `pakko.exe` alone, and the x64 one passed the Subprocess layer 77/77.
   One unrelated finding: T-F362.
 - **Reported by:** performance study, 2026-10-06.
 
