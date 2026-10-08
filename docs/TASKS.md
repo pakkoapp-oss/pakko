@@ -2125,12 +2125,53 @@ re-measured with T-F346's script before and after.
   mutants killed (no length guard, case-sensitive match).
 - **Reported by:** T-F355 smoke, 2026-10-08.
 
-### T-F363 — Windows App SDK 2.x and SDK BuildTools 10.0.28000, App and the operation window together (P3)
+### T-F363 — Windows App SDK 2.x, SDK BuildTools 10.0.28000 and C# 14, one wave (P3)
 
-- [ ] **Status:** open. Dependabot proposed both for `Archiver.OperationUi` alone (#13 BuildTools
-  10.0.26100.7705 -> 10.0.28000.2705, #22 Microsoft.WindowsAppSDK 1.8.260209005 -> 2.5.1); closed,
-  because the two WinUI exes must stay on one Windows App SDK and the bump changes the shipped
-  binaries under Native AOT (T-F355). Do both projects in one change: read the 2.x release notes
-  (breaking changes, AOT/CsWinRT), build both architectures, run the T-F355 smoke rows for the App
-  and the operation window on the deployed package.
-- **Reported by:** Dependabot, 2026-10-08.
+- [ ] **Status:** open. **Part A (packages).** Dependabot proposed both for `Archiver.OperationUi`
+  alone (#13 BuildTools 10.0.26100.7705 -> 10.0.28000.2705, #22 Microsoft.WindowsAppSDK
+  1.8.260209005 -> 2.5.1); closed, because the two WinUI exes must stay on one Windows App SDK and
+  the bump changes the shipped binaries under Native AOT (T-F355). Do both projects in one change:
+  read the 2.x release notes (breaking changes, AOT/CsWinRT), build both architectures, run the
+  T-F355 smoke rows for the App and the operation window on the deployed package.
+- **Part B (C# 12 -> 14, user request 2026-10-08).** `LangVersion` 12 is pinned in
+  `Directory.Build.props` and repeated in six `.csproj` files (App, CLI, Core, Shell, CLI.Tests,
+  Shell.Tests); the pin was kept by T-F270 only because C# 14 rebinds span calls. Move every
+  project to 14 in one commit, taking C# 13 along. Known break, found by reading the official
+  breaking-change list against the code: `StdinPathList.cs:43`,
+  `MemoryMarshal.Cast<byte, char>(bytes)` on a `byte[]` - C# 14 sees both the `Span` and the
+  `ReadOnlySpan` overload (the documented `MemoryMarshal.Cast` case); write `bytes.AsSpan()`.
+  Then a full build with `TreatWarningsAsErrors` (new CS9258/CS9272/redundant-`or`-pattern
+  warnings become errors), the whole test suite, mutants on the touched code, and the T-F355 smoke
+  rows, since the AOT binaries change. Features adopted in the same wave only where the table
+  below says so; each adoption is its own reviewed step, not a sweep.
+
+  Every C# 13 and 14 feature (Microsoft Learn "What's new in C# 13/14" and the compiler breaking
+  changes for .NET 9 and .NET 10), against Pakko's code (grep of `src/`, 2026-10-08):
+
+  | C# | Feature | Pakko today | Use for us |
+  |---|---|---|---|
+  | 13 | `params` collections (`params ReadOnlySpan<T>`, `IEnumerable<T>`, ...) | 10 `params object[]` (`CoreMessages.Text/Error/Skip`, `CoreText`, the Shell localizers) | Small: `params ReadOnlySpan<object?>` saves an array per message; only if a profile shows it. Keep arrays otherwise |
+  | 13 | `System.Threading.Lock` with the `lock` statement | 37 `lock` statements, 6 `readonly object` lock fields (LogService, CliProgress, AppContainerProfile, DeferredOperationSession, HelperOperationUi, Win32OperationUi) | **Yes**: change the 6 field types to `Lock` - clearer intent, cheaper than `Monitor`, a typed lock cannot be locked by accident on another object. Mechanical, tests exist |
+  | 13 | `\e` escape | no ESC literals | None |
+  | 13 | Method group natural type improvements | transparent | None (compiler only) |
+  | 13 | `^` index in object initializers | not used | None |
+  | 13 | `ref` locals / `ref struct` in async and iterators; `unsafe` in iterators | Core works on spans in sync helpers and copies around `await` | Some: lets a span helper live inside an async method without a sync split. Use when touching such code, not as a sweep |
+  | 13 | `ref struct` implementing interfaces; `allows ref struct` | no own `ref struct` types | None |
+  | 13 | Partial properties and indexers | 29 `[ObservableProperty]` fields (App, `MainViewModel`), `MVVMTK0045` suppressed | **Yes, the main gain**: MVVM Toolkit 8.4 asks for partial properties so CsWinRT sees them - the AOT-safe form (T-F355 research item 4) - and lets `NoWarn MVVMTK0045` go. Convert all 29 (toolkit code fixer MVVMTK0042), device check of every bound list |
+  | 13 | `OverloadResolutionPriorityAttribute` | library authors' tool | None |
+  | 14 | `field` keyword (field-backed properties) | 14 hand-written `set` accessors in `src/` (grep; which of them only validate or notify is to be read) | **Yes**: drops the backing field where a setter only validates or notifies. Breaks: none found - `field` appears only as a method parameter (`TarHeaderNames`), which stays legal |
+  | 14 | Extension members (extension properties, static extensions) | no extension-method classes | None now |
+  | 14 | Null-conditional assignment `a?.B = c` | none found by a grep for `if (x is not null)` + `x.P = ...` | Small: readability where it occurs |
+  | 14 | `nameof` of an unbound generic (`nameof(List<>)`) | not needed | None |
+  | 14 | First-class `Span`/`ReadOnlySpan` implicit conversions | **the one known break** (`StdinPathList.cs:43`); risk of a different overload for array arguments - covariant arrays could throw `ArrayTypeMismatchException` | Gain: span APIs take arrays directly. Cost: review every `MemoryExtensions`/`MemoryMarshal` call on arrays; the tests and the smoke must stay green |
+  | 14 | Modifiers on simple lambda parameters (`(text, out result) => ...`) | not counted | Small |
+  | 14 | Partial events and constructors | generators (CsWinRT, LibraryImport, JSON) do not need them | None |
+  | 14 | User-defined compound assignment operators | no operator types | None |
+  | 14 | File-based app directives (`#:package`) | not an app style we use | None (could replace throwaway `.ps1` probes, not needed) |
+
+  Breaking changes checked against the code: `scoped` as a lambda type name (none), `extension` as
+  a type name (only locals named `extension` - legal), `partial` as a return type (none),
+  `field` inside accessors (none), redundant `is not X or Y` patterns (none), `Enumerable.Reverse`
+  on arrays (does not apply on `net10.0`), collection-expression overload changes (spot-check the
+  `[]` call sites when building), iterator safe context in `unsafe` classes (none).
+- **Reported by:** Dependabot, 2026-10-08 (Part A); the user, 2026-10-08 (Part B).
