@@ -56,12 +56,18 @@ public static class ArchiveNaming
     /// <summary>
     /// T-F264: the "name (1)", "name (2)", ... rule every rename-on-conflict path uses — the number
     /// goes before the extension. <paramref name="isTaken"/> decides what counts as taken (a file
-    /// on disk, a name already claimed in memory).
+    /// on disk, a name already claimed in memory). A compound tar extension counts as one (T-F362:
+    /// "src (1).tar.gz", not "src.tar (1).gz").
     /// </summary>
     public static string GetUniqueName(string fileName, Func<string, bool> isTaken)
     {
         if (!isTaken(fileName))
             return fileName;
+
+        string? compound = CompoundExtensions.FirstOrDefault(
+            ext => fileName.Length > ext.Length && fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase));
+        if (compound is not null)
+            return Number(fileName[..^compound.Length], fileName[^compound.Length..], isTaken);
         return Number(Path.GetFileNameWithoutExtension(fileName), Path.GetExtension(fileName), isTaken);
     }
 

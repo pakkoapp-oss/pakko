@@ -577,6 +577,30 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         File.ReadAllText(existingDest).Should().Be("not a real tar, just occupying the name");
     }
 
+    // T-F362: found on device - "src.tar (1).xz" next to an existing src.tar.xz.
+    [Integration]
+    public async Task CompressAsync_RenameConflictOnCompoundExtension_NumbersBeforeTheWholeExtension()
+    {
+        string srcFile = Path.Combine(_temp.Path, "a.txt");
+        File.WriteAllText(srcFile, "new content");
+        string existingDest = Path.Combine(_temp.Path, "out.tar.xz");
+        File.WriteAllText(existingDest, "not a real archive, just occupying the name");
+
+        ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [srcFile],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "out",
+            Format = ArchiveContainerFormat.TarXz,
+            OnConflict = ConflictBehavior.Rename,
+        });
+
+        result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+        File.Exists(Path.Combine(_temp.Path, "out (1).tar.xz")).Should().BeTrue();
+        File.Exists(Path.Combine(_temp.Path, "out.tar (1).xz")).Should().BeFalse();
+        File.ReadAllText(existingDest).Should().Be("not a real archive, just occupying the name");
+    }
+
     // T-F158: CompressAsync's Overwrite/Skip arms had no direct coverage before this task deleted
     // TarSandboxedService's own private ResolveDestinationConflictAsync in favor of the shared
     // DestinationConflictResolver — only Rename (above) was tested. Mirrors

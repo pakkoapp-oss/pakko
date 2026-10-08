@@ -180,6 +180,31 @@ public sealed class ArchiveNamingTests
         ArchiveNaming.GetUniqueName("report.txt", taken.Contains).Should().Be("report (2).txt");
     }
 
+    // T-F362: a compound tar extension is one extension - the number goes before ".tar.gz", not
+    // between ".tar" and ".gz".
+    [Theory]
+    [InlineData("src.tar.gz", "src (1).tar.gz")]
+    [InlineData("src.tar.bz2", "src (1).tar.bz2")]
+    [InlineData("src.tar.xz", "src (1).tar.xz")]
+    [InlineData("src.tar.zst", "src (1).tar.zst")]
+    [InlineData("src.tar.lzma", "src (1).tar.lzma")]
+    [InlineData("SRC.TAR.GZ", "SRC (1).TAR.GZ")]
+    [InlineData("my.backup.tar.gz", "my.backup (1).tar.gz")]
+    public void GetUniqueName_CompoundTarExtension_NumbersBeforeTheWholeExtension(string name, string expected)
+    {
+        ArchiveNaming.GetUniqueName(name, c => c == name).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("notes.tar.gz.txt", "notes.tar.gz (1).txt")]
+    [InlineData("data.gz", "data (1).gz")]
+    [InlineData("archive.tar", "archive (1).tar")]
+    [InlineData(".tar.gz", ".tar (1).gz")]
+    public void GetUniqueName_NotACompoundTarName_KeepsTheLastExtensionRule(string name, string expected)
+    {
+        ArchiveNaming.GetUniqueName(name, c => c == name).Should().Be(expected);
+    }
+
     [Fact]
     public void GetUniqueFolderName_ExistingFolders_NumbersTheWholeName()
     {

@@ -2114,10 +2114,13 @@ re-measured with T-F346's script before and after.
 
 ### T-F362 — a renamed archive of a compound extension gets its number in the wrong place (P3)
 
-- [ ] **Status:** open. Creating `src.tar.xz` where one exists, with "Rename (add a number)", names
-  the new archive `src.tar (1).xz`, not `src (1).tar.xz`. `ArchiveNaming.GetUniqueName` splits on
-  `Path.GetExtension` (the last dot only), while `ArchiveNaming` already knows the compound
-  extensions (T-F103). Not new with AOT: Core code, found by the T-F355 smoke. Tests first: every
-  compound extension (`.tar.gz`, `.tar.bz2`, `.tar.xz`, `.tar.zst`, `.tar.lzma`), and a plain name
-  that only looks compound stays as it is.
+- [x] **Status:** done 2026-10-08 (user: "do it now"). Creating `src.tar.xz` where one exists, with
+  "Rename (add a number)", named the new archive `src.tar (1).xz`, not `src (1).tar.xz`:
+  `ArchiveNaming.GetUniqueName` split on `Path.GetExtension` (the last dot only), while
+  `ArchiveNaming` already knew the compound extensions (T-F103). Not new with AOT: Core code, found
+  by the T-F355 smoke. Now a compound tar extension is one extension for every rename-on-conflict
+  path (archive creation, extraction, duplicate entry names). Tests first (8 red): every compound
+  extension and case, a dotted stem; names that only look compound (`notes.tar.gz.txt`, `.tar.gz`
+  alone) keep the old rule; `TarSandboxedService` creating over an existing `out.tar.xz`. Two
+  mutants killed (no length guard, case-sensitive match).
 - **Reported by:** T-F355 smoke, 2026-10-08.
