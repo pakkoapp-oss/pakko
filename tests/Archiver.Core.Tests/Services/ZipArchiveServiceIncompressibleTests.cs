@@ -148,6 +148,48 @@ public sealed class ZipArchiveServiceIncompressibleTests : IDisposable
             .Should().HaveCount(80).And.OnlyContain(e => e.Located.RealCompressionMethod == StoredMethod);
     }
 
+    // T-F357: a stored entry above the in-memory threshold is copied from its source, which is held
+    // open until then; when ArchiveAsync returns every source is free again (Delete after operation
+    // comes next), and each entry still round-trips.
+    [Theory]
+    [InlineData(ArchiveMode.SingleArchive)]
+    [InlineData(ArchiveMode.SeparateArchives)]
+    public async Task ArchiveAsync_LargeStoredAndDeflatedFiles_RoundTripAndTheSourcesAreFreeAfterwards(ArchiveMode mode)
+    {
+        int large = (int)(ParallelSingleArchiveWriter.InMemoryCompressByteThreshold * 3);
+        string[] sources =
+        [
+            WriteRandomFile("a-random.bin", large, seed: 1),
+            WriteRandomFile("b-random.bin", large + 5, seed: 2),
+            WriteTextFile("c-text.txt", large),
+        ];
+        string outDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(outDir);
+
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = sources, DestinationFolder = outDir, ArchiveName = mode == ArchiveMode.SingleArchive ? "out" : null,
+            Mode = mode, CompressionLevel = CompressionLevel.Fastest,
+        });
+
+        result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+        var methods = result.CreatedFiles.SelectMany(ReadRawEntries).ToDictionary(e => e.Name, e => e.Located.RealCompressionMethod);
+        methods.Should().Equal(new Dictionary<string, ushort>
+        {
+            ["a-random.bin"] = StoredMethod, ["b-random.bin"] = StoredMethod, ["c-text.txt"] = DeflateMethod,
+        });
+        string destDir = Path.Combine(_temp.Path, "x");
+        foreach (string archive in result.CreatedFiles)
+            (await _sut.ExtractAsync(new ExtractOptions { ArchivePaths = [archive], DestinationFolder = destDir, Mode = ExtractMode.SingleFolder }))
+                .Success.Should().BeTrue();
+        foreach (string source in sources)
+        {
+            File.ReadAllBytes(Path.Combine(destDir, Path.GetFileName(source))).Should().Equal(File.ReadAllBytes(source));
+            File.Delete(source);
+        }
+        Directory.GetDirectories(outDir, ".pakko-tmp-*").Should().BeEmpty();
+    }
+
     [Theory]
     [MemberData(nameof(Sizes))]
     public async Task ArchiveAsync_CompressibleFileAtFastest_StaysDeflated(int size)

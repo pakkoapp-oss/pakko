@@ -1950,7 +1950,21 @@ re-measured with T-F346's script before and after.
 
 ### T-F357 — The parallel ZIP writer writes an incompressible file three times (P3)
 
-- [ ] **Status:** open. A file Deflate does not shrink (video, photos, archives) is compressed
+- [x] **Status:** done 2026-10-08 (the user's "yes, if nothing breaks and nothing depends on the
+  current shape"). An unencrypted entry stored as it is - one Deflate did not shrink, or any at
+  NoCompression - is no longer written into its chunk a second time: the worker keeps the
+  source's read handle (sharing read only, so the bytes its CRC describes cannot change) and the
+  drain copies the source into the archive, checking length, end of file and CRC again
+  (`WorkResultKind.SourceStored`, `ZipEntryWriter.WriteStoredEntryFromSourceAsync`). Encrypted
+  entries keep the chunk (salt and authentication code are made there). The first Deflate pass
+  still writes its chunk - deciding earlier would change the output. Archive bytes unchanged:
+  SHA-256 of 11 archives (4 levels through the writer directly, Fastest single and separate
+  through `ArchiveAsync`; big random and text, small, empty) identical before and after. 3 x 100
+  MB random, Release: written 944 -> 629 MB at Optimal, 961 -> 646 MB at Fastest, time the same on
+  NVMe (CPU-bound). Checked on device (1.7.1.9, the installed `Archiver.Shell.exe --archive`): 3 x
+  40 MB random + text + 100 small + empty -> `7za t` OK, Store/Deflate as expected, 105 files equal
+  after `7za x`, no `.pakko-tmp-*` left, sources deletable at once.
+- **Was:** open. A file Deflate does not shrink (video, photos, archives) is compressed
   into a chunk file, rewritten there as Stored (T-F299), then copied into the archive: 3 x 100 MB
   writes ~900 MB for a 300 MB archive; a compressible file is written twice. On an SSD that is
   wear and time, on a spinning disk more. Leads: decide Stored from the first block(s) before

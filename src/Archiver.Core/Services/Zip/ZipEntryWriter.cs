@@ -133,6 +133,37 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
             localHeaderOffset, isDirectory: false);
     }
 
+    /// <summary>
+    /// T-F357: a Stored entry copied straight from its source file. The header carries
+    /// <paramref name="crc32"/> and <paramref name="size"/> before the data, so the data must be
+    /// exactly that: exactly <paramref name="size"/> bytes, the source then at its end, the same
+    /// CRC - anything else throws an <see cref="IOException"/> and fails the archive rather than
+    /// leaving an entry whose header disagrees with its data.
+    /// </summary>
+    public async Task WriteStoredEntryFromSourceAsync(
+        string entryName, FileStream source, long size, uint crc32, DateTime lastWriteTime, CancellationToken ct)
+    {
+        var method = new EntryMethod(StoredMethod);
+        long localHeaderOffset = _output.Position;
+        WriteLocalFileHeader(entryName, lastWriteTime, crc32, size, size, method, needsZip64: size >= Zip64Threshold);
+
+        var acc = new Crc32.Accumulator();
+        byte[] buffer = new byte[CopyBufferSize];
+        long left = size;
+        int read = 1;
+        while (left > 0 && read > 0)
+        {
+            read = await source.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, left)), ct).ConfigureAwait(false);
+            acc.Update(buffer.AsSpan(0, read));
+            await _output.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
+            left -= read;
+        }
+        if (left != 0 || source.ReadByte() != -1 || acc.Finish() != crc32)
+            throw new IOException($"'{entryName}' changed while it was being archived.");
+
+        RecordEntry(entryName, lastWriteTime, crc32, method, size, size, localHeaderOffset, isDirectory: false);
+    }
+
     public Task WriteDirectoryPlaceholderAsync(string entryName, DateTime lastWriteTime, CancellationToken ct)
     {
         long localHeaderOffset = _output.Position;

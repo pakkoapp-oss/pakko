@@ -836,7 +836,9 @@ internal static class WorkItemEnumerator
 // TempFileCompressed replaced the original "large files stream sequentially" design outright —
 // both compressed cases know crc/compressed/uncompressed size fully upfront by the time the
 // writer sees them (the temp file is already fully written by a background worker).
-internal enum WorkResultKind { Compressed, TempFileCompressed, DirectoryPlaceholder, Error }
+// SourceStored (T-F357): an unencrypted entry stored as it is, copied in the drain from the
+// worker's own read handle (WorkResult.Source, sharing read only) instead of from a chunk.
+internal enum WorkResultKind { Compressed, TempFileCompressed, SourceStored, DirectoryPlaceholder, Error }
 internal sealed record WorkResult { /* Kind + payload; static WorkResult.For*() factories */ }
 
 // ZipEntryCompressor.cs — compresses a file's bytes fully into memory via DeflateStream directly
@@ -923,7 +925,9 @@ invisible-by-default in Explorer at once. `CompressToTempFileAsync` (in
 `ParallelSingleArchiveWriter`) creates one uniquely-named chunk file (`chunk-{Guid}.tmp`) inside
 that folder per file above the in-memory threshold, streams the compressed result into it, and
 hands the finished path to the writer via `WorkResult.TempFileCompressed`. The writer copies its
-bytes into the archive and deletes it immediately after. A tracked set (`ConcurrentDictionary<string,byte>`)
+bytes into the archive and deletes it immediately after. An unencrypted entry stored as it is
+gets no chunk of its own (T-F357, `WorkResult.SourceStored`): its source stays open until the
+writer copies it, and the pipeline's `finally` releases any source never copied. A tracked set (`ConcurrentDictionary<string,byte>`)
 plus an outer `finally` that awaits every dispatched compress task before sweeping guarantees no
 orphaned temp file survives cancellation or an unhandled exception — a real race (a straggler task
 finishing and creating its temp file *after* an earlier sweep attempt already ran) was caught by a

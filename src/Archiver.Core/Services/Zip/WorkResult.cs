@@ -2,7 +2,7 @@ using Archiver.Core.Models;
 
 namespace Archiver.Core.Services.Zip;
 
-internal enum WorkResultKind { Compressed, TempFileCompressed, DirectoryPlaceholder, Error }
+internal enum WorkResultKind { Compressed, TempFileCompressed, SourceStored, DirectoryPlaceholder, Error }
 
 /// <summary>
 /// Outcome of processing one <see cref="FileWorkItem"/>, produced by a (possibly parallel)
@@ -15,6 +15,10 @@ internal enum WorkResultKind { Compressed, TempFileCompressed, DirectoryPlacehol
 /// compressed in parallel, into a private temp file instead of a `byte[]`, removing the file-size
 /// ceiling that design needed (see DECISIONS.md). Both compressed cases know crc/compressed/
 /// uncompressed size fully upfront by the time the writer sees them.
+///
+/// <see cref="WorkResultKind.SourceStored"/> (T-F357): an unencrypted entry stored as it is, which
+/// the writer copies from <see cref="Source"/> - the worker's own read handle, kept open (sharing
+/// read only) so the bytes its CRC and size describe cannot change before the copy.
 /// </summary>
 internal sealed record WorkResult
 {
@@ -31,6 +35,9 @@ internal sealed record WorkResult
 
     /// <summary>T-F193: the temp file holds a WinZip AES payload around <see cref="Method"/>'s output.</summary>
     public bool IsAesEncrypted { get; init; }
+
+    /// <summary>T-F357: owned by this result; the writer disposes it after copying, or the pipeline at its end.</summary>
+    public FileStream? Source { get; init; }
     public CoreText? ErrorText { get; init; }
     public Exception? ErrorException { get; init; }
 
@@ -46,6 +53,12 @@ internal sealed record WorkResult
         Kind = WorkResultKind.TempFileCompressed, EntryName = entryName, TempFilePath = tempFilePath,
         Crc32 = crc32, CompressedSize = compressedSize, UncompressedSize = uncompressedSize,
         Method = method, LastWriteTime = lastWriteTime, IsAesEncrypted = isAesEncrypted,
+    };
+
+    public static WorkResult ForSourceStored(string entryName, FileStream source, uint crc32, long size, DateTime lastWriteTime) => new()
+    {
+        Kind = WorkResultKind.SourceStored, EntryName = entryName, Source = source, Crc32 = crc32,
+        CompressedSize = size, UncompressedSize = size, Method = ZipEntryWriter.StoredMethod, LastWriteTime = lastWriteTime,
     };
 
     public static WorkResult ForDirectoryPlaceholder(string entryName, DateTime lastWriteTime) => new()

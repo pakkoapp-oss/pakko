@@ -532,6 +532,14 @@ tests caught before shipping):
   on real pipes does not hold an inheritable handle it was not given (fails when the handle list
   is dropped), holds the one it was given, and the command line reads back through
   `CommandLineToArgvW`. Twelve mutants, all caught.
+- T-F357 (`ParallelSingleArchiveWriterTests`): a Stored entry at NoCompression, Optimal and Fastest
+  (random data) keeps its source open (write and delete refused) and writes no chunk; a
+  compressible file and an encrypted incompressible one keep the chunk and free the source; a
+  `SourceStored` whose CRC, length or end of file disagrees throws in the drain; Cancel while
+  sources wait for the drain releases every one. `ZipArchiveServiceIncompressibleTests.
+  ArchiveAsync_LargeStoredAndDeflatedFiles_...` (single and separate): methods, round trip,
+  sources deletable when `ArchiveAsync` returns. Nine of ten mutants caught; rewriting the chunk
+  anyway changes only the bytes written, which the measurement in TASKS.md shows, not a test.
 - `ArchiveEntrySecurityMotwTests` (`Archiver.Core.Tests/Services/`, T-F358) - `ReadMotw` returns
   the archive's mark, null for `Disabled`, an unmarked archive or a path that cannot be read;
   `TryWriteMotw` marks any file under `AllFiles` and only the listed extensions under

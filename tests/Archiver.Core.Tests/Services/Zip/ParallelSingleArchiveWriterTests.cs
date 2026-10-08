@@ -385,28 +385,147 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         Directory.GetFiles(chunkDir).Should().BeEmpty("no temp file should ever be created once the pre-check already fails");
     }
 
-    [Fact]
-    public async Task CompressToTempFileAsync_NoCompressionLevel_UsesStoredMethod()
+    // T-F143 covered the Stored branch; T-F357: a Stored entry is copied from its source in the
+    // drain, so no chunk file is written for it at all.
+    [Theory]
+    [InlineData(CompressionLevel.NoCompression)]
+    [InlineData(CompressionLevel.Optimal)] // random data: Deflate does not shrink it (T-F299)
+    [InlineData(CompressionLevel.Fastest)]
+    public async Task CompressToTempFileAsync_StoredEntry_KeepsTheSourceOpenAndWritesNoChunk(CompressionLevel level)
     {
-        // T-F143: covers CompressToTempFileAsync's StoredMethod branch -- every existing test
-        // driving this method through WriteAsync uses the default Optimal compression level,
-        // which always takes the Deflate branch instead.
         string sourceFile = Path.Combine(_tempDir, "big.bin");
-        byte[] content = BuildContent(2 * 1024 * 1024); // above the 1 MiB in-memory threshold
+        byte[] content = BuildContent(2 * 1024 * 1024 + 17); // above the 1 MiB in-memory threshold
         File.WriteAllBytes(sourceFile, content);
         string chunkDir = Path.Combine(_tempDir, "chunks");
         Directory.CreateDirectory(chunkDir);
-
         var item = new FileWorkItem(sourceFile, "big.bin", FileWorkKind.File, content.Length, DateTime.Now);
 
         WorkResult result = await ParallelSingleArchiveWriter.CompressToTempFileAsync(
-            item, chunkDir, CompressionLevel.NoCompression, null, CancellationToken.None);
+            item, chunkDir, level, null, CancellationToken.None);
+
+        try
+        {
+            result.Kind.Should().Be(WorkResultKind.SourceStored);
+            result.Method.Should().Be(ZipEntryWriter.StoredMethod);
+            result.CompressedSize.Should().Be(content.Length);
+            result.UncompressedSize.Should().Be(content.Length);
+            result.Crc32.Should().Be(Archiver.Core.IO.Crc32.Compute(new MemoryStream(content)));
+            Directory.GetFiles(chunkDir).Should().BeEmpty();
+            // Held until the drain copies it: what the CRC above describes cannot change meanwhile.
+            Action write = () => new FileStream(sourceFile, FileMode.Open, FileAccess.Write, FileShare.ReadWrite).Dispose();
+            write.Should().Throw<IOException>();
+            Action delete = () => File.Delete(sourceFile);
+            delete.Should().Throw<IOException>();
+        }
+        finally
+        {
+            result.Source?.Dispose();
+        }
+        File.Delete(sourceFile);
+    }
+
+    [Fact]
+    public async Task CompressToTempFileAsync_CompressibleFile_StillGoesThroughAChunkAndFreesTheSource()
+    {
+        string sourceFile = Path.Combine(_tempDir, "text.txt");
+        File.WriteAllText(sourceFile, string.Concat(Enumerable.Repeat("The quick brown fox 0123456789\n", 100_000)));
+        string chunkDir = Path.Combine(_tempDir, "chunks");
+        Directory.CreateDirectory(chunkDir);
+        var item = new FileWorkItem(sourceFile, "text.txt", FileWorkKind.File, new FileInfo(sourceFile).Length, DateTime.Now);
+
+        WorkResult result = await ParallelSingleArchiveWriter.CompressToTempFileAsync(
+            item, chunkDir, CompressionLevel.Optimal, null, CancellationToken.None);
+
+        result.Kind.Should().Be(WorkResultKind.TempFileCompressed);
+        result.Method.Should().Be(ZipEntryWriter.DeflateMethod);
+        result.Source.Should().BeNull();
+        File.Exists(result.TempFilePath).Should().BeTrue();
+        File.Delete(sourceFile);
+    }
+
+    // The AES salt and authentication code are made while the chunk is written, so an encrypted
+    // entry Deflate did not shrink keeps T-F299's second pass into its chunk.
+    [Fact]
+    public async Task CompressToTempFileAsync_IncompressibleWithPassword_StaysOnTheChunkPath()
+    {
+        string sourceFile = Path.Combine(_tempDir, "big.bin");
+        byte[] content = BuildContent(2 * 1024 * 1024);
+        File.WriteAllBytes(sourceFile, content);
+        string chunkDir = Path.Combine(_tempDir, "chunks");
+        Directory.CreateDirectory(chunkDir);
+        var item = new FileWorkItem(sourceFile, "big.bin", FileWorkKind.File, content.Length, DateTime.Now);
+
+        WorkResult result = await ParallelSingleArchiveWriter.CompressToTempFileAsync(
+            item, chunkDir, new ParallelSingleArchiveWriter.CompressionSettings(CompressionLevel.Optimal, "s3cret-pass"), null, CancellationToken.None);
 
         result.Kind.Should().Be(WorkResultKind.TempFileCompressed);
         result.Method.Should().Be(ZipEntryWriter.StoredMethod);
-        result.CompressedSize.Should().Be(content.Length);
-        result.UncompressedSize.Should().Be(content.Length);
-        File.ReadAllBytes(result.TempFilePath).Should().Equal(content);
+        result.IsAesEncrypted.Should().BeTrue();
+        result.Source.Should().BeNull();
+        result.CompressedSize.Should().Be(content.Length + WinZipAesEncryptStream.Overhead);
+        File.Delete(sourceFile);
+    }
+
+    // T-F357: the drain copies exactly what the worker measured, or fails the archive - never an
+    // entry whose header disagrees with its data.
+    [Theory]
+    [InlineData(1, 0)]  // CRC differs
+    [InlineData(0, -1)] // the source has more bytes than measured
+    [InlineData(0, 1)]  // the source has fewer bytes than measured
+    public async Task RunPipelineAsync_SourceStoredThatDoesNotMatch_ThrowsAndReleasesTheSource(int crcDelta, int sizeDelta)
+    {
+        byte[] content = BuildContent(4096);
+        string sourceFile = Path.Combine(_tempDir, "a.bin");
+        File.WriteAllBytes(sourceFile, content);
+        // The CRC of the bytes the declared size covers, so each case fails on its own check only.
+        uint crc = Archiver.Core.IO.Crc32.Compute(new MemoryStream(content, 0, Math.Min(content.Length, content.Length + sizeDelta)));
+
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressToTempFile = (item, _) =>
+            Task.FromResult(WorkResult.ForSourceStored(item.EntryName,
+                new FileStream(sourceFile, FileMode.Open, FileAccess.Read, FileShare.Read),
+                crc + (uint)crcDelta, content.Length + sizeDelta, item.LastWriteTime));
+        FileWorkItem[] items = [new("a", "a.bin", FileWorkKind.File, ParallelSingleArchiveWriter.InMemoryCompressByteThreshold + 1, DateTime.Now)];
+
+        Func<Task> act = () => ParallelSingleArchiveWriter.RunPipelineAsync(
+            TempArchivePath, items, NeverCalledInMemoryCompressor, compressToTempFile, windowCapacity: 2,
+            totalBytes: content.Length, progress: null, reportError: _ => { }, CancellationToken.None);
+
+        await act.Should().ThrowAsync<IOException>();
+        File.Delete(sourceFile);
+    }
+
+    [Fact]
+    public async Task RunPipelineAsync_CancelledWhileSourcesWaitForTheDrain_ReleasesEverySource()
+    {
+        string[] sources = Enumerable.Range(0, 3).Select(i => Path.Combine(_tempDir, $"s{i}.bin")).ToArray();
+        foreach (string s in sources) File.WriteAllBytes(s, BuildContent(4096));
+        int opened = 0;
+        using var cts = new CancellationTokenSource();
+
+        // The first entry never finishes, so the drain waits on it while the others hold their sources.
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressToTempFile = async (item, ct) =>
+        {
+            if (item.SourcePath == "blocker")
+            {
+                await Task.Delay(Timeout.Infinite, ct);
+            }
+            var source = new FileStream(item.SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            if (Interlocked.Increment(ref opened) == sources.Length) cts.Cancel();
+            return WorkResult.ForSourceStored(item.EntryName, source, 0, 4096, item.LastWriteTime);
+        };
+        long size = ParallelSingleArchiveWriter.InMemoryCompressByteThreshold + 1;
+        FileWorkItem[] items = [new("blocker", "blocker.bin", FileWorkKind.File, size, DateTime.Now),
+            .. sources.Select(s => new FileWorkItem(s, Path.GetFileName(s), FileWorkKind.File, size, DateTime.Now))];
+
+        Func<Task> act = () => ParallelSingleArchiveWriter.RunPipelineAsync(
+            TempArchivePath, items, NeverCalledInMemoryCompressor, compressToTempFile, windowCapacity: 4,
+            totalBytes: 4 * size, progress: null, reportError: _ => { }, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        Volatile.Read(ref opened).Should().Be(sources.Length);
+        foreach (string s in sources)
+            File.Delete(s); // throws if a source were still held
+        sources.Should().OnlyContain(s => !File.Exists(s));
     }
 
     [Fact]

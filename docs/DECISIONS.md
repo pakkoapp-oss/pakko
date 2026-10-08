@@ -11381,3 +11381,32 @@ not (a share), where the buffered tail written at the close would otherwise repl
 
 **Not taken (yet).** `CreateDirectory` once per folder instead of once per file measured ~3% more
 and was left out of this change.
+
+## T-F357 — a stored entry is copied from its source, not written into a chunk twice (2026-10-08)
+
+**Decision (the user's: "yes, but make sure nothing breaks and nothing depends on the current
+implementation").** In `ParallelSingleArchiveWriter`, an unencrypted entry stored as it is - one
+Deflate did not shrink (T-F299), or any at NoCompression - becomes `WorkResultKind.SourceStored`:
+the worker keeps its read handle on the source and the drain copies the source into the archive
+(`ZipEntryWriter.WriteStoredEntryFromSourceAsync`). Before, it was rewritten into its chunk and
+then copied from there.
+
+**Why the held handle, not a second open.** The handle shares read only: while it is open nobody
+can write, delete or rename the file, so the CRC and size the worker measured describe exactly
+the bytes the drain copies - a re-open would leave a window in which the file could change under
+a header already written. The drain still checks length, end of file and CRC (CPU only, it reads
+the bytes anyway); a mismatch throws, and `ZipArchiveService` turns that into one error and
+deletes the temp archive, as for any write failure - never an entry whose header disagrees with
+its data. At most 2 x `ComputeWindowCapacity()` (32) sources are held at once.
+
+**What stays.** The archive's bytes (11 archives hashed before and after). The first Deflate pass
+still writes its chunk: whether a file shrinks is known only at its end, and deciding from its
+first blocks would change the method of some entries. Encrypted entries keep the chunk: the AES
+salt and authentication code are made while it is written. The disk-space pre-check, T-F141's
+read-back, T-F359's `OneAtATime`, the 99% drain progress are unchanged.
+
+**Cost.** A large incompressible file stays locked against writes from its compression until
+the drain copies it (before: only while it was read), still within the operation. On one spinning
+disk the drain now reads the source instead of the destination's chunk; T-F359's gate covers
+compression only, so the reads overlap differently - recorded, not changed, and not measured (no
+HDD here).

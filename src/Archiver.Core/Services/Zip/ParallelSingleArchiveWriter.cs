@@ -351,6 +351,10 @@ internal static class ParallelSingleArchiveWriter
                         await WriteTempFileResultAsync(writer, result, pendingTempFiles, cancellationToken).ConfigureAwait(false);
                         break;
 
+                    case WorkResultKind.SourceStored:
+                        await WriteSourceStoredResultAsync(writer, result, cancellationToken).ConfigureAwait(false);
+                        break;
+
                     case WorkResultKind.DirectoryPlaceholder:
                         await writer.WriteDirectoryPlaceholderAsync(result.EntryName, result.LastWriteTime, cancellationToken)
                             .ConfigureAwait(false);
@@ -386,6 +390,9 @@ internal static class ParallelSingleArchiveWriter
             foreach (Task<WorkResult> dispatched in dispatchedTasks)
             {
                 try { await dispatched.ConfigureAwait(false); } catch { /* best-effort */ }
+                // T-F357: a source never copied (cancel, failure) is released here; a copied one
+                // was already disposed, and a second Dispose does nothing.
+                if (dispatched.IsCompletedSuccessfully) dispatched.Result.Source?.Dispose();
             }
 
             // Best-effort sweep: anything still tracked here was produced by a worker but never
@@ -421,6 +428,15 @@ internal static class ParallelSingleArchiveWriter
         TryDeleteTempFile(result.TempFilePath, pendingTempFiles);
     }
 
+    private static async Task WriteSourceStoredResultAsync(ZipEntryWriter writer, WorkResult result, CancellationToken cancellationToken)
+    {
+        using FileStream source = result.Source!;
+        source.Seek(0, SeekOrigin.Begin);
+        await writer.WriteStoredEntryFromSourceAsync(
+                result.EntryName, source, result.UncompressedSize, result.Crc32, result.LastWriteTime, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     private static async Task<WorkResult> RunGatedAsync(
         FileWorkItem item, Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressor,
         SemaphoreSlim computeGate, ConcurrentDictionary<string, byte> pendingTempFiles, CancellationToken cancellationToken)
@@ -428,7 +444,8 @@ internal static class ParallelSingleArchiveWriter
         try
         {
             WorkResult result = await compressor(item, cancellationToken).ConfigureAwait(false);
-            if (result.Kind == WorkResultKind.TempFileCompressed)
+            // A SourceStored result names a chunk only when its worker could not delete it.
+            if (result.TempFilePath.Length > 0)
                 pendingTempFiles.TryAdd(result.TempFilePath, 0);
             return result;
         }
@@ -498,13 +515,13 @@ internal static class ParallelSingleArchiveWriter
             }
 
             string tempFilePath = Path.Combine(chunkDirectory, $"chunk-{Guid.NewGuid():N}.tmp");
+            FileStream? source = null;
+            bool sourceHandedOver = false;
 
             try
             {
-                using var source = new FileStream(item.SourcePath, FileMode.Open, FileAccess.Read,
+                source = new FileStream(item.SourcePath, FileMode.Open, FileAccess.Read,
                     FileShare.Read, bufferSize: FileReadBufferSize, useAsync: false);
-                using var tempOut = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write,
-                    FileShare.None, bufferSize: CopyBufferSize, useAsync: false);
 
                 ushort method = ZipEntryWriter.SelectMethod(settings.Level);
                 byte[] buffer = new byte[CopyBufferSize];
@@ -513,22 +530,53 @@ internal static class ParallelSingleArchiveWriter
                 // into the shared ProgressTracker).
                 void OnChunkRead(long delta) => tracker?.ReportBytes(delta, item.EntryName);
 
-                (long uncompressedTotal, uint crc) = await WriteTempEntryAsync(
-                    source, tempOut, method, settings, buffer, item.EntryName, OnChunkRead, cancellationToken).ConfigureAwait(false);
-
-                // T-F299: an entry Deflate did not shrink is rewritten as Stored (7-Zip's rule).
-                // Only incompressible files pay the second read, and it reports no progress again.
-                long aesOverhead = settings.Password is null ? 0 : WinZipAesEncryptStream.Overhead;
-                if (method == ZipEntryWriter.DeflateMethod && tempOut.Length - aesOverhead >= uncompressedTotal)
+                // T-F357: an unencrypted entry stored as it is needs no chunk: one pass for its CRC,
+                // and the drain copies it from this same handle, held until then (see WorkResult).
+                if (method == ZipEntryWriter.StoredMethod && settings.Password is null)
                 {
-                    method = ZipEntryWriter.StoredMethod;
-                    source.Seek(0, SeekOrigin.Begin);
-                    tempOut.SetLength(0);
-                    (uncompressedTotal, crc) = await WriteTempEntryAsync(
-                        source, tempOut, method, settings, buffer, item.EntryName, onBytesRead: null, cancellationToken).ConfigureAwait(false);
+                    (long size, uint storedCrc) = await ZipEntryWriter.CopyWithCrcAsync(
+                        source, Stream.Null, buffer, progress: null, totalBytes: 0, startOffset: 0,
+                        item.EntryName, cancellationToken, OnChunkRead).ConfigureAwait(false);
+                    sourceHandedOver = true;
+                    return WorkResult.ForSourceStored(item.EntryName, source, storedCrc, size, item.LastWriteTime);
                 }
 
-                long compressedSize = tempOut.Length;
+                long uncompressedTotal, compressedSize;
+                uint crc;
+                bool storeFromSource = false;
+                using (var tempOut = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write,
+                    FileShare.None, bufferSize: CopyBufferSize, useAsync: false))
+                {
+                    (uncompressedTotal, crc) = await WriteTempEntryAsync(
+                        source, tempOut, method, settings, buffer, item.EntryName, OnChunkRead, cancellationToken).ConfigureAwait(false);
+
+                    // T-F299: an entry Deflate did not shrink is stored instead (7-Zip's rule). T-F357:
+                    // unencrypted, it is copied from the source in the drain; encrypted, it is
+                    // rewritten into the chunk, since the AES salt and code are made there.
+                    long aesOverhead = settings.Password is null ? 0 : WinZipAesEncryptStream.Overhead;
+                    if (method == ZipEntryWriter.DeflateMethod && tempOut.Length - aesOverhead >= uncompressedTotal)
+                    {
+                        method = ZipEntryWriter.StoredMethod;
+                        storeFromSource = settings.Password is null;
+                        if (!storeFromSource)
+                        {
+                            source.Seek(0, SeekOrigin.Begin);
+                            tempOut.SetLength(0);
+                            (uncompressedTotal, crc) = await WriteTempEntryAsync(
+                                source, tempOut, method, settings, buffer, item.EntryName, onBytesRead: null, cancellationToken).ConfigureAwait(false);
+                        }
+                    }
+                    compressedSize = tempOut.Length;
+                }
+
+                if (storeFromSource)
+                {
+                    TryDeleteTempFile(tempFilePath, pendingTempFiles: null);
+                    sourceHandedOver = true;
+                    WorkResult stored = WorkResult.ForSourceStored(item.EntryName, source, crc, uncompressedTotal, item.LastWriteTime);
+                    return File.Exists(tempFilePath) ? stored with { TempFilePath = tempFilePath } : stored;
+                }
+
                 return WorkResult.ForTempFileCompressed(
                     item.EntryName, tempFilePath, crc, compressedSize, uncompressedTotal, method, item.LastWriteTime,
                     isAesEncrypted: settings.Password is not null);
@@ -550,6 +598,11 @@ internal static class ParallelSingleArchiveWriter
                 // let the exception propagate, matching the in-memory path's behavior.
                 TryDeleteTempFile(tempFilePath, pendingTempFiles: null);
                 throw;
+            }
+            finally
+            {
+                if (!sourceHandedOver)
+                    source?.Dispose();
             }
         }, cancellationToken);
 
