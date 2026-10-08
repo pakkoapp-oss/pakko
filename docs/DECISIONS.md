@@ -11530,8 +11530,17 @@ a plain getter (sandbox handles, `CliCancellation.Source`), turned into auto pro
 
 **What did not happen.** The breaking change predicted in TASKS (`MemoryMarshal.Cast<byte, char>`
 on a `byte[]` in `StdinPathList.cs` becoming ambiguous) did not occur: the build is clean on SDK
-10.0.401, so no code change there. `field` had no candidate: every hand-written setter is computed
-or throws.
+10.0.401, so no code change there. The reason T-F270 pinned C# 12 was silent rebinding, which a
+clean build cannot rule out; a grep of extension calls on array variables found two that now bind to
+`MemoryExtensions.Contains` (`segments.Contains("..")` in `ArchiveEntrySecurity`, `allNames.Contains`
+in `TarSandboxedService`, both `string[]`): the same ordinal `string.Equals` as `Enumerable.Contains`,
+no covariant array, so the same result; the test suite stays the guard. `field` had no candidate:
+every hand-written setter is computed or throws.
 
 **Checked.** Full build (solution, App and OperationUi x64) with no warning, every test project
-including `Category=Slow`, the deployed AOT package on the device.
+including `Category=Slow`. On the deployed x64 AOT package: the browser list, drilling two levels
+with the breadcrumb following, selection enabling "Extract selected", Extract all, the queued list
+with a folder's size and a file's CRC filled in after the row appeared, the format switch renaming
+the compress button, TAR.GZ created, the encryption checkbox showing the password boxes, the tray
+menu opening About, the Shell operation window's password prompt, the Subprocess layer 77/77
+against the packaged `pakko.exe`; no Pakko event in the Application log. The ARM64 build is CI's.

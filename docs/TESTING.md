@@ -1079,6 +1079,10 @@ Ukrainian UI, CI an English one.
   from OperationUi, `PublishReadyToRun` added to the CLI. `dotnet test` runs under JIT, so the
   Subprocess layer also runs against the published AOT `pakko.exe` (`build.yml`'s `build-cli`, and
   nightly on x64 and arm64 in `canary.yml`).
+- **C# 14 (T-F363)**, `PackagingManifestTests.Repo_PinsCSharp14Once` and `LockSourceGuardTests`
+  (Core.Tests, read the repo's files): `LangVersion` 14 only in `Directory.Build.props`, no
+  `.csproj` overriding it; no bare `object x = new()` (a lock object) in `src/`. Mutants killed
+  (2026-10-09): `LangVersion` added to the CLI project, `FileHashService`'s lock back to `object`.
 - `CliVersionTextTests.WithPackage_*`: `pakko -v` appends `(package <full name>)` only when packaged.
 - `PAKKO_CLI_EXE` points `CliProcessRunner` at another `pakko.exe`; set it to
   `%LOCALAPPDATA%\Microsoft\WindowsApps\pakko.exe` to run the whole `Subprocess/` layer against the
