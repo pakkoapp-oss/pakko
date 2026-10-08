@@ -4,8 +4,8 @@
     Archiver.Shell inside the package. No App.xaml and no XAML pages: the package's PRI already has
     Archiver.App's Files/App.xbf, and a second one breaks it (step 2 spike). Bootstrap and
     DeploymentManager stay off: the process runs with the package's identity and its declared
-    WindowsAppRuntime dependency (Gate 0, docs/DECISIONS.md). TFM and WindowsAppSDK version match
-    Archiver.App so the assemblies both place at the package root are identical.
+    WindowsAppRuntime dependency (Gate 0, docs/DECISIONS.md). TFM and package versions match
+    Archiver.App (a test reads both): this exe runs against the framework App's manifest declares.
   -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -29,8 +29,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.7705" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260209005" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <!-- T-F363: the 2.x metapackage publishes Windows ML's onnxruntime/DirectML DLLs (16 MB); Pakko never calls them. -->
+    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="native" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Archiver.OperationUi.Core\Archiver.OperationUi.Core.csproj" />

@@ -11544,3 +11544,39 @@ with a folder's size and a file's CRC filled in after the row appeared, the form
 the compress button, TAR.GZ created, the encryption checkbox showing the password boxes, the tray
 menu opening About, the Shell operation window's password prompt, the Subprocess layer 77/77
 against the packaged `pakko.exe`; no Pakko event in the Application log. The ARM64 build is CI's.
+
+## T-F363 Part A — Windows App SDK 2.5.1, without Windows ML's DLLs (2026-10-09)
+
+**Decision.** `Microsoft.WindowsAppSDK` 1.8.260209005 -> 2.5.1 and `Microsoft.Windows.SDK.BuildTools`
+10.0.26100.7705 -> 10.0.28000.2705, in `Archiver.App` and `Archiver.OperationUi` together (a test
+pins both projects to the same versions: the operation window runs against whatever framework the
+App's manifest declares). The package now depends on the framework `Microsoft.WindowsAppRuntime.2`
+(2.x names the framework by major version), MinVersion 2.5.1.0; that framework's own minimum OS is
+10.0.17763, below Pakko's 10.0.19041, so the reach does not change.
+
+**The metapackage problem.** The 2.x metapackage pulls in AI, ML, Widgets and Search. A plain
+bump published Windows ML's natives into the package: `onnxruntime.dll`, `DirectML.dll`,
+`Microsoft.Windows.AI.MachineLearning.dll`, 14.8 -> 30.6 MB, none of it called by Pakko. The ML
+package's own target (`_SuppressWindowsMLNativeCopyLocal`) drops them from the build copy in
+framework mode but not from the publish set. Rejected: referencing only the component packages
+(`Microsoft.WindowsAppSDK.WinUI` + `.Runtime`). `H.NotifyIcon.WinUI` 2.3.2 depends on the
+metapackage (>= 1.6), so without our direct reference restore takes 1.6 and its WinUI targets
+collide with 2.x (`MSB4011`, and the MSIX build tools' `CustomBeforeMicrosoftCommonTargets`
+error); `Microsoft.WindowsAppSDK.InteractiveExperiences` 2.1.8, which WinUI 2.3.9 names, is not
+on nuget.org either (`NU1603`). Chosen: keep the metapackage and add a direct
+`Microsoft.Windows.AI.MachineLearning` 2.1.74 reference with `ExcludeAssets="native"` -
+declarative, no MSBuild target. A test reads it in both projects, and `CI-Build-Msix.ps1` fails
+when any of the three DLLs reaches the built package.
+
+**Checked.** Release notes 2.0: `FileSavePicker` no longer creates the file (Pakko does not use it);
+`DISABLE_XAML_GENERATED_MAIN` (OperationUi) renames the generated `Main` - the build is clean and
+the window starts from our own entry point; TitleBar drag regions (Pakko calls `SetTitleBar` on a
+Grid). Deployed x64 package: 23 files, the same names as the CI-built v1.7.1 package, 14.1 MB, 37
+`<Resource Language>` in the one inner package, no IL/CsWinRT warning. On the device: the archive
+browser (list, drilling a folder, Extract selected with CRC shown), dragging the window by its
+title bar, About, the tray icon's menu opening About (H.NotifyIcon against the 2.x projections),
+the Explorer operation window asking for a password and extracting an encrypted ZIP; no Pakko
+event in the Application log. The ARM64 build and the Store bundle are CI's.
+
+**Risk.** The Store certifies the package against the 2.x framework for the first time; a
+rejection would show only on the next submission.

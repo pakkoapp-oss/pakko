@@ -2130,7 +2130,14 @@ re-measured with T-F346's script before and after.
 
 ### T-F363 — Windows App SDK 2.x, SDK BuildTools 10.0.28000 and C# 14, one wave (P3)
 
-- [~] **Status:** Part B done 2026-10-09; Part A open. **Part B result:** C# 14 set once in
+- [~] **Status:** Part B done 2026-10-09; Part A done locally 2026-10-09, waits for CI (both
+  architectures, the Store bundle). **Part A result:** Windows App SDK 2.5.1 and BuildTools
+  10.0.28000.2705 in both WinUI projects (`WinUiProjects_ReferenceTheSamePackageVersion`); the 2.x
+  metapackage published Windows ML's `onnxruntime.dll`/`DirectML.dll`/
+  `Microsoft.Windows.AI.MachineLearning.dll` (package 14.8 -> 30.6 MB), now excluded
+  (`ExcludeAssets="native"`, `WinUiProjects_ExcludeTheWindowsMlNativeDlls`, a `CI-Build-Msix.ps1`
+  check); the package has the same 23 files, 14.1 MB, 37 languages, depends on
+  `Microsoft.WindowsAppRuntime.2` 2.5.1. Device smoke green. **Part B result:** C# 14 set once in
   `Directory.Build.props` (`Repo_PinsCSharp14Once`); the predicted `StdinPathList.cs:43` break did
   not happen (the build is clean on SDK 10.0.401, no code change there); the 28
   `[ObservableProperty]` fields are partial properties and `NoWarn MVVMTK0045` is gone (a field

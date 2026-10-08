@@ -560,6 +560,7 @@ inconvenient to write."
 | `CommunityToolkit.Mvvm` | `Archiver.App` only | `ObservableObject`, `RelayCommand` |
 | None | `Archiver.Core` | Pure .NET, no NuGet dependencies |
 | `Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools` | `Archiver.OperationUi` | WinUI 3 operation window (T-F268); same versions as `Archiver.App` |
+| `Microsoft.Windows.AI.MachineLearning` with `ExcludeAssets="native"` | `Archiver.App`, `Archiver.OperationUi` | Not used: keeps Windows ML's onnxruntime/DirectML DLLs out of the package (T-F363) |
 | None | `Archiver.OperationUi.Protocol`, `Archiver.OperationUi.Core` | Pure .NET |
 
 **Vendored native binaries (test-only, not a package reference) — `Archiver.Core.PerformanceTests`

@@ -98,6 +98,32 @@ public sealed class PackagingManifestTests
         overriding.Should().BeEmpty("the language version is set once, in Directory.Build.props (T-F363)");
     }
 
+    [Theory]
+    [InlineData("Microsoft.WindowsAppSDK", "2.5.1")]
+    [InlineData("Microsoft.Windows.SDK.BuildTools", "10.0.28000.2705")]
+    public void WinUiProjects_ReferenceTheSamePackageVersion(string package, string version)
+    {
+        // OperationUi runs against the WindowsAppRuntime framework App's manifest declares (T-F363).
+        foreach (string name in WinUiProjects)
+            LoadProject(name).Descendants()
+                .Where(e => e.Name.LocalName == "PackageReference" && (string?)e.Attribute("Include") == package)
+                .Select(e => (string?)e.Attribute("Version"))
+                .Should().Equal([version], name);
+    }
+
+    [Fact]
+    public void WinUiProjects_ExcludeTheWindowsMlNativeDlls()
+    {
+        // 2.x's metapackage publishes onnxruntime/DirectML/AI.MachineLearning DLLs (16 MB) Pakko never calls (T-F363).
+        foreach (string name in WinUiProjects)
+            LoadProject(name).Descendants()
+                .Where(e => e.Name.LocalName == "PackageReference" && (string?)e.Attribute("Include") == "Microsoft.Windows.AI.MachineLearning")
+                .Select(e => (string?)e.Attribute("ExcludeAssets"))
+                .Should().Equal(["native"], name);
+    }
+
+    private static readonly string[] WinUiProjects = ["Archiver.App", "Archiver.OperationUi"];
+
     private static List<(string Include, string Link)> SatelliteContent() =>
         [.. LoadProject("Archiver.App").Descendants()
             .Where(e => e.Name.LocalName == "Content")

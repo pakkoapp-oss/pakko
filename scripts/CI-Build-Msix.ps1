@@ -141,6 +141,9 @@ function Test-PakkoInPackage([System.IO.Compression.ZipArchive] $package) {
     foreach ($name in $required) {
         if ($names -notcontains $name) { return $false }
     }
+    foreach ($name in @('onnxruntime.dll', 'DirectML.dll', 'Microsoft.Windows.AI.MachineLearning.dll')) {
+        if ($names -contains $name) { throw "The package carries $name - Windows ML's natives are excluded (T-F363)." }
+    }
     foreach ($name in @('coreclr.dll', 'pakko.dll', 'Archiver.Shell.dll', 'Archiver.OperationUi.dll')) {
         if ($names -contains $name) { throw "The package carries $name - a non-AOT build reached it (T-F355)." }
     }
