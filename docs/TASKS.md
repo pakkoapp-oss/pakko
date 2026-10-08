@@ -2017,7 +2017,15 @@ re-measured with T-F346's script before and after.
 
 ### T-F360 — Extract: an "apply the download mark" checkbox, on by default (P2)
 
-- [ ] **Status:** open, decided 2026-10-08, plan first. The user's idea: a checkbox, on by
+- [x] **Status:** done 2026-10-08 (DECISIONS.md's T-F360 entry). Core: `ExtractOptions.
+  ApplyDownloadMark` (default true), `GroupPolicyOptions.MotwModeSetByPolicy` +
+  `EffectiveMotwMode(applyMark)` (the policy wins), public `ArchiveDownloadMark.IsPresent`; App:
+  checkbox + note (cost / risk / policy) in the destination card, logic in App.Core's
+  `DownloadMarkOption`; CLI: `x -snz`/`-snz1`/`-snz0`, `-snz2` refused. Checked on device (1.7.1.10):
+  marked ZIP shows it checked with the cost note, unchecking shows the risk note and extracts
+  unmarked files, checked again on reopening and marks them, an unmarked ZIP shows no checkbox, a
+  browser preview with it unchecked is still marked. The policy on device (needs UAC) waits for
+  the release batch. The user's idea: a checkbox, on by
   default, that applies the archive's `Zone.Identifier` to the extracted files; unchecking it
   shows the risk under it. The user's decisions: unchecked means no mark at all (not
   `UnsafeExtensionsOnly`, whose list has no Office, PDF or ISO types); Group Policy's `MotwMode`

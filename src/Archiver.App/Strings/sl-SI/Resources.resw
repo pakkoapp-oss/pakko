@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Na omrežnih in izmenljivih pogonih, ki nimajo koša, Pakko najprej vpraša.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Označi razširjene datoteke kot prenesene iz interneta</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows bo opozoril pred njihovim odpiranjem. Pri tisočih majhnih datotek razširjanje traja dlje: približno 1,5 s več na vsakih 1000 datotek.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Datoteke se bodo odpirale brez opozorila sistema Windows in brez zaščitenega pogleda sistema Office. Oznako izklopite samo za arhiv, ki mu zaupate.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Nastavljeno s pravilnikom vaše organizacije.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Dodaj datoteke</value>
   </data>

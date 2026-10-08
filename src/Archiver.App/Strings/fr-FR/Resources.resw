@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Sur les lecteurs réseau et amovibles, qui n'ont pas de Corbeille, Pakko demande d'abord.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Marquer les fichiers extraits comme téléchargés depuis Internet</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows avertira avant leur ouverture. Avec des milliers de petits fichiers, l'extraction est plus longue : environ 1,5 s de plus pour 1 000 fichiers.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Les fichiers s'ouvriront sans l'avertissement de Windows ni le mode protégé d'Office. Ne désactivez la marque que pour une archive de confiance.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Défini par la stratégie de votre organisation.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Ajouter des fichiers</value>
   </data>

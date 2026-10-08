@@ -462,6 +462,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>On network and removable drives, which have no Recycle Bin, Pakko asks first.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Mark extracted files as downloaded from the internet</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows warns before opening them. With thousands of small files, extraction takes longer: about 1.5 s more per 1,000 files.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>The files will open without the Windows warning or Office's Protected View. Leave the mark off only for an archive you trust.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Set by your organization's policy.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Add files</value>
   </data>

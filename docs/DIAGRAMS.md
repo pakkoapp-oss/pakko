@@ -376,7 +376,7 @@ flowchart TD
     J0 -- "Rename" --> K2["unique name via GetUniqueFilePath"]
     J0 -- "Overwrite" --> K
     K2 --> K
-    K["open content: VerifyingReadStream(entry.Open, Length, Crc32),<br/>or the decrypting stream, capped the same way (T-F246/T-F231).<br/>Copy to staging, delete a half-written file on failure, then MOTW<br/>(keeps the file time), then the entry time: NTFS 0x000A, else<br/>Unix 0x5455, else DOS (T-F298, best-effort)"]
+    K["open content: VerifyingReadStream(entry.Open, Length, Crc32),<br/>or the decrypting stream, capped the same way (T-F246/T-F231).<br/>Copy to staging, delete a half-written file on failure, then MOTW in<br/>EffectiveMotwMode, T-F360 (keeps the file time), then the entry time: NTFS 0x000A, else<br/>Unix 0x5455, else DOS (T-F298, best-effort)"]
     K -- "CRC mismatch / longer than declared / I/O error /<br/>encrypted entry: wrong password, unsupported method, authentication failed" --> E2["Errors += Cannot extract name: reason<br/>(destination path, never the staging path)"]
     T -. "ERROR_DISK_FULL" .-> X["rethrown: one archive-level error"]
     K --> L["extractedCount++"]
@@ -638,7 +638,7 @@ flowchart TD
     N0 -- "resolvedConflict==Overwrite" --> O3["NO explicit branch — falls through to O<br/>with the ORIGINAL finalFilePath;<br/>the commit's File.Move(overwrite:true) does the actual overwrite<br/>(same asymmetry as diagram 3's ZIP OnConflict gate)"]
     O2 --> O
     O3 --> O
-    O["claim finalFilePath; File.Move(file, staging\relative path of finalFilePath)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFile)<br/>— from the archive the user chose; the stream moves with the file;<br/>the file keeps the time tar.exe set (T-F298)"] --> Mloop
+    O["claim finalFilePath; File.Move(file, staging\relative path of finalFilePath)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFile)<br/>in EffectiveMotwMode (T-F360)<br/>— from the archive the user chose; the stream moves with the file;<br/>the file keeps the time tar.exe set (T-F298)"] --> Mloop
     P --> Mloop
     Mloop -- yes --> I
     Mloop -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>staging, so empty folders arrive too"] --> CM["staging.CommitInto(actualDest) — the same commit as ZIP (diagram 3):<br/>rename when actualDest is new, else a per-file merge;<br/>each locked destination file = one ArchiveError, then the recorded<br/>folder times (T-F298). A cancel before this point leaves nothing at the destination"]

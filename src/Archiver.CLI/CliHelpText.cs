@@ -44,6 +44,9 @@ public static class CliHelpText
                            interactive console (Y/N/A/S/U/Q, like 7-Zip) and is
                            skipped when piped/scripted.
           -ao{a|s|u}       Overwrite mode: a=overwrite, s=skip, u=auto-rename   (x)
+          -snz[0|1]        Download mark: -snz/-snz1 (default) copies the       (x)
+                           archive's "from the internet" mark to every file;
+                           -snz0 leaves it off. Group Policy overrides both
           -t<type>         Archive type: zip (default), tar, tar.gz, tar.bz2,
                            tar.xz, tar.zst, tar.lzma; or tgz, tbz2, txz, tzst   (a)
                            A name ending in one of these types, or in .tgz,

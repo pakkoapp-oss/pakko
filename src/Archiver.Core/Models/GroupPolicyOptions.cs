@@ -12,6 +12,12 @@ public sealed record GroupPolicyOptions
     /// <summary>Whether the Zone.Identifier ADS gets propagated to extracted files, and for which ones.</summary>
     public MotwMode MotwMode { get; init; } = MotwMode.AllFiles;
 
+    /// <summary>
+    /// True when the EnforceMOTW policy chose <see cref="MotwMode"/>; the user's choice to leave
+    /// the mark off (<see cref="ExtractOptions.ApplyDownloadMark"/>) then no longer applies (T-F360).
+    /// </summary>
+    public bool MotwModeSetByPolicy { get; init; }
+
     /// <summary>ArchiveFormatRegistryNames names permitted for extraction/creation. Null/empty imposes no restriction.</summary>
     public IReadOnlyList<string>? AllowedFormats { get; init; }
 
@@ -20,6 +26,13 @@ public sealed record GroupPolicyOptions
 
     /// <summary>Disables tar-family (tar.exe-backed) extraction entirely when true.</summary>
     public bool DisableTarExtraction { get; init; }
+
+    /// <summary>
+    /// The mode an extraction uses: the policy's when it is set, otherwise the user's choice —
+    /// <see cref="MotwMode"/> with the mark on, <see cref="MotwMode.Disabled"/> with it off (T-F360).
+    /// </summary>
+    public MotwMode EffectiveMotwMode(bool applyMark) =>
+        applyMark || MotwModeSetByPolicy ? MotwMode : MotwMode.Disabled;
 
     /// <summary>
     /// True if the given format (an ArchiveFormatRegistryNames name, e.g. "zip") is permitted.

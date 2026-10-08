@@ -202,7 +202,15 @@ Pakko propagates MOTW on all extracted files by default:
 
 1. Read `Zone.Identifier` ADS from the source archive
 2. Write identical `Zone.Identifier` ADS to each extracted file
-3. Default: always on — users cannot disable (only GPO can override in v1.4)
+3. Default: on. Since T-F360 (2026-10-08) the user may leave the mark off for one extraction of
+   an archive they trust: an "apply the download mark" checkbox in the App's extract options
+   (also what Explorer's "Extract..." opens), shown only for an archive that carries the mark and
+   checked again for every new list, and `pakko x -snz0`. Unchecked means no mark at all, not
+   "unsafe types only": that list has no Office, PDF or ISO types, the very files MOTW protects.
+   The `EnforceMOTW` Group Policy wins either way and locks the checkbox. Archive Browser
+   previews, opening a nested archive and Explorer's "Extract Here"/"Extract to folder" always
+   apply the mark — their files are opened by other programs, and they have no options to show.
+   The checkbox exists because the mark costs time: about 1.5 ms per file (T-F358).
 
 Implementation: `FileStream` with ADS path `"extractedfile.txt:Zone.Identifier"`, no P/Invoke required.
 

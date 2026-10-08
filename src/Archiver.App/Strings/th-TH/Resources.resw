@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>บนไดรฟ์เครือข่ายและไดรฟ์แบบถอดได้ ซึ่งไม่มีถังรีไซเคิล Pakko จะถามก่อน</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>ทำเครื่องหมายไฟล์ที่แตกออกมาว่าดาวน์โหลดจากอินเทอร์เน็ต</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows จะเตือนก่อนเปิดไฟล์ หากมีไฟล์ขนาดเล็กหลายพันไฟล์ การแตกไฟล์จะใช้เวลานานขึ้น: ประมาณ 1.5 วินาทีต่อทุก 1,000 ไฟล์</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>ไฟล์จะเปิดโดยไม่มีคำเตือนของ Windows หรือมุมมองที่ได้รับการป้องกันของ Office ปิดเครื่องหมายเฉพาะไฟล์บีบอัดที่คุณเชื่อถือเท่านั้น</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>ตั้งค่าโดยนโยบายขององค์กรของคุณ</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>เพิ่มไฟล์</value>
   </data>

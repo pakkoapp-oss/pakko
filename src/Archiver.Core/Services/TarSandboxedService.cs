@@ -224,7 +224,7 @@ public sealed class TarSandboxedService : ITarService
         {
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new TarExtractionContext(
-                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors,
+                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
                 options.EliminateDuplicateRootFolder);
             (string? actualDest, bool anyExtracted) = await ExtractSingleArchiveAsync(
                 archivePath, destDir, alreadyIsolated, options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken)

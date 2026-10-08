@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Tinklo ir keičiamuosiuose diskuose, kuriuose nėra šiukšlinės, Pakko pirmiausia paklausia.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Pažymėti išskleistus failus kaip atsisiųstus iš interneto</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>„Windows“ įspės prieš juos atidarant. Esant tūkstančiams mažų failų, išskleidimas trunka ilgiau: maždaug 1,5 s daugiau kiekvienam 1000 failų.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Failai bus atidaromi be „Windows“ įspėjimo ir be „Office“ apsaugoto rodinio. Žymą išjunkite tik archyvui, kuriuo pasitikite.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Nustatyta jūsų organizacijos strategijos.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Pridėti failus</value>
   </data>

@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Tīkla un noņemamajos diskos, kuros nav atkritnes, Pakko vispirms jautā.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Atzīmēt izvilktos failus kā lejupielādētus no interneta</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows brīdinās pirms to atvēršanas. Ar tūkstošiem mazu failu izvilkšana ilgst ilgāk: aptuveni par 1,5 s vairāk uz katriem 1000 failiem.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Faili tiks atvērti bez Windows brīdinājuma un bez Office aizsargātā skata. Izslēdziet atzīmi tikai arhīvam, kuram uzticaties.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Iestatīts jūsu organizācijas politikā.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Pievienot failus</value>
   </data>

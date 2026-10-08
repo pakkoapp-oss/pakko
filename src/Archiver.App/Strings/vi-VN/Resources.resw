@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Trên ổ đĩa mạng và ổ đĩa di động, vốn không có Thùng rác, Pakko sẽ hỏi trước.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Đánh dấu tệp đã giải nén là tải xuống từ Internet</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows sẽ cảnh báo trước khi mở chúng. Với hàng nghìn tệp nhỏ, giải nén lâu hơn: khoảng 1,5 giây cho mỗi 1.000 tệp.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Các tệp sẽ mở mà không có cảnh báo của Windows hay Dạng xem được Bảo vệ của Office. Chỉ tắt dấu cho tệp nén bạn tin cậy.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Được đặt bởi chính sách của tổ chức bạn.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Thêm tệp</value>
   </data>

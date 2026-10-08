@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>على محركات الأقراص الشبكية والقابلة للإزالة، التي لا تحتوي على سلة محذوفات، يسألك Pakko أولاً.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>وضع علامة على الملفات المستخرجة بأنها منزّلة من الإنترنت</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>سيحذّر Windows قبل فتحها. مع آلاف الملفات الصغيرة يستغرق الاستخراج وقتًا أطول: نحو 1.5 ثانية إضافية لكل 1000 ملف.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>ستُفتح الملفات دون تحذير Windows أو العرض المحمي في Office. لا تُلغِ العلامة إلا لأرشيف تثق به.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>تم تعيينه بواسطة نهج مؤسستك.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>إضافة ملفات</value>
   </data>

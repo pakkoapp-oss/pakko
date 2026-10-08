@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Pri sieťových a vymeniteľných jednotkách, ktoré nemajú Kôš, sa Pakko najprv opýta.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Označiť extrahované súbory ako stiahnuté z internetu</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows pred ich otvorením upozorní. Pri tisíckach malých súborov trvá extrakcia dlhšie: asi o 1,5 s na každých 1 000 súborov.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Súbory sa otvoria bez upozornenia Windows a bez chráneného zobrazenia Office. Označenie vypnite len pri archíve, ktorému dôverujete.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Nastavené politikou vašej organizácie.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Pridať súbory</value>
   </data>

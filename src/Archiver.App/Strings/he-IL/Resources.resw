@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>בכוננים ברשת ובכוננים נשלפים, שאין בהם סל מיחזור, Pakko שואל תחילה.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>סמן קבצים שחולצו כקבצים שהורדו מהאינטרנט</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows יזהיר לפני פתיחתם. עם אלפי קבצים קטנים החילוץ נמשך זמן רב יותר: כ-1.5 שניות נוספות לכל 1,000 קבצים.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>הקבצים ייפתחו ללא האזהרה של Windows וללא התצוגה המוגנת של Office. בטל את הסימון רק עבור ארכיון שאתה סומך עליו.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>נקבע על-ידי מדיניות הארגון שלך.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>הוסף קבצים</value>
   </data>

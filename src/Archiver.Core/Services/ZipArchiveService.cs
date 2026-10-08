@@ -912,7 +912,7 @@ public sealed class ZipArchiveService : IArchiveService
                     options.SeparateFolderName ?? ArchiveNaming.GetBaseName(archivePath))
                 : options.DestinationFolder;
             var context = new ZipExtractionContext(
-                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.MotwMode, archiveProgress, sink.Errors,
+                conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
                 sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder, sink.Warnings);
             (string? actualDest, bool anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,

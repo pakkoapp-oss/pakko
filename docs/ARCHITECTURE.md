@@ -376,6 +376,8 @@ public sealed record ExtractOptions
     // rejection exactly. Archiver.CLI wires this via -p{pwd}/an interactive masked prompt since
     // T-F191. See DECISIONS.md's T-F189/T-F191 entries.
     public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }
+    // T-F360: false leaves the download mark off; EnforceMOTW overrides it either way.
+    public bool ApplyDownloadMark { get; init; } = true;
 }
 
 public enum ExtractMode { SeparateFolders, SingleFolder }
@@ -1618,12 +1620,17 @@ public enum MotwMode { Disabled = 0, AllFiles = 1, UnsafeExtensionsOnly = 2 }
 public sealed record GroupPolicyOptions
 {
     public MotwMode MotwMode { get; init; } = MotwMode.AllFiles;
+    public bool MotwModeSetByPolicy { get; init; }          // T-F360: EnforceMOTW was 0, 1 or 2
+    public MotwMode EffectiveMotwMode(bool applyMark);      // policy's mode if set, else on/Disabled
     public IReadOnlyList<string>? AllowedFormats { get; init; }
     public IReadOnlyList<string>? BlockedFormats { get; init; }
     public bool DisableTarExtraction { get; init; }
 
     public bool IsFormatAllowed(string registryName); // BlockedFormats takes precedence over AllowedFormats
 }
+
+// Services/ArchiveDownloadMark.cs — T-F360, for the App's checkbox; never throws
+public static class ArchiveDownloadMark { public static bool IsPresent(string archivePath); }
 
 // Interfaces/IRegistryReader.cs — minimal seam, hand-rolled FakeRegistryReader in tests (no
 // mocking library anywhere in this repo)

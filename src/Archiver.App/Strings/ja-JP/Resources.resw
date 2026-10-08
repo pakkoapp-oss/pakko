@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>ごみ箱のないネットワーク ドライブやリムーバブル ドライブでは、Pakko が先に確認します。</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>展開したファイルをインターネットからダウンロードしたものとしてマークする</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>開く前に Windows が警告します。小さなファイルが数千個あると展開に時間がかかります: 1,000 ファイルごとに約 1.5 秒増えます。</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>ファイルは Windows の警告や Office の保護ビューなしで開きます。信頼できるアーカイブの場合にのみマークをオフにしてください。</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>組織のポリシーによって設定されています。</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>ファイルを追加</value>
   </data>

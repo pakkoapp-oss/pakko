@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Bei Netzwerk- und Wechsellaufwerken, die keinen Papierkorb haben, fragt Pakko zuerst nach.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Extrahierte Dateien als aus dem Internet heruntergeladen kennzeichnen</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows warnt vor dem Öffnen. Bei Tausenden kleiner Dateien dauert das Extrahieren länger: etwa 1,5 s mehr pro 1.000 Dateien.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Die Dateien werden ohne die Windows-Warnung und ohne die geschützte Ansicht von Office geöffnet. Lassen Sie die Kennzeichnung nur bei einem vertrauenswürdigen Archiv weg.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Durch die Richtlinie Ihrer Organisation festgelegt.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Dateien hinzufügen</value>
   </data>

@@ -102,6 +102,8 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
     try
     {
         IExtractionRouter router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
+        if (CliDownloadMark.PolicyOverrideWarning(command.ApplyDownloadMark, services.Policy) is { } markWarning)
+            Console.Error.WriteLine(markWarning);
 
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
         if (RejectEmptyStdin(stdinFolder) is { } emptyStdin)
@@ -168,6 +170,7 @@ static ExtractOptions BuildExtractOptions(
             : null,
         ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
         ResolvePasswordAsync = BuildPasswordResolver(command, command.AssumeYes, progress, report),
+        ApplyDownloadMark = command.ApplyDownloadMark ?? true,
     };
 }
 

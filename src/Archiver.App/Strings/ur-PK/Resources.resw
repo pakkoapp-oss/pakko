@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>نیٹ ورک اور ہٹائی جا سکنے والی ڈرائیوز پر، جن میں ری سائیکل بن نہیں ہوتا، Pakko پہلے پوچھتا ہے۔</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>نکالی گئی فائلوں کو انٹرنیٹ سے ڈاؤن لوڈ شدہ کے طور پر نشان زد کریں</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows انہیں کھولنے سے پہلے انتباہ دے گا۔ ہزاروں چھوٹی فائلوں کے ساتھ نکالنے میں زیادہ وقت لگتا ہے: ہر 1,000 فائلوں پر تقریباً 1.5 سیکنڈ زیادہ۔</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>فائلیں Windows کے انتباہ یا Office کے محفوظ منظر کے بغیر کھلیں گی۔ نشان صرف اس آرکائیو کے لیے بند کریں جس پر آپ کو بھروسہ ہو۔</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>آپ کی تنظیم کی پالیسی کے ذریعے سیٹ کیا گیا۔</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>فائلیں شامل کریں</value>
   </data>

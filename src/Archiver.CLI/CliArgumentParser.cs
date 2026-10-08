@@ -36,6 +36,7 @@ public sealed record ParsedCliCommand
     public string? Password { get; init; }                            // -p{pwd}, x/t (T-F191), a (T-F193)
     public bool PromptForPassword { get; init; }                      // bare -p: ask interactively, x/t/a (T-F193)
     public int? ConsoleCodePage { get; init; }                        // -scc{charset}, every command (T-F238); a CliConsoleCharset value
+    public bool? ApplyDownloadMark { get; init; }                     // -snz[0|1], x only (T-F360); null = not given
     public string? ErrorMessage { get; init; }
 }
 
@@ -161,6 +162,7 @@ public static class CliArgumentParser
         public bool WriteToStdout { get; set; }
         public string? Password { get; set; }
         public bool PromptForPassword { get; set; }
+        public bool? ApplyDownloadMark { get; set; }
     }
 
     private static ParsedCliCommand ParseExtract(string[] rest)
@@ -194,6 +196,7 @@ public static class CliArgumentParser
             WriteToStdout = state.WriteToStdout,
             Password = state.Password,
             PromptForPassword = state.PromptForPassword,
+            ApplyDownloadMark = state.ApplyDownloadMark,
         };
     }
 
@@ -234,8 +237,24 @@ public static class CliArgumentParser
             return null;
         }
 
+        if (token.StartsWith("-snz", StringComparison.Ordinal))
+        {
+            (state.ApplyDownloadMark, string? error) = ParseDownloadMark(token);
+            return error;
+        }
+
         return UnsupportedSwitchReason(token);
     }
+
+    // T-F360: 7-Zip's -snz[0|1|2] (NanaZip's ArchiveCommandLine.cpp): 0 none, 1 or bare all files,
+    // 2 Office files only - which Pakko's modes do not have. Whichever -snz comes last wins.
+    private static (bool? Apply, string? Error) ParseDownloadMark(string token) => token switch
+    {
+        "-snz" or "-snz1" => (true, null),
+        "-snz0" => (false, null),
+        "-snz2" => (null, "not supported by Pakko: -snz2 (mark Office files only) has no equivalent; use -snz or -snz0"),
+        _ => (null, $"unknown -snz value: '{token[4..]}' (expected -snz, -snz0 or -snz1)"),
+    };
 
     // T-F193: a bare -p means "prompt for it", as in real 7z. Whichever -p comes last wins.
     private static (string? Password, bool Prompt) ParsePassword(string token) =>
@@ -656,6 +675,7 @@ public static class CliArgumentParser
         ("-x", "not supported: no wildcard exclude-pattern filtering exists in Pakko"),
         ("-v", "not supported: no multi-part/split-archive logic exists in Pakko"),
         ("-ssc", "not supported: case-sensitive matching is not implemented"),
+        ("-snz", "not supported on this command: -snz is only valid with 'x' (extract)"),
     ];
 
     private static string UnsupportedSwitchReason(string token)

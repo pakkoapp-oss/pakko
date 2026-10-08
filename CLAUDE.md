@@ -168,8 +168,8 @@ during operations via `IsNotBusy`/`IsArchiveNameAndNotBusy`, all bind `IsEnabled
 perf uses `useAsync: false`, `bufferSize: 262144` in all `ZipArchiveService` streams (faster on
 local disks from ThreadPool); `.zip` file type association (T-F44) — double-click opens Pakko
 with the archive pre-loaded, `AppInstance.Activated` handles both cold-start and warm file
-activation; MOTW propagation (T-F45) — `Zone.Identifier` ADS copied to every extracted file,
-best-effort, never fatal, no P/Invoke; status line shows operation name/file stats/speed/ETA
+activation; MOTW propagation (T-F45) — `Zone.Identifier` ADS copied to every extracted file by
+default (T-F360: the user may turn it off per extraction, policy wins), best-effort, never fatal; status line shows operation name/file stats/speed/ETA
 during an operation, elapsed time after completion.
 
 **Microsoft Store release is live** (T-F129, done 2026-08-04) —
@@ -500,7 +500,7 @@ files.
 - **tar.exe format support:** creates tar/gz/bz2/xz/zst/lzma, and on a new enough Windows also
   real 7z, but only with `--format=7zip` or `-a` (measured on build 26300, libarchive 3.8.8;
   T-F342). A plain `tar -cf out.7z` silently writes ustar under that name. RAR is read-only.
-- **MOTW:** always propagate `Zone.Identifier` ADS on extracted files (v1.2+)
+- **MOTW:** propagate `Zone.Identifier` by default (v1.2+); off only per user choice or policy (T-F360)
 - **Shell extension:** `IExplorerCommand` only — no legacy `IContextMenu` COM shell extensions
 - **Context-menu ordering:** primary action commands (Extract/Archive) always precede
   diagnostic/verification ones (Test archive) in `PakkoRootCommand::EnumSubCommands` —

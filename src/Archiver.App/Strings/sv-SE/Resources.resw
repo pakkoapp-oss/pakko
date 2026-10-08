@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>På nätverksenheter och flyttbara enheter, som saknar papperskorg, frågar Pakko först.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Markera extraherade filer som hämtade från internet</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows varnar innan de öppnas. Med tusentals små filer tar extraheringen längre tid: ungefär 1,5 s mer per 1 000 filer.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Filerna öppnas utan varningen från Windows och utan Skyddad vy i Office. Stäng bara av markeringen för ett arkiv du litar på.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Angivet av din organisations princip.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Lägg till filer</value>
   </data>

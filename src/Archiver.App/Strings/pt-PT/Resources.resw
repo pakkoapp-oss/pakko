@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Em unidades de rede e amovíveis, que não têm Reciclagem, o Pakko pergunta primeiro.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Marcar os ficheiros extraídos como transferidos da Internet</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>O Windows avisará antes de os abrir. Com milhares de ficheiros pequenos, a extração demora mais: cerca de 1,5 s a mais por cada 1000 ficheiros.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Os ficheiros abrirão sem o aviso do Windows nem a Vista Protegida do Office. Desative a marca apenas para um arquivo em que confia.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Definido pela política da sua organização.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Adicionar ficheiros</value>
   </data>

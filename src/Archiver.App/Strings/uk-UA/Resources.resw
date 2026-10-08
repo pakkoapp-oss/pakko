@@ -429,6 +429,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Для мережевих і знімних дисків, де Кошика немає, Pakko спершу окремо запитає.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Позначати видобуті файли як завантажені з інтернету</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows попереджатиме перед їх відкриттям. Для тисяч дрібних файлів видобування довше: приблизно на 1,5 с більше на кожні 1000 файлів.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Файли відкриватимуться без попередження Windows і без захищеного перегляду Office. Вимикайте мітку лише для архіву, якому довіряєте.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Задано політикою вашої організації.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Додати файли</value>
   </data>

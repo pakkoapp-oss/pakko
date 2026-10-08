@@ -62,6 +62,13 @@ public sealed record ExtractOptions
     /// retrofit precedent in docs/DECISIONS.md).
     /// </summary>
     public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }
+
+    /// <summary>
+    /// T-F360: false leaves the archive's download mark (Zone.Identifier) off the extracted files,
+    /// the user's choice for one extraction. Default true. An EnforceMOTW Group Policy overrides
+    /// it either way (<see cref="GroupPolicyOptions.EffectiveMotwMode"/>).
+    /// </summary>
+    public bool ApplyDownloadMark { get; init; } = true;
 }
 
 /// <summary>How multiple archives being extracted at once land relative to each other.</summary>

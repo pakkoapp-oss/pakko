@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Pada drive jaringan dan drive yang dapat dilepas, yang tidak memiliki Keranjang Sampah, Pakko bertanya terlebih dahulu.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Tandai file yang diekstrak sebagai diunduh dari internet</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows akan memperingatkan sebelum membukanya. Dengan ribuan file kecil, ekstraksi lebih lama: sekitar 1,5 detik lebih per 1.000 file.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>File akan terbuka tanpa peringatan Windows atau Tampilan Terproteksi Office. Matikan tanda hanya untuk arsip yang Anda percayai.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Diatur oleh kebijakan organisasi Anda.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Tambah file</value>
   </data>

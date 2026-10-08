@@ -60,6 +60,27 @@ public sealed class GroupPolicyServiceTests
         GroupPolicyService.Load(reader).MotwMode.Should().Be(expected);
     }
 
+    // T-F360: the ADMX writes EnforceMOTW only when the policy is Enabled, so a valid value means
+    // an administrator chose the mode and the user's checkbox no longer decides.
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    [InlineData(2, true)]
+    [InlineData(99, false)]
+    [InlineData(-1, false)]
+    public void Load_EnforceMotwValue_SetsSetByPolicyOnlyForAKnownMode(int dwordValue, bool expected)
+    {
+        FakeRegistryReader reader = new FakeRegistryReader().WithDword(PolicyKeyPath, "EnforceMOTW", dwordValue);
+
+        GroupPolicyService.Load(reader).MotwModeSetByPolicy.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Load_EnforceMotwAbsent_NotSetByPolicy()
+    {
+        GroupPolicyService.Load(new FakeRegistryReader()).MotwModeSetByPolicy.Should().BeFalse();
+    }
+
     [Fact]
     public void Load_EnforceMotwAbsent_DiffersFromExplicitZero()
     {

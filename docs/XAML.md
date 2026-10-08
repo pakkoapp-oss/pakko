@@ -64,10 +64,13 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │       │       in the same cell, then the inline password panel (T-F199 step 5): note,
         │       │       EncryptPasswordBox, EncryptConfirmBox, the red message line, "Show
         │       │       password", the rule hint.
-        │       └── DestinationCard — Border (card), Grid (Auto,*) with 6 rows: title, destination
+        │       └── DestinationCard — Border (card), Grid (Auto,*) with 7 rows: title, destination
         │               (Up button NavigateDestinationUpCommand, read-only TextBox, "..."), "If file
         │               exists" ComboBox (Overwrite/Skip/Rename/Ask), Open destination, delete-after
-        │               CheckBox (words from DeleteAfterLabel, T-F207) + Recycle Bin note.
+        │               CheckBox (words from DeleteAfterLabel, T-F207) + Recycle Bin note, then
+        │               (T-F360) a StackPanel shown by DownloadMarkVisibility: the download-mark
+        │               CheckBox (DownloadMarkChecked, enabled by DownloadMarkCanChange) and its
+        │               note (DownloadMarkNoteText: cost, risk or policy).
         │
         └── Row 3: FooterGrid (*,Auto,Auto,Auto,Auto, MinHeight=40)
             ├── Col 0: StackPanel — ProgressBar (while running); footer line (FooterText from

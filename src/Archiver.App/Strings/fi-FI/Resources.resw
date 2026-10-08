@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Verkko- ja siirrettävillä asemilla, joilla ei ole roskakoria, Pakko kysyy ensin.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Merkitse puretut tiedostot Internetistä ladatuiksi</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows varoittaa ennen niiden avaamista. Tuhansilla pienillä tiedostoilla purku kestää kauemmin: noin 1,5 s enemmän 1 000 tiedostoa kohden.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Tiedostot avautuvat ilman Windowsin varoitusta tai Officen suojattua näkymää. Jätä merkintä pois vain arkistosta, johon luotat.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Organisaatiosi käytännön määrittämä.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Lisää tiedostoja</value>
   </data>

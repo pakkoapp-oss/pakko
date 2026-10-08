@@ -24,13 +24,15 @@
             <string id="EnforceMOTW">Mark-of-the-Web propagation on extraction</string>
             <string id="EnforceMOTWExplain">This policy setting controls whether Pakko propagates the Mark-of-the-Web (Zone.Identifier) marker from an archive to the files it extracts from that archive.
 
-If you enable this policy setting and select "Propagate to all files", Pakko always copies the archive's Zone.Identifier marker to every extracted file — this is Pakko's default behavior when this policy is not configured.
+If you enable this policy setting and select "Propagate to all files", Pakko always copies the archive's Zone.Identifier marker to every extracted file, and users cannot turn it off.
 
 If you select "Do not propagate", Pakko never writes a Zone.Identifier marker on extracted files.
 
 If you select "Propagate to unsafe extensions only", Pakko writes the marker only on extracted files whose extension is on its built-in unsafe-extension list (executables, scripts, shortcuts, and similar file types), leaving other extracted files unmarked.
 
-If you disable or do not configure this policy setting, Pakko propagates Mark-of-the-Web to all extracted files.</string>
+When this policy setting is enabled, the choice in Pakko's extract options ("Mark extracted files as downloaded from the internet") and the pakko -snz switch are locked to it.
+
+If you disable or do not configure this policy setting, Pakko propagates Mark-of-the-Web to all extracted files by default, but a user may leave it off for one extraction. To make sure every extracted file is marked, enable this policy setting and select "Propagate to all files".</string>
             <string id="EnforceMOTW0">Do not propagate</string>
             <string id="EnforceMOTW1">Propagate to all files</string>
             <string id="EnforceMOTW2">Propagate to unsafe extensions only</string>

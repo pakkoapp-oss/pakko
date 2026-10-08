@@ -164,8 +164,9 @@ Windows Explorer's own ZIP folder propagates MOTW (see `SECURITY.md`). 7-Zip (de
 
 - On extraction: reads `Zone.Identifier` ADS from the source archive
 - Writes `Zone.Identifier` ADS to **every** extracted file
-- Always on by default — cannot be disabled by user
-- Only a GPO policy can disable MOTW propagation (v1.4)
+- On by default; the user may leave it off for one extraction (T-F360: a checkbox in the App's
+  extract options, `pakko x -snz0`) — previews and nested archives always get it
+- The `EnforceMOTW` Group Policy (v1.4) overrides the user's choice either way
 
 Implementation: `FileStream` opened with ADS path `file.txt:Zone.Identifier`.
 

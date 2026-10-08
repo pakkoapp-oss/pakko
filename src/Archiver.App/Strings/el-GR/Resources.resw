@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Σε δικτυακές και αφαιρούμενες μονάδες δίσκου, που δεν έχουν Κάδο Ανακύκλωσης, το Pakko ρωτά πρώτα.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Σήμανση των αρχείων που εξάγονται ως ληφθέντα από το διαδίκτυο</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Τα Windows θα προειδοποιούν πριν ανοίξουν. Με χιλιάδες μικρά αρχεία η εξαγωγή διαρκεί περισσότερο: περίπου 1,5 δευτ. επιπλέον ανά 1.000 αρχεία.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Τα αρχεία θα ανοίγουν χωρίς την προειδοποίηση των Windows ή την Προστατευμένη προβολή του Office. Απενεργοποιήστε τη σήμανση μόνο για αρχείο συμπίεσης που εμπιστεύεστε.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Ορίστηκε από την πολιτική του οργανισμού σας.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Προσθήκη αρχείων</value>
   </data>

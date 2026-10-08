@@ -106,6 +106,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsNotBusy))]
     [NotifyPropertyChangedFor(nameof(IsArchiveNameAndNotBusy))]
     [NotifyPropertyChangedFor(nameof(IsCompressionLevelEnabled))]
+    [NotifyPropertyChangedFor(nameof(DownloadMarkCanChange))]
     [NotifyCanExecuteChangedFor(nameof(NavigateDestinationUpCommand))]
     private bool _isBusy = false;
 
@@ -185,6 +186,69 @@ public sealed partial class MainViewModel : ObservableObject
     private ListActions _listActions = PrimaryActionPolicy.Evaluate([], _ => false);
 
     private bool IsExtractAccent => IsBrowsingArchive || _listActions.Accent == PrimaryAction.Extract;
+
+    // T-F360: "apply the download mark", on again for every new list or archive. Whether an archive
+    // carries the mark is read off the UI thread; a result for a list that has since changed is
+    // dropped (the generation).
+    private bool _anyArchiveMarked;
+    private int _downloadMarkGeneration;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DownloadMarkChecked))]
+    [NotifyPropertyChangedFor(nameof(DownloadMarkNoteText))]
+    private bool _applyDownloadMark = true;
+
+    private DownloadMarkView MarkView => DownloadMarkOption.For(
+        IsBrowsingArchive ? Location.ShowsExtractActions : _listActions.Accent == PrimaryAction.Extract,
+        _anyArchiveMarked, _policy, ApplyDownloadMark);
+
+    public Visibility DownloadMarkVisibility => MarkView.Visible ? Visibility.Visible : Visibility.Collapsed;
+
+    public bool DownloadMarkChecked
+    {
+        get => MarkView.Checked;
+        set => ApplyDownloadMark = value;
+    }
+
+    public bool DownloadMarkCanChange => MarkView.CanChange && !IsBusy;
+
+    public string DownloadMarkNoteText => MarkView.Note switch
+    {
+        DownloadMarkNote.Cost => _res.GetString("DownloadMarkCostNote"),
+        DownloadMarkNote.Risk => _res.GetString("DownloadMarkRiskNote"),
+        DownloadMarkNote.Policy => _res.GetString("DownloadMarkPolicyNote"),
+        _ => string.Empty,
+    };
+
+    private void RefreshDownloadMark()
+    {
+        int generation = ++_downloadMarkGeneration;
+        _anyArchiveMarked = false;
+        ApplyDownloadMark = true;
+        RaiseDownloadMark();
+        string[] archives = IsBrowsingArchive
+            ? (BrowsedArchivePath is { } browsed ? [browsed] : [])
+            : [.. _listActions.ExtractablePaths];
+        if (archives.Length > 0)
+            _ = ReadMarksAsync(archives, generation);
+    }
+
+    private async Task ReadMarksAsync(string[] archives, int generation)
+    {
+        bool marked = await Task.Run(() => archives.Any(ArchiveDownloadMark.IsPresent));
+        if (generation != _downloadMarkGeneration)
+            return;
+        _anyArchiveMarked = marked;
+        RaiseDownloadMark();
+    }
+
+    private void RaiseDownloadMark()
+    {
+        OnPropertyChanged(nameof(DownloadMarkVisibility));
+        OnPropertyChanged(nameof(DownloadMarkChecked));
+        OnPropertyChanged(nameof(DownloadMarkCanChange));
+        OnPropertyChanged(nameof(DownloadMarkNoteText));
+    }
 
     // T-F05: collapses while the archive browser is open.
     public Visibility NewArchiveCardVisibility =>
@@ -550,9 +614,16 @@ public sealed partial class MainViewModel : ObservableObject
     {
         RaiseBrowseLocationChanged();
         RaiseFooter();
+        RefreshDownloadMark();
     }
 
-    partial void OnBrowseScopeChanged(ArchiveBrowseScope value) => RaiseBrowseLocationChanged();
+    partial void OnBrowseScopeChanged(ArchiveBrowseScope value)
+    {
+        RaiseBrowseLocationChanged();
+        RaiseDownloadMark();
+    }
+
+    partial void OnBrowsedArchivePathChanged(string? value) => RefreshDownloadMark();
 
     private BrowseLocationState Location => BrowseLocationState.For(
         IsBrowsingArchive && BrowseScope == ArchiveBrowseScope.Archive, _browseStack.Count > 0, _browsedIsZip);
@@ -714,6 +785,7 @@ public sealed partial class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(DeleteAfterLabel));
             OnPropertyChanged(nameof(OptionsOpacity));
             OnPropertyChanged(nameof(NewArchiveSummary));
+            RefreshDownloadMark();
         };
     }
 
@@ -947,6 +1019,8 @@ public sealed partial class MainViewModel : ObservableObject
                     ? BrowsePasswordResolver(archivePaths[0])
                     : info => _dialogService.ShowPasswordPromptAsync(info, archivePaths.Count > 1),
                 SelectedEntryPaths = selectedEntryPaths,
+                // T-F360: the single file the unsafe-type warning extracts is about to be opened.
+                ApplyDownloadMark = destinationOverride is not null || MarkView.ApplyMark,
             };
 
             _operationStatusPrefix = string.Format(System.Globalization.CultureInfo.CurrentCulture, _res.GetString("StatusExtractingCount"), options.ArchivePaths.Count);

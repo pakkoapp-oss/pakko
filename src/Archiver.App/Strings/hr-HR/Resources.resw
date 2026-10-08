@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Na mrežnim i prijenosnim pogonima, koji nemaju Koš za smeće, Pakko najprije pita.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Označi raspakirane datoteke kao preuzete s interneta</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows će upozoriti prije njihova otvaranja. Kod tisuća malih datoteka raspakiravanje traje dulje: oko 1,5 s više na svakih 1000 datoteka.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Datoteke će se otvarati bez upozorenja sustava Windows i bez zaštićenog prikaza sustava Office. Oznaku isključite samo za arhivu kojoj vjerujete.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Postavljeno pravilima vaše organizacije.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Dodaj datoteke</value>
   </data>

@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Na dyskach sieciowych i wymiennych, które nie mają Kosza, Pakko najpierw pyta.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Oznacz wypakowane pliki jako pobrane z internetu</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>System Windows ostrzeże przed ich otwarciem. Przy tysiącach małych plików wypakowywanie trwa dłużej: około 1,5 s więcej na każde 1000 plików.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Pliki będą otwierane bez ostrzeżenia systemu Windows i bez widoku chronionego pakietu Office. Wyłączaj oznaczenie tylko dla archiwum, któremu ufasz.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Ustawione przez zasady Twojej organizacji.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Dodaj pliki</value>
   </data>

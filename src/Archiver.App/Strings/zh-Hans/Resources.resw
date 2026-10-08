@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>对于没有回收站的网络驱动器和可移动驱动器，Pakko 会先询问。</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>将解压的文件标记为从 Internet 下载</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>打开前 Windows 会发出警告。文件数以千计时解压会更慢: 每 1000 个文件约多 1.5 秒。</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>文件打开时将不显示 Windows 警告，也不使用 Office 受保护的视图。仅对你信任的压缩包关闭此标记。</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>由你所在组织的策略设置。</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>添加文件</value>
   </data>

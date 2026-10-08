@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Pe unitățile de rețea și cele amovibile, care nu au Coș de reciclare, Pakko întreabă mai întâi.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Marchează fișierele extrase ca descărcate de pe internet</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows va avertiza înainte de deschiderea lor. Cu mii de fișiere mici, extragerea durează mai mult: cu aproximativ 1,5 s în plus la fiecare 1.000 de fișiere.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Fișierele se vor deschide fără avertizarea Windows și fără Vizualizarea protejată din Office. Dezactivați marcajul doar pentru o arhivă în care aveți încredere.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Setat de politica organizației dvs.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Adaugă fișiere</value>
   </data>

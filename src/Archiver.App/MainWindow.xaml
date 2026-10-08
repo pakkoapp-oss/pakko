@@ -567,6 +567,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <TextBlock x:Uid="DestinationCardTitle" Grid.Row="0" Grid.ColumnSpan="2" FontWeight="SemiBold"/>
@@ -632,6 +633,21 @@
                             Opacity="0.7"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Visibility="{x:Bind ViewModel.DeleteAfterVisibility, Mode=OneWay}"/>
+                        <!-- T-F360: only for an archive that carries the download mark; Group Policy locks it. -->
+                        <StackPanel
+                            Grid.Row="6" Grid.Column="1"
+                            Spacing="2"
+                            Visibility="{x:Bind ViewModel.DownloadMarkVisibility, Mode=OneWay}">
+                            <CheckBox
+                                x:Uid="DownloadMarkCheck"
+                                IsChecked="{x:Bind ViewModel.DownloadMarkChecked, Mode=TwoWay}"
+                                IsEnabled="{x:Bind ViewModel.DownloadMarkCanChange, Mode=OneWay}"/>
+                            <TextBlock
+                                Text="{x:Bind ViewModel.DownloadMarkNoteText, Mode=OneWay}"
+                                TextWrapping="Wrap"
+                                Opacity="0.7"
+                                Style="{StaticResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
                     </Grid>
                 </Border>
                 </Grid>

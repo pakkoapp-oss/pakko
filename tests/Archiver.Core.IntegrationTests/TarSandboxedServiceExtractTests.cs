@@ -629,6 +629,39 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         File.Exists(Path.Combine(destDir, "a.txt") + ":Zone.Identifier").Should().BeFalse();
     }
 
+    // T-F360: through the router App and CLI use, so a copy of the options that drops the choice
+    // would show here.
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    public async Task ExtractThroughRouter_DownloadMarkChoice_PolicyWinsOtherwiseTheChoice(
+        bool applyMark, bool policySetsAllFiles, bool expectMarked)
+    {
+        string archivePath = Path.Combine(_temp.Path, "valid.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("hello") },
+        ]);
+        File.WriteAllText(archivePath + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n");
+        GroupPolicyOptions policy = policySetsAllFiles
+            ? new GroupPolicyOptions { MotwMode = MotwMode.AllFiles, MotwModeSetByPolicy = true }
+            : new GroupPolicyOptions();
+
+        string destDir = Path.Combine(_temp.Path, "out");
+        var router = await PakkoServices.Create(policy).CreateExtractionRouterAsync();
+        ArchiveResult result = await router.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            ApplyDownloadMark = applyMark,
+        });
+
+        result.Success.Should().BeTrue();
+        File.Exists(Path.Combine(destDir, "a.txt") + ":Zone.Identifier").Should().Be(expectMarked);
+    }
+
     [Integration]
     public async Task ExtractAsync_MotwModeUnsafeExtensionsOnly_PropagatesOnlyToUnsafeExtensions()
     {

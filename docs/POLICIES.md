@@ -54,8 +54,11 @@ an error.** Policies only take effect when explicitly set.
 
 Mark-of-the-Web (the `Zone.Identifier` NTFS Alternate Data Stream) tells Windows and Office that a
 file originated from the internet, gating Protected View, SmartScreen, and script execution
-warnings. Pakko always propagates MOTW from an archive to its extracted files by default; this
-policy controls *how much* of that propagation happens, not whether the underlying feature exists:
+warnings. Pakko propagates MOTW from an archive to its extracted files by default, and the user
+may leave it off for one extraction (T-F360: the App's "apply the download mark" checkbox,
+`pakko x -snz0`). Once this policy is set, it decides instead: the checkbox shows the policy's
+mode and is locked, and `pakko` warns that `-snz` has no effect. Not configured or Disabled
+removes the value, and the user's choice applies again:
 
 - `0` — MOTW propagation is fully disabled. Use only if a downstream tool cannot handle the
   `Zone.Identifier` stream correctly (rare) — this trades away a real security control.

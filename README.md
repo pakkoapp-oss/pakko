@@ -159,7 +159,7 @@ support are all implemented and on-device verified. Per-release history:
 - ✅ `pakko` command line — in any terminal after a Store install, or as a standalone zip
 - ✅ File type association (every readable format). No URI protocol is registered (the former
   `pakko://` scheme was removed), so a web page cannot launch Pakko through a link of its own
-- ✅ MOTW propagation on every extracted file, including Archive Browser previews
+- ✅ MOTW propagation on extracted files by default, always for Archive Browser previews; the user may leave it off for one trusted archive, unless Group Policy decides
 - ✅ Alternate Data Stream / reserved-filename / reparse-point protections during extraction
 - ✅ Archive Browser — navigate, extract selected/all, preview an image or text file without a
   manual extract, climb past the archive root into the real filesystem

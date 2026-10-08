@@ -34,6 +34,27 @@ public sealed class CliSubprocessTests
         File.ReadAllText(extractedFile).Should().Be("hello world");
     }
 
+    // T-F360: -snz0 leaves the archive's download mark off; without it the mark is applied.
+    // Assumes no EnforceMOTW Group Policy on the test machine.
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("-snz", true)]
+    [InlineData("-snz0", false)]
+    public void Extract_MarkedZip_SnzDecidesTheMark(string? snz, bool expectMarked)
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string zipPath = Path.Combine(scratchDir, "marked.zip");
+        File.Copy(CliFixtureFiles.ValidZip, zipPath);
+        File.WriteAllText(zipPath + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n");
+
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        string[] args = snz is null ? ["x", $"-o{destDir}", zipPath] : ["x", snz, $"-o{destDir}", zipPath];
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run(args);
+
+        exitCode.Should().Be(0, stdErr);
+        File.Exists(Path.Combine(destDir, "a.txt") + ":Zone.Identifier").Should().Be(expectMarked);
+    }
+
     // T-F154: pakko.exe's own "x" command always uses ExtractMode.SingleFolder (see
     // Archiver.CLI/Program.cs's BuildExtractOptions) — never SeparateFolders, the mode the T-F154
     // bug actually lived in (App's default Extract button, Explorer's "Extract Here"). Confirms

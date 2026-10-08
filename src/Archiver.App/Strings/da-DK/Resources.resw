@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>På netværksdrev og flytbare drev, som ikke har en papirkurv, spørger Pakko først.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Markér udpakkede filer som hentet fra internettet</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows advarer, før de åbnes. Med tusindvis af små filer tager udpakningen længere tid: ca. 1,5 sek. mere pr. 1.000 filer.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Filerne åbnes uden advarslen fra Windows eller Beskyttet visning i Office. Slå kun markeringen fra for et arkiv, du har tillid til.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Angivet af din organisations politik.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Tilføj filer</value>
   </data>

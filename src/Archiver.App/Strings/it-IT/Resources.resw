@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Sulle unità di rete e rimovibili, che non hanno il Cestino, Pakko chiede prima.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Contrassegna i file estratti come scaricati da Internet</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows avviserà prima di aprirli. Con migliaia di file piccoli l'estrazione richiede più tempo: circa 1,5 s in più ogni 1.000 file.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>I file si apriranno senza l'avviso di Windows né la Visualizzazione protetta di Office. Disattiva il contrassegno solo per un archivio attendibile.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Impostato dai criteri dell'organizzazione.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Aggiungi file</value>
   </data>

@@ -11411,3 +11411,39 @@ the drain copies it (before: only while it was read), still within the operation
 disk the drain now reads the source instead of the destination's chunk; T-F359's gate covers
 compression only, so the reads overlap differently - recorded, not changed, and not measured (no
 HDD here).
+
+---
+
+## T-F360 — the user may leave the download mark off for one extraction (2026-10-08)
+
+**Decision (the user's, 2026-10-08).** An "apply the download mark" checkbox in the App's extract
+options, on by default; unchecked, the extracted files get no `Zone.Identifier` at all. The
+user chose "no mark" over `UnsafeExtensionsOnly`, whose list has no Office, PDF or ISO types -
+the very files MOTW protects - so a half-way mode would look safe and not be. The `EnforceMOTW`
+Group Policy wins: when set, the checkbox shows the policy's mode and is locked. Where: the App's
+extract options (Explorer's "Extract..." opens the same window) and `pakko x -snz0`. The user
+allowed `SECURITY.md` and `CLAUDE.md`'s MOTW hard constraint to change for this task.
+
+**Why "set by policy" is its own flag.** `GroupPolicyOptions.MotwMode` is `AllFiles` both when no
+policy exists and when an administrator chose `1`; only the second must override the user. The
+ADMX writes `EnforceMOTW` only in the Enabled state (Not configured and Disabled delete it), so a
+value of 0, 1 or 2 means an administrator chose it (`MotwModeSetByPolicy`); a malformed value
+keeps today's default and does not lock anything. `EffectiveMotwMode(applyMark)` is the one rule:
+the policy's mode when set, otherwise the mode with the mark on and `Disabled` with it off. Both
+engines take it at the one place they read the mode, so nothing else in them changed.
+
+**Agent's choices (the "agent's questions are the agent's" rule).** The checkbox is not
+remembered: it is checked again for every new list, every archive opened in the browser and every
+start. It shows only when extraction is the action (the list's accent, or the browser's extract
+actions) and an archive in it carries the mark - read off the UI thread; a result for a list that
+has since changed is dropped (a generation counter). Previews, opening a nested archive and the
+unsafe-type single-file extraction always mark: their files are opened by other programs next.
+Explorer's "Extract Here"/"Extract to folder" have no options and always mark. The note under it
+gives the cost with the mark on (~1.5 s per 1,000 small files, T-F358's measurement), the risk with
+it off, and names the policy when locked. CLI: 7-Zip's `-snz` numbering (NanaZip's
+`ArchiveCommandLine.cpp`): bare and `1` mark, `0` does not, `2` (Office only) is refused, exit 7 on
+any other command; when the policy overrides it pakko says so on stderr, the exit code unchanged.
+
+**Rejected.** Remembering the choice across runs (a forgotten "off" would silently strip the mark
+from later downloads); counting the archive's files to show an exact time (a tar-family archive
+needs a `tar.exe` run for that); a checkbox in "Extract Here" (it has no window).

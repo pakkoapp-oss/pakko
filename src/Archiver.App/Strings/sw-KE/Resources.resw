@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Kwenye viendeshi vya mtandao na vinavyoondolewa, ambavyo havina Pipa la Kuchakata, Pakko huuliza kwanza.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Weka alama kwenye faili zilizotolewa kuwa zimepakuliwa kutoka intaneti</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows itaonya kabla ya kuzifungua. Kwa maelfu ya faili ndogo, utoaji huchukua muda zaidi: takriban sekunde 1.5 zaidi kwa kila faili 1,000.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Faili zitafunguka bila onyo la Windows wala Mwonekano Uliolindwa wa Office. Zima alama tu kwa kumbukumbu unayoiamini.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Imewekwa na sera ya shirika lako.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Ongeza faili</value>
   </data>

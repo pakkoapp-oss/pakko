@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Hálózati és cserélhető meghajtókon, amelyeken nincs Lomtár, a Pakko előbb rákérdez.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>A kibontott fájlok megjelölése internetről letöltöttként</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>A Windows figyelmeztet megnyitásuk előtt. Több ezer kis fájlnál a kibontás tovább tart: 1000 fájlonként körülbelül 1,5 mp-cel.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>A fájlok a Windows figyelmeztetése és az Office védett nézete nélkül nyílnak meg. Csak megbízható archívumnál kapcsolja ki a jelölést.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>A szervezet házirendje állította be.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Fájlok hozzáadása</value>
   </data>

@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>За мрежови и преносими дискове, които нямат кошче, Pakko първо пита.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Маркиране на извлечените файлове като изтеглени от интернет</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows ще предупреждава преди отварянето им. При хиляди малки файлове извличането е по-бавно: около 1,5 s повече на всеки 1000 файла.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Файловете ще се отварят без предупреждението на Windows и без защитения изглед на Office. Изключвайте маркировката само за архив, на който имате доверие.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Зададено от правилата на вашата организация.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Добавяне на файлове</value>
   </data>

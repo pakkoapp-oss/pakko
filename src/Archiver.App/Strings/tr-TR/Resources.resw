@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Geri Dönüşüm Kutusu olmayan ağ ve çıkarılabilir sürücülerde Pakko önce sorar.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Ayıklanan dosyaları internetten indirilmiş olarak işaretle</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows açılmadan önce uyarır. Binlerce küçük dosyada ayıklama daha uzun sürer: her 1.000 dosya için yaklaşık 1,5 sn daha.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Dosyalar Windows uyarısı ve Office Korumalı Görünüm olmadan açılır. İşareti yalnızca güvendiğiniz bir arşiv için kapatın.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Kuruluşunuzun ilkesi tarafından ayarlandı.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Dosya ekle</value>
   </data>

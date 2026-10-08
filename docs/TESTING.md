@@ -551,6 +551,18 @@ tests caught before shipping):
   copy branches with and without the mark. Ten of eleven mutants caught; the one that survives
   drops the flush before the time is set - NTFS keeps a time set through a handle when that handle
   writes later, so no test on this machine can see it (kept for a share).
+- T-F360: `DownloadMarkChoiceTests` (`Archiver.Core.Tests/Services/`) - through
+  `PakkoServices.Create(policy)`'s router (the App and CLI path, so a copy of `ExtractOptions`
+  that drops the choice shows): mark on/off on a marked ZIP, off keeps the entry time, a set
+  `AllFiles` policy marks despite off, a set `Disabled` does not mark despite on; the 8-case
+  `EffectiveMotwMode` matrix; `ArchiveDownloadMark.IsPresent` on marked, unmarked, empty, missing,
+  invalid and folder paths. `GroupPolicyServiceTests`: `MotwModeSetByPolicy` only for 0/1/2.
+  `TarSandboxedServiceExtractTests.ExtractThroughRouter_DownloadMarkChoice_...` (Integration):
+  the same through tar.exe. App.Core `DownloadMarkOptionTests`: hidden, checked with the cost
+  note, unchecked with the risk note, locked with the policy note. CLI `CliDownloadMarkTests`:
+  `-snz`/`-snz1`/`-snz0`, last wins, `-snz2` and unknown values exit 7, `-snz0` on `t`/`l`/`a`/`h`
+  exits 7, the policy warning; subprocess `Extract_MarkedZip_SnzDecidesTheMark`. Seven mutants:
+  five caught; the two survivors were redundant checks and were removed.
 - `PolicyOwnershipTests` (`Archiver.Core.Tests/Services/`, T-F261/T-F250) — Group Policy has one
   owner: every engine/router constructor requires a non-null `GroupPolicyOptions` (reflection);
   `TarSandboxedService` refuses Extract/List/Compress under `DisableTarExtraction` and never runs

@@ -22,7 +22,8 @@ public static class GroupPolicyService
     /// <summary>Loads policy via the given reader — the seam tests use to avoid touching the real registry.</summary>
     public static GroupPolicyOptions Load(IRegistryReader reader)
     {
-        MotwMode motwMode = reader.GetDword(PolicyKeyPath, "EnforceMOTW") switch
+        int? enforceMotw = reader.GetDword(PolicyKeyPath, "EnforceMOTW");
+        MotwMode motwMode = enforceMotw switch
         {
             0 => MotwMode.Disabled,
             2 => MotwMode.UnsafeExtensionsOnly,
@@ -36,6 +37,8 @@ public static class GroupPolicyService
         return new GroupPolicyOptions
         {
             MotwMode = motwMode,
+            // T-F360: the ADMX writes EnforceMOTW only when the policy is Enabled.
+            MotwModeSetByPolicy = enforceMotw is 0 or 1 or 2,
             AllowedFormats = allowedFormats is { Length: > 0 } ? allowedFormats : null,
             BlockedFormats = blockedFormats is { Length: > 0 } ? blockedFormats : null,
             DisableTarExtraction = reader.GetDword(PolicyKeyPath, "DisableTarExtraction") == 1,

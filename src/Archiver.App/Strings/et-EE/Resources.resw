@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Võrgu- ja irdketastel, millel pole prügikasti, küsib Pakko enne.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Märgi lahti pakitud failid internetist allalaaditutuks</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows hoiatab enne nende avamist. Tuhandete väikeste failide korral võtab lahtipakkimine kauem: umbes 1,5 s rohkem iga 1000 faili kohta.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>Failid avanevad ilma Windowsi hoiatuse ja Office'i kaitstud vaateta. Lülitage märge välja ainult arhiivi puhul, mida usaldate.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Määratud teie organisatsiooni poliitikaga.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Lisa failid</value>
   </data>

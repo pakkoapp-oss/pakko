@@ -428,6 +428,18 @@
   <data name="RecycleBinNote.Text" xml:space="preserve">
     <value>Op netwerk- en verwisselbare stations, die geen Prullenbak hebben, vraagt Pakko het eerst.</value>
   </data>
+  <data name="DownloadMarkCheck.Content" xml:space="preserve">
+    <value>Uitgepakte bestanden markeren als gedownload van internet</value>
+  </data>
+  <data name="DownloadMarkCostNote" xml:space="preserve">
+    <value>Windows waarschuwt voordat ze worden geopend. Bij duizenden kleine bestanden duurt uitpakken langer: ongeveer 1,5 s extra per 1000 bestanden.</value>
+  </data>
+  <data name="DownloadMarkRiskNote" xml:space="preserve">
+    <value>De bestanden worden geopend zonder de Windows-waarschuwing en zonder de beveiligde weergave van Office. Zet de markering alleen uit voor een archief dat u vertrouwt.</value>
+  </data>
+  <data name="DownloadMarkPolicyNote" xml:space="preserve">
+    <value>Ingesteld door het beleid van uw organisatie.</value>
+  </data>
   <data name="EmptyAddFilesButton.Content" xml:space="preserve">
     <value>Bestanden toevoegen</value>
   </data>
