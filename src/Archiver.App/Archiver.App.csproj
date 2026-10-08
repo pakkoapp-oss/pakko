@@ -53,7 +53,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CsWinRTAotWarningLevel>2</CsWinRTAotWarningLevel>
 	<ImplicitUsings>enable</ImplicitUsings>
-	<LangVersion>12</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -138,10 +137,6 @@
   -->
   <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
   </PropertyGroup>
 
   <!-- Deploy the freshly built MSIX after every Release build in Visual Studio -->

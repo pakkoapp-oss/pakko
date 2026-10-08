@@ -36,7 +36,7 @@ internal sealed partial class Win32OperationUi : IOperationUi
 
     private sealed class Session : IOperationSession
     {
-        private readonly object _dialogLock = new();
+        private readonly Lock _dialogLock = new();
         private readonly CancellationTokenSource _cts = new();
         private readonly Timer? _cancelPoll;
         private readonly string _title;

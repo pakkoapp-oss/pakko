@@ -26,7 +26,7 @@ internal sealed partial class AppContainerProfile
 
     // Where the OS records a profile (one key per AppContainer SID, confirmed 2026-09-25).
     private const string MappingsKey = @"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppContainer\Mappings\";
-    private static readonly object CreateLock = new();
+    private static readonly Lock CreateLock = new();
 
     /// <summary>
     /// Creates the profile if it doesn't already exist. Safe to call on every operation.

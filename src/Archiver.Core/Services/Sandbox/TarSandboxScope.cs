@@ -58,7 +58,6 @@ internal sealed partial class TarSandboxScope : IDisposable
     private const string UnreadableNameMessage = "empty or unreadable filename";
 
     private readonly SafeSidHandle _sid;
-    private readonly string _quarantineRoot;
     private readonly FileStream _archive;
 
     // Null until the first listing decides it (see ListAsync).
@@ -68,12 +67,12 @@ internal sealed partial class TarSandboxScope : IDisposable
     public string? OutputDirectory { get; }
 
     /// <summary>The operation-scoped quarantine directory (contains "out\" if present) — deleted whole by Dispose().</summary>
-    public string QuarantineRoot => _quarantineRoot;
+    public string QuarantineRoot { get; }
 
     private TarSandboxScope(SafeSidHandle sid, string quarantineRoot, FileStream archive, string? outputDirectory)
     {
         _sid = sid;
-        _quarantineRoot = quarantineRoot;
+        QuarantineRoot = quarantineRoot;
         _archive = archive;
         OutputDirectory = outputDirectory;
     }
@@ -239,7 +238,7 @@ internal sealed partial class TarSandboxScope : IDisposable
     {
         if (OutputDirectory is null)
             throw new InvalidOperationException("This scope was created without an output folder.");
-        string firstDir = Path.Combine(_quarantineRoot, FirstCopyFolderName);
+        string firstDir = Path.Combine(QuarantineRoot, FirstCopyFolderName);
         Directory.CreateDirectory(firstDir);
         try
         {
@@ -302,7 +301,7 @@ internal sealed partial class TarSandboxScope : IDisposable
             (int exitCode, string? stdOut, string? stdErr) = await SandboxedProcessLauncher.RunAsync(
                 TarExecutablePath,
                 [mode, "-f", "-", .. headerCharset, .. arguments],
-                new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: _quarantineRoot,
+                new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: QuarantineRoot,
                     OutputEncoding: TarOutputEncoding.Current),
                 cancellationToken)
                 .ConfigureAwait(false);
@@ -359,7 +358,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         _sid.Dispose();
         // The AppContainer profile itself is never deleted here — it's created once, lazily,
         // and reused for the lifetime of the install (see DECISIONS.md's T-F52 follow-up entry).
-        try { if (Directory.Exists(_quarantineRoot)) Directory.Delete(_quarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
+        try { if (Directory.Exists(QuarantineRoot)) Directory.Delete(QuarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
     }
 
     private static partial class NativeMethods

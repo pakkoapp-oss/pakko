@@ -5,7 +5,6 @@
     <IsAotCompatible>true</IsAotCompatible>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <LangVersion>12</LangVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- T-F148: [LibraryImport]'s generated marshalling code uses pointers; no hand-written unsafe code. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

@@ -108,7 +108,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsCompressionLevelEnabled))]
     [NotifyPropertyChangedFor(nameof(DownloadMarkCanChange))]
     [NotifyCanExecuteChangedFor(nameof(NavigateDestinationUpCommand))]
-    private bool _isBusy = false;
+    public partial bool IsBusy { get; set; } = false;
 
     private string _lastOperation = string.Empty;
 
@@ -121,10 +121,10 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [ObservableProperty]
-    private int _progress = 0;
+    public partial int Progress { get; set; } = 0;
 
     [ObservableProperty]
-    private bool _isProgressIndeterminate = false;
+    public partial bool IsProgressIndeterminate { get; set; } = false;
 
     public bool IsOperationRunning => IsBusy;
     public bool IsNotBusy => !IsBusy;
@@ -141,17 +141,17 @@ public sealed partial class MainViewModel : ObservableObject
         IsBusy ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
-    private string _statusMessage = _res.GetString("StatusReady");
+    public partial string StatusMessage { get; set; } = _res.GetString("StatusReady");
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(NavigateDestinationUpCommand))]
-    private string _destinationPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+    public partial string DestinationPath { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
     [ObservableProperty]
-    private ObservableCollection<FileItem> _fileItems = [];
+    public partial ObservableCollection<FileItem> FileItems { get; set; } = [];
 
     [ObservableProperty]
-    private string? _archiveName;
+    public partial string? ArchiveName { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSingleArchive))]
@@ -159,7 +159,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsArchiveNameEnabled))]
     [NotifyPropertyChangedFor(nameof(IsArchiveNameAndNotBusy))]
     [NotifyPropertyChangedFor(nameof(ArchiveNamePlaceholder))]
-    private ArchiveMode _selectedArchiveMode = ArchiveMode.SingleArchive;
+    public partial ArchiveMode SelectedArchiveMode { get; set; } = ArchiveMode.SingleArchive;
 
     public bool IsSingleArchive
     {
@@ -196,7 +196,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DownloadMarkChecked))]
     [NotifyPropertyChangedFor(nameof(DownloadMarkNoteText))]
-    private bool _applyDownloadMark = true;
+    public partial bool ApplyDownloadMark { get; set; } = true;
 
     private DownloadMarkView MarkView => DownloadMarkOption.For(
         IsBrowsingArchive ? Location.ShowsExtractActions : _listActions.Accent == PrimaryAction.Extract,
@@ -257,7 +257,7 @@ public sealed partial class MainViewModel : ObservableObject
     // T-F199 board 8: an archives-only list collapses the card; the user can open it again.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NewArchiveSummaryVisibility))]
-    private bool _isNewArchiveCardExpanded = true;
+    public partial bool IsNewArchiveCardExpanded { get; set; } = true;
 
     public Visibility NewArchiveSummaryVisibility =>
         IsNewArchiveCardExpanded ? Visibility.Collapsed : Visibility.Visible;
@@ -403,7 +403,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(OnConflictIndex))]
-    private ConflictBehavior _onConflict = ConflictBehavior.Rename;
+    public partial ConflictBehavior OnConflict { get; set; } = ConflictBehavior.Rename;
 
     public int OnConflictIndex
     {
@@ -426,7 +426,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CompressionLevelIndex))]
     [NotifyPropertyChangedFor(nameof(NewArchiveSummary))]
-    private CompressionLevel _selectedCompressionLevel = CompressionLevel.Fastest;
+    public partial CompressionLevel SelectedCompressionLevel { get; set; } = CompressionLevel.Fastest;
 
     public int CompressionLevelIndex
     {
@@ -462,7 +462,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(EncryptCheckVisibility))]
     [NotifyPropertyChangedFor(nameof(EncryptZipOnlyVisibility))]
     [NotifyPropertyChangedFor(nameof(EncryptionPanelVisibility))]
-    private ArchiveContainerFormat _selectedContainerFormat = ArchiveContainerFormat.Zip;
+    public partial ArchiveContainerFormat SelectedContainerFormat { get; set; } = ArchiveContainerFormat.Zip;
 
     partial void OnSelectedContainerFormatChanged(ArchiveContainerFormat value) => ClearEncryptionPassword();
 
@@ -501,7 +501,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NewArchiveSummary))]
     [NotifyPropertyChangedFor(nameof(EncryptionPanelVisibility))]
-    private bool _encryptWithPassword = false;
+    public partial bool EncryptWithPassword { get; set; } = false;
 
     partial void OnEncryptWithPasswordChanged(bool value) => ClearEncryptionPassword();
 
@@ -516,7 +516,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EncryptionPasswordRevealMode))]
-    private bool _showEncryptionPassword;
+    public partial bool ShowEncryptionPassword { get; set; }
 
     public Microsoft.UI.Xaml.Controls.PasswordRevealMode EncryptionPasswordRevealMode => ShowEncryptionPassword
         ? Microsoft.UI.Xaml.Controls.PasswordRevealMode.Visible
@@ -588,10 +588,10 @@ public sealed partial class MainViewModel : ObservableObject
         _policy.DisableTarExtraction ? Visibility.Collapsed : Visibility.Visible;
 
     [ObservableProperty]
-    private bool _openDestinationFolder = false;
+    public partial bool OpenDestinationFolder { get; set; } = false;
 
     [ObservableProperty]
-    private bool _deleteAfterOperation = false;
+    public partial bool DeleteAfterOperation { get; set; } = false;
 
     // T-F05: Archive Browser — inline mode-swap state. IsBrowsingArchive drives which of the two
     // Row-1/Row-3 sibling Grids in MainWindow.xaml is visible; nothing else in this ViewModel
@@ -608,7 +608,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ScanArchiveFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(CloseArchiveCommand))]
-    private bool _isBrowsingArchive = false;
+    public partial bool IsBrowsingArchive { get; set; } = false;
 
     partial void OnIsBrowsingArchiveChanged(bool value)
     {
@@ -701,24 +701,24 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ScanArchiveFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(TestBrowsedArchiveCommand))]
-    private string? _browsedArchivePath;
+    public partial string? BrowsedArchivePath { get; set; }
 
     [ObservableProperty]
-    private string _currentFolderPath = string.Empty;
+    public partial string CurrentFolderPath { get; set; } = string.Empty;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(NavigateUpCommand))]
-    private ArchiveBrowseScope _browseScope = ArchiveBrowseScope.Archive;
+    public partial ArchiveBrowseScope BrowseScope { get; set; } = ArchiveBrowseScope.Archive;
 
     [ObservableProperty]
-    private ObservableCollection<ArchiveEntryViewModel> _currentFolderEntries = [];
+    public partial ObservableCollection<ArchiveEntryViewModel> CurrentFolderEntries { get; set; } = [];
 
     [ObservableProperty]
-    private ObservableCollection<string> _breadcrumbSegments = [];
+    public partial ObservableCollection<string> BreadcrumbSegments { get; set; } = [];
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
-    private IReadOnlyList<ArchiveEntryViewModel> _selectedBrowserEntries = [];
+    public partial IReadOnlyList<ArchiveEntryViewModel> SelectedBrowserEntries { get; set; } = [];
 
     // Null until the first header click: the list keeps the order items were added in.
     private string? _sortColumn;
@@ -760,7 +760,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (_policy.DisableTarExtraction && SelectedContainerFormat != ArchiveContainerFormat.Zip)
             SelectedContainerFormat = ArchiveContainerFormat.Zip;
 
-        _fileItems.CollectionChanged += (_, _) =>
+        FileItems.CollectionChanged += (_, _) =>
         {
             ArchiveCommand.NotifyCanExecuteChanged();
             UpdateDefaultDestination();

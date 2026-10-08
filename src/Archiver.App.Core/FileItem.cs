@@ -33,20 +33,20 @@ public sealed partial class FileItem : ObservableObject, IDisposable
     public override string ToString() => Name;
 
     [ObservableProperty]
-    private string _size = "...";
+    public partial string Size { get; set; } = "...";
 
     [ObservableProperty]
-    private long _sizeBytes = -1;
+    public partial long SizeBytes { get; set; } = -1;
 
     // Empty (not "...") for folders — unlike size, a folder has no single meaningful CRC to
     // aggregate, so LoadCrc32Async is never started for one. Crc32 is null while a file's CRC is
     // still computing or unavailable (error reading the file); never a 0-as-sentinel — an empty
     // file's CRC-32 is legitimately 0.
     [ObservableProperty]
-    private string _crc32Display = string.Empty;
+    public partial string Crc32Display { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private uint? _crc32;
+    public partial uint? Crc32 { get; set; }
 
     /// <summary>Files in this item: 1 for a file, the folder's file count once <see cref="TotalsReady"/>
     /// completes (0 when it could not be measured).</summary>

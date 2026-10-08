@@ -20,7 +20,7 @@ internal sealed class DeferredOperationSession : IOperationSession
 
     // Guards everything below. Starting the window happens inside it, so nothing reaches the
     // window before the state kept so far has.
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private IOperationSession? _window;
     private (string Name, int Index, int Count)? _item;
     private ProgressReport? _latest;

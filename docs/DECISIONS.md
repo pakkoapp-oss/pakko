@@ -11511,3 +11511,27 @@ device-checked (no hardware) - the pre-release check list covers it.
 **Rejected.** ReadyToRun for the satellites (T-F349: 126 vs 32 ms for Shell); AOT for the CLI and
 Shell only (an AOT App is where the size and memory win is, and a JIT App keeps the 346-file
 package).
+
+## T-F363 Part B — C# 14, with the C# 13 forms enforced (2026-10-09)
+
+**Decision.** The user asked to move from C# 12 to C# 14, taking C# 13 along, and to have the
+build enforce the new forms. `LangVersion` 14 is set once in `Directory.Build.props`; the six
+per-project copies are gone and `Repo_PinsCSharp14Once` keeps it that way.
+
+**What changed.** The 28 `[ObservableProperty]` fields (`MainViewModel`, `FileItem`) are partial
+properties, the form MVVM Toolkit 8.4 asks for so the CsWinRT generator sees them under AOT
+(T-F355 research item 4); `NoWarn MVVMTK0045` is removed, so a field now fails the build
+(mutant checked). Eight lock objects are `System.Threading.Lock` (`LockSourceGuardTests` rejects a
+bare `object x = new()` in `src/`). The `.editorconfig` makes IDE0330 (Lock), IDE0340 (unbound
+generic `nameof`), IDE0360 (simple accessor / `field`), IDE0032 (auto property) and IDE0031
+(null propagation, `?.=` in C# 14) errors; the only hits were four read-only backing fields with
+a plain getter (sandbox handles, `CliCancellation.Source`), turned into auto properties by
+`dotnet format style`.
+
+**What did not happen.** The breaking change predicted in TASKS (`MemoryMarshal.Cast<byte, char>`
+on a `byte[]` in `StdinPathList.cs` becoming ambiguous) did not occur: the build is clean on SDK
+10.0.401, so no code change there. `field` had no candidate: every hand-written setter is computed
+or throws.
+
+**Checked.** Full build (solution, App and OperationUi x64) with no warning, every test project
+including `Category=Slow`, the deployed AOT package on the device.

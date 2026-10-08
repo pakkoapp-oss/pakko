@@ -10,7 +10,7 @@ namespace Archiver.CLI;
 /// </summary>
 public sealed class CliProgress(TextWriter writer) : IProgress<ProgressReport>
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private int _shown = -1;
 
     /// <summary>Null when stderr is redirected: no progress at all.</summary>

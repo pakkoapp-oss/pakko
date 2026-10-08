@@ -16,10 +16,8 @@
          .editorconfig (CA1305/CA1707/CA1805) is unaffected by this flag — a suppressed diagnostic
          is never emitted, so there's nothing for TreatWarningsAsErrors to promote. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- T-F270: the .NET 10 SDK defaults net10.0 projects to C# 14, whose implicit span
-         conversions can silently rebind calls like array.Contains/Reverse to MemoryExtensions.
-         The .NET 8 -> 10 move keeps the language unchanged; moving to C# 14 is its own decision. -->
-    <LangVersion>12</LangVersion>
+    <!-- T-F363: C# 14, set once here; no project overrides it (a test reads the csproj files). -->
+    <LangVersion>14</LangVersion>
     <!-- T-F240: the vulnerable-package gate. With TreatWarningsAsErrors above, any known
          advisory (NU1901-NU1904), direct or transitive, fails restore on every CI run and the
          nightly canary. These match the .NET 10 SDK defaults; pinned so an SDK change can't

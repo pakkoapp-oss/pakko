@@ -7,7 +7,6 @@
     <!-- T-F287: [LibraryImport]'s generated marshalling code uses pointers; no hand-written unsafe code. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ImplicitUsings>enable</ImplicitUsings>
-    <LangVersion>12</LangVersion>
     <AssemblyName>pakko</AssemblyName>
     <RootNamespace>Archiver.CLI</RootNamespace>
     <!-- Default only: Publish-Cli.ps1 overrides this with the real vX.Y.Z release tag via

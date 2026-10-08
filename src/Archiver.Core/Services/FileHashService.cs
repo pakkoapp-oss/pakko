@@ -122,7 +122,7 @@ public static class FileHashService
         var namesSum = new HashDigestAccumulator(digestSize);
         var entries = new List<HashEntry>();
         int fileCount = 0;
-        object sync = new object();
+        Lock sync = new();
 
         // T-F251: the shared DirectoryWalker — an unreadable folder is one error entry instead of
         // an exception out of this method, and a junction or symlink is skipped (never followed:

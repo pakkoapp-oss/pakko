@@ -8,7 +8,6 @@ namespace Archiver.CLI;
 /// </summary>
 public sealed class CliCancellation : IDisposable
 {
-    private readonly CancellationTokenSource _source = new();
     private readonly ConsoleCancelEventHandler? _handler;
 
     private CliCancellation(bool listenToConsole)
@@ -27,18 +26,18 @@ public sealed class CliCancellation : IDisposable
 
     /// <summary>Cancelled by the first Ctrl+C, or by <see cref="Source"/> (e.g. the conflict
     /// prompt's Quit).</summary>
-    public CancellationToken Token => _source.Token;
+    public CancellationToken Token => Source.Token;
 
     /// <summary>The underlying source, for callers that cancel on their own (Quit at a prompt).</summary>
-    public CancellationTokenSource Source => _source;
+    public CancellationTokenSource Source { get; } = new();
 
     /// <summary>Handles one Ctrl+C: returns true (keep running) the first time and cancels the
     /// token; false once already cancelled, so the process ends.</summary>
     public bool HandleInterrupt()
     {
-        if (_source.IsCancellationRequested)
+        if (Source.IsCancellationRequested)
             return false;
-        _source.Cancel();
+        Source.Cancel();
         return true;
     }
 
@@ -47,6 +46,6 @@ public sealed class CliCancellation : IDisposable
     {
         if (_handler is not null)
             Console.CancelKeyPress -= _handler;
-        _source.Dispose();
+        Source.Dispose();
     }
 }

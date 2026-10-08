@@ -12,7 +12,7 @@ internal sealed class AggregateProgressTracker
 {
     private readonly long _totalBytes;
     private readonly IProgress<ProgressReport> _progress;
-    private readonly object _sync = new();
+    private readonly Lock _sync = new();
     private long _bytesTransferred;
     private int _lastReportedPercent = -1;
 

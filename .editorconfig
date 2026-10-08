@@ -25,6 +25,17 @@ csharp_style_expression_bodied_properties = true:suggestion
 dotnet_style_null_propagation = true:suggestion
 dotnet_style_coalesce_expression = true:suggestion
 
+# T-F363: C# 13/14 forms, enforced (warning -> error under TreatWarningsAsErrors)
+csharp_prefer_system_threading_lock = true:warning
+dotnet_diagnostic.IDE0330.severity = warning
+csharp_style_prefer_unbound_generic_type_in_nameof = true:warning
+dotnet_diagnostic.IDE0340.severity = warning
+csharp_style_prefer_simple_property_accessors = true:warning
+dotnet_diagnostic.IDE0360.severity = warning
+dotnet_style_prefer_auto_properties = true:warning
+dotnet_diagnostic.IDE0032.severity = warning
+dotnet_diagnostic.IDE0031.severity = warning
+
 # Using directives
 csharp_using_directive_placement = outside_namespace:error
 

@@ -19,8 +19,6 @@ internal sealed partial class LaunchAttributeList : IDisposable
     // ProcThreadAttributeValue(ProcThreadAttributeHandleList = 2, FALSE, TRUE, FALSE) = 0x00020002.
     private static readonly IntPtr ProcThreadAttributeHandleList = (IntPtr)0x00020002;
 
-    private readonly SafeProcThreadAttributeListHandle _attributeList = new();
-
     // Both buffers are only pointed at by the attribute list, never copied into it — they must
     // outlive it, and are released in Dispose after it.
     private IntPtr _securityCapabilitiesBuffer;
@@ -28,7 +26,7 @@ internal sealed partial class LaunchAttributeList : IDisposable
 
     private LaunchAttributeList() { }
 
-    public SafeProcThreadAttributeListHandle AttributeList => _attributeList;
+    public SafeProcThreadAttributeListHandle AttributeList { get; } = new();
 
     /// <summary>
     /// Builds the list. The caller keeps <paramref name="appContainerSid"/> and every handle in
@@ -48,8 +46,8 @@ internal sealed partial class LaunchAttributeList : IDisposable
         var list = new LaunchAttributeList();
         try
         {
-            list._attributeList.SetBuffer(Marshal.AllocHGlobal(size));
-            if (!NativeMethods.InitializeProcThreadAttributeList(list._attributeList, attributeCount, 0, ref size))
+            list.AttributeList.SetBuffer(Marshal.AllocHGlobal(size));
+            if (!NativeMethods.InitializeProcThreadAttributeList(list.AttributeList, attributeCount, 0, ref size))
                 throw new InvalidOperationException($"InitializeProcThreadAttributeList failed (Win32 error {Marshal.GetLastWin32Error()}).");
 
             if (appContainerSid != IntPtr.Zero)
@@ -64,7 +62,7 @@ internal sealed partial class LaunchAttributeList : IDisposable
                 int structSize = Marshal.SizeOf<SECURITY_CAPABILITIES>();
                 list._securityCapabilitiesBuffer = Marshal.AllocHGlobal(structSize);
                 Marshal.StructureToPtr(securityCapabilities, list._securityCapabilitiesBuffer, fDeleteOld: false);
-                Update(list._attributeList, ProcThreadAttributeSecurityCapabilities, list._securityCapabilitiesBuffer, structSize);
+                Update(list.AttributeList, ProcThreadAttributeSecurityCapabilities, list._securityCapabilitiesBuffer, structSize);
             }
 
             if (inheritedHandles.Count > 0)
@@ -73,7 +71,7 @@ internal sealed partial class LaunchAttributeList : IDisposable
                 int bytes = IntPtr.Size * handles.Length;
                 list._handleListBuffer = Marshal.AllocHGlobal(bytes);
                 Marshal.Copy(handles, 0, list._handleListBuffer, handles.Length);
-                Update(list._attributeList, ProcThreadAttributeHandleList, list._handleListBuffer, bytes);
+                Update(list.AttributeList, ProcThreadAttributeHandleList, list._handleListBuffer, bytes);
             }
 
             return list;
@@ -95,7 +93,7 @@ internal sealed partial class LaunchAttributeList : IDisposable
     {
         // Attribute list (and its DeleteProcThreadAttributeList call) must go first — it may
         // still reference both buffers internally until torn down.
-        _attributeList.Dispose();
+        AttributeList.Dispose();
         if (_securityCapabilitiesBuffer != IntPtr.Zero)
             Marshal.FreeHGlobal(_securityCapabilitiesBuffer);
         if (_handleListBuffer != IntPtr.Zero)

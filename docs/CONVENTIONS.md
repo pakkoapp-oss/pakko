@@ -8,7 +8,9 @@ AI agents must follow these rules in all generated code.
 
 | Rule | Value |
 |------|-------|
-| Language version | C# 12 (pinned in `Directory.Build.props`; .NET 10 SDK) |
+| Language version | C# 14 (set once in `Directory.Build.props`, never per project; .NET 10 SDK; T-F363) |
+| Locks | `System.Threading.Lock` (`private readonly Lock _lock = new();`), never a bare `object` (a test reads `src/`) |
+| Properties | Auto property or `field` keyword instead of a hand-written backing field (IDE0032/IDE0360 are errors) |
 | Nullable reference types | `enable` (all projects) |
 | Implicit usings | `enable` |
 | File-scoped namespaces | Required |
@@ -301,10 +303,11 @@ public sealed partial class BoolToVisibilityConverter : IValueConverter { ... }
 
 - Bindings are `x:Bind` only. `{Binding}` or `DisplayMemberPath` needs the source class `partial`
   with `[WinRT.GeneratedBindableCustomProperty]`.
-- `[ObservableProperty]` stays on fields (C# 12; MVVMTK0045 is suppressed in `Archiver.App.csproj`).
-  The CsWinRT generator does not see the generated properties, but it does see the `x:Bind` code
-  that assigns them. A new collection bound to `ItemsSource` gets a device check; if it throws
-  under AOT, declare its instantiation:
+- `[ObservableProperty]` goes on a partial property (T-F363), never a field: the CsWinRT generator
+  sees a partial property, not one generated from a field, and MVVMTK0045 fails the build.
+  `[ObservableProperty] public partial bool IsBusy { get; set; } = false;`
+  A new collection bound to `ItemsSource` still gets a device check; if it throws under AOT,
+  declare its instantiation:
   `[assembly: WinRT.GeneratedWinRTExposedExternalType(typeof(ObservableCollection<Foo>))]`.
 - No collection expression (`[]`) passed straight to a WinRT API: its compiler-made type has no
   WinRT vtable.

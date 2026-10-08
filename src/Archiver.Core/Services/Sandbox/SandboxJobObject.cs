@@ -34,16 +34,15 @@ internal sealed partial class SandboxJobObject : IDisposable
     // How long ReadLimitHit waits for the job to report the process's exit.
     private const uint ExitMessageWaitMilliseconds = 1000;
 
-    private readonly SafeJobObjectHandle _handle;
     private readonly SafeCompletionPortHandle _port;
 
     private SandboxJobObject(SafeJobObjectHandle handle, SafeCompletionPortHandle port)
     {
-        _handle = handle;
+        Handle = handle;
         _port = port;
     }
 
-    public SafeJobObjectHandle Handle => _handle;
+    public SafeJobObjectHandle Handle { get; }
 
     /// <summary>Which Job limit stopped the process, if any (T-F239).</summary>
     public enum LimitHit
@@ -190,7 +189,7 @@ internal sealed partial class SandboxJobObject : IDisposable
 
     public void Dispose()
     {
-        _handle.Dispose();
+        Handle.Dispose();
         _port.Dispose();
     }
 

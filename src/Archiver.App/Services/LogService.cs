@@ -9,7 +9,7 @@ public sealed class LogService : ILogService
     private const int MaxRotatedFiles = 3;
 
     private readonly string _logPath;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     public LogService()
     {

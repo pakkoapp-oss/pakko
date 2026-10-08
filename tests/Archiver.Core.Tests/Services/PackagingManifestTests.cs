@@ -86,6 +86,18 @@ public sealed class PackagingManifestTests
         Property(LoadProject(name), "IsAotCompatible").Should().Equal("true");
     }
 
+    [Fact]
+    public void Repo_PinsCSharp14Once()
+    {
+        Property(XDocument.Load(Path.Combine(RepoRoot, "Directory.Build.props")), "LangVersion").Should().Equal("14");
+
+        string[] overriding = [.. Directory.EnumerateFiles(Path.Combine(RepoRoot, "src"), "*.csproj", SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(Path.Combine(RepoRoot, "tests"), "*.csproj", SearchOption.AllDirectories))
+            .Where(p => Property(XDocument.Load(p), "LangVersion").Count > 0)
+            .Select(Path.GetFileName)!];
+        overriding.Should().BeEmpty("the language version is set once, in Directory.Build.props (T-F363)");
+    }
+
     private static List<(string Include, string Link)> SatelliteContent() =>
         [.. LoadProject("Archiver.App").Descendants()
             .Where(e => e.Name.LocalName == "Content")

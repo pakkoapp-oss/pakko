@@ -2130,7 +2130,14 @@ re-measured with T-F346's script before and after.
 
 ### T-F363 — Windows App SDK 2.x, SDK BuildTools 10.0.28000 and C# 14, one wave (P3)
 
-- [ ] **Status:** open. **Part A (packages).** Dependabot proposed both for `Archiver.OperationUi`
+- [~] **Status:** Part B done 2026-10-09; Part A open. **Part B result:** C# 14 set once in
+  `Directory.Build.props` (`Repo_PinsCSharp14Once`); the predicted `StdinPathList.cs:43` break did
+  not happen (the .NET 10 BCL resolves `MemoryMarshal.Cast` on an array; build clean); the 28
+  `[ObservableProperty]` fields are partial properties and `NoWarn MVVMTK0045` is gone (a field
+  fails the build); 8 lock objects are `Lock` (`LockSourceGuardTests`); `field` had no candidate
+  (every hand-written setter is computed or throws); IDE0330/0340/0360/0032/0031 enforced as
+  errors, which turned 4 read-only backing fields into auto properties. Tests, mutants (3) and the
+  smoke on the deployed package green. **Part A (packages).** Dependabot proposed both for `Archiver.OperationUi`
   alone (#13 BuildTools 10.0.26100.7705 -> 10.0.28000.2705, #22 Microsoft.WindowsAppSDK
   1.8.260209005 -> 2.5.1); closed, because the two WinUI exes must stay on one Windows App SDK and
   the bump changes the shipped binaries under Native AOT (T-F355). Do both projects in one change:

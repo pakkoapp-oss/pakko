@@ -85,7 +85,7 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
 
         // Everything below is guarded by _lock. The pump sends queued messages in order; progress
         // is coalesced into one pending slot so a slow helper never blocks the operation.
-        private readonly object _lock = new();
+        private readonly Lock _lock = new();
         private readonly Queue<ProtocolMessage> _queue = new();
         private readonly SemaphoreSlim _signal = new(0);
         private ProgressMessage? _pendingProgress;

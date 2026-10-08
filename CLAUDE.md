@@ -895,9 +895,11 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 ```
 
 > **Toolchain (T-F270, 2026-09-26):** .NET 10 LTS — `global.json` pins SDK `10.0.100` with
-> `rollForward: latestFeature` (dev machine: 10.0.401); **C# 12** — `LangVersion` pinned once in
-> `Directory.Build.props` (C# 14's implicit span conversions can rebind calls; moving is a separate
-> decision); **Visual Studio 2026** (18.x) with MSVC **v143** (14.44) x64+ARM64 for the C++
+> `rollForward: latestFeature` (dev machine: 10.0.401); **C# 14** (T-F363) — `LangVersion` set once in
+> `Directory.Build.props`, never per project (a test reads them). Write C# 13/14: `[ObservableProperty]`
+> on a `partial` property, never a field (MVVMTK0045 is an error); `System.Threading.Lock`, never a
+> bare `object`, to lock on; `field` over a hand-written backing field; IDE0330/0340/0360/0032/0031
+> are errors (`.editorconfig`); **Visual Studio 2026** (18.x) with MSVC **v143** (14.44) x64+ARM64 for the C++
 > projects. Every C# build goes through `dotnet`; `msbuild.exe` (found via `vswhere -latest`) builds
 > only the `.vcxproj` files. CI: `windows-2022` runner + `setup-dotnet 10.0.x`.
 > `dotnet test` and `dotnet build src/Archiver.Core` work freely from terminal.
@@ -1189,13 +1191,6 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
   run, then passed immediately on rerun in isolation — looks like parallel-execution timing
   noise, not a real regression. If a test fails once, rerun before treating it as caused by
   your change.
-  **Recurred 2026-07-18** (1–5 `Archiver.Core.IntegrationTests` failures in a full repo-wide
-  `dotnet test` run, always passing in isolation and on a plain rerun) right after
-  `Archiver.CLI.Tests`' new `Subprocess/` layer (T-F09) started launching real
-  `TarSandboxedService`-driven subprocesses concurrently with `Archiver.Core.IntegrationTests`'
-  own sandbox tests — same shared `Pakko.TarSandbox` AppContainer profile/quarantine ACL under
-  more concurrent load than before. Same rule applies: rerun once before treating a failure here
-  as a real regression.
   **Root-caused and fixed 2026-07-24 (T-F130):** all 10 `Archiver.Core.IntegrationTests` classes
   that drive real AppContainer/Job Object/quarantine ACL calls were racing against *each other*
   under xUnit's default parallel-by-class execution — grouped into one
