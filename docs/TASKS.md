@@ -2124,3 +2124,13 @@ re-measured with T-F346's script before and after.
   alone) keep the old rule; `TarSandboxedService` creating over an existing `out.tar.xz`. Two
   mutants killed (no length guard, case-sensitive match).
 - **Reported by:** T-F355 smoke, 2026-10-08.
+
+### T-F363 — Windows App SDK 2.x and SDK BuildTools 10.0.28000, App and the operation window together (P3)
+
+- [ ] **Status:** open. Dependabot proposed both for `Archiver.OperationUi` alone (#13 BuildTools
+  10.0.26100.7705 -> 10.0.28000.2705, #22 Microsoft.WindowsAppSDK 1.8.260209005 -> 2.5.1); closed,
+  because the two WinUI exes must stay on one Windows App SDK and the bump changes the shipped
+  binaries under Native AOT (T-F355). Do both projects in one change: read the 2.x release notes
+  (breaking changes, AOT/CsWinRT), build both architectures, run the T-F355 smoke rows for the App
+  and the operation window on the deployed package.
+- **Reported by:** Dependabot, 2026-10-08.
