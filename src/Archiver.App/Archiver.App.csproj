@@ -36,7 +36,7 @@
       T-F139 follow-up: without Language-based splitting, resource-package count no longer crosses
       the packaging pipeline's own flat-vs-bundle threshold, so a plain `dotnet publish` now emits
       a flat .msix with the WindowsAppSDK runtime staged as loose sibling files under
-      Dependencies\<arch>\Microsoft.WindowsAppRuntime.1.8.msix instead of one self-contained
+      Dependencies\<arch>\Microsoft.WindowsAppRuntime.<version>.msix instead of one self-contained
       .msixbundle. Harmless standalone, but build.yml's release job uploads both x64 and arm64
       artifacts together — the two architectures' identically-named Dependencies files collided as
       GitHub Release assets (HTTP 404 from a duplicate-name upload, first hit on the v1.4.6 tag

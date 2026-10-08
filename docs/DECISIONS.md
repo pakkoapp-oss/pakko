@@ -11565,8 +11565,11 @@ collide with 2.x (`MSB4011`, and the MSIX build tools' `CustomBeforeMicrosoftCom
 error); `Microsoft.WindowsAppSDK.InteractiveExperiences` 2.1.8, which WinUI 2.3.9 names, is not
 on nuget.org either (`NU1603`). Chosen: keep the metapackage and add a direct
 `Microsoft.Windows.AI.MachineLearning` 2.1.74 reference with `ExcludeAssets="native"` -
-declarative, no MSBuild target. A test reads it in both projects, and `CI-Build-Msix.ps1` fails
-when any of the three DLLs reaches the built package.
+declarative, no MSBuild target. A test reads it in both projects (same version, bumped with the
+metapackage), and `CI-Build-Msix.ps1` - which both the dev and the Store builds run - fails when
+any of the three DLLs reaches the built package, matched by file name in any folder. Seen red on
+a copy of the CI package with an empty `onnxruntime.dll` added, and with `sub\DirectML.dll`,
+which the first, full-path version of the check missed.
 
 **Checked.** Release notes 2.0: `FileSavePicker` no longer creates the file (Pakko does not use it);
 `DISABLE_XAML_GENERATED_MAIN` (OperationUi) renames the generated `Main` - the build is clean and

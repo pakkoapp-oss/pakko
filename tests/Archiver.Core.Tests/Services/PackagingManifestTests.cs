@@ -101,6 +101,7 @@ public sealed class PackagingManifestTests
     [Theory]
     [InlineData("Microsoft.WindowsAppSDK", "2.5.1")]
     [InlineData("Microsoft.Windows.SDK.BuildTools", "10.0.28000.2705")]
+    [InlineData("Microsoft.Windows.AI.MachineLearning", "2.1.74")]
     public void WinUiProjects_ReferenceTheSamePackageVersion(string package, string version)
     {
         // OperationUi runs against the WindowsAppRuntime framework App's manifest declares (T-F363).
