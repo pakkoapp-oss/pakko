@@ -1,4 +1,5 @@
 using System.Text;
+using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 using FluentAssertions;
@@ -649,7 +650,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
             : new GroupPolicyOptions();
 
         string destDir = Path.Combine(_temp.Path, "out");
-        var router = await PakkoServices.Create(policy).CreateExtractionRouterAsync();
+        IExtractionRouter router = await PakkoServices.Create(policy).CreateExtractionRouterAsync();
         ArchiveResult result = await router.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [archivePath],

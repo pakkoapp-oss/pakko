@@ -103,7 +103,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
     {
         IExtractionRouter router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
         if (CliDownloadMark.PolicyOverrideWarning(command.ApplyDownloadMark, services.Policy) is { } markWarning)
-            Console.Error.WriteLine(markWarning);
+            await Console.Error.WriteLineAsync(markWarning).ConfigureAwait(false);
 
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
         if (RejectEmptyStdin(stdinFolder) is { } emptyStdin)
