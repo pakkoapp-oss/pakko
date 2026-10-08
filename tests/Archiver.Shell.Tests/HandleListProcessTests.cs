@@ -9,7 +9,7 @@ namespace Archiver.Shell.Tests;
 
 // T-F356: the helper may now start in the middle of an operation, so it must not take along
 // handles that belong to another child (tar.exe's pipes). A real child process on real pipes.
-public sealed class HandleListProcessTests
+public sealed partial class HandleListProcessTests
 {
     private static readonly string Ping = Path.Combine(Environment.SystemDirectory, "ping.exe");
     private static readonly string[] FiveSeconds = ["-n", "6", "127.0.0.1"];
@@ -21,7 +21,7 @@ public sealed class HandleListProcessTests
         using var others = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
         using var own = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
 
-        using HandleListProcess child = HandleListProcess.Start(Ping, FiveSeconds, [own.ClientSafePipeHandle]);
+        using var child = HandleListProcess.Start(Ping, FiveSeconds, [own.ClientSafePipeHandle]);
         try
         {
             others.DisposeLocalCopyOfClientHandle();
@@ -43,7 +43,7 @@ public sealed class HandleListProcessTests
     {
         using var own = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
 
-        using HandleListProcess child = HandleListProcess.Start(Ping, FiveSeconds, [own.ClientSafePipeHandle]);
+        using var child = HandleListProcess.Start(Ping, FiveSeconds, [own.ClientSafePipeHandle]);
         try
         {
             own.DisposeLocalCopyOfClientHandle();
@@ -65,7 +65,7 @@ public sealed class HandleListProcessTests
     public void Kill_Twice_AndAfterDispose_DoesNotThrow()
     {
         using var own = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
-        HandleListProcess child = HandleListProcess.Start(Ping, FiveSeconds, [own.ClientSafePipeHandle]);
+        var child = HandleListProcess.Start(Ping, FiveSeconds, [own.ClientSafePipeHandle]);
 
         child.Kill();
         child.Kill();
@@ -121,9 +121,9 @@ public sealed class HandleListProcessTests
         }
     }
 
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr CommandLineToArgvW(string commandLine, out int argumentCount);
+    [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial IntPtr CommandLineToArgvW(string commandLine, out int argumentCount);
 
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr LocalFree(IntPtr memory);
+    [LibraryImport("kernel32.dll")]
+    private static partial IntPtr LocalFree(IntPtr memory);
 }
