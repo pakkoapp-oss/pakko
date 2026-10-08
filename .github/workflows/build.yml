@@ -430,9 +430,10 @@ jobs:
   build-cli:
     needs: test
     if: github.event_name == 'push'
-    # T-F355: pakko.exe is Native AOT; its ARM64 leg links with the VS ARM64 build tools, pinned
-    # here for the same reason as build-msix above.
-    runs-on: windows-2022
+    # T-F355: not windows-2022 like build-msix - this job runs the Subprocess layer, and on that
+    # image tar.exe carries no embedded Authenticode signature, which TarSignatureVerifier requires,
+    # so every tar test fails there. The AOT ARM64 link uses the image's latest VS ARM64 tools.
+    runs-on: windows-latest
     # T-F125: see build-msix's identical permissions comment above.
     permissions:
       id-token: write

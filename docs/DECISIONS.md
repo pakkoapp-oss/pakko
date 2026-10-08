@@ -11492,7 +11492,11 @@ is left off (IL3058 noise for packages without .NET 10 metadata).
 
 **Build.** ILCompiler needs the VS C++ tools and finds them through `vswhere.exe` on `PATH` (the
 scripts add `Microsoft Visual Studio\Installer`). ARM64 links with the ARM64 build tools, so
-`build-cli` moved to `windows-2022` like `build-msix`. The native `.pdb` of each exe is a CI
+`build-cli` stays on `windows-latest`: moved to `windows-2022` first, its new AOT Subprocess step
+failed every tar test there with "tar.exe failed Authenticode signature verification" - that
+image's tar.exe has no embedded signature, the only kind `TarSignatureVerifier` accepts (by
+design, T-F52), and the `test` job never ran on it. Not an AOT effect: the same AOT exe passed on
+`windows-latest`, on an ARM64 runner and on the dev machine. The native `.pdb` of each exe is a CI
 artifact, never packaged. An unrelated trap hit during the spike: Google Drive syncing the repo
 held `bin\...\*.deps.json` open and `GenerateDepsFile` failed (MSB4018) until Drive was quit.
 
