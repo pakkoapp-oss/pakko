@@ -2024,8 +2024,11 @@ re-measured with T-F346's script before and after.
   `DownloadMarkOption`; CLI: `x -snz`/`-snz1`/`-snz0`, `-snz2` refused. Checked on device (1.7.1.10):
   marked ZIP shows it checked with the cost note, unchecking shows the risk note and extracts
   unmarked files, checked again on reopening and marks them, an unmarked ZIP shows no checkbox, a
-  browser preview with it unchecked is still marked. The policy on device (needs UAC) waits for
-  the release batch. The user's idea: a checkbox, on by
+  browser preview with it unchecked is still marked. Policy on device (1.7.1.11, real HKLM value,
+  the user approved UAC): `EnforceMOTW=1` - checkbox locked and checked with the policy note,
+  files marked; `pakko x -snz0` warns and marks. `EnforceMOTW=0` - locked and unchecked, files
+  unmarked; `pakko x -snz` warns and does not mark. The value was removed afterwards. The user's
+  idea: a checkbox, on by
   default, that applies the archive's `Zone.Identifier` to the extracted files; unchecking it
   shows the risk under it. The user's decisions: unchecked means no mark at all (not
   `UnsafeExtensionsOnly`, whose list has no Office, PDF or ISO types); Group Policy's `MotwMode`
