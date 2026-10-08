@@ -2185,3 +2185,77 @@ re-measured with T-F346's script before and after.
   on arrays (does not apply on `net10.0`), collection-expression overload changes (spot-check the
   `[]` call sites when building), iterator safe context in `unsafe` classes (none).
 - **Reported by:** Dependabot, 2026-10-08 (Part A); the user, 2026-10-08 (Part B).
+
+## DevOps wave (T-F364–T-F371) — after T-F363
+
+From a senior-DevOps review of the repo on 2026-10-09 (user request), with AI-assisted development
+in mind; the user asked for these to be the next wave after T-F363. Checked as the repo owner
+(`pakkoapp-oss`): secret scanning, push protection and Dependabot security updates are already on;
+the `main-protection` ruleset has only `deletion` and `non_fast_forward`. Not planned: rewriting
+`scripts/*.ps1` in C# — they drive Appx, the certificate store, `vswhere` and MSBuild, which
+PowerShell does natively.
+
+### T-F364 — Reproducible restore and build: NuGet lock files, deterministic CI builds (P2)
+
+- [ ] **Status:** open. `RestorePackagesWithLockFile` for every project, `--locked-mode` in CI and
+  the canary (the canary keeps its floating toolchain, not floating packages); pin the floating
+  `FluentAssertions 7.*`; `ContinuousIntegrationBuild=true` in CI. Gains a restore cache keyed on the
+  lock files. Dependabot updates lock files itself.
+- **Reported by:** DevOps review, 2026-10-09.
+
+### T-F365 — An SBOM for the MSIX and the CLI zips, attested (P2)
+
+- [ ] **Status:** open. CycloneDX (or SPDX) per artifact in `build.yml`, published with the
+  release and attested with `actions/attest-sbom` next to the existing SLSA provenance (T-F125).
+  The audience (government, defence) asks for the component list, not only provenance. Update
+  `SECURITY.md`'s supply-chain section only with permission.
+- **Reported by:** DevOps review, 2026-10-09.
+
+### T-F366 — `timeout-minutes` on every job, `concurrency` for branch pushes (P2)
+
+- [ ] **Status:** open. Only one canary job has a timeout; a hung GUI or Subprocess test holds a
+  runner for 6 hours. `concurrency` cancels a superseded run on a branch push, never on a tag or a
+  `workflow_dispatch` release build.
+- **Reported by:** DevOps review, 2026-10-09.
+
+### T-F367 — Rulesets: required `test` on `main`, protected `v*` tags (P2)
+
+- [ ] **Status:** open. The agent pushes straight to `main`; nothing stops a push with red code or a
+  stray release tag. Add the `test` job as a required status check (admin bypass, no PR needed for a
+  solo repo) and a tag ruleset for `v*` (creation and deletion by the owner only). Needs the
+  `pakkoapp-oss` account (`gh auth switch`, CLAUDE.md).
+- **Reported by:** DevOps review, 2026-10-09.
+
+### T-F368 — The dev build's revision outside the tracked `Package.appxmanifest` (P2)
+
+- [ ] **Status:** open. `Deploy.ps1` bumps the 4th version segment in a tracked file, so the
+  manifest is always modified locally and a "never commit it" rule has to guard it. Pass the
+  version to the package build as an MSBuild property (or a generated, git-ignored manifest) and
+  keep the tracked file at `X.Y.Z.0`; a test checks the tracked revision is 0 (Store rule).
+- **Reported by:** DevOps review, 2026-10-09.
+
+### T-F369 — `CLAUDE.md` split by area, with a size gate (P2)
+
+- [ ] **Status:** open. `CLAUDE.md` is 114 KB (~28k tokens loaded every session); `TASKS.md` 190 KB.
+  Keep a core (`CLAUDE.md` ~25 KB: project, hard constraints, build commands, doc map) and move
+  area rules into path-scoped files loaded only when that area is touched (`src/Archiver.App/CLAUDE.md`,
+  `src/Archiver.Core/CLAUDE.md`, `scripts/CLAUDE.md`, ...); history goes to `DECISIONS.md`. A test
+  fails when `CLAUDE.md` passes the gate (the global rule asks for one). Graduate finished tasks out
+  of `TASKS.md` in the same pass.
+- **Reported by:** DevOps review, 2026-10-09.
+
+### T-F370 — Agent hooks for the rules that are text only today (P3)
+
+- [ ] **Status:** open. A Claude Code `PreToolUse` hook (in `.claude/settings.json`, tracked) that
+  blocks committing `Package.appxmanifest` (until T-F368 removes the need), `python` without
+  `py -3`, and `dotnet ... /p:` through Bash. Rules written as text drift; a hook does not.
+- **Reported by:** DevOps review, 2026-10-09.
+
+### T-F371 — Scripts on PowerShell 7, OpenSSF Scorecard, visible CI retries (P3)
+
+- [ ] **Status:** open. Move `Deploy.ps1`/`CI-Build-Msix.ps1` and the rest from `#Requires -Version
+  5.1` to pwsh 7 (CI already runs `shell: pwsh`; ends the BOM/ANSI-codepage class, T-F84) after
+  checking the Appx module under pwsh 7 on the dev machine. Add the OpenSSF Scorecard workflow (a
+  public trust signal). Every second attempt of a "2 attempts" CI step writes a warning annotation,
+  so flaky tests show a trend instead of hiding.
+- **Reported by:** DevOps review, 2026-10-09.
