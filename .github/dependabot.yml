@@ -8,6 +8,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # 8.x moved to the Xceed licence (free only for non-commercial use) and rewrote the API;
+      # the tests stay on 7.x and lower.
+      - dependency-name: FluentAssertions
+        versions: [">= 8.0.0"]
   # Third-party actions are pinned to a full commit SHA with a "# vX.Y.Z" comment (CLAUDE.md);
   # Dependabot updates both together.
   - package-ecosystem: github-actions
