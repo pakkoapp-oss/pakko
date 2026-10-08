@@ -2130,8 +2130,10 @@ re-measured with T-F346's script before and after.
 
 ### T-F363 — Windows App SDK 2.x, SDK BuildTools 10.0.28000 and C# 14, one wave (P3)
 
-- [~] **Status:** Part B done 2026-10-09; Part A done locally 2026-10-09, waits for CI (both
-  architectures, the Store bundle). **Part A result:** Windows App SDK 2.5.1 and BuildTools
+- [x] **Status:** done 2026-10-09 (Part B d4a0ce9, Part A e347128). CI on e347128 green
+  (`build-msix` x64/arm64, `build-cli`; the dispatched `build-store-msix`/`bundle-store-msix`:
+  both Store packages 37 languages, no Windows ML DLL, `Microsoft.WindowsAppRuntime.2` 2.5.1),
+  canary green, Sonar 0 new. **Part A result:** Windows App SDK 2.5.1 and BuildTools
   10.0.28000.2705 in both WinUI projects (`WinUiProjects_ReferenceTheSamePackageVersion`); the 2.x
   metapackage published Windows ML's `onnxruntime.dll`/`DirectML.dll`/
   `Microsoft.Windows.AI.MachineLearning.dll` (package 14.8 -> 30.6 MB), now excluded

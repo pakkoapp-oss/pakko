@@ -11576,7 +11576,9 @@ Grid). Deployed x64 package: 23 files, the same names as the CI-built v1.7.1 pac
 browser (list, drilling a folder, Extract selected with CRC shown), dragging the window by its
 title bar, About, the tray icon's menu opening About (H.NotifyIcon against the 2.x projections),
 the Explorer operation window asking for a password and extracting an encrypted ZIP; no Pakko
-event in the Application log. The ARM64 build and the Store bundle are CI's.
+event in the Application log. CI on e347128: the x64 and arm64 bundles (14.1 / 13.7 MB, one
+inner package each, so no separate Dependencies files to collide as release assets) and the
+dispatched Store bundle, all without the three DLLs.
 
 **Risk.** The Store certifies the package against the 2.x framework for the first time; a
 rejection would show only on the next submission.
