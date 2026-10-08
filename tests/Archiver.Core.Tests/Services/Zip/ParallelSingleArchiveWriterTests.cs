@@ -424,6 +424,34 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         File.Delete(sourceFile);
     }
 
+    // T-F357: WriteStoredEntryFromSourceAsync writes its own header, Zip64 included. On demand only,
+    // like ZipArchiveServiceZip64Tests' >4 GiB test (which takes ZipArchive, not this writer).
+    [Fact]
+    [Trait("Category", "VeryLarge")]
+    public async Task WriteAsync_StoredFileOver4GiB_TakesTheSourcePathAndReadsBack()
+    {
+        string sourceDir = Path.Combine(_tempDir, "source");
+        Directory.CreateDirectory(sourceDir);
+        const long size = 4L * 1024 * 1024 * 1024 + 4096;
+        using (var fs = new FileStream(Path.Combine(sourceDir, "big.bin"), FileMode.Create, FileAccess.Write))
+        {
+            fs.Seek(size - 1, SeekOrigin.Begin);
+            fs.WriteByte(7);
+        }
+        string archivePath = TempArchivePath;
+
+        await ParallelSingleArchiveWriter.WriteAsync(
+            archivePath, [sourceDir], CompressionLevel.NoCompression, size,
+            new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, CancellationToken.None);
+
+        using ZipArchive archive = ZipFile.OpenRead(archivePath);
+        ZipArchiveEntry entry = archive.Entries.Should().ContainSingle(e => e.Name == "big.bin").Subject;
+        entry.Length.Should().Be(size);
+        entry.CompressedLength.Should().Be(size);
+        using Stream data = entry.Open();
+        data.CopyTo(Stream.Null); // .NET checks the CRC at the end of the entry
+    }
+
     [Fact]
     public async Task CompressToTempFileAsync_CompressibleFile_StillGoesThroughAChunkAndFreesTheSource()
     {

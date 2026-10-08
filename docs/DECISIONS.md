@@ -11386,7 +11386,8 @@ and was left out of this change.
 
 **Decision (the user's: "yes, but make sure nothing breaks and nothing depends on the current
 implementation").** In `ParallelSingleArchiveWriter`, an unencrypted entry stored as it is - one
-Deflate did not shrink (T-F299), or any at NoCompression - becomes `WorkResultKind.SourceStored`:
+Deflate did not shrink (T-F299), or any at NoCompression when this writer runs (over 64 files) -
+becomes `WorkResultKind.SourceStored`:
 the worker keeps its read handle on the source and the drain copies the source into the archive
 (`ZipEntryWriter.WriteStoredEntryFromSourceAsync`). Before, it was rewritten into its chunk and
 then copied from there.

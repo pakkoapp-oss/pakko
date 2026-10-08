@@ -1952,7 +1952,8 @@ re-measured with T-F346's script before and after.
 
 - [x] **Status:** done 2026-10-08 (the user's "yes, if nothing breaks and nothing depends on the
   current shape"). An unencrypted entry stored as it is - one Deflate did not shrink, or any at
-  NoCompression - is no longer written into its chunk a second time: the worker keeps the
+  NoCompression when this writer runs at all (over 64 files; three files at NoCompression take
+  `ZipArchive`, which already wrote them once) - is no longer written into its chunk a second time: the worker keeps the
   source's read handle (sharing read only, so the bytes its CRC describes cannot change) and the
   drain copies the source into the archive, checking length, end of file and CRC again
   (`WorkResultKind.SourceStored`, `ZipEntryWriter.WriteStoredEntryFromSourceAsync`). Encrypted

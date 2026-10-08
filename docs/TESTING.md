@@ -538,7 +538,9 @@ tests caught before shipping):
   `SourceStored` whose CRC, length or end of file disagrees throws in the drain; Cancel while
   sources wait for the drain releases every one. `ZipArchiveServiceIncompressibleTests.
   ArchiveAsync_LargeStoredAndDeflatedFiles_...` (single and separate): methods, round trip,
-  sources deletable when `ArchiveAsync` returns. Nine of ten mutants caught; rewriting the chunk
+  sources deletable when `ArchiveAsync` returns. `WriteAsync_StoredFileOver4GiB_...`
+  (`Category=VeryLarge`, on demand) takes this path with Zip64 and reads back with its CRC
+  checked - `ZipArchiveServiceZip64Tests`' >4 GiB test takes `ZipArchive` instead. Nine of ten mutants caught; rewriting the chunk
   anyway changes only the bytes written, which the measurement in TASKS.md shows, not a test.
 - `ArchiveEntrySecurityMotwTests` (`Archiver.Core.Tests/Services/`, T-F358) - `ReadMotw` returns
   the archive's mark, null for `Disabled`, an unmarked archive or a path that cannot be read;
