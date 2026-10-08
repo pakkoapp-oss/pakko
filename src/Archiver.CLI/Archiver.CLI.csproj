@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <PublishAot>true</PublishAot>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <!-- T-F287: [LibraryImport]'s generated marshalling code uses pointers; no hand-written unsafe code. -->

@@ -490,7 +490,18 @@ files.
 - All IO exceptions caught per-item → `ArchiveError` — methods never throw to callers, except
   `OperationCanceledException` on cancellation (T-F260), even between two sources
 - MVVM: no business logic in `.xaml.cs` files
-- `PublishTrimmed` must be `false` for `Archiver.App` — WinUI 3 `x:Bind` generated code is not trim-compatible. Trimming silently breaks event handlers and Command bindings in Release builds.
+- **Native AOT (T-F355): all four exes (App, Shell, OperationUi, `pakko`) ship Native AOT; the five
+  libraries are `IsAotCompatible`.** The build fails on IL2xxx/IL3xxx/CsWinRT warnings, but `dotnet
+  test` runs under JIT and cannot see an AOT-only failure. No `Assembly.Load*`, `Reflection.Emit`,
+  reflection over unknown types, `[ComImport]` (use `[GeneratedComInterface]`) or reflection JSON
+  (use a `JsonSerializerContext`). WinUI: a value read from a resource dictionary (`Resources[...]`,
+  `ThemeDictionaries`, `TryGetValue`) is cast with `WinRT.CastExtensions.As<T>(...)`, never `(T)` or
+  `as T` (a test reads the source); a class implementing a WinRT or mapped .NET interface is
+  `partial`; only `x:Bind` (`{Binding}` needs `[GeneratedBindableCustomProperty]`); no collection
+  expression handed to WinRT; a new collection bound to `ItemsSource` gets a device check. Never
+  `UseSystemResourceKeys`/`InvariantGlobalization`. ILCompiler needs `vswhere.exe` on PATH. Verify
+  App/Shell/OperationUi changes on the deployed package, not under the debugger. Examples:
+  `docs/CONVENTIONS.md`; why: `docs/DECISIONS.md` T-F355.
 - **tar.exe:** always use `C:\Windows\System32\tar.exe` (absolute path) — never via PATH
 - **Any `Process.Start` of a system-provided executable must use an absolute path, not a bare
   relative name** — same reasoning as the tar.exe rule above (PATH-hijack resistance), generalized
@@ -1185,15 +1196,6 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
   own sandbox tests — same shared `Pakko.TarSandbox` AppContainer profile/quarantine ACL under
   more concurrent load than before. Same rule applies: rerun once before treating a failure here
   as a real regression.
-  **Confirmed the same flakiness also reproduces in GitHub Actions CI, not just on a local dev
-  machine (2026-07-19, T-F122's `build.yml` `test` job):** a full `dotnet test` run failed on
-  `TarSandboxScopeTests.RunAsync_PreScanThenExtractionWithinOneScope_BothSucceed` and
-  `TarSandboxedServiceCompressedFormatsTests.ExtractAsync_TarGz_SeparateFoldersMode_StripsCompoundExtensionForSubfolderName`
-  (2 of 60 `Archiver.Core.IntegrationTests`, every other project 100% green) on the very first
-  real CI run after both this doc's prior 2026-07-18 entry and T-F117/T-F118 shipped, then passed
-  100% clean on an immediate `gh run rerun --failed` with zero code changes in between — same
-  root cause (AppContainer/Job-Object contention under CI's own parallel test execution), not a
-  new bug.
   **Root-caused and fixed 2026-07-24 (T-F130):** all 10 `Archiver.Core.IntegrationTests` classes
   that drive real AppContainer/Job Object/quarantine ACL calls were racing against *each other*
   under xUnit's default parallel-by-class execution — grouped into one
@@ -1207,22 +1209,9 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
   `Subprocess/` layer launching real sandboxed subprocesses concurrently with this project, not
   just within it) — that would need a similar fix scoped across both projects, not assumed already
   covered by the single-project Collection above.
-  **Recurred 2026-08-11 (T-F162), same predicted vector, different symptom:** the v1.4.11 release
-  CI run failed `TarSandboxedServiceExtractTests.ExtractAsync_SingleArchive_
-  ReportsRealBytesTransferredNotHardcodedZero` and
-  `TarSandboxedServiceCompressTests.CompressAsync_TarWithMultipleFiles_ReportsRealFilenameAndByteTotals`
-  twice in a row (`Percent` 99 instead of the expected terminal 100), then passed clean on a third
-  rerun with zero code changes — not an AppContainer-setup race this time, but `System.Progress<T>`
-  posting its callback via `ThreadPool.QueueUserWorkItem` (no captured `SynchronizationContext` in
-  a console test host) racing against each test's own bounded 5-second wait-loop. An isolated probe
-  (saturate the ThreadPool with 5,000 blocking work items, then call `Progress<T>.Report` and time
-  the callback) confirmed the callback can be delayed past 30 seconds under contention, not just a
-  few milliseconds — exactly the shape of a CI runner under full-suite parallel load. Fixed by
-  switching both tests to the same hand-rolled synchronous `IProgress<T>` fake already used this
-  way in ~8 other files across `Archiver.Core.Tests` (e.g.
-  `TarSandboxedServiceProgressPollingTests`), which reports on the calling thread with no
-  marshaling at all — removes the race by construction rather than widening the timeout. See
-  `docs/DECISIONS.md`'s T-F162 entry for the full probe methodology.
+  **T-F162 (2026-08-11):** a test waiting on `System.Progress<T>`'s callback can time out on a
+  loaded runner (it posts to the ThreadPool); use the synchronous hand-rolled `IProgress<T>` fake
+  instead (see `docs/DECISIONS.md`'s T-F162 entry).
 - **T-F143 SonarCloud coverage triage (2026-08-06) — categories left deliberately uncovered by
   design, not by oversight:** `ExplorerLauncher`'s OS-side-effect callers (4 call sites — opening
   a real Explorer window isn't something a unit test should trigger); native Win32/subprocess
@@ -1255,9 +1244,7 @@ quick-reference list only, to avoid known failure modes without re-reading the f
 - Every EXE launched via `CreateProcess` from outside its own package needs its own
   `<Application>` entry in `Package.appxmanifest` (`EntryPoint="Windows.FullTrustApplication"`,
   `AppListEntry="none"` to hide it) — otherwise `ERROR_ACCESS_DENIED`
-- Satellite EXEs must be built self-contained (`--self-contained`, not `--no-self-contained`) —
-  a framework-dependent apphost in an MSIX package has no runtime to fall back on; also needs its
-  own `.dll`/`.deps.json`/`.runtimeconfig.json` via `Content Include`, not just the bare `.exe`
+- Satellite EXEs ship as one Native AOT exe each (T-F355), packaged via `Content Include` of the `.exe` alone
 
 Two more, not duplicated elsewhere:
 

@@ -9,6 +9,8 @@
   -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <PublishAot>true</PublishAot>
+    <CsWinRTAotWarningLevel>2</CsWinRTAotWarningLevel>
     <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>

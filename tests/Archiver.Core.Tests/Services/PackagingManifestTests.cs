@@ -4,8 +4,8 @@ using FluentAssertions;
 namespace Archiver.Core.Tests.Services;
 
 // T-F317: the MSIX carries pakko.exe as its own hidden Application with the "pakko.exe" execution
-// alias, and Archiver.App.csproj packages the four files its apphost needs (the runtime itself is
-// the App's, at the package root). CI-Build-Msix.ps1 checks the same in the built package.
+// alias. T-F355: every exe is Native AOT, so each satellite is packaged as its exe alone - there is
+// no .NET runtime at the package root for an apphost to find. CI-Build-Msix.ps1 checks the built package.
 public sealed class PackagingManifestTests
 {
     private static readonly string RepoRoot = FindRepoRoot();
@@ -34,19 +34,71 @@ public sealed class PackagingManifestTests
     }
 
     [Fact]
-    public void AppProject_PackagesPakkosApphostFiles()
+    public void AppProject_PackagesPakkoAsItsExeAlone()
     {
-        var project = XDocument.Load(Path.Combine(RepoRoot, "src", "Archiver.App", "Archiver.App.csproj"));
-        List<(string Include, string Link)> pakko = [.. project.Descendants()
-            .Where(e => e.Name.LocalName == "Content")
-            .Select(e => ((string?)e.Attribute("Include") ?? "", e.Elements().FirstOrDefault(c => c.Name.LocalName == "Link")?.Value ?? ""))
-            .Where(c => c.Item2.StartsWith("pakko.", StringComparison.Ordinal))];
+        List<(string Include, string Link)> pakko = [.. SatelliteContent().Where(c => c.Link.StartsWith("pakko.", StringComparison.Ordinal))];
 
-        pakko.Select(c => c.Link).Should().BeEquivalentTo(
-            ["pakko.exe", "pakko.dll", "pakko.deps.json", "pakko.runtimeconfig.json"]);
+        pakko.Select(c => c.Link).Should().Equal("pakko.exe");
         pakko.Should().OnlyContain(c => c.Include.StartsWith(@"..\Archiver.CLI\bin\", StringComparison.Ordinal)
             && c.Include.EndsWith(@"\" + c.Link, StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void AppProject_PackagesEachSatelliteAsItsExeAlone()
+    {
+        SatelliteContent().Select(c => c.Link).Should().BeEquivalentTo(
+            ["Archiver.Shell.exe", "Archiver.OperationUi.exe", "pakko.exe"]);
+    }
+
+    [Theory]
+    [InlineData("Archiver.App")]
+    [InlineData("Archiver.Shell")]
+    [InlineData("Archiver.OperationUi")]
+    [InlineData("Archiver.CLI")]
+    public void ExeProject_PublishesNativeAot(string name)
+    {
+        XDocument project = LoadProject(name);
+
+        Property(project, "PublishAot").Should().Equal("true");
+        Property(project, "PublishReadyToRun").Should().BeEmpty("ReadyToRun is a JIT-runtime format, meaningless under AOT");
+        Property(project, "PublishTrimmed").Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("Archiver.App")]
+    [InlineData("Archiver.OperationUi")]
+    public void WinUiProject_EnablesTheCsWinRtAotChecks(string name)
+    {
+        XDocument project = LoadProject(name);
+
+        Property(project, "AllowUnsafeBlocks").Should().Equal("true");
+        Property(project, "CsWinRTAotWarningLevel").Should().Equal("2");
+    }
+
+    [Theory]
+    [InlineData("Archiver.Core")]
+    [InlineData("Archiver.App.Core")]
+    [InlineData("Archiver.Messages")]
+    [InlineData("Archiver.OperationUi.Core")]
+    [InlineData("Archiver.OperationUi.Protocol")]
+    public void Library_IsAotCompatible(string name)
+    {
+        Property(LoadProject(name), "IsAotCompatible").Should().Equal("true");
+    }
+
+    private static List<(string Include, string Link)> SatelliteContent() =>
+        [.. LoadProject("Archiver.App").Descendants()
+            .Where(e => e.Name.LocalName == "Content")
+            .Select(e => ((string?)e.Attribute("Include") ?? "", e.Elements().FirstOrDefault(c => c.Name.LocalName == "Link")?.Value ?? ""))
+            .Where(c => SatelliteProjects.Any(p => c.Item1.StartsWith(@"..\" + p + @"\bin\", StringComparison.Ordinal)))];
+
+    private static readonly string[] SatelliteProjects = ["Archiver.Shell", "Archiver.OperationUi", "Archiver.CLI"];
+
+    private static XDocument LoadProject(string name) =>
+        XDocument.Load(Path.Combine(RepoRoot, "src", name, name + ".csproj"));
+
+    private static List<string> Property(XDocument project, string name) =>
+        [.. project.Descendants().Where(e => e.Name.LocalName == name).Select(e => e.Value.Trim())];
 
     private static string FindRepoRoot()
     {

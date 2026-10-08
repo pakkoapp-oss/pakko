@@ -281,6 +281,39 @@ indent_size = 2
 
 ---
 
+## Native AOT (T-F355)
+
+All four exes are published Native AOT and the five libraries carry `IsAotCompatible=true`, so
+the trim and AOT analyzers run on every build and `TreatWarningsAsErrors` turns a finding into a
+build error. `dotnet test` runs under JIT and never sees an AOT-only failure: check a change to
+App, OperationUi or Shell on the deployed package. The rule itself is in `CLAUDE.md`.
+
+```csharp
+// A resource-dictionary value is a WinRT object: a C# cast throws InvalidCastException under AOT
+// and `as` gives null. WinUiAotSourceGuardTests reads App and OperationUi for this.
+_close.Style = WinRT.CastExtensions.As<Style>(Application.Current.Resources["AccentButtonStyle"]);   // yes
+_close.Style = (Style)Application.Current.Resources["AccentButtonStyle"];                            // no
+
+// A class that implements a WinRT interface (IValueConverter) or a mapped .NET one
+// (IDisposable on a type handed to WinRT) is partial: CsWinRT generates its vtable (CsWinRT1028).
+public sealed partial class BoolToVisibilityConverter : IValueConverter { ... }
+```
+
+- Bindings are `x:Bind` only. `{Binding}` or `DisplayMemberPath` needs the source class `partial`
+  with `[WinRT.GeneratedBindableCustomProperty]`.
+- `[ObservableProperty]` stays on fields (C# 12; MVVMTK0045 is suppressed in `Archiver.App.csproj`).
+  The CsWinRT generator does not see the generated properties, but it does see the `x:Bind` code
+  that assigns them. A new collection bound to `ItemsSource` gets a device check; if it throws
+  under AOT, declare its instantiation:
+  `[assembly: WinRT.GeneratedWinRTExposedExternalType(typeof(ObservableCollection<Foo>))]`.
+- No collection expression (`[]`) passed straight to a WinRT API: its compiler-made type has no
+  WinRT vtable.
+- JSON goes through a `JsonSerializerContext` (`ProtocolJsonContext`, `LaunchArgumentsJsonContext`);
+  COM through `[GeneratedComInterface]` (`Archiver.Shell/ShellCom.cs`); P/Invoke through
+  `[LibraryImport]`.
+
+---
+
 ## Archiver.Shell Conventions
 
 ### ShellArgumentParser — validation boundary

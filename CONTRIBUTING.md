@@ -3,7 +3,8 @@
 ## Prerequisites
 
 - **Visual Studio 2026** with the *.NET desktop* and *Desktop development with C++* workloads,
-  plus the MSVC v143 (14.44) x64 and ARM64 build tools (the shell extension targets v143)
+  plus the MSVC v143 (14.44) x64 and ARM64 build tools (the shell extension targets v143; the
+  Native AOT link of the four exes, T-F355, uses the same C++ tools)
 - **.NET 10 SDK** (`global.json` pins the 10.0.100 feature band or later)
 - Language: **C# 12** (pinned in `Directory.Build.props`)
 - **Windows 10 1809+** or Windows 11

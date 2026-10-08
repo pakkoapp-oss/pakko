@@ -388,10 +388,10 @@ public sealed partial class MainViewModel : ObservableObject
     // T-F82/T-F199: the accent sits on the action that fits the list, and the primary button is
     // always the rightmost one (footer columns 3 and 4).
     public Style? ArchiveButtonStyle =>
-        _listActions.Accent == PrimaryAction.Extract ? null : (Style)Application.Current.Resources["AccentButtonStyle"];
+        _listActions.Accent == PrimaryAction.Extract ? null : WinRT.CastExtensions.As<Style>(Application.Current.Resources["AccentButtonStyle"]);
 
     public Style? ExtractButtonStyle =>
-        _listActions.Accent == PrimaryAction.Extract ? (Style)Application.Current.Resources["AccentButtonStyle"] : null;
+        _listActions.Accent == PrimaryAction.Extract ? WinRT.CastExtensions.As<Style>(Application.Current.Resources["AccentButtonStyle"]) : null;
 
     public int ArchiveButtonColumn => _listActions.Accent == PrimaryAction.Extract ? 3 : 4;
 

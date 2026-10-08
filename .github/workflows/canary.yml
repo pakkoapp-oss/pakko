@@ -80,12 +80,31 @@ jobs:
           }
           throw "dotnet test failed after $attempts attempt(s)."
 
+      # T-F355: dotnet test runs under JIT, so an AOT-only failure (trimmed reflection, a missing
+      # generic instantiation) never shows there; the Subprocess layer against the published
+      # native pakko.exe does. Also catches ILCompiler drift on the floating toolchain.
+      - name: Subprocess tests against the Native AOT pakko.exe (x64, 2 attempts)
+        id: aot_cli
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          .\scripts\Publish-Cli.ps1 -Architecture x64
+          if ($LASTEXITCODE -ne 0) { throw "Publish-Cli.ps1 failed." }
+          $env:PAKKO_CLI_EXE = Join-Path $PWD 'artifacts\cli\win-x64\pakko.exe'
+          $attempts = 2
+          for ($i = 1; $i -le $attempts; $i++) {
+            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            dotnet test tests/Archiver.CLI.Tests --filter "FullyQualifiedName~Subprocess"
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+          }
+          throw "Subprocess tests against the AOT pakko.exe failed after $attempts attempt(s)."
+
       - name: Record result
         id: record
         if: always()
         shell: pwsh
         run: |
-          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_dotnet.outcome }}', '${{ steps.build_test.outcome }}')
+          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_dotnet.outcome }}', '${{ steps.build_test.outcome }}', '${{ steps.aot_cli.outcome }}')
           $failed = ($outcomes -contains 'failure') -or ($outcomes -contains 'cancelled')
           "failed=$($failed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
@@ -218,6 +237,24 @@ jobs:
           }
           throw "dotnet test on ARM64 failed after $attempts attempt(s)."
 
+      # T-F355: the first run of a Native AOT ARM64 binary anywhere - pakko.exe built and run natively
+      # on this runner, through the same Subprocess layer as canary-dotnet's x64 step.
+      - name: Subprocess tests against the Native AOT pakko.exe (arm64, 2 attempts)
+        id: aot_cli
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          .\scripts\Publish-Cli.ps1 -Architecture arm64
+          if ($LASTEXITCODE -ne 0) { throw "Publish-Cli.ps1 failed." }
+          $env:PAKKO_CLI_EXE = Join-Path $PWD 'artifacts\cli\win-arm64\pakko.exe'
+          $attempts = 2
+          for ($i = 1; $i -le $attempts; $i++) {
+            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            dotnet test tests/Archiver.CLI.Tests --filter "FullyQualifiedName~Subprocess"
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+          }
+          throw "Subprocess tests against the AOT pakko.exe failed after $attempts attempt(s)."
+
       # T-F290: diagnostic only, never part of the result -- which names the OS tar.exe survives.
       - name: tar.exe name probe
         if: always()
@@ -249,7 +286,7 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_dotnet.outcome }}', '${{ steps.build_test.outcome }}')
+          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_dotnet.outcome }}', '${{ steps.build_test.outcome }}', '${{ steps.aot_cli.outcome }}')
           $failed = ($outcomes -contains 'failure') -or ($outcomes -contains 'cancelled')
           "failed=$($failed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 

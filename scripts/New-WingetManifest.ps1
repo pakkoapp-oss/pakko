@@ -79,9 +79,9 @@ $installerYaml = @(
     'NestedInstallerType: portable',
     'NestedInstallerFiles:',
     '- RelativeFilePath: pakko.exe',
-    # A symlink in WinGet\Links does not work: the .NET apphost looks for pakko.dll next to the
-    # link, not next to the real file ("The application to execute does not exist", T-F317). So
-    # winget puts the install folder itself on PATH; the command is still "pakko".
+    # A symlink in WinGet\Links broke the pre-AOT apphost, which looked for pakko.dll next to the
+    # link ("The application to execute does not exist", T-F317). So winget puts the install folder
+    # itself on PATH; the command is still "pakko". The AOT exe (T-F355) allows a symlink: T-F361.
     'ArchiveBinariesDependOnPath: true',
     'Commands:',
     '- pakko',

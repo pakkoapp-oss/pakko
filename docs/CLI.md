@@ -40,14 +40,14 @@ plus the two-character `rn` (rename) special case, and the real switch-prefix ta
 
 `Archiver.CLI` ships as a separate, standalone downloadable artifact that does not require Pakko's
 GUI to be installed; since T-F317 (v1.7.0) the MSIX carries the same `pakko.exe` too (see the
-table below). Published self-contained per architecture
+table below). Published as one Native AOT `pakko.exe` per architecture (T-F355)
 (`win-x64`/`win-arm64`, matching the solution's existing platform set) via GitHub Releases — the
 same channel already used for v1.1+ — each build accompanied by a `SHA256SUMS` file so a script or
 a user can verify the download before running it. This is a packaging/release-engineering concern
 layered on top of the Architecture section above, not a change to it: `Archiver.CLI` itself stays
 exactly what's described there — a third thin frontend consuming `Archiver.Core` in-process,
-built self-contained (`dotnet publish --self-contained`, the same satellite-EXE pattern
-`Archiver.Shell` already uses) so it runs on a machine with no separate .NET install. The built exe
+compiled Native AOT (T-F355): one native exe with the runtime and `Archiver.Core` inside, so it
+runs on a machine with no .NET install, and the zip holds `pakko.exe` alone. The built exe
 is named `pakko.exe` (`Archiver.CLI.csproj`'s `AssemblyName`, distinct from the project/folder
 name) — short, matches the product name, and matches the `pakko:` prefix already used in every
 stderr message and in `--help`'s own `USAGE:` line.
@@ -62,12 +62,13 @@ stderr message and in `--help`'s own `USAGE:` line.
 
 - **Inside the MSIX** `pakko.exe` is its own hidden `<Application Id="Cli">` with a `uap3`
   execution alias, the same shape as NanaZip's console exe (`NanaZipC.exe`). It is the same
-  program as the zip, built from the same project; it shares the App's .NET runtime at the package
-  root (four files, ~300 KB) and runs with the package identity — tar.exe still goes through the
+  program as the zip, built from the same project — one native exe (T-F355) — and runs with the
+  package identity — tar.exe still goes through the
   same AppContainer sandbox.
-- **winget does not use a `WinGet\Links` symlink here:** the .NET apphost resolves `pakko.dll`
-  next to the path it was started from, so a symlinked `pakko.exe` fails with "The application to
-  execute does not exist". `winget uninstall` removes the folder but (winget's behavior) leaves the
+- **winget does not use a `WinGet\Links` symlink here:** the apphost build before T-F355 resolved
+  `pakko.dll` next to the path it was started from, so a symlinked `pakko.exe` failed with "The
+  application to execute does not exist". The AOT exe has no such file; moving the manifest to a
+  symlink is T-F361. `winget uninstall` removes the folder but (winget's behavior) leaves the
   `PATH` entry; it points nowhere and is harmless.
 - **Both installed:** a bare `pakko` runs whichever folder comes first in `PATH`. `WindowsApps` is
   usually ahead of user entries, so the Store copy wins; `pakko -v` shows which one ran.

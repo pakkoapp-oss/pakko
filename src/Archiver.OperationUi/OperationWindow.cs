@@ -287,7 +287,7 @@ internal sealed partial class OperationWindow
         _overwrite.Click += (_, _) => _execute(_model.AnswerConflict(ConflictChoice.Overwrite, _applyToAll.IsChecked == true));
         _rename.Click += (_, _) => _execute(_model.AnswerConflict(ConflictChoice.Rename, _applyToAll.IsChecked == true));
         _skip.Click += (_, _) => _execute(_model.AnswerConflict(ConflictChoice.Skip, _applyToAll.IsChecked == true));
-        _skip.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+        _skip.Style = WinRT.CastExtensions.As<Style>(Application.Current.Resources["AccentButtonStyle"]);
     }
 
     private void BuildPasswordPanel()
@@ -309,7 +309,7 @@ internal sealed partial class OperationWindow
             _passwordBox.Password = "";
             _execute(_model.DeclinePassword());
         };
-        _passwordOk.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+        _passwordOk.Style = WinRT.CastExtensions.As<Style>(Application.Current.Resources["AccentButtonStyle"]);
     }
 
     private Border Card(TextBlock label, TextBlock details)
@@ -371,7 +371,7 @@ internal sealed partial class OperationWindow
         // T-F339: the viewer took its content's text as its own name, so UI Automation had the
         // result twice; only the text itself stays in the control view.
         AutomationProperties.SetAccessibilityView(_resultScroll, Microsoft.UI.Xaml.Automation.Peers.AccessibilityView.Raw);
-        _close.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+        _close.Style = WinRT.CastExtensions.As<Style>(Application.Current.Resources["AccentButtonStyle"]);
         _cancel.Click += (_, _) => _execute(_model.UserClosed());
         _close.Click += (_, _) => _execute(_model.UserClosed());
 
@@ -387,7 +387,7 @@ internal sealed partial class OperationWindow
         // Declining is the accent and the default: Enter never extracts a suspected bomb.
         _confirm.Click += (_, _) => _execute(_model.AnswerConfirm(true));
         _decline.Click += (_, _) => _execute(_model.AnswerConfirm(false));
-        _decline.Style = (Style)Application.Current.Resources["AccentButtonStyle"];
+        _decline.Style = WinRT.CastExtensions.As<Style>(Application.Current.Resources["AccentButtonStyle"]);
         foreach (Button button in new[] { _overwrite, _rename, _skip, _passwordOk, _skipArchive, _confirm, _decline, _cancel, _close })
             buttons.Children.Add(button);
 
@@ -499,7 +499,7 @@ internal sealed partial class OperationWindow
         return dpi == 0 ? 1.0 : dpi / 96.0;
     }
 
-    private static Brush Brush(string key) => (Brush)Application.Current.Resources[key];
+    private static Brush Brush(string key) => WinRT.CastExtensions.As<Brush>(Application.Current.Resources[key]);
 
     private static void SetVisible(UIElement element, bool visible) =>
         element.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;

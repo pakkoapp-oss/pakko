@@ -1890,6 +1890,8 @@ re-measured with T-F346's script before and after.
 
 ### T-F349 — Shell, the operation window and `pakko` ship without ReadyToRun (P2)
 
+- **Superseded 2026-10-08 by T-F355:** every exe is Native AOT, ReadyToRun is gone from the build.
+
 - [x] **Status:** closed 2026-10-06. Standalone `pakko.exe`: done (`Publish-Cli.ps1` passes `PublishReadyToRun`; `pakko.dll` and `Archiver.Core.dll` carry R2R code in the CI zips for win-x64 and win-arm64, checked by PE header). The five DLLs in the package: **not done, the gain is too small.** Measured after T-F348/T-F350/T-F351 in two unpackaged copies of the installed package, one with R2R-published `Archiver.Shell.dll`, `Archiver.OperationUi.Protocol.dll` and `pakko.dll` (two alternating rounds of 15): `pakko l` 157/163 -> 149/162 ms - under the 20 ms set as the bar for changing three build files, and a clean comparison. Shell extract-here 430/508 -> 416/501 ms (CPU 547/688 -> 531/625 ms) is **indicative only**: outside the package the helper crashes at start, so those runs took the Win32 failover path, not the shipped one. **Not measured on the real path:** `Archiver.Shell.dll`, `Archiver.OperationUi.Protocol.dll` (the study's ~110 ms of jitted `FrameCodec..cctor`) and the helper's three DLLs. Reopen with a packaged A/B (two installs, `Measure-Startup.ps1`: Shell exit and the conflict prompt) if that is wanted. **Was:** Checked in the installed package by PE header: `Archiver.Shell.dll`,
   `pakko.dll`, `Archiver.OperationUi.dll`, `.Core.dll`, `.Protocol.dll` have no R2R code
   (`Deploy.ps1`/`CI-Build-Msix.ps1` build them with `dotnet build`; R2R runs only in publish);
@@ -2044,18 +2046,32 @@ re-measured with T-F346's script before and after.
 - [ ] **Status:** open. `LoadComponent` is ~148 ms of the start; browse mode and the password
   panel are hidden then. `x:Load` could defer them — estimate 30-60 ms, not measured. Risk: the
   layout history of T-F106/T-F05 (blank rows) and `x:Bind` targets inside deferred elements. Do
-  only with an on-device A/B that shows the gain; otherwise close as not worth it.
+  only with an on-device A/B that shows the gain; otherwise close as not worth it. Measure against
+  the Native AOT App (T-F355) - the start is already ~150 ms shorter.
 - **Reported by:** performance study, 2026-10-06.
 
 ### T-F355 — Native AOT: a spike for `pakko`, Shell and the App (decision needed)
 
-- [ ] **Status:** open, outside the wave. Windows App SDK supports Native AOT for WinUI 3 since
-  1.6 (Microsoft's sample: start time -50%, self-contained package ~2x smaller) — the only large
-  lever left for App start and memory; it conflicts with the `PublishTrimmed=false` hard
-  constraint in `CLAUDE.md`, which predates that support. `pakko.exe` and Shell are the realistic
-  first step (Core is on `LibraryImport`, Shell on generated COM; T-F348 removes the reflection
-  JSON). Spike on a branch: does it build, do all tests pass, what the start and size numbers are,
-  what H.NotifyIcon and `x:Bind` do. The user decides after the numbers.
+- [~] **Status:** implemented and smoke-tested 2026-10-08; `[x]` after the merge's CI artifact check. Spike (branch
+  `spike/native-aot`) numbers, x64 medians: `pakko x` (ZIP) 133 -> 34 ms, Shell "Extract here"
+  (ZIP) 151-192 -> 32 ms, App window 587 -> ~430 ms, App working set 139 -> 105 MB, MSIX 62.9 ->
+  14.8 MB (346 -> 27 files), CLI zip 37.8 -> 2.8 MB. **User decision 2026-10-08: the whole project
+  on Native AOT** (it is all or nothing: an AOT App leaves no .NET runtime in the package for the
+  satellites). All four exes `PublishAot`, the five libraries `IsAotCompatible`; the `CLAUDE.md`
+  `PublishTrimmed=false` constraint replaced by the AOT rule. Three AOT failure classes found and
+  fixed (`docs/DECISIONS.md`); guarded by `PackagingManifestTests`, `WinUiAotSourceGuardTests`
+  and the Subprocess layer against the AOT `pakko.exe` in CI. **Smoke 2026-10-08** (agent, `windows`
+  MCP, local Deploy 1.7.1.18 — `build.yml` builds no artifact for a branch): every Explorer menu
+  item through the real context menu, the WinUI operation window (progress, Cancel, conflict,
+  password, bomb, results) and its Win32 failover after killing the helper, 1000 paths over
+  stdin, the tar.exe sandbox (7z, tar.gz), AMSI (EICAR found); App browse/nested/preview, "Up" to
+  "This PC", AES ZIP and TAR.XZ, all ContentDialogs, the download-mark checkbox, Test/Scan/Hash,
+  About, Recycle Bin, light theme; CLI pipes, `h -si`, `-snz0`, Ctrl+C -> 255; no Pakko crash in
+  the event log. The canary on the branch ran the AOT `pakko.exe` 77/77 natively on an ARM64
+  runner too. Not done here: Group Policy (HKLM needs UAC), keyboard/narrow window, WACK, the
+  ARM64 package on a device (no hardware). Before `[x]`: the CI-built MSIX and CLI zip after the
+  merge (native exes, contents, Subprocess layer).
+  One unrelated finding: T-F362.
 - **Reported by:** performance study, 2026-10-06.
 
 ### T-F356 — Start the operation-window helper only when the operation is not fast (decision needed)
@@ -2086,3 +2102,22 @@ re-measured with T-F346's script before and after.
   (baseline: window at ~1.9 s on a long extraction, conflict prompt at ~0.8 s). Plan mode +
   advisor.
 - **Reported by:** performance study, 2026-10-06.
+
+### T-F361 — winget: a `WinGet\Links` symlink for the AOT `pakko.exe` (P3)
+
+- [ ] **Status:** open. The winget manifest puts the install folder on `PATH`
+  (`ArchiveBinariesDependOnPath: true`) because the pre-AOT apphost looked for `pakko.dll` next to
+  the symlink. The Native AOT `pakko.exe` (T-F355) is one file, so winget's ordinary symlink should
+  work and leaves no stale `PATH` entry after uninstall. Change `New-WingetManifest.ps1`, check with
+  `winget install --manifest` (admin, `LocalManifestFiles`), update `docs/CLI.md`.
+- **Reported by:** T-F355, 2026-10-08.
+
+### T-F362 — a renamed archive of a compound extension gets its number in the wrong place (P3)
+
+- [ ] **Status:** open. Creating `src.tar.xz` where one exists, with "Rename (add a number)", names
+  the new archive `src.tar (1).xz`, not `src (1).tar.xz`. `ArchiveNaming.GetUniqueName` splits on
+  `Path.GetExtension` (the last dot only), while `ArchiveNaming` already knows the compound
+  extensions (T-F103). Not new with AOT: Core code, found by the T-F355 smoke. Tests first: every
+  compound extension (`.tar.gz`, `.tar.bz2`, `.tar.xz`, `.tar.zst`, `.tar.lzma`), and a plain name
+  that only looks compound stays as it is.
+- **Reported by:** T-F355 smoke, 2026-10-08.

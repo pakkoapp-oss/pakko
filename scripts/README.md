@@ -47,14 +47,18 @@ You only need to run this once per machine (or when the certificate expires).
 ```
 
 This will:
-1. Build `Archiver.Shell` (`dotnet build`, self-contained) for the target architecture
+1. Publish `Archiver.Shell`, `Archiver.OperationUi` and `Archiver.CLI` as Native AOT exes (T-F355)
+   for the target architecture, into the `bin` folders `Archiver.App.csproj` packages from. Needs
+   the Visual Studio C++ build tools for that architecture; the script puts `vswhere.exe` on
+   `PATH`, which ILCompiler uses to find them
 2. Build `Archiver.ShellExtension.dll` (`MSBuild.exe` directly on the `.vcxproj`, with
    `/p:SolutionDir` passed explicitly — see `DECISIONS.md` for why)
 3. Run `dotnet publish` on `Archiver.App.csproj` with `GenerateAppxPackageOnBuild=true` and
    `AppxPackageSigningEnabled=true` + `PackageCertificateThumbprint=<thumbprint>` — packaging
    *and* signing happen in this one step. `Content Include` items in `Archiver.App.csproj`
-   (conditioned on `GenerateAppxPackageOnBuild=true`) declare `Archiver.Shell.exe` and
-   `Archiver.ShellExtension.dll` as package content, so `dotnet publish` includes them
+   (conditioned on `GenerateAppxPackageOnBuild=true`) declare the three satellite exes and
+   `Archiver.ShellExtension.dll` as package content (the App itself is Native AOT too, so the
+   package has no .NET runtime files), so `dotnet publish` includes them
    automatically — there is no separate `Archiver.Package.wapproj` and no manual `SignTool.exe`
    call (a manual `SignTool` call on an MSIX produces `ERROR_BAD_FORMAT`; see `DECISIONS.md`
    "MSIX Signing")
@@ -99,19 +103,23 @@ Archive Browser.
 ## Publishing the standalone CLI (Archiver.CLI, T-F09)
 
 `Publish-Cli.ps1` is **independent of everything above** — the zip needs no dev-signing
-certificate. (Separately, since T-F317 `Deploy.ps1` and `CI-Build-Msix.ps1` also build
-`Archiver.CLI` self-contained and package its `pakko.exe` into the MSIX for the `pakko` execution
+certificate. (Separately, since T-F317 `Deploy.ps1` and `CI-Build-Msix.ps1` also publish
+`Archiver.CLI` and package its `pakko.exe` into the MSIX for the `pakko` execution
 alias; `CI-Build-Msix.ps1 -CliVersion X.Y.Z` stamps a release version, and the script fails if the
-built package lacks `pakko.exe` or the alias.)
+built package lacks one of the three satellite exes or the alias, or carries `coreclr.dll` or a
+satellite `.dll` - a sign a non-AOT build slipped in. It also copies the four exes' native `.pdb`
+files to `artifacts/pdb/<arch>/`, which CI keeps as the `pakko-pdb-<arch>` artifact for crash
+dumps.)
 
 ```powershell
 .\scripts\Publish-Cli.ps1                    # both architectures (default)
 .\scripts\Publish-Cli.ps1 -Architecture x64  # one architecture only
 ```
 
-Publishes a self-contained build per architecture to `artifacts/cli/<rid>/` (gitignored) — the
-built exe is `pakko.exe` (`AssemblyName`, distinct from the `Archiver.CLI` project/folder name) —
-zips each as `pakko-<rid>.zip`, and writes a `SHA256SUMS` file covering both zips — ready to
+Publishes a Native AOT build per architecture to `artifacts/cli/<rid>/` (gitignored; T-F355, needs
+the C++ build tools of each architecture) — the built exe is `pakko.exe` (`AssemblyName`, distinct
+from the `Archiver.CLI` project/folder name) — zips `pakko.exe` alone as `pakko-<rid>.zip` (its
+`pakko.pdb` stays in the folder), and writes a `SHA256SUMS` file covering both zips — ready to
 attach directly to a GitHub Release. See `CLI.md`'s "Distribution" section for why no `tar.exe`
 copy is bundled alongside it.
 
@@ -132,8 +140,8 @@ name):
 2. Open a PR to `microsoft/winget-pkgs` adding the folder under
    `manifests/p/PavloRybchenko/PakkoCLI/<version>/` (from the `pakkoapp-oss` account).
 
-The manifest uses `ArchiveBinariesDependOnPath: true` — winget's `Links` symlink breaks the .NET
-apphost (see `docs/CLI.md`, Distribution).
+The manifest uses `ArchiveBinariesDependOnPath: true` — winget's `Links` symlink broke the
+pre-AOT apphost; a symlink is possible now (T-F361, see `docs/CLI.md`, Distribution).
 
 ### Store listing text into a Partner Center export (T-F332)
 

@@ -1066,9 +1066,19 @@ Ukrainian UI, CI an English one.
 
 - `PackagingManifestTests` (Core.Tests, tests first): the source `Package.appxmanifest` has one
   hidden FullTrust `<Application>` for `pakko.exe` with the only `ExecutionAlias` (`pakko.exe`), and
-  `Archiver.App.csproj` packages exactly `pakko.exe`/`.dll`/`.deps.json`/`.runtimeconfig.json` from
-  `Archiver.CLI`'s output. Mutation-checked (2026-10-03): alias removed, `pakko.dll` item removed —
-  both red. `CI-Build-Msix.ps1` checks the same in the built package.
+  `Archiver.App.csproj` packages `pakko.exe` alone from `Archiver.CLI`'s output (T-F355: Native
+  AOT; before it, the apphost's `.dll`/`.deps.json`/`.runtimeconfig.json` too). Mutation-checked
+  (2026-10-03): alias removed — red. `CI-Build-Msix.ps1` checks the same in the built package.
+- **Native AOT (T-F355)**, `PackagingManifestTests` and `WinUiAotSourceGuardTests` (Core.Tests,
+  tests first, read the repo's files): each satellite packaged as its exe alone; `PublishAot` in
+  the four exe projects and no `PublishReadyToRun`/`PublishTrimmed`; `AllowUnsafeBlocks` and
+  `CsWinRTAotWarningLevel` 2 in App and OperationUi; `IsAotCompatible` in the five libraries; no
+  `(T)` or `as T` on a resource-dictionary read in App or OperationUi (only `WinRT.CastExtensions.As<T>`).
+  Seven mutants killed (2026-10-08): a `pakko.dll` item back, `(Style)` and `as Brush` back,
+  `PublishAot` dropped from Shell, `IsAotCompatible` dropped from Messages, the warning level dropped
+  from OperationUi, `PublishReadyToRun` added to the CLI. `dotnet test` runs under JIT, so the
+  Subprocess layer also runs against the published AOT `pakko.exe` (`build.yml`'s `build-cli`, and
+  nightly on x64 and arm64 in `canary.yml`).
 - `CliVersionTextTests.WithPackage_*`: `pakko -v` appends `(package <full name>)` only when packaged.
 - `PAKKO_CLI_EXE` points `CliProcessRunner` at another `pakko.exe`; set it to
   `%LOCALAPPDATA%\Microsoft\WindowsApps\pakko.exe` to run the whole `Subprocess/` layer against the

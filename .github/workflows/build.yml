@@ -266,6 +266,13 @@ jobs:
             src/Archiver.App/AppPackages/**/*.msixbundle
           if-no-files-found: error
 
+      # T-F355: the four AOT exes' native symbols, kept for reading crash dumps; not released.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pakko-pdb-${{ matrix.architecture }}
+          path: artifacts/pdb/${{ matrix.architecture }}/*.pdb
+          if-no-files-found: error
+
   # T-F129: Store-submission MSIX, signed with the reserved Partner Center Publisher identity.
   # Manual-only (workflow_dispatch) -- run this from the Actions tab against the tag/ref you're
   # about to submit, download both architecture legs' artifacts, and upload them together to
@@ -423,7 +430,9 @@ jobs:
   build-cli:
     needs: test
     if: github.event_name == 'push'
-    runs-on: windows-latest
+    # T-F355: pakko.exe is Native AOT; its ARM64 leg links with the VS ARM64 build tools, pinned
+    # here for the same reason as build-msix above.
+    runs-on: windows-2022
     # T-F125: see build-msix's identical permissions comment above.
     permissions:
       id-token: write
@@ -447,6 +456,23 @@ jobs:
           } else {
             .\scripts\Publish-Cli.ps1
           }
+
+      # T-F355: dotnet test (the test job) runs under JIT and cannot see an AOT-only failure; this
+      # runs the Subprocess layer against the native x64 pakko.exe just published. Skipped on a tag:
+      # its exe prints the release version, not the dev pattern the -v tests expect, and the same
+      # commit already passed here when it was pushed to main.
+      - name: Subprocess tests against the Native AOT pakko.exe
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        shell: pwsh
+        run: |
+          $env:PAKKO_CLI_EXE = Join-Path $PWD 'artifacts\cli\win-x64\pakko.exe'
+          $attempts = 2
+          for ($i = 1; $i -le $attempts; $i++) {
+            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            dotnet test tests/Archiver.CLI.Tests --filter "FullyQualifiedName~Subprocess"
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+          }
+          throw "Subprocess tests against the AOT pakko.exe failed after $attempts attempt(s)."
 
       - name: Attest build provenance (SLSA, T-F125)
         uses: actions/attest-build-provenance@v4

@@ -7,10 +7,12 @@
     dev-signing certificate, and is not affected by anything in that script.
 
     For each requested architecture:
-      1. dotnet publish with SelfContained=true (runs on a machine with no separate
-         .NET install, and without Pakko's GUI/MSIX installed — see docs/CLI.md's
-         "Distribution" section).
-      2. Zips the publish output as pakko-<rid>.zip.
+      1. dotnet publish as Native AOT (T-F355): one native pakko.exe that runs on a machine
+         with no .NET install and without Pakko's GUI/MSIX installed — see docs/CLI.md's
+         "Distribution" section. Needs the Visual Studio C++ build tools for the target
+         architecture.
+      2. Zips pakko.exe alone as pakko-<rid>.zip; its pakko.pdb (native symbols, for crash
+         dumps) stays next to it in the publish folder, outside the zip.
     Then writes a SHA256SUMS file covering every zip produced, so a script or a user
     can verify the download before running it.
 .PARAMETER Architecture
@@ -66,6 +68,9 @@ if (Test-Path -LiteralPath $OutputRoot) {
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 New-Item -ItemType File -Path $ownerMarker | Out-Null
 
+# ILCompiler's link step finds the C++ toolchain through vswhere.exe on PATH.
+$env:PATH = (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer') + ";$env:PATH"
+
 $architectures = if ($Architecture -eq 'both') { @('x64', 'arm64') } else { @($Architecture) }
 $zipPaths = @()
 
@@ -79,8 +84,6 @@ foreach ($arch in $architectures) {
         "/p:Configuration=$Configuration",
         "/p:Platform=$platform",
         "/p:RuntimeIdentifier=$rid",
-        "/p:SelfContained=true",
-        "/p:PublishReadyToRun=true",
         "/p:PublishDir=$publishDir"
     )
     if ($Version) {
@@ -92,7 +95,7 @@ foreach ($arch in $architectures) {
     }
 
     $zipPath = Join-Path $OutputRoot "pakko-$rid.zip"
-    Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zipPath -Force
+    Compress-Archive -Path (Join-Path $publishDir 'pakko.exe') -DestinationPath $zipPath -Force
     $zipPaths += $zipPath
     Write-Host "  -> $zipPath"
 }

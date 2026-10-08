@@ -4,7 +4,7 @@ using Archiver.OperationUi.Protocol;
 namespace Archiver.OperationUi;
 
 /// <summary>The helper's two anonymous pipe ends to Archiver.Shell.</summary>
-internal sealed class ShellPipe : IDisposable
+internal sealed partial class ShellPipe : IDisposable
 {
     private readonly AnonymousPipeClientStream _in;
     private readonly AnonymousPipeClientStream _out;

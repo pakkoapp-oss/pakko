@@ -4,7 +4,8 @@
     Builds, signs, and installs the Pakko MSIX package for local development.
 .DESCRIPTION
     In default (BuildAndDeploy) mode:
-      1. Builds Archiver.Shell and Archiver.OperationUi for the target architecture.
+      1. Publishes Archiver.Shell, Archiver.OperationUi and Archiver.CLI as Native AOT exes
+         for the target architecture (T-F355).
       2. Runs dotnet publish on Archiver.App with GenerateAppxPackageOnBuild=true.
          Content Include items in Archiver.App.csproj declare the satellite EXE as
          package content, so the packaging pipeline includes it automatically.
@@ -84,36 +85,22 @@ if (-not $DeployOnly) {
     Write-Host ""
     Write-Host "Building satellite projects..." -ForegroundColor Cyan
 
-    $shellProj    = Join-Path $repoRoot 'src\Archiver.Shell\Archiver.Shell.csproj'
-
-    # Self-contained: this apphost runs inside the MSIX package with no globally installed
-    # .NET runtime to fall back on. A framework-dependent apphost fails at launch with
-    # "You must install or update .NET to run this application" (a modal dialog — the process
-    # never exits, which looked like the context menu silently doing nothing). Self-contained
-    # apphosts probe their own directory first, where Archiver.App's self-contained publish
-    # already deposits the matching hostfxr/coreclr/hostpolicy native files at the package root.
-    & dotnet build $shellProj    /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
-    $shellBuildExitCode = $LASTEXITCODE
-    if ($shellBuildExitCode -ne 0) { Write-Error "Archiver.Shell build failed (exit $shellBuildExitCode)."; exit $shellBuildExitCode }
-
-    # T-F102: remember this build's own path so the post-publish completeness check (below) can
-    # tell a freshly-copied satellite EXE from a stale one PreserveNewest silently kept.
+    # T-F355: every satellite is a Native AOT exe - runtime and Archiver.Core compiled in, nothing
+    # else of it packaged (the App is AOT too, so the package root has no .NET runtime). Published
+    # into the same bin folder Archiver.App.csproj's Content items read (T-F128: keep the paths).
+    # ILCompiler's link step finds the C++ toolchain through vswhere.exe on PATH.
+    $env:PATH = (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer') + ";$env:PATH"
     $shellExeSourcePath = Join-Path $repoRoot "src\Archiver.Shell\bin\$platform\Release\net10.0-windows\$rid\Archiver.Shell.exe"
-
-    # T-F268: the operation window helper Archiver.Shell starts; self-contained for the same reason.
-    $operationUiProj = Join-Path $repoRoot 'src\Archiver.OperationUi\Archiver.OperationUi.csproj'
-    & dotnet build $operationUiProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
-    $operationUiBuildExitCode = $LASTEXITCODE
-    if ($operationUiBuildExitCode -ne 0) { Write-Error "Archiver.OperationUi build failed (exit $operationUiBuildExitCode)."; exit $operationUiBuildExitCode }
-    # T-F317: pakko.exe for the "pakko" execution alias; self-contained for the same reason.
-    $cliProj = Join-Path $repoRoot 'src\Archiver.CLI\Archiver.CLI.csproj'
-    & dotnet build $cliProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
-    $cliBuildExitCode = $LASTEXITCODE
-    if ($cliBuildExitCode -ne 0) { Write-Error "Archiver.CLI build failed (exit $cliBuildExitCode)."; exit $cliBuildExitCode }
-    $cliDllSourcePath = Join-Path $repoRoot "src\Archiver.CLI\bin\$platform\Release\net10.0\$rid\pakko.dll"
-
-    # The managed .dll, not the apphost: the apphost barely changes between builds (T-F128).
-    $operationUiDllSourcePath = Join-Path $repoRoot "src\Archiver.OperationUi\bin\$platform\Release\net10.0-windows10.0.17763.0\$rid\Archiver.OperationUi.dll"
+    $operationUiExeSourcePath = Join-Path $repoRoot "src\Archiver.OperationUi\bin\$platform\Release\net10.0-windows10.0.17763.0\$rid\Archiver.OperationUi.exe"
+    $cliExeSourcePath = Join-Path $repoRoot "src\Archiver.CLI\bin\$platform\Release\net10.0\$rid\pakko.exe"
+    foreach ($satellite in @(
+        @{ Project = 'src\Archiver.Shell\Archiver.Shell.csproj'; Exe = $shellExeSourcePath },
+        @{ Project = 'src\Archiver.OperationUi\Archiver.OperationUi.csproj'; Exe = $operationUiExeSourcePath },
+        @{ Project = 'src\Archiver.CLI\Archiver.CLI.csproj'; Exe = $cliExeSourcePath }
+    )) {
+        & dotnet publish (Join-Path $repoRoot $satellite.Project) /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid -o (Split-Path $satellite.Exe)
+        if ($LASTEXITCODE -ne 0) { Write-Error "$($satellite.Project) publish failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
+    }
 
     # ── Build Archiver.ShellExtension (C++ DLL) ───────────────────────────────────
     Write-Host ""
@@ -147,7 +134,7 @@ if (-not $DeployOnly) {
     $shellExtBuildExitCode = $LASTEXITCODE
     if ($shellExtBuildExitCode -ne 0) { Write-Error "Archiver.ShellExtension build failed (exit $shellExtBuildExitCode)."; exit $shellExtBuildExitCode }
 
-    # T-F102: same reasoning as Archiver.Shell.exe above.
+    # T-F102: kept for the post-publish completeness check below.
     $shellExtDllSourcePath = Join-Path $shellExtBinDir 'Archiver.ShellExtension.dll'
 
     # ── dotnet publish: package and sign ─────────────────────────────────────
@@ -225,8 +212,8 @@ if (-not $DeployOnly) {
                 foreach ($check in @(
                     @{ Name = 'Archiver.Shell.exe'; SourcePath = $shellExeSourcePath },
                     @{ Name = 'Archiver.ShellExtension.dll'; SourcePath = $shellExtDllSourcePath },
-                    @{ Name = 'Archiver.OperationUi.dll'; SourcePath = $operationUiDllSourcePath },
-                    @{ Name = 'pakko.dll'; SourcePath = $cliDllSourcePath }
+                    @{ Name = 'Archiver.OperationUi.exe'; SourcePath = $operationUiExeSourcePath },
+                    @{ Name = 'pakko.exe'; SourcePath = $cliExeSourcePath }
                 )) {
                     $entry = $zip.Entries | Where-Object { $_.Name -eq $check.Name } | Select-Object -First 1
                     if (-not $entry) {

@@ -8,7 +8,8 @@
     exists only to handle a leftover AppPackages/obj folder from a prior incremental local
     build, which cannot happen here.
 
-    Builds Archiver.Shell, Archiver.ShellExtension.dll, then dotnet publishes Archiver.App with
+    Publishes Archiver.Shell, Archiver.OperationUi and Archiver.CLI as Native AOT exes (T-F355),
+    builds Archiver.ShellExtension.dll, then dotnet publishes Archiver.App (AOT too) with
     AppxPackageSigningEnabled=true. Writes the produced .msix/.msixbundle path to
     $env:GITHUB_OUTPUT (msixPath=...) when running inside GitHub Actions, and always prints it.
 .PARAMETER Architecture
@@ -54,30 +55,23 @@ if (Test-Path $pkgOutDir) {
     Remove-Item -Recurse -Force $pkgOutDir -ErrorAction SilentlyContinue
 }
 
-# ── Build Archiver.Shell (self-contained satellite EXE) ───────────────────────
-Write-Host "Building Archiver.Shell ($Architecture)..." -ForegroundColor Cyan
-$shellProj = Join-Path $repoRoot 'src\Archiver.Shell\Archiver.Shell.csproj'
-& dotnet build $shellProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
-if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.Shell build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
-
-# ── Build Archiver.OperationUi (self-contained WinUI helper Archiver.Shell starts, T-F268) ──
-Write-Host "Building Archiver.OperationUi ($Architecture)..." -ForegroundColor Cyan
-$operationUiProj = Join-Path $repoRoot 'src\Archiver.OperationUi\Archiver.OperationUi.csproj'
-& dotnet build $operationUiProj /p:Configuration=Release /p:Platform=$platform /p:RuntimeIdentifier=$rid --self-contained
-if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.OperationUi build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
-
-# ── Build Archiver.CLI (pakko.exe for the "pakko" execution alias, T-F317) ─────
-# Self-contained like Archiver.Shell. A release passes -CliVersion (the tag without "v") so the
-# packaged pakko -v prints the release, as Publish-Cli.ps1 -Version does for the zip; otherwise
-# the csproj's 0.0.0-dev marker stays (T-F222). Only InformationalVersion, never Version: a global
-# Version also flows to Archiver.Core, so pakko.dll would reference Core X.Y.Z.0 while the package
-# root holds the App's Core 1.0.0.0, and the binder refuses an older assembly (FileLoadException).
-Write-Host "Building Archiver.CLI ($Architecture)..." -ForegroundColor Cyan
-$cliProj = Join-Path $repoRoot 'src\Archiver.CLI\Archiver.CLI.csproj'
-$cliArgs = @($cliProj, '/p:Configuration=Release', "/p:Platform=$platform", "/p:RuntimeIdentifier=$rid", '--self-contained')
-if ($CliVersion) { $cliArgs += "/p:InformationalVersion=$CliVersion" }
-& dotnet build @cliArgs
-if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.CLI build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
+# ── Publish the satellites as Native AOT exes (T-F355) ─────────────────────────
+# Into the bin folders Archiver.App.csproj's Content items read (T-F128: keep the paths). ILCompiler
+# finds the C++ toolchain through vswhere.exe on PATH. A release passes -CliVersion (the tag without
+# "v") so the packaged pakko -v prints the release, as Publish-Cli.ps1 -Version does for the zip;
+# otherwise the csproj's 0.0.0-dev marker stays (T-F222).
+$env:PATH = (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer') + ";$env:PATH"
+foreach ($satellite in @(
+    @{ Project = 'src\Archiver.Shell\Archiver.Shell.csproj'; Out = "src\Archiver.Shell\bin\$platform\Release\net10.0-windows\$rid" },
+    @{ Project = 'src\Archiver.OperationUi\Archiver.OperationUi.csproj'; Out = "src\Archiver.OperationUi\bin\$platform\Release\net10.0-windows10.0.17763.0\$rid" },
+    @{ Project = 'src\Archiver.CLI\Archiver.CLI.csproj'; Out = "src\Archiver.CLI\bin\$platform\Release\net10.0\$rid" }
+)) {
+    Write-Host "Publishing $($satellite.Project) ($Architecture, Native AOT)..." -ForegroundColor Cyan
+    $satelliteArgs = @((Join-Path $repoRoot $satellite.Project), '/p:Configuration=Release', "/p:Platform=$platform", "/p:RuntimeIdentifier=$rid", '-o', (Join-Path $repoRoot $satellite.Out))
+    if ($CliVersion -and $satellite.Project -like '*Archiver.CLI*') { $satelliteArgs += "/p:InformationalVersion=$CliVersion" }
+    & dotnet publish @satelliteArgs
+    if ($LASTEXITCODE -ne 0) { Write-Error "$($satellite.Project) publish failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
+}
 
 # ── Build Archiver.ShellExtension (C++ COM DLL) ────────────────────────────────
 Write-Host ""
@@ -134,17 +128,21 @@ if (-not $msix) {
     exit 1
 }
 
-# ── T-F317: check the built package itself carries pakko.exe and its alias ────
+# ── T-F317/T-F355: check the built package itself carries the AOT exes and pakko's alias ────
 # The source manifest and Archiver.App.csproj are checked by PackagingManifestTests; this checks
-# what the packaging pipeline actually produced. A .msixbundle holds the app package as an inner
+# what the packaging pipeline actually produced: the three satellite exes, pakko's alias, and no
+# JIT runtime or managed satellite left over (each would mean a non-AOT build slipped in). A .msixbundle holds the app package as an inner
 # .msix next to the resource packages, so look inside every inner package for the one with pakko.
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 function Test-PakkoInPackage([System.IO.Compression.ZipArchive] $package) {
     $names = @($package.Entries | ForEach-Object { $_.FullName })
-    $required = @('pakko.exe', 'pakko.dll', 'pakko.deps.json', 'pakko.runtimeconfig.json', 'AppxManifest.xml')
+    $required = @('pakko.exe', 'Archiver.Shell.exe', 'Archiver.OperationUi.exe', 'AppxManifest.xml')
     foreach ($name in $required) {
         if ($names -notcontains $name) { return $false }
+    }
+    foreach ($name in @('coreclr.dll', 'pakko.dll', 'Archiver.Shell.dll', 'Archiver.OperationUi.dll')) {
+        if ($names -contains $name) { throw "The package carries $name - a non-AOT build reached it (T-F355)." }
     }
     $reader = New-Object System.IO.StreamReader(($package.GetEntry('AppxManifest.xml')).Open())
     try { $manifestText = $reader.ReadToEnd() } finally { $reader.Dispose() }
@@ -174,8 +172,22 @@ try {
     $outer.Dispose()
 }
 if (-not $pakkoFound) {
-    Write-Error "The built package $($msix.Name) has no pakko.exe with its four files and the pakko.exe execution alias (T-F317)."
+    Write-Error "The built package $($msix.Name) has no pakko.exe, Archiver.Shell.exe, Archiver.OperationUi.exe and the pakko.exe execution alias (T-F317, T-F355)."
     exit 1
+}
+
+# ── T-F355: native symbols of the four AOT exes, for crash dumps; never packaged ──
+$pdbOutDir = Join-Path $repoRoot "artifacts\pdb\$Architecture"
+New-Item -ItemType Directory -Force -Path $pdbOutDir | Out-Null
+foreach ($nativeDir in @(
+    "src\Archiver.App\bin\$platform\Release\net10.0-windows10.0.17763.0\$rid\native",
+    "src\Archiver.Shell\bin\$platform\Release\net10.0-windows\$rid\native",
+    "src\Archiver.OperationUi\bin\$platform\Release\net10.0-windows10.0.17763.0\$rid\native",
+    "src\Archiver.CLI\bin\$platform\Release\net10.0\$rid\native"
+)) {
+    $pdb = Get-ChildItem -LiteralPath (Join-Path $repoRoot $nativeDir) -Filter '*.pdb' | Select-Object -First 1
+    if (-not $pdb) { Write-Error "No native .pdb under $nativeDir (T-F355)."; exit 1 }
+    Copy-Item -LiteralPath $pdb.FullName -Destination $pdbOutDir
 }
 
 Write-Host ""

@@ -3,7 +3,7 @@ using Microsoft.UI.Xaml.Data;
 
 namespace Archiver.App.Converters;
 
-public sealed class BoolToVisibilityConverter : IValueConverter
+public sealed partial class BoolToVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)
         => value is bool b && b ? Visibility.Visible : Visibility.Collapsed;

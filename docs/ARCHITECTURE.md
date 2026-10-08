@@ -1748,8 +1748,9 @@ single-letter commands (`x`/`t`/`i`/`a`/`l`), specified in full in `CLI.md`. Shi
 standalone, self-contained downloadable artifact (see `CLI.md`'s "Distribution" section and
 `scripts/README.md`) — it does not require the MSIX/GUI to be installed. Since T-F317 (v1.7.0)
 the MSIX also carries the same `pakko.exe` as a hidden `<Application Id="Cli">` with the `pakko.exe`
-execution alias, sharing the App's runtime at the package root (`Archiver.App.csproj`'s
-`Content Include`, built by `Deploy.ps1`/`CI-Build-Msix.ps1`).
+execution alias (`Archiver.App.csproj`'s `Content Include`, built by
+`Deploy.ps1`/`CI-Build-Msix.ps1`). All four exes are Native AOT (T-F355): each is one native file
+with the runtime compiled in, and the package carries no .NET runtime of its own.
 
 **No DI container** — mirrors `Archiver.Shell/Program.cs`'s pattern exactly (T-F261: every
 command takes its services from Core's `PakkoServices`, built once with the loaded policy), not

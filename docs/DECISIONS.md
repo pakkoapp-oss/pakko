@@ -11447,3 +11447,63 @@ any other command; when the policy overrides it pakko says so on stderr, the exi
 **Rejected.** Remembering the choice across runs (a forgotten "off" would silently strip the mark
 from later downloads); counting the archive's files to show an exact time (a tar-family archive
 needs a `tar.exe` run for that); a checkbox in "Extract Here" (it has no window).
+
+---
+
+## T-F355 — every exe is Native AOT (2026-10-08)
+
+**Why.** The performance study left Native AOT as the one large lever for start time and memory.
+A spike (branch `spike/native-aot`, not merged) measured, x64 medians: `pakko --help` 50 -> 17 ms,
+`pakko x` ZIP 133 -> 34 ms, `pakko x` 7z 306 -> 196 ms; Shell "Extract here" ZIP 151-192 -> 32 ms
+(ReadyToRun alone: 126 ms), 7z 360-400 -> 200 ms; App window 587 -> ~430 ms, working set 139 -> 105
+MB; MSIX 62.9 -> 14.8 MB and 346 -> 27 files; CLI zip 37.8 -> 2.8 MB. The user chose the whole
+project on AOT after these numbers.
+
+**All or nothing.** An AOT App publish puts no `coreclr`/`hostfxr` at the package root, and the
+satellites' apphosts relied on exactly that runtime. So Shell, OperationUi and `pakko` are AOT too,
+each packaged as one exe; the managed `.dll`/`.deps.json`/`.runtimeconfig.json` items and the Shell
+satellite-resource item are gone (translations are compiled into the exe).
+
+**What broke under AOT, found on device** (`dotnet test` under JIT saw none of it; found with a
+temporary `UnhandledException` log, since removed):
+1. `x:Bind` of an `ObservableCollection<T>` to `ItemsSource` threw `ArgumentException` in
+   `set_ItemsSource` (crash `0xc000027b` at start). CsWinRT's generated marshalling needs
+   `AllowUnsafeBlocks` (CsWinRT1030 otherwise). Now on in App and OperationUi.
+2. `(Style)Application.Current.Resources[...]` and `(Brush)...` threw `InvalidCastException` -
+   App's footer button, OperationUi's whole layout. Fixed with `WinRT.CastExtensions.As<T>`; a
+   source-reading test forbids `(T)` and `as T` on a resource read.
+3. CsWinRT1028: `BoolToVisibilityConverter` and `ShellPipe` (`IDisposable`, a mapped interface)
+   must be `partial`. `CsWinRTAotWarningLevel=2` makes every such class a build error.
+
+The trim/AOT analyzers found nothing in Core, CLI or Shell: Core is on `LibraryImport`, Shell on
+`[GeneratedComInterface]`, JSON on source-generated contexts (T-F348). H.NotifyIcon, the
+`PakkoBuildTimeUtc` title stamp and `Assembly.GetExecutingAssembly()` resource lookups work.
+
+**Research (Microsoft Learn, CsWinRT `docs/aot-trimming.md`, Community Toolkit 8.4 notes, issues)
+and how each applies:** no dynamic loading/`Reflection.Emit`/built-in COM - none used.
+MVVMTK0045 - `[ObservableProperty]` fields are invisible to the CsWinRT generator, and partial
+properties need C# 13+; the language stays at C# 12 (a separate decision) and the three bound
+collections work because the generator sees the `x:Bind` code; `GeneratedWinRTExposedExternalType`
+is the fallback. `{Binding}` needs `GeneratedBindableCustomProperty` - only `x:Bind` is used.
+Collection expressions cannot cross the WinRT ABI - none do. A third-party report of a WinUI AOT
+app hanging on .NET 10 (CsWinRT 2.2, WASDK 1.8.3) is unconfirmed; the spike (.NET 10, WASDK
+1.8.260209005) did not hang; the smoke includes a long App session. `VerifyReferenceAotCompatibility`
+is left off (IL3058 noise for packages without .NET 10 metadata).
+
+**Build.** ILCompiler needs the VS C++ tools and finds them through `vswhere.exe` on `PATH` (the
+scripts add `Microsoft Visual Studio\Installer`). ARM64 links with the ARM64 build tools, so
+`build-cli` moved to `windows-2022` like `build-msix`. The native `.pdb` of each exe is a CI
+artifact, never packaged. An unrelated trap hit during the spike: Google Drive syncing the repo
+held `bin\...\*.deps.json` open and `GenerateDepsFile` failed (MSB4018) until Drive was quit.
+
+**Checked.** A smoke campaign on the deployed AOT package passed every Explorer command, the
+operation window and its Win32 failover, every App flow and dialog, the light theme and the CLI
+(pipes, Ctrl+C) with no crash in the event log. The canary on the branch ran the Subprocess layer
+against the AOT `pakko.exe` on x64 and natively on an ARM64 runner: 77/77 both.
+
+**Known risk.** The ARM64 package (App, Shell, operation window) is built in CI but not
+device-checked (no hardware) - the pre-release check list covers it.
+
+**Rejected.** ReadyToRun for the satellites (T-F349: 126 vs 32 ms for Shell); AOT for the CLI and
+Shell only (an AOT App is where the size and memory win is, and a JIT App keeps the 346-file
+package).

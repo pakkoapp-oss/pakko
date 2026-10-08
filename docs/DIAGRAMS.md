@@ -531,7 +531,7 @@ flowchart TB
             Shell[Archiver.Shell.exe]
         end
         subgraph AppCliPkg["Application Id=Cli (T-F317)<br/>EntryPoint=Windows.FullTrustApplication<br/>AppListEntry=none<br/>uap3 appExecutionAlias pakko.exe"]
-            CliPkg["pakko.exe (Archiver.CLI)<br/>shares the App's runtime at the package root"]
+            CliPkg["pakko.exe (Archiver.CLI)<br/>Native AOT, one file (T-F355)"]
         end
         OpUi["Archiver.OperationUi.exe (T-F268)<br/>no Application entry of its own —<br/>a child of Shell keeps the package identity<br/>references no Archiver.Core"]
         subgraph ComReg["com:Extension windows.comServer → com:SurrogateServer<br/>verbs for ItemType * / Directory / Drive"]
