@@ -1970,9 +1970,10 @@ re-measured with T-F346's script before and after.
   medians of 7 rounds alternating with 7za: archive without the mark 1116 -> 987 us per file (7za
   1006 -> 993), with the mark 2780 -> 2481 (7za writes none). The mark itself (~1.5 ms, Defender
   scanning the new stream) stays; writing it before the content was faster still (-5%) and was
-  not taken, since it changes the order. Checked on device (1.7.1.8, Explorer's "Extract to
-  folder" path): a marked ZIP, .7z and .tar.gz give every file the mark and the entry's time, an
-  unmarked ZIP gives none and the time.
+  not taken, since it changes the order. Checked on device (1.7.1.8, the installed
+  `Archiver.Shell.exe --extract-folder` started directly, not through the menu): a marked ZIP, .7z
+  and .tar.gz give every file the mark and the entry's time, an unmarked ZIP gives none and the
+  time; the same into a `\\localhost\C$` share, with a zero-byte and a 3 MB entry.
 - **Was:** open. From T-F353's measurement (5000 small files, Release, Defender on): 12.8 s
   against 7za's 6.2 s - ~2.5 ms per file against ~1.2 ms; an archive carrying `Zone.Identifier`
   (every downloaded one) takes 22.4 s, ~1.9 ms more per file for the second stream. Not profiled:
