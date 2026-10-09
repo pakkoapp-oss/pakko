@@ -11680,7 +11680,7 @@ runtime it links is not listed as a component.
 ## T-F366 — a timeout on every job, superseded branch runs cancelled (2026-10-09)
 
 **Decision.** Every job in `build.yml` and `canary.yml` sets `timeout-minutes`, about four times
-its slowest run in the last 40 (`test` 8 min -> 30, `build-msix` 4 -> 30, `canary-slow` 6 -> 45,
+its slowest measured run (`test` over 40 runs, the rest over about 6; `test` 8 min -> 30, `build-msix` 4 -> 30, `canary-slow` 6 -> 45,
 the small jobs 10-20; `canary-fuzz` keeps its 60). GitHub's default is 6 hours, so a hung GUI or
 Subprocess test held a runner that long. `build.yml` gets a workflow-level `concurrency` whose
 group is the ref for a branch push or a pull request and the `run_id` for anything else, with
