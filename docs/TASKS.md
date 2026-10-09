@@ -2222,7 +2222,7 @@ PowerShell does natively.
   CycloneDX 1.6 from a read-only `sbom` job with no cache, `actions/attest` since `attest-sbom` is
   deprecated). CI green on both; `gh attestation verify` on the CI's x64 MSIX bundle and both CLI
   zips finds the CycloneDX and the SLSA attestations; the CI SBOMs equal the local ones (23/1);
-  Sonar 0 new. The `release` step runs first on the next tag. `SECURITY.md` waits for the user.
+  Sonar 0 new. The `release` step runs first on the next tag. `SECURITY.md` section added (user OK).
   Planned as: CycloneDX (or SPDX) per artifact in `build.yml`, published with the
   release and attested with `actions/attest-sbom` next to the existing SLSA provenance (T-F125).
   The audience (government, defence) asks for the component list, not only provenance. Update

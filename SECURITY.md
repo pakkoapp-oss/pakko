@@ -537,6 +537,34 @@ to CI at all. Tracked as a T-F10 Phase 1 follow-up, not solved by this task.
 
 ---
 
+## Component List (SBOM) and Build Attestations (T-F125, T-F365)
+
+Every GitHub Release carries, next to each MSIX and CLI zip, a CycloneDX 1.6 SBOM
+(`pakko-msix-<arch>.cdx.json`, `pakko-win-<arch>.cdx.json`) listing the third-party components
+that artifact ships or needs at run time: the .NET runtime linked into each Native AOT exe
+(`runtime.win-<arch>.Microsoft.DotNet.ILCompiler`), the managed packages compiled into the exes,
+WebView2, and the Windows App SDK family behind the `Microsoft.WindowsAppRuntime.2` framework the
+MSIX depends on. Build-only packages and Windows ML (whose DLLs are kept out of the package) are
+not listed. Both the SBOM and an SLSA build-provenance statement are attested by this repository's
+CI (Sigstore-backed GitHub artifact attestations) against the artifact's own digest:
+
+```powershell
+gh attestation verify pakko-win-x64.zip -R pakkoapp-oss/pakko --predicate-type https://cyclonedx.org/bom
+gh attestation verify pakko-win-x64.zip -R pakkoapp-oss/pakko   # SLSA provenance
+```
+
+The SBOM generator (the CycloneDX .NET tool, pinned) is third-party code, so CI runs it in a job
+of its own with read-only repository access, no secrets, no OIDC token and no shared NuGet cache;
+the jobs that hold the signing certificate only run GitHub's own attestation action on its output.
+It describes the exact package graph the build used, which the committed lock files and locked
+restore fix (T-F364).
+
+**Not covered:** the MSVC runtime that `Archiver.ShellExtension.dll` (C++, no package
+dependencies) links is not listed as a component; the Microsoft Store package is re-signed by
+Microsoft and has no attestation from this repository.
+
+---
+
 ## Recommended Usage Context
 
 This tool is appropriate for:
