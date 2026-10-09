@@ -2,7 +2,7 @@ namespace Archiver.Core.Tests.Fuzz;
 
 /// <summary>
 /// Seeded byte-level mutator for the dependency-free fuzz tests (T-F240). Half of all offsets land
-/// just after a ZIP record signature, where the size, offset and count fields a parser trusts live;
+/// just after a ZIP record signature or a PAR2 packet magic, where the size, offset and count fields a parser trusts live;
 /// random offsets alone almost never reach them in a small archive.
 /// </summary>
 internal static class ByteMutator
@@ -18,6 +18,7 @@ internal static class ByteMutator
         [0x50, 0x4B, 0x06, 0x06], // Zip64 end of central directory
         [0x50, 0x4B, 0x06, 0x07], // Zip64 locator
         [0x50, 0x4B, 0x07, 0x08], // data descriptor
+        [0x50, 0x41, 0x52, 0x32], // PAR2 packet header (T-F275)
     ];
 
     public static byte[] Mutate(byte[] input, Random rng, List<string> log)

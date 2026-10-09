@@ -159,6 +159,23 @@ public sealed class Par2RepairTests : IDisposable
         reports[^1].Should().BeApproximately(1.0, 1e-9);
     }
 
+    // Slices above the 16 MiB range width: the combination runs range by range.
+    [Fact]
+    [Trait("Category", "Slow")]
+    public void Repair_SlicesLargerThanOneRange_RestoresTheOriginal()
+    {
+        const long sliceSize = 20L << 20;
+        int length = (int)(2 * sliceSize + 1);
+        var (file, set, _) = ProtectWithVolume("a.zip", length, new Par2Parameters(sliceSize, 3, 2));
+        byte[] original = File.ReadAllBytes(file);
+        Damage(file, (int)sliceSize + (17 << 20), 1);
+        Damage(file, length - 1, 1);
+
+        Par2Repairer.Repair(file, set, Output(), null, CancellationToken.None).Should().Be(new Par2RepairResult(Par2RepairStatus.Repaired, 2));
+
+        File.ReadAllBytes(Output()).Should().Equal(original);
+    }
+
     // --- Error path ---
 
     [Fact]
