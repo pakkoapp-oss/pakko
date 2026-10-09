@@ -148,6 +148,7 @@ jobs:
           # T-F268: Archiver.OperationUi/** is a WinUI window (no test host can create one; its
           # logic lives in the tested Archiver.OperationUi.Core) and HelperProcessLauncher.cs
           # starts that real exe; HelperOperationUi is tested through a fake launcher instead.
+          # T-F370: scripts/hooks/** is PowerShell, run by AgentBashHookTests through pwsh.
           # See docs/CONVENTIONS.md's "SonarCloud Coverage Exclusions" section.
           .\.sonar\scanner\dotnet-sonarscanner begin `
             /k:"$env:SONAR_PROJECT_KEY" `
@@ -155,7 +156,7 @@ jobs:
             /d:sonar.token="$env:SONAR_TOKEN" `
             /d:sonar.host.url="https://sonarcloud.io" `
             /d:sonar.cs.cobertura.reportsPaths="**/coverage.cobertura.xml" `
-            /d:sonar.coverage.exclusions="src/Archiver.Shell/Program.cs,src/Archiver.Shell/NativeProgressDialog.cs,src/Archiver.Core/Services/ExplorerLauncher.cs,src/Archiver.CLI/Program.cs,src/Archiver.OperationUi/**,src/Archiver.Shell/HelperProcessLauncher.cs"
+            /d:sonar.coverage.exclusions="src/Archiver.Shell/Program.cs,src/Archiver.Shell/NativeProgressDialog.cs,src/Archiver.Core/Services/ExplorerLauncher.cs,src/Archiver.CLI/Program.cs,src/Archiver.OperationUi/**,src/Archiver.Shell/HelperProcessLauncher.cs,scripts/hooks/**"
 
       - name: Run .NET test suite
         # --collect:"XPlat Code Coverage" uses the coverlet.collector package already referenced
