@@ -14,369 +14,20 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 
 ## Current State
 
-**v1.1** tagged `v1.1.0` (GitHub-only early-tester release). **v1.2 (shell extension)**,
-**v1.3 (tar.exe integration)**, and **v1.4** are all complete (T-F51 Group Policy/ADMX done
-2026-07-18 — see `docs/SPEC.md`'s roadmap table). Full per-task detail for
-everything marked `[x]` below lives in `docs/TASKS_DONE.md` and `docs/DECISIONS.md` (each task's
-own entry there) — this section only tracks current status, not the investigation trail.
+v1.1 through v1.4 (shell extension, tar.exe integration, Group Policy) and the v1.5-v1.7 waves
+are complete. **v1.7.1** tagged 2026-10-06 on f04dade (what shipped: `CHANGELOG.md`). The Store
+serves v1.6.0 as 1.6.0.0 (x64) and 1.6.1.0 (ARM64); the combined bundle 1.7.1.0 was submitted
+2026-10-06, certification pending (`docs/DECISIONS.md`). Store listing:
+https://apps.microsoft.com/detail/9p5mw010d8pr.
 
-**v1.2 shell extension:** `Archiver.Shell`, protocol activation, file association, MOTW, and the
-`IExplorerCommand` COM DLL (T-F61) are complete. Progress UI uses the Shell's native
-`IProgressDialog` (T-F61/T-F65 — the earlier `Archiver.ProgressWindow` satellite app was removed,
-see `docs/DECISIONS.md`). T-F62 (Test archive), T-F68 (shell extract silently ignoring
-`SkippedFiles`), T-F63 (Extract/Compress dialogs), and T-F83 (a cold-start protocol/file
-activation bug T-F63's testing surfaced, predating T-F63 itself) are all done.
-
-**v1.3/v1.4 tar.exe integration:** T-F47/T-F48 (`ITarService`/`TarCapabilities` scaffolding +
-capability detection) done. T-F49 (`TarProcessService.ExtractAsync`) done — while designing it, a
-real sandbox-escape exploit was confirmed against a naive tar.exe quarantine-then-validate model
-(a symlink entry writes outside quarantine before validation runs); `ExtractAsync` instead
-pre-scans and rejects the whole archive before extraction runs. The ADS/reserved-name/
-reparse-point/MOTW checks were shared into `ArchiveEntrySecurity` so both extractors (later ZIP
-and Tar) stay in sync. T-F95 (root context-menu icon missing — `Archiver.App.csproj` had no
-`<ApplicationIcon>`) fixed. **T-F96** (`Deploy.ps1`/`dotnet publish` intermittent `MSB3231` on its
-own `AppPackages`/`obj` cleanup) is `[~]` **closed as non-blocking** — root cause unconfirmed
-(leading suspect: Search Indexer race), but `Deploy.ps1`'s own tolerance mitigation has absorbed
-every recurrence since 2026-07-07; see `docs/TASKS_DONE.md`'s T-F96 entry if this needs revisiting.
-
-**T-F05 (Archive Browser) is `[x]` done** (G6 device pass, 2026-09-30) — all implementation done (Core
-`ListEntriesAsync`/`IArchiveListingRouter`, `ExtractOptions.SelectedEntryPaths`, the
-`Archiver.App.Core` project, full breadcrumb/per-folder browser + Extract Selected/All/Info
-wiring), AI-driven on-device verification passed 2026-07-13. A same-day UI design-review pass (comparing a real screenshot against
-NanaZip) found and fixed a genuine bug (Row 0's Add Files/Add Folder/Hash never hid during browse
-mode). Follow-ups (Info dialog folded into columns, CRC-32 column, a blank-row race) are in
-`docs/DECISIONS.md`'s three T-F05 follow-up entries.
-
-**T-F99/T-F100 (drive-root context menu / file-activation routing)** are `[x]` done — on-device
-testing surfaced and fixed a command-line-corrupting `QuotePath` trailing-backslash bug and two
-independent archive-auto-naming bugs for drive-root sources. **T-F103** (extraction destination misnamed for compound extensions, e.g.
-`archive.tar.gz` -> `archive.tar` instead of `archive`) fixed via a shared `ArchiveNaming` helper
-wired into every affected call site plus the native title-display equivalent.
-
-**T-F06 (Ask on Conflict dialog)** done — `ConflictBehavior` gained a 4th value `Ask`, resolved
-per-conflict through a Core->UI callback (`ConflictResolver` helper), wired into both
-Archive-creation modes and both Zip/Tar extraction engines.
-
-**T-F52 (AppContainer Sandbox for tar.exe)** is `[x]` complete — `TarProcessService` was deleted
-outright (fail-closed, no unsandboxed fallback) and replaced by `TarSandboxedService`, routing
-every tar.exe launch through a new `Archiver.Core/Services/Sandbox/` subsystem
-(`AppContainerProfile`, `QuarantineAcl`, `QuarantineStaging`, `SandboxJobObject`,
-`SandboxedProcessLauncher`, `SecurityCapabilitiesAttributeList`, `TarSignatureVerifier`,
-`TarSandboxScope`). Confirmed on real hardware from the actual packaged (MSIX
-`FullTrustApplication`) process identity, not just a test host. Several real bugs found and fixed
-along the way (wrong `CERT_FIND_SUBJECT_CERT` constant, hardlinked staged files not inheriting
-the quarantine ACL, libarchive's implicit parent-directory creation failing under AppContainer, a
-quarantine-location correction to a fixed `%TEMP%`-rooted path) — see `docs/DECISIONS.md`'s several
-T-F52 entries. Graduated via an MCP-driven on-device pass (user-directed accepted substitute for
-a personal click-through) plus a 4th bug found via advisor review post-Step-13: sandbox-setup
-`InvalidOperationException` wasn't caught, now wrapped in `SandboxSetupException`.
-
-**T-F105 (TAR archive creation)** is `[x]` complete, all four phases — `ITarService.CompressAsync`
-(deliberately unsandboxed, since creation reads trusted local files, not an untrusted archive; see
-`SECURITY.md`), a Format combobox in `MainWindow.xaml` (localized across all 37 locales), a
-one-click "Add to X.tar" `IExplorerCommand`, and a `--format zip|tar` CLI switch. On-device
-verification (via `windows` MCP) confirmed all three entry points.
-
-**T-F107** (Archive Browser's "Up" button now climbs past the archive root into the real
-containing folder, up to a drive root, and up to a synthetic "This PC" node) is `[x]` done — new
-`ArchiveBrowseScope` + `FileSystemBrowser` helper. **T-F97** (double-clicking an image/text file
-in the Archive Browser silently previews it via a shared `%TEMP%\PakkoPreview\` cache instead of
-running a full Extract) is `[x]` done — new `PreviewPolicy` allowlist + `PreviewCache`, reusing
-the real `IExtractionRouter` pipeline so T-F49's pre-scan and MOTW propagation both apply for
-free. Two real bugs fixed along the way: `Launcher.LaunchFileAsync` silently failing for an
-arbitrary `%TEMP%` path (fixed via `Process.Start(UseShellExecute=true)`), and
-`ArchiveResult.CreatedFiles` listing destination folders rather than individual file paths.
-**T-F93** (Ko-fi donate link in `README.md` and the About dialog) is `[x]` done.
-
-**T-F108/T-F98/T-F109/T-F110** (all `[x]` done, same session) — T-F108 fixed the extraction
-destination defaulting to Desktop instead of the archive's own folder when browsing with no
-pending files queued; T-F98 lets double-clicking a nested archive inside the browser drill
-straight into it (up to 4 levels, `NestedArchivePolicy.MaxDepth`), reusing T-F49/T-F90/T-F94's
-security machinery unmodified at every level; T-F109 widened the safe-preview allowlist to
-video/audio, with anything else now confirming before extracting to a subfolder next to the
-archive; T-F110 added a preview-vs-extract-only icon per row. All four verified on-device.
-
-**T-F114** (ZIP-only compression/extraction performance-regression tests vs. a vendored,
-hash-verified `7za.exe` reference) is `[x]` done — 6 scenarios (archive+extract x
-one-large-file/many-small-files/hybrid), same-run ratio comparison against a per-scenario
-calibrated constant with 3x cross-machine tolerance, tar-family explicitly out of scope. Every
-`7za.exe` launch runs under tar.exe's own `SandboxJobObject` (Job Object only, no
-AppContainer/quarantine, so timing is unaffected). Many-small-files/hybrid tests are tagged
-`Category=Slow`; the one-large-file tests are tagged `Category=VeryLarge` (on-demand only).
-
-**T-F35** (parallel ZIP compression above a 64-file threshold) is `[x]` done — a new `Archiver.Core/Services/Zip/` subsystem
-(`WorkItemEnumerator`, `ParallelSingleArchiveWriter`, `ZipEntryWriter`, `ZipEntryCompressor`,
-`DosDateTime`) compresses every non-placeholder file in parallel (small files in memory,
-everything else via a per-worker temp file) through a hand-rolled ZIP container writer, since
-`ZipArchive` gives no API to compress independently and splice the result in later. Built to fix
-the ~6x gap T-F114 measured for many-small-files archiving. Two bugs were caught by tests before
-first ship (a bounded-channel concurrency bug, a Zip64 field-offset swap rejected by `7za.exe`
-but not .NET's own lenient reader). Follow-ups: merged three redundant directory walks into one;
-replaced the original 4 MiB "stream sequentially" fallback with per-worker temp-file compression
-at all sizes (surfaced and fixed a temp-file-cleanup/cancellation race); relocated temp files to
-a hidden subfolder next to the destination (after visible chunk-file flicker in Explorer) and
-added a disk-space pre-check. A real on-device NanaZip comparison then caught a genuine
-compatibility bug invisible to `dotnet test`: zero-byte files were tagged `Deflate` even though
-`DeflateStream` emits 0 bytes for empty input (not a valid deflate stream) — real `ZipArchiveEntry`
-always uses `Store` for empty entries; fixed to match. Final T-F114 ratios:
-`ManySmallFiles` 6.02 -> ~1.0, `Hybrid` 3.47 -> ~1.3, `OneLargeFile` 1.22 -> 1.18 (unaffected, as
-expected).
-See `docs/DECISIONS.md`'s T-F35 entry and its four follow-ups for the full stage-by-stage trail.
-
-**T-F09 (`Archiver.CLI`, 7z-familiar CLI)** is `[~]` **implementation complete** — a fourth thin
-frontend over `Archiver.Core` (no DI container, manual construction like `Archiver.Shell`),
-supporting `x`/`t`/`i`/`a`/`l` and the full three-way unknown-input rule from `docs/CLI.md`, shipped as
-its own standalone self-contained per-architecture download. New `Archiver.CLI.Tests` includes a
-`Subprocess/` layer that `Process.Start`s the real built exe against real fixtures — the first
-test layer in this repo to do that. Stays `[~]` until the user's own on-device terminal run of all
-five commands plus the three error cases.
-
-**T-F116** (`Archiver.CLI` `-si`/`-so` stdin/stdout streaming) is `[x]` done — implemented via private `%TEMP%` staging in `CliStreamStaging.cs`, zero
-`Archiver.Core` changes. Empirically confirmed native PowerShell 5.1 silently corrupts binary
-data piped between two executables while PowerShell 7+/`cmd /c` do not (documented in `docs/CLI.md`).
-Same session: the built exe was renamed `Archiver.CLI.exe` -> **`pakko.exe`** (not added to PATH
-automatically, matching ripgrep/fd/bat convention).
-
-**T-F122** (GitHub Actions CI, `.github/workflows/build.yml`) is
-`[x]` done — builds the MSIX + `pakko.exe` on every push/tag and publishes CLI zips + `SHA256SUMS`
-to a GitHub Release on a version tag. Uncovered a real external environment change mid-
-implementation: `windows-latest` silently relabeled to `windows-2025`, which lacks the ARM64
-`v143` toolset variant — fixed by pinning `windows-2022` for the `build-msix` job specifically.
-Graduated only after downloading and running a real CI-produced MSIX + `pakko.exe`.
-
-**T-F117** (a silent no-op in `ExtractAsync`/`TestAsync` for a truly unrecognized archive format)
-is `[x]` done — now records a real `ArchiveError` instead of silently succeeding; a
-known-but-unsupported format keeps its existing `SkippedFile` behavior. **T-F118** (ZIP-vs-tar
-extraction smart-foldering asymmetry — a multi-root archive wrapped in a subfolder for ZIP but
-landed flat for tar-family) is `[x]` done — tar-family now matches ZIP's existing T-14
-smart-foldering algorithm exactly. **T-F03** (a new Explorer "Open" command that launches
-straight into the Archive Browser, mirroring NanaZip's real `kOpen`/`kExtract` split) is `[x]`
-done — new `BrowseCommand` and a `--browse` Shell switch. **T-F232** (`[x]`, 2026-09-26) removed
-the remotely launchable `pakko://` scheme: Shell opens the App via `ActivateApplication` with
-`LaunchArguments` (see `docs/DECISIONS.md`'s fix-phase-4a entry).
-
-**Core implemented features (quick reference):** MSIX signed with dev cert via `Deploy.ps1` (see
-T-F10 for production-grade cert); async streaming (`CopyToAsync`) with `CancellationToken`
-respected mid-file; temp file/dir pattern — no partial files on cancel or failure; ZIP bomb
-detection via compression ratio (1000:1 threshold); UTF-8 round-trip verified for Cyrillic and
-emoji filenames; button text changes to "Archiving..."/"Extracting..." during operation; post-op
-cleanup ("Delete after operation", `SourceRecycler`, T-F207) runs with `IsBusy=true`; SHA-256
-integrity manifest removed (redundant with ZIP built-in CRC-32); ADS blocking (T-F38), reserved
-filename filtering (T-F39), reparse point protection (T-F37); byte-accurate progress reporting
-(T-F16) — `ProgressStream` wraps IO streams, `IsIndeterminate` removed; option controls disabled
-during operations via `IsNotBusy`/`IsArchiveNameAndNotBusy`, all bind `IsEnabled`; FileStream
-perf uses `useAsync: false`, `bufferSize: 262144` in all `ZipArchiveService` streams (faster on
-local disks from ThreadPool); `.zip` file type association (T-F44) — double-click opens Pakko
-with the archive pre-loaded, `AppInstance.Activated` handles both cold-start and warm file
-activation; MOTW propagation (T-F45) — `Zone.Identifier` ADS copied to every extracted file by
-default (T-F360: the user may turn it off per extraction, policy wins), best-effort, never fatal; status line shows operation name/file stats/speed/ETA
-during an operation, elapsed time after completion.
-
-**Microsoft Store release is live** (T-F129, done 2026-08-04) —
-https://apps.microsoft.com/detail/9p5mw010d8pr. Certification passed and the listing was
-confirmed genuinely public via `winget install --id 9P5MW010D8PR --source msstore`. An
-agent-driven functional smoke test against that exact Store-installed package confirmed
-`--test`/`--extract-here`/`--archive` all work, including a real `.7z`/`.rar` extraction through
-`TarSandboxedService`'s AppContainer sandbox from the Store-signed identity specifically.
-
-**T-F140** (`[x]` done) fixed archive-creation progress reporting for both formats (found from a
-real user report that a 4-large-folder archive looked frozen) — ZIP's parallel writer was passing
-`progress: null` into temp-file compression (fixed via a new throttled `ProgressTracker`); TAR's
-percent denominator used top-level selected-path count instead of the real recursive entry count
-(fixed via a `CountRecursiveEntriesAndBytes` pre-scan). Two same-day follow-ups added real
-filenames and byte totals to both dialogs, and fixed a throttle bug that could swallow the very
-first progress report for a small-file-dominated archive. **T-F141** (`[x]` done, same day) fixed
-a related risk the user raised independently: `ParallelSingleArchiveWriter`'s hidden chunk temp
-files were reopened with `FileShare.None`, which could abort the entire operation if a cloud-sync
-client or AV briefly opened a finished chunk file — the read-back never needed exclusivity in the
-first place, so this was a one-word fix to `FileShare.Read`.
-
-**T-F142** (`[x]` done) — real TAR
-extraction byte progress via a poll of the sandboxed quarantine output directory (no streamed
-subprocess channel exists for a sandboxed launch), plus a new shared `ProgressSpeedSampler`
-consumed by both `MainViewModel` and `Archiver.Shell`'s dialog. Advisor review caught two real
-bugs before shipping: a mixed zip+tar selection would have restarted tar's progress from 0% after
-zip already reached 100%; a selected-subset extraction would have reported the whole archive's
-byte total instead of the subset's. Both fixed. The visible speed-readout rendering itself still
-needs the user's own on-device look.
-
-**T-F146** (`[x]`, device-closed 2026-10-03) — AMSI-based "Scan
-for threats" for archives (Explorer context menu + Archive Browser). New standalone
-`IAntivirusScanService`/`AntivirusScanService` (deliberately not folded into
-`IArchiveService`/`ITarService`), a real P/Invoke `amsi.dll` wrapper, and `AmsiProviderCheck`
-(forces `Inconclusive` when no AV provider is registered). ZIP entries scan entirely in-memory;
-tar-family reuses T-F49/T-F52's `TarSandboxScope` quarantine but stops before the move-to-
-destination phase. A Phase 0 empirical spike (real EICAR through a real `.tar.gz`) corrected the
-original design assumption that AMSI never quarantines anything — Defender's own real-time
-on-access scanner intercepted the file independently of AMSI; see `docs/DECISIONS.md`. New entry
-points across all three frontends, full 37-locale localization. A same-day follow-up fixed
-progress reporting from one-report-per-archive to real per-entry progress at zero extra I/O
-cost. Detection was device-checked through both entry points; the no-AMSI-provider `Inconclusive` path is covered by tests only.
-
-**T-F147** (`[x]` done) — SonarCloud triage of the findings backlog (134 -> 44), including
-splitting `ZipArchiveService.ArchiveAsync` (cognitive complexity 132, the highest in the report)
-and `TarSandboxedService` into purpose-specific context/sink records, keeping
-`ExtractWithSmartFolderingAsync`/`ExtractSingleArchiveAsync` algorithmically identical per the
-T-F118 invariant. Won't-Fix findings (P/Invoke struct naming, hardcoded tar.exe/quarantine paths,
-internal-only exception types, xUnit's `[CollectionDefinition]` convention) are now documented in
-`docs/CONVENTIONS.md`'s "SonarCloud Won't-Fix Conventions" section, closing the gap that let this
-same finding category resurface after earlier rounds. `SYSLIB1054` conversion (~40 findings) was
-scoped out as its own task, **T-F148**.
-
-**T-F150** (`[x]` done) — static analyzers now run on every build for every language, with
-mandatory fix-or-documented-suppress: C# `TreatWarningsAsErrors=true`; C++ MSVC `/analyze` on
-both `Archiver.ShellExtension` `.vcxproj` files (found 2 real bugs — missing SAL annotations, an
-ignored `CoInitializeEx` return); PowerShell `PSScriptAnalyzer` as a new CI job (found 4 real
-missing-BOM files, same corruption class as T-F84). See `docs/CONVENTIONS.md`'s "Static-Analysis
-Won't-Fix Conventions" section.
-
-**T-F153** (`[x]` done) — a source path ending in a trailing directory separator (realistic via
-CLI tab-completion) silently corrupted archive creation two ways (wrong entry root in both
-engines; `Archiver.Shell`'s `RunArchiveAsync` placing the new archive inside its own source
-folder with a generic name). Fixed via `Path.TrimEndingDirectorySeparator` at each affected entry
-point (chosen over a bare `TrimEnd` so a real drive root like `"C:\"` stays untouched).
-
-**T-F154** (`[x]` done) — extracting a single-file archive landed the file inside a redundant
-same-named wrapper folder under `ExtractMode.SeparateFolders` (Explorer's "Extract Here" and the
-App's default Extract) — the `isSingleRootFile` flag was computed but never consulted there.
-Fixed via an explicit `unisolatedDestDir` parameter. Also surfaced (not yet built) a new
-collision-dialog gap in `Archiver.Shell`, tracked as the second, later T-F155 entry below.
-
-**T-F156** (`[x]` done, immediately after T-F154 shipped) — `ExtractMode.SingleFolder` still
-wrapped a genuinely multi-root archive in a subfolder, contradicting T-F118's deliberate
-smart-foldering decision. Surfaced the conflict via `AskUserQuestion`; **user confirmed reversing
-it for `SingleFolder` mode only** — `SeparateFolders` mode's unconditional per-archive wrapping is
-unchanged.
-
-**T-F157** (`[x]` done) — new shared `ExtractionDestinationPlanner` (`Classify`/`Resolve`)
-replaces the hand-duplicated `actualDest`/`isSingleRootFolder` decision logic between
-`ZipArchiveService`/`TarSandboxedService` that T-F118's own comment had called "kept
-algorithmically in sync" — a promise T-F154/T-F156 both had to honor manually in one day. Advisor
-review corrected two design points before implementation (a discard-less `switch` does not get
-real compiler exhaustiveness under `TreatWarningsAsErrors`, confirmed via a scratch build). Pure
-refactor, mutation-checked. **T-F158** (`[x]` done, same day) — the archive-creation-side
-analogue: new shared `DestinationConflictResolver` replaces three hand-duplicated copies of the
-Skip/Overwrite/Rename decision. Advisor caught two real issues pre-implementation and a third was
-found independently (a stale test-coverage claim). The one arm only reachable through the WinUI
-App's `SeparateArchives` mode was closed via a real `windows` MCP pass against the actual protocol
-activation.
-
-**T-F155** (`[x]` done) — `Archiver.Shell`'s three extract commands now show a real interactive
-Overwrite/Rename/Skip + "apply to all" conflict dialog (`ShellConflictDialog`, `TaskDialogIndirect`
-— the only Win32 primitive with custom button labels), at parity with the WinUI App's own T-F06
-dialog. A Phase 0 spike caught three real bugs before any production code shipped: `TASKDIALOG_
-BUTTON` needs `Pack = 1`; a missing/broken comctl32 v6 activation context fails at process
-activation itself, not as a catchable exception; and the Windows SxS manifest parser rejected a
-syntactically-valid XML comment between two manifest elements. "Apply to all" across Shell's
-per-archive loop now goes through Core's shared `StickyCallback` (T-F160).
-
-**T-F161** (`[x]` done) — a real user report found the same day T-F155 shipped: extraction's
-commit-phase `Directory.Move` fast path failed the *whole* tree with a misleading error (naming
-only the top-level `_tmp` path) if any single file anywhere inside was transiently locked by
-another process, even after Pakko itself had finished writing every file. Fixed via
-`CommitTempDestToActualDest`, falling back to the existing per-file merge on `IOException`; also
-fixed an independent `_tmp`-folder leak on any mid-loop failure.
-
-**v1.4.12 pre-release verification pass** (2026-08-12, user-directed, agent-driven via `windows`
-MCP against the real installed release MSIX + release `pakko.exe`) — a full action inventory
-across all 4 frontends cross-referenced against the test suite's 20 toxic/adversarial-input
-categories; live smoke tests confirmed no blocking issues (all security gates hold; the reactive
-tar.exe stderr "encrypt"-substring detection is not locale-sensitive even under real `uk-UA`; all
-three documented `-si`/`-so` pipe recipes behave as documented). Opened **T-F164**/**T-F165** (two
-real findings) and **T-F166**-**T-F170** (five pre-existing test-coverage gaps, not bugs).
-
-**T-F172** (`[x]` done, 2026-08-13) — a DocFX developer/API docs site, user-requested (.NET
-equivalent of Rust's mdBook + generated API docs). `GenerateDocumentationFile=true` is on for
-`Archiver.Core`/`Archiver.App.Core`. See this file's Documentation Map for `docfx.json`'s row and
-the Build Commands section for the local-preview command.
-
-**T-F173** (`[x]` done, same day) — full XML `///` doc backfill for `Archiver.Core`/
-`Archiver.App.Core`, dropping T-F172's temporary `NoWarn CS1591` so it's now a real enforced build
-gate under `TreatWarningsAsErrors=true`. Real gap measured first (build with the suppression
-bypassed via `/p:NoWarn=`, not guessed): 182 unique sites, not the 700+ raw public-declaration
-count implied — `Services/Zip`/`Sandbox`/`Antivirus` were already near-fully covered from T-F35/
-T-F52/T-F146. Advisor-reviewed scope call, then user-confirmed: self-documenting Models/ViewModel
-properties (`ArchiveResult.Success`, `ArchiveEntryViewModel.Icon`, ~125 sites) keep
-CONVENTIONS.md's existing exemption, suppressed per-file via a new scoped `.editorconfig` section
-rather than blanket `NoWarn` — but ~35 of them that carry real information (defaults,
-null-semantics, `ConflictBehavior.Rename`'s merge-vs-fresh-folder distinction, T-F156's
-`ExtractMode.SingleFolder` reversal) got real `<summary>` content anyway. `docs/CONVENTIONS.md`'s
-XML Documentation section rewritten to match actual practice (summary-only interfaces, the
-`.editorconfig` mechanism, positional-record `<param>` propagation) instead of an aspirational
-example no real interface followed.
+Per-task detail lives in `docs/TASKS_DONE.md` and `docs/DECISIONS.md`, never here. The long
+narrative this section used to hold is archived verbatim in `docs/DECISIONS.md`'s "CLAUDE.md as of
+2026-10-09 (T-F369)" entry.
 
 **Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
 truth; never trust a count written in a doc.
 
-**Next work:** the open tasks in `docs/TASKS.md` (v1.7.0 went out in waves 0-9: one wave = 3-5
-related tasks, pushed per wave). Completed tasks graduated to `docs/TASKS_DONE.md` 2026-10-05.
-**T-F187** (canary CI build for toolchain-drift detection) is `[x]` done — a real triggered
-`workflow_dispatch` run confirmed both build jobs green on the current `windows-latest` image.
-**T-F188** (ZIP password decrypt engine — ZipCrypto + WinZip AE, internal only) is `[x]` done —
-tests-first, mutation-checked, 18 new tests. **T-F189** (public API: `ResolvePasswordAsync` +
-shared `PasswordResolver`, wired into `ZipArchiveService.ExtractAsync`/`TestAsync`/
-`ListEntriesAsync`) is `[x]` done, 2026-09-18 — user chose design option (b) (stream the decrypted
-plaintext out only after authentication succeeds) when asked explicitly before implementation, so
-an encrypted entry now gets real byte-accurate T-F16 progress via `ProgressStream` with zero
-special-casing. Along the way: `IsEncryptedZip` widened to scan the whole central directory
-(fixing a real pre-existing bug where a mixed plain-then-encrypted archive fell through to a
-misleading "corrupted" message instead of the correct password-protected rejection); a Zip64-sized
-entry's declared size no longer risks an uncaught `OutOfMemoryException` (fails closed to the
-ordinary rejection message instead); `ListEntriesAsync` now reports `Crc32 = null` (not a
-misleading `0`) for an AE-2 entry. Full design rationale, two failed fixture-design attempts
-before the traversal hard-invariant test actually proved anything, and the advisor-caught
-Zip64/exception-safety gaps are in `docs/DECISIONS.md`'s T-F189 entry. **T-F190** (WinUI App
-password prompt dialog) is `[x]` done (2026-09-18, device-closed in G6) — `IDialogService.
-ShowPasswordPromptAsync` wired at `MainViewModel`'s 3 real `ExtractOptions` sites (main Extract,
-T-F97 preview, T-F98 nested drill-in), 37-locale localized, agent-verified on device. `canApplyToRemaining` is a `ShowPasswordPromptAsync`
-parameter the App layer computes per call site, not a `PasswordPromptInfo` field — see
-`docs/DECISIONS.md`'s T-F190 entry for why Core can't compute it correctly for every frontend.
-**T-F191** (`Archiver.CLI` real `-p{pwd}` support) is `[x]` done (2026-09-18, device-closed in G6) —
-`-p{pwd}` on `x`/`t` wired onto T-F189's `ResolvePasswordAsync`/`TestAsync` hooks with zero
-`Archiver.Core` diff; a masked interactive prompt (new `CliPasswordPrompt` class, unit-tested via
-a fake key source since the Subprocess test layer always redirects stdin) when no `-p` and a real
-console; a CLI-specific "incorrect password" line added on top of Core's generic message, since
-`PasswordResolver` itself collapses never-wired/cancelled/exhausted-attempts into the same null
-result. Agent-verified in a real console (`docs/DECISIONS.md`'s T-F191 entry). **T-F192** (`Archiver.Shell` native password prompt)
-is `[x]` (device-closed 2026-10-03) — a custom in-memory `DLGTEMPLATEEX` dialog via
-`DialogBoxIndirectParamW` (NOT `CredUIPromptForCredentialsW`, confirmed by fetching NanaZip's real
-`PasswordDialog.rc`/`.cpp`, which use exactly this custom-dialog shape), wired into all 3 extract
-commands (sticky via `StickyCallback`), 37 locales. A Phase 0 spike
-found `SetForegroundWindow` alone unreliable from this call site (a background thread with
-Archiver.Shell's own `IProgressDialog` already showing) — fixed via `SetWindowPos(HWND_TOPMOST,
-...)`. Agent-driven on-device verification via `windows` MCP against the real installed MSIX
-(all 3 extract commands, real Ukrainian OS UI, including a genuine occlusion test against a
-restored foreground terminal) confirmed every branch; Shell `--test` got the same prompt
-2026-09-24 (`docs/DECISIONS.md`'s T-F192 entry). **T-F194** (`[x]`, device-closed 2026-10-03) — "Scan for threats" now decrypts password-protected ZIP
-entries in memory and hands the plaintext to AMSI (all 3 frontends prompt); no password stays
-`Inconclusive`, never `Clean`. Four advisor-caught defects fixed test-first, incl. a fail-open
-`Clean` on a ZipCrypto check-byte collision and several hostile-header escapes from the "never
-throws" rule — see `docs/DECISIONS.md`'s T-F194 entry. The trust docs (`SECURITY.md`'s new
-"Password-Protected ZIP" section, `SPEC.md`, `README.md`, both `index.html`) were updated the
-same day with user permission. **T-F193** (`[x]`, 2026-09-24) — creating encrypted ZIPs, WinZip AES-256 AE-2 only: App checkbox +
-Encrypt dialog, `pakko a -p`/bare `-p`/`-mem`; public `EncryptionPasswordRule` (printable ASCII,
-<= 99 — 7-Zip's rule, user-confirmed); read side lifted first (Zip64 locator, streaming two-pass
-reader, no size limit). See `docs/DECISIONS.md`'s T-F193 entry. T-F197-T-F201 from the same batch are done; **T-F202** (full UI + every-menu smoke test) stays open.
-**T-F268** (`[x]`, 2026-10-03) — Explorer commands show a code-only WinUI 3 operation window
-(`Archiver.OperationUi`, started by Shell over anonymous pipes; logic in `Archiver.OperationUi.Core`)
-with `Win32OperationUi` as fallback and failover. Steps 1-6 done (step 5: prompts inside the
-window; step 6: 37 locales and polish); the black-window case is T-F315 (`docs/DECISIONS.md`). **T-F270** (`[x]`, 2026-09-26) — all projects on .NET 10 LTS (Build Commands' toolchain note);
-small-files ZIP slowdown fixed where possible in T-F271 (dotnet/runtime#134700).
-**Fix phase 5** (2026-09-28): one Group Policy owner (T-F261/T-F250 — `GroupPolicyOptions`
-required everywhere, `PakkoServices.Create`, listing gated), Explorer selection over stdin (T-F235,
-`--paths-stdin`), menu hides policy-blocked items (T-F262), one naming rule (T-F264).
-**Fix phase 7** (2026-09-28): Core messages are codes (`CoreMessages`/`MessageCode`, never a bare
-`Message =` — a test reads Core's source) rendered by the new `Archiver.Messages` in 37 locales for
-Shell and App, the CLI stays English (T-F209); one `ArchiveResult.Outcome`, `Success` derived
-(T-F260, T-F274); Explorer asks before a suspected bomb (T-F217); T-F253/254/255, T-F221 (CLI
-messages, 7-Zip naming), T-F198 items 1 and 7. See `docs/DECISIONS.md`'s fix phase 7 entry.
-**Wave 4 / T-F199** (`[x]`, closed 2026-09-29 by G1's App pass): main window redesigned — own title bar, option cards,
-footer with the primary action rightmost ("Compress to {format}"), inline encryption password,
-browse badge/Test/Close archive, footer result line (T-F211); every App key in 37 locales
-(`AppResourceKeysTests`). Structure: `docs/XAML.md`; decisions: `docs/DECISIONS.md`'s wave 4 entry.
-**v1.7.1** tagged 2026-10-06 on f04dade (what shipped: `CHANGELOG.md`; v1.7.0 was tagged 2026-10-05 on a3b367e).
-The Store serves v1.6.0 as **1.6.0.0 (x64)** and **1.6.1.0 (ARM64)**; the combined bundle
-**1.7.1.0** was submitted 2026-10-06, certification pending (see `docs/DECISIONS.md`).
+**Next work:** the open tasks in `docs/TASKS.md` (one wave = 3-5 related tasks, one PR per batch).
 
 ## Roadmap Summary
 
@@ -388,48 +39,33 @@ description lives in this file's "Current State" section above instead of a seco
 
 ## Documentation Map
 
-**This is the single index for every doc in the repo.** An earlier `AGENT.md` was a second,
-competing entry point (its own "Read Order", its own stale hard-constraints subset) — it was
-deleted 2026-07-05 once this map fully absorbed its role (see git history if you need it).
-`BOOTSTRAP.md` was deleted the same day — its content is now the "Dependency Injection &
-Startup" section of `docs/ARCHITECTURE.md` (it had drifted into a near-duplicate of a section
-`docs/ARCHITECTURE.md` already had). Do not create a third map file or a new DI-wiring file; extend
-this table and its owners instead.
+The table below is the single index for every doc in the repo — extend it and its owners, never a
+second map file. Only files GitHub/tooling look for at repo root stay there (`README.md`,
+`LICENSE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `CHANGELOG.md`) plus this file;
+every other doc lives under `docs/`.
 
-**Root layout (2026-07-23, T-F126):** only files GitHub/tooling specifically look for at repo
-root stay there — `README.md`, `LICENSE`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
-`CHANGELOG.md` — plus `CLAUDE.md` itself (Claude Code only auto-loads a *root* `CLAUDE.md`, so it
-can never move). Every other doc below lives under `docs/`. **This table gives the real, current
-path for each file — trust it over any bare filename mentioned in this file's own "Current State"
-history narrative below, which predates the move and was not mechanically rewritten throughout
-(too large a diff for a cosmetic path change; the content itself is still accurate).**
+Full table (purpose, read when, update when): `.claude/rules/docs.md`.
 
-| File | Purpose | Read when | Update when |
-|---|---|---|---|
-| **CLAUDE.md** (here) | Session context, hard constraints, build commands, this map | Every session (auto-loaded) | Project status changes, a hard constraint changes, build/deploy commands change |
-| `docs/TASKS.md` | Active/future task backlog, acceptance criteria, `T-Fxx` numbering | Starting any implementation task | A task starts/completes/changes scope; a new `T-Fxx` is claimed |
-| `docs/TASKS_DONE.md` | Archive of completed v1.0 tasks | Need historical task detail | Never — append-only via tasks graduating out of `docs/TASKS.md` |
-| `docs/ARCHITECTURE.md` | Current C# layer diagram + signatures + DI wiring/startup | Before writing code that touches a public signature or a DI-registered service | A public signature/model/interface in `Archiver.Core` changes, or DI registration/lifetime changes |
-| `docs/XAML.md` | Current `MainWindow.xaml` structure + WinUI 3 gotchas | Touching `Archiver.App`'s XAML | XAML structure changes, a new WinUI 3 constraint is discovered |
-| `docs/CONVENTIONS.md` | Coding style, naming, async, error-handling, per-project package whitelist | Before writing any code | A new convention is adopted, or a code example goes stale |
-| `SECURITY.md` | Threat model — **canonical owner of all security/CVE/supply-chain/MOTW rationale** | Modifying compression, traversal, or extraction logic | Threat model changes, a new mitigation is added |
-| `docs/DECISIONS.md` | Architectural decisions + rejected approaches, with root-cause detail | Before implementing packaging, COM, or shell integration | An approach is chosen, rejected, or corrected |
-| `docs/DIAGRAMS.md` | Required sequence/state/activity/component diagrams, Ground Truth Rule | Touching COM/shell, operation lifecycle, `ZipArchiveService` branching, or the manifest | Per its own DoD table — same commit as the code |
-| `docs/TESTING.md` | Test plan and fixture inventory for `Archiver.Core` | Writing or running tests | New test category, fixture, or test count changes |
-| `tests/Archiver.Core.Tests.GenerateFixtures/README.md` | Fixture-generation mechanics only (subordinate to `docs/TESTING.md`) | Adding a fixture-dependent test | A new fixture scenario is added |
-| `docs/SPEC.md` | Product specification — **canonical owner of the version roadmap table, feature scope, non-goals** | Scoping a new feature, checking what's out of scope | Scope or roadmap changes |
-| `docs/CLI.md` | **Canonical owner of Archiver.CLI's (T-F09) command/switch specification** — 7z→Pakko command table, switch fidelity, three-way unknown-input rule | Implementing or extending T-F09 | The planned CLI command/switch surface changes |
-| `docs/POLICIES.md` | Group Policy/ADMX admin reference (T-F51) | Touching GPO-controlled behavior | GPO-controlled behavior changes |
-| `docs/SIGNING.md` | Code Signing Policy (team roles, build process, artifacts covered) — published for SignPath Foundation eligibility (T-F124) | Touching signing/release process | Signing process or team roles change |
-| `README.md` | Public GitHub landing page | User-facing — not an agent instruction source | Public messaging changes; must link to `SECURITY.md`/`docs/SPEC.md`, never restate their tables |
-| `CONTRIBUTING.md` | Contributor onboarding summary | Before a contributor's first build | Build/deploy steps change — update `scripts/README.md` first, then sync the summary here |
-| `scripts/README.md` | **Canonical owner of build/sign/deploy steps** (`Deploy.ps1`, `Setup-DevCert.ps1`) | Running or changing the deploy scripts | `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes |
-| `CHANGELOG.md` | **Canonical owner of per-release history** — one section per version tag, plain-language summary of the `T-Fxx` tasks shipped since the previous tag | Cutting a release | Every version tag — see this file's "Deployment" section |
-| `docs/index.html` + `docs/uk/index.html` | Public project website — bilingual EN/UK landing page: trust model, what's implemented, download links. **Deployment changed T-F172 (2026-08-13):** GitHub Pages is no longer served directly from the `/docs` branch path; `.github/workflows/build.yml`'s `docs`/`deploy-pages` jobs assemble these files (copied verbatim via an explicit allowlist) plus the DocFX site into one Pages artifact on every push to `main` — content and authoring are unchanged, only the delivery mechanism | User-facing — not an agent instruction source | Supported-format list changes, a major feature ships, download/release mechanics change, or roadmap/version-status changes — keep both language versions in sync with each other and with `README.md`'s "Project Status"/"Supported Formats" |
-| `docfx.json` + `toc.yml` + `index.md` + `api/index.md` (repo root) | DocFX config for the generated developer/API docs site (T-F172) — book content is the *existing* curated `docs/*.md`/root `*.md` files read in place (no duplication), API reference is generated from `Archiver.Core`/`Archiver.App.Core`'s own XML `///` comments. Live at `https://pakkoapp-oss.github.io/pakko/dev/` | Adding a new conceptual doc that should appear in the site's nav, or a new class library whose XML comments should be included in the API reference | The curated article list changes, or a new project's API should be included — remember to add its `.csproj` to `docfx.json`'s `metadata[0].src.files` too |
-| `tests/Archiver.Messages.Tests/Glossary.tsv` | The word each of 37 locales uses for ten concepts, and the words it replaced (T-F329); test data for `GlossaryTests` | Writing or changing any translated string | A term is chosen or replaced — same commit as the strings |
-| `docs/store-listing/<locale>.txt` + `README.md` | The Microsoft Store listing text in 37 languages (T-F331): description, short description, features, search terms, "What's new"; the README has the field limits and the rules | Changing what the listing says, or cutting a release | A listed feature changes, a menu item is renamed, or a release needs new "What's new" lines — `en-US.txt` first, then every locale |
-| `.github/workflows/canary.yml` | Nightly canary on floating toolchain versions (T-F187) plus the checks too slow for every push (T-F240: `Category=Slow` without the 7za timing ratios, ARM64 tests, C++ tests under ASan) — 3-day-streak escalation to a tracking GitHub Issue; `canary-fuzz` is outside it and fails red at once | Investigating a canary failure or its tracking Issue | Escalation logic, schedule, or build scope changes |
+| File | Owns / read when |
+|---|---|
+| `docs/TASKS.md` / `docs/TASKS_DONE.md` | open tasks, `T-Fxx` numbering / finished tasks (append-only) |
+| `docs/ARCHITECTURE.md` | C# layers, public signatures, DI wiring — before touching a public signature or DI |
+| `docs/XAML.md` | `MainWindow.xaml` structure, WinUI 3 gotchas |
+| `docs/CONVENTIONS.md` | coding style, naming, per-project package whitelist, Won't-Fix analyzer findings — before writing code |
+| `SECURITY.md` | threat model, all security/CVE/supply-chain/MOTW rationale |
+| `docs/DECISIONS.md` | decisions and rejected approaches, root causes, history |
+| `docs/DIAGRAMS.md` | required diagrams — COM/shell, operation lifecycle, `ZipArchiveService` branching, manifest |
+| `docs/TESTING.md` | test plan, fixtures, categories |
+| `docs/SPEC.md` | product scope, non-goals, the version roadmap table |
+| `docs/CLI.md` | `pakko` command/switch specification |
+| `docs/POLICIES.md` / `docs/SIGNING.md` | Group Policy reference / code-signing policy |
+| `scripts/README.md` | build/sign/deploy steps |
+| `CHANGELOG.md` | per-release history |
+| `README.md`, `CONTRIBUTING.md`, `docs/index.html`, `docs/uk/index.html` | public pages — not agent instructions |
+| `docfx.json` + `toc.yml` | the DocFX developer site |
+| `tests/Archiver.Messages.Tests/Glossary.tsv` | the term each locale uses — before any translated string |
+| `docs/store-listing/` | Store listing text in 37 languages |
+| `.claude/rules/*.md` | area rules for agents (T-F369), see "Area Rules" below |
 
 **Canonical topic owners — do not duplicate, link instead:**
 - Security/threat-model/CVE/supply-chain rationale → `SECURITY.md` only. `docs/SPEC.md`/`README.md` keep at most a 2-line teaser with a link.
@@ -442,40 +78,33 @@ If you're updating a doc and find yourself retyping a table that already exists 
 this list, stop — link to the canonical owner instead. If no owner is obvious for a new topic,
 ask before creating a new file.
 
-### Update Cascades
+Update cascades and the dangling-link grep: `.claude/rules/docs.md` (loads with any `.md` file).
 
-Some changes ripple beyond their primary doc. After updating the primary doc for a change below,
-check whether the cascade docs still agree with it — don't let them silently drift (this is how
-the `com:InProcessServer`/`com:SurrogateServer` drift and the `ARCHITECTURE.md`/`BOOTSTRAP.md`
-DI duplication happened).
+---
 
-| Change | Primary doc | Cascade — check these too |
+## Area Rules (`.claude/rules/`, T-F369)
+
+This file loads into every session and is size-gated (`AgentInstructionsSizeTests`, 26,000 bytes):
+pair every addition with a deletion; history goes to `docs/DECISIONS.md`. Area rules load only when
+a matching file is read or edited — **read the named file first when an action needs it without
+touching a matching file**:
+
+| File | Loads with | Covers |
 |---|---|---|
-| Public signature/model change in `Archiver.Core` | `docs/ARCHITECTURE.md` | `docs/CONVENTIONS.md` (XML-doc example), `docs/TASKS.md` (mark task done) |
-| DI registration or lifetime change | `docs/ARCHITECTURE.md` | — (single owner now, no cascade) |
-| `MainWindow.xaml` structure or new WinUI 3 gotcha | `docs/XAML.md` | — (leaf doc) |
-| New coding convention adopted | `docs/CONVENTIONS.md` | — |
-| Threat model or mitigation changes | `SECURITY.md` | `docs/SPEC.md` (teaser), `README.md` (teaser) |
-| Approach chosen/rejected/corrected (COM, packaging, shell) | `docs/DECISIONS.md` | `docs/ARCHITECTURE.md`, `CLAUDE.md` (hard constraints), `scripts/README.md`, `docs/DIAGRAMS.md` |
-| Task starts/completes, or a new `T-Fxx` is claimed | `docs/TASKS.md` | `docs/TASKS_DONE.md` (graduation on completion), `CLAUDE.md` (Current State), `README.md` (Project Status) |
-| Version scope/roadmap changes | `docs/SPEC.md` | `CLAUDE.md` (Roadmap Summary), `README.md` (Roadmap) |
-| Supported-format list or a major feature ships/changes | `README.md` (Supported Formats / Project Status) | `docs/index.html` + `docs/uk/index.html` (What's Implemented section, kept identical in substance across both languages) |
-| `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes | `scripts/README.md` | `CONTRIBUTING.md`, `README.md` (Building and Deploying), `CLAUDE.md` (Build Commands) |
-| A release is tagged (`vX.Y.Z`) | `CHANGELOG.md` | — (single owner, see "Deployment") |
-| COM/shell, operation lifecycle, `ZipArchiveService` branching, or manifest changes | `docs/DIAGRAMS.md` | Per its own DoD table |
-| New test or fixture added | `docs/TESTING.md` | `tests/Archiver.Core.Tests.GenerateFixtures/README.md`, `CONTRIBUTING.md` |
-| New project added to `src/` or `tests/` | `docs/ARCHITECTURE.md` (folder tree) | `CONTRIBUTING.md` (Project structure table) |
-| A root `.md` file is added, removed, or moved | `CLAUDE.md` (Documentation Map + Repo Layout) | Re-run the dangling-link grep below |
+| `core.md` | `src/Archiver.Core/**`, Core test projects | SafeHandle, accessibility errors, Registry, Deflate/ZIP format, Core contract changes |
+| `app-winui.md` | App, App.Core, OperationUi | Native AOT detail, WinUI 3 gotchas, UI-thread marshaling, resw keys, localization |
+| `packaging.md` | manifest, `.csproj`, `Deploy.ps1` | MSIX packaging, signing, satellite exes, TFM literals, Store gotchas |
+| `shell-extension.md` | `src/Archiver.ShellExtension/**` | menu order, HRESULTs, icons, Packaged COM, C++ build, `dllhost` locks |
+| `shell-cli.md` | Shell, CLI and their tests | COM interop `[PreserveSig]`, console-frontend tests, Shell commands, native modals |
+| `tests.md` | `tests/**` | test filters in full, flakiness history, deliberately uncovered code |
+| `ci.md` | `.github/**` | action pinning, SonarCloud API, CI gotchas, **cutting a release** |
+| `scripts.md` | `scripts/**` | PowerShell 5.1 vs 7, execution policy, file-lock build errors, appcert |
+| `device-verification.md` | `Deploy.ps1`, the manifest | **read before any on-device check**: freshness proof, `windows` MCP, Explorer menu, logs |
+| `text-encoding.md` | `.cpp`/`.h`/`.ps1`/`.cs`/`.resw`/`.md` | non-ASCII literals, `\uXXXX` corruption in tool params, `Localization.cpp` edits |
+| `docs.md` | `docs/**`, root `.md` | update cascades, dangling-link grep, mermaid validation, task graduation |
 
-Before deleting or merging any `.md` file, grep the whole repo for its filename first — dead
-references are easy to miss otherwise (this session found 5 lingering mentions of `AGENT.md`/
-`BOOTSTRAP.md` after removing them).
-
-**Dangling-link grep after moving/renaming any `.md` file (T-F126):** markdown-link syntax only —
-`rg '\]\([A-Za-z0-9_./-]*\.md[^)]*\)' --glob '*.md'` from repo root. Real cross-references show up
-in non-obvious places beyond the doc itself: `.github/*_TEMPLATE.md`, `deploy/README.md`,
-`scripts/*.ps1` comments — grep those separately for bare filename mentions too, not just `.md`
-files.
+A reference to "`CLAUDE.md`'s <rule or section>" in code or docs predates this split: the rule is in
+this file or in one of these (grep `.claude/rules/`).
 
 ---
 
@@ -490,187 +119,48 @@ files.
 - All IO exceptions caught per-item → `ArchiveError` — methods never throw to callers, except
   `OperationCanceledException` on cancellation (T-F260), even between two sources
 - MVVM: no business logic in `.xaml.cs` files
-- **Native AOT (T-F355): all four exes (App, Shell, OperationUi, `pakko`) ship Native AOT; the five
-  libraries are `IsAotCompatible`.** The build fails on IL2xxx/IL3xxx/CsWinRT warnings, but `dotnet
-  test` runs under JIT and cannot see an AOT-only failure. No `Assembly.Load*`, `Reflection.Emit`,
-  reflection over unknown types, `[ComImport]` (use `[GeneratedComInterface]`) or reflection JSON
-  (use a `JsonSerializerContext`). WinUI: a value read from a resource dictionary (`Resources[...]`,
-  `ThemeDictionaries`, `TryGetValue`) is cast with `WinRT.CastExtensions.As<T>(...)`, never `(T)` or
-  `as T` (a test reads the source); a class implementing a WinRT or mapped .NET interface is
-  `partial`; only `x:Bind` (`{Binding}` needs `[GeneratedBindableCustomProperty]`); no collection
-  expression handed to WinRT; a new collection bound to `ItemsSource` gets a device check. Never
-  `UseSystemResourceKeys`/`InvariantGlobalization`. ILCompiler needs `vswhere.exe` on PATH. Verify
-  App/Shell/OperationUi changes on the deployed package, not under the debugger. Examples:
-  `docs/CONVENTIONS.md`; why: `docs/DECISIONS.md` T-F355.
+- **Native AOT (T-F355): all four exes ship Native AOT; the five libraries are `IsAotCompatible`.**
+  `dotnet test` runs under JIT and cannot see an AOT-only failure. No `Assembly.Load*`,
+  `Reflection.Emit`, reflection over unknown types, `[ComImport]` or reflection JSON. WinUI detail:
+  `.claude/rules/app-winui.md`.
 - **tar.exe:** always use `C:\Windows\System32\tar.exe` (absolute path) — never via PATH
-- **Any `Process.Start` of a system-provided executable must use an absolute path, not a bare
-  relative name** — same reasoning as the tar.exe rule above (PATH-hijack resistance), generalized
-  after SonarCloud (S4036) caught 5 `Process.Start("explorer.exe", ...)` call sites doing exactly
-  the relative-name thing the tar.exe rule was meant to prevent. See
-  `Archiver.Core/Services/ExplorerLauncher.cs` for the shared helper (T-F136).
+- **Any `Process.Start` of a system-provided executable uses an absolute path** (PATH-hijack
+  resistance, S4036); helper: `Archiver.Core/Services/ExplorerLauncher.cs` (T-F136).
 - **tar.exe format support:** creates tar/gz/bz2/xz/zst/lzma, and on a new enough Windows also
   real 7z, but only with `--format=7zip` or `-a` (measured on build 26300, libarchive 3.8.8;
   T-F342). A plain `tar -cf out.7z` silently writes ustar under that name. RAR is read-only.
 - **MOTW:** propagate `Zone.Identifier` by default (v1.2+); off only per user choice or policy (T-F360)
 - **Shell extension:** `IExplorerCommand` only — no legacy `IContextMenu` COM shell extensions
-- **Context-menu ordering:** primary action commands (Extract/Archive) always precede
-  diagnostic/verification ones (Test archive) in `PakkoRootCommand::EnumSubCommands` —
-  deliberate deviation from NanaZip's Test-first order. See `DECISIONS.md`'s
-  "Test Archive (T-F62)" entry before copying NanaZip's menu order for a new command.
-- **COM HRESULTs:** never return `S_FALSE` alongside a null/unset out-parameter — `S_FALSE` is a
-  *success* code (`SUCCEEDED()` is true), so callers checking only `SUCCEEDED()` will dereference
-  the null. Use `E_NOTIMPL` instead (verified against Microsoft's own `IExplorerCommand` sample).
-- **Shell-extension icons referencing another exe** (e.g. `PakkoRootCommand::GetIcon` →
-  `Archiver.App.exe,0`): the target exe needs `<ApplicationIcon>` set in its `.csproj` — a
-  `Content Include` of an `.ico` (used for the MSIX tile logo) does NOT embed a Win32 icon
-  resource in the exe. Verify with `ExtractIconEx(path, -1, $null, $null, 0)`'s total count, not
-  `[System.Drawing.Icon]::ExtractAssociatedIcon()` — the latter can return a non-null fallback
-  icon even for a file with zero real icon resources (T-F95).
-- **.NET COM interop (`[ComImport]` interfaces consuming external COM objects):** check the real
-  SDK header before declaring the interface — if a method returns a plain type (e.g. `BOOL`)
-  instead of `HRESULT`, mark it `[PreserveSig]`. Without it, the marshaller assumes the
-  HRESULT + hidden-`[out]`-param convention and silently misreads the return value. Real bug:
-  `IProgressDialog.HasUserCancelled` always read back `false` (Cancel appeared to do nothing)
-  until `[PreserveSig]` was added — see `Archiver.Shell/NativeProgressDialog.cs`.
 - **Low IL sandbox:** P/Invoke is acceptable for security-critical process isolation code (v1.4)
-- **`SafeHandle.DangerousGetHandle()` must be paired with `DangerousAddRef`/`DangerousRelease`
-  spanning the actual dereference** — without it, nothing keeps the handle reachable for the GC
-  between the two calls (a handle-recycling race), even though `using`/async-state-machine capture
-  often makes it work by accident. Same "provable from the line itself, not hand-traced" standard
-  as bounds checks. Found 16 real instances via SonarCloud S3869 — see
-  `Archiver.Core/Services/Sandbox/` for the pattern (T-F136).
-- **A `private` nested class cannot be a parameter type on an `internal` (or more accessible)
-  method — `CS0051` "Inconsistent accessibility."** Bump the nested class to `internal` instead
-  (still invisible outside the assembly without `InternalsVisibleTo`). Hit adding
-  `ParallelSingleArchiveWriter.ProgressTracker` as a parameter on the existing `internal static
-  CompressToTempFileAsync` (T-F140).
-- **A `file`-scoped type (e.g. a hand-rolled `file sealed class FakeX` test fake) cannot appear in
-  the signature of a non-`file`-scoped member — `CS9051`.** If a test helper method needs the fake
-  as an explicit parameter type, drop the `file` modifier on the fake class instead (plain
-  top-level `internal` is fine — it's still test-assembly-only). Only matters when a shared helper
-  takes the fake by type; a fake only ever assigned to `var` never hits this (T-F146).
 - **Every intentionally-empty `catch` block needs a one-line comment stating why** (e.g.
   `/* best-effort */`) — an empty catch's WHY is exactly the non-obvious case this file's own
   comment policy already carves out an exception for. Also satisfies SonarCloud's S108/S2486 by
   construction instead of accumulating findings (44 found at once in one first scan, T-F136).
-- **`Microsoft.Win32.Registry` (`RegistryKey`) is usable from `Archiver.Core` (plain `net10.0`,
-  not `net10.0-windows`) with zero new NuGet package reference** — confirmed via a throwaway probe
-  build; it's already part of the Windows runtime pack pulled in transitively, not something this
-  project's "zero dependencies" constraint blocks. Mark the call site
-  `[SupportedOSPlatform("windows")]` to make the resulting `CA1416` warning meaningful instead of
-  leaving it unaddressed (T-F51, `GroupPolicyService`/`Win32RegistryReader`).
-  **Don't over-annotate:** only the member that directly touches the Windows-only BCL API needs
-  `[SupportedOSPlatform("windows")]` — a raw P/Invoke wrapper class calling its own `[LibraryImport]`s
-  (e.g. `Services/Sandbox/`, `Services/Antivirus/AmsiScanner.cs`) needs no annotation at all, since
-  `DllImport` itself isn't BCL-platform-tagged. Annotating the whole class anyway makes `CA1416`
-  propagate into every caller, including test projects on a plain `net10.0` TFM — confirmed
-  T-F146, where a class-level annotation forced two unrelated test classes to also carry the
-  attribute before the warnings cleared.
-- **UI-thread marshaling for Core→App callbacks:** any delegate `Archiver.Core` invokes that ends
-  up showing WinUI (e.g. `ExtractOptions.ConfirmCompressionBombExtraction` → `ContentDialog`) must
-  marshal onto `Window.DispatcherQueue` inside the App-layer implementation —
-  `ZipArchiveService`/`TarProcessService` run their extraction bodies off the UI thread, and
-  `ContentDialog.ShowAsync()` requires the calling thread to own the DispatcherQueue. Found via
-  design review before shipping (T-F94) — would have crashed on first real use otherwise.
 - **Solution platforms:** the `.sln` has `Any CPU`/`x64`/`x86` solution configs, every C# project
   mapped to `Any CPU` (ARM64 builds go through `dotnet publish -r`, not the `.sln`). Add a project
   with `dotnet sln add`, then check its entries mirror `Archiver.Shell`'s (T-F268, 2026-09-26).
-- **Pin third-party GitHub Actions (`org/action@vX`) to a full commit SHA, not a mutable version
-  tag** — `actions/*` (first-party GitHub actions) are exempt by convention; everything else
-  (`microsoft/setup-msbuild`, `nuget/setup-nuget`, etc.) should be SHA-pinned with a `# vX.Y.Z`
-  trailing comment. Found via SonarCloud S7637 (T-F136).
-- **Checking current SonarCloud findings:** the dashboard
-  (`sonarcloud.io/summary/overall?id=pakkoapp-oss-1_pakko&branch=main`) is a JS SPA a plain fetch
-  won't render — use the public REST API instead, no auth needed for this public project:
-  `sonarcloud.io/api/issues/search?componentKeys=pakkoapp-oss-1_pakko&branch=main&resolved=false&ps=100`
-  (WebFetch renders it fine). Reflects the last CI-analyzed push, not uncommitted local changes —
-  re-check after pushing if verifying a specific fix landed clean.
-- When adding or modifying tests, always run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
-  with no path argument — never scope to a single test project. **Plain `Category!=Slow` alone is
-  not sufficient** — a test tagged only `VeryLarge` (not `Slow`) is not excluded by `!=Slow`, so it
-  would run automatically, defeating the entire point of the `VeryLarge` tier (confirmed empirically
-  2026-07-17: `Category!=Slow` alone picked up T-F114's two one-large-file tests). All projects must
-  stay green after every change. This combined filter excludes T-F20's Zip64 Slow tests and T-F114's
-  Slow-tagged performance tests (real multi-second cost); run `dotnet test --filter "Category=Slow"`
-  too before a release or when the change touches Zip64-adjacent code (entry counts, large files,
-  Zip64 boundary conditions) or compression/extraction performance. `dotnet test --filter
-  "Category=VeryLarge"` (the >4 GiB Zip64 test, T-F114's one-large-file scenarios) is on-demand
-  only — never run automatically as part of either of the above, only when deliberately verifying
-  that specific path.
-- **When writing a regression test for a just-fixed bug, temporarily revert the fix and confirm
-  the new test actually fails before restoring it and leaving the test green** — a test that only
-  ever ran against already-fixed code can pass for the wrong reason (e.g. testing a whitebox seam
-  that bypasses the real bug). This discipline itself caught a second, independent bug this way
-  (T-F140): a progress-throttle timestamp initialized at construction silently swallowed the very
-  first report for any fast/small-file operation — invisible until a fast-operation test was
-  deliberately run against the pre-fix code and didn't fail as expected.
-- If a change modifies a public interface, model, or contract in `Archiver.Core`, check whether
-  tests in other projects (`Archiver.Shell.Tests`, future `Archiver.CLI.Tests`) need to be updated
-  or extended. Internal implementation changes (private methods, buffers, sorting) require only
-  `Archiver.Core.Tests` coverage.
-- Before threading a new `Archiver.Core` constructor parameter (e.g. a new cross-cutting service)
-  through every consumer, grep the whole repo for every `new ZipArchiveService(`/
-  `new TarSandboxedService(`/etc. call site rather than trusting an older written plan's
-  enumerated list — a plan can predate a newer frontend shipping. Real gap: T-F51's plan (written
-  2026-07-17) enumerated only `Archiver.Shell`'s call sites; `Archiver.CLI` shipped the next day
-  and was missing from it entirely.
+- Tests: always `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` with no path argument
+  (plain `Category!=Slow` does not exclude `VeryLarge`); all projects stay green after every
+  change. `Category=Slow` before a release or a Zip64/performance change. Full rule:
+  `.claude/rules/tests.md`.
+- **A regression test for a just-fixed bug must be seen failing:** revert the fix, confirm red,
+  restore (details: `.claude/rules/tests.md`).
 - Prefer simple and explicit over clever and implicit. If a task can be solved with a
   straightforward script step (copy, move, delete) versus a complex MSBuild/pipeline hook, choose
   the script. Reserve MSBuild targets and build pipeline customization for cases where a script
   genuinely cannot work. This applies to all tooling decisions — not just MSBuild.
 - No mocking library (Moq/NSubstitute/etc.) is used anywhere in this repo — write hand-rolled
   fake implementations of interfaces for tests instead (see `ExtractionRouterTests.cs`).
-- **Console-frontend testing (`Archiver.Shell`, future `Archiver.CLI`):** extract argument
-  parsing into its own testable class (e.g. `ShellArgumentParser`) and unit-test it in-process —
-  never parse inline in `Main`. No test in this repo spawns a built `.exe` and asserts on a real
-  exit code/stdout yet — `Archiver.Shell.Tests` only unit-tests the parser, which is fine there
-  since its args are always generated programmatically, never typed by a person. A frontend a
-  user/script invokes directly (`Archiver.CLI`) needs that real-process layer too, since its
-  exit code/stdout *is* the public contract — see T-F09's acceptance criteria for the shape.
-- To unit-test an `internal` `Archiver.Core` class directly, add
-  `<InternalsVisibleTo Include="Archiver.Core.Tests" />` to `Archiver.Core.csproj` rather than
-  making it/its members `public` just for test access (first used for `ArchiveEntrySecurity`, T-F94).
-- **MSIX packaging:** never use `BeforeTargets` hooks or manual `MakeAppx` calls to inject files
-  into packages. Use `Content Include` items in `.csproj` with `CopyToOutputDirectory` — this is
-  the only reliable approach that survives incremental builds. `dotnet publish` with
-  `AppxPackageSigningEnabled=true` is the only confirmed working signing method; manual
-  `SignTool` calls fail on MSIX because `New-SelfSignedCertificate` generates CNG keys on modern
-  Windows and SignTool cannot use CNG keys to sign MSIX directly.
-- **Pre-implementation research:** for tasks involving COM interop, shell integration, or Windows
-  packaging — always research existing working examples before writing any code. "Check NanaZip"
-  means fetch the actual shipped source (github.com/M2Team/NanaZip, e.g.
-  `NanaZipPackage/Package.appxmanifest`) and quote/compare its real XML or code — not a
-  description from memory or search-result summaries. A manifest schema that merely looks
-  plausible is not enough; verify it against a working reference before writing it. Also check
-  Windows Community Toolkit and Microsoft docs. Document findings in `DECISIONS.md` before
-  implementing. (The `com:InProcessServer` schema in the original T-F61 decision was never
-  actually verified this way and shipped with an undeclared XML namespace for ~4 months before
-  being caught — see the "Correction — SurrogateServer" entry in `DECISIONS.md`.)
-  `gh` CLI **is** installed and authenticated in this environment (confirmed T-F122, 2026-07-19 —
-  used extensively for `gh run`/`gh release`/`gh secret`).
-  **`git push` goes as the active `gh` account (`gh auth git-credential`), normally `user137`, a
-  write collaborator** — `pakkoapp-oss` is a personal **User** account, so a collaborator is never
-  admin. **`main` takes pull requests only (T-F367 ruleset):** push a branch, `gh pr create`,
-  `gh pr merge --auto --rebase`; the required `test` check gates the merge. `v*` tags cannot be
-  moved or deleted by anyone; the admin may bypass `main`'s rules only through a PR.
-  **This machine can have a second `gh`-logged-in account (e.g. `user137`) active instead of
-  `pakkoapp-oss`** — check `gh auth status`'s `Active account: true` line before any repo-admin
-  call (topics, settings, branch protection, etc.). The wrong active account fails such calls
-  with a misleading `HTTP 404: Not Found`, not a `403`, since GitHub reports resources the active
-  token can't administer as not-found rather than forbidden. Fix: `gh auth switch --hostname
-  github.com --user pakkoapp-oss` before the call, then switch back afterward
-  (`gh auth switch --hostname github.com --user <other>`) so the machine's default identity isn't
-  left changed for unrelated work. `gh run`/`gh release`/`gh secret`/reads generally work fine
-  either way — this specifically bit `gh repo edit --add-topic` (2026-08-02).
-  GitHub's code search still requires sign-in even for public repos, so for reading a
-  third-party repo's source, prefer:
-  `curl -s "https://api.github.com/repos/<owner>/<repo>/git/trees/main?recursive=1"`
-  lists every file path unauthenticated — grep it for the area you need, then WebFetch the raw
-  file (`raw.githubusercontent.com/<owner>/<repo>/main/<path>`) to read real code.
-  Same method applies beyond COM/shell/packaging: fetching NanaZip's real `NanaZip.Modern/` source
-  settled an archive-browser UI design (T-F05), and fetching its vendored real 7-Zip
-  `ArchiveCommandLine.cpp` settled the CLI command/switch table (T-F09) — don't restrict this
-  research discipline to COM work just because that's where it was first written down.
+- **Pre-implementation research** (COM, shell, packaging, and any design copied from NanaZip or
+  7-Zip): fetch the real shipped source and quote it, never a description from memory; document
+  findings in `docs/DECISIONS.md` before implementing. Unauthenticated: `curl -s
+  "https://api.github.com/repos/<owner>/<repo>/git/trees/main?recursive=1"`, then WebFetch the raw
+  file from `raw.githubusercontent.com`.
+- **Git:** `main` takes pull requests only (T-F367 ruleset): push a branch, `gh pr create`, check
+  SonarCloud, then `gh pr merge --auto --rebase`; the required `test` check gates the merge. `v*`
+  tags cannot be moved or deleted. `git push` goes as the active `gh` account (normally `user137`,
+  a write collaborator); a repo-admin call needs `gh auth switch --hostname github.com --user
+  pakkoapp-oss` first and a switch back after (the wrong account fails with a misleading 404).
 - Before tagging an ad-hoc fix with a new `T-Fxx` comment/reference, grep the highest existing
   number **across the entire repo**, not just `TASKS.md`/`TASKS_DONE.md`/`CLAUDE.md`/
   `DECISIONS.md` — don't guess a number. Some `T-Fxx` tags exist only as code comments with no
@@ -678,109 +168,9 @@ files.
   markdown-only grep misses them and risks a collision. `T-F62`/`T-F63` are already claimed by
   *different* future tasks in `TASKS.md`; reusing them for an unrelated fix creates a lasting
   mismatch between code comments and the task log.
-- `ConflictBehavior.Rename` on `ZipArchiveService.ExtractAsync` means **per-file rename inside a
-  merged existing folder** (the GUI app's tested behavior) — it does NOT mean "always create a
-  fresh whole folder." For shell-only "always fresh" behavior (numbered folder), use
-  `ExtractOptions.SeparateFolderName` computed by the caller instead of changing this semantic.
-- **Context-menu flicker on first open of a new Explorer window** (e.g. showing a stale/other
-  entry before repainting to Pakko's) is a known Explorer verb/icon-cache artifact, not a
-  Pakko code bug — Explorer caches top-level shell-extension verbs across COM DLL
-  (re)registrations until it requeries `GetTitle`/`GetIcon`. Don't chase this with code changes
-  without first confirming the cache-artifact explanation is wrong.
-- **WinUI 3 cold-start activation gotcha:** `AppInstance.Activated` (Windows App SDK) only fires
-  for activations *redirected* to an already-running instance — never for a process's own initial
-  activation. `OnLaunched` must pull it explicitly via
-  `AppInstance.GetCurrent().GetActivatedEventArgs()` and route File/Launch kinds through the same
-  handler `OnActivated` uses, or a cold Explorer/file-association launch silently opens a blank
-  window (see T-F83 in `DECISIONS.md`).
-- **Non-ASCII glyphs (ellipsis, em-dash, Cyrillic) in C++/PowerShell string literals**: never write
-  the literal character — full rule + `\uXXXX` escape pattern, and its one `/utf-8`
-  exception (`Localization.cpp`'s table), are in `CONVENTIONS.md`. Shipped
-  three times already (T-F64, T-F76, T-F63) — check every new string literal.
-  **Fixing an already-corrupted literal is not exempt:** typing the `\uXXXX` escape as Edit-tool
-  replacement text silently re-decodes to the same literal glyph (confirmed T-F105) — the Edit
-  reports `old_string`/`new_string` identical instead of erroring. Build the escape from raw char
-  codes (`[char]0x5C + "u2026"`) and write via `System.IO.File`/byte-level replacement instead.
-  **Not limited to C++/PowerShell:** the same corruption hit C# (an icon-font PUA glyph in
-  `ArchiveEntryViewModel.cs`'s `Icon` property, T-F110) and Markdown prose (`TASKS.md`, T-F110) —
-  any Edit/Write call whose params contain a raw `\uXXXX` escape or a raw PUA/icon-font glyph
-  (Segoe MDL2/Fluent, e.g. codepoint U+E890) risks silent corruption regardless of file type. Use a
-  throwaway Python script via the `py` launcher, building the exact bytes with `chr(0xEXXX)`,
-  for any edit touching such content.
-  **Before concluding a Write/Edit call corrupted non-ASCII text, verify via actual bytes/
-  codepoints, not by eyeballing terminal output.** Git Bash's console can visually render
-  correctly-encoded UTF-8 (e.g. via `cat -A`, or a Python `print()`) as mangled/replacement-looking
-  characters even when the file on disk is byte-perfect — confirmed a false alarm (T-F128) where a
-  real ellipsis (U+2026) looked corrupted in `print(repr(...))` output but was proven correct via
-  `ord()` on the parsed string. Plain `Write` calls with direct Unicode text (Cyrillic, CJK, RTL)
-  for a brand-new file worked correctly across 36 locale files in this harness — the corruption
-  risk documented above is real but narrower than "any non-ASCII in a tool param": it's
-  specifically Edit `old_string` matching against complex scripts, and literal `\uXXXX` escape
-  sequences getting re-decoded, not plain direct-Unicode `Write` calls for new content.
-- **Editing `Localization.cpp`'s per-locale table:** an Edit `old_string` containing a full
-  complex-script field (confirmed with Devanagari, T-F03) can silently fail to match even though
-  `Read` shows it identical to the file — likely invisible normalization variance. Don't retype the
-  translated text as a match target; use a `py` script that anchors on the line's ASCII locale tag
-  (e.g. finds `{ L"hi-IN",`) and inserts/edits by string index instead.
-  **`py -3` heredocs from the Bash tool silently no-op on a `/tmp/...` path** — native Windows
-  Python doesn't resolve Git-Bash's `/tmp`, so a script reports success but writes nothing.
-  Use a full Windows-style path (e.g. this session's scratchpad dir) instead.
-  **Plain `python` (no `py -3`) fails outright via the Bash tool** — exit code ~49, no real
-  error text, even for a trivial script. Always invoke `py -3 <script.py>`, never bare `python`.
-  **`py -3 -c "..."` one-liners with an embedded Windows backslash path are fragile** — produced
-  `SyntaxError: unterminated string literal`. Always write the script to a real `.py` file
-  (Write tool or a heredoc to a Windows-style scratchpad path) and run `py -3 script.py`, never a
-  `-c` one-liner with a literal Windows path inside it.
-- **Shared WinUI `x:Uid` across elements with different property sets is fatal, not a no-op:**
-  giving a `Button` (`.Content`) and a `TextBlock` (`.Text`) the same `x:Uid` applies both resource
-  keys to both elements regardless of which properties exist — crashes natively (`0xc000027b`) at
-  `InitializeComponent()`. Give every distinct element/property combo its own key (T-F05,
-  `DECISIONS.md`).
-- **`ListView` already virtualizes by default** (its own `ItemsStackPanel`) — don't add an explicit
-  `VirtualizingStackPanel` `ItemsPanel` without a specific reason. Doing so gratuitously can race
-  with an async-loaded bound property (a fire-and-forget `Task.Run` setting a value after
-  construction), leaving a freshly realized row blank until a forced re-layout (T-F05,
-  `DECISIONS.md`).
-- **A child element's `MinHeight` (e.g. a `ListView`'s own `MinHeight="80"`) does NOT force a
-  Grid's Star-sized (`*`) row to grow past what the row-sizing algorithm allocates** — the
-  `RowDefinition` itself needs the `MinHeight`. Enough sibling `Auto` rows can otherwise clamp
-  the Star row to 0, and every child inside measures/arranges within zero height regardless of
-  data, binding mode, or population timing — cost five separate disproven fix hypotheses before
-  being found (T-F106, `DECISIONS.md`).
-- **A dotted resw key (`"Foo.Content"`) manually looked up via `_res.GetString("Foo.Content")`
-  silently returns an empty string if no element in XAML actually has `x:Uid="Foo"`.** The dotted
-  naming convention only gets populated by the XAML framework's implicit `x:Uid` + property-suffix
-  lookup — a key that exists in every locale's `.resw` but was never wired to an `x:Uid` is dead,
-  and manual `GetString()` won't resolve it either. For any string accessed manually from C# (not
-  via `x:Uid`), use a plain, non-dotted key name, matching `StatusReady`/`StatusArchiving`/etc.
-  Real bug: `MainViewModel.ArchiveButtonText`/`ExtractButtonText` looked up `"ArchiveButton.Content"`
-  and got blank buttons in every locale until renamed to plain `ArchiveButtonLabel` (T-F104).
-- **MSIX Packaged COM registration lives entirely under
-  `HKLM\SOFTWARE\Classes\PackagedCom\Package\<PackageFullName>\...` and
-  `PackagedCom\ClassIndex\<CLSID>`** — namespaced by the full versioned package identity, with
-  zero classic `HKCR\CLSID\{...}` entry ever written. Confirmed empirically (T-F55/T-F40): a full
-  `HKEY_CLASSES_ROOT` search for the verb ID string returned 0 matches even while installed, and
-  `Remove-AppxPackage`/`Add-AppxPackage` cleanly removes/restores both `PackagedCom` subtrees.
-  There is no orphan-registry-key risk to chase for this app's shell extension — it never used
-  classic `regsvr32`-style registration to begin with.
-- **A new leaf `IExplorerCommand` class needs zero `Package.appxmanifest` entry.** Only
-  `PakkoRootCommand`'s own CLSID is ever registered there (`com:Class`/`desktopN:Verb`); every
-  leaf command (`ArchiveCommand`, `TarArchiveCommand`, etc.) is instantiated internally via
-  `Make<T>()` inside `PakkoRootCommand::EnumSubCommands` — confirmed T-F105 by grepping the
-  manifest for every existing leaf CLSID and finding none.
-- **`System.IO.Compression.DeflateStream` writes literally 0 output bytes for zero-byte input**
-  (not a minimal valid empty final block) — confirmed empirically. Any hand-rolled ZIP writer
-  that tags a zero-length entry's method as Deflate based on the requested compression level
-  (instead of checking actual output length) produces an entry real deflate readers (7-Zip)
-  reject as corrupt, while .NET's own lenient reader accepts it silently — invisible to
-  `dotnet test` unless checked against an independent reader. Real `ZipArchiveEntry` always
-  uses `Store` for empty entries regardless of requested level; match that. Real bug: found via
-  on-device NanaZip cross-check on `ZipEntryCompressor` (T-F35 follow-up, `DECISIONS.md`).
-- **Diagnosing ZIP format bugs:** `7za.exe l -slt <archive>` (the vendored copy under
-  `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/x64/`) dumps per-entry technical fields
-  (Method, Size, Packed Size, CRC, Attributes) — the fastest way to see exactly what a hand-rolled
-  writer actually produced, and to reproduce a real-world `7za`/NanaZip extraction failure
-  without needing NanaZip itself installed.
+- **Non-ASCII glyphs in string literals and tool parameters** (C++, PowerShell, C#, Markdown): never
+  type a literal glyph or a `\uXXXX` escape through Edit/Write; use a `py -3` script. Full rule:
+  `.claude/rules/text-encoding.md`.
 
 ---
 
@@ -833,6 +223,7 @@ windows-archiver-wrapper/
 │   ├── index.html / uk/index.html  ← public project website (GitHub Pages serves /docs directly)
 │   ├── privacy.html                ← Privacy Policy (linked from the app's About dialog)
 │   └── assets/                     ← site-only CSS/OG image/brand-mark copy, no build step
+├── .claude/rules/                  ← area rules for agents, each loaded only for matching paths (T-F369)
 ├── CLAUDE.md                        ← you are here — stays at root, Claude Code only auto-loads it here
 ├── SECURITY.md                      ← stays at root — GitHub-recognized community-health file
 └── README.md
@@ -875,25 +266,9 @@ dotnet publish src/Archiver.App/Archiver.App.csproj \
 # Must run via the PowerShell tool (uses /p: flags). See scripts/README.md.
 .\scripts\Publish-Cli.ps1                    # both architectures -> artifacts/cli/
 .\scripts\Publish-Cli.ps1 -Architecture x64  # one architecture only
-
-# Archiver.ShellExtension (C++ COM DLL) — not built or tested by dotnet build/test
-# Build via Visual Studio / MSBuild (x64 or ARM64 platform).
-# Archiver.ShellExtension.Tests.vcxproj only compiles the two COM-free files (ShellExtUtils.cpp,
-# Localization.cpp) directly — it does NOT compile ExplorerCommands.cpp/dllmain.cpp. To validate
-# a change to an IExplorerCommand class actually compiles, build the real DLL project too:
-# MSBuild src\Archiver.ShellExtension\Archiver.ShellExtension.vcxproj /p:Configuration=Debug /p:Platform=x64
-# Any dotnet build/publish/test command with /p:Key=Value flags must run via the PowerShell
-# tool, not Bash — Bash (Git Bash/MSYS) mangles "/p:" into a path-like token, failing with
-# "MSB1008: Only one project can be specified."
-# First-time test project setup:
-nuget restore tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj -SolutionDirectory .
-# Build directly (NOT via .sln — .sln + /t:<ProjectName> applies that target to every project).
-# $(SolutionDir) is only auto-set when building through the .sln, so pass it explicitly:
-MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxproj /p:SolutionDir=<repo-root>\ /p:Configuration=Debug /p:Platform=x64
-# If MSBuild.exe isn't on PATH, locate it with vswhere — use the PowerShell tool for this,
-# not Bash: Bash strips backslashes from patterns like "MSBuild\**\Bin\MSBuild.exe".
-# Then run: tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.ShellExtension.Tests.exe
 ```
+
+C++ build and test commands: `.claude/rules/shell-extension.md`.
 
 > **Toolchain (T-F270, 2026-09-26):** .NET 10 LTS — `global.json` pins SDK `10.0.401` exactly
 > (`rollForward: disable`; the lock files carry its ILCompiler version, T-F364; bump: `scripts/README.md`); **C# 14** (T-F363) — `LangVersion` set once in
@@ -907,207 +282,25 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > `dotnet build src/Archiver.App` also compiles via CLI (confirmed producing ARM64 output) —
 > useful for a quick compile-check on ViewModel/DI changes without opening VS. Full MSIX
 > packaging/signing/run still needs Deploy.ps1 or VS.
->
-> **A quick `dotnet build` can silently install a stale MSIX.** Its `DeployMsix` post-build
-> target reports success even when MSBuild's incremental packaging step skipped repackaging a
-> changed DLL into the `.msix` (confirmed via file timestamp — 55 min old after a rebuild that
-> changed a XAML-bound command). Don't trust a bare `dotnet build`'s installed package when
-> verifying a UI change on-device — run the full `.\scripts\Deploy.ps1` first (it wipes old
-> `AppPackages` output before rebuilding).
->
-> **`DeployMsix`'s post-build `Add-AppxPackage` also actively fails a Release `dotnet
-> publish`/`build` outright (not just silently) on any machine without the signing cert in
-> `LocalMachine\TrustedPeople`** — e.g. a fresh CI runner (`0x800B0109`, "root certificate ...
-> must be trusted"). Set `$env:PAKKO_DEPLOYING = '1'` before the call and clear it after (see
-> `Deploy.ps1`'s own use of this exact guard) to suppress the target entirely. Found T-F122,
-> 2026-07-19 — the first real CI run failed on this before it was noticed.
->
-> **Correction (recurred 2026-07-18, T-F123, worse than the original symptom):** a bare
-> `dotnet build src/Archiver.App/Archiver.App.csproj /p:Platform=x64` was used to verify a
-> `MainWindow.xaml.cs` event-handler fix (an `IsBusy` guard on `ArchiveBrowserList_DoubleTapped`).
-> The fix appeared to fail identically across three separate rebuild-and-retest cycles — even
-> after the title-bar `Pakko — build <timestamp>` freshness check (below) looked correct each
-> time. A `File.AppendAllText` trace planted at the top of the handler proved the handler wasn't
-> being invoked at all: the installed package was running stale event-handler code despite a
-> fresh-looking title-bar timestamp and a "Build succeeded" log. Switching to the full
-> `.\scripts\Deploy.ps1 -Thumbprint ...` fixed it on the very next attempt. **Always use
-> `Deploy.ps1`, never a bare `dotnet build`, before any on-device verification of
-> `Archiver.App` — do not treat the title-bar timestamp as sufficient proof by itself; it can be
-> fresh while the packaged binary's actual logic is stale.**
->
-> **Never trust build logs alone to prove an on-device check ran against fresh code — always
-> have the running window itself prove it.** `Archiver.App`'s title bar shows
-> `Pakko — build <yyyy-MM-dd HH:mm:ss>`: the running assembly's compile time, from its
-> `PakkoBuildTimeUtc` metadata (T-F218; the file time was the MSIX install time), hidden in a
-> Store build (T-F198 item 4) — not a manually-bumped version, not a build-log claim, but what the
-> installed binary itself reports, visible in every screenshot. Before
-> treating any on-device verification result as valid (especially a repeated "still broken"
-> result across several fix attempts), confirm this timestamp is within the last few minutes of
-> the current time. If it's stale, the deploy didn't actually pick up the latest change and the
-> verification must be redone — don't reason from build-log output alone. If a UI element already
-> on screen needs a freshness check and the title bar isn't convenient to read in a given
-> screenshot, add a similar visible, runtime-computed marker to the relevant page instead of
-> trusting logs.
->
-> **Testing `scripts/*.ps1` fixes:** these scripts require Windows PowerShell 5.1
-> (`#Requires -Version 5.1`). The PowerShell tool runs pwsh 7+, which defaults to UTF-8 and
-> will NOT reproduce non-BOM-file ANSI-codepage bugs (see T-F84). To actually verify a fix,
-> invoke `powershell.exe` explicitly rather than relying on the tool's default interpreter.
->
-> **Running `Deploy.ps1`/any `.ps1` via the Bash tool's `powershell.exe` fails outright** —
-> `cannot be loaded because running scripts is disabled on this system` (default Restricted
-> execution policy for that invocation path). Use the PowerShell tool instead (its pwsh 7 session
-> already runs unrestricted) — don't try `-ExecutionPolicy Bypass` workarounds from Bash.
->
-> **Writing a new throwaway script with non-ASCII content (translations, Cyrillic, etc.):**
-> the opposite applies — run it via the PowerShell tool's default pwsh 7, NOT `powershell.exe`.
-> `powershell.exe` (5.1) decodes a UTF-8-no-BOM `.ps1` via the system ANSI codepage, corrupting
-> every non-ASCII character before the script even runs (confirmed T-F105, a 37-locale insert
-> script). Only reach for explicit `powershell.exe` when deliberately reproducing a codepage bug.
->
-> **PowerShell tool's cwd persists across calls:** if a PowerShell call `cd`s/`Set-Location`s
-> into a scratch folder (e.g. while building a test fixture), a later `rm -rf`/`Remove-Item` on
-> that folder — even from Bash — fails with "in use" until a PowerShell call explicitly
-> `Set-Location`s back out first.
->
-> **PowerShell tool's `Add-Type` classes do NOT persist across separate calls** (only cwd does) —
-> a `Win32`-style helper class defined in one call is gone in the next ("Unable to find type"). If
-> you need it again (e.g. for a follow-up screenshot), redefine the whole `Add-Type` block in the
-> same call that uses it, not just once at the start of a multi-call sequence. Also: `Get-Item` on
-> a registry path containing `{...}` (a GUID/CLSID) silently returns nothing unless you pass
-> `-LiteralPath` instead of the default `-Path` — curly braces are wildcard syntax otherwise.
->
-> **PowerShell tool's *initial* cwd is not guaranteed to be the repo root** — a bare
-> `dotnet test`/`dotnet build` can fail with `MSB1003: Specify a project or solution file`.
-> Prefix with `Set-Location "<repo-root>";` when running dotnet commands via the PowerShell tool.
->
-> **Monitor tool commands run in POSIX/Git-Bash syntax**, even when polling a Windows path —
-> use `[ -f "/c/Program Files/..." ]`, not `Test-Path`, or the wait-loop never fires.
->
-> **Pass `& $exe` arguments as separate array elements, never manually quoted inside a string** —
-> `& $exe $path1 $path2`, not `` & $exe "`"$path1`"" ``. The latter embeds literal `"` characters
-> into the argument itself once PowerShell's own tokenizer is done, corrupting the path (confirmed:
-> `IOException` with a visibly quote-mangled path, T-F142 on-device check). Let PowerShell's own
-> array-argument passing handle spaces — don't hand-roll quoting.
->
-> **Windows MCP (`mcp__windows__*`) synthesizing a WinUI `DoubleTapped` gesture is coordinate-
-> space sensitive, not fundamentally unreliable.** `mouse_control`'s `double_click` failed across
-> ~6 attempts in one session (T-F98/T-F109) when driven by `windowHandle`-relative coordinates or
-> a coordinate guess. The combination that works reliably (confirmed T-F110, a full 4-level
-> Archive Browser drill-down entirely via automation): call `ui_find` for the row to get its
-> `click` coordinates, then pass those coordinates straight to `mouse_control`'s `double_click`
-> with `target: "primary_screen"` and no `windowHandle` at all — same fix T-F107 found for plain
-> single clicks (see that entry above), it turns out to also fix double-clicks. Explorer's
-> right-click context menu (Shift+F10) remains unconfirmed either way. If a double-click still
-> doesn't register after trying the `ui_find` + `primary_screen` combination once, then fall back
-> to asking the user to reproduce manually rather than burning further attempts.
->
-> **`winget install`/`uninstall` needing elevation fails non-interactively** with
-> `0x800704c7` ("canceled by the user") — the UAC prompt has nothing to click it. Retry once
-> and ask the user to approve the UAC prompt that appears; the retry succeeds.
->
-> **Explorer's context menu is automatable via `windows` MCP (confirmed 2026-09-28, T-F235):**
-> `mouse_control` `right_click` on a selected item with `target: "primary_screen"`, then `ui_click`
-> the `MenuItem` "Pakko" and the leaf by `nameContains` in the Explorer window's handle (one call
-> per step — a batched sequence lost the menu). Explorer always sends `--paths-stdin`; the
-> installed `Archiver.Shell.exe` still accepts plain path args as a shortcut (e.g. `--open-ui
-> --browse "<path>"`, T-F03), which skips the COM click and the stdin transport.
->
-> **`Archiver.Shell.exe`'s CLI commands (`--archive`, `--extract-here`, `--extract-folder`,
-> `--test`, `--hash`) take only source/archive paths — never an explicit destination.** The
-> destination is always auto-computed (folder-of-source for extract, `<name>.zip` next to the
-> source for archive — same naming Explorer's "Add to X.zip" verb produces). Passing an extra path
-> as a destination gets silently treated as another source/archive path instead (T-F142).
->
-> **Any Pakko command that shows a native modal (`IProgressDialog`, `MessageBoxW` result dialogs —
-> `--archive`, `--extract-*`, `--test`, `--scan`, `--hash`) blocks forever if invoked directly
-> (`& $exe args`) from the PowerShell tool** — the call never returns because the dialog waits for
-> a click. Launch via `Start-Process -FilePath $exe -ArgumentList @(...)` (detached) instead, then
-> poll for the dialog with `EnumWindows`/`GetWindowThreadProcessId` filtered to the child PID, read
-> its result text via `EnumChildWindows`, and dismiss with `SendMessage(hWnd, 0x00F5, ...)`
-> (BM_CLICK) on the OK button's handle. If a call hangs anyway, `taskkill /F /IM
-> Archiver.Shell.exe` clears the stuck modal before retrying (T-F151/T-F153 smoke tests).
->
-> **A build failing with a file-lock-shaped error** (`MSB3231`/`Access to the path ... is
-> denied` on something under `bin`/`obj`/`AppPackages`) — first try `dotnet build-server
-> shutdown` (kills lingering MSBuild/VBCSCompiler nodes that can hold output handles open)
-> before assuming a stuck folder needs an `obj` clean (see the `AppPackages` wedge note above).
->
-> **`git stash push -u` can silently half-fail**: if cleaning untracked content hits
-> `Permission Denied` on an unrelated empty directory (e.g. leftover build-artifact folders),
-> the stash entry is still created correctly, but the working tree may NOT actually revert —
-> `git status` can still show the same modified files. Always verify with `git status` after
-> any `stash push`; if changes persist, finish the revert manually with `git checkout --
-> <files>` (the stash already has a safe backup, so this is not destructive).
->
-> **GitHub Actions CI (`.github/workflows/build.yml`, T-F122):**
-> - `gh run view --job=<id> --log`/`--log-failed` only returns output **after the whole workflow
->   run completes**, not just that one job — "run ... is still in progress" otherwise, even if the
->   specific job you want logs for already finished.
-> - `gh attestation verify` (and possibly other `gh` subcommands) can print nothing to stdout/
->   stderr yet still exit 0 via the Bash tool — pass `--format json` for reliable output instead
->   of trusting empty plain-text as a failure signal.
-> - `vs_installer.exe modify --add <component>` is unreliable on GitHub-hosted Windows runners —
->   confirmed it returns exit code 0 in under 30ms regardless of `--wait`/`--nocache`/running it
->   twice, without actually installing anything. Don't trust it for CI component installation;
->   pin a runner image that already ships what you need instead (see next point).
-> - The `windows-latest` GitHub Actions runner label is not a stable OS pin — it silently moved
->   from the `windows-2022` image to `windows-2025` mid-project (confirmed T-F122, 2026-07-19),
->   breaking ARM64 C++ builds that worked before. Pin an explicit version (`windows-2022`) for any
->   job where toolchain reproducibility matters.
-> - **`gh workflow run build.yml --ref <tag>` (workflow_dispatch) is safe to run again on a tag that
->   already has a push-triggered release** — `build-msix`/`build-cli`/`release` all correctly report
->   `skipped` (not a conflict/failure) on a manual dispatch, since their own `if:` conditions gate
->   them to the push/tag-trigger path only; just `build-store-msix`/`bundle-store-msix` actually
->   run. Confirmed T-F142/v1.4.7 — no duplicate-release error, no wasted red X.
-> - **`gh release download`/other repo-scoped `gh` commands need `--repo pakkoapp-oss/pakko`**
->   when the Bash tool's cwd isn't inside the git repo (e.g. downloading a release artifact into
->   the scratchpad for a real-artifact smoke test) — otherwise it fails with a misleading `fatal:
->   not a git repository`, not a permissions/network error (T-F151/T-F153 smoke tests).
->
-> **Windows App Certification Kit (`appcert.exe`) requires elevation** — a bare invocation fails
-> with "requires elevation." Run it via `Start-Process -Verb RunAs -Wait` from the PowerShell
-> tool. Its report is XML: `<REPORT OVERALL_RESULT="...">`, per-check `<TEST><RESULT>PASS/FAIL
-> </RESULT><MESSAGES><MESSAGE TEXT="..."/></MESSAGES></TEST>` — parse for `FAIL`/`WARNING` rather
-> than reading the whole report by eye.
->
-> **Deploy shortcuts:**
-> Release build in VS triggers `Deploy.ps1 -DeployOnly` automatically (post-build event).
-> For manual deploy from terminal: `.\scripts\Deploy.ps1` (full build + sign + install)
-> or `.\scripts\Deploy.ps1 -DeployOnly` (install only, no build).
->
-> **Distinguishing an installed dev build from a Store build (or confirming only one is present):**
-> `Get-AppxPackage *Pakko* | Select-Object Name, PackageFullName, Publisher, SignatureKind,
-> InstallLocation` — `Publisher: CN=Pakko Dev` + `SignatureKind: Developer` is the local sideload;
-> a Store install shows a different Publisher and `SignatureKind: Store`. Combine with `Get-Item
-> <InstallLocation>\Archiver.App.exe | LastWriteTime` vs. current time to confirm freshness,
-> complementing (not replacing) the title-bar build-timestamp trick above.
->
-> **Localization (`Strings/<locale>/Resources.resw`, T-F91):** `Package.appxmanifest`'s
-> `<Resource Language="x-generate"/>` auto-detects every `Strings/<locale>/` folder at build —
-> no manual `<Resources>` edit needed when adding a locale. A key missing from a locale's
-> `Resources.resw` falls back to `en-US` automatically, so non-translatable keys (URLs) should
-> be omitted from locale files, not duplicated. Verify a new locale is wired without opening VS:
-> `dotnet build src/Archiver.App/Archiver.App.csproj /p:Platform=x64`, then check
-> `bin/x64/Release/net10.0-windows10.0.17763.0/win-x64/AppxManifest.xml` for the `<Resource
-> Language>` entries.
->
-> **25+ locale resource packages force a `.msixbundle`, not a flat `.msix`** (found 2026-07-07
-> right after T-F91 added 24 locale folders, taking the app from 1 to 25 total resource
-> packages). MSBuild's packaging pipeline needs a bundle once there are enough per-language
-> resource packages that the device must selectively install a subset — a flat `.msix` can't
-> hold multiple resource-qualified sub-packages. `Deploy.ps1`'s "locate the final package" step
-> only searched `-Filter '*.msix'`, so it silently found nothing and failed with `No .msix file
-> found under ...AppPackages` even though `dotnet publish` had already succeeded and produced a
-> real `.msixbundle`. Fixed by widening that search to `-Include '*.msix', '*.msixbundle'` —
-> `Add-AppxPackage` installs either directly. If you ever reduce the shipped locale count back
-> down, expect the output to flip back to a flat `.msix` — both are handled now.
->
-> **`MSB3231` on `AppPackages`/`obj\...\PackageLayout\`:** if a manual `Remove-Item` of that path
-> succeeds right after the failure, it is a transient live handle (Search Indexer is the top
-> suspect) — rerun; `Deploy.ps1` tolerates it when a valid fresh `.msix` exists (T-F96). If the
-> folder stays stuck even across a reboot, clean `src/Archiver.App/obj\`; every Deploy run already
-> packages a new revision, so the output folder name is fresh (T-F368).
+
+Agent tool notes (the rest are in `.claude/rules/scripts.md` and `device-verification.md`):
+- `dotnet` with `/p:` flags and any `.ps1` go through the PowerShell tool, never Bash (Git Bash
+  mangles `/p:`; Bash's `powershell.exe` refuses scripts). The T-F370 hook enforces the first.
+- Python is `py -3 <script.py>` with a Windows-style path, never bare `python`, never a `-c`
+  one-liner holding a Windows path, never a `/tmp` path.
+- **PowerShell tool's cwd persists across calls:** if a PowerShell call `cd`s/`Set-Location`s
+  into a scratch folder (e.g. while building a test fixture), a later `rm -rf`/`Remove-Item` on
+  that folder — even from Bash — fails with "in use" until a PowerShell call explicitly
+  `Set-Location`s back out first.
+- **PowerShell tool's *initial* cwd is not guaranteed to be the repo root** — a bare
+  `dotnet test`/`dotnet build` can fail with `MSB1003: Specify a project or solution file`.
+  Prefix with `Set-Location "<repo-root>";` when running dotnet commands via the PowerShell tool.
+- **Monitor tool commands run in POSIX/Git-Bash syntax**, even when polling a Windows path —
+  use `[ -f "/c/Program Files/..." ]`, not `Test-Path`, or the wait-loop never fires.
+- **On-device verification:** always the full `.\scripts\Deploy.ps1 -Thumbprint ...`, never a bare
+  `dotnet build` (it can install a stale package), and confirm the running window's title-bar build
+  time is within minutes of now before trusting any result. Read
+  `.claude/rules/device-verification.md` first.
 
 ---
 
@@ -1168,105 +361,6 @@ Task<IReadOnlyList<string>> PickFoldersAsync()
 
 ---
 
-## Known test gaps — manual verification required
-
-- **NativeProgressDialog (Archiver.Shell)** — the `IProgressDialog` COM wrapper is not covered
-  by automated tests (COM UI object, not unit-testable). Manual verification required: progress
-  bar and status line update during Extract/Archive, Cancel button stops the operation.
-- **Observed test flakiness (2026-07-07):** `Extract_ValidUnicodeFilenames_Succeeds` and
-  `ExtractAsync_ZipWithMotw_PropagatesZoneIdentifierToExtractedFiles` each failed once in a
-  run, then passed immediately on rerun in isolation — looks like parallel-execution timing
-  noise, not a real regression. If a test fails once, rerun before treating it as caused by
-  your change.
-  **Root-caused and fixed 2026-07-24 (T-F130):** all 10 `Archiver.Core.IntegrationTests` classes
-  that drive real AppContainer/Job Object/quarantine ACL calls were racing against *each other*
-  under xUnit's default parallel-by-class execution — grouped into one
-  `[Collection("TarSandbox", DisableParallelization = true)]` (see `docs/TESTING.md`) so they run
-  sequentially relative to each other while still running in parallel with unrelated projects.
-  **Confirmed in a real CI run on the actual fix** (run `30037580723`, 2026-07-23: 60/60,
-  0 failures, 8s — not just the local `dotnet test` pass or the earlier pre-fix "clean rerun,"
-  which only demonstrated the intermittent-failure pattern, not this fix's effect). If this specific
-  flakiness class recurs
-  recurs anyway, the likely remaining vector is cross-*project* contention (`Archiver.CLI.Tests`'
-  `Subprocess/` layer launching real sandboxed subprocesses concurrently with this project, not
-  just within it) — that would need a similar fix scoped across both projects, not assumed already
-  covered by the single-project Collection above.
-  **T-F162 (2026-08-11):** a test waiting on `System.Progress<T>`'s callback can time out on a
-  loaded runner (it posts to the ThreadPool); use the synchronous hand-rolled `IProgress<T>` fake
-  instead (see `docs/DECISIONS.md`'s T-F162 entry).
-- **T-F143 SonarCloud coverage triage (2026-08-06) — categories left deliberately uncovered by
-  design, not by oversight:** `ExplorerLauncher`'s OS-side-effect callers (4 call sites — opening
-  a real Explorer window isn't something a unit test should trigger); native Win32/subprocess
-  fault-injection paths (`SandboxedProcessLauncher`, `TarSandboxedService.RunUnsandboxedTarAsync`'s
-  `process.Kill()` cleanup — forcing these requires simulating OS-level failures, not worth the
-  brittleness); best-effort estimation-helper `catch` blocks; duplicate `UnauthorizedAccessException`/
-  generic-`Exception` catch variants where only the `IOException` sibling is tested (same code
-  shape, marginal value); and `ZipArchiveService.ArchiveSingleSeparatePathAsync`'s "zero entries
-  written" branch (line ~448) plus `ParallelSingleArchiveWriter`'s CAS-retry-loop race — both left
-  open questions, the exact real-world trigger for the former wasn't confirmed within that task's
-  budget (T-F66 already makes plain empty folders write a placeholder entry, so what else still
-  reaches it is unclear). See `docs/TASKS.md`'s T-F143 entry for the full triage and the 40 tests
-  that *were* added to close the actual gate-blocking gaps.
-
----
-
-## Windows Packaging Best Practices
-
-Root-cause detail for the first six points below lives in `docs/DECISIONS.md` ("MSIX Satellite EXE
-Packaging", "MSIX Signing", "Context Menu Appeared But Commands Did Nothing") — this is the
-quick-reference list only, to avoid known failure modes without re-reading the full postmortems:
-
-- Satellite EXEs: `Content Include` in `Archiver.App.csproj`
-  (`Condition="'$(GenerateAppxPackageOnBuild)'=='true'"`), never `BeforeTargets`/manual `MakeAppx`
-- MSIX signing: `AppxPackageSigningEnabled=true` + `PackageCertificateThumbprint` in
-  `dotnet publish`, never manual `SignTool` (`ERROR_BAD_FORMAT` on MSIX)
-- Self-signed certs: pass `-Provider "Microsoft Strong Cryptographic Provider"` to
-  `New-SelfSignedCertificate` (default CNG keys break SignTool)
-- Never use `.wapproj` with multiple WinUI 3 apps (duplicate `Files/App.xbf` PRI entries)
-- Every EXE launched via `CreateProcess` from outside its own package needs its own
-  `<Application>` entry in `Package.appxmanifest` (`EntryPoint="Windows.FullTrustApplication"`,
-  `AppListEntry="none"` to hide it) — otherwise `ERROR_ACCESS_DENIED`
-- Satellite EXEs ship as one Native AOT exe each (T-F355), packaged via `Content Include` of the `.exe` alone
-
-Two more, not duplicated elsewhere:
-
-- **A hidden satellite `<Application>` (`AppListEntry="none"`, e.g. `Archiver.Shell.exe`'s entry)
-  triggers a Store "headless app" rejection.** Requires a separate account-level
-  `HeadlessAppBypass` waiver request from Microsoft — not a manifest fix, since removing
-  `AppListEntry="none"` would break the intended hidden-process UX. Budget real calendar time for
-  Microsoft's response before assuming a Store submission is close to done.
-- **`Package.appxmanifest`'s `Version` revision (4th segment) must be `0` at Store submission** —
-  the tracked file always is (T-F368, `PackagingManifestTests`); never commit a nonzero one.
-- **`src/Archiver.App/Assets/pakko-icon.svg` is the canonical vector source for every brand-mark
-  asset** (Square44x44/150x150Logo, Wide310x150Logo, SplashScreen, StoreLogo). Regenerate raster
-  assets from this SVG's real geometry, never by upscaling an existing `.png` — confirmed via a
-  real regression this session (upscaling silently lost rounded corners present in the true
-  original, caught only by checking `git show HEAD:<path>` pixel values, not by eyeballing output).
-- **A satellite project's `TargetFramework` is embedded literally in other projects' `Content
-  Include` paths and in `Deploy.ps1`.** Bumping `Archiver.Shell.csproj`'s TFM (e.g. to
-  `net8.0-windows10.0.17763.0` for WinRT APIs) silently moved its real build output to a new
-  folder, but `Archiver.App.csproj`'s four `Content Include` items and `Deploy.ps1`'s
-  `$shellExeSourcePath` kept pointing at the old TFM segment — `Deploy.ps1` kept reporting
-  "installed successfully" with a fresh version number and a fresh `.exe` apphost timestamp while
-  silently installing a stale managed `.dll`. Caught only by comparing the `.dll`'s file *size*,
-  not the `.exe`'s timestamp (the apphost stub barely changes across builds). Grep every
-  `net10.0-windows`-style TFM literal across `.csproj`/`.ps1` files before changing any project's
-  TFM, not just the one project's own file (T-F128).
-- **A COM surrogate (`dllhost.exe`) hosting `Archiver.ShellExtension.dll` can lock the DLL/PDB**
-  after testing the context menu, causing `C1041`/file-in-use errors on the next rebuild. Run
-  `taskkill /F /IM dllhost.exe` (or find the specific PID) before rebuilding if this happens.
-  The same surrogate can also lock unrelated scratch files/folders touched during that
-  right-click (e.g. a smoke-test directory) — same fix if cleanup fails with "in use".
-- **To verify a shell-triggered EXE actually runs** (Explorer/COM invocation can't be scripted):
-  launch it directly the same way the COM caller would (`Start-Process <path> -ArgumentList ...`)
-  and check `Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='.NET Runtime'}`
-  for silent apphost failures — these never produce console output or a visible error otherwise.
-  For a *native* crash (WinUI/WindowsAppRuntime init failure, access violation, etc.) instead
-  check `ProviderName='Application Error'` — these show as event ID 1000 with the faulting
-  module/offset/exception code and never appear under the `.NET Runtime` provider at all.
-
----
-
 ## Deployment
 
 - `Deploy.ps1` packages a generated copy of the manifest (`obj/PakkoDev/`, `/p:PakkoAppxManifest`)
@@ -1277,41 +371,14 @@ Two more, not duplicated elsewhere:
   ```powershell
   .\scripts\Deploy.ps1 -Thumbprint "D2EC5F2C451ED0EBE94B8168A68E5B813954CC75"
   ```
-- **The vendored `7za.exe` test dependency (T-F114, `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/`)
-  never enters this pipeline.** `Deploy.ps1` only publishes `src/Archiver.App`; nothing under
-  `tests/` is packaged, signed, or installed. See `SECURITY.md`'s "Vendored 7-Zip" section if this
-  ever needs re-confirming.
-- **Cutting a public release (a `vX.Y.Z` git tag, distinct from the internal MSIX packaging
-  number above):** before the `chore(release): bump to vX.Y.Z` commit, add a new section to
-  `CHANGELOG.md` (newest first) listing the `T-Fxx` tasks completed since the previous tag, in
-  plain language — check `docs/TASKS_DONE.md`/`git log <prev-tag>..HEAD` for what actually shipped,
-  don't guess from memory. Keep it in the same commit as the version bump. `CHANGELOG.md` is the
-  canonical, human-browsable release history; `.github/RELEASE_NOTES_TEMPLATE.md` stays a static
-  per-release download blurb, not a task list.
-  **The section header format is load-bearing, not just style (fixed 2026-08-04):** `build.yml`'s
-  `release` job extracts the new tag's own `## v<tag> — <date>` section (sections split on a bare
-  `---` line) and prepends it to the actual GitHub Release notes, ahead of the static template —
-  before this fix, every prior release's GitHub-side notes were the template alone, with no
-  changelog content at all. Get the header wrong or omit a tag's section and that release's notes
-  silently fall back to template-only again.
-  **Before tagging, run the nightly checks on the release commit (T-F240):** after pushing it,
-  `gh workflow run canary.yml --ref main`, confirm the run's `headSha` is that commit, and read the
-  verdict from `gh run view <id> --json jobs` — not the run's colour, since the masked jobs report
-  success even when they failed: `canary-failed-day` must be `skipped` and `canary-fuzz` `success`.
+- **Cutting a public release** (`vX.Y.Z` tag): a `CHANGELOG.md` section `## v<tag> — <date>` in the
+  bump commit (the release job reads it) and the nightly checks on the release commit first —
+  read `.claude/rules/ci.md` before tagging.
 
 ---
 
 ## Workflow Tips
 
-- **Benchmarking new CPU-bound parallel code in a fresh `dotnet test` process can show wildly
-  bimodal timing** (e.g. 0.36s vs 1.2s+ for the identical 300 MB CRC-32 chunk-hash) — root cause
-  was .NET's default `ThreadPool` thread-injection ramp-up (~1 new thread per ~500 ms under
-  demand), not the algorithm. Fix: a one-time `ThreadPool.SetMinThreads(Environment.ProcessorCount,
-  ...)` before the parallel section, and prefer synchronous `Parallel.For`/`RandomAccess.Read`
-  over `Parallel.ForAsync`/`RandomAccess.ReadAsync` for CPU+I/O-bound chunked work — avoids
-  async-state-machine/completion-port scheduling entirely (same reasoning as the `useAsync: false`
-  `FileStream` convention already noted above). See `FileHashService.
-  ComputeFileCrc32ParallelAsync`/`Crc32.Combine` (T-F128) for the working pattern.
 - For complex tasks (architecture changes, new services, multi-file refactoring)
   use Plan Mode before writing any code — activate with /plan in Claude Code.
 - **Before committing any task marked complete or partial:** run the full
@@ -1322,22 +389,3 @@ Two more, not duplicated elsewhere:
   If the user explicitly directs it, performing that verification yourself via the local
   `windows` MCP server (see `.claude.local.md`) is an accepted substitute for asking — still
   don't graduate a task on `dotnet test` alone without one or the other.
-- **`docs/TASKS.md`'s task-graduation edits** (moving completed entries to `docs/TASKS_DONE.md`) tend to
-  land in large diff hunks that intermingle several unrelated tasks — `git add -p` can't
-  cleanly split one task's doc update out of such a hunk. When committing narrowly, stage
-  specific files/whole hunks deliberately, or commit the doc consolidation separately.
-- **Debugging via Pakko's log file:** when running as an installed MSIX, the log is NOT at the
-  plain `%LOCALAPPDATA%\Pakko\logs` `LogService.cs` constructs — MSIX virtualizes
-  `LocalApplicationData` per-package. Find it at
-  `%LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalCache\Local\Pakko\logs\pakko.log`
-  (get `<PackageFamilyName>` via `Get-AppxPackage *Pakko*`).
-- **Editing unicode-heavy docs (`docs/DIAGRAMS.md` mermaid blocks, `docs/DECISIONS.md`) with the Edit
-  tool:** a multi-line `old_string` spanning several em-dash (—)/arrow (→) characters can
-  silently fail to match even though `Read` shows it verbatim. Split into smaller edits
-  (isolate one such character per edit) to work around it.
-- **`docs/DIAGRAMS.md` mermaid blocks are never auto-validated — nothing in this repo's workflow
-  renders them.** After editing, run each block through `npx @mermaid-js/mermaid-cli` (`mmdc -i
-  diagram.mmd -o diagram.svg`) before considering the edit done. A bare `;` or an unescaped
-  `"quoted phrase"` inside unquoted label/message/transition text breaks the parser in
-  sequence/state/flowchart diagrams alike — use `—` instead of `;`, and quote the whole label if
-  it needs literal parentheses or quotes.
