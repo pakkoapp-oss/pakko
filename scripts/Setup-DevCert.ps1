@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+﻿#Requires -Version 7.0
 <#
 .SYNOPSIS
     Creates and installs a self-signed developer certificate for local Pakko MSIX signing.

@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+﻿#Requires -Version 7.0
 <#
 .SYNOPSIS
     Writes the CycloneDX SBOM of one shipped artifact: the MSIX or the CLI zip, one architecture (T-F365).

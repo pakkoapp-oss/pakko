@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+#Requires -Version 7.0
 <#
 .SYNOPSIS
     Writes the winget manifest (version, installer, defaultLocale) for a released pakko CLI zip.

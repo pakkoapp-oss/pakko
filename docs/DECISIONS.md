@@ -11783,6 +11783,30 @@ and `Deploy.ps1`), and every rule has one home; the test forbids a nested `CLAUD
 - Old "`CLAUDE.md`'s <rule>" references in code comments are left as they are; the core says
   where such a rule now lives. `CONTRIBUTING.md`'s two C++ build pointers were updated.
 
+---
+
+## T-F371 — scripts on pwsh 7, OpenSSF Scorecard, visible CI retries (2026-10-09)
+
+- **pwsh 7 for the developer scripts.** Checked on the dev machine first: under pwsh 7.6 the Appx
+  module loads as a binary module from `System32\WindowsPowerShell` (no `WinPSCompatSession`), PKI
+  likewise, and a full `Deploy.ps1` run built, signed and installed 1.7.1.26. CI already ran
+  `CI-Build-Msix`, `Publish-Cli`, `New-Sbom` and `New-WingetManifest` under `shell: pwsh`. The
+  Release post-build in `Archiver.App.csproj` called `powershell.exe`, which would now stop at
+  `#Requires`; it calls `pwsh.exe` by name. The absolute-path rule covers `Process.Start` of a
+  system executable; pwsh is not one (the Store build lives under a versioned `WindowsApps` path),
+  and this target runs only in a developer's own Visual Studio.
+- **Not moved:** `Find-`/`Repair-PakkoSandboxAce.ps1`. They are remediation for users hit by
+  T-F233, linked from `SECURITY.md` and `CHANGELOG.md`, and a stock Windows has only 5.1; requiring
+  pwsh would cut off the people they exist for. The ASCII-only string-literal rule
+  (`docs/CONVENTIONS.md`) stays for every script for the same reason.
+- **Scorecard:** `ossf/scorecard-action` v2.4.4 with `publish_results`, which rejects `run:` steps,
+  top-level `env`/`defaults` and unlisted actions; the job is the upstream four steps, third-party
+  actions pinned by commit SHA. Results go to code scanning and scorecard.dev. It publishes from
+  the default branch only, so the first real run is the one after merge.
+- **Retries:** each of the seven "2 attempts" loops writes `::warning title=Retried::<step>` before
+  its second attempt; the run summary then shows which step needed it. A retry that passed used to
+  leave no trace outside the raw log.
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry

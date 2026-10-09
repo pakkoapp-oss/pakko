@@ -7,6 +7,7 @@
   Native AOT link of the four exes, T-F355, uses the same C++ tools)
 - **.NET 10 SDK** (`global.json` pins the 10.0.100 feature band or later)
 - Language: **C# 14** (set once in `Directory.Build.props`)
+- **PowerShell 7** (`pwsh`) for `scripts/*.ps1` (T-F371)
 - **Windows 10 1809+** or Windows 11
 
 ---

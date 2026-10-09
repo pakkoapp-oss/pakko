@@ -378,9 +378,10 @@ downstream service calls. Do not add path content checks to `ShellArgumentParser
   terminator and cascading into parser errors elsewhere in the file (real bug: `Deploy.ps1`'s
   em-dash broke `Write-Warning`'s string, reported as `Missing closing '}'` several lines away;
   see T-F84 in `TASKS_DONE.md`). Unlike the C++ case, there is **no `\uXXXX`-equivalent escape available**
-  — PowerShell's backtick-`u{}` Unicode escape requires PowerShell 6.2+/pwsh core, and these scripts
-  target Windows PowerShell 5.1 (`#Requires -Version 5.1`). Use a plain ASCII substitute instead
-  (e.g. `-` for an em-dash). Non-ASCII characters in comments are safe (comments are skipped
+  in Windows PowerShell 5.1. The developer scripts require pwsh 7 since T-F371, but the rule
+  stays: the two end-user T-F233 scripts still run on 5.1, and a pwsh-7 script started by mistake
+  under `powershell.exe` must still parse far enough to fail with the clear `#Requires` message. Use a plain ASCII
+  substitute instead (e.g. `-` for an em-dash). Non-ASCII characters in comments are safe (comments are skipped
   verbatim regardless of how their bytes decode) — this rule applies only to string literals.
 
 ---

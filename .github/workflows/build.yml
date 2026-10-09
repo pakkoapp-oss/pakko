@@ -557,7 +557,10 @@ jobs:
           $env:PAKKO_CLI_EXE = Join-Path $PWD 'artifacts\cli\win-x64\pakko.exe'
           $attempts = 2
           for ($i = 1; $i -le $attempts; $i++) {
-            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            if ($i -gt 1) {
+              Write-Output "::warning title=Retried::Subprocess tests against the Native AOT pakko.exe: attempt $($i - 1) failed, retrying"
+              Start-Sleep -Seconds 15
+            }
             dotnet test tests/Archiver.CLI.Tests --filter "FullyQualifiedName~Subprocess"
             if ($LASTEXITCODE -eq 0) { exit 0 }
           }

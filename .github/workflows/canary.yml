@@ -83,7 +83,10 @@ jobs:
         run: |
           $attempts = 2
           for ($i = 1; $i -le $attempts; $i++) {
-            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            if ($i -gt 1) {
+              Write-Output "::warning title=Retried::Run .NET test suite (2 attempts): attempt $($i - 1) failed, retrying"
+              Start-Sleep -Seconds 15
+            }
             dotnet test --filter "Category!=Slow&Category!=VeryLarge"
             if ($LASTEXITCODE -eq 0) { exit 0 }
           }
@@ -102,7 +105,10 @@ jobs:
           $env:PAKKO_CLI_EXE = Join-Path $PWD 'artifacts\cli\win-x64\pakko.exe'
           $attempts = 2
           for ($i = 1; $i -le $attempts; $i++) {
-            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            if ($i -gt 1) {
+              Write-Output "::warning title=Retried::Subprocess tests against the Native AOT pakko.exe (x64, 2 attempts): attempt $($i - 1) failed, retrying"
+              Start-Sleep -Seconds 15
+            }
             dotnet test tests/Archiver.CLI.Tests --filter "FullyQualifiedName~Subprocess"
             if ($LASTEXITCODE -eq 0) { exit 0 }
           }
@@ -160,7 +166,10 @@ jobs:
           )
           $attempts = 2
           for ($i = 1; $i -le $attempts; $i++) {
-            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            if ($i -gt 1) {
+              Write-Output "::warning title=Retried::Build Archiver.ShellExtension (x64, 2 attempts): attempt $($i - 1) failed, retrying"
+              Start-Sleep -Seconds 15
+            }
             # $currentArgs, not $args -- $args is a PowerShell automatic variable; reusing it
             # here would shadow a reserved name for no benefit.
             $currentArgs = $msbuildArgs
@@ -215,7 +224,10 @@ jobs:
         run: |
           $attempts = 2
           for ($i = 1; $i -le $attempts; $i++) {
-            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            if ($i -gt 1) {
+              Write-Output "::warning title=Retried::Run Category=Slow tests (2 attempts): attempt $($i - 1) failed, retrying"
+              Start-Sleep -Seconds 15
+            }
             dotnet test --filter "Category=Slow&FullyQualifiedName!~CompressionPerformanceTests&FullyQualifiedName!~HashPerformanceTests&FullyQualifiedName!~ZipSandboxSpikePerformanceTests"
             if ($LASTEXITCODE -eq 0) { exit 0 }
           }
@@ -265,7 +277,10 @@ jobs:
           Write-Host "Process architecture: $([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)"
           $attempts = 2
           for ($i = 1; $i -le $attempts; $i++) {
-            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            if ($i -gt 1) {
+              Write-Output "::warning title=Retried::Run .NET test suite on ARM64 (2 attempts): attempt $($i - 1) failed, retrying"
+              Start-Sleep -Seconds 15
+            }
             dotnet test --filter "Category!=Slow&Category!=VeryLarge"
             if ($LASTEXITCODE -eq 0) { exit 0 }
           }
@@ -283,7 +298,10 @@ jobs:
           $env:PAKKO_CLI_EXE = Join-Path $PWD 'artifacts\cli\win-arm64\pakko.exe'
           $attempts = 2
           for ($i = 1; $i -le $attempts; $i++) {
-            if ($i -gt 1) { Start-Sleep -Seconds 15 }
+            if ($i -gt 1) {
+              Write-Output "::warning title=Retried::Subprocess tests against the Native AOT pakko.exe (arm64, 2 attempts): attempt $($i - 1) failed, retrying"
+              Start-Sleep -Seconds 15
+            }
             dotnet test tests/Archiver.CLI.Tests --filter "FullyQualifiedName~Subprocess"
             if ($LASTEXITCODE -eq 0) { exit 0 }
           }

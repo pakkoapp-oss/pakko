@@ -150,7 +150,7 @@
   <!-- Deploy the freshly built MSIX after every Release build in Visual Studio -->
   <Target Name="DeployMsix" AfterTargets="Build"
           Condition="'$(Configuration)' == 'Release' and '$(PAKKO_DEPLOYING)' != '1'">
-    <Exec Command="powershell.exe -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\scripts\Deploy.ps1&quot; -DeployOnly" />
+    <Exec Command="pwsh.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\scripts\Deploy.ps1&quot; -DeployOnly" />
   </Target>
 
   <!-- T-F218: the title's "build" stamp is the compile time, not the MSIX install time that the

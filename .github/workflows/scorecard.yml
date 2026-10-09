@@ -1,0 +1,46 @@
+name: Scorecard
+
+# T-F371: OpenSSF Scorecard, a public supply-chain trust signal (results on
+# scorecard.dev and in this repo's code-scanning tab). With publish_results the action
+# refuses a job that has `run:` steps, top-level env/defaults or actions outside its
+# allowlist -- keep the job to these four steps. Publishing works only on the default branch.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '27 4 * * 1'
+  branch_protection_rule:
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload SARIF artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: scorecard-sarif
+          path: results.sarif
+          retention-days: 5
+
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: results.sarif
