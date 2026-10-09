@@ -200,6 +200,28 @@ which is why the SDK is pinned as well (`docs/DECISIONS.md`, T-F364).
   `global.json` and the locks together.
 - **A Visual Studio update removed the pinned SDK** (every `dotnet` command says the SDK was not
   found): install exactly that version from the .NET download page, or do the bump above.
+- **Dependabot's NuGet PRs:** a week with none may mean its updater failed (e.g. it lacks the
+  pinned SDK), not that nothing is outdated; read its job log under Insights, Dependency graph,
+  Dependabot, nuget "/".
+
+---
+
+## SBOM per artifact (T-F365)
+
+`New-Sbom.ps1 -Artifact Msix|Cli -Architecture x64|arm64 -Version <v> -OutputPath <file>` writes
+the CycloneDX 1.6 SBOM of one shipped artifact. It restores that artifact's projects with
+`--locked-mode`, runs the CycloneDX tool pinned in `.config/dotnet-tools.json`, removes what the
+artifact does not ship (build tools, Windows ML, other architectures' runtime) and checks the
+result (`docs/DECISIONS.md`, T-F365). CI runs it in the `sbom` job, which has no secrets; the
+build jobs attest each SBOM against its artifact, and a release carries `pakko-msix-<arch>.cdx.json`
+and `pakko-win-<arch>.cdx.json`.
+
+- **Check a downloaded artifact's SBOM attestation:**
+  `gh attestation verify pakko-win-x64.zip -R pakkoapp-oss/pakko --predicate-type https://cyclonedx.org/bom`
+  (the same without `--predicate-type` checks the SLSA provenance).
+- **Bumping the tool:** Dependabot is not known to update `.config/dotnet-tools.json`; change the
+  `cyclonedx` version there by hand, run the script for all four artifacts and diff the component
+  lists before committing.
 
 ---
 

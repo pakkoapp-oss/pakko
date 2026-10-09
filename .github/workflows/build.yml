@@ -207,8 +207,41 @@ jobs:
           }
           Write-Output "PSScriptAnalyzer: 0 findings."
 
+  # T-F365: a CycloneDX SBOM per shipped artifact (both MSIX, both CLI zips). The generator is a
+  # third-party tool, so it runs here, with read-only contents and no secrets; build-msix and
+  # build-cli, which hold the signing key and the OIDC token, only run the first-party
+  # actions/attest on the result. Locked restore = the same package graph those jobs build.
+  sbom:
+    if: github.event_name == 'push'
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+
+      - name: Write the SBOMs
+        shell: pwsh
+        run: |
+          $version = if ("${{ github.ref }}".StartsWith("refs/tags/v")) { "${{ github.ref_name }}".TrimStart('v') } else { "0.0.0-dev+" + "${{ github.sha }}".Substring(0, 7) }
+          foreach ($arch in 'x64', 'arm64') {
+            ./scripts/New-Sbom.ps1 -Artifact Msix -Architecture $arch -Version $version -OutputPath "artifacts/sbom/pakko-msix-$arch.cdx.json"
+            ./scripts/New-Sbom.ps1 -Artifact Cli -Architecture $arch -Version $version -OutputPath "artifacts/sbom/pakko-win-$arch.cdx.json"
+          }
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: pakko-sbom
+          path: artifacts/sbom/*.cdx.json
+          if-no-files-found: error
+
   build-msix:
-    needs: [test, lint-ps1]
+    needs: [test, lint-ps1, sbom]
     if: github.event_name == 'push'
     runs-on: windows-2022
     # T-F364: deterministic source paths (/_/) in the shipped binaries and PDBs; not in `test`,
@@ -267,6 +300,19 @@ jobs:
           subject-path: |
             src/Archiver.App/AppPackages/**/*.msix
             src/Archiver.App/AppPackages/**/*.msixbundle
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: pakko-sbom
+          path: artifacts/sbom
+
+      - name: Attest the SBOM (CycloneDX, T-F365)
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            src/Archiver.App/AppPackages/**/*.msix
+            src/Archiver.App/AppPackages/**/*.msixbundle
+          sbom-path: artifacts/sbom/pakko-msix-${{ matrix.architecture }}.cdx.json
 
       - uses: actions/upload-artifact@v7
         with:
@@ -445,7 +491,7 @@ jobs:
           if-no-files-found: error
 
   build-cli:
-    needs: test
+    needs: [test, sbom]
     if: github.event_name == 'push'
     # T-F355: not windows-2022 like build-msix - this job runs the Subprocess layer, and on that
     # image tar.exe carries no embedded Authenticode signature, which TarSignatureVerifier requires,
@@ -504,6 +550,23 @@ jobs:
         with:
           subject-checksums: artifacts/cli/SHA256SUMS
 
+      - uses: actions/download-artifact@v8
+        with:
+          name: pakko-sbom
+          path: artifacts/sbom
+
+      - name: Attest the x64 SBOM (CycloneDX, T-F365)
+        uses: actions/attest@v4
+        with:
+          subject-path: artifacts/cli/pakko-win-x64.zip
+          sbom-path: artifacts/sbom/pakko-win-x64.cdx.json
+
+      - name: Attest the arm64 SBOM (CycloneDX, T-F365)
+        uses: actions/attest@v4
+        with:
+          subject-path: artifacts/cli/pakko-win-arm64.zip
+          sbom-path: artifacts/sbom/pakko-win-arm64.cdx.json
+
       - uses: actions/upload-artifact@v7
         with:
           name: pakko-cli
@@ -531,6 +594,11 @@ jobs:
           pattern: pakko-msix-*
           path: artifacts/msix
           merge-multiple: true
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: pakko-sbom
+          path: artifacts/sbom
 
       # Prepends this tag's own CHANGELOG.md section (if one exists) ahead of the static
       # download-instructions template, so a GitHub Release's own notes actually say what
@@ -573,6 +641,12 @@ jobs:
             "artifacts/cli/pakko-win-arm64.zip",
             "artifacts/cli/SHA256SUMS"
           ) + $msixAssets
+          # T-F365: the four CycloneDX SBOMs, each attested against its artifact.
+          $sbomAssets = Get-ChildItem -Path artifacts/sbom -Filter *.cdx.json | Select-Object -ExpandProperty FullName
+          if (@($sbomAssets).Count -ne 4) {
+            throw "Expected 4 SBOMs under artifacts/sbom, found $(@($sbomAssets).Count)."
+          }
+          $assets += $sbomAssets
           gh release create "${{ github.ref_name }}" @assets `
             --title "${{ github.ref_name }}" `
             --notes-file $env:NOTES_PATH

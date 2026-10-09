@@ -1088,6 +1088,12 @@ Ukrainian UI, CI an English one.
   `tests/`, `tools/`, lock restore on and locked mode conditioned on `CI` in
   `Directory.Build.props`, `global.json` exact with `rollForward: disable`, `build.yml` taking the
   SDK from `global.json`. All five red before the change (2026-10-09).
+- **SBOM (T-F365)**, `SbomWorkflowTests` (Core.Tests, read the repo's files): the CycloneDX tool
+  pinned exactly; `build.yml`'s `sbom` job read-only with no secrets; no job holding a secret or
+  `id-token` restores tools or runs the generator; `build-msix`/`build-cli` need `sbom` and attest
+  with `actions/attest` and `sbom-path`; `release` publishes the `.cdx.json` files; the script
+  restores locked and drops the build-only and Windows ML packages. Six of seven red before the
+  change (2026-10-09; the seventh, no privileged job runs the generator, held already).
 - `CliVersionTextTests.WithPackage_*`: `pakko -v` appends `(package <full name>)` only when packaged.
 - `PAKKO_CLI_EXE` points `CliProcessRunner` at another `pakko.exe`; set it to
   `%LOCALAPPDATA%\Microsoft\WindowsApps\pakko.exe` to run the whole `Subprocess/` layer against the

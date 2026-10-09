@@ -11620,6 +11620,54 @@ waits for the bump - on purpose: no release on a stale runtime. Bump: `scripts/R
 `Publish-Cli.ps1` for both architectures, the full `CI-Build-Msix.ps1` for x64 and arm64, then a
 normal `Deploy.ps1` - no lock file changed. A lock with one version altered fails the locked
 restore (`NU1403`). The five `BuildReproducibilityTests` were red before the change.
+On CI (run 37882065932, c9a541d): the native PDBs of all four AOT exes name Pakko's C# sources
+as `/_/src/...`. The runner path is left only where the native linker writes it: the PDB path in
+each exe's debug directory and the obj/def paths inside the PDB, which `PathMap` does not reach.
+It is the same on every run (`D:\a\pakko\pakko`), so it does not break reproducibility; left as is.
 
 **Watch.** If Dependabot's NuGet updater regenerates the locks with another SDK, its PRs would
-change the ILCompiler/ILLink entries and fail locked mode; check the first one.
+change the ILCompiler/ILLink entries and fail locked mode; check the first one. Its updater may
+also lack SDK 10.0.401 and fail without opening any PR, so a quiet week means nothing by itself:
+read the job log (Insights, Dependency graph, Dependabot, nuget "/").
+
+## T-F365 — an SBOM per shipped artifact, attested (2026-10-09)
+
+**Decision.** Each of the four shipped artifacts (the MSIX and the CLI zip, x64 and arm64) gets a
+CycloneDX 1.6 JSON SBOM, written by the official CycloneDX .NET tool (pinned in
+`.config/dotnet-tools.json` like docfx) through `scripts/New-Sbom.ps1`, and attested against the
+artifact's digest with `actions/attest` (`sbom-path`) next to the existing SLSA provenance
+(T-F125). The release carries the four `.cdx.json` files. `actions/attest-sbom` was not used: its
+README marks it deprecated in favour of `actions/attest`. CycloneDX 1.6 rather than the tool's
+default 1.7, because more consumers (Dependency-Track, scanners) read 1.6 today.
+
+**The generator never runs next to a secret.** It is third-party code, so it runs in its own
+`sbom` job with `contents: read`, no secrets and no OIDC token; `build-msix` (signing certificate)
+and `build-cli` only download the result and run the first-party `actions/attest`. The script
+restores the artifact's projects with `--locked-mode`, so the graph it describes is the one the
+lock files (T-F364) force on the build jobs too, then runs the tool without a second restore.
+
+**What is listed: what the artifact ships or needs at run time.** Checked against a real CI MSIX
+(run 37882065932): it holds the four AOT exes, `Archiver.ShellExtension.dll`, WebView2's
+`Microsoft.Web.WebView2.Core.dll`/`WebView2Loader.dll`, `Microsoft.WindowsAppRuntime.Bootstrap.dll`
+and `...UniversalBGTask.dll`, and depends on the framework package `Microsoft.WindowsAppRuntime.2`
+>= 2.5.1. So the SBOM keeps `runtime.win-<arch>.Microsoft.DotNet.ILCompiler` (the .NET runtime,
+linked into each exe), the managed packages compiled into the exes (their names are in the
+binaries: H.NotifyIcon, CommunityToolkit.Mvvm, DI, System.Drawing) and the
+`Microsoft.WindowsAppSDK.*` family (the Bootstrap DLL in the package plus the framework it
+requires). It drops `Microsoft.Windows.SDK.BuildTools`/`.MSIX` (build tools),
+`Microsoft.Windows.AI.MachineLearning` and `System.Numerics.Tensors` (referenced only to keep the
+Windows ML DLLs out, T-F363; their names are not in any exe), and the other architectures'
+ILCompiler packages. The CLI SBOM is the .NET runtime alone: `Archiver.Core` has no packages.
+Pakko's own projects are the SBOM's root component, not entries.
+
+**Two tool defects, worked around in the script.** `--runtime` does not drop other
+architectures' packages (all three ILCompiler runtime packages appeared in the x64 list). And
+`--exclude-filter` keeps only what the root's `dependsOn` reaches, while on a solution filter the
+root lists a single package, so any one exclusion cut 29 components to 1. The script therefore
+removes the excluded components (and their references) from the JSON itself, sets the root's
+`dependsOn` to every component nothing else depends on, and then fails unless the right
+architecture's runtime is present and nothing excluded or foreign is. All four SBOMs pass
+`cyclonedx-cli validate` for 1.6 (which does reject a `null` `dependsOn`, an earlier bug here).
+
+**Known gap.** `Archiver.ShellExtension.dll` is C++ with no package dependencies; the MSVC
+runtime it links is not listed as a component.

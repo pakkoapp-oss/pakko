@@ -9,6 +9,10 @@ Get-FileHash .\pakko-win-x64.zip -Algorithm SHA256
 
 Compare the printed hash against the matching line in `SHA256SUMS`.
 
+Each zip and MSIX has a CycloneDX SBOM next to it (`pakko-win-<arch>.cdx.json`,
+`pakko-msix-<arch>.cdx.json`) listing the components it ships, attested by this repository's CI:
+`gh attestation verify pakko-win-x64.zip -R pakkoapp-oss/pakko --predicate-type https://cyclonedx.org/bom`.
+
 `pakko.exe` runs standalone — no installation, no GUI/MSIX required. See `docs/CLI.md` for the full
 command reference.
 

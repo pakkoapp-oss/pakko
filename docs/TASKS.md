@@ -2218,7 +2218,9 @@ PowerShell does natively.
 
 ### T-F365 — An SBOM for the MSIX and the CLI zips, attested (P2)
 
-- [ ] **Status:** open. CycloneDX (or SPDX) per artifact in `build.yml`, published with the
+- [~] **Status:** implemented 2026-10-09, waiting for CI (`docs/DECISIONS.md`'s T-F365 entry:
+  CycloneDX 1.6 from a read-only `sbom` job, `actions/attest` since `attest-sbom` is deprecated).
+  Planned as: CycloneDX (or SPDX) per artifact in `build.yml`, published with the
   release and attested with `actions/attest-sbom` next to the existing SLSA provenance (T-F125).
   The audience (government, defence) asks for the component list, not only provenance. Update
   `SECURITY.md`'s supply-chain section only with permission.
