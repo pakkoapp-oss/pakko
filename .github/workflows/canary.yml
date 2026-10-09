@@ -62,7 +62,8 @@ jobs:
       # T-F364: global.json pins the exact SDK (rollForward: disable); the canary floats it again.
       - name: Float the SDK
         shell: pwsh
-        run: Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
+        run: |
+          Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
 
       - uses: actions/setup-dotnet@v6
         continue-on-error: true
@@ -195,7 +196,8 @@ jobs:
       # T-F364: global.json pins the exact SDK (rollForward: disable); the canary floats it again.
       - name: Float the SDK
         shell: pwsh
-        run: Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
+        run: |
+          Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
 
       - uses: actions/setup-dotnet@v6
         continue-on-error: true
@@ -242,7 +244,8 @@ jobs:
       # T-F364: global.json pins the exact SDK (rollForward: disable); the canary floats it again.
       - name: Float the SDK
         shell: pwsh
-        run: Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
+        run: |
+          Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
 
       - uses: actions/setup-dotnet@v6
         continue-on-error: true
@@ -385,7 +388,8 @@ jobs:
       # T-F364: global.json pins the exact SDK (rollForward: disable); the canary floats it again.
       - name: Float the SDK
         shell: pwsh
-        run: Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
+        run: |
+          Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
 
       - uses: actions/setup-dotnet@v6
         with:
