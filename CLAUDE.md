@@ -15,9 +15,9 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 ## Current State
 
 v1.1 through v1.4 (shell extension, tar.exe integration, Group Policy) and the v1.5-v1.7 waves
-are complete. **v1.7.1** tagged 2026-10-06 on f04dade (what shipped: `CHANGELOG.md`). The Store
-serves v1.6.0 as 1.6.0.0 (x64) and 1.6.1.0 (ARM64); the combined bundle 1.7.1.0 was submitted
-2026-10-06, certification pending (`docs/DECISIONS.md`). Store listing:
+are complete. **v1.7.2** tagged 2026-10-09 (what shipped: `CHANGELOG.md`). The Store serves the
+combined bundle 1.7.1.0 (live by 2026-10-09); 1.7.2.0, the first Native AOT build, goes next
+(`docs/DECISIONS.md`). Store listing:
 https://apps.microsoft.com/detail/9p5mw010d8pr.
 
 Per-task detail lives in `docs/TASKS_DONE.md` and `docs/DECISIONS.md`, never here. The long
