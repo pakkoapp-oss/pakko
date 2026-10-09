@@ -35,7 +35,7 @@ public sealed class BuildReproducibilityTests
     [Fact]
     public void BuildProps_LockRestoreAndEnforceItInCiOnly()
     {
-        XDocument props = XDocument.Load(Path.Combine(RepoRoot, "Directory.Build.props"));
+        var props = XDocument.Load(Path.Combine(RepoRoot, "Directory.Build.props"));
 
         props.Descendants().Where(e => e.Name.LocalName == "RestorePackagesWithLockFile")
             .Select(e => e.Value.Trim()).Should().Equal("true");
@@ -51,7 +51,7 @@ public sealed class BuildReproducibilityTests
         if (Environment.GetEnvironmentVariable("PAKKO_FLOATING_TOOLCHAIN") == "1")
             return;
 
-        using JsonDocument json = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoRoot, "global.json")));
+        using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoRoot, "global.json")));
         JsonElement sdk = json.RootElement.GetProperty("sdk");
 
         sdk.GetProperty("rollForward").GetString().Should().Be("disable");
