@@ -1,7 +1,7 @@
 # Pakko — Developer Deployment Scripts
 
 These scripts handle local MSIX signing and sideloading during development.
-They are not part of the build pipeline — run them manually from a PowerShell terminal.
+They are not part of the build pipeline — run them manually from a PowerShell 7 (`pwsh`) terminal.
 
 ---
 
@@ -9,6 +9,10 @@ They are not part of the build pipeline — run them manually from a PowerShell 
 
 - Windows 10/11 with Developer Mode enabled, **or** sideloading allowed via Group Policy
 - .NET 10 SDK
+- PowerShell 7 (`pwsh`): the developer scripts have `#Requires -Version 7.0`, and the Release
+  post-build deploy in Visual Studio runs `pwsh.exe` (T-F371). The two end-user scripts in
+  "Permission repair for archives opened by older Pakko versions" below stay on
+  Windows PowerShell 5.1.
 - Visual Studio 2026 with Desktop C++ and the MSVC v143 x64/ARM64 build tools (the scripts find
   `MSBuild.exe` via `vswhere -latest`; it builds only the C++ shell extension)
 
@@ -411,7 +415,8 @@ not JSON exits 1 and does not block. Tests: `AgentBashHookTests`.
 
 Pakko versions before fix phase 4 (2026-09-25) changed the permissions of tar-family archives
 (.tar, .gz, .7z, .rar, ...) they opened: an entry for the sandbox was added, and the entries the
-file inherited from its folder were replaced. Two scripts, for users who ask:
+file inherited from its folder were replaced. Two scripts, for users who ask (Windows PowerShell
+5.1 is enough):
 
 ```powershell
 .\scripts\Find-PakkoSandboxAce.ps1                    # read-only: lists affected files

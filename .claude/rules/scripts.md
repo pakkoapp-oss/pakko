@@ -7,19 +7,19 @@ paths:
 
 Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths above is read or edited.
 
-- **Testing `scripts/*.ps1` fixes:** these scripts require Windows PowerShell 5.1
-  (`#Requires -Version 5.1`). The PowerShell tool runs pwsh 7+, which defaults to UTF-8 and
-  will NOT reproduce non-BOM-file ANSI-codepage bugs (see T-F84). To actually verify a fix,
-  invoke `powershell.exe` explicitly rather than relying on the tool's default interpreter.
+- **`scripts/*.ps1` run on pwsh 7** (`#Requires -Version 7.0`, T-F371; `DevOpsHygieneTests`
+  checks every file): test them with the PowerShell tool as is; Appx and PKI load natively there.
+  Exception: `Find-`/`Repair-PakkoSandboxAce.ps1` are end-user remediation (T-F233, `SECURITY.md`)
+  and stay on 5.1, which a stock Windows has; verify a change to them under `powershell.exe`.
 - **Running `Deploy.ps1`/any `.ps1` via the Bash tool's `powershell.exe` fails outright** —
   `cannot be loaded because running scripts is disabled on this system` (default Restricted
   execution policy for that invocation path). Use the PowerShell tool instead (its pwsh 7 session
   already runs unrestricted) — don't try `-ExecutionPolicy Bypass` workarounds from Bash.
 - **Writing a new throwaway script with non-ASCII content (translations, Cyrillic, etc.):**
-  the opposite applies — run it via the PowerShell tool's default pwsh 7, NOT `powershell.exe`.
+  run it via the PowerShell tool's default pwsh 7, NOT `powershell.exe`.
   `powershell.exe` (5.1) decodes a UTF-8-no-BOM `.ps1` via the system ANSI codepage, corrupting
   every non-ASCII character before the script even runs (confirmed T-F105, a 37-locale insert
-  script). Only reach for explicit `powershell.exe` when deliberately reproducing a codepage bug.
+  script).
 - **`DeployMsix`'s post-build `Add-AppxPackage` also actively fails a Release `dotnet
   publish`/`build` outright (not just silently) on any machine without the signing cert in
   `LocalMachine\TrustedPeople`** — e.g. a fresh CI runner (`0x800B0109`, "root certificate ...

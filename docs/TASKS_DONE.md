@@ -12270,3 +12270,39 @@ robustness to future change"* — today that rule has no analyzer feeding it in 
   blocks committing `Package.appxmanifest` (until T-F368 removes the need), `python` without
   `py -3`, and `dotnet ... /p:` through Bash. Rules written as text drift; a hook does not.
 - **Reported by:** DevOps review, 2026-10-09.
+
+## Graduated 2026-10-09 (T-F371)
+
+From a senior-DevOps review of the repo on 2026-10-09 (user request), with AI-assisted development
+in mind; the user asked for these to be the next wave after T-F363. Checked as the repo owner
+(`pakkoapp-oss`): secret scanning, push protection and Dependabot security updates are already on;
+the `main-protection` ruleset has only `deletion` and `non_fast_forward`. Not planned: rewriting
+`scripts/*.ps1` in C# — they drive Appx, the certificate store, `vswhere` and MSBuild, which
+PowerShell does natively.
+
+### T-F369 — `CLAUDE.md` split by area, with a size gate (P2)
+
+- [x] **Status:** done 2026-10-09 (`docs/DECISIONS.md`'s T-F369 entry; `AgentInstructionsSizeTests`).
+  `CLAUDE.md` 111,880 -> 25,453 bytes; eleven path-scoped `.claude/rules/*.md` (3-11 KB) load only
+  with matching files; 37 done tasks moved to `TASKS_DONE.md` (`TASKS.md` 201 -> 130 KB). **Was:**
+  open. `CLAUDE.md` is 114 KB (~28k tokens loaded every session); `TASKS.md` 190 KB.
+  Keep a core (`CLAUDE.md` ~25 KB: project, hard constraints, build commands, doc map) and move
+  area rules into path-scoped files loaded only when that area is touched (`src/Archiver.App/CLAUDE.md`,
+  `src/Archiver.Core/CLAUDE.md`, `scripts/CLAUDE.md`, ...); history goes to `DECISIONS.md`. A test
+  fails when `CLAUDE.md` passes the gate (the global rule asks for one). Graduate finished tasks out
+  of `TASKS.md` in the same pass.
+- **Reported by:** DevOps review, 2026-10-09.
+
+### T-F371 — Scripts on PowerShell 7, OpenSSF Scorecard, visible CI retries (P3)
+
+- [x] **Status:** done 2026-10-09 (`docs/DECISIONS.md`'s T-F371 entry; `DevOpsHygieneTests`).
+  Eight developer scripts `#Requires -Version 7.0`, the Visual Studio Release post-build runs
+  `pwsh.exe`; `Find-`/`Repair-PakkoSandboxAce.ps1` stay on 5.1 (end-user remediation, T-F233). A
+  full `Deploy.ps1` under pwsh 7.6 installed 1.7.1.26 (Appx and PKI load natively). New
+  `scorecard.yml`; seven retry loops write `::warning title=Retried::`. **Was:** open.
+  Move `Deploy.ps1`/`CI-Build-Msix.ps1` and the rest from `#Requires -Version
+  5.1` to pwsh 7 (CI already runs `shell: pwsh`; ends the BOM/ANSI-codepage class, T-F84) after
+  checking the Appx module under pwsh 7 on the dev machine. Add the OpenSSF Scorecard workflow (a
+  public trust signal). Every second attempt of a "2 attempts" CI step writes a warning annotation,
+  so flaky tests show a trend instead of hiding.
+- **Reported by:** DevOps review, 2026-10-09.
