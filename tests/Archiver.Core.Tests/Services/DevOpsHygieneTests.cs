@@ -57,18 +57,24 @@ public sealed partial class DevOpsHygieneTests
         string workflow = WorkflowJobs.Text(RepoRoot, "scorecard.yml");
         string job = WorkflowJobs.Job(RepoRoot, "scorecard.yml", "analysis");
 
-        workflow.Should().Contain("\npermissions: read-all\n");
+        workflow.Should().Contain("\npermissions:\n  contents: read\n");
         workflow.Should().NotContain("\nenv:").And.NotContain("\ndefaults:");
         job.Should().Contain("publish_results: true");
         job.Should().NotContain("run:");
-        string[] uses = [.. Regex.Matches(job, @"uses: (\S+)").Select(m => m.Groups[1].Value)];
+        string[] uses = [.. UsesLine().Matches(job).Select(m => m.Groups[1].Value)];
         uses.Should().HaveCount(4);
         uses.Where(u => !u.StartsWith("actions/", StringComparison.Ordinal))
-            .Should().OnlyContain(u => Regex.IsMatch(u, "@[0-9a-f]{40}$"));
+            .Should().OnlyContain(u => ShaPin().IsMatch(u));
     }
 
     [GeneratedRegex(@"\$attempts = \d+.*?throw ", RegexOptions.Singleline)]
     private static partial Regex RetryLoop();
+
+    [GeneratedRegex(@"uses: (\S+)")]
+    private static partial Regex UsesLine();
+
+    [GeneratedRegex("@[0-9a-f]{40}$")]
+    private static partial Regex ShaPin();
 
     private static string FindRepoRoot()
     {
