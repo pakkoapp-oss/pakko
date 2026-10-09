@@ -31,6 +31,9 @@ public sealed partial class SbomWorkflowTests
         job.Should().NotContain("secrets.");
         job.Should().NotContain("id-token");
         job.Should().NotContain("write");
+        // The NuGet cache key is shared with the signing jobs: a job that saves it could plant files they restore.
+        job.Should().NotContain("cache:");
+        job.Should().Contain("persist-credentials: false");
     }
 
     [Fact]

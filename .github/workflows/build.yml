@@ -218,12 +218,14 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
+      # No NuGet cache here: its key is shared with build-msix/build-cli, and a job that saves it
+      # could leave files in the package folder those jobs then build from.
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-          cache: true
-          cache-dependency-path: "**/packages.lock.json"
 
       - name: Write the SBOMs
         shell: pwsh

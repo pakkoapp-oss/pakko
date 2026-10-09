@@ -11645,6 +11645,11 @@ default 1.7, because more consumers (Dependency-Track, scanners) read 1.6 today.
 and `build-cli` only download the result and run the first-party `actions/attest`. The script
 restores the artifact's projects with `--locked-mode`, so the graph it describes is the one the
 lock files (T-F364) force on the build jobs too, then runs the tool without a second restore.
+It also uses no NuGet cache: `setup-dotnet`'s key is the lock files' hash, shared with the build
+jobs, and any job may save it, so a compromised tool could otherwise leave altered files in the
+package folder that `build-msix` restores and builds with the certificate imported (locked mode
+checks `.nupkg.metadata`, not the extracted files). Its checkout keeps no token
+(`persist-credentials: false`).
 
 **What is listed: what the artifact ships or needs at run time.** Checked against a real CI MSIX
 (run 37882065932): it holds the four AOT exes, `Archiver.ShellExtension.dll`, WebView2's
