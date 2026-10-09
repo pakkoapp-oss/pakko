@@ -12,6 +12,7 @@ public sealed partial class WorkflowLimitsTests
     [Theory]
     [InlineData("build.yml")]
     [InlineData("canary.yml")]
+    [InlineData("scorecard.yml")]
     public void EveryJob_HasItsOwnTimeout(string file)
     {
         List<(string Name, string Body)> jobs = WorkflowJobs.Parse(RepoRoot, file);
