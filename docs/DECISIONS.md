@@ -11794,7 +11794,9 @@ and `Deploy.ps1`), and every rule has one home; the test forbids a nested `CLAUD
   Release post-build in `Archiver.App.csproj` called `powershell.exe`, which would now stop at
   `#Requires`; it calls `pwsh.exe` by name. The absolute-path rule covers `Process.Start` of a
   system executable; pwsh is not one (the Store build lives under a versioned `WindowsApps` path),
-  and this target runs only in a developer's own Visual Studio.
+  and this target runs only in a developer's own Visual Studio. Run once without
+  `PAKKO_DEPLOYING`: a Release `dotnet build` of the App ran it through `cmd`, which found `pwsh.exe`
+  and reinstalled the package.
 - **Not moved:** `Find-`/`Repair-PakkoSandboxAce.ps1`. They are remediation for users hit by
   T-F233, linked from `SECURITY.md` and `CHANGELOG.md`, and a stock Windows has only 5.1; requiring
   pwsh would cut off the people they exist for. The ASCII-only string-literal rule
@@ -11802,7 +11804,10 @@ and `Deploy.ps1`), and every rule has one home; the test forbids a nested `CLAUD
 - **Scorecard:** `ossf/scorecard-action` v2.4.4 with `publish_results`, which rejects `run:` steps,
   top-level `env`/`defaults` and unlisted actions; the job is the upstream four steps, third-party
   actions pinned by commit SHA. Results go to code scanning and scorecard.dev. It publishes from
-  the default branch only, so the first real run is the one after merge.
+  the default branch only, so the first real run is the one after merge. Its job has a 10-minute
+  `timeout-minutes` (T-F366; the verifier in `ossf/scorecard-infra`'s `verify_workflow.go` checks
+  env, defaults, container, services, runner and the step allowlist, not timeouts) and no
+  `concurrency`: it runs only on `main` pushes and a weekly schedule, nothing to supersede.
 - **Retries:** each of the seven "2 attempts" loops writes `::warning title=Retried::<step>` before
   its second attempt; the run summary then shows which step needed it. A retry that passed used to
   leave no trace outside the raw log.
