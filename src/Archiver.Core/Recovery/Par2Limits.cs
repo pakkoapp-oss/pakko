@@ -19,4 +19,9 @@ internal static class Par2Limits
 
     /// <summary>The number of input slices the writer aims for, as par2cmdline does by default.</summary>
     internal const int TargetInputSlices = 2000;
+
+    /// <summary>Largest repair, in matrix entries: missing slices × (slices + missing slices).
+    /// About 128 MiB for each of the two matrices; a default set of 2000 slices stays inside it
+    /// with every slice missing.</summary>
+    internal const long MaxRepairMatrixEntries = 1L << 26;
 }
