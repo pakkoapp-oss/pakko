@@ -24,7 +24,8 @@ function Get-CommandSegment {
     $current = [System.Text.StringBuilder]::new()
     $quote = [char]0
     $heredocEnd = $null
-    $lines = $Text -split "`r?`n"
+    # A trailing backslash continues the command on the next line (CLAUDE.md's dotnet publish block).
+    $lines = ($Text -replace '\\\r?\n', ' ') -split "`r?`n"
     foreach ($line in $lines) {
         if ($null -ne $heredocEnd) {
             if ($line.Trim() -eq $heredocEnd) { $heredocEnd = $null }
