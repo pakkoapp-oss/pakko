@@ -30,3 +30,9 @@ will not sideload at all unless the signing certificate is explicitly trusted on
 machine first (see `scripts/README.md`). It exists for testing a specific pre-release build, or
 for environments that can't use the Store. Public code-signing for this direct-download path is
 still being worked (see `docs/TASKS.md`'s T-F10).
+
+The package needs the Windows App SDK 2.5 runtime (framework package
+`Microsoft.WindowsAppRuntime.2`, 2.5.1 or later). A Store install brings it along; if a sideloaded
+install reports a missing dependency, install that runtime from
+https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads first. Since v1.7.2 this
+replaces the 1.8 runtime earlier versions used.

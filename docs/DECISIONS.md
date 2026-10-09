@@ -11836,6 +11836,11 @@ and `Deploy.ps1`), and every rule has one home; the test forbids a nested `CLAUD
   and Explorer's already loaded menu runs the new Shell and operation window. With 1.7.1 running,
   a plain `Add-AppxPackage` fails `0x80073D02` (as for any MSIX); `-ForceApplicationShutdown`, what
   the Store does, closes it and installs. The Store-signed path itself is checked after publication.
+  The machine already had the 2.5.1 framework from dev deploys, so the test did not cover a
+  sideload user who has only 1.8: the release notes template now names the 2.5 runtime and where to
+  get it (the live v1.7.2 notes were edited to match). The operation window (changed by T-F363 after
+  the AOT smoke) was rechecked on the release build: 6000 files with Cancel, and the Win32 fallback
+  after killing the window.
 - **winget:** the 1.6.0 new-package PR (microsoft/winget-pkgs#446296) had waited since 2026-10-03
   for a moderator; it is closed in favour of #449503 (1.7.2), validated and installed locally first.
   Uninstalling still leaves the `PATH` entry behind (T-F361).
