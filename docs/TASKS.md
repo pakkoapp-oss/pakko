@@ -1593,3 +1593,16 @@ re-measured with T-F346's script before and after.
   work and leaves no stale `PATH` entry after uninstall. Change `New-WingetManifest.ps1`, check with
   `winget install --manifest` (admin, `LocalManifestFiles`), update `docs/CLI.md`.
 - **Reported by:** T-F355, 2026-10-08.
+
+## After v1.7.2
+
+### T-F372 — The unsandboxed curl of the socket sandbox test times out on CI (P3)
+
+- [ ] **Status:** open. `TarSandboxedServiceSandboxBehaviorTests.RunAsync_SocketConnectAttempt_FailsInsideAppContainerButSucceedsUnsandboxed`
+  failed twice on 2026-10-09 within an hour (tag run 37917269113, PR #31's run 37921909953) with
+  `unsandboxedExitCode` 28: curl's own `-m` timeout against the test's loopback listener, which
+  answers every connection with a 200. Both passed on a rerun of the same commit; no failure in the
+  ~20 runs before. Find what the listener or the runner does under load (accept loop, backlog,
+  Defender's network inspection), then fix the test, not the retry count. The two-attempt CI loop
+  does not cover it: `dotnet test` in the `test` job runs once.
+- **Reported by:** v1.7.2 release, 2026-10-09.
