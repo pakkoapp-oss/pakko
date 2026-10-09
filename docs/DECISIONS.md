@@ -11699,3 +11699,20 @@ the maximum execution time" counts the day as failed, anything else stays a huma
 paths ran on the probe branch with the exact script (timeout counted, a `gh run cancel` not).
 `canary-fuzz` sits outside canary-status: its timeout shows as a cancelled run, which the release
 checklist's "`canary-fuzz` is `success`" check still catches.
+
+## T-F367 — `main` through pull requests, `v*` tags fixed (2026-10-09)
+
+**Decision.** The `main-protection` ruleset (deletion, non-fast-forward) gains a `pull_request` rule
+(0 approvals, rebase merge only, keeping history linear) and a required `test` status check pinned to
+the GitHub Actions app (integration 15368, read from a real check run), so a status named `test`
+from anything else does not count. A new `release-tags` ruleset forbids deleting, moving or
+force-updating `refs/tags/v*`, with no bypass; creating a tag stays open. The repository allows
+auto-merge and deletes a merged branch.
+
+**Why pull requests, not "admin bypass, no PR" as first written.** The agent's `git push` runs as
+`user137` (gh is git's credential helper), a write collaborator; on a personal repo a collaborator
+can never be admin. A required check rejects every direct push whose commit has not passed checks on
+another ref, so the planned shape would either block the agent outright or, pushed as the owner with
+bypass, gate nothing. The user chose a pull request per batch: `pull_request` already runs `test`,
+and the signing, SBOM and Pages jobs stay gated to `push`, so `build.yml` did not change. The admin
+role may bypass, but only through a pull request (`bypass_mode: pull_request`).

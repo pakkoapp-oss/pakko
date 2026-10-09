@@ -2241,7 +2241,9 @@ PowerShell does natively.
 
 ### T-F367 — Rulesets: required `test` on `main`, protected `v*` tags (P2)
 
-- [ ] **Status:** open. The agent pushes straight to `main`; nothing stops a push with red code or a
+- [~] **Status:** rulesets applied 2026-10-09 (`docs/DECISIONS.md`'s T-F367 entry); `[x]` once the
+  first PR merges through the `test` check. Planned as: the agent
+  pushes straight to `main`; nothing stops a push with red code or a
   stray release tag. Add the `test` job as a required status check (admin bypass, no PR needed for a
   solo repo) and a tag ruleset for `v*` (creation and deletion by the owner only). Needs the
   `pakkoapp-oss` account (`gh auth switch`, CLAUDE.md).

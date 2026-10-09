@@ -648,10 +648,11 @@ files.
   being caught — see the "Correction — SurrogateServer" entry in `DECISIONS.md`.)
   `gh` CLI **is** installed and authenticated in this environment (confirmed T-F122, 2026-07-19 —
   used extensively for `gh run`/`gh release`/`gh secret`).
-  **It is authenticated as the `pakkoapp-oss` GitHub account itself** (`gh auth status`) — real
-  push/release/tag/API write access to the live repo, not a read-only token. `pakkoapp-oss` is a
-  personal **User** account, not an Organization — collaborators only get push access, never
-  Admin/Maintain/Triage (those roles only exist on org-owned repos).
+  **`git push` goes as the active `gh` account (`gh auth git-credential`), normally `user137`, a
+  write collaborator** — `pakkoapp-oss` is a personal **User** account, so a collaborator is never
+  admin. **`main` takes pull requests only (T-F367 ruleset):** push a branch, `gh pr create`,
+  `gh pr merge --auto --rebase`; the required `test` check gates the merge. `v*` tags cannot be
+  moved or deleted by anyone; the admin may bypass `main`'s rules only through a PR.
   **This machine can have a second `gh`-logged-in account (e.g. `user137`) active instead of
   `pakkoapp-oss`** — check `gh auth status`'s `Active account: true` line before any repo-admin
   call (topics, settings, branch protection, etc.). The wrong active account fails such calls
