@@ -66,6 +66,12 @@
     <Content Include="Assets\Square44x44Logo.ico" />
   </ItemGroup>
 
+  <!-- T-F368: Deploy.ps1 packages a generated copy carrying the dev revision; the MSIX targets add
+       Package.appxmanifest themselves only while @(AppxManifest) is empty. -->
+  <ItemGroup Condition="'$(PakkoAppxManifest)' != ''">
+    <AppxManifest Include="$(PakkoAppxManifest)" />
+  </ItemGroup>
+
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>

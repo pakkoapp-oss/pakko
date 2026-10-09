@@ -53,7 +53,10 @@ This will:
    `PATH`, which ILCompiler uses to find them
 2. Build `Archiver.ShellExtension.dll` (`MSBuild.exe` directly on the `.vcxproj`, with
    `/p:SolutionDir` passed explicitly — see `DECISIONS.md` for why)
-3. Run `dotnet publish` on `Archiver.App.csproj` with `GenerateAppxPackageOnBuild=true` and
+3. Write `src/Archiver.App/obj/PakkoDev/Package.appxmanifest`, a copy of the tracked manifest whose
+   revision is one past the installed dev package (`X.Y.Z.0` with `-SkipVersionBump`), and pass it as
+   `/p:PakkoAppxManifest` (T-F368: the tracked file stays at `X.Y.Z.0`, the Store rule)
+4. Run `dotnet publish` on `Archiver.App.csproj` with `GenerateAppxPackageOnBuild=true` and
    `AppxPackageSigningEnabled=true` + `PackageCertificateThumbprint=<thumbprint>` — packaging
    *and* signing happen in this one step. `Content Include` items in `Archiver.App.csproj`
    (conditioned on `GenerateAppxPackageOnBuild=true`) declare the three satellite exes and
@@ -62,10 +65,9 @@ This will:
    automatically — there is no separate `Archiver.Package.wapproj` and no manual `SignTool.exe`
    call (a manual `SignTool` call on an MSIX produces `ERROR_BAD_FORMAT`; see `DECISIONS.md`
    "MSIX Signing")
-4. Uninstall any existing Pakko package
-5. Install the new `.msix` from `src/Archiver.App/AppPackages/`
-6. Print the installed version, then bump `Package.appxmanifest`'s version (unless
-   `-SkipVersionBump`)
+5. Uninstall any existing Pakko package
+6. Install the new `.msix` from `src/Archiver.App/AppPackages/`
+7. Print the installed version
 
 **`-Architecture`** — `"x64"` (default) or `"arm64"`. Derives the MSBuild Platform and runtime identifier automatically.
 
@@ -386,6 +388,14 @@ compare a run before a change with a run after it on the same machine. It opens 
 windows on the desktop while it runs.
 
 ---
+
+## Agent hook (T-F370)
+
+`.claude/settings.json` (tracked) runs `hooks/Test-AgentBashCommand.ps1` before every Bash-tool
+call Claude Code makes in this repo. It blocks bare `python`/`python3` (use `py -3 script.py`) and
+`dotnet` with a `/p:` switch (Git Bash rewrites `/p:` into a path; use the PowerShell tool), at
+command position only, so quoted text and heredoc bodies pass. Exit 2 blocks; a payload that is
+not JSON exits 1 and does not block. Tests: `AgentBashHookTests`.
 
 ## Notes
 

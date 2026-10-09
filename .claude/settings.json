@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -NonInteractive -File \"$CLAUDE_PROJECT_DIR/scripts/hooks/Test-AgentBashCommand.ps1\"",
+            "timeout": 15,
+            "statusMessage": "Checking the command against the repo rules"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -33,6 +33,17 @@ public sealed class PackagingManifestTests
             .Should().ContainSingle("no other application may claim an alias");
     }
 
+    // T-F368: the Store rejects a nonzero revision; Deploy.ps1 puts the dev revision in a generated
+    // copy under obj\, never in the tracked file.
+    [Fact]
+    public void Manifest_KeepsTheRevisionAtZero()
+    {
+        var manifest = XDocument.Load(Path.Combine(RepoRoot, "src", "Archiver.App", "Package.appxmanifest"));
+        string version = (string)manifest.Descendants().Single(e => e.Name.LocalName == "Identity").Attribute("Version")!;
+
+        Version.Parse(version).Revision.Should().Be(0);
+    }
+
     [Fact]
     public void AppProject_PackagesPakkoAsItsExeAlone()
     {

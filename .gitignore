@@ -1,5 +1,6 @@
-# Claude Code
-.claude/
+# Claude Code (T-F370: the project settings with the agent hook are tracked)
+.claude/*
+!.claude/settings.json
 .claude.local.md
 
 # .NET

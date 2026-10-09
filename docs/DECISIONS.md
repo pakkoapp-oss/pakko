@@ -11725,3 +11725,33 @@ a Linux restore adds `linux-x64` to the AOT exes' runtime identifiers (the ILCom
 package), which no committed lock file holds. Locked mode now also requires
 `'$(OS)' == 'Windows_NT'`. Every shipped artifact is built on Windows, so the lock files still
 gate everything that ships; the Linux restores (dependency submission, the docs job) run unlocked.
+
+## T-F368 — the dev revision in a generated manifest, the tracked one at `.0` (2026-10-09)
+
+`Deploy.ps1` no longer writes `Package.appxmanifest`. It writes a copy to
+`src/Archiver.App/obj/PakkoDev/` with the revision one past the installed dev package (found by
+`SignatureKind -eq 'Developer'`, so a Store install beside it does not count; 1 when the first
+three segments differ) and passes it as `/p:PakkoAppxManifest`. `Archiver.App.csproj` adds it to
+`@(AppxManifest)`; the MSIX targets add `Package.appxmanifest` themselves only when that item is
+empty, so CI, which never sets the property, packages the tracked file as before. No counter file:
+the installed package is the state. `-SkipVersionBump` keeps its name and now means "package at
+`.0`". The Publisher needs nothing: the packaging step rewrites it from the signing certificate
+whichever manifest it reads. Checked on the built bundle, not the log: the version, 37 languages,
+the three applications and 28 entries match a bundle built from the tracked manifest.
+
+Seen on the way, not caused by this change: twice `_CreatePackageLayout`'s `RemoveDir` hit MSB3231
+after the inner `.msix` was written but before the bundle; T-F96's tolerance then installs that
+flat `.msix` (it still carries every language). A manual delete of the same folder succeeded at
+once, the live-handle shape in CLAUDE.md, and the next publish made the bundle.
+
+## T-F370 — a PreToolUse hook for two Bash-tool rules (2026-10-09)
+
+`.claude/settings.json` is tracked now (`.gitignore`: `.claude/*` with `!.claude/settings.json`,
+since git cannot re-include a file under an ignored directory). It runs
+`scripts/hooks/Test-AgentBashCommand.ps1` before every Bash call; the script lives under `scripts/`
+so the PSScriptAnalyzer job covers it. It blocks bare `python`/`python3` and `dotnet` with `/p:`,
+but only at command position after a quote-aware split on `;`, `&`, `|`, `(` and newlines, with
+heredoc bodies skipped, so a commit message or a `grep` pattern naming them passes. The manifest
+rule from the plan was dropped: T-F368 removed the reason for it. Cost: a pwsh start per Bash call,
+0.5–0.8 s measured. The `if` filter would avoid it, but whether it matches inside a compound
+command was not verified, and a filter that silently misses is worse than a slow check.
