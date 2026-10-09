@@ -480,6 +480,29 @@ Always invoked as `C:\Windows\System32\tar.exe` — never as `tar` via PATH sear
 
 ---
 
+## PAR2 Recovery Data (T-F275, v1.8, in progress)
+
+- **What it protects against:** accidental damage — bad sectors, a truncated copy. It is not
+  authentication: whoever writes a PAR2 set chooses both the recovery data and the MD5s a repair is
+  checked against, so repairing from a set of unknown origin trusts its author. An encrypted ZIP's
+  AES authentication still applies after a repair.
+- **No secrets in it:** recovery data is computed over the finished archive's bytes — an encrypted
+  ZIP's ciphertext, never plaintext — and repair needs no password.
+- **New untrusted input:** a PAR2 file is parsed like an archive: bounded memory and sizes, counts
+  in 64 bits with a 32768-slice cap (the class of par2cmdline's GHSA-3c2j-rccw-j2vj), every packet's
+  MD5 checked.
+- **No paths from the file:** the repaired copy is a new file next to the archive (or in a folder
+  the user picks); a name inside the set is only compared, never used as a path (par2cmdline's
+  GHSA-j5pc-g362-c5xp). The original is never written, and the copy keeps its Zone.Identifier.
+- **MD5** is the format's checksum, not a security primitive (a won't-fix entry in
+  `docs/CONVENTIONS.md` comes with the code).
+- **Test oracles** (par2cmdline, par2cmdline-turbo, MultiPar; GPL-2.0) are downloaded with pinned
+  SHA-256s for tests only, never shipped or committed (`scripts/Get-Par2Oracles.ps1`).
+
+Design and research: `docs/DECISIONS.md` "T-F275 — PAR2 recovery data".
+
+---
+
 ## Vendored 7-Zip: Test-Only, Sandboxed, Never Shipped (T-F114)
 
 `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/{x64,arm64}/7za.exe` is a pinned,

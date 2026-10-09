@@ -463,6 +463,21 @@ the existing `Archive`/`Extract`/`Test` wrappers.
 
 ---
 
+## PAR2 Oracles (T-F275, v1.8)
+
+The recovery-data tests check Pakko's PAR2 files against three independent tools, downloaded by
+`scripts/Get-Par2Oracles.ps1` into `artifacts/par2-oracles/` (git-ignored; each release asset pinned
+to the SHA-256 GitHub publishes). They are GPL-2.0 programs, so they are never committed, and
+par2cmdline's own test archives are not copied either — fixtures are generated from Pakko-owned data.
+
+| Tool | Folder | Use |
+|---|---|---|
+| par2cmdline 1.4.0 | `par2cmdline\par2.exe` | reference packets (same `-s`/`-c` gives the same bytes); `verify --full-hash` (without it 1.4.0 skips the whole-file MD5); repair only for contiguous exponent sets — it takes the first k recovery blocks and fails on a singular choice |
+| par2cmdline-turbo 1.5.0 | `par2cmdline-turbo\par2.exe` | repair of any set (retries another block on a singular matrix) |
+| MultiPar 1.3.3.6 | `multipar\par2j64.exe` | a second, Windows-native implementation; x64 only (emulated on ARM64); exit code is a bit mask (16 = repaired). From Git Bash set `MSYS_NO_PATHCONV=1`, or `/ss4096` becomes a path |
+
+How the tests find them and what CI requires is described with the tests themselves (T-F275 step 1).
+
 ## T-F35 Parallel SingleArchive Pipeline Tests (v1.4+)
 
 Three test classes cover the gated `Archiver.Core/Services/Zip/` subsystem (see `ARCHITECTURE.md`'s

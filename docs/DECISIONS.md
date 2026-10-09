@@ -11849,6 +11849,118 @@ and `Deploy.ps1`), and every rule has one home; the test forbids a nested `CLAUD
   tray Exit checks ran on that same bundle, sideloaded and then removed for all users again so the
   Store can install its own copy; this machine is back on Store 1.7.1.0 to watch the Store update.
 
+---
+
+## T-F275 — PAR2 recovery data: research and design (2026-10-09)
+
+Pre-implementation research for wave 6 (target v1.8.0), done before any code per the "fetch the real
+source" rule. Sources: the PAR 2.0 specification (2003-05-11,
+parchive.github.io/doc/Parity Volume Set Specification v2.0.html), par2cmdline v1.4.0 (2026-09-09,
+the reference implementation), par2cmdline-turbo v1.5.0 (branch `turbo`), MultiPar 1.3.3.6 (par2j),
+ParPar (`gf16/`), the open Parchive bug #67 and par2cmdline's two 2026 advisories.
+
+### What the format requires
+
+- Packets: magic `PAR2\0PKT`, u64 length (header included, multiple of 4), MD5 over the bytes from
+  the Recovery Set ID to the end of the body, Recovery Set ID, 16-byte type, body. Little-endian,
+  4-byte aligned, strings not NUL-terminated. Core packets: Main (slice size, file IDs), FileDesc
+  (file ID, MD5, MD5 of the first 16 KiB, length, name), IFSC (MD5 + CRC32 per slice), RecvSlic
+  (exponent + data), Creator (in every file). Set ID = MD5 of the Main body; File ID =
+  MD5(MD5-16k ‖ length ‖ name). The slice MD5/CRC32 are over the zero-padded slice; the file MD5
+  and MD5-16k over the raw bytes. CRC32 is the ZIP CRC (`Archiver.Core.IO.Crc32`).
+- Reed-Solomon over GF(2^16), generator 0x1100B. Input slice i gets the constant 2^n_i, n_i the
+  i-th n with `n%3 && n%5 && n%17 && n%257` (the spec: "the first constant is the first power of
+  two that has order 65535"; par2cmdline's `SetInput`: `while (gcd(G::Limit, logbase) != 1)`);
+  the first are 2, 4, 16, 128, 256, 2048, 8192, 16384, 4107, 32856, 17132. Recovery word
+  R_e[j] = sum_i c_i^e * D_i[j]. At most 32768 input slices.
+- The spec requires identical packets from identical parameters (except Creator): "client writers
+  can compare the output of their program against the reference implementation by comparing
+  packets byte-for-byte".
+
+### Measured on this machine
+
+- A 150-line Python reference (log/exp tables) produced Main, FileDesc, IFSC and RecvSlic packets
+  byte-for-byte equal to par2cmdline 1.4.0, par2cmdline-turbo 1.5.0 and par2j 1.3.3 (300001 bytes
+  with 4096-byte slices; 22 bytes with 4-byte slices; a Cyrillic name). Pakko's packet tests can
+  therefore be exact comparisons.
+- **The code is not MDS.** par2cmdline's `GaussElim` says "Because the matrices being operated on
+  are Vandermonde matrices they are guaranteed not to be singular" and does no pivoting, and
+  `Par2Repairer::ComputeRSmatrix` takes the first available recovery packets in exponent order.
+  With missing slices [2, 48, 237] (bug #67's case) the rows for exponents {1, 2, 4} have rank 2.
+  A 300-slice file with recovery volumes holding exponents 1, 2, 4 and 5 (four blocks for three
+  missing): par2cmdline 1.4.0 printed `RS computation error.` and exited 6 without repairing;
+  par2cmdline-turbo ("Bad recovery block discarded and retrying RS matrix inversion") and par2j
+  repaired it byte-for-byte. Contiguous exponents a..a+k-1 form a column-scaled Vandermonde matrix
+  over distinct constants and are always solvable (300 random trials up to k = 100, none singular);
+  gaps appear when recovery packets are themselves damaged — the bad-sector case this feature is for.
+- par2cmdline and par2j both store the file name as raw UTF-8 in FileDesc's "ASCII" field and write
+  no UniFileN packet; each verifies the other's set. Real volume names are
+  `name.vol<start>+<count>.par2`, zero-padded (`big.vol000+100.par2`), not the spec's `volXX-YY`.
+- par2cmdline skips a 0-byte file ("Skipping 0 byte file", exit 3) and since 1.4.0 skips the whole-
+  file MD5 on verify unless `--full-hash` is given (ChangeLog #303, #310).
+- 512 MiB at 5 % (2000 slices, 100 recovery blocks), Ryzen 5 PRO 4650U: par2cmdline creates in 9.5 s,
+  par2cmdline-turbo in 1.4 s and verifies in 0.88 s.
+- Exit codes: par2cmdline 0 OK, 1 repair possible, 2 not possible, 3 arguments, 4 insufficient
+  critical data, 5 repair failed, 6 file I/O (also what the RS failure above returned), 7 logic,
+  8 memory. par2j is a bit mask: 16 repaired, 16|4 repair failed, 8|4 more blocks needed,
+  128|4 repair possible, 256 PAR files incomplete.
+
+### Reader hardening (from par2cmdline's advisories)
+
+- GHSA-3c2j-rccw-j2vj (fixed in 1.2.0): per-file block counts derived from the u64 FileDesc length
+  were narrowed to u32 and summed in u32; a crafted set wrapped the total and the repairer wrote
+  past an undersized vector. Pakko computes counts in u64/checked and caps the sum at 32768.
+- GHSA-j5pc-g362-c5xp (fixed in 1.2.0): repair restored packet-provided relative paths under the
+  base path and could follow a dangling symlink outside it. Pakko never derives an output path from
+  a packet: the target is the archive the user chose (or the sibling rule below) and the repaired
+  copy is a new file next to it.
+
+### Design (user decisions 2026-09-28 and 2026-10-09, agent decisions marked)
+
+- Standard PAR2 files next to the archive, computed over the finished archive's bytes (ciphertext
+  for an encrypted ZIP; repair needs no password); every created format; offered on the App's "New
+  archive" card (which Explorer's "Compress..." opens) and `pakko a -rr[N]`, not on the one-click
+  verbs. Redundancy 5/10/20 % in the App, default 5, 1–100 in `pakko`.
+- Verify and repair in `pakko` (`t` reports the set's state, `r` repairs), in Explorer on a `.par2`
+  file and on an archive with its set beside it, and in the App. One Group Policy,
+  `DisableRecoveryData`, turns creation, verification and repair off.
+- Sets read: one protected file, from any tool. A set covering several files is refused as not
+  supported.
+- The repaired file goes next to the archive as `<base>.repaired<extension>`; if that folder is not
+  writable the App asks for another, `pakko r` takes `-o<dir>` and Explorer shows the error with a
+  hint. The original is never written. The Zone.Identifier of the damaged original is copied.
+- (Agent) Names written: `<archive>.par2` (index: Main, FileDesc, IFSC, Creator) and
+  `<archive>.vol<0..>+<R>.par2` holding all R blocks with the critical packets at its start and end.
+- (Agent) Set lookup, one rule for Core and the C++ menu: from a `.par2`, the base is the name
+  without `.par2` and without `.volN+M`/`.volN-M` (par2cmdline's `LoadPacketsFromOtherFiles`), files
+  `<base>.par2` and `<base>.*.par2`; from an archive `X.ext`, bases `X.ext` then `X`. A set is
+  accepted if its FileDesc matches the target by name or by length and MD5-16k (renamed pairs still
+  repair); a different name is a warning.
+- (Agent) Parameters: aim at 2000 slices, more (up to 32768) for large files so the slice size stays
+  inside the reader's limit; slice a multiple of 4, at least 4; R = max(1, ceil(n * p / 100));
+  exponents 0..R-1. A test checks that every set the writer can produce passes the reader's limits.
+- (Agent) Repair picks rows across all available recovery blocks (pivoting, a singular row replaced
+  by the next one), never "the first k".
+- (Agent) A PAR2 failure after a good archive is an error and the source does not count as fully
+  processed, so "delete after" keeps it; a cancel during PAR2 keeps the finished archive and removes
+  the temporary `.par2`. PAR2 paths go into a new `ArchiveResult.RecoveryFiles`, not `CreatedFiles`.
+  The router reports one combined percentage plus a new `ProgressPhase.CreatingRecoveryData`.
+- (Agent) Verification is positional (bad sectors, a truncated tail); the sliding search for shifted
+  slices (par2cmdline `-N`) is not in v1.
+- (Agent) MD5 is the BCL's, behind one internal helper. Whether .NET 10 throws under the Windows
+  FIPS policy (.NET Framework did) is unconfirmed; it is checked on the AOT `pakko` with the policy
+  on before the release, and an own RFC 1321 MD5 replaces that one file if needed.
+- (Agent) Test oracles are downloaded, not committed (all three are GPL-2.0; the repo is
+  Apache-2.0): `scripts/Get-Par2Oracles.ps1` pins each release asset to the SHA-256 GitHub publishes
+  for it. par2cmdline is a valid repair oracle only for contiguous exponent sets. par2cmdline's own
+  test archives are not copied; hostile fixtures are rebuilt in C# with valid packet MD5s and
+  hostile fields, since a fuzzer that breaks the MD5 never reaches the field parsing.
+
+Steps, one PR each: 0 docs and oracles, 1 the Core engine, 2 creation, 3 verification, 4 repair,
+5 the v1.8.0 release (`docs/TASKS.md` T-F275).
+
+---
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry

@@ -1096,11 +1096,18 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 
 ### T-F275 — Recovery data for archives: PAR2 files next to the archive (P3)
 
-- [ ] **Status:** open — scheduled by the user 2026-10-05 as a wave of its own, after the
-  post-v1.7.0 fix waves (T-F333's tail and T-F280, the `pakko` messages, the App window items,
-  the localization and listing tails, the infrastructure items). It starts with the
-  `docs/SPEC.md` scope entry and the two open questions below; then write-side (create +
-  par2cmdline accepts it), then verify, then repair, each shippable alone.
+- [~] **Status:** in progress (wave 6, target v1.8.0). Research and design: `docs/DECISIONS.md`
+  "T-F275 — PAR2 recovery data"; scope: `docs/SPEC.md` "Recovery Data". One PR per step:
+  - [x] 0 — research entry, scope, oracle script `scripts/Get-Par2Oracles.ps1` (2026-10-09).
+  - [ ] 1 — the Core engine (`Archiver.Core/Recovery/`: GF(2^16), packets, a bounded reader,
+    create/verify/repair with pivoting over all recovery blocks), tests only: packets byte-for-byte
+    equal to par2cmdline, hostile packets with valid MD5s, the singular case par2cmdline cannot
+    repair, fuzz, Slow/VeryLarge; the oracles wired into CI.
+  - [ ] 2 — creation: `ArchiveOptions.RecoveryPercent`, the router, `pakko a -rr[N]`, the App's
+    option, `DisableRecoveryData`, messages in 37 languages.
+  - [ ] 3 — verification: `pakko t`, Explorer "Verify with PAR2", the App's state panel.
+  - [ ] 4 — repair: `pakko r [-o<dir>]`, Explorer "Repair with PAR2", the App.
+  - [ ] 5 — the v1.8.0 release with the user's checks (MD5 under the FIPS policy among them).
   Option to write PAR2 (Reed-Solomon) recovery files next to a created archive, with a chosen
   redundancy (e.g. 5%), and to verify/repair an archive from them. Use: archives kept on flash
   drives or optical media or carried offline, where bad sectors or a truncated copy are the
@@ -1126,8 +1133,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   sets archive options: the App's "New archive" card, `pakko a`, and Explorer's "Compress..."
   options dialog; not on Explorer's one-click verbs ("Add to X.zip"/"Add to X.tar"), which have no
   options.
-- **Open questions:** where verify/repair lives (App, `pakko`, an Explorer verb on a `.par2` or
-  the archive); Group Policy control.
+- **Decided (user, 2026-10-09):** verify/repair in `pakko` (`t` + a new `r`), in Explorer on a
+  `.par2` and on an archive with its set beside it, and in the App; redundancy 5/10/20 %, default
+  5; one Group Policy, `DisableRecoveryData`; sets protecting one file are read from any tool; the
+  repaired file goes next to the archive, or to another folder when that one is not writable.
 - **Reported by:** user question, 2026-09-28.
 
 ### T-F290 — tar.exe on Windows ARM64 crashes on a non-ASCII name argument (P3)
