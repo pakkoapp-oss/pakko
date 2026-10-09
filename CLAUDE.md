@@ -894,14 +894,14 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 # Then run: tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.ShellExtension.Tests.exe
 ```
 
-> **Toolchain (T-F270, 2026-09-26):** .NET 10 LTS — `global.json` pins SDK `10.0.100` with
-> `rollForward: latestFeature` (dev machine: 10.0.401); **C# 14** (T-F363) — `LangVersion` set once in
+> **Toolchain (T-F270, 2026-09-26):** .NET 10 LTS — `global.json` pins SDK `10.0.401` exactly
+> (`rollForward: disable`; the lock files carry its ILCompiler version, T-F364; bump: `scripts/README.md`); **C# 14** (T-F363) — `LangVersion` set once in
 > `Directory.Build.props`, never per project (a test reads them). Write C# 13/14: `[ObservableProperty]`
 > on a `partial` property, never a field (MVVMTK0045 is an error); `System.Threading.Lock`, never a
 > bare `object`, to lock on; `field` over a hand-written backing field; IDE0330/0340/0360/0032/0031
 > are errors (`.editorconfig`); **Visual Studio 2026** (18.x) with MSVC **v143** (14.44) x64+ARM64 for the C++
 > projects. Every C# build goes through `dotnet`; `msbuild.exe` (found via `vswhere -latest`) builds
-> only the `.vcxproj` files. CI: `windows-2022` runner + `setup-dotnet 10.0.x`.
+> only the `.vcxproj` files. CI: `setup-dotnet` from `global.json` (the canary floats it).
 > `dotnet test` and `dotnet build src/Archiver.Core` work freely from terminal.
 > `dotnet build src/Archiver.App` also compiles via CLI (confirmed producing ARM64 output) —
 > useful for a quick compile-check on ViewModel/DI changes without opening VS. Full MSIX

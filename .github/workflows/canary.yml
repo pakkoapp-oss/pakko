@@ -42,6 +42,8 @@ on:
   workflow_dispatch:
 
 env:
+  # T-F364: restore unlocked here - the SDK floats on purpose; canary-dotnet reports the lock diff.
+  PAKKO_FLOATING_TOOLCHAIN: "1"
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
@@ -56,6 +58,11 @@ jobs:
       - uses: actions/checkout@v7
         continue-on-error: true
         id: checkout
+
+      # T-F364: global.json pins the exact SDK (rollForward: disable); the canary floats it again.
+      - name: Float the SDK
+        shell: pwsh
+        run: Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
 
       - uses: actions/setup-dotnet@v6
         continue-on-error: true
@@ -99,12 +106,22 @@ jobs:
           }
           throw "Subprocess tests against the AOT pakko.exe failed after $attempts attempt(s)."
 
+      # T-F364: a new SDK patch changes the ILCompiler/ILLink versions in the lock files. The release
+      # ships the runtime of the pinned SDK, so a diff here means: bump global.json, regenerate.
+      - name: Lock files match the floating SDK
+        id: lock_drift
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          git diff --exit-code --stat -- '*packages.lock.json'
+          if ($LASTEXITCODE -ne 0) { throw "A newer SDK changes the lock files: bump global.json's version and run dotnet restore (scripts/README.md)." }
+
       - name: Record result
         id: record
         if: always()
         shell: pwsh
         run: |
-          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_dotnet.outcome }}', '${{ steps.build_test.outcome }}', '${{ steps.aot_cli.outcome }}')
+          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_dotnet.outcome }}', '${{ steps.build_test.outcome }}', '${{ steps.aot_cli.outcome }}', '${{ steps.lock_drift.outcome }}')
           $failed = ($outcomes -contains 'failure') -or ($outcomes -contains 'cancelled')
           "failed=$($failed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
@@ -175,6 +192,11 @@ jobs:
         continue-on-error: true
         id: checkout
 
+      # T-F364: global.json pins the exact SDK (rollForward: disable); the canary floats it again.
+      - name: Float the SDK
+        shell: pwsh
+        run: Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
+
       - uses: actions/setup-dotnet@v6
         continue-on-error: true
         id: setup_dotnet
@@ -216,6 +238,11 @@ jobs:
       - uses: actions/checkout@v7
         continue-on-error: true
         id: checkout
+
+      # T-F364: global.json pins the exact SDK (rollForward: disable); the canary floats it again.
+      - name: Float the SDK
+        shell: pwsh
+        run: Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
 
       - uses: actions/setup-dotnet@v6
         continue-on-error: true
@@ -354,6 +381,11 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v7
+
+      # T-F364: global.json pins the exact SDK (rollForward: disable); the canary floats it again.
+      - name: Float the SDK
+        shell: pwsh
+        run: Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
 
       - uses: actions/setup-dotnet@v6
         with:

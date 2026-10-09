@@ -185,11 +185,29 @@ change, nothing else in the workflow.
 
 ---
 
+## Pinned SDK and lock files (T-F364)
+
+`global.json` pins the exact SDK (`rollForward: disable`) and every project has a committed
+`packages.lock.json`; CI restores in locked mode (`CI=true`), so a changed package graph fails
+there instead of building. Native AOT puts the SDK's own ILCompiler/ILLink version into the locks,
+which is why the SDK is pinned as well (`docs/DECISIONS.md`, T-F364).
+
+- **Changing a package:** edit the `.csproj`, run `dotnet restore`, commit the changed
+  `packages.lock.json` files with it.
+- **A new SDK patch** (the canary's `canary-dotnet` fails with "A newer SDK changes the lock
+  files"): install that SDK, set `global.json`'s `version` to it, run
+  `dotnet restore windows-archiver-wrapper.sln --force-evaluate`, run the tests, commit
+  `global.json` and the locks together.
+- **A Visual Studio update removed the pinned SDK** (every `dotnet` command says the SDK was not
+  found): install exactly that version from the .NET download page, or do the bump above.
+
+---
+
 ## Canary build (T-F187)
 
 A separate workflow, `.github/workflows/canary.yml`, runs daily (`cron: "17 6 * * *"`) plus
 `workflow_dispatch` on demand. Unlike `build.yml` above, it runs on a deliberately **floating**
-toolchain (`windows-latest`, floating `dotnet-version: 8.0.x`) instead of the pinned
+toolchain (`windows-latest`, a floating .NET 10 SDK, T-F364) instead of the pinned
 `windows-2022`/MSVC `v143` combination `build-msix` relies on for stability. The goal is to catch
 SDK/NuGet/MSVC toolset drift on the day it actually happens, rather than waiting for someone to
 eventually bump `build.yml`'s pin and discover the break then (the exact class of surprise T-F122

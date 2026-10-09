@@ -87,7 +87,10 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          # T-F364: the exact SDK from global.json - the lock files carry its ILCompiler version.
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
 
       # ── SonarCloud (T-F135) ──────────────────────────────────────────────────────────────────
       # Only runs with a real SONAR_TOKEN available: pushes to main/tags, and PRs from this same
@@ -208,6 +211,10 @@ jobs:
     needs: [test, lint-ps1]
     if: github.event_name == 'push'
     runs-on: windows-2022
+    # T-F364: deterministic source paths (/_/) in the shipped binaries and PDBs; not in `test`,
+    # whose coverage report needs the real source paths.
+    env:
+      ContinuousIntegrationBuild: true
     strategy:
       fail-fast: false
       matrix:
@@ -224,7 +231,10 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          # T-F364: the exact SDK from global.json - the lock files carry its ILCompiler version.
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
@@ -283,6 +293,10 @@ jobs:
     needs: test
     if: github.event_name == 'workflow_dispatch'
     runs-on: windows-2022
+    # T-F364: deterministic source paths (/_/) in the shipped binaries and PDBs; not in `test`,
+    # whose coverage report needs the real source paths.
+    env:
+      ContinuousIntegrationBuild: true
     strategy:
       fail-fast: false
       matrix:
@@ -294,7 +308,10 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          # T-F364: the exact SDK from global.json - the lock files carry its ILCompiler version.
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
 
       - name: Set up MSBuild
         uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3.0.0
@@ -434,6 +451,10 @@ jobs:
     # image tar.exe carries no embedded Authenticode signature, which TarSignatureVerifier requires,
     # so every tar test fails there. The AOT ARM64 link uses the image's latest VS ARM64 tools.
     runs-on: windows-latest
+    # T-F364: deterministic source paths (/_/) in the shipped binaries and PDBs; not in `test`,
+    # whose coverage report needs the real source paths.
+    env:
+      ContinuousIntegrationBuild: true
     # T-F125: see build-msix's identical permissions comment above.
     permissions:
       id-token: write
@@ -444,7 +465,10 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          # T-F364: the exact SDK from global.json - the lock files carry its ILCompiler version.
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
 
       - name: Publish pakko.exe (both architectures)
         shell: pwsh
@@ -586,7 +610,10 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: "10.0.x"
+          # T-F364: the exact SDK from global.json - the lock files carry its ILCompiler version.
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
 
       - uses: actions/configure-pages@v6
 

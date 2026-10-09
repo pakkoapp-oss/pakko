@@ -2206,7 +2206,8 @@ PowerShell does natively.
 
 ### T-F364 — Reproducible restore and build: NuGet lock files, deterministic CI builds (P2)
 
-- [ ] **Status:** open. `RestorePackagesWithLockFile` for every project, `--locked-mode` in CI and
+- [~] **Status:** implemented 2026-10-09, waiting for CI and the canary (`docs/DECISIONS.md`'s
+  T-F364 entry: the SDK is pinned exactly too). Scope as planned: `RestorePackagesWithLockFile` for every project, `--locked-mode` in CI and
   the canary (the canary keeps its floating toolchain, not floating packages); pin the floating
   `FluentAssertions 7.*`; `ContinuousIntegrationBuild=true` in CI. Gains a restore cache keyed on the
   lock files. Dependabot updates lock files itself.

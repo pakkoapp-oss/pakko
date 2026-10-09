@@ -1083,6 +1083,11 @@ Ukrainian UI, CI an English one.
   (Core.Tests, read the repo's files): `LangVersion` 14 only in `Directory.Build.props`, no
   `.csproj` overriding it; no bare `object x = new()` (a lock object) in `src/`. Mutants killed
   (2026-10-09): `LangVersion` added to the CLI project, `FileHashService`'s lock back to `object`.
+- **Lock files (T-F364)**, `BuildReproducibilityTests` (Core.Tests, read the repo's files): no `*`
+  in any `PackageReference` version, a `packages.lock.json` next to every `.csproj` under `src/`,
+  `tests/`, `tools/`, lock restore on and locked mode conditioned on `CI` in
+  `Directory.Build.props`, `global.json` exact with `rollForward: disable`, `build.yml` taking the
+  SDK from `global.json`. All five red before the change (2026-10-09).
 - `CliVersionTextTests.WithPackage_*`: `pakko -v` appends `(package <full name>)` only when packaged.
 - `PAKKO_CLI_EXE` points `CliProcessRunner` at another `pakko.exe`; set it to
   `%LOCALAPPDATA%\Microsoft\WindowsApps\pakko.exe` to run the whole `Subprocess/` layer against the
