@@ -46,40 +46,35 @@ internal static class Par2Repairer
             case Par2VerifyStatus.RepairTooLarge:
                 return new Par2RepairResult(Par2RepairStatus.RepairTooLarge, 0);
         }
-        RecoverySolution solution = verification.Solution!;
-        int[] missing = verification.DamagedSlices;
-        int missingCount = missing.Length;
+        int missingCount = verification.DamagedSlices.Length;
 
         // After the verify pass: the copy, the combination (one pass per missing slice), the check.
         double work = 2.0 * set.FileLength + (double)set.Slices.Length * set.SliceSize * missingCount;
         var tracker = new Par2Progress(f => progress?.Invoke(VerifyShare + (1 - VerifyShare) * f), work);
 
         string temp = ArchiveTempFile.Create(outputPath);
-        var handles = new Dictionary<string, SafeFileHandle>(StringComparer.OrdinalIgnoreCase);
         try
         {
+            bool matches;
+            using (var files = new HandleCache())
             using (SafeFileHandle output = File.OpenHandle(temp, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
             {
-                SafeFileHandle? source = verification.FileMissing ? null : Open(handles, targetPath);
-                long sourceLength = source is null ? 0 : RandomAccess.GetLength(source);
-                Copy(source, output, Math.Min(sourceLength, set.FileLength), tracker, cancellationToken);
+                SafeFileHandle? source = verification.FileMissing ? null : files.Open(targetPath);
+                var io = new RepairFiles(source, source is null ? 0 : RandomAccess.GetLength(source), output, files);
+                Copy(io.Source, output, Math.Min(io.SourceLength, set.FileLength), tracker, cancellationToken);
                 RandomAccess.SetLength(output, set.FileLength);
                 if (missingCount > 0)
-                    Rebuild(set, solution, missing, source, sourceLength, output, handles, tracker, cancellationToken);
+                    Rebuild(set, verification, io, tracker, cancellationToken);
 
                 Par2FileHashes check = Par2FileHasher.Hash(output, set.FileLength, set.SliceSize, b => tracker.Add(b), cancellationToken);
-                bool matches = BinaryPrimitives.ReadUInt128LittleEndian(check.FileMd5) == set.FileMd5
+                matches = BinaryPrimitives.ReadUInt128LittleEndian(check.FileMd5) == set.FileMd5
                     && check.Slices.Zip(set.Slices).All(pair => pair.First == pair.Second);
-                if (!matches)
-                {
-                    output.Dispose();
-                    DeleteQuietly(temp);
-                    return new Par2RepairResult(Par2RepairStatus.VerificationFailed, 0);
-                }
             }
-            foreach (SafeFileHandle handle in handles.Values)
-                handle.Dispose();
-            handles.Clear();
+            if (!matches)
+            {
+                DeleteQuietly(temp);
+                return new Par2RepairResult(Par2RepairStatus.VerificationFailed, 0);
+            }
             File.Move(temp, outputPath, overwrite: false);
             return new Par2RepairResult(Par2RepairStatus.Repaired, missingCount);
         }
@@ -88,46 +83,30 @@ internal static class Par2Repairer
             DeleteQuietly(temp);
             throw;
         }
-        finally
-        {
-            foreach (SafeFileHandle handle in handles.Values)
-                handle.Dispose();
-        }
     }
 
     // Inputs: the intact slices, then the chosen recovery blocks. Missing slice j is
     // Σ_t inverse[j][t] · block t + Σ_i (Σ_t inverse[j][t] · c_i^e_t) · slice i.
-    private static void Rebuild(Par2Set set, RecoverySolution solution, int[] missing, SafeFileHandle? source, long sourceLength,
-        SafeFileHandle output, Dictionary<string, SafeFileHandle> handles, Par2Progress tracker, CancellationToken cancellationToken)
+    private static void Rebuild(Par2Set set, Par2Verification verification, RepairFiles io, Par2Progress tracker, CancellationToken cancellationToken)
     {
+        RecoverySolution solution = verification.Solution!;
+        int[] missing = verification.DamagedSlices;
         int m = missing.Length;
         var missingSet = new HashSet<int>(missing);
         int[] present = [.. Enumerable.Range(0, set.Slices.Length).Where(i => !missingSet.Contains(i))];
         Par2RecoveryBlock[] blocks = [.. solution.ChosenBlocks.Select(b => set.RecoveryBlocks[b])];
-        ushort[] constants = Gf16.InputConstants(set.Slices.Length);
+        ushort[][] presentCoefficients = PresentCoefficients(set, solution, present, blocks, cancellationToken);
 
-        var presentCoefficients = new ushort[m][];
-        for (int j = 0; j < m; j++)
-            presentCoefficients[j] = new ushort[present.Length];
-        var powers = new ushort[present.Length];
-        for (int t = 0; t < m; t++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            for (int i = 0; i < present.Length; i++)
-                powers[i] = Gf16.Pow(constants[present[i]], blocks[t].Exponent);
-            for (int j = 0; j < m; j++)
-                Gf16Region.MulAdd(solution.Inverse[j][t], MemoryMarshal.AsBytes(powers.AsSpan()), MemoryMarshal.AsBytes(presentCoefficients[j].AsSpan()));
-        }
-
-        SafeFileHandle[] blockFiles = [.. blocks.Select(b => Open(handles, b.Path))];
+        SafeFileHandle[] blockFiles = [.. blocks.Select(b => io.Files.Open(b.Path))];
         long[] blockFileLengths = [.. blockFiles.Select(RandomAccess.GetLength)];
-        Par2SliceCombiner.Combine(set.SliceSize, present.Length + m, m,
+        long sourceEnd = Math.Min(io.SourceLength, set.FileLength);
+        Par2SliceCombiner.Combine(new Par2CombineShape(set.SliceSize, present.Length + m, m),
             (j, i) => i < present.Length ? presentCoefficients[j][i] : solution.Inverse[j][i - present.Length],
             (i, at, buffer) =>
             {
                 if (i < present.Length)
                 {
-                    Par2FileIo.ReadPadded(source!, Math.Min(sourceLength, set.FileLength), present[i] * set.SliceSize + at, buffer);
+                    Par2FileIo.ReadPadded(io.Source!, sourceEnd, present[i] * set.SliceSize + at, buffer);
                     return;
                 }
                 int t = i - present.Length;
@@ -138,9 +117,29 @@ internal static class Par2Repairer
                 long offset = missing[j] * set.SliceSize + at;
                 int length = (int)Math.Clamp(set.FileLength - offset, 0, data.Length);
                 if (length > 0)
-                    RandomAccess.Write(output, data[..length], offset);
+                    RandomAccess.Write(io.Output, data[..length], offset);
             },
             bytes => tracker.Add((double)bytes * m), cancellationToken);
+    }
+
+    // presentCoefficients[j][i] = Σ_t inverse[j][t] · c_present[i] ^ e_t, built a row of powers at a time.
+    private static ushort[][] PresentCoefficients(Par2Set set, RecoverySolution solution, int[] present, Par2RecoveryBlock[] blocks, CancellationToken cancellationToken)
+    {
+        int m = blocks.Length;
+        ushort[] constants = Gf16.InputConstants(set.Slices.Length);
+        ushort[][] coefficients = new ushort[m][];
+        for (int j = 0; j < m; j++)
+            coefficients[j] = new ushort[present.Length];
+        ushort[] powers = new ushort[present.Length];
+        for (int t = 0; t < m; t++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            for (int i = 0; i < present.Length; i++)
+                powers[i] = Gf16.Pow(constants[present[i]], blocks[t].Exponent);
+            for (int j = 0; j < m; j++)
+                Gf16Region.MulAdd(solution.Inverse[j][t], MemoryMarshal.AsBytes(powers.AsSpan()), MemoryMarshal.AsBytes(coefficients[j].AsSpan()));
+        }
+        return coefficients;
     }
 
     private static void Copy(SafeFileHandle? source, SafeFileHandle output, long length, Par2Progress tracker, CancellationToken cancellationToken)
@@ -160,13 +159,6 @@ internal static class Par2Repairer
         }
     }
 
-    private static SafeFileHandle Open(Dictionary<string, SafeFileHandle> handles, string path)
-    {
-        if (!handles.TryGetValue(path, out SafeFileHandle? handle))
-            handles[path] = handle = File.OpenHandle(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-        return handle;
-    }
-
     private static void DeleteQuietly(string path)
     {
         try
@@ -176,6 +168,27 @@ internal static class Par2Repairer
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // best-effort: a temporary file left behind is swept by the next run in this folder
+        }
+    }
+
+    private sealed record RepairFiles(SafeFileHandle? Source, long SourceLength, SafeFileHandle Output, HandleCache Files);
+
+    /// <summary>The input files of a repair, each opened once, read-shared, closed together.</summary>
+    private sealed class HandleCache : IDisposable
+    {
+        private readonly Dictionary<string, SafeFileHandle> _handles = new(StringComparer.OrdinalIgnoreCase);
+
+        internal SafeFileHandle Open(string path)
+        {
+            if (!_handles.TryGetValue(path, out SafeFileHandle? handle))
+                _handles[path] = handle = File.OpenHandle(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return handle;
+        }
+
+        public void Dispose()
+        {
+            foreach (SafeFileHandle handle in _handles.Values)
+                handle.Dispose();
         }
     }
 }

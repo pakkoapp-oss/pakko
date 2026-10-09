@@ -40,19 +40,21 @@ internal static class Gf16
     /// </summary>
     internal static ushort[] InputConstants(int count)
     {
-        var constants = new ushort[count];
+        ushort[] constants = new ushort[count];
         int found = 0;
-        for (int n = 0; found < count; n++)
+        int n = 0;
+        while (found < count)
         {
             if (n % 3 != 0 && n % 5 != 0 && n % 17 != 0 && n % 257 != 0)
                 constants[found++] = Exp[n];
+            n++;
         }
         return constants;
     }
 
     private static ushort[] BuildExp()
     {
-        var exp = new ushort[2 * Order];
+        ushort[] exp = new ushort[2 * Order];
         int x = 1;
         for (int i = 0; i < Order; i++)
         {
@@ -67,7 +69,7 @@ internal static class Gf16
 
     private static ushort[] BuildLog(ushort[] exp)
     {
-        var log = new ushort[Order + 1];
+        ushort[] log = new ushort[Order + 1];
         for (int i = 0; i < Order; i++)
             log[exp[i]] = (ushort)i;
         return log;

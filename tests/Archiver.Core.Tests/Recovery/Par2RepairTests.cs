@@ -20,7 +20,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Verify_IntactFile_IsIntact()
     {
-        var (file, set) = Protect("a.zip", 10000, 5);
+        (string file, Par2Set set) = Protect("a.zip", 10000, 5);
 
         Par2Verification result = Par2Verifier.Verify(file, set, null, CancellationToken.None);
 
@@ -31,7 +31,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_IntactFile_WritesNothing()
     {
-        var (file, set) = Protect("a.zip", 10000, 5);
+        (string file, Par2Set set) = Protect("a.zip", 10000, 5);
         string output = Output();
 
         Par2Repairer.Repair(file, set, output, null, CancellationToken.None).Status.Should().Be(Par2RepairStatus.NothingToRepair);
@@ -45,7 +45,7 @@ public sealed class Par2RepairTests : IDisposable
     [InlineData(9999)]
     public void Repair_OneFlippedByte_RestoresTheOriginal(int offset)
     {
-        var (file, set) = Protect("a.zip", 10000, 5);
+        (string file, Par2Set set) = Protect("a.zip", 10000, 5);
         byte[] original = File.ReadAllBytes(file);
         Damage(file, offset, 1);
         byte[] damaged = File.ReadAllBytes(file);
@@ -61,7 +61,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_AsManyDamagedSlicesAsRecoveryBlocks_RestoresTheOriginal()
     {
-        var (file, set) = Protect("a.zip", 2000, 10, sliceSize: 20);
+        (string file, Par2Set set) = Protect("a.zip", 2000, 10, sliceSize: 20);
         byte[] original = File.ReadAllBytes(file);
         foreach (int slice in new[] { 0, 7, 33, 50, 51, 52, 60, 77, 98, 99 })
             Damage(file, slice * 20 + 3, 1);
@@ -74,7 +74,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_ZeroedWholeSlices_RestoresTheOriginal()
     {
-        var (file, set) = Protect("a.zip", 300001, 10);
+        (string file, Par2Set set) = Protect("a.zip", 300001, 10);
         byte[] original = File.ReadAllBytes(file);
         using (FileStream stream = File.OpenWrite(file))
         {
@@ -90,7 +90,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_TruncatedTail_RestoresTheOriginal()
     {
-        var (file, set) = Protect("a.zip", 10000, 10);
+        (string file, Par2Set set) = Protect("a.zip", 10000, 10);
         byte[] original = File.ReadAllBytes(file);
         using (FileStream stream = File.OpenWrite(file))
             stream.SetLength(9900);
@@ -104,7 +104,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_BytesAppended_CutsThemOff()
     {
-        var (file, set) = Protect("a.zip", 10000, 5);
+        (string file, Par2Set set) = Protect("a.zip", 10000, 5);
         byte[] original = File.ReadAllBytes(file);
         File.AppendAllText(file, "trailing");
 
@@ -117,7 +117,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_FileDeletedWithFullRedundancy_RebuildsItFromTheSetAlone()
     {
-        var (file, set) = Protect("a.zip", 5000, 100, sliceSize: 100);
+        (string file, Par2Set set) = Protect("a.zip", 5000, 100, sliceSize: 100);
         byte[] original = File.ReadAllBytes(file);
         File.Delete(file);
 
@@ -149,7 +149,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_ReportsProgressUpToOne()
     {
-        var (file, set) = Protect("a.zip", 100000, 10);
+        (string file, Par2Set set) = Protect("a.zip", 100000, 10);
         Damage(file, 50000, 100);
         var reports = new List<double>();
 
@@ -166,7 +166,7 @@ public sealed class Par2RepairTests : IDisposable
     {
         const long sliceSize = 20L << 20;
         int length = (int)(2 * sliceSize + 1);
-        var (file, set, _) = ProtectWithVolume("a.zip", length, new Par2Parameters(sliceSize, 3, 2));
+        (string file, Par2Set set, _) = ProtectWithVolume("a.zip", length, new Par2Parameters(sliceSize, 3, 2));
         byte[] original = File.ReadAllBytes(file);
         Damage(file, (int)sliceSize + (17 << 20), 1);
         Damage(file, length - 1, 1);
@@ -181,7 +181,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_OneDamagedSliceMoreThanRecoveryBlocks_FailsCleanly()
     {
-        var (file, set) = Protect("a.zip", 2000, 5, sliceSize: 20);
+        (string file, Par2Set set) = Protect("a.zip", 2000, 5, sliceSize: 20);
         foreach (int slice in new[] { 1, 2, 3, 4, 5, 6 })
             Damage(file, slice * 20, 1);
         string output = Output();
@@ -197,7 +197,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_FirstBlocksDependent_SolvesWithTheSpareBlock()
     {
-        var (file, set, volume) = ProtectWithVolume("a.zip", 960, new Par2Parameters(4, 240, 6));
+        (string file, Par2Set set, string volume) = ProtectWithVolume("a.zip", 960, new Par2Parameters(4, 240, 6));
         byte[] original = File.ReadAllBytes(file);
         DestroyRecoveryBlocks(volume, 0, 3);
         foreach (int slice in new[] { 2, 48, 237 })
@@ -213,7 +213,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_OnlyDependentBlocksLeft_FailsCleanly()
     {
-        var (file, _, volume) = ProtectWithVolume("a.zip", 960, new Par2Parameters(4, 240, 6));
+        (string file, _, string volume) = ProtectWithVolume("a.zip", 960, new Par2Parameters(4, 240, 6));
         DestroyRecoveryBlocks(volume, 0, 3, 5);
         foreach (int slice in new[] { 2, 48, 237 })
             Damage(file, slice * 4, 4);
@@ -229,7 +229,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_IndexDamaged_UsesTheCopiesInTheVolume()
     {
-        var (file, _, volume) = ProtectWithVolume("a.zip", 10000, Par2Creator.ChooseParameters(10000, 10)!.Value);
+        (string file, _, string volume) = ProtectWithVolume("a.zip", 10000, Par2Creator.ChooseParameters(10000, 10)!.Value);
         byte[] original = File.ReadAllBytes(file);
         string index = Par2Creator.IndexPath(file);
         byte[] indexBytes = File.ReadAllBytes(index);
@@ -245,7 +245,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_RecoveryBlockDamaged_UsesTheOthers()
     {
-        var (file, _, volume) = ProtectWithVolume("a.zip", 960, new Par2Parameters(4, 240, 3));
+        (string file, _, string volume) = ProtectWithVolume("a.zip", 960, new Par2Parameters(4, 240, 3));
         byte[] original = File.ReadAllBytes(file);
         DestroyRecoveryBlocks(volume, 1);
         Damage(file, 100, 8);
@@ -259,7 +259,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_IndexAndVolumeCriticalPacketsLost_NoSet()
     {
-        var (file, _, volume) = ProtectWithVolume("a.zip", 960, new Par2Parameters(4, 240, 3));
+        (string file, _, string volume) = ProtectWithVolume("a.zip", 960, new Par2Parameters(4, 240, 3));
         string index = Par2Creator.IndexPath(file);
         File.WriteAllBytes(index, new byte[100]);
         byte[] volumeBytes = File.ReadAllBytes(volume);
@@ -273,7 +273,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_ForgedRecoveryDataWithValidHash_IsCaughtByTheFinalCheck()
     {
-        var (file, _, volume) = ProtectWithVolume("a.zip", 960, new Par2Parameters(4, 240, 3));
+        (string file, _, string volume) = ProtectWithVolume("a.zip", 960, new Par2Parameters(4, 240, 3));
         ForgeRecoveryBlock(volume, 0);
         Damage(file, 0, 4);
         Par2Set set = ReadSet(file, volume);
@@ -288,7 +288,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Repair_OutputExists_ThrowsAndKeepsIt()
     {
-        var (file, set) = Protect("a.zip", 10000, 5);
+        (string file, Par2Set set) = Protect("a.zip", 10000, 5);
         Damage(file, 10, 1);
         string output = Output();
         File.WriteAllText(output, "keep");
@@ -304,7 +304,7 @@ public sealed class Par2RepairTests : IDisposable
     [SupportedOSPlatform("windows")]
     public void Repair_OutputFolderNotWritable_ThrowsAndLeavesTheOriginal()
     {
-        var (file, set) = Protect("a.zip", 10000, 5);
+        (string file, Par2Set set) = Protect("a.zip", 10000, 5);
         Damage(file, 10, 1);
         byte[] damaged = File.ReadAllBytes(file);
         string folder = Directory.CreateDirectory(Path.Combine(_temp.Path, "locked")).FullName;
@@ -323,7 +323,7 @@ public sealed class Par2RepairTests : IDisposable
     [InlineData(0.95)]
     public void Repair_CancelledAtAnyPoint_LeavesNoFiles(double at)
     {
-        var (file, set) = Protect("a.zip", 300001, 10);
+        (string file, Par2Set set) = Protect("a.zip", 300001, 10);
         Damage(file, 1000, 5000);
         string[] before = Directory.GetFiles(_temp.Path);
         using var cts = new CancellationTokenSource();
@@ -387,7 +387,7 @@ public sealed class Par2RepairTests : IDisposable
     [Fact]
     public void Verify_SetOfAnotherFile_IsNotRepairable()
     {
-        var (_, set) = Protect("a.zip", 10000, 5);
+        (_, Par2Set set) = Protect("a.zip", 10000, 5);
         string other = Path.Combine(_temp.Path, "other.zip");
         File.WriteAllBytes(other, new byte[10000]);
 
@@ -414,7 +414,7 @@ public sealed class Par2RepairTests : IDisposable
         Par2Parameters parameters = sliceSize is { } size
             ? new Par2Parameters(size, (int)Par2FileHasher.SliceCount(length, size), (int)Math.Max(1, Par2FileHasher.SliceCount(Par2FileHasher.SliceCount(length, size) * percent, 100)))
             : Par2Creator.ChooseParameters(length, percent)!.Value;
-        var (file, set, _) = ProtectWithVolume(name, length, parameters);
+        (string file, Par2Set set, _) = ProtectWithVolume(name, length, parameters);
         return (file, set);
     }
 
@@ -459,7 +459,7 @@ public sealed class Par2RepairTests : IDisposable
     private static void DestroyRecoveryBlocks(string volume, params uint[] exponents)
     {
         byte[] bytes = File.ReadAllBytes(volume);
-        foreach (var packet in PacketOffsets(volume).Where(p => p.Type == "PAR 2.0\0RecvSlic" && exponents.Contains(p.Exponent)))
+        foreach ((int Offset, string Type, uint Exponent) packet in PacketOffsets(volume).Where(p => p.Type == "PAR 2.0\0RecvSlic" && exponents.Contains(p.Exponent)))
             bytes[packet.Offset + 68] ^= 0xFF;
         File.WriteAllBytes(volume, bytes);
     }
@@ -468,7 +468,7 @@ public sealed class Par2RepairTests : IDisposable
     private static void ForgeRecoveryBlock(string volume, uint exponent)
     {
         byte[] bytes = File.ReadAllBytes(volume);
-        var packet = PacketOffsets(volume).Single(p => p.Type == "PAR 2.0\0RecvSlic" && p.Exponent == exponent);
+        (int Offset, string Type, uint Exponent) packet = PacketOffsets(volume).Single(p => p.Type == "PAR 2.0\0RecvSlic" && p.Exponent == exponent);
         int length = (int)BinaryPrimitives.ReadInt64LittleEndian(bytes.AsSpan(packet.Offset + 8));
         bytes[packet.Offset + 68] ^= 0x01;
         Par2PacketForge.Md5(bytes.AsSpan(packet.Offset + 32, length - 32)).CopyTo(bytes, packet.Offset + 16);

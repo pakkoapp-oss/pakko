@@ -26,7 +26,7 @@ public sealed class Par2SliceCombinerTests
         byte[][] outputs = [.. Enumerable.Range(0, outputCount).Select(_ => new byte[sliceSize])];
         long consumed = 0;
 
-        Par2SliceCombiner.Combine(sliceSize, inputCount, outputCount, (o, i) => coefficients[o, i],
+        Par2SliceCombiner.Combine(new Par2CombineShape(sliceSize, inputCount, outputCount), (o, i) => coefficients[o, i],
             (i, at, buffer) => inputs[i].AsSpan((int)at, buffer.Length).CopyTo(buffer),
             (o, at, data) => data.CopyTo(outputs[o].AsSpan((int)at)),
             bytes => consumed += bytes, CancellationToken.None, maxRangeWidth);

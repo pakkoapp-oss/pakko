@@ -60,7 +60,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_RecoveryBlock_DataOffsetPointsAtTheSliceData()
     {
-        var (_, _, packets) = OneFileSet(8, 16, "a.zip", recovery: 2);
+        (_, _, List<byte[]> packets) = OneFileSet(8, 16, "a.zip", recovery: 2);
         string path = Write(_temp.Path, "a.par2", packets);
 
         Par2RecoveryBlock block = Read(path).Sets.Single().RecoveryBlocks[1];
@@ -75,7 +75,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     public void Read_BlockCountWrapsAThirtyTwoBitCounter_IsRefused()
     {
         // GHSA-3c2j-rccw-j2vj: 4 * 2^32 bytes in 4-byte slices is 2^32 slices, 0 in a u32.
-        var (_, _, packets) = OneFileSet(4, 4UL << 32, "a.zip");
+        (_, _, List<byte[]> packets) = OneFileSet(4, 4UL << 32, "a.zip");
 
         Par2ReadResult result = Read(Write(_temp.Path, "a.par2", packets));
 
@@ -86,7 +86,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_OneSliceMoreThanTheLimit_IsRefused()
     {
-        var (_, _, packets) = OneFileSet(4, 4UL * Par2Limits.MaxInputSlices + 1, "a.zip");
+        (_, _, List<byte[]> packets) = OneFileSet(4, 4UL * Par2Limits.MaxInputSlices + 1, "a.zip");
 
         Read(Write(_temp.Path, "a.par2", packets)).Rejected.Should().ContainSingle().Which.Problem.Should().Be(Par2SetProblem.Malformed);
     }
@@ -94,7 +94,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_ExactlyTheSliceLimit_IsAccepted()
     {
-        var (_, _, packets) = OneFileSet(4, 4UL * Par2Limits.MaxInputSlices, "a.zip");
+        (_, _, List<byte[]> packets) = OneFileSet(4, 4UL * Par2Limits.MaxInputSlices, "a.zip");
 
         Read(Write(_temp.Path, "a.par2", packets)).Sets.Should().ContainSingle().Which.Slices.Should().HaveCount(Par2Limits.MaxInputSlices);
     }
@@ -132,7 +132,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_LengthBeyondTheFile_PacketIsIgnored()
     {
-        var (_, _, packets) = OneFileSet(8, 16, "a.zip");
+        (_, _, List<byte[]> packets) = OneFileSet(8, 16, "a.zip");
         BinaryPrimitives.WriteUInt64LittleEndian(packets[0].AsSpan(8), 1UL << 40);
 
         Read(Write(_temp.Path, "a.par2", packets)).Rejected.Should().ContainSingle().Which.Problem.Should().Be(Par2SetProblem.MissingCriticalPackets);
@@ -144,7 +144,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [InlineData(66UL)]
     public void Read_LengthBelowHeaderOrUnaligned_PacketIsIgnored(ulong length)
     {
-        var (_, _, packets) = OneFileSet(8, 16, "a.zip");
+        (_, _, List<byte[]> packets) = OneFileSet(8, 16, "a.zip");
         BinaryPrimitives.WriteUInt64LittleEndian(packets[0].AsSpan(8), length);
 
         Read(Write(_temp.Path, "a.par2", packets)).Sets.Should().BeEmpty();
@@ -153,7 +153,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_RecoveryBodyNotSliceSized_BlockIsIgnored()
     {
-        var (setId, _, packets) = OneFileSet(8, 16, "a.zip");
+        (byte[] setId, _, List<byte[]> packets) = OneFileSet(8, 16, "a.zip");
         packets.Add(Packet(setId, RecoveryType, RecoveryBody(0, 12)));
         packets.Add(Packet(setId, RecoveryType, RecoveryBody(1, 4)));
 
@@ -163,7 +163,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_IfscWithWrongEntryCount_IsRefused()
     {
-        var (setId, fileId, packets) = OneFileSet(8, 16, "a.zip");
+        (byte[] setId, byte[] fileId, List<byte[]> packets) = OneFileSet(8, 16, "a.zip");
         packets[2] = Packet(setId, IfscType, IfscBody(fileId, 3));
 
         Read(Write(_temp.Path, "a.par2", packets)).Rejected.Should().ContainSingle().Which.Problem.Should().Be(Par2SetProblem.Malformed);
@@ -191,7 +191,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_SetIdNotTheMainBodyHash_MainIsIgnored()
     {
-        var (_, fileId, _) = OneFileSet(8, 16, "a.zip");
+        (_, byte[] fileId, _) = OneFileSet(8, 16, "a.zip");
         byte[] wrongSet = Enumerable.Repeat((byte)7, 16).ToArray();
         string path = Write(_temp.Path, "a.par2",
         [
@@ -209,7 +209,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_FileDescNotMatchingItsFileId_IsIgnored()
     {
-        var (setId, fileId, packets) = OneFileSet(8, 16, "a.zip");
+        (byte[] setId, byte[] fileId, List<byte[]> packets) = OneFileSet(8, 16, "a.zip");
         packets[1] = Packet(setId, FileDescType, FileDescBody(fileId, new byte[16], new byte[16], 16, "b.zip"));
 
         Read(Write(_temp.Path, "a.par2", packets)).Rejected.Should().ContainSingle().Which.Problem.Should().Be(Par2SetProblem.MissingCriticalPackets);
@@ -218,8 +218,8 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_TwoSetsMixed_ReadsEachSeparately()
     {
-        var first = OneFileSet(8, 16, "a.zip", recovery: 1);
-        var second = OneFileSet(12, 24, "a.zip", recovery: 2);
+        (byte[] SetId, byte[] FileId, List<byte[]> Packets) first = OneFileSet(8, 16, "a.zip", recovery: 1);
+        (byte[] SetId, byte[] FileId, List<byte[]> Packets) second = OneFileSet(12, 24, "a.zip", recovery: 2);
 
         Par2ReadResult result = Read(Write(_temp.Path, "a.par2", [.. first.Packets, .. second.Packets]));
 
@@ -229,7 +229,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_ConflictingIfscCopies_IsRefused()
     {
-        var (setId, fileId, packets) = OneFileSet(8, 16, "a.zip");
+        (byte[] setId, byte[] fileId, List<byte[]> packets) = OneFileSet(8, 16, "a.zip");
         byte[] other = IfscBody(fileId, 2);
         other[20] = 1;
         packets.Add(Packet(setId, IfscType, other));
@@ -240,7 +240,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_ConflictingFileDescCopies_IsRefused()
     {
-        var (setId, fileId, packets) = OneFileSet(8, 16, "a.zip");
+        (byte[] setId, byte[] fileId, List<byte[]> packets) = OneFileSet(8, 16, "a.zip");
         byte[] otherMd5 = Enumerable.Repeat((byte)9, 16).ToArray();
         packets.Add(Packet(setId, FileDescType, FileDescBody(fileId, otherMd5, new byte[16], 16, "a.zip")));
 
@@ -250,7 +250,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_ConflictingRecoveryBlocksForOneExponent_UsesNeither()
     {
-        var (setId, _, packets) = OneFileSet(8, 16, "a.zip", recovery: 2);
+        (byte[] setId, _, List<byte[]> packets) = OneFileSet(8, 16, "a.zip", recovery: 2);
         packets.Add(Packet(setId, RecoveryType, RecoveryBody(1, 8, 0xEE)));
 
         Read(Write(_temp.Path, "a.par2", packets)).Sets.Single().RecoveryBlocks.Select(b => b.Exponent).Should().Equal(0u);
@@ -259,7 +259,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_UnknownPacketType_IsSkipped()
     {
-        var (setId, _, packets) = OneFileSet(8, 16, "a.zip", recovery: 1);
+        (byte[] setId, _, List<byte[]> packets) = OneFileSet(8, 16, "a.zip", recovery: 1);
         packets.Insert(1, Packet(setId, "PAR 2.0\0UniFileN"u8.ToArray(), new byte[32]));
 
         Read(Write(_temp.Path, "a.par2", packets)).Sets.Should().ContainSingle();
@@ -268,7 +268,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_TruncatedLastPacket_KeepsTheOthers()
     {
-        var (_, _, packets) = OneFileSet(8, 16, "a.zip", recovery: 2);
+        (_, _, List<byte[]> packets) = OneFileSet(8, 16, "a.zip", recovery: 2);
         byte[] all = packets.SelectMany(p => p).ToArray();
         string path = Path.Combine(_temp.Path, "a.par2");
         File.WriteAllBytes(path, all[..^5]);
@@ -279,7 +279,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_GarbageBetweenPackets_IsSkipped()
     {
-        var (_, _, packets) = OneFileSet(8, 16, "a.zip", recovery: 1);
+        (_, _, List<byte[]> packets) = OneFileSet(8, 16, "a.zip", recovery: 1);
         byte[] garbage = [1, 2, 3, .. Magic, 0xFF, 0xFF, 5];
 
         Read(Write(_temp.Path, "a.par2", [garbage, packets[0], garbage, packets[1], packets[2], [9], packets[3]]))
@@ -289,7 +289,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_MagicInsideRecoveryData_StillReadsTheBlock()
     {
-        var (setId, _, packets) = OneFileSet(16, 32, "a.zip");
+        (byte[] setId, _, List<byte[]> packets) = OneFileSet(16, 32, "a.zip");
         byte[] body = RecoveryBody(0, 16);
         Magic.CopyTo(body, 6);
         packets.Add(Packet(setId, RecoveryType, body));
@@ -300,7 +300,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_PacketSpanningTheReadWindow_IsFound()
     {
-        var (_, _, packets) = OneFileSet(8, 16, "a.zip");
+        (_, _, List<byte[]> packets) = OneFileSet(8, 16, "a.zip");
         byte[] padding = new byte[(1 << 20) - 5];
 
         Read(Write(_temp.Path, "a.par2", [padding, .. packets])).Sets.Should().ContainSingle();
@@ -309,7 +309,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_SmallPacketAboveTheSizeCap_IsNotRead()
     {
-        var (setId, fileId, packets) = OneFileSet(8, 16, "a.zip");
+        (byte[] setId, byte[] fileId, List<byte[]> packets) = OneFileSet(8, 16, "a.zip");
         byte[] huge = new byte[(int)Par2Limits.MaxSmallPacketLength];
         fileId.CopyTo(huge, 0);
         packets[2] = Packet(setId, IfscType, huge);
@@ -355,7 +355,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [InlineData("CON")]
     public void Read_HostileName_IsKeptAsBytesOnly(string name)
     {
-        var (_, _, packets) = OneFileSet(8, 16, name);
+        (_, _, List<byte[]> packets) = OneFileSet(8, 16, name);
 
         Encoding.UTF8.GetString(Read(Write(_temp.Path, "a.par2", packets)).Sets.Single().Name).Should().Be(name);
     }
@@ -389,7 +389,7 @@ public sealed class Par2PacketReaderTests : IDisposable
     [Fact]
     public void Read_RecoveryBlocksWithoutTheirSet_AreRejected()
     {
-        var (_, _, packets) = OneFileSet(8, 16, "a.zip", recovery: 2);
+        (_, _, List<byte[]> packets) = OneFileSet(8, 16, "a.zip", recovery: 2);
 
         Read(Write(_temp.Path, "a.par2", packets.Skip(3))).Sets.Should().BeEmpty();
     }

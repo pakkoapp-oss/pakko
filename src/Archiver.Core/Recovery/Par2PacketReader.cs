@@ -64,66 +64,83 @@ internal static class Par2PacketReader
     private static void Scan(SafeFileHandle file, HashBudget budget, Dictionary<UInt128, SetBuilder> sets,
         List<RecoveryCandidate> candidates, CancellationToken cancellationToken)
     {
-        string path = budget.Path;
-        long fileLength = budget.FileLength;
-        byte[] window = new byte[WindowLength];
-        long windowStart = 0;
-        int windowLength = 0;
+        var magic = new MagicFinder(file, budget.FileLength);
         byte[] header = new byte[Par2Packets.HeaderLength];
         long position = 0;
-        while (fileLength - position >= Par2Packets.HeaderLength)
+        while (magic.Next(position, cancellationToken) is { } offset)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (position < windowStart || position + Par2Packets.Magic.Length > windowStart + windowLength)
-            {
-                windowStart = position;
-                windowLength = Par2FileIo.ReadUpTo(file, window, position);
-                if (windowLength < Par2Packets.HeaderLength)
-                    return;
-            }
-            int found = window.AsSpan((int)(position - windowStart), windowLength - (int)(position - windowStart)).IndexOf(Par2Packets.Magic);
-            if (found < 0)
-            {
-                // The next window overlaps by the magic's length less one, so no split magic is missed.
-                position = windowStart + windowLength - (Par2Packets.Magic.Length - 1);
-                if (windowStart + windowLength >= fileLength)
-                    return;
-                windowLength = 0;
-                continue;
-            }
-            long offset = position + found;
-            position = offset + 1;
             if (Par2FileIo.ReadUpTo(file, header, offset) < header.Length)
                 return;
-
-            ulong declared = BinaryPrimitives.ReadUInt64LittleEndian(header.AsSpan(Par2Packets.LengthOffset));
-            if (declared < Par2Packets.HeaderLength || declared % 4 != 0 || declared > (ulong)(fileLength - offset))
-                continue;
-            long length = (long)declared;
-            UInt128 setId = BinaryPrimitives.ReadUInt128LittleEndian(header.AsSpan(Par2Packets.SetIdOffset));
-            ReadOnlySpan<byte> type = header.AsSpan(Par2Packets.TypeOffset, 16);
-
-            if (type.SequenceEqual(Par2Packets.RecoveryType))
-            {
-                if (length >= RecoveryHeaderLength)
-                    candidates.Add(new RecoveryCandidate(path, offset, length, setId, BinaryPrimitives.ReadUInt128LittleEndian(header.AsSpan(Par2Packets.HashOffset))));
-                continue;
-            }
-            bool critical = type.SequenceEqual(Par2Packets.MainType) || type.SequenceEqual(Par2Packets.FileDescType) || type.SequenceEqual(Par2Packets.IfscType);
-            if (!critical || length > Par2Limits.MaxSmallPacketLength)
-                continue;
-
-            if (!budget.TrySpend(length))
+            position = TakePacket(file, header, offset, budget, sets, candidates);
+            if (position < 0)
                 return;
-            byte[] packet = new byte[length];
-            if (Par2FileIo.ReadUpTo(file, packet, offset) < packet.Length)
-                continue;
-            if (!packet.AsSpan(Par2Packets.HashOffset, Par2Md5.Size).SequenceEqual(Par2Md5.Hash(packet.AsSpan(Par2Packets.SetIdOffset))))
-                continue;
-            if (!sets.TryGetValue(setId, out SetBuilder? builder))
-                sets[setId] = builder = new SetBuilder();
-            if (builder.Add(setId, type, packet.AsSpan(Par2Packets.HeaderLength)))
-                position = offset + length;
+        }
+    }
+
+    // Looks at the packet whose header is at offset: a recovery block becomes a candidate for the
+    // second phase, a critical packet is read and checked now. Returns where the scan goes on —
+    // past an accepted packet, else the next byte — or -1 once the file's hash budget is spent.
+    private static long TakePacket(SafeFileHandle file, byte[] header, long offset, HashBudget budget,
+        Dictionary<UInt128, SetBuilder> sets, List<RecoveryCandidate> candidates)
+    {
+        long next = offset + 1;
+        ulong declared = BinaryPrimitives.ReadUInt64LittleEndian(header.AsSpan(Par2Packets.LengthOffset));
+        if (declared < Par2Packets.HeaderLength || declared % 4 != 0 || declared > (ulong)(budget.FileLength - offset))
+            return next;
+        long length = (long)declared;
+        UInt128 setId = BinaryPrimitives.ReadUInt128LittleEndian(header.AsSpan(Par2Packets.SetIdOffset));
+        ReadOnlySpan<byte> type = header.AsSpan(Par2Packets.TypeOffset, 16);
+
+        if (type.SequenceEqual(Par2Packets.RecoveryType))
+        {
+            if (length >= RecoveryHeaderLength)
+                candidates.Add(new RecoveryCandidate(budget.Path, offset, length, setId, BinaryPrimitives.ReadUInt128LittleEndian(header.AsSpan(Par2Packets.HashOffset))));
+            return next;
+        }
+        bool critical = type.SequenceEqual(Par2Packets.MainType) || type.SequenceEqual(Par2Packets.FileDescType) || type.SequenceEqual(Par2Packets.IfscType);
+        if (!critical || length > Par2Limits.MaxSmallPacketLength)
+            return next;
+        if (!budget.TrySpend(length))
+            return -1;
+
+        byte[] packet = new byte[length];
+        if (Par2FileIo.ReadUpTo(file, packet, offset) < packet.Length
+            || !packet.AsSpan(Par2Packets.HashOffset, Par2Md5.Size).SequenceEqual(Par2Md5.Hash(packet.AsSpan(Par2Packets.SetIdOffset))))
+            return next;
+        if (!sets.TryGetValue(setId, out SetBuilder? builder))
+            sets[setId] = builder = new SetBuilder();
+        return builder.Add(setId, type, packet.AsSpan(Par2Packets.HeaderLength)) ? offset + length : next;
+    }
+
+    /// <summary>Finds the next packet magic at or after a position, through a 1 MiB window.</summary>
+    private sealed class MagicFinder(SafeFileHandle file, long fileLength)
+    {
+        private readonly byte[] _window = new byte[WindowLength];
+        private long _start;
+        private int _length;
+
+        internal long? Next(long position, CancellationToken cancellationToken)
+        {
+            while (fileLength - position >= Par2Packets.HeaderLength)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (position < _start || position + Par2Packets.Magic.Length > _start + _length)
+                {
+                    _start = position;
+                    _length = Par2FileIo.ReadUpTo(file, _window, position);
+                    if (_length < Par2Packets.HeaderLength)
+                        return null;
+                }
+                int found = _window.AsSpan((int)(position - _start), _length - (int)(position - _start)).IndexOf(Par2Packets.Magic);
+                if (found >= 0)
+                    return position + found;
+                if (_start + _length >= fileLength)
+                    return null;
+                // The next window overlaps by the magic's length less one, so no split magic is missed.
+                position = _start + _length - (Par2Packets.Magic.Length - 1);
+                _length = 0;
+            }
+            return null;
         }
     }
 
@@ -212,7 +229,7 @@ internal static class Par2PacketReader
         {
             if (_conflictingExponents.Contains(block.Exponent))
                 return;
-            if (_recovery.TryGetValue(block.Exponent, out var existing))
+            if (_recovery.TryGetValue(block.Exponent, out (Par2RecoveryBlock Block, UInt128 Md5) existing))
             {
                 if (existing.Md5 != md5)
                 {

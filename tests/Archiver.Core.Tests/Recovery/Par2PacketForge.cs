@@ -23,7 +23,7 @@ internal static class Par2PacketForge
 
     public static byte[] Packet(byte[] setId, byte[] type, byte[] body)
     {
-        var packet = new byte[64 + body.Length];
+        byte[] packet = new byte[64 + body.Length];
         Magic.CopyTo(packet, 0);
         BinaryPrimitives.WriteUInt64LittleEndian(packet.AsSpan(8), (ulong)packet.Length);
         setId.CopyTo(packet, 32);
@@ -35,7 +35,7 @@ internal static class Par2PacketForge
 
     public static byte[] MainBody(long sliceSize, params byte[][] fileIds)
     {
-        var body = new byte[12 + 16 * fileIds.Length];
+        byte[] body = new byte[12 + 16 * fileIds.Length];
         BinaryPrimitives.WriteInt64LittleEndian(body, sliceSize);
         BinaryPrimitives.WriteUInt32LittleEndian(body.AsSpan(8), (uint)fileIds.Length);
         for (int i = 0; i < fileIds.Length; i++)
@@ -46,7 +46,7 @@ internal static class Par2PacketForge
     public static byte[] FileId(byte[] md5First16k, ulong length, string name)
     {
         byte[] nameBytes = Encoding.UTF8.GetBytes(name);
-        var input = new byte[24 + nameBytes.Length];
+        byte[] input = new byte[24 + nameBytes.Length];
         md5First16k.CopyTo(input, 0);
         BinaryPrimitives.WriteUInt64LittleEndian(input.AsSpan(16), length);
         nameBytes.CopyTo(input, 24);
@@ -56,7 +56,7 @@ internal static class Par2PacketForge
     public static byte[] FileDescBody(byte[] fileId, byte[] fileMd5, byte[] md5First16k, ulong length, string name)
     {
         byte[] nameBytes = Encoding.UTF8.GetBytes(name);
-        var body = new byte[56 + ((nameBytes.Length + 3) & ~3)];
+        byte[] body = new byte[56 + ((nameBytes.Length + 3) & ~3)];
         fileId.CopyTo(body, 0);
         fileMd5.CopyTo(body, 16);
         md5First16k.CopyTo(body, 32);
@@ -67,14 +67,14 @@ internal static class Par2PacketForge
 
     public static byte[] IfscBody(byte[] fileId, int entries)
     {
-        var body = new byte[16 + 20 * entries];
+        byte[] body = new byte[16 + 20 * entries];
         fileId.CopyTo(body, 0);
         return body;
     }
 
     public static byte[] RecoveryBody(uint exponent, int sliceSize, byte fill = 0)
     {
-        var body = new byte[4 + sliceSize];
+        byte[] body = new byte[4 + sliceSize];
         BinaryPrimitives.WriteUInt32LittleEndian(body, exponent);
         body.AsSpan(4).Fill(fill);
         return body;

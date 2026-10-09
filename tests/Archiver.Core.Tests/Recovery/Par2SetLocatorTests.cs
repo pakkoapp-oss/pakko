@@ -174,7 +174,7 @@ public sealed class Par2SetLocatorTests : IDisposable
     [Fact]
     public void Select_HostileNameInTheSet_IsNeverAPath()
     {
-        var (_, _, packets) = Par2PacketForge.OneFileSet(8, 16, @"..\..\a.zip");
+        (_, _, List<byte[]> packets) = Par2PacketForge.OneFileSet(8, 16, @"..\..\a.zip");
         Par2Set set = Par2PacketReader.Read([Par2PacketForge.Write(_temp.Path, "x.par2", packets)], CancellationToken.None).Sets.Single();
 
         Par2SetLocator.Select([set], Path.Combine(_temp.Path, "a.zip")).Should().BeNull();

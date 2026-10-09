@@ -33,20 +33,7 @@ internal static class Par2Verifier
 {
     internal static Par2Verification Verify(string targetPath, Par2Set set, Action<double>? progress, CancellationToken cancellationToken)
     {
-        Par2FileHashes? hashes;
-        long actualLength;
-        try
-        {
-            using SafeFileHandle file = File.OpenHandle(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-            actualLength = RandomAccess.GetLength(file);
-            var tracker = new Par2Progress(progress, actualLength);
-            hashes = Par2FileHasher.Hash(file, set.FileLength, set.SliceSize, bytes => tracker.Add(bytes), cancellationToken);
-        }
-        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
-        {
-            hashes = null;
-            actualLength = 0;
-        }
+        (Par2FileHashes? hashes, long actualLength) = HashTarget(targetPath, set, progress, cancellationToken);
 
         var damaged = new List<int>();
         for (int i = 0; i < set.Slices.Length; i++)
@@ -77,5 +64,21 @@ internal static class Par2Verifier
             [.. set.RecoveryBlocks.Select(b => b.Exponent)], cancellationToken);
         return new Par2Verification(solution is null ? Par2VerifyStatus.NotRepairable : Par2VerifyStatus.Repairable,
             damagedSlices, fileMissing, actualLength, solution);
+    }
+
+    // A missing file is not an error here: every slice of it is damaged.
+    private static (Par2FileHashes?, long) HashTarget(string targetPath, Par2Set set, Action<double>? progress, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using SafeFileHandle file = File.OpenHandle(targetPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            long actualLength = RandomAccess.GetLength(file);
+            var tracker = new Par2Progress(progress, actualLength);
+            return (Par2FileHasher.Hash(file, set.FileLength, set.SliceSize, bytes => tracker.Add(bytes), cancellationToken), actualLength);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return (null, 0);
+        }
     }
 }

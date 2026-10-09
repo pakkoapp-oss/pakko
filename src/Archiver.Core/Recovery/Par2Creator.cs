@@ -86,7 +86,7 @@ internal static class Par2Creator
                 ];
                 byte[] creator = Par2Packets.Build(setId, Par2Packets.CreatorType, Par2Packets.CreatorBody());
 
-                WriteVolume(volumeTemp, source, length, setId, critical, creator, parameters, tracker, cancellationToken);
+                WriteVolume(volumeTemp, source, new SetPackets(setId, critical, creator), parameters, tracker, cancellationToken);
                 WritePackets(indexTemp, [.. critical, creator]);
             }
             File.Move(volumeTemp, volumePath, overwrite: true);
@@ -101,9 +101,11 @@ internal static class Par2Creator
         }
     }
 
-    private static void WriteVolume(string path, SafeFileHandle source, long length, byte[] setId, byte[][] critical, byte[] creator,
-        Par2Parameters parameters, Par2Progress tracker, CancellationToken cancellationToken)
+    private static void WriteVolume(string path, SafeFileHandle source, SetPackets packets, Par2Parameters parameters, Par2Progress tracker, CancellationToken cancellationToken)
     {
+        long length = RandomAccess.GetLength(source);
+        byte[] setId = packets.SetId;
+        byte[][] critical = packets.Critical;
         long criticalLength = critical.Sum(p => (long)p.Length);
         long packetLength = RecoveryHeaderLength + parameters.SliceSize;
         long recoveryStart = criticalLength;
@@ -120,10 +122,10 @@ internal static class Par2Creator
         }
         RandomAccess.SetLength(volume, offset);
         offset = WriteAll(volume, critical, offset);
-        WriteAll(volume, [creator], offset);
+        WriteAll(volume, [packets.Creator], offset);
 
         ushort[] constants = Gf16.InputConstants(parameters.SliceCount);
-        Par2SliceCombiner.Combine(parameters.SliceSize, parameters.SliceCount, parameters.RecoveryCount,
+        Par2SliceCombiner.Combine(new Par2CombineShape(parameters.SliceSize, parameters.SliceCount, parameters.RecoveryCount),
             (o, i) => Gf16.Pow(constants[i], (uint)o),
             (i, at, buffer) => Par2FileIo.ReadPadded(source, length, i * parameters.SliceSize + at, buffer),
             (o, at, data) => RandomAccess.Write(volume, data, recoveryStart + o * packetLength + RecoveryHeaderLength + at),
@@ -138,6 +140,8 @@ internal static class Par2Creator
             RandomAccess.Write(volume, md5, packetStart + Par2Packets.HashOffset);
         }
     }
+
+    private sealed record SetPackets(byte[] SetId, byte[][] Critical, byte[] Creator);
 
     private static void WritePackets(string path, byte[][] packets)
     {
