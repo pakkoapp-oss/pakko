@@ -213,6 +213,29 @@ teaser only; don't let it drift from `POLICIES.md` again.
 
 ---
 
+## Recovery Data — PAR2 (v1.8, T-F275, in progress)
+
+For archives kept on flash drives or optical media or carried offline, where bad sectors or a
+truncated copy are the realistic damage.
+
+- **Create:** standard PAR 2.0 files next to a created archive, over the finished archive's bytes
+  (an encrypted ZIP's ciphertext — repair needs no password). Every format Pakko creates. Offered
+  where archive options are set: the App's "New archive" card (also opened by Explorer's
+  "Compress...") with 5/10/20 % (default 5) and `pakko a -rr[N]` (1–100); not on the one-click
+  verbs.
+- **Verify and repair:** `pakko t` reports the set's state, `pakko r` repairs; Explorer offers both
+  on a `.par2` file and on an archive with its set beside it; the App shows the state and repairs.
+  The repaired copy is a new file next to the archive (another folder when that one is not
+  writable); the original is never written.
+- **Interoperable:** sets made by par2cmdline, MultiPar or QuickPar that protect one file are read;
+  Pakko's sets are checked against par2cmdline, par2cmdline-turbo and MultiPar.
+- **Not in scope:** sets covering several files; locating shifted data after inserted or deleted
+  bytes (verification is positional); PAR 3.0; recovery data inside the archive.
+- **Group Policy:** `DisableRecoveryData` turns all of it off (`POLICIES.md` once implemented).
+- Design and research: `DECISIONS.md` "T-F275 — PAR2 recovery data".
+
+---
+
 ## Future Roadmap
 
 | Version | Focus |
@@ -223,6 +246,7 @@ teaser only; don't let it drift from `POLICIES.md` again.
 | v1.4 | GPO/ADMX + AppContainer sandbox (P/Invoke, T-F52) + strict mode policy + Archive Browser (T-F05) + TAR creation via tar.exe (T-F105, pulled forward from v1.5 2026-07-16) — **complete, including GPO/ADMX (T-F51, done 2026-07-18)** |
 | v1.5 | Password-protected ZIP (read ZipCrypto + WinZip AES, create AES-256; T-F188–T-F194) + `pakko://` scheme removed (T-F232) + extraction/sandbox correctness and security fixes (fix phases 1–4a) — **released as v1.5.0** |
 | v1.6 | Remaining fix-batch phases (5–10, `docs/TASKS.md`'s fix-batch index) + additional format fixtures |
+| v1.8 | PAR2 recovery data next to created archives: create, verify, repair (T-F275) |
 | v1.9 | 7z archive creation through tar.exe (T-F342) |
 | v2.0 | `pakko` measured as a stand-in for 7-Zip's console program, gaps closed where they fit Pakko's rules (T-F343) |
 

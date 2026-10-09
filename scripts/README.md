@@ -149,6 +149,19 @@ name):
 The manifest uses `ArchiveBinariesDependOnPath: true` — winget's `Links` symlink broke the
 pre-AOT apphost; a symlink is possible now (T-F361, see `docs/CLI.md`, Distribution).
 
+### PAR2 test oracles (T-F275)
+
+```powershell
+.\scripts\Get-Par2Oracles.ps1                       # this machine's architecture
+.\scripts\Get-Par2Oracles.ps1 -Architecture arm64
+```
+
+Downloads par2cmdline 1.4.0, par2cmdline-turbo 1.5.0 and MultiPar 1.3.3.6 (x64 only) into
+`artifacts/par2-oracles/<tool>/`, each checked against a pinned SHA-256 (the digest GitHub
+publishes for the release asset); a mismatch stops the script and leaves nothing behind. A tool
+already present at the pinned hash is not downloaded again. They are GPL-2.0, so they are never
+committed. What the tests use each for: `docs/TESTING.md`, "PAR2 Oracles".
+
 ### Store listing text into a Partner Center export (T-F332)
 
 `py -3 scripts\Fill-StoreListing.py <export.csv>` checks a listing CSV exported from Partner
