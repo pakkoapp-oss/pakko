@@ -21,11 +21,12 @@ internal static class Par2SliceCombiner
     internal delegate void OutputWriter(int output, long offsetInSlice, ReadOnlySpan<byte> data);
 
     /// <summary>Runs the whole combination; <paramref name="progress"/> gets the input bytes each
-    /// step consumed, inputCount · sliceSize in all.</summary>
+    /// step consumed, inputCount · sliceSize in all. <paramref name="maxRangeWidth"/> lets a test
+    /// force many ranges on small slices.</summary>
     internal static void Combine(long sliceSize, int inputCount, int outputCount, Func<int, int, ushort> coefficient,
-        InputReader read, OutputWriter write, Action<long>? progress, CancellationToken cancellationToken)
+        InputReader read, OutputWriter write, Action<long>? progress, CancellationToken cancellationToken, int maxRangeWidth = MaxRangeWidth)
     {
-        int width = RangeWidth(sliceSize, outputCount);
+        int width = RangeWidth(Math.Min(sliceSize, maxRangeWidth), outputCount);
         int batch = (int)Math.Clamp(InputBatchBudget / width, 1, MaxBatch);
         byte[][] outputs = NewBuffers(outputCount, width);
         byte[][] inputs = NewBuffers(Math.Min(batch, inputCount), width);

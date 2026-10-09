@@ -72,8 +72,8 @@ internal static class Par2Creator
                 if (length <= 0 || sliceCount > Par2Limits.MaxInputSlices || sliceCount != parameters.SliceCount)
                     throw new ArgumentOutOfRangeException(nameof(parameters), "The parameters do not fit the file.");
 
-                var tracker = new ProgressTracker(progress, length, parameters.RecoveryCount);
-                Par2FileHashes hashes = Par2FileHasher.Hash(source, length, parameters.SliceSize, tracker.Hashed, cancellationToken);
+                var tracker = new Par2Progress(progress, (double)length * (1 + parameters.RecoveryCount));
+                Par2FileHashes hashes = Par2FileHasher.Hash(source, length, parameters.SliceSize, bytes => tracker.Add(bytes), cancellationToken);
                 byte[] name = Encoding.UTF8.GetBytes(Path.GetFileName(filePath));
                 byte[] fileId = Par2Packets.FileId(hashes.Md5First16k, length, name);
                 byte[] mainBody = Par2Packets.MainBody(parameters.SliceSize, fileId);
@@ -102,7 +102,7 @@ internal static class Par2Creator
     }
 
     private static void WriteVolume(string path, SafeFileHandle source, long length, byte[] setId, byte[][] critical, byte[] creator,
-        Par2Parameters parameters, ProgressTracker tracker, CancellationToken cancellationToken)
+        Par2Parameters parameters, Par2Progress tracker, CancellationToken cancellationToken)
     {
         long criticalLength = critical.Sum(p => (long)p.Length);
         long packetLength = RecoveryHeaderLength + parameters.SliceSize;
@@ -127,7 +127,7 @@ internal static class Par2Creator
             (o, i) => Gf16.Pow(constants[i], (uint)o),
             (i, at, buffer) => Par2FileIo.ReadPadded(source, length, i * parameters.SliceSize + at, buffer),
             (o, at, data) => RandomAccess.Write(volume, data, recoveryStart + o * packetLength + RecoveryHeaderLength + at),
-            tracker.Combined, cancellationToken);
+            bytes => tracker.Add(bytes * parameters.RecoveryCount), cancellationToken);
 
         byte[] buffer = new byte[CopyBufferLength];
         for (int e = 0; e < parameters.RecoveryCount; e++)
@@ -164,25 +164,6 @@ internal static class Par2Creator
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // best-effort: a temporary file left behind is swept by the next run in this folder
-        }
-    }
-
-    /// <summary>Hashing counts as one pass over the file, the recovery pass as one per recovery block.</summary>
-    private sealed class ProgressTracker(Action<double>? report, long length, int recoveryCount)
-    {
-        private readonly double _total = (double)length * (1 + recoveryCount);
-        private double _done;
-
-        internal void Hashed(long bytes) => Add(bytes);
-
-        internal void Combined(long bytes) => Add((double)bytes * recoveryCount);
-
-        private void Add(double work)
-        {
-            if (report is null)
-                return;
-            _done += work;
-            report(Math.Min(1.0, _done / _total));
         }
     }
 }
