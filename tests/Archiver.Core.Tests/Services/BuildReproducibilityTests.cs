@@ -47,6 +47,10 @@ public sealed class BuildReproducibilityTests
     [Fact]
     public void GlobalJson_PinsTheExactSdk()
     {
+        // The canary rewrites global.json to float the SDK on purpose (canary.yml).
+        if (Environment.GetEnvironmentVariable("PAKKO_FLOATING_TOOLCHAIN") == "1")
+            return;
+
         using JsonDocument json = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoRoot, "global.json")));
         JsonElement sdk = json.RootElement.GetProperty("sdk");
 
