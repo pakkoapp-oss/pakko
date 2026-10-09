@@ -11959,6 +11959,40 @@ ParPar (`gf16/`), the open Parchive bug #67 and par2cmdline's two 2026 advisorie
 Steps, one PR each: 0 docs and oracles, 1 the Core engine, 2 creation, 3 verification, 4 repair,
 5 the v1.8.0 release (`docs/TASKS.md` T-F275).
 
+### Step 1 — the engine (2026-10-09)
+
+- `Archiver.Core/Recovery/` is internal. The public `IRecoveryService`, its `MessageCode`s and the
+  `PakkoServices` wiring come with step 2, the first frontend, since new codes need the 37-language
+  messages that step adds anyway.
+- Packets: Pakko's Main, FileDesc, IFSC and RecvSlic packets equal par2cmdline 1.4.0's byte for byte
+  for the golden sets (22 B / 4, 300001 B / 4096, a Cyrillic name) and for 1 MB / 4096 / 10 blocks in
+  the oracle test. The volume holds the critical packets once before and once after the recovery
+  blocks; par2cmdline spreads log2(R)+1 copies between them, which the specification does not
+  require, so the tests compare packet sets, not file layouts.
+- Volume name width, from par2cmdline's `InitialiseOutputFiles`: `digitsLow` is taken over every
+  file's first exponent including the index file's, which is R, so one volume of 100 blocks is
+  `vol000+100` (`<< ".vol" << std::setw(digitsLow) << std::setfill('0') << ...exponent`).
+- Row selection: the recovery blocks are taken in exponent order and each is kept if it is
+  independent of those kept so far (an incremental row-echelon basis), until there is one per missing
+  slice; so a repair fails only when the available blocks have lower rank. The [2, 48, 237] x
+  {1, 2, 4, 5} test failed against a first-k version before this one went in.
+- Reader: a Main packet counts only if the set ID is its MD5 and a FileDesc only if its file ID
+  matches its own fields, so two valid Main copies cannot disagree; conflicting FileDesc or IFSC
+  copies refuse the set; two valid recovery blocks for one exponent are both dropped. Hashing per PAR2
+  file is capped at twice its length, so fake headers cannot make the scan quadratic. Limits: slice
+  at most 1 GiB, packets other than recovery blocks at most 1 MiB, a repair at most 2^26 matrix
+  entries (missing x (slices + missing)), beyond which the result is "repair too large".
+- Memory: the combination runs in ranges of at most 16 MiB of each slice, the outputs of a range
+  within 256 MiB, input batches within 64 MiB; a slice is never read whole.
+- Repair writes a temporary file next to the output, checks every slice and the file MD5 against the
+  set, and only then renames it (never over an existing file). A test forges recovery data with a
+  valid packet MD5; the final check catches it and nothing is kept.
+- par2j rebuilds a 4-byte slice from its CRC-32 alone (a CRC-32 over 4 bytes is a bijection), which
+  hides the singular case on 4-byte slices; the oracle test uses 8-byte slices. par2j's exit there is
+  272 = 16 (repaired) | 256 (a PAR file incomplete, the blocks the test destroyed).
+- Speed, Release, Ryzen 5 PRO 4650U: 512 MiB at 5 % created in 4.3 s (par2cmdline 9.3 s); 100 slices
+  repaired in 6.9 s; a file above 4 GiB round-trips.
+
 ---
 
 ## CLAUDE.md as of 2026-10-09 (T-F369)

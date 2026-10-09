@@ -159,12 +159,31 @@ jobs:
             /d:sonar.cs.cobertura.reportsPaths="**/coverage.cobertura.xml" `
             /d:sonar.coverage.exclusions="src/Archiver.Shell/Program.cs,src/Archiver.Shell/NativeProgressDialog.cs,src/Archiver.Core/Services/ExplorerLauncher.cs,src/Archiver.CLI/Program.cs,src/Archiver.OperationUi/**,src/Archiver.Shell/HelperProcessLauncher.cs,scripts/**"
 
+      # T-F275: the PAR2 tools the recovery-data tests check Pakko against (GPL, so downloaded,
+      # never committed; the script pins each zip's SHA-256). PAKKO_PAR2_ORACLES_REQUIRED=1 on the
+      # test step makes a missing tool fail its tests instead of skipping them.
+      - name: Download PAR2 test oracles (2 attempts)
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $attempts = 2
+          for ($i = 1; $i -le $attempts; $i++) {
+            if ($i -gt 1) {
+              Write-Output "::warning title=Retried::Download PAR2 test oracles (2 attempts): attempt $($i - 1) failed, retrying"
+              Start-Sleep -Seconds 15
+            }
+            try { & ./scripts/Get-Par2Oracles.ps1; exit 0 } catch { Write-Output $_ }
+          }
+          throw "PAR2 oracle download failed after $attempts attempt(s)."
+
       - name: Run .NET test suite
         # --collect:"XPlat Code Coverage" uses the coverlet.collector package already referenced
         # by every test project (T-F135) — no new package, just feeds SonarCloud's
         # "New code has sufficient test coverage" quality-gate condition instead of leaving it at
         # "no data". Writes one coverage.cobertura.xml per test project under **/TestResults/.
         run: dotnet test --filter "Category!=Slow&Category!=VeryLarge" --collect:"XPlat Code Coverage"
+        env:
+          PAKKO_PAR2_ORACLES_REQUIRED: "1"
 
       - name: End SonarCloud analysis
         if: (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor != 'dependabot[bot]'

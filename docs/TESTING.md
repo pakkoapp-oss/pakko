@@ -476,7 +476,28 @@ par2cmdline's own test archives are not copied either — fixtures are generated
 | par2cmdline-turbo 1.5.0 | `par2cmdline-turbo\par2.exe` | repair of any set (retries another block on a singular matrix) |
 | MultiPar 1.3.3.6 | `multipar\par2j64.exe` | a second, Windows-native implementation; x64 only (emulated on ARM64); exit code is a bit mask (16 = repaired). From Git Bash set `MSYS_NO_PATHCONV=1`, or `/ss4096` becomes a path |
 
-How the tests find them and what CI requires is described with the tests themselves (T-F275 step 1).
+The tests (T-F275 step 1):
+
+- `Archiver.Core.Tests/Recovery/`: `Gf16Tests` (the specification's constants; multiplication against
+  a carry-less multiply), `Gf16RegionTests` (the vector and scalar kernels called directly, against
+  the per-word definition, every length modulo 32), `Par2CreatorTests` (packets equal to the golden
+  par2cmdline sets in `Fixtures/par2/`, parameters, volume names, every writer shape inside the
+  reader's limits), `Par2PacketReaderTests` (hostile packets from `Par2PacketForge`, which recomputes
+  the packet MD5 so the field checks are reached), `Par2SetLocatorTests`, `RecoveryMatrixTests` (the
+  [2, 48, 237] x {1, 2, 4, 5} case, seen red against first-k), `Par2SliceCombinerTests` (range and
+  batch seams forced small), `Par2RepairTests` (flipped, zeroed, cut, appended and deleted data;
+  damaged PAR2 files; forged recovery data caught by the final check; cancellation at each phase; an
+  unwritable output folder; one `Slow` test with slices larger than one range).
+- `Archiver.Core.Tests/Fuzz/Par2FuzzTests` (`Category=Fuzz`): raw mutations of the golden sets, and
+  mutations with the packet MD5 recomputed; reader, verifier and repairer must not throw or write
+  anything but the output they are given.
+- `Archiver.Core.IntegrationTests/Recovery/Par2OracleTests`: `[Par2OracleFact]` skips a test when a
+  tool is missing, unless `PAKKO_PAR2_ORACLES_REQUIRED=1`, where the test runs and fails. CI's `test`
+  job downloads the tools first (two attempts) and sets the variable; the nightly canary does not
+  download them, so these tests skip there.
+- `Archiver.Core.PerformanceTests/Par2PerformanceTests` (`Category=VeryLarge`, Release only):
+  512 MiB at 5 % against par2cmdline (Pakko must not be slower; 4.3 s against 9.3 s on 2026-10-09),
+  a repair of 100 slices (6.9 s), and a round trip over a file above 4 GiB.
 
 ## T-F35 Parallel SingleArchive Pipeline Tests (v1.4+)
 
