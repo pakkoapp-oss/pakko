@@ -77,6 +77,8 @@ public sealed class Par2CreatorTests : IDisposable
         Path.GetFileName(Par2Creator.VolumePath(@"C:\x\a.zip", recoveryCount)).Should().Be(expected);
     }
 
+    // The 5 % rows were checked against par2cmdline 1.4.0's own choice (`par2 c -r5 -n1`): the slice
+    // size in its Main packet and the count in its volume name (2026-10-09).
     [Theory]
     [InlineData(22L, 5, 4L, 6, 1)]
     [InlineData(300001L, 5, 152L, 1974, 99)]
