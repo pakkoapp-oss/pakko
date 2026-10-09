@@ -28,9 +28,11 @@
     <!-- T-F364: every project restores from its committed packages.lock.json; CI fails on any
          drift. The canary floats the SDK on purpose (PAKKO_FLOATING_TOOLCHAIN), so it restores
          unlocked and reports the lock diff instead. One RID set for every project, because a
-         restore with -r adds that RID's section to each lock in the graph. -->
+         restore with -r adds that RID's section to each lock in the graph. Windows only: a Linux
+         restore adds linux-x64 (the AOT host package) to the exes' RIDs, and GitHub's dependency
+         submission restores there; nothing shipped is built on Linux. -->
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <RestoreLockedMode Condition="'$(CI)' == 'true' and '$(PAKKO_FLOATING_TOOLCHAIN)' != '1'">true</RestoreLockedMode>
+    <RestoreLockedMode Condition="'$(CI)' == 'true' and '$(PAKKO_FLOATING_TOOLCHAIN)' != '1' and '$(OS)' == 'Windows_NT'">true</RestoreLockedMode>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
   </PropertyGroup>
 
