@@ -51,24 +51,24 @@ internal static class Gf16Region
                 highTables[k * 16 + n] = (byte)(product >> 8);
             }
         }
-        Vector128<byte> lo0 = Vector128.Create((ReadOnlySpan<byte>)lowTables[..16]);
-        Vector128<byte> lo1 = Vector128.Create((ReadOnlySpan<byte>)lowTables[16..32]);
-        Vector128<byte> lo2 = Vector128.Create((ReadOnlySpan<byte>)lowTables[32..48]);
-        Vector128<byte> lo3 = Vector128.Create((ReadOnlySpan<byte>)lowTables[48..]);
-        Vector128<byte> hi0 = Vector128.Create((ReadOnlySpan<byte>)highTables[..16]);
-        Vector128<byte> hi1 = Vector128.Create((ReadOnlySpan<byte>)highTables[16..32]);
-        Vector128<byte> hi2 = Vector128.Create((ReadOnlySpan<byte>)highTables[32..48]);
-        Vector128<byte> hi3 = Vector128.Create((ReadOnlySpan<byte>)highTables[48..]);
-        Vector128<byte> nibble = Vector128.Create((byte)0x0F);
-        Vector128<ushort> lowByte = Vector128.Create((ushort)0x00FF);
+        var lo0 = Vector128.Create((ReadOnlySpan<byte>)lowTables[..16]);
+        var lo1 = Vector128.Create((ReadOnlySpan<byte>)lowTables[16..32]);
+        var lo2 = Vector128.Create((ReadOnlySpan<byte>)lowTables[32..48]);
+        var lo3 = Vector128.Create((ReadOnlySpan<byte>)lowTables[48..]);
+        var hi0 = Vector128.Create((ReadOnlySpan<byte>)highTables[..16]);
+        var hi1 = Vector128.Create((ReadOnlySpan<byte>)highTables[16..32]);
+        var hi2 = Vector128.Create((ReadOnlySpan<byte>)highTables[32..48]);
+        var hi3 = Vector128.Create((ReadOnlySpan<byte>)highTables[48..]);
+        var nibble = Vector128.Create((byte)0x0F);
+        var lowByte = Vector128.Create((ushort)0x00FF);
 
         int done = 0;
         for (; done + VectorBlock <= src.Length; done += VectorBlock)
         {
             Vector128<ushort> w0 = Vector128.Create(src.Slice(done, 16)).AsUInt16();
             Vector128<ushort> w1 = Vector128.Create(src.Slice(done + 16, 16)).AsUInt16();
-            Vector128<byte> low = Vector128.Narrow(w0 & lowByte, w1 & lowByte);
-            Vector128<byte> high = Vector128.Narrow(w0 >>> 8, w1 >>> 8);
+            var low = Vector128.Narrow(w0 & lowByte, w1 & lowByte);
+            var high = Vector128.Narrow(w0 >>> 8, w1 >>> 8);
             Vector128<byte> n0 = low & nibble;
             Vector128<byte> n1 = low >>> 4;
             Vector128<byte> n2 = high & nibble;

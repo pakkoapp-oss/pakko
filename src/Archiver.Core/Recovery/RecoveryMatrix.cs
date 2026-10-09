@@ -31,7 +31,7 @@ internal static class RecoveryMatrix
         for (int candidate = 0; candidate < exponents.Count && basis.Count < m; candidate++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var row = new ushort[2 * m];
+            ushort[] row = new ushort[2 * m];
             for (int j = 0; j < m; j++)
                 row[j] = Gf16.Pow(constants[missing[j]], exponents[candidate]);
             row[m + basis.Count] = 1;
@@ -58,7 +58,7 @@ internal static class RecoveryMatrix
                 Eliminate(basis[earlier], basis[b], pivots[b]);
         }
 
-        var inverse = new ushort[m][];
+        ushort[][] inverse = new ushort[m][];
         for (int b = 0; b < m; b++)
             inverse[pivots[b]] = basis[b][m..];
         return new RecoverySolution([.. chosen], inverse);

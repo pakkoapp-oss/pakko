@@ -214,7 +214,7 @@ public sealed class Par2OracleTests : IDisposable
     private static void DestroyRecoveryBlocks(string volume, params uint[] exponents)
     {
         byte[] bytes = File.ReadAllBytes(volume);
-        foreach (var packet in Packets(volume).Where(p => p.Type == "PAR 2.0\0RecvSlic" && exponents.Contains(p.Exponent)))
+        foreach ((int Offset, string Type, uint Exponent, int Length) packet in Packets(volume).Where(p => p.Type == "PAR 2.0\0RecvSlic" && exponents.Contains(p.Exponent)))
             bytes[packet.Offset + 68] ^= 0xFF;
         File.WriteAllBytes(volume, bytes);
     }

@@ -33,7 +33,7 @@ internal static class Par2Packets
     /// <summary>Slice size, one file in the recovery set, its file ID; the set ID is its MD5.</summary>
     internal static byte[] MainBody(long sliceSize, ReadOnlySpan<byte> fileId)
     {
-        var body = new byte[12 + Par2Md5.Size];
+        byte[] body = new byte[12 + Par2Md5.Size];
         BinaryPrimitives.WriteInt64LittleEndian(body, sliceSize);
         BinaryPrimitives.WriteUInt32LittleEndian(body.AsSpan(8), 1);
         fileId.CopyTo(body.AsSpan(12));
@@ -43,7 +43,7 @@ internal static class Par2Packets
     /// <summary>MD5(MD5 of the first 16 KiB ‖ length ‖ name), the name unpadded.</summary>
     internal static byte[] FileId(ReadOnlySpan<byte> md5First16k, long length, ReadOnlySpan<byte> name)
     {
-        var input = new byte[Par2Md5.Size + 8 + name.Length];
+        byte[] input = new byte[Par2Md5.Size + 8 + name.Length];
         md5First16k.CopyTo(input);
         BinaryPrimitives.WriteInt64LittleEndian(input.AsSpan(Par2Md5.Size), length);
         name.CopyTo(input.AsSpan(Par2Md5.Size + 8));
@@ -52,7 +52,7 @@ internal static class Par2Packets
 
     internal static byte[] FileDescBody(ReadOnlySpan<byte> fileId, ReadOnlySpan<byte> fileMd5, ReadOnlySpan<byte> md5First16k, long length, ReadOnlySpan<byte> name)
     {
-        var body = new byte[3 * Par2Md5.Size + 8 + PaddedLength(name.Length)];
+        byte[] body = new byte[3 * Par2Md5.Size + 8 + PaddedLength(name.Length)];
         fileId.CopyTo(body);
         fileMd5.CopyTo(body.AsSpan(Par2Md5.Size));
         md5First16k.CopyTo(body.AsSpan(2 * Par2Md5.Size));
@@ -63,7 +63,7 @@ internal static class Par2Packets
 
     internal static byte[] IfscBody(ReadOnlySpan<byte> fileId, IReadOnlyList<Par2SliceChecksum> slices)
     {
-        var body = new byte[Par2Md5.Size + slices.Count * Par2SliceChecksum.Length];
+        byte[] body = new byte[Par2Md5.Size + slices.Count * Par2SliceChecksum.Length];
         fileId.CopyTo(body);
         for (int i = 0; i < slices.Count; i++)
             slices[i].WriteTo(body.AsSpan(Par2Md5.Size + i * Par2SliceChecksum.Length));
@@ -75,7 +75,7 @@ internal static class Par2Packets
     /// <summary>A whole packet around <paramref name="body"/>.</summary>
     internal static byte[] Build(ReadOnlySpan<byte> setId, ReadOnlySpan<byte> type, ReadOnlySpan<byte> body)
     {
-        var packet = new byte[HeaderLength + body.Length];
+        byte[] packet = new byte[HeaderLength + body.Length];
         WriteHeader(packet, setId, type, body.Length);
         body.CopyTo(packet.AsSpan(HeaderLength));
         Par2Md5.Hash(packet.AsSpan(SetIdOffset)).CopyTo(packet.AsSpan(HashOffset));
@@ -96,7 +96,7 @@ internal static class Par2Packets
 
     private static byte[] Pad(byte[] bytes)
     {
-        var padded = new byte[PaddedLength(bytes.Length)];
+        byte[] padded = new byte[PaddedLength(bytes.Length)];
         bytes.CopyTo(padded, 0);
         return padded;
     }

@@ -15,7 +15,7 @@ internal static class Par2TestData
     /// <summary>The bytes the golden sets protect: byte i = (i·31) XOR (i >> 7).</summary>
     public static byte[] Content(int length)
     {
-        var bytes = new byte[length];
+        byte[] bytes = new byte[length];
         for (int i = 0; i < length; i++)
             bytes[i] = (byte)((i * 31) ^ (i >> 7));
         return bytes;
