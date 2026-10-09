@@ -41,7 +41,10 @@ public sealed class BuildReproducibilityTests
             .Select(e => e.Value.Trim()).Should().Equal("true");
         XElement locked = props.Descendants().Single(e => e.Name.LocalName == "RestoreLockedMode");
         locked.Value.Trim().Should().Be("true");
-        ((string?)locked.Attribute("Condition")).Should().Contain("$(CI)").And.Contain("$(PAKKO_FLOATING_TOOLCHAIN)");
+        ((string?)locked.Attribute("Condition")).Should().Contain("$(CI)").And.Contain("$(PAKKO_FLOATING_TOOLCHAIN)")
+            // A Linux restore adds linux-x64 (the AOT host package) to the exes' RID set; GitHub's
+            // dependency submission runs there and failed NU1004 in locked mode.
+            .And.Contain("'$(OS)' == 'Windows_NT'");
     }
 
     [Fact]

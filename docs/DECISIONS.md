@@ -11716,3 +11716,12 @@ another ref, so the planned shape would either block the agent outright or, push
 bypass, gate nothing. The user chose a pull request per batch: `pull_request` already runs `test`,
 and the signing, SBOM and Pages jobs stay gated to `push`, so `build.yml` did not change. The admin
 role may bypass, but only through a pull request (`bypass_mode: pull_request`).
+
+## T-F364 follow-up — locked restore on Windows only (2026-10-09)
+
+GitHub's built-in "Automatic Dependency Submission (NuGet)" restores on a Linux runner with
+`CI=true`, so it inherited `RestoreLockedMode` and failed on every push since T-F364 with NU1004:
+a Linux restore adds `linux-x64` to the AOT exes' runtime identifiers (the ILCompiler host
+package), which no committed lock file holds. Locked mode now also requires
+`'$(OS)' == 'Windows_NT'`. Every shipped artifact is built on Windows, so the lock files still
+gate everything that ships; the Linux restores (dependency submission, the docs job) run unlocked.
