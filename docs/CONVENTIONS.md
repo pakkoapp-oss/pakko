@@ -547,9 +547,11 @@ uses), not merely untested (the first four since T-F149, the last two since T-F2
   tested; the exe only renders it.
 - **`Archiver.Shell/HelperProcessLauncher.cs`**: starts that real exe over anonymous pipes.
   `HelperOperationUi` is tested through `IHelperLauncher` with a fake helper on real pipes.
-- **`scripts/hooks/**`** (T-F370): PowerShell, which coverlet cannot measure at all.
-  `AgentBashHookTests` runs the agent hook through pwsh on every case, the same child-process
-  shape as `Archiver.CLI/Program.cs`.
+- **`scripts/**`** (T-F370 for `scripts/hooks/**`, widened by T-F275): PowerShell and Python,
+  which coverlet cannot measure at all, so every new script failed the `new_coverage` gate at 0 %
+  (`Get-Par2Oracles.ps1`, PR #33). `AgentBashHookTests` runs the agent hook through pwsh on every
+  case, the same child-process shape as `Archiver.CLI/Program.cs`; the other scripts are checked by
+  `DevOpsHygieneTests` and the `lint-ps1` job.
 
 Adding another exclusion needs the same bar as adding a new won't-fix rule above: a specific,
 verified reason the collector (or a unit test) genuinely cannot reach the code — not "coverage is
