@@ -1,0 +1,2 @@
+# T-F369: a CRLF frontmatter could fail to parse and load a rule unconditionally
+.claude/rules/*.md text eol=lf

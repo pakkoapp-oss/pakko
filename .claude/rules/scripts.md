@@ -20,17 +20,6 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   `powershell.exe` (5.1) decodes a UTF-8-no-BOM `.ps1` via the system ANSI codepage, corrupting
   every non-ASCII character before the script even runs (confirmed T-F105, a 37-locale insert
   script). Only reach for explicit `powershell.exe` when deliberately reproducing a codepage bug.
-- **PowerShell tool's `Add-Type` classes do NOT persist across separate calls** (only cwd does) —
-  a `Win32`-style helper class defined in one call is gone in the next ("Unable to find type"). If
-  you need it again (e.g. for a follow-up screenshot), redefine the whole `Add-Type` block in the
-  same call that uses it, not just once at the start of a multi-call sequence. Also: `Get-Item` on
-  a registry path containing `{...}` (a GUID/CLSID) silently returns nothing unless you pass
-  `-LiteralPath` instead of the default `-Path` — curly braces are wildcard syntax otherwise.
-- **Pass `& $exe` arguments as separate array elements, never manually quoted inside a string** —
-  `& $exe $path1 $path2`, not `` & $exe "`"$path1`"" ``. The latter embeds literal `"` characters
-  into the argument itself once PowerShell's own tokenizer is done, corrupting the path (confirmed:
-  `IOException` with a visibly quote-mangled path, T-F142 on-device check). Let PowerShell's own
-  array-argument passing handle spaces — don't hand-roll quoting.
 - **`DeployMsix`'s post-build `Add-AppxPackage` also actively fails a Release `dotnet
   publish`/`build` outright (not just silently) on any machine without the signing cert in
   `LocalMachine\TrustedPeople`** — e.g. a fresh CI runner (`0x800B0109`, "root certificate ...
