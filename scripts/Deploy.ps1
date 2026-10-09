@@ -21,8 +21,8 @@
     Thumbprint of the code-signing certificate (BuildAndDeploy mode only).
     If omitted, the script searches Cert:\CurrentUser\My for CN=Pakko Dev.
 .PARAMETER SkipVersionBump
-    Do not increment Package.appxmanifest's Version after a successful build+install.
-    Has no effect in -DeployOnly mode (which never bumps).
+    Package at the tracked X.Y.Z.0 instead of one revision past the installed dev package.
+    The tracked Package.appxmanifest is never written either way (T-F368).
 .EXAMPLE
     .\Deploy.ps1
     .\Deploy.ps1 -Architecture arm64
@@ -143,6 +143,36 @@ if (-not $DeployOnly) {
     Write-Host ""
     Write-Host "Publishing Pakko ($Architecture)..." -ForegroundColor Cyan
 
+    # T-F368: the dev revision lives only in a generated copy under obj\ (Archiver.App.csproj's
+    # PakkoAppxManifest); the tracked manifest stays at X.Y.Z.0, the Store rule a test enforces.
+    $manifestText = [System.IO.File]::ReadAllText($manifestPath)
+    $versionMatch = [regex]::Match($manifestText, '(?<![A-Za-z])Version="(\d+\.\d+\.\d+)\.(\d+)"')
+    if (-not $versionMatch.Success -or $versionMatch.Groups[2].Value -ne '0') {
+        Write-Error "Package.appxmanifest's Identity Version must be X.Y.Z.0 (T-F368)."
+        exit 1
+    }
+    $baseVersion = $versionMatch.Groups[1].Value
+    $revision = 0
+    if (-not $SkipVersionBump) {
+        $revision = 1
+        $installedDev = Get-AppxPackage -Name 'PavloRybchenko.Pakko' |
+            Where-Object { $_.SignatureKind -eq 'Developer' } |
+            Select-Object -First 1
+        if ($installedDev) {
+            $installedVersion = [version]$installedDev.Version
+            $sameBase = "$($installedVersion.Major).$($installedVersion.Minor).$($installedVersion.Build)" -eq $baseVersion
+            if ($sameBase -and $installedVersion.Revision -lt 65535) { $revision = $installedVersion.Revision + 1 }
+        }
+    }
+    $packageVersion = "$baseVersion.$revision"
+    $devManifestDir = Join-Path $repoRoot 'src\Archiver.App\obj\PakkoDev'
+    $devManifestPath = Join-Path $devManifestDir 'Package.appxmanifest'
+    New-Item -ItemType Directory -Force -Path $devManifestDir | Out-Null
+    $devManifestText = $manifestText.Substring(0, $versionMatch.Index) + "Version=`"$packageVersion`"" +
+        $manifestText.Substring($versionMatch.Index + $versionMatch.Length)
+    [System.IO.File]::WriteAllText($devManifestPath, $devManifestText, (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host "Package version: $packageVersion"
+
     $publishStartTime = Get-Date
 
     $env:PAKKO_DEPLOYING = '1'
@@ -153,7 +183,8 @@ if (-not $DeployOnly) {
         /p:SelfContained=true `
         /p:GenerateAppxPackageOnBuild=true `
         /p:AppxPackageSigningEnabled=true `
-        "/p:PackageCertificateThumbprint=$Thumbprint" 2>&1 |
+        "/p:PackageCertificateThumbprint=$Thumbprint" `
+        "/p:PakkoAppxManifest=$devManifestPath" 2>&1 |
         Tee-Object -Variable publishOutput
     $publishExitCode = $LASTEXITCODE
     $env:PAKKO_DEPLOYING = $null
@@ -299,31 +330,6 @@ if ($installed) {
     Write-Host "========================================" -ForegroundColor Green
 } else {
     Write-Warning "Package installed but could not be verified via Get-AppxPackage."
-}
-
-# ── Bump Package.appxmanifest's Version for the next deploy ──────────────────
-# Only after a real build+install (never in -DeployOnly, which reinstalls an
-# already-built package) and only the last segment, per CLAUDE.md's versioning rule.
-if (-not $DeployOnly -and -not $SkipVersionBump -and $installed) {
-    $manifestText = [System.IO.File]::ReadAllText($manifestPath)
-    $versionPattern = '(?<![A-Za-z])Version="(\d+)\.(\d+)\.(\d+)\.(\d+)"'
-    $match = [regex]::Match($manifestText, $versionPattern)
-
-    if ($match.Success) {
-        $nextPatch = [int]$match.Groups[4].Value + 1
-        $oldVersion = $match.Value
-        $newVersion = 'Version="{0}.{1}.{2}.{3}"' -f `
-            $match.Groups[1].Value, $match.Groups[2].Value, $match.Groups[3].Value, $nextPatch
-
-        $manifestText = $manifestText.Substring(0, $match.Index) + $newVersion +
-            $manifestText.Substring($match.Index + $match.Length)
-        [System.IO.File]::WriteAllText($manifestPath, $manifestText, (New-Object System.Text.UTF8Encoding($false)))
-
-        Write-Host ""
-        Write-Host "Bumped Package.appxmanifest: $oldVersion -> $newVersion" -ForegroundColor Cyan
-    } else {
-        Write-Warning "Could not find Version attribute in Package.appxmanifest - skipped version bump."
-    }
 }
 
 # T-F102: every failure branch above exits explicitly with its own captured code; reaching

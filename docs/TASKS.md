@@ -2241,8 +2241,8 @@ PowerShell does natively.
 
 ### T-F367 — Rulesets: required `test` on `main`, protected `v*` tags (P2)
 
-- [~] **Status:** rulesets applied 2026-10-09 (`docs/DECISIONS.md`'s T-F367 entry); `[x]` once the
-  first PR merges through the `test` check. Planned as: the agent
+- [x] **Status:** done 2026-10-09 (`docs/DECISIONS.md`'s T-F367 entry): PR #25 merged through the
+  required `test` check (run 37895988700). Planned as: the agent
   pushes straight to `main`; nothing stops a push with red code or a
   stray release tag. Add the `test` job as a required status check (admin bypass, no PR needed for a
   solo repo) and a tag ruleset for `v*` (creation and deletion by the owner only). Needs the
@@ -2251,7 +2251,11 @@ PowerShell does natively.
 
 ### T-F368 — The dev build's revision outside the tracked `Package.appxmanifest` (P2)
 
-- [ ] **Status:** open. `Deploy.ps1` bumps the 4th version segment in a tracked file, so the
+- [x] **Status:** done 2026-10-09 (`docs/DECISIONS.md`'s T-F368 entry; `PackagingManifestTests`).
+  `Deploy.ps1` installed 1.7.1.24, then wrote 1.7.1.25 on its next run (that publish hit T-F96's
+  MSB3231; a rerun of the same publish built it, `-DeployOnly` installed it); tracked file untouched; the
+  bundle matches one built from the tracked manifest (37 languages, 3 applications, 28 entries).
+  Planned as: `Deploy.ps1` bumps the 4th version segment in a tracked file, so the
   manifest is always modified locally and a "never commit it" rule has to guard it. Pass the
   version to the package build as an MSBuild property (or a generated, git-ignored manifest) and
   keep the tracked file at `X.Y.Z.0`; a test checks the tracked revision is 0 (Store rule).
@@ -2269,7 +2273,10 @@ PowerShell does natively.
 
 ### T-F370 — Agent hooks for the rules that are text only today (P3)
 
-- [ ] **Status:** open. A Claude Code `PreToolUse` hook (in `.claude/settings.json`, tracked) that
+- [x] **Status:** done 2026-10-09 (`docs/DECISIONS.md`'s T-F370 entry; `AgentBashHookTests`). The
+  manifest rule was dropped: after T-F368 nothing writes the tracked manifest and a test guards its
+  revision. Fired in a live session on `python --version`. Planned as: a Claude Code `PreToolUse`
+  hook (in `.claude/settings.json`, tracked) that
   blocks committing `Package.appxmanifest` (until T-F368 removes the need), `python` without
   `py -3`, and `dotnet ... /p:` through Bash. Rules written as text drift; a hook does not.
 - **Reported by:** DevOps review, 2026-10-09.

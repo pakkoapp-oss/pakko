@@ -1249,9 +1249,8 @@ Two more, not duplicated elsewhere:
   `HeadlessAppBypass` waiver request from Microsoft — not a manifest fix, since removing
   `AppListEntry="none"` would break the intended hidden-process UX. Budget real calendar time for
   Microsoft's response before assuming a Store submission is close to done.
-- **`Package.appxmanifest`'s `Version` 4th segment (revision) must be `0` at Store submission
-  time** — a nonzero revision (e.g. from `Deploy.ps1`'s auto-bump) is rejected outright. Rebuild
-  with `-SkipVersionBump` (or manually reset to `X.X.X.0`) before uploading to Partner Center.
+- **`Package.appxmanifest`'s `Version` revision (4th segment) must be `0` at Store submission** —
+  the tracked file always is (T-F368, `PackagingManifestTests`); never commit a nonzero one.
 - **`src/Archiver.App/Assets/pakko-icon.svg` is the canonical vector source for every brand-mark
   asset** (Square44x44/150x150Logo, Wide310x150Logo, SplashScreen, StoreLogo). Regenerate raster
   assets from this SVG's real geometry, never by upscaling an existing `.png` — confirmed via a
@@ -1284,18 +1283,10 @@ Two more, not duplicated elsewhere:
 
 ## Deployment
 
-- `Deploy.ps1` automatically increments the last segment of the `Version` attribute in
-  `src/Archiver.App/Package.appxmanifest` after every successful build+install (not in
-  `-DeployOnly` mode, which reinstalls an already-built package). No manual bump needed.
-  Pass `-SkipVersionBump` to suppress this for a given run.
-- The version format is `1.4.0.X` — only the last segment changes.
-  Example: `1.4.0.0` → `1.4.0.1`. (Bumped from `1.2.0.x` 2026-07-17 — this is `Package.appxmanifest`'s
-  internal MSIX packaging number, tracked independently of the roadmap version labels in
-  `docs/SPEC.md`; it was already `1.2.0.x` throughout all of v1.3's development, so don't read the
-  first three segments as a live indicator of roadmap completeness.)
-- Do not change the first three segments unless explicitly instructed.
-- If bumping manually (e.g. outside `Deploy.ps1`), only edit the `Version` attribute on
-  `<Identity>` — do not touch `MinVersion`/`MaxVersionTested` on `TargetDeviceFamily`.
+- `Deploy.ps1` packages a generated copy of the manifest (`obj/PakkoDev/`, `/p:PakkoAppxManifest`)
+  whose revision is one past the installed dev package; the tracked file stays `X.Y.Z.0` (T-F368).
+  `-SkipVersionBump` packages at `.0`. Change the first three segments only when told to, on
+  `<Identity>` only, never `TargetDeviceFamily`'s `MinVersion`/`MaxVersionTested`.
 - Full build+sign+install command (user's dev cert thumbprint):
   ```powershell
   .\scripts\Deploy.ps1 -Thumbprint "D2EC5F2C451ED0EBE94B8168A68E5B813954CC75"
