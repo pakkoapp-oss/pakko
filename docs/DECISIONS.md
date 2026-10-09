@@ -11844,6 +11844,10 @@ and `Deploy.ps1`), and every rule has one home; the test forbids a nested `CLAUD
 - **winget:** the 1.6.0 new-package PR (microsoft/winget-pkgs#446296) had waited since 2026-10-03
   for a moderator; it is closed in favour of #449503 (1.7.2), validated and installed locally first.
   Uninstalling still leaves the `PATH` entry behind (T-F361).
+- **Submitted:** the user uploaded the combined bundle (run 37918985547) to Partner Center on
+  2026-10-09; it passed package validation and waits for certification. The user's drag-drop and
+  tray Exit checks ran on that same bundle, sideloaded and then removed for all users again so the
+  Store can install its own copy; this machine is back on Store 1.7.1.0 to watch the Store update.
 
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
