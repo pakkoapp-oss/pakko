@@ -446,6 +446,12 @@ Won't-fix categories recorded so far:
   mechanism note above). SonarCloud's own `csharpsquid:S5344` (PBKDF2 iterations) and `S4790`
   (weak hash) flag the same two lines for the same spec-mandated reason and carry `// NOSONAR`
   markers instead, per the same mechanism note — T-F193's AES writer follows both conventions.
+- **CA5351/S4790 (broken/weak hash) on `Archiver.Core/Recovery/Par2Md5.cs`'s MD5** (T-F275): PAR 2.0
+  fixes MD5 for its packet, slice and file checksums; a set hashed any other way is not PAR2 and no
+  other tool reads it. MD5 there guards against accidental damage, not an attacker (whoever writes a
+  PAR2 set chooses both the data and its hashes, `SECURITY.md`). Every MD5 call goes through that one
+  helper, suppressed there with `#pragma warning disable CA5351` and `// NOSONAR: S4790`; the tests'
+  own independent MD5 (`Par2PacketForge`) carries the same pragma.
 - **`pythonsecurity:S8707` (path taken from a command-line argument) on `scripts/Fill-StoreListing.py`**:
   a local tool whose whole input is the files its operator names; nothing else supplies the
   arguments. Marked `# NOSONAR S8707` on each `open`.

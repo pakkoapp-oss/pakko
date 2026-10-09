@@ -40,7 +40,7 @@ public sealed partial class DevOpsHygieneTests
     }
 
     [Theory]
-    [InlineData("build.yml", 1)]
+    [InlineData("build.yml", 2)]
     [InlineData("canary.yml", 6)]
     public void EveryRetryLoop_AnnotatesItsRetry(string file, int loops)
     {

@@ -1099,11 +1099,11 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - [~] **Status:** in progress (wave 6, target v1.8.0). Research and design: `docs/DECISIONS.md`
   "T-F275 — PAR2 recovery data"; scope: `docs/SPEC.md` "Recovery Data". One PR per step:
   - [x] 0 — research entry, scope, oracle script `scripts/Get-Par2Oracles.ps1` (2026-10-09).
-  - [ ] 1 — the Core engine (`Archiver.Core/Recovery/`: GF(2^16), packets, a bounded reader,
-    create/verify/repair with pivoting over all recovery blocks), tests only: packets byte-for-byte
-    equal to par2cmdline, hostile packets with valid MD5s, the singular case par2cmdline cannot
-    repair, fuzz, Slow/VeryLarge; the oracles wired into CI; the MD5 won't-fix entry in
-    `docs/CONVENTIONS.md`.
+  - [x] 1 — the Core engine (2026-10-09): `Archiver.Core/Recovery/`, internal — GF(2^16) with a
+    vector kernel, packets equal to par2cmdline's, a bounded reader, create/verify/repair with row
+    selection over all recovery blocks; the oracles in CI; the MD5 won't-fix entry. The public
+    `IRecoveryService`, its message codes and the `PakkoServices` wiring moved to step 2, which adds
+    the 37-language messages anyway (`docs/DECISIONS.md`, T-F275 "Step 1").
   - [ ] 2 — creation: `ArchiveOptions.RecoveryPercent`, the router, `pakko a -rr[N]`, the App's
     option, `DisableRecoveryData`, messages in 37 languages.
   - [ ] 3 — verification: `pakko t`, Explorer "Verify with PAR2", the App's state panel.

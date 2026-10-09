@@ -140,6 +140,8 @@ src/
 │   │       ├── ZipNameCodePages.cs      ← T-F234: system OEM/ANSI via in-box CodePagesEncodingProvider
 │   │       └── Decryption/              ← T-F188/T-F189: RawZipEntryLocator (central directory +
 │   │                                          local headers), EncryptedZipEntryReader, ZipCrypto, WinZip AES
+│   ├── Recovery/                   ← T-F275: the PAR 2.0 engine, internal — GF(2^16), packets,
+│   │                                  a bounded reader, create/verify/repair; public API with step 2
 │   ├── IO/
 │   │   ├── TempOwner.cs                ← T-F263/T-F312: public; the one owner of temp names —
 │   │   │                                  tag m<machine>-<pid>-<start ticks>, the sweep of entries
