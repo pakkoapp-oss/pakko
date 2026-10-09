@@ -10,6 +10,56 @@ the technical account of any task named here.
 
 ---
 
+## v1.7.2 — 2026-10-09
+
+Every Pakko program is now compiled ahead of time to native code: faster to start, a much smaller
+download, and no .NET runtime inside the package. Archives made from a drive root are fixed, large
+files are compressed on several cores, and Extract can leave the download mark off for one archive.
+
+### Changed
+
+- **T-F355** - the App, the Explorer commands, the operation window and `pakko` are Native AOT
+  builds. Measured on x64: `pakko x` of a ZIP 133 -> 34 ms, Explorer "Extract here" ~170 -> 32 ms,
+  App window ~590 -> ~430 ms; the MSIX shrinks from 63 to 15 MB and the CLI zip from 38 to 3 MB.
+- **T-F363** - Windows App SDK 2.5.1 and the Windows SDK build tools 10.0.28000 in both WinUI
+  programs.
+- **T-F352, T-F357, T-F359** - creating a ZIP of a few large files uses several cores; a file that
+  does not compress is copied once, not three times; on a hard disk the large files take turns
+  instead of seeking against each other.
+- **T-F358** - extracting many small files from a ZIP opens each file once instead of three times.
+- **T-F347, T-F348, T-F350, T-F351, T-F356** - shorter start-up: the tar.exe check runs off the UI
+  thread and only for a tar-family archive, and an Explorer command opens the operation window
+  only when the operation is not over at once.
+
+### Added
+
+- **T-F360** - Extract has an "apply the download mark" checkbox for an archive that carries the
+  mark, on by default; `pakko x -snz0` does the same. A Group Policy setting still wins.
+- **T-F365** - each MSIX and CLI zip on the GitHub release comes with a CycloneDX SBOM and a build
+  provenance attestation (`SECURITY.md` says how to verify them).
+
+### Fixed
+
+- **T-F344, T-F345** - a ZIP created from a drive root (`pakko a out.zip D:\`) has entry names
+  Pakko and other tools can extract, and leaves out the drive's own system entries.
+- **T-F285** - creating a tar archive from a `subst` drive root works.
+- **T-F362** - a renamed archive of a compound extension is numbered before `.tar.gz`
+  (`a (1).tar.gz`), not between `.tar` and `.gz`.
+- **T-F314, T-F319, T-F324, T-F327, T-F341** - App: focus stays on the list after Enter opens a
+  nested archive; an archive that fails to list keeps the folder you browsed from and says why in
+  your language; hidden system folders at a drive root are not listed; the window background
+  follows a theme change.
+- **T-F339, T-F340** - operation window: the result text is read once by screen readers, and its
+  colors follow a theme change.
+- **T-F329** - byte sizes use the right plural form in languages where the unit changes with the
+  number.
+
+### Known issues
+
+- The ARM64 build was checked by CI on an ARM64 runner, not on an ARM64 device.
+
+---
+
 ## v1.7.1 — 2026-10-06
 
 A data-integrity fix for password-protected ZIPs, and the command line says what it did: files it
