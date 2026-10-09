@@ -124,7 +124,7 @@ T-F232.)
 | `Archiver.App.Core` | WinUI-free helpers for `Archiver.App` (Archive Browser tree/breadcrumb building, real-filesystem browsing, file-activation routing) — kept separate so they're unit-testable without a WinUI test host |
 | `Archiver.App` | WinUI 3 main application |
 | `Archiver.Shell` | Shell-triggered operation entry point (silent CLI, launched by the shell extension); shows progress via the Windows Shell's built-in `IProgressDialog`, in-process |
-| `Archiver.ShellExtension` | C++ COM DLL implementing `IExplorerCommand` (the actual right-click context menu) — built via MSBuild, not `dotnet build`; see `CLAUDE.md` Build Commands |
+| `Archiver.ShellExtension` | C++ COM DLL implementing `IExplorerCommand` (the actual right-click context menu) — built via MSBuild, not `dotnet build`; see `.claude/rules/shell-extension.md` |
 | `Archiver.CLI` | Standalone console frontend (T-F09), built as `pakko.exe` — no WinUI; ships as its own self-contained per-architecture download via `scripts/Publish-Cli.ps1` (and winget), and since T-F317 also inside the MSIX behind the `pakko` execution alias; see `docs/CLI.md` |
 | `Archiver.Messages` | Core's error/skip messages in 37 languages, shared by `Archiver.Shell` and `Archiver.App` (T-F209) |
 | `Archiver.Core.Tests` | Unit tests for core compression/extraction logic |
@@ -132,7 +132,7 @@ T-F232.)
 | `Archiver.Core.PerformanceTests` | ZIP compression/extraction performance-regression tests vs. a vendored, sandboxed `7za.exe` reference (T-F114); see `docs/TESTING.md` |
 | `Archiver.App.Core.Tests` | Unit tests for `Archiver.App.Core`'s WinUI-free helpers |
 | `Archiver.Shell.Tests` | Argument parser tests for `Archiver.Shell` |
-| `Archiver.ShellExtension.Tests` | C++ Google Test suite for `Archiver.ShellExtension`'s COM-free logic — run separately, not covered by `dotnet test`; see `CLAUDE.md` Build Commands |
+| `Archiver.ShellExtension.Tests` | C++ Google Test suite for `Archiver.ShellExtension`'s COM-free logic — run separately, not covered by `dotnet test`; see `.claude/rules/shell-extension.md` |
 | `Archiver.Messages.Tests` | Translation parity for `Archiver.Messages` and its culture resolver |
 | `Archiver.CLI.Tests` | Parser/mapper/help-text unit tests for `Archiver.CLI` plus a `Subprocess/` layer that launches the real built `pakko.exe`; see `docs/CLI.md` |
 | `Archiver.Core.Tests.GenerateFixtures` | Fixture generator (see above) |

@@ -1605,7 +1605,10 @@ PowerShell does natively.
 
 ### T-F369 — `CLAUDE.md` split by area, with a size gate (P2)
 
-- [ ] **Status:** open. `CLAUDE.md` is 114 KB (~28k tokens loaded every session); `TASKS.md` 190 KB.
+- [x] **Status:** done 2026-10-09 (`docs/DECISIONS.md`'s T-F369 entry; `AgentInstructionsSizeTests`).
+  `CLAUDE.md` 111,880 -> 25,453 bytes; eleven path-scoped `.claude/rules/*.md` (3-11 KB) load only
+  with matching files; 37 done tasks moved to `TASKS_DONE.md` (`TASKS.md` 201 -> 130 KB). **Was:**
+  open. `CLAUDE.md` is 114 KB (~28k tokens loaded every session); `TASKS.md` 190 KB.
   Keep a core (`CLAUDE.md` ~25 KB: project, hard constraints, build commands, doc map) and move
   area rules into path-scoped files loaded only when that area is touched (`src/Archiver.App/CLAUDE.md`,
   `src/Archiver.Core/CLAUDE.md`, `scripts/CLAUDE.md`, ...); history goes to `DECISIONS.md`. A test
