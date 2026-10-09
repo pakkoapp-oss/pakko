@@ -50,6 +50,7 @@ env:
 jobs:
   canary-dotnet:
     runs-on: windows-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     outputs:
@@ -128,6 +129,7 @@ jobs:
 
   canary-shellext:
     runs-on: windows-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     outputs:
@@ -184,6 +186,7 @@ jobs:
   # local `Category=Slow` run before a release.
   canary-slow:
     runs-on: windows-latest
+    timeout-minutes: 45
     permissions:
       contents: read
     outputs:
@@ -232,6 +235,7 @@ jobs:
   # vendored arm64 7za.exe by process architecture.
   canary-arm64:
     runs-on: windows-11-arm
+    timeout-minutes: 30
     permissions:
       contents: read
     outputs:
@@ -326,6 +330,7 @@ jobs:
   # PATH by default; it comes from the MSVC toolset the build used.
   canary-asan:
     runs-on: windows-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     outputs:
@@ -426,8 +431,10 @@ jobs:
     needs: [canary-dotnet, canary-shellext, canary-slow, canary-arm64, canary-asan]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       actions: read
+      checks: read
       issues: write
     outputs:
       today_failed: ${{ steps.evaluate.outputs.today_failed }}
@@ -446,10 +453,24 @@ jobs:
 
           # A human-cancelled run is neither a pass nor a real failure -- don't advance or
           # reset the streak, and leave any existing tracking Issue exactly as it is.
+          # T-F366: a job past its timeout-minutes reports "cancelled" too, in needs and in the jobs
+          # API alike (probed); only its check run's annotation tells it apart, and it counts as failed.
           if echo "$NEEDS_JSON" | jq -e 'any(.[]; .result == "cancelled")' > /dev/null; then
-            echo "Run was cancelled -- not counted toward the failure streak, tracking Issue left untouched."
-            echo "today_failed=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            cancelled_checks=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs" --paginate \
+              --jq '.jobs[] | select(.conclusion == "cancelled") | .check_run_url | sub("^https://api.github.com/"; "")')
+            timed_out=false
+            for check in $cancelled_checks; do
+              messages=$(gh api "$check/annotations" --jq '.[].message')
+              if grep -q "exceeded the maximum execution time" <<< "$messages"; then
+                echo "Timed out: $check"
+                timed_out=true
+              fi
+            done
+            if [ "$timed_out" = "false" ]; then
+              echo "Run was cancelled -- not counted toward the failure streak, tracking Issue left untouched."
+              echo "today_failed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
           fi
 
           today_failed=$(echo "$NEEDS_JSON" | jq -r 'any(.[]; .result != "success" or .outputs.failed == "true")')
@@ -525,6 +546,7 @@ jobs:
     needs: canary-status
     if: always() && needs.canary-status.outputs.today_failed == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -539,6 +561,7 @@ jobs:
     needs: [canary-status, canary-failed-day]
     if: always() && needs.canary-status.outputs.today_failed == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       issues: write
     env:

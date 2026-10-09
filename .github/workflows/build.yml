@@ -15,6 +15,14 @@ on:
   # not something that should fire on every commit the way the tester release pipeline does.
   workflow_dispatch:
 
+# T-F366: a newer push to a branch (or PR) cancels the run it supersedes. A tag push or a dispatch
+# gets a group of its own (run_id): one shared group would still queue them, and a third arrival
+# cancels the pending one. A superseded main run may be cancelled mid deploy-pages; the newer run
+# deploys again.
+concurrency:
+  group: ${{ github.workflow }}-${{ ((github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) || github.event_name == 'pull_request') && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 # ── Interim signing identity (T-F122) ──────────────────────────────────────────────────────────
 # Signs with the same local self-signed "CN=Pakko Dev" dev cert Deploy.ps1 already uses
 # (thumbprint below), stored as two repo secrets. TODO(T-F10): once SignPath Foundation issues a
@@ -76,6 +84,7 @@ jobs:
   # analysis upload, none of which need more than read access to repo contents.
   test:
     runs-on: windows-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -185,6 +194,7 @@ jobs:
   # this is fast and independent, so it runs in parallel rather than waiting.
   lint-ps1:
     runs-on: windows-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -214,6 +224,7 @@ jobs:
   sbom:
     if: github.event_name == 'push'
     runs-on: windows-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -246,6 +257,7 @@ jobs:
     needs: [test, lint-ps1, sbom]
     if: github.event_name == 'push'
     runs-on: windows-2022
+    timeout-minutes: 30
     # T-F364: deterministic source paths (/_/) in the shipped binaries and PDBs; not in `test`,
     # whose coverage report needs the real source paths.
     env:
@@ -341,6 +353,7 @@ jobs:
     needs: test
     if: github.event_name == 'workflow_dispatch'
     runs-on: windows-2022
+    timeout-minutes: 30
     # T-F364: deterministic source paths (/_/) in the shipped binaries and PDBs; not in `test`,
     # whose coverage report needs the real source paths.
     env:
@@ -406,6 +419,7 @@ jobs:
     needs: build-store-msix
     if: github.event_name == 'workflow_dispatch'
     runs-on: windows-2022
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -499,6 +513,7 @@ jobs:
     # image tar.exe carries no embedded Authenticode signature, which TarSignatureVerifier requires,
     # so every tar test fails there. The AOT ARM64 link uses the image's latest VS ARM64 tools.
     runs-on: windows-latest
+    timeout-minutes: 20
     # T-F364: deterministic source paths (/_/) in the shipped binaries and PDBs; not in `test`,
     # whose coverage report needs the real source paths.
     env:
@@ -579,6 +594,7 @@ jobs:
     needs: [build-msix, build-cli]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: windows-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
@@ -679,6 +695,7 @@ jobs:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -724,6 +741,7 @@ jobs:
   deploy-pages:
     needs: docs
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       pages: write
       id-token: write

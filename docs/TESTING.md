@@ -1094,6 +1094,11 @@ Ukrainian UI, CI an English one.
   with `actions/attest` and `sbom-path`; `release` publishes the `.cdx.json` files; the script
   restores locked and drops the build-only and Windows ML packages. Six of seven red before the
   change (2026-10-09; the seventh, no privileged job runs the generator, held already).
+- **Job limits (T-F366)**, `WorkflowLimitsTests` (Core.Tests; both share `WorkflowJobs`, the job
+  splitter): every job in `build.yml` and `canary.yml` has a job-level `timeout-minutes` of 1-120;
+  `build.yml`'s concurrency group falls back to `run_id` outside branch pushes and PRs;
+  `canary.yml` has none; canary-status reads check-run annotations for a timeout. All four red
+  before the change; mutants killed: one timeout removed, the `run_id` fallback, the annotation text.
 - `CliVersionTextTests.WithPackage_*`: `pakko -v` appends `(package <full name>)` only when packaged.
 - `PAKKO_CLI_EXE` points `CliProcessRunner` at another `pakko.exe`; set it to
   `%LOCALAPPDATA%\Microsoft\WindowsApps\pakko.exe` to run the whole `Subprocess/` layer against the

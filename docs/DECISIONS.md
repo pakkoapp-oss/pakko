@@ -11676,3 +11676,26 @@ architecture's runtime is present and nothing excluded or foreign is. All four S
 
 **Known gap.** `Archiver.ShellExtension.dll` is C++ with no package dependencies; the MSVC
 runtime it links is not listed as a component.
+
+## T-F366 — a timeout on every job, superseded branch runs cancelled (2026-10-09)
+
+**Decision.** Every job in `build.yml` and `canary.yml` sets `timeout-minutes`, about four times
+its slowest run in the last 40 (`test` 8 min -> 30, `build-msix` 4 -> 30, `canary-slow` 6 -> 45,
+the small jobs 10-20; `canary-fuzz` keeps its 60). GitHub's default is 6 hours, so a hung GUI or
+Subprocess test held a runner that long. `build.yml` gets a workflow-level `concurrency` whose
+group is the ref for a branch push or a pull request and the `run_id` for anything else, with
+`cancel-in-progress: true`. A tag push or a dispatch therefore never waits for or cancels another
+run: one shared group with `cancel-in-progress: false` would still serialize them, and a third
+arrival cancels the one pending. A superseded `main` run can be cancelled during `deploy-pages`;
+the newer run deploys again, so that is accepted. `canary.yml` has no `concurrency`: nothing
+pushes to it, and the release checklist dispatches it on purpose.
+
+**A timeout reports "cancelled", so canary-status checks the annotation.** Probed on a temporary
+branch (a 1-minute job sleeping 150 s): the job's result is `cancelled` in `needs`, and its
+conclusion is `cancelled` in the jobs API too, not `timed_out`. canary-status treated `cancelled`
+as a human cancel and skipped the day, so a hung canary job would have been a silent miss. It now
+reads the annotations of each cancelled job's check run (`checks: read`); "The job has exceeded
+the maximum execution time" counts the day as failed, anything else stays a human cancel. Both
+paths ran on the probe branch with the exact script (timeout counted, a `gh run cancel` not).
+`canary-fuzz` sits outside canary-status: its timeout shows as a cancelled run, which the release
+checklist's "`canary-fuzz` is `success`" check still catches.

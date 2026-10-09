@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
@@ -7,7 +6,7 @@ namespace Archiver.Core.Tests.Services;
 // T-F365: each MSIX and CLI zip gets a CycloneDX SBOM, attested. The third-party generator runs in a
 // job of its own with no secrets and no id-token; the jobs holding the signing key or the OIDC token
 // only run the first-party actions/attest.
-public sealed partial class SbomWorkflowTests
+public sealed class SbomWorkflowTests
 {
     private static readonly string RepoRoot = FindRepoRoot();
 
@@ -85,23 +84,9 @@ public sealed partial class SbomWorkflowTests
     private static string NeedsLine(string job) =>
         job.Split('\n').FirstOrDefault(l => l.TrimStart().StartsWith("needs:", StringComparison.Ordinal)) ?? "";
 
-    private static string Job(string name) =>
-        Jobs().Where(j => j.Name == name).Select(j => j.Body).SingleOrDefault() ?? "";
+    private static string Job(string name) => WorkflowJobs.Job(RepoRoot, "build.yml", name);
 
-    private static List<(string Name, string Body)> Jobs()
-    {
-        // Comment lines go: the one above a job would otherwise count as the previous job's text.
-        string workflow = string.Join('\n', File.ReadAllText(Path.Combine(RepoRoot, ".github", "workflows", "build.yml"))
-            .Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n')
-            .Where(l => !l.TrimStart().StartsWith('#')));
-        string jobs = workflow[(workflow.IndexOf("\njobs:\n", StringComparison.Ordinal) + 7)..];
-        MatchCollection headers = JobHeader().Matches(jobs);
-        return [.. headers.Select((m, i) => (m.Groups[1].Value,
-            jobs[m.Index..(i + 1 < headers.Count ? headers[i + 1].Index : jobs.Length)]))];
-    }
-
-    [GeneratedRegex(@"^  ([a-z0-9-]+):\n", RegexOptions.Multiline)]
-    private static partial Regex JobHeader();
+    private static List<(string Name, string Body)> Jobs() => WorkflowJobs.Parse(RepoRoot, "build.yml");
 
     private static string FindRepoRoot()
     {
