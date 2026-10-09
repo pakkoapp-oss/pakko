@@ -1094,6 +1094,13 @@ Ukrainian UI, CI an English one.
   with `actions/attest` and `sbom-path`; `release` publishes the `.cdx.json` files; the script
   restores locked and drops the build-only and Windows ML packages. Six of seven red before the
   change (2026-10-09; the seventh, no privileged job runs the generator, held already).
+- **Agent hook (T-F370)**, `AgentBashHookTests` (Core.Tests): runs `scripts/hooks/Test-AgentBashCommand.ps1`
+  through pwsh (found on PATH) with the payload Claude Code sends — bare `python`/`python3` and
+  `dotnet ... /p:` at command position (after `;`, `&&`, `|`, `$(`, a newline, an env assignment, a
+  backslash continuation) exit 2; quoted text, a heredoc body, `py -3` and `echo dotnet /p:` exit 0; a
+  non-JSON payload exits 1; `.claude/settings.json` wires the hook to `Bash`. Mutation-checked.
+- **Tracked manifest revision (T-F368)**, `PackagingManifestTests.Manifest_KeepsTheRevisionAtZero`:
+  `Package.appxmanifest`'s Identity revision is 0. Red on 1.7.1.24 before the change.
 - **Job limits (T-F366)**, `WorkflowLimitsTests` (Core.Tests; both share `WorkflowJobs`, the job
   splitter): every job in `build.yml` and `canary.yml` has a job-level `timeout-minutes` of 1-120;
   `build.yml`'s concurrency group falls back to `run_id` outside branch pushes and PRs;

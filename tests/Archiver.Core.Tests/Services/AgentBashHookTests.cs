@@ -21,6 +21,7 @@ public sealed class AgentBashHookTests
     [InlineData("first line\npython x.py")]
     [InlineData("dotnet build src/A.csproj /p:Platform=x64")]
     [InlineData("cd repo && dotnet publish x \"/p:Foo=1\"")]
+    [InlineData("dotnet publish src/A.csproj \\\n    /p:Configuration=Release")]
     public void ForbiddenCommand_IsBlocked(string command)
     {
         (int exitCode, string stderr) = RunHook(Payload(command));

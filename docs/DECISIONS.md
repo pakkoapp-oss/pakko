@@ -11739,7 +11739,7 @@ the installed package is the state. `-SkipVersionBump` keeps its name and now me
 whichever manifest it reads. Checked on the built bundle, not the log: the version, 37 languages,
 the three applications and 28 entries match a bundle built from the tracked manifest.
 
-Seen on the way, not caused by this change: twice `_CreatePackageLayout`'s `RemoveDir` hit MSB3231
+Seen on the way, with no sign it is related (the same folder, the same T-F96 shape): twice `_CreatePackageLayout`'s `RemoveDir` hit MSB3231
 after the inner `.msix` was written but before the bundle; T-F96's tolerance then installs that
 flat `.msix` (it still carries every language). A manual delete of the same folder succeeded at
 once, the live-handle shape in CLAUDE.md, and the next publish made the bundle.

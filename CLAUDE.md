@@ -1031,7 +1031,7 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > **A build failing with a file-lock-shaped error** (`MSB3231`/`Access to the path ... is
 > denied` on something under `bin`/`obj`/`AppPackages`) — first try `dotnet build-server
 > shutdown` (kills lingering MSBuild/VBCSCompiler nodes that can hold output handles open)
-> before assuming a stuck folder needs a version bump (see the `AppPackages` wedge note above).
+> before assuming a stuck folder needs an `obj` clean (see the `AppPackages` wedge note above).
 >
 > **`git stash push -u` can silently half-fail**: if cleaning untracked content hits
 > `Permission Denied` on an unrelated empty directory (e.g. leftover build-artifact folders),
@@ -1103,25 +1103,11 @@ MSBuild tests\Archiver.ShellExtension.Tests\Archiver.ShellExtension.Tests.vcxpro
 > `Add-AppxPackage` installs either directly. If you ever reduce the shipped locale count back
 > down, expect the output to flip back to a flat `.msix` — both are handled now.
 >
-> **A stuck `AppPackages\Archiver.App_<version>_Test\`/`obj\...\PackageLayout\` folder can look
-> like a process lock but isn't one.** Hit this the same day: `dotnet publish` failed with
-> `MSB3231: Unable to remove directory ... Access to the path ... is denied` on a specific
-> version's output folder — reproducible even after `dotnet build-server shutdown`, killing
-> stray `dotnet`/`MSBuild`/`dllhost.exe` processes, and a full machine reboot. Reducing the
-> locale count also didn't help (a real experiment, not just a guess — ruled it out cleanly).
-> What actually worked: bump `Package.appxmanifest`'s `Version` to get a **fresh** output
-> folder name, and separately clean the `obj\` folder (not just `AppPackages\`) — something in
-> that specific version's `obj`/`AppPackages` state was wedged, not a live handle. Don't spend
-> time chasing process locks for this error; a version bump + `obj` clean is faster and fixed
-> it outright.
->
-> **Correction (recurred a 3rd time, 2026-07-07):** the lesson above isn't universal — distinguish
-> a wedged/stale folder from a live-handle race before reaching for a version bump. Test: if a
-> manual `rm -rf`/`Remove-Item` on the "locked" path succeeds immediately right after
-> `dotnet publish` fails on that same path, it's a transient live handle (Search Indexer is the
-> top suspect), not a wedged folder — a version bump won't reliably fix this variant.
-> `Deploy.ps1` now tolerates this specific shape (MSB3231 on `AppPackages`/`PackageLayout` with a
-> valid `.msix` already written) instead of aborting a good build — see T-F96 in `docs/TASKS_DONE.md`.
+> **`MSB3231` on `AppPackages`/`obj\...\PackageLayout\`:** if a manual `Remove-Item` of that path
+> succeeds right after the failure, it is a transient live handle (Search Indexer is the top
+> suspect) — rerun; `Deploy.ps1` tolerates it when a valid fresh `.msix` exists (T-F96). If the
+> folder stays stuck even across a reboot, clean `src/Archiver.App/obj\`; every Deploy run already
+> packages a new revision, so the output folder name is fresh (T-F368).
 
 ---
 
