@@ -12,7 +12,8 @@ on:
   branch_protection_rule:
   workflow_dispatch:
 
-permissions: read-all
+permissions:
+  contents: read
 
 jobs:
   analysis:
@@ -20,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      contents: read
+      actions: read
       security-events: write
       id-token: write
     steps:
