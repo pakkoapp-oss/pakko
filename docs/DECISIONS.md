@@ -11365,7 +11365,7 @@ Before, each file was opened three times - content, mark, time.
 
 **Why.** Profiled, not guessed: under Defender's filter an open and a close cost a small file
 more than its content does (create ~350 us, close ~280), and an archive without a mark paid a
-failed open and an exception per file. Result in TASKS.md's T-F358 entry (-12% / -11%; an
+failed open and an exception per file. Result in TASKS_DONE.md's T-F358 entry (-12% / -11%; an
 unmarked archive now as fast as 7za).
 
 **What stays.** The order content -> mark -> time (T-F45, T-F298): the mark is written through
