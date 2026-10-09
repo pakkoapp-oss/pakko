@@ -351,6 +351,37 @@ public sealed class Par2RepairTests : IDisposable
         Directory.GetFiles(_temp.Path).Should().Equal(file);
     }
 
+    // 32768 slices all damaged: missing x (slices + missing) = 2^31 entries, past the repair limit.
+    [Theory]
+    [InlineData(Par2Limits.MaxInputSlices, true)]
+    [InlineData(Par2Limits.MaxInputSlices - 1, false)]
+    public void Verify_EverySliceOfTheLargestSetDamaged_IsTooLargeOrNotRepairable(int blocks, bool enoughBlocks)
+    {
+        Par2VerifyStatus expected = enoughBlocks ? Par2VerifyStatus.RepairTooLarge : Par2VerifyStatus.NotRepairable;
+        const int sliceCount = Par2Limits.MaxInputSlices;
+        string file = Path.Combine(_temp.Path, "a.zip");
+        File.WriteAllBytes(file, new byte[sliceCount * 4]);
+        var set = new Par2Set
+        {
+            SetId = 1,
+            SliceSize = 4,
+            FileId = 2,
+            FileMd5 = 3,
+            Md5First16k = 4,
+            FileLength = sliceCount * 4,
+            Name = "a.zip"u8.ToArray(),
+            Slices = new Par2SliceChecksum[sliceCount],
+            RecoveryBlocks = [.. Enumerable.Range(0, blocks).Select(e => new Par2RecoveryBlock((uint)e, file, 0))],
+        };
+
+        Par2Verification result = Par2Verifier.Verify(file, set, null, CancellationToken.None);
+
+        result.Status.Should().Be(expected);
+        result.DamagedSlices.Should().HaveCount(sliceCount);
+        Par2Repairer.Repair(file, set, Output(), null, CancellationToken.None).Status
+            .Should().Be(expected == Par2VerifyStatus.RepairTooLarge ? Par2RepairStatus.RepairTooLarge : Par2RepairStatus.NotRepairable);
+    }
+
     // --- Misuse ---
 
     [Fact]

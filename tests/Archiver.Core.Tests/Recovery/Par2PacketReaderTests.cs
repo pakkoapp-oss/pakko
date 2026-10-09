@@ -317,6 +317,37 @@ public sealed class Par2PacketReaderTests : IDisposable
         Read(Write(_temp.Path, "a.par2", packets)).Rejected.Should().ContainSingle().Which.Problem.Should().Be(Par2SetProblem.MissingCriticalPackets);
     }
 
+    // Every 64 bytes a header claiming a 64 KiB IFSC with a wrong MD5: without a budget each one is
+    // read and hashed in full, 3072 x 64 KiB for this 256 KiB file.
+    [Fact]
+    public void Read_FakeHeadersEverywhere_HashingStaysWithinTwiceTheFileLength()
+    {
+        const int fileLength = 256 * 1024;
+        byte[] file = new byte[fileLength];
+        for (int offset = 0; offset + 64 <= fileLength; offset += 64)
+        {
+            Magic.CopyTo(file, offset);
+            BinaryPrimitives.WriteUInt64LittleEndian(file.AsSpan(offset + 8), 64 * 1024);
+            IfscType.CopyTo(file, offset + 48);
+        }
+        string path = Path.Combine(_temp.Path, "fake.par2");
+        File.WriteAllBytes(path, file);
+
+        Par2ReadResult result = Read(path);
+
+        result.Sets.Should().BeEmpty();
+        result.HashedBytes.Should().BeLessThanOrEqualTo(2L * fileLength);
+    }
+
+    [Fact]
+    public void Read_ValidSet_HashesNoMoreThanItsFiles()
+    {
+        string golden = Path.Combine(Par2TestData.GoldenDir, "data.bin");
+        string[] files = [golden + ".par2", golden + ".vol0+4.par2"];
+
+        Read(files).HashedBytes.Should().BeLessThanOrEqualTo(files.Sum(f => new FileInfo(f).Length));
+    }
+
     [Theory]
     [InlineData(@"..\..\evil.exe")]
     [InlineData(@"C:\Windows\x.dll")]

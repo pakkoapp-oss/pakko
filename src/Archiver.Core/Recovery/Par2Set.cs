@@ -42,5 +42,6 @@ internal enum Par2SetProblem
     Malformed,
 }
 
-/// <summary>What reading a group of PAR2 files found: the usable sets and the refused ones.</summary>
-internal sealed record Par2ReadResult(IReadOnlyList<Par2Set> Sets, IReadOnlyList<(UInt128 SetId, Par2SetProblem Problem)> Rejected, int UnreadableFiles);
+/// <summary>What reading a group of PAR2 files found: the usable sets and the refused ones.
+/// <see cref="HashedBytes"/> is how much the reader hashed, held to twice the files' length.</summary>
+internal sealed record Par2ReadResult(IReadOnlyList<Par2Set> Sets, IReadOnlyList<(UInt128 SetId, Par2SetProblem Problem)> Rejected, int UnreadableFiles, long HashedBytes);

@@ -21,15 +21,15 @@ internal static class Par2PacketReader
         var sets = new Dictionary<UInt128, SetBuilder>();
         var candidates = new List<RecoveryCandidate>();
         int unreadable = 0;
-        var files = new List<(string Path, long Length)>();
+        var files = new List<HashBudget>();
         foreach (string path in paths)
         {
             try
             {
                 using SafeFileHandle file = File.OpenHandle(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-                long length = RandomAccess.GetLength(file);
-                files.Add((path, length));
-                Scan(file, path, length, sets, candidates, cancellationToken);
+                var budget = new HashBudget(path, RandomAccess.GetLength(file));
+                files.Add(budget);
+                Scan(file, budget, sets, candidates, cancellationToken);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -37,11 +37,11 @@ internal static class Par2PacketReader
             }
         }
 
-        foreach ((string path, long length) in files)
+        foreach (HashBudget budget in files)
         {
             try
             {
-                ValidateRecoveryBlocks(path, length, candidates, sets, cancellationToken);
+                ValidateRecoveryBlocks(budget, candidates, sets, cancellationToken);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -58,12 +58,14 @@ internal static class Par2PacketReader
             else
                 rejected.Add((setId, problem));
         }
-        return new Par2ReadResult(usable, rejected, unreadable);
+        return new Par2ReadResult(usable, rejected, unreadable, files.Sum(f => f.Spent));
     }
 
-    private static void Scan(SafeFileHandle file, string path, long fileLength, Dictionary<UInt128, SetBuilder> sets,
+    private static void Scan(SafeFileHandle file, HashBudget budget, Dictionary<UInt128, SetBuilder> sets,
         List<RecoveryCandidate> candidates, CancellationToken cancellationToken)
     {
+        string path = budget.Path;
+        long fileLength = budget.FileLength;
         byte[] window = new byte[WindowLength];
         long windowStart = 0;
         int windowLength = 0;
@@ -111,6 +113,8 @@ internal static class Par2PacketReader
             if (!critical || length > Par2Limits.MaxSmallPacketLength)
                 continue;
 
+            if (!budget.TrySpend(length))
+                return;
             byte[] packet = new byte[length];
             if (Par2FileIo.ReadUpTo(file, packet, offset) < packet.Length)
                 continue;
@@ -123,10 +127,10 @@ internal static class Par2PacketReader
         }
     }
 
-    private static void ValidateRecoveryBlocks(string path, long fileLength, List<RecoveryCandidate> candidates,
+    private static void ValidateRecoveryBlocks(HashBudget budget, List<RecoveryCandidate> candidates,
         Dictionary<UInt128, SetBuilder> sets, CancellationToken cancellationToken)
     {
-        long budget = checked(2 * fileLength);
+        string path = budget.Path;
         long acceptedEnd = 0;
         byte[] buffer = new byte[WindowLength];
         using SafeFileHandle? file = candidates.Exists(c => c.Path == path)
@@ -144,9 +148,8 @@ internal static class Par2PacketReader
                 || candidate.Length != RecoveryHeaderLength + sliceSize)
                 continue;
             long hashed = candidate.Length - Par2Packets.SetIdOffset;
-            if (hashed > budget)
+            if (!budget.TrySpend(hashed))
                 return;
-            budget -= hashed;
             byte[] md5 = Par2FileIo.HashRange(file, candidate.Offset + Par2Packets.SetIdOffset, hashed, buffer);
             if (BinaryPrimitives.ReadUInt128LittleEndian(md5) != candidate.Md5)
                 continue;
@@ -158,6 +161,25 @@ internal static class Par2PacketReader
     }
 
     private readonly record struct RecoveryCandidate(string Path, long Offset, long Length, UInt128 SetId, UInt128 Md5);
+
+    /// <summary>What one PAR2 file may cost to hash, over both phases: twice its length. A valid
+    /// file needs at most its length, since its packets do not overlap.</summary>
+    private sealed class HashBudget(string path, long fileLength)
+    {
+        private readonly long _limit = checked(2 * fileLength);
+
+        internal string Path { get; } = path;
+        internal long FileLength { get; } = fileLength;
+        internal long Spent { get; private set; }
+
+        internal bool TrySpend(long bytes)
+        {
+            if (bytes > _limit - Spent)
+                return false;
+            Spent += bytes;
+            return true;
+        }
+    }
 
     /// <summary>The valid packets of one set ID, collected across files.</summary>
     private sealed class SetBuilder
