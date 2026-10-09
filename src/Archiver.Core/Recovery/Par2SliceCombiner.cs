@@ -46,17 +46,23 @@ internal static class Par2SliceCombiner
                 int count = Math.Min(batch, shape.InputCount - first);
                 for (int g = 0; g < count; g++)
                     read(first + g, start, buffers.Inputs[g].AsSpan(0, rangeWidth));
-                for (int o = 0; o < shape.OutputCount; o++)
-                {
-                    for (int g = 0; g < count; g++)
-                        buffers.Factors[o * batch + g] = coefficient(o, first + g);
-                }
+                FillFactors(buffers.Factors, batch, first, count, coefficient);
                 ApplyBatch(buffers, batch, count, rangeWidth, options);
                 progress?.Invoke((long)count * rangeWidth);
             }
 
             for (int o = 0; o < shape.OutputCount; o++)
                 write(o, start, buffers.Outputs[o].AsSpan(0, rangeWidth));
+        }
+    }
+
+    // factors[o * batch + g] = the coefficient of input first + g in output o.
+    private static void FillFactors(ushort[] factors, int batch, int first, int count, Func<int, int, ushort> coefficient)
+    {
+        for (int o = 0; o < factors.Length / batch; o++)
+        {
+            for (int g = 0; g < count; g++)
+                factors[o * batch + g] = coefficient(o, first + g);
         }
     }
 
