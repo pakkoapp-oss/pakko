@@ -17,40 +17,42 @@ param()
 
 Set-StrictMode -Version Latest
 
+function Get-TextWithoutHeredocBody {
+    param([string] $Text)
+
+    $kept = [System.Collections.Generic.List[string]]::new()
+    $heredocEnd = $null
+    # A trailing backslash continues the command on the next line (CLAUDE.md's dotnet publish block).
+    foreach ($line in ($Text -replace '\\\r?\n', ' ') -split '\r?\n') {
+        if ($null -eq $heredocEnd) {
+            $kept.Add($line)
+            $heredoc = [regex]::Match($line, "<<-?\s*['`"]?([A-Za-z_][A-Za-z0-9_]*)")
+            if ($heredoc.Success) { $heredocEnd = $heredoc.Groups[1].Value }
+        } elseif ($line.Trim() -eq $heredocEnd) {
+            $heredocEnd = $null
+        }
+    }
+    return $kept -join "`n"
+}
+
 function Get-CommandSegment {
     param([string] $Text)
 
+    # An escaped character is never a quote or a separator, so it only has to keep its place.
+    $plain = (Get-TextWithoutHeredocBody -Text $Text) -replace '\\.', '_'
+    $separators = [char[]]";&|(`n"
     $segments = [System.Collections.Generic.List[string]]::new()
     $current = [System.Text.StringBuilder]::new()
     $quote = [char]0
-    $heredocEnd = $null
-    # A trailing backslash continues the command on the next line (CLAUDE.md's dotnet publish block).
-    $lines = ($Text -replace '\\\r?\n', ' ') -split "`r?`n"
-    foreach ($line in $lines) {
-        if ($null -ne $heredocEnd) {
-            if ($line.Trim() -eq $heredocEnd) { $heredocEnd = $null }
+    foreach ($c in $plain.ToCharArray()) {
+        if ($quote -eq [char]0 -and $c -in $separators) {
+            $segments.Add($current.ToString())
+            [void]$current.Clear()
             continue
         }
-        if ($quote -eq [char]0) {
-            $heredoc = [regex]::Match($line, "<<-?\s*['`"]?([A-Za-z_][A-Za-z0-9_]*)")
-            if ($heredoc.Success) { $heredocEnd = $heredoc.Groups[1].Value }
-        }
-        for ($i = 0; $i -lt $line.Length; $i++) {
-            $c = $line[$i]
-            if ($quote -ne [char]0) {
-                if ($c -eq $quote) { $quote = [char]0 }
-                elseif ($c -eq '\' -and $quote -eq '"' -and $i + 1 -lt $line.Length) { [void]$current.Append($c); $i++; $c = $line[$i] }
-                [void]$current.Append($c)
-                continue
-            }
-            if ($c -eq "'" -or $c -eq '"') { $quote = $c; [void]$current.Append($c); continue }
-            if ($c -eq ';' -or $c -eq '&' -or $c -eq '|' -or $c -eq '(') {
-                $segments.Add($current.ToString()); [void]$current.Clear(); continue
-            }
-            [void]$current.Append($c)
-        }
-        if ($quote -eq [char]0) { $segments.Add($current.ToString()); [void]$current.Clear() }
-        else { [void]$current.Append("`n") }
+        if ($c -eq $quote) { $quote = [char]0 }
+        elseif ($quote -eq [char]0 -and ($c -eq "'" -or $c -eq '"')) { $quote = $c }
+        [void]$current.Append($c)
     }
     $segments.Add($current.ToString())
     return $segments

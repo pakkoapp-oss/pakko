@@ -15,6 +15,7 @@ public sealed class AgentBashHookTests
     [InlineData("python3 -c \"print(1)\"")]
     [InlineData("cd /c/repo && python script.py")]
     [InlineData("echo hi; python3 x.py")]
+    [InlineData("echo \"a \\\" b\" && python x.py")]
     [InlineData("ls | python -")]
     [InlineData("v=$(python3 -V)")]
     [InlineData("FOO=1 python x.py")]
@@ -62,7 +63,7 @@ public sealed class AgentBashHookTests
     [Fact]
     public void ProjectSettings_RunTheHookBeforeEveryBashCall()
     {
-        using JsonDocument settings = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoRoot, ".claude", "settings.json")));
+        using var settings = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoRoot, ".claude", "settings.json")));
         JsonElement entry = settings.RootElement.GetProperty("hooks").GetProperty("PreToolUse")
             .EnumerateArray().Single(e => e.GetProperty("matcher").GetString() == "Bash");
 
