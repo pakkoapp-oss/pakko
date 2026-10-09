@@ -2218,8 +2218,11 @@ PowerShell does natively.
 
 ### T-F365 — An SBOM for the MSIX and the CLI zips, attested (P2)
 
-- [~] **Status:** implemented 2026-10-09, waiting for CI (`docs/DECISIONS.md`'s T-F365 entry:
-  CycloneDX 1.6 from a read-only `sbom` job, `actions/attest` since `attest-sbom` is deprecated).
+- [x] **Status:** done 2026-10-09 (b24fbf1, fix 9cfb33d; `docs/DECISIONS.md`'s T-F365 entry:
+  CycloneDX 1.6 from a read-only `sbom` job with no cache, `actions/attest` since `attest-sbom` is
+  deprecated). CI green on both; `gh attestation verify` on the CI's x64 MSIX bundle and both CLI
+  zips finds the CycloneDX and the SLSA attestations; the CI SBOMs equal the local ones (23/1);
+  Sonar 0 new. The `release` step runs first on the next tag. `SECURITY.md` waits for the user.
   Planned as: CycloneDX (or SPDX) per artifact in `build.yml`, published with the
   release and attested with `actions/attest-sbom` next to the existing SLSA provenance (T-F125).
   The audience (government, defence) asks for the component list, not only provenance. Update
