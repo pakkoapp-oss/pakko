@@ -11812,6 +11812,34 @@ and `Deploy.ps1`), and every rule has one home; the test forbids a nested `CLAUD
   its second attempt; the run summary then shows which step needed it. A retry that passed used to
   leave no trace outside the raw log.
 
+---
+
+## v1.7.2 — the first Native AOT release, its Store bundle and the upgrade from 1.7.1 (2026-10-09)
+
+- **Store state before it:** the combined bundle 1.7.1.0 is live (public catalog lists
+  `PavloRybchenko.Pakko_1.7.1.0_neutral_~_955q7mnhfhmp4`), so nothing was pending in certification.
+- **Tag:** `v1.7.2` on 3526049 after the main build (37915354183) and the canary on that commit
+  (37916457087: `canary-failed-day` skipped, `canary-fuzz` success) were green, and `Category=Slow`
+  22/22 locally. The tag run's `test` failed once in
+  `RunAsync_SocketConnectAttempt_FailsInsideAppContainerButSucceedsUnsandboxed` (the unsandboxed
+  curl to the test's own loopback listener timed out, exit 28); the same commit passed on main and
+  in the canary, so the failed job was rerun in the same run (37917269113) and passed. The tag did
+  not move.
+- **Store bundle (dispatch 37918985547), compared with the 1.7.1 Store bundle (37399090898):** the
+  inner manifests differ only in the version, the framework dependency
+  (`Microsoft.WindowsAppRuntime.1.8` >= 8000.770.947.0 -> `Microsoft.WindowsAppRuntime.2` >= 2.5.1.0,
+  T-F363) and the build tools' versions; capabilities, extensions and `TargetDeviceFamily` are
+  unchanged; 37 languages, x64 and arm64. The framework 2.5.1.0 is in the Store catalog (product
+  9NRZT3Q9R3DL, x64/arm64/x86), so a Store install or update brings it along.
+- **Upgrade in place, checked with the GitHub Release bundles (same package family as the Store's
+  install, Dev-signed):** 1.7.2 over 1.7.1.0 without uninstalling keeps the package data, starts,
+  and Explorer's already loaded menu runs the new Shell and operation window. With 1.7.1 running,
+  a plain `Add-AppxPackage` fails `0x80073D02` (as for any MSIX); `-ForceApplicationShutdown`, what
+  the Store does, closes it and installs. The Store-signed path itself is checked after publication.
+- **winget:** the 1.6.0 new-package PR (microsoft/winget-pkgs#446296) had waited since 2026-10-03
+  for a moderator; it is closed in favour of #449503 (1.7.2), validated and installed locally first.
+  Uninstalling still leaves the `PATH` entry behind (T-F361).
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry

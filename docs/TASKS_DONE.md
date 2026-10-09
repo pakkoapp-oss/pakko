@@ -12299,7 +12299,8 @@ PowerShell does natively.
   Eight developer scripts `#Requires -Version 7.0`, the Visual Studio Release post-build runs
   `pwsh.exe`; `Find-`/`Repair-PakkoSandboxAce.ps1` stay on 5.1 (end-user remediation, T-F233). A
   full `Deploy.ps1` under pwsh 7.6 installed 1.7.1.26 (Appx and PKI load natively). New
-  `scorecard.yml`; seven retry loops write `::warning title=Retried::`. **Was:** open.
+  `scorecard.yml`; seven retry loops write `::warning title=Retried::`. First Scorecard run after
+  the merge, 37914284962, published 6.4. **Was:** open.
   Move `Deploy.ps1`/`CI-Build-Msix.ps1` and the rest from `#Requires -Version
   5.1` to pwsh 7 (CI already runs `shell: pwsh`; ends the BOM/ANSI-codepage class, T-F84) after
   checking the Appx module under pwsh 7 on the dev machine. Add the OpenSSF Scorecard workflow (a
