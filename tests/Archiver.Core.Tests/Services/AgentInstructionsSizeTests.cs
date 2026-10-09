@@ -19,7 +19,7 @@ public sealed partial class AgentInstructionsSizeTests
     [Fact]
     public void RootClaudeMd_StaysUnderTheGate()
     {
-        long size = Encoding.UTF8.GetByteCount(File.ReadAllText(Path.Combine(RepoRoot, "CLAUDE.md")));
+        long size = Encoding.UTF8.GetByteCount(File.ReadAllText(Path.Combine(RepoRoot, "CLAUDE.md")).ReplaceLineEndings("\n"));
 
         size.Should().BeLessThanOrEqualTo(CoreLimitBytes,
             "CLAUDE.md loads into every session: pair each addition with a deletion, move area rules to .claude/rules/ and history to docs/DECISIONS.md");

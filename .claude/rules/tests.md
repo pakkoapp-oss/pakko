@@ -31,6 +31,7 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   as an explicit parameter type, drop the `file` modifier on the fake class instead (plain
   top-level `internal` is fine — it's still test-assembly-only). Only matters when a shared helper
   takes the fake by type; a fake only ever assigned to `var` never hits this (T-F146).
+
 ## Known test gaps — manual verification required
 
 - **Observed test flakiness (2026-07-07):** `Extract_ValidUnicodeFilenames_Succeeds` and
@@ -65,7 +66,7 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   written" branch (line ~448) plus `ParallelSingleArchiveWriter`'s CAS-retry-loop race — both left
   open questions, the exact real-world trigger for the former wasn't confirmed within that task's
   budget (T-F66 already makes plain empty folders write a placeholder entry, so what else still
-  reaches it is unclear). See `docs/TASKS.md`'s T-F143 entry for the full triage and the 40 tests
+  reaches it is unclear). See `docs/TASKS_DONE.md`'s T-F143 entry for the full triage and the 40 tests
   that *were* added to close the actual gate-blocking gaps.
 - **The vendored `7za.exe` test dependency (T-F114, `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/`)
   never enters this pipeline.** `Deploy.ps1` only publishes `src/Archiver.App`; nothing under

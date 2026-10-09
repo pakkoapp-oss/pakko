@@ -32,8 +32,7 @@ truth; never trust a count written in a doc.
 ## Roadmap Summary
 
 Version-to-focus table: see `docs/SPEC.md`'s "Future Roadmap" section (the sole owner, per T-F72 —
-`README.md`'s roadmap links there too now). Per-version completion detail beyond a one-line scope
-description lives in this file's "Current State" section above instead of a second table.
+`README.md`'s roadmap links there too now).
 
 ---
 
@@ -119,10 +118,12 @@ this file or in one of these (grep `.claude/rules/`).
 - All IO exceptions caught per-item → `ArchiveError` — methods never throw to callers, except
   `OperationCanceledException` on cancellation (T-F260), even between two sources
 - MVVM: no business logic in `.xaml.cs` files
-- **Native AOT (T-F355): all four exes ship Native AOT; the five libraries are `IsAotCompatible`.**
-  `dotnet test` runs under JIT and cannot see an AOT-only failure. No `Assembly.Load*`,
-  `Reflection.Emit`, reflection over unknown types, `[ComImport]` or reflection JSON. WinUI detail:
-  `.claude/rules/app-winui.md`.
+- **Native AOT (T-F355): App, Shell, OperationUi and `pakko` ship Native AOT; the five libraries are
+  `IsAotCompatible`.** `dotnet test` runs under JIT and cannot see an AOT-only failure. No
+  `Assembly.Load*`, `Reflection.Emit`, reflection over unknown types, `[ComImport]` (use
+  `[GeneratedComInterface]`) or reflection JSON (use a `JsonSerializerContext`). Never
+  `UseSystemResourceKeys`/`InvariantGlobalization`. Verify on the deployed package, not under the
+  debugger. WinUI detail: `.claude/rules/app-winui.md`.
 - **tar.exe:** always use `C:\Windows\System32\tar.exe` (absolute path) — never via PATH
 - **Any `Process.Start` of a system-provided executable uses an absolute path** (PATH-hijack
   resistance, S4036); helper: `Archiver.Core/Services/ExplorerLauncher.cs` (T-F136).
@@ -161,6 +162,7 @@ this file or in one of these (grep `.claude/rules/`).
   tags cannot be moved or deleted. `git push` goes as the active `gh` account (normally `user137`,
   a write collaborator); a repo-admin call needs `gh auth switch --hostname github.com --user
   pakkoapp-oss` first and a switch back after (the wrong account fails with a misleading 404).
+  SonarCloud findings through the REST API: `.claude/rules/ci.md`.
 - Before tagging an ad-hoc fix with a new `T-Fxx` comment/reference, grep the highest existing
   number **across the entire repo**, not just `TASKS.md`/`TASKS_DONE.md`/`CLAUDE.md`/
   `DECISIONS.md` — don't guess a number. Some `T-Fxx` tags exist only as code comments with no

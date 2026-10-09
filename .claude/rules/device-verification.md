@@ -77,3 +77,27 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   For a *native* crash (WinUI/WindowsAppRuntime init failure, access violation, etc.) instead
   check `ProviderName='Application Error'` — these show as event ID 1000 with the faulting
   module/offset/exception code and never appear under the `.NET Runtime` provider at all.
+- **`Archiver.Shell.exe`'s CLI commands (`--archive`, `--extract-here`, `--extract-folder`,
+  `--test`, `--hash`) take only source/archive paths — never an explicit destination.** The
+  destination is always auto-computed (folder-of-source for extract, `<name>.zip` next to the
+  source for archive — same naming Explorer's "Add to X.zip" verb produces). Passing an extra path
+  as a destination gets silently treated as another source/archive path instead (T-F142).
+- **Any Pakko command that shows a native modal (`IProgressDialog`, `MessageBoxW` result dialogs —
+  `--archive`, `--extract-*`, `--test`, `--scan`, `--hash`) blocks forever if invoked directly
+  (`& $exe args`) from the PowerShell tool** — the call never returns because the dialog waits for
+  a click. Launch via `Start-Process -FilePath $exe -ArgumentList @(...)` (detached) instead, then
+  poll for the dialog with `EnumWindows`/`GetWindowThreadProcessId` filtered to the child PID, read
+  its result text via `EnumChildWindows`, and dismiss with `SendMessage(hWnd, 0x00F5, ...)`
+  (BM_CLICK) on the OK button's handle. If a call hangs anyway, `taskkill /F /IM
+  Archiver.Shell.exe` clears the stuck modal before retrying (T-F151/T-F153 smoke tests).
+- **PowerShell tool's `Add-Type` classes do NOT persist across separate calls** (only cwd does) —
+  a `Win32`-style helper class defined in one call is gone in the next ("Unable to find type"). If
+  you need it again (e.g. for a follow-up screenshot), redefine the whole `Add-Type` block in the
+  same call that uses it, not just once at the start of a multi-call sequence. Also: `Get-Item` on
+  a registry path containing `{...}` (a GUID/CLSID) silently returns nothing unless you pass
+  `-LiteralPath` instead of the default `-Path` — curly braces are wildcard syntax otherwise.
+- **Pass `& $exe` arguments as separate array elements, never manually quoted inside a string** —
+  `& $exe $path1 $path2`, not `` & $exe "`"$path1`"" ``. The latter embeds literal `"` characters
+  into the argument itself once PowerShell's own tokenizer is done, corrupting the path (confirmed:
+  `IOException` with a visibly quote-mangled path, T-F142 on-device check). Let PowerShell's own
+  array-argument passing handle spaces — don't hand-roll quoting.
