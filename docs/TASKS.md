@@ -1102,7 +1102,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   - [ ] 1 — the Core engine (`Archiver.Core/Recovery/`: GF(2^16), packets, a bounded reader,
     create/verify/repair with pivoting over all recovery blocks), tests only: packets byte-for-byte
     equal to par2cmdline, hostile packets with valid MD5s, the singular case par2cmdline cannot
-    repair, fuzz, Slow/VeryLarge; the oracles wired into CI.
+    repair, fuzz, Slow/VeryLarge; the oracles wired into CI; the MD5 won't-fix entry in
+    `docs/CONVENTIONS.md`.
   - [ ] 2 — creation: `ArchiveOptions.RecoveryPercent`, the router, `pakko a -rr[N]`, the App's
     option, `DisableRecoveryData`, messages in 37 languages.
   - [ ] 3 — verification: `pakko t`, Explorer "Verify with PAR2", the App's state panel.
