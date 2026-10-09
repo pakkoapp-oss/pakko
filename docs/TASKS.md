@@ -2231,8 +2231,10 @@ PowerShell does natively.
 
 ### T-F366 — `timeout-minutes` on every job, `concurrency` for branch pushes (P2)
 
-- [ ] **Status:** open. Only one canary job has a timeout; a hung GUI or Subprocess test holds a
-  runner for 6 hours. `concurrency` cancels a superseded run on a branch push, never on a tag or a
+- [~] **Status:** code done 2026-10-09 (`docs/DECISIONS.md`'s T-F366 entry; `WorkflowLimitsTests`).
+  A timeout reports `cancelled`, so canary-status now reads the check run's annotation (probed).
+  `[x]` once CI shows a superseded `main` run cancelled. Planned as: only one canary job has a
+  timeout; a hung GUI or Subprocess test holds a runner for 6 hours. `concurrency` cancels a superseded run on a branch push, never on a tag or a
   `workflow_dispatch` release build.
 - **Reported by:** DevOps review, 2026-10-09.
 
