@@ -227,7 +227,7 @@ truncated copy are the realistic damage.
   on a `.par2` file and on an archive with its set beside it; the App shows the state and repairs.
   The repaired copy is a new file next to the archive (another folder when that one is not
   writable); the original is never written.
-- **Interoperable:** sets made by par2cmdline, MultiPar or QuickPar that protect one file are read;
+- **Interoperable:** any standard PAR 2.0 set that protects one file is read;
   Pakko's sets are checked against par2cmdline, par2cmdline-turbo and MultiPar.
 - **Not in scope:** sets covering several files; locating shifted data after inserted or deleted
   bytes (verification is positional); PAR 3.0; recovery data inside the archive.

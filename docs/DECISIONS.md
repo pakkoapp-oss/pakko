@@ -11880,9 +11880,9 @@ ParPar (`gf16/`), the open Parchive bug #67 and par2cmdline's two 2026 advisorie
 ### Measured on this machine
 
 - A 150-line Python reference (log/exp tables) produced Main, FileDesc, IFSC and RecvSlic packets
-  byte-for-byte equal to par2cmdline 1.4.0, par2cmdline-turbo 1.5.0 and par2j 1.3.3 (300001 bytes
-  with 4096-byte slices; 22 bytes with 4-byte slices; a Cyrillic name). Pakko's packet tests can
-  therefore be exact comparisons.
+  byte-for-byte equal to par2cmdline 1.4.0, par2cmdline-turbo 1.5.0 and par2j 1.3.3 for 300001
+  bytes with 4096-byte slices, and to par2cmdline for 22 bytes with 4-byte slices and for a
+  Cyrillic file name. Pakko's packet tests can therefore be exact comparisons.
 - **The code is not MDS.** par2cmdline's `GaussElim` says "Because the matrices being operated on
   are Vandermonde matrices they are guaranteed not to be singular" and does no pivoting, and
   `Par2Repairer::ComputeRSmatrix` takes the first available recovery packets in exponent order.
