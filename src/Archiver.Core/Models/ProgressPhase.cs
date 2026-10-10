@@ -23,4 +23,10 @@ public enum ProgressPhase
     /// are zero, since the archive's bytes were already counted by the test.
     /// </summary>
     VerifyingRecoveryData,
+
+    /// <summary>
+    /// T-F275 step 4: rebuilding a damaged archive from its PAR2 set into a new file. The percent
+    /// moves; the byte counts are zero.
+    /// </summary>
+    RepairingArchive,
 }

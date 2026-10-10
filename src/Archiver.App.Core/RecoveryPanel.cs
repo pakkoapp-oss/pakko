@@ -59,7 +59,7 @@ public sealed record RecoveryPanel(bool HasFiles, RecoveryPanelSeverity Severity
         string[] warnings = [.. result.Warnings
             .Where(w => IsVerdict(w.Text) && FullPath(w.SourcePath) == key).Select(w => render(w.Text, w.Message))];
         string[] matches = [.. result.RecoveryChecks
-            .Where(c => c.Text is not null && FullPath(c.ArchivePath) == key).Select(c => render(c.Text, c.Text!.English))];
+            .Where(c => IsMatch(c) && FullPath(c.ArchivePath) == key).Select(c => render(c.Text, c.Text!.English))];
 
         string[] lines = [.. errors, .. warnings, .. matches];
         if (lines.Length == 0)
@@ -76,7 +76,7 @@ public sealed record RecoveryPanel(bool HasFiles, RecoveryPanelSeverity Severity
     public static string? MatchLine(string archivePath, ArchiveResult result, Func<CoreText?, string, string> render)
     {
         string key = FullPath(archivePath);
-        RecoveryCheck? check = result.RecoveryChecks.FirstOrDefault(c => c.Text is not null && FullPath(c.ArchivePath) == key);
+        RecoveryCheck? check = result.RecoveryChecks.FirstOrDefault(c => IsMatch(c) && FullPath(c.ArchivePath) == key);
         return check is null ? null : render(check.Text, check.Text!.English);
     }
 
@@ -87,6 +87,9 @@ public sealed record RecoveryPanel(bool HasFiles, RecoveryPanelSeverity Severity
     /// would hide it: a tar-family archive, or one whose listing failed, is checked by its set.
     /// </summary>
     public bool IsOpenAt(bool insideArchive, bool nested) => HasFiles && insideArchive && !nested;
+
+    // A repaired check carries a text too (step 4); only an intact one says "the set matches".
+    private static bool IsMatch(RecoveryCheck check) => check.State == RecoveryState.Intact && check.Text is not null;
 
     private static bool IsVerdict(CoreText? text) => text is not null && Verdicts.Contains(text.Code);
 

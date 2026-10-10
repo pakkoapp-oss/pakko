@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Archív zodpovedá svojim údajom na obnovenie ({0} blokov, {1} blokov na obnovenie).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Vedľa archívu sa nenašli žiadne údaje na obnovenie.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Archív bol opravený ({0} z {1} blokov). Opravená kópia je {2}; pôvodný archív sa nezmenil.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Opravená kópia nezodpovedala údajom na obnovenie a nebola zachovaná.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Opravenú kópiu sa nepodarilo zapísať: {0}</value>
+  </data>
 </root>

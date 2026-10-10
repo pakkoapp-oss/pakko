@@ -21,6 +21,10 @@ public enum RecoveryState
 
     /// <summary>PAR2 files were found next to the archive, but no set in them can be read.</summary>
     Unusable,
+
+    /// <summary>Damaged, and rebuilt into <see cref="RecoveryCheck.RepairedPath"/> (step 4). Only a
+    /// repair gives this state; a test never does.</summary>
+    Repaired,
 }
 
 /// <summary>
@@ -48,7 +52,11 @@ public sealed record RecoveryCheck
     /// <summary>The recovery blocks found in the set's files.</summary>
     public int RecoveryBlocks { get; init; }
 
-    /// <summary>The verdict in words when <see cref="State"/> is <see cref="RecoveryState.Intact"/>,
-    /// the one state that is neither an error nor a warning in the result; null otherwise.</summary>
+    /// <summary>The verdict in words when <see cref="State"/> is <see cref="RecoveryState.Intact"/>
+    /// or <see cref="RecoveryState.Repaired"/>, the states that are neither an error nor a warning
+    /// in the result; null otherwise.</summary>
     public CoreText? Text { get; init; }
+
+    /// <summary>The repaired copy when <see cref="State"/> is <see cref="RecoveryState.Repaired"/>; null otherwise.</summary>
+    public string? RepairedPath { get; init; }
 }

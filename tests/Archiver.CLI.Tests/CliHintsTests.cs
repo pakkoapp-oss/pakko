@@ -81,4 +81,28 @@ public sealed class CliHintsTests
     {
         Hints([null], [null]).Should().BeEmpty();
     }
+
+    // T-F275 step 4: `t` says a damaged archive can be repaired; the hint says how.
+    [Fact]
+    public void DamageTheSetCanRepair_PointsToTheRepairCommand()
+    {
+        Hints([MessageCode.RecoveryDataDamagedRepairable], []).Should().ContainSingle().Which.Should().Contain("pakko r <archive>");
+    }
+
+    [Fact]
+    public void RepairedCopyNotWritten_PointsToAnotherFolder()
+    {
+        Hints([MessageCode.RecoveryRepairNotWritten], []).Should().ContainSingle().Which.Should().Contain("-o<dir>");
+    }
+
+    [Theory]
+    [InlineData(MessageCode.RecoveryDataDamagedNotRepairable)]
+    [InlineData(MessageCode.RecoveryDataRepairTooLarge)]
+    [InlineData(MessageCode.RecoveryDataNotFound)]
+    [InlineData(MessageCode.RecoveryRepairCheckFailed)]
+    [InlineData(MessageCode.RecoveryDataUnusable)]
+    public void WhatNoRepairCanFix_HasNoHint(MessageCode code)
+    {
+        Hints([code], []).Should().BeEmpty();
+    }
 }

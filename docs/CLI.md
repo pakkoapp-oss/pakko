@@ -109,6 +109,7 @@ Rejected 2026-07-18; see `DECISIONS.md`'s T-F09 "Distribution" entry.
 | `b` | Benchmark | Not supported, deliberately out of scope (same reasoning as T-F05's NanaZip-toolbar scope cuts) |
 | `i` | Info (list supported archive formats/codecs) | Supported — prints ZIP and tar/tar.gz (always) plus each tar.exe-backed format (tar.bz2/xz/zst/lzma, 7z, rar) with its live `TarCapabilities` result, and the tar.exe version. Since T-F261 each format's status comes from Core's `ArchiveFormatPolicy` and the loaded Group Policy: "supported", "not supported" or "blocked by Group Policy"; under `DisableTarExtraction` the tar.exe line reads "disabled by Group Policy" and no version probe runs. Takes no arguments (only `-scc`) |
 | `h` | Hash | **Supported (added 2026-07-20, T-F128/T-F09 follow-up).** Real 7z `h` hashes files on disk, not archive entries — the original row here predated T-F128 and described the wrong thing. Maps onto `FileHashService.ComputeAsync` (same engine as the Explorer context menu's CRC-32/SHA-256 commands, flattened out of the old "Хеш-суми" submenu by T-F128): one or more files hashed independently, or exactly one folder recursed with a combined DataSum/NamesSum printed (NanaZip-compatible, verified against the vendored `7za.exe`) |
+| `r` | (not a 7z command) Repair from PAR2 recovery data | **Pakko's own (T-F275 step 4):** writes `<name>.repaired<extension>` from the PAR2 set next to the archive; see "Repair: `r`" below |
 | `rn` | Rename entries in an archive | Not supported, deliberately — in-place mutation, same reasoning as `d` |
 | — | Scan for threats (Pakko's own App/Explorer command, T-F146) | Not supported, by decision (T-F241, 2026-09-25): 7z has no such command to mirror, and Windows' `MpCmdRun -Scan` cannot see inside password-protected ZIPs (T-F194), so a CLI scan would be weaker than the App's in-memory decrypt-and-scan. Scripts can `pakko x` and run their antivirus on the extracted files (e.g. `MpCmdRun -Scan -ScanType 3 -File <dir>`). The App, the Explorer menu and `Archiver.Shell` keep the command. Revisit on request |
 
@@ -132,7 +133,7 @@ builds indistinguishable from the real v1.4.2). The default is deliberately neve
 
 | 7z switch | Meaning | Pakko mapping |
 |-----------|---------|----------------|
-| `-o{dir}` | Output directory | Maps directly to `ExtractOptions.DestinationFolder`; omitted, it is the current directory (T-F206, 7z behavior), including with `-si` |
+| `-o{dir}` | Output directory | Maps directly to `ExtractOptions.DestinationFolder`; omitted, it is the current directory (T-F206, 7z behavior), including with `-si`. On `r` it is where the repaired copy goes; omitted there, the copy goes next to the archive |
 | `-p{pwd}` | Password / encryption | Supported on `x`/`t` (T-F191, ZIP only — ZipCrypto and WinZip AE-1/AE-2) and on `a` (T-F193: encrypts every file entry with WinZip AES-256 AE-2; folder entries and all file names stay unencrypted). Not applicable to `l` (listing needs no password). **Bare `-p`** (T-F193, 7z semantics) asks on the console — once on `x`/`t`, twice (enter + re-enter) on `a`; before T-F193 a bare `-p` was a command-line error. A bare `-p` with a redirected stdin or with `-si` exits **7** (nothing to type into). **On `a` only:** the password must be printable ASCII (0x20–0x7F) and at most 99 characters — 7-Zip's own creation rule (it decodes ZIP passwords through the ANSI code page and refuses longer AES passwords), so any other password would give an archive 7-Zip cannot open; `x`/`t` accept any password. A `-p<pwd>` that breaks the rule exits **7** (command-line error, nothing created); at the interactive prompt a mismatch or a refused password exits **2** with its reason and is never re-asked (7z behavior), and Esc/Ctrl+C exits **255**. `-p` with any `-t tar*` format exits **7** (tar has no encryption). Without `-p` on an encrypted archive (`x`/`t`): a real interactive console (not redirected/piped) and no `-y` prompts with a masked `Console.ReadKey`-based input, retried on a wrong password up to 3 times; a redirected/piped stdin (including `-si`, which already consumes stdin for the archive itself) or `-y` fails immediately with the same message as an unresolved password always has — deliberate: `-y` means "pick the safe default" for conflicts/compression-bomb warnings, where a safe default exists; there is no safe default for a missing password, so `-y` cannot make the operation proceed, only fail predictably instead of hanging on a prompt that can't be answered non-interactively. **`-p<pwd>` is visible in the process's own command line** (`Get-Process`/Process Explorer, or any other process on the machine enumerating command lines) for as long as `pakko.exe` runs — same exposure as any CLI tool's `-p`/`--password`-shaped flag; prefer the interactive prompt over `-p` when that matters. See `ARCHITECTURE.md`'s "`-p{pwd}` password support (T-F191)" section and `DECISIONS.md`'s T-F191/T-F193 entries |
 | `-r[-\|0]` | Recurse subdirectories | Archiving already recurses folders by default; the 7z on/off nuance needs its own check against current `ArchiveOptions` behavior |
 | `-rr[N]` | Recovery data (WinRAR's spelling — 7z has no such switch) | T-F275, `a` only (exit 7 on other commands, above `-r` in the refusal table). PAR2 files next to the archive: `<archive>.par2` and `<archive>.vol0+R.par2`, R = N percent of its slices rounded up; bare `-rr` is 5, `-rr<N>` takes 1-100, anything else (`-rr0`, `-rr101`, `-rrx`, `-rr5%`) exits 7. Last one wins. With `-so` exits 7 (no file to put a set next to); with `-p` the set protects the ciphertext. On success nothing more is printed; a failed set is `pakko: error: <archive>: Recovery data was not created: ...` with exit 2 and the archive kept. Group Policy `DisableRecoveryData` refuses it with exit 2 before anything is written. With or without `-rr`, `a` over an archive that had a set removes that set's files once the archive is written and before a new set is (the set no longer matches its length or first 16 KiB; a stuck file is a `pakko: warning:`, exit 1), so an `a -rr` interrupted while writing the set leaves an archive with no set; under the policy an old set is left alone |
@@ -287,7 +288,35 @@ policy no set is looked for and a `.par2` path is an error.
 | matched by content under another name | `pakko: warning:` line besides the result | 1 |
 | a `.par2` whose set cannot be read or whose archive is not found | `pakko: error:` line | 2 |
 
-`t out.zip out.zip.par2` checks the set once. Repair is `pakko r` (step 4); no hint points to it yet.
+`t out.zip out.zip.par2` checks the set once. A "can repair it" error ends with
+`pakko: hint: 'pakko r <archive>' writes a repaired copy next to it; the archive itself is not changed`.
+
+## Repair: `r` (T-F275 step 4)
+
+`pakko r <archive|.par2>... [-o<dir>] [-y]`. Not a 7z command (7z has no recovery data; the letter
+is WinRAR's, as `-rr` is). Each damaged archive is rebuilt from the PAR2 set next to it into a new file,
+`<name>.repaired<extension>` (`out.repaired.zip`, `out.repaired.tar.gz`), next to the archive or in
+`-o<dir>` (created when missing). A taken name gets a number (`out.repaired (1).zip`). The archive
+and the PAR2 files are only read; nothing is ever overwritten, so `-y` is accepted and changes
+nothing. A `.par2` path stands for the archive its set protects, and an archive that is gone is
+rebuilt when the set holds enough blocks. `r` rebuilds exactly what `t` calls damaged and
+repairable. `-si`, `-so`, `-p` and every other switch exit 7.
+
+| What `r` finds | Output | Exit |
+|---|---|---|
+| damaged, repairable | stdout `out.zip: repaired (3 of 2000 blocks rebuilt): C:\dir\out.repaired.zip` | 0 |
+| intact | stdout `out.zip: nothing to repair, recovery data intact (2000 blocks, 100 recovery blocks)` | 0 |
+| a ZIP that tests intact and a set that disagrees | the same `pakko: warning:` as `t`; nothing is written | 1 |
+| damaged beyond the set, or the repair too large | the same `pakko: error:` as `t` | 2 |
+| no PAR2 files, PAR2 files that cannot be read, a set for another file | `pakko: error: out.zip: No recovery data was found next to the archive.` or the reason | 2 |
+| the copy does not match the set (the recovery data itself is wrong) | `pakko: error: ...The repaired copy did not match the recovery data and was not kept.` | 2 |
+| the copy cannot be written | `pakko: error: ...The repaired copy could not be written: <reason>` and `pakko: hint: -o<dir> writes the repaired copy to another folder` | 2 |
+| `DisableRecoveryData` policy | `pakko: error: ...Recovery data is disabled by Group Policy.` for every path | 2 |
+
+Ctrl+C stops with exit 255 and leaves no copy. A `pakko r` that was killed leaves only a
+`.pakko-a-*.tmp` file, which the next run in that folder removes. A tar-family archive, or an
+encrypted ZIP, that another tool rewrote beside its old set reads as damaged (there is no test to
+say otherwise), and `r` writes the earlier bytes as the `.repaired` copy; the archive itself stays.
 
 ## Warnings (T-F280)
 

@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>アーカイブは回復データと一致しています ({0} ブロック、回復ブロック {1} 個)。</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>アーカイブの横に回復データが見つかりませんでした。</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>アーカイブを修復しました ({1} ブロック中 {0} ブロック)。修復されたコピーは {2} です。元のアーカイブは変更されていません。</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>修復されたコピーが回復データと一致しなかったため、保存されませんでした。</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>修復されたコピーを書き込めませんでした: {0}</value>
+  </data>
 </root>

@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>الأرشيف يطابق بيانات الاسترداد الخاصة به ({0} كتلة، {1} كتلة استرداد).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>لم يتم العثور على بيانات استرداد بجانب الأرشيف.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>تم إصلاح الأرشيف ({0} من {1} كتلة). النسخة المُصلَحة هي {2}؛ الأصل لم يتغير.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>النسخة المُصلَحة لم تطابق بيانات الاسترداد ولم يتم الاحتفاظ بها.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>تعذرت كتابة النسخة المُصلَحة: {0}</value>
+  </data>
 </root>

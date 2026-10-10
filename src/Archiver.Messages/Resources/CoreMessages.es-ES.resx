@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>El archivo comprimido coincide con sus datos de recuperación ({0} bloques, {1} bloques de recuperación).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>No se encontraron datos de recuperación junto al archivo comprimido.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>El archivo comprimido se reparó ({0} de {1} bloques). La copia reparada es {2}; el original no se modificó.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>La copia reparada no coincidía con los datos de recuperación y no se conservó.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>No se pudo escribir la copia reparada: {0}</value>
+  </data>
 </root>

@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Kumbukumbu inalingana na data yake ya urejeshaji (vitalu {0}, vitalu {1} vya urejeshaji).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Hakuna data ya urejeshaji iliyopatikana kando ya kumbukumbu.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Kumbukumbu imerekebishwa (vitalu {0} kati ya {1}). Nakala iliyorekebishwa ni {2}; ya asili haikubadilishwa.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Nakala iliyorekebishwa haikulingana na data ya urejeshaji na haikuhifadhiwa.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Nakala iliyorekebishwa haikuweza kuandikwa: {0}</value>
+  </data>
 </root>

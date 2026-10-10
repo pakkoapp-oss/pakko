@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>L'archivio corrisponde ai suoi dati di ripristino ({0} blocchi, {1} blocchi di ripristino).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Non sono stati trovati dati di ripristino accanto all'archivio.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>L'archivio è stato riparato ({0} blocchi su {1}). La copia riparata è {2}; l'originale non è stato modificato.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>La copia riparata non corrispondeva ai dati di ripristino e non è stata conservata.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Impossibile scrivere la copia riparata: {0}</value>
+  </data>
 </root>

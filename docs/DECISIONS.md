@@ -12230,6 +12230,64 @@ Known gaps:
 - `MainViewModel` has no test host: the wiring (when the line is reset, the unlisted state, the
   `.par2` row) is checked on a device, the rules under it by `RecoveryPanelTests`.
 
+### Step 4a — repair in Core and `pakko r` (2026-10-10)
+
+- **`IRecoveryService.RepairAsync`** (`RecoveryService`, built only by `PakkoServices`). Each
+  damaged archive is rebuilt into a new file, `<name>.repaired<extension>` (`a.repaired.tar.gz`;
+  the compound tar extensions stay whole), next to the archive or in `RepairOptions.OutputDirectory`.
+  A taken name gets the next number (`a.repaired (1).zip`), also when it is taken between the choice
+  and the rename. The archive and its PAR2 files are only read. An archive whose file is gone is
+  rebuilt under the `.repaired` name too: the original name is never written.
+- **Repair rebuilds exactly what the test calls damaged and repairable.** One function decides the
+  verdict for both (`RecoveryTestStep.Describe`). The set is verified once; a ZIP the set calls
+  damaged is then run through the ZIP test, and if that passes the result is the test's
+  `DoesNotMatch` warning and nothing is written. Without this, `t` would say "probably an earlier
+  version" while `r` wrote that earlier version out as a repair. A good archive is read once: the
+  ZIP test runs only after the set disagrees. An archive that could not be tested (encrypted, with
+  no password given here; refused by policy) did not pass, as in `t`.
+- **Known gap, the same as in `t`.** A tar-family archive has no test, and the test-side rule that
+  would call a rewritten one "does not match" was rejected ("Before 3b"). So a tar-family archive
+  rewritten by another tool beside its old set reads as damaged, and `r` writes what the set
+  describes, the earlier bytes, as `.repaired`. The original is untouched and the copy matches the
+  set, which is what the message says. Pakko's own rewrite removes the old set, so this needs
+  another tool. The same holds for an encrypted ZIP, which `r` cannot test.
+- **The check of the copy is the set check.** The copy is kept only after its MD5 and every block
+  hash match the set (`Par2Repairer`); otherwise it is deleted and the result is
+  `RecoveryRepairCheckFailed`. This is what catches recovery data that was changed with its packet
+  hashes recomputed. No format test of the copy is added: the set describes the archive's bytes
+  exactly, and a format test would say nothing more for a tar-family archive.
+- **No usable recovery data is an error here.** For `t` a missing, unreadable or foreign set is a
+  note beside the archive's own verdict. Repair was asked for, so the same finding
+  (`RecoveryDataNotFound`, `RecoveryDataUnusable`, `RecoveryDataForAnotherFile`) is the error.
+- **The download mark.** The copy gets the archive's `Zone.Identifier`; with the archive gone, the
+  mark of the PAR2 files it was rebuilt from. `EffectiveMotwMode(ApplyDownloadMark)` only decides
+  on or off: a policy narrowed to unsafe types is about what an archive unpacks to, and the copy is
+  the archive itself, so it keeps the mark whatever its extension.
+- **Policy.** `DisableRecoveryData` refuses every path and reads nothing. `BlockedFormats` and
+  `DisableTarExtraction` stop Pakko from opening a format; a repair copies and hashes bytes and
+  never parses them, so Core does it for a blocked format too. The App and Explorer do not offer
+  repair on a blocked archive (steps 4b, 4c), as with the set check in 3b and 3c. This closes the
+  question left open in 3b.
+- **`pakko r <archive|.par2>... [-o<dir>] [-y]`.** Exit 0 when every archive was repaired or
+  needed nothing, 1 for a warning, 2 when one could not be repaired, 7 for the command line. `-y`
+  is accepted and changes nothing (nothing is ever overwritten). `t` now ends a "can repair it"
+  error with a hint naming `pakko r`; a copy that could not be written ends with a hint naming `-o`.
+- **`RecoveryDataLookup` stays static in this step.** Folding it into `IRecoveryService` would pull
+  `MainViewModel` and the App's DI into a Core and CLI change; it moves at 4c.
+- Four message codes in 37 languages: `RecoveryDataNotFound`, `RecoveryDataRepaired`,
+  `RecoveryRepairCheckFailed`, `RecoveryRepairNotWritten`. The repaired message counts as the
+  damage message does ("3 of 2000 blocks"), so one block reads right in every language. `RecoveryState.Repaired` and
+  `RecoveryCheck.RepairedPath` carry the outcome; `ProgressPhase.RepairingArchive` names the work
+  after the verify pass.
+
+Known gaps:
+
+- Repair is positional, as verification is: bytes inserted or removed shift every later block, and
+  the archive reads as damaged beyond what a small set can rebuild.
+- A repair that needs most of the blocks of a large set solves a large matrix and is slow; past
+  the limit of step 1 it is refused (`RecoveryDataRepairTooLarge`).
+- `pakko r` takes no `-p`, so an encrypted ZIP is never tested before it is rebuilt (see above).
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry

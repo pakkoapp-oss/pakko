@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Het archief komt overeen met de herstelgegevens ({0} blokken, {1} herstelblokken).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Er zijn geen herstelgegevens naast het archief gevonden.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Het archief is hersteld ({0} van {1} blokken). De herstelde kopie is {2}; het origineel is niet gewijzigd.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>De herstelde kopie kwam niet overeen met de herstelgegevens en is niet bewaard.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>De herstelde kopie kon niet worden geschreven: {0}</value>
+  </data>
 </root>

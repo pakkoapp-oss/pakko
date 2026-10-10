@@ -539,6 +539,28 @@ The tests (T-F275 step 1):
   test without the set check, a cancelled test). `BrowseModeTests` has `WithoutListing`,
   `BrowseNavigationTests` `KeepsOpenUnlisted` (never for a policy refusal),
   `BrowserEntryRoutingTests` the `.par2` row. `MainViewModel`'s wiring is a device check.
+- Step 4a, repair. `Archiver.Core.Tests/Services/RecoveryServiceTests` runs
+  `IRecoveryService.RepairAsync` on real sets with a fake ZIP engine: the copy's name and bytes for
+  ZIP, tar-family, no extension and several dots; the original's bytes and time unchanged; a
+  `.par2` or a volume alone; archive and set files together repaired once; an intact archive read
+  once and nothing written; the output folder created; the archive gone and rebuilt from a full
+  set; several archives each with its verdict; progress to 100 once. A theory runs `t` and `r` on
+  the same nine scenarios and requires a copy exactly when `t` said repairable. Failure paths: no
+  set, only the writer's temporary files, an unreadable set, another file's set under this name,
+  paths that are not there, damage beyond the set, a recovery block forged with a valid packet
+  hash (the copy is not kept), a volume cut short with enough and with too few whole blocks, the
+  index gone, the volume gone, archive and set renamed, the repaired name taken (twice), a folder
+  where files cannot be created and another folder that works, an output path that is a file,
+  cancel at five points leaving no file, `DisableRecoveryData`, `BlockedFormats`, the download
+  mark (carried, taken from the set files when the archive is gone, absent, left off by the user,
+  enforced by policy, kept under the narrow policy), and par2cmdline's golden set under both of
+  its names. `Archiver.CLI.Tests`: the parser's `r`, the two new hints, and the real `pakko.exe`
+  (`Repair_*` in `CliSubprocessTests`): a ZIP and a tar.gz repaired, `.par2` with `-o`, nothing to
+  repair, beyond the set, no set, set files zeroed, a ZIP another tool rewrote beside its old set
+  (the real ZIP test passes, `r` warns as `t` does and writes nothing), the name taken, the
+  denied folder with its hint and `-o`, bad command lines, paths that are not there, and the
+  process killed while the copy is built (no copy, the original as it was, the next run repairs
+  and sweeps the temporary file).
 - `Archiver.Core.Tests/Fuzz/Par2FuzzTests` (`Category=Fuzz`): raw mutations of the golden sets, and
   mutations with the packet MD5 recomputed; reader, verifier and repairer must not throw or write
   anything but the output they are given.

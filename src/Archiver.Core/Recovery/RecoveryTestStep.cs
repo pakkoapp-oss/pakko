@@ -141,17 +141,24 @@ internal static class RecoveryTestStep
     internal static (RecoveryCheck? Check, ArchiveError? Error, ArchiveWarning? Warning) Check(
         Found found, bool testPassed, Action<double> progress, CancellationToken cancellationToken)
     {
-        Par2Set set = found.Match.Set;
         Par2Verification verification;
         try
         {
-            verification = Par2Verifier.Verify(found.ArchivePath, set, progress, cancellationToken);
+            verification = Par2Verifier.Verify(found.ArchivePath, found.Match.Set, progress, cancellationToken);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return (null, CoreMessages.Error(found.ArchivePath, CoreMessages.FromException(ex), ex), null);
         }
+        return Describe(found, verification, testPassed);
+    }
 
+    /// <summary>What a finished verification means for the archive, in the result's terms. The
+    /// one place that decides it: a repair (step 4) rebuilds exactly what this calls Repairable.</summary>
+    internal static (RecoveryCheck Check, ArchiveError? Error, ArchiveWarning? Warning) Describe(
+        Found found, Par2Verification verification, bool testPassed)
+    {
+        Par2Set set = found.Match.Set;
         int blocks = set.Slices.Length;
         int damaged = verification.Status == Par2VerifyStatus.Intact ? 0 : Math.Max(1, verification.DamagedSlices.Length);
         int recovery = set.RecoveryBlocks.Count;

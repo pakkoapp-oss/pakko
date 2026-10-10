@@ -465,7 +465,7 @@ public sealed class Par2RepairTests : IDisposable
     }
 
     // Changes a recovery block's data and recomputes its packet MD5: wrong data that reads as valid.
-    private static void ForgeRecoveryBlock(string volume, uint exponent)
+    internal static void ForgeRecoveryBlock(string volume, uint exponent)
     {
         byte[] bytes = File.ReadAllBytes(volume);
         (int Offset, string Type, uint Exponent) packet = PacketOffsets(volume).Single(p => p.Type == "PAR 2.0\0RecvSlic" && p.Exponent == exponent);
@@ -473,30 +473,5 @@ public sealed class Par2RepairTests : IDisposable
         bytes[packet.Offset + 68] ^= 0x01;
         Par2PacketForge.Md5(bytes.AsSpan(packet.Offset + 32, length - 32)).CopyTo(bytes, packet.Offset + 16);
         File.WriteAllBytes(volume, bytes);
-    }
-
-    /// <summary>Denies creating files in a folder for the current user; restored on Dispose.</summary>
-    [SupportedOSPlatform("windows")]
-    private sealed class NoCreateFolder : IDisposable
-    {
-        private readonly DirectoryInfo _folder;
-        private readonly FileSystemAccessRule _rule;
-
-        public NoCreateFolder(string path)
-        {
-            _folder = new DirectoryInfo(path);
-            _rule = new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.CreateFiles,
-                InheritanceFlags.None, PropagationFlags.None, AccessControlType.Deny);
-            DirectorySecurity security = _folder.GetAccessControl();
-            security.AddAccessRule(_rule);
-            _folder.SetAccessControl(security);
-        }
-
-        public void Dispose()
-        {
-            DirectorySecurity security = _folder.GetAccessControl();
-            security.RemoveAccessRule(_rule);
-            _folder.SetAccessControl(security);
-        }
     }
 }

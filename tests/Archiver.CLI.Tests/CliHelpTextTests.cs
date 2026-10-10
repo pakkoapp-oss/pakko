@@ -12,6 +12,7 @@ public sealed class CliHelpTextTests
     [InlineData("a")]
     [InlineData("h")]
     [InlineData("i")]
+    [InlineData("r")]
     public void Text_MentionsEveryCommandLetter(string command)
     {
         CliHelpText.Text.Should().Contain($"\n  {command}   ");

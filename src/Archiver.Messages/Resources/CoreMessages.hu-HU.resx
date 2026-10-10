@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Az archívum egyezik a helyreállítási adataival ({0} blokk, {1} helyreállítási blokk).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Az archívum mellett nem találhatók helyreállítási adatok.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Az archívum javítása megtörtént ({1} blokkból {0}). A javított másolat: {2}; az eredeti nem változott.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>A javított másolat nem egyezett a helyreállítási adatokkal, ezért nem maradt meg.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>A javított másolatot nem sikerült kiírni: {0}</value>
+  </data>
 </root>

@@ -23,6 +23,7 @@ public sealed class PakkoServices
         ArchiveService = archiveService;
         TarService = tarService;
         CreationRouter = new ArchiveCreationRouter(archiveService, tarService, policy);
+        RecoveryService = new RecoveryService(policy, CreateExtractionRouterAsync);
         _tarCapabilities = new Lazy<Task<TarCapabilities>>(tarService.DetectCapabilitiesAsync);
     }
 
@@ -37,6 +38,9 @@ public sealed class PakkoServices
 
     /// <summary>Archive creation; needs no tar.exe probe.</summary>
     public IArchiveCreationRouter CreationRouter { get; }
+
+    /// <summary>Repair from PAR2 recovery data (T-F275 step 4); needs no tar.exe probe.</summary>
+    public IRecoveryService RecoveryService { get; }
 
     /// <summary>Builds the real engines under <paramref name="policy"/>.</summary>
     public static PakkoServices Create(GroupPolicyOptions policy) =>

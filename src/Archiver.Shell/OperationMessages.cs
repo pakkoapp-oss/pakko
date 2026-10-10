@@ -73,7 +73,7 @@ internal static class OperationMessages
 
         // T-F275 step 3b: a set that matches is said in words, per archive; every other state of a
         // set is already an error or a warning above.
-        RecoveryCheck[] matching = [.. result.RecoveryChecks.Where(c => c.Text is not null)];
+        RecoveryCheck[] matching = [.. result.RecoveryChecks.Where(c => c.State == RecoveryState.Intact && c.Text is not null)];
         if (matching.Length == 0 || message is null)
             return message;
         string lines = CappedLines(

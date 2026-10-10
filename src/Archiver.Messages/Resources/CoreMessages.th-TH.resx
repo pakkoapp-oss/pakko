@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>ไฟล์บีบอัดตรงกับข้อมูลกู้คืนของไฟล์นี้ ({0} บล็อก, {1} บล็อกกู้คืน)</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>ไม่พบข้อมูลกู้คืนอยู่ข้างไฟล์บีบอัด</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>ซ่อมแซมไฟล์บีบอัดแล้ว ({0} จาก {1} บล็อก) สำเนาที่ซ่อมแซมแล้วคือ {2} ไฟล์ต้นฉบับไม่ถูกเปลี่ยนแปลง</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>สำเนาที่ซ่อมแซมแล้วไม่ตรงกับข้อมูลกู้คืนและไม่ได้เก็บไว้</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>เขียนสำเนาที่ซ่อมแซมแล้วไม่ได้: {0}</value>
+  </data>
 </root>

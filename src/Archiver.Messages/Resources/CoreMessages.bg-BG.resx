@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Архивът съответства на данните си за възстановяване ({0} блока, {1} блока за възстановяване).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>До архива не са намерени данни за възстановяване.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Архивът е поправен ({0} от {1} блока). Поправеното копие е {2}; оригиналът не е променен.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Поправеното копие не съвпадна с данните за възстановяване и не беше запазено.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Поправеното копие не можа да бъде записано: {0}</value>
+  </data>
 </root>

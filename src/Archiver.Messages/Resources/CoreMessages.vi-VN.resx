@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Tệp nén khớp với dữ liệu khôi phục của nó ({0} khối, {1} khối khôi phục).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Không tìm thấy dữ liệu khôi phục bên cạnh tệp nén.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Đã sửa tệp nén ({0}/{1} khối). Bản sao đã sửa là {2}; tệp gốc không bị thay đổi.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Bản sao đã sửa không khớp với dữ liệu khôi phục nên không được giữ lại.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Không thể ghi bản sao đã sửa: {0}</value>
+  </data>
 </root>

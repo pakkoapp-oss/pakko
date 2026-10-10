@@ -34,6 +34,7 @@ return command.Type switch
     CliCommandType.Archive => await RunArchiveAsync(command, services).ConfigureAwait(false),
     CliCommandType.List => await RunListAsync(command, services).ConfigureAwait(false),
     CliCommandType.Hash => await RunHashAsync(command).ConfigureAwait(false),
+    CliCommandType.Repair => await RunRepairAsync(command, services).ConfigureAwait(false),
     _ => 2,
 };
 
@@ -351,6 +352,39 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
         progress?.Clear();
         foreach (RecoveryCheck check in result.RecoveryChecks.Where(c => c.State == RecoveryState.Intact))
             await Console.Out.WriteLineAsync($"{report.DisplayName(check.ArchivePath)}: recovery data intact ({check.Blocks} blocks, {check.RecoveryBlocks} recovery blocks)").ConfigureAwait(false);
+        return ReportResult(result, report);
+    }
+    catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
+    {
+        progress?.Clear();
+        return ReportUserStopped();
+    }
+}
+
+// -------------------------------------------------------------------------
+// r: repair from PAR2 recovery data (T-F275 step 4). Each damaged archive is rebuilt into a new
+// file next to it, or in -o<dir>; the archive itself is only read. Exit code 0 when every archive
+// was repaired or needed nothing, 1 for a warning, 2 when one could not be repaired.
+// -------------------------------------------------------------------------
+static async Task<int> RunRepairAsync(ParsedCliCommand command, PakkoServices services)
+{
+    using var cancellation = CliCancellation.ListenToConsole();
+    var progress = CliProgress.ForConsole();
+    try
+    {
+        var report = new CliReportContext();
+        ArchiveResult result = await services.RecoveryService.RepairAsync(
+            new RepairOptions { Paths = command.ArchivePaths, OutputDirectory = command.OutputDirectory },
+            progress,
+            cancellation.Token).ConfigureAwait(false);
+        progress?.Clear();
+        foreach (RecoveryCheck check in result.RecoveryChecks)
+        {
+            if (check.State == RecoveryState.Repaired)
+                await Console.Out.WriteLineAsync($"{report.DisplayName(check.ArchivePath)}: repaired ({check.DamagedBlocks} of {check.Blocks} blocks rebuilt): {check.RepairedPath}").ConfigureAwait(false);
+            else if (check.State == RecoveryState.Intact)
+                await Console.Out.WriteLineAsync($"{report.DisplayName(check.ArchivePath)}: nothing to repair, recovery data intact ({check.Blocks} blocks, {check.RecoveryBlocks} recovery blocks)").ConfigureAwait(false);
+        }
         return ReportResult(result, report);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)

@@ -1127,7 +1127,14 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
       test's verdict), Test checks the set and is offered on a tar-family archive with one, an
       archive that does not list stays open when it has PAR2 files, a `.par2` row opens the
       archive it protects (`docs/DECISIONS.md`, T-F275 "Step 3c").
-  - [ ] 4 — repair: `pakko r [-o<dir>]`, Explorer "Repair with PAR2", the App.
+  - [~] 4 — repair, in three PRs (`docs/DECISIONS.md`, T-F275 "Step 4a"):
+    - [x] 4a — Core and `pakko r` (2026-10-10): `IRecoveryService.RepairAsync`, the copy
+      `<name>.repaired<ext>` next to the archive or in `-o<dir>`, the original only read, the same
+      verdict rule as `t`, four message codes in 37 languages.
+    - [ ] 4b — Explorer: Shell `--recovery-repair`, "Repair with PAR2" after "Verify with PAR2"
+      (same visibility; not on a blocked format), the operation window with the result.
+    - [ ] 4c — the App: a Repair button on the PAR2 line, a folder choice when the archive's
+      folder cannot be written to; `RecoveryDataLookup` folds into `IRecoveryService`.
   - [ ] 5 — the v1.8.0 release with the user's checks (MD5 under the FIPS policy among them, and
     `DisableRecoveryData` set in HKLM). The CHANGELOG section is written then and names every step:
     step 2 brought the App's "Add recovery data (PAR2)" option, `pakko a -rr[N]` and the policy.

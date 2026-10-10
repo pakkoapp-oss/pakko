@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Arsip cocok dengan data pemulihannya ({0} blok, {1} blok pemulihan).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Tidak ditemukan data pemulihan di samping arsip.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Arsip telah diperbaiki ({0} dari {1} blok). Salinan yang diperbaiki adalah {2}; arsip asli tidak diubah.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Salinan yang diperbaiki tidak cocok dengan data pemulihan dan tidak disimpan.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Salinan yang diperbaiki tidak dapat ditulis: {0}</value>
+  </data>
 </root>

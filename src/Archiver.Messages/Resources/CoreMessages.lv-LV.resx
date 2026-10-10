@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Arhīvs atbilst saviem atkopšanas datiem ({0} bloki, {1} atkopšanas bloki).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Blakus arhīvam netika atrasti atkopšanas dati.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Arhīvs ir salabots ({0} no {1} blokiem). Salabotā kopija ir {2}; oriģināls netika mainīts.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Salabotā kopija neatbilda atkopšanas datiem un netika saglabāta.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Salaboto kopiju neizdevās ierakstīt: {0}</value>
+  </data>
 </root>

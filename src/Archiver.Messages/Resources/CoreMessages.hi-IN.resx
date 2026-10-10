@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>संग्रह अपने पुनर्प्राप्ति डेटा से मेल खाता है ({0} ब्लॉक, {1} पुनर्प्राप्ति ब्लॉक)।</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>संग्रह के पास कोई पुनर्प्राप्ति डेटा नहीं मिला।</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>संग्रह की मरम्मत की गई ({1} में से {0} ब्लॉक)। मरम्मत की गई प्रति {2} है; मूल संग्रह नहीं बदला गया।</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>मरम्मत की गई प्रति पुनर्प्राप्ति डेटा से मेल नहीं खाई और उसे नहीं रखा गया।</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>मरम्मत की गई प्रति लिखी नहीं जा सकी: {0}</value>
+  </data>
 </root>

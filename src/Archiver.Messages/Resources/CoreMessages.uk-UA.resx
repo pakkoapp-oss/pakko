@@ -348,4 +348,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Архів відповідає своїм даним для відновлення ({0} блоків, {1} блоків відновлення).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Поруч з архівом не знайдено даних для відновлення.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Архів відновлено ({0} з {1} блоків). Відновлена копія: {2}; оригінал не змінено.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Відновлена копія не збіглася з даними для відновлення, тому її не збережено.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Не вдалося записати відновлену копію: {0}</value>
+  </data>
 </root>

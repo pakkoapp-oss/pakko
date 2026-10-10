@@ -348,4 +348,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>The archive matches its recovery data ({0} blocks, {1} recovery blocks).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>No recovery data was found next to the archive.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>The archive was repaired ({0} of {1} blocks). The repaired copy is {2}; the original was not changed.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>The repaired copy did not match the recovery data and was not kept.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>The repaired copy could not be written: {0}</value>
+  </data>
 </root>
