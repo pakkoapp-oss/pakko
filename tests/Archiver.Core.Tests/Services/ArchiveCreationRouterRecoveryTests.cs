@@ -55,6 +55,7 @@ internal sealed class RecordingProgress(Action<ProgressReport>? onReport = null)
     }
 }
 
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public sealed class ArchiveCreationRouterRecoveryTests
 {
     private static ArchiveCreationRouter Router(RecoveryWritingEngine engine, GroupPolicyOptions? policy = null) =>
@@ -318,7 +319,7 @@ public sealed class ArchiveCreationRouterRecoveryTests
     }
 
     [Fact]
-    public async Task RecoveryData_RunsOffTheCallersThread()
+    public void RecoveryData_RunsOffTheCallersThread()
     {
         using var temp = new TempDirectory();
         string archive = Path.Combine(temp.Path, "a.zip");
@@ -341,16 +342,22 @@ public sealed class ArchiveCreationRouterRecoveryTests
             .And.OnlyContain(x => progress.OnPoolThread[x.i], "the UI thread awaits the router");
     }
 
+    // The run fails (the second archive does not exist), so the router itself opens nothing either
+    // and the test run starts no Explorer window.
     [Fact]
     public async Task RecoveryPercent_TheEngineNeverOpensTheFolder()
     {
         using var temp = new TempDirectory();
         string archive = Path.Combine(temp.Path, "a.zip");
-        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) };
+        string vanished = Path.Combine(temp.Path, "gone.zip");
+        var engine = new RecoveryWritingEngine
+        {
+            Produce = (o, _) => Written(archive, o.SourcePaths[0]) with { CreatedFiles = [archive, vanished] },
+        };
 
-        // OpenDestinationFolder stays false here, so no Explorer window opens during the test run.
-        await Router(engine).ArchiveAsync(Options(temp, 5));
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 5) with { OpenDestinationFolder = true });
 
+        result.Success.Should().BeFalse();
         engine.LastOptions!.OpenDestinationFolder.Should().BeFalse();
         engine.LastOptions.RecoveryPercent.Should().Be(5);
     }
@@ -375,6 +382,39 @@ public sealed class ArchiveCreationRouterRecoveryTests
         Directory.GetFiles(temp.Path).Should().BeEquivalentTo(
             [archive, .. result.RecoveryFiles, garbageVolume, notes, otherArchiveVolume]);
         VerifyStatus(archive).Should().Be(Par2VerifyStatus.Intact);
+    }
+
+    // The set is written before the stale-volume step: a folder that cannot be listed then must not
+    // turn a written set into "not created" (nor take the sources' Completed away).
+    [Fact]
+    public async Task FolderCannotBeListed_SetStillWritten_NoErrorNoWarning()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        DeniedFolder? denied = null;
+        var engine = new RecoveryWritingEngine
+        {
+            Produce = (o, _) =>
+            {
+                ArchiveResult written = Written(archive, o.SourcePaths[0]);
+                denied = new DeniedFolder(temp.Path);
+                return written;
+            },
+        };
+        ArchiveResult result;
+        try
+        {
+            result = await Router(engine).ArchiveAsync(Options(temp, 5));
+        }
+        finally
+        {
+            denied?.Dispose();
+        }
+
+        result.Errors.Should().BeEmpty();
+        result.Warnings.Should().BeEmpty();
+        result.RecoveryFiles.Should().HaveCount(2).And.OnlyContain(f => File.Exists(f));
+        result.FullyProcessedSources.Should().ContainSingle();
     }
 
     [Fact]

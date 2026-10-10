@@ -1111,7 +1111,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   - [ ] 3 — verification: the public `IRecoveryService`, `pakko t`, Explorer "Verify with PAR2"
     (hidden by `DisableRecoveryData`), the App's state panel.
   - [ ] 4 — repair: `pakko r [-o<dir>]`, Explorer "Repair with PAR2", the App.
-  - [ ] 5 — the v1.8.0 release with the user's checks (MD5 under the FIPS policy among them).
+  - [ ] 5 — the v1.8.0 release with the user's checks (MD5 under the FIPS policy among them, and
+    `DisableRecoveryData` set in HKLM). The CHANGELOG section is written then and names every step:
+    step 2 brought the App's "Add recovery data (PAR2)" option, `pakko a -rr[N]` and the policy.
   Option to write PAR2 (Reed-Solomon) recovery files next to a created archive, with a chosen
   redundancy (e.g. 5%), and to verify/repair an archive from them. Use: archives kept on flash
   drives or optical media or carried offline, where bad sectors or a truncated copy are the
