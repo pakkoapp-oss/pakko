@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Een herstelbestand van een eerdere versie van het archief kon niet worden verwijderd: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Het archief is beschadigd ({0} van {1} blokken); de herstelgegevens kunnen het herstellen ({2} herstelblokken).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Het archief is meer beschadigd ({0} van {1} blokken) dan de herstelgegevens kunnen herstellen ({2} herstelblokken).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Het archief is beschadigd ({0} van {1} blokken); zoveel herstellen gaat de mogelijkheden van Pakko te boven.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>De herstelgegevens komen niet overeen met het archief ({0} van {1} blokken wijken af), maar het archief zelf doorstaat de test: de herstelgegevens zijn waarschijnlijk van een eerdere versie ervan.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>De herstelgegevens zijn beschadigd of in een indeling die Pakko niet kan lezen.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>De herstelgegevens naast het archief zijn voor een ander bestand gemaakt.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Het bestand dat deze herstelgegevens beschermen, is er niet naast gevonden.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>De herstelgegevens zijn gemaakt voor een bestand met een andere naam; ze komen op inhoud overeen met dit archief.</value>
+  </data>
 </root>

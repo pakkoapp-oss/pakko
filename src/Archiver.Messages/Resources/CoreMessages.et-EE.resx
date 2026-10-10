@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Arhiivi varasemast versioonist jäänud taastefaili ei saanud kustutada: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Arhiiv on kahjustatud ({0} plokki {1}-st); selle taasteandmed saavad selle parandada ({2} taasteplokki).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Arhiiv on kahjustatud ({0} plokki {1}-st) rohkem, kui selle taasteandmed parandada saavad ({2} taasteplokki).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Arhiiv on kahjustatud ({0} plokki {1}-st); nii palju parandada ei suuda Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Taasteandmed ei vasta arhiivile ({0} plokki {1}-st erinevad), kuid arhiiv ise läbib testi: taasteandmed on tõenäoliselt selle varasemast versioonist.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Taasteandmed on kahjustatud või vormingus, mida Pakko ei suuda lugeda.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Arhiivi kõrval olevad taasteandmed on loodud teise faili jaoks.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Faili, mida need taasteandmed kaitsevad, ei leitud nende kõrvalt.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Taasteandmed on loodud teise nimega faili jaoks; need vastavad sellele arhiivile sisu järgi.</value>
+  </data>
 </root>

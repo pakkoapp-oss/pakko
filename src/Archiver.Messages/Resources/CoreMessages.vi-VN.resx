@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Không thể xóa tệp khôi phục còn lại từ phiên bản trước của tệp nén: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Tệp nén bị hỏng ({0}/{1} khối); dữ liệu khôi phục của nó có thể sửa được ({2} khối khôi phục).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Tệp nén bị hỏng ({0}/{1} khối) quá mức dữ liệu khôi phục của nó có thể sửa ({2} khối khôi phục).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Tệp nén bị hỏng ({0}/{1} khối); sửa nhiều như vậy vượt quá khả năng của Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Dữ liệu khôi phục không khớp với tệp nén ({0}/{1} khối khác nhau), nhưng bản thân tệp nén vượt qua kiểm tra: dữ liệu khôi phục có lẽ thuộc một phiên bản trước của nó.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Dữ liệu khôi phục bị hỏng hoặc ở định dạng Pakko không đọc được.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Dữ liệu khôi phục bên cạnh tệp nén được tạo cho một tệp khác.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Không tìm thấy tệp mà dữ liệu khôi phục này bảo vệ ở bên cạnh nó.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Dữ liệu khôi phục được tạo cho một tệp có tên khác; nó khớp với tệp nén này theo nội dung.</value>
+  </data>
 </root>

@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Súbor na obnovenie zo staršej verzie archívu nie je možné odstrániť: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Archív je poškodený ({0} z {1} blokov); jeho údaje na obnovenie ho dokážu opraviť ({2} blokov na obnovenie).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Archív je poškodený ({0} z {1} blokov) viac, než jeho údaje na obnovenie dokážu opraviť ({2} blokov na obnovenie).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Archív je poškodený ({0} z {1} blokov); opraviť toľko presahuje možnosti programu Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Údaje na obnovenie nezodpovedajú archívu (líši sa {0} z {1} blokov), ale samotný archív testom prešiel: údaje na obnovenie sú pravdepodobne z jeho staršej verzie.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Údaje na obnovenie sú poškodené alebo vo formáte, ktorý Pakko nedokáže prečítať.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Údaje na obnovenie vedľa archívu boli vytvorené pre iný súbor.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Súbor, ktorý tieto údaje na obnovenie chránia, sa vedľa nich nenašiel.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Údaje na obnovenie boli vytvorené pre súbor s iným názvom; tomuto archívu zodpovedajú obsahom.</value>
+  </data>
 </root>

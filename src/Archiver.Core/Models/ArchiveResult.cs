@@ -10,6 +10,11 @@ public sealed record ArchiveResult
     /// <summary>The PAR2 files written next to the archives in <see cref="CreatedFiles"/>
     /// (T-F275, <see cref="ArchiveOptions.RecoveryPercent"/>): an index and a volume per archive.</summary>
     public IReadOnlyList<string> RecoveryFiles { get; init; } = [];
+
+    /// <summary>The PAR2 check of each tested archive that has a set (T-F275 step 3); filled only by
+    /// <see cref="Interfaces.IExtractionRouter.TestAsync"/> with <c>verifyRecoveryData</c>.</summary>
+    public IReadOnlyList<RecoveryCheck> RecoveryChecks { get; init; } = [];
+
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
 

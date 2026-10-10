@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Eine Wiederherstellungsdatei einer früheren Version des Archivs konnte nicht gelöscht werden: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Das Archiv ist beschädigt ({0} von {1} Blöcken); seine Wiederherstellungsdaten können es reparieren ({2} Wiederherstellungsblöcke).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Das Archiv ist stärker beschädigt ({0} von {1} Blöcken), als seine Wiederherstellungsdaten reparieren können ({2} Wiederherstellungsblöcke).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Das Archiv ist beschädigt ({0} von {1} Blöcken); so viel zu reparieren übersteigt die Möglichkeiten von Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Die Wiederherstellungsdaten passen nicht zum Archiv ({0} von {1} Blöcken weichen ab), aber das Archiv selbst besteht den Test: Die Wiederherstellungsdaten stammen wahrscheinlich von einer früheren Version davon.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Die Wiederherstellungsdaten sind beschädigt oder in einem Format, das Pakko nicht lesen kann.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Die Wiederherstellungsdaten neben dem Archiv wurden für eine andere Datei erstellt.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Die Datei, die diese Wiederherstellungsdaten schützen, wurde daneben nicht gefunden.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Die Wiederherstellungsdaten wurden für eine Datei mit einem anderen Namen erstellt; sie passen dem Inhalt nach zu diesem Archiv.</value>
+  </data>
 </root>

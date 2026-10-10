@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Δεν ήταν δυνατή η διαγραφή ενός αρχείου ανάκτησης από προηγούμενη έκδοση του αρχείου συμπίεσης: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Το αρχείο συμπίεσης είναι κατεστραμμένο ({0} από {1} μπλοκ)· τα δεδομένα ανάκτησής του μπορούν να το επιδιορθώσουν ({2} μπλοκ ανάκτησης).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Το αρχείο συμπίεσης είναι κατεστραμμένο ({0} από {1} μπλοκ) πέρα από όσα μπορούν να επιδιορθώσουν τα δεδομένα ανάκτησής του ({2} μπλοκ ανάκτησης).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Το αρχείο συμπίεσης είναι κατεστραμμένο ({0} από {1} μπλοκ)· η επιδιόρθωση τόσων ξεπερνά τις δυνατότητες του Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Τα δεδομένα ανάκτησης δεν αντιστοιχούν στο αρχείο συμπίεσης (διαφέρουν {0} από {1} μπλοκ), αλλά το ίδιο το αρχείο συμπίεσης περνά τον έλεγχο: τα δεδομένα ανάκτησης είναι πιθανότατα από προηγούμενη έκδοσή του.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Τα δεδομένα ανάκτησης είναι κατεστραμμένα ή σε μορφή που το Pakko δεν μπορεί να διαβάσει.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Τα δεδομένα ανάκτησης δίπλα στο αρχείο συμπίεσης δημιουργήθηκαν για άλλο αρχείο.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Το αρχείο που προστατεύουν αυτά τα δεδομένα ανάκτησης δεν βρέθηκε δίπλα τους.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Τα δεδομένα ανάκτησης δημιουργήθηκαν για αρχείο με άλλο όνομα· αντιστοιχούν σε αυτό το αρχείο συμπίεσης βάσει περιεχομένου.</value>
+  </data>
 </root>

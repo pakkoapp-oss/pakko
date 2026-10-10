@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>לא ניתן היה למחוק קובץ שחזור שנותר מגרסה קודמת של הארכיון: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>הארכיון פגום ({0} מתוך {1} בלוקים); נתוני השחזור שלו יכולים לתקן אותו ({2} בלוקי שחזור).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>הארכיון פגום ({0} מתוך {1} בלוקים) מעבר למה שנתוני השחזור שלו יכולים לתקן ({2} בלוקי שחזור).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>הארכיון פגום ({0} מתוך {1} בלוקים); תיקון בהיקף כזה הוא מעבר ליכולת של Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>נתוני השחזור אינם תואמים לארכיון ({0} מתוך {1} בלוקים שונים), אבל הארכיון עצמו עובר את הבדיקה: נתוני השחזור הם כנראה מגרסה קודמת שלו.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>נתוני השחזור פגומים או בתבנית ש-Pakko אינו יכול לקרוא.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>נתוני השחזור שליד הארכיון נוצרו עבור קובץ אחר.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>הקובץ שנתוני שחזור אלה מגינים עליו לא נמצא לידם.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>נתוני השחזור נוצרו עבור קובץ בשם אחר; הם תואמים לארכיון זה לפי התוכן שלו.</value>
+  </data>
 </root>

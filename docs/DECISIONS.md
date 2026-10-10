@@ -12028,6 +12028,31 @@ Steps, one PR each: 0 docs and oracles, 1 the Core engine, 2 creation, 3 verific
 - The App: a checkbox and 5/10/20 % on the "New archive" card for every format, hidden by the
   policy; the collapsed card's summary names it. The percent text follows the culture ("5 %",
   "%5"). Explorer's one-click verbs have no options and never write a set.
+
+### Step 3a — verification in Core and `pakko t` (2026-10-10)
+
+- Step 3 is three PRs: 3a Core and `pakko t`, 3b Explorer (Shell and the C++ menu), 3c the App.
+- The check is part of `IExtractionRouter.TestAsync`, behind an opt-in `verifyRecoveryData`
+  parameter, not code in each frontend: finding the set, a `.par2` path standing for its archive,
+  the policy, dropping the tar-family "cannot test" skip and counting one archive once would
+  otherwise be written three times, as step 2 kept the PAR2 writing in the router. Opt-in, so
+  Explorer's and the App's Test do not change before 3b and 3c are checked on the device.
+- `IRecoveryService` moves to step 4: the test needs no public verify call, and a public surface
+  ships with its first caller. Repair (`pakko r`) is that caller.
+- A set that disagrees with a ZIP the engine tested as intact is a warning
+  (`RecoveryDataDoesNotMatch`, state `DoesNotMatch`), not damage: `pakko a -y a.zip` without `-rr`
+  over an archive that had a set leaves the old set (cleanup runs only when a new set is written),
+  and calling a good ZIP "not repairable" would be wrong. A tar-family archive has no such second
+  opinion, so a stale set there reads as damage; the remedy is to write the archive with `-rr` again
+  or delete the set. Bytes no ZIP CRC covers (a comment, extra fields) damaged on an intact-testing
+  ZIP also land in this warning, which is still not silent.
+- Messages: the name inside a set is never printed (it is untrusted text going to a console); a
+  match by content under another name is the warning `RecoveryDataNameMismatch` without the name.
+- `pakko t` prints one stdout line per intact set — the first stdout output of `t` — so a
+  tar-family archive that used to be "skipped" shows what checked it. Exit codes that change: a
+  tar-family archive with an intact set 1 -> 0; a ZIP whose PAR2 files cannot be read 0 -> 1.
+- Progress: the test's part of the climb is its ZIP bytes over those plus the checked archives'
+  sizes; the check reports `VerifyingRecoveryData` with zero byte counts and ends at 100.
 - `DisableRecoveryData` (ADMX `SUPPORTED_Pakko18`) covers the whole feature: creation is refused in
   Core now; the verify and repair commands of steps 3-4 are hidden by it as well.
 

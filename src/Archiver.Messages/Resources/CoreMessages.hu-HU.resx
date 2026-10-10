@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Az archívum egy korábbi verziójából maradt helyreállítási fájl nem törölhető: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Az archívum sérült ({1} blokkból {0}); a helyreállítási adatai ki tudják javítani ({2} helyreállítási blokk).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Az archívum jobban sérült ({1} blokkból {0}), mint amit a helyreállítási adatai ki tudnak javítani ({2} helyreállítási blokk).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Az archívum sérült ({1} blokkból {0}); ennyi javítása meghaladja a Pakko képességeit.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>A helyreállítási adatok nem egyeznek az archívummal ({1} blokkból {0} eltér), de maga az archívum átmegy a teszten: a helyreállítási adatok valószínűleg egy korábbi verziójából származnak.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>A helyreállítási adatok sérültek, vagy olyan formátumúak, amelyet a Pakko nem tud olvasni.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Az archívum melletti helyreállítási adatok egy másik fájlhoz készültek.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>A fájl, amelyet ezek a helyreállítási adatok védenek, nem található mellettük.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>A helyreállítási adatok egy más nevű fájlhoz készültek; tartalom alapján egyeznek ezzel az archívummal.</value>
+  </data>
 </root>

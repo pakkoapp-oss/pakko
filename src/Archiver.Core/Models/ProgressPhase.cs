@@ -17,4 +17,10 @@ public enum ProgressPhase
     /// counts are zero, since they no longer count the sources.
     /// </summary>
     CreatingRecoveryData,
+
+    /// <summary>
+    /// T-F275: checking a tested archive against its PAR2 set. The percent moves; the byte counts
+    /// are zero, since the archive's bytes were already counted by the test.
+    /// </summary>
+    VerifyingRecoveryData,
 }

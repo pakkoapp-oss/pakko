@@ -68,6 +68,9 @@ public static class CliHints
         MessageCode.EntryDataTruncated, MessageCode.PasswordProtectedFormatNotSupported,
         MessageCode.RecoveryPercentInvalid, MessageCode.RecoveryDataDisabled, MessageCode.RecoveryDataNotCreated,
         MessageCode.RecoveryDataFileTooLarge, MessageCode.RecoveryOldVolumeNotDeleted,
+        MessageCode.RecoveryDataDamagedRepairable, MessageCode.RecoveryDataDamagedNotRepairable,
+        MessageCode.RecoveryDataRepairTooLarge, MessageCode.RecoveryDataDoesNotMatch, MessageCode.RecoveryDataUnusable,
+        MessageCode.RecoveryDataForAnotherFile, MessageCode.RecoveryDataTargetNotFound, MessageCode.RecoveryDataNameMismatch,
     ];
 
     /// <summary>Every code and its hint; <see cref="CliHint.None"/> is a decision too.</summary>

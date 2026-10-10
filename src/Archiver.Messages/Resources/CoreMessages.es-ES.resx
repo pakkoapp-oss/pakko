@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>No se pudo eliminar un archivo de recuperación de una versión anterior del archivo comprimido: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>El archivo comprimido está dañado ({0} de {1} bloques); sus datos de recuperación pueden repararlo ({2} bloques de recuperación).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>El archivo comprimido está dañado ({0} de {1} bloques) más de lo que sus datos de recuperación pueden reparar ({2} bloques de recuperación).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>El archivo comprimido está dañado ({0} de {1} bloques); reparar tanto supera lo que Pakko puede hacer.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Los datos de recuperación no coinciden con el archivo comprimido ({0} de {1} bloques difieren), pero el propio archivo comprimido supera la prueba: probablemente los datos de recuperación son de una versión anterior.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Los datos de recuperación están dañados o en un formato que Pakko no puede leer.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Los datos de recuperación junto al archivo comprimido se crearon para otro archivo.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>No se encontró junto a estos datos de recuperación el archivo que protegen.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Los datos de recuperación se crearon para un archivo con otro nombre; coinciden con este archivo comprimido por su contenido.</value>
+  </data>
 </root>

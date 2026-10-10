@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Un fișier de recuperare rămas de la o versiune anterioară a arhivei nu a putut fi șters: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Arhiva este deteriorată ({0} din {1} blocuri); datele de recuperare o pot repara ({2} blocuri de recuperare).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Arhiva este deteriorată ({0} din {1} blocuri) peste ce pot repara datele de recuperare ({2} blocuri de recuperare).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Arhiva este deteriorată ({0} din {1} blocuri); repararea atât de multor blocuri depășește posibilitățile Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Datele de recuperare nu corespund arhivei ({0} din {1} blocuri diferă), dar arhiva însăși trece testul: datele de recuperare provin probabil dintr-o versiune anterioară a ei.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Datele de recuperare sunt deteriorate sau într-un format pe care Pakko nu îl poate citi.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Datele de recuperare de lângă arhivă au fost create pentru alt fișier.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Fișierul protejat de aceste date de recuperare nu a fost găsit lângă ele.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Datele de recuperare au fost create pentru un fișier cu alt nume; corespund acestei arhive după conținut.</value>
+  </data>
 </root>

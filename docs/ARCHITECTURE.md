@@ -142,7 +142,8 @@ src/
 │   │                                          local headers), EncryptedZipEntryReader, ZipCrypto, WinZip AES
 │   ├── Recovery/                   ← T-F275: the PAR 2.0 engine, internal — GF(2^16), packets,
 │   │                                  a bounded reader, create/verify/repair; RecoveryDataWriter
-│   │                                  (the router's PAR2 step) and RecoveryProgressSplit
+│   │                                  (the router's PAR2 step), RecoveryProgressSplit, and
+│   │                                  RecoveryTestStep (the test's PAR2 check, T-F275 step 3)
 │   ├── IO/
 │   │   ├── TempOwner.cs                ← T-F263/T-F312: public; the one owner of temp names —
 │   │   │                                  tag m<machine>-<pid>-<start ticks>, the sweep of entries
@@ -614,6 +615,12 @@ public sealed record ArchiveResult
     // of CreatedFiles, so the outcome line, pakko's name check and "contains its own output" stay
     // about the archives.
     public IReadOnlyList<string> RecoveryFiles { get; init; } = [];
+    // T-F275 step 3: the PAR2 check of each tested archive that has a set, filled only by
+    // IExtractionRouter.TestAsync(verifyRecoveryData: true). RecoveryCheck: ArchivePath, State
+    // (Intact / Repairable / NotRepairable / RepairTooLarge / DoesNotMatch / Unusable), SetFiles,
+    // Blocks, DamagedBlocks, RecoveryBlocks. Damage is also an ArchiveError, DoesNotMatch and
+    // Unusable an ArchiveWarning, so a frontend that ignores this list still reports the outcome.
+    public IReadOnlyList<RecoveryCheck> RecoveryChecks { get; init; } = [];
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
     // T-F280: what the user should know although everything asked was done. Never fails the
@@ -726,6 +733,9 @@ whole-archive listing passes (one report before them, a `Transferring` report ri
 `CreatingRecoveryData` (T-F275) is the router's PAR2 step after the engine: the percent keeps
 rising (`RecoveryProgressSplit` gives the engine 0 to 100 · (1 - p/(p+20)) and PAR2 the rest, and
 sends 100 only after the last set), the byte counts are 0. The App shows its own status for it.
+`VerifyingRecoveryData` (T-F275 step 3) is the PAR2 check after a test with `verifyRecoveryData`:
+the test gets the part of the climb its ZIP bytes are, the check the rest, by the archives' sizes;
+the byte counts are 0.
 
 ---
 
@@ -1244,10 +1254,17 @@ public interface IExtractionRouter
     // T-F261: same classifier as ExtractAsync. ZIP paths go to IArchiveService.TestAsync;
     // tar-family paths are skipped ("tar-family archives have no test capability") — tar.exe is
     // never started; policy/capability refusals are skipped with their own reason.
+    // T-F275 step 3, verifyRecoveryData (opt-in; pakko t sets it): each archive is also checked
+    // against a PAR2 set next to it (RecoveryTestStep), a .par2 path stands for the archive its
+    // set protects, a tar-family archive with a usable set is checked by it instead of skipped,
+    // and a ZIP that tests intact while its set disagrees gets a DoesNotMatch warning (a set left
+    // from an earlier version), not damage. Under DisableRecoveryData no set is looked for and a
+    // .par2 path is an error.
     Task<ArchiveResult> TestAsync(
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
         Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null,
+        bool verifyRecoveryData = false,
         CancellationToken cancellationToken = default);
 }
 ```
@@ -1807,7 +1824,7 @@ real, supported command with an unsupported switch). Never a silent no-op.
 | Command | Core API | Notes |
 |---|---|---|
 | `x` | `IExtractionRouter.ExtractAsync` | `ExtractMode.SingleFolder`; `OnConflict = -ao ?? (-y ? Overwrite : Skip)`; `ConfirmCompressionBombExtraction` set only when `-y` |
-| `t` | `IExtractionRouter.TestAsync` (T-F261; ZIP-only testing — `ITarService` has no Test method) | tar-family paths become `SkippedFile`s with a named reason, not silently dropped; Group Policy applies |
+| `t` | `IExtractionRouter.TestAsync` (T-F261; ZIP-only testing — `ITarService` has no Test method) with `verifyRecoveryData` (T-F275), except for `-si` | tar-family paths become `SkippedFile`s with a named reason, not silently dropped, unless a PAR2 set next to them checks them; Group Policy applies |
 | `i` | `PakkoServices.GetTarCapabilitiesAsync` + `ArchiveFormatPolicy` | each line's status (supported / not supported / blocked by Group Policy) comes from the shared classifier; no probe under `DisableTarExtraction` |
 | `a` | `IArchiveCreationRouter.ArchiveAsync` | always `ArchiveMode.SingleArchive`; `ArchiveNaming.GetBaseName` derives the name |
 | `l` | `IArchiveListingRouter.ListEntriesAsync` | looped once per archive path (the router itself takes one path at a time) |

@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>ไม่สามารถลบไฟล์กู้คืนที่เหลือจากไฟล์บีบอัดเวอร์ชันก่อนหน้า: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>ไฟล์บีบอัดเสียหาย ({0} จาก {1} บล็อก) ข้อมูลกู้คืนของไฟล์นี้ซ่อมแซมได้ ({2} บล็อกกู้คืน)</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>ไฟล์บีบอัดเสียหาย ({0} จาก {1} บล็อก) เกินกว่าที่ข้อมูลกู้คืนของไฟล์นี้จะซ่อมแซมได้ ({2} บล็อกกู้คืน)</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>ไฟล์บีบอัดเสียหาย ({0} จาก {1} บล็อก) การซ่อมแซมมากขนาดนี้เกินความสามารถของ Pakko</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>ข้อมูลกู้คืนไม่ตรงกับไฟล์บีบอัด ({0} จาก {1} บล็อกแตกต่างกัน) แต่ตัวไฟล์บีบอัดผ่านการทดสอบ ข้อมูลกู้คืนน่าจะมาจากเวอร์ชันก่อนหน้าของไฟล์</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>ข้อมูลกู้คืนเสียหายหรืออยู่ในรูปแบบที่ Pakko อ่านไม่ได้</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>ข้อมูลกู้คืนที่อยู่ข้างไฟล์บีบอัดถูกสร้างขึ้นสำหรับไฟล์อื่น</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>ไม่พบไฟล์ที่ข้อมูลกู้คืนนี้ปกป้องอยู่ข้าง ๆ</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>ข้อมูลกู้คืนถูกสร้างขึ้นสำหรับไฟล์ที่มีชื่ออื่น แต่ตรงกับไฟล์บีบอัดนี้ตามเนื้อหา</value>
+  </data>
 </root>

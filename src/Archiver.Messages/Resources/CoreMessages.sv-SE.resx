@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>En återställningsfil från en tidigare version av arkivet kunde inte tas bort: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Arkivet är skadat ({0} av {1} block); dess återställningsdata kan reparera det ({2} återställningsblock).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Arkivet är skadat ({0} av {1} block) mer än dess återställningsdata kan reparera ({2} återställningsblock).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Arkivet är skadat ({0} av {1} block); att reparera så mycket ligger utanför vad Pakko klarar.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Återställningsdata stämmer inte med arkivet ({0} av {1} block skiljer sig), men själva arkivet klarar testet: återställningsdata kommer troligen från en tidigare version av det.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Återställningsdata är skadat eller i ett format som Pakko inte kan läsa.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Återställningsdata bredvid arkivet skapades för en annan fil.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Filen som detta återställningsdata skyddar hittades inte bredvid det.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Återställningsdata skapades för en fil med ett annat namn; det stämmer med det här arkivet efter innehåll.</value>
+  </data>
 </root>

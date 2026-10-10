@@ -212,7 +212,7 @@ public sealed class LazyTarProbeTests : IDisposable
             "extract" => () => extraction.ExtractAsync(
                 new ExtractOptions { ArchivePaths = [archive], DestinationFolder = _temp.Path, OpenDestinationFolder = false },
                 null, cancellation.Token),
-            "test" => () => extraction.TestAsync([archive], null, null, cancellation.Token),
+            "test" => () => extraction.TestAsync([archive], null, null, cancellationToken: cancellation.Token),
             _ => () => listing.ListEntriesAsync(archive, cancellation.Token),
         };
 

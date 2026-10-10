@@ -320,7 +320,9 @@ static async Task<int> ReportAndStreamAsync(
 // -------------------------------------------------------------------------
 // t: test integrity — ZIP only (ITarService has no Test method at all). T-F261: the router
 // classifies (Group Policy included) and reports tar-family paths as skipped with the specific
-// reason, never silently dropped, matching CLI.md's three-way rule.
+// reason, never silently dropped, matching CLI.md's three-way rule. T-F275: each archive is also
+// checked against a PAR2 set next to it (a tar-family one by the set alone), and a .par2 path
+// checks the archive it protects; a staged stdin has no neighbours, so it is not looked at.
 // -------------------------------------------------------------------------
 static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices services)
 {
@@ -344,8 +346,11 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
             archivePaths,
             progress,
             resolvePasswordAsync: BuildPasswordResolver(command, assumeYes: false, progress, report),
+            verifyRecoveryData: stdinFolder is null,
             cancellationToken: cancellation.Token).ConfigureAwait(false);
         progress?.Clear();
+        foreach (RecoveryCheck check in result.RecoveryChecks.Where(c => c.State == RecoveryState.Intact))
+            Console.Out.WriteLine($"{report.DisplayName(check.ArchivePath)}: recovery data intact ({check.Blocks} blocks, {check.RecoveryBlocks} recovery blocks)");
         return ReportResult(result, report);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)

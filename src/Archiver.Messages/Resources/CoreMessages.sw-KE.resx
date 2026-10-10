@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Faili ya urejeshaji iliyobaki kutoka toleo la awali la kumbukumbu haikuweza kufutwa: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Kumbukumbu imeharibika (vitalu {0} kati ya {1}); data yake ya urejeshaji inaweza kuirekebisha (vitalu {2} vya urejeshaji).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Kumbukumbu imeharibika (vitalu {0} kati ya {1}) kupita kiasi ambacho data yake ya urejeshaji inaweza kurekebisha (vitalu {2} vya urejeshaji).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Kumbukumbu imeharibika (vitalu {0} kati ya {1}); kurekebisha kiasi hiki ni zaidi ya uwezo wa Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Data ya urejeshaji hailingani na kumbukumbu (vitalu {0} kati ya {1} vinatofautiana), lakini kumbukumbu yenyewe inapita jaribio: huenda data ya urejeshaji ni ya toleo lake la awali.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Data ya urejeshaji imeharibika au iko katika muundo ambao Pakko haiwezi kusoma.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Data ya urejeshaji iliyo karibu na kumbukumbu iliundwa kwa faili lingine.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Faili ambalo data hii ya urejeshaji inalilinda halikupatikana karibu nayo.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Data ya urejeshaji iliundwa kwa faili lenye jina lingine; inalingana na kumbukumbu hii kwa maudhui yake.</value>
+  </data>
 </root>

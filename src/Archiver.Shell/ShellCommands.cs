@@ -154,7 +154,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         {
             result = await service.TestAsync(archivePaths, session.Progress,
                 info => session.AskPasswordAsync(info, canApplyToRemaining: archivePaths.Count > 1),
-                session.Cancellation).ConfigureAwait(false);
+                cancellationToken: session.Cancellation).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {

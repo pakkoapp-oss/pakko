@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>En gjenopprettingsfil fra en tidligere versjon av arkivet kunne ikke slettes: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Arkivet er skadet ({0} av {1} blokker); gjenopprettingsdataene kan reparere det ({2} gjenopprettingsblokker).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Arkivet er skadet ({0} av {1} blokker) mer enn gjenopprettingsdataene kan reparere ({2} gjenopprettingsblokker).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Arkivet er skadet ({0} av {1} blokker); å reparere så mye er mer enn Pakko kan.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Gjenopprettingsdataene samsvarer ikke med arkivet ({0} av {1} blokker er forskjellige), men selve arkivet består testen: gjenopprettingsdataene er sannsynligvis fra en tidligere versjon av det.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Gjenopprettingsdataene er skadet eller i et format Pakko ikke kan lese.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Gjenopprettingsdataene ved siden av arkivet ble laget for en annen fil.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Filen disse gjenopprettingsdataene beskytter, ble ikke funnet ved siden av dem.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Gjenopprettingsdataene ble laget for en fil med et annet navn; de samsvarer med dette arkivet etter innhold.</value>
+  </data>
 </root>

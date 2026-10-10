@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Arkiston aiemmasta versiosta jäänyttä palautustiedostoa ei voitu poistaa: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Arkisto on vahingoittunut ({0}/{1} lohkoa); sen palautustiedot voivat korjata sen ({2} palautuslohkoa).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Arkisto on vahingoittunut ({0}/{1} lohkoa) enemmän kuin sen palautustiedot voivat korjata ({2} palautuslohkoa).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Arkisto on vahingoittunut ({0}/{1} lohkoa); näin suuri korjaus ylittää Pakkon kyvyt.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Palautustiedot eivät vastaa arkistoa ({0}/{1} lohkoa eroaa), mutta itse arkisto läpäisee testin: palautustiedot ovat luultavasti sen aiemmasta versiosta.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Palautustiedot ovat vahingoittuneet tai muodossa, jota Pakko ei voi lukea.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Arkiston vieressä olevat palautustiedot on tehty toiselle tiedostolle.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Tiedostoa, jota nämä palautustiedot suojaavat, ei löytynyt niiden vierestä.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Palautustiedot on tehty toisennimiselle tiedostolle; ne vastaavat tätä arkistoa sisällöltään.</value>
+  </data>
 </root>

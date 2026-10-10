@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Impossibile eliminare un file di ripristino rimasto da una versione precedente dell’archivio: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>L'archivio è danneggiato ({0} blocchi su {1}); i suoi dati di ripristino possono ripararlo ({2} blocchi di ripristino).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>L'archivio è danneggiato ({0} blocchi su {1}) oltre quanto i suoi dati di ripristino possono riparare ({2} blocchi di ripristino).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>L'archivio è danneggiato ({0} blocchi su {1}); riparare così tanto va oltre le capacità di Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>I dati di ripristino non corrispondono all'archivio ({0} blocchi su {1} sono diversi), ma l'archivio stesso supera il test: i dati di ripristino provengono probabilmente da una sua versione precedente.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>I dati di ripristino sono danneggiati o in un formato che Pakko non può leggere.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>I dati di ripristino accanto all'archivio sono stati creati per un altro file.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Il file protetto da questi dati di ripristino non è stato trovato accanto a essi.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>I dati di ripristino sono stati creati per un file con un altro nome; corrispondono a questo archivio per contenuto.</value>
+  </data>
 </root>

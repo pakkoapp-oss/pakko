@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>无法删除压缩包早期版本遗留的恢复文件: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>压缩包已损坏（{1} 个块中有 {0} 个）；其恢复数据可以修复它（{2} 个恢复块）。</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>压缩包的损坏（{1} 个块中有 {0} 个）超出了其恢复数据能修复的范围（{2} 个恢复块）。</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>压缩包已损坏（{1} 个块中有 {0} 个）；修复这么多超出了 Pakko 的能力。</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>恢复数据与压缩包不匹配（{1} 个块中有 {0} 个不同），但压缩包本身通过了测试：恢复数据可能来自它的早期版本。</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>恢复数据已损坏，或其格式 Pakko 无法读取。</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>压缩包旁边的恢复数据是为另一个文件创建的。</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>在此恢复数据旁边找不到它所保护的文件。</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>恢复数据是为另一个名称的文件创建的；按内容它与此压缩包匹配。</value>
+  </data>
 </root>

@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>以前のバージョンのアーカイブから残った回復ファイルを削除できませんでした: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>アーカイブが破損しています ({1} ブロック中 {0} ブロック)。回復データで修復できます (回復ブロック {2} 個)。</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>アーカイブの破損 ({1} ブロック中 {0} ブロック) は、回復データで修復できる範囲を超えています (回復ブロック {2} 個)。</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>アーカイブが破損しています ({1} ブロック中 {0} ブロック)。これほどの修復は Pakko の能力を超えています。</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>回復データがアーカイブと一致しません ({1} ブロック中 {0} ブロックが異なります) が、アーカイブ自体はテストに合格しています。回復データはおそらく以前のバージョンのものです。</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>回復データが破損しているか、Pakko が読み取れない形式です。</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>アーカイブの横にある回復データは別のファイル用に作成されています。</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>この回復データが保護するファイルが、その横に見つかりませんでした。</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>回復データは別の名前のファイル用に作成されていますが、内容によりこのアーカイブと一致します。</value>
+  </data>
 </root>

@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Nevarēja izdzēst atkopšanas failu, kas palicis no iepriekšējās arhīva versijas: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Arhīvs ir bojāts ({0} no {1} blokiem); tā atkopšanas dati to var salabot ({2} atkopšanas bloki).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Arhīvs ir bojāts ({0} no {1} blokiem) vairāk, nekā tā atkopšanas dati var salabot ({2} atkopšanas bloki).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Arhīvs ir bojāts ({0} no {1} blokiem); salabot tik daudz Pakko nespēj.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Atkopšanas dati neatbilst arhīvam (atšķiras {0} no {1} blokiem), taču pats arhīvs testu iztur: atkopšanas dati, visticamāk, ir no tā agrākas versijas.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Atkopšanas dati ir bojāti vai formātā, ko Pakko nevar nolasīt.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Atkopšanas dati blakus arhīvam ir izveidoti citam failam.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Fails, ko šie atkopšanas dati aizsargā, blakus tiem netika atrasts.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Atkopšanas dati ir izveidoti failam ar citu nosaukumu; pēc satura tie atbilst šim arhīvam.</value>
+  </data>
 </root>
