@@ -149,45 +149,42 @@ public sealed class ExtractionRouter : IExtractionRouter
             tested.Sources.Where(s => s.Outcome == SourceOutcome.Completed && !tested.Errors.Any(e => e.SourcePath == s.Path)).Select(s => RecoveryTestStep.Key(s.Path)),
             StringComparer.OrdinalIgnoreCase);
 
-        var errors = new List<ArchiveError>(plan.Errors);
-        var warnings = new List<ArchiveWarning>(plan.Warnings);
-        var checks = new List<RecoveryCheck>(plan.Checks);
-        await Task.Run(() => CheckSets(plan.Sets, checkLengths, checkTotal, passed, climb, checks, errors, warnings, cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
+        await Task.Run(() => CheckSets(plan, checkLengths, passed, climb, cancellationToken), cancellationToken).ConfigureAwait(false);
         climb?.Check(1);
 
         // A tar-family archive that its set could check was tested after all.
         var checkedBySet = new HashSet<string>(
-            checks.Where(c => c.State != RecoveryState.Unusable).Select(c => RecoveryTestStep.Key(c.ArchivePath)), StringComparer.OrdinalIgnoreCase);
+            plan.Checks.Where(c => c.State != RecoveryState.Unusable).Select(c => RecoveryTestStep.Key(c.ArchivePath)), StringComparer.OrdinalIgnoreCase);
         return tested with
         {
-            Errors = [.. tested.Errors, .. errors],
-            Warnings = [.. tested.Warnings, .. warnings],
+            Errors = [.. tested.Errors, .. plan.Errors],
+            Warnings = [.. tested.Warnings, .. plan.Warnings],
             SkippedFiles = [.. tested.SkippedFiles.Where(s => s.Text?.Code != MessageCode.NoTestCapability || !checkedBySet.Contains(RecoveryTestStep.Key(s.Path)))],
-            RecoveryChecks = checks,
+            RecoveryChecks = plan.Checks,
         };
     }
 
-    // Each set's share of the check's part of the climb is its archive's size.
+    // Each set's share of the check's part of the climb is its archive's size; what the checks
+    // find joins what Locate already knew in the plan.
     private static void CheckSets(
-        List<RecoveryTestStep.Found> sets, long[] lengths, double total, HashSet<string> passed, RecoveryClimb? climb,
-        List<RecoveryCheck> checks, List<ArchiveError> errors, List<ArchiveWarning> warnings, CancellationToken cancellationToken)
+        RecoveryTestStep.Plan plan, long[] lengths, HashSet<string> passed, RecoveryClimb? climb, CancellationToken cancellationToken)
     {
+        double total = Math.Max(1, lengths.Sum());
         double before = 0;
-        for (int i = 0; i < sets.Count; i++)
+        for (int i = 0; i < plan.Sets.Count; i++)
         {
-            RecoveryTestStep.Found found = sets[i];
+            RecoveryTestStep.Found found = plan.Sets[i];
             double offset = before;
             long weight = lengths[i];
             before += weight;
             (RecoveryCheck? check, ArchiveError? error, ArchiveWarning? warning) = RecoveryTestStep.Check(
                 found, passed.Contains(RecoveryTestStep.Key(found.ArchivePath)), f => climb?.Check((offset + f * weight) / total), cancellationToken);
             if (check is not null)
-                checks.Add(check);
+                plan.Checks.Add(check);
             if (error is not null)
-                errors.Add(error);
+                plan.Errors.Add(error);
             if (warning is not null)
-                warnings.Add(warning);
+                plan.Warnings.Add(warning);
         }
     }
 
