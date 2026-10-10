@@ -12044,7 +12044,9 @@ Steps, one PR each: 0 docs and oracles, 1 the Core engine, 2 creation, 3 verific
   over an archive that had a set leaves the old set (cleanup runs only when a new set is written),
   and calling a good ZIP "not repairable" would be wrong. A tar-family archive has no such second
   opinion, so a stale set there reads as damage; the remedy is to write the archive with `-rr` again
-  or delete the set. Bytes no ZIP CRC covers (a comment, extra fields) damaged on an intact-testing
+  or delete the set (superseded the same day: Pakko's own rewrite now removes the old set, with
+  or without `-rr`, see "Before 3b" below; the warning stays for another tool's rewrite). Bytes no
+  ZIP CRC covers (a comment, extra fields) damaged on an intact-testing
   ZIP also land in this warning, which is still not silent.
 - Messages: the name inside a set is never printed (it is untrusted text going to a console); a
   match by content under another name is the warning `RecoveryDataNameMismatch` without the name.
