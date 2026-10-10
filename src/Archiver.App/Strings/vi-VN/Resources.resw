@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Đây là một thư mục trên đĩa, không phải tệp nén. Nhấp đúp vào một tệp nén để mở, hoặc nhấn "Đóng tệp nén" (Esc) để quay lại tạo tệp nén.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Đã tìm thấy các tệp PAR2 bên cạnh tệp nén này. Việc kiểm tra tệp nén cũng đối chiếu tệp nén với các tệp đó.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Lên một cấp</value>
   </data>

@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>यह डिस्क पर एक फ़ोल्डर है, संग्रह नहीं। किसी संग्रह को खोलने के लिए उस पर डबल-क्लिक करें, या संग्रह बनाने पर लौटने के लिए "संग्रह बंद करें" (Esc) दबाएं।</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>इस संग्रह के पास PAR2 फ़ाइलें मिलीं। संग्रह का परीक्षण उसे इनके आधार पर भी जाँचता है।</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>एक स्तर ऊपर</value>
   </data>

@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Tämä on levyllä oleva kansio, ei arkisto. Avaa arkisto kaksoisnapsauttamalla sitä tai palaa arkistojen luontiin painamalla "Sulje arkisto" (Esc).</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Tämän arkiston vierestä löytyi PAR2-tiedostoja. Arkiston testaus tarkistaa arkiston myös niiden avulla.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Yksi taso ylös</value>
   </data>

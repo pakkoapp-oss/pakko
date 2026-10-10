@@ -741,6 +741,25 @@ sends 100 only after the last set), the byte counts are 0. The App shows its own
 the test gets the part of the climb its ZIP bytes are, the check the rest, by the archives' sizes;
 the byte counts are 0.
 
+T-F275 step 3c: what a frontend asks before any test runs. Both read the disk, so a UI calls them
+off its thread; step 4 moves them behind `IRecoveryService`.
+
+```csharp
+public static class RecoveryDataLookup
+{
+    // Named like a PAR2 file. Reads nothing.
+    public static bool IsRecoveryFile(string path);
+    // PAR2 files lie next to the archive under either name the test looks for (a.zip.par2,
+    // a.par2, their volumes). Not whether they are usable. False under DisableRecoveryData and
+    // for an unreadable path; never throws.
+    public static bool HasFilesFor(string archivePath, GroupPolicyOptions policy);
+    // The file the set protects, chosen by the set's hashes as the test chooses it. Exactly one
+    // of RecoveryTarget.ArchivePath / Error is set; a file that is gone is still named. Throws
+    // only OperationCanceledException.
+    public static RecoveryTarget FindArchive(string par2Path, GroupPolicyOptions policy, CancellationToken cancellationToken = default);
+}
+```
+
 ---
 
 ## App Services — Current Signatures

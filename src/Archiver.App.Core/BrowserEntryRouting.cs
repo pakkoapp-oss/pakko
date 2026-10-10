@@ -57,6 +57,14 @@ public static class BrowserEntryRouting
     }
 
     /// <summary>
+    /// T-F275 step 3c: a row that <see cref="DecidePendingRow"/> or <see cref="DecideBrowserRow"/>
+    /// leaves alone opens the archive it protects when it is a PAR2 file on disk (in the pending
+    /// list, or in a real folder). Inside an archive a <c>.par2</c> entry is an ordinary entry.
+    /// </summary>
+    public static bool OpensProtectedArchive(bool isBusy, bool insideArchive, bool isFolder, string name) =>
+        !isBusy && !insideArchive && !isFolder && RecoveryDataLookup.IsRecoveryFile(name);
+
+    /// <summary>
     /// Where an entry extracted into <paramref name="scopeDir"/> landed, or null when its name
     /// would point outside the scope (an absolute or <c>..</c> entry name) — T-F242 item 6: the
     /// path is handed to ShellExecute, so it must never name a file Pakko did not write.

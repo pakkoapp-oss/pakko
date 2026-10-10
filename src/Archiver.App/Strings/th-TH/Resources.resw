@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>นี่คือโฟลเดอร์บนดิสก์ ไม่ใช่ไฟล์บีบอัด ดับเบิลคลิกไฟล์บีบอัดเพื่อเปิด หรือกด "ปิดไฟล์บีบอัด" (Esc) เพื่อกลับไปสร้างไฟล์บีบอัด</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>พบไฟล์ PAR2 อยู่ข้างไฟล์บีบอัดนี้ การทดสอบไฟล์บีบอัดจะตรวจสอบกับไฟล์เหล่านั้นด้วย</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>ขึ้นไปหนึ่งระดับ</value>
   </data>

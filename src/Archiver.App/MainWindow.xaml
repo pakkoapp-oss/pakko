@@ -251,7 +251,7 @@
 
             </Grid>
 
-            <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,*"
+            <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto,*"
                   Visibility="{x:Bind ViewModel.IsBrowsingArchiveVisibility, Mode=OneWay}">
 
                 <Grid x:Name="BrowseBreadcrumbRow" Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,8">
@@ -300,9 +300,19 @@
                     Severity="{x:Bind ViewModel.BrowseInfoSeverity, Mode=OneWay}"
                     Message="{x:Bind ViewModel.BrowseInfoText, Mode=OneWay}"/>
 
+                <!-- T-F275 step 3c: the PAR2 files next to the open archive; after Test, its verdict. -->
+                <InfoBar
+                    x:Name="RecoveryInfoBar"
+                    Grid.Row="2"
+                    Margin="0,0,0,8"
+                    IsClosable="False"
+                    IsOpen="{x:Bind ViewModel.IsRecoveryInfoOpen, Mode=OneWay}"
+                    Severity="{x:Bind ViewModel.RecoveryInfoSeverity, Mode=OneWay}"
+                    Message="{x:Bind ViewModel.RecoveryInfoText, Mode=OneWay}"/>
+
                 <Border
                     x:Name="BrowseHeader"
-                    Grid.Row="2"
+                    Grid.Row="3"
                     Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                     BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                     BorderThickness="0,0,0,1">
@@ -316,7 +326,7 @@
                 </Border>
 
                 <ListView
-                    Grid.Row="3"
+                    Grid.Row="4"
                     x:Name="ArchiveBrowserListView"
                     ItemsSource="{x:Bind ViewModel.CurrentFolderEntries, Mode=OneWay}"
                     SelectionMode="Multiple"

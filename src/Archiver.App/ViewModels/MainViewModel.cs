@@ -71,6 +71,10 @@ public sealed partial class MainViewModel : ObservableObject
     // set on every transition (open, drill-in, back out, climb out, close).
     private EncryptionSummary? _browseEncryption;
     private bool _browsedIsZip;
+    // T-F275 step 3c: the PAR2 line of the archive opened from disk, and whether that archive is
+    // open without a listing (it failed, and PAR2 files lie next to it).
+    private RecoveryPanel _recoveryPanel = RecoveryPanel.None;
+    private bool _browseUnlisted;
     private readonly BrowseWork _browseWork = new();
 
     private CancellationTokenSource? _cts;
@@ -650,10 +654,46 @@ public sealed partial class MainViewModel : ObservableObject
         RaiseDownloadMark();
     }
 
-    partial void OnBrowsedArchivePathChanged(string? value) => RefreshDownloadMark();
+    partial void OnBrowsedArchivePathChanged(string? value)
+    {
+        // A nested level keeps the panel (hidden there, back after Up); leaving the archive drops it.
+        if (value is null)
+            SetRecoveryPanel(RecoveryPanel.None, unlisted: false);
+        RefreshDownloadMark();
+    }
 
-    private BrowseLocationState Location => BrowseLocationState.For(
-        IsBrowsingArchive && BrowseScope == ArchiveBrowseScope.Archive, _browseStack.Count > 0, _browsedIsZip);
+    private BrowseLocationState Location
+    {
+        get
+        {
+            BrowseLocationState state = BrowseLocationState.For(
+                IsBrowsingArchive && BrowseScope == ArchiveBrowseScope.Archive, _browseStack.Count > 0, _browsedIsZip);
+            return _browseUnlisted ? state.WithoutListing() : state;
+        }
+    }
+
+    private bool ShowsRecoveryPanel => IsBrowsingArchive
+        && _recoveryPanel.IsOpenAt(BrowseScope == ArchiveBrowseScope.Archive, _browseStack.Count > 0);
+
+    // T-F275 step 3c: a second line under the breadcrumb, about the PAR2 files next to the archive.
+    public bool IsRecoveryInfoOpen => ShowsRecoveryPanel;
+
+    public Microsoft.UI.Xaml.Controls.InfoBarSeverity RecoveryInfoSeverity => _recoveryPanel.Severity switch
+    {
+        RecoveryPanelSeverity.Success => Microsoft.UI.Xaml.Controls.InfoBarSeverity.Success,
+        RecoveryPanelSeverity.Warning => Microsoft.UI.Xaml.Controls.InfoBarSeverity.Warning,
+        RecoveryPanelSeverity.Error => Microsoft.UI.Xaml.Controls.InfoBarSeverity.Error,
+        _ => Microsoft.UI.Xaml.Controls.InfoBarSeverity.Informational,
+    };
+
+    public string RecoveryInfoText => _recoveryPanel.Text;
+
+    private void SetRecoveryPanel(RecoveryPanel panel, bool unlisted)
+    {
+        _recoveryPanel = panel;
+        _browseUnlisted = unlisted;
+        RaiseBrowseLocationChanged();
+    }
 
     public Visibility BrowseExtractActionsVisibility =>
         IsBrowsingArchive && Location.ShowsExtractActions ? Visibility.Visible : Visibility.Collapsed;
@@ -664,8 +704,9 @@ public sealed partial class MainViewModel : ObservableObject
     public Visibility DeleteAfterVisibility =>
         !IsBrowsingArchive || Location.OffersDeleteAfter ? Visibility.Visible : Visibility.Collapsed;
 
+    // A tar-family archive, or one that did not list, is tested by its PAR2 set (T-F275 step 3c).
     public Visibility TestArchiveVisibility =>
-        IsBrowsingArchive && Location.ShowsTest ? Visibility.Visible : Visibility.Collapsed;
+        IsBrowsingArchive && (Location.ShowsTest || ShowsRecoveryPanel) ? Visibility.Visible : Visibility.Collapsed;
 
     private bool ShowsEncryption => IsBrowsingArchive && BrowseScope == ArchiveBrowseScope.Archive
         && _browseEncryption is { IsEncrypted: true };
@@ -714,7 +755,11 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsBrowseInfoOpen));
         OnPropertyChanged(nameof(BrowseInfoSeverity));
         OnPropertyChanged(nameof(BrowseInfoText));
+        OnPropertyChanged(nameof(IsRecoveryInfoOpen));
+        OnPropertyChanged(nameof(RecoveryInfoSeverity));
+        OnPropertyChanged(nameof(RecoveryInfoText));
         TestBrowsedArchiveCommand.NotifyCanExecuteChanged();
+        ScanArchiveFromBrowserCommand.NotifyCanExecuteChanged();
     }
 
     public Visibility IsPendingListVisibility =>
@@ -1132,6 +1177,8 @@ public sealed partial class MainViewModel : ObservableObject
         BrowseListFailureStep onListFailure = BrowseNavigation.DecideListFailure(IsBrowsingArchive, BrowseScope);
         string priorFolderPath = CurrentFolderPath;
         ClearOutcome();
+        // One archive's PAR2 line never shows on the next one.
+        SetRecoveryPanel(RecoveryPanel.None, unlisted: false);
         SetBrowseLevel(null, isZip: false);
         // "Delete after" means sources in create mode and the archive here: a tick never carries
         // across the switch (T-F199 step 6).
@@ -1150,6 +1197,9 @@ public sealed partial class MainViewModel : ObservableObject
         // pass). ListArchiveWithProgressAsync catching internally, not just at the activation
         // call site, fixes it for every caller, matching the same reset+dialog recovery already
         // used for result.Success==false below.
+        // T-F275 step 3c: only that PAR2 files are there (a folder listing, off the UI thread);
+        // whether they are usable is the test's to say.
+        Task<bool> recoveryFilesFound = Task.Run(() => RecoveryDataLookup.HasFilesFor(archivePath, _policy));
         ArchiveListResult? result = await ListArchiveWithProgressAsync(archivePath);
         if (result is null)
         {
@@ -1157,10 +1207,24 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
+        bool hasRecoveryFiles = await recoveryFilesFound && BrowsedArchivePath == archivePath;
         if (!result.Success)
         {
+            string listingError = CoreMessageText.Of(result.ErrorText, result.ErrorMessage ?? "Failed to read archive.");
+            if (BrowseNavigation.KeepsOpenUnlisted(hasRecoveryFiles, result.ErrorText?.Code))
+            {
+                // An archive that does not open is what recovery data is for: it stays open with
+                // nothing listed, the reason in the PAR2 line, and Test to check it by its set.
+                _logService.Warn($"Archive did not list, kept open for its PAR2 files: {archivePath}: {result.ErrorMessage}");
+                _archiveIndex = ArchiveTreeIndex.Build([]);
+                SetBrowseLevel(null, IsZipOnDisk(archivePath));
+                SetRecoveryPanel(RecoveryPanel.Found(_res.GetString("BrowseRecoveryFound"), listingError), unlisted: true);
+                RefreshCurrentFolder();
+                return;
+            }
+
             LeaveFailedListing(onListFailure, priorFolderPath);
-            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), CoreMessageText.Of(result.ErrorText, result.ErrorMessage ?? "Failed to read archive."));
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), listingError);
             return;
         }
 
@@ -1178,6 +1242,8 @@ public sealed partial class MainViewModel : ObservableObject
 
         _archiveIndex = ArchiveTreeIndex.Build(result.Entries);
         SetBrowseLevel(EncryptionSummary.Of(result.Entries), IsZipOnDisk(archivePath));
+        if (hasRecoveryFiles)
+            SetRecoveryPanel(RecoveryPanel.Found(_res.GetString("BrowseRecoveryFound")), unlisted: false);
         RefreshCurrentFolder();
     }
 
@@ -1410,6 +1476,24 @@ public sealed partial class MainViewModel : ObservableObject
         RowOpenAction action = BrowserEntryRouting.DecidePendingRow(IsBusy, item.IsFolder, () => isArchive);
         if (action == RowOpenAction.OpenArchive)
             await EnterBrowseModeAsync(item.FullPath);
+        else if (BrowserEntryRouting.OpensProtectedArchive(IsBusy, insideArchive: false, item.IsFolder, item.FullPath))
+            await OpenProtectedArchiveAsync(item.FullPath);
+    }
+
+    // T-F275 step 3c: a .par2 row opens the archive its set protects, chosen by the set's hashes
+    // as the test chooses it. A set that names no file here is said, never a silent no-op.
+    private async Task OpenProtectedArchiveAsync(string par2Path)
+    {
+        using IDisposable work = _browseWork.Begin();
+        RecoveryTarget target = await Task.Run(() => RecoveryDataLookup.FindArchive(par2Path, _policy));
+        if (target.ArchivePath is null)
+        {
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"),
+                CoreMessageText.Of(target.Error?.Text, target.Error?.Message ?? "The recovery data cannot be read."));
+            return;
+        }
+
+        await EnterBrowseModeAsync(target.ArchivePath);
     }
 
     // T-F242: the Archive Browser's double-click routing (T-F05 folders, T-F107 outside an
@@ -1437,6 +1521,9 @@ public sealed partial class MainViewModel : ObservableObject
                 break;
             case RowOpenAction.ExtractWithWarning:
                 await ExtractSingleBrowserEntryWithWarningAsync(entry);
+                break;
+            case RowOpenAction.None when BrowserEntryRouting.OpensProtectedArchive(IsBusy, insideArchive, entry.IsFolder, entry.FullPath):
+                await OpenProtectedArchiveAsync(entry.FullPath);
                 break;
         }
     }
@@ -1624,9 +1711,11 @@ public sealed partial class MainViewModel : ObservableObject
         IsBrowsingArchive = false;
     }
 
-    // T-F241: the App's Test, through the same router call Explorer, Shell and the CLI use. ZIP
-    // only (TestArchiveVisibility); "no errors" only when the archive was really tested (T-F274).
-    private bool CanTestBrowsedArchive() => !IsBusy && BrowsedArchivePath is not null && _browsedIsZip;
+    // T-F241: the App's Test, through the same router call Explorer, Shell and the CLI use. ZIP,
+    // or any archive with PAR2 files next to it (TestArchiveVisibility); "no errors" only when the
+    // archive was really tested (T-F274).
+    private bool CanTestBrowsedArchive() =>
+        !IsBusy && BrowsedArchivePath is not null && (_browsedIsZip || ShowsRecoveryPanel);
 
     [RelayCommand(CanExecute = nameof(CanTestBrowsedArchive))]
     private async Task TestBrowsedArchiveAsync()
@@ -1641,15 +1730,28 @@ public sealed partial class MainViewModel : ObservableObject
         {
             StatusMessage = _res.GetString("StatusTesting");
             var progress = new Progress<ProgressReport>(r => Progress = r.Percent);
-            ArchiveResult result = await _extractionRouter.TestAsync([archivePath], progress, BrowsePasswordResolver(archivePath), cancellationToken: _cts.Token);
+            // T-F275 step 3c: the archive opened from disk is also checked against a PAR2 set next
+            // to it. A nested one is a temporary copy; no set is its set.
+            bool verifyRecoveryData = _browseStack.Count == 0;
+            ArchiveResult result = await _extractionRouter.TestAsync([archivePath], progress, BrowsePasswordResolver(archivePath), verifyRecoveryData, _cts.Token);
             _browsePasswords.Complete(archivePath, result);
+            // Only a finished test changes the line: a cancelled one throws above and leaves it.
+            if (verifyRecoveryData && BrowsedArchivePath == archivePath)
+                SetRecoveryPanel(_recoveryPanel.After(archivePath, result, CoreMessageText.Of), _browseUnlisted);
             _logService.Info($"Test completed — {archivePath} — {result.Outcome}");
             foreach (ArchiveError error in result.Errors)
                 _logService.Error($"{error.SourcePath} — {error.Message}");
             if (result.Outcome == OperationOutcome.Completed)
-                await _dialogService.ShowInfoAsync(_res.GetString("TestResultTitle"), _res.GetString("TestNoErrorsFound"));
+            {
+                string? match = RecoveryPanel.MatchLine(archivePath, result, CoreMessageText.Of);
+                string noErrors = _res.GetString("TestNoErrorsFound");
+                await _dialogService.ShowInfoAsync(_res.GetString("TestResultTitle"),
+                    match is null ? noErrors : noErrors + Environment.NewLine + Environment.NewLine + match);
+            }
             else
+            {
                 await _dialogService.ShowOperationSummaryAsync("Test", result);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -1682,7 +1784,9 @@ public sealed partial class MainViewModel : ObservableObject
     // Extract). BrowsedArchivePath is the correct target even N levels deep into a nested archive
     // (T-F98) — it already resolves to whatever the browse stack currently has open, real file or
     // NestedArchiveCache temp path, exactly what ExtractSelected/ExtractAll above use identically.
-    private bool CanScanArchiveFromBrowser() => !IsBusy && BrowsedArchivePath is not null;
+    // Not an archive that did not list (T-F275 step 3c): a scan that cannot read its entries
+    // must not end in "no threats found".
+    private bool CanScanArchiveFromBrowser() => !IsBusy && BrowsedArchivePath is not null && !_browseUnlisted;
 
     [RelayCommand(CanExecute = nameof(CanScanArchiveFromBrowser))]
     private async Task ScanArchiveFromBrowserAsync()

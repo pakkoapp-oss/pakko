@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Ini adalah folder di disk, bukan arsip. Klik dua kali arsip untuk membukanya, atau tekan "Tutup arsip" (Esc) untuk kembali membuat arsip.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>File PAR2 ditemukan di samping arsip ini. Pengujian arsip juga memeriksanya dengan file tersebut.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Naik satu tingkat</value>
   </data>

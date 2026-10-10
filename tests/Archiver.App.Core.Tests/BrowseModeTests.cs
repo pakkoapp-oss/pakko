@@ -156,4 +156,17 @@ public sealed class BrowseModeTests
         outer.Dispose();
         work.InFlight.Should().BeFalse();
     }
+
+    // T-F275 step 3c: an archive kept open although its listing failed, because PAR2 files lie
+    // next to it. Nothing to extract or delete; the test is what it stays open for.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void WithoutListing_OffersNothingButWhatTheLocationAlreadyShows(bool isZip)
+    {
+        BrowseLocationState listed = BrowseLocationState.For(insideArchive: true, nested: false, isZip);
+
+        listed.WithoutListing().Should().Be(new BrowseLocationState(
+            ShowsExtractActions: false, ShowsOptions: false, ShowsTest: isZip, OffersDeleteAfter: false, ShowsOutsideInfo: false));
+    }
 }

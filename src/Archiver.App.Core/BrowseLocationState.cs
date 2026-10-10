@@ -26,4 +26,11 @@ public sealed record BrowseLocationState(
         ShowsTest: insideArchive && isZip,
         OffersDeleteAfter: insideArchive && !nested,
         ShowsOutsideInfo: !insideArchive);
+
+    /// <summary>
+    /// T-F275 step 3c: the state for an archive kept open although its listing failed, because
+    /// PAR2 files lie next to it. There is nothing to extract or delete, only the test.
+    /// </summary>
+    public BrowseLocationState WithoutListing() =>
+        this with { ShowsExtractActions = false, ShowsOptions = false, OffersDeleteAfter = false };
 }

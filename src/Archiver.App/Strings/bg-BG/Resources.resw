@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Това е папка на диска, а не архив. Щракнете двукратно върху архив, за да го отворите, или натиснете "Затваряне на архива" (Esc), за да се върнете към създаването на архиви.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>До този архив са открити файлове PAR2. Тестването на архива го проверява и по тях.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Едно ниво нагоре</value>
   </data>

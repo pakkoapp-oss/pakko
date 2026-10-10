@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>یہ ڈسک پر ایک فولڈر ہے، آرکائیو نہیں۔ کسی آرکائیو کو کھولنے کے لیے اس پر ڈبل کلک کریں، یا آرکائیوز بنانے پر واپس جانے کے لیے "آرکائیو بند کریں" (Esc) دبائیں۔</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>اس آرکائیو کے ساتھ PAR2 فائلیں ملی ہیں۔ آرکائیو کی جانچ اسے ان کے مقابلے میں بھی پرکھتی ہے۔</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>ایک سطح اوپر</value>
   </data>

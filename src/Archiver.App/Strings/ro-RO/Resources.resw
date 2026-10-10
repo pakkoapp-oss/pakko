@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Acesta este un folder de pe disc, nu o arhivă. Faceți dublu clic pe o arhivă pentru a o deschide sau apăsați "Închide arhiva" (Esc) pentru a reveni la crearea arhivelor.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Lângă această arhivă au fost găsite fișiere PAR2. Testarea arhivei o verifică și în raport cu ele.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Un nivel mai sus</value>
   </data>

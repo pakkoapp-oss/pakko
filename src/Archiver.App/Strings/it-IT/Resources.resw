@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Questa è una cartella sul disco, non un archivio. Fai doppio clic su un archivio per aprirlo oppure premi "Chiudi archivio" (Esc) per tornare alla creazione di archivi.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Accanto a questo archivio sono stati trovati file PAR2. Il test dell’archivio lo verifica anche rispetto a essi.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Livello superiore</value>
   </data>

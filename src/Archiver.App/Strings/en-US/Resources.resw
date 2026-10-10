@@ -569,6 +569,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>This is a folder on disk, not an archive. Double-click an archive to open it, or press Close archive (Esc) to go back to creating archives.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>PAR2 files were found next to this archive. Testing the archive also checks it against them.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Up one level</value>
   </data>

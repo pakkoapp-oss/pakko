@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Αυτός είναι φάκελος στον δίσκο, όχι αρχείο συμπίεσης. Κάντε διπλό κλικ σε ένα αρχείο συμπίεσης για να το ανοίξετε ή πατήστε "Κλείσιμο αρχείου συμπίεσης" (Esc) για να επιστρέψετε στη δημιουργία αρχείων συμπίεσης.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Βρέθηκαν αρχεία PAR2 δίπλα σε αυτό το αρχείο συμπίεσης. Η δοκιμή του αρχείου συμπίεσης το ελέγχει και με βάση αυτά.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Ένα επίπεδο επάνω</value>
   </data>

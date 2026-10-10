@@ -755,8 +755,8 @@ model and is checked by reading, not by the test.
 ```mermaid
 stateDiagram-v2
     [*] --> PendingListMode
-    PendingListMode --> ArchiveBrowseMode: EnterBrowseModeAsync — pending row double-tap, DecidePendingRow is OpenArchive<br/>or a File activation of one archive (FileActivationRouter Browse, App.xaml.cs EnterBrowseSafelyAsync)<br/>IsBrowsingArchive=true, BrowseScope=Archive, nested stack reset, DeleteAfterOperation=false
-    ArchiveBrowseMode --> PendingListMode: listing fails for an archive opened from the pending list or by a File activation (DecideListFailure PendingList) — ListArchiveWithProgressAsync threw (null, its own error dialog)<br/>or result.Success==false (error dialog) — IsBrowsingArchive=false
+    PendingListMode --> ArchiveBrowseMode: EnterBrowseModeAsync — pending row double-tap, DecidePendingRow is OpenArchive<br/>or a pending .par2 row whose set names a file (OpensProtectedArchive, T-F275)<br/>or a File activation of one archive (FileActivationRouter Browse, App.xaml.cs EnterBrowseSafelyAsync)<br/>IsBrowsingArchive=true, BrowseScope=Archive, nested stack reset, DeleteAfterOperation=false
+    ArchiveBrowseMode --> PendingListMode: listing fails for an archive with no PAR2 files next to it, opened from the pending list or by a File activation (DecideListFailure PendingList) — ListArchiveWithProgressAsync threw (null, its own error dialog)<br/>or result.Success==false (error dialog) — IsBrowsingArchive=false
     ArchiveBrowseMode --> PendingListMode: CloseArchive — button or Esc, CanCloseArchive is IsBrowsingArchive and not IsBusy and no listing or drill-in in flight
     ArchiveBrowseMode --> PendingListMode: browser Extract with DeleteAfterOperation and allowDeleteAfter (a top-level archive), and after RunCleanupAsync the archive file no longer exists (closeBrowser, CloseArchiveCore)
 
@@ -776,14 +776,25 @@ stateDiagram-v2
         RealFolder --> ThisPcState: breadcrumb segment 0 (This PC)
         ThisPcState --> RealFolder: OpenFolder on a drive (NavigateIntoFolder sets RealFileSystem)
         ThisPcState --> ThisPcState: breadcrumb — no-op (one segment only)
-        RealFolder --> InsideArchive: OpenArchive — a real archive on disk, EnterBrowseModeAsync re-enters fresh
-        InsideArchive --> RealFolder: listing fails for an archive opened from a real folder (DecideListFailure BackToRealFolder, T-F319) — LeaveFailedListing restores the folder, then the error dialog
+        RealFolder --> InsideArchive: OpenArchive — a real archive on disk, EnterBrowseModeAsync re-enters fresh<br/>or a .par2 row whose set names a file (OpensProtectedArchive, T-F275)
+        InsideArchive --> RealFolder: listing fails for an archive with no PAR2 files next to it, opened from a real folder (DecideListFailure BackToRealFolder, T-F319) — LeaveFailedListing restores the folder, then the error dialog
     }
 ```
 
 **T-F319 (fixed 2026-10-06):** `EnterBrowseModeAsync` reads where the user was before it changes
 anything; `BrowseNavigation.DecideListFailure` (`BrowseNavigationTests`) picks the exit when the listing
 fails. The destination folder is set only after the archive lists.
+
+**T-F275 step 3c:** an archive whose listing fails stays in `InsideArchive` when
+`RecoveryDataLookup.HasFilesFor` found PAR2 files next to it and the failure is not a Group Policy
+refusal (`BrowseNavigation.KeepsOpenUnlisted`): nothing is listed, Scan is off,
+`BrowseLocationState.WithoutListing` hides the extract actions, the options and delete-after, the
+PAR2 line (`RecoveryInfoBar`) carries the listing error, and Test is shown. No dialog, no exit. The
+line shows only at a top-level archive (`RecoveryPanel.IsOpenAt`), and where it shows Test is
+visible whatever the Test column below says (a tar-family archive is checked by its set). A
+`.par2` row that `DecidePendingRow` or `DecideBrowserRow` leaves at None opens the archive its set
+protects (`BrowserEntryRouting.OpensProtectedArchive`, then `RecoveryDataLookup.FindArchive`); a
+set that names no file is an error dialog and no transition.
 
 ### Where the user is — what the browser offers (`BrowseLocationState.For`)
 

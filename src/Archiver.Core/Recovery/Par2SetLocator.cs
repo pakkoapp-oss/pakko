@@ -36,15 +36,31 @@ internal static partial class Par2SetLocator
         var files = new List<string>();
         foreach (string path in Directory.EnumerateFiles(folder))
         {
-            string name = Path.GetFileName(path);
-            if (name.Length >= baseName.Length + Extension.Length
-                && name.StartsWith(baseName, StringComparison.OrdinalIgnoreCase)
-                && name.EndsWith(Extension, StringComparison.OrdinalIgnoreCase)
-                && name[baseName.Length] == '.')
+            if (IsSetFileName(Path.GetFileName(path), baseName))
                 files.Add(path);
         }
         files.Sort(StringComparer.OrdinalIgnoreCase);
         return files;
+    }
+
+    private static bool IsSetFileName(string name, string baseName) =>
+        name.Length >= baseName.Length + Extension.Length
+        && name.StartsWith(baseName, StringComparison.OrdinalIgnoreCase)
+        && name.EndsWith(Extension, StringComparison.OrdinalIgnoreCase)
+        && name[baseName.Length] == '.';
+
+    /// <summary>Whether <see cref="SetFilesForEitherBase"/> would return anything, asked of the
+    /// folder with a filtered listing that stops at the first such file.</summary>
+    internal static bool AnySetFileForEitherBase(string targetPath)
+    {
+        string full = Path.GetFullPath(targetPath);
+        string? folder = Path.GetDirectoryName(full);
+        string name = Path.GetFileName(full);
+        if (folder is null || name.Length == 0 || !Directory.Exists(folder))
+            return false;
+        string shortName = Path.GetFileNameWithoutExtension(name);
+        string baseName = shortName.Length > 0 ? shortName : name;
+        return Directory.EnumerateFiles(folder, "*" + Extension).Any(path => IsSetFileName(Path.GetFileName(path), baseName));
     }
 
     /// <summary>The set files of a PAR2 file the user opened.</summary>

@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Ovo je fascikla na disku, a ne arhiva. Dvaput kliknite na arhivu da biste je otvorili ili pritisnite "Zatvori arhivu" (Esc) da biste se vratili na pravljenje arhiva.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Pored ove arhive pronađene su PAR2 datoteke. Testiranje arhive proverava je i prema njima.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Jedan nivo gore</value>
   </data>
