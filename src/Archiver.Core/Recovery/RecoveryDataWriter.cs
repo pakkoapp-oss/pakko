@@ -113,9 +113,32 @@ internal static partial class RecoveryDataWriter
     internal static ArchiveResult RemoveEarlierSets(ArchiveResult result, CancellationToken cancellationToken)
     {
         var warnings = new List<ArchiveWarning>();
+        var folderHasPar2 = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         foreach (string archive in result.CreatedFiles)
-            warnings.AddRange(RemoveEarlierSet(archive, cancellationToken));
+        {
+            string? folder = Path.GetDirectoryName(archive);
+            if (folder is null)
+                continue;
+            if (!folderHasPar2.TryGetValue(folder, out bool hasPar2))
+                folderHasPar2[folder] = hasPar2 = HasPar2File(folder);
+            if (hasPar2)
+                warnings.AddRange(RemoveEarlierSet(archive, cancellationToken));
+        }
         return warnings.Count == 0 ? result : result with { Warnings = [.. result.Warnings, .. warnings] };
+    }
+
+    // Most folders hold no PAR2 file at all; one filtered listing spares each archive the full
+    // listings of SetFilesForTarget (a thousand separate archives into a big folder).
+    private static bool HasPar2File(string folder)
+    {
+        try
+        {
+            return Directory.EnumerateFiles(folder, "*.par2").Any();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false; // best-effort: nothing to remove in a folder that cannot be listed
+        }
     }
 
     private static List<ArchiveWarning> RemoveEarlierSet(string archive, CancellationToken cancellationToken)

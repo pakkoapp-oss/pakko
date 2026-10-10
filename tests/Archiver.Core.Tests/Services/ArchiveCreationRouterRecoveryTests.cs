@@ -541,6 +541,45 @@ public sealed class ArchiveCreationRouterRecoveryTests
     }
 
     [Fact]
+    public async Task SeparateArchivesRewritten_EachEarlierSetRemoved_AnArchiveWithoutOneUntouched()
+    {
+        using var temp = new TempDirectory();
+        string[] archives = [Path.Combine(temp.Path, "a.zip"), Path.Combine(temp.Path, "b.zip"), Path.Combine(temp.Path, "c.zip")];
+        EarlierSet(archives[0]);
+        EarlierSet(archives[2]);
+        var engine = new RecoveryWritingEngine
+        {
+            Produce = (o, _) =>
+            {
+                foreach (string archive in archives)
+                    File.WriteAllBytes(archive, Par2TestData.Content(300_001));
+                return new ArchiveResult { CreatedFiles = archives };
+            },
+        };
+
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 0));
+
+        result.Warnings.Should().BeEmpty();
+        Directory.GetFiles(temp.Path).Should().BeEquivalentTo(archives);
+    }
+
+    // No PAR2 file in the folder: nothing beyond one filtered listing per folder is read.
+    [Fact]
+    public async Task ZeroPercent_NoPar2FileInTheFolder_ResultUnchanged()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        string notes = temp.CreateFile("a.zip.txt", "not a set");
+        ArchiveResult engineResult = null!;
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => engineResult = Written(archive, o.SourcePaths[0]) };
+
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 0));
+
+        result.Should().BeSameAs(engineResult);
+        Directory.GetFiles(temp.Path).Should().BeEquivalentTo([archive, notes]);
+    }
+
+    [Fact]
     public async Task DisableRecoveryDataPolicy_EarlierSetLeftAlone()
     {
         using var temp = new TempDirectory();
@@ -579,7 +618,7 @@ public sealed class ArchiveCreationRouterRecoveryTests
     }
 
     [Fact]
-    public async Task ZeroPercent_TheRouterOpensTheFolderAfterTheCleanup()
+    public async Task ZeroPercent_TheEngineNeverOpensTheFolder()
     {
         using var temp = new TempDirectory();
         string archive = Path.Combine(temp.Path, "a.zip");
