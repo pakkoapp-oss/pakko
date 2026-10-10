@@ -306,13 +306,17 @@ std::vector<std::wstring> ListFolderNames(const std::wstring& pattern)
     // Closes the search handle on every path out of the loop.
     struct FindHandle
     {
-        HANDLE handle;
+        explicit FindHandle(HANDLE h) noexcept : handle(h) {}
         ~FindHandle() { if (handle != INVALID_HANDLE_VALUE) FindClose(handle); }
+        FindHandle(const FindHandle&) = delete;
+        FindHandle& operator=(const FindHandle&) = delete;
+
+        const HANDLE handle;
     };
 
     std::vector<std::wstring> names;
     WIN32_FIND_DATAW data{};
-    const FindHandle find{ FindFirstFileExW(pattern.c_str(), FindExInfoBasic, &data, FindExSearchNameMatch, nullptr, 0) };
+    const FindHandle find(FindFirstFileExW(pattern.c_str(), FindExInfoBasic, &data, FindExSearchNameMatch, nullptr, 0));
     if (find.handle == INVALID_HANDLE_VALUE) return names;
     do
     {
