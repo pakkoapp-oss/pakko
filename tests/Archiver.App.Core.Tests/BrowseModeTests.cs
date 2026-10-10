@@ -164,7 +164,7 @@ public sealed class BrowseModeTests
     [InlineData(false)]
     public void WithoutListing_OffersNothingButWhatTheLocationAlreadyShows(bool isZip)
     {
-        BrowseLocationState listed = BrowseLocationState.For(insideArchive: true, nested: false, isZip);
+        var listed = BrowseLocationState.For(insideArchive: true, nested: false, isZip);
 
         listed.WithoutListing().Should().Be(new BrowseLocationState(
             ShowsExtractActions: false, ShowsOptions: false, ShowsTest: isZip, OffersDeleteAfter: false, ShowsOutsideInfo: false));

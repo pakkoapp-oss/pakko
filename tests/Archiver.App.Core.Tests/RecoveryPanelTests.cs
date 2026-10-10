@@ -47,7 +47,7 @@ public sealed class RecoveryPanelTests : IDisposable
     [Fact]
     public void Found_SaysOnlyThatFilesAreThere()
     {
-        RecoveryPanel panel = RecoveryPanel.Found(FoundText);
+        var panel = RecoveryPanel.Found(FoundText);
 
         panel.Should().Be(new RecoveryPanel(true, RecoveryPanelSeverity.Informational, FoundText));
     }
@@ -55,7 +55,7 @@ public sealed class RecoveryPanelTests : IDisposable
     [Fact]
     public void Found_ForAnArchiveThatDidNotOpen_LeadsWithWhy()
     {
-        RecoveryPanel panel = RecoveryPanel.Found(FoundText, "The archive is damaged.");
+        var panel = RecoveryPanel.Found(FoundText, "The archive is damaged.");
 
         panel.Should().Be(new RecoveryPanel(true, RecoveryPanelSeverity.Warning, "The archive is damaged. " + FoundText));
     }
@@ -76,7 +76,7 @@ public sealed class RecoveryPanelTests : IDisposable
     {
         var result = new ArchiveResult { Errors = [CoreMessages.Error(@"C:\a\photos.zip", code, 3, 5, 2)] };
 
-        RecoveryPanel panel = RecoveryPanel.Found(FoundText).After(@"C:\a\photos.zip", result, Render);
+        var panel = RecoveryPanel.Found(FoundText).After(@"C:\a\photos.zip", result, Render);
 
         panel.HasFiles.Should().BeTrue();
         panel.Severity.Should().Be(RecoveryPanelSeverity.Error);
@@ -90,7 +90,7 @@ public sealed class RecoveryPanelTests : IDisposable
         var text = new CoreText(code, 3, 5, 2);
         var result = new ArchiveResult { Warnings = [new ArchiveWarning { SourcePath = @"C:\a\photos.zip", Message = text.English, Text = text }] };
 
-        RecoveryPanel panel = RecoveryPanel.Found(FoundText).After(@"C:\a\photos.zip", result, Render);
+        var panel = RecoveryPanel.Found(FoundText).After(@"C:\a\photos.zip", result, Render);
 
         panel.Severity.Should().Be(RecoveryPanelSeverity.Warning);
         panel.Text.Should().Be(Render(text, text.English));
@@ -101,7 +101,7 @@ public sealed class RecoveryPanelTests : IDisposable
     {
         ArchiveResult result = Matching(@"C:\a\photos.zip");
 
-        RecoveryPanel panel = RecoveryPanel.Found(FoundText).After(@"C:\a\photos.zip", result, Render);
+        var panel = RecoveryPanel.Found(FoundText).After(@"C:\a\photos.zip", result, Render);
 
         panel.Severity.Should().Be(RecoveryPanelSeverity.Success);
         panel.Text.Should().StartWith($"<{MessageCode.RecoveryDataIntact}> The archive matches its recovery data");
@@ -111,7 +111,7 @@ public sealed class RecoveryPanelTests : IDisposable
     [Fact]
     public void After_OnlyTheArchivesOwnErrors_LeavesThePanelAsItWas()
     {
-        RecoveryPanel before = RecoveryPanel.Found(FoundText);
+        var before = RecoveryPanel.Found(FoundText);
         var result = new ArchiveResult
         {
             Errors = [CoreMessages.Error(@"C:\a\photos.zip", MessageCode.RecoveryDataTargetNotFound), new ArchiveError { SourcePath = @"C:\a\photos.zip", Message = "CRC mismatch" }],
@@ -124,7 +124,7 @@ public sealed class RecoveryPanelTests : IDisposable
     [Fact]
     public void After_AnEmptyResult_LeavesThePanelAsItWas()
     {
-        RecoveryPanel before = RecoveryPanel.Found(FoundText, "Cannot read the archive.");
+        var before = RecoveryPanel.Found(FoundText, "Cannot read the archive.");
 
         before.After(@"C:\a\photos.zip", new ArchiveResult(), Render).Should().BeSameAs(before);
         RecoveryPanel.None.After(@"C:\a\photos.zip", new ArchiveResult(), Render).Should().BeSameAs(RecoveryPanel.None);
@@ -134,7 +134,7 @@ public sealed class RecoveryPanelTests : IDisposable
     [Fact]
     public void After_AnotherArchivesVerdict_IsNeverTaken()
     {
-        RecoveryPanel before = RecoveryPanel.Found(FoundText);
+        var before = RecoveryPanel.Found(FoundText);
         var other = new CoreText(MessageCode.RecoveryDataDoesNotMatch, 3, 5);
         var result = new ArchiveResult
         {
@@ -223,7 +223,7 @@ public sealed class RecoveryPanelTests : IDisposable
         Protect(archive);
 
         ArchiveResult result = await TestAsync(archive);
-        RecoveryPanel panel = RecoveryPanel.Found(FoundText).After(archive, result, Render);
+        var panel = RecoveryPanel.Found(FoundText).After(archive, result, Render);
 
         result.Outcome.Should().Be(OperationOutcome.Completed);
         panel.Severity.Should().Be(RecoveryPanelSeverity.Success);
@@ -239,7 +239,7 @@ public sealed class RecoveryPanelTests : IDisposable
         Damage(archive, 5_000, 16);
 
         ArchiveResult result = await TestAsync(archive);
-        RecoveryPanel panel = RecoveryPanel.Found(FoundText).After(archive, result, Render);
+        var panel = RecoveryPanel.Found(FoundText).After(archive, result, Render);
 
         panel.Severity.Should().Be(RecoveryPanelSeverity.Error);
         panel.Text.Should().StartWith("<RecoveryDataDamagedRepairable> ").And.Contain("can repair");
@@ -254,7 +254,7 @@ public sealed class RecoveryPanelTests : IDisposable
         Damage(archive, 2_000, 30_000);
 
         ArchiveResult result = await TestAsync(archive);
-        RecoveryPanel panel = RecoveryPanel.Found(FoundText).After(archive, result, Render);
+        var panel = RecoveryPanel.Found(FoundText).After(archive, result, Render);
 
         panel.Severity.Should().Be(RecoveryPanelSeverity.Error);
         panel.Text.Should().StartWith("<RecoveryDataDamagedNotRepairable> ");
@@ -269,7 +269,7 @@ public sealed class RecoveryPanelTests : IDisposable
         Protect(archive);
         using (FileStream stream = File.Open(archive, FileMode.Open, FileAccess.Write))
             stream.SetLength(stream.Length - 300);
-        RecoveryPanel before = RecoveryPanel.Found(FoundText, "Cannot read the archive.");
+        var before = RecoveryPanel.Found(FoundText, "Cannot read the archive.");
 
         RecoveryPanel panel = before.After(archive, await TestAsync(archive), Render);
 
@@ -287,7 +287,7 @@ public sealed class RecoveryPanelTests : IDisposable
         MakeZip("photos.zip", 2);
 
         ArchiveResult result = await TestAsync(archive);
-        RecoveryPanel panel = RecoveryPanel.Found(FoundText).After(archive, result, Render);
+        var panel = RecoveryPanel.Found(FoundText).After(archive, result, Render);
 
         panel.Severity.Should().Be(RecoveryPanelSeverity.Warning);
         panel.Text.Should().StartWith("<RecoveryDataDoesNotMatch> ").And.NotContain("damaged");
@@ -301,7 +301,7 @@ public sealed class RecoveryPanelTests : IDisposable
         File.WriteAllBytes(archive + ".par2", Noise(3_000, 9));
 
         ArchiveResult result = await TestAsync(archive);
-        RecoveryPanel panel = RecoveryPanel.Found(FoundText).After(archive, result, Render);
+        var panel = RecoveryPanel.Found(FoundText).After(archive, result, Render);
 
         panel.Severity.Should().Be(RecoveryPanelSeverity.Warning);
         panel.Text.Should().StartWith("<RecoveryDataUnusable> ");
@@ -319,7 +319,7 @@ public sealed class RecoveryPanelTests : IDisposable
         File.Delete(other);
 
         ArchiveResult result = await TestAsync(archive);
-        RecoveryPanel panel = RecoveryPanel.Found(FoundText).After(archive, result, Render);
+        var panel = RecoveryPanel.Found(FoundText).After(archive, result, Render);
 
         panel.Severity.Should().Be(RecoveryPanelSeverity.Warning);
         panel.Text.Should().NotContain("matches its recovery data");
@@ -348,7 +348,7 @@ public sealed class RecoveryPanelTests : IDisposable
             stream.SetLength(stream.Length / 2);
         Damage(archive, 5_000, 16);
 
-        RecoveryPanel panel = RecoveryPanel.Found(FoundText).After(archive, await TestAsync(archive), Render);
+        var panel = RecoveryPanel.Found(FoundText).After(archive, await TestAsync(archive), Render);
 
         panel.Severity.Should().Be(RecoveryPanelSeverity.Error);
         panel.Text.Should().NotContain("matches its recovery data");
@@ -371,7 +371,7 @@ public sealed class RecoveryPanelTests : IDisposable
     {
         string archive = MakeZip("photos.zip", 1);
         Protect(archive);
-        RecoveryPanel before = RecoveryPanel.Found(FoundText);
+        var before = RecoveryPanel.Found(FoundText);
 
         ArchiveResult result = await Router(NoPolicy).TestAsync([archive]);
 
