@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>See on kaust kettal, mitte arhiiv. Arhiivi avamiseks topeltklõpsake seda või vajutage arhiivide loomise juurde naasmiseks "Sulge arhiiv" (Esc).</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Selle arhiivi kõrvalt leiti PAR2-failid. Arhiivi testimine kontrollib seda ka nende järgi.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Taseme võrra üles</value>
   </data>

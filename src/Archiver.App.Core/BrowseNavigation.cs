@@ -1,3 +1,5 @@
+using Archiver.Core.Models;
+
 namespace Archiver.App.Core;
 
 /// <summary>
@@ -74,4 +76,12 @@ public static class BrowseNavigation
         wasBrowsing && priorScope == ArchiveBrowseScope.RealFileSystem
             ? BrowseListFailureStep.BackToRealFolder
             : BrowseListFailureStep.PendingList;
+
+    /// <summary>
+    /// T-F275 step 3c: whether an archive whose listing failed stays open with nothing listed, so
+    /// it can be tested against the PAR2 files next to it. Not when Group Policy refused the
+    /// format: an administrator's block is not damage, and the App does not open what is blocked.
+    /// </summary>
+    public static bool KeepsOpenUnlisted(bool hasRecoveryFiles, MessageCode? listingError) =>
+        hasRecoveryFiles && listingError is not (MessageCode.FormatBlocked or MessageCode.TarExtractionDisabled);
 }

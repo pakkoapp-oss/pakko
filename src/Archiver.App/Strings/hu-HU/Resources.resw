@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Ez egy mappa a lemezen, nem archívum. Kattintson duplán egy archívumra a megnyitásához, vagy nyomja meg az "Archívum bezárása" (Esc) gombot az archívumok létrehozásához való visszatéréshez.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Az archívum mellett PAR2-fájlok találhatók. Az archívum tesztelése ezek alapján is ellenőrzi az archívumot.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Egy szinttel feljebb</value>
   </data>

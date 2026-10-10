@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>To jest folder na dysku, a nie archiwum. Kliknij dwukrotnie archiwum, aby je otworzyć, lub naciśnij "Zamknij archiwum" (Esc), aby wrócić do tworzenia archiwów.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Obok tego archiwum znaleziono pliki PAR2. Test archiwum sprawdza je także względem nich.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Poziom wyżej</value>
   </data>

@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>هذا مجلد على القرص، وليس أرشيفًا. انقر نقرًا مزدوجًا فوق أرشيف لفتحه، أو اضغط "إغلاق الأرشيف" (Esc) للعودة إلى إنشاء الأرشيفات.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>تم العثور على ملفات PAR2 بجانب هذا الأرشيف. اختبار الأرشيف يتحقق منه أيضًا مقابلها.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>مستوى واحد لأعلى</value>
   </data>

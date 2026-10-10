@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>디스크의 폴더이며 압축 파일이 아닙니다. 압축 파일을 두 번 클릭하여 열거나, "압축 파일 닫기"(Esc)를 눌러 압축 파일 만들기로 돌아가세요.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>이 압축 파일 옆에서 PAR2 파일을 찾았습니다. 압축 파일 테스트 시 이 파일들과도 대조합니다.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>한 수준 위로</value>
   </data>

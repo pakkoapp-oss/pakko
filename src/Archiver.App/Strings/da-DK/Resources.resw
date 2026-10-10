@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Dette er en mappe på disken, ikke et arkiv. Dobbeltklik på et arkiv for at åbne det, eller tryk på "Luk arkiv" (Esc) for at vende tilbage til at oprette arkiver.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Der blev fundet PAR2-filer ved siden af dette arkiv. En test af arkivet kontrollerer det også mod dem.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Et niveau op</value>
   </data>

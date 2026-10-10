@@ -526,6 +526,19 @@ The tests (T-F275 step 1):
   name, volumes without an index, temporary files, names that only start alike, non-archives, the
   16-archive cap, the policy value, a blocked format. `ComLoadTests` pins the item's place after
   Test; `LocalizationTests` and `Archiver.Messages.Tests` hold the 37 translations.
+- Step 3c, the App. `Archiver.Core.Tests/Services/RecoveryDataLookupTests`: `HasFilesFor` (a set
+  under either name, a volume without its index, temporary files and names that only start alike,
+  the policy, unusable paths) and `FindArchive` (index or volume, two files sharing a base chosen by
+  content, an unreadable set, another file's set, the archive gone, the policy, cancel).
+  `Archiver.App.Core.Tests/RecoveryPanelTests`: the line's rules on hand-built results (each verdict
+  code as error and as warning, another archive's verdict never taken, the archive's own errors
+  left to the dialog, unusable paths) and on the real router with real sets (a ZIP and a tar-family
+  archive that match, damage a set can and cannot repair, an archive cut short going from the
+  listing error to the verdict, an archive rewritten beside its old set, an unreadable set, another
+  file's set under this name, only the writer's temporary files, a volume cut short, the policy, a
+  test without the set check, a cancelled test). `BrowseModeTests` has `WithoutListing`,
+  `BrowseNavigationTests` `KeepsOpenUnlisted` (never for a policy refusal),
+  `BrowserEntryRoutingTests` the `.par2` row. `MainViewModel`'s wiring is a device check.
 - `Archiver.Core.Tests/Fuzz/Par2FuzzTests` (`Category=Fuzz`): raw mutations of the golden sets, and
   mutations with the packet MD5 recomputed; reader, verifier and repairer must not throw or write
   anything but the output they are given.

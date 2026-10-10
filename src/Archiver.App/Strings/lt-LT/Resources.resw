@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Tai aplankas diske, o ne archyvas. Dukart spustelėkite archyvą, kad jį atvertumėte, arba paspauskite "Uždaryti archyvą" (Esc), kad grįžtumėte prie archyvų kūrimo.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Šalia šio archyvo rasta PAR2 failų. Testuojant archyvą jis patikrinamas ir pagal juos.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Vienu lygiu aukštyn</value>
   </data>

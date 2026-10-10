@@ -41,11 +41,13 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │               and its own Add Files / Add Folder buttons; hit-testable, so it takes the
         │               drop itself (see "Empty-state overlay" below). IsFileListEmptyVisibility.
         │
-        ├── Row 1 (browse mode): Grid (RowDefinitions="Auto,Auto,Auto,*") — Archive Browser.
+        ├── Row 1 (browse mode): Grid (RowDefinitions="Auto,Auto,Auto,Auto,*") — Archive Browser.
         │   ├── BrowseBreadcrumbRow (Auto,*,Auto) — Up button (NavigateUpCommand, T-F107),
         │   │       BreadcrumbBar, encryption badge (weakest method present, EncryptionBadgeVisibility)
         │   ├── BrowseInfoBar — InfoBar (IsOpen/Severity/Message bound; encrypted count, AE-2 empty
         │   │       CRC note, ZipCrypto warning as Warning severity, "outside the archive" note)
+        │   ├── RecoveryInfoBar — InfoBar (T-F275 step 3c: PAR2 files next to the open archive,
+        │   │       after Test the set's verdict; IsRecoveryInfoOpen/RecoveryInfoSeverity/RecoveryInfoText)
         │   ├── BrowseHeader — Border -> Grid (Auto,*,100,100,90,140), non-sortable TextBlocks
         │   └── ListView ArchiveBrowserListView (SelectionMode=Multiple, explicit
         │           VirtualizingStackPanel — a known deviation from CLAUDE.md's ListView rule,

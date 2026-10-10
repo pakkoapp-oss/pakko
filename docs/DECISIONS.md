@@ -12179,6 +12179,57 @@ Known gaps:
 - The item's presence means PAR2 files are there, not that they are usable: a set for another file
   or a damaged one is said after the click.
 
+### Step 3c — the App's PAR2 line and the `.par2` row (2026-10-10)
+
+- **A second line under the breadcrumb** (`RecoveryInfoBar`, rules in `App.Core`'s `RecoveryPanel`).
+  When an archive is opened from disk, `RecoveryDataLookup.HasFilesFor` lists its folder off the UI
+  thread; if PAR2 files are there the line says so and nothing more (`BrowseRecoveryFound`, 37
+  languages). No check runs on open: it reads the whole archive. After Test the line carries Core's
+  verdict for that archive, in Core's words: a match (Success), a set that does not match, cannot
+  be read or was made for another file (Warning), damage (Error). Only lines about the open archive
+  are taken, and a test that says nothing about a set leaves the line as it was. A cancelled test
+  throws before the line is touched.
+- **The App's Test checks the set, Explorer keeps two items.** In Explorer "Test archive" and
+  "Verify with PAR2" say what each does. The App has one Test button and one open archive, and the
+  line above already says a set is there, so Test passes `verifyRecoveryData: true` for the archive
+  opened from disk. A nested archive is a temporary copy with no set of its own: no line, no set
+  check. The "no errors" dialog adds the set's line when it matches.
+- **Test is offered wherever the line shows**, also on a tar-family archive: Core checks it by its
+  set instead of skipping it. `BrowseLocationState.For` is unchanged (its table in
+  `docs/DIAGRAMS.md` still holds); the button's visibility is `ShowsTest` or the line.
+- **T-F319 is reversed for one case.** An archive whose listing fails used to close the browser
+  with an error dialog. When PAR2 files lie next to it, it now stays open with nothing listed
+  (`BrowseLocationState.WithoutListing`: no extract actions, no options, no delete-after), the
+  listing error leads the PAR2 line (Warning) and Test is there. That is the case recovery data
+  exists for: the archive that no longer opens. Without PAR2 files, both exits of
+  `BrowseNavigation.DecideListFailure` are as before. A listing that threw (`null`, its own dialog)
+  also leaves as before. A listing refused by Group Policy (`FormatBlocked`,
+  `TarExtractionDisabled`) leaves as before too, PAR2 files or not
+  (`BrowseNavigation.KeepsOpenUnlisted`): a block is not damage, and the App, like Explorer's menu
+  in 3b, does not offer the set check on a format the administrator blocked. Core would still
+  run it (`pakko t`, or the `.par2` file in Explorer). While nothing is listed, "Scan for threats"
+  is off: a scan that cannot read the entries must not end in "no threats found".
+- **A `.par2` row opens the archive it protects** (`BrowserEntryRouting.OpensProtectedArchive`,
+  then `RecoveryDataLookup.FindArchive`): in the pending list and in a real folder, never inside an
+  archive, where a `.par2` entry is an ordinary entry. The archive is chosen by the set's hashes as
+  the test chooses it. A set that names no file here, cannot be read or is refused by policy is an
+  error dialog. A set whose file is gone still names it, so the browser opens it unlisted and Test
+  says it is missing.
+- **No `.par2` file association and no launch route.** Explorer has "Verify with PAR2" on the file;
+  claiming the extension would take it from QuickPar and MultiPar users for a window that only
+  forwards to the archive.
+- **Two public lookups in Core, no `IRecoveryService` yet.** `RecoveryDataLookup` is a static class
+  over `Par2SetLocator` and `RecoveryTestStep.Locate`. Step 4 brings repair and the service; the
+  lookups move behind it then.
+
+Known gaps:
+
+- PAR2 files that appear or go after the archive was opened are not noticed until Test (a set that
+  appeared gets its verdict; a line about files that are gone stays until the archive is reopened).
+- The line says files are there, not that they are usable; that is known after Test.
+- `MainViewModel` has no test host: the wiring (when the line is reset, the unlisted state, the
+  `.par2` row) is checked on a device, the rules under it by `RecoveryPanelTests`.
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry

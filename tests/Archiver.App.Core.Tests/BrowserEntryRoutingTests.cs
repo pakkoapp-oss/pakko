@@ -77,4 +77,28 @@ public sealed class BrowserEntryRoutingTests
 
         BrowserEntryRouting.ResolveInScope(scope, "../scope2/x.txt").Should().BeNull();
     }
+
+    // T-F275 step 3c: a .par2 row on disk opens the archive it protects.
+    [Theory]
+    [InlineData("photos.zip.par2")]
+    [InlineData("PHOTOS.VOL0+1.PAR2")]
+    [InlineData(@"C:\sets\photos.par2")]
+    public void Par2RowOnDisk_OpensTheProtectedArchive(string name)
+    {
+        BrowserEntryRouting.OpensProtectedArchive(isBusy: false, insideArchive: false, isFolder: false, name).Should().BeTrue();
+        // The ordinary routing leaves such a row alone, so the two never both act on it.
+        BrowserEntryRouting.DecidePendingRow(isBusy: false, isFolder: false, Archive(false)).Should().Be(RowOpenAction.None);
+        BrowserEntryRouting.DecideBrowserRow(isBusy: false, insideArchive: false, isFolder: false, name, Archive(false)).Should().Be(RowOpenAction.None);
+    }
+
+    [Theory]
+    [InlineData(true, false, false, "a.zip.par2")]  // an operation is running
+    [InlineData(false, true, false, "a.zip.par2")]  // an entry inside an archive is an ordinary entry
+    [InlineData(false, false, true, "a.zip.par2")]  // a folder named like one
+    [InlineData(false, false, false, "a.zip")]
+    [InlineData(false, false, false, "a.par2.bak")]
+    [InlineData(false, false, false, "par2")]
+    [InlineData(false, false, false, "")]
+    public void Par2Row_Otherwise_IsLeftAlone(bool isBusy, bool insideArchive, bool isFolder, string name) =>
+        BrowserEntryRouting.OpensProtectedArchive(isBusy, insideArchive, isFolder, name).Should().BeFalse();
 }

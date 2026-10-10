@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Dit is een map op de schijf, geen archief. Dubbelklik op een archief om het te openen, of druk op "Archief sluiten" (Esc) om terug te gaan naar het maken van archieven.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Naast dit archief zijn PAR2-bestanden gevonden. Bij het testen van het archief wordt het ook daarmee gecontroleerd.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Eén niveau omhoog</value>
   </data>

@@ -110,6 +110,7 @@ public sealed partial class MainWindow : Window
         // bar opens, closes and rewraps on every level change and resize.
         BrowseBreadcrumbRow.SizeChanged += (_, _) => FitOptionsScroll();
         BrowseInfoBar.SizeChanged += (_, _) => FitOptionsScroll();
+        RecoveryInfoBar.SizeChanged += (_, _) => FitOptionsScroll();
         BrowseHeader.SizeChanged += (_, _) => FitOptionsScroll();
         NewArchiveCard.Expanding += (_, _) => ArrangeCards();
         NewArchiveCard.Collapsed += (_, _) => ArrangeCards();
@@ -192,7 +193,7 @@ public sealed partial class MainWindow : Window
 
     // The 160 px go to the list's rows, not to what sits above them in browse mode.
     private double BrowseChromeHeight() => ViewModel.IsBrowsingArchive
-        ? OuterHeight(BrowseBreadcrumbRow) + OuterHeight(BrowseInfoBar) + OuterHeight(BrowseHeader)
+        ? OuterHeight(BrowseBreadcrumbRow) + OuterHeight(BrowseInfoBar) + OuterHeight(RecoveryInfoBar) + OuterHeight(BrowseHeader)
         : 0;
 
     private static double OuterHeight(FrameworkElement element) =>

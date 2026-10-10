@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Esta es una carpeta del disco, no un archivo comprimido. Haga doble clic en un archivo comprimido para abrirlo o pulse "Cerrar archivo comprimido" (Esc) para volver a crear archivos comprimidos.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Se encontraron archivos PAR2 junto a este archivo comprimido. La prueba del archivo comprimido también lo comprueba con ellos.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Subir un nivel</value>
   </data>

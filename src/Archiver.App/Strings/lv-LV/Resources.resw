@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Šī ir mape diskā, nevis arhīvs. Veiciet dubultklikšķi uz arhīva, lai to atvērtu, vai nospiediet "Aizvērt arhīvu" (Esc), lai atgrieztos pie arhīvu izveides.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Blakus šim arhīvam atrasti PAR2 faili. Arhīva testēšana to pārbauda arī pēc tiem.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Vienu līmeni augstāk</value>
   </data>

@@ -1123,8 +1123,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
       with PAR2" on a `.par2` and on an archive with PAR2 files next to it (hidden by
       `DisableRecoveryData`), `MessageCode.RecoveryDataIntact` and the menu item in 37 languages
       (`docs/DECISIONS.md`, T-F275 "Step 3b").
-    - [ ] 3c — the App's state panel for an opened archive with a set, and how a `.par2` reaches
-      the App.
+    - [x] 3c — the App (2026-10-10): a PAR2 line in the Archive Browser (files found, then the
+      test's verdict), Test checks the set and is offered on a tar-family archive with one, an
+      archive that does not list stays open when it has PAR2 files, a `.par2` row opens the
+      archive it protects (`docs/DECISIONS.md`, T-F275 "Step 3c").
   - [ ] 4 — repair: `pakko r [-o<dir>]`, Explorer "Repair with PAR2", the App.
   - [ ] 5 — the v1.8.0 release with the user's checks (MD5 under the FIPS policy among them, and
     `DisableRecoveryData` set in HKLM). The CHANGELOG section is written then and names every step:

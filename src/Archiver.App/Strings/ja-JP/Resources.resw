@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>これはディスク上のフォルダーで、アーカイブではありません。アーカイブをダブルクリックして開くか、[アーカイブを閉じる] (Esc) を押してアーカイブの作成に戻ります。</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>このアーカイブの横に PAR2 ファイルが見つかりました。アーカイブのテストでは、これらのファイルとの照合も行われます。</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>1 つ上のレベルへ</value>
   </data>

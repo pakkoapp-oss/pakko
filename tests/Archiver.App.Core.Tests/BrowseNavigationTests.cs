@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using FluentAssertions;
 
 namespace Archiver.App.Core.Tests;
@@ -56,4 +57,28 @@ public sealed class BrowseNavigationTests
     public void Up_ThisPc_DoesNothing() =>
         BrowseNavigation.DecideUp(ArchiveBrowseScope.ThisPc, "", nestedDepth: 0, archivePath: null)
             .Should().Be(BrowseUpStep.None);
+
+    // T-F275 step 3c: an archive that does not list stays open when PAR2 files lie next to it.
+    [Theory]
+    [InlineData(MessageCode.ZipCorrupted)]
+    [InlineData(MessageCode.NotAnArchiveList)]
+    [InlineData(MessageCode.FormatNeedsNewerTar)]
+    [InlineData(MessageCode.None)]
+    [InlineData(null)]
+    public void KeepsOpenUnlisted_AFailedListingWithRecoveryFiles_StaysOpen(MessageCode? listingError) =>
+        BrowseNavigation.KeepsOpenUnlisted(hasRecoveryFiles: true, listingError).Should().BeTrue();
+
+    // A format the administrator blocked is not damage: PAR2 files do not open it.
+    [Theory]
+    [InlineData(MessageCode.FormatBlocked)]
+    [InlineData(MessageCode.TarExtractionDisabled)]
+    public void KeepsOpenUnlisted_RefusedByPolicy_NeverStaysOpen(MessageCode listingError) =>
+        BrowseNavigation.KeepsOpenUnlisted(hasRecoveryFiles: true, listingError).Should().BeFalse();
+
+    [Theory]
+    [InlineData(MessageCode.ZipCorrupted)]
+    [InlineData(MessageCode.FormatBlocked)]
+    [InlineData(null)]
+    public void KeepsOpenUnlisted_WithoutRecoveryFiles_NeverStaysOpen(MessageCode? listingError) =>
+        BrowseNavigation.KeepsOpenUnlisted(hasRecoveryFiles: false, listingError).Should().BeFalse();
 }

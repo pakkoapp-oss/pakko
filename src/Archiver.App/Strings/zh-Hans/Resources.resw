@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>这是磁盘上的文件夹，不是压缩包。双击压缩包将其打开，或按“关闭压缩包”(Esc) 返回创建压缩包。</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>在此压缩包旁找到了 PAR2 文件。测试压缩包时也会根据这些文件进行校验。</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>向上一级</value>
   </data>

@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Bu, diskteki bir klasördür, arşiv değildir. Bir arşivi açmak için çift tıklayın veya arşiv oluşturmaya dönmek için "Arşivi kapat" (Esc) düğmesine basın.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Bu arşivin yanında PAR2 dosyaları bulundu. Arşiv testi, arşivi bu dosyalarla da denetler.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Bir düzey yukarı</value>
   </data>

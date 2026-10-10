@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>זוהי תיקייה בדיסק, לא ארכיון. לחץ פעמיים על ארכיון כדי לפתוח אותו, או לחץ על "סגור ארכיון" (Esc) כדי לחזור ליצירת ארכיונים.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>נמצאו קובצי PAR2 לצד ארכיון זה. בדיקת הארכיון בודקת אותו גם מולם.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>רמה אחת למעלה</value>
   </data>

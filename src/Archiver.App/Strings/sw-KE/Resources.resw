@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Hii ni folda kwenye diski, si kumbukumbu. Bofya mara mbili kumbukumbu ili kuifungua, au bonyeza "Funga kumbukumbu" (Esc) ili kurudi kwenye kuunda kumbukumbu.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Faili za PAR2 zimepatikana kando ya kumbukumbu hii. Kujaribu kumbukumbu pia huikagua dhidi ya faili hizo.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Juu ngazi moja</value>
   </data>

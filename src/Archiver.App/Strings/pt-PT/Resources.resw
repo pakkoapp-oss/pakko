@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Esta é uma pasta no disco, não um arquivo. Faça duplo clique num arquivo para o abrir ou prima "Fechar arquivo" (Esc) para voltar à criação de arquivos.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Foram encontrados ficheiros PAR2 junto a este arquivo. O teste do arquivo também o verifica em relação a eles.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Subir um nível</value>
   </data>

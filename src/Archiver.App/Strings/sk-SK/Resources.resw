@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Toto je priečinok na disku, nie archív. Dvakrát kliknite na archív, aby ste ho otvorili, alebo stlačte "Zavrieť archív" (Esc) a vráťte sa k vytváraniu archívov.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Vedľa tohto archívu sa našli súbory PAR2. Test archívu ho overí aj podľa nich.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>O úroveň vyššie</value>
   </data>

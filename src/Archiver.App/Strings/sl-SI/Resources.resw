@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>To je mapa na disku, ne arhiv. Dvokliknite arhiv, da ga odprete, ali pritisnite "Zapri arhiv" (Esc), da se vrnete na ustvarjanje arhivov.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Ob tem arhivu so bile najdene datoteke PAR2. Preizkus arhiva ga preveri tudi glede nanje.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Eno raven višje</value>
   </data>

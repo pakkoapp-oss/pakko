@@ -527,6 +527,9 @@
   <data name="BrowseOutsideInfo" xml:space="preserve">
     <value>Toto je složka na disku, ne archiv. Dvakrát klikněte na archiv, abyste jej otevřeli, nebo stiskněte "Zavřít archiv" (Esc) a vraťte se k vytváření archivů.</value>
   </data>
+  <data name="BrowseRecoveryFound" xml:space="preserve">
+    <value>Vedle tohoto archivu byly nalezeny soubory PAR2. Test archivu jej ověří i podle nich.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>O úroveň výš</value>
   </data>
