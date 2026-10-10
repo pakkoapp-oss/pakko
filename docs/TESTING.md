@@ -573,6 +573,15 @@ The tests (T-F275 step 1):
   `ComLoadTests` pins the item's place after "Verify with PAR2" (fourteen leaves),
   `LocalizationTests` the 37 texts (each names PAR2 and differs from the verify text),
   `ShellExtUtilsTests` the switch. The item's visibility is `AnyPathHasRecoveryData`, tested in 3b.
+- Step 4c, the App's Repair. `RecoveryPanelTests`: when Repair is offered (before any check, only
+  for repairable damage after a test, never for another archive's damage or without files), and
+  the real service on real sets: a ZIP and a tar-family archive repaired (the line names the
+  copy, no second offer, a repaired check never read as a match), an archive cut short going from
+  the listing error to a copy that tests clean, an intact archive, damage beyond the set, the set
+  deleted between the open and the click, a forged recovery block (the copy not kept), a folder
+  where nothing can be created followed by another folder that works, and another archive's
+  result never taken. `RecoveryServiceTests` has the service's `HasFilesFor`/`FindArchive` with
+  its policy and cancel. The wiring in `MainViewModel` is a device check.
 - `Archiver.Core.Tests/Fuzz/Par2FuzzTests` (`Category=Fuzz`): raw mutations of the golden sets, and
   mutations with the packet MD5 recomputed; reader, verifier and repairer must not throw or write
   anything but the output they are given.

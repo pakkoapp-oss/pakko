@@ -49,7 +49,7 @@ public sealed class RecoveryPanelTests : IDisposable
     {
         var panel = RecoveryPanel.Found(FoundText);
 
-        panel.Should().Be(new RecoveryPanel(true, RecoveryPanelSeverity.Informational, FoundText));
+        panel.Should().Be(new RecoveryPanel(true, RecoveryPanelSeverity.Informational, FoundText) { OffersRepair = true });
     }
 
     [Fact]
@@ -57,8 +57,15 @@ public sealed class RecoveryPanelTests : IDisposable
     {
         var panel = RecoveryPanel.Found(FoundText, "The archive is damaged.");
 
-        panel.Should().Be(new RecoveryPanel(true, RecoveryPanelSeverity.Warning, "The archive is damaged. " + FoundText));
+        panel.Should().Be(new RecoveryPanel(true, RecoveryPanelSeverity.Warning, "The archive is damaged. " + FoundText) { OffersRepair = true });
     }
+
+    [Theory]
+    [InlineData(@"Source path does not exist: C:\a\gone.zip", @"Source path does not exist: C:\a\gone.zip. " + FoundText)]
+    [InlineData("Cannot read it! ", "Cannot read it! " + FoundText)]
+    [InlineData("Why?", "Why? " + FoundText)]
+    public void Found_AListingErrorWithoutAStop_StillReadsAsTwoSentences(string listingError, string expected) =>
+        RecoveryPanel.Found(FoundText, listingError).Text.Should().Be(expected);
 
     [Theory]
     [InlineData(true, false, true)]
@@ -327,7 +334,7 @@ public sealed class RecoveryPanelTests : IDisposable
     }
 
     // A set whose writer was cancelled or killed leaves only temporary files: no panel at open
-    // (RecoveryDataLookup.HasFilesFor), and the test says nothing about a set.
+    // (IRecoveryService.HasFilesFor), and the test says nothing about a set.
     [Fact]
     public async Task Real_OnlyTheWritersTemporaryFiles_NoPanelBeforeOrAfter()
     {
@@ -335,7 +342,7 @@ public sealed class RecoveryPanelTests : IDisposable
         File.WriteAllBytes(Path.Combine(_root, ".pakko-photos.zip.par2-1.tmp"), Noise(2_000, 3));
         File.WriteAllBytes(archive + ".par2.tmp", Noise(2_000, 4));
 
-        RecoveryDataLookup.HasFilesFor(archive, NoPolicy).Should().BeFalse();
+        Recovery(NoPolicy).HasFilesFor(archive).Should().BeFalse();
         RecoveryPanel.None.After(archive, await TestAsync(archive), Render).Should().BeSameAs(RecoveryPanel.None);
     }
 
@@ -361,7 +368,7 @@ public sealed class RecoveryPanelTests : IDisposable
         string archive = MakeZip("photos.zip", 1);
         Protect(archive);
 
-        RecoveryDataLookup.HasFilesFor(archive, policy).Should().BeFalse();
+        Recovery(policy).HasFilesFor(archive).Should().BeFalse();
         RecoveryPanel.None.After(archive, await TestAsync(archive, policy), Render).Should().BeSameAs(RecoveryPanel.None);
     }
 
@@ -392,6 +399,246 @@ public sealed class RecoveryPanelTests : IDisposable
         await test.Should().ThrowAsync<OperationCanceledException>();
     }
 
+    // --- Step 4c: when Repair is offered, and what a repair leaves on the line ---
+
+    [Fact]
+    public void OffersRepair_BeforeAnyCheck_ButNotWithoutFiles()
+    {
+        RecoveryPanel.None.OffersRepair.Should().BeFalse();
+        RecoveryPanel.Found(FoundText).OffersRepair.Should().BeTrue();
+        RecoveryPanel.Found(FoundText, "Cannot read the archive.").OffersRepair.Should().BeTrue();
+    }
+
+    [Theory]
+    [MemberData(nameof(VerdictCodes))]
+    public void OffersRepair_AfterATest_OnlyForDamageTheSetCanRebuild(MessageCode code)
+    {
+        var result = new ArchiveResult { Errors = [CoreMessages.Error(@"C:\a\photos.zip", code, 3, 5, 2)] };
+
+        RecoveryPanel panel = RecoveryPanel.Found(FoundText).After(@"C:\a\photos.zip", result, Render);
+
+        panel.OffersRepair.Should().Be(code == MessageCode.RecoveryDataDamagedRepairable);
+    }
+
+    [Fact]
+    public void OffersRepair_AfterAMatch_IsOff()
+    {
+        RecoveryPanel.Found(FoundText).After(@"C:\a\photos.zip", Matching(@"C:\a\photos.zip"), Render).OffersRepair.Should().BeFalse();
+    }
+
+    // Another archive's "can repair it" must not offer a repair of this one.
+    [Fact]
+    public void OffersRepair_ForAnotherArchivesDamage_IsNotTurnedOn()
+    {
+        var result = new ArchiveResult
+        {
+            Errors = [CoreMessages.Error(@"C:\a\other.zip", MessageCode.RecoveryDataDamagedRepairable, 3, 5, 2)],
+            RecoveryChecks = Matching(@"C:\a\photos.zip").RecoveryChecks,
+        };
+
+        RecoveryPanel.Found(FoundText).After(@"C:\a\photos.zip", result, Render).OffersRepair.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("photos.zip", "photos.repaired.zip")]
+    [InlineData("notes.tar.gz", "notes.repaired.tar.gz")]
+    public async Task Real_Repair_SaysWhereTheCopyIs_AndOffersNoSecondRepair(string name, string repairedName)
+    {
+        string archive = name.EndsWith(".zip", StringComparison.Ordinal) ? MakeZip(name, 1) : MakeTarGz(name, 1);
+        byte[] good = File.ReadAllBytes(archive);
+        Protect(archive);
+        Damage(archive, 5_000, 16);
+
+        ArchiveResult result = await RepairAsync(archive);
+        RecoveryPanel panel = RecoveryPanel.Found(FoundText).AfterRepair(archive, result, Render);
+
+        string copy = Path.Combine(_root, repairedName);
+        RecoveryPanel.RepairedCopy(archive, result).Should().Be(copy);
+        File.ReadAllBytes(copy).Should().Equal(good);
+        panel.Severity.Should().Be(RecoveryPanelSeverity.Success);
+        panel.OffersRepair.Should().BeFalse();
+        panel.Text.Should().StartWith("<RecoveryDataRepaired> The archive was repaired (1 of ").And.Contain(repairedName);
+        RecoveryPanel.NeedsAnotherFolder(archive, result).Should().BeFalse();
+        // A repaired check is not "the set matches": the test's dialog and line must not take it.
+        RecoveryPanel.MatchLine(archive, result, Render).Should().BeNull();
+        RecoveryPanel.Found(FoundText).After(archive, result, Render).Severity.Should().Be(RecoveryPanelSeverity.Informational);
+    }
+
+    // The archive kept open although it does not list: the line goes from the listing error to
+    // the repair, and the copy is a ZIP that lists and tests.
+    [Fact]
+    public async Task Real_RepairOfAnArchiveCutShort_GoesFromTheListingErrorToTheCopy()
+    {
+        string archive = MakeZip("photos.zip", 1);
+        Protect(archive);
+        using (FileStream stream = File.Open(archive, FileMode.Open, FileAccess.Write))
+            stream.SetLength(stream.Length - 300);
+        var before = RecoveryPanel.Found(FoundText, "Cannot read the archive.");
+
+        ArchiveResult result = await RepairAsync(archive);
+        RecoveryPanel panel = before.AfterRepair(archive, result, Render);
+
+        panel.Severity.Should().Be(RecoveryPanelSeverity.Success);
+        panel.Text.Should().NotContain("Cannot read the archive.").And.NotContain(FoundText);
+        ArchiveResult copyTested = await Router(NoPolicy).TestAsync([RecoveryPanel.RepairedCopy(archive, result)!]);
+        copyTested.Outcome.Should().Be(OperationOutcome.Completed);
+    }
+
+    [Fact]
+    public async Task Real_RepairOfAnIntactArchive_IsAMatchAndNoCopy()
+    {
+        string archive = MakeTarGz("notes.tar.gz", 1);
+        Protect(archive);
+
+        ArchiveResult result = await RepairAsync(archive);
+        RecoveryPanel panel = RecoveryPanel.Found(FoundText).AfterRepair(archive, result, Render);
+
+        RecoveryPanel.RepairedCopy(archive, result).Should().BeNull();
+        panel.Severity.Should().Be(RecoveryPanelSeverity.Success);
+        panel.OffersRepair.Should().BeFalse();
+        panel.Text.Should().StartWith("<RecoveryDataIntact> ");
+    }
+
+    [Fact]
+    public async Task Real_RepairBeyondTheSet_IsAnErrorAndNoSecondOffer()
+    {
+        string archive = MakeTarGz("notes.tar.gz", 1);
+        Protect(archive);
+        Damage(archive, 2_000, 30_000);
+
+        ArchiveResult result = await RepairAsync(archive);
+        RecoveryPanel panel = RecoveryPanel.Found(FoundText).AfterRepair(archive, result, Render);
+
+        RecoveryPanel.RepairedCopy(archive, result).Should().BeNull();
+        panel.Severity.Should().Be(RecoveryPanelSeverity.Error);
+        panel.OffersRepair.Should().BeFalse();
+        Directory.GetFiles(_root, "*repaired*").Should().BeEmpty();
+    }
+
+    // The set files went away between the open and the click: an error on the line, no offer.
+    [Fact]
+    public async Task Real_RepairAfterTheSetWasDeleted_SaysNoRecoveryData()
+    {
+        string archive = MakeTarGz("notes.tar.gz", 1);
+        Par2CreateResult set = Protect(archive);
+        Damage(archive, 5_000, 16);
+        File.Delete(set.IndexPath);
+        File.Delete(set.VolumePath);
+
+        ArchiveResult result = await RepairAsync(archive);
+        RecoveryPanel panel = RecoveryPanel.Found(FoundText).AfterRepair(archive, result, Render);
+
+        panel.Severity.Should().Be(RecoveryPanelSeverity.Error);
+        panel.Text.Should().StartWith("<RecoveryDataNotFound> ");
+        panel.OffersRepair.Should().BeFalse();
+    }
+
+    // A forged recovery block: the copy fails the final check, the line says so, nothing is kept.
+    [Fact]
+    public async Task Real_RepairFromForgedRecoveryData_SaysTheCopyWasNotKept()
+    {
+        string archive = MakeTarGz("notes.tar.gz", 1);
+        Par2CreateResult set = Protect(archive);
+        Damage(archive, 5_000, 16);
+        byte[] volume = File.ReadAllBytes(set.VolumePath);
+        Forge(volume);
+        File.WriteAllBytes(set.VolumePath, volume);
+
+        ArchiveResult result = await RepairAsync(archive);
+        RecoveryPanel panel = RecoveryPanel.Found(FoundText).AfterRepair(archive, result, Render);
+
+        RecoveryPanel.RepairedCopy(archive, result).Should().BeNull();
+        panel.Severity.Should().Be(RecoveryPanelSeverity.Error);
+        panel.Text.Should().StartWith("<RecoveryRepairCheckFailed> ");
+        Directory.GetFiles(_root, "*repaired*").Should().BeEmpty();
+    }
+
+    // A folder where files cannot be created: the App then asks for another one, and that works.
+    [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public async Task Real_RepairWhereNothingCanBeWritten_AsksForAnotherFolder_WhichWorks()
+    {
+        string archive = MakeTarGz("notes.tar.gz", 1);
+        byte[] good = File.ReadAllBytes(archive);
+        Protect(archive);
+        Damage(archive, 5_000, 16);
+        var folder = new DirectoryInfo(_root);
+        var deny = new System.Security.AccessControl.FileSystemAccessRule(
+            System.Security.Principal.WindowsIdentity.GetCurrent().User!, System.Security.AccessControl.FileSystemRights.CreateFiles,
+            System.Security.AccessControl.InheritanceFlags.None, System.Security.AccessControl.PropagationFlags.None,
+            System.Security.AccessControl.AccessControlType.Deny);
+        System.Security.AccessControl.DirectorySecurity security = folder.GetAccessControl();
+        security.AddAccessRule(deny);
+        folder.SetAccessControl(security);
+        ArchiveResult refused;
+        try
+        {
+            refused = await RepairAsync(archive);
+        }
+        finally
+        {
+            security = folder.GetAccessControl();
+            security.RemoveAccessRule(deny);
+            folder.SetAccessControl(security);
+        }
+        string elsewhere = Path.Combine(Path.GetTempPath(), "PakkoRecoveryPanelTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            ArchiveResult retried = await RepairAsync(archive, elsewhere);
+
+            RecoveryPanel.NeedsAnotherFolder(archive, refused).Should().BeTrue();
+            RecoveryPanel.RepairedCopy(archive, refused).Should().BeNull();
+            // The line keeps offering the repair: nothing was learned against it.
+            RecoveryPanel.Found(FoundText).AfterRepair(archive, refused, Render).OffersRepair.Should().BeTrue();
+            RecoveryPanel.NeedsAnotherFolder(archive, retried).Should().BeFalse();
+            File.ReadAllBytes(RecoveryPanel.RepairedCopy(archive, retried)!).Should().Equal(good);
+        }
+        finally
+        {
+            Directory.Delete(elsewhere, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void RepairHelpers_AnotherArchivesResult_IsNeverTaken()
+    {
+        var result = new ArchiveResult
+        {
+            Errors = [CoreMessages.Error(@"C:\a\other.zip", MessageCode.RecoveryRepairNotWritten, "denied")],
+            RecoveryChecks =
+            [
+                new RecoveryCheck
+                {
+                    ArchivePath = @"C:\a\other.zip", State = RecoveryState.Repaired, RepairedPath = @"C:\a\other.repaired.zip",
+                    Text = new CoreText(MessageCode.RecoveryDataRepaired, 1, 10, "other.repaired.zip"),
+                },
+            ],
+        };
+        var before = RecoveryPanel.Found(FoundText);
+
+        RecoveryPanel.RepairedCopy(@"C:\a\photos.zip", result).Should().BeNull();
+        RecoveryPanel.NeedsAnotherFolder(@"C:\a\photos.zip", result).Should().BeFalse();
+        before.AfterRepair(@"C:\a\photos.zip", result, Render).Should().BeSameAs(before);
+    }
+
+    // Flips one byte of the first recovery block's data and recomputes its packet MD5.
+    private static void Forge(byte[] volume)
+    {
+        byte[] type = System.Text.Encoding.ASCII.GetBytes("PAR 2.0\0RecvSlic");
+        for (int offset = 0; offset + 64 <= volume.Length;)
+        {
+            int length = (int)BitConverter.ToInt64(volume, offset + 8);
+            if (volume.AsSpan(offset + 48, 16).SequenceEqual(type))
+            {
+                volume[offset + 68] ^= 0x01;
+                Par2Md5.Hash(volume.AsSpan(offset + 32, length - 32)).CopyTo(volume, offset + 16);
+                return;
+            }
+            offset += length;
+        }
+        throw new InvalidOperationException("no recovery block in the volume");
+    }
+
     // --- Helpers ---
 
     private static ArchiveResult Matching(string archivePath) => new()
@@ -408,6 +655,12 @@ public sealed class RecoveryPanelTests : IDisposable
 
     private static ExtractionRouter Router(GroupPolicyOptions policy) =>
         new ExtractionRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), new TarCapabilities(), policy);
+
+    private static RecoveryService Recovery(GroupPolicyOptions policy) =>
+        new(policy, () => Task.FromResult<Archiver.Core.Interfaces.IExtractionRouter>(Router(policy)));
+
+    private static Task<ArchiveResult> RepairAsync(string archive, string? outputDirectory = null) =>
+        Recovery(NoPolicy).RepairAsync(new RepairOptions { Paths = [archive], OutputDirectory = outputDirectory });
 
     private static Task<ArchiveResult> TestAsync(string archive, GroupPolicyOptions? policy = null) =>
         Router(policy ?? NoPolicy).TestAsync([archive], verifyRecoveryData: true);

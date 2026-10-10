@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Faili za PAR2 zimepatikana kando ya kumbukumbu hii. Kujaribu kumbukumbu pia huikagua dhidi ya faili hizo.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Rekebisha kwa PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Rekebisha kumbukumbu</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Inarekebisha...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Chagua folda nyingine kwa nakala iliyorekebishwa.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Juu ngazi moja</value>
   </data>

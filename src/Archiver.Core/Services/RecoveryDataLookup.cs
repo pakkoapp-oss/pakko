@@ -3,21 +3,10 @@ using Archiver.Core.Recovery;
 
 namespace Archiver.Core.Services;
 
-/// <summary>The archive a PAR2 file protects, or why it cannot be said (T-F275 step 3c). Exactly
-/// one of the two is set.</summary>
-public sealed record RecoveryTarget
-{
-    /// <summary>The protected file, found next to the PAR2 file and confirmed by the set's own hashes.</summary>
-    public string? ArchivePath { get; init; }
-
-    /// <summary>The set cannot be read, protects a file that is not there, or policy refuses it.</summary>
-    public ArchiveError? Error { get; init; }
-}
-
 /// <summary>
-/// What a frontend asks about PAR2 recovery data before any test runs (T-F275 step 3c). Both
-/// lookups read the disk, so a UI calls them off its thread. The checks themselves stay in
-/// <see cref="Interfaces.IExtractionRouter.TestAsync"/>.
+/// What a frontend asks about PAR2 recovery data before any test runs (T-F275 step 3c). The two
+/// lookups that read the disk are reached through <see cref="Interfaces.IRecoveryService"/>
+/// (step 4c), which holds the policy; only the name check is public here.
 /// </summary>
 public static class RecoveryDataLookup
 {
@@ -31,7 +20,7 @@ public static class RecoveryDataLookup
     /// <see cref="GroupPolicyOptions.DisableRecoveryData"/> and for a path or folder that cannot be
     /// read; never throws.
     /// </summary>
-    public static bool HasFilesFor(string archivePath, GroupPolicyOptions policy)
+    internal static bool HasFilesFor(string archivePath, GroupPolicyOptions policy)
     {
         if (policy.DisableRecoveryData)
             return false;
@@ -50,7 +39,7 @@ public static class RecoveryDataLookup
     /// the hashes in the set, never by a name alone. Never throws except
     /// <see cref="OperationCanceledException"/>.
     /// </summary>
-    public static RecoveryTarget FindArchive(string par2Path, GroupPolicyOptions policy, CancellationToken cancellationToken = default)
+    internal static RecoveryTarget FindArchive(string par2Path, GroupPolicyOptions policy, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!IsRecoveryFile(par2Path))

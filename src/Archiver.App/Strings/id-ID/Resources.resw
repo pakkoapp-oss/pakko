@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>File PAR2 ditemukan di samping arsip ini. Pengujian arsip juga memeriksanya dengan file tersebut.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Perbaiki dengan PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Perbaiki arsip</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Memperbaiki...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Pilih folder lain untuk salinan yang diperbaiki.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Naik satu tingkat</value>
   </data>

@@ -45,6 +45,10 @@ public partial class App : Application
         services.AddSingleton<IExtractionRouter, ExtractionRouter>();
         services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
         services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>();
+        // T-F275 step 4c: repair and the PAR2 lookups, with the same policy and the same router the
+        // Test button uses.
+        services.AddSingleton<IRecoveryService>(sp => new RecoveryService(
+            policy, () => Task.FromResult(sp.GetRequiredService<IExtractionRouter>())));
         services.AddSingleton<IAntivirusScanService, AntivirusScanService>();
         // T-F207: "Delete after operation" — the owner window is read at delete time, after
         // SetWindow has run.

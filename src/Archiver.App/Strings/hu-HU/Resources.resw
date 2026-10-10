@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Az archívum mellett PAR2-fájlok találhatók. Az archívum tesztelése ezek alapján is ellenőrzi az archívumot.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Javítás PAR2-vel</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Archívum javítása</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Javítás...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Válasszon másik mappát a javított másolatnak.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Egy szinttel feljebb</value>
   </data>

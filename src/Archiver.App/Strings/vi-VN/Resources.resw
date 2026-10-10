@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Đã tìm thấy các tệp PAR2 bên cạnh tệp nén này. Việc kiểm tra tệp nén cũng đối chiếu tệp nén với các tệp đó.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Sửa bằng PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Sửa tệp nén</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Đang sửa...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Chọn thư mục khác cho bản sao đã sửa.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Lên một cấp</value>
   </data>

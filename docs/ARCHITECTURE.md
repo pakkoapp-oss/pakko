@@ -763,23 +763,25 @@ public interface IRecoveryService
 }
 ```
 
-T-F275 step 3c: what a frontend asks before any test runs. Both read the disk, so a UI calls them
-off its thread; step 4 moves them behind `IRecoveryService`.
+T-F275 steps 3c and 4c: what a frontend asks before any test runs, on the same interface. Both read
+the disk, so a UI calls them off its thread. The App registers `IRecoveryService` in DI with its
+policy and its `IExtractionRouter`.
 
 ```csharp
-public static class RecoveryDataLookup
+public interface IRecoveryService   // continued
 {
-    // Named like a PAR2 file. Reads nothing.
-    public static bool IsRecoveryFile(string path);
     // PAR2 files lie next to the archive under either name the test looks for (a.zip.par2,
     // a.par2, their volumes). Not whether they are usable. False under DisableRecoveryData and
     // for an unreadable path; never throws.
-    public static bool HasFilesFor(string archivePath, GroupPolicyOptions policy);
+    bool HasFilesFor(string archivePath);
     // The file the set protects, chosen by the set's hashes as the test chooses it. Exactly one
-    // of RecoveryTarget.ArchivePath / Error is set; a file that is gone is still named. Throws
-    // only OperationCanceledException.
-    public static RecoveryTarget FindArchive(string par2Path, GroupPolicyOptions policy, CancellationToken cancellationToken = default);
+    // of RecoveryTarget.ArchivePath / Error is set (Archiver.Core.Models); a file that is gone is
+    // still named. Throws only OperationCanceledException.
+    RecoveryTarget FindArchive(string par2Path, CancellationToken cancellationToken = default);
 }
+
+// The one check that reads nothing: named like a PAR2 file.
+public static class RecoveryDataLookup { public static bool IsRecoveryFile(string path); }
 ```
 
 ---

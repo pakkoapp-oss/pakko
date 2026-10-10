@@ -722,4 +722,42 @@ public sealed class RecoveryServiceTests : IDisposable
     {
         public void Report(ProgressReport value) => onReport(value);
     }
+
+    // --- Step 4c: the lookups a frontend calls, with the service's own policy ---
+
+    [Fact]
+    public void HasFilesFor_AndFindArchive_AnswerForASet()
+    {
+        string archive = Protected("a.tar.gz");
+
+        Service().HasFilesFor(archive).Should().BeTrue();
+        Service().HasFilesFor(Archive("bare.zip")).Should().BeFalse();
+        RecoveryTarget target = Service().FindArchive(Par2Creator.IndexPath(archive));
+        target.Error.Should().BeNull();
+        target.ArchivePath.Should().Be(archive);
+    }
+
+    [Fact]
+    public void HasFilesFor_AndFindArchive_FollowTheServicesPolicy()
+    {
+        string archive = Protected("a.tar.gz");
+        RecoveryService disabled = Service(new GroupPolicyOptions { DisableRecoveryData = true });
+
+        disabled.HasFilesFor(archive).Should().BeFalse();
+        RecoveryTarget target = disabled.FindArchive(Par2Creator.IndexPath(archive));
+        target.ArchivePath.Should().BeNull();
+        target.Error!.Text!.Code.Should().Be(MessageCode.RecoveryDataDisabled);
+    }
+
+    [Fact]
+    public void FindArchive_Cancelled_Throws()
+    {
+        string archive = Protected("a.tar.gz");
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Action find = () => Service().FindArchive(Par2Creator.IndexPath(archive), cts.Token);
+
+        find.Should().Throw<OperationCanceledException>();
+    }
 }

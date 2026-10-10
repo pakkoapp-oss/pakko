@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Naast dit archief zijn PAR2-bestanden gevonden. Bij het testen van het archief wordt het ook daarmee gecontroleerd.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Herstellen met PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Archief herstellen</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Herstellen...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Kies een andere map voor de herstelde kopie.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Eén niveau omhoog</value>
   </data>

@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>इस संग्रह के पास PAR2 फ़ाइलें मिलीं। संग्रह का परीक्षण उसे इनके आधार पर भी जाँचता है।</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>PAR2 से मरम्मत करें</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>संग्रह की मरम्मत</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>मरम्मत की जा रही है...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>मरम्मत की गई प्रति के लिए कोई दूसरा फ़ोल्डर चुनें।</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>एक स्तर ऊपर</value>
   </data>

@@ -12323,6 +12323,42 @@ Known gaps:
 - The other gaps of 3b's visibility rule hold for this item too (more than 16 archives selected,
   non-archive files, a slow share).
 
+### Step 4c — the App's Repair button; the lookups behind the service (2026-10-10)
+
+- **A button on the PAR2 line** ("Repair with PAR2", the menu item's words). It is offered before
+  any check (only reading the archive tells whether there is damage) and after a test that found
+  damage the set can rebuild; not after a match, a repair, or a verdict no repair changes
+  (`RecoveryPanel.OffersRepair`). It calls `IRecoveryService.RepairAsync` for the open archive
+  with the App's download-mark choice.
+- **After a repair the copy is opened.** The line turns to Core's "repaired" text, a dialog says
+  the same, and then the browser opens the copy: the user came for the archive's contents, and
+  the damaged original, often one that would not list, has nothing more to show. The original
+  stays on disk beside its set.
+- **A folder that cannot be written to is answered with a folder choice.** The error
+  (`RecoveryRepairNotWritten`, with Core's reason) is shown with "Choose another folder for the
+  repaired copy.", then the folder picker, then the repair runs again into that folder; cancelling
+  the picker ends it. At most five choices. The code also covers a full disk, where another folder
+  on the same disk will not help; the reason in the dialog says which it was.
+- **`IRecoveryService` now holds the lookups** (`HasFilesFor`, `FindArchive`) with its own policy,
+  and the App gets the service from DI. `RecoveryDataLookup`'s two disk lookups are internal; only
+  `IsRecoveryFile` (a name check) stays public for `BrowserEntryRouting`. `RecoveryTarget` moved to
+  `Archiver.Core.Models`.
+- **Not on a blocked format, with one way around it that Explorer has too.** The App never
+  opens an archive policy refuses (3c: `KeepsOpenUnlisted`), so the line and its button do not
+  show for one. An archive that is gone has no format to classify: reached through its `.par2`
+  row it opens unlisted (the listing error is "not found"), and Repair writes the copy whatever its
+  format; the copy is then refused when it opens. This is 4b's `.par2` path: the repair copies and
+  hashes bytes and never parses the blocked format.
+- Four App strings in 37 languages: the button (the menu item's words), the dialog title (a noun
+  phrase, as the Test dialog's), the status line and the sentence before the folder choice.
+
+Known gaps:
+
+- The dialog and the line name the copy by file name only; after a folder choice the copy is in
+  that folder, and the browser that opens it is the way to see where.
+- `MainViewModel`'s wiring is checked on a device (the commit names the cases), the rules by
+  `RecoveryPanelTests`.
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry

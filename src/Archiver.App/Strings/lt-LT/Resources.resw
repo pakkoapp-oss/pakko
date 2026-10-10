@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Šalia šio archyvo rasta PAR2 failų. Testuojant archyvą jis patikrinamas ir pagal juos.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Taisyti su PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Archyvo taisymas</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Taisoma...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Pasirinkite kitą aplanką pataisytai kopijai.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Vienu lygiu aukštyn</value>
   </data>

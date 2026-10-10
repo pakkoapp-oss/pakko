@@ -47,7 +47,8 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │   ├── BrowseInfoBar — InfoBar (IsOpen/Severity/Message bound; encrypted count, AE-2 empty
         │   │       CRC note, ZipCrypto warning as Warning severity, "outside the archive" note)
         │   ├── RecoveryInfoBar — InfoBar (T-F275 step 3c: PAR2 files next to the open archive,
-        │   │       after Test the set's verdict; IsRecoveryInfoOpen/RecoveryInfoSeverity/RecoveryInfoText)
+        │   │       after Test the set's verdict; IsRecoveryInfoOpen/RecoveryInfoSeverity/RecoveryInfoText;
+        │   │       ActionButton: RecoveryRepairButton, RepairBrowsedArchiveCommand, RecoveryRepairVisibility, step 4c)
         │   ├── BrowseHeader — Border -> Grid (Auto,*,100,100,90,140), non-sortable TextBlocks
         │   └── ListView ArchiveBrowserListView (SelectionMode=Multiple, explicit
         │           VirtualizingStackPanel — a known deviation from CLAUDE.md's ListView rule,

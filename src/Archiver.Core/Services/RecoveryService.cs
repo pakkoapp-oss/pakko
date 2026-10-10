@@ -25,6 +25,13 @@ public sealed class RecoveryService : IRecoveryService
     }
 
     /// <inheritdoc/>
+    public bool HasFilesFor(string archivePath) => RecoveryDataLookup.HasFilesFor(archivePath, _policy);
+
+    /// <inheritdoc/>
+    public RecoveryTarget FindArchive(string par2Path, CancellationToken cancellationToken = default) =>
+        RecoveryDataLookup.FindArchive(par2Path, _policy, cancellationToken);
+
+    /// <inheritdoc/>
     public async Task<ArchiveResult> RepairAsync(
         RepairOptions options,
         IProgress<ProgressReport>? progress = null,

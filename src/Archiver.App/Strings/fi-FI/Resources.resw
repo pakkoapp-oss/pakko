@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Tämän arkiston vierestä löytyi PAR2-tiedostoja. Arkiston testaus tarkistaa arkiston myös niiden avulla.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Korjaa PAR2:lla</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Arkiston korjaus</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Korjataan...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Valitse korjatulle kopiolle toinen kansio.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Yksi taso ylös</value>
   </data>

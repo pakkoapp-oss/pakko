@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>PAR2-filer hittades bredvid det här arkivet. Ett test av arkivet kontrollerar det även mot dem.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Reparera med PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Reparera arkiv</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Reparerar...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Välj en annan mapp för den reparerade kopian.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>En nivå upp</value>
   </data>

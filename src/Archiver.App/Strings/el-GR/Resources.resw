@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Βρέθηκαν αρχεία PAR2 δίπλα σε αυτό το αρχείο συμπίεσης. Η δοκιμή του αρχείου συμπίεσης το ελέγχει και με βάση αυτά.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Επιδιόρθωση με PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Επιδιόρθωση αρχείου συμπίεσης</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Επιδιόρθωση σε εξέλιξη...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Επιλέξτε άλλον φάκελο για το επιδιορθωμένο αντίγραφο.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Ένα επίπεδο επάνω</value>
   </data>

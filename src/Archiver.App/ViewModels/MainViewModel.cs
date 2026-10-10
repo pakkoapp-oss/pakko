@@ -32,6 +32,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IExtractionRouter _extractionRouter;
     private readonly IArchiveListingRouter _archiveListingRouter;
     private readonly IAntivirusScanService _antivirusScanService;
+    private readonly IRecoveryService _recoveryService;
     private readonly IDialogService _dialogService;
     private readonly ILogService _logService;
     private readonly GroupPolicyOptions _policy;
@@ -102,6 +103,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ExtractSelectedFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(ScanArchiveFromBrowserCommand))]
     [NotifyCanExecuteChangedFor(nameof(TestBrowsedArchiveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RepairBrowsedArchiveCommand))]
     [NotifyCanExecuteChangedFor(nameof(CloseArchiveCommand))]
     [NotifyPropertyChangedFor(nameof(IsOperationRunning))]
     [NotifyPropertyChangedFor(nameof(IsOperationRunningVisibility))]
@@ -688,6 +690,11 @@ public sealed partial class MainViewModel : ObservableObject
 
     public string RecoveryInfoText => _recoveryPanel.Text;
 
+    // T-F275 step 4c: Repair sits on the PAR2 line, while a repair may still change something.
+    private bool OffersRecoveryRepair => ShowsRecoveryPanel && _recoveryPanel.OffersRepair;
+
+    public Visibility RecoveryRepairVisibility => OffersRecoveryRepair ? Visibility.Visible : Visibility.Collapsed;
+
     private void SetRecoveryPanel(RecoveryPanel panel, bool unlisted)
     {
         _recoveryPanel = panel;
@@ -758,6 +765,8 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(IsRecoveryInfoOpen));
         OnPropertyChanged(nameof(RecoveryInfoSeverity));
         OnPropertyChanged(nameof(RecoveryInfoText));
+        OnPropertyChanged(nameof(RecoveryRepairVisibility));
+        RepairBrowsedArchiveCommand.NotifyCanExecuteChanged();
         TestBrowsedArchiveCommand.NotifyCanExecuteChanged();
         ScanArchiveFromBrowserCommand.NotifyCanExecuteChanged();
     }
@@ -808,6 +817,7 @@ public sealed partial class MainViewModel : ObservableObject
         IExtractionRouter extractionRouter,
         IArchiveListingRouter archiveListingRouter,
         IAntivirusScanService antivirusScanService,
+        IRecoveryService recoveryService,
         IDialogService dialogService,
         ILogService logService,
         GroupPolicyOptions groupPolicyOptions,
@@ -820,6 +830,7 @@ public sealed partial class MainViewModel : ObservableObject
         _extractionRouter = extractionRouter;
         _archiveListingRouter = archiveListingRouter;
         _antivirusScanService = antivirusScanService;
+        _recoveryService = recoveryService;
         _dialogService = dialogService;
         _logService = logService;
         _policy = groupPolicyOptions;
@@ -1199,7 +1210,7 @@ public sealed partial class MainViewModel : ObservableObject
         // used for result.Success==false below.
         // T-F275 step 3c: only that PAR2 files are there (a folder listing, off the UI thread);
         // whether they are usable is the test's to say.
-        Task<bool> recoveryFilesFound = Task.Run(() => RecoveryDataLookup.HasFilesFor(archivePath, _policy));
+        Task<bool> recoveryFilesFound = Task.Run(() => _recoveryService.HasFilesFor(archivePath));
         ArchiveListResult? result = await ListArchiveWithProgressAsync(archivePath);
         if (result is null)
         {
@@ -1485,7 +1496,7 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task OpenProtectedArchiveAsync(string par2Path)
     {
         using IDisposable work = _browseWork.Begin();
-        RecoveryTarget target = await Task.Run(() => RecoveryDataLookup.FindArchive(par2Path, _policy));
+        RecoveryTarget target = await Task.Run(() => _recoveryService.FindArchive(par2Path));
         if (target.ArchivePath is null)
         {
             await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"),
@@ -1776,6 +1787,101 @@ public sealed partial class MainViewModel : ObservableObject
         // T-F277: kept as the footer result, as a cancelled Compress/Extract is (T-F211).
         if (wasCancelled)
             SetOutcome(_res.GetString("StatusCancelled"), null, null, "Test");
+    }
+
+    // T-F275 step 4c: rebuilds the open archive from its PAR2 set into a copy next to it; the
+    // archive is only read. A folder that cannot be written to is answered with a folder choice.
+    // After a repair the copy is opened: it is the archive the user wanted to see.
+    private const int MaxRepairFolderChoices = 5;
+
+    private bool CanRepairBrowsedArchive() => !IsBusy && BrowsedArchivePath is not null && OffersRecoveryRepair;
+
+    [RelayCommand(CanExecute = nameof(CanRepairBrowsedArchive))]
+    private async Task RepairBrowsedArchiveAsync()
+    {
+        string archivePath = BrowsedArchivePath!;
+        string? repairedCopy = null;
+        _cts = new CancellationTokenSource();
+        IsBusy = true;
+        CancelCommand.NotifyCanExecuteChanged();
+        Progress = 0;
+        bool wasCancelled = false;
+        try
+        {
+            StatusMessage = _res.GetString("StatusRepairing");
+            repairedCopy = await RepairIntoAWritableFolderAsync(archivePath, _cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            wasCancelled = true;
+            StatusMessage = _res.GetString("StatusCancelled");
+        }
+        catch (Exception ex)
+        {
+            _logService.Error("Unexpected error during repair", ex);
+            await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), ex.Message);
+        }
+        finally
+        {
+            _cts?.Dispose();
+            _cts = null;
+        }
+        if (wasCancelled)
+            await Task.Delay(2000);
+        IsBusy = false;
+        StatusMessage = _res.GetString("StatusReady");
+        if (wasCancelled)
+            SetOutcome(_res.GetString("StatusCancelled"), null, null, "Repair");
+        else if (repairedCopy is not null)
+            await EnterBrowseModeAsync(repairedCopy);
+    }
+
+    // Repairs next to the archive first; while the copy cannot be written there, asks for another
+    // folder. Returns the copy, or null when nothing was repaired (said to the user here).
+    private async Task<string?> RepairIntoAWritableFolderAsync(string archivePath, CancellationToken cancellationToken)
+    {
+        var progress = new Progress<ProgressReport>(r => Progress = r.Percent);
+        string? outputDirectory = null;
+        for (int choice = 0; choice <= MaxRepairFolderChoices; choice++)
+        {
+            ArchiveResult result = await _recoveryService.RepairAsync(
+                new RepairOptions { Paths = [archivePath], OutputDirectory = outputDirectory, ApplyDownloadMark = ApplyDownloadMark },
+                progress, cancellationToken);
+            _logService.Info($"Repair completed — {archivePath} — {result.Outcome}");
+            foreach (ArchiveError error in result.Errors)
+                _logService.Error($"{error.SourcePath} — {error.Message}");
+            if (BrowsedArchivePath == archivePath)
+                SetRecoveryPanel(_recoveryPanel.AfterRepair(archivePath, result, CoreMessageText.Of), _browseUnlisted);
+
+            if (!RecoveryPanel.NeedsAnotherFolder(archivePath, result) || choice == MaxRepairFolderChoices)
+            {
+                await ShowRepairResultAsync(archivePath, result);
+                return RecoveryPanel.RepairedCopy(archivePath, result);
+            }
+
+            ArchiveError notWritten = result.Errors.First(e => e.Text?.Code == MessageCode.RecoveryRepairNotWritten);
+            await _dialogService.ShowErrorAsync(_res.GetString("RepairResultTitle"),
+                CoreMessageText.Of(notWritten) + Environment.NewLine + Environment.NewLine + _res.GetString("RepairChooseFolder"));
+            outputDirectory = await _dialogService.PickDestinationFolderAsync();
+            if (outputDirectory is null)
+                return null;
+            Progress = 0;
+        }
+        return null;
+    }
+
+    private async Task ShowRepairResultAsync(string archivePath, ArchiveResult result)
+    {
+        if (result.Outcome != OperationOutcome.Completed)
+        {
+            await _dialogService.ShowOperationSummaryAsync("Repair", result);
+            return;
+        }
+        // Repaired, or intact after all: the line already says which, in Core's words.
+        await _dialogService.ShowInfoAsync(_res.GetString("RepairResultTitle"),
+            RecoveryPanel.RepairedCopy(archivePath, result) is null
+                ? RecoveryPanel.MatchLine(archivePath, result, CoreMessageText.Of) ?? _recoveryPanel.Text
+                : _recoveryPanel.Text);
     }
 
     // T-F146: scans the current selection if any entries are checked, otherwise the whole open

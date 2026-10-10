@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>تم العثور على ملفات PAR2 بجانب هذا الأرشيف. اختبار الأرشيف يتحقق منه أيضًا مقابلها.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>الإصلاح باستخدام PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>إصلاح الأرشيف</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>جارٍ الإصلاح...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>اختر مجلدًا آخر للنسخة المُصلَحة.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>مستوى واحد لأعلى</value>
   </data>

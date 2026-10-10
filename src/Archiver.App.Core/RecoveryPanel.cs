@@ -22,7 +22,7 @@ public enum RecoveryPanelSeverity
 /// test); after a test it carries Core's verdict for that archive. Pure, so the rules are tested
 /// without a window.
 /// </summary>
-/// <param name="HasFiles">PAR2 files lie next to the archive (<see cref="RecoveryDataLookup.HasFilesFor"/>).</param>
+/// <param name="HasFiles">PAR2 files lie next to the archive (<see cref="Archiver.Core.Interfaces.IRecoveryService.HasFilesFor"/>).</param>
 /// <param name="Severity">Informational until a test has run.</param>
 /// <param name="Text">The line shown.</param>
 public sealed record RecoveryPanel(bool HasFiles, RecoveryPanelSeverity Severity, string Text)
@@ -32,7 +32,15 @@ public sealed record RecoveryPanel(bool HasFiles, RecoveryPanelSeverity Severity
         MessageCode.RecoveryDataDamagedRepairable, MessageCode.RecoveryDataDamagedNotRepairable,
         MessageCode.RecoveryDataRepairTooLarge, MessageCode.RecoveryDataDoesNotMatch, MessageCode.RecoveryDataUnusable,
         MessageCode.RecoveryDataForAnotherFile, MessageCode.RecoveryDataNameMismatch,
+        MessageCode.RecoveryDataNotFound, MessageCode.RecoveryRepairCheckFailed,
     ];
+
+    /// <summary>
+    /// Whether Repair is worth offering (step 4c): before any check, since only reading the
+    /// archive tells, and after one that found damage the set can rebuild. Not after a match, a
+    /// repair, or a verdict no repair changes.
+    /// </summary>
+    public bool OffersRepair { get; init; }
 
     /// <summary>No PAR2 files, or none looked for: nothing is shown.</summary>
     public static RecoveryPanel None { get; } = new(false, RecoveryPanelSeverity.Informational, string.Empty);
@@ -43,8 +51,15 @@ public sealed record RecoveryPanel(bool HasFiles, RecoveryPanelSeverity Severity
     /// the error being all the user gets (the case recovery data exists for).
     /// </summary>
     public static RecoveryPanel Found(string foundText, string? listingError = null) => listingError is null
-        ? new RecoveryPanel(true, RecoveryPanelSeverity.Informational, foundText)
-        : new RecoveryPanel(true, RecoveryPanelSeverity.Warning, listingError + " " + foundText);
+        ? new RecoveryPanel(true, RecoveryPanelSeverity.Informational, foundText) { OffersRepair = true }
+        : new RecoveryPanel(true, RecoveryPanelSeverity.Warning, AsSentence(listingError) + " " + foundText) { OffersRepair = true };
+
+    // "Source path does not exist: C:\a\b.zip" ends in a path: without a stop the next sentence runs on.
+    private static string AsSentence(string text)
+    {
+        string trimmed = text.TrimEnd();
+        return trimmed.Length == 0 || ".!?\u3002\u0964\u06D4".Contains(trimmed[^1]) ? trimmed : trimmed + ".";
+    }
 
     /// <summary>
     /// The panel after a test of <paramref name="archivePath"/>: what the set said about that
@@ -69,7 +84,37 @@ public sealed record RecoveryPanel(bool HasFiles, RecoveryPanelSeverity Severity
             severity = RecoveryPanelSeverity.Error;
         else if (warnings.Length > 0)
             severity = RecoveryPanelSeverity.Warning;
-        return new RecoveryPanel(true, severity, string.Join(" ", lines));
+        bool repairable = result.Errors.Any(e => e.Text?.Code == MessageCode.RecoveryDataDamagedRepairable && FullPath(e.SourcePath) == key);
+        return new RecoveryPanel(true, severity, string.Join(" ", lines)) { OffersRepair = repairable };
+    }
+
+    /// <summary>
+    /// The panel after a repair of <paramref name="archivePath"/> (step 4c): that it was repaired
+    /// and where the copy is, in Core's words, or what <see cref="After"/> makes of the result
+    /// when nothing was repaired.
+    /// </summary>
+    public RecoveryPanel AfterRepair(string archivePath, ArchiveResult result, Func<CoreText?, string, string> render) =>
+        Repaired(archivePath, result) is { Text: { } text }
+            ? new RecoveryPanel(true, RecoveryPanelSeverity.Success, render(text, text.English))
+            : After(archivePath, result, render);
+
+    /// <summary>The repaired copy of <paramref name="archivePath"/> in a repair's result, or null.</summary>
+    public static string? RepairedCopy(string archivePath, ArchiveResult result) => Repaired(archivePath, result)?.RepairedPath;
+
+    /// <summary>
+    /// Whether the repair of <paramref name="archivePath"/> built nothing because the copy could
+    /// not be written where it was meant to go: another folder may do.
+    /// </summary>
+    public static bool NeedsAnotherFolder(string archivePath, ArchiveResult result)
+    {
+        string key = FullPath(archivePath);
+        return result.Errors.Any(e => e.Text?.Code == MessageCode.RecoveryRepairNotWritten && FullPath(e.SourcePath) == key);
+    }
+
+    private static RecoveryCheck? Repaired(string archivePath, ArchiveResult result)
+    {
+        string key = FullPath(archivePath);
+        return result.RecoveryChecks.FirstOrDefault(c => c.State == RecoveryState.Repaired && c.RepairedPath is not null && FullPath(c.ArchivePath) == key);
     }
 
     /// <summary>The lines a "no errors" dialog adds for <paramref name="archivePath"/>: that its set matches.</summary>

@@ -572,6 +572,19 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>PAR2 files were found next to this archive. Testing the archive also checks it against them.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Repair with PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Repair archive</value>
+    <comment>Title of the dialog with the result of Repair with PAR2: a noun phrase, like TestResultTitle.</comment>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Repairing...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Choose another folder for the repaired copy.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Up one level</value>
   </data>

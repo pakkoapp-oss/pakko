@@ -791,15 +791,21 @@ anything; `BrowseNavigation.DecideListFailure` (`BrowseNavigationTests`) picks t
 fails. The destination folder is set only after the archive lists.
 
 **T-F275 step 3c:** an archive whose listing fails stays in `InsideArchive` when
-`RecoveryDataLookup.HasFilesFor` found PAR2 files next to it and the failure is not a Group Policy
+`IRecoveryService.HasFilesFor` found PAR2 files next to it and the failure is not a Group Policy
 refusal (`BrowseNavigation.KeepsOpenUnlisted`): nothing is listed, Scan is off,
 `BrowseLocationState.WithoutListing` hides the extract actions, the options and delete-after, the
 PAR2 line (`RecoveryInfoBar`) carries the listing error, and Test is shown. No dialog, no exit. The
 line shows only at a top-level archive (`RecoveryPanel.IsOpenAt`), and where it shows Test is
 visible whatever the Test column below says (a tar-family archive is checked by its set). A
 `.par2` row that `DecidePendingRow` or `DecideBrowserRow` leaves at None opens the archive its set
-protects (`BrowserEntryRouting.OpensProtectedArchive`, then `RecoveryDataLookup.FindArchive`); a
+protects (`BrowserEntryRouting.OpensProtectedArchive`, then `IRecoveryService.FindArchive`); a
 set that names no file is an error dialog and no transition.
+
+**T-F275 step 4c:** the PAR2 line carries a Repair button while `RecoveryPanel.OffersRepair`.
+`RepairBrowsedArchiveCommand` stays in `InsideArchive` while it runs; when a copy was written,
+`EnterBrowseModeAsync` re-enters on the copy (`InsideArchive --> InsideArchive`, fresh, as for any
+archive opened from disk). A copy that cannot be written leads to an error dialog and a folder
+choice, not a transition.
 
 ### Where the user is — what the browser offers (`BrowseLocationState.For`)
 
