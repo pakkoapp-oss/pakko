@@ -517,7 +517,9 @@ The tests (T-F275 step 1):
   text, "Test archive" unchanged, damage a set can and cannot repair (nothing written next to the
   archive), one message for a mixed selection, another file's set, an unreadable set (warning next
   to an archive, error when selected itself), no index, no volume, a volume cut short, only the
-  writer's temporary files, a `.par2` whose archive is gone, `DisableRecoveryData`, cancel.
+  writer's temporary files, a `.par2` whose archive is gone, `DisableRecoveryData`, a set check that still runs under
+  `BlockedFormats`, cancel; and on a real ZIP: test passed and set matches, a rewritten ZIP beside its
+  old set (a warning, never "damaged"), a damaged ZIP its set can repair.
   `ShellArgumentParserTests` has the switch. C++ `ShellExtUtilsTests` (`AnyPathHasRecoveryData`,
   `IsRecoverySetFileName`, `ListFolderNames`) decides the item's visibility with a fake folder
   listing and once on a real folder: a `.par2` alone without touching the disk, a set under either

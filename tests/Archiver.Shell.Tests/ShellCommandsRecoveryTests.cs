@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO.Compression;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Recovery;
@@ -88,6 +89,57 @@ public sealed class ShellCommandsRecoveryTests : IDisposable
 
         ui.Messages.Should().ContainSingle().Which.Text.Should().NotContain("matches its recovery data")
             .And.Contain("notes.tar.gz: ").And.Contain("блок");
+    }
+
+    // --- A ZIP: the engine's own test and the set's check together ---
+
+    [Fact]
+    public async Task ZipWithItsSet_PassesTheTestAndMatches()
+    {
+        string zip = MakeZip("photos.zip", seed: 1);
+        Par2Creator.Create(zip, Par2Creator.ChooseParameters(new FileInfo(zip).Length, 5)!.Value, null, CancellationToken.None);
+        var ui = new FakeOperationUi();
+
+        await Create(ui).VerifyRecoveryAsync([zip]);
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Information);
+        message.Text.Should().StartWith("No errors detected in the archive(s).")
+            .And.Contain("photos.zip: The archive matches its recovery data");
+    }
+
+    // What another tool's rewrite leaves: a good ZIP beside the set of its earlier bytes. A warning
+    // about the set, never a verdict that the archive is damaged (docs/DECISIONS.md, "Before 3b").
+    [Fact]
+    public async Task ZipRewrittenBesideItsOldSet_IsWarnedAbout_NotCalledDamaged()
+    {
+        string zip = MakeZip("photos.zip", seed: 1);
+        Par2Creator.Create(zip, Par2Creator.ChooseParameters(new FileInfo(zip).Length, 5)!.Value, null, CancellationToken.None);
+        File.Delete(zip);
+        MakeZip("photos.zip", seed: 2);
+        var ui = new FakeOperationUi();
+
+        await Create(ui).VerifyRecoveryAsync([zip]);
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Warning);
+        message.Text.Should().Contain("photos.zip").And.Contain("does not match the archive").And.Contain("earlier version")
+            .And.NotContain("is damaged").And.NotContain("can repair").And.NotContain("matches its recovery data");
+    }
+
+    [Fact]
+    public async Task DamagedZipWithItsSet_SaysBothWhatFailedAndThatItCanBeRepaired()
+    {
+        string zip = MakeZip("photos.zip", seed: 1);
+        Par2Creator.Create(zip, Par2Creator.ChooseParameters(new FileInfo(zip).Length, 5)!.Value, null, CancellationToken.None);
+        Damage(zip, 5_000, 16);
+        var ui = new FakeOperationUi();
+
+        await Create(ui).VerifyRecoveryAsync([zip]);
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Error);
+        message.Text.Should().Contain("its recovery data can repair it").And.NotContain("No errors detected").And.NotContain("does not match");
     }
 
     // "Test archive" is unchanged by this step: it does not look at a set (docs/DECISIONS.md, "Step 3b").
@@ -284,6 +336,27 @@ public sealed class ShellCommandsRecoveryTests : IDisposable
         forArchive.Messages.Should().ContainSingle().Which.Text.Should().StartWith("Skipped (1):").And.NotContain("recovery data");
     }
 
+    // BlockedFormats and DisableTarExtraction stop Pakko from opening a format. A set check reads
+    // the file's bytes and hashes them, so it still runs: asked through the .par2 file it gives its
+    // verdict, asked through the archive the refusal is listed and the verdict follows it.
+    [Fact]
+    public async Task UnderBlockedFormats_TheSetCheckStillRuns()
+    {
+        string archive = Protected("notes.tar.gz", out Par2CreateResult set);
+        var policy = new GroupPolicyOptions { BlockedFormats = ["gzip"] };
+        var forPar2 = new FakeOperationUi();
+        var forArchive = new FakeOperationUi();
+
+        await Create(forPar2, policy).VerifyRecoveryAsync([set.IndexPath]);
+        await Create(forArchive, policy).VerifyRecoveryAsync([archive]);
+
+        OperationMessage message = forPar2.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Information);
+        message.Text.Should().Contain("notes.tar.gz: The archive matches its recovery data");
+        forArchive.Messages.Should().ContainSingle().Which.Text.Should()
+            .Contain("blocked by Group Policy").And.Contain("notes.tar.gz: The archive matches its recovery data");
+    }
+
     [Fact]
     public async Task CancelledByUser_ShowsNoMessage()
     {
@@ -319,6 +392,16 @@ public sealed class ShellCommandsRecoveryTests : IDisposable
         byte[] content = Noise(Length, seed);
         new byte[] { 0x1F, 0x8B, 0x08 }.CopyTo(content, 0);
         File.WriteAllBytes(path, content);
+        return path;
+    }
+
+    // A real ZIP with one stored entry of noise, so a byte changed in the middle fails its CRC.
+    private string MakeZip(string name, int seed)
+    {
+        string path = Path.Combine(_root, name);
+        using ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create);
+        using Stream entry = archive.CreateEntry("noise.bin", CompressionLevel.NoCompression).Open();
+        entry.Write(Noise(Length, seed));
         return path;
     }
 
