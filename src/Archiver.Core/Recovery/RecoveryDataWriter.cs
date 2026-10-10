@@ -21,38 +21,25 @@ internal static partial class RecoveryDataWriter
         long[] lengths = [.. result.CreatedFiles.Select(LengthOrZero)];
         double total = Math.Max(1, lengths.Sum());
         double before = 0;
-        bool failed = false;
 
         for (int i = 0; i < result.CreatedFiles.Count; i++)
         {
             string archive = result.CreatedFiles[i];
             double offset = before;
             long weight = lengths[i];
-            try
+            before += weight;
+            (Par2CreateResult? created, ArchiveError? error) = CreateSet(archive, percent, f => progress((offset + f * weight) / total), cancellationToken);
+            if (error is not null)
             {
-                long length = new FileInfo(archive).Length;
-                if (Par2Creator.ChooseParameters(length, percent) is not { } parameters)
-                {
-                    errors.Add(CoreMessages.Error(archive, MessageCode.RecoveryDataFileTooLarge));
-                    failed = true;
-                    continue;
-                }
-                Par2CreateResult created = Par2Creator.Create(archive, parameters, f => progress((offset + f * weight) / total), cancellationToken);
-                recoveryFiles.Add(created.IndexPath);
-                recoveryFiles.Add(created.VolumePath);
-                warnings.AddRange(RemoveStaleVolumes(archive, created, cancellationToken));
+                errors.Add(error);
+                continue;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                errors.Add(CoreMessages.Error(archive, CoreMessages.Wrap(MessageCode.RecoveryDataNotCreated, ex), ex));
-                failed = true;
-            }
-            finally
-            {
-                before += weight;
-            }
+            recoveryFiles.Add(created!.IndexPath);
+            recoveryFiles.Add(created.VolumePath);
+            warnings.AddRange(RemoveStaleVolumes(archive, created, cancellationToken));
         }
 
+        bool failed = errors.Count > result.Errors.Count;
         return result with
         {
             Errors = errors,
@@ -62,6 +49,21 @@ internal static partial class RecoveryDataWriter
                 ? [.. result.Sources.Select(s => s.Outcome == SourceOutcome.Completed ? s with { Outcome = SourceOutcome.Partial } : s)]
                 : result.Sources,
         };
+    }
+
+    private static (Par2CreateResult? Created, ArchiveError? Error) CreateSet(string archive, int percent, Action<double> progress, CancellationToken cancellationToken)
+    {
+        try
+        {
+            long length = new FileInfo(archive).Length;
+            return Par2Creator.ChooseParameters(length, percent) is { } parameters
+                ? (Par2Creator.Create(archive, parameters, progress, cancellationToken), null)
+                : (null, CoreMessages.Error(archive, MessageCode.RecoveryDataFileTooLarge));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return (null, CoreMessages.Error(archive, CoreMessages.Wrap(MessageCode.RecoveryDataNotCreated, ex), ex));
+        }
     }
 
     private static long LengthOrZero(string path)
@@ -78,42 +80,52 @@ internal static partial class RecoveryDataWriter
 
     // A volume of an earlier set for the same archive name: the archive was rewritten, so that set
     // protects bytes that no longer exist. Only files the reader parses as a set with another Set
-    // ID are removed; anything unreadable or not PAR2 is left alone.
-    private static IEnumerable<ArchiveWarning> RemoveStaleVolumes(string archive, Par2CreateResult created, CancellationToken cancellationToken)
+    // ID are removed; anything unreadable or not PAR2 is left alone. Best-effort, after the new set
+    // is written: a folder that cannot be listed leaves nothing to remove, as in TempOwner.SweepStale.
+    private static List<ArchiveWarning> RemoveStaleVolumes(string archive, Par2CreateResult created, CancellationToken cancellationToken)
     {
-        string folder = Path.GetDirectoryName(archive)!;
-        string name = Path.GetFileName(archive);
+        var warnings = new List<ArchiveWarning>();
         Par2ReadResult current = Par2PacketReader.Read([created.IndexPath], cancellationToken);
         if (current.Sets.Count != 1)
-            yield break;
+            return warnings;
         UInt128 setId = current.Sets[0].SetId;
-
-        foreach (string path in Directory.EnumerateFiles(folder, name + ".vol*.par2"))
+        string name = Path.GetFileName(archive);
+        string[] candidates;
+        try
         {
-            string candidate = Path.GetFileName(path);
-            if (string.Equals(path, created.VolumePath, StringComparison.OrdinalIgnoreCase)
-                || !candidate.StartsWith(name, StringComparison.OrdinalIgnoreCase)
-                || !VolumeSuffix().IsMatch(candidate[name.Length..]))
-                continue;
-            Par2ReadResult read = Par2PacketReader.Read([path], cancellationToken);
-            bool stale = read.UnreadableFiles == 0
-                && (read.Sets.Count > 0 || read.Rejected.Count > 0)
-                && read.Sets.All(s => s.SetId != setId)
-                && read.Rejected.All(r => r.SetId != setId);
-            if (!stale)
-                continue;
-            ArchiveWarning? warning = null;
+            candidates = Directory.GetFiles(Path.GetDirectoryName(archive)!, name + ".vol*.par2");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return warnings; // best-effort: nothing to remove in a folder that cannot be listed
+        }
+
+        foreach (string path in candidates.Where(p => IsStaleVolume(p, name, created.VolumePath, setId, cancellationToken)))
+        {
             try
             {
                 File.Delete(path);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                warning = CoreMessages.Warning(path, CoreMessages.Wrap(MessageCode.RecoveryOldVolumeNotDeleted, ex));
+                warnings.Add(CoreMessages.Warning(path, CoreMessages.Wrap(MessageCode.RecoveryOldVolumeNotDeleted, ex)));
             }
-            if (warning is not null)
-                yield return warning;
         }
+        return warnings;
+    }
+
+    private static bool IsStaleVolume(string path, string archiveName, string newVolume, UInt128 setId, CancellationToken cancellationToken)
+    {
+        string candidate = Path.GetFileName(path);
+        if (string.Equals(path, newVolume, StringComparison.OrdinalIgnoreCase)
+            || !candidate.StartsWith(archiveName, StringComparison.OrdinalIgnoreCase)
+            || !VolumeSuffix().IsMatch(candidate[archiveName.Length..]))
+            return false;
+        Par2ReadResult read = Par2PacketReader.Read([path], cancellationToken);
+        return read.UnreadableFiles == 0
+            && (read.Sets.Count > 0 || read.Rejected.Count > 0)
+            && read.Sets.All(s => s.SetId != setId)
+            && read.Rejected.All(r => r.SetId != setId);
     }
 
     [GeneratedRegex(@"^\.vol\d+[+-]\d+\.par2$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
