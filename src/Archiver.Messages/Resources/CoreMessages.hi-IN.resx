@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>पुनर्प्राप्ति डेटा किसी अन्य नाम वाली फ़ाइल के लिए बनाया गया था; यह सामग्री के आधार पर इस संग्रह से मेल खाता है।</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>संग्रह अपने पुनर्प्राप्ति डेटा से मेल खाता है ({0} ब्लॉक, {1} पुनर्प्राप्ति ब्लॉक)।</value>
+  </data>
 </root>

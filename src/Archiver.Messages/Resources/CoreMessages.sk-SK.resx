@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Údaje na obnovenie boli vytvorené pre súbor s iným názvom; tomuto archívu zodpovedajú obsahom.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Archív zodpovedá svojim údajom na obnovenie ({0} blokov, {1} blokov na obnovenie).</value>
+  </data>
 </root>

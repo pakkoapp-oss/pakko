@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>נתוני השחזור נוצרו עבור קובץ בשם אחר; הם תואמים לארכיון זה לפי התוכן שלו.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>הארכיון תואם לנתוני השחזור שלו ({0} בלוקים, {1} בלוקי שחזור).</value>
+  </data>
 </root>

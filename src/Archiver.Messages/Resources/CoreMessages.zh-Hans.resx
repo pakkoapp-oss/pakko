@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>恢复数据是为另一个名称的文件创建的；按内容它与此压缩包匹配。</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>压缩包与其恢复数据一致（{0} 个块，{1} 个恢复块）。</value>
+  </data>
 </root>

@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Podatki za obnovitev so bili ustvarjeni za datoteko z drugim imenom; s tem arhivom se ujemajo po vsebini.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Arhiv se ujema s svojimi podatki za obnovitev ({0} blokov, {1} blokov za obnovitev).</value>
+  </data>
 </root>

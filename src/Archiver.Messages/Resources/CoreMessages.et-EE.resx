@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Taasteandmed on loodud teise nimega faili jaoks; need vastavad sellele arhiivile sisu järgi.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Arhiiv vastab oma taasteandmetele ({0} plokki, {1} taasteplokki).</value>
+  </data>
 </root>

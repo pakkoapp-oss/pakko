@@ -133,4 +133,5 @@ public enum MessageCode
     RecoveryDataForAnotherFile,
     RecoveryDataTargetNotFound,
     RecoveryDataNameMismatch,
+    RecoveryDataIntact,
 }

@@ -195,6 +195,7 @@ MenuPolicy LoadMenuPolicy(const PolicyRegistryReader& reader)
     policy.disableTar = reader.GetDword(L"DisableTarExtraction") == 1u;
     if (auto blocked = reader.GetMultiString(L"BlockedFormats"))
         policy.blockedFormats = std::move(*blocked);
+    policy.disableRecoveryData = reader.GetDword(L"DisableRecoveryData") == 1u;
     return policy;
 }
 
@@ -282,6 +283,79 @@ static bool IsSupportedArchive(const std::wstring& path, const MenuPolicy& polic
     if (policy.IsFormatBlocked(GetFormatRegistryName(path))) return false;
     if (HasZipExtension(path)) return true;
     return !policy.disableTar && TarExeExists() && HasSupportedNonZipArchiveExtension(path);
+}
+
+static bool EndsWithNoCase(const std::wstring& text, const wchar_t* suffix)
+{
+    const size_t length = wcslen(suffix);
+    return text.size() >= length && _wcsicmp(text.c_str() + (text.size() - length), suffix) == 0;
+}
+
+bool IsRecoverySetFileName(const std::wstring& name, const std::wstring& baseName)
+{
+    static const wchar_t kExtension[] = L".par2";
+    return !baseName.empty()
+        && name.size() >= baseName.size() + wcslen(kExtension)
+        && _wcsnicmp(name.c_str(), baseName.c_str(), baseName.size()) == 0
+        && name[baseName.size()] == L'.'
+        && EndsWithNoCase(name, kExtension);
+}
+
+std::vector<std::wstring> ListFolderNames(const std::wstring& pattern)
+{
+    // Closes the search handle on every path out of the loop.
+    struct FindHandle
+    {
+        HANDLE handle;
+        ~FindHandle() { if (handle != INVALID_HANDLE_VALUE) FindClose(handle); }
+    };
+
+    std::vector<std::wstring> names;
+    WIN32_FIND_DATAW data{};
+    const FindHandle find{ FindFirstFileExW(pattern.c_str(), FindExInfoBasic, &data, FindExSearchNameMatch, nullptr, 0) };
+    if (find.handle == INVALID_HANDLE_VALUE) return names;
+    do
+    {
+        if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+            names.emplace_back(data.cFileName);
+    } while (names.size() < kMaxRecoveryNamesListed && FindNextFileW(find.handle, &data));
+    return names;
+}
+
+// "C:\dir\photos.tar.gz" -> folder "C:\dir\", base "photos.tar": Core looks for a set under
+// the full name first and under this shorter one second, and the shorter one's files include both.
+static bool HasRecoveryFilesNextToIt(const std::wstring& path, const FolderLister& listFolder)
+{
+    const wchar_t* pName = PathFindFileNameW(path.c_str());
+    const wchar_t* pExt = PathFindExtensionW(pName);
+    const std::wstring folder(path.c_str(), pName);
+    const std::wstring base = pExt > pName ? std::wstring(pName, pExt) : std::wstring(pName);
+    if (base.empty()) return false;
+
+    for (const auto& name : listFolder(folder + base + L".*par2"))
+    {
+        if (IsRecoverySetFileName(name, base)) return true;
+    }
+    return false;
+}
+
+bool AnyPathHasRecoveryData(const std::vector<std::wstring>& paths, const MenuPolicy& policy, const FolderLister& listFolder)
+{
+    if (policy.disableRecoveryData) return false;
+    for (const auto& p : paths)
+    {
+        if (EndsWithNoCase(p, L".par2")) return true;
+    }
+
+    size_t probes = 0;
+    for (const auto& p : paths)
+    {
+        if (!IsSupportedArchive(p, policy)) continue;
+        if (probes >= kMaxRecoveryProbes) return false;
+        ++probes;
+        if (HasRecoveryFilesNextToIt(p, listFolder)) return true;
+    }
+    return false;
 }
 
 bool AllPathsAreSupportedArchive(const std::vector<std::wstring>& paths, const MenuPolicy& policy)
@@ -517,6 +591,7 @@ std::wstring BuildArchiveArgs(const std::wstring& format)
 }
 
 std::wstring BuildTestArgs() { return L"--test"; }
+std::wstring BuildRecoveryVerifyArgs() { return L"--recovery-verify"; }
 std::wstring BuildScanArgs() { return L"--scan"; }
 std::wstring BuildHashArgs(const std::wstring& algorithm) { return L"--hash --algorithm " + algorithm; }
 std::wstring BuildOpenUiExtractArgs() { return L"--open-ui --extract"; }

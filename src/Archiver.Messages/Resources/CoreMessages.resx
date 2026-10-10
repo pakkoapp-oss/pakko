@@ -345,4 +345,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>The recovery data was made for a file with another name; it matches this archive by its content.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>The archive matches its recovery data ({0} blocks, {1} recovery blocks).</value>
+  </data>
 </root>

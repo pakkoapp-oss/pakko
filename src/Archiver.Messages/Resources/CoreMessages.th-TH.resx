@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>ข้อมูลกู้คืนถูกสร้างขึ้นสำหรับไฟล์ที่มีชื่ออื่น แต่ตรงกับไฟล์บีบอัดนี้ตามเนื้อหา</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>ไฟล์บีบอัดตรงกับข้อมูลกู้คืนของไฟล์นี้ ({0} บล็อก, {1} บล็อกกู้คืน)</value>
+  </data>
 </root>

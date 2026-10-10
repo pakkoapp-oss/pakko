@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Podaci za oporavak kreirani su za datoteku sa drugim imenom; ovoj arhivi odgovaraju po sadržaju.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Arhiva odgovara svojim podacima za oporavak ({0} blokova, {1} blokova za oporavak).</value>
+  </data>
 </root>

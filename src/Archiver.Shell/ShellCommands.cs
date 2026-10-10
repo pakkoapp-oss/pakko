@@ -141,7 +141,16 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
     // which call ExtractAsync once per archive). T-F261: through the router, so Group Policy and
     // format detection are Core's, not a ZIP-engine-for-everything shortcut.
     // -------------------------------------------------------------------------
-    public async Task TestAsync(IReadOnlyList<string> archivePaths)
+    public Task TestAsync(IReadOnlyList<string> archivePaths) => TestAsync(archivePaths, verifyRecoveryData: false);
+
+    // -------------------------------------------------------------------------
+    // --recovery-verify (T-F275 step 3b): the same test, and each archive is also checked against
+    // the PAR2 set next to it; a .par2 path stands for the archive its set protects. A tar-family
+    // archive, which --test can only skip, is checked by its set.
+    // -------------------------------------------------------------------------
+    public Task VerifyRecoveryAsync(IReadOnlyList<string> paths) => TestAsync(paths, verifyRecoveryData: true);
+
+    private async Task TestAsync(IReadOnlyList<string> archivePaths, bool verifyRecoveryData)
     {
         IExtractionRouter service = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
         string title = archivePaths.Count == 1
@@ -154,7 +163,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         {
             result = await service.TestAsync(archivePaths, session.Progress,
                 info => session.AskPasswordAsync(info, canApplyToRemaining: archivePaths.Count > 1),
-                cancellationToken: session.Cancellation).ConfigureAwait(false);
+                verifyRecoveryData, session.Cancellation).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {

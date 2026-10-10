@@ -39,6 +39,8 @@ enum class StringId
     SelectionNotOnDisk,
     // "{0}" is the failure HRESULT as 0xXXXXXXXX.
     LaunchFailedTemplate,
+    // T-F275 step 3b: "Verify with PAR2" - a plain verb like TestArchive, PAR2 never translated.
+    RecoveryVerify,
 };
 
 // The language the menu speaks, as a BCP-47 tag (e.g. L"uk-UA"): PickLanguageTag over the user's

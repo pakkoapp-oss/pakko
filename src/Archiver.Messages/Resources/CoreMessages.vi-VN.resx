@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Dữ liệu khôi phục được tạo cho một tệp có tên khác; nó khớp với tệp nén này theo nội dung.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Tệp nén khớp với dữ liệu khôi phục của nó ({0} khối, {1} khối khôi phục).</value>
+  </data>
 </root>

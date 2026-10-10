@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>A helyreállítási adatok egy más nevű fájlhoz készültek; tartalom alapján egyeznek ezzel az archívummal.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Az archívum egyezik a helyreállítási adataival ({0} blokk, {1} helyreállítási blokk).</value>
+  </data>
 </root>

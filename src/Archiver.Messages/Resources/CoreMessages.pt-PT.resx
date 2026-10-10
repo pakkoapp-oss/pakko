@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Os dados de recuperação foram criados para um ficheiro com outro nome; correspondem a este arquivo pelo conteúdo.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>O arquivo corresponde aos seus dados de recuperação ({0} blocos, {1} blocos de recuperação).</value>
+  </data>
 </root>

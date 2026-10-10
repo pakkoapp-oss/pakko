@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Data pemulihan dibuat untuk file dengan nama lain; data ini cocok dengan arsip ini berdasarkan isinya.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Arsip cocok dengan data pemulihannya ({0} blok, {1} blok pemulihan).</value>
+  </data>
 </root>

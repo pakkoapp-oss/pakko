@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Gjenopprettingsdataene ble laget for en fil med et annet navn; de samsvarer med dette arkivet etter innhold.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Arkivet samsvarer med gjenopprettingsdataene ({0} blokker, {1} gjenopprettingsblokker).</value>
+  </data>
 </root>

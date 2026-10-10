@@ -498,6 +498,75 @@ STDMETHODIMP TestCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcep
 }
 
 // ---------------------------------------------------------------------------
+// RecoveryVerifyCommand (T-F275 step 3b)
+// ---------------------------------------------------------------------------
+
+STDMETHODIMP RecoveryVerifyCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    return SHStrDupW(GetLocalizedString(StringId::RecoveryVerify).c_str(), ppszName);
+}
+
+STDMETHODIMP RecoveryVerifyCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP RecoveryVerifyCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP RecoveryVerifyCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_RecoveryVerifyCommand;
+    return S_OK;
+}
+
+STDMETHODIMP RecoveryVerifyCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    *pCmdState = ECS_HIDDEN;
+    try
+    {
+        // The one GetState that reads the disk: a bounded number of folder listings, whatever
+        // fOkToBeSlow says (docs/DECISIONS.md, T-F275 "Step 3b").
+        if (AnyPathHasRecoveryData(GetPathsFromShellItemArray(psia), GetMenuPolicy(), ListFolderNames))
+            *pCmdState = ECS_ENABLED;
+        return S_OK;
+    }
+    catch (...) { return S_OK; } // hidden: a menu item that cannot be decided is not offered
+}
+
+STDMETHODIMP RecoveryVerifyCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
+{
+    try
+    {
+        return RunShellCommand(psia, BuildRecoveryVerifyArgs());
+    }
+    catch (...) { return E_FAIL; }
+}
+
+STDMETHODIMP RecoveryVerifyCommand::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_DEFAULT;
+    return S_OK;
+}
+
+STDMETHODIMP RecoveryVerifyCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
+    return E_NOTIMPL;
+}
+
+// ---------------------------------------------------------------------------
 // ScanCommand (T-F146)
 // ---------------------------------------------------------------------------
 
@@ -951,13 +1020,14 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         auto pArchive       = Make<ArchiveCommand>();
         auto pTarArchive    = Make<TarArchiveCommand>();
         auto pTest          = Make<TestCommand>();
+        auto pRecoveryVerify = Make<RecoveryVerifyCommand>();
         auto pScan          = Make<ScanCommand>();
         auto pHashCrc32     = Make<HashCrc32Command>();
         auto pHashSha256    = Make<HashSha256Command>();
-        if (!pBrowse || !pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest || !pScan || !pHashCrc32 || !pHashSha256)
+        if (!pBrowse || !pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest || !pRecoveryVerify || !pScan || !pHashCrc32 || !pHashSha256)
             return E_OUTOFMEMORY;
 
-        ComPtr<IExplorerCommand> pCmdBrowse, pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest, pCmdScan, pCmdHashCrc32, pCmdHashSha256;
+        ComPtr<IExplorerCommand> pCmdBrowse, pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest, pCmdRecoveryVerify, pCmdScan, pCmdHashCrc32, pCmdHashSha256;
         HRESULT hr = pBrowse.As(&pCmdBrowse);                if (FAILED(hr)) return hr;
         hr = pExtractDialog.As(&pCmdExtractDialog);          if (FAILED(hr)) return hr;
         hr = pExtractHereFlat.As(&pCmdExtractHereFlat);      if (FAILED(hr)) return hr;
@@ -967,6 +1037,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         hr = pArchive.As(&pCmdC);                            if (FAILED(hr)) return hr;
         hr = pTarArchive.As(&pCmdTarArchive);                if (FAILED(hr)) return hr;
         hr = pTest.As(&pCmdTest);                            if (FAILED(hr)) return hr;
+        hr = pRecoveryVerify.As(&pCmdRecoveryVerify);        if (FAILED(hr)) return hr;
         hr = pScan.As(&pCmdScan);                            if (FAILED(hr)) return hr;
         hr = pHashCrc32.As(&pCmdHashCrc32);                  if (FAILED(hr)) return hr;
         hr = pHashSha256.As(&pCmdHashSha256);                if (FAILED(hr)) return hr;
@@ -986,6 +1057,8 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         // T-F146: "Scan for threats" sits right after Test — same diagnostic/verification group,
         // AnyPathIsSupportedArchive-gated (see ScanCommand::GetState) so it appears for tar-family
         // archives too, unlike Test which stays ZIP-only for T-F86 reasons.
+        // T-F275 step 3b: "Verify with PAR2" sits between Test and Scan - a check of the archive's
+        // bytes like Test, shown only when a set is there to check against.
         // T-F128: CRC-32/SHA-256 join Test at the very end as two separate top-level leaves, not
         // a nested "Хеш-суми" submenu container — an earlier HashCommand-as-parent design
         // (mirroring NanaZip's own cascaded "CRC SHA" submenu) shipped a real bug where Explorer
@@ -1003,6 +1076,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         commands.push_back(std::move(pCmdC));
         commands.push_back(std::move(pCmdTarArchive));
         commands.push_back(std::move(pCmdTest));
+        commands.push_back(std::move(pCmdRecoveryVerify));
         commands.push_back(std::move(pCmdScan));
         commands.push_back(std::move(pCmdHashCrc32));
         commands.push_back(std::move(pCmdHashSha256));

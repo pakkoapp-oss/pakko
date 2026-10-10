@@ -152,6 +152,7 @@ public static class MessageTemplates
         [MessageCode.RecoveryDataForAnotherFile] = "The recovery data next to the archive was made for another file.",
         [MessageCode.RecoveryDataTargetNotFound] = "The file this recovery data protects was not found next to it.",
         [MessageCode.RecoveryDataNameMismatch] = "The recovery data was made for a file with another name; it matches this archive by its content.",
+        [MessageCode.RecoveryDataIntact] = "The archive matches its recovery data ({0} blocks, {1} recovery blocks).",
     };
 
     /// <summary>Every code with a template — all of <see cref="MessageCode"/> except <see cref="MessageCode.None"/>.</summary>

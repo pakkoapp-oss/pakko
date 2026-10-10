@@ -1119,9 +1119,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
       the set of an archive it overwrote without recovery data, with step 2's Set-ID-checked
       stale-volume rule; the other, a name-only match whose length and first-16-KiB MD5 both differ
       read as "does not match". Explorer must not show the wrong verdict to ordinary users.
-    - [ ] 3b — Explorer: Shell `--recovery-verify` (or Test with the flag) and the operation window,
-      "Verify with PAR2" on a `.par2` and on an archive with a set (hidden by
-      `DisableRecoveryData`, C++ `GetMenuPolicy`, `Localization.cpp` in 37 languages).
+    - [x] 3b — Explorer (2026-10-10): Shell `--recovery-verify` and the operation window, "Verify
+      with PAR2" on a `.par2` and on an archive with PAR2 files next to it (hidden by
+      `DisableRecoveryData`), `MessageCode.RecoveryDataIntact` and the menu item in 37 languages
+      (`docs/DECISIONS.md`, T-F275 "Step 3b").
     - [ ] 3c — the App's state panel for an opened archive with a set, and how a `.par2` reaches
       the App.
   - [ ] 4 — repair: `pakko r [-o<dir>]`, Explorer "Repair with PAR2", the App.

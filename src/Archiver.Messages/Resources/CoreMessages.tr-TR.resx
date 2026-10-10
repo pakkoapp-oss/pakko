@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Kurtarma verisi başka adlı bir dosya için oluşturulmuş; içeriğine göre bu arşivle eşleşiyor.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Arşiv kurtarma verisiyle eşleşiyor ({0} blok, {1} kurtarma bloğu).</value>
+  </data>
 </root>

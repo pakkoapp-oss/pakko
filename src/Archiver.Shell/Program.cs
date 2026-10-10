@@ -76,6 +76,10 @@ switch (command.Type)
         await commands.TestAsync(command.Files).ConfigureAwait(false);
         break;
 
+    case CommandType.RecoveryVerify:
+        await commands.VerifyRecoveryAsync(command.Files).ConfigureAwait(false);
+        break;
+
     case CommandType.Scan:
         await commands.ScanAsync(command.Files).ConfigureAwait(false);
         break;

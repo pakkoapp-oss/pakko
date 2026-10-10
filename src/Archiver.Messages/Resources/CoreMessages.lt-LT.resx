@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Atkūrimo duomenys sukurti kitu pavadinimu pavadintam failui; pagal turinį jie atitinka šį archyvą.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Archyvas atitinka savo atkūrimo duomenis ({0} blokai, {1} atkūrimo blokai).</value>
+  </data>
 </root>
