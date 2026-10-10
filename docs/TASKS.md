@@ -1661,3 +1661,14 @@ re-measured with T-F346's script before and after.
   2026-10-10 it failed the first attempt of two of four PR runs.
 - **Reported by:** T-F275 step 4b's local run, 2026-10-10.
 
+### T-F376 — `Start_ChildInheritsTheHandleItWasGiven` failed once on CI (P3)
+
+- [ ] **Status:** open. `Archiver.Shell.Tests.HandleListProcessTests.Start_ChildInheritsTheHandleItWasGiven`
+  failed on PR #43's run 38070212433 (2026-10-10): "Expected read.IsCompleted to be False because
+  the child holds the write end, but found True". It passed on a rerun of the same commit, which
+  changed nothing in Shell. The read finished while the child should have held the pipe's write
+  end; whether the child exited early on a loaded runner or the handle did not reach it is not
+  known. Next: read the test's timing assumptions, reproduce under load, fix the cause, not with a
+  retry.
+- **Reported by:** T-F375's PR, 2026-10-10.
+
