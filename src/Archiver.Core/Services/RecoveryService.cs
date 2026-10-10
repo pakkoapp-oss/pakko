@@ -156,18 +156,21 @@ public sealed class RecoveryService : IRecoveryService
             string folder = options.OutputDirectory ?? Path.GetDirectoryName(Path.GetFullPath(found.ArchivePath))!;
             Directory.CreateDirectory(folder);
             string preferred = Path.Combine(Path.GetFullPath(folder), RepairedName(found.ArchivePath));
-            for (int attempt = 0; ; attempt++)
+            for (int attempt = 0; attempt < MaxNameAttempts; attempt++)
             {
                 output = File.Exists(preferred) ? ArchiveNaming.GetUniqueFilePath(preferred) : preferred;
                 try
                 {
                     return (Par2Repairer.Repair(found.ArchivePath, found.Match.Set, verification, output, progress, cancellationToken), output, null);
                 }
-                catch (IOException ex) when ((ex.HResult & 0xFFFF) is FileExists or AlreadyExists && attempt < MaxNameAttempts)
+                catch (IOException ex) when ((ex.HResult & 0xFFFF) is FileExists or AlreadyExists)
                 {
                     // the name was taken after it was chosen: the existing file stays, the next number is tried
                 }
             }
+            // The last try: a name taken yet again is reported, not retried.
+            output = File.Exists(preferred) ? ArchiveNaming.GetUniqueFilePath(preferred) : preferred;
+            return (Par2Repairer.Repair(found.ArchivePath, found.Match.Set, verification, output, progress, cancellationToken), output, null);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
