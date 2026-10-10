@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Vipengee vyenye kichwa cha ndani kisicholingana na saraka kuu: {0} (cha kwanza: "{1}"). Programu nyingine zinaweza kutoa majina au data tofauti kutoka kwenye kumbukumbu hii.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Data ya urejeshaji lazima iwe kati ya asilimia 1 na 100 ({0} ilitolewa).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Data ya urejeshaji imezimwa na Sera ya Kikundi.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Data ya urejeshaji haikuundwa: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Data ya urejeshaji haikuundwa: kumbukumbu ni tupu au ni kubwa mno.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Faili ya urejeshaji iliyobaki kutoka toleo la awali la kumbukumbu haikuweza kufutwa: {0}</value>
+  </data>
 </root>

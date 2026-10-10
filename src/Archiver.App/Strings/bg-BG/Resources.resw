@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Модерен ZIP архиватор за Windows</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>Добавяне на данни за възстановяване (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>Файловете PAR2 до архива позволяват поправянето му след повреда.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>данни за възстановяване {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>Създаване на данни за възстановяване...</value>
+  </data>
 </root>

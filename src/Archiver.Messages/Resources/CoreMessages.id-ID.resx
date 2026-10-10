@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>{0} entri memiliki header lokal yang tidak cocok dengan direktori pusat (pertama: "{1}"). Program lain mungkin mengekstrak nama atau data yang berbeda dari arsip ini.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Data pemulihan harus antara 1 dan 100 persen ({0} diberikan).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Data pemulihan dinonaktifkan oleh Kebijakan Grup.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Data pemulihan tidak dibuat: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Data pemulihan tidak dibuat: arsip kosong atau terlalu besar.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>File pemulihan dari versi arsip sebelumnya tidak dapat dihapus: {0}</value>
+  </data>
 </root>

@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>{0}개 항목의 로컬 헤더가 중앙 디렉터리와 일치하지 않습니다(첫 번째: "{1}"). 다른 프로그램은 이 압축 파일에서 다른 이름이나 데이터를 추출할 수 있습니다.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>복구 데이터는 1~100% 사이여야 합니다({0}이(가) 지정됨).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>복구 데이터가 그룹 정책에 의해 비활성화되었습니다.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>복구 데이터를 만들지 못했습니다: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>복구 데이터를 만들지 못했습니다: 압축 파일이 비어 있거나 너무 큽니다.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>이전 버전의 압축 파일에서 남은 복구 파일을 삭제할 수 없습니다: {0}</value>
+  </data>
 </root>

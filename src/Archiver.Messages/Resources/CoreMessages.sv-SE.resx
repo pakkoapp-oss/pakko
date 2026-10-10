@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Poster vars lokala huvud inte stämmer med den centrala katalogen: {0} (första: ”{1}”). Andra program kan extrahera andra namn eller data ur det här arkivet.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Återställningsdata måste vara mellan 1 och 100 procent ({0} angavs).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Återställningsdata är inaktiverat av en grupprincip.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Återställningsdata skapades inte: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Återställningsdata skapades inte: arkivet är tomt eller för stort.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>En återställningsfil från en tidigare version av arkivet kunde inte tas bort: {0}</value>
+  </data>
 </root>

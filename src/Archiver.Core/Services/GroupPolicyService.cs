@@ -42,6 +42,7 @@ public static class GroupPolicyService
             AllowedFormats = allowedFormats is { Length: > 0 } ? allowedFormats : null,
             BlockedFormats = blockedFormats is { Length: > 0 } ? blockedFormats : null,
             DisableTarExtraction = reader.GetDword(PolicyKeyPath, "DisableTarExtraction") == 1,
+            DisableRecoveryData = reader.GetDword(PolicyKeyPath, "DisableRecoveryData") == 1,
         };
     }
 }

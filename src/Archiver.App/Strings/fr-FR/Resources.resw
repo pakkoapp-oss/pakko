@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Archiveur ZIP moderne pour Windows</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>Ajouter des données de récupération (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>Les fichiers PAR2 placés à côté de l’archive permettent de la réparer après un dommage.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>données de récupération {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>Création des données de récupération...</value>
+  </data>
 </root>

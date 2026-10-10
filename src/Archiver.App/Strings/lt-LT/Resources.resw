@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Šiuolaikiškas ZIP archyvatorius, skirtas „Windows“</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>Pridėti atkūrimo duomenis (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>Šalia archyvo esantys PAR2 failai leidžia jį pataisyti po pažeidimo.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>atkūrimo duomenys {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>Kuriami atkūrimo duomenys...</value>
+  </data>
 </root>

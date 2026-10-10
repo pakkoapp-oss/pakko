@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Windows کے لیے جدید ZIP آرکائیور</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>بازیابی ڈیٹا شامل کریں (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>آرکائیو کے ساتھ موجود PAR2 فائلیں نقصان کے بعد اسے ٹھیک کرنے دیتی ہیں۔</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>بازیابی ڈیٹا {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>بازیابی ڈیٹا بنایا جا رہا ہے...</value>
+  </data>
 </root>

@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>{0} elem helyi fejléce nem egyezik a központi könyvtárral (az első: „{1}”). Más programok eltérő neveket vagy adatokat bonthatnak ki ebből az archívumból.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>A helyreállítási adatok mértéke 1 és 100 százalék között lehet (megadva: {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>A helyreállítási adatokat csoportházirend tiltja.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>A helyreállítási adatok nem jöttek létre: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>A helyreállítási adatok nem jöttek létre: az archívum üres vagy túl nagy.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Az archívum egy korábbi verziójából maradt helyreállítási fájl nem törölhető: {0}</value>
+  </data>
 </root>

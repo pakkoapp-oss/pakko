@@ -11993,6 +11993,44 @@ Steps, one PR each: 0 docs and oracles, 1 the Core engine, 2 creation, 3 verific
 - Speed, Release, Ryzen 5 PRO 4650U: 512 MiB at 5 % created in 4.3 s (par2cmdline 9.3 s); 100 slices
   repaired in 6.9 s; a file above 4 GiB round-trips.
 
+### Step 2 — creation (2026-10-10)
+
+- `IRecoveryService` moves again, to step 3: creation goes through `IArchiveCreationRouter`, so
+  nothing in step 2 would call it, and a public verify/repair surface without a caller is not shipped.
+  `pakko t` is its first caller. The five new message codes ship here.
+- The router, not the engines, writes the sets: after the engine returns, for every path in
+  `CreatedFiles` — not only when `Success`, since a ZIP with one unreadable source is still written
+  and reports an error. A skipped archive (conflict Skip) is not in `CreatedFiles` in either engine,
+  so it gets no set; a renamed one gets a set under its new name.
+- The PAR2 work runs in `Task.Run`: an engine can complete synchronously, and the App awaits the
+  router on the UI thread. A test runs the router from a plain thread and checks that the PAR2
+  reports come from the pool; it failed with `Task.Run` removed.
+- `OpenDestinationFolder` is passed to the engine as false and the router opens the folder after the
+  sets (when the result has no error, the engines' own rule), so the user does not move an archive
+  whose set is still being written — `Par2Creator` holds it open without delete sharing.
+- A failed set is an `ArchiveError` on that archive (`RecoveryDataNotCreated`, or
+  `RecoveryDataFileTooLarge` for an empty archive or one past the reader's limits); the archive stays,
+  and every `Completed` source becomes `Partial`: the result does not say which source went into which
+  archive, and "Delete after" must not take the sources of an archive without its set.
+- An earlier set for the same archive name: the index is replaced by the rename. A volume named
+  `<archive>.volN+M.par2` is deleted only when the reader parses it as a set (or a refused set) with a
+  different Set ID; unreadable or non-PAR2 files and other `<archive>.*.par2` names are left alone.
+  A failed delete is a warning (`RecoveryOldVolumeNotDeleted`), not an error.
+- Progress: one percent for the whole call (`RecoveryProgressSplit`). The App switches to
+  "Finalizing" on 100, so the engine's 0-100 is scaled below 100 and 100 comes after the last set.
+  PAR2's share is p/(p+20) — 20 % of the bar at 5 %, 50 % at 20 % — as its work grows with p.
+  The PAR2 phase is `ProgressPhase.CreatingRecoveryData` with zero byte counts (the speed sampler
+  never sees bytes go back), and a report is passed on only when the percent changes.
+- `pakko a -rr[N]`: WinRAR's spelling (7z has no recovery switch). Bare `-rr` is the App's default,
+  5; `-rr0` is refused rather than read as "none", since leaving the switch out is none. It sits above
+  `-r` in the refusal table, which therefore is no longer order-free. `-rr` with `-so` exits 7. On
+  success pakko still prints nothing; the subprocess test checks the files.
+- The App: a checkbox and 5/10/20 % on the "New archive" card for every format, hidden by the
+  policy; the collapsed card's summary names it. The percent text follows the culture ("5 %",
+  "%5"). Explorer's one-click verbs have no options and never write a set.
+- `DisableRecoveryData` (ADMX `SUPPORTED_Pakko18`) covers the whole feature: creation is refused in
+  Core now; the verify and repair commands of steps 3-4 are hidden by it as well.
+
 ---
 
 ## CLAUDE.md as of 2026-10-09 (T-F369)

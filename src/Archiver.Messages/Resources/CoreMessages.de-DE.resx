@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Einträge, deren lokaler Header nicht mit dem zentralen Verzeichnis übereinstimmt: {0} (erster: „{1}“). Andere Programme extrahieren aus diesem Archiv möglicherweise andere Namen oder Daten.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Wiederherstellungsdaten müssen zwischen 1 und 100 Prozent liegen (angegeben: {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Wiederherstellungsdaten sind durch eine Gruppenrichtlinie deaktiviert.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Wiederherstellungsdaten wurden nicht erstellt: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Wiederherstellungsdaten wurden nicht erstellt: Das Archiv ist leer oder zu groß.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Eine Wiederherstellungsdatei einer früheren Version des Archivs konnte nicht gelöscht werden: {0}</value>
+  </data>
 </root>

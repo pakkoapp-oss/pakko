@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Entradas cuyo encabezado local no coincide con el directorio central: {0} (la primera: «{1}»). Otros programas pueden extraer nombres o datos distintos de este archivo comprimido.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Los datos de recuperación deben estar entre el 1 y el 100 por ciento (se indicó {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Los datos de recuperación están deshabilitados por una directiva de grupo.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>No se crearon los datos de recuperación: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>No se crearon los datos de recuperación: el archivo comprimido está vacío o es demasiado grande.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>No se pudo eliminar un archivo de recuperación de una versión anterior del archivo comprimido: {0}</value>
+  </data>
 </root>

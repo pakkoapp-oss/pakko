@@ -626,4 +626,16 @@
     <value>Modern ZIP archiver for Windows</value>
     <comment>One-line description of the app that Windows shows next to its name.</comment>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>Add recovery data (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>PAR2 files next to the archive let you repair it after damage.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>recovery data {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>Creating recovery data...</value>
+  </data>
 </root>

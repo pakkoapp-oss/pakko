@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>ऐसी प्रविष्टियाँ जिनका स्थानीय हेडर केंद्रीय निर्देशिका से मेल नहीं खाता: {0} (पहली: "{1}")। अन्य प्रोग्राम इस संग्रह से अलग नाम या डेटा निकाल सकते हैं।</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>पुनर्प्राप्ति डेटा 1 से 100 प्रतिशत के बीच होना चाहिए ({0} दिया गया)।</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>पुनर्प्राप्ति डेटा समूह नीति द्वारा अक्षम है।</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>पुनर्प्राप्ति डेटा नहीं बनाया गया: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>पुनर्प्राप्ति डेटा नहीं बनाया गया: संग्रह खाली है या बहुत बड़ा है।</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>संग्रह के पिछले संस्करण से बची पुनर्प्राप्ति फ़ाइल हटाई नहीं जा सकी: {0}</value>
+  </data>
 </root>

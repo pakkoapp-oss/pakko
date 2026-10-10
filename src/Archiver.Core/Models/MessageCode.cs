@@ -118,4 +118,11 @@ public enum MessageCode
 
     // T-F322: an encrypted 7z or RAR - tar.exe cannot decrypt either, so no password helps
     PasswordProtectedFormatNotSupported,
+
+    // T-F275: PAR2 recovery data
+    RecoveryPercentInvalid,
+    RecoveryDataDisabled,
+    RecoveryDataNotCreated,
+    RecoveryDataFileTooLarge,
+    RecoveryOldVolumeNotDeleted,
 }

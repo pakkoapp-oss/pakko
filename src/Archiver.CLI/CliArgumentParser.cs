@@ -37,6 +37,7 @@ public sealed record ParsedCliCommand
     public bool PromptForPassword { get; init; }                      // bare -p: ask interactively, x/t/a (T-F193)
     public int? ConsoleCodePage { get; init; }                        // -scc{charset}, every command (T-F238); a CliConsoleCharset value
     public bool? ApplyDownloadMark { get; init; }                     // -snz[0|1], x only (T-F360); null = not given
+    public int RecoveryPercent { get; init; }                         // -rr[N], a only (T-F275); 0 = no PAR2 files
     public string? ErrorMessage { get; init; }
 }
 
@@ -377,6 +378,7 @@ public static class CliArgumentParser
         public bool WriteToStdout { get; set; }
         public string? Password { get; set; }
         public bool PromptForPassword { get; set; }
+        public int RecoveryPercent { get; set; }
     }
 
     private static ParsedCliCommand ParseArchive(string[] rest)
@@ -405,6 +407,7 @@ public static class CliArgumentParser
             WriteToStdout = state.WriteToStdout,
             Password = state.Password,
             PromptForPassword = state.PromptForPassword,
+            RecoveryPercent = state.RecoveryPercent,
         };
     }
 
@@ -448,10 +451,33 @@ public static class CliArgumentParser
         if (token.StartsWith("-mem", StringComparison.Ordinal))
             return EncryptionMethodError(token);
 
+        if (token.StartsWith("-rr", StringComparison.Ordinal))
+        {
+            (state.RecoveryPercent, string? error) = ParseRecoveryPercent(token);
+            return error;
+        }
+
         if (token.StartsWith("-m", StringComparison.Ordinal))
             return "not supported by Pakko: of 7z's -m{params}, only -mx=<0-9> and -mem=AES256 are implemented";
 
         return UnsupportedSwitchReason(token);
+    }
+
+    // T-F275: WinRAR's -rr[N] spelling (no 7z switch adds recovery data). A bare -rr is the App's
+    // default, 5 %; 0 is refused rather than read as "none", since leaving -rr out means none.
+    // Whichever -rr comes last wins.
+    private const int DefaultRecoveryPercent = 5;
+
+    private static (int Percent, string? Error) ParseRecoveryPercent(string token)
+    {
+        string value = token[3..];
+        if (value.Length == 0)
+            return (DefaultRecoveryPercent, null);
+        bool number = value.Length <= 3 && value.All(char.IsAsciiDigit);
+        int percent = number ? int.Parse(value, System.Globalization.CultureInfo.InvariantCulture) : 0;
+        return percent is >= 1 and <= 100
+            ? (percent, null)
+            : (0, $"-rr{value}: recovery data is -rr (5 %) or -rr<N> with N from 1 to 100 (percent)");
     }
 
     // T-F193: Pakko writes WinZip AES-256 only, so -mem=AES256 (what 7z itself writes for a ZIP
@@ -659,9 +685,9 @@ public static class CliArgumentParser
     // switch at all — a typo) of the three-way rule. Matched against CLI.md's switch table.
     private const string NotSupportedOnThisCommand = "not supported on this command";
 
-    // Ordered by prefix, not priority — every prefix below is mutually exclusive with every
-    // other (no real 7z switch name is a prefix of another in this table), so scan order doesn't
-    // affect the result. "-mx" needs no separate entry: it already starts with "-m".
+    // Scanned in order, first match wins. Every prefix is exclusive of the others except "-rr",
+    // which starts with "-r" and so must stay above it (T-F275). "-mx" needs no separate entry: it
+    // already starts with "-m".
     private static readonly (string Prefix, string Message)[] UnsupportedSwitchPrefixes =
     [
         ("-ao", NotSupportedOnThisCommand),
@@ -670,6 +696,7 @@ public static class CliArgumentParser
         ("-scrc", "not supported on this command: -scrc{method} is only meaningful for 'h' (hash)"),
         ("-o", NotSupportedOnThisCommand),
         ("-p", "not supported on this command: -p{pwd} is only valid with 'x' (extract), 't' (test) or 'a' (create an AES-256 ZIP)"),
+        ("-rr", "not supported on this command: -rr[N] (recovery data) is only meaningful for 'a' (archive creation)"),
         ("-r", "not supported: recurse-subdirectories toggle has no Pakko equivalent (archiving already recurses by default)"),
         ("-i", "not supported: no wildcard include-pattern filtering exists in Pakko"),
         ("-x", "not supported: no wildcard exclude-pattern filtering exists in Pakko"),

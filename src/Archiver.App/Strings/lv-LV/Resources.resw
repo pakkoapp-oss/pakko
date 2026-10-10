@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Mūsdienīgs ZIP arhivators operētājsistēmai Windows</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>Pievienot atkopšanas datus (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>PAR2 faili blakus arhīvam ļauj to salabot pēc bojājuma.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>atkopšanas dati {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>Notiek atkopšanas datu izveide...</value>
+  </data>
 </root>

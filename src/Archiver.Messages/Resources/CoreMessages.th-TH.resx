@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>รายการ {0} รายการมีส่วนหัวภายในที่ไม่ตรงกับไดเรกทอรีกลาง (รายการแรก: "{1}") โปรแกรมอื่นอาจแตกชื่อหรือข้อมูลที่ต่างออกไปจากไฟล์บีบอัดนี้</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>ข้อมูลกู้คืนต้องอยู่ระหว่าง 1 ถึง 100 เปอร์เซ็นต์ (ระบุ {0})</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>ข้อมูลกู้คืนถูกปิดใช้งานโดยนโยบายกลุ่ม</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>ไม่ได้สร้างข้อมูลกู้คืน: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>ไม่ได้สร้างข้อมูลกู้คืน: ไฟล์บีบอัดว่างเปล่าหรือใหญ่เกินไป</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>ไม่สามารถลบไฟล์กู้คืนที่เหลือจากไฟล์บีบอัดเวอร์ชันก่อนหน้า: {0}</value>
+  </data>
 </root>

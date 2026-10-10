@@ -49,6 +49,7 @@ an error.** Policies only take effect when explicitly set.
 | `AllowedFormats` | `REG_MULTI_SZ` | one format name per line — `zip`, `tar`, `gzip`, `bz2`, `xz`, `zstd`, `lzma`, `rar`, `sevenzip` | Whitelist. If set, only listed formats can be extracted, tested, listed/browsed, scanned or created. Absent = no restriction. |
 | `BlockedFormats` | `REG_MULTI_SZ` | same format name vocabulary as `AllowedFormats` | Blocklist. **Takes precedence over `AllowedFormats`** — a format listed in both is blocked. The Explorer menu hides the Extract/Open/Scan items of a blocked format (plus Test and "Add to X.zip" for `zip`, "Add to X.tar" for `tar`), T-F262. |
 | `DisableTarExtraction` | `REG_DWORD` | `0`/`1` | `1` = Pakko never spawns `tar.exe` at all — not even its startup version check (blocks RAR/7z/tar/tar.gz/tar.bz2/tar.xz/tar.zst/tar.lzma extraction, listing/browsing, scanning and creation outright, and hides the corresponding format options in the app's own UI; the Explorer menu hides the tar-family items and "Add to X.tar" too, T-F262). |
+| `DisableRecoveryData` | `REG_DWORD` | `0`/`1` | `1` = Pakko's PAR2 recovery data is off (T-F275, Pakko 1.8): the app hides the option to add it, and `pakko a -rr` is refused with an error before any archive is written. Verifying and repairing from PAR2 files are part of the same feature and are turned off by the same policy. |
 
 ### `EnforceMOTW` in detail
 
@@ -109,7 +110,7 @@ compression-ratio-threshold override for zip-bomb detection). It was dropped bef
 — no comparable archiver (7-Zip, WinRAR, NanaZip) exposes that threshold as an admin-configurable
 value, and it didn't correspond to a documented sysadmin need, only a hypothetical one. Pakko's
 existing fixed 1000:1 compression-ratio bomb detection (see `SECURITY.md`) is unaffected by Group
-Policy and applies unconditionally, regardless of any of the four keys above.
+Policy and applies unconditionally, regardless of any of the keys above.
 
 ---
 

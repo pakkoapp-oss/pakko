@@ -9,7 +9,7 @@ namespace Archiver.Messages.Tests;
 public sealed class GlossaryTests
 {
     private static readonly string[] Concepts =
-        ["extract", "compress", "archive", "password", "test", "scan", "hash", "skip", "entry", "folder"];
+        ["extract", "compress", "archive", "password", "test", "scan", "hash", "skip", "entry", "folder", "recovery"];
 
     private static readonly Row[] Rows = ReadGlossary();
 

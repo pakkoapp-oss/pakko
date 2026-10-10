@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Elementer med en lokal header, der ikke stemmer overens med det centrale bibliotek: {0} (første: „{1}“). Andre programmer kan udpakke andre navne eller data fra dette arkiv.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Gendannelsesdata skal være mellem 1 og 100 procent ({0} blev angivet).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Gendannelsesdata er deaktiveret af gruppepolitik.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Gendannelsesdata blev ikke oprettet: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Gendannelsesdata blev ikke oprettet: arkivet er tomt eller for stort.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>En gendannelsesfil fra en tidligere version af arkivet kunne ikke slettes: {0}</value>
+  </data>
 </root>

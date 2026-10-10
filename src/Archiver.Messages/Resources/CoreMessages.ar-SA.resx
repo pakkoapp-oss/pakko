@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>عناصر رأسها المحلي لا يطابق الدليل المركزي: {0} (الأول: "{1}"). قد تستخرج برامج أخرى أسماءً أو بيانات مختلفة من هذا الأرشيف.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>يجب أن تكون بيانات الاسترداد بين 1 و100 بالمائة (تم تحديد {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>بيانات الاسترداد معطلة بواسطة نهج المجموعة.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>لم يتم إنشاء بيانات الاسترداد: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>لم يتم إنشاء بيانات الاسترداد: الأرشيف فارغ أو كبير جدًا.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>تعذر حذف ملف استرداد متبقٍ من إصدار سابق من الأرشيف: {0}</value>
+  </data>
 </root>

@@ -6,6 +6,10 @@ public sealed record ArchiveResult
     public bool Success => Errors.Count == 0;
 
     public IReadOnlyList<string> CreatedFiles { get; init; } = [];
+
+    /// <summary>The PAR2 files written next to the archives in <see cref="CreatedFiles"/>
+    /// (T-F275, <see cref="ArchiveOptions.RecoveryPercent"/>): an index and a volume per archive.</summary>
+    public IReadOnlyList<string> RecoveryFiles { get; init; } = [];
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
 

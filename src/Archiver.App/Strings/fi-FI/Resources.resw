@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Moderni ZIP-pakkausohjelma Windowsille</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>Lisää palautustiedot (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>Arkiston vieressä olevilla PAR2-tiedostoilla arkiston voi korjata vaurioitumisen jälkeen.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>palautustiedot {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>Luodaan palautustietoja...</value>
+  </data>
 </root>

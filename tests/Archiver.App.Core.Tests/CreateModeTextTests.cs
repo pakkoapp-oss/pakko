@@ -73,6 +73,18 @@ public sealed class CreateModeTextTests
             .Should().BeEmpty();
     }
 
+    // T-F275: a collapsed card still applies the recovery data option, so the summary says so.
+    [Theory]
+    [InlineData(ArchiveContainerFormat.Zip)]
+    [InlineData(ArchiveContainerFormat.Tar)]
+    public void Summary_RecoveryData_NamedLastForEveryFormat(ArchiveContainerFormat format)
+    {
+        CreateModeText.SummaryKeys(format, CompressionLevel.Optimal, encrypt: false, recoveryPercent: 10)
+            .Should().EndWith("SummaryRecoveryData");
+        CreateModeText.SummaryKeys(format, CompressionLevel.Optimal, encrypt: false, recoveryPercent: 0)
+            .Should().NotContain("SummaryRecoveryData");
+    }
+
     [Fact]
     public void Summary_NoCompression_HasItsOwnWord() =>
         CreateModeText.SummaryKeys(ArchiveContainerFormat.Zip, CompressionLevel.NoCompression, encrypt: false)

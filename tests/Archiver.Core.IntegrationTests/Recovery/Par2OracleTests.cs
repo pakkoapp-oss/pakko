@@ -25,6 +25,27 @@ public sealed class Par2OracleTests : IDisposable
         Run(MultiPar, _temp.Path, "v", created.IndexPath).ExitCode.Should().Be(0);
     }
 
+    // T-F275 step 2: the whole path a frontend takes — the router writes the archive, then its set.
+    [Par2OracleFact(Par2cmdline)]
+    public async Task ArchiveWithRecoveryData_Par2cmdlineVerifiesTheSet()
+    {
+        string source = WriteRandom("data.bin", 300_000);
+        string destination = Path.Combine(_temp.Path, "out");
+        var services = Archiver.Core.Services.PakkoServices.Create(new Archiver.Core.Models.GroupPolicyOptions());
+
+        Archiver.Core.Models.ArchiveResult result = await services.CreationRouter.ArchiveAsync(new Archiver.Core.Models.ArchiveOptions
+        {
+            SourcePaths = [source],
+            DestinationFolder = destination,
+            ArchiveName = "data",
+            RecoveryPercent = 10,
+        });
+
+        result.Errors.Should().BeEmpty();
+        result.RecoveryFiles.Should().HaveCount(2);
+        Run(Par2cmdline, destination, "v", "-q", "--full-hash", result.RecoveryFiles[0]).ExitCode.Should().Be(0);
+    }
+
     [Par2OracleFact(Par2cmdline, MultiPar)]
     public void PakkoSet_CyrillicName_OraclesVerifyIt()
     {

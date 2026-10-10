@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Kaasaegne ZIP-arhiveerija Windowsile</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>Lisa taasteandmed (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>Arhiivi kõrval olevad PAR2-failid võimaldavad seda pärast kahjustust parandada.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>taasteandmed {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>Taasteandmete loomine...</value>
+  </data>
 </root>

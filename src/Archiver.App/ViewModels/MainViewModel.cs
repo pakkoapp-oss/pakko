@@ -106,6 +106,7 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsNotBusy))]
     [NotifyPropertyChangedFor(nameof(IsArchiveNameAndNotBusy))]
     [NotifyPropertyChangedFor(nameof(IsCompressionLevelEnabled))]
+    [NotifyPropertyChangedFor(nameof(IsRecoveryPercentEnabled))]
     [NotifyPropertyChangedFor(nameof(DownloadMarkCanChange))]
     [NotifyCanExecuteChangedFor(nameof(NavigateDestinationUpCommand))]
     public partial bool IsBusy { get; set; } = false;
@@ -269,7 +270,8 @@ public sealed partial class MainViewModel : ObservableObject
         {
             string summary = string.Join(" · ",
                 new[] { CreateModeText.FormatName(SelectedContainerFormat) }
-                    .Concat(CreateModeText.SummaryKeys(SelectedContainerFormat, SelectedCompressionLevel, EncryptWithPassword).Select(_res.GetString)));
+                    .Concat(CreateModeText.SummaryKeys(SelectedContainerFormat, SelectedCompressionLevel, EncryptWithPassword, RecoveryPercent)
+                        .Select(key => _res.GetString(key).Replace("{0}", RecoveryPercentText(RecoveryPercent)))));
             return _listActions.ArchivesOnly ? summary + " — " + _res.GetString("NewArchiveCollapsedReason") : summary;
         }
     }
@@ -580,6 +582,30 @@ public sealed partial class MainViewModel : ObservableObject
 
     public Visibility EncryptZipOnlyVisibility =>
         SelectedContainerFormat == ArchiveContainerFormat.Zip ? Visibility.Collapsed : Visibility.Visible;
+
+    // T-F275: PAR2 recovery data next to the archive, for every format; hidden by the
+    // DisableRecoveryData policy, which is read once at startup like the one below.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NewArchiveSummary))]
+    [NotifyPropertyChangedFor(nameof(IsRecoveryPercentEnabled))]
+    public partial bool AddRecoveryData { get; set; } = false;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NewArchiveSummary))]
+    public partial int RecoveryPercentIndex { get; set; } = RecoveryDataOption.DefaultIndex;
+
+    public Visibility RecoveryDataVisibility =>
+        RecoveryDataOption.IsOffered(_policy) ? Visibility.Visible : Visibility.Collapsed;
+
+    public bool IsRecoveryPercentEnabled => IsNotBusy && AddRecoveryData;
+
+    public IReadOnlyList<string> RecoveryPercentChoices { get; } =
+        [.. RecoveryDataOption.Percents.Select(RecoveryPercentText)];
+
+    private int RecoveryPercent => RecoveryDataOption.PercentFor(_policy, AddRecoveryData, RecoveryPercentIndex);
+
+    private static string RecoveryPercentText(int percent) =>
+        RecoveryDataOption.PercentText(percent, System.Globalization.CultureInfo.CurrentCulture);
 
     // T-F51: DisableTarExtraction also hides the 6 tar-family Format ComboBoxItems — GroupPolicy
     // is loaded once at process startup and never changes mid-session, so this is a fixed value
@@ -892,6 +918,7 @@ public sealed partial class MainViewModel : ObservableObject
                 OpenDestinationFolder = OpenDestinationFolder,
                 CompressionLevel = SelectedCompressionLevel,
                 Format = SelectedContainerFormat,
+                RecoveryPercent = RecoveryPercent,
                 ResolveConflictAsync = conflict => _dialogService.ShowConflictDialogAsync(conflict, () => _cts?.Cancel()),
             };
 
@@ -1824,6 +1851,13 @@ public sealed partial class MainViewModel : ObservableObject
         {
             _checkingArchive = true;
             StatusMessage = $"{_operationStatusPrefix}  ·  {_res.GetString("StatusCheckingArchive")}";
+            return;
+        }
+        // T-F275: the bar keeps moving (Progress is set by the caller); the byte counts are zero,
+        // so there is no speed or time left to show.
+        if (report.Phase == ProgressPhase.CreatingRecoveryData)
+        {
+            StatusMessage = $"{_operationStatusPrefix}  ·  {_res.GetString("StatusCreatingRecoveryData")}";
             return;
         }
         if (_checkingArchive)

@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Elementai, kurių vietinė antraštė nesutampa su centriniu katalogu: {0} (pirmasis: „{1}“). Kitos programos iš šio archyvo gali išskleisti kitus pavadinimus ar duomenis.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Atkūrimo duomenų turi būti nuo 1 iki 100 procentų (nurodyta {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Atkūrimo duomenys išjungti grupės strategija.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Atkūrimo duomenys nesukurti: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Atkūrimo duomenys nesukurti: archyvas tuščias arba per didelis.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Nepavyko ištrinti atkūrimo failo, likusio iš ankstesnės archyvo versijos: {0}</value>
+  </data>
 </root>

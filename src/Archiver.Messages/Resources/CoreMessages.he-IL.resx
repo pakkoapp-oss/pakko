@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>פריטים שהכותרת המקומית שלהם אינה תואמת לספרייה המרכזית: {0} (הראשון: "{1}"). תוכנות אחרות עשויות לחלץ מארכיון זה שמות או נתונים שונים.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>נתוני השחזור חייבים להיות בין 1 ל-100 אחוז (צוין {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>נתוני שחזור הושבתו על-ידי מדיניות קבוצתית.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>נתוני השחזור לא נוצרו: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>נתוני השחזור לא נוצרו: הארכיון ריק או גדול מדי.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>לא ניתן היה למחוק קובץ שחזור שנותר מגרסה קודמת של הארכיון: {0}</value>
+  </data>
 </root>

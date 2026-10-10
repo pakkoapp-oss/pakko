@@ -306,4 +306,19 @@
   <data name="EntryDataTruncated" xml:space="preserve">
     <value>ZIP entry data ends before its declared size.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Recovery data must be between 1 and 100 percent ({0} was given).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Recovery data is disabled by Group Policy.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Recovery data was not created: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Recovery data was not created: the archive is empty or too large.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>A recovery file left from an earlier version of the archive could not be deleted: {0}</value>
+  </data>
 </root>

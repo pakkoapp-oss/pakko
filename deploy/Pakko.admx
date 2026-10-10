@@ -15,12 +15,18 @@
             <product name="Pakko" displayName="$(string.Pakko)">
                 <!-- major (2 digits) + minor (2 digits) + build (5 digits) -->
                 <majorVersion name="Pakko14" displayName="$(string.Pakko14)" versionIndex="1400000" />
+                <majorVersion name="Pakko18" displayName="$(string.Pakko18)" versionIndex="1800000" />
             </product>
         </products>
         <definitions>
             <definition name="SUPPORTED_Pakko14" displayName="$(string.SUPPORTED_Pakko14)">
                 <and>
                     <range ref="Pakko14" />
+                </and>
+            </definition>
+            <definition name="SUPPORTED_Pakko18" displayName="$(string.SUPPORTED_Pakko18)">
+                <and>
+                    <range ref="Pakko18" />
                 </and>
             </definition>
         </definitions>
@@ -98,6 +104,23 @@
             valueName="DisableTarExtraction">
             <parentCategory ref="PakkoPolicies" />
             <supportedOn ref="SUPPORTED_Pakko14" />
+            <enabledValue>
+                <decimal value="1" />
+            </enabledValue>
+            <disabledValue>
+                <decimal value="0" />
+            </disabledValue>
+        </policy>
+
+        <policy
+            name="DisableRecoveryData"
+            class="Machine"
+            displayName="$(string.DisableRecoveryData)"
+            explainText="$(string.DisableRecoveryDataExplain)"
+            key="SOFTWARE\Policies\Pakko"
+            valueName="DisableRecoveryData">
+            <parentCategory ref="PakkoPolicies" />
+            <supportedOn ref="SUPPORTED_Pakko18" />
             <enabledValue>
                 <decimal value="1" />
             </enabledValue>

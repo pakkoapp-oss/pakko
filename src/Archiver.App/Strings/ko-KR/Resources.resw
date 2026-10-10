@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Windows용 최신 ZIP 압축 프로그램</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>복구 데이터 추가(PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>압축 파일 옆의 PAR2 파일로 손상된 압축 파일을 복구할 수 있습니다.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>복구 데이터 {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>복구 데이터를 만드는 중...</value>
+  </data>
 </root>
