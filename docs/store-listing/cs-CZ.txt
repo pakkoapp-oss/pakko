@@ -18,6 +18,7 @@ RAR a 7-Zip: pouze extrahování, pomocí nástroje tar.exe vestavěného ve Win
 Kontextová nabídka Průzkumníka souborů: Otevřít, Extrahovat sem, Komprimovat, Otestovat archiv, Zkontrolovat hrozby, Hash
 Prohlížeč archivů: nahlédněte do archivu, zobrazte náhled obrázků a textu, extrahujte jen to, co vyberete
 Kontrola hrozeb: obsah archivu zkontroluje váš nainstalovaný antivirový program
+Data pro obnovení (PAR2): přidejte je k novému archivu, ověřte archiv a po poškození ho opravte
 Extrahování v sandboxu: RAR, 7-Zip a TAR se čtou v izolovaném kontejneru AppContainer bez přístupu k síti
 Extrahované soubory si zachovají značku Mark-of-the-Web a původní data
 Příkazový řádek v balíčku: příkaz pakko s příkazy ve stylu 7-Zipu
@@ -34,8 +35,8 @@ ZIP s heslem
 ZIP kompresní nástroj
 
 [What's new in this version]
-• Příkaz pakko funguje v každém terminálu hned po instalaci: příkazový řádek ve stylu 7-Zipu pro skripty.
-• Extrahované soubory a složky si zachovají data uložená v archivu.
-• Aplikace se lépe ovládá z klávesnice; okno „Soubor již existuje“ ukazuje velikost a datum obou souborů.
-• Nejrychlejší úroveň komprese už nezvětšuje soubory, které už komprimované byly.
-• Překlady byly zrevidovány ve všech 36 jazycích kromě angličtiny; nabídka Průzkumníka se nyní řídí vaším seznamem jazyků Windows.
+• Novinka: data pro obnovení (PAR2). Při vytváření archivu zapněte „Přidat data pro obnovení (PAR2)“ a archiv půjde po poškození opravit.
+• „Ověřit pomocí PAR2“ a „Opravit pomocí PAR2“ v nabídce Průzkumníka souborů i v aplikaci; opravená kopie je nový soubor, originál se nemění.
+• Fungují i soubory PAR2 vytvořené jinými programy; příkaz pakko přidává data pro obnovení přepínačem -rr a opravuje příkazem r.
+• Pakko se spouští rychleji a stahovaný balíček je mnohem menší.
+• Velké soubory se komprimují na několika jádrech procesoru.

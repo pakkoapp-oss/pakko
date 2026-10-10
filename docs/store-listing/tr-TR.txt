@@ -18,6 +18,7 @@ RAR ve 7-Zip: yalnızca ayıklama, Windows'un yerleşik tar.exe aracıyla
 Dosya Gezgini sağ tık menüsü: Aç, Buraya ayıkla, Sıkıştır, Arşivi test et, Tehditleri tara, Karma
 Arşiv tarayıcısı: arşivin içine bakın, resimleri ve metinleri önizleyin, yalnızca seçtiklerinizi ayıklayın
 Tehdit taraması: arşivin içeriğini yüklü virüsten koruma programınız denetler
+Kurtarma verisi (PAR2): yeni bir arşive ekleyin, arşivi doğrulayın ve hasardan sonra onarın
 Korumalı alanda ayıklama: RAR, 7-Zip ve TAR, ağ erişimi olmayan yalıtılmış bir AppContainer içinde okunur
 Ayıklanan dosyalar Mark-of-the-Web etiketini ve özgün tarihlerini korur
 Komut satırı dahil: 7-Zip tarzı komutlara sahip pakko komutu
@@ -34,8 +35,8 @@ parolalı zip
 açık kaynak
 
 [What's new in this version]
-• pakko komutu, kurulumdan hemen sonra her terminalde çalışır: betikler için 7-Zip tarzı bir komut satırı.
-• Ayıklanan dosyalar ve klasörler, arşivde kayıtlı tarihleri korur.
-• Uygulama klavyeyle daha rahat kullanılıyor; "Dosya zaten var" penceresi iki dosyanın da boyutunu ve tarihini gösteriyor.
-• En hızlı sıkıştırma düzeyi, önceden sıkıştırılmış dosyaları artık büyütmüyor.
-• İngilizce dışındaki 36 dilin tümünde çeviriler gözden geçirildi; Dosya Gezgini menüsü artık Windows dil listenizi izliyor.
+• Yeni: kurtarma verisi (PAR2). Arşiv oluştururken "Kurtarma verisi ekle (PAR2)" seçeneğini açın; arşiv hasar gördükten sonra onarılabilir.
+• Dosya Gezgini menüsünde ve uygulamada "PAR2 ile doğrula" ve "PAR2 ile onar"; onarılan kopya yeni bir dosyadır, özgün dosya değiştirilmez.
+• Başka programlarla oluşturulan PAR2 dosyaları da kullanılabilir; pakko komutu -rr ile kurtarma verisi ekler, r ile onarır.
+• Pakko daha hızlı açılıyor ve indirme boyutu çok daha küçük.
+• Büyük dosyalar birden çok işlemci çekirdeğinde sıkıştırılıyor.

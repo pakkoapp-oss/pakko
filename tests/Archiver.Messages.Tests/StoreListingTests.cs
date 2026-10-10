@@ -33,7 +33,7 @@ public sealed class StoreListingTests
         listing["Short description"].Length.Should().BeLessThanOrEqualTo(270);
         listing["Short description"].Should().NotContain("\n");
         listing["What's new in this version"].Length.Should().BeLessThanOrEqualTo(1500);
-        Lines(listing, "Product features").Should().HaveCount(12).And.OnlyContain(f => f.Length <= 200);
+        Lines(listing, "Product features").Should().HaveCount(13).And.OnlyContain(f => f.Length <= 200);
         Lines(listing, "Search terms").Should().HaveCount(7).And.OnlyHaveUniqueItems().And.OnlyContain(t => t.Length <= 30);
         Lines(listing, "Search terms").Sum(t => t.Split(' ').Length).Should().BeLessThanOrEqualTo(21);
     }

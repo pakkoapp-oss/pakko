@@ -18,6 +18,7 @@ RAR dan 7-Zip: hanya mengekstrak, melalui tar.exe bawaan Windows
 Menu klik kanan File Explorer: Buka, Ekstrak di sini, Kompres, Uji arsip, Pindai ancaman, Hash
 Penjelajah arsip: lihat isi arsip, pratinjau gambar dan teks, ekstrak hanya yang Anda pilih
 Pindai ancaman: isi arsip diperiksa oleh antivirus yang terpasang di komputer Anda
+Data pemulihan (PAR2): tambahkan ke arsip baru, verifikasi arsip, dan perbaiki setelah rusak
 Ekstraksi dalam sandbox: RAR, 7-Zip, dan TAR dibaca di dalam AppContainer terisolasi tanpa akses jaringan
 File yang diekstrak mempertahankan tag Mark-of-the-Web dan tanggal aslinya
 Baris perintah disertakan: perintah pakko dengan perintah bergaya 7-Zip
@@ -34,8 +35,8 @@ zip dengan kata sandi
 sumber terbuka
 
 [What's new in this version]
-• Perintah pakko berfungsi di terminal mana pun segera setelah pemasangan: baris perintah bergaya 7-Zip untuk skrip.
-• File dan folder yang diekstrak mempertahankan tanggal yang tersimpan di dalam arsip.
-• Aplikasi kini lebih nyaman digunakan dengan keyboard; jendela "File sudah ada" menampilkan ukuran dan tanggal kedua file.
-• Tingkat kompresi tercepat tidak lagi memperbesar file yang sudah terkompresi.
-• Terjemahan ditinjau ulang dalam semua 36 bahasa selain bahasa Inggris; menu File Explorer kini mengikuti daftar bahasa Windows Anda.
+• Baru: data pemulihan (PAR2). Aktifkan "Tambahkan data pemulihan (PAR2)" saat membuat arsip, dan arsip dapat diperbaiki setelah rusak.
+• "Verifikasi dengan PAR2" dan "Perbaiki dengan PAR2" di menu File Explorer dan di aplikasi; salinan yang diperbaiki adalah file baru, file asli tidak diubah.
+• File PAR2 buatan program lain juga dapat dipakai; perintah pakko menambahkan data pemulihan dengan -rr dan memperbaiki dengan r.
+• Pakko mulai lebih cepat dan unduhannya jauh lebih kecil.
+• File besar dikompres pada beberapa inti prosesor.

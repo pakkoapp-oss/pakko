@@ -18,6 +18,7 @@ RAR and 7-Zip: extract only, via Windows' built-in tar.exe
 File Explorer right-click menu: Open, Extract here, Compress, Test archive, Scan for threats, Hash
 Archive browser: look inside an archive, preview pictures and text, extract only what you select
 Scan for threats: the archive's contents are checked by your installed antivirus
+Recovery data (PAR2): add it to a new archive, verify the archive and repair it after damage
 Sandboxed extraction: RAR, 7-Zip and TAR are read inside an isolated AppContainer with no network access
 Extracted files keep the Mark-of-the-Web tag and their original dates
 Command line included: the pakko command with 7-Zip-style commands
@@ -34,8 +35,8 @@ sandboxed archive extraction
 open source
 
 [What's new in this version]
-• The pakko command works in any terminal right after installation: a 7-Zip-style command line for scripts.
-• Extracted files and folders keep the dates stored in the archive.
-• The app works better from the keyboard; the "File already exists" dialog shows the size and date of both files.
-• The fastest compression level no longer makes already compressed files larger.
-• Translations revised in all 36 non-English languages; Explorer's menu now follows your Windows language list.
+• New: recovery data (PAR2). Turn on "Add recovery data (PAR2)" when creating an archive, and the archive can be repaired after damage.
+• "Verify with PAR2" and "Repair with PAR2" in the File Explorer menu and in the app; the repaired copy is a new file, the original is not changed.
+• PAR2 files made by other programs work too; the pakko command adds recovery data with -rr and repairs with r.
+• Pakko starts faster and is a much smaller download.
+• Large files are compressed on several processor cores.

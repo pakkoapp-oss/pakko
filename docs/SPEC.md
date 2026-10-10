@@ -213,7 +213,7 @@ teaser only; don't let it drift from `POLICIES.md` again.
 
 ---
 
-## Recovery Data — PAR2 (v1.8, T-F275, in progress)
+## Recovery Data — PAR2 (v1.8, T-F275)
 
 For archives kept on flash drives or optical media or carried offline, where bad sectors or a
 truncated copy are the realistic damage.
@@ -231,7 +231,7 @@ truncated copy are the realistic damage.
   Pakko's sets are checked against par2cmdline, par2cmdline-turbo and MultiPar.
 - **Not in scope:** sets covering several files; locating shifted data after inserted or deleted
   bytes (verification is positional); PAR 3.0; recovery data inside the archive.
-- **Group Policy:** `DisableRecoveryData` turns all of it off (`POLICIES.md` once implemented).
+- **Group Policy:** `DisableRecoveryData` turns all of it off (`POLICIES.md`).
 - Design and research: `DECISIONS.md` "T-F275 — PAR2 recovery data".
 
 ---

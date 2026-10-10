@@ -109,7 +109,8 @@ def check_text(new, files, keep_lists):
         assert col['ReleaseNotes'] == text["What's new in this version"]
         if locale in keep_lists:
             continue
-        assert [col[f'Feature{k}'] for k in range(1, 21)] == text['Product features'].split('\n') + [''] * 8
+        features = text['Product features'].split('\n')
+        assert [col[f'Feature{k}'] for k in range(1, 21)] == features + [''] * (20 - len(features))
         assert [col[f'SearchTerm{k}'] for k in range(1, 8)] == text['Search terms'].split('\n')
 
 

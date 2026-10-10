@@ -18,6 +18,7 @@ RAR und 7-Zip: nur Extrahieren, über das in Windows integrierte tar.exe
 Kontextmenü des Datei-Explorers: Öffnen, Hier extrahieren, Komprimieren, Archiv testen, Auf Bedrohungen prüfen, Hash
 Archiv-Browser: in ein Archiv hineinsehen, Bilder und Text in der Vorschau öffnen, nur das Ausgewählte extrahieren
 Auf Bedrohungen prüfen: Ihr installierter Virenschutz prüft den Inhalt des Archivs
+Wiederherstellungsdaten (PAR2): einem neuen Archiv hinzufügen, das Archiv prüfen und nach einer Beschädigung reparieren
 Extrahieren in einer Sandbox: RAR, 7-Zip und TAR werden in einem isolierten AppContainer ohne Netzwerkzugriff gelesen
 Extrahierte Dateien behalten die Mark-of-the-Web-Kennzeichnung und ihr ursprüngliches Datum
 Kommandozeile inklusive: der Befehl pakko mit Befehlen im Stil von 7-Zip
@@ -34,8 +35,8 @@ Zip mit Passwort
 Open Source
 
 [What's new in this version]
-• Der Befehl pakko funktioniert direkt nach der Installation in jedem Terminal: eine Kommandozeile im Stil von 7-Zip für Skripte.
-• Extrahierte Dateien und Ordner behalten das im Archiv gespeicherte Datum.
-• Die App lässt sich besser mit der Tastatur bedienen; der Dialog „Datei existiert bereits“ zeigt Größe und Datum beider Dateien.
-• Die schnellste Komprimierungsstufe macht bereits komprimierte Dateien nicht mehr größer.
-• Übersetzungen in allen 36 Sprachen außer Englisch überarbeitet; das Explorer-Menü richtet sich jetzt nach Ihrer Windows-Sprachliste.
+• Neu: Wiederherstellungsdaten (PAR2). Aktivieren Sie beim Erstellen eines Archivs „Wiederherstellungsdaten hinzufügen (PAR2)“, dann lässt sich das Archiv nach einer Beschädigung reparieren.
+• „Mit PAR2 prüfen“ und „Mit PAR2 reparieren“ im Menü des Datei-Explorers und in der App; die reparierte Kopie ist eine neue Datei, das Original bleibt unverändert.
+• PAR2-Dateien anderer Programme funktionieren ebenfalls; der Befehl pakko fügt Wiederherstellungsdaten mit -rr hinzu und repariert mit r.
+• Pakko startet schneller und der Download ist deutlich kleiner.
+• Große Dateien werden auf mehreren Prozessorkernen komprimiert.

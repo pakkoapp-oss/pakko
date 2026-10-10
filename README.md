@@ -107,6 +107,10 @@ Pakko closes gaps in Windows Explorer:
   filesystem (drives, "This PC") the same way NanaZip's classic file manager does
 - **Scan for threats** — hands an archive's contents to the antivirus installed on the machine
   (through Windows' AMSI interface), password-protected ZIP entries included
+- **Recovery data (PAR2)** — standard PAR 2.0 files written next to a new archive (5, 10 or 20 %),
+  then "Verify with PAR2" and "Repair with PAR2" in the menu and the app; the repaired copy is a
+  new file and the original is only read. par2cmdline and MultiPar read Pakko's sets, and Pakko
+  reads theirs
 - **Group Policy / ADMX** — administrators can disable tar-family extraction and other
   risk-relevant features fleet-wide via a real ADMX template; see [`docs/POLICIES.md`](docs/POLICIES.md)
 
@@ -119,7 +123,7 @@ compression tools — to read RAR/7z/tar/gz/bz2/xz/zst/lzma, and to create tar-f
 ## Command-Line Interface
 
 `pakko.exe` (project name `Archiver.CLI`) is a standalone, self-contained command-line build with
-7z-familiar commands (`x`/`t`/`i`/`a`/`l`) — it runs independently of the GUI/MSIX. See
+7z-familiar commands (`x`/`t`/`i`/`a`/`l`, and `r` to repair from PAR2 files) — it runs independently of the GUI/MSIX. See
 [`docs/CLI.md`](docs/CLI.md) for the full command/switch specification. Download it as its own
 per-architecture zip (with a `SHA256SUMS` file for verification) from the
 [project's GitHub Releases page](https://github.com/pakkoapp-oss/pakko/releases) — every version
@@ -133,8 +137,8 @@ installed with winget once the winget catalog accepts the package — see `docs/
 
 ZIP archive/extract (with passwords), the native shell extension (context menu, file
 associations, MOTW propagation), sandboxed RAR/7z/tar-family read + tar-family create via
-`tar.exe`, the Archive Browser, antivirus scan, the `pakko` command line and Group Policy/ADMX
-support are all implemented and on-device verified. Per-release history:
+`tar.exe`, the Archive Browser, antivirus scan, PAR2 recovery data, the `pakko` command line and
+Group Policy/ADMX support are all implemented and on-device verified. Per-release history:
 [`CHANGELOG.md`](CHANGELOG.md).
 
 - ✅ Archive (single / separate) with compression level selector, ZIP or any tar-family format
@@ -156,6 +160,8 @@ support are all implemented and on-device verified. Per-release history:
   `X.zip`/`X.tar`, Compress…, Test archive, Scan for threats, Hash (CRC-32, SHA-256)
 - ✅ Scan for threats — archive contents checked by the installed antivirus through AMSI
 - ✅ Extracted files and folders keep the dates stored in the archive
+- ✅ Recovery data (PAR2) — created next to an archive from the app or `pakko a -rr`, verified by
+  `pakko t`, Explorer and the app, repaired into a new file by `pakko r`, Explorer and the app
 - ✅ `pakko` command line — in any terminal after a Store install, or as a standalone zip
 - ✅ File type association (every readable format). No URI protocol is registered (the former
   `pakko://` scheme was removed), so a web page cannot launch Pakko through a link of its own

@@ -18,6 +18,7 @@ RAR ir 7-Zip: tik išskleidimas, „Windows“ įtaisytuoju įrankiu tar.exe
 Failų naršyklės kontekstinis meniu: Atverti, Išskleisti čia, Suspausti, Testuoti archyvą, Tikrinti grėsmes, Maiša
 Archyvų naršyklė: pažvelkite į archyvo vidų, peržiūrėkite paveikslėlius ir tekstą, išskleiskite tik tai, ką pažymėjote
 Grėsmių tikrinimas: archyvo turinį patikrina jūsų įdiegta antivirusinė programa
+Atkūrimo duomenys (PAR2): pridėkite prie naujo archyvo, tikrinkite archyvą ir taisykite jį po pažeidimo
 Išskleidimas smėlio dėžėje: RAR, 7-Zip ir TAR skaitomi izoliuotame „AppContainer“ be prieigos prie tinklo
 Išskleisti failai išlaiko žymą „Mark-of-the-Web“ ir pradines datas
 Komandų eilutė komplekte: komanda pakko su „7-Zip“ stiliaus komandomis
@@ -34,8 +35,8 @@ tar gz
 zip su slaptažodžiu
 
 [What's new in this version]
-• Komanda pakko veikia bet kuriame terminale iškart po įdiegimo: „7-Zip“ stiliaus komandų eilutė scenarijams.
-• Išskleisti failai ir aplankai išlaiko archyve įrašytas datas.
-• Programą patogiau valdyti klaviatūra; langas „Failas jau egzistuoja“ rodo abiejų failų dydį ir datą.
-• Greičiausias suspaudimo lygis nebepadidina jau suspaustų failų.
-• Peržiūrėti vertimai visomis 36 kalbomis, išskyrus anglų; failų naršyklės meniu dabar atsižvelgia į jūsų „Windows“ kalbų sąrašą.
+• Nauja: atkūrimo duomenys (PAR2). Kurdami archyvą įjunkite „Pridėti atkūrimo duomenis (PAR2)“, ir archyvą bus galima pataisyti po pažeidimo.
+• „Tikrinti su PAR2“ ir „Taisyti su PAR2“ Failų naršyklės meniu ir programoje; pataisyta kopija yra naujas failas, originalas nekeičiamas.
+• Tinka ir kitų programų sukurti PAR2 failai; komanda pakko prideda atkūrimo duomenis jungikliu -rr ir taiso komanda r.
+• „Pakko“ paleidžiama greičiau, o atsisiuntimas daug mažesnis.
+• Dideli failai suspaudžiami keliuose procesoriaus branduoliuose.

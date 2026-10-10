@@ -18,6 +18,7 @@ RAR og 7-Zip: bare utpakking, via det innebygde tar.exe i Windows
 Hurtigmenyen i Filutforsker: Åpne, Pakk ut her, Komprimer, Test arkiv, Se etter trusler, Hash
 Arkivutforsker: se inn i et arkiv, forhåndsvis bilder og tekst, pakk ut bare det du velger
 Se etter trusler: innholdet i arkivet kontrolleres av det installerte antivirusprogrammet ditt
+Gjenopprettingsdata (PAR2): legg dem til i et nytt arkiv, kontroller arkivet og reparer det etter en skade
 Utpakking i sandkasse: RAR, 7-Zip og TAR leses i en isolert AppContainer uten nettverkstilgang
 Utpakkede filer beholder Mark-of-the-Web-merket og de opprinnelige datoene
 Kommandolinje følger med: kommandoen pakko med kommandoer i 7-Zip-stil
@@ -34,8 +35,8 @@ tar gz
 zip med passord
 
 [What's new in this version]
-• Kommandoen pakko virker i alle terminaler rett etter installasjonen: en kommandolinje i 7-Zip-stil for skript.
-• Utpakkede filer og mapper beholder datoene som er lagret i arkivet.
-• Appen fungerer bedre med tastaturet; dialogboksen «Filen finnes allerede» viser størrelse og dato for begge filene.
-• Det raskeste komprimeringsnivået gjør ikke lenger allerede komprimerte filer større.
-• Oversettelsene er gjennomgått på alle 36 språk utenom engelsk; menyen i Filutforsker følger nå listen din over Windows-språk.
+• Nytt: gjenopprettingsdata (PAR2). Slå på «Legg til gjenopprettingsdata (PAR2)» når du oppretter et arkiv, så kan arkivet repareres etter en skade.
+• «Kontroller med PAR2» og «Reparer med PAR2» i Filutforsker-menyen og i appen; den reparerte kopien er en ny fil, og originalen endres ikke.
+• PAR2-filer fra andre programmer fungerer også; kommandoen pakko legger til gjenopprettingsdata med -rr og reparerer med r.
+• Pakko starter raskere, og nedlastingen er mye mindre.
+• Store filer komprimeres på flere prosessorkjerner.

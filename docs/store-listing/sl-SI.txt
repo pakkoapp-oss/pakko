@@ -18,6 +18,7 @@ RAR in 7-Zip: samo razširjanje, z orodjem tar.exe, vgrajenim v Windows
 Priročni meni Raziskovalca: Odpri, Razširi tukaj, Stisni, Preizkusi arhiv, Preveri grožnje, Zgoščena vrednost
 Brskalnik po arhivih: poglejte v arhiv, predoglejte si slike in besedilo, razširite samo izbrano
 Preverjanje groženj: vsebino arhiva preveri vaš nameščeni protivirusni program
+Podatki za obnovitev (PAR2): dodajte jih novemu arhivu, preverite arhiv in ga po poškodbi popravite
 Razširjanje v peskovniku: RAR, 7-Zip in TAR se berejo v izoliranem vsebniku AppContainer brez dostopa do omrežja
 Razširjene datoteke ohranijo oznako Mark-of-the-Web in izvirne datume
 Ukazna vrstica je priložena: ukaz pakko z ukazi v slogu 7-Zipa
@@ -34,8 +35,8 @@ zip z geslom
 odprta koda
 
 [What's new in this version]
-• Ukaz pakko deluje v vsakem terminalu takoj po namestitvi: ukazna vrstica v slogu 7-Zipa za skripte.
-• Razširjene datoteke in mape ohranijo datume, shranjene v arhivu.
-• Aplikacijo je lažje uporabljati s tipkovnico; okno »Datoteka že obstaja« prikaže velikost in datum obeh datotek.
-• Najhitrejša raven stiskanja ne poveča več datotek, ki so že stisnjene.
-• Prevodi so pregledani v vseh 36 jezikih razen angleščine; meni Raziskovalca zdaj upošteva vaš seznam jezikov sistema Windows.
+• Novo: podatki za obnovitev (PAR2). Pri ustvarjanju arhiva vklopite »Dodaj podatke za obnovitev (PAR2)« in arhiv bo mogoče po poškodbi popraviti.
+• »Preveri s PAR2« in »Popravi s PAR2« v meniju Raziskovalca in v aplikaciji; popravljena kopija je nova datoteka, izvirnik se ne spremeni.
+• Delujejo tudi datoteke PAR2, ustvarjene z drugimi programi; ukaz pakko doda podatke za obnovitev s stikalom -rr in popravlja z ukazom r.
+• Pakko se zažene hitreje, prenos pa je veliko manjši.
+• Velike datoteke se stisnejo na več procesorskih jedrih.
