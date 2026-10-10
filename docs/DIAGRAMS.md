@@ -94,6 +94,7 @@ sequenceDiagram
     participant TAC as TarArchiveCommand
     participant TC as TestCommand
     participant RVC as RecoveryVerifyCommand
+    participant RRC as RecoveryRepairCommand
     participant SC as ScanCommand
     participant HX as HashCrc32Command / HashSha256Command
     participant ShellExe as Archiver.Shell.exe
@@ -108,7 +109,7 @@ sequenceDiagram
     Factory->>Root: Make<PakkoRootCommand>()
     Explorer->>Root: GetFlags() → ECF_HASSUBCOMMANDS
     Explorer->>Root: EnumSubCommands()
-    Root->>Enum: Make each leaf, then SetCommands([BC, EDC, EHF, EH, EF, CDC, AC, TAC, TC, RVC, SC, HashCrc32, HashSha256])<br/>ALWAYS all thirteen, unconditionally — selection does not filter EnumSubCommands.<br/>Order asserted by ComLoadTests' EnumSubCommands_ReturnsAllThirteenLeafCommandsInDocumentedOrder:<br/>BC first (T-F03, NanaZip's kOpen), then extract dialog/flat/intelligent/named-folder (T-F115),<br/>then compress dialog and the two one-click archive verbs (T-F105), then the diagnostic<br/>group last — Test, Verify with PAR2 (T-F275), Scan (T-F146), CRC-32, SHA-256 (T-F128: two flat leaves, no submenu)
+    Root->>Enum: Make each leaf, then SetCommands([BC, EDC, EHF, EH, EF, CDC, AC, TAC, TC, RVC, RRC, SC, HashCrc32, HashSha256])<br/>ALWAYS all fourteen, unconditionally — selection does not filter EnumSubCommands.<br/>Order asserted by ComLoadTests' EnumSubCommands_ReturnsAllFourteenLeafCommandsInDocumentedOrder:<br/>BC first (T-F03, NanaZip's kOpen), then extract dialog/flat/intelligent/named-folder (T-F115),<br/>then compress dialog and the two one-click archive verbs (T-F105), then the diagnostic<br/>group last — Test, Verify with PAR2, Repair with PAR2 (T-F275), Scan (T-F146), CRC-32, SHA-256 (T-F128: two flat leaves, no submenu)
     Root-->>Explorer: Enum (IEnumExplorerCommand)
     loop Explorer drains the enumerator
         Explorer->>Enum: Next(celt, ...)
@@ -139,7 +140,7 @@ sequenceDiagram
         ShellExe->>App: ActivateApplication("<own PFN>!App", "--extract <base64 JSON>")<br/>— or --archive — then ShellExe's Main returns/exits immediately —<br/>NO operation window, NO Core call in this branch at all
         Note over App: T-F83 (fixed 2026-07-06): cold start reads the activation via<br/>OnLaunched→AppInstance.GetCurrent().GetActivatedEventArgs(), not just<br/>the OnActivated event (which only fires for redirected/warm activation).<br/>Before the fix, a cold protocol launch silently opened an EMPTY window.
         App->>App: LaunchActivationRouter.Decide(arguments) → Mode=AddToList<br/>window.ActivationGate.RunOrDefer(...) → MainViewModel.AddPaths(paths)<br/>— files pre-loaded, user drives Archive/Extract from the full UI.<br/>T-F106: wrapped in ActivationGate/DeferredActionGate so this runs AFTER<br/>the first layout pass
-    else command is EHF, EH, EF, AC, TAC, TC, RVC, SC or a hash leaf (silent form, RunShellCommand)
+    else command is EHF, EH, EF, AC, TAC, TC, RVC, RRC, SC or a hash leaf (silent form, RunShellCommand)
         Explorer->>EH: Invoke(psia, pbc) — every silent leaf has this shape
         alt GetSelectionPaths(psia) empty, or an item has no filesystem path
             EH->>User: MessageBoxW(MB_TOPMOST) — T-F235: a selection is refused whole, never processed partly
@@ -232,6 +233,10 @@ folder, a failed entry shows only as a warning icon.
   to it (one folder listing per archive, at most 16 archives, whatever `fOkToBeSlow` says), and
   hides it under `DisableRecoveryData`. `Invoke` sends `--recovery-verify`, which is `--test` with
   the set check (`ShellCommands.VerifyRecoveryAsync`).
+- **T-F275 step 4b:** `RecoveryRepairCommand` follows it with the same `GetState` (the two items
+  show together, each with its own folder listings) and sends `--recovery-repair`
+  (`ShellCommands.RepairRecoveryAsync`, `IRecoveryService.RepairAsync`: a `.repaired` copy next to
+  the archive, the archive only read).
 - **T-F86:** `EH`/`EF`/`EDC` moved from `AllPathsAreZip`/`AnyPathIsZip` to new
   `AllPathsAreSupportedArchive`/`AnyPathIsSupportedArchive` (extension allowlist + `tar.exe`
   existence check — no magic-byte read at `GetState()` time, deliberately deviating from

@@ -565,6 +565,7 @@ TEST(CommandBuilders, EachEmitsTheSwitchShellArgumentParserExpects)
     EXPECT_EQ(BuildExtractFolderArgs(), L"--extract-folder");
     EXPECT_EQ(BuildTestArgs(), L"--test");
     EXPECT_EQ(BuildRecoveryVerifyArgs(), L"--recovery-verify");
+    EXPECT_EQ(BuildRecoveryRepairArgs(), L"--recovery-repair");
     EXPECT_EQ(BuildScanArgs(), L"--scan");
     EXPECT_EQ(BuildOpenUiExtractArgs(), L"--open-ui --extract");
     EXPECT_EQ(BuildOpenUiArchiveArgs(), L"--open-ui --archive");

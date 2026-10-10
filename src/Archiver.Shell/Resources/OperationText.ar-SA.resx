@@ -54,6 +54,12 @@
   <data name="TitleTestingMany" xml:space="preserve">
     <value>اختبار الأرشيفات: {0}</value>
   </data>
+  <data name="TitleRepairing" xml:space="preserve">
+    <value>إصلاح: {0}</value>
+  </data>
+  <data name="TitleRepairingMany" xml:space="preserve">
+    <value>إصلاح الأرشيفات: {0}</value>
+  </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>فحص التهديدات: {0}</value>
   </data>

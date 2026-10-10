@@ -178,6 +178,26 @@ TEST(LocalizationDataIntegrity, EveryLocaleRecoveryVerifyIsTranslatedAndNamesPar
     }
 }
 
+TEST(GetLocalizedString, RecoveryRepairEnUS)
+{
+    EXPECT_EQ(GetLocalizedString(StringId::RecoveryRepair, L"en-US"), L"Repair with PAR2");
+}
+
+TEST(LocalizationDataIntegrity, EveryLocaleRecoveryRepairIsTranslatedNamesPar2AndDiffersFromVerify)
+{
+    // T-F275 step 4b: the 17th field. A row left without it would read a null pointer here, and
+    // a row that repeated the verify text would put two identical items in the menu.
+    const auto english = GetLocalizedString(StringId::RecoveryRepair, L"en-US");
+    for (const wchar_t* tag : kAllLocaleTags)
+    {
+        const auto text = GetLocalizedString(StringId::RecoveryRepair, tag);
+        EXPECT_NE(text.find(L"PAR2"), std::wstring::npos) << "locale: " << tag;
+        EXPECT_NE(text, GetLocalizedString(StringId::RecoveryVerify, tag)) << "locale: " << tag;
+        if (std::wstring(tag) != L"en-US")
+            EXPECT_NE(text, english) << "locale: " << tag;
+    }
+}
+
 TEST(LocalizationDataIntegrity, EveryLocaleBrowseArchiveIsNonEmpty)
 {
     // T-F03: the most direct catch for a row where the new 11th field was left unset (nullptr) -

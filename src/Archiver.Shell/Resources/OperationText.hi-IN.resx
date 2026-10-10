@@ -54,6 +54,12 @@
   <data name="TitleTestingMany" xml:space="preserve">
     <value>संग्रहों का परीक्षण: {0}</value>
   </data>
+  <data name="TitleRepairing" xml:space="preserve">
+    <value>मरम्मत: {0}</value>
+  </data>
+  <data name="TitleRepairingMany" xml:space="preserve">
+    <value>संग्रहों की मरम्मत: {0}</value>
+  </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>खतरों के लिए स्कैन: {0}</value>
   </data>

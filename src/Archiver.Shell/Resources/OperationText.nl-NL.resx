@@ -54,6 +54,12 @@
   <data name="TitleTestingMany" xml:space="preserve">
     <value>Archieven testen: {0}</value>
   </data>
+  <data name="TitleRepairing" xml:space="preserve">
+    <value>Herstellen: {0}</value>
+  </data>
+  <data name="TitleRepairingMany" xml:space="preserve">
+    <value>Archieven herstellen: {0}</value>
+  </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>Scannen op bedreigingen: {0}</value>
   </data>

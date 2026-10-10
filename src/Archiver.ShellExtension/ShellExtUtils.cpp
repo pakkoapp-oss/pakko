@@ -596,6 +596,7 @@ std::wstring BuildArchiveArgs(const std::wstring& format)
 
 std::wstring BuildTestArgs() { return L"--test"; }
 std::wstring BuildRecoveryVerifyArgs() { return L"--recovery-verify"; }
+std::wstring BuildRecoveryRepairArgs() { return L"--recovery-repair"; }
 std::wstring BuildScanArgs() { return L"--scan"; }
 std::wstring BuildHashArgs(const std::wstring& algorithm) { return L"--hash --algorithm " + algorithm; }
 std::wstring BuildOpenUiExtractArgs() { return L"--open-ui --extract"; }

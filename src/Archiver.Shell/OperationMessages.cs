@@ -81,6 +81,23 @@ internal static class OperationMessages
         return message with { Text = message.Text + Environment.NewLine + Environment.NewLine + lines };
     }
 
+    /// <summary>
+    /// T-F275 step 4b: what a repair did. Each archive that was repaired, or needed nothing, gets
+    /// its line in Core's words under whatever errors and warnings the others produced.
+    /// </summary>
+    public static OperationMessage? ForRepairResult(string title, ArchiveResult result)
+    {
+        OperationMessage? message = ForArchiveResult(title, result);
+        RecoveryCheck[] said = [.. result.RecoveryChecks.Where(c => c.Text is not null)];
+        if (said.Length == 0)
+            return message;
+        string lines = CappedLines(
+            said, c => $"{Path.GetFileName(c.ArchivePath)}: {MessageText.Render(c.Text, c.Text!.English, CultureInfo.CurrentUICulture)}");
+        return message is null
+            ? new OperationMessage(title, MessageSeverity.Information, lines)
+            : message with { Text = message.Text + Environment.NewLine + Environment.NewLine + lines };
+    }
+
     public static OperationMessage ForHash(string title, HashResult result, IReadOnlyList<string> paths)
     {
         // T-F128 follow-up: a folder result shows only the aggregate Files/Size/DataSum/NamesSum,

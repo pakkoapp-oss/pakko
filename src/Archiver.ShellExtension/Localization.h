@@ -41,6 +41,8 @@ enum class StringId
     LaunchFailedTemplate,
     // T-F275 step 3b: "Verify with PAR2" - a plain verb like TestArchive, PAR2 never translated.
     RecoveryVerify,
+    // T-F275 step 4b: "Repair with PAR2", worded like RecoveryVerify.
+    RecoveryRepair,
 };
 
 // The language the menu speaks, as a BCP-47 tag (e.g. L"uk-UA"): PickLanguageTag over the user's

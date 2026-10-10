@@ -54,6 +54,12 @@
   <data name="TitleTestingMany" xml:space="preserve">
     <value>Arhiivide testimine: {0}</value>
   </data>
+  <data name="TitleRepairing" xml:space="preserve">
+    <value>Parandamine: {0}</value>
+  </data>
+  <data name="TitleRepairingMany" xml:space="preserve">
+    <value>Arhiivide parandamine: {0}</value>
+  </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>Ohtude kontroll: {0}</value>
   </data>

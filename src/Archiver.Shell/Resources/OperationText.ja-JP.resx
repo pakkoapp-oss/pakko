@@ -54,6 +54,12 @@
   <data name="TitleTestingMany" xml:space="preserve">
     <value>{0} 個のアーカイブをテスト中</value>
   </data>
+  <data name="TitleRepairing" xml:space="preserve">
+    <value>修復中: {0}</value>
+  </data>
+  <data name="TitleRepairingMany" xml:space="preserve">
+    <value>{0} 個のアーカイブを修復中</value>
+  </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>脅威をスキャン中: {0}</value>
   </data>

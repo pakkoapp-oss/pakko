@@ -1131,8 +1131,9 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
     - [x] 4a — Core and `pakko r` (2026-10-10): `IRecoveryService.RepairAsync`, the copy
       `<name>.repaired<ext>` next to the archive or in `-o<dir>`, the original only read, the same
       verdict rule as `t`, four message codes in 37 languages.
-    - [ ] 4b — Explorer: Shell `--recovery-repair`, "Repair with PAR2" after "Verify with PAR2"
-      (same visibility; not on a blocked format), the operation window with the result.
+    - [x] 4b — Explorer (2026-10-10): Shell `--recovery-repair`, "Repair with PAR2" after
+      "Verify with PAR2" (same visibility; not on a blocked format), the operation window with the
+      result; the menu item and two window titles in 37 languages.
     - [ ] 4c — the App: a Repair button on the PAR2 line, a folder choice when the archive's
       folder cannot be written to; `RecoveryDataLookup` folds into `IRecoveryService`.
   - [ ] 5 — the v1.8.0 release with the user's checks (MD5 under the FIPS policy among them, and
@@ -1645,4 +1646,17 @@ re-measured with T-F346's script before and after.
   Defender's network inspection), then fix the test, not the retry count. The two-attempt CI loop
   does not cover it: `dotnet test` in the `test` job runs once.
 - **Reported by:** v1.7.2 release, 2026-10-09.
+
+### T-F374 — A tar listing test fails once in a while with its archive "in use" (P3)
+
+- [ ] **Status:** open. `TarSandboxedServiceListEntriesTests.ListEntriesAsync_ReadsModifiedFromTheVerboseListing`
+  failed twice on this machine in full parallel runs (2026-10-10, the second time with the message
+  `IOException: The process cannot access the file 'dates.tar' because it is being used by another
+  process.`) and passed alone both times. The test writes `dates.tar`, lists it through the
+  sandboxed tar.exe, and its `TempDirectory` is deleted at the end; which of the three steps met
+  the open handle is not known (the stack was not kept). Likely the same family as T-F373 (a
+  handle held past its owner while another test class starts a process) or tar.exe still exiting.
+  Next: catch the stack, then fix the cause, not with a retry. Also check T-F372's rate: on
+  2026-10-10 it failed the first attempt of two of four PR runs.
+- **Reported by:** T-F275 step 4b's local run, 2026-10-10.
 
