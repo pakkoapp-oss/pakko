@@ -12325,3 +12325,11 @@ PowerShell does natively.
   integration tests; confirm first by making the failure reproducible (a concurrent `Process.Start`
   loop during the test).
 - **Reported by:** agent, T-F275 step 3a, 2026-10-10.
+
+### T-F375 — The Native AOT build writes and repairs recovery data six times slower than JIT (P1)
+
+- [x] **Status:** done 2026-10-10. `Gf16Region` asks for SSSE3 by name, so the AOT build uses
+  `pshufb` and not the per-byte fallback of `Vector128.ShuffleNative`; 200 MB at 5 %: 14.2 s before,
+  2.6 s after (JIT 2.3 s). A subprocess test against the published exe, with par2cmdline as the
+  yardstick, runs in `build-cli`. Cause and numbers: `docs/DECISIONS.md`, "T-F375".
+- **Reported by:** agent, T-F275 step 5's release smoke, 2026-10-10.

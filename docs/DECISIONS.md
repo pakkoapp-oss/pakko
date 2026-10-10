@@ -11990,7 +11990,7 @@ Steps, one PR each: 0 docs and oracles, 1 the Core engine, 2 creation, 3 verific
 - par2j rebuilds a 4-byte slice from its CRC-32 alone (a CRC-32 over 4 bytes is a bijection), which
   hides the singular case on 4-byte slices; the oracle test uses 8-byte slices. par2j's exit there is
   272 = 16 (repaired) | 256 (a PAR file incomplete, the blocks the test destroyed).
-- Speed, Release, Ryzen 5 PRO 4650U: 512 MiB at 5 % created in 4.3 s (par2cmdline 9.3 s); 100 slices
+- Speed, Release under JIT (the AOT build was not timed: T-F375), Ryzen 5 PRO 4650U: 512 MiB at 5 % created in 4.3 s (par2cmdline 9.3 s); 100 slices
   repaired in 6.9 s; a file above 4 GiB round-trips.
 
 ### Step 2 — creation (2026-10-10)
@@ -12358,6 +12358,33 @@ Known gaps:
   that folder, and the browser that opens it is the way to see where.
 - `MainViewModel`'s wiring is checked on a device (the commit names the cases), the rules by
   `RecoveryPanelTests`.
+
+### T-F375 — the AOT build wrote recovery data six times slower than JIT (2026-10-10)
+
+Found by the release smoke, before any release carried PAR2: the installed Native AOT `pakko` took
+14.2 s to create 5 % recovery data for a 200 MB archive; the same source built Release and run
+under JIT took 2.3 s, par2cmdline 1.4.0 3.8 s. Repair of 8 MB of damage: 12.0 s against 3.0 s.
+
+- **Cause.** `Gf16Region`'s kernel looked its nibble tables up with `Vector128.ShuffleNative`.
+  Under JIT that is `pshufb`. The Native AOT compiler targets a baseline x64 processor, where
+  SSSE3 is not assumed, and compiled the portable call as a per-byte fallback. The result is
+  correct, so every test passed; `Vector128.IsHardwareAccelerated` is true either way.
+- **Fix.** The lookup asks for the instruction by name: `Ssse3.IsSupported ? Ssse3.Shuffle(...)
+  : Vector128.ShuffleNative(...)`. In an AOT build that is a run-time check and `pshufb` when
+  present; ARM64 keeps `ShuffleNative` (TBL is in its baseline; not measured on a device). After:
+  create 2.6 s, repair 3.2 s, test 1.1 s, the same as JIT. No change to the project's instruction
+  set: the baseline stays, so the exe still starts on any x64 processor.
+- **Why step 1 missed it.** Its figure ("512 MiB at 5 % created in 4.3 s") was a JIT Release run;
+  the AOT exe was never timed. The device checks of steps 2-4 used small archives.
+- **Guard.** `CliSubprocessTests.Archive_RecoveryData_TakesNoLongerThanTwiceParTwoCmdLine` runs
+  only against a published exe (`PAKKO_CLI_EXE`), in `build-cli` after the publish, with
+  par2cmdline on the same runner as the yardstick. Seen red against the build without the fix
+  (7.3 s against par2cmdline's 2.0 s for 96 MB) and green with it. A first version measured against
+  the same work in the test process and passed on the broken build: tests build Debug, where the
+  kernel is slow too. No other vector code exists in `src/` (grep for `Vector128`, `Vector256`,
+  `ShuffleNative`, `IsHardwareAccelerated`).
+- The App, the Explorer commands and the operation window are AOT builds of the same Core, so
+  they had the same slowdown and get the same fix.
 
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
