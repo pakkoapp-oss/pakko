@@ -599,8 +599,9 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool IsRecoveryPercentEnabled => IsNotBusy && AddRecoveryData;
 
-    public IReadOnlyList<string> RecoveryPercentChoices { get; } =
-        [.. RecoveryDataOption.Percents.Select(RecoveryPercentText)];
+    // A concrete collection, never a collection expression: WinRT marshals ItemsSource (T-F355).
+    public ObservableCollection<string> RecoveryPercentChoices { get; } =
+        new(RecoveryDataOption.Percents.Select(RecoveryPercentText));
 
     private int RecoveryPercent => RecoveryDataOption.PercentFor(_policy, AddRecoveryData, RecoveryPercentIndex);
 
