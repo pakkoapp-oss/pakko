@@ -12050,7 +12050,9 @@ Steps, one PR each: 0 docs and oracles, 1 the Core engine, 2 creation, 3 verific
   match by content under another name is the warning `RecoveryDataNameMismatch` without the name.
 - `pakko t` prints one stdout line per intact set — the first stdout output of `t` — so a
   tar-family archive that used to be "skipped" shows what checked it. Exit codes that change: a
-  tar-family archive with an intact set 1 -> 0; a ZIP whose PAR2 files cannot be read 0 -> 1.
+  tar-family archive with an intact set 1 -> 0; a ZIP whose PAR2 files cannot be read, whose set
+  was made for another file or matches only by content, 0 -> 1. Paths are compared by their full
+  form, since a check's archive may come from a `.par2` path spelled unlike the archive path given.
 - Progress: the test's part of the climb is its ZIP bytes over those plus the checked archives'
   sizes; the check reports `VerifyingRecoveryData` with zero byte counts and ends at 100.
 - `DisableRecoveryData` (ADMX `SUPPORTED_Pakko18`) covers the whole feature: creation is refused in

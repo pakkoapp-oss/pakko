@@ -24,6 +24,20 @@ internal static class RecoveryTestStep
         public List<RecoveryCheck> Checks { get; } = [];
     }
 
+    /// <summary>The one spelling of a path that tells two mentions of a file apart: a check's
+    /// archive may come from a .par2 path, written unlike the archive path the user gave.</summary>
+    internal static string Key(string path)
+    {
+        try
+        {
+            return Path.GetFullPath(path);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return path; // not a usable path; it only has to compare equal to itself
+        }
+    }
+
     internal static bool IsPar2Path(string path) => path.EndsWith(".par2", StringComparison.OrdinalIgnoreCase);
 
     internal static Plan Locate(IReadOnlyList<string> paths, GroupPolicyOptions policy, CancellationToken cancellationToken)
@@ -36,7 +50,7 @@ internal static class RecoveryTestStep
             if (!IsPar2Path(path))
             {
                 plan.ArchivePaths.Add(path);
-                if (!policy.DisableRecoveryData && !seen.Contains(Path.GetFullPath(path)))
+                if (!policy.DisableRecoveryData && !seen.Contains(Key(path)))
                     LocateForArchive(path, plan, seen, cancellationToken);
             }
             else if (policy.DisableRecoveryData)
@@ -59,7 +73,7 @@ internal static class RecoveryTestStep
         {
             setFiles = Par2SetLocator.SetFilesForTarget(archivePath);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             return; // the test still runs; there is just no set to compare with
         }
@@ -75,7 +89,7 @@ internal static class RecoveryTestStep
         }
         if (Par2SetLocator.Select(read.Sets, archivePath) is { } match)
         {
-            seen.Add(Path.GetFullPath(archivePath));
+            seen.Add(Key(archivePath));
             plan.Sets.Add(new Found(archivePath, setFiles, match));
         }
         else
@@ -113,7 +127,7 @@ internal static class RecoveryTestStep
         {
             if (Par2SetLocator.Select(read.Sets, candidate) is { } match)
             {
-                if (seen.Add(Path.GetFullPath(candidate)))
+                if (seen.Add(Key(candidate)))
                     plan.Sets.Add(new Found(candidate, setFiles, match));
                 return;
             }

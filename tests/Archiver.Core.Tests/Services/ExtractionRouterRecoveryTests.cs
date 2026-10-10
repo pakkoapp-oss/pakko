@@ -225,6 +225,32 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
     }
 
     [Fact]
+    public async Task Par2FirstThenTheArchiveSpelledDifferently_IsOneCheckAndNoSkip()
+    {
+        string tar = Protected("a.tar.gz");
+        string spelled = Path.Combine(_temp.Path, ".", "a.tar.gz");
+
+        ArchiveResult result = await Test(Par2Creator.IndexPath(tar), spelled);
+
+        result.RecoveryChecks.Should().ContainSingle().Which.State.Should().Be(RecoveryState.Intact);
+        result.SkippedFiles.Should().BeEmpty();
+        result.Outcome.Should().Be(OperationOutcome.Completed);
+    }
+
+    [Fact]
+    public async Task Par2FirstThenARewrittenZipSpelledDifferently_IsStillAWarning()
+    {
+        string zip = Protected("a.zip");
+        File.WriteAllBytes(zip, Noise(Length + 500, 7));
+        string spelled = Path.Combine(_temp.Path, ".", "a.zip");
+
+        ArchiveResult result = await Test(Par2Creator.IndexPath(zip), spelled);
+
+        result.Errors.Should().BeEmpty();
+        result.Warnings.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.RecoveryDataDoesNotMatch);
+    }
+
+    [Fact]
     public async Task NoSet_ResultIsTheTestAlone()
     {
         string zip = Archive("a.zip");
@@ -407,6 +433,17 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
 
         result.RecoveryChecks.Should().BeEmpty();
         result.SkippedFiles.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.NoTestCapability);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("a\0b.zip")]
+    public async Task UnusablePath_GoesToTheEngineWithoutAThrow(string path)
+    {
+        ArchiveResult result = await Test(path);
+
+        result.RecoveryChecks.Should().BeEmpty();
+        _zip.Tested.Should().Equal(path);
     }
 
     [Fact]
