@@ -121,18 +121,18 @@ public sealed class ArchiveCreationRouterRecoveryTests
     }
 
     [Fact]
-    public async Task ZeroPercent_PassesTheEngineResultAndOptionsThroughUntouched()
+    public async Task ZeroPercent_NoSetBeside_PassesTheEngineResultAndOptionsThroughUntouched()
     {
         using var temp = new TempDirectory();
         string archive = Path.Combine(temp.Path, "a.zip");
         ArchiveResult engineResult = null!;
         var engine = new RecoveryWritingEngine { Produce = (o, _) => engineResult = Written(archive, o.SourcePaths[0]) };
-        ArchiveOptions options = Options(temp, 0) with { OpenDestinationFolder = true };
+        ArchiveOptions options = Options(temp, 0);
 
         ArchiveResult result = await Router(engine).ArchiveAsync(options);
 
         result.Should().BeSameAs(engineResult);
-        engine.LastOptions.Should().BeSameAs(options);
+        engine.LastOptions.Should().Be(options);
         Directory.GetFiles(temp.Path).Should().Equal(archive);
     }
 
@@ -440,5 +440,153 @@ public sealed class ArchiveCreationRouterRecoveryTests
         {
             File.SetAttributes(old.VolumePath, FileAttributes.Normal);
         }
+    }
+
+    // Before 3b: an archive rewritten without recovery data kept the set of its earlier bytes, and
+    // `t` then called the new archive damaged. A set that names the archive but no longer matches
+    // its length and first 16 KiB is removed; every other PAR2 file stays.
+    private static Par2CreateResult EarlierSet(string archive, int length = 9000)
+    {
+        File.WriteAllBytes(archive, Par2TestData.Content(length));
+        return Par2Creator.Create(archive, Par2Creator.ChooseParameters(length, 100)!.Value, null, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData(ArchiveContainerFormat.Zip, "a.zip")]
+    [InlineData(ArchiveContainerFormat.TarGz, "a.tar.gz")]
+    public async Task RewrittenWithoutRecoveryData_EarlierSetRemoved(ArchiveContainerFormat format, string name)
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, name);
+        EarlierSet(archive);
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) };
+
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 0, format));
+
+        result.Errors.Should().BeEmpty();
+        result.Warnings.Should().BeEmpty();
+        result.RecoveryFiles.Should().BeEmpty();
+        Directory.GetFiles(temp.Path).Should().Equal(archive);
+    }
+
+    // QuickPar and MultiPar name a set without the last extension: a.par2 for a.zip.
+    [Fact]
+    public async Task RewrittenWithoutRecoveryData_EarlierSetNamedWithoutTheExtension_Removed()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        Par2CreateResult old = EarlierSet(archive);
+        File.Move(old.IndexPath, Path.Combine(temp.Path, "a.par2"));
+        File.Move(old.VolumePath, Path.Combine(temp.Path, "a" + Path.GetFileName(old.VolumePath)["a.zip".Length..]));
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) };
+
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 0));
+
+        result.Warnings.Should().BeEmpty();
+        Directory.GetFiles(temp.Path).Should().Equal(archive);
+    }
+
+    [Fact]
+    public async Task RewrittenWithTheSameBytes_SetKept()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        Par2CreateResult old = EarlierSet(archive);
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0], 9000) };
+
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 0));
+
+        result.Warnings.Should().BeEmpty();
+        Directory.GetFiles(temp.Path).Should().BeEquivalentTo([archive, old.IndexPath, old.VolumePath]);
+        VerifyStatus(archive).Should().Be(Par2VerifyStatus.Intact);
+    }
+
+    // The name inside the set is another file's: the set is not this archive's, so it is not ours to remove.
+    [Fact]
+    public async Task SetForAnotherFileUnderTheArchiveName_Kept()
+    {
+        using var temp = new TempDirectory();
+        string other = Path.Combine(temp.Path, "b.zip");
+        Par2CreateResult foreign = EarlierSet(other);
+        string archive = Path.Combine(temp.Path, "a.zip");
+        string index = Path.Combine(temp.Path, "a.zip.par2");
+        File.Move(foreign.IndexPath, index);
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) };
+
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 0));
+
+        result.Warnings.Should().BeEmpty();
+        Directory.GetFiles(temp.Path).Should().BeEquivalentTo([archive, other, index, foreign.VolumePath]);
+    }
+
+    [Fact]
+    public async Task RewrittenWithoutRecoveryData_UnreadableAndMixedFilesKept()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        Par2CreateResult old = EarlierSet(archive);
+        Par2CreateResult another = EarlierSet(Path.Combine(temp.Path, "c.zip"), 5000);
+        string garbage = temp.CreateFile("a.zip.vol7+7.par2", "not a PAR2 file");
+        string mixed = Path.Combine(temp.Path, "a.zip.mixed.par2");
+        File.WriteAllBytes(mixed, [.. File.ReadAllBytes(old.IndexPath), .. File.ReadAllBytes(another.IndexPath)]);
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) };
+
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 0));
+
+        result.Warnings.Should().BeEmpty();
+        File.Exists(old.IndexPath).Should().BeFalse();
+        File.Exists(old.VolumePath).Should().BeFalse();
+        File.Exists(garbage).Should().BeTrue();
+        File.Exists(mixed).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DisableRecoveryDataPolicy_EarlierSetLeftAlone()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        Par2CreateResult old = EarlierSet(archive);
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) };
+
+        await Router(engine, new GroupPolicyOptions { DisableRecoveryData = true }).ArchiveAsync(Options(temp, 0));
+
+        Directory.GetFiles(temp.Path).Should().BeEquivalentTo([archive, old.IndexPath, old.VolumePath]);
+    }
+
+    [Fact]
+    public async Task EarlierSetThatCannotBeDeleted_IsAWarning()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        Par2CreateResult old = EarlierSet(archive);
+        File.SetAttributes(old.IndexPath, FileAttributes.ReadOnly);
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) };
+        try
+        {
+            ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 0));
+
+            result.Errors.Should().BeEmpty();
+            ArchiveWarning warning = result.Warnings.Should().ContainSingle().Subject;
+            warning.SourcePath.Should().Be(old.IndexPath);
+            warning.Text!.Code.Should().Be(MessageCode.RecoveryOldVolumeNotDeleted);
+            File.Exists(old.VolumePath).Should().BeFalse();
+            result.FullyProcessedSources.Should().ContainSingle();
+        }
+        finally
+        {
+            File.SetAttributes(old.IndexPath, FileAttributes.Normal);
+        }
+    }
+
+    [Fact]
+    public async Task ZeroPercent_TheRouterOpensTheFolderAfterTheCleanup()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) with { Errors = [new ArchiveError { SourcePath = archive, Message = "x" }] } };
+
+        await Router(engine).ArchiveAsync(Options(temp, 0) with { OpenDestinationFolder = true });
+
+        engine.LastOptions!.OpenDestinationFolder.Should().BeFalse();
     }
 }

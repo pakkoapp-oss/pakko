@@ -119,7 +119,7 @@ internal static partial class Par2SetLocator
         return best;
     }
 
-    private static (long, UInt128)? ReadContentKey(string path)
+    internal static (long Length, UInt128 Md5First16k)? ReadContentKey(string path)
     {
         try
         {

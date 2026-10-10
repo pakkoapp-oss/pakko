@@ -1112,7 +1112,8 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
     - [x] 3a — Core and `pakko t` (2026-10-10): `IExtractionRouter.TestAsync(verifyRecoveryData)`,
       `ArchiveResult.RecoveryChecks`, `ProgressPhase.VerifyingRecoveryData`, eight message codes
       in 37 languages; a tar-family archive with a set is checked by it.
-    - [ ] Before 3b — a stale set on a rewritten tar-family archive: `pakko a -y a.tar.gz` without
+    - [x] Before 3b — a stale set on a rewritten tar-family archive (done 2026-10-10: the router
+      removes it, `docs/DECISIONS.md`'s "Before 3b" entry): `pakko a -y a.tar.gz` without
       `-rr` keeps the old set, and `t` then calls a good archive "damaged beyond repair" (a ZIP gets
       the `DoesNotMatch` warning from its own test). Leading option: the creation router removes
       the set of an archive it overwrote without recovery data, with step 2's Set-ID-checked

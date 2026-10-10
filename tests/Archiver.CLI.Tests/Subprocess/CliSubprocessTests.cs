@@ -441,20 +441,33 @@ public sealed class CliSubprocessTests
         stdErr.Split('\n', StringSplitOptions.RemoveEmptyEntries).Should().HaveCount(1 + linesBesidesTheWarning, because: stdErr);
     }
 
-    [Fact]
-    public void Test_ZipRewrittenWithoutASet_OldSetIsAWarningNotDamage()
+    [Theory]
+    [InlineData("out.zip")]
+    [InlineData("out.tar.gz")]
+    public void Test_RewrittenWithoutASet_OldSetRemoved_NoRecoveryVerdict(string name)
     {
-        string archivePath = ProtectedArchive("out.zip");
-        string other = Path.Combine(Path.GetDirectoryName(archivePath)!, "other.txt");
+        string archivePath = ProtectedArchive(name);
+        string folder = Path.GetDirectoryName(archivePath)!;
+        string other = Path.Combine(folder, "other.txt");
         File.WriteAllText(other, "a different archive under the same name");
-        (int written, _, string writeErr) = CliProcessRunner.Run("a", "-y", archivePath, other);
+        (int written, _, string writeErr) = CliProcessRunner.Run("a", "-y", name.EndsWith(".zip", StringComparison.Ordinal) ? "-tzip" : "-ttar.gz", archivePath, other);
         written.Should().Be(0, because: writeErr);
+        Directory.GetFiles(folder, "*.par2").Should().BeEmpty();
 
-        (int exitCode, _, string stdErr) = CliProcessRunner.Run("t", archivePath);
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", archivePath);
 
-        exitCode.Should().Be(1);
-        stdErr.Should().Contain("pakko: warning: out.zip: The recovery data does not match the archive");
-        stdErr.Should().NotContain("error");
+        // As if the archive had never had a set: a ZIP passes its own test, a tar is not testable.
+        stdOut.Should().NotContain("recovery data");
+        if (name.EndsWith(".zip", StringComparison.Ordinal))
+        {
+            exitCode.Should().Be(0, because: stdErr);
+            stdErr.Should().BeEmpty();
+        }
+        else
+        {
+            exitCode.Should().Be(1);
+            stdErr.Trim().Should().EndWith("tar-family archives have no test capability");
+        }
     }
 
     [Fact]
