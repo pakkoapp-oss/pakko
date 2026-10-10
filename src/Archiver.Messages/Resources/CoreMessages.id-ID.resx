@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>File pemulihan dari versi arsip sebelumnya tidak dapat dihapus: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Arsip rusak ({0} dari {1} blok); data pemulihannya dapat memperbaikinya ({2} blok pemulihan).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Arsip rusak ({0} dari {1} blok) melebihi yang dapat diperbaiki oleh data pemulihannya ({2} blok pemulihan).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Arsip rusak ({0} dari {1} blok); memperbaiki sebanyak ini di luar kemampuan Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Data pemulihan tidak cocok dengan arsip ({0} dari {1} blok berbeda), tetapi arsip itu sendiri lulus pengujian: data pemulihan kemungkinan berasal dari versi sebelumnya.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Data pemulihan rusak atau dalam format yang tidak dapat dibaca Pakko.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Data pemulihan di samping arsip dibuat untuk file lain.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>File yang dilindungi data pemulihan ini tidak ditemukan di sampingnya.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Data pemulihan dibuat untuk file dengan nama lain; data ini cocok dengan arsip ini berdasarkan isinya.</value>
+  </data>
 </root>

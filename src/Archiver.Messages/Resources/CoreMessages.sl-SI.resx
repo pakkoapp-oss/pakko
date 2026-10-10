@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Datoteke za obnovitev, ki je ostala od prejšnje različice arhiva, ni bilo mogoče izbrisati: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Arhiv je poškodovan ({0} od {1} blokov); njegovi podatki za obnovitev ga lahko popravijo ({2} blokov za obnovitev).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Arhiv je poškodovan ({0} od {1} blokov) bolj, kot ga lahko popravijo njegovi podatki za obnovitev ({2} blokov za obnovitev).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Arhiv je poškodovan ({0} od {1} blokov); popraviti toliko presega zmožnosti programa Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Podatki za obnovitev se ne ujemajo z arhivom (razlikuje se {0} od {1} blokov), vendar sam arhiv test prestane: podatki za obnovitev so verjetno iz njegove prejšnje različice.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Podatki za obnovitev so poškodovani ali v obliki, ki je Pakko ne more prebrati.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Podatki za obnovitev ob arhivu so bili ustvarjeni za drugo datoteko.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Datoteke, ki jo ti podatki za obnovitev ščitijo, ob njih ni bilo mogoče najti.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Podatki za obnovitev so bili ustvarjeni za datoteko z drugim imenom; s tem arhivom se ujemajo po vsebini.</value>
+  </data>
 </root>

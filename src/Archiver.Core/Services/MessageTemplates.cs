@@ -144,6 +144,14 @@ public static class MessageTemplates
         [MessageCode.RecoveryDataNotCreated] = "Recovery data was not created: {0}",
         [MessageCode.RecoveryDataFileTooLarge] = "Recovery data was not created: the archive is empty or too large.",
         [MessageCode.RecoveryOldVolumeNotDeleted] = "A recovery file left from an earlier version of the archive could not be deleted: {0}",
+        [MessageCode.RecoveryDataDamagedRepairable] = "The archive is damaged ({0} of {1} blocks); its recovery data can repair it ({2} recovery blocks).",
+        [MessageCode.RecoveryDataDamagedNotRepairable] = "The archive is damaged ({0} of {1} blocks) beyond what its recovery data can repair ({2} recovery blocks).",
+        [MessageCode.RecoveryDataRepairTooLarge] = "The archive is damaged ({0} of {1} blocks); repairing this much is beyond what Pakko can do.",
+        [MessageCode.RecoveryDataDoesNotMatch] = "The recovery data does not match the archive ({0} of {1} blocks differ), but the archive itself tests as intact: the recovery data is probably from an earlier version of it.",
+        [MessageCode.RecoveryDataUnusable] = "The recovery data is damaged or in a form Pakko cannot read.",
+        [MessageCode.RecoveryDataForAnotherFile] = "The recovery data next to the archive was made for another file.",
+        [MessageCode.RecoveryDataTargetNotFound] = "The file this recovery data protects was not found next to it.",
+        [MessageCode.RecoveryDataNameMismatch] = "The recovery data was made for a file with another name; it matches this archive by its content.",
     };
 
     /// <summary>Every code with a template — all of <see cref="MessageCode"/> except <see cref="MessageCode.None"/>.</summary>

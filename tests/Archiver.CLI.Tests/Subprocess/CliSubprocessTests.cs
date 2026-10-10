@@ -348,6 +348,115 @@ public sealed class CliSubprocessTests
         Directory.GetFiles(scratchDir).Should().Equal(sourceFile);
     }
 
+    // T-F275 step 3: `t` checks the archive against a set next to it. 20 KB of noise, stored, so
+    // the archive's bytes are the source's and the damage lands where the test puts it.
+    private static string ProtectedArchive(string name)
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string sourceFile = Path.Combine(scratchDir, "noise.bin");
+        byte[] noise = new byte[20_000];
+        new Random(275).NextBytes(noise);
+        File.WriteAllBytes(sourceFile, noise);
+        string archivePath = Path.Combine(scratchDir, name);
+        string typeSwitch = name.EndsWith(".zip", StringComparison.Ordinal) ? "-tzip" : "-ttar.gz";
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("a", "-rr10", "-mx=0", typeSwitch, archivePath, sourceFile);
+        exitCode.Should().Be(0, because: stdErr);
+        return archivePath;
+    }
+
+    private static void Overwrite(string path, long offset, int count)
+    {
+        using FileStream stream = File.Open(path, FileMode.Open, FileAccess.ReadWrite);
+        stream.Position = offset;
+        stream.Write(Enumerable.Repeat((byte)0x5A, count).ToArray());
+    }
+
+    [Theory]
+    [InlineData("out.zip")]
+    [InlineData("out.tar.gz")]
+    public void Test_IntactSet_SaysSoOnStdoutAndExitsZero(string name)
+    {
+        string archivePath = ProtectedArchive(name);
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", archivePath);
+
+        exitCode.Should().Be(0, because: stdErr);
+        stdOut.Should().Contain($"{name}: recovery data intact (");
+        stdErr.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Test_Par2Path_ChecksTheArchiveItProtects()
+    {
+        string archivePath = ProtectedArchive("out.tar.gz");
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", archivePath + ".par2");
+
+        exitCode.Should().Be(0, because: stdErr);
+        stdOut.Should().Contain("out.tar.gz: recovery data intact (");
+    }
+
+    [Theory]
+    [InlineData("out.zip")]
+    [InlineData("out.tar.gz")]
+    public void Test_DamageTheSetCanRepair_ExitsTwoAndSaysItCanBeRepaired(string name)
+    {
+        string archivePath = ProtectedArchive(name);
+        Overwrite(archivePath, new FileInfo(archivePath).Length / 2, 8);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("t", archivePath);
+
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain($"pakko: error: {name}: The archive is damaged (").And.Contain("its recovery data can repair it");
+    }
+
+    [Theory]
+    [InlineData("out.zip")]
+    [InlineData("out.tar.gz")]
+    public void Test_DamageBeyondTheSet_ExitsTwoAndSaysItCannotBeRepaired(string name)
+    {
+        string archivePath = ProtectedArchive(name);
+        Overwrite(archivePath, 1000, 8000);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("t", archivePath);
+
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("beyond what its recovery data can repair");
+    }
+
+    [Theory]
+    [InlineData("out.zip", 0)]
+    [InlineData("out.tar.gz", 1)]
+    public void Test_SetFilesDamaged_IsAWarningAndTheArchiveIsTestedAsWithoutOne(string name, int linesBesidesTheWarning)
+    {
+        string archivePath = ProtectedArchive(name);
+        foreach (string file in Directory.GetFiles(Path.GetDirectoryName(archivePath)!, "*.par2"))
+            File.WriteAllBytes(file, new byte[new FileInfo(file).Length]);
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", archivePath);
+
+        exitCode.Should().Be(1);
+        stdOut.Should().BeEmpty();
+        stdErr.Should().Contain($"pakko: warning: {name}: The recovery data is damaged or in a form Pakko cannot read.");
+        stdErr.Split('\n', StringSplitOptions.RemoveEmptyEntries).Should().HaveCount(1 + linesBesidesTheWarning, because: stdErr);
+    }
+
+    [Fact]
+    public void Test_ZipRewrittenWithoutASet_OldSetIsAWarningNotDamage()
+    {
+        string archivePath = ProtectedArchive("out.zip");
+        string other = Path.Combine(Path.GetDirectoryName(archivePath)!, "other.txt");
+        File.WriteAllText(other, "a different archive under the same name");
+        (int written, _, string writeErr) = CliProcessRunner.Run("a", "-y", archivePath, other);
+        written.Should().Be(0, because: writeErr);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("t", archivePath);
+
+        exitCode.Should().Be(1);
+        stdErr.Should().Contain("pakko: warning: out.zip: The recovery data does not match the archive");
+        stdErr.Should().NotContain("error");
+    }
+
     [Fact]
     public void Archive_NonAsciiPassword_ExitsSevenAndCreatesNothing()
     {

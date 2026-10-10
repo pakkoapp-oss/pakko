@@ -1108,8 +1108,15 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
     progress, `ArchiveResult.RecoveryFiles`, `pakko a -rr[N]`, the App's option, `DisableRecoveryData`,
     five message codes in 37 languages. `IRecoveryService` moved to step 3 (`docs/DECISIONS.md`,
     T-F275 "Step 2").
-  - [ ] 3 — verification: the public `IRecoveryService`, `pakko t`, Explorer "Verify with PAR2"
-    (hidden by `DisableRecoveryData`), the App's state panel.
+  - [~] 3 — verification, in three PRs (`docs/DECISIONS.md`, T-F275 "Step 3a"):
+    - [x] 3a — Core and `pakko t` (2026-10-10): `IExtractionRouter.TestAsync(verifyRecoveryData)`,
+      `ArchiveResult.RecoveryChecks`, `ProgressPhase.VerifyingRecoveryData`, eight message codes
+      in 37 languages; a tar-family archive with a set is checked by it.
+    - [ ] 3b — Explorer: Shell `--recovery-verify` (or Test with the flag) and the operation window,
+      "Verify with PAR2" on a `.par2` and on an archive with a set (hidden by
+      `DisableRecoveryData`, C++ `GetMenuPolicy`, `Localization.cpp` in 37 languages).
+    - [ ] 3c — the App's state panel for an opened archive with a set, and how a `.par2` reaches
+      the App.
   - [ ] 4 — repair: `pakko r [-o<dir>]`, Explorer "Repair with PAR2", the App.
   - [ ] 5 — the v1.8.0 release with the user's checks (MD5 under the FIPS policy among them, and
     `DisableRecoveryData` set in HKLM). The CHANGELOG section is written then and names every step:
@@ -1621,3 +1628,16 @@ re-measured with T-F346's script before and after.
   Defender's network inspection), then fix the test, not the retry count. The two-attempt CI loop
   does not cover it: `dotnet test` in the `test` job runs once.
 - **Reported by:** v1.7.2 release, 2026-10-09.
+
+### T-F373 — `RunAsync_UnrelatedInheritableHandle_IsNotInheritedByChild` fails under a full run (P3)
+
+- [ ] **Status:** open. `SandboxedProcessLauncherTests.RunAsync_UnrelatedInheritableHandle_IsNotInheritedByChild`
+  failed once in CI on PR #35 (2026-10-10) and once in a local full `dotnet test` the same day, and
+  passed on a rerun and in isolation both times. Likely cause, not yet checked: the test's pipe
+  client handle is inheritable for 500 ms, and any `Process.Start` that another test class runs in
+  parallel in the same test process inherits every inheritable handle (.NET's default), so the pipe
+  never reaches EOF within the 2 s wait — the leak is the other test's child, not Pakko's launcher.
+  If so, run the class in a collection with parallelization disabled, as T-F130 did for the
+  integration tests; confirm first by making the failure reproducible (a concurrent `Process.Start`
+  loop during the test).
+- **Reported by:** agent, T-F275 step 3a, 2026-10-10.

@@ -1641,7 +1641,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             StatusMessage = _res.GetString("StatusTesting");
             var progress = new Progress<ProgressReport>(r => Progress = r.Percent);
-            ArchiveResult result = await _extractionRouter.TestAsync([archivePath], progress, BrowsePasswordResolver(archivePath), _cts.Token);
+            ArchiveResult result = await _extractionRouter.TestAsync([archivePath], progress, BrowsePasswordResolver(archivePath), cancellationToken: _cts.Token);
             _browsePasswords.Complete(archivePath, result);
             _logService.Info($"Test completed — {archivePath} — {result.Outcome}");
             foreach (ArchiveError error in result.Errors)

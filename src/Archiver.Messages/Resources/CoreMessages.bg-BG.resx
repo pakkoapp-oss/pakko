@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Файл за възстановяване, останал от по-ранна версия на архива, не може да бъде изтрит: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Архивът е повреден ({0} от {1} блока); данните за възстановяване могат да го поправят ({2} блока за възстановяване).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Архивът е повреден ({0} от {1} блока) повече, отколкото данните за възстановяване могат да поправят ({2} блока за възстановяване).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Архивът е повреден ({0} от {1} блока); поправянето на толкова много е извън възможностите на Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Данните за възстановяване не съответстват на архива ({0} от {1} блока се различават), но самият архив преминава теста: данните за възстановяване вероятно са от по-ранна негова версия.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Данните за възстановяване са повредени или във формат, който Pakko не може да прочете.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Данните за възстановяване до архива са създадени за друг файл.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Файлът, който тези данни за възстановяване защитават, не е намерен до тях.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Данните за възстановяване са създадени за файл с друго име; те съответстват на този архив по съдържание.</value>
+  </data>
 </root>

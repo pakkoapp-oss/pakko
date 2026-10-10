@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Impossible de supprimer un fichier de récupération laissé par une version antérieure de l’archive : {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>L’archive est endommagée ({0} blocs sur {1}) ; ses données de récupération peuvent la réparer ({2} blocs de récupération).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>L’archive est endommagée ({0} blocs sur {1}) au-delà de ce que ses données de récupération peuvent réparer ({2} blocs de récupération).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>L’archive est endommagée ({0} blocs sur {1}) ; réparer autant dépasse ce que Pakko peut faire.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Les données de récupération ne correspondent pas à l’archive ({0} blocs sur {1} diffèrent), mais l’archive elle-même réussit le test : les données de récupération proviennent probablement d’une version antérieure.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Les données de récupération sont endommagées ou dans un format que Pakko ne peut pas lire.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Les données de récupération à côté de l’archive ont été créées pour un autre fichier.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Le fichier que protègent ces données de récupération est introuvable à côté d’elles.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Les données de récupération ont été créées pour un fichier portant un autre nom ; elles correspondent à cette archive par leur contenu.</value>
+  </data>
 </root>

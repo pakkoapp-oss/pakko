@@ -496,6 +496,15 @@ The tests (T-F275 step 1):
   a warning. `GroupPolicyServiceTests` reads `DisableRecoveryData`; `RecoveryDataOptionTests` and
   `CreateModeTextTests` (App.Core) the card's option; `CliArgumentParserTests` and two
   `CliSubprocessTests` the `-rr[N]` switch.
+- `Archiver.Core.Tests/Services/ExtractionRouterRecoveryTests` (step 3): a ZIP engine that passes
+  or fails named paths, real archives and Pakko's own sets — intact (ZIP, tar.gz, a `.par2` or
+  volume path, a set named `a.par2`), flag off and policy unchanged, a `.par2` refused under the
+  policy, archive plus its `.par2` checked once, renamed archive and set, a set for another file, a
+  ZIP rewritten without a set (warning, not damage), repairable and beyond-repair damage, a missing
+  archive, damaged set files, a locked archive and unlistable folders (errors, never a throw), one
+  rising percent ending at 100, cancellation. `CliSubprocessTests` runs `pakko a -rr10` then `t`
+  over intact, repairable, beyond-repair and damaged sets for ZIP and tar.gz, a `.par2` path and a
+  ZIP rewritten without `-rr`.
 - `Archiver.Core.Tests/Fuzz/Par2FuzzTests` (`Category=Fuzz`): raw mutations of the golden sets, and
   mutations with the packet MD5 recomputed; reader, verifier and repairer must not throw or write
   anything but the output they are given.

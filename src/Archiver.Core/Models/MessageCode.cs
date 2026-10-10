@@ -125,4 +125,12 @@ public enum MessageCode
     RecoveryDataNotCreated,
     RecoveryDataFileTooLarge,
     RecoveryOldVolumeNotDeleted,
+    RecoveryDataDamagedRepairable,
+    RecoveryDataDamagedNotRepairable,
+    RecoveryDataRepairTooLarge,
+    RecoveryDataDoesNotMatch,
+    RecoveryDataUnusable,
+    RecoveryDataForAnotherFile,
+    RecoveryDataTargetNotFound,
+    RecoveryDataNameMismatch,
 }

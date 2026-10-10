@@ -1,5 +1,6 @@
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
+using Archiver.Core.Recovery;
 
 namespace Archiver.Core.Services;
 
@@ -96,13 +97,24 @@ public sealed class ExtractionRouter : IExtractionRouter
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
         Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null,
+        bool verifyRecoveryData = false,
         CancellationToken cancellationToken = default)
     {
-        // T-F261: same classifier as extraction. tar.exe has no test mode, so a tar-family path
-        // that policy and capabilities would allow is still only reported, never opened.
+        if (verifyRecoveryData)
+            return await TestWithRecoveryDataAsync(archivePaths, progress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false);
         ArchiveFormatPolicy.Classification classification = await ArchiveFormatPolicy
             .ClassifyAsync(archivePaths, _tarCapabilities, _policy, cancellationToken).ConfigureAwait(false);
+        return await TestClassifiedAsync(classification, progress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false);
+    }
 
+    // T-F261: same classifier as extraction. tar.exe has no test mode, so a tar-family path
+    // that policy and capabilities would allow is still only reported, never opened.
+    private async Task<ArchiveResult> TestClassifiedAsync(
+        ArchiveFormatPolicy.Classification classification,
+        IProgress<ProgressReport>? progress,
+        Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync,
+        CancellationToken cancellationToken)
+    {
         ArchiveResult zipResult = classification.ZipPaths.Count > 0
             ? await _archiveService.TestAsync(classification.ZipPaths, progress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
@@ -110,6 +122,66 @@ public sealed class ExtractionRouter : IExtractionRouter
         IEnumerable<SkippedFile> untestable = classification.TarPaths
             .Select(path => CoreMessages.Skip(path, MessageCode.NoTestCapability));
         return zipResult with { SkippedFiles = [.. zipResult.SkippedFiles, .. untestable, .. classification.Unsupported] };
+    }
+
+    // T-F275 step 3: the engines test what they can, then each archive with a set is checked by
+    // it - one climb, the test's share by the bytes it reads, the check's by the archives' sizes.
+    private async Task<ArchiveResult> TestWithRecoveryDataAsync(
+        IReadOnlyList<string> paths,
+        IProgress<ProgressReport>? progress,
+        Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync,
+        CancellationToken cancellationToken)
+    {
+        RecoveryTestStep.Plan plan = await Task.Run(() => RecoveryTestStep.Locate(paths, _policy, cancellationToken), cancellationToken).ConfigureAwait(false);
+        ArchiveFormatPolicy.Classification classification = await ArchiveFormatPolicy
+            .ClassifyAsync(plan.ArchivePaths, _tarCapabilities, _policy, cancellationToken).ConfigureAwait(false);
+
+        long[] checkLengths = [.. plan.Sets.Select(s => TotalLength([s.ArchivePath]))];
+        double checkTotal = Math.Max(1, checkLengths.Sum());
+        long testTotal = TotalLength(classification.ZipPaths);
+        int testEnd = plan.Sets.Count == 0 ? 100 : (int)(100 * testTotal / (testTotal + checkTotal));
+        RecoveryClimb? climb = progress is null || plan.Sets.Count == 0 ? null : new RecoveryClimb(progress, testEnd);
+        IProgress<ProgressReport>? testProgress = climb is null ? progress : new SliceProgress(climb, 0, testEnd, bytesBefore: 0);
+
+        ArchiveResult tested = await TestClassifiedAsync(classification, testProgress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false);
+        var passed = new HashSet<string>(
+            tested.Sources.Where(s => s.Outcome == SourceOutcome.Completed && !tested.Errors.Any(e => e.SourcePath == s.Path)).Select(s => s.Path),
+            StringComparer.OrdinalIgnoreCase);
+
+        var errors = new List<ArchiveError>(plan.Errors);
+        var warnings = new List<ArchiveWarning>(plan.Warnings);
+        var checks = new List<RecoveryCheck>(plan.Checks);
+        await Task.Run(() =>
+        {
+            double before = 0;
+            for (int i = 0; i < plan.Sets.Count; i++)
+            {
+                RecoveryTestStep.Found found = plan.Sets[i];
+                double offset = before;
+                long weight = checkLengths[i];
+                before += weight;
+                (RecoveryCheck? check, ArchiveError? error, ArchiveWarning? warning) = RecoveryTestStep.Check(
+                    found, passed.Contains(found.ArchivePath), f => climb?.Check((offset + f * weight) / checkTotal), cancellationToken);
+                if (check is not null)
+                    checks.Add(check);
+                if (error is not null)
+                    errors.Add(error);
+                if (warning is not null)
+                    warnings.Add(warning);
+            }
+        }, cancellationToken).ConfigureAwait(false);
+        climb?.Check(1);
+
+        // A tar-family archive that its set could check was tested after all.
+        var checkedBySet = new HashSet<string>(
+            checks.Where(c => c.State != RecoveryState.Unusable).Select(c => c.ArchivePath), StringComparer.OrdinalIgnoreCase);
+        return tested with
+        {
+            Errors = [.. tested.Errors, .. errors],
+            Warnings = [.. tested.Warnings, .. warnings],
+            SkippedFiles = [.. tested.SkippedFiles.Where(s => s.Text?.Code != MessageCode.NoTestCapability || !checkedBySet.Contains(s.Path))],
+            RecoveryChecks = checks,
+        };
     }
 
     private static ArchiveResult EmptyResult() => new();
@@ -140,6 +212,33 @@ public sealed class ExtractionRouter : IExtractionRouter
             }
         }
         return total;
+    }
+
+    // The test's reports pass through below testEnd and the check's fill the rest; never goes
+    // back, and a check report is passed on only when the percent changes.
+    private sealed class RecoveryClimb(IProgress<ProgressReport> inner, int testEnd) : IProgress<ProgressReport>
+    {
+        private readonly Lock _lock = new();
+        private int _shown = -1;
+
+        public void Report(ProgressReport value)
+        {
+            lock (_lock)
+                _shown = Math.Max(_shown, value.Percent);
+            inner.Report(value);
+        }
+
+        public void Check(double fraction)
+        {
+            int percent = testEnd + (int)((100 - testEnd) * Math.Clamp(fraction, 0, 1));
+            lock (_lock)
+            {
+                if (percent <= _shown)
+                    return;
+                _shown = percent;
+            }
+            inner.Report(new ProgressReport { Percent = percent, Phase = ProgressPhase.VerifyingRecoveryData });
+        }
     }
 
     // Maps one engine's 0-100 onto its slice. Bytes continue after the engine that ran before:

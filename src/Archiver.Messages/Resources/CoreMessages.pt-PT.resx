@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Não foi possível eliminar um ficheiro de recuperação de uma versão anterior do arquivo: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>O arquivo está danificado ({0} de {1} blocos); os seus dados de recuperação podem repará-lo ({2} blocos de recuperação).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>O arquivo está danificado ({0} de {1} blocos) além do que os seus dados de recuperação podem reparar ({2} blocos de recuperação).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>O arquivo está danificado ({0} de {1} blocos); reparar tanto está além do que o Pakko consegue fazer.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Os dados de recuperação não correspondem ao arquivo ({0} de {1} blocos diferem), mas o próprio arquivo passa no teste: os dados de recuperação são provavelmente de uma versão anterior.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Os dados de recuperação estão danificados ou num formato que o Pakko não consegue ler.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Os dados de recuperação ao lado do arquivo foram criados para outro ficheiro.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>O ficheiro que estes dados de recuperação protegem não foi encontrado ao lado deles.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Os dados de recuperação foram criados para um ficheiro com outro nome; correspondem a este arquivo pelo conteúdo.</value>
+  </data>
 </root>

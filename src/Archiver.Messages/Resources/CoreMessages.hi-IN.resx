@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>संग्रह के पिछले संस्करण से बची पुनर्प्राप्ति फ़ाइल हटाई नहीं जा सकी: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>संग्रह क्षतिग्रस्त है ({1} में से {0} ब्लॉक); इसका पुनर्प्राप्ति डेटा इसे ठीक कर सकता है ({2} पुनर्प्राप्ति ब्लॉक)।</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>संग्रह इतना क्षतिग्रस्त है ({1} में से {0} ब्लॉक) कि इसका पुनर्प्राप्ति डेटा इसे ठीक नहीं कर सकता ({2} पुनर्प्राप्ति ब्लॉक)।</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>संग्रह क्षतिग्रस्त है ({1} में से {0} ब्लॉक); इतनी मरम्मत Pakko की क्षमता से बाहर है।</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>पुनर्प्राप्ति डेटा संग्रह से मेल नहीं खाता ({1} में से {0} ब्लॉक अलग हैं), लेकिन संग्रह स्वयं परीक्षण में ठीक है: पुनर्प्राप्ति डेटा संभवतः इसके किसी पिछले संस्करण का है।</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>पुनर्प्राप्ति डेटा क्षतिग्रस्त है या ऐसे प्रारूप में है जिसे Pakko पढ़ नहीं सकता।</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>संग्रह के पास का पुनर्प्राप्ति डेटा किसी अन्य फ़ाइल के लिए बनाया गया था।</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>यह पुनर्प्राप्ति डेटा जिस फ़ाइल की सुरक्षा करता है, वह इसके पास नहीं मिली।</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>पुनर्प्राप्ति डेटा किसी अन्य नाम वाली फ़ाइल के लिए बनाया गया था; यह सामग्री के आधार पर इस संग्रह से मेल खाता है।</value>
+  </data>
 </root>

@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Nepavyko ištrinti atkūrimo failo, likusio iš ankstesnės archyvo versijos: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Archyvas sugadintas ({0} iš {1} blokų); jo atkūrimo duomenys gali jį pataisyti ({2} atkūrimo blokai).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Archyvas sugadintas ({0} iš {1} blokų) labiau, nei jo atkūrimo duomenys gali pataisyti ({2} atkūrimo blokai).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Archyvas sugadintas ({0} iš {1} blokų); tiek pataisyti Pakko negali.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Atkūrimo duomenys neatitinka archyvo (skiriasi {0} iš {1} blokų), tačiau pats archyvas testą praeina: atkūrimo duomenys greičiausiai yra iš ankstesnės jo versijos.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Atkūrimo duomenys sugadinti arba tokio formato, kurio Pakko negali perskaityti.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Šalia archyvo esantys atkūrimo duomenys sukurti kitam failui.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Failas, kurį saugo šie atkūrimo duomenys, šalia jų nerastas.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Atkūrimo duomenys sukurti kitu pavadinimu pavadintam failui; pagal turinį jie atitinka šį archyvą.</value>
+  </data>
 </root>

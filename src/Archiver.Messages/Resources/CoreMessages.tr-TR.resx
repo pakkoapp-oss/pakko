@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Arşivin önceki bir sürümünden kalan kurtarma dosyası silinemedi: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Arşiv hasarlı ({1} bloğun {0} tanesi); kurtarma verisi onu onarabilir ({2} kurtarma bloğu).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Arşiv, kurtarma verisinin onarabileceğinden fazla hasarlı ({1} bloğun {0} tanesi; {2} kurtarma bloğu).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Arşiv hasarlı ({1} bloğun {0} tanesi); bu kadarını onarmak Pakko'nun yapabileceklerinin ötesinde.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Kurtarma verisi arşivle eşleşmiyor ({1} bloğun {0} tanesi farklı), ancak arşivin kendisi testi geçiyor: kurtarma verisi büyük olasılıkla arşivin önceki bir sürümüne ait.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Kurtarma verisi hasarlı veya Pakko'nun okuyamadığı bir biçimde.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Arşivin yanındaki kurtarma verisi başka bir dosya için oluşturulmuş.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Bu kurtarma verisinin koruduğu dosya yanında bulunamadı.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Kurtarma verisi başka adlı bir dosya için oluşturulmuş; içeriğine göre bu arşivle eşleşiyor.</value>
+  </data>
 </root>

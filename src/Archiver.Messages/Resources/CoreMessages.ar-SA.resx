@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>تعذر حذف ملف استرداد متبقٍ من إصدار سابق من الأرشيف: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>الأرشيف تالف ({0} من {1} كتلة)؛ يمكن لبيانات الاسترداد الخاصة به إصلاحه ({2} كتلة استرداد).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>الأرشيف تالف ({0} من {1} كتلة) بما يتجاوز ما يمكن لبيانات الاسترداد الخاصة به إصلاحه ({2} كتلة استرداد).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>الأرشيف تالف ({0} من {1} كتلة)؛ إصلاح هذا القدر يتجاوز قدرة Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>لا تطابق بيانات الاسترداد الأرشيف ({0} من {1} كتلة مختلفة)، لكن اختبار الأرشيف نفسه سليم: على الأرجح أن بيانات الاسترداد من إصدار سابق منه.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>بيانات الاسترداد تالفة أو بتنسيق لا يستطيع Pakko قراءته.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>بيانات الاسترداد الموجودة بجانب الأرشيف أُنشئت لملف آخر.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>لم يتم العثور بجانب بيانات الاسترداد هذه على الملف الذي تحميه.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>أُنشئت بيانات الاسترداد لملف باسم آخر؛ وهي تطابق هذا الأرشيف بمحتواه.</value>
+  </data>
 </root>

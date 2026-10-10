@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Nie można usunąć pliku odzyskiwania pozostałego z wcześniejszej wersji archiwum: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Archiwum jest uszkodzone ({0} z {1} bloków); jego dane odzyskiwania mogą je naprawić ({2} bloków odzyskiwania).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Archiwum jest uszkodzone ({0} z {1} bloków) bardziej, niż jego dane odzyskiwania mogą naprawić ({2} bloków odzyskiwania).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Archiwum jest uszkodzone ({0} z {1} bloków); naprawa w takim zakresie przekracza możliwości programu Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Dane odzyskiwania nie pasują do archiwum (różni się {0} z {1} bloków), ale samo archiwum przechodzi test: dane odzyskiwania pochodzą zapewne z jego wcześniejszej wersji.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Dane odzyskiwania są uszkodzone lub w formacie, którego Pakko nie potrafi odczytać.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Dane odzyskiwania obok archiwum utworzono dla innego pliku.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Nie znaleziono obok tych danych odzyskiwania pliku, który chronią.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Dane odzyskiwania utworzono dla pliku o innej nazwie; pasują do tego archiwum zawartością.</value>
+  </data>
 </root>

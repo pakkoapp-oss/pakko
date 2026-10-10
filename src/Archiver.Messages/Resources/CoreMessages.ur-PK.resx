@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>آرکائیو کے پچھلے ورژن سے بچی بازیابی فائل حذف نہیں کی جا سکی: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>آرکائیو خراب ہے ({1} میں سے {0} بلاک)؛ اس کا بازیابی ڈیٹا اسے ٹھیک کر سکتا ہے ({2} بازیابی بلاک)۔</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>آرکائیو اتنا خراب ہے ({1} میں سے {0} بلاک) کہ اس کا بازیابی ڈیٹا اسے ٹھیک نہیں کر سکتا ({2} بازیابی بلاک)۔</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>آرکائیو خراب ہے ({1} میں سے {0} بلاک)؛ اتنی مرمت Pakko کی صلاحیت سے باہر ہے۔</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>بازیابی ڈیٹا آرکائیو سے میل نہیں کھاتا ({1} میں سے {0} بلاک مختلف ہیں)، لیکن آرکائیو خود ٹیسٹ میں درست ہے: بازیابی ڈیٹا غالباً اس کے کسی پچھلے ورژن کا ہے۔</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>بازیابی ڈیٹا خراب ہے یا ایسی شکل میں ہے جسے Pakko پڑھ نہیں سکتا۔</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>آرکائیو کے ساتھ موجود بازیابی ڈیٹا کسی دوسری فائل کے لیے بنایا گیا تھا۔</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>جس فائل کی یہ بازیابی ڈیٹا حفاظت کرتا ہے وہ اس کے ساتھ نہیں ملی۔</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>بازیابی ڈیٹا کسی دوسرے نام والی فائل کے لیے بنایا گیا تھا؛ یہ مواد کے لحاظ سے اس آرکائیو سے میل کھاتا ہے۔</value>
+  </data>
 </root>

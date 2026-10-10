@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>En gendannelsesfil fra en tidligere version af arkivet kunne ikke slettes: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Arkivet er beskadiget ({0} af {1} blokke); dets gendannelsesdata kan reparere det ({2} gendannelsesblokke).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Arkivet er beskadiget ({0} af {1} blokke) mere, end dets gendannelsesdata kan reparere ({2} gendannelsesblokke).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Arkivet er beskadiget ({0} af {1} blokke); at reparere så meget er mere, end Pakko kan.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Gendannelsesdataene passer ikke til arkivet ({0} af {1} blokke er forskellige), men selve arkivet består testen: gendannelsesdataene stammer sandsynligvis fra en tidligere version af det.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Gendannelsesdataene er beskadigede eller i et format, Pakko ikke kan læse.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Gendannelsesdataene ved siden af arkivet blev lavet til en anden fil.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Filen, som disse gendannelsesdata beskytter, blev ikke fundet ved siden af dem.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Gendannelsesdataene blev lavet til en fil med et andet navn; de passer til dette arkiv efter indhold.</value>
+  </data>
 </root>

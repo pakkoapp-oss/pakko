@@ -102,7 +102,7 @@ Rejected 2026-07-18; see `DECISIONS.md`'s T-F09 "Distribution" entry.
 | `a` | Add (create/add to archive) | Supported — ZIP and all 6 tar-family creation formats (`-ttar`/`-ttar.gz`/`-ttar.bz2`/`-ttar.xz`/`-ttar.zst`/`-ttar.lzma`) via `IArchiveCreationRouter` (T-F105, shipped 2026-07-16, after this doc's original 2026-07-13 draft); `-t7z`/`-trar` remain unsupported — Pakko can only *create* ZIP/tar-family, never 7z/RAR |
 | `u` | Update (add newer/changed files to an *existing* archive) | Not supported — no "diff against existing archive contents" logic exists anywhere in `Archiver.Core` |
 | `d` | Delete (remove entries from an archive) | Not supported, deliberately — no in-place archive mutation, matches T-F05's "not an archive manager" positioning |
-| `t` | Test (verify integrity) | Partial — ZIP via existing `TestAsync` (T-F62); tar-family has no test capability (`ITarService` has no Test method, per T-F86's finding). Since T-F261 `t` goes through `IExtractionRouter.TestAsync`: each path is classified once (Group Policy, then format), a tar-family or refused path is skipped with the router's reason, and tar.exe is never started |
+| `t` | Test (verify integrity) | Partial — ZIP via existing `TestAsync` (T-F62); tar-family has no test capability (`ITarService` has no Test method, per T-F86's finding). Since T-F261 `t` goes through `IExtractionRouter.TestAsync`: each path is classified once (Group Policy, then format), a tar-family or refused path is skipped with the router's reason, and tar.exe is never started. **Recovery data (T-F275, v1.8):** each archive is also checked against a PAR2 set next to it (`<archive>.par2` and `<archive>.*.par2`, or `<name without the last extension>.par2` as QuickPar/MultiPar name it), and a `.par2` path checks the archive its set protects; see "Recovery data in `t`" below |
 | `e` | Extract, flattened (no directory structure) | Not supported — Pakko's extraction always preserves the archive's folder structure; no flatten mode exists |
 | `x` | Extract with full paths | Supported — `ExtractMode.SingleFolder`; since T-F205 an archive's single root folder is kept, as `7z x` does. Without `-o`, extracts into the **current directory**, as `7z x` does (T-F206; before it, next to the archive) |
 | `l` | List contents | Supported — consumes `IArchiveListingRouter` (T-F05, shipped), looped once per archive path given. Tab-separated columns `Size`, `Compressed`, `Crc32`, `Modified`, `Type`, `Encrypted`, `Path` (Path always last). `Compressed` and `Crc32` are `-` for tar-family, 7z and RAR (no per-entry value; T-F214, was `0` for `Compressed`); `Modified` is local time, for those formats read from tar.exe's listing (to the minute within half a year; an older entry shows the date alone, `2020-02-03`, because tar.exe prints its year in place of the time and has no option for both, T-F335), `-` when unreadable. `Encrypted` (T-F221 item 7, 2026-09-28) is `-`, `ZipCrypto`, `AES-128`/`AES-192`/`AES-256`, `+` (encrypted by a method Pakko cannot name) or `?` (the format cannot say without extracting: tar-family, 7z, RAR) |
@@ -269,6 +269,25 @@ Never silently ignore an unrecognized token or switch and proceed as if it wasn'
 ---
 
 See `TASKS.md`'s T-F09 entry for acceptance criteria, test-layer requirements, and current status.
+
+## Recovery data in `t` (T-F275 step 3)
+
+With a PAR2 set next to the archive, `t` also checks the archive against it, block by block at each
+block's own position (bad sectors and a cut tail; bytes inserted or removed read as damage from that
+point on). `-si` is not checked (a staged stdin has no neighbours); under the `DisableRecoveryData`
+policy no set is looked for and a `.par2` path is an error.
+
+| What the set says | Output | Exit |
+|---|---|---|
+| intact | stdout `out.zip: recovery data intact (2000 blocks, 100 recovery blocks)`; a tar-family archive is no longer "skipped" | 0 (was 1 for tar-family) |
+| damaged, repairable | `pakko: error: out.zip: The archive is damaged (3 of 2000 blocks); its recovery data can repair it (100 recovery blocks).` | 2 |
+| damaged beyond the set, or the repair too large | `pakko: error: ...beyond what its recovery data can repair...` / `...beyond what Pakko can do.` | 2 |
+| a ZIP that tests intact and a set that disagrees | `pakko: warning: out.zip: The recovery data does not match the archive...` — taken to be a set left from an earlier version (`a -y` without `-rr` keeps the old set) | 1 |
+| PAR2 files that cannot be read, or a set for another file | `pakko: warning:` line; the archive is tested as without a set | 1 |
+| matched by content under another name | `pakko: warning:` line besides the result | 1 |
+| a `.par2` whose set cannot be read or whose archive is not found | `pakko: error:` line | 2 |
+
+`t out.zip out.zip.par2` checks the set once. Repair is `pakko r` (step 4); no hint points to it yet.
 
 ## Warnings (T-F280)
 

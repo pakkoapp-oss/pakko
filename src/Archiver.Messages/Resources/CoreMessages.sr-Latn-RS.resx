@@ -297,4 +297,28 @@
   <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
     <value>Nije moguće izbrisati datoteku za oporavak preostalu iz ranije verzije arhive: {0}</value>
   </data>
+  <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
+    <value>Arhiva je oštećena ({0} od {1} blokova); njeni podaci za oporavak mogu da je poprave ({2} blokova za oporavak).</value>
+  </data>
+  <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
+    <value>Arhiva je oštećena ({0} od {1} blokova) više nego što njeni podaci za oporavak mogu da poprave ({2} blokova za oporavak).</value>
+  </data>
+  <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
+    <value>Arhiva je oštećena ({0} od {1} blokova); popravka u tolikoj meri prevazilazi mogućnosti programa Pakko.</value>
+  </data>
+  <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
+    <value>Podaci za oporavak ne odgovaraju arhivi (razlikuje se {0} od {1} blokova), ali sama arhiva prolazi test: podaci za oporavak su verovatno iz njene ranije verzije.</value>
+  </data>
+  <data name="RecoveryDataUnusable" xml:space="preserve">
+    <value>Podaci za oporavak su oštećeni ili u formatu koji Pakko ne može da pročita.</value>
+  </data>
+  <data name="RecoveryDataForAnotherFile" xml:space="preserve">
+    <value>Podaci za oporavak pored arhive kreirani su za drugu datoteku.</value>
+  </data>
+  <data name="RecoveryDataTargetNotFound" xml:space="preserve">
+    <value>Datoteka koju ovi podaci za oporavak štite nije pronađena pored njih.</value>
+  </data>
+  <data name="RecoveryDataNameMismatch" xml:space="preserve">
+    <value>Podaci za oporavak kreirani su za datoteku sa drugim imenom; ovoj arhivi odgovaraju po sadržaju.</value>
+  </data>
 </root>
