@@ -9,12 +9,15 @@ namespace Archiver.Core.Recovery;
 /// archive is an <see cref="ArchiveError"/> on that archive, the archive stays, and every source
 /// is downgraded to <see cref="SourceOutcome.Partial"/> — a result does not say which source went
 /// into which archive, and "Delete after" must not take the sources of an unprotected archive.
+/// The sets of an archive's earlier bytes go first: a run cancelled, failed or killed while the
+/// new set is written leaves an archive with no set, never one a test would call damaged.
 /// Never throws except <see cref="OperationCanceledException"/>.
 /// </summary>
 internal static partial class RecoveryDataWriter
 {
     internal static ArchiveResult AddTo(ArchiveResult result, int percent, Action<double> progress, CancellationToken cancellationToken)
     {
+        result = RemoveEarlierSets(result, cancellationToken);
         var errors = new List<ArchiveError>(result.Errors);
         var warnings = new List<ArchiveWarning>(result.Warnings);
         var recoveryFiles = new List<string>();
@@ -36,7 +39,9 @@ internal static partial class RecoveryDataWriter
             }
             recoveryFiles.Add(created!.IndexPath);
             recoveryFiles.Add(created.VolumePath);
-            warnings.AddRange(RemoveStaleVolumes(archive, created, cancellationToken));
+            // A volume the first pass could not delete has its warning already.
+            warnings.AddRange(RemoveStaleVolumes(archive, created, cancellationToken)
+                .Where(w => !warnings.Exists(known => known.SourcePath == w.SourcePath)));
         }
 
         bool failed = errors.Count > result.Errors.Count;
@@ -99,16 +104,18 @@ internal static partial class RecoveryDataWriter
             return []; // best-effort: nothing to remove in a folder that cannot be listed
         }
 
-        return Delete(candidates.Where(p => IsStaleVolume(p, name, created.VolumePath, setId, cancellationToken)));
+        string[] stale = [.. candidates.Where(p => IsStaleVolume(p, name, created.VolumePath, setId, cancellationToken))];
+        return Delete(stale);
     }
 
     /// <summary>
-    /// An archive written without recovery data keeps the set of its earlier bytes, and a test
-    /// would then call the new archive damaged. A set found by the test's own rule, naming this
-    /// archive, whose length and first-16-KiB MD5 no longer match it, is removed: each of its files
-    /// that holds packets of that set alone. A set matching by content, another file's set and
-    /// anything unreadable stay. Best-effort: a file that cannot be deleted is a warning; with no
-    /// warning, <paramref name="result"/> itself comes back.
+    /// A rewritten archive keeps the sets of its earlier bytes, and a test would then call the new
+    /// archive damaged. Every set under either name a test looks for (<c>X.ext</c> and <c>X</c>)
+    /// that names this archive, and whose length and first-16-KiB MD5 no longer match it, is
+    /// removed: each file that holds packets of such sets alone. A set matching by content, another
+    /// file's set and anything unreadable stay. The files are chosen before the first is deleted,
+    /// so a cancellation leaves a set whole or gone. Best-effort: a file that cannot be deleted is a
+    /// warning; with no warning, <paramref name="result"/> itself comes back.
     /// </summary>
     internal static ArchiveResult RemoveEarlierSets(ArchiveResult result, CancellationToken cancellationToken)
     {
@@ -146,34 +153,35 @@ internal static partial class RecoveryDataWriter
         IReadOnlyList<string> setFiles;
         try
         {
-            setFiles = Par2SetLocator.SetFilesForTarget(archive);
+            setFiles = Par2SetLocator.SetFilesForEitherBase(archive);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             return []; // best-effort: nothing to remove in a folder that cannot be listed
         }
-        if (setFiles.Count == 0)
+        if (setFiles.Count == 0 || Par2SetLocator.ReadContentKey(archive) is not { } key)
             return [];
 
         Par2ReadResult read = Par2PacketReader.Read(setFiles, cancellationToken);
-        if (Par2SetLocator.Select(read.Sets, archive) is not { NameMatches: true } match
-            || Par2SetLocator.ReadContentKey(archive) is not { } key
-            || (key.Length == match.Set.FileLength && key.Md5First16k == match.Set.Md5First16k))
+        HashSet<UInt128> earlier = [.. read.Sets
+            .Where(s => Par2SetLocator.Names(s, archive) && (s.FileLength != key.Length || s.Md5First16k != key.Md5First16k))
+            .Select(s => s.SetId)];
+        if (earlier.Count == 0)
             return [];
-        UInt128 setId = match.Set.SetId;
-        return Delete(setFiles.Where(p => HoldsOnlySet(p, setId, cancellationToken)));
+        string[] files = [.. setFiles.Where(p => HoldsOnlySets(p, earlier, cancellationToken))];
+        return Delete(files);
     }
 
-    private static bool HoldsOnlySet(string path, UInt128 setId, CancellationToken cancellationToken)
+    private static bool HoldsOnlySets(string path, HashSet<UInt128> setIds, CancellationToken cancellationToken)
     {
         Par2ReadResult read = Par2PacketReader.Read([path], cancellationToken);
         return read.UnreadableFiles == 0
             && (read.Sets.Count > 0 || read.Rejected.Count > 0)
-            && read.Sets.All(s => s.SetId == setId)
-            && read.Rejected.All(r => r.SetId == setId);
+            && read.Sets.All(s => setIds.Contains(s.SetId))
+            && read.Rejected.All(r => setIds.Contains(r.SetId));
     }
 
-    private static List<ArchiveWarning> Delete(IEnumerable<string> paths)
+    private static List<ArchiveWarning> Delete(string[] paths)
     {
         var warnings = new List<ArchiveWarning>();
         foreach (string path in paths)

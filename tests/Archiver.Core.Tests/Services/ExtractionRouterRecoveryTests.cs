@@ -412,6 +412,90 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
         result.Errors[0].SourcePath.Should().Be(index);
     }
 
+    // --- A set left incomplete: its creation was killed, or a copy of it was cut short ---
+
+    // Killed between the two renames: the volume is in place, the index is not. The volume carries
+    // the critical packets too, so the set still works.
+    [Theory]
+    [InlineData(false, RecoveryState.Intact)]
+    [InlineData(true, RecoveryState.Repairable)]
+    public async Task SetWithoutItsIndex_StillChecksTheArchive(bool damaged, RecoveryState expected)
+    {
+        string tar = Protected("a.tar.gz");
+        File.Delete(Par2Creator.IndexPath(tar));
+        if (damaged)
+            Damage(tar, 100, 10);
+
+        ArchiveResult result = await Test(tar);
+
+        RecoveryCheck check = result.RecoveryChecks.Should().ContainSingle().Subject;
+        check.State.Should().Be(expected);
+        check.RecoveryBlocks.Should().Be(Par2Creator.ChooseParameters(Length, 5)!.Value.RecoveryCount);
+        result.SkippedFiles.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(false, RecoveryState.Intact)]
+    [InlineData(true, RecoveryState.NotRepairable)]
+    public async Task SetWithoutItsVolume_ChecksButCannotRepair(bool damaged, RecoveryState expected)
+    {
+        string tar = Protected("a.tar.gz");
+        File.Delete(Par2Creator.VolumePath(tar, Par2Creator.ChooseParameters(Length, 5)!.Value.RecoveryCount));
+        if (damaged)
+            Damage(tar, 100, 10);
+
+        ArchiveResult result = await Test(tar);
+
+        RecoveryCheck check = result.RecoveryChecks.Should().ContainSingle().Subject;
+        check.State.Should().Be(expected);
+        check.RecoveryBlocks.Should().Be(0);
+    }
+
+    // Every length a half-copied volume can have: the check never throws, an intact archive stays
+    // intact, and a damaged one is never promised more recovery blocks than survived.
+    [Fact]
+    public async Task VolumeCutShortAtAnyLength_NeverThrowsAndNeverOverpromises()
+    {
+        string tar = Protected("a.tar.gz");
+        int recoveryCount = Par2Creator.ChooseParameters(Length, 5)!.Value.RecoveryCount;
+        string volume = Par2Creator.VolumePath(tar, recoveryCount);
+        byte[] whole = File.ReadAllBytes(volume);
+        byte[] intact = File.ReadAllBytes(tar);
+
+        for (int length = 0; length < whole.Length; length += 97)
+        {
+            File.WriteAllBytes(volume, whole.AsSpan(0, length).ToArray());
+            File.WriteAllBytes(tar, intact);
+            (await Test(tar)).RecoveryChecks.Should().ContainSingle().Which.State.Should().Be(RecoveryState.Intact, "length {0}", length);
+
+            Damage(tar, 100, 10);
+            RecoveryCheck check = (await Test(tar)).RecoveryChecks.Should().ContainSingle().Subject;
+            check.State.Should().BeOneOf(RecoveryState.Repairable, RecoveryState.NotRepairable);
+            check.RecoveryBlocks.Should().BeLessThanOrEqualTo(recoveryCount);
+            if (check.State == RecoveryState.Repairable)
+                check.RecoveryBlocks.Should().BeGreaterThanOrEqualTo(check.DamagedBlocks);
+        }
+    }
+
+    // Killed while the set was being written: only the writer's temporary files exist. They are
+    // whole PAR2 files under another name, and no rule finds them.
+    [Fact]
+    public async Task TemporaryFilesOfAnInterruptedRun_AreNotASet()
+    {
+        string tar = Protected("a.tar.gz");
+        int n = 0;
+        foreach (string file in Directory.GetFiles(_temp.Path, "*.par2"))
+            File.Move(file, Path.Combine(_temp.Path, $".pakko-a-{n++:x8}.tmp"));
+        Damage(tar, 100, 10);
+
+        ArchiveResult result = await Test(tar);
+
+        result.RecoveryChecks.Should().BeEmpty();
+        result.Errors.Should().BeEmpty();
+        result.Warnings.Should().BeEmpty();
+        result.SkippedFiles.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.NoTestCapability);
+    }
+
     [Fact]
     public async Task ArchiveLockedByAnotherProgram_IsAnErrorNotAThrow()
     {
