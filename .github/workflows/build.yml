@@ -570,9 +570,27 @@ jobs:
       # runs the Subprocess layer against the native x64 pakko.exe just published. Skipped on a tag:
       # its exe prints the release version, not the dev pattern the -v tests expect, and the same
       # commit already passed here when it was pushed to main.
+      # T-F375: par2cmdline is the yardstick of the AOT exe's recovery-data speed test below.
+      - name: Download PAR2 test oracles (2 attempts)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $attempts = 2
+          for ($i = 1; $i -le $attempts; $i++) {
+            if ($i -gt 1) {
+              Write-Output "::warning title=Retried::Download PAR2 test oracles (2 attempts): attempt $($i - 1) failed, retrying"
+              Start-Sleep -Seconds 15
+            }
+            try { & ./scripts/Get-Par2Oracles.ps1; exit 0 } catch { Write-Output $_ }
+          }
+          throw "PAR2 oracle download failed after $attempts attempt(s)."
+
       - name: Subprocess tests against the Native AOT pakko.exe
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         shell: pwsh
+        env:
+          PAKKO_PAR2_ORACLES_REQUIRED: "1"
         run: |
           $env:PAKKO_CLI_EXE = Join-Path $PWD 'artifacts\cli\win-x64\pakko.exe'
           $attempts = 2

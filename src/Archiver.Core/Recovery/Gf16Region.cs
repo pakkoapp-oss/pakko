@@ -1,5 +1,7 @@
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 
 namespace Archiver.Core.Recovery;
 
@@ -74,10 +76,10 @@ internal static class Gf16Region
             Vector128<byte> n2 = high & nibble;
             Vector128<byte> n3 = high >>> 4;
 
-            Vector128<byte> resultLow = Vector128.ShuffleNative(lo0, n0) ^ Vector128.ShuffleNative(lo1, n1)
-                ^ Vector128.ShuffleNative(lo2, n2) ^ Vector128.ShuffleNative(lo3, n3);
-            Vector128<byte> resultHigh = Vector128.ShuffleNative(hi0, n0) ^ Vector128.ShuffleNative(hi1, n1)
-                ^ Vector128.ShuffleNative(hi2, n2) ^ Vector128.ShuffleNative(hi3, n3);
+            Vector128<byte> resultLow = Lookup(lo0, n0) ^ Lookup(lo1, n1)
+                ^ Lookup(lo2, n2) ^ Lookup(lo3, n3);
+            Vector128<byte> resultHigh = Lookup(hi0, n0) ^ Lookup(hi1, n1)
+                ^ Lookup(hi2, n2) ^ Lookup(hi3, n3);
 
             Vector128<ushort> r0 = Vector128.WidenLower(resultLow) | (Vector128.WidenLower(resultHigh) << 8);
             Vector128<ushort> r1 = Vector128.WidenUpper(resultLow) | (Vector128.WidenUpper(resultHigh) << 8);
@@ -89,4 +91,11 @@ internal static class Gf16Region
         }
         return done;
     }
+
+    // T-F375: the Native AOT build compiles for a baseline x64 processor without SSSE3, where
+    // Vector128.ShuffleNative becomes a per-byte fallback (six times slower over a whole archive);
+    // asking for SSSE3 by name is a run-time check there and pshufb when it is present.
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector128<byte> Lookup(Vector128<byte> table, Vector128<byte> nibbles) =>
+        Ssse3.IsSupported ? Ssse3.Shuffle(table, nibbles) : Vector128.ShuffleNative(table, nibbles);
 }

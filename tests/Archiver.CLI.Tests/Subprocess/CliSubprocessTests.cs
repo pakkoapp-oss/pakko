@@ -336,6 +336,42 @@ public sealed class CliSubprocessTests
         Directory.GetFiles(scratchDir, name + ".vol*+*.par2").Should().ContainSingle();
     }
 
+    // T-F375: the Native AOT pakko.exe took six times as long as the JIT build to write recovery
+    // data, because its byte shuffle was compiled as a per-byte fallback; no test saw it, since
+    // tests run under JIT. par2cmdline on the same machine is the yardstick: Pakko is faster than
+    // it when the vector kernel is in place (200 MB at 5 %: par2cmdline 3.8 s, Pakko 2.7 s, the
+    // broken build 14.2 s).
+    [PublishedExeSpeedFact]
+    public void Archive_RecoveryData_TakesNoLongerThanTwiceParTwoCmdLine()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string big = Path.Combine(scratchDir, "big.bin");
+        byte[] noise = new byte[96 * 1024 * 1024];
+        new Random(375).NextBytes(noise);
+        File.WriteAllBytes(big, noise);
+
+        var reference = System.Diagnostics.Stopwatch.StartNew();
+        using (var par2 = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(PublishedExeSpeedFactAttribute.Par2CmdLinePath)
+        {
+            ArgumentList = { "create", "-q", "-q", "-r5", Path.Combine(scratchDir, "reference.par2"), big },
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        })!)
+        {
+            par2.WaitForExit();
+            par2.ExitCode.Should().Be(0);
+        }
+
+        reference.Stop();
+        var pakko = System.Diagnostics.Stopwatch.StartNew();
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("a", "-rr5", "-mx=0", "-tzip", Path.Combine(scratchDir, "out.zip"), big);
+        pakko.Stop();
+
+        exitCode.Should().Be(0, because: stdErr);
+        pakko.Elapsed.Should().BeLessThan(reference.Elapsed * 2,
+            $"pakko took {pakko.Elapsed.TotalSeconds:F1} s and par2cmdline {reference.Elapsed.TotalSeconds:F1} s for 5 % over the same 96 MB");
+    }
+
     [Fact]
     public void Archive_RecoveryDataWithStdout_ExitsSevenAndCreatesNothing()
     {

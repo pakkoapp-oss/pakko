@@ -582,6 +582,12 @@ The tests (T-F275 step 1):
   where nothing can be created followed by another folder that works, and another archive's
   result never taken. `RecoveryServiceTests` has the service's `HasFilesFor`/`FindArchive` with
   its policy and cancel. The wiring in `MainViewModel` is a device check.
+- T-F375, the AOT exe's speed. `CliSubprocessTests.Archive_RecoveryData_TakesNoLongerThanTwiceParTwoCmdLine`
+  (`[PublishedExeSpeedFact]`) is skipped unless `PAKKO_CLI_EXE` names a published exe, and then
+  needs par2cmdline from `Get-Par2Oracles.ps1`: `pakko a -rr5` on 96 MB must take less than twice
+  par2cmdline's `create -r5` on the same file. `build-cli` runs it after the publish. Locally:
+  `.\scripts\Publish-Cli.ps1 -Architecture x64`, set `PAKKO_CLI_EXE` to
+  `artifacts\cli\win-x64\pakko.exe`, run the default filter.
 - `Archiver.Core.Tests/Fuzz/Par2FuzzTests` (`Category=Fuzz`): raw mutations of the golden sets, and
   mutations with the packet MD5 recomputed; reader, verifier and repairer must not throw or write
   anything but the output they are given.
