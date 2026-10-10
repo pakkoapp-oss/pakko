@@ -64,7 +64,7 @@ public sealed record RecoveryPanel(bool HasFiles, RecoveryPanelSeverity Severity
         string[] lines = [.. errors, .. warnings, .. matches];
         if (lines.Length == 0)
             return this;
-        var severity = RecoveryPanelSeverity.Success;
+        RecoveryPanelSeverity severity = RecoveryPanelSeverity.Success;
         if (errors.Length > 0)
             severity = RecoveryPanelSeverity.Error;
         else if (warnings.Length > 0)
