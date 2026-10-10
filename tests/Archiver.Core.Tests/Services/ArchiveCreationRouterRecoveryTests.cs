@@ -617,6 +617,106 @@ public sealed class ArchiveCreationRouterRecoveryTests
         }
     }
 
+    // A run killed between writing a set and removing the one before it, or an old volume that
+    // could not be deleted, leaves two sets naming the archive; neither may outlive a rewrite.
+    [Fact]
+    public async Task RewrittenWithoutRecoveryData_TwoEarlierSets_BothRemoved()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.tar.gz");
+        Par2CreateResult first = EarlierSet(archive);
+        File.WriteAllBytes(archive, Par2TestData.Content(7000));
+        Par2CreateResult second = Par2Creator.Create(archive, Par2Creator.ChooseParameters(7000, 10)!.Value, null, CancellationToken.None);
+        second.VolumePath.Should().NotBe(first.VolumePath);
+        File.Exists(first.VolumePath).Should().BeTrue();
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) };
+
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 0, ArchiveContainerFormat.TarGz));
+
+        result.Warnings.Should().BeEmpty();
+        Directory.GetFiles(temp.Path).Should().Equal(archive);
+    }
+
+    // One set under each name a test looks for: a.zip.par2 and, as QuickPar names it, a.par2.
+    [Theory]
+    [InlineData(0)]
+    [InlineData(5)]
+    public async Task Rewritten_EarlierSetsUnderBothNames_BothRemoved(int percent)
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        Par2CreateResult shortNamed = EarlierSet(archive, 7000);
+        File.Move(shortNamed.IndexPath, Path.Combine(temp.Path, "a.par2"));
+        File.Move(shortNamed.VolumePath, Path.Combine(temp.Path, "a" + Path.GetFileName(shortNamed.VolumePath)["a.zip".Length..]));
+        EarlierSet(archive);
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) };
+
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, percent));
+
+        result.Errors.Should().BeEmpty();
+        result.Warnings.Should().BeEmpty();
+        Directory.GetFiles(temp.Path).Should().BeEquivalentTo([archive, .. result.RecoveryFiles]);
+    }
+
+    // The earlier set goes before the new one is written: a run cancelled, failed or killed while
+    // writing leaves an archive without a set, never one beside the set of its earlier bytes.
+    [Fact]
+    public async Task RewrittenWithRecoveryData_CancelledWhileCreating_EarlierSetGone()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        EarlierSet(archive);
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0], length: 2_000_000) };
+        using var cts = new CancellationTokenSource();
+        var progress = new RecordingProgress(r =>
+        {
+            if (r.Phase == ProgressPhase.CreatingRecoveryData)
+                cts.Cancel();
+        });
+
+        Func<Task> act = () => Router(engine).ArchiveAsync(Options(temp, 20), progress, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        Directory.GetFiles(temp.Path).Should().Equal(archive);
+    }
+
+    [Fact]
+    public async Task RewrittenWithRecoveryData_SetNotCreated_EarlierSetGone()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        EarlierSet(archive);
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0], length: 0) };
+
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 5));
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.RecoveryDataFileTooLarge);
+        Directory.GetFiles(temp.Path).Should().Equal(archive);
+    }
+
+    // The same bytes again with another percent: the set that still matches is replaced, not lost
+    // before the new one exists.
+    [Fact]
+    public async Task RewrittenWithTheSameBytesAndRecoveryData_CancelledWhileCreating_EarlierSetKept()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        Par2CreateResult old = EarlierSet(archive, 2_000_000);
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0], length: 2_000_000) };
+        using var cts = new CancellationTokenSource();
+        var progress = new RecordingProgress(r =>
+        {
+            if (r.Phase == ProgressPhase.CreatingRecoveryData)
+                cts.Cancel();
+        });
+
+        Func<Task> act = () => Router(engine).ArchiveAsync(Options(temp, 20), progress, cts.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        Directory.GetFiles(temp.Path).Should().BeEquivalentTo([archive, old.IndexPath, old.VolumePath]);
+        VerifyStatus(archive).Should().Be(Par2VerifyStatus.Intact);
+    }
+
     [Fact]
     public async Task ZeroPercent_TheEngineNeverOpensTheFolder()
     {

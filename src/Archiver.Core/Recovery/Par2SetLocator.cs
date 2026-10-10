@@ -68,6 +68,20 @@ internal static partial class Par2SetLocator
         return shortName.Length > 0 && shortName != name ? SetFiles(folder, shortName) : [];
     }
 
+    /// <summary>Every PAR2 file <see cref="SetFilesForTarget"/> could ever return for a file: the
+    /// files of base <c>X</c> include those of base <c>X.ext</c>.</summary>
+    internal static IReadOnlyList<string> SetFilesForEitherBase(string targetPath)
+    {
+        string full = Path.GetFullPath(targetPath);
+        string name = Path.GetFileName(full);
+        string shortName = Path.GetFileNameWithoutExtension(name);
+        return SetFiles(Path.GetDirectoryName(full)!, shortName.Length > 0 ? shortName : name);
+    }
+
+    /// <summary>Whether the file name inside <paramref name="set"/> is that of <paramref name="targetPath"/>.</summary>
+    internal static bool Names(Par2Set set, string targetPath) =>
+        string.Equals(Encoding.UTF8.GetString(set.Name), Path.GetFileName(targetPath), StringComparison.OrdinalIgnoreCase);
+
     /// <summary>The files a set opened through <paramref name="par2Path"/> may protect: the base
     /// itself, whether it exists or not, then any other <c>&lt;base&gt;.*</c> file that is not a
     /// PAR2 file.</summary>
@@ -99,13 +113,12 @@ internal static partial class Par2SetLocator
     /// </summary>
     internal static Par2Match? Select(IReadOnlyList<Par2Set> sets, string targetPath)
     {
-        string name = Path.GetFileName(targetPath);
         (long Length, UInt128 Md5First16k)? content = ReadContentKey(targetPath);
         Par2Match? best = null;
         int bestScore = 0;
         foreach (Par2Set set in sets)
         {
-            bool nameMatches = string.Equals(Encoding.UTF8.GetString(set.Name), name, StringComparison.OrdinalIgnoreCase);
+            bool nameMatches = Names(set, targetPath);
             bool contentMatches = content is { } key && key.Length == set.FileLength && key.Md5First16k == set.Md5First16k;
             int score = (contentMatches ? 2 : 0) + (nameMatches ? 1 : 0);
             if (score == 0)

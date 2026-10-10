@@ -12080,11 +12080,29 @@ Steps, one PR each: 0 docs and oracles, 1 the Core engine, 2 creation, 3 verific
   sector is damaged as well would then be reported as a stale set instead of as damage, and a
   repair would not be offered. The ZIP-only `DoesNotMatch` rule of 3a stays for another tool's
   rewrite.
-- Known gaps, accepted: a short-base set (`a.tar.par2` for `a.tar.gz`) beside an `X.ext` set, or
-  beside an archive rewritten with `-rr`, is not looked at (the rule finds the first base only, and
-  step 2's cleanup looks at `X.ext.vol*`); "Verify with PAR2" opened on that `.par2` in 3b reads it
-  as damage. It needs another tool's set next to Pakko's. Cancelling during the cleanup throws
-  `OperationCanceledException` with the archive written, as cancelling during a set's writing does.
+- Amended the same day, after going through what an interrupted run leaves behind (the failure
+  paths asked for: a set damaged, replaced, forged or half-written, creation cancelled, the process
+  killed). The second bullet above describes the first version; this is the rule now:
+  - Every set that names the archive and no longer matches it goes, not only the one `Select`
+    would pick. A run killed between writing a set and removing the one before it, or an old
+    volume that could not be deleted, leaves two such sets, and the survivor made `t` report
+    damage again.
+  - Both names are listed at once (`Par2SetLocator.SetFilesForEitherBase`: the files of base `X`
+    include those of base `X.ext`), so a short-base set (`a.tar.par2` for `a.tar.gz`) beside an
+    `X.ext` set goes too.
+  - With a percent the same removal runs before the new set is written (`RecoveryDataWriter.AddTo`).
+    Before, a rewrite with `-rr` that was cancelled, failed or killed while the set was being
+    written left the new archive beside the set of its earlier bytes. A set that still matches by
+    content stays until the new one replaces it.
+  - The files to delete are chosen before the first is deleted, so a cancellation leaves an old
+    set whole or gone, never its volume without its index.
+- Known gaps, accepted: a kill (not a cancel) in the middle of the deletes can leave part of an old
+  set, for example its volume without its index, which still reads as a set; the next rewrite
+  removes it. A kill in the few milliseconds between the archive's rename and the removal leaves
+  the old set whole. The `.pakko-a-*.tmp` files a killed run leaves are no set under any rule and
+  are swept by the next archive created in that folder (`ArchiveTempFile.Create`). Cancelling
+  during the cleanup throws `OperationCanceledException` with the archive written, as cancelling
+  during a set's writing does.
 
 ---
 

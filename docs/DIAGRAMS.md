@@ -1170,8 +1170,8 @@ flowchart TD
 
     S7 & P2 & T10 -.-> PR{"router, after the engine returns: RecoveryPercent over 0?<br/>(unless DisableRecoveryData, the engine ran with OpenDestinationFolder off;<br/>with a percent, its progress scaled below 100)"}
     PR -- "no, DisableRecoveryData" --> PR0["the engine's result, unchanged"]
-    PR -- "no" --> PRS["on the thread pool, for each of CreatedFiles: the set the test would find,<br/>naming the archive, length or first-16-KiB MD5 no longer matching →<br/>delete each of its files that holds only that Set ID,<br/>a failed delete → Warnings += RecoveryOldVolumeNotDeleted; then open the folder if asked and no error"]
-    PR -- yes --> PR1["on the thread pool, for each of CreatedFiles, even with errors (T-F275):<br/>Par2Creator writes name.par2 and name.vol0+R.par2 via temp files → RecoveryFiles"]
+    PR -- "no" --> PRS["on the thread pool, for each of CreatedFiles: every set under name.ext or name,<br/>naming the archive, length or first-16-KiB MD5 no longer matching →<br/>delete each file that holds only such sets,<br/>a failed delete → Warnings += RecoveryOldVolumeNotDeleted; then open the folder if asked and no error"]
+    PR -- yes --> PR1["on the thread pool, for each of CreatedFiles, even with errors (T-F275):<br/>earlier sets removed as in the no-percent branch, then Par2Creator writes name.par2 and name.vol0+R.par2 via temp files → RecoveryFiles"]
     PR1 -. "empty or beyond the reader limits / any exception but cancel" .-> PR2["Errors += RecoveryDataFileTooLarge / RecoveryDataNotCreated on that archive,<br/>the archive stays, every Completed source → Partial"]
     PR1 --> PR3["delete name.volN+M.par2 the reader parses as another Set ID,<br/>a failed delete → Warnings += RecoveryOldVolumeNotDeleted"]
     PR3 --> PR4["report 100 %, then open the folder if asked and no error"]

@@ -470,6 +470,60 @@ public sealed class CliSubprocessTests
         }
     }
 
+    // The process dies while the new set is being written (Task Manager, a power cut). What it
+    // leaves must not make `t` report the rewritten archive as damaged or as not matching its set,
+    // and the next run must clean up after it.
+    [Fact]
+    public async Task Archive_KilledWhileWritingTheSet_LeavesNoFalseVerdict_AndTheNextRunRecovers()
+    {
+        string archivePath = ProtectedArchive("out.zip");
+        string folder = Path.GetDirectoryName(archivePath)!;
+        long earlierLength = new FileInfo(archivePath).Length;
+        string big = Path.Combine(folder, "big.bin");
+        byte[] noise = new byte[24 * 1024 * 1024];
+        new Random(373).NextBytes(noise);
+        File.WriteAllBytes(big, noise);
+        var startInfo = new System.Diagnostics.ProcessStartInfo(CliProcessRunner.ExePath)
+        {
+            RedirectStandardInput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        foreach (string arg in new[] { "a", "-y", "-rr100", "-mx=0", "-tzip", archivePath, big })
+            startInfo.ArgumentList.Add(arg);
+
+        bool killedWhileWriting;
+        using (System.Diagnostics.Process process = System.Diagnostics.Process.Start(startInfo)!)
+        {
+            process.StandardInput.Close();
+            // The new archive is in place and the set's temporary files exist: the set is being written.
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            while (!process.HasExited && clock.Elapsed < TimeSpan.FromSeconds(60)
+                && !(new FileInfo(archivePath) is { Exists: true } info && info.Length > earlierLength
+                    && Directory.EnumerateFiles(folder, ".pakko-a-*.tmp").Any()))
+            {
+                await Task.Delay(2);
+            }
+            killedWhileWriting = !process.HasExited;
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+        }
+
+        killedWhileWriting.Should().BeTrue("the kill has to land before the set is finished");
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", archivePath);
+        exitCode.Should().Be(0, because: stdErr);
+        stdErr.Should().BeEmpty();
+        stdOut.Should().NotContain("recovery data");
+
+        (int again, _, string againErr) = CliProcessRunner.Run("a", "-y", "-rr10", "-mx=0", "-tzip", archivePath, big);
+        again.Should().Be(0, because: againErr);
+        Directory.GetFiles(folder, ".pakko-a-*.tmp").Should().BeEmpty();
+        Directory.GetFiles(folder, "*.par2").Should().HaveCount(2);
+        (int verified, string verifiedOut, string verifiedErr) = CliProcessRunner.Run("t", archivePath);
+        verified.Should().Be(0, because: verifiedErr);
+        verifiedOut.Should().Contain("recovery data");
+    }
+
     [Fact]
     public void Archive_NonAsciiPassword_ExitsSevenAndCreatesNothing()
     {
