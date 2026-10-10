@@ -52,6 +52,9 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   `Subprocess/` layer launching real sandboxed subprocesses concurrently with this project, not
   just within it) — that would need a similar fix scoped across both projects, not assumed already
   covered by the single-project Collection above.
+  **T-F373 (2026-10-10):** a test that holds an inheritable handle and waits for its EOF fails when
+  another class in the same assembly `Process.Start`s with redirected stdio meanwhile (the child
+  inherits every inheritable handle); such a test goes in its own `DisableParallelization` collection.
   **T-F162 (2026-08-11):** a test waiting on `System.Progress<T>`'s callback can time out on a
   loaded runner (it posts to the ThreadPool); use the synchronous hand-rolled `IProgress<T>` fake
   instead (see `docs/DECISIONS.md`'s T-F162 entry).
