@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -95,6 +96,7 @@ internal static class Gf16Region
     // T-F375: the Native AOT build compiles for a baseline x64 processor without SSSE3, where
     // Vector128.ShuffleNative becomes a per-byte fallback (six times slower over a whole archive);
     // asking for SSSE3 by name is a run-time check there and pshufb when it is present.
+    [ExcludeFromCodeCoverage(Justification = "Which branch runs depends on the processor; LookupPortable has its own test.")]
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static Vector128<byte> Lookup(Vector128<byte> table, Vector128<byte> nibbles) =>
         Ssse3.IsSupported ? Ssse3.Shuffle(table, nibbles) : LookupPortable(table, nibbles);
