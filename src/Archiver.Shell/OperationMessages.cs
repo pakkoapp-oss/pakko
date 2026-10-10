@@ -67,13 +67,18 @@ internal static class OperationMessages
     /// </summary>
     public static OperationMessage? ForTestResult(string title, ArchiveResult result)
     {
-        if (result.Outcome == OperationOutcome.Completed)
-            return TestPassed(title);
+        OperationMessage? message = result.Outcome == OperationOutcome.Completed ? TestPassed(title) : ForArchiveResult(title, result);
+        if (result.Outcome == OperationOutcome.CompletedWithSkips)
+            message = message! with { Text = message.Text + Environment.NewLine + Environment.NewLine + TestPassed(title).Text };
 
-        OperationMessage? message = ForArchiveResult(title, result);
-        return result.Outcome == OperationOutcome.CompletedWithSkips
-            ? message! with { Text = message.Text + Environment.NewLine + Environment.NewLine + TestPassed(title).Text }
-            : message;
+        // T-F275 step 3b: a set that matches is said in words, per archive; every other state of a
+        // set is already an error or a warning above.
+        RecoveryCheck[] matching = [.. result.RecoveryChecks.Where(c => c.Text is not null)];
+        if (matching.Length == 0 || message is null)
+            return message;
+        string lines = CappedLines(
+            matching, c => $"{Path.GetFileName(c.ArchivePath)}: {MessageText.Render(c.Text, c.Text!.English, CultureInfo.CurrentUICulture)}");
+        return message with { Text = message.Text + Environment.NewLine + Environment.NewLine + lines };
     }
 
     public static OperationMessage ForHash(string title, HashResult result, IReadOnlyList<string> paths)

@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Palautustiedot on tehty toisennimiselle tiedostolle; ne vastaavat tätä arkistoa sisällöltään.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Arkisto vastaa palautustietojaan ({0} lohkoa, {1} palautuslohkoa).</value>
+  </data>
 </root>

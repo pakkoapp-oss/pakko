@@ -171,6 +171,7 @@ internal static class RecoveryTestStep
             Blocks = blocks,
             DamagedBlocks = damaged,
             RecoveryBlocks = recovery,
+            Text = state == RecoveryState.Intact ? CoreMessages.Text(MessageCode.RecoveryDataIntact, blocks, recovery) : null,
         };
         ArchiveError? error = state switch
         {

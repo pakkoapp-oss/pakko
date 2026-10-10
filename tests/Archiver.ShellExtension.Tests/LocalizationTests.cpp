@@ -160,6 +160,24 @@ TEST(LocalizationDataIntegrity, EveryLocaleResolvesToItselfNotTheEnUSFallback)
     }
 }
 
+TEST(GetLocalizedString, RecoveryVerifyEnUS)
+{
+    EXPECT_EQ(GetLocalizedString(StringId::RecoveryVerify, L"en-US"), L"Verify with PAR2");
+}
+
+TEST(LocalizationDataIntegrity, EveryLocaleRecoveryVerifyIsTranslatedAndNamesPar2)
+{
+    // T-F275 step 3b: the 16th field. A row left without it would read a null pointer here.
+    const auto english = GetLocalizedString(StringId::RecoveryVerify, L"en-US");
+    for (const wchar_t* tag : kAllLocaleTags)
+    {
+        const auto text = GetLocalizedString(StringId::RecoveryVerify, tag);
+        EXPECT_NE(text.find(L"PAR2"), std::wstring::npos) << "locale: " << tag;
+        if (std::wstring(tag) != L"en-US")
+            EXPECT_NE(text, english) << "locale: " << tag;
+    }
+}
+
 TEST(LocalizationDataIntegrity, EveryLocaleBrowseArchiveIsNonEmpty)
 {
     // T-F03: the most direct catch for a row where the new 11th field was left unset (nullptr) -

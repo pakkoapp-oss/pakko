@@ -511,6 +511,19 @@ The tests (T-F275 step 1):
   a ZIP and a tar.gz rewritten without `-rr` (the old set is gone, no recovery verdict), and
   `pakko a -rr100` killed while the set is being written (no false verdict from `t`, the next run
   sweeps the temporary files and writes a set that checks).
+- Step 3b, Explorer's "Verify with PAR2". `Archiver.Shell.Tests/ShellCommandsRecoveryTests` runs
+  `ShellCommands.VerifyRecoveryAsync` on real sets with the fake UI: a tar-family archive that
+  matches, a `.par2` or a volume alone, archive plus index plus volume checked once, the Ukrainian
+  text, "Test archive" unchanged, damage a set can and cannot repair (nothing written next to the
+  archive), one message for a mixed selection, another file's set, an unreadable set (warning next
+  to an archive, error when selected itself), no index, no volume, a volume cut short, only the
+  writer's temporary files, a `.par2` whose archive is gone, `DisableRecoveryData`, cancel.
+  `ShellArgumentParserTests` has the switch. C++ `ShellExtUtilsTests` (`AnyPathHasRecoveryData`,
+  `IsRecoverySetFileName`, `ListFolderNames`) decides the item's visibility with a fake folder
+  listing and once on a real folder: a `.par2` alone without touching the disk, a set under either
+  name, volumes without an index, temporary files, names that only start alike, non-archives, the
+  16-archive cap, the policy value, a blocked format. `ComLoadTests` pins the item's place after
+  Test; `LocalizationTests` and `Archiver.Messages.Tests` hold the 37 translations.
 - `Archiver.Core.Tests/Fuzz/Par2FuzzTests` (`Category=Fuzz`): raw mutations of the golden sets, and
   mutations with the packet MD5 recomputed; reader, verifier and repairer must not throw or write
   anything but the output they are given.

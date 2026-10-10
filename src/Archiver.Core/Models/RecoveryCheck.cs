@@ -47,4 +47,8 @@ public sealed record RecoveryCheck
 
     /// <summary>The recovery blocks found in the set's files.</summary>
     public int RecoveryBlocks { get; init; }
+
+    /// <summary>The verdict in words when <see cref="State"/> is <see cref="RecoveryState.Intact"/>,
+    /// the one state that is neither an error nor a warning in the result; null otherwise.</summary>
+    public CoreText? Text { get; init; }
 }

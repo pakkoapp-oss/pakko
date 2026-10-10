@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Data ya urejeshaji iliundwa kwa faili lenye jina lingine; inalingana na kumbukumbu hii kwa maudhui yake.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Kumbukumbu inalingana na data yake ya urejeshaji (vitalu {0}, vitalu {1} vya urejeshaji).</value>
+  </data>
 </root>

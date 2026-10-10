@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Atkopšanas dati ir izveidoti failam ar citu nosaukumu; pēc satura tie atbilst šim arhīvam.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Arhīvs atbilst saviem atkopšanas datiem ({0} bloki, {1} atkopšanas bloki).</value>
+  </data>
 </root>

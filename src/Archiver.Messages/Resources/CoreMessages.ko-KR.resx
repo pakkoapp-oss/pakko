@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>복구 데이터는 다른 이름의 파일용으로 만들어졌지만 내용상 이 압축 파일과 일치합니다.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>압축 파일이 복구 데이터와 일치합니다(블록 {0}개, 복구 블록 {1}개).</value>
+  </data>
 </root>

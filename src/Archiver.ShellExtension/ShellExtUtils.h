@@ -103,8 +103,9 @@ std::wstring FormatHResult(HRESULT hr);
 
 // ---------------------------------------------------------------------------
 // T-F262: Group Policy for the menu - the same HKLM\Software\Policies\Pakko values
-// Archiver.Core's GroupPolicyService reads (docs/POLICIES.md). Only DisableTarExtraction and
-// BlockedFormats are honoured here; a blocked item is hidden instead of refused after the click.
+// Archiver.Core's GroupPolicyService reads (docs/POLICIES.md). Only DisableTarExtraction,
+// BlockedFormats and DisableRecoveryData are honoured here; a blocked item is hidden instead of
+// refused after the click.
 // ---------------------------------------------------------------------------
 
 // Reads one policy value; std::nullopt for an absent key/value, a wrong type, or any error.
@@ -134,6 +135,7 @@ struct MenuPolicy
 {
     bool disableTar = false;                  // DisableTarExtraction == 1
     std::vector<std::wstring> blockedFormats; // BlockedFormats, ArchiveFormatRegistryNames vocabulary
+    bool disableRecoveryData = false;         // DisableRecoveryData == 1 (T-F275)
 
     bool IsFormatBlocked(const std::wstring& registryName) const;
 };
@@ -183,6 +185,31 @@ bool AllPathsAreSupportedArchive(const std::vector<std::wstring>& paths, const M
 // tar.exe present that policy allows. Used for Scan/Extract-dialog gating (T-F86).
 bool AnyPathIsSupportedArchive(const std::vector<std::wstring>& paths, const MenuPolicy& policy);
 
+// ---------------------------------------------------------------------------
+// T-F275 step 3b: whether "Verify with PAR2" has anything to verify.
+// ---------------------------------------------------------------------------
+
+// The file names in one folder that match a FindFirstFileW pattern ("C:\dir\photos.*par2").
+using FolderLister = std::function<std::vector<std::wstring>(const std::wstring& pattern)>;
+
+// The real one: at most kMaxRecoveryNamesListed names, empty for a folder that cannot be listed.
+constexpr size_t kMaxRecoveryNamesListed = 64;
+std::vector<std::wstring> ListFolderNames(const std::wstring& pattern);
+
+// True iff `name` is a PAR2 file of a set for the file `baseName`: "<base>.par2" or
+// "<base>.<anything>.par2", case-insensitive - the rule of Archiver.Core's Par2SetLocator.SetFiles.
+bool IsRecoverySetFileName(const std::wstring& name, const std::wstring& baseName);
+
+// Archives looked at on disk per right-click; the rest of a larger selection is not probed.
+constexpr size_t kMaxRecoveryProbes = 16;
+
+// True iff the selection holds a .par2 file, or an archive policy allows with PAR2 files next to
+// it under either name Core looks for ("photos.zip.*.par2", "photos.*.par2" - the second pattern
+// covers both, and a set left with only its volumes is still found). False under
+// DisableRecoveryData. One folder listing per archive, at most kMaxRecoveryProbes of them: this is
+// the only GetState that reads the disk (docs/DECISIONS.md, T-F275 "Step 3b").
+bool AnyPathHasRecoveryData(const std::vector<std::wstring>& paths, const MenuPolicy& policy, const FolderLister& listFolder);
+
 // Launches Archiver.Shell.exe (next to this DLL) with commandArgs and `paths` on its stdin (see
 // LaunchWithPathList). Does not wait for the child. A failure HRESULT means nothing ran - Explorer
 // ignores Invoke's return value, so the caller must tell the user.
@@ -200,6 +227,8 @@ std::wstring BuildExtractFolderArgs();
 // "tar" (emits "--format tar", consumed by ShellArgumentParser.ParseArchive on the .NET side).
 std::wstring BuildArchiveArgs(const std::wstring& format = L"zip");
 std::wstring BuildTestArgs();
+// T-F275 step 3b: "Verify with PAR2".
+std::wstring BuildRecoveryVerifyArgs();
 // T-F146: "Scan for threats".
 std::wstring BuildScanArgs();
 // T-F128: algorithm is "crc32" or "sha256" - always emitted explicitly (unlike BuildArchiveArgs'

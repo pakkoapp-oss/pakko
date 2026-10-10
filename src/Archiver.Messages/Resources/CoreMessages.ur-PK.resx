@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>بازیابی ڈیٹا کسی دوسرے نام والی فائل کے لیے بنایا گیا تھا؛ یہ مواد کے لحاظ سے اس آرکائیو سے میل کھاتا ہے۔</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>آرکائیو اپنے بازیابی ڈیٹا سے میل کھاتا ہے ({0} بلاک، {1} بازیابی بلاک)۔</value>
+  </data>
 </root>

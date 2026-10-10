@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Τα δεδομένα ανάκτησης δημιουργήθηκαν για αρχείο με άλλο όνομα· αντιστοιχούν σε αυτό το αρχείο συμπίεσης βάσει περιεχομένου.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Το αρχείο συμπίεσης συμφωνεί με τα δεδομένα ανάκτησής του ({0} μπλοκ, {1} μπλοκ ανάκτησης).</value>
+  </data>
 </root>

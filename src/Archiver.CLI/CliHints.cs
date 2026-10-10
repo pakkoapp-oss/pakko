@@ -71,6 +71,7 @@ public static class CliHints
         MessageCode.RecoveryDataDamagedRepairable, MessageCode.RecoveryDataDamagedNotRepairable,
         MessageCode.RecoveryDataRepairTooLarge, MessageCode.RecoveryDataDoesNotMatch, MessageCode.RecoveryDataUnusable,
         MessageCode.RecoveryDataForAnotherFile, MessageCode.RecoveryDataTargetNotFound, MessageCode.RecoveryDataNameMismatch,
+        MessageCode.RecoveryDataIntact,
     ];
 
     /// <summary>Every code and its hint; <see cref="CliHint.None"/> is a decision too.</summary>

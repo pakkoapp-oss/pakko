@@ -173,9 +173,11 @@ namespace
         std::optional<DWORD> disableTar;
         std::optional<std::vector<std::wstring>> blockedFormats;
         std::optional<std::vector<std::wstring>> allowedFormats;
+        std::optional<DWORD> disableRecoveryData;
 
         std::optional<DWORD> GetDword(const wchar_t* valueName) const override
         {
+            if (std::wstring(valueName) == L"DisableRecoveryData") return disableRecoveryData;
             return std::wstring(valueName) == L"DisableTarExtraction" ? disableTar : std::nullopt;
         }
 
@@ -365,6 +367,194 @@ TEST(Win32PolicyRegistryReader, RealValuesAreRead)
 }
 
 // ---------------------------------------------------------------------------
+// T-F275 step 3b: "Verify with PAR2" is shown only when there is something to verify
+// ---------------------------------------------------------------------------
+
+namespace
+{
+    // A folder as the lister sees it: every name is returned whatever the pattern, so a test also
+    // proves the names are checked and not just trusted to the pattern.
+    struct FakeFolder
+    {
+        std::vector<std::wstring> names;
+        mutable std::vector<std::wstring> patterns;
+
+        FolderLister Lister() const
+        {
+            return [this](const std::wstring& pattern) { patterns.push_back(pattern); return names; };
+        }
+    };
+
+    MenuPolicy RecoveryPolicy(std::optional<DWORD> disableRecoveryData)
+    {
+        FakePolicyReader reader;
+        reader.disableRecoveryData = disableRecoveryData;
+        return LoadMenuPolicy(reader);
+    }
+}
+
+// --- Happy ---
+
+TEST(AnyPathHasRecoveryData, Par2FileAloneNeedsNoLookAtTheDisk)
+{
+    const FakeFolder folder{};
+
+    EXPECT_TRUE(AnyPathHasRecoveryData({ L"C:\\d\\notes.tar.gz.par2" }, kNoPolicy, folder.Lister()));
+    EXPECT_TRUE(AnyPathHasRecoveryData({ L"C:\\d\\notes.tar.gz.vol0+10.PAR2" }, kNoPolicy, folder.Lister()));
+    EXPECT_TRUE(folder.patterns.empty());
+}
+
+TEST(AnyPathHasRecoveryData, ArchiveWithItsSetUnderTheFullName)
+{
+    const FakeFolder folder{ { L"notes.tar.gz.par2", L"notes.tar.gz.vol0+10.par2" } };
+
+    EXPECT_TRUE(AnyPathHasRecoveryData({ L"C:\\d\\notes.tar.gz" }, kNoPolicy, folder.Lister()));
+    ASSERT_EQ(folder.patterns.size(), 1u);
+    EXPECT_EQ(folder.patterns[0], L"C:\\d\\notes.tar.*par2");
+}
+
+TEST(AnyPathHasRecoveryData, ArchiveWithItsSetUnderTheShortName)
+{
+    // par2cmdline's own habit: "par2 c photos photos.zip" writes photos.par2.
+    const FakeFolder folder{ { L"photos.par2", L"photos.vol000+02.par2" } };
+
+    EXPECT_TRUE(AnyPathHasRecoveryData({ L"C:\\d\\photos.zip" }, kNoPolicy, folder.Lister()));
+    EXPECT_EQ(folder.patterns[0], L"C:\\d\\photos.*par2");
+}
+
+TEST(AnyPathHasRecoveryData, PartOfAMixedSelection)
+{
+    const FakeFolder folder{};
+
+    EXPECT_TRUE(AnyPathHasRecoveryData({ L"C:\\d\\readme.txt", L"C:\\d\\a.zip", L"C:\\d\\a.zip.par2" }, kNoPolicy, folder.Lister()));
+}
+
+// --- The set is half there ---
+
+TEST(AnyPathHasRecoveryData, VolumesWithoutAnIndexStillCount)
+{
+    // Core checks an archive against volumes alone, so the item must not vanish with the index.
+    const FakeFolder folder{ { L"notes.tar.gz.vol0+10.par2" } };
+
+    EXPECT_TRUE(AnyPathHasRecoveryData({ L"C:\\d\\notes.tar.gz" }, kNoPolicy, folder.Lister()));
+}
+
+TEST(AnyPathHasRecoveryData, TemporaryFilesOfAnInterruptedRunAreNotASet)
+{
+    const FakeFolder folder{ { L".pakko-a-1234.tmp", L"notes.tar.gz", L"notes.tar.gz.par2.tmp" } };
+
+    EXPECT_FALSE(AnyPathHasRecoveryData({ L"C:\\d\\notes.tar.gz" }, kNoPolicy, folder.Lister()));
+}
+
+// --- Another file's set ---
+
+TEST(AnyPathHasRecoveryData, SetOfAFileWhoseNameOnlyStartsTheSameIsNotThisOnes)
+{
+    const FakeFolder folder{ { L"photos2.zip.par2", L"photosXpar2", L"photos.par2x", L"photos-old.par2" } };
+
+    EXPECT_FALSE(AnyPathHasRecoveryData({ L"C:\\d\\photos.zip" }, kNoPolicy, folder.Lister()));
+}
+
+TEST(IsRecoverySetFileName, FollowsCoresRule)
+{
+    EXPECT_TRUE(IsRecoverySetFileName(L"a.zip.par2", L"a.zip"));
+    EXPECT_TRUE(IsRecoverySetFileName(L"A.ZIP.Vol00+01.PAR2", L"a.zip"));
+    EXPECT_TRUE(IsRecoverySetFileName(L"a.zip.par2", L"a"));
+    EXPECT_TRUE(IsRecoverySetFileName(L"a.anything.par2", L"a"));
+    EXPECT_FALSE(IsRecoverySetFileName(L"a.zip", L"a.zip"));
+    EXPECT_FALSE(IsRecoverySetFileName(L"a.zippar2", L"a.zip"));
+    EXPECT_FALSE(IsRecoverySetFileName(L"a.zip.par2", L"a.zi"));
+    EXPECT_FALSE(IsRecoverySetFileName(L"a.zip.par2.bak", L"a.zip"));
+    EXPECT_FALSE(IsRecoverySetFileName(L".par2", L""));
+    EXPECT_FALSE(IsRecoverySetFileName(L"", L"a"));
+}
+
+// --- Misuse and boundaries ---
+
+TEST(AnyPathHasRecoveryData, NothingToVerify)
+{
+    const FakeFolder empty{};
+    const FakeFolder withSet{ { L"notes.par2", L"notes.txt.par2" } };
+
+    EXPECT_FALSE(AnyPathHasRecoveryData({}, kNoPolicy, empty.Lister()));
+    EXPECT_FALSE(AnyPathHasRecoveryData({ L"C:\\d\\a.zip" }, kNoPolicy, empty.Lister()));
+    // Not an archive: Pakko's menu verifies archives; the .par2 file itself still offers the item.
+    EXPECT_FALSE(AnyPathHasRecoveryData({ L"C:\\d\\notes.txt", L"C:\\d\\folder" }, kNoPolicy, withSet.Lister()));
+    EXPECT_TRUE(withSet.patterns.empty());
+}
+
+TEST(AnyPathHasRecoveryData, OnlyTheFirstArchivesOfALargeSelectionAreLookedAt)
+{
+    FakeFolder folder;
+    std::vector<std::wstring> paths;
+    for (size_t i = 0; i < kMaxRecoveryProbes + 50; ++i)
+        paths.push_back(L"C:\\d\\a" + std::to_wstring(i) + L".zip");
+
+    EXPECT_FALSE(AnyPathHasRecoveryData(paths, kNoPolicy, folder.Lister()));
+    EXPECT_EQ(folder.patterns.size(), kMaxRecoveryProbes);
+
+    // A .par2 anywhere in the selection costs nothing to see.
+    paths.push_back(L"C:\\d\\a0.zip.par2");
+    folder.patterns.clear();
+    EXPECT_TRUE(AnyPathHasRecoveryData(paths, kNoPolicy, folder.Lister()));
+    EXPECT_TRUE(folder.patterns.empty());
+}
+
+// --- Group Policy ---
+
+TEST(AnyPathHasRecoveryData, HiddenUnderDisableRecoveryData)
+{
+    const FakeFolder folder{ { L"a.zip.par2" } };
+    const MenuPolicy policy = RecoveryPolicy(1u);
+
+    EXPECT_TRUE(policy.disableRecoveryData);
+    EXPECT_FALSE(AnyPathHasRecoveryData({ L"C:\\d\\a.zip", L"C:\\d\\a.zip.par2" }, policy, folder.Lister()));
+    EXPECT_TRUE(folder.patterns.empty());
+}
+
+TEST(AnyPathHasRecoveryData, OnlyTheValueOneDisables)
+{
+    EXPECT_FALSE(RecoveryPolicy(std::nullopt).disableRecoveryData);
+    EXPECT_FALSE(RecoveryPolicy(0u).disableRecoveryData);
+    EXPECT_FALSE(RecoveryPolicy(2u).disableRecoveryData);
+}
+
+TEST(AnyPathHasRecoveryData, AnArchiveWhoseFormatIsBlockedIsNotLookedAt)
+{
+    const FakeFolder folder{ { L"a.zip.par2", L"a.tar.gz.par2" } };
+
+    EXPECT_FALSE(AnyPathHasRecoveryData({ L"C:\\d\\a.zip" }, PolicyFrom(std::nullopt, std::vector<std::wstring>{ L"zip" }), folder.Lister()));
+    EXPECT_FALSE(AnyPathHasRecoveryData({ L"C:\\d\\a.tar.gz" }, PolicyFrom(1u, std::nullopt), folder.Lister()));
+    EXPECT_TRUE(folder.patterns.empty());
+}
+
+// --- The real folder listing ---
+
+TEST(ListFolderNames, FindsASetLeftWithOnlyItsVolume_AndNothingInAMissingFolder)
+{
+    wchar_t temp[MAX_PATH]{};
+    ASSERT_NE(GetTempPathW(MAX_PATH, temp), 0u);
+    const std::wstring dir = std::wstring(temp) + L"PakkoRecoveryProbe_" + std::to_wstring(GetCurrentProcessId()) + L"_" + std::to_wstring(GetTickCount64());
+    ASSERT_TRUE(CreateDirectoryW(dir.c_str(), nullptr));
+    const std::vector<std::wstring> files = { L"notes.tar.gz", L"notes.tar.gz.vol0+10.par2", L".pakko-a-1.tmp", L"other.zip.par2" };
+    for (const auto& name : files)
+    {
+        const HANDLE h = CreateFileW((dir + L"\\" + name).c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+        ASSERT_NE(h, INVALID_HANDLE_VALUE);
+        CloseHandle(h);
+    }
+
+    EXPECT_TRUE(AnyPathHasRecoveryData({ dir + L"\\notes.tar.gz" }, kNoPolicy, ListFolderNames));
+    EXPECT_FALSE(AnyPathHasRecoveryData({ dir + L"\\other.tar.gz" }, kNoPolicy, ListFolderNames));
+    EXPECT_FALSE(AnyPathHasRecoveryData({ dir + L"\\missing\\notes.tar.gz" }, kNoPolicy, ListFolderNames));
+    EXPECT_TRUE(ListFolderNames(dir + L"\\missing\\*").empty());
+
+    for (const auto& name : files)
+        DeleteFileW((dir + L"\\" + name).c_str());
+    RemoveDirectoryW(dir.c_str());
+}
+
+// ---------------------------------------------------------------------------
 // Command builders (T-F235: the switch part only - the paths go on stdin)
 // ---------------------------------------------------------------------------
 
@@ -374,6 +564,7 @@ TEST(CommandBuilders, EachEmitsTheSwitchShellArgumentParserExpects)
     EXPECT_EQ(BuildExtractHereFlatArgs(), L"--extract-flat");
     EXPECT_EQ(BuildExtractFolderArgs(), L"--extract-folder");
     EXPECT_EQ(BuildTestArgs(), L"--test");
+    EXPECT_EQ(BuildRecoveryVerifyArgs(), L"--recovery-verify");
     EXPECT_EQ(BuildScanArgs(), L"--scan");
     EXPECT_EQ(BuildOpenUiExtractArgs(), L"--open-ui --extract");
     EXPECT_EQ(BuildOpenUiArchiveArgs(), L"--open-ui --archive");

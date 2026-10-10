@@ -345,4 +345,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Дані для відновлення створено для файлу з іншою назвою; вони відповідають цьому архіву за вмістом.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Архів відповідає своїм даним для відновлення ({0} блоків, {1} блоків відновлення).</value>
+  </data>
 </root>

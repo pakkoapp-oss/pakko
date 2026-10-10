@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>أُنشئت بيانات الاسترداد لملف باسم آخر؛ وهي تطابق هذا الأرشيف بمحتواه.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>الأرشيف يطابق بيانات الاسترداد الخاصة به ({0} كتلة، {1} كتلة استرداد).</value>
+  </data>
 </root>

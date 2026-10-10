@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>Gendannelsesdataene blev lavet til en fil med et andet navn; de passer til dette arkiv efter indhold.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Arkivet stemmer med dets gendannelsesdata ({0} blokke, {1} gendannelsesblokke).</value>
+  </data>
 </root>

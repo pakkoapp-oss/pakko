@@ -321,4 +321,7 @@
   <data name="RecoveryDataNameMismatch" xml:space="preserve">
     <value>De herstelgegevens zijn gemaakt voor een bestand met een andere naam; ze komen op inhoud overeen met dit archief.</value>
   </data>
+  <data name="RecoveryDataIntact" xml:space="preserve">
+    <value>Het archief komt overeen met de herstelgegevens ({0} blokken, {1} herstelblokken).</value>
+  </data>
 </root>

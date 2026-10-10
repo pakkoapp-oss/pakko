@@ -12108,6 +12108,77 @@ Steps, one PR each: 0 docs and oracles, 1 the Core engine, 2 creation, 3 verific
 
 ---
 
+### Step 3b — Explorer's "Verify with PAR2" (2026-10-10)
+
+Research first (the rule for COM and shell work). `IExplorerCommand::GetState`, Microsoft's
+reference (`MicrosoftDocs/sdk-api`, `nf-shobjidl_core-iexplorercommand-getstate.md`), on
+`fOkToBeSlow`:
+
+> **FALSE** if a verb object should not perform any memory intensive computations that could cause
+> the UI thread to stop responding. The verb object should return E_PENDING in that case. If
+> **TRUE**, those computations can be completed.
+
+NanaZip (`M2Team/NanaZip`, `NanaZip.UI.Modern/NanaZip.ShellExtension.cpp`, `main`) ignores the
+flag in every command and reads the disk for each selected path while it builds its menu:
+
+```cpp
+UNREFERENCED_PARAMETER(psiItemArray);
+UNREFERENCED_PARAMETER(fOkToBeSlow);
+*pCmdState = ECS_ENABLED;
+return S_OK;
+```
+
+```cpp
+for (std::wstring const FilePath : FilePaths)
+{
+    DWORD FileAttributes = ::GetFileAttributesW(
+        FilePath.c_str());
+    if (FileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+```
+
+Decisions:
+
+- **A verb of its own, after "Test archive".** `--recovery-verify` runs
+  `IExtractionRouter.TestAsync(verifyRecoveryData: true)`: the ZIP test plus the set check, and a
+  `.par2` path stands for the archive its set protects. "Test archive" is unchanged: ZIP only, no
+  look at a set. `pakko t` checks a set by default because a script reads its exit code; in the
+  menu the two items say what each one does, and a tar-family archive gets only the one that can
+  check it.
+- **When the item shows** (`AnyPathHasRecoveryData`, `ShellExtUtils.cpp`): the selection holds a
+  `.par2` file (no disk access), or an archive policy allows with PAR2 files next to it. The probe
+  is one folder listing per archive with the pattern `<name without its last extension>.*par2`,
+  and every name returned is checked with Core's rule (`Par2SetLocator.SetFiles`). That is every
+  file Core could use for the archive under either name it looks for, so a set left with only its
+  volumes still shows the item (Core checks an archive against volumes alone), and the writer's
+  temporary files do not. A false show costs one message from Core; a false hide would lose the
+  check on exactly the damaged sets.
+- **`GetState` reads the disk whatever `fOkToBeSlow` says, and never returns `E_PENDING`.** It is
+  the first `GetState` here that does. The work is bounded instead: at most 16 archives of a
+  selection are probed (`kMaxRecoveryProbes`), at most 64 names are read per listing, and the scan
+  stops at the first hit. `E_PENDING` was not taken: nothing in the repo shows how Windows 11's
+  menu treats it for a sub-command, and NanaZip does its disk reads on the same thread.
+- **The menu is stricter than Core about policy.** Under `DisableRecoveryData` the item is hidden
+  (Core refuses a `.par2` path and looks for no set). An archive whose format `BlockedFormats` or
+  `DisableTarExtraction` refuses is not probed, so the item is not offered on it, though Core would
+  still compare its bytes with a set. Selecting the `.par2` file itself still offers the item: the
+  check reads bytes and hashes and never parses the blocked format.
+- **"The set matches" is a Core message**, `MessageCode.RecoveryDataIntact`, carried by
+  `RecoveryCheck.Text` for the one state that is neither an error nor a warning. Shell appends one
+  line per matching archive to the test's message; the App's panel (3c) can render the same text.
+  `pakko t` keeps its own English line.
+- **No new window text.** The title is the test's ("Testing: X"), and while the set is checked the
+  status line shows the percent alone (`ProgressPhase.VerifyingRecoveryData` has no text in Shell).
+
+Known gaps:
+
+- In a selection of more than 16 archives with no `.par2` file among them, a set next to the 17th
+  or a later one does not show the item. Selecting fewer archives, or the `.par2` file, does.
+- A file that is not an archive by its extension does not get the item, even with a set next to
+  it; its `.par2` file does.
+- On a slow network share the probe costs up to 16 folder listings per right-click on archives.
+- The item's presence means PAR2 files are there, not that they are usable: a set for another file
+  or a damaged one is said after the click.
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry

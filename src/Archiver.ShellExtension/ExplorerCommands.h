@@ -40,6 +40,10 @@ static const CLSID CLSID_TarArchiveCommand =
 static const CLSID CLSID_TestCommand =
     { 0xBA69EF3A, 0xF324, 0x46CB, { 0x93, 0x91, 0x6D, 0x14, 0xFE, 0x95, 0x97, 0xD3 } };
 
+// {BB144D8A-BD24-415B-A8AB-C3BA38E26683}
+static const CLSID CLSID_RecoveryVerifyCommand =
+    { 0xBB144D8A, 0xBD24, 0x415B, { 0xA8, 0xAB, 0xC3, 0xBA, 0x38, 0xE2, 0x66, 0x83 } };
+
 // {1E694800-18F6-4C35-A82B-8E34A94948F9}
 static const CLSID CLSID_ScanCommand =
     { 0x1E694800, 0x18F6, 0x4C35, { 0xA8, 0x2B, 0x8E, 0x34, 0xA9, 0x49, 0x48, 0xF9 } };
@@ -186,6 +190,26 @@ public:
 // when every item does (contrast with ExtractHereCommand/ExtractFolderCommand's AllPathsAreZip).
 // ---------------------------------------------------------------------------
 class TestCommand final :
+    public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
+{
+public:
+    STDMETHODIMP GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept override;
+    STDMETHODIMP GetIcon(IShellItemArray* psia, LPWSTR* ppszIcon) noexcept override;
+    STDMETHODIMP GetToolTip(IShellItemArray* psia, LPWSTR* ppszInfotip) noexcept override;
+    STDMETHODIMP GetCanonicalName(GUID* pguidCommandName) noexcept override;
+    STDMETHODIMP GetState(IShellItemArray* psia, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState) noexcept override;
+    STDMETHODIMP Invoke(IShellItemArray* psia, IBindCtx* pbc) noexcept override;
+    STDMETHODIMP GetFlags(EXPCMDFLAGS* pFlags) noexcept override;
+    STDMETHODIMP EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept override;
+};
+
+// ---------------------------------------------------------------------------
+// Leaf command: "Verify with PAR2" (T-F275 step 3b) - checks each selected archive against the
+// PAR2 set next to it; a selected .par2 file stands for the archive its set protects. Shown only
+// when there is something to verify (AnyPathHasRecoveryData), right after TestCommand: the same
+// diagnostic group, and for a tar-family archive the one check Pakko has.
+// ---------------------------------------------------------------------------
+class RecoveryVerifyCommand final :
     public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
 {
 public:

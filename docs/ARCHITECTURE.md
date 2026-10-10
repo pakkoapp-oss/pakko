@@ -621,8 +621,9 @@ public sealed record ArchiveResult
     // T-F275 step 3: the PAR2 check of each tested archive that has a set, filled only by
     // IExtractionRouter.TestAsync(verifyRecoveryData: true). RecoveryCheck: ArchivePath, State
     // (Intact / Repairable / NotRepairable / RepairTooLarge / DoesNotMatch / Unusable), SetFiles,
-    // Blocks, DamagedBlocks, RecoveryBlocks. Damage is also an ArchiveError, DoesNotMatch and
-    // Unusable an ArchiveWarning, so a frontend that ignores this list still reports the outcome.
+    // Blocks, DamagedBlocks, RecoveryBlocks, Text (step 3b: MessageCode.RecoveryDataIntact for
+    // Intact, null otherwise). Damage is also an ArchiveError, DoesNotMatch and Unusable an
+    // ArchiveWarning, so a frontend that ignores this list still reports every outcome but Intact.
     public IReadOnlyList<RecoveryCheck> RecoveryChecks { get; init; } = [];
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];

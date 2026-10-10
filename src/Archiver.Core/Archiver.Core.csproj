@@ -25,6 +25,7 @@
     <InternalsVisibleTo Include="Archiver.Core.PerformanceTests" />
     <InternalsVisibleTo Include="Archiver.Messages.Tests" />
     <InternalsVisibleTo Include="Archiver.App.Core.Tests" />
+    <InternalsVisibleTo Include="Archiver.Shell.Tests" />
   </ItemGroup>
 
 </Project>
