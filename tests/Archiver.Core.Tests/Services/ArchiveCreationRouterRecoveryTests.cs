@@ -519,6 +519,26 @@ public sealed class ArchiveCreationRouterRecoveryTests
         Directory.GetFiles(temp.Path).Should().BeEquivalentTo([archive, other, index, foreign.VolumePath]);
     }
 
+    // A set that names the archive but lies under a name no test would look at for it: the
+    // cleanup reaches only the files the archive's own name leads to, whatever a set claims.
+    [Fact]
+    public async Task SetNamingTheArchiveUnderAnotherFilesName_Kept()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        Par2CreateResult old = EarlierSet(archive);
+        string index = Path.Combine(temp.Path, "b.zip.par2");
+        string volume = Path.Combine(temp.Path, "b.zip" + Path.GetFileName(old.VolumePath)["a.zip".Length..]);
+        File.Move(old.IndexPath, index);
+        File.Move(old.VolumePath, volume);
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) };
+
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 0));
+
+        result.Warnings.Should().BeEmpty();
+        Directory.GetFiles(temp.Path).Should().BeEquivalentTo([archive, index, volume]);
+    }
+
     [Fact]
     public async Task RewrittenWithoutRecoveryData_UnreadableAndMixedFilesKept()
     {
