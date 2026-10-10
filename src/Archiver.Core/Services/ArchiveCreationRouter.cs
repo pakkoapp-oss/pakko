@@ -55,15 +55,30 @@ public sealed class ArchiveCreationRouter(
             });
         }
 
-        return options.RecoveryPercent == 0
+        if (options.RecoveryPercent > 0)
+            return ArchiveWithRecoveryDataAsync(options, progress, cancellationToken);
+        return _policy.DisableRecoveryData
             ? Engine(options, progress, cancellationToken)
-            : ArchiveWithRecoveryDataAsync(options, progress, cancellationToken);
+            : ArchiveRemovingEarlierSetsAsync(options, progress, cancellationToken);
     }
 
     private Task<ArchiveResult> Engine(ArchiveOptions options, IProgress<ProgressReport>? progress, CancellationToken cancellationToken) =>
         options.Format == ArchiveContainerFormat.Zip
             ? archiveService.ArchiveAsync(options, progress, cancellationToken)
             : tarService.CompressAsync(options, progress, cancellationToken);
+
+    // T-F275: a set left from the archive's earlier bytes goes before the folder opens; under the
+    // policy no PAR2 file is read or touched (a test does not read sets then either).
+    private async Task<ArchiveResult> ArchiveRemovingEarlierSetsAsync(ArchiveOptions options, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
+    {
+        ArchiveResult archived = await Engine(options with { OpenDestinationFolder = false }, progress, cancellationToken).ConfigureAwait(false);
+        ArchiveResult result = archived.CreatedFiles.Count == 0
+            ? archived
+            : await Task.Run(() => RecoveryDataWriter.RemoveEarlierSets(archived, cancellationToken), cancellationToken).ConfigureAwait(false);
+        if (result.Success && options.OpenDestinationFolder)
+            ExplorerLauncher.OpenFolder(options.DestinationFolder);
+        return result;
+    }
 
     // T-F275: the set is written after the engine has finished every archive. The folder opens
     // only then, so the user never moves an archive whose set is still being written; the PAR2 work

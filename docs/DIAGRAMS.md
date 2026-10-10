@@ -1168,8 +1168,9 @@ flowchart TD
     T9 -- no --> TE3["delete .tmp, Errors += TarCreationFailed"]
     T9 -- yes --> T10["ArchiveTempFile.CommitAsync .tmp → name.ext — same rule as S7 (T-F321),<br/>CreatedFiles += the path it landed at"]
 
-    S7 & P2 & T10 -.-> PR{"router, after the engine returns: RecoveryPercent over 0?<br/>(then the engine ran with OpenDestinationFolder off and its percent scaled below 100)"}
-    PR -- no --> PR0["the engine's result, unchanged"]
+    S7 & P2 & T10 -.-> PR{"router, after the engine returns: RecoveryPercent over 0?<br/>(unless DisableRecoveryData, the engine ran with OpenDestinationFolder off;<br/>with a percent, its progress scaled below 100)"}
+    PR -- "no, DisableRecoveryData" --> PR0["the engine's result, unchanged"]
+    PR -- "no" --> PRS["on the thread pool, for each of CreatedFiles: the set the test would find,<br/>naming the archive, length or first-16-KiB MD5 no longer matching →<br/>delete each of its files that holds only that Set ID,<br/>a failed delete → Warnings += RecoveryOldVolumeNotDeleted; then open the folder if asked and no error"]
     PR -- yes --> PR1["on the thread pool, for each of CreatedFiles, even with errors (T-F275):<br/>Par2Creator writes name.par2 and name.vol0+R.par2 via temp files → RecoveryFiles"]
     PR1 -. "empty or beyond the reader limits / any exception but cancel" .-> PR2["Errors += RecoveryDataFileTooLarge / RecoveryDataNotCreated on that archive,<br/>the archive stays, every Completed source → Partial"]
     PR1 --> PR3["delete name.volN+M.par2 the reader parses as another Set ID,<br/>a failed delete → Warnings += RecoveryOldVolumeNotDeleted"]

@@ -12058,6 +12058,28 @@ Steps, one PR each: 0 docs and oracles, 1 the Core engine, 2 creation, 3 verific
 - `DisableRecoveryData` (ADMX `SUPPORTED_Pakko18`) covers the whole feature: creation is refused in
   Core now; the verify and repair commands of steps 3-4 are hidden by it as well.
 
+### Before 3b — an archive rewritten without recovery data loses its old set (2026-10-10)
+
+- `pakko a -y a.tar.gz` without `-rr` over an archive that had a set kept the set, and `t` called the
+  good archive "damaged beyond repair"; a ZIP got the `DoesNotMatch` warning. Explorer would show
+  ordinary users the same wrong verdict in 3b.
+- The creation router now removes such a set whenever no percent is asked for (the App card with
+  the option off, Explorer's one-click verbs, `pakko a` without `-rr`): the set the test would find
+  for the archive (`Par2SetLocator.SetFilesForTarget` and `Select`), only when it names the archive
+  and its length or first-16-KiB MD5 no longer match the bytes just written. Of its files, only one
+  that the reader parses as that Set ID alone is deleted; an unreadable file, a file mixing Set IDs,
+  a set matching by content (a renamed set, or the same bytes written again) and another file's set
+  stay. A failed delete is the existing `RecoveryOldVolumeNotDeleted` warning. No full-file read:
+  the check costs the first 16 KiB of each archive and the set's own files.
+- The cleanup runs on the thread pool with the engine's `OpenDestinationFolder` off and the folder
+  opened after it, as for a written set. Under `DisableRecoveryData` nothing is read or deleted: the
+  test does not read sets then either, and the policy means "no PAR2 work".
+- Rejected: a test-side rule calling a name-only match whose length and first-16-KiB MD5 both differ
+  "does not match". It also covers sets left by another tool, but a truncated archive whose first
+  sector is damaged as well would then be reported as a stale set instead of as damage, and a
+  repair would not be offered. The ZIP-only `DoesNotMatch` rule of 3a stays for another tool's
+  rewrite.
+
 ---
 
 ## CLAUDE.md as of 2026-10-09 (T-F369)

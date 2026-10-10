@@ -493,7 +493,8 @@ The tests (T-F275 step 1):
   (also with errors, also SeparateArchives), none for a skipped one, percent and policy refused before
   the engine, a failed set downgrading the sources, cancellation leaving no partial file, one rising
   percent with 100 last, the PAR2 work off the caller's thread, stale volumes removed and a stuck one
-  a warning. `GroupPolicyServiceTests` reads `DisableRecoveryData`; `RecoveryDataOptionTests` and
+  a warning; an archive rewritten without a percent losing its earlier set (also one named `a.par2`),
+  while a content match, another file's set, unreadable or mixed files and the policy keep theirs. `GroupPolicyServiceTests` reads `DisableRecoveryData`; `RecoveryDataOptionTests` and
   `CreateModeTextTests` (App.Core) the card's option; `CliArgumentParserTests` and two
   `CliSubprocessTests` the `-rr[N]` switch.
 - `Archiver.Core.Tests/Services/ExtractionRouterRecoveryTests` (step 3): a ZIP engine that passes
@@ -503,8 +504,8 @@ The tests (T-F275 step 1):
   ZIP rewritten without a set (warning, not damage), repairable and beyond-repair damage, a missing
   archive, damaged set files, a locked archive and unlistable folders (errors, never a throw), one
   rising percent ending at 100, cancellation. `CliSubprocessTests` runs `pakko a -rr10` then `t`
-  over intact, repairable, beyond-repair and damaged sets for ZIP and tar.gz, a `.par2` path and a
-  ZIP rewritten without `-rr`.
+  over intact, repairable, beyond-repair and damaged sets for ZIP and tar.gz, a `.par2` path, and
+  a ZIP and a tar.gz rewritten without `-rr` (the old set is gone, no recovery verdict).
 - `Archiver.Core.Tests/Fuzz/Par2FuzzTests` (`Category=Fuzz`): raw mutations of the golden sets, and
   mutations with the packet MD5 recomputed; reader, verifier and repairer must not throw or write
   anything but the output they are given.

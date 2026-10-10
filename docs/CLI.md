@@ -282,7 +282,7 @@ policy no set is looked for and a `.par2` path is an error.
 | intact | stdout `out.zip: recovery data intact (2000 blocks, 100 recovery blocks)`; a tar-family archive is no longer "skipped" | 0 (was 1 for tar-family) |
 | damaged, repairable | `pakko: error: out.zip: The archive is damaged (3 of 2000 blocks); its recovery data can repair it (100 recovery blocks).` | 2 |
 | damaged beyond the set, or the repair too large | `pakko: error: ...beyond what its recovery data can repair...` / `...beyond what Pakko can do.` | 2 |
-| a ZIP that tests intact and a set that disagrees | `pakko: warning: out.zip: The recovery data does not match the archive...` — taken to be a set left from an earlier version (`a -y` without `-rr` keeps the old set) | 1 |
+| a ZIP that tests intact and a set that disagrees | `pakko: warning: out.zip: The recovery data does not match the archive...` — taken to be a set left from an earlier version by another tool (Pakko's own `a -y` without `-rr` removes the old set) | 1 |
 | PAR2 files that cannot be read, or a set for another file | `pakko: warning:` line; the archive is tested as without a set | 1 |
 | matched by content under another name | `pakko: warning:` line besides the result | 1 |
 | a `.par2` whose set cannot be read or whose archive is not found | `pakko: error:` line | 2 |
