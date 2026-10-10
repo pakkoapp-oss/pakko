@@ -46,7 +46,7 @@ public sealed partial class WinUiAotSourceGuardTests
         string xaml = File.ReadAllText(Path.Combine(app, "MainWindow.xaml"));
         string viewModel = File.ReadAllText(Path.Combine(app, "ViewModels", "MainViewModel.cs"));
         string[] bound = [.. ItemsSourceBinding().Matches(xaml).Select(m => m.Groups[1].Value)];
-        Dictionary<string, string> declaredTypes = PropertyDeclaration().Matches(viewModel)
+        var declaredTypes = PropertyDeclaration().Matches(viewModel)
             .GroupBy(m => m.Groups[2].Value).ToDictionary(g => g.Key, g => g.First().Groups[1].Value);
         bound.Should().Contain("RecoveryPercentChoices", "the guard must read the bindings it is about");
 
