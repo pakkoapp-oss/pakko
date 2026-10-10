@@ -152,25 +152,8 @@ public sealed class ExtractionRouter : IExtractionRouter
         var errors = new List<ArchiveError>(plan.Errors);
         var warnings = new List<ArchiveWarning>(plan.Warnings);
         var checks = new List<RecoveryCheck>(plan.Checks);
-        await Task.Run(() =>
-        {
-            double before = 0;
-            for (int i = 0; i < plan.Sets.Count; i++)
-            {
-                RecoveryTestStep.Found found = plan.Sets[i];
-                double offset = before;
-                long weight = checkLengths[i];
-                before += weight;
-                (RecoveryCheck? check, ArchiveError? error, ArchiveWarning? warning) = RecoveryTestStep.Check(
-                    found, passed.Contains(RecoveryTestStep.Key(found.ArchivePath)), f => climb?.Check((offset + f * weight) / checkTotal), cancellationToken);
-                if (check is not null)
-                    checks.Add(check);
-                if (error is not null)
-                    errors.Add(error);
-                if (warning is not null)
-                    warnings.Add(warning);
-            }
-        }, cancellationToken).ConfigureAwait(false);
+        await Task.Run(() => CheckSets(plan.Sets, checkLengths, checkTotal, passed, climb, checks, errors, warnings, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
         climb?.Check(1);
 
         // A tar-family archive that its set could check was tested after all.
@@ -183,6 +166,29 @@ public sealed class ExtractionRouter : IExtractionRouter
             SkippedFiles = [.. tested.SkippedFiles.Where(s => s.Text?.Code != MessageCode.NoTestCapability || !checkedBySet.Contains(RecoveryTestStep.Key(s.Path)))],
             RecoveryChecks = checks,
         };
+    }
+
+    // Each set's share of the check's part of the climb is its archive's size.
+    private static void CheckSets(
+        List<RecoveryTestStep.Found> sets, long[] lengths, double total, HashSet<string> passed, RecoveryClimb? climb,
+        List<RecoveryCheck> checks, List<ArchiveError> errors, List<ArchiveWarning> warnings, CancellationToken cancellationToken)
+    {
+        double before = 0;
+        for (int i = 0; i < sets.Count; i++)
+        {
+            RecoveryTestStep.Found found = sets[i];
+            double offset = before;
+            long weight = lengths[i];
+            before += weight;
+            (RecoveryCheck? check, ArchiveError? error, ArchiveWarning? warning) = RecoveryTestStep.Check(
+                found, passed.Contains(RecoveryTestStep.Key(found.ArchivePath)), f => climb?.Check((offset + f * weight) / total), cancellationToken);
+            if (check is not null)
+                checks.Add(check);
+            if (error is not null)
+                errors.Add(error);
+            if (warning is not null)
+                warnings.Add(warning);
+        }
     }
 
     private static ArchiveResult EmptyResult() => new();

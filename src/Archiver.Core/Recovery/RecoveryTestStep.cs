@@ -179,9 +179,11 @@ internal static class RecoveryTestStep
             RecoveryState.RepairTooLarge => CoreMessages.Error(found.ArchivePath, MessageCode.RecoveryDataRepairTooLarge, damaged, blocks),
             _ => null,
         };
-        ArchiveWarning? warning = state == RecoveryState.DoesNotMatch
-            ? CoreMessages.Warning(found.ArchivePath, CoreMessages.Text(MessageCode.RecoveryDataDoesNotMatch, damaged, blocks))
-            : found.Match.NameMatches ? null : CoreMessages.Warning(found.ArchivePath, CoreMessages.Text(MessageCode.RecoveryDataNameMismatch));
+        ArchiveWarning? warning = null;
+        if (state == RecoveryState.DoesNotMatch)
+            warning = CoreMessages.Warning(found.ArchivePath, CoreMessages.Text(MessageCode.RecoveryDataDoesNotMatch, damaged, blocks));
+        else if (!found.Match.NameMatches)
+            warning = CoreMessages.Warning(found.ArchivePath, CoreMessages.Text(MessageCode.RecoveryDataNameMismatch));
         return (check, error, warning);
     }
 }
