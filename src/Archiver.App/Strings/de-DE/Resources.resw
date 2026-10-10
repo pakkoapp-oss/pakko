@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Neben diesem Archiv wurden PAR2-Dateien gefunden. Der Archivtest prüft das Archiv auch gegen sie.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Mit PAR2 reparieren</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Archiv reparieren</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Reparieren...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Wählen Sie einen anderen Ordner für die reparierte Kopie.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Eine Ebene höher</value>
   </data>

@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Pored ove arhive pronađene su PAR2 datoteke. Testiranje arhive proverava je i prema njima.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Popravi pomoću PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Popravka arhive</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Popravljanje...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Izaberite drugu fasciklu za popravljenu kopiju.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Jedan nivo gore</value>
   </data>

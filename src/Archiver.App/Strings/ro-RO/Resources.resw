@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Lângă această arhivă au fost găsite fișiere PAR2. Testarea arhivei o verifică și în raport cu ele.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Repară cu PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Reparare arhivă</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Se repară...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Alegeți alt folder pentru copia reparată.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Un nivel mai sus</value>
   </data>

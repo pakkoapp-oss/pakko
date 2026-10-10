@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Selle arhiivi kõrvalt leiti PAR2-failid. Arhiivi testimine kontrollib seda ka nende järgi.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Paranda PAR2 abil</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Arhiivi parandamine</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Parandamine...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Valige parandatud koopia jaoks teine kaust.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Taseme võrra üles</value>
   </data>

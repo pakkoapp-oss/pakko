@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Blakus šim arhīvam atrasti PAR2 faili. Arhīva testēšana to pārbauda arī pēc tiem.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Labot ar PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Arhīva labošana</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Notiek labošana...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Izvēlieties citu mapi salabotajai kopijai.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Vienu līmeni augstāk</value>
   </data>

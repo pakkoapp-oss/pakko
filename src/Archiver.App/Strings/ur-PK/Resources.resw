@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>اس آرکائیو کے ساتھ PAR2 فائلیں ملی ہیں۔ آرکائیو کی جانچ اسے ان کے مقابلے میں بھی پرکھتی ہے۔</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>PAR2 سے ٹھیک کریں</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>آرکائیو کی مرمت</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>ٹھیک کیا جا رہا ہے...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>ٹھیک کی گئی نقل کے لیے کوئی دوسرا فولڈر منتخب کریں۔</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>ایک سطح اوپر</value>
   </data>

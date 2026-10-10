@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Vedľa tohto archívu sa našli súbory PAR2. Test archívu ho overí aj podľa nich.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Opraviť pomocou PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Oprava archívu</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Oprava...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Vyberte iný priečinok pre opravenú kópiu.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>O úroveň vyššie</value>
   </data>

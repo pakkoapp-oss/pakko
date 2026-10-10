@@ -308,7 +308,15 @@
                     IsClosable="False"
                     IsOpen="{x:Bind ViewModel.IsRecoveryInfoOpen, Mode=OneWay}"
                     Severity="{x:Bind ViewModel.RecoveryInfoSeverity, Mode=OneWay}"
-                    Message="{x:Bind ViewModel.RecoveryInfoText, Mode=OneWay}"/>
+                    Message="{x:Bind ViewModel.RecoveryInfoText, Mode=OneWay}">
+                    <!-- T-F275 step 4c: writes a repaired copy next to the archive. -->
+                    <InfoBar.ActionButton>
+                        <Button
+                            x:Uid="RecoveryRepairButton"
+                            Command="{x:Bind ViewModel.RepairBrowsedArchiveCommand, Mode=OneWay}"
+                            Visibility="{x:Bind ViewModel.RecoveryRepairVisibility, Mode=OneWay}"/>
+                    </InfoBar.ActionButton>
+                </InfoBar>
 
                 <Border
                     x:Name="BrowseHeader"

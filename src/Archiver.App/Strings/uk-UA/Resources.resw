@@ -531,6 +531,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Поруч із цим архівом знайдено файли PAR2. Тестування архіву перевіряє його також за ними.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Відновити за PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Відновлення архіву</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Відновлення...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Виберіть іншу папку для відновленої копії.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>На рівень вище</value>
   </data>

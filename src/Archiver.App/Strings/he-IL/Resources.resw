@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>נמצאו קובצי PAR2 לצד ארכיון זה. בדיקת הארכיון בודקת אותו גם מולם.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>תיקון באמצעות PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>תיקון ארכיון</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>מתקן...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>בחר תיקייה אחרת עבור העותק המתוקן.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>רמה אחת למעלה</value>
   </data>

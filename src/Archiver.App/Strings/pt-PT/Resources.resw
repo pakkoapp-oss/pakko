@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Foram encontrados ficheiros PAR2 junto a este arquivo. O teste do arquivo também o verifica em relação a eles.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Reparar com PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Reparar arquivo</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>A reparar...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Escolha outra pasta para a cópia reparada.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Subir um nível</value>
   </data>

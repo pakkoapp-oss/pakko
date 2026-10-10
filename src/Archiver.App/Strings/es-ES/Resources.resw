@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>Se encontraron archivos PAR2 junto a este archivo comprimido. La prueba del archivo comprimido también lo comprueba con ellos.</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>Reparar con PAR2</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>Reparar archivo comprimido</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>Reparando...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>Elija otra carpeta para la copia reparada.</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Subir un nivel</value>
   </data>

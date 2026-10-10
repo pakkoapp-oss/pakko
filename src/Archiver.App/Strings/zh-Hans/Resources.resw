@@ -530,6 +530,18 @@
   <data name="BrowseRecoveryFound" xml:space="preserve">
     <value>在此压缩包旁找到了 PAR2 文件。测试压缩包时也会根据这些文件进行校验。</value>
   </data>
+  <data name="RecoveryRepairButton.Content" xml:space="preserve">
+    <value>使用 PAR2 修复</value>
+  </data>
+  <data name="RepairResultTitle" xml:space="preserve">
+    <value>修复压缩包</value>
+  </data>
+  <data name="StatusRepairing" xml:space="preserve">
+    <value>正在修复...</value>
+  </data>
+  <data name="RepairChooseFolder" xml:space="preserve">
+    <value>请为修复后的副本选择其他文件夹。</value>
+  </data>
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>向上一级</value>
   </data>
