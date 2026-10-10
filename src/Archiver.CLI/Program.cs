@@ -350,7 +350,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
             cancellationToken: cancellation.Token).ConfigureAwait(false);
         progress?.Clear();
         foreach (RecoveryCheck check in result.RecoveryChecks.Where(c => c.State == RecoveryState.Intact))
-            Console.Out.WriteLine($"{report.DisplayName(check.ArchivePath)}: recovery data intact ({check.Blocks} blocks, {check.RecoveryBlocks} recovery blocks)");
+            await Console.Out.WriteLineAsync($"{report.DisplayName(check.ArchivePath)}: recovery data intact ({check.Blocks} blocks, {check.RecoveryBlocks} recovery blocks)").ConfigureAwait(false);
         return ReportResult(result, report);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
