@@ -144,8 +144,9 @@ public sealed class ExtractionRouter : IExtractionRouter
         IProgress<ProgressReport>? testProgress = climb is null ? progress : new SliceProgress(climb, 0, testEnd, bytesBefore: 0);
 
         ArchiveResult tested = await TestClassifiedAsync(classification, testProgress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false);
+        // Keyed by full path: a check's archive may come from a .par2 path, spelled unlike the archive path given.
         var passed = new HashSet<string>(
-            tested.Sources.Where(s => s.Outcome == SourceOutcome.Completed && !tested.Errors.Any(e => e.SourcePath == s.Path)).Select(s => s.Path),
+            tested.Sources.Where(s => s.Outcome == SourceOutcome.Completed && !tested.Errors.Any(e => e.SourcePath == s.Path)).Select(s => RecoveryTestStep.Key(s.Path)),
             StringComparer.OrdinalIgnoreCase);
 
         var errors = new List<ArchiveError>(plan.Errors);
@@ -161,7 +162,7 @@ public sealed class ExtractionRouter : IExtractionRouter
                 long weight = checkLengths[i];
                 before += weight;
                 (RecoveryCheck? check, ArchiveError? error, ArchiveWarning? warning) = RecoveryTestStep.Check(
-                    found, passed.Contains(found.ArchivePath), f => climb?.Check((offset + f * weight) / checkTotal), cancellationToken);
+                    found, passed.Contains(RecoveryTestStep.Key(found.ArchivePath)), f => climb?.Check((offset + f * weight) / checkTotal), cancellationToken);
                 if (check is not null)
                     checks.Add(check);
                 if (error is not null)
@@ -174,12 +175,12 @@ public sealed class ExtractionRouter : IExtractionRouter
 
         // A tar-family archive that its set could check was tested after all.
         var checkedBySet = new HashSet<string>(
-            checks.Where(c => c.State != RecoveryState.Unusable).Select(c => c.ArchivePath), StringComparer.OrdinalIgnoreCase);
+            checks.Where(c => c.State != RecoveryState.Unusable).Select(c => RecoveryTestStep.Key(c.ArchivePath)), StringComparer.OrdinalIgnoreCase);
         return tested with
         {
             Errors = [.. tested.Errors, .. errors],
             Warnings = [.. tested.Warnings, .. warnings],
-            SkippedFiles = [.. tested.SkippedFiles.Where(s => s.Text?.Code != MessageCode.NoTestCapability || !checkedBySet.Contains(s.Path))],
+            SkippedFiles = [.. tested.SkippedFiles.Where(s => s.Text?.Code != MessageCode.NoTestCapability || !checkedBySet.Contains(RecoveryTestStep.Key(s.Path)))],
             RecoveryChecks = checks,
         };
     }
@@ -206,7 +207,7 @@ public sealed class ExtractionRouter : IExtractionRouter
             {
                 total += new FileInfo(path).Length;
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
             {
                 // best-effort: an unreadable size only changes how the bar is divided
             }
