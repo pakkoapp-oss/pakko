@@ -351,7 +351,7 @@ public sealed class CliSubprocessTests
         File.WriteAllBytes(big, noise);
 
         var reference = System.Diagnostics.Stopwatch.StartNew();
-        using (var par2 = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(PublishedExeSpeedFactAttribute.Par2CmdLinePath)
+        using (System.Diagnostics.Process par2 = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(PublishedExeSpeedFactAttribute.Par2CmdLinePath)
         {
             ArgumentList = { "create", "-q", "-q", "-r5", Path.Combine(scratchDir, "reference.par2"), big },
             UseShellExecute = false,

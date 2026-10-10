@@ -97,5 +97,10 @@ internal static class Gf16Region
     // asking for SSSE3 by name is a run-time check there and pshufb when it is present.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static Vector128<byte> Lookup(Vector128<byte> table, Vector128<byte> nibbles) =>
-        Ssse3.IsSupported ? Ssse3.Shuffle(table, nibbles) : Vector128.ShuffleNative(table, nibbles);
+        Ssse3.IsSupported ? Ssse3.Shuffle(table, nibbles) : LookupPortable(table, nibbles);
+
+    /// <summary>The lookup where SSSE3 is not there: TBL on ARM64.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static Vector128<byte> LookupPortable(Vector128<byte> table, Vector128<byte> nibbles) =>
+        Vector128.ShuffleNative(table, nibbles);
 }

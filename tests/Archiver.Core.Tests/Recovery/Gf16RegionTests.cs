@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Runtime.Intrinsics;
 using Archiver.Core.Recovery;
 using FluentAssertions;
 
@@ -43,6 +44,20 @@ public sealed class Gf16RegionTests
     public void MulAdd_LongRegion_MatchesPerWordDefinition(int factor)
     {
         AssertKernel(Gf16Region.MulAdd, (ushort)factor, 65536 + 34);
+    }
+
+    // T-F375: x64 takes the SSSE3 lookup, so no x64 run reaches the portable one through MulAdd.
+    [Fact]
+    public void LookupPortable_NibbleIndexes_PicksTheTableBytes()
+    {
+        byte[] table = [.. Enumerable.Range(0, 16).Select(i => (byte)(i * 17 + 3))];
+        byte[] nibbles = [15, 0, 7, 8, 1, 14, 2, 13, 3, 12, 4, 11, 5, 10, 6, 9];
+
+        Vector128<byte> picked = Gf16Region.LookupPortable(Vector128.Create(table), Vector128.Create(nibbles));
+
+        byte[] bytes = new byte[16];
+        picked.CopyTo(bytes);
+        bytes.Should().Equal(nibbles.Select(n => table[n]));
     }
 
     [Fact]
