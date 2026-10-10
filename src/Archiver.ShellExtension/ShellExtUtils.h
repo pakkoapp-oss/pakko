@@ -229,6 +229,8 @@ std::wstring BuildArchiveArgs(const std::wstring& format = L"zip");
 std::wstring BuildTestArgs();
 // T-F275 step 3b: "Verify with PAR2".
 std::wstring BuildRecoveryVerifyArgs();
+// T-F275 step 4b: "Repair with PAR2".
+std::wstring BuildRecoveryRepairArgs();
 // T-F146: "Scan for threats".
 std::wstring BuildScanArgs();
 // T-F128: algorithm is "crc32" or "sha256" - always emitted explicitly (unlike BuildArchiveArgs'

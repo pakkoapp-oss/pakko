@@ -13,6 +13,7 @@ internal sealed class ShellServices
     public required Func<Task<IExtractionRouter>> CreateExtractionRouterAsync { get; init; }
     public required Func<IArchiveCreationRouter> CreateArchiveCreationRouter { get; init; }
     public required Func<Task<IAntivirusScanService>> CreateScanServiceAsync { get; init; }
+    public required Func<IRecoveryService> CreateRecoveryService { get; init; }
     public required Func<LaunchOperation, IReadOnlyList<string>, AppLaunchResult> LaunchApp { get; init; }
 
     // T-F261: every service comes from Core's one factory, built with the one loaded policy.
@@ -25,6 +26,7 @@ internal sealed class ShellServices
             CreateExtractionRouterAsync = core.CreateExtractionRouterAsync,
             CreateArchiveCreationRouter = () => core.CreationRouter,
             CreateScanServiceAsync = core.CreateScanServiceAsync,
+            CreateRecoveryService = () => core.RecoveryService,
             LaunchApp = AppLauncher.Launch,
         };
     }

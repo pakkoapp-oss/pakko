@@ -33,7 +33,7 @@ public sealed class GlossaryTests
     {
         Dictionary<string, string> strings = LocalizedSources.Read(locale);
 
-        strings.Keys.Count(k => k.StartsWith("ShellExt/", StringComparison.Ordinal)).Should().Be(16);
+        strings.Keys.Count(k => k.StartsWith("ShellExt/", StringComparison.Ordinal)).Should().Be(17);
         strings.Keys.Select(k => k[..k.IndexOf('/')]).Distinct().Should().HaveCount(9);
         strings.Should().HaveCountGreaterThan(300);
         strings["ShellExt/launchFailedTemplate"].Should().Contain("{0}").And.NotContain("\\u");

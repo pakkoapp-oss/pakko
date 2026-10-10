@@ -44,6 +44,10 @@ static const CLSID CLSID_TestCommand =
 static const CLSID CLSID_RecoveryVerifyCommand =
     { 0xBB144D8A, 0xBD24, 0x415B, { 0xA8, 0xAB, 0xC3, 0xBA, 0x38, 0xE2, 0x66, 0x83 } };
 
+// {A17002FE-53BD-457C-A7E7-346F4B53532E}
+static const CLSID CLSID_RecoveryRepairCommand =
+    { 0xA17002FE, 0x53BD, 0x457C, { 0xA7, 0xE7, 0x34, 0x6F, 0x4B, 0x53, 0x53, 0x2E } };
+
 // {1E694800-18F6-4C35-A82B-8E34A94948F9}
 static const CLSID CLSID_ScanCommand =
     { 0x1E694800, 0x18F6, 0x4C35, { 0xA8, 0x2B, 0x8E, 0x34, 0xA9, 0x49, 0x48, 0xF9 } };
@@ -210,6 +214,26 @@ public:
 // diagnostic group, and for a tar-family archive the one check Pakko has.
 // ---------------------------------------------------------------------------
 class RecoveryVerifyCommand final :
+    public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
+{
+public:
+    STDMETHODIMP GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept override;
+    STDMETHODIMP GetIcon(IShellItemArray* psia, LPWSTR* ppszIcon) noexcept override;
+    STDMETHODIMP GetToolTip(IShellItemArray* psia, LPWSTR* ppszInfotip) noexcept override;
+    STDMETHODIMP GetCanonicalName(GUID* pguidCommandName) noexcept override;
+    STDMETHODIMP GetState(IShellItemArray* psia, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState) noexcept override;
+    STDMETHODIMP Invoke(IShellItemArray* psia, IBindCtx* pbc) noexcept override;
+    STDMETHODIMP GetFlags(EXPCMDFLAGS* pFlags) noexcept override;
+    STDMETHODIMP EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept override;
+};
+
+// ---------------------------------------------------------------------------
+// Leaf command: "Repair with PAR2" (T-F275 step 4b) - rebuilds each selected damaged archive from
+// the PAR2 set next to it into a new file beside it; the archive is only read. Shown exactly when
+// RecoveryVerifyCommand is (AnyPathHasRecoveryData), right after it: whether there is anything to
+// repair is known only after the archive has been read, which a menu must not do.
+// ---------------------------------------------------------------------------
+class RecoveryRepairCommand final :
     public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
 {
 public:

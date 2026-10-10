@@ -19,7 +19,7 @@ internal static partial class LocalizedSources
         "extractDialog", "extractHereFlat", "extractHereIntelligent", "extractFolderFallback",
         "extractFolderMultiFallback", "extractFolderNamedTemplate", "compressDialog", "archiveFallback",
         "archiveNamedTemplate", "testArchive", "scanArchive", "browseArchive", "hashSubmenu",
-        "selectionNotOnDisk", "launchFailedTemplate", "recoveryVerify",
+        "selectionNotOnDisk", "launchFailedTemplate", "recoveryVerify", "recoveryRepair",
     ];
 
     public static readonly string RepoRoot = FindRepoRoot();

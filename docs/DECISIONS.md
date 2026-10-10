@@ -12288,6 +12288,41 @@ Known gaps:
   the limit of step 1 it is refused (`RecoveryDataRepairTooLarge`).
 - `pakko r` takes no `-p`, so an encrypted ZIP is never tested before it is rebuilt (see above).
 
+### Step 4b — Explorer's "Repair with PAR2" (2026-10-10)
+
+- **A verb after "Verify with PAR2"** (`RecoveryRepairCommand`), shown exactly when that one is
+  (`AnyPathHasRecoveryData`): on a `.par2` file, or on an archive policy allows with PAR2 files
+  next to it; hidden under `DisableRecoveryData`; not offered on an archive whose format is blocked.
+  Selecting the `.par2` file itself still offers it under `BlockedFormats`, as with the verify
+  item: the repair copies and hashes bytes and never parses the blocked format, and the copy it
+  writes is as blocked as the original.
+  Whether there is anything to repair is known only after the archive has been read, which a menu
+  must not do, so the item does not wait for damage. On an intact archive it answers "matches its
+  recovery data" and writes nothing.
+- **`--recovery-repair`** runs `IRecoveryService.RepairAsync` with no output folder: the copy
+  lands next to the archive, in the folder the user is looking at, so no folder is opened. The
+  window's result lists, in Core's words, each archive that was repaired (with the copy's name) or
+  needed nothing, under whatever errors and warnings the others produced
+  (`OperationMessages.ForRepairResult`). One message for a mixed selection.
+- **While it runs** the window shows the percent alone, as the verify does: the byte counts of a
+  set check and a rebuild are zero, and no status text was added for `ProgressPhase.RepairingArchive`.
+  Cancel in the window stops the rebuild and leaves no copy and no temporary file (checked on a
+  device with a 600 MB archive).
+- **Two new window titles** in 37 languages ("Repairing: X", "Repairing archives: N") and the menu
+  item. Everything else is Core's text.
+- **A check's text is no longer only "the set matches".** `ForTestResult` and the App's
+  `RecoveryPanel` ask for `RecoveryState.Intact` before they show a match line (done in 4a,
+  pinned by a Shell test here).
+- **A folder that cannot be written to** gives Core's "The repaired copy could not be written:
+  reason". Explorer has no folder choice; the App gets one in 4c, and `pakko r -o<dir>` has it now.
+
+Known gaps:
+
+- Each of the two items runs its own folder listings when the menu opens: up to 32 listings for a
+  selection of 16 archives or more, where 3b had 16.
+- The other gaps of 3b's visibility rule hold for this item too (more than 16 archives selected,
+  non-archive files, a slow share).
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry

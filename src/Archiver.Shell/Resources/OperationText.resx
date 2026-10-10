@@ -58,6 +58,13 @@
     <value>Testing archives: {0}</value>
     <comment>Title of Explorer's operation window. {0} is a count. Keep it after a colon: no noun can agree with a number inside a template.</comment>
   </data>
+  <data name="TitleRepairing" xml:space="preserve">
+    <value>Repairing: {0}</value>
+  </data>
+  <data name="TitleRepairingMany" xml:space="preserve">
+    <value>Repairing archives: {0}</value>
+    <comment>Title of Explorer's operation window. {0} is a count. Keep it after a colon: no noun can agree with a number inside a template.</comment>
+  </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>Scanning: {0}</value>
   </data>

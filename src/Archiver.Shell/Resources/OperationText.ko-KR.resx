@@ -54,6 +54,12 @@
   <data name="TitleTestingMany" xml:space="preserve">
     <value>테스트: 압축 파일 {0}개</value>
   </data>
+  <data name="TitleRepairing" xml:space="preserve">
+    <value>복구: {0}</value>
+  </data>
+  <data name="TitleRepairingMany" xml:space="preserve">
+    <value>복구: 압축 파일 {0}개</value>
+  </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>위협 검사: {0}</value>
   </data>

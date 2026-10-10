@@ -640,6 +640,7 @@ public sealed class ShellCommandsTests : IDisposable
             CreateArchiveCreationRouter = () =>
                 new ArchiveCreationRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), policy),
             CreateScanServiceAsync = () => throw new NotSupportedException("Scan needs AMSI; covered by OperationMessagesTests."),
+            CreateRecoveryService = () => throw new NotSupportedException("Repair is covered by ShellCommandsRecoveryTests."),
             LaunchApp = launch ?? ((_, _) => AppLaunchResult.Launched),
         };
         return new ShellCommands(ui, services);

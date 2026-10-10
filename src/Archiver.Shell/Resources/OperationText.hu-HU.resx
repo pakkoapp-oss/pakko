@@ -54,6 +54,12 @@
   <data name="TitleTestingMany" xml:space="preserve">
     <value>Archívumok tesztelése: {0}</value>
   </data>
+  <data name="TitleRepairing" xml:space="preserve">
+    <value>Javítás: {0}</value>
+  </data>
+  <data name="TitleRepairingMany" xml:space="preserve">
+    <value>Archívumok javítása: {0}</value>
+  </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>Fenyegetések keresése: {0}</value>
   </data>

@@ -221,6 +221,31 @@ public sealed class ShellArgumentParserTests
         result.ErrorMessage.Should().NotBeNullOrEmpty();
     }
 
+    // --- Valid: --recovery-repair (T-F275 step 4b) ---
+
+    [Fact]
+    public void RecoveryRepair_Files_ReturnsRecoveryRepair()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--recovery-repair", "a.tar.gz", "a.tar.gz.par2"]);
+
+        result.Type.Should().Be(CommandType.RecoveryRepair);
+        result.Files.Should().Equal("a.tar.gz", "a.tar.gz.par2");
+        result.ErrorMessage.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("--recovery-repair")]
+    [InlineData("--recovery-repair", "a.zip", "--paths-stdin")]
+    [InlineData("--recovery-Repair", "a.zip")]
+    [InlineData("--repair", "a.zip")]
+    public void RecoveryRepair_Misuse_ReturnsInvalid(params string[] args)
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(args);
+
+        result.Type.Should().Be(CommandType.Invalid);
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
     // --- Valid: --scan (T-F146) ---
 
     [Fact]
@@ -543,6 +568,7 @@ public sealed class ShellArgumentParserTests
     [InlineData(new[] { "--archive", "--paths-stdin" }, CommandType.Archive)]
     [InlineData(new[] { "--test", "--paths-stdin" }, CommandType.Test)]
     [InlineData(new[] { "--recovery-verify", "--paths-stdin" }, CommandType.RecoveryVerify)]
+    [InlineData(new[] { "--recovery-repair", "--paths-stdin" }, CommandType.RecoveryRepair)]
     [InlineData(new[] { "--scan", "--paths-stdin" }, CommandType.Scan)]
     [InlineData(new[] { "--hash", "--algorithm", "crc32", "--paths-stdin" }, CommandType.Hash)]
     [InlineData(new[] { "--open-ui", "--extract", "--paths-stdin" }, CommandType.OpenUiExtract)]

@@ -80,6 +80,10 @@ switch (command.Type)
         await commands.VerifyRecoveryAsync(command.Files).ConfigureAwait(false);
         break;
 
+    case CommandType.RecoveryRepair:
+        await commands.RepairRecoveryAsync(command.Files).ConfigureAwait(false);
+        break;
+
     case CommandType.Scan:
         await commands.ScanAsync(command.Files).ConfigureAwait(false);
         break;

@@ -567,6 +567,74 @@ STDMETHODIMP RecoveryVerifyCommand::EnumSubCommands(IEnumExplorerCommand** ppEnu
 }
 
 // ---------------------------------------------------------------------------
+// RecoveryRepairCommand (T-F275 step 4b)
+// ---------------------------------------------------------------------------
+
+STDMETHODIMP RecoveryRepairCommand::GetTitle(IShellItemArray*, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    return SHStrDupW(GetLocalizedString(StringId::RecoveryRepair).c_str(), ppszName);
+}
+
+STDMETHODIMP RecoveryRepairCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP RecoveryRepairCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP RecoveryRepairCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_RecoveryRepairCommand;
+    return S_OK;
+}
+
+STDMETHODIMP RecoveryRepairCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    *pCmdState = ECS_HIDDEN;
+    try
+    {
+        // The same bounded folder listings as RecoveryVerifyCommand: the two items show together.
+        if (AnyPathHasRecoveryData(GetPathsFromShellItemArray(psia), GetMenuPolicy(), ListFolderNames))
+            *pCmdState = ECS_ENABLED;
+        return S_OK;
+    }
+    catch (...) { return S_OK; } // hidden: a menu item that cannot be decided is not offered
+}
+
+STDMETHODIMP RecoveryRepairCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
+{
+    try
+    {
+        return RunShellCommand(psia, BuildRecoveryRepairArgs());
+    }
+    catch (...) { return E_FAIL; }
+}
+
+STDMETHODIMP RecoveryRepairCommand::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_DEFAULT;
+    return S_OK;
+}
+
+STDMETHODIMP RecoveryRepairCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
+    return E_NOTIMPL;
+}
+
+// ---------------------------------------------------------------------------
 // ScanCommand (T-F146)
 // ---------------------------------------------------------------------------
 
@@ -1021,13 +1089,14 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         auto pTarArchive    = Make<TarArchiveCommand>();
         auto pTest          = Make<TestCommand>();
         auto pRecoveryVerify = Make<RecoveryVerifyCommand>();
+        auto pRecoveryRepair = Make<RecoveryRepairCommand>();
         auto pScan          = Make<ScanCommand>();
         auto pHashCrc32     = Make<HashCrc32Command>();
         auto pHashSha256    = Make<HashSha256Command>();
-        if (!pBrowse || !pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest || !pRecoveryVerify || !pScan || !pHashCrc32 || !pHashSha256)
+        if (!pBrowse || !pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest || !pRecoveryVerify || !pRecoveryRepair || !pScan || !pHashCrc32 || !pHashSha256)
             return E_OUTOFMEMORY;
 
-        ComPtr<IExplorerCommand> pCmdBrowse, pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest, pCmdRecoveryVerify, pCmdScan, pCmdHashCrc32, pCmdHashSha256;
+        ComPtr<IExplorerCommand> pCmdBrowse, pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest, pCmdRecoveryVerify, pCmdRecoveryRepair, pCmdScan, pCmdHashCrc32, pCmdHashSha256;
         HRESULT hr = pBrowse.As(&pCmdBrowse);                if (FAILED(hr)) return hr;
         hr = pExtractDialog.As(&pCmdExtractDialog);          if (FAILED(hr)) return hr;
         hr = pExtractHereFlat.As(&pCmdExtractHereFlat);      if (FAILED(hr)) return hr;
@@ -1038,6 +1107,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         hr = pTarArchive.As(&pCmdTarArchive);                if (FAILED(hr)) return hr;
         hr = pTest.As(&pCmdTest);                            if (FAILED(hr)) return hr;
         hr = pRecoveryVerify.As(&pCmdRecoveryVerify);        if (FAILED(hr)) return hr;
+        hr = pRecoveryRepair.As(&pCmdRecoveryRepair);        if (FAILED(hr)) return hr;
         hr = pScan.As(&pCmdScan);                            if (FAILED(hr)) return hr;
         hr = pHashCrc32.As(&pCmdHashCrc32);                  if (FAILED(hr)) return hr;
         hr = pHashSha256.As(&pCmdHashSha256);                if (FAILED(hr)) return hr;
@@ -1077,6 +1147,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         commands.push_back(std::move(pCmdTarArchive));
         commands.push_back(std::move(pCmdTest));
         commands.push_back(std::move(pCmdRecoveryVerify));
+        commands.push_back(std::move(pCmdRecoveryRepair)); // T-F275 step 4b: check first, then repair
         commands.push_back(std::move(pCmdScan));
         commands.push_back(std::move(pCmdHashCrc32));
         commands.push_back(std::move(pCmdHashSha256));

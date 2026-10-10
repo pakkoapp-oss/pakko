@@ -54,6 +54,12 @@
   <data name="TitleTestingMany" xml:space="preserve">
     <value>กำลังทดสอบไฟล์บีบอัด: {0}</value>
   </data>
+  <data name="TitleRepairing" xml:space="preserve">
+    <value>กำลังซ่อมแซม: {0}</value>
+  </data>
+  <data name="TitleRepairingMany" xml:space="preserve">
+    <value>กำลังซ่อมแซมไฟล์บีบอัด: {0}</value>
+  </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>กำลังสแกนหาภัยคุกคาม: {0}</value>
   </data>

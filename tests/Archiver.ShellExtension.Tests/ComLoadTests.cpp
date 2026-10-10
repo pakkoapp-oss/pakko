@@ -39,6 +39,10 @@ static const CLSID TEST_CLSID_TarArchiveCommand =
 static const CLSID TEST_CLSID_RecoveryVerifyCommand =
     { 0xBB144D8A, 0xBD24, 0x415B, { 0xA8, 0xAB, 0xC3, 0xBA, 0x38, 0xE2, 0x66, 0x83 } };
 
+// {A17002FE-53BD-457C-A7E7-346F4B53532E}
+static const CLSID TEST_CLSID_RecoveryRepairCommand =
+    { 0xA17002FE, 0x53BD, 0x457C, { 0xA7, 0xE7, 0x34, 0x6F, 0x4B, 0x53, 0x53, 0x2E } };
+
 static const CLSID TEST_CLSID_TestCommand =
     { 0xBA69EF3A, 0xF324, 0x46CB, { 0x93, 0x91, 0x6D, 0x14, 0xFE, 0x95, 0x97, 0xD3 } };
 static const CLSID TEST_CLSID_ScanCommand =
@@ -57,7 +61,7 @@ static const CLSID* const kExpectedSubCommandOrder[] = {
     &TEST_CLSID_BrowseCommand, &TEST_CLSID_ExtractDialogCommand, &TEST_CLSID_ExtractHereFlatCommand,
     &TEST_CLSID_ExtractHereCommand, &TEST_CLSID_ExtractFolderCommand, &TEST_CLSID_CompressDialogCommand,
     &TEST_CLSID_ArchiveCommand, &TEST_CLSID_TarArchiveCommand, &TEST_CLSID_TestCommand, &TEST_CLSID_RecoveryVerifyCommand,
-    &TEST_CLSID_ScanCommand, &TEST_CLSID_HashCrc32Command, &TEST_CLSID_HashSha256Command,
+    &TEST_CLSID_RecoveryRepairCommand, &TEST_CLSID_ScanCommand, &TEST_CLSID_HashCrc32Command, &TEST_CLSID_HashSha256Command,
 };
 
 // Helper: locate Archiver.ShellExtension.dll next to this test EXE.
@@ -288,7 +292,7 @@ TEST_F(DllFixture, RootCommand_GetIcon_NeverReturnsSFalseWithNullOutParam)
     pCmd->Release();
 }
 
-TEST_F(DllFixture, EnumSubCommands_ReturnsAllThirteenLeafCommandsInDocumentedOrder)
+TEST_F(DllFixture, EnumSubCommands_ReturnsAllFourteenLeafCommandsInDocumentedOrder)
 {
     // Order asserted here is CLAUDE.md's own hard constraint (T-F62: primary actions — Extract/
     // Archive — always precede diagnostic ones — Test/Scan) made executable, not just documented.
@@ -320,7 +324,7 @@ TEST_F(DllFixture, EnumSubCommands_ReturnsAllThirteenLeafCommandsInDocumentedOrd
         pLeaf->Release();
     }
 
-    // Exactly 13 — a 14th Next() call must report end-of-sequence, not a stray extra command.
+    // Exactly 14 — a 15th Next() call must report end-of-sequence, not a stray extra command.
     IExplorerCommand* pExtra = nullptr;
     ULONG extraFetched = 0;
     hr = pEnum->Next(1, &pExtra, &extraFetched);

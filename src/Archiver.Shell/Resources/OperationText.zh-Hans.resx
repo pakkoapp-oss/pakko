@@ -54,6 +54,12 @@
   <data name="TitleTestingMany" xml:space="preserve">
     <value>正在测试 {0} 个压缩包</value>
   </data>
+  <data name="TitleRepairing" xml:space="preserve">
+    <value>正在修复：{0}</value>
+  </data>
+  <data name="TitleRepairingMany" xml:space="preserve">
+    <value>正在修复 {0} 个压缩包</value>
+  </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>正在扫描威胁：{0}</value>
   </data>

@@ -369,15 +369,294 @@ public sealed class ShellCommandsRecoveryTests : IDisposable
         ui.Sessions.Should().ContainSingle().Which.Disposed.Should().BeTrue();
     }
 
+    // --- Explorer's "Repair with PAR2" (--recovery-repair, T-F275 step 4b) ---
+
+    [Fact]
+    public async Task Repair_DamagedArchive_WritesTheCopyAndSaysWhereItIs()
+    {
+        string archive = Protected("notes.tar.gz", out _);
+        byte[] good = File.ReadAllBytes(archive);
+        Damage(archive, 5_000, 16);
+        byte[] damaged = File.ReadAllBytes(archive);
+        string[] before = Listing();
+        var ui = new FakeOperationUi();
+
+        await Create(ui).RepairRecoveryAsync([archive]);
+
+        ui.Sessions.Should().ContainSingle().Which.Title.Should().Be("Repairing: notes.tar.gz");
+        ui.EndsWithResult.Should().Equal(true);
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Information);
+        message.Text.Should().MatchRegex(
+            @"^notes\.tar\.gz: The archive was repaired \(1 of \d+ blocks\)\. The repaired copy is notes\.repaired\.tar\.gz; the original was not changed\.$");
+        File.ReadAllBytes(Path.Combine(_root, "notes.repaired.tar.gz")).Should().Equal(good);
+        File.ReadAllBytes(archive).Should().Equal(damaged);
+        Listing().Should().HaveCount(before.Length + 1).And.Contain(before);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Repair_Par2FileAlone_RepairsTheArchiveItProtects(bool index)
+    {
+        string archive = Protected("notes.tar.gz", out Par2CreateResult set);
+        byte[] good = File.ReadAllBytes(archive);
+        Damage(archive, 5_000, 16);
+        var ui = new FakeOperationUi();
+
+        await Create(ui).RepairRecoveryAsync([index ? set.IndexPath : set.VolumePath]);
+
+        ui.Messages.Should().ContainSingle().Which.Text.Should().StartWith("notes.tar.gz: The archive was repaired");
+        File.ReadAllBytes(Path.Combine(_root, "notes.repaired.tar.gz")).Should().Equal(good);
+    }
+
+    [Fact]
+    public async Task Repair_ArchiveWithItsSetFilesSelected_IsRepairedOnce()
+    {
+        string archive = Protected("notes.tar.gz", out Par2CreateResult set);
+        Damage(archive, 5_000, 16);
+        var ui = new FakeOperationUi();
+
+        await Create(ui).RepairRecoveryAsync([set.VolumePath, archive, set.IndexPath]);
+
+        ui.Sessions.Should().ContainSingle().Which.Title.Should().Be("Repairing archives: 3");
+        ui.Messages.Should().ContainSingle().Which.Text.Split("was repaired").Should().HaveCount(2);
+        Directory.GetFiles(_root, "*repaired*").Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Repair_IntactArchive_SaysItMatchesAndWritesNothing()
+    {
+        string archive = Protected("notes.tar.gz", out _);
+        string[] before = Listing();
+        var ui = new FakeOperationUi();
+
+        await Create(ui).RepairRecoveryAsync([archive]);
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Information);
+        message.Text.Should().StartWith("notes.tar.gz: The archive matches its recovery data").And.NotContain("repaired");
+        Listing().Should().Equal(before);
+    }
+
+    [Fact]
+    public async Task Repair_InUkrainian_SaysItInUkrainian()
+    {
+        CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("uk-UA");
+        string archive = Protected("notes.tar.gz", out _);
+        Damage(archive, 5_000, 16);
+        var ui = new FakeOperationUi();
+
+        await Create(ui).RepairRecoveryAsync([archive]);
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Title.Should().NotStartWith("Repairing").And.EndWith("notes.tar.gz");
+        message.Text.Should().StartWith("notes.tar.gz: ").And.Contain("notes.repaired.tar.gz").And.NotContain("The archive was repaired");
+    }
+
+    [Fact]
+    public async Task Repair_DamagedBeyondTheSet_IsAnErrorAndNothingIsWritten()
+    {
+        string archive = Protected("notes.tar.gz", out _);
+        File.Copy(Archive("spare.tar.gz", seed: 99), archive, overwrite: true);
+        string[] before = Listing();
+        var ui = new FakeOperationUi();
+
+        await Create(ui).RepairRecoveryAsync([archive]);
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Error);
+        message.Text.Should().Contain("beyond what its recovery data can repair").And.NotContain("was repaired");
+        Listing().Should().Equal(before);
+    }
+
+    [Fact]
+    public async Task Repair_OneRepairedOneBeyondOneWithoutASet_OneMessageWithAllThree()
+    {
+        string repairable = Protected("a.tar.gz", out _);
+        Damage(repairable, 5_000, 16);
+        string beyond = Protected("b.tar.gz", out _, seed: 2);
+        File.Copy(Archive("spare.tar.gz", seed: 99), beyond, overwrite: true);
+        string bare = Archive("c.tar.gz", seed: 3);
+        var ui = new FakeOperationUi();
+
+        await Create(ui).RepairRecoveryAsync([repairable, beyond, bare]);
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Error);
+        message.Text.Should().Contain("b.tar.gz").And.Contain("beyond what its recovery data can repair")
+            .And.Contain("c.tar.gz").And.Contain("No recovery data was found next to the archive.")
+            .And.Contain("a.tar.gz: The archive was repaired");
+        Directory.GetFiles(_root, "*repaired*").Should().Equal(Path.Combine(_root, "a.repaired.tar.gz"));
+    }
+
+    // A good ZIP beside the set of its earlier bytes: the real ZIP test passes, so nothing is
+    // rebuilt from that set and the message is the warning "Verify with PAR2" gives.
+    [Fact]
+    public async Task Repair_ZipRewrittenBesideItsOldSet_IsWarnedAbout_AndNothingIsWritten()
+    {
+        string zip = MakeZip("photos.zip", seed: 1);
+        Par2Creator.Create(zip, Par2Creator.ChooseParameters(new FileInfo(zip).Length, 5)!.Value, null, CancellationToken.None);
+        File.Delete(zip);
+        MakeZip("photos.zip", seed: 2);
+        string[] before = Listing();
+        var ui = new FakeOperationUi();
+
+        await Create(ui).RepairRecoveryAsync([zip]);
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Warning);
+        message.Text.Should().Contain("photos.zip").And.Contain("does not match the archive").And.NotContain("was repaired");
+        Listing().Should().Equal(before);
+    }
+
+    [Fact]
+    public async Task Repair_DamagedZip_IsRepairedToAZipThatTestsClean()
+    {
+        string zip = MakeZip("photos.zip", seed: 1);
+        Par2Creator.Create(zip, Par2Creator.ChooseParameters(new FileInfo(zip).Length, 5)!.Value, null, CancellationToken.None);
+        Damage(zip, 5_000, 16);
+        var ui = new FakeOperationUi();
+        var afterwards = new FakeOperationUi();
+
+        await Create(ui).RepairRecoveryAsync([zip]);
+        await Create(afterwards).TestAsync([Path.Combine(_root, "photos.repaired.zip")]);
+
+        ui.Messages.Should().ContainSingle().Which.Severity.Should().Be(MessageSeverity.Information);
+        afterwards.Messages.Should().ContainSingle().Which.Text.Should().Be("No errors detected in the archive(s).");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Repair_NoUsableSet_IsAnErrorNeverSilence(bool unreadableSet)
+    {
+        string archive = Archive("notes.tar.gz", seed: 1);
+        if (unreadableSet)
+            File.WriteAllBytes(archive + ".par2", Noise(3_000, 5));
+        string[] before = Listing();
+        var ui = new FakeOperationUi();
+
+        await Create(ui).RepairRecoveryAsync([archive]);
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Error);
+        message.Text.Should().Contain(unreadableSet ? "The recovery data is damaged or in a form Pakko cannot read." : "No recovery data was found next to the archive.");
+        Listing().Should().Equal(before);
+    }
+
+    // What a cancelled or killed writer leaves is no set, and the repair says so.
+    [Fact]
+    public async Task Repair_OnlyTheWritersTemporaryFiles_IsNoSet()
+    {
+        string archive = Archive("notes.tar.gz", seed: 1);
+        File.WriteAllBytes(Path.Combine(_root, ".pakko-a-77-x.tmp"), Noise(2_000, 5));
+        var ui = new FakeOperationUi();
+
+        await Create(ui).RepairRecoveryAsync([archive]);
+
+        ui.Messages.Should().ContainSingle().Which.Text.Should().Contain("No recovery data was found next to the archive.");
+        Directory.GetFiles(_root, "*repaired*").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Repair_UnderDisableRecoveryData_IsRefusedAndNothingIsWritten()
+    {
+        string archive = Protected("notes.tar.gz", out _);
+        Damage(archive, 5_000, 16);
+        string[] before = Listing();
+        var ui = new FakeOperationUi();
+
+        await Create(ui, new GroupPolicyOptions { DisableRecoveryData = true }).RepairRecoveryAsync([archive]);
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Error);
+        message.Text.Should().Contain("Recovery data is disabled by Group Policy.");
+        Listing().Should().Equal(before);
+    }
+
+    [Fact]
+    public async Task Repair_CancelledByUser_ShowsNoMessageAndWritesNothing()
+    {
+        string archive = Protected("notes.tar.gz", out _);
+        Damage(archive, 5_000, 16);
+        string[] before = Listing();
+        var ui = new FakeOperationUi { CancelOnBegin = true };
+
+        await Create(ui).RepairRecoveryAsync([archive]);
+
+        ui.Messages.Should().BeEmpty();
+        ui.Sessions.Should().ContainSingle().Which.Disposed.Should().BeTrue();
+        Listing().Should().Equal(before);
+    }
+
+    // A folder where files cannot be created: the message says the copy could not be written.
+    [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public async Task Repair_FolderNotWritable_IsAnErrorAndTheOriginalStays()
+    {
+        string archive = Protected("notes.tar.gz", out _);
+        Damage(archive, 5_000, 16);
+        byte[] damaged = File.ReadAllBytes(archive);
+        string[] before = Listing();
+        var folder = new DirectoryInfo(_root);
+        var deny = new System.Security.AccessControl.FileSystemAccessRule(
+            System.Security.Principal.WindowsIdentity.GetCurrent().User!, System.Security.AccessControl.FileSystemRights.CreateFiles,
+            System.Security.AccessControl.InheritanceFlags.None, System.Security.AccessControl.PropagationFlags.None,
+            System.Security.AccessControl.AccessControlType.Deny);
+        System.Security.AccessControl.DirectorySecurity security = folder.GetAccessControl();
+        security.AddAccessRule(deny);
+        folder.SetAccessControl(security);
+        var ui = new FakeOperationUi();
+        try
+        {
+            await Create(ui).RepairRecoveryAsync([archive]);
+        }
+        finally
+        {
+            security = folder.GetAccessControl();
+            security.RemoveAccessRule(deny);
+            folder.SetAccessControl(security);
+        }
+
+        OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
+        message.Severity.Should().Be(MessageSeverity.Error);
+        message.Text.Should().Contain("notes.tar.gz").And.Contain("The repaired copy could not be written:");
+        Listing().Should().Equal(before);
+        File.ReadAllBytes(archive).Should().Equal(damaged);
+    }
+
+    // "Verify with PAR2" shows a match as "matches"; a repaired check carries a text too and
+    // must never read as one.
+    [Fact]
+    public void TestResult_WithARepairedCheck_DoesNotCallItAMatch()
+    {
+        ArchiveResult result = new()
+        {
+            RecoveryChecks =
+            [
+                new RecoveryCheck
+                {
+                    ArchivePath = Path.Combine(_root, "a.zip"), State = RecoveryState.Repaired, RepairedPath = Path.Combine(_root, "a.repaired.zip"),
+                    Text = new CoreText(MessageCode.RecoveryDataRepaired, 1, 10, "a.repaired.zip"),
+                },
+            ],
+        };
+
+        OperationMessages.ForTestResult("Testing: a.zip", result)!.Text.Should().Be("No errors detected in the archive(s).");
+    }
+
     // --- Helpers ---
 
     private static ShellCommands Create(FakeOperationUi ui, GroupPolicyOptions? policy = null)
     {
         policy ??= new GroupPolicyOptions();
+        Func<Task<IExtractionRouter>> router = () => Task.FromResult<IExtractionRouter>(
+            new ExtractionRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), new TarCapabilities(), policy));
         var services = new ShellServices
         {
-            CreateExtractionRouterAsync = () => Task.FromResult<IExtractionRouter>(
-                new ExtractionRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), new TarCapabilities(), policy)),
+            CreateExtractionRouterAsync = router,
+            CreateRecoveryService = () => new RecoveryService(policy, router),
             CreateArchiveCreationRouter = () => throw new NotSupportedException("Nothing is created here."),
             CreateScanServiceAsync = () => throw new NotSupportedException("Nothing is scanned here."),
             LaunchApp = (_, _) => AppLaunchResult.Launched,

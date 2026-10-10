@@ -561,6 +561,18 @@ The tests (T-F275 step 1):
   denied folder with its hint and `-o`, bad command lines, paths that are not there, and the
   process killed while the copy is built (no copy, the original as it was, the next run repairs
   and sweeps the temporary file).
+- Step 4b, Explorer's "Repair with PAR2". `ShellCommandsRecoveryTests` (`Repair_*`) runs
+  `ShellCommands.RepairRecoveryAsync` on real sets with the fake UI: the copy written and named in
+  the message with the original unchanged, a `.par2` or a volume alone, archive plus set files
+  repaired once, an intact archive, the Ukrainian text, damage beyond the set, one message for a
+  repaired, a beyond-repair and a set-less archive together, a ZIP rewritten beside its old set
+  (the real ZIP test passes: a warning, nothing written), a damaged real ZIP repaired to one that
+  tests clean, no set and an unreadable set, only the writer's temporary files,
+  `DisableRecoveryData`, cancel, a folder where files cannot be created, and a repaired check
+  never shown as a match by `ForTestResult`. `ShellArgumentParserTests` has the switch. C++:
+  `ComLoadTests` pins the item's place after "Verify with PAR2" (fourteen leaves),
+  `LocalizationTests` the 37 texts (each names PAR2 and differs from the verify text),
+  `ShellExtUtilsTests` the switch. The item's visibility is `AnyPathHasRecoveryData`, tested in 3b.
 - `Archiver.Core.Tests/Fuzz/Par2FuzzTests` (`Category=Fuzz`): raw mutations of the golden sets, and
   mutations with the packet MD5 recomputed; reader, verifier and repairer must not throw or write
   anything but the output they are given.

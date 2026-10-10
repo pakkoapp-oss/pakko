@@ -176,6 +176,34 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
     }
 
     // -------------------------------------------------------------------------
+    // --recovery-repair (T-F275 step 4b): each damaged archive is rebuilt from the PAR2 set next
+    // to it into a new file beside it; the archive itself is only read. The copy lands in the
+    // folder the user is looking at, so no folder is opened.
+    // -------------------------------------------------------------------------
+    public async Task RepairRecoveryAsync(IReadOnlyList<string> paths)
+    {
+        string title = paths.Count == 1
+            ? OperationTextLocalizer.Get("TitleRepairing", Path.GetFileName(paths[0]))
+            : OperationTextLocalizer.Get("TitleRepairingMany", paths.Count);
+
+        using IOperationSession session = ui.Begin(title, ProgressStyle.Bytes, endsWithResult: true);
+        ArchiveResult result;
+        try
+        {
+            result = await services.CreateRecoveryService()
+                .RepairAsync(new RepairOptions { Paths = paths }, session.Progress, session.Cancellation).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        if (session.Cancellation.IsCancellationRequested)
+            return;
+
+        session.Complete(OperationMessages.ForRepairResult(title, result));
+    }
+
+    // -------------------------------------------------------------------------
     // --hash (T-F128): CRC-32/SHA-256 for the "Hash" context-menu submenu.
     // -------------------------------------------------------------------------
     public async Task HashAsync(IReadOnlyList<string> paths, HashAlgorithmKind algorithm)

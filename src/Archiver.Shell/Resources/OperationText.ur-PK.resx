@@ -54,6 +54,12 @@
   <data name="TitleTestingMany" xml:space="preserve">
     <value>آرکائیوز کی جانچ: {0}</value>
   </data>
+  <data name="TitleRepairing" xml:space="preserve">
+    <value>ٹھیک کیا جا رہا ہے: {0}</value>
+  </data>
+  <data name="TitleRepairingMany" xml:space="preserve">
+    <value>آرکائیوز ٹھیک کی جا رہی ہیں: {0}</value>
+  </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>خطرات کے لیے اسکین: {0}</value>
   </data>

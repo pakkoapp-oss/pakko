@@ -54,6 +54,12 @@
   <data name="TitleTestingMany" xml:space="preserve">
     <value>Δοκιμή αρχείων συμπίεσης: {0}</value>
   </data>
+  <data name="TitleRepairing" xml:space="preserve">
+    <value>Επιδιόρθωση: {0}</value>
+  </data>
+  <data name="TitleRepairingMany" xml:space="preserve">
+    <value>Επιδιόρθωση αρχείων συμπίεσης: {0}</value>
+  </data>
   <data name="TitleScanning" xml:space="preserve">
     <value>Έλεγχος για απειλές: {0}</value>
   </data>
