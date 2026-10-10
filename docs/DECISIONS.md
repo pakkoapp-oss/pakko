@@ -12069,8 +12069,9 @@ Steps, one PR each: 0 docs and oracles, 1 the Core engine, 2 creation, 3 verific
   and its length or first-16-KiB MD5 no longer match the bytes just written. Of its files, only one
   that the reader parses as that Set ID alone is deleted; an unreadable file, a file mixing Set IDs,
   a set matching by content (a renamed set, or the same bytes written again) and another file's set
-  stay. A failed delete is the existing `RecoveryOldVolumeNotDeleted` warning. No full-file read:
-  the check costs the first 16 KiB of each archive and the set's own files.
+  stay. A failed delete is the existing `RecoveryOldVolumeNotDeleted` warning. The archive is never
+  read in full, only its first 16 KiB; the set's files are read twice (as a set, then one by one).
+  A folder with no `*.par2` file costs one filtered listing and nothing else.
 - The cleanup runs on the thread pool with the engine's `OpenDestinationFolder` off and the folder
   opened after it, as for a written set. Under `DisableRecoveryData` nothing is read or deleted: the
   test does not read sets then either, and the policy means "no PAR2 work".
@@ -12079,6 +12080,11 @@ Steps, one PR each: 0 docs and oracles, 1 the Core engine, 2 creation, 3 verific
   sector is damaged as well would then be reported as a stale set instead of as damage, and a
   repair would not be offered. The ZIP-only `DoesNotMatch` rule of 3a stays for another tool's
   rewrite.
+- Known gaps, accepted: a short-base set (`a.tar.par2` for `a.tar.gz`) beside an `X.ext` set, or
+  beside an archive rewritten with `-rr`, is not looked at (the rule finds the first base only, and
+  step 2's cleanup looks at `X.ext.vol*`); "Verify with PAR2" opened on that `.par2` in 3b reads it
+  as damage. It needs another tool's set next to Pakko's. Cancelling during the cleanup throws
+  `OperationCanceledException` with the archive written, as cancelling during a set's writing does.
 
 ---
 

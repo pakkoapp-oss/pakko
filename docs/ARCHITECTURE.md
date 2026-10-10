@@ -329,6 +329,8 @@ public sealed record ArchiveOptions
     // T-F275: PAR2 recovery data next to each created archive, 1-100 % of its slices; 0 = none.
     // Handled by ArchiveCreationRouter, not the engines: outside 0-100 → RecoveryPercentInvalid,
     // over 0 under the DisableRecoveryData policy → RecoveryDataDisabled, both before any work.
+    // 0 outside the policy: a set left beside a rewritten archive from its earlier bytes is removed
+    // (RecoveryDataWriter.RemoveEarlierSets), so a test does not call the new archive damaged.
     public int RecoveryPercent { get; init; }
 }
 
@@ -1558,7 +1560,9 @@ public sealed class ArchiveCreationRouter(IArchiveService archiveService, ITarSe
 }
 // Later: the T-F51 policy checks (third ctor parameter) and, T-F275, RecoveryPercent — the engine
 // runs with OpenDestinationFolder off, then RecoveryDataWriter.AddTo on the thread pool writes a
-// set per CreatedFiles entry, and the router opens the folder. DIAGRAMS.md diagram 9.
+// set per CreatedFiles entry, and the router opens the folder. With 0 and the policy off, the same
+// shape runs RecoveryDataWriter.RemoveEarlierSets instead (a stale set beside a rewritten archive).
+// DIAGRAMS.md diagram 9.
 ```
 
 `TarSandboxedService.CompressAsync` runs `tar.exe` **unsandboxed** — no `TarSandboxScope`/
