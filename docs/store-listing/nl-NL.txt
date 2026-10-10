@@ -18,6 +18,7 @@ RAR en 7-Zip: alleen uitpakken, via de in Windows ingebouwde tar.exe
 Contextmenu van Verkenner: Openen, Hier uitpakken, Comprimeren, Archief testen, Scannen op bedreigingen, Hash
 Archiefverkenner: kijk in een archief, bekijk voorbeelden van afbeeldingen en tekst, pak alleen uit wat u selecteert
 Scannen op bedreigingen: de inhoud van het archief wordt gecontroleerd door uw geïnstalleerde antivirusprogramma
+Herstelgegevens (PAR2): voeg ze toe aan een nieuw archief, controleer het archief en herstel het na beschadiging
 Uitpakken in een sandbox: RAR, 7-Zip en TAR worden gelezen in een geïsoleerde AppContainer zonder netwerktoegang
 Uitgepakte bestanden behouden het Mark-of-the-Web-label en hun oorspronkelijke datums
 Opdrachtregel inbegrepen: de opdracht pakko, met opdrachten in de stijl van 7-Zip
@@ -34,8 +35,8 @@ tar gz
 zip met wachtwoord
 
 [What's new in this version]
-• De opdracht pakko werkt direct na de installatie in elke terminal: een opdrachtregel in de stijl van 7-Zip voor scripts.
-• Uitgepakte bestanden en mappen behouden de datums die in het archief zijn opgeslagen.
-• De app is beter met het toetsenbord te bedienen; het venster 'Bestand bestaat al' toont de grootte en datum van beide bestanden.
-• Het snelste compressieniveau maakt reeds gecomprimeerde bestanden niet meer groter.
-• Vertalingen herzien in alle 36 talen behalve Engels; het menu van Verkenner volgt nu uw lijst met Windows-talen.
+• Nieuw: herstelgegevens (PAR2). Schakel 'Herstelgegevens toevoegen (PAR2)' in bij het maken van een archief, dan kan het archief na beschadiging worden hersteld.
+• 'Controleren met PAR2' en 'Herstellen met PAR2' in het menu van Verkenner en in de app; de herstelde kopie is een nieuw bestand, het origineel wordt niet gewijzigd.
+• PAR2-bestanden van andere programma's werken ook; de opdracht pakko voegt herstelgegevens toe met -rr en herstelt met r.
+• Pakko start sneller en de download is veel kleiner.
+• Grote bestanden worden op meerdere processorkernen gecomprimeerd.

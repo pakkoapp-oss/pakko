@@ -18,6 +18,7 @@ RAR và 7-Zip: chỉ giải nén, bằng tar.exe tích hợp sẵn trong Windows
 Menu chuột phải của File Explorer: Mở, Giải nén tại đây, Nén, Kiểm tra tệp nén, Quét mối đe dọa, Mã băm
 Trình duyệt tệp nén: xem bên trong tệp nén, xem trước ảnh và văn bản, chỉ giải nén những gì bạn chọn
 Quét mối đe dọa: nội dung tệp nén được phần mềm diệt vi-rút đã cài của bạn kiểm tra
+Dữ liệu khôi phục (PAR2): thêm vào tệp nén mới, xác minh tệp nén và sửa sau khi bị hỏng
 Giải nén trong hộp cát: RAR, 7-Zip và TAR được đọc trong AppContainer cô lập, không có quyền truy cập mạng
 Tệp được giải nén giữ thẻ Mark-of-the-Web và ngày tháng gốc
 Kèm dòng lệnh: lệnh pakko với các lệnh theo kiểu 7-Zip
@@ -34,8 +35,8 @@ zip mật khẩu
 mã nguồn mở
 
 [What's new in this version]
-• Lệnh pakko dùng được trong mọi cửa sổ dòng lệnh ngay sau khi cài đặt: một dòng lệnh kiểu 7-Zip dành cho tập lệnh.
-• Tệp và thư mục được giải nén giữ nguyên ngày tháng lưu trong tệp nén.
-• Ứng dụng dễ dùng bằng bàn phím hơn; cửa sổ "Tệp đã tồn tại" hiển thị kích thước và ngày của cả hai tệp.
-• Mức nén nhanh nhất không còn làm các tệp đã nén sẵn lớn thêm.
-• Đã rà soát bản dịch ở tất cả 36 ngôn ngữ ngoài tiếng Anh; menu của File Explorer giờ tuân theo danh sách ngôn ngữ Windows của bạn.
+• Mới: dữ liệu khôi phục (PAR2). Bật "Thêm dữ liệu khôi phục (PAR2)" khi tạo tệp nén để có thể sửa tệp nén sau khi bị hỏng.
+• "Xác minh bằng PAR2" và "Sửa bằng PAR2" trong menu của File Explorer và trong ứng dụng; bản sao đã sửa là một tệp mới, tệp gốc không bị thay đổi.
+• Tệp PAR2 do chương trình khác tạo cũng dùng được; lệnh pakko thêm dữ liệu khôi phục bằng -rr và sửa bằng r.
+• Pakko khởi động nhanh hơn và dung lượng tải xuống nhỏ hơn nhiều.
+• Tệp lớn được nén trên nhiều nhân của bộ xử lý.

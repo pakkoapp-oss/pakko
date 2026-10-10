@@ -18,6 +18,7 @@ RAR i 7-Zip: samo raspakivanje, alatkom tar.exe ugrađenom u Windows
 Kontekstualni meni Istraživača datoteka: Otvori, Raspakuj ovde, Kompresuj, Testiraj arhivu, Proveri pretnje, Heš
 Pregledač arhiva: zavirite u arhivu, pregledajte slike i tekst, raspakujte samo ono što izaberete
 Provera pretnji: sadržaj arhive proverava vaš instalirani antivirusni program
+Podaci za oporavak (PAR2): dodajte ih novoj arhivi, proverite arhivu i popravite je posle oštećenja
 Raspakivanje u sandbox okruženju: RAR, 7-Zip i TAR čitaju se u izolovanom AppContaineru bez pristupa mreži
 Raspakovane datoteke zadržavaju oznaku Mark-of-the-Web i izvorne datume
 Komandna linija je uključena: komanda pakko sa komandama u stilu 7-Zipa
@@ -34,8 +35,8 @@ zip sa lozinkom
 otvoreni kod
 
 [What's new in this version]
-• Komanda pakko radi u svakom terminalu odmah posle instalacije: komandna linija u stilu 7-Zipa za skripte.
-• Raspakovane datoteke i fascikle zadržavaju datume sačuvane u arhivi.
-• Aplikacija se lakše koristi sa tastature; prozor „Datoteka već postoji“ prikazuje veličinu i datum obe datoteke.
-• Najbrži nivo kompresije više ne povećava već kompresovane datoteke.
-• Prevodi su pregledani na svih 36 jezika osim engleskog; meni Istraživača datoteka sada prati vašu listu jezika u operativnom sistemu Windows.
+• Novo: podaci za oporavak (PAR2). Uključite „Dodaj podatke za oporavak (PAR2)“ pri pravljenju arhive i arhiva će moći da se popravi posle oštećenja.
+• „Proveri pomoću PAR2“ i „Popravi pomoću PAR2“ u meniju Istraživača datoteka i u aplikaciji; popravljena kopija je nova datoteka, a original se ne menja.
+• Rade i PAR2 datoteke napravljene drugim programima; komanda pakko dodaje podatke za oporavak prekidačem -rr i popravlja komandom r.
+• Pakko se pokreće brže, a preuzimanje je mnogo manje.
+• Velike datoteke se kompresuju na više procesorskih jezgara.

@@ -18,6 +18,7 @@ RAR na 7-Zip: kutoa tu, kupitia zana ya tar.exe iliyo ndani ya Windows
 Menyu ya kubofya kulia ya File Explorer: Fungua, Toa hapa, Bana, Jaribu kumbukumbu, Chunguza vitisho, Heshi
 Kivinjari cha kumbukumbu: tazama ndani ya kumbukumbu, hakiki picha na maandishi, toa tu unachochagua
 Chunguza vitisho: maudhui ya kumbukumbu hukaguliwa na programu ya kingavirusi uliyosakinisha
+Data ya urejeshaji (PAR2): iongeze kwenye kumbukumbu mpya, thibitisha kumbukumbu na uirekebishe baada ya kuharibika
 Kutoa ndani ya sanduku la mchanga: RAR, 7-Zip na TAR husomwa ndani ya AppContainer iliyotengwa, bila ufikiaji wa mtandao
 Faili zilizotolewa hubaki na lebo ya Mark-of-the-Web na tarehe zake za awali
 Mstari wa amri umejumuishwa: amri ya pakko yenye amri za mtindo wa 7-Zip
@@ -34,8 +35,8 @@ zip yenye nenosiri
 chanzo huria
 
 [What's new in this version]
-• Amri ya pakko hufanya kazi katika temino yoyote mara tu baada ya kusakinisha: mstari wa amri wa mtindo wa 7-Zip kwa ajili ya hati.
-• Faili na folda zilizotolewa hubaki na tarehe zilizohifadhiwa ndani ya kumbukumbu.
-• Programu inatumika kwa urahisi zaidi kwa kibodi; dirisha la "Faili tayari lipo" linaonyesha ukubwa na tarehe ya faili zote mbili.
-• Kiwango cha haraka zaidi cha kubana hakiongezi tena ukubwa wa faili zilizokwisha kubanwa.
-• Tafsiri zimepitiwa upya katika lugha zote 36 zisizo Kiingereza; menyu ya File Explorer sasa inafuata orodha yako ya lugha za Windows.
+• Mpya: data ya urejeshaji (PAR2). Washa "Ongeza data ya urejeshaji (PAR2)" unapounda kumbukumbu, na kumbukumbu itaweza kurekebishwa baada ya kuharibika.
+• "Thibitisha kwa PAR2" na "Rekebisha kwa PAR2" katika menyu ya File Explorer na katika programu; nakala iliyorekebishwa ni faili mpya, faili asili haibadilishwi.
+• Faili za PAR2 zilizoundwa na programu nyingine pia zinafanya kazi; amri ya pakko huongeza data ya urejeshaji kwa -rr na hurekebisha kwa r.
+• Pakko huanza haraka zaidi na upakuaji wake ni mdogo zaidi.
+• Faili kubwa hubanwa kwa kutumia viini kadhaa vya kichakataji.

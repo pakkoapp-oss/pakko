@@ -18,6 +18,7 @@ RAR och 7-Zip: endast extrahering, via det tar.exe som är inbyggt i Windows
 Utforskarens snabbmeny: Öppna, Extrahera hit, Komprimera, Testa arkiv, Sök efter hot, Hash
 Arkivbläddrare: titta in i ett arkiv, förhandsgranska bilder och text, extrahera bara det du markerar
 Sök efter hot: arkivets innehåll kontrolleras av ditt installerade antivirusprogram
+Återställningsdata (PAR2): lägg till dem i ett nytt arkiv, verifiera arkivet och reparera det efter en skada
 Extrahering i sandlåda: RAR, 7-Zip och TAR läses i en isolerad AppContainer utan nätverksåtkomst
 Extraherade filer behåller Mark-of-the-Web-märkningen och sina ursprungliga datum
 Kommandorad ingår: kommandot pakko med kommandon i 7-Zip-stil
@@ -34,8 +35,8 @@ zip med lösenord
 7zip-alternativ
 
 [What's new in this version]
-• Kommandot pakko fungerar i alla terminaler direkt efter installationen: en kommandorad i 7-Zip-stil för skript.
-• Extraherade filer och mappar behåller de datum som finns sparade i arkivet.
-• Appen fungerar bättre med tangentbordet; dialogrutan ”Filen finns redan” visar storlek och datum för båda filerna.
-• Den snabbaste komprimeringsnivån gör inte längre redan komprimerade filer större.
-• Översättningarna har setts över på alla 36 språk utöver engelska; Utforskarens meny följer nu din lista över Windows-språk.
+• Nytt: återställningsdata (PAR2). Aktivera ”Lägg till återställningsdata (PAR2)” när du skapar ett arkiv, så kan arkivet repareras efter en skada.
+• ”Verifiera med PAR2” och ”Reparera med PAR2” i Utforskarens meny och i appen; den reparerade kopian är en ny fil och originalet ändras inte.
+• PAR2-filer från andra program fungerar också; kommandot pakko lägger till återställningsdata med -rr och reparerar med r.
+• Pakko startar snabbare och nedladdningen är mycket mindre.
+• Stora filer komprimeras på flera processorkärnor.

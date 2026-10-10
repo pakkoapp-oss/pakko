@@ -18,6 +18,7 @@ RAR și 7-Zip: numai extragere, prin instrumentul tar.exe integrat în Windows
 Meniul contextual din Explorer: Deschide, Extrage aici, Comprimă, Testează arhiva, Verifică amenințările, Sumă de control
 Exploratorul de arhive: priviți în interiorul unei arhive, previzualizați imagini și text, extrageți doar ce selectați
 Verificarea amenințărilor: conținutul arhivei este verificat de antivirusul instalat
+Date de recuperare (PAR2): adăugați-le la o arhivă nouă, verificați arhiva și reparați-o după deteriorare
 Extragere în sandbox: RAR, 7-Zip și TAR sunt citite într-un AppContainer izolat, fără acces la rețea
 Fișierele extrase păstrează eticheta Mark-of-the-Web și datele lor inițiale
 Linie de comandă inclusă: comanda pakko, cu comenzi în stilul 7-Zip
@@ -34,8 +35,8 @@ zip cu parolă
 open source
 
 [What's new in this version]
-• Comanda pakko funcționează în orice terminal imediat după instalare: o linie de comandă în stilul 7-Zip pentru scripturi.
-• Fișierele și folderele extrase păstrează datele salvate în arhivă.
-• Aplicația se folosește mai ușor de la tastatură; fereastra „Fișierul există deja” arată dimensiunea și data ambelor fișiere.
-• Cel mai rapid nivel de compresie nu mai mărește fișierele deja comprimate.
-• Traduceri revizuite în toate cele 36 de limbi în afară de engleză; meniul din Explorer urmează acum lista dvs. de limbi din Windows.
+• Nou: date de recuperare (PAR2). Activați „Adăugare date de recuperare (PAR2)” la crearea unei arhive, iar arhiva va putea fi reparată după deteriorare.
+• „Verifică cu PAR2” și „Repară cu PAR2” în meniul din Explorer și în aplicație; copia reparată este un fișier nou, iar originalul nu este modificat.
+• Funcționează și fișierele PAR2 create de alte programe; comanda pakko adaugă date de recuperare cu -rr și repară cu r.
+• Pakko pornește mai repede, iar descărcarea este mult mai mică.
+• Fișierele mari sunt comprimate pe mai multe nuclee ale procesorului.

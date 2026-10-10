@@ -18,6 +18,7 @@ RAR e 7-Zip: apenas extração, através do tar.exe integrado no Windows
 Menu de contexto do Explorador de Ficheiros: Abrir, Extrair aqui, Comprimir, Testar arquivo, Procurar ameaças, Hash
 Explorador de arquivos: veja o interior de um arquivo, pré-visualize imagens e texto, extraia apenas o que selecionar
 Procurar ameaças: o conteúdo do arquivo é verificado pelo antivírus que tem instalado
+Dados de recuperação (PAR2): adicione-os a um novo arquivo, verifique o arquivo e repare-o depois de danificado
 Extração em sandbox: RAR, 7-Zip e TAR são lidos dentro de um AppContainer isolado, sem acesso à rede
 Os ficheiros extraídos mantêm a etiqueta Mark-of-the-Web e as datas originais
 Linha de comandos incluída: o comando pakko, com comandos ao estilo do 7-Zip
@@ -34,8 +35,8 @@ zip com palavra-passe
 código aberto
 
 [What's new in this version]
-• O comando pakko funciona em qualquer terminal logo após a instalação: uma linha de comandos ao estilo do 7-Zip para scripts.
-• Os ficheiros e as pastas extraídos mantêm as datas guardadas no arquivo.
-• A aplicação funciona melhor com o teclado; a caixa «O ficheiro já existe» mostra o tamanho e a data dos dois ficheiros.
-• O nível de compressão mais rápido já não aumenta os ficheiros que já estavam comprimidos.
-• Traduções revistas nos 36 idiomas além do inglês; o menu do Explorador segue agora a sua lista de idiomas do Windows.
+• Novidade: dados de recuperação (PAR2). Ative «Adicionar dados de recuperação (PAR2)» ao criar um arquivo, e este poderá ser reparado depois de danificado.
+• «Verificar com PAR2» e «Reparar com PAR2» no menu do Explorador de Ficheiros e na aplicação; a cópia reparada é um ficheiro novo e o original não é alterado.
+• Os ficheiros PAR2 criados por outros programas também funcionam; o comando pakko adiciona dados de recuperação com -rr e repara com r.
+• O Pakko arranca mais depressa e a transferência é muito mais pequena.
+• Os ficheiros grandes são comprimidos em vários núcleos do processador.

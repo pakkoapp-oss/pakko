@@ -18,6 +18,7 @@ RAR e 7-Zip: sola estrazione, tramite il tar.exe integrato in Windows
 Menu contestuale di Esplora file: Apri, Estrai qui, Comprimi, Testa archivio, Verifica minacce, Hash
 Browser degli archivi: guarda dentro un archivio, visualizza in anteprima immagini e testo, estrai solo ciò che selezioni
 Verifica minacce: il contenuto dell'archivio viene controllato dal tuo antivirus installato
+Dati di ripristino (PAR2): aggiungili a un nuovo archivio, verifica l'archivio e riparalo dopo un danno
 Estrazione in sandbox: RAR, 7-Zip e TAR vengono letti in un AppContainer isolato, senza accesso alla rete
 I file estratti conservano il contrassegno Mark-of-the-Web e le date originali
 Riga di comando inclusa: il comando pakko, con comandi in stile 7-Zip
@@ -34,8 +35,8 @@ zip con password
 open source
 
 [What's new in this version]
-• Il comando pakko funziona in qualsiasi terminale subito dopo l'installazione: una riga di comando in stile 7-Zip per gli script.
-• I file e le cartelle estratti conservano le date salvate nell'archivio.
-• L'app si usa meglio da tastiera; la finestra «Il file esiste già» mostra dimensione e data di entrambi i file.
-• Il livello di compressione più veloce non ingrandisce più i file già compressi.
-• Traduzioni riviste in tutte le 36 lingue diverse dall'inglese; il menu di Esplora file ora segue l'elenco delle lingue di Windows.
+• Novità: dati di ripristino (PAR2). Attiva «Aggiungi dati di ripristino (PAR2)» quando crei un archivio, e potrai ripararlo dopo un danno.
+• «Verifica con PAR2» e «Ripara con PAR2» nel menu di Esplora file e nell'app; la copia riparata è un nuovo file, l'originale non viene modificato.
+• Funzionano anche i file PAR2 creati da altri programmi; il comando pakko aggiunge i dati di ripristino con -rr e ripara con r.
+• Pakko si avvia più velocemente e il download è molto più piccolo.
+• I file di grandi dimensioni vengono compressi su più core del processore.

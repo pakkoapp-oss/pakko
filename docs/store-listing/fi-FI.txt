@@ -18,6 +18,7 @@ RAR ja 7-Zip: vain purku, Windowsin sisäänrakennetulla tar.exe-työkalulla
 Resurssienhallinnan pikavalikko: Avaa, Pura tähän, Pakkaa, Testaa arkisto, Tarkista uhat, Tiiviste
 Arkistoselain: katso arkiston sisään, esikatsele kuvia ja tekstiä, pura vain valitsemasi kohteet
 Uhkien tarkistus: asennettu virustorjuntaohjelmasi tarkistaa arkiston sisällön
+Palautustiedot (PAR2): lisää ne uuteen arkistoon, tarkista arkisto ja korjaa se vaurion jälkeen
 Purku hiekkalaatikossa: RAR, 7-Zip ja TAR luetaan eristetyssä AppContainerissa ilman verkkoyhteyttä
 Puretut tiedostot säilyttävät Mark-of-the-Web-merkinnän ja alkuperäiset päivämääränsä
 Komentorivi mukana: pakko-komento, jonka komennot ovat 7-Zipin tyylisiä
@@ -34,8 +35,8 @@ zip salasanalla
 avoin lähdekoodi
 
 [What's new in this version]
-• pakko-komento toimii missä tahansa päätteessä heti asennuksen jälkeen: 7-Zipin tyylinen komentorivi komentosarjoille.
-• Puretut tiedostot ja kansiot säilyttävät arkistoon tallennetut päivämäärät.
-• Sovellus toimii paremmin näppäimistöllä; ikkuna "Tiedosto on jo olemassa" näyttää molempien tiedostojen koon ja päivämäärän.
-• Nopein pakkaustaso ei enää suurenna jo pakattuja tiedostoja.
-• Käännökset on tarkistettu kaikilla 36 muulla kielellä kuin englannilla; Resurssienhallinnan valikko noudattaa nyt Windowsin kieliluetteloasi.
+• Uutta: palautustiedot (PAR2). Ota arkistoa luodessasi käyttöön "Lisää palautustiedot (PAR2)", niin arkiston voi korjata vaurion jälkeen.
+• "Tarkista PAR2:lla" ja "Korjaa PAR2:lla" Resurssienhallinnan valikossa ja sovelluksessa; korjattu kopio on uusi tiedosto, eikä alkuperäistä muuteta.
+• Myös muiden ohjelmien luomat PAR2-tiedostot käyvät; pakko-komento lisää palautustiedot valitsimella -rr ja korjaa komennolla r.
+• Pakko käynnistyy nopeammin ja sen lataus on paljon pienempi.
+• Suuret tiedostot pakataan usealla suorittimen ytimellä.

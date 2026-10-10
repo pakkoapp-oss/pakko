@@ -18,6 +18,7 @@ RAR i 7-Zip: tylko wypakowywanie, za pomocą wbudowanego w Windows narzędzia ta
 Menu kontekstowe Eksploratora plików: Otwórz, Wypakuj tutaj, Kompresuj, Testuj archiwum, Skanuj w poszukiwaniu zagrożeń, Suma kontrolna
 Przeglądarka archiwów: zajrzyj do archiwum, wyświetl podgląd obrazów i tekstu, wypakuj tylko to, co zaznaczysz
 Skanowanie w poszukiwaniu zagrożeń: zawartość archiwum sprawdza zainstalowany program antywirusowy
+Dane odzyskiwania (PAR2): dodaj je do nowego archiwum, zweryfikuj archiwum i napraw je po uszkodzeniu
 Wypakowywanie w piaskownicy: RAR, 7-Zip i TAR są odczytywane w izolowanym kontenerze AppContainer bez dostępu do sieci
 Wypakowane pliki zachowują znacznik Mark-of-the-Web i swoje pierwotne daty
 Wiersz polecenia w zestawie: polecenie pakko z poleceniami w stylu 7-Zip
@@ -34,8 +35,8 @@ zip z hasłem
 otwarty kod źródłowy
 
 [What's new in this version]
-• Polecenie pakko działa w każdym terminalu od razu po instalacji: wiersz polecenia w stylu 7-Zip do skryptów.
-• Wypakowane pliki i foldery zachowują daty zapisane w archiwum.
-• Aplikację wygodniej obsługuje się z klawiatury; okno „Plik już istnieje” pokazuje rozmiar i datę obu plików.
-• Najszybszy poziom kompresji nie powiększa już plików, które były wcześniej skompresowane.
-• Poprawiono tłumaczenia we wszystkich 36 językach poza angielskim; menu Eksploratora uwzględnia teraz listę języków systemu Windows.
+• Nowość: dane odzyskiwania (PAR2). Włącz „Dodaj dane odzyskiwania (PAR2)” podczas tworzenia archiwum, a archiwum da się naprawić po uszkodzeniu.
+• „Zweryfikuj za pomocą PAR2” i „Napraw za pomocą PAR2” w menu Eksploratora plików i w aplikacji; naprawiona kopia to nowy plik, oryginał nie jest zmieniany.
+• Działają też pliki PAR2 utworzone przez inne programy; polecenie pakko dodaje dane odzyskiwania przełącznikiem -rr i naprawia poleceniem r.
+• Pakko uruchamia się szybciej, a pobierany pakiet jest znacznie mniejszy.
+• Duże pliki są kompresowane na kilku rdzeniach procesora.

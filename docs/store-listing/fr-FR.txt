@@ -18,6 +18,7 @@ RAR et 7-Zip : extraction seule, via l'outil tar.exe intégré à Windows
 Menu contextuel de l'Explorateur de fichiers : Ouvrir, Extraire ici, Compresser, Tester l'archive, Rechercher des menaces, Hachage
 Explorateur d'archives : regardez dans une archive, prévisualisez images et textes, n'extrayez que votre sélection
 Recherche de menaces : le contenu de l'archive est vérifié par votre antivirus installé
+Données de récupération (PAR2) : ajoutez-les à une nouvelle archive, vérifiez l'archive et réparez-la après un dommage
 Extraction en bac à sable : RAR, 7-Zip et TAR sont lus dans un AppContainer isolé, sans accès réseau
 Les fichiers extraits conservent l'étiquette Mark-of-the-Web et leurs dates d'origine
 Ligne de commande incluse : la commande pakko, avec des commandes dans le style de 7-Zip
@@ -34,8 +35,8 @@ extraction fichiers sécurisée
 open source
 
 [What's new in this version]
-• La commande pakko fonctionne dans n'importe quel terminal dès l'installation : une ligne de commande dans le style de 7-Zip pour vos scripts.
-• Les fichiers et dossiers extraits conservent les dates enregistrées dans l'archive.
-• L'application se pilote mieux au clavier ; la boîte de dialogue « Le fichier existe déjà » affiche la taille et la date des deux fichiers.
-• Le niveau de compression le plus rapide ne grossit plus les fichiers déjà compressés.
-• Traductions révisées dans les 36 langues autres que l'anglais ; le menu de l'Explorateur suit désormais votre liste de langues Windows.
+• Nouveau : données de récupération (PAR2). Activez « Ajouter des données de récupération (PAR2) » à la création d'une archive, et elle pourra être réparée après un dommage.
+• « Vérifier avec PAR2 » et « Réparer avec PAR2 » dans le menu de l'Explorateur de fichiers et dans l'application ; la copie réparée est un nouveau fichier, l'original n'est pas modifié.
+• Les fichiers PAR2 créés par d'autres programmes fonctionnent aussi ; la commande pakko ajoute des données de récupération avec -rr et répare avec r.
+• Pakko démarre plus vite et son téléchargement est bien plus léger.
+• Les gros fichiers sont compressés sur plusieurs cœurs du processeur.

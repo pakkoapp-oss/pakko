@@ -18,6 +18,7 @@ RAR og 7-Zip: kun udpakning, via Windows' indbyggede tar.exe
 Stifinders genvejsmenu: Åbn, Udpak her, Komprimer, Test arkiv, Scan for trusler, Hash
 Arkivbrowser: kig ind i et arkiv, se eksempler på billeder og tekst, udpak kun det, du vælger
 Scan for trusler: arkivets indhold kontrolleres af dit installerede antivirusprogram
+Gendannelsesdata (PAR2): føj dem til et nyt arkiv, kontrollér arkivet, og reparer det efter en beskadigelse
 Udpakning i sandkasse: RAR, 7-Zip og TAR læses i en isoleret AppContainer uden netværksadgang
 Udpakkede filer beholder Mark-of-the-Web-mærket og deres oprindelige datoer
 Kommandolinje medfølger: kommandoen pakko med kommandoer i 7-Zip-stil
@@ -34,8 +35,8 @@ zip med adgangskode
 open source
 
 [What's new in this version]
-• Kommandoen pakko virker i enhver terminal lige efter installationen: en kommandolinje i 7-Zip-stil til scripts.
-• Udpakkede filer og mapper beholder de datoer, der er gemt i arkivet.
-• Appen fungerer bedre med tastaturet; dialogen "Filen findes allerede" viser størrelse og dato for begge filer.
-• Det hurtigste komprimeringsniveau gør ikke længere allerede komprimerede filer større.
-• Oversættelserne er gennemgået på alle 36 sprog ud over engelsk; Stifinders menu følger nu din liste over Windows-sprog.
+• Nyt: gendannelsesdata (PAR2). Slå "Tilføj gendannelsesdata (PAR2)" til, når du opretter et arkiv, så kan arkivet repareres efter en beskadigelse.
+• "Kontrollér med PAR2" og "Reparer med PAR2" i Stifinders menu og i appen; den reparerede kopi er en ny fil, og originalen ændres ikke.
+• PAR2-filer fra andre programmer virker også; kommandoen pakko tilføjer gendannelsesdata med -rr og reparerer med r.
+• Pakko starter hurtigere og fylder meget mindre at downloade.
+• Store filer komprimeres på flere processorkerner.

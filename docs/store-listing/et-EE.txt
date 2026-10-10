@@ -18,6 +18,7 @@ RAR ja 7-Zip: ainult lahtipakkimine, Windowsi sisseehitatud tööriistaga tar.ex
 File Exploreri kontekstimenüü: Ava, Paki lahti siia, Tihenda, Testi arhiivi, Kontrolli ohte, Räsi
 Arhiivisirvija: vaata arhiivi sisse, kuva piltide ja teksti eelvaadet, paki lahti ainult valitu
 Ohtude kontroll: arhiivi sisu kontrollib sinu arvutisse installitud viirusetõrje
+Taasteandmed (PAR2): lisage need uuele arhiivile, kontrollige arhiivi ja parandage see pärast kahjustust
 Lahtipakkimine liivakastis: RAR, 7-Zip ja TAR loetakse isoleeritud AppContaineris ilma võrguühenduseta
 Lahtipakitud failid säilitavad Mark-of-the-Web märgise ja oma algsed kuupäevad
 Käsurida on kaasas: käsk pakko 7-Zipi stiilis käskudega
@@ -34,8 +35,8 @@ parooliga zip
 avatud lähtekood
 
 [What's new in this version]
-• Käsk pakko töötab igas terminalis kohe pärast installimist: 7-Zipi stiilis käsurida skriptide jaoks.
-• Lahtipakitud failid ja kaustad säilitavad arhiivi salvestatud kuupäevad.
-• Rakendus töötab klaviatuuriga paremini; aken „Fail on juba olemas“ näitab mõlema faili suurust ja kuupäeva.
-• Kiireim tihendustase ei tee enam juba tihendatud faile suuremaks.
-• Tõlked on üle vaadatud kõigis 36 keeles peale inglise keele; File Exploreri menüü järgib nüüd sinu Windowsi keelte loendit.
+• Uus: taasteandmed (PAR2). Lülitage arhiivi loomisel sisse „Lisa taasteandmed (PAR2)“ ja arhiivi saab pärast kahjustust parandada.
+• „Kontrolli PAR2 abil“ ja „Paranda PAR2 abil“ File Exploreri menüüs ja rakenduses; parandatud koopia on uus fail, originaali ei muudeta.
+• Sobivad ka teiste programmidega loodud PAR2-failid; käsk pakko lisab taasteandmed lülitiga -rr ja parandab käsuga r.
+• Pakko käivitub kiiremini ja allalaaditav pakett on palju väiksem.
+• Suuri faile tihendatakse mitmel protsessorituumal.
