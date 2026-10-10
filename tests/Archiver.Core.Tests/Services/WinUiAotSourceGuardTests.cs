@@ -6,7 +6,7 @@ namespace Archiver.Core.Tests.Services;
 // T-F355: under Native AOT a value read from a WinUI resource dictionary is a WinRT object that a
 // plain (Style)/(Brush) cast cannot unwrap - InvalidCastException at runtime, and `as T` silently
 // gives null. dotnet test runs under JIT and never sees it, so this reads the WinUI sources instead.
-public sealed class WinUiAotSourceGuardTests
+public sealed partial class WinUiAotSourceGuardTests
 {
     private static readonly string[] ResourceReads = ["Resources[", "ThemeDictionaries", "Resources.TryGetValue"];
 
@@ -45,20 +45,30 @@ public sealed class WinUiAotSourceGuardTests
         string app = Path.Combine(FindRepoRoot(), "src", "Archiver.App");
         string xaml = File.ReadAllText(Path.Combine(app, "MainWindow.xaml"));
         string viewModel = File.ReadAllText(Path.Combine(app, "ViewModels", "MainViewModel.cs"));
-        string[] bound = [.. Regex.Matches(xaml, @"ItemsSource=""\{x:Bind ViewModel\.(\w+)").Select(m => m.Groups[1].Value)];
+        string[] bound = [.. ItemsSourceBinding().Matches(xaml).Select(m => m.Groups[1].Value)];
+        Dictionary<string, string> declaredTypes = PropertyDeclaration().Matches(viewModel)
+            .GroupBy(m => m.Groups[2].Value).ToDictionary(g => g.Key, g => g.First().Groups[1].Value);
         bound.Should().Contain("RecoveryPercentChoices", "the guard must read the bindings it is about");
 
         List<string> offenders = [];
         foreach (string property in bound)
         {
-            Match declaration = Regex.Match(viewModel, @"public\s+(?:partial\s+)?(\S+)\s+" + property + @"\s*(?:\{|=>)");
-            declaration.Success.Should().BeTrue(property);
-            if (Regex.IsMatch(declaration.Groups[1].Value, @"^I[A-Z]\w*<"))
-                offenders.Add($"{property}: {declaration.Groups[1].Value}");
+            declaredTypes.Should().ContainKey(property);
+            if (InterfaceType().IsMatch(declaredTypes[property]))
+                offenders.Add($"{property}: {declaredTypes[property]}");
         }
 
         offenders.Should().BeEmpty();
     }
+
+    [GeneratedRegex(@"ItemsSource=""\{x:Bind ViewModel\.(\w+)")]
+    private static partial Regex ItemsSourceBinding();
+
+    [GeneratedRegex(@"public\s+(?:partial\s+)?(\S+)\s+(\w+)\s*(?:\{|=>)")]
+    private static partial Regex PropertyDeclaration();
+
+    [GeneratedRegex(@"^I[A-Z]\w*<")]
+    private static partial Regex InterfaceType();
 
     private static string FindRepoRoot()
     {

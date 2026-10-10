@@ -425,13 +425,8 @@ public static class CliArgumentParser
         if (token == "-so") { state.WriteToStdout = true; return null; }
         if (token == "-y") { state.AssumeYes = true; return null; }
 
-        if (token.StartsWith("-mx", StringComparison.Ordinal))
-        {
-            if (!TryParseCompressionLevel(token, out CompressionLevel? compressionLevel, out string? error))
-                return error;
-            state.CompressionLevel = compressionLevel;
-            return null;
-        }
+        if (token.StartsWith("-m", StringComparison.Ordinal))
+            return ApplyMethodToken(token, state);
 
         if (token.StartsWith("-t", StringComparison.Ordinal))
         {
@@ -448,19 +443,30 @@ public static class CliArgumentParser
             return null;
         }
 
-        if (token.StartsWith("-mem", StringComparison.Ordinal))
-            return EncryptionMethodError(token);
-
         if (token.StartsWith("-rr", StringComparison.Ordinal))
         {
             (state.RecoveryPercent, string? error) = ParseRecoveryPercent(token);
             return error;
         }
 
-        if (token.StartsWith("-m", StringComparison.Ordinal))
-            return "not supported by Pakko: of 7z's -m{params}, only -mx=<0-9> and -mem=AES256 are implemented";
-
         return UnsupportedSwitchReason(token);
+    }
+
+    // 7z's -m{params} on 'a': -mx=<0-9> and -mem=AES256 are implemented, every other one is refused.
+    private static string? ApplyMethodToken(string token, ArchiveParseState state)
+    {
+        if (token.StartsWith("-mx", StringComparison.Ordinal))
+        {
+            if (!TryParseCompressionLevel(token, out CompressionLevel? compressionLevel, out string? error))
+                return error;
+            state.CompressionLevel = compressionLevel;
+            return null;
+        }
+
+        if (token.StartsWith("-mem", StringComparison.Ordinal))
+            return EncryptionMethodError(token);
+
+        return "not supported by Pakko: of 7z's -m{params}, only -mx=<0-9> and -mem=AES256 are implemented";
     }
 
     // T-F275: WinRAR's -rr[N] spelling (no 7z switch adds recovery data). A bare -rr is the App's
