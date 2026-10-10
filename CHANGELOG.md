@@ -10,6 +10,51 @@ the technical account of any task named here.
 
 ---
 
+## v1.8.0 — 2026-10-10
+
+Pakko can write PAR2 recovery data next to an archive it creates, and check or repair an archive
+from such data. It is for archives kept on flash drives or optical media or carried offline, where
+bad sectors or a copy cut short are the usual damage.
+
+### Added
+
+- **T-F275** - recovery data (PAR2), in three parts:
+  - **Create.** The App's New archive card has "Add recovery data (PAR2)" with 5, 10 or 20 %
+    (default 5); `pakko a -rr[N]` takes 1 to 100. Standard PAR 2.0 files (`name.zip.par2` and one
+    volume file) are written next to the archive, for every format Pakko creates. They are
+    computed over the finished archive's bytes; for an encrypted ZIP that is the ciphertext, so a
+    repair needs no password.
+  - **Verify.** `pakko t` reports the set's state with the archive's own test. Explorer has
+    "Verify with PAR2" on a `.par2` file and on an archive with PAR2 files next to it. The App's
+    Archive Browser says when PAR2 files are found and shows the set's verdict after Test; a
+    tar-family archive with a set is tested by it, an archive that does not list stays open when
+    it has PAR2 files, and opening a `.par2` file opens the archive it protects.
+  - **Repair.** `pakko r <archive|.par2> [-o<dir>]`, Explorer's "Repair with PAR2" and the App's
+    Repair button write a repaired copy, `name.repaired.zip`, next to the archive, or in another
+    folder when that one cannot be written to. The original is only read, and the copy is kept
+    only after its hashes match the set.
+  - par2cmdline, par2cmdline-turbo and MultiPar verify and repair with Pakko's sets, and Pakko
+    reads any standard PAR 2.0 set that protects one file. The Reed-Solomon code is Pakko's own;
+    no dependency was added.
+  - Group Policy `DisableRecoveryData` turns creating, verifying and repairing off
+    (`docs/POLICIES.md`).
+
+### Changed
+
+- **T-F275** - an archive rewritten without recovery data loses the PAR2 set an earlier run wrote
+  for it, so that a good archive is not reported as damaged against an old set.
+
+### Known issues
+
+- A tar-family archive or an encrypted ZIP that another program rewrote next to an older PAR2 set
+  reads as damaged, and Repair writes the older version as the `.repaired` copy. The rewritten
+  archive is not touched. Delete the old PAR2 files after rewriting an archive with another tool.
+- A PAR2 set that covers several files is not read, and data shifted by inserted or deleted bytes
+  is not found: the check is by position.
+- The ARM64 build was checked by CI on an ARM64 runner, not on an ARM64 device.
+
+---
+
 ## v1.7.2 — 2026-10-09
 
 Every Pakko program is now compiled ahead of time to native code: faster to start, a much smaller
