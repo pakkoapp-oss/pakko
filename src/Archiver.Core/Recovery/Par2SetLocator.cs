@@ -33,12 +33,7 @@ internal static partial class Par2SetLocator
     {
         if (!Directory.Exists(folder))
             return [];
-        var files = new List<string>();
-        foreach (string path in Directory.EnumerateFiles(folder))
-        {
-            if (IsSetFileName(Path.GetFileName(path), baseName))
-                files.Add(path);
-        }
+        List<string> files = [.. Directory.EnumerateFiles(folder).Where(path => IsSetFileName(Path.GetFileName(path), baseName))];
         files.Sort(StringComparer.OrdinalIgnoreCase);
         return files;
     }

@@ -58,9 +58,9 @@ public static class RecoveryDataLookup
         try
         {
             RecoveryTestStep.Plan plan = RecoveryTestStep.Locate([par2Path], policy, cancellationToken);
-            return plan.Sets.Count > 0
-                ? new RecoveryTarget { ArchivePath = plan.Sets[0].ArchivePath }
-                : new RecoveryTarget { Error = plan.Errors.Count > 0 ? plan.Errors[0] : CoreMessages.Error(par2Path, MessageCode.RecoveryDataTargetNotFound) };
+            if (plan.Sets.Count > 0)
+                return new RecoveryTarget { ArchivePath = plan.Sets[0].ArchivePath };
+            return new RecoveryTarget { Error = plan.Errors.Count > 0 ? plan.Errors[0] : CoreMessages.Error(par2Path, MessageCode.RecoveryDataTargetNotFound) };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
