@@ -37,6 +37,14 @@ internal static class Par2Repairer
     internal static Par2RepairResult Repair(string targetPath, Par2Set set, string outputPath, Action<double>? progress, CancellationToken cancellationToken)
     {
         Par2Verification verification = Par2Verifier.Verify(targetPath, set, f => progress?.Invoke(f * VerifyShare), cancellationToken);
+        return Repair(targetPath, set, verification, outputPath, f => progress?.Invoke(VerifyShare + (1 - VerifyShare) * f), cancellationToken);
+    }
+
+    /// <summary>The same with <paramref name="verification"/> already done by the caller, so the
+    /// file is not read twice. If the file changed since, the final check fails and nothing is kept.</summary>
+    internal static Par2RepairResult Repair(
+        string targetPath, Par2Set set, Par2Verification verification, string outputPath, Action<double>? progress, CancellationToken cancellationToken)
+    {
         switch (verification.Status)
         {
             case Par2VerifyStatus.Intact:
@@ -50,7 +58,7 @@ internal static class Par2Repairer
 
         // After the verify pass: the copy, the combination (one pass per missing slice), the check.
         double work = 2.0 * set.FileLength + (double)set.Slices.Length * set.SliceSize * missingCount;
-        var tracker = new Par2Progress(f => progress?.Invoke(VerifyShare + (1 - VerifyShare) * f), work);
+        var tracker = new Par2Progress(progress, work);
 
         string temp = ArchiveTempFile.Create(outputPath);
         try

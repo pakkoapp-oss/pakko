@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Arhiva corespunde datelor sale de recuperare ({0} blocuri, {1} blocuri de recuperare).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Nu au fost găsite date de recuperare lângă arhivă.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Arhiva a fost reparată ({0} din {1} blocuri). Copia reparată este {2}; originalul nu a fost modificat.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Copia reparată nu corespundea cu datele de recuperare și nu a fost păstrată.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Copia reparată nu a putut fi scrisă: {0}</value>
+  </data>
 </root>

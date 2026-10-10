@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Archyvas atitinka savo atkūrimo duomenis ({0} blokai, {1} atkūrimo blokai).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Šalia archyvo nerasta atkūrimo duomenų.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Archyvas pataisytas ({0} iš {1} blokų). Pataisyta kopija yra {2}; originalas nepakeistas.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Pataisyta kopija neatitiko atkūrimo duomenų ir nebuvo išsaugota.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Nepavyko įrašyti pataisytos kopijos: {0}</value>
+  </data>
 </root>

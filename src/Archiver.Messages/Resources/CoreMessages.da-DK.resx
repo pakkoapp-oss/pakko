@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Arkivet stemmer med dets gendannelsesdata ({0} blokke, {1} gendannelsesblokke).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Der blev ikke fundet gendannelsesdata ved siden af arkivet.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Arkivet blev repareret ({0} af {1} blokke). Den reparerede kopi er {2}; originalen blev ikke ændret.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Den reparerede kopi stemte ikke overens med gendannelsesdataene og blev ikke beholdt.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Den reparerede kopi kunne ikke skrives: {0}</value>
+  </data>
 </root>

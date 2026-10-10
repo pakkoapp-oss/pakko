@@ -18,15 +18,19 @@ public static class CliHelpText
 
         COMMANDS:
           x   Extract archive(s) with full paths        [ZIP, tar-family]
-          t   Test archive integrity                    [ZIP only]
+          t   Test archive integrity                    [ZIP; any archive
+                                                         with PAR2 files]
+          r   Repair from PAR2 recovery data: writes    [any archive with
+              <name>.repaired<ext>, the archive stays    PAR2 files]
           l   List archive contents                     [ZIP, tar-family]
           a   Add files to a new archive                [ZIP, tar-family]
           h   Hash files, or one folder recursively      [CRC-32, SHA-256]
           i   Show supported formats/codecs on this system
 
         SWITCHES:
-          -o<dir>          Output directory; default: the current directory,   (x)
-                           as with 7z (not the archive's own folder)
+          -o<dir>          Output directory; default: the current directory,   (x, r)
+                           as with 7z (not the archive's own folder). r: where
+                           the repaired copy goes; default: next to the archive
           -p<pwd>          Password. x/t: opens a ZipCrypto/AES-encrypted ZIP.  (x, t, a)
                            a: encrypts the new ZIP with AES-256 (file names
                            stay readable); printable ASCII only, at most 99

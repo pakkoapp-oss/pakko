@@ -147,6 +147,67 @@ public sealed class CliArgumentParserTests
         result.Type.Should().Be(CliCommandType.Invalid);
     }
 
+    // --- r (T-F275 step 4) ---
+
+    [Fact]
+    public void Repair_ArchivesAndPar2Files_ReturnsRepairWithEveryPath()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["r", "a.zip", "b.tar.gz.par2"]);
+
+        result.Type.Should().Be(CliCommandType.Repair);
+        result.ArchivePaths.Should().Equal("a.zip", "b.tar.gz.par2");
+        result.OutputDirectory.Should().BeNull();
+    }
+
+    [Fact]
+    public void Repair_OutputDirectoryAndYes_AreTaken()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["r", "-oC:\\out dir", "a.zip", "-y"]);
+
+        result.Type.Should().Be(CliCommandType.Repair);
+        result.OutputDirectory.Should().Be("C:\\out dir");
+        result.AssumeYes.Should().BeTrue();
+        result.ArchivePaths.Should().Equal("a.zip");
+    }
+
+    [Theory]
+    [InlineData("r")]
+    [InlineData("r", "-oC:\\out")]
+    [InlineData("r", "-y")]
+    public void Repair_NoPath_IsInvalid(params string[] args)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(args);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("'r' requires at least one archive or .par2 path");
+    }
+
+    [Fact]
+    public void Repair_BareOutputSwitch_IsInvalid()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["r", "-o", "a.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("-o requires a directory");
+    }
+
+    // The three-way rule: a real switch that means nothing here, and a typo, are told apart.
+    [Theory]
+    [InlineData("-si", "not supported on this command")]
+    [InlineData("-so", "not supported on this command")]
+    [InlineData("-psecret", "not supported on this command")]
+    [InlineData("-rr10", "not supported on this command")]
+    [InlineData("-aoa", "not supported on this command")]
+    [InlineData("-mx=5", "not supported on this command")]
+    [InlineData("-force", "unknown switch '-force'")]
+    public void Repair_SwitchThatDoesNotApply_IsInvalidWithItsReason(string token, string reason)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["r", "a.zip", token]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain(reason);
+    }
+
     // --- Valid: i ---
 
     [Fact]

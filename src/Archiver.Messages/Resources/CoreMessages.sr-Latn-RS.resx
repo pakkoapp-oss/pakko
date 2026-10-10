@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Arhiva odgovara svojim podacima za oporavak ({0} blokova, {1} blokova za oporavak).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Pored arhive nisu pronađeni podaci za oporavak.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Arhiva je popravljena ({0} od {1} blokova). Popravljena kopija je {2}; original nije promenjen.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Popravljena kopija se nije podudarala sa podacima za oporavak i nije sačuvana.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Popravljenu kopiju nije bilo moguće upisati: {0}</value>
+  </data>
 </root>

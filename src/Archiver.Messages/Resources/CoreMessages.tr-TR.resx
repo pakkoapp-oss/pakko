@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Arşiv kurtarma verisiyle eşleşiyor ({0} blok, {1} kurtarma bloğu).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Arşivin yanında kurtarma verisi bulunamadı.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Arşiv onarıldı ({1} bloğun {0} tanesi). Onarılan kopya: {2}; özgün arşiv değiştirilmedi.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Onarılan kopya kurtarma verisiyle eşleşmedi ve saklanmadı.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Onarılan kopya yazılamadı: {0}</value>
+  </data>
 </root>

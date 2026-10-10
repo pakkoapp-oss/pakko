@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>آرکائیو اپنے بازیابی ڈیٹا سے میل کھاتا ہے ({0} بلاک، {1} بازیابی بلاک)۔</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>آرکائیو کے ساتھ کوئی بازیابی ڈیٹا نہیں ملا۔</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>آرکائیو ٹھیک کر دی گئی ({1} میں سے {0} بلاک)۔ ٹھیک کی گئی نقل {2} ہے؛ اصل تبدیل نہیں ہوئی۔</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>ٹھیک کی گئی نقل بازیابی ڈیٹا سے مطابقت نہیں رکھتی تھی اور اسے نہیں رکھا گیا۔</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>ٹھیک کی گئی نقل لکھی نہیں جا سکی: {0}</value>
+  </data>
 </root>

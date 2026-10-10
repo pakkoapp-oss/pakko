@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Arhiiv vastab oma taasteandmetele ({0} plokki, {1} taasteplokki).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Arhiivi kõrvalt ei leitud taasteandmeid.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Arhiiv parandati ({0} plokki {1}-st). Parandatud koopia on {2}; algset arhiivi ei muudetud.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Parandatud koopia ei vastanud taasteandmetele ja seda ei säilitatud.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Parandatud koopiat ei saanud kirjutada: {0}</value>
+  </data>
 </root>

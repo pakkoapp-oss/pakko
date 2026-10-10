@@ -12,6 +12,7 @@ public enum CliCommandType
     Archive,
     List,
     Hash,
+    Repair,
     Help,
     Version,
     Invalid,
@@ -24,7 +25,7 @@ public sealed record ParsedCliCommand
     public IReadOnlyList<string> ArchivePaths { get; init; } = [];   // x, t, l
     public IReadOnlyList<string> SourcePaths { get; init; } = [];    // a, h
     public string? ArchivePathArg { get; init; }                     // a: raw positional[0] (name/path)
-    public string? OutputDirectory { get; init; }                    // -o{dir}, x only
+    public string? OutputDirectory { get; init; }                    // -o{dir}, x and r
     public bool AssumeYes { get; init; }                              // -y
     public ConflictBehavior? OverwriteMode { get; init; }             // -ao{a|s|u}, x only
     public ArchiveContainerFormat ArchiveFormat { get; init; } = ArchiveContainerFormat.Zip; // -t{type}, a only
@@ -112,6 +113,7 @@ public static class CliArgumentParser
             "a" => ParseArchive(rest),
             "l" => ParseList(rest),
             "h" => ParseHash(rest),
+            "r" => ParseRepair(rest),
             "u" or "d" or "rn" or "b" or "e" => Invalid(NotSupportedCommandReason(commandName)),
             var other => Invalid($"Incorrect command line: unknown command '{other}'"),
         };
@@ -346,6 +348,40 @@ public static class CliArgumentParser
         {
             Type = CliCommandType.Test, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin,
             Password = password, PromptForPassword = promptForPassword,
+        };
+    }
+
+    // --- r (Repair, T-F275 step 4) ---
+
+    private static ParsedCliCommand ParseRepair(string[] rest)
+    {
+        var paths = new List<string>();
+        string? outputDirectory = null;
+        bool assumeYes = false;
+        foreach (string token in rest)
+        {
+            if (token == "-y")
+            {
+                assumeYes = true; // nothing to confirm: the copy never replaces a file
+                continue;
+            }
+            if (token.StartsWith("-o", StringComparison.Ordinal))
+            {
+                if (!TryParseOutputDirectory(token, out outputDirectory, out string? error))
+                    return Invalid(error!);
+                continue;
+            }
+            if (IsSwitchToken(token))
+                return Invalid(UnsupportedSwitchReason(token));
+            paths.Add(token);
+        }
+
+        if (paths.Count == 0)
+            return Invalid("'r' requires at least one archive or .par2 path");
+
+        return new ParsedCliCommand
+        {
+            Type = CliCommandType.Repair, ArchivePaths = paths, OutputDirectory = outputDirectory, AssumeYes = assumeYes,
         };
     }
 

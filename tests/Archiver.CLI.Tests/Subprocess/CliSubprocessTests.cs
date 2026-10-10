@@ -407,7 +407,274 @@ public sealed class CliSubprocessTests
         (int exitCode, _, string stdErr) = CliProcessRunner.Run("t", archivePath);
 
         exitCode.Should().Be(2);
-        stdErr.Should().Contain($"pakko: error: {name}: The archive is damaged (").And.Contain("its recovery data can repair it");
+        stdErr.Should().Contain($"pakko: error: {name}: The archive is damaged (").And.Contain("its recovery data can repair it")
+            .And.Contain("pakko: hint: 'pakko r <archive>'");
+    }
+
+    // --- r: repair from the set (T-F275 step 4) ---
+
+    [Theory]
+    [InlineData("out.zip", "out.repaired.zip")]
+    [InlineData("out.tar.gz", "out.repaired.tar.gz")]
+    public void Repair_DamagedArchive_WritesACopyThatIsTheArchiveAgain_AndLeavesTheOriginal(string name, string repairedName)
+    {
+        string archivePath = ProtectedArchive(name);
+        string folder = Path.GetDirectoryName(archivePath)!;
+        byte[] good = File.ReadAllBytes(archivePath);
+        Overwrite(archivePath, good.Length / 2, 8);
+        byte[] damaged = File.ReadAllBytes(archivePath);
+        string[] before = Directory.GetFiles(folder);
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("r", archivePath);
+
+        string repaired = Path.Combine(folder, repairedName);
+        exitCode.Should().Be(0, because: stdErr);
+        stdErr.Should().BeEmpty();
+        stdOut.Should().Contain($"{name}: repaired (1 of ").And.Contain(repaired);
+        File.ReadAllBytes(repaired).Should().Equal(good);
+        File.ReadAllBytes(archivePath).Should().Equal(damaged);
+        Directory.GetFiles(folder).Should().BeEquivalentTo([.. before, repaired]);
+    }
+
+    [Fact]
+    public void Repair_Par2PathAndOutputDirectory_WritesTheCopyThere()
+    {
+        string archivePath = ProtectedArchive("out.tar.gz");
+        string folder = Path.GetDirectoryName(archivePath)!;
+        byte[] good = File.ReadAllBytes(archivePath);
+        Overwrite(archivePath, good.Length / 2, 8);
+        string[] before = Directory.GetFiles(folder);
+        string outDir = Path.Combine(folder, "fixed");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("r", archivePath + ".par2", "-o" + outDir, "-y");
+
+        exitCode.Should().Be(0, because: stdErr);
+        File.ReadAllBytes(Path.Combine(outDir, "out.repaired.tar.gz")).Should().Equal(good);
+        Directory.GetFiles(folder).Should().Equal(before);
+    }
+
+    [Fact]
+    public void Repair_IntactArchive_SaysNothingToRepair_ExitsZero_WritesNothing()
+    {
+        string archivePath = ProtectedArchive("out.zip");
+        string[] before = Directory.GetFiles(Path.GetDirectoryName(archivePath)!);
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("r", archivePath);
+
+        exitCode.Should().Be(0, because: stdErr);
+        stdErr.Should().BeEmpty();
+        stdOut.Should().Contain("out.zip: nothing to repair, recovery data intact (");
+        Directory.GetFiles(Path.GetDirectoryName(archivePath)!).Should().Equal(before);
+    }
+
+    [Theory]
+    [InlineData("out.zip")]
+    [InlineData("out.tar.gz")]
+    public void Repair_DamageBeyondTheSet_ExitsTwo_WritesNothing(string name)
+    {
+        string archivePath = ProtectedArchive(name);
+        Overwrite(archivePath, 1000, 8000);
+        string[] before = Directory.GetFiles(Path.GetDirectoryName(archivePath)!);
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("r", archivePath);
+
+        exitCode.Should().Be(2);
+        stdOut.Should().BeEmpty();
+        stdErr.Should().Contain("beyond what its recovery data can repair").And.NotContain("pakko: hint");
+        Directory.GetFiles(Path.GetDirectoryName(archivePath)!).Should().Equal(before);
+    }
+
+    [Fact]
+    public void Repair_ArchiveWithoutASet_ExitsTwo()
+    {
+        (string scratchDir, string sourceFile) = CreateSourceFile();
+        string archivePath = Path.Combine(scratchDir, "out.zip");
+        CliProcessRunner.Run("a", archivePath, sourceFile).ExitCode.Should().Be(0);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("r", archivePath);
+
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("pakko: error: out.zip: No recovery data was found next to the archive.");
+        Directory.GetFiles(scratchDir, "*repaired*").Should().BeEmpty();
+    }
+
+    // The set files zeroed (a failed disk, a bad copy): for `t` a warning, for `r` the reason it did nothing.
+    [Fact]
+    public void Repair_SetFilesDamaged_ExitsTwo()
+    {
+        string archivePath = ProtectedArchive("out.tar.gz");
+        Overwrite(archivePath, 1000, 8);
+        foreach (string file in Directory.GetFiles(Path.GetDirectoryName(archivePath)!, "*.par2"))
+            File.WriteAllBytes(file, new byte[new FileInfo(file).Length]);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("r", archivePath);
+
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("pakko: error: out.tar.gz: The recovery data is damaged or in a form Pakko cannot read.");
+        Directory.GetFiles(Path.GetDirectoryName(archivePath)!, "*repaired*").Should().BeEmpty();
+    }
+
+    // Another tool rewrote the ZIP and left the old set: the ZIP's own test passes, so `r` builds
+    // nothing from that set (it would be the old version) and says what `t` says.
+    [Fact]
+    public void Repair_ZipRewrittenBesideItsOldSet_IsAWarning_AndNothingIsBuilt()
+    {
+        string archivePath = ProtectedArchive("out.zip");
+        string folder = Path.GetDirectoryName(archivePath)!;
+        string keep = Directory.CreateDirectory(Path.Combine(folder, "keep")).FullName;
+        foreach (string file in Directory.GetFiles(folder, "*.par2"))
+            File.Copy(file, Path.Combine(keep, Path.GetFileName(file)));
+        string other = Path.Combine(folder, "other.bin");
+        byte[] noise = new byte[20_000];
+        new Random(4).NextBytes(noise);
+        File.WriteAllBytes(other, noise);
+        CliProcessRunner.Run("a", "-y", "-mx=0", "-tzip", archivePath, other).ExitCode.Should().Be(0);
+        foreach (string file in Directory.GetFiles(keep))
+            File.Copy(file, Path.Combine(folder, Path.GetFileName(file)));
+
+        (int tested, _, string testedErr) = CliProcessRunner.Run("t", archivePath);
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("r", archivePath);
+
+        tested.Should().Be(1);
+        exitCode.Should().Be(1);
+        stdOut.Should().BeEmpty();
+        stdErr.Should().Contain("pakko: warning: out.zip: The recovery data does not match the archive").And.Be(testedErr);
+        Directory.GetFiles(folder, "*repaired*").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Repair_RepairedNameTaken_UsesTheNextNumber()
+    {
+        string archivePath = ProtectedArchive("out.tar.gz");
+        string folder = Path.GetDirectoryName(archivePath)!;
+        Overwrite(archivePath, 1000, 8);
+        string taken = Path.Combine(folder, "out.repaired.tar.gz");
+        File.WriteAllText(taken, "keep");
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("r", archivePath);
+
+        exitCode.Should().Be(0, because: stdErr);
+        stdOut.Should().Contain("out.repaired (1).tar.gz");
+        File.ReadAllText(taken).Should().Be("keep");
+    }
+
+    // A folder where files cannot be created (a read-only share, another user's folder): the
+    // error names the way out, and the way out works.
+    [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public void Repair_FolderNotWritable_ExitsTwoWithTheOutputHint_AndOutputDirectoryWorks()
+    {
+        string archivePath = ProtectedArchive("out.tar.gz");
+        var folder = new DirectoryInfo(Path.GetDirectoryName(archivePath)!);
+        string outDir = CliFixtureFiles.CreateScratchDir();
+        byte[] good = File.ReadAllBytes(archivePath);
+        Overwrite(archivePath, 1000, 8);
+        string[] before = Directory.GetFiles(folder.FullName);
+        var deny = new System.Security.AccessControl.FileSystemAccessRule(
+            System.Security.Principal.WindowsIdentity.GetCurrent().User!, System.Security.AccessControl.FileSystemRights.CreateFiles,
+            System.Security.AccessControl.InheritanceFlags.None, System.Security.AccessControl.PropagationFlags.None,
+            System.Security.AccessControl.AccessControlType.Deny);
+        System.Security.AccessControl.DirectorySecurity security = folder.GetAccessControl();
+        security.AddAccessRule(deny);
+        folder.SetAccessControl(security);
+        try
+        {
+            (int exitCode, _, string stdErr) = CliProcessRunner.Run("r", archivePath);
+            (int elsewhere, _, string elsewhereErr) = CliProcessRunner.Run("r", archivePath, "-o" + outDir);
+
+            exitCode.Should().Be(2);
+            stdErr.Should().Contain("pakko: error: out.tar.gz: The repaired copy could not be written:")
+                .And.Contain("pakko: hint: -o<dir> writes the repaired copy to another folder");
+            Directory.GetFiles(folder.FullName).Should().Equal(before);
+            elsewhere.Should().Be(0, because: elsewhereErr);
+            File.ReadAllBytes(Path.Combine(outDir, "out.repaired.tar.gz")).Should().Equal(good);
+        }
+        finally
+        {
+            security = folder.GetAccessControl();
+            security.RemoveAccessRule(deny);
+            folder.SetAccessControl(security);
+        }
+    }
+
+    [Theory]
+    [InlineData("r")]
+    [InlineData("r", "out.zip", "-si")]
+    [InlineData("r", "out.zip", "-nosuchswitch")]
+    [InlineData("r", "out.zip", "-o")]
+    public void Repair_BadCommandLine_ExitsSeven(params string[] args)
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run(args);
+
+        exitCode.Should().Be(7);
+        stdOut.Should().BeEmpty();
+        stdErr.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void Repair_PathsThatAreNotThere_ExitTwoEachWithItsReason()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("r", Path.Combine(scratchDir, "gone.zip"), Path.Combine(scratchDir, "gone.zip.par2"));
+
+        exitCode.Should().Be(2);
+        stdErr.Split('\n', StringSplitOptions.RemoveEmptyEntries).Where(l => l.StartsWith("pakko: error:", StringComparison.Ordinal)).Should().HaveCount(2, because: stdErr);
+    }
+
+    // The process dies while the copy is being built (Task Manager, a power cut). No file named
+    // as a repaired copy may exist, the original is as it was, and the next run repairs and
+    // sweeps what the dead one left.
+    [Fact]
+    public async Task Repair_KilledWhileBuildingTheCopy_LeavesNoCopy_AndTheNextRunRepairs()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string big = Path.Combine(scratchDir, "big.bin");
+        byte[] noise = new byte[48 * 1024 * 1024];
+        new Random(374).NextBytes(noise);
+        File.WriteAllBytes(big, noise);
+        string archivePath = Path.Combine(scratchDir, "out.zip");
+        CliProcessRunner.Run("a", "-rr10", "-mx=0", "-tzip", archivePath, big).ExitCode.Should().Be(0);
+        File.Delete(big);
+        byte[] good = File.ReadAllBytes(archivePath);
+        for (int i = 0; i < 150; i++)
+            Overwrite(archivePath, 1000 + (long)i * (good.Length / 160), 8);
+        byte[] damaged = File.ReadAllBytes(archivePath);
+        var startInfo = new System.Diagnostics.ProcessStartInfo(CliProcessRunner.ExePath)
+        {
+            RedirectStandardInput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        foreach (string arg in new[] { "r", archivePath })
+            startInfo.ArgumentList.Add(arg);
+
+        bool killedWhileBuilding;
+        using (System.Diagnostics.Process process = System.Diagnostics.Process.Start(startInfo)!)
+        {
+            process.StandardInput.Close();
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            while (!process.HasExited && clock.Elapsed < TimeSpan.FromSeconds(60)
+                && !Directory.EnumerateFiles(scratchDir, ".pakko-a-*.tmp").Any())
+            {
+                await Task.Delay(2);
+            }
+            killedWhileBuilding = !process.HasExited;
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+        }
+
+        killedWhileBuilding.Should().BeTrue("the kill has to land before the copy is finished");
+        Directory.GetFiles(scratchDir, "*repaired*").Should().BeEmpty();
+        File.ReadAllBytes(archivePath).Should().Equal(damaged);
+        (int tested, _, string testedErr) = CliProcessRunner.Run("t", archivePath);
+        tested.Should().Be(2);
+        testedErr.Should().Contain("its recovery data can repair it");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("r", archivePath);
+        exitCode.Should().Be(0, because: stdErr);
+        File.ReadAllBytes(Path.Combine(scratchDir, "out.repaired.zip")).Should().Equal(good);
+        Directory.GetFiles(scratchDir, ".pakko-a-*.tmp").Should().BeEmpty();
     }
 
     [Theory]

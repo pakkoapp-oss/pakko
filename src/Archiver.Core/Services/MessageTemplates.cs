@@ -152,6 +152,10 @@ public static class MessageTemplates
         [MessageCode.RecoveryDataForAnotherFile] = "The recovery data next to the archive was made for another file.",
         [MessageCode.RecoveryDataTargetNotFound] = "The file this recovery data protects was not found next to it.",
         [MessageCode.RecoveryDataNameMismatch] = "The recovery data was made for a file with another name; it matches this archive by its content.",
+        [MessageCode.RecoveryDataNotFound] = "No recovery data was found next to the archive.",
+        [MessageCode.RecoveryDataRepaired] = "The archive was repaired ({0} of {1} blocks). The repaired copy is {2}; the original was not changed.",
+        [MessageCode.RecoveryRepairCheckFailed] = "The repaired copy did not match the recovery data and was not kept.",
+        [MessageCode.RecoveryRepairNotWritten] = "The repaired copy could not be written: {0}",
         [MessageCode.RecoveryDataIntact] = "The archive matches its recovery data ({0} blocks, {1} recovery blocks).",
     };
 

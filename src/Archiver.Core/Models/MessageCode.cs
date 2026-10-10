@@ -133,5 +133,9 @@ public enum MessageCode
     RecoveryDataForAnotherFile,
     RecoveryDataTargetNotFound,
     RecoveryDataNameMismatch,
+    RecoveryDataNotFound,
+    RecoveryDataRepaired,
+    RecoveryRepairCheckFailed,
+    RecoveryRepairNotWritten,
     RecoveryDataIntact,
 }

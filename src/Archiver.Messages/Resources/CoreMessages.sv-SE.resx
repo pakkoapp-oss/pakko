@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Arkivet stämmer med sina återställningsdata ({0} block, {1} återställningsblock).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Inga återställningsdata hittades bredvid arkivet.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Arkivet reparerades ({0} av {1} block). Den reparerade kopian är {2}; originalet ändrades inte.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Den reparerade kopian stämde inte med återställningsdata och behölls inte.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Den reparerade kopian kunde inte skrivas: {0}</value>
+  </data>
 </root>

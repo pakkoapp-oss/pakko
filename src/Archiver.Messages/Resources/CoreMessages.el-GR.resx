@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Το αρχείο συμπίεσης συμφωνεί με τα δεδομένα ανάκτησής του ({0} μπλοκ, {1} μπλοκ ανάκτησης).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Δεν βρέθηκαν δεδομένα ανάκτησης δίπλα στο αρχείο συμπίεσης.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Το αρχείο συμπίεσης επιδιορθώθηκε ({0} από {1} μπλοκ). Το επιδιορθωμένο αντίγραφο είναι το {2}· το αρχικό δεν άλλαξε.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Το επιδιορθωμένο αντίγραφο δεν ταίριαζε με τα δεδομένα ανάκτησης και δεν διατηρήθηκε.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η εγγραφή του επιδιορθωμένου αντιγράφου: {0}</value>
+  </data>
 </root>

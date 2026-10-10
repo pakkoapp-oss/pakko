@@ -18,6 +18,12 @@ public enum CliHint
     /// when nothing else in the result explains it (T-F293: after a CRC failure it does not).
     /// </summary>
     OverwriteSwitchesWhenUnexplained,
+
+    /// <summary>The archive is damaged and its PAR2 set can rebuild it (T-F275).</summary>
+    RepairCommand,
+
+    /// <summary>The repaired copy could not be written where it was meant to go (T-F275).</summary>
+    OtherOutputFolder,
 }
 
 /// <summary>
@@ -28,6 +34,8 @@ public enum CliHint
 public static class CliHints
 {
     private const string PasswordLine = "pakko: hint: give the password with -p<password>";
+    private const string RepairLine = "pakko: hint: 'pakko r <archive>' writes a repaired copy next to it; the archive itself is not changed";
+    private const string OtherFolderLine = "pakko: hint: -o<dir> writes the repaired copy to another folder";
     private const string OverwriteLine = "pakko: hint: existing files were kept; -aoa overwrites them, -aou renames the extracted ones";
 
     private static readonly Dictionary<MessageCode, CliHint> Hinted = new()
@@ -36,6 +44,8 @@ public static class CliHints
         [MessageCode.PasswordProtectedTest] = CliHint.GivePassword,
         [MessageCode.FileExistsAtDestination] = CliHint.OverwriteSwitches,
         [MessageCode.AllEntriesSkipped] = CliHint.OverwriteSwitchesWhenUnexplained,
+        [MessageCode.RecoveryDataDamagedRepairable] = CliHint.RepairCommand,
+        [MessageCode.RecoveryRepairNotWritten] = CliHint.OtherOutputFolder,
     };
 
     // Listed one by one on purpose: a code added to MessageCode fails CliHintsTests until it is
@@ -68,10 +78,10 @@ public static class CliHints
         MessageCode.EntryDataTruncated, MessageCode.PasswordProtectedFormatNotSupported,
         MessageCode.RecoveryPercentInvalid, MessageCode.RecoveryDataDisabled, MessageCode.RecoveryDataNotCreated,
         MessageCode.RecoveryDataFileTooLarge, MessageCode.RecoveryOldVolumeNotDeleted,
-        MessageCode.RecoveryDataDamagedRepairable, MessageCode.RecoveryDataDamagedNotRepairable,
+        MessageCode.RecoveryDataDamagedNotRepairable,
         MessageCode.RecoveryDataRepairTooLarge, MessageCode.RecoveryDataDoesNotMatch, MessageCode.RecoveryDataUnusable,
         MessageCode.RecoveryDataForAnotherFile, MessageCode.RecoveryDataTargetNotFound, MessageCode.RecoveryDataNameMismatch,
-        MessageCode.RecoveryDataIntact,
+        MessageCode.RecoveryDataIntact, MessageCode.RecoveryDataNotFound, MessageCode.RecoveryDataRepaired, MessageCode.RecoveryRepairCheckFailed,
     ];
 
     /// <summary>Every code and its hint; <see cref="CliHint.None"/> is a decision too.</summary>
@@ -96,6 +106,10 @@ public static class CliHints
         if (keptExistingByDefault
             && (hints.Contains(CliHint.OverwriteSwitches) || (unexplained && hints.Contains(CliHint.OverwriteSwitchesWhenUnexplained))))
             lines.Add(OverwriteLine);
+        if (hints.Contains(CliHint.RepairCommand))
+            lines.Add(RepairLine);
+        if (hints.Contains(CliHint.OtherOutputFolder))
+            lines.Add(OtherFolderLine);
         return lines;
     }
 }

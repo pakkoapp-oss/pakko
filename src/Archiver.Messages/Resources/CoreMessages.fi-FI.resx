@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Arkisto vastaa palautustietojaan ({0} lohkoa, {1} palautuslohkoa).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Arkiston vierestä ei löytynyt palautustietoja.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Arkisto korjattiin ({0}/{1} lohkoa). Korjattu kopio on {2}; alkuperäistä ei muutettu.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Korjattu kopio ei vastannut palautustietoja, eikä sitä säilytetty.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Korjattua kopiota ei voitu kirjoittaa: {0}</value>
+  </data>
 </root>

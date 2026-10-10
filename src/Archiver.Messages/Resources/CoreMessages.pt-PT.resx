@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>O arquivo corresponde aos seus dados de recuperação ({0} blocos, {1} blocos de recuperação).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Não foram encontrados dados de recuperação junto ao arquivo.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>O arquivo foi reparado ({0} de {1} blocos). A cópia reparada é {2}; o original não foi alterado.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>A cópia reparada não correspondia aos dados de recuperação e não foi mantida.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Não foi possível escrever a cópia reparada: {0}</value>
+  </data>
 </root>

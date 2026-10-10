@@ -622,8 +622,9 @@ public sealed record ArchiveResult
     // IExtractionRouter.TestAsync(verifyRecoveryData: true). RecoveryCheck: ArchivePath, State
     // (Intact / Repairable / NotRepairable / RepairTooLarge / DoesNotMatch / Unusable), SetFiles,
     // Blocks, DamagedBlocks, RecoveryBlocks, Text (step 3b: MessageCode.RecoveryDataIntact for
-    // Intact, null otherwise). Damage is also an ArchiveError, DoesNotMatch and Unusable an
+    // Intact, step 4a: RecoveryDataRepaired for Repaired, null otherwise). Damage is also an ArchiveError, DoesNotMatch and Unusable an
     // ArchiveWarning, so a frontend that ignores this list still reports every outcome but Intact.
+    // Step 4a: IRecoveryService.RepairAsync fills it too, adding State Repaired with RepairedPath.
     public IReadOnlyList<RecoveryCheck> RecoveryChecks { get; init; } = [];
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
@@ -740,6 +741,27 @@ sends 100 only after the last set), the byte counts are 0. The App shows its own
 `VerifyingRecoveryData` (T-F275 step 3) is the PAR2 check after a test with `verifyRecoveryData`:
 the test gets the part of the climb its ZIP bytes are, the check the rest, by the archives' sizes;
 the byte counts are 0.
+
+T-F275 step 4a: repair. Built only by `PakkoServices` (`RecoveryService` property); the frontends
+call nothing else to repair.
+
+```csharp
+public interface IRecoveryService
+{
+    // Rebuilds each damaged archive into <name>.repaired<extension>, next to it or in
+    // OutputDirectory; a taken name gets the next number. The archive and its PAR2 files are only
+    // read. An archive is rebuilt exactly when TestAsync(verifyRecoveryData: true) would call it
+    // damaged and repairable (RecoveryTestStep.Describe decides for both), and the copy is kept
+    // only after its hashes match the set. CreatedFiles = the copies; RecoveryChecks = each
+    // archive's state (RecoveryState.Repaired with RepairedPath and Text, or what the test would
+    // say). No usable set is an error. Under DisableRecoveryData every path is refused. Throws
+    // only OperationCanceledException.
+    Task<ArchiveResult> RepairAsync(
+        RepairOptions options,                 // Paths (archives or .par2), OutputDirectory?, ApplyDownloadMark = true
+        IProgress<ProgressReport>? progress = null,   // Phase: VerifyingRecoveryData, then RepairingArchive
+        CancellationToken cancellationToken = default);
+}
+```
 
 T-F275 step 3c: what a frontend asks before any test runs. Both read the disk, so a UI calls them
 off its thread; step 4 moves them behind `IRecoveryService`.

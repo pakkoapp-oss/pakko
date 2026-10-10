@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>הארכיון תואם לנתוני השחזור שלו ({0} בלוקים, {1} בלוקי שחזור).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>לא נמצאו נתוני שחזור לצד הארכיון.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>הארכיון תוקן ({0} מתוך {1} בלוקים). העותק המתוקן הוא {2}; המקור לא שונה.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>העותק המתוקן לא תאם את נתוני השחזור ולא נשמר.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>לא ניתן היה לכתוב את העותק המתוקן: {0}</value>
+  </data>
 </root>

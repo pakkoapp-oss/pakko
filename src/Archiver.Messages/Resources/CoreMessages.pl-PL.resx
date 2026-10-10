@@ -324,4 +324,16 @@
   <data name="RecoveryDataIntact" xml:space="preserve">
     <value>Archiwum zgadza się ze swoimi danymi odzyskiwania ({0} bloków, {1} bloków odzyskiwania).</value>
   </data>
+  <data name="RecoveryDataNotFound" xml:space="preserve">
+    <value>Nie znaleziono danych odzyskiwania obok archiwum.</value>
+  </data>
+  <data name="RecoveryDataRepaired" xml:space="preserve">
+    <value>Archiwum zostało naprawione ({0} z {1} bloków). Naprawiona kopia to {2}; oryginał nie został zmieniony.</value>
+  </data>
+  <data name="RecoveryRepairCheckFailed" xml:space="preserve">
+    <value>Naprawiona kopia nie zgadzała się z danymi odzyskiwania i nie została zachowana.</value>
+  </data>
+  <data name="RecoveryRepairNotWritten" xml:space="preserve">
+    <value>Nie udało się zapisać naprawionej kopii: {0}</value>
+  </data>
 </root>
