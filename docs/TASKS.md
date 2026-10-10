@@ -1635,15 +1635,3 @@ re-measured with T-F346's script before and after.
   does not cover it: `dotnet test` in the `test` job runs once.
 - **Reported by:** v1.7.2 release, 2026-10-09.
 
-### T-F373 — `RunAsync_UnrelatedInheritableHandle_IsNotInheritedByChild` fails under a full run (P3)
-
-- [ ] **Status:** open. `SandboxedProcessLauncherTests.RunAsync_UnrelatedInheritableHandle_IsNotInheritedByChild`
-  failed once in CI on PR #35 (2026-10-10) and once in a local full `dotnet test` the same day, and
-  passed on a rerun and in isolation both times. Likely cause, not yet checked: the test's pipe
-  client handle is inheritable for 500 ms, and any `Process.Start` that another test class runs in
-  parallel in the same test process inherits every inheritable handle (.NET's default), so the pipe
-  never reaches EOF within the 2 s wait — the leak is the other test's child, not Pakko's launcher.
-  If so, run the class in a collection with parallelization disabled, as T-F130 did for the
-  integration tests; confirm first by making the failure reproducible (a concurrent `Process.Start`
-  loop during the test).
-- **Reported by:** agent, T-F275 step 3a, 2026-10-10.
