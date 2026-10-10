@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>适用于 Windows 的现代 ZIP 压缩软件</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>添加恢复数据 (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>压缩包旁的 PAR2 文件可在压缩包损坏后将其修复。</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>恢复数据 {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>正在创建恢复数据...</value>
+  </data>
 </root>

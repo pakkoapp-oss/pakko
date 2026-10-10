@@ -37,6 +37,13 @@ public sealed record ArchiveOptions
     /// writer: setting this for them is an error, never a silently unencrypted archive.
     /// </summary>
     public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }
+
+    /// <summary>
+    /// T-F275: PAR2 recovery data written next to each created archive, as a percent of its
+    /// slices (1-100); 0 writes none. It is computed over the finished archive's bytes, so an
+    /// encrypted ZIP is protected as ciphertext. Refused under the DisableRecoveryData policy.
+    /// </summary>
+    public int RecoveryPercent { get; init; }
 }
 
 /// <summary>Whether multiple source items produce one archive or one archive each.</summary>

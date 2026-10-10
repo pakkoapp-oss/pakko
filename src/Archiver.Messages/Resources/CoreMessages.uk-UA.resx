@@ -306,4 +306,19 @@
   <data name="EntryDataTruncated" xml:space="preserve">
     <value>Дані елемента ZIP обриваються раніше заявленого розміру — ZIP entry data ends before its declared size.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Дані для відновлення мають становити від 1 до 100 відсотків (задано {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Дані для відновлення вимкнено груповою політикою.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Дані для відновлення не створено: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Дані для відновлення не створено: архів порожній або завеликий.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Не вдалося видалити файл для відновлення, що лишився від попередньої версії архіву: {0}</value>
+  </data>
 </root>

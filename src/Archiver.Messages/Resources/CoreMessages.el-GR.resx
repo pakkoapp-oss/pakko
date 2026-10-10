@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Καταχωρήσεις με τοπική κεφαλίδα που δεν ταιριάζει με τον κεντρικό κατάλογο: {0} (πρώτη: «{1}»). Άλλα προγράμματα ενδέχεται να εξαγάγουν διαφορετικά ονόματα ή δεδομένα από αυτό το αρχείο συμπίεσης.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Τα δεδομένα ανάκτησης πρέπει να είναι από 1 έως 100 τοις εκατό (δόθηκε {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Τα δεδομένα ανάκτησης έχουν απενεργοποιηθεί από πολιτική ομάδας.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Τα δεδομένα ανάκτησης δεν δημιουργήθηκαν: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Τα δεδομένα ανάκτησης δεν δημιουργήθηκαν: το αρχείο συμπίεσης είναι κενό ή πολύ μεγάλο.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η διαγραφή ενός αρχείου ανάκτησης από προηγούμενη έκδοση του αρχείου συμπίεσης: {0}</value>
+  </data>
 </root>

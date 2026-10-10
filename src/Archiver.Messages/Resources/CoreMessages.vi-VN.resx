@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>{0} mục có tiêu đề cục bộ không khớp với thư mục trung tâm (mục đầu tiên: "{1}"). Các chương trình khác có thể giải nén tên hoặc dữ liệu khác từ tệp nén này.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Dữ liệu khôi phục phải từ 1 đến 100 phần trăm (đã nhập {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Dữ liệu khôi phục bị Chính sách Nhóm tắt.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Chưa tạo dữ liệu khôi phục: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Chưa tạo dữ liệu khôi phục: tệp nén trống hoặc quá lớn.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Không thể xóa tệp khôi phục còn lại từ phiên bản trước của tệp nén: {0}</value>
+  </data>
 </root>

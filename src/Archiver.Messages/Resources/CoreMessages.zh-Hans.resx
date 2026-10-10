@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>{0} 个条目的本地文件头与中央目录不一致（第一个：“{1}”）。其他程序可能会从此压缩包中解压出不同的名称或数据。</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>恢复数据必须在 1% 到 100% 之间(给定的是 {0})。</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>组策略已禁用恢复数据。</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>未创建恢复数据: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>未创建恢复数据: 压缩包为空或过大。</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>无法删除压缩包早期版本遗留的恢复文件: {0}</value>
+  </data>
 </root>

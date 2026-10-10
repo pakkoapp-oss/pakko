@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Položky, jejichž místní hlavička neodpovídá centrálnímu adresáři: {0} (první: „{1}“). Jiné programy mohou z tohoto archivu extrahovat jiné názvy nebo data.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Data pro obnovení musí být v rozsahu 1 až 100 procent (zadáno {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Data pro obnovení jsou zakázána zásadami skupiny.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Data pro obnovení nebyla vytvořena: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Data pro obnovení nebyla vytvořena: archiv je prázdný nebo příliš velký.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Soubor pro obnovení z dřívější verze archivu nelze odstranit: {0}</value>
+  </data>
 </root>

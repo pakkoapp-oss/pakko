@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Oppføringer med en lokal header som ikke samsvarer med den sentrale katalogen: {0} (første: «{1}»). Andre programmer kan pakke ut andre navn eller data fra dette arkivet.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Gjenopprettingsdata må være mellom 1 og 100 prosent ({0} ble angitt).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Gjenopprettingsdata er deaktivert av gruppepolicy.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Gjenopprettingsdata ble ikke opprettet: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Gjenopprettingsdata ble ikke opprettet: arkivet er tomt eller for stort.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>En gjenopprettingsfil fra en tidligere versjon av arkivet kunne ikke slettes: {0}</value>
+  </data>
 </root>

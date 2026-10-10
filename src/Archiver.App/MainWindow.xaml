@@ -436,6 +436,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto" MinHeight="32"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <TextBlock x:Uid="ModeLabel" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
@@ -540,6 +541,33 @@
                             <TextBlock
                                 Text="{x:Bind viewmodels:MainViewModel.EncryptPasswordRuleHint}"
                                 TextWrapping="Wrap"
+                                Opacity="0.7"
+                                Style="{StaticResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+
+                        <!-- T-F275: PAR2 recovery data next to the archive, any format. -->
+                        <StackPanel
+                            Grid.Row="5" Grid.Column="1"
+                            Spacing="4"
+                            Visibility="{x:Bind ViewModel.RecoveryDataVisibility}">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <CheckBox
+                                    x:Name="RecoveryDataCheckBox"
+                                    x:Uid="RecoveryDataCheck"
+                                    IsChecked="{x:Bind ViewModel.AddRecoveryData, Mode=TwoWay}"
+                                    IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
+                                <ComboBox
+                                    MinHeight="32" MinWidth="90"
+                                    ItemsSource="{x:Bind ViewModel.RecoveryPercentChoices}"
+                                    SelectedIndex="{x:Bind ViewModel.RecoveryPercentIndex, Mode=TwoWay}"
+                                    AutomationProperties.LabeledBy="{x:Bind RecoveryDataCheckBox}"
+                                    IsEnabled="{x:Bind ViewModel.IsRecoveryPercentEnabled, Mode=OneWay}"/>
+                            </StackPanel>
+                            <TextBlock
+                                x:Uid="RecoveryDataNote"
+                                TextWrapping="Wrap"
+                                MaxWidth="420"
+                                HorizontalAlignment="Left"
                                 Opacity="0.7"
                                 Style="{StaticResource CaptionTextBlockStyle}"/>
                         </StackPanel>

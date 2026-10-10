@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Entradas cujo cabeçalho local não corresponde ao diretório central: {0} (a primeira: «{1}»). Outros programas podem extrair deste arquivo nomes ou dados diferentes.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Os dados de recuperação têm de estar entre 1 e 100 por cento (foi indicado {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Os dados de recuperação estão desativados por uma Política de Grupo.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Os dados de recuperação não foram criados: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Os dados de recuperação não foram criados: o arquivo está vazio ou é demasiado grande.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Não foi possível eliminar um ficheiro de recuperação de uma versão anterior do arquivo: {0}</value>
+  </data>
 </root>

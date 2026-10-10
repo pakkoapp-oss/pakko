@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>{0} girdinin yerel üst bilgisi merkezi dizinle eşleşmiyor (ilki: “{1}”). Diğer programlar bu arşivden farklı adlar veya veriler ayıklayabilir.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Kurtarma verisi yüzde 1 ile 100 arasında olmalıdır ({0} verildi).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Kurtarma verisi Grup İlkesi tarafından devre dışı bırakıldı.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Kurtarma verisi oluşturulmadı: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Kurtarma verisi oluşturulmadı: arşiv boş veya çok büyük.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Arşivin önceki bir sürümünden kalan kurtarma dosyası silinemedi: {0}</value>
+  </data>
 </root>

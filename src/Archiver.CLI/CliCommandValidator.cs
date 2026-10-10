@@ -21,6 +21,10 @@ public static class CliCommandValidator
         if ((command.Password is not null || command.PromptForPassword) && command.ArchiveFormat != ArchiveContainerFormat.Zip)
             return "not supported by Pakko: -p on a tar-family archive — only ZIP archives can be password-protected";
 
+        // T-F275: the PAR2 files go next to the archive; a stream has no "next to".
+        if (command.RecoveryPercent > 0 && command.WriteToStdout)
+            return "not supported by Pakko: -rr with -so — recovery data is written next to an archive file, and -so writes no file";
+
         return TypeAgainstName(command);
     }
 

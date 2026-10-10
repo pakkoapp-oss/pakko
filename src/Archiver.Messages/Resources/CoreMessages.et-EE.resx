@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Kirjeid, mille kohalik päis ei vasta kesksele kataloogile: {0} (esimene: „{1}”). Teised programmid võivad sellest arhiivist lahti pakkida teistsuguseid nimesid või andmeid.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Taasteandmete maht peab olema 1 kuni 100 protsenti (anti {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Taasteandmed on rühmapoliitikaga keelatud.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Taasteandmeid ei loodud: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Taasteandmeid ei loodud: arhiiv on tühi või liiga suur.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Arhiivi varasemast versioonist jäänud taastefaili ei saanud kustutada: {0}</value>
+  </data>
 </root>

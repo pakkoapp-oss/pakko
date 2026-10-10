@@ -13,9 +13,11 @@
             <!-- Products -->
             <string id="Pakko">Pakko</string>
             <string id="Pakko14">Pakko 1.4</string>
+            <string id="Pakko18">Pakko 1.8</string>
 
             <!-- Definitions -->
             <string id="SUPPORTED_Pakko14">At least Pakko 1.4</string>
+            <string id="SUPPORTED_Pakko18">At least Pakko 1.8</string>
 
             <!-- Categories -->
             <string id="PakkoPolicies">Pakko</string>
@@ -59,6 +61,12 @@ If you disable or do not configure this policy setting, Pakko does not block any
 If you enable this policy setting, Pakko never spawns tar.exe — every tar-family format is hidden from the archive-creation format list and every tar-family extraction is skipped, whether or not it is also covered by Allowed/Blocked Archive Formats. This is a stricter, architecture-specific kill switch: it stops the tar.exe subprocess and its sandbox from ever being launched at all, rather than only blocking specific formats. ZIP archiving and extraction are unaffected.
 
 If you disable or do not configure this policy setting, Pakko launches tar.exe for tar-family formats as normal (subject to Allowed/Blocked Archive Formats).</string>
+            <string id="DisableRecoveryData">Disable recovery data (PAR2)</string>
+            <string id="DisableRecoveryDataExplain">This policy setting controls whether Pakko works with PAR2 recovery data: writing recovery files next to an archive it creates, and verifying or repairing an archive from them.
+
+If you enable this policy setting, the recovery data option is hidden, a request for recovery data (pakko a -rr) is refused with an error before any archive is written, and the verify and repair commands are not offered.
+
+If you disable or do not configure this policy setting, the user may add recovery data when creating an archive and verify or repair an archive that has it.</string>
         </stringTable>
 
         <presentationTable>

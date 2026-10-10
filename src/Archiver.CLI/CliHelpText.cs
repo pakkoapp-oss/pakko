@@ -53,6 +53,9 @@ public static class CliHelpText
                            .tbz2, .txz, .tzst, must match it (out.tar.gz needs
                            -ttar.gz); any other extension is written as typed
           -mx=<0-9>        Compression level — see table below                 (a)
+          -rr[N]           Recovery data: PAR2 files next to the archive,      (a)
+                           N percent of it, 1-100; bare -rr is 5. par2cmdline
+                           and MultiPar can verify and repair with them too
           -scrc<method>    Hash method: CRC32 (default) or SHA256              (h)
           -si              Read the archive from stdin instead of a path       (x, t, l, h)
           -so              Write output to stdout instead of disk              (x, a)

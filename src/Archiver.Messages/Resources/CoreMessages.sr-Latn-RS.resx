@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Stavke čije se lokalno zaglavlje ne poklapa sa centralnim direktorijumom: {0} (prva: „{1}”). Drugi programi mogu iz ove arhive da raspakuju drugačija imena ili podatke.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Podaci za oporavak moraju biti između 1 i 100 procenata (zadato {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Podaci za oporavak su onemogućeni smernicama grupe.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Podaci za oporavak nisu kreirani: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Podaci za oporavak nisu kreirani: arhiva je prazna ili prevelika.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Nije moguće izbrisati datoteku za oporavak preostalu iz ranije verzije arhive: {0}</value>
+  </data>
 </root>

@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Moderne ZIP-arkiveringsprogram til Windows</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>Tilføj gendannelsesdata (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>PAR2-filer ved siden af arkivet gør det muligt at reparere det efter skade.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>gendannelsesdata {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>Opretter gendannelsesdata...</value>
+  </data>
 </root>

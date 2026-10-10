@@ -66,6 +66,8 @@ public static class CliHints
         MessageCode.SystemInvalidName, MessageCode.SystemAccessDenied, MessageCode.SystemSharingViolation, MessageCode.SystemDiskFull,
         MessageCode.ContentCrcMismatch, MessageCode.ContentLargerThanDeclared, MessageCode.ContentSmallerThanDeclared,
         MessageCode.EntryDataTruncated, MessageCode.PasswordProtectedFormatNotSupported,
+        MessageCode.RecoveryPercentInvalid, MessageCode.RecoveryDataDisabled, MessageCode.RecoveryDataNotCreated,
+        MessageCode.RecoveryDataFileTooLarge, MessageCode.RecoveryOldVolumeNotDeleted,
     ];
 
     /// <summary>Every code and its hint; <see cref="CliHint.None"/> is a decision too.</summary>

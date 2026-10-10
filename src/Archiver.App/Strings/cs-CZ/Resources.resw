@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Moderní archivátor ZIP pro Windows</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>Přidat data pro obnovení (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>Soubory PAR2 vedle archivu umožní archiv po poškození opravit.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>data pro obnovení {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>Vytváření dat pro obnovení...</value>
+  </data>
 </root>

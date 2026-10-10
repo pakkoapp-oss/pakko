@@ -27,6 +27,9 @@ public sealed record GroupPolicyOptions
     /// <summary>Disables tar-family (tar.exe-backed) extraction entirely when true.</summary>
     public bool DisableTarExtraction { get; init; }
 
+    /// <summary>T-F275: no PAR2 recovery data is created (<see cref="ArchiveOptions.RecoveryPercent"/>).</summary>
+    public bool DisableRecoveryData { get; init; }
+
     /// <summary>
     /// The mode an extraction uses: the policy's when it is set, otherwise the user's choice —
     /// <see cref="MotwMode"/> with the mark on, <see cref="MotwMode.Disabled"/> with it off (T-F360).

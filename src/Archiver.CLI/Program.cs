@@ -472,6 +472,7 @@ static ArchiveOptions BuildArchiveOptions(
         CompressionLevel = command.CompressionLevel ?? CompressionLevel.Optimal,
         Format = command.ArchiveFormat,
         ResolvePasswordAsync = BuildNewPasswordResolver(command, prompt),
+        RecoveryPercent = command.RecoveryPercent,
     };
 }
 

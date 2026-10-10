@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Nowoczesny archiwizator ZIP dla systemu Windows</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>Dodaj dane odzyskiwania (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>Pliki PAR2 obok archiwum pozwalają naprawić je po uszkodzeniu.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>dane odzyskiwania {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>Tworzenie danych odzyskiwania...</value>
+  </data>
 </root>

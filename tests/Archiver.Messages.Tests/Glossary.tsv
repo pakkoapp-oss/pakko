@@ -369,3 +369,40 @@ folder	App/AddFolderButton.Content	uk-UA	Додати папку
 folder	App/AddFolderButton.Content	ur-PK	فولڈر شامل کریں		
 folder	App/AddFolderButton.Content	vi-VN	Thêm thư mục		
 folder	App/AddFolderButton.Content	zh-Hans	添加文件夹		
+recovery	App/RecoveryDataCheck.Content	ar-SA	بيانات الاسترداد		
+recovery	App/RecoveryDataCheck.Content	bg-BG	данни за възстановяване		
+recovery	App/RecoveryDataCheck.Content	cs-CZ	data pro obnovení		
+recovery	App/RecoveryDataCheck.Content	da-DK	gendannelsesdata		
+recovery	App/RecoveryDataCheck.Content	de-DE	Wiederherstellungsdaten		
+recovery	App/RecoveryDataCheck.Content	el-GR	ανάκτησης		
+recovery	App/RecoveryDataCheck.Content	en-US	recovery data		
+recovery	App/RecoveryDataCheck.Content	es-ES	datos de recuperación		
+recovery	App/RecoveryDataCheck.Content	et-EE	taasteandmed		
+recovery	App/RecoveryDataCheck.Content	fi-FI	palautustiedot		
+recovery	App/RecoveryDataCheck.Content	fr-FR	données de récupération		
+recovery	App/RecoveryDataCheck.Content	he-IL	נתוני שחזור		
+recovery	App/RecoveryDataCheck.Content	hi-IN	पुनर्प्राप्ति डेटा		
+recovery	App/RecoveryDataCheck.Content	hr-HR	za oporavak		
+recovery	App/RecoveryDataCheck.Content	hu-HU	helyreállítási adatok		
+recovery	App/RecoveryDataCheck.Content	id-ID	data pemulihan		
+recovery	App/RecoveryDataCheck.Content	it-IT	dati di ripristino		
+recovery	App/RecoveryDataCheck.Content	ja-JP	回復データ		
+recovery	App/RecoveryDataCheck.Content	ko-KR	복구 데이터		
+recovery	App/RecoveryDataCheck.Content	lt-LT	atkūrimo duomen		
+recovery	App/RecoveryDataCheck.Content	lv-LV	atkopšanas dat		
+recovery	App/RecoveryDataCheck.Content	nb-NO	gjenopprettingsdata		
+recovery	App/RecoveryDataCheck.Content	nl-NL	herstelgegevens		
+recovery	App/RecoveryDataCheck.Content	pl-PL	dane odzyskiwania		
+recovery	App/RecoveryDataCheck.Content	pt-PT	dados de recuperação		
+recovery	App/RecoveryDataCheck.Content	ro-RO	date de recuperare		
+recovery	App/RecoveryDataCheck.Content	sk-SK	údaje na obnovenie		
+recovery	App/RecoveryDataCheck.Content	sl-SI	za obnovitev		
+recovery	App/RecoveryDataCheck.Content	sr-Latn-RS	za oporavak		
+recovery	App/RecoveryDataCheck.Content	sv-SE	återställningsdata		
+recovery	App/RecoveryDataCheck.Content	sw-KE	data ya urejeshaji		
+recovery	App/RecoveryDataCheck.Content	th-TH	ข้อมูลกู้คืน		
+recovery	App/RecoveryDataCheck.Content	tr-TR	kurtarma veri		
+recovery	App/RecoveryDataCheck.Content	uk-UA	дані для відновлення		
+recovery	App/RecoveryDataCheck.Content	ur-PK	بازیابی ڈیٹا		
+recovery	App/RecoveryDataCheck.Content	vi-VN	dữ liệu khôi phục		
+recovery	App/RecoveryDataCheck.Content	zh-Hans	恢复数据		

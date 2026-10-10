@@ -57,13 +57,16 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │   │       archive in browse mode). MaxHeight set in code-behind (FitOptionsScroll).
         │   └── OptionsGrid (*,* columns; Auto,Auto rows) — two cards, placed by ArrangeCards:
         │       ├── NewArchiveCard — Expander (collapsed with a summary for an archives-only list,
-        │       │       T-F199 board 8; NewArchiveCardVisibility). One Grid (Auto,*) with 5 rows:
+        │       │       T-F199 board 8; NewArchiveCardVisibility). One Grid (Auto,*) with 6 rows:
         │       │       Mode (One archive / Separate archives), Name (placeholder = Core's auto
         │       │       name, T-F264), Format + Compression ComboBoxes (LabeledBy their captions),
         │       │       "Encrypt with password" CheckBox or, for a tar format, the "ZIP only" note
         │       │       in the same cell, then the inline password panel (T-F199 step 5): note,
         │       │       EncryptPasswordBox, EncryptConfirmBox, the red message line, "Show
-        │       │       password", the rule hint.
+        │       │       password", the rule hint; then (T-F275) a StackPanel shown by
+        │       │       RecoveryDataVisibility (hidden by DisableRecoveryData): the "Add recovery
+        │       │       data (PAR2)" CheckBox, the 5/10/20 % ComboBox (LabeledBy the CheckBox,
+        │       │       enabled by IsRecoveryPercentEnabled) and a caption note.
         │       └── DestinationCard — Border (card), Grid (Auto,*) with 7 rows: title, destination
         │               (Up button NavigateDestinationUpCommand, read-only TextBox, "..."), "If file
         │               exists" ComboBox (Overwrite/Skip/Rename/Ask), Open destination, delete-after

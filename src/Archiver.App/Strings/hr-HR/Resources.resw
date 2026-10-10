@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Moderni ZIP arhiver za Windows</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>Dodaj podatke za oporavak (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>Datoteke PAR2 uz arhivu omogućuju njezin popravak nakon oštećenja.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>podaci za oporavak {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>Stvaranje podataka za oporavak...</value>
+  </data>
 </root>

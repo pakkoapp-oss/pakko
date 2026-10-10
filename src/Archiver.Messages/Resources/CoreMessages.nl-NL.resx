@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Items waarvan de lokale header niet overeenkomt met de centrale map: {0} (eerste: ‘{1}’). Andere programma's kunnen andere namen of gegevens uit dit archief uitpakken.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Herstelgegevens moeten tussen 1 en 100 procent liggen ({0} opgegeven).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Herstelgegevens zijn uitgeschakeld door groepsbeleid.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Herstelgegevens zijn niet gemaakt: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Herstelgegevens zijn niet gemaakt: het archief is leeg of te groot.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Een herstelbestand van een eerdere versie van het archief kon niet worden verwijderd: {0}</value>
+  </data>
 </root>

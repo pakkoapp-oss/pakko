@@ -42,12 +42,12 @@ public static class CreateModeText
 
     /// <summary>
     /// The parts after the format name in the collapsed "New archive" card: compression (not for
-    /// plain tar, which has no level — T-F105) and password state (ZIP only, the one format that
-    /// encrypts).
+    /// plain tar, which has no level — T-F105), password state (ZIP only, the one format that
+    /// encrypts) and recovery data when it is on (T-F275).
     /// </summary>
-    public static IReadOnlyList<string> SummaryKeys(ArchiveContainerFormat format, CompressionLevel level, bool encrypt)
+    public static IReadOnlyList<string> SummaryKeys(ArchiveContainerFormat format, CompressionLevel level, bool encrypt, int recoveryPercent = 0)
     {
-        var keys = new List<string>(2);
+        var keys = new List<string>(3);
         if (format != ArchiveContainerFormat.Tar)
         {
             keys.Add(level switch
@@ -60,6 +60,9 @@ public static class CreateModeText
         }
         if (format == ArchiveContainerFormat.Zip)
             keys.Add(encrypt ? "SummaryWithPassword" : "SummaryNoPassword");
+        // T-F275: its text has a {0} for the percent.
+        if (recoveryPercent > 0)
+            keys.Add("SummaryRecoveryData");
         return keys;
     }
 }

@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Entrées dont l'en-tête local ne correspond pas au répertoire central : {0} (la première : '{1}'). D'autres programmes peuvent extraire de cette archive des noms ou des données différents.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Les données de récupération doivent être comprises entre 1 et 100 pour cent ({0} indiqué).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Les données de récupération sont désactivées par une stratégie de groupe.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Les données de récupération n’ont pas été créées : {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Les données de récupération n’ont pas été créées : l’archive est vide ou trop volumineuse.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Impossible de supprimer un fichier de récupération laissé par une version antérieure de l’archive : {0}</value>
+  </data>
 </root>

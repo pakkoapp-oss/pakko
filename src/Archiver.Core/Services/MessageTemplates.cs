@@ -138,6 +138,12 @@ public static class MessageTemplates
         [MessageCode.ContentLargerThanDeclared] = "Content is larger than its declared size ({0} bytes).",
         [MessageCode.ContentSmallerThanDeclared] = "Content is smaller than its declared size ({0} bytes).",
         [MessageCode.EntryDataTruncated] = "ZIP entry data ends before its declared size.",
+
+        [MessageCode.RecoveryPercentInvalid] = "Recovery data must be between 1 and 100 percent ({0} was given).",
+        [MessageCode.RecoveryDataDisabled] = "Recovery data is disabled by Group Policy.",
+        [MessageCode.RecoveryDataNotCreated] = "Recovery data was not created: {0}",
+        [MessageCode.RecoveryDataFileTooLarge] = "Recovery data was not created: the archive is empty or too large.",
+        [MessageCode.RecoveryOldVolumeNotDeleted] = "A recovery file left from an earlier version of the archive could not be deleted: {0}",
     };
 
     /// <summary>Every code with a template — all of <see cref="MessageCode"/> except <see cref="MessageCode.None"/>.</summary>

@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Elementy z nagłówkiem lokalnym niezgodnym z katalogiem centralnym: {0} (pierwszy: „{1}”). Inne programy mogą wypakować z tego archiwum inne nazwy lub dane.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Dane odzyskiwania muszą wynosić od 1 do 100 procent (podano {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Dane odzyskiwania są wyłączone przez zasady grupy.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Nie utworzono danych odzyskiwania: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Nie utworzono danych odzyskiwania: archiwum jest puste lub zbyt duże.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Nie można usunąć pliku odzyskiwania pozostałego z wcześniejszej wersji archiwum: {0}</value>
+  </data>
 </root>

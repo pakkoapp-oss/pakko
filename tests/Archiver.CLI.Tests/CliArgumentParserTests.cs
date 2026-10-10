@@ -992,4 +992,77 @@ public sealed class CliArgumentParserTests
     {
         CliArgumentParser.Parse(["a", "out.zip", "file1.txt"]).Type.Should().Be(CliCommandType.Archive);
     }
+
+    // --- T-F275: -rr[N], PAR2 recovery data next to the archive ---
+
+    [Theory]
+    [InlineData("-rr", 5)]
+    [InlineData("-rr1", 1)]
+    [InlineData("-rr10", 10)]
+    [InlineData("-rr100", 100)]
+    public void Archive_RecoverySwitch_SetsThePercent(string token, int expected)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", token, "out.zip", "file1.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive);
+        result.RecoveryPercent.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Archive_NoRecoverySwitch_NoRecoveryData() =>
+        CliArgumentParser.Parse(["a", "out.zip", "file1.txt"]).RecoveryPercent.Should().Be(0);
+
+    [Fact]
+    public void Archive_RecoverySwitchTwice_LastWins() =>
+        CliArgumentParser.Parse(["a", "-rr20", "-rr", "out.zip", "file1.txt"]).RecoveryPercent.Should().Be(5);
+
+    [Theory]
+    [InlineData("-rr0")]
+    [InlineData("-rr101")]
+    [InlineData("-rrx")]
+    [InlineData("-rr5%")]
+    [InlineData("-rr-5")]
+    [InlineData("-rr99999999999")]
+    public void Archive_RecoverySwitchOutOfRange_IsACommandLineError(string token)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", token, "out.zip", "file1.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("-rr").And.Contain("1").And.Contain("100");
+    }
+
+    [Fact]
+    public void Archive_RecoveryWithStdout_IsACommandLineError()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-rr", "-so", "out.zip", "file1.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("-rr").And.Contain("-so");
+    }
+
+    [Theory]
+    [InlineData("-ttar.gz", "out.tar.gz")]
+    [InlineData("-tzip", "out.zip")]
+    public void Archive_RecoveryWithAnyType_IsAccepted(string typeSwitch, string name) =>
+        CliArgumentParser.Parse(["a", "-rr", typeSwitch, name, "file1.txt"]).RecoveryPercent.Should().Be(5);
+
+    [Fact]
+    public void Archive_RecoveryWithPassword_IsAccepted() =>
+        CliArgumentParser.Parse(["a", "-rr", "-psecret", "out.zip", "file1.txt"]).Type.Should().Be(CliCommandType.Archive);
+
+    [Theory]
+    [InlineData("x")]
+    [InlineData("t")]
+    [InlineData("l")]
+    public void RecoverySwitch_OnAnotherCommand_SaysItIsOnlyForA(string command)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse([command, "-rr", "archive.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("-rr").And.Contain("'a'");
+    }
+
+    [Fact]
+    public void RecurseSwitch_StillHasItsOwnMessage() =>
+        CliArgumentParser.Parse(["x", "-r", "archive.zip"]).ErrorMessage.Should().Contain("recurse");
 }

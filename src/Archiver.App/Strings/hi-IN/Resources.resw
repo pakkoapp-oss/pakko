@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Windows के लिए आधुनिक ZIP आर्काइवर</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>पुनर्प्राप्ति डेटा जोड़ें (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>संग्रह के पास रखी PAR2 फ़ाइलें क्षति के बाद उसकी मरम्मत करने देती हैं।</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>पुनर्प्राप्ति डेटा {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>पुनर्प्राप्ति डेटा बनाया जा रहा है...</value>
+  </data>
 </root>

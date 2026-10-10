@@ -28,6 +28,7 @@ public sealed class CliHelpTextTests
     [InlineData("-scrc<method>")]
     [InlineData("-si")]
     [InlineData("-so")]
+    [InlineData("-rr[N]")]
     public void Text_MentionsEverySupportedSwitch(string switchToken)
     {
         CliHelpText.Text.Should().Contain(switchToken);

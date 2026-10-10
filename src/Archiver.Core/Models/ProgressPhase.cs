@@ -11,4 +11,10 @@ public enum ProgressPhase
     /// listing passes). The percent does not move; a frontend shows a status instead.
     /// </summary>
     CheckingArchive,
+
+    /// <summary>
+    /// T-F275: writing PAR2 recovery data for the finished archives. The percent moves; the byte
+    /// counts are zero, since they no longer count the sources.
+    /// </summary>
+    CreatingRecoveryData,
 }

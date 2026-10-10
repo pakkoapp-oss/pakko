@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Елементи, чийто локален заглавен блок не съответства на централната директория: {0} (първи: „{1}“). Други програми може да извлекат различни имена или данни от този архив.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Данните за възстановяване трябва да са между 1 и 100 процента (зададено: {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Данните за възстановяване са забранени от групова политика.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Данните за възстановяване не бяха създадени: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Данните за възстановяване не бяха създадени: архивът е празен или твърде голям.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Файл за възстановяване, останал от по-ранна версия на архива, не може да бъде изтрит: {0}</value>
+  </data>
 </root>

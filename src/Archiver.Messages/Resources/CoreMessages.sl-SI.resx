@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Vnosi, katerih lokalna glava se ne ujema s centralnim imenikom: {0} (prvi: »{1}«). Drugi programi lahko iz tega arhiva razširijo drugačna imena ali podatke.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Podatki za obnovitev morajo biti med 1 in 100 odstotki (podano {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Podatki za obnovitev so onemogočeni s pravilnikom skupine.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Podatki za obnovitev niso bili ustvarjeni: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Podatki za obnovitev niso bili ustvarjeni: arhiv je prazen ali prevelik.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Datoteke za obnovitev, ki je ostala od prejšnje različice arhiva, ni bilo mogoče izbrisati: {0}</value>
+  </data>
 </root>

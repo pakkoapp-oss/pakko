@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Vienumi, kuru lokālā galvene neatbilst centrālajam direktorijam: {0} (pirmais: “{1}”). Citas programmas no šī arhīva var izvilkt citus nosaukumus vai datus.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Atkopšanas datiem jābūt no 1 līdz 100 procentiem (norādīts {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Atkopšanas dati ir atspējoti ar grupas politiku.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Atkopšanas dati netika izveidoti: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Atkopšanas dati netika izveidoti: arhīvs ir tukšs vai pārāk liels.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Nevarēja izdzēst atkopšanas failu, kas palicis no iepriekšējās arhīva versijas: {0}</value>
+  </data>
 </root>

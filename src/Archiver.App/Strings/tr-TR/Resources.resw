@@ -578,4 +578,16 @@
   <data name="AppDescription" xml:space="preserve">
     <value>Windows için modern ZIP arşivleyicisi</value>
   </data>
+  <data name="RecoveryDataCheck.Content" xml:space="preserve">
+    <value>Kurtarma verisi ekle (PAR2)</value>
+  </data>
+  <data name="RecoveryDataNote.Text" xml:space="preserve">
+    <value>Arşivin yanındaki PAR2 dosyaları, arşivi hasar gördükten sonra onarmanızı sağlar.</value>
+  </data>
+  <data name="SummaryRecoveryData" xml:space="preserve">
+    <value>kurtarma verisi {0}</value>
+  </data>
+  <data name="StatusCreatingRecoveryData" xml:space="preserve">
+    <value>Kurtarma verisi oluşturuluyor...</value>
+  </data>
 </root>

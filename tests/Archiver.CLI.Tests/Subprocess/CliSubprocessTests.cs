@@ -318,6 +318,36 @@ public sealed class CliSubprocessTests
         File.ReadAllText(Path.Combine(destDir, "secret.txt")).Should().Be("top secret content");
     }
 
+    // T-F275: -rr writes the PAR2 index and one volume next to the archive and prints nothing more
+    // on success (pakko a is silent then). Assumes no DisableRecoveryData Group Policy here.
+    [Theory]
+    [InlineData("-tzip", "out.zip")]
+    [InlineData("-ttar.gz", "out.tar.gz")]
+    public void Archive_RecoveryData_WritesTheSetNextToTheArchive(string typeSwitch, string name)
+    {
+        (string scratchDir, string sourceFile) = CreateSourceFile();
+        string archivePath = Path.Combine(scratchDir, name);
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("a", "-rr10", typeSwitch, archivePath, sourceFile);
+
+        exitCode.Should().Be(0, because: stdErr);
+        stdOut.Should().BeEmpty();
+        File.Exists(archivePath + ".par2").Should().BeTrue();
+        Directory.GetFiles(scratchDir, name + ".vol*+*.par2").Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Archive_RecoveryDataWithStdout_ExitsSevenAndCreatesNothing()
+    {
+        (string scratchDir, string sourceFile) = CreateSourceFile();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("a", "-rr", "-so", Path.Combine(scratchDir, "out.zip"), sourceFile);
+
+        exitCode.Should().Be(7);
+        stdErr.Should().Contain("-so");
+        Directory.GetFiles(scratchDir).Should().Equal(sourceFile);
+    }
+
     [Fact]
     public void Archive_NonAsciiPassword_ExitsSevenAndCreatesNothing()
     {

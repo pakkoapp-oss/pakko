@@ -1104,9 +1104,12 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
     selection over all recovery blocks; the oracles in CI; the MD5 won't-fix entry. The public
     `IRecoveryService`, its message codes and the `PakkoServices` wiring moved to step 2, which adds
     the 37-language messages anyway (`docs/DECISIONS.md`, T-F275 "Step 1").
-  - [ ] 2 — creation: `ArchiveOptions.RecoveryPercent`, the router, `pakko a -rr[N]`, the App's
-    option, `DisableRecoveryData`, messages in 37 languages.
-  - [ ] 3 — verification: `pakko t`, Explorer "Verify with PAR2", the App's state panel.
+  - [x] 2 — creation (2026-10-10): `ArchiveOptions.RecoveryPercent`, the router's PAR2 step with one
+    progress, `ArchiveResult.RecoveryFiles`, `pakko a -rr[N]`, the App's option, `DisableRecoveryData`,
+    five message codes in 37 languages. `IRecoveryService` moved to step 3 (`docs/DECISIONS.md`,
+    T-F275 "Step 2").
+  - [ ] 3 — verification: the public `IRecoveryService`, `pakko t`, Explorer "Verify with PAR2"
+    (hidden by `DisableRecoveryData`), the App's state panel.
   - [ ] 4 — repair: `pakko r [-o<dir>]`, Explorer "Repair with PAR2", the App.
   - [ ] 5 — the v1.8.0 release with the user's checks (MD5 under the FIPS policy among them).
   Option to write PAR2 (Reed-Solomon) recovery files next to a created archive, with a chosen

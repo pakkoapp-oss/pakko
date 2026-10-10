@@ -132,6 +132,24 @@ public sealed class GroupPolicyServiceTests
         GroupPolicyService.Load(new FakeRegistryReader()).DisableTarExtraction.Should().BeFalse();
     }
 
+    // T-F275: only 1 disables recovery data; the ADMX writes 1 or 0.
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(0, false)]
+    [InlineData(2, false)]
+    public void Load_DisableRecoveryDataPresent_MapsToExpectedBool(int dwordValue, bool expected)
+    {
+        FakeRegistryReader reader = new FakeRegistryReader().WithDword(PolicyKeyPath, "DisableRecoveryData", dwordValue);
+
+        GroupPolicyService.Load(reader).DisableRecoveryData.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Load_DisableRecoveryDataAbsent_DefaultsToFalse()
+    {
+        GroupPolicyService.Load(new FakeRegistryReader()).DisableRecoveryData.Should().BeFalse();
+    }
+
     // T-F176 (test-coverage audit): GroupPolicyService.Load's only input seam is IRegistryReader,
     // whose contract (int?/string[]?) already makes a wrong RegistryValueKind unrepresentable at
     // this boundary — Win32RegistryReader's own GetDword/GetMultiString pattern-match

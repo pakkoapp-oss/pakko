@@ -1104,17 +1104,22 @@ Sources read for this diagram (2026-09-29): `src/Archiver.Core/Services/ArchiveC
 `TarSandboxedService.cs` — `CompressAsync`, `ProcessSeparateArchivesAsync`, `CompressToArchiveAsync`,
 `AppendSourcesToTarArgs`, `CountRecursiveEntriesAndBytes`, `RunUnsandboxedTarAsync`; the callers
 `MainViewModel.ArchiveAsync`, `ShellCommands.ArchiveAsync` and `Archiver.CLI`'s `BuildArchiveOptions`/
-`CliArgumentParser` (`-t{type}`).
+`CliArgumentParser` (`-t{type}`). Updated 2026-10-10 for T-F275 step 2 from `ArchiveCreationRouter.cs`,
+`Recovery/RecoveryDataWriter.cs` and `Recovery/RecoveryProgressSplit.cs`.
 
 ```mermaid
 flowchart TD
-    F1["App: Format combobox, SelectedArchiveMode,<br/>inline password when Encrypt applies (ZIP only)"] --> R
-    F2["Shell: Add to X.zip or Add to X.tar<br/>SingleArchive, OnConflict=Rename, no password"] --> R
-    F3["CLI a: -t zip / tar / tar.gz ... (default zip), SingleArchive,<br/>-y → Overwrite else Skip, -p refused by the parser for tar-family"] --> R
+    F1["App: Format combobox, SelectedArchiveMode,<br/>inline password when Encrypt applies (ZIP only),<br/>recovery data 5/10/20 % unless DisableRecoveryData"] --> R
+    F2["Shell: Add to X.zip or Add to X.tar<br/>SingleArchive, OnConflict=Rename, no password, no recovery data"] --> R
+    F3["CLI a: -t zip / tar / tar.gz ... (default zip), SingleArchive,<br/>-y → Overwrite else Skip, -p refused by the parser for tar-family,<br/>-rr N → RecoveryPercent, -rr with -so refused by the parser"] --> R
     R{"ArchiveCreationRouter: format allowed by<br/>AllowedFormats/BlockedFormats?"} -- no --> RE1["Errors += CreationFormatBlocked"]
     R -- yes --> R2{"DisableTarExtraction and format is not Zip?"}
     R2 -- yes --> RE2["Errors += TarCreationDisabled — tar.exe never starts"]
-    R2 -- no --> R3{"Format == Zip?"}
+    R2 -- no --> RR1{"RecoveryPercent outside 0 to 100?"}
+    RR1 -- yes --> RRE1["Errors += RecoveryPercentInvalid"]
+    RR1 -- no --> RR2{"RecoveryPercent over 0 and DisableRecoveryData?"}
+    RR2 -- yes --> RRE2["Errors += RecoveryDataDisabled — nothing written"]
+    RR2 -- no --> R3{"Format == Zip?"}
 
     R3 -- yes --> Z0["ZipArchiveService.ArchiveAsync: trim trailing separators (T-F153)"]
     Z0 --> Z1{"ResolvePasswordAsync set?"}
@@ -1162,6 +1167,13 @@ flowchart TD
     T8 --> T9{"exit code 0 and .tmp exists?"}
     T9 -- no --> TE3["delete .tmp, Errors += TarCreationFailed"]
     T9 -- yes --> T10["ArchiveTempFile.CommitAsync .tmp → name.ext — same rule as S7 (T-F321),<br/>CreatedFiles += the path it landed at"]
+
+    S7 & P2 & T10 -.-> PR{"router, after the engine returns: RecoveryPercent over 0?<br/>(then the engine ran with OpenDestinationFolder off and its percent scaled below 100)"}
+    PR -- no --> PR0["the engine's result, unchanged"]
+    PR -- yes --> PR1["on the thread pool, for each of CreatedFiles, even with errors (T-F275):<br/>Par2Creator writes name.par2 and name.vol0+R.par2 via temp files → RecoveryFiles"]
+    PR1 -. "empty or beyond the reader limits / any exception but cancel" .-> PR2["Errors += RecoveryDataFileTooLarge / RecoveryDataNotCreated on that archive,<br/>the archive stays, every Completed source → Partial"]
+    PR1 --> PR3["delete name.volN+M.par2 the reader parses as another Set ID,<br/>a failed delete → Warnings += RecoveryOldVolumeNotDeleted"]
+    PR3 --> PR4["report 100 %, then open the folder if asked and no error"]
 ```
 
 **What this catches:** the two engines are not symmetric, and a change that assumes they are will
@@ -1170,6 +1182,9 @@ outright. ZIP's separate archives run in parallel after a sequential planning pa
 after another. ZIP writes entries itself; tar hands every source path to tar.exe as a name list on
 its stdin (never as arguments, T-F283/T-F273), which is why the ANSI-name gate exists only on this side.
 Encryption forces the hand-rolled writer at any file count — `ZipArchive` has no encrypting API.
+Recovery data (T-F275) is the router's step, not an engine's: it runs over each finished archive's
+bytes (ciphertext for an encrypted ZIP), and the folder opens only after it, so nobody moves an
+archive whose set is still being written.
 
 ---
 

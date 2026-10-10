@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Kohteita, joiden paikallinen otsake ei vastaa keskushakemistoa: {0} (ensimmäinen: ”{1}”). Muut ohjelmat voivat purkaa tästä arkistosta eri nimiä tai tietoja.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Palautustietojen on oltava 1–100 prosenttia (annettiin {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Palautustiedot on poistettu käytöstä ryhmäkäytännöllä.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Palautustietoja ei luotu: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Palautustietoja ei luotu: arkisto on tyhjä tai liian suuri.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Arkiston aiemmasta versiosta jäänyttä palautustiedostoa ei voitu poistaa: {0}</value>
+  </data>
 </root>

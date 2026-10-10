@@ -141,7 +141,8 @@ src/
 │   │       └── Decryption/              ← T-F188/T-F189: RawZipEntryLocator (central directory +
 │   │                                          local headers), EncryptedZipEntryReader, ZipCrypto, WinZip AES
 │   ├── Recovery/                   ← T-F275: the PAR 2.0 engine, internal — GF(2^16), packets,
-│   │                                  a bounded reader, create/verify/repair; public API with step 2
+│   │                                  a bounded reader, create/verify/repair; RecoveryDataWriter
+│   │                                  (the router's PAR2 step) and RecoveryProgressSplit
 │   ├── IO/
 │   │   ├── TempOwner.cs                ← T-F263/T-F312: public; the one owner of temp names —
 │   │   │                                  tag m<machine>-<pid>-<start ticks>, the sweep of entries
@@ -323,6 +324,11 @@ public sealed record ArchiveOptions
     // with nothing created; a tar-family Format with a resolver is an error (TarSandboxedService).
     // Forces ParallelSingleArchiveWriter in both modes — ZipArchive cannot encrypt.
     public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }
+
+    // T-F275: PAR2 recovery data next to each created archive, 1-100 % of its slices; 0 = none.
+    // Handled by ArchiveCreationRouter, not the engines: outside 0-100 → RecoveryPercentInvalid,
+    // over 0 under the DisableRecoveryData policy → RecoveryDataDisabled, both before any work.
+    public int RecoveryPercent { get; init; }
 }
 
 public enum ArchiveMode { SingleArchive, SeparateArchives }
@@ -604,6 +610,10 @@ public sealed record ArchiveResult
     public bool Success { get; }                      // T-F260: derived — no errors
     public OperationOutcome Outcome { get; }          // Completed / CompletedWithWarnings / CompletedWithSkips / NothingDone / Failed
     public IReadOnlyList<string> CreatedFiles { get; init; } = [];
+    // T-F275: the PAR2 index and volume written next to each archive in CreatedFiles — kept out
+    // of CreatedFiles, so the outcome line, pakko's name check and "contains its own output" stay
+    // about the archives.
+    public IReadOnlyList<string> RecoveryFiles { get; init; } = [];
     public IReadOnlyList<ArchiveError> Errors { get; init; } = [];
     public IReadOnlyList<SkippedFile> SkippedFiles { get; init; } = [];
     // T-F280: what the user should know although everything asked was done. Never fails the
@@ -713,6 +723,9 @@ public interface IArchiveService
 plus `Phase` (`ProgressPhase`, T-F307): `CheckingArchive` while tar-family extraction runs its
 whole-archive listing passes (one report before them, a `Transferring` report right after), else
 `Transferring`. Frontends show a localized "checking" status instead of a standing 0%.
+`CreatingRecoveryData` (T-F275) is the router's PAR2 step after the engine: the percent keeps
+rising (`RecoveryProgressSplit` gives the engine 0 to 100 · (1 - p/(p+20)) and PAR2 the rest, and
+sends 100 only after the last set), the byte counts are 0. The App shows its own status for it.
 
 ---
 
@@ -1526,6 +1539,9 @@ public sealed class ArchiveCreationRouter(IArchiveService archiveService, ITarSe
             ? archiveService.ArchiveAsync(options, progress, cancellationToken)
             : tarService.CompressAsync(options, progress, cancellationToken);
 }
+// Later: the T-F51 policy checks (third ctor parameter) and, T-F275, RecoveryPercent — the engine
+// runs with OpenDestinationFolder off, then RecoveryDataWriter.AddTo on the thread pool writes a
+// set per CreatedFiles entry, and the router opens the folder. DIAGRAMS.md diagram 9.
 ```
 
 `TarSandboxedService.CompressAsync` runs `tar.exe` **unsandboxed** — no `TarSandboxScope`/

@@ -282,4 +282,19 @@
   <data name="LocalHeaderMismatch" xml:space="preserve">
     <value>Elemente al căror antet local nu corespunde directorului central: {0} (primul: „{1}”). Alte programe pot extrage din această arhivă alte nume sau date.</value>
   </data>
+  <data name="RecoveryPercentInvalid" xml:space="preserve">
+    <value>Datele de recuperare trebuie să fie între 1 și 100 la sută (s-a indicat {0}).</value>
+  </data>
+  <data name="RecoveryDataDisabled" xml:space="preserve">
+    <value>Datele de recuperare sunt dezactivate de o politică de grup.</value>
+  </data>
+  <data name="RecoveryDataNotCreated" xml:space="preserve">
+    <value>Datele de recuperare nu au fost create: {0}</value>
+  </data>
+  <data name="RecoveryDataFileTooLarge" xml:space="preserve">
+    <value>Datele de recuperare nu au fost create: arhiva este goală sau prea mare.</value>
+  </data>
+  <data name="RecoveryOldVolumeNotDeleted" xml:space="preserve">
+    <value>Un fișier de recuperare rămas de la o versiune anterioară a arhivei nu a putut fi șters: {0}</value>
+  </data>
 </root>
