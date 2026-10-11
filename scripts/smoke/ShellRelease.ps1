@@ -44,16 +44,7 @@ Add-SmokeStep 'SHL-009' {
     $made = Invoke-Pakko @('a', $archive, '-pRight-1', '-mem=AES256', (Join-Path (Get-Fixture Tree) 'text.txt'))
     Assert-Smoke ($made.ExitCode -eq 0) "a: exit $($made.ExitCode) $($made.Text)"
 
-    # Types into the prompt's password box and presses its first button.
-    function Send-Password {
-        param([string]$Text)
-        $window = Get-ShellWindowText | Where-Object { Find-ShellElement -Window $_.Element -ClassName 'PasswordBox' } | Select-Object -First 1
-        $box = Find-ShellElement -Window $window.Element -ClassName 'PasswordBox'
-        $box.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($Text)
-        $button = @(Find-ShellElement -Window $window.Element -ClassName 'Button' -All)[0]
-        $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-    }
-    $prompt = { (Get-ShellWindowText | Where-Object { Find-ShellElement -Window $_.Element -ClassName 'PasswordBox' } | Select-Object -First 1).Text }
+    $prompt = { Get-ShellPasswordPrompt }
 
     Stop-ShellProcess
     $process = Start-ShellProcess -Arguments @('--test', $archive)
@@ -62,10 +53,10 @@ Add-SmokeStep 'SHL-009' {
         $first = & $prompt
         Assert-Smoke ($first -match 'locked\.zip') "the password prompt does not name the archive: $first"
 
-        Send-Password 'Wrong-1'
+        Send-ShellPassword 'Wrong-1'
         Wait-Smoke { $now = & $prompt; $now -and $now -ne $first } 'a second prompt that says more than the first'
 
-        Send-Password 'Right-1'
+        Send-ShellPassword 'Right-1'
         $result = (Wait-ShellResult).Text
         Assert-Smoke ($result -match 'locked\.zip' -and $result -notmatch '\b[0-9A-F]{8}\b') "after the right password the test does not end clean: $result"
     }

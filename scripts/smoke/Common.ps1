@@ -61,6 +61,9 @@ function Invoke-Tool {
 
 function Invoke-Pakko {
     param([Parameter(Mandatory)][string[]]$Arguments, [string]$WorkingDirectory, [int]$TimeoutSeconds = 900)
+    foreach ($argument in $Arguments) {
+        if ($argument -cmatch '^-p(.+)$') { $null = $Smoke.Passwords.Add($Matches[1]) }
+    }
     Invoke-Tool -Exe $Smoke.Pakko -Arguments $Arguments -WorkingDirectory $WorkingDirectory -TimeoutSeconds $TimeoutSeconds
 }
 
@@ -317,6 +320,24 @@ function Wait-ShellResult {
     throw "Archiver.Shell showed no result window in $TimeoutSeconds s"
 }
 
+# The text of the Shell's password prompt (the window with a password box), or nothing.
+function Get-ShellPasswordPrompt {
+    (Get-ShellWindowText | Where-Object { Find-ShellElement -Window $_.Element -ClassName 'PasswordBox' } | Select-Object -First 1).Text
+}
+
+# Types into the prompt's password box and presses its first button.
+function Send-ShellPassword {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', '',
+        Justification = 'A made-up password for an archive the run itself created.')]
+    param([Parameter(Mandatory)][string]$Password)
+    $null = $Smoke.Passwords.Add($Password)
+    $window = Get-ShellWindowText | Where-Object { Find-ShellElement -Window $_.Element -ClassName 'PasswordBox' } | Select-Object -First 1
+    $box = Find-ShellElement -Window $window.Element -ClassName 'PasswordBox'
+    $box.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue($Password)
+    $button = @(Find-ShellElement -Window $window.Element -ClassName 'Button' -All)[0]
+    $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+}
+
 function Stop-ShellProcess {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
         Justification = 'Closes the windows this run opened.')]
@@ -394,4 +415,98 @@ function Invoke-Shell {
         Stop-ShellProcess
         $process.Dispose()
     }
+}
+
+# --- the elevated half (scripts/smoke/elevated/PolicyHost.ps1) --------------------------------
+# One elevation prompt per run, at the first step that needs it. A declined prompt skips every
+# such step with that reason.
+
+function Export-PolicyKey {
+    param([Parameter(Mandatory)][string]$Name)
+    $reg = Join-Path $env:SystemRoot 'System32\reg.exe'
+    $keys = @{ pakko = 'HKLM\Software\Policies\Pakko'; fips = 'HKLM\SYSTEM\CurrentControlSet\Control\Lsa\FipsAlgorithmPolicy' }
+    foreach ($key in $keys.Keys) {
+        $file = Join-Path $Smoke.Elevated.Folder "$Name-$key.reg"
+        $run = Invoke-Tool -Exe $reg -Arguments @('export', $keys[$key], $file, '/y')
+        # A key that does not exist is a state too.
+        if ($run.ExitCode -ne 0) { Set-Content -LiteralPath $file -Value 'absent' -Encoding utf8 }
+    }
+}
+
+function Start-SmokeElevated {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'The elevation prompt is the confirmation.')]
+    param()
+    if ($Smoke.Elevated.Declined) { Skip-Smoke $Smoke.Elevated.Declined }
+    if ($Smoke.Elevated.Process) { return }
+
+    $folder = Get-StepFolder 'elevated'
+    $Smoke.Elevated = @{ Folder = $folder; Next = 1 }
+    Export-PolicyKey 'before'
+    $hostScript = Join-Path $PSScriptRoot 'elevated\PolicyHost.ps1'
+    $arguments = @('-NoProfile', '-File', "`"$hostScript`"", '-Folder', "`"$folder`"", '-ParentId', $PID)
+    try {
+        $process = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList $arguments -Verb RunAs -WindowStyle Hidden -PassThru
+    }
+    catch {
+        $Smoke.Elevated.Declined = "the elevation prompt was not accepted: $($_.Exception.Message)"
+        Skip-Smoke $Smoke.Elevated.Declined
+    }
+
+    $ready = Join-Path $folder 'ready.json'
+    $deadline = (Get-Date).AddSeconds(30)
+    while (-not (Test-Path -LiteralPath $ready) -and -not $process.HasExited -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 200 }
+    Assert-Smoke (Test-Path -LiteralPath $ready) "the elevated helper did not start; see $folder\host.log"
+    $Smoke.Elevated.Process = $process
+}
+
+function Send-ElevatedRequest {
+    param([Parameter(Mandatory)][hashtable]$Request, [int]$TimeoutSeconds = 30)
+    Start-SmokeElevated
+    $number = $Smoke.Elevated.Next++
+    $path = Join-Path $Smoke.Elevated.Folder "request-$number.json"
+    Set-Content -LiteralPath "$path.tmp" -Value ($Request | ConvertTo-Json -Depth 5) -Encoding utf8
+    Move-Item -LiteralPath "$path.tmp" -Destination $path
+
+    $replyPath = Join-Path $Smoke.Elevated.Folder "reply-$number.json"
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while (-not (Test-Path -LiteralPath $replyPath) -and -not $Smoke.Elevated.Process.HasExited -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 150 }
+    Assert-Smoke (Test-Path -LiteralPath $replyPath) "the elevated helper did not answer request $number ($($Request.Kind))"
+    $reply = Get-Content -LiteralPath $replyPath -Raw -Encoding utf8 | ConvertFrom-Json
+    Assert-Smoke $reply.Ok "the elevated helper refused request $number ($($Request.Kind)): $($reply.Error)"
+    $reply
+}
+
+# Asks the helper to stop; it puts the registry back first. Safe to call when it never started.
+function Stop-SmokeElevated {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Ends the helper this run started.')]
+    param()
+    $process = $Smoke.Elevated.Process
+    if (-not $process) { return $false }
+    if (-not $process.HasExited) {
+        $null = Send-ElevatedRequest @{ Kind = 'stop' }
+        $null = $process.WaitForExit(15000)
+    }
+    $Smoke.Elevated.Process = $null
+    Export-PolicyKey 'after'
+    $true
+}
+
+# Runs -Body with the machine policy set to -Values (and the FIPS flag to -Fips), then puts the
+# registry back. Everything Pakko reads the policy with starts after the values are written:
+# every pakko and Archiver.Shell process reads it once, at its start.
+function Use-SmokePolicy {
+    param([hashtable]$Values = @{}, [Nullable[int]]$Fips, [Parameter(Mandatory)][scriptblock]$Body)
+    $null = Send-ElevatedRequest @{ Kind = 'policy'; Values = $Values; Fips = $Fips }
+    try {
+        & $Body
+        if ($Smoke.Hold) {
+            $go = Join-Path $Smoke.Work 'go'
+            Write-Host "`n  policy held: $(($Values.Keys | ForEach-Object { "$_=$($Values[$_] -join ',')" }) -join '; ') fips=$Fips. Create the file $go to go on." -NoNewline
+            while (-not (Test-Path -LiteralPath $go)) { Start-Sleep -Milliseconds 500 }
+            Remove-Item -LiteralPath $go
+        }
+    }
+    finally { $null = Send-ElevatedRequest @{ Kind = 'policy'; Values = @{} } }
 }

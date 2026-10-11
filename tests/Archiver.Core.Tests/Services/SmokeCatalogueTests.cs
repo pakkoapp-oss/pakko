@@ -18,10 +18,9 @@ public sealed partial class SmokeCatalogueTests
     // Rows marked script or uac that have no step in scripts/smoke/ yet (T-F378 steps 3 and 4).
     private static readonly string[] StepsOwed =
     [
-        "CLI-017", "APP-018",
-        "POL-001", "POL-002", "POL-003", "POL-004", "POL-005", "POL-006", "POL-007", "POL-008",
-        "PKG-005", "PKG-006", "PKG-007", "PKG-008", "PKG-009",
-        "REL-001", "REL-002", "REL-003", "REL-004", "REL-005", "REL-006", "REL-007",
+        "CLI-017",
+        "PKG-006", "PKG-007", "PKG-008", "PKG-009",
+        "REL-003", "REL-004", "REL-005", "REL-006", "REL-007",
         "STO-001", "STO-002", "STO-003",
     ];
 

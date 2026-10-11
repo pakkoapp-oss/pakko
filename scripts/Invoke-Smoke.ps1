@@ -27,6 +27,10 @@
     Print the selected rows and stop.
 .PARAMETER KeepWork
     Keep the temporary folder (it is always kept when a row fails).
+.PARAMETER Hold
+    After the scripted checks of a POL row, leave its policy set until a file named "go" appears
+    in the temporary folder: the time to look at the App and the Explorer menu under that policy
+    (POL-009, POL-010).
 .EXAMPLE
     .\Invoke-Smoke.ps1
 .EXAMPLE
@@ -47,7 +51,9 @@ param(
 
     [switch]$List,
 
-    [switch]$KeepWork
+    [switch]$KeepWork,
+
+    [switch]$Hold
 )
 
 $ErrorActionPreference = 'Stop'
@@ -84,7 +90,7 @@ if (-not $package) { throw 'Pakko is not installed. Run scripts\Deploy.ps1 first
 $work = Join-Path ([System.IO.Path]::GetTempPath()) ('pakko-smoke-' + [System.IO.Path]::GetRandomFileName())
 $null = [System.IO.Directory]::CreateDirectory($work)
 
-# Shared by every step. Steps read it; only the fixture helpers add to Fixtures.
+# Shared by every step. Steps read it; only the helpers add to Fixtures and Passwords.
 $Smoke = @{
     Repo     = $repo
     Package  = $package
@@ -97,6 +103,10 @@ $Smoke = @{
     Tar      = Join-Path $env:SystemRoot 'System32\tar.exe'
     Started  = Get-Date
     Fixtures = @{}
+    # Every password a step gave to pakko or typed into a window; APP-018 looks for them.
+    Passwords = [System.Collections.Generic.HashSet[string]]::new()
+    Elevated = @{}
+    Hold     = [bool]$Hold
 }
 
 $steps = @{}
@@ -147,6 +157,7 @@ $results = foreach ($row in $ordered) {
 }
 
 Get-Process -Name 'Archiver.OperationUi', 'Archiver.Shell' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+$null = Stop-SmokeElevated
 
 # --- the report ------------------------------------------------------------------------------
 $failed = @($results | Where-Object Result -eq 'FAIL')

@@ -1632,10 +1632,19 @@ re-measured with T-F346's script before and after.
       par2cmdline-turbo and MultiPar, six failure paths with forged recovery blocks among them,
       a folder closed for new files, every format and AES-256, a set killed and cancelled
       half-way, a rewrite without `-rr`. All OK on package 1.8.0.1 in under three minutes.
-    - [ ] 3c — the elevated batch: five policies, FIPS, WACK compared with its last report. The
-      helper is written (branch `feat/t-f378-smoke-elevated`) and waits for an elevation prompt
-      to be checked against.
-    - [ ] 3d — the package's life cycle, the release checks, action cards for the `mcp` rows.
+    - [x] 3c — the elevated batch (2026-10-11): `POL-001..008` and `PKG-005` behind one elevation
+      prompt per run. A helper process sets the five policy values and the FIPS flag for one
+      row at a time and puts the registry back; WACK's findings are compared with the tracked
+      `scripts/smoke/wack-known.txt`. All OK on package 1.8.0.1 in a minute and a half; with a
+      helper that sets nothing all eight policy rows fail. The App and the Explorer menu under
+      a policy are the new hand-run rows `POL-009` and `POL-010` (`-Hold`).
+    - [x] 3d — `APP-018` (no password of the run on a command line of the Shell's processes, in
+      `pakko.log` or in the Application event log), `REL-001` (the slow tests) and `REL-002` (the
+      canary run on the commit, read and never started) (2026-10-11). A row without a step is
+      already printed with its action and expectation, which is the card an `mcp` row needs.
+    - [ ] 3e — the package's life cycle (`PKG-006..009`): these remove and replace the installed
+      package, so they run only when asked for, keep the package data and end with the dev
+      package back.
   - [ ] 4 — the `store` tier and the first full run, its table in the release record.
 - **Reported by:** maintainer request, 2026-10-11.
 

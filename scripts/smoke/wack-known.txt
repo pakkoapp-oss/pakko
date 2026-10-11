@@ -1,0 +1,7 @@
+# The findings of the Windows App Certification Kit that every run so far has had (PKG-005):
+# one "<test name>=<result>" per line. A finding that is not here fails the row.
+# The two optional tests that have failed in every recorded run.
+Application count=FAIL
+Blocked executables=FAIL
+# pakko.exe has no DPI-awareness manifest (T-F377).
+DPIAwarenessValidation=WARNING

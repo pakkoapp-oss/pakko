@@ -12573,6 +12573,65 @@ steps in `scripts/smoke/ShellRelease.ps1`, six in `Par2Release.ps1`.
   and beyond the set, an open destination, a kill in place of Ctrl+C and no kill at all, a
   rewrite that keeps `-rr`).
 
+**Step 3c, the rows that need an administrator (2026-10-11).** `POL-001..008` and `PKG-005` in
+`scripts/smoke/Policy.ps1`.
+- *One prompt, one helper.* The first such row starts `elevated/PolicyHost.ps1` with
+  `Start-Process -Verb RunAs`; the run stays unelevated, because Pakko must be tested as the
+  user runs it. The helper takes requests as files and does three things: write the five
+  values under `HKLM\Software\Policies\Pakko`, write `FipsAlgorithmPolicy\Enabled`, run
+  `appcert.exe`. It saves what the registry held and writes it back after each row, on a
+  failed request, when told to stop, and when the run that started it is gone. A declined
+  prompt skips every such row with that reason (seen twice, with nobody at the screen).
+- *The registry is checked from outside.* The run exports both keys before the helper starts
+  and after it stops; `POL-008` fails when the exports differ.
+- *A policy row must fail when the policy is not in force.* With a helper that writes nothing,
+  all eight rows are red. `POL-006` and `POL-007` assert things that also hold with no policy
+  (a blocked ZIP is still repaired; PAR2 works under FIPS), so each first proves its state:
+  `pakko l` on the ZIP is refused, the FIPS flag reads 1.
+- *What the rows said and the program does.* Read from package 1.8.0.1 before the steps were
+  written: a refused `x` is exit 1 ("skipped"), a refused `l` or `a` exit 2; under
+  `EnforceMOTW` = 2 only files of unsafe types are marked, so the fixture holds a `.cmd`;
+  `-snz0` against the policy prints that the policy decides. "tar.exe is never started" is not
+  checked: a process trace needs an administrator, and a staging folder proves nothing (a tar
+  extraction that ran leaves none either). The row has the refusals, an empty destination and
+  `pakko i`, which shows tar.exe disabled.
+- *Scripts cover the console and the Shell; the App and the menu are rows of their own.* The
+  old rows asked for all three frontends in one. `POL-009` and `POL-010` are run by hand with
+  `-Hold`, which keeps each row's policy until a file named `go` appears in the run's folder
+  (checked on `POL-005`: the value read 1 and `pakko a -rr5` was refused from another shell
+  while held, and the registry was as before afterwards).
+- *WACK has a tracked list of known findings* (`scripts/smoke/wack-known.txt`: two optional
+  FAILs and the `DPIAwarenessValidation` warning of T-F377) instead of "compare with the last
+  record": a finding that is not on it fails the row, and one that is gone is named in the
+  note. Seen red with the list empty. The run takes 43 s.
+
+**Step 3d, the password search and the two checks of the commit (2026-10-11).** `APP-018` in
+`scripts/smoke/App.ps1`, `REL-001` and `REL-002` in `Release.ps1`.
+- *What a password search can prove.* Only the App writes `pakko.log`, and no script types into
+  the App: a search after a scripted run alone reads a log the run never wrote to. So the row
+  does three things. It types a password made for this run into the Shell's prompt and reads
+  the command lines of the `Archiver.*` processes while both are alive (the Shell hands the
+  work to its window process; fewer than two command lines fails the row). It searches every
+  `pakko.log*` and the Application event log for each password the run gave to `pakko` or typed
+  into a window (`Invoke-Pakko` and `Send-ShellPassword` record them) and for `Right-1` and
+  `Wrong-1`, which the App's hand-run rows `APP-002` and `APP-007` are now told to use. And its
+  note says how many log lines are from this run, so a clean result over an untouched log is
+  visible as that. `pakko -p<password>` has the password on its own command line by design;
+  the Security log's process-creation events need an audit policy and an elevated reader, so
+  the row says "the Application event log".
+- *`REL-002` reads, it does not start.* A workflow run is an action on GitHub that an
+  unattended script should not take; the step finds the newest finished canary run on the
+  checked-out commit and is skipped, with the command to start one, when there is none. (A
+  hand-started run cannot move the canary's three-day streak: that counts scheduled runs only.)
+- *The commit is the checked-out one.* `--ref main` is the release commit only at release
+  time, so both rows name the commit they looked at, and `REL-001` says when the working tree
+  had changes.
+- *Seen red:* a log line with the password, a word that is on the command line, an event log
+  where any entry counts; for `REL-002`, on the commit of v1.8.0, a wrong expectation for
+  `canary-failed-day`, and a job and a step that do not exist.
+- *The package's life cycle is a part of its own (3e).* `PKG-006..009` remove and replace the
+  package every other row tests, and with it the package data.
+
 **Not taken.** A machine-readable file (TSV or JSON) next to a rendered page: two files to keep
 equal for a table a regular expression already reads. A new test project for the guard: the
 existing document-reading tests live in `Archiver.Core.Tests/Services`.
