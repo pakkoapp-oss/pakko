@@ -1595,3 +1595,16 @@ re-measured with T-F346's script before and after.
   retry.
 - **Reported by:** T-F375's PR, 2026-10-10.
 
+### T-F377 — `pakko.exe` in the package has no DPI-awareness manifest (P3)
+
+- [ ] **Status:** open. The Windows App Certification Kit run for v1.8.0 (2026-10-11, package
+  1.8.0.1 x64) gave `DPIAwarenessValidation` WARNING: "File pakko.exe neither has PerMonitorV2
+  manifested in the manifest nor calls into DPI Awareness APIs", and so "the app is not DPI
+  Aware". It is the only non-optional finding of that run. `pakko.exe` is a console program and
+  draws nothing, and 1.7.0 to 1.7.2 passed Store certification with it, so nothing is broken for a
+  user. Next: an `app.manifest` with `PerMonitorV2` for `Archiver.CLI`, as `Archiver.Shell` has
+  (T-F129), then a WACK run that reads `PASS`. The run before this one was on 1.4.2.1
+  (2026-08-01), before `pakko.exe` joined the package (T-F317): WACK belongs in every release's
+  checks.
+- **Reported by:** the v1.8.0 release checks, 2026-10-11.
+
