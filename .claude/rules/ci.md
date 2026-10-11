@@ -59,3 +59,5 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   `gh workflow run canary.yml --ref main`, confirm the run's `headSha` is that commit, and read the
   verdict from `gh run view <id> --json jobs` — not the run's colour, since the masked jobs report
   success even when they failed: `canary-failed-day` must be `skipped` and `canary-fuzz` `success`.
+  The on-device checks before a tag are the `release` tier of `docs/SMOKE.md` (T-F378), the
+  `store` tier before a Store submission; the run's table goes into the release record.

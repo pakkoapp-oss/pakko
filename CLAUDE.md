@@ -54,7 +54,7 @@ Full table (purpose, read when, update when): `.claude/rules/docs.md`.
 | `SECURITY.md` | threat model, all security/CVE/supply-chain/MOTW rationale |
 | `docs/DECISIONS.md` | decisions and rejected approaches, root causes, history |
 | `docs/DIAGRAMS.md` | required diagrams — COM/shell, operation lifecycle, `ZipArchiveService` branching, manifest |
-| `docs/TESTING.md` | test plan, fixtures, categories |
+| `docs/TESTING.md` / `docs/SMOKE.md` | test plan, fixtures, categories / on-device checks by tier |
 | `docs/SPEC.md` | product scope, non-goals, the version roadmap table |
 | `docs/CLI.md` | `pakko` command/switch specification |
 | `docs/POLICIES.md` / `docs/SIGNING.md` | Group Policy reference / code-signing policy |
@@ -300,9 +300,8 @@ Agent tool notes (the rest are in `.claude/rules/scripts.md` and `device-verific
 - **Monitor tool commands run in POSIX/Git-Bash syntax**, even when polling a Windows path —
   use `[ -f "/c/Program Files/..." ]`, not `Test-Path`, or the wait-loop never fires.
 - **On-device verification:** always the full `.\scripts\Deploy.ps1 -Thumbprint ...`, never a bare
-  `dotnet build` (it can install a stale package), and confirm the running window's title-bar build
-  time is within minutes of now before trusting any result. Read
-  `.claude/rules/device-verification.md` first.
+  `dotnet build` (it can install a stale package); the title-bar build time must be minutes old.
+  Read `.claude/rules/device-verification.md` first; the checks are rows of `docs/SMOKE.md`.
 
 ---
 

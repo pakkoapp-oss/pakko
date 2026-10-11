@@ -1049,63 +1049,25 @@ truncated header/payload vs. a clean end of stream, 200 concurrent `MessageWrite
 that neither `PasswordAnswer.ToString()` nor a `ProtocolException` quotes a password. All seven
 guards were mutation-checked (each removed in turn, its test turned red).
 
-## Manual Smoke Test Cycle (Full Stack)
+## On-Device Smoke Checks (T-F378)
 
-Ordered simplest → most complex. Confirms Core, Shell, ShellExtension (COM), and the WinUI app
-all work end-to-end after a change — not just `dotnet test`. Run before a release or after
-touching shell-triggered/UI behavior (see `CLAUDE.md`'s Workflow Tips). Last run in full:
-2026-07-06.
+The checks run on an installed build live in `docs/SMOKE.md`: one catalogue with stable row IDs,
+three tiers (`quick`, `release`, `store`) and, for each row, who can run it and on which artifact.
+It replaces the "Manual Smoke Test Cycle" this section held (last run in full 2026-07-06) and the
+per-release scenario files that were kept outside the repository.
 
-1. **Build core (fast fail)**
-   ```
-   dotnet build src/Archiver.Core
-   ```
-2. **.NET test suite**
-   ```
-   dotnet test --filter "Category!=Slow&Category!=VeryLarge"
-   ```
-3. **C++ Google Test suite** (rebuild only if the exe is missing or C++ source changed)
-   ```
-   tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.ShellExtension.Tests.exe
-   ```
-4. **Shell context menu (Explorer, manual)** — requires the installed MSIX to match the current
-   commit (check `Get-AppxPackage *Pakko*` version against the `Package.appxmanifest` version at
-   HEAD; re-run `Deploy.ps1` only if they've diverged). Use a scratch folder, verify actual disk
-   output (not just that a dialog appeared), clean up after:
-   - Folder → right-click → Pakko → `Add to "<name>.zip"` → verify entries keep their path
-     prefix (T-F75)
-   - Single non-zip file → same → verify archive created
-   - `.zip` → `Extract here` → verify smart-folder logic (wraps in a subfolder when the archive
-     has multiple root items)
-   - `.zip` → `Extract to folder...` → verify `<name>\` subfolder created
-   - `.zip` (valid) → `Test archive` → "No errors detected in the archive(s)."
-   - `.zip` (use the `corrupted_crc_stored.zip` fixture) → `Test archive` → CRC-32 mismatch
-     message naming the entry and both hash values
-   - Mixed selection (zip + non-zip) → confirms `Add to "..."` and `Test archive` both appear,
-     Test archive after the primary action (context-menu ordering rule, `CLAUDE.md`)
-5. **WinUI app (manual)** — launch via
-   `shell:AppsFolder\PavloRybchenko.Pakko_9hkd8feqeqbr4!App` (not `dotnet run` — WinUI dev builds
-   are VS-only, see `CLAUDE.md`). Add files → Archive → Clear → add the resulting archive →
-   Extract → diff extracted content against the originals. Known automation quirk: the
-   Destination text box does not reliably accept direct keyboard input — use the "..."
-   folder-picker button instead.
-6. **Slow tests** (optional — before a release or a Zip64/compression-path-adjacent change; now
-   also runs T-F114's 7-Zip-reference performance suite alongside Zip64's — see above for its
-   rerun-once-before-treating-as-regression rule)
-   ```
-   dotnet test --filter "Category=Slow"
-   ```
-7. **VeryLarge tests** (optional, on demand only — not part of a normal release cycle; run when
-   deliberately verifying Zip64's >4 GiB path or T-F114's one-large-file perf scenarios)
-   ```
-   dotnet test -c Release --filter "Category=VeryLarge"
-   ```
+`SmokeCatalogueTests` (Core) keeps it in step with the app. It reads the entry points from the
+source (`pakko`'s commands and switches from `CliArgumentParser.cs`, `Archiver.Shell`'s
+arguments, the Explorer command classes, `MainViewModel`'s commands, the Group Policy values) and
+fails when one has no live row or a row names one that is gone; IDs are unique and numbered
+without gaps per surface, so a row is retired, not deleted; a `quick` row needs no person and no
+release. Mutation-checked nine ways (2026-10-11): a missing command, menu item and policy, an
+unknown name and task, a repeated and a removed ID, a wrong tier, a `quick` row for a person.
 
 **Known non-bug finding:** `.zip`'s `UserChoice` file association may still point at Windows'
-built-in `CompressedFolder` handler even after Pakko is installed. T-F44 registers the
-association, but Windows requires explicit user opt-in via Settings → Default apps before
-double-click routes to a non-built-in handler — this is a Windows security mechanism (UserChoice
-hash), not a Pakko defect.
+built-in `CompressedFolder` handler even after Pakko is installed. Windows requires the user to
+choose a default app in Settings before a double-click reaches another handler (the UserChoice
+hash), so this is not a Pakko defect.
 
 ## Explorer Operation Window Strings (T-F268 step 6, 2026-09-27)
 
