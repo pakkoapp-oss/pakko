@@ -12533,7 +12533,7 @@ v1.8.0 was never submitted to the Store, so the Store gets 1.8.1.
   | EXP-006 | OK | Compress on a folder opens the App; PAR2 and a password chosen there: AES-256, index and volume file next to the archive, `pakko t` "recovery data intact" |
   | EXP-007 | OK | 300 files, Add to `e7.tar`: one tar, 300 entries |
   | EXP-008 | OK | de-AT first in the list: the ten items in German |
-  | EXP-009 | OK | 1.8.0.5 replaced by 1.8.0.6, Explorer not restarted: Test runs `Archiver.Shell.exe` of 1.8.0.6 |
+  | EXP-009 | part | 1.8.0.5 removed and 1.8.0.6 installed by `Deploy.ps1`, which restarts neither Explorer nor `dllhost`: Test runs `Archiver.Shell.exe` of 1.8.0.6. A removal and an install, not the update in place the row asks for |
   | EXP-010 | OK | `subst` drive: "Add to X.zip" and "X.tar"; `X.zip` lands on the Desktop (a root has no parent folder) |
   | APP-014 | not walked | two displays in "show only on 2"; the scale box of Settings could not be driven reliably, nothing was changed |
   | APP-015 | part | de-DE and ja-JP fully translated; ar-SA translated but not mirrored (T-F386); de-DE clips the PAR2 percentage box (T-F387) |
@@ -12542,12 +12542,20 @@ v1.8.0 was never submitted to the Store, so the Store gets 1.8.1.
   | OPW-003 | OK | conflict (Rename for all: one question, two numbered files), password, suspected bomb 1028:1 (Skip: nothing written); the password page clips its buttons (T-F385) |
   | OPW-005 | OK | titles, "10% · 256,0 МБ / 2,5 ГБ · 34,7 МБ/с", prompts and results in Ukrainian; the bomb result gives the size in bytes where the prompt says 400,0 МБ |
   | CLI-013 | OK | the prompt masks with `*`; a wrong password: one line and a new prompt; the right one extracts |
-  | POL-009 | FAIL | `EnforceMOTW` 0, 1, 2: the box locked at the policy's value; `DisableRecoveryData`: no option, no PAR2 line, a `.par2` refused; formats: opening is refused, but New archive still lists the blocked ones (T-F388) |
+  | POL-009 | FAIL | `EnforceMOTW` 0, 1, 2: the box locked at the policy's value; `DisableRecoveryData`: no option, no PAR2 line, a `.par2` refused (as "not an archive of a known format", which is not the reason); `AllowedFormats` = `zip`: opening a tar.gz is refused, but New archive still lists the tar formats (T-F388, P3: Core refuses the creation, so nothing blocked is written; does not hold the tag). The list under `BlockedFormats` was not looked at |
   | POL-010 | OK | `BlockedFormats` = `zip`: ZIP items hidden, no PAR2 item on the ZIP, both on its `.par2`; `DisableTarExtraction`: no Add to tar; `DisableRecoveryData`: no PAR2 item. `AllowedFormats` does not change the menu, by design (`ShellExtUtils.h`) |
   | PKG-010 | OK | package removed: no Pakko item on a folder, a ZIP or a file, nor in the classic menu |
 
   With the same run: `POL-001..008` and `PKG-005` OK (the kit: PASS, 24 tests, no DPI finding),
   `PKG-009` and `CLI-016` OK, `APP-012` OK after T-F380, and T-F326's device check.
+
+  Owed before the `v1.8.1` tag: `EXP-009` on an update in place (the release-tier run's
+  `PKG-006..008` make one; they have no hold, so one `Add-AppxPackage` of a higher build over
+  the installed one by hand), `APP-023` ("checking the archive" on a tar with several
+  entries), and the release-tier run itself. For the maintainer's batch with `APP-019..021`,
+  since driving them from a script changed the machine's settings once already: `APP-014`
+  (150 % and 200 %), the high-contrast part of `APP-013`, and a second look at `APP-015`
+  once T-F386 and T-F387 are done.
 - **What the walk taught about driving Explorer.** The menu's layout depends on the selection: with
   300 files selected "Open" sits where "Pakko" is for one file, and a click sent to remembered
   coordinates opened all 300 in Notepad. A click goes only to a position read from a screenshot of
