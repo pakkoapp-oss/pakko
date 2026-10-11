@@ -3,5 +3,3 @@
 # The two optional tests that have failed in every recorded run.
 Application count=FAIL
 Blocked executables=FAIL
-# pakko.exe has no DPI-awareness manifest (T-F377).
-DPIAwarenessValidation=WARNING

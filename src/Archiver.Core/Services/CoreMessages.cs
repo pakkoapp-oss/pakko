@@ -41,7 +41,8 @@ internal static class CoreMessages
 
     /// <summary>T-F297: corrupt content with a message Core wrote — still an
     /// <see cref="InvalidDataException"/>, so every existing catch of corrupt content applies.</summary>
-    internal static InvalidDataException InvalidData(CoreText text) => new(text.English, new CoreTextCarrier(text));
+    internal static InvalidDataException InvalidData(CoreText text, Exception? cause = null) =>
+        new(text.English, new CoreTextCarrier(text, cause));
 
     /// <summary>T-F333: archive data that ends early, with a message Core wrote.</summary>
     internal static EndOfStreamException EndOfStream(CoreText text) => new(text.English, new CoreTextCarrier(text));
@@ -110,7 +111,7 @@ internal sealed class CoreTextIOException(CoreText text, Exception? innerExcepti
 /// Carries Core's text as the inner exception of an exception type Core cannot derive from
 /// (<see cref="InvalidDataException"/> is sealed); see <see cref="CoreMessages.InvalidData"/>.
 /// </summary>
-internal sealed class CoreTextCarrier(CoreText text) : Exception(text.English), ICoreTextSource // NOSONAR: S3871 — internal, never thrown on its own
+internal sealed class CoreTextCarrier(CoreText text, Exception? cause = null) : Exception(text.English, cause), ICoreTextSource // NOSONAR: S3871 — internal, never thrown on its own
 {
     public CoreText Text { get; } = text;
 }

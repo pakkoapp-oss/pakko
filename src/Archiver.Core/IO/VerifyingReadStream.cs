@@ -28,7 +28,7 @@ internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uin
         }
         catch (InvalidDataException ex) when (IsDecompressorFailure(ex))
         {
-            throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentDamaged));
+            throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentDamaged), ex);
         }
         Account(buffer[..read]);
         return read;
@@ -46,7 +46,7 @@ internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uin
         }
         catch (InvalidDataException ex) when (IsDecompressorFailure(ex))
         {
-            throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentDamaged));
+            throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentDamaged), ex);
         }
         Account(buffer.Span[..read]);
         return read;
