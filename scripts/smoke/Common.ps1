@@ -493,6 +493,16 @@ function Stop-SmokeElevated {
     $true
 }
 
+# With -Hold: waits in the state a step made, until a file named "go" appears in the run's folder.
+function Wait-SmokeHold {
+    param([Parameter(Mandatory)][string]$What)
+    if (-not $Smoke.Hold) { return }
+    $go = Join-Path $Smoke.Work 'go'
+    Write-Host "`n  $What. Create the file $go to go on." -NoNewline
+    while (-not (Test-Path -LiteralPath $go)) { Start-Sleep -Milliseconds 500 }
+    Remove-Item -LiteralPath $go
+}
+
 # Runs -Body with the machine policy set to -Values (and the FIPS flag to -Fips), then puts the
 # registry back. Everything Pakko reads the policy with starts after the values are written:
 # every pakko and Archiver.Shell process reads it once, at its start.
@@ -501,12 +511,7 @@ function Use-SmokePolicy {
     $null = Send-ElevatedRequest @{ Kind = 'policy'; Values = $Values; Fips = $Fips }
     try {
         & $Body
-        if ($Smoke.Hold) {
-            $go = Join-Path $Smoke.Work 'go'
-            Write-Host "`n  policy held: $(($Values.Keys | ForEach-Object { "$_=$($Values[$_] -join ',')" }) -join '; ') fips=$Fips. Create the file $go to go on." -NoNewline
-            while (-not (Test-Path -LiteralPath $go)) { Start-Sleep -Milliseconds 500 }
-            Remove-Item -LiteralPath $go
-        }
+        Wait-SmokeHold "policy held: $(($Values.Keys | ForEach-Object { "$_=$($Values[$_] -join ',')" }) -join '; ') fips=$Fips"
     }
     finally { $null = Send-ElevatedRequest @{ Kind = 'policy'; Values = @{} } }
 }

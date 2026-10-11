@@ -30,7 +30,17 @@
 .PARAMETER Hold
     After the scripted checks of a POL row, leave its policy set until a file named "go" appears
     in the temporary folder: the time to look at the App and the Explorer menu under that policy
-    (POL-009, POL-010).
+    (POL-009, POL-010). PKG-009 waits the same way with the package removed (PKG-010).
+.PARAMETER PackageLifecycle
+    Run PKG-006..009. They remove and replace the installed package and its data; the run ends
+    with the package it began with.
+.PARAMETER ReleaseFiles
+    A folder that holds the bundle under test: before the tag, the one CI built on the release
+    commit (gh run download <run> -n pakko-msix-x64 -D <folder>); after it, the release's
+    (gh release download <tag> -D <folder>).
+.PARAMETER PreviousRelease
+    A folder with the files of the release before it (gh release download <tag> -D <folder>):
+    PKG-006..008 update from it and try to go back to it.
 .EXAMPLE
     .\Invoke-Smoke.ps1
 .EXAMPLE
@@ -53,7 +63,13 @@ param(
 
     [switch]$KeepWork,
 
-    [switch]$Hold
+    [switch]$Hold,
+
+    [switch]$PackageLifecycle,
+
+    [string]$ReleaseFiles,
+
+    [string]$PreviousRelease
 )
 
 $ErrorActionPreference = 'Stop'
@@ -107,6 +123,7 @@ $Smoke = @{
     Passwords = [System.Collections.Generic.HashSet[string]]::new()
     Elevated = @{}
     Hold     = [bool]$Hold
+    Lifecycle = @{ Asked = [bool]$PackageLifecycle; ReleaseFiles = $ReleaseFiles; PreviousRelease = $PreviousRelease }
 }
 
 $steps = @{}
@@ -158,6 +175,9 @@ $results = foreach ($row in $ordered) {
 
 Get-Process -Name 'Archiver.OperationUi', 'Archiver.Shell' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 $null = Stop-SmokeElevated
+# A life-cycle row that failed half way may have left another package, or none.
+try { Restore-SmokePackage }
+catch { Write-Warning "The package this run began with could not be put back ($($Smoke.Lifecycle.Original)): $_" }
 
 # --- the report ------------------------------------------------------------------------------
 $failed = @($results | Where-Object Result -eq 'FAIL')

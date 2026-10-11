@@ -1642,9 +1642,12 @@ re-measured with T-F346's script before and after.
       `pakko.log` or in the Application event log), `REL-001` (the slow tests) and `REL-002` (the
       canary run on the commit, read and never started) (2026-10-11). A row without a step is
       already printed with its action and expectation, which is the card an `mcp` row needs.
-    - [ ] 3e — the package's life cycle (`PKG-006..009`): these remove and replace the installed
-      package, so they run only when asked for, keep the package data and end with the dev
-      package back.
+    - [x] 3e — the package's life cycle (2026-10-11): `PKG-006..009` run last and only with
+      `-PackageLifecycle`, and the run ends with the package it began with, also after a row
+      that failed half way. `PKG-006..008` update from the previous release's bundle to the
+      new one (`-PreviousRelease`, `-ReleaseFiles`), which before a tag is the bundle CI built
+      on the release commit. All four OK on 1.7.2.0 to 1.8.0.0 in half a minute; six faults, six red rows. The package data is
+      not kept (see `docs/DECISIONS.md`). The menu after a removal is the hand-run `PKG-010`.
   - [ ] 4 — the `store` tier and the first full run, its table in the release record.
 - **Reported by:** maintainer request, 2026-10-11.
 

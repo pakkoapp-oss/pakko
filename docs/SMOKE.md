@@ -24,7 +24,8 @@ Columns:
   server, or a person), `uac` (a script that needs one elevation prompt), `user` (a person only:
   a real drag, a sign-out), `store-machine` (a machine with the Store's install).
 - **On** - what is under test: `dev` (the package `Deploy.ps1` installed), `tag` (the files of the
-  GitHub Release), `store-bundle`, `store-install`.
+  GitHub Release; before the tag exists, the bundle CI built on the release commit),
+  `store-bundle`, `store-install`.
 - **Covers** - the entry points the row exercises, as the code names them (`cli:` a `pakko`
   command or switch, `shell:` an `Archiver.Shell` argument, `menu:` an Explorer command class,
   `app:` a `MainViewModel` command, `policy:` a Group Policy value), and the tasks it guards.
@@ -191,10 +192,11 @@ the registry back in a `finally` block. The App reads policy once at startup: re
 | PKG-003 | quick | script | dev | `pakko -v` from the install folder; the file version of each of the four exes | `pakko -v` names the installed package's full name; every exe has a file version | T-F317 |
 | PKG-004 | quick | script | dev | After the run, look in `%TEMP%` for `PakkoTarStage_*`, `PakkoTarSandbox` contents and `*.zip.tmp` | Nothing is left; no junction, hardlink or staging file of this run either | T-F309 T-F286 T-F244 T-F248 |
 | PKG-005 | release | uac | dev | `appcert.exe test -apptype packagedwin32` on the `.msix` of the installed package; compare the tests that did not pass with `scripts/smoke/wack-known.txt` | No finding that the file does not list | T-F377 |
-| PKG-006 | release | script | tag | Install the previous release, create an archive and a marker in the package data, then install the new bundle over it | Same package family; the marker and the log are kept; the App starts; `pakko t` accepts the old archive | T-F363 |
-| PKG-007 | release | script | tag | The same update with the App running, with `-ForceApplicationShutdown` | The App is closed, the update installs, the App starts | T-F363 |
-| PKG-008 | release | script | tag | Install the previous release over the new one | Refused; the new one still works | T-F368 |
-| PKG-009 | release | script | dev | Remove the package | No `pakko` alias, no Pakko item in the Explorer menu, no process left; a redeploy works | T-F361 |
+| PKG-006 | release | script | tag | With `-PackageLifecycle`: remove the package, install the previous release's bundle, create an archive with its `pakko`, write a marker into the package data and start the App once; then install the new bundle over it | The new version, the same package family; the marker and `pakko.log` are kept; the App starts; `pakko t` accepts the old archive; no crash in the event log | T-F363 |
+| PKG-007 | release | script | tag | The same update with the App running: first without `-ForceApplicationShutdown`, then with it | Without it the update is refused as in use and nothing changes; with it the App is closed, the new version is installed and the App starts | T-F363 |
+| PKG-008 | release | script | tag | Install the previous release's bundle over the new one | Refused as a lower version; the package is the same, `pakko -v` names it, and `pakko a` and `t` work | T-F368 |
+| PKG-009 | release | script | dev | With `-PackageLifecycle`: start the App, remove the package, then install the dev package again | After the removal: no package, no `pakko` alias, no process, no package data. After the install: the package the run began with, and `pakko -v` names it | T-F361 |
+| PKG-010 | release | mcp | dev | `Invoke-Smoke.ps1 -Tier release -Only PKG-009 -PackageLifecycle -Hold`: while the package is removed, open the Explorer menu on a file, a folder and a ZIP | No Pakko item in the menu or under "Show more options" | T-F361 |
 
 ## PRF - speed budgets on the installed build
 

@@ -60,4 +60,8 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   verdict from `gh run view <id> --json jobs` — not the run's colour, since the masked jobs report
   success even when they failed: `canary-failed-day` must be `skipped` and `canary-fuzz` `success`.
   The on-device checks before a tag are the `release` tier of `docs/SMOKE.md` (T-F378), the
-  `store` tier before a Store submission; the run's table goes into the release record.
+  `store` tier before a Store submission; the run's table goes into the release record. Run it
+  as `Invoke-Smoke.ps1 -Tier release -PackageLifecycle -ReleaseFiles <a> -PreviousRelease <b>`
+  (`<a>`: `gh run download <build run of the release commit> -n pakko-msix-x64 -D <a>`; `<b>`:
+  `gh release download <last tag> -D <b>`): without these the update rows `PKG-006..009` are
+  only reported as skipped.
