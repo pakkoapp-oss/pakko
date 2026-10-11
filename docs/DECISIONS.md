@@ -12514,6 +12514,33 @@ reported as `manual` with its text.
 - *Seen red:* with `-PakkoExe` set to the Debug build, PRF-001 and PRF-002 fail (13.3 s against
   3.4 s, 13.8 s against 2.4 s).
 
+**Step 3a, the console rows of the release tier (2026-10-11).** Fourteen steps in
+`scripts/smoke/CliRelease.ps1`, each written after its behaviour was read from package 1.8.0.1.
+- *The list of owed steps.* 36 rows were marked `script` or `uac` with no step, and nothing
+  checked the mark. `SmokeCatalogueTests` now compares the rows without a step with a list in the
+  test, exactly: a new scripted row without a step fails, and so does a row left on the list
+  after it got one. Seen red with the list empty.
+- *Ctrl+C.* The signal goes to a console, so the sender has to leave its own and join the
+  target's; done in the run's process it would take the run's console away. `tools/Send-CtrlC.ps1`
+  is a process of its own, started before the `pakko` to cancel (compiling its P/Invoke takes a
+  second) and told the process ID through a file. `pakko a -mx=9` on 6000 files and 200 MB runs
+  for 11 s; the signal 90 ms after the first temporary file gives exit 255 and an empty folder.
+- *Fixtures a tool will not write.* A tar with `../` in a name, with cp866 names or with two
+  entries of one name is written byte by byte (`New-TarFile`); a ZIP with names that leave the
+  folder, with cp866 names, and a bomb come from .NET's own writer. 7z and RAR are the two files
+  of `Archiver.Core.IntegrationTests/Fixtures`: nothing on the machine creates a RAR.
+- *What the rows said and the program does.* `a -so` is what a terminal refuses (the row said
+  `x -so`); a destination of 329 characters is extracted into, not refused; tar.exe prints no
+  time of day for an entry from 2020, so the listing is checked to the day.
+- *Found:* T-F379. A killed `pakko a` leaves a hidden chunk folder that a later small `pakko a`
+  into the same folder does not remove.
+- *OPW-001 passed only on files nothing had read.* After the console rows had read the 6000
+  files, the Shell archived them in 1.2 s and no window came up at all: the 6.6 s of step 2 was
+  the first read of new files. The row archives the 200 MB file with them now: 7 s with every
+  file cached, the window at 1.4 s.
+- *A time limit for every `pakko` a step starts,* so a hang fails one row (15 minutes unless the
+  step says less; the junction-loop and 20,000-folder rows say 60 s).
+
 **Not taken.** A machine-readable file (TSV or JSON) next to a rendered page: two files to keep
 equal for a table a regular expression already reads. A new test project for the guard: the
 existing document-reading tests live in `Archiver.Core.Tests/Services`.

@@ -23,9 +23,12 @@ function Get-StepFolder {
 }
 
 function Invoke-Tool {
-    param([Parameter(Mandatory)][string]$Exe, [string[]]$Arguments = @(), [string]$WorkingDirectory)
+    # -CommandLine: the arguments as one string, for a program that parses its own (cmd.exe).
+    # A program still running after -TimeoutSeconds is killed with its children, and the step fails.
+    param([Parameter(Mandatory)][string]$Exe, [string[]]$Arguments = @(), [string]$WorkingDirectory, [string]$CommandLine, [int]$TimeoutSeconds = 900)
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new($Exe)
     foreach ($argument in $Arguments) { $startInfo.ArgumentList.Add($argument) }
+    if ($CommandLine) { $startInfo.Arguments = $CommandLine }
     $startInfo.UseShellExecute = $false
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
@@ -37,9 +40,14 @@ function Invoke-Tool {
     $process = [System.Diagnostics.Process]::Start($startInfo)
     try {
         $errorText = $process.StandardError.ReadToEndAsync()
-        $output = $process.StandardOutput.ReadToEnd()
+        $outputText = $process.StandardOutput.ReadToEndAsync()
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            $process.Kill($true)
+            throw "$(Split-Path -Leaf $Exe) $($Arguments -join ' ')$CommandLine did not end in $TimeoutSeconds s"
+        }
         $process.WaitForExit()
         $watch.Stop()
+        $output = $outputText.GetAwaiter().GetResult()
         [pscustomobject]@{
             ExitCode = $process.ExitCode
             Output   = $output
@@ -52,8 +60,112 @@ function Invoke-Tool {
 }
 
 function Invoke-Pakko {
-    param([Parameter(Mandatory)][string[]]$Arguments, [string]$WorkingDirectory)
-    Invoke-Tool -Exe $Smoke.Pakko -Arguments $Arguments -WorkingDirectory $WorkingDirectory
+    param([Parameter(Mandatory)][string[]]$Arguments, [string]$WorkingDirectory, [int]$TimeoutSeconds = 900)
+    Invoke-Tool -Exe $Smoke.Pakko -Arguments $Arguments -WorkingDirectory $WorkingDirectory -TimeoutSeconds $TimeoutSeconds
+}
+
+# One line as typed at cmd.exe's prompt: pipes and redirections are cmd's.
+function Invoke-CmdLine {
+    param([Parameter(Mandatory)][string]$Line, [string]$WorkingDirectory)
+    Invoke-Tool -Exe (Join-Path $env:SystemRoot 'System32\cmd.exe') -CommandLine "/d /s /c `"$Line`"" -WorkingDirectory $WorkingDirectory
+}
+
+# A ustar file written byte by byte: the names are stored exactly as given, which tar.exe will
+# not do for a name that leaves the folder or is not valid UTF-8.
+function New-TarFile {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Writes a fixture inside the run''s own temporary folder.')]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        # Each: @{ Name = [byte[]] or string; Content = string; Modified = [datetime]; Folder = $true }
+        [Parameter(Mandatory)][hashtable[]]$Entries
+    )
+    $stream = [System.IO.File]::Create($Path)
+    try {
+        foreach ($entry in $Entries) {
+            $name = $entry.Name -is [byte[]] ? $entry.Name : [System.Text.Encoding]::UTF8.GetBytes($entry.Name)
+            $content = [System.Text.Encoding]::UTF8.GetBytes([string]$entry.Content)
+            $modified = $entry.Modified ? [datetime]$entry.Modified : [datetime]::UtcNow
+            $header = [byte[]]::new(512)
+            [System.Array]::Copy($name, $header, [System.Math]::Min($name.Length, 100))
+            $fields = @(
+                @{ Offset = 100; Text = '0000644' }, @{ Offset = 108; Text = '0000000' }, @{ Offset = 116; Text = '0000000' }
+                @{ Offset = 124; Text = [System.Convert]::ToString($content.Length, 8).PadLeft(11, '0') }
+                @{ Offset = 136; Text = [System.Convert]::ToString([System.DateTimeOffset]::new($modified.ToUniversalTime()).ToUnixTimeSeconds(), 8).PadLeft(11, '0') }
+                @{ Offset = 148; Text = '        ' }, @{ Offset = 156; Text = $entry.Folder ? '5' : '0' }, @{ Offset = 257; Text = 'ustar' }, @{ Offset = 263; Text = '00' }
+            )
+            foreach ($field in $fields) {
+                $bytes = [System.Text.Encoding]::ASCII.GetBytes($field.Text)
+                [System.Array]::Copy($bytes, 0, $header, $field.Offset, $bytes.Length)
+            }
+            $sum = 0
+            foreach ($byte in $header) { $sum += $byte }
+            $checksum = [System.Text.Encoding]::ASCII.GetBytes([System.Convert]::ToString($sum, 8).PadLeft(6, '0'))
+            [System.Array]::Copy($checksum, 0, $header, 148, 6)
+            $header[154] = 0
+            $stream.Write($header, 0, 512)
+            $stream.Write($content, 0, $content.Length)
+            $padding = (512 - $content.Length % 512) % 512
+            $stream.Write([byte[]]::new($padding), 0, $padding)
+        }
+        $stream.Write([byte[]]::new(1024), 0, 1024)
+    }
+    finally { $stream.Dispose() }
+}
+
+# What tar extraction of this run left in %TEMP%: staging folders and quarantined items.
+function Get-TarLeftover {
+    param([Parameter(Mandatory)][datetime]$Since)
+    $temp = [System.IO.Path]::GetTempPath()
+    @(Get-ChildItem -LiteralPath $temp -Directory -Filter 'PakkoTarStage_*' -ErrorAction SilentlyContinue | Where-Object CreationTime -ge $Since)
+    $sandbox = Join-Path $temp 'PakkoTarSandbox'
+    if (Test-Path -LiteralPath $sandbox) {
+        @(Get-ChildItem -LiteralPath $sandbox -ErrorAction SilentlyContinue | Where-Object CreationTime -ge $Since)
+    }
+}
+
+# pakko in a hidden console of its own, as a person's terminal gives it one: the process to send
+# Ctrl+C to, or to kill. Its output is not captured.
+function Start-PakkoInConsole {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Starts the process a smoke step asked for.')]
+    param([Parameter(Mandatory)][string[]]$Arguments)
+    $quoted = $Arguments | ForEach-Object { $_ -match '\s' ? "`"$_`"" : $_ }
+    $process = Start-Process -FilePath $Smoke.Pakko -ArgumentList $quoted -WindowStyle Hidden -PassThru
+    # Without this the exit code of a process started this way cannot be read later.
+    $null = $process.Handle
+    $process
+}
+
+# Ctrl+C for a process from Start-PakkoInConsole. The sender takes a second to start: get it
+# with -Prepare before the process to cancel is started, then call again with -Signal.
+function Send-CtrlC {
+    param([switch]$Prepare, [hashtable]$Signal, [System.Diagnostics.Process]$Process)
+    if ($Prepare) {
+        $folder = Get-StepFolder ('ctrlc-' + [System.IO.Path]::GetRandomFileName())
+        $script = Join-Path $PSScriptRoot 'tools\Send-CtrlC.ps1'
+        $helper = Start-Process -FilePath (Get-Process -Id $PID).Path -ArgumentList @('-NoProfile', '-File', "`"$script`"", '-Folder', "`"$folder`"") -WindowStyle Hidden -PassThru
+        $deadline = (Get-Date).AddSeconds(30)
+        while (-not (Test-Path -LiteralPath (Join-Path $folder 'ready')) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 50 }
+        Assert-Smoke (Test-Path -LiteralPath (Join-Path $folder 'ready')) 'the Ctrl+C sender did not start'
+        return @{ Folder = $folder; Helper = $helper }
+    }
+
+    Set-Content -LiteralPath (Join-Path $Signal.Folder 'target') -Value $Process.Id -NoNewline
+    $sent = Join-Path $Signal.Folder 'sent'
+    $deadline = (Get-Date).AddSeconds(10)
+    while (-not (Test-Path -LiteralPath $sent) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 20 }
+    Assert-Smoke ((Test-Path -LiteralPath $sent) -and (Get-Content -LiteralPath $sent -Raw).Trim() -eq 'True') 'Ctrl+C could not be sent to the process'
+}
+
+# Waits until -Condition is true; fails the step after -TimeoutSeconds.
+function Wait-Smoke {
+    param([Parameter(Mandatory)][scriptblock]$Condition, [Parameter(Mandatory)][string]$What, [int]$TimeoutSeconds = 30)
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while (-not (& $Condition)) {
+        if ((Get-Date) -gt $deadline) { throw "$What did not happen in $TimeoutSeconds s" }
+        Start-Sleep -Milliseconds 20
+    }
 }
 
 function Get-Sha256 {

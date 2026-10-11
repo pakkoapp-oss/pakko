@@ -1620,9 +1620,30 @@ re-measured with T-F346's script before and after.
     row ID. On package 1.8.0.1 the tier takes 2.5 minutes, all rows OK; with the Debug build as
     `-PakkoExe` the PAR2 speed rows fail. The guard test requires a step for every `quick` row and
     a live scripted row for every step. `-Tier`, not `-Profile`: `$Profile` is PowerShell's own.
-  - [ ] 3 — the `release` tier: the elevated batch (five policies, FIPS, WACK with its report
-    compared to the last one), the update over the previous release, the hostile-input and
-    failing-destination rows, action cards for the `mcp` rows.
+  - [~] 3 — the `release` tier, one PR per part. `SmokeCatalogueTests` now holds the list of
+    scripted rows that still have no step; it only shrinks.
+    - [x] 3a — the 14 scripted `CLI` rows (2026-10-11): other formats and an escaping tar, pipes,
+      Ctrl+C, three shells, code pages, the download mark, hashes against 7-Zip, hostile ZIPs,
+      failing destinations, two runs at once and a killed one, old dates, tar oddities, cp866
+      names, message texts. All OK on package 1.8.0.1 in about a minute; found T-F379.
+    - [ ] 3b — the `SHL`, `OPW` and `PAR` rows.
+    - [ ] 3c — the elevated batch: five policies, FIPS, WACK compared with its last report. The
+      helper is written (branch `feat/t-f378-smoke-elevated`) and waits for an elevation prompt
+      to be checked against.
+    - [ ] 3d — the package's life cycle, the release checks, action cards for the `mcp` rows.
   - [ ] 4 — the `store` tier and the first full run, its table in the release record.
 - **Reported by:** maintainer request, 2026-10-11.
+
+### T-F379 — A killed `pakko a` leaves its chunk folder until a later large run (P3)
+
+- [ ] **Status:** open. `pakko a -mx=9 out.zip <6000 files> <a 200 MB file>` killed mid-write
+  leaves `.pakko-a-*.tmp` and a hidden `.pakko-tmp-*` folder next to the archive. The next `pakko
+  a` into that folder removes the `.tmp` file always (`ArchiveTempFile.Create`), but the chunk
+  folder only when that run goes through `ParallelSingleArchiveWriter`, which holds the sweep
+  for `.pakko-tmp-`: after `pakko a out.zip <a small folder>` the chunk folder of the killed run
+  is still there, with whatever it had compressed. Found by smoke row CLI-016 on package 1.8.0.1
+  (2026-10-11); the row runs the same large command twice until this is fixed. Next: sweep both
+  prefixes from one place that every `a` passes, with a test that kills nothing (a stale folder
+  with a dead owner's name, then a small archive); then make CLI-016's second run a small one.
+- **Reported by:** T-F378 step 3a, 2026-10-11.
 
