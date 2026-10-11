@@ -97,8 +97,10 @@ Add-SmokeStep 'CLI-004' {
         }
     }
 
-    $methods = Invoke-Tool -Exe $Smoke.SevenZip -Arguments @('l', '-slt', "-p$password", (Join-Path $folder 'aes.zip'))
-    Assert-Smoke ($methods.Output -match 'Method = AES-256') '7za does not report AES-256 for aes.zip'
+    if (Test-Path -LiteralPath $Smoke.SevenZip) {
+        $methods = Invoke-Tool -Exe $Smoke.SevenZip -Arguments @('l', '-slt', "-p$password", (Join-Path $folder 'aes.zip'))
+        Assert-Smoke ($methods.Output -match 'Method = AES-256') '7za does not report AES-256 for aes.zip'
+    }
 }
 
 Add-SmokeStep 'CLI-005' {
@@ -111,13 +113,15 @@ Add-SmokeStep 'CLI-005' {
     Write-RandomFile -Path $source -Length 400KB -Seed 7
 
     $locked = Join-Path $folder 'aes.zip'
-    $null = Invoke-Pakko @('a', $locked, '-pRight-1', '-mem=AES256', $source)
+    $made = Invoke-Pakko @('a', $locked, '-pRight-1', '-mem=AES256', $source)
+    Assert-Smoke ($made.ExitCode -eq 0) "a aes.zip: exit $($made.ExitCode) $($made.Text)"
     $wrong = Invoke-Pakko @('t', $locked, '-pWrong-1')
     Assert-Smoke ($wrong.ExitCode -eq 2) "a wrong password: exit $($wrong.ExitCode), expected 2"
     Assert-Smoke (@($wrong.Text -split '\r?\n' | Where-Object { $_.Trim() }).Count -le 2) "a wrong password takes more than two lines: $($wrong.Text)"
 
     $damaged = Join-Path $folder 'damaged.zip'
-    $null = Invoke-Pakko @('a', '-mx=0', $damaged, $source)
+    $made = Invoke-Pakko @('a', '-mx=0', $damaged, $source)
+    Assert-Smoke ($made.ExitCode -eq 0) "a damaged.zip: exit $($made.ExitCode) $($made.Text)"
     Set-DamagedRange -Path $damaged -Offset 100KB -Count 16
     $tested = Invoke-Pakko @('t', $damaged)
     Assert-Smoke ($tested.ExitCode -eq 2) "t on a damaged ZIP: exit $($tested.ExitCode), expected 2"
