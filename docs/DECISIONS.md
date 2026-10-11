@@ -12556,6 +12556,11 @@ v1.8.0 was never submitted to the Store, so the Store gets 1.8.1.
   since driving them from a script changed the machine's settings once already: `APP-014`
   (150 % and 200 %), the high-contrast part of `APP-013`, and a second look at `APP-015`
   once T-F386 and T-F387 are done.
+- **The walk's four findings ship in 1.8.1 too** (the maintainer's decision, 2026-10-11): T-F385
+  (the operation window's password page), T-F386 (right-to-left layout of the App and its
+  dialogs; the title bar row stays left to right), T-F387 (the PAR2 row wraps), T-F388 (the
+  Format list follows the policy). Checked on package 1.8.0.7, T-F388 by its tests and by
+  POL-009 in the release run.
 - **What the walk taught about driving Explorer.** The menu's layout depends on the selection: with
   300 files selected "Open" sits where "Pakko" is for one file, and a click sent to remembered
   coordinates opened all 300 in Notepad. A click goes only to a position read from a screenshot of

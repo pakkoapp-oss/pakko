@@ -617,11 +617,19 @@ public sealed partial class MainViewModel : ObservableObject
     private static string RecoveryPercentText(int percent) =>
         RecoveryDataOption.PercentText(percent, System.Globalization.CultureInfo.CurrentCulture);
 
-    // T-F51: DisableTarExtraction also hides the 6 tar-family Format ComboBoxItems — GroupPolicy
-    // is loaded once at process startup and never changes mid-session, so this is a fixed value
-    // for the lifetime of the ViewModel, not an [ObservableProperty].
-    public Visibility TarFormatVisibility =>
-        _policy.DisableTarExtraction ? Visibility.Collapsed : Visibility.Visible;
+    // T-F388: the card lists a format only when the policy lets Core create it (allowed, not
+    // blocked, and tar.exe not disabled for the tar family). GroupPolicyOptions is loaded once at
+    // process startup, so these are fixed for the lifetime of the ViewModel.
+    public Visibility ZipFormatVisibility => FormatVisibility(ArchiveContainerFormat.Zip);
+    public Visibility TarFormatVisibility => FormatVisibility(ArchiveContainerFormat.Tar);
+    public Visibility TarGzFormatVisibility => FormatVisibility(ArchiveContainerFormat.TarGz);
+    public Visibility TarBz2FormatVisibility => FormatVisibility(ArchiveContainerFormat.TarBz2);
+    public Visibility TarXzFormatVisibility => FormatVisibility(ArchiveContainerFormat.TarXz);
+    public Visibility TarZstFormatVisibility => FormatVisibility(ArchiveContainerFormat.TarZst);
+    public Visibility TarLzmaFormatVisibility => FormatVisibility(ArchiveContainerFormat.TarLzma);
+
+    private Visibility FormatVisibility(ArchiveContainerFormat format) =>
+        CreationFormatOption.IsOffered(_policy, format) ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
     public partial bool OpenDestinationFolder { get; set; } = false;
@@ -837,6 +845,7 @@ public sealed partial class MainViewModel : ObservableObject
         _dialogService = dialogService;
         _logService = logService;
         _policy = groupPolicyOptions;
+        SelectedContainerFormat = CreationFormatOption.Default(_policy);
         _browseWork.Changed += CloseArchiveCommand.NotifyCanExecuteChanged;
 
         // T-F51: defensive only — nothing in this ViewModel currently sets

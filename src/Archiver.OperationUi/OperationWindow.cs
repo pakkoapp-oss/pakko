@@ -72,6 +72,10 @@ internal sealed partial class OperationWindow
     private readonly TextBlock _passwordMessage = new() { FontSize = 14, TextWrapping = TextWrapping.Wrap };
 
     // No MaxLength: a long password is never cut (T-F255).
+    // T-F385: a label of its own, not PasswordBox.Header. The header's part of the box is not
+    // realized when the window is measured for its first page, so the window came out a line
+    // short and cut the buttons.
+    private readonly TextBlock _passwordLabel = new() { FontSize = 14 };
     private readonly PasswordBox _passwordBox = new();
     private readonly TextBlock _wrongPassword = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap };
     private readonly CheckBox _applyToRemaining = new();
@@ -252,7 +256,8 @@ internal sealed partial class OperationWindow
             case AskPassword ask:
                 _heading.Text = _model.Text(WindowStrings.PasswordTitle);
                 _passwordMessage.Text = _model.PasswordMessage ?? "";
-                _passwordBox.Header = _model.Text(WindowStrings.PasswordLabel);
+                _passwordLabel.Text = _model.Text(WindowStrings.PasswordLabel);
+                AutomationProperties.SetName(_passwordBox, _passwordLabel.Text);
                 _wrongPassword.Text = _model.Text(WindowStrings.WrongPassword);
                 SetVisible(_wrongPassword, ask.PreviousAttemptWasWrong);
                 _applyToRemaining.Content = _model.Text(WindowStrings.ApplyToRemaining);
@@ -293,6 +298,7 @@ internal sealed partial class OperationWindow
     private void BuildPasswordPanel()
     {
         _passwordPanel.Children.Add(_passwordMessage);
+        _passwordPanel.Children.Add(_passwordLabel);
         _passwordPanel.Children.Add(_passwordBox);
         _passwordPanel.Children.Add(_wrongPassword);
         _passwordPanel.Children.Add(_applyToRemaining);

@@ -37,7 +37,8 @@ public sealed class DialogService : IDialogService
             PrimaryButtonText = _res.GetString("PermanentDeleteDialogDeleteButton"),
             CloseButtonText = _res.GetString("PermanentDeleteDialogKeepButton"),
             DefaultButton = ContentDialogButton.Close,
-            XamlRoot = _window!.Content.XamlRoot
+            XamlRoot = _window!.Content.XamlRoot,
+            FlowDirection = CoreMessageText.FlowDirection
         };
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }
@@ -51,7 +52,8 @@ public sealed class DialogService : IDialogService
             Title = _res.GetString("NotDeletedDialogTitle"),
             Content = BuildPathList(_res.GetString("NotDeletedDialogMessage"), paths),
             CloseButtonText = _res.GetString("DialogOkButton"),
-            XamlRoot = _window!.Content.XamlRoot
+            XamlRoot = _window!.Content.XamlRoot,
+            FlowDirection = CoreMessageText.FlowDirection
         };
         await dialog.ShowAsync();
     }
@@ -72,7 +74,8 @@ public sealed class DialogService : IDialogService
             Title = title,
             Content = message,
             CloseButtonText = _res.GetString("DialogOkButton"),
-            XamlRoot = _window!.Content.XamlRoot
+            XamlRoot = _window!.Content.XamlRoot,
+            FlowDirection = CoreMessageText.FlowDirection
         };
         await dialog.ShowAsync();
     }
@@ -88,7 +91,8 @@ public sealed class DialogService : IDialogService
             Content = message,
             PrimaryButtonText = _res.GetString("DialogYesButton"),
             CloseButtonText = _res.GetString("DialogNoButton"),
-            XamlRoot = _window!.Content.XamlRoot
+            XamlRoot = _window!.Content.XamlRoot,
+            FlowDirection = CoreMessageText.FlowDirection
         };
         ContentDialogResult result = await dialog.ShowAsync();
         return result == ContentDialogResult.Primary;
@@ -115,7 +119,8 @@ public sealed class DialogService : IDialogService
                         .Replace("{1}", warning.Ratio.ToString()),
                     PrimaryButtonText = _res.GetString("DialogYesButton"),
                     CloseButtonText = _res.GetString("DialogNoButton"),
-                    XamlRoot = _window!.Content.XamlRoot
+                    XamlRoot = _window!.Content.XamlRoot,
+                    FlowDirection = CoreMessageText.FlowDirection
                 };
                 ContentDialogResult result = await dialog.ShowAsync();
                 tcs.SetResult(result == ContentDialogResult.Primary);
@@ -185,7 +190,8 @@ public sealed class DialogService : IDialogService
                     SecondaryButtonText = _res.GetString("ConflictDialogRenameButton"),
                     CloseButtonText = _res.GetString("ConflictDialogSkipButton"),
                     DefaultButton = ContentDialogButton.Close, // Enter resolves to Skip, not Overwrite
-                    XamlRoot = _window!.Content.XamlRoot
+                    XamlRoot = _window!.Content.XamlRoot,
+                    FlowDirection = CoreMessageText.FlowDirection
                 };
                 shown = dialog;
                 ContentDialogResult result = await dialog.ShowAsync();
@@ -297,7 +303,8 @@ public sealed class DialogService : IDialogService
                     PrimaryButtonText = _res.GetString("PasswordDialogOkButton"),
                     CloseButtonText = _res.GetString("PasswordDialogCancelButton"),
                     DefaultButton = ContentDialogButton.Primary,
-                    XamlRoot = _window!.Content.XamlRoot
+                    XamlRoot = _window!.Content.XamlRoot,
+                    FlowDirection = CoreMessageText.FlowDirection
                 };
                 // Without this, focus lands on the primary button and the user has to click into
                 // the box before typing — a real papercut on a dialog whose only real input is the
@@ -469,7 +476,8 @@ public sealed class DialogService : IDialogService
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             },
             CloseButtonText = _res.GetString("DialogOkButton"),
-            XamlRoot = _window!.Content.XamlRoot
+            XamlRoot = _window!.Content.XamlRoot,
+            FlowDirection = CoreMessageText.FlowDirection
         };
 
         await dialog.ShowAsync();
@@ -490,7 +498,8 @@ public sealed class DialogService : IDialogService
                 Title = _res.GetString("ScanResultDialogTitle"),
                 Content = _res.GetString("ScanNoThreatsFound"),
                 CloseButtonText = _res.GetString("DialogOkButton"),
-                XamlRoot = _window!.Content.XamlRoot
+                XamlRoot = _window!.Content.XamlRoot,
+                FlowDirection = CoreMessageText.FlowDirection
             };
             await cleanDialog.ShowAsync();
             return;
@@ -552,7 +561,8 @@ public sealed class DialogService : IDialogService
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             },
             CloseButtonText = _res.GetString("DialogOkButton"),
-            XamlRoot = _window!.Content.XamlRoot
+            XamlRoot = _window!.Content.XamlRoot,
+            FlowDirection = CoreMessageText.FlowDirection
         };
 
         await dialog.ShowAsync();
@@ -608,7 +618,8 @@ public sealed class DialogService : IDialogService
             PrimaryButtonText = copyText.Length > 0 ? _res.GetString("HashCopyButton") : string.Empty,
             CloseButtonText = _res.GetString("DialogOkButton"),
             DefaultButton = ContentDialogButton.Close,
-            XamlRoot = _window!.Content.XamlRoot
+            XamlRoot = _window!.Content.XamlRoot,
+            FlowDirection = CoreMessageText.FlowDirection
         };
         dialog.PrimaryButtonClick += (_, args) =>
         {
@@ -678,7 +689,8 @@ public sealed class DialogService : IDialogService
             Title = _res.GetString("AboutDialogTitle"),
             Content = panel,
             CloseButtonText = _res.GetString("AboutCloseButtonText"),
-            XamlRoot = _window!.Content.XamlRoot
+            XamlRoot = _window!.Content.XamlRoot,
+            FlowDirection = CoreMessageText.FlowDirection
         };
         await dialog.ShowAsync();
     }
