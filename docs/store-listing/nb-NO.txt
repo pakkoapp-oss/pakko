@@ -38,5 +38,5 @@ zip med passord
 • Nytt: gjenopprettingsdata (PAR2). Slå på «Legg til gjenopprettingsdata (PAR2)» når du oppretter et arkiv, så kan arkivet repareres etter en skade.
 • «Kontroller med PAR2» og «Reparer med PAR2» i Filutforsker-menyen og i appen; den reparerte kopien er en ny fil, og originalen endres ikke.
 • PAR2-filer fra andre programmer fungerer også; kommandoen pakko legger til gjenopprettingsdata med -rr og reparerer med r.
-• Pakko starter raskere, og nedlastingen er mye mindre.
-• Store filer komprimeres på flere prosessorkjerner.
+• Rettet: Delete, Enter og menytasten fungerer igjen på en listerad som er valgt med tastaturet.
+• Vinduet speilvendes for språk som skrives fra høyre mot venstre; flere meldinger og oppsettdetaljer er rettet.

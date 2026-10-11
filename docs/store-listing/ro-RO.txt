@@ -38,5 +38,5 @@ open source
 • Nou: date de recuperare (PAR2). Activați „Adăugare date de recuperare (PAR2)” la crearea unei arhive, iar arhiva va putea fi reparată după deteriorare.
 • „Verifică cu PAR2” și „Repară cu PAR2” în meniul din Explorer și în aplicație; copia reparată este un fișier nou, iar originalul nu este modificat.
 • Funcționează și fișierele PAR2 create de alte programe; comanda pakko adaugă date de recuperare cu -rr și repară cu r.
-• Pakko pornește mai repede, iar descărcarea este mult mai mică.
-• Fișierele mari sunt comprimate pe mai multe nuclee ale procesorului.
+• Remediat: tastele Delete, Enter și tasta de meniu funcționează din nou pe un rând al listei selectat de la tastatură.
+• Fereastra este oglindită pentru limbile scrise de la dreapta la stânga; au fost corectate mai multe mesaje și detalii de aspect.

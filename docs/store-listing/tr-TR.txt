@@ -38,5 +38,5 @@ açık kaynak
 • Yeni: kurtarma verisi (PAR2). Arşiv oluştururken "Kurtarma verisi ekle (PAR2)" seçeneğini açın; arşiv hasar gördükten sonra onarılabilir.
 • Dosya Gezgini menüsünde ve uygulamada "PAR2 ile doğrula" ve "PAR2 ile onar"; onarılan kopya yeni bir dosyadır, özgün dosya değiştirilmez.
 • Başka programlarla oluşturulan PAR2 dosyaları da kullanılabilir; pakko komutu -rr ile kurtarma verisi ekler, r ile onarır.
-• Pakko daha hızlı açılıyor ve indirme boyutu çok daha küçük.
-• Büyük dosyalar birden çok işlemci çekirdeğinde sıkıştırılıyor.
+• Düzeltildi: Delete, Enter ve menü tuşu, klavyeyle seçilen liste satırında yeniden çalışıyor.
+• Pencere, sağdan sola yazılan dillerde yansıtılıyor; birkaç ileti ve düzen ayrıntısı düzeltildi.

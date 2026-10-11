@@ -38,5 +38,5 @@ avatud lähtekood
 • Uus: taasteandmed (PAR2). Lülitage arhiivi loomisel sisse „Lisa taasteandmed (PAR2)“ ja arhiivi saab pärast kahjustust parandada.
 • „Kontrolli PAR2 abil“ ja „Paranda PAR2 abil“ File Exploreri menüüs ja rakenduses; parandatud koopia on uus fail, originaali ei muudeta.
 • Sobivad ka teiste programmidega loodud PAR2-failid; käsk pakko lisab taasteandmed lülitiga -rr ja parandab käsuga r.
-• Pakko käivitub kiiremini ja allalaaditav pakett on palju väiksem.
-• Suuri faile tihendatakse mitmel protsessorituumal.
+• Parandatud: klahvid Delete, Enter ja menüüklahv töötavad taas klaviatuurilt valitud loendireal.
+• Aken peegeldatakse paremalt vasakule kirjutatavate keelte jaoks; parandatud on mitu teadet ja paigutuse üksikasja.

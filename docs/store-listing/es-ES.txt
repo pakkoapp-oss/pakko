@@ -38,5 +38,5 @@ código abierto
 • Novedad: datos de recuperación (PAR2). Activa «Agregar datos de recuperación (PAR2)» al crear un archivo comprimido y podrás repararlo si se daña.
 • «Verificar con PAR2» y «Reparar con PAR2» en el menú del Explorador de archivos y en la aplicación; la copia reparada es un archivo nuevo y el original no se modifica.
 • También sirven los archivos PAR2 creados con otros programas; el comando pakko agrega datos de recuperación con -rr y repara con r.
-• Pakko se inicia más rápido y su descarga es mucho más pequeña.
-• Los archivos grandes se comprimen en varios núcleos del procesador.
+• Corregido: las teclas Supr, Intro y la tecla de menú vuelven a funcionar en una fila de la lista seleccionada con el teclado.
+• La ventana se refleja en los idiomas que se escriben de derecha a izquierda; se han corregido varios mensajes y detalles de diseño.

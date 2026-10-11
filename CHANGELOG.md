@@ -10,6 +10,43 @@ the technical account of any task named here.
 
 ---
 
+## v1.8.1 — 2026-10-12
+
+Fixes found by walking every on-device check of v1.8.0 by hand. The one that matters most: keys on
+a list row selected from the keyboard have done nothing since v1.7.2, the first Native AOT build.
+
+### Fixed
+
+- **T-F380** - in the App, Delete removes the focused row of the list, Shift+F10 and the menu key
+  open its menu, and Enter opens the focused row of the archive view. Under Native AOT the three
+  did nothing; the mouse worked.
+- **T-F381** - with "Encrypt with password" on, the "Add recovery data (PAR2)" row stays in view:
+  it is above the encryption rows now, and the card scrolls the password boxes into view.
+- **T-F382** - testing or extracting a ZIP entry whose compressed data is damaged says "The
+  compressed data is damaged." where it showed .NET's "unsupported compression method".
+- **T-F383** - after "Skip" for every conflict the App says "Nothing was done - skipped: N", not
+  "Extracted - archives: 0".
+- **T-F379** - a killed `pakko a` no longer leaves its hidden chunk folder behind until a later
+  large run: any archive creation in that folder removes it.
+- **T-F385** - the Explorer operation window's password page no longer cuts its buttons.
+- **T-F387** - a long label (German) no longer pushes the PAR2 percentage box past the card's edge.
+
+### Changed
+
+- **T-F386** - with Arabic, Hebrew or Urdu the App's window and dialogs are laid out right to
+  left, as the Explorer operation window already was.
+- **T-F388** - under the `AllowedFormats`, `BlockedFormats` or `DisableTarExtraction` policy the New
+  archive card lists only the formats that may be created.
+- **T-F384** - the App's two lists have names for screen readers.
+- **T-F377** - `pakko.exe` declares per-monitor DPI awareness, the one finding of the Windows App
+  Certification Kit for v1.8.0.
+
+### Known issues
+
+- Those of v1.8.0 still apply.
+
+---
+
 ## v1.8.0 — 2026-10-10
 
 Pakko can write PAR2 recovery data next to an archive it creates, and check or repair an archive

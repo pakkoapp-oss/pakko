@@ -38,5 +38,5 @@ código aberto
 • Novidade: dados de recuperação (PAR2). Ative «Adicionar dados de recuperação (PAR2)» ao criar um arquivo, e este poderá ser reparado depois de danificado.
 • «Verificar com PAR2» e «Reparar com PAR2» no menu do Explorador de Ficheiros e na aplicação; a cópia reparada é um ficheiro novo e o original não é alterado.
 • Os ficheiros PAR2 criados por outros programas também funcionam; o comando pakko adiciona dados de recuperação com -rr e repara com r.
-• O Pakko arranca mais depressa e a transferência é muito mais pequena.
-• Os ficheiros grandes são comprimidos em vários núcleos do processador.
+• Corrigido: as teclas Delete, Enter e a tecla de menu voltam a funcionar numa linha da lista selecionada com o teclado.
+• A janela é espelhada nos idiomas escritos da direita para a esquerda; foram corrigidas várias mensagens e pormenores de disposição.

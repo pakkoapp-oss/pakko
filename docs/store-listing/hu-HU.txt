@@ -38,5 +38,5 @@ jelszavas zip
 • Újdonság: helyreállítási adatok (PAR2). Archívum létrehozásakor kapcsolja be a „Helyreállítási adatok hozzáadása (PAR2)” beállítást, és az archívum sérülés után javítható lesz.
 • „Ellenőrzés PAR2-vel” és „Javítás PAR2-vel” a Fájlkezelő menüjében és az alkalmazásban; a javított másolat új fájl, az eredeti nem változik.
 • Más programokkal készült PAR2-fájlok is használhatók; a pakko parancs az -rr kapcsolóval ad hozzá helyreállítási adatokat, és az r paranccsal javít.
-• A Pakko gyorsabban indul, és jóval kisebb a letöltése.
-• A nagy fájlok tömörítése több processzormagon történik.
+• Javítva: a Delete, az Enter és a menübillentyű ismét működik a lista billentyűzettel kijelölt során.
+• Az ablak tükröződik a jobbról balra írt nyelveknél; több üzenet és elrendezési részlet is javult.

@@ -4,9 +4,9 @@ The text of Pakko's Store listing (Partner Center, "Store listings"), one file p
 2026-10-05 this text lived only in Partner Center; it is kept here so that a change is reviewed,
 diffed and pasted from a file, not from a chat window or a terminal.
 
-The files hold the text **for the v1.8.0 submission**: the PAR2 feature line and "What's new" were
-added on 2026-10-10, the rest is the v1.7.0 text. "What's new" covers v1.7.2 and v1.8.0 together,
-because the Store served 1.7.1 when it was written. What is live in the Store can be read
+The files hold the text **for the v1.8.1 submission** (v1.8.0 was never submitted): the PAR2
+feature line is from 2026-10-10, the rest of the features is the v1.7.0 text. "What's new" covers
+v1.8.0 and v1.8.1 together, because the Store serves 1.7.2: three lines on PAR2, two on the fixes. What is live in the Store can be read
 without signing in:
 `https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=9P5MW010D8PR&market=CZ&languages=cs-CZ`
 (`ProductDescription`, `ShortDescription`, `SearchTitles`, and `Features` under the SKU).

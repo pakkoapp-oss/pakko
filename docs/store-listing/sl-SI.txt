@@ -38,5 +38,5 @@ odprta koda
 • Novo: podatki za obnovitev (PAR2). Pri ustvarjanju arhiva vklopite »Dodaj podatke za obnovitev (PAR2)« in arhiv bo mogoče po poškodbi popraviti.
 • »Preveri s PAR2« in »Popravi s PAR2« v meniju Raziskovalca in v aplikaciji; popravljena kopija je nova datoteka, izvirnik se ne spremeni.
 • Delujejo tudi datoteke PAR2, ustvarjene z drugimi programi; ukaz pakko doda podatke za obnovitev s stikalom -rr in popravlja z ukazom r.
-• Pakko se zažene hitreje, prenos pa je veliko manjši.
-• Velike datoteke se stisnejo na več procesorskih jedrih.
+• Popravljeno: tipke Delete, Enter in menijska tipka znova delujejo v vrstici seznama, izbrani s tipkovnico.
+• Okno je zrcaljeno za jezike, ki se pišejo od desne proti levi; popravljenih je več sporočil in podrobnosti postavitve.

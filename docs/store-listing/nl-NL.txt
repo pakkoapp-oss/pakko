@@ -38,5 +38,5 @@ zip met wachtwoord
 • Nieuw: herstelgegevens (PAR2). Schakel 'Herstelgegevens toevoegen (PAR2)' in bij het maken van een archief, dan kan het archief na beschadiging worden hersteld.
 • 'Controleren met PAR2' en 'Herstellen met PAR2' in het menu van Verkenner en in de app; de herstelde kopie is een nieuw bestand, het origineel wordt niet gewijzigd.
 • PAR2-bestanden van andere programma's werken ook; de opdracht pakko voegt herstelgegevens toe met -rr en herstelt met r.
-• Pakko start sneller en de download is veel kleiner.
-• Grote bestanden worden op meerdere processorkernen gecomprimeerd.
+• Opgelost: Delete, Enter en de menutoets werken weer op een lijstrij die met het toetsenbord is geselecteerd.
+• Het venster wordt gespiegeld voor talen die van rechts naar links worden geschreven; diverse meldingen en lay-outdetails zijn gecorrigeerd.
