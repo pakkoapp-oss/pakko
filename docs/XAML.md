@@ -73,6 +73,8 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │       │       password", the rule hint. The PAR2 row is above the encryption rows in
         │       │       the grid and in the markup (T-F381): below them the password panel pushed
         │       │       it out of the card's visible part (MainWindowLayoutTests).
+        │       │       When the password panel appears, code-behind scrolls EncryptConfirmBox
+        │       │       into view (EncryptionPanel.SizeChanged), so both boxes show at 1100x780.
         │       └── DestinationCard — Border (card), Grid (Auto,*) with 7 rows: title, destination
         │               (Up button NavigateDestinationUpCommand, read-only TextBox, "..."), "If file
         │               exists" ComboBox (Overwrite/Skip/Rename/Ask), Open destination, delete-after

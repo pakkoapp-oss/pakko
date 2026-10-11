@@ -112,6 +112,13 @@ public sealed partial class MainWindow : Window
         BrowseInfoBar.SizeChanged += (_, _) => FitOptionsScroll();
         RecoveryInfoBar.SizeChanged += (_, _) => FitOptionsScroll();
         BrowseHeader.SizeChanged += (_, _) => FitOptionsScroll();
+        // T-F381: the password panel opens below the card's visible part at the default window
+        // size; scroll far enough for both boxes. The PAR2 row above the check stays in view.
+        EncryptionPanel.SizeChanged += (_, e) =>
+        {
+            if (e.PreviousSize.Height == 0 && e.NewSize.Height > 0)
+                EncryptConfirmBox.StartBringIntoView();
+        };
         NewArchiveCard.Expanding += (_, _) => ArrangeCards();
         NewArchiveCard.Collapsed += (_, _) => ArrangeCards();
         NewArchiveCard.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, (_, _) => ArrangeCards());
@@ -316,12 +323,13 @@ public sealed partial class MainWindow : Window
     // the row that took its place, so a second Delete works.
     private void PendingList_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key != Windows.System.VirtualKey.Delete || e.OriginalSource is not ListViewItem { Content: FileItem item }
-            || !ViewModel.ClearCommand.CanExecute(null))
+        if (e.Key != Windows.System.VirtualKey.Delete || !ViewModel.ClearCommand.CanExecute(null))
+            return;
+        int index = RowIndex(FileListView, e.OriginalSource);
+        if (index < 0 || index >= ViewModel.FileItems.Count)
             return;
         e.Handled = true;
-        int index = ViewModel.FileItems.IndexOf(item);
-        ViewModel.RemovePath(item.FullPath);
+        ViewModel.RemovePath(ViewModel.FileItems[index].FullPath);
         FocusRowLater(FileListView, System.Math.Min(index, ViewModel.FileItems.Count - 1));
     }
 
@@ -329,8 +337,8 @@ public sealed partial class MainWindow : Window
     // which a keyboard request on the ListViewItem never reaches.
     private void PendingList_ContextRequested(UIElement sender, ContextRequestedEventArgs args)
     {
-        if (args.OriginalSource is ListViewItem { ContentTemplateRoot: FrameworkElement { ContextFlyout: { } flyout } } row
-            && ViewModel.ClearCommand.CanExecute(null))
+        if (args.OriginalSource is ContentControl { ContentTemplateRoot: FrameworkElement { ContextFlyout: { } flyout } } row
+            && RowIndex(FileListView, row) >= 0 && ViewModel.ClearCommand.CanExecute(null))
         {
             args.Handled = true;
             flyout.ShowAt(row);
@@ -353,13 +361,20 @@ public sealed partial class MainWindow : Window
                 FocusRowLater(ArchiveBrowserListView, 0);
             }
         }
-        else if (e.Key == Windows.System.VirtualKey.Enter && e.OriginalSource is ListViewItem { Content: ArchiveEntryViewModel entry })
+        else if (e.Key == Windows.System.VirtualKey.Enter
+            && RowIndex(ArchiveBrowserListView, e.OriginalSource) is var index && index >= 0 && index < ViewModel.CurrentFolderEntries.Count)
         {
             e.Handled = true;
-            await ViewModel.OpenBrowserRowAsync(entry);
+            await ViewModel.OpenBrowserRowAsync(ViewModel.CurrentFolderEntries[index]);
             FocusRowLater(ArchiveBrowserListView, 0);
         }
     }
+
+    // T-F380: the row a key event came from, or -1. Under Native AOT a row's container arrives as
+    // its base class (SelectorItem), so a type test for ListViewItem is never true there; the list
+    // itself knows its containers.
+    private static int RowIndex(ListView list, object source) =>
+        source is DependencyObject container ? list.IndexFromContainer(container) : -1;
 
     private static bool IsAltDown() =>
         Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(Windows.System.VirtualKey.Menu)
@@ -375,7 +390,7 @@ public sealed partial class MainWindow : Window
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
             list.UpdateLayout();
-            if (list.ContainerFromIndex(index) is ListViewItem row)
+            if (list.ContainerFromIndex(index) is Control row)
                 row.Focus(FocusState.Keyboard);
         });
     }

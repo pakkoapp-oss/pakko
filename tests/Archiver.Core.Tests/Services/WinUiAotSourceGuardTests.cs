@@ -35,6 +35,37 @@ public sealed partial class WinUiAotSourceGuardTests
         offenders.Should().BeEmpty();
     }
 
+    // T-F380: under Native AOT a list row's container reaches managed code as its base class
+    // (the log said Microsoft.UI.Xaml.Controls.Primitives.SelectorItem), so a type test for the
+    // container class is never true: Delete, Shift+F10 and Enter on a focused row did nothing.
+    // The list is asked instead (IndexFromContainer), or a base class is tested.
+    [Theory]
+    [InlineData("Archiver.App")]
+    [InlineData("Archiver.OperationUi")]
+    public void ItemContainers_AreNotRecognisedByATypeTest(string project)
+    {
+        string root = Path.Combine(FindRepoRoot(), "src", project);
+        List<string> offenders = [];
+        foreach (string file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
+        {
+            string relative = Path.GetRelativePath(root, file);
+            if (relative.StartsWith("bin", StringComparison.Ordinal) || relative.StartsWith("obj", StringComparison.Ordinal))
+                continue;
+
+            string[] lines = File.ReadAllLines(file);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (ItemContainerTypeTest().IsMatch(lines[i]))
+                    offenders.Add($"{relative}:{i + 1}: {lines[i].Trim()}");
+            }
+        }
+
+        offenders.Should().BeEmpty();
+    }
+
+    [GeneratedRegex(@"\b(is|as)\s+(not\s+)?(ListViewItem|GridViewItem|ListBoxItem|ComboBoxItem|TreeViewItem|FlipViewItem)\b|\((ListViewItem|GridViewItem|ListBoxItem|ComboBoxItem|TreeViewItem|FlipViewItem)\)")]
+    private static partial Regex ItemContainerTypeTest();
+
     // T-F275: a property typed as an interface (IReadOnlyList<string>) and built from a collection
     // expression crashed the deployed App at startup in Microsoft.UI.Xaml.dll (0xc000027b) - WinRT
     // cannot marshal the compiler's own list type. A property an ItemsSource binds to is declared

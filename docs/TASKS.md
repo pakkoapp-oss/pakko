@@ -1635,42 +1635,6 @@ re-measured with T-F346's script before and after.
   with a dead owner's name, then a small archive); then make CLI-016's second run a small one.
 - **Reported by:** T-F378 step 3a, 2026-10-11.
 
-### T-F380 — Delete, Shift+F10 and Enter do nothing on a keyboard-focused row (P2)
-
-- [ ] **Status:** open. On package 1.8.0.2 (Native AOT), with a row of the pending list focused by
-  the keyboard (focus rectangle on it): Delete does not remove it, Shift+F10 and the menu key
-  open no menu. In the archive view Enter on a focused row does not open it. Backspace goes up,
-  and the mouse works: right-click shows "Remove from the list", a double-click opens. Delete
-  was sent two ways (the `windows` MCP server and `SendKeys` to the foreground window). The
-  three handlers that fail share one shape, `e.OriginalSource is ListViewItem { Content: ... }`
-  (`MainWindow.xaml.cs`, `PendingList_PreviewKeyDown`, `PendingList_ContextRequested`,
-  `ArchiveBrowserList_PreviewKeyDown`); the Backspace branch has no such test. That points at
-  the type test on a WinRT object under Native AOT (the rule for resource values in
-  `.claude/rules/app-winui.md` is the same class), not proven yet. T-F308 added these keys
-  before T-F355, so this is a regression no test sees (`dotnet test` runs under JIT). Next:
-  reproduce with a log line in one handler on the deployed package, fix all three, re-run smoke
-  row APP-012; look for the same pattern elsewhere in the App and in `Archiver.OperationUi`.
-- **Reported by:** hand walk of the `mcp` smoke rows (APP-012), 2026-10-11.
-
-### T-F381 — With encryption on, the PAR2 row is pushed out of the New archive card (P2)
-
-- [~] **Status:** code done 2026-10-11 (v1.8.1 wave): the PAR2 row is row 3 of the card's
-  grid, above the encryption check (row 4) and the password panel (row 5), and before them in
-  the markup, so the Tab order follows what is seen; the row's `MinHeight` moved with the
-  check. `MainWindowLayoutTests` holds the order, seen red. Left: a device check at 1100x780 and
-  at the minimum window height that the PAR2 row and both password boxes are in view with
-  encryption on (smoke row PAR-011), then the task graduates.
-- **Earlier status:** open. At the default window size, ticking "Encrypt with a password (AES-256)"
-  shows the hint, two password fields and "Show password" under it, and "Add recovery data
-  (PAR2)" with its percentage lands below the card's visible part: the user cannot see whether
-  recovery data is on without scrolling, and nothing hints that there is more below (the
-  scroll bar shows on the far right only). The collapsed card's summary does name both ("with
-  a password — recovery data 5%"). The feature itself works: an AES-256 ZIP with a 5 % set made
-  in the App, damaged by 64 KB, was repaired by `pakko r` without a password. Next: keep both
-  rows visible at 1100x780 (the PAR2 row above the password block, or the password fields in
-  one line), then a device check at the minimum window height.
-- **Reported by:** maintainer, during the hand walk of the `mcp` smoke rows, 2026-10-11.
-
 ### T-F383 — "Skip" chosen in the conflict dialog leaves no trace in the result (P3)
 
 - [~] **Status:** code done 2026-10-11 (v1.8.1 wave). `ArchiveResult.UserSkippedEntryCount`
@@ -1691,17 +1655,3 @@ re-measured with T-F346's script before and after.
   stays), so only the report is missing. Next: record the answered skips in `SkippedFiles` (or
   count them in the outcome line), so that a run that wrote nothing reads "Nothing done".
 - **Reported by:** hand walk of the `mcp` smoke rows (APP-007, APP-024), 2026-10-11.
-
-### T-F384 — The pending list has no UI Automation name (P3)
-
-- [~] **Status:** code done 2026-10-11 (v1.8.1 wave): `AutomationProperties.Name` on both
-  lists, from two new strings in 37 locales (`PendingListName` "Files and folders",
-  `ArchiveContentsListName` "Archive contents"; no existing string fitted and neither list has
-  a visible label to point `LabeledBy` at). `MainWindowLayoutTests` requires a name on every
-  `ListView`, seen red. Left: read both names through UI Automation on the 1.8.1 package (smoke
-  row APP-012), then the task graduates.
-- **Earlier status:** open. The App's pending `ListView` is exposed as a List with an empty name
-  (seen in the element list of the `windows` MCP server on package 1.8.0.2); a screen reader
-  announces "list" only. T-F304 named two other controls. Next: `AutomationProperties.Name`
-  from a resource in 37 locales, the archive view's list checked the same way.
-- **Reported by:** hand walk of the `mcp` smoke rows (APP-012), 2026-10-11.
