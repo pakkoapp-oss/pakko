@@ -12411,17 +12411,26 @@ under JIT took 2.3 s, par2cmdline 1.4.0 3.8 s. Repair of 8 MB of damage: 12.0 s 
   - *`DisableRecoveryData` = 1:* `pakko a -rr5` refuses and writes no archive; `t` looks for no
     set; `r` refuses an archive path and a `.par2` path. The App shows no PAR2 line and no Repair
     button on an archive with a set, no option on the New archive card, and answers a double-click
-    on a `.par2` row with the refusal. Explorer's submenu on that archive has neither PAR2 item.
+    on a `.par2` row with the refusal (the App reads the policy once at startup, so each App check
+    used a window started under that policy). Explorer's submenu on that archive has neither PAR2
+    item.
   - *`BlockedFormats` = zip:* Explorer offers only Compress and Hash on the zip, and both PAR2
     items on its `.par2` file; the App refuses to open the zip. `pakko t` on the zip reports the
     set and then skips the blocked format, and `pakko r` repairs from either path: Core copies and
     hashes bytes without parsing them, as decided in step 4a. `pakko l` on a zip is refused.
+- **WACK** (`appcert.exe test -apptype packagedwin32`, elevated, on the 1.8.0.1 x64 package):
+  `OVERALL_RESULT="WARNING"`, 24 tests. The two optional FAILs are the known ones (Application
+  count, Blocked executables). New since the last run (1.4.2.1, 2026-08-01):
+  `DPIAwarenessValidation` WARNING for `pakko.exe`, which joined the package in v1.7.0 and has no
+  PerMonitorV2 manifest. 1.7.0 to 1.7.2 passed Store certification with the same exe, so it does
+  not hold the release; T-F377.
 - **Not checked on a device:** a `.par2` dragged into the App window (a synthetic drag does not
-  reach WinUI), a language change with sign-out, WACK, ARM64.
-- **Store:** 1.7.2.0 passed certification (maintainer, 2026-10-11). The Store bundle for 1.8.0 is
-  built by dispatch 38110677528 on the tag; submitting it is the maintainer's step, with the
-  listing text of `docs/store-listing/` (13 feature lines, "What's new" written for an update
-  from 1.7.1).
+  reach WinUI), a language change with sign-out, ARM64.
+- **Store:** 1.7.2.0 passed certification (maintainer, 2026-10-11). The Store bundle for 1.8.0
+  (dispatch 38110677528 on the tag): 1.8.0.0, `CN=EF3EC84C-...`, signature valid, x64 and arm64,
+  37 languages; both inner manifests differ from the 1.7.2 Store bundle (37918985547) in the
+  version only. Submitting it is the maintainer's step, with the listing text of
+  `docs/store-listing/` (13 feature lines, "What's new" written for an update from 1.7.1).
 
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
