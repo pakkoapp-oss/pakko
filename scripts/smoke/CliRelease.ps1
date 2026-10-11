@@ -1,26 +1,6 @@
 #Requires -Version 7.0
 # Steps of docs/SMOKE.md's CLI rows of the release tier. Dot-sourced by scripts/Invoke-Smoke.ps1.
 
-# A ZIP written by .NET, entry by entry: @{ Name; Content; Modified }. A name that ends in "/" is
-# a folder entry.
-function New-ZipFile {
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
-        Justification = 'Writes a fixture inside the run''s own temporary folder.')]
-    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][hashtable[]]$Entries)
-    $archive = [System.IO.Compression.ZipFile]::Open($Path, [System.IO.Compression.ZipArchiveMode]::Create)
-    try {
-        foreach ($entry in $Entries) {
-            $item = $archive.CreateEntry($entry.Name)
-            if ($entry.Modified) { $item.LastWriteTime = [System.DateTimeOffset]::new([datetime]$entry.Modified) }
-            if ($entry.Name.EndsWith('/')) { continue }
-            $writer = [System.IO.StreamWriter]::new($item.Open())
-            try { $writer.Write([string]$entry.Content) }
-            finally { $writer.Dispose() }
-        }
-    }
-    finally { $archive.Dispose() }
-}
-
 Add-SmokeStep 'CLI-006' {
     $folder = Get-StepFolder 'cli006'
     $started = Get-Date

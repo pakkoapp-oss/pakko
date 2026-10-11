@@ -1626,7 +1626,12 @@ re-measured with T-F346's script before and after.
       Ctrl+C, three shells, code pages, the download mark, hashes against 7-Zip, hostile ZIPs,
       failing destinations, two runs at once and a killed one, old dates, tar oddities, cp866
       names, message texts. All OK on package 1.8.0.1 in about a minute; found T-F379.
-    - [ ] 3b — the `SHL`, `OPW` and `PAR` rows.
+    - [x] 3b — the 11 scripted `SHL`, `OPW` and `PAR` rows (2026-10-11): a scan that finds the
+      antivirus test file, the password prompt answered through UI Automation, refused calls,
+      a hash over a closed folder and a junction loop, the operation window killed; PAR2 against
+      par2cmdline-turbo and MultiPar, six failure paths with forged recovery blocks among them,
+      a folder closed for new files, every format and AES-256, a set killed and cancelled
+      half-way, a rewrite without `-rr`. All OK on package 1.8.0.1 in under three minutes.
     - [ ] 3c — the elevated batch: five policies, FIPS, WACK compared with its last report. The
       helper is written (branch `feat/t-f378-smoke-elevated`) and waits for an elevation prompt
       to be checked against.

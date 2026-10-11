@@ -1067,7 +1067,10 @@ unknown name and task, a repeated and a removed ID, a wrong tier, a `quick` row 
 `scripts/Invoke-Smoke.ps1` runs the rows that have a step in `scripts/smoke/`. The test requires
 a live row marked `script` or `uac` for every step, and a step for every such row except the ones
 listed in its `StepsOwed`, which must name exactly the rows still without one: the list shrinks
-as steps are written and cannot hide a new row. No `quick` row may be on it. The runner's own
+as steps are written and cannot hide a new row. No `quick` row may be on it. A step is checked
+the way a regression test is: green on the installed package, then red with a fault put into
+its own fixture (the damage left out, the folder left open, the process not killed), since the
+program under test cannot be broken to order. The runner's own
 check is a run: the `quick` tier green on the installed package, and
 its PAR2 speed rows red with the Debug build of `pakko` given as `-PakkoExe` (13 s against
 par2cmdline's 3 s, the size of T-F375).

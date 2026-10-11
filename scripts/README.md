@@ -451,6 +451,7 @@ and expects; this script is a filter over it.
 .\scripts\Invoke-Smoke.ps1                       # the quick tier: 25 rows, about 2.5 minutes
 .\scripts\Invoke-Smoke.ps1 -Tier release         # quick and release rows
 .\scripts\Invoke-Smoke.ps1 -Tier release -Only CLI-0*   # the console rows: about a minute
+.\scripts\Invoke-Smoke.ps1 -Tier release -Only PAR-*    # the PAR2 rows: about a minute
 .\scripts\Invoke-Smoke.ps1 -Only PAR-*,CLI-004   # some rows of the chosen tier
 .\scripts\Invoke-Smoke.ps1 -Tier store -List     # show the rows, run nothing
 ```
@@ -467,7 +468,9 @@ and expects; this script is a filter over it.
   a row fails. The result table is printed and written to `%TEMP%\pakko-smoke-report.md`; paste
   it into the release record.
 - Windows open and close on the desktop during a run, and the speed rows compare times: leave the
-  machine alone meanwhile. The PAR2 rows need `Get-Par2Oracles.ps1` to have been run once.
+  machine alone meanwhile. The PAR2 rows need `Get-Par2Oracles.ps1` to have been run once, and
+  SHL-008 writes a ZIP with the antivirus test string into the run's folder: the antivirus may
+  report it.
 - Shell and App windows speak the user's language, so steps match numbers, names and hashes in
   their text, never words.
 - Adding a check: add the row to `docs/SMOKE.md` (the next free ID of its surface), then its step.
