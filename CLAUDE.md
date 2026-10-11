@@ -221,6 +221,7 @@ windows-archiver-wrapper/
 │   ├── POLICIES.md
 │   ├── SIGNING.md
 │   ├── TESTING.md
+│   ├── SMOKE.md
 │   ├── XAML.md
 │   ├── index.html / uk/index.html  ← public project website (GitHub Pages serves /docs directly)
 │   ├── privacy.html                ← Privacy Policy (linked from the app's About dialog)

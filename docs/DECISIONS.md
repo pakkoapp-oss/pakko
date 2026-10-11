@@ -12484,6 +12484,11 @@ maintainer are collected into one visit.
   the UI, display scale and right-to-left layout, passwords absent from the log, the three shells
   and two code pages, the release's files, the Store bundle.
 
+**Carried over.** Every task the old files named was looked up by script: 75 tasks, of which 34
+already had a row. Forty of the other 41 got one, on an existing row where it already did the
+check and on nine new rows otherwise. One was a pointer and not a check, and has no row: T-F320,
+named as the reason the Store bundle declares `pakko` as it does.
+
 **Not taken.** A machine-readable file (TSV or JSON) next to a rendered page: two files to keep
 equal for a table a regular expression already reads. A new test project for the guard: the
 existing document-reading tests live in `Archiver.Core.Tests/Services`.
