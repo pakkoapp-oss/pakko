@@ -486,6 +486,20 @@ Add-SmokeStep 'CLI-019' {
         Assert-Smoke ((Test-Path -LiteralPath $written) -and [System.IO.File]::ReadAllText($written) -eq $name) "the file named $name did not come back as a file"
     }
 
+    # The same files named one by one: now each name is an argument on tar.exe's own command line.
+    $namedTar = Join-Path $folder 'named.tar'
+    $run = Invoke-Pakko (@('a', '-ttar', $namedTar) + ($names | ForEach-Object { Join-Path $odd $_ }))
+    Assert-Smoke ($run.ExitCode -eq 0) "a -ttar on files named like options: exit $($run.ExitCode) $($run.Text)"
+    $out = Join-Path $folder 'named.out'
+    $run = Invoke-Pakko @('x', $namedTar, "-o$out")
+    Assert-Smoke ($run.ExitCode -eq 0) "x of the tar of files named like options: exit $($run.ExitCode) $($run.Text)"
+    $written = @(Get-ChildItem -LiteralPath $out -Recurse -File)
+    Assert-Smoke ($written.Count -eq $names.Count) "the tar of $($names.Count) named files gave back $($written.Count): $($written.Name -join ', ')"
+    foreach ($name in $names) {
+        $file = @($written | Where-Object Name -eq $name)
+        Assert-Smoke ($file.Count -eq 1 -and [System.IO.File]::ReadAllText($file[0].FullName) -eq $name) "the file named $name, given by name, did not come back as a file"
+    }
+
     # A name outside the ANSI code page is refused before tar.exe sees it.
     $quoted = Join-Path $folder 'quoted'
     $null = [System.IO.Directory]::CreateDirectory($quoted)
