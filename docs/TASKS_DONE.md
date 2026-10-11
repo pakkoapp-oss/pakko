@@ -12411,3 +12411,52 @@ PowerShell does natively.
   5; one Group Policy, `DisableRecoveryData`; sets protecting one file are read from any tool; the
   repaired file goes next to the archive, or to another folder when that one is not writable.
 - **Reported by:** user question, 2026-09-28.
+
+### T-F378 — One smoke catalogue with tiers, a runner, and a guard test (P2)
+
+- [x] **Status:** done 2026-10-11. The on-device checks were five separate lists: four per-release
+  scenario files outside the repository and a manual cycle in `docs/TESTING.md` last run in July.
+  Review and design: `docs/DECISIONS.md`, "T-F378 — the smoke catalogue". One PR per step:
+  - [x] 1 — the catalogue `docs/SMOKE.md` (117 rows, eleven surfaces, tiers `quick` / `release` /
+    `store`) and `SmokeCatalogueTests`, which fails when an entry point has no row (2026-10-11).
+  - [x] 2 — `scripts/Invoke-Smoke.ps1 -Tier quick|release|store -Only <ids>` and the steps of the
+    25 `quick` rows in `scripts/smoke/` (2026-10-11): fixtures generated per run, a result table by
+    row ID. On package 1.8.0.1 the tier takes 2.5 minutes, all rows OK; with the Debug build as
+    `-PakkoExe` the PAR2 speed rows fail. The guard test requires a step for every `quick` row and
+    a live scripted row for every step. `-Tier`, not `-Profile`: `$Profile` is PowerShell's own.
+  - [x] 3 — the `release` tier, one PR per part. `SmokeCatalogueTests` now holds the list of
+    scripted rows that still have no step; it only shrinks.
+    - [x] 3a — the 14 scripted `CLI` rows (2026-10-11): other formats and an escaping tar, pipes,
+      Ctrl+C, three shells, code pages, the download mark, hashes against 7-Zip, hostile ZIPs,
+      failing destinations, two runs at once and a killed one, old dates, tar oddities, cp866
+      names, message texts. All OK on package 1.8.0.1 in about a minute; found T-F379.
+    - [x] 3b — the 11 scripted `SHL`, `OPW` and `PAR` rows (2026-10-11): a scan that finds the
+      antivirus test file, the password prompt answered through UI Automation, refused calls,
+      a hash over a closed folder and a junction loop, the operation window killed; PAR2 against
+      par2cmdline-turbo and MultiPar, six failure paths with forged recovery blocks among them,
+      a folder closed for new files, every format and AES-256, a set killed and cancelled
+      half-way, a rewrite without `-rr`. All OK on package 1.8.0.1 in under three minutes.
+    - [x] 3c — the elevated batch (2026-10-11): `POL-001..008` and `PKG-005` behind one elevation
+      prompt per run. A helper process sets the five policy values and the FIPS flag for one
+      row at a time and puts the registry back; WACK's findings are compared with the tracked
+      `scripts/smoke/wack-known.txt`. All OK on package 1.8.0.1 in a minute and a half; with a
+      helper that sets nothing all eight policy rows fail. The App and the Explorer menu under
+      a policy are the new hand-run rows `POL-009` and `POL-010` (`-Hold`).
+    - [x] 3d — `APP-018` (no password of the run on a command line of the Shell's processes, in
+      `pakko.log` or in the Application event log), `REL-001` (the slow tests) and `REL-002` (the
+      canary run on the commit, read and never started) (2026-10-11). A row without a step is
+      already printed with its action and expectation, which is the card an `mcp` row needs.
+    - [x] 3e — the package's life cycle (2026-10-11): `PKG-006..009` run last and only with
+      `-PackageLifecycle`, and the run ends with the package it began with, also after a row
+      that failed half way. `PKG-006..008` update from the previous release's bundle to the
+      new one (`-PreviousRelease`, `-ReleaseFiles`), which before a tag is the bundle CI built
+      on the release commit. All four OK on 1.7.2.0 to 1.8.0.0 in half a minute; six faults, six red rows. The package data is
+      not kept (see `docs/DECISIONS.md`). The menu after a removal is the hand-run `PKG-010`.
+  - [x] 4 - the `store` tier (2026-10-11): `CLI-017`, `REL-003..007` and `STO-001..003` in
+    `scripts/smoke/Store.ps1` check the release's files against what `-Tag` stands for (its
+    version, its commit, its `CHANGELOG.md`), the Store bundle of the dispatch run on the tag
+    against the previous one, and the CLI through a winget install and removal. Every scripted
+    row now has a step. Each of the nine seen red. The first full run, on v1.8.0: 121 rows,
+    74 OK, none failed, 1 skipped, 46 by hand, 28 minutes; its table is in the v1.8.0 entry of
+    `docs/DECISIONS.md`.
+- **Reported by:** maintainer request, 2026-10-11.

@@ -1065,9 +1065,8 @@ release. Mutation-checked nine ways (2026-10-11): a missing command, menu item a
 unknown name and task, a repeated and a removed ID, a wrong tier, a `quick` row for a person.
 
 `scripts/Invoke-Smoke.ps1` runs the rows that have a step in `scripts/smoke/`. The test requires
-a live row marked `script` or `uac` for every step, and a step for every such row except the ones
-listed in its `StepsOwed`, which must name exactly the rows still without one: the list shrinks
-as steps are written and cannot hide a new row. No `quick` row may be on it. A step is checked
+a live row marked `script` or `uac` for every step, and a step for every such row (its
+`StepsOwed` list of rows still without one has been empty since step 4). A step is checked
 the way a regression test is: green on the installed package, then red with a fault put into
 its own fixture (the damage left out, the folder left open, the process not killed), since the
 program under test cannot be broken to order. The runner's own
