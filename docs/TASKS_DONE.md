@@ -12640,3 +12640,62 @@ PowerShell does natively.
   archive being created (or no item at all) in both places; check how App and Explorer show the
   same error.
 - **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-04.
+
+### T-F385 — The operation window's password prompt clips its buttons (P3)
+
+- [x] **Status:** done 2026-10-11 (v1.8.1). The password page used `PasswordBox.Header` for
+  its label; the header's part of the box is not realized when the window is measured for its
+  first page, so the window came out one line short. The label is a `TextBlock` of its own now
+  and the box takes its UI Automation name from it. On package 1.8.0.7: both buttons whole,
+  with the page's bottom margin under them.
+- **Before that:** open. Explorer "Extract here" on an encrypted ZIP (package 1.8.0.5, uk-UA,
+  100 %): the window's "Password needed" page shows the two buttons ("OK", "Skip the archive")
+  cut by the window's bottom edge, with no margin under them. The conflict and bomb pages of the
+  same window fit. Next: find what sizes the window for this page (the page is taller than the
+  height it asks for), fix, and look at every page of the window at 100 % and 150 %.
+- **Reported by:** hand walk of the `mcp` smoke rows (OPW-003), 2026-10-11.
+
+### T-F386 — The App's main window is not mirrored for a right-to-left language (P3)
+
+- [x] **Status:** done 2026-10-11 (v1.8.1). `MainWindow`'s root and every `ContentDialog` of
+  `DialogService` take `FlowDirection` from the language the strings come in
+  (`CoreMessageText.FlowDirection`); the title bar row stays left to right, since Windows keeps
+  the caption buttons on the right and a mirrored title ran under them (seen on the first
+  device look). On package 1.8.0.7 with ar-SA first: toolbar, list columns, both cards and
+  the footer mirrored, an error dialog mirrored, paths still read left to right.
+- **Before that:** open. With ar-SA first in the language list the App's strings are Arabic, but
+  the window is laid out left to right: buttons, labels and the cards stay where they are for
+  English. The Explorer operation window sets `FlowDirection` from the culture
+  (`OperationWindow.cs`); `MainWindow` never does. Applies to ar-SA, he-IL and ur-PK. Next: set
+  the root's `FlowDirection` from the UI culture at start, then a device look at the main view,
+  the archive view (paths and file names stay left to right) and the dialogs.
+- **Reported by:** hand walk of the `mcp` smoke rows (APP-015), 2026-10-11.
+
+### T-F387 — In German the PAR2 percentage box is cut by the card's edge (P3)
+
+- [x] **Status:** done 2026-10-11 (v1.8.1). The check and the percentage box sit in a
+  left-aligned `Grid` (`*`, `Auto`): the check takes what the box leaves and wraps its label.
+  On package 1.8.0.7 in de-DE at 1100x780 the label is on two lines and the box is whole.
+- **Before that:** open. de-DE at 1100x780: "Wiederherstellungsdaten hinzufügen (PAR2)" is long
+  enough that the 5/10/20 % box next to it runs past the New archive card's right edge and is
+  clipped. Other languages with a long label may do the same. Next: let the row wrap (the box
+  under the check) when the card is narrow, and check the longest labels of the 37 locales.
+- **Reported by:** hand walk of the `mcp` smoke rows (APP-015), 2026-10-11.
+
+### T-F388 — Under `AllowedFormats` the New archive card still offers the formats it will refuse (P3)
+
+- [x] **Status:** done 2026-10-11 (v1.8.1). `CreationFormatOption` (`Archiver.App.Core`)
+  answers by the rule `ArchiveCreationRouter` refuses by: allowed, not blocked, and for the
+  tar family tar.exe not disabled. Each of the seven items of the Format list binds its
+  visibility to it, and the card starts on the first offered format when ZIP is not one. Seven
+  tests, seen red. Device check under `AllowedFormats` = `zip`: smoke row POL-009 in the
+  release run.
+- **Before that:** open. With `AllowedFormats` = `zip` the App refuses to open a tar.gz ("blocked
+  by Group Policy"), but the Format list of New archive still has TAR and the five compressed
+  tars; choosing one ends in Core's refusal after the user pressed Compress. The App never
+  filtered this list by format: the only rule is `TarFormatVisibility`, which hides the TAR
+  item under `DisableTarExtraction` (`MainViewModel`), so `BlockedFormats` is expected to
+  behave the same (not looked at on the device). Smoke row POL-009's "missing from New
+  archive" was written ahead of the code. Next: build the list from the policy (allowed and
+  blocked alike), with a test in `Archiver.App.Core`, then POL-009 again.
+- **Reported by:** hand walk of the `mcp` smoke rows (POL-009), 2026-10-11.

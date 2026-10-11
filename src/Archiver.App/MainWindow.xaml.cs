@@ -63,6 +63,8 @@ public sealed partial class MainWindow : Window
         });
 
         InitializeComponent();
+        // T-F386: Arabic, Hebrew and Urdu strings in a left-to-right window.
+        RootGrid.FlowDirection = CoreMessageText.FlowDirection;
         ViewModel = App.Services.GetRequiredService<MainViewModel>();
         HashFilesCommand = new AsyncRelayCommand(async () =>
             await App.Services.GetRequiredService<IDialogService>().ShowFileHashAsync([.. ViewModel.FileItems.Select(x => x.FullPath)]));

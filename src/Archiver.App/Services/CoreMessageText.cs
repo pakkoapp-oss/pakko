@@ -15,6 +15,12 @@ internal static class CoreMessageText
 {
     private static readonly Lazy<CultureInfo> Culture = new(() => UiCulture.ResolveFirst(ApplicationLanguages.Languages));
 
+    /// <summary>T-F386: the direction the window and its dialogs are laid out in, from the same
+    /// language the strings come in (ar-SA, he-IL and ur-PK read right to left).</summary>
+    public static Microsoft.UI.Xaml.FlowDirection FlowDirection => Culture.Value.TextInfo.IsRightToLeft
+        ? Microsoft.UI.Xaml.FlowDirection.RightToLeft
+        : Microsoft.UI.Xaml.FlowDirection.LeftToRight;
+
     public static string Of(ArchiveError error) => MessageText.Render(error, Culture.Value);
 
     public static string Of(SkippedFile skipped) => MessageText.Render(skipped, Culture.Value);

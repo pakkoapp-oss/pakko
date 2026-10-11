@@ -41,7 +41,9 @@
             </tb:TaskbarIcon.ContextFlyout>
         </tb:TaskbarIcon>
 
-        <Grid x:Name="AppTitleBar" Grid.Row="0" ColumnDefinitions="Auto,Auto,*" Padding="12,0,0,0">
+        <!-- T-F386: left to right in every language: mirrored, the title ran under the caption buttons,
+             which Windows keeps on the right. -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" ColumnDefinitions="Auto,Auto,*" Padding="12,0,0,0" FlowDirection="LeftToRight">
             <Image Grid.Column="0" Source="Assets/Square44x44Logo.targetsize-24_altform-unplated.png" Width="16" Height="16" VerticalAlignment="Center"/>
             <TextBlock x:Name="TitleText" Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
                        Style="{StaticResource CaptionTextBlockStyle}"/>
@@ -488,13 +490,13 @@
                             <ComboBox MinHeight="32" MinWidth="120" SelectedIndex="{x:Bind ViewModel.FormatIndex, Mode=TwoWay}"
                                       AutomationProperties.LabeledBy="{x:Bind FormatLabelText}"
                                       IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}">
-                                <ComboBoxItem x:Uid="FormatZipItem"/>
+                                <ComboBoxItem x:Uid="FormatZipItem" Visibility="{x:Bind ViewModel.ZipFormatVisibility}"/>
                                 <ComboBoxItem x:Uid="FormatTarItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                                <ComboBoxItem x:Uid="FormatTarGzItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                                <ComboBoxItem x:Uid="FormatTarBz2Item" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                                <ComboBoxItem x:Uid="FormatTarXzItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                                <ComboBoxItem x:Uid="FormatTarZstItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
-                                <ComboBoxItem x:Uid="FormatTarLzmaItem" Visibility="{x:Bind ViewModel.TarFormatVisibility}"/>
+                                <ComboBoxItem x:Uid="FormatTarGzItem" Visibility="{x:Bind ViewModel.TarGzFormatVisibility}"/>
+                                <ComboBoxItem x:Uid="FormatTarBz2Item" Visibility="{x:Bind ViewModel.TarBz2FormatVisibility}"/>
+                                <ComboBoxItem x:Uid="FormatTarXzItem" Visibility="{x:Bind ViewModel.TarXzFormatVisibility}"/>
+                                <ComboBoxItem x:Uid="FormatTarZstItem" Visibility="{x:Bind ViewModel.TarZstFormatVisibility}"/>
+                                <ComboBoxItem x:Uid="FormatTarLzmaItem" Visibility="{x:Bind ViewModel.TarLzmaFormatVisibility}"/>
                             </ComboBox>
                             <TextBlock x:Name="CompressionLabelText" x:Uid="CompressionLabel" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"/>
                             <ComboBox MinHeight="32" MinWidth="140" SelectedIndex="{x:Bind ViewModel.CompressionLevelIndex, Mode=TwoWay}"
@@ -514,19 +516,23 @@
                             Grid.Row="3" Grid.Column="1"
                             Spacing="4"
                             Visibility="{x:Bind ViewModel.RecoveryDataVisibility}">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
+                            <!-- T-F387: the check takes what the box leaves and wraps its label (German's is
+                                 long); a horizontal StackPanel let the box run past the card's edge. -->
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" HorizontalAlignment="Left">
                                 <CheckBox
                                     x:Name="RecoveryDataCheckBox"
                                     x:Uid="RecoveryDataCheck"
                                     IsChecked="{x:Bind ViewModel.AddRecoveryData, Mode=TwoWay}"
                                     IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
                                 <ComboBox
+                                    Grid.Column="1"
+                                    VerticalAlignment="Top"
                                     MinHeight="32" MinWidth="90"
                                     ItemsSource="{x:Bind ViewModel.RecoveryPercentChoices}"
                                     SelectedIndex="{x:Bind ViewModel.RecoveryPercentIndex, Mode=TwoWay}"
                                     AutomationProperties.LabeledBy="{x:Bind RecoveryDataCheckBox}"
                                     IsEnabled="{x:Bind ViewModel.IsRecoveryPercentEnabled, Mode=OneWay}"/>
-                            </StackPanel>
+                            </Grid>
                             <TextBlock
                                 x:Uid="RecoveryDataNote"
                                 TextWrapping="Wrap"
