@@ -450,6 +450,7 @@ and expects; this script is a filter over it.
 ```powershell
 .\scripts\Invoke-Smoke.ps1                       # the quick tier: 25 rows, about 2.5 minutes
 .\scripts\Invoke-Smoke.ps1 -Tier release         # quick and release rows
+.\scripts\Invoke-Smoke.ps1 -Tier release -Only CLI-0*   # the console rows: about a minute
 .\scripts\Invoke-Smoke.ps1 -Only PAR-*,CLI-004   # some rows of the chosen tier
 .\scripts\Invoke-Smoke.ps1 -Tier store -List     # show the rows, run nothing
 ```
@@ -457,7 +458,9 @@ and expects; this script is a filter over it.
 - Install the build first with `Deploy.ps1`; the script tests what is installed. `-PakkoExe <path>`
   tests another `pakko.exe` (the one from a release zip) in the CLI, PAR2 and speed rows.
 - A row a script can run has a step in `scripts/smoke/<Surface>.ps1`, registered with
-  `Add-SmokeStep '<ID>' { ... }`; `Common.ps1` holds the helpers. A step throws to fail
+  `Add-SmokeStep '<ID>' { ... }`; `Common.ps1` holds the helpers, and `tools/` the scripts a step
+  starts as a process of their own (`Send-CtrlC.ps1`: Ctrl+C goes to a console, so the sender
+  joins the target's). A step throws to fail
   (`Assert-Smoke`), calls `Skip-Smoke '<reason>'` when it cannot run here, and may return a note.
   Rows without a step are printed as `manual` with their action and expectation.
 - Fixtures go into a new folder under `%TEMP%` and are removed at the end; the folder is kept when
@@ -468,4 +471,7 @@ and expects; this script is a filter over it.
 - Shell and App windows speak the user's language, so steps match numbers, names and hashes in
   their text, never words.
 - Adding a check: add the row to `docs/SMOKE.md` (the next free ID of its surface), then its step.
-  `SmokeCatalogueTests` fails when a `quick` row has no step or a step has no row.
+  `SmokeCatalogueTests` fails when a row marked `script` or `uac` has no step (unless it is on
+  the test's shrinking `StepsOwed` list) or a step has no row.
+- A step that starts `pakko` gives it a time limit (`Invoke-Tool -TimeoutSeconds`, 15 minutes
+  unless set): a hang fails the row instead of the run.

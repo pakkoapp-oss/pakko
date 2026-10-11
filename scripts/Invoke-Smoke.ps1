@@ -172,7 +172,13 @@ if ($failed -or $KeepWork) {
     Write-Host "Fixtures kept in $work"
 }
 else {
-    Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
+    # A scanner or the indexer may still hold a file for a moment: one more try, then say so.
+    foreach ($attempt in 1..2) {
+        Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
+        if (-not (Test-Path -LiteralPath $work)) { break }
+        Start-Sleep -Seconds 2
+    }
+    if (Test-Path -LiteralPath $work) { Write-Warning "The fixtures could not be removed: $work" }
 }
 
 if ($failed) { exit 1 }

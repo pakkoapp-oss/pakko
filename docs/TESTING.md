@@ -1064,9 +1064,11 @@ without gaps per surface, so a row is retired, not deleted; a `quick` row needs 
 release. Mutation-checked nine ways (2026-10-11): a missing command, menu item and policy, an
 unknown name and task, a repeated and a removed ID, a wrong tier, a `quick` row for a person.
 
-`scripts/Invoke-Smoke.ps1` runs the rows that have a step in `scripts/smoke/` (the 25 `quick` rows
-since step 2); the test also requires a step for every `quick` row and a live scripted row for
-every step. The runner's own check is a run: the `quick` tier green on the installed package, and
+`scripts/Invoke-Smoke.ps1` runs the rows that have a step in `scripts/smoke/`. The test requires
+a live row marked `script` or `uac` for every step, and a step for every such row except the ones
+listed in its `StepsOwed`, which must name exactly the rows still without one: the list shrinks
+as steps are written and cannot hide a new row. No `quick` row may be on it. The runner's own
+check is a run: the `quick` tier green on the installed package, and
 its PAR2 speed rows red with the Debug build of `pakko` given as `-PakkoExe` (13 s against
 par2cmdline's 3 s, the size of T-F375).
 

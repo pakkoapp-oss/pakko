@@ -15,6 +15,17 @@ public sealed partial class SmokeCatalogueTests
     private static readonly string[] Artifacts = ["dev", "tag", "store-bundle", "store-install"];
     private static readonly string[] EntryKinds = ["cli", "shell", "menu", "app", "policy"];
 
+    // Rows marked script or uac that have no step in scripts/smoke/ yet (T-F378 steps 3 and 4).
+    private static readonly string[] StepsOwed =
+    [
+        "CLI-017", "SHL-008", "SHL-009", "SHL-010", "SHL-011", "APP-018", "OPW-004",
+        "PAR-004", "PAR-005", "PAR-006", "PAR-007", "PAR-008", "PAR-009",
+        "POL-001", "POL-002", "POL-003", "POL-004", "POL-005", "POL-006", "POL-007", "POL-008",
+        "PKG-005", "PKG-006", "PKG-007", "PKG-008", "PKG-009",
+        "REL-001", "REL-002", "REL-003", "REL-004", "REL-005", "REL-006", "REL-007",
+        "STO-001", "STO-002", "STO-003",
+    ];
+
     private sealed record Row(string Id, string Tier, string By, string On, string Action, string Expect, string[] Covers);
 
     private static readonly List<Row> Rows = ReadRows();
@@ -89,16 +100,19 @@ public sealed partial class SmokeCatalogueTests
     }
 
     [Fact]
-    public void EveryQuickRow_HasAStep_AndEveryStepHasAScriptRow()
+    public void EveryScriptedRow_HasAStep_AndEveryStepHasAScriptedRow()
     {
         // scripts/Invoke-Smoke.ps1 runs the steps registered in scripts/smoke/ by row ID.
         string[] steps = [.. Directory.GetFiles(Path.Combine(RepoRoot, "scripts", "smoke"), "*.ps1")
             .SelectMany(f => StepId().Matches(File.ReadAllText(f)).Select(m => m.Groups[1].Value))];
+        string[] scripted = [.. Rows.Where(r => r.Tier != "retired" && r.By is "script" or "uac").Select(r => r.Id)];
 
         steps.Should().OnlyHaveUniqueItems();
-        Rows.Where(r => r.Tier == "quick").Select(r => r.Id).Should().BeSubsetOf(steps, "the quick tier runs unattended");
-        steps.Should().BeSubsetOf(Rows.Where(r => r.Tier != "retired" && r.By is "script" or "uac").Select(r => r.Id),
-            "a step belongs to a live row a script can run");
+        steps.Should().BeSubsetOf(scripted, "a step belongs to a live row a script can run");
+        scripted.Except(steps).Should().BeEquivalentTo(StepsOwed,
+            "a row marked script or uac is run by scripts/Invoke-Smoke.ps1: write its step, or mark the row mcp. "
+            + "StepsOwed only shrinks: a row that got its step leaves the list");
+        Rows.Where(r => r.Tier == "quick").Select(r => r.Id).Should().NotIntersectWith(StepsOwed, "the quick tier runs unattended");
     }
 
     [Fact]

@@ -179,17 +179,20 @@ Add-SmokeStep 'SHL-007' {
 }
 
 Add-SmokeStep 'OPW-001' {
+    # The 6000 files alone take a second once Windows has them cached, and the window comes up
+    # only for work that lasts: the 200 MB file keeps it there whatever ran before this step.
     $many = Get-Fixture Many
-    $zip = "$many.zip"
+    $big = Get-Fixture Big
+    $zip = Join-Path (Split-Path -Parent $many) ((Split-Path -Leaf (Split-Path -Parent $many)) + '.zip')
     Remove-Item -LiteralPath $zip -ErrorAction SilentlyContinue
     try {
-        $run = Invoke-Shell -Arguments @('--archive', $many) -Watch '\d+\s?%' -TimeoutSeconds 120
-        Assert-Smoke ($run.Exited -and $run.ExitCode -eq 0) "--archive on 6000 files: exited=$($run.Exited) code=$($run.ExitCode) $($run.Text)"
+        $run = Invoke-Shell -Arguments @('--archive', $many, $big) -Watch '\d+\s?%' -TimeoutSeconds 120
+        Assert-Smoke ($run.Exited -and $run.ExitCode -eq 0) "--archive on 6000 files and 200 MB: exited=$($run.Exited) code=$($run.ExitCode) $($run.Text)"
         Assert-Smoke ($null -ne $run.FirstWindow -and $run.FirstWindow -le 3) "the operation window took $($run.FirstWindow) s to appear, expected within 3"
         Assert-Smoke $run.Watched "the operation window never showed a percentage: $($run.Text)"
 
         $listed = Invoke-Tool -Exe $Smoke.SevenZip -Arguments @('l', $zip)
-        Assert-Smoke ($listed.Output -match '(?m)\s6000 files') "7za does not count 6000 files: $(($listed.Output -split '\r?\n')[-2])"
+        Assert-Smoke ($listed.Output -match '(?m)\s6001 files') "7za does not count 6001 files: $(($listed.Output -split '\r?\n')[-2])"
         'window after {0:n1} s, done in {1:n1} s' -f $run.FirstWindow, $run.Seconds
     }
     finally { Remove-Item -LiteralPath $zip -ErrorAction SilentlyContinue }
