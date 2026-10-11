@@ -12452,11 +12452,12 @@ PowerShell does natively.
       new one (`-PreviousRelease`, `-ReleaseFiles`), which before a tag is the bundle CI built
       on the release commit. All four OK on 1.7.2.0 to 1.8.0.0 in half a minute; six faults, six red rows. The package data is
       not kept (see `docs/DECISIONS.md`). The menu after a removal is the hand-run `PKG-010`.
-  - [x] 4 - the `store` tier (2026-10-11): `CLI-017`, `REL-003..007` and `STO-001..003` in
+  - [x] 4 — the `store` tier (2026-10-11): `CLI-017`, `REL-003..007` and `STO-001..003` in
     `scripts/smoke/Store.ps1` check the release's files against what `-Tag` stands for (its
     version, its commit, its `CHANGELOG.md`), the Store bundle of the dispatch run on the tag
     against the previous one, and the CLI through a winget install and removal. Every scripted
     row now has a step. Each of the nine seen red. The first full run, on v1.8.0: 121 rows,
-    74 OK, none failed, 1 skipped, 46 by hand, 28 minutes; its table is in the v1.8.0 entry of
-    `docs/DECISIONS.md`.
+    74 OK, none failed, 1 skipped, 28 minutes; its table is in the v1.8.0 entry of
+    `docs/DECISIONS.md`. It ran the scripted rows: the 40 `mcp` rows were not walked in it,
+    4 are the maintainer's and 2 need a Store machine.
 - **Reported by:** maintainer request, 2026-10-11.
