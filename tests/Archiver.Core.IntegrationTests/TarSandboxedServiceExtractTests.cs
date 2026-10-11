@@ -483,6 +483,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
 
         result.SkippedFiles.Should().BeEmpty();
         result.CreatedFiles.Should().BeEmpty();
+        result.UserSkippedEntryCount.Should().Be(2, "T-F383: unnamed, but counted");
         result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.NotProcessed);
         File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("old");
     }
@@ -512,6 +513,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         });
 
         result.SkippedFiles.Should().BeEmpty();
+        result.UserSkippedEntryCount.Should().Be(1);
         result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.Partial);
         File.ReadAllText(Path.Combine(destDir, "b.txt")).Should().Be("new b");
     }

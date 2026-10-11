@@ -75,6 +75,20 @@ public sealed class PackagingManifestTests
         Property(project, "PublishTrimmed").Should().BeEmpty();
     }
 
+    // T-F377: the Windows App Certification Kit warns about a packaged exe that neither declares
+    // PerMonitorV2 nor calls the DPI APIs (the two WinUI exes call them).
+    [Theory]
+    [InlineData("Archiver.Shell")]
+    [InlineData("Archiver.CLI")]
+    public void NonWinUiExe_DeclaresPerMonitorV2(string name)
+    {
+        string manifest = Property(LoadProject(name), "ApplicationManifest").Should().ContainSingle().Subject;
+
+        XDocument.Load(Path.Combine(RepoRoot, "src", name, manifest)).Descendants()
+            .Where(e => e.Name.LocalName == "dpiAwareness").Select(e => e.Value.Trim())
+            .Should().Equal("PerMonitorV2");
+    }
+
     [Theory]
     [InlineData("Archiver.App")]
     [InlineData("Archiver.OperationUi")]

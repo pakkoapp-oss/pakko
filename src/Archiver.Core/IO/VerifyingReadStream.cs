@@ -21,7 +21,15 @@ internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uin
 
     public override int Read(Span<byte> buffer)
     {
-        int read = inner.Read(buffer);
+        int read;
+        try
+        {
+            read = inner.Read(buffer);
+        }
+        catch (InvalidDataException ex) when (IsDecompressorFailure(ex))
+        {
+            throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentDamaged));
+        }
         Account(buffer[..read]);
         return read;
     }
@@ -31,10 +39,23 @@ internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uin
 
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
-        int read = await inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+        int read;
+        try
+        {
+            read = await inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+        }
+        catch (InvalidDataException ex) when (IsDecompressorFailure(ex))
+        {
+            throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentDamaged));
+        }
         Account(buffer.Span[..read]);
         return read;
     }
+
+    // T-F382: .NET's text for a broken Deflate stream ("unsupported compression method") is English
+    // and wrong about the cause. An error Core wrote below this stream keeps its own code.
+    private static bool IsDecompressorFailure(InvalidDataException exception) =>
+        CoreMessages.Detail(exception).Code == MessageCode.None;
 
     private void Account(ReadOnlySpan<byte> data)
     {

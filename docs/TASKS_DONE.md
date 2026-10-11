@@ -12461,3 +12461,26 @@ PowerShell does natively.
     `docs/DECISIONS.md`. It ran the scripted rows: the 40 `mcp` rows were not walked in it,
     4 are the maintainer's and 2 need a Store machine.
 - **Reported by:** maintainer request, 2026-10-11.
+
+## Graduated 2026-10-11 (v1.8.1 wave)
+
+### T-F382 — Test of a damaged ZIP entry shows a raw framework message (P3)
+
+- [x] **Status:** done 2026-10-11 (v1.8.1 wave). `VerifyingReadStream`, which both Test and
+  Extract read an entry through, turns an `InvalidDataException` the decompressor threw (no
+  Core code on it) into the new `MessageCode.ContentDamaged`, "The compressed data is damaged.";
+  an error Core wrote below it keeps its own code. It is an error detail of T-F297's kind:
+  English everywhere, Ukrainian in front for uk-UA only (`MessageText.UkrainianOnlyCodes`), no
+  CLI hint. Tests, seen red: the stream over a broken `DeflateStream`, sync and async; `TestAsync`
+  and `ExtractAsync` on a ZIP of random bytes with 70 000 bytes zeroed (a stored-block header
+  goes with them; 4 KiB zeroed in compressible text only gave a CRC error), where the good
+  entry is still extracted.
+- **Earlier status:** open. A ZIP with a PAR2 set and 64 KB zeroed inside a Deflate entry, tested
+  from the App's archive view under uk-UA: the summary's first error reads "The archive entry
+  was compressed using an unsupported compression method." after the localized "Element
+  «big.bin»:". The text is .NET's own for a broken Deflate stream; it is English, and it is
+  wrong about the cause (the method is supported, the data is damaged). The second line, from
+  the recovery check, is right ("damaged (43 of 1996 blocks); can be repaired"). Next: map this
+  failure of the test and extract paths to Core's "data is damaged" message code (as T-F297
+  did for the CRC mismatch), with a test on a fixture whose Deflate stream is cut.
+- **Reported by:** hand walk of the `mcp` smoke rows (PAR-010), 2026-10-11.

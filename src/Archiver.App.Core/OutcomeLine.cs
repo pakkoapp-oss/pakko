@@ -17,6 +17,10 @@ namespace Archiver.App.Core;
 public sealed record OutcomeLine(
     OperationOutcome Outcome, bool Extract, int CreatedCount, int ProblemCount, int Seconds, string? ShowInFolderPath, string DestinationFolder)
 {
+    /// <summary>Entries the user chose to skip in the conflict prompt (T-F383): counted in the
+    /// "nothing was done" line, never offered as details (T-F216).</summary>
+    public int UserSkippedCount { get; init; }
+
     /// <summary>True when "Details..." has something to show.</summary>
     public bool HasDetails => ProblemCount > 0;
 
@@ -29,9 +33,14 @@ public sealed record OutcomeLine(
         _ => "OutcomeProblems",
     };
 
-    /// <summary>The line's format arguments: seconds and count for a clean run, else the problem count.</summary>
-    public IReadOnlyList<int> TextArgs =>
-        Outcome == OperationOutcome.Completed ? [Seconds, CreatedCount] : [ProblemCount];
+    /// <summary>The line's format arguments: seconds and count for a clean run, what was skipped
+    /// when nothing was done, else the problem count.</summary>
+    public IReadOnlyList<int> TextArgs => Outcome switch
+    {
+        OperationOutcome.Completed => [Seconds, CreatedCount],
+        OperationOutcome.NothingDone => [ProblemCount + UserSkippedCount],
+        _ => [ProblemCount],
+    };
 
     /// <summary>
     /// Explorer's arguments for "Show in folder": the created item selected in its folder, or the
@@ -52,13 +61,21 @@ public sealed record OutcomeLine(
 
     /// <summary>Builds the line from an operation's result.</summary>
     public static OutcomeLine From(ArchiveResult result, TimeSpan elapsed, bool extract, string destinationFolder) => new(
-        result.Outcome,
+        WroteNothingByTheUsersChoice(result) ? OperationOutcome.NothingDone : result.Outcome,
         extract,
         result.CreatedFiles.Count,
         result.Errors.Count + result.SkippedFiles.Count + result.Warnings.Count,
         Math.Max(1, (int)Math.Round(elapsed.TotalSeconds)),
         result.CreatedFiles.Count > 0 ? result.CreatedFiles[0] : null,
-        destinationFolder);
+        destinationFolder)
+    {
+        UserSkippedCount = result.UserSkippedEntryCount,
+    };
+
+    // T-F383: Core calls such a run Completed (the skips were the user's own answers), and the
+    // line then read "Extracted - archives: 0".
+    private static bool WroteNothingByTheUsersChoice(ArchiveResult result) =>
+        result.Outcome == OperationOutcome.Completed && result.CreatedFiles.Count == 0 && result.UserSkippedEntryCount > 0;
 
     private static string Normalize(string path) => Path.TrimEndingDirectorySeparator(path);
 }

@@ -236,6 +236,21 @@ public sealed class ExtractionRouterTests : IDisposable
         result.KeptExistingFiles.Select(k => k.Path).Should().Equal("kept.txt");
     }
 
+    // T-F383: each engine asks through its own resolver; the merge adds the answers up.
+    [Fact]
+    public async Task ExtractAsync_MixedSelection_AddsUpTheUserSkips()
+    {
+        string zip = WriteZip("a.zip");
+        string tar = WriteTar("b.tar");
+        var zipService = new FakeArchiveService { ExtractResult = new ArchiveResult { UserSkippedEntryCount = 2 } };
+        var tarService = new FakeTarService { ExtractResult = new ArchiveResult { UserSkippedEntryCount = 3 } };
+        var router = new ExtractionRouter(zipService, tarService, AllSupported, new GroupPolicyOptions());
+
+        ArchiveResult result = await router.ExtractAsync(new ExtractOptions { ArchivePaths = [zip, tar], DestinationFolder = _temp.Path });
+
+        result.UserSkippedEntryCount.Should().Be(5);
+    }
+
     // T-F306: a mixed selection is one climb. ZIP runs first and tar second, each in its own
     // slice of the percent, sized by the archives' sizes on disk; tar's bytes continue from where
     // ZIP's ended, so neither the bar nor the byte count ever goes back. (T-F142 had left tar with

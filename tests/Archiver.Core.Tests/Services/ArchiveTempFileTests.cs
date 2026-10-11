@@ -1,4 +1,5 @@
 using Archiver.Core.IO;
+using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
@@ -37,6 +38,46 @@ public sealed class ArchiveTempFileTests : IDisposable
         ArchiveTempFile.Create(Path.Combine(_temp.Path, "big3.zip"));
 
         File.Exists(leftover).Should().BeFalse("a process id with another start time is a reused id: its owner is gone");
+    }
+
+    // T-F379: a killed run's chunk folder was removed only by a later run large enough to make one.
+    [Fact]
+    public void Create_SweepsTheChunkFolderOfADeadRun_AndKeepsALiveRuns()
+    {
+        string machine = TempOwner.CurrentTag.Split('-')[0];
+        string dead = Path.Combine(_temp.Path, $".pakko-tmp-{machine}-{Environment.ProcessId}-1-0123456789abcdef0123456789abcdef");
+        Directory.CreateDirectory(dead);
+        File.WriteAllText(Path.Combine(dead, "chunk.bin"), "compressed");
+        File.SetAttributes(dead, File.GetAttributes(dead) | FileAttributes.Hidden);
+        string live = Path.Combine(_temp.Path, TempOwner.NewName(".pakko-tmp-"));
+        Directory.CreateDirectory(live);
+
+        ArchiveTempFile.Create(Path.Combine(_temp.Path, "small.zip"));
+
+        Directory.Exists(dead).Should().BeFalse();
+        Directory.Exists(live).Should().BeTrue("its owner is this process");
+    }
+
+    [Fact]
+    public async Task ArchiveAsync_SmallArchive_RemovesTheChunkFolderOfADeadRun()
+    {
+        string machine = TempOwner.CurrentTag.Split('-')[0];
+        string output = Path.Combine(_temp.Path, "out");
+        string dead = Path.Combine(output, $".pakko-tmp-{machine}-{Environment.ProcessId}-1-0123456789abcdef0123456789abcdef");
+        Directory.CreateDirectory(dead);
+        File.WriteAllText(Path.Combine(dead, "chunk.bin"), "compressed");
+        string source = _temp.CreateFile("small.txt", "small");
+
+        ArchiveResult result = await new ZipArchiveService(new GroupPolicyOptions()).ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [source],
+            DestinationFolder = output,
+            ArchiveName = "small",
+            Mode = ArchiveMode.SingleArchive,
+        });
+
+        result.Success.Should().BeTrue();
+        Directory.GetFileSystemEntries(output).Select(Path.GetFileName).Should().Equal("small.zip");
     }
 
     [Fact]

@@ -737,6 +737,7 @@ public sealed class ZipArchiveService : IArchiveService
             SkippedFiles = skippedFiles,
             Warnings = warnings,
             KeptExistingFiles = [.. conflictSkipped.Where(skip => !skip.ByUser).Select(skip => CoreMessages.Skip(skip.Path, MessageCode.FileExistsAtDestination))],
+            UserSkippedEntryCount = conflictResolver.UserSkipCount,
             Sources = sources,
         };
 

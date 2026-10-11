@@ -149,6 +149,7 @@ public sealed class TarSandboxedService : ITarService
             CreatedFiles = createdFiles,
             Errors = errors,
             SkippedFiles = skippedFiles,
+            UserSkippedEntryCount = conflictResolver.UserSkipCount,
             Sources = sources,
         };
 

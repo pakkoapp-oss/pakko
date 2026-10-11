@@ -885,7 +885,8 @@ left as typed; T-F338) with `ArchiveAsync_SourceNamedByDots_*` and two subproces
 `pakko a <out> .` in a chosen directory (ZIP and tar). `TarListingDateTests` and one real-tar.exe
 listing test say whether the time is known (T-F335). `ArchiveCreationRouterTests`/`PolicyOwnershipTests`
 check the item a refusal names (T-F326). `ZipArchiveServiceExtractTests` and `ExtractionRouterTests`
-cover `KeptExistingFiles` (automatic skip listed, the user's own answer not, merge), and the
+cover `KeptExistingFiles` (automatic skip listed, the user's own answer not, merge;
+`UserSkippedEntryCount` counts those answers, T-F383), and the
 subprocess layer pins `pakko x` over existing files: default (line, hint, exit 1), `-aos`, `-aoa`
 (T-F313). `CliCreatedNameTests` covers the taken-name line (T-F325); its wiring in `Program.cs` is
 checked only by a real two-run race on a device, since a test cannot stage that race reliably.

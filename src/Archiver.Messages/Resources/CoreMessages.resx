@@ -306,6 +306,9 @@
   <data name="EntryDataTruncated" xml:space="preserve">
     <value>ZIP entry data ends before its declared size.</value>
   </data>
+  <data name="ContentDamaged" xml:space="preserve">
+    <value>The compressed data is damaged.</value>
+  </data>
   <data name="RecoveryPercentInvalid" xml:space="preserve">
     <value>Recovery data must be between 1 and 100 percent ({0} was given).</value>
   </data>

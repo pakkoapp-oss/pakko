@@ -36,6 +36,48 @@ public sealed class OutcomeAndEncryptionSummaryTests
         line.TextArgs.Should().Equal(1, 1);
     }
 
+    // T-F383: "Extracted in 10 s - archives: 0" after Skip for every conflict.
+    [Fact]
+    public void Outcome_ExtractWhereEveryEntryWasSkippedByTheUser_SaysNothingWasDone()
+    {
+        var result = new ArchiveResult { UserSkippedEntryCount = 3 };
+
+        var line = OutcomeLine.From(result, TimeSpan.FromSeconds(10), extract: true, Dest);
+
+        line.Outcome.Should().Be(OperationOutcome.NothingDone);
+        line.TextKey.Should().Be("OutcomeNothingDone");
+        line.TextArgs.Should().Equal(3);
+        line.HasDetails.Should().BeFalse("the user's own skips are named nowhere (T-F216)");
+        line.ExplorerArguments.Should().BeNull();
+    }
+
+    [Fact]
+    public void Outcome_NothingDoneWithListedAndUserSkips_CountsBoth()
+    {
+        var result = new ArchiveResult
+        {
+            SkippedFiles = [CoreMessages.Skip("y", MessageCode.SourceNotFound, "y")],
+            UserSkippedEntryCount = 2,
+        };
+
+        var line = OutcomeLine.From(result, TimeSpan.FromSeconds(1), extract: true, Dest);
+
+        line.TextKey.Should().Be("OutcomeNothingDone");
+        line.TextArgs.Should().Equal(3);
+        line.HasDetails.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Outcome_ExtractWithOneUserSkipAndTheRestWritten_StaysExtracted()
+    {
+        var result = new ArchiveResult { CreatedFiles = [@"C:\out\a"], UserSkippedEntryCount = 1 };
+
+        var line = OutcomeLine.From(result, TimeSpan.FromSeconds(1), extract: true, Dest);
+
+        line.TextKey.Should().Be("OutcomeExtracted");
+        line.TextArgs.Should().Equal(1, 1);
+    }
+
     [Fact]
     public void Outcome_SubSecondRun_SaysOneSecond()
     {

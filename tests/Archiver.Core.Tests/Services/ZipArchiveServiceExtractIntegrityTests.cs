@@ -178,4 +178,55 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
 
         AssertOnlyDocFailed(result, dest, "declared size");
     }
+
+    // T-F382: bytes zeroed inside a Deflate stream made .NET say "unsupported compression
+    // method", in English and wrong about the cause.
+    private string CreateZipWithDamagedDeflateStream()
+    {
+        string zipPath = Path.Combine(_temp.Path, "damaged.zip");
+        // Data that does not compress goes into stored blocks of at most 64 KiB, so 70 000 zeroed
+        // bytes take a block header with them.
+        byte[] content = new byte[300_000];
+        new Random(382).NextBytes(content);
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            using (var ok = new StreamWriter(archive.CreateEntry("ok.txt", CompressionLevel.Optimal).Open()))
+                ok.Write("fine");
+            using Stream doc = archive.CreateEntry("doc.txt", CompressionLevel.Optimal).Open();
+            doc.Write(content);
+        }
+
+        byte[] bytes = File.ReadAllBytes(zipPath);
+        (int local, int central) = FindHeaders(bytes, "doc.txt");
+        int dataStart = local + 30 + "doc.txt".Length + BitConverter.ToUInt16(bytes, local + 28);
+        (central - dataStart).Should().BeGreaterThan(200_000);
+        Array.Clear(bytes, dataStart + 20_000, 70_000);
+        File.WriteAllBytes(zipPath, bytes);
+        return zipPath;
+    }
+
+    private static void AssertDamagedDetail(ArchiveError error)
+    {
+        CoreText detail = error.Text!.Arguments.OfType<CoreText>().Should().ContainSingle().Subject;
+        detail.Code.Should().Be(MessageCode.ContentDamaged);
+        error.Message.Should().NotContain("unsupported compression method");
+    }
+
+    [Fact]
+    public async Task TestAsync_DamagedDeflateStream_SaysTheDataIsDamaged()
+    {
+        ArchiveResult tested = await _sut.TestAsync([CreateZipWithDamagedDeflateStream()]);
+
+        AssertDamagedDetail(tested.Errors.Should().ContainSingle().Subject);
+    }
+
+    [Fact]
+    public async Task ExtractAsync_DamagedDeflateStream_SaysTheDataIsDamagedAndFailsOnlyThatEntry()
+    {
+        (ArchiveResult result, string dest) = await ExtractAsync(CreateZipWithDamagedDeflateStream());
+
+        AssertDamagedDetail(result.Errors.Should().ContainSingle().Subject);
+        Directory.EnumerateFiles(dest, "ok.txt", SearchOption.AllDirectories).Should().ContainSingle();
+        Directory.EnumerateFiles(dest, "doc.txt", SearchOption.AllDirectories).Should().BeEmpty();
+    }
 }

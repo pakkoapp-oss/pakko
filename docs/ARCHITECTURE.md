@@ -637,6 +637,9 @@ public sealed record ArchiveResult
     // Outcome and the App/Explorer summaries do not change; pakko prints them and exits 1. The
     // tar engine lists the same case in SkippedFiles.
     public IReadOnlyList<SkippedFile> KeptExistingFiles { get; init; } = [];
+    // T-F383: conflict prompts the user answered Skip. Named nowhere and outside Outcome (T-F216);
+    // the App's footer line uses it to not call a run that wrote nothing "Extracted".
+    public int UserSkippedEntryCount { get; init; }
     // T-F260: one entry per source the engine finished; no entry = not processed (fail-closed).
     public IReadOnlyList<SourceResult> Sources { get; init; } = [];
     // The only input to "Delete after operation": sources whose Outcome is Completed.
@@ -687,9 +690,9 @@ is the one English table; `ArchiveListResult.ErrorText`, `ThreatFinding.ReasonTe
 `CoreText` in a UI language (`MessageText.Render`, `UiCulture.Resolve`/`ResolveFirst`) from
 `Resources/CoreMessages.resx` (37 locales); Shell and the App use it, the CLI prints English.
 T-F297: an exception's text enters a message only through `CoreMessages.Detail`, which keeps the
-English text and adds the Windows error code; eight codes of their own (`System*`,
+English text and adds the Windows error code; nine codes of their own (`System*`,
 `ContentCrcMismatch`, T-F333's `ContentLargerThanDeclared`, `ContentSmallerThanDeclared` and
-`EntryDataTruncated`) are translated in the Ukrainian table only (`MessageText.UkrainianOnlyCodes`).
+`EntryDataTruncated`, T-F382's `ContentDamaged`) are translated in the Ukrainian table only (`MessageText.UkrainianOnlyCodes`).
 `ArchiveOptions.ExactFileName` (T-F221) names a single archive exactly, no extension added.
 
 ---

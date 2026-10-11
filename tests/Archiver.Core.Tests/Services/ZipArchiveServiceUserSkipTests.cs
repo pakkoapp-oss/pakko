@@ -64,6 +64,7 @@ public sealed class ZipArchiveServiceUserSkipTests : IDisposable
         }));
 
         prompts.Should().Be(1);
+        result.UserSkippedEntryCount.Should().Be(2, "T-F383: unnamed, but counted");
         result.SkippedFiles.Should().BeEmpty();
         result.Errors.Should().BeEmpty();
         result.CreatedFiles.Should().BeEmpty();
@@ -92,6 +93,7 @@ public sealed class ZipArchiveServiceUserSkipTests : IDisposable
         ArchiveResult result = await _sut.ExtractAsync(Ask(zip, dest, answer: null));
 
         result.SkippedFiles.Should().ContainSingle().Which.Reason.Should().Be(EverySkipped);
+        result.UserSkippedEntryCount.Should().Be(0, "nobody answered");
     }
 
     [Fact]
@@ -117,6 +119,7 @@ public sealed class ZipArchiveServiceUserSkipTests : IDisposable
 
         result.SkippedFiles.Should().BeEmpty();
         result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.Partial);
+        result.UserSkippedEntryCount.Should().Be(1);
         File.ReadAllText(Path.Combine(dest, "b.txt")).Should().Be("new b.txt");
     }
 
@@ -130,6 +133,7 @@ public sealed class ZipArchiveServiceUserSkipTests : IDisposable
             _ => Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Overwrite })));
 
         result.SkippedFiles.Should().BeEmpty();
+        result.UserSkippedEntryCount.Should().Be(0);
         File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("new a.txt");
     }
 }
