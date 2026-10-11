@@ -22,6 +22,7 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
 | `docs/DECISIONS.md` | Architectural decisions + rejected approaches, with root-cause detail | Before implementing packaging, COM, or shell integration | An approach is chosen, rejected, or corrected |
 | `docs/DIAGRAMS.md` | Required sequence/state/activity/component diagrams, Ground Truth Rule | Touching COM/shell, operation lifecycle, `ZipArchiveService` branching, or the manifest | Per its own DoD table — same commit as the code |
 | `docs/TESTING.md` | Test plan and fixture inventory for `Archiver.Core` | Writing or running tests | New test category, fixture, or test count changes |
+| `docs/SMOKE.md` | The catalogue of on-device checks (T-F378): stable row IDs, tiers `quick`/`release`/`store`, who runs a row and on which artifact | Before any on-device check or a release | A command, switch, menu item, App command or policy is added or removed (`SmokeCatalogueTests` fails until a row names it); a check is added, retired or moves tier |
 | `tests/Archiver.Core.Tests.GenerateFixtures/README.md` | Fixture-generation mechanics only (subordinate to `docs/TESTING.md`) | Adding a fixture-dependent test | A new fixture scenario is added |
 | `docs/SPEC.md` | Product specification — **canonical owner of the version roadmap table, feature scope, non-goals** | Scoping a new feature, checking what's out of scope | Scope or roadmap changes |
 | `docs/CLI.md` | **Canonical owner of Archiver.CLI's (T-F09) command/switch specification** — 7z→Pakko command table, switch fidelity, three-way unknown-input rule | Implementing or extending T-F09 | The planned CLI command/switch surface changes |
@@ -57,6 +58,7 @@ DI duplication happened).
 | Supported-format list or a major feature ships/changes | `README.md` (Supported Formats / Project Status) | `docs/index.html` + `docs/uk/index.html` (What's Implemented section, kept identical in substance across both languages) |
 | `Deploy.ps1`/`Setup-DevCert.ps1` behavior changes | `scripts/README.md` | `CONTRIBUTING.md`, `README.md` (Building and Deploying), `CLAUDE.md` (Build Commands) |
 | A release is tagged (`vX.Y.Z`) | `CHANGELOG.md` | — (single owner, see "Deployment") |
+| A new entry point (CLI command or switch, Shell argument, Explorer command, App command, policy) | its own doc (`docs/CLI.md`, `docs/POLICIES.md`, ...) | `docs/SMOKE.md` (a row that names it in Covers) |
 | COM/shell, operation lifecycle, `ZipArchiveService` branching, or manifest changes | `docs/DIAGRAMS.md` | Per its own DoD table |
 | New test or fixture added | `docs/TESTING.md` | `tests/Archiver.Core.Tests.GenerateFixtures/README.md`, `CONTRIBUTING.md` |
 | New project added to `src/` or `tests/` | `docs/ARCHITECTURE.md` (folder tree) | `CONTRIBUTING.md` (Project structure table) |

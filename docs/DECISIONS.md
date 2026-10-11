@@ -12432,6 +12432,62 @@ under JIT took 2.3 s, par2cmdline 1.4.0 3.8 s. Repair of 8 MB of damage: 12.0 s 
   version only. Submitting it is the maintainer's step, with the listing text of
   `docs/store-listing/` (13 feature lines, "What's new" written for an update from 1.7.1).
 
+## T-F378 — the smoke catalogue (2026-10-11)
+
+**What there was.** Four scenario files written per release and kept outside the repository
+(v1.6.0, v1.7.0, the Native AOT campaign, v1.7.2), their helper scripts, and the "Manual Smoke Test
+Cycle" in `docs/TESTING.md`. All were read in full for this review.
+
+**What worked, and is kept.** They test what a user gets (the CI artifact of a tag, the installed
+package, the Store bundle), which is how T-F375, T-F321 and T-F362 were found with every test
+green. They are tables by surface with one expectation per row and a reason for every skipped row.
+Severity decides: P0 and P1 hold the release, P2 and P3 become tasks. Verdicts come from
+independent tools (`7za t`, `Get-FileHash`, par2cmdline, the event log). The checks that need the
+maintainer are collected into one visit.
+
+**What did not.**
+- Each release forked a new file, outside review, and renumbered the rows: A1 of v1.7.0 and A1 of
+  the AOT campaign are different checks, so no row has a history.
+- No tiers. There was a full campaign or nothing; what to leave out was decided by eye each time.
+- Results were written into the scenario, so the list and a run's report were one file.
+- The lists fell behind the app. PAR2 (three frontends, two menu items, `pakko r`, a policy) had
+  no row when v1.8.0 was prepared; WACK had not been run since 1.4.2.1, and the first run after
+  found T-F377; the manual cycle was last run in July; a local note still described the
+  `pakko://` scheme removed by T-F232.
+- Fixtures and scripts were one-off: fixed folders at a drive root, one of them 3.3 GB and not
+  reproducible, and five scripts for the same job.
+- The CLI rows repeated by hand what the subprocess tests already do against the AOT exe.
+- The policy rows were always left "for the maintainer's visit", though one elevated script walks
+  all five values and restores the registry (shown in the v1.8.0 checks).
+- No time budget on the installed build, the only check that catches T-F375's kind.
+- The update and Store rows existed in the v1.7.2 file only.
+
+**Decided.**
+- One catalogue in the repository, `docs/SMOKE.md`, with rows that keep their IDs for good
+  (`CLI-`, `SHL-`, `EXP-`, `APP-`, `OPW-`, `PAR-`, `POL-`, `PKG-`, `PRF-`, `REL-`, `STO-`); a row
+  that no longer applies is marked `retired`, not removed.
+- A run is a filter, not a copy: every row has a tier (`quick` after any change to a shipped exe,
+  `release` before a tag, `store` before and after a submission), an executor (`script`, `mcp`,
+  `uac`, `user`, `store-machine`) and the artifact under test. Making a run longer or shorter is a
+  change of a row's tier.
+- Results go into the release record, never into the catalogue.
+- Speed budgets are ratios to a yardstick measured in the same run (par2cmdline, the vendored
+  `7za`), not seconds: a bound in seconds passes on a fast machine and fails on a loaded one.
+- The catalogue is held to the code by a test, as `DiagramSixTests` holds diagram 6:
+  `SmokeCatalogueTests` reads the entry points from the source and requires a live row for each.
+  Entry points are read as text with regular expressions, since Core's test project references
+  neither the CLI, the Shell, the App nor the C++ project; a sixth test pins that each reader
+  still finds known names, so a renamed file cannot empty a list unnoticed.
+- Rows added beyond what the old files had: PAR2 on every frontend with the failure paths and the
+  other tools, the five policies and FIPS, WACK compared with its last report, the package's life
+  cycle (update, refused downgrade, removal), failing destinations and hostile archives through
+  the UI, display scale and right-to-left layout, passwords absent from the log, the three shells
+  and two code pages, the release's files, the Store bundle.
+
+**Not taken.** A machine-readable file (TSV or JSON) next to a rendered page: two files to keep
+equal for a table a regular expression already reads. A new test project for the guard: the
+existing document-reading tests live in `Archiver.Core.Tests/Services`.
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry

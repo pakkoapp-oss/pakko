@@ -12,6 +12,8 @@
   href: docs/POLICIES.md
 - name: Testing
   href: docs/TESTING.md
+- name: Smoke Catalogue
+  href: docs/SMOKE.md
 - name: Code Signing
   href: docs/SIGNING.md
 - name: Security
