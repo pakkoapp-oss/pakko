@@ -1613,8 +1613,10 @@ re-measured with T-F346's script before and after.
 
 - [ ] **Status:** open. With `AllowedFormats` = `zip` the App refuses to open a tar.gz ("blocked
   by Group Policy"), but the Format list of New archive still has TAR and the five compressed
-  tars; choosing one ends in Core's refusal after the user pressed Compress. Smoke row POL-009
-  expects them to be missing. Whether `BlockedFormats` = `tar` hides them was not looked at.
-  Next: build the list from the policy (allowed and blocked alike), with a test in
-  `Archiver.App.Core`, then POL-009 again.
+  tars; choosing one ends in Core's refusal after the user pressed Compress. The App never
+  filtered this list by format: the only rule is `TarFormatVisibility`, which hides the TAR
+  item under `DisableTarExtraction` (`MainViewModel`), so `BlockedFormats` is expected to
+  behave the same (not looked at on the device). Smoke row POL-009's "missing from New
+  archive" was written ahead of the code. Next: build the list from the policy (allowed and
+  blocked alike), with a test in `Archiver.App.Core`, then POL-009 again.
 - **Reported by:** hand walk of the `mcp` smoke rows (POL-009), 2026-10-11.
