@@ -159,6 +159,27 @@ function Stop-ShellProcess {
     Get-Process -Name 'Archiver.OperationUi', 'Archiver.Shell' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 }
 
+# Starts Archiver.Shell.exe with the arguments; -StandardInput is written as UTF-16, then closed.
+function Start-ShellProcess {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Starts the process a smoke step asked for.')]
+    param(
+        [Parameter(Mandatory)][string[]]$Arguments,
+        [AllowNull()][string]$StandardInput
+    )
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new($Smoke.Shell)
+    foreach ($argument in $Arguments) { $startInfo.ArgumentList.Add($argument) }
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardInput = $PSBoundParameters.ContainsKey('StandardInput')
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+    if ($startInfo.RedirectStandardInput) {
+        $bytes = [System.Text.Encoding]::Unicode.GetBytes($StandardInput)
+        $process.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
+        $process.StandardInput.Close()
+    }
+    $process
+}
+
 # Starts Archiver.Shell.exe the way Explorer does and waits until it exits, or until the windows'
 # text matches -Until (a result window stays open until someone closes it). -Watch is a pattern
 # to look for while waiting, without stopping. Texts are in the user's language: match numbers,
@@ -172,33 +193,25 @@ function Invoke-Shell {
         [string]$StandardInput
     )
     Stop-ShellProcess
-    $startInfo = [System.Diagnostics.ProcessStartInfo]::new($Smoke.Shell)
-    foreach ($argument in $Arguments) { $startInfo.ArgumentList.Add($argument) }
-    $startInfo.UseShellExecute = $false
-    if ($PSBoundParameters.ContainsKey('StandardInput')) { $startInfo.RedirectStandardInput = $true }
+    $start = @{ Arguments = $Arguments }
+    if ($PSBoundParameters.ContainsKey('StandardInput')) { $start.StandardInput = $StandardInput }
     # Not $watch: variable names ignore case, and -Watch is a parameter here.
     $clock = [System.Diagnostics.Stopwatch]::StartNew()
-    $process = [System.Diagnostics.Process]::Start($startInfo)
+    $process = Start-ShellProcess @start
     try {
-        if ($PSBoundParameters.ContainsKey('StandardInput')) {
-            $bytes = [System.Text.Encoding]::Unicode.GetBytes($StandardInput)
-            $process.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
-            $process.StandardInput.Close()
-        }
-
         $text = ''
         $firstWindow = $null
         $matched = $false
         $watched = $false
         while ($clock.Elapsed.TotalSeconds -lt $TimeoutSeconds) {
-            $windows = @(Get-ShellWindowText)
-            if ($windows) {
-                if ($null -eq $firstWindow) { $firstWindow = $clock.Elapsed.TotalSeconds }
-                $text = ($windows | ForEach-Object { "[$($_.Title)] $($_.Text)" }) -join ' || '
-                if ($Watch -and $text -match $Watch) { $watched = $true }
-                if ($Until -and $text -match $Until) { $matched = $true; break }
+            $seen = (Get-ShellWindowText | ForEach-Object { "[$($_.Title)] $($_.Text)" }) -join ' || '
+            if ($seen) {
+                $text = $seen
+                $firstWindow ??= $clock.Elapsed.TotalSeconds
+                $watched = $watched -or ($Watch -and $text -match $Watch)
+                $matched = $Until -and $text -match $Until
             }
-            if ($process.HasExited) { break }
+            if ($matched -or $process.HasExited) { break }
             Start-Sleep -Milliseconds 250
         }
 
