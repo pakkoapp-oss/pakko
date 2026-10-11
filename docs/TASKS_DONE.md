@@ -12550,3 +12550,93 @@ PowerShell does natively.
   announces "list" only. T-F304 named two other controls. Next: `AutomationProperties.Name`
   from a resource in 37 locales, the archive view's list checked the same way.
 - **Reported by:** hand walk of the `mcp` smoke rows (APP-012), 2026-10-11.
+
+### T-F377 — `pakko.exe` in the package has no DPI-awareness manifest (P3)
+
+- [x] **Status:** done 2026-10-11 (v1.8.1 wave). `src/Archiver.CLI/app.manifest` declares
+  `PerMonitorV2`; `PackagingManifestTests` holds both non-WinUI exes to it. The certification
+  kit on package 1.8.0.5 (`PKG-005`): overall PASS, 24 tests, `DPIAwarenessValidation` no
+  longer among the findings; its line is out of `scripts/smoke/wack-known.txt`.
+- **Before that:** code done 2026-10-11 (v1.8.1 wave): `src/Archiver.CLI/app.manifest` declares
+  `PerMonitorV2` (no common-controls dependency, `pakko` draws nothing), and the published AOT
+  `pakko.exe` carries it (the string is in the file). `PackagingManifestTests` holds both
+  non-WinUI exes to it, seen red for the CLI. The finding's line is out of
+  `scripts/smoke/wack-known.txt` (the list only excuses findings), so `PKG-005` fails if the
+  kit still warns. Left: that row green on the 1.8.1 package (one elevation prompt; goes with
+  the release's device session).
+- **Earlier status:** open. The Windows App Certification Kit run for v1.8.0 (2026-10-11, package
+  1.8.0.1 x64) gave `DPIAwarenessValidation` WARNING: "File pakko.exe neither has PerMonitorV2
+  manifested in the manifest nor calls into DPI Awareness APIs", and so "the app is not DPI
+  Aware". It is the only non-optional finding of that run. `pakko.exe` is a console program and
+  draws nothing, and 1.7.0 to 1.7.2 passed Store certification with it, so nothing is broken for a
+  user. Next: an `app.manifest` with `PerMonitorV2` for `Archiver.CLI`, as `Archiver.Shell` has
+  (T-F129), then a WACK run that reads `PASS`. The run before this one was on 1.4.2.1
+  (2026-08-01), before `pakko.exe` joined the package (T-F317): WACK belongs in every release's
+  checks.
+- **Reported by:** the v1.8.0 release checks, 2026-10-11.
+
+### T-F379 — A killed `pakko a` leaves its chunk folder until a later large run (P3)
+
+- [x] **Status:** done 2026-10-11 (v1.8.1 wave). `ArchiveTempFile.Create`, which every
+  creation passes, sweeps `.pakko-tmp-` as well as `.pakko-a-`. Smoke row `CLI-016` creates a
+  small archive after the kill: red on package 1.8.0.2 (the chunk folder stayed), green on
+  1.8.0.5.
+- **Before that:** code done 2026-10-11 (v1.8.1 wave): `ArchiveTempFile.Create`, which every
+  creation passes (ZIP, tar, PAR2), sweeps `.pakko-tmp-` as well as `.pakko-a-`; the prefix
+  constant lives there and the parallel writer reads it. Two tests, both seen red: a dead run's
+  hidden chunk folder goes and a live run's stays; a small `ArchiveAsync` leaves the folder
+  with its archive only. Smoke row `CLI-016` now creates a small archive after the kill; on
+  package 1.8.0.2 it fails with the chunk folder still there, which is the bug. Left: the row
+  green on the 1.8.1 package.
+- **Earlier status:** open. `pakko a -mx=9 out.zip <6000 files> <a 200 MB file>` killed mid-write
+  leaves `.pakko-a-*.tmp` and a hidden `.pakko-tmp-*` folder next to the archive. The next `pakko
+  a` into that folder removes the `.tmp` file always (`ArchiveTempFile.Create`), but the chunk
+  folder only when that run goes through `ParallelSingleArchiveWriter`, which holds the sweep
+  for `.pakko-tmp-`: after `pakko a out.zip <a small folder>` the chunk folder of the killed run
+  is still there, with whatever it had compressed. Found by smoke row CLI-016 on package 1.8.0.1
+  (2026-10-11); the row runs the same large command twice until this is fixed. Next: sweep both
+  prefixes from one place that every `a` passes, with a test that kills nothing (a stale folder
+  with a dead owner's name, then a small archive); then make CLI-016's second run a small one.
+- **Reported by:** T-F378 step 3a, 2026-10-11.
+
+### T-F383 — "Skip" chosen in the conflict dialog leaves no trace in the result (P3)
+
+- [x] **Status:** done 2026-10-11 (v1.8.1 wave). `ArchiveResult.UserSkippedEntryCount`; the
+  App's footer line reads "Nothing was done - skipped: N" when an extraction wrote nothing
+  because of the user's Skip answers. On package 1.8.0.5 under uk-UA: "Нічого не зроблено -
+  пропущено: 1", no "Details..." link. The Explorer window after the same answer closes with
+  no result text, as its tests say.
+- **Before that:** code done 2026-10-11 (v1.8.1 wave). `ArchiveResult.UserSkippedEntryCount`
+  carries how many conflict prompts the user answered Skip (both engines, added up by the
+  router); the entries stay unnamed and `Outcome` unchanged, as T-F216 decided. The App's
+  footer line (`OutcomeLine`) reads "Nothing was done - skipped: N" when an extraction wrote
+  nothing because of those answers, with no "Details..." link; a run that wrote something
+  keeps "Extracted". No new string. The Explorer window was already silent in this case, and
+  `pakko x` exits 0 without a line (the user answered in the console); neither changes. Seven
+  tests seen red; two more pin that a skip-all run in the App's mode (`SeparateFolders`) names
+  no created folder, ZIP and tar. Left: one look at the line in the App on the 1.8.1 package
+  (smoke rows APP-007, APP-024).
+- **Earlier status:** open. In the App with "If the file exists: Ask", extracting over existing
+  files and answering Skip for all ends with "Extracted in 10 s — archives: 0" and no
+  "Details..." link; skipping one entry and overwriting the rest ends with "archives: 1" and no
+  word of the skipped file. A skip made by the "Skip" policy is listed in the summary (T-F68).
+  "Move the archives to the Recycle Bin" does treat the answered skip as a skip (the archive
+  stays), so only the report is missing. Next: record the answered skips in `SkippedFiles` (or
+  count them in the outcome line), so that a run that wrote nothing reads "Nothing done".
+- **Reported by:** hand walk of the `mcp` smoke rows (APP-007, APP-024), 2026-10-11.
+
+### T-F326 — Tar-creation policy refusal names the destination folder as the item (P3)
+
+- [x] **Status:** done. Fixed in code 2026-10-05 (d42a676); the device run left open was made
+  2026-10-11 on package 1.8.0.5 under `DisableTarExtraction=1`: `pakko a -ttar x.tar <file>`
+  prints "pakko: error: x.tar: tar.exe-based archive creation is disabled by Group Policy."
+- **Before that:** fixed in code 2026-10-05 (post-v1.7.0 wave 2, d42a676), by tests: every whole-operation refusal (Group Policy, a password with a tar format, an unusable password, a failed tar.exe signature check) names the archive that was to be written (`ArchiveNaming.RefusedArchivePath`), or the first source in Separate-archives mode. Left: one `pakko a -ttar` run under `DisableTarExtraction=1` on a device (needs UAC; goes with the pre-release visit).
+- **Earlier status:** open. Found in the wave 9 device campaign (2026-10-04, B9) with
+  `DisableTarExtraction=1`: a `pakko a -ttar` run with its output in `C:\g9` prints
+  `pakko: error: g9: tar.exe-based archive creation is disabled by Group Policy.`. The refusal is
+  about the format, not about a file or folder, but `ArchiveCreationRouter` and
+  `TarSandboxedService.CompressAsync` both build it as `CoreMessages.Error(options.DestinationFolder,
+  TarCreationDisabled)`, so the folder reads like the item that failed. Fix direction: name the
+  archive being created (or no item at all) in both places; check how App and Explorer show the
+  same error.
+- **Reported by:** v1.7.0 wave 9 device campaign, 2026-10-04.
