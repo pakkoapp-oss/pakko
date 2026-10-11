@@ -12386,6 +12386,43 @@ under JIT took 2.3 s, par2cmdline 1.4.0 3.8 s. Repair of 8 MB of damage: 12.0 s 
 - The App, the Explorer commands and the operation window are AOT builds of the same Core, so
   they had the same slowdown and get the same fix.
 
+## v1.8.0 — the PAR2 release (2026-10-11)
+
+- **Before the bump.** The release check timed the installed Native AOT `pakko` and found T-F375
+  (the entry above); it was fixed and merged first (PR #43). `Category=Slow` was green, and
+  par2cmdline, par2cmdline-turbo and MultiPar verified and repaired with Pakko's sets, as Pakko did
+  with theirs.
+- **Tag:** `v1.8.0` on a5e05e3 after the main build (38073907652) was green and the canary on that
+  commit read clean (38074631018: `canary-failed-day` skipped, `canary-fuzz` success). The first
+  canary run on it (38073921459) had `canary-arm64` fail both attempts in the socket sandbox test
+  (T-F372), so it was run again. The CHANGELOG header says 2026-10-10, the day of the bump commit;
+  the tag was pushed the next morning with the maintainer's go-ahead. The tag run (38109247340)
+  passed on its first attempt.
+- **Release files, downloaded and checked:** `SHA256SUMS` matches both CLI zips; both
+  `.msixbundle` files carry a valid `CN=Pakko Dev` signature; the x64 `pakko.exe` reports
+  `1.8.0+a5e05e3`. On 200 MB at 5 % it wrote the archive with its set in 2.6 s, tested it in
+  1.1 s and rebuilt 8 MB of damage in 3.2 s, the copy equal to the original byte for byte: the
+  T-F375 fix is in the shipped build. The bundles were not installed (the device has the dev
+  package 1.8.0.1, built from the same commit, and a lower revision does not install over it).
+- **Device checks (package 1.8.0.1, HKLM values set by one elevated script and put back):**
+  - *FIPS* (`FipsAlgorithmPolicy\Enabled` = 1): `pakko a -rr5`, `t` on a good and on a damaged
+    archive, and `r` all work; MD5 through `System.Security.Cryptography` is not refused. The own
+    MD5 kept as a fallback plan is not needed.
+  - *`DisableRecoveryData` = 1:* `pakko a -rr5` refuses and writes no archive; `t` looks for no
+    set; `r` refuses an archive path and a `.par2` path. The App shows no PAR2 line and no Repair
+    button on an archive with a set, no option on the New archive card, and answers a double-click
+    on a `.par2` row with the refusal. Explorer's submenu on that archive has neither PAR2 item.
+  - *`BlockedFormats` = zip:* Explorer offers only Compress and Hash on the zip, and both PAR2
+    items on its `.par2` file; the App refuses to open the zip. `pakko t` on the zip reports the
+    set and then skips the blocked format, and `pakko r` repairs from either path: Core copies and
+    hashes bytes without parsing them, as decided in step 4a. `pakko l` on a zip is refused.
+- **Not checked on a device:** a `.par2` dragged into the App window (a synthetic drag does not
+  reach WinUI), a language change with sign-out, WACK, ARM64.
+- **Store:** 1.7.2.0 passed certification (maintainer, 2026-10-11). The Store bundle for 1.8.0 is
+  built by dispatch 38110677528 on the tag; submitting it is the maintainer's step, with the
+  listing text of `docs/store-listing/` (13 feature lines, "What's new" written for an update
+  from 1.7.1).
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry
