@@ -441,3 +441,31 @@ file inherited from its folder were replaced. Two scripts, for users who ask (Wi
 The repair removes only Pakko's own entries and re-inherits from the file's folder; entries set
 for anyone else are kept (it is not `icacls /reset`). See `docs/DECISIONS.md`'s fix-phase-4
 entry.
+
+## Invoke-Smoke.ps1 — the on-device checks (T-F378)
+
+Runs rows of `docs/SMOKE.md` against the installed package. The catalogue says what each row does
+and expects; this script is a filter over it.
+
+```powershell
+.\scripts\Invoke-Smoke.ps1                       # the quick tier: 25 rows, about 2.5 minutes
+.\scripts\Invoke-Smoke.ps1 -Tier release         # quick and release rows
+.\scripts\Invoke-Smoke.ps1 -Only PAR-*,CLI-004   # some rows of the chosen tier
+.\scripts\Invoke-Smoke.ps1 -Tier store -List     # show the rows, run nothing
+```
+
+- Install the build first with `Deploy.ps1`; the script tests what is installed. `-PakkoExe <path>`
+  tests another `pakko.exe` (the one from a release zip) in the CLI, PAR2 and speed rows.
+- A row a script can run has a step in `scripts/smoke/<Surface>.ps1`, registered with
+  `Add-SmokeStep '<ID>' { ... }`; `Common.ps1` holds the helpers. A step throws to fail
+  (`Assert-Smoke`), calls `Skip-Smoke '<reason>'` when it cannot run here, and may return a note.
+  Rows without a step are printed as `manual` with their action and expectation.
+- Fixtures go into a new folder under `%TEMP%` and are removed at the end; the folder is kept when
+  a row fails. The result table is printed and written to `%TEMP%\pakko-smoke-report.md`; paste
+  it into the release record.
+- Windows open and close on the desktop during a run, and the speed rows compare times: leave the
+  machine alone meanwhile. The PAR2 rows need `Get-Par2Oracles.ps1` to have been run once.
+- Shell and App windows speak the user's language, so steps match numbers, names and hashes in
+  their text, never words.
+- Adding a check: add the row to `docs/SMOKE.md` (the next free ID of its surface), then its step.
+  `SmokeCatalogueTests` fails when a `quick` row has no step or a step has no row.

@@ -321,7 +321,7 @@ try {
     }
 
     Write-Output "Package: $($package.PackageFullName)"
-    Write-Output "App build: $((Get-Item -LiteralPath (Join-Path $installDir 'Archiver.App.dll')).LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss'))"
+    Write-Output "App build: $((Get-Item -LiteralPath (Join-Path $installDir 'Archiver.App.exe')).LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss'))"
     $rows | Format-Table -AutoSize | Out-String | Write-Output
 }
 finally {

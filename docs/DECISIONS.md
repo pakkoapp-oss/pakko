@@ -12489,6 +12489,31 @@ already had a row. Forty of the other 41 got one, on an existing row where it al
 check and on nine new rows otherwise. One was a pointer and not a check, and has no row: T-F320,
 named as the reason the Store bundle declares `pakko` as it does.
 
+**Step 2, the runner (2026-10-11).** `scripts/Invoke-Smoke.ps1` reads the rows from the catalogue
+and runs the steps registered under their IDs in `scripts/smoke/`; a row without a step is
+reported as `manual` with its text.
+- *Measured on package 1.8.0.1 before the bounds were written:* `a -rr5` on 200 MB 2.7 s against
+  par2cmdline's 3.2 s; `r` of 8 MiB 3.3 s against 2.2 s; `a` on 6000 files of 16 KiB 1.0 s against
+  7-Zip's 0.8 s and `x` 10.7 s against 6.1 s; `l` and `t` under 0.2 s. So the factors are 2 for
+  writing a set, 3 for repair (par2cmdline patches in place, Pakko writes and checks a second
+  file), 3 for 6000 files (the perf suite's own calibrated ratio for many small files is 1.58
+  with a tolerance on top), and a run under one second passes whatever the ratio.
+- *The first fixture was too easy.* 6000 files of repeated text were archived in half a second and
+  no operation window appeared at all; the files are 16 KiB of random bytes now, and the window
+  is up after 1.9 s.
+- *Texts are in the user's language.* The Shell and the App show Ukrainian on the machine the
+  steps were written on and English in CI's world, so a step matches numbers, file names and
+  hashes in a window's text: a clean test has no CRC value in it, a damaged one names the entry
+  and two values; a verified set shows its block counts.
+- *Found while writing the steps.* `scripts/Measure-Startup.ps1` had not run since Native AOT: it
+  read the build time from `Archiver.App.dll`, which the package no longer has. It reads the exe
+  now. "Extract here" on an archive with one root folder puts that folder's content into a
+  folder named after the archive, which the catalogue row had described the other way round.
+- *The parameter is `-Tier`.* `$Profile` is an automatic variable in PowerShell, and the catalogue
+  calls the thing a tier.
+- *Seen red:* with `-PakkoExe` set to the Debug build, PRF-001 and PRF-002 fail (13.3 s against
+  3.4 s, 13.8 s against 2.4 s).
+
 **Not taken.** A machine-readable file (TSV or JSON) next to a rendered page: two files to keep
 equal for a table a regular expression already reads. A new test project for the guard: the
 existing document-reading tests live in `Archiver.Core.Tests/Services`.

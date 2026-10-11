@@ -42,6 +42,10 @@ Rules:
 - To make a run longer or shorter, change a row's tier or add a row.
 - Fixtures are generated into a temporary folder by the run; no row depends on a folder left by an
   earlier run.
+- The rows a script can run are run by `scripts\Invoke-Smoke.ps1 -Tier quick` (or `release`,
+  `store`; `-Only PAR-*,CLI-004` for some rows; `-List` to see a tier). A row's step is in
+  `scripts/smoke/`, registered under the row's ID; a row without a step is printed with its action
+  and expectation and reported as `manual`.
 
 Surfaces: `CLI` the console program, `SHL` `Archiver.Shell.exe` started as Explorer starts it,
 `EXP` the real Explorer menu, `APP` the WinUI window, `OPW` the Explorer operation window, `PAR`
@@ -52,7 +56,7 @@ budgets, `REL` the release's files, `STO` the Store.
 
 | ID | Tier | By | On | Action | Expect | Covers |
 |---|---|---|---|---|---|---|
-| CLI-001 | quick | script | dev | Run the `Subprocess` test layer with `PAKKO_CLI_EXE` set to the installed `pakko.exe` | Every test passes; the only skips are the tests of the dev version string | `cli:a` `cli:x` `cli:t` `cli:l` `cli:i` `cli:h` `cli:-o` `cli:-y` `cli:-ao` `cli:-t` `cli:-m` `cli:-mx` `cli:-scrc` T-F09 |
+| CLI-001 | quick | script | dev | Run the `Subprocess` test layer with `PAKKO_CLI_EXE` set to the installed `pakko.exe` | Every test passes | `cli:a` `cli:x` `cli:t` `cli:l` `cli:i` `cli:h` `cli:-o` `cli:-y` `cli:-ao` `cli:-t` `cli:-m` `cli:-mx` `cli:-scrc` T-F09 |
 | CLI-002 | quick | script | dev | `pakko -v`, `--version`, `-h`, `--help` through the package alias in `WindowsApps` | The version is the package's; the help lists `a x t l i h r`; exit 0 | `cli:-v` `cli:--version` `cli:-h` `cli:--help` T-F317 |
 | CLI-003 | quick | script | dev | The refused commands `u`, `d`, `rn`, `b`, `e` and the refused switches `-r`, `-i`, `-x`, `-ssc`, each on a real archive | Exit 7, a line that names the command or switch as not supported, the archive and the folder unchanged | `cli:u` `cli:d` `cli:rn` `cli:b` `cli:e` `cli:-r` `cli:-i` `cli:-x` `cli:-ssc` |
 | CLI-004 | quick | script | dev | Round trip of a folder with a Cyrillic name: `a` as ZIP at `-mx=0` and `-mx=9`, as `-ttar.gz`, and as AES-256 (`-p`, `-mem=AES256`); then `l`, `t`, `x -o` | Extracted files equal the sources byte for byte; `l` shows the names and the Encrypted column; `7za t` accepts each archive | `cli:a` `cli:x` `cli:l` `cli:t` `cli:-p` `cli:-mem` `cli:-mx` `cli:-t` `cli:-o` |
@@ -68,7 +72,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | CLI-014 | release | script | dev | Hostile ZIPs: names that leave the destination, a bomb, a local header that disagrees with the central directory, a 20,000-segment name | Each is refused per entry or asked about; nothing is written outside the destination; the error is short | `cli:x` `cli:t` T-F243 T-F237 T-F280 |
 | CLI-015 | release | script | dev | Extract into a read-only folder, into a path longer than 260 characters, and over a file another process holds open | A per-item error and the right exit code; the other items are extracted; no partial file | `cli:x` `cli:-ao` |
 | CLI-016 | release | script | dev | Two `pakko a` at once into one folder; then kill a third mid-write and run it again | The first two both succeed; after the rerun no `.zip.tmp` remains; neither run replaces the other's archive | `cli:a` T-F263 T-F312 T-F321 |
-| CLI-017 | store | script | tag | CLI-001 and CLI-002 on `pakko.exe` from `pakko-win-x64.zip` of the release | As those rows; the version carries the tag's commit | `cli:-v` |
+| CLI-017 | store | script | tag | CLI-001 and CLI-002 on `pakko.exe` from `pakko-win-x64.zip` of the release | As those rows, less the two tests that expect a dev version string; the version carries the tag's commit | `cli:-v` |
 | CLI-018 | release | script | dev | Extract a ZIP and a tar whose entries are dated 2001; `pakko x a.zip` with no `-o` from an empty current folder; `a -mx=1` and `-mx=9` on 32 MiB of random bytes | Files and folders carry the archive's times; the files land in the current folder; both archives are about the size of the input (stored) | `cli:x` `cli:a` `cli:-mx` T-F298 T-F206 T-F299 |
 | CLI-019 | release | script | dev | tar through `pakko`: 300 files into one tar; files named `-C`, `-T`, `--exclude=x`, `@list` and a name with fullwidth quotes; a tar with two entries of one name under `-aou`, `-aos` and `-aoa`; extract a read-only tar | 300 entries; the odd names are stored as files, or refused, and never read as tar options; both duplicates, the first, the second; the archive stays read-only and nothing of it stays in `%TEMP%` | `cli:a` `cli:x` `cli:-ao` T-F273 T-F283 T-F266 T-F171 T-F248 |
 | CLI-020 | release | script | dev | `pakko l` of a GNU tar and a tar.gz with cp866 names, of a ZIP with cp866 names and no UTF-8 flag, and of a tar.gz | Cyrillic names read correctly and no entry is lost; the tar listing has dates and `-` for the packed size | `cli:l` T-F305 T-F310 T-F234 T-F214 |
@@ -78,7 +82,7 @@ budgets, `REL` the release's files, `STO` the Store.
 
 | ID | Tier | By | On | Action | Expect | Covers |
 |---|---|---|---|---|---|---|
-| SHL-001 | quick | script | dev | `--extract-here` on a ZIP with one root folder and on one with several root items | The first lands as that folder; the second is wrapped in a folder named after the archive | `shell:--extract-here` |
+| SHL-001 | quick | script | dev | `--extract-here` on a ZIP with one root folder, on one with several root items and on one with a single file | The first folder's content lands in a folder named after the archive, not doubled; the several items are wrapped in such a folder; the single file lands next to the archive | `shell:--extract-here` |
 | SHL-002 | quick | script | dev | `--extract-flat` and `--extract-folder` on the same ZIPs | Flat puts the items straight into the folder; the other always makes `<name>\` | `shell:--extract-flat` `shell:--extract-folder` |
 | SHL-003 | quick | script | dev | `--archive` on a folder, and `--archive --format tar` | `<name>.zip` and `<name>.tar` next to the source; `7za t` and `tar -tf` accept them; entries keep the folder prefix | `shell:--archive` `shell:--format` T-F75 |
 | SHL-004 | quick | script | dev | `--test` on a good ZIP and on one with a flipped byte; read the window's text | "No errors" for the first; the entry and both CRC values for the second | `shell:--test` |
@@ -138,7 +142,7 @@ budgets, `REL` the release's files, `STO` the Store.
 
 | ID | Tier | By | On | Action | Expect | Covers |
 |---|---|---|---|---|---|---|
-| OPW-001 | quick | script | dev | `Archiver.Shell.exe --archive` on a folder of 6000 files; read the window through UI Automation | The window is up within 3 seconds and shows a percentage and sizes; the archive holds 6000 entries | `shell:--archive` T-F268 |
+| OPW-001 | quick | script | dev | `Archiver.Shell.exe --archive` on a folder of 6000 files of 16 KiB; read the window through UI Automation | The window is up within 3 seconds and shows a percentage and sizes; the archive holds 6000 entries | `shell:--archive` T-F268 |
 | OPW-002 | release | mcp | dev | The same, with Cancel pressed halfway | No archive and no temporary file is left | T-F268 |
 | OPW-003 | release | mcp | dev | In the window: a name conflict (Rename, for all), a password prompt, a suspected bomb (Skip) | Each question is asked there and the answer takes effect | T-F217 |
 | OPW-004 | release | script | dev | Kill `Archiver.OperationUi.exe` two seconds into a large operation | The Win32 progress dialog takes over and the operation finishes | T-F268 T-F288 |
@@ -182,7 +186,7 @@ the registry back in a `finally` block. The App reads policy once at startup: re
 |---|---|---|---|---|---|---|
 | PKG-001 | quick | script | dev | For the four exes in the install folder: `AssemblyName.GetAssemblyName`; list the package's files | Each exe is native (the call throws); no `coreclr.dll`; file count and size within a tenth of the last record | T-F355 |
 | PKG-002 | quick | script | dev | Read the Application event log (`Application Error`, `.NET Runtime`) from the run's start to its end | No entry names a Pakko exe | T-F355 |
-| PKG-003 | quick | script | dev | Compare the package version, the exes' file versions and `pakko -v` | They agree | T-F317 |
+| PKG-003 | quick | script | dev | `pakko -v` from the install folder; the file version of each of the four exes | `pakko -v` names the installed package's full name; every exe has a file version | T-F317 |
 | PKG-004 | quick | script | dev | After the run, look in `%TEMP%` for `PakkoTarStage_*`, `PakkoTarSandbox` contents and `*.zip.tmp` | Nothing is left; no junction, hardlink or staging file of this run either | T-F309 T-F286 T-F244 T-F248 |
 | PKG-005 | release | uac | dev | `appcert.exe test -apptype packagedwin32` on the package; compare with the last record | No finding that the last record did not have | T-F377 |
 | PKG-006 | release | script | tag | Install the previous release, create an archive and a marker in the package data, then install the new bundle over it | Same package family; the marker and the log are kept; the App starts; `pakko t` accepts the old archive | T-F363 |
@@ -192,17 +196,19 @@ the registry back in a `finally` block. The App reads policy once at startup: re
 
 ## PRF - speed budgets on the installed build
 
-Budgets are ratios to a yardstick run on the same machine in the same run, never bare seconds.
-Where no other program does the same work (PRF-004, the package size in PKG-001) the yardstick is
-the last release record.
+Budgets are ratios to a yardstick run on the same machine in the same run, never bare seconds:
+par2cmdline for PAR2, the vendored `7za` for ZIP. A run that takes under a second passes whatever
+the ratio, since at that size both times are mostly process start. Where no other program does
+the same work the bound is a loose absolute one (PRF-004) or the last release record (the package
+size in PKG-001). The factors were set from a measured run (`docs/DECISIONS.md`, T-F378).
 
 | ID | Tier | By | On | Action | Expect | Covers |
 |---|---|---|---|---|---|---|
 | PRF-001 | quick | script | dev | `pakko a -rr5 -mx=0` on 200 MB against `par2 create -r5` on the same file | Under twice par2cmdline's time | `cli:-rr` T-F375 |
-| PRF-002 | quick | script | dev | `pakko r` of 8 MiB of damage against `par2 repair` | Under twice par2cmdline's time | `cli:r` T-F375 |
-| PRF-003 | quick | script | dev | `pakko a` and `pakko x` on 6000 small files against the vendored `7za` | Under twice 7-Zip's time for each | `cli:a` `cli:x` T-F114 |
-| PRF-004 | quick | script | dev | `scripts/Measure-Startup.ps1` on the installed App | Within a quarter of the last record | T-F347 |
-| PRF-005 | quick | script | dev | `pakko l` and `pakko t` on a ZIP of 4000 entries against `7za l` and `7za t` | Under twice 7-Zip's time | `cli:l` `cli:t` T-F237 |
+| PRF-002 | quick | script | dev | `pakko r` of 8 MiB of damage in 200 MB against `par2 repair` | Under three times par2cmdline's time (it patches in place; Pakko writes and checks a second file) | `cli:r` T-F375 |
+| PRF-003 | quick | script | dev | `pakko a` and `pakko x` on 6000 files of 16 KiB against the vendored `7za` | Under three times 7-Zip's time for each | `cli:a` `cli:x` T-F114 |
+| PRF-004 | quick | script | dev | `scripts/Measure-Startup.ps1 -Scenario App` on the installed App | The window is visible within a second of the start (median of three) | T-F347 |
+| PRF-005 | quick | script | dev | `pakko l` and `pakko t` on a ZIP of 6000 entries against `7za l` and `7za t` | Under twice 7-Zip's time | `cli:l` `cli:t` T-F237 |
 
 ## REL - the release's files
 
