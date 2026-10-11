@@ -115,6 +115,7 @@ public enum MessageCode
     ContentLargerThanDeclared,
     ContentSmallerThanDeclared,
     EntryDataTruncated,
+    ContentDamaged,
 
     // T-F322: an encrypted 7z or RAR - tar.exe cannot decrypt either, so no password helps
     PasswordProtectedFormatNotSupported,

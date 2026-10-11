@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO.Compression;
 using System.Text;
 using Archiver.Core.IO;
 using Archiver.Core.Models;
@@ -74,6 +75,25 @@ public sealed class VerifyingReadStreamTests
         detail.Code.Should().Be(expectedCode);
         detail.English.Should().Be(string.Format(CultureInfo.InvariantCulture, expectedEnglish, declared));
         ex.Message.Should().Be(detail.English);
+    }
+
+    // T-F382: the decompressor's own failure is English and names the wrong cause.
+    [Fact]
+    public void Read_DecompressorFails_ErrorCarriesTheDamagedCode()
+    {
+        using var s = new VerifyingReadStream(new DeflateStream(new MemoryStream(new byte[64]), CompressionMode.Decompress), 1000, expectedCrc32: null);
+        Action act = () => s.CopyTo(Stream.Null);
+
+        CoreMessages.Detail(act.Should().Throw<InvalidDataException>().Which).Code.Should().Be(MessageCode.ContentDamaged);
+    }
+
+    [Fact]
+    public async Task ReadAsync_DecompressorFails_ErrorCarriesTheDamagedCode()
+    {
+        await using var s = new VerifyingReadStream(new DeflateStream(new MemoryStream(new byte[64]), CompressionMode.Decompress), 1000, expectedCrc32: null);
+        Func<Task> act = () => s.CopyToAsync(Stream.Null);
+
+        CoreMessages.Detail((await act.Should().ThrowAsync<InvalidDataException>()).Which).Code.Should().Be(MessageCode.ContentDamaged);
     }
 
     [Fact]

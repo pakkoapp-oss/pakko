@@ -75,7 +75,7 @@ public static class CliHints
         MessageCode.ScanEntryUnsupportedMethod, MessageCode.ScanEntryAuthenticationFailed, MessageCode.ScanEntryTooLarge, MessageCode.LocalHeaderMismatch,
         MessageCode.SystemInvalidName, MessageCode.SystemAccessDenied, MessageCode.SystemSharingViolation, MessageCode.SystemDiskFull,
         MessageCode.ContentCrcMismatch, MessageCode.ContentLargerThanDeclared, MessageCode.ContentSmallerThanDeclared,
-        MessageCode.EntryDataTruncated, MessageCode.PasswordProtectedFormatNotSupported,
+        MessageCode.EntryDataTruncated, MessageCode.ContentDamaged, MessageCode.PasswordProtectedFormatNotSupported,
         MessageCode.RecoveryPercentInvalid, MessageCode.RecoveryDataDisabled, MessageCode.RecoveryDataNotCreated,
         MessageCode.RecoveryDataFileTooLarge, MessageCode.RecoveryOldVolumeNotDeleted,
         MessageCode.RecoveryDataDamagedNotRepairable,

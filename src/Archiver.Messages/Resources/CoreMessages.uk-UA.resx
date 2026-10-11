@@ -306,6 +306,9 @@
   <data name="EntryDataTruncated" xml:space="preserve">
     <value>Дані елемента ZIP обриваються раніше заявленого розміру — ZIP entry data ends before its declared size.</value>
   </data>
+  <data name="ContentDamaged" xml:space="preserve">
+    <value>Стиснені дані пошкоджено — The compressed data is damaged.</value>
+  </data>
   <data name="RecoveryPercentInvalid" xml:space="preserve">
     <value>Дані для відновлення мають становити від 1 до 100 відсотків (задано {0}).</value>
   </data>

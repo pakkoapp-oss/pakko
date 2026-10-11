@@ -13,6 +13,8 @@ internal static class ArchiveTempFile
 {
     private const string Prefix = ".pakko-a-";
     private const string Suffix = ".tmp";
+    /// <summary>The folder the parallel ZIP writer keeps its compressed chunks in.</summary>
+    internal const string ChunkFolderPrefix = ".pakko-tmp-";
     private const int SharingViolation = 0x20;
     private const int LockViolation = 0x21;
     private const int FileExists = 0x50;
@@ -23,12 +25,14 @@ internal static class ArchiveTempFile
     // About 1.5 s in all: long enough for a scanner or sync client that opened the file for a moment.
     private static readonly int[] RetryDelaysMs = [100, 200, 400, 800];
 
-    /// <summary>Sweeps the archive's folder for temporary files of runs that no longer run, and
-    /// returns a new temporary path there. The file itself is not created.</summary>
+    /// <summary>Sweeps the archive's folder for temporary files and chunk folders of runs that no
+    /// longer run (T-F379: every creation passes here, a small one too), and returns a new temporary
+    /// path there. The file itself is not created.</summary>
     public static string Create(string destPath)
     {
         string folder = Path.GetDirectoryName(Path.GetFullPath(destPath))!;
         TempOwner.SweepStale(folder, Prefix, Suffix, TempScope.Destination);
+        TempOwner.SweepStale(folder, ChunkFolderPrefix, "", TempScope.Destination);
         return Path.Combine(folder, TempOwner.NewName(Prefix, Suffix));
     }
 

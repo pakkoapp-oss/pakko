@@ -23,6 +23,12 @@ public sealed record ArchiveResult
     /// so they do not change <see cref="Outcome"/>; the tar engine lists the same case as a skip.</summary>
     public IReadOnlyList<SkippedFile> KeptExistingFiles { get; init; } = [];
 
+    /// <summary>How many entries were not extracted because the user answered Skip in the conflict
+    /// prompt (T-F383). They are the user's own decision and are named nowhere (T-F216), so they do
+    /// not change <see cref="Outcome"/>; a frontend uses the count to not report a run that wrote
+    /// nothing as done.</summary>
+    public int UserSkippedEntryCount { get; init; }
+
     /// <summary>What the user should know although everything asked was done (T-F280). A warning
     /// never fails the operation and never makes a source undeletable.</summary>
     public IReadOnlyList<ArchiveWarning> Warnings { get; init; } = [];

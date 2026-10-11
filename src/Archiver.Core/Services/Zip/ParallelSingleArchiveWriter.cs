@@ -41,7 +41,7 @@ internal static class ParallelSingleArchiveWriter
     // T-F35 follow-up entry.
     public const long InMemoryCompressByteThreshold = 1L * 1024 * 1024;
 
-    private const string ChunkFolderPrefix = ".pakko-tmp-";
+    private const string ChunkFolderPrefix = ArchiveTempFile.ChunkFolderPrefix;
     private const int FileReadBufferSize = 65536;
     private const int CopyBufferSize = 81920;
 

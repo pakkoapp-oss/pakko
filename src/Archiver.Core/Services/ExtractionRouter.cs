@@ -79,6 +79,7 @@ public sealed class ExtractionRouter : IExtractionRouter
             SkippedFiles = [.. zipResult.SkippedFiles, .. tarResult.SkippedFiles, .. unsupported],
             Warnings = [.. zipResult.Warnings, .. tarResult.Warnings],
             KeptExistingFiles = [.. zipResult.KeptExistingFiles, .. tarResult.KeptExistingFiles],
+            UserSkippedEntryCount = zipResult.UserSkippedEntryCount + tarResult.UserSkippedEntryCount,
             // T-F260: unsupported/policy-blocked paths get no SourceResult, so they are never
             // deletable; a cancel in either engine throws before this merge is reached.
             Sources = [.. zipResult.Sources, .. tarResult.Sources],

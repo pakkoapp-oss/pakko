@@ -29,6 +29,7 @@ public static class MessageText
         MessageCode.ContentLargerThanDeclared,
         MessageCode.ContentSmallerThanDeclared,
         MessageCode.EntryDataTruncated,
+        MessageCode.ContentDamaged,
     };
 
     /// <summary><paramref name="text"/> in <paramref name="culture"/> (resolved with

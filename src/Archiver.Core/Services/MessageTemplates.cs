@@ -138,6 +138,7 @@ public static class MessageTemplates
         [MessageCode.ContentLargerThanDeclared] = "Content is larger than its declared size ({0} bytes).",
         [MessageCode.ContentSmallerThanDeclared] = "Content is smaller than its declared size ({0} bytes).",
         [MessageCode.EntryDataTruncated] = "ZIP entry data ends before its declared size.",
+        [MessageCode.ContentDamaged] = "The compressed data is damaged.",
 
         [MessageCode.RecoveryPercentInvalid] = "Recovery data must be between 1 and 100 percent ({0} was given).",
         [MessageCode.RecoveryDataDisabled] = "Recovery data is disabled by Group Policy.",
