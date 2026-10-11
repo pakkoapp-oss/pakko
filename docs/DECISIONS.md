@@ -12467,6 +12467,41 @@ under JIT took 2.3 s, par2cmdline 1.4.0 3.8 s. Repair of 8 MB of damage: 12.0 s 
   | APP-018 | OK | 2.1 | 8 passwords; 2 command lines; pakko.log: 7 lines, 7 since the run began; 8 events |
   | POL-008 | OK | 0.5 | 20 policy changes, the two keys as before |
   | PKG-006 | OK | 7.7 | 1.7.2.0 to 1.8.0.0 |
+- **Hand walk of the `mcp` rows** (2026-10-11, package 1.8.0.2 from `Deploy.ps1`, title build
+  14:10, uk-UA, through the `windows` MCP server). 23 of 40 rows; stopped there, the rest is
+  listed below and is owed before the next tag.
+
+  | ID | Result | Note |
+  |---|---|---|
+  | APP-001 | OK | title build time minutes old; About shows 1.8.0.2 |
+  | APP-002 | OK | pickers add files and a folder; ZIP, TAR and the five compressed tars pass `7za t`; the encrypted ZIP is AES-256 |
+  | APP-003 | OK | box on: 9 of 9 files marked; off: none; the note under the box changes |
+  | APP-004 | OK | folders, breadcrumb, Up to the folder, the drive, This PC; no hidden system folder at the root; sorting is in the pending list (row reworded) |
+  | APP-005 | OK | selected rows only, then all, from a ZIP and from a tar with `a[1].txt` |
+  | APP-006 | OK | Test, Scan, text and image preview, a nested archive |
+  | APP-007 | OK | conflict (size and date of both), suspected bomb (1028:1), password (wrong, then right), error; found T-F383 |
+  | APP-008 | OK | the path follows the parent button and the picker |
+  | APP-009 | OK | cancel of a 2.5 GB compression leaves nothing; Clear empties the list; removal before the count not timed |
+  | APP-010 | OK | Show in folder selects the output; Details reopens the summary |
+  | APP-011 | OK | sources in the Recycle Bin and off the list; the folder opens |
+  | APP-012 | FAIL | T-F380 (Delete, Shift+F10, Enter on a focused row); also T-F384 |
+  | APP-013 | part | 560 px window scrolls; dark and light right, live switch repaints; high contrast not judged (no capture) |
+  | APP-017 | OK | one window 31 minutes, over 25 operations, two theme changes; no event from Pakko |
+  | APP-022 | OK | "79,6 МБ/с · Залишилось ~36 с"; a Windows error shows its text and code (0x80070057) |
+  | APP-023 | part | one progress through a ZIP and a tar.gz; "checking the archive" not seen, the tar had one entry |
+  | APP-024 | OK | cancel at the conflict question: both archives stay, no partial file, staging folder gone; a skipped entry keeps the archive; control run recycles it |
+  | PAR-010 | OK | PAR2 line, verdict, repair, the repaired copy opens, a `.par2` row opens its archive; found T-F382 |
+  | PAR-011 | OK | 5, 10, 20 % give 100, 200, 400 recovery blocks of 1997 for a ZIP and a tar.gz; AES-256 with a set repaired without a password; found T-F381 |
+  | EXP-001 | OK | the ten items in order; only the root item has an icon (row reworded) |
+  | EXP-002 | part | folder: Compress, Add to zip, Add to tar, two Hash items, both archives right; plain file and mixed selection not walked |
+  | EXP-004 | OK | Extract to folder, Extract here, Extract files: files where each says, the mark carried, Cyrillic intact |
+  | EXP-005 | OK | Open, Test, Scan; CRC-32 equals `7za h`, SHA-256 equals `Get-FileHash` |
+
+  Not walked: the rest of `EXP-002`, `EXP-003`, `EXP-006..010`, `APP-014..016`, `OPW-002`,
+  `OPW-003`, `OPW-005`, `CLI-013`, `POL-009`, `POL-010`, `PKG-010`, `STO-007`. How the Explorer
+  menu was driven: left click the row, right click, wait a second, click "Pakko", wait, click
+  the item; the menu is captured with `CopyFromScreen` (the server's own screenshot misses
+  it), and screenshots are kept out of the folder under test, whose rows they would shift.
 
 ## T-F378 — the smoke catalogue (2026-10-11)
 
