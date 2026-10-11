@@ -17,7 +17,9 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   (use a `JsonSerializerContext`). WinUI: a value read from a resource dictionary (`Resources[...]`,
   `ThemeDictionaries`, `TryGetValue`) is cast with `WinRT.CastExtensions.As<T>(...)`, never `(T)` or
   `as T` (a test reads the source); a class implementing a WinRT or mapped .NET interface is
-  `partial`; only `x:Bind` (`{Binding}` needs `[GeneratedBindableCustomProperty]`); no collection
+  `partial`; only `x:Bind` (`{Binding}` needs `[GeneratedBindableCustomProperty]`); a list row's container
+  arrives as its base class (`SelectorItem`), so never `is ListViewItem`: ask the list
+  (`IndexFromContainer`) or test a base class (T-F380, a test reads the source); no collection
   expression handed to WinRT; a new collection bound to `ItemsSource` gets a device check. Never
   `UseSystemResourceKeys`/`InvariantGlobalization`. ILCompiler needs `vswhere.exe` on PATH. Verify
   App/Shell/OperationUi changes on the deployed package, not under the debugger. Examples:

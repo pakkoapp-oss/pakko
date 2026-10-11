@@ -554,6 +554,7 @@
                         <!-- T-F199 step 5: the password inline, stacked (a half-width card has no room
                              for two boxes side by side), checked while typing. -->
                         <StackPanel
+                            x:Name="EncryptionPanel"
                             Grid.Row="5" Grid.Column="1"
                             Spacing="6"
                             MaxWidth="420"
