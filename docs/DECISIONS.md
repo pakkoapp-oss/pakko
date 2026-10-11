@@ -12503,6 +12503,57 @@ under JIT took 2.3 s, par2cmdline 1.4.0 3.8 s. Repair of 8 MB of damage: 12.0 s 
   the item; the menu is captured with `CopyFromScreen` (the server's own screenshot misses
   it), and screenshots are kept out of the folder under test, whose rows they would shift.
 
+## v1.8.1 — the fix wave after the hand walk, and the rest of the walk (2026-10-11)
+
+Seven tasks from the walk of the `mcp` smoke rows and from the v1.8.0 checks went in as two pull
+requests (#55 Core and CLI, #56 the App): T-F377, T-F379, T-F380, T-F381, T-F382, T-F383, T-F384.
+v1.8.0 was never submitted to the Store, so the Store gets 1.8.1.
+
+- **T-F380, the cause.** A build that logged what the three keyboard handlers saw gave, for every
+  key on a focused row: `sourceType=Microsoft.UI.Xaml.Controls.Primitives.SelectorItem
+  isListViewItem=False isFrameworkElement=True indexFromContainer=<the row>`. Under Native AOT
+  the row's container is projected as its base class, so a type test for `ListViewItem` is never
+  true. The first suspicion, the `{ Content: ... }` part of the pattern, was wrong; the fix was
+  not written until the log was read. The handlers ask the list (`IndexFromContainer`), and a
+  source test bans a type test for an item container class.
+- **T-F381, the second look.** Moving the PAR2 row above the encryption rows kept it in view but
+  pushed the confirm box under the card's edge; the card now scrolls that box into view when the
+  password panel appears. At the minimum window height the card shows three or four rows and
+  nothing makes all of them fit.
+- **T-F383 keeps T-F216.** The user's own Skip answers stay unnamed and outside
+  `ArchiveResult.Outcome`; only their count travels, and only the App's footer line uses it.
+- **The rest of the hand walk** (packages 1.8.0.5 and 1.8.0.6 from `Deploy.ps1`, uk-UA, through the
+  `windows` MCP server). 16 of the 17 rows the v1.8.0 record left; `APP-014` is still owed.
+
+  | ID | Result | Note |
+  |---|---|---|
+  | STO-007 | OK | since 1.7.2 (what the Store serves) only v1.8.0: create, verify, repair, foreign sets, `-rr` and `r` are named; the `DisableRecoveryData` policy is not |
+  | EXP-002 | OK | plain file: Compress, Add to zip, Add to tar, two Hash items; ZIP + text file: Extract files, Compress, both Add items, then Test, Scan, Hash |
+  | EXP-003 | OK | ZIP with a set: Verify and Repair after Test; its `.par2`: both; ZIP without a set: neither |
+  | EXP-006 | OK | Compress on a folder opens the App; PAR2 and a password chosen there: AES-256, index and volume file next to the archive, `pakko t` "recovery data intact" |
+  | EXP-007 | OK | 300 files, Add to `e7.tar`: one tar, 300 entries |
+  | EXP-008 | OK | de-AT first in the list: the ten items in German |
+  | EXP-009 | OK | 1.8.0.5 replaced by 1.8.0.6, Explorer not restarted: Test runs `Archiver.Shell.exe` of 1.8.0.6 |
+  | EXP-010 | OK | `subst` drive: "Add to X.zip" and "X.tar"; `X.zip` lands on the Desktop (a root has no parent folder) |
+  | APP-014 | not walked | two displays in "show only on 2"; the scale box of Settings could not be driven reliably, nothing was changed |
+  | APP-015 | part | de-DE and ja-JP fully translated; ar-SA translated but not mirrored (T-F386); de-DE clips the PAR2 percentage box (T-F387) |
+  | APP-016 | OK | Open with, Pakko, no window open before: a new window on the archive |
+  | OPW-002 | OK | 2.5 GB folder, Cancel at about 10 %: no archive, the temporary file gone |
+  | OPW-003 | OK | conflict (Rename for all: one question, two numbered files), password, suspected bomb 1028:1 (Skip: nothing written); the password page clips its buttons (T-F385) |
+  | OPW-005 | OK | titles, "10% · 256,0 МБ / 2,5 ГБ · 34,7 МБ/с", prompts and results in Ukrainian; the bomb result gives the size in bytes where the prompt says 400,0 МБ |
+  | CLI-013 | OK | the prompt masks with `*`; a wrong password: one line and a new prompt; the right one extracts |
+  | POL-009 | FAIL | `EnforceMOTW` 0, 1, 2: the box locked at the policy's value; `DisableRecoveryData`: no option, no PAR2 line, a `.par2` refused; formats: opening is refused, but New archive still lists the blocked ones (T-F388) |
+  | POL-010 | OK | `BlockedFormats` = `zip`: ZIP items hidden, no PAR2 item on the ZIP, both on its `.par2`; `DisableTarExtraction`: no Add to tar; `DisableRecoveryData`: no PAR2 item. `AllowedFormats` does not change the menu, by design (`ShellExtUtils.h`) |
+  | PKG-010 | OK | package removed: no Pakko item on a folder, a ZIP or a file, nor in the classic menu |
+
+  With the same run: `POL-001..008` and `PKG-005` OK (the kit: PASS, 24 tests, no DPI finding),
+  `PKG-009` and `CLI-016` OK, `APP-012` OK after T-F380, and T-F326's device check.
+- **What the walk taught about driving Explorer.** The menu's layout depends on the selection: with
+  300 files selected "Open" sits where "Pakko" is for one file, and a click sent to remembered
+  coordinates opened all 300 in Notepad. A click goes only to a position read from a screenshot of
+  the menu that is open now. Positions seen at 100 %, row at y: folder Pakko y+423, ZIP y+529,
+  tar.gz y+424, `.par2` y+354.
+
 ## T-F378 — the smoke catalogue (2026-10-11)
 
 **What there was.** Four scenario files written per release and kept outside the repository
