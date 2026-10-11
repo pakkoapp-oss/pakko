@@ -113,6 +113,26 @@ function New-TarFile {
     finally { $stream.Dispose() }
 }
 
+# A ZIP written by .NET, entry by entry: @{ Name; Content; Modified }. A name that ends in "/" is
+# a folder entry.
+function New-ZipFile {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '',
+        Justification = 'Writes a fixture inside the run''s own temporary folder.')]
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][hashtable[]]$Entries)
+    $archive = [System.IO.Compression.ZipFile]::Open($Path, [System.IO.Compression.ZipArchiveMode]::Create)
+    try {
+        foreach ($entry in $Entries) {
+            $item = $archive.CreateEntry($entry.Name)
+            if ($entry.Modified) { $item.LastWriteTime = [System.DateTimeOffset]::new([datetime]$entry.Modified) }
+            if ($entry.Name.EndsWith('/')) { continue }
+            $writer = [System.IO.StreamWriter]::new($item.Open())
+            try { $writer.Write([string]$entry.Content) }
+            finally { $writer.Dispose() }
+        }
+    }
+    finally { $archive.Dispose() }
+}
+
 # What tar extraction of this run left in %TEMP%: staging folders and quarantined items.
 function Get-TarLeftover {
     param([Parameter(Mandatory)][datetime]$Since)
@@ -262,6 +282,39 @@ function Get-ShellWindowText {
             ForEach-Object { $_.Current.Name } | Where-Object { $_ } | Select-Object -Unique
         [pscustomobject]@{ Title = $window.Current.Name; Text = ($names -join ' | '); Element = $window }
     }
+}
+
+# The first element under a Shell window with this control type or class name, or nothing.
+function Find-ShellElement {
+    param(
+        [Parameter(Mandatory)][System.Windows.Automation.AutomationElement]$Window,
+        [System.Windows.Automation.ControlType]$ControlType,
+        [string]$ClassName,
+        [switch]$All
+    )
+    $condition = $ControlType ?
+        [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, $ControlType) :
+        [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ClassNameProperty, $ClassName)
+    if ($All) { return @($Window.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)) }
+    $Window.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+}
+
+# The Shell's result window: one that shows no progress bar and asks for no password, with the
+# same text on two looks in a row (a window is up before its content is).
+function Wait-ShellResult {
+    param([int]$TimeoutSeconds = 60)
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $before = $null
+    while ((Get-Date) -lt $deadline) {
+        $window = Get-ShellWindowText | Where-Object {
+            -not (Find-ShellElement -Window $_.Element -ControlType ([System.Windows.Automation.ControlType]::ProgressBar)) -and
+            -not (Find-ShellElement -Window $_.Element -ClassName 'PasswordBox')
+        } | Select-Object -First 1
+        if ($window -and $window.Text -eq $before) { return $window }
+        $before = $window ? $window.Text : $null
+        Start-Sleep -Milliseconds 300
+    }
+    throw "Archiver.Shell showed no result window in $TimeoutSeconds s"
 }
 
 function Stop-ShellProcess {

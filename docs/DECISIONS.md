@@ -12541,6 +12541,38 @@ reported as `manual` with its text.
 - *A time limit for every `pakko` a step starts,* so a hang fails one row (15 minutes unless the
   step says less; the junction-loop and 20,000-folder rows say 60 s).
 
+**Step 3b, the Shell, operation-window and PAR2 rows of the release tier (2026-10-11).** Five
+steps in `scripts/smoke/ShellRelease.ps1`, six in `Par2Release.ps1`.
+- *A window is read by the kinds of its controls.* A result window is one with no progress bar
+  and no password box whose text is the same on two looks; the password prompt is the window
+  with a `PasswordBox`, filled through UI Automation's value pattern, its first button pressed
+  through the invoke pattern. No word of the user's language is matched.
+- *The antivirus test string* is written into the ZIP by .NET from two halves, so neither the
+  script nor a plain file holds it; the step skips when the antivirus removes the ZIP first.
+- *What the rows said and the program does.* `Archiver.Shell` with no list or an unknown
+  argument exits non-zero with no window, as the row said, but a path that does not exist gets
+  a result window that names it. "Read-only folder" for `pakko r` is a folder that refuses new
+  files (`icacls /deny user:(WD,AD)`): denying the whole of "write" also takes the right to
+  wait on a handle, and then the set itself cannot be read and the verdict is "no recovery
+  data".
+- *A forged set.* A changed byte in a recovery block is an ordinary damaged packet: its MD5 no
+  longer fits and the block is not counted (the damaged-volume case, 99 blocks of 100). The
+  forged case gives every recovery packet the MD5 of its changed content: `t` still says the
+  archive can be repaired, and `r` ends with "The repaired copy did not match the recovery data
+  and was not kept", exit 2, no file left.
+- *Every `pakko r` in these steps* goes through one helper that hashes the archive before and
+  after: repair never writes to the file it was given.
+- *A set half-way.* `pakko a -rr20` on 200 MB has the archive under its name while the set is
+  still a temporary file: killed there it leaves the archive and `.pakko-a-*.tmp`, cancelled
+  with Ctrl+C the archive alone (exit 255): the archive was finished, and a cancel during PAR2
+  keeps it and removes the partial set, as T-F275's design decided. Neither leaves a file named
+  `*.par2`, `t` claims nothing, and `a -y -rr20` ends with a whole set and no leftover.
+- *Seen red:* sixteen deliberate faults, one row each time (no test string, a wrong second
+  password, a known argument and an archive that exists, an open folder, a window left alive,
+  recovery blocks left as they were, a volume not damaged, the archive's own set, damage within
+  and beyond the set, an open destination, a kill in place of Ctrl+C and no kill at all, a
+  rewrite that keeps `-rr`).
+
 **Not taken.** A machine-readable file (TSV or JSON) next to a rendered page: two files to keep
 equal for a table a regular expression already reads. A new test project for the guard: the
 existing document-reading tests live in `Archiver.Core.Tests/Services`.
