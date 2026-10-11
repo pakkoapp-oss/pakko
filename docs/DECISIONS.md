@@ -12431,6 +12431,38 @@ under JIT took 2.3 s, par2cmdline 1.4.0 3.8 s. Repair of 8 MB of damage: 12.0 s 
   37 languages; both inner manifests differ from the 1.7.2 Store bundle (37918985547) in the
   version only. Submitting it is the maintainer's step, with the listing text of
   `docs/store-listing/` (13 feature lines, "What's new" written for an update from 1.7.1).
+- **The first full smoke run** (T-F378 step 4, 2026-10-11): `Invoke-Smoke.ps1 -Tier store
+  -PackageLifecycle -Tag v1.8.0` on the release's downloaded files, with v1.7.2 as the previous
+  release, device package 1.8.0.1. 121 rows: 74 OK, none failed, 1 skipped, 46 for a person
+  (`-List` prints them); 28 minutes, 21 of them the slow tests. The package the run began with
+  was installed again at its end. `REL-002` was skipped because the run stood on a local commit
+  with no canary; the canary of the tagged commit is the one read under "Tag" above. OK with
+  nothing to note: `CLI-002..012`, `CLI-014..016`, `CLI-018..021`, `SHL-001..011`, `OPW-004`,
+  `PAR-001..009`, `POL-001..007`, `PKG-002..004`, `PKG-007..009`, `REL-004`, `REL-006`.
+
+  | ID | Result | s | Note |
+  |---|---|---|---|
+  | CLI-001 | OK | 33.1 | passed 110, skipped 0 |
+  | CLI-017 | OK | 23.3 | 1.8.0+a5e05e33069b4ff44f0fd77efc0226d759c9b8eb; passed 108 |
+  | OPW-001 | OK | 7.8 | window after 1.4 s, done in 7.6 s |
+  | PKG-001 | OK | 0.0 | 27 files, 34.7 MB |
+  | PKG-005 | OK | 40.7 | overall WARNING, 24 tests; known: Application count=FAIL; Blocked executables=FAIL; DPIAwarenessValidation=WARNING |
+  | PRF-001 | OK | 5.9 | a -rr5 on 200 MB: 2.6 s against 3.1 s |
+  | PRF-002 | OK | 5.5 | r of 8 MiB: 3.3 s against 1.9 s |
+  | PRF-003 | OK | 16.4 | a on 6000 files: 1.0 s against 0.8 s x on 6000 files: 9.7 s against 4.9 s |
+  | PRF-004 | OK | 15.7 | median 345 ms |
+  | PRF-005 | OK | 1.5 | l of 6000 entries: 0.1 s against 0.0 s t of 6000 entries: 0.2 s against 0.1 s |
+  | REL-001 | OK | 1262.8 | passed 23 on 30e1e2f |
+  | REL-002 | skipped | 1.1 | no finished canary run on 30e1e2f: gh workflow run canary.yml --ref <branch of the commit>, then run this row again |
+  | REL-003 | OK | 22.7 | 2 hashes, 4 attestations |
+  | REL-005 | OK | 0.7 | 2590 characters of CHANGELOG.md |
+  | REL-007 | OK | 9.8 | the uninstall left its PATH entry (T-F361); the step put the PATH back |
+  | STO-001 | OK | 17.5 | run 38110677528: 1.8.0.0, 37 languages, signature Valid |
+  | STO-002 | OK | 11.5 | against 1.7.2 (run 37918985547): the version only |
+  | STO-003 | OK | 5.0 | What's new differs from v1.7.2; StoreListingTests passed 111 |
+  | APP-018 | OK | 2.1 | 8 passwords; 2 command lines; pakko.log: 7 lines, 7 since the run began; 8 events |
+  | POL-008 | OK | 0.5 | 20 policy changes, the two keys as before |
+  | PKG-006 | OK | 7.7 | 1.7.2.0 to 1.8.0.0 |
 
 ## T-F378 — the smoke catalogue (2026-10-11)
 
@@ -12659,6 +12691,36 @@ steps in `scripts/smoke/ShellRelease.ps1`, six in `Par2Release.ps1`.
   own minutes.
 - *Seen red:* marker deleted before the update, log deleted before the update, the switch
   left out, the App not running, the downgrade forced, the package not removed.
+
+**Step 4, the store tier (2026-10-11).** `CLI-017`, `REL-003..007` and `STO-001..003` in
+`scripts/smoke/Store.ps1`.
+- *What is expected comes from the tag, not from the files.* `-Tag` gives the version, `git
+  rev-parse` the commit, `git show <tag>:CHANGELOG.md` the notes. A folder of another release's
+  files under this release's names fails `CLI-017`, `REL-004` and `REL-006` on content (seen with
+  the v1.7.2 files renamed). A whole `-Tier store` run refuses to start without `-Tag`,
+  `-ReleaseFiles`, `-PreviousRelease` and `-PackageLifecycle`: without them most of its rows
+  would be skipped and the table would still read green.
+- *The version of a release exe.* `pakko -v` of a release prints `pakko 1.8.0`; the commit is in
+  the file's product version (`1.8.0+<sha>`), so `CLI-017` reads both. The `Subprocess` layer
+  runs on the release exe less two tests, excluded by name, that expect the version text of a
+  build that is not a release.
+- *The Store rows read a run and never start one.* `STO-001` takes the bundle of the newest
+  successful `workflow_dispatch` run of `build.yml` on the tag's commit and is skipped with the
+  command to start one when there is none. `STO-002` fails on any manifest difference from the
+  previous tag's Store bundle other than the version: a meant difference is explained in the
+  release record, not allowed in the step.
+- *winget.* A package installed with `winget install --manifest` is not found by `--id`; the
+  step removes it with `winget uninstall --manifest`. The uninstall leaves the package's PATH
+  entry (T-F361, open), so the step notes it and writes the user's PATH value back as it found
+  it; any other change of the PATH fails the row. Skipped when the CLI is already installed
+  that way or local manifests are off.
+- *`STO-003` is split.* A script can tell that "What's new" is not the previous release's text
+  and run `StoreListingTests`; whether the listing names every change is read by a person
+  (`STO-007`).
+- *`REL-001` and `REL-002` stay rows of the commit that is checked out.* They are the checks
+  before a tag; in a run after it they repeat on the working commit.
+- *Seen red:* another release's files under the tag's names, a flipped byte in a zip, the
+  same release given as the previous one, and six faults put into the steps.
 
 **Not taken.** A machine-readable file (TSV or JSON) next to a rendered page: two files to keep
 equal for a table a regular expression already reads. A new test project for the guard: the

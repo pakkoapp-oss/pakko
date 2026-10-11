@@ -502,7 +502,7 @@ gh release download <tag> -D $env:TEMP\new
 - Shell and App windows speak the user's language, so steps match numbers, names and hashes in
   their text, never words.
 - Adding a check: add the row to `docs/SMOKE.md` (the next free ID of its surface), then its step.
-  `SmokeCatalogueTests` fails when a row marked `script` or `uac` has no step (unless it is on
-  the test's shrinking `StepsOwed` list) or a step has no row.
+  `SmokeCatalogueTests` fails when a row marked `script` or `uac` has no step or a step has no
+  row.
 - A step that starts `pakko` gives it a time limit (`Invoke-Tool -TimeoutSeconds`, 15 minutes
   unless set): a hang fails the row instead of the run.
