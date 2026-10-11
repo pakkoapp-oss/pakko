@@ -64,4 +64,6 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   as `Invoke-Smoke.ps1 -Tier release -PackageLifecycle -ReleaseFiles <a> -PreviousRelease <b>`
   (`<a>`: `gh run download <build run of the release commit> -n pakko-msix-x64 -D <a>`; `<b>`:
   `gh release download <last tag> -D <b>`): without these the update rows `PKG-006..009` are
-  only reported as skipped.
+  only reported as skipped. After the tag: `-Tier store -PackageLifecycle -Tag <tag> -ReleaseFiles
+  <gh release download of the tag> -PreviousRelease <b>`, once the Store bundle is built
+  (`gh workflow run build.yml --ref <tag>`).

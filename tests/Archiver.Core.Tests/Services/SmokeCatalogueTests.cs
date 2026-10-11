@@ -15,13 +15,9 @@ public sealed partial class SmokeCatalogueTests
     private static readonly string[] Artifacts = ["dev", "tag", "store-bundle", "store-install"];
     private static readonly string[] EntryKinds = ["cli", "shell", "menu", "app", "policy"];
 
-    // Rows marked script or uac that have no step in scripts/smoke/ yet (T-F378 steps 3 and 4).
-    private static readonly string[] StepsOwed =
-    [
-        "CLI-017",
-        "REL-003", "REL-004", "REL-005", "REL-006", "REL-007",
-        "STO-001", "STO-002", "STO-003",
-    ];
+    // Rows marked script or uac that have no step in scripts/smoke/. Empty since T-F378 step 4:
+    // a new such row comes with its step.
+    private static readonly string[] StepsOwed = [];
 
     private sealed record Row(string Id, string Tier, string By, string On, string Action, string Expect, string[] Covers);
 

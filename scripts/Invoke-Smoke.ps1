@@ -34,6 +34,9 @@
 .PARAMETER PackageLifecycle
     Run PKG-006..009. They remove and replace the installed package and its data; the run ends
     with the package it began with.
+.PARAMETER Tag
+    The release under test, as vX.Y.Z. The store rows take from it what the release's files
+    should say: the version, the commit, the CHANGELOG.md section.
 .PARAMETER ReleaseFiles
     A folder that holds the bundle under test: before the tag, the one CI built on the release
     commit (gh run download <run> -n pakko-msix-x64 -D <folder>); after it, the release's
@@ -67,6 +70,8 @@ param(
 
     [switch]$PackageLifecycle,
 
+    [string]$Tag,
+
     [string]$ReleaseFiles,
 
     [string]$PreviousRelease
@@ -98,6 +103,10 @@ if ($List) {
     return
 }
 if (-not $selected) { throw "No row of docs/SMOKE.md matches -Tier $Tier -Only $($Only -join ',')." }
+# A whole store run without these would report its rows as skipped, and look finished.
+if ($Tier -eq 'store' -and -not $Only -and -not ($Tag -and $ReleaseFiles -and $PreviousRelease -and $PackageLifecycle)) {
+    throw 'A run of the store tier needs -Tag, -ReleaseFiles, -PreviousRelease and -PackageLifecycle (see scripts/README.md).'
+}
 
 # --- what is under test ----------------------------------------------------------------------
 $package = Get-AppxPackage -Name 'PavloRybchenko.Pakko' | Select-Object -First 1
@@ -123,7 +132,7 @@ $Smoke = @{
     Passwords = [System.Collections.Generic.HashSet[string]]::new()
     Elevated = @{}
     Hold     = [bool]$Hold
-    Lifecycle = @{ Asked = [bool]$PackageLifecycle; ReleaseFiles = $ReleaseFiles; PreviousRelease = $PreviousRelease }
+    Lifecycle = @{ Asked = [bool]$PackageLifecycle; Tag = $Tag; ReleaseFiles = $ReleaseFiles; PreviousRelease = $PreviousRelease }
 }
 
 $steps = @{}

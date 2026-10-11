@@ -454,6 +454,12 @@ and expects; this script is a filter over it.
 .\scripts\Invoke-Smoke.ps1 -Tier release -Only PAR-*    # the PAR2 rows: about a minute
 .\scripts\Invoke-Smoke.ps1 -Only PAR-*,CLI-004   # some rows of the chosen tier
 .\scripts\Invoke-Smoke.ps1 -Tier store -List     # show the rows, run nothing
+# Before a tag: the release tier with the update rows (<run> = the build run of the release commit)
+gh run download <run> -n pakko-msix-x64 -D $env:TEMP\new; gh release download <last tag> -D $env:TEMP\last
+.\scripts\Invoke-Smoke.ps1 -Tier release -PackageLifecycle -ReleaseFiles $env:TEMP\new -PreviousRelease $env:TEMP\last
+# After it: everything, on the release's own files
+gh release download <tag> -D $env:TEMP\new
+.\scripts\Invoke-Smoke.ps1 -Tier store -PackageLifecycle -Tag <tag> -ReleaseFiles $env:TEMP\new -PreviousRelease $env:TEMP\last
 ```
 
 - Install the build first with `Deploy.ps1`; the script tests what is installed. `-PakkoExe <path>`
@@ -487,6 +493,12 @@ and expects; this script is a filter over it.
   `-ReleaseFiles <folder>`: before the tag, the bundle CI built on the release commit
   (`gh run download <run> -n pakko-msix-x64 -D <folder>`), after it the release's own files.
   With `-Hold`, `PKG-009` waits with the package removed (PKG-010).
+- The store rows (`CLI-017`, `REL-003..007`, `STO-001..003`) check the release's files against
+  what `-Tag` stands for: its version, its commit, its `CHANGELOG.md`. A whole `-Tier store` run
+  refuses to start without `-Tag`, `-ReleaseFiles`, `-PreviousRelease` and `-PackageLifecycle`.
+  They need `gh` (signed in) and the network; `REL-007` installs the CLI with winget and removes
+  it, and is skipped when the CLI is already installed that way. `STO-001` and `STO-002` read
+  the Store bundle of a dispatch run on the tag and never start one.
 - Shell and App windows speak the user's language, so steps match numbers, names and hashes in
   their text, never words.
 - Adding a check: add the row to `docs/SMOKE.md` (the next free ID of its surface), then its step.
