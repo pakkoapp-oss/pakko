@@ -19,7 +19,6 @@ public sealed partial class SmokeCatalogueTests
     private static readonly string[] StepsOwed =
     [
         "CLI-017",
-        "PKG-006", "PKG-007", "PKG-008", "PKG-009",
         "REL-003", "REL-004", "REL-005", "REL-006", "REL-007",
         "STO-001", "STO-002", "STO-003",
     ];

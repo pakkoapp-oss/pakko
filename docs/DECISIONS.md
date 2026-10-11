@@ -12632,6 +12632,34 @@ steps in `scripts/smoke/ShellRelease.ps1`, six in `Par2Release.ps1`.
 - *The package's life cycle is a part of its own (3e).* `PKG-006..009` remove and replace the
   package every other row tests, and with it the package data.
 
+**Step 3e, the package's life cycle (2026-10-11).** `PKG-006..009` in
+`scripts/smoke/Package.ps1`.
+- *The update rows need two bundles.* The plan was to update from the last release to the
+  installed dev package. Windows refuses that with `0x80073CF3`, also on a clean install of the
+  release with the App closed: `Deploy.ps1` installs a flat `.msix`, a release is a
+  `.msixbundle`. So `PKG-006..008` take two folders: `-PreviousRelease` (`gh release download`)
+  and `-ReleaseFiles`. The rows stay in the `release` tier, because the new bundle exists
+  before the tag: `build-msix` uploads it for every push to `main`, signed with the same
+  certificate (`gh run download <run> -n pakko-msix-x64`; read from run 38128169267). A `v*`
+  tag cannot be moved, so an update that fails must be found before it.
+- *What Windows does, read before the steps were written.* A lower version is refused with
+  `0x80073D06` and goes in with `-ForceUpdateFromAnyVersion` (the steps use that to get back to
+  the previous release between rows, never in `PKG-008`). An update over the running App is
+  refused with `0x80073D02`; with `-ForceApplicationShutdown` the App is closed. An update keeps
+  `LocalState` and `pakko.log`; a removal deletes the package data and the `pakko` alias.
+- *Only when asked for, and the first package comes back.* The rows are skipped without
+  `-PackageLifecycle`. Before the first change the step finds the file of the installed package
+  under `AppPackages` and checks its signature; `PKG-009` puts it back, and so does the end of
+  the run when a row failed half way (seen after each fault below: the dev package was back).
+- *The package data is not saved and restored.* `Deploy.ps1` removes the package on every run,
+  so a dev install never keeps its data anyway; copying a loaded settings hive out and back
+  would add a way to fail and protect nothing.
+- *They run last.* The rows are `-AtEnd` and come after `APP-018`, `PKG-002` and `PKG-004` in the
+  catalogue: a removal deletes the log those read. The update rows read the event log for their
+  own minutes.
+- *Seen red:* marker deleted before the update, log deleted before the update, the switch
+  left out, the App not running, the downgrade forced, the package not removed.
+
 **Not taken.** A machine-readable file (TSV or JSON) next to a rendered page: two files to keep
 equal for a table a regular expression already reads. A new test project for the guard: the
 existing document-reading tests live in `Archiver.Core.Tests/Services`.

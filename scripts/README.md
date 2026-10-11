@@ -479,6 +479,14 @@ and expects; this script is a filter over it.
   Decline the prompt and those rows are skipped. `-Hold` keeps each row's policy set until a
   file named `go` is created in the run's folder: the time to look at the App and the
   Explorer menu under it (POL-009, POL-010).
+- `PKG-006..009` remove and replace the installed package, so they are skipped without
+  `-PackageLifecycle`. With it they run last, and the run ends with the package it began with
+  (its file must still be under `src/Archiver.App/AppPackages`); the package's data is lost, as
+  on every `Deploy.ps1`. `PKG-006..008` update from one bundle to another and also need
+  `-PreviousRelease <folder>` (`gh release download <last tag> -D <folder>`) and
+  `-ReleaseFiles <folder>`: before the tag, the bundle CI built on the release commit
+  (`gh run download <run> -n pakko-msix-x64 -D <folder>`), after it the release's own files.
+  With `-Hold`, `PKG-009` waits with the package removed (PKG-010).
 - Shell and App windows speak the user's language, so steps match numbers, names and hashes in
   their text, never words.
 - Adding a check: add the row to `docs/SMOKE.md` (the next free ID of its surface), then its step.
