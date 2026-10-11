@@ -536,6 +536,9 @@ public sealed partial class MainViewModel : ObservableObject
     // T-F198 items 2 and 6: names for controls that show only a glyph (the Cancel label starts with one).
     public static string CancelButtonName => _res.GetString("PasswordDialogCancelButton");
     public static string BrowseUpButtonName => _res.GetString("BrowseUpButtonName");
+    // T-F384: what a screen reader calls the two lists.
+    public static string PendingListName => _res.GetString("PendingListName");
+    public static string ArchiveContentsListName => _res.GetString("ArchiveContentsListName");
     public static string DestinationUpButtonName => _res.GetString("DestinationUpButtonName");
     public static string DestinationBrowseButtonName => _res.GetString("DestinationBrowseButtonName");
     public static string EncryptedEntryIconName => _res.GetString("BrowseEncryptedBadgeUnknown");

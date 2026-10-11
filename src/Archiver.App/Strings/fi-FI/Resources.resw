@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Yksi taso ylös</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>Tiedostot ja kansiot</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>Arkiston sisältö</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>Yläkansio</value>
   </data>

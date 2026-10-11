@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Jedan nivo gore</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>Datoteke i fascikle</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>Sadržaj arhive</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>Nadređena fascikla</value>
   </data>

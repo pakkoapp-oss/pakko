@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>ขึ้นไปหนึ่งระดับ</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>ไฟล์และโฟลเดอร์</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>เนื้อหาของไฟล์บีบอัด</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>โฟลเดอร์หลัก</value>
   </data>

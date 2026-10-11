@@ -588,6 +588,14 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Up one level</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>Files and folders</value>
+    <comment>Screen-reader name of a list, not shown on screen. A noun phrase, no full stop.</comment>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>Archive contents</value>
+    <comment>Screen-reader name of a list, not shown on screen. A noun phrase, no full stop.</comment>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>Parent folder</value>
   </data>

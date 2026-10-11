@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Eén niveau omhoog</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>Bestanden en mappen</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>Inhoud van het archief</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>Bovenliggende map</value>
   </data>

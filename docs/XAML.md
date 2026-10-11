@@ -35,7 +35,7 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │   ├── Header: Border -> Grid (*,80,100,90,140) — Name/Type/Size/Crc/Modified, each a
         │   │       sortable Button (SortByCommand)
         │   └── Body: Grid
-        │       ├── ListView FileListView (SelectionMode=None, AllowDrop, DoubleTapped ->
+        │       ├── ListView FileListView (UIA name PendingListName, T-F384; SelectionMode=None, AllowDrop, DoubleTapped ->
         │       │       PendingList_DoubleTapped); row ContextFlyout "Remove from list"
         │       └── StackPanel empty state (T-F199 board 3) — drop zone WITH its own drop handlers
         │               and its own Add Files / Add Folder buttons; hit-testable, so it takes the
@@ -50,7 +50,7 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │   │       after Test the set's verdict; IsRecoveryInfoOpen/RecoveryInfoSeverity/RecoveryInfoText;
         │   │       ActionButton: RecoveryRepairButton, RepairBrowsedArchiveCommand, RecoveryRepairVisibility, step 4c)
         │   ├── BrowseHeader — Border -> Grid (Auto,*,100,100,90,140), non-sortable TextBlocks
-        │   └── ListView ArchiveBrowserListView (SelectionMode=Multiple, explicit
+        │   └── ListView ArchiveBrowserListView (UIA name ArchiveContentsListName, T-F384; SelectionMode=Multiple, explicit
         │           VirtualizingStackPanel — a known deviation from CLAUDE.md's ListView rule,
         │           see T-F05; SelectionChanged + DoubleTapped). ItemTemplate: icon /
         │           Grid(lock FontIcon when IsEncrypted, named for UIA; Name) / Size / Packed / Crc /
@@ -63,13 +63,16 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │       │       T-F199 board 8; NewArchiveCardVisibility). One Grid (Auto,*) with 6 rows:
         │       │       Mode (One archive / Separate archives), Name (placeholder = Core's auto
         │       │       name, T-F264), Format + Compression ComboBoxes (LabeledBy their captions),
-        │       │       "Encrypt with password" CheckBox or, for a tar format, the "ZIP only" note
-        │       │       in the same cell, then the inline password panel (T-F199 step 5): note,
+        │       │       then (T-F275) a StackPanel shown by RecoveryDataVisibility (hidden by
+        │       │       DisableRecoveryData): the "Add recovery data (PAR2)" CheckBox, the
+        │       │       5/10/20 % ComboBox (LabeledBy the CheckBox, enabled by
+        │       │       IsRecoveryPercentEnabled) and a caption note; then the "Encrypt with
+        │       │       password" CheckBox or, for a tar format, the "ZIP only" note in the same
+        │       │       cell, and last the inline password panel (T-F199 step 5): note,
         │       │       EncryptPasswordBox, EncryptConfirmBox, the red message line, "Show
-        │       │       password", the rule hint; then (T-F275) a StackPanel shown by
-        │       │       RecoveryDataVisibility (hidden by DisableRecoveryData): the "Add recovery
-        │       │       data (PAR2)" CheckBox, the 5/10/20 % ComboBox (LabeledBy the CheckBox,
-        │       │       enabled by IsRecoveryPercentEnabled) and a caption note.
+        │       │       password", the rule hint. The PAR2 row is above the encryption rows in
+        │       │       the grid and in the markup (T-F381): below them the password panel pushed
+        │       │       it out of the card's visible part (MainWindowLayoutTests).
         │       └── DestinationCard — Border (card), Grid (Auto,*) with 7 rows: title, destination
         │               (Up button NavigateDestinationUpCommand, read-only TextBox, "..."), "If file
         │               exists" ComboBox (Overwrite/Skip/Rename/Ask), Open destination, delete-after

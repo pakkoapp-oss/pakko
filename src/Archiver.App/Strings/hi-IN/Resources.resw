@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>एक स्तर ऊपर</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>फ़ाइलें और फ़ोल्डर</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>संग्रह की सामग्री</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>पैरेंट फ़ोल्डर</value>
   </data>

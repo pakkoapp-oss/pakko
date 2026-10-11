@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Taseme võrra üles</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>Failid ja kaustad</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>Arhiivi sisu</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>Ülemkaust</value>
   </data>

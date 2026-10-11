@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Vienu līmeni augstāk</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>Faili un mapes</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>Arhīva saturs</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>Vecākmape</value>
   </data>

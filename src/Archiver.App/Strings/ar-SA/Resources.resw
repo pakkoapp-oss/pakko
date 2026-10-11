@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>مستوى واحد لأعلى</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>الملفات والمجلدات</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>محتويات الأرشيف</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>المجلد الأصل</value>
   </data>

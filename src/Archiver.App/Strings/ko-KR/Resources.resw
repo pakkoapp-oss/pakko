@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>한 수준 위로</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>파일 및 폴더</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>압축 파일 내용</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>상위 폴더</value>
   </data>
