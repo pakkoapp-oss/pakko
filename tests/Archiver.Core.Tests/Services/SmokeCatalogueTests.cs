@@ -89,6 +89,19 @@ public sealed partial class SmokeCatalogueTests
     }
 
     [Fact]
+    public void EveryQuickRow_HasAStep_AndEveryStepHasAScriptRow()
+    {
+        // scripts/Invoke-Smoke.ps1 runs the steps registered in scripts/smoke/ by row ID.
+        string[] steps = [.. Directory.GetFiles(Path.Combine(RepoRoot, "scripts", "smoke"), "*.ps1")
+            .SelectMany(f => StepId().Matches(File.ReadAllText(f)).Select(m => m.Groups[1].Value))];
+
+        steps.Should().OnlyHaveUniqueItems();
+        Rows.Where(r => r.Tier == "quick").Select(r => r.Id).Should().BeSubsetOf(steps, "the quick tier runs unattended");
+        steps.Should().BeSubsetOf(Rows.Where(r => r.Tier != "retired" && r.By is "script" or "uac").Select(r => r.Id),
+            "a step belongs to a live row a script can run");
+    }
+
+    [Fact]
     public void EntryPoints_AreReadFromEverySource()
     {
         // Guards the readers below: a renamed file or a reshaped switch would otherwise leave an
@@ -151,6 +164,9 @@ public sealed partial class SmokeCatalogueTests
 
     [GeneratedRegex(@"^\| [A-Z]{3}-\d{3} \|")]
     private static partial Regex RowStart();
+
+    [GeneratedRegex(@"^Add-SmokeStep '([A-Z]{3}-\d{3})'", RegexOptions.Multiline)]
+    private static partial Regex StepId();
 
     [GeneratedRegex(@"^T-F\d+$")]
     private static partial Regex TaskId();

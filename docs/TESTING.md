@@ -1064,6 +1064,12 @@ without gaps per surface, so a row is retired, not deleted; a `quick` row needs 
 release. Mutation-checked nine ways (2026-10-11): a missing command, menu item and policy, an
 unknown name and task, a repeated and a removed ID, a wrong tier, a `quick` row for a person.
 
+`scripts/Invoke-Smoke.ps1` runs the rows that have a step in `scripts/smoke/` (the 25 `quick` rows
+since step 2); the test also requires a step for every `quick` row and a live scripted row for
+every step. The runner's own check is a run: the `quick` tier green on the installed package, and
+its PAR2 speed rows red with the Debug build of `pakko` given as `-PakkoExe` (13 s against
+par2cmdline's 3 s, the size of T-F375).
+
 **Known non-bug finding:** `.zip`'s `UserChoice` file association may still point at Windows'
 built-in `CompressedFolder` handler even after Pakko is installed. Windows requires the user to
 choose a default app in Settings before a double-click reaches another handler (the UserChoice

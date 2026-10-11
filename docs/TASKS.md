@@ -1615,11 +1615,11 @@ re-measured with T-F346's script before and after.
   Review and design: `docs/DECISIONS.md`, "T-F378 — the smoke catalogue". One PR per step:
   - [x] 1 — the catalogue `docs/SMOKE.md` (117 rows, eleven surfaces, tiers `quick` / `release` /
     `store`) and `SmokeCatalogueTests`, which fails when an entry point has no row (2026-10-11).
-  - [ ] 2 — `scripts/Invoke-Smoke.ps1 -Profile quick|release|store -Only <ids>` with the steps of
-    the `script` rows in `scripts/smoke/`, fixtures generated per run, a result table by row ID;
-    the `quick` tier first. The guard test then also requires a step for every `script` row and a
-    row for every step. Done when `-Profile quick` passes on a deployed package within ten
-    minutes and a slowed step turns its `PRF` row red.
+  - [x] 2 — `scripts/Invoke-Smoke.ps1 -Tier quick|release|store -Only <ids>` and the steps of the
+    25 `quick` rows in `scripts/smoke/` (2026-10-11): fixtures generated per run, a result table by
+    row ID. On package 1.8.0.1 the tier takes 2.5 minutes, all rows OK; with the Debug build as
+    `-PakkoExe` the PAR2 speed rows fail. The guard test requires a step for every `quick` row and
+    a live scripted row for every step. `-Tier`, not `-Profile`: `$Profile` is PowerShell's own.
   - [ ] 3 — the `release` tier: the elevated batch (five policies, FIPS, WACK with its report
     compared to the last one), the update over the previous release, the hostile-input and
     failing-destination rows, action cards for the `mcp` rows.
