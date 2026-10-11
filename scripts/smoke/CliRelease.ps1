@@ -412,8 +412,8 @@ Add-SmokeStep 'CLI-016' {
     }
     $hashes = @{ one = Get-Sha256 (Join-Path $folder 'one.zip'); two = Get-Sha256 (Join-Path $folder 'two.zip') }
 
-    # The same command twice: the chunk folder of a killed run is swept only by a run that makes
-    # chunks itself (T-F379).
+    # A small archive after the kill: every creation sweeps the killed run's temporary file and
+    # its chunk folder, not only a run that makes chunks itself (T-F379).
     $long = @('a', '-mx=9', (Join-Path $folder 'killed.zip'), $many, (Get-Fixture Big))
     $killed = Start-PakkoInConsole $long
     try {
@@ -424,11 +424,11 @@ Add-SmokeStep 'CLI-016' {
     finally { $killed.Dispose() }
     Assert-Smoke (@(Get-ChildItem -LiteralPath $folder -Force | Where-Object Name -NotLike '*.zip').Count -gt 0) 'the killed pakko a left nothing, so the next check would prove nothing'
 
-    $again = Invoke-Pakko $long
+    $again = Invoke-Pakko @('a', (Join-Path $folder 'small.zip'), (Get-Fixture Tree))
     Assert-Smoke ($again.ExitCode -eq 0) "a after a killed run: exit $($again.ExitCode) $($again.Text)"
     $left = @(Get-ChildItem -LiteralPath $folder -Force -Name | Sort-Object)
-    Assert-Smoke (($left -join ',') -eq 'killed.zip,one.zip,two.zip') "after the rerun the folder holds: $($left -join ', ')"
-    Assert-Smoke ((Get-Sha256 (Join-Path $folder 'one.zip')) -eq $hashes.one -and (Get-Sha256 (Join-Path $folder 'two.zip')) -eq $hashes.two) 'the rerun changed another run''s archive'
+    Assert-Smoke (($left -join ',') -eq 'one.zip,small.zip,two.zip') "after the small run the folder holds: $($left -join ', ')"
+    Assert-Smoke ((Get-Sha256 (Join-Path $folder 'one.zip')) -eq $hashes.one -and (Get-Sha256 (Join-Path $folder 'two.zip')) -eq $hashes.two) 'the small run changed another run''s archive'
 }
 
 Add-SmokeStep 'CLI-019' {

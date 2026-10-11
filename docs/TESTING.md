@@ -886,9 +886,12 @@ left as typed; T-F338) with `ArchiveAsync_SourceNamedByDots_*` and two subproces
 listing test say whether the time is known (T-F335). `ArchiveCreationRouterTests`/`PolicyOwnershipTests`
 check the item a refusal names (T-F326). `ZipArchiveServiceExtractTests` and `ExtractionRouterTests`
 cover `KeptExistingFiles` (automatic skip listed, the user's own answer not, merge;
-`UserSkippedEntryCount` counts those answers, T-F383), and the
+`UserSkippedEntryCount` counts those answers, T-F383; `OutcomeAndEncryptionSummaryTests` holds
+the App's "nothing was done" line), and the
 subprocess layer pins `pakko x` over existing files: default (line, hint, exit 1), `-aos`, `-aoa`
-(T-F313). `CliCreatedNameTests` covers the taken-name line (T-F325); its wiring in `Program.cs` is
+(T-F313). `VerifyingReadStreamTests` and `ZipArchiveServiceExtractIntegrityTests` cover a broken Deflate stream
+(`ContentDamaged`, T-F382), `ArchiveTempFileTests` the sweep of a dead run's chunk folder (T-F379),
+`PackagingManifestTests` the `PerMonitorV2` manifest of both non-WinUI exes (T-F377). `CliCreatedNameTests` covers the taken-name line (T-F325); its wiring in `Program.cs` is
 checked only by a real two-run race on a device, since a test cannot stage that race reliably.
 
 **v1.7.0 wave 3 additions (2026-10-03):** `CliArgumentParserTests` covers PowerShell-split pairs

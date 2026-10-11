@@ -72,6 +72,28 @@ public sealed class ZipArchiveServiceUserSkipTests : IDisposable
         File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("old");
     }
 
+    // T-F383: the App extracts each archive into its own folder; a run that wrote nothing there
+    // must name no created folder, or the footer line still says "Extracted".
+    [Fact]
+    public async Task UserChoseSkipAll_SeparateFolders_NothingCreatedAndTheAnswersCounted()
+    {
+        string zip = WriteZip("a.txt", "b.txt");
+        string dest = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(Path.Combine(dest, "in"));
+        File.WriteAllText(Path.Combine(dest, "in", "a.txt"), "old");
+        File.WriteAllText(Path.Combine(dest, "in", "b.txt"), "old");
+
+        ArchiveResult result = await _sut.ExtractAsync(Ask(zip, dest,
+            _ => Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip, ApplyToAll = true })) with
+        {
+            Mode = ExtractMode.SeparateFolders,
+        });
+
+        result.CreatedFiles.Should().BeEmpty();
+        result.UserSkippedEntryCount.Should().Be(2);
+        result.Outcome.Should().Be(OperationOutcome.Completed);
+    }
+
     [Fact]
     public async Task UserSkippedEachEntryOneByOne_NoEverySkippedWarning()
     {

@@ -1600,9 +1600,10 @@ re-measured with T-F346's script before and after.
 - [~] **Status:** code done 2026-10-11 (v1.8.1 wave): `src/Archiver.CLI/app.manifest` declares
   `PerMonitorV2` (no common-controls dependency, `pakko` draws nothing), and the published AOT
   `pakko.exe` carries it (the string is in the file). `PackagingManifestTests` holds both
-  non-WinUI exes to it, seen red for the CLI. Left: a WACK run on the 1.8.1 package that reads
-  `PASS` for `DPIAwarenessValidation`, then the finding's line leaves
-  `scripts/smoke/wack-known.txt` (one elevation prompt; goes with the release's device session).
+  non-WinUI exes to it, seen red for the CLI. The finding's line is out of
+  `scripts/smoke/wack-known.txt` (the list only excuses findings), so `PKG-005` fails if the
+  kit still warns. Left: that row green on the 1.8.1 package (one elevation prompt; goes with
+  the release's device session).
 - **Earlier status:** open. The Windows App Certification Kit run for v1.8.0 (2026-10-11, package
   1.8.0.1 x64) gave `DPIAwarenessValidation` WARNING: "File pakko.exe neither has PerMonitorV2
   manifested in the manifest nor calls into DPI Awareness APIs", and so "the app is not DPI
@@ -1620,8 +1621,9 @@ re-measured with T-F346's script before and after.
   creation passes (ZIP, tar, PAR2), sweeps `.pakko-tmp-` as well as `.pakko-a-`; the prefix
   constant lives there and the parallel writer reads it. Two tests, both seen red: a dead run's
   hidden chunk folder goes and a live run's stays; a small `ArchiveAsync` leaves the folder
-  with its archive only. Left: smoke row `CLI-016` reruns a small command after the kill
-  (the step and the row's text), checked on the 1.8.1 package.
+  with its archive only. Smoke row `CLI-016` now creates a small archive after the kill; on
+  package 1.8.0.2 it fails with the chunk folder still there, which is the bug. Left: the row
+  green on the 1.8.1 package.
 - **Earlier status:** open. `pakko a -mx=9 out.zip <6000 files> <a 200 MB file>` killed mid-write
   leaves `.pakko-a-*.tmp` and a hidden `.pakko-tmp-*` folder next to the archive. The next `pakko
   a` into that folder removes the `.tmp` file always (`ArchiveTempFile.Create`), but the chunk
@@ -1671,8 +1673,10 @@ re-measured with T-F346's script before and after.
   footer line (`OutcomeLine`) reads "Nothing was done - skipped: N" when an extraction wrote
   nothing because of those answers, with no "Details..." link; a run that wrote something
   keeps "Extracted". No new string. The Explorer window was already silent in this case, and
-  `pakko x` exits 0 without a line, like 7-Zip after an answered prompt. Seven tests seen red.
-  Left: one look at the line in the App on the 1.8.1 package (smoke rows APP-007, APP-024).
+  `pakko x` exits 0 without a line (the user answered in the console); neither changes. Seven
+  tests seen red; two more pin that a skip-all run in the App's mode (`SeparateFolders`) names
+  no created folder, ZIP and tar. Left: one look at the line in the App on the 1.8.1 package
+  (smoke rows APP-007, APP-024).
 - **Earlier status:** open. In the App with "If the file exists: Ask", extracting over existing
   files and answering Skip for all ends with "Extracted in 10 s — archives: 0" and no
   "Details..." link; skipping one entry and overwriting the rest ends with "archives: 1" and no

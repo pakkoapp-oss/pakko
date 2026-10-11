@@ -455,6 +455,35 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("original content");
     }
 
+    // T-F383: as ZipArchiveServiceUserSkipTests' case of the same name, in the mode the App uses.
+    [Integration]
+    public async Task ExtractAsync_UserChoseSkipAll_SeparateFolders_NothingCreatedAndTheAnswersCounted()
+    {
+        string archivePath = Path.Combine(_temp.Path, "valid.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("new a") },
+            new TarBuilder.Entry { Name = "b.txt", Content = Encoding.ASCII.GetBytes("new b") },
+        ]);
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(Path.Combine(destDir, "valid"));
+        File.WriteAllText(Path.Combine(destDir, "valid", "a.txt"), "old");
+        File.WriteAllText(Path.Combine(destDir, "valid", "b.txt"), "old");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archivePath],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SeparateFolders,
+            OnConflict = ConflictBehavior.Ask,
+            ResolveConflictAsync = _ => Task.FromResult(new ConflictDecision { Resolution = ConflictResolution.Skip, ApplyToAll = true }),
+        });
+
+        result.CreatedFiles.Should().BeEmpty();
+        result.UserSkippedEntryCount.Should().Be(2);
+        result.Outcome.Should().Be(OperationOutcome.Completed);
+    }
+
     // T-F216: an explicit "Skip, apply to all" is the user's decision — no per-entry "already
     // exists" lines and no "every entry was skipped" warning, as for ZIP
     // (ZipArchiveServiceUserSkipTests). Nothing was extracted, so the source stays NotProcessed.
