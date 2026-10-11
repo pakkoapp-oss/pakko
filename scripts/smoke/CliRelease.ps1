@@ -226,9 +226,9 @@ Add-SmokeStep 'CLI-010' {
         '65001 '        = 'utf-8';   '65001 -sccUTF-8' = 'utf-8'; '65001 -sccWIN' = 'windows-1251'; '65001 -sccDOS' = 'cp866'
     }
     foreach ($case in $expected.Keys) {
-        $codePage, $switch = $case -split ' '
+        $codePage, $encodingSwitch = $case -split ' '
         $startInfo = [System.Diagnostics.ProcessStartInfo]::new((Join-Path $env:SystemRoot 'System32\cmd.exe'))
-        $startInfo.Arguments = "/d /s /c `"chcp $codePage >nul & `"$($Smoke.Pakko)`" l $switch `"$zip`"`""
+        $startInfo.Arguments = "/d /s /c `"chcp $codePage >nul & `"$($Smoke.Pakko)`" l $encodingSwitch `"$zip`"`""
         $startInfo.UseShellExecute = $false
         $startInfo.RedirectStandardOutput = $true
         $process = [System.Diagnostics.Process]::Start($startInfo)
