@@ -114,12 +114,12 @@ budgets, `REL` the release's files, `STO` the Store.
 | ID | Tier | By | On | Action | Expect | Covers |
 |---|---|---|---|---|---|---|
 | APP-001 | release | mcp | dev | Read the title bar and About | A build time within minutes of the deploy; About shows the package version | T-F218 |
-| APP-002 | release | mcp | dev | Add files and a folder through the pickers; create a ZIP, each tar format and an AES-256 ZIP | Every archive passes `7za t`; the encrypted one is AES-256 | `app:BrowseFiles` `app:BrowseFolder` `app:Archive` |
+| APP-002 | release | mcp | dev | Add files and a folder through the pickers; create a ZIP, each tar format and an AES-256 ZIP (password `Right-1`, then run APP-018) | Every archive passes `7za t`; the encrypted one is AES-256 | `app:BrowseFiles` `app:BrowseFolder` `app:Archive` |
 | APP-003 | release | mcp | dev | Extract a marked ZIP with the download-mark box on, then off | `Zone.Identifier` present, then absent; the note under the box changes | `app:Extract` T-F360 |
 | APP-004 | release | mcp | dev | In the archive view: enter folders, use the breadcrumb, go Up to the folder, the drive and This PC, sort by each column, close the archive | Rows are never blank; Up follows diagram 6; sorting flips on a second click; hidden system folders are not listed at a drive root | `app:NavigateUp` `app:SortBy` `app:CloseArchive` T-F112 T-F292 T-F324 |
 | APP-005 | release | mcp | dev | Extract selected rows, then Extract all, from a ZIP and from a tar with `a[1].txt` next to `a1.txt` | Only the selected entries, then all of them | `app:ExtractSelectedFromBrowser` `app:ExtractAllFromBrowser` T-F284 |
 | APP-006 | release | mcp | dev | Test and Scan from the archive view; preview a text file and an image; open a nested archive | "No errors"; the scan verdict; the preview opens; the nested archive lists | `app:TestBrowsedArchive` `app:ScanArchiveFromBrowser` T-F111 |
-| APP-007 | release | mcp | dev | Raise each dialog: a name conflict, a suspected bomb, a password (wrong, then right), an error | Each is shown and the choice takes effect; the conflict dialog shows size and date of both files; a renamed `x.tar.xz` becomes `x (1).tar.xz` | T-F220 T-F362 |
+| APP-007 | release | mcp | dev | Raise each dialog: a name conflict, a suspected bomb, a password (`Wrong-1`, then `Right-1`; then run APP-018), an error | Each is shown and the choice takes effect; the conflict dialog shows size and date of both files; a renamed `x.tar.xz` becomes `x (1).tar.xz` | T-F220 T-F362 |
 | APP-008 | release | mcp | dev | Pick a destination folder, then use the parent-folder button | The path field follows both | `app:BrowseDestination` `app:NavigateDestinationUp` |
 | APP-009 | release | mcp | dev | Start a long operation and Cancel it; add rows and Clear them; add a large folder and remove it before its size is counted | No partial output; the list is empty; counting stops | `app:Cancel` `app:Clear` T-F236 |
 | APP-010 | release | mcp | dev | After an extraction use the result line: Show in folder, then the details | Explorer opens with the output selected; the summary dialog lists the result | `app:ShowOutcomeInFolder` `app:ShowOutcomeDetails` T-F211 |
@@ -130,7 +130,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | APP-015 | release | mcp | dev | The App in ar-SA, de-DE and ja-JP (language list, no sign-out) | Right-to-left layout mirrors; the longest strings fit; no English left in the main view | T-F209 |
 | APP-016 | release | mcp | dev | From Explorer: Open with, then Pakko, on an archive, with no Pakko window open | A new window opens on that archive | `app:Extract` |
 | APP-017 | release | mcp | dev | Keep one window open for 15 minutes across ten operations, the archive view and a theme change | It answers every click; the event log has no entry from Pakko | T-F355 |
-| APP-018 | release | script | dev | After the encrypted rows of this run, search `pakko.log`, the event log and the process command lines for the passwords used | None of them appears anywhere | T-F200 |
+| APP-018 | release | script | dev | Last in a run: type a new password into the Shell's prompt and read the command lines of the Archiver processes; search `pakko.log` and the Application event log for every password the run used and for `Right-1` and `Wrong-1` | None of them appears anywhere; the note says how much of the log is from this run | T-F200 |
 | APP-019 | store | user | tag | Drag files, a folder and a `.par2` file from Explorer into the window | Rows are added; the `.par2` row opens the archive it protects | T-F275 |
 | APP-020 | store | user | tag | Every item of the tray icon's menu; left click | Open, About and Exit work; a left click hides and shows the window | T-F198 |
 | APP-021 | store | user | tag | Change the display language with a sign-out, to en-US and to a regional variant | The App, the Shell dialogs and the Explorer menu follow it | T-F254 T-F91 |
@@ -171,14 +171,16 @@ the registry back in a `finally` block. The App reads policy once at startup: re
 
 | ID | Tier | By | On | Action | Expect | Covers |
 |---|---|---|---|---|---|---|
-| POL-001 | release | uac | dev | `EnforceMOTW` at each value, with the user's own choice set the other way | The policy wins in `pakko x`, Shell and the App; the App's box is locked | `policy:EnforceMOTW` T-F51 |
-| POL-002 | release | uac | dev | `AllowedFormats` = `zip` | Listing, extracting and creating tar, 7z and RAR are refused in all three frontends; ZIP works | `policy:AllowedFormats` |
-| POL-003 | release | uac | dev | `BlockedFormats` = `zip`, and = `sevenzip` `rar` | The blocked formats are refused by `pakko l`, `x`, `a`, Shell and the App; the Explorer menu hides their items; the rest work | `policy:BlockedFormats` T-F262 |
-| POL-004 | release | uac | dev | `DisableTarExtraction` = 1 | Every tar-family action is refused and `tar.exe` is never started; Add to X.tar is hidden; the refusal names the archive, not the destination folder | `policy:DisableTarExtraction` T-F261 T-F326 |
-| POL-005 | release | uac | dev | `DisableRecoveryData` = 1 | `pakko a -rr` writes nothing, `t` looks for no set, `r` refuses; the App shows no option, no PAR2 line and no Repair, and refuses a `.par2` row; Explorer shows neither PAR2 item | `policy:DisableRecoveryData` T-F275 |
-| POL-006 | release | uac | dev | `BlockedFormats` = `zip` with a set next to a ZIP | Explorer and the App offer no PAR2 action on the ZIP; on its `.par2` file they do; `pakko r` writes the copy | `policy:BlockedFormats` `menu:RecoveryRepairCommand` |
+| POL-001 | release | uac | dev | `EnforceMOTW` at 0, 1 and 2, each with the user's own choice the other way: `pakko x` (with `-snz0` where the policy marks) and Shell extraction of a marked ZIP that holds a text file and a `.cmd` | 0: no file is marked; 1: both are; 2: the `.cmd` alone. `pakko` says that the policy decides | `policy:EnforceMOTW` T-F51 |
+| POL-002 | release | uac | dev | `AllowedFormats` = `zip`: `pakko l`, `x`, `a` on tar, tar.gz, 7z and RAR and on ZIP; Shell extraction and "Add to tar" | The others are refused with "blocked by Group Policy" and nothing is written; ZIP works | `policy:AllowedFormats` |
+| POL-003 | release | uac | dev | `BlockedFormats` = `zip`, and = `sevenzip` `rar`: `pakko l`, `t`, `x`, `a`; Shell extraction, test and "Add to tar" | The blocked formats are refused and nothing is written; the rest work | `policy:BlockedFormats` T-F262 |
+| POL-004 | release | uac | dev | `DisableTarExtraction` = 1: `pakko l`, `x`, `a` on tar.gz, 7z and RAR; `pakko i`; Shell extraction and "Add to tar" | Every tar-family action is refused and nothing is written; `i` shows `tar.exe` disabled; the refusal names the archive, not the destination folder; ZIP works | `policy:DisableTarExtraction` T-F261 T-F326 |
+| POL-005 | release | uac | dev | `DisableRecoveryData` = 1: `pakko a -rr5`, `t` on an archive with a set, `r` on a damaged one; Shell `--recovery-repair` | `a -rr` is refused and writes nothing, `t` says nothing of the set, `r` is refused; no repaired copy appears | `policy:DisableRecoveryData` T-F275 |
+| POL-006 | release | uac | dev | `BlockedFormats` = `zip`: `pakko l` and `pakko r` on a damaged ZIP with a set | `l` is refused; `r` writes a copy equal to the original | `policy:BlockedFormats` `cli:r` |
 | POL-007 | release | uac | dev | The Windows FIPS policy on (`FipsAlgorithmPolicy\Enabled` = 1): `pakko a -rr5`, `t`, `r`, `h`, and an AES-256 round trip | All work; MD5 for PAR2 is not refused | `cli:-rr` T-F275 |
-| POL-008 | release | uac | dev | Export the two registry keys before and after the batch | The exports are equal | `policy:EnforceMOTW` |
+| POL-008 | release | uac | dev | Last of the elevated rows: stop the helper and compare the exports of the two registry keys from before the first policy with those after | The exports are equal | `policy:EnforceMOTW` |
+| POL-009 | release | mcp | dev | `Invoke-Smoke.ps1 -Tier release -Only POL-00* -Hold`: while each policy is held, open the App | `EnforceMOTW`: the box is locked at the policy's value; formats: the blocked ones are missing from New archive and refused on open; `DisableRecoveryData`: no option, no PAR2 line, no Repair, a `.par2` row is refused | `policy:EnforceMOTW` `policy:AllowedFormats` `policy:DisableRecoveryData` |
+| POL-010 | release | mcp | dev | The same held run: open the Explorer menu on a ZIP, a tar.gz, a folder and a ZIP with a set and its `.par2` | Items of a blocked format are hidden; under `DisableTarExtraction` Add to X.tar is hidden; under `DisableRecoveryData` neither PAR2 item shows; under `BlockedFormats` = `zip` the ZIP has no PAR2 item and its `.par2` has | `policy:BlockedFormats` `policy:DisableTarExtraction` `menu:RecoveryRepairCommand` `menu:TarArchiveCommand` |
 
 ## PKG - the package and its life cycle
 
@@ -188,7 +190,7 @@ the registry back in a `finally` block. The App reads policy once at startup: re
 | PKG-002 | quick | script | dev | Read the Application event log (`Application Error`, `.NET Runtime`) from the run's start to its end | No entry names a Pakko exe | T-F355 |
 | PKG-003 | quick | script | dev | `pakko -v` from the install folder; the file version of each of the four exes | `pakko -v` names the installed package's full name; every exe has a file version | T-F317 |
 | PKG-004 | quick | script | dev | After the run, look in `%TEMP%` for `PakkoTarStage_*`, `PakkoTarSandbox` contents and `*.zip.tmp` | Nothing is left; no junction, hardlink or staging file of this run either | T-F309 T-F286 T-F244 T-F248 |
-| PKG-005 | release | uac | dev | `appcert.exe test -apptype packagedwin32` on the package; compare with the last record | No finding that the last record did not have | T-F377 |
+| PKG-005 | release | uac | dev | `appcert.exe test -apptype packagedwin32` on the `.msix` of the installed package; compare the tests that did not pass with `scripts/smoke/wack-known.txt` | No finding that the file does not list | T-F377 |
 | PKG-006 | release | script | tag | Install the previous release, create an archive and a marker in the package data, then install the new bundle over it | Same package family; the marker and the log are kept; the App starts; `pakko t` accepts the old archive | T-F363 |
 | PKG-007 | release | script | tag | The same update with the App running, with `-ForceApplicationShutdown` | The App is closed, the update installs, the App starts | T-F363 |
 | PKG-008 | release | script | tag | Install the previous release over the new one | Refused; the new one still works | T-F368 |
@@ -214,8 +216,8 @@ size in PKG-001). The factors were set from a measured run (`docs/DECISIONS.md`,
 
 | ID | Tier | By | On | Action | Expect | Covers |
 |---|---|---|---|---|---|---|
-| REL-001 | release | script | dev | `dotnet test --filter "Category=Slow"` on the release commit | Green | T-F114 |
-| REL-002 | release | script | dev | `gh workflow run canary.yml --ref main` on the release commit; read the jobs | `canary-failed-day` skipped, `canary-fuzz` success; the ARM64 subprocess step passed | T-F240 |
+| REL-001 | release | script | dev | `dotnet test --filter "Category=Slow"` on the checked-out commit | Green; the note names the commit | T-F114 |
+| REL-002 | release | script | dev | Read the jobs of the newest finished canary run on the checked-out commit; when there is none (the row is skipped), start one with `gh workflow run canary.yml --ref main` and run the row again | `canary-failed-day` skipped, `canary-fuzz` success; the ARM64 subprocess step passed | T-F240 |
 | REL-003 | store | script | tag | `SHA256SUMS` against every file it lists; `gh attestation verify` for the bundles and the CLI zips | All match; the attestations are valid | T-F364 |
 | REL-004 | store | script | tag | Signature, version and architecture of both `.msixbundle` files | Valid, signed by the dev certificate, the tag's version, x64 and arm64 | T-F129 |
 | REL-005 | store | script | tag | The GitHub Release's notes | They begin with the tag's own section of `CHANGELOG.md` | T-F240 |
