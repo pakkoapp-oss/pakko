@@ -38,5 +38,5 @@ open source
 • New: recovery data (PAR2). Turn on "Add recovery data (PAR2)" when creating an archive, and the archive can be repaired after damage.
 • "Verify with PAR2" and "Repair with PAR2" in the File Explorer menu and in the app; the repaired copy is a new file, the original is not changed.
 • PAR2 files made by other programs work too; the pakko command adds recovery data with -rr and repairs with r.
-• Pakko starts faster and is a much smaller download.
-• Large files are compressed on several processor cores.
+• Fixed: the Delete, Enter and menu keys work again on a list row selected from the keyboard.
+• The window is mirrored for right-to-left languages, and several messages and layout details are corrected.

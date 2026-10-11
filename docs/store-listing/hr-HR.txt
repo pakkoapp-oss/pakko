@@ -38,5 +38,5 @@ otvoreni kod
 • Novo: podaci za oporavak (PAR2). Uključite „Dodaj podatke za oporavak (PAR2)” pri stvaranju arhive i arhiva će se nakon oštećenja moći popraviti.
 • „Provjeri pomoću PAR2” i „Popravi pomoću PAR2” u izborniku Eksplorera za datoteke i u aplikaciji; popravljena kopija nova je datoteka, a izvornik se ne mijenja.
 • Rade i PAR2 datoteke stvorene drugim programima; naredba pakko dodaje podatke za oporavak prekidačem -rr i popravlja naredbom r.
-• Pakko se pokreće brže, a preuzimanje je mnogo manje.
-• Velike datoteke komprimiraju se na više procesorskih jezgri.
+• Ispravljeno: tipke Delete, Enter i tipka izbornika ponovno rade na retku popisa odabranom tipkovnicom.
+• Prozor se zrcali za jezike koji se pišu zdesna nalijevo; ispravljeno je nekoliko poruka i detalja rasporeda.

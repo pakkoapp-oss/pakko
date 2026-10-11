@@ -15,8 +15,8 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 ## Current State
 
 v1.1 through v1.4 (shell extension, tar.exe integration, Group Policy) and the v1.5-v1.7 waves
-are complete. **v1.8.0** (PAR2 recovery data) was released 2026-10-11 (`CHANGELOG.md`). The
-Store bundle 1.7.2.0, the first Native AOT build, passed certification 2026-10-11; 1.8.0 is not
+are complete. **v1.8.1** (v1.8.0, PAR2 recovery data, plus fixes) was released 2026-10-12. The
+Store bundle 1.7.2.0, the first Native AOT build, passed certification 2026-10-11; 1.8.1 is not
 submitted yet (`docs/DECISIONS.md`). Store listing:
 https://apps.microsoft.com/detail/9p5mw010d8pr.
 

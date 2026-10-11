@@ -38,5 +38,5 @@ zip su slaptažodžiu
 • Nauja: atkūrimo duomenys (PAR2). Kurdami archyvą įjunkite „Pridėti atkūrimo duomenis (PAR2)“, ir archyvą bus galima pataisyti po pažeidimo.
 • „Tikrinti su PAR2“ ir „Taisyti su PAR2“ Failų naršyklės meniu ir programoje; pataisyta kopija yra naujas failas, originalas nekeičiamas.
 • Tinka ir kitų programų sukurti PAR2 failai; komanda pakko prideda atkūrimo duomenis jungikliu -rr ir taiso komanda r.
-• „Pakko“ paleidžiama greičiau, o atsisiuntimas daug mažesnis.
-• Dideli failai suspaudžiami keliuose procesoriaus branduoliuose.
+• Ištaisyta: klavišai „Delete“, „Enter“ ir meniu klavišas vėl veikia klaviatūra pasirinktoje sąrašo eilutėje.
+• Langas atspindimas kalboms, rašomoms iš dešinės į kairę; pataisyti keli pranešimai ir išdėstymo smulkmenos.

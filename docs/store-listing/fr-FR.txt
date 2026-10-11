@@ -38,5 +38,5 @@ open source
 • Nouveau : données de récupération (PAR2). Activez « Ajouter des données de récupération (PAR2) » à la création d'une archive, et elle pourra être réparée après un dommage.
 • « Vérifier avec PAR2 » et « Réparer avec PAR2 » dans le menu de l'Explorateur de fichiers et dans l'application ; la copie réparée est un nouveau fichier, l'original n'est pas modifié.
 • Les fichiers PAR2 créés par d'autres programmes fonctionnent aussi ; la commande pakko ajoute des données de récupération avec -rr et répare avec r.
-• Pakko démarre plus vite et son téléchargement est bien plus léger.
-• Les gros fichiers sont compressés sur plusieurs cœurs du processeur.
+• Corrigé : les touches Suppr, Entrée et la touche Menu fonctionnent de nouveau sur une ligne de la liste sélectionnée au clavier.
+• La fenêtre est inversée pour les langues écrites de droite à gauche ; plusieurs messages et détails de mise en page ont été corrigés.

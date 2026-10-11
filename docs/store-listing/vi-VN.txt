@@ -38,5 +38,5 @@ mã nguồn mở
 • Mới: dữ liệu khôi phục (PAR2). Bật "Thêm dữ liệu khôi phục (PAR2)" khi tạo tệp nén để có thể sửa tệp nén sau khi bị hỏng.
 • "Xác minh bằng PAR2" và "Sửa bằng PAR2" trong menu của File Explorer và trong ứng dụng; bản sao đã sửa là một tệp mới, tệp gốc không bị thay đổi.
 • Tệp PAR2 do chương trình khác tạo cũng dùng được; lệnh pakko thêm dữ liệu khôi phục bằng -rr và sửa bằng r.
-• Pakko khởi động nhanh hơn và dung lượng tải xuống nhỏ hơn nhiều.
-• Tệp lớn được nén trên nhiều nhân của bộ xử lý.
+• Đã sửa: các phím Delete, Enter và phím menu hoạt động trở lại trên hàng danh sách được chọn bằng bàn phím.
+• Cửa sổ được lật đối xứng cho các ngôn ngữ viết từ phải sang trái; đã sửa một số thông báo và chi tiết bố cục.

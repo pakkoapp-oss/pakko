@@ -38,5 +38,5 @@ alternatíva 7-zip
 • Novinka: údaje na obnovenie (PAR2). Pri vytváraní archívu zapnite „Pridať údaje na obnovenie (PAR2)“ a archív sa po poškodení bude dať opraviť.
 • „Overiť pomocou PAR2“ a „Opraviť pomocou PAR2“ v ponuke Prieskumníka aj v aplikácii; opravená kópia je nový súbor, originál sa nemení.
 • Fungujú aj súbory PAR2 vytvorené inými programami; príkaz pakko pridáva údaje na obnovenie prepínačom -rr a opravuje príkazom r.
-• Pakko sa spúšťa rýchlejšie a sťahovaný balík je oveľa menší.
-• Veľké súbory sa komprimujú na viacerých jadrách procesora.
+• Opravené: klávesy Delete, Enter a kláves ponuky opäť fungujú na riadku zoznamu vybranom z klávesnice.
+• Okno sa zrkadlí pre jazyky písané sprava doľava; opravených bolo niekoľko správ a detailov rozloženia.

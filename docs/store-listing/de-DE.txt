@@ -38,5 +38,5 @@ Open Source
 • Neu: Wiederherstellungsdaten (PAR2). Aktivieren Sie beim Erstellen eines Archivs „Wiederherstellungsdaten hinzufügen (PAR2)“, dann lässt sich das Archiv nach einer Beschädigung reparieren.
 • „Mit PAR2 prüfen“ und „Mit PAR2 reparieren“ im Menü des Datei-Explorers und in der App; die reparierte Kopie ist eine neue Datei, das Original bleibt unverändert.
 • PAR2-Dateien anderer Programme funktionieren ebenfalls; der Befehl pakko fügt Wiederherstellungsdaten mit -rr hinzu und repariert mit r.
-• Pakko startet schneller und der Download ist deutlich kleiner.
-• Große Dateien werden auf mehreren Prozessorkernen komprimiert.
+• Behoben: Entf, Eingabe und die Menütaste funktionieren wieder in einer per Tastatur ausgewählten Listenzeile.
+• Das Fenster wird für Sprachen mit Schreibrichtung von rechts nach links gespiegelt; mehrere Meldungen und Layoutdetails wurden korrigiert.

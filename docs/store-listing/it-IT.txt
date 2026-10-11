@@ -38,5 +38,5 @@ open source
 • Novità: dati di ripristino (PAR2). Attiva «Aggiungi dati di ripristino (PAR2)» quando crei un archivio, e potrai ripararlo dopo un danno.
 • «Verifica con PAR2» e «Ripara con PAR2» nel menu di Esplora file e nell'app; la copia riparata è un nuovo file, l'originale non viene modificato.
 • Funzionano anche i file PAR2 creati da altri programmi; il comando pakko aggiunge i dati di ripristino con -rr e ripara con r.
-• Pakko si avvia più velocemente e il download è molto più piccolo.
-• I file di grandi dimensioni vengono compressi su più core del processore.
+• Corretto: i tasti Canc, Invio e il tasto Menu funzionano di nuovo su una riga dell'elenco selezionata da tastiera.
+• La finestra è speculare per le lingue scritte da destra a sinistra; corretti diversi messaggi e dettagli di layout.

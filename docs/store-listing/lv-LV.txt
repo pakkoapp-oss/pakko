@@ -38,5 +38,5 @@ atvērtais pirmkods
 • Jaunums: atkopšanas dati (PAR2). Veidojot arhīvu, ieslēdziet “Pievienot atkopšanas datus (PAR2)”, un arhīvu pēc bojājuma varēs salabot.
 • “Pārbaudīt ar PAR2” un “Labot ar PAR2” Failu pārlūka izvēlnē un lietotnē; salabotā kopija ir jauns fails, oriģināls netiek mainīts.
 • Der arī citu programmu izveidoti PAR2 faili; komanda pakko pievieno atkopšanas datus ar -rr un labo ar r.
-• Pakko tiek palaists ātrāk, un lejupielāde ir daudz mazāka.
-• Lieli faili tiek saspiesti vairākos procesora kodolos.
+• Novērsts: taustiņi Delete, Enter un izvēlnes taustiņš atkal darbojas saraksta rindā, kas izvēlēta ar tastatūru.
+• Logs tiek spoguļots valodām, kuras raksta no labās uz kreiso pusi; izlaboti vairāki ziņojumi un izkārtojuma sīkumi.

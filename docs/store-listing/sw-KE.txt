@@ -38,5 +38,5 @@ chanzo huria
 • Mpya: data ya urejeshaji (PAR2). Washa "Ongeza data ya urejeshaji (PAR2)" unapounda kumbukumbu, na kumbukumbu itaweza kurekebishwa baada ya kuharibika.
 • "Thibitisha kwa PAR2" na "Rekebisha kwa PAR2" katika menyu ya File Explorer na katika programu; nakala iliyorekebishwa ni faili mpya, faili asili haibadilishwi.
 • Faili za PAR2 zilizoundwa na programu nyingine pia zinafanya kazi; amri ya pakko huongeza data ya urejeshaji kwa -rr na hurekebisha kwa r.
-• Pakko huanza haraka zaidi na upakuaji wake ni mdogo zaidi.
-• Faili kubwa hubanwa kwa kutumia viini kadhaa vya kichakataji.
+• Imerekebishwa: vitufe vya Delete, Enter na kitufe cha menyu vinafanya kazi tena kwenye safu ya orodha iliyochaguliwa kwa kibodi.
+• Dirisha linageuzwa kwa lugha zinazoandikwa kutoka kulia kwenda kushoto; ujumbe kadhaa na maelezo ya mpangilio yamerekebishwa.

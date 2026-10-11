@@ -38,5 +38,5 @@ otwarty kod źródłowy
 • Nowość: dane odzyskiwania (PAR2). Włącz „Dodaj dane odzyskiwania (PAR2)” podczas tworzenia archiwum, a archiwum da się naprawić po uszkodzeniu.
 • „Zweryfikuj za pomocą PAR2” i „Napraw za pomocą PAR2” w menu Eksploratora plików i w aplikacji; naprawiona kopia to nowy plik, oryginał nie jest zmieniany.
 • Działają też pliki PAR2 utworzone przez inne programy; polecenie pakko dodaje dane odzyskiwania przełącznikiem -rr i naprawia poleceniem r.
-• Pakko uruchamia się szybciej, a pobierany pakiet jest znacznie mniejszy.
-• Duże pliki są kompresowane na kilku rdzeniach procesora.
+• Naprawiono: klawisze Delete, Enter i klawisz menu znów działają w wierszu listy wybranym z klawiatury.
+• Okno jest odbijane lustrzanie w językach pisanych od prawej do lewej; poprawiono kilka komunikatów i szczegółów układu.
