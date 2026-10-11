@@ -12433,10 +12433,14 @@ under JIT took 2.3 s, par2cmdline 1.4.0 3.8 s. Repair of 8 MB of damage: 12.0 s 
   `docs/store-listing/` (13 feature lines, "What's new" written for an update from 1.7.1).
 - **The first full smoke run** (T-F378 step 4, 2026-10-11): `Invoke-Smoke.ps1 -Tier store
   -PackageLifecycle -Tag v1.8.0` on the release's downloaded files, with v1.7.2 as the previous
-  release, device package 1.8.0.1. 121 rows: 74 OK, none failed, 1 skipped, 46 for a person
-  (`-List` prints them); 28 minutes, 21 of them the slow tests. The package the run began with
-  was installed again at its end. `REL-002` was skipped because the run stood on a local commit
-  with no canary; the canary of the tagged commit is the one read under "Tag" above. OK with
+  release, device package 1.8.0.1. 121 rows: 74 OK, none failed, 1 skipped, 46 without a step
+  (`-List` prints them); 28 minutes, 21 of them the slow tests. The run walked the scripted
+  rows only: of the 46, 40 are `mcp` rows that were not walked in it (the device checks of this
+  release are the ones recorded above), 4 are the maintainer's and 2 need a Store machine. The
+  package the run began with was installed again at its end. `REL-001` and `REL-002` ran on
+  the commit checked out, the step 4 branch before its rebase onto b7bde45 (`<local>` in the
+  table), which has no canary run; the canary of the tagged commit is the one read under
+  "Tag" above. OK with
   nothing to note: `CLI-002..012`, `CLI-014..016`, `CLI-018..021`, `SHL-001..011`, `OPW-004`,
   `PAR-001..009`, `POL-001..007`, `PKG-002..004`, `PKG-007..009`, `REL-004`, `REL-006`.
 
@@ -12449,11 +12453,11 @@ under JIT took 2.3 s, par2cmdline 1.4.0 3.8 s. Repair of 8 MB of damage: 12.0 s 
   | PKG-005 | OK | 40.7 | overall WARNING, 24 tests; known: Application count=FAIL; Blocked executables=FAIL; DPIAwarenessValidation=WARNING |
   | PRF-001 | OK | 5.9 | a -rr5 on 200 MB: 2.6 s against 3.1 s |
   | PRF-002 | OK | 5.5 | r of 8 MiB: 3.3 s against 1.9 s |
-  | PRF-003 | OK | 16.4 | a on 6000 files: 1.0 s against 0.8 s x on 6000 files: 9.7 s against 4.9 s |
+  | PRF-003 | OK | 16.4 | a on 6000 files: 1.0 s against 0.8 s; x on 6000 files: 9.7 s against 4.9 s |
   | PRF-004 | OK | 15.7 | median 345 ms |
-  | PRF-005 | OK | 1.5 | l of 6000 entries: 0.1 s against 0.0 s t of 6000 entries: 0.2 s against 0.1 s |
-  | REL-001 | OK | 1262.8 | passed 23 on 30e1e2f |
-  | REL-002 | skipped | 1.1 | no finished canary run on 30e1e2f: gh workflow run canary.yml --ref <branch of the commit>, then run this row again |
+  | PRF-005 | OK | 1.5 | l of 6000 entries: 0.1 s against 0.0 s; t of 6000 entries: 0.2 s against 0.1 s |
+  | REL-001 | OK | 1262.8 | passed 23 on `<local>` |
+  | REL-002 | skipped | 1.1 | no finished canary run on `<local>`: gh workflow run canary.yml --ref <branch of the commit>, then run this row again |
   | REL-003 | OK | 22.7 | 2 hashes, 4 attestations |
   | REL-005 | OK | 0.7 | 2590 characters of CHANGELOG.md |
   | REL-007 | OK | 9.8 | the uninstall left its PATH entry (T-F361); the step put the PATH back |
