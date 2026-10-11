@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Poziom wyżej</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>Pliki i foldery</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>Zawartość archiwum</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>Folder nadrzędny</value>
   </data>

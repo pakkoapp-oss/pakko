@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>向上一级</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>文件和文件夹</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>压缩包内容</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>上级文件夹</value>
   </data>

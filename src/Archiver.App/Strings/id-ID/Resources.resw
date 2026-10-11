@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Naik satu tingkat</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>File dan folder</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>Isi arsip</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>Folder induk</value>
   </data>

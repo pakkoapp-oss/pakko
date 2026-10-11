@@ -546,6 +546,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>На рівень вище</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>Файли й папки</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>Вміст архіву</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>Батьківська папка</value>
   </data>

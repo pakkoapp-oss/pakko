@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Lên một cấp</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>Tệp và thư mục</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>Nội dung tệp nén</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>Thư mục mẹ</value>
   </data>

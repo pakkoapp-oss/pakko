@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Ett nivå opp</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>Filer og mapper</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>Arkivets innhold</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>Overordnet mappe</value>
   </data>

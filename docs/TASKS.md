@@ -1654,7 +1654,13 @@ re-measured with T-F346's script before and after.
 
 ### T-F381 — With encryption on, the PAR2 row is pushed out of the New archive card (P2)
 
-- [ ] **Status:** open. At the default window size, ticking "Encrypt with a password (AES-256)"
+- [~] **Status:** code done 2026-10-11 (v1.8.1 wave): the PAR2 row is row 3 of the card's
+  grid, above the encryption check (row 4) and the password panel (row 5), and before them in
+  the markup, so the Tab order follows what is seen; the row's `MinHeight` moved with the
+  check. `MainWindowLayoutTests` holds the order, seen red. Left: a device check at 1100x780 and
+  at the minimum window height that the PAR2 row and both password boxes are in view with
+  encryption on (smoke row PAR-011), then the task graduates.
+- **Earlier status:** open. At the default window size, ticking "Encrypt with a password (AES-256)"
   shows the hint, two password fields and "Show password" under it, and "Add recovery data
   (PAR2)" with its percentage lands below the card's visible part: the user cannot see whether
   recovery data is on without scrolling, and nothing hints that there is more below (the
@@ -1688,7 +1694,13 @@ re-measured with T-F346's script before and after.
 
 ### T-F384 — The pending list has no UI Automation name (P3)
 
-- [ ] **Status:** open. The App's pending `ListView` is exposed as a List with an empty name
+- [~] **Status:** code done 2026-10-11 (v1.8.1 wave): `AutomationProperties.Name` on both
+  lists, from two new strings in 37 locales (`PendingListName` "Files and folders",
+  `ArchiveContentsListName` "Archive contents"; no existing string fitted and neither list has
+  a visible label to point `LabeledBy` at). `MainWindowLayoutTests` requires a name on every
+  `ListView`, seen red. Left: read both names through UI Automation on the 1.8.1 package (smoke
+  row APP-012), then the task graduates.
+- **Earlier status:** open. The App's pending `ListView` is exposed as a List with an empty name
   (seen in the element list of the `windows` MCP server on package 1.8.0.2); a screen reader
   announces "list" only. T-F304 named two other controls. Next: `AutomationProperties.Name`
   from a resource in 37 locales, the archive view's list checked the same way.

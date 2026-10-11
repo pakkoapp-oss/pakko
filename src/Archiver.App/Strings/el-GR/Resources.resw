@@ -545,6 +545,12 @@
   <data name="BrowseUpButtonName" xml:space="preserve">
     <value>Ένα επίπεδο επάνω</value>
   </data>
+  <data name="PendingListName" xml:space="preserve">
+    <value>Αρχεία και φάκελοι</value>
+  </data>
+  <data name="ArchiveContentsListName" xml:space="preserve">
+    <value>Περιεχόμενα αρχείου συμπίεσης</value>
+  </data>
   <data name="DestinationUpButtonName" xml:space="preserve">
     <value>Γονικός φάκελος</value>
   </data>

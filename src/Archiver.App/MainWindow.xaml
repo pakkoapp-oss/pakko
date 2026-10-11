@@ -167,6 +167,7 @@
                 <Grid Grid.Row="1">
                     <ListView
                         x:Name="FileListView"
+                        AutomationProperties.Name="{x:Bind viewmodels:MainViewModel.PendingListName}"
                         ItemsSource="{x:Bind ViewModel.FileItems, Mode=OneWay}"
                         SelectionMode="None"
                         MinHeight="80"
@@ -336,6 +337,7 @@
                 <ListView
                     Grid.Row="4"
                     x:Name="ArchiveBrowserListView"
+                    AutomationProperties.Name="{x:Bind viewmodels:MainViewModel.ArchiveContentsListName}"
                     ItemsSource="{x:Bind ViewModel.CurrentFolderEntries, Mode=OneWay}"
                     SelectionMode="Multiple"
                     MinHeight="80"
@@ -452,8 +454,8 @@
                             <RowDefinition Height="Auto" MinHeight="32"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto" MinHeight="32"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto" MinHeight="32"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
@@ -505,16 +507,45 @@
                             </ComboBox>
                         </StackPanel>
 
+                        <!-- T-F275: PAR2 recovery data next to the archive, any format. -->
+                        <!-- T-F381: above the encryption rows, in the grid and in the markup (the Tab order follows
+                             the markup): under them the password block pushed it out of the card's visible part. -->
+                        <StackPanel
+                            Grid.Row="3" Grid.Column="1"
+                            Spacing="4"
+                            Visibility="{x:Bind ViewModel.RecoveryDataVisibility}">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <CheckBox
+                                    x:Name="RecoveryDataCheckBox"
+                                    x:Uid="RecoveryDataCheck"
+                                    IsChecked="{x:Bind ViewModel.AddRecoveryData, Mode=TwoWay}"
+                                    IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
+                                <ComboBox
+                                    MinHeight="32" MinWidth="90"
+                                    ItemsSource="{x:Bind ViewModel.RecoveryPercentChoices}"
+                                    SelectedIndex="{x:Bind ViewModel.RecoveryPercentIndex, Mode=TwoWay}"
+                                    AutomationProperties.LabeledBy="{x:Bind RecoveryDataCheckBox}"
+                                    IsEnabled="{x:Bind ViewModel.IsRecoveryPercentEnabled, Mode=OneWay}"/>
+                            </StackPanel>
+                            <TextBlock
+                                x:Uid="RecoveryDataNote"
+                                TextWrapping="Wrap"
+                                MaxWidth="420"
+                                HorizontalAlignment="Left"
+                                Opacity="0.7"
+                                Style="{StaticResource CaptionTextBlockStyle}"/>
+                        </StackPanel>
+
                         <!-- T-F198 item 5: a tar format says why there is no password. -->
                         <CheckBox
                             x:Uid="EncryptWithPasswordCheck"
-                            Grid.Row="3" Grid.Column="1"
+                            Grid.Row="4" Grid.Column="1"
                             IsChecked="{x:Bind ViewModel.EncryptWithPassword, Mode=TwoWay}"
                             IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"
                             Visibility="{x:Bind ViewModel.EncryptCheckVisibility, Mode=OneWay}"/>
                         <TextBlock
                             x:Uid="EncryptZipOnlyNote"
-                            Grid.Row="3" Grid.Column="1"
+                            Grid.Row="4" Grid.Column="1"
                             VerticalAlignment="Center"
                             Opacity="0.7"
                             Style="{StaticResource CaptionTextBlockStyle}"
@@ -523,7 +554,7 @@
                         <!-- T-F199 step 5: the password inline, stacked (a half-width card has no room
                              for two boxes side by side), checked while typing. -->
                         <StackPanel
-                            Grid.Row="4" Grid.Column="1"
+                            Grid.Row="5" Grid.Column="1"
                             Spacing="6"
                             MaxWidth="420"
                             HorizontalAlignment="Left"
@@ -559,33 +590,6 @@
                             <TextBlock
                                 Text="{x:Bind viewmodels:MainViewModel.EncryptPasswordRuleHint}"
                                 TextWrapping="Wrap"
-                                Opacity="0.7"
-                                Style="{StaticResource CaptionTextBlockStyle}"/>
-                        </StackPanel>
-
-                        <!-- T-F275: PAR2 recovery data next to the archive, any format. -->
-                        <StackPanel
-                            Grid.Row="5" Grid.Column="1"
-                            Spacing="4"
-                            Visibility="{x:Bind ViewModel.RecoveryDataVisibility}">
-                            <StackPanel Orientation="Horizontal" Spacing="12">
-                                <CheckBox
-                                    x:Name="RecoveryDataCheckBox"
-                                    x:Uid="RecoveryDataCheck"
-                                    IsChecked="{x:Bind ViewModel.AddRecoveryData, Mode=TwoWay}"
-                                    IsEnabled="{x:Bind ViewModel.IsNotBusy, Mode=OneWay}"/>
-                                <ComboBox
-                                    MinHeight="32" MinWidth="90"
-                                    ItemsSource="{x:Bind ViewModel.RecoveryPercentChoices}"
-                                    SelectedIndex="{x:Bind ViewModel.RecoveryPercentIndex, Mode=TwoWay}"
-                                    AutomationProperties.LabeledBy="{x:Bind RecoveryDataCheckBox}"
-                                    IsEnabled="{x:Bind ViewModel.IsRecoveryPercentEnabled, Mode=OneWay}"/>
-                            </StackPanel>
-                            <TextBlock
-                                x:Uid="RecoveryDataNote"
-                                TextWrapping="Wrap"
-                                MaxWidth="420"
-                                HorizontalAlignment="Left"
                                 Opacity="0.7"
                                 Style="{StaticResource CaptionTextBlockStyle}"/>
                         </StackPanel>
