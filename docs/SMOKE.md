@@ -56,7 +56,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | CLI-002 | quick | script | dev | `pakko -v`, `--version`, `-h`, `--help` through the package alias in `WindowsApps` | The version is the package's; the help lists `a x t l i h r`; exit 0 | `cli:-v` `cli:--version` `cli:-h` `cli:--help` T-F317 |
 | CLI-003 | quick | script | dev | The refused commands `u`, `d`, `rn`, `b`, `e` and the refused switches `-r`, `-i`, `-x`, `-ssc`, each on a real archive | Exit 7, a line that names the command or switch as not supported, the archive and the folder unchanged | `cli:u` `cli:d` `cli:rn` `cli:b` `cli:e` `cli:-r` `cli:-i` `cli:-x` `cli:-ssc` |
 | CLI-004 | quick | script | dev | Round trip of a folder with a Cyrillic name: `a` as ZIP at `-mx=0` and `-mx=9`, as `-ttar.gz`, and as AES-256 (`-p`, `-mem=AES256`); then `l`, `t`, `x -o` | Extracted files equal the sources byte for byte; `l` shows the names and the Encrypted column; `7za t` accepts each archive | `cli:a` `cli:x` `cli:l` `cli:t` `cli:-p` `cli:-mem` `cli:-mx` `cli:-t` `cli:-o` |
-| CLI-005 | quick | script | dev | The error exits: a missing archive, a wrong password, a ZIP with one flipped byte | Exit 2 each time; the damaged entry is named with both CRC values and is not left on disk | `cli:t` `cli:x` T-F231 |
+| CLI-005 | quick | script | dev | The error exits: a missing archive, a wrong password, a ZIP with one flipped byte | Exit 2 each time; the damaged entry is named with both CRC values and is not left on disk | `cli:t` `cli:x` T-F231 T-F246 |
 | CLI-006 | release | script | dev | Extract a 7z, a RAR and a tar.gz, and a tar with an escaping name | The first three extract through the sandbox; the last is refused; no `PakkoTarStage_*` or `PakkoTarSandbox` folder remains in `%TEMP%` | `cli:x` T-F148 T-F256 |
 | CLI-007 | release | script | dev | Through `cmd`: `pakko a -so` piped into `pakko x -si`; `pakko h -si`; `pakko x -so` with the output on a terminal | The piped archive extracts equal to the source; the hash equals `Get-FileHash`; `-so` to a terminal is refused | `cli:-si` `cli:-so` `cli:h` |
 | CLI-008 | release | script | dev | Send Ctrl+C to a long `pakko a` | Exit 255; no archive and no `.tmp` file is left | `cli:a` |
@@ -65,10 +65,14 @@ budgets, `REL` the release's files, `STO` the Store.
 | CLI-011 | release | script | dev | `x` and `x -snz0` on a ZIP that carries the download mark | The extracted files have `Zone.Identifier` by default and none with `-snz0` | `cli:-snz` T-F360 |
 | CLI-012 | release | script | dev | `pakko h` of a folder against `7za h`; the same on a folder with an unreadable subfolder and a junction loop | The sums equal 7-Zip's; the unreadable entries are listed and the loop does not hang it | `cli:h` `cli:-scrc` T-F225 T-F251 |
 | CLI-013 | release | mcp | dev | In a real console window: `pakko x enc.zip -p` with the password typed at the prompt | The prompt masks the input; the right password extracts, a wrong one gives one line | `cli:-p` T-F221 |
-| CLI-014 | release | script | dev | Hostile ZIPs: names that leave the destination, a bomb, a local header that disagrees with the central directory, a 20,000-segment name | Each is refused per entry or asked about; nothing is written outside the destination; the error is short | `cli:x` `cli:t` T-F243 T-F237 |
+| CLI-014 | release | script | dev | Hostile ZIPs: names that leave the destination, a bomb, a local header that disagrees with the central directory, a 20,000-segment name | Each is refused per entry or asked about; nothing is written outside the destination; the error is short | `cli:x` `cli:t` T-F243 T-F237 T-F280 |
 | CLI-015 | release | script | dev | Extract into a read-only folder, into a path longer than 260 characters, and over a file another process holds open | A per-item error and the right exit code; the other items are extracted; no partial file | `cli:x` `cli:-ao` |
-| CLI-016 | release | script | dev | Two `pakko a` at once into one folder; then kill a third mid-write and run it again | The first two both succeed; after the rerun no `.zip.tmp` remains | `cli:a` T-F263 T-F312 |
+| CLI-016 | release | script | dev | Two `pakko a` at once into one folder; then kill a third mid-write and run it again | The first two both succeed; after the rerun no `.zip.tmp` remains; neither run replaces the other's archive | `cli:a` T-F263 T-F312 T-F321 |
 | CLI-017 | store | script | tag | CLI-001 and CLI-002 on `pakko.exe` from `pakko-win-x64.zip` of the release | As those rows; the version carries the tag's commit | `cli:-v` |
+| CLI-018 | release | script | dev | Extract a ZIP and a tar whose entries are dated 2001; `pakko x a.zip` with no `-o` from an empty current folder; `a -mx=1` and `-mx=9` on 32 MiB of random bytes | Files and folders carry the archive's times; the files land in the current folder; both archives are about the size of the input (stored) | `cli:x` `cli:a` `cli:-mx` T-F298 T-F206 T-F299 |
+| CLI-019 | release | script | dev | tar through `pakko`: 300 files into one tar; files named `-C`, `-T`, `--exclude=x`, `@list` and a name with fullwidth quotes; a tar with two entries of one name under `-aou`, `-aos` and `-aoa`; extract a read-only tar | 300 entries; the odd names are stored as files, or refused, and never read as tar options; both duplicates, the first, the second; the archive stays read-only and nothing of it stays in `%TEMP%` | `cli:a` `cli:x` `cli:-ao` T-F273 T-F283 T-F266 T-F171 T-F248 |
+| CLI-020 | release | script | dev | `pakko l` of a GNU tar and a tar.gz with cp866 names, of a ZIP with cp866 names and no UTF-8 flag, and of a tar.gz | Cyrillic names read correctly and no entry is lost; the tar listing has dates and `-` for the packed size | `cli:l` T-F305 T-F310 T-F234 T-F214 |
+| CLI-021 | release | script | dev | The messages: `x` over a ZIP with a CRC error; `x` and `t` on an encrypted 7z; a password remembered for several archives that fits only the first; a run that extracts all, some, and none | No `-aoa` hint after the CRC error; no `-p` hint for the 7z; one line for the password that does not fit; exit 0, 1 and 2 for all, some and none; counts read naturally (no "1 entries") | `cli:x` `cli:t` `cli:-p` T-F293 T-F295 T-F296 T-F322 T-F301 T-F260 T-F323 |
 
 ## SHL - `Archiver.Shell.exe`, started as Explorer starts it
 
@@ -80,10 +84,11 @@ budgets, `REL` the release's files, `STO` the Store.
 | SHL-004 | quick | script | dev | `--test` on a good ZIP and on one with a flipped byte; read the window's text | "No errors" for the first; the entry and both CRC values for the second | `shell:--test` |
 | SHL-005 | quick | script | dev | `--hash --algorithm sha256` and `--algorithm crc32` on a file | The values equal `Get-FileHash` and `7za h` | `shell:--hash` `shell:--algorithm` T-F128 |
 | SHL-006 | quick | script | dev | `--archive --paths-stdin` with 1000 paths written to stdin | One archive with 1000 entries | `shell:--paths-stdin` T-F235 |
-| SHL-007 | quick | script | dev | `--open-ui --browse <zip>`, `--open-ui --extract <zip>`, `--open-ui --archive <file>` | The App window opens in the archive view, with the archive pending, and with the file pending | `shell:--open-ui` `shell:--browse` `shell:--extract` |
+| SHL-007 | quick | script | dev | `--open-ui --browse <zip>`, `--open-ui --extract <zip>`, `--open-ui --archive <file>` | The App window opens in the archive view, with the archive pending, and with the file pending; a second window opens offset from the first, not on top of it | `shell:--open-ui` `shell:--browse` `shell:--extract` T-F201 |
 | SHL-008 | release | script | dev | `--scan` on a ZIP that holds the EICAR test file and on a clean one | "Threat detected" and "clean"; a tar.gz is scanned through the sandbox | `shell:--scan` T-F146 |
 | SHL-009 | release | script | dev | `--test` on an encrypted ZIP: answer the window's password prompt wrongly, then rightly | A second prompt with "wrong password", then "no errors" | `shell:--test` T-F191 |
 | SHL-010 | release | script | dev | No file list, an unknown argument, a path that does not exist | A message and a non-zero exit; no window is left waiting | `shell:--extract-here` |
+| SHL-011 | release | script | dev | `--hash --algorithm sha256` on a folder with an unreadable file and a junction loop | The window lists the hashes and names the entries it skipped; it does not hang | `shell:--hash` T-F291 T-F251 |
 
 ## EXP - the real Explorer menu
 
@@ -98,6 +103,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | EXP-007 | release | mcp | dev | Select 300 files and click Add to X.tar | One tar with 300 entries; the list went through stdin | `menu:TarArchiveCommand` T-F273 |
 | EXP-008 | release | mcp | dev | Put de-AT first in the language list (no sign-out) and open the menu | The items are in German: the first language of the list that Pakko ships wins | T-F330 |
 | EXP-009 | release | mcp | dev | Open the menu right after a package update, without restarting Explorer | The Pakko items are there and the clicked one runs the new `Archiver.Shell.exe` | `menu:TestCommand` |
+| EXP-010 | release | mcp | dev | Add to X.zip on the root of a drive (a `subst` letter) | The archive is named after the drive letter, not `archive` | `menu:ArchiveCommand` T-F281 |
 
 ## APP - the WinUI window
 
@@ -106,24 +112,27 @@ budgets, `REL` the release's files, `STO` the Store.
 | APP-001 | release | mcp | dev | Read the title bar and About | A build time within minutes of the deploy; About shows the package version | T-F218 |
 | APP-002 | release | mcp | dev | Add files and a folder through the pickers; create a ZIP, each tar format and an AES-256 ZIP | Every archive passes `7za t`; the encrypted one is AES-256 | `app:BrowseFiles` `app:BrowseFolder` `app:Archive` |
 | APP-003 | release | mcp | dev | Extract a marked ZIP with the download-mark box on, then off | `Zone.Identifier` present, then absent; the note under the box changes | `app:Extract` T-F360 |
-| APP-004 | release | mcp | dev | In the archive view: enter folders, use the breadcrumb, go Up to the folder, the drive and This PC, sort by each column, close the archive | Rows are never blank; Up follows diagram 6; sorting flips on a second click | `app:NavigateUp` `app:SortBy` `app:CloseArchive` T-F112 |
+| APP-004 | release | mcp | dev | In the archive view: enter folders, use the breadcrumb, go Up to the folder, the drive and This PC, sort by each column, close the archive | Rows are never blank; Up follows diagram 6; sorting flips on a second click; hidden system folders are not listed at a drive root | `app:NavigateUp` `app:SortBy` `app:CloseArchive` T-F112 T-F292 T-F324 |
 | APP-005 | release | mcp | dev | Extract selected rows, then Extract all, from a ZIP and from a tar with `a[1].txt` next to `a1.txt` | Only the selected entries, then all of them | `app:ExtractSelectedFromBrowser` `app:ExtractAllFromBrowser` T-F284 |
-| APP-006 | release | mcp | dev | Test and Scan from the archive view; preview a text file and an image; open a nested archive | "No errors"; the scan verdict; the preview opens; the nested archive lists | `app:TestBrowsedArchive` `app:ScanArchiveFromBrowser` |
-| APP-007 | release | mcp | dev | Raise each dialog: a name conflict, a suspected bomb, a password (wrong, then right), an error | Each is shown and the choice takes effect; the conflict dialog shows size and date of both files | T-F220 |
+| APP-006 | release | mcp | dev | Test and Scan from the archive view; preview a text file and an image; open a nested archive | "No errors"; the scan verdict; the preview opens; the nested archive lists | `app:TestBrowsedArchive` `app:ScanArchiveFromBrowser` T-F111 |
+| APP-007 | release | mcp | dev | Raise each dialog: a name conflict, a suspected bomb, a password (wrong, then right), an error | Each is shown and the choice takes effect; the conflict dialog shows size and date of both files; a renamed `x.tar.xz` becomes `x (1).tar.xz` | T-F220 T-F362 |
 | APP-008 | release | mcp | dev | Pick a destination folder, then use the parent-folder button | The path field follows both | `app:BrowseDestination` `app:NavigateDestinationUp` |
 | APP-009 | release | mcp | dev | Start a long operation and Cancel it; add rows and Clear them; add a large folder and remove it before its size is counted | No partial output; the list is empty; counting stops | `app:Cancel` `app:Clear` T-F236 |
 | APP-010 | release | mcp | dev | After an extraction use the result line: Show in folder, then the details | Explorer opens with the output selected; the summary dialog lists the result | `app:ShowOutcomeInFolder` `app:ShowOutcomeDetails` T-F211 |
 | APP-011 | release | mcp | dev | Create with "move the sources to the Recycle Bin" and "open the destination folder" on | The sources are in the Recycle Bin and gone from the list; the folder opens | T-F207 T-F302 |
-| APP-012 | release | mcp | dev | Keyboard only: Enter and Backspace in the archive view, Delete and Shift+F10 in the list, Tab through the footer | Every action is reachable and every control has a name for a screen reader | T-F308 |
+| APP-012 | release | mcp | dev | Keyboard only: Enter and Backspace in the archive view, Delete and Shift+F10 in the list, Tab through the footer | Every action is reachable and every control has a name for a screen reader | T-F308 T-F304 |
 | APP-013 | release | mcp | dev | A window under 600 px high; the light, dark and high-contrast themes; switching the theme while the window is open | The option cards scroll and nothing is cut off; colours are right in each theme | T-F282 |
-| APP-014 | release | mcp | dev | Display scale 150 % and 200 % | No clipped text or overlapping controls in the main view, the archive view and the dialogs | T-F377 |
+| APP-014 | release | mcp | dev | Display scale 150 % and 200 % | No clipped text or overlapping controls in the main view, the archive view and the dialogs | |
 | APP-015 | release | mcp | dev | The App in ar-SA, de-DE and ja-JP (language list, no sign-out) | Right-to-left layout mirrors; the longest strings fit; no English left in the main view | T-F209 |
 | APP-016 | release | mcp | dev | From Explorer: Open with, then Pakko, on an archive, with no Pakko window open | A new window opens on that archive | `app:Extract` |
 | APP-017 | release | mcp | dev | Keep one window open for 15 minutes across ten operations, the archive view and a theme change | It answers every click; the event log has no entry from Pakko | T-F355 |
 | APP-018 | release | script | dev | After the encrypted rows of this run, search `pakko.log`, the event log and the process command lines for the passwords used | None of them appears anywhere | T-F200 |
 | APP-019 | store | user | tag | Drag files, a folder and a `.par2` file from Explorer into the window | Rows are added; the `.par2` row opens the archive it protects | T-F275 |
 | APP-020 | store | user | tag | Every item of the tray icon's menu; left click | Open, About and Exit work; a left click hides and shows the window | T-F198 |
-| APP-021 | store | user | tag | Change the display language with a sign-out, to en-US and to a regional variant | The App, the Shell dialogs and the Explorer menu follow it | T-F254 |
+| APP-021 | store | user | tag | Change the display language with a sign-out, to en-US and to a regional variant | The App, the Shell dialogs and the Explorer menu follow it | T-F254 T-F91 |
+| APP-022 | release | mcp | dev | Under uk-UA: watch the footer during a long operation; cause an error that comes from Windows (a name the file system refuses) | Speed and time left are in Ukrainian units; the error shows the Windows code and its text | T-F303 T-F297 |
+| APP-023 | release | mcp | dev | Extract a mixed selection of a ZIP and a tar.gz | One progress that grows through both; the tar part shows "checking the archive" while it lists, not 0 % or 100 % | `app:Extract` T-F306 T-F307 |
+| APP-024 | release | mcp | dev | With "move the archives to the Recycle Bin" on: cancel the extraction of a large tar.gz; extract an archive of which one entry is skipped | The archive stays in place both times and no partial output is left | `app:Extract` `app:Cancel` T-F245 T-F229 |
 
 ## OPW - the Explorer operation window
 
@@ -132,7 +141,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | OPW-001 | quick | script | dev | `Archiver.Shell.exe --archive` on a folder of 6000 files; read the window through UI Automation | The window is up within 3 seconds and shows a percentage and sizes; the archive holds 6000 entries | `shell:--archive` T-F268 |
 | OPW-002 | release | mcp | dev | The same, with Cancel pressed halfway | No archive and no temporary file is left | T-F268 |
 | OPW-003 | release | mcp | dev | In the window: a name conflict (Rename, for all), a password prompt, a suspected bomb (Skip) | Each question is asked there and the answer takes effect | T-F217 |
-| OPW-004 | release | script | dev | Kill `Archiver.OperationUi.exe` two seconds into a large operation | The Win32 progress dialog takes over and the operation finishes | T-F268 |
+| OPW-004 | release | script | dev | Kill `Archiver.OperationUi.exe` two seconds into a large operation | The Win32 progress dialog takes over and the operation finishes | T-F268 T-F288 |
 | OPW-005 | release | mcp | dev | Titles, progress and result texts under uk-UA | All translated; sizes use the language's units | T-F268 |
 
 ## PAR - PAR2 recovery data
@@ -161,7 +170,7 @@ the registry back in a `finally` block. The App reads policy once at startup: re
 | POL-001 | release | uac | dev | `EnforceMOTW` at each value, with the user's own choice set the other way | The policy wins in `pakko x`, Shell and the App; the App's box is locked | `policy:EnforceMOTW` T-F51 |
 | POL-002 | release | uac | dev | `AllowedFormats` = `zip` | Listing, extracting and creating tar, 7z and RAR are refused in all three frontends; ZIP works | `policy:AllowedFormats` |
 | POL-003 | release | uac | dev | `BlockedFormats` = `zip`, and = `sevenzip` `rar` | The blocked formats are refused by `pakko l`, `x`, `a`, Shell and the App; the Explorer menu hides their items; the rest work | `policy:BlockedFormats` T-F262 |
-| POL-004 | release | uac | dev | `DisableTarExtraction` = 1 | Every tar-family action is refused and `tar.exe` is never started; Add to X.tar is hidden | `policy:DisableTarExtraction` T-F261 |
+| POL-004 | release | uac | dev | `DisableTarExtraction` = 1 | Every tar-family action is refused and `tar.exe` is never started; Add to X.tar is hidden; the refusal names the archive, not the destination folder | `policy:DisableTarExtraction` T-F261 T-F326 |
 | POL-005 | release | uac | dev | `DisableRecoveryData` = 1 | `pakko a -rr` writes nothing, `t` looks for no set, `r` refuses; the App shows no option, no PAR2 line and no Repair, and refuses a `.par2` row; Explorer shows neither PAR2 item | `policy:DisableRecoveryData` T-F275 |
 | POL-006 | release | uac | dev | `BlockedFormats` = `zip` with a set next to a ZIP | Explorer and the App offer no PAR2 action on the ZIP; on its `.par2` file they do; `pakko r` writes the copy | `policy:BlockedFormats` `menu:RecoveryRepairCommand` |
 | POL-007 | release | uac | dev | The Windows FIPS policy on (`FipsAlgorithmPolicy\Enabled` = 1): `pakko a -rr5`, `t`, `r`, `h`, and an AES-256 round trip | All work; MD5 for PAR2 is not refused | `cli:-rr` T-F275 |
@@ -174,7 +183,7 @@ the registry back in a `finally` block. The App reads policy once at startup: re
 | PKG-001 | quick | script | dev | For the four exes in the install folder: `AssemblyName.GetAssemblyName`; list the package's files | Each exe is native (the call throws); no `coreclr.dll`; file count and size within a tenth of the last record | T-F355 |
 | PKG-002 | quick | script | dev | Read the Application event log (`Application Error`, `.NET Runtime`) from the run's start to its end | No entry names a Pakko exe | T-F355 |
 | PKG-003 | quick | script | dev | Compare the package version, the exes' file versions and `pakko -v` | They agree | T-F317 |
-| PKG-004 | quick | script | dev | After the run, look in `%TEMP%` for `PakkoTarStage_*`, `PakkoTarSandbox` contents and `*.zip.tmp` | Nothing is left | T-F309 |
+| PKG-004 | quick | script | dev | After the run, look in `%TEMP%` for `PakkoTarStage_*`, `PakkoTarSandbox` contents and `*.zip.tmp` | Nothing is left; no junction, hardlink or staging file of this run either | T-F309 T-F286 T-F244 T-F248 |
 | PKG-005 | release | uac | dev | `appcert.exe test -apptype packagedwin32` on the package; compare with the last record | No finding that the last record did not have | T-F377 |
 | PKG-006 | release | script | tag | Install the previous release, create an archive and a marker in the package data, then install the new bundle over it | Same package family; the marker and the log are kept; the App starts; `pakko t` accepts the old archive | T-F363 |
 | PKG-007 | release | script | tag | The same update with the App running, with `-ForceApplicationShutdown` | The App is closed, the update installs, the App starts | T-F363 |
@@ -184,6 +193,8 @@ the registry back in a `finally` block. The App reads policy once at startup: re
 ## PRF - speed budgets on the installed build
 
 Budgets are ratios to a yardstick run on the same machine in the same run, never bare seconds.
+Where no other program does the same work (PRF-004, the package size in PKG-001) the yardstick is
+the last release record.
 
 | ID | Tier | By | On | Action | Expect | Covers |
 |---|---|---|---|---|---|---|

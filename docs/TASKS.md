@@ -1613,7 +1613,7 @@ re-measured with T-F346's script before and after.
 - [~] **Status:** in progress. The on-device checks were five separate lists: four per-release
   scenario files outside the repository and a manual cycle in `docs/TESTING.md` last run in July.
   Review and design: `docs/DECISIONS.md`, "T-F378 — the smoke catalogue". One PR per step:
-  - [x] 1 — the catalogue `docs/SMOKE.md` (108 rows, eleven surfaces, tiers `quick` / `release` /
+  - [x] 1 — the catalogue `docs/SMOKE.md` (117 rows, eleven surfaces, tiers `quick` / `release` /
     `store`) and `SmokeCatalogueTests`, which fails when an entry point has no row (2026-10-11).
   - [ ] 2 — `scripts/Invoke-Smoke.ps1 -Profile quick|release|store -Only <ids>` with the steps of
     the `script` rows in `scripts/smoke/`, fixtures generated per run, a result table by row ID;
