@@ -8,10 +8,11 @@ CI without a binary blob (T-F50).
 
 ## `valid.7z`
 
-Committed as a binary fixture because `tar.exe`/libarchive can only **read** 7z, never create it
-(empirically confirmed while implementing T-F50 — `tar.exe --format=7zip` doesn't exist; only
-`ustar|pax|cpio|shar` are valid `--format` values for writing). Built via NanaZip's bundled 7-Zip-
-compatible CLI (already used for the same purpose in T-F85's manual verification):
+Committed as a binary fixture so that the reader is tested on another program's archive.
+(Until 2026-10-12 this section said `tar.exe --format=7zip` doesn't exist. That was read off
+`tar --help`, which lists only `ustar|pax|cpio|shar`; the format works and writes a real 7z —
+see `docs/DECISIONS.md`'s T-F342 entry.) Built via NanaZip's bundled 7-Zip-compatible CLI
+(already used for the same purpose in T-F85's manual verification):
 
 ```
 echo "hello from a real 7z fixture" > seven.txt
@@ -24,8 +25,8 @@ gated `[SkipIfFormatUnsupported("7z")]`.
 
 ## `valid.rar`
 
-Committed as a binary fixture for the same reason as `valid.7z` — `tar.exe`/libarchive can only
-**read** RAR, never create it (proprietary format writer, owned by RARLAB). Previously undocumented
+Committed as a binary fixture because `tar.exe`/libarchive can only **read** RAR, never create
+it (proprietary format writer, owned by RARLAB). Previously undocumented
 gap (T-F85/T-F86/T-F49); closed by installing WinRAR's official console `Rar.exe` (via
 `winget install RARLab.WinRAR`, 40-day trial) purely to generate this one fixture, then
 uninstalling it — no RAR-writing tool is used at runtime or shipped with Pakko, this is a one-off

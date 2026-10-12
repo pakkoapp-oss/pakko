@@ -6,7 +6,8 @@ namespace Archiver.Core.IntegrationTests;
 /// Creates compressed tar archives (tar.gz/tar.bz2/tar.xz/tar.zst/tar.lzma) by shelling out to
 /// the real system tar.exe, rather than committing a static binary corpus (T-F50). tar.exe can
 /// create these formats itself (empirically confirmed - see DECISIONS.md's T-F50 entry), unlike
-/// 7z/rar, which tar.exe can only read, never write. Writes source entries to a temp directory
+/// rar, which tar.exe can only read (the 7z fixture is committed for another reason, see
+/// Fixtures/README.md). Writes source entries to a temp directory
 /// first since tar.exe compresses from real files, not from an in-memory stream.
 /// </summary>
 internal static class ExternalTarFixtureBuilder

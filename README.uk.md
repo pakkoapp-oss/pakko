@@ -92,7 +92,7 @@ Pakko використовує іншу модель довіри — це не 
 | ZIP | ✅ читання/запис, v1.0 | `System.IO.Compression` |
 | TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ читання (v1.3) + створення (v1.4) | `tar.exe` (вбудований у Windows), пісочниця AppContainer для видобування |
 | RAR | ✅ лише читання, v1.3 | `tar.exe` (вбудований у Windows) — libarchive не має райтера RAR |
-| 7z | ✅ лише читання, v1.3 | `tar.exe` (вбудований у Windows) — libarchive не має райтера 7z |
+| 7z | ✅ лише читання, v1.3 | `tar.exe` (вбудований у Windows) — створення 7z заплановано на v1.9 |
 | ZIP із паролем | ✅ читання (ZipCrypto, WinZip AES) і створення (лише AES-256) | `System.IO.Compression` + криптографія .NET |
 | Зашифровані 7z/RAR | ❌ розпізнаються й відхиляються зі зрозумілою помилкою | — |
 

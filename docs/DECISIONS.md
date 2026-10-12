@@ -1069,6 +1069,11 @@ state the multi-instance decision explicitly, so a future reader doesn't wonder 
 
 ## T-F50 — tar.exe Test Fixtures: Runtime Generation Instead of a Committed Corpus; Bomb-Detection Gap Found
 
+> **Superseded in part (2026-10-12, T-F342).** "No 7z ... writer exists in libarchive" below is
+> wrong for 7z: it was read off `tar --help`, which lists only `ustar|pax|cpio|shar`, while
+> `tar --format=7zip` writes a real 7z (measured in the T-F342 entry). RAR stays read-only, and
+> the committed `valid.7z` stays: a reader test should be given another program's archive.
+
 **Empirical check before committing to a design (advisor-recommended):** ran
 `tar.exe --version`/`--help` and tried creating each target format directly.
 `tar --format {ustar|pax|cpio|shar}` are the only writer formats — no 7z or rar writer exists in
@@ -12859,6 +12864,480 @@ the archive.
   `Repair-PakkoSandboxAce.ps1` now sets a Low label to Medium (it left `S:(ML;;NW;;;LW)`; checked
   under PowerShell 7 and 5.1: `S:AI(ML;;NW;;;ME)` after). v1.8.1 is tagged on the commit that holds
   the advisory, before any T-F342 code reaches `main`; T-F342's wave 0 (records only) may go first.
+
+## T-F342 — creating 7z through tar.exe: sources and measurements (wave 0, 2026-10-12)
+
+Record made before any code. Machine: Windows 11 build 26300, `C:\Windows\System32\tar.exe` =
+`bsdtar 3.8.8 - libarchive 3.8.8 zlib/1.2.13.1-motley liblzma/5.8.1 bz2lib/1.0.8 libzstd/1.5.7
+cng/2.0 libb2/bundled`, ANSI code page 1251, OEM 866. The independent reader is the vendored
+`7za.exe` (`tests/Archiver.Core.PerformanceTests/Tools/7-Zip/x64`). The wave plan is in the
+maintainer's working notes; what it decides is repeated under "Decided" below.
+
+### Sources
+
+Fetched 2026-10-12, quoted by line range from the fetched files, not retyped.
+
+| What | Where | Pin |
+|---|---|---|
+| 7z writer | `libarchive/libarchive`, `libarchive/archive_write_set_format_7zip.c` | tag `v3.8.8`; file SHA-256 `ef983fc6de33b1db9d38783ee35b3649efa98daff59c84e0437d6afca4ccbffe` |
+| Container | `ip7z/7zip`, `DOC/7zFormat.txt` ("7z Format description (18.06)") | `main` at `9128b80e`; SHA-256 `c5aba210bcc35e0506fa06bed771cf1807cbd0098dad8916b3b65ae819f5b077` |
+| Method IDs | `ip7z/7zip`, `DOC/Methods.txt` (version 26.04) | same commit; SHA-256 `d86eabea38c824768265e4e1d9fe9287abe752dd458b644952a9d460f9f87d46` |
+
+Windows ships Microsoft's own build of libarchive (`archiveint.dll`; tar.exe is a thin front
+end). The upstream source says what the writer is meant to do; what this tar.exe does is
+established by the measurements below, and the two differ in one message already (the level
+range, below).
+
+**The writer has three options and no others** (lines 422, 486, 528; anything else is
+`Undefined option`). Defaults, lines 375-398:
+
+```c
+    /* Set default compression type and its level. */
+#if HAVE_LZMA_H
+    zip->opt_compression = _7Z_LZMA1;
+#elif defined(HAVE_BZLIB_H) && defined(BZ_CONFIG_ERROR)
+    zip->opt_compression = _7Z_BZIP2;
+#elif defined(HAVE_ZLIB_H)
+    zip->opt_compression = _7Z_DEFLATE;
+#elif HAVE_ZSTD_H && HAVE_ZSTD_compressStream
+    zip->opt_compression = _7Z_ZSTD;
+#else
+    zip->opt_compression = _7Z_COPY;
+#endif
+
+    zip->opt_compression_level = 6;
+
+#ifdef ZSTD_CLEVEL_DEFAULT
+    // Zstandard compression needs a different default
+    // value than other encoders.
+    zip->opt_zstd_compression_level = ZSTD_CLEVEL_DEFAULT;
+#else
+    zip->opt_zstd_compression_level = 3;
+#endif
+
+    zip->opt_threads = 1;
+```
+
+`compression` accepts `copy`/`store`, `deflate`, `bzip2`, `lzma1`, `lzma2`, `zstd`, `ppmd`
+(lines 425-468), and ends:
+
+```c
+        else {
+            archive_set_error(&(a->archive),
+                ARCHIVE_ERRNO_MISC,
+                "Unknown compression name: `%s'",
+                value);
+            return (ARCHIVE_FAILED);
+        }
+```
+
+`compression-level`, lines 486-527 (one field for every method, checked again where it is used):
+
+```c
+    if (strcmp(key, "compression-level") == 0) {
+        if (value == NULL || *value == '\0') {
+            archive_set_error(&(a->archive), ARCHIVE_ERRNO_MISC,
+                "Invalid compression-level option value `%s'", value);
+            return (ARCHIVE_FAILED);
+        }
+...
+        if (lvl < min_level || lvl > max_level) {
+            archive_set_error(&(a->archive), ARCHIVE_ERRNO_MISC,
+                "compression-level option value `%ld' out of range", lvl);
+            return (ARCHIVE_FAILED);
+        }
+
+        // Note: we don't know here if this value is for zstd (negative to ~22),
+        // or zlib-style 0-9. If zstd is enabled but not in use, we will need to
+        // validate opt_compression_level before use.
+        zip->opt_compression_level = (int)lvl;
+
+        zip->opt_zstd_compression_level = (int)lvl;
+        return (ARCHIVE_OK);
+    }
+```
+
+`threads`, lines 528-551:
+
+```c
+    if (strcmp(key, "threads") == 0) {
+        intmax_t threads;
+        if (string_to_number(value, &threads) != ARCHIVE_OK) {
+            return (ARCHIVE_WARN);
+        }
+        if (threads < 0 || threads > INT_MAX) {
+            return (ARCHIVE_WARN);
+        }
+        if (threads == 0) {
+#if defined(HAVE_SYSCONF) && defined(_SC_NPROCESSORS_ONLN)
+            threads = sysconf(_SC_NPROCESSORS_ONLN);
+#elif !defined(__CYGWIN__) && defined(_WIN32_WINNT) && \
+    _WIN32_WINNT >= 0x0601 /* _WIN32_WINNT_WIN7 */
+            DWORD winCores = GetActiveProcessorCount(
+                ALL_PROCESSOR_GROUPS);
+            threads = (intmax_t)winCores;
+#else
+            threads = 1;
+#endif
+        }
+
+        zip->opt_threads = (int)threads;
+        return (ARCHIVE_OK);
+    }
+```
+
+**One solid block for every method except copy**, lines 1118-1121:
+
+```c
+    if (coders->codec == _7Z_COPY)
+        numFolders = (int)zip->total_number_nonempty_entry;
+    else
+        numFolders = 1;
+```
+
+**The compressed stream goes through a temporary file first**, lines 676-687, and is copied
+into the output when the archive is closed (line 999: "Read all file contents and an encoded
+header from the temporary file"):
+
+```c
+    /*
+     * Open a temporary file.
+     */
+    if (zip->temp_fd == -1) {
+        zip->temp_offset = 0;
+        zip->temp_fd = __archive_mktemp(NULL);
+        if (zip->temp_fd < 0) {
+            archive_set_error(&a->archive, errno,
+                "Couldn't create temporary file");
+            return (ARCHIVE_FATAL);
+        }
+    }
+```
+
+**Three times per entry**, lines 1524-1537:
+
+```c
+    /* Make MTime. */
+    r = make_time(a, kMTime, MTIME_IS_SET, MTIME);
+    if (r < 0)
+        return (r);
+
+    /* Make CTime. */
+    r = make_time(a, kCTime, CTIME_IS_SET, CTIME);
+    if (r < 0)
+        return (r);
+
+    /* Make ATime. */
+    r = make_time(a, kATime, ATIME_IS_SET, ATIME);
+    if (r < 0)
+        return (r);
+```
+
+**Attributes: directory or archive, read-only from the mode bits, and the unix mode in the high
+half**, lines 1560-1576. Hidden and System have no source here:
+
+```c
+    for (;file != NULL; file = file->next) {
+        /*
+         * High 16bits is unix mode.
+         * Low 16bits is Windows attributes.
+         */
+        uint32_t encattr, attr = 0;
+
+        if (file->dir)
+            attr |= FILE_ATTRIBUTE_DIRECTORY;
+        else
+            attr |= FILE_ATTRIBUTE_ARCHIVE;
+
+        if ((file->mode & 0222) == 0)
+            attr |= FILE_ATTRIBUTE_READONLY;
+
+        attr |= FILE_ATTRIBUTE_UNIX_EXTENSION;
+        attr |= ((uint32_t)file->mode) << 16;
+```
+
+**A symbolic link is an entry whose content is the link's target**, lines 648-659:
+
+```c
+    /*
+     * Store a symbolic link name as file contents.
+     */
+    if (archive_entry_filetype(entry) == AE_IFLNK) {
+        ssize_t bytes;
+        const void *p = (const void *)archive_entry_symlink_utf8(entry);
+        bytes = compress_out(a, p, (size_t)file->size, ARCHIVE_Z_RUN);
+        if (bytes < 0)
+            return ((int)bytes);
+        zip->entry_crc32 = crc32(zip->entry_crc32, p, (unsigned)bytes);
+        zip->entry_bytes_remaining -= bytes;
+    }
+```
+
+There is no encryption anywhere in the file (no `passphrase`, `encrypt` or AES identifier).
+
+**Container** (`7zFormat.txt`, lines 171-188):
+
+```
+SignatureHeader
+~~~~~~~~~~~~~~~
+  BYTE kSignature[6] = {'7', 'z', 0xBC, 0xAF, 0x27, 0x1C};
+
+  ArchiveVersion
+  {
+    BYTE Major;   // now = 0
+    BYTE Minor;   // now = 4
+  };
+
+  UINT32 StartHeaderCRC;
+
+  StartHeader
+  {
+    REAL_UINT64 NextHeaderOffset
+    REAL_UINT64 NextHeaderSize
+    UINT32 NextHeaderCRC
+  }
+```
+
+The header proper is at the end of the file and may itself be packed (`0x17 = kEncodedHeader`,
+line 162). The words "recover", "parity" and "redundan" do not occur in the file: the format has
+CRC32 for detection and nothing for repair.
+
+**Method IDs** (`Methods.txt`): `00 - Copy` (line 30), `21 - LZMA2` (line 42), `03.. - 7z` /
+`01` / `01 - LZMA` (lines 49-51), `04.. - Misc codecs` / `01 - [Zip]` / `08 - Deflate` (lines
+79-87) and `02` / `02 - BZip2` (lines 100-101). zstd is not a 7-Zip method, lines 125-133:
+
+```
+   F7 - External codecs (that are not included to 7-Zip)
+
+      0x xx - reserved
+
+      10 xx - reserved (LZHAM)
+         01 - LZHAM
+
+      11 xx - reserved (Tino Reichardt)
+         01 - ZSTD
+```
+
+### Measured
+
+Raw output; `<work>` stands for the scratch folder.
+
+**The writer exists, and `tar --help` does not say so.** `--help` still prints `--format
+{ustar|pax|cpio|shar}`, which is where T-F50's "no 7z writer" came from.
+
+```
+$ tar --format=7zip -cf probe-file.7z -T NUL          -> exit 0, 32 bytes:
+00000000: 377a bcaf 271c 0003 8d9b d50f 0000 0000  7z..'...........
+00000010: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+$ tar --format=7zip -cf - -T NUL | xxd                -> exit 0, nothing on stderr, 10240 bytes:
+00000000: 377a bcaf 271c 0003 8d9b d50f 0000 0000  7z..'...........
+          (zeros to 0x27ff: stdout is padded to tar's 10240-byte block, a file is not)
+$ tar --format=nope -cf - -T NUL
+Can't use format nope: No such format 'nope'
+[exit 1]
+$ tar -a -cf auto.7z -C src a.txt        -> 377abcaf271c
+$ tar -cf plain.7z -C src a.txt          -> "ustar" at offset 257 (a tar under the name .7z)
+```
+
+**Levels and options** (`7za l -slt` after each):
+
+```
+--options 7zip:compression-level=0                     -> Method = LZMA:18, Solid = +, Blocks = 1
+--options 7zip:compression=copy                        -> Method = Copy, Solid = -, Blocks = 2
+--options 7zip:compression=lzma2,compression-level=9   -> Method = LZMA2:26, Solid = +, Blocks = 1
+(no options)                                           -> Method = LZMA:23, Solid = +, Blocks = 1
+--options 7zip:compression=lzma2                       -> Method = LZMA2:23
+$ tar --format=7zip --options 7zip:compression-level=10 -cf l10.7z -C src a.txt
+tar.exe: a.txt: compression-level option value `10' out of range 0-9
+[exit 1]                                               (l10.7z is left behind, 0 bytes)
+$ tar --format=7zip --options 7zip:nosuchkey=1 -cf bad.7z -C src a.txt
+tar.exe: Undefined option: `7zip:nosuchkey'
+[exit 1]                                               (no file)
+$ tar --format=7zip --options 7zip:compression=rar -cf badm.7z -C src a.txt
+tar.exe: Unknown compression name: `rar'
+[exit 1]                                               (no file)
+```
+
+Level 0 is not "no compression"; store is `compression=copy`. The level message names the entry
+and "0-9", which the upstream text does not: the level is checked when the first entry is
+written, after the output file exists.
+
+**Methods against both readers** (20 000 lines of text plus 2 MiB of random bytes):
+
+| `compression=` | `7za l -slt` | `7za t` | this tar.exe, `tar -xOf` |
+|---|---|---|---|
+| `lzma2` | `LZMA2:23` | Everything is Ok | exit 0 |
+| `lzma1` (default) | `LZMA:23` | Everything is Ok | exit 0 |
+| `bzip2` | `BZip2` | Everything is Ok | exit 0 |
+| `deflate` | `Deflate` | Everything is Ok | exit 0 |
+| `copy` | `Copy` | Everything is Ok | exit 0 |
+| `ppmd` | `PPMD` | Everything is Ok | **exit 1**, `rnd.bin: Failed to decode PPMd: Illegal byte sequence` (text alone: exit 0) |
+| `zstd` | `04F71101` | **exit 2**, `ERROR: Unsupported Method` for both entries | exit 0 |
+
+`threads=0` and `threads=1` give the same bytes (2 107 035 for that input). Times on a 52 MB
+corpus, from the research session earlier the same day and not repeated for this entry: lzma1 and
+lzma2 about 14.7 s (level 1: 7.9 s, level 9: 13.7 s), bzip2 4.5 s, deflate 1.9 s, copy 0.26 s,
+`threads` without effect; `7za a -mx5` 7.4 s with all cores and 12.8 s with one.
+
+**Password is ignored without a word:**
+
+```
+$ tar --format=7zip --passphrase secret -cf pw.7z -C src a.txt
+[exit 0]
+$ 7za l -slt pw.7z      -> Method = LZMA:23, Encrypted = -
+$ 7za t pw.7z           -> Everything is Ok (no password asked)
+```
+
+**Temporary file.** TMP and TEMP of the child decide where it goes; it is gone after a normal
+exit and after a kill; a run that fails leaves a 0-byte output file.
+
+```
+$ tar --format=7zip --options 7zip:compression=copy -cf <work>\out\tmpA.7z -C <work>\src rnd300.bin   [TMP=TEMP=<work>\tmpA]
+[exit 0] seen in watched dir while running: libarchive_XXXXXXXXXX
+    after exit, tmpA holds: []; archive bytes: 314572940
+$ tar --format=7zip -cf <work>\out\notmp.7z -C <work>\src a.txt   [TMP=TEMP=<work>\missing]
+tar.exe: Couldn't create temporary file
+tar.exe: Error exit delayed from previous errors
+[exit 1]
+    output file: exists, 0 bytes
+$ tar -czf <work>\out\notmp.tar.gz -C <work>\src a.txt   [TMP=TEMP=<work>\missing]
+[exit 0]
+    output file: exists, 132 bytes
+$ tar --format=7zip --options 7zip:compression=lzma2 -cf <work>\out\killed.7z -C <work>\src rnd300.bin   [TMP=TEMP=<work>\tmpA]
+[exit -1, killed] seen in watched dir while running: libarchive_XXXXXXXXXX
+    after kill, tmpA holds: []; output file: exists, 0 bytes
+```
+
+So a 7z needs free space for the archive twice (temporary file, then output), and with the
+system's TEMP a packed copy of the user's data is written outside the destination's volume.
+`SandboxedProcessLauncher` passes `lpEnvironment: IntPtr.Zero` today and cannot set either.
+
+**A file over 4 GiB** (4 831 838 208 bytes of zeros with `PAKKO-MARKER` at 4 GiB + 12345):
+
+```
+$ tar --format=7zip --options 7zip:compression=copy -cf big-copy.7z -C src big.bin
+[exit 0] 20 s, archive 4831838342 bytes
+$ tar --format=7zip --options 7zip:compression=lzma2 -cf big-lzma2.7z -C src big.bin
+[exit 0] 68 s, archive 703027 bytes
+```
+
+For both: `7za t` "Everything is Ok", `Size = 4831838208`; `tar -tvf` shows 4831838208;
+`tar -xf` gives a file of that length with the marker in place.
+
+**A drive root as the parent.** Names come out without a `.\` prefix. A subst drive fails in
+tar.exe for every format, which `SubstDrive.Resolve` (T-F285) already avoids:
+
+```
+$ tar --format=7zip -cf croot.7z -T -     (list: -C / C:\ / Windows\win.ini)
+[exit 0]      tar -tf: Windows/win.ini
+$ tar --format=7zip -cf root-list.7z -T - (list: -C / R:\ / top.txt / -C / R:\ / folder; R: is a subst drive)
+tar.exe: GetVolumePathName failed: 123: Unknown error
+tar.exe: GetVolumePathName failed: 123: Unknown error
+tar.exe: Error exit delayed from previous errors
+[exit 1]      (the same for ustar, and for the names as arguments)
+$ the same list with the resolved path instead of R:\
+[exit 0]      tar -tf: top.txt, folder/inner.txt, folder/
+```
+
+**Links inside a source folder** (`links\real\file.txt`; `links\junction` -> `real`;
+`links\hard.txt` a hard link to the file; `links\sym.txt` and `links\symdir` symbolic links):
+
+```
+$ tar --format=7zip -cf links.7z -C <work> links ; tar -tvf links.7z
+-rw-rw-rw-  0 0      0          25 links/hard.txt
+lrw-rw-rw-  0 0      0           0 links/sym.txt -> \\\\?\\C:\\Users\\<user>\\...\\links\\real\\file.txt
+lrw-rw-rw-  0 0      0           0 links/symdir -> \\\\?\\C:\\Users\\<user>\\...\\links\\real
+-rw-rw-rw-  0 0      0          25 links/real/file.txt
+-rw-rw-rw-  0 0      0          25 links/junction/file.txt
+drwxrwxrwx  0 0      0           0 links/junction/
+drwxrwxrwx  0 0      0           0 links/real/
+drwxrwxrwx  0 0      0           0 links/
+```
+
+A junction is followed (its content is stored again), a hard link is stored as a second full
+file (ustar stores `link to links/hard.txt` instead), and a symbolic link becomes an entry
+holding the link's absolute target (`7za l -slt`: `Size = 164`, `Attributes = A lrw-rw-rw-`).
+`7za l -slt` of the same archive shows Modified, Created and Accessed for every entry and
+`Attributes = A -rw-rw-rw-` / `D drwxrwxrwx`.
+
+**From the earlier session, not repeated here:** names reach the container as UTF-16 and
+Cyrillic names given through the real channel (`-T -`, an ANSI list with `-C` lines) are right in
+`7za l`; ReadOnly is kept and Hidden/System are lost; an unreadable or locked source is skipped
+and tar.exe exits 1 with the rest written; `pakko l` and `pakko x` of such an archive work
+through the sandbox; `tar -tf` catches a flipped byte only in the headers while `tar -xOf`
+caught all six positions tried, the copy method included (`7-Zip bad CRC`) — this one is
+measured again where "Test" for 7z is built.
+
+**Which Windows has the writer** (earlier session; static search of `archiveint.dll` files from
+Microsoft's symbol server for the writer's strings, nothing run): present in all 11 versions
+looked at, 3.3.2 (Windows 10 1803) to 3.8.8. Only 3.3.2, 3.7.7, 3.8.1, 3.8.2 and 3.8.8 matched
+the SHA-256 Winbindex lists; the other six are indicative. One Windows release ships several
+libarchive versions over its life (3.8.4 is in 1809 and 21H2 too), so a build number does not
+say which.
+
+### Decided
+
+- **A functional probe, not a version check**: `--format=7zip` with an empty `-T NUL` list,
+  written to a file (32 bytes; the launcher decodes stdout as text). Offered only when the probe
+  passes and `Supports7z` (reading) is true, so Pakko can open what it makes. The probe runs
+  when the answer is needed (T-F350), once per process, after `TarSignatureVerifier`.
+- **Always `--format=7zip`, never `-a`** (the output goes to a temporary name), and never
+  `--passphrase`.
+- **Methods offered: LZMA2 (default), LZMA, BZip2, Deflate, Copy.** Not PPMd (this tar.exe cannot
+  read back its own PPMd archive of incompressible data) and not zstd (7-Zip cannot read it).
+  `threads` is not passed. The method is its own property of the options, apart from the level:
+  NoCompression is `compression=copy`, Fastest 1, Optimal 6, SmallestSize 9.
+- **Explorer gets "Add to name.7z"**, one click, LZMA2: the task asks for it. The C++ extension
+  cannot run tar.exe in `GetState`, so the item shows wherever policy allows the format and a
+  tar.exe without the writer is refused when the command runs (the RAR precedent: "the menu item
+  still shows"). This ends T-F105's "one click only for a format with no choices".
+- **TMP and TEMP of the creating tar.exe point at a Pakko-named subfolder of the destination**,
+  excluded from the walk (T-F316's case), a full copy of the environment with the two replaced.
+- **Creation stays outside the sandbox** (T-F105: trusted local input); reading what was made
+  goes through the AppContainer as for any 7z.
+- **No password for 7z**, with a message of its own ("7z encryption is not supported yet")
+  ahead of launching tar.exe. Reading and then writing encrypted 7z are separate later tasks.
+- **PAR2 needs no change** (`RecoveryDataWriter` takes a finished file) and matters more than
+  for ZIP: one solid block and a header at the end mean one bad byte can lose everything after
+  it. "Test" for 7z (`tar -xOf` in the sandbox) is part of this release for that reason.
+- **Order:** v1.8.1 is tagged before any T-F342 code reaches `main`.
+
+### Corrected with this entry
+
+T-F50's entry above, `tests/Archiver.Core.IntegrationTests/Fixtures/README.md`, the doc
+comments of `TarCapabilities`, two test class comments, the reason given in the format tables
+of `README.md`, `README.uk.md` and `docs/SPEC.md`, and the Explorer row in `docs/TASKS.md` said
+libarchive has no 7z writer. `ITarService`'s "read-only 7z/rar support" describes Pakko's own
+service and stays until that changes. `SECURITY.md` still says so ("libarchive has no writer for" 7z, in the tar.exe section):
+it is changed only with the maintainer's explicit yes, asked for with the release's other
+`SECURITY.md` text.
+
+### Not measured
+
+- Whether an old tar.exe (below libarchive 3.7, or 3.3.2 without liblzma) really writes 7z, and
+  with which default method: the probe answers it on the machine. A Windows 10 22H2 or Server
+  machine is a release-tier row for the maintainer.
+- 65 536 or more entries, and the 99 % hold while the temporary file is copied into a large
+  archive: with the tests of the first code wave.
+
+### Found on the way, outside T-F342
+
+- **A symbolic link inside a source folder** (every tar.exe format, shipped behaviour): tar.exe
+  stores it as a link entry with the absolute target path (`\\?\C:\Users\<user>\...`), so the
+  archive carries a path of the machine it was made on, and Pakko then refuses its own archive:
+  `pakko a -ttar links` exits 0 and `pakko x` of the result says "Archive contains a symlink,
+  hardlink, device, or other special entry and cannot be safely extracted." (the same for the
+  7z). A plain tar also stores a hard link as a link entry, which that rule names too; a 7z
+  stores it as a file. Only a selected source is
+  checked for being a link today (`AppendSourcesToNameList`). Gets a task number with the first
+  code wave, test first.
+- **tar.exe prints other memory for a missing name**: for `-C R:\ .` on the subst drive above,
+  `tar.exe: wekyb3d8bbwe\mingw64????d MMMM yyyy' ?.': Couldn't visit directory: No such file or
+  directory` (pieces of PATH and of a date format). The same was seen for a missing name in a
+  `-T -` list, once with a crash (0xC0000005). Pakko shows tar.exe's stderr to the user. Also
+  numbered and fixed with the first code wave.
+- libarchive 3.8.8 cannot read a PPMd 7z holding incompressible data, whoever wrote it; Pakko
+  shows tar.exe's raw error for it.
 
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 

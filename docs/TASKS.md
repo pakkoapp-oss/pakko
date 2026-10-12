@@ -460,7 +460,7 @@ menu trees):
 | Extract to "\<folder\>" | ≥1 file needs extraction | done — `ExtractFolderCommand` |
 | Compress (dialog, format/options) | any selection | done — `CompressDialogCommand` (see `TASKS_DONE.md`'s T-F63) |
 | Compress to "\<name\>.zip" (one click) | any selection | done, but see T-F64 (label says "Add to archive…" though behavior is already the one-click no-dialog path) |
-| Compress to "\<name\>.7z" | any selection | out of scope — 7z creation forbidden (`CLAUDE.md`: ZIP only, no third-party compression code) |
+| Compress to "\<name\>.7z" | any selection | planned — T-F342, v1.9 (was "out of scope — 7z creation forbidden", from the belief that tar.exe cannot write 7z) |
 | Compress + Email variants (×4) | any selection | **out of scope, deliberately** — mail client integration adds attack surface and a dependency the gov/defense trust model doesn't need; not tracked as a task |
 | CRC/Checksum submenu (CRC-32/64, SHA-1/256/384/512, BLAKE2/3, etc.) | any selection | covered by existing T-F46 (File Hash Viewer), which already targets SHA-256; T-F46 is in-app UI only today, not a context-menu verb — cross-referenced, no new task |
 
@@ -1470,14 +1470,17 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 - **Measured 2026-10-06 on Windows build 26300** (`C:\Windows\System32\tar.exe`, bsdtar 3.8.8 /
   libarchive 3.8.8): `tar --format=7zip -cf out.7z a.txt` and `tar -a -cf out.7z a.txt` both write
   a real 7z (signature `37 7A BC AF 27 1C`, method LZMA:23; the vendored `7za t` says "Everything
-  is Ok"). A plain `tar -cf out.7z` still writes ustar under that name. This replaces the
-  hard constraint in `CLAUDE.md` ("libarchive has no writer for 7z"), which was true for the
-  tar.exe checked for T-F50 — correct that line in the same commit as the feature.
-- **Open before design (Plan mode + advisor):** which Windows builds ship a tar.exe with the 7zip
-  writer (the manifest's minimum is 17763) — detect it in `TarCapabilities` and hide the format
-  where it is missing; compression level and method options tar.exe accepts for 7zip; no password
-  (libarchive's 7zip writer has no encryption — confirm, and keep "ZIP only" for encryption);
-  RAR stays read-only. Creation runs unsandboxed like T-F105 (trusted local input).
+  is Ok"). A plain `tar -cf out.7z` still writes ustar under that name. The hard constraint in
+  `CLAUDE.md` ("libarchive has no writer for 7z") is corrected; T-F50 had taken it
+  from the format list `tar --help` prints.
+- **Settled 2026-10-12 (sources and measurements: `docs/DECISIONS.md`'s T-F342 entry):** the
+  writer is found by a functional probe, not by a Windows or libarchive version, and the format
+  is hidden where the probe fails; methods LZMA2 (default), LZMA, BZip2, Deflate and Copy, levels
+  0-9; no password (the writer has no encryption and ignores `--passphrase` without a word);
+  the writer's temporary file is redirected into the destination; "Test" for 7z is part of the
+  task; RAR stays read-only. Creation runs unsandboxed like T-F105 (trusted local input).
+- **Next:** Plan mode + advisor before the Core contract change (the first code wave), which
+  starts after v1.8.1 is tagged.
 - **Reported by:** the user, 2026-10-06.
 
 ### T-F343 — `pakko` in place of 7-Zip's console program: measure how compatible it is (v2.0, user-requested)
