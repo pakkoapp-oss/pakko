@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Ett annat markerat objekt har samma namn och den här mappen kunde inte läggas till med ett nytt namn. Byt namn på ett av dem och försök igen.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Ett markerat objekt kunde inte läsas. Det kan ha flyttats eller tagits bort efter att det markerades.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arkivets innehållslista är inkonsekvent.</value>
   </data>

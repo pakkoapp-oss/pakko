@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>另一个选定项目的名称相同，无法以新名称添加此文件夹。请重命名其中一个，然后重试。</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>无法读取某个选定项目。它可能在选定后已被移动或删除。</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>压缩包内容列表不一致。</value>
   </data>

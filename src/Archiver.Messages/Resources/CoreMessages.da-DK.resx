@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Et andet valgt element har samme navn, og denne mappe kunne ikke tilføjes under et nyt navn. Omdøb et af dem, og prøv igen.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Et valgt element kunne ikke læses. Det kan være flyttet eller slettet, efter at det blev valgt.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arkivets indholdsliste er inkonsistent.</value>
   </data>

@@ -24,6 +24,7 @@ public sealed class TarSandboxedService : ITarService
 
     private readonly GroupPolicyOptions _policy;
     private readonly Func<Task<TarCapabilities>> _probe;
+    private readonly Action? _beforeCreationLaunch;
 
     /// <summary>Creates the service under the given Group Policy (T-F261: required, never defaulted).</summary>
     public TarSandboxedService(GroupPolicyOptions policy)
@@ -33,11 +34,14 @@ public sealed class TarSandboxedService : ITarService
 
     // T-F261: test seam for the unsandboxed tar.exe --version probe, so a unit test can prove it
     // never runs under DisableTarExtraction without starting tar.exe.
-    internal TarSandboxedService(GroupPolicyOptions policy, Func<Task<TarCapabilities>> probe)
+    // beforeCreationLaunch (T-F390) runs after the name list is final and before tar.exe starts,
+    // so a test can remove a source inside that window.
+    internal TarSandboxedService(GroupPolicyOptions policy, Func<Task<TarCapabilities>> probe, Action? beforeCreationLaunch = null)
     {
         ArgumentNullException.ThrowIfNull(policy);
         _policy = policy;
         _probe = probe;
+        _beforeCreationLaunch = beforeCreationLaunch;
     }
 
     // T-F261: POLICIES.md promises DisableTarExtraction means tar.exe is never started — enforced
@@ -1229,7 +1233,7 @@ public sealed class TarSandboxedService : ITarService
 
     // Returns one SourceResult per source that reached CompressToArchiveAsync; a missing or
     // conflict-skipped source records none, so it stays not deletable (T-F260).
-    private static async Task<List<SourceResult>> ProcessSeparateArchivesAsync(
+    private async Task<List<SourceResult>> ProcessSeparateArchivesAsync(
         ArchiveOptions options, string extension, ConflictResolver conflictResolver,
         ArchiveResultSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
@@ -1276,7 +1280,7 @@ public sealed class TarSandboxedService : ITarService
     // temp-then-commit pattern (no partial files on cancel or failure, CLAUDE.md hard
     // constraint). Reparse-point sources are skipped (T-F23 precedent); missing sources are
     // reported as ArchiveError, matching ZipArchiveService.ArchiveAsync's per-item handling.
-    private static async Task CompressToArchiveAsync(
+    private async Task CompressToArchiveAsync(
         ArchiveOptions options,
         (string Path, bool ReplacesExisting) destination,
         List<string> createdFiles,
@@ -1314,12 +1318,18 @@ public sealed class TarSandboxedService : ITarService
             tarArgs.Add("-");
 
             var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
-            var nameList = new List<string>();
+            var nameList = new List<ListedSource>();
             (int entryCount, long totalEntriesForProgress, long totalBytesForProgress) =
                 AppendSourcesToNameList(nameList, sortedSourcePaths, errors, skippedFiles, collisionStagingDir, stagedJunctions,
                     ownPaths: [tempPath, destPath]);
 
             if (entryCount == 0)
+                return;
+
+            // T-F390: counting a large source takes time, and tar.exe prints a wrong name for a
+            // listed source that is gone. One gone since it was listed never reaches tar.exe.
+            ReportVanished(nameList, errors);
+            if (nameList.Count == 0)
                 return;
 
             int reportedFiles = 0;
@@ -1342,12 +1352,16 @@ public sealed class TarSandboxedService : ITarService
             try
             {
                 ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, options.SourcePaths);
-                byte[] nameListBytes = TarCommandLineEncoding.EncodeLines(nameList);
+                byte[] nameListBytes = TarCommandLineEncoding.EncodeLines(nameList.SelectMany(source => source.Lines));
+                _beforeCreationLaunch?.Invoke();
                 (int exitCode, _, string? stdErr) = await RunUnsandboxedTarAsync(tarArgs, nameListBytes, OnVerboseLine, cancellationToken).ConfigureAwait(false);
 
                 if (exitCode != 0 || !File.Exists(tempPath))
                 {
                     TryDeleteBestEffort(tempPath);
+                    // T-F390: the line is never shown (DescribeCreationFailure); Pakko names what is gone.
+                    if (stdErr.Contains(UnvisitableSourceLine, StringComparison.Ordinal) && ReportVanished(nameList, errors) == 0)
+                        errors.Add(CoreMessages.Error(destPath, MessageCode.TarSourceUnreadable));
                     errors.Add(CoreMessages.Error(destPath, MessageCode.TarCreationFailed, DescribeCreationFailure(stdErr)));
                     return;
                 }
@@ -1381,6 +1395,31 @@ public sealed class TarSandboxedService : ITarService
     // T-F171: each junction is removed on its own first (a non-recursive delete removes only the
     // link), and the staging folder is deleted recursively only once every junction is gone — a
     // recursive delete never reaches a folder that points at the user's own files.
+    // T-F390: one source on tar.exe's "-T -" list. SourcePath is what an error about it names.
+    internal sealed record ListedSource(string SourcePath, string Parent, string Name)
+    {
+        // T-F283: in the list only an exact "-C" line is special, so a file of that name is written "./-C".
+        public IEnumerable<string> Lines => ["-C", Parent, Name == "-C" ? "./-C" : Name];
+
+        public bool Exists()
+        {
+            string path = Path.Combine(Parent, Name);
+            return File.Exists(path) || Directory.Exists(path);
+        }
+    }
+
+    // Takes every source that no longer exists off the list and records it; returns how many.
+    internal static int ReportVanished(List<ListedSource> nameList, List<ArchiveError> errors)
+    {
+        List<ListedSource> vanished = [.. nameList.Where(source => !source.Exists())];
+        foreach (ListedSource source in vanished)
+        {
+            errors.Add(CoreMessages.Error(source.SourcePath, MessageCode.SourceNotFound, source.SourcePath));
+            nameList.Remove(source);
+        }
+        return vanished.Count;
+    }
+
     private static void DeleteStagingDirectory(string stagingDir, List<string> junctions)
     {
         foreach (string junction in junctions)
@@ -1421,7 +1460,7 @@ public sealed class TarSandboxedService : ITarService
     // T-F283: every name is one line of tar.exe's "-T -" list. In that list only an exact "-C" line
     // is special (the next line is the folder to change to); no other line is read as an option.
     private static (int EntryCount, long TotalEntriesForProgress, long TotalBytesForProgress) AppendSourcesToNameList(
-        List<string> nameList, IReadOnlyList<string> sortedSourcePaths, List<ArchiveError> errors, List<SkippedFile> skippedFiles,
+        List<ListedSource> nameList, IReadOnlyList<string> sortedSourcePaths, List<ArchiveError> errors, List<SkippedFile> skippedFiles,
         string collisionStagingDir, List<string> stagedJunctions, string[] ownPaths)
     {
         int entryCount = 0;
@@ -1481,12 +1520,12 @@ public sealed class TarSandboxedService : ITarService
         private readonly HashSet<string> _claimed = new(StringComparer.OrdinalIgnoreCase);
 
         // False when the source was refused (its error is recorded).
-        public bool TryAppendLines(List<string> nameList, string sourcePath, string fullSource, List<ArchiveError> errors)
+        public bool TryAppendLines(List<ListedSource> nameList, string sourcePath, string fullSource, List<ArchiveError> errors)
         {
             if (Claim(sourcePath, fullSource, Path.GetDirectoryName(fullSource)!, Path.GetFileName(fullSource), errors) is not { } claimed)
                 return false;
 
-            AppendClaimed(nameList, claimed);
+            nameList.Add(new ListedSource(sourcePath, claimed.Parent, claimed.Name));
             return true;
         }
 
@@ -1497,7 +1536,7 @@ public sealed class TarSandboxedService : ITarService
         // (Hidden and System, as in the App's browser, T-F324: tar.exe cannot read "System Volume
         // Information" and would fail the whole run), this run's archive and temporary file when
         // the destination is the root itself, and links, as for any selected source.
-        public bool TryAppendDriveRootLines(List<string> nameList, string sourcePath, string root, string[] ownPaths, ArchiveResultLists result)
+        public bool TryAppendDriveRootLines(List<ListedSource> nameList, string sourcePath, string root, string[] ownPaths, ArchiveResultLists result)
         {
             const FileAttributes OsOwned = FileAttributes.Hidden | FileAttributes.System;
             FileSystemInfo[] children;
@@ -1529,17 +1568,10 @@ public sealed class TarSandboxedService : ITarService
                 }
                 if (Claim(sourcePath, child.FullName, root, child.Name, result.Errors) is not { } claimed)
                     continue;
-                AppendClaimed(nameList, claimed);
+                nameList.Add(new ListedSource(child.FullName, claimed.Parent, claimed.Name));
                 any = true;
             }
             return any;
-        }
-
-        private static void AppendClaimed(List<string> nameList, (string Parent, string Name) claimed)
-        {
-            nameList.Add("-C");
-            nameList.Add(claimed.Parent);
-            nameList.Add(claimed.Name == "-C" ? "./-C" : claimed.Name);
         }
 
         private (string Parent, string Name)? Claim(string sourcePath, string fullSource, string parent, string name, List<ArchiveError> errors)
@@ -1718,8 +1750,14 @@ public sealed class TarSandboxedService : ITarService
 
     // T-F215: "-v" writes one "a <name>" progress line per entry to stderr, before any error —
     // the failure message keeps only the lines that say what went wrong.
-    private static CoreText DescribeCreationFailure(string stdErr) =>
-        CoreText.Raw(string.Join(Environment.NewLine, SplitLines(stdErr).Where(line => !line.StartsWith("a ", StringComparison.Ordinal))));
+    // T-F390: for a listed name that is gone tar.exe prints this with a name that is not the
+    // missing one - empty, or bytes of its own environment (measured, docs/DECISIONS.md) - so the
+    // line is dropped; "Cannot stat" and "Couldn't open" lines name the right file and stay.
+    internal const string UnvisitableSourceLine = "Couldn't visit directory";
+
+    internal static CoreText DescribeCreationFailure(string stdErr) =>
+        CoreText.Raw(string.Join(Environment.NewLine, SplitLines(stdErr).Where(line =>
+            !line.StartsWith("a ", StringComparison.Ordinal) && !line.Contains(UnvisitableSourceLine, StringComparison.Ordinal))));
 
     // Column 4 (0-based) of "tar -tvf" output: mode, link-count, owner, group, size, month, day,
     // time, name. Locale-independent (plain ASCII decimal), unlike the date columns — see

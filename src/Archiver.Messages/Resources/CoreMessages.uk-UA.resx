@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Інший вибраний елемент має таке саме ім'я, а цю папку не вдалося додати під новим іменем. Перейменуйте один із них і спробуйте ще раз.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Вибраний елемент не вдалося прочитати. Можливо, його перемістили або видалили після вибору.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Список вмісту архіву суперечливий.</value>
   </data>

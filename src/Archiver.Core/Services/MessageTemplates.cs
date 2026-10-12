@@ -102,6 +102,8 @@ public static class MessageTemplates
             "More copies with this name were not extracted ({0}): only the first and the last copy can be taken out of this archive.",
         [MessageCode.TarSourceNameCollisionNotAdded] =
             "Another selected item has the same name, and this folder could not be added under a new name. Rename one of them and try again.",
+        [MessageCode.TarSourceUnreadable] =
+            "A selected item could not be read. It may have been moved or deleted after it was selected.",
         [MessageCode.ListingInconsistent] = "Archive listing is inconsistent.",
         [MessageCode.TarUnreadableNames] =
             "The archive contains file names tar.exe cannot represent on this system (code page {0}), " +

@@ -12732,3 +12732,25 @@ PowerShell does natively.
   `D:AI(A;ID;0x1301bf;;;S-1-15-2-...)...S:(ML;;NW;;;LW)`, after the old script
   `D:AI(A;ID;0x1200a9;;;AU)...S:(ML;;NW;;;LW)`.
 - **Found by:** the T-F342 research (permissions of extracted files), 2026-10-12.
+
+### T-F390 — tar.exe prints a wrong name for a listed source that is gone, and Pakko showed it (P2)
+
+- [x] **Status:** done 2026-10-12 (unreleased; the T-F342 wave 1 pull request). A source that
+  disappears after Pakko listed it for tar.exe is reported by Pakko as `SourceNotFound`: once
+  right before tar.exe starts (`TarSandboxedService.ReportVanished`, the source is then taken off
+  the list and the rest is archived), and once more when tar.exe fails with a "Couldn't visit
+  directory" line. That line is never shown (`DescribeCreationFailure` drops it); when nothing
+  on the list turns out missing, the new message `TarSourceUnreadable` (37 locales) stands in for
+  it. Lines that name the right file ("Cannot stat", "Couldn't open") are shown as before.
+  Tests: `TarVanishedSourceTests` (7, unit) and `TarSandboxedServiceVanishedSourceTests` (2, real
+  tar.exe, both seen red before the fix; the seam removes the source after the last check).
+  Smoke row `CLI-024` (quick, scripted).
+- **Before that:** the name list for `tar -T -` was checked for existence once, before the
+  recursive count of every source, so a large selection left seconds for a source to go. tar.exe
+  then printed `tar.exe: <something>: Couldn't visit directory: No such file or directory`, where
+  `<something>` is not the missing name (measured: empty, and in wave 0 pieces of PATH), and
+  Pakko passed its stderr to the user as the error text. Every tar.exe format.
+- **Not done:** the report to Microsoft/libarchive is drafted in `docs/DECISIONS.md` and not
+  sent. A file deleted inside a folder while tar.exe walks it is tar.exe's own "Cannot stat"
+  line, which names the file correctly.
+- **Found by:** the T-F342 research (wave 0), 2026-10-12.

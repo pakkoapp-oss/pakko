@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Một mục được chọn khác có cùng tên và không thể thêm thư mục này với tên mới. Hãy đổi tên một trong hai rồi thử lại.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Không thể đọc một mục được chọn. Mục đó có thể đã bị di chuyển hoặc bị xóa sau khi được chọn.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Danh sách nội dung tệp nén không nhất quán.</value>
   </data>

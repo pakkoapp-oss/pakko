@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Seçili başka bir öğe aynı ada sahip ve bu klasör yeni bir adla eklenemedi. Bunlardan birini yeniden adlandırıp tekrar deneyin.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Seçili bir öğe okunamadı. Seçildikten sonra taşınmış veya silinmiş olabilir.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arşivin içerik listesi tutarsız.</value>
   </data>

@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>کسی اور منتخب آئٹم کا نام بھی یہی ہے، اور یہ فولڈر نئے نام سے شامل نہیں کیا جا سکا۔ ان میں سے ایک کا نام تبدیل کریں اور دوبارہ کوشش کریں۔</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>ایک منتخب آئٹم پڑھا نہیں جا سکا۔ ممکن ہے کہ انتخاب کے بعد اسے منتقل یا حذف کر دیا گیا ہو۔</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>آرکائیو کے مواد کی فہرست میں تضاد ہے۔</value>
   </data>

@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Teisel valitud üksusel on sama nimi ja seda kausta ei saanud uue nimega lisada. Nimetage üks neist ümber ja proovige uuesti.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Valitud üksust ei saanud lugeda. Võimalik, et see teisaldati või kustutati pärast valimist.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arhiivi sisuloend on vastuoluline.</value>
   </data>

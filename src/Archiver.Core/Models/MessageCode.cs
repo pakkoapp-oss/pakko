@@ -78,6 +78,7 @@ public enum MessageCode
     TarSpecialEntry,
     TarDuplicateCopiesNotExtracted,
     TarSourceNameCollisionNotAdded,
+    TarSourceUnreadable,
     ListingInconsistent,
     TarUnreadableNames,
     SandboxSetupFailed,

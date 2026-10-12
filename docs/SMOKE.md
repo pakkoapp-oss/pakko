@@ -80,6 +80,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | CLI-021 | release | script | dev | The messages: `x` over a ZIP with a CRC error; `x` and `t` on an encrypted 7z; a password remembered for several archives that fits only the first; a run that extracts all, some, and none | No `-aoa` hint after the CRC error; no `-p` hint for the 7z; one line for the password that does not fit; exit 0, 1 and 2 for all, some and none; counts read naturally (no "1 entries") | `cli:x` `cli:t` `cli:-p` T-F293 T-F295 T-F296 T-F322 T-F301 T-F260 T-F323 |
 | CLI-022 | quick | script | dev | `a -ttar.gz` of a tree, then `x` into a folder that grants Authenticated Users read access; save each extracted file's security with `icacls /save` | Every file has the folder's inherited entry, no entry for an AppContainer SID (`S-1-15-2-`) and no integrity label | `cli:x` T-F389 |
 | CLI-023 | release | user | dev | `x` of a tar.gz and of a 7z onto an exFAT or FAT32 USB drive and into a network share | Exit 0 both times; every file is there with the source's bytes; no "cannot extract" line | `cli:x` T-F389 |
+| CLI-024 | quick | script | dev | `a -ttar.gz` of two names, one of which does not exist | Exit 2; the error names the missing source; no line of tar.exe's own ("Couldn't visit directory") | `cli:a` T-F390 |
 
 ## SHL - `Archiver.Shell.exe`, started as Explorer starts it
 

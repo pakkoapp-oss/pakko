@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Een ander geselecteerd item heeft dezelfde naam en deze map kon niet onder een nieuwe naam worden toegevoegd. Wijzig de naam van een van beide en probeer het opnieuw.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Een geselecteerd item kon niet worden gelezen. Mogelijk is het verplaatst of verwijderd nadat het was geselecteerd.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>De inhoudslijst van het archief is inconsistent.</value>
   </data>
