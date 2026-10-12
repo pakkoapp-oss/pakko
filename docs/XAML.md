@@ -74,7 +74,13 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │       │       the grid and in the markup (T-F381): below them the password panel pushed
         │       │       it out of the card's visible part (MainWindowLayoutTests).
         │       │       The Format list shows a format only when CreationFormatOption offers it
-        │       │       (T-F388, policy); the PAR2 check and its box are a left-aligned Grid (*, Auto) so
+        │       │       (T-F388, policy), in CreationFormatOption.ListOrder's order (FormatIndex is a row
+        │       │       number there; MainWindowLayoutTests compares the two). 7Z is its second item,
+        │       │       after ZIP, and the only one bound OneWay: it joins
+        │       │       the list when the tar.exe writer probe answers yes (T-F342). While 7Z is the
+        │       │       format, a Method label and list (LZMA2, LZMA, BZip2, Deflate, Copy) show
+        │       │       on their own line under Format and Compression (beside them the row ran past
+        │       │       the card's edge), and Copy disables Compression; the PAR2 check and its box are a left-aligned Grid (*, Auto) so
         │       │       a long label wraps (T-F387). When the password panel appears, code-behind scrolls EncryptConfirmBox
         │       │       into view (EncryptionPanel.SizeChanged), so both boxes show at 1100x780.
         │       └── DestinationCard — Border (card), Grid (Auto,*) with 7 rows: title, destination

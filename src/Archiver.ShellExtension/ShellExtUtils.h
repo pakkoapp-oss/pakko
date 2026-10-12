@@ -152,7 +152,8 @@ MenuPolicy GetMenuPolicy();
 // empty string for an extension the menu does not treat as an archive. Extension-only (T-F86).
 std::wstring GetFormatRegistryName(const std::wstring& path);
 
-// Whether a one-click "Add to X.<format>" item may be shown: format is "zip" or "tar".
+// Whether a one-click "Add to X.<format>" item may be shown: format is the policy's name for it,
+// "zip", "tar" or "sevenzip" (T-F342: tar.exe writes 7z too, so DisableTarExtraction hides it).
 bool IsCreationFormatAllowed(const std::wstring& format, const MenuPolicy& policy);
 
 // Returns true iff all paths end with .zip (case-insensitive).
@@ -167,6 +168,31 @@ bool AnyPathIsZip(const std::vector<std::wstring>& paths, const MenuPolicy& poli
 // cached in a function-local static (mirrors ExplorerCommands.cpp's GetAppIconPath) - GetState()
 // is called by Explorer on every right-click, so this must never re-stat the filesystem per call.
 bool TarExeExists();
+
+// ---------------------------------------------------------------------------
+// T-F342: whether this system's tar.exe writes 7z. Only running it tells, and the menu must not
+// start a process per right-click, so the .NET side (Archiver.Core's SevenZipWriterVerdict)
+// leaves a one-line file in the package's LocalCache folder:
+// "<tar.exe size>;<tar.exe write time as a FILETIME>;<0|1>".
+// ---------------------------------------------------------------------------
+
+constexpr size_t kMaxSevenZipVerdictBytes = 128;
+
+// "Name_PublisherId" from a package full name "Name_Version_Architecture_ResourceId_PublisherId";
+// empty for anything else.
+std::wstring PackageFamilyNameFromFullName(const std::wstring& fullName);
+
+// <localAppData>\Packages\<family>\LocalCache\sevenzip-writer.txt for a DLL in an installed
+// package's folder; empty when dllDirectory is not one.
+std::wstring BuildSevenZipVerdictPath(const std::wstring& dllDirectory, const std::wstring& localAppData);
+
+// True only for a well-formed verdict that says "no" about a tar.exe of exactly this size and
+// write time. No verdict, a malformed one, one measured on another tar.exe (a Windows update
+// replaced it), or "yes" is false: the item shows, and Archiver.Shell reports a missing writer.
+bool IsSevenZipWriterVerdictAbsent(const std::string& verdict, ULONGLONG tarSize, ULONGLONG tarWriteTime);
+
+// The real one: the verdict file against the real tar.exe, re-read at most every few seconds.
+bool SevenZipWriterKnownAbsent();
 
 // Returns true iff path ends with a non-ZIP extension Archiver.Core can extract via ITarService
 // (rar, 7z, tar, gz, tgz, bz2, tbz2, xz, txz, zst, tzst, lzma - case-insensitive). Extension-only,

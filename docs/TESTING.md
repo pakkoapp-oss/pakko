@@ -354,6 +354,13 @@ regression worth investigating, not the old expected noise.
   (`SkipIfFormatUnsupportedAttribute.cs`), skipped if `DetectCapabilitiesAsync` reports the named
   format unsupported. Not yet exercised by any test — T-F50's format-specific fixtures will use it.
 - `[SevenZipWriterFact]` (T-F342) — skipped where `CanCreateSevenZipAsync` is false.
+  T-F342, the App and the Explorer menu: `SevenZipWriterVerdictTests` (Core: the file's line, the
+  package folder's name, no write without an answer or under `DisableTarExtraction`, a read-only
+  or blocked target), `CreationFormatOptionTests`, `SevenZipMethodOptionTests` and
+  `CreateModeTextTests` (App.Core), `ShellCommandsSevenZipVerdictTests` (the Shell records after a
+  7z creation, also a refused one, and for no other format), and in C++ `ShellExtUtilsTests`
+  (`SevenZipWriterVerdict`, `PackageFamilyName`, `BuildSevenZipVerdictPath`, the policy rule for
+  `sevenzip`) with `ComLoadTests` pinning the item after "Add to X.tar" (fifteen leaves).
   `[SymbolicLinkFact]` (T-F391) — skipped where the process may not create symbolic links
   (needs elevation or Developer Mode; junction tests need neither and always run).
 

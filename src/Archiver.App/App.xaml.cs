@@ -41,6 +41,10 @@ public partial class App : Application
         var tarService = new TarSandboxedService(policy);
         Task<TarCapabilities> tarProbe = Task.Run(tarService.DetectCapabilitiesAsync);
         services.AddSingleton<ITarService>(tarService);
+        // T-F342: whether tar.exe writes 7z is found by running it once more. Started here so the
+        // "New archive" card has the answer early; it also goes to a file, for the Explorer menu.
+        _ = Task.Run(async () => SevenZipWriterVerdict.TryRecord(
+            policy, await tarService.AskSevenZipWriterAsync().ConfigureAwait(false)));
         services.AddSingleton<TarCapabilities>(_ => tarProbe.GetAwaiter().GetResult());
         services.AddSingleton<IExtractionRouter, ExtractionRouter>();
         services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();

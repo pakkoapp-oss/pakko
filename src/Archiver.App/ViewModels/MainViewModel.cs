@@ -274,10 +274,13 @@ public sealed partial class MainViewModel : ObservableObject
     {
         get
         {
-            string summary = string.Join(" · ",
-                new[] { CreateModeText.FormatName(SelectedContainerFormat) }
-                    .Concat(CreateModeText.SummaryKeys(SelectedContainerFormat, SelectedCompressionLevel, EncryptWithPassword, RecoveryPercent)
-                        .Select(key => _res.GetString(key).Replace("{0}", RecoveryPercentText(RecoveryPercent)))));
+            var parts = new List<string> { CreateModeText.FormatName(SelectedContainerFormat) };
+            if (SelectedContainerFormat == ArchiveContainerFormat.SevenZip)
+                parts.Add(SevenZipMethodOption.Name(SelectedSevenZipMethod));
+            parts.AddRange(
+                CreateModeText.SummaryKeys(SelectedContainerFormat, SelectedCompressionLevel, EncryptWithPassword, RecoveryPercent, SelectedSevenZipMethod)
+                    .Select(key => _res.GetString(key).Replace("{0}", RecoveryPercentText(RecoveryPercent))));
+            string summary = string.Join(" · ", parts);
             return _listActions.ArchivesOnly ? summary + " — " + _res.GetString("NewArchiveCollapsedReason") : summary;
         }
     }
@@ -470,39 +473,39 @@ public sealed partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(EncryptCheckVisibility))]
     [NotifyPropertyChangedFor(nameof(EncryptZipOnlyVisibility))]
     [NotifyPropertyChangedFor(nameof(EncryptionPanelVisibility))]
+    [NotifyPropertyChangedFor(nameof(SevenZipMethodVisibility))]
     public partial ArchiveContainerFormat SelectedContainerFormat { get; set; } = ArchiveContainerFormat.Zip;
 
     partial void OnSelectedContainerFormatChanged(ArchiveContainerFormat value) => ClearEncryptionPassword();
 
     public int FormatIndex
     {
-        get => SelectedContainerFormat switch
-        {
-            ArchiveContainerFormat.Zip     => 0,
-            ArchiveContainerFormat.Tar     => 1,
-            ArchiveContainerFormat.TarGz   => 2,
-            ArchiveContainerFormat.TarBz2  => 3,
-            ArchiveContainerFormat.TarXz   => 4,
-            ArchiveContainerFormat.TarZst  => 5,
-            ArchiveContainerFormat.TarLzma => 6,
-            _                              => 0
-        };
-        set => SelectedContainerFormat = value switch
-        {
-            0 => ArchiveContainerFormat.Zip,
-            1 => ArchiveContainerFormat.Tar,
-            2 => ArchiveContainerFormat.TarGz,
-            3 => ArchiveContainerFormat.TarBz2,
-            4 => ArchiveContainerFormat.TarXz,
-            5 => ArchiveContainerFormat.TarZst,
-            6 => ArchiveContainerFormat.TarLzma,
-            _ => ArchiveContainerFormat.Zip
-        };
+        get => CreationFormatOption.ToIndex(SelectedContainerFormat);
+        set => SelectedContainerFormat = CreationFormatOption.FromIndex(value);
     }
 
-    public bool IsPlainTarFormatSelected => SelectedContainerFormat == ArchiveContainerFormat.Tar;
+    // T-F342: plain tar has no level, and neither has a 7z whose method is Copy.
+    public bool IsCompressionLevelEnabled =>
+        IsNotBusy && SevenZipMethodOption.HasCompressionLevel(SelectedContainerFormat, SelectedSevenZipMethod);
 
-    public bool IsCompressionLevelEnabled => IsNotBusy && !IsPlainTarFormatSelected;
+    // T-F342: how a 7z is compressed; the list shows only while 7z is the format.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SevenZipMethodIndex))]
+    [NotifyPropertyChangedFor(nameof(IsCompressionLevelEnabled))]
+    [NotifyPropertyChangedFor(nameof(NewArchiveSummary))]
+    public partial SevenZipMethod SelectedSevenZipMethod { get; set; } = SevenZipMethod.Lzma2;
+
+    public int SevenZipMethodIndex
+    {
+        get => SevenZipMethodOption.ToIndex(SelectedSevenZipMethod);
+        set => SelectedSevenZipMethod = SevenZipMethodOption.FromIndex(value);
+    }
+
+    // A concrete collection, never a collection expression: WinRT marshals ItemsSource (T-F355).
+    public ObservableCollection<string> SevenZipMethodChoices { get; } = new(SevenZipMethodOption.Names);
+
+    public Visibility SevenZipMethodVisibility =>
+        SelectedContainerFormat == ArchiveContainerFormat.SevenZip ? Visibility.Visible : Visibility.Collapsed;
 
     // T-F193: only the ZIP writer can encrypt. The checkbox keeps its checked state when a tar
     // format is picked (it's merely hidden), so ArchiveAsync checks the format again at use.
@@ -628,8 +631,27 @@ public sealed partial class MainViewModel : ObservableObject
     public Visibility TarZstFormatVisibility => FormatVisibility(ArchiveContainerFormat.TarZst);
     public Visibility TarLzmaFormatVisibility => FormatVisibility(ArchiveContainerFormat.TarLzma);
 
+    // T-F342: the one that changes after startup. Whether tar.exe writes 7z is found by running
+    // it, and the window does not wait for that: 7z joins the list when the probe answers.
+    public Visibility SevenZipFormatVisibility => FormatVisibility(ArchiveContainerFormat.SevenZip);
+
+    private bool _sevenZipWriter;
+
     private Visibility FormatVisibility(ArchiveContainerFormat format) =>
-        CreationFormatOption.IsOffered(_policy, format) ? Visibility.Visible : Visibility.Collapsed;
+        CreationFormatOption.IsOffered(_policy, format, _sevenZipWriter) ? Visibility.Visible : Visibility.Collapsed;
+
+    private async Task OfferSevenZipWhenWritableAsync(ITarService tarService)
+    {
+        if (!await tarService.CanCreateSevenZipAsync())
+            return;
+
+        _sevenZipWriter = true;
+        OnPropertyChanged(nameof(SevenZipFormatVisibility));
+        // The card started on a format picked before the answer; under a policy that allows only
+        // 7z that was ZIP, which Core refuses.
+        if (!CreationFormatOption.IsOffered(_policy, SelectedContainerFormat, _sevenZipWriter))
+            SelectedContainerFormat = CreationFormatOption.Default(_policy, _sevenZipWriter);
+    }
 
     [ObservableProperty]
     public partial bool OpenDestinationFolder { get; set; } = false;
@@ -833,7 +855,8 @@ public sealed partial class MainViewModel : ObservableObject
         ILogService logService,
         GroupPolicyOptions groupPolicyOptions,
         SourceRecycler sourceRecycler,
-        TarCapabilities tarCapabilities)
+        TarCapabilities tarCapabilities,
+        ITarService tarService)
     {
         _tarCapabilities = tarCapabilities;
         _sourceRecycler = sourceRecycler;
@@ -845,7 +868,8 @@ public sealed partial class MainViewModel : ObservableObject
         _dialogService = dialogService;
         _logService = logService;
         _policy = groupPolicyOptions;
-        SelectedContainerFormat = CreationFormatOption.Default(_policy);
+        SelectedContainerFormat = CreationFormatOption.Default(_policy, _sevenZipWriter);
+        _ = OfferSevenZipWhenWritableAsync(tarService);
         _browseWork.Changed += CloseArchiveCommand.NotifyCanExecuteChanged;
 
         // T-F51: defensive only — nothing in this ViewModel currently sets
@@ -987,6 +1011,7 @@ public sealed partial class MainViewModel : ObservableObject
                 OpenDestinationFolder = OpenDestinationFolder,
                 CompressionLevel = SelectedCompressionLevel,
                 Format = SelectedContainerFormat,
+                SevenZipMethod = SelectedSevenZipMethod,
                 RecoveryPercent = RecoveryPercent,
                 ResolveConflictAsync = conflict => _dialogService.ShowConflictDialogAsync(conflict, () => _cts?.Cancel()),
             };

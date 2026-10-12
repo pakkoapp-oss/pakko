@@ -16,7 +16,7 @@ namespace Archiver.Core.Services;
 /// </summary>
 public sealed class TarSandboxedService : ITarService
 {
-    private const string TarExecutablePath = @"C:\Windows\System32\tar.exe"; // NOSONAR: S1075 — CLAUDE.md's Hard Constraints mandate this exact absolute path, never PATH-resolved (PATH-hijack resistance); moving it to config would reopen that risk
+    internal const string TarExecutablePath = @"C:\Windows\System32\tar.exe"; // NOSONAR: S1075 — CLAUDE.md's Hard Constraints mandate this exact absolute path, never PATH-resolved (PATH-hijack resistance); moving it to config would reopen that risk
 
     // The App's first window waits for DetectCapabilitiesAsync (App.xaml.cs starts it on the
     // thread pool, T-F347) — a hung tar.exe --version must not hang app launch indefinitely.

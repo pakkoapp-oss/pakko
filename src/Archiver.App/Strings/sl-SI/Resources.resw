@@ -122,6 +122,9 @@
   <data name="FormatTarLzmaItem.Content" xml:space="preserve">
     <value>TAR.LZMA</value>
   </data>
+  <data name="FormatSevenZipItem.Content" xml:space="preserve">
+    <value>7Z</value>
+  </data>
   <data name="CompressionFastItem.Content" xml:space="preserve">
     <value>Hitro</value>
   </data>
@@ -164,6 +167,9 @@
   </data>
   <data name="CompressionLabel.Text" xml:space="preserve">
     <value>Stiskanje:</value>
+  </data>
+  <data name="SevenZipMethodLabel.Text" xml:space="preserve">
+    <value>Metoda:</value>
   </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>Če datoteka že obstaja:</value>

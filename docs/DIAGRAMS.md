@@ -92,6 +92,7 @@ sequenceDiagram
     participant CDC as CompressDialogCommand
     participant AC as ArchiveCommand
     participant TAC as TarArchiveCommand
+    participant SZC as SevenZipArchiveCommand
     participant TC as TestCommand
     participant RVC as RecoveryVerifyCommand
     participant RRC as RecoveryRepairCommand
@@ -109,7 +110,7 @@ sequenceDiagram
     Factory->>Root: Make<PakkoRootCommand>()
     Explorer->>Root: GetFlags() → ECF_HASSUBCOMMANDS
     Explorer->>Root: EnumSubCommands()
-    Root->>Enum: Make each leaf, then SetCommands([BC, EDC, EHF, EH, EF, CDC, AC, TAC, TC, RVC, RRC, SC, HashCrc32, HashSha256])<br/>ALWAYS all fourteen, unconditionally — selection does not filter EnumSubCommands.<br/>Order asserted by ComLoadTests' EnumSubCommands_ReturnsAllFourteenLeafCommandsInDocumentedOrder:<br/>BC first (T-F03, NanaZip's kOpen), then extract dialog/flat/intelligent/named-folder (T-F115),<br/>then compress dialog and the two one-click archive verbs (T-F105), then the diagnostic<br/>group last — Test, Verify with PAR2, Repair with PAR2 (T-F275), Scan (T-F146), CRC-32, SHA-256 (T-F128: two flat leaves, no submenu)
+    Root->>Enum: Make each leaf, then SetCommands([BC, EDC, EHF, EH, EF, CDC, AC, TAC, SZC, TC, RVC, RRC, SC, HashCrc32, HashSha256])<br/>ALWAYS all fifteen, unconditionally — selection does not filter EnumSubCommands.<br/>Order asserted by ComLoadTests' EnumSubCommands_ReturnsAllFifteenLeafCommandsInDocumentedOrder:<br/>BC first (T-F03, NanaZip's kOpen), then extract dialog/flat/intelligent/named-folder (T-F115),<br/>then compress dialog and the three one-click archive verbs (T-F105, 7z: T-F342), then the diagnostic<br/>group last — Test, Verify with PAR2, Repair with PAR2 (T-F275), Scan (T-F146), CRC-32, SHA-256 (T-F128: two flat leaves, no submenu)
     Root-->>Explorer: Enum (IEnumExplorerCommand)
     loop Explorer drains the enumerator
         Explorer->>Enum: Next(celt, ...)
@@ -122,7 +123,8 @@ sequenceDiagram
     Explorer->>CDC: GetState → always ECS_ENABLED (T-F63)
     Explorer->>AC: GetState → ECS_HIDDEN iff AllPathsAreZip(paths) OR NOT IsCreationFormatAllowed("zip", policy)<br/>(INVERTED vs. EH/EF, deliberately still AllPathsAreZip — T-F86)
     Explorer->>TAC: GetState → ECS_HIDDEN iff AllPathsAreZip(paths) OR NOT IsCreationFormatAllowed("tar", policy)
-    Explorer->>AC: GetTitle(psia) → BuildAddToArchiveTitle(paths)<br/>dynamic "Add to <name>.zip", truncated middle if >40 chars — TAC the same with .tar
+    Explorer->>SZC: GetState → ECS_HIDDEN iff AllPathsAreZip(paths) OR NOT IsCreationFormatAllowed("sevenzip", policy)<br/>OR NOT TarExeExists() OR SevenZipWriterKnownAbsent() (T-F342: the menu cannot run tar.exe to ask,<br/>so it reads the verdict file the App and Archiver.Shell leave in the package LocalCache folder —<br/>hidden only on a no measured on this very tar.exe, re-read at most every 5 s)
+    Explorer->>AC: GetTitle(psia) → BuildAddToArchiveTitle(paths)<br/>dynamic "Add to <name>.zip", truncated middle if >40 chars — TAC the same with .tar, SZC with .7z
     Explorer->>TC: GetState → ECS_ENABLED iff AnyPathIsZip(paths, policy)<br/>(T-F62/T-F86: ZIP only — tar-family has no test, the router would skip it)
     Explorer->>SC: GetState → ECS_ENABLED iff AnyPathIsSupportedArchive(paths, policy) (T-F146)
     Explorer->>HX: GetState → ECS_ENABLED iff paths non-empty (any file or folder, T-F128)
@@ -146,7 +148,7 @@ sequenceDiagram
             EH->>User: MessageBoxW(MB_TOPMOST) — T-F235: a selection is refused whole, never processed partly
             EH-->>Explorer: E_INVALIDARG
         else paths present
-            EH->>ShellExe: LaunchShellExe(args, paths) — BuildExtractHereArgs / BuildExtractHereFlatArgs /<br/>BuildExtractFolderArgs / BuildArchiveArgs() / BuildArchiveArgs("tar") / BuildTestArgs /<br/>BuildScanArgs / BuildHashArgs("crc32"|"sha256")<br/>CreateProcessW(command --paths-stdin) — T-F235: only the stdin read end is inherited, then<br/>the paths go to the child's stdin (UTF-16LE, NUL-separated, end marker) — does NOT wait
+            EH->>ShellExe: LaunchShellExe(args, paths) — BuildExtractHereArgs / BuildExtractHereFlatArgs /<br/>BuildExtractFolderArgs / BuildArchiveArgs() / BuildArchiveArgs("tar") / BuildArchiveArgs("7z") / BuildTestArgs /<br/>BuildScanArgs / BuildHashArgs("crc32"|"sha256")<br/>CreateProcessW(command --paths-stdin) — T-F235: only the stdin read end is inherited, then<br/>the paths go to the child's stdin (UTF-16LE, NUL-separated, end marker) — does NOT wait
             ShellExe->>ShellExe: StdinPathList.Read — a list cut short is refused whole
             EH-->>Explorer: S_OK, or a MessageBoxW with the HRESULT on a launch or<br/>write failure — returned once the list is written, NOT when the operation finishes
             ShellExe->>Dlg: ui.Begin(title, Bytes, or Percent for Scan) — ONE session per Explorer command,<br/>even for a multi-archive selection (T-F268 step 3). The WinUI helper comes first<br/>(diagram 8) — Win32OperationUi, drawn here, is its fallback. Cancel is polled every 250 ms<br/>(IProgressDialog.HasUserCancelled, [PreserveSig] BOOL) and cancels the session's one token

@@ -460,7 +460,7 @@ menu trees):
 | Extract to "\<folder\>" | ≥1 file needs extraction | done — `ExtractFolderCommand` |
 | Compress (dialog, format/options) | any selection | done — `CompressDialogCommand` (see `TASKS_DONE.md`'s T-F63) |
 | Compress to "\<name\>.zip" (one click) | any selection | done, but see T-F64 (label says "Add to archive…" though behavior is already the one-click no-dialog path) |
-| Compress to "\<name\>.7z" | any selection | planned — T-F342, v1.9 (was "out of scope — 7z creation forbidden", from the belief that tar.exe cannot write 7z) |
+| Compress to "\<name\>.7z" | any selection | done — `SevenZipArchiveCommand` (T-F342), hidden where tar.exe is known not to write 7z (was "out of scope — 7z creation forbidden", from the belief that tar.exe cannot write 7z) |
 | Compress + Email variants (×4) | any selection | **out of scope, deliberately** — mail client integration adds attack surface and a dependency the gov/defense trust model doesn't need; not tracked as a task |
 | CRC/Checksum submenu (CRC-32/64, SHA-1/256/384/512, BLAKE2/3, etc.) | any selection | covered by existing T-F46 (File Hash Viewer), which already targets SHA-256; T-F46 is in-app UI only today, not a context-menu verb — cross-referenced, no new task |
 
@@ -1489,9 +1489,14 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   rule, `-p` refused, `pakko i`, `Archiver.Shell.exe --archive --format 7z`; smoke rows
   `CLI-026..032` and `SHL-012`, an `a -t7z` case in `POL-002..004`. Decisions:
   `docs/DECISIONS.md`'s T-F342 wave 2 entry.
+- **Wave 3 (App and Explorer) done 2026-10-12:** 7Z in the App's Format list with a method
+  list, shown once the writer probe answers; Explorer's Add to "name.7z"
+  (`SevenZipArchiveCommand`), hidden after Pakko has learnt that this tar.exe does not write
+  7z (the verdict file the App and the Shell leave for the extension); smoke rows `SHL-013`,
+  `EXP-011`, `EXP-012`, `APP-025`. Decisions: `docs/DECISIONS.md`'s T-F342 wave 3 entry.
 - **For the CHANGELOG (the documents wave):** `pakko a x.7z src` with no `-t` is now exit 7; it
   used to write a ZIP named `x.7z`.
-- **Next:** the App and Explorer wave, "Test" for 7z, and the documents (`SECURITY.md`: the
+- **Next:** "Test" for 7z, and the documents (`SECURITY.md`: the
   maintainer agreed on 2026-10-12). The maintainer decided the same day that v1.8.1 carries 7z
   creation without encryption.
 - **Reported by:** the user, 2026-10-06.

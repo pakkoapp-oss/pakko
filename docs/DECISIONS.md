@@ -13579,6 +13579,119 @@ left it; the App and the Explorer menu follow in wave 3.
 - **For the next wave:** a record that outlives the process (the Explorer menu's hint) is
   written only from an answer, never from `null`.
 
+### The CLI's 7z test named a file the runner's code page cannot carry (found by CI, 2026-10-12)
+
+With the probe fixed, the same job failed once more, on one test:
+`Archive_SevenZip_WritesARealSevenZipThatListsAndExtractsBack` gave tar.exe a Cyrillic file name,
+and on the runner (ANSI code page 1252) Core refused it before tar.exe ran, as T-F266 says it
+must. The code was right and the test was not: it now takes the Cyrillic name where the system
+code page carries it and a Latin-1 one elsewhere (`CodePagesEncodingProvider.Instance.GetEncoding(0)`
+round trip; no encoding means the page is UTF-8). It could not be seen red here (this machine's
+page is 1251); the red run is CI's.
+
+## T-F342 — creating 7z through tar.exe: the App and the Explorer menu (wave 3, 2026-10-12)
+
+7Z in the "New archive" card, with a method list, and "Add to name.7z" in Explorer. Core, the CLI
+and the Shell are as waves 1 and 2 left them, plus one small Core type (the verdict file).
+
+- **The Explorer item is hidden after the check** (the maintainer's choice, 2026-10-12, over
+  "always shown" and "never offered"). The C++ extension cannot run the writer probe: it answers
+  `GetState` inside Explorer's surrogate and must not start a process there. So the item shows
+  until Pakko has learnt that this tar.exe does not write 7z, and the .NET side leaves what it
+  learnt in a file.
+- **The verdict file.** One ASCII line, `<tar.exe size>;<tar.exe write time, FILETIME>;<0|1>`,
+  at `%LOCALAPPDATA%\Packages\<family name>\LocalCache\sevenzip-writer.txt`. The extension hides
+  the item only for a `0` whose size and time are those of the present
+  `C:\Windows\System32\tar.exe`. No file, anything else in it, more than 128 bytes, a number past
+  64 bits, another size or time: the item shows. A Windows update that replaces tar.exe so drops
+  an old verdict by itself. The file is the user's to write; forging it hides or shows a menu
+  item and nothing more, since Core refuses the creation itself (`SevenZipWriterUnavailable`).
+  The extension reads it at most once in five seconds, as it does the policy.
+- **Who writes it:** the App after its startup probe (in the background) and `Archiver.Shell`
+  after an `--archive --format 7z`, also a refused one. Best effort, through a temporary file and
+  `File.Move(overwrite)`; a failed write changes nothing. The CLI does not write it (a separate
+  distribution that has no menu).
+- **Only an answer is written.** Under `DisableTarExtraction` Core says "no" without asking
+  tar.exe, and a probe that timed out says nothing (`AskSevenZipWriterAsync` is null, wave 2's
+  fix): neither goes into the file, or the item would stay hidden after the policy is lifted or
+  after one busy start. The plan had accepted "a timeout writes 0"; the tri-state answer of
+  wave 2 made that unnecessary, so it is dropped.
+- **Where the file lies was settled by looking, not by a throwaway build.** The plan's step 0
+  was a temporary build that writes from the App and the Shell and reads from the extension. The
+  installed package already showed the answer: the App's log lies in
+  `Packages\<family name>\LocalCache\Local\Pakko`, so `%LOCALAPPDATA%` is redirected for the
+  package's processes, and whether the surrogate (`dllhost.exe`) sees the same redirection was
+  the unknown. An explicit path under `Packages\<family name>\LocalCache` needs no redirection
+  on either side. The family name is taken from the folder the module lies in (a package full
+  name `Name_Version_Arch_ResourceId_PublisherId` gives `Name_PublisherId`); outside a package
+  there is no path and nothing is written or read. Confirmed on the device, see below.
+- **The App lists 7Z once the probe has answered yes**, and not before:
+  `CreationFormatOption.IsOffered(policy, format, sevenZipWriter)`. The probe starts in
+  `App.xaml.cs` and does not hold the window; the item's visibility is the one `OneWay` binding
+  in the list. When the probe returns and the selected format is not an offered one
+  (`AllowedFormats` = `sevenzip` alone), the default is taken again.
+- **7Z is the second row of the Format list, after ZIP** (the maintainer, 2026-10-12, on seeing
+  the first device build, where it was last). `CreationFormatOption.ListOrder` is now the list's
+  row order; `FormatIndex` counts in it, where it had been a hand-written switch in the view
+  model, and `Default` takes the first listed format that is offered, so with ZIP blocked and a
+  writer present the card starts on 7Z. `MainWindowLayoutTests` compares the markup's rows with
+  `ListOrder`: a mismatch would create another format than the one picked. Windows' own
+  "Compress to" submenu has the same order (ZIP, 7z, TAR). The Explorer menu keeps the plan's
+  order (zip, tar, 7z): the request was about the card.
+- **The method has its own line.** The plan put Method between Format and Compression; on the
+  device (uk-UA) that row ran past the card's edge and cut the compression list off. Method is
+  now a second line of the same cell, shown for 7Z only, so the first line is what every other
+  format already had and no locale's width changes. Pinned by
+  `SevenZipMethod_HasItsOwnLineUnderFormatAndCompression`, seen red against the first markup.
+- **Method names are not translated** (LZMA2, LZMA, BZip2, Deflate, Copy: what 7-Zip prints), and
+  they are text, not resource keys. Copy disables the compression level, as plain tar does.
+- **No password for 7z**: the card shows the existing "ZIP only" note, as for tar. Recovery data
+  works as for every format.
+- **`SevenZipArchiveCommand`** comes after `TarArchiveCommand` and before Test; its title is the
+  existing `BuildAddToArchiveTitle` with `.7z`, so `Localization.cpp` has no new text. Hidden
+  when the whole selection is ZIP (as tar), under `BlockedFormats` = `sevenzip`, under
+  `DisableTarExtraction`, without tar.exe, and after a verdict of "no". LZMA2, default level.
+- **No glossary row for "Method".** The plan asked for one; `GlossaryTests` has a fixed list of
+  concepts each used in many strings, and this word is used once (`SevenZipMethodLabel.Text`).
+  The 37 translations are in the resw files only.
+
+### A stale verdict
+
+tar.exe's size and write time stand for "the same tar.exe". An update that replaced only the
+library tar.exe loads (`archiveint.dll`) would leave them as they were. A stale `1` shows an item
+whose creation Core then refuses with its own message; a stale `0` hides the item until the App
+starts once, since the App writes the verdict at every start. Accepted for that reason.
+
+### Measured on the device (build 26300, package 1.8.1.10, 2026-10-12)
+
+- Quick tier: 34 rows, 34 OK, with the new `SHL-013` (the Shell wrote the verdict at the explicit
+  path). No IL or CsWinRT warning in the package build.
+- The verdict deleted, the App started: the file was back, `92280;134333970915154125;1`, tar.exe's
+  own size and time.
+- `APP-025`: ZIP, 7Z, TAR in that order; Method on its own line, nothing cut off; five archives of
+  a Cyrillic-named folder, `7za l -slt`: `LZMA2:20`, `LZMA:20`, `BZip2`, `Deflate`, `Copy`
+  (level "Fast"), `7za t` Ok for each; Copy greyed the level out; with recovery data the two
+  `.par2` files lay next to the archive and `pakko t` said "recovery data intact"; the collapsed
+  card read "7Z, Copy, recovery data 5%" in Ukrainian. The method list is the first list of this
+  window bound to `ItemsSource`, and it works in the Native AOT package.
+- `EXP-011`: Compress..., zip, tar, 7z, the two hashes, in that order; the item wrote
+  `LZMA2:23`, `7za t` Ok.
+- `EXP-012`: with `92280;...;0` the menu had zip and tar and no 7z; with `92281;...;0` and with
+  no file it had 7z again. So the extension, inside `dllhost.exe`, reads the file the App and the
+  Shell write.
+- Windows' own "Compress to > 7z file" on the same folder wrote `LZMA:23`: libarchive's default
+  method (lzma1). Pakko's item writes LZMA2, as decided in wave 0.
+
+Not measured: the card in a long-label locale (de-DE). The first line is the one every format
+had before this wave and the new line holds one short label, so no row grew.
+
+### Mutants (each fails a named test, then restored)
+
+`IsOffered` never offering 7z, and offering it without a writer; a verdict written under the
+policy; a verdict written from no answer; the Shell recording after every format; in C++, a
+verdict that ignores the size, one that ignores the time, `sevenzip` allowed under the tar
+policy, and the number parser without its overflow check.
+
 ## T-F390 — tar.exe's wrong name for a missing list entry (2026-10-12)
 
 Measured on bsdtar 3.8.8 (Windows build 26300), a `-T -` list of `-C <dir>` / `<name>` lines,

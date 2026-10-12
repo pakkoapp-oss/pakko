@@ -130,8 +130,15 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             Format = format,
         };
 
-        await RunArchiveOperationAsync(OperationTextLocalizer.Get("TitleArchiving", archiveName),
-            session => router.ArchiveAsync(options, session.Progress, session.Cancellation)).ConfigureAwait(false);
+        await RunArchiveOperationAsync(OperationTextLocalizer.Get("TitleArchiving", archiveName), async session =>
+        {
+            ArchiveResult result = await router.ArchiveAsync(options, session.Progress, session.Cancellation).ConfigureAwait(false);
+            // T-F342: the creation has run the 7z writer probe; the Explorer menu, which cannot,
+            // hides "Add to name.7z" from the verdict left here.
+            if (format == ArchiveContainerFormat.SevenZip)
+                await services.RecordSevenZipWriterAsync().ConfigureAwait(false);
+            return result;
+        }).ConfigureAwait(false);
     }
 
     // -------------------------------------------------------------------------

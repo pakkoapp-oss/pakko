@@ -36,6 +36,10 @@ static const CLSID CLSID_ArchiveCommand =
 static const CLSID CLSID_TarArchiveCommand =
     { 0x5F440071, 0x6288, 0x4446, { 0xAE, 0x25, 0x3F, 0x4E, 0xDA, 0x49, 0x0D, 0xDC } };
 
+// {901753CF-1E33-41C7-85BA-12217F250348}
+static const CLSID CLSID_SevenZipArchiveCommand =
+    { 0x901753CF, 0x1E33, 0x41C7, { 0x85, 0xBA, 0x12, 0x21, 0x7F, 0x25, 0x03, 0x48 } };
+
 // {BA69EF3A-F324-46CB-9391-6D14FE9597D3}
 static const CLSID CLSID_TestCommand =
     { 0xBA69EF3A, 0xF324, 0x46CB, { 0x93, 0x91, 0x6D, 0x14, 0xFE, 0x95, 0x97, 0xD3 } };
@@ -174,6 +178,25 @@ public:
 // reachable only through CompressDialogCommand's format selector.
 // ---------------------------------------------------------------------------
 class TarArchiveCommand final :
+    public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
+{
+public:
+    STDMETHODIMP GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept override;
+    STDMETHODIMP GetIcon(IShellItemArray* psia, LPWSTR* ppszIcon) noexcept override;
+    STDMETHODIMP GetToolTip(IShellItemArray* psia, LPWSTR* ppszInfotip) noexcept override;
+    STDMETHODIMP GetCanonicalName(GUID* pguidCommandName) noexcept override;
+    STDMETHODIMP GetState(IShellItemArray* psia, BOOL fOkToBeSlow, EXPCMDSTATE* pCmdState) noexcept override;
+    STDMETHODIMP Invoke(IShellItemArray* psia, IBindCtx* pbc) noexcept override;
+    STDMETHODIMP GetFlags(EXPCMDFLAGS* pFlags) noexcept override;
+    STDMETHODIMP EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept override;
+};
+
+// ---------------------------------------------------------------------------
+// Leaf command: "Add to <name>.7z" (T-F342) - a 7z with the default method (LZMA2) and level,
+// written by tar.exe. Hidden where tar.exe is known not to write 7z (SevenZipWriterKnownAbsent):
+// the menu cannot run the probe itself, so it reads the verdict Archiver.Shell and the App leave.
+// ---------------------------------------------------------------------------
+class SevenZipArchiveCommand final :
     public RuntimeClass<RuntimeClassFlags<ClassicCom>, IExplorerCommand>
 {
 public:

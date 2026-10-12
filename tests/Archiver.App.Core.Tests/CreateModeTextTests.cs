@@ -85,6 +85,21 @@ public sealed class CreateModeTextTests
             .Should().NotContain("SummaryRecoveryData");
     }
 
+    // T-F342: 7z cannot encrypt either; the Copy method has no level to name.
+    [Fact]
+    public void Summary_SevenZip_NamesCompressionButNotForCopy_AndNoPasswordState()
+    {
+        CreateModeText.SummaryKeys(ArchiveContainerFormat.SevenZip, CompressionLevel.SmallestSize, encrypt: true)
+            .Should().Equal("SummaryCompressionBest");
+        CreateModeText.SummaryKeys(ArchiveContainerFormat.SevenZip, CompressionLevel.Optimal, encrypt: false, 5, SevenZipMethod.Copy)
+            .Should().Equal("SummaryRecoveryData");
+        CreateModeText.SummaryKeys(ArchiveContainerFormat.Zip, CompressionLevel.Optimal, encrypt: false, 0, SevenZipMethod.Copy)
+            .Should().Equal("SummaryCompressionNormal", "SummaryNoPassword");
+    }
+
+    [Fact]
+    public void FormatName_SevenZip() => CreateModeText.FormatName(ArchiveContainerFormat.SevenZip).Should().Be("7Z");
+
     [Fact]
     public void Summary_NoCompression_HasItsOwnWord() =>
         CreateModeText.SummaryKeys(ArchiveContainerFormat.Zip, CompressionLevel.NoCompression, encrypt: false)

@@ -36,6 +36,31 @@ public sealed class MainWindowLayoutTests
         Row(encrypt).Should().BeLessThan(Row(passwords));
     }
 
+    // T-F342: Format, Method and Compression in one line ran past the card's edge and cut the
+    // compression list off (seen on the device, uk-UA).
+    [Fact]
+    public void SevenZipMethod_HasItsOwnLineUnderFormatAndCompression()
+    {
+        XElement method = Xaml.Descendants().Single(e => Name(e) == "SevenZipMethodLabelText").Parent!;
+        XElement compression = Xaml.Descendants().Single(e => Name(e) == "CompressionLabelText").Parent!;
+
+        method.Should().NotBeSameAs(compression);
+        method.Parent.Should().BeSameAs(compression.Parent, "the two lines are of one cell");
+        method.Parent!.Attribute("Orientation").Should().BeNull("a StackPanel stacks its lines unless told otherwise");
+        compression.ElementsAfterSelf().Should().Contain(method);
+    }
+
+    // FormatIndex is a row number: the markup's rows and CreationFormatOption.ListOrder must agree,
+    // or picking one format creates another.
+    [Fact]
+    public void FormatList_RowsAreInCreationFormatOptionsOrder()
+    {
+        XElement list = Xaml.Descendants().Single(e => (string?)e.Attribute(X + "Uid") == "FormatZipItem").Parent!;
+
+        list.Elements().Select(e => (string?)e.Attribute(X + "Uid"))
+            .Should().Equal(CreationFormatOption.ListOrder.Select(format => $"Format{format}Item"));
+    }
+
     private static string? Name(XElement element) => (string?)element.Attribute(X + "Name");
 
     private static int Row(XElement element) => (int)element.Attribute("Grid.Row")!;

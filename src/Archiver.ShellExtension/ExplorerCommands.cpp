@@ -428,6 +428,81 @@ STDMETHODIMP TarArchiveCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) n
 }
 
 // ---------------------------------------------------------------------------
+// SevenZipArchiveCommand (T-F342) - "Add to <name>.7z"
+// ---------------------------------------------------------------------------
+
+STDMETHODIMP SevenZipArchiveCommand::GetTitle(IShellItemArray* psia, LPWSTR* ppszName) noexcept
+{
+    if (!ppszName) return E_POINTER;
+    try
+    {
+        return SHStrDupW(BuildAddToArchiveTitle(GetPathsFromShellItemArray(psia), L".7z", GetCurrentUILanguageTag()).c_str(), ppszName);
+    }
+    catch (...) { return SHStrDupW(GetLocalizedString(StringId::ArchiveFallback).c_str(), ppszName); }
+}
+
+STDMETHODIMP SevenZipArchiveCommand::GetIcon(IShellItemArray*, LPWSTR* ppszIcon) noexcept
+{
+    if (!ppszIcon) return E_POINTER;
+    *ppszIcon = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP SevenZipArchiveCommand::GetToolTip(IShellItemArray*, LPWSTR* ppszInfotip) noexcept
+{
+    if (!ppszInfotip) return E_POINTER;
+    *ppszInfotip = nullptr;
+    return E_NOTIMPL;
+}
+
+STDMETHODIMP SevenZipArchiveCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
+{
+    if (!pguidCommandName) return E_POINTER;
+    *pguidCommandName = CLSID_SevenZipArchiveCommand;
+    return S_OK;
+}
+
+STDMETHODIMP SevenZipArchiveCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
+{
+    if (!pCmdState) return E_POINTER;
+    // Hidden under BlockedFormats=sevenzip or DisableTarExtraction=1, without tar.exe, and where
+    // the verdict file says this tar.exe does not write 7z.
+    try
+    {
+        const bool hidden = AllPathsAreZip(GetPathsFromShellItemArray(psia))
+            || !IsCreationFormatAllowed(L"sevenzip", GetMenuPolicy())
+            || !TarExeExists()
+            || SevenZipWriterKnownAbsent();
+        *pCmdState = hidden ? ECS_HIDDEN : ECS_ENABLED;
+    }
+    catch (...) { *pCmdState = ECS_HIDDEN; }
+    return S_OK;
+}
+
+STDMETHODIMP SevenZipArchiveCommand::Invoke(IShellItemArray* psia, IBindCtx*) noexcept
+{
+    try
+    {
+        return RunShellCommand(psia, BuildArchiveArgs(L"7z"));
+    }
+    catch (...) { return E_FAIL; }
+}
+
+STDMETHODIMP SevenZipArchiveCommand::GetFlags(EXPCMDFLAGS* pFlags) noexcept
+{
+    if (!pFlags) return E_POINTER;
+    *pFlags = ECF_DEFAULT;
+    return S_OK;
+}
+
+STDMETHODIMP SevenZipArchiveCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) noexcept
+{
+    if (!ppEnum) return E_POINTER;
+    *ppEnum = nullptr;
+    return E_NOTIMPL;
+}
+
+// ---------------------------------------------------------------------------
 // TestCommand
 // ---------------------------------------------------------------------------
 
@@ -1087,16 +1162,17 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         auto pCompressDialog = Make<CompressDialogCommand>();
         auto pArchive       = Make<ArchiveCommand>();
         auto pTarArchive    = Make<TarArchiveCommand>();
+        auto pSevenZipArchive = Make<SevenZipArchiveCommand>();
         auto pTest          = Make<TestCommand>();
         auto pRecoveryVerify = Make<RecoveryVerifyCommand>();
         auto pRecoveryRepair = Make<RecoveryRepairCommand>();
         auto pScan          = Make<ScanCommand>();
         auto pHashCrc32     = Make<HashCrc32Command>();
         auto pHashSha256    = Make<HashSha256Command>();
-        if (!pBrowse || !pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pTest || !pRecoveryVerify || !pRecoveryRepair || !pScan || !pHashCrc32 || !pHashSha256)
+        if (!pBrowse || !pExtractDialog || !pExtractHereFlat || !pExtractHere || !pExtractFolder || !pCompressDialog || !pArchive || !pTarArchive || !pSevenZipArchive || !pTest || !pRecoveryVerify || !pRecoveryRepair || !pScan || !pHashCrc32 || !pHashSha256)
             return E_OUTOFMEMORY;
 
-        ComPtr<IExplorerCommand> pCmdBrowse, pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdTest, pCmdRecoveryVerify, pCmdRecoveryRepair, pCmdScan, pCmdHashCrc32, pCmdHashSha256;
+        ComPtr<IExplorerCommand> pCmdBrowse, pCmdExtractDialog, pCmdExtractHereFlat, pCmdA, pCmdB, pCmdCompressDialog, pCmdC, pCmdTarArchive, pCmdSevenZipArchive, pCmdTest, pCmdRecoveryVerify, pCmdRecoveryRepair, pCmdScan, pCmdHashCrc32, pCmdHashSha256;
         HRESULT hr = pBrowse.As(&pCmdBrowse);                if (FAILED(hr)) return hr;
         hr = pExtractDialog.As(&pCmdExtractDialog);          if (FAILED(hr)) return hr;
         hr = pExtractHereFlat.As(&pCmdExtractHereFlat);      if (FAILED(hr)) return hr;
@@ -1105,6 +1181,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         hr = pCompressDialog.As(&pCmdCompressDialog);        if (FAILED(hr)) return hr;
         hr = pArchive.As(&pCmdC);                            if (FAILED(hr)) return hr;
         hr = pTarArchive.As(&pCmdTarArchive);                if (FAILED(hr)) return hr;
+        hr = pSevenZipArchive.As(&pCmdSevenZipArchive);      if (FAILED(hr)) return hr;
         hr = pTest.As(&pCmdTest);                            if (FAILED(hr)) return hr;
         hr = pRecoveryVerify.As(&pCmdRecoveryVerify);        if (FAILED(hr)) return hr;
         hr = pRecoveryRepair.As(&pCmdRecoveryRepair);        if (FAILED(hr)) return hr;
@@ -1119,6 +1196,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         // deviation from NanaZip's own Test-before-Compress grouping, per project direction:
         // primary actions before Test, always). T-F105: "Add to X.tar" sits right after
         // "Add to X.zip" — both are one-click archive-creation commands, kept adjacent.
+        // T-F342: "Add to X.7z" is the third of them, after tar.
         // T-F115: the new flat "Extract here" sits between the dialog and the (renamed)
         // "...Intelligently" command, matching NanaZip's own three-way extract-verb layout.
         // T-F03: "Open" (BrowseCommand) goes FIRST, ahead of even the Extract dialog — confirmed
@@ -1145,6 +1223,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         commands.push_back(std::move(pCmdCompressDialog));
         commands.push_back(std::move(pCmdC));
         commands.push_back(std::move(pCmdTarArchive));
+        commands.push_back(std::move(pCmdSevenZipArchive));
         commands.push_back(std::move(pCmdTest));
         commands.push_back(std::move(pCmdRecoveryVerify));
         commands.push_back(std::move(pCmdRecoveryRepair)); // T-F275 step 4b: check first, then repair
