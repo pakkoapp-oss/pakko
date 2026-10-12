@@ -12,11 +12,13 @@ namespace Archiver.Core.Services.Sandbox;
 internal static class TarExcludePattern
 {
     private const string Syntax = @"\[]*?$^";
+    // The separator inside a tar entry name, on every system.
+    private const char EntrySeparator = '/';
 
     /// <summary>The pattern for <paramref name="relativePath"/> under the entry tar.exe names <paramref name="entryRoot"/>.</summary>
     public static string For(string entryRoot, string relativePath)
     {
-        string path = entryRoot + "/" + relativePath.Replace(Path.DirectorySeparatorChar, '/');
+        string path = entryRoot + EntrySeparator + relativePath.Replace(Path.DirectorySeparatorChar, EntrySeparator);
         var pattern = new StringBuilder("^", path.Length + 8);
         foreach (char c in path)
         {
