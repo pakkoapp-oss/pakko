@@ -96,6 +96,7 @@ Add-SmokeStep 'POL-002' {
             @{ Run = @('x', "-o$root\tgz", $fixture.TarGz); Exit = 1; Says = $blocked }
             @{ Run = @('a', '-ttar.gz', "$root\new.tar.gz", $fixture.Source); Exit = 2; Says = $blocked }
             @{ Run = @('a', '-ttar', "$root\new.tar", $fixture.Source); Exit = 2; Says = $blocked }
+            @{ Run = @('a', '-t7z', "$root\new.7z", $fixture.Source); Exit = 2; Says = $blocked }
             @{ Run = @('l', $fixture.SevenZip); Exit = 2; Says = $blocked }
             @{ Run = @('x', "-o$root\7z", $fixture.SevenZip); Exit = 1; Says = $blocked }
             @{ Run = @('l', $fixture.Rar); Exit = 2; Says = $blocked }
@@ -130,9 +131,10 @@ Add-SmokeStep 'POL-003' {
             @{ Run = @('l', $fixture.TarGz); Exit = 0 }
             @{ Run = @('x', "-o$root\7z", $fixture.SevenZip); Exit = 0 }
             @{ Run = @('a', '-ttar.gz', "$root\new.tar.gz", $fixture.Source); Exit = 0 }
+            @{ Run = @('a', '-t7z', "$root\new.7z", $fixture.Source); Exit = 0 }
         )
         $left = @(Get-ChildItem -LiteralPath $root -Force -Name | Sort-Object)
-        Assert-Smoke (($left -join ',') -eq '7z,new.tar.gz') "under BlockedFormats=zip pakko wrote: $($left -join ', ')"
+        Assert-Smoke (($left -join ',') -eq '7z,new.7z,new.tar.gz') "under BlockedFormats=zip pakko wrote: $($left -join ', ')"
 
         foreach ($command in '--extract-folder', '--test') {
             $refused = Invoke-PolicyShell -Archive $fixture.Zip -Folder (Join-Path $root "shell$command") -Arguments @($command)
@@ -149,10 +151,12 @@ Add-SmokeStep 'POL-003' {
             @{ Run = @('x', "-o$root\7z-blocked", $fixture.SevenZip); Exit = 1; Says = $blocked }
             @{ Run = @('l', $fixture.Rar); Exit = 2; Says = $blocked }
             @{ Run = @('x', "-o$root\rar-blocked", $fixture.Rar); Exit = 1; Says = $blocked }
+            @{ Run = @('a', '-t7z', "$root\blocked.7z", $fixture.Source); Exit = 2; Says = 'is blocked by Group Policy' }
             @{ Run = @('t', $fixture.Zip); Exit = 0 }
             @{ Run = @('x', "-o$root\tgz", $fixture.TarGz); Exit = 0 }
         )
         Assert-Smoke (-not (Test-Path -LiteralPath "$root\7z-blocked") -and -not (Test-Path -LiteralPath "$root\rar-blocked")) 'a blocked 7z or RAR was extracted'
+        Assert-Smoke (-not (Test-Path -LiteralPath "$root\blocked.7z")) 'a blocked 7z was created'
     }
 }
 
@@ -171,6 +175,7 @@ Add-SmokeStep 'POL-004' {
             @{ Run = @('x', "-o$root\rar", $fixture.Rar); Exit = 1; Says = $extraction }
             @{ Run = @('a', '-ttar.gz', "$root\new.tar.gz", $fixture.Source); Exit = 2; Says = $creation }
             @{ Run = @('a', '-ttar', "$root\new.tar", $fixture.Source); Exit = 2; Says = $creation }
+            @{ Run = @('a', '-t7z', "$root\new.7z", $fixture.Source); Exit = 2; Says = $creation }
             @{ Run = @('i'); Exit = 0; Says = 'tar\.exe: .*\(disabled by Group Policy\)' }
             @{ Run = @('x', "-o$root\zip", $fixture.Zip); Exit = 0 }
             @{ Run = @('a', "$root\new.zip", $fixture.Source); Exit = 0 }

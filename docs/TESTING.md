@@ -749,7 +749,12 @@ tests caught before shipping):
   this system's tar.exe has no 7z writer. Pakko's own reader on the same archives, the
   destination-inside-source case, cancel and failure cleanup: `TarSandboxedServiceSevenZipTests`
   (`Archiver.Core.IntegrationTests/`). Arguments, the probe's verdict and every refusal:
-  `TarSevenZipCreationTests` (`Archiver.Core.Tests/`, no tar.exe run).
+  `TarSevenZipCreationTests` (`Archiver.Core.Tests/`, no tar.exe run). The CLI on top of it:
+  `CliSevenZipSwitchTests` (`-t7z`, `-m0=`, the `.7z` name rule, the password refusal, parsed
+  in-process) and `CliSevenZipSubprocessTests` (the real exe: signature, round trip, a bzip2
+  stream for `-m0=bzip2`, stored text at `-mx=0`, `-so`, `-rr5`, an existing archive with and
+  without `-y`, a missing source, the exit-7 refusals, `i`). That project has no 7-Zip, so the
+  method is read from the archive's own bytes there.
 - `ZipEntryWriterCompatibilityTests` (`Archiver.Core.PerformanceTests/` — lives there specifically
   to reuse the vendored, hash-verified `7za.exe` binary rather than duplicating it into a second
   test project; a correctness suite, not a performance one, despite the location) — proves the

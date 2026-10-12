@@ -82,6 +82,13 @@ budgets, `REL` the release's files, `STO` the Store.
 | CLI-023 | release | user | dev | `x` of a tar.gz and of a 7z onto an exFAT or FAT32 USB drive and into a network share | Exit 0 both times; every file is there with the source's bytes; no "cannot extract" line | `cli:x` T-F389 |
 | CLI-024 | quick | script | dev | `a -ttar.gz` of two names, one of which does not exist | Exit 2; the error names the missing source; no line of tar.exe's own ("Couldn't visit directory"). Guards the check made before tar.exe starts; a source that goes after it is covered by `TarSandboxedServiceVanishedSourceTests` only | `cli:a` T-F390 |
 | CLI-025 | quick | script | dev | `a -ttar` of a folder that holds a junction to a folder outside it, then `l` and `x` | `a` exits 1 with a "skipped" line naming the junction; the listing has nothing under it and no file of its target; `x` exits 0 | `cli:a` `cli:x` T-F391 |
+| CLI-026 | quick | script | dev | `a -t7z` of a tree with a Cyrillic name at `-mx=0`, the default and `-mx=9`; then `l` and `x -o` | Each file begins with the 7z signature and passes `7za t`; `7za l -slt` says Copy for `-mx=0` and LZMA2 for the others; the extracted tree equals the source | `cli:a` `cli:-t` `cli:-mx` T-F342 |
+| CLI-027 | quick | script | dev | `a -t7z` with `-m0=` lzma, bzip2, deflate and copy; with `-m0=bzip2 -mx=0`; with `-m0=ppmd` and `-m0=zstd` | Four archives with the method named, by `7za l -slt`; the fifth is Copy; the last two are exit 7 with no file | `cli:-m` T-F342 |
+| CLI-028 | quick | script | dev | `a -t7z -p...`; `a x.7z` with no `-t`; `-tzip x.7z`; `-t7z x.zip`; `-m0=lzma2` on a ZIP | Each is exit 7 with its reason, before anything is written | `cli:-p` `cli:-t` `cli:-m` T-F342 |
+| CLI-029 | quick | script | dev | `pakko i` | The 7z line reads create, extract, list, and supported | `cli:i` T-F342 |
+| CLI-030 | release | script | dev | Send Ctrl+C to a long `a -t7z`; kill the tar.exe of another | Exit 255, and exit 2; no archive, no `.tmp`, no `.pakko-7z-*` folder next to it and no new `libarchive_*` in `%TEMP%` | `cli:a` T-F342 |
+| CLI-031 | release | script | dev | `a -t7z` with the archive inside the folder it packs | The archive lists the source's files and nothing of its own making; nothing else is left in the folder | `cli:a` T-F342 T-F316 |
+| CLI-032 | release | user | dev | `a -t7z` on Windows 10 22H2 or a Windows Server | A 7z archive, or exit 2 with "this system's tar.exe" cannot create 7z; never tar.exe's own text | `cli:-t` T-F342 |
 
 ## SHL - `Archiver.Shell.exe`, started as Explorer starts it
 
@@ -98,6 +105,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | SHL-009 | release | script | dev | `--test` on an encrypted ZIP: answer the window's password prompt wrongly, then rightly | A second prompt with "wrong password", then "no errors" | `shell:--test` T-F191 |
 | SHL-010 | release | script | dev | No file list, an unknown argument, a path that does not exist | The first two: a non-zero exit and no window. The missing path: a result window that names the file; nothing is written | `shell:--extract-here` |
 | SHL-011 | release | script | dev | `--hash --algorithm sha256` on a folder with an unreadable file and a junction loop | The window lists the hashes and names the entries it skipped; it does not hang | `shell:--hash` T-F291 T-F251 |
+| SHL-012 | quick | script | dev | `--archive --format 7z` on a folder | `<name>.7z` next to the source, accepted by `7za t`, the entries under the folder's name, nothing else left | `shell:--format` T-F342 |
 
 ## EXP - the real Explorer menu
 
@@ -177,9 +185,9 @@ the registry back in a `finally` block. The App reads policy once at startup: re
 | ID | Tier | By | On | Action | Expect | Covers |
 |---|---|---|---|---|---|---|
 | POL-001 | release | uac | dev | `EnforceMOTW` at 0, 1 and 2, each with the user's own choice the other way: `pakko x` (with `-snz0` where the policy marks) and Shell extraction of a marked ZIP that holds a text file and a `.cmd` | 0: no file is marked; 1: both are; 2: the `.cmd` alone. `pakko` says that the policy decides | `policy:EnforceMOTW` T-F51 |
-| POL-002 | release | uac | dev | `AllowedFormats` = `zip`: `pakko l`, `x`, `a` on tar, tar.gz, 7z and RAR and on ZIP; Shell extraction and "Add to tar" | The others are refused with "blocked by Group Policy" and nothing is written; ZIP works | `policy:AllowedFormats` |
-| POL-003 | release | uac | dev | `BlockedFormats` = `zip`, and = `sevenzip` `rar`: `pakko l`, `t`, `x`, `a`; Shell extraction, test and "Add to tar" | The blocked formats are refused and nothing is written; the rest work | `policy:BlockedFormats` T-F262 |
-| POL-004 | release | uac | dev | `DisableTarExtraction` = 1: `pakko l`, `x`, `a` on tar.gz, 7z and RAR; `pakko i`; Shell extraction and "Add to tar" | Every tar-family action is refused and nothing is written; `i` shows `tar.exe` disabled; the refusal names the archive, not the destination folder; ZIP works | `policy:DisableTarExtraction` T-F261 T-F326 |
+| POL-002 | release | uac | dev | `AllowedFormats` = `zip`: `pakko l`, `x`, `a` on tar, tar.gz, 7z and RAR and on ZIP (`a -t7z` too); Shell extraction and "Add to tar" | The others are refused with "blocked by Group Policy" and nothing is written; ZIP works | `policy:AllowedFormats` T-F342 |
+| POL-003 | release | uac | dev | `BlockedFormats` = `zip`, and = `sevenzip` `rar`: `pakko l`, `t`, `x`, `a` (`a -t7z` under both); Shell extraction, test and "Add to tar" | The blocked formats are refused and nothing is written; the rest work | `policy:BlockedFormats` T-F262 T-F342 |
+| POL-004 | release | uac | dev | `DisableTarExtraction` = 1: `pakko l`, `x`, `a` on tar.gz, 7z and RAR (`a -t7z` too); `pakko i`; Shell extraction and "Add to tar" | Every tar-family action is refused and nothing is written; `i` shows `tar.exe` disabled; the refusal names the archive, not the destination folder; ZIP works | `policy:DisableTarExtraction` T-F261 T-F326 |
 | POL-005 | release | uac | dev | `DisableRecoveryData` = 1: `pakko a -rr5`, `t` on an archive with a set, `r` on a damaged one; Shell `--recovery-repair` | `a -rr` is refused and writes nothing, `t` says nothing of the set, `r` is refused; no repaired copy appears | `policy:DisableRecoveryData` T-F275 |
 | POL-006 | release | uac | dev | `BlockedFormats` = `zip`: `pakko l` and `pakko r` on a damaged ZIP with a set | `l` is refused; `r` writes a copy equal to the original | `policy:BlockedFormats` `cli:r` |
 | POL-007 | release | uac | dev | The Windows FIPS policy on (`FipsAlgorithmPolicy\Enabled` = 1): `pakko a -rr5`, `t`, `r`, `h`, and an AES-256 round trip | All work; MD5 for PAR2 is not refused | `cli:-rr` T-F275 |

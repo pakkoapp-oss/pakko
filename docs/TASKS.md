@@ -1485,8 +1485,13 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   their own messages (37 locales), and libarchive's temporary file kept in the destination.
   No frontend offers the format yet. Decisions and measurements: `docs/DECISIONS.md`'s T-F342
   wave 1 entry. Fixed on the way, in the same pull request: T-F390, T-F391; recorded: T-F392.
-- **Next:** wave 2 (CLI `-t7z`, `-m0=`, Shell `--format 7z`, with their smoke rows), then the App
-  and Explorer wave, "Test" for 7z, and the documents (`SECURITY.md` needs the maintainer's word).
+- **Wave 2 (CLI and Shell) done 2026-10-12:** `pakko a -t7z`, `-m0=<method>`, the `.7z` name
+  rule, `-p` refused, `pakko i`, `Archiver.Shell.exe --archive --format 7z`; smoke rows
+  `CLI-026..032` and `SHL-012`, an `a -t7z` case in `POL-002..004`. Decisions:
+  `docs/DECISIONS.md`'s T-F342 wave 2 entry.
+- **Next:** the App and Explorer wave, "Test" for 7z, and the documents (`SECURITY.md`: the
+  maintainer agreed on 2026-10-12). The maintainer decided the same day that v1.8.1 carries 7z
+  creation without encryption.
 - **Reported by:** the user, 2026-10-06.
 
 ### T-F343 — `pakko` in place of 7-Zip's console program: measure how compatible it is (v2.0, user-requested)

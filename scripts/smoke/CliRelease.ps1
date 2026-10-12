@@ -563,3 +563,72 @@ Add-SmokeStep 'CLI-020' {
     $listed = Invoke-Pakko @('l', '-sccUTF-8', $zip)
     Assert-Smoke ($listed.ExitCode -eq 0 -and $listed.Output.Contains("`t$cyrillic/one.txt") -and $listed.Output.Contains("`tascii.txt")) "l of a ZIP with cp866 names: exit $($listed.ExitCode) $($listed.Text)"
 }
+
+# T-F342: what a stopped 'a -t7z' may leave next to the archive or in %TEMP%: the archive, its
+# temporary file, the writer's folder, libarchive's own temporary file.
+function Get-SevenZipLeftover {
+    param([Parameter(Mandatory)][string]$Folder, [Parameter(Mandatory)][datetime]$Since)
+    @(Get-ChildItem -LiteralPath $Folder -Force -Name)
+    @(Get-ChildItem -LiteralPath ([System.IO.Path]::GetTempPath()) -Filter 'libarchive_*' -Force -ErrorAction SilentlyContinue |
+        Where-Object CreationTime -ge $Since | ForEach-Object { "%TEMP%\$($_.Name)" })
+}
+
+Add-SmokeStep 'CLI-030' {
+    $folder = Get-StepFolder 'cli030'
+    $sources = @((Get-Fixture Many), (Get-Fixture Big))
+    $began = Get-Date
+
+    # Ctrl+C: the signal goes as soon as tar.exe has something on disk.
+    $signal = Send-CtrlC -Prepare
+    $process = Start-PakkoInConsole (@('a', '-t7z', '-mx=9', (Join-Path $folder 'long.7z')) + $sources)
+    try {
+        Wait-Smoke { @(Get-ChildItem -LiteralPath $folder -Force).Count -gt 0 } 'the first file of pakko a -t7z'
+        Send-CtrlC -Signal $signal -Process $process
+        Assert-Smoke ($process.WaitForExit(30000)) 'pakko a -t7z did not end within 30 s of Ctrl+C'
+        Assert-Smoke ($process.ExitCode -eq 255) "pakko a -t7z after Ctrl+C: exit $($process.ExitCode), expected 255"
+    }
+    finally {
+        if (-not $process.HasExited) { $process.Kill() }
+        $process.Dispose()
+    }
+    $left = @(Get-SevenZipLeftover -Folder $folder -Since $began)
+    Assert-Smoke ($left.Count -eq 0) "pakko a -t7z after Ctrl+C left: $($left -join ', ')"
+
+    # tar.exe killed under pakko: an error, and the same nothing.
+    $process = Start-PakkoInConsole (@('a', '-t7z', '-mx=9', (Join-Path $folder 'killed.7z')) + $sources)
+    try {
+        Wait-Smoke { @(Get-ChildItem -LiteralPath $folder -Force).Count -gt 0 } 'the first file of the second pakko a -t7z'
+        $tar = @(Get-CimInstance Win32_Process -Filter "Name = 'tar.exe' AND ParentProcessId = $($process.Id)")
+        Assert-Smoke ($tar.Count -eq 1) "pakko has $($tar.Count) tar.exe children"
+        Stop-Process -Id $tar[0].ProcessId -Force
+        Assert-Smoke ($process.WaitForExit(30000)) 'pakko a -t7z did not end within 30 s of its tar.exe being killed'
+        Assert-Smoke ($process.ExitCode -eq 2) "pakko a -t7z with tar.exe killed: exit $($process.ExitCode), expected 2"
+    }
+    finally {
+        if (-not $process.HasExited) { $process.Kill() }
+        $process.Dispose()
+    }
+    $left = @(Get-SevenZipLeftover -Folder $folder -Since $began)
+    Assert-Smoke ($left.Count -eq 0) "pakko a -t7z with tar.exe killed left: $($left -join ', ')"
+}
+
+Add-SmokeStep 'CLI-031' {
+    $folder = Get-StepFolder 'cli031'
+    $name = Split-Path -Leaf (Get-Fixture Tree)
+    $source = Join-Path $folder $name
+    Copy-Item -LiteralPath (Get-Fixture Tree) -Destination $source -Recurse
+    $before = @(Get-ChildItem -LiteralPath $source -Recurse -File).Count
+
+    # The archive is written into the folder it packs.
+    $archive = Join-Path $source 'inside.7z'
+    $made = Invoke-Pakko @('a', '-t7z', $archive, $source)
+    Assert-Smoke ($made.ExitCode -eq 0) "a -t7z into its own source: exit $($made.ExitCode) $($made.Text)"
+
+    $listed = Invoke-Pakko @('l', '-sccUTF-8', $archive)
+    Assert-Smoke ($listed.ExitCode -eq 0) "l: exit $($listed.ExitCode) $($listed.Text)"
+    $files = @($listed.Output -split '\r?\n' | Where-Object { $_ -match '\tf\t' })
+    Assert-Smoke ($files.Count -eq $before) "the archive lists $($files.Count) files, the source had $before"
+    Assert-Smoke ($listed.Output -notmatch 'libarchive_|\.pakko-|inside\.7z|\.tmp') "the archive holds a file of its own making: $($listed.Output)"
+    $left = @(Get-ChildItem -LiteralPath $source -Force -Name | Where-Object { $_ -match '^\.pakko-|^libarchive_|\.tmp$' })
+    Assert-Smoke ($left.Count -eq 0) "left next to the archive: $($left -join ', ')"
+}

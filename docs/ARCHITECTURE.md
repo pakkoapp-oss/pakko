@@ -1711,7 +1711,7 @@ registered there, every leaf command is instantiated internally via `Make<T>()`.
 `BuildAddToArchiveTitle(paths, ext = L".zip")` and `BuildArchiveArgs(paths, format = L"zip")` (the
 latter only emits `--format <value>` for a non-`"zip"` value, so the pre-existing zip command line
 is unchanged). On the .NET side, `ShellArgumentParser.ParseArchive` consumes an optional
-`--format zip|tar` pair right after `--archive` into a new `ParsedCommand.Format`
+`--format zip|tar` pair (and `7z` since T-F342) right after `--archive` into a new `ParsedCommand.Format`
 (`ArchiveContainerFormat`, default `Zip`); `Archiver.Shell`'s archive command (`ShellCommands.ArchiveAsync`
 since T-F268, via `ShellServices`) now constructs `new ArchiveCreationRouter(new ZipArchiveService(), new TarSandboxedService())` directly
 (no DI container in this console entry point) instead of calling `ZipArchiveService.ArchiveAsync`,
@@ -1889,6 +1889,7 @@ public sealed record ParsedCliCommand
     public ConflictBehavior? OverwriteMode { get; init; }             // -ao{a|s|u}, x only
     public ArchiveContainerFormat ArchiveFormat { get; init; } = ArchiveContainerFormat.Zip; // a
     public CompressionLevel? CompressionLevel { get; init; }          // -mx=N, a only
+    public SevenZipMethod? SevenZipMethod { get; init; }              // -m0=<method>, a -t7z only (T-F342)
     public string? ErrorMessage { get; init; }
 }
 ```

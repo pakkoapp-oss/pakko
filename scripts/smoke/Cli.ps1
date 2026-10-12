@@ -204,3 +204,114 @@ Add-SmokeStep 'CLI-025' {
         [System.IO.Directory]::Delete($link, $false)
     }
 }
+
+# T-F342: the methods 7-Zip names in "7za l -slt" for the entries of a 7z archive (empty files have none).
+function Get-SevenZipMethod {
+    param([Parameter(Mandatory)][string]$Archive)
+    $listed = Invoke-Tool -Exe $Smoke.SevenZip -Arguments @('l', '-slt', $Archive)
+    Assert-Smoke ($listed.ExitCode -eq 0) "7za l -slt $(Split-Path -Leaf $Archive): exit $($listed.ExitCode)"
+    @($listed.Output -split '\r?\n' | Where-Object { $_ -match '^Method = \S' } | ForEach-Object { ($_ -replace '^Method = ', '') -replace ':.*$', '' } | Sort-Object -Unique)
+}
+
+function Test-SevenZipSignature {
+    param([Parameter(Mandatory)][string]$Archive)
+    $head = [byte[]]::new(6)
+    $stream = [System.IO.File]::OpenRead($Archive)
+    try { $null = $stream.Read($head, 0, 6) } finally { $stream.Dispose() }
+    ($head -join ',') -eq '55,122,188,175,39,28'
+}
+
+Add-SmokeStep 'CLI-026' {
+    $folder = Get-StepFolder 'cli026'
+    if (-not (Test-Path -LiteralPath $Smoke.SevenZip)) { Skip-Smoke 'the vendored 7za.exe is not there' }
+    $tree = Get-Fixture Tree
+    $name = Split-Path -Leaf $tree
+    $expected = Get-TreeHash $tree
+
+    $cases = @(
+        @{ File = 'store.7z'; Create = @('-mx=0'); Method = 'Copy' }
+        @{ File = 'default.7z'; Create = @(); Method = 'LZMA2' }
+        @{ File = 'best.7z'; Create = @('-mx=9'); Method = 'LZMA2' }
+    )
+    foreach ($case in $cases) {
+        $archive = Join-Path $folder $case.File
+        $made = Invoke-Pakko (@('a', '-t7z', $archive) + $case.Create + @($tree))
+        Assert-Smoke ($made.ExitCode -eq 0) "a -t7z $($case.File): exit $($made.ExitCode) $($made.Text)"
+        Assert-Smoke (Test-SevenZipSignature $archive) "$($case.File) does not begin with the 7z signature"
+
+        $reference = Invoke-Tool -Exe $Smoke.SevenZip -Arguments @('t', $archive)
+        Assert-Smoke ($reference.ExitCode -eq 0) "7za t $($case.File): exit $($reference.ExitCode)"
+        $methods = Get-SevenZipMethod $archive
+        Assert-Smoke (($methods -join ',') -eq $case.Method) "$($case.File): 7za names the method(s) '$($methods -join ',')', expected $($case.Method)"
+
+        $listed = Invoke-Pakko @('l', '-sccUTF-8', $archive)
+        Assert-Smoke ($listed.ExitCode -eq 0 -and $listed.Output.Contains("$name/sub/$name.txt")) "l $($case.File) does not show the Cyrillic name: $($listed.Text)"
+
+        $out = Join-Path $folder ($case.File + '.out')
+        $extracted = Invoke-Pakko @('x', $archive, "-o$out")
+        Assert-Smoke ($extracted.ExitCode -eq 0) "x $($case.File): exit $($extracted.ExitCode) $($extracted.Text)"
+        Assert-Smoke ((Get-TreeHash (Join-Path $out $name)) -eq $expected) "x $($case.File): the extracted files differ from the sources"
+    }
+    Assert-Smoke ((Get-Item -LiteralPath (Join-Path $folder 'default.7z')).Length -lt (Get-Item -LiteralPath (Join-Path $folder 'store.7z')).Length) 'the default archive is not smaller than the stored one'
+}
+
+Add-SmokeStep 'CLI-027' {
+    $folder = Get-StepFolder 'cli027'
+    if (-not (Test-Path -LiteralPath $Smoke.SevenZip)) { Skip-Smoke 'the vendored 7za.exe is not there' }
+    $tree = Get-Fixture Tree
+
+    $cases = @(
+        @{ Switches = @('-m0=lzma'); Method = 'LZMA' }
+        @{ Switches = @('-m0=BZip2'); Method = 'BZip2' }
+        @{ Switches = @('-m0=deflate'); Method = 'Deflate' }
+        @{ Switches = @('-m0=copy'); Method = 'Copy' }
+        @{ Switches = @('-m0=bzip2', '-mx=0'); Method = 'Copy' }
+    )
+    $index = 0
+    foreach ($case in $cases) {
+        $archive = Join-Path $folder "m$((++$index)).7z"
+        $made = Invoke-Pakko (@('a', '-t7z', $archive) + $case.Switches + @($tree))
+        Assert-Smoke ($made.ExitCode -eq 0) "a -t7z $($case.Switches -join ' '): exit $($made.ExitCode) $($made.Text)"
+        $methods = Get-SevenZipMethod $archive
+        Assert-Smoke (($methods -join ',') -eq $case.Method) "$($case.Switches -join ' '): 7za names '$($methods -join ',')', expected $($case.Method)"
+        $reference = Invoke-Tool -Exe $Smoke.SevenZip -Arguments @('t', $archive)
+        Assert-Smoke ($reference.ExitCode -eq 0) "7za t after $($case.Switches -join ' '): exit $($reference.ExitCode)"
+    }
+
+    foreach ($method in 'ppmd', 'zstd') {
+        $archive = Join-Path $folder "$method.7z"
+        $refused = Invoke-Pakko @('a', '-t7z', "-m0=$method", $archive, $tree)
+        Assert-Smoke ($refused.ExitCode -eq 7) "-m0=$method`: exit $($refused.ExitCode), expected 7: $($refused.Text)"
+        Assert-Smoke (-not (Test-Path -LiteralPath $archive)) "-m0=$method left a file"
+    }
+}
+
+Add-SmokeStep 'CLI-028' {
+    $folder = Get-StepFolder 'cli028'
+    $tree = Get-Fixture Tree
+
+    $cases = @(
+        @{ Name = 'locked.7z'; Run = @('-t7z', '-pSmoke-1'); Says = 'encrypt' }
+        @{ Name = 'plain.7z'; Run = @(); Says = '-t7z' }
+        @{ Name = 'zip.7z'; Run = @('-tzip'); Says = '-tzip' }
+        @{ Name = 'seven.zip'; Run = @('-t7z'); Says = '-t7z' }
+        @{ Name = 'method.zip'; Run = @('-m0=lzma2'); Says = '-t7z' }
+    )
+    foreach ($case in $cases) {
+        $archive = Join-Path $folder $case.Name
+        $refused = Invoke-Pakko (@('a') + $case.Run + @($archive, $tree))
+        Assert-Smoke ($refused.ExitCode -eq 7) "a $($case.Run -join ' ') $($case.Name): exit $($refused.ExitCode), expected 7: $($refused.Text)"
+        Assert-Smoke ($refused.Text.Contains($case.Says)) "a $($case.Run -join ' ') $($case.Name) does not say '$($case.Says)': $($refused.Text)"
+    }
+    $left = @(Get-ChildItem -LiteralPath $folder -Force -Name)
+    Assert-Smoke ($left.Count -eq 0) "the refused commands left: $($left -join ', ')"
+}
+
+Add-SmokeStep 'CLI-029' {
+    $info = Invoke-Pakko @('i')
+    Assert-Smoke ($info.ExitCode -eq 0) "i: exit $($info.ExitCode) $($info.Text)"
+    $line = @($info.Output -split '\r?\n' | Where-Object { $_ -match '^\s+7z\s' })
+    Assert-Smoke ($line.Count -eq 1) "i has $($line.Count) lines for 7z: $($info.Output)"
+    Assert-Smoke ($line[0] -match 'create, extract, list' -and $line[0] -match '\(supported\)') "the 7z line of i: $($line[0])"
+    "7z: $($line[0].Trim())"
+}
