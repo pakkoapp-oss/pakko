@@ -57,13 +57,13 @@ static const CLSID TEST_CLSID_HashSha256Command =
 
 // Expected EnumSubCommands order — mirrors ExplorerCommands.cpp's own build order exactly (see
 // its "Order mirrors NanaZip's real ContextMenu.cpp" comment): Browse first (T-F03), then the
-// Extract group (dialog, flat, "here", folder), then the Archive group (dialog, zip, tar, 7z), then
+// Extract group (dialog, flat, "here", folder), then the Archive group (dialog, zip, 7z, tar), then
 // the diagnostic group last (Test, Scan, then the two hash leaves) — CLAUDE.md's hard constraint
 // that primary actions precede diagnostic ones (T-F62) is asserted by this exact ordering.
 static const CLSID* const kExpectedSubCommandOrder[] = {
     &TEST_CLSID_BrowseCommand, &TEST_CLSID_ExtractDialogCommand, &TEST_CLSID_ExtractHereFlatCommand,
     &TEST_CLSID_ExtractHereCommand, &TEST_CLSID_ExtractFolderCommand, &TEST_CLSID_CompressDialogCommand,
-    &TEST_CLSID_ArchiveCommand, &TEST_CLSID_TarArchiveCommand, &TEST_CLSID_SevenZipArchiveCommand, &TEST_CLSID_TestCommand, &TEST_CLSID_RecoveryVerifyCommand,
+    &TEST_CLSID_ArchiveCommand, &TEST_CLSID_SevenZipArchiveCommand, &TEST_CLSID_TarArchiveCommand, &TEST_CLSID_TestCommand, &TEST_CLSID_RecoveryVerifyCommand,
     &TEST_CLSID_RecoveryRepairCommand, &TEST_CLSID_ScanCommand, &TEST_CLSID_HashCrc32Command, &TEST_CLSID_HashSha256Command,
 };
 
