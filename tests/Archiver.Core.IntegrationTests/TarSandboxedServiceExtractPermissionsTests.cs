@@ -78,7 +78,7 @@ public sealed partial class TarSandboxedServiceExtractPermissionsTests : IDispos
         var info = new FileInfo(file);
         FileSecurity security = info.GetAccessControl();
         security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
-        using WindowsIdentity identity = WindowsIdentity.GetCurrent();
+        using var identity = WindowsIdentity.GetCurrent();
         security.AddAccessRule(new FileSystemAccessRule(identity.User!, FileSystemRights.FullControl, AccessControlType.Allow));
         info.SetAccessControl(security);
         ReadDaclAndLabel(file).Should().NotContain(InheritedAuthenticatedUsersAce);
