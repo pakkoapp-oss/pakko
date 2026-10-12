@@ -91,8 +91,8 @@ sequenceDiagram
     participant EF as ExtractFolderCommand
     participant CDC as CompressDialogCommand
     participant AC as ArchiveCommand
-    participant TAC as TarArchiveCommand
     participant SZC as SevenZipArchiveCommand
+    participant TAC as TarArchiveCommand
     participant TC as TestCommand
     participant RVC as RecoveryVerifyCommand
     participant RRC as RecoveryRepairCommand
@@ -110,7 +110,7 @@ sequenceDiagram
     Factory->>Root: Make<PakkoRootCommand>()
     Explorer->>Root: GetFlags() → ECF_HASSUBCOMMANDS
     Explorer->>Root: EnumSubCommands()
-    Root->>Enum: Make each leaf, then SetCommands([BC, EDC, EHF, EH, EF, CDC, AC, TAC, SZC, TC, RVC, RRC, SC, HashCrc32, HashSha256])<br/>ALWAYS all fifteen, unconditionally — selection does not filter EnumSubCommands.<br/>Order asserted by ComLoadTests' EnumSubCommands_ReturnsAllFifteenLeafCommandsInDocumentedOrder:<br/>BC first (T-F03, NanaZip's kOpen), then extract dialog/flat/intelligent/named-folder (T-F115),<br/>then compress dialog and the three one-click archive verbs (T-F105, 7z: T-F342), then the diagnostic<br/>group last — Test, Verify with PAR2, Repair with PAR2 (T-F275), Scan (T-F146), CRC-32, SHA-256 (T-F128: two flat leaves, no submenu)
+    Root->>Enum: Make each leaf, then SetCommands([BC, EDC, EHF, EH, EF, CDC, AC, SZC, TAC, TC, RVC, RRC, SC, HashCrc32, HashSha256])<br/>ALWAYS all fifteen, unconditionally — selection does not filter EnumSubCommands.<br/>Order asserted by ComLoadTests' EnumSubCommands_ReturnsAllFifteenLeafCommandsInDocumentedOrder:<br/>BC first (T-F03, NanaZip's kOpen), then extract dialog/flat/intelligent/named-folder (T-F115),<br/>then compress dialog and the three one-click archive verbs (T-F105, 7z: T-F342), then the diagnostic<br/>group last — Test, Verify with PAR2, Repair with PAR2 (T-F275), Scan (T-F146), CRC-32, SHA-256 (T-F128: two flat leaves, no submenu)
     Root-->>Explorer: Enum (IEnumExplorerCommand)
     loop Explorer drains the enumerator
         Explorer->>Enum: Next(celt, ...)

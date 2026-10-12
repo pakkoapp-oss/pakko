@@ -1194,9 +1194,10 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         // kCompress before kCompressToZip). Test archive is a diagnostic/verification action,
         // not a primary one — it goes last, after every Extract/Archive variant (deliberate
         // deviation from NanaZip's own Test-before-Compress grouping, per project direction:
-        // primary actions before Test, always). T-F105: "Add to X.tar" sits right after
-        // "Add to X.zip" — both are one-click archive-creation commands, kept adjacent.
-        // T-F342: "Add to X.7z" is the third of them, after tar.
+        // primary actions before Test, always). T-F105: "Add to X.tar" joins "Add to X.zip" —
+        // both are one-click archive-creation commands, kept adjacent.
+        // T-F342: "Add to X.7z" sits between them: zip, 7z, tar, the order of the App's Format
+        // list and of Windows' own "Compress to" submenu.
         // T-F115: the new flat "Extract here" sits between the dialog and the (renamed)
         // "...Intelligently" command, matching NanaZip's own three-way extract-verb layout.
         // T-F03: "Open" (BrowseCommand) goes FIRST, ahead of even the Extract dialog — confirmed
@@ -1222,8 +1223,8 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         commands.push_back(std::move(pCmdB));
         commands.push_back(std::move(pCmdCompressDialog));
         commands.push_back(std::move(pCmdC));
-        commands.push_back(std::move(pCmdTarArchive));
         commands.push_back(std::move(pCmdSevenZipArchive));
+        commands.push_back(std::move(pCmdTarArchive));
         commands.push_back(std::move(pCmdTest));
         commands.push_back(std::move(pCmdRecoveryVerify));
         commands.push_back(std::move(pCmdRecoveryRepair)); // T-F275 step 4b: check first, then repair

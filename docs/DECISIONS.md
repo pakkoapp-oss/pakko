@@ -13639,8 +13639,8 @@ and the Shell are as waves 1 and 2 left them, plus one small Core type (the verd
   `sevenzip` alone): a selection does not jump under the user a moment after the start.
   `MainWindowLayoutTests` compares the markup's rows with
   `ListOrder`: a mismatch would create another format than the one picked. Windows' own
-  "Compress to" submenu has the same order (ZIP, 7z, TAR). The Explorer menu keeps the plan's
-  order (zip, tar, 7z): the request was about the card.
+  "Compress to" submenu has the same order (ZIP, 7z, TAR). The Explorer menu kept the plan's
+  order (zip, tar, 7z) in this wave and was changed right after it, see the end of this entry.
 - **The method has its own line.** The plan put Method between Format and Compression; on the
   device (uk-UA) that row ran past the card's edge and cut the compression list off. Method is
   now a second line of the same cell, shown for 7Z only, so the first line is what every other
@@ -13706,6 +13706,16 @@ had before this wave and the new line holds one short label, so no row grew.
 policy; a verdict written from no answer; the Shell recording after every format; in C++, a
 verdict that ignores the size, one that ignores the time, `sevenzip` allowed under the tar
 policy, and the number parser without its overflow check.
+
+### The Explorer submenu: zip, 7z, tar (the maintainer, 2026-10-12, after wave 3)
+
+Wave 3 left the submenu as the plan had it (zip, tar, 7z) and asked. The maintainer chose the
+card's order for the menu too: "Add to name.7z" now comes right after "Add to name.zip" and
+before "Add to name.tar". `PakkoRootCommand::EnumSubCommands`; pinned by
+`EnumSubCommands_ReturnsAllFifteenLeafCommandsInDocumentedOrder`, seen red first. Asked the same
+day whether Pakko should get the "preserve symbolic links" and "preserve hard links" boxes of
+Windows' own wizard, the maintainer decided it should not: Pakko keeps leaving links out of what
+it creates (T-F23, T-F391) and refusing an archive that holds one, and T-F392 stays its own task.
 
 ## T-F390 — tar.exe's wrong name for a missing list entry (2026-10-12)
 
