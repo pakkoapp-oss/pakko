@@ -26,6 +26,16 @@ public interface ITarService
     Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// T-F342: what tar.exe answered to the question behind <see cref="CanCreateSevenZipAsync"/>:
+    /// true or false, or null when it gave no answer (it timed out, as on a busy machine, or could
+    /// not be started). No answer is not "no": it is not kept, and the next call asks again. Use
+    /// this where the answer outlives the process; <see cref="CanCreateSevenZipAsync"/> is true
+    /// only for a "yes". The default is for an engine that always answers.
+    /// </summary>
+    async Task<bool?> AskSevenZipWriterAsync(CancellationToken cancellationToken = default) =>
+        await CanCreateSevenZipAsync(cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
     /// Extracts one or more tar-family archives (tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma,
     /// 7z, rar) via tar.exe. Never throws — errors are captured in ArchiveResult.Errors.
     /// IProgress&lt;ProgressReport&gt; (T-F142 — was IProgress&lt;int&gt;) to match

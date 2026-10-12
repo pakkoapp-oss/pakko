@@ -1655,3 +1655,17 @@ re-measured with T-F346's script before and after.
   after tar.exe is done). Next: measure which step it is, then give it its share of the bar or
   a text of its own.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`APP-023`), 2026-10-12.
+
+### T-F396 — A vanished-source test failed once beside the other test projects (P3)
+
+- [ ] **Status:** open. 2026-10-12, one full default run on the T-F342 wave 2 branch:
+  `TarSandboxedServiceVanishedSourceTests.CompressAsync_FolderRemovedJustBeforeTarStarts_IsNamedByPakko`
+  failed in 519 ms, its output holding `tar.exe: Error exit delayed from previous errors`, while
+  the other test projects ran beside it. The class alone then passed three times and the whole
+  project twice (240 of 240). The test creates a plain tar and asks nothing about 7z, so the
+  writer probe change of that branch is not in its path. Not known: which assertion failed and
+  tar.exe's whole stderr (the run's output was filtered to totals). T-F390 measured that tar.exe's
+  text for a missing list entry differs from run to run; if this is a wording Pakko does not
+  recognise, the vanished source is not named by Pakko and that is a product gap, not a test
+  fault. Next: run the class in a loop beside a CPU load, keeping the whole output.
+- **Reported by:** the full test run before the probe fix was pushed, 2026-10-12.

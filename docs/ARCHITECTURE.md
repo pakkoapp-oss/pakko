@@ -1229,6 +1229,10 @@ public interface ITarService
     // T-F342: runs tar.exe's 7z writer once (an empty archive to stdout) and keeps the answer;
     // false under DisableTarExtraction or when tar.exe cannot read 7z. See "Creating 7z" below.
     Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default);
+
+    // What tar.exe answered: true, false, or null for no answer (a timeout, a failed start).
+    // No answer is asked once more, is not kept, and is not "no". Default: the answer above.
+    Task<bool?> AskSevenZipWriterAsync(CancellationToken cancellationToken = default);
     Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
         IProgress<int>? progress = null,

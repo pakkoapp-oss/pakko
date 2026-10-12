@@ -13549,6 +13549,36 @@ left it; the App and the Explorer menu follow in wave 3.
   `a -t7z` is refused with the policy's text and writes nothing; under `BlockedFormats` = `zip`
   it writes the archive).
 
+### The writer probe took a timeout for "no writer" (found by CI, 2026-10-12)
+
+- **What happened.** Run 38252939959 of this wave's pull request, on one `windows-2025` runner:
+  of the nine `[SevenZipWriterFact]` tests in `CliSevenZipSubprocessTests` five passed (the same
+  tar.exe wrote 7z), two were skipped (the attribute's own probe said "no writer") and two failed
+  with `pakko: error: out.7z: This system's tar.exe cannot create 7z archives.`; those two took
+  16 s and 50 s, on a runner slow enough to hit the job's 30-minute limit earlier the same day.
+- **Root cause.** Wave 1's probe answered `false` for anything that was not a 7z header on
+  stdout, including its own 5-second timeout (`DetectionTimeout`, chosen for the `--version`
+  probe the App's first window waits for) and a tar.exe that could not be started, and the
+  answer was kept for the service's lifetime. On a busy machine tar.exe takes longer than five
+  seconds to start, so a machine that writes 7z was told it cannot. Not a test fault: a person's
+  `pakko a -t7z` on a loaded machine gets the same refusal.
+- **Fix.** `ITarService.AskSevenZipWriterAsync` returns what tar.exe answered, `true` or
+  `false`, or `null` when it gave no answer (a timeout, a failed start, or a `--version` probe
+  that returned its all-false default with no version). No answer is asked once more, is never
+  kept, and is never reported as "no"; `CanCreateSevenZipAsync` is `true` only for a "yes". The
+  writer probe and the `--version` run behind it wait 30 seconds, not 5: nothing on screen waits
+  for them. A tar.exe that fails the signature check is never run, so that stays a "no".
+- **Still refused:** two unanswered runs in a row (a tar.exe that hangs for a minute). The
+  refusal is `SevenZipWriterUnavailable`, whose text then overstates what is known; accepted for
+  a case that needs a broken tar.exe, and the next attempt asks again.
+- **Tests.** `TarSevenZipCreationTests` (no answer is retried once, not kept, asked again next
+  time; an answered "no" is kept; no `--version` answer does not run the writer; concurrent
+  questions share one run; the interface's default), and against the real tar.exe
+  `ProbeSevenZipWriterAsync_TimedOut_IsNoAnswer`. Mutants killed: an unanswered run kept; one
+  attempt; no version read as "no"; a timeout read as "no".
+- **For the next wave:** a record that outlives the process (the Explorer menu's hint) is
+  written only from an answer, never from `null`.
+
 ## T-F390 — tar.exe's wrong name for a missing list entry (2026-10-12)
 
 Measured on bsdtar 3.8.8 (Windows build 26300), a `-T -` list of `-C <dir>` / `<name>` lines,

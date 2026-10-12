@@ -22,34 +22,44 @@ public sealed class TarSandboxedService : ITarService
     // thread pool, T-F347) — a hung tar.exe --version must not hang app launch indefinitely.
     private static readonly TimeSpan DetectionTimeout = TimeSpan.FromSeconds(5);
 
+    // T-F342: nothing on screen waits for the 7z writer probe, and a timeout here used to read as
+    // "this tar.exe has no 7z writer": on a loaded machine tar.exe can take longer than five
+    // seconds to start. A run that gave no answer is asked once more before the caller is told so.
+    private static readonly TimeSpan SevenZipWriterProbeTimeout = TimeSpan.FromSeconds(30);
+    private const int SevenZipWriterProbeAttempts = 2;
+
     private readonly GroupPolicyOptions _policy;
     private readonly Func<Task<TarCapabilities>> _probe;
     private readonly Action? _beforeCreationLaunch;
-    private readonly Lazy<Task<bool>> _sevenZipWriter;
+    // The --version probe as the 7z writer question runs it: with the writer probe's patience.
+    private readonly Func<Task<TarCapabilities>> _sevenZipReaderProbe;
+    private readonly Func<Task<bool?>> _sevenZipWriterProbe;
+    private readonly Lock _sevenZipWriterLock = new();
+    private Task<bool?>? _sevenZipWriter;
 
     /// <summary>Creates the service under the given Group Policy (T-F261: required, never defaulted).</summary>
     public TarSandboxedService(GroupPolicyOptions policy)
         : this(policy, () => DetectCapabilitiesAsync(TarExecutablePath))
     {
+        _sevenZipReaderProbe = () => DetectCapabilitiesAsync(TarExecutablePath, SevenZipWriterProbeTimeout);
     }
 
     // T-F261: test seam for the unsandboxed tar.exe --version probe, so a unit test can prove it
     // never runs under DisableTarExtraction without starting tar.exe.
     // beforeCreationLaunch (T-F390) runs after the name list is final and before tar.exe starts,
     // so a test can remove a source inside that window.
-    // sevenZipWriterProbe (T-F342) stands in for the run of tar.exe's 7z writer.
+    // sevenZipWriterProbe (T-F342) stands in for the run of tar.exe's 7z writer; null is a run
+    // that gave no answer.
     internal TarSandboxedService(
         GroupPolicyOptions policy, Func<Task<TarCapabilities>> probe, Action? beforeCreationLaunch = null,
-        Func<Task<bool>>? sevenZipWriterProbe = null)
+        Func<Task<bool?>>? sevenZipWriterProbe = null)
     {
         ArgumentNullException.ThrowIfNull(policy);
         _policy = policy;
         _probe = probe;
         _beforeCreationLaunch = beforeCreationLaunch;
-        sevenZipWriterProbe ??= () => ProbeSevenZipWriterAsync(TarExecutablePath);
-        // A 7z Pakko could not open again is not offered: reading needs what Supports7z reports.
-        _sevenZipWriter = new Lazy<Task<bool>>(async () =>
-            (await _probe().ConfigureAwait(false)).Supports7z && await sevenZipWriterProbe().ConfigureAwait(false));
+        _sevenZipReaderProbe = probe;
+        _sevenZipWriterProbe = sevenZipWriterProbe ?? (() => ProbeSevenZipWriterAsync(TarExecutablePath, SevenZipWriterProbeTimeout));
     }
 
     // T-F261: POLICIES.md promises DisableTarExtraction means tar.exe is never started — enforced
@@ -63,7 +73,47 @@ public sealed class TarSandboxedService : ITarService
 
     /// <inheritdoc/>
     public async Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default) =>
-        !_policy.DisableTarExtraction && await _sevenZipWriter.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await AskSevenZipWriterAsync(cancellationToken).ConfigureAwait(false) == true;
+
+    /// <inheritdoc/>
+    /// <remarks>False under DisableTarExtraction, without starting anything.</remarks>
+    public async Task<bool?> AskSevenZipWriterAsync(CancellationToken cancellationToken = default)
+    {
+        if (_policy.DisableTarExtraction)
+            return false;
+
+        Task<bool?> answer;
+        lock (_sevenZipWriterLock)
+        {
+            // A run that gave no answer (or failed) is not kept: the next question asks again.
+            if (_sevenZipWriter is null
+                || (_sevenZipWriter.IsCompleted && (!_sevenZipWriter.IsCompletedSuccessfully || _sevenZipWriter.Result is null)))
+            {
+                _sevenZipWriter = AskSevenZipWriterWithRetryAsync();
+            }
+            answer = _sevenZipWriter;
+        }
+        return await answer.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<bool?> AskSevenZipWriterWithRetryAsync()
+    {
+        bool? answer = null;
+        for (int attempt = 0; attempt < SevenZipWriterProbeAttempts && answer is null; attempt++)
+            answer = await AskSevenZipWriterOnceAsync().ConfigureAwait(false);
+        return answer;
+    }
+
+    private async Task<bool?> AskSevenZipWriterOnceAsync()
+    {
+        TarCapabilities capabilities = await _sevenZipReaderProbe().ConfigureAwait(false);
+        // A 7z Pakko could not open again is not offered: reading needs what Supports7z reports.
+        if (capabilities.Supports7z)
+            return await _sevenZipWriterProbe().ConfigureAwait(false);
+        // All-false with no version is what DetectCapabilitiesAsync returns when tar.exe gave no
+        // answer; a tar.exe that did answer names its version.
+        return capabilities.Version.Length == 0 ? null : false;
+    }
 
     // The first six bytes of a 7z archive ('7' 'z' BC AF 27 1C), as Latin-1 text.
     private const string SevenZipSignature = "7z\u00BC\u00AF'\u001C";
@@ -72,15 +122,16 @@ public sealed class TarSandboxedService : ITarService
     // libarchive ships in different Windows releases), so tar.exe writes an empty archive to its
     // stdout: 32 bytes of 7z header, then padding. An unknown format exits 1 and writes nothing.
     // Latin-1 keeps every byte as one character. Unsandboxed like the version probe: no archive
-    // is read. Any failure means "no writer".
-    internal static async Task<bool> ProbeSevenZipWriterAsync(string tarExecutablePath)
+    // is read. A tar.exe that fails the signature check is never run, so the answer is "no"; a
+    // run that timed out or could not be started gave no answer (null).
+    internal static async Task<bool?> ProbeSevenZipWriterAsync(string tarExecutablePath, TimeSpan timeout)
     {
         try
         {
             if (!TarSignatureVerifier.Verify(tarExecutablePath))
                 return false;
 
-            using var timeoutCts = new CancellationTokenSource(DetectionTimeout);
+            using var timeoutCts = new CancellationTokenSource(timeout);
             (int exitCode, string? output, _) = await SandboxedProcessLauncher.RunAsync(
                 tarExecutablePath, ["--format=7zip", "-cf", "-", "-T", "NUL"],
                 new ProcessLaunchOptions(OutputEncoding: System.Text.Encoding.Latin1), timeoutCts.Token).ConfigureAwait(false);
@@ -88,7 +139,7 @@ public sealed class TarSandboxedService : ITarService
         }
         catch (Exception)
         {
-            return false;
+            return null;
         }
     }
 
@@ -107,7 +158,10 @@ public sealed class TarSandboxedService : ITarService
     // lets Archiver.Core.Tests point the real detection logic at a path that doesn't exist, to
     // prove "tar.exe physically absent" hits the same documented all-false-defaults path as every
     // other failure mode here, without adding a public seam to the const itself.
-    internal static async Task<TarCapabilities> DetectCapabilitiesAsync(string tarExecutablePath)
+    internal static Task<TarCapabilities> DetectCapabilitiesAsync(string tarExecutablePath) =>
+        DetectCapabilitiesAsync(tarExecutablePath, DetectionTimeout);
+
+    private static async Task<TarCapabilities> DetectCapabilitiesAsync(string tarExecutablePath, TimeSpan timeout)
     {
         try
         {
@@ -118,7 +172,7 @@ public sealed class TarSandboxedService : ITarService
             if (!TarSignatureVerifier.Verify(tarExecutablePath))
                 return new TarCapabilities();
 
-            using var timeoutCts = new CancellationTokenSource(DetectionTimeout);
+            using var timeoutCts = new CancellationTokenSource(timeout);
             (_, string? output, _) = await SandboxedProcessLauncher.RunAsync(
                 tarExecutablePath, ["--version"], new ProcessLaunchOptions(), timeoutCts.Token).ConfigureAwait(false);
             return TarVersionParser.Parse(output);
