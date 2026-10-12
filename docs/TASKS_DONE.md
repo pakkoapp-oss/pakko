@@ -12744,15 +12744,19 @@ PowerShell does natively.
   it. Lines that name the right file ("Cannot stat", "Couldn't open") are shown as before.
   Tests: `TarVanishedSourceTests` (7, unit) and `TarSandboxedServiceVanishedSourceTests` (2, real
   tar.exe, both seen red before the fix; the seam removes the source after the last check).
-  Smoke row `CLI-024` (quick, scripted).
+  Smoke row `CLI-024` (quick, scripted) guards the check made up front, which the CLI already
+  passed before this fix: the window itself is reachable only through the integration seam, so
+  the two integration tests are this task's proof. `CLI-024` ran OK on the published Native AOT
+  `pakko.exe`; the run on the installed package is owed (it waits for the v1.8.1 release smoke,
+  which needs the v1.8.1 package installed).
 - **Before that:** the name list for `tar -T -` was checked for existence once, before the
   recursive count of every source, so a large selection left seconds for a source to go. tar.exe
   then printed `tar.exe: <something>: Couldn't visit directory: No such file or directory`, where
   `<something>` is not the missing name (measured: empty, and in wave 0 pieces of PATH), and
   Pakko passed its stderr to the user as the error text. Every tar.exe format.
 - **Not done:** the report to Microsoft/libarchive is drafted in `docs/DECISIONS.md` and not
-  sent. A file deleted inside a folder while tar.exe walks it is tar.exe's own "Cannot stat"
-  line, which names the file correctly.
+  sent. A file deleted inside a folder while tar.exe walks it was not measured (the "Cannot
+  stat" lines measured, for a denied file and folder, name the file correctly).
 - **Found by:** the T-F342 research (wave 0), 2026-10-12.
 
 ### T-F391 — A link inside a source folder: tar.exe followed a junction and stored a symbolic link's absolute target (P2)
@@ -12765,7 +12769,9 @@ PowerShell does natively.
   anchored, escaped pattern for each link (`TarExcludePattern`). Tests:
   `TarSandboxedServiceNestedLinkTests` (7 with the real tar.exe, 6 seen red; the symbolic-link
   one needs the right to create links) and `TarExcludePatternTests` (9). Mutants without the `^`
-  anchor and without the escaping both fail the decoy test. Smoke row `CLI-025` (quick, scripted).
+  anchor and without the escaping both fail the decoy test. Smoke row `CLI-025` (quick, scripted):
+  OK on the published Native AOT `pakko.exe`; the run on the installed package is owed (after
+  the v1.8.1 release smoke).
 - **Before that:** only a selected source was checked for being a link. Inside a folder tar.exe
   followed a junction and packed what it points to (files from outside the selection), and
   stored a symbolic link as a link entry with its target as `//?/C:/Users/<user>/...`: the
