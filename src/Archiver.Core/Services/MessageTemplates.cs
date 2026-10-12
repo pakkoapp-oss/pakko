@@ -39,9 +39,11 @@ public static class MessageTemplates
         [MessageCode.PasswordTooLong] =
             "Archive was not created: the password is longer than {0} characters, the most 7-Zip accepts for an AES-encrypted ZIP.",
         [MessageCode.PasswordOnlyForZip] = "Password protection is only available for ZIP archives.",
+        [MessageCode.SevenZipEncryptionNotSupported] = "Password protection is not available for 7z archives.",
         [MessageCode.CreationFormatBlocked] = "Creating a {0} archive is blocked by Group Policy.",
         [MessageCode.TarCreationDisabled] = "tar.exe-based archive creation is disabled by Group Policy.",
         [MessageCode.TarCreationFailed] = "tar.exe failed to create archive: {0}",
+        [MessageCode.SevenZipWriterUnavailable] = "This system's tar.exe cannot create 7z archives.",
         [MessageCode.TarNameNotRepresentable] =
             "The name '{0}' contains characters that tar.exe cannot handle safely on this system " +
             "(ANSI code page {1}). Use ZIP for this content.",

@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>A proteção por palavra-passe só está disponível para arquivos ZIP.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>A proteção por palavra-passe não está disponível para arquivos 7z.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>A criação de um arquivo {0} está bloqueada por uma Política de Grupo.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>O tar.exe não conseguiu criar o arquivo: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>O tar.exe deste sistema não consegue criar arquivos 7z.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>O nome «{0}» contém carateres que o tar.exe não consegue processar em segurança neste sistema (página de códigos ANSI {1}). Utilize ZIP para este conteúdo.</value>

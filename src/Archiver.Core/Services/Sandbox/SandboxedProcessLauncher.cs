@@ -19,6 +19,7 @@ internal static partial class SandboxedProcessLauncher
     private const uint CREATE_NO_WINDOW = 0x08000000;
     private const uint CREATE_SUSPENDED = 0x00000004;
     private const uint EXTENDED_STARTUPINFO_PRESENT = 0x00080000;
+    private const uint CREATE_UNICODE_ENVIRONMENT = 0x00000400;
     private const uint HANDLE_FLAG_INHERIT = 0x00000001;
 
     // How long a terminated child gets to actually go away before the call returns anyway.
@@ -96,6 +97,8 @@ internal static partial class SandboxedProcessLauncher
         string commandLine = BuildCommandLine(fileName, arguments);
         char[] commandLineBuffer = new char[commandLine.Length + 1];
         commandLine.CopyTo(0, commandLineBuffer, 0, commandLine.Length);
+        // Null (no overrides) passes NULL: the child then inherits this process's environment as before.
+        char[]? environment = options.EnvironmentOverrides is null ? null : ProcessEnvironmentBlock.Build(options.EnvironmentOverrides);
 
         bool outRef = false, errRef = false, sidRef = false, inRef = false;
         try
@@ -142,8 +145,8 @@ internal static partial class SandboxedProcessLauncher
                     lpProcessAttributes: IntPtr.Zero,
                     lpThreadAttributes: IntPtr.Zero,
                     bInheritHandles: true,
-                    CREATE_NO_WINDOW | CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT,
-                    lpEnvironment: IntPtr.Zero,
+                    CREATE_NO_WINDOW | CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT | (environment is null ? 0 : CREATE_UNICODE_ENVIRONMENT),
+                    environment,
                     options.WorkingDirectory,
                     ref startupInfoEx,
                     out PROCESS_INFORMATION processInfo);
@@ -450,7 +453,7 @@ internal static partial class SandboxedProcessLauncher
             IntPtr lpThreadAttributes,
             [MarshalAs(UnmanagedType.Bool)] bool bInheritHandles,
             uint dwCreationFlags,
-            IntPtr lpEnvironment,
+            [In] char[]? lpEnvironment,
             string? lpCurrentDirectory,
             ref STARTUPINFOEX lpStartupInfo,
             out PROCESS_INFORMATION lpProcessInformation);

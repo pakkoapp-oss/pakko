@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>パスワード保護は ZIP アーカイブでのみ使用できます。</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>パスワード保護は 7z アーカイブでは使用できません。</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>{0} アーカイブの作成はグループ ポリシーによってブロックされています。</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe でアーカイブを作成できませんでした: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>このシステムの tar.exe では 7z アーカイブを作成できません。</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>名前「{0}」には、このシステムで tar.exe が安全に処理できない文字が含まれています (ANSI コード ページ {1})。この内容には ZIP を使用してください。</value>

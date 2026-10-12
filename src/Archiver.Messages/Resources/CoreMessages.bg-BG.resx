@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Защитата с парола е налична само за ZIP архиви.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Защитата с парола не е налична за 7z архиви.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Създаването на архив {0} е блокирано от групова политика.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe не успя да създаде архива: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>tar.exe на тази система не може да създава 7z архиви.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Името „{0}“ съдържа знаци, които tar.exe не може да обработи безопасно в тази система (ANSI кодова страница {1}). Използвайте ZIP за това съдържание.</value>

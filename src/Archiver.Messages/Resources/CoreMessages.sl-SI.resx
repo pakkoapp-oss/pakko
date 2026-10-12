@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Zaščita z geslom je na voljo le za arhive ZIP.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Zaščita z geslom ni na voljo za arhive 7z.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Ustvarjanje arhiva {0} je blokirano s pravilnikom skupine.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe ni mogel ustvariti arhiva: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>tar.exe tega sistema ne more ustvariti arhivov 7z.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Ime »{0}« vsebuje znake, ki jih tar.exe v tem sistemu ne more varno obdelati (kodna stran ANSI {1}). Za to vsebino uporabite ZIP.</value>

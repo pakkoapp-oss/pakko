@@ -15,6 +15,8 @@ internal static class ArchiveTempFile
     private const string Suffix = ".tmp";
     /// <summary>The folder the parallel ZIP writer keeps its compressed chunks in.</summary>
     internal const string ChunkFolderPrefix = ".pakko-tmp-";
+    /// <summary>The folder tar.exe's 7z writer keeps its temporary file in (T-F342).</summary>
+    internal const string WriterFolderPrefix = ".pakko-7z-";
     private const int SharingViolation = 0x20;
     private const int LockViolation = 0x21;
     private const int FileExists = 0x50;
@@ -33,6 +35,7 @@ internal static class ArchiveTempFile
         string folder = Path.GetDirectoryName(Path.GetFullPath(destPath))!;
         TempOwner.SweepStale(folder, Prefix, Suffix, TempScope.Destination);
         TempOwner.SweepStale(folder, ChunkFolderPrefix, "", TempScope.Destination);
+        TempOwner.SweepStale(folder, WriterFolderPrefix, "", TempScope.Destination);
         return Path.Combine(folder, TempOwner.NewName(Prefix, Suffix));
     }
 
@@ -40,6 +43,11 @@ internal static class ArchiveTempFile
     /// (T-F391: the list of names tar.exe leaves out).</summary>
     public static string NewSibling(string tempPath) =>
         Path.Combine(Path.GetDirectoryName(tempPath)!, TempOwner.NewName(Prefix, Suffix));
+
+    /// <summary>A folder path in <paramref name="tempPath"/>'s folder for tar.exe's 7z writer
+    /// (T-F342), swept like the temporary file. The folder itself is not created.</summary>
+    public static string NewWriterFolder(string tempPath) =>
+        Path.Combine(Path.GetDirectoryName(tempPath)!, TempOwner.NewName(WriterFolderPrefix));
 
     /// <summary>
     /// Overwrite keeps the old archive until the commit replaces it — except when the archive lies

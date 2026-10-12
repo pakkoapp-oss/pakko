@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Salasanasuojaus on käytettävissä vain ZIP-arkistoille.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Salasanasuojaus ei ole käytettävissä 7z-arkistoille.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>{0}-arkiston luominen on estetty ryhmäkäytännöllä.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe ei pystynyt luomaan arkistoa: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>Tämän järjestelmän tar.exe ei voi luoda 7z-arkistoja.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Nimi ”{0}” sisältää merkkejä, joita tar.exe ei voi käsitellä turvallisesti tässä järjestelmässä (ANSI-koodisivu {1}). Käytä ZIP-muotoa tälle sisällölle.</value>

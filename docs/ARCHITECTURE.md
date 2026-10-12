@@ -311,9 +311,12 @@ public sealed record ArchiveOptions
     public CompressionLevel CompressionLevel { get; init; } = CompressionLevel.Optimal;
     // T-F105 (v1.4): which container format to CREATE. Default Zip preserves all pre-T-F105
     // callers/tests unchanged. Deliberately separate from the detection-only ArchiveFormat enum
-    // (Models/ArchiveFormat.cs) used by extraction routing — that one includes read-only formats
-    // (Rar, SevenZip) that can never be a creation target.
+    // (Models/ArchiveFormat.cs) used by extraction routing — that one includes a read-only format
+    // (Rar) that can never be a creation target.
     public ArchiveContainerFormat Format { get; init; } = ArchiveContainerFormat.Zip;
+    // T-F342: the method of a SevenZip archive; other formats ignore it. CompressionLevel sets its
+    // level (Fastest 1, Optimal 6, SmallestSize 9); NoCompression stores, whatever the method.
+    public SevenZipMethod SevenZipMethod { get; init; } = SevenZipMethod.Lzma2;
 
     // T-F06: invoked once per conflicting destination path when OnConflict == Ask. Null (e.g.
     // Archiver.Shell, or a test that doesn't wire it) falls back to Skip — see ConflictResolver.
@@ -322,7 +325,7 @@ public sealed record ArchiveOptions
     // T-F193: non-null encrypts every ZIP file entry with WinZip AES-256 (AE-2); folder entries
     // stay unencrypted. Called once, before any destination-conflict step, Purpose = Encrypt,
     // maxAttempts = 1. A cancelled answer or one EncryptionPasswordRule refuses fails the call
-    // with nothing created; a tar-family Format with a resolver is an error (TarSandboxedService).
+    // with nothing created; a tar-family or 7z Format with a resolver is an error (TarSandboxedService).
     // Forces ParallelSingleArchiveWriter in both modes — ZipArchive cannot encrypt.
     public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }
 
@@ -338,7 +341,10 @@ public sealed record ArchiveOptions
 public enum ArchiveMode { SingleArchive, SeparateArchives }
 
 // Models/ArchiveContainerFormat.cs
-public enum ArchiveContainerFormat { Zip, Tar, TarGz, TarBz2, TarXz, TarZst, TarLzma }
+public enum ArchiveContainerFormat { Zip, Tar, TarGz, TarBz2, TarXz, TarZst, TarLzma, SevenZip }
+
+// Models/SevenZipMethod.cs (T-F342)
+public enum SevenZipMethod { Lzma2, Lzma, BZip2, Deflate, Copy }
 
 public enum ConflictBehavior { Overwrite, Skip, Rename, Ask }
 // T-23 (v1.0): Ask was cut from scope, default Skip. T-F06 (2026-07-14) reintroduced it as a
@@ -1220,6 +1226,9 @@ public sealed record TarCapabilities
 public interface ITarService
 {
     Task<TarCapabilities> DetectCapabilitiesAsync();
+    // T-F342: runs tar.exe's 7z writer once (an empty archive to stdout) and keeps the answer;
+    // false under DisableTarExtraction or when tar.exe cannot read 7z. See "Creating 7z" below.
+    Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default);
     Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
         IProgress<int>? progress = null,
@@ -1635,6 +1644,23 @@ tar-family listing path being coarser than ZIP's.
 `GetBaseName` — `GetExtension(ArchiveContainerFormat)` maps the enum to `.zip`/`.tar`/`.tar.gz`/
 etc.; `ZipArchiveService.ArchiveAsync`'s two previously-hardcoded `".zip"` literals now call it
 too, so both creation paths share one source of truth for extensions.
+
+**Creating 7z (T-F342, Core; no frontend offers it yet).** `ArchiveContainerFormat.SevenZip`
+goes to `TarSandboxedService.CompressAsync` like the tar family, with three differences. It is
+refused before anything is written when `CanCreateSevenZipAsync` is false
+(`SevenZipWriterUnavailable`) or a password is asked for (`SevenZipEncryptionNotSupported`). Its
+arguments come from `AppendSevenZipArgs` (`--format=7zip --options 7zip:compression=...`), not
+from `AppendCompressionFilterArgs`. And tar.exe runs with TMP/TEMP pointing at a folder of
+Pakko's own next to the archive (`ProcessLaunchOptions.EnvironmentOverrides`,
+`ProcessEnvironmentBlock`, `ArchiveTempFile.NewWriterFolder`), because libarchive's 7z writer
+keeps the whole compressed stream in a temporary file. The policy name is `sevenzip`, the one
+reading uses. Why, and the measurements: `docs/DECISIONS.md`'s T-F342 wave 1 entry.
+
+**Sources on tar.exe's name list (T-F390, T-F391).** `AppendSourcesToNameList` builds
+`ListedSource` records (the selected path, the `-C` folder, the name, the item itself and the
+exclude patterns for links inside it), not text lines. A listed source that is gone is reported
+by Pakko (`ReportVanished`) right before tar.exe starts and again after a failure; links inside a
+source are excluded through an `-X` file of `TarExcludePattern`s and reported as skipped.
 
 **T-F264 (2026-09-28):** `ArchiveNaming` is the only naming source. New public members:
 

@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Wachtwoordbeveiliging is alleen beschikbaar voor ZIP-archieven.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Wachtwoordbeveiliging is niet beschikbaar voor 7z-archieven.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Het maken van een {0}-archief is geblokkeerd door groepsbeleid.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe kon het archief niet maken: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>tar.exe van dit systeem kan geen 7z-archieven maken.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>De naam ‘{0}’ bevat tekens die tar.exe op dit systeem niet veilig kan verwerken (ANSI-codetabel {1}). Gebruik ZIP voor deze inhoud.</value>

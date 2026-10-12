@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Bảo vệ bằng mật khẩu chỉ khả dụng cho tệp nén ZIP.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Bảo vệ bằng mật khẩu không khả dụng cho tệp nén 7z.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Việc tạo tệp nén {0} bị Chính sách Nhóm chặn.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe không thể tạo tệp nén: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>tar.exe của hệ thống này không thể tạo tệp nén 7z.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Tên "{0}" chứa ký tự mà tar.exe không thể xử lý an toàn trên hệ thống này (trang mã ANSI {1}). Hãy dùng ZIP cho nội dung này.</value>

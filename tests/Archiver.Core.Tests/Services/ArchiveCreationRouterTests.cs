@@ -37,6 +37,9 @@ file sealed class FakeTarService : ITarService
     public int CompressCallCount;
     public ArchiveResult CompressResult = new();
 
+    public Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
+
+
     public Task<TarCapabilities> DetectCapabilitiesAsync() => Task.FromResult(new TarCapabilities());
 
     public Task<ArchiveResult> ExtractAsync(ExtractOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)

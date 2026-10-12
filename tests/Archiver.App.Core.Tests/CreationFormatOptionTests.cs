@@ -6,12 +6,15 @@ namespace Archiver.App.Core.Tests;
 // T-F388: the New archive card offered formats a policy makes Core refuse.
 public sealed class CreationFormatOptionTests
 {
-    private static readonly ArchiveContainerFormat[] All = Enum.GetValues<ArchiveContainerFormat>();
+    // T-F342: Core creates 7z, but the card has no entry for it until the App wave adds one.
+    private static readonly ArchiveContainerFormat[] All =
+        [.. Enum.GetValues<ArchiveContainerFormat>().Where(f => f != ArchiveContainerFormat.SevenZip)];
 
     [Fact]
     public void NoPolicy_OffersEveryFormat()
     {
         All.Should().OnlyContain(f => CreationFormatOption.IsOffered(new GroupPolicyOptions(), f));
+        CreationFormatOption.IsOffered(new GroupPolicyOptions(), ArchiveContainerFormat.SevenZip).Should().BeFalse();
         CreationFormatOption.Default(new GroupPolicyOptions()).Should().Be(ArchiveContainerFormat.Zip);
     }
 

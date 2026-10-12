@@ -12,6 +12,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// <param name="StdInData">Bytes written to the child's stdin through a pipe, then closed (T-F283: tar.exe's "-T -" name list). Not combined with <paramref name="StdIn"/>.</param>
 /// <param name="WorkingDirectory">The child's current directory; relative arguments resolve against it.</param>
 /// <param name="OutputEncoding">How stdout/stderr are decoded; null reads them as UTF-8.</param>
+/// <param name="EnvironmentOverrides">Variables the child gets with these values, on top of this process's whole environment (T-F342: TMP/TEMP for libarchive's 7z writer); null hands the environment over unchanged.</param>
 internal sealed record ProcessLaunchOptions(
     SafeSidHandle? AppContainerSid = null,
     SafeJobObjectHandle? Job = null,
@@ -20,4 +21,5 @@ internal sealed record ProcessLaunchOptions(
     Microsoft.Win32.SafeHandles.SafeFileHandle? StdIn = null,
     string? WorkingDirectory = null,
     System.Text.Encoding? OutputEncoding = null,
-    byte[]? StdInData = null);
+    byte[]? StdInData = null,
+    IReadOnlyDictionary<string, string>? EnvironmentOverrides = null);

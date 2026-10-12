@@ -44,6 +44,9 @@ file sealed class TarMustNotRunService : ITarService
     public int ProbeCalls;
     public int TarCalls;
 
+    public Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
+
+
     public Task<TarCapabilities> DetectCapabilitiesAsync()
     {
         ProbeCalls++;

@@ -51,6 +51,9 @@ public static class SevenZipRunner
     /// </summary>
     public static void Test(string archivePath) => Run(["t", archivePath, "-bd"]);
 
+    /// <summary>T-F342: 7-Zip's technical listing (<c>l -slt</c>): Method, Solid and Attributes for each entry.</summary>
+    public static string ListTechnical(string archivePath) => RunForOutput(["l", "-slt", "-bd", archivePath]);
+
     /// <summary>
     /// T-F193: builds a WinZip-AES-256 encrypted ZIP with the real reference tool (7-Zip only ever
     /// writes AE-2) — the independent source of large encrypted entries Pakko's own reader is

@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Parola koruması yalnızca ZIP arşivleri için kullanılabilir.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Parola koruması 7z arşivleri için kullanılamaz.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>{0} arşivi oluşturma Grup İlkesi tarafından engellendi.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe arşivi oluşturamadı: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>Bu sistemin tar.exe'si 7z arşivleri oluşturamıyor.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>“{0}” adı, tar.exe'nin bu sistemde güvenle işleyemeyeceği karakterler içeriyor (ANSI kod sayfası {1}). Bu içerik için ZIP kullanın.</value>

@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>La protección con contraseña solo está disponible para archivos ZIP.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>La protección con contraseña no está disponible para archivos 7z.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>La creación de un archivo {0} está bloqueada por una directiva de grupo.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe no pudo crear el archivo comprimido: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>El tar.exe de este sistema no puede crear archivos 7z.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>El nombre «{0}» contiene caracteres que tar.exe no puede manejar con seguridad en este sistema (página de códigos ANSI {1}). Use ZIP para este contenido.</value>

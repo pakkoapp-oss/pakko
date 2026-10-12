@@ -34,6 +34,8 @@ internal sealed class TestingZipEngine : IArchiveService
 
 internal sealed class UnusedTarEngine : ITarService
 {
+    public Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
+
     public Task<TarCapabilities> DetectCapabilitiesAsync() => Task.FromResult(new TarCapabilities());
     public Task<ArchiveResult> CompressAsync(ArchiveOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default) => throw new NotImplementedException();
     public Task<ArchiveResult> ExtractAsync(ExtractOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default) => throw new NotImplementedException();

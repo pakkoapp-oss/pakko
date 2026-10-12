@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>הגנה בסיסמה זמינה לארכיוני ZIP בלבד.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>הגנה בסיסמה אינה זמינה לארכיוני 7z.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>יצירת ארכיון {0} חסומה על-ידי מדיניות קבוצתית.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe לא הצליח ליצור את הארכיון: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>tar.exe של מערכת זו אינו יכול ליצור ארכיוני 7z.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>השם "{0}" מכיל תווים ש-tar.exe אינו יכול לטפל בהם בבטחה במערכת זו (דף קוד ANSI {1}). השתמש ב-ZIP עבור תוכן זה.</value>

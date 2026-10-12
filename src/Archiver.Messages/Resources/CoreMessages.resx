@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Password protection is only available for ZIP archives.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Password protection is not available for 7z archives.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Creating a {0} archive is blocked by Group Policy.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe failed to create archive: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>This system's tar.exe cannot create 7z archives.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>The name '{0}' contains characters that tar.exe cannot handle safely on this system (ANSI code page {1}). Use ZIP for this content.</value>

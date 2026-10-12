@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>الحماية بكلمة مرور متاحة لأرشيفات ZIP فقط.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>الحماية بكلمة مرور غير متاحة لأرشيفات 7z.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>إنشاء أرشيف {0} محظور بواسطة نهج المجموعة.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>تعذر على tar.exe إنشاء الأرشيف: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>لا يمكن لـ tar.exe على هذا النظام إنشاء أرشيفات 7z.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>يحتوي الاسم "{0}" على أحرف لا يستطيع tar.exe معالجتها بأمان على هذا النظام (صفحة ترميز ANSI {1}). استخدم ZIP لهذا المحتوى.</value>

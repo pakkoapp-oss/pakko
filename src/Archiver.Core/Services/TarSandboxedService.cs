@@ -25,6 +25,7 @@ public sealed class TarSandboxedService : ITarService
     private readonly GroupPolicyOptions _policy;
     private readonly Func<Task<TarCapabilities>> _probe;
     private readonly Action? _beforeCreationLaunch;
+    private readonly Lazy<Task<bool>> _sevenZipWriter;
 
     /// <summary>Creates the service under the given Group Policy (T-F261: required, never defaulted).</summary>
     public TarSandboxedService(GroupPolicyOptions policy)
@@ -36,12 +37,19 @@ public sealed class TarSandboxedService : ITarService
     // never runs under DisableTarExtraction without starting tar.exe.
     // beforeCreationLaunch (T-F390) runs after the name list is final and before tar.exe starts,
     // so a test can remove a source inside that window.
-    internal TarSandboxedService(GroupPolicyOptions policy, Func<Task<TarCapabilities>> probe, Action? beforeCreationLaunch = null)
+    // sevenZipWriterProbe (T-F342) stands in for the run of tar.exe's 7z writer.
+    internal TarSandboxedService(
+        GroupPolicyOptions policy, Func<Task<TarCapabilities>> probe, Action? beforeCreationLaunch = null,
+        Func<Task<bool>>? sevenZipWriterProbe = null)
     {
         ArgumentNullException.ThrowIfNull(policy);
         _policy = policy;
         _probe = probe;
         _beforeCreationLaunch = beforeCreationLaunch;
+        sevenZipWriterProbe ??= () => ProbeSevenZipWriterAsync(TarExecutablePath);
+        // A 7z Pakko could not open again is not offered: reading needs what Supports7z reports.
+        _sevenZipWriter = new Lazy<Task<bool>>(async () =>
+            (await _probe().ConfigureAwait(false)).Supports7z && await sevenZipWriterProbe().ConfigureAwait(false));
     }
 
     // T-F261: POLICIES.md promises DisableTarExtraction means tar.exe is never started — enforced
@@ -52,6 +60,41 @@ public sealed class TarSandboxedService : ITarService
     /// <remarks>Under DisableTarExtraction the probe never runs and all-false defaults are returned.</remarks>
     public Task<TarCapabilities> DetectCapabilitiesAsync() =>
         _policy.DisableTarExtraction ? Task.FromResult(new TarCapabilities()) : _probe();
+
+    /// <inheritdoc/>
+    public async Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default) =>
+        !_policy.DisableTarExtraction && await _sevenZipWriter.Value.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+    // The first six bytes of a 7z archive ('7' 'z' BC AF 27 1C), as Latin-1 text.
+    private const string SevenZipSignature = "7z\u00BC\u00AF'\u001C";
+
+    // T-F342: no Windows or libarchive version says whether the 7z writer is there (the same
+    // libarchive ships in different Windows releases), so tar.exe writes an empty archive to its
+    // stdout: 32 bytes of 7z header, then padding. An unknown format exits 1 and writes nothing.
+    // Latin-1 keeps every byte as one character. Unsandboxed like the version probe: no archive
+    // is read. Any failure means "no writer".
+    internal static async Task<bool> ProbeSevenZipWriterAsync(string tarExecutablePath)
+    {
+        try
+        {
+            if (!TarSignatureVerifier.Verify(tarExecutablePath))
+                return false;
+
+            using var timeoutCts = new CancellationTokenSource(DetectionTimeout);
+            (int exitCode, string? output, _) = await SandboxedProcessLauncher.RunAsync(
+                tarExecutablePath, ["--format=7zip", "-cf", "-", "-T", "NUL"],
+                new ProcessLaunchOptions(OutputEncoding: System.Text.Encoding.Latin1), timeoutCts.Token).ConfigureAwait(false);
+            return IsSevenZipWriterOutput(exitCode, output);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    // Exit 0 alone is not enough: the output has to start as a 7z archive does.
+    internal static bool IsSevenZipWriterOutput(int exitCode, string latin1Output) =>
+        exitCode == 0 && latin1Output.StartsWith(SevenZipSignature, StringComparison.Ordinal);
 
     private static ArchiveResult RefuseAll(IReadOnlyList<string> paths, CoreText text) => new()
     {
@@ -1165,13 +1208,22 @@ public sealed class TarSandboxedService : ITarService
         // prompt — rather than silently writing an unencrypted archive the user asked to protect.
         if (options.ResolvePasswordAsync is not null)
         {
-            errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.PasswordOnlyForZip));
+            // T-F342: libarchive's 7z writer ignores --passphrase without a word, so it is never passed.
+            errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options),
+                options.Format == ArchiveContainerFormat.SevenZip ? MessageCode.SevenZipEncryptionNotSupported : MessageCode.PasswordOnlyForZip));
             return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 
         if (!TarSignatureVerifier.Verify(TarExecutablePath))
         {
             errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.TarSignatureInvalid));
+            return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
+        }
+
+        // T-F342: refused before anything is written; a plain "tar -cf name.7z" would write ustar.
+        if (options.Format == ArchiveContainerFormat.SevenZip && !await CanCreateSevenZipAsync(cancellationToken).ConfigureAwait(false))
+        {
+            errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.SevenZipWriterUnavailable));
             return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 
@@ -1294,6 +1346,11 @@ public sealed class TarSandboxedService : ITarService
         (string destPath, bool replacesExisting) = destination;
         string tempPath = ArchiveTempFile.Create(destPath);
         string excludeListPath = ArchiveTempFile.NewSibling(tempPath);
+        // T-F342: libarchive's 7z writer keeps the whole compressed stream in a temporary file
+        // and copies it into the archive at the end. Left in %TEMP%, that is a copy of the user's
+        // data on the system drive; here it stays in the destination, in a folder of Pakko's own.
+        bool sevenZip = options.Format == ArchiveContainerFormat.SevenZip;
+        string writerTempDir = ArchiveTempFile.NewWriterFolder(tempPath);
         // T-F171: decided here, created only on the first collision, so the finally below cleans it
         // up even when staging stops partway through.
         TarCollisionStaging.SweepStale();
@@ -1303,7 +1360,17 @@ public sealed class TarSandboxedService : ITarService
         try
         {
             var tarArgs = new List<string>();
-            AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel);
+            if (sevenZip)
+            {
+                AppendSevenZipArgs(tarArgs, options.SevenZipMethod, options.CompressionLevel);
+                // Like the temporary file below: the destination may lie inside a source (T-F316).
+                tarArgs.Add("--exclude");
+                tarArgs.Add(Path.GetFileName(writerTempDir));
+            }
+            else
+            {
+                AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel);
+            }
             // T-F316: tar.exe walks a source folder itself, and when the destination lies inside
             // one it would pack this run's own temporary file. The name is Pakko's own (ASCII, no
             // pattern characters), and tar.exe matches it at any depth.
@@ -1322,7 +1389,7 @@ public sealed class TarSandboxedService : ITarService
             var nameList = new List<ListedSource>();
             (int entryCount, long totalEntriesForProgress, long totalBytesForProgress) =
                 AppendSourcesToNameList(nameList, sortedSourcePaths, errors, skippedFiles, collisionStagingDir, stagedJunctions,
-                    ownPaths: [tempPath, destPath, excludeListPath]);
+                    ownPaths: [tempPath, destPath, excludeListPath, writerTempDir]);
 
             if (entryCount == 0)
                 return;
@@ -1364,7 +1431,15 @@ public sealed class TarSandboxedService : ITarService
                 }
                 byte[] nameListBytes = TarCommandLineEncoding.EncodeLines(nameList.SelectMany(source => source.Lines));
                 _beforeCreationLaunch?.Invoke();
-                (int exitCode, _, string? stdErr) = await RunUnsandboxedTarAsync(tarArgs, nameListBytes, OnVerboseLine, cancellationToken).ConfigureAwait(false);
+                Dictionary<string, string>? environment = null;
+                if (sevenZip)
+                {
+                    // Both names: libarchive asks GetTempPathW, which takes TMP and falls back to
+                    // TEMP only when TMP is not set (measured: a TMP that names no folder fails).
+                    Directory.CreateDirectory(writerTempDir);
+                    environment = new() { ["TMP"] = writerTempDir, ["TEMP"] = writerTempDir };
+                }
+                (int exitCode, _, string? stdErr) = await RunUnsandboxedTarAsync(tarArgs, nameListBytes, OnVerboseLine, environment, cancellationToken).ConfigureAwait(false);
 
                 if (exitCode != 0 || !File.Exists(tempPath))
                 {
@@ -1398,6 +1473,8 @@ public sealed class TarSandboxedService : ITarService
         finally
         {
             TryDeleteBestEffort(excludeListPath);
+            // tar.exe has exited by now, also after a cancel, so its temporary file is closed.
+            try { if (sevenZip && Directory.Exists(writerTempDir)) Directory.Delete(writerTempDir, recursive: true); } catch { /* best-effort; the next creation here sweeps it */ }
             if (Directory.Exists(collisionStagingDir))
                 DeleteStagingDirectory(collisionStagingDir, stagedJunctions);
         }
@@ -1731,6 +1808,33 @@ public sealed class TarSandboxedService : ITarService
     // store/no-compression mode (see DECISIONS.md's T-F105 entry for the raw command output).
     // Plain Tar gets no filter flag and no --options at all — passing --options without an
     // active filter fails with "Unknown module name", confirmed empirically the same round.
+    // T-F342: always --format=7zip, never -a (the format would follow the temporary file's name),
+    // and never a bare "-cf name.7z" (ustar under that name). The level is its own key:
+    // "compression-level=0" is LZMA with a small dictionary, not "stored", so NoCompression is the
+    // Copy method. Every method was measured with levels 1, 6 and 9 (docs/DECISIONS.md).
+    internal static void AppendSevenZipArgs(List<string> tarArgs, SevenZipMethod method, System.IO.Compression.CompressionLevel level)
+    {
+        string? compression = level == System.IO.Compression.CompressionLevel.NoCompression ? null : method switch
+        {
+            SevenZipMethod.Lzma2 => "lzma2",
+            SevenZipMethod.Lzma => "lzma1",
+            SevenZipMethod.BZip2 => "bzip2",
+            SevenZipMethod.Deflate => "deflate",
+            SevenZipMethod.Copy => null,
+            _ => throw new ArgumentOutOfRangeException(nameof(method), method, null),
+        };
+        int numericLevel = level switch
+        {
+            System.IO.Compression.CompressionLevel.Fastest => 1,
+            System.IO.Compression.CompressionLevel.SmallestSize => 9,
+            _ => 6,
+        };
+
+        tarArgs.Add("--format=7zip");
+        tarArgs.Add("--options");
+        tarArgs.Add(compression is null ? "7zip:compression=copy" : $"7zip:compression={compression},compression-level={numericLevel}");
+    }
+
     private static void AppendCompressionFilterArgs(List<string> tarArgs, ArchiveContainerFormat format, System.IO.Compression.CompressionLevel level)
     {
         (string? filterFlag, string? moduleName, int max) = format switch
@@ -1773,10 +1877,12 @@ public sealed class TarSandboxedService : ITarService
         IReadOnlyList<string> arguments,
         byte[] stdInData,
         Action<string>? onStdErrLine,
+        IReadOnlyDictionary<string, string>? environment,
         CancellationToken cancellationToken)
         => SandboxedProcessLauncher.RunAsync(
             TarExecutablePath, arguments,
-            new ProcessLaunchOptions(OnStdErrLine: onStdErrLine, OutputEncoding: TarOutputEncoding.Current, StdInData: stdInData), cancellationToken);
+            new ProcessLaunchOptions(OnStdErrLine: onStdErrLine, OutputEncoding: TarOutputEncoding.Current, StdInData: stdInData,
+                EnvironmentOverrides: environment), cancellationToken);
 
     // T-F204: tar.exe's own words for a name it cannot show in the locale's code page (or an
     // empty one) — the archive is not damaged, this system just cannot name the file.

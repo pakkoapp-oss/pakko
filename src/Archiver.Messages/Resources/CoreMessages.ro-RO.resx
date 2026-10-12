@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Protecția prin parolă este disponibilă doar pentru arhivele ZIP.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Protecția prin parolă nu este disponibilă pentru arhivele 7z.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Crearea unei arhive {0} este blocată de o politică de grup.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe nu a putut crea arhiva: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>tar.exe de pe acest sistem nu poate crea arhive 7z.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Numele „{0}” conține caractere pe care tar.exe nu le poate gestiona în siguranță pe acest sistem (pagina de coduri ANSI {1}). Utilizați ZIP pentru acest conținut.</value>

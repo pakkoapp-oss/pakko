@@ -353,6 +353,9 @@ regression worth investigating, not the old expected noise.
 - `[SkipIfFormatUnsupported("rar5")]` etc. — custom `FactAttribute`
   (`SkipIfFormatUnsupportedAttribute.cs`), skipped if `DetectCapabilitiesAsync` reports the named
   format unsupported. Not yet exercised by any test — T-F50's format-specific fixtures will use it.
+- `[SevenZipWriterFact]` (T-F342) — skipped where `CanCreateSevenZipAsync` is false.
+  `[SymbolicLinkFact]` (T-F391) — skipped where the process may not create symbolic links
+  (needs elevation or Developer Mode; junction tests need neither and always run).
 
 ### When to Run
 
@@ -738,6 +741,15 @@ tests caught before shipping):
   folder, CRC-32 and SHA-256: one file, flat, nested with an empty subfolder and Cyrillic names,
   empty folder, a folder typed in another case (7-Zip uses the on-disk name), and `folder\.`
   (contents only, no folder item).
+- `SevenZipCreationCompatibilityTests` (`Archiver.Core.PerformanceTests/`, for the same vendored
+  `7za.exe`; T-F342) — the 7z archives tar.exe writes for Pakko, judged by 7-Zip: every method at
+  every level is a real 7z (signature, `7za t`, the method in `7za l -slt`), a default archive
+  extracted by 7-Zip equals the source, the level changes the LZMA dictionary, and the writer's
+  known limit is pinned (ReadOnly kept, Hidden lost). `[SevenZipWriterFact]` skips them where
+  this system's tar.exe has no 7z writer. Pakko's own reader on the same archives, the
+  destination-inside-source case, cancel and failure cleanup: `TarSandboxedServiceSevenZipTests`
+  (`Archiver.Core.IntegrationTests/`). Arguments, the probe's verdict and every refusal:
+  `TarSevenZipCreationTests` (`Archiver.Core.Tests/`, no tar.exe run).
 - `ZipEntryWriterCompatibilityTests` (`Archiver.Core.PerformanceTests/` — lives there specifically
   to reuse the vendored, hash-verified `7za.exe` binary rather than duplicating it into a second
   test project; a correctness suite, not a performance one, despite the location) — proves the
