@@ -43,12 +43,15 @@ public static class CreateModeText
     /// <summary>
     /// The parts after the format name in the collapsed "New archive" card: compression (not for
     /// plain tar, which has no level — T-F105), password state (ZIP only, the one format that
-    /// encrypts) and recovery data when it is on (T-F275).
+    /// encrypts) and recovery data when it is on (T-F275). A 7z whose method is Copy has no level
+    /// either (T-F342); the method's name is text, not a key: <see cref="SevenZipMethodOption.Name"/>.
     /// </summary>
-    public static IReadOnlyList<string> SummaryKeys(ArchiveContainerFormat format, CompressionLevel level, bool encrypt, int recoveryPercent = 0)
+    public static IReadOnlyList<string> SummaryKeys(
+        ArchiveContainerFormat format, CompressionLevel level, bool encrypt, int recoveryPercent = 0,
+        SevenZipMethod sevenZipMethod = SevenZipMethod.Lzma2)
     {
         var keys = new List<string>(3);
-        if (format != ArchiveContainerFormat.Tar)
+        if (SevenZipMethodOption.HasCompressionLevel(format, sevenZipMethod))
         {
             keys.Add(level switch
             {

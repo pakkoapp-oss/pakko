@@ -16,6 +16,9 @@ internal sealed class ShellServices
     public required Func<IRecoveryService> CreateRecoveryService { get; init; }
     public required Func<LaunchOperation, IReadOnlyList<string>, AppLaunchResult> LaunchApp { get; init; }
 
+    // T-F342: leaves what the 7z writer probe found where the Explorer menu reads it.
+    public Func<Task> RecordSevenZipWriterAsync { get; init; } = () => Task.CompletedTask;
+
     // T-F261: every service comes from Core's one factory, built with the one loaded policy.
     // T-F85: the factory probes tar.exe at most once per Explorer invocation.
     public static ShellServices Create(GroupPolicyOptions policy)
@@ -28,6 +31,8 @@ internal sealed class ShellServices
             CreateScanServiceAsync = core.CreateScanServiceAsync,
             CreateRecoveryService = () => core.RecoveryService,
             LaunchApp = AppLauncher.Launch,
+            RecordSevenZipWriterAsync = async () => SevenZipWriterVerdict.TryRecord(
+                policy, await core.TarService.AskSevenZipWriterAsync().ConfigureAwait(false)),
         };
     }
 }

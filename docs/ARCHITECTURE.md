@@ -212,6 +212,8 @@ src/
 │   ├── Win32SourceDeleteOperations.cs                   ← T-F207: final-path + volume-type + SHFileOperationW P/Invoke
 │   ├── PrimaryActionPolicy.cs                           ← T-F199: Compress/Extract availability + which one is primary
 │   ├── CreateModeText.cs                                ← T-F199: create-mode resource keys (card summary, delete-after words)
+│   ├── SevenZipMethodOption.cs                          ← T-F342: the 7z method list (row <-> SevenZipMethod), and which
+│   │                                                       format and method leave the compression level a meaning
 │   ├── InlinePasswordState.cs                           ← T-F199: inline encryption password checks (message key, AllowsCompress)
 │   ├── EncryptionSummary.cs                             ← T-F199: browse badge + info-bar notes, read without a password
 │   ├── BrowseLocationState.cs / BrowseWork.cs           ← T-F199: what browse mode offers where; in-flight browse work
@@ -1649,7 +1651,7 @@ tar-family listing path being coarser than ZIP's.
 etc.; `ZipArchiveService.ArchiveAsync`'s two previously-hardcoded `".zip"` literals now call it
 too, so both creation paths share one source of truth for extensions.
 
-**Creating 7z (T-F342, Core; no frontend offers it yet).** `ArchiveContainerFormat.SevenZip`
+**Creating 7z (T-F342, Core).** `ArchiveContainerFormat.SevenZip`
 goes to `TarSandboxedService.CompressAsync` like the tar family, with three differences. It is
 refused before anything is written when `CanCreateSevenZipAsync` is false
 (`SevenZipWriterUnavailable`) or a password is asked for (`SevenZipEncryptionNotSupported`). Its
@@ -1659,6 +1661,21 @@ Pakko's own next to the archive (`ProcessLaunchOptions.EnvironmentOverrides`,
 `ProcessEnvironmentBlock`, `ArchiveTempFile.NewWriterFolder`), because libarchive's 7z writer
 keeps the whole compressed stream in a temporary file. The policy name is `sevenzip`, the one
 reading uses. Why, and the measurements: `docs/DECISIONS.md`'s T-F342 wave 1 entry.
+
+**Who offers 7z (T-F342, the App and Explorer wave).** The App lists 7Z only after
+`CanCreateSevenZipAsync` answered yes (`CreationFormatOption.IsOffered(policy, format,
+sevenZipWriter)`; `MainViewModel.OfferSevenZipWhenWritableAsync` shows the item when the probe
+started in `App.xaml.cs` returns), second in the list after ZIP (`CreationFormatOption.ListOrder`
+is the list's row order and what `FormatIndex` counts in), with a method list (`SevenZipMethodOption`). The Explorer menu's
+`SevenZipArchiveCommand` cannot run tar.exe, so it reads a verdict file instead:
+`SevenZipWriterVerdict` (Core) writes `<tar.exe size>;<tar.exe write time>;<0|1>` to
+`%LOCALAPPDATA%\Packages\<family name>\LocalCache\sevenzip-writer.txt`, from the App at startup
+and from `Archiver.Shell` after a 7z creation, and only from an answer of
+`ITarService.AskSevenZipWriterAsync` (never from a timeout, never under `DisableTarExtraction`).
+The path is built from the folder the exe was started from (a package folder is named by the
+package full name), not left to the per-package redirection of `%LOCALAPPDATA%`. The menu hides
+the item only on a `0` measured on the tar.exe that is there now (`ShellExtUtils`'
+`SevenZipWriterKnownAbsent`). Why: `docs/DECISIONS.md`'s T-F342 wave 3 entry.
 
 **Sources on tar.exe's name list (T-F390, T-F391).** `AppendSourcesToNameList` builds
 `ListedSource` records (the selected path, the `-C` folder, the name, the item itself and the

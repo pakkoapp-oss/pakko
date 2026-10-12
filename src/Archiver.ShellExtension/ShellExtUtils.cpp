@@ -240,8 +240,8 @@ std::wstring GetFormatRegistryName(const std::wstring& path)
 bool IsCreationFormatAllowed(const std::wstring& format, const MenuPolicy& policy)
 {
     if (policy.IsFormatBlocked(format)) return false;
-    // Creating a tar also runs tar.exe, which DisableTarExtraction turns off entirely.
-    return !(format == L"tar" && policy.disableTar);
+    // Creating a tar or a 7z also runs tar.exe, which DisableTarExtraction turns off entirely.
+    return !((format == L"tar" || format == L"sevenzip") && policy.disableTar);
 }
 
 bool AnyPathIsZip(const std::vector<std::wstring>& paths, const MenuPolicy& policy)
@@ -264,6 +264,153 @@ bool TarExeExists()
         s_exists = attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY);
     });
     return s_exists;
+}
+
+// ---------------------------------------------------------------------------
+// T-F342: the 7z writer verdict
+// ---------------------------------------------------------------------------
+
+static bool IsPackageNamePart(const std::wstring& part)
+{
+    bool hasAlphanumeric = false;
+    for (const wchar_t c : part)
+    {
+        const bool alphanumeric = (c >= L'0' && c <= L'9') || (c >= L'A' && c <= L'Z') || (c >= L'a' && c <= L'z');
+        if (!alphanumeric && c != L'.' && c != L'-') return false;
+        hasAlphanumeric = hasAlphanumeric || alphanumeric;
+    }
+    return hasAlphanumeric;
+}
+
+std::wstring PackageFamilyNameFromFullName(const std::wstring& fullName)
+{
+    std::vector<std::wstring> parts;
+    size_t start = 0;
+    for (;;)
+    {
+        const size_t end = fullName.find(L'_', start);
+        if (end == std::wstring::npos)
+        {
+            parts.push_back(fullName.substr(start));
+            break;
+        }
+        parts.push_back(fullName.substr(start, end - start));
+        start = end + 1;
+    }
+    if (parts.size() != 5 || !IsPackageNamePart(parts[0]) || !IsPackageNamePart(parts[4])) return {};
+    return parts[0] + L"_" + parts[4];
+}
+
+std::wstring BuildSevenZipVerdictPath(const std::wstring& dllDirectory, const std::wstring& localAppData)
+{
+    if (localAppData.empty()) return {};
+
+    std::wstring directory = dllDirectory;
+    while (!directory.empty() && (directory.back() == L'\\' || directory.back() == L'/'))
+        directory.pop_back();
+    const size_t separator = directory.find_last_of(L"\\/");
+    const std::wstring family = PackageFamilyNameFromFullName(
+        separator == std::wstring::npos ? directory : directory.substr(separator + 1));
+    if (family.empty()) return {};
+    return localAppData + L"\\Packages\\" + family + L"\\LocalCache\\sevenzip-writer.txt";
+}
+
+// Reads decimal digits at pos; false for none, or for a value past ULONGLONG.
+static bool ReadVerdictNumber(const std::string& text, size_t& pos, ULONGLONG& value)
+{
+    const size_t first = pos;
+    value = 0;
+    while (pos < text.size() && text[pos] >= '0' && text[pos] <= '9')
+    {
+        const ULONGLONG digit = static_cast<ULONGLONG>(text[pos] - '0');
+        if (value > (ULLONG_MAX - digit) / 10) return false;
+        value = value * 10 + digit;
+        ++pos;
+    }
+    return pos > first;
+}
+
+static bool SkipVerdictSeparator(const std::string& text, size_t& pos)
+{
+    if (pos >= text.size() || text[pos] != ';') return false;
+    ++pos;
+    return true;
+}
+
+bool IsSevenZipWriterVerdictAbsent(const std::string& verdict, ULONGLONG tarSize, ULONGLONG tarWriteTime)
+{
+    if (verdict.size() > kMaxSevenZipVerdictBytes) return false;
+
+    size_t pos = 0;
+    ULONGLONG size = 0;
+    ULONGLONG writeTime = 0;
+    if (!ReadVerdictNumber(verdict, pos, size) || !SkipVerdictSeparator(verdict, pos)) return false;
+    if (!ReadVerdictNumber(verdict, pos, writeTime) || !SkipVerdictSeparator(verdict, pos)) return false;
+    // Exactly one character is left: the answer.
+    if (verdict.size() - pos != 1) return false;
+    return verdict[pos] == '0' && size == tarSize && writeTime == tarWriteTime;
+}
+
+namespace
+{
+    struct FileHandleCloser
+    {
+        void operator()(HANDLE handle) const noexcept { CloseHandle(handle); }
+    };
+
+    // One byte more than a verdict may have, so an oversized file is seen as oversized.
+    std::string ReadVerdictFile(const std::wstring& path)
+    {
+        const HANDLE raw = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (raw == INVALID_HANDLE_VALUE) return {};
+        const std::unique_ptr<void, FileHandleCloser> file(raw);
+
+        char buffer[kMaxSevenZipVerdictBytes + 1] = {};
+        DWORD read = 0;
+        if (!ReadFile(file.get(), buffer, static_cast<DWORD>(sizeof(buffer)), &read, nullptr)) return {};
+        return std::string(buffer, std::min<size_t>(read, sizeof(buffer)));
+    }
+
+    std::wstring GetLocalAppDataPath()
+    {
+        PWSTR pszPath = nullptr;
+        if (FAILED(SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_DEFAULT, nullptr, &pszPath))) return {};
+        const std::unique_ptr<wchar_t, decltype(&CoTaskMemFree)> owned(pszPath, &CoTaskMemFree);
+        return owned.get();
+    }
+
+    bool ReadSevenZipWriterKnownAbsent()
+    {
+        const std::wstring path = BuildSevenZipVerdictPath(GetDllDirectory(), GetLocalAppDataPath());
+        if (path.empty()) return false;
+
+        WIN32_FILE_ATTRIBUTE_DATA tar = {};
+        if (!GetFileAttributesExW(L"C:\\Windows\\System32\\tar.exe", GetFileExInfoStandard, &tar)) return false;
+        const ULONGLONG size = (static_cast<ULONGLONG>(tar.nFileSizeHigh) << 32) | tar.nFileSizeLow;
+        const ULONGLONG writeTime =
+            (static_cast<ULONGLONG>(tar.ftLastWriteTime.dwHighDateTime) << 32) | tar.ftLastWriteTime.dwLowDateTime;
+        return IsSevenZipWriterVerdictAbsent(ReadVerdictFile(path), size, writeTime);
+    }
+}
+
+bool SevenZipWriterKnownAbsent()
+{
+    constexpr ULONGLONG kRefreshMs = 5000;
+    static std::mutex s_mutex;
+    static bool s_absent = false;
+    static ULONGLONG s_readAt = 0;
+    static bool s_loaded = false;
+
+    const std::lock_guard<std::mutex> lock(s_mutex);
+    const ULONGLONG now = GetTickCount64();
+    if (!s_loaded || now - s_readAt >= kRefreshMs)
+    {
+        s_absent = ReadSevenZipWriterKnownAbsent();
+        s_readAt = now;
+        s_loaded = true;
+    }
+    return s_absent;
 }
 
 bool HasSupportedNonZipArchiveExtension(const std::wstring& path)

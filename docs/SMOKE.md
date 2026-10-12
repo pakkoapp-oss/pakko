@@ -88,7 +88,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | CLI-029 | quick | script | dev | `pakko i` | The 7z line reads create, extract, list, and supported | `cli:i` T-F342 |
 | CLI-030 | release | script | dev | Send Ctrl+C to a long `a -t7z`; kill the tar.exe of another | Exit 255, and exit 2; no archive, no `.tmp`, no `.pakko-7z-*` folder next to it and no new `libarchive_*` in `%TEMP%` | `cli:a` T-F342 |
 | CLI-031 | release | script | dev | `a -t7z` with the archive inside the folder it packs | The archive lists the source's files and nothing of its own making; nothing else is left in the folder | `cli:a` T-F342 T-F316 |
-| CLI-032 | release | user | dev | `a -t7z` on Windows 10 22H2 or a Windows Server | A 7z archive, or exit 2 with "This system's tar.exe cannot create 7z archives." and no file; never tar.exe's own text | `cli:-t` T-F342 |
+| CLI-032 | release | user | dev | `a -t7z` on Windows 10 22H2 or a Windows Server; then start the App and open the Explorer menu on a folder | A 7z archive, or exit 2 with "This system's tar.exe cannot create 7z archives." and no file; never tar.exe's own text. Where it was the refusal: the App's Format list has no 7Z, and the menu has no Add to X.7z once the App has run | `cli:-t` T-F342 |
 
 ## SHL - `Archiver.Shell.exe`, started as Explorer starts it
 
@@ -106,13 +106,14 @@ budgets, `REL` the release's files, `STO` the Store.
 | SHL-010 | release | script | dev | No file list, an unknown argument, a path that does not exist | The first two: a non-zero exit and no window. The missing path: a result window that names the file; nothing is written | `shell:--extract-here` |
 | SHL-011 | release | script | dev | `--hash --algorithm sha256` on a folder with an unreadable file and a junction loop | The window lists the hashes and names the entries it skipped; it does not hang | `shell:--hash` T-F291 T-F251 |
 | SHL-012 | quick | script | dev | `--archive --format 7z` on a folder | `<name>.7z` next to the source, accepted by `7za t`, the entries under the folder's name, nothing else left | `shell:--format` T-F342 |
+| SHL-013 | quick | script | dev | Delete the 7z writer verdict in the package's `LocalCache` folder, then `--archive --format 7z` on a file | The verdict file is back and reads tar.exe's size, its write time and `1` | `shell:--format` T-F342 |
 
 ## EXP - the real Explorer menu
 
 | ID | Tier | By | On | Action | Expect | Covers |
 |---|---|---|---|---|---|---|
 | EXP-001 | release | mcp | dev | Right-click a `.zip`, open the Pakko submenu | Open, Extract files, Extract here, Extract here (smart), Extract to folder, Compress, Test, Scan, two Hash items, in that order; the root Pakko item has the icon, the submenu items have none (T-F92) | `menu:BrowseCommand` `menu:ExtractDialogCommand` `menu:ExtractHereFlatCommand` `menu:ExtractHereCommand` `menu:ExtractFolderCommand` `menu:CompressDialogCommand` `menu:TestCommand` `menu:ScanCommand` `menu:HashCrc32Command` `menu:HashSha256Command` |
-| EXP-002 | release | mcp | dev | Right-click a folder, a plain file, and a mixed selection of a ZIP and a text file | Add to X.zip and Add to X.tar on the first two; on the mixed one both Add and Test, Test after the primary action | `menu:ArchiveCommand` `menu:TarArchiveCommand` |
+| EXP-002 | release | mcp | dev | Right-click a folder, a plain file, and a mixed selection of a ZIP and a text file | Add to X.zip, Add to X.tar and Add to X.7z on the first two, in that order; on the mixed one the Add items and Test, Test after the primary actions | `menu:ArchiveCommand` `menu:TarArchiveCommand` `menu:SevenZipArchiveCommand` |
 | EXP-003 | release | mcp | dev | Right-click an archive with PAR2 files next to it, its `.par2` file, and an archive without a set | Verify with PAR2 and Repair with PAR2 on the first two, after Test; neither on the third | `menu:RecoveryVerifyCommand` `menu:RecoveryRepairCommand` T-F275 |
 | EXP-004 | release | mcp | dev | Click Extract here, Extract to folder and Extract files on a ZIP that carries the download mark | The files are where each item says; the mark is carried over; Cyrillic names are intact | `menu:ExtractHereCommand` `menu:ExtractFolderCommand` `menu:ExtractDialogCommand` |
 | EXP-005 | release | mcp | dev | Click Open, then Test, then Scan, then each Hash item | The App opens on the archive; the operation window reports each result; the hashes equal `Get-FileHash` and `7za h` | `menu:BrowseCommand` `menu:TestCommand` `menu:ScanCommand` `menu:HashCrc32Command` `menu:HashSha256Command` |
@@ -121,6 +122,8 @@ budgets, `REL` the release's files, `STO` the Store.
 | EXP-008 | release | mcp | dev | Put de-AT first in the language list (no sign-out) and open the menu | The items are in German: the first language of the list that Pakko ships wins | T-F330 |
 | EXP-009 | release | mcp | dev | Open the menu right after a package update, without restarting Explorer | The Pakko items are there and the clicked one runs the new `Archiver.Shell.exe` | `menu:TestCommand` |
 | EXP-010 | release | mcp | dev | Add to X.zip on the root of a drive (a `subst` letter) | The archive is named after the drive letter, not `archive` | `menu:ArchiveCommand` T-F281 |
+| EXP-011 | release | mcp | dev | Right-click a folder and click Add to X.7z | The item sits after Add to X.tar and before Test; `<name>.7z` appears next to the folder and `7za t` accepts it | `menu:SevenZipArchiveCommand` T-F342 |
+| EXP-012 | release | mcp | dev | Write a verdict of `0` with tar.exe's own size and write time into the package's `LocalCache` folder, wait six seconds and open the menu on a folder; write it again with the size one larger; then delete the file | No Add to X.7z the first time; the item is back the second time and without the file | `menu:SevenZipArchiveCommand` T-F342 |
 
 ## APP - the WinUI window
 
@@ -150,6 +153,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | APP-022 | release | mcp | dev | Under uk-UA: watch the footer during a long operation; cause an error that comes from Windows (a name the file system refuses) | Speed and time left are in Ukrainian units; the error shows the Windows code and its text | T-F303 T-F297 |
 | APP-023 | release | mcp | dev | Extract a mixed selection of a ZIP and a tar.gz | One progress that grows through both; the tar part shows "checking the archive" while it lists, not 0 % or 100 % | `app:Extract` T-F306 T-F307 |
 | APP-024 | release | mcp | dev | With "move the archives to the Recycle Bin" on: cancel the extraction of a large tar.gz; extract an archive of which one entry is skipped | The archive stays in place both times and no partial output is left | `app:Extract` `app:Cancel` T-F245 T-F229 |
+| APP-025 | release | mcp | dev | Start the App and open the Format list; pick 7Z and compress a folder with a Cyrillic name; repeat with each method, Copy last; once more with recovery data on | 7Z is the second format, between ZIP and TAR, and is there within seconds of the start; Method has its own line and no list is cut off by the card's edge; `7za l -slt` names each method; Copy greys out the compression level; the password row reads "ZIP only"; the collapsed card names 7Z and the method; the `.par2` files are next to the archive and Test passes | `app:Archive` T-F342 |
 
 ## OPW - the Explorer operation window
 
@@ -192,8 +196,8 @@ the registry back in a `finally` block. The App reads policy once at startup: re
 | POL-006 | release | uac | dev | `BlockedFormats` = `zip`: `pakko l` and `pakko r` on a damaged ZIP with a set | `l` is refused; `r` writes a copy equal to the original | `policy:BlockedFormats` `cli:r` |
 | POL-007 | release | uac | dev | The Windows FIPS policy on (`FipsAlgorithmPolicy\Enabled` = 1): `pakko a -rr5`, `t`, `r`, `h`, and an AES-256 round trip | All work; MD5 for PAR2 is not refused | `cli:-rr` T-F275 |
 | POL-008 | release | uac | dev | Last of the elevated rows: stop the helper and compare the exports of the two registry keys from before the first policy with those after | The exports are equal | `policy:EnforceMOTW` |
-| POL-009 | release | mcp | dev | `Invoke-Smoke.ps1 -Tier release -Only POL-00* -Hold`: while each policy is held, open the App | `EnforceMOTW`: the box is locked at the policy's value; formats: the blocked ones are missing from New archive and refused on open; `DisableRecoveryData`: no option, no PAR2 line, no Repair, a `.par2` row is refused | `policy:EnforceMOTW` `policy:AllowedFormats` `policy:DisableRecoveryData` |
-| POL-010 | release | mcp | dev | The same held run: open the Explorer menu on a ZIP, a tar.gz, a folder and a ZIP with a set and its `.par2` | Items of a blocked format are hidden; under `DisableTarExtraction` Add to X.tar is hidden; under `DisableRecoveryData` neither PAR2 item shows; under `BlockedFormats` = `zip` the ZIP has no PAR2 item and its `.par2` has | `policy:BlockedFormats` `policy:DisableTarExtraction` `menu:RecoveryRepairCommand` `menu:TarArchiveCommand` |
+| POL-009 | release | mcp | dev | `Invoke-Smoke.ps1 -Tier release -Only POL-00* -Hold`: while each policy is held, open the App | `EnforceMOTW`: the box is locked at the policy's value; formats: the blocked ones are missing from New archive (7Z too, also under `DisableTarExtraction`) and refused on open; `DisableRecoveryData`: no option, no PAR2 line, no Repair, a `.par2` row is refused | `policy:EnforceMOTW` `policy:AllowedFormats` `policy:DisableRecoveryData` |
+| POL-010 | release | mcp | dev | The same held run: open the Explorer menu on a ZIP, a tar.gz, a folder and a ZIP with a set and its `.par2` | Items of a blocked format are hidden; under `DisableTarExtraction` Add to X.tar and Add to X.7z are hidden, and under `BlockedFormats` = `sevenzip` Add to X.7z is; under `DisableRecoveryData` neither PAR2 item shows; under `BlockedFormats` = `zip` the ZIP has no PAR2 item and its `.par2` has | `policy:BlockedFormats` `policy:DisableTarExtraction` `menu:RecoveryRepairCommand` `menu:TarArchiveCommand` `menu:SevenZipArchiveCommand` |
 
 ## PKG - the package and its life cycle
 

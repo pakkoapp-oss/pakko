@@ -234,6 +234,7 @@ TEST(MenuPolicy, NothingConfiguredRestrictsNothing)
     EXPECT_TRUE(AnyPathIsZip({ L"C:\\a.zip" }, policy));
     EXPECT_TRUE(IsCreationFormatAllowed(L"zip", policy));
     EXPECT_TRUE(IsCreationFormatAllowed(L"tar", policy));
+    EXPECT_TRUE(IsCreationFormatAllowed(L"sevenzip", policy));
 }
 
 // --- DisableTarExtraction=1: every tar.exe-backed item hides, ZIP stays ---
@@ -251,6 +252,8 @@ TEST(MenuPolicy, DisableTarHidesEveryTarFamilyExtractionAndTarCreationOnly)
     EXPECT_TRUE(AnyPathIsZip({ L"C:\\a.zip" }, policy));
     EXPECT_TRUE(IsCreationFormatAllowed(L"zip", policy));
     EXPECT_FALSE(IsCreationFormatAllowed(L"tar", policy));
+    // T-F342: tar.exe writes 7z too.
+    EXPECT_FALSE(IsCreationFormatAllowed(L"sevenzip", policy));
 }
 
 TEST(MenuPolicy, DisableTarWithMixedSelectionHidesOneClickExtractButKeepsAnyGates)
@@ -272,6 +275,14 @@ TEST(MenuPolicy, BlockedSevenZipHidesOnlySevenZip)
         EXPECT_EQ(AllPathsAreSupportedArchive({ path }, policy), GetFormatRegistryName(path) != L"sevenzip") << path;
     EXPECT_TRUE(IsCreationFormatAllowed(L"zip", policy));
     EXPECT_TRUE(IsCreationFormatAllowed(L"tar", policy));
+    EXPECT_FALSE(IsCreationFormatAllowed(L"sevenzip", policy));
+}
+
+TEST(MenuPolicy, BlockedTarLeavesSevenZipCreation)
+{
+    const MenuPolicy policy = PolicyFrom(std::nullopt, std::vector<std::wstring>{ L"tar" });
+
+    EXPECT_TRUE(IsCreationFormatAllowed(L"sevenzip", policy));
 }
 
 TEST(MenuPolicy, BlockedZipHidesZipExtractionTestAndZipCreation)
@@ -582,6 +593,111 @@ TEST(BuildArchiveArgs, DefaultFormatOmitsFormatFlag)
 TEST(BuildArchiveArgs, TarFormatEmitsFormatFlag)
 {
     EXPECT_EQ(BuildArchiveArgs(L"tar"), L"--archive --format tar");
+}
+
+// T-F342: the value ShellArgumentParser accepts is "7z", not the policy's "sevenzip".
+TEST(BuildArchiveArgs, SevenZipFormatEmitsFormatFlag)
+{
+    EXPECT_EQ(BuildArchiveArgs(L"7z"), L"--archive --format 7z");
+}
+
+// ---------------------------------------------------------------------------
+// T-F342: the 7z writer verdict
+// ---------------------------------------------------------------------------
+
+static constexpr ULONGLONG kTarSize = 60416;
+static constexpr ULONGLONG kTarTime = 133577283450000000ull;
+
+TEST(SevenZipWriterVerdict, MatchingNoHidesTheItem)
+{
+    EXPECT_TRUE(IsSevenZipWriterVerdictAbsent("60416;133577283450000000;0", kTarSize, kTarTime));
+}
+
+TEST(SevenZipWriterVerdict, MatchingYesShowsTheItem)
+{
+    EXPECT_FALSE(IsSevenZipWriterVerdictAbsent("60416;133577283450000000;1", kTarSize, kTarTime));
+}
+
+// A Windows update replaced tar.exe: the old "no" says nothing about the new one.
+TEST(SevenZipWriterVerdict, AnotherTarExeShowsTheItem)
+{
+    EXPECT_FALSE(IsSevenZipWriterVerdictAbsent("60417;133577283450000000;0", kTarSize, kTarTime));
+    EXPECT_FALSE(IsSevenZipWriterVerdictAbsent("60416;133577283450000001;0", kTarSize, kTarTime));
+}
+
+TEST(SevenZipWriterVerdict, NoFileShowsTheItem)
+{
+    EXPECT_FALSE(IsSevenZipWriterVerdictAbsent("", kTarSize, kTarTime));
+}
+
+TEST(SevenZipWriterVerdict, MalformedTextShowsTheItem)
+{
+    const char* const malformed[] = {
+        "0", ";;0", "60416;133577283450000000", "60416;133577283450000000;", "60416;133577283450000000;2",
+        "60416;133577283450000000;00", "60416;133577283450000000;0\n", " 60416;133577283450000000;0",
+        "60416;133577283450000000;0;0", "-60416;133577283450000000;0", "60416;-1;0", "60416,133577283450000000,0",
+        "0x60416;133577283450000000;0", "sixty;133577283450000000;0", "60416;133577283450000000;no",
+    };
+    for (const char* text : malformed)
+        EXPECT_FALSE(IsSevenZipWriterVerdictAbsent(text, kTarSize, kTarTime)) << text;
+}
+
+// 2^64 wraps to 0 in a careless parser, and would then match a zero-sized tar.exe.
+TEST(SevenZipWriterVerdict, NumberPastSixtyFourBitsShowsTheItem)
+{
+    EXPECT_FALSE(IsSevenZipWriterVerdictAbsent("18446744073709551616;1;0", 0, 1));
+    EXPECT_FALSE(IsSevenZipWriterVerdictAbsent("1;99999999999999999999999999;0", 1, 0));
+    EXPECT_TRUE(IsSevenZipWriterVerdictAbsent("18446744073709551615;1;0", 18446744073709551615ull, 1));
+}
+
+TEST(SevenZipWriterVerdict, OversizedTextShowsTheItem)
+{
+    // Leading zeros keep it a "valid" matching verdict; only its length refuses it.
+    const std::string padded = std::string(kMaxSevenZipVerdictBytes, '0') + "60416;133577283450000000;0";
+    EXPECT_FALSE(IsSevenZipWriterVerdictAbsent(padded, kTarSize, kTarTime));
+
+    const std::string atLimit = std::string(kMaxSevenZipVerdictBytes - 26, '0') + "60416;133577283450000000;0";
+    ASSERT_EQ(atLimit.size(), kMaxSevenZipVerdictBytes);
+    EXPECT_TRUE(IsSevenZipWriterVerdictAbsent(atLimit, kTarSize, kTarTime));
+}
+
+TEST(SevenZipWriterVerdict, EmbeddedNulShowsTheItem)
+{
+    const std::string text("60416;133577283450000000;0\0", 27);
+    EXPECT_FALSE(IsSevenZipWriterVerdictAbsent(text, kTarSize, kTarTime));
+}
+
+TEST(PackageFamilyName, FirstAndLastPartOfTheFullName)
+{
+    EXPECT_EQ(PackageFamilyNameFromFullName(L"PavloRybchenko.Pakko_1.8.1.7_x64__9hkd8feqeqbr4"), L"PavloRybchenko.Pakko_9hkd8feqeqbr4");
+    EXPECT_EQ(PackageFamilyNameFromFullName(L"Name_1.0.0.0_arm64_res_abc"), L"Name_abc");
+}
+
+TEST(PackageFamilyName, AnythingElseIsEmpty)
+{
+    const wchar_t* const names[] = {
+        L"", L"Release", L"Name_1.0.0.0_x64_9hkd8feqeqbr4", L"Name_1.0.0.0_x64__a_b", L"_1.0.0.0_x64__9hkd8feqeqbr4",
+        L"Name_1.0.0.0_x64__", L".._1_x64__..", L"Na me_1_x64__abc", L"Name_1_x64__a\\b", L"Name_1_x64__a/b",
+    };
+    for (const wchar_t* name : names)
+        EXPECT_TRUE(PackageFamilyNameFromFullName(name).empty()) << name;
+}
+
+TEST(BuildSevenZipVerdictPath, PackageFolderGivesItsLocalCacheFile)
+{
+    const std::wstring expected = L"C:\\Users\\u\\AppData\\Local\\Packages\\PavloRybchenko.Pakko_9hkd8feqeqbr4\\LocalCache\\sevenzip-writer.txt";
+
+    EXPECT_EQ(BuildSevenZipVerdictPath(
+        L"C:\\Program Files\\WindowsApps\\PavloRybchenko.Pakko_1.8.1.7_x64__9hkd8feqeqbr4", L"C:\\Users\\u\\AppData\\Local"), expected);
+    EXPECT_EQ(BuildSevenZipVerdictPath(
+        L"C:\\Program Files\\WindowsApps\\PavloRybchenko.Pakko_1.8.1.7_x64__9hkd8feqeqbr4\\", L"C:\\Users\\u\\AppData\\Local"), expected);
+}
+
+TEST(BuildSevenZipVerdictPath, NotAPackageFolderGivesNothing)
+{
+    EXPECT_TRUE(BuildSevenZipVerdictPath(L"C:\\src\\pakko\\bin\\x64\\Debug", L"C:\\Users\\u\\AppData\\Local").empty());
+    EXPECT_TRUE(BuildSevenZipVerdictPath(L"", L"C:\\Users\\u\\AppData\\Local").empty());
+    EXPECT_TRUE(BuildSevenZipVerdictPath(L"C:\\Program Files\\WindowsApps\\Name_1_x64__abc", L"").empty());
 }
 
 // T-F128
@@ -896,6 +1012,13 @@ TEST(BuildAddToArchiveTitle, NameOverLimitIsTruncatedInTheMiddle)
 TEST(BuildAddToArchiveTitle, TarExtensionSingleFileUsesNameWithoutExtension)
 {
     EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Docs\\report.docx" }, L".tar"), L"Add to \"report.tar\"");
+}
+
+// T-F342: SevenZipArchiveCommand::GetTitle passes L".7z".
+TEST(BuildAddToArchiveTitle, SevenZipExtensionNamesTheArchiveShellCreates)
+{
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Docs\\report.docx" }, L".7z"), L"Add to \"report.7z\"");
+    EXPECT_EQ(BuildAddToArchiveTitle({ L"C:\\Docs\\backup.tar.gz" }, L".7z"), L"Add to \"backup.7z\"");
 }
 
 TEST(BuildAddToArchiveTitle, TarExtensionCompoundTarExtensionStripsBothComponents)

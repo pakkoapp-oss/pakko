@@ -131,6 +131,9 @@
   <data name="FormatTarLzmaItem.Content" xml:space="preserve">
     <value>TAR.LZMA</value>
   </data>
+  <data name="FormatSevenZipItem.Content" xml:space="preserve">
+    <value>7Z</value>
+  </data>
   <data name="CompressionFastItem.Content" xml:space="preserve">
     <value>Fast</value>
     <comment>Compression level in the Compression drop-down; an adjective describing the compression, not an adverb.</comment>
@@ -177,6 +180,9 @@
   </data>
   <data name="CompressionLabel.Text" xml:space="preserve">
     <value>Compression:</value>
+  </data>
+  <data name="SevenZipMethodLabel.Text" xml:space="preserve">
+    <value>Method:</value>
   </data>
   <data name="ConflictLabel.Text" xml:space="preserve">
     <value>If file exists:</value>

@@ -35,6 +35,9 @@ static const CLSID TEST_CLSID_ArchiveCommand =
     { 0xE84DDF12, 0x7539, 0x4D06, { 0x85, 0xD8, 0xBF, 0xA4, 0xF8, 0x7B, 0xCF, 0x27 } };
 static const CLSID TEST_CLSID_TarArchiveCommand =
     { 0x5F440071, 0x6288, 0x4446, { 0xAE, 0x25, 0x3F, 0x4E, 0xDA, 0x49, 0x0D, 0xDC } };
+// {901753CF-1E33-41C7-85BA-12217F250348}
+static const CLSID TEST_CLSID_SevenZipArchiveCommand =
+    { 0x901753CF, 0x1E33, 0x41C7, { 0x85, 0xBA, 0x12, 0x21, 0x7F, 0x25, 0x03, 0x48 } };
 // {BB144D8A-BD24-415B-A8AB-C3BA38E26683}
 static const CLSID TEST_CLSID_RecoveryVerifyCommand =
     { 0xBB144D8A, 0xBD24, 0x415B, { 0xA8, 0xAB, 0xC3, 0xBA, 0x38, 0xE2, 0x66, 0x83 } };
@@ -54,13 +57,13 @@ static const CLSID TEST_CLSID_HashSha256Command =
 
 // Expected EnumSubCommands order — mirrors ExplorerCommands.cpp's own build order exactly (see
 // its "Order mirrors NanaZip's real ContextMenu.cpp" comment): Browse first (T-F03), then the
-// Extract group (dialog, flat, "here", folder), then the Archive group (dialog, zip, tar), then
+// Extract group (dialog, flat, "here", folder), then the Archive group (dialog, zip, tar, 7z), then
 // the diagnostic group last (Test, Scan, then the two hash leaves) — CLAUDE.md's hard constraint
 // that primary actions precede diagnostic ones (T-F62) is asserted by this exact ordering.
 static const CLSID* const kExpectedSubCommandOrder[] = {
     &TEST_CLSID_BrowseCommand, &TEST_CLSID_ExtractDialogCommand, &TEST_CLSID_ExtractHereFlatCommand,
     &TEST_CLSID_ExtractHereCommand, &TEST_CLSID_ExtractFolderCommand, &TEST_CLSID_CompressDialogCommand,
-    &TEST_CLSID_ArchiveCommand, &TEST_CLSID_TarArchiveCommand, &TEST_CLSID_TestCommand, &TEST_CLSID_RecoveryVerifyCommand,
+    &TEST_CLSID_ArchiveCommand, &TEST_CLSID_TarArchiveCommand, &TEST_CLSID_SevenZipArchiveCommand, &TEST_CLSID_TestCommand, &TEST_CLSID_RecoveryVerifyCommand,
     &TEST_CLSID_RecoveryRepairCommand, &TEST_CLSID_ScanCommand, &TEST_CLSID_HashCrc32Command, &TEST_CLSID_HashSha256Command,
 };
 
@@ -292,7 +295,7 @@ TEST_F(DllFixture, RootCommand_GetIcon_NeverReturnsSFalseWithNullOutParam)
     pCmd->Release();
 }
 
-TEST_F(DllFixture, EnumSubCommands_ReturnsAllFourteenLeafCommandsInDocumentedOrder)
+TEST_F(DllFixture, EnumSubCommands_ReturnsAllFifteenLeafCommandsInDocumentedOrder)
 {
     // Order asserted here is CLAUDE.md's own hard constraint (T-F62: primary actions — Extract/
     // Archive — always precede diagnostic ones — Test/Scan) made executable, not just documented.
@@ -324,7 +327,7 @@ TEST_F(DllFixture, EnumSubCommands_ReturnsAllFourteenLeafCommandsInDocumentedOrd
         pLeaf->Release();
     }
 
-    // Exactly 14 — a 15th Next() call must report end-of-sequence, not a stray extra command.
+    // Exactly 15 — a 16th Next() call must report end-of-sequence, not a stray extra command.
     IExplorerCommand* pExtra = nullptr;
     ULONG extraFetched = 0;
     hr = pEnum->Next(1, &pExtra, &extraFetched);
