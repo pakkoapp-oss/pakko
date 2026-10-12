@@ -13,7 +13,9 @@ public sealed class CliSevenZipSubprocessTests : IAsyncLifetime
 {
     private static readonly byte[] Signature = [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C];
     private const int PackedDataOffset = 32;   // the 7z signature header is 32 bytes
-    private const string CyrillicName = "\u0437\u0432\u0456\u0442.txt";
+    // tar.exe takes names through the system ANSI code page and Core refuses a name that page
+    // cannot carry (T-F266): Cyrillic where it can, Latin-1 on an en-US machine such as CI's.
+    private static readonly string NonAsciiName = new[] { "\u0437\u0432\u0456\u0442.txt", "caf\u00E9.txt" }.First(SurvivesTheAnsiCodePage);
     private static readonly string Text = string.Concat(Enumerable.Repeat("The quick brown fox jumps over the lazy dog. ", 400));
 
     private readonly TestTempFolder _temp = new("pakko-cli-7z-");
@@ -33,13 +35,20 @@ public sealed class CliSevenZipSubprocessTests : IAsyncLifetime
 
     private string Archive(string name = "out.7z") => Path.Combine(_temp.Path, name);
 
+    private static bool SurvivesTheAnsiCodePage(string name)
+    {
+        // null: the ANSI code page is UTF-8, which carries any name.
+        Encoding? ansi = CodePagesEncodingProvider.Instance.GetEncoding(0);
+        return ansi is null || ansi.GetString(ansi.GetBytes(name)) == name;
+    }
+
     private static bool Holds(byte[] haystack, byte[] needle) => haystack.AsSpan().IndexOf(needle) >= 0;
 
     [SevenZipWriterFact]
     public void Archive_SevenZip_WritesARealSevenZipThatListsAndExtractsBack()
     {
         string first = Source("a.txt");
-        string second = Source(CyrillicName);
+        string second = Source(NonAsciiName);
 
         (int exitCode, _, string stdErr) = CliProcessRunner.Run("a", "-t7z", Archive(), first, second);
 
@@ -56,7 +65,7 @@ public sealed class CliSevenZipSubprocessTests : IAsyncLifetime
         (int extractExit, _, string extractErr) = CliProcessRunner.Run("x", $"-o{dest}", Archive());
         extractExit.Should().Be(0, extractErr);
         File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be(Text);
-        File.ReadAllText(Path.Combine(dest, CyrillicName)).Should().Be(Text);
+        File.ReadAllText(Path.Combine(dest, NonAsciiName)).Should().Be(Text);
     }
 
     [SevenZipWriterFact]
