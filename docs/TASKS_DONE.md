@@ -12699,3 +12699,28 @@ PowerShell does natively.
   archive" was written ahead of the code. Next: build the list from the policy (allowed and
   blocked alike), with a test in `Archiver.App.Core`, then POL-009 again.
 - **Reported by:** hand walk of the `mcp` smoke rows (POL-009), 2026-10-11.
+
+### T-F389 — A file extracted through the tar.exe sandbox keeps the quarantine folder's permissions (P0)
+
+- [x] **Status:** done 2026-10-12 (v1.8.1). After the move out of the quarantine each file is
+  given the permissions of the folder it is in (`QuarantineAcl.InheritFromParent`: an empty,
+  unprotected DACL and an empty label list through `SetNamedSecurityInfoW`); a file whose
+  security cannot be written is deleted from the staging and reported, not delivered. Five
+  tests (`TarSandboxedServiceExtractPermissionsTests`), the two extraction ones seen red.
+  Checked with the built `pakko.exe`: a 7z marked `ZoneId=3`, extracted into a folder granting
+  Authenticated Users, gives files that inherit that entry, carry no sandbox entry and no
+  label, and keep the mark.
+- **Before that:** tar.exe creates each file inside the AppContainer, so the file gets the
+  `out\` folder's inherited entries (Modify for the sandbox SID `S-1-15-2-...`) and a Low
+  integrity label. `File.Move` on the same volume keeps that security descriptor, so the
+  delivered file did not inherit from its destination: on a folder granting Authenticated
+  Users read access the file lacked that entry, while the subfolder (created by Pakko) and a
+  ZIP extracted next to it had it. Every tar.exe format (tar, gz, bz2, xz, zst, lzma, 7z, rar).
+  The move from the quarantine predates `03a65e3` (2026-09-25); versions before v1.8.1 were
+  not re-run, every version with the sandbox is presumed affected. A destination on another
+  volume was not tested (a copy there, expected clean).
+- **Open:** files already extracted by earlier versions are not repaired. `scripts/
+  Find-PakkoSandboxAce.ps1 -AllFiles` lists them (without `-AllFiles` it looks at archive
+  extensions only); whether `Repair-PakkoSandboxAce.ps1` removes the label was not checked.
+  An advisory in `SECURITY.md` needs the user's permission.
+- **Found by:** the T-F342 research (permissions of extracted files), 2026-10-12.

@@ -54,6 +54,43 @@ internal static partial class QuarantineAcl
     public static void EnsureSharedParentTraverse(string path, SafeSidHandle sid)
         => Grant(path, sid, FileTraverse, NoInheritance, sharedParent: true);
 
+    /// <summary>
+    /// T-F389: gives a file that tar.exe wrote inside the AppContainer the permissions of the
+    /// folder it is in now. Such a file carries the quarantine folder's inherited entries (the
+    /// sandbox SID among them) and a Low integrity label, and a rename keeps both. An empty,
+    /// unprotected DACL leaves only what the current parent grants; an empty label list removes
+    /// the label. Throws <see cref="IOException"/> when the file's security cannot be written.
+    /// </summary>
+    public static void InheritFromParent(string filePath)
+    {
+        const int SE_FILE_OBJECT = 1;
+        const uint DACL_SECURITY_INFORMATION = 0x00000004;
+        const uint LABEL_SECURITY_INFORMATION = 0x00000010;
+        const uint UNPROTECTED_DACL_SECURITY_INFORMATION = 0x20000000;
+        const int AclHeaderLength = 8;
+        const byte AclRevision = 2;
+
+        // ACL header with no entries: AclRevision, Sbz1, AclSize (ushort), AceCount (ushort), Sbz2 (ushort).
+        IntPtr emptyAcl = Marshal.AllocHGlobal(AclHeaderLength);
+        try
+        {
+            Marshal.WriteInt64(emptyAcl, 0);
+            Marshal.WriteByte(emptyAcl, 0, AclRevision);
+            Marshal.WriteInt16(emptyAcl, 2, AclHeaderLength);
+
+            uint result = NativeMethods.SetNamedSecurityInfoW(
+                filePath, SE_FILE_OBJECT,
+                DACL_SECURITY_INFORMATION | UNPROTECTED_DACL_SECURITY_INFORMATION | LABEL_SECURITY_INFORMATION,
+                IntPtr.Zero, IntPtr.Zero, emptyAcl, emptyAcl);
+            if (result != 0)
+                throw new IOException($"SetNamedSecurityInfoW('{filePath}') failed (Win32 error {result}).");
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(emptyAcl);
+        }
+    }
+
     private static void Grant(string path, SafeSidHandle sid, uint accessMask, int inheritance, bool sharedParent)
     {
         const int SE_FILE_OBJECT = 1;
