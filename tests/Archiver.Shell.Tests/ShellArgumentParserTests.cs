@@ -140,6 +140,27 @@ public sealed class ShellArgumentParserTests
     }
 
     [Fact]
+    public void Archive_FormatSevenZip_ReturnsArchiveCommandWithSevenZipFormat()
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--archive", "--format", "7z", "document.txt"]);
+
+        result.Type.Should().Be(CommandType.Archive);
+        result.Format.Should().Be(ArchiveContainerFormat.SevenZip);
+        result.Files.Should().Equal("document.txt");
+    }
+
+    [Theory]
+    [InlineData("7Z")]
+    [InlineData("sevenzip")]
+    [InlineData(".7z")]
+    public void Archive_AnotherSpellingOfSevenZip_ReturnsInvalid(string value)
+    {
+        ParsedCommand result = ShellArgumentParser.Parse(["--archive", "--format", value, "document.txt"]);
+
+        result.Type.Should().Be(CommandType.Invalid);
+    }
+
+    [Fact]
     public void Archive_UnknownFormatValue_ReturnsInvalid()
     {
         ParsedCommand result = ShellArgumentParser.Parse(["--archive", "--format", "tar.gz", "document.txt"]);

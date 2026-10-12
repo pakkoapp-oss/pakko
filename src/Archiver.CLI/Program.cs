@@ -405,7 +405,7 @@ static async Task<int> RunInfoAsync(PakkoServices services)
     GroupPolicyOptions policy = services.Policy;
 
     await Console.Out.WriteLineAsync("Pakko CLI — supported formats on this system:").ConfigureAwait(false);
-    const string CreateExtractList = "create, extract, list";
+    const string CreateExtractList = CliInfoText.CreateExtractList;
     await PrintFormatLineAsync("zip", "create, extract, test, list", ArchiveFormat.Zip).ConfigureAwait(false);
     await PrintFormatLineAsync("tar", CreateExtractList, ArchiveFormat.Tar).ConfigureAwait(false);
     await PrintFormatLineAsync("tar.gz", CreateExtractList, ArchiveFormat.GZip).ConfigureAwait(false);
@@ -413,7 +413,11 @@ static async Task<int> RunInfoAsync(PakkoServices services)
     await PrintFormatLineAsync("tar.xz", CreateExtractList, ArchiveFormat.Xz).ConfigureAwait(false);
     await PrintFormatLineAsync("tar.zst", CreateExtractList, ArchiveFormat.Zstd).ConfigureAwait(false);
     await PrintFormatLineAsync("tar.lzma", CreateExtractList, ArchiveFormat.Lzma).ConfigureAwait(false);
-    await PrintFormatLineAsync("7z", "extract, list", ArchiveFormat.SevenZip).ConfigureAwait(false);
+    // T-F342: whether this tar.exe writes 7z is found by running its writer once, and only where
+    // policy lets tar.exe run for 7z at all.
+    bool sevenZipWriter = !ArchiveFormatPolicy.IsBlockedByPolicy(ArchiveFormat.SevenZip, policy)
+        && await services.TarService.CanCreateSevenZipAsync(CancellationToken.None).ConfigureAwait(false);
+    await PrintFormatLineAsync("7z", CliInfoText.SevenZipActions(sevenZipWriter), ArchiveFormat.SevenZip).ConfigureAwait(false);
     await PrintFormatLineAsync("rar", "extract, list", ArchiveFormat.Rar).ConfigureAwait(false);
     await Console.Out.WriteLineAsync().ConfigureAwait(false);
     string tarVersion = policy.DisableTarExtraction ? "disabled by Group Policy" : $"version {capabilities.Version}";
@@ -510,6 +514,7 @@ static ArchiveOptions BuildArchiveOptions(
         OnConflict = command.AssumeYes ? ConflictBehavior.Overwrite : ConflictBehavior.Skip,
         CompressionLevel = command.CompressionLevel ?? CompressionLevel.Optimal,
         Format = command.ArchiveFormat,
+        SevenZipMethod = command.SevenZipMethod ?? SevenZipMethod.Lzma2,
         ResolvePasswordAsync = BuildNewPasswordResolver(command, prompt),
         RecoveryPercent = command.RecoveryPercent,
     };

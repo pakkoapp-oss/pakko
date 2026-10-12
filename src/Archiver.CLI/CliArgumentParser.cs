@@ -31,6 +31,7 @@ public sealed record ParsedCliCommand
     public ArchiveContainerFormat ArchiveFormat { get; init; } = ArchiveContainerFormat.Zip; // -t{type}, a only
     public string? ArchiveTypeSwitch { get; init; }                   // the -t token as typed; null when no -t (T-F296)
     public CompressionLevel? CompressionLevel { get; init; }          // -mx=N, a only (null = default Optimal)
+    public SevenZipMethod? SevenZipMethod { get; init; }              // -m0=<method>, a -t7z only (T-F342); null = not given
     public HashAlgorithmKind HashAlgorithm { get; init; } = HashAlgorithmKind.Crc32; // -scrc{method}, h only (T-F128/T-F09 follow-up); Crc32 matches real 7z's own default hash method
     public bool ReadFromStdin { get; init; }                          // -si, x/t/l/h only (T-F116)
     public bool WriteToStdout { get; init; }                          // -so, x/a only (T-F116)
@@ -411,6 +412,7 @@ public static class CliArgumentParser
         public ArchiveContainerFormat ArchiveFormat { get; set; } = ArchiveContainerFormat.Zip;
         public string? ArchiveTypeSwitch { get; set; }
         public CompressionLevel? CompressionLevel { get; set; }
+        public SevenZipMethod? SevenZipMethod { get; set; }
         public bool WriteToStdout { get; set; }
         public string? Password { get; set; }
         public bool PromptForPassword { get; set; }
@@ -440,6 +442,7 @@ public static class CliArgumentParser
             ArchiveFormat = state.ArchiveFormat,
             ArchiveTypeSwitch = state.ArchiveTypeSwitch,
             CompressionLevel = state.CompressionLevel,
+            SevenZipMethod = state.SevenZipMethod,
             WriteToStdout = state.WriteToStdout,
             Password = state.Password,
             PromptForPassword = state.PromptForPassword,
@@ -488,7 +491,8 @@ public static class CliArgumentParser
         return UnsupportedSwitchReason(token);
     }
 
-    // 7z's -m{params} on 'a': -mx=<0-9> and -mem=AES256 are implemented, every other one is refused.
+    // 7z's -m{params} on 'a': -mx=<0-9>, -mem=AES256 and -m0=<method> (7z only, T-F342) are
+    // implemented, every other one is refused.
     private static string? ApplyMethodToken(string token, ArchiveParseState state)
     {
         if (token.StartsWith("-mx", StringComparison.Ordinal))
@@ -502,7 +506,42 @@ public static class CliArgumentParser
         if (token.StartsWith("-mem", StringComparison.Ordinal))
             return EncryptionMethodError(token);
 
-        return "not supported by Pakko: of 7z's -m{params}, only -mx=<0-9> and -mem=AES256 are implemented";
+        if (token.StartsWith("-m0", StringComparison.Ordinal))
+        {
+            (state.SevenZipMethod, string? error) = ParseSevenZipMethod(token);
+            return error;
+        }
+
+        if (token.Length > 2 && char.IsAsciiDigit(token[2]))
+            return $"not supported by Pakko: {token[..3]} — a 7z archive is written with one method, named by -m0=<method>";
+
+        return "not supported by Pakko: of 7z's -m{params}, only -mx=<0-9>, -mem=AES256 and -m0=<method> (with -t7z) are implemented";
+    }
+
+    // T-F342: the methods tar.exe's 7z writer has and Pakko offers. A bare name only: a method's
+    // own parameters (-m0=lzma2:d=64m) have no counterpart there. Whichever -m0 comes last wins.
+    private const string SevenZipMethodNames = "lzma2, lzma, bzip2, deflate, copy";
+
+    private static (SevenZipMethod? Method, string? Error) ParseSevenZipMethod(string token)
+    {
+        if (!token.StartsWith("-m0=", StringComparison.Ordinal) || token.Length == 4)
+            return (null, $"-m0 requires a method in the form -m0=<method>: {SevenZipMethodNames}");
+
+        string method = token[4..];
+        if (method.Contains(':'))
+            return (null, $"not supported by Pakko: -m0={method} — a method's parameters cannot be set; name the method alone ({SevenZipMethodNames})");
+
+        return method.ToUpperInvariant() switch
+        {
+            "LZMA2" => (SevenZipMethod.Lzma2, null),
+            "LZMA" => (SevenZipMethod.Lzma, null),
+            "BZIP2" => (SevenZipMethod.BZip2, null),
+            "DEFLATE" => (SevenZipMethod.Deflate, null),
+            "COPY" => (SevenZipMethod.Copy, null),
+            "PPMD" or "ZSTD" =>
+                (null, $"not supported by Pakko: -m0={method} — Windows' tar.exe, which writes the archive, has no {method} for 7z ({SevenZipMethodNames})"),
+            _ => (null, $"unknown -m0 value: '{method}' (expected {SevenZipMethodNames})"),
+        };
     }
 
     // T-F275: WinRAR's -rr[N] spelling (no 7z switch adds recovery data). A bare -rr is the App's
@@ -577,9 +616,9 @@ public static class CliArgumentParser
         }
 
         string typeValue = token[2..];
-        if (typeValue is "7z" or "rar")
+        if (typeValue is "rar")
         {
-            error = $"not supported by Pakko: -t{typeValue} — Pakko can only create ZIP/tar-family archives, {typeValue} is extract-only";
+            error = "not supported by Pakko: -trar — Pakko can only create ZIP, 7z and tar-family archives, rar is extract-only";
             return false;
         }
 
@@ -592,6 +631,7 @@ public static class CliArgumentParser
             "tar.xz" => ArchiveContainerFormat.TarXz,
             "tar.zst" => ArchiveContainerFormat.TarZst,
             "tar.lzma" => ArchiveContainerFormat.TarLzma,
+            "7z" => ArchiveContainerFormat.SevenZip,
             // T-F294: dot-free spellings PowerShell cannot split.
             "tgz" => ArchiveContainerFormat.TarGz,
             "tbz2" => ArchiveContainerFormat.TarBz2,
@@ -601,7 +641,7 @@ public static class CliArgumentParser
         };
         if (format is null)
         {
-            error = $"unknown -t value: '{typeValue}' (expected zip, tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma, or tgz, tbz2, txz, tzst)";
+            error = $"unknown -t value: '{typeValue}' (expected zip, 7z, tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma, or tgz, tbz2, txz, tzst)";
             return false;
         }
 

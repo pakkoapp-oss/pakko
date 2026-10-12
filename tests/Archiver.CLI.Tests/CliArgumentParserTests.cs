@@ -672,15 +672,6 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void Archive_SevenZipType_ReturnsInvalidNamingExtractOnlyGap()
-    {
-        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-t7z", "out", "file1.txt"]);
-
-        result.Type.Should().Be(CliCommandType.Invalid);
-        result.ErrorMessage.Should().Contain("extract-only");
-    }
-
-    [Fact]
     public void Archive_RarType_ReturnsInvalidNamingExtractOnlyGap()
     {
         ParsedCliCommand result = CliArgumentParser.Parse(["a", "-trar", "out", "file1.txt"]);

@@ -18,8 +18,15 @@ public static class CliCommandValidator
 
     private static string? ArchiveRules(ParsedCliCommand command)
     {
-        if ((command.Password is not null || command.PromptForPassword) && command.ArchiveFormat != ArchiveContainerFormat.Zip)
+        bool password = command.Password is not null || command.PromptForPassword;
+        // T-F342: Windows' tar.exe writes 7z without encryption, and Pakko has no 7z code of its own.
+        if (password && command.ArchiveFormat == ArchiveContainerFormat.SevenZip)
+            return "not supported by Pakko: -p with -t7z — Pakko cannot encrypt a 7z archive; only ZIP archives can be password-protected";
+        if (password && command.ArchiveFormat != ArchiveContainerFormat.Zip)
             return "not supported by Pakko: -p on a tar-family archive — only ZIP archives can be password-protected";
+
+        if (command.SevenZipMethod is not null && command.ArchiveFormat != ArchiveContainerFormat.SevenZip)
+            return "-m0=<method> names the method of a 7z archive: add -t7z, or leave -m0 out";
 
         // T-F275: the PAR2 files go next to the archive; a stream has no "next to".
         if (command.RecoveryPercent > 0 && command.WriteToStdout)
@@ -65,9 +72,6 @@ public static class CliCommandValidator
         int bestLength = 0;
         foreach (ArchiveContainerFormat format in Enum.GetValues<ArchiveContainerFormat>())
         {
-            // T-F342: no -t7z yet (the CLI wave adds it), so a .7z name asks for nothing.
-            if (format == ArchiveContainerFormat.SevenZip)
-                continue;
             string extension = ArchiveNaming.GetExtension(format);
             if (extension.Length > bestLength && name.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
             {
@@ -86,6 +90,7 @@ public static class CliCommandValidator
         ArchiveContainerFormat.TarXz => "-ttar.xz (or -ttxz)",
         ArchiveContainerFormat.TarZst => "-ttar.zst (or -ttzst)",
         ArchiveContainerFormat.TarLzma => "-ttar.lzma",
+        ArchiveContainerFormat.SevenZip => "-t7z",
         _ => "-tzip",
     };
 }
