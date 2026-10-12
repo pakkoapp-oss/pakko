@@ -777,6 +777,19 @@ public sealed class TarSandboxedService : ITarService
             return (false, relativePath);
         }
 
+        // T-F389: tar.exe created the file inside the sandbox; the move kept the quarantine
+        // folder's permissions on it. A file that cannot take the destination's is not delivered.
+        try
+        {
+            QuarantineAcl.InheritFromParent(stagedFilePath);
+        }
+        catch (IOException ex)
+        {
+            TryDeleteBestEffort(stagedFilePath);
+            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotExtractEntry, relativePath, CoreMessages.Detail(ex)), ex));
+            return (false, relativePath);
+        }
+
         // T-F45: propagate Zone.Identifier ADS from the archive the user chose to the extracted
         // file — MOTW must reflect the real source. The stream moves with the file at commit.
         ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFilePath, context.MotwMode);

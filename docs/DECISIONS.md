@@ -12829,6 +12829,26 @@ steps in `scripts/smoke/ShellRelease.ps1`, six in `Par2Release.ps1`.
 equal for a table a regular expression already reads. A new test project for the guard: the
 existing document-reading tests live in `Archiver.Core.Tests/Services`.
 
+## T-F389 — permissions of files leaving the sandbox (2026-10-12)
+
+Found while researching T-F342. A file tar.exe writes in the AppContainer has the quarantine
+`out\` folder's inherited entries and a Low integrity label
+(`D:AI(A;ID;0x1301bf;;;S-1-15-2-...)(A;ID;FA;;;SY)(A;ID;FA;;;BA)(A;ID;FA;;;<user>)S:(ML;;NW;;;LW)`),
+and a same-volume rename keeps the descriptor. Same class as T-F233, for the output instead of
+the archive.
+
+- **Chosen:** reset the file where it lands in the staging folder: `SetNamedSecurityInfoW` with
+  `DACL | UNPROTECTED_DACL | LABEL` and one empty ACL for both lists. The staging folder is inside
+  the destination's volume and inherits from it, which is where a ZIP entry gets its permissions
+  too, so both engines now agree. A failure deletes the staged file and reports the entry.
+- **Rejected:** copying out of the quarantine instead of renaming (a second write of every byte);
+  removing only the sandbox SID's entry (leaves the temporary folder's other inherited entries
+  and the label); repairing files extracted by earlier versions (the 2026-09-25 decision for
+  T-F233 stands: no automatic rewrite of users' permissions).
+- **Known limit, shared with ZIP:** the file inherits from the staging folder, not from an
+  existing subfolder of the destination that has permissions of its own.
+- **Decided by the agent (delegated 2026-10-12):** fixed before the v1.8.1 tag.
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry
