@@ -360,6 +360,27 @@ Nothing is repaired automatically. `scripts/Find-PakkoSandboxAce.ps1` lists affe
 `icacls /save`, removes only Pakko's entries and makes the file inherit from its real folder again.
 Entries set explicitly for anyone else are kept.
 
+### Advisory: Permissions of Files Extracted by Earlier Versions (T-F389)
+
+Pakko versions before v1.8.1 extracted a tar-family archive (.tar, .gz, .bz2, .xz, .zst, .lzma,
+.7z, .rar) inside the sandbox and then moved each file to its destination. On the same drive as
+`%TEMP%` the move kept the security the file got in the sandbox's folder, so each extracted file:
+- has an entry for Pakko's sandbox (an `S-1-15-2-...` AppContainer SID, Modify) and a Low
+  integrity label, and
+- has the temporary folder's permissions, not those of the folder it was extracted into - on a
+  shared folder, other people may have no access to it.
+
+Folders created by the extraction, and files extracted from ZIP archives, are not affected. A
+destination on another drive was not tested; a move there is a copy, which is expected to take the
+destination's permissions. From v1.8.1 an extracted file takes the permissions of its folder and
+carries neither the entry nor the label.
+
+Nothing is repaired automatically. `scripts/Find-PakkoSandboxAce.ps1 -Path <folder> -AllFiles`
+lists affected files (read-only; without `-AllFiles` it looks only at archive extensions);
+`scripts/Repair-PakkoSandboxAce.ps1 -Path <file>` saves the current permissions with
+`icacls /save`, makes the file inherit from its real folder again and sets a Low integrity label
+back to Medium.
+
 ### Advisory: `pakko://` Links in Earlier Versions (T-F232)
 
 Pakko versions before v1.5.0 registered a `pakko://` URI scheme. A web page, e-mail or

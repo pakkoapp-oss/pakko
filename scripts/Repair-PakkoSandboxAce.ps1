@@ -8,7 +8,10 @@
       1. removes only the explicit entries for Pakko's sandbox SID;
       2. if the file inherits permissions: drops the inherited entries, which came from Pakko's
          temporary folder, not from the file's own folder, and inherits again from the folder
-         it is in. A file with inheritance turned off keeps it off.
+         it is in. A file with inheritance turned off keeps it off;
+      3. if the file has a Low integrity label (a file an earlier Pakko extracted from a
+         tar-family archive has one, T-F389): sets the label to Medium, the level a file
+         without a label has.
     Entries the file had explicitly for anyone else are kept. This is not "icacls /reset",
     which would also drop them. Restore the backup with:
       icacls "<folder of the file>" /restore "<backup file>"
@@ -76,6 +79,15 @@ if (-not $acl.AreAccessRulesProtected) {
     & $icacls $file.FullName /inheritance:e | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "icacls /inheritance:e failed ($LASTEXITCODE). Restore with: icacls `"$($file.DirectoryName)`" /restore `"$backup`""
+    }
+}
+
+# T-F389: tar.exe wrote such a file inside the sandbox, which also labels it Low integrity.
+# The backup holds the file's SDDL as it was; Medium is what an unlabelled file is treated as.
+if ((Get-Content -LiteralPath $backup -Raw -Encoding Unicode) -match '\(ML;[^)]*;LW\)') {
+    & $icacls $file.FullName /setintegritylevel medium | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "icacls /setintegritylevel failed ($LASTEXITCODE). Restore with: icacls `"$($file.DirectoryName)`" /restore `"$backup`""
     }
 }
 

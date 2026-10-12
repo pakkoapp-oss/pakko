@@ -20,7 +20,8 @@ a list row selected from the keyboard have done nothing since v1.7.2, the first 
 - **T-F389** - a file extracted from a tar, gz, bz2, xz, zst, lzma, 7z or rar archive has the
   permissions of the folder it is extracted into. Before, it kept an entry for Pakko's sandbox
   and a Low integrity label and did not inherit from that folder, so on a shared folder other
-  people could be left without access to it. Files extracted by earlier versions are not changed.
+  people could be left without access to it. Files extracted by earlier versions are not changed:
+  `SECURITY.md` ("Permissions of Files Extracted by Earlier Versions") says how to find and repair them.
 - **T-F380** - in the App, Delete removes the focused row of the list, Shift+F10 and the menu key
   open its menu, and Enter opens the focused row of the archive view. Under Native AOT the three
   did nothing; the mouse worked.

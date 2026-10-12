@@ -12724,8 +12724,11 @@ PowerShell does natively.
   The move from the quarantine predates `03a65e3` (2026-09-25); versions before v1.8.1 were
   not re-run, every version with the sandbox is presumed affected. A destination on another
   volume was not tested (a copy there, expected clean).
-- **Open:** files already extracted by earlier versions are not repaired. `scripts/
-  Find-PakkoSandboxAce.ps1 -AllFiles` lists them (without `-AllFiles` it looks at archive
-  extensions only); whether `Repair-PakkoSandboxAce.ps1` removes the label was not checked.
-  An advisory in `SECURITY.md` needs the user's permission.
+- **Earlier files (2026-10-12, the maintainer left the decision to the agent):** not repaired
+  automatically. Advisory in `SECURITY.md`. `scripts/Find-PakkoSandboxAce.ps1 -AllFiles` lists
+  them (without `-AllFiles` it looks at archive extensions only: 0 of 6 found, 6 of 6 with it).
+  `Repair-PakkoSandboxAce.ps1` restored the inherited entries but left `S:(ML;;NW;;;LW)`; it now
+  sets a Low label to Medium. Run on a file extracted by the build before the fix: before
+  `D:AI(A;ID;0x1301bf;;;S-1-15-2-...)...S:(ML;;NW;;;LW)`, after the old script
+  `D:AI(A;ID;0x1200a9;;;AU)...S:(ML;;NW;;;LW)`.
 - **Found by:** the T-F342 research (permissions of extracted files), 2026-10-12.
