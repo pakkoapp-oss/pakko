@@ -1617,10 +1617,12 @@ re-measured with T-F346's script before and after.
   picture of the window taken after the terminal was minimized, `pakko.log` has "Pakko started"
   only, the Application event log has nothing. The window was closed after about two minutes.
   Three more tries (one under the same topmost window) opened the dialog. So `ShowAboutAsync`
-  was entered and never finished, without a dialog on screen. Next: read `DialogService`'s
-  one-dialog-at-a-time path for a way to wait for ever; a test on that path once the cause is
-  known. Does not hold the v1.8.1 tag: the trigger is unknown and nothing else in the window
-  was affected.
+  was entered and never finished, without a dialog on screen. `DialogService` has no gate of
+  its own: every dialog calls `ContentDialog.ShowAsync` directly, and WinUI allows one open
+  dialog per window. Not tried in that window: whether a second dialog (a name conflict, a
+  password prompt) would still open; if WinUI counted the About dialog as open, it would not.
+  Next: reproduce, then try a second dialog in the stuck window. Does not hold the v1.8.1 tag:
+  seen once in five tries, with no known trigger.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`APP-001`), 2026-10-12.
 
 ### T-F394 — Two smoke steps report the wrong thing (P3)
@@ -1635,3 +1637,14 @@ re-measured with T-F346's script before and after.
      (the prompt was not accepted): there is no `after-*.reg` to compare. It should be skipped
      with the reason the other elevated rows give.
 - **Reported by:** the release-tier smoke run of v1.8.1, 2026-10-12.
+
+### T-F395 — The App's bar stands near its end while a tar archive of many files is finished (P3)
+
+- [ ] **Status:** open. Package 1.8.1.5 (`b146f3b`), 2026-10-12: a ZIP of three files and a
+  tar.gz of 6000 files of 256 KiB extracted together from the App. The bar, read every 80 ms:
+  0 to 3 under "checking the archive's contents", 3 to 95 in 7 s, then 95, 96, 97, 98, 99 and
+  100 over 16 s, with the same speed in the text for all of them and no time left; "extracted
+  in 26 s". What runs in those 16 s was not measured (the files leave the quarantine folder
+  after tar.exe is done). Next: measure which step it is, then give it its share of the bar or
+  a text of its own.
+- **Reported by:** the release-tier smoke run of v1.8.1 (`APP-023`), 2026-10-12.
