@@ -12894,21 +12894,22 @@ the archive.
   | APP-023 | OK | ZIP of 512 MB and tar.gz of 1.5 GB with six entries: bar 4, 8, 24, "checking the archive's contents" at 24, done in 4 s. A small ZIP and a tar.gz of 6000 files of 256 KiB, the bar read every 80 ms: "checking" while it goes 0 to 3, 3 to 95 in 7 s with speed and time left, 95 to 100 in 16 s with the speed text unchanged, "extracted in 26 s - archives: 2" |
   | APP-012 | OK | Delete and Shift+F10 on a keyboard-focused row of the list; Enter and Backspace in the archive view (T-F380). The footer's tab order was not walked again |
   | APP-015 | OK | ar-SA: the whole window mirrored, no English in the main view (T-F386); de-DE: the PAR2 percentage box inside the card (T-F387); ja-JP: nothing cut. Driven by a script that puts the language first in the list and puts `uk`, `en-US` and their keyboards back |
+  | APP-023 (the bar's end) | P3 | in the second run the bar stood between 95 and 100 for 16 of the 26 s, the speed text unchanged (T-F395) |
   | APP-006 | part | Test from the archive view: a stored entry with a flipped byte gives the CRC-32 message; a Deflate entry with 70 000 bytes zeroed gives "The compressed data is damaged." with the Ukrainian text in front (T-F382). Scan, preview and a nested archive were not walked again |
   | APP-007 | part | the conflict dialog shows size and date of both files; Skip for all: one question, result line "nothing done - skipped: 7" (T-F383). Bomb, password and error dialogs were not walked again |
   | APP-002 | part | AES-256 ZIP with a 5 % set from the New archive card: `7za l -slt` "AES-256 Deflate", `7za t` OK, `pakko t` "recovery data intact"; with encryption on, the PAR2 row and both password boxes are in view (T-F381). The pickers and the tar formats were not walked again |
   | APP-013 | part | window of 886 x 553: the cards scroll, nothing is cut. The themes were not walked again |
   | OPW-003 | part | password page: both buttons whole, also with the "wrong password" line (the window grows); wrong, then right: "no errors" (T-F385). Conflict and bomb were not walked again |
-  | POL-009 | OK | `EnforceMOTW` 0, 1, 2: the box disabled at Off, On, On, with "set by your organisation's policy"; `AllowedFormats` = `zip`: New archive lists ZIP only (T-F388), a tar.gz is refused on open; `BlockedFormats` = `zip`: the six tar formats only, a ZIP is refused on open; `DisableRecoveryData`: no PAR2 option, no PAR2 line and no Repair on a ZIP with a set. A `.par2` row is accepted into the list; what extraction says of it was not looked at again |
+  | POL-009 | part | `EnforceMOTW` 0, 1, 2: the box disabled at Off, On, On, with "set by your organisation's policy"; `AllowedFormats` = `zip`: New archive lists ZIP only (T-F388), a tar.gz is refused on open; `BlockedFormats` = `zip`: the six tar formats only, a ZIP is refused on open; `DisableRecoveryData`: no PAR2 option, no PAR2 line and no Repair on a ZIP with a set. A `.par2` row is accepted into the list; what extraction says of it was not looked at again |
   | POL-010 | OK | `BlockedFormats` = `zip`: the ZIP with a set shows Compress and the two Hash items only, its `.par2` shows Add to tar, Verify and Repair and no Add to zip; `DisableTarExtraction`: a folder has Add to zip and no Add to tar; `DisableRecoveryData`: the ZIP with a set has its nine items and no PAR2 item |
   | CLI-023 | part | the share half, through `\\localhost\Users\...` (an NTFS folder behind SMB): `x` of a tar.gz and of a 7z, exit 0, seven files each with the source's bytes, inherited permissions only. exFAT or FAT32 is the maintainer's |
 
   Besides the rows: `Archiver.Shell.exe --extract-folder` on a tar.gz and a tar leaves files
   that carry only the folder's inherited entries, no sandbox SID and no label (T-F389).
-- **What T-F389 costs.** `pakko x` of the tar.gz of 6000 files takes 25.6 and 26.2 s with the
-  v1.8.0 `pakko` and 27.5 and 31.3 s with 1.8.1.5: the permissions of each file are reset on the
-  way out of the quarantine folder. The slow last five per cent of the bar is that move; v1.8.0
-  has it too.
+- **`pakko x` of the tar.gz of 6000 files, timed twice each:** 25.6 and 26.2 s with the v1.8.0
+  `pakko`, 27.5 and 31.3 s with 1.8.1.5. The difference fits what T-F389 added (each file's
+  permissions are reset on the way out of the quarantine folder), but only the totals were
+  measured, not the step.
 - **PKG-005 needed a file put in place.** The step looks for a `.msix` under
   `src\Archiver.App\AppPackages`, where `Deploy.ps1` leaves the `.msixbundle` only; the `.msix`
   of the same build (`bin\x64\Release\...`, the hash of the one in the bundle's folder, a valid
