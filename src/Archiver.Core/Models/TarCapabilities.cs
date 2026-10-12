@@ -2,15 +2,16 @@ namespace Archiver.Core.Models;
 
 /// <summary>
 /// What the system's tar.exe (libarchive) supports, probed once via ITarService.DetectCapabilitiesAsync
-/// by parsing its version output. tar.exe can read RAR/7z but never write either — libarchive has
-/// no writer for them (see CLAUDE.md's tar.exe format-support hard constraint).
+/// by parsing its version output. tar.exe reads RAR and cannot write it; a new enough one writes
+/// 7z with --format=7zip (T-F342, see CLAUDE.md's tar.exe format-support hard constraint), which
+/// this record does not report yet.
 /// </summary>
 public sealed record TarCapabilities
 {
     /// <summary>Can read RAR archives (read-only — no RAR writer exists in libarchive).</summary>
     public bool SupportsRar { get; init; }
 
-    /// <summary>Can read 7z archives (read-only — no 7z writer exists in libarchive).</summary>
+    /// <summary>Can read 7z archives.</summary>
     public bool Supports7z { get; init; }
 
     /// <summary>Can read and write .tar.zst.</summary>

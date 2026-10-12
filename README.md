@@ -86,7 +86,7 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 | ZIP | ✅ read/write, v1.0 | `System.IO.Compression` |
 | TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ read (v1.3) + create (v1.4) | `tar.exe` (Windows built-in), AppContainer-sandboxed for extraction |
 | RAR | ✅ read only, v1.3 | `tar.exe` (Windows built-in) — libarchive has no RAR writer |
-| 7z | ✅ read only, v1.3 | `tar.exe` (Windows built-in) — libarchive has no 7z writer |
+| 7z | ✅ read only, v1.3 | `tar.exe` (Windows built-in) — creating 7z is planned for v1.9 |
 | Password-protected ZIP | ✅ read (ZipCrypto, WinZip AES) and create (AES-256 only) | `System.IO.Compression` + .NET cryptography |
 | Encrypted 7z/RAR | ❌ detected and refused with a clear error | — |
 

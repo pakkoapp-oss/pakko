@@ -210,6 +210,31 @@ jobs:
           & "tests\Archiver.ShellExtension.Tests\bin\x64\Debug\Archiver.ShellExtension.Tests.exe"
           if ($LASTEXITCODE -ne 0) { throw "Archiver.ShellExtension.Tests failed (exit $LASTEXITCODE)" }
 
+      # T-F342: diagnostic only, never part of the result -- whether this image's tar.exe writes
+      # 7z, which decides if the 7z creation tests run here or skip.
+      - name: tar.exe 7z writer probe
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $tar = 'C:\Windows\System32\tar.exe'
+          & $tar --version
+          $empty = Join-Path $env:RUNNER_TEMP 'probe-empty.7z'
+          & $tar --format=7zip -cf $empty -T NUL
+          Write-Host "empty list: exit $LASTEXITCODE"
+          if (Test-Path $empty) {
+            $bytes = [IO.File]::ReadAllBytes($empty)
+            Write-Host "$($bytes.Length) bytes, first: $([Convert]::ToHexString($bytes, 0, [Math]::Min(6, $bytes.Length)))"
+          }
+          Set-Content -LiteralPath (Join-Path $env:RUNNER_TEMP 'probe.txt') -Value 'x'
+          foreach ($method in 'lzma2', 'lzma1', 'bzip2', 'deflate', 'copy') {
+            $out = Join-Path $env:RUNNER_TEMP "probe-$method.7z"
+            & $tar --format=7zip --options "7zip:compression=$method" -cf $out -C $env:RUNNER_TEMP probe.txt
+            Write-Host "${method}: create exit $LASTEXITCODE"
+            & $tar -tvf $out
+            Write-Host "${method}: list exit $LASTEXITCODE"
+          }
+
   # T-F150: PowerShell has no compiled build step, so its static-analysis gate lives here instead
   # of inside a .vcxproj/.csproj (see docs/DECISIONS.md's T-F150 entry). No dependency on `test` —
   # this is fast and independent, so it runs in parallel rather than waiting.

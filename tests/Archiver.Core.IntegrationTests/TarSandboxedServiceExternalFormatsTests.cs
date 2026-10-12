@@ -5,9 +5,9 @@ using FluentAssertions;
 namespace Archiver.Core.IntegrationTests;
 
 /// <summary>
-/// T-F50: formats tar.exe/libarchive can only read, never create (7z; RAR is the same gap but
-/// has no encoder available on this machine at all - see Fixtures/README.md) - use a committed
-/// binary fixture instead of test-time generation.
+/// T-F50: formats read from a committed binary fixture instead of one generated at test time -
+/// RAR has no encoder available on this machine at all, and the 7z comes from another program
+/// than the tar.exe under test (which can write 7z itself, T-F342) - see Fixtures/README.md.
 /// </summary>
 [Collection("TarSandbox")]
 public sealed class TarSandboxedServiceExternalFormatsTests : IDisposable
