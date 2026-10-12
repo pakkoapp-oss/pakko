@@ -12747,8 +12747,8 @@ PowerShell does natively.
   Smoke row `CLI-024` (quick, scripted) guards the check made up front, which the CLI already
   passed before this fix: the window itself is reachable only through the integration seam, so
   the two integration tests are this task's proof. `CLI-024` ran OK on the published Native AOT
-  `pakko.exe`; the run on the installed package is owed (it waits for the v1.8.1 release smoke,
-  which needs the v1.8.1 package installed).
+  `pakko.exe`, and on the installed package 1.8.1.6 built from `54eb5f8` (the quick tier,
+  28 rows OK, 2026-10-12).
 - **Before that:** the name list for `tar -T -` was checked for existence once, before the
   recursive count of every source, so a large selection left seconds for a source to go. tar.exe
   then printed `tar.exe: <something>: Couldn't visit directory: No such file or directory`, where
@@ -12770,8 +12770,8 @@ PowerShell does natively.
   `TarSandboxedServiceNestedLinkTests` (7 with the real tar.exe, 6 seen red; the symbolic-link
   one needs the right to create links) and `TarExcludePatternTests` (9). Mutants without the `^`
   anchor and without the escaping both fail the decoy test. Smoke row `CLI-025` (quick, scripted):
-  OK on the published Native AOT `pakko.exe`; the run on the installed package is owed (after
-  the v1.8.1 release smoke).
+  OK on the published Native AOT `pakko.exe`, and on the installed package 1.8.1.6 built from
+  `54eb5f8` (the quick tier, 28 rows OK, 2026-10-12).
 - **Before that:** only a selected source was checked for being a link. Inside a folder tar.exe
   followed a junction and packed what it points to (files from outside the selection), and
   stored a symbolic link as a link entry with its target as `//?/C:/Users/<user>/...`: the
