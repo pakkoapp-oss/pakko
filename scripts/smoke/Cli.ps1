@@ -173,3 +173,34 @@ Add-SmokeStep 'CLI-024' {
     Assert-Smoke ($run.Text.Contains('missing.txt')) "the error does not name the missing source: $($run.Text)"
     Assert-Smoke ($run.Text -notmatch "Couldn't visit directory|tar\.exe:") "tar.exe's own line is shown: $($run.Text)"
 }
+
+Add-SmokeStep 'CLI-025' {
+    $folder = Get-StepFolder 'cli025'
+    $tree = Join-Path $folder 'tree'
+    $outside = Join-Path $folder 'outside'
+    New-Item -ItemType Directory -Path (Join-Path $tree 'sub'), $outside | Out-Null
+    Set-Content -LiteralPath (Join-Path $tree 'inside.txt') -Value 'inside'
+    Set-Content -LiteralPath (Join-Path $outside 'secret.txt') -Value 'outside'
+    $link = Join-Path $tree 'sub\link'
+    New-Item -ItemType Junction -Path $link -Target $outside | Out-Null
+
+    try {
+        $archive = Join-Path $folder 'tree.tar'
+        $made = Invoke-Pakko @('a', '-ttar', $archive, $tree)
+        Assert-Smoke ($made.ExitCode -eq 1) "a: exit $($made.ExitCode), expected 1 (a skip): $($made.Text)"
+        Assert-Smoke ($made.Text -match 'skipped' -and $made.Text.Contains($link)) "a does not name the junction as skipped: $($made.Text)"
+
+        $listed = Invoke-Pakko @('l', $archive)
+        Assert-Smoke ($listed.ExitCode -eq 0) "l: exit $($listed.ExitCode) $($listed.Text)"
+        Assert-Smoke ($listed.Output -match 'tree/inside\.txt') "the listing lacks tree/inside.txt: $($listed.Output)"
+        Assert-Smoke ($listed.Output -notmatch 'secret\.txt|tree/sub/link') "the junction or its target is in the archive: $($listed.Output)"
+
+        $out = Join-Path $folder 'out'
+        $extracted = Invoke-Pakko @('x', $archive, "-o$out")
+        Assert-Smoke ($extracted.ExitCode -eq 0) "x of Pakko's own archive: exit $($extracted.ExitCode) $($extracted.Text)"
+    }
+    finally {
+        # The link first: a recursive delete of the step folder must not reach its target through it.
+        [System.IO.Directory]::Delete($link, $false)
+    }
+}

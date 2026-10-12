@@ -20,7 +20,7 @@ public sealed class TarVanishedSourceTests : IDisposable
     {
         if (create)
             File.WriteAllText(Path.Combine(_temp.Path, name), name);
-        return new TarSandboxedService.ListedSource(Path.Combine(_temp.Path, name), _temp.Path, name);
+        return new TarSandboxedService.ListedSource(Path.Combine(_temp.Path, name), _temp.Path, name, Path.Combine(_temp.Path, name));
     }
 
     // --- Happy path ---
@@ -95,7 +95,7 @@ public sealed class TarVanishedSourceTests : IDisposable
     public void ReportVanished_FolderSource_CountsAsExisting()
     {
         Directory.CreateDirectory(Path.Combine(_temp.Path, "folder"));
-        List<TarSandboxedService.ListedSource> list = [new(Path.Combine(_temp.Path, "folder"), _temp.Path, "folder")];
+        List<TarSandboxedService.ListedSource> list = [new(Path.Combine(_temp.Path, "folder"), _temp.Path, "folder", Path.Combine(_temp.Path, "folder"))];
 
         TarSandboxedService.ReportVanished(list, []).Should().Be(0);
     }

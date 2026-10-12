@@ -1293,6 +1293,7 @@ public sealed class TarSandboxedService : ITarService
         // appeared since then is another run's, and the commit must not replace it.
         (string destPath, bool replacesExisting) = destination;
         string tempPath = ArchiveTempFile.Create(destPath);
+        string excludeListPath = ArchiveTempFile.NewSibling(tempPath);
         // T-F171: decided here, created only on the first collision, so the finally below cleans it
         // up even when staging stops partway through.
         TarCollisionStaging.SweepStale();
@@ -1321,7 +1322,7 @@ public sealed class TarSandboxedService : ITarService
             var nameList = new List<ListedSource>();
             (int entryCount, long totalEntriesForProgress, long totalBytesForProgress) =
                 AppendSourcesToNameList(nameList, sortedSourcePaths, errors, skippedFiles, collisionStagingDir, stagedJunctions,
-                    ownPaths: [tempPath, destPath]);
+                    ownPaths: [tempPath, destPath, excludeListPath]);
 
             if (entryCount == 0)
                 return;
@@ -1352,6 +1353,15 @@ public sealed class TarSandboxedService : ITarService
             try
             {
                 ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, options.SourcePaths);
+                // T-F391: many links make many patterns, so they go in a file ("-X"), not on the
+                // command line. The file is next to the archive and is excluded by name, as the
+                // archive's own temporary file is (T-F316).
+                string[] excludePatterns = [.. nameList.SelectMany(source => source.ExcludePatterns)];
+                if (excludePatterns.Length > 0)
+                {
+                    File.WriteAllBytes(excludeListPath, TarCommandLineEncoding.EncodeLines(excludePatterns));
+                    tarArgs.InsertRange(0, ["-X", excludeListPath, "--exclude", Path.GetFileName(excludeListPath)]);
+                }
                 byte[] nameListBytes = TarCommandLineEncoding.EncodeLines(nameList.SelectMany(source => source.Lines));
                 _beforeCreationLaunch?.Invoke();
                 (int exitCode, _, string? stdErr) = await RunUnsandboxedTarAsync(tarArgs, nameListBytes, OnVerboseLine, cancellationToken).ConfigureAwait(false);
@@ -1387,6 +1397,7 @@ public sealed class TarSandboxedService : ITarService
         }
         finally
         {
+            TryDeleteBestEffort(excludeListPath);
             if (Directory.Exists(collisionStagingDir))
                 DeleteStagingDirectory(collisionStagingDir, stagedJunctions);
         }
@@ -1395,9 +1406,13 @@ public sealed class TarSandboxedService : ITarService
     // T-F171: each junction is removed on its own first (a non-recursive delete removes only the
     // link), and the staging folder is deleted recursively only once every junction is gone — a
     // recursive delete never reaches a folder that points at the user's own files.
-    // T-F390: one source on tar.exe's "-T -" list. SourcePath is what an error about it names.
-    internal sealed record ListedSource(string SourcePath, string Parent, string Name)
+    // T-F390: one source on tar.exe's "-T -" list. SourcePath is what an error about it names;
+    // Origin is the item itself, which Parent and Name are not when it is staged under a new name.
+    internal sealed record ListedSource(string SourcePath, string Parent, string Name, string Origin)
     {
+        // T-F391: one pattern for each link inside the source.
+        public IReadOnlyList<string> ExcludePatterns { get; init; } = [];
+
         // T-F283: in the list only an exact "-C" line is special, so a file of that name is written "./-C".
         public IEnumerable<string> Lines => ["-C", Parent, Name == "-C" ? "./-C" : Name];
 
@@ -1489,18 +1504,23 @@ public sealed class TarSandboxedService : ITarService
             // T-F266/T-F204: tar.exe receives this path and walks the folder itself, so every
             // name it will touch must survive its ANSI command line / path conversion. Refused
             // before tar.exe runs (U+2713 crashed it, U+FF02 injected options).
-            (long entries, long bytes, string? unrepresentable) = CountRecursiveEntriesAndBytes(fullSource);
+            var links = new List<FileSystemInfo>();
+            (long entries, long bytes, string? unrepresentable) = CountRecursiveEntriesAndBytes(fullSource, links);
             if (unrepresentable is not null)
             {
                 errors.Add(CoreMessages.Error(sourcePath, TarArgumentEncodingException.Describe(unrepresentable, TarCommandLineEncoding.AnsiCodePage)));
                 continue;
             }
 
+            int listedBefore = nameList.Count;
             bool appended = isDriveRoot
                 ? claims.TryAppendDriveRootLines(nameList, sourcePath, fullSource, ownPaths, new ArchiveResultLists(errors, skippedFiles))
                 : claims.TryAppendLines(nameList, sourcePath, fullSource, errors);
             if (!appended)
                 continue;
+
+            for (int i = listedBefore; i < nameList.Count; i++)
+                nameList[i] = LeaveOutLinks(nameList[i], links, skippedFiles);
 
             entryCount++;
             totalEntriesForProgress += entries;
@@ -1508,6 +1528,24 @@ public sealed class TarSandboxedService : ITarService
         }
 
         return (entryCount, totalEntriesForProgress, totalBytesForProgress);
+    }
+
+    // T-F391: tar.exe follows a junction (packing files from outside the selection) and stores a
+    // symbolic link with its absolute target path, which Pakko then refuses to extract. Each link
+    // inside the source is excluded by an anchored pattern and reported, as the ZIP engine does
+    // (T-F23). A link in a drive root itself belongs to no listed source and already has its skip.
+    private static ListedSource LeaveOutLinks(ListedSource listed, List<FileSystemInfo> links, List<SkippedFile> skippedFiles)
+    {
+        string prefix = listed.Origin + Path.DirectorySeparatorChar;
+        var patterns = new List<string>();
+        foreach (FileSystemInfo link in links.Where(link => link.FullName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
+        {
+            string relative = link.FullName[prefix.Length..];
+            patterns.Add(TarExcludePattern.For(listed.Name, relative));
+            skippedFiles.Add(CoreMessages.Skip(Path.Combine(listed.SourcePath, relative),
+                link is DirectoryInfo ? MessageCode.FolderLinkNotFollowed : MessageCode.ReparsePointNotArchived));
+        }
+        return patterns.Count == 0 ? listed : listed with { ExcludePatterns = patterns };
     }
 
     private sealed record ArchiveResultLists(List<ArchiveError> Errors, List<SkippedFile> SkippedFiles);
@@ -1525,7 +1563,7 @@ public sealed class TarSandboxedService : ITarService
             if (Claim(sourcePath, fullSource, Path.GetDirectoryName(fullSource)!, Path.GetFileName(fullSource), errors) is not { } claimed)
                 return false;
 
-            nameList.Add(new ListedSource(sourcePath, claimed.Parent, claimed.Name));
+            nameList.Add(new ListedSource(sourcePath, claimed.Parent, claimed.Name, fullSource));
             return true;
         }
 
@@ -1568,7 +1606,7 @@ public sealed class TarSandboxedService : ITarService
                 }
                 if (Claim(sourcePath, child.FullName, root, child.Name, result.Errors) is not { } claimed)
                     continue;
-                nameList.Add(new ListedSource(child.FullName, claimed.Parent, claimed.Name));
+                nameList.Add(new ListedSource(child.FullName, claimed.Parent, claimed.Name, child.FullName));
                 any = true;
             }
             return any;
@@ -1630,7 +1668,9 @@ public sealed class TarSandboxedService : ITarService
     // entry-count-weighted, not a real running byte total).
     // T-F266: also returns the first path tar.exe would receive altered (null if none) — the
     // source's own full path, then every name beneath it, in the same single walk.
-    internal static (long EntryCount, long TotalBytes, string? Unrepresentable) CountRecursiveEntriesAndBytes(string sourcePath)
+    // T-F391: every link met inside the source is added to links.
+    internal static (long EntryCount, long TotalBytes, string? Unrepresentable) CountRecursiveEntriesAndBytes(
+        string sourcePath, List<FileSystemInfo>? links = null)
     {
         string? unrepresentable = TarCommandLineEncoding.IsRepresentable(sourcePath) ? null : sourcePath;
 
@@ -1651,6 +1691,8 @@ public sealed class TarSandboxedService : ITarService
                 unrepresentable = entry.Info.FullName;
             if (entry.Kind == WalkEntryKind.File)
                 totalBytes += FileLengthOrZero((FileInfo)entry.Info);
+            else if (entry.Kind == WalkEntryKind.ReparsePoint)
+                links?.Add(entry.Info);
         }
 
         return (count, totalBytes, unrepresentable);

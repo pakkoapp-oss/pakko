@@ -36,6 +36,11 @@ internal static class ArchiveTempFile
         return Path.Combine(folder, TempOwner.NewName(Prefix, Suffix));
     }
 
+    /// <summary>Another temporary path in <paramref name="tempPath"/>'s folder, swept like it
+    /// (T-F391: the list of names tar.exe leaves out).</summary>
+    public static string NewSibling(string tempPath) =>
+        Path.Combine(Path.GetDirectoryName(tempPath)!, TempOwner.NewName(Prefix, Suffix));
+
     /// <summary>
     /// Overwrite keeps the old archive until the commit replaces it — except when the archive lies
     /// inside a folder being archived: the walk would pack the old archive into the new one, so it is

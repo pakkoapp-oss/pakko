@@ -13404,6 +13404,39 @@ Every failing run ends with `tar.exe: Error exit delayed from previous errors` a
   `C:\Windows\System32`); with several such names the process was seen to end with 0xC0000005.
   Expected: the listed name, as for "Cannot stat".
 
+## T-F391 — links inside a source folder, and tar.exe's exclude patterns (2026-10-12)
+
+Measured on bsdtar 3.8.8 with a folder `src` listed through `-T -`, holding junctions
+(`sub\link`, `br[ack]et`, a Cyrillic one), a file and a folder symbolic link, a second hard link
+and decoy files. `tar -tvf` of the result:
+
+| What is in `src` | Stored as |
+|---|---|
+| A junction | a folder with everything its target holds (`src/sub/link/secret.txt`: a file from outside `src`) |
+| A symbolic link (file or folder) | `lrw-rw-rw- ... src/symfile.txt -> //?/C:/Users/<user>/.../outside/secret.txt` |
+| A second hard link | tar: `hrw-rw-rw- ... src/hard2.txt link to src/file.txt`; 7z: a second full file |
+
+| Exclude given | Result |
+|---|---|
+| `--exclude src/sub/link` | the junction goes, and so does the real file `src/x/src/sub/link`: a plain path matches at any depth |
+| `--exclude ^src/sub/link` | only the junction and what is under it; `src/sub/link.txt` and `src/x/src/sub/link` stay |
+| `--exclude ^src/br[ack]et` | the junction stays and the real file `src/braet` goes: brackets are a character class |
+| `--exclude ^src/br\[ack\]et` | only the junction |
+| `-X <file>` with the same anchored lines in the ANSI code page, a Cyrillic one included | as on the command line; also with `--format=7zip` |
+| `--hard-dereference` | "Option --hard-dereference is not supported" |
+
+- **Chosen:** one pattern for each link, `^` + the entry's path with `\ [ ] * ? $ ^` escaped by a
+  backslash (`$` ends a pattern, so a name like `cash$` needs it), handed over in a file with
+  `-X`. A tree of a package manager can hold thousands of junctions, which a command line cannot
+  carry. The file lies next to the archive under the temporary-file name pattern: that folder's
+  path already has to survive tar.exe's ANSI command line, the stale-file sweep covers it, and it
+  is excluded by name like the archive's own temporary file (T-F316).
+- **Chosen:** the same rule and the same two messages as the ZIP engine (T-F23), with its known
+  limits (what Windows does not show as a reparse point is not seen).
+- **Rejected:** `-L` (follow every link): it packs files from outside the selection, the thing
+  T-F23 stopped for ZIP. Refusing the whole source: one link in a large folder would block it.
+- **Hard links** are not reparse points and tar.exe has no switch for them: T-F392, open.
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry
