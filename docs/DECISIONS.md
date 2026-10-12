@@ -13542,7 +13542,10 @@ left it; the App and the Explorer menu follow in wave 3.
   or Server; `POL-002`, `POL-003` and `POL-004` each gained an `a -t7z` case.
   On the installed package 1.8.1.7 built from `13cfaf3` (2026-10-12): the quick tier, 33 rows OK
   (`CLI-001` ran the subprocess layer on the installed exe: 126 passed), and `CLI-030` and
-  `CLI-031` OK. The three policy rows need an elevation prompt accepted and are owed.
+  `CLI-031` OK; `POL-002`, `POL-003`, `POL-004` and `POL-008` OK in an elevated run (under
+  `AllowedFormats` = `zip`, `BlockedFormats` = `sevenzip` and `DisableTarExtraction` an
+  `a -t7z` is refused with the policy's text and writes nothing; under `BlockedFormats` = `zip`
+  it writes the archive).
 
 ## T-F390 — tar.exe's wrong name for a missing list entry (2026-10-12)
 
