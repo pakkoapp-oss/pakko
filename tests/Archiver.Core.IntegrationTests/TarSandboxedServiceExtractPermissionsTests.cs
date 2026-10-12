@@ -78,7 +78,8 @@ public sealed partial class TarSandboxedServiceExtractPermissionsTests : IDispos
         var info = new FileInfo(file);
         FileSecurity security = info.GetAccessControl();
         security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
-        security.AddAccessRule(new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.FullControl, AccessControlType.Allow));
+        using WindowsIdentity identity = WindowsIdentity.GetCurrent();
+        security.AddAccessRule(new FileSystemAccessRule(identity.User!, FileSystemRights.FullControl, AccessControlType.Allow));
         info.SetAccessControl(security);
         ReadDaclAndLabel(file).Should().NotContain(InheritedAuthenticatedUsersAce);
 
@@ -87,6 +88,35 @@ public sealed partial class TarSandboxedServiceExtractPermissionsTests : IDispos
         string sddl = ReadDaclAndLabel(file);
         sddl.Should().Contain(InheritedAuthenticatedUsersAce);
         sddl.Should().NotContain("(A;;", "no explicit entry is left");
+    }
+
+    [Fact]
+    public void CarriesSandboxSecurity_OrdinaryFile_IsFalse()
+    {
+        string file = Path.Combine(_temp.Path, "plain.txt");
+        File.WriteAllText(file, "x");
+
+        Archiver.Core.Services.Sandbox.QuarantineAcl.CarriesSandboxSecurity(file).Should().BeFalse();
+    }
+
+    [Fact]
+    public void CarriesSandboxSecurity_MissingFile_IsFalse() =>
+        Archiver.Core.Services.Sandbox.QuarantineAcl.CarriesSandboxSecurity(Path.Combine(_temp.Path, "missing.txt")).Should().BeFalse();
+
+    [Fact]
+    public void CarriesSandboxSecurity_FileWithAnAppContainerEntry_IsTrueUntilReset()
+    {
+        string file = Path.Combine(_temp.Path, "marked.txt");
+        File.WriteAllText(file, "x");
+        var info = new FileInfo(file);
+        FileSecurity security = info.GetAccessControl();
+        security.AddAccessRule(new FileSystemAccessRule(
+            new SecurityIdentifier("S-1-15-2-1-2-3-4-5-6-7"), FileSystemRights.Modify, AccessControlType.Allow));
+        info.SetAccessControl(security);
+
+        Archiver.Core.Services.Sandbox.QuarantineAcl.CarriesSandboxSecurity(file).Should().BeTrue();
+        Archiver.Core.Services.Sandbox.QuarantineAcl.InheritFromParent(file);
+        Archiver.Core.Services.Sandbox.QuarantineAcl.CarriesSandboxSecurity(file).Should().BeFalse();
     }
 
     private Task<ArchiveResult> ExtractAsync(string destDir, ConflictBehavior onConflict = ConflictBehavior.Skip)

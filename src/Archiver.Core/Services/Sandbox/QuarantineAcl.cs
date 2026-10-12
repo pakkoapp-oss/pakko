@@ -91,6 +91,49 @@ internal static partial class QuarantineAcl
         }
     }
 
+    /// <summary>
+    /// T-F389: true when <paramref name="filePath"/> has an entry for an AppContainer SID or an
+    /// integrity label - what a file created by the sandboxed tar.exe carries. False when the file's
+    /// security cannot be read: a volume without permissions (FAT, exFAT) has none to carry, and a
+    /// file that reached its volume by copy was created by Pakko, not by the sandbox.
+    /// </summary>
+    public static bool CarriesSandboxSecurity(string filePath)
+    {
+        const int SE_FILE_OBJECT = 1;
+        const uint DaclAndLabel = 0x00000004 | 0x00000010;
+        const uint SDDL_REVISION_1 = 1;
+        const string AppContainerSidPrefix = "S-1-15-2-";
+        const string MandatoryLabelAce = "(ML;";
+
+        uint getResult = NativeMethods.GetNamedSecurityInfoW(
+            filePath, SE_FILE_OBJECT, DaclAndLabel,
+            IntPtr.Zero, IntPtr.Zero, out _, IntPtr.Zero, out IntPtr securityDescriptor);
+        if (getResult != 0)
+            return false;
+
+        try
+        {
+            if (!NativeMethods.ConvertSecurityDescriptorToStringSecurityDescriptorW(
+                    securityDescriptor, SDDL_REVISION_1, DaclAndLabel, out IntPtr text, out _))
+                return false;
+
+            try
+            {
+                string sddl = Marshal.PtrToStringUni(text) ?? string.Empty;
+                return sddl.Contains(AppContainerSidPrefix, StringComparison.Ordinal)
+                    || sddl.Contains(MandatoryLabelAce, StringComparison.Ordinal);
+            }
+            finally
+            {
+                NativeMethods.LocalFree(text);
+            }
+        }
+        finally
+        {
+            NativeMethods.LocalFree(securityDescriptor);
+        }
+    }
+
     private static void Grant(string path, SafeSidHandle sid, uint accessMask, int inheritance, bool sharedParent)
     {
         const int SE_FILE_OBJECT = 1;
@@ -256,6 +299,12 @@ internal static partial class QuarantineAcl
             IntPtr psidGroup,
             IntPtr dacl,
             IntPtr sacl);
+
+        [LibraryImport("advapi32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool ConvertSecurityDescriptorToStringSecurityDescriptorW(
+            IntPtr securityDescriptor, uint requestedStringSDRevision, uint securityInformation,
+            out IntPtr stringSecurityDescriptor, out uint stringSecurityDescriptorLen);
 
         [LibraryImport("kernel32.dll", SetLastError = true)]
         public static partial IntPtr LocalFree(IntPtr hMem);

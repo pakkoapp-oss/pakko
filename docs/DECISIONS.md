@@ -12841,13 +12841,20 @@ the archive.
   `DACL | UNPROTECTED_DACL | LABEL` and one empty ACL for both lists. The staging folder is inside
   the destination's volume and inherits from it, which is where a ZIP entry gets its permissions
   too, so both engines now agree. A failure deletes the staged file and reports the entry.
+  The reset runs only for a file that carries an AppContainer entry or a label: a destination on
+  another volume gets a copy made by Pakko, and FAT/exFAT has no permissions, so neither has
+  anything of the sandbox's and neither may lose a file to a refused call. What
+  `SetNamedSecurityInfoW` returns on exFAT or over SMB was not measured (smoke row `CLI-023`).
 - **Rejected:** copying out of the quarantine instead of renaming (a second write of every byte);
   removing only the sandbox SID's entry (leaves the temporary folder's other inherited entries
   and the label); repairing files extracted by earlier versions (the 2026-09-25 decision for
   T-F233 stands: no automatic rewrite of users' permissions).
 - **Known limit, shared with ZIP:** the file inherits from the staging folder, not from an
   existing subfolder of the destination that has permissions of its own.
-- **Decided by the agent (delegated 2026-10-12):** fixed before the v1.8.1 tag.
+- **Decided by the agent (delegated 2026-10-12):** fixed before the v1.8.1 tag. `852695b` is
+  therefore not the release commit any more: the CI build, the nightly checks and the
+  release-tier smoke run are owed again on the commit that holds this fix, and `CLI-023` joins
+  the maintainer's batch.
 
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 

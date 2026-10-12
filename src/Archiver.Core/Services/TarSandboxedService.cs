@@ -779,9 +779,12 @@ public sealed class TarSandboxedService : ITarService
 
         // T-F389: tar.exe created the file inside the sandbox; the move kept the quarantine
         // folder's permissions on it. A file that cannot take the destination's is not delivered.
+        // Only a file that carries them is touched: one copied to another volume, or on a volume
+        // without permissions, has nothing of the sandbox's and must not fail here.
         try
         {
-            QuarantineAcl.InheritFromParent(stagedFilePath);
+            if (QuarantineAcl.CarriesSandboxSecurity(stagedFilePath))
+                QuarantineAcl.InheritFromParent(stagedFilePath);
         }
         catch (IOException ex)
         {
