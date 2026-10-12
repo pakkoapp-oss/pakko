@@ -12914,11 +12914,17 @@ the archive.
   `src\Archiver.App\AppPackages`, where `Deploy.ps1` leaves the `.msixbundle` only; the `.msix`
   of the same build (`bin\x64\Release\...`, the hash of the one in the bundle's folder, a valid
   signature) was copied there (T-F394).
-- **Owed before the tag, the maintainer's:** the exFAT or FAT32 half of `CLI-023`, `APP-014`
-  (150 % and 200 %), the high-contrast part of `APP-013`.
-- **The releases after it** (the maintainer, 2026-10-12): v1.8.1 goes out as it is, without 7z
-  creation; v1.9.0 carries 7z creation without encryption (T-F342); encrypted 7z comes after a
-  spike of its own, since libarchive's writer does not encrypt and its reader does not read
+- **Not done, the maintainer's:** the exFAT or FAT32 half of `CLI-023`, `APP-014` (150 % and
+  200 %), the high-contrast part of `APP-013`.
+- **`b146f3b` is not tagged** (the maintainer, 2026-10-12, after this run): v1.8.1 is to carry
+  7z creation without encryption (T-F342) as well, so the release commit will be a later one.
+  This reverses the 2026-10-12 note in the T-F389 entry ("v1.8.1 is tagged ... before any
+  T-F342 code reaches `main`"): T-F342's code now goes to `main` before the tag. The agent's
+  advice was to tag `b146f3b` first, because T-F389 is a P0 fix and v1.8.0 is public without
+  it; the maintainer chose one release. The CI build, the nightly checks, `Category=Slow` and
+  the release-tier run are owed again on the commit that ends T-F342; this run stays as the
+  record of `b146f3b` and of the fixes it checked. Encrypted 7z is not part of v1.8.1: it needs
+  a spike of its own, since libarchive's writer does not encrypt and its reader does not read
   encrypted 7z.
 
 ## T-F342 — creating 7z through tar.exe: sources and measurements (wave 0, 2026-10-12)
