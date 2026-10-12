@@ -23,11 +23,9 @@ public static class CreationFormatOption
     public static ArchiveContainerFormat Default(GroupPolicyOptions policy)
     {
         ArgumentNullException.ThrowIfNull(policy);
-        foreach (ArchiveContainerFormat format in Enum.GetValues<ArchiveContainerFormat>())
-        {
-            if (IsOffered(policy, format))
-                return format;
-        }
-        return ArchiveContainerFormat.Zip;
+        return Enum.GetValues<ArchiveContainerFormat>()
+            .Where(format => IsOffered(policy, format))
+            .DefaultIfEmpty(ArchiveContainerFormat.Zip)
+            .First();
     }
 }
