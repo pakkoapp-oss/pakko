@@ -145,6 +145,52 @@ public sealed partial class SevenZipCreationCompatibilityTests : IDisposable
         SevenZipRunner.Test(archive);
     }
 
+    // --- Boundary: sizes past the 16-bit and 32-bit limits (Slow / VeryLarge, on demand) ---
+
+    [SevenZipWriterFact]
+    [Trait("Category", "Slow")]
+    public async Task MoreThan65535Files_AreAllInTheArchive()
+    {
+        const int count = 66_000;
+        string tree = Path.Combine(_temp.Path, "many");
+        Directory.CreateDirectory(tree);
+        for (int i = 0; i < count; i++)
+            File.WriteAllBytes(Path.Combine(tree, $"{i:D5}.txt"), [(byte)i]);
+
+        string archive = await CreateAsync(tree, "many", SevenZipMethod.Lzma2, CompressionLevel.Fastest);
+
+        SevenZipRunner.Test(archive);
+        ArchiveListResult listed = await _sut.ListEntriesAsync(archive);
+        listed.Success.Should().BeTrue(because: listed.ErrorMessage);
+        listed.Entries.Count(entry => !entry.IsDirectory).Should().Be(count);
+    }
+
+    [SevenZipWriterFact]
+    [Trait("Category", "VeryLarge")]
+    public async Task FileLargerThan4GiB_IsStoredWhole()
+    {
+        string tree = Path.Combine(_temp.Path, "large");
+        Directory.CreateDirectory(tree);
+        const long length = (4L << 30) + 4096;
+        byte[] marker = "past 4 GiB"u8.ToArray();
+        using (var file = new FileStream(Path.Combine(tree, "large.bin"), FileMode.CreateNew))
+        {
+            file.SetLength(length);
+            file.Position = length - marker.Length;
+            file.Write(marker);
+        }
+
+        string archive = await CreateAsync(tree, "large", SevenZipMethod.Copy, CompressionLevel.Optimal);
+
+        SevenZipRunner.Test(archive);
+        new FileInfo(archive).Length.Should().BeGreaterThan(length);
+        using var written = new FileStream(archive, FileMode.Open, FileAccess.Read);
+        byte[] tail = new byte[4096];
+        written.Position = 32 + length - marker.Length;
+        written.ReadExactly(tail, 0, marker.Length);
+        tail.AsSpan(0, marker.Length).SequenceEqual(marker).Should().BeTrue(because: "Copy stores the bytes right after the 32-byte header");
+    }
+
     // --- Error path / known limits of libarchive's writer, pinned ---
 
     [SevenZipWriterFact]

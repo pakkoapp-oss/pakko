@@ -1359,31 +1359,7 @@ public sealed class TarSandboxedService : ITarService
 
         try
         {
-            var tarArgs = new List<string>();
-            if (sevenZip)
-            {
-                AppendSevenZipArgs(tarArgs, options.SevenZipMethod, options.CompressionLevel);
-                // Like the temporary file below: the destination may lie inside a source (T-F316).
-                tarArgs.Add("--exclude");
-                tarArgs.Add(Path.GetFileName(writerTempDir));
-            }
-            else
-            {
-                AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel);
-            }
-            // T-F316: tar.exe walks a source folder itself, and when the destination lies inside
-            // one it would pack this run's own temporary file. The name is Pakko's own (ASCII, no
-            // pattern characters), and tar.exe matches it at any depth.
-            tarArgs.Add("--exclude");
-            tarArgs.Add(Path.GetFileName(tempPath));
-            tarArgs.Add("-v");
-            tarArgs.Add("-cf");
-            tarArgs.Add(tempPath);
-            // T-F283/T-F273: the names go to tar.exe as a list on its stdin, never as arguments —
-            // a selected name could otherwise be read as one of its options, and a long selection
-            // would overflow the command line.
-            tarArgs.Add("-T");
-            tarArgs.Add("-");
+            List<string> tarArgs = BuildCreationArgs(options, tempPath, writerTempDir);
 
             var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
             var nameList = new List<ListedSource>();
@@ -1420,34 +1396,16 @@ public sealed class TarSandboxedService : ITarService
             try
             {
                 ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, options.SourcePaths);
-                // T-F391: many links make many patterns, so they go in a file ("-X"), not on the
-                // command line. The file is next to the archive and is excluded by name, as the
-                // archive's own temporary file is (T-F316).
-                string[] excludePatterns = [.. nameList.SelectMany(source => source.ExcludePatterns)];
-                if (excludePatterns.Length > 0)
-                {
-                    File.WriteAllBytes(excludeListPath, TarCommandLineEncoding.EncodeLines(excludePatterns));
-                    tarArgs.InsertRange(0, ["-X", excludeListPath, "--exclude", Path.GetFileName(excludeListPath)]);
-                }
+                WriteExcludeList(nameList, excludeListPath, tarArgs);
                 byte[] nameListBytes = TarCommandLineEncoding.EncodeLines(nameList.SelectMany(source => source.Lines));
                 _beforeCreationLaunch?.Invoke();
-                Dictionary<string, string>? environment = null;
-                if (sevenZip)
-                {
-                    // Both names: libarchive asks GetTempPathW, which takes TMP and falls back to
-                    // TEMP only when TMP is not set (measured: a TMP that names no folder fails).
-                    Directory.CreateDirectory(writerTempDir);
-                    environment = new() { ["TMP"] = writerTempDir, ["TEMP"] = writerTempDir };
-                }
+                Dictionary<string, string>? environment = sevenZip ? CreateWriterFolder(writerTempDir) : null;
                 (int exitCode, _, string? stdErr) = await RunUnsandboxedTarAsync(tarArgs, nameListBytes, OnVerboseLine, environment, cancellationToken).ConfigureAwait(false);
 
                 if (exitCode != 0 || !File.Exists(tempPath))
                 {
                     TryDeleteBestEffort(tempPath);
-                    // T-F390: the line is never shown (DescribeCreationFailure); Pakko names what is gone.
-                    if (stdErr.Contains(UnvisitableSourceLine, StringComparison.Ordinal) && ReportVanished(nameList, errors) == 0)
-                        errors.Add(CoreMessages.Error(destPath, MessageCode.TarSourceUnreadable));
-                    errors.Add(CoreMessages.Error(destPath, MessageCode.TarCreationFailed, DescribeCreationFailure(stdErr)));
+                    ReportCreationFailure(stdErr, nameList, errors, destPath);
                     return;
                 }
 
@@ -1474,10 +1432,69 @@ public sealed class TarSandboxedService : ITarService
         {
             TryDeleteBestEffort(excludeListPath);
             // tar.exe has exited by now, also after a cancel, so its temporary file is closed.
-            try { if (sevenZip && Directory.Exists(writerTempDir)) Directory.Delete(writerTempDir, recursive: true); } catch { /* best-effort; the next creation here sweeps it */ }
+            try { if (Directory.Exists(writerTempDir)) Directory.Delete(writerTempDir, recursive: true); } catch { /* best-effort; the next creation here sweeps it */ }
             if (Directory.Exists(collisionStagingDir))
                 DeleteStagingDirectory(collisionStagingDir, stagedJunctions);
         }
+    }
+
+    private static List<string> BuildCreationArgs(ArchiveOptions options, string tempPath, string writerTempDir)
+    {
+        var tarArgs = new List<string>();
+        if (options.Format == ArchiveContainerFormat.SevenZip)
+        {
+            AppendSevenZipArgs(tarArgs, options.SevenZipMethod, options.CompressionLevel);
+            // Like the temporary file below: the destination may lie inside a source (T-F316).
+            tarArgs.Add("--exclude");
+            tarArgs.Add(Path.GetFileName(writerTempDir));
+        }
+        else
+        {
+            AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel);
+        }
+        // T-F316: tar.exe walks a source folder itself, and when the destination lies inside
+        // one it would pack this run's own temporary file. The name is Pakko's own (ASCII, no
+        // pattern characters), and tar.exe matches it at any depth.
+        tarArgs.Add("--exclude");
+        tarArgs.Add(Path.GetFileName(tempPath));
+        tarArgs.Add("-v");
+        tarArgs.Add("-cf");
+        tarArgs.Add(tempPath);
+        // T-F283/T-F273: the names go to tar.exe as a list on its stdin, never as arguments —
+        // a selected name could otherwise be read as one of its options, and a long selection
+        // would overflow the command line.
+        tarArgs.Add("-T");
+        tarArgs.Add("-");
+        return tarArgs;
+    }
+
+    // T-F391: many links make many patterns, so they go in a file ("-X"), not on the command
+    // line. The file is next to the archive and is excluded by name, as the archive's own
+    // temporary file is (T-F316).
+    private static void WriteExcludeList(List<ListedSource> nameList, string excludeListPath, List<string> tarArgs)
+    {
+        string[] excludePatterns = [.. nameList.SelectMany(source => source.ExcludePatterns)];
+        if (excludePatterns.Length == 0)
+            return;
+        File.WriteAllBytes(excludeListPath, TarCommandLineEncoding.EncodeLines(excludePatterns));
+        tarArgs.InsertRange(0, ["-X", excludeListPath, "--exclude", Path.GetFileName(excludeListPath)]);
+    }
+
+    // T-F342: both names, because libarchive asks GetTempPathW, which takes TMP and falls back to
+    // TEMP only when TMP is not set (measured: a TMP that names no folder fails).
+    private static Dictionary<string, string> CreateWriterFolder(string writerTempDir)
+    {
+        Directory.CreateDirectory(writerTempDir);
+        return new() { ["TMP"] = writerTempDir, ["TEMP"] = writerTempDir };
+    }
+
+    // T-F390: the "Couldn't visit directory" line is never shown (DescribeCreationFailure); Pakko
+    // names what is gone, or says a source could not be read when every listed one is still there.
+    private static void ReportCreationFailure(string stdErr, List<ListedSource> nameList, List<ArchiveError> errors, string destPath)
+    {
+        if (stdErr.Contains(UnvisitableSourceLine, StringComparison.Ordinal) && ReportVanished(nameList, errors) == 0)
+            errors.Add(CoreMessages.Error(destPath, MessageCode.TarSourceUnreadable));
+        errors.Add(CoreMessages.Error(destPath, MessageCode.TarCreationFailed, DescribeCreationFailure(stdErr)));
     }
 
     // T-F171: each junction is removed on its own first (a non-recursive delete removes only the
