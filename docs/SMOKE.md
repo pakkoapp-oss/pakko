@@ -88,7 +88,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | CLI-029 | quick | script | dev | `pakko i` | The 7z line reads create, extract, list, and supported | `cli:i` T-F342 |
 | CLI-030 | release | script | dev | Send Ctrl+C to a long `a -t7z`; kill the tar.exe of another | Exit 255, and exit 2; no archive, no `.tmp`, no `.pakko-7z-*` folder next to it and no new `libarchive_*` in `%TEMP%` | `cli:a` T-F342 |
 | CLI-031 | release | script | dev | `a -t7z` with the archive inside the folder it packs | The archive lists the source's files and nothing of its own making; nothing else is left in the folder | `cli:a` T-F342 T-F316 |
-| CLI-032 | release | user | dev | `a -t7z` on Windows 10 22H2 or a Windows Server | A 7z archive, or exit 2 with "this system's tar.exe" cannot create 7z; never tar.exe's own text | `cli:-t` T-F342 |
+| CLI-032 | release | user | dev | `a -t7z` on Windows 10 22H2 or a Windows Server | A 7z archive, or exit 2 with "This system's tar.exe cannot create 7z archives." and no file; never tar.exe's own text | `cli:-t` T-F342 |
 
 ## SHL - `Archiver.Shell.exe`, started as Explorer starts it
 

@@ -13540,7 +13540,8 @@ left it; the App and the Explorer menu follow in wave 3.
   no refusal of a password.
 - **Smoke.** Rows `CLI-026..031` and `SHL-012` with steps; `CLI-032` for a person on Windows 10
   or Server; `POL-002`, `POL-003` and `POL-004` each gained an `a -t7z` case.
-  On the installed package 1.8.1.7 built from `13cfaf3` (2026-10-12): the quick tier, 33 rows OK
+  On the installed package 1.8.1.7 (2026-10-12; its exes name `13cfaf3`, the commit before the
+  rebase onto `main`, with the same `src` and `tests` as `4ebfc5e`): the quick tier, 33 rows OK
   (`CLI-001` ran the subprocess layer on the installed exe: 126 passed), and `CLI-030` and
   `CLI-031` OK; `POL-002`, `POL-003`, `POL-004` and `POL-008` OK in an elevated run (under
   `AllowedFormats` = `zip`, `BlockedFormats` = `sevenzip` and `DisableTarExtraction` an
