@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>密码保护仅适用于 ZIP 压缩包。</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>密码保护不适用于 7z 压缩包。</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>组策略已阻止创建 {0} 压缩包。</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe 无法创建压缩包: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>此系统的 tar.exe 无法创建 7z 压缩包。</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>名称“{0}”包含 tar.exe 在此系统上无法安全处理的字符(ANSI 代码页 {1})。请对此内容使用 ZIP。</value>

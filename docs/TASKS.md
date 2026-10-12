@@ -1479,8 +1479,14 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   0-9; no password (the writer has no encryption and ignores `--passphrase` without a word);
   the writer's temporary file is redirected into the destination; "Test" for 7z is part of the
   task; RAR stays read-only. Creation runs unsandboxed like T-F105 (trusted local input).
-- **Next:** Plan mode + advisor before the Core contract change (the first code wave), which
-  starts after v1.8.1 is tagged.
+- **Wave 1 (Core) done 2026-10-12, not merged before the v1.8.1 tag:**
+  `ArchiveContainerFormat.SevenZip`, `ArchiveOptions.SevenZipMethod`,
+  `ITarService.CanCreateSevenZipAsync` (the writer probe), the arguments, both refusals with
+  their own messages (37 locales), and libarchive's temporary file kept in the destination.
+  No frontend offers the format yet. Decisions and measurements: `docs/DECISIONS.md`'s T-F342
+  wave 1 entry. Fixed on the way, in the same pull request: T-F390, T-F391; recorded: T-F392.
+- **Next:** wave 2 (CLI `-t7z`, `-m0=`, Shell `--format 7z`, with their smoke rows), then the App
+  and Explorer wave, "Test" for 7z, and the documents (`SECURITY.md` needs the maintainer's word).
 - **Reported by:** the user, 2026-10-06.
 
 ### T-F343 — `pakko` in place of 7-Zip's console program: measure how compatible it is (v2.0, user-requested)

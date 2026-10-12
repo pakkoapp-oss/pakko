@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Passordbeskyttelse er bare tilgjengelig for ZIP-arkiver.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Passordbeskyttelse er ikke tilgjengelig for 7z-arkiver.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Oppretting av et {0}-arkiv er blokkert av gruppepolicy.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe kunne ikke opprette arkivet: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>tar.exe på dette systemet kan ikke opprette 7z-arkiver.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Navnet «{0}» inneholder tegn som tar.exe ikke kan håndtere trygt på dette systemet (ANSI-tegntabell {1}). Bruk ZIP for dette innholdet.</value>

@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Ulinzi wa nenosiri unapatikana kwa kumbukumbu za ZIP tu.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Ulinzi wa nenosiri haupatikani kwa kumbukumbu za 7z.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Kuunda kumbukumbu ya {0} kumezuiwa na Sera ya Kikundi.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe imeshindwa kuunda kumbukumbu: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>tar.exe ya mfumo huu haiwezi kuunda kumbukumbu za 7z.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Jina "{0}" lina herufi ambazo tar.exe haiwezi kushughulikia kwa usalama kwenye mfumo huu (ukurasa wa msimbo wa ANSI {1}). Tumia ZIP kwa maudhui haya.</value>

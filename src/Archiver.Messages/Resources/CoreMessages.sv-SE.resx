@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Lösenordsskydd är bara tillgängligt för ZIP-arkiv.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Lösenordsskydd är inte tillgängligt för 7z-arkiv.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Att skapa ett {0}-arkiv blockeras av en grupprincip.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe kunde inte skapa arkivet: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>Systemets tar.exe kan inte skapa 7z-arkiv.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Namnet ”{0}” innehåller tecken som tar.exe inte kan hantera säkert på det här systemet (ANSI-teckentabell {1}). Använd ZIP för det här innehållet.</value>

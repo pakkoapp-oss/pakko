@@ -36,6 +36,7 @@ public static class ArchiveFormatRegistryNames
         ArchiveContainerFormat.TarXz => "xz",
         ArchiveContainerFormat.TarZst => "zstd",
         ArchiveContainerFormat.TarLzma => "lzma",
+        ArchiveContainerFormat.SevenZip => "sevenzip",
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
     };
 }

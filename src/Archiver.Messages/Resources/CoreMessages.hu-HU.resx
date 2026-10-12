@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>A jelszavas védelem csak ZIP-archívumokhoz érhető el.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>A jelszavas védelem 7z-archívumokhoz nem érhető el.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>{0}-archívum létrehozását csoportházirend tiltja.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>A tar.exe nem tudta létrehozni az archívumot: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>A rendszer tar.exe-je nem tud 7z-archívumot létrehozni.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>A(z) „{0}” név olyan karaktereket tartalmaz, amelyeket a tar.exe ezen a rendszeren nem tud biztonságosan kezelni (ANSI kódlap: {1}). Ehhez a tartalomhoz használjon ZIP-et.</value>

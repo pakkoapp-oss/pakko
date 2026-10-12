@@ -13373,6 +13373,67 @@ it is changed only with the maintainer's explicit yes, asked for with the releas
 - libarchive 3.8.8 cannot read a PPMd 7z holding incompressible data, whoever wrote it; Pakko
   shows tar.exe's raw error for it.
 
+## T-F342 — creating 7z through tar.exe: Core (wave 1, 2026-10-12)
+
+What `Archiver.Core` does for `ArchiveContainerFormat.SevenZip`. No frontend offers it yet
+(`CreationFormatOption.IsOffered` and `CliCommandValidator.FormatOfName` leave it out until
+their own waves). Sources and the first measurements are in the wave 0 entry above.
+
+**Measured for this wave (bsdtar 3.8.8, Windows build 26300):**
+
+| Run | Result |
+|---|---|
+| `tar --format=7zip -cf <file> -T NUL` | exit 0, 32 bytes, `37 7A BC AF 27 1C`; the same with TMP and TEMP naming a folder that does not exist (an empty archive uses no temporary file) |
+| `tar --format=nosuch -cf <file> -T NUL` | exit 1, "Can't use format nosuch: No such format 'nosuch'", no file |
+| creation with `TMP=<folder>`, `TEMP=<missing folder>` | exit 0; the temporary file is in `<folder>` and gone afterwards |
+| creation with `TMP=<missing folder>`, `TEMP=<folder>` | exit 1 "Couldn't create temporary file", a 0-byte output: only TMP counts when it is set |
+| the temporary folder inside the source, `--exclude <its name>` | exit 0, the folder and its file are not in the archive |
+| `7zip:compression=` lzma2, lzma1, bzip2, deflate, each with `compression-level=` 1, 6, 9 | exit 0 every time; `7za t` "Everything is Ok"; Method `LZMA2:20/23/26`, `LZMA:20/23/26`, `BZip2`, `Deflate`; Solid `+` |
+| `7zip:compression=copy` (also with `compression-level=6`) | exit 0; Method `Copy`, Solid `-` |
+
+**Decided:**
+
+- **The writer is found by running it**, once for a `TarSandboxedService`, and only when a 7z is
+  asked for (`ITarService.CanCreateSevenZipAsync`). The probe writes the empty archive to stdout,
+  read as Latin-1 so each byte stays one character, and needs exit 0 and the signature. It is a
+  method of its own and not a `TarCapabilities` field: that record is filled from `--version`,
+  where the field would be a wrong "no" until the probe has run. The plan had the probe write a
+  file; stdout needs no temporary path (one that does not fit tar.exe's ANSI command line would
+  have turned the answer into a wrong "no") and leaves nothing to delete.
+- **The answer also needs `Supports7z`** (reading, from the version): Pakko does not create an
+  archive it would then refuse to open.
+- **The refusal is in the engine**, where tar.exe is started, before the destination folder is
+  created: `SevenZipWriterUnavailable`. A password gets `SevenZipEncryptionNotSupported`, not the
+  ZIP-only message, and `--passphrase` is never passed (libarchive ignores it without a word).
+  Policy needs nothing new: the format's name is `sevenzip`, the one reading uses, so
+  `BlockedFormats`/`AllowedFormats` and `DisableTarExtraction` already stop it in the router.
+- **Arguments:** always `--format=7zip` and `--options 7zip:compression=<m>,compression-level=<n>`;
+  never `-a`. Fastest 1, Optimal 6, SmallestSize 9; NoCompression is the Copy method whatever
+  method was chosen (`compression-level=0` is LZMA with a small dictionary, not "stored").
+- **libarchive's temporary file stays in the destination.** The child gets this process's whole
+  environment with TMP and TEMP set to a folder of Pakko's own next to the archive
+  (`.pakko-7z-<owner>-<id>`): `ProcessLaunchOptions.EnvironmentOverrides`, built by
+  `ProcessEnvironmentBlock` (sorted without regard to case, UTF-16, `CREATE_UNICODE_ENVIRONMENT`).
+  Without overrides the launcher passes NULL as before, so no sandboxed launch changes. The
+  folder is excluded by name (the destination may lie inside a source, T-F316), removed when the
+  run ends, and swept by the next creation in that folder if the process was killed.
+  **Cost:** while a 7z is written the destination holds about twice the archive's size (the
+  writer's file and Pakko's own temporary file); before, half of that was in `%TEMP%`.
+- **`=C:`-style variables** (the per-drive current directories cmd.exe keeps) are not in .NET's
+  `Environment.GetEnvironmentVariables()` and so not in the block. tar.exe gets absolute paths
+  and a `-C` line for every source, so nothing resolves against them.
+
+**Rejected:** a version gate (wave 0: the same libarchive version ships in different Windows
+releases); leaving the temporary file in `%TEMP%` (a copy of the user's data on the system
+drive, and "Couldn't create temporary file" where TEMP is not writable while the destination is);
+a second `tar --version` cache shared with `PakkoServices` (one more `--version` run on the
+first 7z of a process is cheaper than a new seam between the two).
+
+**Not covered by a Core test:** a tar.exe killed from outside in the middle of a 7z. Its two
+halves are: a failing run (a source held open) and a cancelled run both leave the destination
+empty, and a writer folder left by a dead process is removed by the next creation. The on-device
+row for the kill itself comes with the CLI wave (plan section 5.1).
+
 ## T-F390 — tar.exe's wrong name for a missing list entry (2026-10-12)
 
 Measured on bsdtar 3.8.8 (Windows build 26300), a `-T -` list of `-C <dir>` / `<name>` lines,

@@ -27,6 +27,9 @@ file sealed class CountingTarService : ITarService
 {
     public int ProbeCalls;
 
+    public Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
+
+
     public Task<TarCapabilities> DetectCapabilitiesAsync()
     {
         ProbeCalls++;

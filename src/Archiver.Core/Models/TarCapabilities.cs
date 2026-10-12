@@ -3,8 +3,8 @@ namespace Archiver.Core.Models;
 /// <summary>
 /// What the system's tar.exe (libarchive) supports, probed once via ITarService.DetectCapabilitiesAsync
 /// by parsing its version output. tar.exe reads RAR and cannot write it; a new enough one writes
-/// 7z with --format=7zip (T-F342, see CLAUDE.md's tar.exe format-support hard constraint), which
-/// this record does not report yet.
+/// 7z with --format=7zip (T-F342). That is not in this record: no version tells it, so
+/// ITarService.CanCreateSevenZipAsync finds it by running the writer.
 /// </summary>
 public sealed record TarCapabilities
 {

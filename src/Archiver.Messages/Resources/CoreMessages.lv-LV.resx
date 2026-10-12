@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Aizsardzība ar paroli ir pieejama tikai ZIP arhīviem.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Aizsardzība ar paroli nav pieejama 7z arhīviem.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>{0} arhīva izveide ir bloķēta ar grupas politiku.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe nevarēja izveidot arhīvu: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>Šīs sistēmas tar.exe nevar izveidot 7z arhīvus.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Nosaukumā “{0}” ir rakstzīmes, kuras tar.exe šajā sistēmā nevar droši apstrādāt (ANSI koda lappuse {1}). Šim saturam izmantojiet ZIP.</value>

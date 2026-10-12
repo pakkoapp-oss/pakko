@@ -17,6 +17,15 @@ public interface ITarService
     Task<TarCapabilities> DetectCapabilitiesAsync();
 
     /// <summary>
+    /// T-F342: whether this system's tar.exe writes 7z archives Pakko can open again. Found by
+    /// having it write an empty one, not by its version (the same libarchive version ships in
+    /// different Windows releases), so it starts tar.exe: ask only when 7z creation is wanted.
+    /// The answer is kept for the service's lifetime. False under DisableTarExtraction, without
+    /// starting anything. Never throws, except <see cref="OperationCanceledException"/>.
+    /// </summary>
+    Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Extracts one or more tar-family archives (tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma,
     /// 7z, rar) via tar.exe. Never throws — errors are captured in ArchiveResult.Errors.
     /// IProgress&lt;ProgressReport&gt; (T-F142 — was IProgress&lt;int&gt;) to match
@@ -48,7 +57,7 @@ public interface ITarService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Creates a tar-family archive (tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma) from
+    /// Creates a tar-family archive (tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma) or a 7z from
     /// options.SourcePaths via tar.exe. Unlike ExtractAsync, this never runs the sandboxed
     /// AppContainer path — the input is trusted local files the user selected, not an untrusted
     /// archive being parsed, so T-F52's threat model (a hostile archive driving libarchive into

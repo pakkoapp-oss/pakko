@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Ochrona hasłem jest dostępna tylko dla archiwów ZIP.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Ochrona hasłem nie jest dostępna dla archiwów 7z.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Tworzenie archiwum {0} jest zablokowane przez zasady grupy.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe nie mógł utworzyć archiwum: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>tar.exe w tym systemie nie może tworzyć archiwów 7z.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Nazwa „{0}” zawiera znaki, których tar.exe nie może bezpiecznie obsłużyć w tym systemie (strona kodowa ANSI {1}). Użyj formatu ZIP dla tej zawartości.</value>

@@ -65,6 +65,9 @@ public static class CliCommandValidator
         int bestLength = 0;
         foreach (ArchiveContainerFormat format in Enum.GetValues<ArchiveContainerFormat>())
         {
+            // T-F342: no -t7z yet (the CLI wave adds it), so a .7z name asks for nothing.
+            if (format == ArchiveContainerFormat.SevenZip)
+                continue;
             string extension = ArchiveNaming.GetExtension(format);
             if (extension.Length > bestLength && name.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
             {

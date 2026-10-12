@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Η προστασία με κωδικό πρόσβασης είναι διαθέσιμη μόνο για αρχεία ZIP.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Η προστασία με κωδικό πρόσβασης δεν είναι διαθέσιμη για αρχεία 7z.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Η δημιουργία αρχείου {0} αποκλείεται από πολιτική ομάδας.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>Το tar.exe δεν μπόρεσε να δημιουργήσει το αρχείο συμπίεσης: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>Το tar.exe αυτού του συστήματος δεν μπορεί να δημιουργήσει αρχεία 7z.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Το όνομα «{0}» περιέχει χαρακτήρες που το tar.exe δεν μπορεί να χειριστεί με ασφάλεια σε αυτό το σύστημα (κωδικοσελίδα ANSI {1}). Χρησιμοποιήστε ZIP για αυτό το περιεχόμενο.</value>

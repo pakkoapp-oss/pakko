@@ -22,6 +22,13 @@ public sealed record ArchiveOptions
     public ArchiveContainerFormat Format { get; init; } = ArchiveContainerFormat.Zip;
 
     /// <summary>
+    /// T-F342: the compression method of a <see cref="ArchiveContainerFormat.SevenZip"/> archive;
+    /// other formats ignore it. <see cref="CompressionLevel"/> sets its level (Fastest 1, Optimal 6,
+    /// SmallestSize 9); NoCompression stores, whatever the method.
+    /// </summary>
+    public SevenZipMethod SevenZipMethod { get; init; } = SevenZipMethod.Lzma2;
+
+    /// <summary>
     /// T-F06: invoked once per conflicting destination path when <see cref="OnConflict"/> is
     /// <see cref="ConflictBehavior.Ask"/>. Null (e.g. Archiver.Shell, or a test that doesn't wire
     /// it) falls back to Skip — see ConflictResolver.
@@ -33,7 +40,7 @@ public sealed record ArchiveOptions
     /// entry, never directory entries. Invoked once per call, before any destination conflict is
     /// resolved, with <see cref="PasswordPurpose.Encrypt"/>. A cancelled (null), empty, non-ASCII
     /// or longer-than-99-character answer fails the call without creating anything (7-Zip's own
-    /// creation rule — it cannot open anything else). Tar-family formats have no encrypting
+    /// creation rule — it cannot open anything else). Tar-family formats and 7z have no encrypting
     /// writer: setting this for them is an error, never a silently unencrypted archive.
     /// </summary>
     public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }

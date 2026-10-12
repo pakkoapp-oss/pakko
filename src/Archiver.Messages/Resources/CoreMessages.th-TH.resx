@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>การป้องกันด้วยรหัสผ่านใช้ได้กับไฟล์ ZIP เท่านั้น</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>การป้องกันด้วยรหัสผ่านใช้กับไฟล์ 7z ไม่ได้</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>การสร้างไฟล์บีบอัด {0} ถูกบล็อกโดยนโยบายกลุ่ม</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe ไม่สามารถสร้างไฟล์บีบอัด: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>tar.exe ของระบบนี้สร้างไฟล์ 7z ไม่ได้</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>ชื่อ "{0}" มีอักขระที่ tar.exe ไม่สามารถจัดการได้อย่างปลอดภัยบนระบบนี้ (โค้ดเพจ ANSI {1}) โปรดใช้ ZIP สำหรับเนื้อหานี้</value>

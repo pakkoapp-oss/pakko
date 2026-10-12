@@ -13,6 +13,9 @@ public static class CreationFormatOption
     public static bool IsOffered(GroupPolicyOptions policy, ArchiveContainerFormat format)
     {
         ArgumentNullException.ThrowIfNull(policy);
+        // T-F342: Core creates 7z, but the card has no entry for it until the App wave adds one.
+        if (format == ArchiveContainerFormat.SevenZip)
+            return false;
         // DisableTarExtraction stops tar.exe in both directions, and only ZIP is written without it.
         return policy.IsFormatAllowed(ArchiveFormatRegistryNames.ToRegistryName(format))
             && (format == ArchiveContainerFormat.Zip || !policy.DisableTarExtraction);

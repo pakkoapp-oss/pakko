@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Passwortschutz ist nur für ZIP-Archive verfügbar.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Passwortschutz ist für 7z-Archive nicht verfügbar.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Das Erstellen eines {0}-Archivs ist durch eine Gruppenrichtlinie blockiert.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe konnte das Archiv nicht erstellen: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>tar.exe dieses Systems kann keine 7z-Archive erstellen.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Der Name „{0}“ enthält Zeichen, die tar.exe auf diesem System nicht sicher verarbeiten kann (ANSI-Codepage {1}). Verwenden Sie ZIP für diesen Inhalt.</value>

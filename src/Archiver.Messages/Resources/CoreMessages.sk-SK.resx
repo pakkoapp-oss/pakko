@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Ochrana heslom je k dispozícii len pre archívy ZIP.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Ochrana heslom nie je k dispozícii pre archívy 7z.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Vytvorenie archívu {0} je blokované skupinovou politikou.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe nemohol vytvoriť archív: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>Program tar.exe tohto systému nedokáže vytvárať archívy 7z.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Názov „{0}“ obsahuje znaky, ktoré tar.exe v tomto systéme nemôže bezpečne spracovať (kódová stránka ANSI {1}). Pre tento obsah použite ZIP.</value>

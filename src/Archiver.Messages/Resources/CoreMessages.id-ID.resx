@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Perlindungan kata sandi hanya tersedia untuk arsip ZIP.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Perlindungan kata sandi tidak tersedia untuk arsip 7z.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>Pembuatan arsip {0} diblokir oleh Kebijakan Grup.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe gagal membuat arsip: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>tar.exe di sistem ini tidak dapat membuat arsip 7z.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Nama "{0}" berisi karakter yang tidak dapat ditangani tar.exe dengan aman di sistem ini (halaman kode ANSI {1}). Gunakan ZIP untuk konten ini.</value>

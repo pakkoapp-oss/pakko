@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Apsauga slaptažodžiu galima tik ZIP archyvams.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Apsauga slaptažodžiu negalima 7z archyvams.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>{0} archyvo kūrimą blokuoja grupės strategija.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe nepavyko sukurti archyvo: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>Šios sistemos tar.exe negali kurti 7z archyvų.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Pavadinime „{0}“ yra simbolių, kurių tar.exe šioje sistemoje negali saugiai apdoroti (ANSI kodų puslapis {1}). Šiam turiniui naudokite ZIP.</value>

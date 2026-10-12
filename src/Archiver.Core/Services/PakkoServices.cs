@@ -36,7 +36,7 @@ public sealed class PakkoServices
     /// <summary>The tar.exe engine.</summary>
     public ITarService TarService { get; }
 
-    /// <summary>Archive creation; needs no tar.exe probe.</summary>
+    /// <summary>Archive creation. Only a 7z asks tar.exe anything first (T-F342: whether it has the writer).</summary>
     public IArchiveCreationRouter CreationRouter { get; }
 
     /// <summary>Repair from PAR2 recovery data (T-F275 step 4); needs no tar.exe probe.</summary>

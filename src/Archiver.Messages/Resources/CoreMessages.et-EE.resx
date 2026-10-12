@@ -69,6 +69,9 @@
   <data name="PasswordOnlyForZip" xml:space="preserve">
     <value>Paroolikaitse on saadaval ainult ZIP-arhiividele.</value>
   </data>
+  <data name="SevenZipEncryptionNotSupported" xml:space="preserve">
+    <value>Paroolikaitse ei ole 7z-arhiividele saadaval.</value>
+  </data>
   <data name="CreationFormatBlocked" xml:space="preserve">
     <value>{0}-arhiivi loomine on rühmapoliitikaga blokeeritud.</value>
   </data>
@@ -77,6 +80,9 @@
   </data>
   <data name="TarCreationFailed" xml:space="preserve">
     <value>tar.exe ei saanud arhiivi luua: {0}</value>
+  </data>
+  <data name="SevenZipWriterUnavailable" xml:space="preserve">
+    <value>Selle süsteemi tar.exe ei saa 7z-arhiive luua.</value>
   </data>
   <data name="TarNameNotRepresentable" xml:space="preserve">
     <value>Nimi „{0}” sisaldab märke, mida tar.exe selles süsteemis turvaliselt käsitleda ei saa (ANSI koodileht {1}). Kasutage selle sisu jaoks ZIP-i.</value>
