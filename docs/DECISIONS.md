@@ -13633,8 +13633,11 @@ and the Shell are as waves 1 and 2 left them, plus one small Core type (the verd
 - **7Z is the second row of the Format list, after ZIP** (the maintainer, 2026-10-12, on seeing
   the first device build, where it was last). `CreationFormatOption.ListOrder` is now the list's
   row order; `FormatIndex` counts in it, where it had been a hand-written switch in the view
-  model, and `Default` takes the first listed format that is offered, so with ZIP blocked and a
-  writer present the card starts on 7Z. `MainWindowLayoutTests` compares the markup's rows with
+  model, and `Default` takes the first listed format that is offered. The card still starts
+  before the probe answers, so with ZIP blocked it starts on the first tar format, and the
+  answer moves the selection only off a format that is not offered (`AllowedFormats` =
+  `sevenzip` alone): a selection does not jump under the user a moment after the start.
+  `MainWindowLayoutTests` compares the markup's rows with
   `ListOrder`: a mismatch would create another format than the one picked. Windows' own
   "Compress to" submenu has the same order (ZIP, 7z, TAR). The Explorer menu keeps the plan's
   order (zip, tar, 7z): the request was about the card.
@@ -13681,8 +13684,20 @@ starts once, since the App writes the verdict at every start. Accepted for that 
   Shell write.
 - Windows' own "Compress to > 7z file" on the same folder wrote `LZMA:23`: libarchive's default
   method (lzma1). Pakko's item writes LZMA2, as decided in wave 0.
+- Windows' own "Create archive" wizard (Compress to > Additional options), its combo boxes read
+  with `CB_GETLBTEXT`. Formats: 7zip (selected when it opens), tar (GNU), tar (posix pax
+  interchange), tar (Restricted POSIX pax interchange), tar (POSIX ustar), ZIP. Methods for
+  7zip: Store, Deflate, BZip2, LZMA1, LZMA2 (the default there), PPMd; for each tar: none (the
+  default), BZip2, Gzip, xz, Zstandard; for ZIP: Store, Deflate (the default). So the wizard and
+  the one-click item of Windows differ in their 7z default (LZMA2 against LZMA1), Pakko's 7z
+  list is the wizard's without PPMd (wave 0: this tar.exe cannot read back its own PPMd archive
+  of incompressible data), and Pakko's tar family has one more than the wizard's (lzma).
 
-Not measured: the card in a long-label locale (de-DE). The first line is the one every format
+Not measured: whether the arrow keys on the closed Format box step over a hidden row. A hidden
+7Z is now the second row, between two shown ones, on a machine whose tar.exe has no writer
+and under a policy; rows hidden by a policy have sat between shown ones since T-F388. It needs
+a policy in HKLM or a tar.exe without the writer, so it is part of `POL-009` (the elevated run)
+and of `CLI-032` (Windows 10 or Server). Also not measured: the card in a long-label locale (de-DE). The first line is the one every format
 had before this wave and the new line holds one short label, so no row grew.
 
 ### Mutants (each fails a named test, then restored)
