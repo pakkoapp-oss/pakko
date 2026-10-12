@@ -12885,8 +12885,7 @@ Fetched 2026-10-12, quoted by line range from the fetched files, not retyped.
 
 Windows ships Microsoft's own build of libarchive (`archiveint.dll`; tar.exe is a thin front
 end). The upstream source says what the writer is meant to do; what this tar.exe does is
-established by the measurements below, and the two differ in one message already (the level
-range, below).
+established by the measurements below. Nothing measured contradicts the quoted source.
 
 **The writer has three options and no others** (lines 422, 486, 528; anything else is
 `Undefined option`). Defaults, lines 375-398:
@@ -12955,6 +12954,23 @@ range, below).
         zip->opt_zstd_compression_level = (int)lvl;
         return (ARCHIVE_OK);
     }
+```
+
+With zstd built in, as it is in this tar.exe (`libzstd/1.5.7`), that check lets 10 through
+(`max_level` is zstd's); the 0-9 range is enforced when the first entry with content is
+written, lines 616-625:
+
+```c
+        int level = zip->opt_compression_level;
+#if HAVE_ZSTD_H
+        if (zip->opt_compression == _7Z_ZSTD) {
+            level = zip->opt_zstd_compression_level;
+        } else if (level < 0 || level > 9) {
+            archive_set_error(&(a->archive), ARCHIVE_ERRNO_MISC,
+                "compression-level option value `%d' out of range 0-9", level);
+            file_free(file);
+            return (ARCHIVE_FATAL);
+        }
 ```
 
 `threads`, lines 528-551:
@@ -13158,9 +13174,9 @@ tar.exe: Unknown compression name: `rar'
 [exit 1]                                               (no file)
 ```
 
-Level 0 is not "no compression"; store is `compression=copy`. The level message names the entry
-and "0-9", which the upstream text does not: the level is checked when the first entry is
-written, after the output file exists.
+Level 0 is not "no compression"; store is `compression=copy`. A level over 9 is refused by the
+second check quoted above (line 622), at the first entry, after the output file exists: hence
+the entry's name in the message and the empty file.
 
 **Methods against both readers** (20 000 lines of text plus 2 MiB of random bytes):
 
@@ -13275,6 +13291,22 @@ the SHA-256 Winbindex lists; the other six are indicative. One Windows release s
 libarchive versions over its life (3.8.4 is in 1809 and 21H2 too), so a build number does not
 say which.
 
+**The CI image.** The .NET tests run on `windows-latest` (Windows Server 2025, image
+`windows-2025-vs2026`) and nightly on `windows-11-arm` (bsdtar 3.8.8, from the canary's log). A
+one-off diagnostic step in `build.yml`'s `test` job (run 38210385109, removed again) printed
+for Server 2025:
+
+```
+bsdtar 3.8.4 - libarchive 3.8.4 zlib/1.2.13.1-motley liblzma/5.8.1 bz2lib/1.0.8 libzstd/1.5.7 cng/2.0 libb2/bundled
+empty list: exit 0
+32 bytes, first: 377ABCAF271C
+lzma2: create exit 0      (the same for lzma1, bzip2, deflate, copy)
+-rw-rw-rw-  0 0      0           3 Oct 12 06:17 probe.txt
+lzma2: list exit 0
+```
+
+So the 7z creation tests will run in CI, not skip, and 3.8.4 is a second version seen writing.
+
 ### Decided
 
 - **A functional probe, not a version check**: `--format=7zip` with an empty `-T NUL` list,
@@ -13315,8 +13347,8 @@ it is changed only with the maintainer's explicit yes, asked for with the releas
 ### Not measured
 
 - Whether an old tar.exe (below libarchive 3.7, or 3.3.2 without liblzma) really writes 7z, and
-  with which default method: the probe answers it on the machine. A Windows 10 22H2 or Server
-  machine is a release-tier row for the maintainer.
+  with which default method: the probe answers it on the machine. Windows 10 22H2 and Server
+  2022 are a release-tier row for the maintainer (Server 2025 is measured above).
 - 65 536 or more entries, and the 99 % hold while the temporary file is copied into a large
   archive: with the tests of the first code wave.
 
@@ -13329,8 +13361,10 @@ it is changed only with the maintainer's explicit yes, asked for with the releas
   hardlink, device, or other special entry and cannot be safely extracted." (the same for the
   7z). A plain tar also stores a hard link as a link entry, which that rule names too; a 7z
   stores it as a file. Only a selected source is
-  checked for being a link today (`AppendSourcesToNameList`). Gets a task number with the first
-  code wave, test first.
+  checked for being a link today (`AppendSourcesToNameList`). `SECURITY.md` promises that links
+  are skipped only for `ZipArchiveService`, so no written promise is broken, and the behaviour
+  dates from the first tar creation: it does not hold v1.8.1 back (decided by the agent,
+  delegated 2026-10-12). Gets a task number with the first code wave, test first.
 - **tar.exe prints other memory for a missing name**: for `-C R:\ .` on the subst drive above,
   `tar.exe: wekyb3d8bbwe\mingw64????d MMMM yyyy' ?.': Couldn't visit directory: No such file or
   directory` (pieces of PATH and of a date format). The same was seen for a missing name in a
