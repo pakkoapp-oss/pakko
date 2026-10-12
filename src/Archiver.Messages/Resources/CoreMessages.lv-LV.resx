@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Citam atlasītam vienumam ir tāds pats nosaukums, un šo mapi nevarēja pievienot ar jaunu nosaukumu. Pārdēvējiet vienu no tiem un mēģiniet vēlreiz.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Atlasīto vienumu nevarēja nolasīt. Iespējams, tas pēc atlasīšanas tika pārvietots vai izdzēsts.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arhīva satura saraksts ir pretrunīgs.</value>
   </data>

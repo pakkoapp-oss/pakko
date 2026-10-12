@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Egy másik kijelölt elemnek ugyanez a neve, és ezt a mappát nem sikerült új néven hozzáadni. Nevezze át az egyiket, és próbálja újra.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Egy kijelölt elemet nem sikerült beolvasni. Lehet, hogy a kijelölés után áthelyezték vagy törölték.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Az archívum tartalomlistája ellentmondásos.</value>
   </data>

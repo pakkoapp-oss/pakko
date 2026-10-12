@@ -67,7 +67,7 @@ public static class CliHints
         MessageCode.DestinationFileLocked, MessageCode.UnsafeEntryPath, MessageCode.EntryAlternateDataStream, MessageCode.EntryReservedName,
         MessageCode.EntryControlCharacters, MessageCode.CannotExtractEntry, MessageCode.EntryThroughReparsePoint, MessageCode.TarExtractionFailed,
         MessageCode.TarUnsafeEntryPath, MessageCode.TarListingInconsistent, MessageCode.TarSpecialEntry, MessageCode.TarDuplicateCopiesNotExtracted,
-        MessageCode.TarSourceNameCollisionNotAdded, MessageCode.ListingInconsistent, MessageCode.TarUnreadableNames, MessageCode.SandboxSetupFailed,
+        MessageCode.TarSourceNameCollisionNotAdded, MessageCode.TarSourceUnreadable, MessageCode.ListingInconsistent, MessageCode.TarUnreadableNames, MessageCode.SandboxSetupFailed,
         MessageCode.ArchiveInUse, MessageCode.CannotOpenArchive, MessageCode.CannotReopenArchive, MessageCode.HashFolderSkipped,
         MessageCode.HashLinkSkipped, MessageCode.HashFileChanged, MessageCode.NoAntivirusRegistered, MessageCode.ScanSessionFailed,
         MessageCode.ScanCannotReadArchive, MessageCode.ScanCannotReadEntry, MessageCode.ScanCannotExtract, MessageCode.ScanRemovedOrBlocked,

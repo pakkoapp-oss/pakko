@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>يحمل عنصر محدد آخر الاسم نفسه، وتعذر إضافة هذا المجلد باسم جديد. أعد تسمية أحدهما وحاول مرة أخرى.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>تعذرت قراءة عنصر محدد. ربما تم نقله أو حذفه بعد تحديده.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>قائمة محتويات الأرشيف غير متسقة.</value>
   </data>

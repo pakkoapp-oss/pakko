@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Kitas pasirinktas elementas turi tą patį pavadinimą, o šio aplanko nepavyko pridėti nauju pavadinimu. Pervadinkite vieną iš jų ir bandykite dar kartą.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Pasirinkto elemento nepavyko nuskaityti. Gali būti, kad jis buvo perkeltas arba ištrintas po to, kai buvo pasirinktas.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Archyvo turinio sąrašas prieštaringas.</value>
   </data>

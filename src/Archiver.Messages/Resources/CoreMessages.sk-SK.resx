@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Iná vybratá položka má rovnaký názov a tento priečinok sa nepodarilo pridať pod novým názvom. Premenujte jednu z nich a skúste to znova.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Vybratú položku sa nepodarilo prečítať. Po výbere mohla byť presunutá alebo odstránená.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Zoznam obsahu archívu je nekonzistentný.</value>
   </data>

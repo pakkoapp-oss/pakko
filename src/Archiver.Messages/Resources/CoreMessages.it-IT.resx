@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Un altro elemento selezionato ha lo stesso nome e non è stato possibile aggiungere questa cartella con un nuovo nome. Rinomina uno dei due e riprova.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Non è stato possibile leggere un elemento selezionato. Potrebbe essere stato spostato o eliminato dopo la selezione.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>L’elenco del contenuto dell’archivio è incoerente.</value>
   </data>

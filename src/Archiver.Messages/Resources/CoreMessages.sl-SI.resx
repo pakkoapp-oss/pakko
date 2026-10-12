@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Drug izbrani element ima enako ime in te mape ni bilo mogoče dodati pod novim imenom. Preimenujte enega od njiju in poskusite znova.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Izbranega elementa ni bilo mogoče prebrati. Morda je bil po izbiri premaknjen ali izbrisan.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Seznam vsebine arhiva ni skladen.</value>
   </data>

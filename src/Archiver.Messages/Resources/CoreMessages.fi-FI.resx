@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Toisella valitulla kohteella on sama nimi, eikä tätä kansiota voitu lisätä uudella nimellä. Nimeä toinen niistä uudelleen ja yritä uudelleen.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Valittua kohdetta ei voitu lukea. Se on ehkä siirretty tai poistettu valinnan jälkeen.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Arkiston sisältöluettelo on ristiriitainen.</value>
   </data>

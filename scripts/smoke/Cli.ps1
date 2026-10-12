@@ -161,3 +161,15 @@ Add-SmokeStep 'CLI-022' {
         Assert-Smoke ($sddl -match ';ID;[^)]*;;;AU\)') "$($file.Name) does not inherit from its folder: $sddl"
     }
 }
+
+Add-SmokeStep 'CLI-024' {
+    $folder = Get-StepFolder 'cli024'
+    $present = Join-Path $folder 'present.txt'
+    Set-Content -LiteralPath $present -Value 'present'
+    $missing = Join-Path $folder 'missing.txt'
+
+    $run = Invoke-Pakko @('a', '-ttar.gz', (Join-Path $folder 'out.tar.gz'), $present, $missing)
+    Assert-Smoke ($run.ExitCode -eq 2) "a with a missing name: exit $($run.ExitCode), expected 2: $($run.Text)"
+    Assert-Smoke ($run.Text.Contains('missing.txt')) "the error does not name the missing source: $($run.Text)"
+    Assert-Smoke ($run.Text -notmatch "Couldn't visit directory|tar\.exe:") "tar.exe's own line is shown: $($run.Text)"
+}

@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>לפריט נבחר אחר יש אותו שם, ולא ניתן היה להוסיף תיקייה זו בשם חדש. שנה את שמו של אחד מהם ונסה שוב.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>לא ניתן היה לקרוא פריט נבחר. ייתכן שהוא הועבר או נמחק לאחר שנבחר.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>רשימת התוכן של הארכיון אינה עקבית.</value>
   </data>

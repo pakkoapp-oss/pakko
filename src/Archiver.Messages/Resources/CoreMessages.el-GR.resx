@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Ένα άλλο επιλεγμένο στοιχείο έχει το ίδιο όνομα και αυτός ο φάκελος δεν ήταν δυνατό να προστεθεί με νέο όνομα. Μετονομάστε ένα από αυτά και δοκιμάστε ξανά.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η ανάγνωση ενός επιλεγμένου στοιχείου. Ενδέχεται να μετακινήθηκε ή να διαγράφηκε μετά την επιλογή του.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Η λίστα περιεχομένων του αρχείου συμπίεσης είναι ασυνεπής.</value>
   </data>

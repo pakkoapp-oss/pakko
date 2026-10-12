@@ -13373,6 +13373,37 @@ it is changed only with the maintainer's explicit yes, asked for with the releas
 - libarchive 3.8.8 cannot read a PPMd 7z holding incompressible data, whoever wrote it; Pakko
   shows tar.exe's raw error for it.
 
+## T-F390 — tar.exe's wrong name for a missing list entry (2026-10-12)
+
+Measured on bsdtar 3.8.8 (Windows build 26300), a `-T -` list of `-C <dir>` / `<name>` lines,
+three runs each, identical every time. `a <name>` lines are the `-v` progress.
+
+| Case | stderr | Name correct |
+|---|---|---|
+| A listed name that does not exist (plain tar and `-z`) | `tar.exe: : Couldn't visit directory: No such file or directory` | no: empty here; in wave 0 `soft VS Code\bin;C:\????nope.txt` and `wekyb3d8bbwe\mingw64????d MMMM yyyy' ?.'`, once a crash (0xC0000005) |
+| The folder of a `-C` line does not exist | `tar.exe: could not chdir to '<full path>'` | yes |
+| A subfolder the user may not read | `tar.exe: src/denied: Cannot stat: Permission denied` | yes |
+| A file the user may not read | `tar.exe: src/noread.txt: Cannot stat: Permission denied` | yes |
+| A file another process holds open | `tar.exe: Couldn't open src/locked.txt: Permission denied` | yes |
+
+Every failing run ends with `tar.exe: Error exit delayed from previous errors` and exit 1.
+
+- **Chosen:** drop only the "Couldn't visit directory" line (the one whose name part is not the
+  file's), and have Pakko name the source: the list is kept as `(source, folder, name)` records,
+  checked again right before tar.exe starts and once more after a failure that has that line.
+  `TarSourceUnreadable` covers a failure where every listed source still exists.
+- **Rejected:** showing a tar.exe line only when it names something Pakko listed. It needs a
+  parser for each line shape tar.exe has, and it would hide lines that carry no name at all
+  ("Couldn't create temporary file", "No such format"), which are the useful ones. The four
+  other shapes above name the file correctly.
+- **Rejected:** only the check before the launch. The source can still go between that check and
+  tar.exe's own walk; the integration tests remove it exactly there.
+- **Report to Microsoft/libarchive (draft, not sent):** `bsdtar -cf out.tar -T list` where a
+  listed name does not exist prints "Couldn't visit directory" with a name taken from
+  unrelated memory instead of the listed name, on Windows (3.8.8, the copy in
+  `C:\Windows\System32`); with several such names the process was seen to end with 0xC0000005.
+  Expected: the listed name, as for "Cannot stat".
+
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
 > **Superseded.** The live rules are the root `CLAUDE.md` and `.claude/rules/*.md`. This entry

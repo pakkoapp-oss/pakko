@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Druga izabrana stavka ima isto ime, a ova fascikla nije mogla da se doda pod novim imenom. Preimenujte jednu od njih i pokušajte ponovo.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Izabrana stavka nije mogla da se pročita. Možda je premeštena ili izbrisana nakon što je izabrana.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Spisak sadržaja arhive nije dosledan.</value>
   </data>

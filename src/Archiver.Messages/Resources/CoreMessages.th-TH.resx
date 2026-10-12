@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>รายการอื่นที่เลือกมีชื่อเดียวกัน และไม่สามารถเพิ่มโฟลเดอร์นี้ด้วยชื่อใหม่ได้ เปลี่ยนชื่อรายการใดรายการหนึ่งแล้วลองอีกครั้ง</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>ไม่สามารถอ่านรายการที่เลือกได้ รายการนั้นอาจถูกย้ายหรือลบหลังจากที่เลือกแล้ว</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>รายการเนื้อหาของไฟล์บีบอัดไม่สอดคล้องกัน</value>
   </data>

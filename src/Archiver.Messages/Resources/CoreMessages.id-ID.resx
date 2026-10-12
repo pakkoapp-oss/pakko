@@ -213,6 +213,9 @@
   <data name="TarSourceNameCollisionNotAdded" xml:space="preserve">
     <value>Item lain yang dipilih memiliki nama yang sama, dan folder ini tidak dapat ditambahkan dengan nama baru. Ganti nama salah satunya lalu coba lagi.</value>
   </data>
+  <data name="TarSourceUnreadable" xml:space="preserve">
+    <value>Item yang dipilih tidak dapat dibaca. Item tersebut mungkin telah dipindahkan atau dihapus setelah dipilih.</value>
+  </data>
   <data name="ListingInconsistent" xml:space="preserve">
     <value>Daftar isi arsip tidak konsisten.</value>
   </data>
