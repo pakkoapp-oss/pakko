@@ -12754,3 +12754,27 @@ PowerShell does natively.
   sent. A file deleted inside a folder while tar.exe walks it is tar.exe's own "Cannot stat"
   line, which names the file correctly.
 - **Found by:** the T-F342 research (wave 0), 2026-10-12.
+
+### T-F391 — A link inside a source folder: tar.exe followed a junction and stored a symbolic link's absolute target (P2)
+
+- [x] **Status:** done 2026-10-12 (unreleased; the T-F342 wave 1 pull request). Every link the
+  pre-scan meets inside a source folder (`CountRecursiveEntriesAndBytes`, the walk it already
+  did) is left out of the archive and reported as skipped, with the ZIP engine's two messages
+  (`FolderLinkNotFollowed`, `ReparsePointNotArchived`). tar.exe is told through an exclude list
+  (`-X <file>`, next to the archive, excluded by name and deleted after the run) holding one
+  anchored, escaped pattern for each link (`TarExcludePattern`). Tests:
+  `TarSandboxedServiceNestedLinkTests` (7 with the real tar.exe, 6 seen red; the symbolic-link
+  one needs the right to create links) and `TarExcludePatternTests` (9). Mutants without the `^`
+  anchor and without the escaping both fail the decoy test. Smoke row `CLI-025` (quick, scripted).
+- **Before that:** only a selected source was checked for being a link. Inside a folder tar.exe
+  followed a junction and packed what it points to (files from outside the selection), and
+  stored a symbolic link as a link entry with its target as `//?/C:/Users/<user>/...`: the
+  archive carried a path of the machine it was made on, and Pakko then refused to extract its own
+  archive ("Archive contains a symlink, hardlink, device, or other special entry"). Every
+  tar.exe format, since tar creation first shipped.
+- **Changed behaviour to note in the release notes:** a tar-family archive of a folder that holds
+  a junction no longer contains the junction's target; the run ends with a "skipped" line and
+  exit 1 from `pakko`, as for ZIP.
+- **Not done:** `SECURITY.md` still describes the link rule for `ZipArchiveService` only (its
+  edit needs the maintainer's word; batched with the T-F342 wave 5 edit). Hard links are T-F392.
+- **Found by:** the T-F342 research (wave 0), 2026-10-12.

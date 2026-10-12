@@ -81,6 +81,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | CLI-022 | quick | script | dev | `a -ttar.gz` of a tree, then `x` into a folder that grants Authenticated Users read access; save each extracted file's security with `icacls /save` | Every file has the folder's inherited entry, no entry for an AppContainer SID (`S-1-15-2-`) and no integrity label | `cli:x` T-F389 |
 | CLI-023 | release | user | dev | `x` of a tar.gz and of a 7z onto an exFAT or FAT32 USB drive and into a network share | Exit 0 both times; every file is there with the source's bytes; no "cannot extract" line | `cli:x` T-F389 |
 | CLI-024 | quick | script | dev | `a -ttar.gz` of two names, one of which does not exist | Exit 2; the error names the missing source; no line of tar.exe's own ("Couldn't visit directory") | `cli:a` T-F390 |
+| CLI-025 | quick | script | dev | `a -ttar` of a folder that holds a junction to a folder outside it, then `l` and `x` | `a` exits 1 with a "skipped" line naming the junction; the listing has nothing under it and no file of its target; `x` exits 0 | `cli:a` `cli:x` T-F391 |
 
 ## SHL - `Archiver.Shell.exe`, started as Explorer starts it
 

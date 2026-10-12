@@ -1584,3 +1584,20 @@ re-measured with T-F346's script before and after.
   known. Next: read the test's timing assumptions, reproduce under load, fix the cause, not with a
   retry.
 - **Reported by:** T-F375's PR, 2026-10-10.
+
+### T-F392 — Two hard links to one file in a source folder: Pakko cannot extract the tar it made (P3)
+
+- [ ] **Status:** open. tar.exe stores the second name of a file as a hard-link entry
+  (`hrw-rw-rw- ... src/hard2.txt link to src/file.txt`) in tar, tar.gz and the other tar
+  filters, and Pakko refuses any archive that holds one ("Archive contains a symlink, hardlink,
+  device, or other special entry"). A 7z of the same folder stores a second full file and
+  extracts. Pinned by `CompressAsync_TwoHardLinksToOneFile_StoresALinkEntryPakkoRefuses_TF392`.
+- **Measured 2026-10-12 (bsdtar 3.8.8):** tar.exe has no switch to store the content instead
+  (`--hard-dereference`: "Option --hard-dereference is not supported"). The link is not a reparse
+  point, so the pre-scan does not see it; finding one means opening every file for its link count.
+- **Ways forward, none chosen:** extract a hard-link entry as a copy of the entry it names, when
+  that entry is inside the same archive and already in the quarantine (a change to the extraction
+  rules and to `SECURITY.md`); or refuse to create a tar from a folder with such a pair and
+  suggest ZIP or 7z; or leave it (two links to one file inside one selected folder are rare on
+  Windows; a package store's links point outside the folder and are stored as plain files).
+- **Reported by:** the T-F342 research (wave 0), 2026-10-12.
