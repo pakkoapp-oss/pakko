@@ -1489,6 +1489,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   rule, `-p` refused, `pakko i`, `Archiver.Shell.exe --archive --format 7z`; smoke rows
   `CLI-026..032` and `SHL-012`, an `a -t7z` case in `POL-002..004`. Decisions:
   `docs/DECISIONS.md`'s T-F342 wave 2 entry.
+- **For the CHANGELOG (the documents wave):** `pakko a x.7z src` with no `-t` is now exit 7; it
+  used to write a ZIP named `x.7z`.
 - **Next:** the App and Explorer wave, "Test" for 7z, and the documents (`SECURITY.md`: the
   maintainer agreed on 2026-10-12). The maintainer decided the same day that v1.8.1 carries 7z
   creation without encryption.
