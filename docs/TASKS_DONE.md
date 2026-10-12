@@ -12705,11 +12705,16 @@ PowerShell does natively.
 - [x] **Status:** done 2026-10-12 (v1.8.1). After the move out of the quarantine each file is
   given the permissions of the folder it is in (`QuarantineAcl.InheritFromParent`: an empty,
   unprotected DACL and an empty label list through `SetNamedSecurityInfoW`); a file whose
-  security cannot be written is deleted from the staging and reported, not delivered. Five
-  tests (`TarSandboxedServiceExtractPermissionsTests`), the two extraction ones seen red.
-  Checked with the built `pakko.exe`: a 7z marked `ZoneId=3`, extracted into a folder granting
-  Authenticated Users, gives files that inherit that entry, carry no sandbox entry and no
-  label, and keep the mark.
+  security cannot be written is deleted from the staging and reported, not delivered. Only a
+  file that carries a sandbox entry or a label is touched (`CarriesSandboxSecurity`), so a file
+  copied to another volume, or on a volume without permissions (FAT, exFAT), cannot fail here.
+  Eight tests (`TarSandboxedServiceExtractPermissionsTests`), the two extraction ones seen red.
+  Checked on the installed package 1.8.1.3 (Native AOT), into a folder granting Authenticated
+  Users: `pakko x` of a tar.gz and of a 7z, and `Archiver.Shell.exe --extract-folder` of a 7z
+  - files, files in a subfolder and an empty folder all inherit that entry and carry no sandbox
+  entry and no label; a 7z marked `ZoneId=3` keeps the mark. Smoke rows `CLI-022` (quick,
+  scripted, OK on 1.8.1.3) and `CLI-023` (release, a USB drive and a network share: needs the
+  maintainer's hardware, not run).
 - **Before that:** tar.exe creates each file inside the AppContainer, so the file gets the
   `out\` folder's inherited entries (Modify for the sandbox SID `S-1-15-2-...`) and a Low
   integrity label. `File.Move` on the same volume keeps that security descriptor, so the

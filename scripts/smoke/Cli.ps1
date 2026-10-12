@@ -132,3 +132,32 @@ Add-SmokeStep 'CLI-005' {
     Assert-Smoke ($extracted.ExitCode -eq 2) "x on a damaged ZIP: exit $($extracted.ExitCode), expected 2"
     Assert-Smoke (-not (Test-Path -LiteralPath (Join-Path $out 'payload.bin'))) 'x left the damaged entry on disk'
 }
+
+Add-SmokeStep 'CLI-022' {
+    $folder = Get-StepFolder 'cli022'
+    $archive = Join-Path $folder 'tree.tar.gz'
+    $made = Invoke-Pakko @('a', '-ttar.gz', $archive, (Get-Fixture Tree))
+    Assert-Smoke ($made.ExitCode -eq 0) "a -ttar.gz: exit $($made.ExitCode) $($made.Text)"
+
+    $icacls = Join-Path $env:SystemRoot 'System32\icacls.exe'
+    $out = Join-Path $folder 'shared'
+    New-Item -ItemType Directory -Path $out | Out-Null
+    $granted = Invoke-Tool -Exe $icacls -Arguments @($out, '/grant', '*S-1-5-11:(OI)(CI)(RX)')
+    Assert-Smoke ($granted.ExitCode -eq 0) "icacls /grant: exit $($granted.ExitCode) $($granted.Text)"
+
+    $run = Invoke-Pakko @('x', $archive, "-o$out")
+    Assert-Smoke ($run.ExitCode -eq 0) "x: exit $($run.ExitCode) $($run.Text)"
+    $files = @(Get-ChildItem -LiteralPath $out -Recurse -File)
+    Assert-Smoke ($files.Count -eq 4) "x wrote $($files.Count) files, expected 4"
+
+    # icacls /save writes the SDDL, the integrity label included; names in its plain output are localized.
+    $saved = Join-Path $folder 'acl.txt'
+    foreach ($file in $files) {
+        $save = Invoke-Tool -Exe $icacls -Arguments @($file.FullName, '/save', $saved)
+        Assert-Smoke ($save.ExitCode -eq 0) "icacls /save $($file.Name): exit $($save.ExitCode) $($save.Text)"
+        $sddl = Get-Content -LiteralPath $saved -Raw -Encoding Unicode
+        Assert-Smoke ($sddl -notmatch 'S-1-15-2-') "$($file.Name) keeps the sandbox's entry: $sddl"
+        Assert-Smoke ($sddl -notmatch '\(ML;') "$($file.Name) keeps an integrity label: $sddl"
+        Assert-Smoke ($sddl -match ';ID;[^)]*;;;AU\)') "$($file.Name) does not inherit from its folder: $sddl"
+    }
+}
