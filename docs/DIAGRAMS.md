@@ -1133,7 +1133,9 @@ Sources read for this diagram (2026-09-29): `src/Archiver.Core/Services/ArchiveC
 `AppendSourcesToTarArgs`, `CountRecursiveEntriesAndBytes`, `RunUnsandboxedTarAsync`; the callers
 `MainViewModel.ArchiveAsync`, `ShellCommands.ArchiveAsync` and `Archiver.CLI`'s `BuildArchiveOptions`/
 `CliArgumentParser` (`-t{type}`). Updated 2026-10-10 for T-F275 step 2 from `ArchiveCreationRouter.cs`,
-`Recovery/RecoveryDataWriter.cs` and `Recovery/RecoveryProgressSplit.cs`.
+`Recovery/RecoveryDataWriter.cs` and `Recovery/RecoveryProgressSplit.cs`. Updated 2026-10-12 for
+T-F390, T-F391 and T-F342 (Core) from `TarSandboxedService.cs` (`CompressAsync`, `CompressToArchiveAsync`,
+`BuildCreationArgs`, `WriteExcludeList`, `ReportVanished`, `ReportCreationFailure`, `LeaveOutLinks`).
 
 ```mermaid
 flowchart TD
@@ -1180,20 +1182,22 @@ flowchart TD
 
     R3 -- no --> T0["TarSandboxedService.CompressAsync — UNSANDBOXED (T-F105)"]
     T0 --> T1{"ResolvePasswordAsync set?"}
-    T1 -- yes --> TE1["Errors += PasswordOnlyForZip — before any prompt"]
+    T1 -- yes --> TE1["Errors += PasswordOnlyForZip, or SevenZipEncryptionNotSupported for 7z (T-F342) — before any prompt"]
     T1 -- no --> T2{"tar.exe Authenticode signature valid?"}
     T2 -- no --> TE2["Errors += TarSignatureInvalid"]
-    T2 -- yes --> TM{"Mode"}
+    T2 -- yes --> T2Z{"Format == SevenZip and CanCreateSevenZipAsync false?<br/>(tar.exe reads 7z by its version, and its 7z writer ran once:<br/>an empty archive to stdout, exit 0 and the 7z signature, T-F342)"}
+    T2Z -- yes --> TE2Z["Errors += SevenZipWriterUnavailable, nothing written"]
+    T2Z -- no --> TM{"Mode"}
     TM -- SingleArchive --> T3["DestinationConflictResolver on name.ext, Skip returns every source skipped"]
     TM -- SeparateArchives --> T4["SEQUENTIAL loop, sorted: missing → SourceNotFound,<br/>conflict per source, then one tar.exe per source"]
     T3 --> T3T["temp = ArchiveTempFile.Create (T-F312)"]
     T3T --> T5
-    T4 --> T5["temp = ArchiveTempFile.Create per source (T-F312).<br/>T-F286: first sweep the staging folders a killed creation left (owner process gone, links removed first).<br/>AppendSourcesToNameList, per source: reparse point skipped, missing → error,<br/>a name the ANSI code page cannot hold anywhere in the tree → error (T-F266/T-F204),<br/>a clashing name: file staged as a renamed copy, folder as a junction (T-F168, T-F171),<br/>a clashing folder on a network share → error, then lines -C, parent, name (exact -C → ./-C, T-F283)"]
-    T5 --> T6{"no source left?"}
+    T4 --> T5["temp = ArchiveTempFile.Create per source (T-F312).<br/>T-F286: first sweep the staging folders a killed creation left (owner process gone, links removed first).<br/>AppendSourcesToNameList, per source: reparse point skipped, missing → error,<br/>a name the ANSI code page cannot hold anywhere in the tree → error (T-F266/T-F204),<br/>a clashing name: file staged as a renamed copy, folder as a junction (T-F168, T-F171),<br/>a clashing folder on a network share → error, a link inside a source folder is reported as skipped and gets an anchored exclude pattern (T-F391),<br/>then one record per source: -C, parent, name (exact -C → ./-C, T-F283)"]
+    T5 --> T6{"no source left, also after the re-check right before the launch?<br/>(ReportVanished: a source gone since it was listed is SourceNotFound, T-F390)"}
     T6 -- yes --> T7["no tar.exe run"]
-    T6 -- no --> T8["tar.exe -v -cf name.tmp -T - — the name list on stdin (T-F273/T-F283), SandboxedProcessLauncher with no AppContainer and<br/>no Job Object, stderr a-lines drive progress"]
+    T6 -- no --> T8["tar.exe -v -cf name.tmp -T - — the name list on stdin (T-F273/T-F283), SandboxedProcessLauncher with no AppContainer and<br/>no Job Object, stderr a-lines drive progress.<br/>Links: an -X exclude-list file next to the archive (T-F391).<br/>7z: --format=7zip --options 7zip:compression=..., the child's TMP and TEMP set to a .pakko-7z-* folder<br/>next to the archive, excluded by name and removed after the run (T-F342)"]
     T8 --> T9{"exit code 0 and .tmp exists?"}
-    T9 -- no --> TE3["delete .tmp, Errors += TarCreationFailed"]
+    T9 -- no --> TE3["delete .tmp, Errors += TarCreationFailed without the visit-directory line of tar.exe,<br/>and for that line: SourceNotFound for each listed source now gone, else TarSourceUnreadable (T-F390)"]
     T9 -- yes --> T10["ArchiveTempFile.CommitAsync .tmp → name.ext — same rule as S7 (T-F321),<br/>CreatedFiles += the path it landed at"]
 
     S7 & P2 & T10 -.-> PR{"router, after the engine returns: RecoveryPercent over 0?<br/>(unless DisableRecoveryData, the engine ran with OpenDestinationFolder off;<br/>with a percent, its progress scaled below 100)"}
