@@ -1479,7 +1479,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   0-9; no password (the writer has no encryption and ignores `--passphrase` without a word);
   the writer's temporary file is redirected into the destination; "Test" for 7z is part of the
   task; RAR stays read-only. Creation runs unsandboxed like T-F105 (trusted local input).
-- **Wave 1 (Core) done 2026-10-12, not merged before the v1.8.1 tag:**
+- **Wave 1 (Core) done 2026-10-12:**
   `ArchiveContainerFormat.SevenZip`, `ArchiveOptions.SevenZipMethod`,
   `ITarService.CanCreateSevenZipAsync` (the writer probe), the arguments, both refusals with
   their own messages (37 locales), and libarchive's temporary file kept in the destination.

@@ -13332,7 +13332,9 @@ So the 7z creation tests will run in CI, not skip, and 3.8.4 is a second version
 - **PAR2 needs no change** (`RecoveryDataWriter` takes a finished file) and matters more than
   for ZIP: one solid block and a header at the end mean one bad byte can lose everything after
   it. "Test" for 7z (`tar -xOf` in the sandbox) is part of this release for that reason.
-- **Order:** v1.8.1 is tagged before any T-F342 code reaches `main`.
+- **Order:** v1.8.1 is tagged before any T-F342 code reaches `main`. Reversed by the maintainer
+  on 2026-10-12: v1.8.1 carries 7z creation, so T-F342 goes to `main` before the tag (the
+  v1.8.1 release-tier smoke entry).
 
 ### Corrected with this entry
 
