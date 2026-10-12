@@ -27,6 +27,7 @@ public sealed class TarSandboxedServiceSevenZipTests : IDisposable
 {
     private const string TarExecutablePath = @"C:\Windows\System32\tar.exe";
     private static readonly byte[] Signature = [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C];
+    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(30);
 
     private readonly TarSandboxedService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
@@ -80,7 +81,13 @@ public sealed class TarSandboxedServiceSevenZipTests : IDisposable
 
     [SevenZipWriterFact]
     public async Task ProbeSevenZipWriterAsync_OnThisSystem_FindsTheWriter() =>
-        (await TarSandboxedService.ProbeSevenZipWriterAsync(TarExecutablePath)).Should().BeTrue();
+        (await TarSandboxedService.ProbeSevenZipWriterAsync(TarExecutablePath, ProbeTimeout)).Should().BeTrue();
+
+    // T-F342: a run cut short is "no answer", never "no writer" (a loaded CI runner showed both
+    // answers from one tar.exe while the timeout meant "no").
+    [SevenZipWriterFact]
+    public async Task ProbeSevenZipWriterAsync_TimedOut_IsNoAnswer() =>
+        (await TarSandboxedService.ProbeSevenZipWriterAsync(TarExecutablePath, TimeSpan.Zero)).Should().BeNull();
 
     [SevenZipWriterFact]
     public async Task CompressAsync_Tree_RoundTripsThroughPakkosOwnReader()
@@ -199,7 +206,7 @@ public sealed class TarSandboxedServiceSevenZipTests : IDisposable
         var sut = new TarSandboxedService(
             new GroupPolicyOptions(),
             () => Task.FromResult(new TarCapabilities { Supports7z = true }),
-            sevenZipWriterProbe: () => { probes++; return TarSandboxedService.ProbeSevenZipWriterAsync(TarExecutablePath); });
+            sevenZipWriterProbe: () => { probes++; return TarSandboxedService.ProbeSevenZipWriterAsync(TarExecutablePath, ProbeTimeout); });
         string tree = BuildTree();
 
         (await sut.CompressAsync(Options(tree) with { Format = ArchiveContainerFormat.TarGz })).Success.Should().BeTrue();
@@ -212,7 +219,7 @@ public sealed class TarSandboxedServiceSevenZipTests : IDisposable
 
     [Integration]
     public async Task ProbeSevenZipWriterAsync_NoTarExeAtThePath_IsFalse() =>
-        (await TarSandboxedService.ProbeSevenZipWriterAsync(Path.Combine(_temp.Path, "no-tar.exe"))).Should().BeFalse();
+        (await TarSandboxedService.ProbeSevenZipWriterAsync(Path.Combine(_temp.Path, "no-tar.exe"), ProbeTimeout)).Should().BeFalse();
 
     // --- Error path: nothing is left when the run fails or is cancelled ---
 

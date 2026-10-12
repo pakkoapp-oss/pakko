@@ -22,6 +22,22 @@ file sealed class ZipMustNotRunService : IArchiveService
         => throw new InvalidOperationException("the ZIP engine must not run");
 }
 
+file sealed class YesOrNoTarService(bool canCreate) : ITarService
+{
+    public Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default) => Task.FromResult(canCreate);
+
+    public Task<TarCapabilities> DetectCapabilitiesAsync() => throw new NotSupportedException();
+
+    public Task<ArchiveResult> ExtractAsync(ExtractOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
+    public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
+    public Task<ArchiveResult> CompressAsync(ArchiveOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+}
+
 file sealed class TarMustNotCreateService : ITarService
 {
     public Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default)
@@ -55,10 +71,20 @@ public sealed class TarSevenZipCreationTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
+    // A tar.exe that answered --version and has no 7z reader; all-false with no version is what
+    // a probe returns when tar.exe gave no answer at all.
+    private static readonly TarCapabilities NoSevenZipReader = new() { Version = "bsdtar 3.5.2 - libarchive 3.5.2" };
+
     private TarSandboxedService Service(GroupPolicyOptions? policy = null, bool reads7z = true, bool writes7z = true) => new(
         policy ?? new GroupPolicyOptions(),
-        () => { _versionProbes++; return Task.FromResult(reads7z ? Reads7z : new TarCapabilities()); },
-        sevenZipWriterProbe: () => { _writerProbes++; return Task.FromResult(writes7z); });
+        () => { _versionProbes++; return Task.FromResult(reads7z ? Reads7z : NoSevenZipReader); },
+        sevenZipWriterProbe: () => { _writerProbes++; return Task.FromResult<bool?>(writes7z); });
+
+    // Each call takes the next answer; the last one repeats.
+    private TarSandboxedService ServiceAnswering(params bool?[] writerAnswers) => new(
+        new GroupPolicyOptions(),
+        () => { _versionProbes++; return Task.FromResult(Reads7z); },
+        sevenZipWriterProbe: () => Task.FromResult(writerAnswers[Math.Min(_writerProbes++, writerAnswers.Length - 1)]));
 
     private ArchiveOptions SevenZipOptions(Func<PasswordPromptInfo, Task<PasswordDecision>>? password = null)
     {
@@ -154,8 +180,121 @@ public sealed class TarSevenZipCreationTests : IDisposable
         TarSandboxedService sut = Service(reads7z: false);
 
         (await sut.CanCreateSevenZipAsync()).Should().BeFalse();
+        (await sut.AskSevenZipWriterAsync()).Should().BeFalse();
 
         _writerProbes.Should().Be(0);
+        _versionProbes.Should().Be(1);
+    }
+
+    // --- Error path: a tar.exe that gave no answer (timed out on a busy machine, could not be
+    // started) is not a tar.exe without the writer. Found on a loaded CI runner, where the same
+    // tar.exe wrote 7z for five tests and "could not" for four. ---
+
+    [Fact]
+    public async Task AskSevenZipWriterAsync_NoAnswer_IsNullAfterOneRetry_AndIsNotKept()
+    {
+        TarSandboxedService sut = ServiceAnswering(null, null, true);
+
+        (await sut.AskSevenZipWriterAsync()).Should().BeNull();
+        _writerProbes.Should().Be(2);
+
+        (await sut.AskSevenZipWriterAsync()).Should().BeTrue();
+        (await sut.AskSevenZipWriterAsync()).Should().BeTrue();
+        _writerProbes.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task CanCreateSevenZipAsync_NoAnswerThenAnAnswer_IsTheAnswer()
+    {
+        TarSandboxedService sut = ServiceAnswering(null, true);
+
+        (await sut.CanCreateSevenZipAsync()).Should().BeTrue();
+
+        _writerProbes.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task CanCreateSevenZipAsync_NoAnswer_IsFalseNow_AndAsksAgainNextTime()
+    {
+        TarSandboxedService sut = ServiceAnswering(null, null, null, true);
+
+        (await sut.CanCreateSevenZipAsync()).Should().BeFalse();
+        (await sut.CanCreateSevenZipAsync()).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AskSevenZipWriterAsync_AnsweredNo_IsFalseAndKept()
+    {
+        TarSandboxedService sut = ServiceAnswering(false, true);
+
+        (await sut.AskSevenZipWriterAsync()).Should().BeFalse();
+        (await sut.AskSevenZipWriterAsync()).Should().BeFalse();
+
+        _writerProbes.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AskSevenZipWriterAsync_VersionProbeGotNoAnswer_IsNull_AndTheWriterIsNotRun()
+    {
+        var sut = new TarSandboxedService(
+            new GroupPolicyOptions(),
+            () => { _versionProbes++; return Task.FromResult(new TarCapabilities()); },
+            sevenZipWriterProbe: () => { _writerProbes++; return Task.FromResult<bool?>(true); });
+
+        (await sut.AskSevenZipWriterAsync()).Should().BeNull();
+        (await sut.CanCreateSevenZipAsync()).Should().BeFalse();
+
+        _writerProbes.Should().Be(0);
+        _versionProbes.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task AskSevenZipWriterAsync_TarDisabledByPolicy_IsFalseAndStartsNothing()
+    {
+        TarSandboxedService sut = Service(new GroupPolicyOptions { DisableTarExtraction = true });
+
+        (await sut.AskSevenZipWriterAsync()).Should().BeFalse();
+
+        (_versionProbes, _writerProbes).Should().Be((0, 0));
+    }
+
+    [Fact]
+    public async Task AskSevenZipWriterAsync_ConcurrentQuestions_ShareOneProbe()
+    {
+        var pending = new TaskCompletionSource<bool?>();
+        var sut = new TarSandboxedService(
+            new GroupPolicyOptions(), () => Task.FromResult(Reads7z),
+            sevenZipWriterProbe: () => { _writerProbes++; return pending.Task; });
+
+        Task<bool?> first = sut.AskSevenZipWriterAsync();
+        Task<bool?> second = sut.AskSevenZipWriterAsync();
+        pending.SetResult(true);
+
+        (await first).Should().BeTrue();
+        (await second).Should().BeTrue();
+        _writerProbes.Should().Be(1);
+    }
+
+    // The interface's own answer for an engine that only says yes or no.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ITarService_AskSevenZipWriterAsync_DefaultsToTheYesOrNoAnswer(bool canCreate)
+    {
+        ITarService engine = new YesOrNoTarService(canCreate);
+
+        (await engine.AskSevenZipWriterAsync()).Should().Be(canCreate);
+    }
+
+    [Fact]
+    public async Task CompressAsync_SevenZipProbeGotNoAnswer_IsRefusedAndWritesNothing()
+    {
+        TarSandboxedService sut = ServiceAnswering((bool?)null);
+
+        ArchiveResult result = await sut.CompressAsync(SevenZipOptions());
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.SevenZipWriterUnavailable);
+        Directory.Exists(Path.Combine(_temp.Path, "out")).Should().BeFalse();
     }
 
     [Theory]
@@ -242,7 +381,7 @@ public sealed class TarSevenZipCreationTests : IDisposable
     [Fact]
     public async Task CanCreateSevenZipAsync_CancelledWhileTheProbeRuns_Throws()
     {
-        var pending = new TaskCompletionSource<bool>();
+        var pending = new TaskCompletionSource<bool?>();
         var sut = new TarSandboxedService(new GroupPolicyOptions(), () => Task.FromResult(Reads7z), sevenZipWriterProbe: () => pending.Task);
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
