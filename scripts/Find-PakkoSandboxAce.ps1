@@ -9,6 +9,9 @@
     archive, and the permissions it inherited from its folder were recomputed from the temporary
     folder instead: other users/groups could lose access. This script only reads permissions and
     prints every affected file; Repair-PakkoSandboxAce.ps1 fixes one.
+    Versions before v1.8.1 also left the sandbox's entry on every file they extracted from such
+    an archive (T-F389). Those files have any extension: search the folders you extracted into
+    with -AllFiles.
 .PARAMETER Path
     Folders to search recursively. Defaults to Desktop, Documents and Downloads.
 .PARAMETER AllFiles

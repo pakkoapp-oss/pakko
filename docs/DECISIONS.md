@@ -12855,6 +12855,10 @@ the archive.
   therefore not the release commit any more: the CI build, the nightly checks and the
   release-tier smoke run are owed again on the commit that holds this fix, and `CLI-023` joins
   the maintainer's batch.
+- **Also left to the agent (2026-10-12):** the advisory is in `SECURITY.md`;
+  `Repair-PakkoSandboxAce.ps1` now sets a Low label to Medium (it left `S:(ML;;NW;;;LW)`; checked
+  under PowerShell 7 and 5.1: `S:AI(ML;;NW;;;ME)` after). v1.8.1 is tagged on the commit that holds
+  the advisory, before any T-F342 code reaches `main`; T-F342's wave 0 (records only) may go first.
 
 ## CLAUDE.md as of 2026-10-09 (T-F369)
 
