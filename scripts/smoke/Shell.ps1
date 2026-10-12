@@ -197,3 +197,21 @@ Add-SmokeStep 'OPW-001' {
     }
     finally { Remove-Item -LiteralPath $zip -ErrorAction SilentlyContinue }
 }
+
+Add-SmokeStep 'SHL-012' {
+    $folder = Get-StepFolder 'shl012'
+    $name = Split-Path -Leaf (Get-Fixture Tree)
+    $source = Join-Path $folder $name
+    Copy-Item -LiteralPath (Get-Fixture Tree) -Destination $source -Recurse
+
+    $run = Invoke-Shell -Arguments @('--archive', '--format', '7z', $source) -TimeoutSeconds 30
+    Assert-Smoke ($run.Exited -and $run.ExitCode -eq 0) "--archive --format 7z: exited=$($run.Exited) code=$($run.ExitCode) $($run.Text)"
+    $archive = Join-Path $folder "$name.7z"
+    Assert-Smoke (Test-Path -LiteralPath $archive) '--archive --format 7z made no <name>.7z next to the source'
+    $tested = Invoke-Tool -Exe $Smoke.SevenZip -Arguments @('t', $archive)
+    Assert-Smoke ($tested.ExitCode -eq 0) "7za t on the 7z: exit $($tested.ExitCode)"
+    $listed = Invoke-Pakko @('l', '-sccUTF-8', $archive)
+    Assert-Smoke ($listed.Output.Contains("$name/sub/empty.dat")) "the entries lost their folder prefix: $($listed.Output)"
+    $left = @(Get-ChildItem -LiteralPath $folder -Force -Name | Where-Object { $_ -notin $name, "$name.7z" })
+    Assert-Smoke ($left.Count -eq 0) "left next to the archive: $($left -join ', ')"
+}

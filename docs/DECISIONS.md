@@ -13498,6 +13498,52 @@ halves are: a failing run (a source held open) and a cancelled run both leave th
 empty, and a writer folder left by a dead process is removed by the next creation. The on-device
 row for the kill itself comes with the CLI wave (plan section 5.1).
 
+## T-F342 — creating 7z through tar.exe: the CLI and the Shell (wave 2, 2026-10-12)
+
+`pakko a -t7z`, `-m0=<method>` and `Archiver.Shell.exe --archive --format 7z`. Core is as wave 1
+left it; the App and the Explorer menu follow in wave 3.
+
+- **`-mx` keeps its four steps for 7z.** `0` is Copy, `1-2` level 1, `3-6` level 6, `7-9` level 9:
+  what Core already makes of `CompressionLevel`. The plan had said "a new map for `-mx0..9`"; a
+  ten-step scale would be a new Core contract for a difference nobody asked for, so it is dropped.
+- **`-mx=0` stores, whatever `-m0` names.** Core turns "no compression" into `compression=copy`
+  before it looks at the method, so `-m0=bzip2 -mx=0` is a Copy archive. Documented, not refused;
+  pinned by `Archive_SevenZipWithAMethodAtLevelZero_StillStores` and by smoke row `CLI-027`.
+- **`-m0=<method>` is a bare name and belongs to `-t7z`.** `lzma2`, `lzma`, `bzip2`, `deflate`,
+  `copy`, in any case; the last one given wins, as with `-mx` and `-rr`. Refused with exit 7:
+  `ppmd` and `zstd` (tar.exe's 7z writer has neither), a method with parameters
+  (`-m0=lzma2:d=64m`), a second coder (`-m1=`), and `-m0` on any type but 7z. 7-Zip accepts
+  `-m0=deflate` for a ZIP too; Pakko's ZIP has one method, so there it would be a switch that
+  does nothing.
+- **A name ending in `.7z` follows the T-F294 rule.** `pakko a x.7z src` with no `-t` is exit 7
+  with "add -t7z"; `-tzip x.7z` and `-t7z x.zip` are exit 7. The type is never taken from the
+  name. **This changes what a command did:** until now `pakko a backup.7z src` wrote a ZIP named
+  `backup.7z` and exited 0. For the CHANGELOG.
+- **A password with `-t7z` is refused before anything runs,** with its own text (Pakko cannot
+  encrypt a 7z archive), not the tar-family one. Core refuses it too
+  (`SevenZipEncryptionNotSupported`); the CLI's check is the one a user meets.
+- **No up-front check for the writer on `a -t7z`.** Where this tar.exe has no 7z writer Core
+  returns `SevenZipWriterUnavailable`, the CLI prints it, exit 2, nothing is written. That path
+  runs only against Core's fakes: the development machine and the CI runner both have the
+  writer. `pakko i` asks the probe (only when policy lets tar.exe handle 7z) and prints
+  `create, extract, list` or `extract, list` (`CliInfoText.SevenZipActions`).
+- **The parser has no `--`.** A source named like a switch is given with its folder
+  (`.\-m0=lzma`), as for every other switch; nothing new was added for 7z.
+- **Tests.** `CliSevenZipSwitchTests` (the parser and the rules across switches) and
+  `CliSevenZipSubprocessTests` (the real exe and the real tar.exe). The CLI test project has no
+  7-Zip, so the subprocess tests read the archive's own bytes: the 7z signature, "BZh" at the
+  start of the packed data for bzip2, the plain text where nothing is compressed. The method by
+  7-Zip's word is in `SevenZipCreationCompatibilityTests` and in smoke rows `CLI-026` and
+  `CLI-027`. Not written as tests: Ctrl+C on the real exe (the test layer has no console to
+  signal; smoke row `CLI-030` does it, and Core's cancel and kill tests are wave 1's).
+  Mutants killed: no check of `-m0` without `-t7z`; `.7z` names skipped again by the name rule;
+  no refusal of a password.
+- **Smoke.** Rows `CLI-026..031` and `SHL-012` with steps; `CLI-032` for a person on Windows 10
+  or Server; `POL-002`, `POL-003` and `POL-004` each gained an `a -t7z` case.
+  On the installed package 1.8.1.7 built from `13cfaf3` (2026-10-12): the quick tier, 33 rows OK
+  (`CLI-001` ran the subprocess layer on the installed exe: 126 passed), and `CLI-030` and
+  `CLI-031` OK. The three policy rows need an elevation prompt accepted and are owed.
+
 ## T-F390 — tar.exe's wrong name for a missing list entry (2026-10-12)
 
 Measured on bsdtar 3.8.8 (Windows build 26300), a `-T -` list of `-C <dir>` / `<name>` lines,
