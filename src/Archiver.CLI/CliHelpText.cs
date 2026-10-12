@@ -23,7 +23,7 @@ public static class CliHelpText
           r   Repair from PAR2 recovery data: writes    [any archive with
               <name>.repaired<ext>, the archive stays    PAR2 files]
           l   List archive contents                     [ZIP, tar-family]
-          a   Add files to a new archive                [ZIP, tar-family]
+          a   Add files to a new archive                [ZIP, 7z, tar-family]
           h   Hash files, or one folder recursively      [CRC-32, SHA-256]
           i   Show supported formats/codecs on this system
 
@@ -51,12 +51,17 @@ public static class CliHelpText
           -snz[0|1]        Download mark: -snz/-snz1 (default) copies the       (x)
                            archive's "from the internet" mark to every file;
                            -snz0 leaves it off. Group Policy overrides both
-          -t<type>         Archive type: zip (default), tar, tar.gz, tar.bz2,
-                           tar.xz, tar.zst, tar.lzma; or tgz, tbz2, txz, tzst   (a)
+          -t<type>         Archive type: zip (default), 7z, tar, tar.gz,
+                           tar.bz2, tar.xz, tar.zst, tar.lzma; or tgz, tbz2,
+                           txz, tzst                                            (a)
                            A name ending in one of these types, or in .tgz,
                            .tbz2, .txz, .tzst, must match it (out.tar.gz needs
-                           -ttar.gz); any other extension is written as typed
+                           -ttar.gz, out.7z needs -t7z); any other extension
+                           is written as typed. 7z is written by Windows' own
+                           tar.exe, where it can, and never with a password
           -mx=<0-9>        Compression level — see table below                 (a)
+          -m0=<method>     Method of a 7z archive (with -t7z): lzma2 (default), (a)
+                           lzma, bzip2, deflate, copy
           -rr[N]           Recovery data: PAR2 files next to the archive,      (a)
                            N percent of it, 1-100; bare -rr is 5. par2cmdline
                            and MultiPar can verify and repair with them too
@@ -71,6 +76,7 @@ public static class CliHelpText
         COMPRESSION LEVEL (-mx, command 'a' only):
           0    -> Store (no compression)   3-6 -> Optimal (default)
           1-2  -> Fastest                  7-9 -> SmallestSize
+          The same four steps for every type. For 7z, 0 stores whatever -m0 says.
 
         HASH (command 'h'):
           One or more files -> each hashed independently.

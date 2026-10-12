@@ -94,11 +94,11 @@ public static class ShellArgumentParser
     }
 
     // T-F105: "--archive" alone means ZIP (unchanged pre-existing behavior); an optional
-    // "--format zip|tar" pair, consumed right after "--archive" and before the file paths,
-    // selects TAR instead. Only these two values are accepted here — the one-click shell command
-    // never prompts the user, so it only ever needs the two formats with nothing to configure
-    // (plain zip and plain tar); the Compress dialog's full 6-variant tar selector goes through
-    // MainViewModel's IArchiveCreationRouter call directly, not this CLI path.
+    // "--format zip|tar|7z" pair, consumed right after "--archive" and before the file paths,
+    // selects another format. Only these values are accepted here — the one-click shell command
+    // never prompts the user, so it takes each format as its defaults make it (plain zip, plain
+    // tar, and since T-F342 a 7z with the default method); the Compress dialog's full selector
+    // goes through MainViewModel's IArchiveCreationRouter call directly, not this CLI path.
     private static ParsedCommand ParseArchive(string[] args)
     {
         string[] rest = args[1..];
@@ -113,6 +113,7 @@ public static class ShellArgumentParser
             {
                 "zip" => ArchiveContainerFormat.Zip,
                 "tar" => ArchiveContainerFormat.Tar,
+                "7z"  => ArchiveContainerFormat.SevenZip,
                 _     => (ArchiveContainerFormat)(-1),
             };
             if ((int)format == -1)
