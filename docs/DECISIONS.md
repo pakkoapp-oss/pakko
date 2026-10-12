@@ -12865,6 +12865,61 @@ the archive.
   under PowerShell 7 and 5.1: `S:AI(ML;;NW;;;ME)` after). v1.8.1 is tagged on the commit that holds
   the advisory, before any T-F342 code reaches `main`; T-F342's wave 0 (records only) may go first.
 
+## v1.8.1 — the release-tier smoke run on b146f3b (2026-10-12)
+
+- **The package under test.** The dev package installed before the run (1.8.1.3) was built from
+  `b45c857`, a commit of the T-F389 branch from before `5ac3f87`; the four exes said so in their
+  product version. The run was made on 1.8.1.4 and 1.8.1.5, both from `Deploy.ps1` in a worktree
+  checked out at `b146f3b` (product version `...+b146f3b6e274...` on all four exes), with the
+  harness of the same worktree: `REL-001` and `REL-002` act on the checked-out commit.
+- **Scripted rows** (`Invoke-Smoke.ps1 -Tier release -PackageLifecycle -ReleaseFiles <the bundle
+  of run 38209984260> -PreviousRelease <v1.8.0>`, 1 638 s): 58 OK, none failed. `REL-001` passed
+  23 on `b146f3b`, `REL-002` read run 38210014591, `PKG-006` went 1.8.0.0 to 1.8.1.0,
+  `PKG-007..009` OK, `APP-018` OK (7 passwords, none found in the log, the event log or a
+  command line).
+- **The elevated rows**, in a second run with the maintainer at the machine (`-Only
+  POL-00*,PKG-005 -Hold`, 443 s): `POL-001..008` OK (20 policy changes, the two registry keys as
+  before), `PKG-005` OK (the kit: PASS, 24 tests; the two known findings of `wack-known.txt`).
+  In the first run nobody accepted the prompt: the rows were skipped, and `POL-008` said FAIL
+  with the registry untouched (T-F394).
+- **`mcp` rows walked on 1.8.1.5** (uk-UA, the `windows` MCP server): the rows that the changes
+  since the 2026-10-11 walk reach (63 files under `src` between `v1.8.0` and `b146f3b`) and the
+  rows that record left owed. The other `mcp` rows keep their results of 2026-10-10 and
+  2026-10-11 (packages 1.8.0.5 and 1.8.0.6); they were not walked again on `b146f3b`.
+
+  | ID | Result | Note |
+  |---|---|---|
+  | EXP-009 | OK | 1.8.1.4 installed and the menu opened; `Add-AppxPackage` of 1.8.1.5 over it, the same Explorer process: the ten items in order, Test ran `Archiver.Shell.exe` and `Archiver.OperationUi.exe` of 1.8.1.5, "no errors". The first `Add-AppxPackage`, seconds after the menu was open, failed with 0x80073D02 (the package in use by the menu's COM surrogate); a second one about ten seconds later went through |
+  | APP-001 | OK | title "build 2026-10-12 12:48:44", About "Pakko v1.8.1.5". Once the About button went disabled and no dialog came (T-F393) |
+  | APP-023 | OK | ZIP of 512 MB and tar.gz of 1.5 GB with six entries: bar 4, 8, 24, "checking the archive's contents" at 24, done in 4 s. A small ZIP and a tar.gz of 6000 files of 256 KiB, the bar read every 80 ms: "checking" while it goes 0 to 3, 3 to 95 in 7 s with speed and time left, 95 to 100 in 16 s with the speed text unchanged, "extracted in 26 s - archives: 2" |
+  | APP-012 | OK | Delete and Shift+F10 on a keyboard-focused row of the list; Enter and Backspace in the archive view (T-F380). The footer's tab order was not walked again |
+  | APP-015 | OK | ar-SA: the whole window mirrored, no English in the main view (T-F386); de-DE: the PAR2 percentage box inside the card (T-F387); ja-JP: nothing cut. Driven by a script that puts the language first in the list and puts `uk`, `en-US` and their keyboards back |
+  | APP-006 | part | Test from the archive view: a stored entry with a flipped byte gives the CRC-32 message; a Deflate entry with 70 000 bytes zeroed gives "The compressed data is damaged." with the Ukrainian text in front (T-F382). Scan, preview and a nested archive were not walked again |
+  | APP-007 | part | the conflict dialog shows size and date of both files; Skip for all: one question, result line "nothing done - skipped: 7" (T-F383). Bomb, password and error dialogs were not walked again |
+  | APP-002 | part | AES-256 ZIP with a 5 % set from the New archive card: `7za l -slt` "AES-256 Deflate", `7za t` OK, `pakko t` "recovery data intact"; with encryption on, the PAR2 row and both password boxes are in view (T-F381). The pickers and the tar formats were not walked again |
+  | APP-013 | part | window of 886 x 553: the cards scroll, nothing is cut. The themes were not walked again |
+  | OPW-003 | part | password page: both buttons whole, also with the "wrong password" line (the window grows); wrong, then right: "no errors" (T-F385). Conflict and bomb were not walked again |
+  | POL-009 | OK | `EnforceMOTW` 0, 1, 2: the box disabled at Off, On, On, with "set by your organisation's policy"; `AllowedFormats` = `zip`: New archive lists ZIP only (T-F388), a tar.gz is refused on open; `BlockedFormats` = `zip`: the six tar formats only, a ZIP is refused on open; `DisableRecoveryData`: no PAR2 option, no PAR2 line and no Repair on a ZIP with a set. A `.par2` row is accepted into the list; what extraction says of it was not looked at again |
+  | POL-010 | OK | `BlockedFormats` = `zip`: the ZIP with a set shows Compress and the two Hash items only, its `.par2` shows Add to tar, Verify and Repair and no Add to zip; `DisableTarExtraction`: a folder has Add to zip and no Add to tar; `DisableRecoveryData`: the ZIP with a set has its nine items and no PAR2 item |
+  | CLI-023 | part | the share half, through `\\localhost\Users\...` (an NTFS folder behind SMB): `x` of a tar.gz and of a 7z, exit 0, seven files each with the source's bytes, inherited permissions only. exFAT or FAT32 is the maintainer's |
+
+  Besides the rows: `Archiver.Shell.exe --extract-folder` on a tar.gz and a tar leaves files
+  that carry only the folder's inherited entries, no sandbox SID and no label (T-F389).
+- **What T-F389 costs.** `pakko x` of the tar.gz of 6000 files takes 25.6 and 26.2 s with the
+  v1.8.0 `pakko` and 27.5 and 31.3 s with 1.8.1.5: the permissions of each file are reset on the
+  way out of the quarantine folder. The slow last five per cent of the bar is that move; v1.8.0
+  has it too.
+- **PKG-005 needed a file put in place.** The step looks for a `.msix` under
+  `src\Archiver.App\AppPackages`, where `Deploy.ps1` leaves the `.msixbundle` only; the `.msix`
+  of the same build (`bin\x64\Release\...`, the hash of the one in the bundle's folder, a valid
+  signature) was copied there (T-F394).
+- **Owed before the tag, the maintainer's:** the exFAT or FAT32 half of `CLI-023`, `APP-014`
+  (150 % and 200 %), the high-contrast part of `APP-013`.
+- **The releases after it** (the maintainer, 2026-10-12): v1.8.1 goes out as it is, without 7z
+  creation; v1.9.0 carries 7z creation without encryption (T-F342); encrypted 7z comes after a
+  spike of its own, since libarchive's writer does not encrypt and its reader does not read
+  encrypted 7z.
+
 ## T-F342 — creating 7z through tar.exe: sources and measurements (wave 0, 2026-10-12)
 
 Record made before any code. Machine: Windows 11 build 26300, `C:\Windows\System32\tar.exe` =

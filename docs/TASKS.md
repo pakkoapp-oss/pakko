@@ -1607,3 +1607,31 @@ re-measured with T-F346's script before and after.
   suggest ZIP or 7z; or leave it (two links to one file inside one selected folder are rare on
   Windows; a package store's links point outside the folder and are stored as plain files).
 - **Reported by:** the T-F342 research (wave 0), 2026-10-12.
+
+### T-F393 — The About button went disabled once and no dialog came (P3)
+
+- [ ] **Status:** open. Package 1.8.1.5 (`b146f3b`), uk-UA, 2026-10-12. The App was started with
+  `Start-Process` on `Archiver.App.exe` in the install folder; a topmost Windows Terminal window
+  covered the right half of its window, the About button included. One UI Automation click on
+  About: the button reads disabled from then on, no dialog is in the UI Automation tree or on a
+  picture of the window taken after the terminal was minimized, `pakko.log` has "Pakko started"
+  only, the Application event log has nothing. The window was closed after about two minutes.
+  Three more tries (one under the same topmost window) opened the dialog. So `ShowAboutAsync`
+  was entered and never finished, without a dialog on screen. Next: read `DialogService`'s
+  one-dialog-at-a-time path for a way to wait for ever; a test on that path once the cause is
+  known. Does not hold the v1.8.1 tag: the trigger is unknown and nothing else in the window
+  was affected.
+- **Reported by:** the release-tier smoke run of v1.8.1 (`APP-001`), 2026-10-12.
+
+### T-F394 — Two smoke steps report the wrong thing (P3)
+
+- [ ] **Status:** open. Both seen in the release-tier run of v1.8.1, 2026-10-12.
+  1. `PKG-005` looks for `*_<version>_*.msix` under `src\Archiver.App\AppPackages`, where
+     `Deploy.ps1` leaves the `.msixbundle` and its `.cer` only, and is skipped with "run
+     Deploy.ps1" right after a `Deploy.ps1`. The `.msix` of the same build is under
+     `bin\x64\Release\...`. Next: give `appcert.exe` the bundle, or take the `.msix` from where
+     the build leaves it; say which file was tested in the row's note.
+  2. `POL-008` fails with "the registry is not as it was" when the elevated helper never started
+     (the prompt was not accepted): there is no `after-*.reg` to compare. It should be skipped
+     with the reason the other elevated rows give.
+- **Reported by:** the release-tier smoke run of v1.8.1, 2026-10-12.
