@@ -762,6 +762,18 @@ tests caught before shipping):
   stream for `-m0=bzip2`, stored text at `-mx=0`, `-so`, `-rr5`, an existing archive with and
   without `-y`, a missing source, the exit-7 refusals, `i`). That project has no 7-Zip, so the
   method is read from the archive's own bytes there.
+  **Testing through tar.exe (T-F397).** `TarSandboxedServiceTestTests`
+  (`Archiver.Core.IntegrationTests/`, the real tar.exe): a whole archive of each format, a byte
+  flipped and a file cut short, the formats whose pass carries the structure-only warning (with a
+  flipped gzip that tar.exe does not notice, pinned so a later tar.exe that does is seen), the
+  encrypted fixtures, an escaping name and a link entry, policy, progress, cancellation.
+  `SandboxDiscardedStdOutTests`: the launcher drops stdout and counts it.
+  `SevenZipRecoveryEndToEndTests`: a 7z with a PAR2 set damaged three ways, tested, repaired,
+  extracted and compared with the source, and the two sides of the "passes its own test" rule.
+  `TarTestCoverageTests` (`Archiver.Core.Tests/`, no tar.exe): which formats count as verified,
+  from header bytes. The Shell's and the App's recovery tests keep starting no tar.exe through
+  `StructureOnlyTarEngine`; `CliSevenZipSubprocessTests` has `t` on a whole, a changed and a cut
+  7z and the create, damage, repair, extract road.
 - `ZipEntryWriterCompatibilityTests` (`Archiver.Core.PerformanceTests/` — lives there specifically
   to reuse the vendored, hash-verified `7za.exe` binary rather than duplicating it into a second
   test project; a correctness suite, not a performance one, despite the location) — proves the

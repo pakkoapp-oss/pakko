@@ -247,6 +247,18 @@ public sealed class TarSandboxedServiceTestTests : IDisposable
         ShouldHavePassed(await _sut.TestAsync([archive]), archive, contentsVerified: false);
     }
 
+    // An xz stream may have no check ("xz --check=none", a legal stream), and then nothing
+    // verifies what it holds: TarTestCoverage reads the check's id, the low four bits of the
+    // eighth byte. What tar.exe itself writes has one, which the xz tests above rely on.
+    [Integration]
+    public void TarExeWritesXzWithACheck()
+    {
+        byte[] head = File.ReadAllBytes(Create("xz"))[..8];
+
+        head[..6].Should().Equal(0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00);
+        (head[7] & 0x0F).Should().NotBe(0);
+    }
+
     // ── Refusals ────────────────────────────────────────────────────────────────────────────────
 
     [Theory]

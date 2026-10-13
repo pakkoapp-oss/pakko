@@ -25,9 +25,25 @@ public sealed class TarTestCoverageTests : IDisposable
     public void SevenZip_IsVerified() =>
         TarTestCoverage.VerifiesContents(Write("a.7z", 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C)).Should().BeTrue();
 
+    // The low four bits of the second Stream Flags byte name the check: 0 is None, which is legal
+    // ("xz --check=none"); 1 CRC32, 4 CRC64 (xz's and tar.exe's default), 10 SHA-256.
+    [Theory]
+    [InlineData(0x04, true)]
+    [InlineData(0x01, true)]
+    [InlineData(0x0A, true)]
+    [InlineData(0x00, false)]
+    [InlineData(0xF0, false)]
+    public void Xz_IsVerifiedOnlyWithACheck(byte check, bool expected) =>
+        TarTestCoverage.VerifiesContents(Write("a.tar.xz", 0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00, 0x00, check)).Should().Be(expected);
+
     [Fact]
-    public void Xz_IsVerified() =>
-        TarTestCoverage.VerifiesContents(Write("a.tar.xz", 0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00)).Should().BeTrue();
+    public void Xz_CutBeforeItsStreamFlags_IsNotVerified()
+    {
+        string path = Path.Combine(_temp.Path, "short.xz");
+        File.WriteAllBytes(path, [0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00, 0x00]);
+
+        TarTestCoverage.VerifiesContents(path).Should().BeFalse();
+    }
 
     [Fact]
     public void Bzip2_IsVerified() =>

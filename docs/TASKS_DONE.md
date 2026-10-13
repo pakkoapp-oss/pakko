@@ -12793,8 +12793,8 @@ PowerShell does natively.
   runs comes first, so an archive extraction would refuse fails the test with the same message.
   `ExtractionRouter.TestAsync` sends tar-family paths there. `pakko t`, Explorer's Test
   (`AnyPathIsSupportedArchive`) and the App's Test button work for every archive Pakko reads.
-- **What a pass means, by format:** tar.exe compares the checksums of 7z, tar.xz, tar.bz2 and a
-  zstd frame that has one; it does not compare gzip's CRC-32 or a RAR's data CRC, and a plain
+- **What a pass means, by format:** tar.exe compares the checksums of 7z, tar.bz2, and of an xz
+  stream or a zstd frame that has one (what tar.exe writes has); it does not compare gzip's CRC-32 or a RAR's data CRC, and a plain
   tar and an .lzma have none (measured, `docs/DECISIONS.md`). For those a passed test carries
   the warning `TestedStructureOnly` and no frontend says "no errors" (the maintainer's
   choice); `MessageCode.NoTestCapability` is gone.
