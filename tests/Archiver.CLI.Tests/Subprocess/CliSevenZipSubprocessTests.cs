@@ -174,6 +174,71 @@ public sealed class CliSevenZipSubprocessTests : IAsyncLifetime
         File.Exists(Archive("backup.7z")).Should().BeFalse();
     }
 
+    // --- T-F397: 'pakko t' on a 7z, through tar.exe reading every entry ---
+
+    [SevenZipWriterFact]
+    public void Test_SevenZip_ExitsZeroWithNoWarning()
+    {
+        CliProcessRunner.Run("a", "-t7z", Archive(), Source("a.txt"), Source(NonAsciiName)).ExitCode.Should().Be(0);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("t", Archive());
+
+        exitCode.Should().Be(0, stdErr);
+        stdErr.Should().BeEmpty("a 7z carries checksums tar.exe compares, so nothing is left unverified");
+    }
+
+    [SevenZipWriterTheory]
+    [InlineData("lzma2")]
+    [InlineData("copy")]
+    public void Test_SevenZipWithAChangedByte_ExitsTwoAndNamesTheArchive(string method)
+    {
+        CliProcessRunner.Run("a", "-t7z", "-m0=" + method, Archive(), Source("a.txt")).ExitCode.Should().Be(0);
+        byte[] bytes = File.ReadAllBytes(Archive());
+        bytes[bytes.Length / 2] ^= 0xFF;
+        File.WriteAllBytes(Archive(), bytes);
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", Archive());
+
+        exitCode.Should().Be(2, stdErr);
+        stdErr.Should().Contain("out.7z");
+        stdOut.Should().NotContain("No errors");
+    }
+
+    [SevenZipWriterFact]
+    public void Test_TruncatedSevenZip_ExitsTwo()
+    {
+        CliProcessRunner.Run("a", "-t7z", Archive(), Source("a.txt")).ExitCode.Should().Be(0);
+        using (var stream = new FileStream(Archive(), FileMode.Open, FileAccess.Write))
+            stream.SetLength(stream.Length / 2);
+
+        CliProcessRunner.Run("t", Archive()).ExitCode.Should().Be(2);
+    }
+
+    // The whole road in the user's own words: create with a set, damage, test, repair, test, extract.
+    [SevenZipWriterFact]
+    public void SevenZipWithRecoveryData_DamagedThenRepaired_ExtractsToTheSource()
+    {
+        string source = Source("a.txt");
+        CliProcessRunner.Run("a", "-t7z", "-m0=copy", "-rr30", Archive(), source).ExitCode.Should().Be(0);
+        byte[] bytes = File.ReadAllBytes(Archive());
+        bytes[bytes.Length / 2] ^= 0xFF;
+        File.WriteAllBytes(Archive(), bytes);
+
+        (int testExit, _, string testErr) = CliProcessRunner.Run("t", Archive());
+        (int repairExit, _, string repairErr) = CliProcessRunner.Run("r", Archive());
+        string repaired = Path.Combine(_temp.Path, "out.repaired.7z");
+        (int retestExit, _, string retestErr) = CliProcessRunner.Run("t", repaired);
+        string dest = Path.Combine(_temp.Path, "back");
+        (int extractExit, _, string extractErr) = CliProcessRunner.Run("x", $"-o{dest}", repaired);
+
+        testExit.Should().Be(2, testErr);
+        testErr.Should().Contain("pakko r");
+        repairExit.Should().Be(0, repairErr);
+        retestExit.Should().Be(0, retestErr);
+        extractExit.Should().Be(0, extractErr);
+        File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be(Text);
+    }
+
     [SevenZipWriterFact]
     public void Info_OnASystemWithTheWriter_SaysSevenZipIsCreated()
     {

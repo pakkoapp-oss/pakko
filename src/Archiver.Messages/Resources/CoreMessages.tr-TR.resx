@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Bu arşiv biçimi, bu sistemin tar.exe'si (sürüm {0}) tarafından desteklenmiyor.</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>tar ailesi arşivleri test edilemez</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Yalnızca arşivin yapısı denetlendi: tar.exe bu biçimdeki dosyaların içeriğini doğrulayamaz.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Bu arşiv parola korumalı ve ayıklanamıyor.</value>

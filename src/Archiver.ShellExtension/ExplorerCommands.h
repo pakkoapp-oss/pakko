@@ -273,9 +273,8 @@ public:
 // ---------------------------------------------------------------------------
 // Leaf command: "Scan for threats" (T-F146) — AMSI-based scan of an archive's quarantine-
 // expanded contents. Shown whenever the selection contains at least one supported archive
-// (AnyPathIsSupportedArchive, not AnyPathIsZip like TestCommand — unlike Test, this genuinely
-// supports tar-family archives via AntivirusScanService's quarantine-extraction path, so gating
-// it to ZIP-only would silently hide the feature for every non-ZIP archive). Positioned after
+// (AnyPathIsSupportedArchive, as TestCommand since T-F397: tar-family archives are scanned
+// through AntivirusScanService's quarantine-extraction path). Positioned after
 // TestCommand — diagnostic/verification commands go last, after every Extract/Archive variant.
 // ---------------------------------------------------------------------------
 class ScanCommand final :
@@ -295,7 +294,7 @@ public:
 // ---------------------------------------------------------------------------
 // Leaf command: "Extract..." (T-F63) — dialog form. Opens Archiver.App with the
 // selected archives pre-loaded instead of extracting silently. Shown whenever the
-// selection contains at least one .zip, same as TestCommand (AnyPathIsZip), not the
+// selection contains at least one archive, same as TestCommand, not the
 // stricter AllPathsAreZip ExtractHereCommand/ExtractFolderCommand use.
 // ---------------------------------------------------------------------------
 class ExtractDialogCommand final :

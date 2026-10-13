@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>此系统的 tar.exe(版本 {0})不支持此压缩包格式。</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>无法测试 tar 系列压缩包</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>仅检查了压缩包的结构：tar.exe 无法校验此格式中文件的内容。</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>此压缩包受密码保护，无法解压。</value>

@@ -654,7 +654,7 @@ public sealed class RecoveryPanelTests : IDisposable
     };
 
     private static ExtractionRouter Router(GroupPolicyOptions policy) =>
-        new ExtractionRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), new TarCapabilities(), policy);
+        new ExtractionRouter(new ZipArchiveService(policy), new StructureOnlyTarEngine(), new TarCapabilities(), policy);
 
     private static RecoveryService Recovery(GroupPolicyOptions policy) =>
         new(policy, () => Task.FromResult<Archiver.Core.Interfaces.IExtractionRouter>(Router(policy)));
@@ -678,7 +678,8 @@ public sealed class RecoveryPanelTests : IDisposable
         return path;
     }
 
-    // Noise under a gzip header: the set covers bytes, not a format, and no test starts tar.exe.
+    // Noise under a gzip header: the set covers bytes, not a format, and no test starts tar.exe
+    // (StructureOnlyTarEngine stands for it).
     private string MakeTarGz(string name, int seed)
     {
         string path = Path.Combine(_root, name);

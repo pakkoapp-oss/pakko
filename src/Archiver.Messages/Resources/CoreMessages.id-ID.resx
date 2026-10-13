@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Format arsip ini tidak didukung oleh tar.exe di sistem ini (versi {0}).</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>arsip keluarga tar tidak dapat diuji</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Hanya struktur arsip yang diperiksa: tar.exe tidak dapat memverifikasi isi file dalam format ini.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Arsip ini dilindungi kata sandi dan tidak dapat diekstrak.</value>

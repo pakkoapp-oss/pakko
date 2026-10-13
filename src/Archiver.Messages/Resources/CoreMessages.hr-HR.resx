@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Ovaj oblik arhive nije podržan u tar.exe ovog sustava (verzija {0}).</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>arhive obitelji tar ne mogu se testirati</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Provjerena je samo struktura arhive: tar.exe ne može provjeriti sadržaj datoteka u ovom formatu.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Ova je arhiva zaštićena lozinkom i ne može se raspakirati.</value>

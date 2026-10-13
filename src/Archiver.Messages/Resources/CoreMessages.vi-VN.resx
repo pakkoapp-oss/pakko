@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Định dạng tệp nén này không được tar.exe của hệ thống này (phiên bản {0}) hỗ trợ.</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>không thể kiểm tra tệp nén họ tar</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Chỉ kiểm tra cấu trúc của tệp nén: tar.exe không thể xác minh nội dung các tệp ở định dạng này.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Tệp nén này được bảo vệ bằng mật khẩu và không thể giải nén.</value>

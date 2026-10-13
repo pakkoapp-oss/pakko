@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>यह संग्रह प्रारूप इस सिस्टम के tar.exe (संस्करण {0}) द्वारा समर्थित नहीं है।</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>tar परिवार के संग्रहों का परीक्षण नहीं किया जा सकता</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>केवल संग्रह की संरचना जाँची गई: tar.exe इस प्रारूप में फ़ाइलों की सामग्री सत्यापित नहीं कर सकता।</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>यह संग्रह पासवर्ड से सुरक्षित है और निकाला नहीं जा सकता।</value>

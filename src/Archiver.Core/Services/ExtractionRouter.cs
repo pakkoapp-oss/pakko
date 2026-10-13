@@ -108,21 +108,36 @@ public sealed class ExtractionRouter : IExtractionRouter
         return await TestClassifiedAsync(classification, progress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false);
     }
 
-    // T-F261: same classifier as extraction. tar.exe has no test mode, so a tar-family path
-    // that policy and capabilities would allow is still only reported, never opened.
+    // T-F261: same classifier as extraction. T-F397: a tar-family archive is tested by the tar
+    // engine (tar.exe reads every entry and writes nothing), ZIP first and tar second in one
+    // climb, as extraction (T-F306).
     private async Task<ArchiveResult> TestClassifiedAsync(
         ArchiveFormatPolicy.Classification classification,
         IProgress<ProgressReport>? progress,
         Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync,
         CancellationToken cancellationToken)
     {
-        ArchiveResult zipResult = classification.ZipPaths.Count > 0
-            ? await _archiveService.TestAsync(classification.ZipPaths, progress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false)
+        IReadOnlyList<string> zipPaths = classification.ZipPaths;
+        IReadOnlyList<string> tarPaths = classification.TarPaths;
+        bool mixed = progress is not null && zipPaths.Count > 0 && tarPaths.Count > 0;
+        int zipSliceEnd = mixed ? ZipSharePercent(zipPaths, tarPaths) : 100;
+
+        ArchiveResult zipResult = zipPaths.Count > 0
+            ? await _archiveService.TestAsync(
+                zipPaths, mixed ? new SliceProgress(progress!, 0, zipSliceEnd, bytesBefore: 0) : progress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false)
+            : EmptyResult();
+        ArchiveResult tarResult = tarPaths.Count > 0
+            ? await _tarService.TestAsync(
+                tarPaths, mixed ? new SliceProgress(progress!, zipSliceEnd, 100, bytesBefore: 0) : progress, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
 
-        IEnumerable<SkippedFile> untestable = classification.TarPaths
-            .Select(path => CoreMessages.Skip(path, MessageCode.NoTestCapability));
-        return zipResult with { SkippedFiles = [.. zipResult.SkippedFiles, .. untestable, .. classification.Unsupported] };
+        return zipResult with
+        {
+            Errors = [.. zipResult.Errors, .. tarResult.Errors],
+            Warnings = [.. zipResult.Warnings, .. tarResult.Warnings],
+            SkippedFiles = [.. zipResult.SkippedFiles, .. tarResult.SkippedFiles, .. classification.Unsupported],
+            Sources = [.. zipResult.Sources, .. tarResult.Sources],
+        };
     }
 
     // T-F275 step 3: the engines test what they can, then each archive with a set is checked by
@@ -139,31 +154,37 @@ public sealed class ExtractionRouter : IExtractionRouter
 
         long[] checkLengths = [.. plan.Sets.Select(s => TotalLength([s.ArchivePath]))];
         double checkTotal = Math.Max(1, checkLengths.Sum());
-        long testTotal = TotalLength(classification.ZipPaths);
+        long testTotal = TotalLength(classification.ZipPaths) + TotalLength(classification.TarPaths);
         int testEnd = plan.Sets.Count == 0 ? 100 : (int)(100 * testTotal / (testTotal + checkTotal));
         RecoveryClimb? climb = progress is null || plan.Sets.Count == 0 ? null : new RecoveryClimb(progress, testEnd);
         IProgress<ProgressReport>? testProgress = climb is null ? progress : new SliceProgress(climb, 0, testEnd, bytesBefore: 0);
 
         ArchiveResult tested = await TestClassifiedAsync(classification, testProgress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false);
         // Keyed by full path: a check's archive may come from a .par2 path, spelled unlike the archive path given.
+        // T-F397: a test that checked only the structure did not pass the contents. Counting it
+        // would turn real damage into "a newer archive beside an older set".
         var passed = new HashSet<string>(
-            tested.Sources.Where(s => s.Outcome == SourceOutcome.Completed && !tested.Errors.Any(e => e.SourcePath == s.Path)).Select(s => RecoveryTestStep.Key(s.Path)),
+            tested.Sources
+                .Where(s => s.Outcome == SourceOutcome.Completed && !tested.Errors.Any(e => e.SourcePath == s.Path)
+                    && !tested.Warnings.Any(w => IsStructureOnly(w) && w.SourcePath == s.Path))
+                .Select(s => RecoveryTestStep.Key(s.Path)),
             StringComparer.OrdinalIgnoreCase);
 
         await Task.Run(() => CheckSets(plan, checkLengths, passed, climb, cancellationToken), cancellationToken).ConfigureAwait(false);
         climb?.Check(1);
 
-        // A tar-family archive that its set could check was tested after all.
+        // An archive its set could check had every byte compared: "only the structure" is no longer so.
         var checkedBySet = new HashSet<string>(
             plan.Checks.Where(c => c.State != RecoveryState.Unusable).Select(c => RecoveryTestStep.Key(c.ArchivePath)), StringComparer.OrdinalIgnoreCase);
         return tested with
         {
             Errors = [.. tested.Errors, .. plan.Errors],
-            Warnings = [.. tested.Warnings, .. plan.Warnings],
-            SkippedFiles = [.. tested.SkippedFiles.Where(s => s.Text?.Code != MessageCode.NoTestCapability || !checkedBySet.Contains(RecoveryTestStep.Key(s.Path)))],
+            Warnings = [.. tested.Warnings.Where(w => !IsStructureOnly(w) || !checkedBySet.Contains(RecoveryTestStep.Key(w.SourcePath))), .. plan.Warnings],
             RecoveryChecks = plan.Checks,
         };
     }
+
+    private static bool IsStructureOnly(ArchiveWarning warning) => warning.Text?.Code == MessageCode.TestedStructureOnly;
 
     // Each set's share of the check's part of the climb is its archive's size; what the checks
     // find joins what Locate already knew in the plan.

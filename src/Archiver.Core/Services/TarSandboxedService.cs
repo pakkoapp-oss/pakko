@@ -1178,6 +1178,119 @@ public sealed class TarSandboxedService : ITarService
         }
     }
 
+    /// <inheritdoc/>
+    public async Task<ArchiveResult> TestAsync(
+        IReadOnlyList<string> archivePaths,
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (_policy.DisableTarExtraction)
+            return RefuseAll(archivePaths, TarDisabled);
+
+        var errors = new List<ArchiveError>();
+        var warnings = new List<ArchiveWarning>();
+        var sources = new List<SourceResult>();
+        int total = archivePaths.Count;
+        for (int i = 0; i < total; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            string archivePath = archivePaths[i];
+            int errorsBefore = errors.Count;
+            // As ExtractAsync: bytes within the archive for one, a step for each of several.
+            if (await TestOneArchiveAsync(archivePath, total == 1 ? progress : null, errors, cancellationToken).ConfigureAwait(false))
+            {
+                bool passed = errors.Count == errorsBefore;
+                if (passed && !TarTestCoverage.VerifiesContents(archivePath))
+                    warnings.Add(CoreMessages.Warning(archivePath, CoreMessages.Text(MessageCode.TestedStructureOnly)));
+                sources.Add(SourceOutcomeRules.Classify(archivePath, produced: true, clean: passed));
+            }
+
+            if (total > 1)
+                progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
+        }
+
+        return new ArchiveResult { Errors = errors, Warnings = warnings, Sources = sources };
+    }
+
+    // One archive of TestAsync's loop. False: there was no file to look at. Every other outcome
+    // but a cancel (T-F260) ends up in errors.
+    private static async Task<bool> TestOneArchiveAsync(
+        string archivePath, IProgress<ProgressReport>? progress, List<ArchiveError> errors, CancellationToken cancellationToken)
+    {
+        if (!File.Exists(archivePath))
+        {
+            errors.Add(CoreMessages.Error(archivePath, MessageCode.SourceNotFound, archivePath));
+            return false;
+        }
+
+        if (IsKnownEncryptedRar(archivePath))
+        {
+            errors.Add(CoreMessages.Error(archivePath, MessageCode.PasswordProtectedFormatNotSupported));
+            return true;
+        }
+
+        try
+        {
+            using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, cancellationToken)
+                .ConfigureAwait(false);
+
+            // The pre-scan extraction runs (T-F49): an archive it refuses must not pass a test.
+            // Its sum of the entries' sizes is what tar.exe is about to write to stdout.
+            (long declaredSize, _, _, _) = await ScanForUnsafeEntriesAsync(scope, cancellationToken).ConfigureAwait(false);
+
+            long read = 0;
+            int lastPercent = -1;
+            void OnContentBytes(int count)
+            {
+                read += count;
+                // 99 at most: 100 is said once tar.exe has exited with no error.
+                int percent = declaredSize > 0 ? (int)Math.Min(99, read * 100 / declaredSize) : 0;
+                if (percent == lastPercent)
+                    return;
+                lastPercent = percent;
+                progress?.Report(new ProgressReport { Percent = percent, BytesTransferred = Math.Min(read, declaredSize), TotalBytes = declaredSize });
+            }
+
+            (int exitCode, string stdErr) = await scope.TestAsync(OnContentBytes, cancellationToken).ConfigureAwait(false);
+            if (exitCode != 0)
+            {
+                errors.Add(CoreMessages.Error(archivePath, IsLikelyEncryptionFailure(stdErr)
+                    ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
+                    : CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(stdErr))));
+                return true;
+            }
+
+            progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = declaredSize, TotalBytes = declaredSize });
+        }
+        catch (TarArchiveRejectedException ex)
+        {
+            errors.Add(CoreMessages.Error(archivePath, ex.Text));
+        }
+        catch (TarSignatureVerificationException ex)
+        {
+            errors.Add(CoreMessages.Error(archivePath, ex.Text));
+        }
+        catch (SandboxSetupException ex)
+        {
+            errors.Add(CoreMessages.Error(archivePath, ex.Text, ex));
+        }
+        catch (IOException ex)
+        {
+            errors.Add(CoreMessages.Error(archivePath,
+                IsLikelyEncryptionFailure(ex.Message)
+                    ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
+                    : CoreMessages.FromException(ex),
+                ex));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotOpenArchive, CoreMessages.Detail(ex)), ex));
+        }
+
+        return true;
+    }
+
     private static bool IsHeaderEncryptedRar(string archivePath) =>
         ArchiveFormatDetector.Detect(archivePath) == ArchiveFormat.Rar
             && ArchiveFormatDetector.IsRarHeaderEncrypted(archivePath);

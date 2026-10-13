@@ -217,7 +217,7 @@ Add-SmokeStep 'PAR-006' {
 Add-SmokeStep 'PAR-007' {
     $root = Get-StepFolder 'par007'
     $sources = @((Get-Fixture Tree), (Get-Par2Payload))
-    $cases = @('zip', 'tar', 'tar.gz', 'tar.bz2', 'tar.xz', 'tar.zst', 'tar.lzma' | ForEach-Object { @{ Name = $_; Extension = $_; Switches = @("-t$_") } })
+    $cases = @('zip', '7z', 'tar', 'tar.gz', 'tar.bz2', 'tar.xz', 'tar.zst', 'tar.lzma' | ForEach-Object { @{ Name = $_; Extension = $_; Switches = @("-t$_") } })
     $cases += @{ Name = 'aes'; Extension = 'zip'; Switches = @('-pSecret-1', '-mem=AES256') }
 
     foreach ($case in $cases) {
@@ -316,4 +316,34 @@ Add-SmokeStep 'PAR-009' {
         $tested = Invoke-Pakko @('t', $archive)
         Assert-Smoke ($tested.ExitCode -eq ($format -eq 'zip' ? 0 : 1) -and $tested.Text -notmatch 'damaged|recovery') "t after the rewrite as ${format}: exit $($tested.ExitCode) $($tested.Text)"
     }
+}
+
+# T-F397: the whole road for a 7z. Its own test sees the damage (tar.exe compares the 7z
+# checksums), the set repairs it, the copy passes the test and extracts to the sources.
+Add-SmokeStep 'PAR-012' {
+    $folder = Get-StepFolder 'par012'
+    $tree = Get-Fixture Tree
+    $name = Split-Path -Leaf $tree
+    $archive = Join-Path $folder 'data.7z'
+    $made = Invoke-Pakko @('a', '-t7z', '-rr30', $archive, $tree, (Get-Par2Payload))
+    Assert-Smoke ($made.ExitCode -eq 0) "a -t7z -rr30: exit $($made.ExitCode) $($made.Text)"
+
+    $intact = Invoke-Pakko @('t', $archive)
+    Assert-Smoke ($intact.ExitCode -eq 0 -and $intact.Output -match 'recovery data intact' -and $intact.Error.Trim().Length -eq 0) "t on the whole 7z: exit $($intact.ExitCode) $($intact.Text)"
+
+    Set-DamagedRange -Path $archive -Offset ([long]((Get-Item -LiteralPath $archive).Length / 2)) -Count 64KB
+    $verdict = Invoke-Pakko @('t', $archive)
+    Assert-Smoke ($verdict.ExitCode -eq 2 -and $verdict.Text -match 'can repair it') "t on the damaged 7z: exit $($verdict.ExitCode) $($verdict.Text)"
+    Assert-Smoke ($verdict.Error -match 'Cannot read archive') "t on the damaged 7z does not carry tar.exe's own verdict: $($verdict.Text)"
+
+    $repair = Invoke-Par2Repair $archive
+    Assert-Smoke ($repair.ExitCode -eq 0) "r: exit $($repair.ExitCode) $($repair.Text)"
+    $copy = Join-Path $folder 'data.repaired.7z'
+    $retest = Invoke-Pakko @('t', $copy)
+    Assert-Smoke ($retest.ExitCode -eq 0 -and $retest.Error.Trim().Length -eq 0) "t on the repaired copy: exit $($retest.ExitCode) $($retest.Text)"
+
+    $out = Join-Path $folder 'out'
+    $extracted = Invoke-Pakko @('x', $copy, "-o$out")
+    Assert-Smoke ($extracted.ExitCode -eq 0) "x on the repaired copy: exit $($extracted.ExitCode) $($extracted.Text)"
+    Assert-Smoke ((Get-TreeHash (Join-Path $out $name)) -eq (Get-TreeHash $tree)) 'the repaired copy does not extract to the sources'
 }

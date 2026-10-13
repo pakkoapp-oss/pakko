@@ -103,27 +103,29 @@ public sealed class OperationOutcomeTests : IDisposable
     }
 
     [Fact]
-    public async Task Test_OnlyATarArchive_IsNothingDone()
+    public async Task Test_OnlyATarArchive_IsCompletedWithWarnings()
     {
+        // T-F397: the tar engine tests it (TestingTarEngine stands for tar.exe); a plain tar has no
+        // checksum of contents, so the outcome is not the plain "no errors".
         string tar = FixtureHelper.Archive("valid_nested_folders.tar");
-        var router = new ExtractionRouter(new ZipArchiveService(new GroupPolicyOptions()), new TarSandboxedService(new GroupPolicyOptions()),
+        var router = new ExtractionRouter(new ZipArchiveService(new GroupPolicyOptions()), new TestingTarEngine(),
             new TarCapabilities(), new GroupPolicyOptions());
 
         ArchiveResult result = await router.TestAsync([tar]);
 
-        result.Outcome.Should().Be(OperationOutcome.NothingDone, "nothing was tested, so no \"no errors\" claim");
+        result.Outcome.Should().Be(OperationOutcome.CompletedWithWarnings);
     }
 
     [Fact]
-    public async Task Test_ZipAndTar_IsCompletedWithSkips()
+    public async Task Test_ZipAndTar_IsCompletedWithWarnings()
     {
-        var router = new ExtractionRouter(new ZipArchiveService(new GroupPolicyOptions()), new TarSandboxedService(new GroupPolicyOptions()),
+        var router = new ExtractionRouter(new ZipArchiveService(new GroupPolicyOptions()), new TestingTarEngine(),
             new TarCapabilities(), new GroupPolicyOptions());
 
         ArchiveResult result = await router.TestAsync(
             [FixtureHelper.Archive("valid_single_file.zip"), FixtureHelper.Archive("valid_nested_folders.tar")]);
 
-        result.Outcome.Should().Be(OperationOutcome.CompletedWithSkips);
+        result.Outcome.Should().Be(OperationOutcome.CompletedWithWarnings);
     }
 
     [Fact]

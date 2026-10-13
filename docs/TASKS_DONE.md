@@ -12784,3 +12784,32 @@ PowerShell does natively.
 - **Not done:** `SECURITY.md` still describes the link rule for `ZipArchiveService` only (its
   edit needs the maintainer's word; batched with the T-F342 wave 5 edit). Hard links are T-F392.
 - **Found by:** the T-F342 research (wave 0), 2026-10-12.
+
+### T-F397 — "Test" for the archives tar.exe reads: 7z, the tar family, RAR (P1, T-F342 wave 4)
+
+- [x] **Status:** done 2026-10-13 (unreleased; the T-F342 wave 4 pull request).
+  `ITarService.TestAsync` has tar.exe read every entry inside the sandbox and write nothing
+  (`tar -x -O`, stdout read and dropped by `SandboxedProcessLauncher`); the pre-scan extraction
+  runs comes first, so an archive extraction would refuse fails the test with the same message.
+  `ExtractionRouter.TestAsync` sends tar-family paths there. `pakko t`, Explorer's Test
+  (`AnyPathIsSupportedArchive`) and the App's Test button work for every archive Pakko reads.
+- **What a pass means, by format:** tar.exe compares the checksums of 7z, tar.xz, tar.bz2 and a
+  zstd frame that has one; it does not compare gzip's CRC-32 or a RAR's data CRC, and a plain
+  tar and an .lzma have none (measured, `docs/DECISIONS.md`). For those a passed test carries
+  the warning `TestedStructureOnly` and no frontend says "no errors" (the maintainer's
+  choice); `MessageCode.NoTestCapability` is gone.
+- **PAR2:** a pass counts against a disagreeing set ("a newer archive beside an older set")
+  only where the test verified the contents; the structure-only warning is dropped for an
+  archive its set could check.
+- **Tests:** `TarSandboxedServiceTestTests` (43, real tar.exe), `SandboxDiscardedStdOutTests`
+  (4), `SevenZipRecoveryEndToEndTests` (6), `TarTestCoverageTests` (15), router and recovery
+  tests, CLI subprocess tests of `t` on a 7z; fifteen mutants, each failing a named test.
+  Smoke rows `CLI-033` (quick), `CLI-034`, `PAR-012`, `EXP-013`, `APP-026`; `PAR-007` now has 7z.
+- **Before that:** a tar-family archive was skipped by Test with "tar-family archives have no
+  test capability", Explorer offered Test for ZIP alone (T-F86), and `pakko t` on a 7z with a
+  PAR2 set reported the set only.
+- **Not done:** a compressed RAR was not measured (nothing here writes one); a RAR is counted
+  as unverified whatever its method. A tar.lzma is tested by the engine, but no frontend gets
+  there: the format detector does not recognize one (T-F398, found by smoke row `CLI-034`). `SECURITY.md` does not yet name this launch of tar.exe
+  (the T-F342 wave 5 edit).
+- **Asked by:** the T-F342 plan (a 7z Pakko makes must be testable), 2026-10-12.

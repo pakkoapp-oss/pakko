@@ -60,7 +60,6 @@ public static class MessageTemplates
             "{0} requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version {1}) does not support it.",
         [MessageCode.FormatNotSupportedByTar] = "{0} is not supported by this system's tar.exe (version {1}).",
         [MessageCode.ArchiveFormatNotSupportedByTar] = "This archive format is not supported by this system's tar.exe (version {0}).",
-        [MessageCode.NoTestCapability] = "tar-family archives have no test capability",
         [MessageCode.PasswordProtectedExtract] = "This archive is password-protected and cannot be extracted.",
         [MessageCode.PasswordProtectedTest] = "This archive is password-protected and cannot be tested.",
         [MessageCode.RememberedPasswordDoesNotFit] = "The password applied to the remaining archives does not fit this archive.",
@@ -71,6 +70,8 @@ public static class MessageTemplates
         [MessageCode.CannotExtractArchive] = "Cannot extract archive: {0}",
         [MessageCode.AccessDeniedExtractingArchive] = "Access denied extracting archive: {0}",
         [MessageCode.CannotReadArchive] = "Cannot read archive: {0}",
+        [MessageCode.TestedStructureOnly] =
+            "Only the archive's structure was checked: tar.exe cannot verify the contents of files in this format.",
         [MessageCode.EntryNameCollision] =
             "Entry '{0}' has the same name as another entry once decoded; it is not extracted, since one would overwrite the other.",
         [MessageCode.LocalHeaderMismatch] =

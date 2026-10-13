@@ -2,9 +2,9 @@ namespace Archiver.App.Core;
 
 /// <summary>
 /// T-F199 step 6 / T-F210: what the Archive Browser offers where the user is. Inside an archive:
-/// the extract actions and their options; Test only for ZIP (tar.exe has no test mode, and
-/// Explorer offers Test for ZIP only); "delete after" only for an archive on disk, not a nested
-/// one (that is a temp copy). Outside (a real folder or "This PC" after Up, T-F107): none of it,
+/// the extract actions, their options and Test (T-F397: for every format, since the tar engine
+/// tests what it reads); "delete after" only for an archive on disk, not a nested one (that is
+/// a temp copy). Outside (a real folder or "This PC" after Up, T-F107): none of it,
 /// and a line saying where the user is.
 /// </summary>
 /// <param name="ShowsExtractActions">Extract selected / Extract all.</param>
@@ -20,10 +20,10 @@ public sealed record BrowseLocationState(
     bool ShowsOutsideInfo)
 {
     /// <summary>The state for a location.</summary>
-    public static BrowseLocationState For(bool insideArchive, bool nested, bool isZip) => new(
+    public static BrowseLocationState For(bool insideArchive, bool nested) => new(
         ShowsExtractActions: insideArchive,
         ShowsOptions: insideArchive,
-        ShowsTest: insideArchive && isZip,
+        ShowsTest: insideArchive,
         OffersDeleteAfter: insideArchive && !nested,
         ShowsOutsideInfo: !insideArchive);
 

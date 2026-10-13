@@ -13717,6 +13717,164 @@ day whether Pakko should get the "preserve symbolic links" and "preserve hard li
 Windows' own wizard, the maintainer decided it should not: Pakko keeps leaving links out of what
 it creates (T-F23, T-F391) and refusing an archive that holds one, and T-F392 stays its own task.
 
+## T-F397 — "Test" for the archives tar.exe reads (T-F342 wave 4, 2026-10-13)
+
+Pakko creates 7z since waves 1-3 and could not test one: the router skipped every tar-family
+archive ("tar-family archives have no test capability"), Explorer offered Test for ZIP alone
+(T-F86), and `pakko t` on a 7z with a PAR2 set reported the set only. The test now exists for
+every format tar.exe reads.
+
+### Measured first (bsdtar 3.8.8 - libarchive 3.8.8, build 26300, 2026-10-12)
+
+`tar -x -O -f -`, the archive as the child's stdin (a file handle, as Pakko gives it), stdout to
+NUL. Archives of one tree (text, 300 KB of random bytes, an empty file, a folder) made by the same
+tar.exe; one byte flipped at offset 10, at 25, 50 and 75 % and 20 bytes before the end; the file
+cut at 60 %. "caught" is exit 1 with a message, "not seen" is exit 0.
+
+| Format | Flip at 10 | Flips at 25/50/75 % | Flip near the end | Cut at 60 % |
+|---|---|---|---|---|
+| 7z, lzma2 / bzip2 / deflate / copy | caught (`Header CRC error`) | caught (`7-Zip bad CRC: 0x... should be 0x...`) | caught (`Malformed` or `Damaged 7-Zip archive`) | caught (`Seek error`) |
+| 7z, lzma1 | caught | caught (`Decompression failed (9)`) | caught | caught |
+| tar.xz | caught (`Lzma library error: Corrupted input data`) | caught | caught | caught |
+| tar.bz2 | caught | caught | caught | caught (`truncated bzip2 input`) |
+| tar.zst | caught | caught | caught | caught |
+| tar.lzma | caught | caught | caught | caught |
+| tar.gz | caught (`gzip decompression failed`) | **not seen** | caught (inside the deflate stream) | caught |
+| plain tar | caught (`Unrecognized archive format`) | **not seen** | **not seen** | caught (`Truncated tar archive`) |
+
+Looked at again where it was not seen. For the tar.gz, the bytes tar.exe wrote to stdout were
+hashed: the whole archive gives `10bd7ff5...`, the flip at 25 % `fe9cd1f4...`, at 50 %
+`c2b492ad...`, each 547 000 bytes long and each with exit 0. A flip inside gzip's own CRC-32 field
+(8 and 5 bytes before the end) and inside its length field: exit 0, the right content. So this
+tar.exe does not compare gzip's CRC-32 at all. The RAR fixture (`valid.rar`, 101 bytes, one stored
+entry): flips at 8-60 are caught as `Header CRC error`, flips at 64-92 (the entry's data) give
+other content with exit 0, so a stored RAR's data CRC is not compared either. No tool here writes
+a compressed RAR, so that case was not measured. The encrypted fixtures: `The file content is
+encrypted, but currently not supported` (7z, data), `The archive header is encrypted...` (7z,
+headers), `Reading encrypted data is not currently supported` and `Encryption is not supported`
+(RAR). Nothing appeared in the working folder in any run. The .zst this tar.exe writes begins
+`28 B5 2F FD 04`: the frame's content-checksum flag is set.
+
+tar.lzma is "caught" only because a changed byte breaks the decoder on this data; the format has
+no integrity check, so it is counted with the unverified ones.
+
+### Decided
+
+- **Every format tar.exe reads is tested, by one mechanism**: `tar.exe -x -O -f -` inside the
+  sandbox extraction uses (AppContainer, Job Object, the archive as stdin), with no output
+  folder. Nothing is written to disk. A separate road for 7z alone would have been artificial.
+- **stdout is read and dropped.** "-O" sends every file's content there. The launcher kept
+  stdout as one string; `ProcessLaunchOptions.OnStdOutDiscarded` makes it read into a fixed
+  buffer and report only the sizes. The same sizes, against the sum of entry sizes from the
+  listing, are the progress within one archive: a multi-gigabyte test from Explorer does not sit
+  at 0 %.
+- **A test that verified no contents says so, and never says "no errors"** (the maintainer,
+  2026-10-12, shown the table above; over "offer Test only where it is reliable" and over
+  "Pakko checks gzip's CRC itself"). Plain tar, tar.gz, tar.lzma, RAR and a zstd frame without
+  the checksum flag pass with the warning `TestedStructureOnly` ("Only the archive's structure
+  was checked: tar.exe cannot verify the contents of files in this format."), 37 locales. The
+  outcome is `CompletedWithWarnings`: `pakko t` exits 1, the Shell and the App show the warning
+  in place of "No errors detected". The list is by the format's structure
+  (`TarTestCoverage.VerifiesContents`), not by what a byte flip happened to break. A check of
+  gzip in Pakko's own process would be a parser of untrusted input outside the sandbox, against
+  the hard constraint; it was not taken.
+- **An archive extraction would refuse does not pass a test.** With "-O" a name like `../x` is
+  harmless, yet `ExtractAsync` refuses the whole archive for it (T-F49). The test runs the same
+  pre-scan (`ScanForUnsafeEntriesAsync`) first and returns the same refusal, for an escaping
+  name and for a link entry.
+- **Encrypted 7z and RAR**: the refusal extraction gives
+  (`PasswordProtectedFormatNotSupported`); no password is asked.
+- **The limits are the sandbox's**: the memory and processor-time limits of a listing or an
+  extraction, named by `DescribeLimitHit`. A decompression bomb writes nothing and ends at the
+  time limit. A cancel kills tar.exe and throws (T-F260).
+- **`MessageCode.NoTestCapability` is gone**, with its template, its 37 strings and
+  `ArchiveFormatPolicy.NoTestCapabilityReason`: nothing is "not testable" any more. The enum's
+  values are numbered by position and no test or wire format pins a number (looked for), so the
+  member was removed, not left unused.
+- **The PAR2 rule, both ways.** "An archive that passes its own test while its set disagrees is
+  a newer archive beside an older set, not damage" held for ZIP only. It now holds for the
+  tar-family formats whose test verifies the contents, and for no other: a damaged tar.gz passes
+  tar.exe's test, and counting that pass would have turned real damage into "the set is old" and
+  refused the repair. In the router a pass that carries `TestedStructureOnly` is not a pass for
+  this rule; in `RecoveryService` such a format is not tested at all. The other way round, the
+  warning is dropped for an archive its set could check: the set compared every byte, so "only
+  the structure" would be false.
+- **Test in Explorer and in the App for every archive Pakko reads.**
+  `TestCommand::GetState` moved from `AnyPathIsZip` to `AnyPathIsSupportedArchive` (T-F86's
+  reason, a false "No errors detected" for an archive nobody opened, is gone: a tar-family
+  archive is read, and where its contents are not verified the result says so).
+  `BrowseLocationState.For` lost its `isZip` input and the App the plumbing that carried it.
+  `AnyPathIsZip` no longer gates a command and stays only as the tested form of the ZIP
+  extension rule.
+- **Progress with both kinds selected**: ZIP first and tar second in one climb, shared by the
+  archives' sizes on disk, as extraction since T-F306.
+
+### Found on the way: Pakko does not read the tar.lzma it writes (T-F398)
+
+The first run of smoke row `CLI-034` failed on its tar.lzma case: `pakko t data.tar.lzma` said
+"File is not a recognized archive format and cannot be tested", and `l` and `x` say the same of
+listing and extracting. An .lzma (LZMA-alone) has no magic number, `ArchiveFormatDetector.Detect`
+answers Unknown for it (its own comment calls this a known gap), and an unknown file goes to the
+ZIP engine. So Pakko has created tar.lzma since T-F105 and has never read one back; the engine's
+test of a tar.lzma (covered by `TarSandboxedServiceTestTests`) is unreachable from any frontend.
+Older than this wave and not fixed in it: recorded as T-F398, and the case left the smoke row.
+
+### Asked on the way and decided by the maintainer (2026-10-12)
+
+- **The 7z writer stays found by the probe, not by a table of tar.exe versions.** The question
+  was whether a hard-coded table built from the official documentation could replace the probe.
+  Microsoft's page on tar (learn.microsoft.com/windows/tar, 139 words) says only that tar
+  creates, lists and extracts ".tar, .tar.gz, .zip, and .7z" and points at the FreeBSD manual:
+  no table by Windows build or tar.exe version exists. libarchive's documentation says what a
+  release can do, not what Microsoft's build of it includes. A table would be Pakko's own
+  measurements of two versions (3.8.4 and 3.8.8), wrong for any other until a Pakko release. And
+  the constraint "libarchive has no 7z writer" had stood in `CLAUDE.md` for the same reason: it
+  was read off `tar --help`, not tried. What a table would have given (no verdict file for the
+  menu, no timed probe) was weighed and not taken.
+- **No "preserve symbolic links" / "preserve hard links" choice**, and the Explorer submenu in
+  the card's order (zip, 7z, tar): recorded at the end of the wave 3 entry.
+
+### Tests
+
+Seen red against a stub that kept the old skip: 41 of the 43 in `TarSandboxedServiceTestTests`;
+the three launcher tests; 16 router and recovery tests. `SevenZipRecoveryEndToEndTests` (a real
+7z with a set: damaged in its data, in its header, cut short; the test sees it, the repair
+rebuilds it, the copy extracts to the source byte for byte; a newer whole 7z beside an older set
+is not rebuilt; a damaged tar.gz is) and the CLI's subprocess tests were written against the
+finished code, so the mutants below are their proof. The tests of the Shell and the App that
+"start no tar.exe" keep that property through a small `StructureOnlyTarEngine`.
+
+### Mutants (each fails a named test, then restored)
+
+Fifteen, all killed: the router skipping tar paths; a structure-only pass counted for the PAR2
+rule; the warning kept beside a set that checked the archive; the tar engine's errors dropped
+from the merged result; `-O` left out; the launcher keeping stdout despite the option; no
+pre-scan; tar.exe's exit code ignored; no structure-only warning; the warning on a failed test;
+the tar policy ignored; the repair rule back to ZIP only; the repair rule asking every format;
+gzip counted as verified; the zstd checksum flag ignored.
+
+### Measured on the device (build 26300, package 1.8.1.11, 2026-10-13)
+
+- Quick tier: 35 rows, 35 OK, with the new `CLI-033`. No IL or CsWinRT warning in the package
+  build. Release rows `CLI-034`, `PAR-012`, `PAR-007` (now with a 7z case) and `PAR-009`: OK.
+- `EXP-013`: on a `.7z` the submenu reads Open, the four Extract items, Compress..., Add to
+  whole.zip, Add to whole.7z, Add to whole.tar, Test archive, Scan, the two hashes. Test on the
+  whole 7z: "No errors detected" (in Ukrainian). On the same archive with eight bytes zeroed in
+  its middle: "changed.7z: Cannot read archive: src/data.bin: 7-Zip bad CRC: 0x1236744d should be
+  0x2b38af34". On a tar.gz: the structure-only warning and no "no errors" line. The last two
+  were started as `Archiver.Shell.exe --test`, what the menu item runs; the menu itself was
+  opened on the 7z only, and the item's gate is the function Scan has used on tar.gz and RAR.
+- `APP-026`: the Test button is there for a 7z and a tar.gz; the 7z ends with "No errors
+  found", the tar.gz with the summary dialog and its one warning. That dialog's title is the
+  general one for a run with warnings ("Completed with problems"), which reads stronger than the
+  warning under it; left as it is, noted for the maintainer. The changed 7z was not tried in the
+  App (the same router call as the Shell's).
+- A 7z of 1.26 GB (Copy, random data): `pakko t` exit 0 in 1.1 s, peak working set of
+  `pakko.exe` 20 MB. The contents are not held.
+
+Not measured on the device: the progress moving during a long test (the integration test reads
+the reports), and Test under `DisableTarExtraction` (`POL-010`, the elevated run at the end).
+
 ## T-F390 — tar.exe's wrong name for a missing list entry (2026-10-12)
 
 Measured on bsdtar 3.8.8 (Windows build 26300), a `-T -` list of `-C <dir>` / `<name>` lines,

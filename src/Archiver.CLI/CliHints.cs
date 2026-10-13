@@ -60,7 +60,7 @@ public static class CliHints
         MessageCode.TarCreationDisabled, MessageCode.TarCreationFailed, MessageCode.SevenZipWriterUnavailable, MessageCode.TarNameNotRepresentable, MessageCode.TarSignatureInvalid,
         MessageCode.TarSignatureVerificationFailed, MessageCode.NotAnArchiveExtract, MessageCode.NotAnArchiveTest, MessageCode.NotAnArchiveList,
         MessageCode.UnsupportedByZipEngine, MessageCode.FormatBlocked, MessageCode.TarExtractionDisabled, MessageCode.FormatNeedsNewerTar,
-        MessageCode.FormatNotSupportedByTar, MessageCode.ArchiveFormatNotSupportedByTar, MessageCode.NoTestCapability, MessageCode.PasswordProtectedBrowse, MessageCode.RememberedPasswordDoesNotFit,
+        MessageCode.FormatNotSupportedByTar, MessageCode.ArchiveFormatNotSupportedByTar, MessageCode.PasswordProtectedBrowse, MessageCode.RememberedPasswordDoesNotFit,
         MessageCode.ZipCorrupted, MessageCode.CannotExtractArchive, MessageCode.AccessDeniedExtractingArchive, MessageCode.CannotReadArchive,
         MessageCode.EntryNameCollision, MessageCode.EntryFailed, MessageCode.EntryWrongPassword, MessageCode.EntryAuthenticationFailed,
         MessageCode.EntryUnsupportedEncryptedMethod, MessageCode.InsufficientDiskSpace, MessageCode.ZipBombDeclined, MessageCode.TarBombDeclined,
@@ -82,6 +82,7 @@ public static class CliHints
         MessageCode.RecoveryDataRepairTooLarge, MessageCode.RecoveryDataDoesNotMatch, MessageCode.RecoveryDataUnusable,
         MessageCode.RecoveryDataForAnotherFile, MessageCode.RecoveryDataTargetNotFound, MessageCode.RecoveryDataNameMismatch,
         MessageCode.RecoveryDataIntact, MessageCode.RecoveryDataNotFound, MessageCode.RecoveryDataRepaired, MessageCode.RecoveryRepairCheckFailed,
+        MessageCode.TestedStructureOnly,
     ];
 
     /// <summary>Every code and its hint; <see cref="CliHint.None"/> is a decision too.</summary>

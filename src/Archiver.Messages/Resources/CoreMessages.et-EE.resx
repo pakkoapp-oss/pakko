@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Selle süsteemi tar.exe (versioon {0}) ei toeta seda arhiivivormingut.</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>tar-perekonna arhiive ei saa testida</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Kontrolliti ainult arhiivi struktuuri: tar.exe ei saa selles vormingus failide sisu kontrollida.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>See arhiiv on parooliga kaitstud ja seda ei saa lahti pakkida.</value>

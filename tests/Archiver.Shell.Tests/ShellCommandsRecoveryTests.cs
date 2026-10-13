@@ -151,7 +151,8 @@ public sealed class ShellCommandsRecoveryTests : IDisposable
 
         await Create(ui).TestAsync([archive]);
 
-        ui.Messages.Should().ContainSingle().Which.Text.Should().StartWith("Skipped (1):").And.NotContain("recovery data");
+        ui.Messages.Should().ContainSingle().Which.Text.Should().Contain("Only the archive's structure was checked")
+            .And.NotContain("No errors detected").And.NotContain("recovery data");
     }
 
     // --- The archive is damaged ---
@@ -300,7 +301,7 @@ public sealed class ShellCommandsRecoveryTests : IDisposable
 
         OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Warning);
-        message.Text.Should().StartWith("Skipped (1):").And.NotContain("No errors detected").And.NotContain("recovery data");
+        message.Text.Should().Contain("Only the archive's structure was checked").And.NotContain("No errors detected").And.NotContain("recovery data");
     }
 
     [Fact]
@@ -333,7 +334,7 @@ public sealed class ShellCommandsRecoveryTests : IDisposable
         OperationMessage message = forPar2.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Error);
         message.Text.Should().Contain("Group Policy");
-        forArchive.Messages.Should().ContainSingle().Which.Text.Should().StartWith("Skipped (1):").And.NotContain("recovery data");
+        forArchive.Messages.Should().ContainSingle().Which.Text.Should().Contain("Only the archive's structure was checked").And.NotContain("recovery data");
     }
 
     // BlockedFormats and DisableTarExtraction stop Pakko from opening a format. A set check reads
@@ -652,7 +653,7 @@ public sealed class ShellCommandsRecoveryTests : IDisposable
     {
         policy ??= new GroupPolicyOptions();
         Func<Task<IExtractionRouter>> router = () => Task.FromResult<IExtractionRouter>(
-            new ExtractionRouter(new ZipArchiveService(policy), new TarSandboxedService(policy), new TarCapabilities(), policy));
+            new ExtractionRouter(new ZipArchiveService(policy), new StructureOnlyTarEngine(), new TarCapabilities(), policy));
         var services = new ShellServices
         {
             CreateExtractionRouterAsync = router,

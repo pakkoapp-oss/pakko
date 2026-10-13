@@ -140,14 +140,16 @@ public sealed class RecoveryService : IRecoveryService
         });
     }
 
-    // The rule of the test: a ZIP that its own test passes while the set disagrees is a newer
-    // archive beside an older set, not damage, and nothing is rebuilt from that set. The ZIP is
+    // The rule of the test: an archive that its own test passes while the set disagrees is a newer
+    // archive beside an older set, not damage, and nothing is rebuilt from that set. It is
     // tested only when the set calls it damaged, so a good archive is read once. An archive that
-    // could not be tested (encrypted, refused by policy) did not pass.
+    // could not be tested (encrypted, refused by policy) did not pass. T-F397: nor did one whose
+    // format gives tar.exe no checksum of contents to compare (TarTestCoverage): its test reads a
+    // damaged tar.gz to the end and finds nothing, so it is not asked.
     private async Task<bool> TestsAsIntactAsync(string archivePath, Par2Verification verification, CancellationToken cancellationToken)
     {
         if (verification.Status == Par2VerifyStatus.Intact || verification.FileMissing
-            || ArchiveFormatDetector.Detect(archivePath) != ArchiveFormat.Zip)
+            || (ArchiveFormatDetector.Detect(archivePath) != ArchiveFormat.Zip && !TarTestCoverage.VerifiesContents(archivePath)))
             return false;
         IExtractionRouter router = await _router().ConfigureAwait(false);
         ArchiveResult tested = await router.TestAsync([archivePath], cancellationToken: cancellationToken).ConfigureAwait(false);

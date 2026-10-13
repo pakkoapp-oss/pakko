@@ -632,3 +632,47 @@ Add-SmokeStep 'CLI-031' {
     $left = @(Get-ChildItem -LiteralPath $source -Force -Name | Where-Object { $_ -match '^\.pakko-|^libarchive_|\.tmp$' })
     Assert-Smoke ($left.Count -eq 0) "left next to the archive: $($left -join ', ')"
 }
+
+# T-F397: 'pakko t' on the other formats tar.exe reads. It compares the checksums of xz, bzip2
+# and zstd, and does not compare gzip's CRC-32; a plain tar has none. For those a passed test is
+# exit 1 with the warning that only the structure was checked. A tar.lzma is not here: Pakko
+# does not recognize one at all (T-F398).
+Add-SmokeStep 'CLI-034' {
+    $folder = Get-StepFolder 'cli034'
+    $tree = Get-Fixture Tree
+    $warning = "Only the archive's structure was checked"
+    $cases = @(
+        @{ Type = 'tar.xz'; Verified = $true }
+        @{ Type = 'tar.bz2'; Verified = $true }
+        @{ Type = 'tar.zst'; Verified = $true }
+        @{ Type = 'tar.gz'; Verified = $false }
+        @{ Type = 'tar'; Verified = $false }
+    )
+    foreach ($case in $cases) {
+        $archive = Join-Path $folder "data.$($case.Type)"
+        $made = Invoke-Pakko @('a', "-t$($case.Type)", $archive, $tree)
+        Assert-Smoke ($made.ExitCode -eq 0) "a -t$($case.Type): exit $($made.ExitCode) $($made.Text)"
+
+        $whole = Invoke-Pakko @('t', $archive)
+        if ($case.Verified) {
+            Assert-Smoke ($whole.ExitCode -eq 0 -and $whole.Error.Trim().Length -eq 0) "t on $($case.Type): exit $($whole.ExitCode) $($whole.Text)"
+        }
+        else {
+            Assert-Smoke ($whole.ExitCode -eq 1 -and $whole.Error.Contains($warning) -and -not $whole.Output.Contains('No errors')) "t on $($case.Type): exit $($whole.ExitCode) $($whole.Text)"
+        }
+
+        $cut = Join-Path $folder "cut.$($case.Type)"
+        $bytes = [System.IO.File]::ReadAllBytes($archive)
+        [System.IO.File]::WriteAllBytes($cut, $bytes[0..([int]($bytes.Length * 0.6))])
+        $truncated = Invoke-Pakko @('t', $cut)
+        Assert-Smoke ($truncated.ExitCode -eq 2 -and -not $truncated.Error.Contains($warning)) "t on a truncated $($case.Type): exit $($truncated.ExitCode) $($truncated.Text)"
+
+        if ($case.Verified) {
+            $flipped = Join-Path $folder "flipped.$($case.Type)"
+            Copy-Item -LiteralPath $archive -Destination $flipped
+            Set-DamagedRange -Path $flipped -Offset ([long]((Get-Item -LiteralPath $flipped).Length / 2)) -Count 4
+            $damaged = Invoke-Pakko @('t', $flipped)
+            Assert-Smoke ($damaged.ExitCode -eq 2) "t on a damaged $($case.Type): exit $($damaged.ExitCode) $($damaged.Text)"
+        }
+    }
+}

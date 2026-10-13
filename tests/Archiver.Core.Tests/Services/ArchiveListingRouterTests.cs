@@ -33,6 +33,9 @@ file sealed class FakeArchiveService : IArchiveService
 
 file sealed class FakeTarService : ITarService
 {
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
+
     public string? LastListedPath;
     public int ListCallCount;
     public ArchiveListResult ListResult = new() { Success = true };

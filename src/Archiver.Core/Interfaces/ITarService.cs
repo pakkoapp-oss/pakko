@@ -54,6 +54,18 @@ public interface ITarService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// T-F397: tests each archive by having tar.exe read every entry inside the sandbox and write
+    /// nothing ("-x -O"). An archive extraction would refuse is refused here with the same
+    /// message. Where the format has no checksum of file contents that tar.exe verifies (plain
+    /// tar, tar.gz, tar.lzma, RAR), a passed test carries a warning that only the structure was
+    /// checked. Never throws, except <see cref="OperationCanceledException"/> on cancellation.
+    /// </summary>
+    Task<ArchiveResult> TestAsync(
+        IReadOnlyList<string> archivePaths,
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Lists a tar-family archive's entries as a flat list, without extracting. Never throws — a
     /// failure (corrupted archive, tar.exe error) is reported via
     /// ArchiveListResult.Success/ErrorMessage. Does not run the whole-archive safety pre-scan
