@@ -13771,7 +13771,7 @@ no integrity check, so it is counted with the unverified ones.
 - **A test that verified no contents says so, and never says "no errors"** (the maintainer,
   2026-10-12, shown the table above; over "offer Test only where it is reliable" and over
   "Pakko checks gzip's CRC itself"). Plain tar, tar.gz, tar.lzma, RAR and a zstd frame without
-  the checksum flag pass with the warning `TestedStructureOnly` ("Only the archive's structure
+  the checksum flag, and an xz stream whose check is None, pass with the warning `TestedStructureOnly` ("Only the archive's structure
   was checked: tar.exe cannot verify the contents of files in this format."), 37 locales. The
   outcome is `CompletedWithWarnings`: `pakko t` exits 1, the Shell and the App show the warning
   in place of "No errors detected". The list is by the format's structure
@@ -13843,6 +13843,28 @@ rebuilds it, the copy extracts to the source byte for byte; a newer whole 7z bes
 is not rebuilt; a damaged tar.gz is) and the CLI's subprocess tests were written against the
 finished code, so the mutants below are their proof. The tests of the Shell and the App that
 "start no tar.exe" keep that property through a small `StructureOnlyTarEngine`.
+
+### Found by the closing review: an xz stream may have no check
+
+`TarTestCoverage` at first counted every xz as verified. An xz stream names its check in its
+header (the low four bits of the eighth byte: 0 None, 1 CRC32, 4 CRC64, 10 SHA-256), and None is
+legal (`xz --check=none`). Such a file would have passed with a plain "no errors", and the PAR2
+rule would have taken that pass for "a newer archive beside an older set" and refused a repair:
+the harm the zstd flag was already read to avoid. The header is now read for xz as for zstd;
+`Xz_IsVerifiedOnlyWithACheck`, seen red for the None case. tar.exe's own xz carries CRC64
+(`TarExeWritesXzWithACheck`). Not measured: what tar.exe does with a real `--check=none` stream
+that is damaged (nothing here writes one); by the format it has nothing to compare.
+
+### Known limits of this wave
+
+- **No C++ test of the Test item's gate.** The plan asked for one; `GetState` of no command is
+  unit-tested (the helpers are), so `TestCommand` going back to `AnyPathIsZip` would be seen
+  only by smoke row `EXP-013`.
+- **The bar waits through the listing.** A test first lists the archive twice (the pre-scan),
+  then reads it. For a 7z the listing reads the headers and costs nothing; for a tar.gz or
+  tar.xz each listing decompresses the whole stream, so on a large one the progress stays at
+  0 % for about two thirds of the time, as it does before an extraction of the same archive.
+  The 1.26 GB measurement below is of a 7z.
 
 ### Mutants (each fails a named test, then restored)
 

@@ -1235,6 +1235,15 @@ public interface ITarService
     // What tar.exe answered: true, false, or null for no answer (a timeout, a failed start).
     // No answer is asked once more, is not kept, and is not "no". Default: the answer above.
     Task<bool?> AskSevenZipWriterAsync(CancellationToken cancellationToken = default);
+
+    // T-F397: tar.exe reads every entry inside the sandbox and writes nothing ("-x -O"), after
+    // extraction's own pre-scan. A pass in a format whose contents tar.exe does not verify
+    // carries a TestedStructureOnly warning. Never throws, except on cancellation.
+    Task<ArchiveResult> TestAsync(
+        IReadOnlyList<string> archivePaths,
+        IProgress<ProgressReport>? progress = null,
+        CancellationToken cancellationToken = default);
+
     Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
         IProgress<int>? progress = null,
@@ -1672,7 +1681,8 @@ buffer and drop it, so an archive's contents are never held in memory. Before th
 makes extraction's own pre-scan (`ScanForUnsafeEntriesAsync`): an archive extraction would refuse
 is refused with the same message, and the scan's sum of entry sizes is the total the progress
 counts the dropped bytes against. `TarTestCoverage.VerifiesContents` says, by format, whether such
-a pass verified what the files hold (7z, xz, bzip2, a zstd frame with the checksum flag) or only
+a pass verified what the files hold (7z, bzip2, an xz stream or a zstd frame whose header names a
+check) or only
 that the archive reads to its end (plain tar, tar.gz, tar.lzma, RAR; a .lzma never gets this far
 through the router, which does not recognize it, T-F398): the second kind returns a
 `TestedStructureOnly` warning, so the outcome is `CompletedWithWarnings` and no frontend says a

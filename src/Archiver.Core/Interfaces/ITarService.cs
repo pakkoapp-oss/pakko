@@ -57,8 +57,8 @@ public interface ITarService
     /// T-F397: tests each archive by having tar.exe read every entry inside the sandbox and write
     /// nothing ("-x -O"). An archive extraction would refuse is refused here with the same
     /// message. Where the format has no checksum of file contents that tar.exe verifies (plain
-    /// tar, tar.gz, tar.lzma, RAR), a passed test carries a warning that only the structure was
-    /// checked. Never throws, except <see cref="OperationCanceledException"/> on cancellation.
+    /// tar, tar.gz, tar.lzma, RAR, an xz or zstd stream written without one), a passed test
+    /// carries a warning that only the structure was checked. Never throws, except <see cref="OperationCanceledException"/> on cancellation.
     /// </summary>
     Task<ArchiveResult> TestAsync(
         IReadOnlyList<string> archivePaths,
