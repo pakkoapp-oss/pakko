@@ -10,9 +10,6 @@ namespace Archiver.Core.Services;
 /// </summary>
 public static class ArchiveFormatPolicy
 {
-    /// <summary>The reason a tar-family archive is skipped by Test: only the ZIP engine can test.</summary>
-    public static string NoTestCapabilityReason => MessageTemplates.English(MessageCode.NoTestCapability);
-
     /// <summary>
     /// A selection split by engine. <see cref="ZipPaths"/> also holds unrecognized paths, so the
     /// ZIP engine's own "not a recognized archive" handling reports them.

@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Tämän järjestelmän tar.exe (versio {0}) ei tue tätä arkistomuotoa.</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>tar-perheen arkistoja ei voi testata</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Vain arkiston rakenne tarkistettiin: tar.exe ei voi tarkistaa tiedostojen sisältöä tässä muodossa.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Tämä arkisto on suojattu salasanalla, eikä sitä voi purkaa.</value>

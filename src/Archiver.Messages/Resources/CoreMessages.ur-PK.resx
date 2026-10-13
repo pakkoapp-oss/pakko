@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>یہ آرکائیو فارمیٹ اس سسٹم کے tar.exe (ورژن {0}) میں تعاون یافتہ نہیں ہے۔</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>tar خاندان کے آرکائیوز جانچے نہیں جا سکتے</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>صرف آرکائیو کی ساخت جانچی گئی: tar.exe اس فارمیٹ میں فائلوں کے مواد کی تصدیق نہیں کر سکتا۔</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>یہ آرکائیو پاس ورڈ سے محفوظ ہے اور نکالا نہیں جا سکتا۔</value>

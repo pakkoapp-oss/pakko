@@ -537,15 +537,12 @@ STDMETHODIMP TestCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCm
 {
     if (!pCmdState) return E_POINTER;
     // T-F62: unlike ExtractHere/ExtractFolder, Test appears whenever the selection contains at
-    // least one archive — matching NanaZip's NeedExtract-gated Test verb, which fires on a mixed
-    // selection too. ZipArchiveService.TestAsync skips non-zip paths internally, the same
-    // defense-in-depth pattern ExtractAsync already relies on.
-    // T-F86: deliberately stays AnyPathIsZip, NOT AnyPathIsSupportedArchive - ITarService has no
-    // Test/verify method, so enabling this for RAR/7z/tar would show "Test archive", run
-    // ShellCommands.TestAsync's ZipArchiveService.TestAsync (which silently skips non-zip paths), and report
-    // a false "No errors detected" for an archive that was never actually tested. See
-    // DECISIONS.md's T-F86 entry.
-    *pCmdState = AnyPathIsZip(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
+    // least one archive, as NanaZip's NeedExtract-gated Test verb does on a mixed selection.
+    // T-F397: any archive Pakko reads, not ZIP alone. T-F86 had kept it to ZIP because nothing
+    // tested a tar-family archive and the result box said "No errors detected" for one that was
+    // never opened; ITarService.TestAsync now has tar.exe read every entry. The gate is the one
+    // Scan uses: an allowed format, and tar.exe present for a tar-family one.
+    *pCmdState = AnyPathIsSupportedArchive(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
 
@@ -743,10 +740,9 @@ STDMETHODIMP ScanCommand::GetCanonicalName(GUID* pguidCommandName) noexcept
 STDMETHODIMP ScanCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDSTATE* pCmdState) noexcept
 {
     if (!pCmdState) return E_POINTER;
-    // T-F146: AnyPathIsSupportedArchive, not AnyPathIsZip like TestCommand — unlike Test (T-F86:
-    // no tar Test method exists), the scan path genuinely supports tar-family archives via
-    // AntivirusScanService's own quarantine-extraction flow, so gating this to ZIP-only would
-    // silently hide the feature for every non-ZIP archive.
+    // T-F146: AnyPathIsSupportedArchive — the scan path supports tar-family archives through
+    // AntivirusScanService's own quarantine-extraction flow, so a ZIP-only gate would hide the
+    // feature for every other archive. Test has the same gate since T-F397.
     *pCmdState = AnyPathIsSupportedArchive(GetPathsFromShellItemArray(psia), GetMenuPolicy()) ? ECS_ENABLED : ECS_HIDDEN;
     return S_OK;
 }
@@ -811,7 +807,7 @@ STDMETHODIMP ExtractDialogCommand::GetState(IShellItemArray* psia, BOOL, EXPCMDS
     // Same "any, not all" breadth as TestCommand, not the stricter AllPathsAreSupportedArchive
     // ExtractHereCommand/ExtractFolderCommand use — a dialog lets the user reconsider the
     // destination even for a mixed selection that includes at least one archive.
-    // T-F86: unlike TestCommand, this one DOES use AnyPathIsSupportedArchive - Invoke launches
+    // T-F86: AnyPathIsSupportedArchive - Invoke launches
     // --open-ui --extract, which opens Archiver.App and routes through IExtractionRouter
     // (MainViewModel/ExtractionRouter), which does support RAR/7z/tar-family (T-F85). No false
     // "tested OK" risk here since a dialog opens rather than a silent pass/fail messagebox.
@@ -1205,7 +1201,7 @@ STDMETHODIMP PakkoRootCommand::EnumSubCommands(IEnumExplorerCommand** ppEnum) no
         // group. It's a separate, coexisting command, not a replacement for Extract.
         // T-F146: "Scan for threats" sits right after Test — same diagnostic/verification group,
         // AnyPathIsSupportedArchive-gated (see ScanCommand::GetState) so it appears for tar-family
-        // archives too, unlike Test which stays ZIP-only for T-F86 reasons.
+        // archives too, as Test does since T-F397.
         // T-F275 step 3b: "Verify with PAR2" sits between Test and Scan - a check of the archive's
         // bytes like Test, shown only when a set is there to check against.
         // T-F128: CRC-32/SHA-256 join Test at the very end as two separate top-level leaves, not

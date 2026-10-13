@@ -76,6 +76,23 @@ file sealed class FakeTarService : ITarService
         return Task.FromResult(ExtractResult);
     }
 
+    // T-F397
+    public IReadOnlyList<string>? LastTestedPaths;
+    public ArchiveResult? TestResult;
+    public IReadOnlyList<ProgressReport> TestProgressScript = [];
+
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        LastTestedPaths = archivePaths;
+        foreach (ProgressReport report in TestProgressScript)
+            progress?.Report(report);
+        return Task.FromResult(TestResult ?? new ArchiveResult
+        {
+            Sources = [.. archivePaths.Select(p => new SourceResult { Path = p, Outcome = SourceOutcome.Completed })],
+        });
+    }
+
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
 
@@ -484,7 +501,7 @@ public sealed class ExtractionRouterTests : IDisposable
     // --- T-F261: TestAsync goes through the router ---
 
     [Fact]
-    public async Task TestAsync_ZipAndTar_TestsOnlyTheZipAndSkipsTheTarWithoutTouchingTar()
+    public async Task TestAsync_ZipAndTar_EachGoesToItsOwnEngine_AndNothingIsExtracted()
     {
         string zip = WriteZip("a.zip");
         string tar = WriteTar("b.tar");
@@ -495,11 +512,80 @@ public sealed class ExtractionRouterTests : IDisposable
         ArchiveResult result = await router.TestAsync([zip, tar]);
 
         zipService.LastTestedPaths.Should().Equal(zip);
+        tarService.LastTestedPaths.Should().Equal(tar);
         tarService.ExtractCallCount.Should().Be(0);
-        SkippedFile skipped = result.SkippedFiles.Should().ContainSingle().Subject;
-        (skipped.Path, skipped.Reason, skipped.Text!.Code)
-            .Should().Be((tar, ArchiveFormatPolicy.NoTestCapabilityReason, MessageCode.NoTestCapability));
+        result.SkippedFiles.Should().BeEmpty();
         result.Success.Should().BeTrue();
+    }
+
+    // T-F397: what the tar engine found is in the result next to the ZIP engine's.
+    [Fact]
+    public async Task TestAsync_TarEngineResult_IsMergedIntoTheRouters()
+    {
+        string zip = WriteZip("a.zip");
+        string good = WriteTar("good.tar");
+        string bad = WriteTar("bad.tar");
+        var tarService = new FakeTarService
+        {
+            TestResult = new ArchiveResult
+            {
+                Errors = [new ArchiveError { SourcePath = bad, Message = "damaged" }],
+                Warnings = [new ArchiveWarning { SourcePath = good, Message = "structure only" }],
+                Sources = [new SourceResult { Path = good, Outcome = SourceOutcome.Completed }, new SourceResult { Path = bad, Outcome = SourceOutcome.Partial }],
+            },
+        };
+        var router = new ExtractionRouter(new FakeArchiveService(), tarService, AllSupported, new GroupPolicyOptions());
+
+        ArchiveResult result = await router.TestAsync([zip, good, bad]);
+
+        tarService.LastTestedPaths.Should().Equal(good, bad);
+        result.Errors.Should().ContainSingle().Which.SourcePath.Should().Be(bad);
+        result.Warnings.Should().ContainSingle().Which.SourcePath.Should().Be(good);
+        result.Sources.Select(s => s.Path).Should().Contain([good, bad]);
+        result.Success.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task TestAsync_TarBlockedByPolicy_SkippedWithPolicyReasonAndEngineNotCalled()
+    {
+        string tar = WriteTar("a.tar");
+        var tarService = new FakeTarService();
+        var router = new ExtractionRouter(new FakeArchiveService(), tarService, AllSupported, new GroupPolicyOptions { BlockedFormats = ["tar"] });
+
+        ArchiveResult result = await router.TestAsync([tar]);
+
+        tarService.LastTestedPaths.Should().BeNull();
+        result.SkippedFiles.Should().ContainSingle(s => s.Path == tar && s.Reason.Contains("Group Policy"));
+    }
+
+    // One climb over both engines, as extraction has had since T-F306.
+    [Fact]
+    public async Task TestAsync_ZipAndTar_ProgressClimbsOnceThroughBoth()
+    {
+        string zip = WriteZip("a.zip");
+        string tar = WriteTar("b.tar");
+        var tarService = new FakeTarService { TestProgressScript = [new ProgressReport { Percent = 50 }, new ProgressReport { Percent = 100 }] };
+        var router = new ExtractionRouter(new FakeArchiveService(), tarService, AllSupported, new GroupPolicyOptions());
+        var seen = new List<int>();
+
+        await router.TestAsync([zip, tar], new SynchronousProgress(r => seen.Add(r.Percent)));
+
+        seen.Should().BeInAscendingOrder();
+        seen[^1].Should().Be(100);
+        seen.Should().Contain(p => p > 0 && p < 100, "the tar part has its own share of the climb");
+    }
+
+    [Fact]
+    public async Task TestAsync_CancelledInTheTarEngine_Throws()
+    {
+        string tar = WriteTar("a.tar");
+        var router = new ExtractionRouter(new FakeArchiveService(), new FakeTarService(), AllSupported, new GroupPolicyOptions());
+        using var cancel = new CancellationTokenSource();
+        cancel.Cancel();
+
+        Func<Task> test = () => router.TestAsync([tar], cancellationToken: cancel.Token);
+
+        await test.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]
@@ -555,7 +641,7 @@ public sealed class ExtractionRouterTests : IDisposable
 
         zipService.LastTestResolver.Should().BeSameAs(resolver);
         result.Success.Should().BeFalse();
-        result.SkippedFiles.Select(s => s.Path).Should().Equal(zip, tar);
+        result.SkippedFiles.Select(s => s.Path).Should().Equal(zip);
     }
 
     [Fact]

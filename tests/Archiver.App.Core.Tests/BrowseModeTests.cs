@@ -10,24 +10,27 @@ public sealed class BrowseModeTests
     [Fact]
     public void Location_InsideTopLevelZip_OffersEverything()
     {
-        var state = BrowseLocationState.For(insideArchive: true, nested: false, isZip: true);
+        var state = BrowseLocationState.For(insideArchive: true, nested: false);
 
         state.Should().Be(new BrowseLocationState(
             ShowsExtractActions: true, ShowsOptions: true, ShowsTest: true, OffersDeleteAfter: true, ShowsOutsideInfo: false));
     }
 
     [Fact]
-    public void Location_InsideTarFamily_NoTest()
+    public void Location_InsideAnyArchive_OffersTest()
     {
-        // tar.exe has no test mode; Explorer's menu offers Test for ZIP only (T-F86).
-        BrowseLocationState.For(insideArchive: true, nested: false, isZip: false).ShowsTest.Should().BeFalse();
+        // T-F397: the tar engine tests what it reads, so Test no longer depends on the format
+        // (it was ZIP only, T-F86). A nested archive is tested too.
+        BrowseLocationState.For(insideArchive: true, nested: false).ShowsTest.Should().BeTrue();
+        BrowseLocationState.For(insideArchive: true, nested: true).ShowsTest.Should().BeTrue();
+        BrowseLocationState.For(insideArchive: false, nested: false).ShowsTest.Should().BeFalse();
     }
 
     [Fact]
     public void Location_NestedArchive_NoDeleteAfter()
     {
         // The nested archive is a temp copy: sending it to the Recycle Bin means nothing.
-        var state = BrowseLocationState.For(insideArchive: true, nested: true, isZip: true);
+        var state = BrowseLocationState.For(insideArchive: true, nested: true);
 
         state.OffersDeleteAfter.Should().BeFalse();
         state.ShowsExtractActions.Should().BeTrue();
@@ -36,7 +39,7 @@ public sealed class BrowseModeTests
     [Fact]
     public void Location_OutsideArchive_HidesArchiveActionsAndExplains()
     {
-        var state = BrowseLocationState.For(insideArchive: false, nested: false, isZip: false);
+        var state = BrowseLocationState.For(insideArchive: false, nested: false);
 
         state.Should().Be(new BrowseLocationState(
             ShowsExtractActions: false, ShowsOptions: false, ShowsTest: false, OffersDeleteAfter: false, ShowsOutsideInfo: true));
@@ -159,14 +162,12 @@ public sealed class BrowseModeTests
 
     // T-F275 step 3c: an archive kept open although its listing failed, because PAR2 files lie
     // next to it. Nothing to extract or delete; the test is what it stays open for.
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void WithoutListing_OffersNothingButWhatTheLocationAlreadyShows(bool isZip)
+    [Fact]
+    public void WithoutListing_OffersOnlyTheTest()
     {
-        var listed = BrowseLocationState.For(insideArchive: true, nested: false, isZip);
+        var listed = BrowseLocationState.For(insideArchive: true, nested: false);
 
         listed.WithoutListing().Should().Be(new BrowseLocationState(
-            ShowsExtractActions: false, ShowsOptions: false, ShowsTest: isZip, OffersDeleteAfter: false, ShowsOutsideInfo: false));
+            ShowsExtractActions: false, ShowsOptions: false, ShowsTest: true, OffersDeleteAfter: false, ShowsOutsideInfo: false));
     }
 }

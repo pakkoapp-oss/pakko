@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>تنسيق الأرشيف هذا غير مدعوم في tar.exe على هذا النظام (الإصدار {0}).</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>لا يمكن اختبار أرشيفات عائلة tar</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>تم التحقق من بنية الأرشيف فقط: لا يستطيع tar.exe التحقق من محتوى الملفات في هذا التنسيق.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>هذا الأرشيف محمي بكلمة مرور ولا يمكن استخراجه.</value>

@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Deze archiefindeling wordt niet ondersteund door tar.exe van dit systeem (versie {0}).</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>archieven uit de tar-familie kunnen niet worden getest</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Alleen de structuur van het archief is gecontroleerd: tar.exe kan de inhoud van bestanden in deze indeling niet verifiëren.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Dit archief is met een wachtwoord beveiligd en kan niet worden uitgepakt.</value>

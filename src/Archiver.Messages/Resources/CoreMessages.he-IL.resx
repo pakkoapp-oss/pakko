@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>פורמט ארכיון זה אינו נתמך על-ידי tar.exe של מערכת זו (גרסה {0}).</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>לא ניתן לבדוק ארכיונים ממשפחת tar</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>נבדק רק מבנה הארכיון: tar.exe אינו יכול לאמת את תוכן הקבצים בתבנית זו.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>ארכיון זה מוגן בסיסמה ולא ניתן לחלץ אותו.</value>

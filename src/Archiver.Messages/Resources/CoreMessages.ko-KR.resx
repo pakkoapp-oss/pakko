@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>이 압축 파일 형식은 이 시스템의 tar.exe(버전 {0})에서 지원되지 않습니다.</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>tar 계열 압축 파일은 테스트할 수 없습니다</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>압축 파일의 구조만 확인했습니다. tar.exe는 이 형식에서 파일 내용을 검증할 수 없습니다.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>이 압축 파일은 암호로 보호되어 있어 압축을 풀 수 없습니다.</value>

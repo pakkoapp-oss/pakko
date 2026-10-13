@@ -28,7 +28,7 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         ├── Row 0 (create mode): toolbar Grid (Auto,Auto,*,Auto,Auto) — Add Files / Add Folder /
         │       (spacer) / Hash / About. Visibility=IsPendingListVisibility.
         ├── Row 0 (browse mode): toolbar Grid (*,Auto,Auto,Auto,Auto) — (spacer) / Test archive
-        │       (ZIP only, TestArchiveVisibility, T-F241) / Scan / Close archive (Esc accelerator,
+        │       (every format since T-F397, TestArchiveVisibility, T-F241) / Scan / Close archive (Esc accelerator,
         │       T-F210) / About. Visibility=IsBrowsingArchiveVisibility.
         │
         ├── Row 1 (create mode): Grid (RowDefinitions="Auto,*") — File table.

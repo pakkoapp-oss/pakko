@@ -12,19 +12,19 @@ public sealed class DiagramSixTests
     public void BrowseLocationTable_MatchesCode_AndCoversTheWholeDomain()
     {
         List<string[]> rows = Table("browse-location");
-        var seen = new List<(bool, bool, bool)>();
+        var seen = new List<(bool, bool)>();
         foreach (string[] row in rows)
         {
-            (bool inside, bool nested, bool isZip) = (YesNo(row[0]), YesNo(row[1]), YesNo(row[2]));
-            seen.Add((inside, nested, isZip));
-            BrowseLocationState.For(inside, nested, isZip).Should().Be(
-                new BrowseLocationState(YesNo(row[3]), YesNo(row[4]), YesNo(row[5]), YesNo(row[6]), YesNo(row[7])),
+            (bool inside, bool nested) = (YesNo(row[0]), YesNo(row[1]));
+            seen.Add((inside, nested));
+            BrowseLocationState.For(inside, nested).Should().Be(
+                new BrowseLocationState(YesNo(row[2]), YesNo(row[3]), YesNo(row[4]), YesNo(row[5]), YesNo(row[6])),
                 "row {0}", string.Join(" | ", row));
         }
 
         bool[] both = [false, true];
         seen.Should().BeEquivalentTo(
-            from i in both from n in both from z in both select (i, n, z),
+            from i in both from n in both select (i, n),
             "every input of BrowseLocationState.For appears exactly once");
     }
 

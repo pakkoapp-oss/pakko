@@ -218,12 +218,15 @@ public sealed class CliSubprocessTests
     }
 
     [RequiresTarExe]
-    public void Test_TarGzArchive_ExitsOneAndNamesReason()
+    public void Test_TarGzArchive_IsTested_AndExitsOneSayingOnlyTheStructureWasChecked()
     {
+        // T-F397: tar.exe reads the archive to its end, but does not compare gzip's CRC-32; the
+        // warning says so, and a warning is exit 1 as it is for 7-Zip.
         (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", CliFixtureFiles.ValidTarGz!);
 
         exitCode.Should().Be(1);
-        stdErr.Should().Contain("tar-family archives have no test capability");
+        stdErr.Trim().Should().Be("pakko: warning: valid.tar.gz: Only the archive's structure was checked: tar.exe cannot verify the contents of files in this format.");
+        stdOut.Should().NotContain("No errors");
     }
 
     // --- T-F191: -p{pwd} ---
@@ -759,7 +762,8 @@ public sealed class CliSubprocessTests
 
         (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", archivePath);
 
-        // As if the archive had never had a set: a ZIP passes its own test, a tar is not testable.
+        // As if the archive had never had a set: a ZIP passes its own test, a tar.gz is read to its
+        // end with the warning that tar.exe verifies no contents there (T-F397).
         stdOut.Should().NotContain("recovery data");
         if (name.EndsWith(".zip", StringComparison.Ordinal))
         {
@@ -769,7 +773,7 @@ public sealed class CliSubprocessTests
         else
         {
             exitCode.Should().Be(1);
-            stdErr.Trim().Should().EndWith("tar-family archives have no test capability");
+            stdErr.Trim().Should().EndWith("Only the archive's structure was checked: tar.exe cannot verify the contents of files in this format.");
         }
     }
 

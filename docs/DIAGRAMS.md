@@ -125,7 +125,7 @@ sequenceDiagram
     Explorer->>TAC: GetState → ECS_HIDDEN iff AllPathsAreZip(paths) OR NOT IsCreationFormatAllowed("tar", policy)
     Explorer->>SZC: GetState → ECS_HIDDEN iff AllPathsAreZip(paths) OR NOT IsCreationFormatAllowed("sevenzip", policy)<br/>OR NOT TarExeExists() OR SevenZipWriterKnownAbsent() (T-F342: the menu cannot run tar.exe to ask,<br/>so it reads the verdict file the App and Archiver.Shell leave in the package LocalCache folder —<br/>hidden only on a no measured on this very tar.exe, re-read at most every 5 s)
     Explorer->>AC: GetTitle(psia) → BuildAddToArchiveTitle(paths)<br/>dynamic "Add to <name>.zip", truncated middle if >40 chars — TAC the same with .tar, SZC with .7z
-    Explorer->>TC: GetState → ECS_ENABLED iff AnyPathIsZip(paths, policy)<br/>(T-F62/T-F86: ZIP only — tar-family has no test, the router would skip it)
+    Explorer->>TC: GetState → ECS_ENABLED iff AnyPathIsSupportedArchive(paths, policy)<br/>(T-F397: any archive Pakko reads — it was ZIP only while nothing tested a tar-family archive, T-F86)
     Explorer->>SC: GetState → ECS_ENABLED iff AnyPathIsSupportedArchive(paths, policy) (T-F146)
     Explorer->>HX: GetState → ECS_ENABLED iff paths non-empty (any file or folder, T-F128)
     User->>Explorer: click one visible leaf command
@@ -165,7 +165,7 @@ sequenceDiagram
             else AC / TAC
                 ShellExe->>Core: IArchiveCreationRouter.ArchiveAsync(SingleArchive, OnConflict=Rename, Format=zip or tar)
             else TC
-                ShellExe->>Core: IExtractionRouter.TestAsync(paths, progress, password via session.AskPasswordAsync)<br/>— the FULL selection, the router classifies each path, tar-family is skipped (T-F261)
+                ShellExe->>Core: IExtractionRouter.TestAsync(paths, progress, password via session.AskPasswordAsync)<br/>— the FULL selection, the router classifies each path, ZIP to the ZIP engine and tar-family to ITarService.TestAsync (T-F261, T-F397)
             else SC
                 ShellExe->>Core: IAntivirusScanService.ScanAsync — diagram 7
             else hash leaf
@@ -225,8 +225,8 @@ folder, a failed entry shows only as a warning icon.
   Archive for all-ZIP selections") would be editing the wrong method; `ArchiveCommand`'s
   `GetState` condition is the *inverse* of `ExtractHereCommand`/`ExtractFolderCommand`'s, which is
   easy to get backwards when copy-pasting.
-- `TestCommand::GetState` (T-F62) uses `AnyPathIsZip` (`ExtractDialogCommand` shared it until T-F86
-  moved it to `AnyPathIsSupportedArchive`), distinct from `AllPathsAreZip` (EH/EF) and its inverse (AC) — copy-pasting
+- `TestCommand::GetState` (T-F62) used `AnyPathIsZip` until T-F397 and uses `AnyPathIsSupportedArchive`
+  since, as `ExtractDialogCommand` has since T-F86, distinct from `AllPathsAreZip` (EH/EF) and its inverse (AC) — copy-pasting
   `AllPathsAreZip` here would hide Test/ExtractDialog on any mixed selection, unlike NanaZip's
   reference behavior (verified against real
   NanaZip source in `DECISIONS.md`).
@@ -250,9 +250,11 @@ folder, a failed entry shows only as a warning icon.
   reintroduce either the false-Test-pass bug or hide a legitimate archive action.
   **Since T-F261/T-F274 (2026-09-28)** Test goes through `ExtractionRouter.TestAsync`, which skips a
   tar-family archive with its own reason and never says "No errors detected" for a run that read
-  nothing — so enabling Test for tar would now show a skip, not a false pass. `TC` stays ZIP-only
-  because there is still nothing to test there. (The comment at `ExplorerCommands.cpp`'s
-  `TestCommand::GetState` still gives the pre-T-F261 reason.)
+  nothing — so enabling Test for tar would have shown a skip, not a false pass.
+  **Since T-F397 (2026-10-13)** `ITarService.TestAsync` tests a tar-family archive (tar.exe reads
+  every entry in the sandbox), and `TC` moved to `AnyPathIsSupportedArchive`. Where tar.exe
+  verifies no contents (tar, tar.gz, RAR) the result is the "only the structure was
+  checked" warning, never "No errors detected": the false pass T-F86 guarded against stays out.
 - **T-F99 (2026-07-13), obsolete since T-F235 (2026-09-28):** paths no longer go on the command
   line, so `QuotePath`'s drive-root trailing-backslash corruption cannot recur there; see
   `DECISIONS.md`'s T-F99 and fix phase 5 entries.
@@ -811,22 +813,17 @@ choice, not a transition.
 
 ### Where the user is — what the browser offers (`BrowseLocationState.For`)
 
-`insideArchive` is `IsBrowsingArchive && BrowseScope == Archive`; `nested` is `_browseStack.Count > 0`;
-`isZip` is the magic-byte check of the level being browsed. Outside an archive `isZip` is always
-false (`SetBrowseLevel(null, false)`) and the stack is always empty, so those rows are unreachable but
-still pinned.
+`insideArchive` is `IsBrowsingArchive && BrowseScope == Archive`; `nested` is `_browseStack.Count > 0`.
+Outside an archive the stack is always empty, so that row is unreachable but still pinned. Test
+no longer depends on the format (T-F397: the tar engine tests what it reads; it was ZIP only).
 
 <!-- check:browse-location -->
-| insideArchive | nested | isZip | Extract selected/all | Options cards | Test | Delete-after | Outside-archive info | Where |
-|---|---|---|---|---|---|---|---|---|
-| yes | no | yes | yes | yes | yes | yes | no | top-level ZIP |
-| yes | no | no | yes | yes | no | yes | no | top-level tar family |
-| yes | yes | yes | yes | yes | yes | no | no | nested ZIP (a temp copy) |
-| yes | yes | no | yes | yes | no | no | no | nested tar family |
-| no | no | no | no | no | no | no | yes | real folder or This PC |
-| no | no | yes | no | no | no | no | yes | unreachable |
-| no | yes | no | no | no | no | no | yes | unreachable |
-| no | yes | yes | no | no | no | no | yes | unreachable |
+| insideArchive | nested | Extract selected/all | Options cards | Test | Delete-after | Outside-archive info | Where |
+|---|---|---|---|---|---|---|---|
+| yes | no | yes | yes | yes | yes | no | an archive opened from disk |
+| yes | yes | yes | yes | yes | no | no | a nested archive (a temp copy) |
+| no | no | no | no | no | no | yes | real folder or This PC |
+| no | yes | no | no | no | no | yes | unreachable |
 <!-- /check -->
 
 ### What a double-click on a row does (`BrowserEntryRouting`, T-F111)

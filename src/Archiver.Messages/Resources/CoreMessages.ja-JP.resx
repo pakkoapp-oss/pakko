@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>このアーカイブ形式はこのシステムの tar.exe (バージョン {0}) ではサポートされていません。</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>tar 系アーカイブはテストできません</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>アーカイブの構造のみを確認しました。tar.exe はこの形式のファイルの内容を検証できません。</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>このアーカイブはパスワードで保護されているため、展開できません。</value>

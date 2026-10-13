@@ -161,7 +161,8 @@ bool IsCreationFormatAllowed(const std::wstring& format, const MenuPolicy& polic
 bool AllPathsAreZip(const std::vector<std::wstring>& paths);
 
 // Returns true iff at least one path ends with .zip (case-insensitive) and ZIP is not blocked by
-// policy (T-F262) - the gate for the ZIP-only Test command.
+// policy (T-F262). It gated the Test command while Test was ZIP-only; since T-F397 Test uses
+// AnyPathIsSupportedArchive, and this stays as the tested form of the ZIP extension rule.
 bool AnyPathIsZip(const std::vector<std::wstring>& paths, const MenuPolicy& policy);
 
 // T-F86: true iff C:\Windows\System32\tar.exe exists. Checked once via GetFileAttributesW and

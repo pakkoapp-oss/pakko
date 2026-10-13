@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Ce format d’archive n’est pas pris en charge par le tar.exe de ce système (version {0}).</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>les archives de la famille tar ne peuvent pas être testées</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Seule la structure de l’archive a été vérifiée : tar.exe ne peut pas vérifier le contenu des fichiers dans ce format.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Cette archive est protégée par mot de passe et ne peut pas être extraite.</value>

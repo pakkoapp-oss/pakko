@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
@@ -24,6 +25,8 @@ internal static partial class SandboxedProcessLauncher
 
     // How long a terminated child gets to actually go away before the call returns anyway.
     private const uint TerminateWaitMilliseconds = 5000;
+
+    private const int DiscardBufferBytes = 81920;
 
     public static async Task<(int ExitCode, string StdOut, string StdErr)> RunAsync(
         string fileName,
@@ -199,7 +202,9 @@ internal static partial class SandboxedProcessLauncher
         using var stdOutReader = new StreamReader(stdOutStream, outputEncoding);
         using var stdErrReader = new StreamReader(stdErrStream, outputEncoding);
 
-        Task<string> stdOutTask = stdOutReader.ReadToEndAsync(cancellationToken);
+        Task<string> stdOutTask = options.OnStdOutDiscarded is { } onDiscarded
+            ? DiscardAsync(stdOutStream, onDiscarded, cancellationToken)
+            : stdOutReader.ReadToEndAsync(cancellationToken);
         Task<string> stdErrTask = options.OnStdErrLine is { } onLine
             ? ReadLinesAsync(stdErrReader, onLine, cancellationToken)
             : stdErrReader.ReadToEndAsync(cancellationToken);
@@ -227,6 +232,24 @@ internal static partial class SandboxedProcessLauncher
                 catch (IOException) { /* the child exited without reading all of its stdin */ }
             }
         });
+    }
+
+    // T-F397: "tar -x -O" writes every file's content to stdout. Read, so tar.exe never waits on a
+    // full pipe, and dropped, so an archive's whole content is never held in memory.
+    private static async Task<string> DiscardAsync(FileStream stream, Action<int> onDiscarded, CancellationToken cancellationToken)
+    {
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(DiscardBufferBytes);
+        try
+        {
+            int read;
+            while ((read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
+                onDiscarded(read);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+        return string.Empty;
     }
 
     // tar.exe's "-v" writes one "a <name>" line per entry to stderr during creation — streamed so

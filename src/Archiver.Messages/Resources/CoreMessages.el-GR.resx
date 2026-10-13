@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Αυτή η μορφή αρχείου δεν υποστηρίζεται από το tar.exe αυτού του συστήματος (έκδοση {0}).</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>τα αρχεία συμπίεσης της οικογένειας tar δεν μπορούν να δοκιμαστούν</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Ελέγχθηκε μόνο η δομή του αρχείου συμπίεσης: το tar.exe δεν μπορεί να επαληθεύσει το περιεχόμενο των αρχείων σε αυτήν τη μορφή.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Αυτό το αρχείο συμπίεσης προστατεύεται με κωδικό πρόσβασης και δεν μπορεί να εξαχθεί.</value>

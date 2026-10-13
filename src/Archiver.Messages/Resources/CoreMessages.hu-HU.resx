@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>A rendszer tar.exe-je ({0} verzió) nem támogatja ezt az archívumformátumot.</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>a tar-családba tartozó archívumok nem tesztelhetők</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Csak az archívum szerkezete lett ellenőrizve: a tar.exe nem tudja ellenőrizni a fájlok tartalmát ebben a formátumban.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Ez az archívum jelszóval védett, ezért nem bontható ki.</value>

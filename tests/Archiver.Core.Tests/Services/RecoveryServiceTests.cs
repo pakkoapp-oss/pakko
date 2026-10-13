@@ -18,11 +18,12 @@ public sealed class RecoveryServiceTests : IDisposable
     private const string Mark = "[ZoneTransfer]\r\nZoneId=3\r\n";
     private readonly TempDirectory _temp = new();
     private readonly TestingZipEngine _zip = new();
+    private readonly TestingTarEngine _tar = new();
 
     public void Dispose() => _temp.Dispose();
 
     private ExtractionRouter Router(GroupPolicyOptions policy) =>
-        new(_zip, new UnusedTarEngine(), new TarCapabilities(), policy);
+        new(_zip, _tar, new TarCapabilities { Supports7z = true }, policy);
 
     private RecoveryService Service(GroupPolicyOptions? policy = null)
     {
@@ -46,6 +47,8 @@ public sealed class RecoveryServiceTests : IDisposable
             new byte[] { 0x50, 0x4B, 0x03, 0x04 }.CopyTo(content, 0);
         else if (name.EndsWith(".gz", StringComparison.Ordinal))
             new byte[] { 0x1F, 0x8B, 0x08 }.CopyTo(content, 0);
+        else if (name.EndsWith(".7z", StringComparison.Ordinal))
+            new byte[] { 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C }.CopyTo(content, 0);
         return content;
     }
 
@@ -88,6 +91,7 @@ public sealed class RecoveryServiceTests : IDisposable
         byte[] good = File.ReadAllBytes(archive);
         Damage(archive, 5_000, 16);
         _zip.Failing.Add(archive);
+        _tar.Failing.Add(archive);
         byte[] damaged = File.ReadAllBytes(archive);
         DateTime modified = File.GetLastWriteTimeUtc(archive);
         string[] before = Files();
@@ -289,6 +293,52 @@ public sealed class RecoveryServiceTests : IDisposable
         result.RecoveryChecks.Should().ContainSingle().Which.State.Should().Be(RecoveryState.DoesNotMatch);
         Files().Should().Equal(before);
         _zip.Tested.Should().Equal(archive);
+    }
+
+    // T-F397: tar.exe verifies what a 7z holds, so the rule above holds for it as for a ZIP.
+    [Fact]
+    public async Task SevenZipThatTestsIntactWhileItsSetDisagrees_IsWarnedAbout_AndNothingIsRebuilt()
+    {
+        string archive = Protected("a.7z");
+        Damage(archive, 5_000, 16);
+        string[] before = Files();
+
+        ArchiveResult result = await Repair(archive);
+
+        result.Errors.Should().BeEmpty();
+        result.CreatedFiles.Should().BeEmpty();
+        result.RecoveryChecks.Should().ContainSingle().Which.State.Should().Be(RecoveryState.DoesNotMatch);
+        Files().Should().Equal(before);
+        _tar.Tested.Should().Equal(archive);
+    }
+
+    [Fact]
+    public async Task SevenZipThatFailsItsTest_IsRebuilt()
+    {
+        string archive = Protected("a.7z");
+        Damage(archive, 5_000, 16);
+        _tar.Failing.Add(archive);
+
+        ArchiveResult result = await Repair(archive);
+
+        result.Errors.Should().BeEmpty();
+        result.CreatedFiles.Should().Equal(Path.Combine(_temp.Path, "a.repaired.7z"));
+    }
+
+    // tar.exe reads a damaged tar.gz to its end and reports nothing (it does not compare gzip's
+    // CRC-32). Such a pass says nothing of the contents, so the set's verdict stands and the
+    // archive is rebuilt; and the test is not run at all, since nothing it says would count.
+    [Fact]
+    public async Task TarGzWhoseTestCannotSeeTheDamage_IsStillRebuilt_AndIsNotTestedForIt()
+    {
+        string archive = Protected("a.tar.gz");
+        Damage(archive, 5_000, 16);
+
+        ArchiveResult result = await Repair(archive);
+
+        result.Errors.Should().BeEmpty();
+        result.CreatedFiles.Should().Equal(Path.Combine(_temp.Path, "a.repaired.tar.gz"));
+        _tar.Tested.Should().BeEmpty();
     }
 
     // --- No usable recovery data: an error, since repair was asked for ---

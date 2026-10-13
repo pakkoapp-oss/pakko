@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>tar.exe ของระบบนี้ (เวอร์ชัน {0}) ไม่รองรับรูปแบบไฟล์บีบอัดนี้</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>ไม่สามารถทดสอบไฟล์บีบอัดตระกูล tar ได้</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>ตรวจสอบเฉพาะโครงสร้างของไฟล์บีบอัดเท่านั้น: tar.exe ไม่สามารถตรวจสอบเนื้อหาของไฟล์ในรูปแบบนี้ได้</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>ไฟล์บีบอัดนี้ป้องกันด้วยรหัสผ่านและไม่สามารถแตกไฟล์ได้</value>

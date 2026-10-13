@@ -24,6 +24,9 @@ file sealed class ZipMustNotRunService : IArchiveService
 
 file sealed class YesOrNoTarService(bool canCreate) : ITarService
 {
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
+
     public Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default) => Task.FromResult(canCreate);
 
     public Task<TarCapabilities> DetectCapabilitiesAsync() => throw new NotSupportedException();
@@ -40,6 +43,9 @@ file sealed class YesOrNoTarService(bool canCreate) : ITarService
 
 file sealed class TarMustNotCreateService : ITarService
 {
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
+
     public Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default)
         => throw new InvalidOperationException("the 7z writer must not be asked for");
 

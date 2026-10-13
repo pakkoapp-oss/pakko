@@ -32,8 +32,28 @@ internal sealed class TestingZipEngine : IArchiveService
     public Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 }
 
-internal sealed class UnusedTarEngine : ITarService
+// T-F397: a tar engine whose test reads every path it is given to its end and passes, or fails
+// the paths named. As the real engine, it says that only the structure was checked where the
+// format gives tar.exe no checksum to compare (a tar.gz), and says nothing of a 7z.
+internal sealed class TestingTarEngine : ITarService
 {
+    public HashSet<string> Failing { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<string> Tested { get; } = [];
+
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Tested.AddRange(archivePaths);
+        progress?.Report(new ProgressReport { Percent = 50 });
+        progress?.Report(new ProgressReport { Percent = 100 });
+        return Task.FromResult(new ArchiveResult
+        {
+            Errors = [.. archivePaths.Where(Failing.Contains).Select(p => CoreMessages.Error(p, MessageCode.CannotReadArchive, "damaged"))],
+            Warnings = [.. archivePaths.Where(p => !Failing.Contains(p) && !TarTestCoverage.VerifiesContents(p)).Select(p => CoreMessages.Warning(p, CoreMessages.Text(MessageCode.TestedStructureOnly)))],
+            Sources = [.. archivePaths.Select(p => new SourceResult { Path = p, Outcome = Failing.Contains(p) ? SourceOutcome.Partial : SourceOutcome.Completed })],
+        });
+    }
+
     public Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
 
     public Task<TarCapabilities> DetectCapabilitiesAsync() => Task.FromResult(new TarCapabilities());
@@ -48,11 +68,12 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
     private const int Length = 10_000;
     private readonly TempDirectory _temp = new();
     private readonly TestingZipEngine _zip = new();
+    private readonly TestingTarEngine _tar = new();
 
     public void Dispose() => _temp.Dispose();
 
     private ExtractionRouter Router(GroupPolicyOptions? policy = null) =>
-        new(_zip, new UnusedTarEngine(), new TarCapabilities(), policy ?? new GroupPolicyOptions());
+        new(_zip, _tar, new TarCapabilities(), policy ?? new GroupPolicyOptions());
 
     private Task<ArchiveResult> Test(params string[] paths) =>
         Router().TestAsync(paths, verifyRecoveryData: true);
@@ -64,6 +85,8 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
         // The detector reads the magic: a gzip header makes "a.tar.gz" a tar-family archive.
         if (name.EndsWith(".gz", StringComparison.Ordinal))
             new byte[] { 0x1F, 0x8B, 0x08 }.CopyTo(content, 0);
+        else if (name.EndsWith(".7z", StringComparison.Ordinal))
+            new byte[] { 0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C }.CopyTo(content, 0);
         File.WriteAllBytes(path, content);
         return path;
     }
@@ -168,14 +191,16 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
     // --- Flag off and policy ---
 
     [Fact]
-    public async Task WithoutTheFlag_NoSetIsLookedForAndTarIsStillSkipped()
+    public async Task WithoutTheFlag_NoSetIsLookedForAndTarIsTestedByItsEngine()
     {
         string tar = Protected("a.tar.gz");
 
         ArchiveResult result = await Router().TestAsync([tar]);
 
         result.RecoveryChecks.Should().BeEmpty();
-        result.SkippedFiles.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.NoTestCapability);
+        _tar.Tested.Should().Equal(tar);
+        result.SkippedFiles.Should().BeEmpty();
+        result.Warnings.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TestedStructureOnly);
     }
 
     [Fact]
@@ -198,7 +223,8 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
 
         result.RecoveryChecks.Should().BeEmpty();
         result.Errors.Should().BeEmpty();
-        result.SkippedFiles.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.NoTestCapability);
+        result.SkippedFiles.Should().BeEmpty();
+        result.Warnings.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TestedStructureOnly);
     }
 
     [Fact]
@@ -261,8 +287,9 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
         ArchiveResult result = await Test(zip, tar);
 
         result.RecoveryChecks.Should().BeEmpty();
-        result.Warnings.Should().BeEmpty();
-        result.SkippedFiles.Should().ContainSingle().Which.Path.Should().Be(tar);
+        result.SkippedFiles.Should().BeEmpty();
+        result.Warnings.Should().ContainSingle().Which.Should().Match<ArchiveWarning>(
+            w => w.SourcePath == tar && w.Text!.Code == MessageCode.TestedStructureOnly);
     }
 
     [Fact]
@@ -293,8 +320,8 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
         ArchiveResult result = await Test(tar);
 
         result.RecoveryChecks.Should().BeEmpty();
-        result.Warnings.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.RecoveryDataForAnotherFile);
-        result.SkippedFiles.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.NoTestCapability);
+        result.Warnings.Select(w => w.Text!.Code).Should().BeEquivalentTo([MessageCode.TestedStructureOnly, MessageCode.RecoveryDataForAnotherFile]);
+        result.SkippedFiles.Should().BeEmpty();
     }
 
     [Fact]
@@ -386,7 +413,7 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
     }
 
     [Fact]
-    public async Task DamagedSetFiles_AreAWarningAndTarIsStillSkipped()
+    public async Task DamagedSetFiles_AreAWarningAndTheTarKeepsItsStructureOnlyWarning()
     {
         string tar = Protected("a.tar.gz");
         foreach (string file in Directory.GetFiles(_temp.Path, "*.par2"))
@@ -394,9 +421,9 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
 
         ArchiveResult result = await Test(tar);
 
-        result.Warnings.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.RecoveryDataUnusable);
+        result.Warnings.Select(w => w.Text!.Code).Should().BeEquivalentTo([MessageCode.TestedStructureOnly, MessageCode.RecoveryDataUnusable]);
         result.RecoveryChecks.Should().ContainSingle().Which.State.Should().Be(RecoveryState.Unusable);
-        result.SkippedFiles.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.NoTestCapability);
+        result.SkippedFiles.Should().BeEmpty();
         result.Errors.Should().BeEmpty();
     }
 
@@ -494,8 +521,8 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
 
         result.RecoveryChecks.Should().BeEmpty();
         result.Errors.Should().BeEmpty();
-        result.Warnings.Should().BeEmpty();
-        result.SkippedFiles.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.NoTestCapability);
+        result.Warnings.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TestedStructureOnly);
+        result.SkippedFiles.Should().BeEmpty();
     }
 
     [Fact]
@@ -518,7 +545,68 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
             result = await Test(tar);
 
         result.RecoveryChecks.Should().BeEmpty();
-        result.SkippedFiles.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.NoTestCapability);
+        result.SkippedFiles.Should().BeEmpty();
+        result.Warnings.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TestedStructureOnly);
+    }
+
+    // --- T-F397: the tar engine's own test beside the set ---
+
+    // The set compares every byte, so "only the structure was checked" would no longer be true.
+    [Fact]
+    public async Task TarWithIntactSet_HasNoStructureOnlyWarning()
+    {
+        string tar = Protected("a.tar.gz");
+
+        ArchiveResult result = await Test(tar);
+
+        _tar.Tested.Should().Equal(tar);
+        result.Warnings.Should().BeEmpty();
+        result.RecoveryChecks.Should().ContainSingle().Which.State.Should().Be(RecoveryState.Intact);
+        result.Outcome.Should().Be(OperationOutcome.Completed);
+    }
+
+    // tar.exe reads a tar.gz with changed bytes to its end and reports nothing. That pass must not
+    // count as "the archive is fine and the set is merely older": the set is right, it is damage.
+    [Fact]
+    public async Task TarPassingAStructureOnlyTestWhileTheSetDisagrees_IsDamageNotAnOlderSet()
+    {
+        string tar = Protected("a.tar.gz");
+        Damage(tar, 100, 10);
+
+        ArchiveResult result = await Test(tar);
+
+        _tar.Tested.Should().Equal(tar);
+        result.RecoveryChecks.Should().ContainSingle().Which.State.Should().Be(RecoveryState.Repairable);
+        result.Errors.Should().ContainSingle();
+    }
+
+    // A 7z passes a test that does verify its contents: the same rule as for a ZIP then holds.
+    [Fact]
+    public async Task VerifiedTarFamilyArchiveRewrittenWithoutASet_OldSetIsAWarningNotDamage()
+    {
+        var router = new ExtractionRouter(_zip, _tar, new TarCapabilities { Supports7z = true }, new GroupPolicyOptions());
+        string sevenZip = Protected("a.7z");
+        Damage(sevenZip, 100, 10);
+
+        ArchiveResult result = await router.TestAsync([sevenZip], verifyRecoveryData: true);
+
+        _tar.Tested.Should().Equal(sevenZip);
+
+        result.Errors.Should().BeEmpty();
+        result.Warnings.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.RecoveryDataDoesNotMatch);
+    }
+
+    [Fact]
+    public async Task TarFailingItsTestAndDamaged_ReportsBoth()
+    {
+        string tar = Protected("a.tar.gz");
+        Damage(tar, 100, 10);
+        _tar.Failing.Add(tar);
+
+        ArchiveResult result = await Test(tar);
+
+        result.Errors.Select(Code).Should().Contain(MessageCode.CannotReadArchive);
+        result.RecoveryChecks.Should().ContainSingle().Which.State.Should().Be(RecoveryState.Repairable);
     }
 
     [Theory]

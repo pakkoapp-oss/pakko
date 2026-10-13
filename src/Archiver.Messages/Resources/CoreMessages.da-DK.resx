@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Dette arkivformat understøttes ikke af dette systems tar.exe (version {0}).</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>arkiver i tar-familien kan ikke testes</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Kun arkivets struktur blev kontrolleret: tar.exe kan ikke kontrollere indholdet af filerne i dette format.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Dette arkiv er beskyttet med adgangskode og kan ikke udpakkes.</value>

@@ -25,6 +25,9 @@ file sealed class QuietZipService : IArchiveService
 // Counts the tar.exe --version probe; the engine calls succeed without starting anything.
 file sealed class CountingTarService : ITarService
 {
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+        => Task.FromResult(new ArchiveResult());
+
     public int ProbeCalls;
 
     public Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);

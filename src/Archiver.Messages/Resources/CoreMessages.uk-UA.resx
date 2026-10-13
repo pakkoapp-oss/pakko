@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Цей формат архіву не підтримується tar.exe цієї системи (версія {0}).</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>архіви сімейства tar не можна протестувати</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Перевірено лише структуру архіву: tar.exe не може звірити вміст файлів у цьому форматі.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Цей архів захищено паролем, тому його не можна видобути.</value>

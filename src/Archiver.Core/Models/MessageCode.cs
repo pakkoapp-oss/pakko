@@ -48,7 +48,6 @@ public enum MessageCode
     FormatNeedsNewerTar,
     FormatNotSupportedByTar,
     ArchiveFormatNotSupportedByTar,
-    NoTestCapability,
     PasswordProtectedExtract,
     PasswordProtectedTest,
     RememberedPasswordDoesNotFit,
@@ -142,4 +141,7 @@ public enum MessageCode
     RecoveryRepairCheckFailed,
     RecoveryRepairNotWritten,
     RecoveryDataIntact,
+
+    // Testing through tar.exe (T-F397)
+    TestedStructureOnly,
 }

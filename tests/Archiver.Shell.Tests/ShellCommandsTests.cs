@@ -177,9 +177,9 @@ public sealed class ShellCommandsTests : IDisposable
     {
         // T-F216: before, the skipped list and "no errors" were two modal boxes in a row.
         string zip = MakeZip("ok.zip", ("a.txt", "A"));
-        string notZip = Path.Combine(_root, "notes.tar.gz");
-        using (var gzip = new GZipStream(File.Create(notZip), CompressionLevel.Fastest))
-            gzip.Write("a gzip stream, which Test skips as a known non-ZIP format"u8);
+        // A RAR, which this router's tar.exe is said not to read: the one kind of input Test still skips.
+        string notZip = Path.Combine(_root, "notes.rar");
+        File.WriteAllBytes(notZip, [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00]);
         var ui = new FakeOperationUi();
 
         await Create(ui).TestAsync([zip, notZip]);
@@ -187,15 +187,16 @@ public sealed class ShellCommandsTests : IDisposable
         OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Warning);
         message.Title.Should().Be("Testing archives: 2");
-        message.Text.Should().StartWith("Skipped (1):").And.Contain("notes.tar.gz")
+        message.Text.Should().StartWith("Skipped (1):").And.Contain("notes.rar")
             .And.EndWith("No errors detected in the archive(s).");
     }
 
     [Fact]
-    public async Task Test_TarFamilyArchive_IsSkippedByTheRouterNotSentToTheZipEngine()
+    public async Task Test_TarFamilyArchive_GoesToTheTarEngineNotTheZipEngine()
     {
         // T-F261: Shell used to hand every path to the ZIP engine, which answered "GZip format is
-        // not supported" for a format Pakko does support.
+        // not supported" for a format Pakko does support. T-F397: the tar engine now tests it; these
+        // few bytes are no tar, so its verdict is that the archive cannot be read.
         string tarGz = Path.Combine(_root, "notes.tar.gz");
         using (var gzip = new GZipStream(File.Create(tarGz), CompressionLevel.Fastest))
             gzip.Write("gzip"u8);
@@ -203,21 +204,20 @@ public sealed class ShellCommandsTests : IDisposable
 
         await Create(ui).TestAsync([tarGz]);
 
-        ui.Messages.Should().ContainSingle().Which.Text.Should().Contain(ArchiveFormatPolicy.NoTestCapabilityReason)
-            .And.NotContain("not supported");
+        ui.Messages.Should().ContainSingle().Which.Text.Should().Contain("notes.tar.gz")
+            .And.NotContain("not supported").And.NotContain("No errors detected");
     }
 
     [Fact]
     public async Task Test_NothingTested_DoesNotClaimNoErrors()
     {
-        // T-F274: every archive skipped (no test capability) used to end with "No errors detected",
-        // claiming a test that never ran.
-        string tarGz = Path.Combine(_root, "notes.tar.gz");
-        using (var gzip = new GZipStream(File.Create(tarGz), CompressionLevel.Fastest))
-            gzip.Write("gzip"u8);
+        // T-F274: every archive skipped used to end with "No errors detected", claiming a test that
+        // never ran. A RAR, which this router's tar.exe is said not to read, is skipped.
+        string rar = Path.Combine(_root, "notes.rar");
+        File.WriteAllBytes(rar, [0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00]);
         var ui = new FakeOperationUi();
 
-        await Create(ui).TestAsync([tarGz]);
+        await Create(ui).TestAsync([rar]);
 
         OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Warning);

@@ -228,6 +228,18 @@ internal sealed partial class TarSandboxScope : IDisposable
     }
 
     /// <summary>
+    /// T-F397: has tar.exe read every entry and write nothing ("-x -O": the contents go to its
+    /// stdout, which is dropped). <paramref name="onContentBytes"/> gets the size of each piece.
+    /// </summary>
+    public async Task<(int ExitCode, string StdErr)> TestAsync(Action<int> onContentBytes, CancellationToken cancellationToken)
+    {
+        if (_utf8Headers is null)
+            await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
+        (int exitCode, _, string stdErr) = await RunAsync("-x", ["-O"], cancellationToken, onContentBytes).ConfigureAwait(false);
+        return (exitCode, stdErr);
+    }
+
+    /// <summary>
     /// T-F171: extracts the first entry matching each of <paramref name="members"/> ("-q") into a
     /// fresh folder beside <see cref="OutputDirectory"/>, and returns that folder. The main pass
     /// leaves only the last of several same-named entries; this recovers the first one.
@@ -282,7 +294,7 @@ internal sealed partial class TarSandboxScope : IDisposable
     // One tar.exe run inside this scope's AppContainer, under a fresh Job Object (ActiveProcessLimit
     // = 1, RAM/CPU limits), reading the archive from its own handle with its own file position.
     private async Task<(int ExitCode, string StdOut, string StdErr)> RunAsync(
-        string mode, IReadOnlyList<string> arguments, CancellationToken cancellationToken)
+        string mode, IReadOnlyList<string> arguments, CancellationToken cancellationToken, Action<int>? onStdOutDiscarded = null)
     {
         string[] headerCharset = _utf8Headers == true ? ["--options", Utf8HeaderOption] : [];
         SandboxJobObject job;
@@ -302,7 +314,7 @@ internal sealed partial class TarSandboxScope : IDisposable
                 TarExecutablePath,
                 [mode, "-f", "-", .. headerCharset, .. arguments],
                 new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: QuarantineRoot,
-                    OutputEncoding: TarOutputEncoding.Current),
+                    OutputEncoding: TarOutputEncoding.Current, OnStdOutDiscarded: onStdOutDiscarded),
                 cancellationToken)
                 .ConfigureAwait(false);
 

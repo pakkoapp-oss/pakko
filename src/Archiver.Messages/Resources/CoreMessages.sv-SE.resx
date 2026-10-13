@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Det här arkivformatet stöds inte av systemets tar.exe (version {0}).</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>arkiv i tar-familjen kan inte testas</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Endast arkivets struktur kontrollerades: tar.exe kan inte verifiera innehållet i filerna i det här formatet.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Det här arkivet är lösenordsskyddat och kan inte extraheras.</value>

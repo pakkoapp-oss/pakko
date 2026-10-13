@@ -16,3 +16,13 @@ public sealed class SevenZipWriterFactAttribute : FactAttribute
             Skip = "this system's tar.exe does not write 7z";
     }
 }
+
+/// <summary>A theory that needs a tar.exe with the 7z writer; see <see cref="SevenZipWriterFactAttribute"/>.</summary>
+public sealed class SevenZipWriterTheoryAttribute : TheoryAttribute
+{
+    public SevenZipWriterTheoryAttribute()
+    {
+        if (!new TarSandboxedService(new GroupPolicyOptions()).CanCreateSevenZipAsync(CancellationToken.None).GetAwaiter().GetResult())
+            Skip = "this system's tar.exe does not write 7z";
+    }
+}

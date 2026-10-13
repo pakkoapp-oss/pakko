@@ -11,6 +11,9 @@ namespace Archiver.Core.Tests.Services;
 // T-F275 step 2: an engine that writes real archive files, so the router's PAR2 step runs for real.
 internal sealed class RecoveryWritingEngine : IArchiveService, ITarService
 {
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+        => throw new NotImplementedException();
+
     public Func<ArchiveOptions, IProgress<ProgressReport>?, ArchiveResult> Produce = (_, _) => new ArchiveResult();
     public ArchiveOptions? LastOptions;
     public int Calls;

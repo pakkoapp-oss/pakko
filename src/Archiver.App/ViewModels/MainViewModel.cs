@@ -60,8 +60,7 @@ public sealed partial class MainViewModel : ObservableObject
         ArchiveTree ArchiveIndex,
         List<string> BreadcrumbAncestry,
         string? ScopeDir,
-        EncryptionSummary? Encryption,
-        bool IsZip);
+        EncryptionSummary? Encryption);
 
     private readonly Stack<NestedBrowseLevel> _browseStack = new();
     private string? _currentNestedScopeDir;
@@ -71,7 +70,6 @@ public sealed partial class MainViewModel : ObservableObject
     // T-F199 step 6: the open archive level's encryption badge/notes and whether Test applies —
     // set on every transition (open, drill-in, back out, climb out, close).
     private EncryptionSummary? _browseEncryption;
-    private bool _browsedIsZip;
     // T-F275 step 3c: the PAR2 line of the archive opened from disk, and whether that archive is
     // open without a listing (it failed, and PAR2 files lie next to it).
     private RecoveryPanel _recoveryPanel = RecoveryPanel.None;
@@ -702,7 +700,7 @@ public sealed partial class MainViewModel : ObservableObject
         get
         {
             BrowseLocationState state = BrowseLocationState.For(
-                IsBrowsingArchive && BrowseScope == ArchiveBrowseScope.Archive, _browseStack.Count > 0, _browsedIsZip);
+                IsBrowsingArchive && BrowseScope == ArchiveBrowseScope.Archive, _browseStack.Count > 0);
             return _browseUnlisted ? state.WithoutListing() : state;
         }
     }
@@ -744,7 +742,7 @@ public sealed partial class MainViewModel : ObservableObject
     public Visibility DeleteAfterVisibility =>
         !IsBrowsingArchive || Location.OffersDeleteAfter ? Visibility.Visible : Visibility.Collapsed;
 
-    // A tar-family archive, or one that did not list, is tested by its PAR2 set (T-F275 step 3c).
+    // An archive that did not list stays open for its PAR2 set, and Test with it (T-F275 step 3c).
     public Visibility TestArchiveVisibility =>
         IsBrowsingArchive && (Location.ShowsTest || ShowsRecoveryPanel) ? Visibility.Visible : Visibility.Collapsed;
 
@@ -777,10 +775,9 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private void SetBrowseLevel(EncryptionSummary? encryption, bool isZip)
+    private void SetBrowseLevel(EncryptionSummary? encryption)
     {
         _browseEncryption = encryption;
-        _browsedIsZip = isZip;
         RaiseBrowseLocationChanged();
     }
 
@@ -1227,7 +1224,7 @@ public sealed partial class MainViewModel : ObservableObject
         ClearOutcome();
         // One archive's PAR2 line never shows on the next one.
         SetRecoveryPanel(RecoveryPanel.None, unlisted: false);
-        SetBrowseLevel(null, isZip: false);
+        SetBrowseLevel(null);
         // "Delete after" means sources in create mode and the archive here: a tick never carries
         // across the switch (T-F199 step 6).
         DeleteAfterOperation = false;
@@ -1265,7 +1262,7 @@ public sealed partial class MainViewModel : ObservableObject
                 // nothing listed, the reason in the PAR2 line, and Test to check it by its set.
                 _logService.Warn($"Archive did not list, kept open for its PAR2 files: {archivePath}: {result.ErrorMessage}");
                 _archiveIndex = ArchiveTreeIndex.Build([]);
-                SetBrowseLevel(null, IsZipOnDisk(archivePath));
+                SetBrowseLevel(null);
                 SetRecoveryPanel(RecoveryPanel.Found(_res.GetString("BrowseRecoveryFound"), listingError), unlisted: true);
                 RefreshCurrentFolder();
                 return;
@@ -1289,7 +1286,7 @@ public sealed partial class MainViewModel : ObservableObject
             DestinationPath = Path.GetDirectoryName(archivePath) ?? DestinationPath;
 
         _archiveIndex = ArchiveTreeIndex.Build(result.Entries);
-        SetBrowseLevel(EncryptionSummary.Of(result.Entries), IsZipOnDisk(archivePath));
+        SetBrowseLevel(EncryptionSummary.Of(result.Entries));
         if (hasRecoveryFiles)
             SetRecoveryPanel(RecoveryPanel.Found(_res.GetString("BrowseRecoveryFound")), unlisted: false);
         RefreshCurrentFolder();
@@ -1310,7 +1307,6 @@ public sealed partial class MainViewModel : ObservableObject
         IsBrowsingArchive = false;
     }
 
-    private static bool IsZipOnDisk(string archivePath) => ArchiveFormatDetector.Detect(archivePath) == ArchiveFormat.Zip;
 
     // T-F98: shared by EnterBrowseModeAsync (a real, on-disk archive) and
     // NavigateIntoNestedArchiveAsync (a temp-extracted nested one) — tar-family listing shells
@@ -1438,8 +1434,7 @@ public sealed partial class MainViewModel : ObservableObject
             _archiveIndex,
             new List<string>(_nestedBreadcrumbAncestry),
             _currentNestedScopeDir,
-            _browseEncryption,
-            _browsedIsZip));
+            _browseEncryption));
 
         _nestedBreadcrumbAncestry.Add(_currentLevelDisplayName ?? Path.GetFileName(BrowsedArchivePath ?? string.Empty));
         if (CurrentFolderPath.Length > 0)
@@ -1450,7 +1445,7 @@ public sealed partial class MainViewModel : ObservableObject
         BrowsedArchivePath = extractedPath;
         CurrentFolderPath = string.Empty;
         _archiveIndex = ArchiveTreeIndex.Build(listResult.Entries);
-        SetBrowseLevel(EncryptionSummary.Of(listResult.Entries), IsZipOnDisk(extractedPath));
+        SetBrowseLevel(EncryptionSummary.Of(listResult.Entries));
         RefreshCurrentFolder();
     }
 
@@ -1681,7 +1676,7 @@ public sealed partial class MainViewModel : ObservableObject
                 _archiveIndex = parentLevel.ArchiveIndex;
                 _nestedBreadcrumbAncestry = parentLevel.BreadcrumbAncestry;
                 _currentNestedScopeDir = parentLevel.ScopeDir;
-                SetBrowseLevel(parentLevel.Encryption, parentLevel.IsZip);
+                SetBrowseLevel(parentLevel.Encryption);
                 RefreshCurrentFolder();
                 if (childScopeDir is not null)
                     NestedArchiveCache.DeleteScope(childScopeDir);
@@ -1690,7 +1685,7 @@ public sealed partial class MainViewModel : ObservableObject
             case BrowseUpStep.ContainingFolder:
                 string containingFolder = Path.GetDirectoryName(BrowsedArchivePath)!;
                 BrowsedArchivePath = null;
-                SetBrowseLevel(null, isZip: false);
+                SetBrowseLevel(null);
                 BrowseScope = ArchiveBrowseScope.RealFileSystem;
                 CurrentFolderPath = containingFolder;
                 RefreshCurrentFolder();
@@ -1705,7 +1700,7 @@ public sealed partial class MainViewModel : ObservableObject
                 if (BrowseScope == ArchiveBrowseScope.Archive)
                 {
                     BrowsedArchivePath = null;
-                    SetBrowseLevel(null, isZip: false);
+                    SetBrowseLevel(null);
                 }
                 BrowseScope = ArchiveBrowseScope.ThisPc;
                 CurrentFolderPath = string.Empty;
@@ -1754,16 +1749,16 @@ public sealed partial class MainViewModel : ObservableObject
         CurrentFolderEntries = [];
         SelectedBrowserEntries = [];
         BreadcrumbSegments = [];
-        SetBrowseLevel(null, isZip: false);
+        SetBrowseLevel(null);
         DeleteAfterOperation = false;
         IsBrowsingArchive = false;
     }
 
-    // T-F241: the App's Test, through the same router call Explorer, Shell and the CLI use. ZIP,
-    // or any archive with PAR2 files next to it (TestArchiveVisibility); "no errors" only when the
-    // archive was really tested (T-F274).
+    // T-F241: the App's Test, through the same router call Explorer, Shell and the CLI use.
+    // T-F397: for every format the browser opens; "no errors" only when the archive was really
+    // tested (T-F274) and nothing was left unverified (a warning goes to the summary instead).
     private bool CanTestBrowsedArchive() =>
-        !IsBusy && BrowsedArchivePath is not null && (_browsedIsZip || ShowsRecoveryPanel);
+        !IsBusy && BrowsedArchivePath is not null;
 
     [RelayCommand(CanExecute = nameof(CanTestBrowsedArchive))]
     private async Task TestBrowsedArchiveAsync()

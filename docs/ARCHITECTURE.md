@@ -1316,14 +1316,16 @@ public interface IExtractionRouter
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default);
 
-    // T-F261: same classifier as ExtractAsync. ZIP paths go to IArchiveService.TestAsync;
-    // tar-family paths are skipped ("tar-family archives have no test capability") — tar.exe is
-    // never started; policy/capability refusals are skipped with their own reason.
+    // T-F261: same classifier as ExtractAsync. ZIP paths go to IArchiveService.TestAsync and
+    // (T-F397) tar-family paths to ITarService.TestAsync, ZIP first, in one climb of the
+    // progress; policy/capability refusals are skipped with their own reason.
     // T-F275 step 3, verifyRecoveryData (opt-in; pakko t sets it): each archive is also checked
     // against a PAR2 set next to it (RecoveryTestStep), a .par2 path stands for the archive its
-    // set protects, a tar-family archive with a usable set is checked by it instead of skipped,
-    // and a ZIP that tests intact while its set disagrees gets a DoesNotMatch warning (a set left
-    // from an earlier version), not damage. Under DisableRecoveryData no set is looked for and a
+    // set protects, and an archive that tests intact while its set disagrees gets a DoesNotMatch
+    // warning (a set left from an earlier version), not damage. T-F397: that holds only for a
+    // test that verified the contents (a ZIP, a 7z, tar.xz/bz2/zst); a pass that carries
+    // TestedStructureOnly does not count, and that warning is dropped for an archive its set
+    // could check, since the set compared every byte. Under DisableRecoveryData no set is looked for and a
     // .par2 path is an error.
     Task<ArchiveResult> TestAsync(
         IReadOnlyList<string> archivePaths,
@@ -1662,6 +1664,21 @@ Pakko's own next to the archive (`ProcessLaunchOptions.EnvironmentOverrides`,
 keeps the whole compressed stream in a temporary file. The policy name is `sevenzip`, the one
 reading uses. Why, and the measurements: `docs/DECISIONS.md`'s T-F342 wave 1 entry.
 
+**Testing a tar-family archive (T-F397).** `ITarService.TestAsync(archivePaths, progress,
+cancellationToken)` has tar.exe read every entry inside the same sandbox extraction uses and
+write nothing: `TarSandboxScope.TestAsync` runs `tar -x -O -f -`, and
+`ProcessLaunchOptions.OnStdOutDiscarded` makes `SandboxedProcessLauncher` read stdout in a fixed
+buffer and drop it, so an archive's contents are never held in memory. Before that run the test
+makes extraction's own pre-scan (`ScanForUnsafeEntriesAsync`): an archive extraction would refuse
+is refused with the same message, and the scan's sum of entry sizes is the total the progress
+counts the dropped bytes against. `TarTestCoverage.VerifiesContents` says, by format, whether such
+a pass verified what the files hold (7z, xz, bzip2, a zstd frame with the checksum flag) or only
+that the archive reads to its end (plain tar, tar.gz, tar.lzma, RAR; a .lzma never gets this far
+through the router, which does not recognize it, T-F398): the second kind returns a
+`TestedStructureOnly` warning, so the outcome is `CompletedWithWarnings` and no frontend says a
+plain "no errors". `ExtractionRouter` and `RecoveryService` use the same list for the PAR2 rule
+(a pass counts against a disagreeing set only when it verified the contents).
+
 **Who offers 7z (T-F342, the App and Explorer wave).** The App lists 7Z only after
 `CanCreateSevenZipAsync` answered yes (`CreationFormatOption.IsOffered(policy, format,
 sevenZipWriter)`; `MainViewModel.OfferSevenZipWhenWritableAsync` shows the item when the probe
@@ -1925,7 +1942,7 @@ real, supported command with an unsupported switch). Never a silent no-op.
 | Command | Core API | Notes |
 |---|---|---|
 | `x` | `IExtractionRouter.ExtractAsync` | `ExtractMode.SingleFolder`; `OnConflict = -ao ?? (-y ? Overwrite : Skip)`; `ConfirmCompressionBombExtraction` set only when `-y` |
-| `t` | `IExtractionRouter.TestAsync` (T-F261; ZIP-only testing — `ITarService` has no Test method) with `verifyRecoveryData` (T-F275), except for `-si` | tar-family paths become `SkippedFile`s with a named reason, not silently dropped, unless a PAR2 set next to them checks them; Group Policy applies |
+| `t` | `IExtractionRouter.TestAsync` (T-F261; T-F397: a tar-family archive is tested by `ITarService.TestAsync`) with `verifyRecoveryData` (T-F275), except for `-si` | a format whose contents tar.exe does not verify (tar, tar.gz, RAR) passes with the `TestedStructureOnly` warning, exit 1, unless a PAR2 set next to it checked it; Group Policy applies |
 | `i` | `PakkoServices.GetTarCapabilitiesAsync` + `ArchiveFormatPolicy` | each line's status (supported / not supported / blocked by Group Policy) comes from the shared classifier; no probe under `DisableTarExtraction` |
 | `a` | `IArchiveCreationRouter.ArchiveAsync` | always `ArchiveMode.SingleArchive`; `ArchiveNaming.GetBaseName` derives the name |
 | `l` | `IArchiveListingRouter.ListEntriesAsync` | looped once per archive path (the router itself takes one path at a time) |
@@ -2155,9 +2172,8 @@ services.AddSingleton<IAntivirusScanService, AntivirusScanService>();
 `ThreatScanResult` is a genuine three-state result, not a success/failure `ArchiveResult`. Since
 T-F268 that is `ShellCommands.ScanAsync` + `OperationMessages.ForScan`, sharing the one
 `IOperationUi` session (progress, cancel poll, password prompt) with every other command. `Archiver.ShellExtension` gained a `ScanCommand`
-leaf `IExplorerCommand`, gated on `AnyPathIsSupportedArchive` (not `AnyPathIsZip` like
-`TestCommand` — T-F86's ZIP-only reasoning for Test doesn't apply here, since the scan path
-genuinely supports tar-family via the quarantine flow), registered in `PakkoRootCommand::
+leaf `IExplorerCommand`, gated on `AnyPathIsSupportedArchive` (the scan path supports
+tar-family via the quarantine flow; `TestCommand` has the same gate since T-F397), registered in `PakkoRootCommand::
 EnumSubCommands` right after `TestCommand`. `Archiver.App`'s `MainViewModel` gained
 `ScanArchiveFromBrowserCommand` — one combined button (scans the current `SelectedBrowserEntries`
 selection if any, else the whole `BrowsedArchivePath` archive — deliberately not two separate

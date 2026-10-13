@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Tento formát archivu není podporován programem tar.exe tohoto systému (verze {0}).</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>archivy rodiny tar nelze testovat</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Byla zkontrolována pouze struktura archivu: tar.exe nedokáže ověřit obsah souborů v tomto formátu.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Tento archiv je chráněn heslem a nelze jej extrahovat.</value>

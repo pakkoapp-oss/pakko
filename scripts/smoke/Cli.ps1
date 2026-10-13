@@ -315,3 +315,31 @@ Add-SmokeStep 'CLI-029' {
     Assert-Smoke ($line[0] -match 'create, extract, list' -and $line[0] -match '\(supported\)') "the 7z line of i: $($line[0])"
     "7z: $($line[0].Trim())"
 }
+
+# T-F397: 'pakko t' on a 7z. tar.exe reads every entry in the sandbox and writes nothing; a 7z
+# carries checksums it compares, so a whole one passes with no warning and a changed byte fails.
+Add-SmokeStep 'CLI-033' {
+    $folder = Get-StepFolder 'cli033'
+    $tree = Get-Fixture Tree
+    foreach ($method in @('lzma2', 'copy')) {
+        $archive = Join-Path $folder "$method.7z"
+        $made = Invoke-Pakko @('a', '-t7z', "-m0=$method", $archive, $tree)
+        Assert-Smoke ($made.ExitCode -eq 0) "a -t7z -m0=$method`: exit $($made.ExitCode) $($made.Text)"
+
+        $whole = Invoke-Pakko @('t', $archive)
+        Assert-Smoke ($whole.ExitCode -eq 0 -and $whole.Error.Trim().Length -eq 0) "t on the whole $method.7z: exit $($whole.ExitCode) $($whole.Text)"
+
+        $flipped = Join-Path $folder "$method-flipped.7z"
+        Copy-Item -LiteralPath $archive -Destination $flipped
+        Set-DamagedRange -Path $flipped -Offset ([long]((Get-Item -LiteralPath $flipped).Length / 2)) -Count 4
+        $damaged = Invoke-Pakko @('t', $flipped)
+        Assert-Smoke ($damaged.ExitCode -eq 2 -and $damaged.Error.Contains("$method-flipped.7z")) "t on the damaged $method.7z: exit $($damaged.ExitCode) $($damaged.Text)"
+
+        $cut = Join-Path $folder "$method-cut.7z"
+        $bytes = [System.IO.File]::ReadAllBytes($archive)
+        [System.IO.File]::WriteAllBytes($cut, $bytes[0..([int]($bytes.Length * 0.6))])
+        $truncated = Invoke-Pakko @('t', $cut)
+        Assert-Smoke ($truncated.ExitCode -eq 2) "t on the truncated $method.7z: exit $($truncated.ExitCode) $($truncated.Text)"
+    }
+    Assert-Smoke (@(Get-ChildItem -LiteralPath $folder -Force).Count -eq 6) "t left something behind: $((Get-ChildItem -LiteralPath $folder -Force -Name) -join ', ')"
+}

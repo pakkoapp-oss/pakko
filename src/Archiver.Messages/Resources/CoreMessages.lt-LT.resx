@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Šios sistemos tar.exe (versija {0}) nepalaiko šio archyvo formato.</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>tar šeimos archyvų negalima testuoti</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Patikrinta tik archyvo struktūra: tar.exe negali patikrinti šio formato failų turinio.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Šis archyvas apsaugotas slaptažodžiu ir jo negalima išskleisti.</value>

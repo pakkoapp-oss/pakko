@@ -120,8 +120,8 @@
   <data name="ArchiveFormatNotSupportedByTar" xml:space="preserve">
     <value>Muundo huu wa kumbukumbu hautumiki na tar.exe ya mfumo huu (toleo {0}).</value>
   </data>
-  <data name="NoTestCapability" xml:space="preserve">
-    <value>kumbukumbu za familia ya tar haziwezi kujaribiwa</value>
+  <data name="TestedStructureOnly" xml:space="preserve">
+    <value>Muundo wa kumbukumbu pekee ndio uliokaguliwa: tar.exe haiwezi kuthibitisha maudhui ya faili katika umbizo hili.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Kumbukumbu hii imelindwa kwa nenosiri na haiwezi kutolewa.</value>

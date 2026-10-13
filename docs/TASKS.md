@@ -1494,12 +1494,35 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   (`SevenZipArchiveCommand`), hidden after Pakko has learnt that this tar.exe does not write
   7z (the verdict file the App and the Shell leave for the extension); smoke rows `SHL-013`,
   `EXP-011`, `EXP-012`, `APP-025`. Decisions: `docs/DECISIONS.md`'s T-F342 wave 3 entry.
+- **Wave 4 ("Test", T-F397) done 2026-10-13:** every format tar.exe reads is tested (tar.exe
+  reads each entry in the sandbox and writes nothing), in `pakko t`, Explorer and the App; a
+  format whose contents tar.exe does not verify passes with a warning in place of "no errors";
+  PAR2 end to end on a 7z; the Explorer submenu reads zip, 7z, tar. Entry: `docs/TASKS_DONE.md`'s
+  T-F397; decisions and measurements: `docs/DECISIONS.md`'s T-F397 entry.
 - **For the CHANGELOG (the documents wave):** `pakko a x.7z src` with no `-t` is now exit 7; it
-  used to write a ZIP named `x.7z`.
-- **Next:** "Test" for 7z, and the documents (`SECURITY.md`: the
+  used to write a ZIP named `x.7z`. `pakko t` on a tar-family archive now tests it: exit 0 for
+  7z, tar.xz, tar.bz2 and tar.zst, exit 1 with a warning for tar, tar.gz and RAR,
+  exit 2 for a damaged one; it used to be exit 1 with "no test capability" for all of them.
+  Explorer and the App offer Test for every archive.
+- **Next:** the documents (`SECURITY.md`: the
   maintainer agreed on 2026-10-12). The maintainer decided the same day that v1.8.1 carries 7z
   creation without encryption.
 - **Reported by:** the user, 2026-10-06.
+
+### T-F398 — Pakko creates tar.lzma and cannot list, extract or test one (P2)
+
+- [ ] **Status:** open. Found 2026-10-13 by smoke row `CLI-034` (T-F397). `pakko a -ttar.lzma`
+  writes the archive; `pakko l`, `x` and `t` on it answer "File is not a recognized archive
+  format", and so do the App and the Shell, which use the same router.
+- **Cause:** an .lzma (LZMA-alone) stream has no magic number, so
+  `ArchiveFormatDetector.Detect` returns `Unknown` (the comment above
+  `DetectFormatFromHeader` calls it a known gap), and `ArchiveFormatPolicy` sends an unknown
+  file to the ZIP engine. tar.exe itself reads the file (the engine's tests extract and test
+  a tar.lzma directly).
+- **Ways forward, none chosen:** let the `.lzma` / `.tlz` extension decide when the bytes
+  match no other format (an extension-assisted fallback, with a test that a renamed ZIP is
+  still a ZIP); or stop offering tar.lzma for creation. Since tar creation shipped (T-F105).
+- **Reported by:** the T-F342 wave 4 smoke run, 2026-10-13.
 
 ### T-F343 — `pakko` in place of 7-Zip's console program: measure how compatible it is (v2.0, user-requested)
 
