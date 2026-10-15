@@ -75,8 +75,8 @@ def fill(rows, files, new_locales, keep_lists):
     header = rows[0]
     for r in rows[1:]:
         icons = {c for c in r[FIRST_LANGUAGE_COLUMN:] if c} if r[0] == ICON else set()
-        assert len(icons) <= 1, icons
-        icon = next(iter(icons), '')
+        # A later export has the icon in every language under its own listing's URL: kept as is.
+        icon = next(iter(icons)) if len(icons) == 1 else ''
         for i in range(FIRST_LANGUAGE_COLUMN, len(header)):
             r[i] = new_value(r[0], r[i], files[header[i]], icon, header[i] in keep_lists)
 
