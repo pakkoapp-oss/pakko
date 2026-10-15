@@ -15,7 +15,8 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 ## Current State
 
 v1.1 through v1.4 (shell extension, tar.exe integration, Group Policy) and the v1.5-v1.7 waves
-are complete. **v1.8.1** (v1.8.0, PAR2 recovery data, plus fixes) was released 2026-10-12. The
+are complete. **v1.8.0** (PAR2 recovery data) was released 2026-10-11; v1.8.1 (fixes plus 7z
+creation, T-F342, and Test for tar.exe's formats, T-F397) is in progress, not tagged. The
 Store bundle 1.7.2.0, the first Native AOT build, passed certification 2026-10-11; 1.8.1 is not
 submitted yet (`docs/DECISIONS.md`). Store listing:
 https://apps.microsoft.com/detail/9p5mw010d8pr.
@@ -273,7 +274,7 @@ dotnet publish src/Archiver.App/Archiver.App.csproj \
 
 C++ build and test commands: `.claude/rules/shell-extension.md`.
 
-> **Toolchain (T-F270, 2026-09-26):** .NET 10 LTS — `global.json` pins SDK `10.0.401` exactly
+> **Toolchain (T-F270, 2026-09-26):** .NET 10 LTS — `global.json` pins SDK `10.0.402` exactly
 > (`rollForward: disable`; the lock files carry its ILCompiler version, T-F364; bump: `scripts/README.md`); **C# 14** (T-F363) — `LangVersion` set once in
 > `Directory.Build.props`, never per project (a test reads them). Write C# 13/14: `[ObservableProperty]`
 > on a `partial` property, never a field (MVVMTK0045 is an error); `System.Threading.Lock`, never a
