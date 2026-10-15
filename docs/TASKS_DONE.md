@@ -12813,3 +12813,21 @@ PowerShell does natively.
   there: the format detector does not recognize one (T-F398, found by smoke row `CLI-034`). `SECURITY.md` does not yet name this launch of tar.exe
   (the T-F342 wave 5 edit).
 - **Asked by:** the T-F342 plan (a 7z Pakko makes must be testable), 2026-10-12.
+
+### T-F398 — Pakko creates tar.lzma and cannot list, extract or test one (P2)
+
+- [x] **Status:** done 2026-10-15 (unreleased; goes into v1.8.1). `ArchiveFormatDetector.Detect`
+  answers Lzma for a file whose bytes name no format, whose name ends in `.lzma`, and whose first
+  byte is a valid LZMA properties byte (below 225) in a 13-byte header. The bytes still win: a ZIP
+  or a gzip renamed to `.tar.lzma` keeps its own format. `l`, `x` and `t` in `pakko`, the App and
+  the Shell read the tar.lzma Pakko writes; `t` passes it with the "only the structure was
+  checked" warning (T-F397).
+- **The maintainer's choice (2026-10-15):** the name fallback, not dropping tar.lzma from
+  creation. `.tlz` is not added: Pakko does not write it, and a new extension would change the
+  Explorer and manifest lists (T-F264).
+- **Tests:** twelve cases in `ArchiveFormatDetectorTests` and
+  `TarLzma_WrittenByPakko_IsListedExtractedAndTested` (the real `pakko.exe`). Red before the fix:
+  the three `.lzma`-named cases and the CLI test. The guards (other names, a renamed ZIP and gzip,
+  impossible properties bytes, a short file) pass either way; five mutants of the fix show each
+  one failing (`docs/DECISIONS.md`'s T-F398 entry). Smoke row `CLI-034` has its tar.lzma case back.
+- **Found by:** smoke row `CLI-034` (T-F397), 2026-10-13.

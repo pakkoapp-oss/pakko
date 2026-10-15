@@ -229,6 +229,30 @@ public sealed class CliSubprocessTests
         stdOut.Should().NotContain("No errors");
     }
 
+    // T-F398: an .lzma stream has no magic number, so the tar.lzma pakko writes used to reach the
+    // ZIP engine and be "not a recognized archive format" for l, x and t.
+    [RequiresTarCapability("lzma")]
+    public void TarLzma_WrittenByPakko_IsListedExtractedAndTested()
+    {
+        (string scratchDir, string sourceFile) = CreateSourceFile();
+        string archivePath = Path.Combine(scratchDir, "out.tar.lzma");
+        string destDir = Path.Combine(scratchDir, "out");
+
+        CliProcessRunner.Run("a", "-ttar.lzma", archivePath, sourceFile).ExitCode.Should().Be(0);
+
+        (int listExit, string listOut, string listErr) = CliProcessRunner.Run("l", archivePath);
+        listExit.Should().Be(0, because: listErr);
+        listOut.Should().Contain("secret.txt");
+
+        CliProcessRunner.Run("x", $"-o{destDir}", archivePath).ExitCode.Should().Be(0);
+        File.ReadAllText(Path.Combine(destDir, "secret.txt")).Should().Be("top secret content");
+
+        (int testExit, string testOut, string testErr) = CliProcessRunner.Run("t", archivePath);
+        testExit.Should().Be(1);
+        testErr.Trim().Should().Be("pakko: warning: out.tar.lzma: Only the archive's structure was checked: tar.exe cannot verify the contents of files in this format.");
+        testOut.Should().NotContain("No errors");
+    }
+
     // --- T-F191: -p{pwd} ---
 
     private static string EncryptedZipPath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "encrypted_aes256.zip");

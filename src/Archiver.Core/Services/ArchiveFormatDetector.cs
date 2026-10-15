@@ -3,8 +3,9 @@ using Archiver.Core.Models;
 namespace Archiver.Core.Services;
 
 /// <summary>
-/// Detects archive format from magic bytes only — no extension reliance, matching this
-/// codebase's existing ZIP signature-sniffing convention (see ZipArchiveService.IsZipFile).
+/// Detects archive format from magic bytes — no extension reliance, matching this
+/// codebase's existing ZIP signature-sniffing convention (see ZipArchiveService.IsZipFile),
+/// except for .lzma, which has no magic number (T-F398).
 /// Used by ExtractionRouter to decide which service (IArchiveService vs ITarService) should
 /// handle a given archive path.
 /// </summary>
@@ -67,7 +68,10 @@ public static class ArchiveFormatDetector
     public static ArchiveFormat FormatFromExtension(string fileName) =>
         _formatByExtension.GetValueOrDefault(Path.GetExtension(fileName), ArchiveFormat.Unknown);
 
-    /// <summary>Detects an archive's real format from its magic bytes. Returns Unknown on any read failure.</summary>
+    /// <summary>
+    /// Detects an archive's real format from its magic bytes; an .lzma name decides only when the
+    /// bytes name no format (T-F398). Returns Unknown on any read failure.
+    /// </summary>
     public static ArchiveFormat Detect(string path)
     {
         try
@@ -75,7 +79,10 @@ public static class ArchiveFormatDetector
             using FileStream fs = File.OpenRead(path);
             Span<byte> header = stackalloc byte[262];
             int read = fs.Read(header);
-            return DetectFormatFromHeader(header, read);
+            ArchiveFormat format = DetectFormatFromHeader(header, read);
+            return format == ArchiveFormat.Unknown && FormatFromExtension(path) == ArchiveFormat.Lzma && IsLzmaAloneHeader(header, read)
+                ? ArchiveFormat.Lzma
+                : format;
         }
         catch
         {
@@ -83,10 +90,17 @@ public static class ArchiveFormatDetector
         }
     }
 
-    // NOTE: raw .lzma (LZMA_Alone) streams have no reliable magic number — cannot be
-    // distinguished from arbitrary binary data by header bytes alone. Files in this format will
-    // classify as Unknown until a future extension-assisted fallback is added; this is a known
-    // gap, not an oversight.
+    // T-F398: an .lzma (LZMA_Alone) stream has no magic number, so the name decides, and only
+    // when the bytes name no other format. A wrong guess reaches tar.exe in the sandbox, which
+    // refuses it; before this, Pakko could not read the tar.lzma it writes.
+    private const int LzmaAloneHeaderLength = 13;
+
+    // The properties byte is (pb * 5 + lp) * 9 + lc with lc < 9, lp < 5, pb < 5.
+    private const byte LzmaPropertiesLimit = 9 * 5 * 5;
+
+    private static bool IsLzmaAloneHeader(ReadOnlySpan<byte> h, int read) =>
+        read >= LzmaAloneHeaderLength && h[0] < LzmaPropertiesLimit;
+
     private static ArchiveFormat DetectFormatFromHeader(ReadOnlySpan<byte> header, int read)
     {
         if (IsZipSignature(header, read)) return ArchiveFormat.Zip;
