@@ -124,6 +124,70 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
         ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Unknown);
     }
 
+    // T-F398: an .lzma (LZMA_Alone) stream has no magic number; the 13-byte header tar.exe's
+    // --lzma writes (measured 2026-10-15): properties 0x5D, a 4 MiB dictionary, an unknown size.
+    private static readonly byte[] LzmaAloneHeader =
+        [0x5D, 0x00, 0x00, 0x40, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x33];
+
+    [Theory]
+    [InlineData("a.tar.lzma")]
+    [InlineData("A.TAR.LZMA")]
+    [InlineData("a.lzma")]
+    public void Detect_LzmaAloneHeaderNamedLzma_ReturnsLzma(string name)
+    {
+        string path = WriteBytes(name, LzmaAloneHeader);
+        ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Lzma);
+    }
+
+    [Theory]
+    [InlineData("a.bin")]
+    [InlineData("a.zip")]
+    [InlineData("a.lzma.bin")]
+    public void Detect_LzmaAloneHeaderUnderAnotherName_ReturnsUnknown(string name)
+    {
+        string path = WriteBytes(name, LzmaAloneHeader);
+        ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Unknown);
+    }
+
+    [Fact]
+    public void Detect_ZipNamedLzma_ReturnsZip()
+    {
+        string path = WriteBytes("renamed.tar.lzma", [0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Zip, "the bytes decide whenever they name a format");
+    }
+
+    [Fact]
+    public void Detect_GZipNamedLzma_ReturnsGZip()
+    {
+        string path = WriteBytes("renamed.tar.lzma", [0x1F, 0x8B, 0x08, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.GZip);
+    }
+
+    // 225 = 9 * 5 * 5: lc, lp and pb cannot encode it, so no LZMA decoder accepts the stream.
+    [Theory]
+    [InlineData(0xE1)]
+    [InlineData(0xFF)]
+    public void Detect_NamedLzmaWithImpossibleProperties_ReturnsUnknown(byte properties)
+    {
+        byte[] bytes = [.. LzmaAloneHeader];
+        bytes[0] = properties;
+        string path = WriteBytes("a.tar.lzma", bytes);
+        ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Unknown);
+    }
+
+    [Fact]
+    public void Detect_NamedLzmaShorterThanTheHeader_ReturnsUnknown()
+    {
+        string path = WriteBytes("a.tar.lzma", LzmaAloneHeader[..12]);
+        ArchiveFormatDetector.Detect(path).Should().Be(ArchiveFormat.Unknown);
+    }
+
+    [Fact]
+    public void Detect_MissingLzmaFile_ReturnsUnknown()
+    {
+        ArchiveFormatDetector.Detect(Path.Combine(_temp.Path, "missing.tar.lzma")).Should().Be(ArchiveFormat.Unknown);
+    }
+
     [Theory]
     [InlineData("clip.zip")]
     [InlineData("clip.RAR")]

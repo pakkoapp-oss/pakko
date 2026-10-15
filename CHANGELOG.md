@@ -35,6 +35,9 @@ a list row selected from the keyboard have done nothing since v1.7.2, the first 
   large run: any archive creation in that folder removes it.
 - **T-F385** - the Explorer operation window's password page no longer cuts its buttons.
 - **T-F387** - a long label (German) no longer pushes the PAR2 percentage box past the card's edge.
+- **T-F398** - `pakko l`, `x` and `t`, the App and Explorer read a tar.lzma archive. Pakko
+  writes tar.lzma but answered "not a recognized archive format" for one: an .lzma stream has no
+  signature, so the name now decides when the bytes name no other format.
 
 ### Changed
 
@@ -45,6 +48,7 @@ a list row selected from the keyboard have done nothing since v1.7.2, the first 
 - **T-F384** - the App's two lists have names for screen readers.
 - **T-F377** - `pakko.exe` declares per-monitor DPI awareness, the one finding of the Windows App
   Certification Kit for v1.8.0.
+- Built with the .NET 10.0.13 runtime (SDK 10.0.402).
 
 ### Known issues
 

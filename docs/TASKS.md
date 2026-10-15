@@ -1509,21 +1509,6 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   creation without encryption.
 - **Reported by:** the user, 2026-10-06.
 
-### T-F398 — Pakko creates tar.lzma and cannot list, extract or test one (P2)
-
-- [ ] **Status:** open. Found 2026-10-13 by smoke row `CLI-034` (T-F397). `pakko a -ttar.lzma`
-  writes the archive; `pakko l`, `x` and `t` on it answer "File is not a recognized archive
-  format", and so do the App and the Shell, which use the same router.
-- **Cause:** an .lzma (LZMA-alone) stream has no magic number, so
-  `ArchiveFormatDetector.Detect` returns `Unknown` (the comment above
-  `DetectFormatFromHeader` calls it a known gap), and `ArchiveFormatPolicy` sends an unknown
-  file to the ZIP engine. tar.exe itself reads the file (the engine's tests extract and test
-  a tar.lzma directly).
-- **Ways forward, none chosen:** let the `.lzma` / `.tlz` extension decide when the bytes
-  match no other format (an extension-assisted fallback, with a test that a renamed ZIP is
-  still a ZIP); or stop offering tar.lzma for creation. Since tar creation shipped (T-F105).
-- **Reported by:** the T-F342 wave 4 smoke run, 2026-10-13.
-
 ### T-F343 — `pakko` in place of 7-Zip's console program: measure how compatible it is (v2.0, user-requested)
 
 - [ ] **Status:** open. Requested by the user 2026-10-06. One of the project's goals is a console

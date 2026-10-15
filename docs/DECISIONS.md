@@ -13897,6 +13897,34 @@ gzip counted as verified; the zstd checksum flag ignored.
 Not measured on the device: the progress moving during a long test (the integration test reads
 the reports), and Test under `DisableTarExtraction` (`POL-010`, the elevated run at the end).
 
+## T-F398 — reading the tar.lzma Pakko writes (2026-10-15)
+
+An .lzma (LZMA-alone) stream starts with a properties byte, a 4-byte dictionary size and an
+8-byte uncompressed size; no magic number. The detector therefore answered Unknown and the ZIP
+engine refused the file (the T-F397 entry above, "Found on the way").
+
+- **Chosen (the maintainer, 2026-10-15): the name decides, but only after the bytes.** `Detect`
+  first tries every signature; only an Unknown result with an `.lzma` name and a plausible header
+  (13 bytes at least, properties byte `(pb * 5 + lp) * 9 + lc` below 225) becomes Lzma. What
+  tar.exe's `--lzma` writes was checked: `5D 00 00 40 00` followed by eight `FF` bytes.
+- **Why the name is acceptable here:** a wrong guess sends the file to tar.exe inside the sandbox,
+  which refuses it with its own error, where before the ZIP engine refused it. Group Policy's
+  format rules see Lzma as for any other tar-family format.
+- **Rejected:** stop offering tar.lzma for creation (breaks scripts that already write it, and
+  leaves existing archives unreadable); a stricter check of the dictionary size (xz's own rule
+  accepts only some sizes, other writers differ, and the sandbox already refuses a false guess);
+  adding `.tlz` (Pakko does not write it; the extension lists are compared by T-F264's test).
+
+### Mutants (each fails a named test, then restored)
+
+| Mutant of `ArchiveFormatDetector.Detect` | Fails |
+|---|---|
+| no `.lzma` name condition | `Detect_LzmaAloneHeaderUnderAnotherName_ReturnsUnknown` (all three names) |
+| no properties-byte check | `Detect_NamedLzmaWithImpossibleProperties_ReturnsUnknown` (225, 255) |
+| no 13-byte length check | `Detect_NamedLzmaShorterThanTheHeader_ReturnsUnknown` |
+| the name checked before the signatures | `Detect_ZipNamedLzma_ReturnsZip`, `Detect_GZipNamedLzma_ReturnsGZip` |
+| `<` becomes `<=` on the properties byte | `Detect_NamedLzmaWithImpossibleProperties_ReturnsUnknown` (225) |
+
 ## T-F390 — tar.exe's wrong name for a missing list entry (2026-10-12)
 
 Measured on bsdtar 3.8.8 (Windows build 26300), a `-T -` list of `-C <dir>` / `<name>` lines,

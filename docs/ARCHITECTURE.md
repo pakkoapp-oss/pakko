@@ -93,7 +93,7 @@ src/
 │   │   │                                  Group Policy gate) for extract, test, list and scan
 │   │   ├── PakkoServices.cs            ← T-F261: Core factory for Shell/CLI, one policy for everything
 │   │   ├── ArchiveEntrySecurity.cs     ← ADS/reserved-name/reparse-point/bomb checks, shared
-│   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based
+│   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based (.lzma by name, T-F398)
 │   │   ├── ArchiveNaming.cs            ← compound-extension-aware naming (T-F103)
 │   │   ├── SourcePathNormalizer.cs     ← a creation source as entries are named from it: no trailing separator, "."/".."/relative resolved (T-F153, T-F338)
 │   │   ├── ConflictResolver.cs         ← T-F06: resolves ConflictBehavior.Ask
@@ -1347,7 +1347,8 @@ public interface IExtractionRouter
 
 Implementation: `ExtractionRouter` in `Archiver.Core/Services/`. Classifies every
 `ArchivePaths` entry via `ArchiveFormatDetector.Detect` (magic-byte only — ZIP/gzip/bzip2/
-RAR/7z/xz/zstd via header bytes, plain `.tar` via the `ustar` string at offset 257), routes
+RAR/7z/xz/zstd via header bytes, plain `.tar` via the `ustar` string at offset 257; an `.lzma`
+name with a valid LZMA properties byte when the bytes name nothing, T-F398), routes
 ZIP to `IArchiveService` and tar-family formats `TarCapabilities` reports supported to
 `ITarService` (both sub-calls get `OpenDestinationFolder = false` — the router opens it itself,
 once, after merging), and merges both `ArchiveResult`s. **T-F142 correction:** no adapter step
@@ -1683,8 +1684,8 @@ is refused with the same message, and the scan's sum of entry sizes is the total
 counts the dropped bytes against. `TarTestCoverage.VerifiesContents` says, by format, whether such
 a pass verified what the files hold (7z, bzip2, an xz stream or a zstd frame whose header names a
 check) or only
-that the archive reads to its end (plain tar, tar.gz, tar.lzma, RAR; a .lzma never gets this far
-through the router, which does not recognize it, T-F398): the second kind returns a
+that the archive reads to its end (plain tar, tar.gz, tar.lzma, RAR; a .lzma reaches it by its name,
+T-F398): the second kind returns a
 `TestedStructureOnly` warning, so the outcome is `CompletedWithWarnings` and no frontend says a
 plain "no errors". `ExtractionRouter` and `RecoveryService` use the same list for the PAR2 rule
 (a pass counts against a disagreeing set only when it verified the contents).

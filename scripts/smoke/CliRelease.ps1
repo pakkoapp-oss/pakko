@@ -635,8 +635,8 @@ Add-SmokeStep 'CLI-031' {
 
 # T-F397: 'pakko t' on the other formats tar.exe reads. It compares the checksums of xz, bzip2
 # and zstd, and does not compare gzip's CRC-32; a plain tar has none. For those a passed test is
-# exit 1 with the warning that only the structure was checked. A tar.lzma is not here: Pakko
-# does not recognize one at all (T-F398).
+# exit 1 with the warning that only the structure was checked. A tar.lzma is recognized by its
+# name, having no magic number (T-F398).
 Add-SmokeStep 'CLI-034' {
     $folder = Get-StepFolder 'cli034'
     $tree = Get-Fixture Tree
@@ -647,6 +647,7 @@ Add-SmokeStep 'CLI-034' {
         @{ Type = 'tar.zst'; Verified = $true }
         @{ Type = 'tar.gz'; Verified = $false }
         @{ Type = 'tar'; Verified = $false }
+        @{ Type = 'tar.lzma'; Verified = $false }
     )
     foreach ($case in $cases) {
         $archive = Join-Path $folder "data.$($case.Type)"
