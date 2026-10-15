@@ -108,9 +108,12 @@ accessed by Windows with the user's credentials, as for any other application. S
 The app runs only when the user explicitly opens it. No persistent processes.
 
 **No format parsers beyond ZIP**
-Each supported format adds parser attack surface. RAR and 7z are read-only, via the Windows
-built-in `tar.exe` process — not an in-process parser — since libarchive has no writer for
-either. TAR-family formats (read and create) use the same `tar.exe` process.
+Each supported format adds parser attack surface. RAR is read-only and 7z is read and created
+(v1.8.1, T-F342), both via the Windows built-in `tar.exe` process — not an in-process parser.
+libarchive has no RAR writer; its 7z writer is in the tar.exe of recent Windows releases and not
+in older ones, so Pakko runs it once on an empty input to find out (a probe, not a version table)
+and offers 7z only where it answered. TAR-family formats (read and create) use the same
+`tar.exe` process.
 Two bounded metadata reads run in-process, neither extracting anything: the RAR5 encryption check
 (see "Encrypted-Archive Diagnostics" below) and, for an uncompressed tar only, a walk of its
 512-byte header blocks (T-F305) that decides whether the names are UTF-8 or the OEM code page when
@@ -329,6 +332,47 @@ simply starts with `-` (T-F283, fixed in v1.6.0): since then the selected names 
 tar.exe's command line at all — they go to its standard input as a name list, where only an exact
 `-C` line has a meaning of its own.
 
+**7z creation (T-F342, v1.8.1)** runs the same way, for the same reason: its input is the files the
+user selected. What differs from the tar family:
+
+- **The writer's temporary file stays next to the archive.** libarchive's 7z writer buffers the
+  compressed data in a temporary file and takes its folder from TMP/TEMP. Pakko starts tar.exe
+  with both set to a folder of its own beside the archive (`.pakko-7z-<owner>-<id>`), excluded from
+  the archive by name, removed when the run ends and swept by the next creation in that folder if
+  the process was killed. Without this a full copy of the user's data would sit in `%TEMP%` on the
+  system drive while the archive is written.
+- **No password.** The writer has no encryption and libarchive ignores `--passphrase` without a
+  word, so a 7z with a password would come out unencrypted. Pakko refuses a password for 7z
+  before tar.exe starts (`pakko a -t7z -p...` is exit 7, the App and Explorer offer no password
+  for it) and never passes the option.
+- **Metadata:** each entry keeps its three times and the read-only attribute; Hidden and System
+  are not stored (the writer has no source for them).
+
+**Links inside a selected folder (T-F391, v1.8.1)** are skipped when a tar-family or 7z archive is
+created, with the same rule and messages as ZIP (T-F23): a junction or symbolic link is not
+followed, so the archive cannot pick up files from outside the selection, and is not stored as a
+link either. tar.exe would otherwise store a junction as a folder holding everything its target
+holds. Hard links are not reparse points and are still stored (T-F392, open).
+
+### Test (T-F397, v1.8.1)
+
+"Test" of a tar-family, 7z or RAR archive runs tar.exe **inside the same sandbox** as extraction:
+the archive is hostile input to libarchive's parser whatever is done with its contents. The
+whole-archive pre-scan (T-F49) runs first, so an archive extraction would refuse fails the test
+with the same message. Then tar.exe reads every entry with `-x -O`: the contents go to standard
+output, which Pakko reads and discards, and nothing is written to disk.
+
+A pass means what tar.exe checked. It compares the checksums of 7z, bzip2, and of an xz stream or
+a zstd frame that carries one; it does not compare gzip's CRC-32 or a RAR's data, and a plain tar
+and an .lzma have none. For those formats a passed test carries the warning "Only the archive's
+structure was checked" and no frontend says "no errors". A PAR2 set beside the archive is trusted
+over a passed test only where the test did verify the contents.
+
+**An .lzma archive is recognized by its name (T-F398, v1.8.1).** The format has no signature, so
+when the bytes match no other format and the name ends in `.lzma`, the file is treated as one; the
+bytes always win over the name. A wrong guess reaches tar.exe inside the sandbox, which refuses
+it, where before the ZIP engine refused it.
+
 ### Trust Chain
 
 ```
@@ -501,7 +545,7 @@ Always invoked as `C:\Windows\System32\tar.exe` — never as `tar` via PATH sear
 
 ---
 
-## PAR2 Recovery Data (T-F275, v1.8, in progress)
+## PAR2 Recovery Data (T-F275, v1.8)
 
 - **What it protects against:** accidental damage — bad sectors, a truncated copy. It is not
   authentication: whoever writes a PAR2 set chooses both the recovery data and the MD5s a repair is
@@ -621,7 +665,7 @@ This tool is appropriate for:
 
 This tool is **not** a replacement for:
 
-- Full-featured archivers where RAR/7z writing, encrypted 7z/RAR, encrypted file names, or
+- Full-featured archivers where RAR writing, encrypted 7z/RAR, encrypted file names, or
   encryption other than AES-256 ZIP is required
 - Environments requiring FIPS 140-2 validated cryptography (password-protected ZIP is read and
   written via .NET's own AES/HMAC/PBKDF2, but the WinZip AES format itself mandates SHA-1 and Pakko makes no
