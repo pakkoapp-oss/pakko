@@ -12,8 +12,24 @@ the technical account of any task named here.
 
 ## v1.8.1 — 2026-10-12
 
-Fixes found by walking every on-device check of v1.8.0 by hand. The one that matters most: keys on
-a list row selected from the keyboard have done nothing since v1.7.2, the first Native AOT build.
+Pakko creates 7z archives, and "Test" works for every archive it reads. Plus the fixes found by
+walking every on-device check of v1.8.0 by hand; the one that matters most: keys on a list row
+selected from the keyboard have done nothing since v1.7.2, the first Native AOT build.
+
+### Added
+
+- **T-F342** - 7z archives can be created: 7Z in the App's Format list (second, after ZIP), Add to
+  "name.7z" in the Explorer menu, `pakko a -t7z` (also `-m0=lzma2|lzma|bzip2|deflate|copy`),
+  `Archiver.Shell.exe --archive --format 7z`. They are written by Windows' own tar.exe, which has
+  the 7z writer in recent Windows releases: Pakko asks it once, and where it cannot write 7z the
+  format is not offered. No password: the writer has no encryption, so a password for 7z is
+  refused before anything is written. The writer's temporary file is kept next to the archive,
+  not in `%TEMP%`. Group Policy's `sevenzip` format name covers creation too.
+- **T-F397** - "Test" for 7z, RAR and the tar family (tar, gz, bz2, xz, zst, lzma) in `pakko t`,
+  the Explorer menu and the App. tar.exe reads every entry inside the sandbox and writes nothing.
+  Where it compares the contents' checksums (7z, bz2, and xz or zst written with a check) a pass
+  is "no errors"; for tar, gz, lzma and RAR a pass says that only the structure was checked.
+  Recovery data (PAR2) works on a 7z end to end.
 
 ### Fixed
 
@@ -35,12 +51,24 @@ a list row selected from the keyboard have done nothing since v1.7.2, the first 
   large run: any archive creation in that folder removes it.
 - **T-F385** - the Explorer operation window's password page no longer cuts its buttons.
 - **T-F387** - a long label (German) no longer pushes the PAR2 percentage box past the card's edge.
+- **T-F390** - when a selected file or folder is deleted while a tar or 7z archive is being
+  created, Pakko names it; tar.exe's own message named a wrong path.
+- **T-F391** - a junction or symbolic link inside a folder being archived as tar or 7z is left out
+  and reported, as ZIP always did. Before, tar.exe followed a junction (packing files from outside
+  the selection) and stored a symbolic link with its absolute target.
 - **T-F398** - `pakko l`, `x` and `t`, the App and Explorer read a tar.lzma archive. Pakko
   writes tar.lzma but answered "not a recognized archive format" for one: an .lzma stream has no
   signature, so the name now decides when the bytes name no other format.
 
 ### Changed
 
+- **`pakko a x.7z src` with no `-t`** is now exit 7 and writes nothing: a `.7z` name needs `-t7z`.
+  Before, it wrote a ZIP named `x.7z`.
+- **`pakko t` on a tar-family, 7z or RAR archive** tests it: exit 0 for 7z, tar.xz, tar.bz2 and
+  tar.zst; exit 1 with the warning "Only the archive's structure was checked" for tar, tar.gz,
+  tar.lzma and RAR; exit 2 for a damaged one. Before, all of them were exit 1 with "no test
+  capability". Scripts that read the exit code of `t` should expect this.
+- The Explorer submenu lists the formats as zip, 7z, tar, as the App does.
 - **T-F386** - with Arabic, Hebrew or Urdu the App's window and dialogs are laid out right to
   left, as the Explorer operation window already was.
 - **T-F388** - under the `AllowedFormats`, `BlockedFormats` or `DisableTarExtraction` policy the New
