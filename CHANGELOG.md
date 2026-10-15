@@ -64,9 +64,10 @@ selected from the keyboard have done nothing since v1.7.2, the first Native AOT 
 
 - **`pakko a x.7z src` with no `-t`** is now exit 7 and writes nothing: a `.7z` name needs `-t7z`.
   Before, it wrote a ZIP named `x.7z`.
-- **`pakko t` on a tar-family, 7z or RAR archive** tests it: exit 0 for 7z, tar.xz, tar.bz2 and
-  tar.zst; exit 1 with the warning "Only the archive's structure was checked" for tar, tar.gz,
-  tar.lzma and RAR; exit 2 for a damaged one. Before, all of them were exit 1 with "no test
+- **`pakko t` on a tar-family, 7z or RAR archive** tests it: exit 0 for 7z, tar.bz2, and tar.xz
+  or tar.zst written with a check (as tar.exe writes them); exit 1 with the warning "Only the
+  archive's structure was checked" for tar, tar.gz, tar.lzma, RAR and an xz or zst stream without
+  a check; exit 2 for a damaged one. Before, all of them were exit 1 with "no test
   capability". Scripts that read the exit code of `t` should expect this.
 - The Explorer submenu lists the formats as zip, 7z, tar, as the App does.
 - **T-F386** - with Arabic, Hebrew or Urdu the App's window and dialogs are laid out right to

@@ -365,8 +365,9 @@ output, which Pakko reads and discards, and nothing is written to disk.
 A pass means what tar.exe checked. It compares the checksums of 7z, bzip2, and of an xz stream or
 a zstd frame that carries one; it does not compare gzip's CRC-32 or a RAR's data, and a plain tar
 and an .lzma have none. For those formats a passed test carries the warning "Only the archive's
-structure was checked" and no frontend says "no errors". A PAR2 set beside the archive is trusted
-over a passed test only where the test did verify the contents.
+structure was checked" and no frontend says "no errors". When a PAR2 set beside the archive
+disagrees with it, a passed test counts against the set (the archive is taken as newer than its
+set) only where the test verified the contents; for the structure-only formats the set decides.
 
 **An .lzma archive is recognized by its name (T-F398, v1.8.1).** The format has no signature, so
 when the bytes match no other format and the name ends in `.lzma`, the file is treated as one; the
