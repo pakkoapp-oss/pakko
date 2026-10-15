@@ -46,7 +46,7 @@ is a teaser only, per `CLAUDE.md`'s Documentation Map).
 | ZIP | ✅ v1.0 (read+write) | `System.IO.Compression.ZipFile` |
 | TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ v1.3 (read), ✅ v1.4 (write, T-F105) | `tar.exe` (Windows built-in) |
 | RAR | ✅ v1.3 (read only — no libarchive writer exists) | `tar.exe` (Windows built-in) |
-| 7z | ✅ v1.3 (read only — creation is v1.9, T-F342) | `tar.exe` (Windows built-in) |
+| 7z | ✅ v1.3 (read), ✅ v1.8.1 (write without a password, T-F342; where Windows' tar.exe has the 7z writer) | `tar.exe` (Windows built-in) |
 | Password-protected ZIP | ✅ v1.5 (read: ZipCrypto + WinZip AES; create: WinZip AES-256 only, T-F193 — file names stay unencrypted) | `System.IO.Compression` + .NET `System.Security.Cryptography` |
 | Encrypted 7z/RAR | ❌ Detected and refused with a clear error (T-F113) | — |
 | Multi-volume | ❌ Out of scope | — |
@@ -247,7 +247,7 @@ truncated copy are the realistic damage.
 | v1.5 | Password-protected ZIP (read ZipCrypto + WinZip AES, create AES-256; T-F188–T-F194) + `pakko://` scheme removed (T-F232) + extraction/sandbox correctness and security fixes (fix phases 1–4a) — **released as v1.5.0** |
 | v1.6 | Remaining fix-batch phases (5–10, `docs/TASKS.md`'s fix-batch index) + additional format fixtures |
 | v1.8 | PAR2 recovery data next to created archives: create, verify, repair (T-F275) — **released as v1.8.0** |
-| v1.9 | 7z archive creation through tar.exe (T-F342) |
+| v1.8.1 | 7z archive creation through tar.exe (T-F342) + Test for every format tar.exe reads (T-F397) + fixes |
 | v2.0 | `pakko` measured as a stand-in for 7-Zip's console program, gaps closed where they fit Pakko's rules (T-F343) |
 
 Package version (`Package.appxmanifest`'s `Identity Version`) tracks MSIX packaging, not this

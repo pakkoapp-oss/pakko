@@ -47,7 +47,7 @@ an error.** Policies only take effect when explicitly set.
 |---|---|---|---|
 | `EnforceMOTW` | `REG_DWORD` | `0` = disabled, `1` = all files, `2` = unsafe extensions only | Controls Mark-of-the-Web (`Zone.Identifier`) propagation to extracted files. Absent = Pakko's shipped default (`1`, all files) is unchanged. |
 | `AllowedFormats` | `REG_MULTI_SZ` | one format name per line — `zip`, `tar`, `gzip`, `bz2`, `xz`, `zstd`, `lzma`, `rar`, `sevenzip` | Whitelist. If set, only listed formats can be extracted, tested, listed/browsed, scanned or created. Absent = no restriction. |
-| `BlockedFormats` | `REG_MULTI_SZ` | same format name vocabulary as `AllowedFormats` | Blocklist. **Takes precedence over `AllowedFormats`** — a format listed in both is blocked. The Explorer menu hides the Extract/Open/Scan items of a blocked format (plus Test and "Add to X.zip" for `zip`, "Add to X.tar" for `tar`, "Add to X.7z" for `sevenzip`), T-F262. |
+| `BlockedFormats` | `REG_MULTI_SZ` | same format name vocabulary as `AllowedFormats` | Blocklist. **Takes precedence over `AllowedFormats`** — a format listed in both is blocked. The Explorer menu hides the Extract/Open/Test/Scan items of a blocked format (plus "Add to X.zip" for `zip`, "Add to X.tar" for `tar`, "Add to X.7z" for `sevenzip`), T-F262. |
 | `DisableTarExtraction` | `REG_DWORD` | `0`/`1` | `1` = Pakko never spawns `tar.exe` at all — not even its startup version check (blocks RAR/7z/tar/tar.gz/tar.bz2/tar.xz/tar.zst/tar.lzma extraction, listing/browsing, scanning and creation outright, and hides the corresponding format options in the app's own UI; the Explorer menu hides the tar-family items, "Add to X.tar" and "Add to X.7z" too, T-F262). |
 | `DisableRecoveryData` | `REG_DWORD` | `0`/`1` | `1` = Pakko's PAR2 recovery data is off (T-F275, Pakko 1.8): the app hides the option to add it, and `pakko a -rr` is refused with an error before any archive is written. Verifying and repairing from PAR2 files are part of the same feature and are turned off by the same policy: `pakko t` looks for no set, Explorer's "Verify with PAR2" and "Repair with PAR2" menu items are hidden, and the App shows no PAR2 line, checks no set in Test and answers a double-click on a `.par2` file with this refusal; `pakko r` refuses every path. |
 
@@ -86,7 +86,7 @@ extensions directly:
 | `zstd` | `.zst`, `.tar.zst` |
 | `lzma` | `.lzma`, `.tar.lzma` |
 | `rar` | `.rar` (read-only in Pakko — no RAR creation) |
-| `sevenzip` | `.7z` (read-only in Pakko — no 7z creation) |
+| `sevenzip` | `.7z` (read, and created since Pakko 1.8.1 where Windows' tar.exe has the 7z writer, T-F342) |
 
 If both lists mention a format, it is blocked. Leaving both absent means every format Pakko
 supports is available, same as today's shipped behavior. A typical restrictive deployment sets
