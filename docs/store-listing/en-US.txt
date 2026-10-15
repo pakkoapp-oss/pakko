@@ -1,20 +1,20 @@
 [Description]
 Pakko is a free, open-source ZIP archiver for Windows built entirely on .NET's own compression APIs — no 7-Zip, no WinRAR, and no third-party compression code anywhere in the app.
 
-Create and extract ZIP archives directly through System.IO.Compression, with or without a password: Pakko opens ZipCrypto and WinZip AES archives and creates AES-256 encrypted ones that 7-Zip and other ZIP tools can read. RAR, 7-Zip and TAR-family archives (TAR, GZ, BZ2, XZ, ZST, LZMA) are read through Windows' own built-in tar.exe, launched inside an isolated AppContainer sandbox with no network access.
+Create and extract ZIP archives directly through System.IO.Compression, with or without a password: Pakko opens ZipCrypto and WinZip AES archives and creates AES-256 encrypted ones that 7-Zip and other ZIP tools can read. RAR, 7-Zip and TAR-family archives (TAR, GZ, BZ2, XZ, ZST, LZMA) are read through Windows' own built-in tar.exe, launched inside an isolated AppContainer sandbox with no network access. The same tar.exe also creates TAR-family and 7-Zip archives (7-Zip without a password, on Windows versions whose tar.exe can write it).
 
 Pakko integrates natively with File Explorer: right-click to extract, compress, test an archive, scan it for threats with your antivirus or compute its SHA-256 hash, and double-click any supported archive to browse its contents without extracting everything first. Every extracted file keeps the Mark-of-the-Web security tag of the archive it came from.
 
 Built for anyone who wants to see exactly what's compressing their files — the entire source code is public on GitHub under the Apache 2.0 license. No telemetry, no analytics, no network requests of any kind. The interface is available in 37 languages.
 
 [Short description]
-A free, open-source archiver that relies only on the compression code built into .NET and Windows. Creates and extracts ZIP (with AES-256 passwords too) and extracts RAR, 7-Zip and TAR in a sandbox. No telemetry.
+A free, open-source archiver that relies only on the compression code built into .NET and Windows. Creates and extracts ZIP (with AES-256 passwords too), 7-Zip and TAR, and extracts RAR; archives are read in a sandbox. No telemetry.
 
 [Product features]
 ZIP: create and extract with .NET's own compression library
 Password-protected ZIP: opens ZipCrypto and WinZip AES, creates AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: extract and create, via Windows' built-in tar.exe
-RAR and 7-Zip: extract only, via Windows' built-in tar.exe
+7-Zip: extract and create (without a password); RAR: extract only — via Windows' built-in tar.exe
 File Explorer right-click menu: Open, Extract here, Compress, Test archive, Scan for threats, Hash
 Archive browser: look inside an archive, preview pictures and text, extract only what you select
 Scan for threats: the archive's contents are checked by your installed antivirus
@@ -35,8 +35,8 @@ sandboxed archive extraction
 open source
 
 [What's new in this version]
+• New: create 7-Zip archives in the app, from the File Explorer menu and with pakko a -t7z (without a password; needs a Windows version whose tar.exe can write 7-Zip).
+• "Test archive" now also checks 7-Zip, RAR and TAR archives, not only ZIP.
 • New: recovery data (PAR2). Turn on "Add recovery data (PAR2)" when creating an archive, and the archive can be repaired after damage.
-• "Verify with PAR2" and "Repair with PAR2" in the File Explorer menu and in the app; the repaired copy is a new file, the original is not changed.
 • PAR2 files made by other programs work too; the pakko command adds recovery data with -rr and repairs with r.
 • Fixed: the Delete, Enter and menu keys work again on a list row selected from the keyboard.
-• The window is mirrored for right-to-left languages, and several messages and layout details are corrected.

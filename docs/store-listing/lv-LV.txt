@@ -1,20 +1,20 @@
 [Description]
 Pakko ir bezmaksas atvērtā pirmkoda ZIP arhivators operētājsistēmai Windows, kas pilnībā balstīts uz .NET pašas saspiešanas API — bez 7-Zip, bez WinRAR un bez jebkāda trešo pušu saspiešanas koda lietotnē.
 
-Izveidojiet un izvelciet ZIP arhīvus tieši, izmantojot System.IO.Compression, ar paroli vai bez tās: Pakko atver ZipCrypto un WinZip AES arhīvus un izveido ar AES-256 šifrētus arhīvus, kurus var nolasīt 7-Zip un citas ZIP programmas. RAR, 7-Zip un TAR saimes arhīvi (TAR, GZ, BZ2, XZ, ZST, LZMA) tiek lasīti ar Windows iebūvēto rīku tar.exe, kas tiek palaists izolētā AppContainer smilškastē bez piekļuves tīklam.
+Izveidojiet un izvelciet ZIP arhīvus tieši, izmantojot System.IO.Compression, ar paroli vai bez tās: Pakko atver ZipCrypto un WinZip AES arhīvus un izveido ar AES-256 šifrētus arhīvus, kurus var nolasīt 7-Zip un citas ZIP programmas. RAR, 7-Zip un TAR saimes arhīvi (TAR, GZ, BZ2, XZ, ZST, LZMA) tiek lasīti ar Windows iebūvēto rīku tar.exe, kas tiek palaists izolētā AppContainer smilškastē bez piekļuves tīklam. Tas pats tar.exe izveido arī TAR saimes un 7-Zip arhīvus (7-Zip bez paroles, tajās Windows versijās, kuru tar.exe tos spēj ierakstīt).
 
 Pakko ir integrēts failu pārlūkā: noklikšķiniet ar peles labo pogu, lai izvilktu vai saspiestu failus, testētu arhīvu, ar savu pretvīrusu programmu pārbaudītu, vai tajā nav draudu, vai aprēķinātu tā SHA-256 kontrolsummu, un veiciet dubultklikšķi uz jebkura atbalstīta arhīva, lai pārlūkotu tā saturu, vispirms neizvelkot visu. Katrs izvilktais fails saglabā tā arhīva Mark-of-the-Web drošības atzīmi, no kura tas nācis.
 
 Izveidots ikvienam, kurš vēlas precīzi redzēt, kas saspiež viņa failus — viss pirmkods ir publiski pieejams vietnē GitHub saskaņā ar Apache 2.0 licenci. Bez telemetrijas, bez lietošanas analītikas, bez jebkādiem tīkla pieprasījumiem. Saskarne ir pieejama 37 valodās.
 
 [Short description]
-Bezmaksas atvērtā pirmkoda arhivators, kas izmanto tikai .NET un Windows iebūvēto saspiešanas kodu. Izveido un izvelk ZIP arhīvus (arī ar AES-256 paroli) un izvelk RAR, 7-Zip un TAR arhīvus smilškastē. Bez telemetrijas.
+Bezmaksas atvērtā pirmkoda arhivators, kas izmanto tikai .NET un Windows iebūvēto saspiešanas kodu. Izveido un izvelk ZIP (arī ar AES-256 paroli), 7-Zip un TAR arhīvus un izvelk RAR; arhīvi tiek lasīti smilškastē. Bez telemetrijas.
 
 [Product features]
 ZIP: izveide un izvilkšana ar .NET pašas saspiešanas bibliotēku
 ZIP ar paroli: atver ZipCrypto un WinZip AES, izveido AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: izvilkšana un izveide ar Windows iebūvēto rīku tar.exe
-RAR un 7-Zip: tikai izvilkšana, ar Windows iebūvēto rīku tar.exe
+7-Zip: izvilkšana un izveide (bez paroles); RAR: tikai izvilkšana — ar Windows iebūvēto rīku tar.exe
 Failu pārlūka kontekstizvēlne: Atvērt, Izvilkt šeit, Saspiest, Testēt arhīvu, Pārbaudīt draudus, Kontrolsumma
 Arhīvu pārlūks: ieskatieties arhīvā, priekšskatiet attēlus un tekstu, izvelciet tikai atlasīto
 Draudu pārbaude: arhīva saturu pārbauda jūsu instalētā pretvīrusu programma
@@ -35,8 +35,8 @@ zip ar paroli
 atvērtais pirmkods
 
 [What's new in this version]
+• Jaunums: 7-Zip arhīvu izveide lietotnē, Failu pārlūka izvēlnē un ar pakko a -t7z (bez paroles; vajadzīga Windows versija, kuras tar.exe spēj ierakstīt 7-Zip).
+• “Testēt arhīvu” tagad pārbauda arī 7-Zip, RAR un TAR arhīvus, ne tikai ZIP.
 • Jaunums: atkopšanas dati (PAR2). Veidojot arhīvu, ieslēdziet “Pievienot atkopšanas datus (PAR2)”, un arhīvu pēc bojājuma varēs salabot.
-• “Pārbaudīt ar PAR2” un “Labot ar PAR2” Failu pārlūka izvēlnē un lietotnē; salabotā kopija ir jauns fails, oriģināls netiek mainīts.
 • Der arī citu programmu izveidoti PAR2 faili; komanda pakko pievieno atkopšanas datus ar -rr un labo ar r.
 • Novērsts: taustiņi Delete, Enter un izvēlnes taustiņš atkal darbojas saraksta rindā, kas izvēlēta ar tastatūru.
-• Logs tiek spoguļots valodām, kuras raksta no labās uz kreiso pusi; izlaboti vairāki ziņojumi un izkārtojuma sīkumi.

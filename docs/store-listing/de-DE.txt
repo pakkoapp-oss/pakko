@@ -1,20 +1,20 @@
 [Description]
 Pakko ist ein kostenloser, quelloffener ZIP-Archivierer für Windows, der vollständig auf den eigenen Komprimierungs-APIs von .NET aufbaut – kein 7-Zip, kein WinRAR und nirgends in der App Komprimierungscode von Drittanbietern.
 
-Erstellen und extrahieren Sie ZIP-Archive direkt über System.IO.Compression, mit oder ohne Passwort: Pakko öffnet ZipCrypto- und WinZip-AES-Archive und erstellt AES-256-verschlüsselte Archive, die 7-Zip und andere ZIP-Programme lesen können. RAR-, 7-Zip- und TAR-Archive (TAR, GZ, BZ2, XZ, ZST, LZMA) werden über das in Windows integrierte tar.exe gelesen, das in einer isolierten AppContainer-Sandbox ohne Netzwerkzugriff läuft.
+Erstellen und extrahieren Sie ZIP-Archive direkt über System.IO.Compression, mit oder ohne Passwort: Pakko öffnet ZipCrypto- und WinZip-AES-Archive und erstellt AES-256-verschlüsselte Archive, die 7-Zip und andere ZIP-Programme lesen können. RAR-, 7-Zip- und TAR-Archive (TAR, GZ, BZ2, XZ, ZST, LZMA) werden über das in Windows integrierte tar.exe gelesen, das in einer isolierten AppContainer-Sandbox ohne Netzwerkzugriff läuft. Dasselbe tar.exe erstellt auch TAR- und 7-Zip-Archive (7-Zip ohne Passwort, in Windows-Versionen, deren tar.exe sie schreiben kann).
 
 Pakko fügt sich nativ in den Datei-Explorer ein: Per Rechtsklick können Sie extrahieren, komprimieren, ein Archiv testen, es von Ihrem Virenschutz auf Bedrohungen prüfen lassen oder seinen SHA-256-Hash berechnen; ein Doppelklick auf ein unterstütztes Archiv zeigt dessen Inhalt, ohne dass Sie erst alles extrahieren müssen. Jede extrahierte Datei behält die Mark-of-the-Web-Sicherheitskennzeichnung des Archivs, aus dem sie stammt.
 
 Entwickelt für alle, die genau sehen wollen, was ihre Dateien komprimiert – der gesamte Quellcode ist auf GitHub unter der Apache-2.0-Lizenz öffentlich. Keine Telemetrie, keine Analysen, keinerlei Netzwerkanfragen. Die Oberfläche gibt es in 37 Sprachen.
 
 [Short description]
-Ein kostenloser, quelloffener Archivierer, der nur den in .NET und Windows enthaltenen Komprimierungscode nutzt. Erstellt und extrahiert ZIP (auch mit AES-256-Passwort) und extrahiert RAR, 7-Zip und TAR in einer Sandbox. Keine Telemetrie.
+Ein kostenloser, quelloffener Archivierer, der nur den in .NET und Windows enthaltenen Komprimierungscode nutzt. Erstellt und extrahiert ZIP (auch mit AES-256-Passwort), 7-Zip und TAR und extrahiert RAR; Archive werden in einer Sandbox gelesen. Keine Telemetrie.
 
 [Product features]
 ZIP: Erstellen und Extrahieren mit der eigenen Komprimierungsbibliothek von .NET
 ZIP mit Passwort: öffnet ZipCrypto und WinZip AES, erstellt AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: Extrahieren und Erstellen über das in Windows integrierte tar.exe
-RAR und 7-Zip: nur Extrahieren, über das in Windows integrierte tar.exe
+7-Zip: Extrahieren und Erstellen (ohne Passwort); RAR: nur Extrahieren — über das in Windows integrierte tar.exe
 Kontextmenü des Datei-Explorers: Öffnen, Hier extrahieren, Komprimieren, Archiv testen, Auf Bedrohungen prüfen, Hash
 Archiv-Browser: in ein Archiv hineinsehen, Bilder und Text in der Vorschau öffnen, nur das Ausgewählte extrahieren
 Auf Bedrohungen prüfen: Ihr installierter Virenschutz prüft den Inhalt des Archivs
@@ -35,8 +35,8 @@ Zip mit Passwort
 Open Source
 
 [What's new in this version]
+• Neu: 7-Zip-Archive erstellen – in der App, im Menü des Datei-Explorers und mit pakko a -t7z (ohne Passwort; erfordert eine Windows-Version, deren tar.exe 7-Zip schreiben kann).
+• „Archiv testen“ prüft jetzt auch 7-Zip-, RAR- und TAR-Archive, nicht nur ZIP.
 • Neu: Wiederherstellungsdaten (PAR2). Aktivieren Sie beim Erstellen eines Archivs „Wiederherstellungsdaten hinzufügen (PAR2)“, dann lässt sich das Archiv nach einer Beschädigung reparieren.
-• „Mit PAR2 prüfen“ und „Mit PAR2 reparieren“ im Menü des Datei-Explorers und in der App; die reparierte Kopie ist eine neue Datei, das Original bleibt unverändert.
 • PAR2-Dateien anderer Programme funktionieren ebenfalls; der Befehl pakko fügt Wiederherstellungsdaten mit -rr hinzu und repariert mit r.
 • Behoben: Entf, Eingabe und die Menütaste funktionieren wieder in einer per Tastatur ausgewählten Listenzeile.
-• Das Fenster wird für Sprachen mit Schreibrichtung von rechts nach links gespiegelt; mehrere Meldungen und Layoutdetails wurden korrigiert.

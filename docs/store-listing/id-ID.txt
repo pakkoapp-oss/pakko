@@ -1,20 +1,20 @@
 [Description]
 Pakko adalah pengarsip ZIP gratis dan sumber terbuka untuk Windows, dibangun sepenuhnya di atas API kompresi milik .NET sendiri — tanpa 7-Zip, tanpa WinRAR, dan tanpa kode kompresi pihak ketiga di mana pun dalam aplikasi.
 
-Buat dan ekstrak arsip ZIP langsung melalui System.IO.Compression, dengan atau tanpa kata sandi: Pakko membuka arsip ZipCrypto dan WinZip AES serta membuat arsip terenkripsi AES-256 yang dapat dibaca 7-Zip dan program ZIP lainnya. Arsip RAR, 7-Zip, dan keluarga TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) dibaca melalui tar.exe bawaan Windows, yang dijalankan di dalam sandbox AppContainer terisolasi tanpa akses jaringan.
+Buat dan ekstrak arsip ZIP langsung melalui System.IO.Compression, dengan atau tanpa kata sandi: Pakko membuka arsip ZipCrypto dan WinZip AES serta membuat arsip terenkripsi AES-256 yang dapat dibaca 7-Zip dan program ZIP lainnya. Arsip RAR, 7-Zip, dan keluarga TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) dibaca melalui tar.exe bawaan Windows, yang dijalankan di dalam sandbox AppContainer terisolasi tanpa akses jaringan. tar.exe yang sama juga membuat arsip keluarga TAR dan 7-Zip (7-Zip tanpa kata sandi, pada versi Windows yang tar.exe-nya dapat menulisnya).
 
 Pakko menyatu dengan File Explorer: klik kanan untuk mengekstrak, mengompres, menguji arsip, memindainya dari ancaman dengan antivirus Anda, atau menghitung hash SHA-256-nya, dan klik dua kali arsip apa pun yang didukung untuk menelusuri isinya tanpa harus mengekstrak semuanya terlebih dahulu. Setiap file yang diekstrak mempertahankan tag keamanan Mark-of-the-Web dari arsip asalnya.
 
 Dibuat untuk siapa saja yang ingin melihat dengan tepat apa yang mengompres file mereka — seluruh kode sumber tersedia untuk umum di GitHub di bawah lisensi Apache 2.0. Tanpa telemetri, tanpa analitik penggunaan, tanpa permintaan jaringan dalam bentuk apa pun. Antarmuka tersedia dalam 37 bahasa.
 
 [Short description]
-Pengarsip gratis dan sumber terbuka yang hanya mengandalkan kode kompresi bawaan .NET dan Windows. Membuat dan mengekstrak arsip ZIP (juga dengan kata sandi AES-256), serta mengekstrak RAR, 7-Zip, dan TAR di dalam sandbox. Tanpa telemetri.
+Pengarsip gratis dan sumber terbuka yang hanya mengandalkan kode kompresi bawaan .NET dan Windows. Membuat dan mengekstrak arsip ZIP (juga dengan kata sandi AES-256), 7-Zip, dan TAR, serta mengekstrak RAR; arsip dibaca di dalam sandbox. Tanpa telemetri.
 
 [Product features]
 ZIP: membuat dan mengekstrak dengan pustaka kompresi milik .NET sendiri
 ZIP berkata sandi: membuka ZipCrypto dan WinZip AES, membuat AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: mengekstrak dan membuat, melalui tar.exe bawaan Windows
-RAR dan 7-Zip: hanya mengekstrak, melalui tar.exe bawaan Windows
+7-Zip: mengekstrak dan membuat (tanpa kata sandi); RAR: hanya mengekstrak — melalui tar.exe bawaan Windows
 Menu klik kanan File Explorer: Buka, Ekstrak di sini, Kompres, Uji arsip, Pindai ancaman, Hash
 Penjelajah arsip: lihat isi arsip, pratinjau gambar dan teks, ekstrak hanya yang Anda pilih
 Pindai ancaman: isi arsip diperiksa oleh antivirus yang terpasang di komputer Anda
@@ -35,8 +35,8 @@ zip dengan kata sandi
 sumber terbuka
 
 [What's new in this version]
+• Baru: buat arsip 7-Zip di aplikasi, dari menu File Explorer, dan dengan pakko a -t7z (tanpa kata sandi; memerlukan versi Windows yang tar.exe-nya dapat menulis 7-Zip).
+• "Uji arsip" kini juga memeriksa arsip 7-Zip, RAR, dan TAR, tidak hanya ZIP.
 • Baru: data pemulihan (PAR2). Aktifkan "Tambahkan data pemulihan (PAR2)" saat membuat arsip, dan arsip dapat diperbaiki setelah rusak.
-• "Verifikasi dengan PAR2" dan "Perbaiki dengan PAR2" di menu File Explorer dan di aplikasi; salinan yang diperbaiki adalah file baru, file asli tidak diubah.
 • File PAR2 buatan program lain juga dapat dipakai; perintah pakko menambahkan data pemulihan dengan -rr dan memperbaiki dengan r.
 • Diperbaiki: tombol Delete, Enter, dan tombol menu kembali berfungsi pada baris daftar yang dipilih dengan keyboard.
-• Jendela dicerminkan untuk bahasa yang ditulis dari kanan ke kiri; beberapa pesan dan detail tata letak diperbaiki.

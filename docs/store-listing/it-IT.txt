@@ -1,20 +1,20 @@
 [Description]
 Pakko è un archiviatore ZIP gratuito e open source per Windows, costruito interamente sulle API di compressione proprie di .NET: niente 7-Zip, niente WinRAR e nessun codice di compressione di terze parti in alcuna parte dell'app.
 
-Crea ed estrai archivi ZIP direttamente tramite System.IO.Compression, con o senza password: Pakko apre gli archivi ZipCrypto e WinZip AES e crea archivi cifrati con AES-256, leggibili da 7-Zip e dagli altri programmi ZIP. Gli archivi RAR, 7-Zip e della famiglia TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) vengono letti tramite il tar.exe integrato in Windows, eseguito in una sandbox AppContainer isolata e senza accesso alla rete.
+Crea ed estrai archivi ZIP direttamente tramite System.IO.Compression, con o senza password: Pakko apre gli archivi ZipCrypto e WinZip AES e crea archivi cifrati con AES-256, leggibili da 7-Zip e dagli altri programmi ZIP. Gli archivi RAR, 7-Zip e della famiglia TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) vengono letti tramite il tar.exe integrato in Windows, eseguito in una sandbox AppContainer isolata e senza accesso alla rete. Lo stesso tar.exe crea anche archivi della famiglia TAR e 7-Zip (7-Zip senza password, nelle versioni di Windows il cui tar.exe sa scriverli).
 
 Pakko si integra in modo nativo con Esplora file: fai clic con il pulsante destro per estrarre, comprimere, testare un archivio, verificare con il tuo antivirus se contiene minacce o calcolarne l'hash SHA-256, e fai doppio clic su qualsiasi archivio supportato per sfogliarne il contenuto senza dover prima estrarre tutto. Ogni file estratto conserva il contrassegno di sicurezza Mark-of-the-Web dell'archivio da cui proviene.
 
 Creato per chiunque voglia vedere esattamente che cosa comprime i propri file: l'intero codice sorgente è pubblico su GitHub con licenza Apache 2.0. Nessuna telemetria, nessuna analisi d'uso, nessuna richiesta di rete di alcun tipo. L'interfaccia è disponibile in 37 lingue.
 
 [Short description]
-Un archiviatore gratuito e open source che si affida soltanto al codice di compressione integrato in .NET e in Windows. Crea ed estrae ZIP (anche con password AES-256) ed estrae RAR, 7-Zip e TAR in una sandbox. Nessuna telemetria.
+Un archiviatore gratuito e open source che si affida soltanto al codice di compressione integrato in .NET e in Windows. Crea ed estrae ZIP (anche con password AES-256), 7-Zip e TAR ed estrae RAR; gli archivi vengono letti in una sandbox. Nessuna telemetria.
 
 [Product features]
 ZIP: creazione ed estrazione con la libreria di compressione propria di .NET
 ZIP con password: apre ZipCrypto e WinZip AES, crea AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: estrazione e creazione, tramite il tar.exe integrato in Windows
-RAR e 7-Zip: sola estrazione, tramite il tar.exe integrato in Windows
+7-Zip: estrazione e creazione (senza password); RAR: sola estrazione — tramite il tar.exe integrato in Windows
 Menu contestuale di Esplora file: Apri, Estrai qui, Comprimi, Testa archivio, Verifica minacce, Hash
 Browser degli archivi: guarda dentro un archivio, visualizza in anteprima immagini e testo, estrai solo ciò che selezioni
 Verifica minacce: il contenuto dell'archivio viene controllato dal tuo antivirus installato
@@ -35,8 +35,8 @@ zip con password
 open source
 
 [What's new in this version]
+• Novità: crea archivi 7-Zip nell'app, dal menu di Esplora file e con pakko a -t7z (senza password; serve una versione di Windows il cui tar.exe sappia scrivere 7-Zip).
+• «Testa archivio» ora controlla anche gli archivi 7-Zip, RAR e TAR, non solo ZIP.
 • Novità: dati di ripristino (PAR2). Attiva «Aggiungi dati di ripristino (PAR2)» quando crei un archivio, e potrai ripararlo dopo un danno.
-• «Verifica con PAR2» e «Ripara con PAR2» nel menu di Esplora file e nell'app; la copia riparata è un nuovo file, l'originale non viene modificato.
 • Funzionano anche i file PAR2 creati da altri programmi; il comando pakko aggiunge i dati di ripristino con -rr e ripara con r.
 • Corretto: i tasti Canc, Invio e il tasto Menu funzionano di nuovo su una riga dell'elenco selezionata da tastiera.
-• La finestra è speculare per le lingue scritte da destra a sinistra; corretti diversi messaggi e dettagli di layout.

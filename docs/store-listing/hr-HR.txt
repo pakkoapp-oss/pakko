@@ -1,20 +1,20 @@
 [Description]
 Pakko je besplatan ZIP arhiver otvorenog koda za Windows, u cijelosti izgrađen na vlastitim API-jima platforme .NET za komprimiranje — bez 7-Zipa, bez WinRAR-a i bez ikakvog koda za komprimiranje trećih strana igdje u aplikaciji.
 
-Stvarajte i raspakirajte ZIP arhive izravno putem System.IO.Compression, s lozinkom ili bez nje: Pakko otvara arhive ZipCrypto i WinZip AES te stvara arhive šifrirane algoritmom AES-256 koje mogu čitati 7-Zip i drugi ZIP programi. Arhive RAR, 7-Zip i arhive iz obitelji TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) čitaju se alatom tar.exe ugrađenim u Windows, pokrenutim u izoliranom sandboxu AppContainer bez pristupa mreži.
+Stvarajte i raspakirajte ZIP arhive izravno putem System.IO.Compression, s lozinkom ili bez nje: Pakko otvara arhive ZipCrypto i WinZip AES te stvara arhive šifrirane algoritmom AES-256 koje mogu čitati 7-Zip i drugi ZIP programi. Arhive RAR, 7-Zip i arhive iz obitelji TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) čitaju se alatom tar.exe ugrađenim u Windows, pokrenutim u izoliranom sandboxu AppContainer bez pristupa mreži. Isti tar.exe stvara i arhive iz obitelji TAR i 7-Zip (7-Zip bez lozinke, u verzijama sustava Windows čiji ih tar.exe može zapisati).
 
 Pakko se ugrađuje u Eksplorer za datoteke: kliknite desnom tipkom miša da biste raspakirali ili komprimirali datoteke, testirali arhivu, provjerili ima li u njoj prijetnji svojim antivirusnim programom ili izračunali njezin SHA-256 sažetak, a dvoklikom na bilo koju podržanu arhivu pregledajte njezin sadržaj bez prethodnog raspakiravanja svega. Svaka raspakirana datoteka zadržava sigurnosnu oznaku Mark-of-the-Web arhive iz koje potječe.
 
 Napravljen za sve koji žele točno vidjeti što komprimira njihove datoteke — cijeli izvorni kod javno je dostupan na GitHubu pod licencom Apache 2.0. Bez telemetrije, bez analitike korištenja, bez ikakvih mrežnih zahtjeva. Sučelje je dostupno na 37 jezika.
 
 [Short description]
-Besplatan arhiver otvorenog koda koji se oslanja samo na kod za komprimiranje ugrađen u .NET i Windows. Stvara i raspakirava ZIP arhive (i s lozinkom AES-256) te raspakirava RAR, 7-Zip i TAR u sandboxu. Bez telemetrije.
+Besplatan arhiver otvorenog koda koji se oslanja samo na kod za komprimiranje ugrađen u .NET i Windows. Stvara i raspakirava ZIP (i s lozinkom AES-256), 7-Zip i TAR te raspakirava RAR; arhive se čitaju u sandboxu. Bez telemetrije.
 
 [Product features]
 ZIP: stvaranje i raspakiravanje vlastitom bibliotekom platforme .NET za komprimiranje
 ZIP s lozinkom: otvara ZipCrypto i WinZip AES, stvara AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: raspakiravanje i stvaranje alatom tar.exe ugrađenim u Windows
-RAR i 7-Zip: samo raspakiravanje, alatom tar.exe ugrađenim u Windows
+7-Zip: raspakiravanje i stvaranje (bez lozinke); RAR: samo raspakiravanje — alatom tar.exe ugrađenim u Windows
 Kontekstni izbornik Eksplorera za datoteke: Otvori, Raspakiraj ovdje, Komprimiraj, Testiraj arhivu, Provjeri prijetnje, Sažetak
 Preglednik arhiva: zavirite u arhivu, pretpregledajte slike i tekst, raspakirajte samo ono što odaberete
 Provjera prijetnji: sadržaj arhive provjerava vaš instalirani antivirusni program
@@ -35,8 +35,8 @@ zip s lozinkom
 otvoreni kod
 
 [What's new in this version]
+• Novo: stvaranje arhiva 7-Zip u aplikaciji, iz izbornika Eksplorera za datoteke i naredbom pakko a -t7z (bez lozinke; potrebna je verzija sustava Windows čiji tar.exe može zapisati 7-Zip).
+• „Testiraj arhivu” sada provjerava i arhive 7-Zip, RAR i TAR, ne samo ZIP.
 • Novo: podaci za oporavak (PAR2). Uključite „Dodaj podatke za oporavak (PAR2)” pri stvaranju arhive i arhiva će se nakon oštećenja moći popraviti.
-• „Provjeri pomoću PAR2” i „Popravi pomoću PAR2” u izborniku Eksplorera za datoteke i u aplikaciji; popravljena kopija nova je datoteka, a izvornik se ne mijenja.
 • Rade i PAR2 datoteke stvorene drugim programima; naredba pakko dodaje podatke za oporavak prekidačem -rr i popravlja naredbom r.
 • Ispravljeno: tipke Delete, Enter i tipka izbornika ponovno rade na retku popisa odabranom tipkovnicom.
-• Prozor se zrcali za jezike koji se pišu zdesna nalijevo; ispravljeno je nekoliko poruka i detalja rasporeda.

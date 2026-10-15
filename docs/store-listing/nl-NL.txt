@@ -1,20 +1,20 @@
 [Description]
 Pakko is een gratis, opensource ZIP-archiveerprogramma voor Windows, volledig gebouwd op de eigen compressie-API's van .NET — geen 7-Zip, geen WinRAR en nergens in de app compressiecode van derden.
 
-Maak ZIP-archieven en pak ze uit, rechtstreeks via System.IO.Compression, met of zonder wachtwoord: Pakko opent ZipCrypto- en WinZip AES-archieven en maakt met AES-256 versleutelde archieven die 7-Zip en andere ZIP-programma's kunnen lezen. RAR-, 7-Zip- en TAR-archieven (TAR, GZ, BZ2, XZ, ZST, LZMA) worden gelezen via de in Windows ingebouwde tar.exe, uitgevoerd in een geïsoleerde AppContainer-sandbox zonder netwerktoegang.
+Maak ZIP-archieven en pak ze uit, rechtstreeks via System.IO.Compression, met of zonder wachtwoord: Pakko opent ZipCrypto- en WinZip AES-archieven en maakt met AES-256 versleutelde archieven die 7-Zip en andere ZIP-programma's kunnen lezen. RAR-, 7-Zip- en TAR-archieven (TAR, GZ, BZ2, XZ, ZST, LZMA) worden gelezen via de in Windows ingebouwde tar.exe, uitgevoerd in een geïsoleerde AppContainer-sandbox zonder netwerktoegang. Dezelfde tar.exe maakt ook TAR- en 7-Zip-archieven (7-Zip zonder wachtwoord, in Windows-versies waarvan de tar.exe ze kan schrijven).
 
 Pakko is geïntegreerd in Verkenner: klik met de rechtermuisknop om uit te pakken, te comprimeren, een archief te testen, het met uw antivirusprogramma op bedreigingen te scannen of de SHA-256-hash te berekenen, en dubbelklik op een ondersteund archief om door de inhoud te bladeren zonder eerst alles uit te pakken. Elk uitgepakt bestand behoudt het Mark-of-the-Web-beveiligingslabel van het archief waaruit het komt.
 
 Gebouwd voor iedereen die precies wil zien wat zijn bestanden comprimeert — de volledige broncode staat openbaar op GitHub onder de Apache 2.0-licentie. Geen telemetrie, geen gebruiksanalyse, geen enkele netwerkaanvraag. De interface is beschikbaar in 37 talen.
 
 [Short description]
-Een gratis, opensource archiveerprogramma dat alleen steunt op de compressiecode die in .NET en Windows is ingebouwd. Maakt ZIP-archieven en pakt ze uit (ook met AES-256-wachtwoord) en pakt RAR, 7-Zip en TAR uit in een sandbox. Geen telemetrie.
+Een gratis, opensource archiveerprogramma dat alleen steunt op de compressiecode die in .NET en Windows is ingebouwd. Maakt ZIP- (ook met AES-256-wachtwoord), 7-Zip- en TAR-archieven en pakt ze uit, en pakt RAR uit; uitpakken in een sandbox. Geen telemetrie.
 
 [Product features]
 ZIP: maken en uitpakken met de eigen compressiebibliotheek van .NET
 ZIP met wachtwoord: opent ZipCrypto en WinZip AES, maakt AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: uitpakken en maken via de in Windows ingebouwde tar.exe
-RAR en 7-Zip: alleen uitpakken, via de in Windows ingebouwde tar.exe
+7-Zip: uitpakken en maken (zonder wachtwoord); RAR: alleen uitpakken — via de in Windows ingebouwde tar.exe
 Contextmenu van Verkenner: Openen, Hier uitpakken, Comprimeren, Archief testen, Scannen op bedreigingen, Hash
 Archiefverkenner: kijk in een archief, bekijk voorbeelden van afbeeldingen en tekst, pak alleen uit wat u selecteert
 Scannen op bedreigingen: de inhoud van het archief wordt gecontroleerd door uw geïnstalleerde antivirusprogramma
@@ -35,8 +35,8 @@ tar gz
 zip met wachtwoord
 
 [What's new in this version]
+• Nieuw: maak 7-Zip-archieven in de app, vanuit het menu van Verkenner en met pakko a -t7z (zonder wachtwoord; vereist een Windows-versie waarvan de tar.exe 7-Zip kan schrijven).
+• 'Archief testen' controleert nu ook 7-Zip-, RAR- en TAR-archieven, niet alleen ZIP.
 • Nieuw: herstelgegevens (PAR2). Schakel 'Herstelgegevens toevoegen (PAR2)' in bij het maken van een archief, dan kan het archief na beschadiging worden hersteld.
-• 'Controleren met PAR2' en 'Herstellen met PAR2' in het menu van Verkenner en in de app; de herstelde kopie is een nieuw bestand, het origineel wordt niet gewijzigd.
 • PAR2-bestanden van andere programma's werken ook; de opdracht pakko voegt herstelgegevens toe met -rr en herstelt met r.
 • Opgelost: Delete, Enter en de menutoets werken weer op een lijstrij die met het toetsenbord is geselecteerd.
-• Het venster wordt gespiegeld voor talen die van rechts naar links worden geschreven; diverse meldingen en lay-outdetails zijn gecorrigeerd.

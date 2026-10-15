@@ -1,20 +1,20 @@
 [Description]
 Pakko 是一款适用于 Windows 的免费开源 ZIP 压缩软件，完全基于 .NET 自身的压缩 API 构建——不使用 7-Zip，不使用 WinRAR，应用中的任何地方都不包含第三方压缩代码。
 
-直接通过 System.IO.Compression 创建和解压 ZIP 压缩包，有无密码均可：Pakko 可以打开 ZipCrypto 和 WinZip AES 压缩包，并创建 7-Zip 及其他 ZIP 工具都能读取的 AES-256 加密压缩包。RAR、7-Zip 及 TAR 系列压缩包（TAR、GZ、BZ2、XZ、ZST、LZMA）则通过 Windows 内置的 tar.exe 读取，该工具在隔离的、无网络访问权限的 AppContainer 沙盒中运行。
+直接通过 System.IO.Compression 创建和解压 ZIP 压缩包，有无密码均可：Pakko 可以打开 ZipCrypto 和 WinZip AES 压缩包，并创建 7-Zip 及其他 ZIP 工具都能读取的 AES-256 加密压缩包。RAR、7-Zip 及 TAR 系列压缩包（TAR、GZ、BZ2、XZ、ZST、LZMA）则通过 Windows 内置的 tar.exe 读取，该工具在隔离的、无网络访问权限的 AppContainer 沙盒中运行。 同一个 tar.exe 还能创建 TAR 系列和 7-Zip 压缩包（7-Zip 不带密码，仅限 tar.exe 能写入 7-Zip 的 Windows 版本）。
 
 Pakko 与文件资源管理器集成：右键单击即可解压、压缩、测试压缩包、用你的杀毒软件扫描其中的威胁，或计算其 SHA-256 哈希；双击任意受支持的压缩包即可浏览其内容，无需先解压全部文件。每个解压出的文件都会保留其来源压缩包的 Mark-of-the-Web 安全标记。
 
 专为想要确切了解是什么在压缩自己文件的人而打造——完整源代码在 GitHub 上公开，采用 Apache 2.0 许可证。没有遥测，没有使用情况分析，没有任何形式的网络请求。界面提供 37 种语言。
 
 [Short description]
-一款免费开源的压缩软件，只依赖 .NET 和 Windows 内置的压缩代码。可创建和解压 ZIP（支持 AES-256 密码），并在沙盒中解压 RAR、7-Zip 和 TAR。没有遥测。
+一款免费开源的压缩软件，只依赖 .NET 和 Windows 内置的压缩代码。可创建和解压 ZIP（支持 AES-256 密码）、7-Zip 和 TAR，并可解压 RAR；压缩包在沙盒中读取。没有遥测。
 
 [Product features]
 ZIP：使用 .NET 自身的压缩库创建和解压
 带密码的 ZIP：可打开 ZipCrypto 和 WinZip AES，可创建 AES-256
 TAR、GZ、BZ2、XZ、ZST、LZMA：通过 Windows 内置的 tar.exe 解压和创建
-RAR 和 7-Zip：仅支持解压，通过 Windows 内置的 tar.exe
+7-Zip：解压和创建（不带密码）；RAR：仅支持解压——均通过 Windows 内置的 tar.exe
 文件资源管理器右键菜单：打开、解压到当前文件夹、压缩、测试压缩包、扫描威胁、哈希
 压缩包浏览器：查看压缩包内部，预览图片和文本，只解压选中的内容
 扫描威胁：由你已安装的杀毒软件检查压缩包的内容
@@ -35,8 +35,8 @@ zip 加密压缩
 开源
 
 [What's new in this version]
+• 新功能：可在应用中、文件资源管理器菜单中以及用 pakko a -t7z 创建 7-Zip 压缩包（不带密码；需要 tar.exe 能写入 7-Zip 的 Windows 版本）。
+• “测试压缩包”现在也能检查 7-Zip、RAR 和 TAR 压缩包，而不仅是 ZIP。
 • 新功能：恢复数据 (PAR2)。创建压缩包时开启“添加恢复数据 (PAR2)”，压缩包损坏后即可修复。
-• 文件资源管理器菜单和应用中新增“使用 PAR2 验证”和“使用 PAR2 修复”；修复后的副本是新文件，原文件不会被更改。
 • 也支持其他程序创建的 PAR2 文件；pakko 命令用 -rr 添加恢复数据，用 r 修复。
 • 修复：在用键盘选中的列表行上，Delete、Enter 和菜单键恢复正常。
-• 对于从右向左书写的语言，窗口会镜像显示；还修正了若干消息和布局细节。
