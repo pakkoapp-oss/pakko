@@ -339,8 +339,9 @@ Add-SmokeStep 'CLI-021' {
     $encrypted = Join-Path $fixtures 'encrypted.7z'
     $run = Invoke-Pakko @('x', $encrypted, "-o$(Join-Path $folder 'e7')")
     Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text -notmatch '(^|\s)-p') "x on an encrypted 7z: exit $($run.ExitCode) $($run.Text)"
+    # Since T-F397 `t` reads a 7z, so an encrypted one fails the test as extraction does.
     $run = Invoke-Pakko @('t', $encrypted)
-    Assert-Smoke ($run.ExitCode -eq 1 -and $run.Text -notmatch '(^|\s)-p') "t on an encrypted 7z: exit $($run.ExitCode) $($run.Text)"
+    Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text -notmatch '(^|\s)-p') "t on an encrypted 7z: exit $($run.ExitCode) $($run.Text)"
 
     # One password for two archives; it fits the first.
     $first = Join-Path $folder 'first.zip'

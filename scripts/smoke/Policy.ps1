@@ -278,6 +278,7 @@ Add-SmokeStep 'POL-007' {
 
 Add-SmokeStep 'POL-008' -AtEnd {
     if (-not $Smoke.Elevated.Folder) { Skip-Smoke 'no row of this run asked for the elevated helper' }
+    if ($Smoke.Elevated.Declined) { Skip-Smoke $Smoke.Elevated.Declined }
     $null = Stop-SmokeElevated
     foreach ($before in Get-ChildItem -LiteralPath $Smoke.Elevated.Folder -Filter 'before-*.reg') {
         $after = $before.FullName -replace 'before-(\w+)\.reg$', 'after-$1.reg'
