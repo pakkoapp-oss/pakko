@@ -1239,20 +1239,8 @@ public sealed class TarSandboxedService : ITarService
             // Its sum of the entries' sizes is what tar.exe is about to write to stdout.
             (long declaredSize, _, _, _) = await ScanForUnsafeEntriesAsync(scope, cancellationToken).ConfigureAwait(false);
 
-            long read = 0;
-            int lastPercent = -1;
-            void OnContentBytes(int count)
-            {
-                read += count;
-                // 99 at most: 100 is said once tar.exe has exited with no error.
-                int percent = declaredSize > 0 ? (int)Math.Min(99, read * 100 / declaredSize) : 0;
-                if (percent == lastPercent)
-                    return;
-                lastPercent = percent;
-                progress?.Report(new ProgressReport { Percent = percent, BytesTransferred = Math.Min(read, declaredSize), TotalBytes = declaredSize });
-            }
-
-            (int exitCode, string stdErr) = await scope.TestAsync(OnContentBytes, cancellationToken).ConfigureAwait(false);
+            (int exitCode, string stdErr) = await scope.TestAsync(ContentProgress(progress, declaredSize), cancellationToken)
+                .ConfigureAwait(false);
             if (exitCode != 0)
             {
                 errors.Add(CoreMessages.Error(archivePath, IsLikelyEncryptionFailure(stdErr)
@@ -1289,6 +1277,24 @@ public sealed class TarSandboxedService : ITarService
         }
 
         return true;
+    }
+
+    // TestOneArchiveAsync's counter of the bytes tar.exe writes to stdout, as percents of the
+    // entries' declared sizes; reports only a changed percent.
+    private static Action<int> ContentProgress(IProgress<ProgressReport>? progress, long declaredSize)
+    {
+        long read = 0;
+        int lastPercent = -1;
+        return count =>
+        {
+            read += count;
+            // 99 at most: 100 is said once tar.exe has exited with no error.
+            int percent = declaredSize > 0 ? (int)Math.Min(99, read * 100 / declaredSize) : 0;
+            if (percent == lastPercent)
+                return;
+            lastPercent = percent;
+            progress?.Report(new ProgressReport { Percent = percent, BytesTransferred = Math.Min(read, declaredSize), TotalBytes = declaredSize });
+        };
     }
 
     private static bool IsHeaderEncryptedRar(string archivePath) =>
