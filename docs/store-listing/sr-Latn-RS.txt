@@ -1,20 +1,20 @@
 [Description]
 Pakko je besplatan ZIP arhiver otvorenog koda za Windows, u potpunosti izgrađen na sopstvenim API-jima platforme .NET za kompresiju — bez 7-Zipa, bez WinRAR-a i bez ikakvog koda za kompresiju nezavisnih proizvođača bilo gde u aplikaciji.
 
-Pravite i raspakujte ZIP arhive direktno preko System.IO.Compression, sa lozinkom ili bez nje: Pakko otvara arhive ZipCrypto i WinZip AES i pravi arhive šifrovane algoritmom AES-256 koje mogu da čitaju 7-Zip i drugi ZIP programi. Arhive RAR, 7-Zip i arhive iz porodice TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) čitaju se alatkom tar.exe ugrađenom u Windows, pokrenutom u izolovanom sandbox okruženju AppContainer bez pristupa mreži.
+Pravite i raspakujte ZIP arhive direktno preko System.IO.Compression, sa lozinkom ili bez nje: Pakko otvara arhive ZipCrypto i WinZip AES i pravi arhive šifrovane algoritmom AES-256 koje mogu da čitaju 7-Zip i drugi ZIP programi. Arhive RAR, 7-Zip i arhive iz porodice TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) čitaju se alatkom tar.exe ugrađenom u Windows, pokrenutom u izolovanom sandbox okruženju AppContainer bez pristupa mreži. Ista alatka tar.exe pravi i arhive iz porodice TAR i 7-Zip (7-Zip bez lozinke, u verzijama sistema Windows čiji tar.exe može da ih zapiše).
 
 Pakko se ugrađuje u Istraživač datoteka: kliknite desnim tasterom miša da biste raspakovali ili kompresovali datoteke, testirali arhivu, proverili svojim antivirusnim programom ima li u njoj pretnji ili izračunali njen SHA-256 heš, a dvoklikom na bilo koju podržanu arhivu pregledajte njen sadržaj bez prethodnog raspakivanja svega. Svaka raspakovana datoteka zadržava bezbednosnu oznaku Mark-of-the-Web arhive iz koje potiče.
 
 Napravljen za sve koji žele tačno da vide šta kompresuje njihove datoteke — ceo izvorni kôd je javno dostupan na GitHubu pod licencom Apache 2.0. Bez telemetrije, bez analitike korišćenja, bez ikakvih mrežnih zahteva. Interfejs je dostupan na 37 jezika.
 
 [Short description]
-Besplatan arhiver otvorenog koda koji se oslanja samo na kôd za kompresiju ugrađen u .NET i Windows. Pravi i raspakuje ZIP arhive (i sa lozinkom AES-256) i raspakuje RAR, 7-Zip i TAR u sandbox okruženju. Bez telemetrije.
+Besplatan arhiver otvorenog koda koji se oslanja samo na kôd za kompresiju ugrađen u .NET i Windows. Pravi i raspakuje ZIP (i sa lozinkom AES-256), 7-Zip i TAR i raspakuje RAR; arhive se čitaju u sandbox okruženju. Bez telemetrije.
 
 [Product features]
 ZIP: pravljenje i raspakivanje sopstvenom bibliotekom platforme .NET za kompresiju
 ZIP sa lozinkom: otvara ZipCrypto i WinZip AES, pravi AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: raspakivanje i pravljenje alatkom tar.exe ugrađenom u Windows
-RAR i 7-Zip: samo raspakivanje, alatkom tar.exe ugrađenom u Windows
+7-Zip: raspakivanje i pravljenje (bez lozinke); RAR: samo raspakivanje — alatkom tar.exe ugrađenom u Windows
 Kontekstualni meni Istraživača datoteka: Otvori, Raspakuj ovde, Kompresuj, Testiraj arhivu, Proveri pretnje, Heš
 Pregledač arhiva: zavirite u arhivu, pregledajte slike i tekst, raspakujte samo ono što izaberete
 Provera pretnji: sadržaj arhive proverava vaš instalirani antivirusni program
@@ -35,8 +35,8 @@ zip sa lozinkom
 otvoreni kod
 
 [What's new in this version]
+• Novo: pravljenje arhiva 7-Zip u aplikaciji, iz menija Istraživača datoteka i komandom pakko a -t7z (bez lozinke; potrebna je verzija sistema Windows čiji tar.exe može da zapiše 7-Zip).
+• „Testiraj arhivu“ sada proverava i arhive 7-Zip, RAR i TAR, ne samo ZIP.
 • Novo: podaci za oporavak (PAR2). Uključite „Dodaj podatke za oporavak (PAR2)“ pri pravljenju arhive i arhiva će moći da se popravi posle oštećenja.
-• „Proveri pomoću PAR2“ i „Popravi pomoću PAR2“ u meniju Istraživača datoteka i u aplikaciji; popravljena kopija je nova datoteka, a original se ne menja.
 • Rade i PAR2 datoteke napravljene drugim programima; komanda pakko dodaje podatke za oporavak prekidačem -rr i popravlja komandom r.
 • Ispravljeno: tasteri Delete, Enter i taster menija ponovo rade na redu liste izabranom sa tastature.
-• Prozor se preslikava za jezike koji se pišu zdesna nalevo; ispravljeno je nekoliko poruka i detalja rasporeda.

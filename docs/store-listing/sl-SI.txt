@@ -1,20 +1,20 @@
 [Description]
 Pakko je brezplačen odprtokodni arhivator ZIP za Windows, v celoti zgrajen na lastnih API-jih okolja .NET za stiskanje — brez 7-Zipa, brez WinRAR-ja in brez kakršne koli kode za stiskanje drugih proizvajalcev kjer koli v aplikaciji.
 
-Ustvarjajte in razširjajte arhive ZIP neposredno prek System.IO.Compression, z geslom ali brez njega: Pakko odpira arhive ZipCrypto in WinZip AES ter ustvarja arhive, šifrirane z AES-256, ki jih berejo 7-Zip in drugi programi za ZIP. Arhivi RAR, 7-Zip in arhivi družine TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) se berejo z orodjem tar.exe, vgrajenim v Windows, ki se zažene v izoliranem peskovniku AppContainer brez dostopa do omrežja.
+Ustvarjajte in razširjajte arhive ZIP neposredno prek System.IO.Compression, z geslom ali brez njega: Pakko odpira arhive ZipCrypto in WinZip AES ter ustvarja arhive, šifrirane z AES-256, ki jih berejo 7-Zip in drugi programi za ZIP. Arhivi RAR, 7-Zip in arhivi družine TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) se berejo z orodjem tar.exe, vgrajenim v Windows, ki se zažene v izoliranem peskovniku AppContainer brez dostopa do omrežja. Isto orodje tar.exe ustvarja tudi arhive družine TAR in 7-Zip (7-Zip brez gesla, v različicah sistema Windows, katerih tar.exe jih zna zapisati).
 
 Pakko je vgrajen v Raziskovalca: z desno tipko miške kliknite, če želite razširiti ali stisniti datoteke, preizkusiti arhiv, s protivirusnim programom preveriti, ali so v njem grožnje, ali izračunati njegovo zgoščeno vrednost SHA-256, z dvoklikom katerega koli podprtega arhiva pa prebrskajte njegovo vsebino, ne da bi morali najprej vse razširiti. Vsaka razširjena datoteka ohrani varnostno oznako Mark-of-the-Web arhiva, iz katerega izvira.
 
 Narejen za vse, ki želijo natančno videti, kaj stiska njihove datoteke — celotna izvorna koda je javno dostopna v GitHubu pod licenco Apache 2.0. Brez telemetrije, brez analitike uporabe, brez kakršnih koli omrežnih zahtev. Vmesnik je na voljo v 37 jezikih.
 
 [Short description]
-Brezplačen odprtokodni arhivator, ki se zanaša samo na kodo za stiskanje, vgrajeno v .NET in Windows. Ustvarja in razširja arhive ZIP (tudi z geslom AES-256) ter v peskovniku razširja arhive RAR, 7-Zip in TAR. Brez telemetrije.
+Brezplačen odprtokodni arhivator, ki se zanaša samo na kodo za stiskanje, vgrajeno v .NET in Windows. Ustvarja in razširja arhive ZIP (tudi z geslom AES-256), 7-Zip in TAR ter razširja RAR; arhivi se berejo v peskovniku. Brez telemetrije.
 
 [Product features]
 ZIP: ustvarjanje in razširjanje z lastno knjižnico okolja .NET za stiskanje
 ZIP z geslom: odpira ZipCrypto in WinZip AES, ustvarja AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: razširjanje in ustvarjanje z orodjem tar.exe, vgrajenim v Windows
-RAR in 7-Zip: samo razširjanje, z orodjem tar.exe, vgrajenim v Windows
+7-Zip: razširjanje in ustvarjanje (brez gesla); RAR: samo razširjanje — z orodjem tar.exe, vgrajenim v Windows
 Priročni meni Raziskovalca: Odpri, Razširi tukaj, Stisni, Preizkusi arhiv, Preveri grožnje, Zgoščena vrednost
 Brskalnik po arhivih: poglejte v arhiv, predoglejte si slike in besedilo, razširite samo izbrano
 Preverjanje groženj: vsebino arhiva preveri vaš nameščeni protivirusni program
@@ -35,8 +35,8 @@ zip z geslom
 odprta koda
 
 [What's new in this version]
+• Novo: ustvarjanje arhivov 7-Zip v aplikaciji, iz menija Raziskovalca in z ukazom pakko a -t7z (brez gesla; potrebna je različica sistema Windows, katere tar.exe zna zapisati 7-Zip).
+• »Preizkusi arhiv« zdaj preverja tudi arhive 7-Zip, RAR in TAR, ne le ZIP.
 • Novo: podatki za obnovitev (PAR2). Pri ustvarjanju arhiva vklopite »Dodaj podatke za obnovitev (PAR2)« in arhiv bo mogoče po poškodbi popraviti.
-• »Preveri s PAR2« in »Popravi s PAR2« v meniju Raziskovalca in v aplikaciji; popravljena kopija je nova datoteka, izvirnik se ne spremeni.
 • Delujejo tudi datoteke PAR2, ustvarjene z drugimi programi; ukaz pakko doda podatke za obnovitev s stikalom -rr in popravlja z ukazom r.
 • Popravljeno: tipke Delete, Enter in menijska tipka znova delujejo v vrstici seznama, izbrani s tipkovnico.
-• Okno je zrcaljeno za jezike, ki se pišejo od desne proti levi; popravljenih je več sporočil in podrobnosti postavitve.

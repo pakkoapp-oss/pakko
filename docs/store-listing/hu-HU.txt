@@ -1,20 +1,20 @@
 [Description]
 A Pakko ingyenes, nyílt forráskódú ZIP-archiváló Windowsra, amely teljes egészében a .NET saját tömörítési API-jaira épül — nincs benne 7-Zip, nincs WinRAR, és sehol az alkalmazásban nincs harmadik féltől származó tömörítő kód.
 
-Hozzon létre és bontson ki ZIP-archívumokat közvetlenül a System.IO.Compression segítségével, jelszóval vagy anélkül: a Pakko megnyitja a ZipCrypto és a WinZip AES archívumokat, és AES-256 titkosítású archívumokat hoz létre, amelyeket a 7-Zip és más ZIP-programok is olvasnak. A RAR-, 7-Zip- és a TAR-családba tartozó archívumokat (TAR, GZ, BZ2, XZ, ZST, LZMA) a Windows beépített tar.exe eszköze olvassa, amely elszigetelt, hálózati hozzáférés nélküli AppContainer sandboxban fut.
+Hozzon létre és bontson ki ZIP-archívumokat közvetlenül a System.IO.Compression segítségével, jelszóval vagy anélkül: a Pakko megnyitja a ZipCrypto és a WinZip AES archívumokat, és AES-256 titkosítású archívumokat hoz létre, amelyeket a 7-Zip és más ZIP-programok is olvasnak. A RAR-, 7-Zip- és a TAR-családba tartozó archívumokat (TAR, GZ, BZ2, XZ, ZST, LZMA) a Windows beépített tar.exe eszköze olvassa, amely elszigetelt, hálózati hozzáférés nélküli AppContainer sandboxban fut. Ugyanez a tar.exe TAR-családba tartozó és 7-Zip-archívumokat is létrehoz (a 7-Zip-archívumokat jelszó nélkül, azokon a Windows-verziókon, amelyek tar.exe eszköze írni tudja őket).
 
 A Pakko natívan beépül a Fájlkezelőbe: jobb gombbal kattintva kibonthat, tömöríthet, tesztelhet egy archívumot, a víruskeresőjével fenyegetéseket kereshet benne, vagy kiszámíthatja az SHA-256 hashét, bármely támogatott archívumra duplán kattintva pedig böngészheti annak tartalmát anélkül, hogy előbb mindent ki kellene bontania. Minden kibontott fájl megőrzi annak az archívumnak a Mark-of-the-Web biztonsági jelölését, amelyből származik.
 
 Azoknak készült, akik pontosan látni akarják, mi tömöríti a fájljaikat — a teljes forráskód nyilvánosan elérhető a GitHubon, Apache 2.0 licenc alatt. Nincs telemetria, nincs használati elemzés, nincs semmilyen hálózati kérés. A felület 37 nyelven érhető el.
 
 [Short description]
-Ingyenes, nyílt forráskódú archiváló, amely kizárólag a .NET-be és a Windowsba beépített tömörítő kódra támaszkodik. ZIP-archívumokat hoz létre és bont ki (AES-256 jelszóval is), a RAR-, 7-Zip- és TAR-archívumokat pedig sandboxban bontja ki. Nincs telemetria.
+Ingyenes, nyílt forráskódú archiváló, amely kizárólag a .NET-be és a Windowsba beépített tömörítő kódra támaszkodik. ZIP- (AES-256 jelszóval is), 7-Zip- és TAR-archívumokat hoz létre és bont ki, a RAR-t pedig kibontja; sandboxban olvas. Nincs telemetria.
 
 [Product features]
 ZIP: létrehozás és kibontás a .NET saját tömörítési könyvtárával
 Jelszóval védett ZIP: megnyitja a ZipCrypto és a WinZip AES archívumokat, AES-256 archívumot hoz létre
 TAR, GZ, BZ2, XZ, ZST, LZMA: kibontás és létrehozás a Windows beépített tar.exe eszközével
-RAR és 7-Zip: csak kibontás, a Windows beépített tar.exe eszközével
+7-Zip: kibontás és létrehozás (jelszó nélkül); RAR: csak kibontás — a Windows beépített tar.exe eszközével
 A Fájlkezelő helyi menüje: Megnyitás, Kibontás ide, Tömörítés, Archívum tesztelése, Fenyegetések keresése, Hash
 Archívumböngésző: nézzen bele az archívumba, tekintse meg a képek és szövegek előnézetét, és csak a kijelölt elemeket bontsa ki
 Fenyegetések keresése: az archívum tartalmát a telepített víruskeresője ellenőrzi
@@ -35,8 +35,8 @@ tar gz
 jelszavas zip
 
 [What's new in this version]
+• Újdonság: 7-Zip-archívumok létrehozása az alkalmazásban, a Fájlkezelő menüjéből és a pakko a -t7z paranccsal (jelszó nélkül; olyan Windows-verzió kell, amelynek tar.exe eszköze tud 7-Zip-et írni).
+• Az „Archívum tesztelése” mostantól a 7-Zip-, RAR- és TAR-archívumokat is ellenőrzi, nem csak a ZIP-et.
 • Újdonság: helyreállítási adatok (PAR2). Archívum létrehozásakor kapcsolja be a „Helyreállítási adatok hozzáadása (PAR2)” beállítást, és az archívum sérülés után javítható lesz.
-• „Ellenőrzés PAR2-vel” és „Javítás PAR2-vel” a Fájlkezelő menüjében és az alkalmazásban; a javított másolat új fájl, az eredeti nem változik.
 • Más programokkal készült PAR2-fájlok is használhatók; a pakko parancs az -rr kapcsolóval ad hozzá helyreállítási adatokat, és az r paranccsal javít.
 • Javítva: a Delete, az Enter és a menübillentyű ismét működik a lista billentyűzettel kijelölt során.
-• Az ablak tükröződik a jobbról balra írt nyelveknél; több üzenet és elrendezési részlet is javult.

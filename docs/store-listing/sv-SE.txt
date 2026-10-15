@@ -1,20 +1,20 @@
 [Description]
 Pakko är ett kostnadsfritt ZIP-arkiveringsprogram med öppen källkod för Windows, byggt helt och hållet på .NET:s egna komprimerings-API:er — ingen 7-Zip, ingen WinRAR och ingen komprimeringskod från tredje part någonstans i appen.
 
-Skapa och extrahera ZIP-arkiv direkt via System.IO.Compression, med eller utan lösenord: Pakko öppnar ZipCrypto- och WinZip AES-arkiv och skapar AES-256-krypterade arkiv som 7-Zip och andra ZIP-program kan läsa. RAR-, 7-Zip- och TAR-arkiv (TAR, GZ, BZ2, XZ, ZST, LZMA) läses via det tar.exe som är inbyggt i Windows och som körs i en isolerad AppContainer-sandlåda utan nätverksåtkomst.
+Skapa och extrahera ZIP-arkiv direkt via System.IO.Compression, med eller utan lösenord: Pakko öppnar ZipCrypto- och WinZip AES-arkiv och skapar AES-256-krypterade arkiv som 7-Zip och andra ZIP-program kan läsa. RAR-, 7-Zip- och TAR-arkiv (TAR, GZ, BZ2, XZ, ZST, LZMA) läses via det tar.exe som är inbyggt i Windows och som körs i en isolerad AppContainer-sandlåda utan nätverksåtkomst. Samma tar.exe skapar också TAR- och 7-Zip-arkiv (7-Zip utan lösenord, i de Windows-versioner vars tar.exe kan skriva dem).
 
 Pakko är integrerat i Utforskaren: högerklicka för att extrahera, komprimera, testa ett arkiv, låta ditt antivirusprogram söka efter hot i det eller beräkna dess SHA-256-hash, och dubbelklicka på ett arkiv som stöds för att bläddra i innehållet utan att först behöva extrahera allt. Varje extraherad fil behåller säkerhetsmärkningen Mark-of-the-Web från arkivet den kommer ifrån.
 
 Byggt för alla som vill se exakt vad som komprimerar deras filer — hela källkoden finns offentligt på GitHub under Apache 2.0-licensen. Ingen telemetri, ingen användningsanalys, inga nätverksförfrågningar av något slag. Gränssnittet finns på 37 språk.
 
 [Short description]
-Ett kostnadsfritt arkiveringsprogram med öppen källkod som bara förlitar sig på den komprimeringskod som är inbyggd i .NET och Windows. Skapar och extraherar ZIP (även med AES-256-lösenord) och extraherar RAR, 7-Zip och TAR i en sandlåda. Ingen telemetri.
+Ett kostnadsfritt arkiveringsprogram med öppen källkod som bara förlitar sig på den komprimeringskod som är inbyggd i .NET och Windows. Skapar och extraherar ZIP (även med AES-256-lösenord), 7-Zip och TAR och extraherar RAR; arkiv läses i en sandlåda. Ingen telemetri.
 
 [Product features]
 ZIP: skapa och extrahera med .NET:s eget komprimeringsbibliotek
 ZIP med lösenord: öppnar ZipCrypto och WinZip AES, skapar AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: extrahera och skapa via det tar.exe som är inbyggt i Windows
-RAR och 7-Zip: endast extrahering, via det tar.exe som är inbyggt i Windows
+7-Zip: extrahering och skapande (utan lösenord); RAR: endast extrahering — via det tar.exe som är inbyggt i Windows
 Utforskarens snabbmeny: Öppna, Extrahera hit, Komprimera, Testa arkiv, Sök efter hot, Hash
 Arkivbläddrare: titta in i ett arkiv, förhandsgranska bilder och text, extrahera bara det du markerar
 Sök efter hot: arkivets innehåll kontrolleras av ditt installerade antivirusprogram
@@ -35,8 +35,8 @@ zip med lösenord
 7zip-alternativ
 
 [What's new in this version]
+• Nytt: skapa 7-Zip-arkiv i appen, från Utforskarens meny och med pakko a -t7z (utan lösenord; kräver en Windows-version vars tar.exe kan skriva 7-Zip).
+• ”Testa arkiv” kontrollerar nu även 7-Zip-, RAR- och TAR-arkiv, inte bara ZIP.
 • Nytt: återställningsdata (PAR2). Aktivera ”Lägg till återställningsdata (PAR2)” när du skapar ett arkiv, så kan arkivet repareras efter en skada.
-• ”Verifiera med PAR2” och ”Reparera med PAR2” i Utforskarens meny och i appen; den reparerade kopian är en ny fil och originalet ändras inte.
 • PAR2-filer från andra program fungerar också; kommandot pakko lägger till återställningsdata med -rr och reparerar med r.
 • Åtgärdat: Delete, Retur och menytangenten fungerar igen på en listrad som valts med tangentbordet.
-• Fönstret spegelvänds för språk som skrivs från höger till vänster; flera meddelanden och layoutdetaljer har rättats.

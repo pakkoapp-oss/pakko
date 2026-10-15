@@ -1,20 +1,20 @@
 [Description]
 „Pakko“ yra nemokamas atvirojo kodo ZIP archyvatorius, skirtas „Windows“, sukurtas remiantis vien pačios .NET suspaudimo API — be „7-Zip“, be „WinRAR“ ir be jokio trečiųjų šalių suspaudimo kodo programoje.
 
-Kurkite ir išskleiskite ZIP archyvus tiesiogiai per „System.IO.Compression“, su slaptažodžiu arba be jo: „Pakko“ atveria „ZipCrypto“ ir „WinZip AES“ archyvus ir kuria AES-256 šifruotus archyvus, kuriuos perskaito „7-Zip“ ir kitos ZIP programos. RAR, 7-Zip ir TAR šeimos archyvai (TAR, GZ, BZ2, XZ, ZST, LZMA) skaitomi „Windows“ įtaisytuoju įrankiu tar.exe, paleidžiamu izoliuotoje „AppContainer“ smėlio dėžėje be prieigos prie tinklo.
+Kurkite ir išskleiskite ZIP archyvus tiesiogiai per „System.IO.Compression“, su slaptažodžiu arba be jo: „Pakko“ atveria „ZipCrypto“ ir „WinZip AES“ archyvus ir kuria AES-256 šifruotus archyvus, kuriuos perskaito „7-Zip“ ir kitos ZIP programos. RAR, 7-Zip ir TAR šeimos archyvai (TAR, GZ, BZ2, XZ, ZST, LZMA) skaitomi „Windows“ įtaisytuoju įrankiu tar.exe, paleidžiamu izoliuotoje „AppContainer“ smėlio dėžėje be prieigos prie tinklo. Tas pats tar.exe kuria ir TAR šeimos bei 7-Zip archyvus (7-Zip be slaptažodžio, tose „Windows“ versijose, kurių tar.exe gali juos įrašyti).
 
 „Pakko“ integruota į failų naršyklę: spustelėkite dešiniuoju pelės mygtuku, kad išskleistumėte ar suspaustumėte failus, testuotumėte archyvą, antivirusine programa patikrintumėte, ar jame nėra grėsmių, arba apskaičiuotumėte jo SHA-256 maišą, o dukart spustelėję bet kurį palaikomą archyvą naršykite jo turinį iš pradžių visko neišskleidę. Kiekvienas išskleistas failas išlaiko archyvo, iš kurio jis paimtas, saugos žymą „Mark-of-the-Web“.
 
 Sukurta visiems, kurie nori tiksliai matyti, kas suspaudžia jų failus — visas išeitinis kodas viešai prieinamas „GitHub“ pagal „Apache 2.0“ licenciją. Jokios telemetrijos, jokios naudojimo analizės, jokių tinklo užklausų. Sąsaja pateikiama 37 kalbomis.
 
 [Short description]
-Nemokamas atvirojo kodo archyvatorius, kuris remiasi tik .NET ir „Windows“ įtaisytu suspaudimo kodu. Kuria ir išskleidžia ZIP archyvus (taip pat su AES-256 slaptažodžiu) ir smėlio dėžėje išskleidžia RAR, 7-Zip ir TAR archyvus. Jokios telemetrijos.
+Nemokamas atvirojo kodo archyvatorius, kuris remiasi tik .NET ir „Windows“ įtaisytu suspaudimo kodu. Kuria ir išskleidžia ZIP (taip pat su AES-256 slaptažodžiu), 7-Zip ir TAR archyvus bei išskleidžia RAR; archyvai skaitomi smėlio dėžėje. Jokios telemetrijos.
 
 [Product features]
 ZIP: kūrimas ir išskleidimas pačios .NET suspaudimo biblioteka
 ZIP su slaptažodžiu: atveria „ZipCrypto“ ir „WinZip AES“, kuria AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: išskleidimas ir kūrimas „Windows“ įtaisytuoju įrankiu tar.exe
-RAR ir 7-Zip: tik išskleidimas, „Windows“ įtaisytuoju įrankiu tar.exe
+7-Zip: išskleidimas ir kūrimas (be slaptažodžio); RAR: tik išskleidimas — „Windows“ įtaisytuoju įrankiu tar.exe
 Failų naršyklės kontekstinis meniu: Atverti, Išskleisti čia, Suspausti, Testuoti archyvą, Tikrinti grėsmes, Maiša
 Archyvų naršyklė: pažvelkite į archyvo vidų, peržiūrėkite paveikslėlius ir tekstą, išskleiskite tik tai, ką pažymėjote
 Grėsmių tikrinimas: archyvo turinį patikrina jūsų įdiegta antivirusinė programa
@@ -35,8 +35,8 @@ tar gz
 zip su slaptažodžiu
 
 [What's new in this version]
+• Nauja: 7-Zip archyvų kūrimas programoje, Failų naršyklės meniu ir komanda pakko a -t7z (be slaptažodžio; reikia „Windows“ versijos, kurios tar.exe gali įrašyti 7-Zip).
+• „Testuoti archyvą“ dabar tikrina ir 7-Zip, RAR bei TAR archyvus, ne tik ZIP.
 • Nauja: atkūrimo duomenys (PAR2). Kurdami archyvą įjunkite „Pridėti atkūrimo duomenis (PAR2)“, ir archyvą bus galima pataisyti po pažeidimo.
-• „Tikrinti su PAR2“ ir „Taisyti su PAR2“ Failų naršyklės meniu ir programoje; pataisyta kopija yra naujas failas, originalas nekeičiamas.
 • Tinka ir kitų programų sukurti PAR2 failai; komanda pakko prideda atkūrimo duomenis jungikliu -rr ir taiso komanda r.
 • Ištaisyta: klavišai „Delete“, „Enter“ ir meniu klavišas vėl veikia klaviatūra pasirinktoje sąrašo eilutėje.
-• Langas atspindimas kalboms, rašomoms iš dešinės į kairę; pataisyti keli pranešimai ir išdėstymo smulkmenos.

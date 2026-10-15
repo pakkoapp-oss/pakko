@@ -1,20 +1,20 @@
 [Description]
 Pakko est un archiveur ZIP gratuit et open source pour Windows, entièrement construit sur les API de compression propres à .NET — sans 7-Zip, sans WinRAR et sans aucun code de compression tiers dans l'application.
 
-Créez et extrayez des archives ZIP directement via System.IO.Compression, avec ou sans mot de passe : Pakko ouvre les archives ZipCrypto et WinZip AES et crée des archives chiffrées en AES-256, lisibles par 7-Zip et les autres outils ZIP. Les archives RAR, 7-Zip et de la famille TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) sont lues par l'outil tar.exe intégré à Windows, lancé dans un bac à sable AppContainer isolé, sans accès réseau.
+Créez et extrayez des archives ZIP directement via System.IO.Compression, avec ou sans mot de passe : Pakko ouvre les archives ZipCrypto et WinZip AES et crée des archives chiffrées en AES-256, lisibles par 7-Zip et les autres outils ZIP. Les archives RAR, 7-Zip et de la famille TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) sont lues par l'outil tar.exe intégré à Windows, lancé dans un bac à sable AppContainer isolé, sans accès réseau. Le même tar.exe crée aussi des archives de la famille TAR et 7-Zip (7-Zip sans mot de passe, dans les versions de Windows dont le tar.exe sait les écrire).
 
 Pakko s'intègre nativement à l'Explorateur de fichiers : un clic droit pour extraire, compresser, tester une archive, y rechercher des menaces avec votre antivirus ou calculer son hachage SHA-256, et un double-clic sur toute archive prise en charge pour parcourir son contenu sans tout extraire d'abord. Chaque fichier extrait conserve l'étiquette de sécurité Mark-of-the-Web de l'archive dont il provient.
 
 Conçu pour quiconque veut voir exactement ce qui compresse ses fichiers — l'intégralité du code source est publique sur GitHub sous licence Apache 2.0. Aucune télémétrie, aucune analyse d'usage, aucune requête réseau d'aucune sorte. L'interface est disponible en 37 langues.
 
 [Short description]
-Un archiveur gratuit et open source qui ne s'appuie que sur le code de compression intégré à .NET et à Windows. Il crée et extrait des ZIP (y compris avec mot de passe AES-256) et extrait RAR, 7-Zip et TAR dans un bac à sable. Aucune télémétrie.
+Un archiveur gratuit et open source qui ne s'appuie que sur le code de compression intégré à .NET et à Windows. Crée et extrait ZIP (aussi avec mot de passe AES-256), 7-Zip et TAR, et extrait RAR ; lecture dans un bac à sable. Aucune télémétrie.
 
 [Product features]
 ZIP : création et extraction avec la bibliothèque de compression propre à .NET
 ZIP avec mot de passe : ouvre ZipCrypto et WinZip AES, crée de l'AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA : extraction et création, via l'outil tar.exe intégré à Windows
-RAR et 7-Zip : extraction seule, via l'outil tar.exe intégré à Windows
+7-Zip : extraction et création (sans mot de passe) ; RAR : extraction seule — via l'outil tar.exe intégré à Windows
 Menu contextuel de l'Explorateur de fichiers : Ouvrir, Extraire ici, Compresser, Tester l'archive, Rechercher des menaces, Hachage
 Explorateur d'archives : regardez dans une archive, prévisualisez images et textes, n'extrayez que votre sélection
 Recherche de menaces : le contenu de l'archive est vérifié par votre antivirus installé
@@ -35,8 +35,8 @@ extraction fichiers sécurisée
 open source
 
 [What's new in this version]
+• Nouveau : créez des archives 7-Zip dans l'application, depuis le menu de l'Explorateur de fichiers et avec pakko a -t7z (sans mot de passe ; nécessite une version de Windows dont le tar.exe sait écrire le 7-Zip).
+• « Tester l'archive » vérifie désormais aussi les archives 7-Zip, RAR et TAR, pas seulement ZIP.
 • Nouveau : données de récupération (PAR2). Activez « Ajouter des données de récupération (PAR2) » à la création d'une archive, et elle pourra être réparée après un dommage.
-• « Vérifier avec PAR2 » et « Réparer avec PAR2 » dans le menu de l'Explorateur de fichiers et dans l'application ; la copie réparée est un nouveau fichier, l'original n'est pas modifié.
 • Les fichiers PAR2 créés par d'autres programmes fonctionnent aussi ; la commande pakko ajoute des données de récupération avec -rr et répare avec r.
 • Corrigé : les touches Suppr, Entrée et la touche Menu fonctionnent de nouveau sur une ligne de la liste sélectionnée au clavier.
-• La fenêtre est inversée pour les langues écrites de droite à gauche ; plusieurs messages et détails de mise en page ont été corrigés.

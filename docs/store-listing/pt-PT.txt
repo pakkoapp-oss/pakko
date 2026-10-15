@@ -1,20 +1,20 @@
 [Description]
 O Pakko é um arquivador ZIP gratuito e de código aberto para Windows, construído inteiramente sobre as API de compressão do próprio .NET — sem 7-Zip, sem WinRAR e sem qualquer código de compressão de terceiros na aplicação.
 
-Crie e extraia arquivos ZIP diretamente através do System.IO.Compression, com ou sem palavra-passe: o Pakko abre arquivos ZipCrypto e WinZip AES e cria arquivos encriptados com AES-256, que o 7-Zip e outras ferramentas ZIP conseguem ler. Os arquivos RAR, 7-Zip e da família TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) são lidos através do tar.exe integrado no Windows, executado dentro de uma sandbox AppContainer isolada, sem acesso à rede.
+Crie e extraia arquivos ZIP diretamente através do System.IO.Compression, com ou sem palavra-passe: o Pakko abre arquivos ZipCrypto e WinZip AES e cria arquivos encriptados com AES-256, que o 7-Zip e outras ferramentas ZIP conseguem ler. Os arquivos RAR, 7-Zip e da família TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) são lidos através do tar.exe integrado no Windows, executado dentro de uma sandbox AppContainer isolada, sem acesso à rede. O mesmo tar.exe também cria arquivos da família TAR e 7-Zip (7-Zip sem palavra-passe, nas versões do Windows cujo tar.exe os consegue escrever).
 
 O Pakko integra-se de forma nativa com o Explorador de Ficheiros: clique com o botão direito para extrair, comprimir, testar um arquivo, procurar ameaças nele com o seu antivírus ou calcular o respetivo hash SHA-256, e faça duplo clique em qualquer arquivo suportado para navegar no seu conteúdo sem ter de extrair tudo primeiro. Cada ficheiro extraído mantém a etiqueta de segurança Mark-of-the-Web do arquivo de onde veio.
 
 Criado para quem quer ver exatamente o que está a comprimir os seus ficheiros — todo o código-fonte é público no GitHub sob a licença Apache 2.0. Sem telemetria, sem análises de utilização, sem quaisquer pedidos de rede. A interface está disponível em 37 idiomas.
 
 [Short description]
-Um arquivador gratuito e de código aberto que depende apenas do código de compressão integrado no .NET e no Windows. Cria e extrai ZIP (também com palavra-passe AES-256) e extrai RAR, 7-Zip e TAR numa sandbox. Sem telemetria.
+Um arquivador gratuito e de código aberto que depende apenas do código de compressão integrado no .NET e no Windows. Cria e extrai ZIP (também com palavra-passe AES-256), 7-Zip e TAR, e extrai RAR; os arquivos são lidos numa sandbox. Sem telemetria.
 
 [Product features]
 ZIP: criação e extração com a biblioteca de compressão do próprio .NET
 ZIP com palavra-passe: abre ZipCrypto e WinZip AES, cria AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: extração e criação, através do tar.exe integrado no Windows
-RAR e 7-Zip: apenas extração, através do tar.exe integrado no Windows
+7-Zip: extração e criação (sem palavra-passe); RAR: apenas extração — através do tar.exe integrado no Windows
 Menu de contexto do Explorador de Ficheiros: Abrir, Extrair aqui, Comprimir, Testar arquivo, Procurar ameaças, Hash
 Explorador de arquivos: veja o interior de um arquivo, pré-visualize imagens e texto, extraia apenas o que selecionar
 Procurar ameaças: o conteúdo do arquivo é verificado pelo antivírus que tem instalado
@@ -35,8 +35,8 @@ zip com palavra-passe
 código aberto
 
 [What's new in this version]
+• Novidade: crie arquivos 7-Zip na aplicação, no menu do Explorador de Ficheiros e com pakko a -t7z (sem palavra-passe; requer uma versão do Windows cujo tar.exe consiga escrever 7-Zip).
+• «Testar arquivo» passa a verificar também arquivos 7-Zip, RAR e TAR, não só ZIP.
 • Novidade: dados de recuperação (PAR2). Ative «Adicionar dados de recuperação (PAR2)» ao criar um arquivo, e este poderá ser reparado depois de danificado.
-• «Verificar com PAR2» e «Reparar com PAR2» no menu do Explorador de Ficheiros e na aplicação; a cópia reparada é um ficheiro novo e o original não é alterado.
 • Os ficheiros PAR2 criados por outros programas também funcionam; o comando pakko adiciona dados de recuperação com -rr e repara com r.
 • Corrigido: as teclas Delete, Enter e a tecla de menu voltam a funcionar numa linha da lista selecionada com o teclado.
-• A janela é espelhada nos idiomas escritos da direita para a esquerda; foram corrigidas várias mensagens e pormenores de disposição.

@@ -1,20 +1,20 @@
 [Description]
 Pakko to bezpłatny archiwizator ZIP o otwartym kodzie źródłowym dla systemu Windows, zbudowany wyłącznie na własnych interfejsach API kompresji platformy .NET — bez 7-Zip, bez WinRAR i bez jakiegokolwiek kodu kompresji innych firm w aplikacji.
 
-Twórz i wypakowuj archiwa ZIP bezpośrednio przez System.IO.Compression, z hasłem lub bez: Pakko otwiera archiwa ZipCrypto i WinZip AES oraz tworzy archiwa szyfrowane AES-256, które odczytują 7-Zip i inne programy do ZIP. Archiwa RAR, 7-Zip i z rodziny TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) są odczytywane przez wbudowane w Windows narzędzie tar.exe, uruchamiane w izolowanej piaskownicy AppContainer bez dostępu do sieci.
+Twórz i wypakowuj archiwa ZIP bezpośrednio przez System.IO.Compression, z hasłem lub bez: Pakko otwiera archiwa ZipCrypto i WinZip AES oraz tworzy archiwa szyfrowane AES-256, które odczytują 7-Zip i inne programy do ZIP. Archiwa RAR, 7-Zip i z rodziny TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) są odczytywane przez wbudowane w Windows narzędzie tar.exe, uruchamiane w izolowanej piaskownicy AppContainer bez dostępu do sieci. To samo narzędzie tar.exe tworzy też archiwa z rodziny TAR i 7-Zip (7-Zip bez hasła, w wersjach Windows, których tar.exe potrafi je zapisać).
 
 Pakko integruje się natywnie z Eksploratorem plików: kliknij prawym przyciskiem myszy, aby wypakować pliki, skompresować je, przetestować archiwum, przeskanować je programem antywirusowym w poszukiwaniu zagrożeń albo obliczyć jego sumę kontrolną SHA-256, a kliknij dwukrotnie dowolne obsługiwane archiwum, aby przejrzeć jego zawartość bez wypakowywania wszystkiego. Każdy wypakowany plik zachowuje znacznik bezpieczeństwa Mark-of-the-Web archiwum, z którego pochodzi.
 
 Stworzony dla każdego, kto chce dokładnie wiedzieć, co kompresuje jego pliki — cały kod źródłowy jest publicznie dostępny w serwisie GitHub na licencji Apache 2.0. Żadnej telemetrii, żadnej analityki, żadnych żądań sieciowych. Interfejs jest dostępny w 37 językach.
 
 [Short description]
-Bezpłatny archiwizator o otwartym kodzie źródłowym, który korzysta wyłącznie z kodu kompresji wbudowanego w .NET i Windows. Tworzy i wypakowuje archiwa ZIP (także z hasłem AES-256) oraz wypakowuje RAR, 7-Zip i TAR w piaskownicy. Bez telemetrii.
+Bezpłatny archiwizator o otwartym kodzie źródłowym, który korzysta wyłącznie z kodu kompresji wbudowanego w .NET i Windows. Tworzy i wypakowuje archiwa ZIP (także z hasłem AES-256), 7-Zip i TAR oraz wypakowuje RAR; archiwa są odczytywane w piaskownicy. Bez telemetrii.
 
 [Product features]
 ZIP: tworzenie i wypakowywanie za pomocą własnej biblioteki kompresji .NET
 ZIP z hasłem: otwiera ZipCrypto i WinZip AES, tworzy AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: wypakowywanie i tworzenie za pomocą wbudowanego w Windows narzędzia tar.exe
-RAR i 7-Zip: tylko wypakowywanie, za pomocą wbudowanego w Windows narzędzia tar.exe
+7-Zip: wypakowywanie i tworzenie (bez hasła); RAR: tylko wypakowywanie — za pomocą wbudowanego w Windows narzędzia tar.exe
 Menu kontekstowe Eksploratora plików: Otwórz, Wypakuj tutaj, Kompresuj, Testuj archiwum, Skanuj w poszukiwaniu zagrożeń, Suma kontrolna
 Przeglądarka archiwów: zajrzyj do archiwum, wyświetl podgląd obrazów i tekstu, wypakuj tylko to, co zaznaczysz
 Skanowanie w poszukiwaniu zagrożeń: zawartość archiwum sprawdza zainstalowany program antywirusowy
@@ -35,8 +35,8 @@ zip z hasłem
 otwarty kod źródłowy
 
 [What's new in this version]
+• Nowość: tworzenie archiwów 7-Zip w aplikacji, z menu Eksploratora plików i poleceniem pakko a -t7z (bez hasła; potrzebna wersja Windows, której tar.exe potrafi zapisać 7-Zip).
+• „Testuj archiwum” sprawdza teraz także archiwa 7-Zip, RAR i TAR, nie tylko ZIP.
 • Nowość: dane odzyskiwania (PAR2). Włącz „Dodaj dane odzyskiwania (PAR2)” podczas tworzenia archiwum, a archiwum da się naprawić po uszkodzeniu.
-• „Zweryfikuj za pomocą PAR2” i „Napraw za pomocą PAR2” w menu Eksploratora plików i w aplikacji; naprawiona kopia to nowy plik, oryginał nie jest zmieniany.
 • Działają też pliki PAR2 utworzone przez inne programy; polecenie pakko dodaje dane odzyskiwania przełącznikiem -rr i naprawia poleceniem r.
 • Naprawiono: klawisze Delete, Enter i klawisz menu znów działają w wierszu listy wybranym z klawiatury.
-• Okno jest odbijane lustrzanie w językach pisanych od prawej do lewej; poprawiono kilka komunikatów i szczegółów układu.

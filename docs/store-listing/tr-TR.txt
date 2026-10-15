@@ -1,20 +1,20 @@
 [Description]
 Pakko, Windows için ücretsiz ve açık kaynaklı bir ZIP arşivleyicisidir; tamamen .NET'in kendi sıkıştırma API'leri üzerine kurulmuştur — uygulamanın hiçbir yerinde 7-Zip, WinRAR veya üçüncü taraf sıkıştırma kodu yoktur.
 
-ZIP arşivlerini doğrudan System.IO.Compression üzerinden, parolalı veya parolasız oluşturun ve ayıklayın: Pakko, ZipCrypto ve WinZip AES arşivlerini açar ve 7-Zip ile diğer ZIP programlarının okuyabildiği AES-256 şifreli arşivler oluşturur. RAR, 7-Zip ve TAR ailesi arşivleri (TAR, GZ, BZ2, XZ, ZST, LZMA), Windows'un yerleşik tar.exe aracıyla okunur; bu araç, ağ erişimi olmayan yalıtılmış bir AppContainer korumalı alanında çalıştırılır.
+ZIP arşivlerini doğrudan System.IO.Compression üzerinden, parolalı veya parolasız oluşturun ve ayıklayın: Pakko, ZipCrypto ve WinZip AES arşivlerini açar ve 7-Zip ile diğer ZIP programlarının okuyabildiği AES-256 şifreli arşivler oluşturur. RAR, 7-Zip ve TAR ailesi arşivleri (TAR, GZ, BZ2, XZ, ZST, LZMA), Windows'un yerleşik tar.exe aracıyla okunur; bu araç, ağ erişimi olmayan yalıtılmış bir AppContainer korumalı alanında çalıştırılır. Aynı tar.exe, TAR ailesi ve 7-Zip arşivleri de oluşturur (7-Zip arşivlerini parolasız, tar.exe aracının bunları yazabildiği Windows sürümlerinde).
 
 Pakko, Dosya Gezgini ile bütünleşir: dosyaları ayıklamak, sıkıştırmak, bir arşivi test etmek, virüsten koruma programınızla tehditlere karşı taratmak veya SHA-256 karmasını hesaplamak için sağ tıklayın; desteklenen herhangi bir arşive çift tıklayarak her şeyi önceden ayıklamadan içeriğine göz atın. Ayıklanan her dosya, geldiği arşivin Mark-of-the-Web güvenlik etiketini korur.
 
 Dosyalarını tam olarak neyin sıkıştırdığını görmek isteyen herkes için tasarlanmıştır — tüm kaynak kodu Apache 2.0 lisansıyla GitHub'da herkese açıktır. Telemetri yok, kullanım analizi yok, hiçbir türde ağ isteği yok. Arayüz 37 dilde kullanılabilir.
 
 [Short description]
-Yalnızca .NET ve Windows'ta yerleşik sıkıştırma koduna dayanan, ücretsiz ve açık kaynaklı bir arşivleyici. ZIP arşivleri oluşturur ve ayıklar (AES-256 parolasıyla da), RAR, 7-Zip ve TAR arşivlerini ise korumalı alanda ayıklar. Telemetri yok.
+Yalnızca .NET ve Windows'ta yerleşik sıkıştırma koduna dayanan, ücretsiz ve açık kaynaklı bir arşivleyici. ZIP (AES-256 parolasıyla da), 7-Zip ve TAR arşivleri oluşturur ve ayıklar, RAR arşivlerini de ayıklar; arşivler korumalı alanda okunur. Telemetri yok.
 
 [Product features]
 ZIP: .NET'in kendi sıkıştırma kitaplığıyla oluşturma ve ayıklama
 Parolalı ZIP: ZipCrypto ve WinZip AES arşivlerini açar, AES-256 arşivleri oluşturur
 TAR, GZ, BZ2, XZ, ZST, LZMA: Windows'un yerleşik tar.exe aracıyla ayıklama ve oluşturma
-RAR ve 7-Zip: yalnızca ayıklama, Windows'un yerleşik tar.exe aracıyla
+7-Zip: ayıklama ve oluşturma (parolasız); RAR: yalnızca ayıklama — Windows'un yerleşik tar.exe aracıyla
 Dosya Gezgini sağ tık menüsü: Aç, Buraya ayıkla, Sıkıştır, Arşivi test et, Tehditleri tara, Karma
 Arşiv tarayıcısı: arşivin içine bakın, resimleri ve metinleri önizleyin, yalnızca seçtiklerinizi ayıklayın
 Tehdit taraması: arşivin içeriğini yüklü virüsten koruma programınız denetler
@@ -35,8 +35,8 @@ parolalı zip
 açık kaynak
 
 [What's new in this version]
+• Yeni: uygulamada, Dosya Gezgini menüsünden ve pakko a -t7z ile 7-Zip arşivleri oluşturun (parolasız; tar.exe aracı 7-Zip yazabilen bir Windows sürümü gerekir).
+• "Arşivi test et" artık yalnızca ZIP'i değil, 7-Zip, RAR ve TAR arşivlerini de denetliyor.
 • Yeni: kurtarma verisi (PAR2). Arşiv oluştururken "Kurtarma verisi ekle (PAR2)" seçeneğini açın; arşiv hasar gördükten sonra onarılabilir.
-• Dosya Gezgini menüsünde ve uygulamada "PAR2 ile doğrula" ve "PAR2 ile onar"; onarılan kopya yeni bir dosyadır, özgün dosya değiştirilmez.
 • Başka programlarla oluşturulan PAR2 dosyaları da kullanılabilir; pakko komutu -rr ile kurtarma verisi ekler, r ile onarır.
 • Düzeltildi: Delete, Enter ve menü tuşu, klavyeyle seçilen liste satırında yeniden çalışıyor.
-• Pencere, sağdan sola yazılan dillerde yansıtılıyor; birkaç ileti ve düzen ayrıntısı düzeltildi.

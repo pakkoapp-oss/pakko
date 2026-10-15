@@ -1,20 +1,20 @@
 [Description]
 Pakko er en gratis open source-app til ZIP-arkivering på Windows, bygget udelukkende på .NET's egne komprimerings-API'er — ingen 7-Zip, ingen WinRAR og ingen tredjeparts komprimeringskode nogen steder i appen.
 
-Opret og udpak ZIP-arkiver direkte via System.IO.Compression, med eller uden adgangskode: Pakko åbner ZipCrypto- og WinZip AES-arkiver og opretter AES-256-krypterede arkiver, som 7-Zip og andre ZIP-programmer kan læse. RAR-, 7-Zip- og TAR-arkiver (TAR, GZ, BZ2, XZ, ZST, LZMA) læses via Windows' indbyggede tar.exe, som køres i en isoleret AppContainer-sandkasse uden netværksadgang.
+Opret og udpak ZIP-arkiver direkte via System.IO.Compression, med eller uden adgangskode: Pakko åbner ZipCrypto- og WinZip AES-arkiver og opretter AES-256-krypterede arkiver, som 7-Zip og andre ZIP-programmer kan læse. RAR-, 7-Zip- og TAR-arkiver (TAR, GZ, BZ2, XZ, ZST, LZMA) læses via Windows' indbyggede tar.exe, som køres i en isoleret AppContainer-sandkasse uden netværksadgang. Det samme tar.exe opretter også TAR- og 7-Zip-arkiver (7-Zip uden adgangskode, i de Windows-versioner, hvis tar.exe kan skrive dem).
 
 Pakko er integreret i Stifinder: højreklik for at udpakke, komprimere, teste et arkiv, scanne det for trusler med dit antivirusprogram eller beregne dets SHA-256-hash, og dobbeltklik på et understøttet arkiv for at gennemse indholdet uden først at udpakke det hele. Hver udpakket fil beholder Mark-of-the-Web-sikkerhedsmærket fra det arkiv, den kommer fra.
 
 Bygget til alle, der vil se præcis, hvad der komprimerer deres filer — hele kildekoden ligger offentligt på GitHub under Apache 2.0-licensen. Ingen telemetri, ingen brugsanalyse, ingen netværksanmodninger af nogen art. Brugerfladen findes på 37 sprog.
 
 [Short description]
-En gratis open source-arkiveringsapp, der kun bygger på den komprimeringskode, som er indbygget i .NET og Windows. Opretter og udpakker ZIP (også med AES-256-adgangskode) og udpakker RAR, 7-Zip og TAR i en sandkasse. Ingen telemetri.
+En gratis open source-arkiveringsapp, der kun bygger på den komprimeringskode, som er indbygget i .NET og Windows. Opretter og udpakker ZIP (også med AES-256-adgangskode), 7-Zip og TAR og udpakker RAR; arkiver læses i en sandkasse. Ingen telemetri.
 
 [Product features]
 ZIP: oprettelse og udpakning med .NET's eget komprimeringsbibliotek
 ZIP med adgangskode: åbner ZipCrypto og WinZip AES, opretter AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: udpakning og oprettelse via Windows' indbyggede tar.exe
-RAR og 7-Zip: kun udpakning, via Windows' indbyggede tar.exe
+7-Zip: udpakning og oprettelse (uden adgangskode); RAR: kun udpakning — via Windows' indbyggede tar.exe
 Stifinders genvejsmenu: Åbn, Udpak her, Komprimer, Test arkiv, Scan for trusler, Hash
 Arkivbrowser: kig ind i et arkiv, se eksempler på billeder og tekst, udpak kun det, du vælger
 Scan for trusler: arkivets indhold kontrolleres af dit installerede antivirusprogram
@@ -35,8 +35,8 @@ zip med adgangskode
 open source
 
 [What's new in this version]
+• Nyt: opret 7-Zip-arkiver i appen, fra Stifinders menu og med pakko a -t7z (uden adgangskode; kræver en Windows-version, hvis tar.exe kan skrive 7-Zip).
+• "Test arkiv" kontrollerer nu også 7-Zip-, RAR- og TAR-arkiver, ikke kun ZIP.
 • Nyt: gendannelsesdata (PAR2). Slå "Tilføj gendannelsesdata (PAR2)" til, når du opretter et arkiv, så kan arkivet repareres efter en beskadigelse.
-• "Kontrollér med PAR2" og "Reparer med PAR2" i Stifinders menu og i appen; den reparerede kopi er en ny fil, og originalen ændres ikke.
 • PAR2-filer fra andre programmer virker også; kommandoen pakko tilføjer gendannelsesdata med -rr og reparerer med r.
 • Rettet: Delete, Enter og menutasten virker igen på en listerække, der er valgt med tastaturet.
-• Vinduet spejlvendes for sprog, der skrives fra højre mod venstre; flere meddelelser og layoutdetaljer er rettet.
