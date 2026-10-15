@@ -122,13 +122,14 @@ public sealed class ExtractionRouter : IExtractionRouter
         bool mixed = progress is not null && zipPaths.Count > 0 && tarPaths.Count > 0;
         int zipSliceEnd = mixed ? ZipSharePercent(zipPaths, tarPaths) : 100;
 
+        IProgress<ProgressReport>? zipProgress = mixed ? new SliceProgress(progress!, 0, zipSliceEnd, bytesBefore: 0) : progress;
+        IProgress<ProgressReport>? tarProgress = mixed ? new SliceProgress(progress!, zipSliceEnd, 100, bytesBefore: 0) : progress;
+
         ArchiveResult zipResult = zipPaths.Count > 0
-            ? await _archiveService.TestAsync(
-                zipPaths, mixed ? new SliceProgress(progress!, 0, zipSliceEnd, bytesBefore: 0) : progress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false)
+            ? await _archiveService.TestAsync(zipPaths, zipProgress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
         ArchiveResult tarResult = tarPaths.Count > 0
-            ? await _tarService.TestAsync(
-                tarPaths, mixed ? new SliceProgress(progress!, zipSliceEnd, 100, bytesBefore: 0) : progress, cancellationToken).ConfigureAwait(false)
+            ? await _tarService.TestAsync(tarPaths, tarProgress, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
 
         return zipResult with

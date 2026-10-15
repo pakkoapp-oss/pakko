@@ -21,7 +21,7 @@ public sealed class SandboxDiscardedStdOutTests : IDisposable
     private string TarOfOneLargeFile()
     {
         string source = Path.Combine(_temp.Path, "big.bin");
-        var bytes = new byte[ContentBytes];
+        byte[] bytes = new byte[ContentBytes];
         new Random(397).NextBytes(bytes);
         File.WriteAllBytes(source, bytes);
         string archive = Path.Combine(_temp.Path, "big.tar");
