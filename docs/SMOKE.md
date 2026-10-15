@@ -258,3 +258,4 @@ size in PKG-001). The factors were set from a measured run (`docs/DECISIONS.md`,
 | STO-005 | store | store-machine | store-install | After certification: update from the previous Store version | The new version, `SignatureKind: Store`, package data kept, the App starts | T-F129 |
 | STO-006 | store | store-machine | store-install | CLI-002, SHL-001 and PAR-001 on the Store install | As those rows | T-F317 |
 | STO-007 | store | mcp | store-bundle | Read the feature lines and "What's new" of `docs/store-listing/en-US.txt` against `CHANGELOG.md` since the version the Store serves | Every user-visible change since that version is named | T-F331 |
+| STO-008 | store | store-machine | store-install | CLI-026 and SHL-012 (7z creation) on the Store install, on x64 and on an ARM64 machine | As those rows; where the machine's tar.exe has no 7z writer, 7z is not offered and `a -t7z` is refused with Pakko's own message, not tar.exe's text | T-F342 |

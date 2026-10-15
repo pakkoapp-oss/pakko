@@ -12831,3 +12831,54 @@ PowerShell does natively.
   impossible properties bytes, a short file) pass either way; five mutants of the fix show each
   one failing (`docs/DECISIONS.md`'s T-F398 entry). Smoke row `CLI-034` has its tar.lzma case back.
 - **Found by:** smoke row `CLI-034` (T-F397), 2026-10-13.
+
+### T-F342 — Create 7z archives through tar.exe (v1.8.1, user-requested)
+
+- [x] **Status:** done 2026-10-15 (unreleased; goes into v1.8.1, waves 0-5). Requested by the user 2026-10-06: Windows now writes 7z by default, so
+  Pakko should offer it next to ZIP and the tar family (App Format list, Explorer "Add to X.7z",
+  `pakko a -t7z`).
+- **Measured 2026-10-06 on Windows build 26300** (`C:\Windows\System32\tar.exe`, bsdtar 3.8.8 /
+  libarchive 3.8.8): `tar --format=7zip -cf out.7z a.txt` and `tar -a -cf out.7z a.txt` both write
+  a real 7z (signature `37 7A BC AF 27 1C`, method LZMA:23; the vendored `7za t` says "Everything
+  is Ok"). A plain `tar -cf out.7z` still writes ustar under that name. The hard constraint in
+  `CLAUDE.md` ("libarchive has no writer for 7z") is corrected; T-F50 had taken it
+  from the format list `tar --help` prints.
+- **Settled 2026-10-12 (sources and measurements: `docs/DECISIONS.md`'s T-F342 entry):** the
+  writer is found by a functional probe, not by a Windows or libarchive version, and the format
+  is hidden where the probe fails; methods LZMA2 (default), LZMA, BZip2, Deflate and Copy, levels
+  0-9; no password (the writer has no encryption and ignores `--passphrase` without a word);
+  the writer's temporary file is redirected into the destination; "Test" for 7z is part of the
+  task; RAR stays read-only. Creation runs unsandboxed like T-F105 (trusted local input).
+- **Wave 1 (Core) done 2026-10-12:**
+  `ArchiveContainerFormat.SevenZip`, `ArchiveOptions.SevenZipMethod`,
+  `ITarService.CanCreateSevenZipAsync` (the writer probe), the arguments, both refusals with
+  their own messages (37 locales), and libarchive's temporary file kept in the destination.
+  No frontend offers the format yet. Decisions and measurements: `docs/DECISIONS.md`'s T-F342
+  wave 1 entry. Fixed on the way, in the same pull request: T-F390, T-F391; recorded: T-F392.
+- **Wave 2 (CLI and Shell) done 2026-10-12:** `pakko a -t7z`, `-m0=<method>`, the `.7z` name
+  rule, `-p` refused, `pakko i`, `Archiver.Shell.exe --archive --format 7z`; smoke rows
+  `CLI-026..032` and `SHL-012`, an `a -t7z` case in `POL-002..004`. Decisions:
+  `docs/DECISIONS.md`'s T-F342 wave 2 entry.
+- **Wave 3 (App and Explorer) done 2026-10-12:** 7Z in the App's Format list with a method
+  list, shown once the writer probe answers; Explorer's Add to "name.7z"
+  (`SevenZipArchiveCommand`), hidden after Pakko has learnt that this tar.exe does not write
+  7z (the verdict file the App and the Shell leave for the extension); smoke rows `SHL-013`,
+  `EXP-011`, `EXP-012`, `APP-025`. Decisions: `docs/DECISIONS.md`'s T-F342 wave 3 entry.
+- **Wave 4 ("Test", T-F397) done 2026-10-13:** every format tar.exe reads is tested (tar.exe
+  reads each entry in the sandbox and writes nothing), in `pakko t`, Explorer and the App; a
+  format whose contents tar.exe does not verify passes with a warning in place of "no errors";
+  PAR2 end to end on a 7z; the Explorer submenu reads zip, 7z, tar. Entry: `docs/TASKS_DONE.md`'s
+  T-F397; decisions and measurements: `docs/DECISIONS.md`'s T-F397 entry.
+- **For the CHANGELOG (the documents wave):** `pakko a x.7z src` with no `-t` is now exit 7; it
+  used to write a ZIP named `x.7z`. `pakko t` on a tar-family archive now tests it: exit 0 for
+  7z, tar.xz, tar.bz2 and tar.zst, exit 1 with a warning for tar, tar.gz and RAR,
+  exit 2 for a damaged one; it used to be exit 1 with "no test capability" for all of them.
+  Explorer and the App offer Test for every archive.
+- **Wave 5 (documents) done 2026-10-15:** `SECURITY.md` (7z creation, Test in the sandbox, links in
+  a source, .lzma by name), `docs/SPEC.md`, `docs/POLICIES.md`, `CHANGELOG.md`, the Store listing in
+  37 languages, smoke row `STO-008`. `README.md`, `README.uk.md` and the two site pages change in the
+  tag's pull request: the site is published from `main` and says only what has shipped. The
+  maintainer decided on 2026-10-12 that v1.8.1 carries 7z creation without encryption; encrypted 7z
+  is a later task.
+- **Reported by:** the user, 2026-10-06.
+
