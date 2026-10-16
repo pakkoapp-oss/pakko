@@ -40,3 +40,4 @@ açık kaynak
 • Yeni: kurtarma verisi (PAR2). Arşiv oluştururken "Kurtarma verisi ekle (PAR2)" seçeneğini açın; arşiv hasar gördükten sonra onarılabilir.
 • Başka programlarla oluşturulan PAR2 dosyaları da kullanılabilir; pakko komutu -rr ile kurtarma verisi ekler, r ile onarır.
 • Düzeltildi: Delete, Enter ve menü tuşu, klavyeyle seçilen liste satırında yeniden çalışıyor.
+• Düzeltildi: Windows 10'da ve 23H2 sürümüne kadar Windows 11'de TAR arşivleri artık reddedilmiyor ve Pakko yalnızca Windows'un kendi tar.exe'sinin işleyebildiği biçimleri sunuyor.

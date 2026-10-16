@@ -40,3 +40,4 @@ avatud lähtekood
 • Uus: taasteandmed (PAR2). Lülitage arhiivi loomisel sisse „Lisa taasteandmed (PAR2)“ ja arhiivi saab pärast kahjustust parandada.
 • Sobivad ka teiste programmidega loodud PAR2-failid; käsk pakko lisab taasteandmed lülitiga -rr ja parandab käsuga r.
 • Parandatud: klahvid Delete, Enter ja menüüklahv töötavad taas klaviatuurilt valitud loendireal.
+• Parandatud: Windows 10-s ja Windows 11-s kuni versioonini 23H2 ei lükata TAR-arhiive enam tagasi ning Pakko pakub ainult vorminguid, millega Windowsi tar.exe toime tuleb.

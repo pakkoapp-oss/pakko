@@ -40,3 +40,4 @@ código aberto
 • Novidade: dados de recuperação (PAR2). Ative «Adicionar dados de recuperação (PAR2)» ao criar um arquivo, e este poderá ser reparado depois de danificado.
 • Os ficheiros PAR2 criados por outros programas também funcionam; o comando pakko adiciona dados de recuperação com -rr e repara com r.
 • Corrigido: as teclas Delete, Enter e a tecla de menu voltam a funcionar numa linha da lista selecionada com o teclado.
+• Corrigido: no Windows 10 e no Windows 11 até à versão 23H2, os arquivos TAR já não são recusados, e o Pakko oferece apenas os formatos que o tar.exe do Windows consegue tratar.

@@ -40,3 +40,4 @@ chanzo huria
 • Mpya: data ya urejeshaji (PAR2). Washa "Ongeza data ya urejeshaji (PAR2)" unapounda kumbukumbu, na kumbukumbu itaweza kurekebishwa baada ya kuharibika.
 • Faili za PAR2 zilizoundwa na programu nyingine pia zinafanya kazi; amri ya pakko huongeza data ya urejeshaji kwa -rr na hurekebisha kwa r.
 • Imerekebishwa: vitufe vya Delete, Enter na kitufe cha menyu vinafanya kazi tena kwenye safu ya orodha iliyochaguliwa kwa kibodi.
+• Imerekebishwa: kwenye Windows 10 na Windows 11 hadi toleo la 23H2, kumbukumbu za TAR hazikataliwi tena, na Pakko inatoa tu miundo ambayo tar.exe ya Windows inaweza kushughulikia.

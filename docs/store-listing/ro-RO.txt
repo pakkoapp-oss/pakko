@@ -40,3 +40,4 @@ open source
 • Nou: date de recuperare (PAR2). Activați „Adăugare date de recuperare (PAR2)” la crearea unei arhive, iar arhiva va putea fi reparată după deteriorare.
 • Funcționează și fișierele PAR2 create de alte programe; comanda pakko adaugă date de recuperare cu -rr și repară cu r.
 • Remediat: tastele Delete, Enter și tasta de meniu funcționează din nou pe un rând al listei selectat de la tastatură.
+• Remediat: pe Windows 10 și Windows 11 până la versiunea 23H2, arhivele TAR nu mai sunt refuzate, iar Pakko oferă doar formatele pe care le poate gestiona tar.exe din Windows.

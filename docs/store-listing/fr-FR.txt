@@ -40,3 +40,4 @@ open source
 • Nouveau : données de récupération (PAR2). Activez « Ajouter des données de récupération (PAR2) » à la création d'une archive, et elle pourra être réparée après un dommage.
 • Les fichiers PAR2 créés par d'autres programmes fonctionnent aussi ; la commande pakko ajoute des données de récupération avec -rr et répare avec r.
 • Corrigé : les touches Suppr, Entrée et la touche Menu fonctionnent de nouveau sur une ligne de la liste sélectionnée au clavier.
+• Corrigé : sous Windows 10 et Windows 11 jusqu'à la version 23H2, les archives TAR ne sont plus refusées, et Pakko ne propose que les formats que le tar.exe de Windows sait traiter.

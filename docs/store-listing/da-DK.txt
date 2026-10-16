@@ -40,3 +40,4 @@ open source
 • Nyt: gendannelsesdata (PAR2). Slå "Tilføj gendannelsesdata (PAR2)" til, når du opretter et arkiv, så kan arkivet repareres efter en beskadigelse.
 • PAR2-filer fra andre programmer virker også; kommandoen pakko tilføjer gendannelsesdata med -rr og reparerer med r.
 • Rettet: Delete, Enter og menutasten virker igen på en listerække, der er valgt med tastaturet.
+• Rettet: på Windows 10 og Windows 11 til og med version 23H2 afvises TAR-arkiver ikke længere, og Pakko tilbyder kun de formater, som Windows' egen tar.exe kan håndtere.

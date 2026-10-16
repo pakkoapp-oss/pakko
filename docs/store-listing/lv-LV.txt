@@ -40,3 +40,4 @@ atvērtais pirmkods
 • Jaunums: atkopšanas dati (PAR2). Veidojot arhīvu, ieslēdziet “Pievienot atkopšanas datus (PAR2)”, un arhīvu pēc bojājuma varēs salabot.
 • Der arī citu programmu izveidoti PAR2 faili; komanda pakko pievieno atkopšanas datus ar -rr un labo ar r.
 • Novērsts: taustiņi Delete, Enter un izvēlnes taustiņš atkal darbojas saraksta rindā, kas izvēlēta ar tastatūru.
+• Novērsts: Windows 10 un Windows 11 līdz versijai 23H2 TAR arhīvi vairs netiek noraidīti, un Pakko piedāvā tikai tos formātus, ar kuriem spēj strādāt Windows tar.exe.

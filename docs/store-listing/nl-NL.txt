@@ -40,3 +40,4 @@ zip met wachtwoord
 • Nieuw: herstelgegevens (PAR2). Schakel 'Herstelgegevens toevoegen (PAR2)' in bij het maken van een archief, dan kan het archief na beschadiging worden hersteld.
 • PAR2-bestanden van andere programma's werken ook; de opdracht pakko voegt herstelgegevens toe met -rr en herstelt met r.
 • Opgelost: Delete, Enter en de menutoets werken weer op een lijstrij die met het toetsenbord is geselecteerd.
+• Opgelost: op Windows 10 en Windows 11 tot en met versie 23H2 worden TAR-archieven niet meer geweigerd, en Pakko biedt alleen de indelingen aan die de eigen tar.exe van Windows aankan.
