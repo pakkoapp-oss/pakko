@@ -82,27 +82,11 @@ internal static partial class TarSignatureVerifier
 
         using (file)
         {
-            bool addedRef = false;
-            try
-            {
-                file.DangerousAddRef(ref addedRef);
-                IntPtr fileHandle = file.DangerousGetHandle();
-                foreach (string? algorithm in CatalogHashAlgorithms)
-                {
-                    if (VerifyCatalogMember(filePath, fileHandle, algorithm))
-                        return true;
-                }
-                return false;
-            }
-            finally
-            {
-                if (addedRef)
-                    file.DangerousRelease();
-            }
+            return CatalogHashAlgorithms.Any(algorithm => VerifyCatalogMember(filePath, file, algorithm));
         }
     }
 
-    private static bool VerifyCatalogMember(string filePath, IntPtr fileHandle, string? hashAlgorithm)
+    private static bool VerifyCatalogMember(string filePath, SafeFileHandle file, string? hashAlgorithm)
     {
         Guid subsystem = DriverActionVerify;
         if (!NativeMethods.CryptCATAdminAcquireContext2(out IntPtr catAdmin, ref subsystem, hashAlgorithm, IntPtr.Zero, 0))
@@ -112,7 +96,7 @@ internal static partial class TarSignatureVerifier
         {
             byte[] hash = new byte[MaxHashLength];
             uint hashLength = (uint)hash.Length;
-            if (!NativeMethods.CryptCATAdminCalcHashFromFileHandle2(catAdmin, fileHandle, ref hashLength, hash, 0)
+            if (!NativeMethods.CryptCATAdminCalcHashFromFileHandle2(catAdmin, file, ref hashLength, hash, 0)
                 || hashLength == 0 || hashLength > hash.Length)
             {
                 return false;
@@ -126,7 +110,7 @@ internal static partial class TarSignatureVerifier
             {
                 string? catalogPath = CatalogFilePath(catInfo);
                 return catalogPath is not null
-                    && VerifyCatalogIntegrity(catalogPath, filePath, fileHandle, hash, hashLength, catAdmin)
+                    && VerifyCatalogIntegrity(catalogPath, filePath, hash, hashLength, catAdmin)
                     && VerifySignerOrganization(catalogPath, CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED);
             }
             finally
@@ -162,7 +146,7 @@ internal static partial class TarSignatureVerifier
     }
 
     private static bool VerifyCatalogIntegrity(
-        string catalogPath, string filePath, IntPtr fileHandle, byte[] hash, uint hashLength, IntPtr catAdmin)
+        string catalogPath, string filePath, byte[] hash, uint hashLength, IntPtr catAdmin)
     {
         IntPtr hashPtr = Marshal.AllocHGlobal((int)hashLength);
         IntPtr catalogInfoPtr = Marshal.AllocHGlobal(Marshal.SizeOf<WINTRUST_CATALOG_INFO>());
@@ -177,7 +161,8 @@ internal static partial class TarSignatureVerifier
                 pcwszCatalogFilePath = catalogPath,
                 pcwszMemberTag = Convert.ToHexString(hash, 0, (int)hashLength),
                 pcwszMemberFilePath = filePath,
-                hMemberFile = fileHandle,
+                // Optional: the hash computed from the open handle is passed below instead.
+                hMemberFile = IntPtr.Zero,
                 pbCalculatedFileHash = hashPtr,
                 cbCalculatedFileHash = hashLength,
                 pcCatalogContext = IntPtr.Zero,
@@ -368,11 +353,11 @@ internal static partial class TarSignatureVerifier
         [LibraryImport("wintrust.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static partial bool CryptCATAdminCalcHashFromFileHandle2(
-            IntPtr hCatAdmin, IntPtr hFile, ref uint pcbHash, [Out] byte[] pbHash, uint dwFlags);
+            IntPtr hCatAdmin, SafeFileHandle hFile, ref uint pcbHash, [Out] byte[] pbHash, uint dwFlags);
 
         [LibraryImport("wintrust.dll", SetLastError = true)]
         public static partial IntPtr CryptCATAdminEnumCatalogFromHash(
-            IntPtr hCatAdmin, byte[] pbHash, uint cbHash, uint dwFlags, IntPtr phPrevCatInfo);
+            IntPtr hCatAdmin, [In] byte[] pbHash, uint cbHash, uint dwFlags, IntPtr phPrevCatInfo);
 
         [LibraryImport("wintrust.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]

@@ -13937,7 +13937,8 @@ scanned). The same VM with the 2026-09 cumulative update: below, under T-F402.
 - `TarSignatureVerifier.Verify` = the embedded check as before, or else the catalog: the file's
   hash (SHA-256, then the system default SHA-1 for older catalogs) computed from one open handle,
   the catalog found by that hash in `DRIVER_ACTION_VERIFY`'s database, `WinVerifyTrust` with
-  `WTD_CHOICE_CATALOG` on the same handle and hash, and the Organization read from the catalog's
+  `WTD_CHOICE_CATALOG` given that hash (the handle goes to the hash function as a `SafeFileHandle`;
+  `hMemberFile` is optional and left empty), and the Organization read from the catalog's
   own signature. Revocation and URL retrieval as for the embedded check.
 - The catalog is queried as `CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED`. Asked for as a CTL
   (`CERT_QUERY_CONTENT_FLAG_CTL`, which a catalog is) `CryptQueryObject` succeeds with content type
