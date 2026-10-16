@@ -12969,9 +12969,48 @@ the archive.
   | APP-014 | part | 150 % and 175 % (the most this 1920 x 1080 display offers; 200 % was not reached): main view, archive view, the Test result and the Hash dialogs whole. In a window about 720 effective pixels wide the footer line is cut without an ellipsis (T-F400, not new) |
   | CLI-023 | OK | `x` of a tar.gz (Cyrillic names) and of a 7z onto a FAT32 USB drive and into `\\localhost\Users\...`: exit 0, every file with the bytes of the same archive extracted to NTFS |
 
-- **Not done:** `CLI-032` needs Windows 10 22H2 or a Windows Server, which this machine is not;
-  `APP-014` at 200 %.
+- **Not done on this machine:** `APP-014` at 200 %. `CLI-032` needs Windows 10 22H2 or a
+  Windows Server; it was run on Hyper-V VMs instead (next item).
+- **`CLI-032` and the menu on VMs (2026-10-16).** On a Windows Server 2022 VM (20348.169,
+  tar.exe 3.3.2) the standalone `pakko` of `37a0b93` refused every tar.exe action: the
+  catalog-signed `tar.exe` failed the signature check (T-F401). With the fix (standalone
+  `pakko`): `a -ttar.gz` exit 0, `t` of it exit 1 with the structure-only warning, `x` exit 0,
+  `a -t7z` exit 2 with Pakko's text, `l` of a 7z and of a RAR exit 2 naming version 3.3.2. With
+  the 2026-09 update (20348.5622, tar.exe 3.8.4) it extracts a tar.gz and lists a RAR; that
+  build has zlib only, which showed T-F402 and T-F403. On a Windows 10 22H2 VM
+  (19045.6456, tar.exe 3.5.2, zlib only), packages 1.8.1.15 and 1.8.1.16: every `a` of
+  tar.zst, tar.bz2, tar.xz, tar.lzma and 7z exits 2 with Pakko's text and starts no
+  compressor program, tar.gz is made, `pakko i` lists tar and tar.gz. Package 1.8.1.17 (the
+  code of `71c124b`), walked by mouse through the Hyper-V console: `pakko l` wrote the
+  snapshot `...;?;tar,gzip`, the App rewrote it `...;0;tar,gzip`; the Explorer menu offers no
+  Open, Extract or Test on a .tar.xz or a .7z, all of them on a .tar.gz, and no Add to X.7z on
+  a folder; the App's Format list is ZIP, TAR, TAR.GZ.
+- **`EXP-012` on this machine after #77:** 1.8.1.16 with the snapshot `0;tar,gzip` (no Add to
+  X.7z, no Extract or Test on a .tar.xz, both on a .tar.gz), with the size of another
+  `tar.exe` and with no file (every item back). It also found that `?;tar,gzip`, what the Shell
+  writes for an Explorer-only user, still offered Add to X.7z, which Core then refused; fixed
+  in `71c124b` and checked on 1.8.1.17.
+- **Not checked:** double-clicking a .tar.xz on the Windows 10 VM (Windows' own Open, which
+  starts the App).
 - **Found, not blocking:** T-F399 and T-F400 (both P3).
+
+## v1.8.1 — the release gates on 71c124b (2026-10-16)
+
+- **The commit.** `71c124b` is `main` after #77 (T-F401, T-F402, T-F403); the tag goes on the
+  merge of this record (#76), which changes documents only.
+- **CI and the nightly checks.** Build run 38914611436 green. Canary run 38924163952 on
+  `71c124b`: every job success, `canary-server2022` included; `canary-failed-day` skipped,
+  `canary-fuzz` success.
+- **Scripted rows** (`Invoke-Smoke.ps1 -Tier release -PackageLifecycle -ReleaseFiles <the bundle
+  of run 38914611436> -PreviousRelease <v1.8.0>`, 1 713 s, the elevated rows confirmed by the
+  maintainer at the machine): 78 OK, 1 FAIL, 1 skipped, 47 manual. `OPW-001` failed in the
+  harness (UI Automation read a window that had just closed) and `REL-002` skipped because the
+  run's checkout was the branch of this record, not `71c124b`; both run again from a checkout
+  of `71c124b`: OK (window after 1.7 s; canary run 38924163952). `REL-001` passed 24,
+  `PKG-005` PASS with the two known findings, `PKG-006` 1.8.0.0 to 1.8.1.0, `POL-001..008` OK.
+- **`mcp` rows:** the 6cc00a1 record above stands for the rows #77 does not reach; `EXP-012`
+  and the Windows 10 VM walk are in that record's "`CLI-032` and the menu on VMs" and
+  "`EXP-012` on this machine after #77" items.
 
 ## T-F342 — creating 7z through tar.exe: sources and measurements (wave 0, 2026-10-12)
 
