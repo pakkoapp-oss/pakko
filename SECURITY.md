@@ -300,9 +300,10 @@ Measured on Windows 10 22H2 (build 19045.6456, libarchive 3.5.2) and Windows Ser
 for a filter it has no library for, `tar.exe` starts a program of that name, found the way
 Windows finds any program (its working folder, then PATH). Creating with `--zstd` or `-j` ran a
 test `zstd.exe` or `bzip2.exe` placed there; reading an xz, lzma, zstd or bzip2 stream ran `xz`,
-`lzma`, `zstd` or `bzip2`. Through Pakko 1.8.1 before this fix, `pakko a -ttar.zst` and
-`-ttar.bz2` ran such a program from the current folder and from PATH; creation is not sandboxed,
-so it ran with the user's rights.
+`lzma`, `zstd` or `bzip2`. In a development build that had T-F401 (which lets Pakko run this
+`tar.exe`) but not this check, `pakko a -ttar.zst` and `-ttar.bz2` ran such a program from the
+current folder and from PATH; creation is not sandboxed, so it ran with the user's rights.
+Released versions did not run this `tar.exe` at all on the systems measured (T-F401).
 
 Pakko now decides from the libraries `tar.exe --version` names (zlib, bz2lib, liblzma, libzstd)
 and never relies on an outside program:
@@ -312,7 +313,10 @@ and never relies on an outside program:
 - **Reading** was already refused before `tar.exe` starts: the format is taken from the file's
   content, so an xz, zstd or bzip2 stream under another name is refused too (measured), and a raw
   lzma stream, which has no signature, is recognized only by the `.lzma` name and then refused
-  the same way.
+  the same way. Only the outer layer is checked: a gzip stream that holds an xz, zstd or bzip2
+  one passes, and `tar.exe` then tries to start the outside program. The sandbox's Job Object
+  allows one process and no children, so it cannot (measured on Windows 10: nothing ran, and the
+  archive fails with `tar.exe`'s own "unable to run program").
 
 The decision rests on `tar.exe`'s own `--version` text, read from the signature-checked
 `C:\Windows\System32\tar.exe` (above).

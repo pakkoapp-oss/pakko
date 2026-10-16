@@ -13917,6 +13917,7 @@ on Windows 10 22H2 19045.6456 (tar 3.5.2) and Server 2022 20348.5622 (tar 3.8.4)
 | `tar -tf` of xz, lzma, zstd, bzip2 (also named `.tar`) | ran `xz -d -qq`, `lzma -d -qq`, `zstd -d -qq`, `bzip2 -d` | ran |
 | `pakko a -ttar.zst`, `-ttar.bz2` (1.8.1 before this fix) | ran (`--no-check -9`, `-4`) | ran |
 | `pakko l`/`t`/`x` of the same streams, any name | refused by content before tar.exe, nothing ran | same |
+| `pakko l`/`t`/`x` of a gzip stream holding xz, zstd or bzip2 | passes the outer check; tar.exe in the sandbox tried `xz -d -qq` etc. and got "unable to run program" (Job Object: one process), nothing ran | same |
 
 The child `tar.exe` gets Pakko's working folder; the destination folder is not searched.
 
@@ -13945,7 +13946,12 @@ The child `tar.exe` gets Pakko's working folder; the destination folder is not s
   has a known 7z answer. The extension treats a format the matching snapshot does not list like
   a policy-blocked one, in `AllPathsAreSupportedArchive` (Extract, Open) and
   `AnyPathIsSupportedArchive` (Test, Scan); no file, an older line without the field, or one for
-  another `tar.exe` hides nothing.
+  another `tar.exe` hides nothing. Until the App or `Archiver.Shell` has written it, the menu
+  offers the items and Core refuses when they are used.
+- The gate keeps the capabilities it got (`KnownCapabilitiesAsync`): a `--version` run that
+  gave no version (the five-second timeout on a loaded machine) is asked again with the 7z
+  writer probe's thirty seconds, so a slow `tar.exe` is not read as one without codecs. Without
+  any version the gate still refuses: an unknown `tar.exe` could start outside programs.
 
 **Rejected.**
 - Probing each codec by running `tar.exe` (an empty archive per filter): more processes at

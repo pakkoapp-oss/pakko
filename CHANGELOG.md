@@ -78,8 +78,9 @@ keyboard have done nothing since v1.7.2, the first Native AOT build.
   tar.lzma was offered on every system, and on a tar.exe without that library it either failed
   with tar.exe's own text or, for tar.zst and tar.bz2, made tar.exe run a program named
   `zstd.exe` or `bzip2.exe` from the current folder or PATH, outside the sandbox. Such a
-  creation is now refused before tar.exe starts, naming the missing codec. The Explorer menu
-  no longer offers Extract or Test for an archive this tar.exe cannot read.
+  creation is now refused before tar.exe starts, naming the missing codec. Once the App has
+  started (or Explorer has made a 7z), the Explorer menu no longer offers Extract or Test for an
+  archive this tar.exe cannot read; before that, Pakko refuses it when the item is used.
 
 ### Changed
 
