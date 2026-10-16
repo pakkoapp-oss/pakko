@@ -1123,6 +1123,14 @@ TEST(TarCapabilitySnapshot, FourthFieldKeepsTheSevenZipAnswer)
     EXPECT_FALSE(IsSevenZipWriterVerdictAbsent("60416;133577283450000000;1;tar,gzip,sevenzip", kTarSize, kTarTime));
 }
 
+TEST(TarCapabilitySnapshot, UnaskedSevenZipWriterShowsTheItemAndKeepsTheList)
+{
+    EXPECT_FALSE(IsSevenZipWriterVerdictAbsent("60416;133577283450000000;?;tar,gzip", kTarSize, kTarTime));
+    std::vector<std::wstring> readable;
+    ASSERT_TRUE(ParseTarReadableFormats("60416;133577283450000000;?;tar,gzip", kTarSize, kTarTime, readable));
+    EXPECT_EQ(readable, (std::vector<std::wstring>{ L"tar", L"gzip" }));
+}
+
 TEST(TarCapabilitySnapshot, ReadableFormatsOfAMatchingSnapshot)
 {
     std::vector<std::wstring> readable;

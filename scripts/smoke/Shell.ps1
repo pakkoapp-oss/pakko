@@ -235,4 +235,19 @@ Add-SmokeStep 'SHL-013' {
     $written = [IO.File]::ReadAllText($verdict)
     Assert-Smoke ($written.StartsWith($expected, [StringComparison]::Ordinal) -and $written -cmatch ';[a-z0-9,]*\bsevenzip\b[a-z0-9,]*$') `
         "the snapshot reads '$written', expected '$expected<formats including sevenzip>'"
+
+    # T-F403: any other menu action leaves it too when it is missing, with "?" for the unasked writer.
+    Remove-Item -LiteralPath $verdict -Force
+    $zipFolder = Join-Path $folder 'zip'
+    New-Item -ItemType Directory -Path $zipFolder | Out-Null
+    $other = Join-Path $folder 'other.txt'
+    Set-Content -LiteralPath $other -Value 'unasked' -Encoding ascii
+    $zip = Join-Path $zipFolder 'other.zip'
+    Compress-Archive -LiteralPath $other -DestinationPath $zip
+    $run = Invoke-Shell -Arguments @('--extract-here', $zip) -TimeoutSeconds 30
+    Assert-Smoke ($run.Exited -and $run.ExitCode -eq 0) "--extract-here other.zip: exited=$($run.Exited) code=$($run.ExitCode) $($run.Text)"
+    Assert-Smoke (Test-Path -LiteralPath $verdict) "no snapshot after --extract-here at $verdict"
+    $expectedUnasked = '{0};{1};?;' -f $tar.Length, $tar.LastWriteTimeUtc.ToFileTimeUtc()
+    $written = [IO.File]::ReadAllText($verdict)
+    Assert-Smoke ($written.StartsWith($expectedUnasked, [StringComparison]::Ordinal)) "after --extract-here the snapshot reads '$written', expected '$expectedUnasked<formats>'"
 }

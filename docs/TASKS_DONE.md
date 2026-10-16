@@ -12934,8 +12934,10 @@ PowerShell does natively.
   TAR.GZ; the snapshot reads `...;0;tar,gzip`. The host (Windows 11, tar 3.8.8): everything as
   before, the methods line lists all five. Not walked: the Explorer menu on the VM (opening it
   from a background UI Automation script did not work; `EXP-012`, `CLI-035`). The menu learns
-  what tar.exe reads only from the snapshot, which the App writes at start and `Archiver.Shell`
-  after a 7z creation; before either, it still offers the items and Core refuses.
+  what tar.exe reads from the snapshot, which the App writes at start and `Archiver.Shell` and an
+  installed `pakko` write after their work when it is missing or stale (`?` for an unasked 7z
+  writer, at the user's request 2026-10-16); before any Pakko run the menu still offers the items
+  and Core refuses.
 - **Also measured:** a gzip stream holding an xz, zstd or bzip2 one passes Pakko's content
   check; in the sandbox `tar.exe` tries to start `xz -d`, `zstd -d` or `bzip2 -d` and cannot
   (the Job Object allows no child process), so nothing ran. And the gate first called a

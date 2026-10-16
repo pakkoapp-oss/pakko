@@ -180,7 +180,7 @@ bool TarExeExists();
 // T-F342: whether this system's tar.exe writes 7z; T-F403: which formats it reads. Only running it
 // tells, and the menu must not start a process per right-click, so the .NET side (Archiver.Core's
 // TarCapabilitySnapshot) leaves a one-line file in the package's LocalCache folder:
-// "<tar.exe size>;<tar.exe write time as a FILETIME>;<0|1>[;<format>,<format>,...]".
+// "<tar.exe size>;<tar.exe write time as a FILETIME>;<0|1|?>[;<format>,<format>,...]" (? = not asked).
 // ---------------------------------------------------------------------------
 
 constexpr size_t kMaxSevenZipVerdictBytes = 256;
