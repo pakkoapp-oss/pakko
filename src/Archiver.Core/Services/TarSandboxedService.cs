@@ -36,6 +36,8 @@ public sealed class TarSandboxedService : ITarService
     private readonly Func<Task<bool?>> _sevenZipWriterProbe;
     private readonly Lock _sevenZipWriterLock = new();
     private Task<bool?>? _sevenZipWriter;
+    private readonly Lock _capabilitiesLock = new();
+    private Task<TarCapabilities>? _knownCapabilities;
 
     /// <summary>Creates the service under the given Group Policy (T-F261: required, never defaulted).</summary>
     public TarSandboxedService(GroupPolicyOptions policy)
@@ -94,6 +96,34 @@ public sealed class TarSandboxedService : ITarService
             answer = _sevenZipWriter;
         }
         return await answer.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    // T-F403: the creation gate needs an answer, not a timeout: on a loaded machine the five-second
+    // --version run can come back empty, which would read as a tar.exe without codecs. A run that
+    // gave no version is asked again with the 7z writer probe's patience; a version, once given,
+    // is kept for the service's lifetime (tar.exe does not change under a running process).
+    private async Task<TarCapabilities> KnownCapabilitiesAsync()
+    {
+        Task<TarCapabilities> answer;
+        lock (_capabilitiesLock)
+        {
+            if (_knownCapabilities is null
+                || (_knownCapabilities.IsCompleted
+                    && (!_knownCapabilities.IsCompletedSuccessfully || _knownCapabilities.Result.Version.Length == 0)))
+            {
+                _knownCapabilities = AskCapabilitiesAsync();
+            }
+            answer = _knownCapabilities;
+        }
+        return await answer.ConfigureAwait(false);
+    }
+
+    private async Task<TarCapabilities> AskCapabilitiesAsync()
+    {
+        TarCapabilities capabilities = await DetectCapabilitiesAsync().ConfigureAwait(false);
+        return capabilities.Version.Length > 0 || _policy.DisableTarExtraction
+            ? capabilities
+            : await _sevenZipReaderProbe().ConfigureAwait(false);
     }
 
     private async Task<bool?> AskSevenZipWriterWithRetryAsync()
@@ -1396,7 +1426,7 @@ public sealed class TarSandboxedService : ITarService
         // T-F403: a codec tar.exe lacks is refused before it starts. Without a built-in library,
         // tar.exe runs a program of that name from its working folder or PATH, outside any sandbox
         // (measured for zstd and bzip2 on zlib-only tar.exe builds).
-        TarCapabilities capabilities = await DetectCapabilitiesAsync().ConfigureAwait(false);
+        TarCapabilities capabilities = await KnownCapabilitiesAsync().ConfigureAwait(false);
         if (ArchiveFormatPolicy.GetTarCreationRefusalReason(options.Format, options.SevenZipMethod, capabilities) is { } refusal)
         {
             errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), refusal));

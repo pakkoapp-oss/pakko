@@ -52,6 +52,27 @@ public sealed class TarCreationCapabilityGateTests : IDisposable
         Directory.Exists(Path.Combine(_temp.Path, "out")).Should().BeFalse();
     }
 
+    // A --version run that gave no answer (a timeout on a loaded machine: empty capabilities) is
+    // asked again, and an answer is kept: a slow tar.exe must not read as one without codecs.
+    [Fact]
+    public async Task CompressAsync_FirstProbeGaveNoAnswer_AsksAgainAndKeepsTheAnswer()
+    {
+        TarCapabilities full = TarVersionParser.Parse(
+            "bsdtar 3.8.8 - libarchive 3.8.8 zlib/1.2.13 liblzma/5.8.1 bz2lib/1.0.8 libzstd/1.5.7");
+        int probes = 0;
+        var sut = new TarSandboxedService(
+            new GroupPolicyOptions(), () => Task.FromResult(probes++ == 0 ? new TarCapabilities() : full),
+            beforeCreationLaunch: () => _launches++, sevenZipWriterProbe: () => Task.FromResult<bool?>(true));
+
+        ArchiveResult first = await sut.CompressAsync(Options(ArchiveContainerFormat.TarXz));
+        ArchiveResult second = await sut.CompressAsync(Options(ArchiveContainerFormat.TarXz) with { ArchiveName = "out2" });
+
+        first.Errors.Should().NotContain(e => e.Text != null && (e.Text.Code == MessageCode.FormatNeedsNewerTar || e.Text.Code == MessageCode.FormatNotSupportedByTar));
+        second.Errors.Should().NotContain(e => e.Text != null && (e.Text.Code == MessageCode.FormatNeedsNewerTar || e.Text.Code == MessageCode.FormatNotSupportedByTar));
+        _launches.Should().Be(2);
+        probes.Should().Be(2);
+    }
+
     [Fact]
     public async Task CompressAsync_SevenZipMethodThisTarCannotUse_IsRefusedBeforeTarStarts()
     {
