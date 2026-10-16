@@ -66,12 +66,20 @@ keyboard have done nothing since v1.7.2, the first Native AOT build.
   its own, and Pakko's check accepted only the latter: it refused tar.exe with "failed
   Authenticode signature verification", so every tar, gz, bz2, xz, zst, lzma, 7z and RAR
   action failed. The check accepts both kinds now and still requires Microsoft as the signer.
-  What each system can then do depends on its tar.exe: RAR and 7z need libarchive 3.7.0 or
-  later, so Windows 10 gets the tar family back, not RAR or 7z.
-- **T-F402** - Pakko no longer offers 7z or tar.zst where tar.exe cannot do them. Windows
-  Server 2022's tar.exe (libarchive 3.8.4 with its updates) is built without LZMA, bzip2 and
-  zstd: it reads tar, tar.gz and RAR, while 7z, which nearly always uses LZMA, failed with
-  tar.exe's own error. 7z now also needs LZMA in tar.exe, and tar.zst needs zstd.
+  What each system can then do depends on its tar.exe (T-F403): Windows 10's has zlib only, so
+  it gets tar and tar.gz back; Server 2022's, with its updates, adds RAR.
+- **T-F402** - Pakko no longer offers 7z or tar.zst where tar.exe cannot do them. The tar.exe
+  of Windows 10 and of Windows Server 2022 is built without LZMA, bzip2 and zstd: 7z, which
+  nearly always uses LZMA, failed with tar.exe's own error. 7z now also needs LZMA in tar.exe,
+  and tar.zst needs zstd.
+- **T-F403** - what Pakko offers follows what this system's tar.exe can do, everywhere. The
+  App's Format and 7z method lists, `pakko a`, `pakko i` and the Explorer menu all take it from
+  one rule over the libraries built into tar.exe. Before, creating tar.bz2, tar.xz, tar.zst or
+  tar.lzma was offered on every system, and on a tar.exe without that library it either failed
+  with tar.exe's own text or, for tar.zst and tar.bz2, made tar.exe run a program named
+  `zstd.exe` or `bzip2.exe` from the current folder or PATH, outside the sandbox. Such a
+  creation is now refused before tar.exe starts, naming the missing codec. The Explorer menu
+  no longer offers Extract or Test for an archive this tar.exe cannot read.
 
 ### Changed
 

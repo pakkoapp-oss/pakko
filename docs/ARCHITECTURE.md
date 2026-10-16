@@ -1695,15 +1695,25 @@ plain "no errors". `ExtractionRouter` and `RecoveryService` use the same list fo
 sevenZipWriter)`; `MainViewModel.OfferSevenZipWhenWritableAsync` shows the item when the probe
 started in `App.xaml.cs` returns), second in the list after ZIP (`CreationFormatOption.ListOrder`
 is the list's row order and what `FormatIndex` counts in), with a method list (`SevenZipMethodOption`). The Explorer menu's
-`SevenZipArchiveCommand` cannot run tar.exe, so it reads a verdict file instead:
-`SevenZipWriterVerdict` (Core) writes `<tar.exe size>;<tar.exe write time>;<0|1>` to
-`%LOCALAPPDATA%\Packages\<family name>\LocalCache\sevenzip-writer.txt`, from the App at startup
+`SevenZipArchiveCommand` cannot run tar.exe, so it reads a snapshot file instead:
+`TarCapabilitySnapshot` (Core) writes `<tar.exe size>;<tar.exe write time>;<0|1>;<formats read>` to
+`%LOCALAPPDATA%\Packages\<family name>\LocalCache\tar-capabilities.txt`, from the App at startup
 and from `Archiver.Shell` after a 7z creation, and only from an answer of
 `ITarService.AskSevenZipWriterAsync` (never from a timeout, never under `DisableTarExtraction`).
 The path is built from the folder the exe was started from (a package folder is named by the
 package full name), not left to the per-package redirection of `%LOCALAPPDATA%`. The menu hides
 the item only on a `0` measured on the tar.exe that is there now (`ShellExtUtils`'
 `SevenZipWriterKnownAbsent`). Why: `docs/DECISIONS.md`'s T-F342 wave 3 entry.
+
+**The capability matrix (T-F403).** What this tar.exe can do is decided in one place,
+`ArchiveFormatPolicy`, from `TarCapabilities` (the libraries `tar --version` names and the
+version): `GetRefusalReason` for reading, `GetTarCreationRefusalReason(format, sevenZipMethod,
+capabilities)` for making, `CreatableSevenZipMethods` and `TarReadableRegistryNames`.
+`TarSandboxedService.CompressAsync` asks it before tar.exe starts; the App passes its
+`TarCapabilities` to `CreationFormatOption.IsOffered`/`Default` and builds the 7z method list
+from `CreatableSevenZipMethods`; `pakko i` prints the methods line from it; the snapshot's
+fourth field is `TarReadableRegistryNames`, and the menu's `MenuPolicy` (`GetMenuPolicy`) treats
+a format it does not list like a blocked one. Why: `docs/DECISIONS.md`'s T-F403 entry.
 
 **Sources on tar.exe's name list (T-F390, T-F391).** `AppendSourcesToNameList` builds
 `ListedSource` records (the selected path, the `-C` folder, the name, the item itself and the

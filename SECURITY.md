@@ -293,6 +293,30 @@ process's folder on close, best-effort; the next start removes folders whose pro
   handle does not close the gap between this check and the launch by path; the check stays a
   cheap extra, as above.
 
+### Compressor Programs tar.exe Would Start (T-F403)
+
+Measured on Windows 10 22H2 (build 19045.6456, libarchive 3.5.2) and Windows Server 2022 (builds
+20348.169 and 20348.5622, libarchive 3.3.2 and 3.8.4), whose `tar.exe` is built with zlib only:
+for a filter it has no library for, `tar.exe` starts a program of that name, found the way
+Windows finds any program (its working folder, then PATH). Creating with `--zstd` or `-j` ran a
+test `zstd.exe` or `bzip2.exe` placed there; reading an xz, lzma, zstd or bzip2 stream ran `xz`,
+`lzma`, `zstd` or `bzip2`. Through Pakko 1.8.1 before this fix, `pakko a -ttar.zst` and
+`-ttar.bz2` ran such a program from the current folder and from PATH; creation is not sandboxed,
+so it ran with the user's rights.
+
+Pakko now decides from the libraries `tar.exe --version` names (zlib, bz2lib, liblzma, libzstd)
+and never relies on an outside program:
+
+- **Creation** of a format, or a 7z method, whose library is not built in is refused before
+  `tar.exe` starts (measured again with the fix: no program ran).
+- **Reading** was already refused before `tar.exe` starts: the format is taken from the file's
+  content, so an xz, zstd or bzip2 stream under another name is refused too (measured), and a raw
+  lzma stream, which has no signature, is recognized only by the `.lzma` name and then refused
+  the same way.
+
+The decision rests on `tar.exe`'s own `--version` text, read from the signature-checked
+`C:\Windows\System32\tar.exe` (above).
+
 ### Why Sandbox tar.exe at All, Given It's Microsoft-Signed?
 
 Two distinct threat vectors, only the second of which the v1.4 sandbox (T-F52) defends against —

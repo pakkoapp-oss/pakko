@@ -12916,3 +12916,30 @@ PowerShell does natively.
   (that server's exact `--version`; red before the fix).
 - Decisions: `docs/DECISIONS.md`'s T-F401 entry, "What the updated VM showed (T-F402)".
 - **Reported by:** `CLI-032` on a Windows Server 2022 VM, 2026-10-16.
+
+### T-F403 — The tar.exe capability matrix: what Pakko offers and runs follows what tar.exe can do (P1)
+
+- [x] **Status:** done 2026-10-16. One rule over the libraries built into `tar.exe`
+  (`ArchiveFormatPolicy.GetTarCreationRefusalReason`, `CreatableSevenZipMethods`,
+  `TarReadableRegistryNames`, beside the existing reading rule) now decides creation in Core
+  (before `tar.exe` starts), the App's Format and 7z method lists, `pakko i` and, through the
+  `tar-capabilities.txt` snapshot, the Explorer menu's archive items. Found with T-F401: on a
+  zlib-only `tar.exe` (Windows 10 22H2, Server 2022) `pakko a -ttar.zst` and `-ttar.bz2` made
+  `tar.exe` run a `zstd.exe` or `bzip2.exe` from the current folder or PATH, outside the sandbox
+  (measured with a marker program); the other compressed tar formats and 7z failed with
+  `tar.exe`'s own text. A blocker for T-F401, which is what let Pakko run that `tar.exe`.
+- **Measured with the fix** on the Windows 10 VM (19045.6456, tar 3.5.2): every `a` of
+  tar.zst, tar.bz2, tar.xz, tar.lzma and 7z exits 2 with Pakko's text and no marker runs, tar.gz
+  is made; `pakko i` lists tar and tar.gz as supported; the App's Format list reads ZIP, TAR,
+  TAR.GZ; the snapshot reads `...;0;tar,gzip`. The host (Windows 11, tar 3.8.8): everything as
+  before, the methods line lists all five. Not walked: the Explorer menu on the VM (opening it
+  from a background UI Automation script did not work; `EXP-012`, `CLI-035`).
+- **Tests:** `ArchiveFormatPolicyCreationTests`, `TarCreationCapabilityGateTests` (red without
+  the gate), `TarVersionParserTests` (the three measured `--version` lines),
+  `CreationFormatOptionTests`, `SevenZipMethodOptionTests`, `TarCapabilitySnapshotTests`,
+  `CliSevenZipSwitchTests`; gtest `TarCapabilitySnapshot.*` for the snapshot parser and the menu
+  rule. Smoke: `SHL-013`, `EXP-012` updated, `CLI-035` new.
+- Decisions: `docs/DECISIONS.md`'s T-F403 entry. `SECURITY.md`: "Compressor Programs tar.exe
+  Would Start" (the maintainer agreed on 2026-10-16 to a paragraph saying what was measured).
+- **Reported by:** the user, 2026-10-16 ("a capability matrix, found dynamically, that the
+  graphical and the command-line menus are built from").
