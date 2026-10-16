@@ -40,3 +40,4 @@ Open Source
 • Neu: Wiederherstellungsdaten (PAR2). Aktivieren Sie beim Erstellen eines Archivs „Wiederherstellungsdaten hinzufügen (PAR2)“, dann lässt sich das Archiv nach einer Beschädigung reparieren.
 • PAR2-Dateien anderer Programme funktionieren ebenfalls; der Befehl pakko fügt Wiederherstellungsdaten mit -rr hinzu und repariert mit r.
 • Behoben: Entf, Eingabe und die Menütaste funktionieren wieder in einer per Tastatur ausgewählten Listenzeile.
+• Behoben: Unter Windows 10 und Windows 11 bis Version 23H2 werden TAR-Archive nicht mehr abgelehnt, und Pakko bietet nur die Formate an, die das tar.exe von Windows beherrscht.

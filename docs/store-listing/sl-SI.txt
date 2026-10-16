@@ -40,3 +40,4 @@ odprta koda
 • Novo: podatki za obnovitev (PAR2). Pri ustvarjanju arhiva vklopite »Dodaj podatke za obnovitev (PAR2)« in arhiv bo mogoče po poškodbi popraviti.
 • Delujejo tudi datoteke PAR2, ustvarjene z drugimi programi; ukaz pakko doda podatke za obnovitev s stikalom -rr in popravlja z ukazom r.
 • Popravljeno: tipke Delete, Enter in menijska tipka znova delujejo v vrstici seznama, izbrani s tipkovnico.
+• Popravljeno: v sistemih Windows 10 in Windows 11 do različice 23H2 arhivi TAR niso več zavrnjeni, Pakko pa ponuja le oblike, ki jih zna obdelati tar.exe sistema Windows.

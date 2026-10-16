@@ -40,3 +40,4 @@ jelszavas zip
 • Újdonság: helyreállítási adatok (PAR2). Archívum létrehozásakor kapcsolja be a „Helyreállítási adatok hozzáadása (PAR2)” beállítást, és az archívum sérülés után javítható lesz.
 • Más programokkal készült PAR2-fájlok is használhatók; a pakko parancs az -rr kapcsolóval ad hozzá helyreállítási adatokat, és az r paranccsal javít.
 • Javítva: a Delete, az Enter és a menübillentyű ismét működik a lista billentyűzettel kijelölt során.
+• Javítva: a Windows 10 és a Windows 11 23H2-es verziójáig a TAR-archívumokat már nem utasítja el, és a Pakko csak azokat a formátumokat kínálja, amelyeket a Windows saját tar.exe-je kezelni tud.

@@ -40,3 +40,4 @@ sumber terbuka
 • Baru: data pemulihan (PAR2). Aktifkan "Tambahkan data pemulihan (PAR2)" saat membuat arsip, dan arsip dapat diperbaiki setelah rusak.
 • File PAR2 buatan program lain juga dapat dipakai; perintah pakko menambahkan data pemulihan dengan -rr dan memperbaiki dengan r.
 • Diperbaiki: tombol Delete, Enter, dan tombol menu kembali berfungsi pada baris daftar yang dipilih dengan keyboard.
+• Diperbaiki: di Windows 10 dan Windows 11 hingga versi 23H2, arsip TAR tidak lagi ditolak, dan Pakko hanya menawarkan format yang dapat ditangani tar.exe milik Windows.

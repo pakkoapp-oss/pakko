@@ -40,3 +40,4 @@ avoin lähdekoodi
 • Uutta: palautustiedot (PAR2). Ota arkistoa luodessasi käyttöön "Lisää palautustiedot (PAR2)", niin arkiston voi korjata vaurion jälkeen.
 • Myös muiden ohjelmien luomat PAR2-tiedostot käyvät; pakko-komento lisää palautustiedot valitsimella -rr ja korjaa komennolla r.
 • Korjattu: Delete, Enter ja valikkonäppäin toimivat taas näppäimistöllä valitulla luettelon rivillä.
+• Korjattu: Windows 10:ssä ja Windows 11:ssä versioon 23H2 asti TAR-arkistoja ei enää hylätä, ja Pakko tarjoaa vain muodot, joita Windowsin oma tar.exe osaa käsitellä.

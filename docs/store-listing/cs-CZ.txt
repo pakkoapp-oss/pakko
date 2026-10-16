@@ -40,3 +40,4 @@ ZIP kompresní nástroj
 • Novinka: data pro obnovení (PAR2). Při vytváření archivu zapněte „Přidat data pro obnovení (PAR2)“ a archiv půjde po poškození opravit.
 • Fungují i soubory PAR2 vytvořené jinými programy; příkaz pakko přidává data pro obnovení přepínačem -rr a opravuje příkazem r.
 • Opraveno: klávesy Delete, Enter a klávesa nabídky znovu fungují na řádku seznamu vybraném z klávesnice.
+• Opraveno: ve Windows 10 a Windows 11 do verze 23H2 už nejsou archivy TAR odmítány a Pakko nabízí jen formáty, které zvládne tar.exe systému Windows.

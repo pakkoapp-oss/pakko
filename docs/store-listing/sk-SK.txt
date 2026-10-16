@@ -40,3 +40,4 @@ alternatíva 7-zip
 • Novinka: údaje na obnovenie (PAR2). Pri vytváraní archívu zapnite „Pridať údaje na obnovenie (PAR2)“ a archív sa po poškodení bude dať opraviť.
 • Fungujú aj súbory PAR2 vytvorené inými programami; príkaz pakko pridáva údaje na obnovenie prepínačom -rr a opravuje príkazom r.
 • Opravené: klávesy Delete, Enter a kláves ponuky opäť fungujú na riadku zoznamu vybranom z klávesnice.
+• Opravené: vo Windows 10 a Windows 11 do verzie 23H2 sa už archívy TAR neodmietajú a Pakko ponúka len formáty, ktoré zvládne tar.exe systému Windows.

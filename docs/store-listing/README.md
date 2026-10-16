@@ -8,7 +8,8 @@ The files hold the text **for the v1.8.1 submission** (v1.8.0 was never submitte
 feature line is from 2026-10-10, the 7-Zip line and the sentence on creating 7-Zip and TAR in the
 description from 2026-10-15 (T-F342), the rest of the features is the v1.7.0 text. "What's new"
 covers v1.8.0 and v1.8.1 together, because the Store serves 1.7.2: 7-Zip creation, Test for every
-format (T-F397), two lines on PAR2, one on the fixes. What is live in the Store can be read
+format (T-F397), two lines on PAR2, one on the fixes, one on Windows 10 and Windows 11 up to
+23H2 (T-F401, T-F403, 2026-10-16). What is live in the Store can be read
 without signing in:
 `https://displaycatalog.mp.microsoft.com/v7.0/products?bigIds=9P5MW010D8PR&market=CZ&languages=cs-CZ`
 (`ProductDescription`, `ShortDescription`, `SearchTitles`, and `Features` under the SKU).

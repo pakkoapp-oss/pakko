@@ -40,3 +40,4 @@ otwarty kod źródłowy
 • Nowość: dane odzyskiwania (PAR2). Włącz „Dodaj dane odzyskiwania (PAR2)” podczas tworzenia archiwum, a archiwum da się naprawić po uszkodzeniu.
 • Działają też pliki PAR2 utworzone przez inne programy; polecenie pakko dodaje dane odzyskiwania przełącznikiem -rr i naprawia poleceniem r.
 • Naprawiono: klawisze Delete, Enter i klawisz menu znów działają w wierszu listy wybranym z klawiatury.
+• Naprawiono: w systemach Windows 10 i Windows 11 do wersji 23H2 archiwa TAR nie są już odrzucane, a Pakko oferuje tylko formaty, które obsługuje tar.exe systemu Windows.

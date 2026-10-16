@@ -40,3 +40,4 @@ open source
 • New: recovery data (PAR2). Turn on "Add recovery data (PAR2)" when creating an archive, and the archive can be repaired after damage.
 • PAR2 files made by other programs work too; the pakko command adds recovery data with -rr and repairs with r.
 • Fixed: the Delete, Enter and menu keys work again on a list row selected from the keyboard.
+• Fixed: on Windows 10 and Windows 11 up to version 23H2, TAR archives are no longer refused, and Pakko offers only the formats that Windows' own tar.exe can handle.

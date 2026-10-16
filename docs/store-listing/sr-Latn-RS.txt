@@ -40,3 +40,4 @@ otvoreni kod
 • Novo: podaci za oporavak (PAR2). Uključite „Dodaj podatke za oporavak (PAR2)“ pri pravljenju arhive i arhiva će moći da se popravi posle oštećenja.
 • Rade i PAR2 datoteke napravljene drugim programima; komanda pakko dodaje podatke za oporavak prekidačem -rr i popravlja komandom r.
 • Ispravljeno: tasteri Delete, Enter i taster menija ponovo rade na redu liste izabranom sa tastature.
+• Ispravljeno: na sistemima Windows 10 i Windows 11 do verzije 23H2 arhive TAR se više ne odbijaju, a Pakko nudi samo formate sa kojima radi tar.exe sistema Windows.

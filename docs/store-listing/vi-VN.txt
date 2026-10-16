@@ -40,3 +40,4 @@ mã nguồn mở
 • Mới: dữ liệu khôi phục (PAR2). Bật "Thêm dữ liệu khôi phục (PAR2)" khi tạo tệp nén để có thể sửa tệp nén sau khi bị hỏng.
 • Tệp PAR2 do chương trình khác tạo cũng dùng được; lệnh pakko thêm dữ liệu khôi phục bằng -rr và sửa bằng r.
 • Đã sửa: các phím Delete, Enter và phím menu hoạt động trở lại trên hàng danh sách được chọn bằng bàn phím.
+• Đã sửa: trên Windows 10 và Windows 11 đến phiên bản 23H2, tệp nén TAR không còn bị từ chối, và Pakko chỉ cung cấp những định dạng mà tar.exe của Windows xử lý được.

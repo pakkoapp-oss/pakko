@@ -40,3 +40,4 @@ zip su slaptažodžiu
 • Nauja: atkūrimo duomenys (PAR2). Kurdami archyvą įjunkite „Pridėti atkūrimo duomenis (PAR2)“, ir archyvą bus galima pataisyti po pažeidimo.
 • Tinka ir kitų programų sukurti PAR2 failai; komanda pakko prideda atkūrimo duomenis jungikliu -rr ir taiso komanda r.
 • Ištaisyta: klavišai „Delete“, „Enter“ ir meniu klavišas vėl veikia klaviatūra pasirinktoje sąrašo eilutėje.
+• Ištaisyta: „Windows 10“ ir „Windows 11“ iki 23H2 versijos TAR archyvai nebeatmetami, o „Pakko“ siūlo tik tuos formatus, kuriuos geba apdoroti „Windows“ tar.exe.

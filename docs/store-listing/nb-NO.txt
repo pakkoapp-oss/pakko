@@ -40,3 +40,4 @@ zip med passord
 • Nytt: gjenopprettingsdata (PAR2). Slå på «Legg til gjenopprettingsdata (PAR2)» når du oppretter et arkiv, så kan arkivet repareres etter en skade.
 • PAR2-filer fra andre programmer fungerer også; kommandoen pakko legger til gjenopprettingsdata med -rr og reparerer med r.
 • Rettet: Delete, Enter og menytasten fungerer igjen på en listerad som er valgt med tastaturet.
+• Rettet: på Windows 10 og Windows 11 til og med versjon 23H2 avvises ikke TAR-arkiver lenger, og Pakko tilbyr bare formatene som Windows' egen tar.exe kan håndtere.
