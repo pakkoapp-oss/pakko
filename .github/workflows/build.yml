@@ -72,10 +72,10 @@ env:
 # (a native WinVerifyTrust/CryptQueryObject P/Invoke check, see that class's own doc comment)
 # started returning false specifically on windows-2022, even though plain PowerShell
 # Get-AuthenticodeSignature on the exact same file on the exact same runner reports a genuinely
-# valid Microsoft signature. That's a real, separate, unresolved discrepancy in this project's own
-# native verification code across Windows Server 2022 vs. 2025/11 -- worth its own investigation
-# (not a CI-infra problem), but out of scope for T-F122. Keeping `test` on windows-latest sidesteps
-# it entirely for now, since build-msix is the only job that actually needs windows-2022.
+# valid Microsoft signature. The cause, found at T-F401: that image's tar.exe is signed through a
+# Windows catalog only, and the check then accepted embedded signatures only. It accepts both now;
+# canary.yml's canary-server2022 job runs it on windows-2022 every night. `test` stays on
+# windows-latest, since build-msix is the only job that actually needs windows-2022.
 jobs:
   # T-F143 (SonarCloud S8264): `contents: read` is declared here at job level instead of at
   # workflow level (which used to apply to this job by default) — every other job in this file

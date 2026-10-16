@@ -279,12 +279,19 @@ process's folder on close, best-effort; the next start removes folders whose pro
 
 `C:\Windows\System32\tar.exe` is:
 
-- **Microsoft-signed** — binary integrity verified by Windows Authenticode chain
+- **Microsoft-signed** — binary integrity verified by Windows Authenticode chain, through either
+  kind of signing Windows uses for this file: an embedded signature (Windows 11 24H2 and later) or
+  a Windows catalog that lists the file's hash (Windows 10, Windows 11 up to 23H2, Windows Server
+  2022, whose `tar.exe` has no embedded signature at all; T-F401)
 - **Open source** — based on bsdtar/libarchive, source on GitHub (`microsoft/bsdtar`)
 - **Part of Windows Update** — patched through normal OS update cycle, MSRC process applies
 - **No SHA-256 verification needed** — unlike third-party binaries, the Authenticode signature provides equivalent or stronger integrity guarantee
 - **T-F52 (v1.4) additionally verifies the Authenticode subject is Microsoft before every launch**
-  — cheap defense-in-depth, not a primary control (see "Why Sandbox tar.exe at All" below for why)
+  — cheap defense-in-depth, not a primary control (see "Why Sandbox tar.exe at All" below for why).
+  The Organization is read from the signature that vouched for the file: its own for an
+  embedded signature, the catalog's for a catalog. Hashing and verifying through one open
+  handle does not close the gap between this check and the launch by path; the check stays a
+  cheap extra, as above.
 
 ### Why Sandbox tar.exe at All, Given It's Microsoft-Signed?
 

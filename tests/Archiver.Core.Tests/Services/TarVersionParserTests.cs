@@ -43,13 +43,33 @@ public sealed class TarVersionParserTests
     [Fact]
     public void Parse_ExactMinimumVersion_SupportsRarAnd7zAndZstd()
     {
-        const string output = "bsdtar 3.7.0 - libarchive 3.7.0";
+        const string output = "bsdtar 3.7.0 - libarchive 3.7.0 zlib/1.2.13 liblzma/5.4.1 bz2lib/1.0.8 libzstd/1.5.5";
 
         TarCapabilities result = TarVersionParser.Parse(output);
 
         result.Supports7z.Should().BeTrue();
         result.SupportsRar.Should().BeTrue();
         result.SupportsZstd.Should().BeTrue();
+    }
+
+    // T-F402: Windows Server 2022 with the 2026-09 update (build 20348.5622) has libarchive 3.8.4
+    // built with zlib only. It reads RAR, but cannot compress or read LZMA/LZMA2 (the method of
+    // nearly every 7z, and the writer's default) and has no zstd: `--zstd` looks for an external
+    // zstd program. Measured on a VM, the exact output below.
+    [Fact]
+    public void Parse_ModernVersionWithoutLzmaOrZstd_SupportsRarButNot7zOrZstd()
+    {
+        const string output = "bsdtar 3.8.4 - libarchive 3.8.4 zlib/1.2.5.f-ipp cng/2.0 libb2/bundled";
+
+        TarCapabilities result = TarVersionParser.Parse(output);
+
+        result.Version.Should().Be("3.8.4");
+        result.SupportsRar.Should().BeTrue();
+        result.Supports7z.Should().BeFalse();
+        result.SupportsZstd.Should().BeFalse();
+        result.SupportsXz.Should().BeFalse();
+        result.SupportsLzma.Should().BeFalse();
+        result.SupportsBz2.Should().BeFalse();
     }
 
     [Theory]

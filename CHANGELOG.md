@@ -13,8 +13,10 @@ the technical account of any task named here.
 ## v1.8.1 — 2026-10-12
 
 Pakko creates 7z archives, and "Test" works for every archive it reads. Plus the fixes found by
-walking every on-device check of v1.8.0 by hand; the one that matters most: keys on a list row
-selected from the keyboard have done nothing since v1.7.2, the first Native AOT build.
+walking every on-device check of v1.8.0 by hand. The two that matter most: on Windows 10, Windows
+11 up to 23H2 and Windows Server 2022 Pakko refused Windows' own tar.exe, so no tar, 7z or RAR
+archive could be opened, extracted or made there; and keys on a list row selected from the
+keyboard have done nothing since v1.7.2, the first Native AOT build.
 
 ### Added
 
@@ -59,6 +61,17 @@ selected from the keyboard have done nothing since v1.7.2, the first Native AOT 
 - **T-F398** - `pakko l`, `x` and `t`, the App and Explorer read a tar.lzma archive. Pakko
   writes tar.lzma but answered "not a recognized archive format" for one: an .lzma stream has no
   signature, so the name now decides when the bytes name no other format.
+- **T-F401** - Pakko runs Windows' tar.exe on Windows 10, Windows 11 up to 23H2 and Windows
+  Server 2022 again. There tar.exe is signed through a Windows catalog, not with a signature of
+  its own, and Pakko's check accepted only the latter: it refused tar.exe with "failed
+  Authenticode signature verification", so every tar, gz, bz2, xz, zst, lzma, 7z and RAR
+  action failed. The check accepts both kinds now and still requires Microsoft as the signer.
+  What each system can then do depends on its tar.exe: RAR and 7z need libarchive 3.7.0 or
+  later, so Windows 10 gets the tar family back, not RAR or 7z.
+- **T-F402** - Pakko no longer offers 7z or tar.zst where tar.exe cannot do them. Windows
+  Server 2022's tar.exe (libarchive 3.8.4 with its updates) is built without LZMA, bzip2 and
+  zstd: it reads tar, tar.gz and RAR, while 7z, which nearly always uses LZMA, failed with
+  tar.exe's own error. 7z now also needs LZMA in tar.exe, and tar.zst needs zstd.
 
 ### Changed
 

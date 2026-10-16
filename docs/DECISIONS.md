@@ -2904,6 +2904,10 @@ not an embedded PKCS#7-in-PE signature (confirmed via
 signatures — and doesn't need to, since tar.exe (the only file this class ever checks) carries a
 real embedded signature. The test was corrected to assert `notepad.exe` returns `false`, with a
 comment explaining this is a deliberate scope boundary, not something to "fix" later.
+**Revisited by T-F401 (2026-10-16):** the premise was wrong. `tar.exe` carries an embedded
+signature only on Windows 11 24H2 and later; on Windows 10, Windows 11 up to 23H2 and Windows
+Server 2022 it is signed through a catalog only, and Pakko refused it there. The class now accepts
+both; see the T-F401 entry.
 
 **Step 8 — `TarSandboxedService`: real bug — implicit parent-directory creation fails under the
 AppContainer, explicit directory entries don't.** Before deleting `TarProcessService.cs`, the
@@ -13896,6 +13900,73 @@ gzip counted as verified; the zstd checksum flag ignored.
 
 Not measured on the device: the progress moving during a long test (the integration test reads
 the reports), and Test under `DisableTarExtraction` (`POL-010`, the elevated run at the end).
+
+## T-F401 — a catalog-signed tar.exe (2026-10-16)
+
+**Found.** `CLI-032` on a Hyper-V VM of Windows Server 2022 Datacenter Evaluation, build 20348.169
+(the Evaluation Center VHD): `pakko a -t7z`, `a -ttar.gz`, `x` of a tar.gz all gave exit 2 and
+"tar.exe failed Authenticode signature verification"; `pakko i` listed every tar.exe format as
+not supported, with an empty version. `Get-AuthenticodeSignature` on the same file: Valid,
+`SignatureType` Catalog, `IsOSBinary` true, `CN=Microsoft Windows, O=Microsoft Corporation`. The
+PE certificate table of that `tar.exe` is 0 bytes; on the development machine (build 26300) it is
+10 360 bytes, and that file reports `SignatureType` Catalog too, so the type alone does not say
+whether a file has an embedded signature. The same discrepancy was seen on the `windows-2022` CI
+image on 2026-07-19 (T-F122) and left open as "Server only".
+
+**How wide.** Winbindex's `tar.exe` records give a signature type for some builds: "Catalog file"
+for Windows 10 1903, 1909, 2004, 20H2, 21H1, 21H2 and Windows 11 22H2, 23H2; "Overlay" (embedded)
+for Windows 11 24H2, 25H2, 26H1. Most rows are unknown (files from cumulative updates are not
+scanned). The same VM with the 2026-09 cumulative update: below, under T-F402.
+
+**Sources** (learn.microsoft.com, quoted):
+- `CryptCATAdminAcquireContext2`: "acquires a handle to a catalog administrator context for a
+  given hash algorithm and hash policy"; `pgSubsystem`: "DRIVER_ACTION_VERIFY represents the
+  subsystem for operating system components and third party drivers"; `pwszHashAlgorithm`: "If it
+  is NULL, the default hashing algorithm may be chosen ... The default algorithm in Windows 8 is
+  SHA1."
+- `CryptCATAdminCalcHashFromFileHandle2`: "If pbHash is set to NULL, then pcbHash contains the
+  number of bytes to allocate for pbHash."
+- `CryptCATAdminEnumCatalogFromHash`: "To get the first catalog that contains the hash ... pass
+  NULL for this parameter"; "After the final call to this function, call
+  CryptCATAdminReleaseCatalogContext"; the returned HCATINFO "is NOT the same as a HANDLE returned
+  from CryptCATOpen"; the file name comes from `CryptCATCatalogInfoFromContext`.
+- `WINTRUST_CATALOG_INFO`: "used when calling WinVerifyTrust to verify a member of a Microsoft
+  catalog"; `hCatAdmin` "can be zero only for a SHA1 file hash".
+
+**Decided.**
+- `TarSignatureVerifier.Verify` = the embedded check as before, or else the catalog: the file's
+  hash (SHA-256, then the system default SHA-1 for older catalogs) computed from one open handle,
+  the catalog found by that hash in `DRIVER_ACTION_VERIFY`'s database, `WinVerifyTrust` with
+  `WTD_CHOICE_CATALOG` on the same handle and hash, and the Organization read from the catalog's
+  own signature. Revocation and URL retrieval as for the embedded check.
+- The catalog is queried as `CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED`. Asked for as a CTL
+  (`CERT_QUERY_CONTENT_FLAG_CTL`, which a catalog is) `CryptQueryObject` succeeds with content type
+  2 but returns no message handle, so the signer cannot be read (measured on whoami.exe's catalog).
+- A copy of a catalog-signed file passes wherever it lies: a catalog lists hashes, not paths. Pakko
+  only ever checks `C:\Windows\System32\tar.exe` by absolute path, so the path is not this check's
+  job; a test fixes the behaviour.
+- Tests choose the catalog-only file by its empty PE certificate table (`whoami.exe`, `where.exe`,
+  `findstr.exe` or `notepad.exe`), and a changed copy flips a byte in the middle of the first
+  section, inside what Authenticode hashes.
+- CI: the nightly `canary-server2022` job runs the signature tests and the sandboxed tar.exe tests
+  on `windows-2022`, whose `tar.exe` is catalog-only; it prints the certificate table first.
+
+**What the updated VM showed (T-F402).** With the 2026-09 cumulative update (build 20348.5622)
+the same server has `tar.exe` 3.8.4, still catalog-only (PE certificate table 0 bytes): the
+v1.8.1 `pakko` before this fix refused it as before; the fixed one runs it. Its `--version` is
+`bsdtar 3.8.4 - libarchive 3.8.4 zlib/1.2.5.f-ipp cng/2.0 libb2/bundled`: no liblzma, bz2lib or
+libzstd. Measured with it: a 7z with Deflate or Copy is written; LZMA2 (the writer's default)
+fails with "`lzma2' compression not supported on this platform", bzip2 likewise; `l` of an LZMA
+7z fails with "LZMA codec is unsupported"; `--zstd` tries to launch an external `zstd`; RAR and
+tar.gz work. Pakko had offered 7z and tar.zst on version alone. Decided: `Supports7z` needs
+liblzma as well as 3.7.0, `SupportsZstd` needs libzstd as well; RAR stays on the version, since
+libarchive reads it without an external library. A 7z made with Deflate or Copy is then not
+opened on such a system either: nearly every 7z uses LZMA, and Pakko cannot tell from the name.
+
+**Rejected.** Reading the signer with `WTHelperProvDataFromStateData`/
+`WTHelperGetProvSignerFromChain` (Microsoft marks both "may be altered or unavailable", and their
+structures are long to marshal); a check of the CN or an EKU in place of the Organization (Microsoft
+signs system files under several CNs, T-F52).
 
 ## T-F398 — reading the tar.lzma Pakko writes (2026-10-15)
 
