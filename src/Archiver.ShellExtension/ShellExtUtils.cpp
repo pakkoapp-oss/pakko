@@ -398,7 +398,9 @@ bool IsSevenZipWriterVerdictAbsent(const std::string& verdict, ULONGLONG tarSize
     char answer = 0;
     bool hasList = false;
     std::vector<std::wstring> readable;
-    return ParseVerdict(verdict, tarSize, tarWriteTime, answer, hasList, readable) && answer == '0';
+    if (!ParseVerdict(verdict, tarSize, tarWriteTime, answer, hasList, readable)) return false;
+    // T-F403: writing 7z needs reading it, so a list without sevenzip settles it whatever the answer.
+    return answer == '0' || (hasList && std::find(readable.begin(), readable.end(), L"sevenzip") == readable.end());
 }
 
 bool ParseTarReadableFormats(const std::string& verdict, ULONGLONG tarSize, ULONGLONG tarWriteTime,

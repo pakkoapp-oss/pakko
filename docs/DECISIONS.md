@@ -13958,6 +13958,10 @@ The child `tar.exe` gets Pakko's working folder; the destination folder is not s
   install time (an MSIX runs no code then), so the first right-click before any Pakko run still
   shows every item; a logon task to write it earlier was not taken (a new background process
   for one item that refuses safely).
+- "Add to X.7z" hides on `0`, and also on a list without `sevenzip` whatever the third field
+  says: writing 7z needs reading it, so Core refuses there anyway. Found in EXP-012 on the host:
+  an Explorer-only user on a zlib-only `tar.exe` gets `?;tar,gzip` and saw an item that always
+  failed.
 - The gate keeps the capabilities it got (`KnownCapabilitiesAsync`): a `--version` run that
   gave no version (the five-second timeout on a loaded machine) is asked again with the 7z
   writer probe's thirty seconds, so a slow `tar.exe` is not read as one without codecs. Without
