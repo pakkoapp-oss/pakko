@@ -12882,3 +12882,37 @@ PowerShell does natively.
   is a later task.
 - **Reported by:** the user, 2026-10-06.
 
+### T-F401 — A catalog-signed tar.exe was refused, so tar, 7z and RAR did not work there (P1)
+
+- [x] **Status:** done 2026-10-16. `TarSignatureVerifier` accepts a `tar.exe` signed through a
+  Windows catalog as well as one with an embedded signature; the signer must still be Microsoft
+  Corporation. Found by `CLI-032` on a Windows Server 2022 VM (20348.169), where every tar.exe
+  action failed with "tar.exe failed Authenticode signature verification": that `tar.exe` has no
+  embedded signature, as on Windows 10 and Windows 11 up to 23H2. Pre-existing since T-F52.
+- **Measured on the VM with the fixed standalone `pakko`** (tar.exe 3.3.2): `a -t7z` exit 2 with
+  "This system's tar.exe cannot create 7z archives." and no file (the `CLI-032` refusal branch: the
+  7z writer is offered only where tar.exe also reads 7z, libarchive 3.7.0+); `a -ttar.gz` exit 0,
+  `t` of it exit 1 with the structure-only warning, `x` of a tar.gz exit 0; `l` of a 7z and of a RAR
+  exit 2 naming version 3.3.2; `pakko i` shows the version.
+- **Tests:** `TarSignatureVerifierTests` (a catalog-only system binary and an unchanged copy
+  pass, changed copies of it and of tar.exe fail; the two catalog tests were red before the fix).
+  CI: `canary-server2022`.
+- Decisions and sources: `docs/DECISIONS.md`'s T-F401 entry. `SECURITY.md`'s tar.exe trust model
+  says both kinds of signing (the maintainer agreed to that edit on 2026-10-16).
+- **The same VM with the 2026-09 update** (20348.5622, tar.exe 3.8.4, still catalog-only): the
+  v1.8.1 `pakko` before the fix refused tar.exe as before, so the bug is not limited to an
+  unpatched system; the fixed one extracts a tar.gz and lists a RAR. 7z there is T-F402.
+- **Reported by:** the release-tier smoke run of v1.8.1 (`CLI-032`), 2026-10-16.
+
+### T-F402 — 7z and tar.zst offered where tar.exe has no LZMA or zstd (P2)
+
+- [x] **Status:** done 2026-10-16. `TarVersionParser` reports 7z only where tar.exe has liblzma
+  as well as libarchive 3.7.0, and tar.zst only where it has libzstd. Found right after T-F401 on
+  the Windows Server 2022 VM with the 2026-09 update: its tar.exe 3.8.4 is built with zlib only,
+  `pakko i` listed 7z (create, extract) and tar.zst as supported, and `a -t7z` failed with
+  tar.exe's own "`lzma2' compression not supported on this platform", `l` of a 7z with "LZMA codec
+  is unsupported". Hidden until T-F401: before it, Pakko did not run that tar.exe at all.
+- **Tests:** `TarVersionParserTests.Parse_ModernVersionWithoutLzmaOrZstd_SupportsRarButNot7zOrZstd`
+  (that server's exact `--version`; red before the fix).
+- Decisions: `docs/DECISIONS.md`'s T-F401 entry, "What the updated VM showed (T-F402)".
+- **Reported by:** `CLI-032` on a Windows Server 2022 VM, 2026-10-16.

@@ -242,6 +242,73 @@ jobs:
           $failed = ($outcomes -contains 'failure') -or ($outcomes -contains 'cancelled')
           "failed=$($failed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
+  # T-F401: the tar.exe of windows-2022 (Windows Server 2022) has no embedded signature, only a
+  # Windows catalog, as on Windows 10 and Windows 11 up to 23H2; TarSignatureVerifier must accept
+  # it, and the sandboxed tar.exe tests must pass behind that check. The first step prints the
+  # PE certificate table, so the job shows whether the image still tests the catalog path.
+  canary-server2022:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      failed: ${{ steps.record.outputs.failed }}
+    steps:
+      - uses: actions/checkout@v7
+        continue-on-error: true
+        id: checkout
+
+      - name: The tar.exe under test
+        shell: pwsh
+        run: |
+          $tar = 'C:\Windows\System32\tar.exe'
+          $bytes = [IO.File]::ReadAllBytes($tar)
+          $optional = [BitConverter]::ToInt32($bytes, 0x3C) + 24
+          $directories = $optional + $(if ([BitConverter]::ToUInt16($bytes, $optional) -eq 0x20B) { 112 } else { 96 })
+          $table = [BitConverter]::ToInt32($bytes, $directories + 4 * 8 + 4)
+          & $tar --version
+          Write-Output "PE certificate table: $table bytes; signature type: $((Get-AuthenticodeSignature $tar).SignatureType)"
+          if ($table -ne 0) { Write-Output "::warning title=T-F401::This image's tar.exe has an embedded signature: the catalog path is not tested here." }
+
+      # T-F364: global.json pins the exact SDK (rollForward: disable); the canary floats it again.
+      - name: Float the SDK
+        shell: pwsh
+        run: |
+          Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
+
+      - uses: actions/setup-dotnet@v6
+        continue-on-error: true
+        id: setup_dotnet
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Signature and sandboxed tar.exe tests (2 attempts)
+        id: tar_test
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $attempts = 2
+          for ($i = 1; $i -le $attempts; $i++) {
+            if ($i -gt 1) {
+              Write-Output "::warning title=Retried::Signature and sandboxed tar.exe tests (2 attempts): attempt $($i - 1) failed, retrying"
+              Start-Sleep -Seconds 15
+            }
+            dotnet test tests/Archiver.Core.Tests --filter "FullyQualifiedName~TarSignatureVerifier"
+            $signature = $LASTEXITCODE
+            dotnet test tests/Archiver.Core.IntegrationTests --filter "Category!=Slow&Category!=VeryLarge"
+            if ($signature -eq 0 -and $LASTEXITCODE -eq 0) { exit 0 }
+          }
+          throw "Signature and sandboxed tar.exe tests failed after $attempts attempt(s)."
+
+      - name: Record result
+        id: record
+        if: always()
+        shell: pwsh
+        run: |
+          $outcomes = @('${{ steps.checkout.outcome }}', '${{ steps.setup_dotnet.outcome }}', '${{ steps.tar_test.outcome }}')
+          $failed = ($outcomes -contains 'failure') -or ($outcomes -contains 'cancelled')
+          "failed=$($failed.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
   # T-F240: the ARM64 CLI and MSIX are built on every push but their tests never ran on ARM64.
   # The default filter's PerformanceTests have no timing assertions, and SevenZipRunner picks the
   # vendored arm64 7za.exe by process architecture.

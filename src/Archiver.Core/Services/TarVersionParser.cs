@@ -33,15 +33,19 @@ public static partial class TarVersionParser
             int.Parse(match.Groups[3].Value));
 
         bool supportsModernFormats = version >= MinVersionForModernFormats;
+        bool hasLzma = versionOutput.Contains("liblzma", StringComparison.OrdinalIgnoreCase);
 
+        // T-F402: a new enough tar.exe can still lack a codec. Windows Server 2022's 3.8.4 is built
+        // with zlib only: no zstd (`--zstd` then runs an external program), and no LZMA/LZMA2, the
+        // method of nearly every 7z and the 7z writer's default. RAR needs no external library.
         return new TarCapabilities
         {
             Version = version.ToString(),
-            SupportsXz = versionOutput.Contains("liblzma", StringComparison.OrdinalIgnoreCase),
-            SupportsLzma = versionOutput.Contains("liblzma", StringComparison.OrdinalIgnoreCase),
+            SupportsXz = hasLzma,
+            SupportsLzma = hasLzma,
             SupportsBz2 = versionOutput.Contains("bz2lib", StringComparison.OrdinalIgnoreCase),
-            SupportsZstd = supportsModernFormats,
-            Supports7z = supportsModernFormats,
+            SupportsZstd = supportsModernFormats && versionOutput.Contains("libzstd", StringComparison.OrdinalIgnoreCase),
+            Supports7z = supportsModernFormats && hasLzma,
             SupportsRar = supportsModernFormats,
         };
     }

@@ -289,7 +289,9 @@ repo's convention), every assertion is against real OS behavior:
   `Pakko.TarSandbox` profile — plus a real forced-failure case: a >64-char profile name makes
   `CreateAppContainerProfile` throw `InvalidOperationException`, the exact failure shape
   `TarSandboxScope` now rewraps as `SandboxSetupException`), `TarSignatureVerifierTests.cs` (real
-  tar.exe passes, an unsigned decoy and a catalog-signed system binary both correctly fail).
+  tar.exe passes; T-F401: a system binary signed through a catalog only, chosen by its empty PE
+  certificate table, passes, and so does an unchanged copy of it; an unsigned decoy and copies of
+  that binary and of tar.exe with a byte changed inside their first section fail).
 - `tests/Archiver.Core.IntegrationTests/` — `QuarantineAclTests.cs` (3 tests: a granted quarantine
   lets a real sandboxed extraction succeed; an un-granted sibling folder is denied — the actual
   security proof; and a nonexistent path makes `GetNamedSecurityInfoW` throw

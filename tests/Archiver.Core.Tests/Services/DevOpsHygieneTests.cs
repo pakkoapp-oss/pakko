@@ -41,7 +41,7 @@ public sealed partial class DevOpsHygieneTests
 
     [Theory]
     [InlineData("build.yml", 3)]
-    [InlineData("canary.yml", 6)]
+    [InlineData("canary.yml", 7)]
     public void EveryRetryLoop_AnnotatesItsRetry(string file, int loops)
     {
         MatchCollection found = RetryLoop().Matches(WorkflowJobs.Text(RepoRoot, file));
