@@ -13948,6 +13948,16 @@ The child `tar.exe` gets Pakko's working folder; the destination folder is not s
   `AnyPathIsSupportedArchive` (Test, Scan); no file, an older line without the field, or one for
   another `tar.exe` hides nothing. Until the App or `Archiver.Shell` has written it, the menu
   offers the items and Core refuses when they are used.
+- Who writes the snapshot and when: the App at every start (with the 7z writer answer);
+  `Archiver.Shell` after a 7z creation (with the answer) and, after any other command that does
+  not open the App, when the snapshot is missing, older or names another `tar.exe`
+  (`TarCapabilitySnapshot.RecordIfStaleAsync`); `pakko` from the installed package the same way
+  after `x`, `t`, `l`, `a`, `i` or `r`. A current snapshot costs no `tar.exe` run. Without the
+  writer question the third field keeps the answer already recorded for this `tar.exe`, or is
+  `?` (not asked), which the menu treats as "shown", never as "no". Nothing is written at
+  install time (an MSIX runs no code then), so the first right-click before any Pakko run still
+  shows every item; a logon task to write it earlier was not taken (a new background process
+  for one item that refuses safely).
 - The gate keeps the capabilities it got (`KnownCapabilitiesAsync`): a `--version` run that
   gave no version (the five-second timeout on a loaded machine) is asked again with the 7z
   writer probe's thirty seconds, so a slow `tar.exe` is not read as one without codecs. Without

@@ -384,7 +384,8 @@ static bool ParseVerdict(const std::string& verdict, ULONGLONG tarSize, ULONGLON
     ULONGLONG writeTime = 0;
     if (!ReadVerdictNumber(verdict, pos, size) || !SkipVerdictSeparator(verdict, pos)) return false;
     if (!ReadVerdictNumber(verdict, pos, writeTime) || !SkipVerdictSeparator(verdict, pos)) return false;
-    if (pos >= verdict.size() || (verdict[pos] != '0' && verdict[pos] != '1')) return false;
+    // '?': the Shell or pakko recorded what tar.exe reads without asking about the 7z writer.
+    if (pos >= verdict.size() || (verdict[pos] != '0' && verdict[pos] != '1' && verdict[pos] != '?')) return false;
     answer = verdict[pos];
     ++pos;
     hasList = pos < verdict.size();

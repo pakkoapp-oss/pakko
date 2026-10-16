@@ -1713,7 +1713,10 @@ capabilities)` for making, `CreatableSevenZipMethods` and `TarReadableRegistryNa
 `TarCapabilities` to `CreationFormatOption.IsOffered`/`Default` and builds the 7z method list
 from `CreatableSevenZipMethods`; `pakko i` prints the methods line from it; the snapshot's
 fourth field is `TarReadableRegistryNames`, and the menu's `MenuPolicy` (`GetMenuPolicy`) treats
-a format it does not list like a blocked one. Why: `docs/DECISIONS.md`'s T-F403 entry.
+a format it does not list like a blocked one. Besides the App, `Archiver.Shell` (after any command
+that does not open the App) and an installed `pakko` call `TarCapabilitySnapshot.RecordIfStaleAsync`,
+which writes only a missing or stale snapshot, with `?` for an unasked 7z writer. Why:
+`docs/DECISIONS.md`'s T-F403 entry.
 
 **Sources on tar.exe's name list (T-F390, T-F391).** `AppendSourcesToNameList` builds
 `ListedSource` records (the selected path, the `-C` folder, the name, the item itself and the

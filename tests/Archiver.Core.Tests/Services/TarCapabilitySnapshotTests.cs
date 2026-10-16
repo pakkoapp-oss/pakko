@@ -74,6 +74,101 @@ public sealed class TarCapabilitySnapshotTests : IDisposable
 
     private string TarCapabilitySnapshotPath() => Path.Combine(PackageData(), "LocalCache", TarCapabilitySnapshot.FileName);
 
+    private static readonly TarCapabilities ZlibOnly = TarVersionParser.Parse("bsdtar 3.5.2 - libarchive 3.5.2 zlib/1.2.5.f-ipp ");
+
+    // T-F403: the Shell and pakko leave what tar.exe reads without asking about the 7z writer;
+    // "not asked" is "?", never "no", so the menu does not hide Add to name.7z on it.
+    [Fact]
+    public void TryWrite_NoAnswerButCapabilities_WritesAQuestionMark()
+    {
+        string path = TarCapabilitySnapshotPath();
+
+        TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: null, ZlibOnly).Should().BeTrue();
+
+        File.ReadAllText(path).Should().Be($"{new FileInfo(_tar).Length};{File.GetLastWriteTimeUtc(_tar).ToFileTimeUtc()};?;tar,gzip");
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void TryWrite_NoAnswer_KeepsTheAnswerRecordedForThisTar(bool canCreate)
+    {
+        string path = TarCapabilitySnapshotPath();
+        TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: canCreate).Should().BeTrue();
+
+        TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: null, ZlibOnly).Should().BeTrue();
+
+        File.ReadAllText(path).Should().Be(Expected(canCreate) + ";tar,gzip");
+    }
+
+    [Fact]
+    public void TryWrite_NoAnswer_DoesNotKeepTheAnswerOfAnotherTar()
+    {
+        string path = TarCapabilitySnapshotPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, "1;2;0;tar");
+
+        TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: null, ZlibOnly).Should().BeTrue();
+
+        File.ReadAllText(path).Should().EndWith(";?;tar,gzip");
+    }
+
+    // No version: tar.exe gave no answer, which says nothing about what it reads.
+    [Fact]
+    public void TryWrite_NoAnswerAndNoVersion_WritesNothing()
+    {
+        string path = TarCapabilitySnapshotPath();
+
+        TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: null, new TarCapabilities()).Should().BeFalse();
+        TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: null).Should().BeFalse();
+
+        File.Exists(path).Should().BeFalse();
+    }
+
+    // A current snapshot costs no tar.exe run; a missing or stale one is written from a probe.
+    [Fact]
+    public async Task RecordIfStale_ProbesAndWritesOnlyWhenTheSnapshotIsNotCurrent()
+    {
+        string path = TarCapabilitySnapshotPath();
+        int probes = 0;
+        Task<TarCapabilities> Probe() { probes++; return Task.FromResult(ZlibOnly); }
+
+        (await TarCapabilitySnapshot.RecordIfStaleAsync(new GroupPolicyOptions(), path, _tar, Probe)).Should().BeTrue();
+        (await TarCapabilitySnapshot.RecordIfStaleAsync(new GroupPolicyOptions(), path, _tar, Probe)).Should().BeFalse();
+
+        probes.Should().Be(1);
+        File.ReadAllText(path).Should().EndWith(";?;tar,gzip");
+    }
+
+    [Fact]
+    public async Task RecordIfStale_TarDisabledOrNoPackage_DoesNotProbe()
+    {
+        int probes = 0;
+        Task<TarCapabilities> Probe() { probes++; return Task.FromResult(ZlibOnly); }
+
+        (await TarCapabilitySnapshot.RecordIfStaleAsync(new GroupPolicyOptions { DisableTarExtraction = true }, TarCapabilitySnapshotPath(), _tar, Probe))
+            .Should().BeFalse();
+        (await TarCapabilitySnapshot.RecordIfStaleAsync(new GroupPolicyOptions(), null, _tar, Probe)).Should().BeFalse();
+
+        probes.Should().Be(0);
+    }
+
+    [Fact]
+    public void IsCurrent_OnlyForASnapshotOfThisTarThatListsWhatItReads()
+    {
+        string path = TarCapabilitySnapshotPath();
+        TarCapabilitySnapshot.IsCurrent(path, _tar).Should().BeFalse();
+
+        TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: true).Should().BeTrue();
+        TarCapabilitySnapshot.IsCurrent(path, _tar).Should().BeFalse("an older line has no list of formats");
+
+        TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: true, ZlibOnly).Should().BeTrue();
+        TarCapabilitySnapshot.IsCurrent(path, _tar).Should().BeTrue();
+
+        File.WriteAllText(path, "1;2;1;tar,gzip");
+        TarCapabilitySnapshot.IsCurrent(path, _tar).Should().BeFalse("it names another tar.exe");
+    }
+
     [Fact]
     public void PathFor_PackageFolder_IsTheFamilysLocalCache()
     {

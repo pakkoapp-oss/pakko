@@ -109,7 +109,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | SHL-010 | release | script | dev | No file list, an unknown argument, a path that does not exist | The first two: a non-zero exit and no window. The missing path: a result window that names the file; nothing is written | `shell:--extract-here` |
 | SHL-011 | release | script | dev | `--hash --algorithm sha256` on a folder with an unreadable file and a junction loop | The window lists the hashes and names the entries it skipped; it does not hang | `shell:--hash` T-F291 T-F251 |
 | SHL-012 | quick | script | dev | `--archive --format 7z` on a folder | `<name>.7z` next to the source, accepted by `7za t`, the entries under the folder's name, nothing else left | `shell:--format` T-F342 |
-| SHL-013 | quick | script | dev | Delete the tar capability snapshot (`tar-capabilities.txt`) in the package's `LocalCache` folder, then `--archive --format 7z` on a file | The file is back and reads tar.exe's size, its write time, `1` and the formats tar.exe reads, `sevenzip` among them | `shell:--format` T-F342 T-F403 |
+| SHL-013 | quick | script | dev | Delete the tar capability snapshot (`tar-capabilities.txt`) in the package's `LocalCache` folder, then `--archive --format 7z` on a file | The file is back and reads tar.exe's size, its write time, `1` and the formats tar.exe reads, `sevenzip` among them; deleted again and `--extract-here` on a ZIP, it is back with `?` in place of `1` | `shell:--format` T-F342 T-F403 |
 
 ## EXP - the real Explorer menu
 

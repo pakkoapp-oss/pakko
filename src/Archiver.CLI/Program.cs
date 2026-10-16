@@ -21,7 +21,7 @@ if (command.ConsoleCodePage is { } consoleCodePage)
 if (command.Type is CliCommandType.Extract or CliCommandType.Test or CliCommandType.List or CliCommandType.Archive)
     CliStreamStaging.SweepAbandoned();
 
-return command.Type switch
+int exitCode = command.Type switch
 {
     CliCommandType.Help => RunHelp(),
     CliCommandType.Version => RunVersion(),
@@ -37,6 +37,15 @@ return command.Type switch
     CliCommandType.Repair => await RunRepairAsync(command, services).ConfigureAwait(false),
     _ => 2,
 };
+
+// T-F403: a pakko started from the installed package leaves what tar.exe reads for the Explorer
+// menu when that snapshot is missing or stale; a standalone pakko has no package folder to write.
+if (command.Type is CliCommandType.Extract or CliCommandType.Test or CliCommandType.Info or CliCommandType.Archive
+    or CliCommandType.List or CliCommandType.Repair)
+{
+    await TarCapabilitySnapshot.RecordIfStaleAsync(services.Policy, services.GetTarCapabilitiesAsync).ConfigureAwait(false);
+}
+return exitCode;
 
 static int RunHelp()
 {

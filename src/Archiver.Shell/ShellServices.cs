@@ -19,6 +19,10 @@ internal sealed class ShellServices
     // T-F342: leaves what the 7z writer probe found where the Explorer menu reads it.
     public Func<Task> RecordSevenZipWriterAsync { get; init; } = () => Task.CompletedTask;
 
+    // T-F403: after any command, what tar.exe reads goes to the Explorer menu's snapshot when that
+    // is missing or stale, so the menu learns it without the App having run.
+    public Func<Task> RecordTarCapabilitiesIfStaleAsync { get; init; } = () => Task.CompletedTask;
+
     // T-F261: every service comes from Core's one factory, built with the one loaded policy.
     // T-F85: the factory probes tar.exe at most once per Explorer invocation.
     public static ShellServices Create(GroupPolicyOptions policy)
@@ -34,6 +38,7 @@ internal sealed class ShellServices
             RecordSevenZipWriterAsync = async () => TarCapabilitySnapshot.TryRecord(
                 policy, await core.TarService.AskSevenZipWriterAsync().ConfigureAwait(false),
                 await core.GetTarCapabilitiesAsync().ConfigureAwait(false)),
+            RecordTarCapabilitiesIfStaleAsync = () => TarCapabilitySnapshot.RecordIfStaleAsync(policy, core.GetTarCapabilitiesAsync),
         };
     }
 }

@@ -40,7 +40,8 @@ if (command.FilesFromStdin)
 // T-F268: every window these commands show goes through IOperationUi. The WinUI operation window
 // helper is used when it starts; Win32OperationUi (the native dialogs) is its fallback.
 var ui = new HelperOperationUi(new HelperProcessLauncher(), new Win32OperationUi());
-var commands = new ShellCommands(ui, ShellServices.Create(policy));
+var services = ShellServices.Create(policy);
+var commands = new ShellCommands(ui, services);
 
 switch (command.Type)
 {
@@ -92,3 +93,7 @@ switch (command.Type)
         await commands.HashAsync(command.Files, command.Algorithm).ConfigureAwait(false);
         break;
 }
+
+// T-F403: the App records the snapshot itself when it starts, so the commands that open it do not.
+if (command.Type is not (CommandType.OpenUiExtract or CommandType.OpenUiArchive or CommandType.OpenUiBrowse))
+    await services.RecordTarCapabilitiesIfStaleAsync().ConfigureAwait(false);
