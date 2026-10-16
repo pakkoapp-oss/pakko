@@ -12931,6 +12931,48 @@ the archive.
   a spike of its own, since libarchive's writer does not encrypt and its reader does not read
   encrypted 7z.
 
+## v1.8.1 — the release gates on 6cc00a1 (2026-10-15 and 2026-10-16)
+
+- **The commit and the package.** `6cc00a1` is `main` after wave 5 of T-F342 (#74); `677fe04`
+  (#75) changes only the smoke harness on top of it. The package under test, 1.8.1.13, came from
+  `Deploy.ps1` at `6cc00a1` (product version `1.0.0+6cc00a1...` on the exes).
+- **CI and the nightly checks on `6cc00a1`.** Build run 38770335070 green (`deploy-pages` needed a
+  rerun: GitHub still held an earlier deployment as in progress). Canary run 38771014331:
+  `canary-failed-day` skipped, `canary-fuzz` success. The 7z writer tests (`SevenZipWriterFact`)
+  ran and passed, not skipped, in the CI `test` job and in the ARM64 step of the canary (the ARM64
+  step has the same 11 skips as before, none of them 7z). On `3d537a2` (the code of `main` after
+  #73) `-c Release` `Category=Slow` and `Category=VeryLarge` passed, the 7z test over 4 GiB
+  included.
+- **Scripted rows** (`Invoke-Smoke.ps1 -Tier release -PackageLifecycle -ReleaseFiles <the bundle
+  of run 38770335070> -PreviousRelease <v1.8.0>`, 1 737 s): 70 OK, 2 FAIL, 8 skipped. Both
+  failures were the harness, fixed in #75: `CLI-021` still expected exit 1 from `t` on an
+  encrypted 7z (exit 2 since T-F397), and `POL-008` failed instead of skipping when nobody accepted
+  the prompt (T-F394). `REL-001` passed 24 on `6cc00a1`, `REL-002` read run 38771014331,
+  `PKG-006` went 1.8.0.0 to 1.8.1.0, `PKG-007..009` OK.
+- **The elevated rows**, with the maintainer at the machine on 2026-10-16 (`-Only
+  POL-00*,PKG-005`, 65 s): `POL-001..008` OK (20 policy changes, the two keys as before),
+  `PKG-005` OK (PASS, 24 tests; the two known findings of `wack-known.txt`). A second run with
+  `-Hold` (384 s, the same rows OK) held each policy for `POL-009`.
+- **`mcp` rows walked on 1.8.1.13** (uk-UA): the rows that T-F342, T-F397 and T-F398 reach, and
+  the rows the 2026-10-12 record left to the maintainer. The others keep their earlier results.
+
+  | ID | Result | Note |
+  |---|---|---|
+  | EXP-002 | OK | the Add items in the order zip, 7z, tar |
+  | EXP-011 | OK | "Add to X.7z" makes an archive that `7za t` accepts |
+  | EXP-012 | OK | the 7z item is hidden while the saved verdict says this `tar.exe` does not write 7z, and back with no verdict or one for another `tar.exe` |
+  | EXP-013 | OK | Test from the menu: "no errors" on a 7z, the structure-only warning on a tar.gz, the file named on a damaged 7z |
+  | APP-025 | OK | 7Z second in the Format list; the five methods, each one what `7za` reads back; Cyrillic names whole; Copy turns the level off; the password marked as ZIP only; with PAR2 `pakko t` exits 0; the collapsed card says "7Z · Copy · recovery data 5%" |
+  | APP-026 | OK | Test in the App: as `EXP-013` |
+  | POL-009 | OK | `EnforceMOTW` 0, 1, 2: the box disabled at Off, On, On with "set by your organisation's policy". `AllowedFormats` = `zip`: ZIP only, Down stays on ZIP, a 7z refused on open. `BlockedFormats` = `zip`: 7Z and the six tar formats, but TAR selected (T-F399). `BlockedFormats` = `sevenzip rar`: no 7Z, Down on ZIP lands on TAR. `DisableTarExtraction`: ZIP only, Down stays, a tar.gz refused on open. `DisableRecoveryData`: no PAR2 option, no PAR2 line and no Repair on a 7z with a set, a `.par2` row refused on open |
+  | APP-013 | OK | window 986 x 553: both cards scroll to their last row; dark, light and high contrast switched while the window was open, colours right in each |
+  | APP-014 | part | 150 % and 175 % (the most this 1920 x 1080 display offers; 200 % was not reached): main view, archive view, the Test result and the Hash dialogs whole. In a window about 720 effective pixels wide the footer line is cut without an ellipsis (T-F400, not new) |
+  | CLI-023 | OK | `x` of a tar.gz (Cyrillic names) and of a 7z onto a FAT32 USB drive and into `\\localhost\Users\...`: exit 0, every file with the bytes of the same archive extracted to NTFS |
+
+- **Not done:** `CLI-032` needs Windows 10 22H2 or a Windows Server, which this machine is not;
+  `APP-014` at 200 %.
+- **Found, not blocking:** T-F399 and T-F400 (both P3).
+
 ## T-F342 — creating 7z through tar.exe: sources and measurements (wave 0, 2026-10-12)
 
 Record made before any code. Machine: Windows 11 build 26300, `C:\Windows\System32\tar.exe` =
