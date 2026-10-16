@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pakko — Open-Source Windows Archiver (ZIP, TAR, RAR, 7-Zip)</title>
-<meta name="description" content="Pakko is a free, open-source Windows archiver built on .NET's own compression APIs and the built-in, sandboxed tar.exe — no 7-Zip, no WinRAR, no third-party compression code. ZIP read/write, TAR/RAR/7-Zip read, Explorer integration, and a standalone CLI.">
+<meta name="description" content="Pakko is a free, open-source Windows archiver built on .NET's own compression APIs and the built-in, sandboxed tar.exe — no 7-Zip, no WinRAR, no third-party compression code. ZIP, TAR and 7-Zip read/write, RAR read, Explorer integration, and a standalone CLI.">
 <link rel="canonical" href="https://pakkoapp-oss.github.io/pakko/">
 <link rel="alternate" hreflang="en" href="https://pakkoapp-oss.github.io/pakko/">
 <link rel="alternate" hreflang="uk" href="https://pakkoapp-oss.github.io/pakko/uk/">
@@ -168,7 +168,7 @@
             <li><span class="check">✓</span><span>ZIP — read &amp; write, via <code>System.IO.Compression</code></span></li>
             <li><span class="check">✓</span><span>TAR / GZ / BZ2 / XZ / ZST / LZMA — read &amp; write, via <code>tar.exe</code></span></li>
             <li><span class="check">✓</span><span>RAR — read only, via <code>tar.exe</code></span></li>
-            <li><span class="check">✓</span><span>7-Zip — read only, via <code>tar.exe</code></span></li>
+            <li><span class="check">✓</span><span>7-Zip — read &amp; write (no password), via <code>tar.exe</code> where it has the 7z writer</span></li>
             <li><span class="check">✓</span><span>Password-protected ZIP — read (ZipCrypto, WinZip AES), including antivirus scan of the decrypted contents, and create (AES-256; file names stay visible)</span></li>
           </ul>
         </div>
