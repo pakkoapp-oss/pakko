@@ -10,7 +10,7 @@ the technical account of any task named here.
 
 ---
 
-## v1.8.1 — 2026-10-12
+## v1.8.1 — 2026-10-16
 
 Pakko creates 7z archives, and "Test" works for every archive it reads. Plus the fixes found by
 walking every on-device check of v1.8.0 by hand. The two that matter most: on Windows 10, Windows
