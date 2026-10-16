@@ -38,9 +38,12 @@ public static partial class TarVersionParser
         // T-F402: a new enough tar.exe can still lack a codec. Windows Server 2022's 3.8.4 is built
         // with zlib only: no zstd (`--zstd` then runs an external program), and no LZMA/LZMA2, the
         // method of nearly every 7z and the 7z writer's default. RAR needs no external library.
+        // T-F403: only a library built into tar.exe counts; without one, tar.exe runs a program of
+        // that name from its working folder or PATH (measured for zstd and bzip2).
         return new TarCapabilities
         {
             Version = version.ToString(),
+            SupportsGzip = versionOutput.Contains("zlib", StringComparison.OrdinalIgnoreCase),
             SupportsXz = hasLzma,
             SupportsLzma = hasLzma,
             SupportsBz2 = versionOutput.Contains("bz2lib", StringComparison.OrdinalIgnoreCase),
@@ -49,6 +52,13 @@ public static partial class TarVersionParser
             SupportsRar = supportsModernFormats,
         };
     }
+
+    /// <summary>
+    /// Whether <paramref name="version"/> (<see cref="TarCapabilities.Version"/>) is new enough for
+    /// RAR, 7z and zstd, so a refusal can say "needs a newer tar.exe" only when that is the reason.
+    /// </summary>
+    internal static bool MeetsModernVersion(string version) =>
+        Version.TryParse(version, out Version? parsed) && parsed >= MinVersionForModernFormats;
 
     [GeneratedRegex(@"libarchive\s+(\d+)\.(\d+)\.(\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex LibarchiveVersionRegex();

@@ -72,6 +72,34 @@ public sealed class TarVersionParserTests
         result.SupportsBz2.Should().BeFalse();
     }
 
+    // T-F403: the exact output of three tar.exe builds measured on VMs, all zlib only. Without a
+    // built-in library tar.exe falls back to an external program found in its working folder or
+    // on PATH (measured: zstd.exe and bzip2.exe ran), so only a built-in library counts.
+    [Theory]
+    [InlineData("bsdtar 3.5.2 - libarchive 3.5.2 zlib/1.2.5.f-ipp ")] // Windows 10 22H2, 19045.6456
+    [InlineData("bsdtar 3.3.2 - libarchive 3.3.2 zlib/1.2.5.f-ipp ")] // Server 2022, 20348.169
+    [InlineData("bsdtar 3.8.4 - libarchive 3.8.4 zlib/1.2.5.f-ipp cng/2.0 libb2/bundled ")] // Server 2022, 20348.5622
+    public void Parse_ZlibOnlyBuilds_SupportGzipAndNoOtherCodec(string output)
+    {
+        TarCapabilities result = TarVersionParser.Parse(output);
+
+        result.SupportsGzip.Should().BeTrue();
+        result.SupportsBz2.Should().BeFalse();
+        result.SupportsXz.Should().BeFalse();
+        result.SupportsLzma.Should().BeFalse();
+        result.SupportsZstd.Should().BeFalse();
+        result.Supports7z.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Parse_NoZlib_DoesNotSupportGzip()
+    {
+        TarCapabilities result = TarVersionParser.Parse("bsdtar 3.8.4 - libarchive 3.8.4 liblzma/5.8.1");
+
+        result.SupportsGzip.Should().BeFalse();
+        result.SupportsXz.Should().BeTrue();
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
