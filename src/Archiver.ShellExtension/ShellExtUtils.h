@@ -193,9 +193,10 @@ std::wstring PackageFamilyNameFromFullName(const std::wstring& fullName);
 // package's folder; empty when dllDirectory is not one.
 std::wstring BuildSevenZipVerdictPath(const std::wstring& dllDirectory, const std::wstring& localAppData);
 
-// True only for a well-formed verdict that says "no" about a tar.exe of exactly this size and
-// write time. No verdict, a malformed one, one measured on another tar.exe (a Windows update
-// replaced it), or "yes" is false: the item shows, and Archiver.Shell reports a missing writer.
+// True only for a well-formed verdict about a tar.exe of exactly this size and write time that
+// says "no", or whose list of readable formats lacks sevenzip (T-F403). No verdict, a malformed
+// one, one measured on another tar.exe (a Windows update replaced it), or "yes"/"?" with sevenzip
+// or no list is false: the item shows, and Archiver.Shell reports a missing writer.
 bool IsSevenZipWriterVerdictAbsent(const std::string& verdict, ULONGLONG tarSize, ULONGLONG tarWriteTime);
 
 // The real one: the verdict file against the real tar.exe, re-read at most every few seconds.
