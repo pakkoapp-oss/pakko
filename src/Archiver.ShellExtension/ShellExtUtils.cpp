@@ -187,6 +187,20 @@ bool MenuPolicy::IsFormatBlocked(const std::wstring& registryName) const
     return false;
 }
 
+bool MenuPolicy::IsTarFormatUnreadable(const std::wstring& registryName) const
+{
+    if (!tarReadabilityKnown || registryName.empty() || _wcsicmp(registryName.c_str(), L"zip") == 0) return false;
+    for (const auto& readable : tarReadable)
+    {
+        if (_wcsicmp(readable.c_str(), registryName.c_str()) == 0) return false;
+    }
+    return true;
+}
+
+// T-F403: fills the policy's tar.exe readability from the snapshot file; defined with the file
+// reading below.
+static void LoadTarReadability(MenuPolicy& policy);
+
 MenuPolicy LoadMenuPolicy(const PolicyRegistryReader& reader)
 {
     // Same rules as Archiver.Core's GroupPolicyService.Load: only DisableTarExtraction == 1
@@ -212,6 +226,7 @@ MenuPolicy GetMenuPolicy()
     if (!s_loaded || now - s_readAt >= kRefreshMs)
     {
         s_policy = LoadMenuPolicy(Win32PolicyRegistryReader());
+        LoadTarReadability(s_policy);
         s_readAt = now;
         s_loaded = true;
     }
@@ -312,7 +327,7 @@ std::wstring BuildSevenZipVerdictPath(const std::wstring& dllDirectory, const st
     const std::wstring family = PackageFamilyNameFromFullName(
         separator == std::wstring::npos ? directory : directory.substr(separator + 1));
     if (family.empty()) return {};
-    return localAppData + L"\\Packages\\" + family + L"\\LocalCache\\sevenzip-writer.txt";
+    return localAppData + L"\\Packages\\" + family + L"\\LocalCache\\tar-capabilities.txt";
 }
 
 // Reads decimal digits at pos; false for none, or for a value past ULONGLONG.
@@ -337,7 +352,30 @@ static bool SkipVerdictSeparator(const std::string& text, size_t& pos)
     return true;
 }
 
-bool IsSevenZipWriterVerdictAbsent(const std::string& verdict, ULONGLONG tarSize, ULONGLONG tarWriteTime)
+static bool IsLowerAsciiLetter(char c) { return c >= 'a' && c <= 'z'; }
+static bool IsAsciiDigit(char c) { return c >= '0' && c <= '9'; }
+
+// T-F403: "name,name,..." from pos to the end; each name a lowercase letter, then lowercase
+// letters or digits. pos only moves forward, so the loop ends within the text.
+static bool ReadReadableList(const std::string& text, size_t pos, std::vector<std::wstring>& names)
+{
+    names.clear();
+    while (pos < text.size())
+    {
+        const size_t first = pos;
+        if (!IsLowerAsciiLetter(text[pos])) return false;
+        while (pos < text.size() && (IsLowerAsciiLetter(text[pos]) || IsAsciiDigit(text[pos]))) ++pos;
+        names.emplace_back(text.begin() + static_cast<std::ptrdiff_t>(first), text.begin() + static_cast<std::ptrdiff_t>(pos));
+        if (pos >= text.size()) return true;
+        if (text[pos] != ',' || pos + 1 >= text.size()) return false;
+        ++pos;
+    }
+    return false;
+}
+
+// "<size>;<write time>;<0|1>[;<list>]" for a tar.exe of exactly this size and write time.
+static bool ParseVerdict(const std::string& verdict, ULONGLONG tarSize, ULONGLONG tarWriteTime,
+    char& answer, bool& hasList, std::vector<std::wstring>& readable)
 {
     if (verdict.size() > kMaxSevenZipVerdictBytes) return false;
 
@@ -346,9 +384,28 @@ bool IsSevenZipWriterVerdictAbsent(const std::string& verdict, ULONGLONG tarSize
     ULONGLONG writeTime = 0;
     if (!ReadVerdictNumber(verdict, pos, size) || !SkipVerdictSeparator(verdict, pos)) return false;
     if (!ReadVerdictNumber(verdict, pos, writeTime) || !SkipVerdictSeparator(verdict, pos)) return false;
-    // Exactly one character is left: the answer.
-    if (verdict.size() - pos != 1) return false;
-    return verdict[pos] == '0' && size == tarSize && writeTime == tarWriteTime;
+    if (pos >= verdict.size() || (verdict[pos] != '0' && verdict[pos] != '1')) return false;
+    answer = verdict[pos];
+    ++pos;
+    hasList = pos < verdict.size();
+    if (hasList && (!SkipVerdictSeparator(verdict, pos) || !ReadReadableList(verdict, pos, readable))) return false;
+    return size == tarSize && writeTime == tarWriteTime;
+}
+
+bool IsSevenZipWriterVerdictAbsent(const std::string& verdict, ULONGLONG tarSize, ULONGLONG tarWriteTime)
+{
+    char answer = 0;
+    bool hasList = false;
+    std::vector<std::wstring> readable;
+    return ParseVerdict(verdict, tarSize, tarWriteTime, answer, hasList, readable) && answer == '0';
+}
+
+bool ParseTarReadableFormats(const std::string& verdict, ULONGLONG tarSize, ULONGLONG tarWriteTime,
+    std::vector<std::wstring>& readable)
+{
+    char answer = 0;
+    bool hasList = false;
+    return ParseVerdict(verdict, tarSize, tarWriteTime, answer, hasList, readable) && hasList;
 }
 
 namespace
@@ -380,18 +437,37 @@ namespace
         return owned.get();
     }
 
-    bool ReadSevenZipWriterKnownAbsent()
+    // The snapshot file's text and the real tar.exe's size and write time; false when either is missing.
+    bool ReadSnapshotAndTar(std::string& text, ULONGLONG& size, ULONGLONG& writeTime)
     {
         const std::wstring path = BuildSevenZipVerdictPath(GetDllDirectory(), GetLocalAppDataPath());
         if (path.empty()) return false;
 
         WIN32_FILE_ATTRIBUTE_DATA tar = {};
         if (!GetFileAttributesExW(L"C:\\Windows\\System32\\tar.exe", GetFileExInfoStandard, &tar)) return false;
-        const ULONGLONG size = (static_cast<ULONGLONG>(tar.nFileSizeHigh) << 32) | tar.nFileSizeLow;
-        const ULONGLONG writeTime =
-            (static_cast<ULONGLONG>(tar.ftLastWriteTime.dwHighDateTime) << 32) | tar.ftLastWriteTime.dwLowDateTime;
-        return IsSevenZipWriterVerdictAbsent(ReadVerdictFile(path), size, writeTime);
+        size = (static_cast<ULONGLONG>(tar.nFileSizeHigh) << 32) | tar.nFileSizeLow;
+        writeTime = (static_cast<ULONGLONG>(tar.ftLastWriteTime.dwHighDateTime) << 32) | tar.ftLastWriteTime.dwLowDateTime;
+        text = ReadVerdictFile(path);
+        return true;
     }
+
+    bool ReadSevenZipWriterKnownAbsent()
+    {
+        std::string text;
+        ULONGLONG size = 0;
+        ULONGLONG writeTime = 0;
+        return ReadSnapshotAndTar(text, size, writeTime) && IsSevenZipWriterVerdictAbsent(text, size, writeTime);
+    }
+}
+
+static void LoadTarReadability(MenuPolicy& policy)
+{
+    std::string text;
+    ULONGLONG size = 0;
+    ULONGLONG writeTime = 0;
+    std::vector<std::wstring> readable;
+    policy.tarReadabilityKnown = ReadSnapshotAndTar(text, size, writeTime) && ParseTarReadableFormats(text, size, writeTime, readable);
+    policy.tarReadable = policy.tarReadabilityKnown ? std::move(readable) : std::vector<std::wstring>{};
 }
 
 bool SevenZipWriterKnownAbsent()
@@ -427,7 +503,9 @@ bool HasSupportedNonZipArchiveExtension(const std::wstring& path)
 
 static bool IsSupportedArchive(const std::wstring& path, const MenuPolicy& policy)
 {
-    if (policy.IsFormatBlocked(GetFormatRegistryName(path))) return false;
+    // T-F403: a format this tar.exe cannot read is hidden the same way as a blocked one.
+    const std::wstring name = GetFormatRegistryName(path);
+    if (policy.IsFormatBlocked(name) || policy.IsTarFormatUnreadable(name)) return false;
     if (HasZipExtension(path)) return true;
     return !policy.disableTar && TarExeExists() && HasSupportedNonZipArchiveExtension(path);
 }

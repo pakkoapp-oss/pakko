@@ -685,7 +685,7 @@ TEST(PackageFamilyName, AnythingElseIsEmpty)
 
 TEST(BuildSevenZipVerdictPath, PackageFolderGivesItsLocalCacheFile)
 {
-    const std::wstring expected = L"C:\\Users\\u\\AppData\\Local\\Packages\\PavloRybchenko.Pakko_9hkd8feqeqbr4\\LocalCache\\sevenzip-writer.txt";
+    const std::wstring expected = L"C:\\Users\\u\\AppData\\Local\\Packages\\PavloRybchenko.Pakko_9hkd8feqeqbr4\\LocalCache\\tar-capabilities.txt";
 
     EXPECT_EQ(BuildSevenZipVerdictPath(
         L"C:\\Program Files\\WindowsApps\\PavloRybchenko.Pakko_1.8.1.7_x64__9hkd8feqeqbr4", L"C:\\Users\\u\\AppData\\Local"), expected);
@@ -1110,4 +1110,70 @@ TEST(BuildExtractFolderTitle, UkrainianLocaleTranslatesSurroundingPhrase)
 TEST(BuildExtractFolderTitle, UkrainianLocaleMultipleArchivesFallback)
 {
     EXPECT_EQ(BuildExtractFolderTitle({ L"C:\\a.zip", L"C:\\b.zip" }, L"uk-UA"), L"\u0412\u0438\u0434\u043e\u0431\u0443\u0442\u0438 \u043a\u043e\u0436\u0435\u043d \u0443 \u0441\u0432\u043e\u044e \u043f\u0430\u043f\u043a\u0443");
+}
+
+// ---------------------------------------------------------------------------
+// T-F403: the formats tar.exe reads, a fourth field of the same snapshot file. An archive item is
+// hidden for a format a matching snapshot does not list, the same way as for a blocked one.
+// ---------------------------------------------------------------------------
+
+TEST(TarCapabilitySnapshot, FourthFieldKeepsTheSevenZipAnswer)
+{
+    EXPECT_TRUE(IsSevenZipWriterVerdictAbsent("60416;133577283450000000;0;tar,gzip", kTarSize, kTarTime));
+    EXPECT_FALSE(IsSevenZipWriterVerdictAbsent("60416;133577283450000000;1;tar,gzip,sevenzip", kTarSize, kTarTime));
+}
+
+TEST(TarCapabilitySnapshot, ReadableFormatsOfAMatchingSnapshot)
+{
+    std::vector<std::wstring> readable;
+    ASSERT_TRUE(ParseTarReadableFormats("60416;133577283450000000;0;tar,gzip,bz2,rar", kTarSize, kTarTime, readable));
+    EXPECT_EQ(readable, (std::vector<std::wstring>{ L"tar", L"gzip", L"bz2", L"rar" }));
+}
+
+TEST(TarCapabilitySnapshot, NoReadableFormatsFromAnotherTarOrAnOlderFile)
+{
+    std::vector<std::wstring> readable;
+    EXPECT_FALSE(ParseTarReadableFormats("60417;133577283450000000;0;tar,gzip", kTarSize, kTarTime, readable));
+    EXPECT_FALSE(ParseTarReadableFormats("60416;133577283450000000;0", kTarSize, kTarTime, readable));
+    EXPECT_FALSE(ParseTarReadableFormats("", kTarSize, kTarTime, readable));
+}
+
+TEST(TarCapabilitySnapshot, MalformedListIsIgnored)
+{
+    const char* const malformed[] = {
+        "60416;133577283450000000;0;", "60416;133577283450000000;0;tar,", "60416;133577283450000000;0;,tar",
+        "60416;133577283450000000;0;tar,,gzip", "60416;133577283450000000;0;Tar", "60416;133577283450000000;0;tar gzip",
+        "60416;133577283450000000;0;2tar", "60416;133577283450000000;0;tar;gzip", "60416;133577283450000000;2;tar",
+    };
+    for (const char* text : malformed)
+    {
+        std::vector<std::wstring> readable;
+        EXPECT_FALSE(ParseTarReadableFormats(text, kTarSize, kTarTime, readable)) << text;
+    }
+}
+
+TEST(TarCapabilitySnapshot, UnknownReadabilityHidesNothing)
+{
+    const MenuPolicy policy;
+    EXPECT_FALSE(policy.IsTarFormatUnreadable(L"xz"));
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\a.tar.xz" }, policy));
+}
+
+TEST(TarCapabilitySnapshot, KnownReadabilityHidesWhatTarCannotRead)
+{
+    MenuPolicy policy;
+    policy.tarReadabilityKnown = true;
+    policy.tarReadable = { L"tar", L"gzip" };
+
+    EXPECT_TRUE(policy.IsTarFormatUnreadable(L"xz"));
+    EXPECT_FALSE(policy.IsTarFormatUnreadable(L"gzip"));
+    EXPECT_FALSE(policy.IsTarFormatUnreadable(L"zip"));
+    EXPECT_FALSE(policy.IsTarFormatUnreadable(L""));
+
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\a.tar.gz", L"C:\b.zip" }, policy));
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\a.tar.xz" }, policy));
+    // The same breadth as a policy-blocked format: Extract needs every one, Test any one.
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\a.tar.gz", L"C:\b.7z" }, policy));
+    EXPECT_TRUE(AnyPathIsSupportedArchive({ L"C:\a.tar.gz", L"C:\b.7z" }, policy));
+    EXPECT_FALSE(AnyPathIsSupportedArchive({ L"C:\a.rar", L"C:\b.tar.zst" }, policy));
 }

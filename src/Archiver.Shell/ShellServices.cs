@@ -31,8 +31,9 @@ internal sealed class ShellServices
             CreateScanServiceAsync = core.CreateScanServiceAsync,
             CreateRecoveryService = () => core.RecoveryService,
             LaunchApp = AppLauncher.Launch,
-            RecordSevenZipWriterAsync = async () => SevenZipWriterVerdict.TryRecord(
-                policy, await core.TarService.AskSevenZipWriterAsync().ConfigureAwait(false)),
+            RecordSevenZipWriterAsync = async () => TarCapabilitySnapshot.TryRecord(
+                policy, await core.TarService.AskSevenZipWriterAsync().ConfigureAwait(false),
+                await core.GetTarCapabilitiesAsync().ConfigureAwait(false)),
         };
     }
 }
