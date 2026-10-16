@@ -515,7 +515,7 @@ jobs:
   # entry for the failure mode this sidesteps.
   canary-status:
     # Every masked job goes here; the evaluation below reads them all generically (T-F240).
-    needs: [canary-dotnet, canary-shellext, canary-slow, canary-arm64, canary-asan]
+    needs: [canary-dotnet, canary-shellext, canary-slow, canary-arm64, canary-asan, canary-server2022]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
