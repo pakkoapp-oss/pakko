@@ -136,8 +136,14 @@ struct MenuPolicy
     bool disableTar = false;                  // DisableTarExtraction == 1
     std::vector<std::wstring> blockedFormats; // BlockedFormats, ArchiveFormatRegistryNames vocabulary
     bool disableRecoveryData = false;         // DisableRecoveryData == 1 (T-F275)
+    // T-F403: the formats this system's tar.exe reads, from the snapshot the .NET side leaves
+    // (TarCapabilitySnapshot). Not known: nothing is hidden for it.
+    bool tarReadabilityKnown = false;
+    std::vector<std::wstring> tarReadable;    // ArchiveFormatRegistryNames vocabulary
 
     bool IsFormatBlocked(const std::wstring& registryName) const;
+    // A tar.exe format the known snapshot does not list; never "zip" (no tar.exe) or "".
+    bool IsTarFormatUnreadable(const std::wstring& registryName) const;
 };
 
 // Fail-safe like GroupPolicyService.Load: anything unreadable counts as not configured.
@@ -145,7 +151,7 @@ MenuPolicy LoadMenuPolicy(const PolicyRegistryReader& reader);
 
 // The real machine policy, re-read at most every few seconds - GetState runs for every menu item
 // on every right-click, and the DLL lives in Explorer for hours, so a policy change still applies
-// without restarting Explorer.
+// without restarting Explorer. T-F403: with what tar.exe reads, from the snapshot file.
 MenuPolicy GetMenuPolicy();
 
 // ArchiveFormatRegistryNames name for a path's extension ("zip", "gzip", "sevenzip", ...), or an
@@ -171,19 +177,19 @@ bool AnyPathIsZip(const std::vector<std::wstring>& paths, const MenuPolicy& poli
 bool TarExeExists();
 
 // ---------------------------------------------------------------------------
-// T-F342: whether this system's tar.exe writes 7z. Only running it tells, and the menu must not
-// start a process per right-click, so the .NET side (Archiver.Core's SevenZipWriterVerdict)
-// leaves a one-line file in the package's LocalCache folder:
-// "<tar.exe size>;<tar.exe write time as a FILETIME>;<0|1>".
+// T-F342: whether this system's tar.exe writes 7z; T-F403: which formats it reads. Only running it
+// tells, and the menu must not start a process per right-click, so the .NET side (Archiver.Core's
+// TarCapabilitySnapshot) leaves a one-line file in the package's LocalCache folder:
+// "<tar.exe size>;<tar.exe write time as a FILETIME>;<0|1>[;<format>,<format>,...]".
 // ---------------------------------------------------------------------------
 
-constexpr size_t kMaxSevenZipVerdictBytes = 128;
+constexpr size_t kMaxSevenZipVerdictBytes = 256;
 
 // "Name_PublisherId" from a package full name "Name_Version_Architecture_ResourceId_PublisherId";
 // empty for anything else.
 std::wstring PackageFamilyNameFromFullName(const std::wstring& fullName);
 
-// <localAppData>\Packages\<family>\LocalCache\sevenzip-writer.txt for a DLL in an installed
+// <localAppData>\Packages\<family>\LocalCache\tar-capabilities.txt for a DLL in an installed
 // package's folder; empty when dllDirectory is not one.
 std::wstring BuildSevenZipVerdictPath(const std::wstring& dllDirectory, const std::wstring& localAppData);
 
@@ -194,6 +200,12 @@ bool IsSevenZipWriterVerdictAbsent(const std::string& verdict, ULONGLONG tarSize
 
 // The real one: the verdict file against the real tar.exe, re-read at most every few seconds.
 bool SevenZipWriterKnownAbsent();
+
+// T-F403: true, with the formats in readable, only for a well-formed snapshot of a tar.exe of
+// exactly this size and write time that has the fourth field: names of a lowercase letter then
+// lowercase letters or digits, comma-separated. Anything else leaves readability unknown.
+bool ParseTarReadableFormats(const std::string& verdict, ULONGLONG tarSize, ULONGLONG tarWriteTime,
+    std::vector<std::wstring>& readable);
 
 // Returns true iff path ends with a non-ZIP extension Archiver.Core can extract via ITarService
 // (rar, 7z, tar, gz, tgz, bz2, tbz2, xz, txz, zst, tzst, lzma - case-insensitive). Extension-only,

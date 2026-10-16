@@ -166,6 +166,19 @@ public static class ArchiveFormatPolicy
         return null;
     }
 
+    /// <summary>
+    /// T-F403: the Group Policy names of the tar.exe formats this tar.exe reads, for the Explorer
+    /// extension's snapshot (<see cref="TarCapabilitySnapshot"/>); policy is applied there apart.
+    /// </summary>
+    public static IReadOnlyList<string> TarReadableRegistryNames(TarCapabilities caps)
+    {
+        ArgumentNullException.ThrowIfNull(caps);
+        ArchiveFormat[] tarFormats =
+            [ArchiveFormat.Tar, ArchiveFormat.GZip, ArchiveFormat.Bz2, ArchiveFormat.Xz, ArchiveFormat.Zstd,
+             ArchiveFormat.Lzma, ArchiveFormat.Rar, ArchiveFormat.SevenZip];
+        return [.. tarFormats.Where(format => IsSupportedByTar(format, caps)).Select(ArchiveFormatRegistryNames.ToRegistryName)];
+    }
+
     /// <summary>The 7z methods this tar.exe can write, in the order the lists show them.</summary>
     public static IReadOnlyList<SevenZipMethod> CreatableSevenZipMethods(TarCapabilities caps)
     {

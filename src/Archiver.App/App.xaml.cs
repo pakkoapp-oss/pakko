@@ -43,8 +43,9 @@ public partial class App : Application
         services.AddSingleton<ITarService>(tarService);
         // T-F342: whether tar.exe writes 7z is found by running it once more. Started here so the
         // "New archive" card has the answer early; it also goes to a file, for the Explorer menu.
-        _ = Task.Run(async () => SevenZipWriterVerdict.TryRecord(
-            policy, await tarService.AskSevenZipWriterAsync().ConfigureAwait(false)));
+        // T-F403: with what it reads, so the menu offers no archive item tar.exe cannot open.
+        _ = Task.Run(async () => TarCapabilitySnapshot.TryRecord(
+            policy, await tarService.AskSevenZipWriterAsync().ConfigureAwait(false), await tarProbe.ConfigureAwait(false)));
         services.AddSingleton<TarCapabilities>(_ => tarProbe.GetAwaiter().GetResult());
         services.AddSingleton<IExtractionRouter, ExtractionRouter>();
         services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
