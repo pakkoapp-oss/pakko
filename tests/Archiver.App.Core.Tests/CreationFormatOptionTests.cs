@@ -138,4 +138,26 @@ public sealed class CreationFormatOptionTests
             CreationFormatOption.IsOffered(policy, format, true).Should().Be(
                 policy.IsFormatAllowed(Archiver.Core.Services.ArchiveFormatRegistryNames.ToRegistryName(format)), format.ToString());
     }
+
+    // T-F403: the card offers only what this system's tar.exe can make. Windows 10 22H2 and Server
+    // 2022 (measured) have a zlib-only tar.exe: tar and tar.gz, no other codec and no 7z.
+    [Fact]
+    public void ZlibOnlyTar_OffersZipTarAndTarGzOnly()
+    {
+        TarCapabilities zlibOnly = Archiver.Core.Services.TarVersionParser.Parse("bsdtar 3.5.2 - libarchive 3.5.2 zlib/1.2.5.f-ipp ");
+
+        All.Where(f => CreationFormatOption.IsOffered(new GroupPolicyOptions(), f, true, zlibOnly)).Should().Equal(
+            ArchiveContainerFormat.Zip, ArchiveContainerFormat.Tar, ArchiveContainerFormat.TarGz);
+        CreationFormatOption.Default(new GroupPolicyOptions { BlockedFormats = ["zip"] }, true, zlibOnly)
+            .Should().Be(ArchiveContainerFormat.Tar);
+    }
+
+    [Fact]
+    public void EveryCodec_OffersEveryFormat()
+    {
+        TarCapabilities all = Archiver.Core.Services.TarVersionParser.Parse(
+            "bsdtar 3.8.8 - libarchive 3.8.8 zlib/1.2.13 liblzma/5.8.1 bz2lib/1.0.8 libzstd/1.5.7");
+
+        All.Should().OnlyContain(f => CreationFormatOption.IsOffered(new GroupPolicyOptions(), f, true, all));
+    }
 }

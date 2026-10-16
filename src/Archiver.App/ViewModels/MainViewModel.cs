@@ -495,12 +495,14 @@ public sealed partial class MainViewModel : ObservableObject
 
     public int SevenZipMethodIndex
     {
-        get => SevenZipMethodOption.ToIndex(SelectedSevenZipMethod);
-        set => SelectedSevenZipMethod = SevenZipMethodOption.FromIndex(value);
+        get => SevenZipMethodOption.ToIndex(SelectedSevenZipMethod, _sevenZipMethods);
+        set => SelectedSevenZipMethod = SevenZipMethodOption.FromIndex(value, _sevenZipMethods);
     }
 
     // A concrete collection, never a collection expression: WinRT marshals ItemsSource (T-F355).
-    public ObservableCollection<string> SevenZipMethodChoices { get; } = new(SevenZipMethodOption.Names);
+    public ObservableCollection<string> SevenZipMethodChoices { get; } = new();
+
+    private readonly IReadOnlyList<SevenZipMethod> _sevenZipMethods;
 
     public Visibility SevenZipMethodVisibility =>
         SelectedContainerFormat == ArchiveContainerFormat.SevenZip ? Visibility.Visible : Visibility.Collapsed;
@@ -636,7 +638,7 @@ public sealed partial class MainViewModel : ObservableObject
     private bool _sevenZipWriter;
 
     private Visibility FormatVisibility(ArchiveContainerFormat format) =>
-        CreationFormatOption.IsOffered(_policy, format, _sevenZipWriter) ? Visibility.Visible : Visibility.Collapsed;
+        CreationFormatOption.IsOffered(_policy, format, _sevenZipWriter, _tarCapabilities) ? Visibility.Visible : Visibility.Collapsed;
 
     private async Task OfferSevenZipWhenWritableAsync(ITarService tarService)
     {
@@ -647,8 +649,8 @@ public sealed partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(SevenZipFormatVisibility));
         // The card started on a format picked before the answer; under a policy that allows only
         // 7z that was ZIP, which Core refuses.
-        if (!CreationFormatOption.IsOffered(_policy, SelectedContainerFormat, _sevenZipWriter))
-            SelectedContainerFormat = CreationFormatOption.Default(_policy, _sevenZipWriter);
+        if (!CreationFormatOption.IsOffered(_policy, SelectedContainerFormat, _sevenZipWriter, _tarCapabilities))
+            SelectedContainerFormat = CreationFormatOption.Default(_policy, _sevenZipWriter, _tarCapabilities);
     }
 
     [ObservableProperty]
@@ -865,7 +867,11 @@ public sealed partial class MainViewModel : ObservableObject
         _dialogService = dialogService;
         _logService = logService;
         _policy = groupPolicyOptions;
-        SelectedContainerFormat = CreationFormatOption.Default(_policy, _sevenZipWriter);
+        // T-F403: the 7z methods this tar.exe can write, in list order.
+        _sevenZipMethods = ArchiveFormatPolicy.CreatableSevenZipMethods(tarCapabilities);
+        foreach (string name in SevenZipMethodOption.NamesOf(_sevenZipMethods))
+            SevenZipMethodChoices.Add(name);
+        SelectedContainerFormat = CreationFormatOption.Default(_policy, _sevenZipWriter, _tarCapabilities);
         _ = OfferSevenZipWhenWritableAsync(tarService);
         _browseWork.Changed += CloseArchiveCommand.NotifyCanExecuteChanged;
 

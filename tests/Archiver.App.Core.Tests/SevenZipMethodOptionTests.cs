@@ -48,4 +48,23 @@ public sealed class SevenZipMethodOptionTests
     [InlineData(ArchiveContainerFormat.TarGz, SevenZipMethod.Copy, true)]
     public void HasCompressionLevel_NotForPlainTarOrACopied7z(ArchiveContainerFormat format, SevenZipMethod method, bool expected) =>
         SevenZipMethodOption.HasCompressionLevel(format, method).Should().Be(expected);
+
+    // T-F403: the list holds only the methods this tar.exe can write; rows are positions in it.
+    private static readonly SevenZipMethod[] NoBZip2 = [SevenZipMethod.Lzma2, SevenZipMethod.Lzma, SevenZipMethod.Deflate, SevenZipMethod.Copy];
+
+    [Fact]
+    public void Rows_OfAShorterList_MapToItsMethods()
+    {
+        SevenZipMethodOption.FromIndex(2, NoBZip2).Should().Be(SevenZipMethod.Deflate);
+        SevenZipMethodOption.ToIndex(SevenZipMethod.Copy, NoBZip2).Should().Be(3);
+        SevenZipMethodOption.NamesOf(NoBZip2).Should().Equal("LZMA2", "LZMA", "Deflate", "Copy");
+    }
+
+    [Fact]
+    public void MethodNotInTheList_IsTheFirstRow_AndAnOutOfRangeRowIsTheFirstMethod()
+    {
+        SevenZipMethodOption.ToIndex(SevenZipMethod.BZip2, NoBZip2).Should().Be(0);
+        SevenZipMethodOption.FromIndex(-1, NoBZip2).Should().Be(SevenZipMethod.Lzma2);
+        SevenZipMethodOption.FromIndex(0, []).Should().Be(SevenZipMethod.Lzma2);
+    }
 }

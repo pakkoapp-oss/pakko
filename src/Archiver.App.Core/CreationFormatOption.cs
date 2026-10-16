@@ -43,13 +43,22 @@ public static class CreationFormatOption
     /// <summary>
     /// Whether the card lists <paramref name="format"/> under <paramref name="policy"/>.
     /// <paramref name="sevenZipWriter"/> is what <c>ITarService.CanCreateSevenZipAsync</c> found
-    /// (T-F342): 7z is listed only where this system's tar.exe writes it.
+    /// (T-F342): 7z is listed only where this system's tar.exe writes it. T-F403: with
+    /// <paramref name="tarCapabilities"/>, a format is listed only where this tar.exe can make it
+    /// (<see cref="ArchiveFormatPolicy.GetTarCreationRefusalReason"/>, the rule Core refuses by);
+    /// for 7z that asks for the format, the method list then holds the methods it can write.
     /// </summary>
-    public static bool IsOffered(GroupPolicyOptions policy, ArchiveContainerFormat format, bool sevenZipWriter)
+    public static bool IsOffered(
+        GroupPolicyOptions policy, ArchiveContainerFormat format, bool sevenZipWriter, TarCapabilities? tarCapabilities = null)
     {
         ArgumentNullException.ThrowIfNull(policy);
         if (format == ArchiveContainerFormat.SevenZip && !sevenZipWriter)
             return false;
+        if (tarCapabilities is not null
+            && ArchiveFormatPolicy.GetTarCreationRefusalReason(format, SevenZipMethod.Copy, tarCapabilities) is not null)
+        {
+            return false;
+        }
         // DisableTarExtraction stops tar.exe in both directions, and only ZIP is written without it.
         return policy.IsFormatAllowed(ArchiveFormatRegistryNames.ToRegistryName(format))
             && (format == ArchiveContainerFormat.Zip || !policy.DisableTarExtraction);
@@ -57,11 +66,12 @@ public static class CreationFormatOption
 
     /// <summary>The format the card starts on: ZIP when it is offered, else the first listed one that is;
     /// ZIP again when nothing is (Core then refuses the creation and says why).</summary>
-    public static ArchiveContainerFormat Default(GroupPolicyOptions policy, bool sevenZipWriter)
+    public static ArchiveContainerFormat Default(
+        GroupPolicyOptions policy, bool sevenZipWriter, TarCapabilities? tarCapabilities = null)
     {
         ArgumentNullException.ThrowIfNull(policy);
         return ListOrder
-            .Where(format => IsOffered(policy, format, sevenZipWriter))
+            .Where(format => IsOffered(policy, format, sevenZipWriter, tarCapabilities))
             .DefaultIfEmpty(ArchiveContainerFormat.Zip)
             .First();
     }
