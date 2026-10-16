@@ -141,9 +141,72 @@ public static class ArchiveFormatPolicy
 
     private static bool IsZipEngineFormat(ArchiveFormat format) => format is ArchiveFormat.Zip or ArchiveFormat.Unknown;
 
+    /// <summary>
+    /// T-F403: why this system's tar.exe cannot make an archive of <paramref name="format"/> with
+    /// <paramref name="sevenZipMethod"/> (used only for 7z), or null when it can. The one rule
+    /// Core applies before starting tar.exe and the App's and the CLI's lists offer by. Policy is
+    /// not part of it (<c>ArchiveCreationRouter</c> refuses by that first), nor whether the 7z
+    /// writer is there (<see cref="Interfaces.ITarService.CanCreateSevenZipAsync"/>). ZIP never
+    /// needs tar.exe.
+    /// </summary>
+    public static CoreText? GetTarCreationRefusalReason(
+        ArchiveContainerFormat format, SevenZipMethod sevenZipMethod, TarCapabilities caps)
+    {
+        ArgumentNullException.ThrowIfNull(caps);
+        if (format == ArchiveContainerFormat.Zip)
+            return null;
+
+        ArchiveFormat read = ReadFormatOf(format);
+        if (!IsSupportedByTar(read, caps))
+            return BuildUnsupportedReason(read, caps);
+
+        if (format == ArchiveContainerFormat.SevenZip && !IsSevenZipMethodSupported(sevenZipMethod, caps))
+            return CoreMessages.Text(MessageCode.FormatNotSupportedByTar, $"7-Zip {SevenZipMethodName(sevenZipMethod)}", caps.Version);
+
+        return null;
+    }
+
+    /// <summary>The 7z methods this tar.exe can write, in the order the lists show them.</summary>
+    public static IReadOnlyList<SevenZipMethod> CreatableSevenZipMethods(TarCapabilities caps)
+    {
+        ArgumentNullException.ThrowIfNull(caps);
+        return [.. Enum.GetValues<SevenZipMethod>().Where(method => IsSevenZipMethodSupported(method, caps))];
+    }
+
+    private static ArchiveFormat ReadFormatOf(ArchiveContainerFormat format) => format switch
+    {
+        ArchiveContainerFormat.Tar => ArchiveFormat.Tar,
+        ArchiveContainerFormat.TarGz => ArchiveFormat.GZip,
+        ArchiveContainerFormat.TarBz2 => ArchiveFormat.Bz2,
+        ArchiveContainerFormat.TarXz => ArchiveFormat.Xz,
+        ArchiveContainerFormat.TarZst => ArchiveFormat.Zstd,
+        ArchiveContainerFormat.TarLzma => ArchiveFormat.Lzma,
+        ArchiveContainerFormat.SevenZip => ArchiveFormat.SevenZip,
+        _ => ArchiveFormat.Zip,
+    };
+
+    // LZMA and LZMA2 need liblzma, which reading 7z already requires (T-F402).
+    private static bool IsSevenZipMethodSupported(SevenZipMethod method, TarCapabilities caps) => method switch
+    {
+        SevenZipMethod.Lzma2 or SevenZipMethod.Lzma => caps.Supports7z,
+        SevenZipMethod.BZip2 => caps.SupportsBz2,
+        SevenZipMethod.Deflate => caps.SupportsGzip,
+        _ => true,
+    };
+
+    private static string SevenZipMethodName(SevenZipMethod method) => method switch
+    {
+        SevenZipMethod.Lzma2 => "LZMA2",
+        SevenZipMethod.Lzma => "LZMA",
+        SevenZipMethod.BZip2 => "BZip2",
+        SevenZipMethod.Deflate => "Deflate",
+        _ => "Copy",
+    };
+
     private static bool IsSupportedByTar(ArchiveFormat format, TarCapabilities caps) => format switch
     {
-        ArchiveFormat.Tar or ArchiveFormat.GZip => true,
+        ArchiveFormat.Tar => true,
+        ArchiveFormat.GZip => caps.SupportsGzip,
         ArchiveFormat.Bz2 => caps.SupportsBz2,
         ArchiveFormat.Xz => caps.SupportsXz,
         ArchiveFormat.Zstd => caps.SupportsZstd,
@@ -153,13 +216,22 @@ public static class ArchiveFormatPolicy
         _ => false,
     };
 
+    // T-F403: "needs a newer tar.exe" only where the version is what is missing; a new enough
+    // tar.exe built without the codec gets the codec's name.
     private static CoreText BuildUnsupportedReason(ArchiveFormat format, TarCapabilities caps) => format switch
     {
-        ArchiveFormat.Rar => CoreMessages.Text(MessageCode.FormatNeedsNewerTar, "RAR", caps.Version),
-        ArchiveFormat.SevenZip => CoreMessages.Text(MessageCode.FormatNeedsNewerTar, "7-Zip", caps.Version),
-        ArchiveFormat.Zstd => CoreMessages.Text(MessageCode.FormatNeedsNewerTar, "Zstandard", caps.Version),
+        ArchiveFormat.Rar => NewerOrMissing("RAR", caps),
+        ArchiveFormat.SevenZip => NewerOrMissing("7-Zip", caps),
+        ArchiveFormat.Zstd => NewerOrMissing("Zstandard", caps),
         ArchiveFormat.Xz => CoreMessages.Text(MessageCode.FormatNotSupportedByTar, "XZ", caps.Version),
         ArchiveFormat.Lzma => CoreMessages.Text(MessageCode.FormatNotSupportedByTar, "LZMA", caps.Version),
+        ArchiveFormat.Bz2 => CoreMessages.Text(MessageCode.FormatNotSupportedByTar, "bzip2", caps.Version),
+        ArchiveFormat.GZip => CoreMessages.Text(MessageCode.FormatNotSupportedByTar, "gzip", caps.Version),
         _ => CoreMessages.Text(MessageCode.ArchiveFormatNotSupportedByTar, caps.Version),
     };
+
+    private static CoreText NewerOrMissing(string name, TarCapabilities caps) =>
+        TarVersionParser.MeetsModernVersion(caps.Version)
+            ? CoreMessages.Text(MessageCode.FormatNotSupportedByTar, name, caps.Version)
+            : CoreMessages.Text(MessageCode.FormatNeedsNewerTar, name, caps.Version);
 }

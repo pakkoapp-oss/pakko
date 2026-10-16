@@ -295,7 +295,7 @@ public sealed class LazyTarProbeTests : IDisposable
         no policy | no tar | zip -> zip engine
         no policy | no tar | tar -> tar engine
         no policy | no tar | gz -> tar engine
-        no policy | no tar | bz2 -> refused: This archive format is not supported by this system's tar.exe (version ).
+        no policy | no tar | bz2 -> refused: bzip2 is not supported by this system's tar.exe (version ).
         no policy | no tar | xz -> refused: XZ is not supported by this system's tar.exe (version ).
         no policy | no tar | zst -> refused: Zstandard requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version ) does not support it.
         no policy | no tar | rar -> refused: RAR requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version ) does not support it.
@@ -313,7 +313,7 @@ public sealed class LazyTarProbeTests : IDisposable
         blocked rar+zip | no tar | zip -> refused: This archive format (zip) is blocked by Group Policy.
         blocked rar+zip | no tar | tar -> tar engine
         blocked rar+zip | no tar | gz -> tar engine
-        blocked rar+zip | no tar | bz2 -> refused: This archive format is not supported by this system's tar.exe (version ).
+        blocked rar+zip | no tar | bz2 -> refused: bzip2 is not supported by this system's tar.exe (version ).
         blocked rar+zip | no tar | xz -> refused: XZ is not supported by this system's tar.exe (version ).
         blocked rar+zip | no tar | zst -> refused: Zstandard requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version ) does not support it.
         blocked rar+zip | no tar | rar -> refused: This archive format (rar) is blocked by Group Policy.

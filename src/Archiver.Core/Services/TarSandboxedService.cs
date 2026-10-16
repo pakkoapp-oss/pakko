@@ -1393,6 +1393,16 @@ public sealed class TarSandboxedService : ITarService
             return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 
+        // T-F403: a codec tar.exe lacks is refused before it starts. Without a built-in library,
+        // tar.exe runs a program of that name from its working folder or PATH, outside any sandbox
+        // (measured for zstd and bzip2 on zlib-only tar.exe builds).
+        TarCapabilities capabilities = await DetectCapabilitiesAsync().ConfigureAwait(false);
+        if (ArchiveFormatPolicy.GetTarCreationRefusalReason(options.Format, options.SevenZipMethod, capabilities) is { } refusal)
+        {
+            errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), refusal));
+            return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
+        }
+
         // T-F342: refused before anything is written; a plain "tar -cf name.7z" would write ustar.
         if (options.Format == ArchiveContainerFormat.SevenZip && !await CanCreateSevenZipAsync(cancellationToken).ConfigureAwait(false))
         {

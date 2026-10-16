@@ -26,6 +26,13 @@ public sealed record TarCapabilities
     /// <summary>Can read and write .tar.bz2.</summary>
     public bool SupportsBz2 { get; init; }
 
+    /// <summary>
+    /// Can read and write .tar.gz, and use Deflate in a 7z: zlib is built into tar.exe (T-F403).
+    /// True by default: every tar.exe measured has zlib, and a tar.exe that gave no version is
+    /// not run for an archive at all.
+    /// </summary>
+    public bool SupportsGzip { get; init; } = true;
+
     /// <summary>The raw <c>tar --version</c> output the probe parsed, for diagnostics.</summary>
     public string Version { get; init; } = string.Empty;
 }
