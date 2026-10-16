@@ -13012,6 +13012,35 @@ the archive.
   and the Windows 10 VM walk are in that record's "`CLI-032` and the menu on VMs" and
   "`EXP-012` on this machine after #77" items.
 
+## v1.8.1 — the tag, the Store tier and the Store install (2026-10-16)
+
+- **The tag.** `v1.8.1` on `8be757c` (#76 merged; it differs from `71c124b` in documents only).
+  The tag build 38931412077 failed once in SonarCloud's upload (HTTP 502 from their side, the
+  tests had passed); the failed jobs run again, all green, the release job included. The release
+  holds the same files as v1.8.0; its notes start with the CHANGELOG section.
+- **Store bundle:** run 38931472569 (`workflow_dispatch` on the tag), `Archiver.App_1.8.1.0`,
+  x64 and arm64, Store publisher.
+- **Store tier** (`-Tier store -PackageLifecycle -Tag v1.8.1`, 1 877 s): 79 OK, 0 FAIL,
+  10 skipped, 55 manual. Skipped: `POL-001..008` and `PKG-005` (nobody accepted the elevation
+  prompt; OK on `71c124b` above) and `REL-002` (the canary ran on `71c124b`). `STO-001` 37
+  languages, signature valid; `STO-002` only the version differs from 1.8.0; `STO-003` "What's
+  new" differs from v1.8.0. `STO-007` read by the agent: the listing gained a line for T-F401 and
+  T-F403 (#78) before the submission.
+- **The listing import (`STO-004`).** Partner Center took the filled CSV in 36 languages;
+  sv-SE was refused as a whole language, as on 2026-10-05, and Partner Center names no field.
+  CSVs that change only sv-SE (everything; texts; features; search terms) were made to find the
+  field; result not yet known. The submission went out; the Store published 1.8.1.0 the same
+  day.
+- **The Store install** (this machine, Windows 11, the development package removed first,
+  `winget install --id 9P5MW010D8PR --source msstore`): 1.8.1.0, `SignatureKind` Store, the App
+  starts (title without a build time). `CLI-002`, `SHL-001`, `PAR-001` (`STO-006`) and `CLI-026`,
+  `SHL-012` (`STO-008`, x64, a `tar.exe` that writes 7z) OK.
+- **Not done:** `STO-005` as written (this machine had no earlier Store version, so it was a
+  first install, not an update); `STO-008` on ARM64 and on a `tar.exe` without a 7z writer with
+  the Store's package: the Windows 10 VM's Store (11910.1002.5.0) only says the browser is out of
+  date and `wsreset -i` did not update it in seven minutes. The same code as package 1.8.1.17,
+  walked on that VM above.
+
 ## T-F342 — creating 7z through tar.exe: sources and measurements (wave 0, 2026-10-12)
 
 Record made before any code. Machine: Windows 11 build 26300, `C:\Windows\System32\tar.exe` =
