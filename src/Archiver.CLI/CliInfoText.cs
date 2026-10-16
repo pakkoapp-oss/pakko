@@ -10,4 +10,8 @@ public static class CliInfoText
     /// depend on that.
     /// </summary>
     public static string SevenZipActions(bool writerAvailable) => writerAvailable ? CreateExtractList : "extract, list";
+
+    /// <summary>T-F403: the 7z methods this system's tar.exe can write.</summary>
+    public static string SevenZipMethodsLine(IReadOnlyList<Archiver.Core.Models.SevenZipMethod> methods) =>
+        "  methods for 7z: " + string.Join(", ", methods.Select(Archiver.Core.Services.ArchiveFormatPolicy.SevenZipMethodName));
 }

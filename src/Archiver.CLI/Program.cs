@@ -407,23 +407,29 @@ static async Task<int> RunInfoAsync(PakkoServices services)
     await Console.Out.WriteLineAsync("Pakko CLI — supported formats on this system:").ConfigureAwait(false);
     const string CreateExtractList = CliInfoText.CreateExtractList;
     await PrintFormatLineAsync("zip", "create, extract, test, list", ArchiveFormat.Zip).ConfigureAwait(false);
-    await PrintFormatLineAsync("tar", CreateExtractList, ArchiveFormat.Tar).ConfigureAwait(false);
-    await PrintFormatLineAsync("tar.gz", CreateExtractList, ArchiveFormat.GZip).ConfigureAwait(false);
-    await PrintFormatLineAsync("tar.bz2", CreateExtractList, ArchiveFormat.Bz2).ConfigureAwait(false);
-    await PrintFormatLineAsync("tar.xz", CreateExtractList, ArchiveFormat.Xz).ConfigureAwait(false);
-    await PrintFormatLineAsync("tar.zst", CreateExtractList, ArchiveFormat.Zstd).ConfigureAwait(false);
-    await PrintFormatLineAsync("tar.lzma", CreateExtractList, ArchiveFormat.Lzma).ConfigureAwait(false);
+    // T-F403: "create" only where Core's one rule lets this tar.exe make the format.
+    await PrintFormatLineAsync("tar", TarActions(ArchiveContainerFormat.Tar), ArchiveFormat.Tar).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.gz", TarActions(ArchiveContainerFormat.TarGz), ArchiveFormat.GZip).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.bz2", TarActions(ArchiveContainerFormat.TarBz2), ArchiveFormat.Bz2).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.xz", TarActions(ArchiveContainerFormat.TarXz), ArchiveFormat.Xz).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.zst", TarActions(ArchiveContainerFormat.TarZst), ArchiveFormat.Zstd).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.lzma", TarActions(ArchiveContainerFormat.TarLzma), ArchiveFormat.Lzma).ConfigureAwait(false);
     // T-F342: whether this tar.exe writes 7z is found by running its writer once, and only where
     // policy lets tar.exe run for 7z at all.
     bool sevenZipWriter = !ArchiveFormatPolicy.IsBlockedByPolicy(ArchiveFormat.SevenZip, policy)
         && await services.TarService.CanCreateSevenZipAsync(CancellationToken.None).ConfigureAwait(false);
     await PrintFormatLineAsync("7z", CliInfoText.SevenZipActions(sevenZipWriter), ArchiveFormat.SevenZip).ConfigureAwait(false);
+    if (sevenZipWriter && ArchiveFormatPolicy.GetTarCreationRefusalReason(ArchiveContainerFormat.SevenZip, SevenZipMethod.Copy, capabilities) is null)
+        await Console.Out.WriteLineAsync(CliInfoText.SevenZipMethodsLine(ArchiveFormatPolicy.CreatableSevenZipMethods(capabilities))).ConfigureAwait(false);
     await PrintFormatLineAsync("rar", "extract, list", ArchiveFormat.Rar).ConfigureAwait(false);
     await Console.Out.WriteLineAsync().ConfigureAwait(false);
     string tarVersion = policy.DisableTarExtraction ? "disabled by Group Policy" : $"version {capabilities.Version}";
     await Console.Out.WriteLineAsync($"tar.exe: C:\\Windows\\System32\\tar.exe ({tarVersion})").ConfigureAwait(false);
 
     return 0;
+
+    string TarActions(ArchiveContainerFormat format) =>
+        ArchiveFormatPolicy.GetTarCreationRefusalReason(format, SevenZipMethod.Copy, capabilities) is null ? CreateExtractList : "extract, list";
 
     Task PrintFormatLineAsync(string format, string capabilitiesText, ArchiveFormat archiveFormat)
     {

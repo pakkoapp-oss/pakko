@@ -194,7 +194,8 @@ public static class ArchiveFormatPolicy
         _ => true,
     };
 
-    private static string SevenZipMethodName(SevenZipMethod method) => method switch
+    /// <summary>The method's own name, the same in every language ("LZMA2", "BZip2", ...).</summary>
+    public static string SevenZipMethodName(SevenZipMethod method) => method switch
     {
         SevenZipMethod.Lzma2 => "LZMA2",
         SevenZipMethod.Lzma => "LZMA",

@@ -167,4 +167,12 @@ public sealed class CliSevenZipSwitchTests
     {
         CliInfoText.SevenZipActions(writerAvailable).Should().Be(expected);
     }
+
+    // T-F403: the methods line lists what this tar.exe can write, from Core's one rule.
+    [Fact]
+    public void Info_SevenZipMethodsLine_ListsTheWritableMethods()
+    {
+        CliInfoText.SevenZipMethodsLine([SevenZipMethod.Lzma2, SevenZipMethod.Lzma, SevenZipMethod.Deflate, SevenZipMethod.Copy])
+            .Should().Be("  methods for 7z: LZMA2, LZMA, Deflate, Copy");
+    }
 }
