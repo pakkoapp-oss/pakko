@@ -295,7 +295,9 @@ jobs:
             }
             dotnet test tests/Archiver.Core.Tests --filter "FullyQualifiedName~TarSignatureVerifier"
             $signature = $LASTEXITCODE
-            dotnet test tests/Archiver.Core.IntegrationTests --filter "Category!=Slow&Category!=VeryLarge"
+            # This image's tar.exe has zlib only (no xz, lzma, bzip2, zstd, LZMA 7z): the classes that
+            # make such archives run on windows-latest in build.yml's test job instead.
+            dotnet test tests/Archiver.Core.IntegrationTests --filter "Category!=Slow&Category!=VeryLarge&FullyQualifiedName!~TarSandboxedServiceTestTests&FullyQualifiedName!~SandboxStdinTests&FullyQualifiedName!~TarSandboxedServiceCompressTests"
             if ($signature -eq 0 -and $LASTEXITCODE -eq 0) { exit 0 }
           }
           throw "Signature and sandboxed tar.exe tests failed after $attempts attempt(s)."
