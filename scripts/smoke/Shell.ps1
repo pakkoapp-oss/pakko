@@ -217,12 +217,13 @@ Add-SmokeStep 'SHL-012' {
 }
 
 # T-F342: the Explorer menu cannot ask tar.exe whether it writes 7z, so the Shell leaves the
-# answer where the menu reads it (Archiver.Core's SevenZipWriterVerdict).
+# answer where the menu reads it (Archiver.Core's TarCapabilitySnapshot); T-F403: with the
+# formats tar.exe reads, which here (a tar.exe that writes 7z) include sevenzip.
 Add-SmokeStep 'SHL-013' {
     $folder = Get-StepFolder 'shl013'
     $source = Join-Path $folder 'note.txt'
     Set-Content -LiteralPath $source -Value 'verdict' -Encoding ascii
-    $verdict = Join-Path $env:LOCALAPPDATA "Packages\$($Smoke.Package.PackageFamilyName)\LocalCache\sevenzip-writer.txt"
+    $verdict = Join-Path $env:LOCALAPPDATA "Packages\$($Smoke.Package.PackageFamilyName)\LocalCache\tar-capabilities.txt"
     Remove-Item -LiteralPath $verdict -Force -ErrorAction SilentlyContinue
 
     $run = Invoke-Shell -Arguments @('--archive', '--format', '7z', $source) -TimeoutSeconds 30
@@ -230,7 +231,8 @@ Add-SmokeStep 'SHL-013' {
     Assert-Smoke (Test-Path -LiteralPath (Join-Path $folder 'note.7z')) '--archive --format 7z made no note.7z'
     Assert-Smoke (Test-Path -LiteralPath $verdict) "no verdict file at $verdict"
     $tar = Get-Item -LiteralPath (Join-Path $env:SystemRoot 'System32\tar.exe')
-    $expected = '{0};{1};1' -f $tar.Length, $tar.LastWriteTimeUtc.ToFileTimeUtc()
+    $expected = '{0};{1};1;' -f $tar.Length, $tar.LastWriteTimeUtc.ToFileTimeUtc()
     $written = [IO.File]::ReadAllText($verdict)
-    Assert-Smoke ($written -ceq $expected) "the verdict reads '$written', expected '$expected'"
+    Assert-Smoke ($written.StartsWith($expected, [StringComparison]::Ordinal) -and $written -cmatch ';[a-z0-9,]*\bsevenzip\b[a-z0-9,]*$') `
+        "the snapshot reads '$written', expected '$expected<formats including sevenzip>'"
 }

@@ -116,14 +116,14 @@ sequenceDiagram
         Explorer->>Enum: Next(celt, ...)
         Enum-->>Explorer: fetched items,<br/>S_OK if fetched==celt, else S_FALSE<br/>S_FALSE is a SUCCESS code here, not failure
     end
-    Note over Explorer,HX: Visibility is decided per-command by GetState(), separately from enumeration.<br/>T-F262: the archive predicates take GetMenuPolicy() — an item DisableTarExtraction or<br/>BlockedFormats blocks is not an archive for them (HKLM policy, fail-safe, re-read at most every 5 s)
+    Note over Explorer,HX: Visibility is decided per-command by GetState(), separately from enumeration.<br/>T-F262: the archive predicates take GetMenuPolicy() — an item DisableTarExtraction or<br/>BlockedFormats blocks is not an archive for them (HKLM policy, fail-safe, re-read at most every 5 s)<br/>T-F403: nor is one whose format the tar capability snapshot (tar-capabilities.txt) does not list as read
     Explorer->>BC: GetState → ECS_ENABLED iff paths.size()==1 AND AllPathsAreSupportedArchive(paths, policy)
     Explorer->>EDC: GetState → ECS_ENABLED iff AnyPathIsSupportedArchive(paths, policy)
     Explorer->>EHF: GetState → ECS_ENABLED iff AllPathsAreSupportedArchive(paths, policy) — same for EH and EF
     Explorer->>CDC: GetState → always ECS_ENABLED (T-F63)
     Explorer->>AC: GetState → ECS_HIDDEN iff AllPathsAreZip(paths) OR NOT IsCreationFormatAllowed("zip", policy)<br/>(INVERTED vs. EH/EF, deliberately still AllPathsAreZip — T-F86)
     Explorer->>TAC: GetState → ECS_HIDDEN iff AllPathsAreZip(paths) OR NOT IsCreationFormatAllowed("tar", policy)
-    Explorer->>SZC: GetState → ECS_HIDDEN iff AllPathsAreZip(paths) OR NOT IsCreationFormatAllowed("sevenzip", policy)<br/>OR NOT TarExeExists() OR SevenZipWriterKnownAbsent() (T-F342: the menu cannot run tar.exe to ask,<br/>so it reads the verdict file the App and Archiver.Shell leave in the package LocalCache folder —<br/>hidden only on a no measured on this very tar.exe, re-read at most every 5 s)
+    Explorer->>SZC: GetState → ECS_HIDDEN iff AllPathsAreZip(paths) OR NOT IsCreationFormatAllowed("sevenzip", policy)<br/>OR NOT TarExeExists() OR SevenZipWriterKnownAbsent() (T-F342: the menu cannot run tar.exe to ask,<br/>so it reads the snapshot file the App and Archiver.Shell leave in the package LocalCache folder —<br/>hidden only on a no measured on this very tar.exe, re-read at most every 5 s)
     Explorer->>AC: GetTitle(psia) → BuildAddToArchiveTitle(paths)<br/>dynamic "Add to <name>.zip", truncated middle if >40 chars — TAC the same with .tar, SZC with .7z
     Explorer->>TC: GetState → ECS_ENABLED iff AnyPathIsSupportedArchive(paths, policy)<br/>(T-F397: any archive Pakko reads — it was ZIP only while nothing tested a tar-family archive, T-F86)
     Explorer->>SC: GetState → ECS_ENABLED iff AnyPathIsSupportedArchive(paths, policy) (T-F146)

@@ -13901,6 +13901,59 @@ gzip counted as verified; the zstd checksum flag ignored.
 Not measured on the device: the progress moving during a long test (the integration test reads
 the reports), and Test under `DisableTarExtraction` (`POL-010`, the elevated run at the end).
 
+## T-F403 — the tar.exe capability matrix (2026-10-16)
+
+**Found.** With T-F401 Pakko ran the zlib-only `tar.exe` of Windows 10 and Server 2022, and the
+creation side asked nothing of it: the App listed tar.bz2, tar.xz, tar.zst, tar.lzma and the 7z
+methods everywhere, `pakko a` started `tar.exe` for them, and `pakko i` said "create" for all.
+
+**Measured first (VMs, a marker `zstd.exe`/`bzip2.exe`/`xz.exe`/`lzma.exe` that writes a trace),
+on Windows 10 22H2 19045.6456 (tar 3.5.2) and Server 2022 20348.5622 (tar 3.8.4):**
+
+| What | Working folder | PATH |
+|---|---|---|
+| `tar --zstd -cf`, `tar -j -cf` | ran `zstd --no-check -3`, `bzip2` | ran |
+| `tar -J -cf`, `tar --lzma -cf` | "Unsupported compression option", nothing ran | same |
+| `tar -tf` of xz, lzma, zstd, bzip2 (also named `.tar`) | ran `xz -d -qq`, `lzma -d -qq`, `zstd -d -qq`, `bzip2 -d` | ran |
+| `pakko a -ttar.zst`, `-ttar.bz2` (1.8.1 before this fix) | ran (`--no-check -9`, `-4`) | ran |
+| `pakko l`/`t`/`x` of the same streams, any name | refused by content before tar.exe, nothing ran | same |
+
+The child `tar.exe` gets Pakko's working folder; the destination folder is not searched.
+
+**Decided.**
+- One capability object, one rule (feature detection + specification with a reason):
+  `TarCapabilities` is built by `TarVersionParser` from the libraries in `--version` (zlib,
+  bz2lib, liblzma, libzstd) and the version; `ArchiveFormatPolicy.GetRefusalReason` (reading,
+  existing) and the new `GetTarCreationRefusalReason` (format x 7z method) are the only places
+  that decide. `CompressAsync` asks it before `tar.exe` starts; the App's Format list
+  (`CreationFormatOption.IsOffered` with the capabilities) and 7z method list
+  (`CreatableSevenZipMethods`), `pakko i` (status, and a "methods for 7z" line) and the Explorer
+  menu (through the snapshot) take its answer.
+- The matrix: tar always; gz needs zlib; bz2 needs bz2lib; xz and lzma need liblzma; zst needs
+  libzstd and 3.7.0; RAR needs 3.7.0; 7z reading needs 3.7.0 and liblzma (T-F402); 7z writing
+  needs reading and the writer probe (T-F342); 7z methods: LZMA2 and LZMA need liblzma, BZip2
+  bz2lib, Deflate zlib, Copy nothing. A tar format reads and writes with the same codec, so
+  `pakko i` keeps one list of actions per tar format and its status covers both.
+- A refusal names the missing codec (`FormatNotSupportedByTar`); "needs a newer tar.exe"
+  (`FormatNeedsNewerTar`) only where the version is what is missing. No new message codes.
+- `SupportsGzip` defaults to true: every `tar.exe` measured has zlib, and a `tar.exe` that gave no
+  version is not run for an archive at all; the parser sets it from the text.
+- The Explorer extension cannot run `tar.exe`, so the 7z writer verdict file became a snapshot,
+  `tar-capabilities.txt` (`TarCapabilitySnapshot`): the same `size;time;0|1` plus a fourth field,
+  the Group Policy names of the formats `tar.exe` reads. It is written where the verdict was
+  (the App at start, `Archiver.Shell` after the 7z writer question), so a file present always
+  has a known 7z answer. The extension treats a format the matching snapshot does not list like
+  a policy-blocked one, in `AllPathsAreSupportedArchive` (Extract, Open) and
+  `AnyPathIsSupportedArchive` (Test, Scan); no file, an older line without the field, or one for
+  another `tar.exe` hides nothing.
+
+**Rejected.**
+- Probing each codec by running `tar.exe` (an empty archive per filter): more processes at
+  start, and the `--version` libraries matched every measurement.
+- Counting a codec as present when an outside program could supply it: that is the PATH risk.
+- A per-command rule in the CLI for "extract but not create": it would have been a second copy of
+  the rule (tried, removed in the same branch).
+
 ## T-F401 — a catalog-signed tar.exe (2026-10-16)
 
 **Found.** `CLI-032` on a Hyper-V VM of Windows Server 2022 Datacenter Evaluation, build 20348.169
