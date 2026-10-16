@@ -24,6 +24,24 @@ public static class SevenZipMethodOption
     /// <summary>The row text of <paramref name="method"/>.</summary>
     public static string Name(SevenZipMethod method) => Names[ToIndex(method)];
 
+    /// <summary>T-F403: the row texts of a list of only the methods this tar.exe can write.</summary>
+    public static IReadOnlyList<string> NamesOf(IReadOnlyList<SevenZipMethod> methods) => [.. methods.Select(Name)];
+
+    /// <summary>The method of row <paramref name="index"/> of <paramref name="methods"/>; LZMA2 for a row it does not have.</summary>
+    public static SevenZipMethod FromIndex(int index, IReadOnlyList<SevenZipMethod> methods) =>
+        index >= 0 && index < methods.Count ? methods[index] : SevenZipMethod.Lzma2;
+
+    /// <summary>The row of <paramref name="method"/> in <paramref name="methods"/>; the first for a method it does not have.</summary>
+    public static int ToIndex(SevenZipMethod method, IReadOnlyList<SevenZipMethod> methods)
+    {
+        for (int index = 0; index < methods.Count; index++)
+        {
+            if (methods[index] == method)
+                return index;
+        }
+        return 0;
+    }
+
     /// <summary>
     /// Whether the compression level means anything: not for plain tar (T-F105), nor for a 7z whose
     /// method is Copy.
