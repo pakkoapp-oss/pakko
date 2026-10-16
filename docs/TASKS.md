@@ -1635,3 +1635,25 @@ re-measured with T-F346's script before and after.
   recognise, the vanished source is not named by Pakko and that is a product gap, not a test
   fault. Next: run the class in a loop beside a CPU load, keeping the whole output.
 - **Reported by:** the full test run before the probe fix was pushed, 2026-10-12.
+
+### T-F399 — Under a policy that blocks ZIP the New archive card starts on TAR, not on 7Z (P3)
+
+- [ ] **Status:** open. Package 1.8.1.13, 2026-10-16, `BlockedFormats` = `zip` (`POL-009`): the
+  Format list shows 7Z, TAR, TAR.GZ ... with TAR selected. `CreationFormatOption.Default` runs at
+  startup with `sevenZipWriter` false, so it picks TAR; when the probe answers,
+  `OfferSevenZipWhenWritableAsync` only moves off a format that is no longer offered, and TAR
+  still is. Nothing is refused and the policy holds; the first format shown is just not the one
+  selected. Next: when the probe answers and the selection is still the startup default, move to
+  the new `Default`; a unit test on `CreationFormatOption`/the ViewModel for this order.
+- **Reported by:** the release-tier smoke run of v1.8.1 (`POL-009`), 2026-10-16.
+
+### T-F400 — The footer line is cut off without an ellipsis in a narrow window (P3)
+
+- [ ] **Status:** open. Package 1.8.1.13, 2026-10-16, display scale 150 % with the window at its
+  restored size (about 720 px wide in effective pixels): "Буде стиснуто елементів: 2 — у вказану
+  вище папку" ends in the middle of a letter under the Clear button. The footer `TextBlock` in
+  `MainWindow.xaml` sits in an `Auto` column of its grid, so it is never given less width than its
+  text and `TextTrimming="CharacterEllipsis"` never applies; the parent clips it instead. Not new
+  in v1.8.1. Next: give the text column `*` (the links then need a place of their own) or a
+  `MaxWidth` bound to the space left, and check the result at 100 %, 150 % and 175 %.
+- **Reported by:** the release-tier smoke run of v1.8.1 (`APP-014`), 2026-10-16.
