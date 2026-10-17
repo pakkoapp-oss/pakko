@@ -75,4 +75,20 @@ public static class CreationFormatOption
             .DefaultIfEmpty(ArchiveContainerFormat.Zip)
             .First();
     }
+
+    /// <summary>
+    /// T-F399: the format the card stands on once <c>ITarService.CanCreateSevenZipAsync</c> has
+    /// found a 7z writer. <paramref name="startupDefault"/> is what <see cref="Default"/> picked
+    /// before that answer: a selection still on it follows the new default, one the user changed
+    /// stays unless it is no longer offered.
+    /// </summary>
+    public static ArchiveContainerFormat AfterSevenZipProbe(
+        GroupPolicyOptions policy, ArchiveContainerFormat selected, ArchiveContainerFormat startupDefault,
+        TarCapabilities? tarCapabilities = null)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        return selected == startupDefault || !IsOffered(policy, selected, true, tarCapabilities)
+            ? Default(policy, true, tarCapabilities)
+            : selected;
+    }
 }

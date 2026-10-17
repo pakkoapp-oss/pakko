@@ -648,10 +648,12 @@ public sealed partial class MainViewModel : ObservableObject
         _sevenZipWriter = true;
         OnPropertyChanged(nameof(SevenZipFormatVisibility));
         // The card started on a format picked before the answer; under a policy that allows only
-        // 7z that was ZIP, which Core refuses.
-        if (!CreationFormatOption.IsOffered(_policy, SelectedContainerFormat, _sevenZipWriter, _tarCapabilities))
-            SelectedContainerFormat = CreationFormatOption.Default(_policy, _sevenZipWriter, _tarCapabilities);
+        // 7z that was ZIP, which Core refuses, and under one that blocks ZIP it was TAR (T-F399).
+        SelectedContainerFormat = CreationFormatOption.AfterSevenZipProbe(
+            _policy, SelectedContainerFormat, _startupFormat, _tarCapabilities);
     }
+
+    private ArchiveContainerFormat _startupFormat;
 
     [ObservableProperty]
     public partial bool OpenDestinationFolder { get; set; } = false;
@@ -871,7 +873,8 @@ public sealed partial class MainViewModel : ObservableObject
         _sevenZipMethods = ArchiveFormatPolicy.CreatableSevenZipMethods(tarCapabilities);
         foreach (string name in SevenZipMethodOption.NamesOf(_sevenZipMethods))
             SevenZipMethodChoices.Add(name);
-        SelectedContainerFormat = CreationFormatOption.Default(_policy, _sevenZipWriter, _tarCapabilities);
+        _startupFormat = CreationFormatOption.Default(_policy, _sevenZipWriter, _tarCapabilities);
+        SelectedContainerFormat = _startupFormat;
         _ = OfferSevenZipWhenWritableAsync(tarService);
         _browseWork.Changed += CloseArchiveCommand.NotifyCanExecuteChanged;
 

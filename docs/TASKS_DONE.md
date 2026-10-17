@@ -12952,3 +12952,17 @@ PowerShell does natively.
   Would Start" (the maintainer agreed on 2026-10-16 to a paragraph saying what was measured).
 - **Reported by:** the user, 2026-10-16 ("a capability matrix, found dynamically, that the
   graphical and the command-line menus are built from").
+
+### T-F400 — The footer line is cut off without an ellipsis in a narrow window (P3)
+
+- [x] **Status:** done 2026-10-17. The footer line sat in an `Auto` column, so it was always as
+  wide as its text and the parent clipped it. Now the column is `*` in a left-aligned Grid (as
+  wide as the text, never wider than the footer; the links follow the text), the line keeps to
+  one line (`NoWrap`: wrapped beside "Show in folder" the column was a few letters wide and the
+  result ran to five lines) and trims with an ellipsis; the full text is its tooltip and its
+  UI Automation name.
+- **Checked** on package 1.8.1.2 (this machine, display scale 150 %, the window at its smallest):
+  "Буде стиснуто елементів…" and "Стисн… Показати в папці"; maximized, the link
+  stands right after the full result. 175 % not walked.
+- Decisions: `docs/DECISIONS.md`, "T-F399, T-F400 — the New archive card and the footer".
+- **Reported by:** the release-tier smoke run of v1.8.1 (`APP-014`), 2026-10-16.

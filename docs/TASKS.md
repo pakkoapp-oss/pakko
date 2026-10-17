@@ -1638,7 +1638,9 @@ re-measured with T-F346's script before and after.
 
 ### T-F399 — Under a policy that blocks ZIP the New archive card starts on TAR, not on 7Z (P3)
 
-- [ ] **Status:** open. Package 1.8.1.13, 2026-10-16, `BlockedFormats` = `zip` (`POL-009`): the
+- [ ] **Status:** fixed in code 2026-10-17 (`CreationFormatOption.AfterSevenZipProbe`, tests red
+  without it); graduates after `POL-009` (needs the elevation prompt) in the walk before the next
+  release. Package 1.8.1.13, 2026-10-16, `BlockedFormats` = `zip` (`POL-009`): the
   Format list shows 7Z, TAR, TAR.GZ ... with TAR selected. `CreationFormatOption.Default` runs at
   startup with `sevenZipWriter` false, so it picks TAR; when the probe answers,
   `OfferSevenZipWhenWritableAsync` only moves off a format that is no longer offered, and TAR
@@ -1647,13 +1649,15 @@ re-measured with T-F346's script before and after.
   the new `Default`; a unit test on `CreationFormatOption`/the ViewModel for this order.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`POL-009`), 2026-10-16.
 
-### T-F400 — The footer line is cut off without an ellipsis in a narrow window (P3)
+### T-F404 — At 150 % on a 1920 x 1080 display the window opens taller than the work area (P3)
 
-- [ ] **Status:** open. Package 1.8.1.13, 2026-10-16, display scale 150 % with the window at its
-  restored size (about 720 px wide in effective pixels): "Буде стиснуто елементів: 2 — у вказану
-  вище папку" ends in the middle of a letter under the Clear button. The footer `TextBlock` in
-  `MainWindow.xaml` sits in an `Auto` column of its grid, so it is never given less width than its
-  text and `TextTrimming="CharacterEllipsis"` never applies; the parent clips it instead. Not new
-  in v1.8.1. Next: give the text column `*` (the links then need a place of their own) or a
-  `MaxWidth` bound to the space left, and check the result at 100 %, 150 % and 175 %.
-- **Reported by:** the release-tier smoke run of v1.8.1 (`APP-014`), 2026-10-16.
+- [ ] **Status:** open. Package 1.8.1.2, 2026-10-17, this machine (DPI 144, work area 1280 x 672
+  in effective pixels, taskbar 48): the App opens at its restored size about 1082 x 711, so placed
+  at y=76 its footer (Clear, Extract, Compress) sits partly under the taskbar until the window is
+  moved. The options scroll (wheel and scrollbar work), so nothing is unreachable, but the
+  T-F199/T-F224 comment beside `AppWindow.Resize(1100, 720)` ("720 fits a 1366x768 screen's work
+  area") holds at 100 % only. Next: read why the window ends up at 711 effective pixels (the
+  `Resize` takes physical pixels), then clamp the first size and position to
+  `DisplayArea.WorkArea`; check at 100 %, 150 % and 175 %.
+- **Reported by:** the T-F400 device check, 2026-10-17 (the user asked how to reach the cut-off
+  "Where and what after" card).

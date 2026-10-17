@@ -734,14 +734,19 @@
                         IsIndeterminate="{x:Bind ViewModel.IsProgressIndeterminate, Mode=OneWay}"
                         Visibility="{x:Bind ViewModel.IsOperationRunningVisibility, Mode=OneWay}"/>
                     <!-- T-F211/T-F199 step 7: result, browse selection or preview (App.Core FooterLine);
-                         the result stays until the next action. -->
-                    <Grid ColumnDefinitions="Auto,Auto,Auto" ColumnSpacing="4"
+                         the result stays until the next action. T-F400: a star column in a
+                         left-aligned Grid is as wide as the text but no wider than the footer, so
+                         the text trims with an ellipsis and the links follow it. One line: wrapped
+                         beside a link the column is a few letters wide; the tooltip has it all. -->
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="4" HorizontalAlignment="Left"
                           Visibility="{x:Bind ViewModel.FooterTextVisibility, Mode=OneWay}">
                         <TextBlock
                             VerticalAlignment="Center"
                             Text="{x:Bind ViewModel.FooterText, Mode=OneWay}"
+                            ToolTipService.ToolTip="{x:Bind ViewModel.FooterText, Mode=OneWay}"
                             TextTrimming="CharacterEllipsis"
-                            Style="{StaticResource CaptionTextBlockStyle}"/>
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            TextWrapping="NoWrap"/>
                         <HyperlinkButton
                             x:Uid="OutcomeShowInFolderButton"
                             Grid.Column="1"
