@@ -92,6 +92,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | CLI-033 | quick | script | dev | `t` on a fresh 7z (LZMA2, Copy); on a copy with changed bytes in the middle; on one cut short | Exit 0 with nothing on stderr; exit 2 naming the archive; exit 2; nothing is written next to the archives | `cli:t` T-F397 |
 | CLI-034 | release | script | dev | `t` on tar.xz, tar.bz2, tar.zst, tar.gz, tar and tar.lzma; on each cut short; on the first three with changed bytes | Exit 0 for the first three; exit 1 with "Only the archive's structure was checked" and no "No errors" for the rest; exit 2 for every cut one and for the changed ones | `cli:t` T-F397 T-F398 |
 | CLI-035 | release | user | dev | On a tar.exe built with zlib only (Windows 10 22H2, Windows Server 2022): `pakko i`; `a` with `-ttar.zst`, `-ttar.bz2`, `-ttar.xz`, `-ttar.lzma` and `-t7z`, run in a folder that holds a `zstd.exe` and a `bzip2.exe` that leave a trace, and again with that folder on PATH; the App's Format list; the Explorer menu on a .tar.xz and a .7z | `i`: tar and tar.gz supported, the rest not, no methods line; each `a` exits 2 with Pakko's text naming the codec or a newer tar.exe, no file and no trace; Format lists ZIP, TAR, TAR.GZ; no Extract or Test on either archive | `cli:i` `cli:-t` T-F401 T-F403 |
+| CLI-036 | quick | script | dev | `x -o<file>` on a ZIP and on a tar.gz, where `<file>` is an existing file; `a` of an archive inside that file's name, as if it were a folder | Exit 2 with `pakko: error:` and no "Unhandled exception" each time; the file is unchanged | `cli:x` `cli:-o` `cli:a` T-F406 |
 
 ## SHL - `Archiver.Shell.exe`, started as Explorer starts it
 
@@ -110,6 +111,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | SHL-011 | release | script | dev | `--hash --algorithm sha256` on a folder with an unreadable file and a junction loop | The window lists the hashes and names the entries it skipped; it does not hang | `shell:--hash` T-F291 T-F251 |
 | SHL-012 | quick | script | dev | `--archive --format 7z` on a folder | `<name>.7z` next to the source, accepted by `7za t`, the entries under the folder's name, nothing else left | `shell:--format` T-F342 |
 | SHL-013 | quick | script | dev | Delete the tar capability snapshot (`tar-capabilities.txt`) in the package's `LocalCache` folder, then `--archive --format 7z` on a file | The file is back and reads tar.exe's size, its write time, `1` and the formats tar.exe reads, `sevenzip` among them; deleted again and `--extract-here` on a ZIP, it is back with `?` in place of `1` | `shell:--format` T-F342 T-F403 |
+| SHL-014 | quick | script | dev | `--extract-here` on a ZIP and on a tar.gz with several root items, where a file already has the name of the folder it would make | A result window with the error (0x800700B7) each time, no crash; the file is unchanged | `shell:--extract-here` T-F406 |
 
 ## EXP - the real Explorer menu
 

@@ -78,6 +78,10 @@ public sealed class ZipArchiveService : IArchiveService
         // downstream Path.GetFileName call in this class already sees a clean path.
         options = options with { SourcePaths = [.. options.SourcePaths.Select(SourcePathNormalizer.Normalize)] };
 
+        // T-F406: before any prompt, and both modes write into this folder.
+        if (DestinationFolder.TryCreate(options.DestinationFolder) is { } folderFailure)
+            return DestinationFolder.CreationRefused(options, folderFailure);
+
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
         var skippedFiles = new List<SkippedFile>();
@@ -178,8 +182,6 @@ public sealed class ZipArchiveService : IArchiveService
         // ItemType) has no file name; ArchiveNaming names it after the drive letter ("Z.zip"), the
         // same way BuildAddToArchiveTitle does for the context-menu title text.
         string destPath = Path.Combine(options.DestinationFolder, ArchiveNaming.SingleArchiveFileName(options with { Format = ArchiveContainerFormat.Zip }));
-
-        Directory.CreateDirectory(options.DestinationFolder);
 
         // T-F158: shared with TarSandboxedService's equivalent conflict decision — see
         // DestinationConflictResolver and DECISIONS.md's T-F158 entry.
@@ -373,8 +375,6 @@ public sealed class ZipArchiveService : IArchiveService
         List<ArchiveError> errors, List<string> createdFiles, List<SkippedFile> skippedFiles,
         IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
-        Directory.CreateDirectory(options.DestinationFolder);
-
         long totalSourceBytes = ComputeTotalBytes(options.SourcePaths);
         progress?.Report(new ProgressReport { Percent = 0, BytesTransferred = 0, TotalBytes = totalSourceBytes });
 
@@ -659,7 +659,8 @@ public sealed class ZipArchiveService : IArchiveService
         var passwordResolver = new PasswordResolver(options.ResolvePasswordAsync, maxAttempts: 3);
 
         bool destinationExisted = Directory.Exists(options.DestinationFolder);
-        Directory.CreateDirectory(options.DestinationFolder);
+        if (DestinationFolder.TryCreate(options.DestinationFolder) is { } folderFailure)
+            return DestinationFolder.ExtractionRefused(options.ArchivePaths, folderFailure);
         ArchiveResult? result = null;
         try
         {

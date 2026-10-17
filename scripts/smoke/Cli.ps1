@@ -343,3 +343,25 @@ Add-SmokeStep 'CLI-033' {
     }
     Assert-Smoke (@(Get-ChildItem -LiteralPath $folder -Force).Count -eq 6) "t left something behind: $((Get-ChildItem -LiteralPath $folder -Force -Name) -join ', ')"
 }
+
+# T-F406: a folder that cannot be made (a file holds its name) is an error with exit code 2, for
+# extraction and for a new archive, never the runtime's unhandled-exception crash; the file stays.
+Add-SmokeStep 'CLI-036' {
+    $folder = Get-StepFolder 'cli036'
+    $tree = Get-Fixture Tree
+    $blocker = Join-Path $folder 'blocker'
+    [System.IO.File]::WriteAllText($blocker, 'keep me')
+    $zip = Join-Path $folder 'made.zip'
+    $tarGz = Join-Path $folder 'made.tar.gz'
+    foreach ($made in @((Invoke-Pakko @('a', $zip, $tree)), (Invoke-Pakko @('a', '-ttar.gz', $tarGz, $tree)))) {
+        Assert-Smoke ($made.ExitCode -eq 0) "making the archives: exit $($made.ExitCode) $($made.Text)"
+    }
+
+    foreach ($archive in @($zip, $tarGz)) {
+        $into = Invoke-Pakko @('x', "-o$blocker", $archive)
+        Assert-Smoke ($into.ExitCode -eq 2 -and $into.Error.Contains('pakko: error:') -and -not $into.Error.Contains('Unhandled exception')) "x -o<file> on $(Split-Path -Leaf $archive): exit $($into.ExitCode) $($into.Text)"
+    }
+    $create = Invoke-Pakko @('a', (Join-Path $blocker 'new.zip'), $tree)
+    Assert-Smoke ($create.ExitCode -eq 2 -and -not $create.Error.Contains('Unhandled exception')) "a into a folder that is a file: exit $($create.ExitCode) $($create.Text)"
+    Assert-Smoke ([System.IO.File]::ReadAllText($blocker) -eq 'keep me') 'the file holding the folder name changed'
+}

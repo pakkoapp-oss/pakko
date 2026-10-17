@@ -13122,6 +13122,62 @@ the archive.
 - **No release for these two:** both are P3 and touch no data; they go out with the first tasks
   that come from T-F343.
 
+## T-F406 — "never throws" made checkable: Core entry checks, a contract test, one last-resort handler per program (2026-10-17)
+
+- **Found by** T-F343's measurement: `pakko x a.zip -o<file>` died with an unhandled `IOException`
+  (exit 0xC0000409, the runtime's crash report on stderr). `Directory.CreateDirectory(destination)`
+  stood outside any handling in `ZipArchiveService.ArchiveAsync` (both modes) and `ExtractAsync`, and
+  in `TarSandboxedService.ExtractAsync` and `CompressAsync`. The hard constraint "methods never throw
+  to callers" had no test, so nothing saw it.
+- **How wide** (the user asked where else): `CoreNeverThrowsContractTests` runs every public Core
+  operation with the real engines (`tar.exe` included) against nine hostile paths. Before the fix:
+  **38 of 198 cases threw** — the destination folder in every writing operation (a file, a missing
+  drive, bad characters, an empty string, a locked file, a non-archive, an empty file all made
+  `CreateDirectory` throw), and an empty archive path in `TarSandboxedService` extract and list and in
+  `AntivirusScanService` (an `ArgumentException` from `TarSandboxScope.OpenArchive` and
+  `ZipArchiveReader.Open`, past `catch (IOException)`). After: 235 of 235, with the completeness test.
+  The programs: none of the four had a last-resort handler; the App had four `async void` event
+  handlers without one.
+- **The standard** (the user asked whether to standardize: yes, because the failures share one
+  shape — each method chose its own catches, and nothing stood at the edge):
+  - Core checks paths at entry: `InputPaths.Problem` (empty or unparseable: `SourceNotFound`) and
+    `DestinationFolder.TryCreate` (`CannotExtractArchive`/`CannotCreateArchive` with the OS text).
+    Existing message codes; no new translations.
+  - The contract test with a completeness check: a written table of (interface, method) -> tests,
+    compared with reflection over `IArchiveService`, `ITarService`, `IExtractionRouter`,
+    `IArchiveCreationRouter`, `IArchiveListingRouter`, `IRecoveryService`, `IAntivirusScanService`
+    and `FileHashService`. It found a member on its first run (`ITarService.AskSevenZipWriterAsync`,
+    no path; listed with its reason).
+  - One handler per program: `CliLastResort` (stderr `pakko: error: Unexpected error: <type>:
+    <message>` plus the stack, exit 2, as 7-Zip's `MainAr.cpp` turns `catch(...)` into kFatalError);
+    `ShellLastResort` (native dialog with `ResultOperationFailed` and the exception, exit 2 — the
+    WinExe used to vanish silently); the App's `UnhandledException` and `UnobservedTaskException` to
+    `App.ReportUnexpected` (log, best-effort dialog, `e.Handled = true`); every `async void` catches in
+    its own body (`AsyncVoidHandlersTests` reads the source; red with the old `FileList_Drop`).
+- **App keeps running** after an unexpected exception: the defect is logged and shown, the user's
+  list and choices stay, and closing is theirs. Exiting would lose that work for an error that
+  usually belongs to one command. The dialog is best-effort: before the first window there is no
+  `XamlRoot`, and a dialog may already be open; the log line is the guaranteed part.
+- **OperationUi: no change.** When the helper dies, `HelperOperationUi` already carries the
+  operation on with the native dialogs ("The helper is gone without closing its window", T-F268);
+  reporting the failure over the pipe would be a protocol change for no gain.
+- **Rejected:** a catch-all in every public Core method (hides defects and loses per-item
+  reporting); a Roslyn analyzer (costly, and blind to throws through calls); only the program-level
+  handlers (Core's rule would stay unchecked); adding `ArgumentException` to the per-item catches
+  (an `ArgumentNullException` or `ArgumentOutOfRangeException` from our own code would be shown as
+  "Cannot extract archive" — the advisor's objection, accepted).
+- **Tests:** `DestinationIsAFileTests` (Core.Tests, 5, red without the fix), `CoreNeverThrowsContractTests`
+  (IntegrationTests), `CliLastResortTests`, `Extract_OutputFolderIsAFile_ExitsTwoWithAnError`
+  (subprocess, red with the Core services and `pakko`'s `Program.cs` of `main`: exit 0xC0000409),
+  `ShellLastResortTests`, `AsyncVoidHandlersTests`. Smoke: `CLI-036`, `SHL-014`. Diagrams 3, 5
+  and 9 show the entry checks.
+- **On the device** (dev package 1.8.1.4, Native AOT): `CLI-036`, `SHL-014`; the App, opened
+  through `--open-ui`, made a ZIP, and its extraction into a folder name held by a file showed
+  "Cannot extract archive ... (0x800700B7)" and kept running. Not reached on the device: the
+  last-resort handlers themselves, since Core no longer throws on any known path; they are
+  covered by the JIT tests only. `StackTraceSupport` is not turned off anywhere, so the AOT
+  build keeps the stack text they print.
+
 ## T-F342 — creating 7z through tar.exe: sources and measurements (wave 0, 2026-10-12)
 
 Record made before any code. Machine: Windows 11 build 26300, `C:\Windows\System32\tar.exe` =

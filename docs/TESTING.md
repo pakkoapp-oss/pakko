@@ -1304,6 +1304,18 @@ manager through `ShellCom` (title, line, `HasUserCancelled` before start; an unk
 failure HRESULT; an unregistered class throws `COMException`). It cannot see a wrong vtable order;
 progress and Cancel are checked on the device.
 
+## Core Never Throws (T-F406, 2026-10-17)
+
+- `CoreNeverThrowsContractTests` (IntegrationTests, real engines and `tar.exe`): every public Core
+  operation against nine hostile paths (a file as the folder, a missing drive, bad characters, an
+  empty string, a locked file, a non-archive, an empty file, ...) must return, never throw. A
+  written table maps each (interface, method) to its cases; a reflection check over the public
+  Core services fails when a member is added without a row or a stated reason.
+- `DestinationIsAFileTests` (Core.Tests), `CliLastResortTests` and the subprocess
+  `Extract_OutputFolderIsAFile_ExitsTwoWithAnError` (CLI.Tests), `ShellLastResortTests`
+  (Shell.Tests), `AsyncVoidHandlersTests` (App.Core.Tests: reads every `.cs` of the App and
+  OperationUi: each `async void` body catches). Device rows: `CLI-036`, `SHL-014`.
+
 ---
 
 ## Rules

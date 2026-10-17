@@ -306,23 +306,31 @@ public sealed partial class MainWindow : Window
 
     private async void FileList_Drop(object sender, DragEventArgs e)
     {
-        if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+        // T-F406: an async void handler's exception has no caller to reach.
+        try
         {
-            IReadOnlyList<IStorageItem> items = await e.DataView.GetStorageItemsAsync();
-            var paths = new List<string>();
-            foreach (IStorageItem? item in items)
+            if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
             {
-                string path = item switch
+                IReadOnlyList<IStorageItem> items = await e.DataView.GetStorageItemsAsync();
+                var paths = new List<string>();
+                foreach (IStorageItem? item in items)
                 {
-                    Windows.Storage.StorageFile file => file.Path,
-                    Windows.Storage.StorageFolder folder => folder.Path,
-                    _ => item.Path
-                };
-                System.Diagnostics.Debug.WriteLine($"[Drop] name={item.Name} path={path}");
-                if (!string.IsNullOrEmpty(path))
-                    paths.Add(path);
+                    string path = item switch
+                    {
+                        Windows.Storage.StorageFile file => file.Path,
+                        Windows.Storage.StorageFolder folder => folder.Path,
+                        _ => item.Path
+                    };
+                    System.Diagnostics.Debug.WriteLine($"[Drop] name={item.Name} path={path}");
+                    if (!string.IsNullOrEmpty(path))
+                        paths.Add(path);
+                }
+                ViewModel.AddPaths(paths);
             }
-            ViewModel.AddPaths(paths);
+        }
+        catch (Exception ex)
+        {
+            App.ReportUnexpected(ex, nameof(FileList_Drop));
         }
     }
 
@@ -378,8 +386,16 @@ public sealed partial class MainWindow : Window
             && RowIndex(ArchiveBrowserListView, e.OriginalSource) is var index && index >= 0 && index < ViewModel.CurrentFolderEntries.Count)
         {
             e.Handled = true;
-            await ViewModel.OpenBrowserRowAsync(ViewModel.CurrentFolderEntries[index]);
-            FocusRowLater(ArchiveBrowserListView, 0);
+            // T-F406: an async void handler's exception has no caller to reach.
+            try
+            {
+                await ViewModel.OpenBrowserRowAsync(ViewModel.CurrentFolderEntries[index]);
+                FocusRowLater(ArchiveBrowserListView, 0);
+            }
+            catch (Exception ex)
+            {
+                App.ReportUnexpected(ex, nameof(ArchiveBrowserList_PreviewKeyDown));
+            }
         }
     }
 
@@ -410,8 +426,16 @@ public sealed partial class MainWindow : Window
 
     private async void PendingList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        if (e.OriginalSource is FrameworkElement { DataContext: FileItem item })
-            await ViewModel.OpenPendingRowAsync(item);
+        // T-F406: an async void handler's exception has no caller to reach.
+        try
+        {
+            if (e.OriginalSource is FrameworkElement { DataContext: FileItem item })
+                await ViewModel.OpenPendingRowAsync(item);
+        }
+        catch (Exception ex)
+        {
+            App.ReportUnexpected(ex, nameof(PendingList_DoubleTapped));
+        }
     }
 
     private void ArchiveBreadcrumb_ItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args) =>
@@ -425,7 +449,15 @@ public sealed partial class MainWindow : Window
 
     private async void ArchiveBrowserList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
     {
-        if (e.OriginalSource is FrameworkElement { DataContext: ArchiveEntryViewModel entry })
-            await ViewModel.OpenBrowserRowAsync(entry);
+        // T-F406: an async void handler's exception has no caller to reach.
+        try
+        {
+            if (e.OriginalSource is FrameworkElement { DataContext: ArchiveEntryViewModel entry })
+                await ViewModel.OpenBrowserRowAsync(entry);
+        }
+        catch (Exception ex)
+        {
+            App.ReportUnexpected(ex, nameof(ArchiveBrowserList_DoubleTapped));
+        }
     }
 }

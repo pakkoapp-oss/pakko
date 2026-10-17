@@ -251,3 +251,26 @@ Add-SmokeStep 'SHL-013' {
     $written = [IO.File]::ReadAllText($verdict)
     Assert-Smoke ($written.StartsWith($expectedUnasked, [StringComparison]::Ordinal)) "after --extract-here the snapshot reads '$written', expected '$expectedUnasked<formats>'"
 }
+
+# T-F406: the folder Extract here would make is taken by a file. The Shell used to vanish with an
+# unhandled exception; now its result window names the error and the file stays as it was.
+Add-SmokeStep 'SHL-014' {
+    $folder = Get-StepFolder 'shl014'
+    $one = Join-Path $folder 'one.txt'
+    $two = Join-Path $folder 'two.txt'
+    Set-Content -LiteralPath $one -Value '1' -Encoding ascii
+    Set-Content -LiteralPath $two -Value '2' -Encoding ascii
+    $archives = @((Join-Path $folder 'several.zip'), (Join-Path $folder 'several.tar.gz'))
+    foreach ($made in @((Invoke-Pakko @('a', $archives[0], $one, $two)), (Invoke-Pakko @('a', '-ttar.gz', $archives[1], $one, $two)))) {
+        Assert-Smoke ($made.ExitCode -eq 0) "making the archives: exit $($made.ExitCode) $($made.Text)"
+    }
+    Remove-Item -LiteralPath $one, $two
+    $blocker = Join-Path $folder 'several'
+    [System.IO.File]::WriteAllText($blocker, 'keep me')
+
+    foreach ($archive in $archives) {
+        $run = Invoke-Shell -Arguments @('--extract-here', $archive) -Until '0x800700B7' -TimeoutSeconds 30
+        Assert-Smoke ($run.Matched -and -not $run.Exited) "--extract-here $(Split-Path -Leaf $archive): no result window with the error; exited=$($run.Exited) code=$($run.ExitCode) $($run.Text)"
+    }
+    Assert-Smoke ([System.IO.File]::ReadAllText($blocker) -eq 'keep me') 'the file holding the folder name changed'
+}

@@ -34,6 +34,21 @@ public sealed class CliSubprocessTests
         File.ReadAllText(extractedFile).Should().Be("hello world");
     }
 
+    // T-F406: -o naming an existing file crashed pakko with an unhandled IOException (0xC0000409).
+    // 7-Zip exits 2 with an error; so does pakko now, and the file is left as it was.
+    [Fact]
+    public void Extract_OutputFolderIsAFile_ExitsTwoWithAnError()
+    {
+        string file = Path.Combine(CliFixtureFiles.CreateScratchDir(), "not-a-folder");
+        File.WriteAllText(file, "keep me");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", $"-o{file}", CliFixtureFiles.ValidZip);
+
+        exitCode.Should().Be(2, stdErr);
+        stdErr.Should().Contain("pakko: error:").And.NotContain("Unhandled exception");
+        File.ReadAllText(file).Should().Be("keep me");
+    }
+
     // T-F360: -snz0 leaves the archive's download mark off; without it the mark is applied.
     // Assumes no EnforceMOTW Group Policy on the test machine.
     [Theory]
