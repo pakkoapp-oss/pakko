@@ -226,7 +226,7 @@ internal sealed partial class TarSandboxScope : IDisposable
             await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
         // T-F410: the names go in a file. Thousands of them would overflow the command line, and
         // "-T -" cannot carry them: stdin is the archive. "-n": a listed folder brings only itself,
-        // the list names everything that is to come (ExpandSelection, ExtractOptions.EntryFilter).
+        // the list names everything that is to come (ExpandSelection).
         string[] memberArguments = members is { Count: > 0 } ? ["-n", "-T", WriteMemberList(members)] : [];
         return await RunAsync("-x", ["-C", OutputFolderName, .. memberArguments], cancellationToken).ConfigureAwait(false);
     }

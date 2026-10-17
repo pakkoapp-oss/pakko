@@ -119,6 +119,25 @@ public sealed class CliNameSelectionTests
     }
 
     [Fact]
+    public void ResolveArchives_RecursiveWalk_DoesNotFollowAJunctionLoop()
+    {
+        Archives();
+        // A junction back to its own parent: following it would find every archive again, and again.
+        string loop = Path.Combine(_dir, "arcs", "deep", "loop");
+        using (var mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+            Path.Combine(Environment.SystemDirectory, "cmd.exe"), ["/d", "/c", "mklink", "/J", loop, Path.Combine(_dir, "arcs")])
+            { UseShellExecute = false, RedirectStandardOutput = true })!)
+        {
+            mklink.WaitForExit();
+            mklink.ExitCode.Should().Be(0);
+        }
+
+        (IReadOnlyList<string> paths, _) = Resolve("x", "-an", "-air!arcs\\*.zip");
+
+        paths.Select(Path.GetFileName).Should().Equal("three.zip", "one.zip", "two.zip");
+    }
+
+    [Fact]
     public void ResolveArchives_WildcardMatchesNothing_CannotFindArchive()
     {
         (IReadOnlyList<string> paths, string? error) = Resolve("x", "none*.zip");

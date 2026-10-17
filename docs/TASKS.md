@@ -1688,3 +1688,13 @@ re-measured with T-F346's script before and after.
   maps onto Pakko's rule of naming entries after the source's own name (T-F153), then the exit code.
   Chocolatey treats 1 as "some files could not be extracted".
 - **Reported by:** T-F343's measurement, 2026-10-17.
+
+### T-F415 — `pakko x -aos`: a file kept by choice exits 1, where 7-Zip exits 0 (P3, from T-F410, decision first)
+
+- [ ] **Status:** open. Measured with T-F410's wave A: Scoop's `x <arc> -o<dir> -xr!*.nsis -y -aos`
+  over files that already exist exits 0 in 7za and 1 in `pakko`, since T-F313 reports every kept
+  file as a `pakko: skipped:` warning. Scoop stops on any non-zero exit. Decide first: keep T-F313's
+  warning for the default skip but exit 0 when `-aos` asked for it (7-Zip's reading: the user chose
+  it), or keep exit 1 and record Scoop's `-aos` path as a difference. Record the decision in
+  `docs/DECISIONS.md`.
+- **Reported by:** T-F410 wave A's measurement, 2026-10-17.

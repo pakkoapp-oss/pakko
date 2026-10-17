@@ -168,9 +168,13 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
         progress?.Clear();
         if (cancellation.Token.IsCancellationRequested)
             return ReportUserStopped();
-        // T-F410: 7-Zip's ThereAreNoFiles, when a filter let nothing through.
+        // T-F410: 7-Zip's ThereAreNoFiles, when a filter let nothing through; -so then streams nothing.
         if (command.EntryFilter is not null && result is { Success: true, CreatedFiles.Count: 0, SkippedFiles.Count: 0 })
+        {
             await Console.Out.WriteLineAsync("No files to process").ConfigureAwait(false);
+            if (stdoutFolder is not null)
+                return 0;
+        }
         return await ReportAndStreamAsync(result, stdoutFolder, report, cancellation.Token).ConfigureAwait(false);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)

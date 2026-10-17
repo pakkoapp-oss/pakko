@@ -13312,11 +13312,20 @@ the archive.
   wave B, instead of silently testing everything.
 - **Where it differs from 7-Zip, deliberately:** `-bb1` also names a folder Pakko creates for an
   entry inside it when the folder's own entry did not pass the filter (7-Zip prints only entries).
-- **`tar.exe` gets the names in a list file, always.** `TarSandboxScope.ExtractAsync` writes the
-  members to `list\members.txt` in the quarantine (read-execute for the AppContainer) and passes
-  `-n -T list\members.txt`, for `SelectedEntryPaths` too: a large selection could overflow the
-  command line as well. `-n` is safe there because `ExpandSelection` already names every
-  descendant. A line `-C` is a name in `x` mode (measured: libarchive's "change directory" line
+- **A filter on tar is applied when leaving the quarantine, not by `tar.exe`.** The first build
+  gave `tar.exe` the names that passed in a list file; measured on 2026-10-17 (unsandboxed, a tar of
+  1-byte files) that costs libarchive N^2 pattern matches: 10,000 names 14.8 s against 5.1 s for
+  the whole archive, 20,000 44.9 s against 10.6 s, 40,000 147.9 s against 23.5 s. Scoop passes
+  `-xr!*.nsis` on every call, so every Scoop extraction would have paid that. Now `tar.exe`
+  extracts what it would without the filter, and the move out of the quarantine leaves out every
+  file that did not pass (the quarantine is deleted anyway); folder entries, folder times and the
+  duplicate pass use the names that passed.
+- **A selection goes to `tar.exe` in a list file.** `TarSandboxScope.ExtractAsync` writes
+  `SelectedEntryPaths`' expanded members to `list\members.txt` in the quarantine (read-execute for
+  the AppContainer) and passes `-n -T list\members.txt`: as arguments a large selection
+  overflowed the command line, and "-T -" cannot carry them, stdin being the archive. `-n` is safe
+  because `ExpandSelection` already names every descendant. A selection is what a person checked
+  in the App, so the N^2 above stays small. A line `-C` is a name in `x` mode (measured: libarchive's "change directory" line
   is `c` mode's), so no escape beyond T-F284's. A selected name with a line break cannot be
   written to the list and fails that archive with T-F266's "cannot be passed to tar.exe" error,
   where it used to reach `tar.exe` as an argument.
@@ -13326,7 +13335,7 @@ the archive.
   `-ir!app\*` too; Chocolatey's line with a folder works on ZIP and 7z. Left: the inner tar of a
   `.tar.gz` (T-F412); 7za's OEM names in Chocolatey's lines; Scoop's `-aos` over existing files
   exits 1, T-F313's warning for a kept file, where 7-Zip exits 0, and Scoop stops on any non-zero
-  exit — a contract question, not this wave's; `-aou`'s rename pattern.
+  exit — a contract question, now T-F415; `-aou`'s rename pattern.
 
 ## T-F342 — creating 7z through tar.exe: sources and measurements (wave 0, 2026-10-12)
 
