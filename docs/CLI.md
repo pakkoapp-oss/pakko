@@ -328,3 +328,122 @@ warning) unless an error makes it 2. `a` has one of its own, the name taken duri
 headers disagree with its central directory. Pakko extracts by the central directory; another
 program may extract other names or data from the same archive. `t` reports the same archive as
 an error (exit 2), as `7z t` does.
+
+## 7-Zip compatibility matrix (T-F343)
+
+Measured 2026-10-17 by `scripts/Measure-SevenZipCompat.ps1`: the same command line run by the
+vendored 7-Zip `7za.exe` 26.02 (T-F114) and by `pakko.exe`, each in a fresh folder, comparing the
+exit code, the files written (path and SHA-256) and the output lines a caller reads. The switch
+list is 7-Zip's own (`kSwitchForms` in `CPP/7zip/UI/Common/ArchiveCommandLine.cpp`, tag `26.02`),
+not the help page, which leaves out about twenty of them. Method and sources: `docs/DECISIONS.md`,
+"T-F343". The tables above say how a command or switch maps onto Pakko; this one says where each
+stands.
+
+**States.** **Yes** — works as in 7-Zip (same exit code, same result). **Can add** — missing
+today, possible within Pakko's rules; the task is named, or "not planned" when nobody is known to
+need it. **Declined** — possible, decided against; the reason is given. **Can't** — would break a
+hard constraint or needs what Windows' `tar.exe` and .NET do not have.
+
+### Real callers
+
+What a program that runs `7z.exe` passes, copied from its source. **None of the three works with
+`pakko` today**: each stops at the first switch Pakko does not take.
+
+| Caller | Command line | Today | Stops at | Task |
+|---|---|---|---|---|
+| Scoop, `Expand-7zipArchive` | `x <arc> -o<dir> -xr!*.nsis -y` (+ `-ir!<dir>\*`, `-aoa`/`-aos`/`-aou`) | exit 7 | `-xr!` | T-F410 |
+| Scoop, inner tar of a `.tar.*` | `l <arc>`, then the regex `[^ ]*tar$` over the output | differs | 7-Zip opens a `.tar.gz` as gzip holding `x.tar` and extracts the `.tar`; Pakko extracts through to the files, and its `l` has other columns | T-F412 |
+| Chocolatey, `Get-ChocolateyUnzip` | `x -aoa -bd -bb1 -o"<dir>" -y "<file>" ["<folder>"]`; reads the `- <name>` lines as the list of installed files; one message per exit code 0/1/2/7/8/255 | exit 7 | `-bd`, `-bb1`; the folder filter | T-F408, T-F410 |
+| patool, `p7zip.py` | `x -y -p- -aou -o<dir> -- <arc>`, `l -y -p- -- <arc>`, `t -y -p- -- <arc>`, `a -y -t7z -sae -- <arc> <files>` | exit 7 | `--`; `-y` and `-p-` on `l`/`t`; `-sae` | T-F407, T-F409, T-F411 |
+| patool | `e -y -p- -o<dir> -- <arc>` | exit 7 | `e` | Declined |
+| patool | `a -y -txz`/`-tgzip`/`-tbzip2 -- <file>.xz <file>` | exit 7 | single-file streams | T-F413 |
+
+### Commands
+
+| Command | State | Note |
+|---|---|---|
+| `a` | Yes | ZIP, 7z (where `tar.exe` writes it) and the tar family. Without an extension 7-Zip makes `.7z`, Pakko `.zip`: Declined (ZIP is Pakko's default) |
+| `x` | Yes | Name filters after the archive name: Can add, T-F410 |
+| `t` | Yes | |
+| `l` | Can add | Pakko prints its own tab-separated columns; 7-Zip's list layout, `-slt` and `-ba`: T-F412 |
+| `h` | Yes | CRC-32 and SHA-256 |
+| `i` | Yes | Pakko's own layout (formats with read/write state) |
+| `e` | Declined | Pakko always keeps the folder structure ("no flatten mode") |
+| `u`, `d`, `rn` | Declined | Changing an archive in place is out of scope |
+| `b` | Declined | Benchmarking is out of scope |
+| `X`, `A`, ... (capital letters) | Can add | 7-Zip takes any case; T-F411 |
+| A switch before the command (`-y x a.zip`) | Can add | 7-Zip takes the first non-switch as the command; T-F411 |
+
+### Switches
+
+| Switch | State | Note |
+|---|---|---|
+| `--` | Can add | T-F407. Every patool call starts the names with it |
+| `-ai`, `-ax`, `-an` | Can add | Archive names by wildcard or list; T-F410 (with `x *.zip`, which 7-Zip also takes) |
+| `-ad` | Can't | Opens 7-Zip's GUI dialog (7zG only) |
+| `-aoa`, `-aos`, `-aou` | Yes | |
+| `-aot` | Can add | Rename the existing file instead of the new one; T-F411 |
+| `-ba`, `-bb0`..`-bb3`, `-bd`, `-bso`/`-bse`/`-bsp{0,1,2}`, `-bt` | Can add | Output control; T-F408. `-bb1` and up print `- <name>` per file, which Chocolatey records |
+| `-i`, `-x` (with `r`, `!`, `@list`), name filters after the archive, `@listfile`, `-r`, `-r-`, `-r0`, `-spd`, `-scs` | Can add | One name-matching engine for `x`, `l`, `t`, `a`; T-F410. Scoop passes `-xr!*.nsis` on every call |
+| `-m0=` (7z) | Yes | `lzma2`, `lzma`, `bzip2`, `deflate`, `copy` |
+| `-m0=ppmd`, `-m0=zstd` (7z) | Can't | Not in `tar.exe`'s 7z writer |
+| `-mx=N` | Yes | `-mxN` without `=` (7-Zip takes both): Can add, T-F411 |
+| `-mm=Deflate`/`Copy` (ZIP) | Can add | not planned |
+| `-mm=Deflate64`/`BZip2`/`LZMA`/`PPMd` (ZIP) | Can't | No such codec in .NET; Pakko writes ZIP with `System.IO.Compression` only |
+| `-mmt` | Can add | Thread count of the parallel ZIP writer; T-F411 |
+| `-mtc`, `-mta`, `-mtm` | Can add | not planned |
+| `-mem=AES256` | Yes | |
+| `-mem=ZipCrypto`/`AES128`/`AES192` | Declined | ZipCrypto is broken; AES-256 only (T-F193) |
+| `-mhe`, `-p` with `-t7z` | Can't | 7z encryption: `tar.exe`'s 7z writer has no AES |
+| `-o` | Yes | Given twice: 7-Zip exits 7, Pakko takes the last; T-F411 |
+| `-p` on `x`, `t`, `a` (ZIP) | Yes | |
+| `-p`, `-p-` on `l` | Can add | T-F409 |
+| `-p-` on `x`, `t` | Yes | |
+| `-saa`, `-sae`, `-sas` | Can add | How `a` names the archive; T-F411 (patool passes `-sae`) |
+| `-scc` | Yes | |
+| `-scrcCRC32`, `-scrcSHA256` on `h` | Yes | Other methods, and `-scrc` on `x`: Can add, not planned |
+| `-sdel` | Can add | Delete the sources after `a` (the App has it); T-F411 |
+| `-seml` | Declined | Sending mail is out of scope |
+| `-sfx` | Can't | Needs 7-Zip's SFX module: third-party code |
+| `-si`, `-so` | Yes | Within the limits above; `-so` with a name filter: T-F410 |
+| `-slp`, `-stm` | Declined | Large pages and CPU affinity tune 7-Zip's own codecs; nothing to tune here |
+| `-slt` | Can add | T-F412 |
+| `-snh`, `-snl` | Can add | not planned; how Pakko treats links is T-F391's |
+| `-sni`, `-sns` | Can't | NT security and alternate streams have no place in ZIP or in `tar.exe`'s formats as Pakko writes them |
+| `-snc`, `-snr`, `-snt`, `-snoi`, `-snon`, `-snld` | Declined | Pakko's own name and link safety rules decide these (`SECURITY.md`) |
+| `-snz` | Yes | |
+| `-spe` | Can add | Core already has the option (`EliminateDuplicateRootFolder`); T-F411 |
+| `-spf` | Declined | Absolute paths in an archive are what Pakko's traversal checks refuse |
+| `-ssc`, `-ssc-` | Can add | With T-F410's name matching |
+| `-sse`, `-ssp`, `-ssw`, `-stl`, `-w` | Can add | T-F411 |
+| `-stx` | Can add | With T-F410 |
+| `-t` on `a` | Yes | Case-insensitive (`-tZIP`): Can add, T-F411 |
+| `-tgzip`, `-tbzip2`, `-txz` (one file, no tar) | Can add | T-F413: gzip with .NET's `GZipStream`; xz and bzip2 only if `tar.exe` can write a bare stream (to be measured), otherwise Can't |
+| `-u` | Declined | Update is a change in place |
+| `-v` | Can add | not planned (split volumes) |
+| `-y` on `x`, `a` | Yes | |
+| `-y` on `l`, `t` | Can add | T-F409 |
+
+Not measured (7-Zip itself refused the probe's context): `-scrf`, `-shd`, `-slf`, `-slsl`,
+`-slmu`, `-smemx`, `-spm`, `-spo`.
+
+### Errors and exit codes
+
+7-Zip's codes (`ExitCode.h`): 0 no error, 1 warning, 2 fatal error, 7 command line error, 8 out
+of memory, 255 stopped by the user. 7-Zip writes errors to stderr (`ERROR: ...`, `Command Line
+Error:`) and a summary line to stdout (`Everything is Ok`, `Errors: N`, `Warnings: N`).
+
+| Case | 7-Zip | Pakko | State |
+|---|---|---|---|
+| Missing archive, cut archive (`x`, `t`, `l`), not an archive | 2 | 2 | Yes |
+| Wrong password | 2, writes empty files | 2, writes nothing | Yes (Pakko writes no empty files) |
+| Unknown command, unknown switch, no archive name, `-o` with a space | 7 | 7 | Yes |
+| `-o` names a file | 2 | crashed (unhandled exception) | Fixed by T-F406 |
+| `a` with one missing source | 1 (warning), the rest archived under the path as given (`app\readme.txt`) | 2, the rest archived without the folder (`readme.txt`) | Can add, T-F414 |
+| Encrypted archive or a conflict, no `-y`, stdin closed | 255 (the prompt reads end of input) | 2 or 1, no prompt | Declined: Pakko does not prompt when nobody can answer (T-F160, T-F191) |
+| Text of the messages | `ERROR: ...` | `pakko: error: ...` | Declined: Pakko's own wording (T-F221); scripts branch on the exit code |
+
+**Position.** "Goal" above says `pakko` is familiar but not a drop-in. The numbers keep that true
+today. T-F407 to T-F410 close what the three measured callers stop at, except `e` and the inner
+tar step; whether `pakko` can then be offered as a stand-in for those callers is decided when they
+land, with this script run again.

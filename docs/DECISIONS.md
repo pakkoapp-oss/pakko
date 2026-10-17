@@ -13041,6 +13041,53 @@ the archive.
   date and `wsreset -i` did not update it in seven minutes. The same code as package 1.8.1.17,
   walked on that VM above.
 
+## T-F343 — `pakko` in place of 7-Zip's console program: the measurement (2026-10-17)
+
+- **Question.** How far is `pakko` from a stand-in for `7z.exe` for the programs that run it? Measured
+  instead of guessed; the result is the matrix in `docs/CLI.md`, "7-Zip compatibility matrix".
+- **Who runs the console program.** NanaZip ships its console program as a project of its own
+  (`NanaZip.Universal.Console`, the vendored `CPP/7zip/UI/Console`; tree of `M2Team/NanaZip` at
+  `9df185ce59d7`); its own front ends are not the callers measured here. Measured callers, each
+  command line copied from its source:
+  - Scoop `lib/decompress.ps1` (`ScoopInstaller/Scoop` `e6aa3b366bde`), `Expand-7zipArchive`:
+    `$ArgList = @('x', $Path, "-o$DestinationPath", '-xr!*.nsis', '-y')`, then `-ir!$ExtractDir\*`,
+    `-aoa`/`-aos`/`-aou`; for `.tar.*` it runs `l` and takes `(Select-String -Path $LogPath -Pattern
+    '[^ ]*tar$').Matches.Value` as the inner tar to extract next.
+  - Chocolatey `src/chocolatey.resources/helpers/functions/Get-ChocolateyUnzip.ps1`
+    (`chocolatey/choco` `c8659d49508d`): `$params = "x -aoa -bd $loggingParam -o`"$destinationNoRedirection`"
+    -y `"$fileFullPathNoRedirection`""` with `$loggingParam = '-bb1'`; every stdout line that
+    `StartsWith("- ")` is recorded as an installed file; exit codes 0/1/2/7/8/255 each get a message.
+  - patool `patoolib/programs/p7zip.py` (`wummel/patool` `eb8185c6ef6e`): `[cmd, 'x', '-y', '-p-',
+    '-aou', f'-o{outdir}', '--', archive]`, the same shape for `e`, `l`, `t`, and `a` with `-t7z -sae`,
+    `-tzip`, `-txz`, `-tgzip`, `-tbzip2`.
+- **The switch list** is 7-Zip's code, not its help: `kSwitchForms` in
+  `CPP/7zip/UI/Common/ArchiveCommandLine.cpp` at tag `26.02` of `ip7z/7zip` (`f9d78aff31a5`), the
+  version of the vendored `7za.exe`. 66 forms; the help page and the `7za` usage screen list 48
+  (missing among others `-ba`, `-snz`, `-scrf`, `-shd`, `-smemx`, `-slsl`, `-slmu`, `-spm`, `-spo`,
+  `-snld`, `-snoi`, `-snon`). Commands: `g_Commands = "audtexlbih"` plus `rn`. Exit codes:
+  `CPP/7zip/UI/Common/ExitCode.h` (0, 1 warning, 2 fatal, 7 command line, 8 memory, 255 user break);
+  `MainAr.cpp` turns any uncaught exception into 2, a command line error into 7 with
+  "Command Line Error:" on stderr.
+- **Method.** `scripts/Measure-SevenZipCompat.ps1`: archives made by `7za` from one source tree
+  (with a Cyrillic folder and a `.nsis` file for Scoop's exclusion), each command line run by `7za`
+  and by `pakko` in fresh folders with stdin closed, comparing exit code, files written (path and
+  SHA-256) and the parsed output (Chocolatey's `- ` lines, Scoop's regex). Then every switch alone on
+  a command line that works without it, so one refused switch cannot hide the next; then error and
+  parsing cases. `pakko` = the standalone x64 build of `Publish-Cli.ps1` (`0.0.0-dev+07e0af1`).
+- **Result.** None of the three callers works today; each stops at the first switch `pakko`
+  refuses: Scoop at `-xr!`, Chocolatey at `-bd`/`-bb1`, patool at `--`. 91 switch probes: 12
+  accepted, 67 refused (exit 7), 2 different (`-so` with a name filter, `@listfile`), 10 where 7-Zip
+  itself refused the probe's context. Error cases: 10 of 16 agree (missing, cut or wrong archive: 2;
+  command line errors: 7); parsing cases: 3 of 16. Two runs gave the same counts. One real defect: `-o`
+  naming a file crashed `pakko` with an unhandled exception (T-F406).
+- **Tasks.** T-F406 (the crash, P1), T-F407 (`--`), T-F408 (output switches), T-F409 (`-y`, `-p`,
+  `-p-` on `l`/`t`), T-F410 (name filters, plan mode), T-F411 (small switches and spellings),
+  T-F412 (`l` layout and the inner tar, decision first), T-F413 (bare gzip/xz/bzip2), T-F414
+  (missing source = warning). States "Declined" and "Can't" in the matrix give their reason there;
+  7z encryption is "Can't" (`tar.exe`'s 7z writer has no AES), as told to the user on 2026-10-17.
+- **Position.** `docs/CLI.md`'s "familiar but not a drop-in" stays true; it is decided again with
+  this script once T-F407 to T-F410 land.
+
 ## T-F399, T-F400 — the New archive card and the footer (2026-10-17)
 
 - **T-F399, cause.** The card picks its format in the ViewModel constructor, before

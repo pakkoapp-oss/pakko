@@ -1462,25 +1462,6 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   images, and trailers for MSIX app", "Import and export store listings for your MSIX app".
 - **Reported by:** user, 2026-10-05.
 
-### T-F343 — `pakko` in place of 7-Zip's console program: measure how compatible it is (v2.0, user-requested)
-
-- [ ] **Status:** open. Requested by the user 2026-10-06. One of the project's goals is a console
-  replacement for 7-Zip that is as close to the original as it can be in commands and abilities.
-  This task measures the distance instead of guessing it: put `pakko.exe` where a real caller
-  expects `7z.exe` / `NanaZipC.exe` (NanaZip's own front ends and scripts first, then common
-  third-party callers), run them, and record every command, switch, exit code and output line
-  that differs.
-- **Outcome:** a compatibility table in `docs/CLI.md` (works / differs / missing, per command and
-  switch), and a follow-up task for each gap worth closing. `docs/CLI.md` today says "familiar but
-  distinct, not a drop-in" on purpose; this task is where that position is re-decided with
-  numbers. T-F342 (7z creation) removes the largest known gap first.
-- **Method to settle in Plan mode:** NanaZip's GUI loads its backend in-process (the 7-Zip DLL
-  interface), so substituting an exe may only be possible for callers that spawn the console
-  program — read NanaZip's real source before choosing the callers. Pakko's rules stay: no
-  third-party compression code, extraction of tar-family/7z/RAR only through the sandboxed
-  tar.exe.
-- **Reported by:** the user, 2026-10-06.
-
 ## Performance wave (T-F346–T-F359)
 
 Opened 2026-10-06 from a measured study of start-up and resource use (installed dev 1.7.1.1 x64,
@@ -1648,3 +1629,93 @@ re-measured with T-F346's script before and after.
   selected. Next: when the probe answers and the selection is still the startup default, move to
   the new `Default`; a unit test on `CreationFormatOption`/the ViewModel for this order.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`POL-009`), 2026-10-16.
+
+### T-F406 — Core throws when an operation's folder cannot be made; no frontend has a last-resort handler (P1)
+
+- [ ] **Status:** in progress (its own PR). `pakko x a.zip -o<file>` died with an unhandled
+  `IOException` (0xC0000409): `Directory.CreateDirectory(destination)` sat outside any error handling
+  in `ZipArchiveService` and `TarSandboxedService`. A contract test over every public Core operation
+  with hostile paths found 38 failures in 198 cases (destination folder in every writing operation;
+  an empty archive path in tar extract/list and scan). None of the four programs (App, Shell,
+  OperationUi, `pakko`) catches what slips through. Approach: two layers — Core checks its paths
+  at entry, with a contract test and a completeness check over every public operation; one
+  last-resort handler per program.
+- **Reported by:** T-F343's measurement, 2026-10-17.
+
+### T-F407 — `pakko`: `--` ends the switches (P2, from T-F343)
+
+- [ ] **Status:** open. 7-Zip reads every argument after `--` as a name, never a switch
+  (`CommandLineParser.cpp`); `pakko` refuses `--` as an unknown switch (exit 7). patool puts `--`
+  before the names on every call, so no patool command works. Next: parse `--`; a name starting with
+  `-` after it is a name; tests in `CliParser`'s and the subprocess layer; the T-F343 script's patool
+  rows then move past `--`.
+- **Reported by:** T-F343's measurement, 2026-10-17 (`docs/CLI.md`, "7-Zip compatibility matrix").
+
+### T-F408 — `pakko`: 7-Zip's output switches `-bb`, `-bd`, `-bs`, `-bt`, `-ba` (P2, from T-F343)
+
+- [ ] **Status:** open. `pakko` refuses all of them (exit 7). Chocolatey runs `x -aoa -bd -bb1
+  -o<dir> -y <file>` and records each `- <name>` line of 7-Zip's `-bb1` output as an installed file;
+  `-bd` turns off a progress indicator Pakko does not draw. Next: accept `-bd` and `-bt`
+  (`-bt`: print the time), `-bb0..3` (from 1: a `- <name>` line per file written, as 7-Zip),
+  `-bso`/`-bse`/`-bsp` stream choice, `-ba` (no header lines in `l`, with T-F412). Check against 7za
+  with the T-F343 script; the exact line format is 7-Zip's `ExtractCallbackConsole.cpp`.
+- **Reported by:** T-F343's measurement, 2026-10-17.
+
+### T-F409 — `pakko`: `-y`, `-p` and `-p-` on `l` and `t` (P2, from T-F343)
+
+- [ ] **Status:** open. 7-Zip takes `-y` on every command and `-p`/`-p-` on `l`; `pakko` says "not
+  supported on this command" (exit 7) for `-y` on `l`/`t` and `-p`/`-p-` on `l`. patool passes
+  `-y -p-` on `l` and `t`. Next: accept them (`-y` has nothing to answer there; `-p` on `l` opens a
+  ZIP whose names are fine anyway, a 7z with encrypted headers is refused as today).
+- **Reported by:** T-F343's measurement, 2026-10-17.
+
+### T-F410 — `pakko`: name filters — `-i`, `-x`, names after the archive, `@listfile`, `-r`, archive wildcards (P2, from T-F343, plan mode)
+
+- [ ] **Status:** open. The largest gap: 7-Zip matches names on `x`, `l`, `t`, `a` (`-i`/`-x` with
+  `r`, `!`, `@list`; plain names and wildcards after the archive name; `@listfile`; `-r`, `-r-`,
+  `-r0`; `-spd`; `-ssc`; `-scs` for list files) and takes wildcards in the archive name
+  (`x *.zip`, `-ai`, `-ax`, `-an`, `-stx`). `pakko` has none: Scoop passes `-xr!*.nsis` on every
+  call (exit 7 today), Chocolatey a folder name after the archive (`pakko` reads it as a second
+  archive, exit 2). Core extraction already takes `SelectedEntryPaths` (the archive view's
+  selection); the matching rules are 7-Zip's `Wildcard.cpp`, read before designing. Plan mode and
+  the advisor first: it touches Core options, both engines and `tar.exe`'s own include patterns
+  (T-F391's exclude-pattern findings apply).
+- **Reported by:** T-F343's measurement, 2026-10-17.
+
+### T-F411 — `pakko`: small 7-Zip switches and spellings (P3, from T-F343)
+
+- [ ] **Status:** open. Each is small and measured: a command in capitals (`X`) and a switch before
+  the command (`-y x a.zip`), both taken by 7-Zip, exit 7 in `pakko`; `-mx9` without `=` and
+  `-tZIP` in capitals; `-o` given twice (7-Zip: exit 7, `pakko`: the last wins); `-aot`; `-saa`,
+  `-sae`, `-sas` (patool passes `-sae`); `-sdel` (the App has "delete after"); `-spe` (Core has
+  `EliminateDuplicateRootFolder`); `-mmt` (the parallel ZIP writer's threads); `-sse`, `-ssp`,
+  `-ssw`, `-stl`, `-w`. One commit each, each against 7za with the T-F343 script.
+- **Reported by:** T-F343's measurement, 2026-10-17.
+
+### T-F412 — `pakko l`: 7-Zip's list layout, `-slt`, and the inner tar of a `.tar.gz` (P3, from T-F343, decision first)
+
+- [ ] **Status:** open. Scoop runs `l` on a `.tar.*` and takes the inner `.tar` name with the regex
+  `[^ ]*tar$`: 7-Zip opens `x.tar.gz` as a gzip stream holding `x.tar` (and `x` extracts the `.tar`
+  file), Pakko reads straight through to the files (one step, by design) and its `l` prints its own
+  tab-separated columns. Decide first: keep Pakko's one step and its columns (Scoop's `.tar.*` path
+  then stays unsupported) or add 7-Zip's layout behind a switch (`-slt`'s `Path = ...` blocks are what
+  most libraries parse). Needs the maintainer's decision; record it in `docs/DECISIONS.md`.
+- **Reported by:** T-F343's measurement, 2026-10-17.
+
+### T-F413 — `pakko a -tgzip`/`-txz`/`-tbzip2`: one file compressed without tar (P3, from T-F343, measure first)
+
+- [ ] **Status:** open. 7-Zip compresses a single file into a bare `.gz`, `.xz`, `.bz2`; patool uses
+  it. `pakko` knows those types only inside tar (exit 7). gzip: .NET's `GZipStream` is
+  `System.IO.Compression` (allowed). xz and bzip2: only if `tar.exe` can write a bare stream (libarchive
+  has a `raw` write format; measure whether `tar.exe` exposes it and runs it inside Pakko's rules),
+  otherwise "Can't" in the matrix. Reading such a file is the same question.
+- **Reported by:** T-F343's measurement, 2026-10-17.
+
+### T-F414 — `pakko a`: a missing source is a warning (exit 1), and paths are kept as given (P3, from T-F343)
+
+- [ ] **Status:** open. `7za a new.zip app\readme.txt no-such-file.txt` warns ("WARNING: The system
+  cannot find the file specified"), archives the rest under the path as typed (`app\readme.txt`) and
+  exits 1. `pakko` exits 2 and stores the file as `readme.txt`. Next: decide how the path as typed
+  maps onto Pakko's rule of naming entries after the source's own name (T-F153), then the exit code.
+  Chocolatey treats 1 as "some files could not be extracted".
+- **Reported by:** T-F343's measurement, 2026-10-17.

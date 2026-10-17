@@ -406,6 +406,21 @@ windows on the desktop while it runs.
 
 ---
 
+## Measuring 7-Zip compatibility (T-F343)
+
+```powershell
+.\scripts\Publish-Cli.ps1 -Architecture x64        # the pakko.exe it measures
+.\scripts\Measure-SevenZipCompat.ps1               # TSV in %TEMP%\pakko-7z-compat.tsv
+```
+
+Runs real callers' command lines (Scoop, Chocolatey, patool), every 7-Zip 26.02 switch on its own,
+and error and parsing cases, once with the vendored `7za.exe` and once with `pakko.exe`, and writes a
+verdict per row (works, differs, missing, accepted, reference-fails, pakko-only). A measurement, not
+a test: run it before and after a change to the command line and compare the TSVs. The matrix it
+produced is `docs/CLI.md`'s "7-Zip compatibility matrix".
+
+---
+
 ## Agent hook (T-F370)
 
 `.claude/settings.json` (tracked) runs `hooks/Test-AgentBashCommand.ps1` before every Bash-tool
