@@ -26,6 +26,7 @@ async Task<int> RunCommandAsync()
     (TextWriter messages, TextWriter errors) = command.Output.Writers(Console.Out, Console.Error, command.WriteToStdout);
     Console.SetOut(messages);
     Console.SetError(errors);
+    (command, string? nameError) = ResolveNames(command);
     // T-F263: -si/-so staging left by a pakko that was killed (e.g. `x -so` plaintext) goes now.
     if (command.Type is CliCommandType.Extract or CliCommandType.Test or CliCommandType.List or CliCommandType.Archive)
         CliStreamStaging.SweepAbandoned();
@@ -35,6 +36,7 @@ async Task<int> RunCommandAsync()
         CliCommandType.Help => RunHelp(),
         CliCommandType.Version => RunVersion(),
         CliCommandType.Invalid => RunInvalid(command),
+        _ when nameError is not null => RunInvalid(command with { ErrorMessage = nameError }),
         _ when command.PromptForPassword && Console.IsInputRedirected => RejectBarePasswordWithoutConsole(),
         _ when command.Type == CliCommandType.Archive && command.WriteToStdout && !Console.IsOutputRedirected => RejectArchiveToConsole(),
         CliCommandType.Extract => await RunExtractAsync(command, services).ConfigureAwait(false),
@@ -56,6 +58,19 @@ async Task<int> RunCommandAsync()
     }
     await PrintTimeStatsIfAskedAsync(command).ConfigureAwait(false);
     return exitCode;
+}
+
+// T-F410: the archives on disk and the filter for the entries inside them, from the name switches;
+// a list file that cannot be read or a wildcard that finds no archive is a command-line error.
+static (ParsedCliCommand Command, string? Error) ResolveNames(ParsedCliCommand command)
+{
+    if (command.Type is not (CliCommandType.Extract or CliCommandType.List or CliCommandType.Test))
+        return (command, null);
+    (IReadOnlyList<string> archives, string? archiveError) = CliNameSelection.ResolveArchives(command, Directory.GetCurrentDirectory());
+    if (archiveError is not null)
+        return (command, archiveError);
+    (CliNameFilter? filter, string? filterError) = CliNameSelection.BuildEntryFilter(command);
+    return (command with { ArchivePaths = archives, EntryFilter = filter }, filterError);
 }
 
 // T-F408: -bt, after the command, as 7-Zip's PrintStat.
@@ -153,6 +168,9 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
         progress?.Clear();
         if (cancellation.Token.IsCancellationRequested)
             return ReportUserStopped();
+        // T-F410: 7-Zip's ThereAreNoFiles, when a filter let nothing through.
+        if (command.EntryFilter is not null && result is { Success: true, CreatedFiles.Count: 0, SkippedFiles.Count: 0 })
+            await Console.Out.WriteLineAsync("No files to process").ConfigureAwait(false);
         return await ReportAndStreamAsync(result, stdoutFolder, report, cancellation.Token).ConfigureAwait(false);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
@@ -202,6 +220,7 @@ static ExtractOptions BuildExtractOptions(
         ResolvePasswordAsync = BuildPasswordResolver(command, command.AssumeYes, progress, report),
         ApplyDownloadMark = command.ApplyDownloadMark ?? true,
         OnItemExtracted = command.Output.LogLevel >= 1 ? NameExtractedItem(destination, progress) : null,
+        EntryFilter = command.EntryFilter is { } filter ? filter.Includes : null,
     };
 }
 
@@ -613,7 +632,7 @@ static async Task<int> RunListAsync(ParsedCliCommand command, PakkoServices serv
 
         foreach (string archivePath in archivePaths)
         {
-            if (!await PrintArchiveListingAsync(archivePath, router, multiple && !command.Output.DisableHeaders, !command.Output.DisableHeaders, report, cancellation.Token).ConfigureAwait(false))
+            if (!await PrintArchiveListingAsync(archivePath, router, multiple && !command.Output.DisableHeaders, !command.Output.DisableHeaders, command.EntryFilter, report, cancellation.Token).ConfigureAwait(false))
                 anyFailed = true;
         }
 
@@ -628,7 +647,7 @@ static async Task<int> RunListAsync(ParsedCliCommand command, PakkoServices serv
 // Prints one archive's listing (or its error) to stdout/stderr. Returns false on failure. -ba (T-F408)
 // leaves the column header and the multi-archive lines out.
 static async Task<bool> PrintArchiveListingAsync(
-    string archivePath, IArchiveListingRouter router, bool multiple, bool header, CliReportContext report, CancellationToken cancellationToken)
+    string archivePath, IArchiveListingRouter router, bool multiple, bool header, CliNameFilter? filter, CliReportContext report, CancellationToken cancellationToken)
 {
     if (multiple)
         await Console.Out.WriteLineAsync($"# archive: {archivePath}").ConfigureAwait(false);
@@ -643,11 +662,13 @@ static async Task<bool> PrintArchiveListingAsync(
 
     if (header)
         await Console.Out.WriteLineAsync(CliEntryFormatter.Header).ConfigureAwait(false);
-    foreach (ArchiveEntryInfo entry in listResult.Entries)
+    // T-F410: the names after the archive, -i and -x pick the rows, as 7-Zip's l.
+    List<ArchiveEntryInfo> entries = [.. listResult.Entries.Where(e => filter?.Includes(e.Path, e.IsDirectory) ?? true)];
+    foreach (ArchiveEntryInfo entry in entries)
         await Console.Out.WriteLineAsync(CliEntryFormatter.FormatRow(entry)).ConfigureAwait(false);
 
     if (multiple)
-        await Console.Out.WriteLineAsync($"# total: {listResult.Entries.Count} entries").ConfigureAwait(false);
+        await Console.Out.WriteLineAsync($"# total: {entries.Count} entries").ConfigureAwait(false);
 
     return true;
 }

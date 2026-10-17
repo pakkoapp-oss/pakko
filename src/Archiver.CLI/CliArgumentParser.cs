@@ -42,6 +42,9 @@ public sealed record ParsedCliCommand
     public int RecoveryPercent { get; init; }                         // -rr[N], a only (T-F275); 0 = no PAR2 files
     public bool ArchiveNameExact { get; init; }                       // -sae, a only (T-F411): no extension added
     public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
+    public CliNameSwitches NameSwitches { get; init; } = new();       // -i/-x/-r/-spd/-ssc/-scs/-ai/-ax/-an, x/l/t (T-F410)
+    public IReadOnlyList<CliFilterName> FilterNames { get; init; } = []; // x/l: the names after the archive name (T-F410)
+    public CliNameFilter? EntryFilter { get; init; }                  // x/l: set by Program from CliNameSelection, not by the parser (T-F410)
     public string? ErrorMessage { get; init; }
 }
 
@@ -73,9 +76,11 @@ public static class CliArgumentParser
             return Invalid(charsetError!);
         if (!CliOutputOptions.TryTake(ref switchPart, out CliOutputOptions output, out string? outputError))
             return Invalid(outputError!);
+        if (!CliNameSwitches.TryTake(ref switchPart, out CliNameSwitches nameSwitches, out string? nameError))
+            return Invalid(nameError!);
 
         CliToken[] rest = [.. switchPart.Select(CliToken.Of), .. names.Select(CliToken.Name)];
-        ParsedCliCommand command = CliCommandValidator.Validate(ParseCommand(args[0], rest));
+        ParsedCliCommand command = CliCommandValidator.Validate(ParseCommand(args[0], rest, nameSwitches));
         if (command.Type == CliCommandType.Invalid)
             return command;
         // T-F408: under -so stdout carries the data; 7-Zip turns its messages off there (StdOutMode).
@@ -86,11 +91,13 @@ public static class CliArgumentParser
         return command with { ConsoleCodePage = consoleCodePage, Output = output };
     }
 
-    // One command-line argument, and whether it is read as a switch: a name after "--" never is.
+    // One command-line argument, and whether it is read as a switch: a name after "--" never is,
+    // nor a list file (T-F410: "@name" is a list file only before "--", as in 7-Zip).
     private readonly record struct CliToken(string Text, bool IsSwitch)
     {
+        public bool AfterStop { get; init; }
         public static CliToken Of(string text) => new(text, text.Length > 0 && text[0] == '-');
-        public static CliToken Name(string text) => new(text, false);
+        public static CliToken Name(string text) => new(text, false) { AfterStop = true };
     }
 
     // T-F294: PowerShell passes "-name.rest" to a native program as two arguments, "-name" and
@@ -128,8 +135,12 @@ public static class CliArgumentParser
     private static bool LooksLikeSplitPiece(string token) =>
         token.Length >= 2 && token[0] == '.' && token[1] is not ('.' or '\\' or '/');
 
-    private static ParsedCliCommand ParseCommand(string commandName, CliToken[] rest) =>
-        commandName switch
+    private static ParsedCliCommand ParseCommand(string commandName, CliToken[] rest, CliNameSwitches nameSwitches)
+    {
+        if (commandName is not ("x" or "l" or "t") && (nameSwitches.FiltersNames || nameSwitches.PicksArchives
+            || !nameSwitches.WildcardMatching || nameSwitches.CaseSensitive || nameSwitches.ListFileCharset is not null))
+            return Invalid(NameSwitchesOnlyOnExtractReason);
+        ParsedCliCommand command = commandName switch
         {
             "x" => ParseExtract(rest),
             "t" => ParseTest(rest),
@@ -141,6 +152,42 @@ public static class CliArgumentParser
             "u" or "d" or "rn" or "b" or "e" => Invalid(NotSupportedCommandReason(commandName)),
             var other => Invalid($"Incorrect command line: unknown command '{other}'"),
         };
+        return command.Type is CliCommandType.Extract or CliCommandType.List or CliCommandType.Test
+            ? SplitArchiveAndNames(command, nameSwitches)
+            : command;
+    }
+
+    private const string NameSwitchesOnlyOnExtractReason =
+        "not supported on this command: name filters (-i, -x, -r, -ai, -ax, -an, -spd, -ssc, -scs) work on 'x' and 'l', archive names (-ai, -ax, -an) also on 't'";
+
+    // T-F410: as in 7-Zip, the first name is the archive (none with -si or -an) and every other
+    // name filters the entries inside it. The command parsers collect every name as FilterNames.
+    private static ParsedCliCommand SplitArchiveAndNames(ParsedCliCommand command, CliNameSwitches nameSwitches)
+    {
+        IReadOnlyList<CliFilterName> names = command.FilterNames;
+        bool archiveNamed = !command.ReadFromStdin && !nameSwitches.NoArchiveName;
+        string verb = command.Type switch { CliCommandType.Extract => "x", CliCommandType.Test => "t", _ => "l" };
+        if (command.ReadFromStdin && nameSwitches.PicksArchives)
+            return Invalid("'-ai', '-ax' and '-an' cannot be combined with '-si' — stdin already carries the archive");
+        if (nameSwitches.NoArchiveName && !nameSwitches.Archives.Any(a => a.Include))
+            return Invalid("'-an' needs '-ai' to name the archives (e.g. -an -ai!*.zip)");
+        if (archiveNamed && names.Count == 0)
+            return Invalid($"'{verb}' requires at least one archive path");
+
+        List<CliFilterName> filters = [.. names.Skip(archiveNamed ? 1 : 0)];
+        if (command.Type == CliCommandType.Test && (filters.Count > 0 || nameSwitches.FiltersNames))
+            return Invalid("not supported on 't' yet: names after the archive and -i, -x, -r filter what 'x' and 'l' read; 't' tests the whole archive");
+        return command with
+        {
+            ArchivePaths = archiveNamed ? [names[0].Text] : [],
+            FilterNames = filters,
+            NameSwitches = nameSwitches,
+        };
+    }
+
+    // T-F410: "@name" before "--" is a list file of names, as in 7-Zip (AddToCensorFromNonSwitchesStrings).
+    private static CliFilterName PositionalName(CliToken token) =>
+        new(token.Text, IsListFile: !token.AfterStop && token.Text.StartsWith('@'));
 
     // T-F238: -scc{charset} applies to every command, so it is taken out before the per-command
     // parsers see the tokens. As in 7-Zip, the last occurrence wins. 7-Zip also takes a numeric
@@ -181,7 +228,7 @@ public static class CliArgumentParser
     // wasn't enough, since the loop nesting itself was the bigger contributor.
     private sealed class ExtractParseState
     {
-        public List<string> ArchivePaths { get; } = [];
+        public List<CliFilterName> Names { get; } = [];
         public string? OutputDirectory { get; set; }
         public bool AssumeYes { get; set; }
         public ConflictBehavior? OverwriteMode { get; set; }
@@ -203,19 +250,15 @@ public static class CliArgumentParser
                 return Invalid(error);
         }
 
-        if (state.ReadFromStdin && state.ArchivePaths.Count > 0)
-            return Invalid("'-si' cannot be combined with an explicit archive path");
         if (state.WriteToStdout && state.OutputDirectory is not null)
             return Invalid("'-so' cannot be combined with '-o' (mutually exclusive destinations)");
         if (state.ReadFromStdin && state.PromptForPassword)
             return Invalid(BarePasswordWithStdinReason);
-        if (!state.ReadFromStdin && state.ArchivePaths.Count == 0)
-            return Invalid("'x' requires at least one archive path");
 
         return new ParsedCliCommand
         {
             Type = CliCommandType.Extract,
-            ArchivePaths = state.ArchivePaths,
+            FilterNames = state.Names,
             OutputDirectory = state.OutputDirectory,
             AssumeYes = state.AssumeYes,
             OverwriteMode = state.OverwriteMode,
@@ -235,7 +278,7 @@ public static class CliArgumentParser
         string token = argument.Text;
         if (!argument.IsSwitch)
         {
-            state.ArchivePaths.Add(token);
+            state.Names.Add(PositionalName(argument));
             return null;
         }
 
@@ -341,16 +384,17 @@ public static class CliArgumentParser
 
     private static ParsedCliCommand ParseTest(CliToken[] rest)
     {
-        var archivePaths = new List<string>();
+        var names = new List<CliFilterName>();
         bool readFromStdin = false;
         bool assumeYes = false;
         string? password = null;
         bool promptForPassword = false;
-        foreach ((string token, bool isSwitch) in rest)
+        foreach (CliToken argument in rest)
         {
+            (string token, bool isSwitch) = argument;
             if (!isSwitch)
             {
-                archivePaths.Add(token);
+                names.Add(PositionalName(argument));
                 continue;
             }
             if (token == "-si")
@@ -371,16 +415,12 @@ public static class CliArgumentParser
             return Invalid(UnsupportedSwitchReason(token));
         }
 
-        if (readFromStdin && archivePaths.Count > 0)
-            return Invalid("'-si' cannot be combined with an explicit archive path");
-        if (!readFromStdin && archivePaths.Count == 0)
-            return Invalid("'t' requires at least one archive path");
         if (readFromStdin && promptForPassword)
             return Invalid(BarePasswordWithStdinReason);
 
         return new ParsedCliCommand
         {
-            Type = CliCommandType.Test, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin, AssumeYes = assumeYes,
+            Type = CliCommandType.Test, FilterNames = names, ReadFromStdin = readFromStdin, AssumeYes = assumeYes,
             Password = password, PromptForPassword = promptForPassword,
         };
     }
@@ -709,16 +749,17 @@ public static class CliArgumentParser
 
     private static ParsedCliCommand ParseList(CliToken[] rest)
     {
-        var archivePaths = new List<string>();
+        var names = new List<CliFilterName>();
         bool readFromStdin = false;
         bool assumeYes = false;
         string? password = null;
         bool promptForPassword = false;
-        foreach ((string token, bool isSwitch) in rest)
+        foreach (CliToken argument in rest)
         {
+            (string token, bool isSwitch) = argument;
             if (!isSwitch)
             {
-                archivePaths.Add(token);
+                names.Add(PositionalName(argument));
                 continue;
             }
             if (token == "-si")
@@ -742,16 +783,12 @@ public static class CliArgumentParser
             return Invalid(UnsupportedSwitchReason(token));
         }
 
-        if (readFromStdin && archivePaths.Count > 0)
-            return Invalid("'-si' cannot be combined with an explicit archive path");
-        if (!readFromStdin && archivePaths.Count == 0)
-            return Invalid("'l' requires at least one archive path");
         if (readFromStdin && promptForPassword)
             return Invalid(BarePasswordWithStdinReason);
 
         return new ParsedCliCommand
         {
-            Type = CliCommandType.List, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin, AssumeYes = assumeYes,
+            Type = CliCommandType.List, FilterNames = names, ReadFromStdin = readFromStdin, AssumeYes = assumeYes,
             Password = password, PromptForPassword = promptForPassword,
         };
     }
@@ -858,11 +895,9 @@ public static class CliArgumentParser
         ("-o", NotSupportedOnThisCommand),
         ("-p", "not supported on this command: -p{pwd} is only valid with 'x' (extract), 't' (test), 'l' (list) or 'a' (create an AES-256 ZIP)"),
         ("-rr", "not supported on this command: -rr[N] (recovery data) is only meaningful for 'a' (archive creation)"),
-        ("-r", "not supported: recurse-subdirectories toggle has no Pakko equivalent (archiving already recurses by default)"),
-        ("-i", "not supported: no wildcard include-pattern filtering exists in Pakko"),
-        ("-x", "not supported: no wildcard exclude-pattern filtering exists in Pakko"),
+        ("-r", "unknown -r value: expected -r, -r- or -r0 (T-F410)"),
         ("-v", "not supported: no multi-part/split-archive logic exists in Pakko"),
-        ("-ssc", "not supported: case-sensitive matching is not implemented"),
+        ("-ssc", "unknown -ssc value: expected -ssc or -ssc- (T-F410)"),
         ("-snz", "not supported on this command: -snz is only valid with 'x' (extract)"),
         ("-sa", "not supported on this command: -sa{s|e} names the archive 'a' creates"),
     ];

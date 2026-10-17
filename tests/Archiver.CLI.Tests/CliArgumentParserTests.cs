@@ -63,11 +63,13 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void Extract_MultipleArchives_ReturnsAllPaths()
+    public void Extract_NameAfterTheArchive_IsAFilter()
     {
+        // T-F410: as in 7-Zip (Chocolatey passes a folder there); several archives are "x *.zip" or -ai.
         ParsedCliCommand result = CliArgumentParser.Parse(["x", "a.zip", "b.zip"]);
 
-        result.ArchivePaths.Should().Equal("a.zip", "b.zip");
+        result.ArchivePaths.Should().Equal("a.zip");
+        result.FilterNames.Should().Equal(new CliFilterName("b.zip", false));
     }
 
     [Fact]
@@ -108,7 +110,8 @@ public sealed class CliArgumentParserTests
         result.Type.Should().Be(CliCommandType.Extract);
         result.AssumeYes.Should().BeTrue();
         result.OutputDirectory.Should().Be("C:\\dest");
-        result.ArchivePaths.Should().Equal("a.zip", "b.zip");
+        result.ArchivePaths.Should().Equal("a.zip");
+        result.FilterNames.Should().Equal(new CliFilterName("b.zip", false));
     }
 
     [Fact]
@@ -132,11 +135,13 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void Test_MultipleArchives_ReturnsAllPaths()
+    public void Test_NameAfterTheArchive_IsRefusedUntilTFiltersExist()
     {
+        // T-F410 wave A: 7-Zip reads b.zip as a filter; Pakko's t cannot filter yet, and says so.
         ParsedCliCommand result = CliArgumentParser.Parse(["t", "a.zip", "b.zip"]);
 
-        result.ArchivePaths.Should().Equal("a.zip", "b.zip");
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("'t'");
     }
 
     [Fact]
@@ -307,11 +312,13 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void List_MultipleArchives_ReturnsAllPaths()
+    public void List_NameAfterTheArchive_IsAFilter()
     {
+        // T-F410: as in 7-Zip; several archives are "l *.zip" or -ai.
         ParsedCliCommand result = CliArgumentParser.Parse(["l", "a.zip", "b.zip"]);
 
-        result.ArchivePaths.Should().Equal("a.zip", "b.zip");
+        result.ArchivePaths.Should().Equal("a.zip");
+        result.FilterNames.Should().Equal(new CliFilterName("b.zip", false));
     }
 
     [Fact]
@@ -470,11 +477,11 @@ public sealed class CliArgumentParserTests
     // --- Invalid: case 3 (unsupported switch on a supported command) ---
 
     [Fact]
-    public void Extract_RecurseSwitch_ReturnsInvalidNamingUnsupportedSwitch()
+    public void Extract_VolumeSwitch_ReturnsInvalidNamingUnsupportedSwitch()
     {
-        // Case 3 (a real 7z switch, deliberately unsupported on any command) — kept as a
-        // still-genuinely-unsupported switch after T-F191 gave '-p' a real meaning on 'x'/'t'.
-        ParsedCliCommand result = CliArgumentParser.Parse(["x", "-r0", "archive.zip"]);
+        // Case 3 (a real 7z switch, deliberately unsupported on any command); -r0, used here
+        // before, filters names since T-F410.
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", "-v10m", "archive.zip"]);
 
         result.Type.Should().Be(CliCommandType.Invalid);
         result.ErrorMessage.Should().Contain("not supported");
@@ -756,12 +763,14 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void Extract_SiSwitchWithExplicitArchivePath_ReturnsInvalid()
+    public void Extract_SiWithAName_TheNameFiltersWhatStdinHolds()
     {
+        // T-F410: as in 7-Zip, -si leaves no archive name, so every name is a filter.
         ParsedCliCommand result = CliArgumentParser.Parse(["x", "-si", "archive.zip"]);
 
-        result.Type.Should().Be(CliCommandType.Invalid);
-        result.ErrorMessage.Should().Contain("-si");
+        result.Type.Should().Be(CliCommandType.Extract, result.ErrorMessage);
+        result.ArchivePaths.Should().BeEmpty();
+        result.FilterNames.Should().Equal(new CliFilterName("archive.zip", false));
     }
 
     [Fact]
@@ -1114,6 +1123,6 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void RecurseSwitch_StillHasItsOwnMessage() =>
-        CliArgumentParser.Parse(["x", "-r", "archive.zip"]).ErrorMessage.Should().Contain("recurse");
+    public void RecurseSwitch_OnArchiveCreation_SaysWhereFiltersWork() =>
+        CliArgumentParser.Parse(["a", "-r", "out.zip", "file.txt"]).ErrorMessage.Should().Contain("name filters");
 }

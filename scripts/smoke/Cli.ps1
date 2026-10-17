@@ -412,3 +412,75 @@ Add-SmokeStep 'CLI-037' {
     $refused = Invoke-Pakko @('a', '-saa', (Join-Path $folder 'saa'), $tree)
     Assert-Smoke ($refused.ExitCode -eq 7) "a -saa: exit $($refused.ExitCode), expected 7"
 }
+
+Add-SmokeStep 'CLI-038' {
+    $folder = Get-StepFolder 'cli038'
+    $source = Join-Path $folder 'src'
+    foreach ($name in @('a.txt', 'b.nsis', 'dir\c.txt', 'dir\sub\d.nsis', 'dir\sub\e.txt', 'Other\f.txt', 'Other\dir\x.nsis')) {
+        $path = Join-Path $source $name
+        $null = New-Item -ItemType Directory -Force -Path (Split-Path $path)
+        Set-Content -LiteralPath $path -Value $name -NoNewline
+    }
+    # An empty folder is the one folder 'a' writes an entry for (T-F66): -xtd and -xtf see it.
+    $null = New-Item -ItemType Directory -Path (Join-Path $source 'empty')
+    $zip = Join-Path $folder 'made.zip'
+    $made = Invoke-Pakko (@('a', $zip) + @('a.txt', 'b.nsis', 'dir', 'Other', 'empty' | ForEach-Object { Join-Path $source $_ }))
+    Assert-Smoke ($made.ExitCode -eq 0) "making the ZIP: exit $($made.ExitCode) $($made.Text)"
+
+    function Get-Relative([string]$Root) {
+        @(Get-ChildItem -LiteralPath $Root -Recurse -File | ForEach-Object { [System.IO.Path]::GetRelativePath($Root, $_.FullName) })
+    }
+
+    $scoop = Join-Path $folder 'scoop'
+    $run = Invoke-Pakko @('x', $zip, "-o$scoop", '-xr!*.nsis', '-y')
+    $files = @(Get-Relative $scoop)
+    Assert-Smoke ($run.ExitCode -eq 0 -and $files -contains 'dir\c.txt' -and -not ($files -like '*.nsis')) "Scoop's -xr!*.nsis: exit $($run.ExitCode), files: $files"
+    $scoopIn = Join-Path $folder 'scoop-in'
+    $run = Invoke-Pakko @('x', $zip, "-o$scoopIn", '-ir!dir\*', '-y')
+    $files = @(Get-Relative $scoopIn)
+    Assert-Smoke ($run.ExitCode -eq 0 -and $files.Count -eq 3 -and -not ($files -notlike 'dir\*')) "Scoop's -ir!dir\*: exit $($run.ExitCode), files: $files"
+
+    $choco = Join-Path $folder 'choco'
+    $run = Invoke-Pakko @('x', '-aoa', '-bd', '-bb1', "-o$choco", '-y', $zip, 'dir')
+    $files = @(Get-Relative $choco)
+    Assert-Smoke ($run.ExitCode -eq 0 -and $files.Count -eq 3 -and -not ($files -notlike 'dir\*')) "Chocolatey's x with a folder: exit $($run.ExitCode), files: $files"
+    foreach ($name in @($run.Output -split '\r?\n' | Where-Object { $_.StartsWith('- ') } | ForEach-Object { $_.Substring(2) })) {
+        Assert-Smoke (Test-Path -LiteralPath (Join-Path $choco $name)) "Chocolatey's x names '$name', which is not in the folder"
+    }
+
+    $list = Join-Path $folder 'names.txt'
+    Set-Content -LiteralPath $list -Value "`"a.txt`"`r`n" -NoNewline -Encoding utf8
+    foreach ($form in @("@$list", "-i@$list")) {
+        $out = Join-Path $folder ('list' + $form.Length)
+        $run = Invoke-Pakko @('x', $zip, "-o$out", $form)
+        $files = @(Get-Relative $out)
+        Assert-Smoke ($run.ExitCode -eq 0 -and $files.Count -eq 1 -and $files[0] -eq 'a.txt') "x $form`: exit $($run.ExitCode), files: $files"
+    }
+
+    $none = Join-Path $folder 'none'
+    $run = Invoke-Pakko @('x', $zip, "-o$none", 'nothing.zzz')
+    Assert-Smoke ($run.ExitCode -eq 0 -and $run.Output.Contains('No files to process') -and -not (Test-Path -LiteralPath $none)) "x nothing.zzz: exit $($run.ExitCode), $($run.Text)"
+
+    $arcs = Join-Path $folder 'arcs'
+    $null = New-Item -ItemType Directory -Path $arcs
+    Copy-Item -LiteralPath $zip -Destination (Join-Path $arcs 'one.zip')
+    Copy-Item -LiteralPath $zip -Destination (Join-Path $arcs 'two.zip')
+    $run = Invoke-Pakko @('l', '-ba', (Join-Path $arcs '*.zip'), 'a.txt')
+    Assert-Smoke ($run.ExitCode -eq 0 -and @($run.Output -split '\r?\n' | Where-Object { $_ }).Count -eq 2) "l <folder>\*.zip: exit $($run.ExitCode), $($run.Text)"
+    $run = Invoke-Pakko @('l', '-ba', '-an', "-ai!$arcs\*.zip", "-ax!$arcs\two.zip", 'a.txt')
+    Assert-Smoke ($run.ExitCode -eq 0 -and @($run.Output -split '\r?\n' | Where-Object { $_ }).Count -eq 1) "l -an -ai! -ax!: exit $($run.ExitCode), $($run.Text)"
+
+    $rows = { param($a) @((Invoke-Pakko (@('l', '-ba') + $a + @($zip))).Output -split '\r?\n' | Where-Object { $_ }) }
+    $recursive = & $rows @('-r', '-i!*.txt')
+    Assert-Smoke ($recursive.Count -eq 4) "l -r -i!*.txt: $($recursive.Count) rows, expected 4"
+    Assert-Smoke ((& $rows @('-spd', '-i!*.txt')).Count -eq 0) "l -spd -i!*.txt lists something"
+    Assert-Smoke ((& $rows @('-ssc', '-i!A.TXT')).Count -eq 0) "l -ssc -i!A.TXT lists something"
+    $utf16 = Join-Path $folder 'utf16.txt'
+    [System.IO.File]::WriteAllText($utf16, "b.nsis`r`n", [System.Text.Encoding]::Unicode)
+    Assert-Smoke ((& $rows @('-scsUTF-16LE', "-i@$utf16")).Count -eq 1) "l -scsUTF-16LE -i@list: not one row"
+    Assert-Smoke (-not ((& $rows @('-xtd')) -match '\tD\t|/$')) "l -xtd lists a folder"
+    Assert-Smoke ((& $rows @('-xtf')).Count -ge 1) "l -xtf lists no folder"
+
+    $refused = Invoke-Pakko @('t', $zip, '-x!*.nsis')
+    Assert-Smoke ($refused.ExitCode -eq 7) "t with a filter: exit $($refused.ExitCode), expected 7"
+}

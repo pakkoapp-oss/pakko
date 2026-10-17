@@ -118,7 +118,7 @@ public sealed class CliSevenZipCallerSubprocessTests
     [Fact]
     public void List_NoHeaders_PrintsEntryRowsOnly()
     {
-        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("l", "-ba", CliFixtureFiles.ValidZip, CliFixtureFiles.ValidZip);
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("l", "-ba", CliFixtureFiles.ValidZip, $"-ai!{CliFixtureFiles.ValidZip}");
 
         exitCode.Should().Be(0, stdErr);
         string[] lines = stdOut.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
