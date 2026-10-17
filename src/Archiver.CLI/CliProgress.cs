@@ -23,6 +23,9 @@ public sealed class CliProgress(TextWriter writer) : IProgress<ProgressReport>, 
     {
         if (output.DisablePercents)
             return null;
+        // No -bse or -bsp moved anything: Console.Error is still stderr, as before T-F408.
+        if (output.ErrStream is null && output.PercentStream is null or CliOutputTarget.StdErr)
+            return Console.IsErrorRedirected ? null : new CliProgress(Console.Error);
         Stream? stream = (output.PercentStream ?? CliOutputTarget.StdErr) switch
         {
             CliOutputTarget.StdErr when !Console.IsErrorRedirected => Console.OpenStandardError(),
