@@ -1383,6 +1383,22 @@ public sealed class TarSandboxedService : ITarService
         return entries;
     }
 
+    // Why tar.exe cannot write this archive here, or null.
+    private async Task<CoreText?> WriterRefusalAsync(ArchiveOptions options, CancellationToken cancellationToken)
+    {
+        // T-F403: a codec tar.exe lacks is refused before it starts. Without a built-in library,
+        // tar.exe runs a program of that name from its working folder or PATH, outside any sandbox
+        // (measured for zstd and bzip2 on zlib-only tar.exe builds).
+        TarCapabilities capabilities = await KnownCapabilitiesAsync().ConfigureAwait(false);
+        if (ArchiveFormatPolicy.GetTarCreationRefusalReason(options.Format, options.SevenZipMethod, capabilities) is { } refusal)
+            return refusal;
+
+        // T-F342: refused before anything is written; a plain "tar -cf name.7z" would write ustar.
+        if (options.Format == ArchiveContainerFormat.SevenZip && !await CanCreateSevenZipAsync(cancellationToken).ConfigureAwait(false))
+            return CoreMessages.Text(MessageCode.SevenZipWriterUnavailable);
+        return null;
+    }
+
     /// <inheritdoc/>
     // T-F105: deliberately unsandboxed — SourcePaths are trusted local files the user selected,
     // not an untrusted archive being parsed, so T-F52's threat model (a hostile archive driving
@@ -1431,20 +1447,9 @@ public sealed class TarSandboxedService : ITarService
             return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 
-        // T-F403: a codec tar.exe lacks is refused before it starts. Without a built-in library,
-        // tar.exe runs a program of that name from its working folder or PATH, outside any sandbox
-        // (measured for zstd and bzip2 on zlib-only tar.exe builds).
-        TarCapabilities capabilities = await KnownCapabilitiesAsync().ConfigureAwait(false);
-        if (ArchiveFormatPolicy.GetTarCreationRefusalReason(options.Format, options.SevenZipMethod, capabilities) is { } refusal)
+        if (await WriterRefusalAsync(options, cancellationToken).ConfigureAwait(false) is { } refusal)
         {
             errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), refusal));
-            return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
-        }
-
-        // T-F342: refused before anything is written; a plain "tar -cf name.7z" would write ustar.
-        if (options.Format == ArchiveContainerFormat.SevenZip && !await CanCreateSevenZipAsync(cancellationToken).ConfigureAwait(false))
-        {
-            errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.SevenZipWriterUnavailable));
             return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 
