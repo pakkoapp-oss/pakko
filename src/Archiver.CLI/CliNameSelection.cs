@@ -1,3 +1,4 @@
+using System.IO.Enumeration;
 using System.Text;
 
 namespace Archiver.CLI;
@@ -84,7 +85,7 @@ public static class CliNameSelection
                     found.Add(mask.Path);
                 continue;
             }
-            foreach (string file in Candidates(mask))
+            foreach (string file in (IEnumerable<string>?)Candidates(mask) ?? [])
             {
                 if (filter.Includes(file, isFolder: false))
                     found.Add(file);
@@ -99,8 +100,9 @@ public static class CliNameSelection
         mask.Recursion != CliRecursion.None || (mask.WildcardMatching && CliNameFilter.ContainsWildcard(mask.Path));
 
     // The files under the mask's literal leading folders; deeper only when it recurses or a
-    // folder part holds a wildcard. Links are not followed, so a junction loop ends the walk.
-    private static IEnumerable<string> Candidates(CliNameMask mask)
+    // folder part holds a wildcard. Linked folders are not followed, so a junction loop ends the walk;
+    // null when the folder does not exist.
+    private static FileSystemEnumerable<string>? Candidates(CliNameMask mask)
     {
         string[] parts = mask.Path.Split('\\', '/');
         int literal = 0;
@@ -111,9 +113,17 @@ public static class CliNameSelection
         {
             RecurseSubdirectories = mask.Recursion != CliRecursion.None || literal < parts.Length - 1,
             IgnoreInaccessible = true,
-            AttributesToSkip = FileAttributes.ReparsePoint,
+            AttributesToSkip = 0,
         };
-        return Directory.Exists(root) ? Directory.EnumerateFiles(root, "*", options) : [];
+        if (!Directory.Exists(root))
+            return null;
+        // A linked file stays (a OneDrive placeholder carries the reparse attribute too); only a
+        // linked folder is not walked into.
+        return new FileSystemEnumerable<string>(root, static (ref FileSystemEntry entry) => entry.ToFullPath(), options)
+        {
+            ShouldIncludePredicate = static (ref FileSystemEntry entry) => !entry.IsDirectory,
+            ShouldRecursePredicate = static (ref FileSystemEntry entry) => (entry.Attributes & FileAttributes.ReparsePoint) == 0,
+        };
     }
 
     private static string ListFileError(string path) =>

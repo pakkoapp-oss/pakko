@@ -6,8 +6,10 @@ using FluentAssertions;
 namespace Archiver.Core.IntegrationTests;
 
 // T-F410: ExtractOptions.EntryFilter through the real tar.exe, as Archiver.Core.Tests'
-// EntryFilterTests does for ZIP. tar.exe gets the names that passed in a list file ("-T"), never
-// on its command line, and without recursion ("-n"), so a folder that passes brings only itself.
+// EntryFilterTests does for ZIP. tar.exe extracts what it would without the filter, and the move
+// out of the quarantine leaves out what did not pass (a list of thousands of names costs
+// libarchive N^2 matches). A selection (SelectedEntryPaths) goes to tar.exe as a list file ("-T"),
+// never on its command line, and without recursion ("-n").
 [Collection("TarSandbox")]
 public sealed class TarSandboxedServiceEntryFilterTests : IDisposable
 {
@@ -87,9 +89,8 @@ public sealed class TarSandboxedServiceEntryFilterTests : IDisposable
     }
 
     [Integration]
-    public async Task ExtractAsync_ThousandsOfNamesPass_NoCommandLineLimit()
+    public async Task ExtractAsync_ThousandsOfNamesPass_AllOfThemArrive()
     {
-        // 5,000 names of ~40 characters are far past the 32,767-character command line.
         List<TarBuilder.Entry> entries = [.. Enumerable.Range(0, 5000).Select(i => File($"folder-with-a-long-name/file-{i:D5}.txt"))];
         entries.Add(File("folder-with-a-long-name/skip.nsis"));
         string dest = NewDestination();
@@ -131,6 +132,64 @@ public sealed class TarSandboxedServiceEntryFilterTests : IDisposable
         ArchiveResult result = await _sut.ExtractAsync(Options(Tar([File("a.txt")]), NewDestination(), (_, _) => true));
 
         result.FullyProcessedSources.Should().BeEmpty();
+    }
+
+    [Integration]
+    public async Task ExtractAsync_ThousandsOfNamesSelected_NoCommandLineLimit()
+    {
+        // 5,000 names of ~40 characters are far past the 32,767-character command line.
+        List<TarBuilder.Entry> entries = [.. Enumerable.Range(0, 5000).Select(i => File($"folder-with-a-long-name/file-{i:D5}.txt"))];
+        entries.Add(File("folder-with-a-long-name/skip.nsis"));
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [Tar(entries)], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            SelectedEntryPaths = [.. entries.Where(e => !e.Name.EndsWith(".nsis", StringComparison.Ordinal)).Select(e => e.Name)],
+        });
+
+        result.Errors.Should().BeEmpty();
+        Directory.EnumerateFiles(Path.Combine(dest, "folder-with-a-long-name")).Should().HaveCount(5000);
+    }
+
+    [Integration]
+    public async Task ExtractAsync_SelectedNamesWithPatternCharacters_TakeOnlyThoseNames()
+    {
+        // T-F284 through the list file: escaped, and a line starting with '-' ("-C" too) is a name.
+        string tar = Tar([File("a[1].txt"), File("a1.txt"), File("-dash.txt"), File("-C"), File("x.txt")]);
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [tar], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            SelectedEntryPaths = ["a[1].txt", "-dash.txt", "-C"],
+        });
+
+        result.Errors.Should().BeEmpty();
+        Relative(dest).Should().BeEquivalentTo("a[1].txt", "-dash.txt", "-C");
+    }
+
+    [Integration]
+    public async Task ExtractAsync_NonAsciiNameInAUtf8Header_BySelectionAndByFilter()
+    {
+        // A UTF-8 header makes the scope read names with hdrcharset=UTF-8; the list file must name
+        // the member so that tar.exe finds it (measured: ANSI bytes, as on the command line).
+        string name = "\u0444\u0430\u0439\u043B.txt";
+        TarBuilder.Entry cyrillic = new() { Name = name, NameBytes = Encoding.UTF8.GetBytes(name), Content = [1] };
+        string tar = Tar([cyrillic, File("other.txt")]);
+        string bySelection = NewDestination();
+        string byFilter = NewDestination();
+
+        ArchiveResult selected = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [tar], DestinationFolder = bySelection, Mode = ExtractMode.SingleFolder, SelectedEntryPaths = [name],
+        });
+        ArchiveResult filtered = await _sut.ExtractAsync(Options(tar, byFilter, (path, _) => path == name));
+
+        selected.Errors.Should().BeEmpty();
+        filtered.Errors.Should().BeEmpty();
+        Relative(bySelection).Should().Equal(name);
+        Relative(byFilter).Should().Equal(name);
     }
 
     private static ExtractOptions Options(string tar, string dest, Func<string, bool, bool> filter) => new()

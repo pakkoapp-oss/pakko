@@ -83,6 +83,25 @@ public sealed class CliNameFilterSubprocessTests
     }
 
     [Fact]
+    public void ExtractToStdout_NothingMatches_IsNoErrorAndWritesNothing()
+    {
+        // 7za: exit 0, no data (its -so check counts only an extraction that happened).
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("x", "-so", Zip(), "nothing.zzz");
+
+        exitCode.Should().Be(0, stdErr);
+        stdOut.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ExtractToStdout_FilterLeavesOneFile_WritesIt()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("x", "-so", Zip(), "dir/c.txt");
+
+        exitCode.Should().Be(0, stdErr);
+        stdOut.Should().Be("dir/c.txt");
+    }
+
+    [Fact]
     public void List_WithAFolder_ListsOnlyWhatIsUnderIt()
     {
         (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("l", "-ba", Zip(), "dir/sub");
