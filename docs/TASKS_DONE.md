@@ -12985,3 +12985,23 @@ PowerShell does natively.
 - Decisions: `docs/DECISIONS.md`, "T-F399, T-F400 — the New archive card and the footer".
 - **Reported by:** the user, 2026-10-17 ("a visual hint that there is more below; the
   scrollbar appears only on hover and not everyone will see it").
+
+### T-F343 — `pakko` in place of 7-Zip's console program: measure how compatible it is (v2.0, user-requested)
+
+- [x] **Status:** done 2026-10-17 (the measurement; the gaps are T-F406 to T-F414). Requested by the user 2026-10-06. One of the project's goals is a console
+  replacement for 7-Zip that is as close to the original as it can be in commands and abilities.
+  This task measures the distance instead of guessing it: put `pakko.exe` where a real caller
+  expects `7z.exe` / `NanaZipC.exe` (NanaZip's own front ends and scripts first, then common
+  third-party callers), run them, and record every command, switch, exit code and output line
+  that differs.
+- **Outcome:** a compatibility table in `docs/CLI.md` (works / differs / missing, per command and
+  switch), and a follow-up task for each gap worth closing. `docs/CLI.md` today says "familiar but
+  distinct, not a drop-in" on purpose; this task is where that position is re-decided with
+  numbers. T-F342 (7z creation) removes the largest known gap first.
+- **Method to settle in Plan mode:** NanaZip's GUI loads its backend in-process (the 7-Zip DLL
+  interface), so substituting an exe may only be possible for callers that spawn the console
+  program — read NanaZip's real source before choosing the callers. Pakko's rules stay: no
+  third-party compression code, extraction of tar-family/7z/RAR only through the sandboxed
+  tar.exe.
+- **Reported by:** the user, 2026-10-06.
+- **Result:** `docs/CLI.md`, "7-Zip compatibility matrix" (supported / can add / declined / can't, per command, switch, caller and error case); `scripts/Measure-SevenZipCompat.ps1`; `docs/DECISIONS.md`, "T-F343".
