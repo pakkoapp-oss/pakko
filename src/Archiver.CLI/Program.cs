@@ -54,12 +54,17 @@ async Task<int> RunCommandAsync()
     {
         await TarCapabilitySnapshot.RecordIfStaleAsync(services.Policy, services.GetTarCapabilitiesAsync).ConfigureAwait(false);
     }
-    if (command.Output.ShowTime)
-    {
-        foreach (string line in CliTimeStats.ForCurrentProcess())
-            await Console.Out.WriteLineAsync(line).ConfigureAwait(false);
-    }
+    await PrintTimeStatsIfAskedAsync(command).ConfigureAwait(false);
     return exitCode;
+}
+
+// T-F408: -bt, after the command, as 7-Zip's PrintStat.
+static async Task PrintTimeStatsIfAskedAsync(ParsedCliCommand command)
+{
+    if (!command.Output.ShowTime)
+        return;
+    foreach (string line in CliTimeStats.ForCurrentProcess())
+        await Console.Out.WriteLineAsync(line).ConfigureAwait(false);
 }
 
 static int RunHelp()
@@ -123,7 +128,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
     // T-F160: cancelled by the conflict prompt's (Q)uit / end of input, or by Ctrl+C — either way a
     // clean Core cancellation (temp output removed) and exit code 255, 7-Zip's "user stopped".
     using var cancellation = CliCancellation.ListenToConsole();
-    using CliProgress? progress = CliProgress.For(command.Output, command.WriteToStdout);
+    using var progress = CliProgress.For(command.Output, command.WriteToStdout);
     try
     {
         IExtractionRouter router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
@@ -364,7 +369,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
 {
     using var cancellation = CliCancellation.ListenToConsole();
     // T-F295 item 1: declared outside the try, so a cancel clears the percentage first.
-    using CliProgress? progress = CliProgress.For(command.Output, command.WriteToStdout);
+    using var progress = CliProgress.For(command.Output, command.WriteToStdout);
     try
     {
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
@@ -404,7 +409,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
 static async Task<int> RunRepairAsync(ParsedCliCommand command, PakkoServices services)
 {
     using var cancellation = CliCancellation.ListenToConsole();
-    using CliProgress? progress = CliProgress.For(command.Output, command.WriteToStdout);
+    using var progress = CliProgress.For(command.Output, command.WriteToStdout);
     try
     {
         var report = new CliReportContext();
@@ -488,7 +493,7 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
     using var cancellation = CliCancellation.ListenToConsole();
     // T-F295 item 1: declared outside the try, so a cancel clears the percentage first. The
     // encryption password is asked before any work starts, so no percentage is on screen then.
-    using CliProgress? progress = CliProgress.For(command.Output, command.WriteToStdout);
+    using var progress = CliProgress.For(command.Output, command.WriteToStdout);
     try
     {
         IArchiveCreationRouter router = services.CreationRouter;

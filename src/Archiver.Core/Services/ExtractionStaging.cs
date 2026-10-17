@@ -92,13 +92,7 @@ internal sealed class ExtractionStaging : IDisposable
                 ApplyFolderTimes(newFolderTimes);
                 // Named only once the move succeeded: a failed one goes on to the merge below, which names them.
                 if (committed is not null && folders is not null && files is not null)
-                {
-                    committed(FolderName(actualDest));
-                    foreach (string folder in folders)
-                        committed(FolderName(Destination(actualDest, folder)));
-                    foreach (string file in files)
-                        committed(Destination(actualDest, file));
-                }
+                    NameRenamedTree(actualDest, folders, files, committed);
                 return [];
             }
             catch (IOException)
@@ -116,8 +110,28 @@ internal sealed class ExtractionStaging : IDisposable
             committed?.Invoke(FolderName(finalFolder));
         }
 
+        List<string> lockedRelativePaths = MergeFiles(actualDest, files ?? StagedFiles(), committed);
+
+        // A file left behind above failed to move (locked); Dispose removes it with the rest of
+        // the staging folder — it cannot reach its destination, and must not be left behind.
+        ApplyFolderTimes(newFolderTimes);
+        return lockedRelativePaths;
+    }
+
+    private void NameRenamedTree(string actualDest, List<string> folders, List<string> files, Action<string> committed)
+    {
+        committed(FolderName(actualDest));
+        foreach (string folder in folders)
+            committed(FolderName(Destination(actualDest, folder)));
+        foreach (string file in files)
+            committed(Destination(actualDest, file));
+    }
+
+    // Each file on its own: a locked target fails only itself and is returned, not named.
+    private List<string> MergeFiles(string actualDest, List<string> files, Action<string>? committed)
+    {
         var lockedRelativePaths = new List<string>();
-        foreach (string file in files ?? StagedFiles())
+        foreach (string file in files)
         {
             string relative = System.IO.Path.GetRelativePath(Path, file);
             string finalFile = System.IO.Path.Combine(actualDest, relative);
@@ -133,10 +147,6 @@ internal sealed class ExtractionStaging : IDisposable
             }
             committed?.Invoke(finalFile);
         }
-
-        // A file left behind above failed to move (locked); Dispose removes it with the rest of
-        // the staging folder — it cannot reach its destination, and must not be left behind.
-        ApplyFolderTimes(newFolderTimes);
         return lockedRelativePaths;
     }
 

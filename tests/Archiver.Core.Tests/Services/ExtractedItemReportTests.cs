@@ -81,7 +81,7 @@ public sealed class ExtractedItemReportTests : IDisposable
 
     private ExtractionStaging StagingWithSubFolder()
     {
-        ExtractionStaging staging = ExtractionStaging.Create(_temp.Path);
+        var staging = ExtractionStaging.Create(_temp.Path);
         Directory.CreateDirectory(Path.Combine(staging.Path, "Sub"));
         File.WriteAllText(Path.Combine(staging.Path, "loose1.txt"), "loose1");
         File.WriteAllText(Path.Combine(staging.Path, "Sub", "nested1.txt"), "nested1");
