@@ -47,6 +47,8 @@ internal sealed partial class TarSandboxScope : IDisposable
     private const string OutputFolderName = "out";
     // T-F171: the second, first-copy pass extracts beside "out", never into it.
     private const string FirstCopyFolderName = "first";
+    // T-F410: the names an extraction is limited to, read by tar.exe ("-T"), beside "out".
+    private const string MemberListFolderName = "list";
 
     private const int ErrorSharingViolation = unchecked((int)0x80070020);
     private const uint GenericRead = 0x80000000;
@@ -222,8 +224,10 @@ internal sealed partial class TarSandboxScope : IDisposable
             throw new InvalidOperationException("This scope was created without an output folder.");
         if (_utf8Headers is null)
             await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
-        // T-F283: "--" ends tar's options, so an entry name starting with "-" is a member, not an option.
-        string[] memberArguments = members is { Count: > 0 } ? ["--", .. members.Select(EscapeMemberPattern)] : [];
+        // T-F410: the names go in a file. Thousands of them would overflow the command line, and
+        // "-T -" cannot carry them: stdin is the archive. "-n": a listed folder brings only itself,
+        // the list names everything that is to come (ExpandSelection, ExtractOptions.EntryFilter).
+        string[] memberArguments = members is { Count: > 0 } ? ["-n", "-T", WriteMemberList(members)] : [];
         return await RunAsync("-x", ["-C", OutputFolderName, .. memberArguments], cancellationToken).ConfigureAwait(false);
     }
 
@@ -270,6 +274,28 @@ internal sealed partial class TarSandboxScope : IDisposable
         (int exitCode, _, string stdErr) = await RunAsync(
             "-x", ["-q", "-C", FirstCopyFolderName, "--", .. members.Select(EscapeMemberPattern)], cancellationToken).ConfigureAwait(false);
         return (firstDir, exitCode, stdErr);
+    }
+
+    // The list in the quarantine, readable by the AppContainer, in the code page tar.exe reads
+    // names in (T-F283's EncodeLines; measured 2026-10-17: UTF-8 or OEM bytes are "Not found in
+    // archive"). A line starting with '-' is a name there, "-C" included (measured). Returns the
+    // path relative to the quarantine root, tar.exe's working directory.
+    private string WriteMemberList(IReadOnlyList<string> members)
+    {
+        string folder = Path.Combine(QuarantineRoot, MemberListFolderName);
+        Directory.CreateDirectory(folder);
+        try
+        {
+            QuarantineAcl.GrantReadExecute(folder, _sid);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
+        }
+        string relativePath = Path.Combine(MemberListFolderName, "members.txt");
+        File.WriteAllBytes(Path.Combine(QuarantineRoot, relativePath),
+            TarCommandLineEncoding.EncodeLines(members.Select(EscapeMemberPattern)));
+        return relativePath;
     }
 
     /// <summary>

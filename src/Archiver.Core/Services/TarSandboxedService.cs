@@ -273,7 +273,8 @@ public sealed class TarSandboxedService : ITarService
             sources.Add(SourceOutcomeRules.Classify(options.ArchivePaths[i],
                 produced: createdFiles.Count > createdBefore,
                 clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore
-                    && conflictResolver.UserSkipCount == userSkipsBefore && options.SelectedEntryPaths is null));
+                    && conflictResolver.UserSkipCount == userSkipsBefore && options.SelectedEntryPaths is null
+                    && options.EntryFilter is null));
         }
 
         var result = new ArchiveResult
@@ -363,7 +364,7 @@ public sealed class TarSandboxedService : ITarService
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new TarExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
-                options.EliminateDuplicateRootFolder, options.OnItemExtracted);
+                options.EliminateDuplicateRootFolder, options.OnItemExtracted, options.EntryFilter);
             (string? actualDest, bool anyExtracted) = await ExtractSingleArchiveAsync(
                 archivePath, destDir, alreadyIsolated, options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken)
                 .ConfigureAwait(false);
@@ -455,7 +456,7 @@ public sealed class TarSandboxedService : ITarService
         // same way ZIP derives them from ZipArchiveEntry.FullName, with no second tar.exe call.
         // A selected subset (T-F05/T-F98 drill-down) has no single meaningful "root" to collapse,
         // same reasoning as ZIP's isSelectedSubset — always extract straight into destDir.
-        bool isSelectedSubset = selectedEntryPaths is { Count: > 0 };
+        bool isSelectedSubset = selectedEntryPaths is { Count: > 0 } || context.EntryFilter is not null;
         // T-F196: `tar -C dir .` (the most common way to make a tar) prefixes every member with
         // "./". tar.exe itself resolves that away on disk (out\a.txt, not out\.\a.txt), so the
         // root-shape decision must see the same names — otherwise "." reads as one shared root
@@ -471,7 +472,16 @@ public sealed class TarSandboxedService : ITarService
         // declaredUncompressedSize (deliberately whole-archive, for the T-F94 bomb check below).
         // Using the whole-archive total for a subset extraction would stall the poll well short
         // of 94% and claim bytes in the terminal report that were never written.
-        List<string>? expandedSelection = isSelectedSubset ? ExpandSelection(allNames, selectedEntryPaths!) : null;
+        List<string>? expandedSelection = selectedEntryPaths is { Count: > 0 } ? ExpandSelection(allNames, selectedEntryPaths) : null;
+        // T-F410: each name on its own, as the listing shows it (no "./"), a folder without its
+        // content. None passes: 7-Zip's "No files to process", which creates no folder either.
+        if (context.EntryFilter is { } entryFilter)
+        {
+            expandedSelection = [.. (expandedSelection ?? (IEnumerable<string>)allNames).Where(name =>
+                StripLeadingDotSlash(name) is { Length: > 0 } shown && entryFilter(shown, name.EndsWith('/')))];
+            if (expandedSelection.Count == 0)
+                return (destDir, false);
+        }
         long progressTotalBytes = expandedSelection != null
             ? expandedSelection.Sum(n => sizeByName.GetValueOrDefault(n, 0L))
             : declaredUncompressedSize;
@@ -824,7 +834,9 @@ public sealed class TarSandboxedService : ITarService
         // T-F205: ExtractOptions.EliminateDuplicateRootFolder.
         bool EliminateDuplicateRootFolder,
         // T-F408: ExtractOptions.OnItemExtracted.
-        Action<string>? OnItemExtracted);
+        Action<string>? OnItemExtracted,
+        // T-F410: ExtractOptions.EntryFilter.
+        Func<string, bool, bool>? EntryFilter);
 
     // One file of ExtractSingleArchiveAsync's move-phase loop (quarantine "out\" -> staging, then
     // committed) — conflict-resolve, move, propagate MOTW. Returns whether the file was

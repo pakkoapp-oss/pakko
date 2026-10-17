@@ -726,7 +726,7 @@ public sealed class ZipArchiveService : IArchiveService
             sources.Add(SourceOutcomeRules.Classify(archivePath,
                 produced: createdFiles.Count > createdBefore,
                 clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore
-                    && conflictSkipped.Count == conflictSkippedBefore && options.SelectedEntryPaths is null));
+                    && conflictSkipped.Count == conflictSkippedBefore && options.SelectedEntryPaths is null && options.EntryFilter is null));
 
             if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
         }
@@ -915,7 +915,7 @@ public sealed class ZipArchiveService : IArchiveService
                 : options.DestinationFolder;
             var context = new ZipExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
-                sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder, sink.Warnings, options.OnItemExtracted);
+                sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder, sink.Warnings, options.OnItemExtracted, options.EntryFilter);
             (string? actualDest, bool anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
@@ -1360,15 +1360,24 @@ public sealed class ZipArchiveService : IArchiveService
         // rows, not thousands, even against a 65,000-entry archive. The compression-bomb check
         // below deliberately still evaluates allFileEntries (the whole archive), not this subset —
         // see DECISIONS.md's T-F05 entry for why (conservative: may over-warn, never under-warns).
-        bool isSelectedSubset = selectedEntryPaths is { Count: > 0 };
+        bool isSelectedSubset = selectedEntryPaths is { Count: > 0 } || context.EntryFilter is not null;
         List<NamedZipEntry> entries = allEntries;
-        if (isSelectedSubset)
+        if (selectedEntryPaths is { Count: > 0 })
         {
             var selectedSet = new HashSet<string>(selectedEntryPaths!, StringComparer.Ordinal);
             entries = allEntries
                 .Where(e => selectedSet.Contains(e.FullName)
                          || selectedSet.Any(s => e.FullName.StartsWith(s + "/", StringComparison.Ordinal)))
                 .ToList();
+        }
+
+        // T-F410: each entry on its own, a folder does not bring its content. None passes: 7-Zip's
+        // "No files to process", which creates no folder either.
+        if (context.EntryFilter is { } entryFilter)
+        {
+            entries = [.. entries.Where(e => entryFilter(e.FullName, e.FullName.EndsWith('/')))];
+            if (entries.Count == 0)
+                return (destDir, false);
         }
 
         if (entries.Count == 0)
@@ -1527,7 +1536,9 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F280: null where the caller has nowhere to show a warning.
         List<ArchiveWarning>? Warnings = null,
         // T-F408: ExtractOptions.OnItemExtracted.
-        Action<string>? OnItemExtracted = null);
+        Action<string>? OnItemExtracted = null,
+        // T-F410: ExtractOptions.EntryFilter.
+        Func<string, bool, bool>? EntryFilter = null);
 
     // The per-call setup ExtractWithSmartFolderingAsync computes once and every entry of its loop
     // reads unchanged — cut into its own type alongside ZipExtractionContext so
