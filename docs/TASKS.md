@@ -1641,6 +1641,13 @@ re-measured with T-F346's script before and after.
   selection); the matching rules are 7-Zip's `Wildcard.cpp`, read before designing. Plan mode and
   the advisor first: it touches Core options, both engines and `tar.exe`'s own include patterns
   (T-F391's exclude-pattern findings apply).
+- **Done so far** (wave A, 2026-10-17): `x` and `l` take the names after the archive, `-i`/`-x`
+  (`r`, `w`, `!`, `@list`), `-xtd`/`-xtf`, `@listfile`, `-r`/`-r-`/`-r0`, `-spd`, `-ssc`, `-scs`;
+  `x`, `l` and `t` take archive wildcards, `-ai`, `-ax`, `-an` (`docs/DECISIONS.md`, "T-F410, wave
+  A"). A name after the archive is now a filter, no longer a second archive: the 1.8.2 CHANGELOG
+  says so under a change in behavior. **Still open (wave B):** the same filters on `t` (Core's
+  `TestAsync` takes no selection) and on `a` (wildcards in the sources, `-r`, `-x`, both writers,
+  `tar.exe`'s `-X`), and `-stx`.
 - **Reported by:** T-F343's measurement, 2026-10-17.
 
 ### T-F411 — `pakko`: small 7-Zip switches and spellings (P3, from T-F343)

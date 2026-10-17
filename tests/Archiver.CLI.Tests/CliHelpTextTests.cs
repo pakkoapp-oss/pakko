@@ -38,6 +38,17 @@ public sealed class CliHelpTextTests
     [InlineData("-bt")]
     [InlineData("-ba")]
     [InlineData("-bso{0|1|2}")]
+    [InlineData("-i[r]!<name>")]
+    [InlineData("-x[r]!<name>")]
+    [InlineData("-xtd")]
+    [InlineData("-r[-|0]")]
+    [InlineData("-spd")]
+    [InlineData("-ssc")]
+    [InlineData("-scs<charset>")]
+    [InlineData("-ai")]
+    [InlineData("-ax")]
+    [InlineData("-an")]
+    [InlineData("@<file>")]
     public void Text_MentionsEverySupportedSwitch(string switchToken)
     {
         CliHelpText.Text.Should().Contain(switchToken);

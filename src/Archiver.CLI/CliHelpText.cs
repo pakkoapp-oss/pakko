@@ -83,6 +83,23 @@ public static class CliHelpText
                            nowhere unless -bso2
           --               Every argument after it is a name, even one that    (all)
                            starts with '-' (patool passes it)
+          <arc> <names>    Names after the archive filter what x and l take,   (x, l)
+                           as in 7-Zip: a folder takes what is in it; @<file>
+                           reads the names from a list file. Nothing matches:
+                           'No files to process', exit 0
+          -i[r]!<name>     Include (-i) or exclude (-x) names; r: at any       (x, l)
+          -x[r]!<name>     depth, r-: from the top, r0: wildcards only; @<file>
+                           instead of !<name> for a list (Scoop: -xr!*.nsis).
+                           -xtd / -xtf: leave out every folder / file
+          -r[-|0]          How masks recurse: -r any depth, -r- from the top   (x, l)
+                           (default), -r0 any depth only with a wildcard
+          -spd, -ssc       No wildcards; case-sensitive names                  (x, l, t)
+          -scs<charset>    List file charset: UTF-8 (default), UTF-16LE,       (x, l, t)
+                           UTF-16BE, WIN, DOS
+          -ai, -ax, -an    More archives by mask (-ai!*.zip, -air! recurses),  (x, l, t)
+                           archives left out (-ax), no archive name (-an);
+                           x *.zip works too. Before, x a.zip b.zip took two
+                           archives, now b.zip is a name inside a.zip (7-Zip)
           -scc{UTF-8|WIN|DOS}  Charset of printed text (stdout, stderr)   (all)
                            Default: the console code page, where a name it
                            cannot hold prints as '?'. Use -sccUTF-8 when

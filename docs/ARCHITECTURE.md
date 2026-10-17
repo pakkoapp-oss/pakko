@@ -402,6 +402,11 @@ public sealed record ExtractOptions
     // destination, full path, once; never a skipped or locked one. Called by
     // ExtractionStaging.CommitInto for both engines; its exceptions are not caught. pakko -bb1.
     public Action<string>? OnItemExtracted { get; init; }
+    // T-F410: non-null keeps only the entries it accepts (entry name as the archive has it, a
+    // folder's ending with '/'; is it a folder). Each entry on its own, a folder does not bring
+    // its content; with SelectedEntryPaths both apply. A subset (no root collapse, never fully
+    // processed); none passes: nothing created. pakko's 7-Zip name filters (CliNameFilter).
+    public Func<string, bool, bool>? EntryFilter { get; init; }
 }
 
 public enum ExtractMode { SeparateFolders, SingleFolder }
