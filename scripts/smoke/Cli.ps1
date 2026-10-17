@@ -407,4 +407,6 @@ Add-SmokeStep 'CLI-037' {
     Assert-Smoke ($timed.ExitCode -eq 0 -and $timed.Output.Contains('Global  Time =')) "t -bt: exit $($timed.ExitCode), no time lines"
     $refused = Invoke-Pakko @('x', '-so', '-bse1', $zip)
     Assert-Smoke ($refused.ExitCode -eq 7) "x -so -bse1: exit $($refused.ExitCode), expected 7"
+    $refused = Invoke-Pakko @('a', '-saa', (Join-Path $folder 'saa'), $tree)
+    Assert-Smoke ($refused.ExitCode -eq 7) "a -saa: exit $($refused.ExitCode), expected 7"
 }
