@@ -31,7 +31,7 @@ public static class CliHelpText
           -o<dir>          Output directory; default: the current directory,   (x, r)
                            as with 7z (not the archive's own folder). r: where
                            the repaired copy goes; default: next to the archive
-          -p<pwd>          Password. x/t: opens a ZipCrypto/AES-encrypted ZIP.  (x, t, a)
+          -p<pwd>          Password. x/t: opens a ZipCrypto/AES-encrypted ZIP.  (x, t, l, a)
                            a: encrypts the new ZIP with AES-256 (file names
                            stay readable); printable ASCII only, at most 99
                            characters, so 7-Zip can open it. A bare -p asks
@@ -39,6 +39,7 @@ public static class CliHelpText
                            interactive console. Without -p on an encrypted
                            archive, x/t prompt the same way, or fail
                            immediately when piped/scripted/-y is given.
+                           l: accepted and not needed. -p- is the password "-"
           -mem=AES256      Encryption method: accepted for 7z compatibility;   (a)
                            AES-256 is the only one (ZipCrypto/AES128/AES192
                            are refused)
@@ -68,6 +69,20 @@ public static class CliHelpText
           -scrc<method>    Hash method: CRC32 (default) or SHA256              (h)
           -si              Read the archive from stdin instead of a path       (x, t, l, h)
           -so              Write output to stdout instead of disk              (x, a)
+          -sae / -sas      -sae: the archive is named exactly as typed;        (a)
+                           -sas (default): a name without an extension gets
+                           the type's
+          -bb[N]           Log level, -bb is 1: from 1, x prints "- <name>"    (all)
+                           for each folder and file it wrote, relative to -o
+          -bd              No percentage                                       (all)
+          -bt              Time statistics after the command, as 7-Zip's       (all)
+          -ba              l prints the entry rows only, no header             (l)
+          -bso{0|1|2}      Where messages (-bso), errors (-bse) and the        (all)
+          -bse, -bsp       percentage (-bsp) go: 0 nowhere, 1 stdout, 2 stderr.
+                           Under -so stdout carries the data, so messages go
+                           nowhere unless -bso2
+          --               Every argument after it is a name, even one that    (all)
+                           starts with '-' (patool passes it)
           -scc{UTF-8|WIN|DOS}  Charset of printed text (stdout, stderr)   (all)
                            Default: the console code page, where a name it
                            cannot hold prints as '?'. Use -sccUTF-8 when

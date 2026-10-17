@@ -398,6 +398,10 @@ public sealed record ExtractOptions
     public Func<PasswordPromptInfo, Task<PasswordDecision>>? ResolvePasswordAsync { get; init; }
     // T-F360: false leaves the download mark off; EnforceMOTW overrides it either way.
     public bool ApplyDownloadMark { get; init; } = true;
+    // T-F408: each folder (path ending with a separator) and file that arrived in the
+    // destination, full path, once; never a skipped or locked one. Called by
+    // ExtractionStaging.CommitInto for both engines; its exceptions are not caught. pakko -bb1.
+    public Action<string>? OnItemExtracted { get; init; }
 }
 
 public enum ExtractMode { SeparateFolders, SingleFolder }

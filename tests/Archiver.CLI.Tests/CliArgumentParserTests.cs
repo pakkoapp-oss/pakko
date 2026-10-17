@@ -528,7 +528,6 @@ public sealed class CliArgumentParserTests
     }
 
     [Theory]
-    [InlineData("l")]
     [InlineData("h")]
     public void PasswordSwitch_OnCommandThatNeedsNoPassword_ReturnsInvalid(string command)
     {
@@ -664,9 +663,9 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void Test_AssumeYesSwitch_ReturnsInvalid()
+    public void Test_OverwriteSwitch_ReturnsInvalid()
     {
-        ParsedCliCommand result = CliArgumentParser.Parse(["t", "-y", "archive.zip"]);
+        ParsedCliCommand result = CliArgumentParser.Parse(["t", "-aoa", "archive.zip"]);
 
         result.Type.Should().Be(CliCommandType.Invalid);
     }
@@ -689,9 +688,9 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void List_AnySwitch_ReturnsInvalid()
+    public void List_OverwriteSwitch_ReturnsInvalid()
     {
-        ParsedCliCommand result = CliArgumentParser.Parse(["l", "-y", "archive.zip"]);
+        ParsedCliCommand result = CliArgumentParser.Parse(["l", "-aoa", "archive.zip"]);
 
         result.Type.Should().Be(CliCommandType.Invalid);
     }

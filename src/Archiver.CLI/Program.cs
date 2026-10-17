@@ -22,6 +22,10 @@ async Task<int> RunCommandAsync()
     ParsedCliCommand command = CliArgumentParser.Parse(args);
     if (command.ConsoleCodePage is { } consoleCodePage)
         CliConsoleCharset.Apply(consoleCodePage);
+    // T-F408: -bso/-bse, after -scc has set the writers' encoding.
+    (TextWriter messages, TextWriter errors) = command.Output.Writers(Console.Out, Console.Error, command.WriteToStdout);
+    Console.SetOut(messages);
+    Console.SetError(errors);
     // T-F263: -si/-so staging left by a pakko that was killed (e.g. `x -so` plaintext) goes now.
     if (command.Type is CliCommandType.Extract or CliCommandType.Test or CliCommandType.List or CliCommandType.Archive)
         CliStreamStaging.SweepAbandoned();
@@ -50,7 +54,17 @@ async Task<int> RunCommandAsync()
     {
         await TarCapabilitySnapshot.RecordIfStaleAsync(services.Policy, services.GetTarCapabilitiesAsync).ConfigureAwait(false);
     }
+    await PrintTimeStatsIfAskedAsync(command).ConfigureAwait(false);
     return exitCode;
+}
+
+// T-F408: -bt, after the command, as 7-Zip's PrintStat.
+static async Task PrintTimeStatsIfAskedAsync(ParsedCliCommand command)
+{
+    if (!command.Output.ShowTime)
+        return;
+    foreach (string line in CliTimeStats.ForCurrentProcess())
+        await Console.Out.WriteLineAsync(line).ConfigureAwait(false);
 }
 
 static int RunHelp()
@@ -114,7 +128,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
     // T-F160: cancelled by the conflict prompt's (Q)uit / end of input, or by Ctrl+C — either way a
     // clean Core cancellation (temp output removed) and exit code 255, 7-Zip's "user stopped".
     using var cancellation = CliCancellation.ListenToConsole();
-    var progress = CliProgress.ForConsole();
+    using var progress = CliProgress.For(command.Output, command.WriteToStdout);
     try
     {
         IExtractionRouter router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
@@ -187,8 +201,19 @@ static ExtractOptions BuildExtractOptions(
         ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
         ResolvePasswordAsync = BuildPasswordResolver(command, command.AssumeYes, progress, report),
         ApplyDownloadMark = command.ApplyDownloadMark ?? true,
+        OnItemExtracted = command.Output.LogLevel >= 1 ? NameExtractedItem(destination, progress) : null,
     };
 }
+
+// T-F408: -bb1 and up print 7-Zip's "- <name>" line (ExtractCallbackConsole.cpp, PrepareOperation)
+// for each item, relative to the destination, a folder with a trailing '\'. Unlike 7-Zip the
+// lines come after the archive's entries are in place, in the order they were moved in, and a
+// renamed file (-aou) is named as written: Chocolatey records these names as installed files.
+static Action<string> NameExtractedItem(string destination, CliProgress? progress) => path =>
+{
+    progress?.Clear();
+    Console.Out.WriteLine("- " + Path.GetRelativePath(destination, path));
+};
 
 // A prompt starts on a clean line, not after the progress percentage.
 static Func<T, Task<TResult>> ClearingProgress<T, TResult>(CliProgress? progress, Func<T, Task<TResult>> prompt)
@@ -344,7 +369,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
 {
     using var cancellation = CliCancellation.ListenToConsole();
     // T-F295 item 1: declared outside the try, so a cancel clears the percentage first.
-    var progress = CliProgress.ForConsole();
+    using var progress = CliProgress.For(command.Output, command.WriteToStdout);
     try
     {
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
@@ -361,7 +386,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
         ArchiveResult result = await router.TestAsync(
             archivePaths,
             progress,
-            resolvePasswordAsync: BuildPasswordResolver(command, assumeYes: false, progress, report),
+            resolvePasswordAsync: BuildPasswordResolver(command, command.AssumeYes, progress, report),
             verifyRecoveryData: stdinFolder is null,
             cancellationToken: cancellation.Token).ConfigureAwait(false);
         progress?.Clear();
@@ -384,7 +409,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
 static async Task<int> RunRepairAsync(ParsedCliCommand command, PakkoServices services)
 {
     using var cancellation = CliCancellation.ListenToConsole();
-    var progress = CliProgress.ForConsole();
+    using var progress = CliProgress.For(command.Output, command.WriteToStdout);
     try
     {
         var report = new CliReportContext();
@@ -468,7 +493,7 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
     using var cancellation = CliCancellation.ListenToConsole();
     // T-F295 item 1: declared outside the try, so a cancel clears the percentage first. The
     // encryption password is asked before any work starts, so no percentage is on screen then.
-    var progress = CliProgress.ForConsole();
+    using var progress = CliProgress.For(command.Output, command.WriteToStdout);
     try
     {
         IArchiveCreationRouter router = services.CreationRouter;
@@ -516,12 +541,13 @@ static string ResolveArchiveDestination(ParsedCliCommand command, CliStagingFold
 }
 
 // T-F221 item 6 (user decision 2026-09-28, 7-Zip's rule): a name with an extension is written
-// exactly as typed ("-ttar x.gz" makes a tar named x.gz); a name without one gets the format's.
+// exactly as typed ("-ttar x.gz" makes a tar named x.gz); a name without one gets the format's,
+// unless -sae says to write it as typed (T-F411).
 static ArchiveOptions BuildArchiveOptions(
     ParsedCliCommand command, string destFolder, StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt)
 {
     string fileName = Path.GetFileName(command.ArchivePathArg!);
-    bool hasExtension = fileName.Contains('.'); // T-F294: ".gz" too, as 7-Zip writes it
+    bool hasExtension = command.ArchiveNameExact || fileName.Contains('.'); // T-F294: ".gz" too, as 7-Zip writes it
     return new()
     {
         SourcePaths = command.SourcePaths,
@@ -587,7 +613,7 @@ static async Task<int> RunListAsync(ParsedCliCommand command, PakkoServices serv
 
         foreach (string archivePath in archivePaths)
         {
-            if (!await PrintArchiveListingAsync(archivePath, router, multiple, report, cancellation.Token).ConfigureAwait(false))
+            if (!await PrintArchiveListingAsync(archivePath, router, multiple && !command.Output.DisableHeaders, !command.Output.DisableHeaders, report, cancellation.Token).ConfigureAwait(false))
                 anyFailed = true;
         }
 
@@ -599,9 +625,10 @@ static async Task<int> RunListAsync(ParsedCliCommand command, PakkoServices serv
     }
 }
 
-// Prints one archive's listing (or its error) to stdout/stderr. Returns false on failure.
+// Prints one archive's listing (or its error) to stdout/stderr. Returns false on failure. -ba (T-F408)
+// leaves the column header and the multi-archive lines out.
 static async Task<bool> PrintArchiveListingAsync(
-    string archivePath, IArchiveListingRouter router, bool multiple, CliReportContext report, CancellationToken cancellationToken)
+    string archivePath, IArchiveListingRouter router, bool multiple, bool header, CliReportContext report, CancellationToken cancellationToken)
 {
     if (multiple)
         await Console.Out.WriteLineAsync($"# archive: {archivePath}").ConfigureAwait(false);
@@ -614,7 +641,8 @@ static async Task<bool> PrintArchiveListingAsync(
         return false;
     }
 
-    await Console.Out.WriteLineAsync(CliEntryFormatter.Header).ConfigureAwait(false);
+    if (header)
+        await Console.Out.WriteLineAsync(CliEntryFormatter.Header).ConfigureAwait(false);
     foreach (ArchiveEntryInfo entry in listResult.Entries)
         await Console.Out.WriteLineAsync(CliEntryFormatter.FormatRow(entry)).ConfigureAwait(false);
 

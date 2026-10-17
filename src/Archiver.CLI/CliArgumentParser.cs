@@ -40,6 +40,8 @@ public sealed record ParsedCliCommand
     public int? ConsoleCodePage { get; init; }                        // -scc{charset}, every command (T-F238); a CliConsoleCharset value
     public bool? ApplyDownloadMark { get; init; }                     // -snz[0|1], x only (T-F360); null = not given
     public int RecoveryPercent { get; init; }                         // -rr[N], a only (T-F275); 0 = no PAR2 files
+    public bool ArchiveNameExact { get; init; }                       // -sae, a only (T-F411): no extension added
+    public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
     public string? ErrorMessage { get; init; }
 }
 
@@ -60,14 +62,35 @@ public static class CliArgumentParser
         if (args[0] is "-v" or "--version")
             return new ParsedCliCommand { Type = CliCommandType.Version };
 
-        string[] rest = args[1..];
-        if (ShellSplitReason(rest) is { } splitError)
+        // T-F407: as in 7-Zip (CommandLineParser.cpp, ParseStrings), everything after the first "--"
+        // is a name, even "-name" or a second "--"; patool puts "--" before the names on every call.
+        int stop = Array.IndexOf(args, "--", 1);
+        string[] switchPart = stop < 0 ? args[1..] : args[1..stop];
+        string[] names = stop < 0 ? [] : args[(stop + 1)..];
+        if (ShellSplitReason(switchPart) is { } splitError)
             return Invalid(splitError);
-        if (!TryTakeConsoleCharset(ref rest, out int? consoleCodePage, out string? charsetError))
+        if (!TryTakeConsoleCharset(ref switchPart, out int? consoleCodePage, out string? charsetError))
             return Invalid(charsetError!);
+        if (!CliOutputOptions.TryTake(ref switchPart, out CliOutputOptions output, out string? outputError))
+            return Invalid(outputError!);
 
+        CliToken[] rest = [.. switchPart.Select(CliToken.Of), .. names.Select(CliToken.Name)];
         ParsedCliCommand command = CliCommandValidator.Validate(ParseCommand(args[0], rest));
-        return command.Type == CliCommandType.Invalid ? command : command with { ConsoleCodePage = consoleCodePage };
+        if (command.Type == CliCommandType.Invalid)
+            return command;
+        // T-F408: under -so stdout carries the data; 7-Zip turns its messages off there (StdOutMode).
+        if (command.WriteToStdout && output.OutStream == CliOutputTarget.StdOut)
+            return Invalid("'-bso1' cannot be combined with '-so' — stdout carries the data; send messages to stderr with -bso2");
+        if (command.WriteToStdout && output.ErrStream == CliOutputTarget.StdOut)
+            return Invalid("'-bse1' cannot be combined with '-so' — stdout carries the data; errors stay on stderr");
+        return command with { ConsoleCodePage = consoleCodePage, Output = output };
+    }
+
+    // One command-line argument, and whether it is read as a switch: a name after "--" never is.
+    private readonly record struct CliToken(string Text, bool IsSwitch)
+    {
+        public static CliToken Of(string text) => new(text, text.Length > 0 && text[0] == '-');
+        public static CliToken Name(string text) => new(text, false);
     }
 
     // T-F294: PowerShell passes "-name.rest" to a native program as two arguments, "-name" and
@@ -105,7 +128,7 @@ public static class CliArgumentParser
     private static bool LooksLikeSplitPiece(string token) =>
         token.Length >= 2 && token[0] == '.' && token[1] is not ('.' or '\\' or '/');
 
-    private static ParsedCliCommand ParseCommand(string commandName, string[] rest) =>
+    private static ParsedCliCommand ParseCommand(string commandName, CliToken[] rest) =>
         commandName switch
         {
             "x" => ParseExtract(rest),
@@ -169,11 +192,11 @@ public static class CliArgumentParser
         public bool? ApplyDownloadMark { get; set; }
     }
 
-    private static ParsedCliCommand ParseExtract(string[] rest)
+    private static ParsedCliCommand ParseExtract(CliToken[] rest)
     {
         var state = new ExtractParseState();
 
-        foreach (string token in rest)
+        foreach (CliToken token in rest)
         {
             string? error = ApplyExtractToken(token, state);
             if (error is not null)
@@ -207,9 +230,10 @@ public static class CliArgumentParser
     // Returns an error message if the token was invalid/unsupported, null on success (including
     // a plain archive-path token). Mutates state in place — matches the original inline loop's
     // per-token behavior exactly, just without the loop's own nesting contributing to complexity.
-    private static string? ApplyExtractToken(string token, ExtractParseState state)
+    private static string? ApplyExtractToken(CliToken argument, ExtractParseState state)
     {
-        if (!IsSwitchToken(token))
+        string token = argument.Text;
+        if (!argument.IsSwitch)
         {
             state.ArchivePaths.Add(token);
             return null;
@@ -315,17 +339,28 @@ public static class CliArgumentParser
 
     // --- t (Test) ---
 
-    private static ParsedCliCommand ParseTest(string[] rest)
+    private static ParsedCliCommand ParseTest(CliToken[] rest)
     {
         var archivePaths = new List<string>();
         bool readFromStdin = false;
+        bool assumeYes = false;
         string? password = null;
         bool promptForPassword = false;
-        foreach (string token in rest)
+        foreach ((string token, bool isSwitch) in rest)
         {
+            if (!isSwitch)
+            {
+                archivePaths.Add(token);
+                continue;
+            }
             if (token == "-si")
             {
                 readFromStdin = true;
+                continue;
+            }
+            if (token == "-y")
+            {
+                assumeYes = true; // T-F409: as on x, no password is asked for unless -p asks
                 continue;
             }
             if (token.StartsWith("-p", StringComparison.Ordinal))
@@ -333,9 +368,7 @@ public static class CliArgumentParser
                 (password, promptForPassword) = ParsePassword(token);
                 continue;
             }
-            if (IsSwitchToken(token))
-                return Invalid(UnsupportedSwitchReason(token));
-            archivePaths.Add(token);
+            return Invalid(UnsupportedSwitchReason(token));
         }
 
         if (readFromStdin && archivePaths.Count > 0)
@@ -347,20 +380,25 @@ public static class CliArgumentParser
 
         return new ParsedCliCommand
         {
-            Type = CliCommandType.Test, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin,
+            Type = CliCommandType.Test, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin, AssumeYes = assumeYes,
             Password = password, PromptForPassword = promptForPassword,
         };
     }
 
     // --- r (Repair, T-F275 step 4) ---
 
-    private static ParsedCliCommand ParseRepair(string[] rest)
+    private static ParsedCliCommand ParseRepair(CliToken[] rest)
     {
         var paths = new List<string>();
         string? outputDirectory = null;
         bool assumeYes = false;
-        foreach (string token in rest)
+        foreach ((string token, bool isSwitch) in rest)
         {
+            if (!isSwitch)
+            {
+                paths.Add(token);
+                continue;
+            }
             if (token == "-y")
             {
                 assumeYes = true; // nothing to confirm: the copy never replaces a file
@@ -372,9 +410,7 @@ public static class CliArgumentParser
                     return Invalid(error!);
                 continue;
             }
-            if (IsSwitchToken(token))
-                return Invalid(UnsupportedSwitchReason(token));
-            paths.Add(token);
+            return Invalid(UnsupportedSwitchReason(token));
         }
 
         if (paths.Count == 0)
@@ -388,13 +424,13 @@ public static class CliArgumentParser
 
     // --- i (Info) ---
 
-    private static ParsedCliCommand ParseInfo(string[] rest)
+    private static ParsedCliCommand ParseInfo(CliToken[] rest)
     {
         if (rest.Length == 0)
             return new ParsedCliCommand { Type = CliCommandType.Info };
 
-        string token = rest[0];
-        return Invalid(IsSwitchToken(token)
+        (string token, bool isSwitch) = rest[0];
+        return Invalid(isSwitch
             ? UnsupportedSwitchReason(token)
             : "'i' does not accept any arguments");
     }
@@ -417,13 +453,14 @@ public static class CliArgumentParser
         public string? Password { get; set; }
         public bool PromptForPassword { get; set; }
         public int RecoveryPercent { get; set; }
+        public bool ArchiveNameExact { get; set; }
     }
 
-    private static ParsedCliCommand ParseArchive(string[] rest)
+    private static ParsedCliCommand ParseArchive(CliToken[] rest)
     {
         var state = new ArchiveParseState();
 
-        foreach (string token in rest)
+        foreach (CliToken token in rest)
         {
             string? error = ApplyArchiveToken(token, state);
             if (error is not null)
@@ -447,12 +484,14 @@ public static class CliArgumentParser
             Password = state.Password,
             PromptForPassword = state.PromptForPassword,
             RecoveryPercent = state.RecoveryPercent,
+            ArchiveNameExact = state.ArchiveNameExact,
         };
     }
 
-    private static string? ApplyArchiveToken(string token, ArchiveParseState state)
+    private static string? ApplyArchiveToken(CliToken argument, ArchiveParseState state)
     {
-        if (!IsSwitchToken(token))
+        string token = argument.Text;
+        if (!argument.IsSwitch)
         {
             if (state.ArchivePathArg is null)
                 state.ArchivePathArg = token;
@@ -488,8 +527,25 @@ public static class CliArgumentParser
             return error;
         }
 
+        if (token.StartsWith("-sa", StringComparison.Ordinal))
+        {
+            (state.ArchiveNameExact, string? error) = ParseArchiveNameMode(token);
+            return error;
+        }
+
         return UnsupportedSwitchReason(token);
     }
+
+    // T-F411: 7-Zip's -sa{s|e|a} (ArchiveCommandLine.cpp, ParseArcNameMode). -sas is Pakko's own rule
+    // (T-F221 item 6: a name with no extension gets the type's), -sae writes the name as typed.
+    // Whichever comes last wins.
+    private static (bool Exact, string? Error) ParseArchiveNameMode(string token) => token switch
+    {
+        "-sas" => (false, null),
+        "-sae" => (true, null),
+        "-saa" => (false, "not supported by Pakko: -saa (always add the type's extension) is not implemented; use -sas or -sae"),
+        _ => (false, $"unknown -sa value: '{token[3..]}' (expected -sas or -sae)"),
+    };
 
     // 7z's -m{params} on 'a': -mx=<0-9>, -mem=AES256 and -m0=<method> (7z only, T-F342) are
     // implemented, every other one is refused.
@@ -651,41 +707,66 @@ public static class CliArgumentParser
 
     // --- l (List) ---
 
-    private static ParsedCliCommand ParseList(string[] rest)
+    private static ParsedCliCommand ParseList(CliToken[] rest)
     {
         var archivePaths = new List<string>();
         bool readFromStdin = false;
-        foreach (string token in rest)
+        bool assumeYes = false;
+        string? password = null;
+        bool promptForPassword = false;
+        foreach ((string token, bool isSwitch) in rest)
         {
+            if (!isSwitch)
+            {
+                archivePaths.Add(token);
+                continue;
+            }
             if (token == "-si")
             {
                 readFromStdin = true;
                 continue;
             }
-            if (IsSwitchToken(token))
-                return Invalid(UnsupportedSwitchReason(token));
-            archivePaths.Add(token);
+            // T-F409: 7-Zip takes -y and -p on 'l', and patool passes "-y -p-". Listing asks nothing
+            // and needs no password: ZIP names are not encrypted, and a 7z with encrypted headers is
+            // refused as before, since Pakko gives tar.exe no password.
+            if (token == "-y")
+            {
+                assumeYes = true;
+                continue;
+            }
+            if (token.StartsWith("-p", StringComparison.Ordinal))
+            {
+                (password, promptForPassword) = ParsePassword(token);
+                continue;
+            }
+            return Invalid(UnsupportedSwitchReason(token));
         }
 
         if (readFromStdin && archivePaths.Count > 0)
             return Invalid("'-si' cannot be combined with an explicit archive path");
         if (!readFromStdin && archivePaths.Count == 0)
             return Invalid("'l' requires at least one archive path");
+        if (readFromStdin && promptForPassword)
+            return Invalid(BarePasswordWithStdinReason);
 
-        return new ParsedCliCommand { Type = CliCommandType.List, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin };
+        return new ParsedCliCommand
+        {
+            Type = CliCommandType.List, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin, AssumeYes = assumeYes,
+            Password = password, PromptForPassword = promptForPassword,
+        };
     }
 
     // --- h (Hash, T-F128/T-F09 follow-up) ---
 
-    private static ParsedCliCommand ParseHash(string[] rest)
+    private static ParsedCliCommand ParseHash(CliToken[] rest)
     {
         var paths = new List<string>();
         HashAlgorithmKind algorithm = HashAlgorithmKind.Crc32; // matches real 7z's own default hash method
         bool readFromStdin = false;
 
-        foreach (string token in rest)
+        foreach ((string token, bool isSwitch) in rest)
         {
-            if (!IsSwitchToken(token))
+            if (!isSwitch)
             {
                 paths.Add(token);
                 continue;
@@ -750,8 +831,6 @@ public static class CliArgumentParser
 
     // --- shared helpers ---
 
-    private static bool IsSwitchToken(string token) => token.Length > 0 && token[0] == '-';
-
     // Case 2 of the three-way rule: a real 7z command Pakko deliberately doesn't implement.
     private static string NotSupportedCommandReason(string command) => command switch
     {
@@ -777,7 +856,7 @@ public static class CliArgumentParser
         ("-t", "not supported on this command: -t{type} is only meaningful for 'a' (archive creation)"),
         ("-scrc", "not supported on this command: -scrc{method} is only meaningful for 'h' (hash)"),
         ("-o", NotSupportedOnThisCommand),
-        ("-p", "not supported on this command: -p{pwd} is only valid with 'x' (extract), 't' (test) or 'a' (create an AES-256 ZIP)"),
+        ("-p", "not supported on this command: -p{pwd} is only valid with 'x' (extract), 't' (test), 'l' (list) or 'a' (create an AES-256 ZIP)"),
         ("-rr", "not supported on this command: -rr[N] (recovery data) is only meaningful for 'a' (archive creation)"),
         ("-r", "not supported: recurse-subdirectories toggle has no Pakko equivalent (archiving already recurses by default)"),
         ("-i", "not supported: no wildcard include-pattern filtering exists in Pakko"),
@@ -785,6 +864,7 @@ public static class CliArgumentParser
         ("-v", "not supported: no multi-part/split-archive logic exists in Pakko"),
         ("-ssc", "not supported: case-sensitive matching is not implemented"),
         ("-snz", "not supported on this command: -snz is only valid with 'x' (extract)"),
+        ("-sa", "not supported on this command: -sa{s|e} names the archive 'a' creates"),
     ];
 
     private static string UnsupportedSwitchReason(string token)

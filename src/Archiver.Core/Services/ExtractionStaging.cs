@@ -65,14 +65,21 @@ internal sealed class ExtractionStaging : IDisposable
     // each. Catches both IOException AND UnauthorizedAccessException: a real locked-file
     // File.Move(overwrite: true) was confirmed to throw the latter.
     /// <summary>Moves everything staged into <paramref name="actualDest"/>; returns the relative
-    /// paths of files that could not be moved.</summary>
-    public IReadOnlyList<string> CommitInto(string actualDest, Action<string, string>? moveOverride = null)
+    /// paths of files that could not be moved. T-F408: <paramref name="committed"/> is called with
+    /// the full path of each folder (ending with a separator) and file that arrived, once each —
+    /// <paramref name="actualDest"/> itself only when this commit created it.</summary>
+    public IReadOnlyList<string> CommitInto(
+        string actualDest, Action<string, string>? moveOverride = null, Action<string>? committed = null)
     {
         // T-F298: before anything below creates a folder, or every folder would look pre-existing.
         List<(string Folder, DateTime Utc)> newFolderTimes = [.. _folderTimes
             .Select(t => (Folder: t.Key.Length == 0 ? actualDest : System.IO.Path.Combine(actualDest, t.Key), t.Value))
             .Where(t => !Directory.Exists(t.Folder))
             .OrderByDescending(t => t.Folder.Length)];
+
+        // Listed before the fast path's rename only when someone is to be told; the merge needs them anyway.
+        List<string>? folders = committed is null ? null : StagedFolders();
+        List<string>? files = committed is null ? null : StagedFiles();
 
         if (!Directory.Exists(actualDest))
         {
@@ -83,20 +90,48 @@ internal sealed class ExtractionStaging : IDisposable
             {
                 (moveOverride ?? Directory.Move)(Path, actualDest);
                 ApplyFolderTimes(newFolderTimes);
+                // Named only once the move succeeded: a failed one goes on to the merge below, which names them.
+                if (committed is not null && folders is not null && files is not null)
+                    NameRenamedTree(actualDest, folders, files, committed);
                 return [];
             }
             catch (IOException)
             {
                 Directory.CreateDirectory(actualDest);
+                committed?.Invoke(FolderName(actualDest));
             }
         }
 
         // T-F197: folders first, so an empty one arrives too.
-        foreach (string folder in Directory.EnumerateDirectories(Path, "*", SearchOption.AllDirectories).ToList())
-            Directory.CreateDirectory(System.IO.Path.Combine(actualDest, System.IO.Path.GetRelativePath(Path, folder)));
+        foreach (string folder in folders ?? StagedFolders())
+        {
+            string finalFolder = Destination(actualDest, folder);
+            Directory.CreateDirectory(finalFolder);
+            committed?.Invoke(FolderName(finalFolder));
+        }
 
+        List<string> lockedRelativePaths = MergeFiles(actualDest, files ?? StagedFiles(), committed);
+
+        // A file left behind above failed to move (locked); Dispose removes it with the rest of
+        // the staging folder — it cannot reach its destination, and must not be left behind.
+        ApplyFolderTimes(newFolderTimes);
+        return lockedRelativePaths;
+    }
+
+    private void NameRenamedTree(string actualDest, List<string> folders, List<string> files, Action<string> committed)
+    {
+        committed(FolderName(actualDest));
+        foreach (string folder in folders)
+            committed(FolderName(Destination(actualDest, folder)));
+        foreach (string file in files)
+            committed(Destination(actualDest, file));
+    }
+
+    // Each file on its own: a locked target fails only itself and is returned, not named.
+    private List<string> MergeFiles(string actualDest, List<string> files, Action<string>? committed)
+    {
         var lockedRelativePaths = new List<string>();
-        foreach (string file in Directory.EnumerateFiles(Path, "*", SearchOption.AllDirectories).ToList())
+        foreach (string file in files)
         {
             string relative = System.IO.Path.GetRelativePath(Path, file);
             string finalFile = System.IO.Path.Combine(actualDest, relative);
@@ -108,14 +143,22 @@ internal sealed class ExtractionStaging : IDisposable
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 lockedRelativePaths.Add(relative);
+                continue;
             }
+            committed?.Invoke(finalFile);
         }
-
-        // A file left behind above failed to move (locked); Dispose removes it with the rest of
-        // the staging folder — it cannot reach its destination, and must not be left behind.
-        ApplyFolderTimes(newFolderTimes);
         return lockedRelativePaths;
     }
+
+    private List<string> StagedFolders() => [.. Directory.EnumerateDirectories(Path, "*", SearchOption.AllDirectories)];
+
+    private List<string> StagedFiles() => [.. Directory.EnumerateFiles(Path, "*", SearchOption.AllDirectories)];
+
+    private string Destination(string actualDest, string staged) =>
+        System.IO.Path.Combine(actualDest, System.IO.Path.GetRelativePath(Path, staged));
+
+    private static string FolderName(string folder) =>
+        System.IO.Path.TrimEndingDirectorySeparator(folder) + System.IO.Path.DirectorySeparatorChar;
 
     // Deepest first: setting a child's time does not touch its parent's, but it keeps the order
     // obviously safe if that ever changes.

@@ -365,3 +365,50 @@ Add-SmokeStep 'CLI-036' {
     Assert-Smoke ($create.ExitCode -eq 2 -and -not $create.Error.Contains('Unhandled exception')) "a into a folder that is a file: exit $($create.ExitCode) $($create.Text)"
     Assert-Smoke ([System.IO.File]::ReadAllText($blocker) -eq 'keep me') 'the file holding the folder name changed'
 }
+
+# T-F407, T-F408, T-F409, T-F411: the command lines patool and Chocolatey give 7z.exe (docs/CLI.md,
+# "Real callers"), on the installed pakko.
+Add-SmokeStep 'CLI-037' {
+    $folder = Get-StepFolder 'cli037'
+    $tree = Get-Fixture Tree
+    $zip = Join-Path $folder 'made.zip'
+    $made = Invoke-Pakko @('a', $zip, $tree)
+    Assert-Smoke ($made.ExitCode -eq 0) "making the ZIP: exit $($made.ExitCode) $($made.Text)"
+
+    $patool = Join-Path $folder 'patool'
+    foreach ($line in @(@('x', '-y', '-p-', '-aou', "-o$patool", '--', $zip), @('l', '-y', '-p-', '--', $zip), @('t', '-y', '-p-', '--', $zip))) {
+        $run = Invoke-Pakko $line
+        Assert-Smoke ($run.ExitCode -eq 0) "patool's $($line[0]): exit $($run.ExitCode) $($run.Text)"
+    }
+    $sevenZip = Join-Path $folder 'patool.7z'
+    $run = Invoke-Pakko @('a', '-y', '-t7z', '-sae', '--', $sevenZip, $tree)
+    Assert-Smoke ($run.ExitCode -eq 0 -and (Test-SevenZipSignature $sevenZip)) "patool's a -t7z: exit $($run.ExitCode) $($run.Text)"
+    $exact = Join-Path $folder 'no-extension'
+    $run = Invoke-Pakko @('a', '-y', '-tzip', '-sae', '--', $exact, $tree)
+    Assert-Smoke ($run.ExitCode -eq 0 -and (Test-Path -LiteralPath $exact -PathType Leaf)) "a -sae: exit $($run.ExitCode), the archive is not named exactly as typed"
+
+    $choco = Join-Path $folder 'choco'
+    # -sccUTF-8 only so this harness, which reads UTF-8, compares a non-ASCII name exactly. Without it
+    # pakko writes the console's code page (T-F238) and 7-Zip the OEM one (docs/CLI.md, Real callers).
+    $run = Invoke-Pakko @('x', '-aoa', '-bd', '-bb1', "-o$choco", '-y', '-sccUTF-8', $zip)
+    Assert-Smoke ($run.ExitCode -eq 0) "Chocolatey's x: exit $($run.ExitCode) $($run.Text)"
+    $named = @($run.Output -split '\r?\n' | Where-Object { $_.StartsWith('- ') } | ForEach-Object { $_.Substring(2) })
+    foreach ($name in $named) {
+        Assert-Smoke (Test-Path -LiteralPath (Join-Path $choco $name)) "Chocolatey's x names '$name', which is not in the folder"
+    }
+    foreach ($file in Get-ChildItem -LiteralPath $choco -Recurse -File) {
+        $relative = [System.IO.Path]::GetRelativePath($choco, $file.FullName)
+        Assert-Smoke ($named -contains $relative) "Chocolatey's x wrote '$relative' without a '- ' line"
+    }
+
+    $list = Invoke-Pakko @('l', '-ba', $zip)
+    Assert-Smoke ($list.ExitCode -eq 0 -and -not $list.Output.StartsWith('Size')) "l -ba: exit $($list.ExitCode), the header is still there"
+    $quiet = Invoke-Pakko @('l', '-bso0', $zip)
+    Assert-Smoke ($quiet.ExitCode -eq 0 -and $quiet.Output.Length -eq 0) "l -bso0: exit $($quiet.ExitCode), stdout: $($quiet.Output)"
+    $timed = Invoke-Pakko @('t', '-bt', $zip)
+    Assert-Smoke ($timed.ExitCode -eq 0 -and $timed.Output.Contains('Global  Time =')) "t -bt: exit $($timed.ExitCode), no time lines"
+    $refused = Invoke-Pakko @('x', '-so', '-bse1', $zip)
+    Assert-Smoke ($refused.ExitCode -eq 7) "x -so -bse1: exit $($refused.ExitCode), expected 7"
+    $refused = Invoke-Pakko @('a', '-saa', (Join-Path $folder 'saa'), $tree)
+    Assert-Smoke ($refused.ExitCode -eq 7) "a -saa: exit $($refused.ExitCode), expected 7"
+}
