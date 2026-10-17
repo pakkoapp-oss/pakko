@@ -91,6 +91,8 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         │               CheckBox (DownloadMarkChecked, enabled by DownloadMarkCanChange) and its
         │               note (DownloadMarkNoteText: cost, risk or policy).
         │
+        │   OptionsMoreBelow (T-F405): a Border over the bottom 24 px of Row 2, a gradient and a
+        │   divider line, shown by MainWindow.xaml.cs while ScrollEdgeHint says content is below.
         └── Row 3: FooterGrid (*,Auto,Auto,Auto,Auto, MinHeight=40)
             ├── Col 0: StackPanel — ProgressBar (while running); footer line (FooterText from
             │       App.Core FooterLine.Pick: result, browse selection, or create preview) with

@@ -19,6 +19,29 @@
          No Mica: dropped when captures came back black (2026-09-28), later traced to the monitor
          being off rather than the backdrop; not re-tested since (DECISIONS.md, wave 4). -->
     <Grid x:Name="RootGrid" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+        <!-- T-F405: the "more below" shade fades into SolidBackgroundFillColorBase (F3F3F3 / 202020);
+             in high contrast only its divider line shows. -->
+        <Grid.Resources>
+            <ResourceDictionary>
+                <ResourceDictionary.ThemeDictionaries>
+                    <ResourceDictionary x:Key="Light">
+                        <LinearGradientBrush x:Key="OptionsMoreBelowBrush" StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#00F3F3F3" Offset="0"/>
+                            <GradientStop Color="#FFF3F3F3" Offset="1"/>
+                        </LinearGradientBrush>
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="Dark">
+                        <LinearGradientBrush x:Key="OptionsMoreBelowBrush" StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#00202020" Offset="0"/>
+                            <GradientStop Color="#FF202020" Offset="1"/>
+                        </LinearGradientBrush>
+                    </ResourceDictionary>
+                    <ResourceDictionary x:Key="HighContrast">
+                        <SolidColorBrush x:Key="OptionsMoreBelowBrush" Color="Transparent"/>
+                    </ResourceDictionary>
+                </ResourceDictionary.ThemeDictionaries>
+            </ResourceDictionary>
+        </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="32"/>
             <RowDefinition Height="*"/>
@@ -723,6 +746,21 @@
                 </Border>
                 </Grid>
             </ScrollViewer>
+            <!-- T-F405: the scrollbar shows only on hover; this shade and line say cards continue
+                 below. Shown by MainWindow.xaml.cs UpdateOptionsMoreBelow; the right margin keeps
+                 the scrollbar clear. -->
+            <Border
+                x:Name="OptionsMoreBelow"
+                Grid.Row="2"
+                Height="24"
+                Margin="0,0,12,0"
+                VerticalAlignment="Bottom"
+                IsHitTestVisible="False"
+                AutomationProperties.AccessibilityView="Raw"
+                Visibility="Collapsed"
+                Background="{ThemeResource OptionsMoreBelowBrush}"
+                BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                BorderThickness="0,0,0,1"/>
 
             <!-- Footer: status or progress on the left, the action buttons on the right, primary last. -->
             <Grid x:Name="FooterGrid" Grid.Row="3" ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="8" MinHeight="40"
