@@ -30,10 +30,10 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         _temp.Dispose();
     }
 
-    public static TheoryData<string> Hostile => new()
-    {
+    public static TheoryData<string> Hostile =>
+    [
         "a file", "a folder", "missing", "a missing drive", "bad characters", "empty", "locked", "not an archive", "an empty file",
-    };
+    ];
 
     // A path of the named kind. Where an archive is wanted, "a file" is a real archive.
     private string Path(string kind, string extension = ".zip")

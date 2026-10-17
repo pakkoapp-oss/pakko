@@ -94,6 +94,20 @@ public sealed class AntivirusScanService : IAntivirusScanService
     // T-F234: see ZipArchiveService.NameCodePages — scan reports the same names extraction writes.
     internal ZipNameCodePages NameCodePages { get; init; } = ZipNameCodePages.System;
 
+    // T-F406: a path that cannot be opened at all is reported, not handed to a reader.
+    private static List<string> TakeUsablePaths(IReadOnlyList<string> paths, List<ThreatFinding> findings)
+    {
+        var usable = new List<string>();
+        foreach (string path in paths)
+        {
+            if (InputPaths.Problem(path) is { } pathProblem)
+                findings.Add(CoreMessages.Inconclusive(path, null, pathProblem));
+            else
+                usable.Add(path);
+        }
+        return usable;
+    }
+
     /// <inheritdoc/>
     public async Task<ThreatScanResult> ScanAsync(
         AntivirusScanOptions options,
@@ -101,15 +115,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         CancellationToken cancellationToken = default)
     {
         var findings = new List<ThreatFinding>();
-        // T-F406: a path that cannot be opened at all is reported, not handed to a reader.
-        var usable = new List<string>();
-        foreach (string path in options.ArchivePaths)
-        {
-            if (InputPaths.Problem(path) is { } pathProblem)
-                findings.Add(CoreMessages.Inconclusive(path, null, pathProblem));
-            else
-                usable.Add(path);
-        }
+        List<string> usable = TakeUsablePaths(options.ArchivePaths, findings);
         ArchiveFormatPolicy.Classification classification = await ArchiveFormatPolicy
             .ClassifyAsync(usable, _tarCapabilities, _policy, cancellationToken).ConfigureAwait(false);
 
