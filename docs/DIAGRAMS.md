@@ -366,9 +366,9 @@ flowchart TD
     PW -- yes --> PW1["ResolveArchivePasswordAsync, once per archive, before staging:<br/>options.ResolvePasswordAsync, up to 3 attempts, each checked against<br/>the smallest encrypted entry (T-F189/T-F243)"]
     PW1 -- "no password (none wired, cancelled, attempts used up)" --> PW2["Errors += PasswordProtectedExtract, archive not opened"]
     PW1 -- "resolved" --> A0
-    PW -- no --> A0["ZipArchiveReader.Open: allEntries = every ZIP entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?"}
+    PW -- no --> A0["ZipArchiveReader.Open: allEntries = every ZIP entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty, or T-F410:<br/>options.EntryFilter set?"}
     A1 -- no --> A2["entries = allEntries.<br/>isSingleRootFolder/isSingleRootFile computed over files AND folders<br/>(a.txt + empty/ is MultiRoot), then<br/>ExtractionDestinationPlanner.Classify → RootShape (T-F157)"]
-    A1 -- yes --> A3["entries = allEntries filtered to the selected paths<br/>+ anything nested under a selected folder path<br/>→ RootShape.SelectedSubset"]
+    A1 -- yes --> A3["entries = allEntries filtered to the selected paths<br/>+ anything nested under a selected folder path,<br/>then T-F410: each entry asked of EntryFilter on its own<br/>(none passes: return, nothing created)<br/>→ RootShape.SelectedSubset"]
     A2 --> A3B["ExtractionDestinationPlanner.Resolve(alreadyIsolated, shape, destDir,<br/>unisolatedDestDir, rootDuplicatesArchiveName)<br/>→ (actualDest, stripRootPrefix). T-F205: SingleFolder keeps the root<br/>unless EliminateDuplicateRootFolder is set and the root is named like the archive"]
     A3 --> A3B
     A3B --> A4["Compression-bomb check sums allFileEntries (whole archive),<br/>never the filtered subset — T-F05/T-F94"]
@@ -639,10 +639,10 @@ flowchart TD
     Bomb -- "InsufficientDiskSpace" --> BombSkip1["SkippedFiles += 'destination has N bytes free,<br/>archive declares M uncompressed'; return (destDir, false)<br/>— scope disposed, no extraction ever runs"]
     Bomb -- "UserDeclined<br/>(callback null → defaults to declined, e.g. Archiver.Shell/CLI)" --> BombSkip2["SkippedFiles += 'suspicious ratio N:1'; return (destDir, false)<br/>— scope disposed, no extraction ever runs"]
     Bomb -- "NotABomb, or UserConfirmed" --> PreDir["Pre-create the directories an entry needs before<br/>its own directory entry (archive order), via Directory.CreateDirectory<br/>at Pakko's OWN (unsandboxed) identity under scope.OutputDirectory —<br/>libarchive's implicit parent-dir creation fails under the AppContainer<br/>(T-F52); a directory with its own entry first is left to tar.exe,<br/>which sets its time (T-F298)"]
-    PreDir --> G2{"T-F05: options.SelectedEntryPaths<br/>set and non-empty?<br/>(gates D-G above already ran<br/>UNCONDITIONALLY — the pre-scan<br/>never branches on this)"}
+    PreDir --> G2{"T-F05: options.SelectedEntryPaths<br/>set and non-empty, or T-F410:<br/>options.EntryFilter set?<br/>(gates D-G above already ran<br/>UNCONDITIONALLY — the pre-scan<br/>never branches on this)"}
     G2 -- no --> H["scope.ExtractAsync(null)<br/>= tar -x -f - -C out (current directory = quarantine root)"]
-    G2 -- yes --> G3["ExpandSelection(allNames, SelectedEntryPaths):<br/>each selected path → its exact -t name<br/>(file or dir form) + every -t name it's<br/>a '/'-prefix of (descendants) — built from<br/>the SAME name list gate D already validated,<br/>never a second listing"]
-    G3 --> H2["scope.ExtractAsync(&lt;expanded members&gt;)<br/>each name escaped so tar.exe reads it as that name,<br/>not as a wildcard pattern (T-F284)"]
+    G2 -- yes --> G3["ExpandSelection(allNames, SelectedEntryPaths):<br/>each selected path → its exact -t name<br/>(file or dir form) + every -t name it's<br/>a '/'-prefix of (descendants) — built from<br/>the SAME name list gate D already validated,<br/>never a second listing. T-F410: then each<br/>name asked of EntryFilter (no ./ prefix),<br/>none passes: return before the bomb check"]
+    G3 --> H2["scope.ExtractAsync(&lt;expanded members&gt;)<br/>each name escaped so tar.exe reads it as that name,<br/>not as a wildcard pattern (T-F284), written to list/members.txt<br/>in the quarantine: tar -x -n -T list/members.txt (T-F410:<br/>stdin is the archive, and no command-line limit)"]
     H2 -- "exit != 0 (e.g. a stale/unmatched<br/>member name — 'Not found in archive')" --> RejIO2
     H2 -- "exit 0" --> FC
     H -- "exit != 0 (T-F239: a Job limit hit is named in front of stderr)" --> RejIO2["throw IOException(stdErr)<br/>→ finally still runs: scope disposed<br/>→ caught in ExtractAsync as ArchiveError"]

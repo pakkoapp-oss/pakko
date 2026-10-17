@@ -13312,6 +13312,21 @@ the archive.
   wave B, instead of silently testing everything.
 - **Where it differs from 7-Zip, deliberately:** `-bb1` also names a folder Pakko creates for an
   entry inside it when the folder's own entry did not pass the filter (7-Zip prints only entries).
+- **`tar.exe` gets the names in a list file, always.** `TarSandboxScope.ExtractAsync` writes the
+  members to `list\members.txt` in the quarantine (read-execute for the AppContainer) and passes
+  `-n -T list\members.txt`, for `SelectedEntryPaths` too: a large selection could overflow the
+  command line as well. `-n` is safe there because `ExpandSelection` already names every
+  descendant. A line `-C` is a name in `x` mode (measured: libarchive's "change directory" line
+  is `c` mode's), so no escape beyond T-F284's. A selected name with a line break cannot be
+  written to the list and fails that archive with T-F266's "cannot be passed to tar.exe" error,
+  where it used to reach `tar.exe` as an argument.
+- **Measured after** (`scripts/Measure-SevenZipCompat.ps1`, the branch's JIT build against
+  `7za.exe` 26.02): works 43, accepted 39, differs 24, missing 51, pakko-only 5, reference-fails
+  10 (before: 31, 27, 26, 73, 5, 10). Scoop's `x -xr!*.nsis -y` works on ZIP, 7z and tar, its
+  `-ir!app\*` too; Chocolatey's line with a folder works on ZIP and 7z. Left: the inner tar of a
+  `.tar.gz` (T-F412); 7za's OEM names in Chocolatey's lines; Scoop's `-aos` over existing files
+  exits 1, T-F313's warning for a kept file, where 7-Zip exits 0, and Scoop stops on any non-zero
+  exit — a contract question, not this wave's; `-aou`'s rename pattern.
 
 ## T-F342 — creating 7z through tar.exe: sources and measurements (wave 0, 2026-10-12)
 
