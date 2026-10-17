@@ -232,7 +232,8 @@ public sealed class TarSandboxedService : ITarService
         var conflictResolver = new ConflictResolver(options.OnConflict, options.ResolveConflictAsync);
 
         bool destinationExisted = Directory.Exists(options.DestinationFolder);
-        Directory.CreateDirectory(options.DestinationFolder);
+        if (DestinationFolder.TryCreate(options.DestinationFolder) is { } folderFailure)
+            return DestinationFolder.ExtractionRefused(options.ArchivePaths, folderFailure);
         try
         {
             return await ExtractArchivesAsync(options, conflictResolver, new ArchiveResultSink(errors, createdFiles, skippedFiles), progress, cancellationToken)
@@ -352,6 +353,11 @@ public sealed class TarSandboxedService : ITarService
         string archivePath, string destDir, ExtractOptions options, ConflictResolver conflictResolver,
         ArchiveResultSink sink, IProgress<ProgressReport>? archiveProgress, CancellationToken cancellationToken)
     {
+        if (InputPaths.Problem(archivePath) is { } pathProblem)
+        {
+            sink.Errors.Add(CoreMessages.Error(archivePath, pathProblem));
+            return;
+        }
         try
         {
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
@@ -1166,6 +1172,8 @@ public sealed class TarSandboxedService : ITarService
     {
         if (_policy.DisableTarExtraction)
             return CoreMessages.ListFailure(TarDisabled);
+        if (InputPaths.Problem(archivePath) is { } pathProblem)
+            return CoreMessages.ListFailure(pathProblem);
 
         // T-F113: cheap proactive check for the header-encrypted case only (unlike ExtractAsync's
         // IsEncryptedRar check) — a data-only-encrypted RAR's filenames are still readable, so
@@ -1440,7 +1448,8 @@ public sealed class TarSandboxedService : ITarService
             return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 
-        Directory.CreateDirectory(options.DestinationFolder);
+        if (DestinationFolder.TryCreate(options.DestinationFolder) is { } folderFailure)
+            return DestinationFolder.CreationRefused(options, folderFailure);
         string extension = ArchiveNaming.GetExtension(options.Format);
         IEnumerable<SourceResult> sources;
 

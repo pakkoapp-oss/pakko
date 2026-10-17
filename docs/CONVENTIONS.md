@@ -120,6 +120,32 @@ catch (IOException ex)
 }
 ```
 
+### Errors at the boundary (T-F406)
+
+"Never throws" is checked, not trusted. Two layers:
+
+1. **Core.** A public operation checks the paths it is given before it uses them:
+   `InputPaths.Problem(path)` for an archive or source path (empty, or one `Path.GetFullPath`
+   refuses), and `DestinationFolder.TryCreate(folder)` for the folder it writes into
+   (`ExtractionRefused`/`CreationRefused` build the result). Per-item `catch` blocks take the
+   I/O failures they expect (`IOException`, `UnauthorizedAccessException`, ...), **never
+   `ArgumentException` as a family**: an `ArgumentNullException` or `ArgumentOutOfRangeException`
+   from our own code is a defect, and catching it would print it as "Cannot extract archive".
+   `CoreNeverThrowsContractTests` (IntegrationTests) runs every public operation with the real
+   engines against hostile paths (a file where a folder goes and the reverse, missing, a missing
+   drive, bad characters, empty, locked, not an archive, an empty file). Its completeness test
+   compares a written table with the public methods found by reflection: **a new public method on
+   a Core interface fails the build until it has rows there**, or a reason in `NotPathOperations`.
+2. **Each program.** One last-resort handler, for what is a defect by definition:
+   `pakko` — `CliLastResort` (stderr, exit 2, as 7-Zip's `MainAr.cpp`); `Archiver.Shell` —
+   `ShellLastResort` (a native error dialog, exit 2); the App — `Application.UnhandledException`
+   and `TaskScheduler.UnobservedTaskException` go to `App.ReportUnexpected` (log, a best-effort
+   dialog, keep running). **Every `async void` in the App and OperationUi catches inside its own
+   body** and calls `App.ReportUnexpected` (`AsyncVoidHandlersTests` reads the source).
+   `Archiver.OperationUi` has no handler of its own: when it dies, Shell's helper connection
+   carries the operation on with the native dialogs (T-F268).
+   Cancellation (`OperationCanceledException`) is never turned into an error by these handlers.
+
 ---
 
 ## MVVM Rules

@@ -20,7 +20,49 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+        // T-F406: the last line of defence, before anything else can throw.
+        UnhandledException += (_, e) =>
+        {
+            e.Handled = true;
+            ReportUnexpected(e.Exception, "Unhandled exception");
+        };
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            e.SetObserved();
+            ReportUnexpected(e.Exception, "Unobserved task exception");
+        };
         Services = ConfigureServices();
+    }
+
+    /// <summary>
+    /// T-F406: an exception nothing else caught. Core reports failures in its results and the
+    /// ViewModel catches around each operation, so this is a defect: it is logged and shown, and the
+    /// App keeps running — the user's list and choices stay on screen, and closing is theirs to do.
+    /// The dialog is best-effort: there is no window to show it in before the first one opens, and
+    /// a dialog may already be open.
+    /// </summary>
+    internal static void ReportUnexpected(Exception exception, string where)
+    {
+        ILogService? log = Services?.GetService<ILogService>();
+        log?.Error(where, exception);
+        IDialogService? dialogs = Services?.GetService<IDialogService>();
+        if (dialogs is null)
+            return;
+        _ = ShowUnexpectedAsync(dialogs, log, exception);
+    }
+
+    private static async Task ShowUnexpectedAsync(IDialogService dialogs, ILogService? log, Exception exception)
+    {
+        try
+        {
+            var res = Windows.ApplicationModel.Resources.ResourceLoader.GetForViewIndependentUse();
+            await dialogs.ShowErrorAsync(res.GetString("DialogErrorTitle"), $"{exception.GetType().Name}: {exception.Message}");
+        }
+        catch (Exception ex)
+        {
+            // Best-effort: no window yet, or a dialog already open. The log has the first exception.
+            log?.Warn($"Could not show the unexpected-error dialog: {ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     private static ServiceProvider ConfigureServices()

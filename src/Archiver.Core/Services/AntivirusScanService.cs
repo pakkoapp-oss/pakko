@@ -101,8 +101,17 @@ public sealed class AntivirusScanService : IAntivirusScanService
         CancellationToken cancellationToken = default)
     {
         var findings = new List<ThreatFinding>();
+        // T-F406: a path that cannot be opened at all is reported, not handed to a reader.
+        var usable = new List<string>();
+        foreach (string path in options.ArchivePaths)
+        {
+            if (InputPaths.Problem(path) is { } pathProblem)
+                findings.Add(CoreMessages.Inconclusive(path, null, pathProblem));
+            else
+                usable.Add(path);
+        }
         ArchiveFormatPolicy.Classification classification = await ArchiveFormatPolicy
-            .ClassifyAsync(options.ArchivePaths, _tarCapabilities, _policy, cancellationToken).ConfigureAwait(false);
+            .ClassifyAsync(usable, _tarCapabilities, _policy, cancellationToken).ConfigureAwait(false);
 
         // T-F250: scan reads ZIPs itself, not through ZipArchiveService, so a blocked "zip" is
         // refused here too — the ZIP bucket also holds Unknown paths, which include ZIPs the

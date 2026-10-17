@@ -438,7 +438,7 @@ Error:`) and a summary line to stdout (`Everything is Ok`, `Errors: N`, `Warning
 | Missing archive, cut archive (`x`, `t`, `l`), not an archive | 2 | 2 | Yes |
 | Wrong password | 2, writes empty files | 2, writes nothing | Yes (Pakko writes no empty files) |
 | Unknown command, unknown switch, no archive name, `-o` with a space | 7 | 7 | Yes |
-| `-o` names a file | 2 | crashed (unhandled exception) | Fixed by T-F406 |
+| `-o` names a file | 2 | 2 (crashed before T-F406) | Yes |
 | `a` with one missing source | 1 (warning), the rest archived under the path as given (`app\readme.txt`) | 2, the rest archived without the folder (`readme.txt`) | Can add, T-F414 |
 | Encrypted archive or a conflict, no `-y`, stdin closed | 255 (the prompt reads end of input) | 2 or 1, no prompt | Declined: Pakko does not prompt when nobody can answer (T-F160, T-F191) |
 | Text of the messages | `ERROR: ...` | `pakko: error: ...` | Declined: Pakko's own wording (T-F221); scripts branch on the exit code |

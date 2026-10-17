@@ -1630,18 +1630,6 @@ re-measured with T-F346's script before and after.
   the new `Default`; a unit test on `CreationFormatOption`/the ViewModel for this order.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`POL-009`), 2026-10-16.
 
-### T-F406 — Core throws when an operation's folder cannot be made; no frontend has a last-resort handler (P1)
-
-- [ ] **Status:** in progress (its own PR). `pakko x a.zip -o<file>` died with an unhandled
-  `IOException` (0xC0000409): `Directory.CreateDirectory(destination)` sat outside any error handling
-  in `ZipArchiveService` and `TarSandboxedService`. A contract test over every public Core operation
-  with hostile paths found 38 failures in 198 cases (destination folder in every writing operation;
-  an empty archive path in tar extract/list and scan). None of the four programs (App, Shell,
-  OperationUi, `pakko`) catches what slips through. Approach: two layers — Core checks its paths
-  at entry, with a contract test and a completeness check over every public operation; one
-  last-resort handler per program.
-- **Reported by:** T-F343's measurement, 2026-10-17.
-
 ### T-F407 — `pakko`: `--` ends the switches (P2, from T-F343)
 
 - [ ] **Status:** open. 7-Zip reads every argument after `--` as a name, never a switch

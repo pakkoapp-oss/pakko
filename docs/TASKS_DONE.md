@@ -13005,3 +13005,16 @@ PowerShell does natively.
   tar.exe.
 - **Reported by:** the user, 2026-10-06.
 - **Result:** `docs/CLI.md`, "7-Zip compatibility matrix" (supported / can add / declined / can't, per command, switch, caller and error case); `scripts/Measure-SevenZipCompat.ps1`; `docs/DECISIONS.md`, "T-F343".
+
+### T-F406 — Core throws when an operation's folder cannot be made; no frontend has a last-resort handler (P1)
+
+- [x] **Status:** done 2026-10-17. `pakko x a.zip -o<file>` died with an unhandled
+  `IOException` (0xC0000409): `Directory.CreateDirectory(destination)` sat outside any error handling
+  in `ZipArchiveService` and `TarSandboxedService`. A contract test over every public Core operation
+  with hostile paths found 38 failures in 198 cases (destination folder in every writing operation;
+  an empty archive path in tar extract/list and scan). None of the four programs (App, Shell,
+  OperationUi, `pakko`) catches what slips through. Approach: two layers — Core checks its paths
+  at entry, with a contract test and a completeness check over every public operation; one
+  last-resort handler per program.
+- **Reported by:** T-F343's measurement, 2026-10-17.
+- **Result:** `InputPaths` and `DestinationFolder` in Core; `CoreNeverThrowsContractTests` with its completeness table (235 of 235); `CliLastResort`, `ShellLastResort`, `App.ReportUnexpected`; `docs/CONVENTIONS.md`, "Errors at the boundary"; `docs/DECISIONS.md`, "T-F406"; smoke `CLI-036`.

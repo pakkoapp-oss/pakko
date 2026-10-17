@@ -6,46 +6,52 @@ using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 
-// T-F51/T-F261: loaded once per invocation; every command gets its services from Core's one
-// factory built with it — Archiver.CLI has no DI container, same as Archiver.Shell.
-// pakko.exe only ships for Windows (tar.exe/AppContainer are already Windows-only throughout
-// this file) despite this project's plain net10.0 (not net10.0-windows) TargetFramework.
-#pragma warning disable CA1416
-var services = PakkoServices.Create(GroupPolicyService.Load());
-#pragma warning restore CA1416
+// T-F406: whatever escapes the run is a defect; it ends as 7-Zip ends one (stderr, exit 2).
+return await CliLastResort.RunAsync(RunCommandAsync, Console.Error).ConfigureAwait(false);
 
-ParsedCliCommand command = CliArgumentParser.Parse(args);
-if (command.ConsoleCodePage is { } consoleCodePage)
-    CliConsoleCharset.Apply(consoleCodePage);
-// T-F263: -si/-so staging left by a pakko that was killed (e.g. `x -so` plaintext) goes now.
-if (command.Type is CliCommandType.Extract or CliCommandType.Test or CliCommandType.List or CliCommandType.Archive)
-    CliStreamStaging.SweepAbandoned();
-
-int exitCode = command.Type switch
+async Task<int> RunCommandAsync()
 {
-    CliCommandType.Help => RunHelp(),
-    CliCommandType.Version => RunVersion(),
-    CliCommandType.Invalid => RunInvalid(command),
-    _ when command.PromptForPassword && Console.IsInputRedirected => RejectBarePasswordWithoutConsole(),
-    _ when command.Type == CliCommandType.Archive && command.WriteToStdout && !Console.IsOutputRedirected => RejectArchiveToConsole(),
-    CliCommandType.Extract => await RunExtractAsync(command, services).ConfigureAwait(false),
-    CliCommandType.Test => await RunTestAsync(command, services).ConfigureAwait(false),
-    CliCommandType.Info => await RunInfoAsync(services).ConfigureAwait(false),
-    CliCommandType.Archive => await RunArchiveAsync(command, services).ConfigureAwait(false),
-    CliCommandType.List => await RunListAsync(command, services).ConfigureAwait(false),
-    CliCommandType.Hash => await RunHashAsync(command).ConfigureAwait(false),
-    CliCommandType.Repair => await RunRepairAsync(command, services).ConfigureAwait(false),
-    _ => 2,
-};
+    // T-F51/T-F261: loaded once per invocation; every command gets its services from Core's one
+    // factory built with it — Archiver.CLI has no DI container, same as Archiver.Shell.
+    // pakko.exe only ships for Windows (tar.exe/AppContainer are already Windows-only throughout
+    // this file) despite this project's plain net10.0 (not net10.0-windows) TargetFramework.
+    #pragma warning disable CA1416
+    var services = PakkoServices.Create(GroupPolicyService.Load());
+    #pragma warning restore CA1416
 
-// T-F403: a pakko started from the installed package leaves what tar.exe reads for the Explorer
-// menu when that snapshot is missing or stale; a standalone pakko has no package folder to write.
-if (command.Type is CliCommandType.Extract or CliCommandType.Test or CliCommandType.Info or CliCommandType.Archive
-    or CliCommandType.List or CliCommandType.Repair)
-{
-    await TarCapabilitySnapshot.RecordIfStaleAsync(services.Policy, services.GetTarCapabilitiesAsync).ConfigureAwait(false);
+    ParsedCliCommand command = CliArgumentParser.Parse(args);
+    if (command.ConsoleCodePage is { } consoleCodePage)
+        CliConsoleCharset.Apply(consoleCodePage);
+    // T-F263: -si/-so staging left by a pakko that was killed (e.g. `x -so` plaintext) goes now.
+    if (command.Type is CliCommandType.Extract or CliCommandType.Test or CliCommandType.List or CliCommandType.Archive)
+        CliStreamStaging.SweepAbandoned();
+
+    int exitCode = command.Type switch
+    {
+        CliCommandType.Help => RunHelp(),
+        CliCommandType.Version => RunVersion(),
+        CliCommandType.Invalid => RunInvalid(command),
+        _ when command.PromptForPassword && Console.IsInputRedirected => RejectBarePasswordWithoutConsole(),
+        _ when command.Type == CliCommandType.Archive && command.WriteToStdout && !Console.IsOutputRedirected => RejectArchiveToConsole(),
+        CliCommandType.Extract => await RunExtractAsync(command, services).ConfigureAwait(false),
+        CliCommandType.Test => await RunTestAsync(command, services).ConfigureAwait(false),
+        CliCommandType.Info => await RunInfoAsync(services).ConfigureAwait(false),
+        CliCommandType.Archive => await RunArchiveAsync(command, services).ConfigureAwait(false),
+        CliCommandType.List => await RunListAsync(command, services).ConfigureAwait(false),
+        CliCommandType.Hash => await RunHashAsync(command).ConfigureAwait(false),
+        CliCommandType.Repair => await RunRepairAsync(command, services).ConfigureAwait(false),
+        _ => 2,
+    };
+
+    // T-F403: a pakko started from the installed package leaves what tar.exe reads for the Explorer
+    // menu when that snapshot is missing or stale; a standalone pakko has no package folder to write.
+    if (command.Type is CliCommandType.Extract or CliCommandType.Test or CliCommandType.Info or CliCommandType.Archive
+        or CliCommandType.List or CliCommandType.Repair)
+    {
+        await TarCapabilitySnapshot.RecordIfStaleAsync(services.Policy, services.GetTarCapabilitiesAsync).ConfigureAwait(false);
+    }
+    return exitCode;
 }
-return exitCode;
 
 static int RunHelp()
 {

@@ -354,8 +354,12 @@ adding `Zip/ZipArchiveReader` and `ArchiveEntrySecurity.HasReservedName`): `Extr
 `IO/VerifyingReadStream`. T-F223 (2026-09-29): nodes PW-PW2 and K's encrypted-entry failures from
 `TryRejectUnsupportedOrEncryptedZipAsync`, `ResolveArchivePasswordAsync` and `OpenEntryContentStream`.
 
+Updated 2026-10-17 for T-F406 from `DestinationFolder.TryCreate` and `InputPaths.Problem` at the entry of `ZipArchiveService.ExtractAsync`.
+
 ```mermaid
 flowchart TD
+    ZD{"ExtractAsync, once per call: DestinationFolder.TryCreate fails?<br/>(a file by that name, a missing drive, bad characters — T-F406)"} -- yes --> ZDE["return: Errors += CannotExtractArchive with the OS text<br/>for every archive, nothing opened"]
+    ZD -- no --> PM
     PM{"ExtractAsync outer loop, per archive:<br/>file missing? (T-F221)"} -- yes --> PM1["Errors += SourceNotFound<br/>(not 'not a recognized archive')"]
     PM -- no --> P0{"zip blocked by Group Policy?<br/>(T-F250 — also catches an Unknown-detected ZIP)"} -- yes --> P1["SkippedFiles += policy reason,<br/>archive not opened"]
     P0 -- no --> PW{"IsEncryptedZip? (any entry, whole central directory)"}
@@ -612,8 +616,13 @@ Source read for this diagram: `ExtractSingleArchiveAsync`, `ScanForUnsafeEntries
 `ExtractionStaging.CommitInto` in `src/Archiver.Core/Services/ExtractionStaging.cs` (re-read for
 fix phase 4, 2026-09-25).
 
+Updated 2026-10-17 for T-F406 from `DestinationFolder.TryCreate` and `InputPaths.Problem` at the entry of `TarSandboxedService.ExtractAsync` and `ExtractOneArchiveAsync`.
+
 ```mermaid
 flowchart TD
+    X0{"ExtractAsync, once per call: DestinationFolder.TryCreate fails? (T-F406)"} -- yes --> X0E["return: Errors += CannotExtractArchive with the OS text for every archive"]
+    X0 -- no --> X1{"ExtractOneArchiveAsync: InputPaths.Problem —<br/>empty or unparseable archive path? (T-F406)"} -- yes --> X1E["Errors += SourceNotFound, next archive"]
+    X1 -- no --> A0
     A0["ExtractSingleArchiveAsync per archivePath:<br/>scope = TarSandboxScope.CreateAsync(archivePath, needsOutputDir:true)<br/>— verifies tar.exe's Authenticode signature once,<br/>opens archivePath read-only, sharing read only, for the whole scope (T-F233),<br/>ensures the AppContainer profile, sweeps quarantines of dead runs (T-F263), creates %TEMP%\PakkoTarSandbox\&lt;owner-guid&gt;\out<br/>with ACEs — no ACE, link or copy of the user's archive"]
     A0 -- "signature check fails, or the archive is open for writing elsewhere ('in use')" --> RejSig["throw TarSignatureVerificationException / IOException<br/>caught in ExtractAsync as ArchiveError — fail-closed,<br/>never a silent unsandboxed fallback"]
     A0 -- "signature OK" --> A[ExtractSingleArchiveAsync continues] --> B["scope.ListAsync(verbose:false) = tar -t -f - (archive as inherited stdin)<br/>first with --options tar:hdrcharset=UTF-8, again without it if tar.exe<br/>reports non-UTF-8 names (T-F204) — INSIDE the AppContainer + a fresh Job Object"]
@@ -1136,6 +1145,8 @@ Sources read for this diagram (2026-09-29): `src/Archiver.Core/Services/ArchiveC
 T-F390, T-F391 and T-F342 (Core) from `TarSandboxedService.cs` (`CompressAsync`, `CompressToArchiveAsync`,
 `BuildCreationArgs`, `WriteExcludeList`, `ReportVanished`, `ReportCreationFailure`, `LeaveOutLinks`).
 
+Updated 2026-10-17 for T-F406 from `DestinationFolder.TryCreate` and `InputPaths.Problem` at the entry of `ZipArchiveService.ArchiveAsync` and `TarSandboxedService.CompressAsync`.
+
 ```mermaid
 flowchart TD
     F1["App: Format combobox, SelectedArchiveMode,<br/>inline password when Encrypt applies (ZIP only),<br/>recovery data 5/10/20 % unless DisableRecoveryData"] --> R
@@ -1151,7 +1162,9 @@ flowchart TD
     RR2 -- no --> R3{"Format == Zip?"}
 
     R3 -- yes --> Z0["ZipArchiveService.ArchiveAsync: trim trailing separators (T-F153)"]
-    Z0 --> Z1{"ResolvePasswordAsync set?"}
+    Z0 --> ZD{"DestinationFolder.TryCreate fails? (T-F406, before any prompt)"}
+    ZD -- yes --> ZDE["return: Errors += CannotCreateArchive with the OS text, nothing written"]
+    ZD -- no --> Z1{"ResolvePasswordAsync set?"}
     Z1 -- yes --> Z2["ResolveEncryptionPasswordAsync — one prompt, maxAttempts 1,<br/>BEFORE any conflict step (T-F193)"]
     Z2 --> Z3{"null, empty, non-printable-ASCII or over 99 chars?<br/>(EncryptionPasswordRule)"}
     Z3 -- yes --> ZE["return: one error, nothing written"]
@@ -1186,7 +1199,9 @@ flowchart TD
     T2 -- no --> TE2["Errors += TarSignatureInvalid"]
     T2 -- yes --> T2Z{"Format == SevenZip and CanCreateSevenZipAsync false?<br/>(tar.exe reads 7z by its version, and its 7z writer ran once:<br/>an empty archive to stdout, exit 0 and the 7z signature, T-F342)"}
     T2Z -- yes --> TE2Z["Errors += SevenZipWriterUnavailable, nothing written"]
-    T2Z -- no --> TM{"Mode"}
+    T2Z -- no --> TD{"DestinationFolder.TryCreate fails? (T-F406)"}
+    TD -- yes --> TDE["return: Errors += CannotCreateArchive with the OS text, tar.exe never starts"]
+    TD -- no --> TM{"Mode"}
     TM -- SingleArchive --> T3["DestinationConflictResolver on name.ext, Skip returns every source skipped"]
     TM -- SeparateArchives --> T4["SEQUENTIAL loop, sorted: missing → SourceNotFound,<br/>conflict per source, then one tar.exe per source"]
     T3 --> T3T["temp = ArchiveTempFile.Create (T-F312)"]

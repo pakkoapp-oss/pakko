@@ -39,6 +39,10 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   propagate into every caller, including test projects on a plain `net10.0` TFM — confirmed
   T-F146, where a class-level annotation forced two unrelated test classes to also carry the
   attribute before the warnings cleared.
+- **A public Core operation checks its paths at entry** (`InputPaths.Problem`,
+  `DestinationFolder.TryCreate`) and never catches `ArgumentException` as a family per item; a new
+  public method gets rows in `CoreNeverThrowsContractTests` or its completeness test fails
+  (`docs/CONVENTIONS.md`, "Errors at the boundary", T-F406).
 - If a change modifies a public interface, model, or contract in `Archiver.Core`, check whether
   tests in other projects (`Archiver.Shell.Tests`, future `Archiver.CLI.Tests`) need to be updated
   or extended. Internal implementation changes (private methods, buffers, sorting) require only
