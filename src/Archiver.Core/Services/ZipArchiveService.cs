@@ -915,7 +915,7 @@ public sealed class ZipArchiveService : IArchiveService
                 : options.DestinationFolder;
             var context = new ZipExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
-                sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder, sink.Warnings);
+                sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder, sink.Warnings, options.OnItemExtracted);
             (string? actualDest, bool anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
@@ -1479,7 +1479,7 @@ public sealed class ZipArchiveService : IArchiveService
             bytesRead += bytesConsumed;
         }
 
-        foreach (string relativePath in staging.CommitInto(actualDest))
+        foreach (string relativePath in staging.CommitInto(actualDest, committed: context.OnItemExtracted))
         {
             context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.DestinationFileLocked, relativePath)));
         }
@@ -1525,7 +1525,9 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F205: ExtractOptions.EliminateDuplicateRootFolder.
         bool EliminateDuplicateRootFolder = false,
         // T-F280: null where the caller has nowhere to show a warning.
-        List<ArchiveWarning>? Warnings = null);
+        List<ArchiveWarning>? Warnings = null,
+        // T-F408: ExtractOptions.OnItemExtracted.
+        Action<string>? OnItemExtracted = null);
 
     // The per-call setup ExtractWithSmartFolderingAsync computes once and every entry of its loop
     // reads unchanged — cut into its own type alongside ZipExtractionContext so
