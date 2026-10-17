@@ -13018,3 +13018,21 @@ PowerShell does natively.
   last-resort handler per program.
 - **Reported by:** T-F343's measurement, 2026-10-17.
 - **Result:** `InputPaths` and `DestinationFolder` in Core; `CoreNeverThrowsContractTests` with its completeness table (235 of 235); `CliLastResort`, `ShellLastResort`, `App.ReportUnexpected`; `docs/CONVENTIONS.md`, "Errors at the boundary"; `docs/DECISIONS.md`, "T-F406"; smoke `CLI-036`.
+
+### T-F407 — `pakko`: `--` ends the switches (P2, from T-F343)
+
+- [x] **Status:** done 2026-10-17. Every argument after the first `--` is a name, as in 7-Zip's `CommandLineParser.cpp`; patool's lines now run.
+- **Reported by:** T-F343's measurement, 2026-10-17 (`docs/CLI.md`, "7-Zip compatibility matrix").
+- **Result:** `CliArgumentParser` (`CliToken`); `CliSevenZipCallerTests`, `CliSevenZipCallerSubprocessTests`; `docs/CLI.md`; `docs/DECISIONS.md`, "T-F407, T-F409, T-F408, T-F411's -sae"; smoke `CLI-037`.
+
+### T-F408 — `pakko`: 7-Zip's output switches `-bb`, `-bd`, `-bs`, `-bt`, `-ba` (P2, from T-F343)
+
+- [x] **Status:** done 2026-10-17. `-ba`, `-bb[N]`, `-bd`, `-bt`, `-bso`/`-bse`/`-bsp` on every command; `x -bb1` prints `- <name>` for each item that arrived, through the new `ExtractOptions.OnItemExtracted` (called by `ExtractionStaging.CommitInto` for both engines). Chocolatey's line runs; its folder filter is T-F410.
+- **Reported by:** T-F343's measurement, 2026-10-17.
+- **Result:** `CliOutputOptions`, `CliTimeStats`, `CliProgress.For`, `ExtractOptions.OnItemExtracted`; `ExtractedItemReportTests`, `TarSandboxedServiceExtractedItemReportTests`, `CliTimeStatsTests`; `docs/CLI.md`; `docs/DECISIONS.md` (same entry); diagrams 3 and 5; smoke `CLI-037`.
+
+### T-F409 — `pakko`: `-y`, `-p` and `-p-` on `l` and `t` (P2, from T-F343)
+
+- [x] **Status:** done 2026-10-17. `-y` on `t` keeps the password prompt off, as on `x`; `-y`, `-p`, `-p-` on `l` are taken and change nothing. `-p-` stays the password `-`, which is what 7-Zip reads.
+- **Reported by:** T-F343's measurement, 2026-10-17.
+- **Result:** `CliArgumentParser`; `CliSevenZipCallerTests`, `CliSevenZipCallerSubprocessTests`; `docs/CLI.md`; `docs/DECISIONS.md` (same entry); smoke `CLI-037`.

@@ -31,6 +31,13 @@ public sealed class CliHelpTextTests
     [InlineData("-si")]
     [InlineData("-so")]
     [InlineData("-rr[N]")]
+    [InlineData("--  ")]
+    [InlineData("-sae")]
+    [InlineData("-bb[N]")]
+    [InlineData("-bd")]
+    [InlineData("-bt")]
+    [InlineData("-ba")]
+    [InlineData("-bso{0|1|2}")]
     public void Text_MentionsEverySupportedSwitch(string switchToken)
     {
         CliHelpText.Text.Should().Contain(switchToken);

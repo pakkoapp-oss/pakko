@@ -1630,33 +1630,6 @@ re-measured with T-F346's script before and after.
   the new `Default`; a unit test on `CreationFormatOption`/the ViewModel for this order.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`POL-009`), 2026-10-16.
 
-### T-F407 — `pakko`: `--` ends the switches (P2, from T-F343)
-
-- [ ] **Status:** open. 7-Zip reads every argument after `--` as a name, never a switch
-  (`CommandLineParser.cpp`); `pakko` refuses `--` as an unknown switch (exit 7). patool puts `--`
-  before the names on every call, so no patool command works. Next: parse `--`; a name starting with
-  `-` after it is a name; tests in `CliParser`'s and the subprocess layer; the T-F343 script's patool
-  rows then move past `--`.
-- **Reported by:** T-F343's measurement, 2026-10-17 (`docs/CLI.md`, "7-Zip compatibility matrix").
-
-### T-F408 — `pakko`: 7-Zip's output switches `-bb`, `-bd`, `-bs`, `-bt`, `-ba` (P2, from T-F343)
-
-- [ ] **Status:** open. `pakko` refuses all of them (exit 7). Chocolatey runs `x -aoa -bd -bb1
-  -o<dir> -y <file>` and records each `- <name>` line of 7-Zip's `-bb1` output as an installed file;
-  `-bd` turns off a progress indicator Pakko does not draw. Next: accept `-bd` and `-bt`
-  (`-bt`: print the time), `-bb0..3` (from 1: a `- <name>` line per file written, as 7-Zip),
-  `-bso`/`-bse`/`-bsp` stream choice, `-ba` (no header lines in `l`, with T-F412). Check against 7za
-  with the T-F343 script; the exact line format is 7-Zip's `ExtractCallbackConsole.cpp`.
-- **Reported by:** T-F343's measurement, 2026-10-17.
-
-### T-F409 — `pakko`: `-y`, `-p` and `-p-` on `l` and `t` (P2, from T-F343)
-
-- [ ] **Status:** open. 7-Zip takes `-y` on every command and `-p`/`-p-` on `l`; `pakko` says "not
-  supported on this command" (exit 7) for `-y` on `l`/`t` and `-p`/`-p-` on `l`. patool passes
-  `-y -p-` on `l` and `t`. Next: accept them (`-y` has nothing to answer there; `-p` on `l` opens a
-  ZIP whose names are fine anyway, a 7z with encrypted headers is refused as today).
-- **Reported by:** T-F343's measurement, 2026-10-17.
-
 ### T-F410 — `pakko`: name filters — `-i`, `-x`, names after the archive, `@listfile`, `-r`, archive wildcards (P2, from T-F343, plan mode)
 
 - [ ] **Status:** open. The largest gap: 7-Zip matches names on `x`, `l`, `t`, `a` (`-i`/`-x` with
@@ -1678,6 +1651,7 @@ re-measured with T-F346's script before and after.
   `-sae`, `-sas` (patool passes `-sae`); `-sdel` (the App has "delete after"); `-spe` (Core has
   `EliminateDuplicateRootFolder`); `-mmt` (the parallel ZIP writer's threads); `-sse`, `-ssp`,
   `-ssw`, `-stl`, `-w`. One commit each, each against 7za with the T-F343 script.
+- **Done so far** (2026-10-17, with T-F407): `-sae` and `-sas`. Still open: the rest above, and a switch before the command now includes `pakko -- x a.zip`.
 - **Reported by:** T-F343's measurement, 2026-10-17.
 
 ### T-F412 — `pakko l`: 7-Zip's list layout, `-slt`, and the inner tar of a `.tar.gz` (P3, from T-F343, decision first)

@@ -13178,6 +13178,83 @@ the archive.
   covered by the JIT tests only. `StackTraceSupport` is not turned off anywhere, so the AOT
   build keeps the stack text they print.
 
+## T-F407, T-F409, T-F408, T-F411's -sae: what patool and Chocolatey pass (2026-10-17)
+
+- **Sources** (7-Zip 26.02, `ip7z/7zip` tag `26.02`, read before the code):
+  - `CPP/Common/CommandLineParser.cpp`, `ParseStrings`: `if (StopSwitchIndex < 0) { if
+    (s.IsEqualTo(kStopSwitchParsing)) { StopSwitchIndex = (int)NonSwitchStrings.Size(); continue; }
+    if (!s.IsEmpty() && IsItSwitchChar(s[0])) { ... } } NonSwitchStrings.Add(s);` with
+    `kStopSwitchParsing = "--"`: after the first `--` every argument is a name, a second `--` too.
+  - `CPP/7zip/UI/Common/ArchiveCommandLine.cpp`: `options.Password =
+    parser[NKey::kPassword].PostStrings[0];`, no special case, so `-p-` is the password `-`
+    (Pakko already read it so). `{ "ba", SWFRM_SIMPLE }`, `{ "bd", SWFRM_SIMPLE }`, `{ "bt",
+    SWFRM_SIMPLE }`, `{ "bb", SWFRM_STRING_SINGL(0) }`, `bso`/`bse`/`bsp` with one of `012`;
+    `-bb` with no number is level 1, otherwise `StringToUInt32` or `"Unsupported switch postfix
+    -bb"`; `if (options.StdOutMode) options.Number_for_Out = k_OutStream_disabled;`; `sa` with one of
+    `sea` (`ParseArcNameMode`: Smart, Exact, Add).
+  - `CPP/7zip/UI/Console/ExtractCallbackConsole.cpp`, `PrepareOperation`: `kExtractString = "-"` at
+    `LogLevel >= 1`, `kSkipString = "."` from level 2; a folder's name gets a trailing separator.
+  - `CPP/7zip/UI/Console/Main.cpp`, `PrintStat`, `PrintTime`, `PrintMemUsage`; the layout checked
+    against the vendored `7za.exe t -bt`: `Kernel  Time =     0.000 =    0%    Cnt: ...`.
+- **`--` (T-F407).** Arguments before the first `--` are handled as before (`-scc`, T-F294's
+  PowerShell split check, the output switches); each one after it goes to the command's parser as a
+  name (`CliToken` with `IsSwitch` false). A switch before the command (`pakko -- x a.zip`,
+  `-y x a.zip`) stays an unknown command: that is T-F411's.
+- **`-y`, `-p` on `l` and `t` (T-F409).** `-y` on `t` keeps the password prompt off, as on `x`
+  (T-F193's rule: no safe default for a password, so `-y` makes it fail at once instead of asking).
+  On `l` both are taken and change nothing: a listing asks nothing, ZIP names are not encrypted, and
+  Pakko gives `tar.exe` no password.
+- **`-sae`, `-sas` (part of T-F411).** `-sae` writes the archive under the name as typed; `-sas` is
+  the rule Pakko already had (T-F221 item 6). `-saa` stays refused: `CliCommandValidator`'s
+  type-against-name check would first have to know that the extension is added.
+- **Output switches (T-F408).** They apply to every command and are taken out before the command's
+  parser, as `-scc` is. `-bso`/`-bse` replace `Console.Out`/`Console.Error` after `-scc` set their
+  encoding. The percentage is written to the process's own handle (`OpenStandardError`/
+  `OpenStandardOutput`), so `-bso`/`-bse` do not move it; it stays on stderr by default (Pakko's
+  T-F221 item 9; 7-Zip's default is stdout). Under `-so` stdout carries the data: messages go
+  nowhere there unless `-bso2` sends them to stderr, as with 7-Zip's `StdOutMode`, and `-bso1` or
+  `-bse1` with `-so` is exit 7, since its text would end up inside the data. `-bt` prints 7-Zip's
+  four time lines with the peak memory from `Process` (`PeakPagedMemorySize64` is
+  `PeakPagefileUsage`, `PeakWorkingSet64` is `PeakWorkingSetSize`); the cycle lines need
+  `QueryProcessCycleTime`, which .NET does not expose, and 7-Zip too leaves them out where that
+  call is missing. `-ba` takes the header and the `#` lines out of `l`; no other command prints a
+  header (Pakko has no banner).
+- **`-bb1` and up on `x` (T-F408, the one Core change).** `ExtractOptions.OnItemExtracted` is
+  called by `ExtractionStaging.CommitInto`, the one place where both engines move what they wrote
+  into the destination (one `ExtractionStaging.Create` per engine; every mode, the single-root
+  collapse and selected entries pass through it, with a test for each route). Only what arrived is
+  named: the fast path's rename names everything after it succeeded, the per-file merge names each
+  file after its own move; a locked or skipped file is not named; the destination folder itself
+  only when the commit created it. An exception from the callback is not caught, like one from
+  `ResolveConflictAsync`: it is the caller's defect and goes to the program's last-resort handler
+  (T-F406).
+- **Where `pakko x -bb1` differs from 7-Zip, deliberately.** The lines come once the archive's
+  entries are in place, folders first and then files, not in archive order; a file renamed by
+  `-aou` is named as written (Chocolatey records the names as files that exist); a folder with no
+  entry of its own is named too, since it arrives as well. `-bb2` and up print what `-bb1` prints:
+  Pakko names no skipped item at any level. `-bb` on `a`, `t`, `l`, `h`, `r` is taken and prints no
+  per-file lines.
+- **Measured after** (`scripts/Measure-SevenZipCompat.ps1`, JIT build of the branch, against the
+  vendored `7za.exe` 26.02): patool's `x`, `l`, `t`, `a -t7z`, `a -tzip`, `a -ttar`, `x` with a
+  password: works on ZIP, 7z and tar; `t` on tar and tar.gz exit 1 (only the structure is checked,
+  T-F397's decision); `x` of a `.tar.gz`/`.tar.xz` gives the files where 7-Zip gives the inner
+  `.tar` (T-F412); `e`, `-txz`, `-tgzip`, `-tbzip2` stay exit 7 (declined, T-F413). Chocolatey's
+  `x -aoa -bd -bb1`: the same set of `- <name>` lines as 7za on ZIP, 7z and tar; the one visible
+  difference is the code page of a Cyrillic name (7za wrote it in the OEM code page, `pakko` in
+  the console's, T-F238's default); with a folder after the archive it is exit 2 (T-F410). Scoop:
+  still exit 7 at `-xr!` (T-F410). Totals: works 31, accepted 27, differs 26, missing 73,
+  reference-fails 10, pakko-only 5.
+- **Rejected:** a callback in each engine's entry loop (two places, and it would run before the
+  commit, naming a file that then fails to move in); printing the names from a listing of the
+  archive (it would name skipped files); refusing `-bb1` (Chocolatey would still stop at it).
+- **Tests.** CLI parser: `CliSevenZipCallerTests`; real exe: `CliSevenZipCallerSubprocessTests`
+  (patool's lines, Chocolatey's line compared with the files on disk, the stream switches, `-so`
+  bytes unchanged under `-bt`/`-bb1`/`-bb3`); `CliTimeStatsTests`; Core: `ExtractedItemReportTests`
+  (`CommitInto`, every ZIP route, skip, rename, a lock, the fast path failing over to the merge) and
+  `TarSandboxedServiceExtractedItemReportTests` (real `tar.exe`). Each was seen red: the new switches
+  refused, `CommitInto` without the callback, each engine without it, the locked file named, the
+  merge naming twice, `Program.cs` without the stream, `-bt` and `-ba` code, and `-bb` set to 9.
+
 ## T-F342 — creating 7z through tar.exe: sources and measurements (wave 0, 2026-10-12)
 
 Record made before any code. Machine: Windows 11 build 26300, `C:\Windows\System32\tar.exe` =
