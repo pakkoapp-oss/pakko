@@ -13061,6 +13061,10 @@ the archive.
 - **Packages on this machine.** `Deploy.ps1` replaced the Store 1.8.1.0 install (same package
   name, so its uninstall step removed it). Before the next Store submission the Store 1.8.1 has
   to be installed again, so that `STO-005` is a real update this time.
+- **A false lead, measured away.** At 150 % the `windows` MCP tools are not DPI-aware: their
+  screenshot is the top-left 1280 x 720 *physical* pixels of a 1920 x 1080 screen, so the footer
+  looked hidden below the screen edge. `GetWindowRect` from a per-monitor-aware process: the
+  window is 1100 x 720 at (38, 38), inside the 1920 x 1008 work area. No task opened.
 - **No release for these two:** both are P3 and touch no data; they go out with the first tasks
   that come from T-F343.
 
