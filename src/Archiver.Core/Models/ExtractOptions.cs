@@ -78,6 +78,17 @@ public sealed record ExtractOptions
     /// (the default) names nothing.
     /// </summary>
     public Action<string>? OnItemExtracted { get; init; }
+
+    /// <summary>
+    /// T-F410: non-null extracts only the entries it returns true for, given the entry's name as
+    /// the archive has it ('/'-separated, a folder's ending with '/') and whether it is a folder.
+    /// Unlike <see cref="SelectedEntryPaths"/> a folder that passes does not bring its content:
+    /// each entry is asked on its own. Both set: an entry must pass both. A filtered extraction is a
+    /// subset (no root folder is collapsed, the archive is never fully processed), and when no entry
+    /// passes nothing is created, not even the destination. Called on the extraction's own thread; an
+    /// exception from it is not caught.
+    /// </summary>
+    public Func<string, bool, bool>? EntryFilter { get; init; }
 }
 
 /// <summary>How multiple archives being extracted at once land relative to each other.</summary>
