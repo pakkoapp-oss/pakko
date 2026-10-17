@@ -43,7 +43,8 @@ Add-SmokeStep 'CLI-003' {
 
     $refused = @(
         @('u', $zip, (Get-Fixture Tree)), @('d', $zip, 'text.txt'), @('rn', $zip, 'a', 'b'), @('b'), @('e', $zip),
-        @('l', $zip, '-r'), @('l', $zip, '-i!*.txt'), @('l', $zip, '-x!*.txt'), @('l', $zip, '-ssc')
+        # T-F410: x and l filter names now; t until wave B, and h never, still refuse them.
+        @('t', $zip, '-r'), @('t', $zip, '-i!*.txt'), @('t', $zip, '-x!*.txt'), @('h', $zip, '-ssc')
     )
     foreach ($arguments in $refused) {
         $run = Invoke-Pakko $arguments -WorkingDirectory $folder
