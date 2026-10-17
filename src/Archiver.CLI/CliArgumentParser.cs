@@ -40,6 +40,7 @@ public sealed record ParsedCliCommand
     public int? ConsoleCodePage { get; init; }                        // -scc{charset}, every command (T-F238); a CliConsoleCharset value
     public bool? ApplyDownloadMark { get; init; }                     // -snz[0|1], x only (T-F360); null = not given
     public int RecoveryPercent { get; init; }                         // -rr[N], a only (T-F275); 0 = no PAR2 files
+    public bool ArchiveNameExact { get; init; }                       // -sae, a only (T-F411): no extension added
     public string? ErrorMessage { get; init; }
 }
 
@@ -442,6 +443,7 @@ public static class CliArgumentParser
         public string? Password { get; set; }
         public bool PromptForPassword { get; set; }
         public int RecoveryPercent { get; set; }
+        public bool ArchiveNameExact { get; set; }
     }
 
     private static ParsedCliCommand ParseArchive(CliToken[] rest)
@@ -472,6 +474,7 @@ public static class CliArgumentParser
             Password = state.Password,
             PromptForPassword = state.PromptForPassword,
             RecoveryPercent = state.RecoveryPercent,
+            ArchiveNameExact = state.ArchiveNameExact,
         };
     }
 
@@ -514,8 +517,25 @@ public static class CliArgumentParser
             return error;
         }
 
+        if (token.StartsWith("-sa", StringComparison.Ordinal))
+        {
+            (state.ArchiveNameExact, string? error) = ParseArchiveNameMode(token);
+            return error;
+        }
+
         return UnsupportedSwitchReason(token);
     }
+
+    // T-F411: 7-Zip's -sa{s|e|a} (ArchiveCommandLine.cpp, ParseArcNameMode). -sas is Pakko's own rule
+    // (T-F221 item 6: a name with no extension gets the type's), -sae writes the name as typed.
+    // Whichever comes last wins.
+    private static (bool Exact, string? Error) ParseArchiveNameMode(string token) => token switch
+    {
+        "-sas" => (false, null),
+        "-sae" => (true, null),
+        "-saa" => (false, "not supported by Pakko: -saa (always add the type's extension) is not implemented; use -sas or -sae"),
+        _ => (false, $"unknown -sa value: '{token[3..]}' (expected -sas or -sae)"),
+    };
 
     // 7z's -m{params} on 'a': -mx=<0-9>, -mem=AES256 and -m0=<method> (7z only, T-F342) are
     // implemented, every other one is refused.
@@ -834,6 +854,7 @@ public static class CliArgumentParser
         ("-v", "not supported: no multi-part/split-archive logic exists in Pakko"),
         ("-ssc", "not supported: case-sensitive matching is not implemented"),
         ("-snz", "not supported on this command: -snz is only valid with 'x' (extract)"),
+        ("-sa", "not supported on this command: -sa{s|e} names the archive 'a' creates"),
     ];
 
     private static string UnsupportedSwitchReason(string token)

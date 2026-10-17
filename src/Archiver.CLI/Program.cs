@@ -516,12 +516,13 @@ static string ResolveArchiveDestination(ParsedCliCommand command, CliStagingFold
 }
 
 // T-F221 item 6 (user decision 2026-09-28, 7-Zip's rule): a name with an extension is written
-// exactly as typed ("-ttar x.gz" makes a tar named x.gz); a name without one gets the format's.
+// exactly as typed ("-ttar x.gz" makes a tar named x.gz); a name without one gets the format's,
+// unless -sae says to write it as typed (T-F411).
 static ArchiveOptions BuildArchiveOptions(
     ParsedCliCommand command, string destFolder, StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt)
 {
     string fileName = Path.GetFileName(command.ArchivePathArg!);
-    bool hasExtension = fileName.Contains('.'); // T-F294: ".gz" too, as 7-Zip writes it
+    bool hasExtension = command.ArchiveNameExact || fileName.Contains('.'); // T-F294: ".gz" too, as 7-Zip writes it
     return new()
     {
         SourcePaths = command.SourcePaths,
