@@ -388,7 +388,9 @@ Add-SmokeStep 'CLI-037' {
     Assert-Smoke ($run.ExitCode -eq 0 -and (Test-Path -LiteralPath $exact -PathType Leaf)) "a -sae: exit $($run.ExitCode), the archive is not named exactly as typed"
 
     $choco = Join-Path $folder 'choco'
-    $run = Invoke-Pakko @('x', '-aoa', '-bd', '-bb1', "-o$choco", '-y', $zip)
+    # -sccUTF-8 only so this harness, which reads UTF-8, compares a non-ASCII name exactly. Without it
+    # pakko writes the console's code page (T-F238) and 7-Zip the OEM one: the same on a default console.
+    $run = Invoke-Pakko @('x', '-aoa', '-bd', '-bb1', "-o$choco", '-y', '-sccUTF-8', $zip)
     Assert-Smoke ($run.ExitCode -eq 0) "Chocolatey's x: exit $($run.ExitCode) $($run.Text)"
     $named = @($run.Output -split '\r?\n' | Where-Object { $_.StartsWith('- ') } | ForEach-Object { $_.Substring(2) })
     foreach ($name in $named) {
