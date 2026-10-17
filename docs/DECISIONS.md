@@ -13255,6 +13255,64 @@ the archive.
   refused, `CommitInto` without the callback, each engine without it, the locked file named, the
   merge naming twice, `Program.cs` without the stream, `-bt` and `-ba` code, and `-bb` set to 9.
 
+## T-F410, wave A: 7-Zip's name filters on x and l, and archive names by wildcard (2026-10-17)
+
+- **Sources** (7-Zip 26.02, `ip7z/7zip` tag `26.02`, read before the code):
+  - `CPP/Common/Wildcard.cpp`, `CItem::CheckPath`: the mask is split into parts at `\` and `/`;
+    `delta = pathParts.Size() - PathParts.Size()`; without recursion the parts are compared from
+    offset 0 only (`finish = 0`), with it from every offset up to `delta`; `if (!isFile && !ForDir)
+    return false`. A mask that may name a folder therefore takes everything under it (`dir` takes
+    `dir\c.txt`), and `*.txt` without `-r` takes only the top level.
+  - `CCensorNode::AddItem`: `if (item.WildcardMatching && ignoreWildcardIndex != 0 &&
+    DoesNameContainWildcard(front)) { AddItemSimple(include, item); return; } CCensorNode &subNode =
+    Find_SubNode_Or_Add_New(front); item.PathParts.Delete(0);` — every literal leading folder of a
+    mask becomes a sub-node, so recursion floats only below it. `CheckPathVect`: the node's
+    excludes, then the matching sub-node, then the node's includes; an exclude wins.
+  - `EnhancedMaskTest`: `*` any run, `?` one character, `MyCharUpper` on both unless
+    `g_CaseSensitive` (false on Windows; `-ssc` sets it).
+  - `CPP/7zip/UI/Common/ArchiveCommandLine.cpp`, `AddToCensorFromNonSwitchesStrings`: with no name
+    after the archive and no `-i`, the universal `*` is added; `@name` before `--` is a list file.
+    `AddSwitchWildcardsToCensor`: `-i`/`-x` take `r`, `r-`, `r0`, `w`, `w-`, `m`, then `!name` or
+    `@list`; `-xtd`/`-xtf` set `ExcludeDirItems`/`ExcludeFileItems`; each switch starts from the
+    global `nop`, so `-r -x!*.nsis` is recursive. `-r0` recurses only a name with a wildcard. For x
+    and l the censor is built with `k_AbsPath` (no prefix split); the archive name goes into
+    `arcCensor` with `-ai`/`-ax`, never recursive unless the switch says `r`.
+  - `CPP/Common/ListFileUtils.cpp`, `ReadNamesFromListFile2`: UTF-8 unless `-scs` names another
+    code page, BOMs skipped, each line trimmed, one pair of surrounding quotes removed, empty lines
+    dropped; bad UTF-8 is "Incorrect item in listfile".
+  - `CPP/7zip/UI/Common/Extract.cpp`, `DecompressArchive`: `if (realIndices.Size() == 0) {
+    callback->ThereAreNoFiles(); return ...; }` before `CreateComplexDir(outDir)`.
+- **Measured** (vendored `7za.exe` 26.02, `x t.zip -oo -bd -bb1`, an archive with `a.txt`,
+  `b.nsis`, `dir\c.txt`, `dir\sub\{d.nsis,e.TXT,y.nsis}`, `emptydir\`, `Other\f.txt`,
+  `Other\dir\x.nsis`): every row of `CliNameFilterTests.Includes_TakesWhat7ZipTakes` is one run.
+  Among them: `-xr!dir\*.nsis` removes `dir\sub\d.nsis` and keeps `Other\dir\x.nsis`, the sub-node
+  rule above (a flat list of masks gets both wrong); `-ir!dir\*` (Scoop) takes everything under
+  `dir\` but not `dir\` itself; `C:\x\a.txt`, `..\a.txt` and `dir\..\a.txt` are no error, only
+  "No files to process", exit 0, and `-o`'s folder is not created; `x "arcs/*.zip"` opens each
+  match, `none*.zip` is "Cannot find archive", exit 7; `-an -air!arcs\*.zip` walks the folder tree;
+  a missing list file is "The file operation error for listfile", exit 7.
+- **`tar.exe` and a member list** (build 26300): `tar -x -f a.tar -T -` fails with "Error
+  inclusion pattern: Failed to open '-'", so stdin is out for extraction. `-T <file>` works: the
+  T-F284 escaped pattern `a[[]1].txt` takes only `a[1].txt`, `-dash.txt` is a name, a Cyrillic
+  name must be in the ANSI code page (1251 here; UTF-8 and OEM bytes are "Not found in archive"),
+  which is what `TarCommandLineEncoding.EncodeLines` already writes. A folder pattern `d/` takes
+  everything under it, `-n` does not.
+- **Names after the archive are filters (a change in behavior).** Until now `pakko x a.zip b.zip`
+  extracted two archives; 7-Zip reads `b.zip` as a name inside `a.zip`, and Chocolatey passes a
+  folder there. Pakko now does what 7-Zip does, on `x` and `l`; several archives are `x *.zip` or
+  `-ai!b.zip`. In CHANGELOG as a change in behavior.
+- **The matcher is `Archiver.CLI`'s `CliNameFilter`, not Core's.** These are 7-Zip's command-line
+  rules, a CLI contract; Core gets a plain predicate, `ExtractOptions.EntryFilter`. The node tree
+  is ported as it is (the sub-node rule is behavior, not structure). Nothing recurses: the mask
+  test goes back to the last `*` instead of calling itself (entry names come from the archive, a
+  recursive matcher backtracks exponentially on `*a*a*...b`), and the node walk is a loop.
+- **Why not `SelectedEntryPaths`.** A selected folder brings its whole content, so `dir -x!dir\sub`
+  could not be said; and its check is O(entries x selected). `EntryFilter` is asked once per entry.
+- **`t` and `a`** refuse `-i`, `-x`, `-r` and names after the archive on `t` with exit 7 until
+  wave B, instead of silently testing everything.
+- **Where it differs from 7-Zip, deliberately:** `-bb1` also names a folder Pakko creates for an
+  entry inside it when the folder's own entry did not pass the filter (7-Zip prints only entries).
+
 ## T-F342 — creating 7z through tar.exe: sources and measurements (wave 0, 2026-10-12)
 
 Record made before any code. Machine: Windows 11 build 26300, `C:\Windows\System32\tar.exe` =
