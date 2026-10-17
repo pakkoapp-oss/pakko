@@ -41,6 +41,7 @@ public sealed record ParsedCliCommand
     public bool? ApplyDownloadMark { get; init; }                     // -snz[0|1], x only (T-F360); null = not given
     public int RecoveryPercent { get; init; }                         // -rr[N], a only (T-F275); 0 = no PAR2 files
     public bool ArchiveNameExact { get; init; }                       // -sae, a only (T-F411): no extension added
+    public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
     public string? ErrorMessage { get; init; }
 }
 
@@ -70,10 +71,19 @@ public static class CliArgumentParser
             return Invalid(splitError);
         if (!TryTakeConsoleCharset(ref switchPart, out int? consoleCodePage, out string? charsetError))
             return Invalid(charsetError!);
+        if (!CliOutputOptions.TryTake(ref switchPart, out CliOutputOptions output, out string? outputError))
+            return Invalid(outputError!);
 
         CliToken[] rest = [.. switchPart.Select(CliToken.Of), .. names.Select(CliToken.Name)];
         ParsedCliCommand command = CliCommandValidator.Validate(ParseCommand(args[0], rest));
-        return command.Type == CliCommandType.Invalid ? command : command with { ConsoleCodePage = consoleCodePage };
+        if (command.Type == CliCommandType.Invalid)
+            return command;
+        // T-F408: under -so stdout carries the data; 7-Zip turns its messages off there (StdOutMode).
+        if (command.WriteToStdout && output.OutStream == CliOutputTarget.StdOut)
+            return Invalid("'-bso1' cannot be combined with '-so' — stdout carries the data; send messages to stderr with -bso2");
+        if (command.WriteToStdout && output.ErrStream == CliOutputTarget.StdOut)
+            return Invalid("'-bse1' cannot be combined with '-so' — stdout carries the data; errors stay on stderr");
+        return command with { ConsoleCodePage = consoleCodePage, Output = output };
     }
 
     // One command-line argument, and whether it is read as a switch: a name after "--" never is.

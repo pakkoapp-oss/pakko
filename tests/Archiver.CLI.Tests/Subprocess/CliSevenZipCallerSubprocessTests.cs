@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using FluentAssertions;
 
 namespace Archiver.CLI.Tests.Subprocess;
@@ -63,7 +64,7 @@ public sealed class CliSevenZipCallerSubprocessTests
 
         exitCode.Should().Be(0, stdErr);
         Directory.GetFiles(scratchDir).Select(Path.GetFileName).Should().Equal(expectedName);
-        using var archive = System.IO.Compression.ZipFile.OpenRead(Path.Combine(scratchDir, expectedName));
+        using ZipArchive archive = ZipFile.OpenRead(Path.Combine(scratchDir, expectedName));
         archive.Entries.Should().ContainSingle();
     }
 
@@ -76,6 +77,80 @@ public sealed class CliSevenZipCallerSubprocessTests
 
         exitCode.Should().Be(0, stdErr);
         File.ReadAllBytes(Path.Combine(scratchDir, "out.7z")).AsSpan(0, 2).ToArray().Should().Equal((byte)'7', (byte)'z');
+    }
+
+    // --- T-F408: output switches ---
+
+    [Fact]
+    public void List_MessagesOff_WritesNothingToStdOut()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("l", "-bso0", CliFixtureFiles.ValidZip);
+
+        exitCode.Should().Be(0, stdErr);
+        stdOut.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void List_MessagesToStdErr_MovesTheListing()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("l", "-bso2", CliFixtureFiles.ValidZip);
+
+        exitCode.Should().Be(0, stdErr);
+        stdOut.Should().BeEmpty();
+        stdErr.Should().Contain("a.txt");
+    }
+
+    [Theory]
+    [InlineData("-bse0", false, false)]
+    [InlineData("-bse1", true, false)]
+    [InlineData("-bse2", false, true)]
+    public void Extract_ErrorStream_DecidesWhereTheErrorGoes(string token, bool onStdOut, bool onStdErr)
+    {
+        string missing = Path.Combine(CliFixtureFiles.CreateScratchDir(), "missing.zip");
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("x", token, $"-o{CliFixtureFiles.CreateScratchDir()}", missing);
+
+        exitCode.Should().Be(2, "the exit code is the same whatever stream the message goes to");
+        stdOut.Contains("pakko: error:").Should().Be(onStdOut, stdOut);
+        stdErr.Contains("pakko: error:").Should().Be(onStdErr, stdErr);
+    }
+
+    [Fact]
+    public void List_NoHeaders_PrintsEntryRowsOnly()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("l", "-ba", CliFixtureFiles.ValidZip, CliFixtureFiles.ValidZip);
+
+        exitCode.Should().Be(0, stdErr);
+        string[] lines = stdOut.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
+        lines.Should().NotBeEmpty().And.OnlyContain(line => !line.StartsWith('#') && !line.StartsWith("Size\t", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Test_ShowTime_PrintsSevenZipsTimeLines()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", "-bt", CliFixtureFiles.ValidZip);
+
+        exitCode.Should().Be(0, stdErr);
+        stdOut.Should().MatchRegex(@"Kernel  Time = +\d+\.\d{3} = +\d+%")
+            .And.MatchRegex(@"Global  Time = +\d+\.\d{3} = +\d+%");
+    }
+
+    // 7-Zip has no stdout messages under -so (StdOutMode): the data comes out byte for byte.
+    [Theory]
+    [InlineData("-bt")]
+    [InlineData("-bb1")]
+    [InlineData("-bb3")]
+    public void Extract_ToStdOut_WithOutputSwitches_GivesTheSameBytes(string token)
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string zip = Path.Combine(scratchDir, "one.zip");
+        using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Create))
+            archive.CreateEntryFromFile(CliFixtureFiles.SourceFileA, "one.txt");
+
+        (int exitCode, byte[] withSwitch, string stdErr) = CliProcessRunner.RunWithBinaryStdio([], "x", "-so", token, zip);
+
+        exitCode.Should().Be(0, stdErr);
+        withSwitch.Should().Equal(File.ReadAllBytes(CliFixtureFiles.SourceFileA));
     }
 
     private static string EncryptedZipPath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "encrypted_aes256.zip");
