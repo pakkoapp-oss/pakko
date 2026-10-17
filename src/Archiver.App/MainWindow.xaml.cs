@@ -121,6 +121,11 @@ public sealed partial class MainWindow : Window
             if (e.PreviousSize.Height == 0 && e.NewSize.Height > 0)
                 EncryptConfirmBox.StartBringIntoView();
         };
+        // T-F405: the "more below" shade follows the scroll position, the panel's size and its content.
+        OptionsScroll.ViewChanged += (_, _) => UpdateOptionsMoreBelow();
+        OptionsScroll.SizeChanged += (_, _) => UpdateOptionsMoreBelow();
+        OptionsGrid.SizeChanged += (_, _) => UpdateOptionsMoreBelow();
+        OptionsScroll.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, (_, _) => UpdateOptionsMoreBelow());
         NewArchiveCard.Expanding += (_, _) => ArrangeCards();
         NewArchiveCard.Collapsed += (_, _) => ArrangeCards();
         NewArchiveCard.RegisterPropertyChangedCallback(UIElement.VisibilityProperty, (_, _) => ArrangeCards());
@@ -199,6 +204,12 @@ public sealed partial class MainWindow : Window
             - ToolbarHeight() - FooterGrid.DesiredSize.Height - spacing - TableMinHeight - BrowseChromeHeight();
         OptionsScroll.MaxHeight = System.Math.Max(0, available);
     }
+
+    private void UpdateOptionsMoreBelow() =>
+        OptionsMoreBelow.Visibility = OptionsScroll.Visibility == Visibility.Visible
+            && ScrollEdgeHint.ShowsMoreBelow(OptionsScroll.ScrollableHeight, OptionsScroll.VerticalOffset)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
     // The 160 px go to the list's rows, not to what sits above them in browse mode.
     private double BrowseChromeHeight() => ViewModel.IsBrowsingArchive

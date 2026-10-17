@@ -13065,6 +13065,13 @@ the archive.
   screenshot is the top-left 1280 x 720 *physical* pixels of a 1920 x 1080 screen, so the footer
   looked hidden below the screen edge. `GetWindowRect` from a per-monitor-aware process: the
   window is 1100 x 720 at (38, 38), inside the 1920 x 1008 work area. No task opened.
+- **T-F405, the "more below" hint** (the user asked, 2026-10-17, what the usual practice is).
+  Chosen: an edge shade with a divider, shown only while content is hidden below, the pattern
+  of Windows Settings and most scrolling panes. Rejected: forcing the scrollbar visible (Windows
+  has its own "Always show scrollbars" setting, WinUI follows it); a "more" chevron button
+  (noise in a form, another tab stop); relying on the half-shown next card alone (the user
+  read it as the window's edge). The shade is a theme-dictionary gradient to
+  `SolidBackgroundFillColorBase`, valid because the window background is solid, not Mica.
 - **No release for these two:** both are P3 and touch no data; they go out with the first tasks
   that come from T-F343.
 

@@ -12966,3 +12966,22 @@ PowerShell does natively.
   stands right after the full result. 175 % not walked.
 - Decisions: `docs/DECISIONS.md`, "T-F399, T-F400 — the New archive card and the footer".
 - **Reported by:** the release-tier smoke run of v1.8.1 (`APP-014`), 2026-10-16.
+
+### T-F405 — The options panel says when cards continue below it (P3, user-requested)
+
+- [x] **Status:** done 2026-10-17. The options panel scrolls, but its scrollbar shows only on
+  hover, and a card cut off by the footer reads as the end of the window. Now a 24 px shade
+  fades the last of the panel into the window colour and a divider line sits above the footer,
+  both only while content is hidden below (`ScrollEdgeHint.ShowsMoreBelow`, updated on scroll,
+  on the panel's size and on its content's size). Not hit-testable, not in the UI Automation
+  tree. High contrast keeps only the line. The Windows setting "Always show scrollbars" still
+  applies as before.
+- **Checked** on package 1.8.1.3 (this machine, dark theme, 150 %), physical pixels read from a
+  per-monitor-aware process: with content below, the card fades from `262626` to `212121` over
+  the last rows and a `353535` line shows; scrolled to the end, the card is `262626` to its
+  border and no line. Light theme not walked.
+- **Tests:** `ScrollEdgeHintTests` (content below, at the end, a fraction short, nothing to
+  scroll, NaN and overscroll).
+- Decisions: `docs/DECISIONS.md`, "T-F399, T-F400 — the New archive card and the footer".
+- **Reported by:** the user, 2026-10-17 ("a visual hint that there is more below; the
+  scrollbar appears only on hover and not everyone will see it").
