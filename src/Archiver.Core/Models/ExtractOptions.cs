@@ -69,6 +69,15 @@ public sealed record ExtractOptions
     /// it either way (<see cref="GroupPolicyOptions.EffectiveMotwMode"/>).
     /// </summary>
     public bool ApplyDownloadMark { get; init; } = true;
+
+    /// <summary>
+    /// T-F408: called once for each file and folder that arrived in the destination, with its full
+    /// path; a folder's path ends with a directory separator. A file that was skipped, or could not
+    /// be moved in, is not named. Called on the extraction's own thread, after the archive's
+    /// entries are in place; an exception from it is the caller's defect and is not caught. Null
+    /// (the default) names nothing.
+    /// </summary>
+    public Action<string>? OnItemExtracted { get; init; }
 }
 
 /// <summary>How multiple archives being extracted at once land relative to each other.</summary>

@@ -135,6 +135,46 @@ public sealed class CliSevenZipCallerSubprocessTests
             .And.MatchRegex(@"Global  Time = +\d+\.\d{3} = +\d+%");
     }
 
+    // Chocolatey's Get-ChocolateyUnzip: "x -aoa -bd -bb1 -o<dir> -y <file>", then each "- <name>"
+    // line joined to <dir> is recorded as an installed file.
+    [Fact]
+    public void Extract_ChocolateyLine_NamesEveryItemWritten()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string zip = Path.Combine(scratchDir, "pkg.zip");
+        using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Create))
+        {
+            archive.CreateEntryFromFile(CliFixtureFiles.SourceFileA, "tools/a.txt");
+            archive.CreateEntryFromFile(CliFixtureFiles.SourceFileB, "tools/sub/b.txt");
+            archive.CreateEntryFromFile(CliFixtureFiles.SourceFileA, "readme.txt");
+        }
+        string destDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("x", "-aoa", "-bd", "-bb1", $"-o{destDir}", "-y", zip);
+
+        exitCode.Should().Be(0, stdErr);
+        string[] named = [.. Lines(stdOut).Where(l => l.StartsWith("- ", StringComparison.Ordinal)).Select(l => l[2..])];
+        string[] onDisk = [.. Directory.EnumerateDirectories(destDir, "*", SearchOption.AllDirectories).Select(d => Path.GetRelativePath(destDir, d) + @"\")
+            .Concat(Directory.EnumerateFiles(destDir, "*", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(destDir, f)))];
+        named.Should().BeEquivalentTo(onDisk).And.Contain(@"tools\sub\b.txt").And.Contain(@"tools\sub\");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("-bb0")]
+    public void Extract_WithoutLogLevel_NamesNothing(string? token)
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        string[] args = token is null ? ["x", $"-o{destDir}", CliFixtureFiles.ValidZip] : ["x", token, $"-o{destDir}", CliFixtureFiles.ValidZip];
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run(args);
+
+        exitCode.Should().Be(0, stdErr);
+        Lines(stdOut).Should().NotContain(l => l.StartsWith("- ", StringComparison.Ordinal));
+    }
+
+    private static string[] Lines(string text) => text.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
+
     // 7-Zip has no stdout messages under -so (StdOutMode): the data comes out byte for byte.
     [Theory]
     [InlineData("-bt")]

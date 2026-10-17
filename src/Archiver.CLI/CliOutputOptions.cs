@@ -53,12 +53,6 @@ public sealed record CliOutputOptions
         var remaining = new List<string>(switches.Length);
         foreach (string token in switches)
         {
-            if (!token.StartsWith("-b", StringComparison.Ordinal))
-            {
-                remaining.Add(token);
-                continue;
-            }
-
             (CliOutputOptions? taken, error) = Apply(token, options);
             if (error is not null)
                 return false;

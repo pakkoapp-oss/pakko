@@ -115,7 +115,7 @@ public sealed partial class SmokeCatalogueTests
         // empty list, and an empty list needs no rows.
         string[] found = [.. EntryPoints()];
 
-        found.Should().Contain(["cli:a", "cli:r", "cli:u", "cli:-rr", "cli:-si", "cli:--help"]);
+        found.Should().Contain(["cli:a", "cli:r", "cli:u", "cli:-rr", "cli:-si", "cli:--help", "cli:-bb", "cli:-bso"]);
         found.Should().Contain(["shell:--recovery-repair", "shell:--paths-stdin", "shell:--browse"]);
         found.Should().Contain(["menu:RecoveryRepairCommand", "menu:TarArchiveCommand"]);
         found.Should().Contain(["app:RepairBrowsedArchive", "app:Archive", "app:Cancel"]);
@@ -125,7 +125,8 @@ public sealed partial class SmokeCatalogueTests
 
     private static IEnumerable<string> EntryPoints()
     {
-        string cli = Source("src", "Archiver.CLI", "CliArgumentParser.cs");
+        // T-F408: the output switches every command takes are parsed in CliOutputOptions.
+        string cli = Source("src", "Archiver.CLI", "CliArgumentParser.cs") + Source("src", "Archiver.CLI", "CliOutputOptions.cs");
         string commandSwitch = CliCommandSwitch().Match(cli).Value;
         foreach (Match m in QuotedWord().Matches(commandSwitch))
             yield return "cli:" + m.Groups[1].Value;

@@ -196,8 +196,19 @@ static ExtractOptions BuildExtractOptions(
         ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
         ResolvePasswordAsync = BuildPasswordResolver(command, command.AssumeYes, progress, report),
         ApplyDownloadMark = command.ApplyDownloadMark ?? true,
+        OnItemExtracted = command.Output.LogLevel >= 1 ? NameExtractedItem(destination, progress) : null,
     };
 }
+
+// T-F408: -bb1 and up print 7-Zip's "- <name>" line (ExtractCallbackConsole.cpp, PrepareOperation)
+// for each item, relative to the destination, a folder with a trailing '\'. Unlike 7-Zip the
+// lines come after the archive's entries are in place, in the order they were moved in, and a
+// renamed file (-aou) is named as written: Chocolatey records these names as installed files.
+static Action<string> NameExtractedItem(string destination, CliProgress? progress) => path =>
+{
+    progress?.Clear();
+    Console.Out.WriteLine("- " + Path.GetRelativePath(destination, path));
+};
 
 // A prompt starts on a clean line, not after the progress percentage.
 static Func<T, Task<TResult>> ClearingProgress<T, TResult>(CliProgress? progress, Func<T, Task<TResult>> prompt)

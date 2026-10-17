@@ -363,7 +363,7 @@ public sealed class TarSandboxedService : ITarService
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new TarExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
-                options.EliminateDuplicateRootFolder);
+                options.EliminateDuplicateRootFolder, options.OnItemExtracted);
             (string? actualDest, bool anyExtracted) = await ExtractSingleArchiveAsync(
                 archivePath, destDir, alreadyIsolated, options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken)
                 .ConfigureAwait(false);
@@ -634,7 +634,7 @@ public sealed class TarSandboxedService : ITarService
         CreateFolderEntries((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, staging.Path);
 
         cancellationToken.ThrowIfCancellationRequested();
-        foreach (string relativePath in staging.CommitInto(actualDest))
+        foreach (string relativePath in staging.CommitInto(actualDest, committed: context.OnItemExtracted))
         {
             context.Errors.Add(CoreMessages.Error(archivePath, MessageCode.DestinationFileLocked, relativePath));
         }
@@ -822,7 +822,9 @@ public sealed class TarSandboxedService : ITarService
         // SkippedFiles since data the user asked for genuinely failed to arrive.
         List<ArchiveError> Errors,
         // T-F205: ExtractOptions.EliminateDuplicateRootFolder.
-        bool EliminateDuplicateRootFolder);
+        bool EliminateDuplicateRootFolder,
+        // T-F408: ExtractOptions.OnItemExtracted.
+        Action<string>? OnItemExtracted);
 
     // One file of ExtractSingleArchiveAsync's move-phase loop (quarantine "out\" -> staging, then
     // committed) — conflict-resolve, move, propagate MOTW. Returns whether the file was
