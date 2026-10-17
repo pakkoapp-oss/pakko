@@ -94,7 +94,9 @@ Window (ExtendsContentIntoTitleBar, SetTitleBar(AppTitleBar); no Mica, see DECIS
         └── Row 3: FooterGrid (*,Auto,Auto,Auto,Auto, MinHeight=40)
             ├── Col 0: StackPanel — ProgressBar (while running); footer line (FooterText from
             │       App.Core FooterLine.Pick: result, browse selection, or create preview) with
-            │       "Show in folder" / "Details..." HyperlinkButtons (T-F211); StatusMessage line.
+            │       "Show in folder" / "Details..." HyperlinkButtons (T-F211) in a left-aligned
+            │       Grid (*,Auto,Auto): one line, ellipsis, full text as tooltip (T-F400);
+            │       StatusMessage line.
             ├── Col 1: Cancel (while running)
             ├── Col 2: Clear (create mode)
             ├── Create mode: Extract (inside a Border that carries the "why disabled" tooltip,

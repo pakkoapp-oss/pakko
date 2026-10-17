@@ -13041,6 +13041,29 @@ the archive.
   date and `wsreset -i` did not update it in seven minutes. The same code as package 1.8.1.17,
   walked on that VM above.
 
+## T-F399, T-F400 — the New archive card and the footer (2026-10-17)
+
+- **T-F399, cause.** The card picks its format in the ViewModel constructor, before
+  `CanCreateSevenZipAsync` answers; with ZIP blocked that is TAR. When the probe found a 7z
+  writer the card only moved off a format no longer offered, and TAR still was.
+- **T-F399, fix.** `CreationFormatOption.AfterSevenZipProbe(policy, selected, startupDefault)`:
+  a selection still on the startup default follows the new default (7Z, listed before the tar
+  family); one the user changed stays unless it is no longer offered. Compared by value, not by
+  a "user touched it" flag: the index setter also runs on the ComboBox's TwoWay write-back. The
+  startup format is stored before the probe starts (a cached verdict can answer at once).
+  Tests: `CreationFormatOptionTests.AfterSevenZipProbe_*`; the ZIP-blocked one was red with the
+  old rule. On the device it needs a machine policy (`HKLM` only, an elevation prompt), so
+  `POL-009` runs in the walk before the next release and T-F399 graduates then.
+- **T-F400.** The footer line is in a `*` column of a left-aligned Grid, one line, ellipsis,
+  full text in the tooltip. Rejected on the device: keeping `CaptionTextBlockStyle`'s wrapping.
+  The create preview wrapped to two readable lines, but beside "Show in folder" the result had
+  about 85 px at the smallest window (150 %) and broke into five lines of a few letters.
+- **Packages on this machine.** `Deploy.ps1` replaced the Store 1.8.1.0 install (same package
+  name, so its uninstall step removed it). Before the next Store submission the Store 1.8.1 has
+  to be installed again, so that `STO-005` is a real update this time.
+- **No release for these two:** both are P3 and touch no data; they go out with the first tasks
+  that come from T-F343.
+
 ## T-F342 — creating 7z through tar.exe: sources and measurements (wave 0, 2026-10-12)
 
 Record made before any code. Machine: Windows 11 build 26300, `C:\Windows\System32\tar.exe` =

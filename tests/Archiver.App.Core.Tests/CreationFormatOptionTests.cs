@@ -88,6 +88,44 @@ public sealed class CreationFormatOptionTests
         CreationFormatOption.Default(policy, true).Should().Be(ArchiveContainerFormat.SevenZip, "7z is listed before the tar family");
     }
 
+    // T-F399: the probe answers after the card is built. A selection still at the startup default
+    // moves to the new first row; one the user changed stays.
+    [Fact]
+    public void AfterSevenZipProbe_StartupDefaultMovesToSevenZip_WhenZipIsBlocked()
+    {
+        var policy = new GroupPolicyOptions { BlockedFormats = ["zip"] };
+        ArchiveContainerFormat startup = CreationFormatOption.Default(policy, false);
+
+        startup.Should().Be(ArchiveContainerFormat.Tar);
+        CreationFormatOption.AfterSevenZipProbe(policy, startup, startup).Should().Be(ArchiveContainerFormat.SevenZip);
+    }
+
+    [Fact]
+    public void AfterSevenZipProbe_KeepsAFormatTheUserPicked()
+    {
+        var policy = new GroupPolicyOptions { BlockedFormats = ["zip"] };
+
+        CreationFormatOption.AfterSevenZipProbe(policy, ArchiveContainerFormat.TarGz, ArchiveContainerFormat.Tar)
+            .Should().Be(ArchiveContainerFormat.TarGz);
+    }
+
+    [Fact]
+    public void AfterSevenZipProbe_ZipStaysWhereZipIsOffered()
+    {
+        CreationFormatOption.AfterSevenZipProbe(new GroupPolicyOptions(), ArchiveContainerFormat.Zip, ArchiveContainerFormat.Zip)
+            .Should().Be(ArchiveContainerFormat.Zip);
+    }
+
+    // Under a policy that allows only 7z the startup default is ZIP, which Core refuses.
+    [Fact]
+    public void AfterSevenZipProbe_LeavesAFormatNoLongerOffered()
+    {
+        var policy = new GroupPolicyOptions { AllowedFormats = ["sevenzip"] };
+
+        CreationFormatOption.AfterSevenZipProbe(policy, ArchiveContainerFormat.Zip, ArchiveContainerFormat.Zip)
+            .Should().Be(ArchiveContainerFormat.SevenZip);
+    }
+
     // The maintainer's order (2026-10-12): 7z right after ZIP, the tar family under them.
     [Fact]
     public void ListOrder_IsZipThenSevenZipThenTheTarFamily()
