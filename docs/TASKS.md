@@ -1648,16 +1648,3 @@ re-measured with T-F346's script before and after.
   selected. Next: when the probe answers and the selection is still the startup default, move to
   the new `Default`; a unit test on `CreationFormatOption`/the ViewModel for this order.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`POL-009`), 2026-10-16.
-
-### T-F404 — At 150 % on a 1920 x 1080 display the window opens taller than the work area (P3)
-
-- [ ] **Status:** open. Package 1.8.1.2, 2026-10-17, this machine (DPI 144, work area 1280 x 672
-  in effective pixels, taskbar 48): the App opens at its restored size about 1082 x 711, so placed
-  at y=76 its footer (Clear, Extract, Compress) sits partly under the taskbar until the window is
-  moved. The options scroll (wheel and scrollbar work), so nothing is unreachable, but the
-  T-F199/T-F224 comment beside `AppWindow.Resize(1100, 720)` ("720 fits a 1366x768 screen's work
-  area") holds at 100 % only. Next: read why the window ends up at 711 effective pixels (the
-  `Resize` takes physical pixels), then clamp the first size and position to
-  `DisplayArea.WorkArea`; check at 100 %, 150 % and 175 %.
-- **Reported by:** the T-F400 device check, 2026-10-17 (the user asked how to reach the cut-off
-  "Where and what after" card).
