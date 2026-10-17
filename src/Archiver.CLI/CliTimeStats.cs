@@ -13,9 +13,9 @@ public static class CliTimeStats
     /// <summary>The lines for this process so far.</summary>
     public static IReadOnlyList<string> ForCurrentProcess()
     {
-        using Process process = Process.GetCurrentProcess();
+        using var process = Process.GetCurrentProcess();
         return Lines(
-            process.PrivilegedProcessorTime, process.UserProcessorTime, DateTime.Now - process.StartTime,
+            process.PrivilegedProcessorTime, process.UserProcessorTime, DateTime.UtcNow - process.StartTime.ToUniversalTime(),
             process.PeakPagedMemorySize64, process.PeakWorkingSet64);
     }
 
