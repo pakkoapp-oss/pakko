@@ -78,6 +78,51 @@ public sealed class CliSevenZipCallerTests
         result.ArchivePaths.Should().Equal("-pX", ".1");
     }
 
+    // --- T-F409: -y, -p and -p- on l and t (patool: "l -y -p- -- a.zip", "t -y -p- -- a.zip") ---
+
+    [Theory]
+    [InlineData("l", CliCommandType.List)]
+    [InlineData("t", CliCommandType.Test)]
+    public void PatoolLine_IsAccepted(string command, CliCommandType expected)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse([command, "-y", "-p-", "--", "a.zip"]);
+
+        result.Type.Should().Be(expected, result.ErrorMessage);
+        result.ArchivePaths.Should().Equal("a.zip");
+        result.AssumeYes.Should().BeTrue();
+        result.Password.Should().Be("-", "7-Zip reads -p- as the password '-' (ArchiveCommandLine.cpp, kPassword)");
+    }
+
+    [Theory]
+    [InlineData("-pSecret", "Secret", false)]
+    [InlineData("-p", null, true)]
+    public void List_TakesAPassword(string token, string? password, bool prompt)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["l", token, "a.zip"]);
+
+        result.Type.Should().Be(CliCommandType.List, result.ErrorMessage);
+        result.Password.Should().Be(password);
+        result.PromptForPassword.Should().Be(prompt);
+    }
+
+    [Fact]
+    public void List_BarePasswordWithStdin_IsRefused()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["l", "-p", "-si"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("a bare '-p' cannot be combined with '-si'");
+    }
+
+    [Fact]
+    public void Hash_Password_IsStillNotOnThisCommand()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["h", "-pX", "a.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("not supported on this command").And.Contain("'l' (list)");
+    }
+
     [Fact]
     public void Info_DoubleDash_TakesNoArguments()
     {

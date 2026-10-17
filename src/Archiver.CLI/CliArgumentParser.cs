@@ -332,6 +332,7 @@ public static class CliArgumentParser
     {
         var archivePaths = new List<string>();
         bool readFromStdin = false;
+        bool assumeYes = false;
         string? password = null;
         bool promptForPassword = false;
         foreach ((string token, bool isSwitch) in rest)
@@ -344,6 +345,11 @@ public static class CliArgumentParser
             if (token == "-si")
             {
                 readFromStdin = true;
+                continue;
+            }
+            if (token == "-y")
+            {
+                assumeYes = true; // T-F409: as on x, no password is asked for unless -p asks
                 continue;
             }
             if (token.StartsWith("-p", StringComparison.Ordinal))
@@ -363,7 +369,7 @@ public static class CliArgumentParser
 
         return new ParsedCliCommand
         {
-            Type = CliCommandType.Test, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin,
+            Type = CliCommandType.Test, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin, AssumeYes = assumeYes,
             Password = password, PromptForPassword = promptForPassword,
         };
     }
@@ -675,6 +681,9 @@ public static class CliArgumentParser
     {
         var archivePaths = new List<string>();
         bool readFromStdin = false;
+        bool assumeYes = false;
+        string? password = null;
+        bool promptForPassword = false;
         foreach ((string token, bool isSwitch) in rest)
         {
             if (!isSwitch)
@@ -687,6 +696,19 @@ public static class CliArgumentParser
                 readFromStdin = true;
                 continue;
             }
+            // T-F409: 7-Zip takes -y and -p on 'l', and patool passes "-y -p-". Listing asks nothing
+            // and needs no password: ZIP names are not encrypted, and a 7z with encrypted headers is
+            // refused as before, since Pakko gives tar.exe no password.
+            if (token == "-y")
+            {
+                assumeYes = true;
+                continue;
+            }
+            if (token.StartsWith("-p", StringComparison.Ordinal))
+            {
+                (password, promptForPassword) = ParsePassword(token);
+                continue;
+            }
             return Invalid(UnsupportedSwitchReason(token));
         }
 
@@ -694,8 +716,14 @@ public static class CliArgumentParser
             return Invalid("'-si' cannot be combined with an explicit archive path");
         if (!readFromStdin && archivePaths.Count == 0)
             return Invalid("'l' requires at least one archive path");
+        if (readFromStdin && promptForPassword)
+            return Invalid(BarePasswordWithStdinReason);
 
-        return new ParsedCliCommand { Type = CliCommandType.List, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin };
+        return new ParsedCliCommand
+        {
+            Type = CliCommandType.List, ArchivePaths = archivePaths, ReadFromStdin = readFromStdin, AssumeYes = assumeYes,
+            Password = password, PromptForPassword = promptForPassword,
+        };
     }
 
     // --- h (Hash, T-F128/T-F09 follow-up) ---
@@ -798,7 +826,7 @@ public static class CliArgumentParser
         ("-t", "not supported on this command: -t{type} is only meaningful for 'a' (archive creation)"),
         ("-scrc", "not supported on this command: -scrc{method} is only meaningful for 'h' (hash)"),
         ("-o", NotSupportedOnThisCommand),
-        ("-p", "not supported on this command: -p{pwd} is only valid with 'x' (extract), 't' (test) or 'a' (create an AES-256 ZIP)"),
+        ("-p", "not supported on this command: -p{pwd} is only valid with 'x' (extract), 't' (test), 'l' (list) or 'a' (create an AES-256 ZIP)"),
         ("-rr", "not supported on this command: -rr[N] (recovery data) is only meaningful for 'a' (archive creation)"),
         ("-r", "not supported: recurse-subdirectories toggle has no Pakko equivalent (archiving already recurses by default)"),
         ("-i", "not supported: no wildcard include-pattern filtering exists in Pakko"),

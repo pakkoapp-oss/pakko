@@ -361,7 +361,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
         ArchiveResult result = await router.TestAsync(
             archivePaths,
             progress,
-            resolvePasswordAsync: BuildPasswordResolver(command, assumeYes: false, progress, report),
+            resolvePasswordAsync: BuildPasswordResolver(command, command.AssumeYes, progress, report),
             verifyRecoveryData: stdinFolder is null,
             cancellationToken: cancellation.Token).ConfigureAwait(false);
         progress?.Clear();
