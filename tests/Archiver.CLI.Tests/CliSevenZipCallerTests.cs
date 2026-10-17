@@ -123,6 +123,52 @@ public sealed class CliSevenZipCallerTests
         result.ErrorMessage.Should().Contain("not supported on this command").And.Contain("'l' (list)");
     }
 
+    // --- T-F411: -sae / -sas (7-Zip's ArcNameMode; patool: "a -y -t7z -sae -- <arc> <files>") ---
+
+    [Theory]
+    [InlineData(new[] { "a", "-sae", "out", "f" }, true)]
+    [InlineData(new[] { "a", "-sas", "out", "f" }, false)]
+    [InlineData(new[] { "a", "-sae", "-sas", "out", "f" }, false)]
+    [InlineData(new[] { "a", "out", "f" }, false)]
+    public void Archive_NameMode_IsTaken(string[] args, bool exact)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(args);
+
+        result.Type.Should().Be(CliCommandType.Archive, result.ErrorMessage);
+        result.ArchiveNameExact.Should().Be(exact);
+    }
+
+    [Fact]
+    public void Archive_PatoolLine_IsAccepted()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-y", "-t7z", "-sae", "--", "out.7z", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive, result.ErrorMessage);
+        result.ArchivePathArg.Should().Be("out.7z");
+        result.ArchiveNameExact.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("-saa", "not supported by Pakko: -saa")]
+    [InlineData("-sax", "unknown -sa value")]
+    [InlineData("-sa", "unknown -sa value")]
+    public void Archive_OtherNameModes_AreRefused(string token, string reason)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", token, "out", "f"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain(reason);
+    }
+
+    [Fact]
+    public void Extract_NameMode_IsNotOnThisCommand()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", "-sae", "a.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("not supported on this command");
+    }
+
     [Fact]
     public void Info_DoubleDash_TakesNoArguments()
     {

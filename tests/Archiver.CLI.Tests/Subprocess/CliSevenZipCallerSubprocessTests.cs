@@ -51,5 +51,32 @@ public sealed class CliSevenZipCallerSubprocessTests
         stdErr.Should().Contain("incorrect password");
     }
 
+    // T-F411: -sae writes the name exactly as typed; without it a name with no extension gets the type's.
+    [Theory]
+    [InlineData("-sae", "noext")]
+    [InlineData("-sas", "noext.zip")]
+    public void Archive_NameMode_DecidesTheFileName(string nameMode, string expectedName)
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-tzip", nameMode, "noext", CliFixtureFiles.SourceFileA);
+
+        exitCode.Should().Be(0, stdErr);
+        Directory.GetFiles(scratchDir).Select(Path.GetFileName).Should().Equal(expectedName);
+        using var archive = System.IO.Compression.ZipFile.OpenRead(Path.Combine(scratchDir, expectedName));
+        archive.Entries.Should().ContainSingle();
+    }
+
+    [SevenZipWriterFact]
+    public void Archive_PatoolSevenZipLine_WritesThe7z()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-y", "-t7z", "-sae", "--", "out.7z", CliFixtureFiles.SourceFileA);
+
+        exitCode.Should().Be(0, stdErr);
+        File.ReadAllBytes(Path.Combine(scratchDir, "out.7z")).AsSpan(0, 2).ToArray().Should().Equal((byte)'7', (byte)'z');
+    }
+
     private static string EncryptedZipPath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "encrypted_aes256.zip");
 }
