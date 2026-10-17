@@ -75,7 +75,8 @@ public sealed class CliSevenZipCallerTests
         ParsedCliCommand result = CliArgumentParser.Parse(["x", "--", "-pX", ".1"]);
 
         result.Type.Should().Be(CliCommandType.Extract, result.ErrorMessage);
-        result.ArchivePaths.Should().Equal("-pX", ".1");
+        result.ArchivePaths.Should().Equal("-pX");
+        result.FilterNames.Should().Equal(new CliFilterName(".1", false));
     }
 
     // --- T-F409: -y, -p and -p- on l and t (patool: "l -y -p- -- a.zip", "t -y -p- -- a.zip") ---

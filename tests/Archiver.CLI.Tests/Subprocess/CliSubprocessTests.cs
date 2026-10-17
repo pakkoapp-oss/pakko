@@ -1212,10 +1212,10 @@ public sealed class CliSubprocessTests
     [Fact]
     public void UnsupportedSwitchOnSupportedCommand_ExitsSevenNamingSwitch()
     {
-        // Case 3 (a real 7z switch, deliberately unsupported on any command) — kept as a
-        // still-genuinely-unsupported switch after T-F191 gave '-p' a real meaning on 'x'/'t'
-        // (see the parser-level test of the same shape in CliArgumentParserTests.cs).
-        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("x", "-r0", "archive.zip");
+        // Case 3 (a real 7z switch, deliberately unsupported on any command); -r0, used here
+        // before, filters names since T-F410 (the parser-level test of the same shape is in
+        // CliArgumentParserTests.cs).
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("x", "-v10m", "archive.zip");
 
         exitCode.Should().Be(7);
         stdErr.Should().Contain("not supported");
@@ -1408,7 +1408,8 @@ public sealed class CliSubprocessTests
         string missing = Path.Combine(scratchDir, "missing.zip");
         string destDir = CliFixtureFiles.CreateScratchDir();
 
-        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", $"-o{destDir}", zipPath, missing);
+        // T-F410: a second archive is -ai's; after the archive name it would be a filter.
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", $"-o{destDir}", zipPath, $"-ai!{missing}");
 
         exitCode.Should().Be(2);
         stdErr.Should().Contain("pakko: error:").And.Contain("pakko: warning: tampered.zip:");

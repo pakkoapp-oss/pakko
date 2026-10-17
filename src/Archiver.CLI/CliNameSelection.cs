@@ -1,0 +1,169 @@
+using System.Text;
+
+namespace Archiver.CLI;
+
+/// <summary>
+/// T-F410: turns the parsed name switches into what x, l and t run on — the archives on disk
+/// (7-Zip's arcCensor: the archive name, -ai, -ax, wildcards) and the filter for the entries
+/// inside them (7-Zip's Censor: -i, -x, the names after the archive, list files). The parser
+/// reads no file; this does, so its errors (a missing list file, no archive found) are exit 7
+/// here, as 7-Zip's CArcCmdLineException.
+/// </summary>
+public static class CliNameSelection
+{
+    // 7-Zip's ReadNamesFromListFile2 refuses a list of 2 GiB or more; Pakko keeps it in memory.
+    private const long MaxListFileBytes = 64L * 1024 * 1024;
+
+    /// <summary>The entry filter for x and l, or null when nothing filters (every entry).</summary>
+    public static (CliNameFilter? Filter, string? Error) BuildEntryFilter(ParsedCliCommand command)
+    {
+        CliNameSwitches switches = command.NameSwitches;
+        if (!switches.FiltersNames && command.FilterNames.Count == 0)
+            return (null, null);
+
+        var masks = new List<CliNameMask>();
+        foreach (CliWildcardSwitch item in switches.Names)
+        {
+            CliRecursion recursion = item.Recursion ?? switches.Recursion;
+            bool wildcardMatching = item.WildcardMatching ?? switches.WildcardMatching;
+            if (NamesOf(item.Text, item.IsListFile, switches.ListFileCharset) is not { } names)
+                return (null, ListFileError(item.Text));
+            masks.AddRange(names.Select(n => new CliNameMask(n, item.Include, recursion, wildcardMatching)));
+        }
+        foreach (CliFilterName name in command.FilterNames)
+        {
+            if (name.Text.Length == 0 || (name.IsListFile && name.Text.Length == 1))
+                return (null, "Empty file path");
+            string text = name.IsListFile ? name.Text[1..] : name.Text;
+            if (NamesOf(text, name.IsListFile, switches.ListFileCharset) is not { } names)
+                return (null, ListFileError(text));
+            masks.AddRange(names.Select(n => new CliNameMask(n, Include: true, switches.Recursion, switches.WildcardMatching)));
+        }
+
+        return (CliNameFilter.Create(masks, switches.CaseSensitive, switches.ExcludeFolders, switches.ExcludeFiles), null);
+    }
+
+    /// <summary>
+    /// The archives to open: the archive name and -ai's names as typed when none has a wildcard or
+    /// recurses (a missing one is the command's own error, exit 2, as in 7-Zip); otherwise every
+    /// file they match under <paramref name="currentDirectory"/>, without -ax's, sorted. A
+    /// wildcard that matches no file is "Cannot find archive".
+    /// </summary>
+    public static (IReadOnlyList<string> Paths, string? Error) ResolveArchives(ParsedCliCommand command, string currentDirectory)
+    {
+        CliNameSwitches switches = command.NameSwitches;
+        if (command.ReadFromStdin)
+            return (command.ArchivePaths, null);
+
+        var includes = new List<CliNameMask>();
+        var excludes = new List<CliNameMask>();
+        foreach (string path in command.ArchivePaths)
+            includes.Add(new CliNameMask(path, Include: true, CliRecursion.None, switches.WildcardMatching));
+        foreach (CliWildcardSwitch item in switches.Archives)
+        {
+            if (NamesOf(item.Text, item.IsListFile, switches.ListFileCharset) is not { } names)
+                return ([], ListFileError(item.Text));
+            // 7-Zip's nopArc: an archive name never recurses unless its own switch says r.
+            (item.Include ? includes : excludes).AddRange(names.Select(n => new CliNameMask(
+                n, item.Include, item.Recursion ?? CliRecursion.None, item.WildcardMatching ?? switches.WildcardMatching)));
+        }
+
+        if (includes.TrueForAll(m => !Searches(m)) && excludes.Count == 0)
+            return ([.. includes.Select(m => m.Path)], null);
+
+        // Matched as full paths, so a mask's literal folders become the filter's sub-nodes.
+        var full = new List<CliNameMask>(includes.Count + excludes.Count);
+        full.AddRange(includes.Concat(excludes).Select(m => m with { Path = Path.GetFullPath(m.Path, currentDirectory) }));
+        CliNameFilter filter = CliNameFilter.Create(full, switches.CaseSensitive);
+        var found = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (CliNameMask mask in full.Where(m => m.Include))
+        {
+            if (!Searches(mask))
+            {
+                if (filter.Includes(mask.Path, isFolder: false))
+                    found.Add(mask.Path);
+                continue;
+            }
+            foreach (string file in Candidates(mask))
+            {
+                if (filter.Includes(file, isFolder: false))
+                    found.Add(file);
+            }
+        }
+
+        return found.Count == 0 ? ([], "Cannot find archive") : ([.. found], null);
+    }
+
+    // A mask that has to be looked for on disk rather than opened as typed.
+    private static bool Searches(CliNameMask mask) =>
+        mask.Recursion != CliRecursion.None || (mask.WildcardMatching && CliNameFilter.ContainsWildcard(mask.Path));
+
+    // The files under the mask's literal leading folders; deeper only when it recurses or a
+    // folder part holds a wildcard. Links are not followed, so a junction loop ends the walk.
+    private static IEnumerable<string> Candidates(CliNameMask mask)
+    {
+        string[] parts = mask.Path.Split('\\', '/');
+        int literal = 0;
+        while (literal < parts.Length - 1 && !(mask.WildcardMatching && CliNameFilter.ContainsWildcard(parts[literal])))
+            literal++;
+        string root = string.Join(Path.DirectorySeparatorChar, parts[..literal]) + Path.DirectorySeparatorChar;
+        var options = new EnumerationOptions
+        {
+            RecurseSubdirectories = mask.Recursion != CliRecursion.None || literal < parts.Length - 1,
+            IgnoreInaccessible = true,
+            AttributesToSkip = FileAttributes.ReparsePoint,
+        };
+        return Directory.Exists(root) ? Directory.EnumerateFiles(root, "*", options) : [];
+    }
+
+    private static string ListFileError(string path) =>
+        File.Exists(path) ? $"Incorrect item in listfile: {path}" : $"The file operation error for listfile: cannot open {path}";
+
+    // One name, or a list file's names; null when the list file cannot be read or decoded.
+    private static IReadOnlyList<string>? NamesOf(string text, bool isListFile, string? charset) =>
+        isListFile ? ReadListFile(text, charset) : [text];
+
+    /// <summary>
+    /// 7-Zip's ReadNamesFromListFile2 (ListFileUtils.cpp): UTF-8 unless <paramref name="charset"/>
+    /// names another (-scs), byte order marks skipped, one name per line, each trimmed and
+    /// stripped of one pair of surrounding quotes, empty lines dropped. Null when the file cannot
+    /// be read, or is not valid in that charset.
+    /// </summary>
+    public static IReadOnlyList<string>? ReadListFile(string path, string? charset)
+    {
+        string text;
+        try
+        {
+            if (new FileInfo(path).Length >= MaxListFileBytes)
+                return null;
+            text = Decode(File.ReadAllBytes(path), charset ?? "UTF-8");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DecoderFallbackException or ArgumentException)
+        {
+            return null;
+        }
+        if (text.Contains('\0'))
+            return null;
+
+        var names = new List<string>();
+        foreach (string line in text.TrimStart('\uFEFF').Split('\n', '\r'))
+        {
+            string name = line.Trim();
+            if (name.Length >= 2 && name[0] == '"' && name[^1] == '"')
+                name = name[1..^1];
+            if (name.Length > 0)
+                names.Add(name);
+        }
+        return names;
+    }
+
+    private static string Decode(byte[] bytes, string charset) => charset.ToUpperInvariant() switch
+    {
+        "UTF-16LE" when bytes.Length % 2 == 0 => new UnicodeEncoding(false, false, throwOnInvalidBytes: true).GetString(bytes),
+        "UTF-16BE" when bytes.Length % 2 == 0 => new UnicodeEncoding(true, false, throwOnInvalidBytes: true).GetString(bytes),
+        "UTF-16LE" or "UTF-16BE" => throw new ArgumentException("odd length", nameof(bytes)),
+        "WIN" => CliConsoleCharset.CreateEncoding(CliConsoleCharset.Ansi).GetString(bytes),
+        "DOS" => CliConsoleCharset.CreateEncoding(CliConsoleCharset.Oem).GetString(bytes),
+        _ => new UTF8Encoding(false, throwOnInvalidBytes: true).GetString(bytes),
+    };
+}
