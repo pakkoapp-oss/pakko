@@ -146,7 +146,7 @@ public sealed class CliNameSelectionTests
         Archives();
         // A junction back to its own parent: following it would find every archive again, and again.
         string loop = Path.Combine(_dir, "arcs", "deep", "loop");
-        using (var mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+        using (System.Diagnostics.Process mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
             Path.Combine(Environment.SystemDirectory, "cmd.exe"), ["/d", "/c", "mklink", "/J", loop, Path.Combine(_dir, "arcs")])
             { UseShellExecute = false, RedirectStandardOutput = true })!)
         {

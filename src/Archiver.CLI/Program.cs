@@ -164,20 +164,15 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
         };
         var passed = new CliFilterCount();
         ExtractOptions options = BuildExtractOptions(command, ArchivePathsFor(command, stdinFolder), destination, cancellation.Source, progress, report)
-            with { EntryFilter = command.EntryFilter is { } filter ? passed.Counting(filter.Includes) : null };
+            with { EntryFilter = CountedFilter(command, passed) };
 
         ArchiveResult result = await router.ExtractAsync(options, progress, cancellation.Token).ConfigureAwait(false);
         progress?.Clear();
         if (cancellation.Token.IsCancellationRequested)
             return ReportUserStopped();
-        // T-F410: 7-Zip's ThereAreNoFiles, when a filter let no entry through (not when the
-        // entries that passed were all skipped at the conflict prompt); -so then streams nothing.
-        if (command.EntryFilter is not null && result.Success && passed.Count == 0)
-        {
-            await Console.Out.WriteLineAsync("No files to process").ConfigureAwait(false);
-            if (stdoutFolder is not null)
-                return 0;
-        }
+        // T-F410: -so then streams nothing.
+        if (await ReportNoFileToProcessAsync(command, result, passed).ConfigureAwait(false) && stdoutFolder is not null)
+            return 0;
         return await ReportAndStreamAsync(result, stdoutFolder, report, cancellation.Token).ConfigureAwait(false);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
@@ -185,6 +180,20 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
         progress?.Clear();
         return ReportUserStopped();
     }
+}
+
+// T-F410: the command's name filter, counting what it lets through; null when nothing filters.
+static Func<string, bool, bool>? CountedFilter(ParsedCliCommand command, CliFilterCount passed) =>
+    command.EntryFilter is { } filter ? passed.Counting(filter.Includes) : null;
+
+// T-F410: 7-Zip's ThereAreNoFiles, when a filter let no entry through (not when the entries that
+// passed were all skipped at the conflict prompt). True when it was printed.
+static async Task<bool> ReportNoFileToProcessAsync(ParsedCliCommand command, ArchiveResult result, CliFilterCount passed)
+{
+    if (command.EntryFilter is null || !result.Success || passed.Count > 0)
+        return false;
+    await Console.Out.WriteLineAsync("No files to process").ConfigureAwait(false);
+    return true;
 }
 
 // T-F244 item 4: -si stages into a folder this run owns from the moment it exists, so a failed

@@ -181,7 +181,7 @@ public sealed class CliNameFilterSubprocessTests
                 File.WriteAllText(path, entry);
         }
         string tar = Path.Combine(CliFixtureFiles.CreateScratchDir(), "t.tar");
-        using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+        using System.Diagnostics.Process process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
             @"C:\Windows\System32\tar.exe", ["-cf", tar, "-C", source, "a.txt", "b.nsis", "dir", "emptydir", "Other"]) { UseShellExecute = false })!;
         process.WaitForExit();
         process.ExitCode.Should().Be(0);

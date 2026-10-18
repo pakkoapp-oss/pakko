@@ -1364,7 +1364,7 @@ public sealed class ZipArchiveService : IArchiveService
         List<NamedZipEntry> entries = allEntries;
         if (selectedEntryPaths is { Count: > 0 })
         {
-            var selectedSet = new HashSet<string>(selectedEntryPaths!, StringComparer.Ordinal);
+            var selectedSet = new HashSet<string>(selectedEntryPaths, StringComparer.Ordinal);
             entries = allEntries
                 .Where(e => selectedSet.Contains(e.FullName)
                          || selectedSet.Any(s => e.FullName.StartsWith(s + "/", StringComparison.Ordinal)))
