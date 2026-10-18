@@ -577,7 +577,7 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
         // T-F414: a name that adds nothing is a warning (exit 1), as in 7-Zip; with nothing left
         // there is no archive (Pakko never writes an empty one), exit 2.
         CliArchiveSourceList sources = CliArchiveSources.Resolve(
-            includes, excludes, command.NameSwitches.CaseSensitive, Environment.CurrentDirectory, command.ArchivePathArg!);
+            includes, excludes, command.NameSwitches.CaseSensitive, Environment.CurrentDirectory, ArchiveFilePath(command));
         foreach (CliSourceProblem problem in sources.Problems)
             await Console.Error.WriteLineAsync($"pakko: warning: {problem.Name}: {problem.Reason}").ConfigureAwait(false);
         if (sources.Sources.Count == 0)
@@ -600,6 +600,12 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
         progress?.Clear();
         if (ReportNewPasswordPromptOutcome(prompt.Value) is { } promptExitCode)
             return promptExitCode;
+        // T-F410: -x can leave out everything there was; Core then writes no archive and reports nothing.
+        if (result.CreatedFiles.Count == 0 && result.Outcome == OperationOutcome.Completed)
+        {
+            await Console.Error.WriteLineAsync("pakko: error: nothing to archive").ConfigureAwait(false);
+            return 2;
+        }
         int code = Math.Max(sourcesCode, await ReportAndStreamAsync(result, stdoutFolder, new CliReportContext(), cancellation.Token).ConfigureAwait(false));
 
         // T-F325: the archive is complete but not where the caller will look for it - exit 1.
@@ -634,6 +640,13 @@ static string ResolveArchiveDestination(ParsedCliCommand command, CliStagingFold
     return string.IsNullOrEmpty(dir) ? "." : dir;
 }
 
+static bool ArchiveNameHasExtension(ParsedCliCommand command) =>
+    command.ArchiveNameExact || Path.GetFileName(command.ArchivePathArg!).Contains('.'); // T-F294: ".gz" too, as 7-Zip writes it
+
+// T-F410: the file 'a' writes (before a clash renames it), so a mask never takes it as a source.
+static string ArchiveFilePath(ParsedCliCommand command) =>
+    ArchiveNameHasExtension(command) ? command.ArchivePathArg! : command.ArchivePathArg! + ArchiveNaming.GetExtension(command.ArchiveFormat);
+
 // T-F221 item 6 (user decision 2026-09-28, 7-Zip's rule): a name with an extension is written
 // exactly as typed ("-ttar x.gz" makes a tar named x.gz); a name without one gets the format's,
 // unless -sae says to write it as typed (T-F411).
@@ -641,7 +654,7 @@ static ArchiveOptions BuildArchiveOptions(
     ParsedCliCommand command, CliArchiveSourceList sources, string destFolder, StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt)
 {
     string fileName = Path.GetFileName(command.ArchivePathArg!);
-    bool hasExtension = command.ArchiveNameExact || fileName.Contains('.'); // T-F294: ".gz" too, as 7-Zip writes it
+    bool hasExtension = ArchiveNameHasExtension(command);
     return new()
     {
         SourcePaths = [.. sources.Sources.Select(source => source.FullPath)],
