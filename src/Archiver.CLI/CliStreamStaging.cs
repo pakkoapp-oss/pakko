@@ -1,3 +1,6 @@
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+
 namespace Archiver.CLI;
 
 /// <summary>
@@ -8,7 +11,7 @@ namespace Archiver.CLI;
 /// (T-F49) needs a real file to scan before extraction runs — none of that can operate on a raw
 /// stdin pipe mid-stream, so this buffers at the CLI boundary instead of touching Core.
 /// </summary>
-public static class CliStreamStaging
+public static partial class CliStreamStaging
 {
     /// <summary>The staged archive's file name inside its <see cref="CliStagingFolder"/>.</summary>
     public const string StdinFileName = "stdin.bin";
@@ -125,9 +128,18 @@ public static class CliStreamStaging
     /// </summary>
     public static async Task<string?> StreamSingleFileToStdoutAsync(string stagingDir, CancellationToken cancellationToken)
     {
-        await using Stream stdout = Console.OpenStandardOutput();
+        // T-F419: Console's own stream drops a closed pipe's error (ERROR_NO_DATA), so a reader
+        // that stopped early read as a delivered archive - and -sdel then deleted the sources. A
+        // FileStream over the same handle reports it.
+        using var handle = new SafeFileHandle(GetStdHandle(StdOutputHandle), ownsHandle: false);
+        await using Stream stdout = handle.IsInvalid ? Console.OpenStandardOutput() : new FileStream(handle, FileAccess.Write, bufferSize: 0);
         return await StreamSingleFileAsync(stagingDir, stdout, cancellationToken).ConfigureAwait(false);
     }
+
+    private const int StdOutputHandle = -11;
+
+    [LibraryImport("kernel32.dll")]
+    private static partial nint GetStdHandle(int standardHandle);
 
     /// <summary>
     /// Same as <see cref="StreamSingleFileToStdoutAsync"/> but writes to an injected stream —
