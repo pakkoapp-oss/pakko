@@ -57,6 +57,7 @@ public sealed record ParsedCliCommand
     public bool SetArchiveTime { get; init; }                         // -stl, a only (T-F411)
     public bool ReadFilesOpenForWriting { get; init; }                // -ssw, a only (T-F411)
     public bool StopOnUnreadableSource { get; init; }                 // -sse, a only (T-F411)
+    public bool DropRootNamedLikeOutput { get; init; }                // -spe[-], x only (T-F411)
     public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
     public CliNameSwitches NameSwitches { get; init; } = new();       // -i/-x/-r/-spd/-ssc/-scs/-ai/-ax/-an, x/l/t (T-F410)
     public IReadOnlyList<CliFilterName> FilterNames { get; init; } = []; // x/l/t: the names after the archive name; a: its sources (T-F410)
@@ -333,6 +334,7 @@ public static class CliArgumentParser
         public string? Password { get; set; }
         public bool PromptForPassword { get; set; }
         public bool? ApplyDownloadMark { get; set; }
+        public bool DropRootNamedLikeOutput { get; set; }
     }
 
     private static ParsedCliCommand ParseExtract(CliToken[] rest)
@@ -363,6 +365,7 @@ public static class CliArgumentParser
             Password = state.Password,
             PromptForPassword = state.PromptForPassword,
             ApplyDownloadMark = state.ApplyDownloadMark,
+            DropRootNamedLikeOutput = state.DropRootNamedLikeOutput,
         };
     }
 
@@ -381,6 +384,15 @@ public static class CliArgumentParser
         if (token == "-si") { state.ReadFromStdin = true; return null; }
         if (token == "-so") { state.WriteToStdout = true; return null; }
         if (token == "-y") { state.AssumeYes = true; return null; }
+
+        // T-F411: 7-Zip's -spe (SWFRM_MINUS): -spe- turns it off again.
+        if (token.StartsWith("-spe", StringComparison.Ordinal))
+        {
+            if (token is not ("-spe" or "-spe-"))
+                return $"Incorrect command line: -spe takes only '-' after it, got '{token}'";
+            state.DropRootNamedLikeOutput = token == "-spe";
+            return null;
+        }
 
         if (token.StartsWith("-o", StringComparison.Ordinal))
         {
@@ -1094,6 +1106,7 @@ public static class CliArgumentParser
         ("-stl", "not supported on this command: -stl (the archive takes its newest file's time) is only meaningful for 'a'"),
         ("-ssw", "not supported on this command: -ssw (read files open for writing) is only meaningful for 'a'"),
         ("-sse", "not supported on this command: -sse (stop at a file that cannot be read) is only meaningful for 'a'"),
+        ("-spe", "not supported on this command: -spe (drop the root folder named like -o) is only meaningful for 'x'"),
         ("-ssp", "not supported by Pakko: -ssp (keep the sources' last access time) - tar.exe cannot keep it, and Windows mostly does not update it"),
     ];
 

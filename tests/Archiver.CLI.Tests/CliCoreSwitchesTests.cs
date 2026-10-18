@@ -174,6 +174,32 @@ public sealed class CliCoreSwitchesTests
         result.ErrorMessage.Should().Contain(reason);
     }
 
+    // --- -spe: drop the root folder named like -o's last part (SWFRM_MINUS) ---
+
+    [Theory]
+    [InlineData("-spe", true)]
+    [InlineData("-SPE", true)]
+    [InlineData("-spe-", false)]
+    public void Extract_DropRootNamedLikeOutput_IsTaken(string token, bool expected)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", token, "a.zip", @"-oC:\out\src"]);
+
+        result.Type.Should().Be(CliCommandType.Extract, result.ErrorMessage);
+        result.DropRootNamedLikeOutput.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("x", "-spex", "-spe takes only '-'")]
+    [InlineData("a", "-spe", "not supported on this command")]
+    [InlineData("t", "-spe", "not supported on this command")]
+    public void DropRootNamedLikeOutput_WithAPostfixOrOnAnotherCommand_IsRefused(string command, string token, string reason)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse([command, token, "a.zip", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain(reason);
+    }
+
     // --- -ssp: declined (Pakko cannot keep the sources' last access time through tar.exe) ---
 
     [Theory]

@@ -22,6 +22,15 @@ public sealed record ExtractOptions
     /// </summary>
     public bool EliminateDuplicateRootFolder { get; init; }
 
+    /// <summary>
+    /// T-F411: drop an archive's single root folder when it has this name, without case (7-Zip's
+    /// -spe, which takes the last part of -o). Decided over every entry of the archive before
+    /// <see cref="SelectedEntryPaths"/> and <see cref="EntryFilter"/>, so a selected or filtered
+    /// extraction drops it too; a root that is a file is not dropped. Null (the default) leaves
+    /// <see cref="EliminateDuplicateRootFolder"/>'s rule, which compares with the archive's name.
+    /// </summary>
+    public string? DuplicateRootName { get; init; }
+
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
 

@@ -267,8 +267,20 @@ static ExtractOptions BuildExtractOptions(
         ConfirmCompressionBombExtraction = command.AssumeYes ? (_ => Task.FromResult(true)) : null,
         ResolvePasswordAsync = BuildPasswordResolver(command, command.AssumeYes, progress, report),
         ApplyDownloadMark = command.ApplyDownloadMark ?? true,
+        DuplicateRootName = command.DropRootNamedLikeOutput ? OutputFolderName(command.OutputDirectory) : null,
         OnItemExtracted = command.Output.LogLevel >= 1 ? NameExtractedItem(destination, progress) : null,
     };
+}
+
+// T-F411: -spe's root name - the last part of -o as typed, never resolved (7-Zip's
+// SplitPathToParts_Smart: "-o." names ".", which no root folder has). No -o: nothing is dropped.
+static string? OutputFolderName(string? outputDirectory)
+{
+    if (outputDirectory is null)
+        return null;
+    string trimmed = outputDirectory.TrimEnd('\\', '/');
+    string name = trimmed[(trimmed.LastIndexOfAny(['\\', '/', ':']) + 1)..];
+    return name.Length == 0 ? null : name;
 }
 
 // T-F408: -bb1 and up print 7-Zip's "- <name>" line (ExtractCallbackConsole.cpp, PrepareOperation)

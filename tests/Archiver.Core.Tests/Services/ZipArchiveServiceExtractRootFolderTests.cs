@@ -85,4 +85,104 @@ public sealed class ZipArchiveServiceExtractRootFolderTests : IDisposable
 
         File.Exists(Path.Combine(dest, "singleroot", "in", "c.txt")).Should().BeTrue();
     }
+
+    // --- T-F411: DuplicateRootName (7-Zip's -spe: the root named like -o's last part) ---
+
+    private async Task<string> ExtractNamedRootAsync(
+        string zip, string rootName, Func<string, bool, bool>? filter = null, IReadOnlyList<string>? selected = null)
+    {
+        string dest = Path.Combine(_temp.Path, "dest");
+        Directory.CreateDirectory(dest);
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            DuplicateRootName = rootName, EntryFilter = filter, SelectedEntryPaths = selected,
+        });
+        result.Errors.Should().BeEmpty();
+        return dest;
+    }
+
+    [Theory]
+    [InlineData("src")]
+    [InlineData("SRC")]
+    public async Task ExtractAsync_DuplicateRootName_RootNamedSo_IsStripped(string rootName)
+    {
+        string zip = CreateZip("any.zip", "src/a.txt", "src/d/b.txt");
+
+        string dest = await ExtractNamedRootAsync(zip, rootName);
+
+        File.Exists(Path.Combine(dest, "a.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(dest, "d", "b.txt")).Should().BeTrue();
+        Directory.Exists(Path.Combine(dest, "src")).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("other")]
+    [InlineData(".")]
+    [InlineData("sr")]
+    public async Task ExtractAsync_DuplicateRootName_RootNamedOtherwise_IsKept(string rootName)
+    {
+        string zip = CreateZip("src.zip", "src/a.txt");
+
+        string dest = await ExtractNamedRootAsync(zip, rootName);
+
+        File.Exists(Path.Combine(dest, "src", "a.txt")).Should().BeTrue();
+    }
+
+    // 7za: a file named like -o's last part is not a folder to drop.
+    [Fact]
+    public async Task ExtractAsync_DuplicateRootName_RootIsAFile_IsKept()
+    {
+        string zip = CreateZip("f.zip", "src");
+
+        string dest = await ExtractNamedRootAsync(zip, "src");
+
+        File.Exists(Path.Combine(dest, "src")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_DuplicateRootName_SecondRoot_IsKept()
+    {
+        string zip = CreateZip("two.zip", "src/a.txt", "x.txt");
+
+        string dest = await ExtractNamedRootAsync(zip, "src");
+
+        File.Exists(Path.Combine(dest, "src", "a.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(dest, "x.txt")).Should().BeTrue();
+    }
+
+    // 7za: -spe with -x!/-i! still drops the root, decided over every entry of the archive.
+    [Fact]
+    public async Task ExtractAsync_DuplicateRootName_WithAFilter_IsStripped()
+    {
+        string zip = CreateZip("any.zip", "src/a.txt", "src/d/b.txt");
+
+        string dest = await ExtractNamedRootAsync(zip, "src", filter: (name, _) => name != "src/a.txt");
+
+        File.Exists(Path.Combine(dest, "d", "b.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(dest, "a.txt")).Should().BeFalse();
+        Directory.Exists(Path.Combine(dest, "src")).Should().BeFalse();
+    }
+
+    // The filter cannot make a second root disappear: an entry it leaves out still counts.
+    [Fact]
+    public async Task ExtractAsync_DuplicateRootName_FilterLeavesOutTheSecondRoot_IsKept()
+    {
+        string zip = CreateZip("two.zip", "src/a.txt", "x.txt");
+
+        string dest = await ExtractNamedRootAsync(zip, "src", filter: (name, _) => name != "x.txt");
+
+        File.Exists(Path.Combine(dest, "src", "a.txt")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_DuplicateRootName_WithASelection_IsStripped()
+    {
+        string zip = CreateZip("any.zip", "src/a.txt", "src/d/b.txt");
+
+        string dest = await ExtractNamedRootAsync(zip, "src", selected: ["src/d"]);
+
+        File.Exists(Path.Combine(dest, "d", "b.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(dest, "a.txt")).Should().BeFalse();
+    }
 }

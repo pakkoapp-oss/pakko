@@ -364,7 +364,7 @@ public sealed class TarSandboxedService : ITarService
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new TarExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
-                options.EliminateDuplicateRootFolder, options.OnItemExtracted, options.EntryFilter);
+                options.EliminateDuplicateRootFolder, options.OnItemExtracted, options.EntryFilter, options.DuplicateRootName);
             (string? actualDest, bool anyExtracted) = await ExtractSingleArchiveAsync(
                 archivePath, destDir, alreadyIsolated, options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken)
                 .ConfigureAwait(false);
@@ -523,9 +523,14 @@ public sealed class TarSandboxedService : ITarService
         // shared ExtractionDestinationPlanner instead of two hand-kept-in-sync copies (T-F118's own
         // comment called that sync a documentation-enforced promise) — see DECISIONS.md's T-F157
         // entry.
-        RootShape rootShape = ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
-        bool rootDuplicatesArchiveName = context.EliminateDuplicateRootFolder && isSingleRootFolder
-            && ExtractionDestinationPlanner.RootDuplicatesArchiveName(rootNames[0][..rootNames[0].IndexOf('/')], archivePath);
+        // T-F411: -spe's root is decided over every entry, as in ZipArchiveService.
+        bool namedRootDropped = context.DuplicateRootName is { } namedRoot
+            && ExtractionDestinationPlanner.AllEntriesUnderRoot(rootNames, namedRoot);
+        RootShape rootShape = namedRootDropped
+            ? RootShape.SingleFolder
+            : ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
+        bool rootDuplicatesArchiveName = namedRootDropped || (context.EliminateDuplicateRootFolder && isSingleRootFolder
+            && ExtractionDestinationPlanner.RootDuplicatesArchiveName(rootNames[0][..rootNames[0].IndexOf('/')], archivePath));
         (string? actualDest, bool stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
             alreadyIsolated, rootShape, destDir, unisolatedDestDir, rootDuplicatesArchiveName);
 
@@ -857,7 +862,9 @@ public sealed class TarSandboxedService : ITarService
         // T-F408: ExtractOptions.OnItemExtracted.
         Action<string>? OnItemExtracted,
         // T-F410: ExtractOptions.EntryFilter.
-        Func<string, bool, bool>? EntryFilter);
+        Func<string, bool, bool>? EntryFilter,
+        // T-F411: ExtractOptions.DuplicateRootName.
+        string? DuplicateRootName);
 
     // One file of ExtractSingleArchiveAsync's move-phase loop (quarantine "out\" -> staging, then
     // committed) — conflict-resolve, move, propagate MOTW. Returns whether the file was
