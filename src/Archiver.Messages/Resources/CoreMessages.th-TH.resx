@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>"{0}" จะถูกเก็บไว้ภายใน "{1}" ในไฟล์บีบอัด เป็น "{2}"</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>"{0}" เป็นชื่อที่ Windows สงวนไว้สำหรับอุปกรณ์ จึงไม่ได้สร้างไฟล์บีบอัด</value>
+  </data>
 </root>

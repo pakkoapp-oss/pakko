@@ -193,6 +193,37 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
             Format = ArchiveContainerFormat.TarGz,
         }));
 
+    // T-F419: the archive's own exact name (-sae): a device name took the engine down.
+    public static TheoryData<string> DeviceNames => ["NUL", "CON ", "aux", "COM1.", "nul.", "CONOUT$"];
+
+    [Theory, MemberData(nameof(DeviceNames))]
+    public Task ZipEngineCreate_ExactName(string name) => NoThrow(() =>
+        _services.ArchiveService.ArchiveAsync(new ArchiveOptions { SourcePaths = [Source()], DestinationFolder = Destination(), ExactFileName = name }));
+
+    [Theory, MemberData(nameof(DeviceNames))]
+    public Task TarEngineCompress_ExactName(string name) => NoThrow(() =>
+        _services.TarService.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [Source()], DestinationFolder = Destination(), ExactFileName = name, Format = ArchiveContainerFormat.TarGz,
+        }));
+
+    [Theory, MemberData(nameof(DeviceNames))]
+    public async Task Create_ExactDeviceName_RefusedWithItsOwnCode_NothingWritten(string name)
+    {
+        string destination = Destination();
+        foreach (ArchiveContainerFormat format in new[] { ArchiveContainerFormat.Zip, ArchiveContainerFormat.TarGz })
+        {
+            ArchiveResult result = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+            {
+                SourcePaths = [Source()], DestinationFolder = destination, ExactFileName = name, Format = format, RecoveryPercent = 5,
+            });
+
+            result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.ArchiveNameReserved);
+            result.CreatedFiles.Should().BeEmpty();
+        }
+        Directory.Exists(destination).Should().BeFalse("nothing is written, not even the folder");
+    }
+
     [Theory, MemberData(nameof(Hostile))]
     public Task TarEngineCompress_Destination(string kind) => NoThrow(() =>
         _services.TarService.CompressAsync(new ArchiveOptions

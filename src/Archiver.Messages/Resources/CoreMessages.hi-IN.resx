@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>"{0}" संग्रह में "{1}" के अंदर "{2}" के रूप में रखा जाएगा।</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>"{0}" एक ऐसा नाम है जिसे Windows किसी डिवाइस के लिए आरक्षित रखता है; कोई संग्रह नहीं बनाया गया।</value>
+  </data>
 </root>

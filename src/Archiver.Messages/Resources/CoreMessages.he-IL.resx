@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>"{0}" יישמר בתוך "{1}" בארכיון, בשם "{2}".</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>"{0}" הוא שם ש-Windows שומרת להתקן; לא נוצר ארכיון.</value>
+  </data>
 </root>

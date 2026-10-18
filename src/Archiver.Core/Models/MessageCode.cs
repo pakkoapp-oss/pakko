@@ -148,4 +148,7 @@ public enum MessageCode
     // Sources named by part of their path (T-F414)
     SourceNamePartsInvalid,
     SourceNamesOverlap,
+
+    // An archive named as a Windows device (T-F419)
+    ArchiveNameReserved,
 }

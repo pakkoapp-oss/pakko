@@ -83,6 +83,8 @@ public sealed class ZipArchiveService : IArchiveService
             return new ArchiveResult { CreatedFiles = [], Errors = [namesError], SkippedFiles = [] };
 
         // T-F406: before any prompt, and both modes write into this folder.
+        if (DestinationFolder.ReservedArchiveName(options) is { } reserved)
+            return reserved;
         if (DestinationFolder.TryCreate(options.DestinationFolder) is { } folderFailure)
             return DestinationFolder.CreationRefused(options, folderFailure);
 

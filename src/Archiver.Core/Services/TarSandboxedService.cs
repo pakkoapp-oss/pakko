@@ -1579,6 +1579,8 @@ public sealed class TarSandboxedService : ITarService
             return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
         }
 
+        if (DestinationFolder.ReservedArchiveName(options) is { } reserved)
+            return reserved;
         if (DestinationFolder.TryCreate(options.DestinationFolder) is { } folderFailure)
             return DestinationFolder.CreationRefused(options, folderFailure);
         string extension = ArchiveNaming.GetExtension(options.Format);

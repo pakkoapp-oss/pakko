@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>"{0}"이(가) 압축 파일에서 "{1}" 안에 "{2}"(으)로 저장됩니다.</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>"{0}"은(는) Windows가 장치용으로 예약한 이름이므로 압축 파일을 만들지 않았습니다.</value>
+  </data>
 </root>

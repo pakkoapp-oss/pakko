@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>„{0}“ archyve būtų įrašytas į „{1}“ kaip „{2}“.</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>„{0}“ yra pavadinimas, kurį Windows rezervuoja įrenginiui; archyvas nesukurtas.</value>
+  </data>
 </root>

@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>„{0}“ würde im Archiv innerhalb von „{1}“ als „{2}“ gespeichert.</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>„{0}“ ist ein Name, den Windows für ein Gerät reserviert; es wurde kein Archiv erstellt.</value>
+  </data>
 </root>

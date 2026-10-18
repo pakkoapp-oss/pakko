@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>"{0}" sẽ được lưu bên trong "{1}" trong tệp nén, dưới tên "{2}".</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>"{0}" là tên mà Windows dành riêng cho một thiết bị; không có tệp nén nào được tạo.</value>
+  </data>
 </root>

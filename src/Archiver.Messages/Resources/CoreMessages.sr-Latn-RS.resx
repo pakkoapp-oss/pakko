@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>„{0}” bi bio sačuvan u arhivi unutar „{1}” kao „{2}”.</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>„{0}” je naziv koji Windows rezerviše za uređaj; arhiva nije napravljena.</value>
+  </data>
 </root>

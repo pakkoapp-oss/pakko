@@ -31,6 +31,21 @@ internal static class DestinationFolder
         Sources = [.. archivePaths.Select(path => new SourceResult { Path = path, Outcome = SourceOutcome.NotProcessed })],
     };
 
+    /// <summary>T-F419: a single archive named exactly as a device ("NUL", "CON ", only with an
+    /// exact name, -sae): Windows opens the device instead, or a long path writes a file Explorer
+    /// cannot remove. Null when the name can be used; nothing is written otherwise.</summary>
+    internal static ArchiveResult? ReservedArchiveName(ArchiveOptions options)
+    {
+        if (options.Mode != ArchiveMode.SingleArchive || options.ExactFileName is not { } name
+            || !ArchiveEntrySecurity.IsDeviceName(Path.GetFileName(name)))
+            return null;
+        return new()
+        {
+            Errors = [CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.ArchiveNameReserved, name)],
+            Sources = [.. options.SourcePaths.Select(path => new SourceResult { Path = path, Outcome = SourceOutcome.NotProcessed })],
+        };
+    }
+
     /// <summary>The result of an archive creation whose folder could not be made.</summary>
     internal static ArchiveResult CreationRefused(ArchiveOptions options, Exception failure) => new()
     {

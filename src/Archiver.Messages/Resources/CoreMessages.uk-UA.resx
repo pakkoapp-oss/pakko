@@ -378,4 +378,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>«{0}» потрапив би в архіві всередину «{1}», як «{2}».</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>«{0}» — ім’я, яке Windows резервує для пристрою; архів не створено.</value>
+  </data>
 </root>

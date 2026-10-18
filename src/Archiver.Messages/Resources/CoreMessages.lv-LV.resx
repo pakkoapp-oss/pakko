@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>“{0}” arhīvā tiktu saglabāts mapē “{1}” kā “{2}”.</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>“{0}” ir nosaukums, ko Windows rezervē ierīcei; arhīvs netika izveidots.</value>
+  </data>
 </root>

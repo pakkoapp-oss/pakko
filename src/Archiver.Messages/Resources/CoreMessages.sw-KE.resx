@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>"{0}" ingehifadhiwa ndani ya "{1}" kwenye kumbukumbu, kama "{2}".</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>"{0}" ni jina ambalo Windows huhifadhi kwa ajili ya kifaa; hakuna kumbukumbu iliyoundwa.</value>
+  </data>
 </root>

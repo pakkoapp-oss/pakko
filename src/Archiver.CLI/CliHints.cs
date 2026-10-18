@@ -53,7 +53,7 @@ public static class CliHints
     private static readonly MessageCode[] NoHint =
     [
         MessageCode.None, MessageCode.SourceNotFound, MessageCode.NothingToArchive, MessageCode.SourceNamePartsInvalid, MessageCode.SourceNamesOverlap,
-        MessageCode.CannotAccessFile, MessageCode.AccessDenied,
+        MessageCode.ArchiveNameReserved, MessageCode.CannotAccessFile, MessageCode.AccessDenied,
         MessageCode.LinkNotArchived, MessageCode.FolderLinkNotFollowed, MessageCode.ReparsePointNotArchived, MessageCode.ArchiveAlreadyExists,
         MessageCode.CannotCreateArchive, MessageCode.AccessDeniedCreatingArchive, MessageCode.UnexpectedError, MessageCode.UnknownArchivingError,
         MessageCode.EntryNameTooLong, MessageCode.NotEnoughSpaceToCompress, MessageCode.PasswordNotEntered, MessageCode.PasswordEmpty,
