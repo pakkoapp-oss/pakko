@@ -582,19 +582,27 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
 
         ArchiveResult result = await router.ArchiveAsync(options, progress, cancellation.Token).ConfigureAwait(false);
         progress?.Clear();
-        if (ReportNewPasswordPromptOutcome(prompt.Value) is { } promptExitCode)
-            return promptExitCode;
-        // T-F410: -x can leave out everything there was; Core then writes no archive and reports nothing.
-        if (result.CreatedFiles.Count == 0 && result.Outcome == OperationOutcome.Completed)
-            return await ReportNothingToArchiveAsync().ConfigureAwait(false);
-        int code = Math.Max(sourcesCode, await ReportAndStreamAsync(result, stdoutFolder, new CliReportContext(), cancellation.Token).ConfigureAwait(false));
-        return stdoutFolder is null ? await ReportTakenNameAsync(code, options, result).ConfigureAwait(false) : code;
+        return await ReportArchiveResultAsync(result, prompt.Value, sourcesCode, stdoutFolder, options, cancellation.Token).ConfigureAwait(false);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
         progress?.Clear();
         return ReportUserStopped();
     }
+}
+
+// The exit code of a finished 'a', after the prompt's outcome, the report and the streamed archive.
+static async Task<int> ReportArchiveResultAsync(
+    ArchiveResult result, CliPasswordPrompt.NewPasswordResult? promptResult, int sourcesCode,
+    CliStagingFolder? stdoutFolder, ArchiveOptions options, CancellationToken ct)
+{
+    if (ReportNewPasswordPromptOutcome(promptResult) is { } promptExitCode)
+        return promptExitCode;
+    // T-F410: -x can leave out everything there was; Core then writes no archive and reports nothing.
+    if (result.CreatedFiles.Count == 0 && result.Outcome == OperationOutcome.Completed)
+        return await ReportNothingToArchiveAsync().ConfigureAwait(false);
+    int code = Math.Max(sourcesCode, await ReportAndStreamAsync(result, stdoutFolder, new CliReportContext(), ct).ConfigureAwait(false));
+    return stdoutFolder is null ? await ReportTakenNameAsync(code, options, result).ConfigureAwait(false) : code;
 }
 
 // T-F325: the archive is complete but not where the caller will look for it - exit 1.
