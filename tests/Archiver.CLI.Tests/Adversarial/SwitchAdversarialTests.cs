@@ -71,6 +71,61 @@ public sealed class SwitchAdversarialTests : IDisposable
         Snapshot().Should().Equal(before, "a refused command line touches nothing");
     }
 
+    // -sdel in the combinations where a 7-Zip that honoured it would delete the most.
+    [Theory]
+    [InlineData("a", "-sdel", "-so", "o.zip", "src")]
+    [InlineData("a", "-sdel", "-y", "o.zip", @"src\*.txt", "-x!b.txt")]
+    [InlineData("a", "-sdel", @"src\o.zip", "src")]
+    [InlineData("a", "-sdel", "-rr", "o.zip", "src")]
+    [InlineData("a", "-sdel", "-ttar", "o.tar", "src")]
+    [InlineData("a", "-y", "o.zip", "src", "--", "-sdel")]
+    [InlineData("-sdel", "a", "o.zip", "src")]
+    [InlineData("a", "-SDEL", "o.zip", "src")]
+    public void SdelInAnyCombination_DeletesNoSource(params string[] args)
+    {
+        string[] before = Snapshot().Where(e => e.StartsWith("src", StringComparison.Ordinal)).ToArray();
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko(args);
+
+        Snapshot().Where(e => e.StartsWith("src", StringComparison.Ordinal)).Should().Equal(before, $"exit {exitCode}: {stdErr}");
+        if (!args.Contains("--"))
+            exitCode.Should().Be(7, stdErr);
+    }
+
+    [Fact]
+    public void MissingListFile_IsExitSevenAndChangesNothing()
+    {
+        string[] before = Snapshot();
+
+        (int exitCode, _, _) = _scratch.Pakko("x", "arc.zip", "-oout", "-aoa", "@missing.txt");
+
+        exitCode.Should().Be(7);
+        Snapshot().Should().Equal(before);
+    }
+
+    [Theory]
+    [InlineData(@"..\a.txt")]
+    [InlineData(@"C:\a.txt")]
+    public void TraversalOrAbsoluteFilter_WithAoa_MatchesNothingAndOverwritesNothing(string filter)
+    {
+        (int exitCode, string stdOut, _) = _scratch.Pakko("x", "arc.zip", "-oout", "-aoa", filter);
+
+        exitCode.Should().Be(0);
+        stdOut.Should().Contain("No files to process");
+        File.ReadAllText(_scratch.Inside(@"out\a.txt")).Should().Be("PRECIOUS");
+    }
+
+    [Fact]
+    public void ListFileOnA_WithAMissingLine_ArchivesTheRestAndExitsOne()
+    {
+        _scratch.WriteFile("list.txt", "src\\a.txt\r\nnot-there.txt\r\n");
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("a", "o.zip", "@list.txt");
+
+        exitCode.Should().Be(1, stdErr);
+        File.Exists(_scratch.Inside("o.zip")).Should().BeTrue();
+    }
+
     // CLI.md's three-way rule: a real 7z switch Pakko does not implement is "not supported by
     // Pakko: <reason>", never the typo message "Incorrect command line: unknown switch". -sdel and
     // the others are 7-Zip's own (kSwitchForms, listed in CLI.md's matrix as "Can add").
