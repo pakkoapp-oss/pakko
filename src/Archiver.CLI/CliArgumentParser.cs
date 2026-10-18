@@ -57,6 +57,7 @@ public sealed record ParsedCliCommand
     public bool SetArchiveTime { get; init; }                         // -stl, a only (T-F411)
     public bool ReadFilesOpenForWriting { get; init; }                // -ssw, a only (T-F411)
     public bool StopOnUnreadableSource { get; init; }                 // -sse, a only (T-F411)
+    public bool DeleteSourcesAfter { get; init; }                     // -sdel, a only (T-F411)
     public bool DropRootNamedLikeOutput { get; init; }                // -spe[-], x only (T-F411)
     public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
     public CliNameSwitches NameSwitches { get; init; } = new();       // -i/-x/-r/-spd/-ssc/-scs/-ai/-ax/-an, x/l/t (T-F410)
@@ -603,6 +604,7 @@ public static class CliArgumentParser
         public bool SetArchiveTime { get; set; }
         public bool ReadFilesOpenForWriting { get; set; }
         public bool StopOnUnreadableSource { get; set; }
+        public bool DeleteSourcesAfter { get; set; }
     }
 
     private static ParsedCliCommand ParseArchive(CliToken[] rest)
@@ -641,6 +643,7 @@ public static class CliArgumentParser
             SetArchiveTime = state.SetArchiveTime,
             ReadFilesOpenForWriting = state.ReadFilesOpenForWriting,
             StopOnUnreadableSource = state.StopOnUnreadableSource,
+            DeleteSourcesAfter = state.DeleteSourcesAfter,
         };
     }
 
@@ -667,6 +670,7 @@ public static class CliArgumentParser
         if (token == "-stl") { state.SetArchiveTime = true; return null; }
         if (token == "-ssw") { state.ReadFilesOpenForWriting = true; return null; }
         if (token == "-sse") { state.StopOnUnreadableSource = true; return null; }
+        if (token == "-sdel") { state.DeleteSourcesAfter = true; return null; }
         if (SimpleSwitchPostfixError(token) is { } postfixError)
             return postfixError;
 
@@ -759,7 +763,7 @@ public static class CliArgumentParser
 
     // T-F411: 7-Zip's switches that take no value (SWFRM_SIMPLE in ArchiveCommandLine.cpp): one
     // with anything after its name is "Incorrect switch postfix" there.
-    private static readonly string[] SimpleArchiveSwitches = ["-stl", "-ssw", "-sse"];
+    private static readonly string[] SimpleArchiveSwitches = ["-stl", "-ssw", "-sse", "-sdel"];
 
     private static string? SimpleSwitchPostfixError(string token)
     {
@@ -1102,6 +1106,7 @@ public static class CliArgumentParser
         ("-ssw", "not supported on this command: -ssw (read files open for writing) is only meaningful for 'a'"),
         ("-sse", "not supported on this command: -sse (stop at a file that cannot be read) is only meaningful for 'a'"),
         ("-spe", "not supported on this command: -spe (drop the root folder named like -o) is only meaningful for 'x'"),
+        ("-sdel", "not supported on this command: -sdel (delete the sources once archived) is only meaningful for 'a'"),
         ("-ssp", "not supported by Pakko: -ssp (keep the sources' last access time) - tar.exe cannot keep it, and Windows mostly does not update it"),
     ];
 
