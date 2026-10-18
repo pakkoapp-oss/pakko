@@ -730,16 +730,17 @@ public sealed class CliArgumentParserTests
         result.Type.Should().Be(CliCommandType.Invalid);
     }
 
+    // T-F411: -aot renames the file already there (7-Zip's kRenameExisting).
     [Fact]
-    public void Extract_OverwriteModeT_ReturnsInvalidNamingNoEquivalent()
+    public void Extract_OverwriteModeT_RenamesTheExistingFile()
     {
         ParsedCliCommand result = CliArgumentParser.Parse(["x", "-aot", "archive.zip"]);
 
-        result.Type.Should().Be(CliCommandType.Invalid);
-        result.ErrorMessage.Should().Contain("no equivalent");
+        result.Type.Should().Be(CliCommandType.Extract, result.ErrorMessage);
+        result.OverwriteMode.Should().Be(ConflictBehavior.RenameExisting);
     }
 
-    // T-F222: --help lists -ao{a|s|u}; the errors offered -aot as valid too, which is then refused.
+    // T-F222: the errors name exactly the modes Pakko takes (-aot too since T-F411).
     [Theory]
     [InlineData("-ao")]
     [InlineData("-aox")]
@@ -749,7 +750,7 @@ public sealed class CliArgumentParserTests
         ParsedCliCommand result = CliArgumentParser.Parse(["x", token, "archive.zip"]);
 
         result.Type.Should().Be(CliCommandType.Invalid);
-        result.ErrorMessage.Should().Contain("a, s, or u").And.NotContain("or t");
+        result.ErrorMessage.Should().Contain("a, s, t or u");
     }
 
     // --- T-F116: -si / -so ---
