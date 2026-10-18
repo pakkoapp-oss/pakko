@@ -705,6 +705,7 @@ static ArchiveOptions BuildArchiveOptions(
         RecoveryPercent = command.RecoveryPercent,
         MaxThreads = command.MaxThreads,
         SetArchiveTimeFromNewestEntry = command.SetArchiveTime,
+        ReadFilesOpenForWriting = command.ReadFilesOpenForWriting,
     };
 }
 

@@ -66,4 +66,28 @@ public sealed class CliCoreSwitchesSubprocessTests
         exitCode.Should().Be(0, stdErr);
         File.GetLastWriteTimeUtc(Path.Combine(scratchDir, "out.zip")).Should().Be(sourceTime);
     }
+
+    // --- -ssw ---
+
+    [Fact]
+    public void Archive_FileHeldOpenForWriting_IsStoredOnlyWithTheSwitch()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string held = Path.Combine(scratchDir, "log.txt");
+        File.WriteAllText(held, "line one");
+
+        int withoutCode, withCode;
+        string withErr;
+        using (new FileStream(held, FileMode.Open, FileAccess.Write, FileShare.ReadWrite))
+        {
+            (withoutCode, _, _) = CliProcessRunner.RunIn(scratchDir, "a", "without.zip", "log.txt");
+            (withCode, _, withErr) = CliProcessRunner.RunIn(scratchDir, "a", "-ssw", "with.zip", "log.txt");
+        }
+
+        withoutCode.Should().NotBe(0);
+        File.Exists(Path.Combine(scratchDir, "without.zip")).Should().BeFalse("its only file could not be read");
+        withCode.Should().Be(0, withErr);
+        using ZipArchive archive = ZipFile.OpenRead(Path.Combine(scratchDir, "with.zip"));
+        archive.Entries.Should().ContainSingle(e => e.FullName == "log.txt");
+    }
 }

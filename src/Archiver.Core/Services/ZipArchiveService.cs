@@ -230,6 +230,7 @@ public sealed class ZipArchiveService : IArchiveService
         {
             EntryNames = run.Names,
             MaxThreads = options.MaxThreads,
+            ReadFilesOpenForWriting = options.ReadFilesOpenForWriting,
         };
         bool useParallelPipeline = UsesParallelWriter(settings, totalFileCount, totalSourceBytes, largestFileBytes,
             ArchiveEntrySecurity.GetAvailableFreeSpace(options.DestinationFolder),
@@ -360,6 +361,7 @@ public sealed class ZipArchiveService : IArchiveService
                     sourcePath, entryName, compressionLevel, sink.SkippedFiles.Add, sink.Errors.Add, progressInfo.TotalBytes, progressInfo.Progress)
                 {
                     Names = settings.Names,
+                    SourceShare = settings.SourceShare,
                 };
                 await AddDirectoryToArchiveAsync(archive, sourcePath, context, progressInfo.StartOffset, cancellationToken).ConfigureAwait(false);
             }
@@ -367,7 +369,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 string entryName = GetUniqueEntryName(usedEntryNames, ownName);
                 await AddEntryFromFileAsync(archive, sourcePath, entryName,
-                    compressionLevel, progressInfo, cancellationToken).ConfigureAwait(false);
+                    compressionLevel, progressInfo, settings.SourceShare, cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -419,6 +421,7 @@ public sealed class ZipArchiveService : IArchiveService
         {
             EntryNames = run.Names,
             MaxThreads = options.MaxThreads,
+            ReadFilesOpenForWriting = options.ReadFilesOpenForWriting,
         };
         if (settings.RequiresHandRolledWriter)
         {
@@ -586,6 +589,7 @@ public sealed class ZipArchiveService : IArchiveService
                     sourcePath, settings.NameOf(sourcePath), compressionLevel, AddSkipped, AddError, totalSourceBytes, progress)
                 {
                     Names = settings.Names,
+                    SourceShare = settings.SourceShare,
                 };
                 await AddDirectoryToArchiveAsync(archive, sourcePath, context, baseOffset, cancellationToken)
                     .ConfigureAwait(false);
@@ -594,7 +598,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 using ZipArchive archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create); // NOSONAR: S6966 — on a pool thread already; synchronous I/O on purpose (docs/CONVENTIONS.md)
                 await AddEntryFromFileAsync(archive, sourcePath, settings.NameOf(sourcePath),
-                    compressionLevel, new EntryWriteProgress(totalSourceBytes, baseOffset, progress), cancellationToken)
+                    compressionLevel, new EntryWriteProgress(totalSourceBytes, baseOffset, progress), settings.SourceShare, cancellationToken)
                     .ConfigureAwait(false);
             }
             else
@@ -1894,6 +1898,7 @@ public sealed class ZipArchiveService : IArchiveService
         string entryName,
         CompressionLevel compressionLevel,
         EntryWriteProgress progressInfo,
+        FileShare sourceShare,
         CancellationToken cancellationToken)
     {
         // T-F21: Open the source file BEFORE creating the archive entry.
@@ -1904,7 +1909,7 @@ public sealed class ZipArchiveService : IArchiveService
             sourcePath,
             FileMode.Open,
             FileAccess.Read,
-            FileShare.Read,
+            sourceShare,
             bufferSize: FileStreamBufferSize,
             useAsync: false);
         ZipArchiveEntry entry = archive.CreateEntry(entryName, compressionLevel);
@@ -1940,6 +1945,9 @@ public sealed class ZipArchiveService : IArchiveService
     {
         /// <summary>T-F410: which entries below <see cref="RootDir"/> are kept.</summary>
         public SourceEntryNames Names { get; init; } = SourceEntryNames.OwnNames;
+
+        /// <summary>T-F411: how each file below <see cref="RootDir"/> is opened (-ssw).</summary>
+        public FileShare SourceShare { get; init; } = FileShare.Read;
     }
 
     // T-F21: errors list receives per-file ArchiveErrors so that a single inaccessible file
@@ -2021,7 +2029,7 @@ public sealed class ZipArchiveService : IArchiveService
         try
         {
             await AddEntryFromFileAsync(archive, filePath, entryName, context.CompressionLevel,
-                new EntryWriteProgress(context.TotalBytes, startOffset, context.Progress), cancellationToken);
+                new EntryWriteProgress(context.TotalBytes, startOffset, context.Progress), context.SourceShare, cancellationToken);
         }
         catch (IOException ex)
         {
