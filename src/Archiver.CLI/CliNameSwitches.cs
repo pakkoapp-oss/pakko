@@ -28,6 +28,7 @@ public sealed record CliNameSwitches
     public bool NoArchiveName { get; init; }                                // -an
     public bool ExcludeFolders { get; init; }                               // -xtd
     public bool ExcludeFiles { get; init; }                                 // -xtf
+    public IReadOnlyList<string> ExcludedTypes { get; init; } = [];        // -stx{Type}, in order
 
     /// <summary>Whether any switch that filters names inside an archive was given.</summary>
     public bool FiltersNames => Names.Count > 0 || ExcludeFolders || ExcludeFiles || Recursion != CliRecursion.None;
@@ -73,6 +74,9 @@ public sealed record CliNameSwitches
         _ when token.Equals("-xtd", StringComparison.OrdinalIgnoreCase) => (options with { ExcludeFolders = true }, null),
         _ when token.Equals("-xtf", StringComparison.OrdinalIgnoreCase) => (options with { ExcludeFiles = true }, null),
         _ when token.StartsWith("-scs", StringComparison.Ordinal) => ParseListFileCharset(token[4..], options),
+        // 7-Zip: "-stx" alone is "Too short switch", exit 7; a type it does not know is exit 2 (Program).
+        "-stx" => (null, "Too short switch: -stx (e.g. -stxzip)"),
+        _ when token.StartsWith("-stx", StringComparison.Ordinal) => (options with { ExcludedTypes = [.. options.ExcludedTypes, token[4..]] }, null),
         _ when token.StartsWith("-ai", StringComparison.Ordinal) => Add(token, 3, include: true, archive: true, options),
         _ when token.StartsWith("-ax", StringComparison.Ordinal) => Add(token, 3, include: false, archive: true, options),
         _ when token.StartsWith("-i", StringComparison.Ordinal) => Add(token, 2, include: true, archive: false, options),
