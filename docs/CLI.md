@@ -497,6 +497,7 @@ Error:`) and a summary line to stdout (`Everything is Ok`, `Errors: N`, `Warning
 | Unknown command, unknown switch, no archive name, `-o` with a space | 7 | 7 | Yes |
 | `-o` names a file | 2 | 2 (crashed before T-F406) | Yes |
 | `a` with one missing source | 1 (warning), the rest archived under the path as given (`app\readme.txt`) | 1 (warning), the same (2 and `readme.txt` before T-F414) | Yes |
+| `a` with a source file that cannot be read (locked, no read access, open for writing without `-ssw`) | 1 (warning), the rest archived | 2, the file named, the rest archived | Declined: a file the user named is not in the archive; with `-sse` no archive is written (T-F419) |
 | `a` whose sources all are missing, or whose masks find nothing | 1 or 0, an empty archive | 2, `nothing to archive`, no archive | Declined: Pakko writes no empty archive |
 | `a` with the same name twice (`a o.zip t.txt top\..\t.txt`) | 2, `Duplicate filename on disk` | 0, archived once (one file), or `t (1).txt` for two files | Declined: Pakko's renaming rule (T-F30) |
 | `a` with `-stx` | ignored | 7 | Declined: Pakko refuses a switch it would not use |

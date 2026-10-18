@@ -275,10 +275,11 @@ public sealed class ArchiveAdversarialTests : IDisposable
         File.Exists(_scratch.Inside("o.zip")).Should().BeFalse();
     }
 
-    // 7za reads a locked source as a warning (exit 1) and archives the rest; CLI.md's table has the
-    // same 1 for a missing source. Pakko writes the archive and exits 2, the code for "failed".
+    // 7za reads a locked source as a warning (exit 1) and archives the rest. Pakko writes the rest
+    // too but exits 2: a file asked for is not in the archive (docs/CLI.md, errors and exit codes;
+    // the -ssw row). A missing source stays a warning, exit 1, as in 7-Zip.
     [Fact]
-    public void LockedSource_RestArchived_ExitsOneLikeAMissingSource()
+    public void LockedSource_RestArchived_ExitsTwoAndNamesTheFile()
     {
         _scratch.WriteFile(@"src\a.txt", "A");
         _scratch.WriteFile(@"src\b.txt", "B");
@@ -291,12 +292,13 @@ public sealed class ArchiveAdversarialTests : IDisposable
         string archive = _scratch.Inside("o.zip");
         File.Exists(archive).Should().BeTrue();
         EntryNames(archive).Should().Equal("src/b.txt");
-        exitCode.Should().Be(1, $"the archive was written with the readable files, as 7za does (exit 1); stderr: {stdErr}");
+        exitCode.Should().Be(2, $"a source file is not in the archive; stderr: {stdErr}");
+        stdErr.Should().Contain("a.txt");
     }
 
-    // Same as the lock: 7za warns (exit 1) about a source it may not read and archives the rest.
+    // Same as the lock: 7za warns (exit 1); Pakko archives the rest and exits 2.
     [Fact]
-    public void AclDeniedSource_RestArchived_ExitsOneLikeAMissingSource()
+    public void AclDeniedSource_RestArchived_ExitsTwoAndNamesTheFile()
     {
         _scratch.WriteFile(@"src\a.txt", "A");
         _scratch.WriteFile(@"src\b.txt", "B");
@@ -315,7 +317,8 @@ public sealed class ArchiveAdversarialTests : IDisposable
         }
 
         EntryNames(_scratch.Inside("o.zip")).Should().Equal("src/b.txt");
-        exitCode.Should().Be(1, $"the archive was written with the readable files, as 7za does (exit 1); stderr: {stdErr}");
+        exitCode.Should().Be(2, $"a source file is not in the archive; stderr: {stdErr}");
+        stdErr.Should().Contain("a.txt");
     }
 
     private static void RunIcacls(params string[] args)
