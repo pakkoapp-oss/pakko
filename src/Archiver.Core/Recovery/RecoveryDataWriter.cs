@@ -61,14 +61,34 @@ internal static partial class RecoveryDataWriter
         try
         {
             long length = new FileInfo(archive).Length;
-            return Par2Creator.ChooseParameters(length, percent) is { } parameters
+            if (Par2Creator.ChooseParameters(length, percent) is not { } parameters)
+                return (null, CoreMessages.Error(archive, MessageCode.RecoveryDataFileTooLarge));
+            string? taken = FirstForeignFile(
+                [Par2Creator.IndexPath(archive), Par2Creator.VolumePath(archive, parameters.RecoveryCount)], archive, cancellationToken);
+            return taken is null
                 ? (Par2Creator.Create(archive, parameters, progress, cancellationToken), null)
-                : (null, CoreMessages.Error(archive, MessageCode.RecoveryDataFileTooLarge));
+                : (null, CoreMessages.Error(taken, CoreMessages.Text(MessageCode.RecoveryDataNotCreated, CoreMessages.Text(MessageCode.FileExistsAtDestination))));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return (null, CoreMessages.Error(archive, CoreMessages.Wrap(MessageCode.RecoveryDataNotCreated, ex), ex));
         }
+    }
+
+    // T-F419: the set's names may already be taken by a file the user keeps there. Only a file
+    // that is wholly PAR2 data naming this archive is Pakko's to replace (RemoveEarlierSets has
+    // already removed the sets of the archive's earlier bytes); anything else stays, -y or not.
+    private static string? FirstForeignFile(string[] paths, string archive, CancellationToken cancellationToken)
+    {
+        foreach (string path in paths.Where(File.Exists))
+        {
+            Par2ReadResult read = Par2PacketReader.Read([path], cancellationToken);
+            bool ownSet = read.UnreadableFiles == 0 && read.Sets.Count > 0 && read.Rejected.Count == 0
+                && read.Sets.All(s => Par2SetLocator.Names(s, archive));
+            if (!ownSet)
+                return path;
+        }
+        return null;
     }
 
     private static long LengthOrZero(string path)
