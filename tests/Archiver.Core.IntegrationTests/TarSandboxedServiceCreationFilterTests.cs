@@ -116,6 +116,31 @@ public sealed class TarSandboxedServiceCreationFilterTests : IDisposable
     }
 
     [Integration]
+    public async Task CompressAsync_RenamedSource_IsAskedAboutByItsOwnName()
+    {
+        string dir = MakeTree();
+        string other = Path.Combine(_temp.Path, "other", "dir");
+        Directory.CreateDirectory(other);
+        File.WriteAllText(Path.Combine(other, "c.txt"), "o");
+
+        (ArchiveResult result, string[] files) = await CompressAsync([dir, other], (name, _) => name != "dir/c.txt");
+
+        result.Errors.Should().BeEmpty();
+        files.Should().NotContain(f => f.EndsWith("/c.txt", StringComparison.Ordinal));
+    }
+
+    [Integration]
+    public async Task CompressAsync_WithAFilter_NoSourceIsFullyProcessed()
+    {
+        string dir = MakeTree();
+
+        (ArchiveResult result, _) = await CompressAsync([dir], (name, _) => name != "dir/c.log");
+
+        result.CreatedFiles.Should().ContainSingle();
+        result.FullyProcessedSources.Should().BeEmpty();
+    }
+
+    [Integration]
     public async Task CompressAsync_EverythingLeftOut_WritesNoArchive()
     {
         string dir = MakeTree();

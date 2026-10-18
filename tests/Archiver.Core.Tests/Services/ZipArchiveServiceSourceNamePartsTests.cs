@@ -167,6 +167,28 @@ public sealed class ZipArchiveServiceSourceNamePartsTests : IDisposable
         entries.Should().Equal("dir/c (1).txt", "dir/c.txt");
     }
 
+    // The closing review's case: B's "sub" is renamed "sub (1)", the folder C's "sub (1)/z" passes
+    // through, which wrote "sub (1)/z" twice. The rename steps over every folder a name holds.
+    [Theory]
+    [MemberData(nameof(Writers))]
+    public async Task ArchiveAsync_RenameNeverLandsOnAFolderOfAnotherName(CompressionLevel level)
+    {
+        foreach (string folder in new[] { "A", "B" })
+        {
+            Directory.CreateDirectory(Path.Combine(_temp.Path, folder, "sub"));
+            File.WriteAllText(Path.Combine(_temp.Path, folder, "sub", "z"), folder);
+        }
+        string c = Path.Combine(_temp.Path, "C", "sub (1)");
+        Directory.CreateDirectory(c);
+        File.WriteAllText(Path.Combine(c, "z"), "C");
+
+        (ArchiveResult result, string[] entries) = await ArchiveAsync(
+            [Path.Combine(_temp.Path, "A", "sub"), Path.Combine(_temp.Path, "B", "sub"), Path.Combine(c, "z")], [1, 1, 2], level);
+
+        result.Errors.Should().BeEmpty();
+        entries.Should().OnlyHaveUniqueItems().And.HaveCount(3).And.Contain("sub (1)/z");
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]

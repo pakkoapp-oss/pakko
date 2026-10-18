@@ -117,7 +117,7 @@ public sealed class ZipArchiveService : IArchiveService
 
             // T-F260: one archive for every source — each is Completed only when the whole call
             // was clean (per-source attribution of an issue inside one folder is not attempted).
-            bool clean = errors.Count == 0 && skippedFiles.Count == 0;
+            bool clean = errors.Count == 0 && skippedFiles.Count == 0 && !names.Filters;
             sources = options.SourcePaths.Select(p => SourceOutcomeRules.Classify(p, createdFiles.Count > 0, clean));
         }
         else // SeparateArchives
@@ -313,7 +313,7 @@ public sealed class ZipArchiveService : IArchiveService
             // files both named "report.txt" from different folders) — track names already
             // claimed at the archive root and rename later occurrences, the same way
             // GetUniqueFilePath renames colliding output files on disk.
-            var usedEntryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> usedEntryNames = settings.Names.NewTakenNames();
             for (int i = 0; i < total; i++)
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -632,7 +632,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         Interlocked.Add(ref completedBytesBox[0], pathSize);
-        sink.Sources.Add(SourceOutcomeRules.Classify(sourcePath, committed, issues == 0));
+        sink.Sources.Add(SourceOutcomeRules.Classify(sourcePath, committed, issues == 0 && !settings.Names.Filters));
     }
 
     // T-F193: maps one encrypted SeparateArchives worker's own 0..totalBytes progress onto the
@@ -1946,7 +1946,7 @@ public sealed class ZipArchiveService : IArchiveService
         CancellationToken cancellationToken = default)
     {
         string fullRoot = Path.GetFullPath(sourceDir);
-        foreach (WalkEntry entry in DirectoryWalker.Walk(sourceDir, context.Names.LeaveOutBelow(sourceDir, context.EntryPrefix)))
+        foreach (WalkEntry entry in DirectoryWalker.Walk(sourceDir, context.Names.LeaveOutBelow(sourceDir, context.Names.For(sourceDir))))
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
