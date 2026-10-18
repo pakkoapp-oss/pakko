@@ -13322,6 +13322,12 @@ the archive.
   through); `-n` (above). Left for T-F411's `-spe`: a filtered extraction is a subset, so
   `EliminateDuplicateRootFolder` does not apply to it, where 7-Zip applies ElimDup to the entries
   that pass; no caller sets both today.
+- **CI on a 1252 runner** (2026-10-18) failed the Cyrillic selection test: a UTF-8 name outside the
+  ANSI code page is listed by `tar.exe` under `hdrcharset=UTF-8` as `????.txt` with exit 0 (measured
+  on the Windows 10 VM, bsdtar 3.5.2, ACP 1252), so the real name matched nothing, the selection
+  expanded to no member, and an empty member list is `tar.exe`'s "every entry": the whole archive
+  was extracted (on `main` too, since T-F05). A selection that names no entry now extracts nothing,
+  as ZIP does; the test takes a name both code pages share (`TarCodePage.PortableNonAsciiName`).
 - **Where it differs from 7-Zip, deliberately:** `-bb1` also names a folder Pakko creates for an
   entry inside it when the folder's own entry did not pass the filter (7-Zip prints only entries).
 - **A filter on tar is applied when leaving the quarantine, not by `tar.exe`.** The first build
