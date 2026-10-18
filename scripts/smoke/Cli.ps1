@@ -493,3 +493,46 @@ Add-SmokeStep 'CLI-038' {
     $unknown = Invoke-Pakko @('t', $zip, '-stxgz')
     Assert-Smoke ($unknown.ExitCode -eq 2 -and $unknown.Text.Contains('Unsupported archive type')) "t -stxgz: exit $($unknown.ExitCode) $($unknown.Text)"
 }
+
+Add-SmokeStep 'CLI-039' {
+    # T-F414 and T-F410 wave C: what 'a' archives and under which name, as 7za 26.02 measured.
+    $folder = Get-StepFolder 'cli039'
+    $tree = Join-Path $folder 'tree'
+    foreach ($name in @('t.txt', 'dir\c.txt', 'dir\c.log', 'dir\sub\s.txt')) {
+        $path = Join-Path $tree $name
+        $null = New-Item -ItemType Directory -Force -Path (Split-Path $path)
+        Set-Content -LiteralPath $path -Value $name -NoNewline
+    }
+    function Get-ZipName([string]$Zip) {
+        $archive = [System.IO.Compression.ZipFile]::OpenRead($Zip)
+        try { @($archive.Entries | ForEach-Object { $_.FullName } | Sort-Object) } finally { $archive.Dispose() }
+    }
+    $cases = @(
+        @{ Args = @('dir\sub'); Names = @('dir/sub/s.txt') },
+        @{ Args = @('.'); Names = @('dir/c.log', 'dir/c.txt', 'dir/sub/s.txt', 't.txt') },
+        @{ Args = @('dir', '-xr!*.log'); Names = @('dir/c.txt', 'dir/sub/s.txt') },
+        @{ Args = @('*.txt', '-r'); Names = @('dir/c.txt', 'dir/sub/s.txt', 't.txt') },
+        @{ Args = @('dir', '*.txt', '-r'); Names = @('dir/c.log', 'dir/c.txt', 'dir/sub/s.txt', 't.txt') },
+        @{ Args = @('t.txt', '-i!dir\*.log'); Names = @('dir/c.log', 't.txt') }
+    )
+    $i = 0
+    foreach ($case in $cases) {
+        $zip = Join-Path $folder "case$i.zip"
+        $i++
+        $run = Invoke-Pakko -Arguments (@('a', $zip) + $case.Args) -WorkingDirectory $tree
+        $names = if (Test-Path -LiteralPath $zip) { Get-ZipName $zip } else { @() }
+        Assert-Smoke ($run.ExitCode -eq 0 -and (($names -join '|') -eq ($case.Names -join '|'))) "a $($case.Args -join ' '): exit $($run.ExitCode), entries: $($names -join ', ') $($run.Text)"
+    }
+
+    $zip = Join-Path $folder 'missing.zip'
+    $run = Invoke-Pakko -Arguments @('a', $zip, 'missing.txt', 't.txt') -WorkingDirectory $tree
+    Assert-Smoke ($run.ExitCode -eq 1 -and $run.Text.Contains('pakko: warning: missing.txt:') -and ((Get-ZipName $zip) -join '|') -eq 't.txt') "a missing.txt t.txt: exit $($run.ExitCode) $($run.Text)"
+    $zip = Join-Path $folder 'nothing.zip'
+    $run = Invoke-Pakko -Arguments @('a', $zip, 'missing.txt') -WorkingDirectory $tree
+    Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text.Contains('nothing to archive') -and -not (Test-Path -LiteralPath $zip)) "a missing.txt: exit $($run.ExitCode) $($run.Text)"
+
+    $tar = Join-Path $folder 'made.tar'
+    $run = Invoke-Pakko -Arguments @('a', '-ttar', $tar, 'dir\sub', 'dir', '-xr!*.log') -WorkingDirectory $tree
+    $listed = Invoke-Pakko @('l', '-ba', $tar)
+    Assert-Smoke ($run.ExitCode -eq 0 -and $listed.Output.Contains('c.txt') -and -not $listed.Output.Contains('c.log')) "a -ttar dir -xr!*.log: exit $($run.ExitCode) $($run.Text) $($listed.Output)"
+}

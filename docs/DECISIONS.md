@@ -13255,6 +13255,69 @@ the archive.
   refused, `CommitInto` without the callback, each engine without it, the locked file named, the
   merge naming twice, `Program.cs` without the stream, `-bt` and `-ba` code, and `-bb` set to 9.
 
+## T-F414 and T-F410, wave C: what 'a' archives, under which name (2026-10-18)
+
+- **Measured first** (vendored `7za.exe` 26.02, one tree `dir\c.txt`, `dir\c.log`, `dir\sub\s.txt`,
+  `dir\sub\deep\d.txt`, `dir2\sub\x.txt`, `t.txt`, `top\t.txt`):
+  - names: `a o.zip dir\sub` stores `dir\sub\...`, `dir\sub\s.txt` stores `dir\sub\s.txt`; an absolute
+    `C:\...\dir\sub` stores `sub\...`; `.\dir\sub`, `..\t.txt` and `dir\sub\..\c.txt` store `sub\...`,
+    `t.txt`, `c.txt`; `.`, `dir\.` and `dir\sub\..` store the folder's contents at the top; `dir\` is
+    `dir`; `.\dir\*.txt` stores `c.txt`, `<abs>\*\*.txt` stores `dir\c.txt` and `top\t.txt`.
+  - masks: `dir\*.txt` -> `dir\c.txt`; `d*` takes `dir` and `dir2` whole; `dir\*` takes `dir`'s children,
+    `sub` whole; `*.txt -r`, `c.txt -r`, `sub -r` (both `sub` folders, whole) and `*\s* -r` search at
+    any depth; `a dir dir\sub` and `a dir *.txt -r` take each item once; hidden files are taken;
+    `*.TXT` matches `t.txt`, not with `-ssc`; with `-spd`, `dir\*` matches nothing.
+  - excludes: `dir -xr!*.log`, `-xr!sub`, `-x!dir\sub`, `-x!dir\c.txt` leave those out; `dir -x!c.txt`
+    does not (a mask without `r` is matched from the top of the names), `-xr0!sub` neither; an
+    absolute `-x!C:\...\dir\c.txt` (with or without `r`) leaves nothing out.
+  - `-i!dir\*.log` adds a source, alone too; `@lst.txt` lists sources; `-ai` on `a` is exit 7, `-an`
+    exit 2, `-stxzip` is taken and does nothing.
+  - exit codes: one missing source is `WARNING: The system cannot find the file specified.`, the
+    rest archived, exit 1; all missing: an empty archive, exit 1; `*.xyz` finding nothing: an empty
+    archive, exit 0; `t.txt t.txt` and `t.txt top\..\t.txt`: `Duplicate filename on disk`, exit 2.
+  - Source read: `CPP/Common/Wildcard.cpp` 26.02, `CCensor::AddItem` (the prefix: everything
+    before the last part of an absolute name or one with a `.`/`..` part, all of it when the name
+    ends in one, stopping at the first wildcard part; an empty rest becomes the universal `*`) and
+    `CCensor::ExtendExclude` (only the pair with an empty prefix lends its excludes to the others).
+- **Decided (the user delegated the choices, 2026-10-18).** 7-Zip's naming for the CLI only: the
+  App and Explorer pass full paths, which 7-Zip also names by the last part, so they change
+  nothing. A missing source is a warning, exit 1, as in 7-Zip (Chocolatey reads 1 as "some files
+  were not taken"). With nothing left Pakko writes no archive and exits 2 (7-Zip writes an empty
+  one): Pakko never writes an archive without entries. `a .` stores the contents, as 7-Zip,
+  undoing T-F338's folder name (the 1.8.2 CHANGELOG says so under a change in behavior). The same
+  file named twice is archived once; two files under one name keep T-F30's ` (1)`. `-stx` on `a`
+  stays exit 7, and `-ai`, `-ax`, `-an`, `-xtd`, `-xtf` with it.
+- **Core.** `ArchiveOptions.SourceNameParts` (for each source, how many of its last path parts
+  name it) rather than a map from path to name: the name is always a tail of the source's own
+  path, so it cannot climb out of it, there is no key to match after normalization, and tar.exe
+  takes it as that name under the folder above (`-C <parent> dir/sub`). A count the path cannot
+  give, a `.`/`..` part in the tail (a fully qualified path is not normalized, T-F338), or a list
+  that does not match the sources is `SourceNamePartsInvalid`; a name inside another source's name
+  is `SourceNamesOverlap` (37 languages each), checked against every folder a name passes through,
+  so a name sorted between them (`dir-x`) does not hide it. A clash of two equal names is renamed in
+  its last part only (`ArchiveNaming.GetUniqueEntryName`; T-F171's staging copy gets its folders).
+  `ArchiveOptions.EntryFilter` (name in the archive, folder or not) leaves an entry out with all it
+  holds, a source itself included, and reports nothing; `DirectoryWalker` yields such an entry as
+  `LeftOut` and never enters it, a folder whose children are all left out is empty (its placeholder
+  is written), and the tar engine turns them into anchored `-X` lines beside T-F391's links.
+- **CLI.** `CliArchiveSources` ports `AddItem`'s split, looks a plain name up as typed, and
+  searches a mask with one iterative walk per prefix and literal folder; a folder found is taken
+  whole and not entered, `-x` stops the walk too, and an item found twice or under a folder taken is
+  dropped, so Core's overlap refusal is left for a relative and an absolute source that meet
+  (`a o.zip C:\other\dir dir\c.txt`). A drive root stays one source (Core's T-F285 listing).
+  `CliNameSelection.BuildArchiveMasks` reads list files with the same reader as `x`.
+- **Rejected:** the CLI listing every file itself and handing Core a flat list (Core's link
+  skipping, empty-folder entries and tar.exe's own walk would be bypassed); passing `-x` straight to
+  tar.exe as patterns (its matching is not 7-Zip's, and the ZIP engine needs the same rule).
+- **Tests**, each seen red where it guards a fix: Core `ZipArchiveServiceSourceNamePartsTests` and
+  `ZipArchiveServiceEntryFilterTests` (both ZIP writers, separate archives),
+  `TarSandboxedServiceSourceNamePartsTests` and `TarSandboxedServiceCreationFilterTests` (tar and
+  7z, a name with `[`, `]`, `$`, `dir/sub` against `dir/sub2`), two rows in
+  `CoreNeverThrowsContractTests`; CLI `CliArchiveSourcesTests` (the measured names and masks, a
+  link not entered) and `CliArchiveSourcesSubprocessTests` (the 7za lines through the real exe);
+  `CliArgumentParserTests`. Mutants: the names ignored (9 red), the folder-keeping rename (red in
+  ZIP and tar), the tar `-X` lines dropped (5 red), the CLI's names, exit code and filter dropped.
+
 ## T-F410, wave B: name filters on t, and -stx (2026-10-18)
 
 - **Measured first** (vendored `7za.exe` 26.02; `tar.exe` 3.8.8 on build 26300 and 3.5.2 on the

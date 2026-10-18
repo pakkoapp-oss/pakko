@@ -1631,34 +1631,6 @@ re-measured with T-F346's script before and after.
   the new `Default`; a unit test on `CreationFormatOption`/the ViewModel for this order.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`POL-009`), 2026-10-16.
 
-### T-F410 — `pakko`: name filters — `-i`, `-x`, names after the archive, `@listfile`, `-r`, archive wildcards (P2, from T-F343, plan mode)
-
-- [ ] **Status:** open. The largest gap: 7-Zip matches names on `x`, `l`, `t`, `a` (`-i`/`-x` with
-  `r`, `!`, `@list`; plain names and wildcards after the archive name; `@listfile`; `-r`, `-r-`,
-  `-r0`; `-spd`; `-ssc`; `-scs` for list files) and takes wildcards in the archive name
-  (`x *.zip`, `-ai`, `-ax`, `-an`, `-stx`). `pakko` has none: Scoop passes `-xr!*.nsis` on every
-  call (exit 7 today), Chocolatey a folder name after the archive (`pakko` reads it as a second
-  archive, exit 2). Core extraction already takes `SelectedEntryPaths` (the archive view's
-  selection); the matching rules are 7-Zip's `Wildcard.cpp`, read before designing. Plan mode and
-  the advisor first: it touches Core options, both engines and `tar.exe`'s own include patterns
-  (T-F391's exclude-pattern findings apply).
-- **Done so far** (wave A, 2026-10-17): `x` and `l` take the names after the archive, `-i`/`-x`
-  (`r`, `w`, `!`, `@list`), `-xtd`/`-xtf`, `@listfile`, `-r`/`-r-`/`-r0`, `-spd`, `-ssc`, `-scs`;
-  `x`, `l` and `t` take archive wildcards, `-ai`, `-ax`, `-an` (`docs/DECISIONS.md`, "T-F410, wave
-  A"). A name after the archive is now a filter, no longer a second archive: the 1.8.2 CHANGELOG
-  says so under a change in behavior. **Wave B** (2026-10-18): `t` takes the same filters (Core's
-  `TestAsync` takes an `entryFilter`), and `-stx` on `x`, `l`, `t` (`docs/DECISIONS.md`, "T-F410,
-  wave B"); for the 1.8.2 CHANGELOG: "`pakko t` takes `-i`, `-x` and names after the archive; `-stx`
-  leaves out an archive type"; "a selection in a tar that names no entry no longer extracts the
-  whole archive"; "selecting a tar entry whose name holds `$` (App, `x`) no longer picks another
-  file or fails with Not found"; "a filter on `x`/`t` over a tar whose listing shows `?` for a name
-  `tar.exe` cannot show (Windows 10) now stops with a clear message, exit 2" (T-F416); "`No files
-  to process` is no longer printed over an archive that was skipped". **Still open (wave C, with T-F414):** the filters on `a` (wildcards in the
-  sources, `-r`, `-x`, both writers, `tar.exe`'s `-X`); 7-Zip stores a source path as typed
-  (`a o.zip dir\sub` gives `dir\sub\...`), Pakko by the source's own name (T-F153), so the
-  wildcards wait for T-F414's decision.
-- **Reported by:** T-F343's measurement, 2026-10-17.
-
 ### T-F411 — `pakko`: small 7-Zip switches and spellings (P3, from T-F343)
 
 - [ ] **Status:** open. Each is small and measured: a command in capitals (`X`) and a switch before
@@ -1668,6 +1640,8 @@ re-measured with T-F346's script before and after.
   filter too: a filtered extraction is a subset today, so Core skips ElimDup there; T-F410's DECISIONS entry) (Core has
   `EliminateDuplicateRootFolder`); `-mmt` (the parallel ZIP writer's threads); `-sse`, `-ssp`,
   `-ssw`, `-stl`, `-w`. One commit each, each against 7za with the T-F343 script.
+- **1.8.2 CHANGELOG notes** of the waves done so far are in T-F410's and T-F414's entries in
+  `TASKS_DONE.md` (both graduated 2026-10-18).
 - **Done so far** (2026-10-17, with T-F407): `-sae` and `-sas`. Still open: the rest above, and a switch before the command now includes `pakko -- x a.zip`.
 - **Reported by:** T-F343's measurement, 2026-10-17.
 
@@ -1688,15 +1662,6 @@ re-measured with T-F346's script before and after.
   `System.IO.Compression` (allowed). xz and bzip2: only if `tar.exe` can write a bare stream (libarchive
   has a `raw` write format; measure whether `tar.exe` exposes it and runs it inside Pakko's rules),
   otherwise "Can't" in the matrix. Reading such a file is the same question.
-- **Reported by:** T-F343's measurement, 2026-10-17.
-
-### T-F414 — `pakko a`: a missing source is a warning (exit 1), and paths are kept as given (P3, from T-F343)
-
-- [ ] **Status:** open. `7za a new.zip app\readme.txt no-such-file.txt` warns ("WARNING: The system
-  cannot find the file specified"), archives the rest under the path as typed (`app\readme.txt`) and
-  exits 1. `pakko` exits 2 and stores the file as `readme.txt`. Next: decide how the path as typed
-  maps onto Pakko's rule of naming entries after the source's own name (T-F153), then the exit code.
-  Chocolatey treats 1 as "some files could not be extracted".
 - **Reported by:** T-F343's measurement, 2026-10-17.
 
 ### T-F415 — `pakko x -aos`: a file kept by choice exits 1, where 7-Zip exits 0 (P3, from T-F410, decision first)
