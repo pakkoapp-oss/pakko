@@ -81,11 +81,8 @@ public static class CliArgumentParser
         int stop = Array.IndexOf(args, "--");
         string[] switchPart = stop < 0 ? args : args[..stop];
         string[] names = stop < 0 ? [] : args[(stop + 1)..];
-        if (TakeCommand(ref switchPart, ref names, out bool afterBarePassword) is not { } commandName)
-            return Invalid("Incorrect command line: no command given (e.g. pakko x archive.zip)");
-        // "-p secret x a.zip" makes "secret" the command; a word that may be a password is never printed.
-        if (afterBarePassword && Array.IndexOf(CommandNames, commandName) < 0)
-            return Invalid("Incorrect command line: unknown command after a bare -p (the word is not printed; give a password as -p<password>)");
+        if (TakeCommand(ref switchPart, ref names, out string? commandError) is not { } commandName)
+            return Invalid(commandError!);
         if (!CliSwitchNames.TryCanonicalize(switchPart, out switchPart, out string? repeatError))
             return Invalid(repeatError!);
         if (ShellSplitReason(switchPart) is { } splitError)
@@ -126,10 +123,10 @@ public static class CliArgumentParser
         return false;
     }
 
-    private static string? TakeCommand(ref string[] switchPart, ref string[] names, out bool afterBarePassword)
+    private static string? TakeCommand(ref string[] switchPart, ref string[] names, out string? error)
     {
         int index = Array.FindIndex(switchPart, token => token.Length == 0 || token[0] != '-');
-        afterBarePassword = index > 0 && CliSwitchNames.ToLowerAscii(switchPart[index - 1]) == "-p";
+        bool afterBarePassword = index > 0 && CliSwitchNames.ToLowerAscii(switchPart[index - 1]) == "-p";
         string typed;
         if (index >= 0)
         {
@@ -144,10 +141,20 @@ public static class CliArgumentParser
         }
         else
         {
+            error = "Incorrect command line: no command given (e.g. pakko x archive.zip)";
             return null;
         }
+        error = null;
         string lower = CliSwitchNames.ToLowerAscii(typed);
-        return Array.IndexOf(CommandNames, lower) >= 0 ? lower : typed;
+        if (Array.IndexOf(CommandNames, lower) >= 0)
+            return lower;
+        // "-p secret x a.zip" makes "secret" the command; a word that may be a password is never printed.
+        if (afterBarePassword)
+        {
+            error = "Incorrect command line: unknown command after a bare -p (the word is not printed; give a password as -p<password>)";
+            return null;
+        }
+        return typed;
     }
 
     // T-F408: under -so stdout carries the data; 7-Zip turns its messages off there (StdOutMode).
