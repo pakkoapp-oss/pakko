@@ -342,12 +342,15 @@ public sealed class CliArchiveSourcesTests : IAsyncLifetime
     [Fact]
     public void Review_MaskInADriveRoot_LeavesOutTheSystemsOwnEntries()
     {
+        const FileAttributes OsOwned = FileAttributes.Hidden | FileAttributes.System;
         string root = Path.GetPathRoot(_temp.Path)!;
+        // One listing: a file there can come and go (DumpStack.log.tmp), so nothing is asked twice.
+        string[] osOwned = [.. new DirectoryInfo(root).EnumerateFileSystemInfos("*", new EnumerationOptions { AttributesToSkip = 0 })
+            .Where(entry => (entry.Attributes & OsOwned) == OsOwned).Select(entry => entry.FullName)];
 
         CliArchiveSourceList list = Search([Mask(root + "*")]);
 
-        list.Sources.Should().NotContain(source =>
-            (File.GetAttributes(source.FullPath) & (FileAttributes.Hidden | FileAttributes.System)) == (FileAttributes.Hidden | FileAttributes.System));
+        list.Sources.Select(source => source.FullPath).Should().NotIntersectWith(osOwned);
     }
 
     [Fact]
