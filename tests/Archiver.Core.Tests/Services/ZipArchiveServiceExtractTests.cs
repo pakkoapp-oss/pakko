@@ -1326,6 +1326,59 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         contents.Should().Equal("first", "second");
     }
 
+    // T-F419: Windows writes "a.txt." and "a.txt " as "a.txt"; under Overwrite (-y) the second
+    // entry used to replace the first. Both stay, whichever comes first.
+    [Theory]
+    [InlineData("a.txt", "a.txt.")]
+    [InlineData("a.txt.", "a.txt")]
+    [InlineData("a.txt", "a.txt ")]
+    [InlineData("A.TXT ", "a.txt")]
+    public async Task ExtractAsync_NamesWindowsTrimsToOne_OverwriteKeepsBoth(string first, string second)
+    {
+        string zipPath = Path.Combine(_temp.Path, "twins.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            WriteEntry(archive, first, "first");
+            WriteEntry(archive, second, "second");
+        }
+        string dest = Path.Combine(_temp.Path, "out");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.Success.Should().BeTrue();
+        Directory.GetFiles(dest, "*", SearchOption.AllDirectories).Select(File.ReadAllText).Should().BeEquivalentTo("first", "second");
+    }
+
+    // A case-only twin is one name to Windows and to 7-Zip alike: Overwrite keeps the later.
+    [Fact]
+    public async Task ExtractAsync_CaseTwin_OverwriteKeepsTheLater()
+    {
+        string zipPath = Path.Combine(_temp.Path, "case.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            WriteEntry(archive, "a.txt", "first");
+            WriteEntry(archive, "A.TXT", "second");
+        }
+        string dest = Path.Combine(_temp.Path, "out");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.Success.Should().BeTrue();
+        Directory.GetFiles(dest).Select(File.ReadAllText).Should().Equal("second");
+    }
+
     private static void WriteEntry(ZipArchive archive, string entryName, string content)
     {
         ZipArchiveEntry entry = archive.CreateEntry(entryName);

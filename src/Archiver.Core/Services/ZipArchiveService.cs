@@ -1620,6 +1620,9 @@ public sealed class ZipArchiveService : IArchiveService
     {
         // T-F358: the archive's Zone.Identifier, read once; null when there is none to write.
         public byte[]? Motw { get; init; }
+
+        // T-F419: the claimed paths an entry took under a name Windows trimmed ("a.txt." as "a.txt").
+        public HashSet<string> ClaimedByTrimmedNames { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     // One entry of ExtractWithSmartFolderingAsync's loop — every one of the 6 skip-gates below is
@@ -1752,11 +1755,17 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F228: from the path as it actually resolved inside staging, so the conflict check
         // and the commit always talk about the same file.
         string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, Path.GetRelativePath(fullTempDest, destFilePath)));
+        bool trimmedByWindows = !string.Equals(Path.GetFileName(relativePath), Path.GetFileName(finalFilePath), StringComparison.OrdinalIgnoreCase);
         if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath))
         {
             int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
-            ConflictBehavior resolvedConflict = await context.ConflictResolver
-                .ResolveAsync(finalFilePath, named.Entry.Length, new DateTimeOffset(named.ModifiedUtc).ToLocalTime()).ConfigureAwait(false);
+            // T-F419: "a.txt." and "a.txt" are two entries Windows writes under one name; neither
+            // may overwrite the other, -y or not (7-Zip keeps both, as "a.txt_").
+            ConflictBehavior resolvedConflict = claimedFinalPaths.Contains(finalFilePath)
+                && (trimmedByWindows || plan.ClaimedByTrimmedNames.Contains(finalFilePath))
+                ? ConflictBehavior.Rename
+                : await context.ConflictResolver
+                    .ResolveAsync(finalFilePath, named.Entry.Length, new DateTimeOffset(named.ModifiedUtc).ToLocalTime()).ConfigureAwait(false);
             if (resolvedConflict == ConflictBehavior.Skip)
             {
                 // T-F216: the user's own Skip answer is not reported back; only an automatic one (T-F313).
@@ -1774,6 +1783,8 @@ public sealed class ZipArchiveService : IArchiveService
             }
         }
         claimedFinalPaths.Add(finalFilePath);
+        if (trimmedByWindows)
+            plan.ClaimedByTrimmedNames.Add(finalFilePath);
 
         // T-F189: entry names are never encrypted by the ZIP format itself, so every check above
         // (ADS/reserved-name, traversal, reparse-point, conflict) already ran unmodified before
