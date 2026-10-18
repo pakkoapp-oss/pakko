@@ -618,15 +618,8 @@ public sealed class ZipArchiveService : IArchiveService
             // T-F260: never commit after a cancel (see ArchiveSingleArchiveModeAsync's same gate).
             cancellationToken.ThrowIfCancellationRequested();
             bool stoppedAtUnreadable = settings.StopOnUnreadableSource && Interlocked.CompareExchange(ref errorCount, 0, 0) > 0;
-            if (!stoppedAtUnreadable && HasTempEntries(separateTempPath))
-            {
-                sink.CreatedFiles.Add(await ArchiveTempFile.CommitAsync(separateTempPath, destPath, replacesExisting, cancellationToken).ConfigureAwait(false));
-                committed = true;
-            }
-            else
-            {
-                TryDeleteBestEffort(separateTempPath);
-            }
+            committed = await CommitSeparateIfWrittenAsync(
+                separateTempPath, destPath, replacesExisting, stoppedAtUnreadable, sink, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -654,6 +647,19 @@ public sealed class ZipArchiveService : IArchiveService
         // issues is counted through Interlocked by the callbacks above, so it is read the same way.
         bool clean = Interlocked.CompareExchange(ref issues, 0, 0) == 0 && !settings.Names.Filters;
         sink.Sources.Add(SourceOutcomeRules.Classify(sourcePath, committed, clean));
+    }
+
+    private static async Task<bool> CommitSeparateIfWrittenAsync(
+        string tempPath, string destPath, bool replacesExisting, bool stoppedAtUnreadable,
+        ArchiveResultSink sink, CancellationToken cancellationToken)
+    {
+        if (stoppedAtUnreadable || !HasTempEntries(tempPath))
+        {
+            TryDeleteBestEffort(tempPath);
+            return false;
+        }
+        sink.CreatedFiles.Add(await ArchiveTempFile.CommitAsync(tempPath, destPath, replacesExisting, cancellationToken).ConfigureAwait(false));
+        return true;
     }
 
     // T-F193: maps one encrypted SeparateArchives worker's own 0..totalBytes progress onto the

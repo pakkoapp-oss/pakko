@@ -581,35 +581,41 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
     using var progress = CliProgress.For(command.Output, command.WriteToStdout);
     try
     {
-        (CliArchiveSourceList? sources, CliNameFilter? excludes, int sourcesCode) = await ResolveArchiveSourcesAsync(command).ConfigureAwait(false);
-        if (sources is null)
-            return sourcesCode;
-        if (RejectUnsafeDeletion(command, sources) is { } deletionError)
-            return deletionError;
-        // T-F411: -sdel deletes from what was there before archiving, never from what is there after.
-        CliSourceSnapshot? toDelete = command.DeleteSourcesAfter
-            ? CliSourceSnapshot.Take(sources.Sources.Select(source => source.FullPath))
-            : null;
-
-        IArchiveCreationRouter router = services.CreationRouter;
-
-        using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
-        StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt = new();
-        ArchiveOptions options = BuildArchiveOptions(command, sources, ResolveArchiveDestination(command, stdoutFolder), prompt) with
-        {
-            EntryFilter = excludes is null ? null : excludes.Includes,
-        };
-
-        ArchiveResult result = await router.ArchiveAsync(options, progress, cancellation.Token).ConfigureAwait(false);
-        progress?.Clear();
-        int code = await ReportArchiveResultAsync(result, prompt.Value, sourcesCode, stdoutFolder, options, cancellation.Token).ConfigureAwait(false);
-        return toDelete is null ? code : await DeleteArchivedSourcesAsync(toDelete, result, code).ConfigureAwait(false);
+        return await ArchiveResolvedSourcesAsync(command, services, progress, cancellation.Token).ConfigureAwait(false);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
         progress?.Clear();
         return ReportUserStopped();
     }
+}
+
+static async Task<int> ArchiveResolvedSourcesAsync(
+    ParsedCliCommand command, PakkoServices services, CliProgress? progress, CancellationToken cancellationToken)
+{
+    (CliArchiveSourceList? sources, CliNameFilter? excludes, int sourcesCode) = await ResolveArchiveSourcesAsync(command).ConfigureAwait(false);
+    if (sources is null)
+        return sourcesCode;
+    if (RejectUnsafeDeletion(command, sources) is { } deletionError)
+        return deletionError;
+    // T-F411: -sdel deletes from what was there before archiving, never from what is there after.
+    CliSourceSnapshot? toDelete = command.DeleteSourcesAfter
+        ? CliSourceSnapshot.Take(sources.Sources.Select(source => source.FullPath))
+        : null;
+
+    IArchiveCreationRouter router = services.CreationRouter;
+
+    using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
+    StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt = new();
+    ArchiveOptions options = BuildArchiveOptions(command, sources, ResolveArchiveDestination(command, stdoutFolder), prompt) with
+    {
+        EntryFilter = excludes is null ? null : excludes.Includes,
+    };
+
+    ArchiveResult result = await router.ArchiveAsync(options, progress, cancellationToken).ConfigureAwait(false);
+    progress?.Clear();
+    int code = await ReportArchiveResultAsync(result, prompt.Value, sourcesCode, stdoutFolder, options, cancellationToken).ConfigureAwait(false);
+    return toDelete is null ? code : await DeleteArchivedSourcesAsync(toDelete, result, code).ConfigureAwait(false);
 }
 
 // T-F411: -sdel on a volume root or the current folder (or one holding it) is a command-line

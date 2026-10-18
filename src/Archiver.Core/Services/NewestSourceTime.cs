@@ -25,10 +25,10 @@ internal static class NewestSourceTime
                     newest = Later(newest, File.GetLastWriteTimeUtc(source));
                 continue;
             }
-            foreach (WalkEntry entry in DirectoryWalker.Walk(source, names.LeaveOutBelow(source, name)))
+            foreach (WalkEntry entry in DirectoryWalker.Walk(source, names.LeaveOutBelow(source, name))
+                .Where(entry => entry.Kind is WalkEntryKind.Directory or WalkEntryKind.File))
             {
-                if (entry.Kind is WalkEntryKind.Directory or WalkEntryKind.File)
-                    newest = Later(newest, entry.Info.LastWriteTimeUtc);
+                newest = Later(newest, entry.Info.LastWriteTimeUtc);
             }
         }
         return newest;

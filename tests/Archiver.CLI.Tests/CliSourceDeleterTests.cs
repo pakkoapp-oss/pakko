@@ -35,7 +35,7 @@ public sealed class CliSourceDeleterTests : IDisposable
 
     private bool TryCreateJunction(string link, string target)
     {
-        using var mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+        using System.Diagnostics.Process? mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
             Path.Combine(Environment.SystemDirectory, "cmd.exe"), ["/d", "/c", "mklink", "/J", link, target])
         { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true })!;
         mklink.WaitForExit();
@@ -87,7 +87,7 @@ public sealed class CliSourceDeleterTests : IDisposable
     public void Delete_UnchangedFolder_IsGoneEntirely()
     {
         string src = CreateTree();
-        CliSourceSnapshot snapshot = CliSourceSnapshot.Take([src]);
+        var snapshot = CliSourceSnapshot.Take([src]);
 
         CliDeleteOutcome outcome = snapshot.DeleteUnchanged([src]);
 
@@ -101,7 +101,7 @@ public sealed class CliSourceDeleterTests : IDisposable
     {
         string src = CreateTree();
         string file = Path.Combine(src, "a.txt");
-        CliSourceSnapshot snapshot = CliSourceSnapshot.Take([file]);
+        var snapshot = CliSourceSnapshot.Take([file]);
 
         snapshot.DeleteUnchanged([file]);
 
@@ -114,7 +114,7 @@ public sealed class CliSourceDeleterTests : IDisposable
     public void Delete_FileChangedAfterTheList_IsKeptWithItsFolders()
     {
         string src = CreateTree();
-        CliSourceSnapshot snapshot = CliSourceSnapshot.Take([src]);
+        var snapshot = CliSourceSnapshot.Take([src]);
         string changed = Path.Combine(src, "d", "b.txt");
         File.WriteAllText(changed, "b changed");
 
@@ -130,7 +130,7 @@ public sealed class CliSourceDeleterTests : IDisposable
     public void Delete_FileTouchedAfterTheList_IsKept()
     {
         string src = CreateTree();
-        CliSourceSnapshot snapshot = CliSourceSnapshot.Take([src]);
+        var snapshot = CliSourceSnapshot.Take([src]);
         string touched = Path.Combine(src, "a.txt");
         File.SetLastWriteTimeUtc(touched, File.GetLastWriteTimeUtc(touched).AddSeconds(1));
 
@@ -144,7 +144,7 @@ public sealed class CliSourceDeleterTests : IDisposable
     public void Delete_FileCreatedAfterTheList_IsLeftAndTheFolderStays()
     {
         string src = CreateTree();
-        CliSourceSnapshot snapshot = CliSourceSnapshot.Take([src]);
+        var snapshot = CliSourceSnapshot.Take([src]);
         string late = Path.Combine(src, "d", "late.txt");
         File.WriteAllText(late, "late");
 
@@ -160,7 +160,7 @@ public sealed class CliSourceDeleterTests : IDisposable
     {
         string src = CreateTree();
         File.SetAttributes(Path.Combine(src, "a.txt"), FileAttributes.ReadOnly);
-        CliSourceSnapshot snapshot = CliSourceSnapshot.Take([src]);
+        var snapshot = CliSourceSnapshot.Take([src]);
 
         CliDeleteOutcome outcome = snapshot.DeleteUnchanged([src]);
 
@@ -174,7 +174,7 @@ public sealed class CliSourceDeleterTests : IDisposable
     {
         string src = CreateTree();
         string other = CreateTree("other");
-        CliSourceSnapshot snapshot = CliSourceSnapshot.Take([src, other]);
+        var snapshot = CliSourceSnapshot.Take([src, other]);
 
         snapshot.DeleteUnchanged([other]);
 
@@ -186,7 +186,7 @@ public sealed class CliSourceDeleterTests : IDisposable
     public void Delete_CompletedPathSpelledDifferently_StillMatches()
     {
         string src = CreateTree();
-        CliSourceSnapshot snapshot = CliSourceSnapshot.Take([src + Path.DirectorySeparatorChar]);
+        var snapshot = CliSourceSnapshot.Take([src + Path.DirectorySeparatorChar]);
 
         snapshot.DeleteUnchanged([src.ToUpperInvariant()]);
 
@@ -200,7 +200,7 @@ public sealed class CliSourceDeleterTests : IDisposable
         string target = CreateTree("target");
         if (!TryCreateJunction(Path.Combine(src, "j"), target))
             return; // no junctions on this volume
-        CliSourceSnapshot snapshot = CliSourceSnapshot.Take([src]);
+        var snapshot = CliSourceSnapshot.Take([src]);
 
         snapshot.DeleteUnchanged([src]);
 
@@ -217,7 +217,7 @@ public sealed class CliSourceDeleterTests : IDisposable
         string link = Path.Combine(_dir, "link");
         if (!TryCreateJunction(link, target))
             return; // no junctions on this volume
-        CliSourceSnapshot snapshot = CliSourceSnapshot.Take([link]);
+        var snapshot = CliSourceSnapshot.Take([link]);
 
         CliDeleteOutcome outcome = snapshot.DeleteUnchanged([link]);
 
@@ -231,7 +231,7 @@ public sealed class CliSourceDeleterTests : IDisposable
     {
         string src = CreateTree();
         string held = Path.Combine(src, "a.txt");
-        CliSourceSnapshot snapshot = CliSourceSnapshot.Take([src]);
+        var snapshot = CliSourceSnapshot.Take([src]);
 
         CliDeleteOutcome outcome;
         using (new FileStream(held, FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -249,7 +249,7 @@ public sealed class CliSourceDeleterTests : IDisposable
     {
         string src = CreateTree();
         string denied = Path.Combine(src, "d");
-        var security = new DirectoryInfo(denied).GetAccessControl();
+        System.Security.AccessControl.DirectorySecurity security = new DirectoryInfo(denied).GetAccessControl();
         var rule = new System.Security.AccessControl.FileSystemAccessRule(
             System.Security.Principal.WindowsIdentity.GetCurrent().User!,
             System.Security.AccessControl.FileSystemRights.ListDirectory, System.Security.AccessControl.AccessControlType.Deny);
@@ -257,7 +257,7 @@ public sealed class CliSourceDeleterTests : IDisposable
         new DirectoryInfo(denied).SetAccessControl(security);
         try
         {
-            CliSourceSnapshot snapshot = CliSourceSnapshot.Take([src]);
+            var snapshot = CliSourceSnapshot.Take([src]);
 
             CliDeleteOutcome outcome = snapshot.DeleteUnchanged([src]);
 
