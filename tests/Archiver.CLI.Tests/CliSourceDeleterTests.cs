@@ -74,6 +74,40 @@ public sealed class CliSourceDeleterTests : IDisposable
         CliSourceDeleter.Refusal([source], @"C:\work\sub").Should().BeNull();
     }
 
+    // T-F419: the same folder by another spelling.
+    [Theory]
+    [InlineData(@"\\?\C:\work")]
+    [InlineData(@"\\?\C:\WORK\")]
+    public void Refusal_CurrentFolderThroughTheLongPathPrefix_IsRefused(string source)
+    {
+        CliSourceDeleter.Refusal([source], @"C:\work\sub").Should().Contain("current folder");
+    }
+
+    [Fact]
+    public void Refusal_CurrentFolderReachedThroughAJunction_IsRefused()
+    {
+        string src = CreateTree();
+        string link = Path.Combine(_dir, "jsrc");
+        TryCreateJunction(link, src).Should().BeTrue();
+
+        CliSourceDeleter.Refusal([src], Path.Combine(link, "sub")).Should().Contain("current folder");
+    }
+
+    [Fact]
+    public void Delete_SourceNamedThroughAJunction_IsALinkAndStays()
+    {
+        string src = CreateTree();
+        string link = Path.Combine(_dir, "jsrc");
+        TryCreateJunction(link, src).Should().BeTrue();
+        string throughLink = Path.Combine(link, "d");
+        var snapshot = CliSourceSnapshot.Take([throughLink]);
+
+        CliDeleteOutcome outcome = snapshot.DeleteUnchanged([throughLink]);
+
+        outcome.Links.Should().ContainSingle();
+        File.Exists(Path.Combine(src, "d", "b.txt")).Should().BeTrue();
+    }
+
     [Fact]
     public void Refusal_PrefixThatIsNotAParent_IsAllowed()
     {
