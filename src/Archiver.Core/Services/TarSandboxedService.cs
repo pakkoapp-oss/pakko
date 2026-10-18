@@ -480,6 +480,7 @@ public sealed class TarSandboxedService : ITarService
             Directory.CreateDirectory(destDir);
             return (destDir, true);
         }
+        RefuseUnshowableName(tarMembers ?? (context.EntryFilter is null ? null : (IEnumerable<string>)allNames));
         List<string>? expandedSelection = tarMembers;
         // T-F410: each name on its own, as the listing shows it (no "./"), a folder without its
         // content. None passes: 7-Zip's "No files to process", which creates no folder either.
@@ -1362,6 +1363,16 @@ public sealed class TarSandboxedService : ITarService
         return nothingRead ? TestRun.NothingPassed : TestRun.Read;
     }
 
+    // T-F416: tar.exe 3.5.2 (Windows 10) lists a name it cannot show in the ANSI code page with '?'
+    // ("????.txt", exit 0) while it extracts the real name, so a listed name with '?' matches
+    // nothing reliably: a filter's verdict on it, a selection of it, a "-T"/"-X" line for it. A
+    // real '?' is no Windows file name either. Thrown only where names decide what is done.
+    private static void RefuseUnshowableName(IEnumerable<string>? names)
+    {
+        if (names?.Select(StripLeadingDotSlash).FirstOrDefault(name => name.Contains('?')) is { } unshowable)
+            throw new TarArgumentEncodingException(unshowable, TarCommandLineEncoding.AnsiCodePage);
+    }
+
     // The pre-scan extraction runs (T-F49): an archive it refuses must not pass a test, a filter or
     // not. Then tar.exe reads what the filter passes; its declared size is what tar.exe is about to
     // write to stdout. NothingRead: no file passed, and tar.exe did not run.
@@ -1370,6 +1381,7 @@ public sealed class TarSandboxedService : ITarService
     {
         (long declaredSize, string[] names, Dictionary<string, long> sizeByName, _) =
             await ScanForUnsafeEntriesAsync(scope, cancellationToken).ConfigureAwait(false);
+        RefuseUnshowableName(entryFilter is null ? null : names);
         TestSubset subset = entryFilter is null ? new TestSubset(declaredSize, null, null) : TestSubset.Of(names, sizeByName, entryFilter);
         if (subset.NothingToRead)
             return (0, string.Empty, 0, true);
