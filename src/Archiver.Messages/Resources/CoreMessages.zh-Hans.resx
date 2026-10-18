@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>“{0}”将以“{2}”存入压缩包中的“{1}”内。</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>“{0}”是 Windows 为设备保留的名称；未创建压缩包。</value>
+  </data>
 </root>

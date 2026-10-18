@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>سيُخزَّن "{0}" داخل "{1}" في الأرشيف باسم "{2}".</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>"{0}" اسم يحجزه Windows لجهاز، ولذلك لم يُنشأ أي أرشيف.</value>
+  </data>
 </root>

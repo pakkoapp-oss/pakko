@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>"{0}" akan disimpan di dalam "{1}" di arsip, sebagai "{2}".</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>"{0}" adalah nama yang dicadangkan Windows untuk perangkat; tidak ada arsip yang dibuat.</value>
+  </data>
 </root>

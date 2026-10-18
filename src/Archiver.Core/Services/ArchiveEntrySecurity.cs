@@ -55,6 +55,10 @@ internal static partial class ArchiveEntrySecurity
     public static bool HasReservedName(string entryPath)
         => entryPath.Split(PathSeparators).Any(IsReservedSegment);
 
+    // T-F419: a whole file name Windows reads as a device; "CON.zip" is not one on Windows 11.
+    public static bool IsDeviceName(string fileName)
+        => _reservedNames.Contains(fileName.TrimEnd(' ', '.'));
+
     private static bool IsReservedSegment(string segment)
     {
         int dot = segment.IndexOf('.');

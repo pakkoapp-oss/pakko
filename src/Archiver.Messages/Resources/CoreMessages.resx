@@ -378,4 +378,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>'{0}' would be stored inside '{1}' in the archive, as '{2}'.</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>'{0}' is a name Windows reserves for a device; no archive was created.</value>
+  </data>
 </root>

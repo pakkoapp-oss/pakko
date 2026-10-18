@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>”{0}” tallentuisi arkistossa kohteen ”{1}” sisään nimellä ”{2}”.</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>”{0}” on nimi, jonka Windows varaa laitteelle; arkistoa ei luotu.</value>
+  </data>
 </root>

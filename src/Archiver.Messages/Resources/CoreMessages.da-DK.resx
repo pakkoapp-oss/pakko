@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>„{0}“ ville blive gemt inde i „{1}“ i arkivet som „{2}“.</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>„{0}“ er et navn, som Windows reserverer til en enhed; der blev ikke oprettet noget arkiv.</value>
+  </data>
 </root>

@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>“{0}”, arşivde “{1}” içinde “{2}” olarak saklanırdı.</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>“{0}”, Windows'un bir aygıt için ayırdığı bir addır; arşiv oluşturulmadı.</value>
+  </data>
 </root>

@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>A(z) „{0}” az archívumban a(z) „{1}” belsejébe kerülne, „{2}” néven.</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>A(z) „{0}” olyan név, amelyet a Windows egy eszköznek tart fenn; nem jött létre archívum.</value>
+  </data>
 </root>

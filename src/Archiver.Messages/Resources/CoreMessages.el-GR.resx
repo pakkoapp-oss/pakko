@@ -351,4 +351,7 @@
   <data name="SourceNamesOverlap" xml:space="preserve">
     <value>Το «{0}» θα αποθηκευόταν μέσα στο «{1}» στο αρχείο συμπίεσης, ως «{2}».</value>
   </data>
+  <data name="ArchiveNameReserved" xml:space="preserve">
+    <value>Το «{0}» είναι όνομα που τα Windows δεσμεύουν για συσκευή· δεν δημιουργήθηκε αρχείο συμπίεσης.</value>
+  </data>
 </root>
