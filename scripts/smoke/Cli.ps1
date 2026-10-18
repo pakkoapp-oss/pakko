@@ -43,8 +43,9 @@ Add-SmokeStep 'CLI-003' {
 
     $refused = @(
         @('u', $zip, (Get-Fixture Tree)), @('d', $zip, 'text.txt'), @('rn', $zip, 'a', 'b'), @('b'), @('e', $zip),
-        # T-F410: x and l filter names now; t until wave B, and h never, still refuse them.
-        @('t', $zip, '-r'), @('t', $zip, '-i!*.txt'), @('t', $zip, '-x!*.txt'), @('h', $zip, '-ssc')
+        # T-F410: x, l and t filter names now; a until wave C, and h never, still refuse them.
+        @('a', (Join-Path $folder 'b.zip'), (Get-Fixture Tree), '-r'), @('a', (Join-Path $folder 'b.zip'), (Get-Fixture Tree), '-x!*.txt'),
+        @('h', $zip, '-ssc'), @('h', $zip, '-stxzip')
     )
     foreach ($arguments in $refused) {
         $run = Invoke-Pakko $arguments -WorkingDirectory $folder
@@ -482,6 +483,13 @@ Add-SmokeStep 'CLI-038' {
     Assert-Smoke (-not ((& $rows @('-xtd')) -match '\tD\t|/$')) "l -xtd lists a folder"
     Assert-Smoke ((& $rows @('-xtf')).Count -ge 1) "l -xtf lists no folder"
 
-    $refused = Invoke-Pakko @('t', $zip, '-x!*.nsis')
-    Assert-Smoke ($refused.ExitCode -eq 7) "t with a filter: exit $($refused.ExitCode), expected 7"
+    # T-F410 wave B: t filters too, and -stx leaves out a type.
+    $tested = Invoke-Pakko @('t', $zip, '-x!*.nsis')
+    Assert-Smoke ($tested.ExitCode -eq 0) "t -x!*.nsis: exit $($tested.ExitCode) $($tested.Text)"
+    $none = Invoke-Pakko @('t', $zip, 'nothing.zzz')
+    Assert-Smoke ($none.ExitCode -eq 0 -and $none.Output.Contains('No files to process')) "t nothing.zzz: exit $($none.ExitCode) $($none.Text)"
+    $excluded = Invoke-Pakko @('t', $zip, '-stxzip')
+    Assert-Smoke ($excluded.ExitCode -eq 2 -and $excluded.Text.Contains('Cannot open the file as archive')) "t -stxzip: exit $($excluded.ExitCode) $($excluded.Text)"
+    $unknown = Invoke-Pakko @('t', $zip, '-stxgz')
+    Assert-Smoke ($unknown.ExitCode -eq 2 -and $unknown.Text.Contains('Unsupported archive type')) "t -stxgz: exit $($unknown.ExitCode) $($unknown.Text)"
 }

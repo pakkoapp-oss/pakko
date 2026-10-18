@@ -147,7 +147,8 @@ public static class CliArgumentParser
     private static ParsedCliCommand ParseCommand(string commandName, CliToken[] rest, CliNameSwitches nameSwitches)
     {
         if (commandName is not ("x" or "l" or "t") && (nameSwitches.FiltersNames || nameSwitches.PicksArchives
-            || !nameSwitches.WildcardMatching || nameSwitches.CaseSensitive || nameSwitches.ListFileCharset is not null))
+            || !nameSwitches.WildcardMatching || nameSwitches.CaseSensitive || nameSwitches.ListFileCharset is not null
+            || nameSwitches.ExcludedTypes.Count > 0))
             return Invalid(NameSwitchesOnlyOnExtractReason);
         ParsedCliCommand command = commandName switch
         {
@@ -167,7 +168,7 @@ public static class CliArgumentParser
     }
 
     private const string NameSwitchesOnlyOnExtractReason =
-        "not supported on this command: name filters (-i, -x, -r, -ai, -ax, -an, -spd, -ssc, -scs) work on 'x', 'l' and 't'";
+        "not supported on this command: name filters (-i, -x, -r, -ai, -ax, -an, -spd, -ssc, -scs) and -stx work on 'x', 'l' and 't'";
 
     // T-F410: as in 7-Zip, the first name is the archive (none with -si or -an) and every other
     // name filters the entries inside it. The command parsers collect every name as FilterNames.

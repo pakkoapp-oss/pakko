@@ -37,6 +37,7 @@ async Task<int> RunCommandAsync()
         CliCommandType.Version => RunVersion(),
         CliCommandType.Invalid => RunInvalid(command),
         _ when nameError is not null => RunInvalid(command with { ErrorMessage = nameError }),
+        _ when CliArchiveTypeExclusion.FirstUnknown(command.NameSwitches.ExcludedTypes) is { } unknownType => RejectUnknownArchiveType(unknownType),
         _ when command.PromptForPassword && Console.IsInputRedirected => RejectBarePasswordWithoutConsole(),
         _ when command.Type == CliCommandType.Archive && command.WriteToStdout && !Console.IsOutputRedirected => RejectArchiveToConsole(),
         CliCommandType.Extract => await RunExtractAsync(command, services).ConfigureAwait(false),
@@ -105,6 +106,26 @@ static int RunInvalid(ParsedCliCommand command)
     return 7;
 }
 
+// T-F410: 7-Zip's "Unsupported archive type" for a -stx type it does not know is exit 2, not 7.
+static int RejectUnknownArchiveType(string type)
+{
+    Console.Error.WriteLine($"pakko: error: Unsupported archive type: -stx{type}");
+    return 2;
+}
+
+// T-F410: -stx; an archive of an excluded type is reported and left out, the rest go on, and the
+// run then ends with exit 2 at least, as 7-Zip's "Can't open as archive".
+static IReadOnlyList<string> WithoutExcludedTypes(IReadOnlyList<string> archivePaths, ParsedCliCommand command, CliReportContext report, out bool anyRefused)
+{
+    (IReadOnlyList<string> kept, IReadOnlyList<string> refused) = CliArchiveTypeExclusion.Apply(archivePaths, command.NameSwitches.ExcludedTypes);
+    foreach (string path in refused)
+        Console.Error.WriteLine($"pakko: error: {report.DisplayName(path)}: Cannot open the file as archive");
+    anyRefused = refused.Count > 0;
+    return kept;
+}
+
+static int WithRefusedArchives(int exitCode, bool anyRefused) => anyRefused && exitCode is 0 or 1 ? 2 : exitCode;
+
 // T-F193: the parser can't see whether stdin is a console, so this half of the bare -p rule lives here.
 static int RejectBarePasswordWithoutConsole()
 {
@@ -162,8 +183,11 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
             PasswordGiven = command.Password is not null || command.PromptForPassword,
             KeptExistingByDefault = command.OverwriteMode is null && !command.AssumeYes,
         };
+        IReadOnlyList<string> archivePaths = WithoutExcludedTypes(ArchivePathsFor(command, stdinFolder), command, report, out bool anyRefused);
+        if (anyRefused && archivePaths.Count == 0)
+            return 2;
         var passed = new CliFilterCount();
-        ExtractOptions options = BuildExtractOptions(command, ArchivePathsFor(command, stdinFolder), destination, cancellation.Source, progress, report)
+        ExtractOptions options = BuildExtractOptions(command, archivePaths, destination, cancellation.Source, progress, report)
             with { EntryFilter = CountedFilter(command, passed) };
 
         ArchiveResult result = await router.ExtractAsync(options, progress, cancellation.Token).ConfigureAwait(false);
@@ -172,8 +196,8 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
             return ReportUserStopped();
         // T-F410: -so then streams nothing.
         if (await ReportNoFileToProcessAsync(command, result, passed).ConfigureAwait(false) && stdoutFolder is not null)
-            return 0;
-        return await ReportAndStreamAsync(result, stdoutFolder, report, cancellation.Token).ConfigureAwait(false);
+            return WithRefusedArchives(0, anyRefused);
+        return WithRefusedArchives(await ReportAndStreamAsync(result, stdoutFolder, report, cancellation.Token).ConfigureAwait(false), anyRefused);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
@@ -409,13 +433,14 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
         if (RejectEmptyStdin(stdinFolder) is { } emptyStdin)
             return emptyStdin;
-        IReadOnlyList<string> archivePaths = ArchivePathsFor(command, stdinFolder);
-
         var report = new CliReportContext
         {
             StdinPath = StdinPathFor(stdinFolder),
             PasswordGiven = command.Password is not null || command.PromptForPassword,
         };
+        IReadOnlyList<string> archivePaths = WithoutExcludedTypes(ArchivePathsFor(command, stdinFolder), command, report, out bool anyRefused);
+        if (anyRefused && archivePaths.Count == 0)
+            return 2;
         IExtractionRouter router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
         var passed = new CliFilterCount();
         ArchiveResult result = await router.TestAsync(
@@ -431,7 +456,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
             await Console.Out.WriteLineAsync("No files to process").ConfigureAwait(false);
         foreach (RecoveryCheck check in result.RecoveryChecks.Where(c => c.State == RecoveryState.Intact))
             await Console.Out.WriteLineAsync($"{report.DisplayName(check.ArchivePath)}: recovery data intact ({check.Blocks} blocks, {check.RecoveryBlocks} recovery blocks)").ConfigureAwait(false);
-        return ReportResult(result, report);
+        return WithRefusedArchives(ReportResult(result, report), anyRefused);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
@@ -644,11 +669,10 @@ static async Task<int> RunListAsync(ParsedCliCommand command, PakkoServices serv
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
         if (RejectEmptyStdin(stdinFolder) is { } emptyStdin)
             return emptyStdin;
-        IReadOnlyList<string> archivePaths = ArchivePathsFor(command, stdinFolder);
         var report = new CliReportContext { StdinPath = StdinPathFor(stdinFolder) };
+        IReadOnlyList<string> archivePaths = WithoutExcludedTypes(ArchivePathsFor(command, stdinFolder), command, report, out bool anyFailed);
 
         bool multiple = archivePaths.Count > 1;
-        bool anyFailed = false;
 
         foreach (string archivePath in archivePaths)
         {
