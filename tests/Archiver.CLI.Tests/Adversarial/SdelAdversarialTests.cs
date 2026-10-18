@@ -218,7 +218,8 @@ public sealed class SdelAdversarialTests : IDisposable
 
         Tree("target").Should().Equal("t.txt=T");
         Directory.Exists(_scratch.Inside("j")).Should().BeTrue();
-        exitCode.Should().Be(1, stdErr);
+        // A link alone is nothing to archive (T-F419 E): exit 2, as with no source left.
+        exitCode.Should().Be(2, stdErr);
     }
 
     // CLI.md: "Unlike 7-Zip a link is never entered or deleted (7-Zip follows a junction and deletes

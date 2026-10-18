@@ -25,10 +25,13 @@ public static class CliSourceDeleter
     /// <summary>Why -sdel must not run on these sources, or null.</summary>
     public static string? Refusal(IEnumerable<string> sources, string currentFolder)
     {
-        string current = Normalize(currentFolder);
+        // T-F419: compared where the paths really lead - "\\?\C:\w\src" or a junction to the
+        // current folder's parent is the same folder as "C:\w\src".
+        string current = RealPath(currentFolder) ?? Normalize(currentFolder);
         foreach (string source in sources)
         {
-            string full = Normalize(source);
+            if (RealPath(source) is not { } full)
+                return $"-sdel cannot tell where this source leads: {source}";
             if (Path.GetPathRoot(full) is { } root && string.Equals(Normalize(root), full, StringComparison.OrdinalIgnoreCase))
                 return $"-sdel would delete a volume root: {source}";
             if (IsSameOrUnder(current, full))
@@ -38,6 +41,49 @@ public static class CliSourceDeleter
     }
 
     internal static string Normalize(string path) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+
+    /// <summary>T-F419: the full path with the long-path prefix dropped and every junction or
+    /// symbolic link on the way resolved to its final target; null when that cannot be read.
+    /// One step per path part (a link's own chain is resolved by the system), so the loop is bounded.</summary>
+    internal static string? RealPath(string path)
+    {
+        try
+        {
+            string full = Normalize(WithoutLongPathPrefix(path));
+            string? root = Path.GetPathRoot(full);
+            if (string.IsNullOrEmpty(root))
+                return null;
+            string real = root;
+            foreach (string part in full[root.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
+            {
+                string next = Path.Combine(real, part);
+                var info = new FileInfo(next);
+                if (info.Exists || Directory.Exists(next))
+                {
+                    FileSystemInfo entry = info.Exists ? info : new DirectoryInfo(next);
+                    if (entry.LinkTarget is not null)
+                        next = entry.ResolveLinkTarget(returnFinalTarget: true) is { } target ? Normalize(target.FullName) : next;
+                }
+                real = next;
+            }
+            return Normalize(real);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>T-F419: whether <paramref name="path"/> passes a link on its way (j\t.txt with j a
+    /// junction), or where it leads cannot be read: such a source is not deleted.</summary>
+    internal static bool LeadsElsewhere(string path) =>
+        RealPath(path) is not { } real
+        || !real.Equals(Normalize(WithoutLongPathPrefix(path)), StringComparison.OrdinalIgnoreCase);
+
+    private static string WithoutLongPathPrefix(string path) =>
+        path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase) ? @"\\" + path[8..]
+        : path.StartsWith(@"\\?\", StringComparison.Ordinal) ? path[4..]
+        : path;
 
     private static bool IsSameOrUnder(string path, string folder) =>
         path.Equals(folder, StringComparison.OrdinalIgnoreCase)
@@ -89,7 +135,7 @@ public sealed class CliSourceSnapshot
             var info = new FileInfo(full);
             if (!info.Exists && !Directory.Exists(full))
                 return source;
-            if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
+            if ((info.Attributes & FileAttributes.ReparsePoint) != 0 || CliSourceDeleter.LeadsElsewhere(full))
                 source.IsLink = true;
             else if ((info.Attributes & FileAttributes.Directory) != 0)
                 ListFolder(full, source);
