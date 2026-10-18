@@ -120,6 +120,16 @@ public sealed class CliNameSelectionTests
         paths.Should().Equal("missing.zip", "other.zip");
     }
 
+    // T-F419: the '?' of the long-path prefix is not a wildcard.
+    [Fact]
+    public void ResolveArchives_LongPathPrefix_KeptAsTyped()
+    {
+        (IReadOnlyList<string> paths, string? error) = Resolve("x", @"\\?\C:\w\a.zip");
+
+        error.Should().BeNull();
+        paths.Should().Equal(@"\\?\C:\w\a.zip");
+    }
+
     [Fact]
     public void ResolveArchives_Wildcard_FindsTheFilesInThatFolderOnly()
     {
