@@ -13,9 +13,10 @@ public static class CliCreatedName
         if (createdFiles.Count != 1)
             return null;
 
-        // GetFullPath drops the trailing dot or space Windows drops from the name on disk.
+        // GetFullPath drops the trailing dot or space Windows drops from the name on disk; Core
+        // reports the created path as it was given, so both sides need it (T-F419).
         string requested = Path.GetFileName(Path.GetFullPath(requestedPath));
-        string landed = Path.GetFileName(createdFiles[0]);
+        string landed = Path.GetFileName(Path.GetFullPath(createdFiles[0]));
         return string.Equals(landed, requested, StringComparison.OrdinalIgnoreCase)
             ? null
             : $"pakko: warning: created '{landed}': the name '{requested}' was taken while compressing";
