@@ -43,8 +43,9 @@ Add-SmokeStep 'CLI-003' {
 
     $refused = @(
         @('u', $zip, (Get-Fixture Tree)), @('d', $zip, 'text.txt'), @('rn', $zip, 'a', 'b'), @('b'), @('e', $zip),
-        # T-F410: x, l and t filter names now; a until wave C, and h never, still refuse them.
-        @('a', (Join-Path $folder 'b.zip'), (Get-Fixture Tree), '-r'), @('a', (Join-Path $folder 'b.zip'), (Get-Fixture Tree), '-x!*.txt'),
+        # T-F410: x, l, t and (wave C) a filter names; a still refuses what picks archives, -stx
+        # and -xtd, and h refuses them all.
+        @('a', (Join-Path $folder 'b.zip'), (Get-Fixture Tree), '-ai!*.zip'), @('a', (Join-Path $folder 'b.zip'), (Get-Fixture Tree), '-xtd'),
         @('h', $zip, '-ssc'), @('h', $zip, '-stxzip')
     )
     foreach ($arguments in $refused) {
@@ -170,9 +171,12 @@ Add-SmokeStep 'CLI-024' {
     Set-Content -LiteralPath $present -Value 'present'
     $missing = Join-Path $folder 'missing.txt'
 
-    $run = Invoke-Pakko @('a', '-ttar.gz', (Join-Path $folder 'out.tar.gz'), $present, $missing)
-    Assert-Smoke ($run.ExitCode -eq 2) "a with a missing name: exit $($run.ExitCode), expected 2: $($run.Text)"
-    Assert-Smoke ($run.Text.Contains('missing.txt')) "the error does not name the missing source: $($run.Text)"
+    # T-F414: the missing name is a warning (exit 1) and the rest is archived, as in 7-Zip.
+    $out = Join-Path $folder 'out.tar.gz'
+    $run = Invoke-Pakko @('a', '-ttar.gz', $out, $present, $missing)
+    Assert-Smoke ($run.ExitCode -eq 1) "a with a missing name: exit $($run.ExitCode), expected 1: $($run.Text)"
+    Assert-Smoke ($run.Text.Contains('pakko: warning:') -and $run.Text.Contains('missing.txt')) "the warning does not name the missing source: $($run.Text)"
+    Assert-Smoke ((Invoke-Pakko @('l', '-ba', $out)).Output.Contains('present.txt')) "the archive does not hold present.txt"
     Assert-Smoke ($run.Text -notmatch "Couldn't visit directory|tar\.exe:") "tar.exe's own line is shown: $($run.Text)"
 }
 
