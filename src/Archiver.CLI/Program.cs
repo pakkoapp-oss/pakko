@@ -184,7 +184,8 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
             KeptExistingByDefault = command.OverwriteMode is null && !command.AssumeYes,
         };
         IReadOnlyList<string> archivePaths = WithoutExcludedTypes(ArchivePathsFor(command, stdinFolder), command, report, out bool anyRefused);
-        if (anyRefused && archivePaths.Count == 0)
+        // Only -stx empties it: the parser and ResolveArchives never hand over an empty list.
+        if (archivePaths.Count == 0)
             return 2;
         var passed = new CliFilterCount();
         ExtractOptions options = BuildExtractOptions(command, archivePaths, destination, cancellation.Source, progress, report)
@@ -439,7 +440,8 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
             PasswordGiven = command.Password is not null || command.PromptForPassword,
         };
         IReadOnlyList<string> archivePaths = WithoutExcludedTypes(ArchivePathsFor(command, stdinFolder), command, report, out bool anyRefused);
-        if (anyRefused && archivePaths.Count == 0)
+        // Only -stx empties it: the parser and ResolveArchives never hand over an empty list.
+        if (archivePaths.Count == 0)
             return 2;
         IExtractionRouter router = await services.CreateExtractionRouterAsync().ConfigureAwait(false);
         var passed = new CliFilterCount();
