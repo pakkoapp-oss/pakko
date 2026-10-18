@@ -1192,10 +1192,11 @@ public sealed class ZipArchiveService : IArchiveService
             cancellationToken.ThrowIfCancellationRequested();
 
             ZipArchiveEntry entry = named.Entry;
+            bool isFolder = named.FullName.EndsWith('/');
             // T-F410: asked first, folders too, so a filter counts what it let through as on extraction.
-            if (entryFilter is not null && !entryFilter(named.FullName, named.FullName.EndsWith('/')))
+            if (FilteredOut(entryFilter, named.FullName, isFolder))
                 continue;
-            if (named.FullName.EndsWith('/'))
+            if (isFolder)
                 continue; // directory entry — no data to verify
 
             if (named.CollidesAfterDecoding)
@@ -1223,6 +1224,9 @@ public sealed class ZipArchiveService : IArchiveService
             }
         }
     }
+
+    private static bool FilteredOut(Func<string, bool, bool>? entryFilter, string name, bool isFolder) =>
+        entryFilter is not null && !entryFilter(name, isFolder);
 
     // T-F279: reads an entry to the end, as CopyTo(Stream.Null) did, but stops on cancel instead of
     // finishing a multi-gigabyte entry first.
