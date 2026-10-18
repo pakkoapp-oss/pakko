@@ -1683,7 +1683,9 @@ re-measured with T-F346's script before and after.
 
 ### T-F419 — `pakko`: an adversarial test suite for every switch, written by a red-team agent (P2, part of T-F411 wave E, before PR #88 merges)
 
-- [ ] **Status:** in progress (2026-10-18, the user: in this wave). T-F411 wave E's independent reviewer found what every test missed: `-aot`
+- [ ] **Status:** in progress (2026-10-18, the user: in this wave). 2026-10-19: passes 1 and 2 done,
+  326 cases, every red one triaged and fixed or re-pinned (`docs/DECISIONS.md`, "T-F419"); owed: the
+  second red-team pass on the fixes (step 4), then graduation. T-F411 wave E's independent reviewer found what every test missed: `-aot`
   with a relative `-o` overwrote the user's file, exit 0 - all tests used an absolute folder. The
   tests were written by the agent that wrote the code and shared its blind spots. Plan:
   1. **Red team** (a fresh subagent on the strongest model, in its own worktree, given the repo and

@@ -13372,6 +13372,67 @@ the archive.
   - `docs/CLI.md`: `-sdel` keeps every source when anything in the archive was skipped (Core judges
     one archive as a whole), and an added file is left without a warning.
 
+## T-F419 - a red team against every switch (2026-10-19)
+
+- **How.** Two fresh subagents (Opus, own worktrees, `src/` read-only, never shown DECISIONS or
+  the plans) wrote `tests/Archiver.CLI.Tests/Adversarial/` through the real exe. Pass 1 was meant
+  for the wave E branch but its worktree started from `main`, so wave E's switches were refused
+  there and pass 1 attacked the older surface; pass 2 started from the branch tip (checked with
+  `git rev-parse` and a working `-sdel` before writing) and attacked `-sdel`, `-aot`, `-spe`,
+  `-sse`, `-ssw`, `-stl`, `-w`, `-mmt`, `-ssp`. Its rewrite of pass 1's "refused" rows into
+  attacks on the working switches replaced them. 326 cases; every red one was triaged here.
+- **Defects, fixed test-first (each seen red with the fix reverted):**
+  - C - `x` wrote through a junction already inside `-o` (`-aoa` overwrote a file outside it, a
+    plain `x` planted new ones), both engines; T-F37's check covered the staging folder only.
+    `ExtractionStaging.CommitInto` now leaves out every folder and file whose path below the
+    destination passes a link (`EntryThroughReparsePoint`); `-o` itself may be a link. 7za
+    follows such a junction; Pakko does not, on purpose (SECURITY.md's T-F37 row now holds).
+  - A - `a -rr` replaced a user's own `o.zip.par2` that was not PAR2 data, exit 0, `-y` or not.
+    A file under the set's names is replaced only when it is wholly PAR2 data naming this
+    archive; otherwise it stays and the set is a `RecoveryDataNotCreated` error on that file.
+  - B - ZIP entries `a.txt` and `a.txt.`/`a.txt ` fold into one name on Windows; under `-y` the
+    later replaced the earlier, exit 0. A collision in one run that involves a name Windows
+    trimmed is numbered (as Rename), either order; a case-only twin keeps 7-Zip's rule (the later
+    wins under `-y`). The tar.exe route was not attacked with such names: open point below.
+  - D - `a -sae NUL` crashed Core (`ArgumentNullException`, the never-throws contract) and
+    `a -sae CON` wrote a file Explorer cannot remove. An exact archive name Windows reads as a
+    device is refused before anything is written (`ArchiveNameReserved`, 37 translations,
+    contract rows for both engines). `CON.zip` stays allowed (Windows 11 reads it as a file).
+  - P1 - `a -sdel -so ... | head -c 16` exited 0 and deleted the sources whose only archive never
+    arrived. `Console.OpenStandardOutput()`'s stream drops ERROR_NO_DATA/ERROR_BROKEN_PIPE, so
+    the closed-pipe branch never ran; stdout is now written through a `FileStream` over the
+    same handle (`GetStdHandle`). Plain `a -so` to such a reader is exit 2 too, as in 7za.
+  - P2, P3 - `-sdel`'s current-folder refusal compared strings: `\\?\C:\w\src`, or the real path
+    of a folder whose child is the current folder entered through a junction, deleted all but
+    the working folder. P4 - a source named through a junction (`j\t.txt`, `j\sub`, `j\*.txt`)
+    had the target's files deleted. `CliSourceDeleter.RealPath` drops the prefix and resolves
+    every link on the way; the refusal compares real paths (one it cannot read is refused), and
+    a source whose real path differs from its spelling is a link: listed, never deleted. A user
+    whose working folder sits under a link therefore gets nothing deleted - the safe side.
+  - F - `x`/`t`/`l` read the `?` of `\\?\` as a wildcard ("Cannot find archive").
+  - E - a source made only of links wrote no archive and exited 1; now `nothing to archive`, 2.
+  - H - `a -y o.zip.` printed T-F325's "name was taken" warning (exit 1): Core reports the path
+    as given, so both sides are compared as Windows reads them.
+  - G - `x -o"out2 "` made an empty `out2` and put the files in `out2 `, which Explorer cannot
+    open. `-o` is read through `GetFullPath` (a `\\?\` path stays literal); 7-Zip writes only
+    `out2 `.
+  - J, K, P5 - every failed move at commit read "locked by another process": a read-only file
+    under `-aoa`/`-y` is now replaced (7-Zip clears the attribute), a folder in the file's way is
+    `DestinationIsAFolder` (37 translations), and under `-aot` that folder is renamed like a file
+    (7-Zip's rule), both engines.
+  - L - a switch on the wrong command (`-aoa`/`-aot`/`-o` on `a`, `-si`, `-so`, `-y`) now names
+    itself, as CLI.md's rule 3 says.
+- **Wrong expectations (the test changed, not the code):**
+  - I - a locked or ACL-denied source: 7za exits 1 and archives the rest; Pakko archives the rest
+    and exits 2, the documented choice (the `-ssw` row already said it): a file the user named is
+    missing from the archive. Pinned; CLI.md's exit-code table has the row now.
+  - `Sdel_JunctionAsTheSource_IsNeitherEnteredNorDeleted` expected exit 1, written before E.
+  - The UNC test returned early (green) without the administrative share; it skips now.
+- **Open points (not defects found, not attacked):** ZIP-style trimmed twins through tar.exe;
+  `-ssw`'s "changed between the two reads" (a race not timed); `-w` on another volume (no second
+  volume here); a volume-root refusal (cannot be done inside a scratch folder); SUBST and
+  files changing mid-run in general (not deterministic).
+
 ## T-F411, wave D: how `pakko` reads a command line, as 7-Zip does (2026-10-18)
 
 - **Measured first** (vendored `7za.exe` 26.02): `X a.zip`, `L`, `A` and `-y x a.zip` exit 0;
