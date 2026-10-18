@@ -168,6 +168,19 @@ public sealed class SdelAdversarialTests : IDisposable
         exitCode.Should().Be(2, "the archive was not delivered");
     }
 
+    // The same stopped reader without -sdel: 7za 26.02 says "System ERROR: The pipe is being
+    // closed", exit 2. Exit 0 tells a script the archive arrived.
+    [Fact]
+    public void ToStdout_ReaderStopsEarly_IsNotExitZero()
+    {
+        File.WriteAllBytes(_scratch.Inside(@"src\big.bin"), RandomNumberGenerator.GetBytes(3 * 1024 * 1024));
+
+        (int exitCode, int bytesRead, string stdErr) = PakkoStdoutReadingOnly(16, "a", "-so", "o.zip", "src");
+
+        bytesRead.Should().Be(16);
+        exitCode.Should().Be(2, $"the archive did not reach the reader, as 7za reports (stderr: {stdErr})");
+    }
+
     [Fact]
     public void Sdel_ToStdout_ReadInFull_StreamHoldsEverythingDeleted()
     {
