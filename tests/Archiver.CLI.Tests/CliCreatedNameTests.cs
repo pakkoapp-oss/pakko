@@ -38,6 +38,15 @@ public sealed class CliCreatedNameTests
         CliCreatedName.TakenLine(requested, [@"C:\out\docs.zip"]).Should().BeNull();
     }
 
+    // T-F419: Core reports the created path as it was given, trailing dot and all.
+    [Theory]
+    [InlineData(@"C:\out\docs.zip.")]
+    [InlineData(@"C:\out\docs.zip ")]
+    public void CreatedPathKeepsWhatWindowsTrims_NoLine(string path)
+    {
+        CliCreatedName.TakenLine(path, [path]).Should().BeNull();
+    }
+
     [Fact]
     public void NothingCreated_NoLine()
     {
