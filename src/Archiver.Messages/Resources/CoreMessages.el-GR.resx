@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>Το «{0}» είναι όνομα που τα Windows δεσμεύουν για συσκευή· δεν δημιουργήθηκε αρχείο συμπίεσης.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>Δεν είναι δυνατή η εγγραφή του «{0}»: υπάρχει ήδη φάκελος με αυτό το όνομα.</value>
+  </data>
 </root>

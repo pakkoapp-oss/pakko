@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>„{0}“ е име, което Windows запазва за устройство; не е създаден архив.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>„{0}“ не може да бъде записан: на мястото му има папка със същото име.</value>
+  </data>
 </root>

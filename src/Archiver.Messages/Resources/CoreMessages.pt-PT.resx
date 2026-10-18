@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>«{0}» é um nome que o Windows reserva para um dispositivo; não foi criado nenhum arquivo.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>Não é possível escrever «{0}»: existe uma pasta com esse nome no seu lugar.</value>
+  </data>
 </root>

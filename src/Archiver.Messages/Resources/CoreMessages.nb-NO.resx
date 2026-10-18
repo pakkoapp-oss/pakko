@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>«{0}» er et navn Windows reserverer for en enhet; det ble ikke opprettet noe arkiv.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>Kan ikke skrive «{0}»: en mappe med samme navn er i veien.</value>
+  </data>
 </root>

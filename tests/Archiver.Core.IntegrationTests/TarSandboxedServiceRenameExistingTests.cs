@@ -57,6 +57,22 @@ public sealed class TarSandboxedServiceRenameExistingTests : IDisposable
         Read(dest, "b.txt").Should().Be("b");
     }
 
+    // T-F419: the folder of the entry's name is renamed through tar.exe's route too.
+    [Integration]
+    public async Task ExtractAsync_FolderWhereTheEntryGoes_IsRenamedAndTheFileTakesItsName()
+    {
+        string tar = WriteTar(("a.txt", "new"));
+        string dest = CreateDest();
+        Directory.CreateDirectory(Path.Combine(dest, "a.txt"));
+        File.WriteAllText(Path.Combine(dest, "a.txt", "inner.txt"), "inner");
+
+        ArchiveResult result = await ExtractAsync(tar, dest);
+
+        result.Errors.Should().BeEmpty();
+        Read(dest, "a.txt").Should().Be("new");
+        Read(dest, Path.Combine("a (1).txt", "inner.txt")).Should().Be("inner");
+    }
+
     [Integration]
     public async Task ExtractAsync_ExistingFileLocked_StaysAsItWas()
     {

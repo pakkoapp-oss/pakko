@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>„{0}“ je název, který Windows vyhrazuje pro zařízení; archiv nebyl vytvořen.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>„{0}“ nelze zapsat: v cestě je složka stejného názvu.</value>
+  </data>
 </root>

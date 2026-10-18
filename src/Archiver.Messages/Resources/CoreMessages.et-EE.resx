@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>„{0}” on nimi, mille Windows reserveerib seadmele; arhiivi ei loodud.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>„{0}” ei saa kirjutada: samanimeline kaust on ees.</value>
+  </data>
 </root>

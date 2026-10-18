@@ -91,6 +91,7 @@ public static class MessageTemplates
             "Suspicious compression ratio ({0}:1, {1} bytes declared) across the whole archive. " +
             "Extraction was declined as a precaution against decompression bombs.",
         [MessageCode.DestinationFileLocked] = "Cannot write '{0}': destination file is locked by another process.",
+        [MessageCode.DestinationIsAFolder] = "Cannot write '{0}': a folder of that name is in the way.",
         [MessageCode.AllEntriesSkipped] = "No entries were extracted from this archive — every entry was skipped.",
         [MessageCode.UnsafeEntryPath] = "Entry '{0}' has an unsafe path and was not extracted.",
         [MessageCode.EntryAlternateDataStream] = "Alternate Data Stream entry rejected for security.",

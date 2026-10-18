@@ -65,7 +65,7 @@ public static class CliHints
         MessageCode.ZipCorrupted, MessageCode.CannotExtractArchive, MessageCode.AccessDeniedExtractingArchive, MessageCode.CannotReadArchive,
         MessageCode.EntryNameCollision, MessageCode.EntryFailed, MessageCode.EntryWrongPassword, MessageCode.EntryAuthenticationFailed,
         MessageCode.EntryUnsupportedEncryptedMethod, MessageCode.InsufficientDiskSpace, MessageCode.ZipBombDeclined, MessageCode.TarBombDeclined,
-        MessageCode.DestinationFileLocked, MessageCode.UnsafeEntryPath, MessageCode.EntryAlternateDataStream, MessageCode.EntryReservedName,
+        MessageCode.DestinationFileLocked, MessageCode.DestinationIsAFolder, MessageCode.UnsafeEntryPath, MessageCode.EntryAlternateDataStream, MessageCode.EntryReservedName,
         MessageCode.EntryControlCharacters, MessageCode.CannotExtractEntry, MessageCode.EntryThroughReparsePoint, MessageCode.TarExtractionFailed,
         MessageCode.TarUnsafeEntryPath, MessageCode.TarListingInconsistent, MessageCode.TarSpecialEntry, MessageCode.TarDuplicateCopiesNotExtracted,
         MessageCode.TarSourceNameCollisionNotAdded, MessageCode.TarSourceUnreadable, MessageCode.ListingInconsistent, MessageCode.TarUnreadableNames, MessageCode.SandboxSetupFailed,

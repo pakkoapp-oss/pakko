@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>“{0}” ir nosaukums, ko Windows rezervē ierīcei; arhīvs netika izveidots.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>Nevar ierakstīt “{0}”: tā vietā ir mape ar tādu pašu nosaukumu.</value>
+  </data>
 </root>

@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>„{0}“ ist ein Name, den Windows für ein Gerät reserviert; es wurde kein Archiv erstellt.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>„{0}“ kann nicht geschrieben werden: Ein Ordner mit diesem Namen ist im Weg.</value>
+  </data>
 </root>

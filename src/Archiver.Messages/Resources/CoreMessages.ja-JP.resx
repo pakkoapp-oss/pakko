@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>「{0}」は Windows がデバイス用に予約している名前のため、アーカイブは作成されませんでした。</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>「{0}」を書き込めません: 同じ名前のフォルダーがあります。</value>
+  </data>
 </root>

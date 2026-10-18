@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>»{0}« je ime, ki ga Windows rezervira za napravo; arhiv ni bil ustvarjen.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>»{0}« ni mogoče zapisati: na njegovem mestu je mapa z enakim imenom.</value>
+  </data>
 </root>

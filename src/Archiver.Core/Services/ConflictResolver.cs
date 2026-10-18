@@ -20,6 +20,9 @@ internal sealed class ConflictResolver(
     // a source being fully processed. The no-callback default Skip is not counted.
     public int UserSkipCount { get; private set; }
 
+    // T-F419: under -aot a folder in an entry's way is renamed too, as in 7-Zip.
+    public bool RenamesExisting => configured == ConflictBehavior.RenameExisting;
+
     // incomingSize/incomingModified describe the file that would replace existingPath, for a
     // prompt that compares both (T-F268); null when there is no such file yet (a new archive).
     public async Task<ConflictBehavior> ResolveAsync(string existingPath, long? incomingSize = null, DateTimeOffset? incomingModified = null)

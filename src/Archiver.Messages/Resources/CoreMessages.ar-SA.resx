@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>"{0}" اسم يحجزه Windows لجهاز، ولذلك لم يُنشأ أي أرشيف.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>تعذرت كتابة "{0}": يوجد مجلد بهذا الاسم في مكانه.</value>
+  </data>
 </root>

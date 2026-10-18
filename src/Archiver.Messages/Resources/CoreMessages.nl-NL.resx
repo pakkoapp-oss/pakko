@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>‘{0}’ is een naam die Windows voor een apparaat reserveert; er is geen archief gemaakt.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>Kan ‘{0}’ niet schrijven: er staat een map met die naam in de weg.</value>
+  </data>
 </root>
