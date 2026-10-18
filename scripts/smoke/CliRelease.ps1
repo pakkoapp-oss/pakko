@@ -343,12 +343,13 @@ Add-SmokeStep 'CLI-021' {
     $run = Invoke-Pakko @('t', $encrypted)
     Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text -notmatch '(^|\s)-p') "t on an encrypted 7z: exit $($run.ExitCode) $($run.Text)"
 
-    # One password for two archives; it fits the first.
+    # One password for two archives; it fits the first. Since T-F410 a second name after the archive
+    # is a name inside it, so the second archive comes through -ai, as in 7-Zip.
     $first = Join-Path $folder 'first.zip'
     $second = Join-Path $folder 'second.zip'
     $null = Invoke-Pakko @('a', $first, '-pFirst-1', $text)
     $null = Invoke-Pakko @('a', $second, '-pSecond-2', $text)
-    foreach ($arguments in @('x', $first, $second, '-pFirst-1', "-o$(Join-Path $folder 'two')"), @('t', $first, $second, '-pFirst-1')) {
+    foreach ($arguments in @('x', $first, "-ai!$second", '-pFirst-1', "-o$(Join-Path $folder 'two')"), @('t', $first, "-ai!$second", '-pFirst-1')) {
         $run = Invoke-Pakko $arguments
         $lines = @($run.Text -split '\r?\n' | Where-Object { $_.Trim() })
         Assert-Smoke ($run.ExitCode -eq 2 -and $lines.Count -eq 1 -and $lines[0] -match 'second\.zip') "$($arguments[0]) with a password that fits the first archive only: exit $($run.ExitCode) $($run.Text)"
@@ -360,10 +361,10 @@ Add-SmokeStep 'CLI-021' {
     $zip = Join-Path $folder 'tree.zip'
     $null = Invoke-Pakko @('a', $zip, $tree)
     $out = Join-Path $folder 'out'
-    $all = Invoke-Pakko @('x', $zip, $one, "-o$out")
+    $all = Invoke-Pakko @('x', $zip, "-ai!$one", "-o$out")
     Assert-Smoke ($all.ExitCode -eq 0 -and -not $all.Text.Trim()) "x of everything: exit $($all.ExitCode) $($all.Text)"
     Remove-Item -LiteralPath (Join-Path $out "$(Split-Path -Leaf $tree)\random.bin")
-    $some = Invoke-Pakko @('x', $zip, $one, "-o$out")
+    $some = Invoke-Pakko @('x', $zip, "-ai!$one", "-o$out")
     Assert-Smoke ($some.ExitCode -eq 1) "x where some files exist: exit $($some.ExitCode) $($some.Text)"
     $none = Invoke-Pakko @('x', (Join-Path $folder 'none.zip'), "-o$out")
     Assert-Smoke ($none.ExitCode -eq 2) "x of a missing archive: exit $($none.ExitCode) $($none.Text)"
