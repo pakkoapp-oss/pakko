@@ -310,15 +310,17 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// <summary>
     /// T-F284: tar.exe reads an extract member as a wildcard pattern, so the name "a[1].txt" selected
     /// "a1.txt". Each wildcard character goes into a one-character class, which matches only itself.
+    /// '$' too: libarchive reads a trailing one as an end anchor ("cost$" took "cost"; measured
+    /// 2026-10-18, T-F410's review). '^' needs nothing (measured).
     /// </summary>
     internal static string EscapeMemberPattern(string entryName)
     {
-        if (entryName.AsSpan().IndexOfAny('[', '*', '?') < 0)
+        if (entryName.AsSpan().IndexOfAny("[*?$") < 0)
             return entryName;
         var escaped = new System.Text.StringBuilder(entryName.Length + 8);
         foreach (char c in entryName)
         {
-            if (c is '[' or '*' or '?')
+            if (c is '[' or '*' or '?' or '$')
                 escaped.Append('[').Append(c).Append(']');
             else
                 escaped.Append(c);

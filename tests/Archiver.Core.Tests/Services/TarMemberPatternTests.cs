@@ -18,6 +18,8 @@ public sealed class TarMemberPatternTests
     [InlineData("q?.txt", "q[?].txt")]
     [InlineData("[[", "[[][[]")]
     [InlineData("-C", "-C")]
+    [InlineData("cost$", "cost[$]")] // T-F410 review: a trailing '$' anchors the pattern's end
+    [InlineData("x$y", "x[$]y")]
     public void EscapeMemberPattern_WildcardCharactersMatchOnlyThemselves(string name, string expected)
     {
         TarSandboxScope.EscapeMemberPattern(name).Should().Be(expected);

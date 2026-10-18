@@ -394,7 +394,7 @@ public sealed class TarSandboxedService : ITarService
             // proactive check above only catches RAR's more common data-only case before staging
             // even begins.
             sink.Errors.Add(CoreMessages.Error(archivePath,
-                IsLikelyEncryptionFailure(ex.Message)
+                ex is not TarArgumentEncodingException && IsLikelyEncryptionFailure(ex.Message)
                     ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
                     : CoreMessages.Wrap(MessageCode.CannotExtractArchive, ex),
                 ex));
@@ -1350,7 +1350,7 @@ public sealed class TarSandboxedService : ITarService
         catch (IOException ex)
         {
             errors.Add(CoreMessages.Error(archivePath,
-                IsLikelyEncryptionFailure(ex.Message)
+                ex is not TarArgumentEncodingException && IsLikelyEncryptionFailure(ex.Message)
                     ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
                     : CoreMessages.FromException(ex),
                 ex));
