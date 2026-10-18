@@ -933,14 +933,9 @@ public sealed class TarSandboxedService : ITarService
                     context.SkippedFiles.Add(CoreMessages.Skip(relativePath, MessageCode.FileExistsAtDestination));
                 return (false, relativePath);
             }
-            // T-F411: -aot, as in ZipArchiveService's identical rule.
+            // T-F411: -aot, the rule ZipArchiveService shares.
             if (resolvedConflict == ConflictBehavior.RenameExisting)
-            {
-                if (plan.ClaimedFinalPaths.Contains(finalFilePath))
-                    resolvedConflict = ConflictBehavior.Rename;
-                else
-                    plan.Staging.RenameExistingOnCommit(finalFilePath, plan.ClaimedFinalPaths);
-            }
+                resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, plan.ClaimedFinalPaths);
             if (resolvedConflict == ConflictBehavior.Rename)
             {
                 finalFilePath = ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.ClaimedFinalPaths);

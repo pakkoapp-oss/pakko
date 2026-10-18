@@ -1755,15 +1755,9 @@ public sealed class ZipArchiveService : IArchiveService
                 context.ConflictSkippedEntries.Add((relativePath, ByUser: context.ConflictResolver.UserSkipCount != userSkipsSoFar));
                 return (false, named.Entry.Length);
             }
-            // T-F411: -aot. Against an earlier entry of this run (nothing on disk to rename yet)
-            // the new one is renamed instead; never the overwrite every other value falls into.
+            // T-F411: -aot.
             if (resolvedConflict == ConflictBehavior.RenameExisting)
-            {
-                if (claimedFinalPaths.Contains(finalFilePath))
-                    resolvedConflict = ConflictBehavior.Rename;
-                else
-                    plan.Staging.RenameExistingOnCommit(finalFilePath, claimedFinalPaths);
-            }
+                resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, claimedFinalPaths);
             if (resolvedConflict == ConflictBehavior.Rename)
             {
                 string uniqueFinal = ArchiveNaming.GetUniqueFilePath(finalFilePath, claimedFinalPaths);

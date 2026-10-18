@@ -67,21 +67,28 @@ public sealed class ArchiveCreationRouter(
         ArchiveResult result = await (options.Format == ArchiveContainerFormat.Zip
             ? archiveService.ArchiveAsync(options, progress, cancellationToken)
             : tarService.CompressAsync(options, progress, cancellationToken)).ConfigureAwait(false);
+        // Not cancellable: the archive is committed, and its time is metadata (best-effort).
         if (options.SetArchiveTimeFromNewestEntry && options.Mode == ArchiveMode.SingleArchive && result.CreatedFiles is [string archive])
-            await Task.Run(() => SetTimeFromNewestSource(archive, options), cancellationToken).ConfigureAwait(false);
+            await Task.Run(() => SetTimeFromNewestSource(archive, options), CancellationToken.None).ConfigureAwait(false);
         return result;
     }
 
     // T-F411: the sources as the engine read them - normalized, named and filtered the same way.
+    // Best-effort like FileTimes: a source that cannot be read again leaves the written time.
     private static void SetTimeFromNewestSource(string archive, ArchiveOptions options)
     {
-        ArchiveOptions normalized = options with { SourcePaths = [.. options.SourcePaths.Select(SourcePathNormalizer.Normalize)] };
-        (SourceEntryNames names, ArchiveError? namesError) = SourceEntryNames.Create(normalized);
-        // The engine refused the same names, so it wrote nothing; there is no archive to time.
-        if (namesError is not null)
-            return;
-        if (NewestSourceTime.Find(normalized.SourcePaths, names) is { } newest)
-            FileTimes.TrySetFile(archive, newest);
+        try
+        {
+            ArchiveOptions normalized = options with { SourcePaths = [.. options.SourcePaths.Select(SourcePathNormalizer.Normalize)] };
+            (SourceEntryNames names, ArchiveError? namesError) = SourceEntryNames.Create(normalized);
+            // The engine refused the same names, so it wrote nothing; there is no archive to time.
+            if (namesError is not null)
+                return;
+            if (NewestSourceTime.Find(normalized.SourcePaths, names) is { } newest)
+                FileTimes.TrySetFile(archive, newest);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        { /* best-effort: the archive is written, only its time is not set */ }
     }
 
     // T-F275: a set left from the archive's earlier bytes goes before the folder opens; under the
