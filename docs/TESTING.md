@@ -893,6 +893,18 @@ code and real stderr substring asserted — `pakko.exe` must be built (`dotnet b
 src/Archiver.CLI` or a prior `dotnet test`/`dotnet build` at the repo root) before running this
 layer, or `CliProcessRunner` throws with a clear message naming the expected path.
 
+**Adversarial layer** (`Adversarial/`, T-F419) — written by red-team agents that never saw the
+plans or DECISIONS, through the same real exe: every switch against path spellings (`\\?\`, UNC,
+8.3, trailing dot or space, reserved names), links (junctions, symlinks, hard links inside, as the
+source, as `-o`), locked/read-only/ACL-denied files, hostile values, repeats and combinations
+(`-sdel -so`, `-aot -y`, `-sdel` with masks and `-x`), with 7za as the oracle where it is safe. One
+rule for every case: no byte the user did not ask to lose is lost, and no exit 0 for what was not
+done. `AdversarialScratch` gives each test its own `%TEMP%\pakko-redteam-*` folder, asserts every
+path is inside it before the exe runs, and undoes ACL denies on Dispose; `RequiresSymlinkFact`,
+`RequiresShortNamesFact` and `RequiresAdminShareFact` skip what the machine cannot do (never an
+early green return). In the default run (about 20 s); `Sdel_FileChangedWhileArchiving_IsKept` is
+`Slow`. Triage of what it found: `docs/DECISIONS.md`, "T-F419".
+
 **T-F116 additions (`-si`/`-so` streaming):** `CliStreamStagingTests.cs` (new unit-test file, no
 process spawn) covers `CliStreamStaging.StreamSingleFileAsync`'s three outcomes — exactly one file
 copied byte-for-byte, zero/multiple files named in the error message, and a destination `Stream`
