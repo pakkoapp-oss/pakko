@@ -1916,17 +1916,8 @@ public sealed class TarSandboxedService : ITarService
 
         foreach (string sourcePath in sortedSourcePaths)
         {
-            if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
-            {
-                skippedFiles.Add(CoreMessages.Skip(sourcePath, MessageCode.LinkNotArchived));
+            if (IsRefusedAtTop(sourcePath, result))
                 continue;
-            }
-
-            if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
-            {
-                errors.Add(CoreMessages.Error(sourcePath, MessageCode.SourceNotFound, sourcePath));
-                continue;
-            }
 
             string fullSource = Path.GetFullPath(sourcePath);
             bool isDriveRoot = Path.GetDirectoryName(fullSource) is null;
@@ -1953,13 +1944,7 @@ public sealed class TarSandboxedService : ITarService
             bool appended = isDriveRoot
                 ? claims.TryAppendDriveRootLines(nameList, sourcePath, fullSource, ownPaths, new ArchiveResultLists(errors, skippedFiles))
                 : claims.TryAppendLines(nameList, sourcePath, fullSource, name, errors);
-            // T-F410: a drive root's own children the filter leaves out are not listed either.
-            var leftOutPaths = new HashSet<string>(leftOut.Select(info => info.FullName), StringComparer.OrdinalIgnoreCase);
-            for (int i = nameList.Count - 1; i >= listedBefore; i--)
-            {
-                if (leftOutPaths.Contains(nameList[i].Origin))
-                    nameList.RemoveAt(i);
-            }
+            RemoveLeftOutChildren(nameList, listedBefore, leftOut);
             if (!appended || nameList.Count == listedBefore)
                 continue;
 
@@ -1992,6 +1977,33 @@ public sealed class TarSandboxedService : ITarService
         return patterns.Count == 0 ? listed : listed with { ExcludePatterns = patterns };
     }
 
+    // A link given as a source is skipped (T-F23), a missing one is an error; true for either.
+    private static bool IsRefusedAtTop(string sourcePath, ArchiveResultLists result)
+    {
+        if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
+        {
+            result.SkippedFiles.Add(CoreMessages.Skip(sourcePath, MessageCode.LinkNotArchived));
+            return true;
+        }
+        if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
+        {
+            result.Errors.Add(CoreMessages.Error(sourcePath, MessageCode.SourceNotFound, sourcePath));
+            return true;
+        }
+        return false;
+    }
+
+    // T-F410: a drive root's own children the filter leaves out are not listed either.
+    private static void RemoveLeftOutChildren(List<ListedSource> nameList, int listedBefore, List<FileSystemInfo> leftOut)
+    {
+        var leftOutPaths = new HashSet<string>(leftOut.Select(info => info.FullName), StringComparer.OrdinalIgnoreCase);
+        for (int i = nameList.Count - 1; i >= listedBefore; i--)
+        {
+            if (leftOutPaths.Contains(nameList[i].Origin))
+                nameList.RemoveAt(i);
+        }
+    }
+
     // T-F410: what the filter left out inside the source, by the same anchored patterns as the
     // links above; nothing is reported for it.
     private static ListedSource LeaveOutFiltered(ListedSource listed, List<FileSystemInfo> leftOut)
@@ -2009,9 +2021,9 @@ public sealed class TarSandboxedService : ITarService
     // copy, a clashing folder as a junction under the new name; a clashing folder on a network share
     // cannot be, and is refused. Null means the source was refused and its error is recorded.
     // T-F414: claimed starts with every folder a source's name passes through.
-    private sealed class SourceNameClaims(string stagingDir, List<string> stagedJunctions, HashSet<string> claimed)
+    private sealed class SourceNameClaims(string stagingDir, List<string> stagedJunctions, HashSet<string> takenNames)
     {
-        private readonly HashSet<string> _claimed = claimed;
+        private readonly HashSet<string> _claimed = takenNames;
 
         // False when the source was refused (its error is recorded).
         public bool TryAppendLines(List<ListedSource> nameList, string sourcePath, string fullSource, string name, List<ArchiveError> errors)

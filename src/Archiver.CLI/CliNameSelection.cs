@@ -58,15 +58,8 @@ public static class CliNameSelection
     {
         CliNameSwitches switches = command.NameSwitches;
         var includes = new List<CliNameMask>();
-        foreach (CliFilterName name in command.FilterNames)
-        {
-            if (name.Text.Length == 0 || (name.IsListFile && name.Text.Length == 1))
-                return ([], null, "Empty file path");
-            string text = name.IsListFile ? name.Text[1..] : name.Text;
-            if (NamesOf(text, name.IsListFile, switches.ListFileCharset) is not { } names)
-                return ([], null, ListFileError(text));
-            includes.AddRange(names.Select(n => new CliNameMask(n, Include: true, switches.Recursion, switches.WildcardMatching)));
-        }
+        if (AddSourceNames(command, includes) is { } sourceError)
+            return ([], null, sourceError);
 
         var excludes = new List<CliNameMask>();
         foreach (CliWildcardSwitch item in switches.Names)
@@ -80,6 +73,22 @@ public static class CliNameSelection
         excludes.RemoveAll(m => Path.IsPathRooted(m.Path) || Array.Exists(m.Path.Split(PathSeparators), part => part is "." or ".."));
         CliNameFilter? filter = excludes.Count == 0 ? null : CliNameFilter.Create(excludes, switches.CaseSensitive, startFromAll: true);
         return (includes, filter, null);
+    }
+
+    // The names after the archive, a list file's names in its place; the error when one cannot be read.
+    private static string? AddSourceNames(ParsedCliCommand command, List<CliNameMask> includes)
+    {
+        CliNameSwitches switches = command.NameSwitches;
+        foreach (CliFilterName name in command.FilterNames)
+        {
+            if (name.Text.Length == 0 || (name.IsListFile && name.Text.Length == 1))
+                return "Empty file path";
+            string text = name.IsListFile ? name.Text[1..] : name.Text;
+            if (NamesOf(text, name.IsListFile, switches.ListFileCharset) is not { } names)
+                return ListFileError(text);
+            includes.AddRange(names.Select(n => new CliNameMask(n, Include: true, switches.Recursion, switches.WildcardMatching)));
+        }
+        return null;
     }
 
     /// <summary>

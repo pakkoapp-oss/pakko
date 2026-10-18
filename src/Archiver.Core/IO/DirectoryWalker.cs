@@ -79,13 +79,9 @@ internal static class DirectoryWalker
                 continue;
             }
 
-            if (leaveOut is not null)
-            {
-                FileSystemInfo[] leftOut = [.. children.Where(leaveOut)];
-                foreach (FileSystemInfo child in leftOut.OrderBy(c => c.FullName, StringComparer.OrdinalIgnoreCase))
-                    yield return new WalkEntry(WalkEntryKind.LeftOut, child);
-                children = [.. children.Except(leftOut)];
-            }
+            children = WithoutLeftOut(children, leaveOut, out FileSystemInfo[] leftOut);
+            foreach (FileSystemInfo child in leftOut)
+                yield return new WalkEntry(WalkEntryKind.LeftOut, child);
 
             yield return new WalkEntry(WalkEntryKind.Directory, dir, IsEmptyDirectory: children.Length == 0);
 
@@ -100,6 +96,18 @@ internal static class DirectoryWalker
             for (int i = subDirs.Length - 1; i >= 0; i--)
                 pending.Push((subDirs[i], IsReparsePoint(subDirs[i])));
         }
+    }
+
+    // T-F410: the children leaveOut keeps; leftOut gets the others, in the walk's order.
+    private static FileSystemInfo[] WithoutLeftOut(FileSystemInfo[] children, Func<FileSystemInfo, bool>? leaveOut, out FileSystemInfo[] leftOut)
+    {
+        if (leaveOut is null)
+        {
+            leftOut = [];
+            return children;
+        }
+        leftOut = [.. children.Where(leaveOut).OrderBy(c => c.FullName, StringComparer.OrdinalIgnoreCase)];
+        return [.. children.Except(leftOut)];
     }
 
     // Null when the listing failed; listingError then says why.

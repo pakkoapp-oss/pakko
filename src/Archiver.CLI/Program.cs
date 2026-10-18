@@ -567,25 +567,9 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
     using var progress = CliProgress.For(command.Output, command.WriteToStdout);
     try
     {
-        // T-F410: a list file that cannot be read is a command-line error, as for x.
-        (IReadOnlyList<CliNameMask> includes, CliNameFilter? excludes, string? maskError) = CliNameSelection.BuildArchiveMasks(command);
-        if (maskError is not null)
-        {
-            await Console.Error.WriteLineAsync($"pakko: error: {maskError}").ConfigureAwait(false);
-            return 7;
-        }
-        // T-F414: a name that adds nothing is a warning (exit 1), as in 7-Zip; with nothing left
-        // there is no archive (Pakko never writes an empty one), exit 2.
-        CliArchiveSourceList sources = CliArchiveSources.Resolve(
-            includes, excludes, command.NameSwitches.CaseSensitive, Environment.CurrentDirectory, ArchiveFilePath(command));
-        foreach (CliSourceProblem problem in sources.Problems)
-            await Console.Error.WriteLineAsync($"pakko: warning: {problem.Name}: {problem.Reason}").ConfigureAwait(false);
-        if (sources.Sources.Count == 0)
-        {
-            await Console.Error.WriteLineAsync("pakko: error: nothing to archive").ConfigureAwait(false);
-            return 2;
-        }
-        int sourcesCode = sources.Problems.Count > 0 ? 1 : 0;
+        (CliArchiveSourceList? sources, CliNameFilter? excludes, int sourcesCode) = await ResolveArchiveSourcesAsync(command).ConfigureAwait(false);
+        if (sources is null)
+            return sourcesCode;
 
         IArchiveCreationRouter router = services.CreationRouter;
 
@@ -602,10 +586,7 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
             return promptExitCode;
         // T-F410: -x can leave out everything there was; Core then writes no archive and reports nothing.
         if (result.CreatedFiles.Count == 0 && result.Outcome == OperationOutcome.Completed)
-        {
-            await Console.Error.WriteLineAsync("pakko: error: nothing to archive").ConfigureAwait(false);
-            return 2;
-        }
+            return await ReportNothingToArchiveAsync().ConfigureAwait(false);
         int code = Math.Max(sourcesCode, await ReportAndStreamAsync(result, stdoutFolder, new CliReportContext(), cancellation.Token).ConfigureAwait(false));
 
         // T-F325: the archive is complete but not where the caller will look for it - exit 1.
@@ -620,6 +601,32 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
         progress?.Clear();
         return ReportUserStopped();
     }
+}
+
+// T-F410/T-F414: the sources of 'a', or the exit code when there are none. A list file that cannot
+// be read is a command-line error (7), as for x; a name that adds nothing is a warning (1), as in
+// 7-Zip; with nothing left there is no archive (Pakko never writes an empty one), exit 2.
+static async Task<(CliArchiveSourceList? Sources, CliNameFilter? Excludes, int Code)> ResolveArchiveSourcesAsync(ParsedCliCommand command)
+{
+    (IReadOnlyList<CliNameMask> includes, CliNameFilter? excludes, string? maskError) = CliNameSelection.BuildArchiveMasks(command);
+    if (maskError is not null)
+    {
+        await Console.Error.WriteLineAsync($"pakko: error: {maskError}").ConfigureAwait(false);
+        return (null, null, 7);
+    }
+    CliArchiveSourceList sources = CliArchiveSources.Resolve(
+        includes, excludes, command.NameSwitches.CaseSensitive, Environment.CurrentDirectory, ArchiveFilePath(command));
+    foreach (CliSourceProblem problem in sources.Problems)
+        await Console.Error.WriteLineAsync($"pakko: warning: {problem.Name}: {problem.Reason}").ConfigureAwait(false);
+    if (sources.Sources.Count == 0)
+        return (null, null, await ReportNothingToArchiveAsync().ConfigureAwait(false));
+    return (sources, excludes, sources.Problems.Count > 0 ? 1 : 0);
+}
+
+static async Task<int> ReportNothingToArchiveAsync()
+{
+    await Console.Error.WriteLineAsync("pakko: error: nothing to archive").ConfigureAwait(false);
+    return 2;
 }
 
 // T-F193: a -p<pwd> Pakko cannot encrypt with is a command-line error, found before any work.
