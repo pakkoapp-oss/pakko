@@ -560,6 +560,8 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
 {
     if (RejectUnusableEncryptionPassword(command) is { } commandLineError)
         return commandLineError;
+    if (RejectMissingWorkingFolder(command) is { } workingFolderError)
+        return workingFolderError;
 
     using var cancellation = CliCancellation.ListenToConsole();
     // T-F295 item 1: declared outside the try, so a cancel clears the percentage first. The
@@ -638,6 +640,15 @@ static async Task<(CliArchiveSourceList? Sources, CliNameFilter? Excludes, int C
 static async Task<int> ReportNothingToArchiveAsync()
 {
     await Console.Error.WriteLineAsync("pakko: error: nothing to archive").ConfigureAwait(false);
+    return 2;
+}
+
+// T-F411: 7-Zip fails 'a' when -w names a folder that is not there (exit 2, no archive).
+static int? RejectMissingWorkingFolder(ParsedCliCommand command)
+{
+    if (command.WorkingFolder is not { Length: > 0 } folder || Directory.Exists(folder))
+        return null;
+    Console.Error.WriteLine($"pakko: error: -w: the working folder does not exist: {folder}");
     return 2;
 }
 

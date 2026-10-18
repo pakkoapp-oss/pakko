@@ -52,6 +52,7 @@ public sealed record ParsedCliCommand
     public bool? ApplyDownloadMark { get; init; }                     // -snz[0|1], x only (T-F360); null = not given
     public int RecoveryPercent { get; init; }                         // -rr[N], a only (T-F275); 0 = no PAR2 files
     public CliArchiveNameMode ArchiveNameMode { get; init; }          // -sas/-sae/-saa, a only (T-F411)
+    public string? WorkingFolder { get; init; }                       // -w[dir], a only (T-F411); "" = bare -w, null = not given
     public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
     public CliNameSwitches NameSwitches { get; init; } = new();       // -i/-x/-r/-spd/-ssc/-scs/-ai/-ax/-an, x/l/t (T-F410)
     public IReadOnlyList<CliFilterName> FilterNames { get; init; } = []; // x/l/t: the names after the archive name; a: its sources (T-F410)
@@ -586,6 +587,7 @@ public static class CliArgumentParser
         public bool PromptForPassword { get; set; }
         public int RecoveryPercent { get; set; }
         public CliArchiveNameMode ArchiveNameMode { get; set; }
+        public string? WorkingFolder { get; set; }
     }
 
     private static ParsedCliCommand ParseArchive(CliToken[] rest)
@@ -619,6 +621,7 @@ public static class CliArgumentParser
             PromptForPassword = state.PromptForPassword,
             RecoveryPercent = state.RecoveryPercent,
             ArchiveNameMode = state.ArchiveNameMode,
+            WorkingFolder = state.WorkingFolder,
         };
     }
 
@@ -670,6 +673,15 @@ public static class CliArgumentParser
         {
             (state.ArchiveNameMode, string? error) = ParseArchiveNameMode(token);
             return error;
+        }
+
+        // T-F411: 7-Zip's working folder (an empty one is the system's temp). Pakko writes its
+        // temporary archive next to the destination, so the commit is a rename on one volume;
+        // Program checks only that a named folder exists, as 7-Zip fails without it.
+        if (token.StartsWith("-w", StringComparison.Ordinal))
+        {
+            state.WorkingFolder = token[2..];
+            return null;
         }
 
         return UnsupportedSwitchReason(token);
@@ -1022,6 +1034,8 @@ public static class CliArgumentParser
         ("-ssc", "unknown -ssc value: expected -ssc or -ssc- (T-F410)"),
         ("-snz", "not supported on this command: -snz is only valid with 'x' (extract)"),
         ("-sa", "not supported on this command: -sa{s|e|a} names the archive 'a' creates"),
+        ("-w", "not supported on this command: -w{dir} is only meaningful for 'a' (archive creation)"),
+        ("-ssp", "not supported by Pakko: -ssp (keep the sources' last access time) - tar.exe cannot keep it, and Windows mostly does not update it"),
     ];
 
     private static string UnsupportedSwitchReason(string token)
