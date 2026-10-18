@@ -39,6 +39,9 @@ public static class CliCommandValidator
     // in an archive type Pakko writes counts; any other extension is written as typed (T-F221 item 6).
     private static string? TypeAgainstName(ParsedCliCommand command)
     {
+        // T-F411: under -saa the type's extension follows the name, so "x.zip -t7z" is "x.zip.7z".
+        if (command.ArchiveNameMode == CliArchiveNameMode.Always)
+            return null;
         string name = Path.GetFileName(command.ArchivePathArg!);
         ArchiveContainerFormat? named = FormatOfName(name);
         if (named is not { } nameFormat || nameFormat == command.ArchiveFormat)

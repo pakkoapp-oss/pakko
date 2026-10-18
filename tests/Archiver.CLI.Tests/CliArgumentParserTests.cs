@@ -527,12 +527,13 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void PasswordSwitch_BareThenValued_ValueWins()
+    public void PasswordSwitch_BareThenValued_IsAMultipleInstanceError()
     {
+        // T-F411: 7-Zip's -p is not Multi ("Multiple instances for switch", exit 7).
         ParsedCliCommand result = CliArgumentParser.Parse(["x", "-p", "-pSecret", "archive.zip"]);
 
-        result.Password.Should().Be("Secret");
-        result.PromptForPassword.Should().BeFalse();
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Be("Multiple instances for switch: -p");
     }
 
     [Theory]
@@ -644,12 +645,12 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void PasswordSwitch_GivenTwice_LastOneWins()
+    public void PasswordSwitch_GivenTwice_IsRefusedWithoutPrintingEitherPassword()
     {
         ParsedCliCommand result = CliArgumentParser.Parse(["x", "-pFirst", "-pSecond", "archive.zip"]);
 
-        result.Type.Should().Be(CliCommandType.Extract);
-        result.Password.Should().Be("Second");
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Be("Multiple instances for switch: -p");
     }
 
     [Fact]
@@ -688,11 +689,11 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void Archive_CompressionLevelOutOfRange_ReturnsInvalid()
+    public void Archive_CompressionLevelAboveNine_IsNine()
     {
-        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-mx=10", "out.zip", "file1.txt"]);
-
-        result.Type.Should().Be(CliCommandType.Invalid);
+        // T-F411: 7za takes -mx10 and -mx=99 (exit 0) and compresses at its highest level.
+        CliArgumentParser.Parse(["a", "-mx=10", "out.zip", "file1.txt"]).CompressionLevel
+            .Should().Be(CliArgumentParser.Parse(["a", "-mx=9", "out.zip", "file1.txt"]).CompressionLevel);
     }
 
     [Fact]
@@ -910,11 +911,12 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void Scc_LastOccurrenceWins()
+    public void Scc_GivenTwice_IsAMultipleInstanceError()
     {
         ParsedCliCommand result = CliArgumentParser.Parse(["l", "-sccDOS", "-sccUTF-8", "archive.zip"]);
 
-        result.ConsoleCodePage.Should().Be(CliConsoleCharset.Utf8);
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Be("Multiple instances for switch: -sccUTF-8");
     }
 
     [Fact]
@@ -1074,8 +1076,9 @@ public sealed class CliArgumentParserTests
         CliArgumentParser.Parse(["a", "out.zip", "file1.txt"]).RecoveryPercent.Should().Be(0);
 
     [Fact]
-    public void Archive_RecoverySwitchTwice_LastWins() =>
-        CliArgumentParser.Parse(["a", "-rr20", "-rr", "out.zip", "file1.txt"]).RecoveryPercent.Should().Be(5);
+    public void Archive_RecoverySwitchTwice_IsAMultipleInstanceError() =>
+        CliArgumentParser.Parse(["a", "-rr20", "-rr", "out.zip", "file1.txt"]).ErrorMessage
+            .Should().Be("Multiple instances for switch: -rr");
 
     [Theory]
     [InlineData("-rr0")]

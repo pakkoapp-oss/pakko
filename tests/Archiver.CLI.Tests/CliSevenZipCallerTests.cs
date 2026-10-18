@@ -127,16 +127,17 @@ public sealed class CliSevenZipCallerTests
     // --- T-F411: -sae / -sas (7-Zip's ArcNameMode; patool: "a -y -t7z -sae -- <arc> <files>") ---
 
     [Theory]
-    [InlineData(new[] { "a", "-sae", "out", "f" }, true)]
-    [InlineData(new[] { "a", "-sas", "out", "f" }, false)]
-    [InlineData(new[] { "a", "-sae", "-sas", "out", "f" }, false)]
-    [InlineData(new[] { "a", "out", "f" }, false)]
-    public void Archive_NameMode_IsTaken(string[] args, bool exact)
+    [InlineData(new[] { "a", "-sae", "out", "f" }, CliArchiveNameMode.Exact)]
+    [InlineData(new[] { "a", "-sas", "out", "f" }, CliArchiveNameMode.Smart)]
+    [InlineData(new[] { "a", "-saa", "out", "f" }, CliArchiveNameMode.Always)]
+    [InlineData(new[] { "a", "-SAa", "out", "f" }, CliArchiveNameMode.Always)]
+    [InlineData(new[] { "a", "out", "f" }, CliArchiveNameMode.Smart)]
+    public void Archive_NameMode_IsTaken(string[] args, CliArchiveNameMode mode)
     {
         ParsedCliCommand result = CliArgumentParser.Parse(args);
 
         result.Type.Should().Be(CliCommandType.Archive, result.ErrorMessage);
-        result.ArchiveNameExact.Should().Be(exact);
+        result.ArchiveNameMode.Should().Be(mode);
     }
 
     [Fact]
@@ -146,12 +147,12 @@ public sealed class CliSevenZipCallerTests
 
         result.Type.Should().Be(CliCommandType.Archive, result.ErrorMessage);
         result.ArchivePathArg.Should().Be("out.7z");
-        result.ArchiveNameExact.Should().BeTrue();
+        result.ArchiveNameMode.Should().Be(CliArchiveNameMode.Exact);
     }
 
     [Theory]
-    [InlineData("-saa", "not supported by Pakko: -saa")]
     [InlineData("-sax", "unknown -sa value")]
+    [InlineData("-SAE", "unknown -sa value")]
     [InlineData("-sa", "unknown -sa value")]
     public void Archive_OtherNameModes_AreRefused(string token, string reason)
     {
@@ -268,13 +269,16 @@ public sealed class CliSevenZipCallerTests
         result.Output.Should().Be(new CliOutputOptions { DisableHeaders = true, ShowTime = true, DisablePercents = true, LogLevel = 2 });
     }
 
-    [Fact]
-    public void OutputSwitch_LastOneWins()
+    [Theory]
+    [InlineData("-bb3", "-bb0")]
+    [InlineData("-bso0", "-bso1")]
+    [InlineData("-ba", "-ba")]
+    public void OutputSwitch_GivenTwice_IsAMultipleInstanceError(string first, string second)
     {
-        ParsedCliCommand result = CliArgumentParser.Parse(["x", "-bb3", "-bb0", "-bso0", "-bso1", "a.zip"]);
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", first, second, "a.zip"]);
 
-        result.Output.LogLevel.Should().Be(0u);
-        result.Output.OutStream.Should().Be(CliOutputTarget.StdOut);
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Be($"Multiple instances for switch: {second}");
     }
 
     [Fact]

@@ -29,9 +29,9 @@ public sealed class CliDownloadMarkTests
     }
 
     [Fact]
-    public void Extract_LastSnzWins()
+    public void Extract_SnzTwice_IsAMultipleInstanceError()
     {
-        CliArgumentParser.Parse(["x", "-snz0", "-snz", "a.zip"]).ApplyDownloadMark.Should().BeTrue();
+        CliArgumentParser.Parse(["x", "-snz0", "-snz", "a.zip"]).ErrorMessage.Should().Be("Multiple instances for switch: -snz");
     }
 
     // --- Misuse & Fool ---

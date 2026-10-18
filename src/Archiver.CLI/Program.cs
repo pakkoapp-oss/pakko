@@ -659,8 +659,12 @@ static string ResolveArchiveDestination(ParsedCliCommand command, CliStagingFold
     return string.IsNullOrEmpty(dir) ? "." : dir;
 }
 
-static bool ArchiveNameHasExtension(ParsedCliCommand command) =>
-    command.ArchiveNameExact || Path.GetFileName(command.ArchivePathArg!).Contains('.'); // T-F294: ".gz" too, as 7-Zip writes it
+static bool ArchiveNameHasExtension(ParsedCliCommand command) => command.ArchiveNameMode switch
+{
+    CliArchiveNameMode.Exact => true,
+    CliArchiveNameMode.Always => false, // T-F411: -saa, "n.tar" becomes "n.tar.tar" as in 7-Zip
+    _ => Path.GetFileName(command.ArchivePathArg!).Contains('.'), // T-F294: ".gz" too, as 7-Zip writes it
+};
 
 // T-F410: the file 'a' writes (before a clash renames it), so a mask never takes it as a source.
 static string ArchiveFilePath(ParsedCliCommand command) =>
@@ -668,7 +672,7 @@ static string ArchiveFilePath(ParsedCliCommand command) =>
 
 // T-F221 item 6 (user decision 2026-09-28, 7-Zip's rule): a name with an extension is written
 // exactly as typed ("-ttar x.gz" makes a tar named x.gz); a name without one gets the format's,
-// unless -sae says to write it as typed (T-F411).
+// unless -sae says to write it as typed; -saa adds the format's to any name (T-F411).
 static ArchiveOptions BuildArchiveOptions(
     ParsedCliCommand command, CliArchiveSourceList sources, string destFolder, StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt)
 {
