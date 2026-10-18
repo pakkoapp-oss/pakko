@@ -60,7 +60,8 @@ public static class CliHelpText
                            -ttar.gz, out.7z needs -t7z); any other extension
                            is written as typed. 7z is written by Windows' own
                            tar.exe, where it can, and never with a password
-          -mx=<0-9>        Compression level — see table below                 (a)
+          -mx[=]<0-9>      Compression level — see table below; -mx is 9,      (a)
+                           a level above 9 is 9
           -m0=<method>     Method of a 7z archive (with -t7z): lzma2 (default), (a)
                            lzma, bzip2, deflate, copy
           -rr[N]           Recovery data: PAR2 files next to the archive,      (a)
@@ -69,9 +70,9 @@ public static class CliHelpText
           -scrc<method>    Hash method: CRC32 (default) or SHA256              (h)
           -si              Read the archive from stdin instead of a path       (x, t, l, h)
           -so              Write output to stdout instead of disk              (x, a)
-          -sae / -sas      -sae: the archive is named exactly as typed;        (a)
+          -sae/-sas/-saa   -sae: the archive is named exactly as typed;        (a)
                            -sas (default): a name without an extension gets
-                           the type's
+                           the type's; -saa: the type's is always added
           -bb[N]           Log level, -bb is 1: from 1, x prints "- <name>"    (all)
                            for each folder and file it wrote, relative to -o
           -bd              No percentage                                       (all)
@@ -111,6 +112,10 @@ public static class CliHelpText
                            Default: the console code page, where a name it
                            cannot hold prints as '?'. Use -sccUTF-8 when
                            redirecting to a file, e.g. pakko l a.zip -sccUTF-8 > list.txt
+
+        SWITCHES: as in 7-Zip, a switch name and the command are read without
+          case (-Y X), switches may come before the command, and each switch is
+          given once (twice is exit 7) except -i, -x, -ai, -ax, -m and -stx.
 
         COMPRESSION LEVEL (-mx, command 'a' only):
           0    -> Store (no compression)   3-6 -> Optimal (default)

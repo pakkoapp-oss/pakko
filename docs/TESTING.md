@@ -1327,6 +1327,17 @@ progress and Cancel are checked on the device.
   entered, the archive being written never taken) and `CliArchiveSourcesSubprocessTests` (the same
   7za lines through the real exe, ZIP and tar). Device row: `CLI-039`.
 
+## How `pakko` Reads a Command Line (T-F411 wave D, 2026-10-18)
+
+- `CliSwitchNamesTests`: the command and switch names in capitals, a switch before the command,
+  `--` first, values keeping their case, a non-ASCII letter in a name or the command matching
+  nothing (U+0131, U+0130, U+017F: the last one is what catches a `ToUpperInvariant` fold), the
+  longest name winning (`-rr5` is not `-r`, `-scrc` is not `-scc`), a postfix letter kept
+  case-sensitive (`-AOA`), every single switch refused when repeated and the Multi ones taken, a
+  password never printed in that error, every `-mx` spelling 7za takes. The 1.8.1 "last one wins"
+  tests now expect exit 7. `CliSevenZipCallerSubprocessTests`: `-Y X ... -O<dir>`, `-o` twice
+  (exit 7, nothing written), `-saa` on ZIP and tar, through the real exe. Device row: `CLI-040`.
+
 ---
 
 ## Rules

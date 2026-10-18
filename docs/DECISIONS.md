@@ -10074,6 +10074,8 @@ anyway. The Win32 fallback (`MessageBoxW`) has no such mode and ignores it.
 
 **T-F238: `-scc{UTF-8|WIN|DOS}` follows 7-Zip** (checked in NanaZip's vendored
 `ArchiveCommandLine.cpp`/`Main.cpp`): case-insensitive, last one wins, every command accepts it.
+*(2026-10-18, T-F411 wave D: measured, 7-Zip refuses a second `-scc` with exit 7, and so does
+`pakko` now; see that entry.)*
 The default stays the lossy console code page, like 7-Zip. Only the three names 7-Zip's help
 lists; numeric code pages and UTF-16 are refused with a named error. Pakko replaces its own
 stdout/stderr writers (BOM-free, auto-flush) instead of setting `Console.OutputEncoding`, which
@@ -13254,6 +13256,49 @@ the archive.
   `TarSandboxedServiceExtractedItemReportTests` (real `tar.exe`). Each was seen red: the new switches
   refused, `CommitInto` without the callback, each engine without it, the locked file named, the
   merge naming twice, `Program.cs` without the stream, `-bt` and `-ba` code, and `-bb` set to 9.
+
+## T-F411, wave D: how `pakko` reads a command line, as 7-Zip does (2026-10-18)
+
+- **Measured first** (vendored `7za.exe` 26.02): `X a.zip`, `L`, `A` and `-y x a.zip` exit 0;
+  `-y -- x a.zip -ooq` extracts nothing (`-ooq` is a name after `--`); `Xx`, `a.zip x`, a lone `-y`
+  or `--` exit 7. `-Y`, `-O<dir>`, `-MX=9`, `-mX=9`, `-MX9`, `-mMT=2`, `-mEM=aes256`, `-M0=LZMA2`,
+  `-BB1`, `-BSO2`, `-SNZ0`, `-R-`, `-SSC-`, `-XR!a.txt`, `-xR0!`, `-IR!`, `-sccutf-8`, `-SCCUTF-8`,
+  `-scrcsha256`, `-tZIP`, `-T7Z` exit 0; `-AOA`, `-aoA`, `-SAE` are "Incorrect switch postfix", exit 7;
+  a switch name with U+0131 is "Unknown switch", a command `U+0130` "Unsupported command". Given
+  twice, `-o`, `-y`, `-p`, `-t`, `-scc`, `-r` are "Multiple instances for switch", exit 7; `-mx1
+  -mx=9`, `-x` twice and `-scrcCRC32 -scrcSHA256` (both computed) exit 0. `-mx`, `-mx9`, `-mx10`,
+  `-mx=99` exit 0 (`-mx` and `-mx9` give the same size); `-mx=-1` and `-mxa` exit 2. `-saa`:
+  `n.tar -ttar` writes `n.tar.tar`, `q.7z -t7z` `q.7z.7z`, `named.zip` (no `-t`) `named.zip.7z`.
+- **Source read:** `CPP/Common/CommandLineParser.cpp` 26.02, `CParser::ParseString` (the longest
+  name in `kSwitchForms` that prefixes the argument, `IsString1PrefixedByString2_NoCase_Ascii`; a
+  form that is not `Multi` and is already set is "Multiple instances for switch:"; a `kChar`
+  postfix is looked up case-sensitively in its `PostCharSet`) and `ParseStrings` (after `--`
+  everything is a non-switch string; the first non-switch string is the command). The `Multi` forms
+  of `kSwitchForms` (`ArchiveCommandLine.cpp` 26.02): `m`, `i`, `x`, `ai`, `ax`, `stx`, `u`, `v`,
+  `scrc`.
+- **Decided (delegated to the agent, 2026-10-18).** `CliSwitchNames` writes every known switch name
+  in lower case before any other parser sees it, so each keeps its ordinal prefix match; the
+  values that 7-Zip reads without case (types, `-m` property names) are lowered where they are
+  parsed, the rest stays as typed. ASCII letters only, as in 7-Zip: `ToUpperInvariant` would read
+  a dash, U+017F (long s) and `o` as the switch `-so`. A repeated single switch is exit 7, as in 7-Zip, which changes
+  1.8.1's "the last one wins" for `-p`, `-scc`, `-snz`, `-sa`, `-o`, `-t`, `-ao`, `-bb`, `-bs*`,
+  `-r` and Pakko's own `-rr` (taken once too); the 1.8.2 CHANGELOG says so under a change in
+  behavior. A second `-scrc` is exit 7 too: 7-Zip computes each, Pakko one, and dropping one
+  silently would print a different report than the caller asked for. `-mx` above 9 is 9, as in
+  7-Zip; a level that is not a number stays exit 7 (7-Zip: 2, a refusal in both). `-saa` turns off
+  the name-against-type check (T-F294), since the type's extension follows the name; Pakko's
+  default type stays ZIP, so `a -saa named.zip` is `named.zip.zip`, not 7-Zip's `named.zip.7z`.
+- **Correction of an older entry:** "Fix phase 8" (T-F238) says 7-Zip's `-scc` is "last one wins";
+  measured, 7-Zip refuses a second `-scc` with exit 7. That entry is kept as written; this one
+  supersedes that sentence.
+- **Mutants** (each red, then restored): no lower-casing, no repeat check, no `-mx` clamp, a command
+  read with case, `--` searched from the second argument, `-t` and `-m` property values read with
+  case, a fold through `ToUpperInvariant`. A fold through `ToLowerInvariant` stayed green and is
+  equivalent here: .NET maps U+0130 to itself, and the one other letter it lowers to ASCII, the
+  Kelvin sign, lowers to `k`, which no switch name holds.
+- **Left for wave E** (Core options, measured the same day, `scratchpad` notes copied into its
+  plan): `-aot`, `-sdel`, `-spe` (7-Zip drops the root folder named like the last part of `-o`, not
+  like the archive, `Extract.cpp` 26.02), `-mmt`, `-sse`, `-ssw`, `-stl`, `-ssp`, `-w`.
 
 ## T-F414 and T-F410, wave C: what 'a' archives, under which name (2026-10-18)
 
