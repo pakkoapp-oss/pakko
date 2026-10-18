@@ -148,6 +148,18 @@ internal sealed class AdversarialScratch : IDisposable
 }
 
 /// <summary>A test that needs File.CreateSymbolicLink (Developer Mode or the privilege); skipped without it.</summary>
+// T-F419: the temp folder through \\localhost\<drive>$ - skipped, not passed, where the
+// administrative share is not reachable.
+public sealed class RequiresAdminShareFactAttribute : FactAttribute
+{
+    public RequiresAdminShareFactAttribute()
+    {
+        string temp = Path.GetTempPath();
+        if (!Directory.Exists(@"\\localhost\" + temp[0] + "$" + temp[2..]))
+            Skip = "the administrative share \\\\localhost\\" + temp[0] + "$ is not reachable on this machine";
+    }
+}
+
 public sealed class RequiresSymlinkFactAttribute : FactAttribute
 {
     public RequiresSymlinkFactAttribute()

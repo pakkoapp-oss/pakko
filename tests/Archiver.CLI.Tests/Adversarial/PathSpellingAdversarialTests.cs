@@ -59,12 +59,10 @@ public sealed class PathSpellingAdversarialTests : IDisposable
         File.ReadAllText(_scratch.Inside(@"out\a.txt")).Should().Be("A");
     }
 
-    [Fact]
+    [RequiresAdminShareFact]
     public void UncArchiveAndOutput_Work()
     {
         string unc = @"\\localhost\" + _scratch.Root[0] + "$" + _scratch.Root[2..];
-        if (!Directory.Exists(unc))
-            return; // the administrative share is not reachable on this machine; the report says so
 
         (int exitCode, _, string stdErr) = _scratch.Pakko("x", unc + @"\archivefile.zip", $@"-o{unc}\out", "-aoa");
 
