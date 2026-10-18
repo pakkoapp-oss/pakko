@@ -126,6 +126,35 @@ public sealed class ZipArchiveServiceEntryFilterTests : IDisposable
         entries.Should().Equal("dir/c.txt", "dir/sub/deep/");
     }
 
+    // Both engines ask by the name before a clash renames a source (T-F30): "dir (1)" is "dir".
+    [Theory]
+    [MemberData(nameof(Writers))]
+    public async Task ArchiveAsync_RenamedSource_IsAskedAboutByItsOwnName(CompressionLevel level)
+    {
+        string dir = MakeTree();
+        string other = Path.Combine(_temp.Path, "other", "dir");
+        Directory.CreateDirectory(other);
+        File.WriteAllText(Path.Combine(other, "c.txt"), "o");
+
+        (ArchiveResult result, string[] entries) = await ArchiveAsync([dir, other], (name, _) => name != "dir/c.txt", level);
+
+        result.Errors.Should().BeEmpty();
+        entries.Should().NotContain(e => e.EndsWith("/c.txt", StringComparison.Ordinal));
+    }
+
+    // T-F260: what a filter leaves out is not reported, so no source counts as fully archived.
+    [Theory]
+    [MemberData(nameof(Writers))]
+    public async Task ArchiveAsync_WithAFilter_NoSourceIsFullyProcessed(CompressionLevel level)
+    {
+        string dir = MakeTree();
+
+        (ArchiveResult result, _) = await ArchiveAsync([dir], (name, _) => name != "dir/c.log", level);
+
+        result.CreatedFiles.Should().ContainSingle();
+        result.FullyProcessedSources.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task ArchiveAsync_EverythingLeftOut_WritesNoArchive()
     {

@@ -19,6 +19,7 @@ public sealed record ArchiveOptions
     /// T-F410: asked for each entry with its name in the archive ('/' between parts, no trailing
     /// one) and whether it is a folder; false leaves a file out, or a folder with all it holds,
     /// a source itself included (7-Zip's <c>a -x</c>). Nothing is reported for it. Null keeps all.
+    /// A source renamed for a clash (T-F30, T-F171) is asked about by its name before the rename.
     /// </summary>
     public Func<string, bool, bool>? EntryFilter { get; init; }
 

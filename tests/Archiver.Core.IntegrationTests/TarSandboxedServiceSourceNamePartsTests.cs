@@ -85,6 +85,26 @@ public sealed class TarSandboxedServiceSourceNamePartsTests : IDisposable
         files.Should().Equal("dir/c (1).txt", "dir/c.txt");
     }
 
+    // The closing review's case, as in ZipArchiveServiceSourceNamePartsTests.
+    [Integration]
+    public async Task CompressAsync_RenameNeverLandsOnAFolderOfAnotherName()
+    {
+        foreach (string folder in new[] { "A", "B" })
+        {
+            Directory.CreateDirectory(Path.Combine(_temp.Path, folder, "sub"));
+            File.WriteAllText(Path.Combine(_temp.Path, folder, "sub", "z"), folder);
+        }
+        string c = Path.Combine(_temp.Path, "C", "sub (1)");
+        Directory.CreateDirectory(c);
+        File.WriteAllText(Path.Combine(c, "z"), "C");
+
+        (ArchiveResult result, string[] files) = await CompressAsync(
+            [Path.Combine(_temp.Path, "A", "sub"), Path.Combine(_temp.Path, "B", "sub"), Path.Combine(c, "z")], [1, 1, 2]);
+
+        result.Errors.Should().BeEmpty();
+        files.Should().OnlyHaveUniqueItems().And.HaveCount(3).And.Contain("sub (1)/z");
+    }
+
     [Integration]
     public async Task CompressAsync_OneNameInsideAnother_RefusedBeforeTarRuns()
     {

@@ -33,7 +33,7 @@ internal static class WorkItemEnumerator
         Action<SkippedFile> reportSkipped,
         Action<ArchiveError> reportError)
     {
-        var usedEntryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> usedEntryNames = names.NewTakenNames();
 
         foreach (string sourcePath in sortedSourcePaths)
         {
@@ -49,7 +49,7 @@ internal static class WorkItemEnumerator
             if (Directory.Exists(sourcePath))
             {
                 string entryName = ZipArchiveService.GetUniqueEntryName(usedEntryNames, names.For(sourcePath));
-                foreach (FileWorkItem item in EnumerateDirectory(sourcePath, entryName, names.LeaveOutBelow(sourcePath, entryName), reportSkipped, reportError))
+                foreach (FileWorkItem item in EnumerateDirectory(sourcePath, entryName, names.LeaveOutBelow(sourcePath, names.For(sourcePath)), reportSkipped, reportError))
                     yield return item;
             }
             else if (File.Exists(sourcePath))

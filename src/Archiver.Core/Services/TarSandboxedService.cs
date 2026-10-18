@@ -1591,7 +1591,7 @@ public sealed class TarSandboxedService : ITarService
                 .ConfigureAwait(false);
 
             // T-F260: one archive for every source — see ZipArchiveService.ArchiveAsync's same rule.
-            bool clean = errors.Count == 0 && skippedFiles.Count == 0;
+            bool clean = errors.Count == 0 && skippedFiles.Count == 0 && !names.Filters;
             sources = options.SourcePaths.Select(p => SourceOutcomeRules.Classify(p, createdFiles.Count > 0, clean));
         }
         else // ArchiveMode.SeparateArchives — one archive per top-level source path
@@ -1624,6 +1624,8 @@ public sealed class TarSandboxedService : ITarService
         ArchiveResultSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
         var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
+        // T-F410: as the ZIP engine, a source the filter leaves out gets no archive and no conflict prompt.
+        sortedSourcePaths.RemoveAll(path => names.For(path) is { Length: > 0 } name && !names.Keeps(name, Directory.Exists(path)));
         var sources = new List<SourceResult>();
 
         foreach (string sourcePath in sortedSourcePaths)
@@ -1655,7 +1657,7 @@ public sealed class TarSandboxedService : ITarService
                 .ConfigureAwait(false);
             sources.Add(SourceOutcomeRules.Classify(sourcePath,
                 produced: sink.CreatedFiles.Count > createdBefore,
-                clean: sink.Errors.Count == errorsBefore && sink.SkippedFiles.Count == skippedBefore));
+                clean: sink.Errors.Count == errorsBefore && sink.SkippedFiles.Count == skippedBefore && !names.Filters));
         }
 
         return sources;
@@ -1910,7 +1912,7 @@ public sealed class TarSandboxedService : ITarService
         int entryCount = 0;
         long totalEntriesForProgress = 0;
         long totalBytesForProgress = 0;
-        var claims = new SourceNameClaims(collisionStagingDir, stagedJunctions);
+        var claims = new SourceNameClaims(collisionStagingDir, stagedJunctions, names.NewTakenNames());
 
         foreach (string sourcePath in sortedSourcePaths)
         {
@@ -2006,9 +2008,10 @@ public sealed class TarSandboxedService : ITarService
     // T-F171: every source claims its name, file or folder. A clashing file is staged as a renamed
     // copy, a clashing folder as a junction under the new name; a clashing folder on a network share
     // cannot be, and is refused. Null means the source was refused and its error is recorded.
-    private sealed class SourceNameClaims(string stagingDir, List<string> stagedJunctions)
+    // T-F414: claimed starts with every folder a source's name passes through.
+    private sealed class SourceNameClaims(string stagingDir, List<string> stagedJunctions, HashSet<string> claimed)
     {
-        private readonly HashSet<string> _claimed = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _claimed = claimed;
 
         // False when the source was refused (its error is recorded).
         public bool TryAppendLines(List<ListedSource> nameList, string sourcePath, string fullSource, string name, List<ArchiveError> errors)

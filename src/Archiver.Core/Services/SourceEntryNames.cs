@@ -49,6 +49,27 @@ internal sealed class SourceEntryNames
         return OverlapError(names) is { } overlap ? (OwnNames, overlap) : (new SourceEntryNames(names, options.EntryFilter), null);
     }
 
+    /// <summary>
+    /// Every folder a source's name passes through ("dir" of "dir/sub"): a set of names already
+    /// taken, so a source renamed for a clash (T-F30, T-F171) never becomes one of them.
+    /// </summary>
+    internal HashSet<string> NewTakenNames()
+    {
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string name in _names?.Values ?? Enumerable.Empty<string>())
+        {
+            for (int cut = name.LastIndexOf('/'); cut > 0; cut = name.LastIndexOf('/', cut - 1))
+                taken.Add(name[..cut]);
+        }
+        return taken;
+    }
+
+    /// <summary>
+    /// T-F410: whether a filter is set. What it leaves out is not reported, so no source of such a
+    /// run counts as fully archived (T-F260: "delete after" must not take it).
+    /// </summary>
+    internal bool Filters => _keep is not null;
+
     /// <summary>T-F410: whether the entry named <paramref name="entryName"/> goes into the archive.</summary>
     internal bool Keeps(string entryName, bool isFolder) => _keep is null || _keep(entryName, isFolder);
 
