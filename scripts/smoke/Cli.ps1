@@ -570,3 +570,45 @@ Add-SmokeStep 'CLI-040' {
     $run = Invoke-Pakko @('x', $zip, "-o$out", '-AOA')
     Assert-Smoke ($run.ExitCode -eq 7) "x -AOA: exit $($run.ExitCode), expected 7"
 }
+
+Add-SmokeStep 'CLI-041' {
+    # T-F411 wave E: 7-Zip's switches that Core carries out, as 7za 26.02 measured.
+    $folder = Get-StepFolder 'cli041'
+    $src = Join-Path $folder 'src'
+    $null = New-Item -ItemType Directory -Path (Join-Path $src 'd')
+    Set-Content -LiteralPath (Join-Path $src 'a.txt') -Value 'new' -NoNewline
+    Set-Content -LiteralPath (Join-Path $src 'd\b.txt') -Value 'b' -NoNewline
+    $stamp = [datetime]::new(2020, 1, 1, 10, 0, 0, [DateTimeKind]::Utc)
+    foreach ($item in @((Join-Path $src 'a.txt'), (Join-Path $src 'd\b.txt'), (Join-Path $src 'd'), $src)) {
+        (Get-Item -LiteralPath $item).LastWriteTimeUtc = $stamp
+    }
+
+    $zip = Join-Path $folder 'src.zip'
+    $run = Invoke-Pakko -Arguments @('a', '-stl', '-mmt=1', '-ssw', "-w$folder", $zip, 'src') -WorkingDirectory $folder
+    Assert-Smoke ($run.ExitCode -eq 0 -and (Get-Item -LiteralPath $zip).LastWriteTimeUtc -eq $stamp) "a -stl -mmt=1 -ssw -w: exit $($run.ExitCode) $($run.Text)"
+
+    $o1 = Join-Path $folder 'o1\src'
+    $run = Invoke-Pakko @('x', $zip, "-o$o1", '-spe')
+    Assert-Smoke ($run.ExitCode -eq 0 -and (Test-Path -LiteralPath (Join-Path $o1 'a.txt')) -and -not (Test-Path -LiteralPath (Join-Path $o1 'src'))) "x -spe: exit $($run.ExitCode) $($run.Text)"
+
+    $o2 = Join-Path $folder 'o2'
+    $null = New-Item -ItemType Directory -Path (Join-Path $o2 'src')
+    Set-Content -LiteralPath (Join-Path $o2 'src\a.txt') -Value 'old' -NoNewline
+    $run = Invoke-Pakko @('x', $zip, "-o$o2", '-aot')
+    $new = Get-Content -LiteralPath (Join-Path $o2 'src\a.txt') -Raw
+    $old = Get-Content -LiteralPath (Join-Path $o2 'src\a (1).txt') -Raw -ErrorAction SilentlyContinue
+    Assert-Smoke ($run.ExitCode -eq 0 -and $new -eq 'new' -and $old -eq 'old') "x -aot: exit $($run.ExitCode), a.txt '$new', a (1).txt '$old' $($run.Text)"
+
+    $copy = Join-Path $folder 'copy'
+    Copy-Item -LiteralPath $src -Destination $copy -Recurse
+    $run = Invoke-Pakko @('a', '-sdel', (Join-Path $folder 'copy.zip'), $copy)
+    Assert-Smoke ($run.ExitCode -eq 0 -and -not (Test-Path -LiteralPath $copy) -and (Test-Path -LiteralPath (Join-Path $folder 'copy.zip'))) "a -sdel: exit $($run.ExitCode) $($run.Text)"
+
+    $stopped = Join-Path $folder 'stopped.zip'
+    $lock = [System.IO.File]::Open((Join-Path $src 'a.txt'), 'Open', 'ReadWrite', 'None')
+    try { $run = Invoke-Pakko @('a', '-sse', $stopped, $src) } finally { $lock.Dispose() }
+    Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text.Contains('-sse stops at a file') -and -not (Test-Path -LiteralPath $stopped)) "a -sse with a locked file: exit $($run.ExitCode) $($run.Text)"
+
+    $run = Invoke-Pakko @('a', '-ssp', (Join-Path $folder 'ssp.zip'), $src)
+    Assert-Smoke ($run.ExitCode -eq 7) "a -ssp: exit $($run.ExitCode), expected 7"
+}

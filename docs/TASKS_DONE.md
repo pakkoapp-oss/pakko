@@ -13105,3 +13105,38 @@ PowerShell does natively.
   `DirectoryWalker`'s `LeftOut`; `ZipArchiveServiceEntryFilterTests`,
   `TarSandboxedServiceCreationFilterTests`, `CliArchiveSourcesTests`,
   `CliArchiveSourcesSubprocessTests`; `docs/CLI.md`; smoke `CLI-039`.
+
+### T-F411 — `pakko`: small 7-Zip switches and spellings (P3, from T-F343)
+
+- [x] **Status:** done 2026-10-18 (wave E). Each is small and measured: a command in capitals (`X`) and a switch before
+  the command (`-y x a.zip`), both taken by 7-Zip, exit 7 in `pakko`; `-mx9` without `=` and
+  `-tZIP` in capitals; `-o` given twice (7-Zip: exit 7, `pakko`: the last wins); `-aot`; `-saa`,
+  `-sae`, `-sas` (patool passes `-sae`); `-sdel` (the App has "delete after"); `-spe` (with a name
+  filter too: a filtered extraction is a subset today, so Core skips ElimDup there; T-F410's DECISIONS entry) (Core has
+  `EliminateDuplicateRootFolder`); `-mmt` (the parallel ZIP writer's threads); `-sse`, `-ssp`,
+  `-ssw`, `-stl`, `-w`. One commit each, each against 7za with the T-F343 script.
+- **1.8.2 CHANGELOG notes** of the waves done so far are in T-F410's and T-F414's entries in
+  `TASKS_DONE.md` (both graduated 2026-10-18).
+- **Done so far** (2026-10-17, with T-F407): `-sae` and `-sas`. **Wave D** (2026-10-18, CLI only;
+  `docs/DECISIONS.md`, "T-F411, wave D"): a command and switch names in capitals, a switch before the
+  command (and `pakko -- x a.zip`), a repeated single switch is exit 7 (`-o` included), `-mx9`/`-mx`/
+  a level above 9, `-tZIP`, `-saa`. **1.8.2 CHANGELOG notes for wave D:** added — 7-Zip's spellings
+  (`X`, `-Y`, `-MX=9`, `-y x a.zip`, `-mx9`, `-tZIP`, `-saa`); changed — a switch given twice is a
+  command-line error (exit 7) except `-i`, `-x`, `-ai`, `-ax`, `-m`, `-stx`, where 1.8.1 took the last
+  one, and a second `-scrc` is refused. **Wave E** (2026-10-18, Core options; `docs/DECISIONS.md`,
+  "T-F411, wave E"): `-aot`, `-sdel`, `-spe`, `-mmt`, `-sse`, `-ssw`, `-stl`, `-w`; `-ssp` declined.
+  **1.8.2 CHANGELOG notes for wave E:** added - `-aot` (the file already there is renamed, the
+  extracted one takes its name), `-sdel` (as 7-Zip: only files unchanged since they were listed,
+  then empty folders; never a link, a volume root or the current folder; nothing of a source a
+  `-x` filter or a skip touched), `-spe` (drops the root folder named like `-o`'s last part), `-mmt`
+  (the ZIP writer's threads), `-sse` (no archive when a file cannot be read), `-ssw` (reads files
+  open for writing), `-stl` (the archive takes its newest file's time), `-w` (taken; the folder must
+  exist); `-ssp` is refused with its reason.
+- **Reported by:** T-F343's measurement, 2026-10-17.
+- **Result:** Core `ConflictBehavior.RenameExisting` (`ExtractionStaging.RenameExistingOnCommit`),
+  `ExtractOptions.DuplicateRootName`, `ArchiveOptions.MaxThreads`, `SetArchiveTimeFromNewestEntry`,
+  `ReadFilesOpenForWriting`, `StopOnUnreadableSource`; CLI `CliSourceDeleter`/`CliSourceSnapshot`.
+  `RenameExistingConflictTests`, `TarSandboxedServiceRenameExistingTests`,
+  `ZipArchiveServiceStopOnUnreadableTests`, `ZipArchiveServiceShareForWriteTests`,
+  `ArchiveTimeFromNewestEntryTests`, `CliCoreSwitchesTests`, `CliSourceDeleterTests`,
+  `CliCoreSwitchesSubprocessTests`; `docs/CLI.md`; smoke `CLI-040`, `CLI-041`.

@@ -1634,27 +1634,6 @@ re-measured with T-F346's script before and after.
   the new `Default`; a unit test on `CreationFormatOption`/the ViewModel for this order.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`POL-009`), 2026-10-16.
 
-### T-F411 — `pakko`: small 7-Zip switches and spellings (P3, from T-F343)
-
-- [ ] **Status:** open. Each is small and measured: a command in capitals (`X`) and a switch before
-  the command (`-y x a.zip`), both taken by 7-Zip, exit 7 in `pakko`; `-mx9` without `=` and
-  `-tZIP` in capitals; `-o` given twice (7-Zip: exit 7, `pakko`: the last wins); `-aot`; `-saa`,
-  `-sae`, `-sas` (patool passes `-sae`); `-sdel` (the App has "delete after"); `-spe` (with a name
-  filter too: a filtered extraction is a subset today, so Core skips ElimDup there; T-F410's DECISIONS entry) (Core has
-  `EliminateDuplicateRootFolder`); `-mmt` (the parallel ZIP writer's threads); `-sse`, `-ssp`,
-  `-ssw`, `-stl`, `-w`. One commit each, each against 7za with the T-F343 script.
-- **1.8.2 CHANGELOG notes** of the waves done so far are in T-F410's and T-F414's entries in
-  `TASKS_DONE.md` (both graduated 2026-10-18).
-- **Done so far** (2026-10-17, with T-F407): `-sae` and `-sas`. **Wave D** (2026-10-18, CLI only;
-  `docs/DECISIONS.md`, "T-F411, wave D"): a command and switch names in capitals, a switch before the
-  command (and `pakko -- x a.zip`), a repeated single switch is exit 7 (`-o` included), `-mx9`/`-mx`/
-  a level above 9, `-tZIP`, `-saa`. **1.8.2 CHANGELOG notes for wave D:** added — 7-Zip's spellings
-  (`X`, `-Y`, `-MX=9`, `-y x a.zip`, `-mx9`, `-tZIP`, `-saa`); changed — a switch given twice is a
-  command-line error (exit 7) except `-i`, `-x`, `-ai`, `-ax`, `-m`, `-stx`, where 1.8.1 took the last
-  one, and a second `-scrc` is refused. Still open (wave E, Core options): `-aot`, `-sdel`, `-spe`,
-  `-mmt`, `-sse`, `-ssp`, `-ssw`, `-stl`, `-w`.
-- **Reported by:** T-F343's measurement, 2026-10-17.
-
 ### T-F412 — `pakko l`: 7-Zip's list layout, `-slt`, and the inner tar of a `.tar.gz` (P3, from T-F343, decision first)
 
 - [ ] **Status:** open. Scoop runs `l` on a `.tar.*` and takes the inner `.tar` name with the regex

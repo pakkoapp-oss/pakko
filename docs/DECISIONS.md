@@ -13257,6 +13257,107 @@ the archive.
   refused, `CommitInto` without the callback, each engine without it, the locked file named, the
   merge naming twice, `Program.cs` without the stream, `-bt` and `-ba` code, and `-bb` set to 9.
 
+## T-F411, wave E: 7-Zip's switches that Core carries out (2026-10-18)
+
+- **Measured first** (vendored `7za.exe` 26.02; tree `s\a.txt`, `s\d\b.txt`):
+  - `x -aot` over `a.txt` renames it to `a_1.txt` and writes the new one as `a.txt`.
+  - `a -sdel`: files and folders go; `s\*` leaves an empty `s`; a read-only file goes; a missing
+    second source is exit 1 and the rest goes; `-xr!b.txt` keeps `b.txt` and `d\`; a junction
+    inside, or as the source, is followed and the files behind it are deleted; `-sdel` on `x` is
+    exit 0 and does nothing.
+  - `-sse`: a file without read access is exit 2 and no archive (without it exit 1 and the rest);
+    a missing source is exit 1 and the archive is written either way.
+  - `-ssw`: a file another process holds open for writing with `FileShare.ReadWrite` is a warning
+    without it, stored with it. `tar.exe` (`-cf`, `-a -cf .zip`, `--format=7zip`) reads such a
+    file without being asked, exit 0; a file locked with no sharing is `Couldn't open`, exit 1,
+    after which Pakko's tar engine already writes no archive (`exitCode != 0`).
+  - `-stl`: the archive takes the newest time of its files and folders (a folder of 2024 over
+    files of 2020/2021 gave 2024).
+  - `-spe`: `x spe.zip -oo\src -spe` drops the root `src`; also with `-x!src\a.txt` and
+    `-i!src\d\*`, with `-oo\src\` and `-oo\SRC`; a root that is a file named `src` stays; `-o.`
+    in a folder named `src` drops nothing; `-o..\src` drops it.
+  - `-mmt`, `-mmt=`, `-mmt=OFF`, `-mmt0`, `-MMT=2`, `-mmt99` exit 0; `-mmtON`, `-mmton`, `-mmt=-1`,
+    `-mmt99999999999`, `-mmt=abc` exit 2. `-w<missing folder>` on `a` is exit 2 and no archive, on
+    `x` exit 0; `-ssp` exit 0 on `a` and `x`.
+- **Source read** (7-Zip 26.02): `CPP/7zip/UI/Common/Update.cpp`, the `DeleteAfterCompressing`
+  pass at the end of `UpdateArchive`: each processed file of `dirItems` is deleted only when its
+  size, `MTime` and `CTime` equal those listed before archiving (`DeleteFileAlways`), then the
+  folders sorted by depth with `RemoveDirAlways_if_Empty`. `UpdateCallback.cpp`: `-sse`
+  (`StopAfterOpenError`) acts only on `OpenShared` failing; `-ssw` is `OpenShared(path,
+  ShareForWrite)`; `-stl` is `Need_LatestMTime`. `Extract.cpp`: `ElimDup` checks every item against
+  the last part of `-o` before the censor. `ArchiveCommandLine.cpp`: `sdel`, `sse`, `ssw`, `stl`,
+  `ssp` are `SWFRM_SIMPLE` (no postfix), `spe` is `SWFRM_MINUS`, `w` a string; `-w` is used for the
+  temporary archive (`ap.TempPrefix`).
+- **Decided (delegated by the user).**
+  - `-aot` is a new `ConflictBehavior.RenameExisting`, added last (no protocol carries the enum;
+    the App maps it by index with `_ => Skip`). Both extraction conflict sites are `if` chains
+    whose last case is an overwrite, so each handles the new value explicitly: against an earlier
+    entry of the same run (nothing on disk yet) the new file is renamed, as `Rename` does; against
+    a file on disk the path goes to `ExtractionStaging.RenameExistingOnCommit`. In the commit, for
+    each such file, the existing one is renamed to a name that is neither on disk nor claimed by
+    the run, the staged one is moved in without overwrite, and on failure the existing one gets
+    its name back; should that fail too, it stays under the numbered name, which is -aot's own
+    outcome, and the new file is reported locked. No new message code. The fast whole-folder move
+    is skipped while any rename is planned. Numbered as `-aou` numbers (`a (1).txt`, 7-Zip
+    `a_1.txt`); 7-Zip renames the first of two equal names in one archive, Pakko the second.
+  - `-sdel` stays in the CLI, with 7-Zip's model rather than a recursive folder delete (which
+    would take files changed or added while archiving): `CliSourceSnapshot` lists every file
+    (size, modification and creation time) and folder of the sources before archiving, without
+    entering a link; afterwards only the sources in `ArchiveResult.FullyProcessedSources` are
+    touched (any skip, error or filter makes a source `Partial`, T-F260/T-F410), unchanged files
+    are deleted permanently (read-only cleared), folders deepest first when empty. Differences
+    kept on purpose: with `-x` nothing of the source is deleted (Core does not report which files a
+    filter left out); a link is never entered or deleted; a volume root, or a source that is or
+    holds the current folder (`..`), is refused with exit 7 before anything is written; nothing
+    is deleted when the archive was not written in full (exit 2, or `-so` failing). Permanent,
+    not the Recycle Bin: the switch is explicit and scripted, as 7-Zip's. The App's
+    `ResolveFinalPath` is not needed: it picks the Recycle Bin by volume, and the CLI deletes the
+    very paths Core read.
+  - `-spe` is `ExtractOptions.DuplicateRootName`: decided over every entry before a selection or
+    filter (`ExtractionDestinationPlanner.AllEntriesUnderRoot`); the CLI passes `-o`'s last part as
+    typed, never resolved. `EliminateDuplicateRootFolder` (the archive's name, T-F205) is unchanged.
+  - `-mmt` is `ArchiveOptions.MaxThreads`: the parallel writer's window is `min(N, 16)`, one
+    allowed (its compute gate is released as each file's compression ends; the floor of 2 in
+    `ComputeWindowCapacity()` is only the default). SeparateArchives divides `N` the same way.
+  - `-sse` is `ArchiveOptions.StopOnUnreadableSource`, ZIP only (tar already stops): an error while
+    writing entries means the temporary archive is not committed, in both archive modes.
+  - `-ssw` is `ArchiveOptions.ReadFilesOpenForWriting`: every ZIP source open shares writing.
+    Checked: the in-memory and chunk paths take size and CRC from the bytes read, the sequential
+    writer's `ZipArchive` computes its own, and a file stored as it is (read twice, T-F357) fails
+    the archive with "changed while it was being archived" rather than writing a wrong entry.
+  - `-stl` is `ArchiveOptions.SetArchiveTimeFromNewestEntry`, done by `ArchiveCreationRouter` for
+    both engines from the sources as read from disk (`NewestSourceTime`, the same walk and filter);
+    SingleArchive only. A time that cannot be set leaves the written one (`FileTimes`).
+  - `-w` is taken on `a` with no effect beyond checking a named folder exists (exit 2 otherwise):
+    Pakko's temporary archive stays next to the destination so the commit is a rename.
+  - `-ssp` is declined (exit 7): `tar.exe` cannot keep the access time, and Windows mostly does not
+    update it.
+  - The `a`-only switches stay "not supported on this command" elsewhere (the three-way rule),
+    where 7za takes them silently.
+- **Tests and mutants.** Core: `RenameExistingConflictTests` (plain, selection, filter, T-F154's
+  unwrap, duplicates, cancel before the commit, a locked existing file, the new file not movable,
+  a numbered name still to come), `TarSandboxedServiceRenameExistingTests`, the `-spe` rows of
+  both root-folder test classes, `ZipArchiveServiceStopOnUnreadableTests`,
+  `ZipArchiveServiceShareForWriteTests`, `ArchiveTimeFromNewestEntryTests`, the `-mmt` window and
+  byte-equality tests; CLI: `CliCoreSwitchesTests`, `CliSourceDeleterTests`, and
+  `CliCoreSwitchesSubprocessTests` on the real exe. Mutants killed: each conflict site falling
+  into the overwrite, the commit without the rename, without the name given back, without the
+  run's claimed names (it took `readme (1)`, which the archive then overwrote - the test that
+  first passed by NTFS order was replaced); `-sdel` on `Sources` instead of fully processed ones,
+  without the "not written in full" guard, without either refusal, comparing size only, entering
+  links, without the emptiness check (a kept folder reported as a failure), an unlisted folder
+  taken as listed; `-spe` over the filtered entries, case-sensitive, without the separator test;
+  `-sse` in either mode; each `-ssw` open; `-stl` off, without the filter, files only, in
+  SeparateArchives. Survived, left: the staged file's move with `overwrite: true` after the
+  existing one was moved away (only a file appearing at that name in between reaches it); the
+  parallel writer's use of `WindowCapacity` (not observable without a hook).
+- **Compatibility totals** (`scripts/Measure-SevenZipCompat.ps1`, x64 build of the branch against
+  main's): works 53 -> 56, missing 42 -> 34, none worse. The eight switch probes `-aot`, `-mmt2`,
+  `-w`, `-ssw`, `-sse`, `-spe`, `-sdel`, `-stl` went from missing to accepted; `-ssp` stays missing
+  (declined). New cases: `x -spe` into a folder named like the root (ZIP, tar) and `a -mmt=off -stl
+  -ssw -sse` work; `x -aot` onto a file differs only in the renamed file's name (`readme_1.txt`
+  against `readme (1).txt`).
+
 ## T-F411, wave D: how `pakko` reads a command line, as 7-Zip does (2026-10-18)
 
 - **Measured first** (vendored `7za.exe` 26.02): `X a.zip`, `L`, `A` and `-y x a.zip` exit 0;

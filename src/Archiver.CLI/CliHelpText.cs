@@ -48,10 +48,14 @@ public static class CliHelpText
                            is declined; a file conflict prompts on a real
                            interactive console (Y/N/A/S/U/Q, like 7-Zip) and is
                            skipped when piped/scripted.
-          -ao{a|s|u}       Overwrite mode: a=overwrite, s=skip, u=auto-rename   (x)
+          -ao{a|s|u|t}     Overwrite mode: a=overwrite, s=skip, u=auto-rename   (x)
+                           the new file, t=auto-rename the existing one
           -snz[0|1]        Download mark: -snz/-snz1 (default) copies the       (x)
                            archive's "from the internet" mark to every file;
                            -snz0 leaves it off. Group Policy overrides both
+          -spe             Drop the archive's root folder when it is named     (x)
+                           like the last part of -o (-oout\src: src's content
+                           goes straight into out\src)
           -t<type>         Archive type: zip (default), 7z, tar, tar.gz,
                            tar.bz2, tar.xz, tar.zst, tar.lzma; or tgz, tbz2,
                            txz, tzst                                            (a)
@@ -67,6 +71,14 @@ public static class CliHelpText
           -rr[N]           Recovery data: PAR2 files next to the archive,      (a)
                            N percent of it, 1-100; bare -rr is 5. par2cmdline
                            and MultiPar can verify and repair with them too
+          -mmt[=N|on|off]  At most N files compressed at once (ZIP)            (a)
+          -sse             Write no archive when a file cannot be read (ZIP)   (a)
+          -ssw             Also read files open for writing (ZIP)              (a)
+          -stl             The archive takes its newest file's time            (a)
+          -sdel            Delete the sources once archived: files unchanged   (a)
+                           since they were listed, then empty folders; never
+                           a link, a volume root or the current folder
+          -w[dir]          Working folder: accepted; it must exist             (a)
           -scrc<method>    Hash method: CRC32 (default) or SHA256              (h)
           -si              Read the archive from stdin instead of a path       (x, t, l, h)
           -so              Write output to stdout instead of disk              (x, a)
