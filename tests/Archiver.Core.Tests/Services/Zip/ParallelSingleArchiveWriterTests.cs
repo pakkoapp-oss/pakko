@@ -185,10 +185,12 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         archive.Entries.Should().BeEmpty();
     }
 
-    [Fact]
-    public async Task RunPipelineAsync_NeverStartsMoreThanWindowCapacityItemsConcurrently()
+    // T-F411: 7-Zip's -mmt1 and -mmt=off give a window of one, below ComputeWindowCapacity's own floor of 2.
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task RunPipelineAsync_NeverStartsMoreThanWindowCapacityItemsConcurrently(int windowCapacity)
     {
-        const int windowCapacity = 2;
         FileWorkItem[] items = Enumerable.Range(0, 5)
             .Select(i => new FileWorkItem($"f{i}", $"f{i}.txt", FileWorkKind.File, 10, DateTime.Now))
             .ToArray();
@@ -234,6 +236,29 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
 
         using ZipArchive archive = ZipFile.OpenRead(archivePath);
         archive.Entries.Should().HaveCount(items.Length);
+    }
+
+    // T-F411: ArchiveOptions.MaxThreads (7-Zip's -mmt); 0 or less leaves the core count's own window.
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(3, 3)]
+    [InlineData(16, 16)]
+    [InlineData(17, 16)]
+    [InlineData(int.MaxValue, 16)]
+    public void ComputeWindowCapacity_WithAThreadLimit_IsThatLimitUpToSixteen(int maxThreads, int expected)
+    {
+        ParallelSingleArchiveWriter.ComputeWindowCapacity(maxThreads).Should().Be(expected);
+        new ParallelSingleArchiveWriter.CompressionSettings(CompressionLevel.Optimal) { MaxThreads = maxThreads }
+            .WindowCapacity.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ComputeWindowCapacity_WithoutAThreadLimit_FollowsTheCoreCount(int maxThreads)
+    {
+        ParallelSingleArchiveWriter.ComputeWindowCapacity(maxThreads)
+            .Should().Be(Math.Clamp(Environment.ProcessorCount, 2, 16));
     }
 
     [Fact]

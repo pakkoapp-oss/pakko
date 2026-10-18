@@ -703,6 +703,7 @@ static ArchiveOptions BuildArchiveOptions(
         SevenZipMethod = command.SevenZipMethod ?? SevenZipMethod.Lzma2,
         ResolvePasswordAsync = BuildNewPasswordResolver(command, prompt),
         RecoveryPercent = command.RecoveryPercent,
+        MaxThreads = command.MaxThreads,
     };
 }
 

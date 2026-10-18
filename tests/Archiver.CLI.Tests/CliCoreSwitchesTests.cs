@@ -50,6 +50,59 @@ public sealed class CliCoreSwitchesTests
         result.ErrorMessage.Should().Contain("not supported on this command");
     }
 
+    // --- -mmt: the ZIP writer's threads (7za 26.02: -mmt0 and -mmt= are taken, -mmtON and -mmt=-1 are not) ---
+
+    [Theory]
+    [InlineData("-mmt", 0)]
+    [InlineData("-mmt=", 0)]
+    [InlineData("-mmt=on", 0)]
+    [InlineData("-mmt=ON", 0)]
+    [InlineData("-mmt0", 0)]
+    [InlineData("-mmt=off", 1)]
+    [InlineData("-mmt=OFF", 1)]
+    [InlineData("-mmt1", 1)]
+    [InlineData("-mmt=4", 4)]
+    [InlineData("-MMT=2", 2)]
+    [InlineData("-mmt99", 99)]
+    public void Archive_ThreadCount_IsTaken(string token, int threads)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", token, "out.zip", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive, result.ErrorMessage);
+        result.MaxThreads.Should().Be(threads);
+    }
+
+    [Theory]
+    [InlineData("-mmtON")]
+    [InlineData("-mmton")]
+    [InlineData("-mmt=-1")]
+    [InlineData("-mmt=abc")]
+    [InlineData("-mmt99999999999")]
+    [InlineData("-mmt=4x")]
+    public void Archive_ThreadCountThatIsNotACount_IsRefused(string token)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", token, "out.zip", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain("-mmt");
+    }
+
+    [Fact]
+    public void Archive_ThreadCountWithTheLevel_BothTaken()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-mx9", "-mmt=2", "out.zip", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive, result.ErrorMessage);
+        result.MaxThreads.Should().Be(2);
+        result.CompressionLevel.Should().Be(System.IO.Compression.CompressionLevel.SmallestSize);
+    }
+
+    [Fact]
+    public void Archive_NoThreadCount_IsZero()
+    {
+        CliArgumentParser.Parse(["a", "out.zip", "f.txt"]).MaxThreads.Should().Be(0);
+    }
+
     // --- -ssp: declined (Pakko cannot keep the sources' last access time through tar.exe) ---
 
     [Theory]

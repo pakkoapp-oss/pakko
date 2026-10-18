@@ -195,6 +195,34 @@ public sealed class ZipArchiveServiceParallelPipelineTests : IDisposable
         VerifyEntryContent(zip, "file0050-large.bin", largeContent2);
     }
 
+    // T-F411: -mmt1 compresses one file at a time; the archive is the same bytes as with every core.
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    public async Task ArchiveAsync_ManyFiles_ThreadLimit_SameBytesAsWithoutOne(int maxThreads)
+    {
+        string sourceDir = CreateManyFilesDirectory("source", fileCount: 70);
+        byte[] largeContent = new byte[3 * 1024 * 1024];
+        new Random(2).NextBytes(largeContent);
+        File.WriteAllBytes(Path.Combine(sourceDir, "file0030-large.bin"), largeContent);
+
+        ArchiveResult limited = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [sourceDir], DestinationFolder = _temp.Path, ArchiveName = "limited",
+            CompressionLevel = CompressionLevel.Fastest, MaxThreads = maxThreads,
+        });
+        ArchiveResult unlimited = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [sourceDir], DestinationFolder = _temp.Path, ArchiveName = "unlimited",
+            CompressionLevel = CompressionLevel.Fastest,
+        });
+
+        limited.Errors.Should().BeEmpty();
+        File.ReadAllBytes(limited.CreatedFiles[0]).Should().Equal(File.ReadAllBytes(unlimited.CreatedFiles[0]));
+        using ZipArchive zip = ZipFile.OpenRead(limited.CreatedFiles[0]);
+        VerifyEntryContent(zip, "file0030-large.bin", largeContent);
+    }
+
     private static void VerifyEntryContent(ZipArchive zip, string entryName, byte[] expected)
     {
         ZipArchiveEntry entry = zip.Entries.Should().ContainSingle(e => e.Name == entryName).Subject;
