@@ -13306,6 +13306,9 @@ the archive.
   dropped, so Core's overlap refusal is left for a relative and an absolute source that meet
   (`a o.zip C:\other\dir dir\c.txt`). A drive root stays one source (Core's T-F285 listing).
   `CliNameSelection.BuildArchiveMasks` reads list files with the same reader as `x`.
+- **`scripts/Measure-SevenZipCompat.ps1` after** (published x64 `pakko`, after the closing review): works 45,
+  accepted 46, differs 22, missing 47, pakko-only 5, reference-fails 11; `a` with a missing source and
+  `a *.md -r` now "works" (both differed).
 - **Closing review** (a read-only reviewer against 7za, 2026-10-18), each fix with a test seen red
   first: a source renamed for a clash (`sub` -> `sub (1)`) could become the folder another source's
   name passes through (`sub (1)/z`), writing that entry twice in ZIP and tar (the names taken now
