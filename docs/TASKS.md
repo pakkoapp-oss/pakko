@@ -1680,3 +1680,32 @@ re-measured with T-F346's script before and after.
   bsdtar's `safe_fprintf` escapes a name, undo exactly that in the listing, and escape `\` in a
   `-T`/`-X` line by doubling it; then the App, `l`, a selection and a filter agree on the name.
 - **Reported by:** T-F410 wave B's closing review, 2026-10-18.
+
+### T-F419 — `pakko`: an adversarial test suite for every switch, written by a red-team agent (P2, part of T-F411 wave E, before PR #88 merges)
+
+- [ ] **Status:** in progress (2026-10-18, the user: in this wave). T-F411 wave E's independent reviewer found what every test missed: `-aot`
+  with a relative `-o` overwrote the user's file, exit 0 - all tests used an absolute folder. The
+  tests were written by the agent that wrote the code and shared its blind spots. Plan:
+  1. **Red team** (a fresh subagent on the strongest model, in its own worktree, given the repo and
+     `docs/CLI.md` only, never the plans or DECISIONS findings): for **every** switch and command in
+     CLI.md's switch table, write tests through the real exe (`Subprocess/`) that try to break it.
+     Priority to what changes or deletes user data: `-sdel`, `-aot`/`-aoa`/`-aou`/`-aos`, `-y`, `-o`,
+     `-spe`, `-so`/`-si`, `-rr`, `r`, `-p`, `-w`, names and masks on `a` and `x`.
+  2. **Attack classes**, each switch against each: path spellings (relative, `..`, `.\`, forward
+     slashes, trailing dot or space, `\\?\`, UNC, SUBST, 8.3 short names, `file:stream`, case,
+     reserved names, very long paths); links (junction, symlink, hard link, inside, as the source,
+     as `-o`, as a target); files changing, appearing or vanishing during the run; locked,
+     read-only, ACL-denied and in-use files and folders; Ctrl+C at each phase; full disk; hostile
+     values (huge, negative, empty, non-ASCII, control characters, RTL); switch combinations and
+     repeats (`-sdel -so`, `-aot -y`, `-spe -o.`, `-sdel` with masks and `-x`); the archive inside
+     a source or the destination; names colliding with the archive's own entries; 7za as the
+     oracle where it is safe to run.
+  3. **The rule for every test**: no case may lose, overwrite or delete a byte the user did not
+     ask to lose, or report success when it did; what differs from 7-Zip on purpose is pinned as a
+     test and named in CLI.md.
+  4. **Triage by the main agent**: a red test is a defect (fix, test-first, closing review) or a
+     wrong expectation (fixed in the test, reason in DECISIONS); nothing silenced. A second red-team
+     pass on the fixes.
+  5. Tests in `tests/Archiver.CLI.Tests/Adversarial/`, in the default run while they stay fast; a
+     destructive case works only inside its own scratch folder (asserted before the exe runs).
+- **Reported by:** the user, 2026-10-18, after T-F411 wave E's review.
