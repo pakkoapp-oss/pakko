@@ -50,3 +50,6 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   suspect) — rerun; `Deploy.ps1` tolerates it when a valid fresh `.msix` exists (T-F96). If the
   folder stays stuck even across a reboot, clean `src/Archiver.App/obj\`; every Deploy run already
   packages a new revision, so the output folder name is fresh (T-F368).
+- **`MSB4018` "GenerateDepsFile" with `Archiver.Core.deps.json` "being used by another process"**
+  (2026-10-18, three Deploy runs in a row): `dotnet build-server shutdown` alone did not clear it;
+  deleting `src/Archiver.Core/bin/x64/Release/net10.0/win-x64` and rerunning did.
