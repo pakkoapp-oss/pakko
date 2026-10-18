@@ -79,6 +79,55 @@ public sealed class ExtractedItemReportTests : IDisposable
         named.Should().NotContain(locked).And.Contain(Path.Combine(actualDest, "Sub", "nested1.txt"));
     }
 
+    // T-F419: a junction already in the destination is not a way out of it; the destination itself may be one.
+    [Fact]
+    public void CommitInto_JunctionInsideTheDestination_IsNotEnteredAndIsListed()
+    {
+        using ExtractionStaging staging = StagingWithSubFolder();
+        string actualDest = Path.Combine(_temp.Path, "out");
+        string outside = Path.Combine(_temp.Path, "outside");
+        Directory.CreateDirectory(actualDest);
+        Directory.CreateDirectory(outside);
+        File.WriteAllText(Path.Combine(outside, "nested1.txt"), "precious");
+        string junction = Path.Combine(actualDest, "Sub");
+        ZipArchiveServiceArchiveTests.TryCreateJunction(junction, outside).Should().BeTrue();
+        var named = new List<string>();
+        try
+        {
+            staging.CommitInto(actualDest, committed: named.Add).Should().BeEmpty();
+
+            File.ReadAllText(Path.Combine(outside, "nested1.txt")).Should().Be("precious");
+            staging.LeftOutThroughLink.Should().BeEquivalentTo("Sub" + Sep, Path.Combine("Sub", "nested1.txt"));
+            named.Should().Equal(Path.Combine(actualDest, "loose1.txt"));
+        }
+        finally
+        {
+            // TempDirectory's recursive delete cannot remove a junction.
+            Directory.Delete(junction, recursive: false);
+        }
+    }
+
+    [Fact]
+    public void CommitInto_DestinationIsAJunction_IsWrittenThrough()
+    {
+        using ExtractionStaging staging = StagingWithSubFolder();
+        string real = Path.Combine(_temp.Path, "real");
+        string actualDest = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(real);
+        ZipArchiveServiceArchiveTests.TryCreateJunction(actualDest, real).Should().BeTrue();
+        try
+        {
+            staging.CommitInto(actualDest).Should().BeEmpty();
+
+            staging.LeftOutThroughLink.Should().BeEmpty();
+            File.ReadAllText(Path.Combine(real, "Sub", "nested1.txt")).Should().Be("nested1");
+        }
+        finally
+        {
+            Directory.Delete(actualDest, recursive: false);
+        }
+    }
+
     private ExtractionStaging StagingWithSubFolder()
     {
         var staging = ExtractionStaging.Create(_temp.Path);

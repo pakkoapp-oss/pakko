@@ -28,6 +28,11 @@ internal sealed class ExtractionStaging : IDisposable
 
     private readonly HashSet<string> _renameExisting = new(StringComparer.OrdinalIgnoreCase);
     private HashSet<string>? _claimedFinalPaths;
+    private readonly List<string> _leftOutThroughLink = [];
+
+    /// <summary>T-F419: what <see cref="CommitInto"/> left out because its path in the destination
+    /// passes through a link already there, relative to the destination (a folder ends with a separator).</summary>
+    public IReadOnlyList<string> LeftOutThroughLink => _leftOutThroughLink;
 
     /// <summary>T-F411: <see cref="Models.ConflictBehavior.RenameExisting"/> - the file at
     /// <paramref name="finalPath"/> is renamed in the commit, just before the staged one takes its
@@ -133,6 +138,11 @@ internal sealed class ExtractionStaging : IDisposable
         foreach (string folder in folders ?? StagedFolders())
         {
             string finalFolder = Destination(actualDest, folder);
+            if (ReachesThroughLink(finalFolder, actualDest))
+            {
+                _leftOutThroughLink.Add(FolderName(System.IO.Path.GetRelativePath(Path, folder)));
+                continue;
+            }
             Directory.CreateDirectory(finalFolder);
             committed?.Invoke(FolderName(finalFolder));
         }
@@ -162,6 +172,11 @@ internal sealed class ExtractionStaging : IDisposable
         {
             string relative = System.IO.Path.GetRelativePath(Path, file);
             string finalFile = System.IO.Path.Combine(actualDest, relative);
+            if (ReachesThroughLink(System.IO.Path.GetDirectoryName(finalFile)!, actualDest))
+            {
+                _leftOutThroughLink.Add(relative);
+                continue;
+            }
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(finalFile)!);
             if (_renameExisting.Contains(System.IO.Path.GetFullPath(finalFile)))
             {
@@ -230,6 +245,22 @@ internal sealed class ExtractionStaging : IDisposable
                 || (_claimedFinalPaths?.Contains(path) ?? false);
         });
         return System.IO.Path.Combine(folder, name);
+    }
+
+    // T-F419: T-F37's check covers the staging folder only; a junction or symlink already inside
+    // the destination would carry the commit outside it (7-Zip follows one too). The destination
+    // itself may be a link: the user chose it.
+    private static bool ReachesThroughLink(string folder, string actualDest)
+    {
+        int rootLength = System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(actualDest)).Length;
+        for (string? current = System.IO.Path.GetFullPath(folder);
+             current is not null && current.Length > rootLength;
+             current = System.IO.Path.GetDirectoryName(current))
+        {
+            if (ArchiveEntrySecurity.IsReparsePoint(current))
+                return true;
+        }
+        return false;
     }
 
     private List<string> StagedFolders() => [.. Directory.EnumerateDirectories(Path, "*", SearchOption.AllDirectories)];
