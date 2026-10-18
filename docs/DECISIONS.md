@@ -13357,6 +13357,20 @@ the archive.
   (declined). New cases: `x -spe` into a folder named like the root (ZIP, tar) and `a -mmt=off -stl
   -ssw -sse` work; `x -aot` onto a file differs only in the renamed file's name (`readme_1.txt`
   against `readme (1).txt`).
+- **Closing review** (advisor, then a read-only reviewer on the strongest model with the user's
+  yes). Fixed:
+  - **`-aot` lost the existing file with a relative `-o`** (high; both engines, exit 0). The claimed
+    names are full paths, the commit's were built on `-o` as typed, so `README` was moved to
+    `README (1)` and the archive's own `README (1)` then overwrote it. The commit now compares full
+    paths (`ExtractionStaging.FreeNameBeside`); the earlier test used an absolute folder and could
+    not see it. Tests: `Extract_RenameExistingWithARelativeOutput_KeepsTheExistingFile` on the real
+    exe, `CommitInto_DestinationNotCanonical_StillAvoidsClaimedNames`, both seen red first.
+  - A numbered name held by a folder failed the entry as "locked"; a folder now counts as taken.
+  - `-stl`'s step after the engine could throw on a cancel or an unreadable source once the archive
+    was committed; it is best-effort now and runs without the token. The router's other step after
+    the engine (removing earlier PAR2 sets, T-F275) keeps its cancellation, as the contract allows.
+  - `docs/CLI.md`: `-sdel` keeps every source when anything in the archive was skipped (Core judges
+    one archive as a whole), and an added file is left without a warning.
 
 ## T-F411, wave D: how `pakko` reads a command line, as 7-Zip does (2026-10-18)
 
