@@ -567,17 +567,29 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
     using var progress = CliProgress.For(command.Output, command.WriteToStdout);
     try
     {
+        // T-F414: a name that adds nothing is a warning (exit 1), as in 7-Zip; with nothing left
+        // there is no archive (Pakko never writes an empty one), exit 2.
+        CliArchiveSourceList sources = CliArchiveSources.Resolve(command.SourcePaths, Environment.CurrentDirectory, command.ArchivePathArg!);
+        foreach (CliSourceProblem problem in sources.Problems)
+            await Console.Error.WriteLineAsync($"pakko: warning: {problem.Name}: {problem.Reason}").ConfigureAwait(false);
+        if (sources.Sources.Count == 0)
+        {
+            await Console.Error.WriteLineAsync("pakko: error: nothing to archive").ConfigureAwait(false);
+            return 2;
+        }
+        int sourcesCode = sources.Problems.Count > 0 ? 1 : 0;
+
         IArchiveCreationRouter router = services.CreationRouter;
 
         using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
         StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt = new();
-        ArchiveOptions options = BuildArchiveOptions(command, ResolveArchiveDestination(command, stdoutFolder), prompt);
+        ArchiveOptions options = BuildArchiveOptions(command, sources, ResolveArchiveDestination(command, stdoutFolder), prompt);
 
         ArchiveResult result = await router.ArchiveAsync(options, progress, cancellation.Token).ConfigureAwait(false);
         progress?.Clear();
         if (ReportNewPasswordPromptOutcome(prompt.Value) is { } promptExitCode)
             return promptExitCode;
-        int code = await ReportAndStreamAsync(result, stdoutFolder, new CliReportContext(), cancellation.Token).ConfigureAwait(false);
+        int code = Math.Max(sourcesCode, await ReportAndStreamAsync(result, stdoutFolder, new CliReportContext(), cancellation.Token).ConfigureAwait(false));
 
         // T-F325: the archive is complete but not where the caller will look for it - exit 1.
         string requestedPath = Path.Combine(options.DestinationFolder, ArchiveNaming.SingleArchiveFileName(options));
@@ -615,13 +627,14 @@ static string ResolveArchiveDestination(ParsedCliCommand command, CliStagingFold
 // exactly as typed ("-ttar x.gz" makes a tar named x.gz); a name without one gets the format's,
 // unless -sae says to write it as typed (T-F411).
 static ArchiveOptions BuildArchiveOptions(
-    ParsedCliCommand command, string destFolder, StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt)
+    ParsedCliCommand command, CliArchiveSourceList sources, string destFolder, StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt)
 {
     string fileName = Path.GetFileName(command.ArchivePathArg!);
     bool hasExtension = command.ArchiveNameExact || fileName.Contains('.'); // T-F294: ".gz" too, as 7-Zip writes it
     return new()
     {
-        SourcePaths = command.SourcePaths,
+        SourcePaths = [.. sources.Sources.Select(source => source.FullPath)],
+        SourceNameParts = [.. sources.Sources.Select(source => source.NameParts)],
         DestinationFolder = destFolder,
         ArchiveName = hasExtension ? null : fileName,
         ExactFileName = hasExtension ? fileName : null,

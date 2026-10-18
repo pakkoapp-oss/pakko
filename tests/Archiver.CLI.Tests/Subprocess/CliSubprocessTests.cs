@@ -992,10 +992,10 @@ public sealed class CliSubprocessTests
         archive.Entries.Select(e => e.Name).Should().BeEquivalentTo("a.txt", "b.txt");
     }
 
-    // T-F338: "." is the current folder, archived under its own name as 7-Zip does - the entries
-    // were "./a.txt".
+    // T-F338: the entries were "./a.txt". T-F414: "." is the current folder's contents, each at the
+    // top of the archive, as 7-Zip stores them (T-F338 had named them by the folder).
     [Fact]
-    public void Archive_DotAsSource_NamesEntriesByTheCurrentFolder()
+    public void Archive_DotAsSource_StoresTheCurrentFoldersContentsAtTheTop()
     {
         string sourceDir = Path.Combine(CliFixtureFiles.CreateScratchDir(), "proj");
         Directory.CreateDirectory(Path.Combine(sourceDir, "sub"));
@@ -1007,11 +1007,11 @@ public sealed class CliSubprocessTests
 
         exitCode.Should().Be(0, stdErr);
         using ZipArchive archive = ZipFile.OpenRead(outputZip);
-        archive.Entries.Select(e => e.FullName).Should().BeEquivalentTo("proj/a.txt", "proj/sub/b.txt");
+        archive.Entries.Select(e => e.FullName).Should().BeEquivalentTo("a.txt", "sub/b.txt");
     }
 
     [RequiresTarExe]
-    public void Archive_DotAsSourceToTar_NamesEntriesByTheCurrentFolder()
+    public void Archive_DotAsSourceToTar_StoresTheCurrentFoldersContentsAtTheTop()
     {
         string sourceDir = Path.Combine(CliFixtureFiles.CreateScratchDir(), "proj");
         Directory.CreateDirectory(sourceDir);
@@ -1023,7 +1023,7 @@ public sealed class CliSubprocessTests
         exitCode.Should().Be(0, stdErr);
         (_, string tarStdOut, _) = RunTarExe("-tf", outputTar);
         tarStdOut.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Should().Contain("proj/a.txt").And.OnlyContain(name => name.StartsWith("proj/"));
+            .Should().Equal("a.txt");
     }
 
     [RequiresTarExe]
