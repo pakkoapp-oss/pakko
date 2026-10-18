@@ -13296,6 +13296,10 @@ the archive.
   case, a fold through `ToUpperInvariant`. A fold through `ToLowerInvariant` stayed green and is
   equivalent here: .NET maps U+0130 to itself, and the one other letter it lowers to ASCII, the
   Kelvin sign, lowers to `k`, which no switch name holds.
+- **`scripts/Measure-SevenZipCompat.ps1`** (published x64 `pakko`), against wave C's: works 45 -> 53
+  (three of the cases are new: `-y -- x`, `-MX=9`, `-saa`), accepted 46 -> 47, differs 22 -> 21,
+  missing 47 -> 42, pakko-only 5, reference-fails 11; none got worse (`-O -Y -AOA` "works": exit 7
+  in both, on the postfix letter).
 - **Left for wave E** (Core options, measured the same day, `scratchpad` notes copied into its
   plan): `-aot`, `-sdel`, `-spe` (7-Zip drops the root folder named like the last part of `-o`, not
   like the archive, `Extract.cpp` 26.02), `-mmt`, `-sse`, `-ssw`, `-stl`, `-ssp`, `-w`.
