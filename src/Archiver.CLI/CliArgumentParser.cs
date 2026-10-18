@@ -167,7 +167,7 @@ public static class CliArgumentParser
     }
 
     private const string NameSwitchesOnlyOnExtractReason =
-        "not supported on this command: name filters (-i, -x, -r, -ai, -ax, -an, -spd, -ssc, -scs) work on 'x' and 'l', archive names (-ai, -ax, -an) also on 't'";
+        "not supported on this command: name filters (-i, -x, -r, -ai, -ax, -an, -spd, -ssc, -scs) work on 'x', 'l' and 't'";
 
     // T-F410: as in 7-Zip, the first name is the archive (none with -si or -an) and every other
     // name filters the entries inside it. The command parsers collect every name as FilterNames.
@@ -184,8 +184,6 @@ public static class CliArgumentParser
             return Invalid($"'{verb}' requires at least one archive path");
 
         List<CliFilterName> filters = [.. names.Skip(archiveNamed ? 1 : 0)];
-        if (command.Type == CliCommandType.Test && (filters.Count > 0 || nameSwitches.FiltersNames))
-            return Invalid("not supported on 't' yet: names after the archive and -i, -x, -r filter what 'x' and 'l' read; 't' tests the whole archive");
         return command with
         {
             ArchivePaths = archiveNamed ? [names[0].Text] : [],

@@ -109,8 +109,8 @@ public sealed class CliNameSwitchesTests
     [Theory]
     [InlineData("-x!*.nsis")]
     [InlineData("-r")]
-    public void Test_NameFilter_IsRefusedUntilTFiltersExist(string token) =>
-        CliArgumentParser.Parse(["t", "a.zip", token]).ErrorMessage.Should().Contain("'t'");
+    public void Test_NameFilter_IsTaken(string token) =>
+        CliArgumentParser.Parse(["t", "a.zip", token]).Type.Should().Be(CliCommandType.Test);
 
     [Theory]
     [InlineData("a", "-x!*.tmp")]
