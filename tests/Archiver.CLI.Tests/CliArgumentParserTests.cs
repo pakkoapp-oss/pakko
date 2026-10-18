@@ -135,13 +135,14 @@ public sealed class CliArgumentParserTests
     }
 
     [Fact]
-    public void Test_NameAfterTheArchive_IsRefusedUntilTFiltersExist()
+    public void Test_NameAfterTheArchive_IsAFilter()
     {
-        // T-F410 wave A: 7-Zip reads b.zip as a filter; Pakko's t cannot filter yet, and says so.
+        // T-F410 wave B: as on x, 7-Zip reads b.zip as a name inside a.zip.
         ParsedCliCommand result = CliArgumentParser.Parse(["t", "a.zip", "b.zip"]);
 
-        result.Type.Should().Be(CliCommandType.Invalid);
-        result.ErrorMessage.Should().Contain("'t'");
+        result.Type.Should().Be(CliCommandType.Test, result.ErrorMessage);
+        result.ArchivePaths.Should().Equal("a.zip");
+        result.FilterNames.Should().Equal(new CliFilterName("b.zip", false));
     }
 
     [Fact]

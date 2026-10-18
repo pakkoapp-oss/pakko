@@ -143,13 +143,84 @@ public sealed class CliNameFilterSubprocessTests
         stdErr.Should().Contain("listfile");
     }
 
+    // T-F410 wave B: t takes the same filters (7za 26.02: a damaged entry the filter leaves out is
+    // not reported; nothing passing is "No files to process", exit 0).
     [Fact]
-    public void Test_WithANameFilter_IsRefused()
+    public void Test_DamagedEntry_FailsTheWholeArchive()
     {
-        (int exitCode, _, string stdErr) = CliProcessRunner.Run("t", Zip(), "-xr!*.nsis");
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("t", DamagedZip());
 
-        exitCode.Should().Be(7);
-        stdErr.Should().Contain("'t'");
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("d.nsis");
+    }
+
+    [Fact]
+    public void Test_ScoopExclude_LeavesOutTheDamagedEntry()
+    {
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("t", DamagedZip(), "-xr!*.nsis");
+
+        exitCode.Should().Be(0, stdErr);
+    }
+
+    [Fact]
+    public void Test_NameAfterTheArchive_TestsOnlyIt()
+    {
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("t", DamagedZip(), "dir\\sub\\d.nsis");
+
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("d.nsis");
+    }
+
+    [Fact]
+    public void Test_NothingMatches_SaysSoAndPasses()
+    {
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", DamagedZip(), "nothing.zzz");
+
+        exitCode.Should().Be(0, stdErr);
+        stdOut.Should().Contain("No files to process");
+    }
+
+    [Fact]
+    public void Test_NothingMatchesInATar_HasNoStructureOnlyWarning()
+    {
+        // A plain tar's test always says only the structure was checked (exit 1); nothing was read here.
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", Tar(), "nothing.zzz");
+
+        exitCode.Should().Be(0, stdErr);
+        stdOut.Should().Contain("No files to process");
+    }
+
+    [Fact]
+    public void Test_FilterOnATar_TestsWhatPasses()
+    {
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("t", Tar(), "-xr!*.nsis");
+
+        exitCode.Should().Be(1, "a plain tar's test checks only the structure: " + stdErr);
+    }
+
+    // The tree, every entry stored, with one byte of dir/sub/d.nsis's content flipped: only that
+    // entry's CRC-32 fails.
+    private static string DamagedZip()
+    {
+        string path = Path.Combine(CliFixtureFiles.CreateScratchDir(), "damaged.zip");
+        using (ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create))
+        {
+            foreach (string entry in Entries)
+            {
+                ZipArchiveEntry created = archive.CreateEntry(entry, CompressionLevel.NoCompression);
+                if (!entry.EndsWith('/'))
+                {
+                    using var writer = new StreamWriter(created.Open());
+                    writer.Write(entry == "dir/sub/d.nsis" ? "damaged-entry-payload" : entry);
+                }
+            }
+        }
+        byte[] bytes = File.ReadAllBytes(path);
+        int at = bytes.AsSpan().IndexOf("damaged-entry-payload"u8);
+        at.Should().BePositive();
+        bytes[at] ^= 0xFF;
+        File.WriteAllBytes(path, bytes);
+        return path;
     }
 
     private static string Zip()
