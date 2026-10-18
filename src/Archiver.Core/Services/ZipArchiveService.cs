@@ -226,7 +226,11 @@ public sealed class ZipArchiveService : IArchiveService
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password) { EntryNames = run.Names };
+        var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password)
+        {
+            EntryNames = run.Names,
+            MaxThreads = options.MaxThreads,
+        };
         bool useParallelPipeline = UsesParallelWriter(settings, totalFileCount, totalSourceBytes, largestFileBytes,
             ArchiveEntrySecurity.GetAvailableFreeSpace(options.DestinationFolder),
             () => run.HasNoSeekPenalty(options.DestinationFolder) && sortedSourcePaths.TrueForAll(p => run.HasNoSeekPenalty(p)));
@@ -409,9 +413,13 @@ public sealed class ZipArchiveService : IArchiveService
         var progressContext = new SeparateArchiveProgressContext(totalSourceBytes, [0], progress);
 
         // T-F193/T-F299: an archive written by ParallelSingleArchiveWriter already compresses with
-        // up to ComputeWindowCapacity() workers of its own — divide the outer parallelism so the
-        // two levels together stay near the core count instead of multiplying.
-        var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password) { EntryNames = run.Names };
+        // up to its WindowCapacity workers of its own — divide the outer parallelism so the two
+        // levels together stay near the core count (or -mmt's limit, T-F411) instead of multiplying.
+        var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password)
+        {
+            EntryNames = run.Names,
+            MaxThreads = options.MaxThreads,
+        };
         if (settings.RequiresHandRolledWriter)
         {
             settings = settings with
@@ -419,9 +427,10 @@ public sealed class ZipArchiveService : IArchiveService
                 OneLargeFileAtATime = AnyDiskHasSeekPenalty(run.HasSeekPenalty, options.DestinationFolder, sortedSourcePaths),
             };
         }
+        int threadBudget = options.MaxThreads > 0 ? options.MaxThreads : Environment.ProcessorCount;
         int degreeOfParallelism = settings.RequiresHandRolledWriter
-            ? Math.Max(1, Environment.ProcessorCount / Zip.ParallelSingleArchiveWriter.ComputeWindowCapacity())
-            : Environment.ProcessorCount;
+            ? Math.Max(1, threadBudget / settings.WindowCapacity)
+            : threadBudget;
 
         await Parallel.ForEachAsync(
             plans.Where(p => p.DestPath is not null),

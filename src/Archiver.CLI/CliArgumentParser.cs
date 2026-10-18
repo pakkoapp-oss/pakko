@@ -53,6 +53,7 @@ public sealed record ParsedCliCommand
     public int RecoveryPercent { get; init; }                         // -rr[N], a only (T-F275); 0 = no PAR2 files
     public CliArchiveNameMode ArchiveNameMode { get; init; }          // -sas/-sae/-saa, a only (T-F411)
     public string? WorkingFolder { get; init; }                       // -w[dir], a only (T-F411); "" = bare -w, null = not given
+    public int MaxThreads { get; init; }                              // -mmt[N|on|off], a only (T-F411); 0 = the core count
     public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
     public CliNameSwitches NameSwitches { get; init; } = new();       // -i/-x/-r/-spd/-ssc/-scs/-ai/-ax/-an, x/l/t (T-F410)
     public IReadOnlyList<CliFilterName> FilterNames { get; init; } = []; // x/l/t: the names after the archive name; a: its sources (T-F410)
@@ -588,6 +589,7 @@ public static class CliArgumentParser
         public int RecoveryPercent { get; set; }
         public CliArchiveNameMode ArchiveNameMode { get; set; }
         public string? WorkingFolder { get; set; }
+        public int MaxThreads { get; set; }
     }
 
     private static ParsedCliCommand ParseArchive(CliToken[] rest)
@@ -622,6 +624,7 @@ public static class CliArgumentParser
             RecoveryPercent = state.RecoveryPercent,
             ArchiveNameMode = state.ArchiveNameMode,
             WorkingFolder = state.WorkingFolder,
+            MaxThreads = state.MaxThreads,
         };
     }
 
@@ -711,6 +714,12 @@ public static class CliArgumentParser
             return null;
         }
 
+        if (token.StartsWith("-mmt", StringComparison.Ordinal))
+        {
+            (state.MaxThreads, string? error) = ParseThreadCount(token);
+            return error;
+        }
+
         if (token.StartsWith("-mem", StringComparison.Ordinal))
             return EncryptionMethodError(token);
 
@@ -723,7 +732,25 @@ public static class CliArgumentParser
         if (token.Length > 2 && char.IsAsciiDigit(token[2]))
             return $"not supported by Pakko: {token[..3]} — a 7z archive is written with one method, named by -m0=<method>";
 
-        return "not supported by Pakko: of 7z's -m{params}, only -mx=<0-9>, -mem=AES256 and -m0=<method> (with -t7z) are implemented";
+        return "not supported by Pakko: of 7z's -m{params}, only -mx=<0-9>, -mmt=<N>, -mem=AES256 and -m0=<method> (with -t7z) are implemented";
+    }
+
+    // T-F411: 7-Zip's -mmt (measured on 7za 26.02): bare, "=", "=on" and "0" follow the core count,
+    // "=off" is one thread, a number with or without "=" is that many; "on" without "=", a sign or
+    // a number past UInt32 is refused. on/off without case, as 7-Zip reads them.
+    private static (int Threads, string? Error) ParseThreadCount(string token)
+    {
+        string value = token[4..];
+        bool hasEquals = value.StartsWith('=');
+        if (hasEquals)
+            value = value[1..];
+        if (value.Length == 0)
+            return (0, null);
+        if (hasEquals && CliSwitchNames.ToLowerAscii(value) is "on" or "off")
+            return (value.Length == 3 ? 1 : 0, null);
+        if (value.All(char.IsAsciiDigit) && uint.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out uint threads))
+            return ((int)Math.Min(threads, (uint)int.MaxValue), null);
+        return (0, $"-mmt takes a thread count (-mmt, -mmt4, -mmt=4, -mmt=on or -mmt=off), got '{token[4..]}'");
     }
 
     // T-F411: 7-Zip reads a property's name without case (-MX=9, -mEM=AES256); its value as typed.

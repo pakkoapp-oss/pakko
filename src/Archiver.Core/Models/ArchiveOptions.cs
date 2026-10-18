@@ -47,6 +47,13 @@ public sealed record ArchiveOptions
     public SevenZipMethod SevenZipMethod { get; init; } = SevenZipMethod.Lzma2;
 
     /// <summary>
+    /// T-F411: at most this many files are compressed at once by the ZIP engine (7-Zip's -mmt),
+    /// up to 16; 0 or less follows the core count. The archive's bytes do not depend on it. The
+    /// tar-family formats and 7z are written by tar.exe, which this does not reach.
+    /// </summary>
+    public int MaxThreads { get; init; }
+
+    /// <summary>
     /// T-F06: invoked once per conflicting destination path when <see cref="OnConflict"/> is
     /// <see cref="ConflictBehavior.Ask"/>. Null (e.g. Archiver.Shell, or a test that doesn't wire
     /// it) falls back to Skip — see ConflictResolver.

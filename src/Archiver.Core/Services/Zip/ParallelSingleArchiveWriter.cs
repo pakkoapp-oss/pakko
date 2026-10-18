@@ -47,6 +47,11 @@ internal static class ParallelSingleArchiveWriter
 
     public static int ComputeWindowCapacity() => Math.Clamp(Environment.ProcessorCount, 2, 16);
 
+    /// <summary>T-F411: <see cref="ArchiveOptions.MaxThreads"/>'s window - one is allowed (the
+    /// compute gate is released as each file's compression ends, not when it is written).</summary>
+    public static int ComputeWindowCapacity(int maxThreads) =>
+        maxThreads > 0 ? Math.Min(maxThreads, 16) : ComputeWindowCapacity();
+
     /// <summary>
     /// How each file entry is encoded. A non-null <see cref="Password"/> (T-F193) wraps every file
     /// entry in WinZip AES-256 (AE-2); directory placeholders carry no data and stay unencrypted.
@@ -74,6 +79,11 @@ internal static class ParallelSingleArchiveWriter
         public SourceEntryNames? EntryNames { get; init; }
 
         public SourceEntryNames Names => EntryNames ?? SourceEntryNames.OwnNames;
+
+        /// <summary>T-F411: <see cref="ArchiveOptions.MaxThreads"/>; 0 follows the core count.</summary>
+        public int MaxThreads { get; init; }
+
+        public int WindowCapacity => ComputeWindowCapacity(MaxThreads);
 
         public string NameOf(string sourcePath) => Names.For(sourcePath);
     }
@@ -203,7 +213,7 @@ internal static class ParallelSingleArchiveWriter
                     tempPath, items,
                     (item, ct) => CompressEligibleFileAsync(item, settings, tracker, ct),
                     compressToTempFile,
-                    ComputeWindowCapacity(), totalBytes, progress, callbacks.ReportError, cancellationToken)
+                    settings.WindowCapacity, totalBytes, progress, callbacks.ReportError, cancellationToken)
                 .ConfigureAwait(false);
         }
         finally
