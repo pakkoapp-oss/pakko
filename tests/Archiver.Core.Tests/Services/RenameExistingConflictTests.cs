@@ -214,6 +214,43 @@ public sealed class RenameExistingConflictTests : IDisposable
         Directory.GetFiles(dest).Select(Path.GetFileName).Should().Equal("a.txt");
     }
 
+    // Review finding: a folder with the numbered name is taken too, not a target to fail on.
+    [Fact]
+    public void CommitInto_NumberedNameIsAFolder_ExistingTakesTheNextName()
+    {
+        string dest = CreateDest(("a.txt", "old"));
+        Directory.CreateDirectory(Path.Combine(dest, "a (1).txt"));
+        using var staging = ExtractionStaging.Create(_temp.Path);
+        File.WriteAllText(Path.Combine(staging.Path, "a.txt"), "new");
+        var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Path.Combine(dest, "a.txt") };
+        staging.RenameExistingOnCommit(Path.Combine(dest, "a.txt"), claimed);
+
+        staging.CommitInto(dest).Should().BeEmpty();
+
+        Read(dest, "a.txt").Should().Be("new");
+        Read(dest, "a (2).txt").Should().Be("old");
+    }
+
+    // The destination as a caller may give it, not resolved: claimed names are full paths.
+    [Fact]
+    public void CommitInto_DestinationNotCanonical_StillAvoidsClaimedNames()
+    {
+        string dest = CreateDest(("readme", "old"));
+        using var staging = ExtractionStaging.Create(_temp.Path);
+        File.WriteAllText(Path.Combine(staging.Path, "readme"), "new");
+        File.WriteAllText(Path.Combine(staging.Path, "readme (1)"), "from archive");
+        var claimed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { Path.Combine(dest, "readme"), Path.Combine(dest, "readme (1)") };
+        staging.RenameExistingOnCommit(Path.Combine(dest, "readme"), claimed);
+        string nonCanonical = dest.Replace('\\', '/') + "/./";
+
+        staging.CommitInto(nonCanonical).Should().BeEmpty();
+
+        Read(dest, "readme").Should().Be("new");
+        Read(dest, "readme (1)").Should().Be("from archive");
+        Read(dest, "readme (2)").Should().Be("old");
+    }
+
     [Fact]
     public void CommitInto_RenameExistingWithNothingThere_MovesTheNewFileIn()
     {

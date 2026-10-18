@@ -198,7 +198,7 @@ internal sealed class ExtractionStaging : IDisposable
         {
             if (File.Exists(finalFile))
             {
-                movedAway = ArchiveNaming.GetUniqueFilePath(finalFile, _claimedFinalPaths);
+                movedAway = FreeNameBeside(finalFile);
                 File.Move(finalFile, movedAway);
             }
             File.Move(staged, finalFile);
@@ -214,6 +214,22 @@ internal sealed class ExtractionStaging : IDisposable
             }
             return false;
         }
+    }
+
+    // The claimed paths are full paths, while the destination may come as the caller typed it
+    // (a relative -o): compare full paths, or a name the archive still writes looks free and the
+    // archive's own file later overwrites the one moved there. A folder of that name is taken too.
+    private string FreeNameBeside(string finalFile)
+    {
+        string full = System.IO.Path.GetFullPath(finalFile);
+        string folder = System.IO.Path.GetDirectoryName(full)!;
+        string name = ArchiveNaming.GetUniqueName(System.IO.Path.GetFileName(full), candidate =>
+        {
+            string path = System.IO.Path.Combine(folder, candidate);
+            return path.Equals(full, StringComparison.OrdinalIgnoreCase) || File.Exists(path) || Directory.Exists(path)
+                || (_claimedFinalPaths?.Contains(path) ?? false);
+        });
+        return System.IO.Path.Combine(folder, name);
     }
 
     private List<string> StagedFolders() => [.. Directory.EnumerateDirectories(Path, "*", SearchOption.AllDirectories)];

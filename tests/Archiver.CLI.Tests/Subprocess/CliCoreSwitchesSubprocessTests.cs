@@ -105,6 +105,34 @@ public sealed class CliCoreSwitchesSubprocessTests
         File.ReadAllText(Path.Combine(destDir, "a (1).txt")).Should().Be("old");
     }
 
+    // Review finding (T-F411 wave E): with a relative -o the run's claimed names (full paths) did not
+    // match the commit's relative ones, so the old README took "README (1)" and the archive's own
+    // "README (1)" then overwrote it - exit 0, the user's file gone.
+    [Fact]
+    public void Extract_RenameExistingWithARelativeOutput_KeepsTheExistingFile()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string zip = Path.Combine(scratchDir, "t.zip");
+        using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Create))
+        {
+            foreach ((string name, string content) in new[] { ("README", "NEW"), ("README (1)", "NEW-1") })
+            {
+                using var writer = new StreamWriter(archive.CreateEntry(name).Open());
+                writer.Write(content);
+            }
+        }
+        string outDir = Path.Combine(scratchDir, "out");
+        Directory.CreateDirectory(outDir);
+        File.WriteAllText(Path.Combine(outDir, "README"), "ORIGINAL");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, "x", "t.zip", "-oout", "-aot");
+
+        exitCode.Should().Be(0, stdErr);
+        File.ReadAllText(Path.Combine(outDir, "README")).Should().Be("NEW");
+        File.ReadAllText(Path.Combine(outDir, "README (1)")).Should().Be("NEW-1");
+        File.ReadAllText(Path.Combine(outDir, "README (2)")).Should().Be("ORIGINAL");
+    }
+
     // --- -spe ---
 
     // 7za: "x src.zip -o<dir>\src -spe" puts src's content straight into <dir>\src; "-o." in a folder
