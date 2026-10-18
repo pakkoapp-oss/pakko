@@ -245,18 +245,21 @@ public sealed class ArchiveAdversarialTests : IDisposable
         EntryText(archive, "old.txt").Should().Be("OLD");
     }
 
-    // A device name as the archive: Pakko's last-resort handler caught an ArgumentNullException.
+    // A device name as the archive. NUL: Pakko's last-resort handler caught an ArgumentNullException
+    // (exit 2, a stack trace). CON: exit 0 and a real file named "CON", which Pakko's own 'x'
+    // refuses to create (T-F39) and Explorer cannot delete. 7za (without -sae) writes CON.zip.
     [Theory]
     [InlineData("NUL")]
     [InlineData("CON")]
-    public void DeviceNameAsArchive_IsANamedErrorNotAnUnexpectedException(string device)
+    public void DeviceNameAsArchive_NeitherCrashesNorCreatesAReservedNameFile(string device)
     {
         _scratch.WriteFile("b.txt", "B");
 
         (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-sae", device, "b.txt");
 
-        exitCode.Should().NotBe(0, "nothing can be archived into a device");
         stdErr.Should().NotContain("Unexpected error").And.NotContain("Exception");
+        Directory.EnumerateFileSystemEntries(@"\\?\" + _scratch.Root).Select(Path.GetFileName)
+            .Should().NotContain(device, $"a file named {device} is one Windows tools cannot open (exit {exitCode})");
     }
 
     [Theory]
