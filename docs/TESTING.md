@@ -1338,6 +1338,30 @@ progress and Cancel are checked on the device.
   tests now expect exit 7. `CliSevenZipCallerSubprocessTests`: `-Y X ... -O<dir>`, `-o` twice
   (exit 7, nothing written), `-saa` on ZIP and tar, through the real exe. Device row: `CLI-040`.
 
+## 7-Zip's Switches That Core Carries Out (T-F411 wave E, 2026-10-18)
+
+- `RenameExistingConflictTests` (-aot, ZIP): the existing file renamed and the new one in its place
+  through a plain extraction, a selection, a filter, T-F154's single-file unwrap and duplicate
+  names; a numbered name the archive still writes (`readme (1)` comes after `readme` on NTFS, the
+  case that needs the run's claimed names); a locked existing file left as it was; a run cancelled
+  before the commit; `ExtractionStaging.CommitInto` directly, where a staged file held open makes
+  the existing one get its name back. `TarSandboxedServiceRenameExistingTests`: the same through
+  tar.exe.
+- `ZipArchiveServiceExtractRootFolderTests`/`TarSandboxedServiceRootFolderTests` (-spe):
+  `DuplicateRootName` with case, a file root, a second root, a filter, a selection;
+  `ExtractionDestinationPlannerTests.AllEntriesUnderRoot_FollowsSevenZip`.
+- `ZipArchiveServiceStopOnUnreadableTests` (-sse): sequential, parallel, Fastest and SeparateArchives
+  writers, the existing archive kept byte for byte, a link still a skip.
+  `ZipArchiveServiceShareForWriteTests` (-ssw): each way a source is opened, a file locked with no
+  sharing still an error. `ArchiveTimeFromNewestEntryTests` (-stl): through the router for ZIP and a
+  fake tar engine; filter, junction, SeparateArchives. `-mmt`: the window function and the same
+  bytes at 1 and 3 threads.
+- CLI: `CliCoreSwitchesTests` (every spelling 7za takes or refuses), `CliSourceDeleterTests`
+  (refusals; only unchanged files; empty folders; read-only; junction inside and as the source;
+  a held file; an unlisted folder), `CliCoreSwitchesSubprocessTests` on the real exe (`-sdel` with
+  a folder, `s\*`, `*.txt -r`, `-x`, `..`, `.`, a locked file, a missing source, a junction; `-aot`,
+  `-spe`, `-sse`, `-ssw`, `-stl`, `-w`). Device row: `CLI-041`.
+
 ---
 
 ## Rules

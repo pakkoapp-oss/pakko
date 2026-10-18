@@ -164,7 +164,7 @@ is refused without being printed, where 7-Zip prints it: it may be a password ty
 | `-mem={method}` | ZIP encryption method | T-F193, `a` only: `-mem=AES256` (case-insensitive) is accepted as a no-op — AES-256 is the only method Pakko writes. `-mem=ZipCrypto`/`AES128`/`AES192` are refused (exit 7) rather than silently upgraded; any other value is an unknown-value error. Every other `-m{param}` except `-mx` is refused on `a` as not implemented |
 | `-m0={method}` | Method of a 7z archive | T-F342, `a -t7z` only: `lzma2` (default), `lzma`, `bzip2`, `deflate`, `copy`, in any case; the last `-m0` wins (`-m` is the one switch 7-Zip takes many times). Refused with exit 7: `ppmd` and `zstd` (tar.exe's 7z writer has neither), a method with parameters (`-m0=lzma2:d=64m`), a second coder (`-m1=`), and `-m0` without `-t7z`. `-mx=0` stores whatever `-m0` names |
 | `-m{params}` (e.g. `-mx=9`) | Compression method/level | Partial — 7z's 0–9 scale doesn't map 1:1 onto `System.IO.Compression.CompressionLevel`'s four discrete values (`NoCompression`/`Fastest`/`Optimal`/`SmallestSize`); needs an explicit, documented bucketing, not a naive `/9*4` — resolved: `0`->`NoCompression`, `1-2`->`Fastest`, `3-6`->`Optimal` (7z's own default `-mx5` lands here), `7-9`->`SmallestSize`. T-F411: `-mx` and `-mx=` alone are 9, `-mxN` is `-mx=N`, and a level above 9 is 9 (7za takes `-mx10` and `-mx=99`); a value that is not a number is exit 7 (7za: exit 2). The same four steps for `-t7z`: Copy, then tar.exe's levels 1, 6 and 9 |
-| `-ao{a\|s\|u\|t}` | Overwrite mode | Mostly supported — maps to `ExtractOptions.OnConflict` (Overwrite/Skip/Rename); 7z's 4th variant (`t`, rename existing instead of new) has no Pakko equivalent |
+| `-ao{a\|s\|u\|t}` | Overwrite mode | Maps to `ExtractOptions.OnConflict`: `a` Overwrite, `s` Skip, `u` Rename, `t` RenameExisting (T-F411, below) |
 | `-scc{charset}` | Console charset | **Supported on every command (T-F238).** `-sccUTF-8`, `-sccWIN` (system ANSI code page) or `-sccDOS` (system OEM code page), case-insensitive, given once (twice: exit 7, as in 7-Zip; T-F411) — the three names 7-Zip's own help lists (confirmed in NanaZip's vendored `ArchiveCommandLine.cpp`/`Main.cpp`); 7-Zip's undocumented numeric form (`-scc1251`) is refused with a named error. Sets the encoding of everything pakko prints, stdout **and** stderr, with no BOM. Without it, output uses the console code page, so a name the page cannot hold is written as `?` (7-Zip writes it lossily too): under `chcp 866`, `pakko l x.zip > list.txt` turns `Звіт.txt` into `Зв?т.txt`. Use `-sccUTF-8` whenever a script needs exact names. The switch is meant for redirected output: on
 an interactive console whose code page is not UTF-8, the console decodes pakko's UTF-8 bytes in
 its own code page, so non-ASCII text (including a conflict prompt on stderr) shows as mojibake —
@@ -179,6 +179,15 @@ expected, and the same with 7-Zip. The console's own code page is never changed 
 | `-bd` | No percentage | **T-F408**, every command |
 | `-bt` | Time statistics | **T-F408**, every command: after it, 7-Zip's `Kernel`, `User`, `Process` and `Global` time lines with the peak memory; no cycle-count lines (.NET has no `QueryProcessCycleTime`) |
 | `-ba` | No headers | **T-F408**: `l` prints the entry rows only, without the column header and the `#` lines; no other command prints a header |
+| `-aot` | Rename the file already there | **T-F411 wave E**, `x`. The existing file is renamed and the extracted one takes its name, as in 7-Zip; the new name is numbered as `-aou` numbers it (`a (1).txt`, where 7-Zip writes `a_1.txt`) and is never a name the archive is still to write. The rename happens when the extracted files are moved in, one file at a time: a run stopped before that changes nothing, and a file that cannot be moved in leaves the existing one under its own name (`Cannot write ...: destination file is locked`, exit 2). Two entries of one archive with one name: the later one is renamed itself, as with `-aou` (7-Zip renames the first) |
+| `-spe[-]` | Drop the root folder named like `-o` | **T-F411 wave E**, `x`. When every entry of the archive lies under one folder named like the last part of `-o` as typed (without case), that folder is dropped: `x src.zip -oout\src -spe` puts `src`'s content straight into `out\src` (7-Zip's `ElimDup`, `Extract.cpp`). Decided over every entry before a name filter, so `-x`/`-i` drop it too, as in 7-Zip; a file of that name, or any entry beside the folder, keeps it; `-o.` names `.`, so nothing is dropped; without `-o` nothing is. `-spe-` turns it off. Explorer's "Extract to <name>\" compares with the archive's name instead (T-F205), unchanged |
+| `-mmt[N\|=on\|=off]` | Threads | **T-F411 wave E**, `a`. The most files the ZIP writer compresses at once, up to 16: `-mmt`, `-mmt=`, `-mmt=on` and `-mmt0` follow the core count, `-mmt=off` is one, `-mmtN`/`-mmt=N` is N; the archive is the same bytes either way. `-mmtON` without `=`, a sign or a number past UInt32 is exit 7 (7za: 2). `tar.exe` writes the other formats and is not reached. On other commands: exit 7, as every `-m` |
+| `-sse` | Stop at a file that cannot be read | **T-F411 wave E**, `a`. A source file the ZIP engine cannot open fails the archive: none is written, an existing one it would replace stays byte for byte, the file is named and exit is 2 with `no archive written: -sse stops at a file that cannot be read` (7za: exit 2, no archive). A missing source is a warning before anything is read and not covered, as in 7-Zip. The tar-family formats and 7z write no archive when `tar.exe` cannot read a file, `-sse` or not (measured) |
+| `-ssw` | Read files open for writing | **T-F411 wave E**, `a`. The ZIP engine also opens a file another program holds open for writing (7-Zip's `OpenShared`); without it such a file is an error, as in 7-Zip (7-Zip: a warning, exit 1; Pakko: exit 2). Each entry's size and CRC come from the bytes read; a file stored as it is is read twice and fails the archive if it changed in between. `tar.exe` reads such files without being asked, so the other formats take them with or without `-ssw` |
+| `-stl` | Archive time from the newest entry | **T-F411 wave E**, `a`. The archive takes the newest modification time among the files and folders it holds, read from disk (7za counts folders too, measured); what a filter leaves out and what is behind a link do not count |
+| `-sdel` | Delete the sources once archived | **T-F411 wave E**, `a`. As 7-Zip's `UpdateArchive` does it (`Update.cpp`): the files listed before archiving are deleted permanently (no Recycle Bin), read-only ones too, when their size, modification and creation time are still the same; then the folders, deepest first, each only once empty. A file changed or added meanwhile stays (`pakko: warning: -sdel kept <path>: it changed while it was being archived`, exit 1). Only a source Core reports archived in full is touched: with a skip, an error or a `-x` filter nothing of it is deleted (7-Zip deletes the files it stored), and when the archive was not written in full nothing at all. Unlike 7-Zip a link is never entered or deleted (7-Zip follows a junction and deletes the files behind it). Refused with exit 7 before anything is written: a volume root, or a source that is or holds the current folder (`a -sdel x.zip ..`); `.` names the current folder's items, which go, while the folder stays. A file that cannot be deleted is named, exit 2 |
+| `-w[dir]` | Working folder | **T-F411 wave E**, `a`. Taken; Pakko writes its temporary archive next to the destination, so the final step is a rename on one volume. `-w<dir>` naming a folder that is not there is exit 2 before anything is written, as in 7-Zip |
+| `-ssp` | Keep the sources' last access time | **Declined (T-F411 wave E)**, exit 7 on every command: `tar.exe` cannot keep it, and Windows mostly does not update it |
 | `-bso{0\|1\|2}`, `-bse{0\|1\|2}`, `-bsp{0\|1\|2}` | Where messages, errors and the percentage go | **T-F408**, every command: 0 off, 1 stdout, 2 stderr. Defaults: messages stdout, errors stderr, percentage stderr (7-Zip's is stdout). Under `-so` messages are off unless `-bso2`; `-bso1` or `-bse1` with `-so` is exit 7, since the text would end up inside the data |
 
 ---
@@ -426,7 +435,7 @@ Chocolatey's folder lines run too.
 | `-ai`, `-ax`, `-an` | Yes | Archive names by wildcard or list, and `x *.zip`; T-F410, on `x`, `l`, `t` |
 | `-ad` | Can't | Opens 7-Zip's GUI dialog (7zG only) |
 | `-aoa`, `-aos`, `-aou` | Yes | |
-| `-aot` | Can add | Rename the existing file instead of the new one; T-F411 |
+| `-aot` | Yes | T-F411 wave E; the renamed file is numbered as `-aou` numbers it |
 | `-ba`, `-bb0`..`-bb3`, `-bd`, `-bso`/`-bse`/`-bsp{0,1,2}`, `-bt` | Yes | Output control; T-F408. `-bb1` and up print `- <name>` per item `x` wrote, which Chocolatey records; where it differs from 7-Zip: the switch table above |
 | `-i`, `-x` (with `r`, `w`, `!`, `@list`), `-xtd`, `-xtf`, name filters after the archive, `@listfile`, `-r`, `-r-`, `-r0`, `-spd`, `-scs` | Yes | T-F410's waves A and B; on `a` too (wave C) except `-xtd`/`-xtf`. `m` and `#` after `-i`/`-x`: Declined |
 | `-m0=` (7z) | Yes | `lzma2`, `lzma`, `bzip2`, `deflate`, `copy` |
@@ -434,7 +443,7 @@ Chocolatey's folder lines run too.
 | `-mx=N`, `-mxN`, `-mx` | Yes | T-F411: `-mx` is 9, above 9 is 9 |
 | `-mm=Deflate`/`Copy` (ZIP) | Can add | not planned |
 | `-mm=Deflate64`/`BZip2`/`LZMA`/`PPMd` (ZIP) | Can't | No such codec in .NET; Pakko writes ZIP with `System.IO.Compression` only |
-| `-mmt` | Can add | Thread count of the parallel ZIP writer; T-F411 |
+| `-mmt` | Yes | T-F411 wave E; the ZIP writer's threads, `tar.exe` is not reached |
 | `-mtc`, `-mta`, `-mtm` | Can add | not planned |
 | `-mem=AES256` | Yes | |
 | `-mem=ZipCrypto`/`AES128`/`AES192` | Declined | ZipCrypto is broken; AES-256 only (T-F193) |
@@ -449,7 +458,7 @@ Chocolatey's folder lines run too.
 | `-saa` | Yes | T-F411; Pakko's default type is ZIP, 7-Zip's 7z |
 | `-scc` | Yes | |
 | `-scrcCRC32`, `-scrcSHA256` on `h` | Yes | Other methods, and `-scrc` on `x`: Can add, not planned |
-| `-sdel` | Can add | Delete the sources after `a` (the App has it); T-F411 |
+| `-sdel` | Yes | T-F411 wave E; nothing of a source a filter or a skip touched, never through a link |
 | `-seml` | Declined | Sending mail is out of scope |
 | `-sfx` | Can't | Needs 7-Zip's SFX module: third-party code |
 | `-si`, `-so` | Yes | Within the limits above; with a name filter too (T-F410) |
@@ -459,10 +468,11 @@ Chocolatey's folder lines run too.
 | `-sni`, `-sns` | Can't | NT security and alternate streams have no place in ZIP or in `tar.exe`'s formats as Pakko writes them |
 | `-snc`, `-snr`, `-snt`, `-snoi`, `-snon`, `-snld` | Declined | Pakko's own name and link safety rules decide these (`SECURITY.md`) |
 | `-snz` | Yes | |
-| `-spe` | Can add | Core already has the option (`EliminateDuplicateRootFolder`); T-F411 |
+| `-spe` | Yes | T-F411 wave E (`ExtractOptions.DuplicateRootName`) |
 | `-spf` | Declined | Absolute paths in an archive are what Pakko's traversal checks refuse |
 | `-ssc`, `-ssc-` | Yes | T-F410 |
-| `-sse`, `-ssp`, `-ssw`, `-stl`, `-w` | Can add | T-F411 |
+| `-sse`, `-ssw`, `-stl`, `-w` | Yes | T-F411 wave E; `-sse` and `-ssw` act on the ZIP engine, `tar.exe` behaves so already |
+| `-ssp` | Declined | `tar.exe` cannot keep the last access time; Windows mostly does not update it |
 | `-stx` | Yes | T-F410's wave B, on `x`, `l`, `t` |
 | `-t` on `a` | Yes | Case-insensitive (`-tZIP`), T-F411 |
 | `-tgzip`, `-tbzip2`, `-txz` (one file, no tar) | Can add | T-F413: gzip with .NET's `GZipStream`; xz and bzip2 only if `tar.exe` can write a bare stream (to be measured), otherwise Can't |

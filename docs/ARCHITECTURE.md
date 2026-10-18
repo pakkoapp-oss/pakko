@@ -349,6 +349,17 @@ public sealed record ArchiveOptions
     // from its earlier bytes is removed first (RecoveryDataWriter.RemoveEarlierSets), so a test
     // does not call the new archive damaged, also when writing the new set is cut short.
     public int RecoveryPercent { get; init; }
+
+    // T-F411 wave E, 7-Zip's -mmt/-stl/-ssw/-sse. MaxThreads: at most N files compressed at once by
+    // the ZIP writer (window min(N, 16); 0 or less = the core count); tar.exe is not reached.
+    // SetArchiveTimeFromNewestEntry: ArchiveCreationRouter sets the archive's time to the newest of
+    // its files and folders on disk (NewestSourceTime), SingleArchive only. ReadFilesOpenForWriting:
+    // every ZIP source opened with FileShare.ReadWrite. StopOnUnreadableSource: an error while the
+    // ZIP engine writes entries means the archive is not committed (tar already stops).
+    public int MaxThreads { get; init; }
+    public bool SetArchiveTimeFromNewestEntry { get; init; }
+    public bool ReadFilesOpenForWriting { get; init; }
+    public bool StopOnUnreadableSource { get; init; }
 }
 
 public enum ArchiveMode { SingleArchive, SeparateArchives }
@@ -359,9 +370,12 @@ public enum ArchiveContainerFormat { Zip, Tar, TarGz, TarBz2, TarXz, TarZst, Tar
 // Models/SevenZipMethod.cs (T-F342)
 public enum SevenZipMethod { Lzma2, Lzma, BZip2, Deflate, Copy }
 
-public enum ConflictBehavior { Overwrite, Skip, Rename, Ask }
+public enum ConflictBehavior { Overwrite, Skip, Rename, Ask, RenameExisting }
 // T-23 (v1.0): Ask was cut from scope, default Skip. T-F06 (2026-07-14) reintroduced it as a
 // real interactive per-conflict dialog — see ConflictResolver and DECISIONS.md's T-F06 entry.
+// T-F411 wave E: RenameExisting (7-Zip's -aot), extraction only - the file already there is
+// renamed in ExtractionStaging's commit, never overwritten; an earlier entry of the same run is
+// met by renaming the new one. Archive creation treats it as Rename (DestinationConflictResolver).
 ```
 
 ```csharp
@@ -382,6 +396,11 @@ public sealed record ExtractOptions
     // is named like the archive (NanaZip's "Extract to name\" ElimDup). Set by Shell's
     // --extract-folder only.
     public bool EliminateDuplicateRootFolder { get; init; }
+
+    // T-F411 wave E (7-Zip's -spe): drop the single root folder named so (without case), decided
+    // over every entry before SelectedEntryPaths/EntryFilter - ExtractionDestinationPlanner.
+    // AllEntriesUnderRoot. The CLI passes -o's last part as typed.
+    public string? DuplicateRootName { get; init; }
 
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
@@ -963,6 +982,7 @@ internal static class ParallelSingleArchiveWriter
     public const long InMemoryCompressByteThreshold = 1L * 1024 * 1024; // 1 MiB — memory-shape
         // boundary (RAM buffer vs. disk-streamed buffer), not a parallelism-eligibility boundary.
     public static int ComputeWindowCapacity(); // Clamp(ProcessorCount, 2, 16)
+    public static int ComputeWindowCapacity(int maxThreads); // T-F411: min(N, 16), or the above when N <= 0
 
     public static Task WriteAsync(
         string tempPath, IReadOnlyList<string> sortedSourcePaths, CompressionLevel compressionLevel,

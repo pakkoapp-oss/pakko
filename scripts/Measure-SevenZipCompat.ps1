@@ -206,6 +206,10 @@ $cases = @(
     @{ Caller = '(parsing)'; Id = '-y -- before the command'; Args = @('-y', '--', 'x', '{a}'); On = @('test.zip'); Error = $true }
     @{ Caller = '(parsing)'; Id = '-MX=9 in capitals'; Args = @('a', '-MX=9', '{n}.zip', 'app'); On = @('(create)'); Error = $true }
     @{ Caller = '(parsing)'; Id = '-saa'; Args = @('a', '-ttar', '-saa', '{n}.tar', 'app'); On = @('(create)'); Error = $true }
+    # T-F411 wave E: switches Core carries out.
+    @{ Caller = '(parsing)'; Id = 'x -aot onto a file'; Args = @('x', '{a}', '-o{o}', '-aot'); On = @('test.zip'); Conflict = $true; Error = $true }
+    @{ Caller = '(parsing)'; Id = 'x -spe into a folder named like the root'; Args = @('x', '{a}', '-o{o}\app', '-spe', '-y'); On = @('test.zip', 'test.tar'); Error = $true }
+    @{ Caller = '(parsing)'; Id = 'a -mmt=off -stl -ssw -sse'; Args = @('a', '-mmt=off', '-stl', '-ssw', '-sse', '{n}.zip', 'app'); On = @('(create)'); Error = $true }
 )
 
 function Invoke-Case {

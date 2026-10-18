@@ -393,6 +393,10 @@ flowchart TD
     J -- yes --> J0["T-F06: conflictResolver.ResolveAsync(finalFilePath)<br/>Ask → options.ResolveConflictAsync, else configured value"]
     J0 -- "Skip" --> S6["ConflictSkippedEntries += path, by the user or automatic (T-F260: archive Partial)<br/>the automatic ones become ArchiveResult.KeptExistingFiles (T-F313), the user's are counted in UserSkippedEntryCount (T-F383)"]
     J0 -- "Rename" --> K2["unique name via GetUniqueFilePath"]
+    J0 -- "RenameExisting (T-F411, -aot)" --> J1{"finalFilePath already claimed in this run?"}
+    J1 -- yes --> K2
+    J1 -- "no: the file is on disk" --> J2["staging.RenameExistingOnCommit(finalFilePath, claimed):<br/>the commit renames the existing file (a name neither on disk nor claimed),<br/>moves the new one in without overwrite, gives the old name back on failure"]
+    J2 --> K
     J0 -- "Overwrite" --> K
     K2 --> K
     K["open content: VerifyingReadStream(entry.Open, Length, Crc32),<br/>or the decrypting stream, capped the same way (T-F246/T-F231).<br/>Copy to staging, delete a half-written file on failure, then MOTW in<br/>EffectiveMotwMode, T-F360 (keeps the file time), then the entry time: NTFS 0x000A, else<br/>Unix 0x5455, else DOS (T-F298, best-effort)"]
@@ -659,6 +663,10 @@ flowchart TD
     N -- yes --> N0["T-F06: resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath)<br/>same resolver/callback shape as diagram 3's node J0 —<br/>independent ConflictResolver instance, own 'apply to all'<br/>memory scoped to this ExtractAsync call only<br/>(does not cross a mixed zip+tar-family selection)"]
     N0 -- "resolvedConflict==Skip" --> P["SkippedFiles += 'already exists at destination'; continue"]
     N0 -- "resolvedConflict==Rename" --> O2["finalFilePath = GetUniqueFilePath(finalFilePath, claimed)"]
+    N0 -- "resolvedConflict==RenameExisting (T-F411)" --> O4{"already claimed in this run?"}
+    O4 -- yes --> O2
+    O4 -- "no" --> O5["plan.Staging.RenameExistingOnCommit — the same commit step as diagram 3's J2"]
+    O5 --> O
     N0 -- "resolvedConflict==Overwrite" --> O3["NO explicit branch — falls through to O<br/>with the ORIGINAL finalFilePath;<br/>the commit's File.Move(overwrite:true) does the actual overwrite<br/>(same asymmetry as diagram 3's ZIP OnConflict gate)"]
     O2 --> O
     O3 --> O
@@ -1154,11 +1162,16 @@ Updated 2026-10-18 for T-F414 and T-F410 wave C from `SourceEntryNames.cs`, `Dir
 `RunArchiveAsync`; the T-F403 codec refusal (`ArchiveFormatPolicy.GetTarCreationRefusalReason`), missing
 here since 2026-10-16, drawn from the same reading.
 
+Updated 2026-10-18 for T-F411 wave E from `ArchiveCreationRouter.cs` (`Engine`, `SetTimeFromNewestSource`),
+`NewestSourceTime.cs`, `ZipArchiveService.cs` (`ArchiveSingleArchiveModeAsync`, `ArchiveSingleSeparatePathAsync`,
+`AddEntryFromFileAsync`), `Zip/ParallelSingleArchiveWriter.cs` (`CompressionSettings`, `ComputeWindowCapacity`)
+and `Archiver.CLI`'s `Program.cs` (`RunArchiveAsync`, `DeleteArchivedSourcesAsync`), `CliSourceDeleter.cs`.
+
 ```mermaid
 flowchart TD
     F1["App: Format combobox, SelectedArchiveMode,<br/>inline password when Encrypt applies (ZIP only),<br/>recovery data 5/10/20 % unless DisableRecoveryData"] --> R
     F2["Shell: Add to X.zip or Add to X.tar<br/>SingleArchive, OnConflict=Rename, no password, no recovery data"] --> R
-    F3["CLI a: -t zip / tar / tar.gz ... (default zip), SingleArchive,<br/>-y → Overwrite else Skip, -p refused by the parser for tar-family,<br/>-rr N → RecoveryPercent, -rr with -so refused by the parser.<br/>CliArchiveSources (T-F414, T-F410): sources by 7-Zip's prefix rule → SourceNameParts,<br/>masks searched once per prefix, -x → EntryFilter; a missing name is a warning (exit 1),<br/>none left → exit 2 and Core is not called"] --> R
+    F3["CLI a: -t zip / tar / tar.gz ... (default zip), SingleArchive,<br/>-y → Overwrite else Skip, -p refused by the parser for tar-family,<br/>-rr N → RecoveryPercent, -rr with -so refused by the parser.<br/>CliArchiveSources (T-F414, T-F410): sources by 7-Zip's prefix rule → SourceNameParts,<br/>masks searched once per prefix, -x → EntryFilter; a missing name is a warning (exit 1),<br/>none left → exit 2 and Core is not called.<br/>T-F411: -mmt → MaxThreads, -stl, -ssw, -sse → their options; -sdel: a volume root or a source<br/>holding the current folder → exit 7, else CliSourceSnapshot lists the sources before Core runs"] --> R
     R{"ArchiveCreationRouter: format allowed by<br/>AllowedFormats/BlockedFormats?"} -- no --> RE1["Errors += CreationFormatBlocked"]
     R -- yes --> R2{"DisableTarExtraction and format is not Zip?"}
     R2 -- yes --> RE2["Errors += TarCreationDisabled — tar.exe never starts"]
@@ -1184,12 +1197,13 @@ flowchart TD
     S1 -- Skip --> S1S["return: every source SkippedFiles (ArchiveAlreadyExists)"]
     S1 -- "Overwrite / Rename" --> S2["temp = ArchiveTempFile.Create: sweep .pakko-a-* of dead runs,<br/>new .pakko-a-owner-guid.tmp — not hidden, the old archive stays (T-F312)<br/>one walk: total bytes, file count, largest file (T-F35, T-F352)"]
     S2 --> S3{"password set, OR level Fastest, OR file count over 64,<br/>OR a few large files: level not NoCompression, at least 8 MiB beside the<br/>largest file and at least a quarter of it, free space for twice the sources,<br/>source and destination disks known to have no seek penalty?<br/>(UsesParallelWriter, T-F299/T-F352)"}
-    S3 -- yes --> S4["ParallelSingleArchiveWriter — hand-rolled writer,<br/>the only one that encrypts (AES-256 AE-2), T-F35/T-F193,<br/>and stores an entry Deflate did not shrink (T-F299)"]
+    S3 -- yes --> S4["ParallelSingleArchiveWriter — hand-rolled writer,<br/>the only one that encrypts (AES-256 AE-2), T-F35/T-F193,<br/>and stores an entry Deflate did not shrink (T-F299).<br/>Window min(MaxThreads, 16), or the core count clamped 2-16 (T-F411)"]
     S3 -- no --> S5["sequential ZipArchive writer"]
-    S4 & S5 -.- SF["both writers: a source, or an entry below it, that EntryFilter leaves out<br/>is skipped with nothing reported, a folder with all it holds (DirectoryWalker LeftOut, T-F410)"]
+    S4 & S5 -.- SF["both writers: a source, or an entry below it, that EntryFilter leaves out<br/>is skipped with nothing reported, a folder with all it holds (DirectoryWalker LeftOut, T-F410).<br/>Every source opened FileShare.Read, ReadWrite with ReadFilesOpenForWriting (T-F411, -ssw)"]
     S4 --> S6
     S5 --> S6{"cancelled? then: any entry in the .tmp?"}
     S6 -- "cancelled" --> SX["delete .tmp, rethrow OperationCanceledException"]
+    S6 -- "StopOnUnreadableSource and an error while writing (T-F411, -sse)" --> S8
     S6 -- "entries" --> S7["ArchiveTempFile.CommitAsync .tmp → name.zip — retries ~1.5 s<br/>while either file is held (T-F312). Replaces only an archive that existed<br/>at the start (Overwrite); one that appeared during the run is kept and<br/>this one takes name (N).zip (T-F321). CreatedFiles += the path it landed at"]
     S6 -- "none" --> S8["delete .tmp — no empty archive (T-F60)"]
     S4 & S5 -. "IOException / UnauthorizedAccessException / any other exception" .-> S9["delete .tmp, Errors += CannotCreateArchive /<br/>AccessDeniedCreatingArchive / UnexpectedError — never thrown"]
@@ -1201,6 +1215,7 @@ flowchart TD
     P3 -- "no, folder" --> P5["ZipArchive + AddDirectoryToArchiveAsync"]
     P3 -- "no, file" --> P6["ZipArchive + AddEntryFromFileAsync"]
     P3 -- "neither exists" --> P7["Errors += SourceNotFound"]
+    P4 & P5 & P6 -.- P8["commit as S6/S7; with StopOnUnreadableSource an error in this source's<br/>archive means it is not committed (T-F411)"]
 
     R3 -- no --> T0["TarSandboxedService.CompressAsync — UNSANDBOXED (T-F105)"]
     T0 --> TN{"SourceEntryNames.Create fails? (T-F414, as ZN)"}
@@ -1228,13 +1243,20 @@ flowchart TD
     T9 -- no --> TE3["delete .tmp, Errors += TarCreationFailed without the visit-directory line of tar.exe,<br/>and for that line: SourceNotFound for each listed source now gone, else TarSourceUnreadable (T-F390)"]
     T9 -- yes --> T10["ArchiveTempFile.CommitAsync .tmp → name.ext — same rule as S7 (T-F321),<br/>CreatedFiles += the path it landed at"]
 
-    S7 & P2 & T10 -.-> PR{"router, after the engine returns: RecoveryPercent over 0?<br/>(unless DisableRecoveryData, the engine ran with OpenDestinationFolder off;<br/>with a percent, its progress scaled below 100)"}
+    S7 & P2 & T10 -.-> STL{"router, Engine: SetArchiveTimeFromNewestEntry, SingleArchive,<br/>one archive created? (T-F411, -stl)"}
+    STL -- yes --> STL1["NewestSourceTime over the sources as the engine read them<br/>(DirectoryWalker, EntryFilter, no link) → the archive's time, best-effort"]
+    STL -- no --> PR
+    STL1 --> PR
+    PR{"router, after the engine returns: RecoveryPercent over 0?<br/>(unless DisableRecoveryData, the engine ran with OpenDestinationFolder off;<br/>with a percent, its progress scaled below 100)"}
     PR -- "no, DisableRecoveryData" --> PR0["the engine's result, unchanged"]
     PR -- "no" --> PRS["on the thread pool, for each of CreatedFiles: every set under name.ext or name,<br/>naming the archive, length or first-16-KiB MD5 no longer matching →<br/>delete each file that holds only such sets,<br/>a failed delete → Warnings += RecoveryOldVolumeNotDeleted; then open the folder if asked and no error"]
     PR -- yes --> PR1["on the thread pool, for each of CreatedFiles, even with errors (T-F275):<br/>earlier sets removed as in the no-percent branch, then Par2Creator writes name.par2 and name.vol0+R.par2 via temp files → RecoveryFiles"]
     PR1 -. "empty or beyond the reader limits / any exception but cancel" .-> PR2["Errors += RecoveryDataFileTooLarge / RecoveryDataNotCreated on that archive,<br/>the archive stays, every Completed source → Partial"]
     PR1 --> PR3["delete name.volN+M.par2 the reader parses as another Set ID,<br/>a failed delete → Warnings += RecoveryOldVolumeNotDeleted"]
     PR3 --> PR4["report 100 %, then open the folder if asked and no error"]
+    PR0 & PRS & PR4 -.-> CD{"CLI a with -sdel: exit below 2 and an archive created? (T-F411)"}
+    CD -- no --> CD0["nothing deleted, a warning"]
+    CD -- yes --> CD1["of FullyProcessedSources only: the listed files whose size, modification and<br/>creation time are unchanged, then the listed folders deepest first when empty;<br/>a link never; a changed file kept (exit 1), a failed delete named (exit 2)"]
 ```
 
 **What this catches:** the two engines are not symmetric, and a change that assumes they are will
