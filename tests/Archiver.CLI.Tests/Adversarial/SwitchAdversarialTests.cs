@@ -1,3 +1,4 @@
+using Archiver.CLI.Tests.Subprocess;
 using FluentAssertions;
 
 namespace Archiver.CLI.Tests.Adversarial;
@@ -25,26 +26,19 @@ public sealed class SwitchAdversarialTests : IDisposable
             .Select(path => Path.GetRelativePath(_scratch.Root, path) + "=" + (File.Exists(path) ? Convert.ToHexString(File.ReadAllBytes(path)) : "dir"))
             .Order(StringComparer.Ordinal)];
 
-    // -sdel deletes the sources in 7-Zip; refused here, the sources must all still be there.
+    // Switches Pakko refuses on that command (wave E's -sdel/-aot/-spe/-sse/-ssw/-stl/-w/-mmt now
+    // work on theirs; SdelAdversarialTests, ExtractWaveEAdversarialTests, ArchiveWaveEAdversarialTests).
     [Theory]
-    [InlineData("a", "-sdel")]
-    [InlineData("a", "-spe")]
-    [InlineData("a", "-sse")]
-    [InlineData("a", "-ssw")]
-    [InlineData("a", "-stl")]
-    [InlineData("a", "-wtmp")]
-    [InlineData("a", "-w")]
     [InlineData("a", "-v1m")]
-    [InlineData("a", "-mmt4")]
     [InlineData("a", "-mhe=on")]
     [InlineData("a", "-spf")]
     [InlineData("a", "-sni")]
     [InlineData("a", "-aoa")]
     [InlineData("a", "-u-")]
     [InlineData("a", "-slt")]
+    [InlineData("a", "-ssp")]
+    [InlineData("x", "-ssp")]
     [InlineData("x", "-sdel")]
-    [InlineData("x", "-aot")]
-    [InlineData("x", "-spe")]
     [InlineData("x", "-spf")]
     [InlineData("x", "-snl")]
     [InlineData("x", "-snh")]
@@ -71,25 +65,53 @@ public sealed class SwitchAdversarialTests : IDisposable
         Snapshot().Should().Equal(before, "a refused command line touches nothing");
     }
 
-    // -sdel in the combinations where a 7-Zip that honoured it would delete the most.
+    // -sdel in the combinations where a 7-Zip that honoured it would delete the most, each with
+    // its own post-condition. "gone": src is deleted and the archive holds both files; "kept":
+    // every source stays (CLI.md: a -x filter or a skip anywhere deletes no source; "--" makes
+    // "-sdel" a name), and an archive the run reports written holds what it was given.
     [Theory]
-    [InlineData("a", "-sdel", "-so", "o.zip", "src")]
-    [InlineData("a", "-sdel", "-y", "o.zip", @"src\*.txt", "-x!b.txt")]
-    [InlineData("a", "-sdel", @"src\o.zip", "src")]
-    [InlineData("a", "-sdel", "-rr", "o.zip", "src")]
-    [InlineData("a", "-sdel", "-ttar", "o.tar", "src")]
-    [InlineData("a", "-y", "o.zip", "src", "--", "-sdel")]
-    [InlineData("-sdel", "a", "o.zip", "src")]
-    [InlineData("a", "-SDEL", "o.zip", "src")]
-    public void SdelInAnyCombination_DeletesNoSource(params string[] args)
+    [InlineData("kept", 1, "o.zip", "a", "-sdel", "-y", "o.zip", @"src\*.txt", "-x!b.txt")]
+    [InlineData("kept", 1, @"src\o.zip", "a", "-sdel", @"src\o.zip", "src")]
+    [InlineData("gone", 0, "o.zip", "a", "-sdel", "-rr", "o.zip", "src")]
+    [InlineData("gone", 0, "o.tar", "a", "-sdel", "-ttar", "o.tar", "src")]
+    [InlineData("kept", 1, "o.zip", "a", "-y", "o.zip", "src", "--", "-sdel")]
+    [InlineData("gone", 0, "o.zip", "-sdel", "a", "o.zip", "src")]
+    [InlineData("gone", 0, "o.zip", "a", "-SDEL", "o.zip", "src")]
+    [InlineData("gone", 0, "o.zip", "a", "-sdel", "o.zip", @".\src\")]
+    public void SdelInAnyCombination_DoesWhatThatCombinationAsks(string expected, int expectedExit, string archive, params string[] args)
     {
         string[] before = Snapshot().Where(e => e.StartsWith("src", StringComparison.Ordinal)).ToArray();
 
         (int exitCode, _, string stdErr) = _scratch.Pakko(args);
 
-        Snapshot().Where(e => e.StartsWith("src", StringComparison.Ordinal)).Should().Equal(before, $"exit {exitCode}: {stdErr}");
-        if (!args.Contains("--"))
-            exitCode.Should().Be(7, stdErr);
+        string[] after = Snapshot().Where(e => e.StartsWith("src", StringComparison.Ordinal) && !e.StartsWith(@"src\o.zip", StringComparison.Ordinal)).ToArray();
+        if (expected == "kept")
+            after.Should().Equal(before.Where(e => !e.StartsWith(@"src\o.zip", StringComparison.Ordinal)), $"exit {exitCode}: {stdErr}");
+        else
+            after.Should().BeEmpty($"exit {exitCode}: {stdErr}");
+        exitCode.Should().Be(expectedExit, stdErr);
+
+        (int checkCode, _, string checkErr) = _scratch.Pakko("x", archive, "-ocheck");
+        checkCode.Should().Be(0, $"the archive {archive} must be there and whole: {checkErr}");
+        string[] extracted = [.. Directory.GetFiles(_scratch.Inside("check"), "*.txt", SearchOption.AllDirectories)
+            .Select(path => Path.GetFileName(path) + "=" + File.ReadAllText(path)).Order(StringComparer.Ordinal)];
+        extracted.Should().Contain("a.txt=A");
+        if (expected == "gone")
+            extracted.Should().Contain("b.txt=B", "a deleted source must be in the archive");
+    }
+
+    // -sdel before the archive is listed, and with the archive going to stdout.
+    [Fact]
+    public void SdelWithSo_StreamedArchiveHoldsTheDeletedSources()
+    {
+        (int exitCode, byte[] stdOut, string stdErr) = CliProcessRunner.RunWithBinaryStdio(
+            [], "a", "-sdel", "-so", _scratch.Inside("o.zip"), _scratch.Inside("src"));
+
+        exitCode.Should().Be(0, stdErr);
+        Directory.Exists(_scratch.Inside("src")).Should().BeFalse();
+        File.WriteAllBytes(_scratch.Inside("streamed.zip"), stdOut);
+        using System.IO.Compression.ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(_scratch.Inside("streamed.zip"));
+        zip.Entries.Select(e => e.Name).Should().Contain(["a.txt", "b.txt"]);
     }
 
     // 7-Zip's commands Pakko declines; d and rn change an archive in place there.
@@ -167,29 +189,45 @@ public sealed class SwitchAdversarialTests : IDisposable
         File.Exists(_scratch.Inside("o.zip")).Should().BeTrue();
     }
 
-    // CLI.md's three-way rule: a real 7z switch Pakko does not implement is "not supported by
-    // Pakko: <reason>", never the typo message "Incorrect command line: unknown switch". -sdel and
-    // the others are 7-Zip's own (kSwitchForms, listed in CLI.md's matrix as "Can add").
+    // CLI.md's three-way rule: a real 7z switch is never the typo message "Incorrect command line:
+    // unknown switch". Wave E's switches are taken on 'a' now and write the archive; -ssp is
+    // declined, so "not supported by Pakko".
     [Theory]
-    [InlineData("-sdel")]
-    [InlineData("-spe")]
     [InlineData("-sse")]
     [InlineData("-ssw")]
     [InlineData("-stl")]
-    [InlineData("-wtmp")]
+    [InlineData("-w")]
     [InlineData("-mmt4")]
-    public void Real7ZipSwitchOnA_IsNotReportedAsATypo(string realSwitch)
+    [InlineData("-mmt=off")]
+    public void Real7ZipSwitchOnA_IsTakenAndWritesTheArchive(string realSwitch)
     {
         (int exitCode, _, string stdErr) = _scratch.Pakko("a", "o.zip", "src", realSwitch);
 
+        exitCode.Should().Be(0, stdErr);
+        using System.IO.Compression.ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(_scratch.Inside("o.zip"));
+        zip.Entries.Select(e => e.FullName).Should().Contain(["src/a.txt", "src/b.txt"]);
+        File.ReadAllText(_scratch.Inside(@"src\a.txt")).Should().Be("A", "only -sdel deletes a source");
+    }
+
+    [Theory]
+    [InlineData("a")]
+    [InlineData("x")]
+    public void DeclinedSsp_IsNotReportedAsATypo(string command)
+    {
+        string[] args = command == "a" ? ["a", "o.zip", "src", "-ssp"] : ["x", "arc.zip", "-oout", "-ssp"];
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko(args);
+
         exitCode.Should().Be(7);
-        stdErr.Should().NotContain("Incorrect command line: unknown switch", "rule 1 is for typos; this is a real 7z switch (rule 2/3)");
+        stdErr.Should().NotContain("Incorrect command line: unknown switch").And.Contain("not supported by Pakko");
     }
 
     // Rule 3: name the switch. `a ... -aoa` says only "not supported on this command".
     [Theory]
     [InlineData("-aoa")]
     [InlineData("-si")]
+    [InlineData("-aot")]
+    [InlineData("-spe")]
     public void SupportedSwitchOnTheWrongCommand_NamesTheSwitch(string wrongHere)
     {
         (int exitCode, _, string stdErr) = _scratch.Pakko("a", "o.zip", "src", wrongHere);
