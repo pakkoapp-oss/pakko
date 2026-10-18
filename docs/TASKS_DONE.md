@@ -13055,3 +13055,53 @@ PowerShell does natively.
   entry, and a filtered test, where a verdict on the name would be a guess (a left-out file would
   have been extracted). A real `?` in a name is treated alike: it is no Windows file name either.
   `TarSandboxedServiceUnshowableNameTests`; `docs/DECISIONS.md`, "T-F410, wave B".
+
+### T-F414 — `pakko a`: a missing source is a warning (exit 1), and paths are kept as given (P3, from T-F343)
+
+- [x] **Status:** done 2026-10-18 (T-F410 wave C). `7za a new.zip app\readme.txt no-such-file.txt` warns ("WARNING: The system
+  cannot find the file specified"), archives the rest under the path as typed (`app\readme.txt`) and
+  exits 1. `pakko` exits 2 and stores the file as `readme.txt`. Next: decide how the path as typed
+  maps onto Pakko's rule of naming entries after the source's own name (T-F153), then the exit code.
+  Chocolatey treats 1 as "some files could not be extracted".
+- **Reported by:** T-F343's measurement, 2026-10-17.
+- **Result:** decided (the user delegated it): 7-Zip's naming for the CLI (`dir\sub` keeps both
+  parts, an absolute path or one with `.`/`..` its last, `.` the folder's contents); a missing source
+  is a warning, exit 1; nothing left: no archive, exit 2. Core's `ArchiveOptions.SourceNameParts`
+  (`SourceNamePartsInvalid`, `SourceNamesOverlap`, 37 languages). For the 1.8.2 CHANGELOG, under a
+  change in behavior: "`pakko a dir\sub` stores `dir\sub\...` as 7-Zip, not `sub\...`"; "`pakko a out.zip
+  .` stores the folder's contents, not the folder"; "a missing source is a warning (exit 1) and the
+  rest is archived". `ZipArchiveServiceSourceNamePartsTests`, `TarSandboxedServiceSourceNamePartsTests`,
+  `CliArchiveSourcesTests`, `CliArchiveSourcesSubprocessTests`; `docs/DECISIONS.md`, "T-F414 and
+  T-F410, wave C"; smoke `CLI-039`.
+
+### T-F410 — `pakko`: name filters — `-i`, `-x`, names after the archive, `@listfile`, `-r`, archive wildcards (P2, from T-F343, plan mode)
+
+- [x] **Status:** done 2026-10-18 (wave C). The largest gap: 7-Zip matches names on `x`, `l`, `t`, `a` (`-i`/`-x` with
+  `r`, `!`, `@list`; plain names and wildcards after the archive name; `@listfile`; `-r`, `-r-`,
+  `-r0`; `-spd`; `-ssc`; `-scs` for list files) and takes wildcards in the archive name
+  (`x *.zip`, `-ai`, `-ax`, `-an`, `-stx`). `pakko` has none: Scoop passes `-xr!*.nsis` on every
+  call (exit 7 today), Chocolatey a folder name after the archive (`pakko` reads it as a second
+  archive, exit 2). Core extraction already takes `SelectedEntryPaths` (the archive view's
+  selection); the matching rules are 7-Zip's `Wildcard.cpp`, read before designing. Plan mode and
+  the advisor first: it touches Core options, both engines and `tar.exe`'s own include patterns
+  (T-F391's exclude-pattern findings apply).
+- **Done so far** (wave A, 2026-10-17): `x` and `l` take the names after the archive, `-i`/`-x`
+  (`r`, `w`, `!`, `@list`), `-xtd`/`-xtf`, `@listfile`, `-r`/`-r-`/`-r0`, `-spd`, `-ssc`, `-scs`;
+  `x`, `l` and `t` take archive wildcards, `-ai`, `-ax`, `-an` (`docs/DECISIONS.md`, "T-F410, wave
+  A"). A name after the archive is now a filter, no longer a second archive: the 1.8.2 CHANGELOG
+  says so under a change in behavior. **Wave B** (2026-10-18): `t` takes the same filters (Core's
+  `TestAsync` takes an `entryFilter`), and `-stx` on `x`, `l`, `t` (`docs/DECISIONS.md`, "T-F410,
+  wave B"); for the 1.8.2 CHANGELOG: "`pakko t` takes `-i`, `-x` and names after the archive; `-stx`
+  leaves out an archive type"; "a selection in a tar that names no entry no longer extracts the
+  whole archive"; "selecting a tar entry whose name holds `$` (App, `x`) no longer picks another
+  file or fails with Not found"; "a filter on `x`/`t` over a tar whose listing shows `?` for a name
+  `tar.exe` cannot show (Windows 10) now stops with a clear message, exit 2" (T-F416); "`No files
+  to process` is no longer printed over an archive that was skipped". **Wave C** (2026-10-18, with T-F414): `a` takes masks in its sources,
+  `-r`, `-i`, `-x`, list files, `-spd`, `-ssc`, `-scs` (Core's `ArchiveOptions.EntryFilter` in both
+  writers, `tar.exe`'s `-X`); for the 1.8.2 CHANGELOG: "`pakko a` takes 7-Zip's masks and `-r`, `-i`,
+  `-x`, `@list`" (`docs/DECISIONS.md`, "T-F414 and T-F410, wave C").
+- **Reported by:** T-F343's measurement, 2026-10-17.
+- **Result:** `CliArchiveSources`, `CliNameSelection.BuildArchiveMasks`, `ArchiveOptions.EntryFilter`,
+  `DirectoryWalker`'s `LeftOut`; `ZipArchiveServiceEntryFilterTests`,
+  `TarSandboxedServiceCreationFilterTests`, `CliArchiveSourcesTests`,
+  `CliArchiveSourcesSubprocessTests`; `docs/CLI.md`; smoke `CLI-039`.

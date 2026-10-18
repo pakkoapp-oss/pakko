@@ -96,6 +96,7 @@ src/
 │   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based (.lzma by name, T-F398)
 │   │   ├── ArchiveNaming.cs            ← compound-extension-aware naming (T-F103)
 │   │   ├── SourcePathNormalizer.cs     ← a creation source as entries are named from it: no trailing separator, "."/".."/relative resolved (T-F153, T-F338)
+│   │   ├── SourceEntryNames.cs         ← T-F414/T-F410: a source's name in the archive (SourceNameParts), EntryFilter's verdicts
 │   │   ├── ConflictResolver.cs         ← T-F06: resolves ConflictBehavior.Ask
 │   │   ├── EncryptionPasswordRule.cs   ← T-F193: public; which passwords a NEW encrypted ZIP accepts
 │   │   │                                  (printable ASCII, <= 99) — shared by App/CLI prompts and
@@ -276,6 +277,7 @@ src/
 │   ├── CliPackageIdentity.cs           ← T-F317: package full name for pakko -v (GetCurrentPackageFullName)
 │   ├── Program.cs
 │   ├── CliArgumentParser.cs
+│   ├── CliArchiveSources.cs            ← T-F414/T-F410: what 'a' archives and the name parts, 7-Zip's prefix rule and mask search
 │   ├── CliStreamStaging.cs             ← T-F116: -si/-so buffer-then-proceed staging, zero Core changes
 │   ├── CliStagingFolder.cs             ← T-F244: per-run <pid>-<guid> staging folder + dead-run sweep
 │   ├── CliCancellation.cs              ← T-F244: Ctrl+C -> cancel (exit 255), second press ends the process

@@ -1316,6 +1316,17 @@ progress and Cancel are checked on the device.
   (Shell.Tests), `AsyncVoidHandlersTests` (App.Core.Tests: reads every `.cs` of the App and
   OperationUi: each `async void` body catches). Device rows: `CLI-036`, `SHL-014`.
 
+## What `a` Archives, Under Which Name (T-F414, T-F410 wave C, 2026-10-18)
+
+- Core: `ZipArchiveServiceSourceNamePartsTests` and `ZipArchiveServiceEntryFilterTests` (both ZIP
+  writers through `CompressionLevel.Optimal` and `Fastest`, and separate archives);
+  `TarSandboxedServiceSourceNamePartsTests` and `TarSandboxedServiceCreationFilterTests`
+  (IntegrationTests, real `tar.exe`, a 7z leg under `SevenZipWriterFact`; a name with `[`, `]`, `$`,
+  and `dir/sub` against `dir/sub2`, for the `-X` lines); two `CoreNeverThrowsContractTests` rows.
+- CLI: `CliArchiveSourcesTests` (the names and masks 7za 26.02 gave for one tree, a link not
+  entered, the archive being written never taken) and `CliArchiveSourcesSubprocessTests` (the same
+  7za lines through the real exe, ZIP and tar). Device row: `CLI-039`.
+
 ---
 
 ## Rules
