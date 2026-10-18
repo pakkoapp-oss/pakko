@@ -143,6 +143,32 @@ public sealed class CliArchiveSourcesSubprocessTests
     }
 
     [Fact]
+    public void Archive_ExcludeLeavingOutEverything_ExitsTwo_NoArchive()
+    {
+        string root = MakeFilterTree();
+        string zip = Path.Combine(CliFixtureFiles.CreateScratchDir(), "n.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(root, "a", zip, "-xr!*", "dir");
+
+        exitCode.Should().Be(2, stdErr);
+        stdErr.Should().Contain("nothing to archive");
+        File.Exists(zip).Should().BeFalse();
+    }
+
+    // The mask never takes the archive being written, also when the name gets its extension.
+    [Fact]
+    public void Archive_MaskBesideTheArchive_DoesNotTakeIt()
+    {
+        string root = MakeFilterTree();
+        File.WriteAllText(Path.Combine(root, "out.zip"), "an old archive");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(root, "a", "-y", "out", "*");
+
+        exitCode.Should().Be(0, stdErr);
+        ZipNames(Path.Combine(root, "out.zip")).Should().NotContain("out.zip").And.Contain("t.txt");
+    }
+
+    [Fact]
     public void Archive_AbsoluteExclude_LeavesNothingOut_As7Zip()
     {
         string root = MakeFilterTree();

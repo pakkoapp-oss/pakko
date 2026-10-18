@@ -13306,6 +13306,21 @@ the archive.
   dropped, so Core's overlap refusal is left for a relative and an absolute source that meet
   (`a o.zip C:\other\dir dir\c.txt`). A drive root stays one source (Core's T-F285 listing).
   `CliNameSelection.BuildArchiveMasks` reads list files with the same reader as `x`.
+- **Closing review** (a read-only reviewer against 7za, 2026-10-18), each fix with a test seen red
+  first: a source renamed for a clash (`sub` -> `sub (1)`) could become the folder another source's
+  name passes through (`sub (1)/z`), writing that entry twice in ZIP and tar (the names taken now
+  start with every folder of every name); the ZIP engine asked the filter about a renamed source by
+  its new name, tar by its own (both now by its own); with a filter no source counts as fully
+  archived, since a left-out entry is not reported (T-F260, not reachable today); tar's separate
+  archives prompted for a source the filter then left out; a named source under a folder `-x`
+  then removed was dropped (`-x!dir dir C:\w\dir\c.txt`, 7-Zip stores `c.txt`); `-x` leaving out
+  everything exited 0 with no archive (now `nothing to archive`, exit 2); `-spd .` archived nothing
+  (7-Zip's universal item ignores `-spd`); a drive-root mask (`C:\*`) took the system's own Hidden
+  and System entries, which Core leaves out of a drive root given whole and tar.exe cannot read
+  (T-F324); `a out *` took an `out.zip` beside it, the mask being compared with the name before its
+  extension (a literal source still can be, as in 7-Zip); `t.txt\` archived the file, 7-Zip warns.
+  Left as they are: `dir.` is `dir` (Windows drops a trailing dot; 7-Zip says not found), and the
+  progress totals and the parallel-writer gate count what a filter leaves out (an estimate).
 - **Rejected:** the CLI listing every file itself and handing Core a flat list (Core's link
   skipping, empty-folder entries and tar.exe's own walk would be bypassed); passing `-x` straight to
   tar.exe as patterns (its matching is not 7-Zip's, and the ZIP engine needs the same rule).

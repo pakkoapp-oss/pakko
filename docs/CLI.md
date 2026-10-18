@@ -265,8 +265,13 @@ Never silently ignore an unrecognized token or switch and proceed as if it wasn'
   (`C:\w\dir\sub` and `.\dir\sub` store `sub/...`), and a path ending in `.` or `..` is that folder's
   contents at the top (`pakko a out.zip .` in `proj` stores `a.txt`; T-F338 had stored
   `proj/a.txt`, a ZIP before it `./a.txt`). A mask (`dir\*.txt`, `d*`, `*.txt -r`) is looked for on
-  disk, hidden files included, never entering a link and never taking the archive being written;
-  an item found twice, or under a folder taken whole, is archived once. A source that exists
+  disk, hidden files included (in a drive root the system's own Hidden and System entries are left
+  out, as for a drive root given whole), never entering a link and never taking the archive being
+  written (a source named literally can be, as in 7-Zip); an item found twice, or under a folder
+  taken whole, is archived once, unless `-x` leaves it out of that folder (`a o.zip -x!dir dir
+  C:\w\dir\c.txt` stores `c.txt`, as 7-Zip). `.` stays the contents under `-spd`. A name ending in a
+  separator names a folder: on a file it is a warning, as in 7-Zip. When `-x` leaves out every
+  source, it is `nothing to archive`, exit 2, as with no source left. A source that exists
   nowhere is `pakko: warning: <name>: The system cannot find the file specified.` and the rest is
   archived, exit **1**; with nothing left `pakko: error: nothing to archive`, exit **2**, and no
   archive (7-Zip writes an empty one). A relative and an absolute source that would land one

@@ -289,6 +289,67 @@ public sealed class CliArchiveSourcesTests : IAsyncLifetime
         }
     }
 
+    // Wave C's closing review, each against 7za 26.02.
+    private CliArchiveSourceList ResolveExcluding(string exclude, params CliNameMask[] masks) =>
+        CliArchiveSources.Resolve(
+            masks, CliNameFilter.Create([new CliNameMask(exclude, Include: false, CliRecursion.None)], startFromAll: true),
+            caseSensitive: false, _temp.Path, Full("o.zip"));
+
+    [Fact]
+    public void Review_ANamedFileUnderAnExcludedFolder_StaysASource()
+    {
+        CliArchiveSourceList list = ResolveExcluding("dir", Mask("dir"), Mask(Full("dir" + Path.DirectorySeparatorChar + "c.txt")));
+
+        list.Sources.Should().Equal(new CliArchiveSource(Full("dir" + Path.DirectorySeparatorChar + "c.txt"), 1));
+    }
+
+    [Fact]
+    public void Review_ANamedFileTheExcludeTakesOutOfItsFolder_StaysASource()
+    {
+        string file = Full("dir" + Path.DirectorySeparatorChar + "c.txt");
+
+        CliArchiveSourceList list = ResolveExcluding("dir/c.txt", Mask("dir"), Mask(file));
+
+        list.Sources.Should().BeEquivalentTo([new CliArchiveSource(Full("dir"), 1), new CliArchiveSource(file, 1)]);
+    }
+
+    [Fact]
+    public void Review_ExcludedSource_IsDropped()
+    {
+        CliArchiveSourceList list = ResolveExcluding("dir", Mask("dir"));
+
+        list.Sources.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Review_DotWithWildcardMatchingOff_IsStillTheContents()
+    {
+        CliArchiveSourceList list = CliArchiveSources.Resolve(
+            [new CliNameMask(".", Include: true, CliRecursion.None, WildcardMatching: false)], null, false, _temp.Path, Full("o.zip"));
+
+        list.Sources.Should().BeEquivalentTo([new CliArchiveSource(Full("dir"), 1), new CliArchiveSource(Full("t.txt"), 1)]);
+    }
+
+    [Fact]
+    public void Review_FileNamedWithATrailingSeparator_IsAProblem()
+    {
+        CliArchiveSourceList list = Resolve("t.txt" + Path.DirectorySeparatorChar);
+
+        list.Sources.Should().BeEmpty();
+        list.Problems.Should().Equal(new CliSourceProblem("t.txt" + Path.DirectorySeparatorChar, CliArchiveSources.NotAFolder));
+    }
+
+    [Fact]
+    public void Review_MaskInADriveRoot_LeavesOutTheSystemsOwnEntries()
+    {
+        string root = Path.GetPathRoot(_temp.Path)!;
+
+        CliArchiveSourceList list = Search([Mask(root + "*")]);
+
+        list.Sources.Should().NotContain(source =>
+            (File.GetAttributes(source.FullPath) & (FileAttributes.Hidden | FileAttributes.System)) == (FileAttributes.Hidden | FileAttributes.System));
+    }
+
     [Fact]
     public void Resolve_DriveRoot_IsPassedOnWhole()
     {

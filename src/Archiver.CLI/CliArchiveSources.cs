@@ -25,6 +25,9 @@ public sealed record CliArchiveSourceList(IReadOnlyList<CliArchiveSource> Source
 public static class CliArchiveSources
 {
     public const string NotFound = "The system cannot find the file specified.";
+    public const string NotAFolder = "A name ending in a path separator names a folder, and this is a file.";
+
+    private const FileAttributes OsOwned = FileAttributes.Hidden | FileAttributes.System;
 
     private static readonly char[] Separators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
 
@@ -54,13 +57,15 @@ public static class CliArchiveSources
                 AddLiteral(mask.Path, prefix, 1, sources, problems);
                 continue;
             }
+            // 7-Zip's universal item for "." is a wildcard that does not recurse, whatever -spd and -r say.
+            CliNameMask searched = everything ? mask with { WildcardMatching = true, Recursion = CliRecursion.None } : mask;
             string under = string.Join('/', rest);
-            if (!Searches(mask, under))
+            if (!Searches(searched, under))
             {
                 AddLiteral(mask.Path, Path.Combine(prefix, under), rest.Length, sources, problems);
                 continue;
             }
-            string literal = string.Join('/', rest[..LiteralFolderCount(rest, mask.WildcardMatching)]);
+            string literal = string.Join('/', rest[..LiteralFolderCount(rest, searched.WildcardMatching)]);
             if (!Directory.Exists(Path.Combine(prefix, literal)))
             {
                 problems.Add(new CliSourceProblem(mask.Path, NotFound));
@@ -68,13 +73,13 @@ public static class CliArchiveSources
             }
             if (!searches.TryGetValue((prefix, literal), out List<(CliNameMask, string)>? masks))
                 searches[(prefix, literal)] = masks = [];
-            masks.Add((mask, under));
+            masks.Add((searched, under));
         }
 
         foreach (((string prefix, string literal), List<(CliNameMask Mask, string Under)> masks) in searches)
             Search(new SearchRoot(prefix, literal, archiveFull), masks, excludes, caseSensitive, sources, problems);
 
-        return new CliArchiveSourceList(WithoutDuplicates(sources), problems);
+        return new CliArchiveSourceList(WithoutDuplicates(sources, excludes), problems);
     }
 
     // CCensor::AddItem: the folder on disk the mask hangs under, the mask's parts below it, and
@@ -112,13 +117,14 @@ public static class CliArchiveSources
         return literal;
     }
 
+    // A name ending in a separator names a folder only (AddItem's forFile = false); 7-Zip warns on a file.
     private static void AddLiteral(string typed, string fullPath, int nameParts, List<CliArchiveSource> sources, List<CliSourceProblem> problems)
     {
         string full = Path.TrimEndingDirectorySeparator(Path.GetFullPath(fullPath));
-        if (File.Exists(full) || Directory.Exists(full))
+        if (Directory.Exists(full) || (File.Exists(full) && !Path.EndsInDirectorySeparator(typed)))
             sources.Add(new CliArchiveSource(full, nameParts));
         else
-            problems.Add(new CliSourceProblem(typed, NotFound));
+            problems.Add(new CliSourceProblem(typed, File.Exists(full) ? NotAFolder : NotFound));
     }
 
     // Where one walk starts: Prefix names the entries, Literal ('/' between parts) is the folder
@@ -152,9 +158,13 @@ public static class CliArchiveSources
                 continue;
             }
 
+            // T-F285/T-F324: in a drive root the system's own entries (Hidden and System) are left
+            // out, as Core leaves them out of a drive root given whole.
+            bool driveRoot = folder.Parent is null;
             foreach (FileSystemInfo child in children)
             {
-                if (string.Equals(child.FullName, root.ArchiveFull, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(child.FullName, root.ArchiveFull, StringComparison.OrdinalIgnoreCase)
+                    || (driveRoot && (child.Attributes & OsOwned) == OsOwned))
                     continue;
                 string name = folderName.Length == 0 ? child.Name : folderName + "/" + child.Name;
                 bool isFolder = child is DirectoryInfo;
@@ -168,29 +178,48 @@ public static class CliArchiveSources
         }
     }
 
-    // A path given twice is taken once, and one under a folder taken whole is already in it.
-    private static List<CliArchiveSource> WithoutDuplicates(List<CliArchiveSource> sources)
+    // A source -x leaves out goes (Core would leave it out anyway, and it takes nothing below it
+    // with it); a path given twice is taken once; one under a folder taken whole is already in it,
+    // unless -x leaves it out there: then it stays a source of its own, as 7-Zip archives it.
+    private static List<CliArchiveSource> WithoutDuplicates(List<CliArchiveSource> sources, CliNameFilter? excludes)
     {
-        var taken = new HashSet<string>(sources.Select(s => s.FullPath), StringComparer.OrdinalIgnoreCase);
-        var kept = new List<CliArchiveSource>(sources.Count);
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var taken = new Dictionary<string, CliArchiveSource>(StringComparer.OrdinalIgnoreCase);
         foreach (CliArchiveSource source in sources)
         {
-            if (!seen.Add(source.FullPath) || HasTakenAncestor(source.FullPath, taken))
+            if (excludes is null || excludes.Includes(NameOf(source), Directory.Exists(source.FullPath)))
+                taken.TryAdd(source.FullPath, source);
+        }
+
+        var kept = new List<CliArchiveSource>(taken.Count);
+        foreach (CliArchiveSource source in taken.Values)
+        {
+            if (TakenAncestor(source.FullPath, taken) is not { } ancestor)
+            {
+                kept.Add(source);
                 continue;
-            kept.Add(source);
+            }
+            string inside = NameOf(ancestor) + "/" + Path.GetRelativePath(ancestor.FullPath, source.FullPath).Replace(Path.DirectorySeparatorChar, '/');
+            if (excludes is not null && !excludes.Includes(inside, Directory.Exists(source.FullPath)))
+                kept.Add(source);
         }
         return kept;
     }
 
-    private static bool HasTakenAncestor(string path, HashSet<string> taken)
+    private static CliArchiveSource? TakenAncestor(string path, Dictionary<string, CliArchiveSource> taken)
     {
         for (string? folder = Path.GetDirectoryName(path); folder is not null; folder = Path.GetDirectoryName(folder))
         {
-            if (taken.Contains(folder))
-                return true;
+            if (taken.TryGetValue(folder, out CliArchiveSource? ancestor))
+                return ancestor;
         }
-        return false;
+        return null;
+    }
+
+    // The source's name in the archive: its last NameParts parts.
+    private static string NameOf(CliArchiveSource source)
+    {
+        string[] parts = source.FullPath[(Path.GetPathRoot(source.FullPath) ?? "").Length..].Split(Separators, StringSplitOptions.RemoveEmptyEntries);
+        return string.Join('/', parts[Math.Max(0, parts.Length - source.NameParts)..]);
     }
 
     private sealed class PrefixComparer : IEqualityComparer<(string Prefix, string Literal)>
