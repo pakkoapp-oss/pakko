@@ -473,6 +473,13 @@ public sealed class TarSandboxedService : ITarService
         // Using the whole-archive total for a subset extraction would stall the poll well short
         // of 94% and claim bytes in the terminal report that were never written.
         List<string>? tarMembers = selectedEntryPaths is { Count: > 0 } ? ExpandSelection(allNames, selectedEntryPaths) : null;
+        // A selection that names no entry selects nothing, as in ZIP: an empty member list is
+        // tar.exe's "every entry" (a name it lists as "????.txt" on 1252 never matches the real one).
+        if (tarMembers is { Count: 0 })
+        {
+            Directory.CreateDirectory(destDir);
+            return (destDir, true);
+        }
         List<string>? expandedSelection = tarMembers;
         // T-F410: each name on its own, as the listing shows it (no "./"), a folder without its
         // content. None passes: 7-Zip's "No files to process", which creates no folder either.

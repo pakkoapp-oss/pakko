@@ -173,8 +173,11 @@ public sealed class TarSandboxedServiceEntryFilterTests : IDisposable
     public async Task ExtractAsync_NonAsciiNameInAUtf8Header_BySelectionAndByFilter()
     {
         // A UTF-8 header makes the scope read names with hdrcharset=UTF-8; the list file must name
-        // the member so that tar.exe finds it (measured: ANSI bytes, as on the command line).
-        string name = "\u0444\u0430\u0439\u043B.txt";
+        // the member so that tar.exe finds it (measured: ANSI bytes, as on the command line). A
+        // name outside the ANSI code page is listed as "????.txt" (bsdtar 3.5.2 on 1252), so the
+        // name is one this machine's code pages share.
+        if (TarCodePage.PortableNonAsciiName() is not { } name)
+            return;
         TarBuilder.Entry cyrillic = new() { Name = name, NameBytes = Encoding.UTF8.GetBytes(name), Content = [1] };
         string tar = Tar([cyrillic, File("other.txt")]);
         string bySelection = NewDestination();
@@ -205,6 +208,23 @@ public sealed class TarSandboxedServiceEntryFilterTests : IDisposable
 
         result.Errors.Should().BeEmpty();
         Relative(dest).Should().NotContain("x.tmp").And.Contain(p => p.EndsWith("a.txt", StringComparison.Ordinal));
+    }
+
+    [Integration]
+    public async Task ExtractAsync_SelectionNamingNoEntry_ExtractsNothing()
+    {
+        // A selected name the listing does not have (a name tar.exe lists as "????.txt" on 1252)
+        // expanded to an empty member list, and an empty list extracted the whole archive.
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [Tar([File("a.txt"), File("b.txt")])], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            SelectedEntryPaths = ["no-such.txt"],
+        });
+
+        result.Errors.Should().BeEmpty();
+        Relative(dest).Should().BeEmpty();
     }
 
     private static ExtractOptions Options(string tar, string dest, Func<string, bool, bool> filter) => new()
