@@ -47,11 +47,25 @@ public sealed class CliNameSwitchesTests
     [InlineData("-r", CliRecursion.Recursive)]
     [InlineData("-r-", CliRecursion.None)]
     [InlineData("-r0", CliRecursion.WildcardOnly)]
-    public void Recursion_TheLastOneWins(string token, CliRecursion expected)
+    public void Recursion_IsTaken(string token, CliRecursion expected)
     {
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", "a.zip", token]);
+
+        result.Type.Should().Be(CliCommandType.Extract, result.ErrorMessage);
+        result.NameSwitches.Recursion.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("-r")]
+    [InlineData("-r-")]
+    [InlineData("-r0")]
+    public void Recursion_GivenTwice_IsAMultipleInstanceError(string token)
+    {
+        // T-F411: measured, "7za l a.zip -r -r" is exit 7.
         ParsedCliCommand result = CliArgumentParser.Parse(["x", "-r", "a.zip", token]);
 
-        result.NameSwitches.Recursion.Should().Be(expected);
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Be($"Multiple instances for switch: {token}");
     }
 
     [Fact]

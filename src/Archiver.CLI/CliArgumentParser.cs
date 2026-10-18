@@ -18,6 +18,17 @@ public enum CliCommandType
     Invalid,
 }
 
+/// <summary>How 'a' names the archive: 7-Zip's -sa{s|e|a} (T-F411).</summary>
+public enum CliArchiveNameMode
+{
+    /// <summary>-sas, the default: a name with no extension gets the type's.</summary>
+    Smart,
+    /// <summary>-sae: the name exactly as typed.</summary>
+    Exact,
+    /// <summary>-saa: the type's extension is always added.</summary>
+    Always,
+}
+
 /// <summary>Result of parsing CLI arguments passed to Archiver.CLI.</summary>
 public sealed record ParsedCliCommand
 {
@@ -40,7 +51,7 @@ public sealed record ParsedCliCommand
     public int? ConsoleCodePage { get; init; }                        // -scc{charset}, every command (T-F238); a CliConsoleCharset value
     public bool? ApplyDownloadMark { get; init; }                     // -snz[0|1], x only (T-F360); null = not given
     public int RecoveryPercent { get; init; }                         // -rr[N], a only (T-F275); 0 = no PAR2 files
-    public bool ArchiveNameExact { get; init; }                       // -sae, a only (T-F411): no extension added
+    public CliArchiveNameMode ArchiveNameMode { get; init; }          // -sas/-sae/-saa, a only (T-F411)
     public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
     public CliNameSwitches NameSwitches { get; init; } = new();       // -i/-x/-r/-spd/-ssc/-scs/-ai/-ax/-an, x/l/t (T-F410)
     public IReadOnlyList<CliFilterName> FilterNames { get; init; } = []; // x/l/t: the names after the archive name; a: its sources (T-F410)
@@ -67,9 +78,13 @@ public static class CliArgumentParser
 
         // T-F407: as in 7-Zip (CommandLineParser.cpp, ParseStrings), everything after the first "--"
         // is a name, even "-name" or a second "--"; patool puts "--" before the names on every call.
-        int stop = Array.IndexOf(args, "--", 1);
-        string[] switchPart = stop < 0 ? args[1..] : args[1..stop];
+        int stop = Array.IndexOf(args, "--");
+        string[] switchPart = stop < 0 ? args : args[..stop];
         string[] names = stop < 0 ? [] : args[(stop + 1)..];
+        if (TakeCommand(ref switchPart, ref names) is not { } commandName)
+            return Invalid("Incorrect command line: no command given (e.g. pakko x archive.zip)");
+        if (!CliSwitchNames.TryCanonicalize(switchPart, out switchPart, out string? repeatError))
+            return Invalid(repeatError!);
         if (ShellSplitReason(switchPart) is { } splitError)
             return Invalid(splitError);
         if (!TryTakeConsoleCharset(ref switchPart, out int? consoleCodePage, out string? charsetError))
@@ -80,12 +95,40 @@ public static class CliArgumentParser
             return Invalid(nameError!);
 
         CliToken[] rest = [.. switchPart.Select(CliToken.Of), .. names.Select(CliToken.Name)];
-        ParsedCliCommand command = CliCommandValidator.Validate(ParseCommand(args[0], rest, nameSwitches));
+        ParsedCliCommand command = CliCommandValidator.Validate(ParseCommand(commandName, rest, nameSwitches));
         if (command.Type == CliCommandType.Invalid)
             return command;
         if (StdOutConflict(command, output) is { } conflict)
             return Invalid(conflict);
         return command with { ConsoleCodePage = consoleCodePage, Output = output };
+    }
+
+    // T-F411: as in 7-Zip (ParseStrings, then the first of NonSwitchStrings), the command is the first
+    // argument that is not a switch, or the first name after "--" when every argument before it is
+    // one. Its letters are compared without case, ASCII only; an unknown command keeps its spelling
+    // for the error message.
+    private static readonly string[] CommandNames = ["x", "t", "i", "a", "l", "h", "r", "u", "d", "rn", "b", "e"];
+
+    private static string? TakeCommand(ref string[] switchPart, ref string[] names)
+    {
+        int index = Array.FindIndex(switchPart, token => token.Length == 0 || token[0] != '-');
+        string typed;
+        if (index >= 0)
+        {
+            typed = switchPart[index];
+            switchPart = [.. switchPart[..index], .. switchPart[(index + 1)..]];
+        }
+        else if (names.Length > 0)
+        {
+            typed = names[0];
+            names = names[1..];
+        }
+        else
+        {
+            return null;
+        }
+        string lower = CliSwitchNames.ToLowerAscii(typed);
+        return Array.IndexOf(CommandNames, lower) >= 0 ? lower : typed;
     }
 
     // T-F408: under -so stdout carries the data; 7-Zip turns its messages off there (StdOutMode).
@@ -212,7 +255,7 @@ public static class CliArgumentParser
         new(token.Text, IsListFile: !token.AfterStop && token.Text.StartsWith('@'));
 
     // T-F238: -scc{charset} applies to every command, so it is taken out before the per-command
-    // parsers see the tokens. As in 7-Zip, the last occurrence wins. 7-Zip also takes a numeric
+    // parsers see the tokens; given twice, CliSwitchNames refuses it, as 7-Zip does. 7-Zip also takes a numeric
     // code page; Pakko supports only the three names its help documents.
     private static bool TryTakeConsoleCharset(ref string[] rest, out int? consoleCodePage, out string? error)
     {
@@ -340,7 +383,7 @@ public static class CliArgumentParser
     }
 
     // T-F360: 7-Zip's -snz[0|1|2] (NanaZip's ArchiveCommandLine.cpp): 0 none, 1 or bare all files,
-    // 2 Office files only - which Pakko's modes do not have. Whichever -snz comes last wins.
+    // 2 Office files only - which Pakko's modes do not have. Given twice: CliSwitchNames refuses it.
     private static (bool? Apply, string? Error) ParseDownloadMark(string token) => token switch
     {
         "-snz" or "-snz1" => (true, null),
@@ -349,7 +392,7 @@ public static class CliArgumentParser
         _ => (null, $"unknown -snz value: '{token[4..]}' (expected -snz, -snz0 or -snz1)"),
     };
 
-    // T-F193: a bare -p means "prompt for it", as in real 7z. Whichever -p comes last wins.
+    // T-F193: a bare -p means "prompt for it", as in real 7z.
     private static (string? Password, bool Prompt) ParsePassword(string token) =>
         token.Length == 2 ? (null, true) : (token[2..], false);
 
@@ -516,7 +559,7 @@ public static class CliArgumentParser
         public string? Password { get; set; }
         public bool PromptForPassword { get; set; }
         public int RecoveryPercent { get; set; }
-        public bool ArchiveNameExact { get; set; }
+        public CliArchiveNameMode ArchiveNameMode { get; set; }
     }
 
     private static ParsedCliCommand ParseArchive(CliToken[] rest)
@@ -549,7 +592,7 @@ public static class CliArgumentParser
             Password = state.Password,
             PromptForPassword = state.PromptForPassword,
             RecoveryPercent = state.RecoveryPercent,
-            ArchiveNameExact = state.ArchiveNameExact,
+            ArchiveNameMode = state.ArchiveNameMode,
         };
     }
 
@@ -599,7 +642,7 @@ public static class CliArgumentParser
 
         if (token.StartsWith("-sa", StringComparison.Ordinal))
         {
-            (state.ArchiveNameExact, string? error) = ParseArchiveNameMode(token);
+            (state.ArchiveNameMode, string? error) = ParseArchiveNameMode(token);
             return error;
         }
 
@@ -607,20 +650,21 @@ public static class CliArgumentParser
     }
 
     // T-F411: 7-Zip's -sa{s|e|a} (ArchiveCommandLine.cpp, ParseArcNameMode). -sas is Pakko's own rule
-    // (T-F221 item 6: a name with no extension gets the type's), -sae writes the name as typed.
-    // Whichever comes last wins.
-    private static (bool Exact, string? Error) ParseArchiveNameMode(string token) => token switch
+    // (T-F221 item 6: a name with no extension gets the type's), -sae writes the name as typed, -saa
+    // always adds the type's extension. The letter is case-sensitive, as in 7-Zip (-SAE is exit 7).
+    private static (CliArchiveNameMode Mode, string? Error) ParseArchiveNameMode(string token) => token switch
     {
-        "-sas" => (false, null),
-        "-sae" => (true, null),
-        "-saa" => (false, "not supported by Pakko: -saa (always add the type's extension) is not implemented; use -sas or -sae"),
-        _ => (false, $"unknown -sa value: '{token[3..]}' (expected -sas or -sae)"),
+        "-sas" => (CliArchiveNameMode.Smart, null),
+        "-sae" => (CliArchiveNameMode.Exact, null),
+        "-saa" => (CliArchiveNameMode.Always, null),
+        _ => (CliArchiveNameMode.Smart, $"unknown -sa value: '{token[3..]}' (expected -sas, -sae or -saa)"),
     };
 
     // 7z's -m{params} on 'a': -mx=<0-9>, -mem=AES256 and -m0=<method> (7z only, T-F342) are
     // implemented, every other one is refused.
-    private static string? ApplyMethodToken(string token, ArchiveParseState state)
+    private static string? ApplyMethodToken(string typed, ArchiveParseState state)
     {
+        string token = PropertyNameInLowerCase(typed);
         if (token.StartsWith("-mx", StringComparison.Ordinal))
         {
             if (!TryParseCompressionLevel(token, out CompressionLevel? compressionLevel, out string? error))
@@ -642,6 +686,15 @@ public static class CliArgumentParser
             return $"not supported by Pakko: {token[..3]} — a 7z archive is written with one method, named by -m0=<method>";
 
         return "not supported by Pakko: of 7z's -m{params}, only -mx=<0-9>, -mem=AES256 and -m0=<method> (with -t7z) are implemented";
+    }
+
+    // T-F411: 7-Zip reads a property's name without case (-MX=9, -mEM=AES256); its value as typed.
+    private static string PropertyNameInLowerCase(string token)
+    {
+        int end = 2;
+        while (end < token.Length && char.IsAsciiLetter(token[end]))
+            end++;
+        return "-m" + CliSwitchNames.ToLowerAscii(token[2..end]) + token[end..];
     }
 
     // T-F342: the methods tar.exe's 7z writer has and Pakko offers. A bare name only: a method's
@@ -672,7 +725,6 @@ public static class CliArgumentParser
 
     // T-F275: WinRAR's -rr[N] spelling (no 7z switch adds recovery data). A bare -rr is the App's
     // default, 5 %; 0 is refused rather than read as "none", since leaving -rr out means none.
-    // Whichever -rr comes last wins.
     private const int DefaultRecoveryPercent = 5;
 
     private static (int Percent, string? Error) ParseRecoveryPercent(string token)
@@ -705,21 +757,27 @@ public static class CliArgumentParser
         };
     }
 
+    // T-F411: 7-Zip takes -mx (level 9), -mxN and -mx=N, and reads a level above 9 as 9.
+    private const int MaxCompressionLevel = 9;
+
     private static bool TryParseCompressionLevel(string token, out CompressionLevel? level, out string? error)
     {
         level = null;
-        if (token.Length < 5 || token[3] != '=')
+        string valueText = token.Length > 3 && token[3] == '=' ? token[4..] : token[3..];
+        if (token.Length == 3)
+            valueText = MaxCompressionLevel.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+        bool digits = valueText.Length > 0 && valueText.All(char.IsAsciiDigit);
+        if (!digits)
         {
-            error = "-mx requires a value in the form -mx=<0-9>, e.g. -mx=9";
+            error = $"-mx takes a level 0-9 (-mx, -mx9 or -mx=9), got '{valueText}'";
             return false;
         }
 
-        string valueText = token[4..];
-        if (!int.TryParse(valueText, out int mx))
-        {
-            error = $"-mx=<n> must be a number 0-9, got '{valueText}'";
-            return false;
-        }
+        // An all-digit value too long for an int is above 9 as well.
+        int mx = int.TryParse(valueText, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int parsed)
+            ? Math.Min(parsed, MaxCompressionLevel)
+            : MaxCompressionLevel;
 
         level = CliCompressionLevelMapper.TryMap(mx);
         if (level is null)
@@ -741,7 +799,7 @@ public static class CliArgumentParser
             return false;
         }
 
-        string typeValue = token[2..];
+        string typeValue = CliSwitchNames.ToLowerAscii(token[2..]); // T-F411: -tZIP, as 7-Zip reads it
         if (typeValue is "rar")
         {
             error = "not supported by Pakko: -trar — Pakko can only create ZIP, 7z and tar-family archives, rar is extract-only";
@@ -827,6 +885,11 @@ public static class CliArgumentParser
 
     private static ParsedCliCommand ParseHash(CliToken[] rest)
     {
+        // T-F411: 7-Zip computes every -scrc method given; Pakko computes one, so a second is refused
+        // rather than silently dropped.
+        if (rest.Count(t => t.IsSwitch && t.Text.StartsWith("-scrc", StringComparison.Ordinal)) > 1)
+            return Invalid("not supported by Pakko: more than one -scrc — Pakko computes one hash method per run");
+
         var paths = new List<string>();
         HashAlgorithmKind algorithm = HashAlgorithmKind.Crc32; // matches real 7z's own default hash method
         bool readFromStdin = false;

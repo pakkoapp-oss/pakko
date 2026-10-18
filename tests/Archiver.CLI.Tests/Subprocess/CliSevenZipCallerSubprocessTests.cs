@@ -54,18 +54,57 @@ public sealed class CliSevenZipCallerSubprocessTests
 
     // T-F411: -sae writes the name exactly as typed; without it a name with no extension gets the type's.
     [Theory]
-    [InlineData("-sae", "noext")]
-    [InlineData("-sas", "noext.zip")]
-    public void Archive_NameMode_DecidesTheFileName(string nameMode, string expectedName)
+    [InlineData("-sae", "noext", "noext")]
+    [InlineData("-sas", "noext", "noext.zip")]
+    [InlineData("-saa", "noext", "noext.zip")]
+    [InlineData("-saa", "named.zip", "named.zip.zip")]
+    [InlineData("-sas", "named.zip", "named.zip")]
+    public void Archive_NameMode_DecidesTheFileName(string nameMode, string typedName, string expectedName)
     {
         string scratchDir = CliFixtureFiles.CreateScratchDir();
 
-        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-tzip", nameMode, "noext", CliFixtureFiles.SourceFileA);
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-tzip", nameMode, typedName, CliFixtureFiles.SourceFileA);
 
         exitCode.Should().Be(0, stdErr);
         Directory.GetFiles(scratchDir).Select(Path.GetFileName).Should().Equal(expectedName);
         using ZipArchive archive = ZipFile.OpenRead(Path.Combine(scratchDir, expectedName));
         archive.Entries.Should().ContainSingle();
+    }
+
+    // T-F411: 7-Zip's spellings (measured on 7za 26.02): a switch before the command, both in capitals.
+    [Fact]
+    public void Extract_SwitchesAndCommandInCapitals_Extracts()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("-Y", "X", CliFixtureFiles.ValidZip, $"-O{destDir}");
+
+        exitCode.Should().Be(0, stdErr);
+        File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("hello world");
+    }
+
+    [Fact]
+    public void Extract_OutputGivenTwice_IsExitSevenAndWritesNothing()
+    {
+        string first = CliFixtureFiles.CreateScratchDir();
+        string second = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", CliFixtureFiles.ValidZip, $"-o{first}", $"-o{second}", "-y");
+
+        exitCode.Should().Be(7);
+        stdErr.Should().Contain("Multiple instances for switch");
+        Directory.EnumerateFileSystemEntries(first).Concat(Directory.EnumerateFileSystemEntries(second)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Archive_TarWithSaa_AddsTheExtensionAgain()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-TTAR", "-saa", "n.tar", CliFixtureFiles.SourceFileA);
+
+        exitCode.Should().Be(0, stdErr);
+        Directory.GetFiles(scratchDir).Select(Path.GetFileName).Should().Equal("n.tar.tar");
     }
 
     [SevenZipWriterFact]
