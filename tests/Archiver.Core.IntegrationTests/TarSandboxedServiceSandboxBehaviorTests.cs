@@ -90,7 +90,6 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
         listener.Start();
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;
         int acceptedConnectionCount = 0;
-        using var cts = new CancellationTokenSource();
         // Accepted clients are disposed only after both curl calls finish (see the finally block
         // below) — disposing a TcpClient immediately after WriteAsync races the OS's delivery of
         // that data under load (parallel test execution) and can send an abrupt RST instead of a
@@ -107,23 +106,26 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
         // curl "fail" this way). This background loop answers every real connection with a
         // minimal 200 OK so a REACHABLE curl always succeeds, leaving connect-level unreachability
         // (never even establishing a connection) as the only way the sandboxed case can fail.
-        var serverLoopTask = Task.Run(async () =>
+        // A dedicated thread, not the ThreadPool: a full parallel CI run starved a pool-based loop
+        // past curl's whole timeout (exit 28, PR #83), as with T-F279's timer (3798127).
+        var serverLoop = new Thread(() =>
         {
             try
             {
-                while (!cts.IsCancellationRequested)
+                while (true)
                 {
-                    TcpClient client = await listener.AcceptTcpClientAsync(cts.Token);
+                    TcpClient client = listener.AcceptTcpClient();
                     acceptedClients.Add(client);
                     Interlocked.Increment(ref acceptedConnectionCount);
                     NetworkStream stream = client.GetStream();
-                    byte[] response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray();
-                    await stream.WriteAsync(response, cts.Token);
-                    await stream.FlushAsync(cts.Token);
+                    stream.Write("HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8);
+                    stream.Flush();
                 }
             }
-            catch (OperationCanceledException) { }
-        });
+            catch (SocketException) { /* listener.Stop() in the finally block ends the loop */ }
+            catch (ObjectDisposedException) { /* the same, when Stop() races the accept */ }
+        }) { IsBackground = true };
+        serverLoop.Start();
 
         var profile = new AppContainerProfile("Pakko.TarSandbox.Test." + Guid.NewGuid());
         try
@@ -142,9 +144,10 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
 
             // Same listener, unsandboxed launch of the same command — attributes the failure
             // above to the missing capability specifically, not environment/listener flakiness.
+            // A long timeout: this one must connect, however loaded the machine is.
             (int unsandboxedExitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
                 CurlExecutablePath,
-                ["-s", "-m", "3", $"http://127.0.0.1:{port}/"],
+                ["-s", "-m", "30", $"http://127.0.0.1:{port}/"],
                 new ProcessLaunchOptions(),
                 CancellationToken.None);
 
@@ -154,12 +157,11 @@ public sealed class TarSandboxedServiceSandboxBehaviorTests
         }
         finally
         {
-            cts.Cancel();
+            listener.Stop();
+            serverLoop.Join();
             foreach (TcpClient client in acceptedClients)
                 client.Dispose();
             try { profile.Delete(); } catch { }
-            listener.Stop();
-            try { await serverLoopTask; } catch { }
         }
     }
 }
