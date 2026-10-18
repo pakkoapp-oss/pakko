@@ -13300,6 +13300,13 @@ the archive.
   (three of the cases are new: `-y -- x`, `-MX=9`, `-saa`), accepted 46 -> 47, differs 22 -> 21,
   missing 47 -> 42, pakko-only 5, reference-fails 11; none got worse (`-O -Y -AOA` "works": exit 7
   in both, on the postfix letter).
+- **Closing review** (a read-only reviewer against 7za, 2026-10-18; each fix with a test seen red
+  first): a bare `-p` followed by a word made that word the command, and "unknown command" printed
+  it, a possible password (7za prints it too; Pakko never prints one, so the word is left out);
+  `-H`, `-?` and `x a.zip -h` were "no command" or "unknown switch" where 7za shows its help (HelpMode
+  for `-?`, `-h`, `--help` anywhere; `-hx` and `-HELP` stay exit 7 in both); `-mx=` was exit 7 where
+  7za takes it as `-mx` (measured: exit 0, the same archive); `-sa{s|e}` in one refusal now names
+  `-saa` too. Left as is (cosmetic): an unknown `-t` or `-m` value is quoted in lower case.
 - **Left for wave E** (Core options, measured the same day, `scratchpad` notes copied into its
   plan): `-aot`, `-sdel`, `-spe` (7-Zip drops the root folder named like the last part of `-o`, not
   like the archive, `Extract.cpp` 26.02), `-mmt`, `-sse`, `-ssw`, `-stl`, `-ssp`, `-w`.

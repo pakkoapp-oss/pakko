@@ -70,7 +70,7 @@ public static class CliArgumentParser
 {
     public static ParsedCliCommand Parse(string[] args)
     {
-        if (args.Length == 0 || args[0] is "-h" or "--help")
+        if (args.Length == 0 || AsksForHelp(args))
             return new ParsedCliCommand { Type = CliCommandType.Help };
 
         if (args[0] is "-v" or "--version")
@@ -81,8 +81,11 @@ public static class CliArgumentParser
         int stop = Array.IndexOf(args, "--");
         string[] switchPart = stop < 0 ? args : args[..stop];
         string[] names = stop < 0 ? [] : args[(stop + 1)..];
-        if (TakeCommand(ref switchPart, ref names) is not { } commandName)
+        if (TakeCommand(ref switchPart, ref names, out bool afterBarePassword) is not { } commandName)
             return Invalid("Incorrect command line: no command given (e.g. pakko x archive.zip)");
+        // "-p secret x a.zip" makes "secret" the command; a word that may be a password is never printed.
+        if (afterBarePassword && Array.IndexOf(CommandNames, commandName) < 0)
+            return Invalid("Incorrect command line: unknown command after a bare -p (the word is not printed; give a password as -p<password>)");
         if (!CliSwitchNames.TryCanonicalize(switchPart, out switchPart, out string? repeatError))
             return Invalid(repeatError!);
         if (ShellSplitReason(switchPart) is { } splitError)
@@ -109,9 +112,24 @@ public static class CliArgumentParser
     // for the error message.
     private static readonly string[] CommandNames = ["x", "t", "i", "a", "l", "h", "r", "u", "d", "rn", "b", "e"];
 
-    private static string? TakeCommand(ref string[] switchPart, ref string[] names)
+    // T-F411: 7-Zip shows its help for -?, -h or --help anywhere before "--", in any case
+    // (ArchiveCommandLine.cpp, HelpMode); "-hx" is not one of them.
+    private static bool AsksForHelp(string[] args)
+    {
+        foreach (string token in args)
+        {
+            if (token == "--")
+                return false;
+            if (CliSwitchNames.ToLowerAscii(token) is "-h" or "-?" or "--help")
+                return true;
+        }
+        return false;
+    }
+
+    private static string? TakeCommand(ref string[] switchPart, ref string[] names, out bool afterBarePassword)
     {
         int index = Array.FindIndex(switchPart, token => token.Length == 0 || token[0] != '-');
+        afterBarePassword = index > 0 && CliSwitchNames.ToLowerAscii(switchPart[index - 1]) == "-p";
         string typed;
         if (index >= 0)
         {
@@ -122,6 +140,7 @@ public static class CliArgumentParser
         {
             typed = names[0];
             names = names[1..];
+            afterBarePassword = switchPart.Length > 0 && CliSwitchNames.ToLowerAscii(switchPart[^1]) == "-p";
         }
         else
         {
@@ -764,7 +783,7 @@ public static class CliArgumentParser
     {
         level = null;
         string valueText = token.Length > 3 && token[3] == '=' ? token[4..] : token[3..];
-        if (token.Length == 3)
+        if (valueText.Length == 0 && token.Length <= 4) // -mx and -mx=: 7-Zip's default level for x, 9
             valueText = MaxCompressionLevel.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
         bool digits = valueText.Length > 0 && valueText.All(char.IsAsciiDigit);
@@ -995,7 +1014,7 @@ public static class CliArgumentParser
         ("-v", "not supported: no multi-part/split-archive logic exists in Pakko"),
         ("-ssc", "unknown -ssc value: expected -ssc or -ssc- (T-F410)"),
         ("-snz", "not supported on this command: -snz is only valid with 'x' (extract)"),
-        ("-sa", "not supported on this command: -sa{s|e} names the archive 'a' creates"),
+        ("-sa", "not supported on this command: -sa{s|e|a} names the archive 'a' creates"),
     ];
 
     private static string UnsupportedSwitchReason(string token)
