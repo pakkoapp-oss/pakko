@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Copia reparată nu a putut fi scrisă: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>„{0}” nu poate fi stocat în arhivă sub acea parte a căii sale.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>„{0}” ar fi stocat în arhivă în interiorul „{1}”, ca „{2}”.</value>
+  </data>
 </root>

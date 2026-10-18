@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>ٹھیک کی گئی نقل لکھی نہیں جا سکی: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>"{0}" کو اس کے پاتھ کے اس حصے کے نام سے آرکائیو میں محفوظ نہیں کیا جا سکتا۔</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>"{0}" آرکائیو میں "{1}" کے اندر "{2}" کے طور پر محفوظ ہو جاتا۔</value>
+  </data>
 </root>

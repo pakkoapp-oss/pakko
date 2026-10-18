@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>修復されたコピーを書き込めませんでした: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>「{0}」をそのパスのその部分の名前でアーカイブに格納することはできません。</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>「{0}」はアーカイブ内で「{1}」の中に「{2}」として格納されることになります。</value>
+  </data>
 </root>

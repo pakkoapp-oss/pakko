@@ -372,4 +372,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Не вдалося записати відновлену копію: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>«{0}» не можна зберегти в архіві під цією частиною його шляху.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>«{0}» потрапив би в архіві всередину «{1}», як «{2}».</value>
+  </data>
 </root>

@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>복구된 사본을 쓸 수 없습니다: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>"{0}"을(를) 경로의 해당 부분 이름으로 압축 파일에 저장할 수 없습니다.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>"{0}"이(가) 압축 파일에서 "{1}" 안에 "{2}"(으)로 저장됩니다.</value>
+  </data>
 </root>

@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Parandatud koopiat ei saanud kirjutada: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>„{0}” ei saa arhiivi salvestada selle teeosa all.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>„{0}” salvestataks arhiivis „{1}” sisse nimega „{2}”.</value>
+  </data>
 </root>

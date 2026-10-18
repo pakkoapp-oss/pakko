@@ -1529,6 +1529,10 @@ public sealed class TarSandboxedService : ITarService
         // shape instead of the normal "-C <parent> <name>" one.
         options = options with { SourcePaths = [.. options.SourcePaths.Select(SourcePathNormalizer.Normalize)] };
 
+        (SourceEntryNames names, ArchiveError? namesError) = SourceEntryNames.Create(options);
+        if (namesError is not null)
+            return new ArchiveResult { Errors = [namesError] };
+
         var errors = new List<ArchiveError>();
         var createdFiles = new List<string>();
         var skippedFiles = new List<SkippedFile>();
@@ -1583,7 +1587,7 @@ public sealed class TarSandboxedService : ITarService
                 };
             }
 
-            await CompressToArchiveAsync(options, (resolvedDestPath, outcome == DestinationConflictOutcome.ProceedReplacingExisting), createdFiles, errors, skippedFiles, progress, cancellationToken)
+            await CompressToArchiveAsync(options, names, (resolvedDestPath, outcome == DestinationConflictOutcome.ProceedReplacingExisting), new ArchiveResultSink(errors, createdFiles, skippedFiles), progress, cancellationToken)
                 .ConfigureAwait(false);
 
             // T-F260: one archive for every source — see ZipArchiveService.ArchiveAsync's same rule.
@@ -1593,7 +1597,7 @@ public sealed class TarSandboxedService : ITarService
         else // ArchiveMode.SeparateArchives — one archive per top-level source path
         {
             var sink = new ArchiveResultSink(errors, createdFiles, skippedFiles);
-            sources = await ProcessSeparateArchivesAsync(options, extension, conflictResolver, sink, progress, cancellationToken)
+            sources = await ProcessSeparateArchivesAsync(options, names, extension, conflictResolver, sink, progress, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -1616,7 +1620,7 @@ public sealed class TarSandboxedService : ITarService
     // Returns one SourceResult per source that reached CompressToArchiveAsync; a missing or
     // conflict-skipped source records none, so it stays not deletable (T-F260).
     private async Task<List<SourceResult>> ProcessSeparateArchivesAsync(
-        ArchiveOptions options, string extension, ConflictResolver conflictResolver,
+        ArchiveOptions options, SourceEntryNames names, string extension, ConflictResolver conflictResolver,
         ArchiveResultSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
         var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
@@ -1647,7 +1651,7 @@ public sealed class TarSandboxedService : ITarService
 
             ArchiveOptions singleOptions = options with { SourcePaths = [sourcePath] };
             int errorsBefore = sink.Errors.Count, skippedBefore = sink.SkippedFiles.Count, createdBefore = sink.CreatedFiles.Count;
-            await CompressToArchiveAsync(singleOptions, (resolvedDestPath, outcome == DestinationConflictOutcome.ProceedReplacingExisting), sink.CreatedFiles, sink.Errors, sink.SkippedFiles, progress, cancellationToken)
+            await CompressToArchiveAsync(singleOptions, names, (resolvedDestPath, outcome == DestinationConflictOutcome.ProceedReplacingExisting), sink, progress, cancellationToken)
                 .ConfigureAwait(false);
             sources.Add(SourceOutcomeRules.Classify(sourcePath,
                 produced: sink.CreatedFiles.Count > createdBefore,
@@ -1664,13 +1668,13 @@ public sealed class TarSandboxedService : ITarService
     // reported as ArchiveError, matching ZipArchiveService.ArchiveAsync's per-item handling.
     private async Task CompressToArchiveAsync(
         ArchiveOptions options,
+        SourceEntryNames names,
         (string Path, bool ReplacesExisting) destination,
-        List<string> createdFiles,
-        List<ArchiveError> errors,
-        List<SkippedFile> skippedFiles,
+        ArchiveResultSink sink,
         IProgress<ProgressReport>? progress,
         CancellationToken cancellationToken)
     {
+        (List<ArchiveError> errors, List<string> createdFiles, List<SkippedFile> skippedFiles) = sink;
         // T-F321: from the conflict decision, not a second look at the disk - an archive that
         // appeared since then is another run's, and the commit must not replace it.
         (string destPath, bool replacesExisting) = destination;
@@ -1694,7 +1698,7 @@ public sealed class TarSandboxedService : ITarService
             var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
             var nameList = new List<ListedSource>();
             (int entryCount, long totalEntriesForProgress, long totalBytesForProgress) =
-                AppendSourcesToNameList(nameList, sortedSourcePaths, errors, skippedFiles, collisionStagingDir, stagedJunctions,
+                AppendSourcesToNameList(nameList, sortedSourcePaths, names, new ArchiveResultLists(errors, skippedFiles), collisionStagingDir, stagedJunctions,
                     ownPaths: [tempPath, destPath, excludeListPath, writerTempDir]);
 
             if (entryCount == 0)
@@ -1899,9 +1903,10 @@ public sealed class TarSandboxedService : ITarService
     // T-F283: every name is one line of tar.exe's "-T -" list. In that list only an exact "-C" line
     // is special (the next line is the folder to change to); no other line is read as an option.
     private static (int EntryCount, long TotalEntriesForProgress, long TotalBytesForProgress) AppendSourcesToNameList(
-        List<ListedSource> nameList, IReadOnlyList<string> sortedSourcePaths, List<ArchiveError> errors, List<SkippedFile> skippedFiles,
+        List<ListedSource> nameList, IReadOnlyList<string> sortedSourcePaths, SourceEntryNames names, ArchiveResultLists result,
         string collisionStagingDir, List<string> stagedJunctions, string[] ownPaths)
     {
+        (List<ArchiveError> errors, List<SkippedFile> skippedFiles) = result;
         int entryCount = 0;
         long totalEntriesForProgress = 0;
         long totalBytesForProgress = 0;
@@ -1939,7 +1944,7 @@ public sealed class TarSandboxedService : ITarService
             int listedBefore = nameList.Count;
             bool appended = isDriveRoot
                 ? claims.TryAppendDriveRootLines(nameList, sourcePath, fullSource, ownPaths, new ArchiveResultLists(errors, skippedFiles))
-                : claims.TryAppendLines(nameList, sourcePath, fullSource, errors);
+                : claims.TryAppendLines(nameList, sourcePath, fullSource, names.For(sourcePath), errors);
             if (!appended)
                 continue;
 
@@ -1982,9 +1987,10 @@ public sealed class TarSandboxedService : ITarService
         private readonly HashSet<string> _claimed = new(StringComparer.OrdinalIgnoreCase);
 
         // False when the source was refused (its error is recorded).
-        public bool TryAppendLines(List<ListedSource> nameList, string sourcePath, string fullSource, List<ArchiveError> errors)
+        public bool TryAppendLines(List<ListedSource> nameList, string sourcePath, string fullSource, string name, List<ArchiveError> errors)
         {
-            if (Claim(sourcePath, fullSource, Path.GetDirectoryName(fullSource)!, Path.GetFileName(fullSource), errors) is not { } claimed)
+            // T-F414: a name kept with its folders ("dir/sub") hangs under the folder above them.
+            if (Claim(sourcePath, fullSource, SourceEntryNames.ParentOf(fullSource, name), name, errors) is not { } claimed)
                 return false;
 
             nameList.Add(new ListedSource(sourcePath, claimed.Parent, claimed.Name, fullSource));
@@ -2051,7 +2057,7 @@ public sealed class TarSandboxedService : ITarService
             string stagedPath = Path.Combine(stagingDir, uniqueName);
             try
             {
-                Directory.CreateDirectory(stagingDir);
+                Directory.CreateDirectory(Path.GetDirectoryName(stagedPath)!);
                 if (isFolder)
                 {
                     DirectoryJunction.Create(stagedPath, fullSource);
@@ -2077,7 +2083,7 @@ public sealed class TarSandboxedService : ITarService
         // an in-memory set of already-claimed entry names rather than disk existence — the candidate
         // doesn't exist on disk yet (it's about to be staged into a fresh temp directory).
         private static string GetUniqueEntryName(string name, HashSet<string> claimedNames) =>
-            ArchiveNaming.GetUniqueName(name, candidate => candidate == name || claimedNames.Contains(candidate));
+            ArchiveNaming.GetUniqueEntryName(name, candidate => candidate == name || claimedNames.Contains(candidate));
     }
 
     // T-F140: real count of entries tar.exe will emit a "-v" line for when archiving this one

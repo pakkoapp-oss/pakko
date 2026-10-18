@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>เขียนสำเนาที่ซ่อมแซมแล้วไม่ได้: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>ไม่สามารถเก็บ "{0}" ในไฟล์บีบอัดด้วยส่วนนั้นของพาธได้</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>"{0}" จะถูกเก็บไว้ภายใน "{1}" ในไฟล์บีบอัด เป็น "{2}"</value>
+  </data>
 </root>

@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>मरम्मत की गई प्रति लिखी नहीं जा सकी: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>"{0}" को उसके पथ के इस भाग के नाम से संग्रह में नहीं रखा जा सकता।</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>"{0}" संग्रह में "{1}" के अंदर "{2}" के रूप में रखा जाएगा।</value>
+  </data>
 </root>

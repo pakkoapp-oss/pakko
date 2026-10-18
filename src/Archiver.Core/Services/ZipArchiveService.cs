@@ -78,6 +78,10 @@ public sealed class ZipArchiveService : IArchiveService
         // downstream Path.GetFileName call in this class already sees a clean path.
         options = options with { SourcePaths = [.. options.SourcePaths.Select(SourcePathNormalizer.Normalize)] };
 
+        (SourceEntryNames names, ArchiveError? namesError) = SourceEntryNames.Create(options);
+        if (namesError is not null)
+            return new ArchiveResult { CreatedFiles = [], Errors = [namesError], SkippedFiles = [] };
+
         // T-F406: before any prompt, and both modes write into this folder.
         if (DestinationFolder.TryCreate(options.DestinationFolder) is { } folderFailure)
             return DestinationFolder.CreationRefused(options, folderFailure);
@@ -98,7 +102,7 @@ public sealed class ZipArchiveService : IArchiveService
             if (passwordError is not null)
                 return new ArchiveResult { CreatedFiles = [], Errors = [passwordError], SkippedFiles = [] };
         }
-        var run = new ArchiveRunContext(conflictResolver, password, HasNoSeekPenalty, HasSeekPenalty);
+        var run = new ArchiveRunContext(conflictResolver, password, HasNoSeekPenalty, HasSeekPenalty, names);
         IEnumerable<SourceResult> sources;
 
         if (options.Mode == ArchiveMode.SingleArchive)
@@ -141,7 +145,8 @@ public sealed class ZipArchiveService : IArchiveService
     // The per-call state both archive modes share — bundled to keep S107's parameter count down.
     // Password is null for an ordinary unencrypted archive (T-F193).
     private sealed record ArchiveRunContext(
-        ConflictResolver ConflictResolver, string? Password, Func<string, bool> HasNoSeekPenalty, Func<string, bool> HasSeekPenalty);
+        ConflictResolver ConflictResolver, string? Password, Func<string, bool> HasNoSeekPenalty, Func<string, bool> HasSeekPenalty,
+        SourceEntryNames Names);
 
     // T-F193: one prompt per ArchiveAsync call, never retried — there is nothing to verify a new
     // password against, so a wrong attempt cannot exist (maxAttempts: 1). The App/CLI prompts ask
@@ -221,7 +226,7 @@ public sealed class ZipArchiveService : IArchiveService
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password);
+        var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password) { EntryNames = run.Names };
         bool useParallelPipeline = UsesParallelWriter(settings, totalFileCount, totalSourceBytes, largestFileBytes,
             ArchiveEntrySecurity.GetAvailableFreeSpace(options.DestinationFolder),
             () => run.HasNoSeekPenalty(options.DestinationFolder) && sortedSourcePaths.TrueForAll(p => run.HasNoSeekPenalty(p)));
@@ -244,7 +249,7 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 var sink = new ArchiveWorkSink(errors, skippedFiles);
                 await WriteSequentialSingleArchiveAsync(
-                    tempPath, sortedSourcePaths, options.CompressionLevel, totalSourceBytes, sink, progress, cancellationToken)
+                    tempPath, sortedSourcePaths, settings, totalSourceBytes, sink, progress, cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -296,7 +301,7 @@ public sealed class ZipArchiveService : IArchiveService
     private sealed record ArchiveWorkSink(List<ArchiveError> Errors, List<SkippedFile> SkippedFiles);
 
     private static async Task WriteSequentialSingleArchiveAsync(
-        string tempPath, List<string> sortedSourcePaths, CompressionLevel compressionLevel, long totalSourceBytes,
+        string tempPath, List<string> sortedSourcePaths, Zip.ParallelSingleArchiveWriter.CompressionSettings settings, long totalSourceBytes,
         ArchiveWorkSink sink, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
     {
         await Task.Run(async () =>
@@ -315,7 +320,7 @@ public sealed class ZipArchiveService : IArchiveService
                     break;
 
                 byteOffset += await AddOneSourcePathToArchiveAsync(
-                    archive, sortedSourcePaths[i], compressionLevel,
+                    archive, sortedSourcePaths[i], settings,
                     new EntryWriteProgress(totalSourceBytes, byteOffset, progress),
                     usedEntryNames, sink, cancellationToken).ConfigureAwait(false);
             }
@@ -326,9 +331,11 @@ public sealed class ZipArchiveService : IArchiveService
     // size of the source), which the caller adds to its running byteOffset regardless of outcome
     // — matches the original inline loop's unconditional trailing `byteOffset += pathSize`.
     private static async Task<long> AddOneSourcePathToArchiveAsync(
-        ZipArchive archive, string sourcePath, CompressionLevel compressionLevel, EntryWriteProgress progressInfo,
+        ZipArchive archive, string sourcePath, Zip.ParallelSingleArchiveWriter.CompressionSettings settings, EntryWriteProgress progressInfo,
         HashSet<string> usedEntryNames, ArchiveWorkSink sink, CancellationToken cancellationToken)
     {
+        CompressionLevel compressionLevel = settings.Level;
+        string ownName = settings.NameOf(sourcePath);
         long pathSize = ComputeSourceBytesBestEffort(sourcePath);
 
         // T-F23: Skip top-level symlinks and NTFS junctions
@@ -342,14 +349,14 @@ public sealed class ZipArchiveService : IArchiveService
         {
             if (Directory.Exists(sourcePath))
             {
-                string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
+                string entryName = GetUniqueEntryName(usedEntryNames, ownName);
                 var context = new DirectoryArchiveContext(
                     sourcePath, entryName, compressionLevel, sink.SkippedFiles.Add, sink.Errors.Add, progressInfo.TotalBytes, progressInfo.Progress);
                 await AddDirectoryToArchiveAsync(archive, sourcePath, context, progressInfo.StartOffset, cancellationToken).ConfigureAwait(false);
             }
             else if (File.Exists(sourcePath))
             {
-                string entryName = GetUniqueEntryName(usedEntryNames, Path.GetFileName(sourcePath));
+                string entryName = GetUniqueEntryName(usedEntryNames, ownName);
                 await AddEntryFromFileAsync(archive, sourcePath, entryName,
                     compressionLevel, progressInfo, cancellationToken).ConfigureAwait(false);
             }
@@ -396,7 +403,7 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F193/T-F299: an archive written by ParallelSingleArchiveWriter already compresses with
         // up to ComputeWindowCapacity() workers of its own — divide the outer parallelism so the
         // two levels together stay near the core count instead of multiplying.
-        var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password);
+        var settings = new Zip.ParallelSingleArchiveWriter.CompressionSettings(options.CompressionLevel, run.Password) { EntryNames = run.Names };
         if (settings.RequiresHandRolledWriter)
         {
             settings = settings with
@@ -559,14 +566,14 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 using ZipArchive archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create); // NOSONAR: S6966 — on a pool thread already; synchronous I/O on purpose (docs/CONVENTIONS.md)
                 var context = new DirectoryArchiveContext(
-                    sourcePath, Path.GetFileName(sourcePath), compressionLevel, AddSkipped, AddError, totalSourceBytes, progress);
+                    sourcePath, settings.NameOf(sourcePath), compressionLevel, AddSkipped, AddError, totalSourceBytes, progress);
                 await AddDirectoryToArchiveAsync(archive, sourcePath, context, baseOffset, cancellationToken)
                     .ConfigureAwait(false);
             }
             else if (File.Exists(sourcePath))
             {
                 using ZipArchive archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create); // NOSONAR: S6966 — on a pool thread already; synchronous I/O on purpose (docs/CONVENTIONS.md)
-                await AddEntryFromFileAsync(archive, sourcePath, Path.GetFileName(sourcePath),
+                await AddEntryFromFileAsync(archive, sourcePath, settings.NameOf(sourcePath),
                     compressionLevel, new EntryWriteProgress(totalSourceBytes, baseOffset, progress), cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -2281,7 +2288,7 @@ public sealed class ZipArchiveService : IArchiveService
         if (usedNames.Add(proposedName))
             return proposedName;
 
-        string candidate = ArchiveNaming.GetUniqueName(proposedName, usedNames.Contains);
+        string candidate = ArchiveNaming.GetUniqueEntryName(proposedName, usedNames.Contains);
         usedNames.Add(candidate);
         return candidate;
     }

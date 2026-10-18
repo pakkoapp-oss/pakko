@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Không thể ghi bản sao đã sửa: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>Không thể lưu "{0}" vào tệp nén theo phần đó của đường dẫn.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>"{0}" sẽ được lưu bên trong "{1}" trong tệp nén, dưới tên "{2}".</value>
+  </data>
 </root>

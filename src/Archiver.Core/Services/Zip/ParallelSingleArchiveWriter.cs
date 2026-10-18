@@ -69,6 +69,11 @@ internal static class ParallelSingleArchiveWriter
         /// Files compressed in memory stay parallel, and the archive's bytes do not depend on this.
         /// </summary>
         public bool OneLargeFileAtATime { get; init; }
+
+        /// <summary>T-F414: the name each source takes in the archive; null names it after itself.</summary>
+        public SourceEntryNames? EntryNames { get; init; }
+
+        public string NameOf(string sourcePath) => (EntryNames ?? SourceEntryNames.OwnNames).For(sourcePath);
     }
 
     /// <summary>
@@ -167,7 +172,7 @@ internal static class ParallelSingleArchiveWriter
             return;
         }
 
-        IEnumerable<FileWorkItem> items = WorkItemEnumerator.Enumerate(sortedSourcePaths, callbacks.ReportSkipped, callbacks.ReportError);
+        IEnumerable<FileWorkItem> items = WorkItemEnumerator.Enumerate(sortedSourcePaths, settings.NameOf, callbacks.ReportSkipped, callbacks.ReportError);
 
         // A per-operation hidden subfolder next to the destination archive — not loose files
         // scattered in that folder (confusing, per on-device verification), and not the system

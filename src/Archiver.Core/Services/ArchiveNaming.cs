@@ -72,6 +72,16 @@ public static class ArchiveNaming
     }
 
     /// <summary>
+    /// T-F414: <see cref="GetUniqueName"/> for an entry name kept with its folders ("dir/c.txt"):
+    /// only its last part is numbered ("dir/c (1).txt").
+    /// </summary>
+    public static string GetUniqueEntryName(string entryName, Func<string, bool> isTaken)
+    {
+        string folders = entryName[..(entryName.LastIndexOf('/') + 1)];
+        return folders + GetUniqueName(entryName[folders.Length..], name => isTaken(folders + name));
+    }
+
+    /// <summary>
     /// T-F264: a folder under <paramref name="parentDir"/> that does not exist yet — "name", else
     /// "name (1)", ... with the number after the whole name (a folder has no extension).
     /// </summary>

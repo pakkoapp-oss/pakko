@@ -372,4 +372,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>The repaired copy could not be written: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>'{0}' cannot be stored in the archive under that part of its path.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>'{0}' would be stored inside '{1}' in the archive, as '{2}'.</value>
+  </data>
 </root>
