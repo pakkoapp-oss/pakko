@@ -892,6 +892,32 @@ public sealed class TarSandboxedService : ITarService
         return name;
     }
 
+    // Conflicts are decided against the destination plus every path already claimed in this run
+    // (T-F30, as in ZIP's WriteEntryAsync). Null when the entry is skipped.
+    private static async Task<string?> ResolveConflictAsync(
+        string finalFilePath, string file, string relativePath, TarCommitPlan plan, TarExtractionContext context)
+    {
+        if (!File.Exists(finalFilePath) && !plan.ClaimedFinalPaths.Contains(finalFilePath))
+            return finalFilePath;
+        (long? incomingSize, DateTimeOffset? incomingModified) = DescribeIncoming(file);
+        int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
+        ConflictBehavior resolvedConflict = await context.ConflictResolver
+            .ResolveAsync(finalFilePath, incomingSize, incomingModified).ConfigureAwait(false);
+        if (resolvedConflict == ConflictBehavior.Skip)
+        {
+            // T-F216: the user's own Skip answer is not listed (as in ZIP); only an automatic one.
+            if (context.ConflictResolver.UserSkipCount == userSkipsSoFar)
+                context.SkippedFiles.Add(CoreMessages.Skip(relativePath, MessageCode.FileExistsAtDestination));
+            return null;
+        }
+        // T-F411: -aot, the rule ZipArchiveService shares.
+        if (resolvedConflict == ConflictBehavior.RenameExisting)
+            resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, plan.ClaimedFinalPaths);
+        return resolvedConflict == ConflictBehavior.Rename
+            ? ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.ClaimedFinalPaths)
+            : finalFilePath;
+    }
+
     private static async Task<(bool Extracted, string? RelativePath)> TryMoveSingleEntryAsync(
         string file, string outputDirectory, TarCommitPlan plan, string archivePath, TarExtractionContext context)
     {
@@ -918,29 +944,10 @@ public sealed class TarSandboxedService : ITarService
 
         string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
 
-        // Conflicts are decided against the destination plus every path already claimed in this
-        // run (T-F30, as in ZIP's WriteEntryAsync).
-        if (File.Exists(finalFilePath) || plan.ClaimedFinalPaths.Contains(finalFilePath))
-        {
-            (long? incomingSize, DateTimeOffset? incomingModified) = DescribeIncoming(file);
-            int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
-            ConflictBehavior resolvedConflict = await context.ConflictResolver
-                .ResolveAsync(finalFilePath, incomingSize, incomingModified).ConfigureAwait(false);
-            if (resolvedConflict == ConflictBehavior.Skip)
-            {
-                // T-F216: the user's own Skip answer is not listed (as in ZIP); only an automatic one.
-                if (context.ConflictResolver.UserSkipCount == userSkipsSoFar)
-                    context.SkippedFiles.Add(CoreMessages.Skip(relativePath, MessageCode.FileExistsAtDestination));
-                return (false, relativePath);
-            }
-            // T-F411: -aot, the rule ZipArchiveService shares.
-            if (resolvedConflict == ConflictBehavior.RenameExisting)
-                resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, plan.ClaimedFinalPaths);
-            if (resolvedConflict == ConflictBehavior.Rename)
-            {
-                finalFilePath = ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.ClaimedFinalPaths);
-            }
-        }
+        string? resolvedFilePath = await ResolveConflictAsync(finalFilePath, file, relativePath, plan, context).ConfigureAwait(false);
+        if (resolvedFilePath is null)
+            return (false, relativePath);
+        finalFilePath = resolvedFilePath;
         plan.ClaimedFinalPaths.Add(finalFilePath);
 
         // T-F263: staged under the path it will have in actualDest; the commit moves it there.

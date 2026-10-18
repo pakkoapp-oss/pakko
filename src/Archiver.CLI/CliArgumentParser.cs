@@ -781,12 +781,8 @@ public static class CliArgumentParser
 
     private static string? SimpleSwitchPostfixError(string token)
     {
-        foreach (string name in SimpleArchiveSwitches)
-        {
-            if (token.StartsWith(name, StringComparison.Ordinal))
-                return $"Incorrect command line: {name} takes no value, got '{token}'";
-        }
-        return null;
+        string? name = Array.Find(SimpleArchiveSwitches, simple => token.StartsWith(simple, StringComparison.Ordinal));
+        return name is null ? null : $"Incorrect command line: {name} takes no value, got '{token}'";
     }
 
     // T-F411: 7-Zip's -mmt (measured on 7za 26.02): bare, "=", "=on" and "0" follow the core count,

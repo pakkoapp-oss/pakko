@@ -320,7 +320,7 @@ public sealed class CliCoreSwitchesSubprocessTests
         string src = CreateTree(scratchDir);
         string target = CreateTree(scratchDir, "target");
         string junction = Path.Combine(src, "j");
-        using (var mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+        using (System.Diagnostics.Process? mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
             Path.Combine(Environment.SystemDirectory, "cmd.exe"), ["/d", "/c", "mklink", "/J", junction, target])
             { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true })!)
         {
