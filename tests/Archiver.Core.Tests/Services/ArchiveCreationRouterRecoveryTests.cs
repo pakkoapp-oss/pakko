@@ -506,6 +506,43 @@ public sealed class ArchiveCreationRouterRecoveryTests
         VerifyStatus(archive).Should().Be(Par2VerifyStatus.Intact);
     }
 
+    // T-F419: a file that is not PAR2 data under the set's name is the user's: kept, and the set is an error.
+    [Fact]
+    public async Task NonPar2FileUnderTheIndexName_Kept_RecoveryDataIsAnError()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        string notes = Path.Combine(temp.Path, "a.zip.par2");
+        File.WriteAllText(notes, "my notes");
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) };
+
+        ArchiveResult result = await Router(engine).ArchiveAsync(Options(temp, 5));
+
+        File.ReadAllText(notes).Should().Be("my notes");
+        ArchiveError error = result.Errors.Should().ContainSingle().Subject;
+        error.SourcePath.Should().Be(notes);
+        error.Text!.Code.Should().Be(MessageCode.RecoveryDataNotCreated);
+        result.RecoveryFiles.Should().BeEmpty();
+        result.FullyProcessedSources.Should().BeEmpty();
+        Directory.GetFiles(temp.Path).Should().BeEquivalentTo([archive, notes]);
+    }
+
+    // T-F419: the archive's own set for the same bytes is still Pakko's to write again.
+    [Fact]
+    public async Task OwnSetForTheSameBytes_WrittenAgain()
+    {
+        using var temp = new TempDirectory();
+        string archive = Path.Combine(temp.Path, "a.zip");
+        var engine = new RecoveryWritingEngine { Produce = (o, _) => Written(archive, o.SourcePaths[0]) };
+        await Router(engine).ArchiveAsync(Options(temp, 5));
+
+        ArchiveResult again = await Router(engine).ArchiveAsync(Options(temp, 5));
+
+        again.Errors.Should().BeEmpty();
+        again.RecoveryFiles.Should().HaveCount(2);
+        VerifyStatus(archive).Should().Be(Par2VerifyStatus.Intact);
+    }
+
     // The name inside the set is another file's: the set is not this archive's, so it is not ours to remove.
     [Fact]
     public async Task SetForAnotherFileUnderTheArchiveName_Kept()
