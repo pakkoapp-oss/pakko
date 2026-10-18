@@ -92,6 +92,47 @@ public sealed class SwitchAdversarialTests : IDisposable
             exitCode.Should().Be(7, stdErr);
     }
 
+    // 7-Zip's commands Pakko declines; d and rn change an archive in place there.
+    [Theory]
+    [InlineData("e")]
+    [InlineData("d")]
+    [InlineData("u")]
+    [InlineData("rn")]
+    [InlineData("b")]
+    [InlineData("E")]
+    public void DeclinedCommand_IsExitSevenAndChangesNothing(string command)
+    {
+        string[] before = Snapshot();
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko(command, "arc.zip", "-oout", "-aoa", "a.txt", "b.txt");
+
+        exitCode.Should().Be(7, stdErr);
+        stdErr.Should().Contain("not supported by Pakko");
+        Snapshot().Should().Equal(before);
+    }
+
+    // stdout carries the data under -so: nothing else may be mixed into it.
+    [Fact]
+    public void ExtractToStdout_WithLogLevel_StdoutHoldsOnlyTheEntryBytes()
+    {
+        (int exitCode, string stdOut, string stdErr) = _scratch.Pakko("x", "arc.zip", "a.txt", "-so", "-bb1");
+
+        exitCode.Should().Be(0, stdErr);
+        stdOut.Should().Be("FROM-ARCHIVE");
+    }
+
+    [Theory]
+    [InlineData("x", "arc.zip", "-so", "-bso1")]
+    [InlineData("x", "arc.zip", "-so", "-bse1")]
+    [InlineData("a", "-so", "-bso1", "o.zip", "src")]
+    public void MessagesOntoTheDataStream_IsExitSeven(params string[] args)
+    {
+        (int exitCode, string stdOut, _) = _scratch.Pakko(args);
+
+        exitCode.Should().Be(7);
+        stdOut.Should().BeEmpty();
+    }
+
     [Fact]
     public void MissingListFile_IsExitSevenAndChangesNothing()
     {
