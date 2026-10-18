@@ -133,48 +133,81 @@ public static class CliArchiveSources
 
     private static void Search(
         SearchRoot root, List<(CliNameMask Mask, string Under)> masks, CliNameFilter? excludes, bool caseSensitive,
-        List<CliArchiveSource> sources, List<CliSourceProblem> problems)
-    {
-        CliNameFilter includes = CliNameFilter.Create(masks.Select(m => m.Mask with { Path = m.Under }), caseSensitive, startFromAll: false);
-        bool anyRecursive = masks.Exists(m => m.Mask.Recursion == CliRecursion.Recursive
-            || (m.Mask.Recursion == CliRecursion.WildcardOnly && m.Mask.WildcardMatching && CliNameFilter.ContainsWildcard(m.Under)));
-        int deepest = masks.Max(m => m.Under.Split('/').Length);
-        var options = new EnumerationOptions { AttributesToSkip = 0, IgnoreInaccessible = false };
+        List<CliArchiveSource> sources, List<CliSourceProblem> problems) =>
+        new MaskSearch(root, masks, excludes, caseSensitive, sources, problems).Run();
 
-        int literalDepth = root.Literal.Length == 0 ? 0 : root.Literal.Split('/').Length;
-        var pending = new Stack<(DirectoryInfo Folder, string Name, int Depth)>();
-        pending.Push((new DirectoryInfo(Path.Combine(root.Prefix, root.Literal)), root.Literal, literalDepth));
-        while (pending.Count > 0)
+    // One walk of Search: a match is a source and is not entered; a folder is entered while a mask
+    // can still match below it, never through a link.
+    private sealed class MaskSearch
+    {
+        private static readonly EnumerationOptions Options = new() { AttributesToSkip = 0, IgnoreInaccessible = false };
+
+        private readonly SearchRoot _root;
+        private readonly CliNameFilter _includes;
+        private readonly CliNameFilter? _excludes;
+        private readonly bool _anyRecursive;
+        private readonly int _deepest;
+        private readonly List<CliArchiveSource> _sources;
+        private readonly List<CliSourceProblem> _problems;
+        private readonly Stack<(DirectoryInfo Folder, string Name, int Depth)> _pending = new();
+
+        public MaskSearch(
+            SearchRoot root, List<(CliNameMask Mask, string Under)> masks, CliNameFilter? excludes, bool caseSensitive,
+            List<CliArchiveSource> sources, List<CliSourceProblem> problems)
         {
-            (DirectoryInfo folder, string folderName, int depth) = pending.Pop();
-            FileSystemInfo[] children;
+            _root = root;
+            _includes = CliNameFilter.Create(masks.Select(m => m.Mask with { Path = m.Under }), caseSensitive, startFromAll: false);
+            _excludes = excludes;
+            _anyRecursive = masks.Exists(m => m.Mask.Recursion == CliRecursion.Recursive
+                || (m.Mask.Recursion == CliRecursion.WildcardOnly && m.Mask.WildcardMatching && CliNameFilter.ContainsWildcard(m.Under)));
+            _deepest = masks.Max(m => m.Under.Split('/').Length);
+            _sources = sources;
+            _problems = problems;
+        }
+
+        public void Run()
+        {
+            int literalDepth = _root.Literal.Length == 0 ? 0 : _root.Literal.Split('/').Length;
+            _pending.Push((new DirectoryInfo(Path.Combine(_root.Prefix, _root.Literal)), _root.Literal, literalDepth));
+            while (_pending.Count > 0)
+            {
+                (DirectoryInfo folder, string folderName, int depth) = _pending.Pop();
+                if (ListChildren(folder) is not { } children)
+                    continue;
+                // T-F285/T-F324: in a drive root the system's own entries (Hidden and System) are left
+                // out, as Core leaves them out of a drive root given whole.
+                bool driveRoot = folder.Parent is null;
+                foreach (FileSystemInfo child in children.Where(c => !IsLeftOut(c, driveRoot)))
+                    Visit(child, folderName.Length == 0 ? child.Name : folderName + "/" + child.Name, depth + 1);
+            }
+        }
+
+        private FileSystemInfo[]? ListChildren(DirectoryInfo folder)
+        {
             try
             {
-                children = [.. folder.EnumerateFileSystemInfos("*", options)];
+                return [.. folder.EnumerateFileSystemInfos("*", Options)];
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                problems.Add(new CliSourceProblem(folder.FullName, ex.Message));
-                continue;
+                _problems.Add(new CliSourceProblem(folder.FullName, ex.Message));
+                return null;
             }
+        }
 
-            // T-F285/T-F324: in a drive root the system's own entries (Hidden and System) are left
-            // out, as Core leaves them out of a drive root given whole.
-            bool driveRoot = folder.Parent is null;
-            foreach (FileSystemInfo child in children)
-            {
-                if (string.Equals(child.FullName, root.ArchiveFull, StringComparison.OrdinalIgnoreCase)
-                    || (driveRoot && (child.Attributes & OsOwned) == OsOwned))
-                    continue;
-                string name = folderName.Length == 0 ? child.Name : folderName + "/" + child.Name;
-                bool isFolder = child is DirectoryInfo;
-                if (excludes is not null && !excludes.Includes(name, isFolder))
-                    continue;
-                if (includes.Includes(name, isFolder))
-                    sources.Add(new CliArchiveSource(child.FullName, depth + 1));
-                else if (isFolder && (anyRecursive || depth + 1 < deepest) && (child.Attributes & FileAttributes.ReparsePoint) == 0)
-                    pending.Push(((DirectoryInfo)child, name, depth + 1));
-            }
+        private bool IsLeftOut(FileSystemInfo child, bool driveRoot) =>
+            string.Equals(child.FullName, _root.ArchiveFull, StringComparison.OrdinalIgnoreCase)
+            || (driveRoot && (child.Attributes & OsOwned) == OsOwned);
+
+        private void Visit(FileSystemInfo child, string name, int depth)
+        {
+            bool isFolder = child is DirectoryInfo;
+            if (_excludes is not null && !_excludes.Includes(name, isFolder))
+                return;
+            if (_includes.Includes(name, isFolder))
+                _sources.Add(new CliArchiveSource(child.FullName, depth));
+            else if (isFolder && (_anyRecursive || depth < _deepest) && (child.Attributes & FileAttributes.ReparsePoint) == 0)
+                _pending.Push(((DirectoryInfo)child, name, depth));
         }
     }
 
@@ -184,11 +217,8 @@ public static class CliArchiveSources
     private static List<CliArchiveSource> WithoutDuplicates(List<CliArchiveSource> sources, CliNameFilter? excludes)
     {
         var taken = new Dictionary<string, CliArchiveSource>(StringComparer.OrdinalIgnoreCase);
-        foreach (CliArchiveSource source in sources)
-        {
-            if (excludes is null || excludes.Includes(NameOf(source), Directory.Exists(source.FullPath)))
-                taken.TryAdd(source.FullPath, source);
-        }
+        foreach (CliArchiveSource source in sources.Where(s => excludes is null || excludes.Includes(NameOf(s), Directory.Exists(s.FullPath))))
+            taken.TryAdd(source.FullPath, source);
 
         var kept = new List<CliArchiveSource>(taken.Count);
         foreach (CliArchiveSource source in taken.Values)

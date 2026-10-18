@@ -632,7 +632,9 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         Interlocked.Add(ref completedBytesBox[0], pathSize);
-        sink.Sources.Add(SourceOutcomeRules.Classify(sourcePath, committed, issues == 0 && !settings.Names.Filters));
+        // issues is counted through Interlocked by the callbacks above, so it is read the same way.
+        bool clean = Interlocked.CompareExchange(ref issues, 0, 0) == 0 && !settings.Names.Filters;
+        sink.Sources.Add(SourceOutcomeRules.Classify(sourcePath, committed, clean));
     }
 
     // T-F193: maps one encrypted SeparateArchives worker's own 0..totalBytes progress onto the
