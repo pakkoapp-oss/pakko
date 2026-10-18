@@ -947,6 +947,7 @@ public sealed class ZipArchiveService : IArchiveService
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
         Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null,
+        Func<string, bool, bool>? entryFilter = null,
         CancellationToken cancellationToken = default)
     {
         var errors = new List<ArchiveError>();
@@ -960,7 +961,7 @@ public sealed class ZipArchiveService : IArchiveService
             // T-F268: was `break`, which returned Success = true for a cancelled Test (T-F260 contract).
             cancellationToken.ThrowIfCancellationRequested();
 
-            await TestOneArchiveAsync(archivePaths[i], passwordResolver, errors, skippedFiles, sources, cancellationToken)
+            await TestOneArchiveAsync(archivePaths[i], passwordResolver, entryFilter, errors, skippedFiles, sources, cancellationToken)
                 .ConfigureAwait(false);
             progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
         }
@@ -975,7 +976,7 @@ public sealed class ZipArchiveService : IArchiveService
 
     // One archive of TestAsync's loop.
     private async Task TestOneArchiveAsync(
-        string archivePath, PasswordResolver passwordResolver, List<ArchiveError> errors,
+        string archivePath, PasswordResolver passwordResolver, Func<string, bool, bool>? entryFilter, List<ArchiveError> errors,
         List<SkippedFile> skippedFiles, List<SourceResult> sources, CancellationToken cancellationToken)
     {
         if (!File.Exists(archivePath))
@@ -1019,7 +1020,7 @@ public sealed class ZipArchiveService : IArchiveService
         int errorsBefore = errors.Count;
         try
         {
-            await Task.Run(() => TestArchiveEntries(archivePath, password, NameCodePages, errors, cancellationToken), cancellationToken)
+            await Task.Run(() => TestArchiveEntries(archivePath, password, NameCodePages, entryFilter, errors, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (IOException ex)
@@ -1171,8 +1172,8 @@ public sealed class ZipArchiveService : IArchiveService
     // archive contains at least one encrypted entry and a password was already resolved once,
     // upfront, in TestAsync — same "once per archive" rule as ExtractAsync.
     private static void TestArchiveEntries(
-        string archivePath, ResolvedZipPassword? password, ZipNameCodePages codePages, List<ArchiveError> errors,
-        CancellationToken cancellationToken)
+        string archivePath, ResolvedZipPassword? password, ZipNameCodePages codePages, Func<string, bool, bool>? entryFilter,
+        List<ArchiveError> errors, CancellationToken cancellationToken)
     {
         using var reader = ZipArchiveReader.Open(archivePath, codePages);
         ZipArchive archive = reader.Archive;
@@ -1191,6 +1192,9 @@ public sealed class ZipArchiveService : IArchiveService
             cancellationToken.ThrowIfCancellationRequested();
 
             ZipArchiveEntry entry = named.Entry;
+            // T-F410: asked first, folders too, so a filter counts what it let through as on extraction.
+            if (entryFilter is not null && !entryFilter(named.FullName, named.FullName.EndsWith('/')))
+                continue;
             if (named.FullName.EndsWith('/'))
                 continue; // directory entry — no data to verify
 

@@ -170,7 +170,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         {
             result = await service.TestAsync(archivePaths, session.Progress,
                 info => session.AskPasswordAsync(info, canApplyToRemaining: archivePaths.Count > 1),
-                verifyRecoveryData, session.Cancellation).ConfigureAwait(false);
+                verifyRecoveryData, cancellationToken: session.Cancellation).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {

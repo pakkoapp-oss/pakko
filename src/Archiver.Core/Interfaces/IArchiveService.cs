@@ -46,11 +46,17 @@ public interface IArchiveService
     /// TestAsync takes a flat path list rather than an Options type; placed before
     /// <paramref name="cancellationToken"/> (CA1068 — CancellationToken must be last).
     /// </param>
+    /// <param name="entryFilter">
+    /// T-F410: non-null tests only the entries it returns true for, asked as
+    /// <see cref="Models.ExtractOptions.EntryFilter"/> is. An archive none of whose entries passes
+    /// is opened and reported clean, with nothing read.
+    /// </param>
     /// <param name="cancellationToken">Cancels the operation.</param>
     Task<ArchiveResult> TestAsync(
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
         Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null,
+        Func<string, bool, bool>? entryFilter = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

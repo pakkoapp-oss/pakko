@@ -59,10 +59,15 @@ public interface ITarService
     /// message. Where the format has no checksum of file contents that tar.exe verifies (plain
     /// tar, tar.gz, tar.lzma, RAR, an xz or zstd stream written without one), a passed test
     /// carries a warning that only the structure was checked. Never throws, except <see cref="OperationCanceledException"/> on cancellation.
+    /// T-F410: a non-null <paramref name="entryFilter"/> has tar.exe read only the files it passes
+    /// (asked as <see cref="Models.ExtractOptions.EntryFilter"/> is); the unsafe-entry pre-scan
+    /// still covers the whole archive. When nothing passes, tar.exe does not run and the archive is
+    /// reported clean, without the structure-only warning.
     /// </summary>
     Task<ArchiveResult> TestAsync(
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
+        Func<string, bool, bool>? entryFilter = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -8,7 +8,7 @@ namespace Archiver.App.Core.Tests;
 // archive to its end, passes it, and says that only the structure was checked.
 internal sealed class StructureOnlyTarEngine : ITarService
 {
-    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default) =>
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<string, bool, bool>? entryFilter = null, CancellationToken cancellationToken = default) =>
         Task.FromResult(new ArchiveResult
         {
             Warnings = [.. archivePaths.Select(path => CoreMessages.Warning(path, CoreMessages.Text(MessageCode.TestedStructureOnly)))],

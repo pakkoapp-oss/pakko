@@ -511,7 +511,7 @@ public sealed class SourceOutcomeTests : IDisposable
 // Returns the given result, or throws OperationCanceledException when given null.
 file sealed class SourcesTarService(ArchiveResult? result) : ITarService
 {
-    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<string, bool, bool>? entryFilter = null, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
 
     public Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default) => Task.FromResult(false);
