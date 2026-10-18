@@ -386,13 +386,10 @@ public static class CliArgumentParser
         if (token == "-so") { state.WriteToStdout = true; return null; }
         if (token == "-y") { state.AssumeYes = true; return null; }
 
-        // T-F411: 7-Zip's -spe (SWFRM_MINUS): -spe- turns it off again.
         if (token.StartsWith("-spe", StringComparison.Ordinal))
         {
-            if (token is not ("-spe" or "-spe-"))
-                return $"Incorrect command line: -spe takes only '-' after it, got '{token}'";
-            state.DropRootNamedLikeOutput = token == "-spe";
-            return null;
+            (state.DropRootNamedLikeOutput, string? error) = ParseDropRoot(token);
+            return error;
         }
 
         if (token.StartsWith("-o", StringComparison.Ordinal))
@@ -425,6 +422,14 @@ public static class CliArgumentParser
 
         return UnsupportedSwitchReason(token);
     }
+
+    // T-F411: 7-Zip's -spe (SWFRM_MINUS): -spe- turns it off again.
+    private static (bool Drop, string? Error) ParseDropRoot(string token) => token switch
+    {
+        "-spe" => (true, null),
+        "-spe-" => (false, null),
+        _ => (false, $"Incorrect command line: -spe takes only '-' after it, got '{token}'"),
+    };
 
     // T-F360: 7-Zip's -snz[0|1|2] (NanaZip's ArchiveCommandLine.cpp): 0 none, 1 or bare all files,
     // 2 Office files only - which Pakko's modes do not have. Given twice: CliSwitchNames refuses it.
@@ -664,13 +669,11 @@ public static class CliArgumentParser
             return null;
         }
 
-        if (token == "-so") { state.WriteToStdout = true; return null; }
-        if (token == "-y") { state.AssumeYes = true; return null; }
-
-        if (token == "-stl") { state.SetArchiveTime = true; return null; }
-        if (token == "-ssw") { state.ReadFilesOpenForWriting = true; return null; }
-        if (token == "-sse") { state.StopOnUnreadableSource = true; return null; }
-        if (token == "-sdel") { state.DeleteSourcesAfter = true; return null; }
+        if (ArchiveFlags.TryGetValue(token, out Action<ArchiveParseState>? setFlag))
+        {
+            setFlag(state);
+            return null;
+        }
         if (SimpleSwitchPostfixError(token) is { } postfixError)
             return postfixError;
 
@@ -760,6 +763,17 @@ public static class CliArgumentParser
 
         return "not supported by Pakko: of 7z's -m{params}, only -mx=<0-9>, -mmt=<N>, -mem=AES256 and -m0=<method> (with -t7z) are implemented";
     }
+
+    // The switches of 'a' that only switch something on.
+    private static readonly Dictionary<string, Action<ArchiveParseState>> ArchiveFlags = new(StringComparer.Ordinal)
+    {
+        ["-so"] = state => state.WriteToStdout = true,
+        ["-y"] = state => state.AssumeYes = true,
+        ["-stl"] = state => state.SetArchiveTime = true,
+        ["-ssw"] = state => state.ReadFilesOpenForWriting = true,
+        ["-sse"] = state => state.StopOnUnreadableSource = true,
+        ["-sdel"] = state => state.DeleteSourcesAfter = true,
+    };
 
     // T-F411: 7-Zip's switches that take no value (SWFRM_SIMPLE in ArchiveCommandLine.cpp): one
     // with anything after its name is "Incorrect switch postfix" there.

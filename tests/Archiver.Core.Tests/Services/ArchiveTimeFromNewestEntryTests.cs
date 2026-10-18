@@ -7,13 +7,16 @@ using FluentAssertions;
 namespace Archiver.Core.Tests.Services;
 
 // A tar-family engine that writes a placeholder archive, so the router's own step is tested
-// without tar.exe.
+// without tar.exe. AfterWriting runs once the archive is there (a cancel arriving just then).
 file sealed class WritingTarService : ITarService
 {
+    public Action? AfterWriting { get; init; }
+
     public Task<ArchiveResult> CompressAsync(ArchiveOptions options, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
     {
         string path = Path.Combine(options.DestinationFolder, options.ArchiveName + ".tar");
         File.WriteAllText(path, "tar");
+        AfterWriting?.Invoke();
         return Task.FromResult(new ArchiveResult { CreatedFiles = [path] });
     }
 
@@ -156,6 +159,28 @@ public sealed class ArchiveTimeFromNewestEntryTests : IDisposable
         {
             Directory.Delete(junction); // the link only; the temp folder's recursive delete cannot remove it
         }
+    }
+
+    // The archive is committed when the cancel arrives: the time step is best-effort metadata and
+    // does not turn a finished archive into a thrown cancellation. DisableRecoveryData leaves out
+    // the router's other step after the engine (removing earlier PAR2 sets, T-F275), which is
+    // cancellable by design.
+    [Fact]
+    public async Task ArchiveAsync_CancelledAfterTheArchiveIsWritten_ReturnsTheArchive()
+    {
+        string src = CreateSource();
+        using var cts = new CancellationTokenSource();
+        var policy = new GroupPolicyOptions { DisableRecoveryData = true };
+        var router = new ArchiveCreationRouter(new ZipArchiveService(policy), new WritingTarService { AfterWriting = cts.Cancel }, policy);
+
+        ArchiveResult result = await router.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [src], DestinationFolder = Destination(), ArchiveName = "a", Format = ArchiveContainerFormat.Tar,
+            SetArchiveTimeFromNewestEntry = true,
+        }, cancellationToken: cts.Token);
+
+        result.CreatedFiles.Should().ContainSingle();
+        File.Exists(result.CreatedFiles[0]).Should().BeTrue();
     }
 
     // The option names one archive's time from all sources; SeparateArchives leaves each archive's own.

@@ -39,6 +39,18 @@ internal sealed class ExtractionStaging : IDisposable
         _claimedFinalPaths = claimedFinalPaths;
     }
 
+    /// <summary>T-F411: both engines' -aot rule for one conflict. Against an earlier entry of this
+    /// run (nothing on disk to rename yet) the new file is renamed instead - <see
+    /// cref="Models.ConflictBehavior.Rename"/>; against a file on disk it is planned for the commit and
+    /// the entry keeps its name. Never the overwrite every other value of the callers' chain falls into.</summary>
+    public Models.ConflictBehavior PlanRenameOfExisting(string finalPath, HashSet<string> claimedFinalPaths)
+    {
+        if (claimedFinalPaths.Contains(finalPath))
+            return Models.ConflictBehavior.Rename;
+        RenameExistingOnCommit(finalPath, claimedFinalPaths);
+        return Models.ConflictBehavior.RenameExisting;
+    }
+
     /// <summary>T-F298: the time a folder entry gets at the destination, by its path relative to
     /// the destination ("" is the destination itself). Set by <see cref="CommitInto"/> after every
     /// file has moved (moving a file into a folder changes the folder's time), and only on folders
