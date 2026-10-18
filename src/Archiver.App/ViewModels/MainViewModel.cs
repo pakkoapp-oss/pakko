@@ -1785,7 +1785,7 @@ public sealed partial class MainViewModel : ObservableObject
             // T-F275 step 3c: the archive opened from disk is also checked against a PAR2 set next
             // to it. A nested one is a temporary copy; no set is its set.
             bool verifyRecoveryData = _browseStack.Count == 0;
-            ArchiveResult result = await _extractionRouter.TestAsync([archivePath], progress, BrowsePasswordResolver(archivePath), verifyRecoveryData, _cts.Token);
+            ArchiveResult result = await _extractionRouter.TestAsync([archivePath], progress, BrowsePasswordResolver(archivePath), verifyRecoveryData, cancellationToken: _cts.Token);
             _browsePasswords.Complete(archivePath, result);
             // Only a finished test changes the line: a cancelled one throws above and leaves it.
             if (verifyRecoveryData && BrowsedArchivePath == archivePath)

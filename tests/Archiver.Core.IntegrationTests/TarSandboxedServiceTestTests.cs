@@ -405,7 +405,7 @@ public sealed class TarSandboxedServiceTestTests : IDisposable
         using var cancel = new CancellationTokenSource();
         var reports = new RecordingProgress(_ => cancel.Cancel());
 
-        Func<Task> test = () => _sut.TestAsync([archive], reports, cancel.Token);
+        Func<Task> test = () => _sut.TestAsync([archive], reports, cancellationToken: cancel.Token);
 
         await test.Should().ThrowAsync<OperationCanceledException>();
         Directory.GetFileSystemEntries(Work).Should().Equal(archive);

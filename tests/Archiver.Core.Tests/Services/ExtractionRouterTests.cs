@@ -40,7 +40,7 @@ file sealed class FakeArchiveService : IArchiveService
     public Func<PasswordPromptInfo, Task<PasswordDecision>>? LastTestResolver;
     public ArchiveResult TestResult = new();
 
-    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null, CancellationToken cancellationToken = default)
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null, Func<string, bool, bool>? entryFilter = null, CancellationToken cancellationToken = default)
     {
         TestCallCount++;
         LastTestedPaths = archivePaths;
@@ -81,7 +81,7 @@ file sealed class FakeTarService : ITarService
     public ArchiveResult? TestResult;
     public IReadOnlyList<ProgressReport> TestProgressScript = [];
 
-    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<string, bool, bool>? entryFilter = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         LastTestedPaths = archivePaths;

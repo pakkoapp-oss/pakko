@@ -99,13 +99,14 @@ public sealed class ExtractionRouter : IExtractionRouter
         IProgress<ProgressReport>? progress = null,
         Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null,
         bool verifyRecoveryData = false,
+        Func<string, bool, bool>? entryFilter = null,
         CancellationToken cancellationToken = default)
     {
         if (verifyRecoveryData)
-            return await TestWithRecoveryDataAsync(archivePaths, progress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false);
+            return await TestWithRecoveryDataAsync(archivePaths, progress, resolvePasswordAsync, entryFilter, cancellationToken).ConfigureAwait(false);
         ArchiveFormatPolicy.Classification classification = await ArchiveFormatPolicy
             .ClassifyAsync(archivePaths, _tarCapabilities, _policy, cancellationToken).ConfigureAwait(false);
-        return await TestClassifiedAsync(classification, progress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false);
+        return await TestClassifiedAsync(classification, progress, resolvePasswordAsync, entryFilter, cancellationToken).ConfigureAwait(false);
     }
 
     // T-F261: same classifier as extraction. T-F397: a tar-family archive is tested by the tar
@@ -115,6 +116,7 @@ public sealed class ExtractionRouter : IExtractionRouter
         ArchiveFormatPolicy.Classification classification,
         IProgress<ProgressReport>? progress,
         Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync,
+        Func<string, bool, bool>? entryFilter,
         CancellationToken cancellationToken)
     {
         IReadOnlyList<string> zipPaths = classification.ZipPaths;
@@ -126,10 +128,10 @@ public sealed class ExtractionRouter : IExtractionRouter
         IProgress<ProgressReport>? tarProgress = mixed ? new SliceProgress(progress!, zipSliceEnd, 100, bytesBefore: 0) : progress;
 
         ArchiveResult zipResult = zipPaths.Count > 0
-            ? await _archiveService.TestAsync(zipPaths, zipProgress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false)
+            ? await _archiveService.TestAsync(zipPaths, zipProgress, resolvePasswordAsync, entryFilter, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
         ArchiveResult tarResult = tarPaths.Count > 0
-            ? await _tarService.TestAsync(tarPaths, tarProgress, cancellationToken).ConfigureAwait(false)
+            ? await _tarService.TestAsync(tarPaths, tarProgress, entryFilter, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
 
         return zipResult with
@@ -147,6 +149,7 @@ public sealed class ExtractionRouter : IExtractionRouter
         IReadOnlyList<string> paths,
         IProgress<ProgressReport>? progress,
         Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync,
+        Func<string, bool, bool>? entryFilter,
         CancellationToken cancellationToken)
     {
         RecoveryTestStep.Plan plan = await Task.Run(() => RecoveryTestStep.Locate(paths, _policy, cancellationToken), cancellationToken).ConfigureAwait(false);
@@ -160,13 +163,14 @@ public sealed class ExtractionRouter : IExtractionRouter
         RecoveryClimb? climb = progress is null || plan.Sets.Count == 0 ? null : new RecoveryClimb(progress, testEnd);
         IProgress<ProgressReport>? testProgress = climb is null ? progress : new SliceProgress(climb, 0, testEnd, bytesBefore: 0);
 
-        ArchiveResult tested = await TestClassifiedAsync(classification, testProgress, resolvePasswordAsync, cancellationToken).ConfigureAwait(false);
+        ArchiveResult tested = await TestClassifiedAsync(classification, testProgress, resolvePasswordAsync, entryFilter, cancellationToken).ConfigureAwait(false);
         // Keyed by full path: a check's archive may come from a .par2 path, spelled unlike the archive path given.
         // T-F397: a test that checked only the structure did not pass the contents. Counting it
-        // would turn real damage into "a newer archive beside an older set".
+        // would turn real damage into "a newer archive beside an older set". T-F410: nor did a
+        // test of only the entries a filter passed.
         var passed = new HashSet<string>(
             tested.Sources
-                .Where(s => s.Outcome == SourceOutcome.Completed && !tested.Errors.Any(e => e.SourcePath == s.Path)
+                .Where(s => entryFilter is null && s.Outcome == SourceOutcome.Completed && !tested.Errors.Any(e => e.SourcePath == s.Path)
                     && !tested.Warnings.Any(w => IsStructureOnly(w) && w.SourcePath == s.Path))
                 .Select(s => RecoveryTestStep.Key(s.Path)),
             StringComparer.OrdinalIgnoreCase);

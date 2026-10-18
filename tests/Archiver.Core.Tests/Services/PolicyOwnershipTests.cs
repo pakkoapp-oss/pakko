@@ -24,7 +24,7 @@ file sealed class RecordingZipService : IArchiveService
         return Task.FromResult(new ArchiveResult());
     }
 
-    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null, CancellationToken cancellationToken = default)
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null, Func<string, bool, bool>? entryFilter = null, CancellationToken cancellationToken = default)
     {
         Calls++;
         return Task.FromResult(new ArchiveResult());
@@ -41,7 +41,7 @@ file sealed class RecordingZipService : IArchiveService
 // supported", so only Group Policy can keep an archive away from tar.exe.
 file sealed class TarMustNotRunService : ITarService
 {
-    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<string, bool, bool>? entryFilter = null, CancellationToken cancellationToken = default)
         => throw new NotImplementedException();
 
     public int ProbeCalls;

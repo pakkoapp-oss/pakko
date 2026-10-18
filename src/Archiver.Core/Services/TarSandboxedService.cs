@@ -1254,6 +1254,7 @@ public sealed class TarSandboxedService : ITarService
     public async Task<ArchiveResult> TestAsync(
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
+        Func<string, bool, bool>? entryFilter = null,
         CancellationToken cancellationToken = default)
     {
         if (_policy.DisableTarExtraction)
@@ -1270,10 +1271,12 @@ public sealed class TarSandboxedService : ITarService
             string archivePath = archivePaths[i];
             int errorsBefore = errors.Count;
             // As ExtractAsync: bytes within the archive for one, a step for each of several.
-            if (await TestOneArchiveAsync(archivePath, total == 1 ? progress : null, errors, cancellationToken).ConfigureAwait(false))
+            TestRun run = await TestOneArchiveAsync(archivePath, total == 1 ? progress : null, entryFilter, errors, cancellationToken).ConfigureAwait(false);
+            if (run != TestRun.NoFile)
             {
                 bool passed = errors.Count == errorsBefore;
-                if (passed && !TarTestCoverage.VerifiesContents(archivePath))
+                // T-F410: nothing passed the filter, so nothing was read, structure included.
+                if (passed && run == TestRun.Read && !TarTestCoverage.VerifiesContents(archivePath))
                     warnings.Add(CoreMessages.Warning(archivePath, CoreMessages.Text(MessageCode.TestedStructureOnly)));
                 sources.Add(SourceOutcomeRules.Classify(archivePath, produced: true, clean: passed));
             }
@@ -1285,21 +1288,32 @@ public sealed class TarSandboxedService : ITarService
         return new ArchiveResult { Errors = errors, Warnings = warnings, Sources = sources };
     }
 
-    // One archive of TestAsync's loop. False: there was no file to look at. Every other outcome
-    // but a cancel (T-F260) ends up in errors.
-    private static async Task<bool> TestOneArchiveAsync(
-        string archivePath, IProgress<ProgressReport>? progress, List<ArchiveError> errors, CancellationToken cancellationToken)
+    // What TestOneArchiveAsync did with one archive.
+    private enum TestRun
+    {
+        // There was no file to look at.
+        NoFile,
+        // tar.exe read the archive, or it was refused or failed (errors says which).
+        Read,
+        // T-F410: the filter passed no entry; tar.exe did not run.
+        NothingPassed,
+    }
+
+    // One archive of TestAsync's loop. Every outcome but a cancel (T-F260) ends up in errors.
+    private static async Task<TestRun> TestOneArchiveAsync(
+        string archivePath, IProgress<ProgressReport>? progress, Func<string, bool, bool>? entryFilter,
+        List<ArchiveError> errors, CancellationToken cancellationToken)
     {
         if (!File.Exists(archivePath))
         {
             errors.Add(CoreMessages.Error(archivePath, MessageCode.SourceNotFound, archivePath));
-            return false;
+            return TestRun.NoFile;
         }
 
         if (IsKnownEncryptedRar(archivePath))
         {
             errors.Add(CoreMessages.Error(archivePath, MessageCode.PasswordProtectedFormatNotSupported));
-            return true;
+            return TestRun.Read;
         }
 
         try
@@ -1307,18 +1321,23 @@ public sealed class TarSandboxedService : ITarService
             using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, cancellationToken)
                 .ConfigureAwait(false);
 
-            // The pre-scan extraction runs (T-F49): an archive it refuses must not pass a test.
-            // Its sum of the entries' sizes is what tar.exe is about to write to stdout.
-            (long declaredSize, _, _, _) = await ScanForUnsafeEntriesAsync(scope, cancellationToken).ConfigureAwait(false);
+            // The pre-scan extraction runs (T-F49): an archive it refuses must not pass a test, a
+            // filter or not. Its sum of the entries' sizes is what tar.exe is about to write to stdout.
+            (long declaredSize, string[] names, Dictionary<string, long> sizeByName, _) =
+                await ScanForUnsafeEntriesAsync(scope, cancellationToken).ConfigureAwait(false);
+            TestSubset subset = entryFilter is null ? new TestSubset(declaredSize, null, null) : TestSubset.Of(names, sizeByName, entryFilter);
+            if (subset.NothingToRead)
+                return TestRun.NothingPassed;
+            declaredSize = subset.DeclaredSize;
 
-            (int exitCode, string stdErr) = await scope.TestAsync(ContentProgress(progress, declaredSize), cancellationToken)
-                .ConfigureAwait(false);
+            (int exitCode, string stdErr) = await scope.TestAsync(
+                ContentProgress(progress, declaredSize), subset.Members, subset.ExcludedFiles, cancellationToken).ConfigureAwait(false);
             if (exitCode != 0)
             {
                 errors.Add(CoreMessages.Error(archivePath, IsLikelyEncryptionFailure(stdErr)
                     ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
                     : CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(stdErr))));
-                return true;
+                return TestRun.Read;
             }
 
             progress?.Report(new ProgressReport { Percent = 100, BytesTransferred = declaredSize, TotalBytes = declaredSize });
@@ -1348,7 +1367,37 @@ public sealed class TarSandboxedService : ITarService
             errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotOpenArchive, CoreMessages.Detail(ex)), ex));
         }
 
-        return true;
+        return TestRun.Read;
+    }
+
+    // T-F410: the files a filtered test reads. Every name is asked, folders too, so a filter counts
+    // what it let through as on extraction; a folder has no data to read. tar.exe gets the shorter
+    // of the two lists: libarchive matches every entry against every pattern, so a long list costs
+    // N^2 (docs/DECISIONS.md, "T-F410, wave A": 40,000 names 148 s against 24 s for none).
+    internal sealed record TestSubset(long DeclaredSize, IReadOnlyList<string>? Members, IReadOnlyList<string>? ExcludedFiles)
+    {
+        public bool NothingToRead { get; private init; }
+
+        public static TestSubset Of(string[] names, Dictionary<string, long> sizeByName, Func<string, bool, bool> entryFilter)
+        {
+            var passedFiles = new List<string>();
+            var leftOutFiles = new List<string>();
+            foreach (string name in names)
+            {
+                bool isFolder = name.EndsWith('/');
+                bool passes = StripLeadingDotSlash(name) is { Length: > 0 } shown && entryFilter(shown, isFolder);
+                if (!isFolder)
+                    (passes ? passedFiles : leftOutFiles).Add(name);
+            }
+            long size = passedFiles.Sum(n => sizeByName.GetValueOrDefault(n, 0L));
+            if (passedFiles.Count == 0)
+                return new TestSubset(0, null, null) { NothingToRead = true };
+            if (leftOutFiles.Count == 0)
+                return new TestSubset(size, null, null);
+            return passedFiles.Count <= leftOutFiles.Count
+                ? new TestSubset(size, passedFiles, null)
+                : new TestSubset(size, null, leftOutFiles);
+        }
     }
 
     // TestOneArchiveAsync's counter of the bytes tar.exe writes to stdout, as percents of the

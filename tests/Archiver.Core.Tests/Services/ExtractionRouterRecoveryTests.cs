@@ -14,10 +14,12 @@ internal sealed class TestingZipEngine : IArchiveService
 {
     public HashSet<string> Failing { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> Tested { get; } = [];
+    public Func<string, bool, bool>? Filter { get; private set; }
 
-    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null, CancellationToken cancellationToken = default)
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null, Func<string, bool, bool>? entryFilter = null, CancellationToken cancellationToken = default)
     {
         Tested.AddRange(archivePaths);
+        Filter = entryFilter;
         progress?.Report(new ProgressReport { Percent = 50 });
         progress?.Report(new ProgressReport { Percent = 100 });
         return Task.FromResult(new ArchiveResult
@@ -39,11 +41,13 @@ internal sealed class TestingTarEngine : ITarService
 {
     public HashSet<string> Failing { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> Tested { get; } = [];
+    public Func<string, bool, bool>? Filter { get; private set; }
 
-    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, CancellationToken cancellationToken = default)
+    public Task<ArchiveResult> TestAsync(IReadOnlyList<string> archivePaths, IProgress<ProgressReport>? progress = null, Func<string, bool, bool>? entryFilter = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Tested.AddRange(archivePaths);
+        Filter = entryFilter;
         progress?.Report(new ProgressReport { Percent = 50 });
         progress?.Report(new ProgressReport { Percent = 100 });
         return Task.FromResult(new ArchiveResult
@@ -594,6 +598,35 @@ public sealed class ExtractionRouterRecoveryTests : IDisposable
 
         result.Errors.Should().BeEmpty();
         result.Warnings.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.RecoveryDataDoesNotMatch);
+    }
+
+    // T-F410: a test of only the entries a filter passed did not read the rest, so the set
+    // disagreeing with a ZIP that passed it is damage, not an older set.
+    [Fact]
+    public async Task ZipPassingAFilteredTestWhileTheSetDisagrees_IsDamageNotAnOlderSet()
+    {
+        string zip = Protected("a.zip");
+        Damage(zip, 100, 10);
+        Func<string, bool, bool> filter = (_, _) => true;
+
+        ArchiveResult result = await Router().TestAsync([zip], verifyRecoveryData: true, entryFilter: filter);
+
+        _zip.Filter.Should().BeSameAs(filter);
+        result.RecoveryChecks.Should().ContainSingle().Which.State.Should().Be(RecoveryState.Repairable);
+        result.Errors.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Filter_ReachesBothEngines()
+    {
+        string zip = Archive("a.zip");
+        string tar = Archive("a.tar.gz");
+        Func<string, bool, bool> filter = (_, _) => true;
+
+        await Router().TestAsync([zip, tar], entryFilter: filter);
+
+        _zip.Filter.Should().BeSameAs(filter);
+        _tar.Filter.Should().BeSameAs(filter);
     }
 
     [Fact]

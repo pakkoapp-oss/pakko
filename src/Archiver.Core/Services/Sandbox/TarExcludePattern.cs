@@ -16,9 +16,12 @@ internal static class TarExcludePattern
     private const char EntrySeparator = '/';
 
     /// <summary>The pattern for <paramref name="relativePath"/> under the entry tar.exe names <paramref name="entryRoot"/>.</summary>
-    public static string For(string entryRoot, string relativePath)
+    public static string For(string entryRoot, string relativePath) =>
+        ForEntry(entryRoot + EntrySeparator + relativePath.Replace(Path.DirectorySeparatorChar, EntrySeparator));
+
+    /// <summary>T-F410: the pattern for the entry named <paramref name="path"/> as the archive has it.</summary>
+    public static string ForEntry(string path)
     {
-        string path = entryRoot + EntrySeparator + relativePath.Replace(Path.DirectorySeparatorChar, EntrySeparator);
         var pattern = new StringBuilder("^", path.Length + 8);
         foreach (char c in path)
         {

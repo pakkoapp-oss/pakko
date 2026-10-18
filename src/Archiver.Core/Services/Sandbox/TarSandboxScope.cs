@@ -234,12 +234,19 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// <summary>
     /// T-F397: has tar.exe read every entry and write nothing ("-x -O": the contents go to its
     /// stdout, which is dropped). <paramref name="onContentBytes"/> gets the size of each piece.
+    /// T-F410: non-empty <paramref name="members"/> reads only those entries ("-T", as
+    /// <see cref="ExtractAsync"/>); non-empty <paramref name="excludedFiles"/> reads all but those
+    /// files ("-X", each anchored to its whole name). The caller passes at most one of them.
     /// </summary>
-    public async Task<(int ExitCode, string StdErr)> TestAsync(Action<int> onContentBytes, CancellationToken cancellationToken)
+    public async Task<(int ExitCode, string StdErr)> TestAsync(
+        Action<int> onContentBytes, IReadOnlyList<string>? members, IReadOnlyList<string>? excludedFiles, CancellationToken cancellationToken)
     {
         if (_utf8Headers is null)
             await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
-        (int exitCode, _, string stdErr) = await RunAsync("-x", ["-O"], cancellationToken, onContentBytes).ConfigureAwait(false);
+        string[] subsetArguments = members is { Count: > 0 } ? ["-T", WriteMemberList(members)]
+            : excludedFiles is { Count: > 0 } ? ["-X", WriteList("excludes.txt", excludedFiles.Select(TarExcludePattern.ForEntry))]
+            : [];
+        (int exitCode, _, string stdErr) = await RunAsync("-x", ["-O", .. subsetArguments], cancellationToken, onContentBytes).ConfigureAwait(false);
         return (exitCode, stdErr);
     }
 
@@ -280,7 +287,10 @@ internal sealed partial class TarSandboxScope : IDisposable
     // names in (T-F283's EncodeLines; measured 2026-10-17: UTF-8 or OEM bytes are "Not found in
     // archive"). A line starting with '-' is a name there, "-C" included (measured). Returns the
     // path relative to the quarantine root, tar.exe's working directory.
-    private string WriteMemberList(IReadOnlyList<string> members)
+    private string WriteMemberList(IReadOnlyList<string> members) =>
+        WriteList("members.txt", members.Select(EscapeMemberPattern));
+
+    private string WriteList(string fileName, IEnumerable<string> lines)
     {
         string folder = Path.Combine(QuarantineRoot, MemberListFolderName);
         Directory.CreateDirectory(folder);
@@ -292,9 +302,8 @@ internal sealed partial class TarSandboxScope : IDisposable
         {
             throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
         }
-        string relativePath = Path.Combine(MemberListFolderName, "members.txt");
-        File.WriteAllBytes(Path.Combine(QuarantineRoot, relativePath),
-            TarCommandLineEncoding.EncodeLines(members.Select(EscapeMemberPattern)));
+        string relativePath = Path.Combine(MemberListFolderName, fileName);
+        File.WriteAllBytes(Path.Combine(QuarantineRoot, relativePath), TarCommandLineEncoding.EncodeLines(lines));
         return relativePath;
     }
 
