@@ -540,3 +540,32 @@ Add-SmokeStep 'CLI-039' {
     $listed = Invoke-Pakko @('l', '-ba', $tar)
     Assert-Smoke ($run.ExitCode -eq 0 -and $listed.Output.Contains('c.txt') -and -not $listed.Output.Contains('c.log')) "a -ttar dir -xr!*.log: exit $($run.ExitCode) $($run.Text) $($listed.Output)"
 }
+
+Add-SmokeStep 'CLI-040' {
+    # T-F411 wave D: 7-Zip's spellings, as 7za 26.02 measured.
+    $folder = Get-StepFolder 'cli040'
+    $zip = Join-Path $folder 'in.zip'
+    $file = Join-Path $folder 'a.txt'
+    Set-Content -LiteralPath $file -Value 'a' -NoNewline
+    $made = Invoke-Pakko @('A', '-TZIP', '-MX9', $zip, $file)
+    Assert-Smoke ($made.ExitCode -eq 0 -and (Test-Path -LiteralPath $zip)) "A -TZIP -MX9: exit $($made.ExitCode) $($made.Text)"
+
+    $out = Join-Path $folder 'out'
+    $run = Invoke-Pakko @('-Y', 'X', $zip, "-O$out")
+    Assert-Smoke ($run.ExitCode -eq 0 -and (Test-Path -LiteralPath (Join-Path $out 'a.txt'))) "-Y X -O: exit $($run.ExitCode) $($run.Text)"
+
+    $here = Join-Path $folder 'here'
+    $null = New-Item -ItemType Directory -Path $here
+    $run = Invoke-Pakko -Arguments @('-y', '--', 'x', $zip) -WorkingDirectory $here
+    Assert-Smoke ($run.ExitCode -eq 0 -and (Test-Path -LiteralPath (Join-Path $here 'a.txt'))) "-y -- x: exit $($run.ExitCode) $($run.Text)"
+
+    $run = Invoke-Pakko -Arguments @('a', '-ttar', '-saa', 'n.tar', $file) -WorkingDirectory $folder
+    Assert-Smoke ($run.ExitCode -eq 0 -and (Test-Path -LiteralPath (Join-Path $folder 'n.tar.tar'))) "a -saa n.tar: exit $($run.ExitCode) $($run.Text)"
+
+    $first = Join-Path $folder 'first'
+    $second = Join-Path $folder 'second'
+    $run = Invoke-Pakko @('x', $zip, "-o$first", "-o$second")
+    Assert-Smoke ($run.ExitCode -eq 7 -and $run.Text.Contains('Multiple instances for switch') -and -not (Test-Path -LiteralPath $first) -and -not (Test-Path -LiteralPath $second)) "x -o -o: exit $($run.ExitCode) $($run.Text)"
+    $run = Invoke-Pakko @('x', $zip, "-o$out", '-AOA')
+    Assert-Smoke ($run.ExitCode -eq 7) "x -AOA: exit $($run.ExitCode), expected 7"
+}

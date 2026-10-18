@@ -203,6 +203,9 @@ $cases = @(
     @{ Caller = '(parsing)'; Id = '-tZIP in capitals'; Args = @('a', '-tZIP', '{n}.zip', 'app'); On = @('(create)'); Error = $true }
     @{ Caller = '(parsing)'; Id = 'a without an extension'; Args = @('a', '{n}', 'app'); On = @('(create)'); Error = $true }
     @{ Caller = '(parsing)'; Id = 'a wildcard source, -r'; Args = @('a', '{n}.zip', '*.md', '-r'); On = @('(create)'); Error = $true }
+    @{ Caller = '(parsing)'; Id = '-- before the command'; Args = @('--', 'x', '{a}'); On = @('test.zip'); Error = $true }
+    @{ Caller = '(parsing)'; Id = '-MX=9 in capitals'; Args = @('a', '-MX=9', '{n}.zip', 'app'); On = @('(create)'); Error = $true }
+    @{ Caller = '(parsing)'; Id = '-saa'; Args = @('a', '-ttar', '-saa', '{n}.tar', 'app'); On = @('(create)'); Error = $true }
 )
 
 function Invoke-Case {
