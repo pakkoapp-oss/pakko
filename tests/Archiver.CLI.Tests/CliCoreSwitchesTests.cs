@@ -128,6 +128,29 @@ public sealed class CliCoreSwitchesTests
         result.ErrorMessage.Should().Contain(reason);
     }
 
+    // --- -ssw: read files open for writing (SWFRM_SIMPLE) ---
+
+    [Fact]
+    public void Archive_ReadFilesOpenForWriting_IsTaken()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-SSW", "out.zip", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive, result.ErrorMessage);
+        result.ReadFilesOpenForWriting.Should().BeTrue();
+        CliArgumentParser.Parse(["a", "out.zip", "f.txt"]).ReadFilesOpenForWriting.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("a", "-ssw-", "-ssw takes no value")]
+    [InlineData("x", "-ssw", "not supported on this command")]
+    public void ReadFilesOpenForWriting_WithAPostfixOrOnAnotherCommand_IsRefused(string command, string token, string reason)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse([command, token, "a.zip", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain(reason);
+    }
+
     // --- -ssp: declined (Pakko cannot keep the sources' last access time through tar.exe) ---
 
     [Theory]

@@ -55,6 +55,7 @@ public sealed record ParsedCliCommand
     public string? WorkingFolder { get; init; }                       // -w[dir], a only (T-F411); "" = bare -w, null = not given
     public int MaxThreads { get; init; }                              // -mmt[N|on|off], a only (T-F411); 0 = the core count
     public bool SetArchiveTime { get; init; }                         // -stl, a only (T-F411)
+    public bool ReadFilesOpenForWriting { get; init; }                // -ssw, a only (T-F411)
     public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
     public CliNameSwitches NameSwitches { get; init; } = new();       // -i/-x/-r/-spd/-ssc/-scs/-ai/-ax/-an, x/l/t (T-F410)
     public IReadOnlyList<CliFilterName> FilterNames { get; init; } = []; // x/l/t: the names after the archive name; a: its sources (T-F410)
@@ -592,6 +593,7 @@ public static class CliArgumentParser
         public string? WorkingFolder { get; set; }
         public int MaxThreads { get; set; }
         public bool SetArchiveTime { get; set; }
+        public bool ReadFilesOpenForWriting { get; set; }
     }
 
     private static ParsedCliCommand ParseArchive(CliToken[] rest)
@@ -628,6 +630,7 @@ public static class CliArgumentParser
             WorkingFolder = state.WorkingFolder,
             MaxThreads = state.MaxThreads,
             SetArchiveTime = state.SetArchiveTime,
+            ReadFilesOpenForWriting = state.ReadFilesOpenForWriting,
         };
     }
 
@@ -652,6 +655,7 @@ public static class CliArgumentParser
         if (token == "-y") { state.AssumeYes = true; return null; }
 
         if (token == "-stl") { state.SetArchiveTime = true; return null; }
+        if (token == "-ssw") { state.ReadFilesOpenForWriting = true; return null; }
         if (SimpleSwitchPostfixError(token) is { } postfixError)
             return postfixError;
 
@@ -744,7 +748,7 @@ public static class CliArgumentParser
 
     // T-F411: 7-Zip's switches that take no value (SWFRM_SIMPLE in ArchiveCommandLine.cpp): one
     // with anything after its name is "Incorrect switch postfix" there.
-    private static readonly string[] SimpleArchiveSwitches = ["-stl"];
+    private static readonly string[] SimpleArchiveSwitches = ["-stl", "-ssw"];
 
     private static string? SimpleSwitchPostfixError(string token)
     {
@@ -1084,6 +1088,7 @@ public static class CliArgumentParser
         ("-sa", "not supported on this command: -sa{s|e|a} names the archive 'a' creates"),
         ("-w", "not supported on this command: -w{dir} is only meaningful for 'a' (archive creation)"),
         ("-stl", "not supported on this command: -stl (the archive takes its newest file's time) is only meaningful for 'a'"),
+        ("-ssw", "not supported on this command: -ssw (read files open for writing) is only meaningful for 'a'"),
         ("-ssp", "not supported by Pakko: -ssp (keep the sources' last access time) - tar.exe cannot keep it, and Windows mostly does not update it"),
     ];
 

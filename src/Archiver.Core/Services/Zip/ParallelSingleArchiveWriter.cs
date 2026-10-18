@@ -85,6 +85,12 @@ internal static class ParallelSingleArchiveWriter
 
         public int WindowCapacity => ComputeWindowCapacity(MaxThreads);
 
+        /// <summary>T-F411: <see cref="ArchiveOptions.ReadFilesOpenForWriting"/>.</summary>
+        public bool ReadFilesOpenForWriting { get; init; }
+
+        /// <summary>How every source file is opened: 7-Zip's OpenShared - writers allowed only with -ssw.</summary>
+        public FileShare SourceShare => ReadFilesOpenForWriting ? FileShare.ReadWrite : FileShare.Read;
+
         public string NameOf(string sourcePath) => Names.For(sourcePath);
     }
 
@@ -502,7 +508,7 @@ internal static class ParallelSingleArchiveWriter
     internal static CompressedEntryData CompressSmallFile(string sourcePath, CompressionSettings settings)
     {
         using var fileStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read,
-            FileShare.Read, bufferSize: 0, useAsync: false);
+            settings.SourceShare, bufferSize: 0, useAsync: false);
         return ZipEntryCompressor.Compress(fileStream, settings.Level, settings.Password);
     }
 
@@ -539,7 +545,7 @@ internal static class ParallelSingleArchiveWriter
             try
             {
                 source = new FileStream(item.SourcePath, FileMode.Open, FileAccess.Read,
-                    FileShare.Read, bufferSize: FileReadBufferSize, useAsync: false);
+                    settings.SourceShare, bufferSize: FileReadBufferSize, useAsync: false);
                 WorkResult result = await CompressOpenSourceAsync(item, source, tempFilePath, settings, tracker, cancellationToken)
                     .ConfigureAwait(false);
                 sourceHandedOver = result.Source is not null;

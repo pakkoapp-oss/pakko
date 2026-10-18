@@ -61,6 +61,14 @@ public sealed record ArchiveOptions
     public bool SetArchiveTimeFromNewestEntry { get; init; }
 
     /// <summary>
+    /// T-F411: the ZIP engine also reads a file another program holds open for writing (7-Zip's
+    /// -ssw); without it such a file is an error, as in 7-Zip. Each entry's size and CRC come from
+    /// the bytes read, so the archive stays consistent; a stored entry read twice fails the
+    /// archive if the file changed in between. tar.exe reads such files without being asked.
+    /// </summary>
+    public bool ReadFilesOpenForWriting { get; init; }
+
+    /// <summary>
     /// T-F06: invoked once per conflicting destination path when <see cref="OnConflict"/> is
     /// <see cref="ConflictBehavior.Ask"/>. Null (e.g. Archiver.Shell, or a test that doesn't wire
     /// it) falls back to Skip — see ConflictResolver.
