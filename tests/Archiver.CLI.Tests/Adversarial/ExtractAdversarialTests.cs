@@ -112,7 +112,8 @@ public sealed class ExtractAdversarialTests : IDisposable
 
         (int exitCode, _, string stdErr) = _scratch.Pakko("x", archive, "-oout", "-y");
 
-        string[] contents = [.. _scratch.FilesUnder("out").Select(name => File.ReadAllText(@"\\?\" + _scratch.Inside(Path.Combine("out", name))))];
+        // Through \\?\ and without GetFullPath, which would trim a twin written under its literal name.
+        string[] contents = [.. _scratch.FilesUnder("out").Select(name => File.ReadAllText(@"\\?\" + Path.Combine(_scratch.Root, "out", name)))];
         if (exitCode == 0)
         {
             contents.Should().Contain("PLAIN", $"exit 0 means every entry was extracted; stderr: {Shown(stdErr)}")
