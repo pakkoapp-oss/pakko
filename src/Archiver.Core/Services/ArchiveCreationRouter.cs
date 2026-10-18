@@ -62,10 +62,27 @@ public sealed class ArchiveCreationRouter(
             : ArchiveRemovingEarlierSetsAsync(options, progress, cancellationToken);
     }
 
-    private Task<ArchiveResult> Engine(ArchiveOptions options, IProgress<ProgressReport>? progress, CancellationToken cancellationToken) =>
-        options.Format == ArchiveContainerFormat.Zip
+    private async Task<ArchiveResult> Engine(ArchiveOptions options, IProgress<ProgressReport>? progress, CancellationToken cancellationToken)
+    {
+        ArchiveResult result = await (options.Format == ArchiveContainerFormat.Zip
             ? archiveService.ArchiveAsync(options, progress, cancellationToken)
-            : tarService.CompressAsync(options, progress, cancellationToken);
+            : tarService.CompressAsync(options, progress, cancellationToken)).ConfigureAwait(false);
+        if (options.SetArchiveTimeFromNewestEntry && options.Mode == ArchiveMode.SingleArchive && result.CreatedFiles is [string archive])
+            await Task.Run(() => SetTimeFromNewestSource(archive, options), cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
+    // T-F411: the sources as the engine read them - normalized, named and filtered the same way.
+    private static void SetTimeFromNewestSource(string archive, ArchiveOptions options)
+    {
+        ArchiveOptions normalized = options with { SourcePaths = [.. options.SourcePaths.Select(SourcePathNormalizer.Normalize)] };
+        (SourceEntryNames names, ArchiveError? namesError) = SourceEntryNames.Create(normalized);
+        // The engine refused the same names, so it wrote nothing; there is no archive to time.
+        if (namesError is not null)
+            return;
+        if (NewestSourceTime.Find(normalized.SourcePaths, names) is { } newest)
+            FileTimes.TrySetFile(archive, newest);
+    }
 
     // T-F275: a set left from the archive's earlier bytes goes before the folder opens; under the
     // policy no PAR2 file is read or touched (a test does not read sets then either).

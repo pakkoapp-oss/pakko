@@ -704,6 +704,7 @@ static ArchiveOptions BuildArchiveOptions(
         ResolvePasswordAsync = BuildNewPasswordResolver(command, prompt),
         RecoveryPercent = command.RecoveryPercent,
         MaxThreads = command.MaxThreads,
+        SetArchiveTimeFromNewestEntry = command.SetArchiveTime,
     };
 }
 
