@@ -69,4 +69,54 @@ public sealed class TarSandboxedServiceRootFolderTests : IDisposable
 
         File.Exists(Path.Combine(dest, "root", "in", "c.txt")).Should().BeTrue();
     }
+
+    // --- T-F411: DuplicateRootName (7-Zip's -spe), the same rule as ZIP's ---
+
+    private async Task<string> ExtractNamedRootAsync(string archive, string rootName, Func<string, bool, bool>? filter = null)
+    {
+        string dest = Path.Combine(_temp.Path, "dest");
+        Directory.CreateDirectory(dest);
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archive], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            DuplicateRootName = rootName, EntryFilter = filter,
+        });
+        result.Success.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
+        return dest;
+    }
+
+    [Integration]
+    public async Task ExtractAsync_DuplicateRootName_RootNamedSo_IsStripped()
+    {
+        string tar = CreateTar("any.tar", "./src/a.txt", "./src/d/b.txt");
+
+        string dest = await ExtractNamedRootAsync(tar, "SRC");
+
+        File.Exists(Path.Combine(dest, "a.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(dest, "d", "b.txt")).Should().BeTrue();
+        Directory.Exists(Path.Combine(dest, "src")).Should().BeFalse();
+    }
+
+    [Integration]
+    public async Task ExtractAsync_DuplicateRootName_WithAFilter_IsStripped()
+    {
+        string tar = CreateTar("any.tar", "src/a.txt", "src/d/b.txt");
+
+        string dest = await ExtractNamedRootAsync(tar, "src", filter: (name, _) => name != "src/a.txt");
+
+        File.Exists(Path.Combine(dest, "d", "b.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(dest, "a.txt")).Should().BeFalse();
+        Directory.Exists(Path.Combine(dest, "src")).Should().BeFalse();
+    }
+
+    [Integration]
+    public async Task ExtractAsync_DuplicateRootName_RootNamedOtherwise_IsKept()
+    {
+        string tar = CreateTar("src.tar", "src/a.txt", "x.txt");
+
+        string dest = await ExtractNamedRootAsync(tar, "src");
+
+        File.Exists(Path.Combine(dest, "src", "a.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(dest, "x.txt")).Should().BeTrue();
+    }
 }

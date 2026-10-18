@@ -68,4 +68,21 @@ internal static class ExtractionDestinationPlanner
     /// numbered ("name (1)").</summary>
     public static bool RootDuplicatesArchiveName(string rootName, string archivePath) =>
         string.Equals(rootName, ArchiveNaming.GetBaseName(archivePath), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>T-F411: 7-Zip's -spe test (Extract.cpp 26.02, elimIsPossible): every entry of the
+    /// archive lies under one folder named <paramref name="rootName"/>, without case - a file of
+    /// that name, or any entry beside it, keeps the root. Names are '/'-separated, a folder's
+    /// ending with '/' (so the root's own folder entry "name/" lies under it).</summary>
+    public static bool AllEntriesUnderRoot(IEnumerable<string> entryNames, string rootName)
+    {
+        bool any = false;
+        foreach (string name in entryNames)
+        {
+            if (name.Length <= rootName.Length || name[rootName.Length] != '/'
+                || !name.StartsWith(rootName, StringComparison.OrdinalIgnoreCase))
+                return false;
+            any = true;
+        }
+        return any;
+    }
 }

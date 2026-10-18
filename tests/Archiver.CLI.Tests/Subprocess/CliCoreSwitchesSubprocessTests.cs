@@ -88,6 +88,51 @@ public sealed class CliCoreSwitchesSubprocessTests
         File.Exists(Path.Combine(scratchDir, "out.zip")).Should().BeFalse();
     }
 
+    // --- -spe ---
+
+    // 7za: "x src.zip -o<dir>\src -spe" puts src's content straight into <dir>\src; "-o." in a folder
+    // named src does not (the name is "." as typed); without -spe the root stays.
+    [Theory]
+    [InlineData(true, @"src", false)]
+    [InlineData(true, @"src\", false)]
+    [InlineData(true, @"SRC", false)]
+    [InlineData(false, @"src", true)]
+    public void Extract_DropRootNamedLikeOutput_PutsTheRootsContentInOutput(bool drop, string outputName, bool rootKept)
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string zip = Path.Combine(scratchDir, "any.zip");
+        using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Create))
+        {
+            using var writer = new StreamWriter(archive.CreateEntry("src/d/b.txt").Open());
+            writer.Write("b");
+        }
+        string output = Path.Combine(scratchDir, "out", outputName);
+        string[] args = drop ? ["x", zip, $"-o{output}", "-spe"] : ["x", zip, $"-o{output}"];
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, args);
+
+        exitCode.Should().Be(0, stdErr);
+        string outDir = Path.Combine(scratchDir, "out", outputName.TrimEnd('\\'));
+        File.Exists(Path.Combine(outDir, "src", "d", "b.txt")).Should().Be(rootKept);
+        File.Exists(Path.Combine(outDir, "d", "b.txt")).Should().Be(!rootKept);
+    }
+
+    [Fact]
+    public void Extract_DropRootWithDotOutput_KeepsTheRoot()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string zip = Path.Combine(scratchDir, "any.zip");
+        using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Create))
+            archive.CreateEntry("src/a.txt").Open().Dispose();
+        string cwd = Path.Combine(scratchDir, "src");
+        Directory.CreateDirectory(cwd);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(cwd, "x", zip, "-o.", "-spe");
+
+        exitCode.Should().Be(0, stdErr);
+        File.Exists(Path.Combine(cwd, "src", "a.txt")).Should().BeTrue();
+    }
+
     // --- -ssw ---
 
     [Fact]

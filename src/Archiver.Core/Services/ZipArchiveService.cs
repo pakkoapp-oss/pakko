@@ -954,7 +954,8 @@ public sealed class ZipArchiveService : IArchiveService
                 : options.DestinationFolder;
             var context = new ZipExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
-                sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder, sink.Warnings, options.OnItemExtracted, options.EntryFilter);
+                sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder, sink.Warnings, options.OnItemExtracted, options.EntryFilter,
+                options.DuplicateRootName);
             (string? actualDest, bool anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
@@ -1452,10 +1453,15 @@ public sealed class ZipArchiveService : IArchiveService
         // lives in ExtractionDestinationPlanner, shared with TarSandboxedService.
         // ExtractSingleArchiveAsync instead of hand-kept-in-sync per T-F118's own comment — see
         // DECISIONS.md's T-F157 entry.
-        RootShape rootShape = ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
-        bool rootDuplicatesArchiveName = context.EliminateDuplicateRootFolder && isSingleRootFolder
+        // T-F411: -spe's root is decided over every entry, so a selection or filter drops it too.
+        bool namedRootDropped = context.DuplicateRootName is { } namedRoot
+            && ExtractionDestinationPlanner.AllEntriesUnderRoot(allEntries.Select(e => e.FullName), namedRoot);
+        RootShape rootShape = namedRootDropped
+            ? RootShape.SingleFolder
+            : ExtractionDestinationPlanner.Classify(isSelectedSubset, isSingleRootFolder, isSingleRootFile);
+        bool rootDuplicatesArchiveName = namedRootDropped || (context.EliminateDuplicateRootFolder && isSingleRootFolder
             && ExtractionDestinationPlanner.RootDuplicatesArchiveName(
-                entries[0].FullName[..entries[0].FullName.IndexOf('/')], archivePath);
+                entries[0].FullName[..entries[0].FullName.IndexOf('/')], archivePath));
         (string? actualDest, bool stripRootPrefix) = ExtractionDestinationPlanner.Resolve(
             alreadyIsolated, rootShape, destDir, unisolatedDestDir, rootDuplicatesArchiveName);
 
@@ -1585,7 +1591,9 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F408: ExtractOptions.OnItemExtracted.
         Action<string>? OnItemExtracted = null,
         // T-F410: ExtractOptions.EntryFilter.
-        Func<string, bool, bool>? EntryFilter = null);
+        Func<string, bool, bool>? EntryFilter = null,
+        // T-F411: ExtractOptions.DuplicateRootName.
+        string? DuplicateRootName = null);
 
     // The per-call setup ExtractWithSmartFolderingAsync computes once and every entry of its loop
     // reads unchanged — cut into its own type alongside ZipExtractionContext so

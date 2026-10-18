@@ -155,4 +155,18 @@ public sealed class ExtractionDestinationPlannerTests
         ExtractionDestinationPlanner.Classify(isSelectedSubset: false, isSingleRootFolder: false, isSingleRootFile: false)
             .Should().Be(RootShape.MultiRoot);
     }
+
+    // T-F411: -spe's test, as Extract.cpp 26.02 decides it (elimIsPossible).
+    [Theory]
+    [InlineData("src", true, "src/", "src/a.txt", "src/d/b.txt")]
+    [InlineData("SRC", true, "src/a.txt")]
+    [InlineData("src", false, "src")]             // a file named so
+    [InlineData("src", false, "src/a.txt", "x.txt")]
+    [InlineData("src", false, "srcx/a.txt")]
+    [InlineData("sr", false, "src/a.txt")]
+    [InlineData("src", false)]                     // no entries
+    public void AllEntriesUnderRoot_FollowsSevenZip(string rootName, bool expected, params string[] names)
+    {
+        ExtractionDestinationPlanner.AllEntriesUnderRoot(names, rootName).Should().Be(expected);
+    }
 }
