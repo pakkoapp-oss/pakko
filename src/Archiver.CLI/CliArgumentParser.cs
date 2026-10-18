@@ -1122,13 +1122,14 @@ public static class CliArgumentParser
 
     private static string UnsupportedSwitchReason(string token)
     {
+        // T-F419: CLI.md's rule 3 names the switch; the bare reason did not.
         if (token is "-si" or "-so" or "-y")
-            return NotSupportedOnThisCommand;
+            return $"{NotSupportedOnThisCommand}: {token}";
 
         foreach ((string prefix, string message) in UnsupportedSwitchPrefixes)
         {
             if (token.StartsWith(prefix, StringComparison.Ordinal))
-                return message;
+                return message == NotSupportedOnThisCommand ? $"{message}: {token}" : message;
         }
 
         return $"Incorrect command line: unknown switch '{token}'";
