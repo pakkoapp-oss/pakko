@@ -83,6 +83,7 @@ public sealed class CliSwitchNamesTests
     [InlineData("-mx10")]
     [InlineData("-mx=99")]
     [InlineData("-mx=99999999999")]
+    [InlineData("-mx=")] // 7za: exit 0, the same archive as -mx
     public void CompressionLevel_EverySpelling7ZipTakes_IsTheHighest(string token)
     {
         ParsedCliCommand result = CliArgumentParser.Parse(["a", token, "out.zip", "f.txt"]);
@@ -274,7 +275,56 @@ public sealed class CliSwitchNamesTests
         result.FilterNames.Select(n => n.Text).Should().Equal("-y");
     }
 
+    [Theory]
+    [InlineData("-H")]
+    [InlineData("-?")]
+    [InlineData("--HELP")]
+    public void HelpSwitch_AnywhereAndInAnyCase_IsHelp(string token)
+    {
+        // 7za: "x a.zip -H" prints the help and exits 0.
+        CliArgumentParser.Parse(["x", "a.zip", token]).Type.Should().Be(CliCommandType.Help);
+        CliArgumentParser.Parse([token]).Type.Should().Be(CliCommandType.Help);
+    }
+
+    [Theory]
+    [InlineData("-hx")]
+    [InlineData("-HELP")]
+    public void NotAHelpSwitch_IsNotHelp(string token)
+    {
+        CliArgumentParser.Parse(["x", "a.zip", token]).Type.Should().Be(CliCommandType.Invalid);
+    }
+
+    [Fact]
+    public void HelpSwitchAfterDoubleDash_IsAName()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["x", "a.zip", "--", "-h"]);
+
+        result.Type.Should().Be(CliCommandType.Extract, result.ErrorMessage);
+        result.FilterNames.Select(n => n.Text).Should().Equal("-h");
+    }
+
     // --- Error path ---
+
+    [Theory]
+    [InlineData("-p secret x a.zip")]
+    [InlineData("-P secret x a.zip")]
+    [InlineData("-p -- secret x a.zip")]
+    public void AWordAfterABarePassword_IsNeverPrintedAsTheCommand(string line)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(line.Split(' '));
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().NotContain("secret").And.Contain("bare -p");
+    }
+
+    [Fact]
+    public void ACommandAfterABarePassword_IsTaken()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["-p", "x", "a.zip"]);
+
+        result.Type.Should().Be(CliCommandType.Extract, result.ErrorMessage);
+        result.PromptForPassword.Should().BeTrue();
+    }
 
     [Fact]
     public void MultipleInstanceError_NamesTheSecondToken()
@@ -292,7 +342,6 @@ public sealed class CliSwitchNamesTests
     }
 
     [Theory]
-    [InlineData("-mx=")]
     [InlineData("-mxa")]
     [InlineData("-mx=-1")]
     public void CompressionLevel_NotANumber_IsACommandLineError(string token)
