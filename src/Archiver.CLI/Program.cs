@@ -448,12 +448,10 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
             progress,
             resolvePasswordAsync: BuildPasswordResolver(command, command.AssumeYes, progress, report),
             verifyRecoveryData: stdinFolder is null,
-            entryFilter: command.EntryFilter is { } filter ? passed.Counting(filter.Includes) : null,
+            entryFilter: CountedFilter(command, passed),
             cancellationToken: cancellation.Token).ConfigureAwait(false);
         progress?.Clear();
-        // T-F410: 7-Zip's ThereAreNoFiles, as on x.
-        if (command.EntryFilter is not null && result.Success && passed.Count == 0)
-            await Console.Out.WriteLineAsync("No files to process").ConfigureAwait(false);
+        await ReportNoFileToProcessAsync(command, result, passed).ConfigureAwait(false);
         foreach (RecoveryCheck check in result.RecoveryChecks.Where(c => c.State == RecoveryState.Intact))
             await Console.Out.WriteLineAsync($"{report.DisplayName(check.ArchivePath)}: recovery data intact ({check.Blocks} blocks, {check.RecoveryBlocks} recovery blocks)").ConfigureAwait(false);
         return WithRefusedArchives(ReportResult(result, report), anyRefused);

@@ -1316,22 +1316,14 @@ public sealed class TarSandboxedService : ITarService
             return TestRun.Read;
         }
 
+        bool nothingRead = false;
         try
         {
             using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, cancellationToken)
                 .ConfigureAwait(false);
 
-            // The pre-scan extraction runs (T-F49): an archive it refuses must not pass a test, a
-            // filter or not. Its sum of the entries' sizes is what tar.exe is about to write to stdout.
-            (long declaredSize, string[] names, Dictionary<string, long> sizeByName, _) =
-                await ScanForUnsafeEntriesAsync(scope, cancellationToken).ConfigureAwait(false);
-            TestSubset subset = entryFilter is null ? new TestSubset(declaredSize, null, null) : TestSubset.Of(names, sizeByName, entryFilter);
-            if (subset.NothingToRead)
-                return TestRun.NothingPassed;
-            declaredSize = subset.DeclaredSize;
-
-            (int exitCode, string stdErr) = await scope.TestAsync(
-                ContentProgress(progress, declaredSize), subset.Members, subset.ExcludedFiles, cancellationToken).ConfigureAwait(false);
+            (int exitCode, string stdErr, long declaredSize, nothingRead) = await ScanAndTestAsync(scope, progress, entryFilter, cancellationToken)
+                .ConfigureAwait(false);
             if (exitCode != 0)
             {
                 errors.Add(CoreMessages.Error(archivePath, IsLikelyEncryptionFailure(stdErr)
@@ -1367,7 +1359,23 @@ public sealed class TarSandboxedService : ITarService
             errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotOpenArchive, CoreMessages.Detail(ex)), ex));
         }
 
-        return TestRun.Read;
+        return nothingRead ? TestRun.NothingPassed : TestRun.Read;
+    }
+
+    // The pre-scan extraction runs (T-F49): an archive it refuses must not pass a test, a filter or
+    // not. Then tar.exe reads what the filter passes; its declared size is what tar.exe is about to
+    // write to stdout. NothingRead: no file passed, and tar.exe did not run.
+    private static async Task<(int ExitCode, string StdErr, long DeclaredSize, bool NothingRead)> ScanAndTestAsync(
+        TarSandboxScope scope, IProgress<ProgressReport>? progress, Func<string, bool, bool>? entryFilter, CancellationToken cancellationToken)
+    {
+        (long declaredSize, string[] names, Dictionary<string, long> sizeByName, _) =
+            await ScanForUnsafeEntriesAsync(scope, cancellationToken).ConfigureAwait(false);
+        TestSubset subset = entryFilter is null ? new TestSubset(declaredSize, null, null) : TestSubset.Of(names, sizeByName, entryFilter);
+        if (subset.NothingToRead)
+            return (0, string.Empty, 0, true);
+        (int exitCode, string stdErr) = await scope.TestAsync(
+            ContentProgress(progress, subset.DeclaredSize), subset.Members, subset.ExcludedFiles, cancellationToken).ConfigureAwait(false);
+        return (exitCode, stdErr, subset.DeclaredSize, false);
     }
 
     // T-F410: the files a filtered test reads. Every name is asked, folders too, so a filter counts
