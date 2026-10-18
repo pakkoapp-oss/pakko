@@ -1948,15 +1948,21 @@ public sealed class TarSandboxedService : ITarService
             if (!appended || nameList.Count == listedBefore)
                 continue;
 
-            for (int i = listedBefore; i < nameList.Count; i++)
-                nameList[i] = LeaveOutFiltered(LeaveOutLinks(nameList[i], links, skippedFiles), leftOut);
-
+            LeaveOutFromLines(nameList, listedBefore, links, leftOut, skippedFiles);
             entryCount++;
             totalEntriesForProgress += entries;
             totalBytesForProgress += bytes;
         }
 
         return (entryCount, totalEntriesForProgress, totalBytesForProgress);
+    }
+
+    // The lines one source added, from listedBefore on: its links and what the filter leaves out excluded.
+    private static void LeaveOutFromLines(
+        List<ListedSource> nameList, int listedBefore, List<FileSystemInfo> links, List<FileSystemInfo> leftOut, List<SkippedFile> skippedFiles)
+    {
+        for (int i = listedBefore; i < nameList.Count; i++)
+            nameList[i] = LeaveOutFiltered(LeaveOutLinks(nameList[i], links, skippedFiles), leftOut);
     }
 
     // T-F391: tar.exe follows a junction (packing files from outside the selection) and stores a

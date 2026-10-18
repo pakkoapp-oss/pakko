@@ -588,19 +588,23 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
         if (result.CreatedFiles.Count == 0 && result.Outcome == OperationOutcome.Completed)
             return await ReportNothingToArchiveAsync().ConfigureAwait(false);
         int code = Math.Max(sourcesCode, await ReportAndStreamAsync(result, stdoutFolder, new CliReportContext(), cancellation.Token).ConfigureAwait(false));
-
-        // T-F325: the archive is complete but not where the caller will look for it - exit 1.
-        string requestedPath = Path.Combine(options.DestinationFolder, ArchiveNaming.SingleArchiveFileName(options));
-        if (stdoutFolder is not null || CliCreatedName.TakenLine(requestedPath, result.CreatedFiles) is not { } nameTaken)
-            return code;
-        await Console.Error.WriteLineAsync(nameTaken).ConfigureAwait(false);
-        return Math.Max(code, 1);
+        return stdoutFolder is null ? await ReportTakenNameAsync(code, options, result).ConfigureAwait(false) : code;
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
         progress?.Clear();
         return ReportUserStopped();
     }
+}
+
+// T-F325: the archive is complete but not where the caller will look for it - exit 1.
+static async Task<int> ReportTakenNameAsync(int code, ArchiveOptions options, ArchiveResult result)
+{
+    string requestedPath = Path.Combine(options.DestinationFolder, ArchiveNaming.SingleArchiveFileName(options));
+    if (CliCreatedName.TakenLine(requestedPath, result.CreatedFiles) is not { } nameTaken)
+        return code;
+    await Console.Error.WriteLineAsync(nameTaken).ConfigureAwait(false);
+    return Math.Max(code, 1);
 }
 
 // T-F410/T-F414: the sources of 'a', or the exit code when there are none. A list file that cannot
