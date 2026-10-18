@@ -239,6 +239,7 @@ public sealed class ZipArchiveService : IArchiveService
         try
         {
             ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, sortedSourcePaths);
+            int errorsBeforeWriting = errors.Count;
             if (useParallelPipeline)
             {
                 settings = settings with
@@ -267,8 +268,10 @@ public sealed class ZipArchiveService : IArchiveService
             // T-F260: never commit after a cancel — several loops inside the writers end with a
             // `break` rather than a throw, which would otherwise leave a partial archive that
             // looks finished.
+            // T-F411: -sse - a source that could not be read fails the archive, which is not written.
             cancellationToken.ThrowIfCancellationRequested();
-            if (HasTempEntries(tempPath))
+            bool stoppedAtUnreadable = options.StopOnUnreadableSource && errors.Count > errorsBeforeWriting;
+            if (!stoppedAtUnreadable && HasTempEntries(tempPath))
             {
                 createdFiles.Add(await ArchiveTempFile.CommitAsync(tempPath, destPath, replacesExisting, cancellationToken).ConfigureAwait(false));
             }
@@ -422,6 +425,7 @@ public sealed class ZipArchiveService : IArchiveService
             EntryNames = run.Names,
             MaxThreads = options.MaxThreads,
             ReadFilesOpenForWriting = options.ReadFilesOpenForWriting,
+            StopOnUnreadableSource = options.StopOnUnreadableSource,
         };
         if (settings.RequiresHandRolledWriter)
         {
@@ -565,9 +569,10 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F260: this worker's own issue count — the shared bags are written by every worker at
         // once, so a before/after delta on them would not attribute issues to this source.
         int issues = 0;
+        int errorCount = 0;
         bool committed = false;
         void AddSkipped(SkippedFile f) { Interlocked.Increment(ref issues); sink.SkippedFiles.Add(f); }
-        void AddError(ArchiveError e) { Interlocked.Increment(ref issues); sink.Errors.Add(e); }
+        void AddError(ArchiveError e) { Interlocked.Increment(ref issues); Interlocked.Increment(ref errorCount); sink.Errors.Add(e); }
         try
         {
             ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, [sourcePath]);
@@ -612,7 +617,8 @@ public sealed class ZipArchiveService : IArchiveService
             // where all contained files failed would otherwise leave an empty archive).
             // T-F260: never commit after a cancel (see ArchiveSingleArchiveModeAsync's same gate).
             cancellationToken.ThrowIfCancellationRequested();
-            if (HasTempEntries(separateTempPath))
+            bool stoppedAtUnreadable = settings.StopOnUnreadableSource && Interlocked.CompareExchange(ref errorCount, 0, 0) > 0;
+            if (!stoppedAtUnreadable && HasTempEntries(separateTempPath))
             {
                 sink.CreatedFiles.Add(await ArchiveTempFile.CommitAsync(separateTempPath, destPath, replacesExisting, cancellationToken).ConfigureAwait(false));
                 committed = true;

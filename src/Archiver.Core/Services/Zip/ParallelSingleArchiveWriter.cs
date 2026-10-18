@@ -91,6 +91,10 @@ internal static class ParallelSingleArchiveWriter
         /// <summary>How every source file is opened: 7-Zip's OpenShared - writers allowed only with -ssw.</summary>
         public FileShare SourceShare => ReadFilesOpenForWriting ? FileShare.ReadWrite : FileShare.Read;
 
+        /// <summary>T-F411: <see cref="ArchiveOptions.StopOnUnreadableSource"/>; read by the
+        /// one-archive-per-source loop, which commits each archive itself.</summary>
+        public bool StopOnUnreadableSource { get; init; }
+
         public string NameOf(string sourcePath) => Names.For(sourcePath);
     }
 

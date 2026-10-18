@@ -67,6 +67,27 @@ public sealed class CliCoreSwitchesSubprocessTests
         File.GetLastWriteTimeUtc(Path.Combine(scratchDir, "out.zip")).Should().Be(sourceTime);
     }
 
+    // --- -sse ---
+
+    // 7za: a file without read access is exit 2 and no archive with -sse; exit 1 and the rest without.
+    [Fact]
+    public void Archive_LockedFileWithStopOnUnreadable_IsExitTwoAndNoArchive()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        File.WriteAllText(Path.Combine(scratchDir, "a.txt"), "a");
+        string locked = Path.Combine(scratchDir, "b.txt");
+        File.WriteAllText(locked, "b");
+
+        int exitCode;
+        string stdErr;
+        using (new FileStream(locked, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            (exitCode, _, stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-sse", "out.zip", "a.txt", "b.txt");
+
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("b.txt").And.Contain("-sse stops at a file that cannot be read");
+        File.Exists(Path.Combine(scratchDir, "out.zip")).Should().BeFalse();
+    }
+
     // --- -ssw ---
 
     [Fact]

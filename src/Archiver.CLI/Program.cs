@@ -604,6 +604,9 @@ static async Task<int> ReportArchiveResultAsync(
     if (result.CreatedFiles.Count == 0 && result.Outcome == OperationOutcome.Completed)
         return await ReportNothingToArchiveAsync().ConfigureAwait(false);
     int code = Math.Max(sourcesCode, await ReportAndStreamAsync(result, stdoutFolder, new CliReportContext(), ct).ConfigureAwait(false));
+    // T-F411: Core's errors name the file; this says why nothing else was archived.
+    if (options.StopOnUnreadableSource && result.CreatedFiles.Count == 0 && result.Errors.Count > 0)
+        await Console.Error.WriteLineAsync("pakko: error: no archive written: -sse stops at a file that cannot be read").ConfigureAwait(false);
     return stdoutFolder is null ? await ReportTakenNameAsync(code, options, result).ConfigureAwait(false) : code;
 }
 
@@ -706,6 +709,7 @@ static ArchiveOptions BuildArchiveOptions(
         MaxThreads = command.MaxThreads,
         SetArchiveTimeFromNewestEntry = command.SetArchiveTime,
         ReadFilesOpenForWriting = command.ReadFilesOpenForWriting,
+        StopOnUnreadableSource = command.StopOnUnreadableSource,
     };
 }
 
