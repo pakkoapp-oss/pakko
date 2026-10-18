@@ -41,7 +41,9 @@ public static class CliNameSelection
             masks.AddRange(names.Select(n => new CliNameMask(n, Include: true, switches.Recursion, switches.WildcardMatching)));
         }
 
-        return (CliNameFilter.Create(masks, switches.CaseSensitive, switches.ExcludeFolders, switches.ExcludeFiles), null);
+        bool commandLineIncludes = command.FilterNames.Count > 0 || switches.Names.Any(n => n.Include);
+        return (CliNameFilter.Create(masks, switches.CaseSensitive, switches.ExcludeFolders, switches.ExcludeFiles,
+            startFromAll: !commandLineIncludes), null);
     }
 
     /// <summary>
@@ -69,13 +71,20 @@ public static class CliNameSelection
                 n, item.Include, item.Recursion ?? CliRecursion.None, item.WildcardMatching ?? switches.WildcardMatching)));
         }
 
+        if (includes.Count == 0)
+            return ([], "Cannot find archive");
         if (includes.TrueForAll(m => !Searches(m)) && excludes.Count == 0)
             return ([.. includes.Select(m => m.Path)], null);
 
-        // Matched as full paths, so a mask's literal folders become the filter's sub-nodes.
+        // Matched as full paths, so a mask's literal folders become the filter's sub-nodes. A
+        // relative exclude also holds under every folder an include searches (7-Zip's
+        // arcCensor.ExtendExclude): -ax!b.zip leaves out C:\d\b.zip found by -ai!C:\d\*.zip.
         var full = new List<CliNameMask>(includes.Count + excludes.Count);
         full.AddRange(includes.Concat(excludes).Select(m => m with { Path = Path.GetFullPath(m.Path, currentDirectory) }));
-        CliNameFilter filter = CliNameFilter.Create(full, switches.CaseSensitive);
+        string[] searched = [.. full.Where(m => m.Include && Searches(m)).Select(LiteralRoot).Distinct(StringComparer.OrdinalIgnoreCase)];
+        foreach (CliNameMask exclude in excludes.Where(m => !Path.IsPathRooted(m.Path)))
+            full.AddRange(searched.Select(folder => exclude with { Path = Path.Combine(folder, exclude.Path) }));
+        CliNameFilter filter = CliNameFilter.Create(full, switches.CaseSensitive, startFromAll: false);
         var found = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (CliNameMask mask in full.Where(m => m.Include))
         {
@@ -104,14 +113,10 @@ public static class CliNameSelection
     // null when the folder does not exist.
     private static FileSystemEnumerable<string>? Candidates(CliNameMask mask)
     {
-        string[] parts = mask.Path.Split('\\', '/');
-        int literal = 0;
-        while (literal < parts.Length - 1 && !(mask.WildcardMatching && CliNameFilter.ContainsWildcard(parts[literal])))
-            literal++;
-        string root = string.Join(Path.DirectorySeparatorChar, parts[..literal]) + Path.DirectorySeparatorChar;
+        string root = LiteralRoot(mask);
         var options = new EnumerationOptions
         {
-            RecurseSubdirectories = mask.Recursion != CliRecursion.None || literal < parts.Length - 1,
+            RecurseSubdirectories = mask.Recursion != CliRecursion.None || LiteralFolderCount(mask) < mask.Path.Split('\\', '/').Length - 1,
             IgnoreInaccessible = true,
             AttributesToSkip = 0,
         };
@@ -125,6 +130,19 @@ public static class CliNameSelection
             ShouldRecursePredicate = static (ref FileSystemEntry entry) => (entry.Attributes & FileAttributes.ReparsePoint) == 0,
         };
     }
+
+    // The mask's leading folders up to the first one with a wildcard (never its last part).
+    private static int LiteralFolderCount(CliNameMask mask)
+    {
+        string[] parts = mask.Path.Split('\\', '/');
+        int literal = 0;
+        while (literal < parts.Length - 1 && !(mask.WildcardMatching && CliNameFilter.ContainsWildcard(parts[literal])))
+            literal++;
+        return literal;
+    }
+
+    private static string LiteralRoot(CliNameMask mask) =>
+        string.Join(Path.DirectorySeparatorChar, mask.Path.Split('\\', '/')[..LiteralFolderCount(mask)]) + Path.DirectorySeparatorChar;
 
     private static string ListFileError(string path) =>
         File.Exists(path) ? $"Incorrect item in listfile: {path}" : $"The file operation error for listfile: cannot open {path}";

@@ -1655,7 +1655,8 @@ re-measured with T-F346's script before and after.
 - [ ] **Status:** open. Each is small and measured: a command in capitals (`X`) and a switch before
   the command (`-y x a.zip`), both taken by 7-Zip, exit 7 in `pakko`; `-mx9` without `=` and
   `-tZIP` in capitals; `-o` given twice (7-Zip: exit 7, `pakko`: the last wins); `-aot`; `-saa`,
-  `-sae`, `-sas` (patool passes `-sae`); `-sdel` (the App has "delete after"); `-spe` (Core has
+  `-sae`, `-sas` (patool passes `-sae`); `-sdel` (the App has "delete after"); `-spe` (with a name
+  filter too: a filtered extraction is a subset today, so Core skips ElimDup there; T-F410's DECISIONS entry) (Core has
   `EliminateDuplicateRootFolder`); `-mmt` (the parallel ZIP writer's threads); `-sse`, `-ssp`,
   `-ssw`, `-stl`, `-w`. One commit each, each against 7za with the T-F343 script.
 - **Done so far** (2026-10-17, with T-F407): `-sae` and `-sas`. Still open: the rest above, and a switch before the command now includes `pakko -- x a.zip`.

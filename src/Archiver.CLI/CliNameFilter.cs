@@ -34,15 +34,18 @@ public sealed class CliNameFilter
     }
 
     /// <summary>
-    /// Builds the filter. With no include mask at all, every entry is included first, as 7-Zip's
-    /// AddToCensorFromNonSwitchesStrings adds "*" when there is no name after the archive and no -i.
+    /// Builds the filter. <paramref name="startFromAll"/> includes every entry first, as 7-Zip's
+    /// AddToCensorFromNonSwitchesStrings adds "*" when the command line names nothing to include
+    /// (no name after the archive, no -i) — decided from the command line, so an empty list file
+    /// includes nothing. Null: when <paramref name="masks"/> has no include.
     /// </summary>
     public static CliNameFilter Create(
-        IEnumerable<CliNameMask> masks, bool caseSensitive = false, bool excludeFolders = false, bool excludeFiles = false)
+        IEnumerable<CliNameMask> masks, bool caseSensitive = false, bool excludeFolders = false, bool excludeFiles = false,
+        bool? startFromAll = null)
     {
         var filter = new CliNameFilter(caseSensitive, excludeFolders, excludeFiles);
         List<CliNameMask> all = [.. masks];
-        if (!all.Exists(m => m.Include))
+        if (startFromAll ?? !all.Exists(m => m.Include))
             filter.Add(new CliNameMask("*", Include: true, CliRecursion.None));
         foreach (CliNameMask mask in all)
             filter.Add(mask);

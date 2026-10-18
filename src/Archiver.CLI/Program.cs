@@ -162,14 +162,17 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
             PasswordGiven = command.Password is not null || command.PromptForPassword,
             KeptExistingByDefault = command.OverwriteMode is null && !command.AssumeYes,
         };
-        ExtractOptions options = BuildExtractOptions(command, ArchivePathsFor(command, stdinFolder), destination, cancellation.Source, progress, report);
+        var passed = new CliFilterCount();
+        ExtractOptions options = BuildExtractOptions(command, ArchivePathsFor(command, stdinFolder), destination, cancellation.Source, progress, report)
+            with { EntryFilter = command.EntryFilter is { } filter ? passed.Counting(filter.Includes) : null };
 
         ArchiveResult result = await router.ExtractAsync(options, progress, cancellation.Token).ConfigureAwait(false);
         progress?.Clear();
         if (cancellation.Token.IsCancellationRequested)
             return ReportUserStopped();
-        // T-F410: 7-Zip's ThereAreNoFiles, when a filter let nothing through; -so then streams nothing.
-        if (command.EntryFilter is not null && result is { Success: true, CreatedFiles.Count: 0, SkippedFiles.Count: 0 })
+        // T-F410: 7-Zip's ThereAreNoFiles, when a filter let no entry through (not when the
+        // entries that passed were all skipped at the conflict prompt); -so then streams nothing.
+        if (command.EntryFilter is not null && result.Success && passed.Count == 0)
         {
             await Console.Out.WriteLineAsync("No files to process").ConfigureAwait(false);
             if (stdoutFolder is not null)
@@ -224,7 +227,6 @@ static ExtractOptions BuildExtractOptions(
         ResolvePasswordAsync = BuildPasswordResolver(command, command.AssumeYes, progress, report),
         ApplyDownloadMark = command.ApplyDownloadMark ?? true,
         OnItemExtracted = command.Output.LogLevel >= 1 ? NameExtractedItem(destination, progress) : null,
-        EntryFilter = command.EntryFilter is { } filter ? filter.Includes : null,
     };
 }
 

@@ -13310,6 +13310,18 @@ the archive.
   could not be said; and its check is O(entries x selected). `EntryFilter` is asked once per entry.
 - **`t` and `a`** refuse `-i`, `-x`, `-r` and names after the archive on `t` with exit 7 until
   wave B, instead of silently testing everything.
+- **Closing review** (a read-only reviewer, 2026-10-18), fixed with a test each, seen red first:
+  an empty list file included everything (the universal `*` is now decided from the command line,
+  as 7-Zip's `AddToCensorFromNonSwitchesStrings` does: `startFromAll`); a relative `-ax` did not
+  reach archives an absolute `-ai` found (7-Zip's `arcCensor.ExtendExclude`: a relative exclude
+  now also holds under every folder an include searches); `-an -ai@<empty list>` succeeded on no
+  archive (now "Cannot find archive"); the tar move dropped a file whose name `tar.exe` writes
+  differently on disk (an entry named `dir\a.txt`), since it kept only listed names — now only the
+  files the filter left out are dropped; "No files to process" was printed when the entries that
+  passed were all skipped at the conflict prompt (now `CliFilterCount` counts what the filter let
+  through); `-n` (above). Left for T-F411's `-spe`: a filtered extraction is a subset, so
+  `EliminateDuplicateRootFolder` does not apply to it, where 7-Zip applies ElimDup to the entries
+  that pass; no caller sets both today.
 - **Where it differs from 7-Zip, deliberately:** `-bb1` also names a folder Pakko creates for an
   entry inside it when the folder's own entry did not pass the filter (7-Zip prints only entries).
 - **A filter on tar is applied when leaving the quarantine, not by `tar.exe`.** The first build
@@ -13322,9 +13334,11 @@ the archive.
   duplicate pass use the names that passed.
 - **A selection goes to `tar.exe` in a list file.** `TarSandboxScope.ExtractAsync` writes
   `SelectedEntryPaths`' expanded members to `list\members.txt` in the quarantine (read-execute for
-  the AppContainer) and passes `-n -T list\members.txt`: as arguments a large selection
-  overflowed the command line, and "-T -" cannot carry them, stdin being the archive. `-n` is safe
-  because `ExpandSelection` already names every descendant. A selection is what a person checked
+  the AppContainer) and passes `-T list\members.txt`: as arguments a large selection
+  overflowed the command line, and "-T -" cannot carry them, stdin being the archive. No `-n`:
+  bsdtar 3.3.2, the `tar.exe` of older Windows 10 builds, takes it only in `c`/`r`/`u` mode
+  (`only_mode(bsdtar, "-n", "cru")`), and `ExpandSelection` already names every descendant, so a
+  listed folder bringing its content changes nothing. A selection is what a person checked
   in the App, so the N^2 above stays small. A line `-C` is a name in `x` mode (measured: libarchive's "change directory" line
   is `c` mode's), so no escape beyond T-F284's. A selected name with a line break cannot be
   written to the list and fails that archive with T-F266's "cannot be passed to tar.exe" error,

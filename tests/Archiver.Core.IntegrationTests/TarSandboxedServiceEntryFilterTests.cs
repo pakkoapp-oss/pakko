@@ -192,6 +192,21 @@ public sealed class TarSandboxedServiceEntryFilterTests : IDisposable
         Relative(byFilter).Should().Equal(name);
     }
 
+    [Integration]
+    public async Task ExtractAsync_NameTarWritesDifferently_IsNotLostToTheFilter()
+    {
+        // libarchive writes "dir\a.txt" as dir/a.txt on Windows; the filter saw the listed name.
+        // Only a file the filter left out is dropped, so this one still arrives.
+        TarBuilder.Entry backslash = new() { Name = "dir\\a.txt", Content = [1] };
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(Options(Tar([backslash, File("x.tmp")]), dest,
+            (path, _) => !path.EndsWith(".tmp", StringComparison.Ordinal)));
+
+        result.Errors.Should().BeEmpty();
+        Relative(dest).Should().NotContain("x.tmp").And.Contain(p => p.EndsWith("a.txt", StringComparison.Ordinal));
+    }
+
     private static ExtractOptions Options(string tar, string dest, Func<string, bool, bool> filter) => new()
     {
         ArchivePaths = [tar], DestinationFolder = dest, Mode = ExtractMode.SingleFolder, EntryFilter = filter,
