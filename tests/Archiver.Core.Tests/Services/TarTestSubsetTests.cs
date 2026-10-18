@@ -16,7 +16,7 @@ public sealed class TarTestSubsetTests
     [Fact]
     public void Of_FewerPass_ListsThePassedFilesForMinusT()
     {
-        TarSandboxedService.TestSubset subset = TarSandboxedService.TestSubset.Of(Names, Sizes, (name, _) => name == "c.txt");
+        var subset = TarSandboxedService.TestSubset.Of(Names, Sizes, (name, _) => name == "c.txt");
 
         subset.Members.Should().Equal("./c.txt");
         subset.ExcludedFiles.Should().BeNull();
@@ -27,7 +27,7 @@ public sealed class TarTestSubsetTests
     [Fact]
     public void Of_FewerLeftOut_ListsTheLeftOutFilesForMinusX()
     {
-        TarSandboxedService.TestSubset subset = TarSandboxedService.TestSubset.Of(Names, Sizes, (name, _) => name != "c.txt");
+        var subset = TarSandboxedService.TestSubset.Of(Names, Sizes, (name, _) => name != "c.txt");
 
         subset.Members.Should().BeNull();
         subset.ExcludedFiles.Should().Equal("./c.txt");
@@ -37,7 +37,7 @@ public sealed class TarTestSubsetTests
     [Fact]
     public void Of_EveryFilePasses_NoList()
     {
-        TarSandboxedService.TestSubset subset = TarSandboxedService.TestSubset.Of(Names, Sizes, (_, isFolder) => !isFolder);
+        var subset = TarSandboxedService.TestSubset.Of(Names, Sizes, (_, isFolder) => !isFolder);
 
         subset.Members.Should().BeNull();
         subset.ExcludedFiles.Should().BeNull();
@@ -47,7 +47,7 @@ public sealed class TarTestSubsetTests
     [Fact]
     public void Of_OnlyFoldersPass_NothingToRead()
     {
-        TarSandboxedService.TestSubset subset = TarSandboxedService.TestSubset.Of(Names, Sizes, (_, isFolder) => isFolder);
+        var subset = TarSandboxedService.TestSubset.Of(Names, Sizes, (_, isFolder) => isFolder);
 
         subset.NothingToRead.Should().BeTrue();
     }

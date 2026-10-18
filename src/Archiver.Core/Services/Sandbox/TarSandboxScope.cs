@@ -243,9 +243,11 @@ internal sealed partial class TarSandboxScope : IDisposable
     {
         if (_utf8Headers is null)
             await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
-        string[] subsetArguments = members is { Count: > 0 } ? ["-T", WriteMemberList(members)]
-            : excludedFiles is { Count: > 0 } ? ["-X", WriteList("excludes.txt", excludedFiles.Select(TarExcludePattern.ForEntry))]
-            : [];
+        string[] subsetArguments = [];
+        if (members is { Count: > 0 })
+            subsetArguments = ["-T", WriteMemberList(members)];
+        else if (excludedFiles is { Count: > 0 })
+            subsetArguments = ["-X", WriteList("excludes.txt", excludedFiles.Select(TarExcludePattern.ForEntry))];
         (int exitCode, _, string stdErr) = await RunAsync("-x", ["-O", .. subsetArguments], cancellationToken, onContentBytes).ConfigureAwait(false);
         return (exitCode, stdErr);
     }

@@ -195,16 +195,23 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
         progress?.Clear();
         if (cancellation.Token.IsCancellationRequested)
             return ReportUserStopped();
-        // T-F410: -so then streams nothing.
-        if (await ReportNoFileToProcessAsync(command, result, passed).ConfigureAwait(false) && stdoutFolder is not null)
-            return WithRefusedArchives(0, anyRefused);
-        return WithRefusedArchives(await ReportAndStreamAsync(result, stdoutFolder, report, cancellation.Token).ConfigureAwait(false), anyRefused);
+        return WithRefusedArchives(await FinishExtractAsync(command, result, passed, stdoutFolder, report, cancellation.Token).ConfigureAwait(false), anyRefused);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
         progress?.Clear();
         return ReportUserStopped();
     }
+}
+
+// T-F410: "No files to process" when the filter let no entry through, and -so then streams nothing.
+static async Task<int> FinishExtractAsync(
+    ParsedCliCommand command, ArchiveResult result, CliFilterCount passed, CliStagingFolder? stdoutFolder,
+    CliReportContext report, CancellationToken cancellationToken)
+{
+    if (await ReportNoFileToProcessAsync(command, result, passed).ConfigureAwait(false) && stdoutFolder is not null)
+        return 0;
+    return await ReportAndStreamAsync(result, stdoutFolder, report, cancellationToken).ConfigureAwait(false);
 }
 
 // T-F410: the command's name filter, counting what it lets through; null when nothing filters.
