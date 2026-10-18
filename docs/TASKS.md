@@ -1650,7 +1650,10 @@ re-measured with T-F346's script before and after.
   `TestAsync` takes an `entryFilter`), and `-stx` on `x`, `l`, `t` (`docs/DECISIONS.md`, "T-F410,
   wave B"); for the 1.8.2 CHANGELOG: "`pakko t` takes `-i`, `-x` and names after the archive; `-stx`
   leaves out an archive type"; "a selection in a tar that names no entry no longer extracts the
-  whole archive". **Still open (wave C, with T-F414):** the filters on `a` (wildcards in the
+  whole archive"; "selecting a tar entry whose name holds `$` (App, `x`) no longer picks another
+  file or fails with Not found"; "a filter on `x`/`t` over a tar whose listing shows `?` for a name
+  `tar.exe` cannot show (Windows 10) now stops with a clear message, exit 2" (T-F416); "`No files
+  to process` is no longer printed over an archive that was skipped". **Still open (wave C, with T-F414):** the filters on `a` (wildcards in the
   sources, `-r`, `-x`, both writers, `tar.exe`'s `-X`); 7-Zip stores a source path as typed
   (`a o.zip dir\sub` gives `dir\sub\...`), Pakko by the source's own name (T-F153), so the
   wildcards wait for T-F414's decision.
