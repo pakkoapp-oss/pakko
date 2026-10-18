@@ -310,6 +310,10 @@ public sealed record ArchiveOptions
     // Out of range, or one name inside another's -> SourceNamePartsInvalid / SourceNamesOverlap,
     // nothing written (SourceEntryNames, both engines).
     public IReadOnlyList<int>? SourceNameParts { get; init; }
+    // T-F410: (entry name with '/', isFolder) -> false leaves a file out, or a folder with all it
+    // holds, a source itself included; nothing reported. ZIP: DirectoryWalker's LeftOut entries;
+    // tar: anchored -X patterns beside T-F391's links. Null keeps every entry.
+    public Func<string, bool, bool>? EntryFilter { get; init; }
     public string DestinationFolder { get; init; } = string.Empty;
     public string? ArchiveName { get; init; }
     public ArchiveMode Mode { get; init; } = ArchiveMode.SingleArchive;
@@ -929,7 +933,7 @@ internal enum FileWorkKind { File, DirectoryPlaceholder }
 internal static class WorkItemEnumerator
 {
     public static IEnumerable<FileWorkItem> Enumerate(
-        IReadOnlyList<string> sortedSourcePaths, Func<string, string> nameOf, // T-F414: a source's entry name
+        IReadOnlyList<string> sortedSourcePaths, SourceEntryNames names, // T-F414/T-F410: entry names, the filter
         Action<SkippedFile> reportSkipped, Action<ArchiveError> reportError);
 }
 

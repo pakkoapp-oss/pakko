@@ -29,7 +29,7 @@ internal static class WorkItemEnumerator
 {
     public static IEnumerable<FileWorkItem> Enumerate(
         IReadOnlyList<string> sortedSourcePaths,
-        Func<string, string> nameOf,
+        SourceEntryNames names,
         Action<SkippedFile> reportSkipped,
         Action<ArchiveError> reportError)
     {
@@ -37,6 +37,9 @@ internal static class WorkItemEnumerator
 
         foreach (string sourcePath in sortedSourcePaths)
         {
+            if (!names.Keeps(names.For(sourcePath), Directory.Exists(sourcePath)))
+                continue;
+
             if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
             {
                 reportSkipped(CoreMessages.Skip(sourcePath, MessageCode.LinkNotArchived));
@@ -45,13 +48,13 @@ internal static class WorkItemEnumerator
 
             if (Directory.Exists(sourcePath))
             {
-                string entryName = ZipArchiveService.GetUniqueEntryName(usedEntryNames, nameOf(sourcePath));
-                foreach (FileWorkItem item in EnumerateDirectory(sourcePath, entryName, reportSkipped, reportError))
+                string entryName = ZipArchiveService.GetUniqueEntryName(usedEntryNames, names.For(sourcePath));
+                foreach (FileWorkItem item in EnumerateDirectory(sourcePath, entryName, names.LeaveOutBelow(sourcePath, entryName), reportSkipped, reportError))
                     yield return item;
             }
             else if (File.Exists(sourcePath))
             {
-                string entryName = ZipArchiveService.GetUniqueEntryName(usedEntryNames, nameOf(sourcePath));
+                string entryName = ZipArchiveService.GetUniqueEntryName(usedEntryNames, names.For(sourcePath));
                 yield return BuildFileItem(new FileInfo(sourcePath), entryName);
             }
             else
@@ -64,10 +67,10 @@ internal static class WorkItemEnumerator
     // T-F236/T-F237: the shared iterative walker — an unreadable subfolder is one error, not an
     // exception out of the producer, and depth no longer costs thread stack.
     private static IEnumerable<FileWorkItem> EnumerateDirectory(
-        string rootDir, string entryPrefix, Action<SkippedFile> reportSkipped, Action<ArchiveError> reportError)
+        string rootDir, string entryPrefix, Func<FileSystemInfo, bool>? leaveOut, Action<SkippedFile> reportSkipped, Action<ArchiveError> reportError)
     {
         string fullRoot = Path.GetFullPath(rootDir);
-        foreach (WalkEntry entry in DirectoryWalker.Walk(rootDir))
+        foreach (WalkEntry entry in DirectoryWalker.Walk(rootDir, leaveOut))
         {
             if (TempOwner.IsOwnBelow(fullRoot, entry.Info.FullName))
                 continue;

@@ -73,7 +73,9 @@ internal static class ParallelSingleArchiveWriter
         /// <summary>T-F414: the name each source takes in the archive; null names it after itself.</summary>
         public SourceEntryNames? EntryNames { get; init; }
 
-        public string NameOf(string sourcePath) => (EntryNames ?? SourceEntryNames.OwnNames).For(sourcePath);
+        public SourceEntryNames Names => EntryNames ?? SourceEntryNames.OwnNames;
+
+        public string NameOf(string sourcePath) => Names.For(sourcePath);
     }
 
     /// <summary>
@@ -172,7 +174,7 @@ internal static class ParallelSingleArchiveWriter
             return;
         }
 
-        IEnumerable<FileWorkItem> items = WorkItemEnumerator.Enumerate(sortedSourcePaths, settings.NameOf, callbacks.ReportSkipped, callbacks.ReportError);
+        IEnumerable<FileWorkItem> items = WorkItemEnumerator.Enumerate(sortedSourcePaths, settings.Names, callbacks.ReportSkipped, callbacks.ReportError);
 
         // A per-operation hidden subfolder next to the destination archive — not loose files
         // scattered in that folder (confusing, per on-device verification), and not the system

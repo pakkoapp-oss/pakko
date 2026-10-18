@@ -337,6 +337,8 @@ public sealed class ZipArchiveService : IArchiveService
         CompressionLevel compressionLevel = settings.Level;
         string ownName = settings.NameOf(sourcePath);
         long pathSize = ComputeSourceBytesBestEffort(sourcePath);
+        if (!settings.Names.Keeps(ownName, Directory.Exists(sourcePath)))
+            return pathSize;
 
         // T-F23: Skip top-level symlinks and NTFS junctions
         if (ArchiveEntrySecurity.IsReparsePoint(sourcePath))
@@ -351,7 +353,10 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 string entryName = GetUniqueEntryName(usedEntryNames, ownName);
                 var context = new DirectoryArchiveContext(
-                    sourcePath, entryName, compressionLevel, sink.SkippedFiles.Add, sink.Errors.Add, progressInfo.TotalBytes, progressInfo.Progress);
+                    sourcePath, entryName, compressionLevel, sink.SkippedFiles.Add, sink.Errors.Add, progressInfo.TotalBytes, progressInfo.Progress)
+                {
+                    Names = settings.Names,
+                };
                 await AddDirectoryToArchiveAsync(archive, sourcePath, context, progressInfo.StartOffset, cancellationToken).ConfigureAwait(false);
             }
             else if (File.Exists(sourcePath))
@@ -393,6 +398,9 @@ public sealed class ZipArchiveService : IArchiveService
         var sortedSourcePaths = options.SourcePaths
             .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+        // T-F410: a source the filter leaves out gets no archive of its own.
+        sortedSourcePaths.RemoveAll(path => !run.Names.Keeps(run.Names.For(path), Directory.Exists(path)));
 
         List<(string SourcePath, string? DestPath, bool ReplacesExisting)> plans = await ResolveSeparateArchivePlansAsync(
             sortedSourcePaths, options.DestinationFolder, run.ConflictResolver, skippedFiles).ConfigureAwait(false);
@@ -566,7 +574,10 @@ public sealed class ZipArchiveService : IArchiveService
             {
                 using ZipArchive archive = ZipFile.Open(separateTempPath, ZipArchiveMode.Create); // NOSONAR: S6966 — on a pool thread already; synchronous I/O on purpose (docs/CONVENTIONS.md)
                 var context = new DirectoryArchiveContext(
-                    sourcePath, settings.NameOf(sourcePath), compressionLevel, AddSkipped, AddError, totalSourceBytes, progress);
+                    sourcePath, settings.NameOf(sourcePath), compressionLevel, AddSkipped, AddError, totalSourceBytes, progress)
+                {
+                    Names = settings.Names,
+                };
                 await AddDirectoryToArchiveAsync(archive, sourcePath, context, baseOffset, cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -1914,7 +1925,11 @@ public sealed class ZipArchiveService : IArchiveService
         Action<SkippedFile> ReportSkipped,
         Action<ArchiveError> ReportError,
         long TotalBytes,
-        IProgress<ProgressReport>? Progress);
+        IProgress<ProgressReport>? Progress)
+    {
+        /// <summary>T-F410: which entries below <see cref="RootDir"/> are kept.</summary>
+        public SourceEntryNames Names { get; init; } = SourceEntryNames.OwnNames;
+    }
 
     // T-F21: errors list receives per-file ArchiveErrors so that a single inaccessible file
     // does not abort the rest of the directory — operation continues for all remaining files.
@@ -1931,7 +1946,7 @@ public sealed class ZipArchiveService : IArchiveService
         CancellationToken cancellationToken = default)
     {
         string fullRoot = Path.GetFullPath(sourceDir);
-        foreach (WalkEntry entry in DirectoryWalker.Walk(sourceDir))
+        foreach (WalkEntry entry in DirectoryWalker.Walk(sourceDir, context.Names.LeaveOutBelow(sourceDir, context.EntryPrefix)))
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
