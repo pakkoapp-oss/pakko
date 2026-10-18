@@ -146,7 +146,11 @@ public static class CliNameSelection
 
     // A mask that has to be looked for on disk rather than opened as typed.
     private static bool Searches(CliNameMask mask) =>
-        mask.Recursion != CliRecursion.None || (mask.WildcardMatching && CliNameFilter.ContainsWildcard(mask.Path));
+        mask.Recursion != CliRecursion.None || (mask.WildcardMatching && CliNameFilter.ContainsWildcard(WithoutLongPathPrefix(mask.Path)));
+
+    // T-F419: the '?' of "\\?\C:\..." is the long-path prefix, not a wildcard (7-Zip's IsSuperPath).
+    private static string WithoutLongPathPrefix(string path) =>
+        path.StartsWith(@"\\?\", StringComparison.Ordinal) ? path[4..] : path;
 
     // The files under the mask's literal leading folders; deeper only when it recurses or a
     // folder part holds a wildcard. Linked folders are not followed, so a junction loop ends the walk;
