@@ -1929,12 +1929,18 @@ public sealed class TarSandboxedService : ITarService
             string fullSource = Path.GetFullPath(sourcePath);
             bool isDriveRoot = Path.GetDirectoryName(fullSource) is null;
             fullSource = SubstDrive.Resolve(fullSource);
+            string name = names.For(sourcePath);
+            // T-F410: a source the filter leaves out is not listed (a drive root has no name to ask about).
+            if (!isDriveRoot && !names.Keeps(name, Directory.Exists(fullSource)))
+                continue;
 
             // T-F266/T-F204: tar.exe receives this path and walks the folder itself, so every
             // name it will touch must survive its ANSI command line / path conversion. Refused
             // before tar.exe runs (U+2713 crashed it, U+FF02 injected options).
             var links = new List<FileSystemInfo>();
-            (long entries, long bytes, string? unrepresentable) = CountRecursiveEntriesAndBytes(fullSource, links);
+            var leftOut = new List<FileSystemInfo>();
+            (long entries, long bytes, string? unrepresentable) = CountRecursiveEntriesAndBytes(
+                fullSource, links, names.LeaveOutBelow(fullSource, isDriveRoot ? "" : name), leftOut);
             if (unrepresentable is not null)
             {
                 errors.Add(CoreMessages.Error(sourcePath, TarArgumentEncodingException.Describe(unrepresentable, TarCommandLineEncoding.AnsiCodePage)));
@@ -1944,12 +1950,19 @@ public sealed class TarSandboxedService : ITarService
             int listedBefore = nameList.Count;
             bool appended = isDriveRoot
                 ? claims.TryAppendDriveRootLines(nameList, sourcePath, fullSource, ownPaths, new ArchiveResultLists(errors, skippedFiles))
-                : claims.TryAppendLines(nameList, sourcePath, fullSource, names.For(sourcePath), errors);
-            if (!appended)
+                : claims.TryAppendLines(nameList, sourcePath, fullSource, name, errors);
+            // T-F410: a drive root's own children the filter leaves out are not listed either.
+            var leftOutPaths = new HashSet<string>(leftOut.Select(info => info.FullName), StringComparer.OrdinalIgnoreCase);
+            for (int i = nameList.Count - 1; i >= listedBefore; i--)
+            {
+                if (leftOutPaths.Contains(nameList[i].Origin))
+                    nameList.RemoveAt(i);
+            }
+            if (!appended || nameList.Count == listedBefore)
                 continue;
 
             for (int i = listedBefore; i < nameList.Count; i++)
-                nameList[i] = LeaveOutLinks(nameList[i], links, skippedFiles);
+                nameList[i] = LeaveOutFiltered(LeaveOutLinks(nameList[i], links, skippedFiles), leftOut);
 
             entryCount++;
             totalEntriesForProgress += entries;
@@ -1975,6 +1988,17 @@ public sealed class TarSandboxedService : ITarService
                 link is DirectoryInfo ? MessageCode.FolderLinkNotFollowed : MessageCode.ReparsePointNotArchived));
         }
         return patterns.Count == 0 ? listed : listed with { ExcludePatterns = patterns };
+    }
+
+    // T-F410: what the filter left out inside the source, by the same anchored patterns as the
+    // links above; nothing is reported for it.
+    private static ListedSource LeaveOutFiltered(ListedSource listed, List<FileSystemInfo> leftOut)
+    {
+        string prefix = listed.Origin + Path.DirectorySeparatorChar;
+        string[] patterns = [.. leftOut
+            .Where(info => info.FullName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            .Select(info => TarExcludePattern.For(listed.Name, info.FullName[prefix.Length..]))];
+        return patterns.Length == 0 ? listed : listed with { ExcludePatterns = [.. listed.ExcludePatterns, .. patterns] };
     }
 
     private sealed record ArchiveResultLists(List<ArchiveError> Errors, List<SkippedFile> SkippedFiles);
@@ -2099,8 +2123,9 @@ public sealed class TarSandboxedService : ITarService
     // T-F266: also returns the first path tar.exe would receive altered (null if none) — the
     // source's own full path, then every name beneath it, in the same single walk.
     // T-F391: every link met inside the source is added to links.
+    // T-F410: what leaveOut leaves out is added to leftOut and neither counted nor entered.
     internal static (long EntryCount, long TotalBytes, string? Unrepresentable) CountRecursiveEntriesAndBytes(
-        string sourcePath, List<FileSystemInfo>? links = null)
+        string sourcePath, List<FileSystemInfo>? links = null, Func<FileSystemInfo, bool>? leaveOut = null, List<FileSystemInfo>? leftOut = null)
     {
         string? unrepresentable = TarCommandLineEncoding.IsRepresentable(sourcePath) ? null : sourcePath;
 
@@ -2113,8 +2138,13 @@ public sealed class TarSandboxedService : ITarService
         // folders only make the progress estimate low — the Math.Min(99, ...) clamp tolerates it.
         long count = 0;
         long totalBytes = 0;
-        foreach (WalkEntry entry in DirectoryWalker.Walk(sourcePath))
+        foreach (WalkEntry entry in DirectoryWalker.Walk(sourcePath, leaveOut))
         {
+            if (entry.Kind == WalkEntryKind.LeftOut)
+            {
+                leftOut?.Add(entry.Info);
+                continue;
+            }
             bool isRoot = count == 0; // the walk always starts with the root itself
             count++;
             if (unrepresentable is null && !isRoot && !TarCommandLineEncoding.IsRepresentable(entry.Info.Name))

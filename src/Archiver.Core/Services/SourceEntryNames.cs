@@ -6,16 +6,22 @@ namespace Archiver.Core.Services;
 /// T-F414: the name each source of an archive operation takes in the archive, from
 /// <see cref="ArchiveOptions.SourceNameParts"/>. Always a tail of the source's own path, so a name
 /// can never climb out of it, and tar.exe can be given the same name under the folder above it.
+/// T-F410: also which entries <see cref="ArchiveOptions.EntryFilter"/> keeps, by those names.
 /// </summary>
 internal sealed class SourceEntryNames
 {
     private static readonly char[] Separators = ['\\', '/'];
 
     private readonly Dictionary<string, string>? _names;
+    private readonly Func<string, bool, bool>? _keep;
 
-    private SourceEntryNames(Dictionary<string, string>? names) => _names = names;
+    private SourceEntryNames(Dictionary<string, string>? names, Func<string, bool, bool>? keep)
+    {
+        _names = names;
+        _keep = keep;
+    }
 
-    internal static SourceEntryNames OwnNames { get; } = new(null);
+    internal static SourceEntryNames OwnNames { get; } = new(null, null);
 
     /// <summary>
     /// Builds the names for <paramref name="options"/>, whose source paths are already normalized
@@ -25,7 +31,7 @@ internal sealed class SourceEntryNames
     internal static (SourceEntryNames Names, ArchiveError? Error) Create(ArchiveOptions options)
     {
         if (options.SourceNameParts is not { } parts)
-            return (OwnNames, null);
+            return (options.EntryFilter is null ? OwnNames : new SourceEntryNames(null, options.EntryFilter), null);
 
         IReadOnlyList<string> sources = options.SourcePaths;
         if (parts.Count != sources.Count)
@@ -40,7 +46,26 @@ internal sealed class SourceEntryNames
             names[sources[i]] = name;
         }
 
-        return OverlapError(names) is { } overlap ? (OwnNames, overlap) : (new SourceEntryNames(names), null);
+        return OverlapError(names) is { } overlap ? (OwnNames, overlap) : (new SourceEntryNames(names, options.EntryFilter), null);
+    }
+
+    /// <summary>T-F410: whether the entry named <paramref name="entryName"/> goes into the archive.</summary>
+    internal bool Keeps(string entryName, bool isFolder) => _keep is null || _keep(entryName, isFolder);
+
+    /// <summary>
+    /// T-F410: the walker's leave-out test below <paramref name="rootDir"/>, whose entries are named
+    /// under <paramref name="prefix"/> ("" for a drive root); null when every entry is kept.
+    /// </summary>
+    internal Func<FileSystemInfo, bool>? LeaveOutBelow(string rootDir, string prefix)
+    {
+        if (_keep is not { } keep)
+            return null;
+        string fullRoot = Path.GetFullPath(rootDir);
+        return info =>
+        {
+            string relative = Path.GetRelativePath(fullRoot, info.FullName).Replace('\\', '/');
+            return !keep(prefix.Length == 0 ? relative : prefix + "/" + relative, info is DirectoryInfo);
+        };
     }
 
     /// <summary>The name of <paramref name="sourcePath"/> (one of the options' sources) in the archive, '/' between parts.</summary>

@@ -15,6 +15,13 @@ public sealed record ArchiveOptions
     /// </summary>
     public IReadOnlyList<int>? SourceNameParts { get; init; }
 
+    /// <summary>
+    /// T-F410: asked for each entry with its name in the archive ('/' between parts, no trailing
+    /// one) and whether it is a folder; false leaves a file out, or a folder with all it holds,
+    /// a source itself included (7-Zip's <c>a -x</c>). Nothing is reported for it. Null keeps all.
+    /// </summary>
+    public Func<string, bool, bool>? EntryFilter { get; init; }
+
     public string DestinationFolder { get; init; } = string.Empty;
     /// <summary>Null auto-names the archive from <see cref="SourcePaths"/> (see ArchiveNaming.ResolveSingleArchiveName).</summary>
     public string? ArchiveName { get; init; }

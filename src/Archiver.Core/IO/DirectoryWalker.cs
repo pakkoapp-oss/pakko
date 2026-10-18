@@ -13,6 +13,10 @@ internal enum WalkEntryKind
 
     /// <summary>A directory whose listing failed; <see cref="WalkEntry.Error"/> says why.</summary>
     UnreadableDirectory,
+
+    /// <summary>T-F410: an entry the caller's filter left out — never entered, and not counted
+    /// when its folder is asked whether it is empty.</summary>
+    LeftOut,
 }
 
 /// <summary>One step of <see cref="DirectoryWalker.Walk"/>.</summary>
@@ -50,7 +54,9 @@ internal static class DirectoryWalker
 {
     private const FileAttributes OsOwned = FileAttributes.Hidden | FileAttributes.System;
 
-    public static IEnumerable<WalkEntry> Walk(string root)
+    /// <param name="root">The folder to walk; its own entry comes first.</param>
+    /// <param name="leaveOut">T-F410: true for an entry below the root to leave out.</param>
+    public static IEnumerable<WalkEntry> Walk(string root, Func<FileSystemInfo, bool>? leaveOut = null)
     {
         var rootDir = new DirectoryInfo(root);
         bool isDriveRoot = rootDir.Parent is null;
@@ -71,6 +77,14 @@ internal static class DirectoryWalker
             {
                 yield return new WalkEntry(WalkEntryKind.UnreadableDirectory, dir, Error: listingError);
                 continue;
+            }
+
+            if (leaveOut is not null)
+            {
+                FileSystemInfo[] leftOut = [.. children.Where(leaveOut)];
+                foreach (FileSystemInfo child in leftOut.OrderBy(c => c.FullName, StringComparer.OrdinalIgnoreCase))
+                    yield return new WalkEntry(WalkEntryKind.LeftOut, child);
+                children = [.. children.Except(leftOut)];
             }
 
             yield return new WalkEntry(WalkEntryKind.Directory, dir, IsEmptyDirectory: children.Length == 0);
