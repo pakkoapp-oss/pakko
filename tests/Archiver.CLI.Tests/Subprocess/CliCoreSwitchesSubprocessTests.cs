@@ -150,6 +150,171 @@ public sealed class CliCoreSwitchesSubprocessTests
         File.Exists(Path.Combine(cwd, "src", "a.txt")).Should().BeTrue();
     }
 
+    // --- -sdel (7za 26.02: files and folders deleted after 'a'; "s\*" leaves an empty "s") ---
+
+    private static string CreateTree(string root, string name = "src")
+    {
+        string src = Path.Combine(root, name);
+        Directory.CreateDirectory(Path.Combine(src, "d"));
+        File.WriteAllText(Path.Combine(src, "a.txt"), "a");
+        File.WriteAllText(Path.Combine(src, "d", "b.txt"), "b");
+        return src;
+    }
+
+    private static string[] Names(string zip)
+    {
+        using ZipArchive archive = ZipFile.OpenRead(zip);
+        return [.. archive.Entries.Select(e => e.FullName)];
+    }
+
+    [Fact]
+    public void Archive_DeleteSourcesAfter_DeletesTheArchivedFolder()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        CreateTree(scratchDir);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-sdel", "out.zip", "src");
+
+        exitCode.Should().Be(0, stdErr);
+        Directory.Exists(Path.Combine(scratchDir, "src")).Should().BeFalse();
+        Names(Path.Combine(scratchDir, "out.zip")).Should().Contain(["src/a.txt", "src/d/b.txt"]);
+    }
+
+    [Fact]
+    public void Archive_DeleteSourcesAfterAMask_DeletesWhatItFoundAndKeepsTheFolder()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        CreateTree(scratchDir);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-sdel", "out.zip", @"src\*");
+
+        exitCode.Should().Be(0, stdErr);
+        Directory.Exists(Path.Combine(scratchDir, "src")).Should().BeTrue();
+        Directory.EnumerateFileSystemEntries(Path.Combine(scratchDir, "src")).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Archive_DeleteSourcesAfterARecursiveMask_DeletesOnlyTheMatches()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string src = CreateTree(scratchDir);
+        File.WriteAllText(Path.Combine(src, "d", "keep.log"), "log");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(src, "a", "-sdel", "-r", Path.Combine(scratchDir, "out.zip"), "*.txt");
+
+        exitCode.Should().Be(0, stdErr);
+        File.Exists(Path.Combine(src, "a.txt")).Should().BeFalse();
+        File.Exists(Path.Combine(src, "d", "b.txt")).Should().BeFalse();
+        File.Exists(Path.Combine(src, "d", "keep.log")).Should().BeTrue();
+    }
+
+    // 7za deletes the files it stored and keeps the excluded one; Pakko keeps the whole source
+    // (Core does not report which files a filter left out) and says so.
+    [Fact]
+    public void Archive_DeleteSourcesAfterWithAnExclude_DeletesNothingAndSaysSo()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        CreateTree(scratchDir);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-sdel", "-xr!b.txt", "out.zip", "src");
+
+        exitCode.Should().Be(1);
+        stdErr.Should().Contain("-sdel kept").And.Contain("not all of it went into the archive");
+        File.Exists(Path.Combine(scratchDir, "src", "a.txt")).Should().BeTrue();
+        File.Exists(Path.Combine(scratchDir, "src", "d", "b.txt")).Should().BeTrue();
+    }
+
+    // ".." names the current folder's parent's items, the current folder among them.
+    [Fact]
+    public void Archive_DeleteSourcesAfterAFolderHoldingTheCurrentOne_IsRefusedBeforeAnythingIsWritten()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string cwd = CreateTree(scratchDir);
+        string archive = Path.Combine(CliFixtureFiles.CreateScratchDir(), "out.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(cwd, "a", "-sdel", archive, "..");
+
+        exitCode.Should().Be(7);
+        stdErr.Should().Contain("current folder");
+        File.Exists(archive).Should().BeFalse();
+        File.Exists(Path.Combine(cwd, "a.txt")).Should().BeTrue();
+    }
+
+    // "." is the current folder's items (7-Zip's universal item), not the folder: they go, it stays.
+    [Fact]
+    public void Archive_DeleteSourcesAfterDot_DeletesTheItemsAndKeepsTheCurrentFolder()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string cwd = CreateTree(scratchDir);
+        string archive = Path.Combine(CliFixtureFiles.CreateScratchDir(), "out.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(cwd, "a", "-sdel", archive, ".");
+
+        exitCode.Should().Be(0, stdErr);
+        Directory.Exists(cwd).Should().BeTrue();
+        Directory.EnumerateFileSystemEntries(cwd).Should().BeEmpty();
+        Names(archive).Should().Contain(["a.txt", "d/b.txt"]);
+    }
+
+    [Fact]
+    public void Archive_DeleteSourcesAfterAFileThatCouldNotBeRead_DeletesNothing()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string src = CreateTree(scratchDir);
+
+        int exitCode;
+        string stdErr;
+        using (new FileStream(Path.Combine(src, "a.txt"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            (exitCode, _, stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-sdel", "out.zip", "src");
+
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("-sdel deleted nothing");
+        File.Exists(Path.Combine(src, "d", "b.txt")).Should().BeTrue();
+    }
+
+    // 7za: a missing source is a warning (exit 1) and the rest is archived and deleted.
+    [Fact]
+    public void Archive_DeleteSourcesAfterWithAMissingSource_DeletesTheRest()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        CreateTree(scratchDir);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-sdel", "out.zip", "src", "nothere.txt");
+
+        exitCode.Should().Be(1, stdErr);
+        Directory.Exists(Path.Combine(scratchDir, "src")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Archive_DeleteSourcesAfterWithAJunctionInside_LeavesTheJunctionAndItsTarget()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string src = CreateTree(scratchDir);
+        string target = CreateTree(scratchDir, "target");
+        string junction = Path.Combine(src, "j");
+        using (var mklink = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+            Path.Combine(Environment.SystemDirectory, "cmd.exe"), ["/d", "/c", "mklink", "/J", junction, target])
+            { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true })!)
+        {
+            mklink.WaitForExit();
+            if (mklink.ExitCode != 0)
+                return; // no junctions on this volume
+        }
+        try
+        {
+            (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-sdel", "out.zip", "src");
+
+            exitCode.Should().BeLessThan(2, stdErr);
+            Directory.Exists(junction).Should().BeTrue();
+            File.Exists(Path.Combine(target, "a.txt")).Should().BeTrue();
+            File.Exists(Path.Combine(target, "d", "b.txt")).Should().BeTrue();
+        }
+        finally
+        {
+            Directory.Delete(junction);
+        }
+    }
+
     // --- -ssw ---
 
     [Fact]

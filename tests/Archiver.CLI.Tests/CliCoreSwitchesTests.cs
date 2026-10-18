@@ -200,6 +200,31 @@ public sealed class CliCoreSwitchesTests
         result.ErrorMessage.Should().Contain(reason);
     }
 
+    // --- -sdel: delete the sources once archived (SWFRM_SIMPLE) ---
+
+    [Fact]
+    public void Archive_DeleteSourcesAfter_IsTaken()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-SDEL", "out.zip", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive, result.ErrorMessage);
+        result.DeleteSourcesAfter.Should().BeTrue();
+        CliArgumentParser.Parse(["a", "out.zip", "f.txt"]).DeleteSourcesAfter.Should().BeFalse();
+    }
+
+    // 7za takes -sdel on x and does nothing; Pakko says so instead (the three-way rule).
+    [Theory]
+    [InlineData("a", "-sdel-", "-sdel takes no value")]
+    [InlineData("x", "-sdel", "not supported on this command")]
+    [InlineData("t", "-sdel", "not supported on this command")]
+    public void DeleteSourcesAfter_WithAPostfixOrOnAnotherCommand_IsRefused(string command, string token, string reason)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse([command, token, "a.zip", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain(reason);
+    }
+
     // --- -ssp: declined (Pakko cannot keep the sources' last access time through tar.exe) ---
 
     [Theory]

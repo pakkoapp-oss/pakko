@@ -584,6 +584,12 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
         (CliArchiveSourceList? sources, CliNameFilter? excludes, int sourcesCode) = await ResolveArchiveSourcesAsync(command).ConfigureAwait(false);
         if (sources is null)
             return sourcesCode;
+        if (RejectUnsafeDeletion(command, sources) is { } deletionError)
+            return deletionError;
+        // T-F411: -sdel deletes from what was there before archiving, never from what is there after.
+        CliSourceSnapshot? toDelete = command.DeleteSourcesAfter
+            ? CliSourceSnapshot.Take(sources.Sources.Select(source => source.FullPath))
+            : null;
 
         IArchiveCreationRouter router = services.CreationRouter;
 
@@ -596,13 +602,50 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
 
         ArchiveResult result = await router.ArchiveAsync(options, progress, cancellation.Token).ConfigureAwait(false);
         progress?.Clear();
-        return await ReportArchiveResultAsync(result, prompt.Value, sourcesCode, stdoutFolder, options, cancellation.Token).ConfigureAwait(false);
+        int code = await ReportArchiveResultAsync(result, prompt.Value, sourcesCode, stdoutFolder, options, cancellation.Token).ConfigureAwait(false);
+        return toDelete is null ? code : await DeleteArchivedSourcesAsync(toDelete, result, code).ConfigureAwait(false);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
     {
         progress?.Clear();
         return ReportUserStopped();
     }
+}
+
+// T-F411: -sdel on a volume root or the current folder (or one holding it) is a command-line
+// error, found before anything is written.
+static int? RejectUnsafeDeletion(ParsedCliCommand command, CliArchiveSourceList sources)
+{
+    if (!command.DeleteSourcesAfter
+        || CliSourceDeleter.Refusal(sources.Sources.Select(source => source.FullPath), Environment.CurrentDirectory) is not { } refusal)
+        return null;
+    Console.Error.WriteLine($"pakko: error: {refusal}");
+    return 7;
+}
+
+// T-F411: -sdel, once the archive is complete (written and, with -so, streamed): only the sources
+// Core reports fully archived (T-F260), and of those only what did not change meanwhile.
+static async Task<int> DeleteArchivedSourcesAsync(CliSourceSnapshot snapshot, ArchiveResult result, int code)
+{
+    if (code >= 2 || result.CreatedFiles.Count == 0)
+    {
+        await Console.Error.WriteLineAsync("pakko: warning: -sdel deleted nothing: the archive was not written in full").ConfigureAwait(false);
+        return Math.Max(code, 1);
+    }
+    var completed = new HashSet<string>(result.FullyProcessedSources.Select(CliSourceDeleter.Normalize), StringComparer.OrdinalIgnoreCase);
+    CliDeleteOutcome outcome = snapshot.DeleteUnchanged(completed);
+    var kept = new List<(string Path, string Reason)>();
+    kept.AddRange(snapshot.SourcePaths.Where(source => !completed.Contains(source)).Select(source => (source, "not all of it went into the archive")));
+    kept.AddRange(outcome.Kept.Select(path => (path, "it changed while it was being archived")));
+    kept.AddRange(outcome.Links.Select(path => (path, "a link is never deleted")));
+    kept.AddRange(outcome.Unlisted.Select(path => (path, "a folder in it could not be listed")));
+    foreach ((string path, string reason) in kept)
+        await Console.Error.WriteLineAsync($"pakko: warning: -sdel kept {path}: {reason}").ConfigureAwait(false);
+    foreach ((string path, string reason) in outcome.Failed)
+        await Console.Error.WriteLineAsync($"pakko: error: -sdel could not delete {path}: {reason}").ConfigureAwait(false);
+    if (outcome.Failed.Count > 0)
+        return 2;
+    return kept.Count > 0 ? Math.Max(code, 1) : code;
 }
 
 // The exit code of a finished 'a', after the prompt's outcome, the report and the streamed archive.
