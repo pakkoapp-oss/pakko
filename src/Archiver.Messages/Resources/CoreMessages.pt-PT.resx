@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Não foi possível escrever a cópia reparada: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>Não é possível guardar «{0}» no arquivo com essa parte do respetivo caminho.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>«{0}» seria guardado dentro de «{1}» no arquivo, como «{2}».</value>
+  </data>
 </root>

@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>De herstelde kopie kon niet worden geschreven: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>‘{0}’ kan niet in het archief worden opgeslagen onder dat deel van het pad.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>‘{0}’ zou in het archief binnen ‘{1}’ worden opgeslagen, als ‘{2}’.</value>
+  </data>
 </root>

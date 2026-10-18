@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Onarılan kopya yazılamadı: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>“{0}” arşivde yolunun bu bölümüyle saklanamaz.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>“{0}”, arşivde “{1}” içinde “{2}” olarak saklanırdı.</value>
+  </data>
 </root>

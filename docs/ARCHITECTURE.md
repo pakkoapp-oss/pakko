@@ -305,6 +305,11 @@ src/
 public sealed record ArchiveOptions
 {
     public IReadOnlyList<string> SourcePaths { get; init; } = [];
+    // T-F414: per source, same order, how many of its last path parts name it in the archive
+    // (1 = its own name, 2 keeps its parent: dir/sub/...). Null: every source after itself.
+    // Out of range, or one name inside another's -> SourceNamePartsInvalid / SourceNamesOverlap,
+    // nothing written (SourceEntryNames, both engines).
+    public IReadOnlyList<int>? SourceNameParts { get; init; }
     public string DestinationFolder { get; init; } = string.Empty;
     public string? ArchiveName { get; init; }
     public ArchiveMode Mode { get; init; } = ArchiveMode.SingleArchive;
@@ -924,7 +929,7 @@ internal enum FileWorkKind { File, DirectoryPlaceholder }
 internal static class WorkItemEnumerator
 {
     public static IEnumerable<FileWorkItem> Enumerate(
-        IReadOnlyList<string> sortedSourcePaths,
+        IReadOnlyList<string> sortedSourcePaths, Func<string, string> nameOf, // T-F414: a source's entry name
         Action<SkippedFile> reportSkipped, Action<ArchiveError> reportError);
 }
 

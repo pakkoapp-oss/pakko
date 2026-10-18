@@ -144,4 +144,8 @@ public enum MessageCode
 
     // Testing through tar.exe (T-F397)
     TestedStructureOnly,
+
+    // Sources named by part of their path (T-F414)
+    SourceNamePartsInvalid,
+    SourceNamesOverlap,
 }

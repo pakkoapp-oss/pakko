@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>לא ניתן היה לכתוב את העותק המתוקן: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>לא ניתן לשמור את "{0}" בארכיון תחת חלק זה של הנתיב שלו.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>"{0}" יישמר בתוך "{1}" בארכיון, בשם "{2}".</value>
+  </data>
 </root>

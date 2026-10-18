@@ -18,6 +18,8 @@ public static class MessageTemplates
 
         [MessageCode.SourceNotFound] = "Source path does not exist: {0}",
         [MessageCode.NothingToArchive] = "Nothing to compress: {0}",
+        [MessageCode.SourceNamePartsInvalid] = "'{0}' cannot be stored in the archive under that part of its path.",
+        [MessageCode.SourceNamesOverlap] = "'{0}' would be stored inside '{1}' in the archive, as '{2}'.",
         [MessageCode.CannotAccessFile] = "Cannot access file: {0}",
         [MessageCode.AccessDenied] = "Access denied: {0}",
         [MessageCode.LinkNotArchived] = "Symbolic links and NTFS junctions are not archived.",

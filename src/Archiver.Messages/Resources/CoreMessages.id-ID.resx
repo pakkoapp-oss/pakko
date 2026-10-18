@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Salinan yang diperbaiki tidak dapat ditulis: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>"{0}" tidak dapat disimpan di arsip dengan bagian jalurnya itu.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>"{0}" akan disimpan di dalam "{1}" di arsip, sebagai "{2}".</value>
+  </data>
 </root>

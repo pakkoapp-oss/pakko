@@ -177,6 +177,22 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
     public Task ZipEngineCreate_Source(string kind) => NoThrow(() =>
         _services.ArchiveService.ArchiveAsync(new ArchiveOptions { SourcePaths = [Path(kind, ".txt")], DestinationFolder = Destination(), ArchiveName = "out" }));
 
+    // T-F414: a source named by part of its path.
+    [Theory, MemberData(nameof(Hostile))]
+    public Task ZipEngineCreate_SourceWithNameParts(string kind) => NoThrow(() =>
+        _services.ArchiveService.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [Path(kind, ".txt")], SourceNameParts = [2], DestinationFolder = Destination(), ArchiveName = "out",
+        }));
+
+    [Theory, MemberData(nameof(Hostile))]
+    public Task TarEngineCompress_SourceWithNameParts(string kind) => NoThrow(() =>
+        _services.TarService.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [Path(kind, ".txt")], SourceNameParts = [2], DestinationFolder = Destination(), ArchiveName = "out",
+            Format = ArchiveContainerFormat.TarGz,
+        }));
+
     [Theory, MemberData(nameof(Hostile))]
     public Task TarEngineCompress_Destination(string kind) => NoThrow(() =>
         _services.TarService.CompressAsync(new ArchiveOptions

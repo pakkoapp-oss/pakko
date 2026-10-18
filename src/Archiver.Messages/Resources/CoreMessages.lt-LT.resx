@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Nepavyko įrašyti pataisytos kopijos: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>„{0}“ negalima įrašyti į archyvą su šia jo kelio dalimi.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>„{0}“ archyve būtų įrašytas į „{1}“ kaip „{2}“.</value>
+  </data>
 </root>

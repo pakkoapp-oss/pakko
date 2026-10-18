@@ -5,6 +5,16 @@ namespace Archiver.Core.Models;
 public sealed record ArchiveOptions
 {
     public IReadOnlyList<string> SourcePaths { get; init; } = [];
+
+    /// <summary>
+    /// T-F414: for each of <see cref="SourcePaths"/>, in the same order, how many of the last parts
+    /// of its path name it in the archive: 1 is its own name, 2 keeps its parent folder
+    /// (<c>C:\w\dir\sub</c> becomes <c>dir/sub/...</c>, 7-Zip's path as typed). Null names every
+    /// source after itself. A count the path cannot give, or one source landing inside another's
+    /// name, fails the call before anything is written.
+    /// </summary>
+    public IReadOnlyList<int>? SourceNameParts { get; init; }
+
     public string DestinationFolder { get; init; } = string.Empty;
     /// <summary>Null auto-names the archive from <see cref="SourcePaths"/> (see ArchiveNaming.ResolveSingleArchiveName).</summary>
     public string? ArchiveName { get; init; }

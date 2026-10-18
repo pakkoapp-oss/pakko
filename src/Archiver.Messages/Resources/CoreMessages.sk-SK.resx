@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Opravenú kópiu sa nepodarilo zapísať: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>„{0}“ nemožno v archíve uložiť pod touto časťou jeho cesty.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>„{0}“ by sa v archíve uložil do „{1}“ ako „{2}“.</value>
+  </data>
 </root>

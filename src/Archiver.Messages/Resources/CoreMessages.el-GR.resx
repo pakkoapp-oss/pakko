@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Δεν ήταν δυνατή η εγγραφή του επιδιορθωμένου αντιγράφου: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>Το «{0}» δεν μπορεί να αποθηκευτεί στο αρχείο συμπίεσης με αυτό το τμήμα της διαδρομής του.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>Το «{0}» θα αποθηκευόταν μέσα στο «{1}» στο αρχείο συμπίεσης, ως «{2}».</value>
+  </data>
 </root>

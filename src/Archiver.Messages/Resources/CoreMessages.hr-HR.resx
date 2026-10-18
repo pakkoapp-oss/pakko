@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Popravljenu kopiju nije bilo moguće zapisati: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>„{0}” ne može se spremiti u arhivu pod tim dijelom svoje putanje.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>„{0}” bi se u arhivi spremio unutar „{1}” kao „{2}”.</value>
+  </data>
 </root>

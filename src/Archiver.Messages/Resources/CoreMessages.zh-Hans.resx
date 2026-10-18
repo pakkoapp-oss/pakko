@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>无法写入修复后的副本: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>无法以路径的这一部分将“{0}”存入压缩包。</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>“{0}”将以“{2}”存入压缩包中的“{1}”内。</value>
+  </data>
 </root>

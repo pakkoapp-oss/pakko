@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Korjattua kopiota ei voitu kirjoittaa: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>Kohdetta ”{0}” ei voi tallentaa arkistoon tällä polun osalla.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>”{0}” tallentuisi arkistossa kohteen ”{1}” sisään nimellä ”{2}”.</value>
+  </data>
 </root>

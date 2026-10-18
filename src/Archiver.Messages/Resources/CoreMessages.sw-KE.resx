@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>Nakala iliyorekebishwa haikuweza kuandikwa: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>"{0}" haiwezi kuhifadhiwa kwenye kumbukumbu kwa sehemu hiyo ya njia yake.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>"{0}" ingehifadhiwa ndani ya "{1}" kwenye kumbukumbu, kama "{2}".</value>
+  </data>
 </root>

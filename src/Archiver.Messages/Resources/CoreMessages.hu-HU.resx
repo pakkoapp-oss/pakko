@@ -345,4 +345,10 @@
   <data name="RecoveryRepairNotWritten" xml:space="preserve">
     <value>A javított másolatot nem sikerült kiírni: {0}</value>
   </data>
+  <data name="SourceNamePartsInvalid" xml:space="preserve">
+    <value>A(z) „{0}” nem tárolható az archívumban az elérési útjának ezzel a részével.</value>
+  </data>
+  <data name="SourceNamesOverlap" xml:space="preserve">
+    <value>A(z) „{0}” az archívumban a(z) „{1}” belsejébe kerülne, „{2}” néven.</value>
+  </data>
 </root>
