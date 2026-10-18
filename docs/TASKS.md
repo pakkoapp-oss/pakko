@@ -1532,6 +1532,9 @@ re-measured with T-F346's script before and after.
   handle held past its owner while another test class starts a process) or tar.exe still exiting.
   Next: catch the stack, then fix the cause, not with a retry. Also check T-F372's rate: on
   2026-10-10 it failed the first attempt of two of four PR runs.
+- **Seen again** 2026-10-18 (T-F411 wave D, a full local run alongside the CLI tests); passed alone
+  at once. Its message was not kept (the run's output was filtered to the test names), so whether
+  it is the same "in use" cause is not known. Next time, keep the full output.
 - **Reported by:** T-F275 step 4b's local run, 2026-10-10.
 
 ### T-F376 — `Start_ChildInheritsTheHandleItWasGiven` failed once on CI (P3)

@@ -885,9 +885,7 @@ public static class CliArgumentParser
 
     private static ParsedCliCommand ParseHash(CliToken[] rest)
     {
-        // T-F411: 7-Zip computes every -scrc method given; Pakko computes one, so a second is refused
-        // rather than silently dropped.
-        if (rest.Count(t => t.IsSwitch && t.Text.StartsWith("-scrc", StringComparison.Ordinal)) > 1)
+        if (HasSecondHashMethod(rest))
             return Invalid("not supported by Pakko: more than one -scrc — Pakko computes one hash method per run");
 
         var paths = new List<string>();
@@ -932,6 +930,11 @@ public static class CliArgumentParser
             ReadFromStdin = readFromStdin,
         };
     }
+
+    // T-F411: 7-Zip computes every -scrc method given; Pakko computes one, so a second is refused
+    // rather than silently dropped.
+    private static bool HasSecondHashMethod(CliToken[] rest) =>
+        rest.Count(token => token.IsSwitch && token.Text.StartsWith("-scrc", StringComparison.Ordinal)) > 1;
 
     private static bool TryParseHashAlgorithm(string token, out HashAlgorithmKind? algorithm, out string? error)
     {
