@@ -87,6 +87,28 @@ public sealed class CliNameSelectionTests
         error.Should().Contain("listfile");
     }
 
+    [Theory]
+    [InlineData("@")]
+    [InlineData("-i@")]
+    public void BuildEntryFilter_EmptyListFile_TakesNothing(string form)
+    {
+        // 7-Zip adds the universal "*" only when the command line names nothing to include,
+        // whatever a list file turns out to hold (AddToCensorFromNonSwitchesStrings).
+        Write("empty.txt", []);
+        CliNameFilter filter = Filter("x", "a.zip", form + Path.Combine(_dir, "empty.txt"));
+
+        filter.Includes("a.txt", isFolder: false).Should().BeFalse();
+    }
+
+    [Fact]
+    public void BuildEntryFilter_OnlyExcludes_StartsFromEverything()
+    {
+        CliNameFilter filter = Filter("x", "a.zip", "-x!*.nsis");
+
+        filter.Includes("a.txt", isFolder: false).Should().BeTrue();
+        filter.Includes("b.nsis", isFolder: false).Should().BeFalse();
+    }
+
     // --- the archives ---
 
     [Fact]
@@ -135,6 +157,28 @@ public sealed class CliNameSelectionTests
         (IReadOnlyList<string> paths, _) = Resolve("x", "-an", "-air!arcs\\*.zip");
 
         paths.Select(Path.GetFileName).Should().Equal("three.zip", "one.zip", "two.zip");
+    }
+
+    [Fact]
+    public void ResolveArchives_RelativeExclude_AppliesUnderAnAbsoluteInclude()
+    {
+        // 7-Zip's arcCensor.ExtendExclude: a relative -ax holds in every folder an -ai names.
+        Archives();
+
+        (IReadOnlyList<string> paths, _) = Resolve("x", "-an", $"-ai!{Path.Combine(_dir, "arcs")}\\*.zip", "-ax!two.zip");
+
+        paths.Select(Path.GetFileName).Should().Equal("one.zip");
+    }
+
+    [Fact]
+    public void ResolveArchives_NoArchiveNamedAndAnEmptyList_CannotFindArchive()
+    {
+        Write("empty.txt", []);
+
+        (IReadOnlyList<string> paths, string? error) = Resolve("x", "-an", "-ai@" + Path.Combine(_dir, "empty.txt"));
+
+        paths.Should().BeEmpty();
+        error.Should().Be("Cannot find archive");
     }
 
     [Fact]

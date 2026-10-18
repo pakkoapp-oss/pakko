@@ -225,9 +225,9 @@ internal sealed partial class TarSandboxScope : IDisposable
         if (_utf8Headers is null)
             await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
         // T-F410: the names go in a file. Thousands of them would overflow the command line, and
-        // "-T -" cannot carry them: stdin is the archive. "-n": a listed folder brings only itself,
-        // the list names everything that is to come (ExpandSelection).
-        string[] memberArguments = members is { Count: > 0 } ? ["-n", "-T", WriteMemberList(members)] : [];
+        // "-T -" cannot carry them: stdin is the archive. No "-n": bsdtar 3.3.2 (Windows 10) takes it
+        // only in c/r/u mode, and ExpandSelection lists every descendant of a folder anyway.
+        string[] memberArguments = members is { Count: > 0 } ? ["-T", WriteMemberList(members)] : [];
         return await RunAsync("-x", ["-C", OutputFolderName, .. memberArguments], cancellationToken).ConfigureAwait(false);
     }
 

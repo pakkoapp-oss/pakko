@@ -479,15 +479,19 @@ public sealed class TarSandboxedService : ITarService
         // tar.exe still extracts tarMembers (or everything); the move phase below leaves out what
         // did not pass. Listing the names for tar.exe instead cost N^2 pattern matches in
         // libarchive (measured 2026-10-17: 40,000 names 148 s against 24 s for all of them).
-        HashSet<string>? keptFiles = null;
+        // Only the files left out are dropped: a name tar.exe writes differently on disk (an entry
+        // named with a backslash becomes a folder and a file) is never lost to a lookup that misses.
+        HashSet<string>? droppedFiles = null;
         if (context.EntryFilter is { } entryFilter)
         {
-            expandedSelection = [.. (tarMembers ?? (IEnumerable<string>)allNames).Where(name =>
+            List<string> candidates = [.. tarMembers ?? (IEnumerable<string>)allNames];
+            expandedSelection = [.. candidates.Where(name =>
                 StripLeadingDotSlash(name) is { Length: > 0 } shown && entryFilter(shown, name.EndsWith('/')))];
             if (expandedSelection.Count == 0)
                 return (destDir, false);
-            keptFiles = new HashSet<string>(
-                expandedSelection.Where(n => !n.EndsWith('/')).Select(StripLeadingDotSlash), StringComparer.OrdinalIgnoreCase);
+            var kept = new HashSet<string>(expandedSelection, StringComparer.Ordinal);
+            droppedFiles = new HashSet<string>(
+                candidates.Where(n => !n.EndsWith('/') && !kept.Contains(n)).Select(StripLeadingDotSlash), StringComparer.OrdinalIgnoreCase);
         }
         long progressTotalBytes = tarMembers != null
             ? tarMembers.Sum(n => sizeByName.GetValueOrDefault(n, 0L))
@@ -623,7 +627,7 @@ public sealed class TarSandboxedService : ITarService
         foreach ((string file, string root) in quarantined)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (keptFiles is not null && !keptFiles.Contains(Path.GetRelativePath(root, file).Replace('\\', '/')))
+            if (droppedFiles is not null && droppedFiles.Contains(Path.GetRelativePath(root, file).Replace('\\', '/')))
                 continue;
             totalFiles++;
 
