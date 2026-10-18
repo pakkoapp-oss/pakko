@@ -294,6 +294,46 @@ public sealed class ArchiveAdversarialTests : IDisposable
         exitCode.Should().Be(1, $"the archive was written with the readable files, as 7za does (exit 1); stderr: {stdErr}");
     }
 
+    // Same as the lock: 7za warns (exit 1) about a source it may not read and archives the rest.
+    [Fact]
+    public void AclDeniedSource_RestArchived_ExitsOneLikeAMissingSource()
+    {
+        _scratch.WriteFile(@"src\a.txt", "A");
+        _scratch.WriteFile(@"src\b.txt", "B");
+        string denied = _scratch.Inside(@"src\a.txt");
+        string user = Environment.UserName;
+        RunIcacls(denied, "/deny", user + ":(R)");
+        int exitCode;
+        string stdErr;
+        try
+        {
+            (exitCode, _, stdErr) = _scratch.Pakko("a", "o.zip", "src");
+        }
+        finally
+        {
+            RunIcacls(denied, "/remove:d", user);
+        }
+
+        EntryNames(_scratch.Inside("o.zip")).Should().Equal("src/b.txt");
+        exitCode.Should().Be(1, $"the archive was written with the readable files, as 7za does (exit 1); stderr: {stdErr}");
+    }
+
+    private static void RunIcacls(params string[] args)
+    {
+        var startInfo = new System.Diagnostics.ProcessStartInfo(@"C:\Windows\System32\icacls.exe")
+        {
+            UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true,
+        };
+        foreach (string arg in args)
+            startInfo.ArgumentList.Add(arg);
+        using System.Diagnostics.Process process = System.Diagnostics.Process.Start(startInfo)
+            ?? throw new InvalidOperationException("icacls.exe did not start");
+        process.StandardOutput.ReadToEnd();
+        string error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        process.ExitCode.Should().Be(0, $"icacls {string.Join(' ', args)}: {error}");
+    }
+
     [Fact]
     public void ArchiveUnderAFileName_IsAnErrorAndTheFileIsKept()
     {
