@@ -14,6 +14,8 @@ public static class CliNameSelection
 {
     // 7-Zip's ReadNamesFromListFile2 refuses a list of 2 GiB or more; Pakko keeps it in memory.
     private const long MaxListFileBytes = 64L * 1024 * 1024;
+    private static readonly char[] PathSeparators = ['\\', '/'];
+    private static readonly char[] LineBreaks = ['\n', '\r'];
 
     /// <summary>The entry filter for x and l, or null when nothing filters (every entry).</summary>
     public static (CliNameFilter? Filter, string? Error) BuildEntryFilter(ParsedCliCommand command)
@@ -76,32 +78,27 @@ public static class CliNameSelection
         if (includes.TrueForAll(m => !Searches(m)) && excludes.Count == 0)
             return ([.. includes.Select(m => m.Path)], null);
 
-        // Matched as full paths, so a mask's literal folders become the filter's sub-nodes. A
-        // relative exclude also holds under every folder an include searches (7-Zip's
-        // arcCensor.ExtendExclude): -ax!b.zip leaves out C:\d\b.zip found by -ai!C:\d\*.zip.
+        List<CliNameMask> full = FullPathMasks(includes, excludes, currentDirectory);
+        var filter = CliNameFilter.Create(full, switches.CaseSensitive, startFromAll: false);
+        var found = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (CliNameMask mask in full.Where(m => m.Include))
+            found.UnionWith(Searches(mask) ? ((IEnumerable<string>?)Candidates(mask) ?? []) : [mask.Path]);
+        found.RemoveWhere(file => !filter.Includes(file, isFolder: false));
+
+        return found.Count == 0 ? ([], "Cannot find archive") : ([.. found], null);
+    }
+
+    // Every mask as a full path, so a mask's literal folders become the filter's sub-nodes. A
+    // relative exclude also holds under every folder an include searches (7-Zip's
+    // arcCensor.ExtendExclude): -ax!b.zip leaves out C:\d\b.zip found by -ai!C:\d\*.zip.
+    private static List<CliNameMask> FullPathMasks(List<CliNameMask> includes, List<CliNameMask> excludes, string currentDirectory)
+    {
         var full = new List<CliNameMask>(includes.Count + excludes.Count);
         full.AddRange(includes.Concat(excludes).Select(m => m with { Path = Path.GetFullPath(m.Path, currentDirectory) }));
         string[] searched = [.. full.Where(m => m.Include && Searches(m)).Select(LiteralRoot).Distinct(StringComparer.OrdinalIgnoreCase)];
         foreach (CliNameMask exclude in excludes.Where(m => !Path.IsPathRooted(m.Path)))
             full.AddRange(searched.Select(folder => exclude with { Path = Path.Combine(folder, exclude.Path) }));
-        CliNameFilter filter = CliNameFilter.Create(full, switches.CaseSensitive, startFromAll: false);
-        var found = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (CliNameMask mask in full.Where(m => m.Include))
-        {
-            if (!Searches(mask))
-            {
-                if (filter.Includes(mask.Path, isFolder: false))
-                    found.Add(mask.Path);
-                continue;
-            }
-            foreach (string file in (IEnumerable<string>?)Candidates(mask) ?? [])
-            {
-                if (filter.Includes(file, isFolder: false))
-                    found.Add(file);
-            }
-        }
-
-        return found.Count == 0 ? ([], "Cannot find archive") : ([.. found], null);
+        return full;
     }
 
     // A mask that has to be looked for on disk rather than opened as typed.
@@ -116,7 +113,7 @@ public static class CliNameSelection
         string root = LiteralRoot(mask);
         var options = new EnumerationOptions
         {
-            RecurseSubdirectories = mask.Recursion != CliRecursion.None || LiteralFolderCount(mask) < mask.Path.Split('\\', '/').Length - 1,
+            RecurseSubdirectories = mask.Recursion != CliRecursion.None || LiteralFolderCount(mask) < mask.Path.Split(PathSeparators).Length - 1,
             IgnoreInaccessible = true,
             AttributesToSkip = 0,
         };
@@ -134,7 +131,7 @@ public static class CliNameSelection
     // The mask's leading folders up to the first one with a wildcard (never its last part).
     private static int LiteralFolderCount(CliNameMask mask)
     {
-        string[] parts = mask.Path.Split('\\', '/');
+        string[] parts = mask.Path.Split(PathSeparators);
         int literal = 0;
         while (literal < parts.Length - 1 && !(mask.WildcardMatching && CliNameFilter.ContainsWildcard(parts[literal])))
             literal++;
@@ -142,7 +139,7 @@ public static class CliNameSelection
     }
 
     private static string LiteralRoot(CliNameMask mask) =>
-        string.Join(Path.DirectorySeparatorChar, mask.Path.Split('\\', '/')[..LiteralFolderCount(mask)]) + Path.DirectorySeparatorChar;
+        string.Join(Path.DirectorySeparatorChar, mask.Path.Split(PathSeparators)[..LiteralFolderCount(mask)]) + Path.DirectorySeparatorChar;
 
     private static string ListFileError(string path) =>
         File.Exists(path) ? $"Incorrect item in listfile: {path}" : $"The file operation error for listfile: cannot open {path}";
@@ -174,7 +171,7 @@ public static class CliNameSelection
             return null;
 
         var names = new List<string>();
-        foreach (string line in text.TrimStart('\uFEFF').Split('\n', '\r'))
+        foreach (string line in text.TrimStart('\uFEFF').Split(LineBreaks))
         {
             string name = line.Trim();
             if (name.Length >= 2 && name[0] == '"' && name[^1] == '"')

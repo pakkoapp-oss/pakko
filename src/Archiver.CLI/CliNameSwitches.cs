@@ -98,35 +98,44 @@ public sealed record CliNameSwitches
             : (options with { Names = [.. options.Names, parsed] }, null);
     }
 
+    // The r[-|0] and w[-] modifiers from pos on, each at most once; pos ends at the first other character.
+    private static (CliRecursion? Recursion, bool? WildcardMatching, int Pos) ParseModifiers(string token, int pos)
+    {
+        CliRecursion? recursion = null;
+        bool? wildcardMatching = null;
+        while (pos < token.Length)
+        {
+            char c = char.ToLowerInvariant(token[pos]);
+            if (c == 'r' && recursion is null)
+                (recursion, pos) = RecursionAt(token, pos + 1);
+            else if (c == 'w' && wildcardMatching is null)
+                (wildcardMatching, pos) = pos + 1 < token.Length && token[pos + 1] == '-' ? (false, pos + 2) : (true, pos + 1);
+            else
+                break;
+        }
+        return (recursion, wildcardMatching, pos);
+    }
+
+    // After 'r': '-' is r- (no recursion), '0' is r0 (wildcards only), anything else plain r.
+    private static (CliRecursion Recursion, int Pos) RecursionAt(string token, int pos)
+    {
+        if (pos >= token.Length)
+            return (CliRecursion.Recursive, pos);
+        return token[pos] switch
+        {
+            '-' => (CliRecursion.None, pos + 1),
+            '0' => (CliRecursion.WildcardOnly, pos + 1),
+            _ => (CliRecursion.Recursive, pos),
+        };
+    }
+
     // ArchiveCommandLine.cpp, AddSwitchWildcardsToCensor: modifiers r[-|0] and w[-], each at most
     // once, then '!' and a name or '@' and a list file. 7-Zip's m (mark mode) and # (a memory map
     // another program shares) have no use here and are refused.
     private static (CliWildcardSwitch? Switch, string? Error) ParseWildcardSwitch(string token, int switchLength, bool include)
     {
         string name = token[..switchLength];
-        CliRecursion? recursion = null;
-        bool? wildcardMatching = null;
-        int pos = switchLength;
-        while (pos < token.Length)
-        {
-            char c = char.ToLowerInvariant(token[pos]);
-            if (c == 'r' && recursion is null)
-            {
-                pos++;
-                (recursion, pos) = pos < token.Length && token[pos] is '-' or '0'
-                    ? (token[pos] == '-' ? CliRecursion.None : CliRecursion.WildcardOnly, pos + 1)
-                    : (CliRecursion.Recursive, pos);
-            }
-            else if (c == 'w' && wildcardMatching is null)
-            {
-                pos++;
-                (wildcardMatching, pos) = pos < token.Length && token[pos] == '-' ? (false, pos + 1) : (true, pos);
-            }
-            else
-            {
-                break;
-            }
-        }
+        (CliRecursion? recursion, bool? wildcardMatching, int pos) = ParseModifiers(token, switchLength);
 
         if (pos >= token.Length - 1)
             return (null, $"{name} needs '!' and a name or '@' and a list file, e.g. {name}r!*.tmp (got '{token}')");

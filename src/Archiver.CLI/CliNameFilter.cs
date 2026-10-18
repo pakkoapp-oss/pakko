@@ -121,37 +121,38 @@ public sealed class CliNameFilter
         if (!isFile && !item.ForDir)
             return false;
         int delta = path.Length - from - item.Parts.Length;
-        if (delta < 0)
+        if (delta < 0 || OffsetRange(item, delta, isFile) is not (int start, int finish))
             return false;
-        int start = 0;
-        int finish = 0;
-        if (isFile)
-        {
-            if (!item.ForDir)
-            {
-                if (item.Recursive)
-                    start = delta;
-                else if (delta != 0)
-                    return false;
-            }
-            if (!item.ForFile && delta == 0)
-                return false;
-        }
-        if (item.Recursive)
-        {
-            finish = delta;
-            if (isFile && !item.ForFile)
-                finish = delta - 1;
-        }
         for (int d = start; d <= finish; d++)
         {
-            int i = 0;
-            while (i < item.Parts.Length && PartMatches(item, i, path[from + d + i]))
-                i++;
-            if (i == item.Parts.Length)
+            if (PartsMatchAt(item, path, from + d))
                 return true;
         }
         return false;
+    }
+
+    // CheckPath's start and finish: where the mask's first part may sit among the path's last
+    // delta + 1 parts. Null when it may sit nowhere.
+    private static (int Start, int Finish)? OffsetRange(Item item, int delta, bool isFile)
+    {
+        if (isFile && !item.ForDir && !item.Recursive && delta != 0)
+            return null;
+        if (isFile && !item.ForFile && delta == 0)
+            return null;
+        int start = isFile && !item.ForDir && item.Recursive ? delta : 0;
+        if (!item.Recursive)
+            return (start, 0);
+        return (start, isFile && !item.ForFile ? delta - 1 : delta);
+    }
+
+    private bool PartsMatchAt(Item item, string[] path, int offset)
+    {
+        for (int i = 0; i < item.Parts.Length; i++)
+        {
+            if (!PartMatches(item, i, path[offset + i]))
+                return false;
+        }
+        return true;
     }
 
     private bool PartMatches(Item item, int index, string name) =>
@@ -204,7 +205,9 @@ public sealed class CliNameFilter
 
     public static bool ContainsWildcard(string value) => value.AsSpan().IndexOfAny('*', '?') >= 0;
 
-    private static string[] SplitPath(string path) => path.Split('/', '\\');
+    private static string[] SplitPath(string path) => path.Split(PathSeparators);
+
+    private static readonly char[] PathSeparators = ['/', '\\'];
 
     private sealed record Item(string[] Parts, bool ForFile, bool ForDir, bool Recursive, bool WildcardMatching);
 

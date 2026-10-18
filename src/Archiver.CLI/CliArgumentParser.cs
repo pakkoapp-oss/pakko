@@ -83,12 +83,21 @@ public static class CliArgumentParser
         ParsedCliCommand command = CliCommandValidator.Validate(ParseCommand(args[0], rest, nameSwitches));
         if (command.Type == CliCommandType.Invalid)
             return command;
-        // T-F408: under -so stdout carries the data; 7-Zip turns its messages off there (StdOutMode).
-        if (command.WriteToStdout && output.OutStream == CliOutputTarget.StdOut)
-            return Invalid("'-bso1' cannot be combined with '-so' — stdout carries the data; send messages to stderr with -bso2");
-        if (command.WriteToStdout && output.ErrStream == CliOutputTarget.StdOut)
-            return Invalid("'-bse1' cannot be combined with '-so' — stdout carries the data; errors stay on stderr");
+        if (StdOutConflict(command, output) is { } conflict)
+            return Invalid(conflict);
         return command with { ConsoleCodePage = consoleCodePage, Output = output };
+    }
+
+    // T-F408: under -so stdout carries the data; 7-Zip turns its messages off there (StdOutMode).
+    private static string? StdOutConflict(ParsedCliCommand command, CliOutputOptions output)
+    {
+        if (!command.WriteToStdout)
+            return null;
+        if (output.OutStream == CliOutputTarget.StdOut)
+            return "'-bso1' cannot be combined with '-so' — stdout carries the data; send messages to stderr with -bso2";
+        if (output.ErrStream == CliOutputTarget.StdOut)
+            return "'-bse1' cannot be combined with '-so' — stdout carries the data; errors stay on stderr";
+        return null;
     }
 
     // One command-line argument, and whether it is read as a switch: a name after "--" never is,

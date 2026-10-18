@@ -52,7 +52,7 @@ public sealed class CliNameFilterTests
     [InlineData("+nothing.zzz", "")]
     public void Includes_TakesWhat7ZipTakes(string masks, string expected)
     {
-        CliNameFilter filter = CliNameFilter.Create(ParseMasks(masks));
+        var filter = CliNameFilter.Create(ParseMasks(masks));
 
         Included(filter).Should().Equal(Split(expected));
     }
