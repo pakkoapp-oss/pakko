@@ -13309,6 +13309,17 @@ the archive.
   leaves out RAR5 (full 7-Zip has two handlers). A filtered tar `t` writes its `-T`/`-X` list in the
   ANSI code page, so a name it cannot hold fails that test with T-F266's "cannot be passed to
   tar.exe" where an unfiltered `t` passes: closed, not a false pass.
+- **Closing review** (a read-only reviewer, 2026-10-18), each fix with a test seen red first:
+  a `-T` line ending in `$` was read as an end anchor (`t d.tar cost$` was "Not found", and with a
+  `cost` beside it the wrong file was read; T-F284's escape now puts `$` in a class, `cost[$]`,
+  measured; `^` needs nothing); a refusal whose text holds a name with "encrypt" in it was reported
+  as an encrypted archive (a refused name, `TarArgumentEncodingException`, is no longer read
+  for tar.exe's wording); "No files to process" was printed over an archive that policy or tar.exe's
+  capabilities skipped (`CliFilterCount.NothingPassedIn` now needs no skip). Left, with tasks:
+  a filtered ZIP `t` (and `x`) asks for the password before the filter is asked, where 7-Zip does
+  not ask when no encrypted entry passes (T-F417); `tar.exe` prints a `\` in a name doubled and
+  Pakko lists it so (T-F418). Deliberate: `-stx` does not look through a `.par2` path to the
+  archive it stands for (`t -stxzip a.zip.par2` still checks `a.zip`), 7-Zip has no such path.
 - **`a` waits for wave C, with T-F414.** `7za a o.zip dir\sub` stores `dir\sub\...` and `a o.zip
   dir\*.txt` stores `dir\c.txt`: the path as typed. Pakko names an entry after the source's own
   name (T-F153), so wildcards in `a`'s sources cannot be designed before T-F414 decides that.

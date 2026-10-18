@@ -214,7 +214,7 @@ static Func<string, bool, bool>? CountedFilter(ParsedCliCommand command, CliFilt
 // passed were all skipped at the conflict prompt). True when it was printed.
 static async Task<bool> ReportNoFileToProcessAsync(ParsedCliCommand command, ArchiveResult result, CliFilterCount passed)
 {
-    if (command.EntryFilter is null || !result.Success || passed.Count > 0)
+    if (command.EntryFilter is null || !passed.NothingPassedIn(result))
         return false;
     await Console.Out.WriteLineAsync("No files to process").ConfigureAwait(false);
     return true;

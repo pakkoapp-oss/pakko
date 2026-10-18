@@ -92,6 +92,24 @@ public sealed class TarSandboxedServiceUnshowableNameTests : IDisposable
         result.Errors.Should().BeEmpty();
     }
 
+    [Integration]
+    public async Task UnshowableNameWithEncryptInIt_IsNotCalledAPassword()
+    {
+        // T-F410 review: the refusal is an IOException whose text holds the name; a name with
+        // "encrypt" in it was read as tar.exe's encryption failure.
+        string path = Path.Combine(_temp.Path, "enc.tar");
+        TarBuilder.WriteTar(path, [File("encrypted-a?b.txt"), File("other.txt")]);
+
+        ArchiveResult tested = await _sut.TestAsync([path], entryFilter: (_, _) => true);
+        ArchiveResult extracted = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = NewDestination(), Mode = ExtractMode.SingleFolder, EntryFilter = (_, _) => true,
+        });
+
+        tested.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TarNameNotRepresentable);
+        extracted.Errors.Should().ContainSingle().Which.Text!.Code.Should().NotBe(MessageCode.PasswordProtectedFormatNotSupported);
+    }
+
     private string Tar()
     {
         string path = Path.Combine(_temp.Path, "q" + Guid.NewGuid().ToString("N")[..6] + ".tar");

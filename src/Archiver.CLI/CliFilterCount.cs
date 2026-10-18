@@ -11,6 +11,14 @@ public sealed class CliFilterCount
 
     public int Count => Volatile.Read(ref _count);
 
+    /// <summary>
+    /// Whether 7-Zip's "No files to process" holds for <paramref name="result"/>: the run went
+    /// through without an error or a skipped archive (which never met the filter) and the filter
+    /// let no entry through.
+    /// </summary>
+    public bool NothingPassedIn(Archiver.Core.Models.ArchiveResult result) =>
+        result.Success && result.SkippedFiles.Count == 0 && Count == 0;
+
     /// <summary><paramref name="filter"/>, counting every entry it lets through.</summary>
     public Func<string, bool, bool> Counting(Func<string, bool, bool> filter) => (path, isFolder) =>
     {

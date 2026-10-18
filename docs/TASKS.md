@@ -1705,3 +1705,21 @@ re-measured with T-F346's script before and after.
   it), or keep exit 1 and record Scoop's `-aos` path as a difference. Record the decision in
   `docs/DECISIONS.md`.
 - **Reported by:** T-F410 wave A's measurement, 2026-10-17.
+
+### T-F417 — a filtered ZIP `t`/`x` asks for the password before the filter is asked (P3, from T-F410)
+
+- [ ] **Status:** open. Measured by T-F410 wave B's reviewer: `e.zip` with a plain `x` and an
+  encrypted `cost`; `pakko t e.zip x </dev/null` is "password-protected and cannot be tested",
+  exit 2, where `7za t e.zip x` exits 0 without asking. `ZipArchiveService` resolves the password
+  per archive before any entry is read (test and extraction alike). Next: ask the filter (and a
+  selection) first and resolve the password only when an encrypted entry passes; a test per path.
+- **Reported by:** T-F410 wave B's closing review, 2026-10-18.
+
+### T-F418 — `tar.exe` lists a `\` in an entry name doubled, and Pakko shows it so (P3, from T-F410)
+
+- [ ] **Status:** open. Measured 2026-10-18 (build 26300): a tar entry `a\b.txt` lists through
+  `tar -tf` as `a\\b.txt` (bsdtar escapes it on output), and `pakko l` shows `a\\b.txt`; a `-T` line
+  needs `a\\b.txt` to name it (`a\b.txt` matches `ab.txt`, `a[\]b.txt` nothing). Next: read how
+  bsdtar's `safe_fprintf` escapes a name, undo exactly that in the listing, and escape `\` in a
+  `-T`/`-X` line by doubling it; then the App, `l`, a selection and a filter agree on the name.
+- **Reported by:** T-F410 wave B's closing review, 2026-10-18.

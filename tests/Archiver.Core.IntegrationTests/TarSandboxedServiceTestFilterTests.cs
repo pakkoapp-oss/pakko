@@ -132,6 +132,20 @@ public sealed class TarSandboxedServiceTestFilterTests : IDisposable
         result.Errors.Should().ContainSingle();
     }
 
+    [Fact]
+    public async Task TestAsync_MemberListWithATrailingDollar_FindsTheName()
+    {
+        // libarchive reads a trailing '$' as an end anchor: unescaped, "-T cost$" is "Not found".
+        string archive = Path.Combine(_temp.Path, "dollar.tar");
+        TarBuilder.WriteTar(archive, [Entry("cost$"), Entry("a.txt"), Entry("b.txt")]);
+
+        ArchiveResult result = await _sut.TestAsync([archive], entryFilter: (name, _) => name == "cost$");
+
+        result.Errors.Should().BeEmpty();
+    }
+
+    private static TarBuilder.Entry Entry(string name) => new() { Name = name, Content = System.Text.Encoding.ASCII.GetBytes(name) };
+
     private string DamagedSevenZip()
     {
         string archive = Create("a.7z", ["--format=7zip", "--options", "7zip:compression=lzma2", "-cf"],
