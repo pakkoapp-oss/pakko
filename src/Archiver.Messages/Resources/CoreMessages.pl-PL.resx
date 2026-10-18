@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>„{0}” to nazwa zarezerwowana przez system Windows dla urządzenia; nie utworzono archiwum.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>Nie można zapisać „{0}”: w tym miejscu jest folder o tej nazwie.</value>
+  </data>
 </root>

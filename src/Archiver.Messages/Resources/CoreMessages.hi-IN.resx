@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>"{0}" एक ऐसा नाम है जिसे Windows किसी डिवाइस के लिए आरक्षित रखता है; कोई संग्रह नहीं बनाया गया।</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>"{0}" नहीं लिखा जा सकता: इसी नाम का एक फ़ोल्डर उसकी जगह पर है।</value>
+  </data>
 </root>

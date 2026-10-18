@@ -66,6 +66,58 @@ public sealed class RenameExistingConflictTests : IDisposable
         Read(dest, "b.txt").Should().Be("b");
     }
 
+    // T-F419: 7-Zip's -aot renames a folder of the entry's name too; its content is kept.
+    [Fact]
+    public async Task ExtractAsync_FolderWhereTheEntryGoes_IsRenamedAndTheFileTakesItsName()
+    {
+        string zip = CreateZip(("a.txt", "new"));
+        string dest = CreateDest();
+        Directory.CreateDirectory(Path.Combine(dest, "a.txt"));
+        File.WriteAllText(Path.Combine(dest, "a.txt", "inner.txt"), "inner");
+
+        ArchiveResult result = await ExtractAsync(zip, dest);
+
+        result.Errors.Should().BeEmpty();
+        Read(dest, "a.txt").Should().Be("new");
+        Read(dest, Path.Combine("a (1).txt", "inner.txt")).Should().Be("inner");
+    }
+
+    // T-F419: under Overwrite a folder in the way fails the entry with its own reason, not a lock.
+    [Fact]
+    public async Task ExtractAsync_Overwrite_FolderWhereTheEntryGoes_IsKeptAndNamedAsAFolder()
+    {
+        string zip = CreateZip(("a.txt", "new"));
+        string dest = CreateDest();
+        Directory.CreateDirectory(Path.Combine(dest, "a.txt"));
+        File.WriteAllText(Path.Combine(dest, "a.txt", "inner.txt"), "inner");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip], DestinationFolder = dest, Mode = ExtractMode.SingleFolder, OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.DestinationIsAFolder);
+        Read(dest, Path.Combine("a.txt", "inner.txt")).Should().Be("inner");
+    }
+
+    // T-F419: an overwrite replaces a read-only file, as 7-Zip's -aoa does.
+    [Fact]
+    public async Task ExtractAsync_Overwrite_ReadOnlyFile_IsReplaced()
+    {
+        string zip = CreateZip(("a.txt", "new"));
+        string dest = CreateDest(("a.txt", "old"));
+        string existing = Path.Combine(dest, "a.txt");
+        File.SetAttributes(existing, FileAttributes.ReadOnly);
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip], DestinationFolder = dest, Mode = ExtractMode.SingleFolder, OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.Errors.Should().BeEmpty();
+        Read(dest, "a.txt").Should().Be("new");
+    }
+
     // The renamed file never takes a name the archive is about to write.
     [Fact]
     public async Task ExtractAsync_NumberedNameComesFromTheArchive_ExistingTakesTheNextOne()

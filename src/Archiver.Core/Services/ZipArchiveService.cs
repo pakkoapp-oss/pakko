@@ -1555,6 +1555,8 @@ public sealed class ZipArchiveService : IArchiveService
         }
         foreach (string relativePath in staging.LeftOutThroughLink)
             skippedFiles.Add(CoreMessages.Skip(relativePath, CoreMessages.Text(MessageCode.EntryThroughReparsePoint)));
+        foreach (string relativePath in staging.BlockedByFolder)
+            context.Errors.Add(CoreMessages.Error(archivePath, MessageCode.DestinationIsAFolder, relativePath));
 
         // T-F87: every entry was individually skipped (conflict/ADS/reserved name/reparse point/
         // zip bomb) — nothing was actually extracted, so the caller must not count this archive
@@ -1758,7 +1760,8 @@ public sealed class ZipArchiveService : IArchiveService
         // and the commit always talk about the same file.
         string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, Path.GetRelativePath(fullTempDest, destFilePath)));
         bool trimmedByWindows = !string.Equals(Path.GetFileName(relativePath), Path.GetFileName(finalFilePath), StringComparison.OrdinalIgnoreCase);
-        if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath))
+        if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath)
+            || (context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
         {
             int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
             // T-F419: "a.txt." and "a.txt" are two entries Windows writes under one name; neither

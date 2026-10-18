@@ -676,6 +676,8 @@ public sealed class TarSandboxedService : ITarService
         }
         foreach (string relativePath in staging.LeftOutThroughLink)
             skippedFiles.Add(CoreMessages.Skip(relativePath, CoreMessages.Text(MessageCode.EntryThroughReparsePoint)));
+        foreach (string relativePath in staging.BlockedByFolder)
+            context.Errors.Add(CoreMessages.Error(archivePath, MessageCode.DestinationIsAFolder, relativePath));
 
         // T-F87: every extracted file was individually skipped (already existed at the
         // destination) — nothing was actually written, so the caller must not count this
@@ -899,7 +901,8 @@ public sealed class TarSandboxedService : ITarService
     private static async Task<string?> ResolveConflictAsync(
         string finalFilePath, string file, string relativePath, TarCommitPlan plan, TarExtractionContext context)
     {
-        if (!File.Exists(finalFilePath) && !plan.ClaimedFinalPaths.Contains(finalFilePath))
+        if (!File.Exists(finalFilePath) && !plan.ClaimedFinalPaths.Contains(finalFilePath)
+            && !(context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
             return finalFilePath;
         (long? incomingSize, DateTimeOffset? incomingModified) = DescribeIncoming(file);
         int userSkipsSoFar = context.ConflictResolver.UserSkipCount;

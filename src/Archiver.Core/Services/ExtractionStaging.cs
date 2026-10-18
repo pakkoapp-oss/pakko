@@ -34,6 +34,12 @@ internal sealed class ExtractionStaging : IDisposable
     /// passes through a link already there, relative to the destination (a folder ends with a separator).</summary>
     public IReadOnlyList<string> LeftOutThroughLink => _leftOutThroughLink;
 
+    private readonly List<string> _blockedByFolder = [];
+
+    /// <summary>T-F419: files <see cref="CommitInto"/> could not move because a folder of that
+    /// name is at the destination, relative to it.</summary>
+    public IReadOnlyList<string> BlockedByFolder => _blockedByFolder;
+
     /// <summary>T-F411: <see cref="Models.ConflictBehavior.RenameExisting"/> - the file at
     /// <paramref name="finalPath"/> is renamed in the commit, just before the staged one takes its
     /// name. <paramref name="claimedFinalPaths"/> is every path this run writes, so the new name is
@@ -190,11 +196,15 @@ internal sealed class ExtractionStaging : IDisposable
             {
                 try
                 {
+                    // T-F419: the conflict was decided as an overwrite; 7-Zip replaces a read-only file too.
+                    if (File.Exists(finalFile) && File.GetAttributes(finalFile).HasFlag(FileAttributes.ReadOnly))
+                        File.SetAttributes(finalFile, File.GetAttributes(finalFile) & ~FileAttributes.ReadOnly);
                     File.Move(file, finalFile, overwrite: true);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
-                    lockedRelativePaths.Add(relative);
+                    // T-F419: a folder of that name is in the way, which is not a lock.
+                    (Directory.Exists(finalFile) ? _blockedByFolder : lockedRelativePaths).Add(relative);
                     continue;
                 }
             }
@@ -209,6 +219,7 @@ internal sealed class ExtractionStaging : IDisposable
     private bool TryMoveInRenamingExisting(string staged, string finalFile)
     {
         string? movedAway = null;
+        bool movedFolder = false;
         try
         {
             if (File.Exists(finalFile))
@@ -216,14 +227,27 @@ internal sealed class ExtractionStaging : IDisposable
                 movedAway = FreeNameBeside(finalFile);
                 File.Move(finalFile, movedAway);
             }
+            else if (Directory.Exists(finalFile))
+            {
+                // T-F419: a folder of the entry's name is renamed as a file would be (7-Zip's -aot).
+                movedAway = FreeNameBeside(finalFile);
+                Directory.Move(finalFile, movedAway);
+                movedFolder = true;
+            }
             File.Move(staged, finalFile);
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            if (movedAway is not null && !File.Exists(finalFile))
+            if (movedAway is not null && !File.Exists(finalFile) && !Directory.Exists(finalFile))
             {
-                try { File.Move(movedAway, finalFile); }
+                try
+                {
+                    if (movedFolder)
+                        Directory.Move(movedAway, finalFile);
+                    else
+                        File.Move(movedAway, finalFile);
+                }
                 catch (Exception backEx) when (backEx is IOException or UnauthorizedAccessException)
                 { /* best-effort: the existing file keeps -aot's numbered name, nothing is lost */ }
             }

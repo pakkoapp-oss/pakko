@@ -151,4 +151,7 @@ public enum MessageCode
 
     // An archive named as a Windows device (T-F419)
     ArchiveNameReserved,
+
+    // A folder where an extracted file goes (T-F419)
+    DestinationIsAFolder,
 }

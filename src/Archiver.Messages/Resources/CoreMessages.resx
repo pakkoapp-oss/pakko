@@ -381,4 +381,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>'{0}' is a name Windows reserves for a device; no archive was created.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>Cannot write '{0}': a folder of that name is in the way.</value>
+  </data>
 </root>

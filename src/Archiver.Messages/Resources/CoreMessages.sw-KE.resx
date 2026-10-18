@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>"{0}" ni jina ambalo Windows huhifadhi kwa ajili ya kifaa; hakuna kumbukumbu iliyoundwa.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>Haiwezi kuandika "{0}": kuna folda yenye jina hilo mahali pake.</value>
+  </data>
 </root>

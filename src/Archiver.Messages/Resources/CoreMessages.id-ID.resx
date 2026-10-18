@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>"{0}" adalah nama yang dicadangkan Windows untuk perangkat; tidak ada arsip yang dibuat.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>Tidak dapat menulis "{0}": ada folder dengan nama itu di tempatnya.</value>
+  </data>
 </root>

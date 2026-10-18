@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>”{0}” on nimi, jonka Windows varaa laitteelle; arkistoa ei luotu.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>Kohdetta ”{0}” ei voi kirjoittaa: samanniminen kansio on tiellä.</value>
+  </data>
 </root>

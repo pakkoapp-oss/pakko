@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>A(z) „{0}” olyan név, amelyet a Windows egy eszköznek tart fenn; nem jött létre archívum.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>A(z) „{0}” nem írható: egy azonos nevű mappa van a helyén.</value>
+  </data>
 </root>

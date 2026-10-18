@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>„{0}“ yra pavadinimas, kurį Windows rezervuoja įrenginiui; archyvas nesukurtas.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>Nepavyksta įrašyti „{0}“: jo vietoje yra tokio paties pavadinimo aplankas.</value>
+  </data>
 </root>

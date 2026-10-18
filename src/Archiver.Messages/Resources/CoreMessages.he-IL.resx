@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>"{0}" הוא שם ש-Windows שומרת להתקן; לא נוצר ארכיון.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>לא ניתן לכתוב את "{0}": תיקייה בשם זה נמצאת במקומו.</value>
+  </data>
 </root>

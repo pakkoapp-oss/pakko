@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>"{0}"은(는) Windows가 장치용으로 예약한 이름이므로 압축 파일을 만들지 않았습니다.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>"{0}"을(를) 쓸 수 없습니다: 같은 이름의 폴더가 있습니다.</value>
+  </data>
 </root>

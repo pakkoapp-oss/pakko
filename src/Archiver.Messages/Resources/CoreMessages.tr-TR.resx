@@ -354,4 +354,7 @@
   <data name="ArchiveNameReserved" xml:space="preserve">
     <value>“{0}”, Windows'un bir aygıt için ayırdığı bir addır; arşiv oluşturulmadı.</value>
   </data>
+  <data name="DestinationIsAFolder" xml:space="preserve">
+    <value>“{0}” yazılamıyor: yerinde aynı adlı bir klasör var.</value>
+  </data>
 </root>
