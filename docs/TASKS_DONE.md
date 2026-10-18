@@ -13036,3 +13036,22 @@ PowerShell does natively.
 - [x] **Status:** done 2026-10-17. `-y` on `t` keeps the password prompt off, as on `x`; `-y`, `-p`, `-p-` on `l` are taken and change nothing. `-p-` stays the password `-`, which is what 7-Zip reads.
 - **Reported by:** T-F343's measurement, 2026-10-17.
 - **Result:** `CliArgumentParser`; `CliSevenZipCallerTests`, `CliSevenZipCallerSubprocessTests`; `docs/CLI.md`; `docs/DECISIONS.md` (same entry); smoke `CLI-037`.
+
+### T-F416 — `tar.exe` lists a UTF-8 name outside the ANSI code page as `????.txt` (P2, from T-F410)
+
+- [x] **Status:** done 2026-10-18 (T-F410 wave B). Measured 2026-10-18 on the Windows 10 VM (bsdtar 3.5.2, ACP 1252): a tar
+  whose UTF-8 header names `\u0444\u0430\u0439\u043B.txt` lists, under
+  `--options tar:hdrcharset=UTF-8 -tf`, as `????.txt` with exit 0, with no "unreadable filename"
+  message for `TarSandboxScope` to fall back on. The CI runner (1252) showed the same through the
+  T-F410 selection test. `TarSandboxedServiceNameEncodingTests` says a name outside the code page is
+  either its real name or a clear failure, never mojibake; on this `tar.exe` it is neither. Next:
+  see what Pakko's listing, extraction and test then do with the `?` name (a `?` cannot be a file
+  name on Windows), and refuse such an archive with a clear message rather than guess.
+- **Reported by:** T-F410 wave A's CI run on PR #84, 2026-10-18.
+- **Result:** measured on the VM with the branch's `pakko`: extraction and an unfiltered test are
+  right (the real name is written; libarchive writes through the wide API); only the listed name is
+  lossy, so `l` and the App show `????.txt`. `TarSandboxedService.RefuseUnshowableName` refuses,
+  with `TarNameNotRepresentable`, an extraction with a filter or a selection that names such an
+  entry, and a filtered test, where a verdict on the name would be a guess (a left-out file would
+  have been extracted). A real `?` in a name is treated alike: it is no Windows file name either.
+  `TarSandboxedServiceUnshowableNameTests`; `docs/DECISIONS.md`, "T-F410, wave B".

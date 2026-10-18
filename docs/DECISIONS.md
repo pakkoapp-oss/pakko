@@ -13296,6 +13296,19 @@ the archive.
   `t -ir!*.txt`, `t -stxzip`, `t -stx7z`): works 43, accepted 42, differs 24, missing 51,
   pakko-only 5, reference-fails 11; the rows measured before are unchanged, the new probes are 3
   accepted and 1 reference-fails (both exit 2 on `-stxzip`).
+- **T-F416, a lossy name (taken into this wave at the maintainer's word).** `tar.exe` 3.5.2 on the
+  Windows 10 VM (ACP 1252) lists a UTF-8 name outside the ANSI code page as `????.txt` (`tick ?.txt`
+  for U+2713), exit 0, plain tar, tar.gz and pax alike, while `x` writes the real `файл.txt`;
+  the listing is the only thing wrong. Repairing it from the headers works only for tar and tar.gz
+  (xz, bzip2, zstd, 7z and RAR headers Pakko does not read), so the names stay as listed and an
+  operation that a name decides fails closed: a filter (`x`, `t`) over an archive with a `?` name,
+  or a selection that names one, is `TarNameNotRepresentable` (its 37 translations exist); a whole
+  extraction or test goes on. Measured after on the VM: `t`/`x cyr.tar -x!other.txt` exit 2 with
+  that message, `x cyr.tar` exit 0 with the real name. `l` and the App still show `????.txt`.
+- **Two deliberate edges.** `rar` and `rar5` both map to `ArchiveFormat.Rar`, so `-stxrar` also
+  leaves out RAR5 (full 7-Zip has two handlers). A filtered tar `t` writes its `-T`/`-X` list in the
+  ANSI code page, so a name it cannot hold fails that test with T-F266's "cannot be passed to
+  tar.exe" where an unfiltered `t` passes: closed, not a false pass.
 - **`a` waits for wave C, with T-F414.** `7za a o.zip dir\sub` stores `dir\sub\...` and `a o.zip
   dir\*.txt` stores `dir\c.txt`: the path as typed. Pakko names an entry after the source's own
   name (T-F153), so wildcards in `a`'s sources cannot be designed before T-F414 decides that.

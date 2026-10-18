@@ -1705,15 +1705,3 @@ re-measured with T-F346's script before and after.
   it), or keep exit 1 and record Scoop's `-aos` path as a difference. Record the decision in
   `docs/DECISIONS.md`.
 - **Reported by:** T-F410 wave A's measurement, 2026-10-17.
-
-### T-F416 — `tar.exe` lists a UTF-8 name outside the ANSI code page as `????.txt` (P2, from T-F410)
-
-- [ ] **Status:** open. Measured 2026-10-18 on the Windows 10 VM (bsdtar 3.5.2, ACP 1252): a tar
-  whose UTF-8 header names `\u0444\u0430\u0439\u043B.txt` lists, under
-  `--options tar:hdrcharset=UTF-8 -tf`, as `????.txt` with exit 0, with no "unreadable filename"
-  message for `TarSandboxScope` to fall back on. The CI runner (1252) showed the same through the
-  T-F410 selection test. `TarSandboxedServiceNameEncodingTests` says a name outside the code page is
-  either its real name or a clear failure, never mojibake; on this `tar.exe` it is neither. Next:
-  see what Pakko's listing, extraction and test then do with the `?` name (a `?` cannot be a file
-  name on Windows), and refuse such an archive with a clear message rather than guess.
-- **Reported by:** T-F410 wave A's CI run on PR #84, 2026-10-18.
