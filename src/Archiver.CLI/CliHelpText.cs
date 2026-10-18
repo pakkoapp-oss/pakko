@@ -87,14 +87,18 @@ public static class CliHelpText
                            as in 7-Zip: a folder takes what is in it; @<file>
                            reads the names from a list file. Nothing matches:
                            'No files to process', exit 0
-          -i[r]!<name>     Include (-i) or exclude (-x) names; r: at any       (x, l, t)
+          a <arc> <names>  Sources, as in 7-Zip: dir\sub is stored as typed,   (a)
+                           an absolute path or one with . or .. by its last
+                           part; . is the folder's contents; masks (*.txt,
+                           dir\*) are looked for; a missing one: warning, exit 1
+          -i[r]!<name>     Include (-i) or exclude (-x) names; r: at any       (x, l, t, a)
           -x[r]!<name>     depth, r-: from the top, r0: wildcards only; @<file>
                            instead of !<name> for a list (Scoop: -xr!*.nsis).
-                           -xtd / -xtf: leave out every folder / file
-          -r[-|0]          How masks recurse: -r any depth, -r- from the       (x, l, t)
+                           -xtd / -xtf (x, l, t): leave out every folder / file
+          -r[-|0]          How masks recurse: -r any depth, -r- from the       (x, l, t, a)
                            top (default), -r0 any depth only with a wildcard
-          -spd, -ssc       No wildcards; case-sensitive names                  (x, l, t)
-          -scs<charset>    List file charset: UTF-8 (default), UTF-16LE,       (x, l, t)
+          -spd, -ssc       No wildcards; case-sensitive names                  (x, l, t, a)
+          -scs<charset>    List file charset: UTF-8 (default), UTF-16LE,       (x, l, t, a)
                            UTF-16BE, WIN, DOS
           -ai, -ax, -an    More archives by mask (-ai!*.zip, -air! recurses),  (x, l, t)
                            archives left out (-ax), no archive name (-an);

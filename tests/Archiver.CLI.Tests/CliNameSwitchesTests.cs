@@ -112,10 +112,10 @@ public sealed class CliNameSwitchesTests
     public void Test_NameFilter_IsTaken(string token) =>
         CliArgumentParser.Parse(["t", "a.zip", token]).Type.Should().Be(CliCommandType.Test);
 
+    // T-F410: 'a' takes -x and -r since wave C (CliArgumentParserTests).
     [Theory]
-    [InlineData("a", "-x!*.tmp")]
-    [InlineData("a", "-r")]
     [InlineData("h", "-ssc")]
+    [InlineData("h", "-x!*.tmp")]
     [InlineData("r", "-ai!*.zip")]
     public void NameSwitch_OnAnotherCommand_SaysWhereFiltersWork(string command, string token) =>
         CliArgumentParser.Parse([command, token, "out.zip", "file.txt"]).ErrorMessage.Should().Contain("name filters");

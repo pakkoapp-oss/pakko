@@ -1123,7 +1123,38 @@ public sealed class CliArgumentParserTests
         result.ErrorMessage.Should().Contain("-rr").And.Contain("'a'");
     }
 
+    // T-F410: 'a' takes -r, -i, -x, -spd, -ssc, -scs and list files (it refused them before).
     [Fact]
-    public void RecurseSwitch_OnArchiveCreation_SaysWhereFiltersWork() =>
-        CliArgumentParser.Parse(["a", "-r", "out.zip", "file.txt"]).ErrorMessage.Should().Contain("name filters");
+    public void RecurseSwitch_OnArchiveCreation_IsTaken()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-r", "-x!*.log", "out.zip", "*.txt", "@list.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive, result.ErrorMessage);
+        result.NameSwitches.Recursion.Should().Be(CliRecursion.Recursive);
+        result.NameSwitches.Names.Should().ContainSingle().Which.Include.Should().BeFalse();
+        result.FilterNames.Should().Equal(new CliFilterName("*.txt", IsListFile: false), new CliFilterName("@list.txt", IsListFile: true));
+        result.SourcePaths.Should().Equal("*.txt", "@list.txt");
+    }
+
+    [Fact]
+    public void IncludeSwitchAlone_NamesTheSourcesOfArchiveCreation() =>
+        CliArgumentParser.Parse(["a", "out.zip", @"-i!dir\*.log"]).Type.Should().Be(CliCommandType.Archive);
+
+    [Fact]
+    public void ExcludeSwitchAlone_OnArchiveCreation_StillNeedsASource() =>
+        CliArgumentParser.Parse(["a", "out.zip", "-x!*.log"]).ErrorMessage.Should().Contain("at least one source");
+
+    [Theory]
+    [InlineData("-ai!*.zip")]
+    [InlineData("-ax!*.zip")]
+    [InlineData("-an")]
+    [InlineData("-stxzip")]
+    [InlineData("-xtd")]
+    [InlineData("-xtf")]
+    public void ArchivePickingSwitch_OnArchiveCreation_IsRefused(string token) =>
+        CliArgumentParser.Parse(["a", token, "out.zip", "file.txt"]).ErrorMessage.Should().Contain("not supported on 'a'");
+
+    [Fact]
+    public void NameSwitch_OnHash_StillSaysWhereFiltersWork() =>
+        CliArgumentParser.Parse(["h", "-r", "file.txt"]).ErrorMessage.Should().Contain("name filters");
 }
