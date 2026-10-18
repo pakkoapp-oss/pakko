@@ -49,4 +49,21 @@ public sealed class CliCoreSwitchesSubprocessTests
         using ZipArchive archive = ZipFile.OpenRead(Path.Combine(scratchDir, "out.zip"));
         archive.Entries.Should().ContainSingle();
     }
+
+    // --- -stl ---
+
+    [Fact]
+    public void Archive_ArchiveTime_IsTheSourcesNewest()
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+        string source = Path.Combine(scratchDir, "old.txt");
+        File.WriteAllText(source, "old");
+        var sourceTime = new DateTime(2020, 1, 1, 10, 0, 0, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(source, sourceTime);
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(scratchDir, "a", "-stl", "out.zip", "old.txt");
+
+        exitCode.Should().Be(0, stdErr);
+        File.GetLastWriteTimeUtc(Path.Combine(scratchDir, "out.zip")).Should().Be(sourceTime);
+    }
 }

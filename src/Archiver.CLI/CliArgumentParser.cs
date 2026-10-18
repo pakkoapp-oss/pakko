@@ -54,6 +54,7 @@ public sealed record ParsedCliCommand
     public CliArchiveNameMode ArchiveNameMode { get; init; }          // -sas/-sae/-saa, a only (T-F411)
     public string? WorkingFolder { get; init; }                       // -w[dir], a only (T-F411); "" = bare -w, null = not given
     public int MaxThreads { get; init; }                              // -mmt[N|on|off], a only (T-F411); 0 = the core count
+    public bool SetArchiveTime { get; init; }                         // -stl, a only (T-F411)
     public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
     public CliNameSwitches NameSwitches { get; init; } = new();       // -i/-x/-r/-spd/-ssc/-scs/-ai/-ax/-an, x/l/t (T-F410)
     public IReadOnlyList<CliFilterName> FilterNames { get; init; } = []; // x/l/t: the names after the archive name; a: its sources (T-F410)
@@ -590,6 +591,7 @@ public static class CliArgumentParser
         public CliArchiveNameMode ArchiveNameMode { get; set; }
         public string? WorkingFolder { get; set; }
         public int MaxThreads { get; set; }
+        public bool SetArchiveTime { get; set; }
     }
 
     private static ParsedCliCommand ParseArchive(CliToken[] rest)
@@ -625,6 +627,7 @@ public static class CliArgumentParser
             ArchiveNameMode = state.ArchiveNameMode,
             WorkingFolder = state.WorkingFolder,
             MaxThreads = state.MaxThreads,
+            SetArchiveTime = state.SetArchiveTime,
         };
     }
 
@@ -647,6 +650,10 @@ public static class CliArgumentParser
 
         if (token == "-so") { state.WriteToStdout = true; return null; }
         if (token == "-y") { state.AssumeYes = true; return null; }
+
+        if (token == "-stl") { state.SetArchiveTime = true; return null; }
+        if (SimpleSwitchPostfixError(token) is { } postfixError)
+            return postfixError;
 
         if (token.StartsWith("-m", StringComparison.Ordinal))
             return ApplyMethodToken(token, state);
@@ -733,6 +740,20 @@ public static class CliArgumentParser
             return $"not supported by Pakko: {token[..3]} — a 7z archive is written with one method, named by -m0=<method>";
 
         return "not supported by Pakko: of 7z's -m{params}, only -mx=<0-9>, -mmt=<N>, -mem=AES256 and -m0=<method> (with -t7z) are implemented";
+    }
+
+    // T-F411: 7-Zip's switches that take no value (SWFRM_SIMPLE in ArchiveCommandLine.cpp): one
+    // with anything after its name is "Incorrect switch postfix" there.
+    private static readonly string[] SimpleArchiveSwitches = ["-stl"];
+
+    private static string? SimpleSwitchPostfixError(string token)
+    {
+        foreach (string name in SimpleArchiveSwitches)
+        {
+            if (token.StartsWith(name, StringComparison.Ordinal))
+                return $"Incorrect command line: {name} takes no value, got '{token}'";
+        }
+        return null;
     }
 
     // T-F411: 7-Zip's -mmt (measured on 7za 26.02): bare, "=", "=on" and "0" follow the core count,
@@ -1062,6 +1083,7 @@ public static class CliArgumentParser
         ("-snz", "not supported on this command: -snz is only valid with 'x' (extract)"),
         ("-sa", "not supported on this command: -sa{s|e|a} names the archive 'a' creates"),
         ("-w", "not supported on this command: -w{dir} is only meaningful for 'a' (archive creation)"),
+        ("-stl", "not supported on this command: -stl (the archive takes its newest file's time) is only meaningful for 'a'"),
         ("-ssp", "not supported by Pakko: -ssp (keep the sources' last access time) - tar.exe cannot keep it, and Windows mostly does not update it"),
     ];
 

@@ -54,6 +54,13 @@ public sealed record ArchiveOptions
     public int MaxThreads { get; init; }
 
     /// <summary>
+    /// T-F411: the archive takes the newest modification time among the files and folders it
+    /// holds, as read from disk (7-Zip's -stl), instead of the time it was written. A time that
+    /// cannot be set leaves the written one. Ignored by <see cref="ArchiveMode.SeparateArchives"/>.
+    /// </summary>
+    public bool SetArchiveTimeFromNewestEntry { get; init; }
+
+    /// <summary>
     /// T-F06: invoked once per conflicting destination path when <see cref="OnConflict"/> is
     /// <see cref="ConflictBehavior.Ask"/>. Null (e.g. Archiver.Shell, or a test that doesn't wire
     /// it) falls back to Skip — see ConflictResolver.

@@ -103,6 +103,31 @@ public sealed class CliCoreSwitchesTests
         CliArgumentParser.Parse(["a", "out.zip", "f.txt"]).MaxThreads.Should().Be(0);
     }
 
+    // --- -stl: the archive takes its newest entry's time (7-Zip's SWFRM_SIMPLE: no postfix) ---
+
+    [Fact]
+    public void Archive_ArchiveTime_IsTaken()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-STL", "out.zip", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive, result.ErrorMessage);
+        result.SetArchiveTime.Should().BeTrue();
+        CliArgumentParser.Parse(["a", "out.zip", "f.txt"]).SetArchiveTime.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("a", "-stl-", "-stl takes no value")]
+    [InlineData("a", "-stlx", "-stl takes no value")]
+    [InlineData("x", "-stl", "not supported on this command")]
+    [InlineData("t", "-stl", "not supported on this command")]
+    public void ArchiveTime_WithAPostfixOrOnAnotherCommand_IsRefused(string command, string token, string reason)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse([command, token, "a.zip", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain(reason);
+    }
+
     // --- -ssp: declined (Pakko cannot keep the sources' last access time through tar.exe) ---
 
     [Theory]
