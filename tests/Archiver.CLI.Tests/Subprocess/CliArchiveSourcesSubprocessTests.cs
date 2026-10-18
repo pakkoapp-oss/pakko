@@ -105,6 +105,92 @@ public sealed class CliArchiveSourcesSubprocessTests
         File.Exists(zip).Should().BeFalse();
     }
 
+    // T-F410: 'a' with name filters, each line against 7za 26.02's own result for the same tree.
+    private static string MakeFilterTree()
+    {
+        string root = MakeTree();
+        File.WriteAllText(Path.Combine(root, "dir", "c.txt"), "c");
+        File.WriteAllText(Path.Combine(root, "dir", "c.log"), "l");
+        return root;
+    }
+
+    [Theory]
+    [InlineData(new[] { "dir", "-xr!*.log" }, new[] { "dir/c.txt", "dir/sub/s.txt" })]
+    [InlineData(new[] { "dir", "-xr!sub" }, new[] { "dir/c.log", "dir/c.txt" })]
+    [InlineData(new[] { "dir", @"-x!dir\sub" }, new[] { "dir/c.log", "dir/c.txt" })]
+    [InlineData(new[] { "dir", "-x!c.txt" }, new[] { "dir/c.log", "dir/c.txt", "dir/sub/s.txt" })]
+    [InlineData(new[] { "*.txt", "-r" }, new[] { "dir/c.txt", "dir/sub/s.txt", "t.txt" })]
+    [InlineData(new[] { "c*.txt", "-r", @"-x!dir\c.txt" }, new string[0])]
+    [InlineData(new[] { @"dir\*.txt" }, new[] { "dir/c.txt" })]
+    [InlineData(new[] { @".\dir\*.txt" }, new[] { "c.txt" })]
+    [InlineData(new[] { "t.txt", @"-i!dir\*.log" }, new[] { "dir/c.log", "t.txt" })]
+    [InlineData(new[] { "dir", "*.txt", "-r" }, new[] { "dir/c.log", "dir/c.txt", "dir/sub/s.txt", "t.txt" })]
+    public void Archive_WithNameFilters_StoresWhat7ZipStores(string[] arguments, string[] expected)
+    {
+        string root = MakeFilterTree();
+        string zip = Path.Combine(CliFixtureFiles.CreateScratchDir(), "o.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(root, ["a", zip, .. arguments]);
+
+        if (expected.Length == 0)
+        {
+            exitCode.Should().Be(2, stdErr);
+            File.Exists(zip).Should().BeFalse();
+            return;
+        }
+        exitCode.Should().Be(0, stdErr);
+        ZipNames(zip).Should().Equal(expected);
+    }
+
+    [Fact]
+    public void Archive_AbsoluteExclude_LeavesNothingOut_As7Zip()
+    {
+        string root = MakeFilterTree();
+        string zip = Path.Combine(CliFixtureFiles.CreateScratchDir(), "o.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(root, "a", zip, "dir", "-x!" + Path.Combine(root, "dir", "c.txt"));
+
+        exitCode.Should().Be(0, stdErr);
+        ZipNames(zip).Should().Contain("dir/c.txt");
+    }
+
+    [Fact]
+    public void Archive_ListFileOfSources_IsRead()
+    {
+        string root = MakeFilterTree();
+        File.WriteAllLines(Path.Combine(root, "lst.txt"), [Path.Combine("dir", "sub"), "t.txt"]);
+        string zip = Path.Combine(CliFixtureFiles.CreateScratchDir(), "o.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(root, "a", zip, "@lst.txt");
+
+        exitCode.Should().Be(0, stdErr);
+        ZipNames(zip).Should().Equal("dir/sub/s.txt", "t.txt");
+    }
+
+    [Fact]
+    public void Archive_MissingListFile_ExitsSeven()
+    {
+        string root = MakeFilterTree();
+        string zip = Path.Combine(CliFixtureFiles.CreateScratchDir(), "o.zip");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(root, "a", zip, "@nope.txt");
+
+        exitCode.Should().Be(7, stdErr);
+        File.Exists(zip).Should().BeFalse();
+    }
+
+    [RequiresTarExe]
+    public void Archive_TarWithAnExclude_LeavesItOut()
+    {
+        string root = MakeFilterTree();
+        string tar = Path.Combine(CliFixtureFiles.CreateScratchDir(), "o.tar");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.RunIn(root, "a", "-ttar", tar, "dir", "-xr!*.log");
+
+        exitCode.Should().Be(0, stdErr);
+        TarNames(tar).Should().Contain("dir/c.txt").And.NotContain(name => name.EndsWith(".log", StringComparison.Ordinal));
+    }
+
     private static string[] TarNames(string tarPath)
     {
         var info = new ProcessStartInfo(@"C:\Windows\System32\tar.exe") { RedirectStandardOutput = true, UseShellExecute = false };

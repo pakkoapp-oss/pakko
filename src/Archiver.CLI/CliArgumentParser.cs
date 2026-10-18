@@ -43,7 +43,7 @@ public sealed record ParsedCliCommand
     public bool ArchiveNameExact { get; init; }                       // -sae, a only (T-F411): no extension added
     public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
     public CliNameSwitches NameSwitches { get; init; } = new();       // -i/-x/-r/-spd/-ssc/-scs/-ai/-ax/-an, x/l/t (T-F410)
-    public IReadOnlyList<CliFilterName> FilterNames { get; init; } = []; // x/l: the names after the archive name (T-F410)
+    public IReadOnlyList<CliFilterName> FilterNames { get; init; } = []; // x/l/t: the names after the archive name; a: its sources (T-F410)
     public CliNameFilter? EntryFilter { get; init; }                  // x/l: set by Program from CliNameSelection, not by the parser (T-F410)
     public string? ErrorMessage { get; init; }
 }
@@ -146,7 +146,12 @@ public static class CliArgumentParser
 
     private static ParsedCliCommand ParseCommand(string commandName, CliToken[] rest, CliNameSwitches nameSwitches)
     {
-        if (commandName is not ("x" or "l" or "t") && (nameSwitches.FiltersNames || nameSwitches.PicksArchives
+        // T-F410: 'a' takes -i, -x, -r, -spd, -ssc and -scs too; what picks archives, -stx, -xtd
+        // and -xtf stay x, l and t's (7-Zip refuses -ai on 'a' and ignores -stx there).
+        if (commandName == "a" && (nameSwitches.PicksArchives || nameSwitches.ExcludedTypes.Count > 0
+            || nameSwitches.ExcludeFolders || nameSwitches.ExcludeFiles))
+            return Invalid(ArchivePickingSwitchesReason);
+        if (commandName is not ("x" or "l" or "t" or "a") && (nameSwitches.FiltersNames || nameSwitches.PicksArchives
             || !nameSwitches.WildcardMatching || nameSwitches.CaseSensitive || nameSwitches.ListFileCharset is not null
             || nameSwitches.ExcludedTypes.Count > 0))
             return Invalid(NameSwitchesOnlyOnExtractReason);
@@ -162,10 +167,19 @@ public static class CliArgumentParser
             "u" or "d" or "rn" or "b" or "e" => Invalid(NotSupportedCommandReason(commandName)),
             var other => Invalid($"Incorrect command line: unknown command '{other}'"),
         };
+        if (command.Type == CliCommandType.Archive)
+        {
+            return command.FilterNames.Count == 0 && !nameSwitches.Names.Any(n => n.Include)
+                ? Invalid("'a' requires an archive name and at least one source file")
+                : command with { NameSwitches = nameSwitches };
+        }
         return command.Type is CliCommandType.Extract or CliCommandType.List or CliCommandType.Test
             ? SplitArchiveAndNames(command, nameSwitches)
             : command;
     }
+
+    private const string ArchivePickingSwitchesReason =
+        "not supported on 'a': -ai, -ax, -an, -stx, -xtd and -xtf work on 'x', 'l' and 't'";
 
     private const string NameSwitchesOnlyOnExtractReason =
         "not supported on this command: name filters (-i, -x, -r, -ai, -ax, -an, -spd, -ssc, -scs) and -stx work on 'x', 'l' and 't'";
@@ -492,6 +506,7 @@ public static class CliArgumentParser
     {
         public string? ArchivePathArg { get; set; }
         public List<string> SourcePaths { get; } = [];
+        public List<CliFilterName> SourceNames { get; } = [];
         public bool AssumeYes { get; set; }
         public ArchiveContainerFormat ArchiveFormat { get; set; } = ArchiveContainerFormat.Zip;
         public string? ArchiveTypeSwitch { get; set; }
@@ -515,7 +530,8 @@ public static class CliArgumentParser
                 return Invalid(error);
         }
 
-        if (state.ArchivePathArg is null || state.SourcePaths.Count == 0)
+        // T-F410: no source is checked in ParseCommand, where -i can name the sources instead.
+        if (state.ArchivePathArg is null)
             return Invalid("'a' requires an archive name and at least one source file");
 
         return new ParsedCliCommand
@@ -523,6 +539,7 @@ public static class CliArgumentParser
             Type = CliCommandType.Archive,
             ArchivePathArg = state.ArchivePathArg,
             SourcePaths = state.SourcePaths,
+            FilterNames = state.SourceNames,
             AssumeYes = state.AssumeYes,
             ArchiveFormat = state.ArchiveFormat,
             ArchiveTypeSwitch = state.ArchiveTypeSwitch,
@@ -542,9 +559,14 @@ public static class CliArgumentParser
         if (!argument.IsSwitch)
         {
             if (state.ArchivePathArg is null)
+            {
                 state.ArchivePathArg = token;
+            }
             else
+            {
                 state.SourcePaths.Add(token);
+                state.SourceNames.Add(PositionalName(argument));
+            }
             return null;
         }
 

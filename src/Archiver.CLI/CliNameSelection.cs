@@ -49,6 +49,40 @@ public static class CliNameSelection
     }
 
     /// <summary>
+    /// T-F410: what 'a' archives: the names after the archive, their list files and -i's names as
+    /// masks to look for (<see cref="CliArchiveSources"/>), and -x's names as the filter over names
+    /// in the archive. 7-Zip's ExtendExclude carries only an exclude without a prefix to every
+    /// source, so an absolute -x name, or one with a '.' or '..' part, leaves nothing out (measured).
+    /// </summary>
+    public static (IReadOnlyList<CliNameMask> Includes, CliNameFilter? Excludes, string? Error) BuildArchiveMasks(ParsedCliCommand command)
+    {
+        CliNameSwitches switches = command.NameSwitches;
+        var includes = new List<CliNameMask>();
+        foreach (CliFilterName name in command.FilterNames)
+        {
+            if (name.Text.Length == 0 || (name.IsListFile && name.Text.Length == 1))
+                return ([], null, "Empty file path");
+            string text = name.IsListFile ? name.Text[1..] : name.Text;
+            if (NamesOf(text, name.IsListFile, switches.ListFileCharset) is not { } names)
+                return ([], null, ListFileError(text));
+            includes.AddRange(names.Select(n => new CliNameMask(n, Include: true, switches.Recursion, switches.WildcardMatching)));
+        }
+
+        var excludes = new List<CliNameMask>();
+        foreach (CliWildcardSwitch item in switches.Names)
+        {
+            if (NamesOf(item.Text, item.IsListFile, switches.ListFileCharset) is not { } names)
+                return ([], null, ListFileError(item.Text));
+            (item.Include ? includes : excludes).AddRange(names.Select(n => new CliNameMask(
+                n, item.Include, item.Recursion ?? switches.Recursion, item.WildcardMatching ?? switches.WildcardMatching)));
+        }
+
+        excludes.RemoveAll(m => Path.IsPathRooted(m.Path) || Array.Exists(m.Path.Split(PathSeparators), part => part is "." or ".."));
+        CliNameFilter? filter = excludes.Count == 0 ? null : CliNameFilter.Create(excludes, switches.CaseSensitive, startFromAll: true);
+        return (includes, filter, null);
+    }
+
+    /// <summary>
     /// The archives to open: the archive name and -ai's names as typed when none has a wildcard or
     /// recurses (a missing one is the command's own error, exit 2, as in 7-Zip); otherwise every
     /// file they match under <paramref name="currentDirectory"/>, without -ax's, sorted. A

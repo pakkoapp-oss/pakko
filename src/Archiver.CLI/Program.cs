@@ -567,9 +567,17 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
     using var progress = CliProgress.For(command.Output, command.WriteToStdout);
     try
     {
+        // T-F410: a list file that cannot be read is a command-line error, as for x.
+        (IReadOnlyList<CliNameMask> includes, CliNameFilter? excludes, string? maskError) = CliNameSelection.BuildArchiveMasks(command);
+        if (maskError is not null)
+        {
+            await Console.Error.WriteLineAsync($"pakko: error: {maskError}").ConfigureAwait(false);
+            return 7;
+        }
         // T-F414: a name that adds nothing is a warning (exit 1), as in 7-Zip; with nothing left
         // there is no archive (Pakko never writes an empty one), exit 2.
-        CliArchiveSourceList sources = CliArchiveSources.Resolve(command.SourcePaths, Environment.CurrentDirectory, command.ArchivePathArg!);
+        CliArchiveSourceList sources = CliArchiveSources.Resolve(
+            includes, excludes, command.NameSwitches.CaseSensitive, Environment.CurrentDirectory, command.ArchivePathArg!);
         foreach (CliSourceProblem problem in sources.Problems)
             await Console.Error.WriteLineAsync($"pakko: warning: {problem.Name}: {problem.Reason}").ConfigureAwait(false);
         if (sources.Sources.Count == 0)
@@ -583,7 +591,10 @@ static async Task<int> RunArchiveAsync(ParsedCliCommand command, PakkoServices s
 
         using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
         StrongBox<CliPasswordPrompt.NewPasswordResult?> prompt = new();
-        ArchiveOptions options = BuildArchiveOptions(command, sources, ResolveArchiveDestination(command, stdoutFolder), prompt);
+        ArchiveOptions options = BuildArchiveOptions(command, sources, ResolveArchiveDestination(command, stdoutFolder), prompt) with
+        {
+            EntryFilter = excludes is null ? null : excludes.Includes,
+        };
 
         ArchiveResult result = await router.ArchiveAsync(options, progress, cancellation.Token).ConfigureAwait(false);
         progress?.Clear();

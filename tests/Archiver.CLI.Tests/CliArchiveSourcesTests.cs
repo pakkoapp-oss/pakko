@@ -122,6 +122,173 @@ public sealed class CliArchiveSourcesTests : IAsyncLifetime
         list.Problems.Should().ContainSingle();
     }
 
+    // T-F410: masks, searched on disk. 7za 26.02's answers for the same tree (step 0 of wave C).
+    private CliArchiveSourceList Search(IReadOnlyList<CliNameMask> masks, params string[] excludes) =>
+        CliArchiveSources.Resolve(
+            masks,
+            excludes.Length == 0 ? null : CliNameFilter.Create(excludes.Select(x => new CliNameMask(x, Include: false, CliRecursion.None)), startFromAll: true),
+            caseSensitive: false, _temp.Path, Full("o.zip"));
+
+    private static CliNameMask Mask(string path, CliRecursion recursion = CliRecursion.None) => new(path, Include: true, recursion);
+
+    private void AddLog() => File.WriteAllText(Full(@"dir\c.log"), "l");
+
+    [Fact]
+    public void Search_WildcardUnderAFolder_KeepsTheFolderInTheName()
+    {
+        AddLog();
+
+        CliArchiveSourceList list = Search([Mask(@"dir\*.txt")]);
+
+        list.Sources.Should().Equal(new CliArchiveSource(Full(@"dir\c.txt"), 2));
+    }
+
+    [Fact]
+    public void Search_DotPrefix_DropsTheFolderFromTheName()
+    {
+        CliArchiveSourceList list = Search([Mask(@".\dir\*.txt")]);
+
+        list.Sources.Should().Equal(new CliArchiveSource(Full(@"dir\c.txt"), 1));
+    }
+
+    [Fact]
+    public void Search_AbsoluteMask_NamesFromItsFirstWildcard()
+    {
+        CliArchiveSourceList list = Search([Mask(Full(@"*\*.txt"))]);
+
+        list.Sources.Should().Equal(new CliArchiveSource(Full(@"dir\c.txt"), 2));
+    }
+
+    [Fact]
+    public void Search_RecursiveMask_FindsEveryDepth()
+    {
+        CliArchiveSourceList list = Search([Mask("*.txt", CliRecursion.Recursive)]);
+
+        list.Sources.Should().BeEquivalentTo([
+            new CliArchiveSource(Full(@"dir\c.txt"), 2),
+            new CliArchiveSource(Full(@"dir\sub\s.txt"), 3),
+            new CliArchiveSource(Full("t.txt"), 1),
+        ]);
+    }
+
+    [Fact]
+    public void Search_RecursiveFolderName_TakesTheFolderWhole()
+    {
+        Directory.CreateDirectory(Full(@"dir2\sub"));
+
+        CliArchiveSourceList list = Search([Mask("sub", CliRecursion.Recursive)]);
+
+        list.Sources.Should().BeEquivalentTo([new CliArchiveSource(Full(@"dir\sub"), 2), new CliArchiveSource(Full(@"dir2\sub"), 2)]);
+    }
+
+    [Fact]
+    public void Search_WildcardFolder_IsTakenWhole_NotEntered()
+    {
+        CliArchiveSourceList list = Search([Mask("d*")]);
+
+        list.Sources.Should().Equal(new CliArchiveSource(Full("dir"), 1));
+    }
+
+    // 7za: "a o.zip dir *.txt -r" takes each item once.
+    [Fact]
+    public void Search_FolderAndARecursiveMaskInsideIt_TakeEachItemOnce()
+    {
+        CliArchiveSourceList list = Search([Mask("dir"), Mask("*.txt", CliRecursion.Recursive)]);
+
+        list.Sources.Should().BeEquivalentTo([new CliArchiveSource(Full("dir"), 1), new CliArchiveSource(Full("t.txt"), 1)]);
+    }
+
+    [Fact]
+    public void Search_FolderAndItsSubfolder_TakeTheFolderOnce()
+    {
+        CliArchiveSourceList list = Search([Mask(@"dir\sub"), Mask("dir")]);
+
+        list.Sources.Should().Equal(new CliArchiveSource(Full("dir"), 1));
+    }
+
+    [Fact]
+    public void Search_ExcludedItem_IsNotTaken_NorEntered()
+    {
+        AddLog();
+
+        CliArchiveSourceList list = Search([Mask("*", CliRecursion.Recursive)], "dir");
+
+        list.Sources.Should().Equal(new CliArchiveSource(Full("t.txt"), 1));
+    }
+
+    [Fact]
+    public void Search_WildcardMatchingNothing_IsNoProblem()
+    {
+        CliArchiveSourceList list = Search([Mask("*.xyz")]);
+
+        list.Sources.Should().BeEmpty();
+        list.Problems.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Search_UnderAMissingFolder_IsAProblem()
+    {
+        CliArchiveSourceList list = Search([Mask(@"nope\*.txt")]);
+
+        list.Problems.Should().ContainSingle().Which.Name.Should().Be(@"nope\*.txt");
+    }
+
+    [Fact]
+    public void Search_WildcardMatchingOff_LooksForTheNameAsTyped()
+    {
+        CliArchiveSourceList list = CliArchiveSources.Resolve(
+            [new CliNameMask(@"dir\*", Include: true, CliRecursion.None, WildcardMatching: false)], null, false, _temp.Path, Full("o.zip"));
+
+        list.Sources.Should().BeEmpty();
+        list.Problems.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Search_CaseSensitive_TakesOnlyTheSameCase()
+    {
+        CliArchiveSourceList list = CliArchiveSources.Resolve([Mask("*.TXT")], null, caseSensitive: true, _temp.Path, Full("o.zip"));
+
+        list.Sources.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Search_NeverTakesTheArchiveBeingWritten()
+    {
+        File.WriteAllText(Full("o.zip"), "old");
+
+        CliArchiveSourceList list = Search([Mask("*.zip")]);
+
+        list.Sources.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Search_DoesNotEnterALinkedFolder()
+    {
+        string target = Path.Combine(Path.GetTempPath(), "pakko-link-target-" + Path.GetRandomFileName());
+        Directory.CreateDirectory(target);
+        File.WriteAllText(Path.Combine(target, "outside.txt"), "o");
+        try
+        {
+            Directory.CreateSymbolicLink(Full("linked"), target);
+        }
+        catch (IOException)
+        {
+            Directory.Delete(target, recursive: true);
+            return; // creating a link needs Developer Mode or elevation: nothing to check here
+        }
+        try
+        {
+            CliArchiveSourceList list = Search([Mask("*.txt", CliRecursion.Recursive)]);
+
+            list.Sources.Should().NotContain(source => source.FullPath.Contains("outside", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(Full("linked"));
+            Directory.Delete(target, recursive: true);
+        }
+    }
+
     [Fact]
     public void Resolve_DriveRoot_IsPassedOnWhole()
     {
