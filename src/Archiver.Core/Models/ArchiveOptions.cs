@@ -69,6 +69,14 @@ public sealed record ArchiveOptions
     public bool ReadFilesOpenForWriting { get; init; }
 
     /// <summary>
+    /// T-F411: a source file the ZIP engine cannot read fails its whole archive, which is then not
+    /// written - an existing one it would replace stays as it was (7-Zip's -sse). Without it such a
+    /// file is an error and the rest is archived. tar.exe already writes no archive when it cannot
+    /// read a file (measured), so the tar-family formats and 7z behave this way regardless.
+    /// </summary>
+    public bool StopOnUnreadableSource { get; init; }
+
+    /// <summary>
     /// T-F06: invoked once per conflicting destination path when <see cref="OnConflict"/> is
     /// <see cref="ConflictBehavior.Ask"/>. Null (e.g. Archiver.Shell, or a test that doesn't wire
     /// it) falls back to Skip — see ConflictResolver.

@@ -151,6 +151,29 @@ public sealed class CliCoreSwitchesTests
         result.ErrorMessage.Should().Contain(reason);
     }
 
+    // --- -sse: stop at a file that cannot be read (SWFRM_SIMPLE) ---
+
+    [Fact]
+    public void Archive_StopOnUnreadableSource_IsTaken()
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse(["a", "-SSE", "out.zip", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Archive, result.ErrorMessage);
+        result.StopOnUnreadableSource.Should().BeTrue();
+        CliArgumentParser.Parse(["a", "out.zip", "f.txt"]).StopOnUnreadableSource.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("a", "-sse1", "-sse takes no value")]
+    [InlineData("x", "-sse", "not supported on this command")]
+    public void StopOnUnreadableSource_WithAPostfixOrOnAnotherCommand_IsRefused(string command, string token, string reason)
+    {
+        ParsedCliCommand result = CliArgumentParser.Parse([command, token, "a.zip", "f.txt"]);
+
+        result.Type.Should().Be(CliCommandType.Invalid);
+        result.ErrorMessage.Should().Contain(reason);
+    }
+
     // --- -ssp: declined (Pakko cannot keep the sources' last access time through tar.exe) ---
 
     [Theory]
