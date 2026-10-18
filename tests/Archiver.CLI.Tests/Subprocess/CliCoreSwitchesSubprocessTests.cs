@@ -88,6 +88,23 @@ public sealed class CliCoreSwitchesSubprocessTests
         File.Exists(Path.Combine(scratchDir, "out.zip")).Should().BeFalse();
     }
 
+    // --- -aot ---
+
+    // 7za: the file already there becomes a_1.txt and the extracted one takes a.txt; Pakko numbers
+    // it as -aou does ("a (1).txt").
+    [Fact]
+    public void Extract_RenameExisting_KeepsBothFiles()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        File.WriteAllText(Path.Combine(destDir, "a.txt"), "old");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", CliFixtureFiles.ValidZip, $"-o{destDir}", "-aot");
+
+        exitCode.Should().Be(0, stdErr);
+        File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("hello world");
+        File.ReadAllText(Path.Combine(destDir, "a (1).txt")).Should().Be("old");
+    }
+
     // --- -spe ---
 
     // 7za: "x src.zip -o<dir>\src -spe" puts src's content straight into <dir>\src; "-o." in a folder

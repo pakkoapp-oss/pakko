@@ -460,27 +460,22 @@ public static class CliArgumentParser
         overwriteMode = null;
         if (token.Length != 4)
         {
-            error = "-ao requires exactly one mode letter: a, s, or u (e.g. -aoa)";
+            error = "-ao requires exactly one mode letter: a, s, t or u (e.g. -aoa)";
             return false;
         }
 
         char mode = token[3];
-        if (mode == 't')
-        {
-            error = "not supported by Pakko: -aot (rename existing file instead of new) has no equivalent";
-            return false;
-        }
-
         overwriteMode = mode switch
         {
             'a' => ConflictBehavior.Overwrite,
             's' => ConflictBehavior.Skip,
             'u' => ConflictBehavior.Rename,
+            't' => ConflictBehavior.RenameExisting,
             _ => (ConflictBehavior?)null,
         };
         if (overwriteMode is null)
         {
-            error = $"unknown -ao mode: '{mode}' (expected a, s, or u)";
+            error = $"unknown -ao mode: '{mode}' (expected a, s, t or u)";
             return false;
         }
 

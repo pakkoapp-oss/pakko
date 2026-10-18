@@ -26,6 +26,19 @@ internal sealed class ExtractionStaging : IDisposable
 
     private readonly Dictionary<string, DateTime> _folderTimes = new(StringComparer.OrdinalIgnoreCase);
 
+    private readonly HashSet<string> _renameExisting = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string>? _claimedFinalPaths;
+
+    /// <summary>T-F411: <see cref="Models.ConflictBehavior.RenameExisting"/> - the file at
+    /// <paramref name="finalPath"/> is renamed in the commit, just before the staged one takes its
+    /// name. <paramref name="claimedFinalPaths"/> is every path this run writes, so the new name is
+    /// never one the archive is still to write.</summary>
+    public void RenameExistingOnCommit(string finalPath, HashSet<string> claimedFinalPaths)
+    {
+        _renameExisting.Add(System.IO.Path.GetFullPath(finalPath));
+        _claimedFinalPaths = claimedFinalPaths;
+    }
+
     /// <summary>T-F298: the time a folder entry gets at the destination, by its path relative to
     /// the destination ("" is the destination itself). Set by <see cref="CommitInto"/> after every
     /// file has moved (moving a file into a folder changes the folder's time), and only on folders
@@ -81,7 +94,9 @@ internal sealed class ExtractionStaging : IDisposable
         List<string>? folders = committed is null ? null : StagedFolders();
         List<string>? files = committed is null ? null : StagedFiles();
 
-        if (!Directory.Exists(actualDest))
+        // A file to rename exists only in a destination that does too; the second test keeps the
+        // fast path's whole-folder rename from ever skipping one.
+        if (!Directory.Exists(actualDest) && _renameExisting.Count == 0)
         {
             // The rename carries the folder's attributes with it.
             var info = new DirectoryInfo(Path);
@@ -136,18 +151,57 @@ internal sealed class ExtractionStaging : IDisposable
             string relative = System.IO.Path.GetRelativePath(Path, file);
             string finalFile = System.IO.Path.Combine(actualDest, relative);
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(finalFile)!);
-            try
+            if (_renameExisting.Contains(System.IO.Path.GetFullPath(finalFile)))
             {
-                File.Move(file, finalFile, overwrite: true);
+                if (!TryMoveInRenamingExisting(file, finalFile))
+                {
+                    lockedRelativePaths.Add(relative);
+                    continue;
+                }
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            else
             {
-                lockedRelativePaths.Add(relative);
-                continue;
+                try
+                {
+                    File.Move(file, finalFile, overwrite: true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    lockedRelativePaths.Add(relative);
+                    continue;
+                }
             }
             committed?.Invoke(finalFile);
         }
         return lockedRelativePaths;
+    }
+
+    // T-F411: never an overwrite - the existing file is renamed first, and gets its name back when
+    // the new one cannot follow. Should that fail too, it stays under the numbered name, which is
+    // what -aot gives it anyway; the new file is reported as not moved in.
+    private bool TryMoveInRenamingExisting(string staged, string finalFile)
+    {
+        string? movedAway = null;
+        try
+        {
+            if (File.Exists(finalFile))
+            {
+                movedAway = ArchiveNaming.GetUniqueFilePath(finalFile, _claimedFinalPaths);
+                File.Move(finalFile, movedAway);
+            }
+            File.Move(staged, finalFile);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            if (movedAway is not null && !File.Exists(finalFile))
+            {
+                try { File.Move(movedAway, finalFile); }
+                catch (Exception backEx) when (backEx is IOException or UnauthorizedAccessException)
+                { /* best-effort: the existing file keeps -aot's numbered name, nothing is lost */ }
+            }
+            return false;
+        }
     }
 
     private List<string> StagedFolders() => [.. Directory.EnumerateDirectories(Path, "*", SearchOption.AllDirectories)];

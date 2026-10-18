@@ -128,5 +128,14 @@ public enum ConflictBehavior
     Rename,
 
     /// <summary>Ask the caller via <see cref="ArchiveOptions.ResolveConflictAsync"/>/ExtractOptions.ResolveConflictAsync.</summary>
-    Ask
+    Ask,
+
+    /// <summary>
+    /// T-F411, on extraction only (7-Zip's -aot): the file already there is renamed, numbered as
+    /// <see cref="Rename"/> numbers, and the extracted one takes its name. Done in the commit, one
+    /// file at a time: a file that cannot be moved in leaves the existing one under its own name.
+    /// Two entries of one archive with the same name: the later one is renamed itself, as with
+    /// <see cref="Rename"/>. On archive creation it is treated as <see cref="Rename"/>.
+    /// </summary>
+    RenameExisting,
 }
