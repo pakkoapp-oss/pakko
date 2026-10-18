@@ -1,0 +1,146 @@
+using System.Diagnostics;
+using System.IO.Compression;
+using System.Text;
+using Archiver.CLI.Tests.Subprocess;
+using FluentAssertions;
+
+namespace Archiver.CLI.Tests.Adversarial;
+
+/// <summary>
+/// T-F419 red team: one fresh folder per test under %TEMP%, and the only place a test lets pakko
+/// write. Every path a test hands pakko goes through <see cref="Inside"/>, which refuses anything
+/// outside the root, and every link it makes points inside the root too, so even a pakko that
+/// follows a link stays in it. Junctions are removed without recursion before the folder is.
+/// </summary>
+internal sealed class AdversarialScratch : IDisposable
+{
+    private const string Cmd = @"C:\Windows\System32\cmd.exe";
+    private readonly List<string> _links = [];
+
+    public AdversarialScratch()
+    {
+        Root = Directory.CreateTempSubdirectory("pakko-redteam-").FullName;
+    }
+
+    public string Root { get; }
+
+    /// <summary>A path under the root; fails the test for one that would leave it.</summary>
+    public string Inside(string relative)
+    {
+        string full = Path.GetFullPath(Path.Combine(Root, relative));
+        full.Should().StartWith(Root + Path.DirectorySeparatorChar, "a red-team test never points pakko outside its scratch folder");
+        return full;
+    }
+
+    public string WriteFile(string relative, string content)
+    {
+        string path = Inside(relative);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, content);
+        return path;
+    }
+
+    public string Folder(string relative) => Directory.CreateDirectory(Inside(relative)).FullName;
+
+    /// <summary>A ZIP whose entry names are written exactly as given, hostile ones included.</summary>
+    public string Zip(string relative, params (string Name, string Content)[] entries)
+    {
+        string path = Inside(relative);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using (ZipArchive archive = ZipFile.Open(path, ZipArchiveMode.Create))
+        {
+            foreach ((string name, string content) in entries)
+            {
+                using Stream stream = archive.CreateEntry(name).Open();
+                stream.Write(Encoding.UTF8.GetBytes(content));
+            }
+        }
+        return path;
+    }
+
+    public void Junction(string linkRelative, string targetRelative)
+    {
+        string link = Inside(linkRelative);
+        RunCmd("mklink", "/J", link, Inside(targetRelative));
+        _links.Add(link);
+    }
+
+    public void HardLink(string linkRelative, string targetRelative) =>
+        RunCmd("mklink", "/H", Inside(linkRelative), Inside(targetRelative));
+
+    public (int ExitCode, string StdOut, string StdErr) Pakko(params string[] args) =>
+        CliProcessRunner.RunIn(Root, args);
+
+    /// <summary>Every file under the root as its relative path, read through \\?\ so names Win32 would trim show as they are.</summary>
+    public IReadOnlyList<string> FilesUnder(string relative)
+    {
+        string longRoot = @"\\?\" + Inside(relative);
+        if (!Directory.Exists(longRoot))
+            return [];
+        return [.. Directory.EnumerateFiles(longRoot, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(longRoot, path))
+            .Order(StringComparer.Ordinal)];
+    }
+
+    public void Dispose()
+    {
+        foreach (string link in _links)
+        {
+            try { Directory.Delete(link); } catch (IOException) { /* best-effort: the recursive delete below retries */ }
+        }
+        // tar.exe's sandbox can hold a file for a moment after pakko exits (TestTempFolder, T-F300).
+        for (int attempt = 1; attempt <= 30; attempt++)
+        {
+            try
+            {
+                Directory.Delete(@"\\?\" + Root, recursive: true);
+                return;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && attempt < 30)
+            {
+                Task.Delay(100).GetAwaiter().GetResult();
+            }
+        }
+    }
+
+    private static void RunCmd(params string[] args)
+    {
+        var startInfo = new ProcessStartInfo(Cmd)
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        };
+        startInfo.ArgumentList.Add("/c");
+        foreach (string arg in args)
+            startInfo.ArgumentList.Add(arg);
+        using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException("cmd.exe did not start");
+        string error = process.StandardError.ReadToEnd();
+        process.StandardOutput.ReadToEnd();
+        process.WaitForExit();
+        process.ExitCode.Should().Be(0, $"cmd /c {string.Join(' ', args)} failed: {error}");
+    }
+}
+
+/// <summary>A test that needs File.CreateSymbolicLink (Developer Mode or the privilege); skipped without it.</summary>
+public sealed class RequiresSymlinkFactAttribute : FactAttribute
+{
+    public RequiresSymlinkFactAttribute()
+    {
+        string probe = Path.Combine(Path.GetTempPath(), "pakko-redteam-symlink-probe-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            File.CreateSymbolicLink(probe, Path.GetTempPath());
+            File.Delete(probe);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Skip = "this account cannot create symbolic links (no Developer Mode or SeCreateSymbolicLinkPrivilege)";
+        }
+    }
+}
