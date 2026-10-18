@@ -1542,7 +1542,8 @@ re-measured with T-F346's script before and after.
   changed nothing in Shell. The read finished while the child should have held the pipe's write
   end; whether the child exited early on a loaded runner or the handle did not reach it is not
   known. Next: read the test's timing assumptions, reproduce under load, fix the cause, not with a
-  retry.
+  retry. Failed again on PR #84's run 39107196966 (2026-10-18), the same message, on a change that
+  touched no Shell code.
 - **Reported by:** T-F375's PR, 2026-10-10.
 
 ### T-F392 — Two hard links to one file in a source folder: Pakko cannot extract the tar it made (P3)
@@ -1645,9 +1646,14 @@ re-measured with T-F346's script before and after.
   (`r`, `w`, `!`, `@list`), `-xtd`/`-xtf`, `@listfile`, `-r`/`-r-`/`-r0`, `-spd`, `-ssc`, `-scs`;
   `x`, `l` and `t` take archive wildcards, `-ai`, `-ax`, `-an` (`docs/DECISIONS.md`, "T-F410, wave
   A"). A name after the archive is now a filter, no longer a second archive: the 1.8.2 CHANGELOG
-  says so under a change in behavior. **Still open (wave B):** the same filters on `t` (Core's
-  `TestAsync` takes no selection) and on `a` (wildcards in the sources, `-r`, `-x`, both writers,
-  `tar.exe`'s `-X`), and `-stx`.
+  says so under a change in behavior. **Wave B** (2026-10-18): `t` takes the same filters (Core's
+  `TestAsync` takes an `entryFilter`), and `-stx` on `x`, `l`, `t` (`docs/DECISIONS.md`, "T-F410,
+  wave B"); for the 1.8.2 CHANGELOG: "`pakko t` takes `-i`, `-x` and names after the archive; `-stx`
+  leaves out an archive type"; "a selection in a tar that names no entry no longer extracts the
+  whole archive". **Still open (wave C, with T-F414):** the filters on `a` (wildcards in the
+  sources, `-r`, `-x`, both writers, `tar.exe`'s `-X`); 7-Zip stores a source path as typed
+  (`a o.zip dir\sub` gives `dir\sub\...`), Pakko by the source's own name (T-F153), so the
+  wildcards wait for T-F414's decision.
 - **Reported by:** T-F343's measurement, 2026-10-17.
 
 ### T-F411 — `pakko`: small 7-Zip switches and spellings (P3, from T-F343)
@@ -1699,3 +1705,15 @@ re-measured with T-F346's script before and after.
   it), or keep exit 1 and record Scoop's `-aos` path as a difference. Record the decision in
   `docs/DECISIONS.md`.
 - **Reported by:** T-F410 wave A's measurement, 2026-10-17.
+
+### T-F416 — `tar.exe` lists a UTF-8 name outside the ANSI code page as `????.txt` (P2, from T-F410)
+
+- [ ] **Status:** open. Measured 2026-10-18 on the Windows 10 VM (bsdtar 3.5.2, ACP 1252): a tar
+  whose UTF-8 header names `\u0444\u0430\u0439\u043B.txt` lists, under
+  `--options tar:hdrcharset=UTF-8 -tf`, as `????.txt` with exit 0, with no "unreadable filename"
+  message for `TarSandboxScope` to fall back on. The CI runner (1252) showed the same through the
+  T-F410 selection test. `TarSandboxedServiceNameEncodingTests` says a name outside the code page is
+  either its real name or a clear failure, never mojibake; on this `tar.exe` it is neither. Next:
+  see what Pakko's listing, extraction and test then do with the `?` name (a `?` cannot be a file
+  name on Windows), and refuse such an archive with a clear message rather than guess.
+- **Reported by:** T-F410 wave A's CI run on PR #84, 2026-10-18.

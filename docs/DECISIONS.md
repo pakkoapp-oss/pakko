@@ -13255,6 +13255,51 @@ the archive.
   refused, `CommitInto` without the callback, each engine without it, the locked file named, the
   merge naming twice, `Program.cs` without the stream, `-bt` and `-ba` code, and `-bb` set to 9.
 
+## T-F410, wave B: name filters on t, and -stx (2026-10-18)
+
+- **Measured first** (vendored `7za.exe` 26.02; `tar.exe` 3.8.8 on build 26300 and 3.5.2 on the
+  Windows 10 VM, build 19045, ACP 1252):
+  - `7za t t.zip -x!*.log -bb1` tests every entry but the top-level `b.log` (no `-r`: top level
+    only); `t t.zip nomatch` is "No files to process", exit 0. `t` filters exactly as `x` does.
+  - A damaged entry the filter leaves out: a ZIP passes (7za and Pakko); a solid 7z fails in 7za
+    ("CRC Failed : a.bin" with `-x!a.bin`), where `tar.exe -x -O -X` passes it, since libarchive
+    skips an excluded entry's checksum; a `.tar.xz` fails either way (7za sees one xz stream, and
+    `tar.exe` cannot read past the damage). The tests expect exactly that, format by format.
+  - `tar -x -O -X <file>` with `TarExcludePattern`'s anchored, escaped names excludes exactly those
+    files (`^a.txt` keeps `a.txt.bak` and `dir/a.txt`; `^k\[1\].txt` keeps `k1.txt`), and
+    `-x -O -T <file>` reads exactly the listed names (T-F284's escape, a `./-d.txt` line); the same
+    on both builds. A `-T` name not in the archive is "Not found in archive", exit 1.
+  - `-stx`: `-stxzip` on a ZIP, under any name (`.dat` too) and on `-si`, is "Cannot open the file
+    as archive", exit 2; `-stx` alone is "Too short switch", exit 7; `-stxgz` and `-stxtgz` are
+    "Unsupported archive type", exit 2; `-stxtar` leaves a `.tar.gz` alone (7-Zip opens the gzip
+    stream) and `-stxgzip` refuses it; `-stx7z` on a ZIP changes nothing. Type names are 7za's `i`
+    Formats list (7z, bzip2, gzip, lzma, tar, xz, zip, zstd); `rar`/`rar5` are the full 7-Zip's.
+- **Core: `TestAsync` takes the same predicate as `ExtractOptions.EntryFilter`**, a trailing
+  parameter before the token on `IArchiveService`, `ITarService` and `IExtractionRouter`. ZIP skips
+  an entry it leaves out (the local-header check stays whole-archive, as 7-Zip's "Headers Error").
+  tar: the unsafe-entry pre-scan stays whole-archive, as on `x` (T-F49); then `tar.exe` gets the
+  **shorter list**: no list when every file passes, `-T` with the files that passed when they are
+  fewer, otherwise `-X` with the files left out. Either list costs libarchive N^2 pattern matches
+  (wave A: 40,000 names 148 s against 24 s), so a Scoop-style `-x!*.nsis` that leaves out one file
+  of 40,000 pays for one pattern, not 39,999. When no file passes (or only folders), `tar.exe` does
+  not run and the archive is reported clean without `TestedStructureOnly`: nothing was read, and a
+  warning would make `t x.tar.gz nomatch` exit 1 where 7-Zip exits 0.
+- **A filtered test never feeds PAR2's "the archive passes its own test" rule** (T-F397): it read
+  only part of the archive, so a set that disagrees is damage, not an older set.
+- **CLI:** `t` takes `-i`, `-x`, names after the archive, `@listfile`, `-r` through wave A's
+  `CliNameFilter`, and prints "No files to process" as `x` does. `-stx{type}` (`x`, `l`, `t`) is
+  checked against `ArchiveFormatDetector.Detect`, the outer format by the bytes; an excluded
+  archive is reported and the others go on, the run ending with exit 2 at least. 7-Zip knows many
+  types Pakko does not read (cab, iso, ...): those are "Unsupported archive type", a deliberate
+  difference, since Pakko cannot honor what it never opens either way.
+- **Measured after** (`scripts/Measure-SevenZipCompat.ps1`, with four new probes: `t -x!*.nsis`,
+  `t -ir!*.txt`, `t -stxzip`, `t -stx7z`): works 43, accepted 42, differs 24, missing 51,
+  pakko-only 5, reference-fails 11; the rows measured before are unchanged, the new probes are 3
+  accepted and 1 reference-fails (both exit 2 on `-stxzip`).
+- **`a` waits for wave C, with T-F414.** `7za a o.zip dir\sub` stores `dir\sub\...` and `a o.zip
+  dir\*.txt` stores `dir\c.txt`: the path as typed. Pakko names an entry after the source's own
+  name (T-F153), so wildcards in `a`'s sources cannot be designed before T-F414 decides that.
+
 ## T-F410, wave A: 7-Zip's name filters on x and l, and archive names by wildcard (2026-10-17)
 
 - **Sources** (7-Zip 26.02, `ip7z/7zip` tag `26.02`, read before the code):

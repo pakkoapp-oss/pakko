@@ -737,10 +737,12 @@ public interface IArchiveService
     // flat path list rather than an Options record, so it's a trailing parameter instead of a
     // field. Placed before cancellationToken per CA1068 (CancellationToken must be last), which is
     // why the two existing call sites (Archiver.CLI/Archiver.Shell) pass cancellationToken: named.
+    // T-F410: entryFilter tests only the entries it passes, asked as ExtractOptions.EntryFilter is.
     Task<ArchiveResult> TestAsync(
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
         Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null,
+        Func<string, bool, bool>? entryFilter = null,
         CancellationToken cancellationToken = default);
 
     // T-F05: lists entries without extracting — flat, not hierarchical. Never throws — a
@@ -1247,10 +1249,13 @@ public interface ITarService
 
     // T-F397: tar.exe reads every entry inside the sandbox and writes nothing ("-x -O"), after
     // extraction's own pre-scan. A pass in a format whose contents tar.exe does not verify
-    // carries a TestedStructureOnly warning. Never throws, except on cancellation.
+    // carries a TestedStructureOnly warning. Never throws, except on cancellation. T-F410:
+    // entryFilter has tar.exe read only the files it passes ("-T" or "-X", the shorter list);
+    // nothing passing runs no tar.exe and carries no warning.
     Task<ArchiveResult> TestAsync(
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
+        Func<string, bool, bool>? entryFilter = null,
         CancellationToken cancellationToken = default);
 
     Task<ArchiveResult> ExtractAsync(
@@ -1344,12 +1349,14 @@ public interface IExtractionRouter
     // test that verified the contents (a ZIP, a 7z, tar.xz/bz2/zst); a pass that carries
     // TestedStructureOnly does not count, and that warning is dropped for an archive its set
     // could check, since the set compared every byte. Under DisableRecoveryData no set is looked for and a
-    // .par2 path is an error.
+    // .par2 path is an error. T-F410: entryFilter goes to both engines; a filtered test never
+    // counts as the archive passing its own test for a recovery set.
     Task<ArchiveResult> TestAsync(
         IReadOnlyList<string> archivePaths,
         IProgress<ProgressReport>? progress = null,
         Func<PasswordPromptInfo, Task<PasswordDecision>>? resolvePasswordAsync = null,
         bool verifyRecoveryData = false,
+        Func<string, bool, bool>? entryFilter = null,
         CancellationToken cancellationToken = default);
 }
 ```
