@@ -93,6 +93,10 @@ src/
 │   │   │                                  Group Policy gate) for extract, test, list and scan
 │   │   ├── PakkoServices.cs            ← T-F261: Core factory for Shell/CLI, one policy for everything
 │   │   ├── ArchiveEntrySecurity.cs     ← ADS/reserved-name/reparse-point/bomb checks, shared
+│   │   ├── EntryDiskName.cs            ← T-F420: public; how an entry name lands on disk (AsPakkoWrites,
+│   │   │                                  AsTarExeWrites, Renames, Trims, SameName, TrimmedTwins,
+│   │   │                                  ShortNameAliasOfAnother); ExtractionNameRegistry.cs (internal):
+│   │   │                                  one extraction's claimed paths, twins and replaced archives
 │   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based (.lzma by name, T-F398)
 │   │   ├── ArchiveNaming.cs            ← compound-extension-aware naming (T-F103)
 │   │   ├── SourcePathNormalizer.cs     ← a creation source as entries are named from it: no trailing separator, "."/".."/relative resolved (T-F153, T-F338)
@@ -216,7 +220,9 @@ src/
 │   ├── DeferredActionGate.cs                            ← T-F106: defers activation past first layout pass
 │   ├── SourceRecycler.cs                                ← T-F207: "Delete after operation" — Recycle Bin / confirm / report;
 │   │                                                       T-F302: DeleteAsync returns RecycleResult (Deleted, NotDeleted);
-│   │                                                       T-F419: DeleteAsync(sources, ISourceSnapshot, confirm)
+│   │                                                       T-F419: DeleteAsync(sources, ISourceSnapshot, confirm);
+│   │                                                       T-F420: static NotFullyProcessed(candidates, fullyProcessed),
+│   │                                                       MissingOutputs(outputs) - checked before anything is deleted
 │   ├── SourceSnapshot.cs                                ← T-F419: the sources before the run; a changed one is kept
 │   ├── Win32SourceDeleteOperations.cs                   ← T-F207: final-path + volume-type + SHFileOperationW P/Invoke
 │   ├── PrimaryActionPolicy.cs                           ← T-F199: Compress/Extract availability + which one is primary

@@ -914,7 +914,10 @@ registry), `EntryDiskNameTarExeTests` (Integration: real tar.exe writes what `As
 predicts, so a libarchive update that names files differently fails here) and the
 cross-archive rows of `CrossArchiveReplacementTests`/`TarFullyProcessedAdversarialTests` (one
 through `ExtractionRouter` with a ZIP and a tar). `SourceRecyclerAdversarialTests`' one real
-Recycle Bin call is `Category=Slow`: it writes to the user's Recycle Bin.
+Recycle Bin call is `Category=Slow`: it writes to the user's Recycle Bin. The T-F420 independent
+review's tests stay as it wrote them, under its own names: `Adversarial/IndependentReviewTests`
+(CLI: twins across archives through tar, a trimmed name over a file on disk, an 8.3 alias in a
+tar) and `Services/IndependentReviewRegistryTests` (Core: -aot across archives).
 
 **T-F116 additions (`-si`/`-so` streaming):** `CliStreamStagingTests.cs` (new unit-test file, no
 process spawn) covers `CliStreamStaging.StreamSingleFileAsync`'s three outcomes — exactly one file
