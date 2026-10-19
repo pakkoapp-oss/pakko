@@ -1525,10 +1525,11 @@ public sealed class ZipArchiveService : IArchiveService
         // it never sees an earlier duplicate entry from THIS SAME run, since nothing is
         // committed to the final destination until after the whole loop finishes. Tracking
         // claimed paths in memory closes that gap; without it, a duplicate entry would
-        // silently overwrite the first one's file in tempDest.
-        var claimedFinalPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // silently overwrite the first one's file in tempDest. T-F420: that bookkeeping is shared
+        // with the tar engine (ExtractionNameRegistry).
+        var names = new ExtractionNameRegistry(context.ReplacedInRun);
 
-        var plan = new ExtractionPlan(staging, tempDest, fullTempDest, actualDest, stripRootPrefix, totalUncompressedBytes, claimedFinalPaths,
+        var plan = new ExtractionPlan(staging, tempDest, fullTempDest, actualDest, stripRootPrefix, totalUncompressedBytes, names,
             encryptedEntryMap, rawArchiveStream)
         {
             Motw = ArchiveEntrySecurity.ReadMotw(archivePath, context.MotwMode),
@@ -1625,16 +1626,13 @@ public sealed class ZipArchiveService : IArchiveService
         string ActualDest,
         bool StripRootPrefix,
         long TotalUncompressedBytes,
-        HashSet<string> ClaimedFinalPaths,
+        ExtractionNameRegistry Names,
         // T-F189: both null unless context.Password is set — see ExtractWithSmartFolderingAsync.
         Dictionary<ZipArchiveEntry, LocatedZipEntry>? EncryptedEntryMap = null,
         Stream? RawArchiveStream = null)
     {
         // T-F358: the archive's Zone.Identifier, read once; null when there is none to write.
         public byte[]? Motw { get; init; }
-
-        // T-F419: the claimed paths an entry took under a name Windows trimmed ("a.txt." as "a.txt").
-        public HashSet<string> ClaimedByTrimmedNames { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
     // One entry of ExtractWithSmartFolderingAsync's loop — every one of the 6 skip-gates below is
@@ -1741,7 +1739,8 @@ public sealed class ZipArchiveService : IArchiveService
     {
         string fullTempDest = plan.FullTempDest;
         string actualDest = plan.ActualDest;
-        HashSet<string> claimedFinalPaths = plan.ClaimedFinalPaths;
+        ExtractionNameRegistry names = plan.Names;
+        HashSet<string> claimedFinalPaths = names.Claimed;
 
         string destFilePath = Path.GetFullPath(Path.Combine(plan.TempDest, relativePath));
 
@@ -1769,7 +1768,7 @@ public sealed class ZipArchiveService : IArchiveService
         string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, Path.GetRelativePath(fullTempDest, destFilePath)));
         // T-F419: a name Windows writes as another - a part's trailing dot or space dropped, or
         // an 8.3 alias ("LONGFI~1.TXT") that resolves to an earlier entry's long name.
-        bool trimmedByWindows = ArchiveEntrySecurity.TrimmedByWindows(relativePath)
+        bool trimmedByWindows = EntryDiskName.IsTrimmed(relativePath)
             || !string.Equals(Path.GetFileName(relativePath), Path.GetFileName(finalFilePath), StringComparison.OrdinalIgnoreCase);
         if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath)
             || (context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
@@ -1777,8 +1776,7 @@ public sealed class ZipArchiveService : IArchiveService
             int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
             // T-F419: "a.txt." and "a.txt" are two entries Windows writes under one name; neither
             // may overwrite the other, -y or not (7-Zip keeps both, as "a.txt_").
-            ConflictBehavior resolvedConflict = claimedFinalPaths.Contains(finalFilePath)
-                && (trimmedByWindows || plan.ClaimedByTrimmedNames.Contains(finalFilePath))
+            ConflictBehavior resolvedConflict = names.MustKeepApart(finalFilePath, trimmedByWindows)
                 ? ConflictBehavior.Rename
                 : await context.ConflictResolver
                     .ResolveAsync(finalFilePath, named.Entry.Length, new DateTimeOffset(named.ModifiedUtc).ToLocalTime()).ConfigureAwait(false);
@@ -1797,14 +1795,8 @@ public sealed class ZipArchiveService : IArchiveService
                 destFilePath = Path.Combine(Path.GetDirectoryName(destFilePath)!, Path.GetFileName(uniqueFinal));
                 finalFilePath = uniqueFinal;
             }
-            else if (claimedFinalPaths.Contains(finalFilePath))
-            {
-                context.ReplacedInRun?.Add(relativePath);
-            }
         }
-        claimedFinalPaths.Add(finalFilePath);
-        if (trimmedByWindows)
-            plan.ClaimedByTrimmedNames.Add(finalFilePath);
+        names.Claim(finalFilePath, trimmedByWindows, relativePath);
 
         // T-F189: entry names are never encrypted by the ZIP format itself, so every check above
         // (ADS/reserved-name, traversal, reparse-point, conflict) already ran unmodified before

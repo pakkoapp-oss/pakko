@@ -157,6 +157,23 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
     public Task Hash_Path(string kind) => NoThrow(() =>
         FileHashService.ComputeAsync([Path(kind, ".bin")], HashAlgorithmKind.Sha256, null, CancellationToken.None));
 
+    // T-F420: where a source path leads, and what it holds (-sdel and "Delete after").
+    [Theory, MemberData(nameof(Hostile))]
+    public Task PathIdentity_Path(string kind) => NoThrow(() =>
+    {
+        string path = Path(kind);
+        _ = Archiver.Core.IO.PathIdentity.Resolve(path);
+        _ = Archiver.Core.IO.PathIdentity.SelfAndAncestors(path);
+        return Task.CompletedTask;
+    });
+
+    [Theory, MemberData(nameof(Hostile))]
+    public Task SourceTree_Path(string kind) => NoThrow(() =>
+    {
+        _ = Archiver.Core.IO.SourceTree.List(Path(kind));
+        return Task.CompletedTask;
+    });
+
     // --- The folder an operation writes into ----------------------------------------------
 
     [Theory, MemberData(nameof(Hostile))]
@@ -311,6 +328,9 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["IRecoveryService.RepairAsync"] = [nameof(Repair_Par2), nameof(Repair_Output)],
         ["IAntivirusScanService.ScanAsync"] = [nameof(Scan_Archive)],
         ["FileHashService.ComputeAsync"] = [nameof(Hash_Path)],
+        ["PathIdentity.Resolve"] = [nameof(PathIdentity_Path)],
+        ["PathIdentity.SelfAndAncestors"] = [nameof(PathIdentity_Path)],
+        ["SourceTree.List"] = [nameof(SourceTree_Path)],
     };
 
     // Public members with no path to be hostile about.
@@ -320,6 +340,12 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["ITarService.CanCreateSevenZipAsync"] = "probes tar.exe's 7z writer in its own temp folder; takes no path",
         ["ITarService.AskSevenZipWriterAsync"] = "the same probe, keeping 'no answer' apart from 'no'; takes no path",
         ["FileHashService.ComputeStreamDigestAsync"] = "hashes a stream the caller opened",
+        ["EntryDiskName.AsPakkoWrites"] = "a name inside an archive, never opened",
+        ["EntryDiskName.AsTarExeWrites"] = "a name inside an archive, never opened",
+        ["EntryDiskName.IsTrimmed"] = "a name inside an archive, never opened",
+        ["EntryDiskName.SameName"] = "names inside an archive, never opened",
+        ["EntryDiskName.TrimmedTwins"] = "names inside an archive, never opened",
+        ["EntryDiskName.StripLeadingDotSlash"] = "a name inside an archive, never opened",
     };
 
     [Fact]
@@ -329,6 +355,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         [
             typeof(IArchiveService), typeof(ITarService), typeof(IExtractionRouter), typeof(IArchiveCreationRouter),
             typeof(IArchiveListingRouter), typeof(IRecoveryService), typeof(IAntivirusScanService), typeof(FileHashService),
+            typeof(Archiver.Core.IO.PathIdentity), typeof(Archiver.Core.IO.SourceTree), typeof(EntryDiskName),
         ];
         HashSet<string> operations = [.. types.SelectMany(type => type
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance

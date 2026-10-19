@@ -150,6 +150,12 @@ src/
 │   │   │                                  tag m<machine>-<pid>-<start ticks>, the sweep of entries
 │   │   │                                  dead runs left (by process here, by age next to a
 │   │   │                                  destination for anything not provably this machine's)
+│   │   ├── PathIdentity.cs             ← T-F419/T-F420: public; a path's final path and file identity
+│   │   │                                  (volume serial + file ID) by handle - -sdel's refusal and
+│   │   │                                  "Delete after"'s containment rule ask it
+│   │   ├── SourceTree.cs               ← T-F420: public; SourceTree.List -> SourceListing (files with
+│   │   │                                  stamps, folders, links, unreadable) over DirectoryWalker -
+│   │   │                                  the CLI's -sdel snapshot and the App's SourceSnapshot
 │   │   ├── FolderTotals.cs             ← T-F236: public; a folder's bytes and file count over
 │   │   │                                  DirectoryWalker, cancellable — the App's pending list and
 │   │   │                                  ZipArchiveService's totals both use it
@@ -209,7 +215,9 @@ src/
 │   ├── PreviewCache.cs                                  ← T-F97: preview extraction cache
 │   ├── DeferredActionGate.cs                            ← T-F106: defers activation past first layout pass
 │   ├── SourceRecycler.cs                                ← T-F207: "Delete after operation" — Recycle Bin / confirm / report;
-│   │                                                       T-F302: DeleteAsync returns RecycleResult (Deleted, NotDeleted)
+│   │                                                       T-F302: DeleteAsync returns RecycleResult (Deleted, NotDeleted);
+│   │                                                       T-F419: DeleteAsync(sources, ISourceSnapshot, confirm)
+│   ├── SourceSnapshot.cs                                ← T-F419: the sources before the run; a changed one is kept
 │   ├── Win32SourceDeleteOperations.cs                   ← T-F207: final-path + volume-type + SHFileOperationW P/Invoke
 │   ├── PrimaryActionPolicy.cs                           ← T-F199: Compress/Extract availability + which one is primary
 │   ├── CreateModeText.cs                                ← T-F199: create-mode resource keys (card summary, delete-after words)

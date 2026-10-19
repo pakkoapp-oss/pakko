@@ -214,8 +214,16 @@ public sealed class RepairAndStreamAdversarialTests : IDisposable
         using var stdOut = new MemoryStream();
         Task copy = process.StandardOutput.BaseStream.CopyToAsync(stdOut);
         Task<string> stdErr = process.StandardError.ReadToEndAsync();
-        process.StandardInput.BaseStream.Write(stdin);
-        process.StandardInput.Close();
+        try
+        {
+            process.StandardInput.BaseStream.Write(stdin);
+            process.StandardInput.Close();
+        }
+        catch (IOException)
+        {
+            // pakko refused the command line and exited before reading stdin (a closed pipe) -
+            // what such a test expects; its exit code says the rest
+        }
         copy.GetAwaiter().GetResult();
         string errors = stdErr.GetAwaiter().GetResult();
         process.WaitForExit();

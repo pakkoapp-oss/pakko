@@ -1,3 +1,5 @@
+using Archiver.Core.IO;
+
 namespace Archiver.App.Core;
 
 /// <summary>What "Delete after operation" may still delete, against what the sources were when
@@ -19,15 +21,12 @@ public interface ISourceSnapshot
 /// awaits the summary dialog before its cleanup and the user keeps working meanwhile, so a file
 /// written into a source after it was archived, or edited, would go with it. A source that differs
 /// in any way is kept whole and reported (the Recycle Bin takes folders, not files, so there is
-/// nothing to delete "except the new part" as 7-Zip's -sdel does). Walked with an explicit stack;
-/// a link is listed, never entered. The CLI's <c>CliSourceSnapshot</c> is the per-file sibling;
-/// T-F420 is to share them.
+/// nothing to delete "except the new part" as 7-Zip's -sdel does). The listing is Core's
+/// <c>SourceTree</c>, which the CLI's per-file <c>CliSourceSnapshot</c> uses too (T-F420).
 /// </summary>
 public sealed class SourceSnapshot : ISourceSnapshot
 {
     private sealed record Listing(HashSet<string> Entries, bool HoldsLink, bool Unreadable);
-
-    private static readonly EnumerationOptions ListOptions = new() { AttributesToSkip = 0, IgnoreInaccessible = false };
 
     private readonly Dictionary<string, Listing> _sources = new(StringComparer.OrdinalIgnoreCase);
 
@@ -72,54 +71,22 @@ public sealed class SourceSnapshot : ISourceSnapshot
         }
     }
 
-    // One line per entry: its path, and for a file its size and times; a link by its path alone.
+    // One line per entry of Core's SourceTree (the listing -sdel works from too, T-F420): a file
+    // with its size and times, a folder, a link by its path alone.
     private static Listing List(string root)
     {
+        SourceListing tree = SourceTree.List(root);
+        if (!tree.Exists)
+            return new Listing([], HoldsLink: false, Unreadable: true);
+        if (tree.IsLink)
+            return new Listing(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "l|" + root }, HoldsLink: false, Unreadable: false);
         var entries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        bool holdsLink = false;
-        try
-        {
-            var rootInfo = new FileInfo(root);
-            if (!rootInfo.Exists)
-            {
-                if (!Directory.Exists(root))
-                    return new Listing(entries, HoldsLink: false, Unreadable: true);
-                var pending = new Stack<DirectoryInfo>();
-                pending.Push(new DirectoryInfo(root));
-                entries.Add("d|" + root);
-                while (pending.Count > 0)
-                {
-                    foreach (FileSystemInfo entry in pending.Pop().EnumerateFileSystemInfos("*", ListOptions))
-                    {
-                        if ((entry.Attributes & FileAttributes.ReparsePoint) != 0)
-                        {
-                            holdsLink = true;
-                            entries.Add("l|" + entry.FullName);
-                        }
-                        else if (entry is DirectoryInfo folder)
-                        {
-                            entries.Add("d|" + folder.FullName);
-                            pending.Push(folder);
-                        }
-                        else
-                        {
-                            entries.Add(Stamp((FileInfo)entry));
-                        }
-                    }
-                }
-            }
-            else
-            {
-                entries.Add(Stamp(rootInfo));
-            }
-            return new Listing(entries, holdsLink, Unreadable: false);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return new Listing(entries, holdsLink, Unreadable: true); // what it holds is unknown: never deleted
-        }
+        foreach (SourceFileStamp file in tree.Files)
+            entries.Add($"f|{file.Path}|{file.Length}|{file.ModifiedUtc.Ticks}|{file.CreatedUtc.Ticks}");
+        foreach (string folder in tree.Folders)
+            entries.Add("d|" + folder);
+        foreach (string link in tree.Links)
+            entries.Add("l|" + link);
+        return new Listing(entries, HoldsLink: tree.Links.Count > 0, tree.Unreadable);
     }
-
-    private static string Stamp(FileInfo file) =>
-        $"f|{file.FullName}|{file.Length}|{file.LastWriteTimeUtc.Ticks}|{file.CreationTimeUtc.Ticks}";
 }
