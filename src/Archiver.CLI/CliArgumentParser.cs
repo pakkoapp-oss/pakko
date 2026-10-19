@@ -1128,10 +1128,11 @@ public static class CliArgumentParser
 
         foreach ((string prefix, string message) in UnsupportedSwitchPrefixes)
         {
-            if (token.StartsWith(prefix, StringComparison.Ordinal))
-                return message == NotSupportedOnThisCommand ? $"{message}: {token}"
-                    : prefix == "-p" ? message // a password is never echoed
-                    : NamingTheToken(message, token);
+            if (!token.StartsWith(prefix, StringComparison.Ordinal))
+                continue;
+            if (message == NotSupportedOnThisCommand)
+                return $"{message}: {token}";
+            return prefix == "-p" ? message : NamingTheToken(message, token); // a password is never echoed
         }
 
         return $"Incorrect command line: unknown switch '{token}'";

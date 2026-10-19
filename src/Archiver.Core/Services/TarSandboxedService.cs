@@ -949,10 +949,12 @@ public sealed class TarSandboxedService : ITarService
 
     // T-F419: a quarantined file by its exact name - tar.exe writes through the long-path prefix,
     // so "a.txt." or "a.txt " is on disk as it is, and without the prefix Windows would trim it.
-    private static string Literal(string fullPath) =>
-        fullPath.StartsWith(@"\\?\", StringComparison.Ordinal) ? fullPath
-        : fullPath.StartsWith(@"\\", StringComparison.Ordinal) ? @"\\?\UNC\" + fullPath[2..]
-        : @"\\?\" + fullPath;
+    private static string Literal(string fullPath)
+    {
+        if (fullPath.StartsWith(@"\\?\", StringComparison.Ordinal))
+            return fullPath;
+        return fullPath.StartsWith(@"\\", StringComparison.Ordinal) ? @"\\?\UNC\" + fullPath[2..] : @"\\?\" + fullPath;
+    }
 
     // Conflicts are decided against the destination plus every path already claimed in this run
     // (T-F30, as in ZIP's WriteEntryAsync). Null when the entry is skipped.
@@ -1579,6 +1581,20 @@ public sealed class TarSandboxedService : ITarService
     }
 
     // Why tar.exe cannot write this archive here, or null.
+    // What refuses an archive before any prompt or write.
+    private async Task<CoreText?> CreationRefusalAsync(ArchiveOptions options, CancellationToken cancellationToken)
+    {
+        // T-F193: tar.exe/libarchive has no encrypting writer. Refuse outright — before any
+        // prompt — rather than silently writing an unencrypted archive the user asked to protect.
+        // T-F342: libarchive's 7z writer ignores --passphrase without a word, so it is never passed.
+        if (options.ResolvePasswordAsync is not null)
+            return CoreMessages.Text(options.Format == ArchiveContainerFormat.SevenZip
+                ? MessageCode.SevenZipEncryptionNotSupported : MessageCode.PasswordOnlyForZip);
+        if (!TarSignatureVerifier.Verify(TarExecutablePath))
+            return CoreMessages.Text(MessageCode.TarSignatureInvalid);
+        return await WriterRefusalAsync(options, cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<CoreText?> WriterRefusalAsync(ArchiveOptions options, CancellationToken cancellationToken)
     {
         // T-F403: a codec tar.exe lacks is refused before it starts. Without a built-in library,
@@ -1630,23 +1646,7 @@ public sealed class TarSandboxedService : ITarService
         var skippedFiles = new List<SkippedFile>();
         var conflictResolver = new ConflictResolver(options.OnConflict, options.ResolveConflictAsync);
 
-        // T-F193: tar.exe/libarchive has no encrypting writer. Refuse outright — before any
-        // prompt — rather than silently writing an unencrypted archive the user asked to protect.
-        if (options.ResolvePasswordAsync is not null)
-        {
-            // T-F342: libarchive's 7z writer ignores --passphrase without a word, so it is never passed.
-            errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options),
-                options.Format == ArchiveContainerFormat.SevenZip ? MessageCode.SevenZipEncryptionNotSupported : MessageCode.PasswordOnlyForZip));
-            return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
-        }
-
-        if (!TarSignatureVerifier.Verify(TarExecutablePath))
-        {
-            errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.TarSignatureInvalid));
-            return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
-        }
-
-        if (await WriterRefusalAsync(options, cancellationToken).ConfigureAwait(false) is { } refusal)
+        if (await CreationRefusalAsync(options, cancellationToken).ConfigureAwait(false) is { } refusal)
         {
             errors.Add(CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), refusal));
             return new ArchiveResult { CreatedFiles = createdFiles, Errors = errors, SkippedFiles = skippedFiles };
@@ -1748,7 +1748,7 @@ public sealed class TarSandboxedService : ITarService
                 continue;
             }
 
-            claimedDestPaths.Add(resolvedDestPath!);
+            claimedDestPaths.Add(resolvedDestPath);
             ArchiveOptions singleOptions = options with { SourcePaths = [sourcePath] };
             int errorsBefore = sink.Errors.Count, skippedBefore = sink.SkippedFiles.Count, createdBefore = sink.CreatedFiles.Count;
             await CompressToArchiveAsync(singleOptions, names, (resolvedDestPath, outcome == DestinationConflictOutcome.ProceedReplacingExisting), sink, progress, cancellationToken)

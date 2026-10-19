@@ -16,7 +16,7 @@ public static partial class PathIdentity
 
     /// <summary>What <see cref="Resolve"/> found: the identity and the final path, without the
     /// long-path prefix.</summary>
-    public sealed record Resolved(Identity Identity, string FinalPath);
+    public sealed record Resolved(Identity Id, string FinalPath);
 
     /// <summary>The identity and final path (without the \\?\ prefix) of an existing file or
     /// folder; null when it does not exist or cannot be opened or read.</summary>
@@ -37,21 +37,17 @@ public static partial class PathIdentity
 
     // On the stack for an ordinary path (SmallFileAllocationTests); a longer one is asked for
     // again in a buffer of the size the first call reported.
-    private static unsafe string? FinalPath(SafeFileHandle handle)
+    private static string? FinalPath(SafeFileHandle handle)
     {
-        const int StackLength = 520;
-        char* small = stackalloc char[StackLength];
-        uint length = GetFinalPathNameByHandle(handle, small, StackLength, 0);
+        Span<char> small = stackalloc char[520];
+        uint length = GetFinalPathNameByHandle(handle, ref MemoryMarshal.GetReference(MemoryMarshal.Cast<char, ushort>(small)), (uint)small.Length, 0);
         if (length == 0)
             return null;
-        if (length < StackLength)
-            return new string(small, 0, (int)length);
+        if (length < small.Length)
+            return new string(small[..(int)length]);
         char[] large = new char[length];
-        fixed (char* start = large)
-        {
-            uint written = GetFinalPathNameByHandle(handle, start, (uint)large.Length, 0);
-            return written == 0 || written >= large.Length ? null : new string(start, 0, (int)written);
-        }
+        uint written = GetFinalPathNameByHandle(handle, ref MemoryMarshal.GetReference(MemoryMarshal.Cast<char, ushort>(large.AsSpan())), (uint)large.Length, 0);
+        return written == 0 || written >= large.Length ? null : new string(large, 0, (int)written);
     }
 
     /// <summary>The identities of <paramref name="path"/> and every folder holding it, by its final
@@ -60,20 +56,22 @@ public static partial class PathIdentity
     {
         if (Resolve(path) is not { } resolved)
             return null;
-        var identities = new HashSet<Identity> { resolved.Identity };
+        var identities = new HashSet<Identity> { resolved.Id };
         for (string? folder = Path.GetDirectoryName(resolved.FinalPath); folder is not null; folder = Path.GetDirectoryName(folder))
         {
             if (Resolve(folder) is not { } step)
                 return null;
-            identities.Add(step.Identity);
+            identities.Add(step.Id);
         }
         return identities;
     }
 
-    private static string WithoutLongPathPrefix(string path) =>
-        path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase) ? @"\\" + path[8..]
-        : path.StartsWith(@"\\?\", StringComparison.Ordinal) ? path[4..]
-        : path;
+    private static string WithoutLongPathPrefix(string path)
+    {
+        if (path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
+            return @"\\" + path[8..];
+        return path.StartsWith(@"\\?\", StringComparison.Ordinal) ? path[4..] : path;
+    }
 
     private const uint FileShareAll = 7;
     private const uint OpenExisting = 3;
@@ -115,5 +113,6 @@ public static partial class PathIdentity
     private static partial bool GetFileInformationByHandle(SafeFileHandle file, out ByHandleFileInformation info);
 
     [LibraryImport("kernel32.dll", EntryPoint = "GetFinalPathNameByHandleW", SetLastError = true)]
-    private static unsafe partial uint GetFinalPathNameByHandle(SafeFileHandle file, char* path, uint length, uint flags);
+    // The buffer as UTF-16 code units: a char is not blittable to the source generator.
+    private static partial uint GetFinalPathNameByHandle(SafeFileHandle file, ref ushort path, uint length, uint flags);
 }
