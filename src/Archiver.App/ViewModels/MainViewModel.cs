@@ -1052,6 +1052,11 @@ public sealed partial class MainViewModel : ObservableObject
                 }
             });
 
+            // T-F419: "Delete after" deletes only what is as it was now - the user keeps working
+            // while the summary is open. Not ticked now, no snapshot: nothing is deleted.
+            ISourceSnapshot? deleteSnapshot = DeleteAfterOperation
+                ? await Task.Run(() => SourceSnapshot.Take(options.SourcePaths), _cts.Token)
+                : null;
             ArchiveResult result = await _archiveCreationRouter.ArchiveAsync(options, progress, _cts.Token);
             _operationStopwatch?.Stop();
             outcomeLine = OutcomeLine.From(result, _operationStopwatch?.Elapsed ?? TimeSpan.Zero, extract: false, DestinationPath);
@@ -1067,8 +1072,8 @@ public sealed partial class MainViewModel : ObservableObject
             // T-F260/T-F229: only sources Core reports as fully processed, and only after the
             // summary, so the user sees what was skipped before anything is deleted. A cancel
             // throws and never reaches this line.
-            if (DeleteAfterOperation)
-                await RunCleanupAsync(result.FullyProcessedSources);
+            if (DeleteAfterOperation && deleteSnapshot is not null)
+                await RunCleanupAsync(result.FullyProcessedSources, deleteSnapshot);
         }
         catch (OperationCanceledException)
         {
@@ -1162,6 +1167,10 @@ public sealed partial class MainViewModel : ObservableObject
                 UpdateOperationStatus(r);
             });
 
+            // T-F419: as ArchiveAsync - the archives as they were when the extraction started.
+            ISourceSnapshot? deleteSnapshot = DeleteAfterOperation && allowDeleteAfter
+                ? await Task.Run(() => SourceSnapshot.Take(options.ArchivePaths), _cts.Token)
+                : null;
             ArchiveResult result = await _extractionRouter.ExtractAsync(options, progress, _cts.Token);
             if (fromBrowser)
                 _browsePasswords.Complete(archivePaths[0], result);
@@ -1178,9 +1187,9 @@ public sealed partial class MainViewModel : ObservableObject
             LogWarnings(result);
             await _dialogService.ShowOperationSummaryAsync("Extract", result);
             // T-F260/T-F229/T-F265: see ArchiveAsync — a subset extraction is never deletable.
-            if (DeleteAfterOperation && allowDeleteAfter)
+            if (DeleteAfterOperation && allowDeleteAfter && deleteSnapshot is not null)
             {
-                await RunCleanupAsync(result.FullyProcessedSources);
+                await RunCleanupAsync(result.FullyProcessedSources, deleteSnapshot);
                 // The browsed archive went to the Recycle Bin: nothing left to browse.
                 closeBrowser = fromBrowser && !File.Exists(archivePaths[0]);
             }
@@ -2077,12 +2086,12 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>T-F200: forgets the browse session's passwords (the window is closing).</summary>
     public void ForgetBrowsePasswords() => _browsePasswords.Clear();
 
-    private async Task RunCleanupAsync(IEnumerable<string> paths)
+    private async Task RunCleanupAsync(IEnumerable<string> paths, ISourceSnapshot snapshot)
     {
         StatusMessage = _res.GetString("StatusCleaningUp");
         // T-F207/T-F242: Recycle Bin where the volume has one, an explicit confirmation before
         // anything is deleted permanently, and every source still on disk is reported.
-        RecycleResult recycled = await _sourceRecycler.DeleteAsync(paths, _dialogService.ShowPermanentDeleteConfirmAsync);
+        RecycleResult recycled = await _sourceRecycler.DeleteAsync(paths, snapshot, _dialogService.ShowPermanentDeleteConfirmAsync);
         // T-F302: a row whose source is gone would only fail the next run ("source does not
         // exist"); the tick, given for this run's sources, does not carry into the next list.
         foreach (string path in recycled.Deleted)

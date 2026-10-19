@@ -4,6 +4,16 @@ namespace Archiver.App.Core.Tests;
 
 // T-F207/T-F242: "Delete after operation" recycles sources on a fixed local volume, asks before
 // deleting anything else permanently, and reports every source still on disk afterwards.
+// T-F419: these tests decide on fake paths; nothing in them changes after the run.
+internal sealed class AllUnchangedSnapshot : ISourceSnapshot
+{
+    public static readonly AllUnchangedSnapshot Instance = new();
+
+    public bool Unchanged(string source) => true;
+
+    public bool HoldsLink(string source) => false;
+}
+
 public sealed class SourceRecyclerTests
 {
     private sealed class FakeOps : ISourceDeleteOperations
@@ -59,7 +69,7 @@ public sealed class SourceRecyclerTests
         _ops.Add(@"Q:\a.zip", @"C:\real\a.zip", isFixed: true);
         _ops.Add(@"C:\b", @"C:\b", isFixed: true);
 
-        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"Q:\a.zip", @"C:\b"], Confirm(true))).NotDeleted;
+        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"Q:\a.zip", @"C:\b"], AllUnchangedSnapshot.Instance, Confirm(true))).NotDeleted;
 
         notDeleted.Should().BeEmpty();
         _ops.RecycleCalls.Should().ContainSingle().Which.Should().Equal(@"C:\real\a.zip", @"C:\b");
@@ -73,7 +83,7 @@ public sealed class SourceRecyclerTests
         _ops.Add(@"Q:\a.zip", @"C:\real\a.zip", isFixed: true);
         _ops.RecycleLeaves.Add(@"C:\real\a.zip");
 
-        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"Q:\a.zip"], Confirm(true))).NotDeleted;
+        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"Q:\a.zip"], AllUnchangedSnapshot.Instance, Confirm(true))).NotDeleted;
 
         notDeleted.Should().Equal(@"Q:\a.zip");
     }
@@ -84,7 +94,7 @@ public sealed class SourceRecyclerTests
         _ops.Add(@"C:\a", @"C:\a", isFixed: true);
         _ops.RecycleThrows = true;
 
-        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"C:\a"], Confirm(true))).NotDeleted;
+        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"C:\a"], AllUnchangedSnapshot.Instance, Confirm(true))).NotDeleted;
 
         notDeleted.Should().Equal(@"C:\a");
     }
@@ -95,7 +105,7 @@ public sealed class SourceRecyclerTests
         // Declining is the user's own choice — reporting it right back as "not deleted" was noise.
         _ops.Add(@"Z:\a.zip", @"\\server\share\a.zip", isFixed: false);
 
-        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"Z:\a.zip"], Confirm(false))).NotDeleted;
+        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"Z:\a.zip"], AllUnchangedSnapshot.Instance, Confirm(false))).NotDeleted;
 
         _confirmCalls.Should().ContainSingle().Which.Should().Equal(@"Z:\a.zip");
         notDeleted.Should().BeEmpty();
@@ -111,7 +121,7 @@ public sealed class SourceRecyclerTests
         _ops.Add(@"E:\b.zip", @"E:\b.zip", isFixed: false);
         _ops.DeleteThrows.Add(@"E:\b.zip");
 
-        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"Z:\a.zip", @"E:\b.zip"], Confirm(true))).NotDeleted;
+        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"Z:\a.zip", @"E:\b.zip"], AllUnchangedSnapshot.Instance, Confirm(true))).NotDeleted;
 
         _ops.Deleted.Should().Equal(@"\\server\share\a.zip");
         notDeleted.Should().Equal(@"E:\b.zip");
@@ -123,7 +133,7 @@ public sealed class SourceRecyclerTests
         _ops.Add(@"C:\a.zip", @"C:\a.zip", isFixed: true);
         _ops.Add(@"Z:\b.zip", @"\\server\share\b.zip", isFixed: false);
 
-        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"C:\a.zip", @"Z:\b.zip"], Confirm(false))).NotDeleted;
+        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"C:\a.zip", @"Z:\b.zip"], AllUnchangedSnapshot.Instance, Confirm(false))).NotDeleted;
 
         _ops.RecycleCalls.Should().ContainSingle().Which.Should().Equal(@"C:\a.zip");
         notDeleted.Should().BeEmpty();
@@ -143,7 +153,7 @@ public sealed class SourceRecyclerTests
         _ops.DeleteThrows.Add(@"E:\c.zip");
 
         RecycleResult result = await new SourceRecycler(_ops).DeleteAsync(
-            [@"Q:\a.zip", @"C:\stuck", @"Z:\b.zip", @"E:\c.zip", @"C:\gone"], Confirm(true));
+            [@"Q:\a.zip", @"C:\stuck", @"Z:\b.zip", @"E:\c.zip", @"C:\gone"], AllUnchangedSnapshot.Instance, Confirm(true));
 
         result.Deleted.Should().BeEquivalentTo(@"Q:\a.zip", @"Z:\b.zip");
         result.NotDeleted.Should().BeEquivalentTo(@"C:\stuck", @"E:\c.zip", @"C:\gone");
@@ -154,7 +164,7 @@ public sealed class SourceRecyclerTests
     {
         _ops.Add(@"Z:\b.zip", @"\\server\share\b.zip", isFixed: false);
 
-        RecycleResult result = await new SourceRecycler(_ops).DeleteAsync([@"Z:\b.zip"], Confirm(false));
+        RecycleResult result = await new SourceRecycler(_ops).DeleteAsync([@"Z:\b.zip"], AllUnchangedSnapshot.Instance, Confirm(false));
 
         result.Deleted.Should().BeEmpty();
         result.NotDeleted.Should().BeEmpty();
@@ -163,7 +173,7 @@ public sealed class SourceRecyclerTests
     [Fact]
     public async Task UnresolvablePath_NeverDeleted_Reported()
     {
-        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"C:\gone.zip"], Confirm(true))).NotDeleted;
+        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"C:\gone.zip"], AllUnchangedSnapshot.Instance, Confirm(true))).NotDeleted;
 
         notDeleted.Should().Equal(@"C:\gone.zip");
         _ops.RecycleCalls.Should().BeEmpty();
@@ -173,7 +183,7 @@ public sealed class SourceRecyclerTests
     [Fact]
     public async Task EmptyInput_NoCallsAtAll()
     {
-        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([], Confirm(true))).NotDeleted;
+        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([], AllUnchangedSnapshot.Instance, Confirm(true))).NotDeleted;
 
         notDeleted.Should().BeEmpty();
         _ops.RecycleCalls.Should().BeEmpty();
@@ -185,7 +195,7 @@ public sealed class SourceRecyclerTests
     {
         _ops.Add(@"C:\a.zip", @"C:\a.zip", isFixed: true);
 
-        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"C:\a.zip", @"c:\A.zip"], Confirm(true))).NotDeleted;
+        IReadOnlyList<string> notDeleted = (await new SourceRecycler(_ops).DeleteAsync([@"C:\a.zip", @"c:\A.zip"], AllUnchangedSnapshot.Instance, Confirm(true))).NotDeleted;
 
         notDeleted.Should().BeEmpty();
         _ops.RecycleCalls.Should().ContainSingle().Which.Should().ContainSingle();

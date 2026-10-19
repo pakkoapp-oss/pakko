@@ -13466,6 +13466,32 @@ the archive.
     -spe` keeps the root folder (CLI.md compares the last part of `-o` as typed).
   - The wider question - one name-to-disk-path plan shared by both engines, and one source-path
     identity helper - is T-F420.
+- **"Delete after" in the App** (a red team from `24d9e3f` on `FullyProcessedSources` and
+  `SourceRecycler`, 58 cases, 24 red; the gate is `-sdel`'s too), each fixed test-first:
+  - The archive written into its own source through a junction or a `\\?\` spelling, or a source
+    named through a junction with the archive in its real folder, left the source deletable, and
+    the delete took the only copy. Core compares file identity as well as the string
+    (`IO/PathIdentity`); a side that exists but cannot be resolved counts as holding the archive.
+  - A drive root (a SUBST drive in the test) left its Hidden+System entries out (T-F345) and was
+    still Completed, so the recycler deleted what was never archived. A drive or share root is
+    never Completed, and the recycler never touches a final path that is a volume or share root.
+  - Extraction under Overwrite where an entry replaced an earlier entry of the same run
+    (`a.txt` twice, `A.txt`, `D/a.txt`), both engines: only the later reached the disk and the
+    archive was deletable. It is Partial now, without a message: a warning would make `x -y` exit 1
+    where 7-Zip exits 0, and a Partial source is kept silently already (a filter, T-F410).
+  - tar/7z separate mode: two sources of one base name under Overwrite wrote one archive (the
+    second over the first) and both were deletable; the second is numbered (ZIP's T-F158 set).
+  - Files written into a source, or edited, after it was archived went with it: the App awaits the
+    summary dialog before cleanup. `SourceSnapshot` (App.Core) lists every source before the run;
+    a source that differs in any way, or was not listed, is kept whole and reported (the Recycle
+    Bin takes folders, so there is no "delete all but the new file" as `-sdel` does). The snapshot
+    is a required parameter of `DeleteAsync`; the red team's tests changed only in taking it before
+    `ArchiveAsync` - an API shape, not an expectation. A test now proves an unchanged source is still
+    deleted, with a trailing separator too (seen red with the key spelled differently).
+  - Two spellings of one item (8.3 and long) went to the delete twice: deduplicated on the final path.
+  - A folder holding a junction, deleted permanently, lost its files before the junction stopped
+    the recursive delete, and was reported "not deleted": such a folder now only goes to the Recycle
+    Bin. Core already marks it Partial, so this is a second line, not reachable today.
 
 ## T-F411, wave D: how `pakko` reads a command line, as 7-Zip does (2026-10-18)
 

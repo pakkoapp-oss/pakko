@@ -33,14 +33,16 @@ public sealed record RecycleResult(IReadOnlyList<string> Deleted, IReadOnlyList<
 public sealed class SourceRecycler(ISourceDeleteOperations ops)
 {
     /// <summary>Deletes <paramref name="sources"/>; see <see cref="RecycleResult"/>.
+    /// <paramref name="snapshot"/> is what the sources were when the operation started (T-F419): a
+    /// source that differs now is kept and reported.
     /// <paramref name="confirmPermanentDeleteAsync"/> gets the sources that cannot go to the
     /// Recycle Bin and returns whether to delete them permanently; it is awaited on the caller's
     /// context, so it may show UI.</summary>
     public async Task<RecycleResult> DeleteAsync(
-        IEnumerable<string> sources, Func<IReadOnlyList<string>, Task<bool>> confirmPermanentDeleteAsync)
+        IEnumerable<string> sources, ISourceSnapshot snapshot, Func<IReadOnlyList<string>, Task<bool>> confirmPermanentDeleteAsync)
     {
         var deleted = new List<string>();
-        (List<string>? notDeleted, List<(string Source, string Final)>? permanent) = await Task.Run(() => RecycleLocalSources(sources, deleted));
+        (List<string>? notDeleted, List<(string Source, string Final)>? permanent) = await Task.Run(() => RecycleLocalSources(sources, snapshot, deleted));
 
         // Declined items are the user's own choice, not a failure — they are not reported.
         if (permanent.Count > 0 && await confirmPermanentDeleteAsync([.. permanent.Select(p => p.Source)]))
@@ -52,7 +54,7 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
     // Recycles what can be recycled; returns what is still on disk plus what needs a permanent
     // delete.
     private (List<string> NotDeleted, List<(string Source, string Final)> Permanent) RecycleLocalSources(
-        IEnumerable<string> sources, List<string> deleted)
+        IEnumerable<string> sources, ISourceSnapshot snapshot, List<string> deleted)
     {
         var notDeleted = new List<string>();
         var recycle = new List<(string Source, string Final)>();
@@ -60,21 +62,34 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
 
         foreach (string source in sources.Distinct(StringComparer.OrdinalIgnoreCase))
         {
+            // T-F419: a file written into the source or edited since it was archived is not in
+            // the archive; the whole source stays.
+            if (!snapshot.Unchanged(source))
+            {
+                notDeleted.Add(source);
+                continue;
+            }
             // T-F207 spike: the shell's own "permanently delete?" warning never fires for a
             // UNC or SUBST path — it deletes silently. So the decision is made here, on the
-            // resolved path, and an unresolvable path is never deleted at all.
+            // resolved path, and an unresolvable path is never deleted at all; nor is a volume or
+            // share root (T-F419: a SUBST or mapped drive root resolves to one).
             string? final = ops.ResolveFinalPath(source);
-            if (final is null)
+            if (final is null || IsRoot(final))
                 notDeleted.Add(source);
             else if (ops.IsOnFixedLocalVolume(final))
                 recycle.Add((source, final));
+            // T-F419: a permanent recursive delete stops at a link it cannot remove, after the
+            // files before it are gone; such a folder only ever goes to the Recycle Bin whole.
+            else if (snapshot.HoldsLink(source))
+                notDeleted.Add(source);
             else
                 permanent.Add((source, final));
         }
 
         if (recycle.Count > 0)
         {
-            try { ops.MoveToRecycleBin([.. recycle.Select(r => r.Final)]); }
+            // T-F419: two spellings of one item are one entry in the delete list.
+            try { ops.MoveToRecycleBin([.. recycle.Select(r => r.Final).Distinct(StringComparer.OrdinalIgnoreCase)]); }
             catch { /* reported below: whatever is still on disk */ }
             foreach ((string source, string final) in recycle)
                 (ops.Exists(final) ? notDeleted : deleted).Add(source);
@@ -86,12 +101,22 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
     private List<string> DeletePermanently(List<(string Source, string Final)> permanent, List<string> deleted)
     {
         var notDeleted = new List<string>();
+        var tried = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach ((string? source, string? final) in permanent)
         {
-            try { ops.DeletePermanently(final); }
-            catch { /* reported below: still on disk */ }
+            if (tried.Add(final))
+            {
+                try { ops.DeletePermanently(final); }
+                catch { /* reported below: still on disk */ }
+            }
             (ops.Exists(final) ? notDeleted : deleted).Add(source);
         }
         return notDeleted;
+    }
+
+    private static bool IsRoot(string finalPath)
+    {
+        string trimmed = Path.TrimEndingDirectorySeparator(finalPath);
+        return Path.GetPathRoot(finalPath) is { } root && string.Equals(Path.TrimEndingDirectorySeparator(root), trimmed, StringComparison.OrdinalIgnoreCase);
     }
 }

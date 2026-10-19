@@ -903,7 +903,12 @@ done. `AdversarialScratch` gives each test its own `%TEMP%\pakko-redteam-*` fold
 path is inside it before the exe runs, and undoes ACL denies on Dispose; `RequiresSymlinkFact`,
 `RequiresShortNamesFact` and `RequiresAdminShareFact` skip what the machine cannot do (never an
 early green return). In the default run (about 20 s); `Sdel_FileChangedWhileArchiving_IsKept` is
-`Slow`. Triage of what it found: `docs/DECISIONS.md`, "T-F419".
+`Slow`. Triage of what it found: `docs/DECISIONS.md`, "T-F419". The same red team on "Delete
+after" (the `FullyProcessedSources` gate the App and `-sdel` both use): `FullyProcessedAdversarialTests`
+(Core.Tests, ZIP), `TarFullyProcessedAdversarialTests` (IntegrationTests, tar.exe) and
+`SourceRecyclerAdversarialTests` (App.Core: the recycler over real Win32 operations, forced to
+the permanent-delete path so nothing reaches the real Recycle Bin, with end-to-end runs through
+`ZipArchiveService` and a SUBST drive via `SubstDriveFact`).
 
 **T-F116 additions (`-si`/`-so` streaming):** `CliStreamStagingTests.cs` (new unit-test file, no
 process spawn) covers `CliStreamStaging.StreamSingleFileAsync`'s three outcomes — exactly one file
