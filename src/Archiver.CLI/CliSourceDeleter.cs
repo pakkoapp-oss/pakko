@@ -1,5 +1,4 @@
-using System.Runtime.InteropServices;
-using Microsoft.Win32.SafeHandles;
+using Archiver.Core.IO;
 
 namespace Archiver.CLI;
 
@@ -23,7 +22,7 @@ public sealed record CliDeleteOutcome(
 /// is never entered or deleted (7-Zip follows a junction and deletes the files behind it), and a
 /// volume root or the current folder (or one holding it) is refused before anything is written.
 /// </summary>
-public static partial class CliSourceDeleter
+public static class CliSourceDeleter
 {
     /// <summary>Why -sdel must not run on these sources, or null.</summary>
     public static string? Refusal(IEnumerable<string> sources, string currentFolder)
@@ -33,16 +32,16 @@ public static partial class CliSourceDeleter
         // compared by file identity, which every spelling of it shares (\\?\Volume{...}\,
         // \\?\GLOBALROOT\, \\.\C:\, \\localhost\C$\).
         string current = RealPath(currentFolder) ?? Normalize(currentFolder);
-        HashSet<FileIdentity> holdingCurrent = IdentitiesUpFrom(currentFolder);
+        HashSet<PathIdentity.Identity> holdingCurrent = PathIdentity.SelfAndAncestors(currentFolder) ?? [];
         foreach (string source in sources)
         {
             if (RealPath(source) is not { } full)
                 return $"-sdel cannot tell where this source leads: {source}";
-            // Opened first: Directory.Exists says no to the volume root \\?\GLOBALROOT\Device\HarddiskVolumeN\.
-            OpenedPath? opened = Open(source);
+            // Resolved first: Directory.Exists says no to the volume root \\?\GLOBALROOT\Device\HarddiskVolumeN\.
+            PathIdentity.Resolved? opened = PathIdentity.Resolve(source);
             if (opened is null && (File.Exists(source) || Directory.Exists(source)))
                 return $"-sdel cannot tell where this source leads: {source}";
-            if (IsVolumeRoot(full) || (opened is not null && IsVolumeRoot(Normalize(WithoutLongPathPrefix(opened.FinalPath)))))
+            if (IsVolumeRoot(full) || (opened is not null && IsVolumeRoot(Normalize(opened.FinalPath))))
                 return $"-sdel would delete a volume root: {source}";
             if (IsSameOrUnder(current, full) || (opened is not null && holdingCurrent.Contains(opened.Identity)))
                 return $"-sdel would delete the current folder or a folder holding it: {source}";
@@ -52,94 +51,6 @@ public static partial class CliSourceDeleter
 
     private static bool IsVolumeRoot(string full) =>
         Path.GetPathRoot(full) is { } root && string.Equals(Normalize(root), full, StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>The current folder and every folder holding it, by identity; empty when the
-    /// current folder cannot be opened (the path comparison still applies). Bounded by the
-    /// path's depth.</summary>
-    private static HashSet<FileIdentity> IdentitiesUpFrom(string folder)
-    {
-        var identities = new HashSet<FileIdentity>();
-        if (Open(folder) is not { } opened)
-            return identities;
-        for (string? next = WithoutLongPathPrefix(opened.FinalPath); next is not null; next = Path.GetDirectoryName(next))
-        {
-            if (Open(next) is { } step)
-                identities.Add(step.Identity);
-        }
-        return identities;
-    }
-
-    private readonly record struct FileIdentity(ulong Volume, ulong Low, ulong High);
-
-    private sealed record OpenedPath(FileIdentity Identity, string FinalPath);
-
-    /// <summary>The identity and final path (every link resolved, \\?\ form) of an existing file
-    /// or folder; null when it cannot be opened or read.</summary>
-    private static OpenedPath? Open(string path)
-    {
-        using SafeFileHandle handle = CreateFile(path, 0, FileShareAll, 0, OpenExisting, BackupSemantics, 0);
-        if (handle.IsInvalid)
-            return null;
-        FileIdentity identity;
-        if (GetFileInformationByHandleEx(handle, FileIdInfoClass, out FileIdInfo id, (uint)Marshal.SizeOf<FileIdInfo>()))
-            identity = new FileIdentity(id.VolumeSerialNumber, id.IdLow, id.IdHigh);
-        else if (GetFileInformationByHandle(handle, out ByHandleFileInformation info))
-            identity = new FileIdentity(info.VolumeSerialNumber, ((ulong)info.FileIndexHigh << 32) | info.FileIndexLow, 0);
-        else
-            return null; // FAT and SMB without FileIdInfo fall back above; neither read: unknown
-        char[] buffer = new char[32768];
-        uint length;
-        unsafe
-        {
-            fixed (char* start = buffer)
-                length = GetFinalPathNameByHandle(handle, start, (uint)buffer.Length, 0);
-        }
-        if (length == 0 || length >= buffer.Length)
-            return null;
-        return new OpenedPath(identity, new string(buffer, 0, (int)length));
-    }
-
-    private const uint FileShareAll = 7;
-    private const uint OpenExisting = 3;
-    private const uint BackupSemantics = 0x02000000;
-    private const int FileIdInfoClass = 18;
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct FileIdInfo
-    {
-        public ulong VolumeSerialNumber;
-        public ulong IdLow;
-        public ulong IdHigh;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct ByHandleFileInformation
-    {
-        public uint FileAttributes;
-        public ulong CreationTime;
-        public ulong LastAccessTime;
-        public ulong LastWriteTime;
-        public uint VolumeSerialNumber;
-        public uint FileSizeHigh;
-        public uint FileSizeLow;
-        public uint NumberOfLinks;
-        public uint FileIndexHigh;
-        public uint FileIndexLow;
-    }
-
-    [LibraryImport("kernel32.dll", EntryPoint = "CreateFileW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
-    private static partial SafeFileHandle CreateFile(string fileName, uint access, uint share, nint security, uint disposition, uint flags, nint template);
-
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool GetFileInformationByHandleEx(SafeFileHandle file, int infoClass, out FileIdInfo info, uint size);
-
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static partial bool GetFileInformationByHandle(SafeFileHandle file, out ByHandleFileInformation info);
-
-    [LibraryImport("kernel32.dll", EntryPoint = "GetFinalPathNameByHandleW", SetLastError = true)]
-    private static unsafe partial uint GetFinalPathNameByHandle(SafeFileHandle file, char* path, uint length, uint flags);
 
     internal static string Normalize(string path) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
 
@@ -199,17 +110,8 @@ public static partial class CliSourceDeleter
 /// </summary>
 public sealed class CliSourceSnapshot
 {
-    private sealed record Stamp(string Path, long Length, DateTime ModifiedUtc, DateTime CreatedUtc);
-
-    private sealed class Source
-    {
-        public List<Stamp> Files { get; } = [];
-        public List<string> Folders { get; } = [];
-        public bool IsLink { get; set; }
-        public bool Unlisted { get; set; }
-    }
-
-    private static readonly EnumerationOptions ListOptions = new() { AttributesToSkip = 0, IgnoreInaccessible = false };
+    // T-F420: the listing is Core's SourceTree, which the App's snapshot uses too.
+    private sealed record Source(IReadOnlyList<SourceFileStamp> Files, IReadOnlyList<string> Folders, bool IsLink, bool Unlisted);
 
     private readonly Dictionary<string, Source> _sources = new(StringComparer.OrdinalIgnoreCase);
 
@@ -232,52 +134,13 @@ public sealed class CliSourceSnapshot
 
     private static Source List(string full)
     {
-        var source = new Source();
-        try
-        {
-            var info = new FileInfo(full);
-            if (!info.Exists && !Directory.Exists(full))
-                return source;
-            if ((info.Attributes & FileAttributes.ReparsePoint) != 0 || CliSourceDeleter.LeadsElsewhere(full))
-                source.IsLink = true;
-            else if ((info.Attributes & FileAttributes.Directory) != 0)
-                ListFolder(full, source);
-            else
-                source.Files.Add(StampOf(info));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            source.Unlisted = true;
-        }
-        return source;
+        SourceListing tree = SourceTree.List(full);
+        if (!tree.Exists)
+            return new Source([], [], IsLink: false, Unlisted: false);
+        if (tree.IsLink || CliSourceDeleter.LeadsElsewhere(full))
+            return new Source([], [], IsLink: true, Unlisted: false);
+        return new Source(tree.Files, tree.Folders, IsLink: false, Unlisted: tree.Unreadable);
     }
-
-    private static void ListFolder(string root, Source source)
-    {
-        var pending = new Stack<string>();
-        pending.Push(root);
-        source.Folders.Add(root);
-        while (pending.Count > 0)
-        {
-            string folder = pending.Pop();
-            foreach (FileSystemInfo entry in new DirectoryInfo(folder).EnumerateFileSystemInfos("*", ListOptions))
-            {
-                if ((entry.Attributes & FileAttributes.ReparsePoint) != 0)
-                    continue;
-                if (entry is DirectoryInfo)
-                {
-                    source.Folders.Add(entry.FullName);
-                    pending.Push(entry.FullName);
-                }
-                else
-                {
-                    source.Files.Add(StampOf((FileInfo)entry));
-                }
-            }
-        }
-    }
-
-    private static Stamp StampOf(FileInfo file) => new(file.FullName, file.Length, file.LastWriteTimeUtc, file.CreationTimeUtc);
 
     /// <summary>Deletes what is unchanged of <paramref name="completedSources"/> (the sources the
     /// archive holds in full); a source not given, or not listed, is not touched.</summary>
@@ -304,14 +167,14 @@ public sealed class CliSourceSnapshot
 
     private static void DeleteSource(Source source, List<string> kept, List<(string, string)> failed)
     {
-        foreach (Stamp file in source.Files)
+        foreach (SourceFileStamp file in source.Files)
             DeleteFileIfUnchanged(file, kept, failed);
         // Deepest first: a folder is tried only after everything below it.
         foreach (string folder in source.Folders.OrderByDescending(f => f.Count(c => c == Path.DirectorySeparatorChar)))
             DeleteFolderIfEmpty(folder, failed);
     }
 
-    private static void DeleteFileIfUnchanged(Stamp stamp, List<string> kept, List<(string, string)> failed)
+    private static void DeleteFileIfUnchanged(SourceFileStamp stamp, List<string> kept, List<(string, string)> failed)
     {
         try
         {
@@ -334,6 +197,8 @@ public sealed class CliSourceSnapshot
             failed.Add((stamp.Path, ex.Message));
         }
     }
+
+    private static readonly EnumerationOptions ListOptions = new() { AttributesToSkip = 0, IgnoreInaccessible = false };
 
     // 7-Zip's RemoveDirAlways_if_Empty: a folder that still holds anything (a file created or
     // changed meanwhile, a link) stays, and that is not a failure.

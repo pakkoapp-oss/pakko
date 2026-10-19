@@ -467,10 +467,10 @@ public sealed class TarSandboxedService : ITarService
         // "./". tar.exe itself resolves that away on disk (out\a.txt, not out\.\a.txt), so the
         // root-shape decision must see the same names — otherwise "." reads as one shared root
         // folder, and the move phase strips a real path segment (or silently drops a root file).
-        var fileNames = allNames.Where(n => !n.EndsWith('/')).Select(StripLeadingDotSlash).ToList();
+        var fileNames = allNames.Where(n => !n.EndsWith('/')).Select(EntryDiskName.StripLeadingDotSlash).ToList();
         // T-F197: folder entries count as roots too ("a.txt" + "empty/" is two roots). A bare
         // "./" member names the archive's own top level, not a root.
-        var rootNames = allNames.Select(StripLeadingDotSlash).Where(n => n.Length > 0).ToList();
+        var rootNames = allNames.Select(EntryDiskName.StripLeadingDotSlash).Where(n => n.Length > 0).ToList();
 
         // T-F142: the exact set of names that will actually be passed to "-xf" (computed once
         // here, reused below both for the tar.exe argument list and for the progress byte total)
@@ -500,12 +500,12 @@ public sealed class TarSandboxedService : ITarService
         {
             List<string> candidates = [.. tarMembers ?? (IEnumerable<string>)allNames];
             expandedSelection = [.. candidates.Where(name =>
-                StripLeadingDotSlash(name) is { Length: > 0 } shown && entryFilter(shown, name.EndsWith('/')))];
+                EntryDiskName.StripLeadingDotSlash(name) is { Length: > 0 } shown && entryFilter(shown, name.EndsWith('/')))];
             if (expandedSelection.Count == 0)
                 return (destDir, false);
             var kept = new HashSet<string>(expandedSelection, StringComparer.Ordinal);
             droppedFiles = new HashSet<string>(
-                candidates.Where(n => !n.EndsWith('/') && !kept.Contains(n)).Select(StripLeadingDotSlash), StringComparer.OrdinalIgnoreCase);
+                candidates.Where(n => !n.EndsWith('/') && !kept.Contains(n)).Select(EntryDiskName.StripLeadingDotSlash), StringComparer.OrdinalIgnoreCase);
         }
         long progressTotalBytes = tarMembers != null
             ? tarMembers.Sum(n => sizeByName.GetValueOrDefault(n, 0L))
@@ -618,8 +618,7 @@ public sealed class TarSandboxedService : ITarService
         // archive is committed, so a cancel or failure partway through leaves no partial files.
         using var staging = ExtractionStaging.Create(unisolatedDestDir);
         var plan = new TarCommitPlan(staging, actualDest, stripRootPrefix,
-            new HashSet<string>(StringComparer.OrdinalIgnoreCase),
-            TrimmedTwinPaths(fileEntries, actualDest, stripRootPrefix));
+            NameRegistry(fileEntries, actualDest, stripRootPrefix, context.ReplacedInRun));
         RecordFolderTimes((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, scope.OutputDirectory!, staging);
 
         int totalFiles = 0;
@@ -720,14 +719,14 @@ public sealed class TarSandboxedService : ITarService
     {
         HashSet<string>? selected = selection is null ? null : new HashSet<string>(selection, StringComparer.Ordinal);
         var folders = new HashSet<string>(
-            allNames.Where(n => n.EndsWith('/')).Select(n => AsWindowsWritesIt(StripLeadingDotSlash(n).TrimEnd('/'), fileNameToo: true)),
+            allNames.Where(n => n.EndsWith('/')).Select(n => EntryDiskName.AsPakkoWrites(n.TrimEnd('/'))),
             StringComparer.OrdinalIgnoreCase);
         var groups = new Dictionary<string, DuplicateGroup>(StringComparer.OrdinalIgnoreCase);
         foreach ((string name, long size) in fileEntries)
         {
             if (selected is not null && !selected.Contains(name))
                 continue;
-            string key = AsWindowsWritesIt(StripLeadingDotSlash(name), fileNameToo: false);
+            string key = EntryDiskName.AsTarExeWrites(name);
             groups[key] = groups.TryGetValue(key, out DuplicateGroup? group)
                 ? group with { Count = group.Count + 1 }
                 : new DuplicateGroup(name, size, 1);
@@ -735,18 +734,6 @@ public sealed class TarSandboxedService : ITarService
         return groups.Where(g => g.Value.Count > 1 && !folders.Contains(g.Key)).Select(g => g.Value).ToList();
     }
 
-    // The folder parts (and the file name with fileNameToo) with their trailing dots and spaces
-    // dropped, as Windows names them on disk.
-    internal static string AsWindowsWritesIt(string name, bool fileNameToo)
-    {
-        string[] parts = name.Split('/');
-        for (int i = 0; i < parts.Length; i++)
-        {
-            if (fileNameToo || i < parts.Length - 1)
-                parts[i] = parts[i].TrimEnd(' ', '.');
-        }
-        return string.Join('/', parts);
-    }
 
     // T-F171: runs the first-copy pass and keeps only files at a group's exact path with the first
     // entry's listed size. A member is a pattern (T-F284), so "a[1].txt" can pull in "a1.txt"
@@ -772,10 +759,10 @@ public sealed class TarSandboxedService : ITarService
 
         foreach (DuplicateGroup group in groups)
         {
-            string displayName = StripLeadingDotSlash(group.FirstName);
+            string displayName = EntryDiskName.StripLeadingDotSlash(group.FirstName);
             // Not through GetFullPath: tar.exe writes "a.txt." as it is, and that would look for "a.txt".
             string? firstPath = firstDir is null ? null
-                : Path.Combine(firstDir, AsWindowsWritesIt(displayName, fileNameToo: false).Replace('/', Path.DirectorySeparatorChar));
+                : Path.Combine(firstDir, EntryDiskName.AsTarExeWrites(displayName).Replace('/', Path.DirectorySeparatorChar));
             FileInfo? info = firstPath is null ? null : new FileInfo(Literal(firstPath));
             bool recovered = info is { Exists: true } && info.Length == group.FirstSize
                 && (info.Attributes & FileAttributes.ReparsePoint) == 0;
@@ -790,26 +777,18 @@ public sealed class TarSandboxedService : ITarService
     }
 
     // Where ExtractSingleArchiveAsync's move phase puts each file: into Staging under the path it
-    // will have in ActualDest (T-F263). ClaimedFinalPaths is ZIP's T-F30 set — a name picked for a
-    // renamed conflict must not collide with another entry of the same archive already staged.
-    // TrimmedTwinPaths: where TrimmedTwinNames land (T-F419).
+    // will have in ActualDest (T-F263). Names is the bookkeeping ZIP shares (T-F30's claimed set,
+    // T-F419's twins kept apart, entries replaced in the run; T-F420).
     private sealed record TarCommitPlan(
-        ExtractionStaging Staging, string ActualDest, bool StripRootPrefix, HashSet<string> ClaimedFinalPaths,
-        HashSet<string> TrimmedTwinPaths);
+        ExtractionStaging Staging, string ActualDest, bool StripRootPrefix, ExtractionNameRegistry Names);
 
-    /// <summary>T-F419: names two different entries share only because Windows trims a part's
-    /// trailing dots and spaces ("a.txt." and "a.txt", "d./x.txt" and "d/x.txt"), as Windows writes
-    /// them. Their copies are kept apart as Rename, -y or not, as in ZIP.</summary>
-    internal static List<string> TrimmedTwinNames(IReadOnlyList<(string Name, long Size)> fileEntries) =>
-        [.. fileEntries.Select(e => StripLeadingDotSlash(e.Name))
-            .GroupBy(name => AsWindowsWritesIt(name, fileNameToo: true), StringComparer.OrdinalIgnoreCase)
-            .Where(g => g.Any(ArchiveEntrySecurity.TrimmedByWindows) && g.Distinct(StringComparer.OrdinalIgnoreCase).Skip(1).Any())
-            .Select(g => g.Key)];
-
-    private static HashSet<string> TrimmedTwinPaths(IReadOnlyList<(string Name, long Size)> fileEntries, string actualDest, bool stripRootPrefix)
+    // T-F419: the twins are known from the listing before anything moves - where two different
+    // names land on one path only through Windows' trimming, they are kept apart as in ZIP.
+    private static ExtractionNameRegistry NameRegistry(
+        IReadOnlyList<(string Name, long Size)> fileEntries, string actualDest, bool stripRootPrefix, List<string>? replacedInRun)
     {
-        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (string twin in TrimmedTwinNames(fileEntries))
+        var names = new ExtractionNameRegistry(replacedInRun);
+        foreach (string twin in EntryDiskName.TrimmedTwins(fileEntries.Select(e => e.Name)))
         {
             string relative = twin;
             int sep = relative.IndexOf('/');
@@ -819,9 +798,9 @@ public sealed class TarSandboxedService : ITarService
                     continue;
                 relative = relative[(sep + 1)..];
             }
-            paths.Add(Path.GetFullPath(Path.Combine(actualDest, relative)));
+            names.KeepApart(Path.GetFullPath(Path.Combine(actualDest, relative)));
         }
-        return paths;
+        return names;
     }
 
     // T-F197: the move phase walks files only, so folder entries are created here — from the
@@ -834,7 +813,7 @@ public sealed class TarSandboxedService : ITarService
         {
             if (!name.EndsWith('/'))
                 continue;
-            string relative = StripLeadingDotSlash(name).TrimEnd('/').Replace('/', Path.DirectorySeparatorChar);
+            string relative = EntryDiskName.StripLeadingDotSlash(name).TrimEnd('/').Replace('/', Path.DirectorySeparatorChar);
             if (stripRootPrefix)
             {
                 int sep = relative.IndexOf(Path.DirectorySeparatorChar);
@@ -857,7 +836,7 @@ public sealed class TarSandboxedService : ITarService
         var preCreate = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (string name in namesInArchiveOrder)
         {
-            string path = StripLeadingDotSlash(name);
+            string path = EntryDiskName.StripLeadingDotSlash(name);
             bool isDirectory = path.EndsWith('/');
             string[] segments = path.TrimEnd('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
             for (int i = 1; i < segments.Length; i++)
@@ -881,7 +860,7 @@ public sealed class TarSandboxedService : ITarService
         {
             if (!name.EndsWith('/'))
                 continue;
-            string entryPath = StripLeadingDotSlash(name).TrimEnd('/').Replace('/', Path.DirectorySeparatorChar);
+            string entryPath = EntryDiskName.StripLeadingDotSlash(name).TrimEnd('/').Replace('/', Path.DirectorySeparatorChar);
             string quarantined = Path.Combine(quarantineDir, entryPath);
             if (entryPath.Length == 0 || !Directory.Exists(quarantined))
                 continue;
@@ -953,24 +932,17 @@ public sealed class TarSandboxedService : ITarService
         : fullPath.StartsWith(@"\\", StringComparison.Ordinal) ? @"\\?\UNC\" + fullPath[2..]
         : @"\\?\" + fullPath;
 
-    private static string StripLeadingDotSlash(string name)
-    {
-        while (name.StartsWith("./", StringComparison.Ordinal))
-            name = name[2..];
-        return name;
-    }
-
     // Conflicts are decided against the destination plus every path already claimed in this run
     // (T-F30, as in ZIP's WriteEntryAsync). Null when the entry is skipped.
     private static async Task<string?> ResolveConflictAsync(
         string finalFilePath, string file, string relativePath, TarCommitPlan plan, TarExtractionContext context)
     {
-        if (!File.Exists(finalFilePath) && !plan.ClaimedFinalPaths.Contains(finalFilePath)
+        if (!File.Exists(finalFilePath) && !plan.Names.Claimed.Contains(finalFilePath)
             && !(context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
             return finalFilePath;
         // T-F419: copies of one name only through Windows' trimming are kept apart (as in ZIP).
-        if (plan.ClaimedFinalPaths.Contains(finalFilePath) && plan.TrimmedTwinPaths.Contains(finalFilePath))
-            return ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.ClaimedFinalPaths);
+        if (plan.Names.MustKeepApart(finalFilePath, namedDifferently: false))
+            return ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.Names.Claimed);
         (long? incomingSize, DateTimeOffset? incomingModified) = DescribeIncoming(Literal(file));
         int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
         ConflictBehavior resolvedConflict = await context.ConflictResolver
@@ -984,12 +956,10 @@ public sealed class TarSandboxedService : ITarService
         }
         // T-F411: -aot, the rule ZipArchiveService shares.
         if (resolvedConflict == ConflictBehavior.RenameExisting)
-            resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, plan.ClaimedFinalPaths);
-        if (resolvedConflict == ConflictBehavior.Rename)
-            return ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.ClaimedFinalPaths);
-        if (plan.ClaimedFinalPaths.Contains(finalFilePath))
-            context.ReplacedInRun?.Add(relativePath);
-        return finalFilePath;
+            resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, plan.Names.Claimed);
+        return resolvedConflict == ConflictBehavior.Rename
+            ? ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.Names.Claimed)
+            : finalFilePath;
     }
 
     private static async Task<(bool Extracted, string? RelativePath)> TryMoveSingleEntryAsync(
@@ -1022,7 +992,7 @@ public sealed class TarSandboxedService : ITarService
         if (resolvedFilePath is null)
             return (false, relativePath);
         finalFilePath = resolvedFilePath;
-        plan.ClaimedFinalPaths.Add(finalFilePath);
+        plan.Names.Claim(finalFilePath, namedDifferently: false, relativePath);
 
         // T-F263: staged under the path it will have in actualDest; the commit moves it there.
         string stagedFilePath = Path.Combine(plan.Staging.Path, Path.GetRelativePath(actualDest, finalFilePath));
@@ -1460,7 +1430,7 @@ public sealed class TarSandboxedService : ITarService
     // real '?' is no Windows file name either. Thrown only where names decide what is done.
     private static void RefuseUnshowableName(IEnumerable<string>? names)
     {
-        if (names?.Select(StripLeadingDotSlash).FirstOrDefault(name => name.Contains('?')) is { } unshowable)
+        if (names?.Select(EntryDiskName.StripLeadingDotSlash).FirstOrDefault(name => name.Contains('?')) is { } unshowable)
             throw new TarArgumentEncodingException(unshowable, TarCommandLineEncoding.AnsiCodePage);
     }
 
@@ -1496,7 +1466,7 @@ public sealed class TarSandboxedService : ITarService
             foreach (string name in names)
             {
                 bool isFolder = name.EndsWith('/');
-                bool passes = StripLeadingDotSlash(name) is { Length: > 0 } shown && entryFilter(shown, isFolder);
+                bool passes = EntryDiskName.StripLeadingDotSlash(name) is { Length: > 0 } shown && entryFilter(shown, isFolder);
                 if (!isFolder)
                     (passes ? passedFiles : leftOutFiles).Add(name);
             }
@@ -1559,7 +1529,7 @@ public sealed class TarSandboxedService : ITarService
             // T-F196: `tar -C dir .` archives prefix every member "./" and start with a bare "./"
             // — shown verbatim, the Archive Browser's root was a lone folder named ".". List the
             // same paths the plain archive would; ExpandSelection maps them back for extraction.
-            string path = StripLeadingDotSlash(names[i]).TrimEnd('/');
+            string path = EntryDiskName.StripLeadingDotSlash(names[i]).TrimEnd('/');
             if (path.Length == 0)
                 continue;
 

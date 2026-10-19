@@ -6,18 +6,21 @@ namespace Archiver.Core.IO;
 /// <summary>
 /// T-F419: where a path really leads - its final path (every link, SUBST drive and \\?\ spelling
 /// resolved) and its file identity (volume serial and file ID), which every spelling of one file
-/// or folder shares, the admin share included. The same idea as the CLI's <c>CliSourceDeleter</c>;
-/// T-F420 is to make it one helper.
+/// or folder shares, the admin share included. The one place -sdel's refusal (the CLI's
+/// <c>CliSourceDeleter</c>) and "Delete after"'s containment rule (<c>SourceOutcomeRules</c>) ask (T-F420).
 /// </summary>
-internal static partial class PathIdentity
+public static partial class PathIdentity
 {
-    internal readonly record struct Identity(ulong Volume, ulong Low, ulong High);
+    /// <summary>A volume serial number and a file ID (128-bit where the volume has one).</summary>
+    public readonly record struct Identity(ulong Volume, ulong Low, ulong High);
 
-    internal sealed record Resolved(Identity Identity, string FinalPath);
+    /// <summary>What <see cref="Resolve"/> found: the identity and the final path, without the
+    /// long-path prefix.</summary>
+    public sealed record Resolved(Identity Identity, string FinalPath);
 
     /// <summary>The identity and final path (without the \\?\ prefix) of an existing file or
     /// folder; null when it does not exist or cannot be opened or read.</summary>
-    internal static Resolved? Resolve(string path)
+    public static Resolved? Resolve(string path)
     {
         using SafeFileHandle handle = CreateFile(path, 0, FileShareAll, 0, OpenExisting, BackupSemantics, 0);
         if (handle.IsInvalid)
@@ -53,7 +56,7 @@ internal static partial class PathIdentity
 
     /// <summary>The identities of <paramref name="path"/> and every folder holding it, by its final
     /// path; null when it cannot be resolved. Bounded by the path's depth.</summary>
-    internal static HashSet<Identity>? SelfAndAncestors(string path)
+    public static HashSet<Identity>? SelfAndAncestors(string path)
     {
         if (Resolve(path) is not { } resolved)
             return null;

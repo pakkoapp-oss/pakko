@@ -53,7 +53,7 @@ public sealed class TarDuplicateNamesTests
     [InlineData("d./x.txt", "d/x.txt", "d/x.txt")]
     public void TrimmedTwinNames_NamesThatMeetOnlyThroughTrimming(string first, string second, string expected)
     {
-        TarSandboxedService.TrimmedTwinNames([(first, 1), (second, 2)]).Should().Equal(expected);
+        EntryDiskName.TrimmedTwins([first, second]).Should().Equal(expected);
     }
 
     [Theory]
@@ -62,7 +62,7 @@ public sealed class TarDuplicateNamesTests
     [InlineData("a.txt.", "a.txt.")]
     public void TrimmedTwinNames_SameOrCaseOnlyNames_AreNone(string first, string second)
     {
-        TarSandboxedService.TrimmedTwinNames([(first, 1), (second, 2)]).Should().BeEmpty();
+        EntryDiskName.TrimmedTwins([first, second]).Should().BeEmpty();
     }
 
     [Fact]
