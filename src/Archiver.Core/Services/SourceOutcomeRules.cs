@@ -34,10 +34,10 @@ internal static class SourceOutcomeRules
             : s)];
     }
 
-    // T-F420: an extraction's archives, in order; one whose entry a later entry replaced is not
+    // T-F420: an extraction's archives; one whose entry a later entry replaced is not
     // wholly on disk (ExtractionNameRegistry), so deleting it would lose that entry.
     internal static List<SourceResult> DowngradeNotWhollyOnDisk(List<SourceResult> sources, ExtractionNameRegistry names) =>
-        [.. sources.Select((s, i) => s.Outcome == SourceOutcome.Completed && names.NotWhollyOnDisk(i)
+        [.. sources.Select(s => s.Outcome == SourceOutcome.Completed && names.NotWhollyOnDisk(s.Path)
             ? s with { Outcome = SourceOutcome.Partial }
             : s)];
 

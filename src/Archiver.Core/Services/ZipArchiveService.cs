@@ -751,7 +751,7 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F419/T-F420: every path this extraction writes, over all its archives. An archive one of
         // whose entries a later one replaced (Overwrite) is not wholly on disk, so not deletable.
         // Not reported - 7-Zip's -y does the same, exit 0.
-        var names = new ExtractionNameRegistry();
+        ExtractionNameRegistry names = options.SharedNames ?? new ExtractionNameRegistry();
 
         for (int i = 0; i < total; i++)
         {
@@ -762,7 +762,7 @@ public sealed class ZipArchiveService : IArchiveService
             string archivePath = options.ArchivePaths[i];
             int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count,
                 conflictSkippedBefore = conflictSkipped.Count;
-            names.CurrentArchive = i;
+            names.CurrentArchive = archivePath;
 
             (bool rejected, ResolvedZipPassword? password) = await TryRejectUnsupportedOrEncryptedZipAsync(
                 archivePath, errors, skippedFiles, passwordResolver).ConfigureAwait(false);
@@ -1793,7 +1793,7 @@ public sealed class ZipArchiveService : IArchiveService
             }
             // T-F411: -aot.
             if (resolvedConflict == ConflictBehavior.RenameExisting)
-                resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, claimedFinalPaths);
+                resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, names);
             if (resolvedConflict == ConflictBehavior.Rename)
             {
                 string uniqueFinal = ArchiveNaming.GetUniqueFilePath(finalFilePath, claimedFinalPaths);

@@ -31,6 +31,10 @@ public sealed record ExtractOptions
     /// </summary>
     public string? DuplicateRootName { get; init; }
 
+    /// <summary>T-F420: the router's one bookkeeping of every path an extraction writes, shared by
+    /// the ZIP and the tar call, so an archive whose file the other engine replaced is not deletable.</summary>
+    internal Services.ExtractionNameRegistry? SharedNames { get; init; }
+
     public ConflictBehavior OnConflict { get; init; } = ConflictBehavior.Skip;
     public bool OpenDestinationFolder { get; init; } = false;
 

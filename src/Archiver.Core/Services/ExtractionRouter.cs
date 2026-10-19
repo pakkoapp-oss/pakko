@@ -57,9 +57,12 @@ public sealed class ExtractionRouter : IExtractionRouter
         int zipSliceEnd = mixed ? ZipSharePercent(zipPaths, tarPaths) : 100;
         SliceProgress? zipSlice = mixed ? new SliceProgress(progress!, 0, zipSliceEnd, bytesBefore: 0) : null;
 
+        // T-F420: one bookkeeping of the paths written, so a tar file replacing a ZIP's leaves that
+        // ZIP not deletable (and Explorer's "Extract here" over both kinds keeps twins apart).
+        var names = options.SharedNames ?? new ExtractionNameRegistry();
         ArchiveResult zipResult = zipPaths.Count > 0
             ? await _archiveService.ExtractAsync(
-                options with { ArchivePaths = zipPaths, OpenDestinationFolder = false },
+                options with { ArchivePaths = zipPaths, OpenDestinationFolder = false, SharedNames = names },
                 zipSlice ?? progress, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
 
@@ -68,7 +71,7 @@ public sealed class ExtractionRouter : IExtractionRouter
             : progress;
         ArchiveResult tarResult = tarPaths.Count > 0
             ? await _tarService.ExtractAsync(
-                options with { ArchivePaths = tarPaths, OpenDestinationFolder = false },
+                options with { ArchivePaths = tarPaths, OpenDestinationFolder = false, SharedNames = names },
                 tarProgress, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
 
@@ -82,7 +85,7 @@ public sealed class ExtractionRouter : IExtractionRouter
             UserSkippedEntryCount = zipResult.UserSkippedEntryCount + tarResult.UserSkippedEntryCount,
             // T-F260: unsupported/policy-blocked paths get no SourceResult, so they are never
             // deletable; a cancel in either engine throws before this merge is reached.
-            Sources = [.. zipResult.Sources, .. tarResult.Sources],
+            Sources = SourceOutcomeRules.DowngradeNotWhollyOnDisk([.. zipResult.Sources, .. tarResult.Sources], names),
         };
 
         if (merged.Success && options.OpenDestinationFolder)

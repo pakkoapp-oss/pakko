@@ -1,3 +1,4 @@
+using Archiver.Core.Interfaces;
 using System.Text;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
@@ -202,6 +203,29 @@ public sealed class TarFullyProcessedAdversarialTests : IDisposable
         });
 
         result.FullyProcessedSources.Should().Equal(second);
+    }
+
+    // T-F420 closing review: the router hands ZIP and tar archives to two engines; a tar.gz whose
+    // a.txt replaced a ZIP's in the same folder leaves the ZIP not deletable either.
+    [Integration]
+    public async Task Router_ZipThenTarIntoOneFolder_Overwrite_TheZipIsNotDeletable()
+    {
+        string folder = Scratch("mixed");
+        string zip = Path.Combine(folder, "a1.zip");
+        using (System.IO.Compression.ZipArchive archive = System.IO.Compression.ZipFile.Open(zip, System.IO.Compression.ZipArchiveMode.Create))
+        using (var writer = new StreamWriter(archive.CreateEntry("a.txt").Open()))
+            writer.Write("ONE");
+        string tar = Path.Combine(folder, "a2.tar");
+        TarBuilder.WriteTar(tar, [new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("TWO") }]);
+        IExtractionRouter router = await PakkoServices.Create(new GroupPolicyOptions()).CreateExtractionRouterAsync();
+
+        ArchiveResult result = await router.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip, tar], DestinationFolder = Path.Combine(_temp.Path, "mixed-out"),
+            Mode = ExtractMode.SingleFolder, OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.FullyProcessedSources.Should().Equal(tar);
     }
 }
 

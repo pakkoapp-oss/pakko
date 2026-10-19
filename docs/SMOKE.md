@@ -135,6 +135,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | EXP-011 | release | mcp | dev | Right-click a folder and click Add to X.7z | The item sits after Add to X.zip and before Add to X.tar; `<name>.7z` appears next to the folder and `7za t` accepts it | `menu:SevenZipArchiveCommand` T-F342 |
 | EXP-012 | release | mcp | dev | Write `tar-capabilities.txt` with tar.exe's own size and write time, `0` and `tar,gzip` into the package's `LocalCache` folder, wait six seconds and open the menu on a folder and on a .tar.xz and a .tar.gz; write it again with `?` in place of `0`; write it again with the size one larger; then delete the file | The first two times: no Add to X.7z, no Extract or Test on the .tar.xz, both on the .tar.gz; the items are back the third time and without the file | `menu:SevenZipArchiveCommand` T-F342 T-F403 |
 | EXP-013 | release | mcp | dev | Right-click a `.7z`, a `.tar.gz` and a `.rar`; click Test on the 7z, on the tar.gz, and on a 7z with changed bytes | Test is in each menu, after the Extract and Add items; the 7z ends with "No errors detected", the tar.gz with "Only the archive's structure was checked" and no "No errors", the changed 7z with an error naming it | `menu:TestCommand` T-F397 |
+| EXP-014 | release | mcp | dev | Explorer "Extract here" on a ZIP holding `What?.txt`, and on a .tar.gz holding `a?b.txt` and `a_b.txt` | `What_.txt` is there; both tar entries are there, one numbered; no error | `menu:ExtractHereCommand` T-F420 |
 
 ## APP - the WinUI window
 
@@ -168,6 +169,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | APP-026 | release | mcp | dev | Open a `.7z` in the App and click Test; open a `.tar.gz` and click Test; open a 7z with changed bytes in its data and click Test | The Test button is there for each; "no errors" for the 7z; the summary with the structure-only warning for the tar.gz; an error for the changed one; the progress moves during the test of a large archive | `app:TestBrowsedArchive` T-F397 |
 | APP-027 | release | mcp | dev | With "move the sources to the Recycle Bin" on: archive a folder and, while the summary is open, add a file to it; again with a file edited; again with the destination set to a junction into the source folder | The folder stays all three times and is named as not deleted; the archive inside it survives the third | `app:Archive` T-F419 |
 | APP-028 | release | mcp | dev | With "move the archives to the Recycle Bin" on: extract a ZIP that holds `a.txt` twice with Overwrite; extract an ordinary ZIP | The first archive stays (only one `a.txt` reached the disk); the second goes to the Recycle Bin | `app:Extract` T-F419 |
+| APP-029 | release | mcp | dev | Open in the App a ZIP holding `a?b.txt` and `a_b.txt`; open `a?b.txt` from the browser; extract all with Overwrite | The browser opens `a?b.txt`'s own content; the folder holds `a_b.txt` and a numbered copy, both contents | `app:Extract` T-F420 |
 
 ## OPW - the Explorer operation window
 

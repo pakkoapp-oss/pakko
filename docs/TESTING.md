@@ -912,7 +912,9 @@ the permanent-delete path so nothing reaches the real Recycle Bin, with end-to-e
 own: `EntryDiskNameTests` (both name rules, `GetFullPath` leaving Pakko's name as it is, the
 registry), `EntryDiskNameTarExeTests` (Integration: real tar.exe writes what `AsTarExeWrites`
 predicts, so a libarchive update that names files differently fails here) and the
-cross-archive rows of `CrossArchiveReplacementTests`/`TarFullyProcessedAdversarialTests`.
+cross-archive rows of `CrossArchiveReplacementTests`/`TarFullyProcessedAdversarialTests` (one
+through `ExtractionRouter` with a ZIP and a tar). `SourceRecyclerAdversarialTests`' one real
+Recycle Bin call is `Category=Slow`: it writes to the user's Recycle Bin.
 
 **T-F116 additions (`-si`/`-so` streaming):** `CliStreamStagingTests.cs` (new unit-test file, no
 process spawn) covers `CliStreamStaging.StreamSingleFileAsync`'s three outcomes — exactly one file
