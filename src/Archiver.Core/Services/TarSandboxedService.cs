@@ -624,7 +624,8 @@ public sealed class TarSandboxedService : ITarService
         // archive is committed, so a cancel or failure partway through leaves no partial files.
         using var staging = ExtractionStaging.Create(unisolatedDestDir);
         var plan = new TarCommitPlan(staging, actualDest, stripRootPrefix,
-            NameRegistry(fileEntries, actualDest, stripRootPrefix, context.Names ?? new ExtractionNameRegistry()));
+            NameRegistry(fileEntries, actualDest, stripRootPrefix, context.Names ?? new ExtractionNameRegistry()),
+            QuarantinedAs(fileEntries, EntryDiskName.Renames), QuarantinedAs(fileEntries, EntryDiskName.Trims));
         RecordFolderTimes((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, scope.OutputDirectory!, staging);
 
         int totalFiles = 0;
@@ -653,7 +654,7 @@ public sealed class TarSandboxedService : ITarService
         foreach ((string file, string root) in quarantined)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (droppedFiles is not null && droppedFiles.Contains(Path.GetRelativePath(root, file).Replace('\\', '/')))
+            if (droppedFiles is not null && droppedFiles.Contains(QuarantineRelative(root, file).Replace('\\', '/')))
                 continue;
             totalFiles++;
 
@@ -785,8 +786,16 @@ public sealed class TarSandboxedService : ITarService
     // Where ExtractSingleArchiveAsync's move phase puts each file: into Staging under the path it
     // will have in ActualDest (T-F263). Names is the bookkeeping ZIP shares (T-F30's claimed set,
     // T-F419's twins kept apart, entries replaced in the run; T-F420).
+    // Renamed and Trimmed: the quarantine paths (tar.exe's names, '/' between parts) of entries
+    // whose own name Windows writes as another, and of those it trims (EntryDiskName) - the move
+    // phase sees only the file, and tar.exe already wrote "a?b" as "a_b" and "d." as "d".
     private sealed record TarCommitPlan(
-        ExtractionStaging Staging, string ActualDest, bool StripRootPrefix, ExtractionNameRegistry Names);
+        ExtractionStaging Staging, string ActualDest, bool StripRootPrefix, ExtractionNameRegistry Names,
+        HashSet<string> Renamed, HashSet<string> Trimmed);
+
+    private static HashSet<string> QuarantinedAs(IReadOnlyList<(string Name, long Size)> fileEntries, Func<string, bool> which) =>
+        new(fileEntries.Where(e => which(e.Name)).Select(e => EntryDiskName.AsTarExeWrites(EntryDiskName.StripLeadingDotSlash(e.Name))),
+            StringComparer.OrdinalIgnoreCase);
 
     // T-F419: the twins are known from the listing before anything moves - where two different
     // names land on one path only through Windows' trimming, they are kept apart as in ZIP.
@@ -930,6 +939,14 @@ public sealed class TarSandboxedService : ITarService
         }
     }
 
+    // A quarantined file's path below root as tar.exe wrote it: Path.GetRelativePath normalizes,
+    // and "a.txt." would come back as "a.txt" (T-F420 review).
+    private static string QuarantineRelative(string root, string file)
+    {
+        string prefix = Path.TrimEndingDirectorySeparator(root) + Path.DirectorySeparatorChar;
+        return file.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? file[prefix.Length..] : Path.GetRelativePath(root, file);
+    }
+
     // T-F419: a quarantined file by its exact name - tar.exe writes through the long-path prefix,
     // so "a.txt." or "a.txt " is on disk as it is, and without the prefix Windows would trim it.
     private static string Literal(string fullPath) =>
@@ -939,15 +956,17 @@ public sealed class TarSandboxedService : ITarService
 
     // Conflicts are decided against the destination plus every path already claimed in this run
     // (T-F30, as in ZIP's WriteEntryAsync). Null when the entry is skipped.
-    private static async Task<string?> ResolveConflictAsync(
-        string finalFilePath, string file, string relativePath, TarCommitPlan plan, TarExtractionContext context)
+    private static async Task<(string? Path, bool EarlierRenamedAway)> ResolveConflictAsync(
+        string finalFilePath, string file, string relativePath, (bool Renamed, bool Trimmed) named, TarCommitPlan plan, TarExtractionContext context)
     {
         if (!File.Exists(finalFilePath) && !plan.Names.Claimed.Contains(finalFilePath)
             && !(context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
-            return finalFilePath;
-        // T-F419: copies of one name only through Windows' trimming are kept apart (as in ZIP).
-        if (plan.Names.MustKeepApart(finalFilePath, namedDifferently: false))
-            return ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.Names.Claimed);
+            return (finalFilePath, false);
+        // T-F419: copies of one name only through Windows' trimming are kept apart (as in ZIP);
+        // T-F420 review: so is a file already on disk that a trimmed name does not name.
+        if (plan.Names.MustKeepApart(finalFilePath, named.Renamed)
+            || (named.Trimmed && !plan.Names.Claimed.Contains(finalFilePath)))
+            return (ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.Names.Claimed), false);
         (long? incomingSize, DateTimeOffset? incomingModified) = DescribeIncoming(Literal(file));
         int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
         ConflictBehavior resolvedConflict = await context.ConflictResolver
@@ -957,20 +976,21 @@ public sealed class TarSandboxedService : ITarService
             // T-F216: the user's own Skip answer is not listed (as in ZIP); only an automatic one.
             if (context.ConflictResolver.UserSkipCount == userSkipsSoFar)
                 context.SkippedFiles.Add(CoreMessages.Skip(relativePath, MessageCode.FileExistsAtDestination));
-            return null;
+            return (null, false);
         }
         // T-F411: -aot, the rule ZipArchiveService shares.
         if (resolvedConflict == ConflictBehavior.RenameExisting)
             resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, plan.Names);
         return resolvedConflict == ConflictBehavior.Rename
-            ? ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.Names.Claimed)
-            : finalFilePath;
+            ? (ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.Names.Claimed), false)
+            : (finalFilePath, resolvedConflict == ConflictBehavior.RenameExisting);
     }
 
     private static async Task<(bool Extracted, string? RelativePath)> TryMoveSingleEntryAsync(
         string file, string outputDirectory, TarCommitPlan plan, string archivePath, TarExtractionContext context)
     {
-        string relativePath = Path.GetRelativePath(outputDirectory, file);
+        string relativePath = QuarantineRelative(outputDirectory, file);
+        string quarantined = relativePath.Replace(Path.DirectorySeparatorChar, '/');
         bool stripRootPrefix = plan.StripRootPrefix;
         string actualDest = plan.ActualDest;
 
@@ -993,11 +1013,15 @@ public sealed class TarSandboxedService : ITarService
 
         string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
 
-        string? resolvedFilePath = await ResolveConflictAsync(finalFilePath, file, relativePath, plan, context).ConfigureAwait(false);
+        // As ZIP's WriteEntryAsync: the file name Windows trims ("a.txt." in the quarantine), or an
+        // 8.3 alias GetFullPath expands, is not the name of the file it lands on.
+        bool trimmedHere = !string.Equals(Path.GetFileName(relativePath), Path.GetFileName(finalFilePath), StringComparison.OrdinalIgnoreCase);
+        (bool Renamed, bool Trimmed) named = (plan.Renamed.Contains(quarantined) || trimmedHere, plan.Trimmed.Contains(quarantined) || trimmedHere);
+        (string? resolvedFilePath, bool earlierRenamedAway) = await ResolveConflictAsync(finalFilePath, file, relativePath, named, plan, context).ConfigureAwait(false);
         if (resolvedFilePath is null)
             return (false, relativePath);
         finalFilePath = resolvedFilePath;
-        plan.Names.Claim(finalFilePath, namedDifferently: false);
+        plan.Names.Claim(finalFilePath, named.Renamed, earlierRenamedAway);
 
         // T-F263: staged under the path it will have in actualDest; the commit moves it there.
         string stagedFilePath = Path.Combine(plan.Staging.Path, Path.GetRelativePath(actualDest, finalFilePath));
@@ -1176,7 +1200,9 @@ public sealed class TarSandboxedService : ITarService
 
         string[] names = SplitLines(nameStdOut);
 
-        string? unsafeName = names.FirstOrDefault(IsDangerousEntryName);
+        // T-F420 review: an entry named as another's 8.3 alias - tar.exe would write it through that
+        // short name inside the quarantine, over the other, before Pakko sees either file.
+        string? unsafeName = names.FirstOrDefault(IsDangerousEntryName) ?? EntryDiskName.ShortNameAliasOfAnother(names);
         if (unsafeName != null)
             throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarUnsafeEntryPath, unsafeName));
 

@@ -44,10 +44,11 @@ internal sealed class ExtractionNameRegistry
     public void KeepApart(string finalPath) => _keptApart.Add(finalPath);
 
     /// <summary>Records the path an entry of <see cref="CurrentArchive"/> is written to; a path
-    /// already claimed means the archive that claimed it lost that file.</summary>
-    public void Claim(string finalPath, bool namedDifferently)
+    /// already claimed means the archive that claimed it lost that file - unless -aot renames that
+    /// file away (<paramref name="earlierRenamedAway"/>), which keeps it on disk.</summary>
+    public void Claim(string finalPath, bool namedDifferently, bool earlierRenamedAway = false)
     {
-        if (!Claimed.Add(finalPath))
+        if (!Claimed.Add(finalPath) && !earlierRenamedAway)
             _notWhollyOnDisk.Add(_owner[finalPath]);
         _owner[finalPath] = CurrentArchive;
         ClaimedInThisArchive.Add(finalPath);

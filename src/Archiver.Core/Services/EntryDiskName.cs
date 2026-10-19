@@ -32,6 +32,57 @@ public static class EntryDiskName
     /// the same name.</summary>
     public static bool Renames(string name) => !string.Equals(AsPakkoWrites(name), string.Join('/', Steps(name)), StringComparison.Ordinal);
 
+    /// <summary>Whether Windows drops a trailing dot or space from a part of <paramref name="name"/>:
+    /// the file it lands on is then not the one it names (7-Zip writes "a.txt." as "a.txt_"), so it
+    /// never replaces a file already there. A refused character turned into '_' is not this: 7-Zip
+    /// writes that name too.</summary>
+    public static bool Trims(string name) =>
+        Steps(name).Any(part => part != ".." && part.TrimEnd(' ', '.').Length != part.Length);
+
+    /// <summary>The first name with a part shaped as a Windows 8.3 alias ("LONGFI~1.TXT",
+    /// "LO1A2B~1.TXT") beside another part of the same folder that starts as it does, or null.
+    /// tar.exe would write that entry through the other's short name, over it.</summary>
+    public static string? ShortNameAliasOfAnother(IReadOnlyList<string> names)
+    {
+        var children = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (string name in names)
+        {
+            string[] parts = AsTarExeWrites(StripLeadingDotSlash(name)).Split('/');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                string folder = string.Join('/', parts[..i]);
+                if (!children.TryGetValue(folder, out List<string>? list))
+                    children[folder] = list = [];
+                list.Add(parts[i]);
+            }
+        }
+        foreach (string name in names)
+        {
+            string[] parts = AsTarExeWrites(StripLeadingDotSlash(name)).Split('/');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (!IsAliasShaped(parts[i]))
+                    continue;
+                string start = parts[i][..Math.Min(2, parts[i].IndexOf('~'))];
+                if (children[string.Join('/', parts[..i])].Any(other =>
+                        !string.Equals(other, parts[i], StringComparison.OrdinalIgnoreCase)
+                        && other.StartsWith(start, StringComparison.OrdinalIgnoreCase)))
+                    return name;
+            }
+        }
+        return null;
+    }
+
+    // An 8.3 name with "~" and digits ending its base: "LONGFI~1.TXT", "LO1A2B~12".
+    private static bool IsAliasShaped(string part)
+    {
+        int dot = part.LastIndexOf('.');
+        string stem = dot < 0 ? part : part[..dot];
+        int tilde = stem.IndexOf('~');
+        return stem.Length <= 8 && (dot < 0 || part.Length - dot - 1 <= 3)
+            && tilde > 0 && tilde < stem.Length - 1 && stem[(tilde + 1)..].All(char.IsAsciiDigit);
+    }
+
     /// <summary>T-F30's "the same name": equal but for case, a "./" step or a doubled separator - a
     /// later copy may replace an earlier one under Overwrite, as in 7-Zip. Two different names that
     /// only land on one path are twins, and are kept apart.</summary>

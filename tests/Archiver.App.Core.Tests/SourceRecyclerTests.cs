@@ -280,6 +280,38 @@ public sealed class SourceRecyclerTests
         }
     }
 
+    // T-F419 GUI pass: Core leaves a source out of FullyProcessedSources with no error or skip
+    // (a folder holding its own archive, an archive whose file a later entry replaced); the App
+    // then kept it without a word. Such a source is still on disk and is named, as -sdel names it.
+    [Fact]
+    public void NotFullyProcessed_NamesWhatCoreLeftOut_BySpellingGiven()
+    {
+        string[] candidates = [@"C:\w\src", @"C:\w\b.zip", @"C:\w\c\"];
+
+        IReadOnlyList<string> left = SourceRecycler.NotFullyProcessed(candidates, [@"c:\W\B.ZIP", @"C:\w\c"]);
+
+        left.Should().Equal([@"C:\w\src"], "case and a trailing separator do not make another source");
+    }
+
+    // T-F420 independent review: the cleanup runs after the summary, while the user keeps working;
+    // an archive deleted or moved meanwhile leaves the sources the only copy.
+    [Fact]
+    public void MissingOutputs_NamesAnOutputNoLongerOnDisk()
+    {
+        var ops = new FakeOps();
+        ops.OnDisk.Add(@"C:\w\a.zip");
+        var recycler = new SourceRecycler(ops);
+
+        recycler.MissingOutputs([@"C:\w\a.zip", @"C:\w\a.zip.par2"]).Should().Equal([@"C:\w\a.zip.par2"]);
+        recycler.MissingOutputs([@"C:\w\a.zip"]).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void NotFullyProcessed_AllProcessed_NothingNamed()
+    {
+        SourceRecycler.NotFullyProcessed([@"C:\w\a.txt"], [@"C:\w\a.txt"]).Should().BeEmpty();
+    }
+
     [Fact]
     public void Win32_MissingPath_ResolvesToNull()
     {

@@ -170,6 +170,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | APP-027 | release | mcp | dev | With "move the sources to the Recycle Bin" on: archive a folder and, while the summary is open, add a file to it; again with a file edited; again with the destination set to a junction into the source folder | The folder stays all three times and is named as not deleted; the archive inside it survives the third | `app:Archive` T-F419 |
 | APP-028 | release | mcp | dev | With "move the archives to the Recycle Bin" on: extract a ZIP that holds `a.txt` twice with Overwrite; extract an ordinary ZIP | The first archive stays (only one `a.txt` reached the disk); the second goes to the Recycle Bin | `app:Extract` T-F419 |
 | APP-029 | release | mcp | dev | Open in the App a ZIP holding `a?b.txt` and `a_b.txt`; open `a?b.txt` from the browser; extract all with Overwrite | The browser opens `a?b.txt`'s own content; the folder holds `a_b.txt` and a numbered copy, both contents | `app:Extract` T-F420 |
+| APP-030 | release | mcp | dev | With "move the sources to the Recycle Bin" on: archive a folder of a few hundred MB and, while it runs, delete nothing; again, and move the new archive away before the summary closes (archive a folder with a skipped link so the summary opens) | The first folder goes to the Recycle Bin; the second stays and is named as not deleted | `app:Archive` T-F420 |
 
 ## OPW - the Explorer operation window
 

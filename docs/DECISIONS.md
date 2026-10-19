@@ -13438,6 +13438,59 @@ the archive.
     name it cannot represent outright, and maps raw ustar bytes to real characters.
   - `JunctionAsSource_RealRecycle_TargetContentSurvives` (the one test that writes to the real
     Recycle Bin) failed once under the full parallel run; it is `Category=Slow` now.
+- **Independent review** (a fresh Opus subagent, own worktree, read-only on `src/`, 24d9e3f..adc49b7;
+  its tests are `IndependentReviewTests`/`IndependentReviewRegistryTests`, each seen red). Fixed:
+  - A tar entry named as another entry's 8.3 alias (`longfilename.txt` and `LONGFI~1.TXT`): tar.exe
+    opens the second through the first's short name inside the quarantine (NTFS resolves an alias
+    under `\\?\` too), so the first's data was gone before the move phase, exit 0 - and the App's
+    "Delete after" would have recycled the archive. The tar pre-scan now refuses such an archive
+    (`TarUnsafeEntryPath`, naming the alias; `EntryDiskName.ShortNameAliasOfAnother`: an 8.3-shaped
+    part with `~` and digits beside a part of the same folder starting with its first two
+    characters, which covers the hashed form `LO1A2B~1.TXT`). Refused, not extracted: tar.exe
+    extracts the whole archive at once and the filter drops files only afterwards (T-F410), so there
+    is no way to keep the alias out of the quarantine. The review's test asked for "the first
+    survives"; it now accepts the two outcomes that lose nothing (refused with nothing written, or
+    both on disk). The ZIP route was already safe (`GetFullPath` expands the alias).
+  - Twins across archives on the tar route (`x arcs\*` with a ZIP's `a.txt` and a tar's `a.txt.`,
+    or two tars): the tar move phase claimed every path as "not named differently" - it sees only
+    the quarantined file, where tar.exe already wrote `a?b` as `a_b` and `d.` as `d`. The listing
+    now gives the quarantine paths whose entry Windows renames or trims, plus the file name's own
+    trim against the final path, as ZIP computes it.
+  - Found fixing that: the move phase took a quarantined path through `Path.GetRelativePath`,
+    which normalizes `a.txt.` to `a.txt`, so an entry left out by `-x!a.txt.` was still extracted
+    (T-F410's dropped files missed it). The path below the quarantine is now cut as written.
+  - **Reversed, `-y` over a file already on disk:** an entry `a.txt.` replaced the user's `a.txt`,
+    which the archive never named; 7za writes it as `a.txt_` and the user's file stays (the review
+    measured the vendored copy). CLI.md and `EntryDiskName`'s comment said the trim is "as 7-Zip
+    writes it"; it is not. Rather than switch to 7-Zip's `_` (the trim, its twins and its numbering
+    were measured and pinned in T-F419/T-F420), an entry whose name Windows trims, or an 8.3 alias
+    of the file it lands on, never replaces a file already there in either engine: it is numbered
+    beside it, `-y` or not (`EntryDiskName.Trims`). A `?` written as `_` keeps 7-Zip's rule (7-Zip
+    writes that name too, and `-y` replaces it). Cost: extracting such an archive twice with
+    Overwrite numbers the trimmed entry the second time. `Zip_ShortNameAliasOfExistingFile` now
+    expects the alias numbered beside the existing file, exit 0 (was: skipped, exit 1) - both kept.
+  - The App's cleanup runs after the summary, while the user keeps working: an archive deleted or
+    moved meanwhile left the sources recycled anyway. The App now checks every created output is
+    still on disk first (`SourceRecycler.MissingOutputs`); if one is gone, nothing is deleted and
+    the sources are named as not deleted.
+  - `-aot` across archives: the second archive's `a.txt` renames the first archive's file to
+    `a (1).txt`, still on disk, yet the claim marked the first archive not wholly on disk. A claim
+    over a file -aot renames away no longer does (`earlierRenamedAway`). No GUI path passes
+    `RenameExisting`; CLI `x` has no delete option - latent, fixed while the registry was open.
+  - Held (checked by the review): containment by identity, the App snapshot, `-sdel`'s refusals and
+    per-file deletion, the rewrite opening nothing new, NTFS against OrdinalIgnoreCase over the BMP.
+    Not checked: SUBST and admin shares end to end, OneDrive placeholders. Reported outside the
+    range, not fixed here: in ZIP separate-archive mode `a.txt` and `a.zip` both map to `a.zip`, so
+    under Overwrite an input could be replaced before it is read (T-F421).
+- **GUI pass (the deployed adc49b7 build, mouse via the `windows` MCP).** C, B, J, K, APP-028,
+  APP-029, EXP-014 as expected. Two defects, fixed test-first:
+  - "Delete after" kept a source Core left out of its fully processed list with no error or skip (a
+    folder holding its own archive, an archive whose file a later entry replaced) without a word;
+    CLI's `-sdel` names it ("not all of it went into the archive"). The App now names it with the
+    rest not deleted (`SourceRecycler.NotFullyProcessed`, T-F242's "every source still on disk is
+    reported").
+  - A folder entry skipped for a link on its path (C, T-F37) is reported as `j\`; the App's summary
+    and Explorer's message showed an empty name. Both trim the separator first.
 
 ## T-F419 - a red team against every switch (2026-10-19)
 

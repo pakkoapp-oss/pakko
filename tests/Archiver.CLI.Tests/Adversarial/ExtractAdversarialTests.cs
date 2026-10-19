@@ -170,7 +170,9 @@ public sealed class ExtractAdversarialTests : IDisposable
         File.ReadAllText(_scratch.Inside(@"out\a.txt")).Should().Be("FIRST");
     }
 
-    // An 8.3 alias of an existing file is the same file: without -ao it must be kept.
+    // An 8.3 alias of an existing file is the same file: it must be kept. T-F420 review: an entry
+    // Windows writes under another name never replaces a file already there - it is numbered
+    // beside it (was: skipped, exit 1), so both are on disk.
     [Fact]
     public void Zip_ShortNameAliasOfExistingFile_DefaultKeepsTheExistingFile()
     {
@@ -182,7 +184,8 @@ public sealed class ExtractAdversarialTests : IDisposable
         (int exitCode, _, string stdErr) = _scratch.Pakko("x", archive, "-oout");
 
         File.ReadAllText(existing).Should().Be("PRECIOUS");
-        exitCode.Should().Be(1, stdErr);
+        exitCode.Should().Be(0, stdErr);
+        File.ReadAllText(_scratch.Inside(@"out\longfilename (1).txt")).Should().Be("FROM-ARCHIVE");
     }
 
     // --- hostile entry names ---

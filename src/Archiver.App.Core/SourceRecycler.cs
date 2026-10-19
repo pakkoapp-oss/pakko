@@ -51,6 +51,20 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
         return new RecycleResult(deleted, notDeleted);
     }
 
+    /// <summary>The <paramref name="candidates"/> Core left out of its fully processed sources - with
+    /// no error or skip when it holds its own archive or a later entry replaced one of its files
+    /// (T-F419). They stay on disk and are reported, as CLI's -sdel reports them.</summary>
+    public static IReadOnlyList<string> NotFullyProcessed(IEnumerable<string> candidates, IEnumerable<string> fullyProcessed)
+    {
+        var processed = new HashSet<string>(fullyProcessed.Select(Path.TrimEndingDirectorySeparator), StringComparer.OrdinalIgnoreCase);
+        return [.. candidates.Where(path => !processed.Contains(Path.TrimEndingDirectorySeparator(path)))];
+    }
+
+    /// <summary>The <paramref name="outputs"/> no longer on disk (T-F420 review): the cleanup runs
+    /// after the summary, while the user keeps working, and an archive deleted or moved meanwhile
+    /// leaves the sources its only copy - nothing is deleted then.</summary>
+    public IReadOnlyList<string> MissingOutputs(IEnumerable<string> outputs) => [.. outputs.Where(path => !ops.Exists(path))];
+
     // Recycles what can be recycled; returns what is still on disk plus what needs a permanent
     // delete.
     private (List<string> NotDeleted, List<(string Source, string Final)> Permanent) RecycleLocalSources(

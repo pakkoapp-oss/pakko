@@ -16,7 +16,8 @@ public static class ShellResultPresenter
     public static string BuildSkippedMessage(IReadOnlyList<SkippedFile> skipped, int maxLinesShown = 10)
     {
         IEnumerable<string> lines = skipped.Take(maxLinesShown)
-            .Select(s => $"{Path.GetFileName(s.Path)}: {MessageText.Render(s, CultureInfo.CurrentUICulture)}");
+            // A folder entry is reported as "j\" (T-F37).
+            .Select(s => $"{Path.GetFileName(Path.TrimEndingDirectorySeparator(s.Path))}: {MessageText.Render(s, CultureInfo.CurrentUICulture)}");
         string header = ResultMessagesLocalizer.Get("ResultSkippedHeader", skipped.Count);
         string message = $"{header}{Environment.NewLine}{string.Join(Environment.NewLine, lines)}";
 

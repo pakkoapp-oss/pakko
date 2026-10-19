@@ -1073,7 +1073,7 @@ public sealed partial class MainViewModel : ObservableObject
             // summary, so the user sees what was skipped before anything is deleted. A cancel
             // throws and never reaches this line.
             if (DeleteAfterOperation && deleteSnapshot is not null)
-                await RunCleanupAsync(result.FullyProcessedSources, deleteSnapshot);
+                await RunCleanupAsync(options.SourcePaths, result, deleteSnapshot);
         }
         catch (OperationCanceledException)
         {
@@ -1189,7 +1189,7 @@ public sealed partial class MainViewModel : ObservableObject
             // T-F260/T-F229/T-F265: see ArchiveAsync — a subset extraction is never deletable.
             if (DeleteAfterOperation && allowDeleteAfter && deleteSnapshot is not null)
             {
-                await RunCleanupAsync(result.FullyProcessedSources, deleteSnapshot);
+                await RunCleanupAsync(options.ArchivePaths, result, deleteSnapshot);
                 // The browsed archive went to the Recycle Bin: nothing left to browse.
                 closeBrowser = fromBrowser && !File.Exists(archivePaths[0]);
             }
@@ -2086,22 +2086,31 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>T-F200: forgets the browse session's passwords (the window is closing).</summary>
     public void ForgetBrowsePasswords() => _browsePasswords.Clear();
 
-    private async Task RunCleanupAsync(IEnumerable<string> paths, ISourceSnapshot snapshot)
+    private async Task RunCleanupAsync(IReadOnlyList<string> candidates, ArchiveResult result, ISourceSnapshot snapshot)
     {
         StatusMessage = _res.GetString("StatusCleaningUp");
+        // T-F420 review: an output gone since the run (deleted or moved while the summary was open)
+        // leaves the sources its only copy - nothing is deleted.
+        IReadOnlyList<string> missing = await Task.Run(() => _sourceRecycler.MissingOutputs(result.CreatedFiles));
+        foreach (string path in missing)
+            _logService.Warn($"Output no longer on disk, nothing deleted: {path}");
         // T-F207/T-F242: Recycle Bin where the volume has one, an explicit confirmation before
-        // anything is deleted permanently, and every source still on disk is reported.
-        RecycleResult recycled = await _sourceRecycler.DeleteAsync(paths, snapshot, _dialogService.ShowPermanentDeleteConfirmAsync);
+        // anything is deleted permanently, and every source still on disk is reported - also one
+        // Core did not process in full (T-F419).
+        RecycleResult recycled = missing.Count > 0
+            ? new RecycleResult([], [.. result.FullyProcessedSources])
+            : await _sourceRecycler.DeleteAsync(result.FullyProcessedSources, snapshot, _dialogService.ShowPermanentDeleteConfirmAsync);
         // T-F302: a row whose source is gone would only fail the next run ("source does not
         // exist"); the tick, given for this run's sources, does not carry into the next list.
         foreach (string path in recycled.Deleted)
             RemovePath(path);
         DeleteAfterOperation = false;
-        if (recycled.NotDeleted.Count == 0)
+        List<string> notDeleted = [.. SourceRecycler.NotFullyProcessed(candidates, result.FullyProcessedSources), .. recycled.NotDeleted];
+        if (notDeleted.Count == 0)
             return;
-        foreach (string path in recycled.NotDeleted)
+        foreach (string path in notDeleted)
             _logService.Warn($"Not deleted after operation: {path}");
-        await _dialogService.ShowNotDeletedAsync(recycled.NotDeleted);
+        await _dialogService.ShowNotDeletedAsync(notDeleted);
     }
 
     private void UpdateOperationStatus(ProgressReport report)
