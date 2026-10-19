@@ -1,3 +1,4 @@
+using Archiver.Core.IO;
 using Archiver.Core.Models;
 
 namespace Archiver.Core.Services;
@@ -19,11 +20,30 @@ internal static class SourceOutcomeRules
 
     // A creation source that contains one of the archives it produced (destination folder inside
     // the source folder) must never be deleted — that would take the new archive with it.
+    // T-F419: also when the archive got there by another spelling (a junction, \\?\, SUBST, the
+    // admin share), compared by file identity; a side that exists but cannot be resolved counts as holding it.
+    // A drive or share root is never deletable either: its Hidden+System entries are left out
+    // (DirectoryWalker, T-F345), so it is never wholly in the archive.
     internal static IReadOnlyList<SourceResult> DowngradeSourcesContainingOutputs(
-        IEnumerable<SourceResult> sources, IReadOnlyCollection<string> createdFiles) =>
-        [.. sources.Select(s => s.Outcome == SourceOutcome.Completed && createdFiles.Any(c => IsSameOrUnder(c, s.Path))
+        IEnumerable<SourceResult> sources, IReadOnlyCollection<string> createdFiles)
+    {
+        List<HashSet<PathIdentity.Identity>?> holders = [.. createdFiles.Where(File.Exists).Select(PathIdentity.SelfAndAncestors)];
+        return [.. sources.Select(s => s.Outcome == SourceOutcome.Completed
+                && (IsRoot(s.Path) || createdFiles.Any(c => IsSameOrUnder(c, s.Path)) || HoldsAnOutput(s.Path, holders))
             ? s with { Outcome = SourceOutcome.Partial }
             : s)];
+    }
+
+    private static bool HoldsAnOutput(string source, List<HashSet<PathIdentity.Identity>?> holders)
+    {
+        if (holders.Count == 0 || (!File.Exists(source) && !Directory.Exists(source)))
+            return false;
+        if (PathIdentity.Resolve(source) is not { } resolved)
+            return true;
+        return holders.Exists(h => h is null || h.Contains(resolved.Identity));
+    }
+
+    private static bool IsRoot(string path) => Directory.Exists(path) && new DirectoryInfo(path).Parent is null;
 
     private static bool IsSameOrUnder(string candidate, string root)
     {

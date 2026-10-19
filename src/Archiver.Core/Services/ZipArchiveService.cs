@@ -748,6 +748,10 @@ public sealed class ZipArchiveService : IArchiveService
         // SkippedFiles (the summary dialog stays as it was), but they make the archive Partial.
         var conflictSkipped = new List<(string Path, bool ByUser)>();
         var warnings = new List<ArchiveWarning>();
+        // T-F419: entries that replaced an earlier entry of the same name in this run (Overwrite):
+        // what reached the disk is not the whole archive, so it is not deletable. Not reported -
+        // 7-Zip's -y does the same, exit 0.
+        var replacedInRun = new List<string>();
 
         for (int i = 0; i < total; i++)
         {
@@ -757,14 +761,14 @@ public sealed class ZipArchiveService : IArchiveService
 
             string archivePath = options.ArchivePaths[i];
             int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count,
-                conflictSkippedBefore = conflictSkipped.Count;
+                conflictSkippedBefore = conflictSkipped.Count, replacedBefore = replacedInRun.Count;
 
             (bool rejected, ResolvedZipPassword? password) = await TryRejectUnsupportedOrEncryptedZipAsync(
                 archivePath, errors, skippedFiles, passwordResolver).ConfigureAwait(false);
             if (!rejected)
             {
                 IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
-                var sink = new ZipExtractResultSink(errors, createdFiles, skippedFiles, conflictSkipped, warnings);
+                var sink = new ZipExtractResultSink(errors, createdFiles, skippedFiles, conflictSkipped, warnings, replacedInRun);
                 await ExtractOneZipWithErrorMappingAsync(
                     archivePath, options, conflictResolver, password, sink, archiveProgress, cancellationToken).ConfigureAwait(false);
             }
@@ -773,7 +777,8 @@ public sealed class ZipArchiveService : IArchiveService
             sources.Add(SourceOutcomeRules.Classify(archivePath,
                 produced: createdFiles.Count > createdBefore,
                 clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore
-                    && conflictSkipped.Count == conflictSkippedBefore && options.SelectedEntryPaths is null && options.EntryFilter is null));
+                    && conflictSkipped.Count == conflictSkippedBefore && replacedInRun.Count == replacedBefore
+                    && options.SelectedEntryPaths is null && options.EntryFilter is null));
 
             if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
         }
@@ -947,7 +952,8 @@ public sealed class ZipArchiveService : IArchiveService
         List<string> CreatedFiles,
         List<SkippedFile> SkippedFiles,
         List<(string Path, bool ByUser)> ConflictSkippedEntries,
-        List<ArchiveWarning> Warnings);
+        List<ArchiveWarning> Warnings,
+        List<string> ReplacedInRun);
 
     private async Task ExtractOneZipWithErrorMappingAsync(
         string archivePath, ExtractOptions options, ConflictResolver conflictResolver,
@@ -963,7 +969,7 @@ public sealed class ZipArchiveService : IArchiveService
             var context = new ZipExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
                 sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder, sink.Warnings, options.OnItemExtracted, options.EntryFilter,
-                options.DuplicateRootName);
+                options.DuplicateRootName, sink.ReplacedInRun);
             (string? actualDest, bool anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
@@ -1605,7 +1611,9 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F410: ExtractOptions.EntryFilter.
         Func<string, bool, bool>? EntryFilter = null,
         // T-F411: ExtractOptions.DuplicateRootName.
-        string? DuplicateRootName = null);
+        string? DuplicateRootName = null,
+        // T-F419: see ExtractAsync's replacedInRun.
+        List<string>? ReplacedInRun = null);
 
     // The per-call setup ExtractWithSmartFolderingAsync computes once and every entry of its loop
     // reads unchanged — cut into its own type alongside ZipExtractionContext so
@@ -1788,6 +1796,10 @@ public sealed class ZipArchiveService : IArchiveService
                 string uniqueFinal = ArchiveNaming.GetUniqueFilePath(finalFilePath, claimedFinalPaths);
                 destFilePath = Path.Combine(Path.GetDirectoryName(destFilePath)!, Path.GetFileName(uniqueFinal));
                 finalFilePath = uniqueFinal;
+            }
+            else if (claimedFinalPaths.Contains(finalFilePath))
+            {
+                context.ReplacedInRun?.Add(relativePath);
             }
         }
         claimedFinalPaths.Add(finalFilePath);
