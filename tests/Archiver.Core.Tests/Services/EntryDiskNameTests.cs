@@ -1,4 +1,4 @@
-using Archiver.Core.Services;
+﻿using Archiver.Core.Services;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
@@ -127,5 +127,52 @@ public sealed class EntryDiskNameTests
         names.MustKeepApart(@"C:\o\d\x.txt", namedDifferently: false).Should().BeFalse("not written yet");
         names.Claim(@"C:\o\d\x.txt", namedDifferently: false);
         names.MustKeepApart(@"C:\o\d\x.txt", namedDifferently: false).Should().BeTrue();
+    }
+    // T-F420 independent review: a name Windows trims is not the name of the file it lands on -
+    // 7-Zip writes "a.txt." as "a.txt_" - so it never replaces a file already there. A refused
+    // character turned into '_' is the name 7-Zip writes too.
+    [Theory]
+    [InlineData("a.txt.", true)]
+    [InlineData("a.txt ", true)]
+    [InlineData("d./x.txt", true)]
+    [InlineData("a/.../b.txt", true)]
+    [InlineData("a?b.txt", false)]
+    [InlineData("./d//x.txt", false)]
+    [InlineData("a.txt", false)]
+    [InlineData("../a.txt", false)]
+    public void Trims_OnlyTrailingDotsAndSpaces(string name, bool expected)
+    {
+        EntryDiskName.Trims(name).Should().Be(expected);
+    }
+
+    // T-F420 independent review: tar.exe writes "LONGFI~1.TXT" through the short name of an earlier
+    // "longfilename.txt" in the quarantine (NTFS resolves an 8.3 alias under \\?\ too), and the
+    // first file's data is gone before Pakko sees it.
+    [Theory]
+    [InlineData(new[] { "longfilename.txt", "LONGFI~1.TXT" }, "LONGFI~1.TXT")]
+    [InlineData(new[] { "d/LONGFI~2.TXT", "d/longfilename.txt" }, "d/LONGFI~2.TXT")]
+    [InlineData(new[] { "longfoldername/a.txt", "LONGFO~1/b.txt" }, "LONGFO~1/b.txt")]
+    [InlineData(new[] { "longfilename.txt", "LO1A2B~1.TXT" }, "LO1A2B~1.TXT")]
+    [InlineData(new[] { "longfilename.txt", "d/LONGFI~1.TXT" }, null)]
+    [InlineData(new[] { "LONGFI~1.TXT" }, null)]
+    [InlineData(new[] { "notes.txt", "LONGFI~1.TXT" }, null)]
+    [InlineData(new[] { "a~b.txt", "ab-long-name.txt" }, null)]
+    public void ShortNameAliasOfAnother_FindsAnAliasBesideALongName(string[] names, string? expected)
+    {
+        EntryDiskName.ShortNameAliasOfAnother(names).Should().Be(expected);
+    }
+
+    // T-F420 independent review: -aot across archives renames the earlier archive's file, which
+    // stays on disk - that archive lost nothing.
+    [Fact]
+    public void Registry_EarlierFileRenamedAway_EarlierArchiveWhollyOnDisk()
+    {
+        var names = new ExtractionNameRegistry { CurrentArchive = @"C:\a1.zip" };
+        names.Claim(@"C:\o\a.txt", namedDifferently: false);
+        names.CurrentArchive = @"C:\a2.zip";
+
+        names.Claim(@"C:\o\a.txt", namedDifferently: false, earlierRenamedAway: true);
+
+        names.NotWhollyOnDisk(@"C:\a1.zip").Should().BeFalse();
     }
 }

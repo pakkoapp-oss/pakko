@@ -58,6 +58,27 @@ public sealed class ShellResultPresenterTests
         }
     }
 
+    // T-F419 GUI pass: a folder entry skipped for a link on its path (T-F37) is reported as "j\";
+    // its line named nothing.
+    [Fact]
+    public void BuildSkippedMessage_FolderEntry_NamedWithoutTheTrailingSeparator()
+    {
+        CultureInfo original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
+            SkippedFile[] skipped = [new SkippedFile { Path = @"j\", Reason = "link" }];
+
+            string message = ShellResultPresenter.BuildSkippedMessage(skipped);
+
+            message.Should().Contain(Environment.NewLine + "j: link");
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
     [Fact]
     public void BuildSkippedMessage_MoreThanMaxLines_TruncatesWithCount()
     {

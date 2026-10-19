@@ -426,7 +426,8 @@ public sealed class DialogService : IDialogService
                 var itemPanel = new StackPanel { Margin = new Thickness(12, 0, 0, 4) };
                 itemPanel.Children.Add(new TextBlock
                 {
-                    Text = Path.GetFileName(skipped.Path),
+                    // A folder entry is reported as "j\" (T-F37).
+                    Text = Path.GetFileName(Path.TrimEndingDirectorySeparator(skipped.Path)),
                     FontWeight = FontWeights.SemiBold
                 });
                 itemPanel.Children.Add(new TextBlock

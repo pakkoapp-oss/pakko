@@ -1773,15 +1773,18 @@ public sealed class ZipArchiveService : IArchiveService
         string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, Path.GetRelativePath(fullTempDest, destFilePath)));
         // T-F419: a name Windows writes as another - a part's trailing dot or space dropped, or
         // an 8.3 alias ("LONGFI~1.TXT") that resolves to an earlier entry's long name.
-        bool trimmedByWindows = EntryDiskName.Renames(named.FullName)
-            || !string.Equals(Path.GetFileName(relativePath), Path.GetFileName(finalFilePath), StringComparison.OrdinalIgnoreCase);
+        bool aliasOfAnother = !string.Equals(Path.GetFileName(relativePath), Path.GetFileName(finalFilePath), StringComparison.OrdinalIgnoreCase);
+        bool trimmedByWindows = EntryDiskName.Renames(named.FullName) || aliasOfAnother;
+        bool earlierRenamedAway = false;
         if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath)
             || (context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
         {
             int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
             // T-F419: "a.txt." and "a.txt" are two entries Windows writes under one name; neither
-            // may overwrite the other, -y or not (7-Zip keeps both, as "a.txt_").
+            // may overwrite the other, -y or not (7-Zip keeps both, as "a.txt_"). T-F420 review: nor
+            // a file already on disk, which such an entry does not name.
             ConflictBehavior resolvedConflict = names.MustKeepApart(finalFilePath, trimmedByWindows)
+                || ((EntryDiskName.Trims(named.FullName) || aliasOfAnother) && !claimedFinalPaths.Contains(finalFilePath))
                 ? ConflictBehavior.Rename
                 : await context.ConflictResolver
                     .ResolveAsync(finalFilePath, named.Entry.Length, new DateTimeOffset(named.ModifiedUtc).ToLocalTime()).ConfigureAwait(false);
@@ -1794,6 +1797,7 @@ public sealed class ZipArchiveService : IArchiveService
             // T-F411: -aot.
             if (resolvedConflict == ConflictBehavior.RenameExisting)
                 resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, names);
+            earlierRenamedAway = resolvedConflict == ConflictBehavior.RenameExisting;
             if (resolvedConflict == ConflictBehavior.Rename)
             {
                 string uniqueFinal = ArchiveNaming.GetUniqueFilePath(finalFilePath, claimedFinalPaths);
@@ -1801,7 +1805,7 @@ public sealed class ZipArchiveService : IArchiveService
                 finalFilePath = uniqueFinal;
             }
         }
-        names.Claim(finalFilePath, trimmedByWindows);
+        names.Claim(finalFilePath, trimmedByWindows, earlierRenamedAway);
 
         // T-F189: entry names are never encrypted by the ZIP format itself, so every check above
         // (ADS/reserved-name, traversal, reparse-point, conflict) already ran unmodified before

@@ -345,6 +345,8 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["EntryDiskName.Renames"] = "a name inside an archive, never opened",
         ["EntryDiskName.SameName"] = "names inside an archive, never opened",
         ["EntryDiskName.TrimmedTwins"] = "names inside an archive, never opened",
+        ["EntryDiskName.Trims"] = "a name inside an archive, never opened",
+        ["EntryDiskName.ShortNameAliasOfAnother"] = "names inside an archive, never opened",
         ["EntryDiskName.StripLeadingDotSlash"] = "a name inside an archive, never opened",
     };
 

@@ -1681,6 +1681,17 @@ re-measured with T-F346's script before and after.
   `-T`/`-X` line by doubling it; then the App, `l`, a selection and a filter agree on the name.
 - **Reported by:** T-F410 wave B's closing review, 2026-10-18.
 
+### T-F421 — ZIP separate archives: `a.txt` and `a.zip` both become `a.zip` (P2, from T-F420's independent review, reproduce first)
+
+- [ ] **Status:** reported, not reproduced (2026-10-19). The T-F420 independent reviewer, reading
+  code outside its range: in separate-archive mode (one archive per source: the App's "Separate
+  archives", Explorer's per-item "Add to") the sources `a.txt` and `a.zip` both map to the
+  archive name `a.zip`; under Overwrite one input could be replaced before it is read.
+  1. Reproduce through the real exe and the App (two sources, Overwrite and Rename).
+  2. Decide by what 7-Zip does with the same pair (measure the vendored `7za.exe`), record
+     in DECISIONS; never replace a file that is itself a source of the run.
+- **Reported by:** the T-F420 independent review subagent, 2026-10-19.
+
 ### T-F420 — one path pipeline for entry names and for source paths, shared by the ZIP and tar engines (P2, from T-F419, research first)
 
 - [ ] **Status:** done in T-F411 wave E (2026-10-19), graduates with T-F419: `EntryDiskName`,
