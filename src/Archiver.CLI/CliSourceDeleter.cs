@@ -32,7 +32,12 @@ public static class CliSourceDeleter
         // compared by file identity, which every spelling of it shares (\\?\Volume{...}\,
         // \\?\GLOBALROOT\, \\.\C:\, \\localhost\C$\).
         string current = RealPath(currentFolder) ?? Normalize(currentFolder);
-        HashSet<PathIdentity.Identity> holdingCurrent = PathIdentity.SelfAndAncestors(currentFolder) ?? [];
+        // T-F420: a current folder that exists but cannot be resolved is refused, not compared by
+        // its spelling alone (a fictitious one, as in a unit test, has no identity to compare).
+        HashSet<PathIdentity.Identity>? holdingCurrent = PathIdentity.SelfAndAncestors(currentFolder);
+        if (holdingCurrent is null && Directory.Exists(currentFolder))
+            return $"-sdel cannot tell where the current folder leads: {currentFolder}";
+        holdingCurrent ??= [];
         foreach (string source in sources)
         {
             if (RealPath(source) is not { } full)

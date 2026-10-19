@@ -1267,6 +1267,55 @@ public sealed class FixesAdversarialTests : IDisposable
         return (process.ExitCode, read, stdErr.GetAwaiter().GetResult());
     }
 
+    // =====================================================================================
+    // T-F420: a character Windows refuses in a name becomes '_' (7-Zip, libarchive), one rule
+    // for both engines; a name that only lands on another entry's path through it is kept apart.
+    // =====================================================================================
+
+    [Theory]
+    [InlineData("zip", "-y")]
+    [InlineData("zip", "-aou")]
+    [InlineData("tar.gz", "-y")]
+    [InlineData("tar.gz", "-aou")]
+    public void NameWithARefusedCharacter_BesideItsUnderscoreTwin_BothKept(string format, string overwrite)
+    {
+        (string Name, string Content)[] entries = [("a?b.txt", "QUESTION"), ("a_b.txt", "UNDERSCORE")];
+        string archive = format == "zip" ? _scratch.Zip("arc.zip", entries) : TarGz("arc.tar.gz", entries);
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("x", archive, "-oout", overwrite);
+
+        exitCode.Should().Be(0, stdErr);
+        Contents("out").Should().Equal(["QUESTION", "UNDERSCORE"], $"files: {string.Join(", ", _scratch.FilesUnder("out"))}");
+    }
+
+    [Theory]
+    [InlineData("zip")]
+    [InlineData("tar.gz")]
+    public void NameWithRefusedCharacters_IsWrittenWithUnderscores(string format)
+    {
+        (string Name, string Content)[] entries = [("What?.txt", "Q"), ("d|e/x<y>.txt", "P")];
+        string archive = format == "zip" ? _scratch.Zip("arc.zip", entries) : TarGz("arc.tar.gz", entries);
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("x", archive, "-oout");
+
+        exitCode.Should().Be(0, stdErr);
+        File.ReadAllText(_scratch.Inside(@"out\What_.txt")).Should().Be("Q");
+        File.ReadAllText(_scratch.Inside(@"out\d_e\x_y_.txt")).Should().Be("P");
+    }
+
+    // 7-Zip's k_EmptyReplaceName: a part that is only dots or spaces is not dropped into its parent.
+    [Fact]
+    public void Zip_PartOfOnlyDots_IsAnUnderscoreFolder()
+    {
+        _scratch.Zip("arc.zip", ("a/.../b.txt", "B"), ("a/b.txt", "A"));
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("x", "arc.zip", "-oout", "-y");
+
+        exitCode.Should().Be(0, stdErr);
+        File.ReadAllText(_scratch.Inside(@"out\a\_\b.txt")).Should().Be("B");
+        File.ReadAllText(_scratch.Inside(@"out\a\b.txt")).Should().Be("A");
+    }
+
     private (int ExitCode, string StdErr) RunThroughCmd(string commandLine)
     {
         var startInfo = new ProcessStartInfo(@"C:\Windows\System32\cmd.exe")

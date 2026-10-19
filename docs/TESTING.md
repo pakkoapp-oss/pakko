@@ -908,7 +908,11 @@ after" (the `FullyProcessedSources` gate the App and `-sdel` both use): `FullyPr
 (Core.Tests, ZIP), `TarFullyProcessedAdversarialTests` (IntegrationTests, tar.exe) and
 `SourceRecyclerAdversarialTests` (App.Core: the recycler over real Win32 operations, forced to
 the permanent-delete path so nothing reaches the real Recycle Bin, with end-to-end runs through
-`ZipArchiveService` and a SUBST drive via `SubstDriveFact`).
+`ZipArchiveService` and a SUBST drive via `SubstDriveFact`). T-F420's shared points have their
+own: `EntryDiskNameTests` (both name rules, `GetFullPath` leaving Pakko's name as it is, the
+registry), `EntryDiskNameTarExeTests` (Integration: real tar.exe writes what `AsTarExeWrites`
+predicts, so a libarchive update that names files differently fails here) and the
+cross-archive rows of `CrossArchiveReplacementTests`/`TarFullyProcessedAdversarialTests`.
 
 **T-F116 additions (`-si`/`-so` streaming):** `CliStreamStagingTests.cs` (new unit-test file, no
 process spawn) covers `CliStreamStaging.StreamSingleFileAsync`'s three outcomes — exactly one file

@@ -490,6 +490,46 @@ public sealed class RequiresShortNamesFactAttribute : FactAttribute
 }
 
 /// <summary>SUBST of a free drive letter onto a scratch folder; the letter is removed again in Unmap.</summary>
+// T-F420: two archives into one folder (x *.zip, Explorer's "Extract here"): the second's a.txt
+// replaced the first's, so the first is not wholly on disk any more.
+public sealed class CrossArchiveReplacementTests : IDisposable
+{
+    private readonly string _root = Path.Combine(Path.GetTempPath(), "pakko-tf420-" + Guid.NewGuid().ToString("N"));
+
+    public CrossArchiveReplacementTests() => Directory.CreateDirectory(_root);
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_root, recursive: true); }
+        catch (IOException) { /* best-effort: a scratch folder in %TEMP% */ }
+    }
+
+    private string Zip(string name, string content)
+    {
+        string path = Path.Combine(_root, name);
+        using System.IO.Compression.ZipArchive zip = System.IO.Compression.ZipFile.Open(path, System.IO.Compression.ZipArchiveMode.Create);
+        using (var writer = new StreamWriter(zip.CreateEntry("a.txt").Open()))
+            writer.Write(content);
+        return path;
+    }
+
+    [Theory]
+    [InlineData(ConflictBehavior.Overwrite, false)]
+    [InlineData(ConflictBehavior.Rename, true)]
+    public async Task Extract_TwoArchivesIntoOneFolder_TheEarlierIsDeletableOnlyIfItsFileStayed(ConflictBehavior onConflict, bool firstDeletable)
+    {
+        string first = Zip("a1.zip", "ONE"), second = Zip("a2.zip", "TWO");
+
+        ArchiveResult result = await new ZipArchiveService(new GroupPolicyOptions()).ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [first, second], DestinationFolder = Path.Combine(_root, "out"),
+            Mode = ExtractMode.SingleFolder, OnConflict = onConflict,
+        });
+
+        result.FullyProcessedSources.Should().Equal(firstDeletable ? [first, second] : [second]);
+    }
+}
+
 internal static class SubstDrive
 {
     private const string Exe = @"C:\Windows\System32\subst.exe";

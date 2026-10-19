@@ -184,6 +184,25 @@ public sealed class TarFullyProcessedAdversarialTests : IDisposable
         if (!(contents.Contains("FIRST") && contents.Contains("SECOND")))
             result.FullyProcessedSources.Should().NotContain(tar, $"only [{string.Join(", ", contents)}] reached the disk");
     }
+
+    // T-F420: two archives into one folder (x *.tar, Explorer's "Extract here"): the second's
+    // a.txt replaced the first's, so the first is not wholly on disk any more.
+    [Integration]
+    public async Task Extract_TwoArchivesIntoOneFolder_Overwrite_TheEarlierIsNotDeletable()
+    {
+        string folder = Scratch("archives");
+        string first = Path.Combine(folder, "a1.tar"), second = Path.Combine(folder, "a2.tar");
+        TarBuilder.WriteTar(first, [new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("ONE") }]);
+        TarBuilder.WriteTar(second, [new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("TWO") }]);
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [first, second], DestinationFolder = Path.Combine(_temp.Path, "out"),
+            Mode = ExtractMode.SingleFolder, OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.FullyProcessedSources.Should().Equal(second);
+    }
 }
 
 /// <summary>A theory that needs the real tar.exe; skipped where it is missing.</summary>

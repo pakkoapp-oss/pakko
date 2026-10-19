@@ -264,7 +264,8 @@ public sealed class TarSandboxedService : ITarService
             cancellationToken.ThrowIfCancellationRequested();
 
             int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count,
-                userSkipsBefore = conflictResolver.UserSkipCount, replacedBefore = sink.ReplacedInRun.Count;
+                userSkipsBefore = conflictResolver.UserSkipCount;
+            sink.Names.CurrentArchive = i;
             await ExtractArchiveAtIndexAsync(
                 options, i, total, conflictResolver, sink, progress, cancellationToken).ConfigureAwait(false);
 
@@ -273,9 +274,10 @@ public sealed class TarSandboxedService : ITarService
             sources.Add(SourceOutcomeRules.Classify(options.ArchivePaths[i],
                 produced: createdFiles.Count > createdBefore,
                 clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore
-                    && conflictResolver.UserSkipCount == userSkipsBefore && sink.ReplacedInRun.Count == replacedBefore
+                    && conflictResolver.UserSkipCount == userSkipsBefore
                     && options.SelectedEntryPaths is null && options.EntryFilter is null));
         }
+        sources = [.. SourceOutcomeRules.DowngradeNotWhollyOnDisk(sources, sink.Names)];
 
         var result = new ArchiveResult
         {
@@ -346,9 +348,8 @@ public sealed class TarSandboxedService : ITarService
         List<string> CreatedFiles,
         List<SkippedFile> SkippedFiles)
     {
-        // T-F419: files that replaced an earlier file of the same name in this run (Overwrite) -
-        // what reached the disk is not the whole archive, so it is not deletable (as in ZIP).
-        public List<string> ReplacedInRun { get; } = [];
+        // T-F419/T-F420: every path the extraction writes, over all its archives (as in ZIP).
+        public ExtractionNameRegistry Names { get; } = new();
     }
 
     // The try/catch error-mapping body of ExtractAsync's per-archive loop, pulled out so the
@@ -370,7 +371,7 @@ public sealed class TarSandboxedService : ITarService
             var context = new TarExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
                 options.EliminateDuplicateRootFolder, options.OnItemExtracted, options.EntryFilter, options.DuplicateRootName,
-                sink.ReplacedInRun);
+                sink.Names);
             (string? actualDest, bool anyExtracted) = await ExtractSingleArchiveAsync(
                 archivePath, destDir, alreadyIsolated, options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken)
                 .ConfigureAwait(false);
@@ -504,8 +505,11 @@ public sealed class TarSandboxedService : ITarService
             if (expandedSelection.Count == 0)
                 return (destDir, false);
             var kept = new HashSet<string>(expandedSelection, StringComparer.Ordinal);
+            // T-F420: by the name tar.exe wrote it ("a?b" as "a_b"); one a kept entry shares stays.
+            var keptOnDisk = new HashSet<string>(kept.Select(EntryDiskName.AsTarExeWrites), StringComparer.OrdinalIgnoreCase);
             droppedFiles = new HashSet<string>(
-                candidates.Where(n => !n.EndsWith('/') && !kept.Contains(n)).Select(EntryDiskName.StripLeadingDotSlash), StringComparer.OrdinalIgnoreCase);
+                candidates.Where(n => !n.EndsWith('/') && !kept.Contains(n)).Select(EntryDiskName.AsTarExeWrites).Where(n => !keptOnDisk.Contains(n)),
+                StringComparer.OrdinalIgnoreCase);
         }
         long progressTotalBytes = tarMembers != null
             ? tarMembers.Sum(n => sizeByName.GetValueOrDefault(n, 0L))
@@ -579,8 +583,9 @@ public sealed class TarSandboxedService : ITarService
         // lost that entry's time.
         // With a selection, only the selected names are extracted: their folders' entries may not be.
         IEnumerable<string> extractedNames = (IEnumerable<string>?)tarMembers ?? allNames;
+        // T-F420: by the name tar.exe gives the folder ("d?" is "d_"), or the creation fails.
         foreach (string relativeDir in DirectoriesToPreCreate(extractedNames))
-            Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, relativeDir));
+            Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, EntryDiskName.AsTarExeWrites(relativeDir + "/")));
 
 
         // T-F142: real byte-level progress for a single-archive extraction (progress is only
@@ -618,7 +623,7 @@ public sealed class TarSandboxedService : ITarService
         // archive is committed, so a cancel or failure partway through leaves no partial files.
         using var staging = ExtractionStaging.Create(unisolatedDestDir);
         var plan = new TarCommitPlan(staging, actualDest, stripRootPrefix,
-            NameRegistry(fileEntries, actualDest, stripRootPrefix, context.ReplacedInRun));
+            NameRegistry(fileEntries, actualDest, stripRootPrefix, context.Names ?? new ExtractionNameRegistry()));
         RecordFolderTimes((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, scope.OutputDirectory!, staging);
 
         int totalFiles = 0;
@@ -785,9 +790,8 @@ public sealed class TarSandboxedService : ITarService
     // T-F419: the twins are known from the listing before anything moves - where two different
     // names land on one path only through Windows' trimming, they are kept apart as in ZIP.
     private static ExtractionNameRegistry NameRegistry(
-        IReadOnlyList<(string Name, long Size)> fileEntries, string actualDest, bool stripRootPrefix, List<string>? replacedInRun)
+        IReadOnlyList<(string Name, long Size)> fileEntries, string actualDest, bool stripRootPrefix, ExtractionNameRegistry names)
     {
-        var names = new ExtractionNameRegistry(replacedInRun);
         foreach (string twin in EntryDiskName.TrimmedTwins(fileEntries.Select(e => e.Name)))
         {
             string relative = twin;
@@ -813,7 +817,7 @@ public sealed class TarSandboxedService : ITarService
         {
             if (!name.EndsWith('/'))
                 continue;
-            string relative = EntryDiskName.StripLeadingDotSlash(name).TrimEnd('/').Replace('/', Path.DirectorySeparatorChar);
+            string relative = EntryDiskName.AsPakkoWrites(name).Replace('/', Path.DirectorySeparatorChar);
             if (stripRootPrefix)
             {
                 int sep = relative.IndexOf(Path.DirectorySeparatorChar);
@@ -860,11 +864,11 @@ public sealed class TarSandboxedService : ITarService
         {
             if (!name.EndsWith('/'))
                 continue;
-            string entryPath = EntryDiskName.StripLeadingDotSlash(name).TrimEnd('/').Replace('/', Path.DirectorySeparatorChar);
+            string entryPath = EntryDiskName.AsTarExeWrites(name).Replace('/', Path.DirectorySeparatorChar);
             string quarantined = Path.Combine(quarantineDir, entryPath);
             if (entryPath.Length == 0 || !Directory.Exists(quarantined))
                 continue;
-            string relative = entryPath;
+            string relative = EntryDiskName.AsPakkoWrites(name).Replace('/', Path.DirectorySeparatorChar);
             if (stripRootPrefix)
             {
                 int sep = relative.IndexOf(Path.DirectorySeparatorChar);
@@ -903,8 +907,8 @@ public sealed class TarSandboxedService : ITarService
         Func<string, bool, bool>? EntryFilter,
         // T-F411: ExtractOptions.DuplicateRootName.
         string? DuplicateRootName,
-        // T-F419: see ArchiveResultSink.ReplacedInRun.
-        List<string>? ReplacedInRun = null);
+        // T-F420: see ArchiveResultSink.Names; null for one archive on its own.
+        ExtractionNameRegistry? Names = null);
 
     // One file of ExtractSingleArchiveAsync's move-phase loop (quarantine "out\" -> staging, then
     // committed) — conflict-resolve, move, propagate MOTW. Returns whether the file was
@@ -992,7 +996,7 @@ public sealed class TarSandboxedService : ITarService
         if (resolvedFilePath is null)
             return (false, relativePath);
         finalFilePath = resolvedFilePath;
-        plan.Names.Claim(finalFilePath, namedDifferently: false, relativePath);
+        plan.Names.Claim(finalFilePath, namedDifferently: false);
 
         // T-F263: staged under the path it will have in actualDest; the commit moves it there.
         string stagedFilePath = Path.Combine(plan.Staging.Path, Path.GetRelativePath(actualDest, finalFilePath));

@@ -48,6 +48,8 @@ public sealed class BrowserEntryRoutingTests
     [Theory]
     [InlineData("a/b.txt", @"a\b.txt")]
     [InlineData("b.txt", "b.txt")]
+    [InlineData("a?b.txt", "a_b.txt")]
+    [InlineData("d./x.txt ", @"d\x.txt")]
     public void ResolveInScope_NormalEntry_InsideScope(string entry, string expectedRelative)
     {
         string scope = Path.Combine(Path.GetTempPath(), "scope");

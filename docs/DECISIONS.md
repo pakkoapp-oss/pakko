@@ -13372,6 +13372,55 @@ the archive.
   - `docs/CLI.md`: `-sdel` keeps every source when anything in the archive was skipped (Core judges
     one archive as a whole), and an added file is left without a warning.
 
+## T-F420 - one place each for an entry's disk name, a run's paths, a path's identity, a source's listing (2026-10-19)
+
+- **Why.** Most of T-F419's findings sat on one seam - where an entry name lands on disk, and where a
+  source path leads - and each rule had two or three copies that drifted. The user: not one pipeline,
+  but single points, as other programs do it. Measured while planning, on the same seam: tar.exe
+  wrote `a?b.txt` and `a_b.txt` both as `a_b.txt` in the quarantine (the first silently lost, exit 0),
+  and ZIP refused `a?b.txt` with .NET's text, exit 2.
+- **Research (read 2026-10-19).** 7-Zip, `CPP/7zip/UI/Common/ExtractingFilePath.cpp` (ip7z/7zip,
+  commit of 2026-09-04): one per-part correction, `Correct_FsPath`/`Get_Correct_FsFile_Name` -
+  `ReplaceIncorrectChars` turns `: * ? < > | "`, control characters and `/` into `_`, and with
+  `g_PathTrailReplaceMode` (on for Windows) every trailing `.` or space into `_`; `.`/`..` parts are
+  emptied, an empty part is `k_EmptyReplaceName` = `_`, a reserved name gets a `_` prefix.
+  libarchive, `archive_write_disk_windows.c`: `cleanup_pathname` turns `: * ? " < > |` into `_` and
+  folds `//` and `.\`; `create_dir` makes a folder through `__la_win_permissive_name_w`, i.e.
+  `GetFullPathNameW`, which drops trailing dots and spaces; a file is opened through
+  `permissive_name_w`, the `\\?\` prefix alone, which keeps them. Measured on 26300: `a.txt.` and
+  `x.txt ` are written as they are, `d./x.txt` lands in `d`, a folder with a trailing space, `...` or
+  ` ` makes tar.exe fail ("Can't create", the archive is an error, nothing lost). And Windows' own
+  `GetFullPath` drops a middle part's trailing dots only (`d .` is `d `, `d ` stays) and the last
+  part's dots and spaces.
+- **What .NET gives, and what not.** `Path.GetInvalidFileNameChars()` is the replaced set;
+  `GetFullPath` is checked to leave Pakko's names as they are. No BCL API reads a file's identity or
+  its final path by handle (`File.OpenHandle` does not open folders): one P/Invoke copy, `PathIdentity`.
+  `System.Formats.Tar` could read tar names without parsing `tar -tf`, but T-F49 keeps tar parsing
+  out of process (and the BCL reads no xz, zstd, 7z or RAR).
+- **The points.** `EntryDiskName` (public, pure): `AsPakkoWrites`, `AsTarExeWrites`, `Renames`,
+  `SameName` (T-F30: equal but for case, `./` and doubled separators), `TrimmedTwins`.
+  `ExtractionNameRegistry`: one per extraction, over all its archives - the claimed paths, the twins
+  kept apart, and which archive claimed each path. `PathIdentity` and `SourceTree` (public): the
+  CLI's `-sdel` and the App's "Delete after" both resolve and list through them.
+- **Decisions.**
+  - `* ? " < > |` become `_`, as in 7-Zip and libarchive (ZIP used to fail the entry; T-F230 only
+    said a failure is the entry's own, not that such a name must fail). `:` and control
+    characters stay refusals (T-F38/T-F39), so SECURITY.md's rows hold as written.
+  - Pakko drops trailing dots and spaces from every part (not 7-Zip's `_`: numbering of twins was
+    already measured and tested in this wave, and a `d ` folder that Windows would keep cannot be
+    opened in Explorer). A part left empty is `_`, as in 7-Zip; `..` stays a step for the
+    containment checks after it.
+  - Two different names that meet on one path are kept apart (numbered), `-y` or not; the same name
+    twice keeps T-F30's rule.
+  - An entry that replaces another of the same extraction marks the archive the other came from as
+    not wholly on disk: Partial, not deletable - across archives too (`x *.zip`, "Extract here"
+    with several archives).
+  - `-sdel` refuses when the current folder exists but its identity cannot be read (the CLI used to
+    fall back to the spelling). No test: an existing folder that cannot be opened for attributes
+    needs an ACL this account cannot set on its own temp folder.
+  - Root shape and `-spe`/the duplicate-root name still compare raw names: a root named `d.` beside
+    `d` is two roots, so nothing is stripped - the conservative side.
+
 ## T-F419 - a red team against every switch (2026-10-19)
 
 - **How.** Two fresh subagents (Opus, own worktrees, `src/` read-only, never shown DECISIONS or
