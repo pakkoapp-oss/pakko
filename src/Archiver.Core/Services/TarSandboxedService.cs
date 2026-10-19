@@ -264,7 +264,7 @@ public sealed class TarSandboxedService : ITarService
             cancellationToken.ThrowIfCancellationRequested();
 
             int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count,
-                userSkipsBefore = conflictResolver.UserSkipCount;
+                userSkipsBefore = conflictResolver.UserSkipCount, replacedBefore = sink.ReplacedInRun.Count;
             await ExtractArchiveAtIndexAsync(
                 options, i, total, conflictResolver, sink, progress, cancellationToken).ConfigureAwait(false);
 
@@ -273,8 +273,8 @@ public sealed class TarSandboxedService : ITarService
             sources.Add(SourceOutcomeRules.Classify(options.ArchivePaths[i],
                 produced: createdFiles.Count > createdBefore,
                 clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore
-                    && conflictResolver.UserSkipCount == userSkipsBefore && options.SelectedEntryPaths is null
-                    && options.EntryFilter is null));
+                    && conflictResolver.UserSkipCount == userSkipsBefore && sink.ReplacedInRun.Count == replacedBefore
+                    && options.SelectedEntryPaths is null && options.EntryFilter is null));
         }
 
         var result = new ArchiveResult
@@ -344,7 +344,12 @@ public sealed class TarSandboxedService : ITarService
     private sealed record ArchiveResultSink(
         List<ArchiveError> Errors,
         List<string> CreatedFiles,
-        List<SkippedFile> SkippedFiles);
+        List<SkippedFile> SkippedFiles)
+    {
+        // T-F419: files that replaced an earlier file of the same name in this run (Overwrite) -
+        // what reached the disk is not the whole archive, so it is not deletable (as in ZIP).
+        public List<string> ReplacedInRun { get; } = [];
+    }
 
     // The try/catch error-mapping body of ExtractAsync's per-archive loop, pulled out so the
     // loop itself reads as "known-encrypted-RAR short-circuit, else extract-and-map-errors" at a
@@ -364,7 +369,8 @@ public sealed class TarSandboxedService : ITarService
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             var context = new TarExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
-                options.EliminateDuplicateRootFolder, options.OnItemExtracted, options.EntryFilter, options.DuplicateRootName);
+                options.EliminateDuplicateRootFolder, options.OnItemExtracted, options.EntryFilter, options.DuplicateRootName,
+                sink.ReplacedInRun);
             (string? actualDest, bool anyExtracted) = await ExtractSingleArchiveAsync(
                 archivePath, destDir, alreadyIsolated, options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken)
                 .ConfigureAwait(false);
@@ -917,7 +923,9 @@ public sealed class TarSandboxedService : ITarService
         // T-F410: ExtractOptions.EntryFilter.
         Func<string, bool, bool>? EntryFilter,
         // T-F411: ExtractOptions.DuplicateRootName.
-        string? DuplicateRootName);
+        string? DuplicateRootName,
+        // T-F419: see ArchiveResultSink.ReplacedInRun.
+        List<string>? ReplacedInRun = null);
 
     // One file of ExtractSingleArchiveAsync's move-phase loop (quarantine "out\" -> staging, then
     // committed) — conflict-resolve, move, propagate MOTW. Returns whether the file was
@@ -977,9 +985,11 @@ public sealed class TarSandboxedService : ITarService
         // T-F411: -aot, the rule ZipArchiveService shares.
         if (resolvedConflict == ConflictBehavior.RenameExisting)
             resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, plan.ClaimedFinalPaths);
-        return resolvedConflict == ConflictBehavior.Rename
-            ? ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.ClaimedFinalPaths)
-            : finalFilePath;
+        if (resolvedConflict == ConflictBehavior.Rename)
+            return ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.ClaimedFinalPaths);
+        if (plan.ClaimedFinalPaths.Contains(finalFilePath))
+            context.ReplacedInRun?.Add(relativePath);
+        return finalFilePath;
     }
 
     private static async Task<(bool Extracted, string? RelativePath)> TryMoveSingleEntryAsync(
@@ -1710,6 +1720,9 @@ public sealed class TarSandboxedService : ITarService
         // T-F410: as the ZIP engine, a source the filter leaves out gets no archive and no conflict prompt.
         sortedSourcePaths.RemoveAll(path => names.For(path) is { Length: > 0 } name && !names.Keeps(name, Directory.Exists(path)));
         var sources = new List<SourceResult>();
+        // T-F419: as ZIP's claimedDestPaths (T-F158) - two sources of one base name never write one
+        // archive under Overwrite, the second is numbered.
+        var claimedDestPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (string sourcePath in sortedSourcePaths)
         {
@@ -1726,14 +1739,15 @@ public sealed class TarSandboxedService : ITarService
             string destPath = Path.Combine(options.DestinationFolder, baseName + extension);
 
             (DestinationConflictOutcome outcome, string? resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
-                destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
-                conflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p)).ConfigureAwait(false);
+                destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: claimedDestPaths.Contains(destPath),
+                conflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p, claimedDestPaths)).ConfigureAwait(false);
             if (outcome == DestinationConflictOutcome.Skip)
             {
                 sink.SkippedFiles.Add(CoreMessages.Skip(sourcePath, MessageCode.ArchiveAlreadyExists, Path.GetFileName(destPath)));
                 continue;
             }
 
+            claimedDestPaths.Add(resolvedDestPath!);
             ArchiveOptions singleOptions = options with { SourcePaths = [sourcePath] };
             int errorsBefore = sink.Errors.Count, skippedBefore = sink.SkippedFiles.Count, createdBefore = sink.CreatedFiles.Count;
             await CompressToArchiveAsync(singleOptions, names, (resolvedDestPath, outcome == DestinationConflictOutcome.ProceedReplacingExisting), sink, progress, cancellationToken)
