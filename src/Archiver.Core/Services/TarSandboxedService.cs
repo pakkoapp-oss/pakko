@@ -236,7 +236,8 @@ public sealed class TarSandboxedService : ITarService
             return DestinationFolder.ExtractionRefused(options.ArchivePaths, folderFailure);
         try
         {
-            return await ExtractArchivesAsync(options, conflictResolver, new ArchiveResultSink(errors, createdFiles, skippedFiles), progress, cancellationToken)
+            var extractSink = new ArchiveResultSink(errors, createdFiles, skippedFiles) { Names = options.SharedNames ?? new ExtractionNameRegistry() };
+            return await ExtractArchivesAsync(options, conflictResolver, extractSink, progress, cancellationToken)
                 .ConfigureAwait(false);
         }
         finally
@@ -265,7 +266,7 @@ public sealed class TarSandboxedService : ITarService
 
             int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count,
                 userSkipsBefore = conflictResolver.UserSkipCount;
-            sink.Names.CurrentArchive = i;
+            sink.Names.CurrentArchive = options.ArchivePaths[i];
             await ExtractArchiveAtIndexAsync(
                 options, i, total, conflictResolver, sink, progress, cancellationToken).ConfigureAwait(false);
 
@@ -349,7 +350,7 @@ public sealed class TarSandboxedService : ITarService
         List<SkippedFile> SkippedFiles)
     {
         // T-F419/T-F420: every path the extraction writes, over all its archives (as in ZIP).
-        public ExtractionNameRegistry Names { get; } = new();
+        public ExtractionNameRegistry Names { get; init; } = new();
     }
 
     // The try/catch error-mapping body of ExtractAsync's per-archive loop, pulled out so the
@@ -960,7 +961,7 @@ public sealed class TarSandboxedService : ITarService
         }
         // T-F411: -aot, the rule ZipArchiveService shares.
         if (resolvedConflict == ConflictBehavior.RenameExisting)
-            resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, plan.Names.Claimed);
+            resolvedConflict = plan.Staging.PlanRenameOfExisting(finalFilePath, plan.Names);
         return resolvedConflict == ConflictBehavior.Rename
             ? ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.Names.Claimed)
             : finalFilePath;

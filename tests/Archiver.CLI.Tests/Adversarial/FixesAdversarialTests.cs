@@ -1316,6 +1316,37 @@ public sealed class FixesAdversarialTests : IDisposable
         File.ReadAllText(_scratch.Inside(@"out\a\b.txt")).Should().Be("A");
     }
 
+    // T-F420 closing review: the name checks run on the raw name, and what the rewrite makes of
+    // it is still safe - "CON." and "NUL .txt" are devices by their stem (T-F243), ".. " is no
+    // step up once trimmed but an "_" folder.
+    [Fact]
+    public void Zip_NamesTheRewriteTouches_DevicesRefused_TrimmedDotDotStaysInside()
+    {
+        _scratch.Zip("arc.zip", ("CON.", "C"), ("NUL .txt", "N"), ("a/.. /b.txt", "B"));
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("x", "arc.zip", "-oout");
+
+        exitCode.Should().Be(1, stdErr);
+        File.ReadAllText(_scratch.Inside(@"out\a\_\b.txt")).Should().Be("B");
+        _scratch.FilesUnder("out").Should().Equal([@"a\_\b.txt"], "the devices are refused, nothing lands beside out");
+        File.Exists(_scratch.Inside("b.txt")).Should().BeFalse();
+    }
+
+    // T-F420 closing review: -aot across two archives into one folder renames the file the first
+    // archive wrote (it is on disk), as in 7-Zip and CLI.md's -aot row - not the second's.
+    [Fact]
+    public void Aot_TwoArchivesIntoOneFolder_TheFirstArchivesFileIsRenamed()
+    {
+        _scratch.Zip("a1.zip", ("a.txt", "ONE"));
+        _scratch.Zip("a2.zip", ("a.txt", "TWO"));
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("x", "a*.zip", "-oout", "-aot");
+
+        exitCode.Should().Be(0, stdErr);
+        File.ReadAllText(_scratch.Inside(@"out\a.txt")).Should().Be("TWO");
+        File.ReadAllText(_scratch.Inside(@"out\a (1).txt")).Should().Be("ONE");
+    }
+
     private (int ExitCode, string StdErr) RunThroughCmd(string commandLine)
     {
         var startInfo = new ProcessStartInfo(@"C:\Windows\System32\cmd.exe")

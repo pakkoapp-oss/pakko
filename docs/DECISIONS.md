@@ -13420,6 +13420,24 @@ the archive.
     needs an ACL this account cannot set on its own temp folder.
   - Root shape and `-spe`/the duplicate-root name still compare raw names: a root named `d.` beside
     `d` is two roots, so nothing is stripped - the conservative side.
+  - The name checks (reserved, ADS, traversal) run on the raw name, and that is enough: `CON.` and
+    `NUL .txt` are devices by their stem (T-F243) before any trimming, and a `.. ` part is no step up
+    once rewritten but an `_` folder (a CLI test pins all three).
+- **Closing review, fixed before the push.**
+  - The router gives ZIP and tar archives to two engine calls; the registry is the router's, shared
+    by both (`ExtractOptions.SharedNames`, internal), and an archive's owner is its path, so a
+    tar.gz whose `a.txt` replaced a ZIP's in one folder leaves that ZIP not deletable (test).
+  - `-aot` across archives: once the registry spanned the extraction, an earlier archive's file
+    counted as "claimed in this run" and the later file was numbered instead of the earlier renamed.
+    -aot asks only the current archive's paths (`ClaimedInThisArchive`): the earlier archive's file
+    is on disk and is renamed, as in 7-Zip and CLI.md's `-aot` row (seen red with the whole set).
+  - Known limit: a `?` in tar.exe's listing is either a real `?` (written `_`) or a character it
+    could not show (T-F416). In a plain `x` the second could group with a real `a_b.txt`: the
+    first-copy pass then finds nothing and reports a copy not extracted (exit 1, nothing lost), or
+    a numbered duplicate of one file. Not reproducible here: build 26300's tar.exe refuses a UTF-8
+    name it cannot represent outright, and maps raw ustar bytes to real characters.
+  - `JunctionAsSource_RealRecycle_TargetContentSurvives` (the one test that writes to the real
+    Recycle Bin) failed once under the full parallel run; it is `Category=Slow` now.
 
 ## T-F419 - a red team against every switch (2026-10-19)
 

@@ -51,14 +51,15 @@ internal sealed class ExtractionStaging : IDisposable
     }
 
     /// <summary>T-F411: both engines' -aot rule for one conflict. Against an earlier entry of this
-    /// run (nothing on disk to rename yet) the new file is renamed instead - <see
-    /// cref="Models.ConflictBehavior.Rename"/>; against a file on disk it is planned for the commit and
-    /// the entry keeps its name. Never the overwrite every other value of the callers' chain falls into.</summary>
-    public Models.ConflictBehavior PlanRenameOfExisting(string finalPath, HashSet<string> claimedFinalPaths)
+    /// archive (nothing on disk to rename yet) the new file is renamed instead - <see
+    /// cref="Models.ConflictBehavior.Rename"/>; against a file on disk - an earlier archive's of the
+    /// same extraction too (T-F420) - it is planned for the commit and the entry keeps its name.
+    /// Never the overwrite every other value of the callers' chain falls into.</summary>
+    internal Models.ConflictBehavior PlanRenameOfExisting(string finalPath, ExtractionNameRegistry names)
     {
-        if (claimedFinalPaths.Contains(finalPath))
+        if (names.ClaimedInThisArchive.Contains(finalPath))
             return Models.ConflictBehavior.Rename;
-        RenameExistingOnCommit(finalPath, claimedFinalPaths);
+        RenameExistingOnCommit(finalPath, names.Claimed);
         return Models.ConflictBehavior.RenameExisting;
     }
 

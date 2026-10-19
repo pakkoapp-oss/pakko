@@ -82,28 +82,30 @@ public sealed class EntryDiskNameTests
     [Fact]
     public void Registry_SameNameTwice_TheArchiveIsNotWhollyOnDisk_NotKeptApart()
     {
-        var names = new ExtractionNameRegistry();
+        var names = new ExtractionNameRegistry { CurrentArchive = @"C:\a.zip" };
 
         names.Claim(@"C:\o\a.txt", namedDifferently: false);
         bool keepApart = names.MustKeepApart(@"C:\o\a.txt", namedDifferently: false);
         names.Claim(@"C:\o\a.txt", namedDifferently: false);
 
         keepApart.Should().BeFalse("T-F30: the conflict rule decides");
-        names.NotWhollyOnDisk(0).Should().BeTrue();
+        names.NotWhollyOnDisk(@"C:\a.zip").Should().BeTrue();
     }
 
     // x *.zip into one folder: the later archive's file replaced the earlier archive's.
     [Fact]
     public void Registry_AcrossArchives_TheEarlierArchiveLostItsFile()
     {
-        var names = new ExtractionNameRegistry();
+        var names = new ExtractionNameRegistry { CurrentArchive = @"C:\a1.zip" };
         names.Claim(@"C:\o\a.txt", namedDifferently: false);
-        names.CurrentArchive = 1;
+        names.CurrentArchive = @"C:\a2.tar";
 
+        bool renamedAsInThisArchive = names.ClaimedInThisArchive.Contains(@"C:\o\a.txt");
         names.Claim(@"C:\o\a.txt", namedDifferently: false);
 
-        names.NotWhollyOnDisk(0).Should().BeTrue();
-        names.NotWhollyOnDisk(1).Should().BeFalse();
+        renamedAsInThisArchive.Should().BeFalse("-aot renames the earlier archive's file, which is on disk");
+        names.NotWhollyOnDisk(@"C:\a1.zip").Should().BeTrue();
+        names.NotWhollyOnDisk(@"C:\a2.tar").Should().BeFalse();
     }
 
     [Fact]
