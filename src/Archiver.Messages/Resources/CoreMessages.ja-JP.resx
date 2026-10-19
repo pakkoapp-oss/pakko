@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>「{0}」を書き込めません: 同じ名前のフォルダーがあります。</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>「{0}」は Windows で使用できるフォルダー名ではありません。</value>
+  </data>
 </root>

@@ -194,15 +194,22 @@ internal sealed class ExtractionStaging : IDisposable
             }
             else
             {
+                FileAttributes? clearedReadOnly = null;
                 try
                 {
                     // T-F419: the conflict was decided as an overwrite; 7-Zip replaces a read-only file too.
-                    if (File.Exists(finalFile) && File.GetAttributes(finalFile).HasFlag(FileAttributes.ReadOnly))
-                        File.SetAttributes(finalFile, File.GetAttributes(finalFile) & ~FileAttributes.ReadOnly);
+                    if (File.Exists(finalFile) && File.GetAttributes(finalFile) is var attributes && attributes.HasFlag(FileAttributes.ReadOnly))
+                    {
+                        File.SetAttributes(finalFile, attributes & ~FileAttributes.ReadOnly);
+                        clearedReadOnly = attributes;
+                    }
                     File.Move(file, finalFile, overwrite: true);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
+                    // T-F419: the file that stays keeps the attribute it had.
+                    if (clearedReadOnly is { } original)
+                        RestoreAttributesBestEffort(finalFile, original);
                     // T-F419: a folder of that name is in the way, which is not a lock.
                     (Directory.Exists(finalFile) ? _blockedByFolder : lockedRelativePaths).Add(relative);
                     continue;
@@ -211,6 +218,18 @@ internal sealed class ExtractionStaging : IDisposable
             committed?.Invoke(finalFile);
         }
         return lockedRelativePaths;
+    }
+
+    private static void RestoreAttributesBestEffort(string path, FileAttributes attributes)
+    {
+        try
+        {
+            File.SetAttributes(path, attributes);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            /* best-effort: the move's own failure is what gets reported */
+        }
     }
 
     // T-F411: never an overwrite - the existing file is renamed first, and gets its name back when

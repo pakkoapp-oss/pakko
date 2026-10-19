@@ -13428,10 +13428,44 @@ the archive.
     missing from the archive. Pinned; CLI.md's exit-code table has the row now.
   - `Sdel_JunctionAsTheSource_IsNeitherEnteredNorDeleted` expected exit 1, written before E.
   - The UNC test returned early (green) without the administrative share; it skips now.
-- **Open points (not defects found, not attacked):** ZIP-style trimmed twins through tar.exe;
-  `-ssw`'s "changed between the two reads" (a race not timed); `-w` on another volume (no second
-  volume here); a volume-root refusal (cannot be done inside a scratch folder); SUBST and
-  files changing mid-run in general (not deterministic).
+- **Open points (not defects found, not attacked):** `-ssw`'s "changed between the two reads" (a
+  race not timed); `-w` on another volume (no second volume here); SUBST and files changing
+  mid-run in general (not deterministic). (Trimmed twins through tar.exe and the volume-root
+  refusal were attacked in pass 3, below.)
+- **Pass 3, on the fixes** (a fresh red team from `24d9e3f`, `FixesAdversarialTests`, 127 cases,
+  18 red), each fixed test-first:
+  - `-sdel`'s refusal and link check compared strings: `\\?\Volume{GUID}\`, `\\?\GLOBALROOT\...`,
+    `\\.\C:\` and `\\localhost\C$\` spellings passed, and a folder holding the current one was
+    archived and emptied. `\\?\` is now stripped only before a drive letter or `UNC`, and a source
+    that exists is also compared by file identity (volume serial and file ID, `FILE_ID_INFO`, else
+    `GetFileInformationByHandle`), measured the same through every spelling, SMB loopback included;
+    a volume root by its final path. A source that exists but cannot be opened is refused.
+  - B again: a trailing dot or space in a **folder** part (`d./x.txt` beside `d/x.txt`) still let the
+    second replace the first, both engines. `ArchiveEntrySecurity.TrimmedByWindows` checks every part
+    (a doubled separator or `./` is not trimming: T-F30's later-wins holds, tested). An entry named as an earlier one's 8.3 alias (`LONGFI~1.TXT`) is numbered too, as pass 1's file-name check already did by accident. Through tar.exe,
+    measured on 26300: it trims a folder's trailing dot or space (the two merge, later wins) but
+    writes a file name as it is (`a.txt.` beside `a.txt`, through `\\?\`). So a folder twin is a
+    T-F171 duplicate group, a file-name twin is not, and both are numbered when they meet in the
+    move phase, which now opens a quarantined file by its literal name. Two older defects under
+    the same names: the move failed on `a.txt.` ("Could not find file"), and the listing trimmed
+    `a.txt ` to `a.txt` (`SplitLines` used `TrimEntries`; only `\r` is dropped now).
+  - `-rr` deleted another archive's PAR2 volume renamed to `o.zip.vol00+99.par2`: a stale volume is
+    removed only when every set in it names this archive. A volume the reader rejects whole now
+    stays too (it cannot be shown to be this archive's); a probe could not make one stay - a
+    damaged copy went with `RemoveEarlierSets` - and `t` reads the set through its index anyway.
+  - A read-only file whose overwrite failed lost its read-only attribute: it is put back.
+  - `x \\?\C:\d\*.zip` found nothing (the prefix's `?` read as a wildcard folder): a searched mask
+    is read without the prefix. So `-ax!\\?\C:\d\two.zip` now leaves `two.zip` out where 7za 26.02
+    extracts it (its exclude does not match the scanned spelling): doing less than 7-Zip loses
+    nothing, and it is what was typed.
+  - A switch family's refusal (`-sae` on `x`) names the switch as typed - except `-p`, whose value
+    is a password and is never echoed.
+  - `-o" "` exited 2 with .NET's "The path is empty. (Parameter 'path')": a folder name Windows
+    cannot parse is `DestinationFolderNameInvalid` (37 translations), both engines and creation.
+  - Pinned as measured, not changed: `a -sae x\CON\o.zip` makes a folder `CON` (7za too); `-o"out "
+    -spe` keeps the root folder (CLI.md compares the last part of `-o` as typed).
+  - The wider question - one name-to-disk-path plan shared by both engines, and one source-path
+    identity helper - is T-F420.
 
 ## T-F411, wave D: how `pakko` reads a command line, as 7-Zip does (2026-10-18)
 

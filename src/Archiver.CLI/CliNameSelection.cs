@@ -137,7 +137,7 @@ public static class CliNameSelection
     private static List<CliNameMask> FullPathMasks(List<CliNameMask> includes, List<CliNameMask> excludes, string currentDirectory)
     {
         var full = new List<CliNameMask>(includes.Count + excludes.Count);
-        full.AddRange(includes.Concat(excludes).Select(m => m with { Path = Path.GetFullPath(m.Path, currentDirectory) }));
+        full.AddRange(includes.Concat(excludes).Select(m => m with { Path = AsSearched(Path.GetFullPath(m.Path, currentDirectory)) }));
         string[] searched = [.. full.Where(m => m.Include && Searches(m)).Select(LiteralRoot).Distinct(StringComparer.OrdinalIgnoreCase)];
         foreach (CliNameMask exclude in excludes.Where(m => !Path.IsPathRooted(m.Path)))
             full.AddRange(searched.Select(folder => exclude with { Path = Path.Combine(folder, exclude.Path) }));
@@ -151,6 +151,13 @@ public static class CliNameSelection
     // T-F419: the '?' of "\\?\C:\..." is the long-path prefix, not a wildcard (7-Zip's IsSuperPath).
     private static string WithoutLongPathPrefix(string path) =>
         path.StartsWith(@"\\?\", StringComparison.Ordinal) ? path[4..] : path;
+
+    // T-F419: a searched mask without the prefix, or its "?" part would read as a wildcard folder
+    // ("\\?\C:\d\*.zip" finds what "C:\d\*.zip" does, as in 7-Zip). Long paths need no prefix in .NET.
+    private static string AsSearched(string fullPath) =>
+        fullPath.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase) ? @"\\" + fullPath[8..]
+        : fullPath.Length >= 6 && fullPath.StartsWith(@"\\?\", StringComparison.Ordinal) && char.IsAsciiLetter(fullPath[4]) && fullPath[5] == ':' ? fullPath[4..]
+        : fullPath;
 
     // The files under the mask's literal leading folders; deeper only when it recurses or a
     // folder part holds a wildcard. Linked folders are not followed, so a junction loop ends the walk;

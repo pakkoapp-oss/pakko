@@ -1759,7 +1759,10 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F228: from the path as it actually resolved inside staging, so the conflict check
         // and the commit always talk about the same file.
         string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, Path.GetRelativePath(fullTempDest, destFilePath)));
-        bool trimmedByWindows = !string.Equals(Path.GetFileName(relativePath), Path.GetFileName(finalFilePath), StringComparison.OrdinalIgnoreCase);
+        // T-F419: a name Windows writes as another - a part's trailing dot or space dropped, or
+        // an 8.3 alias ("LONGFI~1.TXT") that resolves to an earlier entry's long name.
+        bool trimmedByWindows = ArchiveEntrySecurity.TrimmedByWindows(relativePath)
+            || !string.Equals(Path.GetFileName(relativePath), Path.GetFileName(finalFilePath), StringComparison.OrdinalIgnoreCase);
         if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath)
             || (context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
         {

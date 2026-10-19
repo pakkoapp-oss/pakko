@@ -1,3 +1,6 @@
+using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
+
 namespace Archiver.CLI;
 
 /// <summary>T-F411: what -sdel left on disk, and why.</summary>
@@ -20,25 +23,123 @@ public sealed record CliDeleteOutcome(
 /// is never entered or deleted (7-Zip follows a junction and deletes the files behind it), and a
 /// volume root or the current folder (or one holding it) is refused before anything is written.
 /// </summary>
-public static class CliSourceDeleter
+public static partial class CliSourceDeleter
 {
     /// <summary>Why -sdel must not run on these sources, or null.</summary>
     public static string? Refusal(IEnumerable<string> sources, string currentFolder)
     {
         // T-F419: compared where the paths really lead - "\\?\C:\w\src" or a junction to the
-        // current folder's parent is the same folder as "C:\w\src".
+        // current folder's parent is the same folder as "C:\w\src". A source that exists is also
+        // compared by file identity, which every spelling of it shares (\\?\Volume{...}\,
+        // \\?\GLOBALROOT\, \\.\C:\, \\localhost\C$\).
         string current = RealPath(currentFolder) ?? Normalize(currentFolder);
+        HashSet<FileIdentity> holdingCurrent = IdentitiesUpFrom(currentFolder);
         foreach (string source in sources)
         {
             if (RealPath(source) is not { } full)
                 return $"-sdel cannot tell where this source leads: {source}";
-            if (Path.GetPathRoot(full) is { } root && string.Equals(Normalize(root), full, StringComparison.OrdinalIgnoreCase))
+            // Opened first: Directory.Exists says no to the volume root \\?\GLOBALROOT\Device\HarddiskVolumeN\.
+            OpenedPath? opened = Open(source);
+            if (opened is null && (File.Exists(source) || Directory.Exists(source)))
+                return $"-sdel cannot tell where this source leads: {source}";
+            if (IsVolumeRoot(full) || (opened is not null && IsVolumeRoot(Normalize(WithoutLongPathPrefix(opened.FinalPath)))))
                 return $"-sdel would delete a volume root: {source}";
-            if (IsSameOrUnder(current, full))
+            if (IsSameOrUnder(current, full) || (opened is not null && holdingCurrent.Contains(opened.Identity)))
                 return $"-sdel would delete the current folder or a folder holding it: {source}";
         }
         return null;
     }
+
+    private static bool IsVolumeRoot(string full) =>
+        Path.GetPathRoot(full) is { } root && string.Equals(Normalize(root), full, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The current folder and every folder holding it, by identity; empty when the
+    /// current folder cannot be opened (the path comparison still applies). Bounded by the
+    /// path's depth.</summary>
+    private static HashSet<FileIdentity> IdentitiesUpFrom(string folder)
+    {
+        var identities = new HashSet<FileIdentity>();
+        if (Open(folder) is not { } opened)
+            return identities;
+        for (string? next = WithoutLongPathPrefix(opened.FinalPath); next is not null; next = Path.GetDirectoryName(next))
+        {
+            if (Open(next) is { } step)
+                identities.Add(step.Identity);
+        }
+        return identities;
+    }
+
+    private readonly record struct FileIdentity(ulong Volume, ulong Low, ulong High);
+
+    private sealed record OpenedPath(FileIdentity Identity, string FinalPath);
+
+    /// <summary>The identity and final path (every link resolved, \\?\ form) of an existing file
+    /// or folder; null when it cannot be opened or read.</summary>
+    private static OpenedPath? Open(string path)
+    {
+        using SafeFileHandle handle = CreateFile(path, 0, FileShareAll, 0, OpenExisting, BackupSemantics, 0);
+        if (handle.IsInvalid)
+            return null;
+        FileIdentity identity;
+        if (GetFileInformationByHandleEx(handle, FileIdInfoClass, out FileIdInfo id, (uint)Marshal.SizeOf<FileIdInfo>()))
+            identity = new FileIdentity(id.VolumeSerialNumber, id.IdLow, id.IdHigh);
+        else if (GetFileInformationByHandle(handle, out ByHandleFileInformation info))
+            identity = new FileIdentity(info.VolumeSerialNumber, ((ulong)info.FileIndexHigh << 32) | info.FileIndexLow, 0);
+        else
+            return null; // FAT and SMB without FileIdInfo fall back above; neither read: unknown
+        char[] buffer = new char[32768];
+        uint length;
+        unsafe
+        {
+            fixed (char* start = buffer)
+                length = GetFinalPathNameByHandle(handle, start, (uint)buffer.Length, 0);
+        }
+        if (length == 0 || length >= buffer.Length)
+            return null;
+        return new OpenedPath(identity, new string(buffer, 0, (int)length));
+    }
+
+    private const uint FileShareAll = 7;
+    private const uint OpenExisting = 3;
+    private const uint BackupSemantics = 0x02000000;
+    private const int FileIdInfoClass = 18;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FileIdInfo
+    {
+        public ulong VolumeSerialNumber;
+        public ulong IdLow;
+        public ulong IdHigh;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ByHandleFileInformation
+    {
+        public uint FileAttributes;
+        public ulong CreationTime;
+        public ulong LastAccessTime;
+        public ulong LastWriteTime;
+        public uint VolumeSerialNumber;
+        public uint FileSizeHigh;
+        public uint FileSizeLow;
+        public uint NumberOfLinks;
+        public uint FileIndexHigh;
+        public uint FileIndexLow;
+    }
+
+    [LibraryImport("kernel32.dll", EntryPoint = "CreateFileW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    private static partial SafeFileHandle CreateFile(string fileName, uint access, uint share, nint security, uint disposition, uint flags, nint template);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetFileInformationByHandleEx(SafeFileHandle file, int infoClass, out FileIdInfo info, uint size);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetFileInformationByHandle(SafeFileHandle file, out ByHandleFileInformation info);
+
+    [LibraryImport("kernel32.dll", EntryPoint = "GetFinalPathNameByHandleW", SetLastError = true)]
+    private static unsafe partial uint GetFinalPathNameByHandle(SafeFileHandle file, char* path, uint length, uint flags);
 
     internal static string Normalize(string path) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
 
@@ -80,9 +181,11 @@ public static class CliSourceDeleter
         RealPath(path) is not { } real
         || !real.Equals(Normalize(WithoutLongPathPrefix(path)), StringComparison.OrdinalIgnoreCase);
 
+    // Only a drive letter or UNC after the prefix: \\?\Volume{...}\ and \\?\GLOBALROOT\ stay as
+    // they are, or GetFullPath would read what follows as relative to the current folder.
     private static string WithoutLongPathPrefix(string path) =>
         path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase) ? @"\\" + path[8..]
-        : path.StartsWith(@"\\?\", StringComparison.Ordinal) ? path[4..]
+        : path.Length >= 6 && path.StartsWith(@"\\?\", StringComparison.Ordinal) && char.IsAsciiLetter(path[4]) && path[5] == ':' ? path[4..]
         : path;
 
     private static bool IsSameOrUnder(string path, string folder) =>

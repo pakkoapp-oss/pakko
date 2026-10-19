@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>Nevar ierakstīt “{0}”: tā vietā ir mape ar tādu pašu nosaukumu.</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>“{0}” nav mapes nosaukums, ko Windows var izmantot.</value>
+  </data>
 </root>

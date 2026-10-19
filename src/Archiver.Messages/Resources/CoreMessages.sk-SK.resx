@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>„{0}“ nie je možné zapísať: v ceste je priečinok s rovnakým názvom.</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>„{0}“ nie je názov priečinka, ktorý dokáže Windows použiť.</value>
+  </data>
 </root>

@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>“{0}” yazılamıyor: yerinde aynı adlı bir klasör var.</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>“{0}”, Windows'un kullanabileceği bir klasör adı değil.</value>
+  </data>
 </root>

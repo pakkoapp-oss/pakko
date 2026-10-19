@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>„{0}” ei saa kirjutada: samanimeline kaust on ees.</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>„{0}” ei ole kausta nimi, mida Windows saab kasutada.</value>
+  </data>
 </root>

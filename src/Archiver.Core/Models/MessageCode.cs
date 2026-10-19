@@ -154,4 +154,7 @@ public enum MessageCode
 
     // A folder where an extracted file goes (T-F419)
     DestinationIsAFolder,
+
+    // A destination folder name Windows cannot parse, such as " " (T-F419)
+    DestinationFolderNameInvalid,
 }

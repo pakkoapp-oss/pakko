@@ -18,7 +18,12 @@ internal static class DestinationFolder
             Directory.CreateDirectory(folder);
             return null;
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
+        {
+            // T-F419: the folder's name is the only argument here; said in Core's words, not .NET's.
+            return new CoreTextIOException(CoreMessages.Text(MessageCode.DestinationFolderNameInvalid, folder), ex);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return ex;
         }

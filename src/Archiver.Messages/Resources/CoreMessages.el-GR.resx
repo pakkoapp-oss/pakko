@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>Δεν είναι δυνατή η εγγραφή του «{0}»: υπάρχει ήδη φάκελος με αυτό το όνομα.</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>Το «{0}» δεν είναι όνομα φακέλου που μπορούν να χρησιμοποιήσουν τα Windows.</value>
+  </data>
 </root>

@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>"{0}"을(를) 쓸 수 없습니다: 같은 이름의 폴더가 있습니다.</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>"{0}"은(는) Windows에서 사용할 수 있는 폴더 이름이 아닙니다.</value>
+  </data>
 </root>

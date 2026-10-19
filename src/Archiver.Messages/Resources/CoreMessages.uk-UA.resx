@@ -384,4 +384,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>Не вдалося записати «{0}»: на його місці папка з таким самим ім’ям.</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>«{0}» не є назвою папки, яку може використати Windows.</value>
+  </data>
 </root>
