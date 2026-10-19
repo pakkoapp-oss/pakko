@@ -1706,7 +1706,9 @@ re-measured with T-F346's script before and after.
      the same key, by its literal name.
   3. **Source-path identity, one helper:** final path plus file identity (volume serial and file ID)
      for `-sdel`'s refusal and link check, the "Delete after" downgrade and the recycler's
-     volume-root and duplicate guards.
+     volume-root and duplicate guards. Today two copies: `CliSourceDeleter` and Core's
+     `IO/PathIdentity`; and two snapshots, `CliSourceSnapshot` (per file) and App.Core's
+     `SourceSnapshot` (per source).
   4. **Acceptance:** every T-F419 red-team case (CLI `Adversarial/`, Core, App.Core) stays green,
      with no behaviour change that is not named in DECISIONS.
 - **Reported by:** the user, 2026-10-19, during T-F419's triage.

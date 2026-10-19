@@ -494,19 +494,36 @@ internal static class SubstDrive
 {
     private const string Exe = @"C:\Windows\System32\subst.exe";
 
-    public static string? FreeLetter()
+    public static string? FreeLetter() => FreeLetters().FirstOrDefault();
+
+    private static IEnumerable<string> FreeLetters()
     {
         HashSet<char> used = [.. DriveInfo.GetDrives().Select(d => char.ToUpperInvariant(d.Name[0]))];
         for (char c = 'P'; c <= 'Y'; c++)
             if (!used.Contains(c))
-                return c + ":";
-        return null;
+                yield return c + ":";
     }
 
     public static string Map(string folder)
     {
-        string letter = FreeLetter() ?? throw new InvalidOperationException("no free drive letter");
-        Run(letter + " \"" + folder + "\"");
+        // T-F419 triage: another test project maps one at the same time; a letter taken between
+        // the look and the mapping makes subst fail, and the next free one is tried.
+        string? letter = null;
+        foreach (string candidate in FreeLetters())
+        {
+            try
+            {
+                Run(candidate + " \"" + folder + "\"");
+                letter = candidate;
+                break;
+            }
+            catch (InvalidOperationException)
+            {
+                // taken meanwhile: the next one
+            }
+        }
+        if (letter is null)
+            throw new InvalidOperationException("no free drive letter");
         string root = letter + @"\";
         if (!Directory.Exists(root))
         {
