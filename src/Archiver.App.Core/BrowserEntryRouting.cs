@@ -75,6 +75,8 @@ public static class BrowserEntryRouting
         string relative = entryPath.Replace('/', Path.DirectorySeparatorChar);
         if (Path.IsPathRooted(relative))
             return null;
+        // T-F420: where the extraction put it - "a?b.txt" is "a_b.txt" on disk.
+        relative = EntryDiskName.AsPakkoWrites(entryPath).Replace('/', Path.DirectorySeparatorChar);
         string full = Path.GetFullPath(Path.Combine(root, relative));
         return full.StartsWith(root, StringComparison.OrdinalIgnoreCase) && full.Length > root.Length ? full : null;
     }

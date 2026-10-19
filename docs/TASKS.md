@@ -1683,7 +1683,9 @@ re-measured with T-F346's script before and after.
 
 ### T-F420 — one path pipeline for entry names and for source paths, shared by the ZIP and tar engines (P2, from T-F419, research first)
 
-- [ ] **Status:** open. Asked for by the user, 2026-10-19. Most of T-F419's three red-team passes
+- [ ] **Status:** done in T-F411 wave E (2026-10-19), graduates with T-F419: `EntryDiskName`,
+  `ExtractionNameRegistry`, public `PathIdentity` and `SourceTree` (`docs/DECISIONS.md`, "T-F420").
+  Asked for by the user, 2026-10-19. Most of T-F419's three red-team passes
   were about where an entry name lands on disk, and where a source path really leads. The checks
   themselves are already shared (`ArchiveEntrySecurity`: traversal, rooted, ADS, reserved and
   device names, `TrimmedByWindows`), and so are the commit (`ExtractionStaging.CommitInto`) and

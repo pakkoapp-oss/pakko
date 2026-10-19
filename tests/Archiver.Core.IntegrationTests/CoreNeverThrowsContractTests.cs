@@ -342,7 +342,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["FileHashService.ComputeStreamDigestAsync"] = "hashes a stream the caller opened",
         ["EntryDiskName.AsPakkoWrites"] = "a name inside an archive, never opened",
         ["EntryDiskName.AsTarExeWrites"] = "a name inside an archive, never opened",
-        ["EntryDiskName.IsTrimmed"] = "a name inside an archive, never opened",
+        ["EntryDiskName.Renames"] = "a name inside an archive, never opened",
         ["EntryDiskName.SameName"] = "names inside an archive, never opened",
         ["EntryDiskName.TrimmedTwins"] = "names inside an archive, never opened",
         ["EntryDiskName.StripLeadingDotSlash"] = "a name inside an archive, never opened",

@@ -377,7 +377,7 @@ flowchart TD
     CL -- yes --> E0["Errors += same name once decoded, entry not extracted"]
     CL -- no --> U{"HasUnsafePath: a .. segment (either separator)<br/>or a rooted / drive-relative name? (T-F228)"}
     U -- yes --> E1["Errors += unsafe path, entry not extracted"]
-    U -- no --> C{"stripRootPrefix: strip leading segment"}
+    U -- no --> C{"relativePath = EntryDiskName.AsPakkoWrites(name) (T-F420: a refused character as _,<br/>trailing dots and spaces dropped, an emptied part as _) — stripRootPrefix: strip leading segment"}
     C -- "stripped to empty" --> Z["the root itself: actualDest stands in for it<br/>(counts as extracted only for a folder entry)"]
     C -- "non-empty, or not applicable" --> D{"ADS marker, reserved device name (any segment,<br/>part before the first dot, T-F243) or control chars<br/>in the name without its trailing slash? T-F38/T-F39"}
     D -- yes --> S1["SkippedFiles += reason"]
@@ -390,7 +390,9 @@ flowchart TD
     G -- "reparse point" --> S4
     G -- ok --> J{"file exists at finalFilePath, built from the path<br/>as resolved inside staging (T-F228), or already claimed?"}
     J -- no --> K
-    J -- yes --> J0["T-F06: conflictResolver.ResolveAsync(finalFilePath)<br/>Ask → options.ResolveConflictAsync, else configured value"]
+    J -- yes --> JT{"T-F419/T-F420: ExtractionNameRegistry.MustKeepApart —<br/>claimed in this run and either side named differently<br/>(a.txt. and a.txt, a?b and a_b, an 8.3 alias)?"}
+    JT -- yes --> K2
+    JT -- no --> J0["T-F06: conflictResolver.ResolveAsync(finalFilePath)<br/>Ask → options.ResolveConflictAsync, else configured value"]
     J0 -- "Skip" --> S6["ConflictSkippedEntries += path, by the user or automatic (T-F260: archive Partial)<br/>the automatic ones become ArchiveResult.KeptExistingFiles (T-F313), the user's are counted in UserSkippedEntryCount (T-F383)"]
     J0 -- "Rename" --> K2["unique name via GetUniqueFilePath"]
     J0 -- "RenameExisting (T-F411, -aot)" --> J1{"finalFilePath already claimed in this run?"}
@@ -398,6 +400,8 @@ flowchart TD
     J1 -- "no: the file is on disk" --> J2["staging.RenameExistingOnCommit(finalFilePath, claimed):<br/>the commit renames the existing file (a name neither on disk nor claimed),<br/>moves the new one in without overwrite, gives the old name back on failure"]
     J2 --> K
     J0 -- "Overwrite" --> K
+    K0["T-F420: names.Claim(finalFilePath) — a path already claimed marks the archive<br/>that claimed it not wholly on disk (Partial after the loop, also across archives)"]
+    K0 -.- K
     K2 --> K
     K["open content: VerifyingReadStream(entry.Open, Length, Crc32),<br/>or the decrypting stream, capped the same way (T-F246/T-F231).<br/>Copy to staging, delete a half-written file on failure, then MOTW in<br/>EffectiveMotwMode, T-F360 (keeps the file time), then the entry time: NTFS 0x000A, else<br/>Unix 0x5455, else DOS (T-F298, best-effort)"]
     K -- "CRC mismatch / longer than declared / I/O error /<br/>encrypted entry: wrong password, unsupported method, authentication failed" --> E2["Errors += Cannot extract name: reason<br/>(destination path, never the staging path)"]
@@ -650,7 +654,7 @@ flowchart TD
     H2 -- "exit != 0 (e.g. a stale/unmatched<br/>member name — 'Not found in archive')" --> RejIO2
     H2 -- "exit 0" --> FC
     H -- "exit != 0 (T-F239: a Job limit hit is named in front of stderr)" --> RejIO2["throw IOException(stdErr)<br/>→ finally still runs: scope disposed<br/>→ caught in ExtractAsync as ArchiveError"]
-    H -- "exit 0" --> FC{"T-F171: FindDuplicateGroups - file names several<br/>extracted entries share (case-insensitive, not a folder name)?"}
+    H -- "exit 0" --> FC{"T-F171: FindDuplicateGroups - file names several<br/>extracted entries share as tar.exe writes them<br/>(EntryDiskName.AsTarExeWrites, T-F420: a?b is a_b, d./ is d/;<br/>case-insensitive, not a folder name)?"}
     FC -- "none" --> I
     FC -- "yes" --> FC2["scope.ExtractFirstOccurrencesAsync(first names)<br/>= tar -x -q -C first -- names (same AppContainer, fresh Job Object)<br/>keep a file only at the exact expected path with the first entry's -tv size.<br/>SkippedFiles += copies not extracted (3rd+ copy, or an unrecovered first copy)"]
     FC2 --> I["T-F263: staging = ExtractionStaging.Create(unisolatedDestDir),<br/>T-F298: record folder-entry times from the quarantine before any move<br/>walk the kept first copies, then EnumerateFilesGuarded(scope.OutputDirectory)<br/>- the first copy claims the name, the last meets the conflict rule"]
@@ -660,7 +664,9 @@ flowchart TD
     K --> Mloop{More entries?}
     L --> N{"File.Exists at actualDest + relativePath,<br/>or already claimed in this run?"}
     N -- no --> O
-    N -- yes --> N0["T-F06: resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath)<br/>same resolver/callback shape as diagram 3's node J0 —<br/>independent ConflictResolver instance, own 'apply to all'<br/>memory scoped to this ExtractAsync call only<br/>(does not cross a mixed zip+tar-family selection)"]
+    N -- yes --> NT{"T-F419/T-F420: MustKeepApart — a path where twins meet,<br/>known from the listing (EntryDiskName.TrimmedTwins)?"}
+    NT -- yes --> O2
+    NT -- no --> N0["T-F06: resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath)<br/>same resolver/callback shape as diagram 3's node J0 —<br/>independent ConflictResolver instance, own 'apply to all'<br/>memory scoped to this ExtractAsync call only<br/>(does not cross a mixed zip+tar-family selection)"]
     N0 -- "resolvedConflict==Skip" --> P["SkippedFiles += 'already exists at destination'; continue"]
     N0 -- "resolvedConflict==Rename" --> O2["finalFilePath = GetUniqueFilePath(finalFilePath, claimed)"]
     N0 -- "resolvedConflict==RenameExisting (T-F411)" --> O4{"already claimed in this run?"}
@@ -670,7 +676,7 @@ flowchart TD
     N0 -- "resolvedConflict==Overwrite" --> O3["NO explicit branch — falls through to O<br/>with the ORIGINAL finalFilePath;<br/>the commit's File.Move(overwrite:true) does the actual overwrite<br/>(same asymmetry as diagram 3's ZIP OnConflict gate)"]
     O2 --> O
     O3 --> O
-    O["claim finalFilePath; File.Move(file, staging\relative path of finalFilePath)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFile)<br/>in EffectiveMotwMode (T-F360)<br/>— from the archive the user chose; the stream moves with the file;<br/>the file keeps the time tar.exe set (T-F298)"] --> Mloop
+    O["claim finalFilePath (T-F420: a claimed path marks its archive not wholly on disk);<br/>File.Move(the quarantined file by its literal name, staging\relative path of finalFilePath)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFile)<br/>in EffectiveMotwMode (T-F360)<br/>— from the archive the user chose; the stream moves with the file;<br/>the file keeps the time tar.exe set (T-F298)"] --> Mloop
     P --> Mloop
     Mloop -- yes --> I
     Mloop -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>staging, so empty folders arrive too"] --> CM["staging.CommitInto(actualDest) — the same commit as ZIP (diagram 3):<br/>rename when actualDest is new, else a per-file merge;<br/>each locked destination file = one ArchiveError, then the recorded<br/>folder times (T-F298). A cancel before this point leaves nothing at the destination.<br/>T-F408: OnItemExtracted as in diagram 3"]

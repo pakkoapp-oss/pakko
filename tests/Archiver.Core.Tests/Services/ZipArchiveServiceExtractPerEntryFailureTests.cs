@@ -8,7 +8,9 @@ namespace Archiver.Core.Tests.Services;
 
 // T-F230: one entry Windows cannot write (a name legal on macOS/Linux, e.g. "What?.txt") aborted
 // the whole archive with a message naming the internal staging path, and a failed run left the
-// destination folder it had created behind, empty.
+// destination folder it had created behind, empty. T-F420: "What?.txt" is written as "What_.txt"
+// now (7-Zip's and libarchive's rule); a part longer than NTFS's 255 characters is still one
+// Windows cannot write, with the same ERROR_INVALID_NAME.
 public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
 {
     private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
@@ -28,9 +30,12 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
         return zipPath;
     }
 
+    private static readonly string TooLongPart = new('a', 300);
+
+    public static TheoryData<string> UnwritableNames => [TooLongPart + ".txt", TooLongPart + "/inner.txt"];
+
     [Theory]
-    [InlineData("What?.txt")]
-    [InlineData("bad|pipe/inner.txt")]
+    [MemberData(nameof(UnwritableNames))]
     public async Task ExtractAsync_OneUnwritableEntry_OthersStillExtractAndErrorNamesTheEntry(string badName)
     {
         string zip = CreateZip("qmark.zip", "ok1.txt", badName, "ok2.txt");
@@ -56,7 +61,7 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
     [Fact]
     public async Task ExtractAsync_InvalidNameEntry_ErrorCarriesTheWindowsCode()
     {
-        string zip = CreateZip("qmark.zip", "What?.txt");
+        string zip = CreateZip("qmark.zip", TooLongPart + ".txt");
         string dest = Path.Combine(_temp.Path, "q");
         Directory.CreateDirectory(dest);
 

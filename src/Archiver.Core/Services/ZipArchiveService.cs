@@ -748,10 +748,10 @@ public sealed class ZipArchiveService : IArchiveService
         // SkippedFiles (the summary dialog stays as it was), but they make the archive Partial.
         var conflictSkipped = new List<(string Path, bool ByUser)>();
         var warnings = new List<ArchiveWarning>();
-        // T-F419: entries that replaced an earlier entry of the same name in this run (Overwrite):
-        // what reached the disk is not the whole archive, so it is not deletable. Not reported -
-        // 7-Zip's -y does the same, exit 0.
-        var replacedInRun = new List<string>();
+        // T-F419/T-F420: every path this extraction writes, over all its archives. An archive one of
+        // whose entries a later one replaced (Overwrite) is not wholly on disk, so not deletable.
+        // Not reported - 7-Zip's -y does the same, exit 0.
+        var names = new ExtractionNameRegistry();
 
         for (int i = 0; i < total; i++)
         {
@@ -761,14 +761,15 @@ public sealed class ZipArchiveService : IArchiveService
 
             string archivePath = options.ArchivePaths[i];
             int errorsBefore = errors.Count, skippedBefore = skippedFiles.Count, createdBefore = createdFiles.Count,
-                conflictSkippedBefore = conflictSkipped.Count, replacedBefore = replacedInRun.Count;
+                conflictSkippedBefore = conflictSkipped.Count;
+            names.CurrentArchive = i;
 
             (bool rejected, ResolvedZipPassword? password) = await TryRejectUnsupportedOrEncryptedZipAsync(
                 archivePath, errors, skippedFiles, passwordResolver).ConfigureAwait(false);
             if (!rejected)
             {
                 IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
-                var sink = new ZipExtractResultSink(errors, createdFiles, skippedFiles, conflictSkipped, warnings, replacedInRun);
+                var sink = new ZipExtractResultSink(errors, createdFiles, skippedFiles, conflictSkipped, warnings, names);
                 await ExtractOneZipWithErrorMappingAsync(
                     archivePath, options, conflictResolver, password, sink, archiveProgress, cancellationToken).ConfigureAwait(false);
             }
@@ -777,11 +778,12 @@ public sealed class ZipArchiveService : IArchiveService
             sources.Add(SourceOutcomeRules.Classify(archivePath,
                 produced: createdFiles.Count > createdBefore,
                 clean: errors.Count == errorsBefore && skippedFiles.Count == skippedBefore
-                    && conflictSkipped.Count == conflictSkippedBefore && replacedInRun.Count == replacedBefore
+                    && conflictSkipped.Count == conflictSkippedBefore
                     && options.SelectedEntryPaths is null && options.EntryFilter is null));
 
             if (!singleArchive) progress?.Report(new ProgressReport { Percent = (i + 1) * 100 / total, BytesTransferred = 0, TotalBytes = 0 });
         }
+        sources = SourceOutcomeRules.DowngradeNotWhollyOnDisk(sources, names);
 
         var result = new ArchiveResult
         {
@@ -953,7 +955,7 @@ public sealed class ZipArchiveService : IArchiveService
         List<SkippedFile> SkippedFiles,
         List<(string Path, bool ByUser)> ConflictSkippedEntries,
         List<ArchiveWarning> Warnings,
-        List<string> ReplacedInRun);
+        ExtractionNameRegistry Names);
 
     private async Task ExtractOneZipWithErrorMappingAsync(
         string archivePath, ExtractOptions options, ConflictResolver conflictResolver,
@@ -969,7 +971,7 @@ public sealed class ZipArchiveService : IArchiveService
             var context = new ZipExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
                 sink.ConflictSkippedEntries, NameCodePages, password, options.EliminateDuplicateRootFolder, sink.Warnings, options.OnItemExtracted, options.EntryFilter,
-                options.DuplicateRootName, sink.ReplacedInRun);
+                options.DuplicateRootName, sink.Names);
             (string? actualDest, bool anyExtracted) = await Task.Run(async () =>
                 await ExtractWithSmartFolderingAsync(archivePath, destDir, alreadyIsolated,
                     options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken),
@@ -1527,7 +1529,7 @@ public sealed class ZipArchiveService : IArchiveService
         // claimed paths in memory closes that gap; without it, a duplicate entry would
         // silently overwrite the first one's file in tempDest. T-F420: that bookkeeping is shared
         // with the tar engine (ExtractionNameRegistry).
-        var names = new ExtractionNameRegistry(context.ReplacedInRun);
+        ExtractionNameRegistry names = context.Names ?? new ExtractionNameRegistry();
 
         var plan = new ExtractionPlan(staging, tempDest, fullTempDest, actualDest, stripRootPrefix, totalUncompressedBytes, names,
             encryptedEntryMap, rawArchiveStream)
@@ -1613,8 +1615,8 @@ public sealed class ZipArchiveService : IArchiveService
         Func<string, bool, bool>? EntryFilter = null,
         // T-F411: ExtractOptions.DuplicateRootName.
         string? DuplicateRootName = null,
-        // T-F419: see ExtractAsync's replacedInRun.
-        List<string>? ReplacedInRun = null);
+        // T-F420: the operation's paths (see ExtractAsync); null for one archive on its own.
+        ExtractionNameRegistry? Names = null);
 
     // The per-call setup ExtractWithSmartFolderingAsync computes once and every entry of its loop
     // reads unchanged — cut into its own type alongside ZipExtractionContext so
@@ -1659,9 +1661,12 @@ public sealed class ZipArchiveService : IArchiveService
             return (false, named.Entry.Length);
         }
 
-        string relativePath = named.FullName.Replace('/', Path.DirectorySeparatorChar);
-
         bool isFolder = named.FullName.EndsWith('/');
+
+        // T-F420: as Pakko writes it (EntryDiskName) - a refused character as '_', trailing dots
+        // and spaces dropped; a folder keeps its trailing separator for the root strip below.
+        string written = EntryDiskName.AsPakkoWrites(named.FullName).Replace('/', Path.DirectorySeparatorChar);
+        string relativePath = written.Length > 0 && isFolder ? written + Path.DirectorySeparatorChar : written;
 
         if (plan.StripRootPrefix)
         {
@@ -1768,7 +1773,7 @@ public sealed class ZipArchiveService : IArchiveService
         string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, Path.GetRelativePath(fullTempDest, destFilePath)));
         // T-F419: a name Windows writes as another - a part's trailing dot or space dropped, or
         // an 8.3 alias ("LONGFI~1.TXT") that resolves to an earlier entry's long name.
-        bool trimmedByWindows = EntryDiskName.IsTrimmed(relativePath)
+        bool trimmedByWindows = EntryDiskName.Renames(named.FullName)
             || !string.Equals(Path.GetFileName(relativePath), Path.GetFileName(finalFilePath), StringComparison.OrdinalIgnoreCase);
         if (File.Exists(finalFilePath) || claimedFinalPaths.Contains(finalFilePath)
             || (context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
@@ -1796,7 +1801,7 @@ public sealed class ZipArchiveService : IArchiveService
                 finalFilePath = uniqueFinal;
             }
         }
-        names.Claim(finalFilePath, trimmedByWindows, relativePath);
+        names.Claim(finalFilePath, trimmedByWindows);
 
         // T-F189: entry names are never encrypted by the ZIP format itself, so every check above
         // (ADS/reserved-name, traversal, reparse-point, conflict) already ran unmodified before
