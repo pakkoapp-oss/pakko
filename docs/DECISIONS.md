@@ -13450,7 +13450,10 @@ the archive.
     extracts the whole archive at once and the filter drops files only afterwards (T-F410), so there
     is no way to keep the alias out of the quarantine. The review's test asked for "the first
     survives"; it now accepts the two outcomes that lose nothing (refused with nothing written, or
-    both on disk). The ZIP route was already safe (`GetFullPath` expands the alias).
+    both on disk). The ZIP route was already safe (`GetFullPath` expands the alias). The pre-scan
+    is shared, so `t` and the threat scan refuse such an archive too (CLI.md's `t` row: an archive
+    extraction refuses fails the test); listing and the App's browser never run it (ITarService),
+    so the archive still opens.
   - Twins across archives on the tar route (`x arcs\*` with a ZIP's `a.txt` and a tar's `a.txt.`,
     or two tars): the tar move phase claimed every path as "not named differently" - it sees only
     the quarantined file, where tar.exe already wrote `a?b` as `a_b` and `d.` as `d`. The listing
@@ -13465,7 +13468,9 @@ the archive.
     writes it"; it is not. Rather than switch to 7-Zip's `_` (the trim, its twins and its numbering
     were measured and pinned in T-F419/T-F420), an entry whose name Windows trims, or an 8.3 alias
     of the file it lands on, never replaces a file already there in either engine: it is numbered
-    beside it, `-y` or not (`EntryDiskName.Trims`). A `?` written as `_` keeps 7-Zip's rule (7-Zip
+    beside it, `-y` or not - and also under Skip (`-aos`) and the App's Ask, which are not asked:
+    the file there is not the entry's name, so there is nothing to skip or ask about
+    (`EntryDiskName.Trims`). A `?` written as `_` keeps 7-Zip's rule (7-Zip
     writes that name too, and `-y` replaces it). Cost: extracting such an archive twice with
     Overwrite numbers the trimmed entry the second time. `Zip_ShortNameAliasOfExistingFile` now
     expects the alias numbered beside the existing file, exit 0 (was: skipped, exit 1) - both kept.
@@ -13491,6 +13496,11 @@ the archive.
     reported").
   - A folder entry skipped for a link on its path (C, T-F37) is reported as `j\`; the App's summary
     and Explorer's message showed an empty name. Both trim the separator first.
+  - Rechecked on the 3e52d14 build (1.8.1.18): APP-027 (a junction destination into the source:
+    named as not deleted; unchanged: recycled with no dialog), APP-028 (the archive with `a.txt`
+    twice named; a plain one recycled with no dialog, extracted from the browser), APP-030, C in
+    the App (`j`). C through Explorer cannot be set up: "Extract here" makes a fresh numbered folder,
+    so no link is inside it; `ShellResultPresenter`'s unit test covers that line.
 
 ## T-F419 - a red team against every switch (2026-10-19)
 
