@@ -1129,10 +1129,24 @@ public static class CliArgumentParser
         foreach ((string prefix, string message) in UnsupportedSwitchPrefixes)
         {
             if (token.StartsWith(prefix, StringComparison.Ordinal))
-                return message == NotSupportedOnThisCommand ? $"{message}: {token}" : message;
+                return message == NotSupportedOnThisCommand ? $"{message}: {token}"
+                    : prefix == "-p" ? message // a password is never echoed
+                    : NamingTheToken(message, token);
         }
 
         return $"Incorrect command line: unknown switch '{token}'";
+    }
+
+    // T-F419: a family's reason ("-sa{s|e|a} names ...") gets the switch as typed in front, unless
+    // it already starts with it ("-sdel (delete ...").
+    private static string NamingTheToken(string message, string token)
+    {
+        string lead = NotSupportedOnThisCommand + ": ";
+        if (!message.StartsWith(lead, StringComparison.Ordinal))
+            return message;
+        string reason = message[lead.Length..];
+        bool named = reason.StartsWith(token, StringComparison.Ordinal) && (reason.Length == token.Length || reason[token.Length] == ' ');
+        return named ? message : $"{lead}{token}: {reason}";
     }
 
     private static ParsedCliCommand Invalid(string message) =>

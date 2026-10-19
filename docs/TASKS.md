@@ -1681,6 +1681,36 @@ re-measured with T-F346's script before and after.
   `-T`/`-X` line by doubling it; then the App, `l`, a selection and a filter agree on the name.
 - **Reported by:** T-F410 wave B's closing review, 2026-10-18.
 
+### T-F420 — one path pipeline for entry names and for source paths, shared by the ZIP and tar engines (P2, from T-F419, research first)
+
+- [ ] **Status:** open. Asked for by the user, 2026-10-19. Most of T-F419's three red-team passes
+  were about where an entry name lands on disk, and where a source path really leads. The checks
+  themselves are already shared (`ArchiveEntrySecurity`: traversal, rooted, ADS, reserved and
+  device names, `TrimmedByWindows`), and so are the commit (`ExtractionStaging.CommitInto`) and
+  the conflict rule. The mapping from name to disk path is not shared: ZIP works it out per entry,
+  tar.exe writes into the quarantine and the move phase guesses back. What that seam let through:
+  `d./x.txt` beside `d/x.txt`; `a.txt.` written as it is by tar.exe and then missed by a `File.Move`
+  without the prefix (measured on build 26300: tar.exe keeps a file name's trailing dot or space
+  but trims a folder's); the tar listing trimming `a.txt ` to `a.txt`. Source paths have two copies
+  of the same idea: `CliSourceDeleter`'s identity and final-path check, and Core's "the archive is
+  inside its source" downgrade for "Delete after".
+  1. **Research first** (the repo's pre-implementation rule): read 7-Zip's
+     `CPP/7zip/UI/Common/ExtractingFilePath.cpp` (the `Correct_FsPath` and `Get_Correct_FsFile_Name`
+     family, which turns a trailing dot or space into `_` and writes through `\\?\`) and
+     libarchive's `archive_write_disk_windows.c` (what tar.exe does to a name on Windows). Quote both
+     in DECISIONS and record Pakko's choice per case: numbered like a conflict, or `_` like 7-Zip.
+  2. **Entry-name plan, one per extraction:** raw name -> the relative path as Windows writes it
+     (case, trailing dots and spaces per part, `./`, doubled separators) with flags (unsafe,
+     reserved, trimmed), plus one registry of claimed paths and twins per run. ZIP writes from the
+     plan. tar builds the same plan from its listing and maps every quarantined file back through
+     the same key, by its literal name.
+  3. **Source-path identity, one helper:** final path plus file identity (volume serial and file ID)
+     for `-sdel`'s refusal and link check, the "Delete after" downgrade and the recycler's
+     volume-root and duplicate guards.
+  4. **Acceptance:** every T-F419 red-team case (CLI `Adversarial/`, Core, App.Core) stays green,
+     with no behaviour change that is not named in DECISIONS.
+- **Reported by:** the user, 2026-10-19, during T-F419's triage.
+
 ### T-F419 — `pakko`: an adversarial test suite for every switch, written by a red-team agent (P2, part of T-F411 wave E, before PR #88 merges)
 
 - [ ] **Status:** in progress (2026-10-18, the user: in this wave). 2026-10-19: passes 1 and 2 done,

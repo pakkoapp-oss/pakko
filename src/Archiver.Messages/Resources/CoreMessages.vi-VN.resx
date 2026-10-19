@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>Không thể ghi "{0}": có một thư mục cùng tên ở vị trí đó.</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>"{0}" không phải là tên thư mục mà Windows có thể dùng.</value>
+  </data>
 </root>

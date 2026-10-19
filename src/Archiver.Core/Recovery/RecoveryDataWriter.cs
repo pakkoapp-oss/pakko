@@ -225,11 +225,12 @@ internal static partial class RecoveryDataWriter
             || !candidate.StartsWith(archiveName, StringComparison.OrdinalIgnoreCase)
             || !VolumeSuffix().IsMatch(candidate[archiveName.Length..]))
             return false;
+        // T-F419: and only a set that names this archive - another archive's volume renamed to
+        // this name, or a set whose name cannot be read, stays.
         Par2ReadResult read = Par2PacketReader.Read([path], cancellationToken);
         return read.UnreadableFiles == 0
-            && (read.Sets.Count > 0 || read.Rejected.Count > 0)
-            && read.Sets.All(s => s.SetId != setId)
-            && read.Rejected.All(r => r.SetId != setId);
+            && read.Sets.Count > 0 && read.Rejected.Count == 0
+            && read.Sets.All(s => s.SetId != setId && Par2SetLocator.Names(s, archiveName));
     }
 
     [GeneratedRegex(@"^\.vol\d+[+-]\d+\.par2$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]

@@ -27,6 +27,44 @@ public sealed class TarDuplicateNamesTests
         groups.Should().Equal(new TarSandboxedService.DuplicateGroup("./A.txt", 1, 2));
     }
 
+    // T-F419: tar.exe creates "d./x.txt" in "d", so it shares "d/x.txt"'s file; a file name it
+    // writes as it is ("a.txt." beside "a.txt", measured), so those are not one copy.
+    [Theory]
+    [InlineData("d/x.txt", "d./x.txt")]
+    [InlineData("d./x.txt", "d/x.txt")]
+    [InlineData("d/x.txt", "d /x.txt")]
+    public void FindDuplicateGroups_FolderWindowsTrims_IsOneGroup(string first, string second)
+    {
+        List<TarSandboxedService.DuplicateGroup> groups = TarSandboxedService.FindDuplicateGroups(
+            [(first, 1), (second, 2)], [first, second], null);
+
+        groups.Should().Equal(new TarSandboxedService.DuplicateGroup(first, 1, 2));
+    }
+
+    [Fact]
+    public void FindDuplicateGroups_FileNameWindowsTrims_IsNoGroup()
+    {
+        TarSandboxedService.FindDuplicateGroups([("a.txt", 1), ("a.txt. ", 2)], ["a.txt", "a.txt. "], null).Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("a.txt", "a.txt.", "a.txt")]
+    [InlineData("./A.TXT ", "a.txt", "A.TXT")]
+    [InlineData("d./x.txt", "d/x.txt", "d/x.txt")]
+    public void TrimmedTwinNames_NamesThatMeetOnlyThroughTrimming(string first, string second, string expected)
+    {
+        TarSandboxedService.TrimmedTwinNames([(first, 1), (second, 2)]).Should().Equal(expected);
+    }
+
+    [Theory]
+    [InlineData("a.txt", "A.txt")]
+    [InlineData("a.txt", "a.txt")]
+    [InlineData("a.txt.", "a.txt.")]
+    public void TrimmedTwinNames_SameOrCaseOnlyNames_AreNone(string first, string second)
+    {
+        TarSandboxedService.TrimmedTwinNames([(first, 1), (second, 2)]).Should().BeEmpty();
+    }
+
     [Fact]
     public void FindDuplicateGroups_OnlyAmongTheSelection()
     {

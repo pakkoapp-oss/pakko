@@ -59,6 +59,11 @@ internal static partial class ArchiveEntrySecurity
     public static bool IsDeviceName(string fileName)
         => _reservedNames.Contains(fileName.TrimEnd(' ', '.'));
 
+    // T-F419: whether Windows writes this entry under another name - a part ending in a space or a
+    // dot loses it ("d./x.txt" is "d\x.txt"). "." itself is a path step, not a trimmed name.
+    public static bool TrimmedByWindows(string entryPath)
+        => entryPath.Split(PathSeparators).Any(part => part != "." && (part.EndsWith(' ') || part.EndsWith('.')));
+
     private static bool IsReservedSegment(string segment)
     {
         int dot = segment.IndexOf('.');

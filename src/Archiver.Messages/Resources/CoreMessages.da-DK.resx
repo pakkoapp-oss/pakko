@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>„{0}“ kan ikke skrives: der er en mappe med samme navn i vejen.</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>„{0}“ er ikke et mappenavn, som Windows kan bruge.</value>
+  </data>
 </root>

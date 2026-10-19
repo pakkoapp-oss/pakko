@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>„{0}” nu poate fi scris: în locul lui există un folder cu același nume.</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>„{0}” nu este un nume de folder pe care Windows îl poate folosi.</value>
+  </data>
 </root>

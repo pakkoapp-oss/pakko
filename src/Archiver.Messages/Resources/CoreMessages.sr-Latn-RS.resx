@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>Nije moguće upisati „{0}”: na tom mestu je fascikla istog naziva.</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>„{0}” nije naziv fascikle koji Windows može da koristi.</value>
+  </data>
 </root>

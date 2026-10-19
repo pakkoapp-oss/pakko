@@ -602,8 +602,9 @@ public sealed class TarSandboxedService : ITarService
         if (exitCode != 0)
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.TarExtractionFailed, DescribeFailure(stdErr)));
 
+        List<DuplicateGroup> duplicateGroups = FindDuplicateGroups(fileEntries, allNames, expandedSelection);
         (string? firstCopyDir, HashSet<string> firstCopies) = await ExtractFirstCopiesAsync(
-            scope, FindDuplicateGroups(fileEntries, allNames, expandedSelection), skippedFiles, cancellationToken)
+            scope, duplicateGroups, skippedFiles, cancellationToken)
             .ConfigureAwait(false);
 
         // T-F263: the same staging + commit as ZIP extraction (ExtractionStaging) — files move from
@@ -611,7 +612,8 @@ public sealed class TarSandboxedService : ITarService
         // archive is committed, so a cancel or failure partway through leaves no partial files.
         using var staging = ExtractionStaging.Create(unisolatedDestDir);
         var plan = new TarCommitPlan(staging, actualDest, stripRootPrefix,
-            new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+            TrimmedTwinPaths(fileEntries, actualDest, stripRootPrefix));
         RecordFolderTimes((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, scope.OutputDirectory!, staging);
 
         int totalFiles = 0;
@@ -701,6 +703,8 @@ public sealed class TarSandboxedService : ITarService
 
     // T-F171: a name several file entries share. Case-insensitive, since NTFS makes "A.txt" and
     // "a.txt" one file; FirstName is the exact name of the first entry, which "-q" matches.
+    // T-F419: and by folder as tar.exe creates it, trailing dots and spaces dropped ("d./x.txt"
+    // lands in "d"); a file name it writes as it is ("a.txt." stays "a.txt.", measured).
     internal sealed record DuplicateGroup(string FirstName, long FirstSize, int Count);
 
     // Groups among the entries being extracted (the selection, or the whole archive). A name that
@@ -710,19 +714,32 @@ public sealed class TarSandboxedService : ITarService
     {
         HashSet<string>? selected = selection is null ? null : new HashSet<string>(selection, StringComparer.Ordinal);
         var folders = new HashSet<string>(
-            allNames.Where(n => n.EndsWith('/')).Select(n => StripLeadingDotSlash(n).TrimEnd('/')),
+            allNames.Where(n => n.EndsWith('/')).Select(n => AsWindowsWritesIt(StripLeadingDotSlash(n).TrimEnd('/'), fileNameToo: true)),
             StringComparer.OrdinalIgnoreCase);
         var groups = new Dictionary<string, DuplicateGroup>(StringComparer.OrdinalIgnoreCase);
         foreach ((string name, long size) in fileEntries)
         {
             if (selected is not null && !selected.Contains(name))
                 continue;
-            string key = StripLeadingDotSlash(name);
+            string key = AsWindowsWritesIt(StripLeadingDotSlash(name), fileNameToo: false);
             groups[key] = groups.TryGetValue(key, out DuplicateGroup? group)
                 ? group with { Count = group.Count + 1 }
                 : new DuplicateGroup(name, size, 1);
         }
         return groups.Where(g => g.Value.Count > 1 && !folders.Contains(g.Key)).Select(g => g.Value).ToList();
+    }
+
+    // The folder parts (and the file name with fileNameToo) with their trailing dots and spaces
+    // dropped, as Windows names them on disk.
+    internal static string AsWindowsWritesIt(string name, bool fileNameToo)
+    {
+        string[] parts = name.Split('/');
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (fileNameToo || i < parts.Length - 1)
+                parts[i] = parts[i].TrimEnd(' ', '.');
+        }
+        return string.Join('/', parts);
     }
 
     // T-F171: runs the first-copy pass and keeps only files at a group's exact path with the first
@@ -750,11 +767,14 @@ public sealed class TarSandboxedService : ITarService
         foreach (DuplicateGroup group in groups)
         {
             string displayName = StripLeadingDotSlash(group.FirstName);
-            FileInfo? info = firstDir is null ? null : new FileInfo(Path.GetFullPath(Path.Combine(firstDir, displayName)));
+            // Not through GetFullPath: tar.exe writes "a.txt." as it is, and that would look for "a.txt".
+            string? firstPath = firstDir is null ? null
+                : Path.Combine(firstDir, AsWindowsWritesIt(displayName, fileNameToo: false).Replace('/', Path.DirectorySeparatorChar));
+            FileInfo? info = firstPath is null ? null : new FileInfo(Literal(firstPath));
             bool recovered = info is { Exists: true } && info.Length == group.FirstSize
                 && (info.Attributes & FileAttributes.ReparsePoint) == 0;
             if (recovered)
-                accepted.Add(info!.FullName);
+                accepted.Add(firstPath!);
             int notExtracted = group.Count - (recovered ? 2 : 1);
             if (notExtracted > 0)
                 skippedFiles.Add(CoreMessages.Skip(displayName, MessageCode.TarDuplicateCopiesNotExtracted,
@@ -766,8 +786,37 @@ public sealed class TarSandboxedService : ITarService
     // Where ExtractSingleArchiveAsync's move phase puts each file: into Staging under the path it
     // will have in ActualDest (T-F263). ClaimedFinalPaths is ZIP's T-F30 set — a name picked for a
     // renamed conflict must not collide with another entry of the same archive already staged.
+    // TrimmedTwinPaths: where TrimmedTwinNames land (T-F419).
     private sealed record TarCommitPlan(
-        ExtractionStaging Staging, string ActualDest, bool StripRootPrefix, HashSet<string> ClaimedFinalPaths);
+        ExtractionStaging Staging, string ActualDest, bool StripRootPrefix, HashSet<string> ClaimedFinalPaths,
+        HashSet<string> TrimmedTwinPaths);
+
+    /// <summary>T-F419: names two different entries share only because Windows trims a part's
+    /// trailing dots and spaces ("a.txt." and "a.txt", "d./x.txt" and "d/x.txt"), as Windows writes
+    /// them. Their copies are kept apart as Rename, -y or not, as in ZIP.</summary>
+    internal static List<string> TrimmedTwinNames(IReadOnlyList<(string Name, long Size)> fileEntries) =>
+        [.. fileEntries.Select(e => StripLeadingDotSlash(e.Name))
+            .GroupBy(name => AsWindowsWritesIt(name, fileNameToo: true), StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Any(ArchiveEntrySecurity.TrimmedByWindows) && g.Distinct(StringComparer.OrdinalIgnoreCase).Skip(1).Any())
+            .Select(g => g.Key)];
+
+    private static HashSet<string> TrimmedTwinPaths(IReadOnlyList<(string Name, long Size)> fileEntries, string actualDest, bool stripRootPrefix)
+    {
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string twin in TrimmedTwinNames(fileEntries))
+        {
+            string relative = twin;
+            int sep = relative.IndexOf('/');
+            if (stripRootPrefix)
+            {
+                if (sep < 0)
+                    continue;
+                relative = relative[(sep + 1)..];
+            }
+            paths.Add(Path.GetFullPath(Path.Combine(actualDest, relative)));
+        }
+        return paths;
+    }
 
     // T-F197: the move phase walks files only, so folder entries are created here — from the
     // names the pre-scan already validated (no "..", rooted, ADS or reserved names), with the
@@ -889,6 +938,13 @@ public sealed class TarSandboxedService : ITarService
         }
     }
 
+    // T-F419: a quarantined file by its exact name - tar.exe writes through the long-path prefix,
+    // so "a.txt." or "a.txt " is on disk as it is, and without the prefix Windows would trim it.
+    private static string Literal(string fullPath) =>
+        fullPath.StartsWith(@"\\?\", StringComparison.Ordinal) ? fullPath
+        : fullPath.StartsWith(@"\\", StringComparison.Ordinal) ? @"\\?\UNC\" + fullPath[2..]
+        : @"\\?\" + fullPath;
+
     private static string StripLeadingDotSlash(string name)
     {
         while (name.StartsWith("./", StringComparison.Ordinal))
@@ -904,7 +960,10 @@ public sealed class TarSandboxedService : ITarService
         if (!File.Exists(finalFilePath) && !plan.ClaimedFinalPaths.Contains(finalFilePath)
             && !(context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
             return finalFilePath;
-        (long? incomingSize, DateTimeOffset? incomingModified) = DescribeIncoming(file);
+        // T-F419: copies of one name only through Windows' trimming are kept apart (as in ZIP).
+        if (plan.ClaimedFinalPaths.Contains(finalFilePath) && plan.TrimmedTwinPaths.Contains(finalFilePath))
+            return ArchiveNaming.GetUniqueFilePath(finalFilePath, plan.ClaimedFinalPaths);
+        (long? incomingSize, DateTimeOffset? incomingModified) = DescribeIncoming(Literal(file));
         int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
         ConflictBehavior resolvedConflict = await context.ConflictResolver
             .ResolveAsync(finalFilePath, incomingSize, incomingModified).ConfigureAwait(false);
@@ -963,7 +1022,7 @@ public sealed class TarSandboxedService : ITarService
         // reported by the commit (ExtractionStaging.CommitInto), the same way as for ZIP.
         try
         {
-            File.Move(file, stagedFilePath, overwrite: true);
+            File.Move(Literal(file), stagedFilePath, overwrite: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -2344,8 +2403,9 @@ public sealed class TarSandboxedService : ITarService
         return fields.Length > 4 && long.TryParse(fields[4], out long size) ? size : 0;
     }
 
+    // T-F419: only the line end is dropped - "a.txt " is an entry of its own, not "a.txt".
     private static string[] SplitLines(string text)
-        => text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        => [.. text.Split('\n').Select(line => line.TrimEnd('\r')).Where(line => line.Length > 0)];
 
     private static bool IsDangerousEntryName(string entryName)
     {

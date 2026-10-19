@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>Nepavyksta įrašyti „{0}“: jo vietoje yra tokio paties pavadinimo aplankas.</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>„{0}“ nėra aplanko pavadinimas, kurį gali naudoti Windows.</value>
+  </data>
 </root>

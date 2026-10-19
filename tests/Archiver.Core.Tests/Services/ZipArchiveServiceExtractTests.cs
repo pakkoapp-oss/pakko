@@ -1333,6 +1333,8 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
     [InlineData("a.txt.", "a.txt")]
     [InlineData("a.txt", "a.txt ")]
     [InlineData("A.TXT ", "a.txt")]
+    [InlineData("d/x.txt", "d./x.txt")]
+    [InlineData("d./x.txt", "d/x.txt")]
     public async Task ExtractAsync_NamesWindowsTrimsToOne_OverwriteKeepsBoth(string first, string second)
     {
         string zipPath = Path.Combine(_temp.Path, "twins.zip");
@@ -1353,6 +1355,32 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
         result.Success.Should().BeTrue();
         Directory.GetFiles(dest, "*", SearchOption.AllDirectories).Select(File.ReadAllText).Should().BeEquivalentTo("first", "second");
+    }
+
+    // T-F419: a doubled separator or a "./" step is the same name to everyone, not a name Windows
+    // trimmed: T-F30's rule holds and Overwrite keeps the later.
+    [Theory]
+    [InlineData("a//b.txt", "a/b.txt")]
+    [InlineData("./a/b.txt", "a/b.txt")]
+    public async Task ExtractAsync_SameNameSpelledTwice_OverwriteKeepsTheLater(string first, string second)
+    {
+        string zipPath = Path.Combine(_temp.Path, "spelled.zip");
+        using (ZipArchive archive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            WriteEntry(archive, first, "first");
+            WriteEntry(archive, second, "second");
+        }
+        string dest = Path.Combine(_temp.Path, "out");
+
+        await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zipPath],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        Directory.GetFiles(dest, "*", SearchOption.AllDirectories).Select(File.ReadAllText).Should().Equal("second");
     }
 
     // A case-only twin is one name to Windows and to 7-Zip alike: Overwrite keeps the later.

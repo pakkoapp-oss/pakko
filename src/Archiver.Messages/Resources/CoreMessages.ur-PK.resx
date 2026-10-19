@@ -357,4 +357,7 @@
   <data name="DestinationIsAFolder" xml:space="preserve">
     <value>"{0}" نہیں لکھا جا سکتا: اس کی جگہ اسی نام کا ایک فولڈر موجود ہے۔</value>
   </data>
+  <data name="DestinationFolderNameInvalid" xml:space="preserve">
+    <value>"{0}" ایسا فولڈر نام نہیں جسے Windows استعمال کر سکے۔</value>
+  </data>
 </root>
