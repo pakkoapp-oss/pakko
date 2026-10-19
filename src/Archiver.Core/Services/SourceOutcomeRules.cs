@@ -47,7 +47,7 @@ internal static class SourceOutcomeRules
             return false;
         if (PathIdentity.Resolve(source) is not { } resolved)
             return true;
-        return holders.Exists(h => h is null || h.Contains(resolved.Identity));
+        return holders.Exists(h => h is null || h.Contains(resolved.Id));
     }
 
     private static bool IsRoot(string path) => Directory.Exists(path) && new DirectoryInfo(path).Parent is null;

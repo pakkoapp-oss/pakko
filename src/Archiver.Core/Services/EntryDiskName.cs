@@ -56,21 +56,21 @@ public static class EntryDiskName
                 list.Add(parts[i]);
             }
         }
-        foreach (string name in names)
+        return names.FirstOrDefault(name =>
         {
             string[] parts = AsTarExeWrites(StripLeadingDotSlash(name)).Split('/');
-            for (int i = 0; i < parts.Length; i++)
-            {
-                if (!IsAliasShaped(parts[i]))
-                    continue;
-                string start = parts[i][..Math.Min(2, parts[i].IndexOf('~'))];
-                if (children[string.Join('/', parts[..i])].Any(other =>
-                        !string.Equals(other, parts[i], StringComparison.OrdinalIgnoreCase)
-                        && other.StartsWith(start, StringComparison.OrdinalIgnoreCase)))
-                    return name;
-            }
-        }
-        return null;
+            return Enumerable.Range(0, parts.Length).Any(i => IsAliasOfSibling(parts[i], children[string.Join('/', parts[..i])]));
+        });
+    }
+
+    // An alias-shaped part beside another part of its folder that starts as it does.
+    private static bool IsAliasOfSibling(string part, List<string> siblings)
+    {
+        if (!IsAliasShaped(part))
+            return false;
+        string start = part[..Math.Min(2, part.IndexOf('~'))];
+        return siblings.Exists(other =>
+            !string.Equals(other, part, StringComparison.OrdinalIgnoreCase) && other.StartsWith(start, StringComparison.OrdinalIgnoreCase));
     }
 
     // An 8.3 name with "~" and digits ending its base: "LONGFI~1.TXT", "LO1A2B~12".

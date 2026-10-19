@@ -1663,22 +1663,12 @@ public sealed class ZipArchiveService : IArchiveService
 
         bool isFolder = named.FullName.EndsWith('/');
 
-        // T-F420: as Pakko writes it (EntryDiskName) - a refused character as '_', trailing dots
-        // and spaces dropped; a folder keeps its trailing separator for the root strip below.
-        string written = EntryDiskName.AsPakkoWrites(named.FullName).Replace('/', Path.DirectorySeparatorChar);
-        string relativePath = written.Length > 0 && isFolder ? written + Path.DirectorySeparatorChar : written;
-
-        if (plan.StripRootPrefix)
+        // The stripped root folder itself: actualDest stands in for it (and takes its time, T-F298).
+        if (RelativePathOf(named.FullName, isFolder, plan.StripRootPrefix) is not { } relativePath)
         {
-            int sep = relativePath.IndexOf(Path.DirectorySeparatorChar);
-            relativePath = relativePath[(sep + 1)..];
-            // The stripped root folder itself: actualDest stands in for it (and takes its time, T-F298).
-            if (string.IsNullOrEmpty(relativePath))
-            {
-                if (isFolder)
-                    plan.Staging.RecordFolderTime(string.Empty, named.ModifiedUtc);
-                return (isFolder && !Directory.Exists(plan.ActualDest), named.Entry.Length);
-            }
+            if (isFolder)
+                plan.Staging.RecordFolderTime(string.Empty, named.ModifiedUtc);
+            return (isFolder && !Directory.Exists(plan.ActualDest), named.Entry.Length);
         }
 
         // T-F38/T-F39: Reject ADS-marked, reserved-name, or control-character entry names
@@ -1712,6 +1702,26 @@ public sealed class ZipArchiveService : IArchiveService
             return (false, named.Entry.Length);
         }
     }
+
+    // T-F420: the entry's path as Pakko writes it (EntryDiskName) - a refused character as '_',
+    // trailing dots and spaces dropped; a folder keeps its trailing separator. With the root strip,
+    // the part below the root; null for the root folder itself.
+    private static string? RelativePathOf(string fullName, bool isFolder, bool stripRoot)
+    {
+        string written = EntryDiskName.AsPakkoWrites(fullName).Replace('/', Path.DirectorySeparatorChar);
+        string relativePath = written.Length > 0 && isFolder ? written + Path.DirectorySeparatorChar : written;
+        if (!stripRoot)
+            return relativePath;
+        string below = relativePath[(relativePath.IndexOf(Path.DirectorySeparatorChar) + 1)..];
+        return below.Length > 0 ? below : null;
+    }
+
+    // T-F419: "a.txt." and "a.txt" are two entries Windows writes under one name; neither may
+    // overwrite the other, -y or not (7-Zip keeps both, as "a.txt_"). T-F420 review: nor a file
+    // already on disk, which a trimmed name or an 8.3 alias does not name.
+    private static bool KeptApart(ExtractionNameRegistry names, string finalFilePath, string entryName, bool namedDifferently, bool aliasOfAnother) =>
+        names.MustKeepApart(finalFilePath, namedDifferently)
+        || ((EntryDiskName.Trims(entryName) || aliasOfAnother) && !names.Claimed.Contains(finalFilePath));
 
     // T-F197: a folder entry gets the same containment and reparse-point checks as a file entry,
     // then is created in staging; the commit carries it across even when it stays empty. Counts
@@ -1780,11 +1790,7 @@ public sealed class ZipArchiveService : IArchiveService
             || (context.ConflictResolver.RenamesExisting && Directory.Exists(finalFilePath)))
         {
             int userSkipsSoFar = context.ConflictResolver.UserSkipCount;
-            // T-F419: "a.txt." and "a.txt" are two entries Windows writes under one name; neither
-            // may overwrite the other, -y or not (7-Zip keeps both, as "a.txt_"). T-F420 review: nor
-            // a file already on disk, which such an entry does not name.
-            ConflictBehavior resolvedConflict = names.MustKeepApart(finalFilePath, trimmedByWindows)
-                || ((EntryDiskName.Trims(named.FullName) || aliasOfAnother) && !claimedFinalPaths.Contains(finalFilePath))
+            ConflictBehavior resolvedConflict = KeptApart(names, finalFilePath, named.FullName, trimmedByWindows, aliasOfAnother)
                 ? ConflictBehavior.Rename
                 : await context.ConflictResolver
                     .ResolveAsync(finalFilePath, named.Entry.Length, new DateTimeOffset(named.ModifiedUtc).ToLocalTime()).ConfigureAwait(false);

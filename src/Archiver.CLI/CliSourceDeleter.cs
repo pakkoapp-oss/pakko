@@ -38,19 +38,21 @@ public static class CliSourceDeleter
         if (holdingCurrent is null && Directory.Exists(currentFolder))
             return $"-sdel cannot tell where the current folder leads: {currentFolder}";
         holdingCurrent ??= [];
-        foreach (string source in sources)
-        {
-            if (RealPath(source) is not { } full)
-                return $"-sdel cannot tell where this source leads: {source}";
-            // Resolved first: Directory.Exists says no to the volume root \\?\GLOBALROOT\Device\HarddiskVolumeN\.
-            PathIdentity.Resolved? opened = PathIdentity.Resolve(source);
-            if (opened is null && (File.Exists(source) || Directory.Exists(source)))
-                return $"-sdel cannot tell where this source leads: {source}";
-            if (IsVolumeRoot(full) || (opened is not null && IsVolumeRoot(Normalize(opened.FinalPath))))
-                return $"-sdel would delete a volume root: {source}";
-            if (IsSameOrUnder(current, full) || (opened is not null && holdingCurrent.Contains(opened.Identity)))
-                return $"-sdel would delete the current folder or a folder holding it: {source}";
-        }
+        return sources.Select(source => SourceRefusal(source, current, holdingCurrent)).FirstOrDefault(refusal => refusal is not null);
+    }
+
+    private static string? SourceRefusal(string source, string current, HashSet<PathIdentity.Identity> holdingCurrent)
+    {
+        if (RealPath(source) is not { } full)
+            return $"-sdel cannot tell where this source leads: {source}";
+        // Resolved first: Directory.Exists says no to the volume root \\?\GLOBALROOT\Device\HarddiskVolumeN\.
+        PathIdentity.Resolved? opened = PathIdentity.Resolve(source);
+        if (opened is null && (File.Exists(source) || Directory.Exists(source)))
+            return $"-sdel cannot tell where this source leads: {source}";
+        if (IsVolumeRoot(full) || (opened is not null && IsVolumeRoot(Normalize(opened.FinalPath))))
+            return $"-sdel would delete a volume root: {source}";
+        if (IsSameOrUnder(current, full) || (opened is not null && holdingCurrent.Contains(opened.Id)))
+            return $"-sdel would delete the current folder or a folder holding it: {source}";
         return null;
     }
 
@@ -72,23 +74,25 @@ public static class CliSourceDeleter
                 return null;
             string real = root;
             foreach (string part in full[root.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
-            {
-                string next = Path.Combine(real, part);
-                var info = new FileInfo(next);
-                if (info.Exists || Directory.Exists(next))
-                {
-                    FileSystemInfo entry = info.Exists ? info : new DirectoryInfo(next);
-                    if (entry.LinkTarget is not null)
-                        next = entry.ResolveLinkTarget(returnFinalTarget: true) is { } target ? Normalize(target.FullName) : next;
-                }
-                real = next;
-            }
+                real = ResolvedStep(real, part);
             return Normalize(real);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             return null;
         }
+    }
+
+    // One part further: where it leads when it is a link, else the part as it is.
+    private static string ResolvedStep(string real, string part)
+    {
+        string next = Path.Combine(real, part);
+        FileSystemInfo entry = new FileInfo(next);
+        if (!entry.Exists)
+            entry = new DirectoryInfo(next);
+        if (!entry.Exists || entry.LinkTarget is null)
+            return next;
+        return entry.ResolveLinkTarget(returnFinalTarget: true) is { } target ? Normalize(target.FullName) : next;
     }
 
     /// <summary>T-F419: whether <paramref name="path"/> passes a link on its way (j\t.txt with j a
@@ -99,10 +103,13 @@ public static class CliSourceDeleter
 
     // Only a drive letter or UNC after the prefix: \\?\Volume{...}\ and \\?\GLOBALROOT\ stay as
     // they are, or GetFullPath would read what follows as relative to the current folder.
-    private static string WithoutLongPathPrefix(string path) =>
-        path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase) ? @"\\" + path[8..]
-        : path.Length >= 6 && path.StartsWith(@"\\?\", StringComparison.Ordinal) && char.IsAsciiLetter(path[4]) && path[5] == ':' ? path[4..]
-        : path;
+    private static string WithoutLongPathPrefix(string path)
+    {
+        if (path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
+            return @"\\" + path[8..];
+        bool driveAfterPrefix = path.Length >= 6 && path.StartsWith(@"\\?\", StringComparison.Ordinal) && char.IsAsciiLetter(path[4]) && path[5] == ':';
+        return driveAfterPrefix ? path[4..] : path;
+    }
 
     private static bool IsSameOrUnder(string path, string folder) =>
         path.Equals(folder, StringComparison.OrdinalIgnoreCase)

@@ -59,7 +59,7 @@ public sealed class ExtractionRouter : IExtractionRouter
 
         // T-F420: one bookkeeping of the paths written, so a tar file replacing a ZIP's leaves that
         // ZIP not deletable (and Explorer's "Extract here" over both kinds keeps twins apart).
-        var names = options.SharedNames ?? new ExtractionNameRegistry();
+        ExtractionNameRegistry names = options.SharedNames ?? new ExtractionNameRegistry();
         ArchiveResult zipResult = zipPaths.Count > 0
             ? await _archiveService.ExtractAsync(
                 options with { ArchivePaths = zipPaths, OpenDestinationFolder = false, SharedNames = names },
