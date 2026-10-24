@@ -842,7 +842,9 @@ static async Task<int> RunListAsync(ParsedCliCommand command, PakkoServices serv
 
         foreach (string archivePath in archivePaths)
         {
-            if (!await PrintArchiveListingAsync(archivePath, router, multiple && !command.Output.DisableHeaders, !command.Output.DisableHeaders, command.EntryFilter, report, cancellation.Token).ConfigureAwait(false))
+            bool header = !command.Output.DisableHeaders;
+            var listing = new ListingLayout(multiple && header && !command.TechListing, header, command.TechListing);
+            if (!await PrintArchiveListingAsync(archivePath, router, listing, command.EntryFilter, report, cancellation.Token).ConfigureAwait(false))
                 anyFailed = true;
         }
 
@@ -855,11 +857,11 @@ static async Task<int> RunListAsync(ParsedCliCommand command, PakkoServices serv
 }
 
 // Prints one archive's listing (or its error) to stdout/stderr. Returns false on failure. -ba (T-F408)
-// leaves the column header and the multi-archive lines out.
+// leaves the column header and the multi-archive lines out; -slt (T-F412) prints 7-Zip's blocks.
 static async Task<bool> PrintArchiveListingAsync(
-    string archivePath, IArchiveListingRouter router, bool multiple, bool header, CliNameFilter? filter, CliReportContext report, CancellationToken cancellationToken)
+    string archivePath, IArchiveListingRouter router, ListingLayout layout, CliNameFilter? filter, CliReportContext report, CancellationToken cancellationToken)
 {
-    if (multiple)
+    if (layout.Multiple)
         await Console.Out.WriteLineAsync($"# archive: {archivePath}").ConfigureAwait(false);
 
     ArchiveListResult listResult = await router.ListEntriesAsync(archivePath, cancellationToken).ConfigureAwait(false);
@@ -870,14 +872,29 @@ static async Task<bool> PrintArchiveListingAsync(
         return false;
     }
 
-    if (header)
-        await Console.Out.WriteLineAsync(CliEntryFormatter.Header).ConfigureAwait(false);
+    // T-F418: a name holds what the archive stores; 7-Zip's rule keeps it on one line.
+    bool terminal = !Console.IsOutputRedirected;
+    ArchiveFormat format = ArchiveFormatDetector.Detect(archivePath);
+    if (layout.Header)
+    {
+        IReadOnlyList<string> headerLines = layout.Technical
+            ? CliTechListing.ArchiveHeader(report.StdinPath is not null ? "(stdin)" : archivePath, format, new FileInfo(archivePath).Length, terminal)
+            : [CliEntryFormatter.Header];
+        foreach (string line in headerLines)
+            await Console.Out.WriteLineAsync(line).ConfigureAwait(false);
+    }
     // T-F410: the names after the archive, -i and -x pick the rows, as 7-Zip's l.
     List<ArchiveEntryInfo> entries = [.. listResult.Entries.Where(e => filter?.Includes(e.Path, e.IsDirectory) ?? true)];
     foreach (ArchiveEntryInfo entry in entries)
-        await Console.Out.WriteLineAsync(CliEntryFormatter.FormatRow(entry)).ConfigureAwait(false);
+    {
+        IReadOnlyList<string> lines = layout.Technical
+            ? CliTechListing.EntryBlock(entry, format, terminal)
+            : [CliEntryFormatter.FormatRow(entry with { Path = CliTechListing.ForConsole(entry.Path, terminal) })];
+        foreach (string line in lines)
+            await Console.Out.WriteLineAsync(line).ConfigureAwait(false);
+    }
 
-    if (multiple)
+    if (layout.Multiple)
         await Console.Out.WriteLineAsync($"# total: {entries.Count} entries").ConfigureAwait(false);
 
     return true;
@@ -992,3 +1009,6 @@ static int ExitCodeFor(ArchiveResult result) => result.Outcome switch
     OperationOutcome.CompletedWithWarnings or OperationOutcome.CompletedWithSkips or OperationOutcome.NothingDone => 1,
     _ => 1,
 };
+
+// T-F412: how 'l' prints one archive: the '# archive' lines, the header, 7-Zip's -slt blocks.
+internal readonly record struct ListingLayout(bool Multiple, bool Header, bool Technical);

@@ -25,6 +25,11 @@ public static class CliArchiveTypeExclusion
         ["rar5"] = ArchiveFormat.Rar,
     };
 
+    /// <summary>T-F412: 7-Zip's name for <paramref name="format"/> ("rar" for both RAR versions), or
+    /// null for a format Pakko does not read.</summary>
+    public static string? TypeName(ArchiveFormat format) =>
+        FormatByName.FirstOrDefault(pair => pair.Value == format).Key;
+
     /// <summary>The first excluded type Pakko does not know, or null when it knows them all.</summary>
     public static string? FirstUnknown(IReadOnlyList<string> excludedTypes) =>
         excludedTypes.FirstOrDefault(name => !FormatByName.ContainsKey(name));

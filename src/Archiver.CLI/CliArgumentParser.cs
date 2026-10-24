@@ -59,6 +59,7 @@ public sealed record ParsedCliCommand
     public bool StopOnUnreadableSource { get; init; }                 // -sse, a only (T-F411)
     public bool DeleteSourcesAfter { get; init; }                     // -sdel, a only (T-F411)
     public bool DropRootNamedLikeOutput { get; init; }                // -spe[-], x only (T-F411)
+    public bool TechListing { get; init; }                            // -slt, l only (T-F412): 7-Zip's "Name = value" blocks
     public CliOutputOptions Output { get; init; } = new();            // -ba/-bb/-bd/-bt/-bs*, every command (T-F408)
     public CliNameSwitches NameSwitches { get; init; } = new();       // -i/-x/-r/-spd/-ssc/-scs/-ai/-ax/-an, x/l/t (T-F410)
     public IReadOnlyList<CliFilterName> FilterNames { get; init; } = []; // x/l/t: the names after the archive name; a: its sources (T-F410)
@@ -957,6 +958,7 @@ public static class CliArgumentParser
         bool assumeYes = false;
         string? password = null;
         bool promptForPassword = false;
+        bool techListing = false;
         foreach (CliToken argument in rest)
         {
             (string token, bool isSwitch) = argument;
@@ -968,6 +970,12 @@ public static class CliArgumentParser
             if (token == "-si")
             {
                 readFromStdin = true;
+                continue;
+            }
+            // T-F412: 7-Zip's technical listing, "Name = value" blocks (CliTechListing).
+            if (token == "-slt")
+            {
+                techListing = true;
                 continue;
             }
             // T-F409: 7-Zip takes -y and -p on 'l', and patool passes "-y -p-". Listing asks nothing
@@ -992,7 +1000,7 @@ public static class CliArgumentParser
         return new ParsedCliCommand
         {
             Type = CliCommandType.List, FilterNames = names, ReadFromStdin = readFromStdin, AssumeYes = assumeYes,
-            Password = password, PromptForPassword = promptForPassword,
+            Password = password, PromptForPassword = promptForPassword, TechListing = techListing,
         };
     }
 
@@ -1117,6 +1125,7 @@ public static class CliArgumentParser
         ("-sse", "not supported on this command: -sse (stop at a file that cannot be read) is only meaningful for 'a'"),
         ("-spe", "not supported on this command: -spe (drop the root folder named like -o) is only meaningful for 'x'"),
         ("-sdel", "not supported on this command: -sdel (delete the sources once archived) is only meaningful for 'a'"),
+        ("-slt", "not supported on this command: -slt (the technical listing) is only meaningful for 'l'"),
         ("-ssp", "not supported by Pakko: -ssp (keep the sources' last access time) - tar.exe cannot keep it, and Windows mostly does not update it"),
     ];
 
