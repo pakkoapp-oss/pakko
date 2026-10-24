@@ -767,7 +767,7 @@ public sealed class ZipArchiveService : IArchiveService
             names.CurrentArchive = archivePath;
 
             (bool rejected, ResolvedZipPassword? password) = await TryRejectUnsupportedOrEncryptedZipAsync(
-                archivePath, errors, skippedFiles, passwordResolver).ConfigureAwait(false);
+                archivePath, errors, skippedFiles, passwordResolver, options.SelectedEntryPaths, options.EntryFilter).ConfigureAwait(false);
             if (!rejected)
             {
                 IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
@@ -815,7 +815,7 @@ public sealed class ZipArchiveService : IArchiveService
     // contains at least one encrypted entry AND passwordResolver successfully resolved it (T-F189).
     private async Task<(bool Rejected, ResolvedZipPassword? Password)> TryRejectUnsupportedOrEncryptedZipAsync(
         string archivePath, List<ArchiveError> errors, List<SkippedFile> skippedFiles,
-        PasswordResolver passwordResolver)
+        PasswordResolver passwordResolver, IReadOnlyList<string>? selectedEntryPaths, Func<string, bool, bool>? entryFilter)
     {
         // T-F221: a path that is not there is "not found", not "not a recognized archive".
         if (!File.Exists(archivePath))
@@ -840,9 +840,10 @@ public sealed class ZipArchiveService : IArchiveService
             return (true, null);
         }
 
-        if (IsEncryptedZip(archivePath))
+        Func<string, bool>? passes = ExtractionPasses(selectedEntryPaths, entryFilter);
+        if (NeedsPassword(archivePath, NameCodePages, passes))
         {
-            ResolvedZipPassword? password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages).ConfigureAwait(false);
+            ResolvedZipPassword? password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages, passes).ConfigureAwait(false);
             if (password is not null)
                 return (false, password);
 
@@ -862,8 +863,10 @@ public sealed class ZipArchiveService : IArchiveService
     // surfaces as a normal per-entry ArchiveError in the extraction loop instead.
     // T-F194: internal (not private) — AntivirusScanService resolves an archive's password through
     // this exact same verify-against-first-encrypted-entry path rather than a second copy.
+    // T-F417: passes (a filter or selection, by decoded entry name) narrows the probe to the
+    // encrypted entries that will be read; null means every entry is.
     internal static async Task<ResolvedZipPassword?> ResolveArchivePasswordAsync(
-        string archivePath, PasswordResolver passwordResolver, ZipNameCodePages codePages)
+        string archivePath, PasswordResolver passwordResolver, ZipNameCodePages codePages, Func<string, bool>? passes = null)
     {
         // T-F189 (advisor-caught): wraps the WHOLE method body, not just LocateAll — the verify
         // callback below also calls EncryptedZipEntryReader.TryOpen, which can throw
@@ -874,11 +877,10 @@ public sealed class ZipArchiveService : IArchiveService
         try
         {
             using FileStream fs = File.OpenRead(archivePath);
-            List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(fs);
             // T-F243: the smallest encrypted entry, so the full check below stays cheap.
-            LocatedZipEntry? probe = located.Where(e => e.GeneralPurposeEncryptedBit).MinBy(e => e.CompressedSize);
+            LocatedZipEntry? probe = EncryptedEntriesThatPass(fs, archivePath, codePages, passes).MinBy(e => e.CompressedSize);
             if (probe is null)
-                return null; // IsEncryptedZip said yes but nothing actually has the bit set — defensive, shouldn't happen
+                return null; // nothing encrypted passes: the callers ask NeedsPassword first, so defensive
 
             string? text = await passwordResolver.ResolveAsync(
                 Path.GetFileName(archivePath),
@@ -905,6 +907,52 @@ public sealed class ZipArchiveService : IArchiveService
     /// <summary>T-F244: a resolved password plus the one encoding its bytes are taken in for every
     /// entry of the archive.</summary>
     internal sealed record ResolvedZipPassword(string Text, Encoding Encoding);
+
+    // T-F417: as 7-Zip, whose filtered "t"/"x" asks for no password when no encrypted entry passes
+    // (measured, DECISIONS.md). Throws what LocateAll and the reader throw; callers decide.
+    private static List<LocatedZipEntry> EncryptedEntriesThatPass(
+        FileStream fs, string archivePath, ZipNameCodePages codePages, Func<string, bool>? passes)
+    {
+        List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(fs);
+        if (passes is null)
+            return [.. located.Where(e => e.GeneralPurposeEncryptedBit)];
+        using var reader = ZipArchiveReader.Open(archivePath, codePages);
+        // Paired by position, as everywhere (MapLocatedEntries); unpaired, every encrypted entry counts.
+        if (located.Count != reader.Entries.Count)
+            return [.. located.Where(e => e.GeneralPurposeEncryptedBit)];
+        return [.. located.Where((e, i) => e.GeneralPurposeEncryptedBit && passes(reader.Entries[i].FullName))];
+    }
+
+    // T-F417: whether the archive's password must be asked for at all. An archive this cannot read
+    // is asked about as before; the reading that follows reports what is wrong with it.
+    private static bool NeedsPassword(string archivePath, ZipNameCodePages codePages, Func<string, bool>? passes)
+    {
+        if (!IsEncryptedZip(archivePath))
+            return false;
+        if (passes is null)
+            return true;
+        try
+        {
+            using FileStream fs = File.OpenRead(archivePath);
+            return EncryptedEntriesThatPass(fs, archivePath, codePages, passes).Count > 0;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or EndOfStreamException or UnauthorizedAccessException)
+        {
+            return true;
+        }
+    }
+
+    // T-F417: the entries an extraction reads - the same rule as ExtractWithSmartFolderingCoreAsync's
+    // selection (a name, or anything under a selected folder) and filter; null when it reads all.
+    private static Func<string, bool>? ExtractionPasses(IReadOnlyList<string>? selectedEntryPaths, Func<string, bool, bool>? entryFilter)
+    {
+        HashSet<string>? selected = selectedEntryPaths is { Count: > 0 } ? new(selectedEntryPaths, StringComparer.Ordinal) : null;
+        if (selected is null && entryFilter is null)
+            return null;
+        return name =>
+            (selected is null || selected.Contains(name) || selected.Any(s => name.StartsWith(s + "/", StringComparison.Ordinal)))
+            && (entryFilter is null || entryFilter(name, name.EndsWith('/')));
+    }
 
     // T-F243 item 3 / T-F244 item 3: ZipCrypto's one-byte check accepts ~1 in 256 wrong passwords
     // — and ~1 in 256 wrong ENCODINGS of the right one. The encoding is therefore chosen once per
@@ -1062,9 +1110,10 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         ResolvedZipPassword? password = null;
-        if (IsEncryptedZip(archivePath))
+        Func<string, bool>? passes = entryFilter is null ? null : name => entryFilter(name, name.EndsWith('/'));
+        if (NeedsPassword(archivePath, NameCodePages, passes))
         {
-            password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages).ConfigureAwait(false);
+            password = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages, passes).ConfigureAwait(false);
             if (password is null)
             {
                 errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(passwordResolver.RememberedPasswordRejected
