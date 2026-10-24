@@ -40,6 +40,40 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 
 ---
 
+## v1.9.0 wave — the Store release (planned 2026-10-24)
+
+One wave instead of 1.8.2 (the user, 2026-10-24): every open task that can be done now; the rest is
+deferred below with its reason. Wave E's 1.8.2 CHANGELOG notes (`TASKS_DONE.md`, T-F411) go into
+v1.9.0's. Streams run in parallel, each on its own branch from `main` and its own PR; sandbox,
+integration and subprocess tests and the full suite run one at a time, never from two worktrees at
+once; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md are edited by the integrating session only.
+
+| Stream | Tasks | Area |
+|---|---|---|
+| A1 ZIP engine | T-F421, T-F417 | `ZipArchiveService`, `ExtractionRouter` |
+| A2 tar listing, `l` | T-F418, T-F412 (`-slt`) | tar listing parse, `pakko l`, `docs/CLI.md` |
+| A3 CLI create, exit codes | T-F413 (gzip; xz/bz2 measured), T-F415 (`-aos` exits 0) | CLI parser and creation, `docs/CLI.md` |
+| B flaky tests, ARM64 | T-F372, T-F374, T-F376, T-F396, T-F290 | tests only; load loops run alone |
+| C App, on device | T-F393, T-F395, T-F354 (A/B first), T-F399 (`POL-009`), T-F392 (refuse at creation), T-F320 (closed, documented) | App, `TarSandboxedService` creation |
+| D smoke, winget | T-F394, T-F361 | `scripts/`, `scripts/smoke/`, `docs/SMOKE.md` |
+| E localization, Store text | T-F328, T-F91 (layout walk), T-F329 part 5, T-F331 ("What's new") | `.resw`/`.resx`, `Localization.cpp`, `docs/store-listing/` |
+| F measurement, umbrellas | T-F114 (Windows 10 VM), T-F226 (diagram 6), T-F202 (keyboard, real console) | docs, tests |
+
+Decisions taken with the plan (the user approved, 2026-10-24): T-F412 keeps reading a `.tar.gz` in
+one step and adds `-slt`; T-F415 exits 0 when `-aos` asked for the skip; T-F392 refuses a tar from a
+folder holding two hard links to one file; T-F320 adds no restricted capability. Order: streams A, B,
+D, F in parallel; C, then E on the device; then the user's elevated checks (`POL-009`, `winget install
+--manifest`); then the release (`.claude/rules/ci.md`) and the Store submission.
+
+**Deferred past 1.9.0** (the user, 2026-10-24: what cannot be done now): T-F359 (no spinning disk),
+T-F254 (a language pack and a sign-out), T-F332's super hero art (needs the user's image), T-F317's
+outward steps (the winget-pkgs PR was closed unmerged; a new one needs the user's CLA and Microsoft's
+review), T-F91's native-speaker review (no native speakers), T-F202's light theme, en-US and tray
+(system settings and the user's hands). T-F91's layout walk moves here too if the App cannot switch
+its language without a sign-out or a system setting.
+
+---
+
 ## Current State — v1.1 Complete
 
 - All T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39 complete and committed
@@ -1061,6 +1095,7 @@ choice — ask the user before implementing, like T-F118/T-F156 were.
 
 ### T-F254 — Explorer menu stays English for Chinese and regional-variant Windows languages (P2)
 
+- **Deferred past 1.9.0 (2026-10-24):** needs a regional display language pack and a sign-out.
 - [~] **Status:** partial — fixed in code (see Progress). App device-checked 2026-10-04 (v1.7.0 wave 9, CI build of 039955a): with de-AT first in the user language list (no German display pack), the App window comes up in German ("Dateien hinzufügen", "Komprimieren als ZIP"). Left: the Explorer menu and Shell on a machine whose display language is regional (needs the language pack and a sign-out; user chose not to do it for v1.7.0) — covered by `LocalizationTests`/`UiCulture` tests only.
 - [~] **Progress (2026-09-28, fix phase 7):** fixed in 4795bfb (C++ menu) and eb5876e (Shell `.resx`): exact tag (case-insensitive), zh-CN/zh-SG/zh-Hans-* -> zh-Hans, Traditional stays English, else the same language's row. Same rule in `Archiver.Messages.UiCulture`; the App picks the first of `ApplicationLanguages` Pakko translates. Needs a device with a regional language (e.g. de-AT) to confirm.
 
@@ -1159,6 +1194,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F317 — `pakko` in the terminal for Store and winget users (P2, user-requested)
 
+- **Deferred past 1.9.0 (2026-10-24):** the winget-pkgs PR #446296 was closed unmerged; a new one needs the user's CLA and Microsoft's review.
 - [~] **Status:** done in v1.7.0 wave 8 (2026-10-03) except the outward steps. The first
   `microsoft/winget-pkgs` PR is open (user's go and identifier `PavloRybchenko.PakkoCLI`,
   2026-10-03; from `pakkoapp-oss`, manifest schema 1.12.0):
@@ -1401,6 +1437,7 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 
 ### T-F332 — Store listing: the optional fields worth filling (P2)
 
+- **Deferred past 1.9.0 (2026-10-24):** the super hero art needs the user's image; every other field is filled.
 - [~] **Status:** text done 2026-10-05; the CSV import and the 300 x 300 icon went in with the v1.7.1 submission (the user's word, 2026-10-06). Open: the super hero art, if wanted. Follows
   T-F331; the listing CSV has every field, and these
   are empty in all 37 languages.
@@ -1455,6 +1492,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F359 — The parallel ZIP writer on a disk with a seek penalty: large files take turns (P2)
 
+- **Deferred past 1.9.0 (2026-10-24):** no spinning disk to measure on; the code is on `main` and acts only where a disk reports a seek penalty.
 - [~] **Status:** code done 2026-10-06, **not measured** - the dev machine has no spinning disk.
   When the destination or a source is on a disk that reports a seek penalty
   (`DiskSeekPenalty.IsKnownPresent`), `ParallelSingleArchiveWriter` compresses the files that go
