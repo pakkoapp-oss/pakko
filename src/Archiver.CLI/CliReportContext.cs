@@ -17,6 +17,9 @@ internal sealed class CliReportContext
     /// <summary>Existing files were kept because nothing else was chosen (no -ao/-y, no console to ask).</summary>
     public bool KeptExistingByDefault { get; init; }
 
+    /// <summary>-aos asked to keep existing files, so keeping one is no warning (T-F415).</summary>
+    public bool KeptExistingByChoice { get; init; }
+
     /// <summary>Archive file names the fixed -p was already reported wrong for.</summary>
     public HashSet<string> WrongPasswordArchives { get; } = new(StringComparer.OrdinalIgnoreCase);
 
