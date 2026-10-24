@@ -528,6 +528,9 @@ jobs:
       streak: ${{ steps.evaluate.outputs.streak }}
     env:
       GH_TOKEN: ${{ github.token }}
+      # T-F423: no checkout here, so `gh issue` needs the repository named, or it fails with
+      # "not a git repository" (the 3-day escalation never created its Issue).
+      GH_REPO: ${{ github.repository }}
       TRACKING_TITLE: "CI Canary: build failing for 3+ consecutive days"
       NEEDS_JSON: ${{ toJSON(needs) }}
     steps:
@@ -653,6 +656,7 @@ jobs:
       issues: write
     env:
       GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
       TRACKING_TITLE: "CI Canary: build failing for 3+ consecutive days"
     steps:
       - name: Escalate if the streak has reached 3

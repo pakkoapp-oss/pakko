@@ -13037,6 +13037,24 @@ PowerShell does natively.
 - **Reported by:** T-F343's measurement, 2026-10-17.
 - **Result:** `CliArgumentParser`; `CliSevenZipCallerTests`, `CliSevenZipCallerSubprocessTests`; `docs/CLI.md`; `docs/DECISIONS.md` (same entry); smoke `CLI-037`.
 
+### T-F423 — the canary's tar fixture with a Cyrillic name, and its escalation Issue (P2, from the canary)
+
+- [x] **Status:** done 2026-10-24. `canary-dotnet` failed on 2026-10-22, 23 and 24 (and
+  `canary-server2022` on the 24th), always in
+  `ExtractAsync_TarGzWithUnicodeFilenameAndContent_ExtractsCorrectly`: the fixture's own
+  `tar.exe -czf` exited 0xC0000005 before Pakko ran. The runner images moved from bsdtar 3.8.4 to
+  3.8.9 (`windows-2025-vs2026` 20261015, Server 2022 20261021). Reproduced here on 3.8.9 (ACP
+  1251) with a CJK name, given by name or reached by walking `.`: 3.8.9 crashes on a name outside
+  the ANSI code page, which Cyrillic is on the runner's ACP 1252. The third day's escalation then
+  failed too: `gh issue list/create` ran in a job without a checkout and stopped at "not a git
+  repository", so no tracking Issue was opened.
+- **Reported by:** the scheduled canary, 2026-10-24.
+- **Result:** the test takes `TarCodePage.PortableNonAsciiName()` for its file name, as the other
+  code-page tests do; the content keeps Cyrillic and CJK. Pakko itself never hands tar.exe such a
+  name: `TarSandboxedService` refuses it before tar.exe runs, inside a folder too (T-F266).
+  `canary-status` and `canary-alert` name the repository through `GH_REPO`. `docs/DECISIONS.md`,
+  "T-F423".
+
 ### T-F416 — `tar.exe` lists a UTF-8 name outside the ANSI code page as `????.txt` (P2, from T-F410)
 
 - [x] **Status:** done 2026-10-18 (T-F410 wave B). Measured 2026-10-18 on the Windows 10 VM (bsdtar 3.5.2, ACP 1252): a tar
