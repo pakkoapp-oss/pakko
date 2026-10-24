@@ -214,6 +214,8 @@ Add-SmokeStep 'REL-007' {
     if (-not $settings.adminSettings.LocalManifestFiles) { Skip-Smoke 'winget does not install from a local manifest here: winget settings --enable LocalManifestFiles (elevated)' }
     $present = Invoke-Tool -Exe $winget -Arguments @('list', '--id', $id, '--exact', '--disable-interactivity', '--accept-source-agreements')
     $packages = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages'
+    $link = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links\pakko.exe'
+    if (Test-Path -LiteralPath $link) { Skip-Smoke "$link exists already, and the row would replace it" }
     # A copy installed from a manifest is not found by its ID, only by its folder.
     $folders = @(Get-ChildItem -LiteralPath $packages -Directory -Filter "$id*" -ErrorAction SilentlyContinue)
     if ($present.ExitCode -eq 0 -or $folders) { Skip-Smoke "$id is installed on this machine, and the row would remove it" }
@@ -231,14 +233,16 @@ Add-SmokeStep 'REL-007' {
         Assert-Smoke ($installed.ExitCode -eq 0) "winget install --manifest: exit $($installed.ExitCode) $($installed.Text.Trim())"
         $exe = Get-ChildItem -LiteralPath $packages -Recurse -Filter 'pakko.exe' -ErrorAction SilentlyContinue | Where-Object FullName -Like "*$id*" | Select-Object -First 1
         Assert-Smoke $exe "winget installed no pakko.exe under $packages"
-        $version = Invoke-Tool -Exe $exe.FullName -Arguments @('-v')
-        Assert-Smoke ($version.Output.Trim() -eq "pakko $($release.Version)") "the installed pakko printed '$($version.Output.Trim())', not 'pakko $($release.Version)'"
-        Assert-Smoke ((& $userPath) -split ';' -contains $exe.DirectoryName) "the user's PATH does not hold $($exe.DirectoryName)"
+        # T-F361: the command is winget's symlink in WinGet\Links, not the install folder on PATH.
+        Assert-Smoke ((Test-Path -LiteralPath $link) -and (Get-Item -LiteralPath $link).LinkType -eq 'SymbolicLink') "winget made no symlink $link"
+        $version = Invoke-Tool -Exe $link -Arguments @('-v')
+        Assert-Smoke ($version.Output.Trim() -eq "pakko $($release.Version)") "pakko through $link printed '$($version.Output.Trim())', not 'pakko $($release.Version)'"
+        Assert-Smoke (-not ((& $userPath) -split ';' -contains $exe.DirectoryName)) "the user's PATH holds the install folder $($exe.DirectoryName)"
     }
     finally {
         $removed = Invoke-Tool -Exe $winget -Arguments @('uninstall', '--manifest', $folder, '--disable-interactivity', '--accept-source-agreements')
-        # winget leaves the PATH entry of a package installed with ArchiveBinariesDependOnPath
-        # (T-F361), so the step writes back the value it found.
+        # The first portable install on a machine adds WinGet\Links to the user's PATH and winget
+        # keeps it; the step writes back the value it found either way.
         $pathAfter = & $userPath
         if ($pathAfter -cne $pathBefore) {
             Set-ItemProperty -LiteralPath 'HKCU:\Environment' -Name Path -Value $pathBefore -Type (Get-Item -LiteralPath 'HKCU:\Environment').GetValueKind('Path')
@@ -247,11 +251,12 @@ Add-SmokeStep 'REL-007' {
     Assert-Smoke ($removed.ExitCode -eq 0) "winget uninstall: exit $($removed.ExitCode) $($removed.Text.Trim())"
     $left = @(Get-ChildItem -LiteralPath $packages -Recurse -Filter 'pakko.exe' -ErrorAction SilentlyContinue | Where-Object FullName -Like "*$id*")
     Assert-Smoke ($left.Count -eq 0) "the uninstall left $($left[0].FullName)"
+    Assert-Smoke (-not (Test-Path -LiteralPath $link)) "the uninstall left the symlink $link"
 
     $changed = @(Compare-Object ($pathBefore -split ';') ($pathAfter -split ';') | ForEach-Object { "$($_.SideIndicator) $($_.InputObject)" })
-    $own = "=> $($exe.DirectoryName)"
-    Assert-Smoke (-not ($changed | Where-Object { $_ -ne $own })) "the install and uninstall changed the user's PATH in more than the package's own entry: $($changed -join ' // ')"
-    $changed ? 'the uninstall left its PATH entry (T-F361); the step put the PATH back' : 'the uninstall removed its PATH entry'
+    $links = "=> $(Split-Path -Parent $link)"
+    Assert-Smoke (-not ($changed | Where-Object { $_ -ne $links })) "the install and uninstall changed the user's PATH in more than winget's Links folder: $($changed -join ' // ')"
+    $changed ? 'winget added its Links folder to PATH (first portable install); the step put the PATH back' : 'the PATH is as before'
 }
 
 Add-SmokeStep 'STO-001' {

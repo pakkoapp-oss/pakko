@@ -1235,26 +1235,6 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   https://github.com/dotnet/runtime/issues/134700#issuecomment-5970925304 — promises the numbers.
 - **Reported by:** upstream reply to dotnet/runtime#134700, 2026-10-01.
 
-### T-F320 — MSIX write virtualization hides new top-level AppData folders (P3)
-
-- [ ] **Status:** open. Found while checking T-F317 on device (2026-10-03). A packaged process
-  (the `pakko` alias, and so also App and Shell) that creates a **new folder directly under**
-  `%LOCALAPPDATA%` or `%APPDATA%` gets it redirected to
-  `%LOCALAPPDATA%\Packages\PavloRybchenko.Pakko_<hash>\LocalCache\...`; nothing unpackaged sees it.
-  Measured: `pakko x t.zip -o%LOCALAPPDATA%\New` → files only in `LocalCache\Local\New`; the same
-  into `%APPDATA%\New` → not visible; into an existing `%LOCALAPPDATA%` folder or a new subfolder
-  of one → real location; `%TEMP%` → real location; Shell `--extract-here` next to an archive in an
-  existing `%LOCALAPPDATA%` folder → real location. So only the "new top-level AppData folder"
-  shape is affected — rare from Explorer, more reachable from scripts.
-- **Fix to evaluate:** what NanaZip ships — `rescap:Capability Name="unvirtualizedResources"` plus
-  `desktop6:FileSystemWriteVirtualization` disabled. A restricted capability needs a justification
-  in the Store submission, so decide it with the next Store upload (v1.7.0 wave 9). Until then
-  documented in `docs/CLI.md` (Distribution).
-- **Decision (2026-10-03, wave 9, agent):** not fixed for v1.7.0 — the restricted capability can
-  delay Store certification and the shape is rare with a workaround; a known issue of the release
-  (`docs/DECISIONS.md`'s wave 9 entry). Revisit with a Store upload that has time for a review round.
-- **Reported by:** T-F317 device check, 2026-10-03.
-
 ### T-F328 — Localization audit fixes: wrong meanings and one term per action in 36 locales (P2)
 
 - [~] **Status:** in progress. A read-through of every translated string (339 keys, 36 locales,
@@ -1499,15 +1479,6 @@ re-measured with T-F346's script before and after.
   the Native AOT App (T-F355) - the start is already ~150 ms shorter.
 - **Reported by:** performance study, 2026-10-06.
 
-### T-F361 — winget: a `WinGet\Links` symlink for the AOT `pakko.exe` (P3)
-
-- [ ] **Status:** open. The winget manifest puts the install folder on `PATH`
-  (`ArchiveBinariesDependOnPath: true`) because the pre-AOT apphost looked for `pakko.dll` next to
-  the symlink. The Native AOT `pakko.exe` (T-F355) is one file, so winget's ordinary symlink should
-  work and leaves no stale `PATH` entry after uninstall. Change `New-WingetManifest.ps1`, check with
-  `winget install --manifest` (admin, `LocalManifestFiles`), update `docs/CLI.md`.
-- **Reported by:** T-F355, 2026-10-08.
-
 ## After v1.7.2
 
 ### T-F372 — The unsandboxed curl of the socket sandbox test times out on CI (P3)
@@ -1582,19 +1553,6 @@ re-measured with T-F346's script before and after.
   Next: reproduce, then try a second dialog in the stuck window. Does not hold the v1.8.1 tag:
   seen once in five tries, with no known trigger.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`APP-001`), 2026-10-12.
-
-### T-F394 — Two smoke steps report the wrong thing (P3)
-
-- [ ] **Status:** open. Both seen in the release-tier run of v1.8.1, 2026-10-12.
-  1. `PKG-005` looks for `*_<version>_*.msix` under `src\Archiver.App\AppPackages`, where
-     `Deploy.ps1` leaves the `.msixbundle` and its `.cer` only, and is skipped with "run
-     Deploy.ps1" right after a `Deploy.ps1`. The `.msix` of the same build is under
-     `bin\x64\Release\...`. Next: give `appcert.exe` the bundle, or take the `.msix` from where
-     the build leaves it; say which file was tested in the row's note.
-  2. `POL-008` fails with "the registry is not as it was" when the elevated helper never started
-     (the prompt was not accepted): there is no `after-*.reg` to compare. It should be skipped
-     with the reason the other elevated rows give.
-- **Reported by:** the release-tier smoke run of v1.8.1, 2026-10-12.
 
 ### T-F395 — The App's bar stands near its end while a tar archive of many files is finished (P3)
 

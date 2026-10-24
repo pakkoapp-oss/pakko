@@ -57,7 +57,7 @@ stderr message and in `--help`'s own `USAGE:` line.
 | Install | How `pakko` gets on `PATH` | `pakko -v` prints |
 |---|---|---|
 | Pakko from the Microsoft Store or an MSIX | The package's execution alias `pakko.exe` in `%LOCALAPPDATA%\Microsoft\WindowsApps` (on every user's `PATH`) | `pakko X.Y.Z (package PavloRybchenko.Pakko_...)` |
-| `winget install pakko-cli` (package `PavloRybchenko.PakkoCLI`, the CLI zip; available once the winget catalog accepts the package) | winget adds its install folder to the user `PATH` (`ArchiveBinariesDependOnPath`) | `pakko X.Y.Z` |
+| `winget install pakko-cli` (package `PavloRybchenko.PakkoCLI`, the CLI zip; available once the winget catalog accepts the package) | winget's symlink `pakko.exe` in `%LOCALAPPDATA%\Microsoft\WinGet\Links` (on the user `PATH`, T-F361) | `pakko X.Y.Z` |
 | The zip from GitHub Releases | Not added — extract it and add the folder to `PATH` yourself, or call it by full path (like ripgrep/fd/bat zips) | `pakko X.Y.Z` |
 
 - **Inside the MSIX** `pakko.exe` is its own hidden `<Application Id="Cli">` with a `uap3`
@@ -65,19 +65,20 @@ stderr message and in `--help`'s own `USAGE:` line.
   program as the zip, built from the same project — one native exe (T-F355) — and runs with the
   package identity — tar.exe still goes through the
   same AppContainer sandbox.
-- **winget does not use a `WinGet\Links` symlink here:** the apphost build before T-F355 resolved
-  `pakko.dll` next to the path it was started from, so a symlinked `pakko.exe` failed with "The
-  application to execute does not exist". The AOT exe has no such file; moving the manifest to a
-  symlink is T-F361. `winget uninstall` removes the folder but (winget's behavior) leaves the
-  `PATH` entry; it points nowhere and is harmless.
+- **winget runs `pakko` through its `WinGet\Links` symlink (T-F361):** the AOT exe (T-F355) is one
+  file and runs through the link. Before 1.9.0 the manifest put the install folder on `PATH`
+  instead (the pre-AOT apphost looked for `pakko.dll` next to the link and failed), and `winget
+  uninstall` left that `PATH` entry behind; a 1.8.x install upgraded to 1.9.0 may still carry it,
+  pointing nowhere, harmless.
 - **Both installed:** a bare `pakko` runs whichever folder comes first in `PATH`. `WindowsApps` is
   usually ahead of user entries, so the Store copy wins; `pakko -v` shows which one ran.
 - **Known difference of the packaged copy (T-F320):** MSIX write virtualization. Creating a *new
   folder directly under* `%LOCALAPPDATA%` or `%APPDATA%` (e.g. `-o%LOCALAPPDATA%\NewFolder`) lands in
   the package's private `LocalCache` instead, invisible to other programs. Existing folders under
   them, their new subfolders, `%TEMP%` and every other location are written normally. Use the zip
-  or winget copy for that one shape. Kept for v1.7.0 (decision 2026-10-03, `docs/DECISIONS.md`'s
-  wave 9 entry); T-F320 stays open.
+  or winget copy for that one shape. Kept as a known difference (decided again for the v1.9.0
+  Store submission, 2026-10-24: the fix needs the restricted capability `unvirtualizedResources`,
+  which can hold up certification; `docs/DECISIONS.md`, "T-F320").
 
 **Naming note:** `pakko` is the terminal program everywhere — the same convention as 7-Zip (`7z`
 console, `7zFM`/`7zG` GUI) and NanaZip (`NanaZipC` console). The GUI has no execution alias; it is

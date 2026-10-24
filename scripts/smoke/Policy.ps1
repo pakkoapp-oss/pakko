@@ -289,8 +289,11 @@ Add-SmokeStep 'POL-008' -AtEnd {
 }
 
 Add-SmokeStep 'PKG-005' {
-    $msix = Get-ChildItem -LiteralPath (Join-Path $Smoke.Repo 'src\Archiver.App\AppPackages') -Recurse -Filter "*_$($Smoke.Package.Version)_*.msix" -ErrorAction SilentlyContinue | Select-Object -First 1
-    if (-not $msix) { Skip-Smoke "the .msix of the installed package $($Smoke.Package.Version) is not under src\Archiver.App\AppPackages: run Deploy.ps1" }
+    # T-F394: Deploy.ps1 leaves a flat .msix or, when the build bundles, only the .msixbundle;
+    # appcert.exe takes either.
+    $msix = Get-ChildItem -LiteralPath (Join-Path $Smoke.Repo 'src\Archiver.App\AppPackages') -Recurse -Include "*_$($Smoke.Package.Version)_*.msix", "*_$($Smoke.Package.Version)*.msixbundle" -ErrorAction SilentlyContinue |
+        Sort-Object { $_.Extension -ne '.msix' } | Select-Object -First 1
+    if (-not $msix) { Skip-Smoke "no .msix or .msixbundle of the installed package $($Smoke.Package.Version) under src\Archiver.App\AppPackages: run Deploy.ps1" }
     $report = Join-Path (Get-StepFolder 'pkg005') 'wack.xml'
     $null = Send-ElevatedRequest @{ Kind = 'appcert'; Package = $msix.FullName; Report = $report } -TimeoutSeconds 2400
     Assert-Smoke (Test-Path -LiteralPath $report) 'appcert.exe wrote no report'
@@ -307,5 +310,5 @@ Add-SmokeStep 'PKG-005' {
     $new = @($found | Where-Object { $known -notcontains $_ })
     Assert-Smoke ($new.Count -eq 0) "findings the last record did not have: $($new -join '; ')"
     $gone = @($known | Where-Object { $found -notcontains $_ })
-    "overall $($xml.DocumentElement.GetAttribute('OVERALL_RESULT')), $($xml.SelectNodes('//TEST').Count) tests; known: $($found -join '; ')$($gone ? "; no longer found: $($gone -join '; ')" : '')"
+    "$($msix.Name): overall $($xml.DocumentElement.GetAttribute('OVERALL_RESULT')), $($xml.SelectNodes('//TEST').Count) tests; known: $($found -join '; ')$($gone ? "; no longer found: $($gone -join '; ')" : '')"
 }

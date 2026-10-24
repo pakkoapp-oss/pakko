@@ -146,8 +146,8 @@ name):
 2. Open a PR to `microsoft/winget-pkgs` adding the folder under
    `manifests/p/PavloRybchenko/PakkoCLI/<version>/` (from the `pakkoapp-oss` account).
 
-The manifest uses `ArchiveBinariesDependOnPath: true` — winget's `Links` symlink broke the
-pre-AOT apphost; a symlink is possible now (T-F361, see `docs/CLI.md`, Distribution).
+The command is winget's symlink in `%LOCALAPPDATA%\Microsoft\WinGet\Links` (T-F361); the
+install folder no longer goes on `PATH` (see `docs/CLI.md`, Distribution).
 
 ### PAR2 test oracles (T-F275)
 

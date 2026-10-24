@@ -258,7 +258,7 @@ size in PKG-001). The factors were set from a measured run (`docs/DECISIONS.md`,
 | REL-004 | store | script | tag | Signature, version and architecture of both `.msixbundle` files, named as the tag names them | Valid, signed by the dev certificate, the tag's version, one application package of the bundle's architecture | T-F129 |
 | REL-005 | store | script | tag | The GitHub Release's notes | They begin with the tag's own section of `CHANGELOG.md` as it is at the tag | T-F240 |
 | REL-006 | store | script | tag | The four `.cdx.json` files | Present, valid CycloneDX, the tag's version | T-F364 |
-| REL-007 | store | script | tag | `scripts/New-WingetManifest.ps1` from the release's `SHA256SUMS`, `winget validate`, `winget install --manifest`, the installed `pakko -v`, `winget uninstall --manifest` | Valid; installs; the version is the tag's; the user's PATH holds the install folder; the uninstall removes the files. Until T-F361 it leaves its PATH entry: the note says so and the step puts the PATH back; nothing else in the PATH may change | T-F361 |
+| REL-007 | store | script | tag | `scripts/New-WingetManifest.ps1` from the release's `SHA256SUMS`, `winget validate`, `winget install --manifest`, `pakko -v` through `WinGet\Links\pakko.exe`, `winget uninstall --manifest` | Valid; installs; `WinGet\Links\pakko.exe` is a symlink and prints the tag's version; the install folder is not on the user's PATH; the uninstall removes the files and the link. The only PATH change allowed is winget adding its Links folder (first portable install); the step puts the PATH back | T-F361 |
 
 ## STO - the Store
 
