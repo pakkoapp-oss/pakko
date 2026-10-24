@@ -162,9 +162,14 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
     [IntegrationNotOnArm64]
     public async Task ExtractAsync_TarGzWithUnicodeFilenameAndContent_ExtractsCorrectly()
     {
+        // T-F423: tar.exe 3.8.9 crashes (0xC0000005) packing a name outside the ANSI code page,
+        // where 3.8.4 did not; Cyrillic on an ACP 1252 runner is such a name. Pakko itself refuses
+        // one before tar.exe runs (T-F266), so the fixture takes a name this machine can pass.
+        if (TarCodePage.PortableNonAsciiName() is not { } name)
+            return; // this machine's code pages share no candidate
         string archivePath = Path.Combine(_temp.Path, "unicode.tar.gz");
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-czf",
-            [("привіт.txt", "Вміст файлу з юнікодом. Hello, 世界!")]);
+            [(name, "Вміст файлу з юнікодом. Hello, 世界!")]);
 
         string destDir = Path.Combine(_temp.Path, "out");
         ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
@@ -175,7 +180,7 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
         });
 
         result.Success.Should().BeTrue();
-        File.ReadAllText(Path.Combine(destDir, "привіт.txt"))
+        File.ReadAllText(Path.Combine(destDir, name))
             .Should().Be("Вміст файлу з юнікодом. Hello, 世界!");
     }
 }

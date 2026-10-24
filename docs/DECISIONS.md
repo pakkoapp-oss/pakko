@@ -13372,6 +13372,23 @@ the archive.
   - `docs/CLI.md`: `-sdel` keeps every source when anything in the archive was skipped (Core judges
     one archive as a whole), and an added file is left without a warning.
 
+## T-F423 - bsdtar 3.8.9 crashes on a name outside the ANSI code page (2026-10-24)
+
+Measured on bsdtar 3.8.9 (Windows build 26300, ACP 1251, OEM 866): `tar.exe -czf w.tar.gz <a CJK
+name>` and `tar.exe -czf w.tar.gz .` over a folder holding that file both exit -1073741819
+(0xC0000005); a Cyrillic name, inside the code page, packs. The canary runners (ACP 1252) crashed the
+same way on `привіт.txt` once their images carried 3.8.9; on 3.8.4 that fixture had passed. Reading
+is no better on 3.8.9: a pax tar whose UTF-8 name is CJK lists and extracts with "Archive entry has
+empty or unreadable filename ... skipping", exit 1; a GNU tar with the same bytes writes a mojibake
+name.
+
+Pakko's own creation is not affected: since T-F266 every name tar.exe would receive, and every name
+under a folder it would walk, must convert exactly to the ANSI code page or the source is refused
+before tar.exe starts. Only the integration test's fixture shelled out with a name chosen without
+looking at the code page; it now uses `TarCodePage.PortableNonAsciiName()`. Rejected: building the
+fixture with `System.Formats.Tar` and keeping `привіт.txt` - on an ACP 1252 machine the extraction
+would then test the unshowable-name path (T-F416), not the Unicode-content one this test is for.
+
 ## T-F420 - one place each for an entry's disk name, a run's paths, a path's identity, a source's listing (2026-10-19)
 
 - **Why.** Most of T-F419's findings sat on one seam - where an entry name lands on disk, and where a
