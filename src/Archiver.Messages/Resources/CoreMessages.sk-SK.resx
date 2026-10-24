@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} komprimuje iba jeden súbor: zadajte presne jeden súbor, nie priečinok ani viac súborov.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Súbor už v cieli existuje.</value>
+  </data>
 </root>

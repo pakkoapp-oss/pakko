@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>O {0} comprime um único ficheiro: indique exatamente um ficheiro, não uma pasta nem vários ficheiros.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>O ficheiro já existe no destino.</value>
+  </data>
 </root>

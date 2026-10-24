@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} chỉ nén một tệp duy nhất: hãy chỉ định đúng một tệp, không phải thư mục hay nhiều tệp.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Tệp đã tồn tại ở đích.</value>
+  </data>
 </root>

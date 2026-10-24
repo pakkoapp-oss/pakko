@@ -390,4 +390,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} compresses a single file: give exactly one file, not a folder or several files.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>File already exists at destination.</value>
+  </data>
 </root>

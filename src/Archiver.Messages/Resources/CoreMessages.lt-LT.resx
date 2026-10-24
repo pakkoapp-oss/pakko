@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} suspaudžia tik vieną failą: nurodykite lygiai vieną failą, ne aplanką ir ne kelis failus.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Failas jau yra paskirties vietoje.</value>
+  </data>
 </root>

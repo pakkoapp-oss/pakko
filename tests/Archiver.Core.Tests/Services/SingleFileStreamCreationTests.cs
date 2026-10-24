@@ -25,7 +25,8 @@ public sealed class SingleFileStreamCreationTests : IDisposable
     public void Dispose() => _temp.Dispose();
 
     private TarSandboxedService Service() =>
-        new(new GroupPolicyOptions(), () => { _probes++; return Task.FromResult(AllCodecs); });
+        new(new GroupPolicyOptions(), () => { _probes++; return Task.FromResult(AllCodecs); },
+            beforeCreationLaunch: () => throw new InvalidOperationException("tar.exe must not run"));
 
     private ArchiveOptions Options(ArchiveContainerFormat format, params string[] sources) => new()
     {

@@ -43,6 +43,7 @@ public static class CliHints
         [MessageCode.PasswordProtectedExtract] = CliHint.GivePassword,
         [MessageCode.PasswordProtectedTest] = CliHint.GivePassword,
         [MessageCode.FileExistsAtDestination] = CliHint.OverwriteSwitches,
+        [MessageCode.FileWrittenEarlierInThisRun] = CliHint.OverwriteSwitches,
         [MessageCode.AllEntriesSkipped] = CliHint.OverwriteSwitchesWhenUnexplained,
         [MessageCode.RecoveryDataDamagedRepairable] = CliHint.RepairCommand,
         [MessageCode.RecoveryRepairNotWritten] = CliHint.OtherOutputFolder,

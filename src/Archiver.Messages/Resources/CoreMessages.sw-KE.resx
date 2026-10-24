@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} hubana faili moja tu: toa faili moja hasa, si folda wala faili kadhaa.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Faili tayari ipo mahali lengwa.</value>
+  </data>
 </root>

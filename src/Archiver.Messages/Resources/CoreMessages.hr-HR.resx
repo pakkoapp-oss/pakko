@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} komprimira samo jednu datoteku: navedite točno jednu datoteku, ne mapu ni više datoteka.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Datoteka već postoji na odredištu.</value>
+  </data>
 </root>

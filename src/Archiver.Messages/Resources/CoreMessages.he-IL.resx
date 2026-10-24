@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} דוחס קובץ יחיד בלבד: ציין קובץ אחד בדיוק, לא תיקייה ולא כמה קבצים.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>הקובץ כבר קיים ביעד.</value>
+  </data>
 </root>

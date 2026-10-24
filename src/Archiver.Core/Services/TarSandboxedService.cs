@@ -977,8 +977,10 @@ public sealed class TarSandboxedService : ITarService
         if (resolvedConflict == ConflictBehavior.Skip)
         {
             // T-F216: the user's own Skip answer is not listed (as in ZIP); only an automatic one.
+            // T-F415: a path this run already wrote (a skip never claims one) is not a file that was there.
             if (context.ConflictResolver.UserSkipCount == userSkipsSoFar)
-                context.SkippedFiles.Add(CoreMessages.Skip(relativePath, MessageCode.FileExistsAtDestination));
+                context.SkippedFiles.Add(CoreMessages.Skip(relativePath, plan.Names.Claimed.Contains(finalFilePath)
+                    ? MessageCode.FileWrittenEarlierInThisRun : MessageCode.FileExistsAtDestination));
             return (null, false);
         }
         // T-F411: -aot, the rule ZipArchiveService shares.

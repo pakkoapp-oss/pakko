@@ -160,4 +160,8 @@ public enum MessageCode
 
     // gzip, bzip2 or xz asked for a folder or several files (T-F413)
     SingleFileFormatNeedsOneFile,
+
+    // An entry kept because an earlier entry of this run took its path; the same words as
+    // FileExistsAtDestination, apart because -aos asked only for that one (T-F415)
+    FileWrittenEarlierInThisRun,
 }

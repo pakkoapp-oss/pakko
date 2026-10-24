@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} stisne samo eno datoteko: navedite natanko eno datoteko, ne mape ali več datotek.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Datoteka že obstaja na cilju.</value>
+  </data>
 </root>

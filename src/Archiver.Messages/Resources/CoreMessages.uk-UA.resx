@@ -390,4 +390,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} стискає лише один файл: вкажіть рівно один файл, а не папку чи кілька файлів.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Файл уже існує в папці призначення.</value>
+  </data>
 </root>

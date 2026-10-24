@@ -121,6 +121,31 @@ public sealed class CliExitCodeTests : IAsyncLifetime
         CliExitCode.For(empty, keptExistingByChoice: true).Should().Be(1);
     }
 
+    // Two entries of one name: the second is lost to the first this run wrote. -aos asked to keep
+    // files that were there, not that - exit 1, on either engine's route.
+    [Fact]
+    public async Task EntryLostToAnEarlierOneOfThisRun_WithAos_IsOne()
+    {
+        string zip = Path.Combine(_temp.Path, "dup.zip");
+        using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Create))
+        {
+            archive.CreateEntry("dup.txt");
+            archive.CreateEntry("dup.txt");
+        }
+        string destination = Directory.CreateDirectory(Path.Combine(_temp.Path, "out")).FullName;
+        ArchiveResult result = await PakkoServices.Create(new GroupPolicyOptions()).ArchiveService.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destination,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip,
+        });
+        result.KeptExistingFiles.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.FileWrittenEarlierInThisRun);
+
+        CliExitCode.For(result, keptExistingByChoice: true).Should().Be(1);
+        CliExitCode.For(AsTarReportsIt(result), keptExistingByChoice: true).Should().Be(1);
+    }
+
     [Fact]
     public void AnotherSkipAlone_WithAos_IsOne() =>
         CliExitCode.For(new ArchiveResult { SkippedFiles = [OtherSkip] }, keptExistingByChoice: true).Should().Be(1);

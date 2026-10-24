@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} صرف ایک فائل کو کمپریس کرتا ہے: بالکل ایک فائل دیں، کوئی فولڈر یا کئی فائلیں نہیں۔</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>فائل منزل پر پہلے سے موجود ہے۔</value>
+  </data>
 </root>

@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} yalnızca tek bir dosyayı sıkıştırır: bir klasör ya da birden çok dosya değil, tam olarak bir dosya belirtin.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Dosya hedefte zaten var.</value>
+  </data>
 </root>
