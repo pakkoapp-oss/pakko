@@ -13372,6 +13372,146 @@ the archive.
   - `docs/CLI.md`: `-sdel` keeps every source when anything in the archive was skipped (Core judges
     one archive as a whole), and an added file is left without a warning.
 
+## T-F421 and T-F417 - a source of the run is never an archive's name to replace; a filtered ZIP t/x asks for a password only when an encrypted entry passes (2026-10-24)
+
+### T-F421 - reproduced
+
+Core test through `ZipArchiveService.ArchiveAsync` (`ZipArchiveServiceDestinationIsASourceTests`),
+before the fix:
+
+- Separate mode names an archive `GetFileNameWithoutExtension(source) + ".zip"`, so `a.txt` and
+  `a.zip` both map to `a.zip`. Sorted, `a.txt` plans first. Its destination exists on disk (it is
+  the source `a.zip`), so under Overwrite, or Ask answered Overwrite, it plans
+  `ProceedReplacingExisting`. `a.zip` itself is then a same-run collision and gets `a (1).zip`.
+  The parallel commit replaced the source `a.zip` with `a.txt`'s archive: 22 bytes shorter, and
+  its own content gone from that path. What `a.zip`'s own worker packed depended on the race.
+- `a.zip` alone in separate mode maps to itself: under Overwrite it was replaced by an archive
+  holding its old self (63 bytes longer).
+- Single mode with an archive named after a source (App: an explicit name; CLI:
+  `pakko a -y a.txt a.txt`) replaced the source the same way. The T-F419 red-team row
+  `ArchiveIsTheOnlySourceFile_WithY_ItsBytesSurviveInsideTheNewArchive` had pinned that.
+- Rename was already safe, because it numbers. Skip skipped.
+- The tar route (`TarSandboxedService`) has the same two call sites: `a.tar` alone maps to itself,
+  `a.txt` and `a.tar` both map to `a.tar`.
+
+### T-F421 - measured (vendored 7za 26.02)
+
+7-Zip has no separate-archive mode for `a`. Explorer's per-item "Add to" belongs to its GUI and
+cannot be measured here.
+
+- `7za a a.zip a.txt a.zip`: opens `a.zip` as the archive to update, keeps its old data and adds
+  its pre-run copy as an entry. 150 to 378 bytes, exit 0. This is update semantics, which Pakko
+  does not have: `a` with an existing archive replaces it or is skipped.
+- `7za a -y -tzip a.txt a.txt` (a non-archive source as the archive name): "Cannot open the file
+  as [zip] archive", exit 2, `a.txt` untouched.
+
+Neither 7-Zip path replaces the source's content with something else.
+
+### T-F421 - decision
+
+A file that is a source of the run is never replaced. When a destination archive name is an
+existing file among the run's sources, it counts as a same-run collision in
+`DestinationConflictResolver` (the T-F12/T-F158 twins rule), so Pakko's existing
+conflict behaviour applies unchanged:
+
+- Overwrite: numbered. Same-run collisions already rename under Overwrite.
+- Rename: numbered.
+- Ask: asked. An Overwrite answer gives a numbered name.
+- Skip: skipped, as same-run twins are skipped (`DestinationConflictResolverTests`
+  `SameRunOnly_Skip`).
+
+In both engines, both modes, all four call sites:
+
+- `RunSourceFiles` (new, internal, `Archiver.Core/Services`) holds every source the caller passed
+  in. That includes a source a filter leaves out and a link that is skipped, both still the user's
+  files.
+- It compares by full path first, then by file identity (`PathIdentity`, T-F419), so `\\?\`, a
+  junction, SUBST and 8.3 names are caught.
+- A destination that exists but whose identity cannot be read counts as a source (kept). This
+  is a deliberate cost: on a volume where `CreateFile(0 access)` or `GetFinalPathNameByHandle`
+  fails for an existing file, Overwrite numbers that archive instead of replacing it. A false
+  positive costs a numbered name, never data. The alternative, falling back to the spelling
+  comparison, would replace a source reached by another spelling there.
+- This is not T-F316/T-F312's rule. An old archive *inside a source folder* is still deleted
+  first under Overwrite (`ArchiveTempFile.RemoveOldArchiveInsideSources`), because it is the
+  destination. It is not a source the caller named; the walk would otherwise pack it, and 7-Zip
+  also skips its own archive while scanning. T-F421 covers only the sources themselves: the
+  top-level paths passed in.
+- A source whose identity cannot be read is compared by spelling only.
+- The CLI's T-F325 line (`CliCreatedName`) now says
+  `the name 'a.txt' is one of the files being archived` instead of "was taken while
+  compressing". The exit code stays 1: the archive is not where it was asked to be.
+- Two T-F419 red-team rows pinned the old replace-the-source result and are re-pinned:
+  `ArchiveIsTheOnlySourceFile_WithY_...` (now `_TheSourceIsKeptAndTheArchiveIsNumbered`) and
+  `Sdel_ArchiveNamedAsItsOwnSourceWithY_TheArchiveSurvives`: `a -sdel -y o.zip o.zip src` writes
+  `o (1).zip` holding `o.zip`'s old bytes and `src`, then `-sdel` deletes both sources as asked;
+  exit 1. Nothing is lost: every byte is in the new archive.
+
+Rejected:
+
+- Always number and never ask, even under Skip. That would be a behaviour no other conflict has:
+  Skip means "write nothing over a name in the way".
+- A per-source error ("would replace a source"). This would need a new message code in 37 locales.
+  Numbering already exists and keeps the run's output.
+- 7-Zip's update-in-place. Pakko has no update mode.
+- Refusing like 7za's `a -y a.txt a.txt` (exit 2). That covers only the non-archive case and
+  loses the run's output for no gain once the source is kept.
+- A string-only comparison. The T-F419/T-F420 reviews were about "any spelling".
+
+### T-F417 - measured (vendored 7za 26.02)
+
+Fixtures: `mixed_encrypted_and_plain.zip` (AES-256) and `mixed_zipcrypto_and_plain.zip`
+(ZipCrypto, new), each holding a plain `readme.txt` and `compressible.txt` encrypted with
+`testpassword`. Stdin was empty.
+
+| Command | Exit |
+|---|---|
+| `t <zip> readme.txt` | 0 |
+| `x <zip> readme.txt` | 0 |
+| `t <zip> compressible.txt` | 2, "Wrong password" |
+| `t -pwrong <zip> readme.txt` | 0 |
+| `t -pwrong <zip> compressible.txt` | 2 |
+
+All rows are the same for both fixtures.
+
+### T-F417 - decision
+
+`ZipArchiveService` used to resolve the password per archive before reading any entry, through
+`TryRejectUnsupportedOrEncryptedZipAsync` (extract) and `TestOneArchiveAsync` (test). Both now
+work out first which entries will be read:
+
+- Extraction: the selection (a name, or anything under a selected folder), then `EntryFilter`.
+  This is the same rule as `ExtractWithSmartFolderingCoreAsync`.
+- Test: the entry filter.
+
+The password is asked for only when an encrypted entry passes (`NeedsPassword`). It is verified
+against the smallest encrypted entry that passes (`EncryptedEntriesThatPass`), never against one
+that is filtered out, so an archive whose other entries use another password works
+(`encrypted_two_passwords.zip`, new).
+
+- When the central directory and .NET's reader disagree on the entry count, every encrypted entry
+  counts, as before.
+- An archive that cannot be read for this check is asked about as before, and the read that
+  follows reports the problem.
+- A wrong password for an encrypted entry that passes is still reported:
+  `PasswordProtectedTest` / `PasswordProtectedExtract` after three attempts.
+- A `-p` given up front for an archive with no encrypted entry passing is never used, and the run
+  exits 0.
+- No public signature changed. `ResolveArchivePasswordAsync` (internal, also used by
+  `AntivirusScanService`) gained an optional `passes` parameter, and the antivirus path is
+  unchanged.
+
+Rejected: resolving the password lazily inside the entry loop. T-F189 keeps it once per archive
+and before any folder is created, so a cancelled prompt leaves nothing behind.
+
+Not covered: the tar.exe route (7z/RAR) has its own password handling, outside this task.
+
+Nothing upstream asks first. The CLI's `x`/`t` and the App pass a callback that only Core
+invokes. `AntivirusScanService` is the other caller of `ResolveArchivePasswordAsync`, but it is
+its own command (Scan), never a step before extraction, and keeps its unfiltered probe. The
+name/entry pairing uses `ZipArchiveReader.Entries`, which is built one-to-one and in order from
+`archive.Entries` (`ZipArchiveReader.Pair`), as `MapLocatedEntries`' pairing is.
+
 ## T-F320 - MSIX write virtualization stays, for the v1.9.0 Store submission too (2026-10-24)
 
 T-F320's 2026-10-03 decision left the fix to "a Store upload that has time for a review round";
