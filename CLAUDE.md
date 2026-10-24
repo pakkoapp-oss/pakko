@@ -29,7 +29,7 @@ narrative this section used to hold is archived verbatim in `docs/DECISIONS.md`'
 **Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
 truth; never trust a count written in a doc.
 
-**Next work:** the open tasks in `docs/TASKS.md` (one wave = 3-5 related tasks, one PR per batch).
+**Next work:** the v1.9.0 wave (Store release), indexed at the top of `docs/TASKS.md`.
 
 ## Roadmap Summary
 
