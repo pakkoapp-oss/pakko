@@ -104,7 +104,7 @@ public sealed class ZipArchiveService : IArchiveService
             if (passwordError is not null)
                 return new ArchiveResult { CreatedFiles = [], Errors = [passwordError], SkippedFiles = [] };
         }
-        var run = new ArchiveRunContext(conflictResolver, password, HasNoSeekPenalty, HasSeekPenalty, names);
+        var run = new ArchiveRunContext(conflictResolver, password, HasNoSeekPenalty, HasSeekPenalty, names, new RunSourceFiles(options.SourcePaths));
         IEnumerable<SourceResult> sources;
 
         if (options.Mode == ArchiveMode.SingleArchive)
@@ -148,7 +148,7 @@ public sealed class ZipArchiveService : IArchiveService
     // Password is null for an ordinary unencrypted archive (T-F193).
     private sealed record ArchiveRunContext(
         ConflictResolver ConflictResolver, string? Password, Func<string, bool> HasNoSeekPenalty, Func<string, bool> HasSeekPenalty,
-        SourceEntryNames Names);
+        SourceEntryNames Names, RunSourceFiles Sources);
 
     // T-F193: one prompt per ArchiveAsync call, never retried — there is nothing to verify a new
     // password against, so a wrong attempt cannot exist (maxAttempts: 1). The App/CLI prompts ask
@@ -193,7 +193,7 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F158: shared with TarSandboxedService's equivalent conflict decision — see
         // DestinationConflictResolver and DECISIONS.md's T-F158 entry.
         (DestinationConflictOutcome outcome, string? resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
-            destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
+            destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: run.Sources.Contains(destPath), // T-F421: never a source
             run.ConflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p)).ConfigureAwait(false);
 
         if (outcome == DestinationConflictOutcome.Skip)
@@ -414,7 +414,7 @@ public sealed class ZipArchiveService : IArchiveService
         sortedSourcePaths.RemoveAll(path => !run.Names.Keeps(run.Names.For(path), Directory.Exists(path)));
 
         List<(string SourcePath, string? DestPath, bool ReplacesExisting)> plans = await ResolveSeparateArchivePlansAsync(
-            sortedSourcePaths, options.DestinationFolder, run.ConflictResolver, skippedFiles).ConfigureAwait(false);
+            sortedSourcePaths, options.DestinationFolder, run, skippedFiles).ConfigureAwait(false);
 
         var concurrentSink = new ArchiveResultSink([], [], [], []);
         var progressContext = new SeparateArchiveProgressContext(totalSourceBytes, [0], progress);
@@ -474,7 +474,7 @@ public sealed class ZipArchiveService : IArchiveService
     // outcome deterministically before any parallel work starts. See DECISIONS.md's T-F12 entry
     // for the one behavior change this introduces (Overwrite + same-run collision).
     private static async Task<List<(string SourcePath, string? DestPath, bool ReplacesExisting)>> ResolveSeparateArchivePlansAsync(
-        List<string> sortedSourcePaths, string destinationFolder, ConflictResolver conflictResolver, List<SkippedFile> skippedFiles)
+        List<string> sortedSourcePaths, string destinationFolder, ArchiveRunContext run, List<SkippedFile> skippedFiles)
     {
         var claimedDestPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var plans = new List<(string SourcePath, string? DestPath, bool ReplacesExisting)>();
@@ -492,7 +492,9 @@ public sealed class ZipArchiveService : IArchiveService
             string baseName = Path.GetFileNameWithoutExtension(sourcePath);
             string destPath = Path.Combine(destinationFolder, baseName + ArchiveNaming.GetExtension(ArchiveContainerFormat.Zip));
             bool onDiskConflict = File.Exists(destPath);
-            bool sameRunConflict = claimedDestPaths.Contains(destPath);
+            // T-F421: "a.txt" and "a.zip" both map to "a.zip", and "a.zip" alone to itself - a
+            // source of the run is never replaced, whatever the conflict choice.
+            bool sameRunConflict = claimedDestPaths.Contains(destPath) || run.Sources.Contains(destPath);
 
             // T-F158: shared with ZipArchiveService.ArchiveSingleArchiveModeAsync and
             // TarSandboxedService's equivalent conflict decision — see DestinationConflictResolver
@@ -501,7 +503,7 @@ public sealed class ZipArchiveService : IArchiveService
             // under parallel execution) now lives in the shared resolver.
             (DestinationConflictOutcome outcome, string? resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
                 destPath, onDiskConflict, sameRunConflict,
-                conflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p, claimedDestPaths)).ConfigureAwait(false);
+                run.ConflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p, claimedDestPaths)).ConfigureAwait(false);
 
             if (outcome == DestinationConflictOutcome.Skip)
             {
