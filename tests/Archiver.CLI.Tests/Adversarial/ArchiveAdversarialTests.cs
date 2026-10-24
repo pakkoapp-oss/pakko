@@ -192,15 +192,20 @@ public sealed class ArchiveAdversarialTests : IDisposable
         EntryNames(_scratch.Inside(@"src\o.zip")).Should().Equal("src/a.txt");
     }
 
+    // T-F421: a source of the run is never replaced, -y or not; the archive takes the next free
+    // name, said on stderr, exit 1 as any archive not where it was asked to be (T-F325). 7za 26.02
+    // refuses outright ("Cannot open the file as [zip] archive", exit 2) and keeps it too.
     [Fact]
-    public void ArchiveIsTheOnlySourceFile_WithY_ItsBytesSurviveInsideTheNewArchive()
+    public void ArchiveIsTheOnlySourceFile_WithY_TheSourceIsKeptAndTheArchiveIsNumbered()
     {
         string source = _scratch.WriteFile("a.txt", "PRECIOUS-A");
 
         (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-y", "a.txt", "a.txt");
 
-        exitCode.Should().Be(0, stdErr);
-        EntryText(source, "a.txt").Should().Be("PRECIOUS-A", "the source was read before its name was replaced");
+        exitCode.Should().Be(1, stdErr);
+        stdErr.Should().Contain("created 'a (1).txt': the name 'a.txt' is one of the files being archived");
+        File.ReadAllText(source).Should().Be("PRECIOUS-A", "a source of the run is never replaced");
+        EntryText(_scratch.Inside("a (1).txt"), "a.txt").Should().Be("PRECIOUS-A");
     }
 
     [Fact]
