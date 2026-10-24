@@ -165,12 +165,7 @@ public sealed class CliStreamStagingTests
         CliStreamStaging.IsOwnerAlive(Environment.ProcessId, DateTime.UtcNow.AddYears(-10)).Should().BeFalse();
     }
 
-    private static string CreateScratchDir()
-    {
-        string dir = Path.Combine(Path.GetTempPath(), "Archiver.CLI.Tests.Streaming", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        return dir;
-    }
+    private static string CreateScratchDir() => CliTestTemp.NewDir();
 
     private sealed class ThrowingStream : Stream
     {

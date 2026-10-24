@@ -22,8 +22,7 @@ internal static class CliFixtureFiles
 
     static CliFixtureFiles()
     {
-        string root = Path.Combine(Path.GetTempPath(), "Archiver.CLI.Tests.Fixtures", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(root);
+        string root = CliTestTemp.NewDir();
 
         SourceDir = Path.Combine(root, "source");
         Directory.CreateDirectory(SourceDir);
@@ -48,11 +47,6 @@ internal static class CliFixtureFiles
         byte[] largeData = new byte[5 * 1024 * 1024];
         new Random(42).NextBytes(largeData);
         File.WriteAllBytes(LargeSourceFile, largeData);
-
-        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
-        {
-            try { Directory.Delete(root, recursive: true); } catch { /* best-effort cleanup */ }
-        };
     }
 
     private static string BuildTarGz(string root, string sourceDir)
@@ -75,10 +69,5 @@ internal static class CliFixtureFiles
         return tarGzPath;
     }
 
-    public static string CreateScratchDir()
-    {
-        string dir = Path.Combine(Path.GetTempPath(), "Archiver.CLI.Tests.Out", Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        return dir;
-    }
+    public static string CreateScratchDir() => CliTestTemp.NewDir();
 }
