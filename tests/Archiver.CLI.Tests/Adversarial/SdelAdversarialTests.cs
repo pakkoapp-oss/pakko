@@ -408,9 +408,11 @@ public sealed class SdelAdversarialTests : IDisposable
 
         (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-sdel", "-y", "o.zip", "o.zip", "src");
 
-        string archive = _scratch.Inside("o.zip");
+        // T-F421: o.zip is a source, so the archive is numbered and holds it; -sdel then deletes it.
+        string archive = _scratch.Inside("o (1).zip");
         File.Exists(archive).Should().BeTrue($"exit {exitCode}: {stdErr}");
-        ZipFiles(archive).Should().Contain(["a.txt=A", "b.txt=B"]);
+        ZipFiles(archive).Should().Contain(["a.txt=A", "b.txt=B", "o.zip=OLD ARCHIVE BYTES"]);
+        exitCode.Should().Be(1, stdErr);
     }
 
     [RequiresTarExe]

@@ -1659,15 +1659,6 @@ re-measured with T-F346's script before and after.
   `docs/DECISIONS.md`.
 - **Reported by:** T-F410 wave A's measurement, 2026-10-17.
 
-### T-F417 — a filtered ZIP `t`/`x` asks for the password before the filter is asked (P3, from T-F410)
-
-- [ ] **Status:** open. Measured by T-F410 wave B's reviewer: `e.zip` with a plain `x` and an
-  encrypted `cost`; `pakko t e.zip x </dev/null` is "password-protected and cannot be tested",
-  exit 2, where `7za t e.zip x` exits 0 without asking. `ZipArchiveService` resolves the password
-  per archive before any entry is read (test and extraction alike). Next: ask the filter (and a
-  selection) first and resolve the password only when an encrypted entry passes; a test per path.
-- **Reported by:** T-F410 wave B's closing review, 2026-10-18.
-
 ### T-F418 — `tar.exe` lists a `\` in an entry name doubled, and Pakko shows it so (P3, from T-F410)
 
 - [ ] **Status:** open. Measured 2026-10-18 (build 26300): a tar entry `a\b.txt` lists through
@@ -1677,13 +1668,3 @@ re-measured with T-F346's script before and after.
   `-T`/`-X` line by doubling it; then the App, `l`, a selection and a filter agree on the name.
 - **Reported by:** T-F410 wave B's closing review, 2026-10-18.
 
-### T-F421 — ZIP separate archives: `a.txt` and `a.zip` both become `a.zip` (P2, from T-F420's independent review, reproduce first)
-
-- [ ] **Status:** reported, not reproduced (2026-10-19). The T-F420 independent reviewer, reading
-  code outside its range: in separate-archive mode (one archive per source: the App's "Separate
-  archives", Explorer's per-item "Add to") the sources `a.txt` and `a.zip` both map to the
-  archive name `a.zip`; under Overwrite one input could be replaced before it is read.
-  1. Reproduce through the real exe and the App (two sources, Overwrite and Rename).
-  2. Decide by what 7-Zip does with the same pair (measure the vendored `7za.exe`), record
-     in DECISIONS; never replace a file that is itself a source of the run.
-- **Reported by:** the T-F420 independent review subagent, 2026-10-19.

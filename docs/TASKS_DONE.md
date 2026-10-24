@@ -13037,6 +13037,38 @@ PowerShell does natively.
 - **Reported by:** T-F343's measurement, 2026-10-17.
 - **Result:** `CliArgumentParser`; `CliSevenZipCallerTests`, `CliSevenZipCallerSubprocessTests`; `docs/CLI.md`; `docs/DECISIONS.md` (same entry); smoke `CLI-037`.
 
+### T-F421 — ZIP separate archives: `a.txt` and `a.zip` both become `a.zip` (P2, from T-F420's independent review, reproduce first)
+
+- [x] **Status:** done 2026-10-24 (v1.9.0 wave, stream A1); reported 2026-10-19. The T-F420 independent reviewer, reading
+  code outside its range: in separate-archive mode (one archive per source: the App's "Separate
+  archives", Explorer's per-item "Add to") the sources `a.txt` and `a.zip` both map to the
+  archive name `a.zip`; under Overwrite one input could be replaced before it is read.
+  1. Reproduce through the real exe and the App (two sources, Overwrite and Rename).
+  2. Decide by what 7-Zip does with the same pair (measure the vendored `7za.exe`), record
+     in DECISIONS; never replace a file that is itself a source of the run.
+- **Reported by:** the T-F420 independent review subagent, 2026-10-19.
+- **Result:** reproduced in both engines and both modes (a source replaced under Overwrite or an
+  Ask answered Overwrite; also a single archive named after a source). A destination that is an
+  existing source of the run (`RunSourceFiles`: path, then file identity) is a same-run collision:
+  numbered under Overwrite/Rename/Ask-Overwrite, skipped under Skip. CLI: `a -y a.txt a.txt` keeps
+  `a.txt`, writes `a (1).txt`, exit 1 (was exit 0 with the source replaced). `ZipArchiveServiceDestinationIsASourceTests`,
+  `TarSandboxedServiceDestinationIsASourceTests`, `CliCreatedNameTests`; `docs/DECISIONS.md`, "T-F421 and T-F417".
+  **1.9.0 CHANGELOG:** fixed - an archive named like one of its own sources no longer replaces it.
+
+### T-F417 — a filtered ZIP `t`/`x` asks for the password before the filter is asked (P3, from T-F410)
+
+- [x] **Status:** done 2026-10-24 (v1.9.0 wave, stream A1). Measured by T-F410 wave B's reviewer: `e.zip` with a plain `x` and an
+  encrypted `cost`; `pakko t e.zip x </dev/null` is "password-protected and cannot be tested",
+  exit 2, where `7za t e.zip x` exits 0 without asking. `ZipArchiveService` resolves the password
+  per archive before any entry is read (test and extraction alike). Next: ask the filter (and a
+  selection) first and resolve the password only when an encrypted entry passes; a test per path.
+- **Reported by:** T-F410 wave B's closing review, 2026-10-18.
+- **Result:** test and extraction apply the selection and filter first and ask for the password only
+  when an encrypted entry passes, checked against the smallest passing encrypted entry (an archive
+  with two passwords works). `ZipArchiveServiceFilteredPasswordTests`, `CliSevenZipCallerSubprocessTests`;
+  `docs/DECISIONS.md`, "T-F421 and T-F417". **1.9.0 CHANGELOG:** fixed - `t`/`x` with names on a ZIP
+  asks for the password only when an encrypted file is selected.
+
 ### T-F361 — winget: a `WinGet\Links` symlink for the AOT `pakko.exe` (P3)
 
 - [x] **Status:** done 2026-10-24 (v1.9.0 wave, stream D). The winget manifest puts the install folder on `PATH`
