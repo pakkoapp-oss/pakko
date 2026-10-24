@@ -22,6 +22,8 @@ public static class CliCommandValidator
         // T-F342: Windows' tar.exe writes 7z without encryption, and Pakko has no 7z code of its own.
         if (password && command.ArchiveFormat == ArchiveContainerFormat.SevenZip)
             return "not supported by Pakko: -p with -t7z — Pakko cannot encrypt a 7z archive; only ZIP archives can be password-protected";
+        if (password && ArchiveFormatPolicy.IsSingleFileFormat(command.ArchiveFormat))
+            return $"not supported by Pakko: -p with {command.ArchiveTypeSwitch} — gzip, bzip2 and xz have no encryption; only ZIP archives can be password-protected";
         if (password && command.ArchiveFormat != ArchiveContainerFormat.Zip)
             return "not supported by Pakko: -p on a tar-family archive — only ZIP archives can be password-protected";
 
@@ -43,8 +45,9 @@ public static class CliCommandValidator
         if (command.ArchiveNameMode == CliArchiveNameMode.Always)
             return null;
         string name = Path.GetFileName(command.ArchivePathArg!);
-        ArchiveContainerFormat? named = FormatOfName(name);
-        if (named is not { } nameFormat || nameFormat == command.ArchiveFormat)
+        ArchiveContainerFormat? named = FormatOfName(name)
+            ?? (ArchiveFormatPolicy.IsSingleFileFormat(command.ArchiveFormat) ? StreamFormatOfName(name) : null);
+        if (named is not { } nameFormat || nameFormat == command.ArchiveFormat || IsStreamOfTar(command.ArchiveFormat, nameFormat))
             return null;
 
         string fullExtension = ArchiveNaming.GetExtension(nameFormat);
@@ -63,6 +66,17 @@ public static class CliCommandValidator
         (".tzst", ArchiveContainerFormat.TarZst),
     ];
 
+    // T-F413: "-tgzip x.tar.gz x.tar" is how 7-Zip users make a tar.gz in two steps.
+    private static bool IsStreamOfTar(ArchiveContainerFormat format, ArchiveContainerFormat nameFormat) => (format, nameFormat) switch
+    {
+        (ArchiveContainerFormat.GZip, ArchiveContainerFormat.TarGz) => true,
+        (ArchiveContainerFormat.BZip2, ArchiveContainerFormat.TarBz2) => true,
+        (ArchiveContainerFormat.Xz, ArchiveContainerFormat.TarXz) => true,
+        _ => false,
+    };
+
+    // T-F221 item 6 (the user's decision): a name ending in .gz, .bz2 or .xz is written as typed
+    // under any other -t, so a bare stream's extension names a format only for its own -t.
     private static ArchiveContainerFormat? FormatOfName(string name)
     {
         foreach ((string extension, ArchiveContainerFormat format) in ShortExtensions)
@@ -73,7 +87,7 @@ public static class CliCommandValidator
 
         ArchiveContainerFormat? best = null;
         int bestLength = 0;
-        foreach (ArchiveContainerFormat format in Enum.GetValues<ArchiveContainerFormat>())
+        foreach (ArchiveContainerFormat format in Enum.GetValues<ArchiveContainerFormat>().Where(f => !ArchiveFormatPolicy.IsSingleFileFormat(f)))
         {
             string extension = ArchiveNaming.GetExtension(format);
             if (extension.Length > bestLength && name.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
@@ -84,6 +98,11 @@ public static class CliCommandValidator
         }
         return best;
     }
+
+    private static ArchiveContainerFormat? StreamFormatOfName(string name) =>
+        Enum.GetValues<ArchiveContainerFormat>().Where(ArchiveFormatPolicy.IsSingleFileFormat)
+            .Cast<ArchiveContainerFormat?>()
+            .FirstOrDefault(f => name.EndsWith(ArchiveNaming.GetExtension(f!.Value), StringComparison.OrdinalIgnoreCase));
 
     private static string SwitchFor(ArchiveContainerFormat format) => format switch
     {

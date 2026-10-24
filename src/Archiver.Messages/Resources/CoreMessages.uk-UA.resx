@@ -387,4 +387,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>«{0}» не є назвою папки, яку може використати Windows.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} стискає лише один файл: вкажіть рівно один файл, а не папку чи кілька файлів.</value>
+  </data>
 </root>

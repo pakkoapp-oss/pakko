@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>"{0}" bukan nama folder yang dapat digunakan Windows.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} hanya mengompres satu file: berikan tepat satu file, bukan folder atau beberapa file.</value>
+  </data>
 </root>

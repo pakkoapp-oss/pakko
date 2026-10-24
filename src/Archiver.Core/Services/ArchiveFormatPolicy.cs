@@ -186,6 +186,10 @@ public static class ArchiveFormatPolicy
         return [.. Enum.GetValues<SevenZipMethod>().Where(method => IsSevenZipMethodSupported(method, caps))];
     }
 
+    /// <summary>T-F413: one file compressed on its own, no tar inside (gzip, bzip2, xz).</summary>
+    public static bool IsSingleFileFormat(ArchiveContainerFormat format) =>
+        format is ArchiveContainerFormat.GZip or ArchiveContainerFormat.BZip2 or ArchiveContainerFormat.Xz;
+
     private static ArchiveFormat ReadFormatOf(ArchiveContainerFormat format) => format switch
     {
         ArchiveContainerFormat.Tar => ArchiveFormat.Tar,
@@ -195,6 +199,9 @@ public static class ArchiveFormatPolicy
         ArchiveContainerFormat.TarZst => ArchiveFormat.Zstd,
         ArchiveContainerFormat.TarLzma => ArchiveFormat.Lzma,
         ArchiveContainerFormat.SevenZip => ArchiveFormat.SevenZip,
+        ArchiveContainerFormat.GZip => ArchiveFormat.GZip,
+        ArchiveContainerFormat.BZip2 => ArchiveFormat.Bz2,
+        ArchiveContainerFormat.Xz => ArchiveFormat.Xz,
         _ => ArchiveFormat.Zip,
     };
 

@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>„{0}” ei ole kausta nimi, mida Windows saab kasutada.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} tihendab ainult ühe faili: andke täpselt üks fail, mitte kausta ega mitut faili.</value>
+  </data>
 </root>

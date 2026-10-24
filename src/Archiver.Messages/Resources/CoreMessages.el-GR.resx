@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>Το «{0}» δεν είναι όνομα φακέλου που μπορούν να χρησιμοποιήσουν τα Windows.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>Το {0} συμπιέζει μόνο ένα αρχείο: ορίστε ακριβώς ένα αρχείο, όχι φάκελο ή πολλά αρχεία.</value>
+  </data>
 </root>

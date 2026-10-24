@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>„{0}“ nėra aplanko pavadinimas, kurį gali naudoti Windows.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} suspaudžia tik vieną failą: nurodykite lygiai vieną failą, ne aplanką ir ne kelis failus.</value>
+  </data>
 </root>

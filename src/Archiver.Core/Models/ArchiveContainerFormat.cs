@@ -15,4 +15,10 @@ public enum ArchiveContainerFormat
     TarZst,
     TarLzma,
     SevenZip,
+
+    // T-F413: one file compressed on its own, no tar inside (7-Zip's -tgzip, -tbzip2, -txz),
+    // written by tar.exe's raw format. The CLI's only; the App and Explorer do not offer them.
+    GZip,
+    BZip2,
+    Xz,
 }

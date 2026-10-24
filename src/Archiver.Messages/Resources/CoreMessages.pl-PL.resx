@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>„{0}” nie jest nazwą folderu, której system Windows może użyć.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} kompresuje tylko jeden plik: podaj dokładnie jeden plik, a nie folder ani kilka plików.</value>
+  </data>
 </root>

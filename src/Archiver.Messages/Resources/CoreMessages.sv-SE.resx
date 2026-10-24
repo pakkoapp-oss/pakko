@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>”{0}” är inte ett mappnamn som Windows kan använda.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} komprimerar bara en enda fil: ange exakt en fil, inte en mapp eller flera filer.</value>
+  </data>
 </root>

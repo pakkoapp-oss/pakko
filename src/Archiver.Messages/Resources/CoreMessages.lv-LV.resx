@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>“{0}” nav mapes nosaukums, ko Windows var izmantot.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} saspiež tikai vienu failu: norādiet tieši vienu failu, nevis mapi vai vairākus failus.</value>
+  </data>
 </root>

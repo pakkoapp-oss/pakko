@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>"{0}" ऐसा फ़ोल्डर नाम नहीं है जिसे Windows उपयोग कर सके।</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} केवल एक फ़ाइल को संपीड़ित करता है: ठीक एक फ़ाइल दें, कोई फ़ोल्डर या कई फ़ाइलें नहीं।</value>
+  </data>
 </root>

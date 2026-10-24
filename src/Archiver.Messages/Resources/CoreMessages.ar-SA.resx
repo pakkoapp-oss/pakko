@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>"{0}" ليس اسم مجلد يمكن لنظام Windows استخدامه.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>يضغط {0} ملفًا واحدًا فقط: حدّد ملفًا واحدًا بالضبط، لا مجلدًا ولا عدة ملفات.</value>
+  </data>
 </root>

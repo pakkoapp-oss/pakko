@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>"{0}" si jina la folda ambalo Windows inaweza kutumia.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} hubana faili moja tu: toa faili moja hasa, si folda wala faili kadhaa.</value>
+  </data>
 </root>

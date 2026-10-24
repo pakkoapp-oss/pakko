@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>A(z) „{0}” nem olyan mappanév, amelyet a Windows használni tud.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>A(z) {0} csak egyetlen fájlt tömörít: pontosan egy fájlt adjon meg, ne mappát vagy több fájlt.</value>
+  </data>
 </root>

@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>«{0}» não é um nome de pasta que o Windows possa utilizar.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>O {0} comprime um único ficheiro: indique exatamente um ficheiro, não uma pasta nem vários ficheiros.</value>
+  </data>
 </root>

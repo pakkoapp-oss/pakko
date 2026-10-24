@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>「{0}」は Windows で使用できるフォルダー名ではありません。</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} は 1 つのファイルだけを圧縮します: フォルダーや複数のファイルではなく、ファイルを 1 つだけ指定してください。</value>
+  </data>
 </root>

@@ -937,11 +937,15 @@ public static class CliArgumentParser
             "tbz2" => ArchiveContainerFormat.TarBz2,
             "txz" => ArchiveContainerFormat.TarXz,
             "tzst" => ArchiveContainerFormat.TarZst,
+            // T-F413: one file without tar, 7-Zip's format names (7za refuses -tgz and -tbz2).
+            "gzip" => ArchiveContainerFormat.GZip,
+            "bzip2" => ArchiveContainerFormat.BZip2,
+            "xz" => ArchiveContainerFormat.Xz,
             _ => null,
         };
         if (format is null)
         {
-            error = $"unknown -t value: '{typeValue}' (expected zip, 7z, tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma, or tgz, tbz2, txz, tzst)";
+            error = $"unknown -t value: '{typeValue}' (expected zip, 7z, tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma, or tgz, tbz2, txz, tzst; gzip, bzip2, xz for one file without tar)";
             return false;
         }
 

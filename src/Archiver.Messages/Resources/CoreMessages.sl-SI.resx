@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>»{0}« ni ime mape, ki bi ga Windows lahko uporabil.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} stisne samo eno datoteko: navedite natanko eno datoteko, ne mape ali več datotek.</value>
+  </data>
 </root>

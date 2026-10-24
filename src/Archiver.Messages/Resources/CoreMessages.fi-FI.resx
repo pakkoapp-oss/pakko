@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>”{0}” ei ole kansion nimi, jota Windows voi käyttää.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} pakkaa vain yhden tiedoston: anna täsmälleen yksi tiedosto, ei kansiota eikä useita tiedostoja.</value>
+  </data>
 </root>

@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>“{0}”, Windows'un kullanabileceği bir klasör adı değil.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} yalnızca tek bir dosyayı sıkıştırır: bir klasör ya da birden çok dosya değil, tam olarak bir dosya belirtin.</value>
+  </data>
 </root>

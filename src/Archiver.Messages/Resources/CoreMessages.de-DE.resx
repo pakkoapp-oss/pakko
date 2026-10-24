@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>„{0}“ ist kein Ordnername, den Windows verwenden kann.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} komprimiert nur eine einzelne Datei: Geben Sie genau eine Datei an, keinen Ordner und nicht mehrere Dateien.</value>
+  </data>
 </root>

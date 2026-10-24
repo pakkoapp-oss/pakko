@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>«{0}» no es un nombre de carpeta que Windows pueda usar.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} comprime un solo archivo: indique exactamente un archivo, no una carpeta ni varios archivos.</value>
+  </data>
 </root>

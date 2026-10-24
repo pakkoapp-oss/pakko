@@ -387,4 +387,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>'{0}' is not a folder name Windows can use.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} compresses a single file: give exactly one file, not a folder or several files.</value>
+  </data>
 </root>
