@@ -49,6 +49,11 @@
  *     7za.exe a -tzip -mem=ZipCrypto -ptestpassword encrypted_zipcrypto_real.zip compressible.txt
  *     7za.exe a -tzip -mem=AES256 mixed_encrypted_and_plain.zip readme.txt
  *     7za.exe a -tzip -mem=AES256 -ptestpassword mixed_encrypted_and_plain.zip compressible.txt
+ *   T-F417 (7za 26.02): the same pair with ZipCrypto, and both entries encrypted under two passwords:
+ *     7za.exe a -tzip -mem=ZipCrypto mixed_zipcrypto_and_plain.zip readme.txt
+ *     7za.exe a -tzip -mem=ZipCrypto -ptestpassword mixed_zipcrypto_and_plain.zip compressible.txt
+ *     7za.exe a -tzip -mem=AES256 -potherpassword encrypted_two_passwords.zip readme.txt
+ *     7za.exe a -tzip -mem=AES256 -ptestpassword encrypted_two_passwords.zip compressible.txt
  *   encrypted_aes256_ae1.zip and encrypted_aes256_tampered.zip are SYNTHETIC — byte-patched from
  *   encrypted_aes256.zip by a throwaway script (not committed; see docs/DECISIONS.md's T-F188
  *   entry), because 7za.exe only ever emits WinZip AE-2 (never AE-1), and a real bit-flip is the

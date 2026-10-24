@@ -166,6 +166,10 @@ automatically (same manual-tool pattern as `encrypted_aes256.zip` above):
   decrypted.
 - `mixed_encrypted_and_plain.zip` — one plain entry (`readme.txt`) + one AES-256-encrypted entry
   (`compressible.txt`) in the same archive, for the no-second-extraction-path invariant.
+- T-F417: `mixed_zipcrypto_and_plain.zip` (the same pair, ZipCrypto) and
+  `encrypted_two_passwords.zip` (`readme.txt` AES-256 under `otherpassword`, `compressible.txt`
+  under `testpassword`) - a filtered Test/Extract asks for a password only when an encrypted entry
+  passes, and checks it against one that does (`ZipArchiveServiceFilteredPasswordTests`).
 - `encrypted_aes256_ae1.zip` — **SYNTHETIC**, not a `7za.exe` output. `7za.exe` (26.02) only ever
   emits WinZip AE-2; this fixture is `encrypted_aes256.zip` byte-patched (extra-field version
   2→1, plus the real CRC-32 of `compressible.txt` injected into both the local and central
