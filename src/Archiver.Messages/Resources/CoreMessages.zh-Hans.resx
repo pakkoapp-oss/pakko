@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} 只压缩单个文件: 请指定恰好一个文件，而不是文件夹或多个文件。</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>文件已存在于目标位置。</value>
+  </data>
 </root>

@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>يضغط {0} ملفًا واحدًا فقط: حدّد ملفًا واحدًا بالضبط، لا مجلدًا ولا عدة ملفات.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>الملف موجود بالفعل في الوجهة.</value>
+  </data>
 </root>

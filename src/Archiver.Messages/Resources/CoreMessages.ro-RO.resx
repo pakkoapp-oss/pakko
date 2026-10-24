@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} comprimă un singur fișier: indicați exact un fișier, nu un folder sau mai multe fișiere.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Fișierul există deja la destinație.</value>
+  </data>
 </root>

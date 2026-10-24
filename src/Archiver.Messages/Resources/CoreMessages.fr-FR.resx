@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} compresse un seul fichier : indiquez exactement un fichier, pas un dossier ni plusieurs fichiers.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Le fichier existe déjà à la destination.</value>
+  </data>
 </root>

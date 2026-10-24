@@ -85,10 +85,11 @@ public sealed class PathSpellingAdversarialTests : IDisposable
     }
 
     // A tar holding a.txt and A.TXT: tar.exe would write both into one file on NTFS.
-    // T-F415: -aos keeps the second as a file that exists - named on stderr, exit 0 as in 7-Zip.
+    // T-F415: under -aos too the second is lost to the first this run wrote, not kept because it
+    // existed - exit 1, unlike 7-Zip (which exits 0).
     [Theory]
     [InlineData(null, 1)]
-    [InlineData("-aos", 0)]
+    [InlineData("-aos", 1)]
     [InlineData("-aou", 0)]
     public void TarCaseTwin_IsNotSilentlyFolded(string? overwrite, int expectedExit)
     {

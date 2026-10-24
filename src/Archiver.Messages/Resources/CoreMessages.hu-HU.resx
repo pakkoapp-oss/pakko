@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>A(z) {0} csak egyetlen fájlt tömörít: pontosan egy fájlt adjon meg, ne mappát vagy több fájlt.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>A fájl már létezik a célhelyen.</value>
+  </data>
 </root>

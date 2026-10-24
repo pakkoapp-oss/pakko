@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} hanya mengompres satu file: berikan tepat satu file, bukan folder atau beberapa file.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>File sudah ada di tujuan.</value>
+  </data>
 </root>

@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} saspiež tikai vienu failu: norādiet tieši vienu failu, nevis mapi vai vairākus failus.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Fails jau pastāv mērķī.</value>
+  </data>
 </root>

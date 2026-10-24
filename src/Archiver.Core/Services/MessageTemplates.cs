@@ -102,6 +102,7 @@ public static class MessageTemplates
         [MessageCode.CannotExtractEntry] = "Cannot extract '{0}': {1}",
         [MessageCode.EntryThroughReparsePoint] = "Entry path traverses a reparse point (symlink or junction) and was skipped.",
         [MessageCode.FileExistsAtDestination] = "File already exists at destination.",
+        [MessageCode.FileWrittenEarlierInThisRun] = "File already exists at destination.",
         [MessageCode.TarExtractionFailed] = "tar.exe extraction failed: {0}",
         [MessageCode.TarUnsafeEntryPath] = "Archive contains an unsafe entry path ('{0}') and cannot be safely extracted.",
         [MessageCode.TarListingInconsistent] = "Archive listing is inconsistent and cannot be safely extracted.",

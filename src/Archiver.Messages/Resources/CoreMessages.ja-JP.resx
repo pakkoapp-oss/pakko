@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} は 1 つのファイルだけを圧縮します: フォルダーや複数のファイルではなく、ファイルを 1 つだけ指定してください。</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>ファイルは出力先に既に存在します。</value>
+  </data>
 </root>

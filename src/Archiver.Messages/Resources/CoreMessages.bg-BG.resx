@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} компресира само един файл: посочете точно един файл, а не папка или няколко файла.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Файлът вече съществува в местоназначението.</value>
+  </data>
 </root>

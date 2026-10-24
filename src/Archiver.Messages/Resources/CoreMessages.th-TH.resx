@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} บีบอัดได้เพียงไฟล์เดียว: ระบุไฟล์เพียงหนึ่งไฟล์ ไม่ใช่โฟลเดอร์หรือหลายไฟล์</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>ไฟล์มีอยู่แล้วที่ปลายทาง</value>
+  </data>
 </root>

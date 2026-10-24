@@ -748,7 +748,7 @@ public sealed class ZipArchiveService : IArchiveService
         var sources = new List<SourceResult>();
         // Entries skipped because they already exist at the destination — not reported in
         // SkippedFiles (the summary dialog stays as it was), but they make the archive Partial.
-        var conflictSkipped = new List<(string Path, bool ByUser)>();
+        var conflictSkipped = new List<(string Path, bool ByUser, bool InRun)>();
         var warnings = new List<ArchiveWarning>();
         // T-F419/T-F420: every path this extraction writes, over all its archives. An archive one of
         // whose entries a later one replaced (Overwrite) is not wholly on disk, so not deletable.
@@ -793,7 +793,8 @@ public sealed class ZipArchiveService : IArchiveService
             Errors = errors,
             SkippedFiles = skippedFiles,
             Warnings = warnings,
-            KeptExistingFiles = [.. conflictSkipped.Where(skip => !skip.ByUser).Select(skip => CoreMessages.Skip(skip.Path, MessageCode.FileExistsAtDestination))],
+            KeptExistingFiles = [.. conflictSkipped.Where(skip => !skip.ByUser).Select(skip => CoreMessages.Skip(skip.Path,
+                skip.InRun ? MessageCode.FileWrittenEarlierInThisRun : MessageCode.FileExistsAtDestination))],
             UserSkippedEntryCount = conflictResolver.UserSkipCount,
             Sources = sources,
         };
@@ -1003,7 +1004,7 @@ public sealed class ZipArchiveService : IArchiveService
         List<ArchiveError> Errors,
         List<string> CreatedFiles,
         List<SkippedFile> SkippedFiles,
-        List<(string Path, bool ByUser)> ConflictSkippedEntries,
+        List<(string Path, bool ByUser, bool InRun)> ConflictSkippedEntries,
         List<ArchiveWarning> Warnings,
         ExtractionNameRegistry Names);
 
@@ -1650,7 +1651,7 @@ public sealed class ZipArchiveService : IArchiveService
         // Skip/ADS/reparse-point) since data the user asked for genuinely failed to arrive.
         List<ArchiveError> Errors,
         // T-F260: entries skipped because they already exist at the destination (see ExtractAsync).
-        List<(string Path, bool ByUser)> ConflictSkippedEntries,
+        List<(string Path, bool ByUser, bool InRun)> ConflictSkippedEntries,
         // T-F234: see ZipArchiveService.NameCodePages.
         ZipNameCodePages NameCodePages,
         // T-F189: non-null only when this archive contains at least one encrypted entry and a
@@ -1848,7 +1849,9 @@ public sealed class ZipArchiveService : IArchiveService
             if (resolvedConflict == ConflictBehavior.Skip)
             {
                 // T-F216: the user's own Skip answer is not reported back; only an automatic one (T-F313).
-                context.ConflictSkippedEntries.Add((relativePath, ByUser: context.ConflictResolver.UserSkipCount != userSkipsSoFar));
+                // T-F415: a path this run already wrote (a skip never claims one) is not a file that was there.
+                context.ConflictSkippedEntries.Add((relativePath, ByUser: context.ConflictResolver.UserSkipCount != userSkipsSoFar,
+                    InRun: claimedFinalPaths.Contains(finalFilePath)));
                 return (false, named.Entry.Length);
             }
             // T-F411: -aot.

@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} komprimerer bare én fil: oppgi nøyaktig én fil, ikke en mappe eller flere filer.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Filen finnes allerede på målet.</value>
+  </data>
 </root>

@@ -585,6 +585,76 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         File.Exists(Path.Combine(destDir, "other.txt")).Should().BeTrue();
     }
 
+    // T-F415: an entry lost to an earlier one this run wrote is not a file that was there before:
+    // -aos (which asked to keep existing files) does not cover it, so its code says which.
+    [Fact]
+    public async Task ExtractAsync_DuplicateEntryNameUnderSkip_IsKeptAsWrittenEarlierInThisRun()
+    {
+        string zip = CreateZipWithDuplicateEntryNames(Path.Combine(_temp.Path, "dup.zip"), "dup.txt", "first", "second");
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "old.txt"), "there before");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip,
+        });
+
+        SkippedFile kept = result.KeptExistingFiles.Should().ContainSingle().Subject;
+        kept.Path.Should().Be("dup.txt");
+        kept.Text!.Code.Should().Be(MessageCode.FileWrittenEarlierInThisRun);
+        kept.Reason.Should().Be("File already exists at destination.");
+        File.ReadAllText(Path.Combine(destDir, "dup.txt")).Should().Be("first");
+    }
+
+    // Across archives into one folder (x *.zip): the second archive's a.txt meets the first's,
+    // which is on disk by then - still this run's, not the user's.
+    [Fact]
+    public async Task ExtractAsync_SameNameInTwoArchivesUnderSkip_IsKeptAsWrittenEarlierInThisRun()
+    {
+        string first = CreateTestZip("one.zip", "same.txt");
+        string second = Path.Combine(_temp.Path, "two.zip");
+        File.Copy(first, second);
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "same.txt.keep"), "x");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [first, second],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip,
+        });
+
+        result.KeptExistingFiles.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.FileWrittenEarlierInThisRun);
+    }
+
+    // One of each in one run: the file that was there is FileExistsAtDestination, the twin is not.
+    [Fact]
+    public async Task ExtractAsync_ExistingFileAndATwin_KeepTheirOwnCodes()
+    {
+        string zip = CreateZipWithDuplicateEntryNames(Path.Combine(_temp.Path, "dup.zip"), "dup.txt", "first", "second");
+        string other = CreateTestZip("other.zip", "there.txt");
+        string destDir = Path.Combine(_temp.Path, "out");
+        Directory.CreateDirectory(destDir);
+        File.WriteAllText(Path.Combine(destDir, "there.txt"), "there before");
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip, other],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Skip,
+        });
+
+        result.KeptExistingFiles.Select(k => (k.Path, k.Text!.Code)).Should().BeEquivalentTo(
+            [("dup.txt", MessageCode.FileWrittenEarlierInThisRun), ("there.txt", MessageCode.FileExistsAtDestination)]);
+    }
+
     // T-F216: the user's own Skip answer is their decision, not something to report back.
     [Fact]
     public async Task ExtractAsync_UserAnsweredSkip_IsNotAKeptExistingFile()

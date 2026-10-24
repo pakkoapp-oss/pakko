@@ -363,4 +363,7 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} pakkaa vain yhden tiedoston: anna täsmälleen yksi tiedosto, ei kansiota eikä useita tiedostoja.</value>
   </data>
+  <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
+    <value>Tiedosto on jo kohteessa.</value>
+  </data>
 </root>
