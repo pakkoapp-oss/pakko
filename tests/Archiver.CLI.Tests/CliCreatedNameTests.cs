@@ -23,6 +23,21 @@ public sealed class CliCreatedNameTests
             .Be("pakko: warning: created 'docs (1).zip': the name 'docs.zip' was taken while compressing");
     }
 
+    // T-F421: Core numbers an archive whose name is one of its own sources; nobody else took it.
+    [Fact]
+    public void RequestedNameIsASource_SaysSoInsteadOfAnotherRun()
+    {
+        CliCreatedName.TakenLine(@"C:\out\a.txt", [@"C:\out\a (1).txt"], [@"C:\OUT\A.TXT", @"C:\out\b.txt"]).Should()
+            .Be("pakko: warning: created 'a (1).txt': the name 'a.txt' is one of the files being archived");
+    }
+
+    [Fact]
+    public void RequestedNameIsNoSource_StillSaysAnotherRunTookIt()
+    {
+        CliCreatedName.TakenLine(@"C:\out\docs.zip", [@"C:\out\docs (1).zip"], [@"C:\out\b.txt"]).Should()
+            .Be("pakko: warning: created 'docs (1).zip': the name 'docs.zip' was taken while compressing");
+    }
+
     [Fact]
     public void NameDiffersOnlyByCase_NoLine()
     {

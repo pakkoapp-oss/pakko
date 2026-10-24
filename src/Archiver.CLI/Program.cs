@@ -695,7 +695,7 @@ static async Task<int> ReportArchiveResultAsync(
 static async Task<int> ReportTakenNameAsync(int code, ArchiveOptions options, ArchiveResult result)
 {
     string requestedPath = Path.Combine(options.DestinationFolder, ArchiveNaming.SingleArchiveFileName(options));
-    if (CliCreatedName.TakenLine(requestedPath, result.CreatedFiles) is not { } nameTaken)
+    if (CliCreatedName.TakenLine(requestedPath, result.CreatedFiles, options.SourcePaths) is not { } nameTaken)
         return code;
     await Console.Error.WriteLineAsync(nameTaken).ConfigureAwait(false);
     return Math.Max(code, 1);
