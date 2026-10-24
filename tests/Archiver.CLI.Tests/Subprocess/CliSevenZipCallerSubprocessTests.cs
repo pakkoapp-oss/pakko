@@ -232,5 +232,33 @@ public sealed class CliSevenZipCallerSubprocessTests
         withSwitch.Should().Equal(File.ReadAllBytes(CliFixtureFiles.SourceFileA));
     }
 
+    // T-F417: as the vendored 7za 26.02 (measured): a name that takes only the plain entry needs
+    // no password, stdin closed; one that takes the encrypted entry still fails without one.
+    [Theory]
+    [InlineData("t")]
+    [InlineData("x")]
+    public void FilteredToThePlainEntryOfAMixedZip_AsksForNoPassword(string command)
+    {
+        string scratchDir = CliFixtureFiles.CreateScratchDir();
+
+        (int exitCode, _, string stdErr) = command == "x"
+            ? CliProcessRunner.Run(command, "-o" + scratchDir, MixedZipPath, "readme.txt")
+            : CliProcessRunner.Run(command, MixedZipPath, "readme.txt");
+
+        exitCode.Should().Be(0, stdErr);
+        if (command == "x")
+            Directory.GetFiles(scratchDir, "*", SearchOption.AllDirectories).Select(Path.GetFileName).Should().Equal("readme.txt");
+    }
+
+    [Fact]
+    public void Test_FilteredToTheEncryptedEntryOfAMixedZip_WithoutAPassword_Fails()
+    {
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("t", MixedZipPath, "compressible.txt");
+
+        exitCode.Should().Be(2);
+        stdErr.Should().Contain("password");
+    }
+
     private static string EncryptedZipPath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "encrypted_aes256.zip");
+    private static string MixedZipPath => Path.Combine(AppContext.BaseDirectory, "Fixtures", "mixed_encrypted_and_plain.zip");
 }

@@ -44,6 +44,11 @@
       <Link>Fixtures\encrypted_aes256.zip</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- T-F417: readme.txt plain + compressible.txt AES-256 ("testpassword"). -->
+    <None Include="..\Archiver.Core.Tests\Fixtures\archives\mixed_encrypted_and_plain.zip">
+      <Link>Fixtures\mixed_encrypted_and_plain.zip</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <!-- T-F234: cp866 names without the UTF-8 flag, plus 7za's 0x7075 extra. -->
     <None Include="..\Archiver.Core.Tests\Fixtures\archives\legacy_oem866_7za.zip">
       <Link>Fixtures\legacy_oem866_7za.zip</Link>

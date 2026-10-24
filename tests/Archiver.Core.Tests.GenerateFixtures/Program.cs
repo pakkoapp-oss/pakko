@@ -147,6 +147,8 @@
  *     encrypted_aes256_cyrillic_name.zip — MANUAL, requires 7-Zip (T-F189, non-ASCII entry name)
  *     encrypted_with_traversal_entry.zip — MANUAL, SYNTHETIC byte-patch (T-F189, hard invariant)
  *     encrypted_zipcrypto_store.zip   — MANUAL, requires 7-Zip (T-F194, check-byte collision)
+ *     mixed_zipcrypto_and_plain.zip   — MANUAL, requires 7-Zip (T-F417, plain + ZipCrypto entry)
+ *     encrypted_two_passwords.zip     — MANUAL, requires 7-Zip (T-F417, two AES entries, two passwords)
  *     encrypted_aes256_bzip2.zip      — MANUAL, requires 7-Zip (T-F194, unsupported method)
  *     encrypted_aes256_eicar.zip      — MANUAL, SYNTHETIC stdin + byte-patch (T-F194, real AMSI)
  *     legacy_oem866_7za.zip           — MANUAL, requires 7-Zip (T-F234, cp866 names + 0x7075)
