@@ -313,17 +313,21 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// T-F284: tar.exe reads an extract member as a wildcard pattern, so the name "a[1].txt" selected
     /// "a1.txt". Each wildcard character goes into a one-character class, which matches only itself.
     /// '$' too: libarchive reads a trailing one as an end anchor ("cost$" took "cost"; measured
-    /// 2026-10-18, T-F410's review). '^' needs nothing (measured).
+    /// 2026-10-18, T-F410's review). '^' needs nothing (measured). T-F418: '\' is doubled, since
+    /// libarchive's pathmatch reads "\x" as x ("a\b.txt" named ab.txt); a class cannot hold it, as
+    /// '\' escapes the closing ']' there ("a[\]b.txt" named nothing; measured on bsdtar 3.8.9).
     /// </summary>
     internal static string EscapeMemberPattern(string entryName)
     {
-        if (entryName.AsSpan().IndexOfAny("[*?$") < 0)
+        if (entryName.AsSpan().IndexOfAny(@"[*?$\") < 0)
             return entryName;
         var escaped = new System.Text.StringBuilder(entryName.Length + 8);
         foreach (char c in entryName)
         {
             if (c is '[' or '*' or '?' or '$')
                 escaped.Append('[').Append(c).Append(']');
+            else if (c == '\\')
+                escaped.Append(@"\\");
             else
                 escaped.Append(c);
         }

@@ -55,8 +55,8 @@ public sealed class TarSandboxedServiceMemberPatternTests : IDisposable
         tree.Should().BeEquivalentTo(new Dictionary<string, string> { ["a[1].txt"] = "bracket" });
     }
 
-    // A backslash escapes the next pattern character. tar.exe lists a stored backslash doubled, and
-    // the listed name is what a selection passes back, so it already reads as a literal one.
+    // A backslash escapes the next pattern character. T-F418: the listing reads tar.exe's doubled
+    // backslash back to one, and the member pattern doubles it again.
     [Integration]
     public async Task ExtractAsync_SelectedNameWithABackslash_ExtractsThatEntryNotItsPatternMatch()
     {
@@ -80,5 +80,49 @@ public sealed class TarSandboxedServiceMemberPatternTests : IDisposable
 
         result.Errors.Should().BeEmpty();
         tree.Should().BeEquivalentTo(new Dictionary<string, string> { ["d[x]/f.txt"] = "bracket" });
+    }
+    // T-F418: bsdtar prints a stored backslash doubled ("a\b.txt"); the listing shows the name itself.
+    [Integration]
+    public async Task ListEntriesAsync_NameWithABackslash_ListsTheNameItself()
+    {
+        string archive = WriteArchive(("a\b.txt", "backslash"), ("x\\y.txt", "two"), ("ab.txt", "plain"));
+
+        ArchiveListResult listing = await _sut.ListEntriesAsync(archive);
+
+        listing.Success.Should().BeTrue(listing.ErrorMessage);
+        listing.Entries.Select(e => e.Path).Should().BeEquivalentTo(["a\b.txt", "x\\y.txt", "ab.txt"]);
+    }
+
+    // T-F418: a filter is asked the name itself, so "a\b.txt" passes a filter naming it, and not ab.txt.
+    [Integration]
+    public async Task ExtractAsync_FilterNamingABackslashName_TakesThatEntry()
+    {
+        string archive = WriteArchive(("a\b.txt", "backslash"), ("ab.txt", "plain"));
+        string destDir = Path.Combine(_temp.Path, "out-" + Path.GetRandomFileName());
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archive],
+            DestinationFolder = destDir,
+            Mode = ExtractMode.SingleFolder,
+            EntryFilter = (path, _) => path == "a\b.txt",
+        });
+
+        result.Errors.Should().BeEmpty();
+        Directory.GetFiles(destDir, "*", SearchOption.AllDirectories)
+            .Select(f => Path.GetRelativePath(destDir, f)).Should().Equal(["a\b.txt"]);
+    }
+
+    // T-F418 / T-F39: the pre-scan used to see "ctl\001.txt", text with no control character in it;
+    // read back, the name has one, and the archive is refused as a ZIP with that name is.
+    [Integration]
+    public async Task ExtractAsync_EntryNameWithAControlCharacter_IsRefusedBeforeExtraction()
+    {
+        string archive = WriteArchive(("ctl" + (char)1 + ".txt", "control"), ("ok.txt", "plain"));
+
+        (ArchiveResult result, Dictionary<string, string> tree) = await ExtractAsync(archive, null);
+
+        result.Errors.Should().ContainSingle();
+        tree.Should().BeEmpty();
     }
 }
