@@ -13103,6 +13103,23 @@ PowerShell does natively.
      destructive case works only inside its own scratch folder (asserted before the exe runs).
 - **Reported by:** the user, 2026-10-18, after T-F411 wave E's review.
 
+### T-F422 — the CLI tests' scratch folders were never removed from %TEMP% (P2, from the 2026-10-23 cleanup)
+
+- [x] **Status:** done 2026-10-24. `CliFixtureFiles.CreateScratchDir` (133 callers) made
+  `%TEMP%\Archiver.CLI.Tests.Out\<guid>` and nothing deleted it: 37 GB on the dev machine.
+  `CliStreamStagingTests` did the same under `Archiver.CLI.Tests.Streaming`; the fixtures root was
+  deleted on `ProcessExit` only.
+- **Reported by:** the user, 2026-10-23, while freeing disk space.
+- **Result:** `CliTestTemp`: one root per run with an `.owner` file held open without sharing;
+  `NewDir` under it; removed on `ProcessExit`; the next run's `SweepAbandoned` removes a root whose
+  `.owner` it can delete (or one older than five minutes that never got one). Measured: vstest kills
+  the testhost while a large root is still being removed (a full run left 158 MB, the next run's
+  sweep removed it), so the sweep, not the exit handler, is what bounds the leak to one run.
+  `Directory.Delete(@"\\?\" + path, recursive: true)` removes a junction without entering it; a
+  junction to its own ancestor was refused once with access denied and removed on the retry.
+  `CliTestTempTests` (9; the two location tests seen red before the switch, the sweep tests red
+  with the sweep disabled).
+
 ### T-F423 — the canary's tar fixture with a Cyrillic name, and its escalation Issue (P2, from the canary)
 
 - [x] **Status:** done 2026-10-24. `canary-dotnet` failed on 2026-10-22, 23 and 24 (and

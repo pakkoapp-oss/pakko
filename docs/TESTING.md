@@ -887,7 +887,10 @@ hardcoding either. `CliFixtureFiles.cs` builds its own fixtures once per test ru
 by shelling directly to it) rather than depending on `Archiver.Core.IntegrationTests` as a project
 reference, keeping this test layer decoupled; tar-family scenarios are gated behind a local
 `RequiresTarExeAttribute` (duplicated from `Archiver.Core.IntegrationTests`' `IntegrationAttribute`
-on purpose, same reasoning). Covers each command's happy path with real output verified on disk/in
+on purpose, same reasoning). Every scratch folder of the run, fixtures included, lives under
+`CliTestTemp.Root` (`%TEMP%\Archiver.CLI.Tests\<guid>`, T-F422): removed when the run exits,
+and a run whose testhost was killed first is removed by the next run's sweep (its `.owner` file is
+no longer held open); a removal never follows a junction. Covers each command's happy path with real output verified on disk/in
 stdout, plus one real instance of each of the three three-way-rule categories with the real exit
 code and real stderr substring asserted — `pakko.exe` must be built (`dotnet build
 src/Archiver.CLI` or a prior `dotnet test`/`dotnet build` at the repo root) before running this
