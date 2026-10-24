@@ -90,6 +90,8 @@ public static class CliHelpText
           -bd              No percentage                                       (all)
           -bt              Time statistics after the command, as 7-Zip's       (all)
           -ba              l prints the entry rows only, no header             (l)
+          -slt             l prints 7-Zip's technical listing: one block of    (l)
+                           "Path = ...", "Size = ..." lines per entry
           -bso{0|1|2}      Where messages (-bso), errors (-bse) and the        (all)
           -bse, -bsp       percentage (-bsp) go: 0 nowhere, 1 stdout, 2 stderr.
                            Under -so stdout carries the data, so messages go

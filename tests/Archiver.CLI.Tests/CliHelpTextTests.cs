@@ -45,6 +45,7 @@ public sealed class CliHelpTextTests
     [InlineData("-bd")]
     [InlineData("-bt")]
     [InlineData("-ba")]
+    [InlineData("-slt")]
     [InlineData("-bso{0|1|2}")]
     [InlineData("-i[r]!<name>")]
     [InlineData("-x[r]!<name>")]
