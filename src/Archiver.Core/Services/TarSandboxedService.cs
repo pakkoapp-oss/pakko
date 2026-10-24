@@ -1669,7 +1669,7 @@ public sealed class TarSandboxedService : ITarService
             // T-F158: shared with ZipArchiveService's equivalent conflict decision — see
             // DestinationConflictResolver and DECISIONS.md's T-F158 entry.
             (DestinationConflictOutcome outcome, string? resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
-                destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: false,
+                destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: new RunSourceFiles(options.SourcePaths).Contains(destPath), // T-F421: never a source
                 conflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p)).ConfigureAwait(false);
             if (outcome == DestinationConflictOutcome.Skip)
             {
@@ -1724,6 +1724,8 @@ public sealed class TarSandboxedService : ITarService
         // T-F419: as ZIP's claimedDestPaths (T-F158) - two sources of one base name never write one
         // archive under Overwrite, the second is numbered.
         var claimedDestPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // T-F421: as ZIP's - "a.tar" alone maps to itself; a source is never replaced.
+        var runSources = new RunSourceFiles(options.SourcePaths);
 
         foreach (string sourcePath in sortedSourcePaths)
         {
@@ -1740,7 +1742,7 @@ public sealed class TarSandboxedService : ITarService
             string destPath = Path.Combine(options.DestinationFolder, baseName + extension);
 
             (DestinationConflictOutcome outcome, string? resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
-                destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: claimedDestPaths.Contains(destPath),
+                destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: claimedDestPaths.Contains(destPath) || runSources.Contains(destPath),
                 conflictResolver, renameCandidate: p => ArchiveNaming.GetUniqueFilePath(p, claimedDestPaths)).ConfigureAwait(false);
             if (outcome == DestinationConflictOutcome.Skip)
             {
