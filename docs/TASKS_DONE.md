@@ -13037,6 +13037,59 @@ PowerShell does natively.
 - **Reported by:** T-F343's measurement, 2026-10-17.
 - **Result:** `CliArgumentParser`; `CliSevenZipCallerTests`, `CliSevenZipCallerSubprocessTests`; `docs/CLI.md`; `docs/DECISIONS.md` (same entry); smoke `CLI-037`.
 
+### T-F361 — winget: a `WinGet\Links` symlink for the AOT `pakko.exe` (P3)
+
+- [x] **Status:** done 2026-10-24 (v1.9.0 wave, stream D). The winget manifest puts the install folder on `PATH`
+  (`ArchiveBinariesDependOnPath: true`) because the pre-AOT apphost looked for `pakko.dll` next to
+  the symlink. The Native AOT `pakko.exe` (T-F355) is one file, so winget's ordinary symlink should
+  work and leaves no stale `PATH` entry after uninstall. Change `New-WingetManifest.ps1`, check with
+  `winget install --manifest` (admin, `LocalManifestFiles`), update `docs/CLI.md`.
+- **Reported by:** T-F355, 2026-10-08.
+- **Result:** `New-WingetManifest.ps1` no longer writes `ArchiveBinariesDependOnPath`; winget links `pakko.exe` into
+  `%LOCALAPPDATA%\Microsoft\WinGet\Links`. Checked on this machine: the manifest from v1.8.1's `SHA256SUMS`
+  validates; smoke `REL-007` (rewritten for the link) passed - the link is a symlink, `pakko -v` through it
+  prints 1.8.1, the install folder is not on `PATH`, the uninstall removes the files and the link, the user's
+  `PATH` is as before. `docs/CLI.md` (Distribution), `scripts/README.md`, `docs/SMOKE.md` `REL-007`.
+
+### T-F394 — Two smoke steps report the wrong thing (P3)
+
+- [x] **Status:** done 2026-10-24 (v1.9.0 wave, stream D). Both seen in the release-tier run of v1.8.1, 2026-10-12.
+  1. `PKG-005` looks for `*_<version>_*.msix` under `src\Archiver.App\AppPackages`, where
+     `Deploy.ps1` leaves the `.msixbundle` and its `.cer` only, and is skipped with "run
+     Deploy.ps1" right after a `Deploy.ps1`. The `.msix` of the same build is under
+     `bin\x64\Release\...`. Next: give `appcert.exe` the bundle, or take the `.msix` from where
+     the build leaves it; say which file was tested in the row's note.
+  2. `POL-008` fails with "the registry is not as it was" when the elevated helper never started
+     (the prompt was not accepted): there is no `after-*.reg` to compare. It should be skipped
+     with the reason the other elevated rows give.
+- **Reported by:** the release-tier smoke run of v1.8.1, 2026-10-12.
+- **Result:** item 2 (`POL-008` skips when the elevation prompt was declined) went in with 677fe04 (2026-10-16, PR #75).
+  Item 1: `PKG-005` takes the installed version's `.msix` from `AppPackages`, else its `.msixbundle`
+  (appcert.exe takes either), and its note names the file it tested; the lookup was checked against
+  1.8.1.18's `AppPackages`. The elevated run itself is in the pre-release walk with `POL-009`.
+
+### T-F320 — MSIX write virtualization hides new top-level AppData folders (P3)
+
+- [x] **Status:** closed 2026-10-24, not fixed (the user approved with the v1.9.0 plan). Found while checking T-F317 on device (2026-10-03). A packaged process
+  (the `pakko` alias, and so also App and Shell) that creates a **new folder directly under**
+  `%LOCALAPPDATA%` or `%APPDATA%` gets it redirected to
+  `%LOCALAPPDATA%\Packages\PavloRybchenko.Pakko_<hash>\LocalCache\...`; nothing unpackaged sees it.
+  Measured: `pakko x t.zip -o%LOCALAPPDATA%\New` → files only in `LocalCache\Local\New`; the same
+  into `%APPDATA%\New` → not visible; into an existing `%LOCALAPPDATA%` folder or a new subfolder
+  of one → real location; `%TEMP%` → real location; Shell `--extract-here` next to an archive in an
+  existing `%LOCALAPPDATA%` folder → real location. So only the "new top-level AppData folder"
+  shape is affected — rare from Explorer, more reachable from scripts.
+- **Fix to evaluate:** what NanaZip ships — `rescap:Capability Name="unvirtualizedResources"` plus
+  `desktop6:FileSystemWriteVirtualization` disabled. A restricted capability needs a justification
+  in the Store submission, so decide it with the next Store upload (v1.7.0 wave 9). Until then
+  documented in `docs/CLI.md` (Distribution).
+- **Decision (2026-10-03, wave 9, agent):** not fixed for v1.7.0 — the restricted capability can
+  delay Store certification and the shape is rare with a workaround; a known issue of the release
+  (`docs/DECISIONS.md`'s wave 9 entry). Revisit with a Store upload that has time for a review round.
+- **Reported by:** T-F317 device check, 2026-10-03.
+- **Result:** kept as a known difference of the packaged copy, documented in `docs/CLI.md` (Distribution);
+  `docs/DECISIONS.md`, "T-F320".
+
 ### T-F420 — one path pipeline for entry names and for source paths, shared by the ZIP and tar engines (P2, from T-F419, research first)
 
 - [x] **Status:** done 2026-10-23 in T-F411 wave E (PR #88), graduated with T-F419: `EntryDiskName`,

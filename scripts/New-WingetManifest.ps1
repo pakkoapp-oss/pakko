@@ -5,7 +5,7 @@
 .DESCRIPTION
     T-F317. The CLI zips on a GitHub Release (pakko-win-x64.zip, pakko-win-arm64.zip) are
     self-contained folders with pakko.exe at the root. winget installs them as a portable zip and
-    adds the install folder to PATH (ArchiveBinariesDependOnPath), so "pakko" works. The hashes come from the release's own SHA256SUMS, so the
+    links pakko.exe into WinGet\Links (on PATH), so "pakko" works. The hashes come from the release's own SHA256SUMS, so the
     manifest describes exactly the published files.
 
     Only writes files. Submitting them to microsoft/winget-pkgs is a separate, manual step (see
@@ -79,10 +79,9 @@ $installerYaml = @(
     'NestedInstallerType: portable',
     'NestedInstallerFiles:',
     '- RelativeFilePath: pakko.exe',
-    # A symlink in WinGet\Links broke the pre-AOT apphost, which looked for pakko.dll next to the
-    # link ("The application to execute does not exist", T-F317). So winget puts the install folder
-    # itself on PATH; the command is still "pakko". The AOT exe (T-F355) allows a symlink: T-F361.
-    'ArchiveBinariesDependOnPath: true',
+    # T-F361: winget's own symlink in WinGet\Links. The pre-AOT apphost looked for pakko.dll next
+    # to the link and failed (T-F317), so the folder used to go on PATH; the AOT exe (T-F355) is
+    # one file and runs through the link.
     'Commands:',
     '- pakko',
     "ReleaseDate: $ReleaseDate",

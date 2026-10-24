@@ -13372,6 +13372,16 @@ the archive.
   - `docs/CLI.md`: `-sdel` keeps every source when anything in the archive was skipped (Core judges
     one archive as a whole), and an added file is left without a warning.
 
+## T-F320 - MSIX write virtualization stays, for the v1.9.0 Store submission too (2026-10-24)
+
+T-F320's 2026-10-03 decision left the fix to "a Store upload that has time for a review round";
+v1.9.0 is that upload, and the answer is the same: no `rescap:Capability
+Name="unvirtualizedResources"` and no `desktop6:FileSystemWriteVirtualization` off. A restricted
+capability needs a written justification and can hold up certification, for one shape only (a new
+folder directly under `%LOCALAPPDATA%` or `%APPDATA%` from the packaged copy) that has workarounds:
+an existing folder or a subfolder of one, `%TEMP%`, or the zip and winget copies. Documented in
+`docs/CLI.md` (Distribution). Reopen if a user hits it.
+
 ## T-F423 - bsdtar 3.8.9 crashes on a name outside the ANSI code page (2026-10-24)
 
 Measured on bsdtar 3.8.9 (Windows build 26300, ACP 1251, OEM 866): `tar.exe -czf w.tar.gz <a CJK
