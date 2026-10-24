@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>„{0}” nije naziv mape koji Windows može koristiti.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} komprimira samo jednu datoteku: navedite točno jednu datoteku, ne mapu ni više datoteka.</value>
+  </data>
 </root>

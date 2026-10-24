@@ -37,6 +37,10 @@ public static class ArchiveFormatRegistryNames
         ArchiveContainerFormat.TarZst => "zstd",
         ArchiveContainerFormat.TarLzma => "lzma",
         ArchiveContainerFormat.SevenZip => "sevenzip",
+        // T-F413: a bare stream is the format reading detects by its first bytes.
+        ArchiveContainerFormat.GZip => "gzip",
+        ArchiveContainerFormat.BZip2 => "bz2",
+        ArchiveContainerFormat.Xz => "xz",
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
     };
 }

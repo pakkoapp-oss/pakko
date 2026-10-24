@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>“{0}”不是 Windows 可以使用的文件夹名称。</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} 只压缩单个文件: 请指定恰好一个文件，而不是文件夹或多个文件。</value>
+  </data>
 </root>

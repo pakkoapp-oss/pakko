@@ -1,4 +1,5 @@
 using Archiver.Core.Models;
+using Archiver.Core.Services;
 using FluentAssertions;
 
 namespace Archiver.App.Core.Tests;
@@ -6,7 +7,19 @@ namespace Archiver.App.Core.Tests;
 // T-F388: the New archive card offered formats a policy makes Core refuse.
 public sealed class CreationFormatOptionTests
 {
-    private static readonly ArchiveContainerFormat[] All = Enum.GetValues<ArchiveContainerFormat>();
+    // T-F413: gzip, bzip2 and xz of one file are the CLI's only; the card lists archives.
+    private static readonly ArchiveContainerFormat[] All =
+        [.. Enum.GetValues<ArchiveContainerFormat>().Where(f => !ArchiveFormatPolicy.IsSingleFileFormat(f))];
+
+    [Theory]
+    [InlineData(ArchiveContainerFormat.GZip)]
+    [InlineData(ArchiveContainerFormat.BZip2)]
+    [InlineData(ArchiveContainerFormat.Xz)]
+    public void SingleFileFormats_AreNeverOffered(ArchiveContainerFormat format)
+    {
+        CreationFormatOption.IsOffered(new GroupPolicyOptions(), format, true).Should().BeFalse();
+        CreationFormatOption.ListOrder.Should().NotContain(format);
+    }
 
     [Fact]
     public void NoPolicy_OffersEveryFormat()

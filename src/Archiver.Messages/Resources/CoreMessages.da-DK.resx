@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>„{0}“ er ikke et mappenavn, som Windows kan bruge.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} komprimerer kun én fil: angiv præcis én fil, ikke en mappe eller flere filer.</value>
+  </data>
 </root>

@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>„{0}“ nie je názov priečinka, ktorý dokáže Windows použiť.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} komprimuje iba jeden súbor: zadajte presne jeden súbor, nie priečinok ani viac súborov.</value>
+  </data>
 </root>

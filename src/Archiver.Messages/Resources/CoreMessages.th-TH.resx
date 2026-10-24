@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>"{0}" ไม่ใช่ชื่อโฟลเดอร์ที่ Windows ใช้ได้</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} บีบอัดได้เพียงไฟล์เดียว: ระบุไฟล์เพียงหนึ่งไฟล์ ไม่ใช่โฟลเดอร์หรือหลายไฟล์</value>
+  </data>
 </root>

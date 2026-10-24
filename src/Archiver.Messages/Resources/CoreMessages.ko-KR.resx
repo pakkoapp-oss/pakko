@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>"{0}"은(는) Windows에서 사용할 수 있는 폴더 이름이 아닙니다.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0}은(는) 파일 하나만 압축합니다: 폴더나 여러 파일이 아닌 파일 하나만 지정하세요.</value>
+  </data>
 </root>

@@ -63,7 +63,9 @@ public static class CliHelpText
                            .tbz2, .txz, .tzst, must match it (out.tar.gz needs
                            -ttar.gz, out.7z needs -t7z); any other extension
                            is written as typed. 7z is written by Windows' own
-                           tar.exe, where it can, and never with a password
+                           tar.exe, where it can, and never with a password.
+                           gzip, bzip2, xz: one file compressed without tar
+                           (out.gz, or x.tar.gz from x.tar), as 7-Zip's
           -mx[=]<0-9>      Compression level — see table below; -mx is 9,      (a)
                            a level above 9 is 9
           -m0=<method>     Method of a 7z archive (with -t7z): lzma2 (default), (a)

@@ -157,4 +157,7 @@ public enum MessageCode
 
     // A destination folder name Windows cannot parse, such as " " (T-F419)
     DestinationFolderNameInvalid,
+
+    // gzip, bzip2 or xz asked for a folder or several files (T-F413)
+    SingleFileFormatNeedsOneFile,
 }

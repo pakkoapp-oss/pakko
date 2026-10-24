@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>„{0}” nije naziv fascikle koji Windows može da koristi.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} kompresuje samo jednu datoteku: navedite tačno jednu datoteku, ne fasciklu ni više datoteka.</value>
+  </data>
 </root>

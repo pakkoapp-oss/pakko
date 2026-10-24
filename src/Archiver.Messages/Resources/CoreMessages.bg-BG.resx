@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>„{0}“ не е име на папка, което Windows може да използва.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} компресира само един файл: посочете точно един файл, а не папка или няколко файла.</value>
+  </data>
 </root>

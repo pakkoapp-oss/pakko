@@ -169,6 +169,9 @@ public static class ArchiveNaming
         ArchiveContainerFormat.TarZst => ".tar.zst",
         ArchiveContainerFormat.TarLzma => ".tar.lzma",
         ArchiveContainerFormat.SevenZip => ".7z",
+        ArchiveContainerFormat.GZip => ".gz",
+        ArchiveContainerFormat.BZip2 => ".bz2",
+        ArchiveContainerFormat.Xz => ".xz",
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
     };
 

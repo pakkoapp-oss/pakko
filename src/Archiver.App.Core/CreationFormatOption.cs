@@ -52,6 +52,9 @@ public static class CreationFormatOption
         GroupPolicyOptions policy, ArchiveContainerFormat format, bool sevenZipWriter, TarCapabilities? tarCapabilities = null)
     {
         ArgumentNullException.ThrowIfNull(policy);
+        // T-F413: one file compressed without tar is the CLI's 7-Zip compatibility, not an archive.
+        if (ArchiveFormatPolicy.IsSingleFileFormat(format))
+            return false;
         if (format == ArchiveContainerFormat.SevenZip && !sevenZipWriter)
             return false;
         if (tarCapabilities is not null

@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>„{0}” nu este un nume de folder pe care Windows îl poate folosi.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} comprimă un singur fișier: indicați exact un fișier, nu un folder sau mai multe fișiere.</value>
+  </data>
 </root>

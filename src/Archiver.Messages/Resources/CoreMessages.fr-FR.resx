@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>« {0} » n’est pas un nom de dossier utilisable par Windows.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} compresse un seul fichier : indiquez exactement un fichier, pas un dossier ni plusieurs fichiers.</value>
+  </data>
 </root>

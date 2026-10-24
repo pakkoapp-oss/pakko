@@ -1592,6 +1592,8 @@ public sealed class TarSandboxedService : ITarService
     // What refuses an archive before any prompt or write.
     private async Task<CoreText?> CreationRefusalAsync(ArchiveOptions options, CancellationToken cancellationToken)
     {
+        if (SingleFileRefusal(options) is { } singleFile)
+            return singleFile;
         // T-F193: tar.exe/libarchive has no encrypting writer. Refuse outright — before any
         // prompt — rather than silently writing an unencrypted archive the user asked to protect.
         // T-F342: libarchive's 7z writer ignores --passphrase without a word, so it is never passed.
@@ -1602,6 +1604,26 @@ public sealed class TarSandboxedService : ITarService
             return CoreMessages.Text(MessageCode.TarSignatureInvalid);
         return await WriterRefusalAsync(options, cancellationToken).ConfigureAwait(false);
     }
+
+    // T-F413: tar.exe's raw writer takes one regular file, and refuses another entry or a folder
+    // only once it has created its output (measured on 3.8.9). One archive per source makes
+    // several files several streams; a folder is never one.
+    private static CoreText? SingleFileRefusal(ArchiveOptions options)
+    {
+        if (!ArchiveFormatPolicy.IsSingleFileFormat(options.Format))
+            return null;
+        bool oneEach = options.Mode == ArchiveMode.SeparateArchives || options.SourcePaths.Count == 1;
+        return oneEach && !options.SourcePaths.Any(Directory.Exists)
+            ? null
+            : CoreMessages.Text(MessageCode.SingleFileFormatNeedsOneFile, SingleFileFormatName(options.Format));
+    }
+
+    private static string SingleFileFormatName(ArchiveContainerFormat format) => format switch
+    {
+        ArchiveContainerFormat.GZip => "gzip",
+        ArchiveContainerFormat.BZip2 => "bzip2",
+        _ => "xz",
+    };
 
     private async Task<CoreText?> WriterRefusalAsync(ArchiveOptions options, CancellationToken cancellationToken)
     {
@@ -2347,7 +2369,7 @@ public sealed class TarSandboxedService : ITarService
         tarArgs.Add(compression is null ? "7zip:compression=copy" : $"7zip:compression={compression},compression-level={numericLevel}");
     }
 
-    private static void AppendCompressionFilterArgs(List<string> tarArgs, ArchiveContainerFormat format, System.IO.Compression.CompressionLevel level)
+    internal static void AppendCompressionFilterArgs(List<string> tarArgs, ArchiveContainerFormat format, System.IO.Compression.CompressionLevel level)
     {
         (string? filterFlag, string? moduleName, int max) = format switch
         {
@@ -2357,6 +2379,9 @@ public sealed class TarSandboxedService : ITarService
             ArchiveContainerFormat.TarXz => ("-J", "xz", 9),
             ArchiveContainerFormat.TarZst => ("--zstd", "zstd", 19),
             ArchiveContainerFormat.TarLzma => ("--lzma", "lzma", 9),
+            ArchiveContainerFormat.GZip => ("-z", "gzip", 9),
+            ArchiveContainerFormat.BZip2 => ("-j", "bzip2", 9),
+            ArchiveContainerFormat.Xz => ("-J", "xz", 9),
             _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
         };
 
@@ -2376,6 +2401,12 @@ public sealed class TarSandboxedService : ITarService
 
         tarArgs.Add("--options");
         tarArgs.Add($"{moduleName}:compression-level={numericLevel}");
+        // T-F413: the file's bytes alone, through the codec - no tar header, no name stored.
+        if (ArchiveFormatPolicy.IsSingleFileFormat(format))
+        {
+            tarArgs.Add("--format");
+            tarArgs.Add("raw");
+        }
     }
 
     // Unsandboxed tar.exe launch for archive CREATION only (see CompressAsync's own comment for

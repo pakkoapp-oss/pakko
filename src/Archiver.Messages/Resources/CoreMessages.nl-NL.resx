@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>‘{0}’ is geen mapnaam die Windows kan gebruiken.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} comprimeert één enkel bestand: geef precies één bestand op, geen map of meerdere bestanden.</value>
+  </data>
 </root>

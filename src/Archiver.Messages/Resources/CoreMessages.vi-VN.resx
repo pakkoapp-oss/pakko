@@ -360,4 +360,7 @@
   <data name="DestinationFolderNameInvalid" xml:space="preserve">
     <value>"{0}" không phải là tên thư mục mà Windows có thể dùng.</value>
   </data>
+  <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
+    <value>{0} chỉ nén một tệp duy nhất: hãy chỉ định đúng một tệp, không phải thư mục hay nhiều tệp.</value>
+  </data>
 </root>

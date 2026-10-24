@@ -93,6 +93,7 @@ public static class MessageTemplates
         [MessageCode.DestinationFileLocked] = "Cannot write '{0}': destination file is locked by another process.",
         [MessageCode.DestinationIsAFolder] = "Cannot write '{0}': a folder of that name is in the way.",
         [MessageCode.DestinationFolderNameInvalid] = "'{0}' is not a folder name Windows can use.",
+        [MessageCode.SingleFileFormatNeedsOneFile] = "{0} compresses a single file: give exactly one file, not a folder or several files.",
         [MessageCode.AllEntriesSkipped] = "No entries were extracted from this archive — every entry was skipped.",
         [MessageCode.UnsafeEntryPath] = "Entry '{0}' has an unsafe path and was not extracted.",
         [MessageCode.EntryAlternateDataStream] = "Alternate Data Stream entry rejected for security.",
