@@ -13037,6 +13037,72 @@ PowerShell does natively.
 - **Reported by:** T-F343's measurement, 2026-10-17.
 - **Result:** `CliArgumentParser`; `CliSevenZipCallerTests`, `CliSevenZipCallerSubprocessTests`; `docs/CLI.md`; `docs/DECISIONS.md` (same entry); smoke `CLI-037`.
 
+### T-F420 — one path pipeline for entry names and for source paths, shared by the ZIP and tar engines (P2, from T-F419, research first)
+
+- [x] **Status:** done 2026-10-23 in T-F411 wave E (PR #88), graduated with T-F419: `EntryDiskName`,
+  `ExtractionNameRegistry`, public `PathIdentity` and `SourceTree` (`docs/DECISIONS.md`, "T-F420").
+  Asked for by the user, 2026-10-19. Most of T-F419's three red-team passes
+  were about where an entry name lands on disk, and where a source path really leads. The checks
+  themselves are already shared (`ArchiveEntrySecurity`: traversal, rooted, ADS, reserved and
+  device names, `TrimmedByWindows`), and so are the commit (`ExtractionStaging.CommitInto`) and
+  the conflict rule. The mapping from name to disk path is not shared: ZIP works it out per entry,
+  tar.exe writes into the quarantine and the move phase guesses back. What that seam let through:
+  `d./x.txt` beside `d/x.txt`; `a.txt.` written as it is by tar.exe and then missed by a `File.Move`
+  without the prefix (measured on build 26300: tar.exe keeps a file name's trailing dot or space
+  but trims a folder's); the tar listing trimming `a.txt ` to `a.txt`. Source paths have two copies
+  of the same idea: `CliSourceDeleter`'s identity and final-path check, and Core's "the archive is
+  inside its source" downgrade for "Delete after".
+  1. **Research first** (the repo's pre-implementation rule): read 7-Zip's
+     `CPP/7zip/UI/Common/ExtractingFilePath.cpp` (the `Correct_FsPath` and `Get_Correct_FsFile_Name`
+     family, which turns a trailing dot or space into `_` and writes through `\\?\`) and
+     libarchive's `archive_write_disk_windows.c` (what tar.exe does to a name on Windows). Quote both
+     in DECISIONS and record Pakko's choice per case: numbered like a conflict, or `_` like 7-Zip.
+  2. **Entry-name plan, one per extraction:** raw name -> the relative path as Windows writes it
+     (case, trailing dots and spaces per part, `./`, doubled separators) with flags (unsafe,
+     reserved, trimmed), plus one registry of claimed paths and twins per run. ZIP writes from the
+     plan. tar builds the same plan from its listing and maps every quarantined file back through
+     the same key, by its literal name.
+  3. **Source-path identity, one helper:** final path plus file identity (volume serial and file ID)
+     for `-sdel`'s refusal and link check, the "Delete after" downgrade and the recycler's
+     volume-root and duplicate guards. Today two copies: `CliSourceDeleter` and Core's
+     `IO/PathIdentity`; and two snapshots, `CliSourceSnapshot` (per file) and App.Core's
+     `SourceSnapshot` (per source).
+  4. **Acceptance:** every T-F419 red-team case (CLI `Adversarial/`, Core, App.Core) stays green,
+     with no behaviour change that is not named in DECISIONS.
+- **Reported by:** the user, 2026-10-19, during T-F419's triage.
+
+### T-F419 — `pakko`: an adversarial test suite for every switch, written by a red-team agent (P2, part of T-F411 wave E, before PR #88 merges)
+
+- [x] **Status:** done 2026-10-23 (PR #88). Passes 1 and 2: 326 cases, every red one triaged and
+  fixed or re-pinned (`docs/DECISIONS.md`, "T-F419"); step 4's second pass was the independent
+  review of the fixes (`IndependentReviewTests`, `IndependentReviewRegistryTests`: five findings,
+  each seen red, then fixed) and the GUI pass (APP-027..030). T-F411 wave E's independent reviewer found what every test missed: `-aot`
+  with a relative `-o` overwrote the user's file, exit 0 - all tests used an absolute folder. The
+  tests were written by the agent that wrote the code and shared its blind spots. Plan:
+  1. **Red team** (a fresh subagent on the strongest model, in its own worktree, given the repo and
+     `docs/CLI.md` only, never the plans or DECISIONS findings): for **every** switch and command in
+     CLI.md's switch table, write tests through the real exe (`Subprocess/`) that try to break it.
+     Priority to what changes or deletes user data: `-sdel`, `-aot`/`-aoa`/`-aou`/`-aos`, `-y`, `-o`,
+     `-spe`, `-so`/`-si`, `-rr`, `r`, `-p`, `-w`, names and masks on `a` and `x`.
+  2. **Attack classes**, each switch against each: path spellings (relative, `..`, `.\`, forward
+     slashes, trailing dot or space, `\\?\`, UNC, SUBST, 8.3 short names, `file:stream`, case,
+     reserved names, very long paths); links (junction, symlink, hard link, inside, as the source,
+     as `-o`, as a target); files changing, appearing or vanishing during the run; locked,
+     read-only, ACL-denied and in-use files and folders; Ctrl+C at each phase; full disk; hostile
+     values (huge, negative, empty, non-ASCII, control characters, RTL); switch combinations and
+     repeats (`-sdel -so`, `-aot -y`, `-spe -o.`, `-sdel` with masks and `-x`); the archive inside
+     a source or the destination; names colliding with the archive's own entries; 7za as the
+     oracle where it is safe to run.
+  3. **The rule for every test**: no case may lose, overwrite or delete a byte the user did not
+     ask to lose, or report success when it did; what differs from 7-Zip on purpose is pinned as a
+     test and named in CLI.md.
+  4. **Triage by the main agent**: a red test is a defect (fix, test-first, closing review) or a
+     wrong expectation (fixed in the test, reason in DECISIONS); nothing silenced. A second red-team
+     pass on the fixes.
+  5. Tests in `tests/Archiver.CLI.Tests/Adversarial/`, in the default run while they stay fast; a
+     destructive case works only inside its own scratch folder (asserted before the exe runs).
+- **Reported by:** the user, 2026-10-18, after T-F411 wave E's review.
+
 ### T-F423 — the canary's tar fixture with a Cyrillic name, and its escalation Issue (P2, from the canary)
 
 - [x] **Status:** done 2026-10-24. `canary-dotnet` failed on 2026-10-22, 23 and 24 (and
