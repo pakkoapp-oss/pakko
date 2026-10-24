@@ -140,6 +140,7 @@ public sealed class CliSubprocessTests
     }
 
     // T-F313: -aos is the user's own choice to keep existing files - named, but no hint.
+    // T-F415: and exit 0, as 7-Zip's (Scoop stops on any other code).
     [Fact]
     public void Extract_OverlappingFileWithSkipSwitch_NamesTheKeptFileWithoutAHint()
     {
@@ -148,8 +149,50 @@ public sealed class CliSubprocessTests
 
         (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", "-aos", $"-o{destDir}", CliFixtureFiles.ValidZip);
 
-        exitCode.Should().Be(1, because: stdErr);
+        exitCode.Should().Be(0, because: stdErr);
         stdErr.Should().Contain("pakko: skipped: a.txt: File already exists at destination.").And.NotContain("hint");
+        File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("kept");
+    }
+
+    // T-F415: Scoop's re-run - every file is there already; ZIP also says the archive gave nothing.
+    [Fact]
+    public void Extract_EveryFileExistsWithSkipSwitch_ExitsZero()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        File.WriteAllText(Path.Combine(destDir, "a.txt"), "kept");
+        File.WriteAllText(Path.Combine(destDir, "b.txt"), "kept");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", "-aos", $"-o{destDir}", CliFixtureFiles.ValidZip);
+
+        exitCode.Should().Be(0, because: stdErr);
+        stdErr.Should().Contain("pakko: skipped: a.txt:").And.Contain("pakko: skipped: b.txt:");
+    }
+
+    // T-F415: the tar engine lists a kept file as a skip; -aos makes it exit 0 there too.
+    [RequiresTarExe]
+    public void Extract_TarGzOverlappingFileWithSkipSwitch_ExitsZero()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        File.WriteAllText(Path.Combine(destDir, "a.txt"), "kept");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", "-aos", $"-o{destDir}", CliFixtureFiles.ValidTarGz!);
+
+        exitCode.Should().Be(0, because: stdErr);
+        stdErr.Should().Contain("pakko: skipped: a.txt: File already exists at destination.");
+        File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("kept");
+        File.Exists(Path.Combine(destDir, "b.txt")).Should().BeTrue();
+    }
+
+    // T-F415: without -aos the default skip keeps T-F313's exit 1 on the tar route too.
+    [RequiresTarExe]
+    public void Extract_TarGzOverlappingFileNoSwitch_ExitsOne()
+    {
+        string destDir = CliFixtureFiles.CreateScratchDir();
+        File.WriteAllText(Path.Combine(destDir, "a.txt"), "kept");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", $"-o{destDir}", CliFixtureFiles.ValidTarGz!);
+
+        exitCode.Should().Be(1, because: stdErr);
     }
 
     [Fact]

@@ -182,6 +182,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
             StdinPath = StdinPathFor(stdinFolder),
             PasswordGiven = command.Password is not null || command.PromptForPassword,
             KeptExistingByDefault = command.OverwriteMode is null && !command.AssumeYes,
+            KeptExistingByChoice = command.OverwriteMode == ConflictBehavior.Skip,
         };
         IReadOnlyList<string> archivePaths = WithoutExcludedTypes(ArchivePathsFor(command, stdinFolder), command, report, out bool anyRefused);
         // Only -stx empties it: the parser and ResolveArchives never hand over an empty list.
@@ -1014,16 +1015,8 @@ static int ReportResult(ArchiveResult result, CliReportContext report)
         Console.Error.WriteLine($"pakko: warning: {report.DisplayName(warning.SourcePath)}: {warning.Message}");
 
     PrintHints(result, report);
-    return ExitCodeFor(result);
+    return CliExitCode.For(result, report.KeptExistingByChoice);
 }
-
-static int ExitCodeFor(ArchiveResult result) => result.Outcome switch
-{
-    OperationOutcome.Completed => result.KeptExistingFiles.Count > 0 ? 1 : 0,
-    OperationOutcome.Failed => 2,
-    OperationOutcome.CompletedWithWarnings or OperationOutcome.CompletedWithSkips or OperationOutcome.NothingDone => 1,
-    _ => 1,
-};
 
 // T-F412: how 'l' prints one archive: the '# archive' lines, the header, 7-Zip's -slt blocks.
 internal readonly record struct ListingLayout(bool Multiple, bool Header, bool Technical);
