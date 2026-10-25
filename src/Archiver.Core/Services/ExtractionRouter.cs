@@ -47,7 +47,7 @@ public sealed class ExtractionRouter : IExtractionRouter
         ArchiveFormatPolicy.Classification classification = await ArchiveFormatPolicy
             .ClassifyAsync(options.ArchivePaths, _tarCapabilities, _policy, cancellationToken).ConfigureAwait(false);
         IReadOnlyList<string> zipPaths = classification.ZipPaths;
-        IReadOnlyList<string> tarPaths = classification.TarPaths;
+        (IReadOnlyList<string> tarPaths, IReadOnlyList<string> barePaths) = SplitBareGzip(classification.TarPaths);
         IReadOnlyList<SkippedFile> unsupported = classification.Unsupported;
 
         // T-F306: with both kinds selected, ZIP runs first and tar second, each in its own slice of
@@ -56,6 +56,8 @@ public sealed class ExtractionRouter : IExtractionRouter
         bool mixed = progress is not null && zipPaths.Count > 0 && tarPaths.Count > 0;
         int zipSliceEnd = mixed ? ZipSharePercent(zipPaths, tarPaths) : 100;
         SliceProgress? zipSlice = mixed ? new SliceProgress(progress!, 0, zipSliceEnd, bytesBefore: 0) : null;
+        // T-F413: a gzip of one file gets the bar only when it is all there is.
+        bool bareOnly = zipPaths.Count == 0 && tarPaths.Count == 0;
 
         // T-F420: one bookkeeping of the paths written, so a tar file replacing a ZIP's leaves that
         // ZIP not deletable (and Explorer's "Extract here" over both kinds keeps twins apart).
@@ -74,18 +76,23 @@ public sealed class ExtractionRouter : IExtractionRouter
                 options with { ArchivePaths = tarPaths, OpenDestinationFolder = false, SharedNames = names },
                 tarProgress, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
+        ArchiveResult bareResult = barePaths.Count > 0
+            ? await new BareGzipEngine(_policy).ExtractAsync(
+                options with { ArchivePaths = barePaths, OpenDestinationFolder = false, SharedNames = names },
+                bareOnly ? progress : null, cancellationToken).ConfigureAwait(false)
+            : EmptyResult();
 
         var merged = new ArchiveResult
         {
-            CreatedFiles = [.. zipResult.CreatedFiles, .. tarResult.CreatedFiles],
-            Errors = [.. zipResult.Errors, .. tarResult.Errors],
-            SkippedFiles = [.. zipResult.SkippedFiles, .. tarResult.SkippedFiles, .. unsupported],
+            CreatedFiles = [.. zipResult.CreatedFiles, .. tarResult.CreatedFiles, .. bareResult.CreatedFiles],
+            Errors = [.. zipResult.Errors, .. tarResult.Errors, .. bareResult.Errors],
+            SkippedFiles = [.. zipResult.SkippedFiles, .. tarResult.SkippedFiles, .. bareResult.SkippedFiles, .. unsupported],
             Warnings = [.. zipResult.Warnings, .. tarResult.Warnings],
             KeptExistingFiles = [.. zipResult.KeptExistingFiles, .. tarResult.KeptExistingFiles],
-            UserSkippedEntryCount = zipResult.UserSkippedEntryCount + tarResult.UserSkippedEntryCount,
+            UserSkippedEntryCount = zipResult.UserSkippedEntryCount + tarResult.UserSkippedEntryCount + bareResult.UserSkippedEntryCount,
             // T-F260: unsupported/policy-blocked paths get no SourceResult, so they are never
             // deletable; a cancel in either engine throws before this merge is reached.
-            Sources = SourceOutcomeRules.DowngradeNotWhollyOnDisk([.. zipResult.Sources, .. tarResult.Sources], names),
+            Sources = SourceOutcomeRules.DowngradeNotWhollyOnDisk([.. zipResult.Sources, .. tarResult.Sources, .. bareResult.Sources], names),
         };
 
         if (merged.Success && options.OpenDestinationFolder)
@@ -123,7 +130,7 @@ public sealed class ExtractionRouter : IExtractionRouter
         CancellationToken cancellationToken)
     {
         IReadOnlyList<string> zipPaths = classification.ZipPaths;
-        IReadOnlyList<string> tarPaths = classification.TarPaths;
+        (IReadOnlyList<string> tarPaths, IReadOnlyList<string> barePaths) = SplitBareGzip(classification.TarPaths);
         bool mixed = progress is not null && zipPaths.Count > 0 && tarPaths.Count > 0;
         int zipSliceEnd = mixed ? ZipSharePercent(zipPaths, tarPaths) : 100;
 
@@ -136,14 +143,30 @@ public sealed class ExtractionRouter : IExtractionRouter
         ArchiveResult tarResult = tarPaths.Count > 0
             ? await _tarService.TestAsync(tarPaths, tarProgress, entryFilter, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
+        ArchiveResult bareResult = barePaths.Count > 0
+            ? await BareGzipEngine.TestAsync(barePaths, entryFilter, cancellationToken).ConfigureAwait(false)
+            : EmptyResult();
 
         return zipResult with
         {
-            Errors = [.. zipResult.Errors, .. tarResult.Errors],
+            Errors = [.. zipResult.Errors, .. tarResult.Errors, .. bareResult.Errors],
             Warnings = [.. zipResult.Warnings, .. tarResult.Warnings],
             SkippedFiles = [.. zipResult.SkippedFiles, .. tarResult.SkippedFiles, .. classification.Unsupported],
-            Sources = [.. zipResult.Sources, .. tarResult.Sources],
+            Sources = [.. zipResult.Sources, .. tarResult.Sources, .. bareResult.Sources],
         };
+    }
+
+    // T-F413: of the paths the tar route may open, the gzip streams of one file, which tar.exe
+    // cannot read; Group Policy and tar.exe's capabilities have allowed the format already.
+    internal static (IReadOnlyList<string> Tar, IReadOnlyList<string> Bare) SplitBareGzip(IReadOnlyList<string> tarPaths)
+    {
+        if (tarPaths.Count == 0)
+            return (tarPaths, []);
+        var tar = new List<string>();
+        var bare = new List<string>();
+        foreach (string path in tarPaths)
+            (BareGzip.IsBareGzip(path) ? bare : tar).Add(path);
+        return (tar, bare);
     }
 
     // T-F275 step 3: the engines test what they can, then each archive with a set is checked by
