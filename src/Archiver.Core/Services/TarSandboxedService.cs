@@ -1958,11 +1958,15 @@ public sealed class TarSandboxedService : ITarService
 
     // T-F390: the "Couldn't visit directory" line is never shown (DescribeCreationFailure); Pakko
     // names what is gone, or says a source could not be read when every listed one is still there.
-    private static void ReportCreationFailure(string stdErr, List<ListedSource> nameList, List<ArchiveError> errors, string destPath)
+    // T-F396: whether a source is gone is asked of the file system on every failure - tar.exe's
+    // stale buffer overwrote even the "Couldn't visit directory" words in 13 of 200 runs, leaving
+    // only an environment fragment and the errno text, which is then not shown either.
+    internal static void ReportCreationFailure(string stdErr, List<ListedSource> nameList, List<ArchiveError> errors, string destPath)
     {
-        if (stdErr.Contains(UnvisitableSourceLine, StringComparison.Ordinal) && ReportVanished(nameList, errors) == 0)
+        bool vanished = ReportVanished(nameList, errors) > 0;
+        if (!vanished && stdErr.Contains(UnvisitableSourceLine, StringComparison.Ordinal))
             errors.Add(CoreMessages.Error(destPath, MessageCode.TarSourceUnreadable));
-        errors.Add(CoreMessages.Error(destPath, MessageCode.TarCreationFailed, DescribeCreationFailure(stdErr)));
+        errors.Add(CoreMessages.Error(destPath, MessageCode.TarCreationFailed, DescribeCreationFailure(stdErr, dropMissingFileLines: vanished)));
     }
 
     // T-F171: each junction is removed on its own first (a non-recursive delete removes only the
@@ -2452,9 +2456,12 @@ public sealed class TarSandboxedService : ITarService
     // line is dropped; "Cannot stat" and "Couldn't open" lines name the right file and stay.
     internal const string UnvisitableSourceLine = "Couldn't visit directory";
 
-    internal static CoreText DescribeCreationFailure(string stdErr) =>
+    internal static CoreText DescribeCreationFailure(string stdErr, bool dropMissingFileLines = false) =>
         CoreText.Raw(string.Join(Environment.NewLine, SplitLines(stdErr).Where(line =>
-            !line.StartsWith("a ", StringComparison.Ordinal) && !line.Contains(UnvisitableSourceLine, StringComparison.Ordinal))));
+            !line.StartsWith("a ", StringComparison.Ordinal) && !line.Contains(UnvisitableSourceLine, StringComparison.Ordinal)
+            && !(dropMissingFileLines && line.EndsWith(MissingFileErrno, StringComparison.Ordinal)))));
+
+    private const string MissingFileErrno = ": No such file or directory";
 
     // Column 4 (0-based) of "tar -tvf" output: mode, link-count, owner, group, size, month, day,
     // time, name. Locale-independent (plain ASCII decimal), unlike the date columns — see
