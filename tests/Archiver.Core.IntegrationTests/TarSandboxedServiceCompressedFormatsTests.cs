@@ -159,7 +159,7 @@ public sealed class TarSandboxedServiceCompressedFormatsTests : IDisposable
         File.ReadAllText(Path.Combine(destDir, "a.txt")).Should().Be("hello lzma");
     }
 
-    [IntegrationNotOnArm64]
+    [Integration]
     public async Task ExtractAsync_TarGzWithUnicodeFilenameAndContent_ExtractsCorrectly()
     {
         // T-F423: tar.exe 3.8.9 crashes (0xC0000005) packing a name outside the ANSI code page,
