@@ -13372,6 +13372,207 @@ the archive.
   - `docs/CLI.md`: `-sdel` keeps every source when anything in the archive was skipped (Core judges
     one archive as a whole), and an added file is left without a warning.
 
+## T-F418 and T-F412 - tar.exe's escaped names read back, and `l -slt` (2026-10-24)
+
+**T-F418, the cause, from the shipped source.** bsdtar prints every name in a listing through
+`safe_fprintf` (`tar/util.c`; named `safe_fputs` on master). Each byte goes through
+`bsdtar_expand_char`. At tags `v3.3.2` and `v3.5.2` (the Windows 10 tar.exe builds) and `v3.8.1`
+the table is the same:
+
+    if (isprint((unsigned char)c) && c != '\\')
+        buff[i++] = c;
+    else {
+        buff[i++] = '\\';
+        switch (c) {
+        case '\a': buff[i++] = 'a'; break;
+        case '\b': buff[i++] = 'b'; break;
+        case '\f': buff[i++] = 'f'; break;
+        case '\n': buff[i++] = 'n'; break;
+        case '\r': buff[i++] = 'r'; break;
+        case '\t': buff[i++] = 't'; break;
+        case '\v': buff[i++] = 'v'; break;
+        case '\\': buff[i++] = '\\'; break;
+        default:
+            sprintf(buff + i, "%03o", 0xFF & (int)c);
+
+The wide-character pass decides which characters reach that table:
+`if (iswprint(wc) && wc != L'\\')`, the bytes are copied, otherwise each byte is expanded. So an
+octal escape is one byte in the listing's code page, and a multi-byte character becomes a run of them.
+
+Read mode (`-x`, `-t`) turns command-line members, `-T` lines and `-X` lines into
+`archive_match` patterns:
+
+- Members and `-T` lines: `archive_match_include_pattern(_from_file)` in `tar/read.c`.
+- `-X` lines: `archive_match_exclude_pattern_from_file` in `tar/bsdtar.c`.
+
+`add_pattern_from_file` (`libarchive/archive_match.c`) ends a line at 0x0D or 0x0A and drops empty
+lines. `add_pattern_mbs` strips one trailing `/`. There is no escape layer of its own: the line
+is a `pathmatch` pattern.
+
+`libarchive/archive_pathmatch.c`, `pm()`:
+
+    case '\\':
+        /* Trailing '\\' matches itself. */
+        if (p[1] == '\0') {
+            if (*s != '\\')
+                return (0);
+        } else {
+            ++p;
+            if (*p != *s)
+                return (0);
+        }
+
+Inside `[...]` (`pm_list`), a `\` escapes the next character, the closing `]` included. The
+create-mode `-T` reader is `libarchive_fe/line_reader.c`, which only splits at CR/LF. It reads
+disk paths, not patterns, and is left as it is.
+
+**Measured on this machine.** tar.exe is bsdtar 3.8.9 on build 26300, user code page 1251. The
+fixtures were written with System.Formats.Tar as PAX. `-tf` printed:
+
+| Stored name | `-tf` prints |
+|---|---|
+| `a\b.txt` | `a\\b.txt` |
+| `end\` | `end\\` |
+| 0x01 | `\001` |
+| 0x7F | `\177` |
+| ESC | `\033` |
+| LF, CR | `\n`, `\r` |
+| BEL BS VT FF | `\a\b\v\f` |
+| TAB | a raw TAB (the Windows CRT's `iswprint` passes it) |
+| U+0416 (Cyrillic Zhe) | the byte C6 |
+| U+00E9 (e acute) | `e` (cp1251 best fit) |
+
+U+0085 and U+1F600 gave "Archive entry has empty or unreadable filename ... skipping", exit 1.
+`-tvf` escapes the same way. The `hdrcharset=UTF-8` option changed nothing in these lines.
+
+`-T` lines and `--` members both matched as follows:
+
+| Line | Matches |
+|---|---|
+| `a\\b.txt` | `a\b.txt` only |
+| `a\b.txt` | `ab.txt` |
+| `a[\]b.txt` | nothing |
+| `x\\\\y.txt` | `x\\y.txt` |
+| `end\\` | `end\` |
+| `end\` | `end\` |
+| raw 0x01 or 0x7F | that entry |
+| `ctl\001.txt` | nothing |
+| `br\[1\].txt` or `br[[]1].txt` | `br[1].txt` |
+| `cost\$` or `cost[$]` | `cost$` |
+| `^ab.txt` as an include | nothing (`^` is special in an exclude only) |
+
+`tar -xf` wrote `a\b.txt` as `a/b.txt` and `x\\y.txt` as `x/y.txt`. 7za 26.02 lists both
+`a\b.txt` entries as `a_b.txt`: its tar handler keeps one file name.
+
+**Decisions.**
+
+- `TarListingName.Unescape` reads the escape grammar back, not a list of characters. Which
+  characters get escaped is the CRT's choice; TAB showed that.
+- A run of octal bytes is decoded in `TarOutputEncoding.Current`, the encoding tar.exe's output was
+  read in.
+- An escape bsdtar never writes (an unknown letter, a lone trailing `\`, fewer than three digits,
+  a value above 377) refuses the listing as inconsistent. Pakko does not guess.
+- Only the `-t` names are read back. The `-tv` lines are read by column, and escaping never adds a
+  space.
+- `TarSandboxScope.EscapeMemberPattern` doubles `\`. A class cannot hold it, as measured.
+- `TarExcludePattern.ForEntry` already escaped `\`. Its `-X` lines were built from the doubled
+  form, so they never matched such an entry; they do now.
+- The App, `pakko l`, a selection and a filter now all see `a\b.txt`. The listing shows it as
+  tar.exe extracts it, the folder `a` with the file `b.txt` (both separators count:
+  `EntryDiskName`, `CliNameFilter`). It does not show 7-Zip's `a_b.txt`. In the App, `ArchiveTreeIndex` splits on `/` only, so
+  the name most likely appears as one root row named `a\b.txt`; it selects and extracts that
+  entry. Not checked on device.
+- A single leading `\` (`\evil.txt`) is still refused by the pre-scan: `HasUnsafePath` starts
+  with `Path.IsPathRooted`, which is true for it on Windows. Before the fix, the doubled form was
+  refused as UNC-shaped.
+
+**What changes because of it.**
+
+- A tar entry with a C0 control character in its name used to pass the T-F39 check: the pre-scan
+  saw the text `ctl\001.txt`. Such an archive is now refused before extraction, as a ZIP with that
+  name is.
+- The `l` output now runs every name through 7-Zip's `CStdOutStream::Normalize_UString`
+  (`CPP/Common/StdOutStream.cpp`), for ZIP and tar alike:
+  - Redirected output: LF and CR become `_`.
+  - On a terminal: every character for which `IsDangerousTerminalChar` is true becomes `_`. That
+    is C0, 0x7F..0x9F, U+202A..U+202E and U+2066..U+2069.
+
+  Before this change, a ZIP name with LF split its row.
+
+**Rejected.**
+
+- Escaping `\` inside a class (`[\]`): it matches nothing (measured).
+- Unescaping every listing line, `-tv` included: there is nothing to gain, and it would put a
+  read-back LF into column parsing.
+- Keeping the doubled name and undoing it only for display: a filter and the App would still
+  disagree with the shown name.
+- Treating an unknown escape as literal text: it hides a format change in a later tar.exe.
+
+**T-F412, decided by the maintainer: Pakko keeps its one step and its columns, and `-slt` is
+added.** From 7-Zip's `CPP/7zip/UI/Console/List.cpp` (`ip7z/7zip`, main, 26.02):
+
+- The property names come from `kPropIdToName`: `"Path"`, `"Folder"`, `"Size"`, `"Packed Size"`,
+  `"Attributes"`, `"Created"`, `"Accessed"`, `"Modified"`, ..., `"Encrypted"`, ..., `"CRC"`,
+  `"Type"`, ..., `"Method"`, ..., `"Physical Size"`.
+- `AddProp` writes `name + " = "`.
+- In tech mode `PrintItemInfo` prints each field of the handler (`AddMainProps` reads the
+  handler's `GetPropertyInfo` list). It prints `f.NameA` and then the value; `VT_EMPTY` prints
+  nothing after the `" = "`. Every field is followed by `endl`, and every item by one more `endl`.
+- `Print_OpenArchive_Props` prints `"--\n"`, `PrintPropPair_Path(so, arc.Path)`, `"Type"` and
+  `kpidPhySize`.
+- `ListArchives` prints `endl << kListing` (`"Listing archive: "`) before that block, and
+  `"----------\n"` after it when `techMode`. The headers are left out without `enableHeaders`
+  (`-ba`).
+- `PrintTime(..., showNS)` uses `ConvertUtcFileTimeToString2` (`CPP/Windows/PropVariantConv.cpp`).
+  It prints local time as `yyyy-MM-dd`, then ` HH:mm` above `kTimestampPrintLevel_DAY` (-3),
+  then `:ss` from `kTimestampPrintLevel_SEC` (0), then a fraction above it.
+- Paths go through `Normalize_UString_Path`, `\` on Windows.
+
+`7za l -slt` measured here: ZIP prints Path, Folder, Size, Packed Size, Modified (7 digits),
+Created, Accessed, Attributes, Encrypted, Comment, CRC (`3610A686`), Method, Characteristics,
+Host OS, Version, Volume Index, Offset. tar prints Path, Folder, Size, Packed Size, Modified (to
+the second), Created, Accessed, Mode, User, Group, User ID, Group ID, Symbolic Link, Hard Link,
+Characteristics, Comment, Device Major, Device Minor. 7z prints Path, Size, Packed Size, Modified,
+Attributes, CRC, Encrypted, Method, Block. A `.tar.gz` is `Type = gzip` with the one item
+`s.tar`.
+
+**What Pakko prints.**
+
+- Archive block: the `Listing archive:` line, `--`, `Path`, `Type` (7-Zip's name for the outer
+  format by its bytes, from `CliArchiveTypeExclusion`'s table) and `Physical Size` (the file's
+  length), a blank line, then `----------`.
+- Entry fields: those 7-Zip prints for the format and Pakko knows, in 7-Zip's order:
+  - ZIP: Path, Folder, Size, Packed Size, Modified, Encrypted, CRC.
+  - 7z: Path, Size, Modified.
+  - tar family and RAR: Path, Folder, Size, Modified.
+- A value Pakko lacks stays empty (`CRC = ` for a folder), as 7-Zip's `VT_EMPTY` does.
+- `Modified` is at the precision Pakko holds: ZIP to the second, tar.exe's listing to the minute
+  or to the day. It is never padded.
+- `-ba -slt` prints the entry blocks only. With several archives there are no `#` lines; each
+  archive's own block separates them.
+
+A `.tar.gz` prints `Type = gzip` and then the tar's files (Pakko's one step). Scoop's regex
+`[^ ]*tar$` over 7-Zip's `l` finds no inner `.tar` in Pakko's output either way. That stays a
+recorded difference.
+
+**Rejected for `-slt`.**
+
+- Printing every 7-Zip field with an empty value: an empty `Method` or `Attributes` reads as "the
+  archive has none", where Pakko only does not know.
+- `Type = tar` for a `.tar.gz`: 7-Zip's first block names the outer format, and so does `-stx`
+  (T-F410).
+- 7-Zip's nested-archive layout (`----` and a second `--` block for the inner tar): Pakko has
+  no inner item to describe, neither its size nor its time.
+- Sub-second `Modified`: Pakko's ZIP listing does not read the NTFS extra field.
+
+Integration (2026-10-25): the RAR field order was checked against 7-Zip's `kProps` in
+`Rar5Handler.cpp` and `RarHandler.cpp` (Path, IsDir, Size, PackSize, MTime, ...), so the subset
+Pakko prints keeps 7-Zip's order. The integration tests first named `"a\b.txt"` as a regular C#
+literal, a backspace, not a backslash; they now use `@"a\b.txt"`, and the control-character
+row asserts the pre-scan's refusal, not just an error (tar.exe failing to write the name passed
+it before). `-slt` reads the archive's length in its own branch; gone or locked by then, it is
+a `pakko: error:` line.
+
 ## T-F421 and T-F417 - a source of the run is never an archive's name to replace; a filtered ZIP t/x asks for a password only when an encrypted entry passes (2026-10-24)
 
 ### T-F421 - reproduced

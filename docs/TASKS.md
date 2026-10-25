@@ -1519,6 +1519,15 @@ re-measured with T-F346's script before and after.
 
 ## After v1.7.2
 
+### T-F424 — `tar.exe` lists a name outside the code page by best fit (`café.txt` as `cafe.txt`) (P3, from T-F418)
+
+- [ ] **Status:** open. Measured by T-F418 (bsdtar 3.8.9, cp1251): a tar entry `café.txt` lists
+  through `tar -t` as `cafe.txt`, and a filter or a `-T` line naming either matches nothing. T-F416
+  catches only the `?` form of a lossy name. Next: tell a best-fit name from a real one (the
+  listing's name does not round-trip through the code page back to a stored name), and refuse a
+  filter or selection over it with `TarNameNotRepresentable`, as T-F416 does.
+- **Reported by:** T-F418's measurement, 2026-10-24.
+
 ### T-F372 — The unsandboxed curl of the socket sandbox test times out on CI (P3)
 
 - [ ] **Status:** open. `TarSandboxedServiceSandboxBehaviorTests.RunAsync_SocketConnectAttempt_FailsInsideAppContainerButSucceedsUnsandboxed`
@@ -1630,16 +1639,6 @@ re-measured with T-F346's script before and after.
   the new `Default`; a unit test on `CreationFormatOption`/the ViewModel for this order.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`POL-009`), 2026-10-16.
 
-### T-F412 — `pakko l`: 7-Zip's list layout, `-slt`, and the inner tar of a `.tar.gz` (P3, from T-F343, decision first)
-
-- [ ] **Status:** open. Scoop runs `l` on a `.tar.*` and takes the inner `.tar` name with the regex
-  `[^ ]*tar$`: 7-Zip opens `x.tar.gz` as a gzip stream holding `x.tar` (and `x` extracts the `.tar`
-  file), Pakko reads straight through to the files (one step, by design) and its `l` prints its own
-  tab-separated columns. Decide first: keep Pakko's one step and its columns (Scoop's `.tar.*` path
-  then stays unsupported) or add 7-Zip's layout behind a switch (`-slt`'s `Path = ...` blocks are what
-  most libraries parse). Needs the maintainer's decision; record it in `docs/DECISIONS.md`.
-- **Reported by:** T-F343's measurement, 2026-10-17.
-
 ### T-F413 — `pakko a -tgzip`/`-txz`/`-tbzip2`: one file compressed without tar (P3, from T-F343, measure first)
 
 - [ ] **Status:** open. 7-Zip compresses a single file into a bare `.gz`, `.xz`, `.bz2`; patool uses
@@ -1658,13 +1657,4 @@ re-measured with T-F346's script before and after.
   it), or keep exit 1 and record Scoop's `-aos` path as a difference. Record the decision in
   `docs/DECISIONS.md`.
 - **Reported by:** T-F410 wave A's measurement, 2026-10-17.
-
-### T-F418 — `tar.exe` lists a `\` in an entry name doubled, and Pakko shows it so (P3, from T-F410)
-
-- [ ] **Status:** open. Measured 2026-10-18 (build 26300): a tar entry `a\b.txt` lists through
-  `tar -tf` as `a\\b.txt` (bsdtar escapes it on output), and `pakko l` shows `a\\b.txt`; a `-T` line
-  needs `a\\b.txt` to name it (`a\b.txt` matches `ab.txt`, `a[\]b.txt` nothing). Next: read how
-  bsdtar's `safe_fprintf` escapes a name, undo exactly that in the listing, and escape `\` in a
-  `-T`/`-X` line by doubling it; then the App, `l`, a selection and a filter agree on the name.
-- **Reported by:** T-F410 wave B's closing review, 2026-10-18.
 

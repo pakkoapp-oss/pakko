@@ -877,8 +877,23 @@ static async Task<bool> PrintArchiveListingAsync(
     ArchiveFormat format = ArchiveFormatDetector.Detect(archivePath);
     if (layout.Header)
     {
+        string shownName = report.StdinPath is not null ? "(stdin)" : archivePath;
+        long physicalSize = 0;
+        if (layout.Technical)
+        {
+            try
+            {
+                physicalSize = new FileInfo(archivePath).Length;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // The archive was listed a moment ago; gone or locked now, it is this run's error.
+                await Console.Error.WriteLineAsync($"pakko: error: {shownName}: {ex.Message}").ConfigureAwait(false);
+                return false;
+            }
+        }
         IReadOnlyList<string> headerLines = layout.Technical
-            ? CliTechListing.ArchiveHeader(report.StdinPath is not null ? "(stdin)" : archivePath, format, new FileInfo(archivePath).Length, terminal)
+            ? CliTechListing.ArchiveHeader(shownName, format, physicalSize, terminal)
             : [CliEntryFormatter.Header];
         foreach (string line in headerLines)
             await Console.Out.WriteLineAsync(line).ConfigureAwait(false);
