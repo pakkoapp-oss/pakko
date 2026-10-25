@@ -13098,6 +13098,31 @@ PowerShell does natively.
   `docs/DECISIONS.md`, "T-F421 and T-F417". **1.9.0 CHANGELOG:** fixed - `t`/`x` with names on a ZIP
   asks for the password only when an encrypted file is selected.
 
+### T-F290 — tar.exe on Windows ARM64 crashes on a non-ASCII name argument (P3)
+
+- [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream B). On the `windows-11-arm` runner, `C:\Windows\System32\tar.exe -czf
+  out.tar.gz <name>` with a Cyrillic file name exits with 0xC0000005 (access violation), both
+  attempts of the T-F240 canary run 36616898216. The x64 runners pass the same fixture. The failing
+  call is the test fixture (`ExternalTarFixtureBuilder`), not Pakko. Open question, which sets the
+  priority: does it crash only on a name the ANSI code page cannot represent (Pakko already refuses
+  those before tar.exe runs, `TarCommandLineEncoding.IsRepresentable`), or on any non-ASCII name
+  (then TAR creation on an ARM64 machine whose code page does cover it, e.g. Cyrillic under 1251,
+  would hit it)? `canary-arm64`'s "tar.exe name probe" step logs the tar version, code pages and
+  exit codes per name and form; read it, then decide. Until then
+  `ExtractAsync_TarGzWithUnicodeFilenameAndContent_ExtractsCorrectly` is skipped on an ARM64 OS
+  (`IntegrationNotOnArm64Attribute`).
+- **Probe result (run 36620565447, bsdtar 3.8.8, ACP 1252, OEM 437):** `plain.txt` and `café.txt`
+  exit 0 with `-cf` and `-czf`; a Cyrillic name exits 0xC0000005 with both. So it crashes on a name
+  the ANSI code page cannot represent, not on any non-ASCII name — Pakko refuses such names before
+  tar.exe runs, so production is not exposed; P3. Left open: the same check on a machine whose ACP
+  covers Cyrillic (1251), and whether to report it upstream. (The probe's list-file runs are not
+  evidence: pwsh wrote the list in UTF-8, which tar.exe reads in the ACP.)
+- **Reported by:** T-F240 canary, 2026-09-29.
+- **Result:** the crash is tar.exe's on a name outside the ANSI code page (the probe above; x64 bsdtar
+  3.8.9 does the same since 2026-10-22, T-F423). The test's fixture now takes
+  `TarCodePage.PortableNonAsciiName()` (T-F423), so `IntegrationNotOnArm64Attribute` is gone and the
+  test runs on ARM64: canary run 40168664989 on the branch, `canary-arm64` green, 10 skips (was 11).
+
 ### T-F361 — winget: a `WinGet\Links` symlink for the AOT `pakko.exe` (P3)
 
 - [x] **Status:** done 2026-10-24 (v1.9.0 wave, stream D). The winget manifest puts the install folder on `PATH`
