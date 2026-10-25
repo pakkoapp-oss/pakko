@@ -22,6 +22,8 @@ internal static partial class SandboxedProcessLauncher
     private const uint EXTENDED_STARTUPINFO_PRESENT = 0x00080000;
     private const uint CREATE_UNICODE_ENVIRONMENT = 0x00000400;
     private const uint HANDLE_FLAG_INHERIT = 0x00000001;
+    private const uint DUPLICATE_SAME_ACCESS = 0x00000002;
+    private static readonly IntPtr CurrentProcess = new(-1); // GetCurrentProcess()'s pseudo-handle, never closed
 
     // How long a terminated child gets to actually go away before the call returns anyway.
     private const uint TerminateWaitMilliseconds = 5000;
@@ -103,27 +105,27 @@ internal static partial class SandboxedProcessLauncher
         // Null (no overrides) passes NULL: the child then inherits this process's environment as before.
         char[]? environment = options.EnvironmentOverrides is null ? null : ProcessEnvironmentBlock.Build(options.EnvironmentOverrides);
 
+        // T-F426: the child gets an inheritable duplicate of the caller's stdin, closed once
+        // CreateProcessW has returned. Marking the caller's own handle inheritable left it so while
+        // tar.exe ran, and any Process.Start in this process (bInheritHandles TRUE, no handle list)
+        // took the user's archive along, open without delete sharing, for its whole life.
+        using SafeFileHandle? stdInForChild = options.StdIn is null ? null : DuplicateInheritable(options.StdIn);
+
         bool outRef = false, errRef = false, sidRef = false, inRef = false;
         try
         {
             stdOutWrite.DangerousAddRef(ref outRef);
             stdErrWrite.DangerousAddRef(ref errRef);
             options.AppContainerSid?.DangerousAddRef(ref sidRef);
-            options.StdIn?.DangerousAddRef(ref inRef);
+            stdInForChild?.DangerousAddRef(ref inRef);
             IntPtr rawStdOut = stdOutWrite.DangerousGetHandle(); // NOSONAR: S3869 — raw value goes into STARTUPINFO and the handle list; pinned by DangerousAddRef above until CreateProcessW returns
             IntPtr rawStdErr = stdErrWrite.DangerousGetHandle(); // NOSONAR: S3869 — same
             IntPtr rawSid = options.AppContainerSid?.DangerousGetHandle() ?? IntPtr.Zero; // NOSONAR: S3869 — PSID struct field, pinned the same way
-            IntPtr rawStdIn = options.StdIn?.DangerousGetHandle() ?? IntPtr.Zero; // NOSONAR: S3869 — same
+            IntPtr rawStdIn = stdInForChild?.DangerousGetHandle() ?? IntPtr.Zero; // NOSONAR: S3869 — same
 
             List<IntPtr> inherited = [rawStdOut, rawStdErr];
             if (rawStdIn != IntPtr.Zero)
-            {
-                // Only a handle named in the handle list below is ever inherited, so marking the
-                // caller's handle inheritable leaks it to no other launch.
-                if (!NativeMethods.SetHandleInformation(options.StdIn!, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT))
-                    throw new IOException($"SetHandleInformation (stdin) failed (Win32 error {Marshal.GetLastWin32Error()}).");
                 inherited.Add(rawStdIn);
-            }
 
             using var attributes = LaunchAttributeList.Create(rawSid, inherited);
 
@@ -172,7 +174,7 @@ internal static partial class SandboxedProcessLauncher
         finally
         {
             if (inRef)
-                options.StdIn!.DangerousRelease();
+                stdInForChild!.DangerousRelease();
             if (sidRef)
                 options.AppContainerSid!.DangerousRelease();
             if (errRef)
@@ -296,6 +298,18 @@ internal static partial class SandboxedProcessLauncher
             writeEnd.Dispose();
             throw new IOException($"SetHandleInformation ({pipeName} parent end) failed (Win32 error {error}).");
         }
+    }
+
+    private static SafeFileHandle DuplicateInheritable(SafeFileHandle handle)
+    {
+        if (!NativeMethods.DuplicateHandle(CurrentProcess, handle, CurrentProcess, out SafeFileHandle duplicate, 0,
+                bInheritHandle: true, DUPLICATE_SAME_ACCESS))
+        {
+            int error = Marshal.GetLastWin32Error();
+            duplicate.Dispose();
+            throw new IOException($"DuplicateHandle (stdin) failed (Win32 error {error}).");
+        }
+        return duplicate;
     }
 
     // Waits for the process handle to become signaled (process exit) without blocking a
@@ -463,6 +477,13 @@ internal static partial class SandboxedProcessLauncher
         [LibraryImport("kernel32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static partial bool SetHandleInformation(SafeFileHandle hObject, uint dwMask, uint dwFlags);
+
+        [LibraryImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool DuplicateHandle(
+            IntPtr hSourceProcessHandle, SafeFileHandle hSourceHandle, IntPtr hTargetProcessHandle,
+            out SafeFileHandle lpTargetHandle, uint dwDesiredAccess,
+            [MarshalAs(UnmanagedType.Bool)] bool bInheritHandle, uint dwOptions);
 
         [LibraryImport("kernel32.dll", SetLastError = true)]
         public static partial uint WaitForSingleObject(SafeProcessOrThreadHandle hHandle, uint dwMilliseconds);
