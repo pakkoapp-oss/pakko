@@ -165,7 +165,7 @@ sequenceDiagram
             else AC / TAC
                 ShellExe->>Core: IArchiveCreationRouter.ArchiveAsync(SingleArchive, OnConflict=Rename, Format=zip or tar)
             else TC
-                ShellExe->>Core: IExtractionRouter.TestAsync(paths, progress, password via session.AskPasswordAsync)<br/>— the FULL selection, the router classifies each path, ZIP to the ZIP engine and tar-family to ITarService.TestAsync (T-F261, T-F397)
+                ShellExe->>Core: IExtractionRouter.TestAsync(paths, progress, password via session.AskPasswordAsync)<br/>— the FULL selection, the router classifies each path, ZIP to the ZIP engine, tar-family to ITarService.TestAsync, a gzip of one file to Core's own reader (T-F261, T-F397, T-F413)
             else SC
                 ShellExe->>Core: IAntivirusScanService.ScanAsync — diagram 7
             else hash leaf

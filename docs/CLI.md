@@ -160,7 +160,7 @@ is refused without being printed, where 7-Zip prints it: it may be a password ty
 | `-spd`, `-ssc[-]` | Wildcards off; case-sensitive names | **T-F410**, `x`, `l` and `t`'s archive names. `-spd` reads `*` and `?` as plain characters; `-ssc` compares names case-sensitively (`-ssc-`, the default on Windows, does not) |
 | `-stx{Type}` | Exclude archive type | **T-F410 wave B**, `x`, `l` and `t`, with `-si` too. An archive whose own format, by its bytes, is excluded is `Cannot open the file as archive`; the other archives go on and the run ends with exit 2, as in 7-Zip. Only the outer format counts: `-stxtar` leaves a `.tar.gz` alone, `-stxgzip` refuses it. Types, in any case: `zip`, `7z`, `tar`, `gzip`, `bzip2`, `xz`, `zstd`, `lzma`, `rar`, `rar5`; another name is `Unsupported archive type`, exit 2 (7-Zip knows more types, which Pakko does not read). `-stx` with no type: exit 7. On other commands: exit 7 |
 | `-y` | Assume yes, suppress prompts | Needs a CLI-side default for Pakko's interactive callbacks (conflict resolution, compression-bomb confirm, T-F94) since there's no UI to prompt. **T-F160:** without `-y`/`-ao`, `x` on a real interactive console (stdin not redirected, not `-si`) now asks per conflict exactly like 7-Zip's console — `(Y)es / (N)o / (A)lways / (S)kip all / A(u)to rename all / (Q)uit?`, re-asked until one valid letter, end of input = quit (confirmed against NanaZip's vendored `UI/Console/UserInputUtils.cpp`). Deviation: the prompt goes to **stderr**, not 7z's stdout, since `-so` streams data on stdout. "Always"/"Skip all"/"Auto rename all" span the whole command, including a mixed zip+tar selection. Redirected/scripted runs keep the silent Skip. `Q` or Ctrl+C stops cleanly with exit code **255** (7-Zip's "user stopped"). **T-F216:** entries the user skipped at the prompt (one by one or "Skip all") are not reported as skips, so a run where the user skipped everything exits **0**, as in 7-Zip (was 1); the configured Skip (`-aos`, redirected input) still reports them **T-F409:** also taken on `t` (no password prompt, as on `x`) and on `l` (nothing to answer) |
-| `-t{type}` | Archive type override | Only meaningful for `a` (creation) — extraction/list/test formats are always auto-detected via `ArchiveFormatDetector`, `-t` has no effect there. For `a`, 7 real spellings map 1:1 onto `ArchiveContainerFormat`: `-tzip` (default), `-ttar`, `-ttar.gz`, `-ttar.bz2`, `-ttar.xz`, `-ttar.zst`, `-ttar.lzma`, plus the dot-free `-ttgz`/`-ttbz2`/`-ttxz`/`-ttzst` that PowerShell cannot split (T-F294). A name ending in one of these types (or in `.tgz`/`.tbz2`/`.txz`/`.tzst`) must match the type, `-tzip` included when no `-t` is given (`a out.tar.gz src` is exit 7, not a ZIP named `out.tar.gz`); any other extension is written as typed. `-t7z` (T-F342) creates a 7z archive; a name ending in `.7z` needs it (`a out.7z src` is exit 7), and `-p` with it is exit 7 (Pakko cannot encrypt 7z). `-trar` is recognized but rejected — RAR is extract-only |
+| `-t{type}` | Archive type override | Only meaningful for `a` (creation) — extraction/list/test formats are always auto-detected via `ArchiveFormatDetector`, `-t` has no effect there. For `a`, 7 real spellings map 1:1 onto `ArchiveContainerFormat`: `-tzip` (default), `-ttar`, `-ttar.gz`, `-ttar.bz2`, `-ttar.xz`, `-ttar.zst`, `-ttar.lzma`, plus the dot-free `-ttgz`/`-ttbz2`/`-ttxz`/`-ttzst` that PowerShell cannot split (T-F294). A name ending in one of these types (or in `.tgz`/`.tbz2`/`.txz`/`.tzst`) must match the type, `-tzip` included when no `-t` is given (`a out.tar.gz src` is exit 7, not a ZIP named `out.tar.gz`); any other extension is written as typed. `-t7z` (T-F342) creates a 7z archive; a name ending in `.7z` needs it (`a out.7z src` is exit 7), and `-p` with it is exit 7 (Pakko cannot encrypt 7z). `-trar` is recognized but rejected — RAR is extract-only. **T-F413:** `-tgzip`, `-tbzip2`, `-txz` (7-Zip's names, any case; `-tgz` and `-tbz2` are unknown, as in 7-Zip) compress **one file** without tar, through `tar.exe`'s raw format: `a -tgzip notes.txt.gz notes.txt`, patool's `a -y -txz -- <file>.xz <file>`, and 7-Zip's two-step `a -tgzip x.tar.gz x.tar`. A name without an extension gets the type's (`made` -> `made.xz`). The name may end in the type's extension, the tar type of the same codec (`.tar.gz`/`.tgz`, `.tar.bz2`/`.tbz2`, `.tar.xz`/`.txz`) or no archive type; another type's or stream's extension is exit 7 (`-tgzip out.xz`). A bare `.gz`/`.bz2`/`.xz` name under another `-t`, or with no `-t`, is still written as typed (`a out.gz src` is a ZIP named `out.gz`, where 7-Zip picks gzip). Two files or a folder: exit 2, `gzip compresses a single file: give exactly one file, not a folder or several files.`, nothing written (7-Zip: exit 2). `-p`: exit 7. Unlike 7-Zip, the gzip header holds no file name and no time (Pakko asks tar.exe for MTIME 0: its raw writer would store the time of compression), so an extracted file gets the time of extraction. Blocked by `DisableTarExtraction` and by blocking `gzip`/`bz2`/`xz`, as the tar formats of that codec; bzip2 and xz need a `tar.exe` with those codecs (T-F403). Not offered by the App or Explorer |
 | `-v{size}` | Split into volumes | Not supported — no multi-part/split-archive logic exists anywhere in `Archiver.Core` |
 | `-mem={method}` | ZIP encryption method | T-F193, `a` only: `-mem=AES256` (case-insensitive) is accepted as a no-op — AES-256 is the only method Pakko writes. `-mem=ZipCrypto`/`AES128`/`AES192` are refused (exit 7) rather than silently upgraded; any other value is an unknown-value error. Every other `-m{param}` except `-mx` is refused on `a` as not implemented |
 | `-m0={method}` | Method of a 7z archive | T-F342, `a -t7z` only: `lzma2` (default), `lzma`, `bzip2`, `deflate`, `copy`, in any case; the last `-m0` wins (`-m` is the one switch 7-Zip takes many times). Refused with exit 7: `ppmd` and `zstd` (tar.exe's 7z writer has neither), a method with parameters (`-m0=lzma2:d=64m`), a second coder (`-m1=`), and `-m0` without `-t7z`. `-mx=0` stores whatever `-m0` names |
@@ -270,9 +270,25 @@ Never silently ignore an unrecognized token or switch and proceed as if it wasn'
   An encrypted 7z or RAR gets no `-p` hint (T-F322): tar.exe cannot decrypt either, and the error
   says that passwords are supported for ZIP archives only.
 - `x` over files that already exist (T-F313): each file kept by the default or by `-aos` is one
-  `pakko: skipped: <name>: File already exists at destination.` line and the exit code is **1**,
-  for ZIP as for tar-family (a ZIP used to exit 0 with no line). A file the user skipped at the
+  `pakko: skipped: <name>: File already exists at destination.` line, for ZIP as for tar-family
+  (a ZIP used to exit 0 with no line). The exit code is **1** for the default skip and **0** with
+  `-aos`, as in 7-Zip (T-F415: the user chose it; Scoop stops on any other code). An entry kept
+  because an earlier entry of the same run took its name (two entries of one name, `a.txt` and
+  `A.TXT` in a tar, one name in two archives of one `x`) prints the same line and stays exit 1
+  under `-aos` too: no file that was there was kept, an entry of the archive was lost (7-Zip
+  exits 0). Any other skip, warning or error keeps its code. A file the user skipped at the
   interactive prompt is not reported (T-F216).
+- A gzip of one file (not a tar inside; T-F413): `x`, `t` and `l` read it in process, as
+  `tar.exe` cannot. The file is named from the archive's name as 7-Zip's default name is
+  (`notes.txt.gz` -> `notes.txt`, `x.tgz` -> `x.tar`, `noext` -> `noext~`), never from the
+  name stored in the header (7-Zip uses that one when present, as a path), and lands in the
+  `-o` folder; `-ao*`, `-y`, `-so`, the name filters, `-snz` and the compression-ratio check
+  work as for any archive. `t` checks every byte and each member's CRC and size: a cut stream
+  or bytes after it are `Cannot read archive: The compressed data is damaged.`, exit 2. `l`
+  shows the whole decompressed size (7-Zip shows gzip's own size field, the last member's
+  only). A gzip whose start holds a tar, cpio, zip or another format `tar.exe` opens still goes
+  to `tar.exe`. A bzip2 or xz of one file cannot be read (`tar.exe` gives no way to ask for
+  its raw reader, .NET has no such decoder): exit 2 with `tar.exe`'s text, as before.
 - `-si`: an empty stdin is `stdin was empty, so there is no archive to read` (exit 2); the staged
   archive is always shown as `(stdin)`, never its temporary path.
 - `a -so` with stdout on a terminal is refused (exit 7), like 7-Zip, gzip and zstd.
@@ -411,12 +427,12 @@ Chocolatey's folder lines run too.
 
 | Caller | Command line | Today | Stops at | Task |
 |---|---|---|---|---|
-| Scoop, `Expand-7zipArchive` | `x <arc> -o<dir> -xr!*.nsis -y` (+ `-ir!<dir>\*`, `-aoa`/`-aos`/`-aou`) | ZIP, 7z, tar: works, `-ir!` too. `.tar.gz`, `.tar.xz`: differs, as below. `-aos` over existing files exits 1 where 7-Zip exits 0 (T-F313 reports a kept file as a warning; Scoop stops on a non-zero exit); `-aou` names the renamed file differently | nothing | T-F412 (decided: a known difference) |
+| Scoop, `Expand-7zipArchive` | `x <arc> -o<dir> -xr!*.nsis -y` (+ `-ir!<dir>\*`, `-aoa`/`-aos`/`-aou`) | ZIP, 7z, tar: works, `-ir!` too. `.tar.gz`, `.tar.xz`: differs, as below. `-aos` over existing files exits 0, as in 7-Zip (T-F415; the kept files are still named on stderr); `-aou` names the renamed file differently | nothing | T-F412 (decided: a known difference) |
 | Scoop, inner tar of a `.tar.*` | `l <arc>`, then the regex `[^ ]*tar$` over the output | differs (by design) | 7-Zip opens a `.tar.gz` as gzip holding `x.tar` and extracts the `.tar`; Pakko reads through to the files in one step (kept, T-F412's decision), so neither its `l` nor `l -slt` names an inner `.tar` | T-F412: a known difference |
 | Chocolatey, `Get-ChocolateyUnzip` | `x -aoa -bd -bb1 -o"<dir>" -y "<file>" ["<folder>"]`; reads the `- <name>` lines as the list of installed files; one message per exit code 0/1/2/7/8/255 | ZIP, 7z, tar: works, the same `- <name>` lines (7za printed a Cyrillic name in the OEM code page, `pakko` in the console's). `.tar.gz`, `.tar.xz`: differs, as for Scoop's inner tar. A folder after the archive (T-F410): works | nothing | T-F412 (decided: a known difference) |
 | patool, `p7zip.py` | `x -y -p- -aou -o<dir> -- <arc>`, `l -y -p- -- <arc>`, `t -y -p- -- <arc>`, `a -y -t7z -sae -- <arc> <files>` | works, except: `t` on a tar or tar.gz is exit 1 (only the structure is checked, T-F397); `x` of a `.tar.gz` or `.tar.xz` gives the files where 7-Zip gives the inner `.tar` | nothing | T-F412 |
 | patool | `e -y -p- -o<dir> -- <arc>` | exit 7 | `e` | Declined |
-| patool | `a -y -txz`/`-tgzip`/`-tbzip2 -- <file>.xz <file>` | exit 7 | single-file streams | T-F413 |
+| patool | `a -y -txz`/`-tgzip`/`-tbzip2 -- <file>.xz <file>` | works (T-F413); extracting such a `.xz` or `.bz2` with `x` is exit 2 (bzip2 and xz of one file cannot be read), a `.gz` works | nothing | T-F413 |
 
 ### Commands
 
@@ -441,7 +457,7 @@ Chocolatey's folder lines run too.
 | `--` | Yes | T-F407. Every patool call starts the names with it |
 | `-ai`, `-ax`, `-an` | Yes | Archive names by wildcard or list, and `x *.zip`; T-F410, on `x`, `l`, `t` |
 | `-ad` | Can't | Opens 7-Zip's GUI dialog (7zG only) |
-| `-aoa`, `-aos`, `-aou` | Yes | |
+| `-aoa`, `-aos`, `-aou` | Yes | `-aos` exits 0 for files kept because they exist (T-F415) |
 | `-aot` | Yes | T-F411 wave E; the renamed file is numbered as `-aou` numbers it |
 | `-ba`, `-bb0`..`-bb3`, `-bd`, `-bso`/`-bse`/`-bsp{0,1,2}`, `-bt` | Yes | Output control; T-F408. `-bb1` and up print `- <name>` per item `x` wrote, which Chocolatey records; where it differs from 7-Zip: the switch table above |
 | `-i`, `-x` (with `r`, `w`, `!`, `@list`), `-xtd`, `-xtf`, name filters after the archive, `@listfile`, `-r`, `-r-`, `-r0`, `-spd`, `-scs` | Yes | T-F410's waves A and B; on `a` too (wave C) except `-xtd`/`-xtf`. `m` and `#` after `-i`/`-x`: Declined |
@@ -482,7 +498,8 @@ Chocolatey's folder lines run too.
 | `-ssp` | Declined | `tar.exe` cannot keep the last access time; Windows mostly does not update it |
 | `-stx` | Yes | T-F410's wave B, on `x`, `l`, `t` |
 | `-t` on `a` | Yes | Case-insensitive (`-tZIP`), T-F411 |
-| `-tgzip`, `-tbzip2`, `-txz` (one file, no tar) | Can add | T-F413: gzip with .NET's `GZipStream`; xz and bzip2 only if `tar.exe` can write a bare stream (to be measured), otherwise Can't |
+| `-tgzip`, `-tbzip2`, `-txz` (one file, no tar) | Yes | T-F413: written by tar.exe's raw format; read back: gzip yes (in process), bzip2 and xz Can't (no reader tar.exe exposes, no .NET decoder) |
+| `x`, `t`, `l` of a `.bz2` or `.xz` holding one file | Can't | tar.exe has no reader for a bare stream that can be asked for, .NET has no bzip2/xz decoder, and Pakko takes no third-party compression code |
 | `-u` | Declined | Update is a change in place |
 | `-v` | Can add | not planned (split volumes) |
 | `-y` on `x`, `a` | Yes | |
