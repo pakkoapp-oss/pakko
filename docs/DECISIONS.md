@@ -13372,6 +13372,25 @@ the archive.
   - `docs/CLI.md`: `-sdel` keeps every source when anything in the archive was skipped (Core judges
     one archive as a whole), and an added file is left without a warning.
 
+## T-F425 - an EOF test that waited on the thread pool (2026-10-25)
+
+T-F373 put `RunAsync_UnrelatedInheritableHandle_IsNotInheritedByChild` in its own
+`DisableParallelization` collection; it failed again on PR #99 with the same message. xUnit 2.9.3's
+`XunitTestAssemblyRunner.RunTestCollectionsAsync` (v2 branch, read 2026-10-25) awaits every parallel
+collection, then runs the non-parallel ones one by one, so no other test launched a process at that
+time. .NET 10's `PipeStream.Windows.cs` sends `ReadAsync` on a synchronous pipe to
+`AsyncOverSyncRead`, which is `AsyncOverSyncWithIoCancellation.InvokeAsync`: `await
+Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.ForceYielding)`, then a blocking read on that
+pool thread. The test raced that read against `Task.Delay(2 s)`, whose timer does not need the pool,
+so a starved pool fails it without any leak.
+
+Chosen: the read runs on a `LongRunning` (dedicated) thread, and the verdict is the child's own state
+right after EOF (`Process.WaitForExit(1000)` false: still running), not a wall clock. Rejected: a
+longer timeout (a leak to the child gives EOF at the child's exit, about 5 s, so any clock long enough
+for a starved pool also passes a leak) and a retry. Evidence is a mutation, not a CI capture: pool
+starvation red before, green after; an empty handle list in the launcher red after. Whether CI's pool
+was starved is inferred from the 4 s duration; a recurrence prints the pool's counts to settle it.
+
 ## T-F413 and T-F415 - one file compressed without tar; -aos exits 0 for files kept by choice
 
 #### T-F415: `x -aos` and the exit code

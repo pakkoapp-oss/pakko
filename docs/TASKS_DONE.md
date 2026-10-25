@@ -13066,6 +13066,25 @@ PowerShell does natively.
   keep their code. `CliExitCode`, `CliExitCodeTests`. **1.9.0 CHANGELOG:** changed - `x -aos` over existing
   files exits 0, as 7-Zip (the kept files are still named).
 
+### T-F425 — `RunAsync_UnrelatedInheritableHandle_IsNotInheritedByChild` failed again after T-F373 (P3, stream B)
+
+- [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream B). Failed on PR #99's run 40187903386 with
+  T-F373's message, on a change to the gzip reader only. T-F373's cause cannot apply: in xUnit 2.9.3 a
+  `DisableParallelization` collection runs only after every parallel one has finished
+  (`XunitTestAssemblyRunner.RunTestCollectionsAsync`), and the test ran alone, in the last seconds of a 10 m 39 s run.
+  No launch outside xUnit's scheduling was found (`subst` in `FullyProcessedAdversarialTests` is
+  synchronous; `FuzzRunner`'s abandoned `Task.Run` launches only through the handle-listed launcher).
+  The test is sensitive to a starved thread pool: .NET 10's `PipeStream.ReadAsync` on a synchronous
+  pipe is `AsyncOverSyncWithIoCancellation.InvokeAsync`, a blocking `ReadCore` on a pool thread
+  after `ForceYielding`, raced against a 2 s timer. 400 blocked pool items turned it red with the CI
+  message. That starvation happened on CI is inferred, not proven: the test took 4 s against a
+  nominal 2.5 s. The test now reads to EOF on a dedicated thread and asks the kernel
+  (`WaitForExit(1000)`) whether the child still runs after it, with no `Delay(500)` (CreateProcessW
+  runs before `RunAsync`'s first await). Green under the same starvation; red (EOF after 5122 ms,
+  when the child exited) with the launcher's handle list emptied. A failure now names the pool's
+  thread and queue counts and the EOF time.
+- **Reported by:** PR #99's CI, 2026-10-25.
+
 ### T-F418 — `tar.exe` lists a `\` in an entry name doubled, and Pakko shows it so (P3, from T-F410)
 
 - [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream A2). Measured 2026-10-18 (build 26300): a tar entry `a\b.txt` lists through
