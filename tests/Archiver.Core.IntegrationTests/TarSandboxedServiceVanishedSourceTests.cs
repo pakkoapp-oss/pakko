@@ -78,4 +78,37 @@ public sealed class TarSandboxedServiceVanishedSourceTests : IDisposable
         result.Errors.Should().Contain(e => e.Text!.Code == MessageCode.SourceNotFound && e.SourcePath == vanishing);
         result.Errors.Should().NotContain(e => e.Message.Contains(LeakingLine));
     }
+
+    // T-F429: every stderr line reached the progress as the "current file", so tar.exe's line for
+    // the missing entry - a piece of the environment block in every run (T-F396) - was shown live.
+    [Integration]
+    public async Task CompressAsync_SourceRemovedJustBeforeTarStarts_ProgressNamesOnlyRealEntries()
+    {
+        string vanishing = Path.Combine(_temp.Path, "folder");
+        Directory.CreateDirectory(vanishing);
+        File.WriteAllText(Path.Combine(vanishing, "inner.txt"), "i");
+        string staying = Path.Combine(_temp.Path, "staying.txt");
+        File.WriteAllText(staying, "s");
+        var sut = new TarSandboxedService(
+            new GroupPolicyOptions(),
+            () => Task.FromResult(new TarCapabilities()),
+            beforeCreationLaunch: () => Directory.Delete(vanishing, recursive: true));
+        var currentFiles = new List<string?>();
+
+        await sut.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [vanishing, staying],
+            DestinationFolder = Path.Combine(_temp.Path, "out"),
+            ArchiveName = "out",
+            Format = ArchiveContainerFormat.Tar,
+        }, new SyncProgress(report => currentFiles.Add(report.CurrentFile)));
+
+        currentFiles.Should().OnlyContain(name => name == null || name == "staying.txt");
+    }
+
+    // Synchronous, not System.Progress<T>: its callback posts to the pool (T-F162).
+    private sealed class SyncProgress(Action<ProgressReport> onReport) : IProgress<ProgressReport>
+    {
+        public void Report(ProgressReport value) => onReport(value);
+    }
 }

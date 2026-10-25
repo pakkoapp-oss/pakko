@@ -1847,6 +1847,9 @@ public sealed class TarSandboxedService : ITarService
             int reportedFiles = 0;
             void OnVerboseLine(string line)
             {
+                // T-F429: stderr carries tar.exe's errors too; only an "a <name>" line is an entry.
+                if (ParseTarVerboseEntryName(line) is not { } entryName)
+                    return;
                 reportedFiles++;
                 long denominator = Math.Max(totalEntriesForProgress, 1);
                 long bytesTransferred = totalBytesForProgress > 0
@@ -1857,7 +1860,7 @@ public sealed class TarSandboxedService : ITarService
                     Percent = Math.Min(99, (int)(reportedFiles * 100L / denominator)),
                     BytesTransferred = bytesTransferred,
                     TotalBytes = totalBytesForProgress,
-                    CurrentFile = ParseTarVerboseEntryName(line),
+                    CurrentFile = entryName,
                 });
             }
 
@@ -2337,8 +2340,8 @@ public sealed class TarSandboxedService : ITarService
     // the fixed "a " prefix so the dialog can show the real entry name instead of the raw line; // NOSONAR: prose, not commented-out code (S125 false positive)
     // falls back to the raw line unchanged if it doesn't match the expected shape, so a format
     // surprise degrades to "a slightly odd-looking filename shown", never a thrown exception.
-    private static string ParseTarVerboseEntryName(string verboseLine) =>
-        verboseLine.StartsWith("a ", StringComparison.Ordinal) ? verboseLine[2..] : verboseLine;
+    private static string? ParseTarVerboseEntryName(string verboseLine) =>
+        verboseLine.StartsWith("a ", StringComparison.Ordinal) ? verboseLine[2..] : null;
 
     // Maps the selected container format + the existing ZIP CompressionLevel enum (reused as the
     // UI-facing knob rather than inventing a second one) to tar.exe's real
