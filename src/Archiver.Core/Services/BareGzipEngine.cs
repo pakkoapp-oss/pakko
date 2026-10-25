@@ -102,14 +102,21 @@ internal sealed class BareGzipEngine(GroupPolicyOptions policy)
             if (!await PassesRatioCheckAsync(archivePath, measured.Length, options, skipped).ConfigureAwait(false))
                 return null;
 
-            if (await PlanAsync(archivePath, Path.GetFullPath(Path.Combine(options.DestinationFolder, name)), name, measured, conflictResolver, names, errors, skipped)
+            // The file lands in the destination itself, never beside or above it.
+            string target = Path.GetFullPath(Path.Combine(options.DestinationFolder, name));
+            if (!string.Equals(Path.GetDirectoryName(target), Path.TrimEndingDirectorySeparator(Path.GetFullPath(options.DestinationFolder)), StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.UnsafeEntryPath, name)));
+                return null;
+            }
+            if (await PlanAsync(archivePath, target, name, measured, conflictResolver, names, errors, skipped)
                 .ConfigureAwait(false) is not { } plan)
             {
                 return null;
             }
 
             tempPath = ArchiveTempFile.Create(plan.FinalPath);
-            BareGzip.ReadResult written = await Task.Run(() => WriteTemp(archivePath, tempPath, cancellationToken), cancellationToken).ConfigureAwait(false);
+            BareGzip.ReadResult written = await Task.Run(() => WriteTemp(archivePath, tempPath, measured.Length, cancellationToken), cancellationToken).ConfigureAwait(false);
             if (written.Damaged || written.Length != measured.Length)
             {
                 errors.Add(CoreMessages.Error(archivePath, Damaged(MessageCode.CannotExtractArchive)));
@@ -142,10 +149,11 @@ internal sealed class BareGzipEngine(GroupPolicyOptions policy)
         }
     }
 
-    private static BareGzip.ReadResult WriteTemp(string archivePath, string tempPath, CancellationToken cancellationToken)
+    // The second read may not give more than the first measured: a file swapped in between stops.
+    private static BareGzip.ReadResult WriteTemp(string archivePath, string tempPath, long measuredLength, CancellationToken cancellationToken)
     {
         using var output = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        return BareGzip.Read(archivePath, output, cancellationToken);
+        return BareGzip.Read(archivePath, output, cancellationToken, measuredLength);
     }
 
     // T-F94: the whole stream's real size against the file's, as for a tar.

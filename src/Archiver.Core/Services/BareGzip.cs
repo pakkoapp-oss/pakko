@@ -16,9 +16,11 @@ internal static class BareGzip
 {
     private const int TarBlock = 512;
     private const int CopyBuffer = 81920;
-    // DeflateStream reads its input 8 KiB at a time, so it stops at most that far past the end
-    // of the compressed data; the trailer is looked for in this much before where it stopped.
-    private const int TrailerWindow = 64 * 1024;
+    private const int TrailerLength = 8;
+    // The head is read across members (an empty member may come first, as bsdtar reads past it),
+    // with at most this much compressed input fed a byte at a time; past it the stream stays on
+    // the tar route undecided.
+    private const int HeadInputLimit = 1024 * 1024;
     private const byte FlagHeaderCrc = 0x02, FlagExtra = 0x04, FlagName = 0x08, FlagComment = 0x10, FlagReserved = 0xE0;
 
     /// <summary>What reading the stream found.</summary>
@@ -41,9 +43,8 @@ internal static class BareGzip
             using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             if (ReadHeader(file) is null)
                 return false;
-            using var inflate = new DeflateStream(file, CompressionMode.Decompress);
             byte[] head = new byte[TarBlock];
-            int? length = ReadHead(inflate, head);
+            int? length = ReadHead(file, head);
             return length is { } read && !OpensAsAnArchive(head.AsSpan(0, read));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException
@@ -53,23 +54,40 @@ internal static class BareGzip
         }
     }
 
-    // As much of the start as decompresses (no trailer is checked here): a stream damaged further
-    // on is still one file, and the engine reports the damage. Null when not one byte decompresses
-    // before the damage - the tar route reports such a file as before.
-    private static int? ReadHead(DeflateStream inflate, byte[] head)
+    // As much of the start as decompresses, member after member (no trailer is checked here): a
+    // stream damaged further on is still one file, and the engine reports the damage. Null when not
+    // one byte decompresses before the damage, or the head needs more input than HeadInputLimit -
+    // the tar route reports such a file as before. The file is past the first member's header.
+    private static int? ReadHead(FileStream file, byte[] head)
     {
         int length = 0;
-        try
+        long fed = 0;
+        while (true)
         {
-            int read;
-            while (length < head.Length && (read = inflate.Read(head, length, head.Length - length)) > 0)
-                length += read;
+            long dataStart = file.Position;
+            var input = new FeedStream(file, fastBytes: 0, HeadInputLimit - fed);
+            bool memberEnded;
+            try
+            {
+                using var inflate = new DeflateStream(input, CompressionMode.Decompress, leaveOpen: true);
+                int read;
+                while (length < head.Length && (read = inflate.Read(head, length, head.Length - length)) > 0)
+                    length += read;
+                memberEnded = length < head.Length;
+            }
+            catch (InvalidDataException)
+            {
+                return length > 0 ? length : null;
+            }
+            fed += input.BytesRead;
+            if (input.LimitReached)
+                return null;
+            if (!memberEnded)
+                return length;
+            file.Position = dataStart + input.BytesRead + TrailerLength;
+            if (file.Position >= file.Length || ReadHeader(file) is null)
+                return length;
         }
-        catch (InvalidDataException)
-        {
-            return length > 0 ? length : null;
-        }
-        return length;
     }
 
     // What tar.exe reads inside a gzip: a tar (a header whose checksum holds, or the zero block of
@@ -148,11 +166,20 @@ internal static class BareGzip
             if (name.Length > extension.Length + 1 && name[^(extension.Length + 1)] == '.'
                 && name.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
             {
-                return (name[..^(extension.Length + 1)] + added).TrimEnd();
+                return Usable(name[..^(extension.Length + 1)] + added);
             }
         }
         int dot = name.LastIndexOf('.');
-        return (dot > 0 ? name[..dot] : name + "~").TrimEnd();
+        return Usable(dot > 0 ? name[..dot] : name + "~");
+    }
+
+    // A name Windows writes as itself: "...gz" would be "..", " .gz" empty - the destination's
+    // parent or the destination itself. Trailing dots and spaces go, as Windows drops them; a name
+    // left empty is '_' (7-Zip's k_EmptyReplaceName, as EntryDiskName).
+    private static string Usable(string name)
+    {
+        string trimmed = name.TrimEnd(' ', '.');
+        return trimmed.Length == 0 ? "_" : trimmed;
     }
 
     private static readonly (string Extension, string Added)[] Extensions =
@@ -161,10 +188,12 @@ internal static class BareGzip
     /// <summary>
     /// Decompresses every member of <paramref name="path"/> into <paramref name="destination"/>
     /// (or nowhere, to test or measure it) and checks each member's CRC-32 and size against its
-    /// trailer. Throws <see cref="IOException"/> or <see cref="UnauthorizedAccessException"/>
-    /// when a file cannot be read or written, <see cref="OperationCanceledException"/> on cancel.
+    /// trailer. Past <paramref name="limit"/> decompressed bytes it stops as damaged (the file
+    /// changed since it was measured). Throws <see cref="IOException"/> or
+    /// <see cref="UnauthorizedAccessException"/> when a file cannot be read or written,
+    /// <see cref="OperationCanceledException"/> on cancel.
     /// </summary>
-    public static ReadResult Read(string path, Stream? destination, CancellationToken cancellationToken)
+    public static ReadResult Read(string path, Stream? destination, CancellationToken cancellationToken, long limit = long.MaxValue)
     {
         using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.SequentialScan);
         long total = 0;
@@ -192,6 +221,8 @@ internal static class BareGzip
                 while ((read = inflate.Read(buffer, 0, buffer.Length)) > 0)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (read > limit - total - memberLength)
+                        return new ReadResult(total + memberLength, Damaged: true, modified);
                     crc.Update(buffer.AsSpan(0, read));
                     destination?.Write(buffer, 0, read);
                     memberLength += read;
@@ -203,10 +234,10 @@ internal static class BareGzip
             }
             total += memberLength;
 
-            long? trailer = FindTrailer(file, dataStart, dataStart + counted.BytesRead, crc.Finish(), (uint)memberLength);
-            if (trailer is not { } at)
+            long dataEnd = ExactDataEnd(file, dataStart, counted.BytesRead - counted.LastRead, buffer, cancellationToken);
+            if (!TrailerIsAt(file, dataEnd, crc.Finish(), (uint)memberLength))
                 return new ReadResult(total, Damaged: true, modified);
-            position = at + 8;
+            position = dataEnd + TrailerLength;
         }
         while (position < file.Length);
         return new ReadResult(total, Damaged: false, modified);
@@ -216,6 +247,7 @@ internal static class BareGzip
     // member header or ends early. Returns the member's MTIME.
     private static uint? ReadHeader(FileStream file)
     {
+        long headerStart = file.Position;
         Span<byte> fixedPart = stackalloc byte[10];
         if (file.ReadAtLeast(fixedPart, 10, throwOnEndOfStream: false) < 10
             || fixedPart[0] != 0x1F || fixedPart[1] != 0x8B || fixedPart[2] != 8 || (fixedPart[3] & FlagReserved) != 0)
@@ -234,9 +266,31 @@ internal static class BareGzip
             return null;
         if ((flags & FlagComment) != 0 && !SkipZeroTerminated(file))
             return null;
-        if ((flags & FlagHeaderCrc) != 0)
-            file.Position += 2;
+        if ((flags & FlagHeaderCrc) != 0 && !HeaderCrcHolds(file, headerStart))
+            return null;
         return file.Position <= file.Length ? BinaryPrimitives.ReadUInt32LittleEndian(fixedPart[4..8]) : null;
+    }
+
+    // FHCRC: the low 16 bits of the CRC-32 of every header byte before it (RFC 1952, 2.3.1).
+    private static bool HeaderCrcHolds(FileStream file, long headerStart)
+    {
+        long crcAt = file.Position;
+        if (crcAt + 2 > file.Length)
+            return false;
+        var crc = new Crc32.Accumulator();
+        byte[] chunk = new byte[4096];
+        file.Position = headerStart;
+        for (long left = crcAt - headerStart; left > 0;)
+        {
+            int read = file.Read(chunk, 0, (int)Math.Min(chunk.Length, left));
+            if (read <= 0)
+                return false;
+            crc.Update(chunk.AsSpan(0, read));
+            left -= read;
+        }
+        Span<byte> stored = stackalloc byte[2];
+        file.ReadExactly(stored);
+        return BinaryPrimitives.ReadUInt16LittleEndian(stored) == (ushort)crc.Finish();
     }
 
     private static bool SkipZeroTerminated(FileStream file)
@@ -249,53 +303,79 @@ internal static class BareGzip
         return b == 0;
     }
 
-    // Where the member's 8-byte trailer (CRC-32, size mod 2^32) starts: in the window before where
-    // DeflateStream stopped reading, the first place the trailer's bytes are followed by the end of
-    // the file or by the next member. An empty member's trailer is eight zeros, which its own
-    // compressed bytes may hold too, so what follows decides.
-    private static long? FindTrailer(FileStream file, long dataStart, long readEnd, uint crc, uint size)
+    // Where the member's compressed data ends, to the byte. DeflateStream reads its input in
+    // blocks and tells nothing of what it left unread (measured: a seekable stream stays at the
+    // block's end), so the member is inflated again with the input fed a byte at a time from the
+    // block in which the first pass ended - the end lies in that block. Costs a second inflate.
+    private static long ExactDataEnd(FileStream file, long dataStart, long lastBlockStart, byte[] buffer, CancellationToken cancellationToken)
     {
-        Span<byte> trailer = stackalloc byte[8];
-        BinaryPrimitives.WriteUInt32LittleEndian(trailer, crc);
-        BinaryPrimitives.WriteUInt32LittleEndian(trailer[4..], size);
-
-        long from = Math.Max(dataStart, readEnd - TrailerWindow);
-        long to = Math.Min(file.Length, readEnd + trailer.Length + NextHeader.Length);
-        if (to - from < trailer.Length)
-            return null;
-        byte[] window = new byte[to - from];
-        file.Position = from;
-        file.ReadExactly(window);
-        for (int start = 0; start + trailer.Length <= window.Length; start++)
+        file.Position = dataStart;
+        var input = new FeedStream(file, lastBlockStart, long.MaxValue);
+        using (var inflate = new DeflateStream(input, CompressionMode.Decompress, leaveOpen: true))
         {
-            int index = window.AsSpan(start).IndexOf(trailer);
-            if (index < 0)
-                return null;
-            int after = start + index + trailer.Length;
-            if (from + after == file.Length || window.AsSpan(after).StartsWith(NextHeader))
-                return from + start + index;
-            start += index;
+            while (inflate.Read(buffer, 0, buffer.Length) > 0)
+                cancellationToken.ThrowIfCancellationRequested();
         }
-        return null;
+        return dataStart + input.BytesRead;
     }
 
-    private static ReadOnlySpan<byte> NextHeader => [0x1F, 0x8B, 0x08];
+    // The 8-byte trailer (CRC-32, size mod 2^32) right where the compressed data ends.
+    private static bool TrailerIsAt(FileStream file, long at, uint crc, uint size)
+    {
+        if (at + TrailerLength > file.Length)
+            return false;
+        Span<byte> stored = stackalloc byte[TrailerLength];
+        file.Position = at;
+        file.ReadExactly(stored);
+        return BinaryPrimitives.ReadUInt32LittleEndian(stored) == crc && BinaryPrimitives.ReadUInt32LittleEndian(stored[4..]) == size;
+    }
 
-    // Counts what DeflateStream took from the file, so the trailer is looked for where it stopped.
+    // Counts what DeflateStream took from the file and the size of its last read.
     private sealed class CountingStream(Stream inner) : Stream
     {
         public long BytesRead { get; private set; }
+        public int LastRead { get; private set; }
 
-        public override int Read(byte[] buffer, int offset, int count)
+        public override int Read(byte[] buffer, int offset, int count) => Count(inner.Read(buffer, offset, count));
+
+        public override int Read(Span<byte> buffer) => Count(inner.Read(buffer));
+
+        private int Count(int read)
         {
-            int read = inner.Read(buffer, offset, count);
-            BytesRead += read;
+            if (read > 0)
+            {
+                LastRead = read;
+                BytesRead += read;
+            }
             return read;
         }
 
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { /* read-only */ }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    // Gives DeflateStream its input as it asks up to fastBytes, then one byte a read, so the bytes
+    // it took are exactly what it decoded; stops (as the end of input) at limit bytes.
+    private sealed class FeedStream(Stream inner, long fastBytes, long limit) : Stream
+    {
+        public long BytesRead { get; private set; }
+        public bool LimitReached => BytesRead >= limit;
+
+        public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
+
         public override int Read(Span<byte> buffer)
         {
-            int read = inner.Read(buffer);
+            if (buffer.IsEmpty || LimitReached)
+                return 0;
+            long allowed = BytesRead < fastBytes ? fastBytes - BytesRead : 1;
+            int read = inner.Read(buffer[..(int)Math.Min(buffer.Length, Math.Min(allowed, limit - BytesRead))]);
             BytesRead += read;
             return read;
         }

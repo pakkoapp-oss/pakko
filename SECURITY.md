@@ -128,6 +128,18 @@ practice a gzip that reaches this check is decompressed once in full, outside th
 and processor limits (7 GiB of zeros behind a 32 MB archive: 0.9 s). bzip2, xz and zstd have no decoder in .NET, so such a tar is not
 read in-process and keeps the refusal.
 
+**A gzip of one file (T-F413, v1.9.0) is decompressed in-process.** tar.exe cannot read one (its raw
+reader cannot be asked for), so Pakko does, with the same `DeflateStream` it uses for ZIP - no new
+decoder. It is chosen only when the start of the stream, read across members, holds no tar header
+and no signature of a format tar.exe opens; a tar.gz stays on the sandboxed route and its
+pre-scan. Every member's header (with its FHCRC when set), its CRC-32 and size are checked, the
+trailer exactly where the compressed data ends; the compression-ratio check runs on the measured
+size before anything is written; the file is written to a temp file next to the target and
+committed, never written past the measured size; the name comes from the archive's own name (never
+from the header's FNAME), never dots or spaces only, and the target must be in the destination
+itself. Like the ZIP path, this runs unsandboxed in-process (see "Known Limitations": a native
+decompression bug would run with the user's rights). bzip2 and xz of one file are not read.
+
 **ZIP extraction: staged, checked per entry, verified (v1.5.0)**
 - **Integrity.** Every extracted entry's content CRC-32 is checked against its header (AE-2
   encrypted entries carry no CRC — their HMAC authenticates them instead), and no entry may produce
