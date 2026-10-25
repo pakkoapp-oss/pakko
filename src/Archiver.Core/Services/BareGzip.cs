@@ -39,20 +39,37 @@ internal static class BareGzip
         try
         {
             using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-            Span<byte> magic = stackalloc byte[2];
-            if (file.ReadAtLeast(magic, 2, throwOnEndOfStream: false) < 2 || magic[0] != 0x1F || magic[1] != 0x8B)
+            if (ReadHeader(file) is null)
                 return false;
-            file.Position = 0;
-            using var gzip = new GZipStream(file, CompressionMode.Decompress);
+            using var inflate = new DeflateStream(file, CompressionMode.Decompress);
             byte[] head = new byte[TarBlock];
-            int length = gzip.ReadAtLeast(head, TarBlock, throwOnEndOfStream: false);
-            return !OpensAsAnArchive(head.AsSpan(0, length));
+            int? length = ReadHead(inflate, head);
+            return length is { } read && !OpensAsAnArchive(head.AsSpan(0, read));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException
             or ArgumentException or NotSupportedException)
         {
             return false;
         }
+    }
+
+    // As much of the start as decompresses (no trailer is checked here): a stream damaged further
+    // on is still one file, and the engine reports the damage. Null when not one byte decompresses
+    // before the damage - the tar route reports such a file as before.
+    private static int? ReadHead(DeflateStream inflate, byte[] head)
+    {
+        int length = 0;
+        try
+        {
+            int read;
+            while (length < head.Length && (read = inflate.Read(head, length, head.Length - length)) > 0)
+                length += read;
+        }
+        catch (InvalidDataException)
+        {
+            return length > 0 ? length : null;
+        }
+        return length;
     }
 
     // What tar.exe reads inside a gzip: a tar (a header whose checksum holds, or the zero block of

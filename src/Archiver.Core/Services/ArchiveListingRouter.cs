@@ -45,8 +45,11 @@ public sealed class ArchiveListingRouter : IArchiveListingRouter
         if (classification.Unsupported.Count > 0)
             return CoreMessages.ListFailure(classification.Unsupported[0].Text!);
 
-        return classification.ZipPaths.Count > 0
-            ? await _archiveService.ListEntriesAsync(archivePath, cancellationToken).ConfigureAwait(false)
+        if (classification.ZipPaths.Count > 0)
+            return await _archiveService.ListEntriesAsync(archivePath, cancellationToken).ConfigureAwait(false);
+        // T-F413: a gzip of one file, which tar.exe cannot read.
+        return BareGzip.IsBareGzip(archivePath)
+            ? await BareGzipEngine.ListAsync(archivePath, cancellationToken).ConfigureAwait(false)
             : await _tarService.ListEntriesAsync(archivePath, cancellationToken).ConfigureAwait(false);
     }
 }
