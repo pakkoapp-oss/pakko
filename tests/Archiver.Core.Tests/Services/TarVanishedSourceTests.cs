@@ -91,6 +91,50 @@ public sealed class TarVanishedSourceTests : IDisposable
             e => e.Text!.Code == MessageCode.SourceNotFound && e.SourcePath == gone.SourcePath);
     }
 
+    // T-F396: in 13 of 200 runs (bsdtar 3.8.8, 2026-10-25) the stale buffer overwrote the words
+    // "Couldn't visit directory" too, leaving a fragment of the environment and the errno text.
+    [Theory]
+    [InlineData(@"tar.exe: odules;C:\Program Fi????: No such file or directory")]
+    [InlineData(@"tar.exe: rogram Files\Eclipse????" +"\u0002: No such file or directory")]
+    public void ReportCreationFailure_GarbledLineWithoutTheVisitWords_StillNamesTheVanishedSource(string garbledLine)
+    {
+        TarSandboxedService.ListedSource gone = Listed("folder", create: false);
+        List<TarSandboxedService.ListedSource> list = [gone, Listed("staying.txt", create: true)];
+        var errors = new List<ArchiveError>();
+        string stdErr = garbledLine + "\na staying.txt\ntar.exe: Error exit delayed from previous errors\n";
+
+        TarSandboxedService.ReportCreationFailure(stdErr, list, errors, Path.Combine(_temp.Path, "out.tar"));
+
+        errors.Should().Contain(e => e.Text!.Code == MessageCode.SourceNotFound && e.SourcePath == gone.SourcePath);
+        errors.Should().NotContain(e => e.Text!.Code == MessageCode.TarSourceUnreadable);
+        errors.Should().NotContain(e => e.Message.Contains("No such file or directory"));
+    }
+
+    [Fact]
+    public void ReportCreationFailure_NothingVanished_KeepsTarsMissingFileLine()
+    {
+        List<TarSandboxedService.ListedSource> list = [Listed("staying.txt", create: true)];
+        var errors = new List<ArchiveError>();
+        const string stdErr = "tar.exe: src/inner.txt: Couldn't open: No such file or directory\ntar.exe: Error exit delayed from previous errors\n";
+
+        TarSandboxedService.ReportCreationFailure(stdErr, list, errors, Path.Combine(_temp.Path, "out.tar"));
+
+        errors.Should().NotContain(e => e.Text!.Code == MessageCode.SourceNotFound);
+        errors.Should().Contain(e => e.Message.Contains("src/inner.txt: Couldn't open"));
+    }
+
+    [Fact]
+    public void ReportCreationFailure_VisitLineAndNothingVanished_SaysASourceCouldNotBeRead()
+    {
+        List<TarSandboxedService.ListedSource> list = [Listed("staying.txt", create: true)];
+        var errors = new List<ArchiveError>();
+        const string stdErr = "tar.exe: : Couldn't visit directory: No such file or directory\ntar.exe: Error exit delayed from previous errors\n";
+
+        TarSandboxedService.ReportCreationFailure(stdErr, list, errors, Path.Combine(_temp.Path, "out.tar"));
+
+        errors.Should().Contain(e => e.Text!.Code == MessageCode.TarSourceUnreadable);
+    }
+
     [Fact]
     public void ReportVanished_FolderSource_CountsAsExisting()
     {

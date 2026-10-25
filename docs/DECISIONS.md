@@ -14347,6 +14347,20 @@ list) are unchanged: the leak went to an unsandboxed process Pakko itself starte
     the recursive delete, and was reported "not deleted": such a folder now only goes to the Recycle
     Bin. Core already marks it Partial, so this is a second line, not reachable today.
 
+## T-F396 - a vanished source is found by the file system, not by tar.exe's words (2026-10-25)
+
+T-F390 named a vanished source when tar.exe's stderr held "Couldn't visit directory". Measured on
+bsdtar 3.8.8 (200 runs, a missing folder first on the `-T -` list, one existing file after it): the
+path in that line is always a stale buffer, a piece of the environment block that changes per run,
+and in 13 runs the buffer also overwrote the words themselves, leaving only `<piece>: No such file or
+directory`. Text that tar.exe does not write reliably cannot decide anything. Chosen: on every failed
+creation `ReportVanished` checks each listed source's existence (the platform as the oracle); the
+"Couldn't visit" line only chooses between `TarSourceUnreadable` and nothing when no source vanished.
+When Pakko has named a vanished source, every tar.exe line ending in ": No such file or directory" is
+dropped from `TarCreationFailed`: its name cannot be trusted, and keeping a deeper missing file's
+line is not worth showing a piece of the user's environment. Rejected: matching the errno text alone
+as the trigger (a missing file inside a source writes it too, and no source has vanished then).
+
 ## T-F411, wave D: how `pakko` reads a command line, as 7-Zip does (2026-10-18)
 
 - **Measured first** (vendored `7za.exe` 26.02): `X a.zip`, `L`, `A` and `-y x a.zip` exit 0;

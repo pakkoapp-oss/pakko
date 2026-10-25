@@ -13404,6 +13404,33 @@ PowerShell does natively.
   `canary-status` and `canary-alert` name the repository through `GH_REPO`. `docs/DECISIONS.md`,
   "T-F423".
 
+### T-F396 — A vanished-source test failed once beside the other test projects (P3)
+
+- [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream B). **Was:** open. 2026-10-12, one full default run on the T-F342 wave 2 branch:
+  `TarSandboxedServiceVanishedSourceTests.CompressAsync_FolderRemovedJustBeforeTarStarts_IsNamedByPakko`
+  failed in 519 ms, its output holding `tar.exe: Error exit delayed from previous errors`, while
+  the other test projects ran beside it. The class alone then passed three times and the whole
+  project twice (240 of 240). The test creates a plain tar and asks nothing about 7z, so the
+  writer probe change of that branch is not in its path. Not known: which assertion failed and
+  tar.exe's whole stderr (the run's output was filtered to totals). T-F390 measured that tar.exe's
+  text for a missing list entry differs from run to run; if this is a wording Pakko does not
+  recognise, the vanished source is not named by Pakko and that is a product gap, not a test
+  fault. Next: run the class in a loop beside a CPU load, keeping the whole output.
+- **Reported by:** the full test run before the probe fix was pushed, 2026-10-12.
+- **Result:** a product gap, not a test fault. The class passed 40 runs in a row beside a load on
+  every core; measured instead, 200 runs of tar.exe with a missing folder on its `-T -` list (as
+  Pakko builds it): all exit 1, and the name in the error line is never the folder but a stale
+  buffer, a fragment of the environment block (PATH, other variables) that differs every run. In 13
+  of 200 runs that buffer overwrote the words "Couldn't visit directory" as well, leaving
+  `<fragment>: No such file or directory`; Pakko named a vanished source only when those words were
+  there, so the source went unnamed and the fragment was shown in `TarCreationFailed`.
+  `ReportCreationFailure` now asks the file system which sources are gone on every failure, and when
+  one is, drops tar.exe's "...: No such file or directory" lines (a missing file deeper in the same
+  run loses its line too; Pakko's own `SourceNotFound` stands for it). Tests on the measured texts in
+  `TarVanishedSourceTests`, red before; a mutant that keeps the lines fails them.
+- **1.9.0 CHANGELOG:** fixed - when a folder being archived to a tar-family format was removed just
+  before tar.exe started, Pakko sometimes did not name it and showed a garbled tar.exe line instead.
+
 ### T-F416 — `tar.exe` lists a UTF-8 name outside the ANSI code page as `????.txt` (P2, from T-F410)
 
 - [x] **Status:** done 2026-10-18 (T-F410 wave B). Measured 2026-10-18 on the Windows 10 VM (bsdtar 3.5.2, ACP 1252): a tar
