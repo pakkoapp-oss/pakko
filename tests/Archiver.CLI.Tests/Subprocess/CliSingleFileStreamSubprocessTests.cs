@@ -47,6 +47,7 @@ public sealed class CliSingleFileStreamSubprocessTests : IAsyncLifetime
         exitCode.Should().Be(0, stdErr);
         Gunzip(Output("out.gz")).Should().Be(Text, "no tar header: the stream is the file's bytes alone");
         new FileInfo(Output("out.gz")).Length.Should().BeLessThan(Text.Length);
+        File.ReadAllBytes(Output("out.gz")).AsSpan(4, 4).ToArray().Should().Equal([0, 0, 0, 0], "MTIME 0: raw gzip would store the time of compression");
     }
 
     [RequiresTarCapability("xz")]

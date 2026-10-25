@@ -2402,7 +2402,11 @@ public sealed class TarSandboxedService : ITarService
         };
 
         tarArgs.Add("--options");
-        tarArgs.Add($"{moduleName}:compression-level={numericLevel}");
+        // T-F413: raw gzip would store the time of compression, not the file's (measured on
+        // 3.8.9); no time is better than a wrong one for the reader that sets it on the file.
+        tarArgs.Add(format == ArchiveContainerFormat.GZip
+            ? $"{moduleName}:compression-level={numericLevel},{moduleName}:!timestamp"
+            : $"{moduleName}:compression-level={numericLevel}");
         // T-F413: the file's bytes alone, through the codec - no tar header, no name stored.
         if (ArchiveFormatPolicy.IsSingleFileFormat(format))
         {
