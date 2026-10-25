@@ -137,4 +137,97 @@ public sealed class CliSingleFileStreamSubprocessTests : IAsyncLifetime
         exitCode.Should().Be(7, stdErr);
         File.Exists(Output("out.xz")).Should().BeFalse();
     }
+
+    // --- Reading a gzip of one file (x, t, l), which tar.exe cannot: .NET's own gzip makes it ---
+
+    private string BareGz(string name, string text)
+    {
+        string path = Output(name);
+        using (FileStream file = File.Create(path))
+        using (var gzip = new GZipStream(file, CompressionLevel.Optimal))
+            gzip.Write(System.Text.Encoding.UTF8.GetBytes(text));
+        return path;
+    }
+
+    [Fact]
+    public void Extract_BareGzip_WritesTheFileNamedAfterTheArchive()
+    {
+        string archive = BareGz("notes.txt.gz", Text);
+        string dir = Output("x");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", $"-o{dir}", archive);
+
+        exitCode.Should().Be(0, stdErr);
+        Directory.GetFileSystemEntries(dir).Select(Path.GetFileName).Should().Equal("notes.txt");
+        File.ReadAllText(Path.Combine(dir, "notes.txt")).Should().Be(Text);
+    }
+
+    [Fact]
+    public void Extract_BareGzip_ToStdout_IsTheBytes()
+    {
+        string archive = BareGz("notes.txt.gz", Text);
+
+        (int exitCode, byte[] stdOut, string stdErr) = CliProcessRunner.RunWithBinaryStdio([], "x", "-so", archive);
+
+        exitCode.Should().Be(0, stdErr);
+        System.Text.Encoding.UTF8.GetString(stdOut).Should().Be(Text);
+    }
+
+    // T-F415 on this route: -aos keeps the file, names it, exits 0; the default skip exits 1.
+    [Fact]
+    public void Extract_BareGzip_OverAnExistingFile_AosIsZero_DefaultIsOne()
+    {
+        string archive = BareGz("notes.txt.gz", Text);
+        string dir = Output("x");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "notes.txt"), "kept");
+
+        (int aosExit, _, string aosErr) = CliProcessRunner.Run("x", "-aos", $"-o{dir}", archive);
+        (int defaultExit, _, string defaultErr) = CliProcessRunner.Run("x", $"-o{dir}", archive);
+
+        aosExit.Should().Be(0, aosErr);
+        aosErr.Should().Contain("pakko: skipped: notes.txt: File already exists at destination.");
+        defaultExit.Should().Be(1, defaultErr);
+        File.ReadAllText(Path.Combine(dir, "notes.txt")).Should().Be("kept");
+    }
+
+    [Fact]
+    public void Test_BareGzip_IntactIsZero_CutShortIsTwo()
+    {
+        string archive = BareGz("notes.txt.gz", Text);
+        string cut = Output("cut.txt.gz");
+        File.WriteAllBytes(cut, File.ReadAllBytes(archive)[..^5]);
+
+        (int intactExit, _, string intactErr) = CliProcessRunner.Run("t", archive);
+        (int cutExit, _, string cutErr) = CliProcessRunner.Run("t", cut);
+
+        intactExit.Should().Be(0, intactErr);
+        cutExit.Should().Be(2, cutErr);
+        cutErr.Should().Contain("The compressed data is damaged.");
+    }
+
+    [Fact]
+    public void List_BareGzip_ShowsTheOneFile()
+    {
+        string archive = BareGz("notes.txt.gz", Text);
+
+        (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("l", archive);
+
+        exitCode.Should().Be(0, stdErr);
+        stdOut.Should().Contain("notes.txt").And.Contain(Text.Length.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    // Pakko's own -tgzip round-trips through its own x.
+    [RequiresTarExe]
+    public void Gzip_CreatedByPakko_ExtractsBackByPakko()
+    {
+        (int createExit, _, string createErr) = CliProcessRunner.Run("a", "-tgzip", Output("a.txt.gz"), Source("a.txt"));
+        string dir = Output("x");
+
+        (int exitCode, _, string stdErr) = CliProcessRunner.Run("x", $"-o{dir}", Output("a.txt.gz"));
+
+        createExit.Should().Be(0, createErr);
+        exitCode.Should().Be(0, stdErr);
+        File.ReadAllText(Path.Combine(dir, "a.txt")).Should().Be(Text);
+    }
 }
