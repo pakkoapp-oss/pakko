@@ -14220,8 +14220,7 @@ its comment said this "leaks it to no other launch". That held for launches with
 
 Chosen: `DuplicateHandle` with `bInheritHandle` TRUE, the duplicate in the handle list and in
 `hStdInput`, owned by a `SafeFileHandle` and closed when `CreateSuspendedProcess` returns. Rejected:
-clearing the flag on the caller's handle in a `finally` after `CreateProcessW` (the advisor's first
-shape) - a failure there has no good answer once the child exists: throwing orphans the suspended
+clearing the flag on the caller's handle in a `finally` after `CreateProcessW` - a failure there has no good answer once the child exists: throwing orphans the suspended
 child, ignoring it keeps the leak. The duplicate leaves the caller's handle as it was opened and
 needs no step in a `finally` that can fail. SECURITY.md's claims (pipe ends, the sandbox's handle
 list) are unchanged: the leak went to an unsandboxed process Pakko itself started.

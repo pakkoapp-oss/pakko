@@ -13431,6 +13431,21 @@ PowerShell does natively.
 - **1.9.0 CHANGELOG:** fixed - when a folder being archived to a tar-family format was removed just
   before tar.exe started, Pakko sometimes did not name it and showed a garbled tar.exe line instead.
 
+### T-F429 — tar.exe's error lines reached the progress as the current file (P3, from T-F396)
+
+- [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream B). `CompressAsync`'s `OnVerboseLine` took every
+  stderr line, counted it as an entry and passed it whole as `ProgressReport.CurrentFile` when it was
+  not an `a <name>` line. With a vanished source that line is tar.exe's garbled one (T-F396: a piece
+  of the environment block in every run), shown live in Shell's progress dialog and the App's status;
+  the CLI does not print `CurrentFile`. Only an `a <name>` line is an entry now.
+  `CompressAsync_SourceRemovedJustBeforeTarStarts_ProgressNamesOnlyRealEntries`: red before (the
+  "Couldn't visit directory" and "Error exit delayed" lines as current files), green after.
+- **Open:** whether the sandboxed listing and extraction stderr (`DescribeFailure`) carries the same
+  stale buffer was not measured.
+- **Reported by:** stream B's closing review, 2026-10-25.
+- **1.9.0 CHANGELOG:** fixed - while creating a tar-family archive, the progress could show one of
+  tar.exe's error lines as the file being added.
+
 ### T-F416 — `tar.exe` lists a UTF-8 name outside the ANSI code page as `????.txt` (P2, from T-F410)
 
 - [x] **Status:** done 2026-10-18 (T-F410 wave B). Measured 2026-10-18 on the Windows 10 VM (bsdtar 3.5.2, ACP 1252): a tar

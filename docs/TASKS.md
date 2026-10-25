@@ -53,7 +53,7 @@ once; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md are edited by the integra
 | A1 ZIP engine | T-F421, T-F417 | `ZipArchiveService`, `ExtractionRouter` |
 | A2 tar listing, `l` | T-F418, T-F412 (`-slt`) | tar listing parse, `pakko l`, `docs/CLI.md` |
 | A3 CLI create, exit codes | T-F413 (gzip; xz/bz2 measured), T-F415 (`-aos` exits 0) | CLI parser and creation, `docs/CLI.md` |
-| B flaky tests, ARM64 | T-F372, T-F374, T-F376, T-F396, T-F290, T-F425 (done), T-F426 (done), T-F427, T-F428 | tests only; load loops run alone |
+| B flaky tests, ARM64 | done 2026-10-25: T-F372, T-F374, T-F376, T-F396, T-F290, T-F425, T-F426, T-F429; T-F427, T-F428 deferred | tests, and three Core fixes found by them (T-F426, T-F396, T-F429); load loops run alone |
 | C App, on device | T-F393, T-F395, T-F354 (A/B first), T-F399 (`POL-009`), T-F392 (refuse at creation), T-F320 (closed, documented) | App, `TarSandboxedService` creation |
 | D smoke, winget | T-F394, T-F361 | `scripts/`, `scripts/smoke/`, `docs/SMOKE.md` |
 | E localization, Store text | T-F328, T-F91 (layout walk), T-F329 part 5, T-F331 ("What's new") | `.resw`/`.resx`, `Localization.cpp`, `docs/store-listing/` |
@@ -70,7 +70,10 @@ T-F254 (a language pack and a sign-out), T-F332's super hero art (needs the user
 outward steps (the winget-pkgs PR was closed unmerged; a new one needs the user's CLA and Microsoft's
 review), T-F91's native-speaker review (no native speakers), T-F202's light theme, en-US and tray
 (system settings and the user's hands). T-F91's layout walk moves here too if the App cannot switch
-its language without a sign-out or a system setting.
+its language without a sign-out or a system setting. Found by stream B (2026-10-25, the agent's call):
+T-F428 (a change to the sandbox launcher's cancel path that needs a plan; low exposure in the
+product), T-F427 (the real AMSI path cannot be checked while Defender's real-time protection is
+off on this machine).
 
 ---
 
