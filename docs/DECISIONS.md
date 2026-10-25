@@ -13664,6 +13664,34 @@ built `notes.tar.gz` as a gzip of the four bytes `gzip` and expected "cannot be 
 a valid gzip of one file, so it is now tested in process and passes, as in 7-Zip. The test keeps
 its point (never "not supported") and expects "No errors detected".
 
+### T-F413 - the independent review of the gzip reader (2026-10-25)
+
+A read-only reviewer (fresh agent, the strongest model, the user's yes) found, with tests
+(`ReviewBareGzipDefectTests`, red on the merged code):
+
+- **High:** the output name came from the archive's name with the extension cut, so `...gz` gave
+  `..`, `..gz` gave `.` and ` .gz` an empty name; with `-aot` the engine moved the destination's
+  parent (or the destination itself) aside and wrote the file in its place, reporting success.
+  Fixed twice over: a name of dots and spaces only is `_` (trailing dots and spaces go, as Windows
+  drops them), and the engine refuses, with `UnsafeEntryPath`, a target whose folder is not the
+  destination itself. With the name rule mutated away, the `-aot` rows still hold through the
+  second check.
+- **Medium:** the trailer was looked for in a 64 KiB window and accepted at the first match
+  followed by the end or by `1F 8B 08`, so bytes inserted before a trailer passed as clean (gzip -t
+  reports a CRC error) and a crafted match could start an overlapping member. DeflateStream does
+  not say where its input ended (measured: a seekable stream is left at the end of its 8 KiB read,
+  not at the end of the data). The member is now inflated a second time with its input fed a byte
+  at a time from the read in which the first pass ended, which gives the end to the byte, and the
+  trailer must be exactly there. Cost: a second inflate of each member (Deflate decodes far faster
+  than the disk writes; accepted for a format that is rare next to tar.gz).
+- **Low-medium:** the head (512 bytes, tar or not) was read from the first member only, so an empty
+  first member put a tar.gz on this route as one file. The head is now read across members, fed a
+  byte at a time, at most 1 MiB of compressed input (past it: the tar route, as before).
+- **Low:** the header CRC (FHCRC) is now checked; the write pass stops past the length the first
+  pass measured (a file swapped in between). Trailing zero padding after the last member stays
+  "damaged" (gzip and 7-Zip warn and extract): stricter, not unsafe, left as is.
+- The tar listing side (`TarListingName`, `ListedNames`, `EscapeMemberPattern`): nothing serious.
+
 ## T-F418 and T-F412 - tar.exe's escaped names read back, and `l -slt` (2026-10-24)
 
 **T-F418, the cause, from the shipped source.** bsdtar prints every name in a listing through
