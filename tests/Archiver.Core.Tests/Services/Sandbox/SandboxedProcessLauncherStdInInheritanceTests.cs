@@ -21,7 +21,7 @@ public sealed class SandboxedProcessLauncherStdInInheritanceTests
         Process? bystander = null;
         try
         {
-            using (var stdIn = File.OpenHandle(archive, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (Microsoft.Win32.SafeHandles.SafeFileHandle stdIn = File.OpenHandle(archive, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
                     @"C:\Windows\System32\cmd.exe",
