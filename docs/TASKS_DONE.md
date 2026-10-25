@@ -13327,6 +13327,64 @@ PowerShell does natively.
   under a 2 s clock, `HasExited` on a five-second child). Mutants: `Delay(6000)` green; a decoy handle
   in the list instead of the given one fails `ChildInherits`; no handle list fails `ChildDoesNotInherit`.
   That CI's lateness was load is inferred from the 5 s duration, not captured.
+- **Seen also** (found 2026-10-25): `ChildInherits` on runs 39284793134 and 39135827668, and the
+  sibling `ChildDoesNotInherit` on run 40091364840 (`TimeoutException` at its 2 s wait), which is why
+  the sibling changed too.
+
+### T-F426 — The archive's handle went to any process Pakko started while tar.exe ran (P2, from T-F374)
+
+- [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream B). `SandboxedProcessLauncher` handed tar.exe the
+  archive as stdin (T-F233) by marking the caller's handle inheritable, and left it so until the
+  handle was closed after tar.exe exited. The handle list kept it from every other sandboxed launch,
+  but .NET's `Process.Start` calls `CreateProcess` with `bInheritHandles` always TRUE and no list
+  (`Process.Windows.cs`, release/10.0), so a process started meanwhile held the user's archive open,
+  without delete sharing, for its whole life. Now the child gets an inheritable duplicate
+  (`DuplicateHandle`), closed as soon as `CreateProcessW` returns; the caller's handle is never
+  changed. `SandboxedProcessLauncherStdInInheritanceTests` (in the `InheritableHandle` collection)
+  starts a plain process while the child runs and opens the file exclusively after: red before
+  ("being used by another process"), green after.
+- **Exposure in the product:** none known. The App's "Show in folder" starts explorer.exe with
+  `UseShellExecute` false, but the button is hidden while an operation runs (T-F211,
+  `OnIsBusyChanged` clears the outcome line) and the App runs one operation at a time;
+  `ExplorerLauncher` and `DialogService` go through `ShellExecuteEx` (not measured); Shell starts its
+  helper through a handle list (T-F356); the CLI starts nothing else. Not a way out of the sandbox:
+  the copy went to a process Pakko itself started. A window remains between the duplicate and its
+  close, as for the stdout/stderr pipe ends. No CHANGELOG line (no user-visible effect known).
+- **Reported by:** stream B, reading T-F374, 2026-10-25.
+
+### T-F374 — A tar listing test fails once in a while with its archive "in use" (P3)
+
+- [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream B), by T-F426. **Was:** open. `TarSandboxedServiceListEntriesTests.ListEntriesAsync_ReadsModifiedFromTheVerboseListing`
+  failed twice on this machine in full parallel runs (2026-10-10, the second time with the message
+  `IOException: The process cannot access the file 'dates.tar' because it is being used by another
+  process.`) and passed alone both times. The test writes `dates.tar`, lists it through the
+  sandboxed tar.exe, and its `TempDirectory` is deleted at the end; which of the three steps met
+  the open handle is not known (the stack was not kept). Likely the same family as T-F373 (a
+  handle held past its owner while another test class starts a process) or tar.exe still exiting.
+  Next: catch the stack, then fix the cause, not with a retry. Also check T-F372's rate: on
+  2026-10-10 it failed the first attempt of two of four PR runs.
+- **Seen again** 2026-10-18 (T-F411 wave D, a full local run alongside the CLI tests); passed alone
+  at once. Its message was not kept (the run's output was filtered to the test names), so whether
+  it is the same "in use" cause is not known. Next time, keep the full output.
+- **Reported by:** T-F275 step 4b's local run, 2026-10-10.
+- **Result:** T-F426 found and fixed a leak that gives this message: the launcher left the archive's
+  stdin handle (opened with read sharing only) inheritable while tar.exe ran, and any `Process.Start`
+  in another test class at that time (`AgentBashHookTests`' pwsh, `subst`, `mklink`) took a copy for
+  its own life. That this caused the recorded failures is inferred; their stacks were not kept.
+
+### T-F372 — The unsandboxed curl of the socket sandbox test times out on CI (P3)
+
+- [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream B). **Was:** open. `TarSandboxedServiceSandboxBehaviorTests.RunAsync_SocketConnectAttempt_FailsInsideAppContainerButSucceedsUnsandboxed`
+  failed twice on 2026-10-09 within an hour (tag run 37917269113, PR #31's run 37921909953) with
+  `unsandboxedExitCode` 28: curl's own `-m` timeout against the test's loopback listener, which
+  answers every connection with a 200. Both passed on a rerun of the same commit; no failure in the
+  ~20 runs before. Find what the listener or the runner does under load (accept loop, backlog,
+  Defender's network inspection), then fix the test, not the retry count. The two-attempt CI loop
+  does not cover it: `dotnet test` in the `test` job runs once.
+- **Reported by:** v1.7.2 release, 2026-10-09.
+- **Result:** fixed by 96bba576 (2026-10-18, a CI flake on PR #83): the listener answers on its own
+  thread, not the pool, and the unsandboxed curl gets 30 s. No failure of this test in the 46
+  `build.yml` runs since (checked 2026-10-25: every failed first attempt and every failed run).
 
 ### T-F423 — the canary's tar fixture with a Cyrillic name, and its escalation Issue (P2, from the canary)
 
