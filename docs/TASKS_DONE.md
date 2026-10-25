@@ -13037,6 +13037,35 @@ PowerShell does natively.
 - **Reported by:** T-F343's measurement, 2026-10-17.
 - **Result:** `CliArgumentParser`; `CliSevenZipCallerTests`, `CliSevenZipCallerSubprocessTests`; `docs/CLI.md`; `docs/DECISIONS.md` (same entry); smoke `CLI-037`.
 
+### T-F418 — `tar.exe` lists a `\` in an entry name doubled, and Pakko shows it so (P3, from T-F410)
+
+- [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream A2). Measured 2026-10-18 (build 26300): a tar entry `a\b.txt` lists through
+  `tar -tf` as `a\\b.txt` (bsdtar escapes it on output), and `pakko l` shows `a\\b.txt`; a `-T` line
+  needs `a\\b.txt` to name it (`a\b.txt` matches `ab.txt`, `a[\]b.txt` nothing). Next: read how
+  bsdtar's `safe_fprintf` escapes a name, undo exactly that in the listing, and escape `\` in a
+  `-T`/`-X` line by doubling it; then the App, `l`, a selection and a filter agree on the name.
+- **Reported by:** T-F410 wave B's closing review, 2026-10-18.
+- **Result:** bsdtar's `bsdtar_expand_char` escaping (quoted, v3.3.2-v3.8.1) is read back by
+  `TarListingName.Unescape` in the pre-scan and the `-t` listing; a member pattern doubles `\`. A tar
+  entry with a control character is now refused by the pre-scan, as a ZIP is (T-F39).
+  `TarListingNameTests`, `TarSandboxedServiceMemberPatternTests`; `docs/DECISIONS.md`, "T-F418 and T-F412".
+  Follow-up: T-F424 (best-fit names). **1.9.0 CHANGELOG:** fixed - a tar name with `\` is shown, filtered
+  and selected as stored; a tar with a control character in a name is refused, as a ZIP is.
+
+### T-F412 — `pakko l`: 7-Zip's list layout, `-slt`, and the inner tar of a `.tar.gz` (P3, from T-F343, decision first)
+
+- [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream A2). Scoop runs `l` on a `.tar.*` and takes the inner `.tar` name with the regex
+  `[^ ]*tar$`: 7-Zip opens `x.tar.gz` as a gzip stream holding `x.tar` (and `x` extracts the `.tar`
+  file), Pakko reads straight through to the files (one step, by design) and its `l` prints its own
+  tab-separated columns. Decide first: keep Pakko's one step and its columns (Scoop's `.tar.*` path
+  then stays unsupported) or add 7-Zip's layout behind a switch (`-slt`'s `Path = ...` blocks are what
+  most libraries parse). Needs the maintainer's decision; record it in `docs/DECISIONS.md`.
+- **Reported by:** T-F343's measurement, 2026-10-17.
+- **Result:** decided (user, 2026-10-24): one-step reading kept; `pakko l -slt` prints 7-Zip's technical
+  blocks (fields Pakko knows, in 7-Zip's names and order, from List.cpp 26.02); Scoop's inner-tar path
+  is a known difference in `docs/CLI.md`. `CliTechListing`, `CliTechListingTests`, `CliTechListingSubprocessTests`.
+  **1.9.0 CHANGELOG:** added - `pakko l -slt`, 7-Zip's technical listing.
+
 ### T-F421 — ZIP separate archives: `a.txt` and `a.zip` both become `a.zip` (P2, from T-F420's independent review, reproduce first)
 
 - [x] **Status:** done 2026-10-24 (v1.9.0 wave, stream A1); reported 2026-10-19. The T-F420 independent reviewer, reading

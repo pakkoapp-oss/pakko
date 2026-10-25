@@ -85,19 +85,19 @@ public sealed class TarSandboxedServiceMemberPatternTests : IDisposable
     [Integration]
     public async Task ListEntriesAsync_NameWithABackslash_ListsTheNameItself()
     {
-        string archive = WriteArchive(("a\b.txt", "backslash"), ("x\\y.txt", "two"), ("ab.txt", "plain"));
+        string archive = WriteArchive((@"a\b.txt", "backslash"), ("x\\y.txt", "two"), ("ab.txt", "plain"));
 
         ArchiveListResult listing = await _sut.ListEntriesAsync(archive);
 
         listing.Success.Should().BeTrue(listing.ErrorMessage);
-        listing.Entries.Select(e => e.Path).Should().BeEquivalentTo(["a\b.txt", "x\\y.txt", "ab.txt"]);
+        listing.Entries.Select(e => e.Path).Should().BeEquivalentTo([@"a\b.txt", "x\\y.txt", "ab.txt"]);
     }
 
     // T-F418: a filter is asked the name itself, so "a\b.txt" passes a filter naming it, and not ab.txt.
     [Integration]
     public async Task ExtractAsync_FilterNamingABackslashName_TakesThatEntry()
     {
-        string archive = WriteArchive(("a\b.txt", "backslash"), ("ab.txt", "plain"));
+        string archive = WriteArchive((@"a\b.txt", "backslash"), ("ab.txt", "plain"));
         string destDir = Path.Combine(_temp.Path, "out-" + Path.GetRandomFileName());
 
         ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
@@ -105,12 +105,12 @@ public sealed class TarSandboxedServiceMemberPatternTests : IDisposable
             ArchivePaths = [archive],
             DestinationFolder = destDir,
             Mode = ExtractMode.SingleFolder,
-            EntryFilter = (path, _) => path == "a\b.txt",
+            EntryFilter = (path, _) => path == @"a\b.txt",
         });
 
         result.Errors.Should().BeEmpty();
         Directory.GetFiles(destDir, "*", SearchOption.AllDirectories)
-            .Select(f => Path.GetRelativePath(destDir, f)).Should().Equal(["a\b.txt"]);
+            .Select(f => Path.GetRelativePath(destDir, f)).Should().Equal([@"a\b.txt"]);
     }
 
     // T-F418 / T-F39: the pre-scan used to see "ctl\001.txt", text with no control character in it;
@@ -122,7 +122,7 @@ public sealed class TarSandboxedServiceMemberPatternTests : IDisposable
 
         (ArchiveResult result, Dictionary<string, string> tree) = await ExtractAsync(archive, null);
 
-        result.Errors.Should().ContainSingle();
+        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("unsafe entry path");
         tree.Should().BeEmpty();
     }
 }
