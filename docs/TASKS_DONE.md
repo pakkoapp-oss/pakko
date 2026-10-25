@@ -13307,6 +13307,27 @@ PowerShell does natively.
   `CliTestTempTests` (9; the two location tests seen red before the switch, the sweep tests red
   with the sweep disabled).
 
+### T-F376 — `Start_ChildInheritsTheHandleItWasGiven` failed once on CI (P3)
+
+- [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream B). **Was:** open. `Archiver.Shell.Tests.HandleListProcessTests.Start_ChildInheritsTheHandleItWasGiven`
+  failed on PR #43's run 38070212433 (2026-10-10): "Expected read.IsCompleted to be False because
+  the child holds the write end, but found True". It passed on a rerun of the same commit, which
+  changed nothing in Shell. The read finished while the child should have held the pipe's write
+  end; whether the child exited early on a loaded runner or the handle did not reach it is not
+  known. Next: read the test's timing assumptions, reproduce under load, fix the cause, not with a
+  retry. Failed again on PR #84's run 39107196966 (2026-10-18), the same message, on a change that
+  touched no Shell code.
+- **Reported by:** T-F375's PR, 2026-10-10.
+- **Result:** both failures took 5 s, ping's own lifetime (`-n 6`), and came 7 s into the run, at
+  its peak load: the continuation after `Delay(300)` came after the child had exited by itself and
+  closed the pipe. `Delay(6000)` reproduces the CI message exactly. The test's child now lives until
+  killed (`-n 60`), and the read runs on its own thread (`LongRunning`), since a pool read that has not
+  started yet also reads as "not completed" and would pass a real leak; the sibling
+  `Start_ChildDoesNotInheritAnInheritableHandleItWasNotGiven` gets the same two changes (a pool read
+  under a 2 s clock, `HasExited` on a five-second child). Mutants: `Delay(6000)` green; a decoy handle
+  in the list instead of the given one fails `ChildInherits`; no handle list fails `ChildDoesNotInherit`.
+  That CI's lateness was load is inferred from the 5 s duration, not captured.
+
 ### T-F423 — the canary's tar fixture with a Cyrillic name, and its escalation Issue (P2, from the canary)
 
 - [x] **Status:** done 2026-10-24. `canary-dotnet` failed on 2026-10-22, 23 and 24 (and

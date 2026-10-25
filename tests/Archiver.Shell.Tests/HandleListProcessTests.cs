@@ -14,6 +14,15 @@ public sealed partial class HandleListProcessTests
     private static readonly string Ping = Path.Combine(Environment.SystemDirectory, "ping.exe");
     private static readonly string[] FiveSeconds = ["-n", "6", "127.0.0.1"];
 
+    // T-F376: a test whose verdict needs the child alive runs one that lives until it is killed,
+    // and reads on its own thread: on a loaded runner a continuation came 5 s late, after a
+    // five-second child had exited by itself and closed the pipe.
+    private static readonly string[] UntilKilled = ["-n", "60", "127.0.0.1"];
+
+    private static Task<int> ReadOnOwnThread(AnonymousPipeServerStream pipe) =>
+        Task.Factory.StartNew(() => pipe.Read(new byte[1], 0, 1),
+            CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+
     [Fact]
     public async Task Start_ChildDoesNotInheritAnInheritableHandleItWasNotGiven()
     {
@@ -21,13 +30,13 @@ public sealed partial class HandleListProcessTests
         using var others = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
         using var own = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
 
-        using var child = HandleListProcess.Start(Ping, FiveSeconds, [own.ClientSafePipeHandle]);
+        using var child = HandleListProcess.Start(Ping, UntilKilled, [own.ClientSafePipeHandle]);
         try
         {
             others.DisposeLocalCopyOfClientHandle();
 
             // With every writer gone the read ends; a child holding the write end would keep it open.
-            int read = await others.ReadAsync(new byte[1]).AsTask().WaitAsync(TimeSpan.FromSeconds(2));
+            int read = await ReadOnOwnThread(others).WaitAsync(TimeSpan.FromSeconds(2));
 
             read.Should().Be(0);
             Process.GetProcessById(child.Id).HasExited.Should().BeFalse("the child is still running, so it is not what closed the pipe");
@@ -43,12 +52,12 @@ public sealed partial class HandleListProcessTests
     {
         using var own = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
 
-        using var child = HandleListProcess.Start(Ping, FiveSeconds, [own.ClientSafePipeHandle]);
+        using var child = HandleListProcess.Start(Ping, UntilKilled, [own.ClientSafePipeHandle]);
         try
         {
             own.DisposeLocalCopyOfClientHandle();
 
-            Task<int> read = own.ReadAsync(new byte[1]).AsTask();
+            Task<int> read = ReadOnOwnThread(own);
             await Task.Delay(300);
             read.IsCompleted.Should().BeFalse("the child holds the write end");
 
