@@ -121,13 +121,17 @@ internal static class BareGzip
         }
         if (!digits)
             return false;
-        long sum = 8 * ' ';
+        // Old tars summed signed chars; libarchive takes either sum.
+        long sum = 8 * ' ', signedSum = 8 * ' ';
         for (int i = 0; i < TarBlock; i++)
         {
             if (i < 148 || i >= 156)
+            {
                 sum += block[i];
+                signedSum += (sbyte)block[i];
+            }
         }
-        return sum == stored;
+        return sum == stored || signedSum == stored;
     }
 
     /// <summary>

@@ -70,7 +70,7 @@ public sealed class SingleFileStreamCreationTests : IDisposable
             .Should().Equal(ArchiveContainerFormat.GZip, ArchiveContainerFormat.BZip2, ArchiveContainerFormat.Xz);
 
     [Theory]
-    [InlineData(ArchiveContainerFormat.GZip, CompressionLevel.Optimal, "-z", "gzip:compression-level=4")]
+    [InlineData(ArchiveContainerFormat.GZip, CompressionLevel.Optimal, "-z", "gzip:compression-level=4,gzip:!timestamp")]
     [InlineData(ArchiveContainerFormat.BZip2, CompressionLevel.Fastest, "-j", "bzip2:compression-level=1")]
     [InlineData(ArchiveContainerFormat.Xz, CompressionLevel.SmallestSize, "-J", "xz:compression-level=9")]
     public void AppendCompressionFilterArgs_SingleFileFormat_IsTheCodecInTheRawFormat(
