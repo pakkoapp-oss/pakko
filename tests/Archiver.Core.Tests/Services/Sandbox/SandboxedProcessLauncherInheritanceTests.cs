@@ -9,7 +9,7 @@ namespace Archiver.Core.Tests.Services.Sandbox;
 public sealed class InheritableHandleCollection;
 #pragma warning restore CA1711
 
-// T-F373: the pipe below is inheritable for 500 ms, and any Process.Start another test class runs
+// T-F373: the pipe below is inheritable until the child exists, and any Process.Start another test class runs
 // meanwhile (AgentBashHookTests' pwsh, a mklink junction) inherits it with every other inheritable
 // handle, so EOF waited for that unrelated child. Alone in its collection, nothing else launches.
 [Collection("InheritableHandle")]
@@ -27,22 +27,37 @@ public sealed class SandboxedProcessLauncherInheritanceTests
             System.IO.Pipes.PipeDirection.In, System.IO.HandleInheritability.Inheritable);
 
         using var cts = new CancellationTokenSource();
+        int childId = 0;
         Task<(int, string, string)> child = SandboxedProcessLauncher.RunAsync(
             @"C:\Windows\System32\cmd.exe",
             ["/c", @"C:\Windows\System32\ping.exe -n 6 127.0.0.1 >nul"],
-            new ProcessLaunchOptions(),
+            new ProcessLaunchOptions(OnProcessStarted: id => childId = id),
             cts.Token);
 
-        await Task.Delay(500);
+        // CreateProcessW ran before RunAsync's first await: the child holds a copy or never will.
+        using var childProcess = System.Diagnostics.Process.GetProcessById(childId);
         server.DisposeLocalCopyOfClientHandle();
 
-        byte[] buffer = new byte[1];
-        Task<int> read = server.ReadAsync(buffer, 0, 1);
-        Task finished = await Task.WhenAny(read, Task.Delay(TimeSpan.FromSeconds(2)));
+        // T-F425: ReadAsync on this synchronous pipe blocks a thread-pool thread, and a starved pool
+        // at the end of a CI run held EOF past a 2 s clock. A dedicated thread and the kernel's own
+        // wait on the child judge EOF against the child's lifetime, not the pool's.
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        Task<(int Read, TimeSpan At, bool ChildAliveAfter)> eof = Task.Factory.StartNew(
+            () =>
+            {
+                int read = server.Read(new byte[1], 0, 1);
+                TimeSpan at = clock.Elapsed;
+                return (read, at, !childProcess.WaitForExit(1000));
+            },
+            CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
-        child.IsCompleted.Should().BeFalse("the child must still be running for this to prove anything");
-        finished.Should().BeSameAs(read, "the child must not hold an inherited copy of the pipe");
-        (await read).Should().Be(0);
+        Task finished = await Task.WhenAny(eof, Task.Delay(TimeSpan.FromSeconds(30)));
+        finished.Should().BeSameAs(eof,
+            $"something holds the pipe open (pool threads {ThreadPool.ThreadCount}, pending {ThreadPool.PendingWorkItemCount})");
+        (int bytes, TimeSpan eofAt, bool childAliveAfter) = await eof;
+        bytes.Should().Be(0);
+        childAliveAfter.Should().BeTrue(
+            $"EOF must come while the child runs, not when it exits: the child must not hold an inherited copy of the pipe (EOF after {eofAt.TotalMilliseconds:F0} ms)");
 
         cts.Cancel();
         await FluentActions.Awaiting(() => child).Should().ThrowAsync<OperationCanceledException>();

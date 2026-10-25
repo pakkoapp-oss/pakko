@@ -53,7 +53,7 @@ once; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md are edited by the integra
 | A1 ZIP engine | T-F421, T-F417 | `ZipArchiveService`, `ExtractionRouter` |
 | A2 tar listing, `l` | T-F418, T-F412 (`-slt`) | tar listing parse, `pakko l`, `docs/CLI.md` |
 | A3 CLI create, exit codes | T-F413 (gzip; xz/bz2 measured), T-F415 (`-aos` exits 0) | CLI parser and creation, `docs/CLI.md` |
-| B flaky tests, ARM64 | T-F372, T-F374, T-F376, T-F396, T-F290 | tests only; load loops run alone |
+| B flaky tests, ARM64 | T-F372, T-F374, T-F376, T-F396, T-F290, T-F425 (done) | tests only; load loops run alone |
 | C App, on device | T-F393, T-F395, T-F354 (A/B first), T-F399 (`POL-009`), T-F392 (refuse at creation), T-F320 (closed, documented) | App, `TarSandboxedService` creation |
 | D smoke, winget | T-F394, T-F361 | `scripts/`, `scripts/smoke/`, `docs/SMOKE.md` |
 | E localization, Store text | T-F328, T-F91 (layout walk), T-F329 part 5, T-F331 ("What's new") | `.resw`/`.resx`, `Localization.cpp`, `docs/store-listing/` |

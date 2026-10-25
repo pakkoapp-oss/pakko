@@ -55,6 +55,8 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   **T-F373 (2026-10-10):** a test that holds an inheritable handle and waits for its EOF fails when
   another class in the same assembly `Process.Start`s with redirected stdio meanwhile (the child
   inherits every inheritable handle); such a test goes in its own `DisableParallelization` collection.
+  **T-F425:** `ReadAsync` on a synchronous pipe blocks a pool thread; never race it against a timer
+  (a starved pool fails it). Read on a dedicated thread and judge by the child's state, not a clock.
   **T-F162 (2026-08-11):** a test waiting on `System.Progress<T>`'s callback can time out on a
   loaded runner (it posts to the ThreadPool); use the synchronous hand-rolled `IProgress<T>` fake
   instead (see `docs/DECISIONS.md`'s T-F162 entry).
