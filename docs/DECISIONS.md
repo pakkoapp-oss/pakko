@@ -13372,6 +13372,298 @@ the archive.
   - `docs/CLI.md`: `-sdel` keeps every source when anything in the archive was skipped (Core judges
     one archive as a whole), and an added file is left without a warning.
 
+## T-F413 and T-F415 - one file compressed without tar; -aos exits 0 for files kept by choice
+
+#### T-F415: `x -aos` and the exit code
+
+**Decision (the user's, 2026-10-24, not reopened):** with `-aos` given explicitly, a file kept
+because it already exists still prints `pakko: skipped: <name>: File already exists at
+destination.`, but the exit code is 0, as 7-Zip's. Without `-aos` the default skip keeps T-F313's
+exit 1.
+
+**Rule (CLI, `CliExitCode.For(result, keptExistingByChoice)`):** under `-aos` (and only `-aos`:
+`OverwriteMode == Skip`; `-y` never sets it, `-ao*` wins over `-y`) the exit code is computed from
+the result without
+
+- the files ZIP names in `ArchiveResult.KeptExistingFiles`, and the tar engine's skips of code
+  `FileExistsAtDestination` (the tar engine lists the same case as a skip, which makes the outcome
+  `CompletedWithSkips`; dropping only `KeptExistingFiles` would have left the tar route at 1);
+- ZIP's per-archive `AllEntriesSkipped` ("every entry was skipped") when the rest of the skips are
+  only kept files: Scoop's re-run over an unpacked app keeps every file, and ZIP then adds that
+  line too.
+
+Everything else keeps its code: an error is 2, a warning 1, and every other skip 1 (a link, an
+unsafe entry path, a reserved name, an archive Pakko cannot open, an `AllEntriesSkipped` with no
+kept file behind it - an empty archive is not what `-aos` asked for). The printed lines come from
+the result as it was; only the exit code changes. `FileExistsAtDestination` as a skip code is
+produced only by an automatic conflict keep (`TarSandboxedService.ResolveConflictAsync`,
+`ZipArchiveService` building `KeptExistingFiles`); `RecoveryDataWriter` uses the code only inside
+an error's text.
+
+**Known edge:** several archives in one `x`, one of them empty (its `AllEntriesSkipped` has no
+kept file behind it) and another whose files were all kept: the empty archive's line is dropped
+too, exit 0. `AllEntriesSkipped` names the archive, not the entries, so the CLI cannot pair them.
+
+**An entry lost to an earlier one of the same run keeps exit 1 under `-aos`.** Two entries of
+one name in one archive (a tar's `a.txt` and `A.TXT`, ZIP's duplicate names), or one name that
+two archives of one `x` share, used to be reported with `FileExistsAtDestination` too. That second
+entry is not a file that was there before the run: the run wrote the first and lost the second.
+`-aos` asked to keep existing files, and `PathSpellingAdversarialTests.TarCaseTwin_IsNotSilentlyFolded`
+pins exit 1 for it under `-aos` on purpose (a data-loss case). Core now tells the two apart at the
+decision point of each engine, by "this run already claimed the path" (`ExtractionNameRegistry.Claimed`,
+shared by both engines and across archives; a skipped entry never claims its path, a written one
+claims it before the write): ZIP's `ConflictSkippedEntries` carries `InRun`, the tar engine's
+`ResolveConflictAsync` picks the code. The new code `FileWrittenEarlierInThisRun` has the same
+English text as `FileExistsAtDestination` ("File already exists at destination.") and each
+locale's existing translation of it (copied by script, so the stderr line does not change and
+nothing new needed translating); `CliHints` gives it the same overwrite hint. 7-Zip exits 0 for
+such a twin under `-aos`: recorded as a difference.
+
+**Rejected:** treating every `FileExistsAtDestination` as kept-by-choice (7-Zip's reading, which
+would flip the pinned twin test to 0 and hide a lost entry from a script); keeping exit 1 for
+`-aos` altogether (the user decided otherwise).
+
+#### T-F413: `a -tgzip`, `-tbzip2`, `-txz`
+
+**Measured, `C:\Windows\System32\tar.exe` = `bsdtar 3.8.9 - libarchive 3.8.9 zlib/1.2.13.1-motley
+liblzma/5.8.3 bz2lib/1.0.8 libzstd/1.5.7 cng/2.0 libb2/bundled`, Windows 11 build 26300, ANSI code
+page 1251, OEM 866, in a scratch folder (`f.txt` = `hello raw world\n`):**
+
+| Command | Result |
+|---|---|
+| `tar.exe --help` | lists `--format {ustar\|pax\|cpio\|shar}` only; raw is not in the help |
+| `tar.exe -c --format raw -J -f out1.xz f.txt` | exit 0, 72 bytes, starts `fd 37 7a 58 5a 00`; 7za 26.02 `t`: OK, `e -so`: `hello raw world` |
+| `tar.exe -c --format raw -j -f out2.bz2 f.txt` | exit 0, 53 bytes, `BZh9`; 7za `t` OK, `e -so` gives the text |
+| `tar.exe -c --format raw -z -f out3.gz f.txt` | exit 0; header `1f 8b 08 00 <mtime> 00 03`: no FNAME; 7za `l -slt`: `Path = out3` (the archive's name) |
+| `tar.exe -c --format=raw --xz -f out6.xz f.txt` | exit 0, same 72 bytes |
+| `tar.exe -c --format raw -J -f out4.xz f.txt g.txt` | `tar.exe: g.txt: Raw format only supports one entry per archive`, exit 1, **`out4.xz` left with 0 bytes** |
+| `tar.exe -c --format raw -J -f dir.xz d` (a folder, empty or not) | `tar.exe: d: Raw format only supports filetype AE_IFREG`, exit 1, 0-byte `dir.xz` left |
+| `tar.exe -c -a -f out5.xz f.txt` | exit 0, but a **tar** inside xz (7za lists `out5`, 2048 bytes): `-a` never picks raw |
+| `tar.exe -c --format raw -J -f empty.xz empty.txt` (0 bytes) | exit 0, 32 bytes; 7za `t`: OK, size 0 |
+| 50 MB random file, `--format raw -J` | exit 0, 7za `t` OK |
+| `--format raw -J --options xz:compression-level=9`; `-j --options bzip2:compression-level=1` | exit 0 |
+| `tar.exe -c --format raw -J -f stdin.xz @- < f.txt` | `Unrecognized archive format`, exit 1 (`@-` reads an archive, not a file) |
+| `tar.exe -c --format raw -J -f c.xz -C d x.txt` | exit 0, content of `d\x.txt` |
+| Pakko's own shape: stdin `-C\n<dir>\nf.txt\n` piped to `tar.exe -J --options xz:compression-level=N --format raw --exclude t.tmp -v -cf <dest>\t.tmp -T -`, N = 0, 1, 9, and the same with `-j bzip2` and `-z gzip` | all exit 0, `-v` prints `a f.txt`, 7za `e -so` gives the text |
+| the same with two `-C` groups (two sources) | `Raw format only supports one entry per archive`, exit 1, 0-byte output |
+| the same with a folder | `Raw format only supports filetype AE_IFREG`, exit 1, 0-byte output |
+| the same with an empty file and `-j` | exit 0, 7za `t`: size 0 |
+| `tar.exe -c --format raw -J -f ../o.xz Звіт.txt` (Cyrillic, in ACP 1251) | exit 0, content right |
+| `tar.exe -c --format raw -J -f ../o.xz 中文.txt` (CJK, not in ACP 1251, as an argument) | **segmentation fault**, exit 139, 0-byte output |
+| `tar.exe -c --format raw -J -f ../o2.xz -C ../中文dir p.txt` | `could not chdir to '../??dir'`, exit 1 |
+| Reading: `tar.exe -x -O -f out1.xz`, `tar.exe -t -f out1.xz`, `tar.exe -t -f out3.gz`, `tar.exe -x -f out1.xz -C xo` | all `Error opening archive: Unrecognized archive format`, exit 1: bsdtar does not enable libarchive's raw reader |
+
+| `tar.exe -x --format raw -O -f out1.xz`, `tar.exe -t --format raw -f out1.xz`, the same for `out3.gz`, `out2.bz2` | `Option --format is not permitted in mode -x` (`-t`), exit 1: the raw reader cannot be asked for |
+| `tar.exe -c --format cpio -z -f x.cpio.gz -C cp m.txt`, then `tar.exe -tf x.cpio.gz` | lists `m.txt`, exit 0: a cpio inside gzip opens today |
+| a pax inside gzip, and a zip (`tar -c --format zip`) gzipped raw, then `-tf` | both list `m.txt`, exit 0 |
+| 1024 zero bytes gzipped raw, `-tf` | exit 0, nothing listed (an empty tar) |
+| `hello\n` gzipped raw, `-tf` | `Missing type keyword in mtree specification`, prints `hello`, exit 1: plain text inside gzip is taken for an mtree file |
+
+**.NET's `GZipStream` (measured with a .NET 10 file-based program on the fixtures above):** a
+wrong CRC or a wrong ISIZE throws `InvalidDataException` (with the odd text "The archive entry was
+compressed using an unsupported compression method."); two members decompress to both
+(`one\ntwo\n`); an empty file is 0 bytes and no error; **a stream cut before its trailer and a
+stream followed by other bytes both decompress without any error**. So `GZipStream` alone cannot
+back `t`.
+
+**7-Zip 26.02 (the vendored `7za.exe`), same folder:**
+
+| Command | Result |
+|---|---|
+| `7za a -tgzip made.gz src.txt` | exit 0; header `1f 8b 08 08 <mtime> 04 00 73 72 63 2e 74 78 74 00`: 7-Zip writes FNAME = `src.txt` and the mtime |
+| `7za a -tgzip two.gz src.txt src2.txt` | `System ERROR: The parameter is incorrect.`, exit 2 |
+| `7za a -tgzip fold.gz fold` (a folder) | the same, exit 2 |
+| `7za a -tgzip made.gz src2.txt` over an existing `made.gz` | the same, exit 2 (no update of a stream) |
+| `7za a -txz made src.txt` | exit 0, writes `made.xz` (the extension is added) |
+| `7za a -tbzip2 made.bz2 src.txt` | exit 0 |
+| `7za a -tgz ...`, `7za a -tbz2 ...` | `Unsupported archive type`, exit 2; `-tgzip`, `-tbzip2`, `-txz` work |
+| `7za x outer.gz` (FNAME `inner.txt`) | writes `inner.txt`: the header's name wins over the archive's |
+| `7za x plain.gz` (no FNAME) | writes `plain` |
+| `7za x multi.gz` (two gzip members, `one\n` + `two\n`) | writes `multi` = `one\ntwo\n`; `l` shows size 4 (the last member's ISIZE) |
+| FNAME `..\..\pwn.txt`, `../../pwn2.txt` (hand-built headers) | `pwn.txt`, `pwn2.txt` inside `-o`: the `..` parts dropped |
+| FNAME `C:\Windows\x.txt` | `C_\Windows\x.txt` inside `-o` |
+| FNAME `a/b.txt` | `a\b.txt`: FNAME is read as a path |
+| FNAME `..`, `CON`, `name. ` | `_`, `_CON`, `name__` |
+| `7za t` on a bad CRC, a bad ISIZE, a cut stream, a stream with bytes after it | exit 2: `CRC Failed`, `CRC Failed`, `Unexpected end of data`, `There are some data after the end of the payload data` |
+
+(Python's `gzip.GzipFile(filename="..\\..\\pwn.txt")` writes only the basename `pwn.txt` into
+FNAME - checked with `od` - so the path cases above use headers built byte by byte.)
+
+**7-Zip's naming rule, from the source** (`ip7z/7zip`, branch `main`, fetched 2026-10-24):
+
+`CPP/7zip/Archive/GzHandler.cpp`, the item's path is FNAME when the header has one:
+
+```cpp
+    case kpidPath:
+      if (_item.NameIsPresent())
+        prop = MultiByteToUnicodeString(_item.Name, CP_ACP);
+      break;
+```
+
+and creation writes the source's name without its folder:
+
+```cpp
+        UString name = prop.bstrVal;
+        int slashPos = name.ReverseFind_PathSepar();
+        if (slashPos >= 0)
+          name.DeleteFrontal((unsigned)(slashPos + 1));
+        newItem.Name = UnicodeStringToMultiByte(name, CP_ACP);
+        if (!newItem.Name.IsEmpty())
+          newItem.Flags |= NFlags::kName;
+```
+
+```cpp
+REGISTER_ARC_IO(
+  "gzip", "gz gzip tgz tpz apk", "* * .tar .tar .tar", 0xEF,
+```
+
+`CPP/7zip/UI/Common/OpenArchive.cpp`, an item with no path takes the archive's default name:
+
+```cpp
+  if (result.IsEmpty())
+    return GetItem_DefaultPath(index, result);
+...
+    result = DefaultName;
+```
+
+```cpp
+        int subExtIndex = ai.FindExtension(extension);
+        if (subExtIndex < 0)
+          subExtIndex = 0;
+        const CArcExtInfo &extInfo = ai.Exts[(unsigned)subExtIndex];
+        DefaultName = GetDefaultName2(fileName, extInfo.Ext, extInfo.AddExt);
+```
+
+`CPP/7zip/UI/Common/DefaultName.cpp`: the archive's name without its extension (`.gz` -> nothing,
+`.tgz` -> `.tar`), else without its last dot part, else the name plus `~`:
+
+```cpp
+  if (fileNameLen > extLen + 1)
+  {
+    const unsigned dotPos = fileNameLen - (extLen + 1);
+    if (fileName[dotPos] == '.')
+      if (extension.IsEqualTo_NoCase(fileName.Ptr(dotPos + 1)))
+        return fileName.Left(dotPos) + addSubExtension;
+  }
+  int dotPos = fileName.ReverseFind_Dot();
+  if (dotPos > 0)
+    return fileName.Left((unsigned)dotPos) + addSubExtension;
+  if (addSubExtension.IsEmpty())
+    return fileName + L'~';
+```
+
+**Decision: creation runs through tar.exe's raw format, for all three.** The engine is the
+existing tar creation path (`TarSandboxedService.CompressAsync`, unsandboxed by design for
+creation, absolute path, signature check, T-F266 name checks through the `-T -` list, links left
+out, `-x` filters, the destination conflict, temp file and commit). New: the formats
+`ArchiveContainerFormat.GZip`, `BZip2`, `Xz` (`.gz`, `.bz2`, `.xz`; policy names `gzip`, `bz2`,
+`xz`, the ones reading detects), `ArchiveFormatPolicy.IsSingleFileFormat`, and
+`AppendCompressionFilterArgs` adding `--format raw` after the codec's options. Core refuses two
+sources (one archive) or a folder before tar.exe starts, with `SingleFileFormatNeedsOneFile`
+(`{0} compresses a single file: give exactly one file, not a folder or several files.`, 37
+locales), exit 2 in the CLI as 7-Zip's: tar.exe would refuse it only after creating a 0-byte file.
+One archive per source (`ArchiveMode.SeparateArchives`) takes several files, never a folder. A CJK
+name on a 1251 machine is refused by T-F266 before tar.exe runs (tar.exe crashes on it, measured
+above), as for every tar format.
+
+**Rejected: gzip through .NET's `GZipStream`** (the plan's first idea, the coordinator's, not a
+user decision). It would be a second creation engine for one format: its own conflict handling,
+link and filter rules, temp and commit, progress, policy and naming, all of which the tar path
+already has and tests. Consequences of the choice:
+
+- gzip creation is blocked under `DisableTarExtraction`, like `tar.gz` (tested).
+- Pakko's gzip has no FNAME and an MTIME of 0. tar.exe's raw `-z` writes no FNAME but **the time of
+  compression** as MTIME, not the file's (measured: a source dated 2020-01-01 got `7e a2 dd 6a`,
+  2026-10-25, the moment of the run); a reader that sets the file's time from it (7-Zip, Pakko's own)
+  would stamp a wrong time, so Pakko passes `--options gzip:compression-level=N,gzip:!timestamp`
+  (measured: MTIME `00 00 00 00`, the level still applied, XFL 04 at 1 and 02 at 9, `7za t` OK).
+  7-Zip writes both FNAME and the file's own time. A reader names the output from the archive's
+  name then (7-Zip: `out.gz` -> `out`), so `a -tgzip a.txt.gz a.txt` round-trips; the extracted
+  file gets the time of extraction.
+- The raw writer was measured on 3.8.9 only. `GetTarCreationRefusalReason` reports gzip as
+  creatable on a zlib-only 3.5.2 (Windows 10) without a measurement there: unverified.
+
+**The App and Explorer do not offer these formats** (`CreationFormatOption.IsOffered` is false,
+the card's list unchanged): they are the CLI's 7-Zip compatibility, not archives.
+
+**Names.** `-tgzip`, `-tbzip2`, `-txz` (any case), 7-Zip's format names; `-tgz` and `-tbz2` stay
+unknown (exit 7; 7za: `Unsupported archive type`, exit 2). The name rule of T-F294/T-F296 extends
+so: under a stream type, a name ending in that stream's extension, in no archive type at all, or
+in the tar format of the same codec (`-tgzip x.tar.gz x.tar`, 7-Zip's two-step tar.gz; `.tgz`,
+`.tar.bz2`, `.tbz2`, `.tar.xz`, `.txz` alike) is accepted; another archive type or another stream's
+extension (`-tgzip out.xz`, `-txz out.tar.gz`) is exit 7. A bare `.gz`, `.bz2` or `.xz` name under
+any other type is still written as typed (`-ttar out.gz`, and `a out.gz src` with no `-t` is still
+a ZIP named `out.gz`): T-F221 item 6, the user's decision, stands. 7-Zip would pick gzip from the
+extension there. `-p` with a stream type is exit 7 (`gzip, bzip2 and xz have no encryption`).
+
+**Reading, before this change:** a gzip of one file goes the tar route (its bytes say gzip) and
+tar.exe fails: `Unrecognized archive format`, or for text the mtree line above; `x`, `t` and `l`
+were exit 2 with tar.exe's text. Pakko's own `-tgzip` output could not be read back by Pakko.
+
+**Decision: x, t and l read a gzip of one file in process; bzip2 and xz of one file stay "Can't"
+for reading** (tar.exe has no way to ask for its raw reader, and .NET has no bzip2 or xz decoder;
+a third-party decoder is not allowed). So Pakko writes `.bz2` and `.xz` it cannot read back:
+7-Zip, gzip-compatible tools and `xz`/`bzip2` read them.
+
+- **What is one** (`BareGzip.IsBareGzip`): a gzip member header, and the first 512 decompressed
+  bytes (no trailer checked there) are neither a tar header whose checksum holds, nor the zero
+  block of an empty tar, nor the start of another format tar.exe opens inside gzip: zip, cpio
+  (`070707`, `070701`, `070702`, binary), ar, 7z, rar, cab, xar, LHA, mtree (`#mtree`), WARC, rpm,
+  or another compressed stream (gzip, compress, bzip2, xz, zstd, lzip). Everything that opened
+  before still goes to tar.exe (cpio.gz and zip-in-gzip measured above). What changes: a gzip of
+  text or of any other file is now extracted where tar.exe failed, and a `.tar.gz` whose first
+  block is not a valid tar header now extracts as one file named `x.tar` instead of failing in
+  tar.exe. A file of zeros inside gzip reads as an empty tar (tar.exe's own reading), and an ISO
+  image inside gzip (its signature is at 32 KiB) is now one file. When not one byte decompresses,
+  the file stays on the tar route and fails there as before.
+- **Where it runs:** `ExtractionRouter` (extract and test) and `ArchiveListingRouter` split the
+  paths the tar route got after `ArchiveFormatPolicy.ClassifyAsync`, so Group Policy and tar.exe's
+  capabilities are applied first, unchanged (`DisableTarExtraction` and a blocked `gzip` refuse it
+  as they refuse a `.tar.gz`; the public `Classification` record is unchanged). The App, Explorer's
+  menu and the Shell go through the same routers, so a `.gz` of one file opens and extracts there
+  too.
+- **The engine** (`BareGzipEngine`, internal): the file lands in the destination folder itself (a
+  single-file archive's rule, T-F154, in both modes), under 7-Zip's default name from the
+  archive's name (`DefaultName.cpp`: `.gz`/`.gzip` dropped, `.tgz`/`.tpz`/`.apk` -> `.tar`, else
+  the last dot part dropped, else `~` added, trailing spaces trimmed), never from the header's
+  FNAME. A device name (`CON.gz`) is skipped with `EntryReservedName`. The whole stream is read once
+  to check it and learn its real size, then the compression-ratio check (T-F94, `TarBombDeclined`
+  / `InsufficientDiskSpace`, the same callback), then the shared `ConflictResolver` and
+  `ExtractionNameRegistry` (Skip, Overwrite, Rename, RenameExisting with a folder in the way moved
+  aside, `DestinationIsAFolder` otherwise; `FileExistsAtDestination` or `FileWrittenEarlierInThisRun`
+  as skips), then a second read into a temporary file next to the target (`ArchiveTempFile`),
+  which gets the header's MTIME and the download mark (`EffectiveMotwMode`) and is committed only
+  when complete. Damage is `Cannot extract archive: The compressed data is damaged.` and leaves
+  nothing. The selection (`SelectedEntryPaths`) and the name filter (`EntryFilter`) see the one
+  name; a subset is never deletable. `OnItemExtracted` names the file. A cancel throws and leaves
+  nothing. Progress is a step per archive, the bar only when no ZIP or tar shares the run.
+- **Reading** (`BareGzip.Read`): every member is inflated with `DeflateStream` and its trailer
+  found and checked by Pakko: the 8 bytes of CRC-32 and size are looked for in the 64 KiB before
+  where DeflateStream stopped reading, and taken where they are followed by the end of the file
+  or the next member's header (an empty member's trailer is eight zero bytes, which its own data
+  may hold). Wrong CRC, wrong size, a cut, bytes after the last member, reserved header flags or a
+  header that ends early are damage, as 7za's `t` says for each (measured above). Header fields
+  (FEXTRA, FNAME, FCOMMENT, FHCRC) are skipped, never used.
+- **`t`** reads every byte: no `TestedStructureOnly` warning. Damage is `Cannot read archive: The
+  compressed data is damaged.`, exit 2.
+- **`l`** shows one entry: the name, the whole decompressed size (gzip's own size field holds only
+  the last member's, modulo 4 GiB; 7-Zip lists that, 4 for `multi.gz`), the file's size as the
+  packed size, the first member's MTIME. Listing reads the whole stream.
+
+**Rejected:** naming the file from FNAME, as 7-Zip does - it is untrusted archive data, 7-Zip
+reads it as a path (`a/b.txt` -> `a\b.txt`, `C:\Windows\x.txt` -> `C_\Windows\x.txt`, measured),
+and `GZipStream` does not expose it; gzip -d's default is the archive's name too. A difference
+from 7-Zip only when FNAME differs from the archive's name. `GZipStream` alone (passes a cut
+stream, measured). Asking tar.exe (no raw reader). Changing the public `Classification` record.
+
+**Not changed:** the antivirus scan (`AntivirusScanService`) still sends a gzip of one file to the
+tar route, where it fails as before (an open point). `pakko i` lists no line for gzip of one file.
+
+Integration (2026-10-25): `ShellCommandsTests.Test_TarFamilyArchive_GoesToTheTarEngineNotTheZipEngine`
+built `notes.tar.gz` as a gzip of the four bytes `gzip` and expected "cannot be read"; that file is
+a valid gzip of one file, so it is now tested in process and passes, as in 7-Zip. The test keeps
+its point (never "not supported") and expects "No errors detected".
+
 ## T-F418 and T-F412 - tar.exe's escaped names read back, and `l -slt` (2026-10-24)
 
 **T-F418, the cause, from the shipped source.** bsdtar prints every name in a listing through

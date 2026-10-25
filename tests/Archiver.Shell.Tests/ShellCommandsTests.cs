@@ -195,8 +195,8 @@ public sealed class ShellCommandsTests : IDisposable
     public async Task Test_TarFamilyArchive_GoesToTheTarEngineNotTheZipEngine()
     {
         // T-F261: Shell used to hand every path to the ZIP engine, which answered "GZip format is
-        // not supported" for a format Pakko does support. T-F397: the tar engine now tests it; these
-        // few bytes are no tar, so its verdict is that the archive cannot be read.
+        // not supported" for a format Pakko does support. T-F413: these few bytes are no tar, so
+        // they are a gzip of one file, tested in process with its trailer checked - as 7-Zip does.
         string tarGz = Path.Combine(_root, "notes.tar.gz");
         using (var gzip = new GZipStream(File.Create(tarGz), CompressionLevel.Fastest))
             gzip.Write("gzip"u8);
@@ -204,8 +204,8 @@ public sealed class ShellCommandsTests : IDisposable
 
         await Create(ui).TestAsync([tarGz]);
 
-        ui.Messages.Should().ContainSingle().Which.Text.Should().Contain("notes.tar.gz")
-            .And.NotContain("not supported").And.NotContain("No errors detected");
+        ui.Messages.Should().ContainSingle().Which.Text.Should().Contain("No errors detected")
+            .And.NotContain("not supported");
     }
 
     [Fact]

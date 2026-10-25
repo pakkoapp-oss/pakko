@@ -1394,6 +1394,10 @@ progress and Cancel are checked on the device.
   a held file; an unlisted folder), `CliCoreSwitchesSubprocessTests` on the real exe (`-sdel` with
   a folder, `s\*`, `*.txt -r`, `-x`, `..`, `.`, a locked file, a missing source, a junction; `-aot`,
   `-spe`, `-sse`, `-ssw`, `-stl`, `-w`). Device row: `CLI-041`.
+- T-F413/T-F415 (v1.9.0): `Archiver.CLI.Tests` `CliExitCodeTests`, `CliSingleFileTypeTests`,
+  `Subprocess/CliSingleFileStreamSubprocessTests`; `Archiver.Core.Tests` `BareGzipTests`,
+  `BareGzipEngineTests`, `SingleFileStreamCreationTests` (its service fails before tar.exe can
+  start). No new fixture files: every gzip is built in the test. Device rows: `CLI-042`, `CLI-043`, `EXP-015`.
 
 ---
 

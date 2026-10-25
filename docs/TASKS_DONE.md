@@ -13037,6 +13037,35 @@ PowerShell does natively.
 - **Reported by:** T-F343's measurement, 2026-10-17.
 - **Result:** `CliArgumentParser`; `CliSevenZipCallerTests`, `CliSevenZipCallerSubprocessTests`; `docs/CLI.md`; `docs/DECISIONS.md` (same entry); smoke `CLI-037`.
 
+### T-F413 — `pakko a -tgzip`/`-txz`/`-tbzip2`: one file compressed without tar (P3, from T-F343, measure first)
+
+- [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream A3). 7-Zip compresses a single file into a bare `.gz`, `.xz`, `.bz2`; patool uses
+  it. `pakko` knows those types only inside tar (exit 7). gzip: .NET's `GZipStream` is
+  `System.IO.Compression` (allowed). xz and bzip2: only if `tar.exe` can write a bare stream (libarchive
+  has a `raw` write format; measure whether `tar.exe` exposes it and runs it inside Pakko's rules),
+  otherwise "Can't" in the matrix. Reading such a file is the same question.
+- **Reported by:** T-F343's measurement, 2026-10-17.
+- **Result:** `a -tgzip/-tbzip2/-txz` write one file through tar.exe's raw format (MTIME 0; two files
+  or a folder refused first with `SingleFileFormatNeedsOneFile`); `x`/`t`/`l` read a gzip of one file in
+  process (`BareGzip`, `BareGzipEngine`: every member's CRC and size checked, named as 7-Zip's default
+  name, the ratio check on the real size); bzip2/xz of one file stay Can't. `docs/DECISIONS.md`,
+  "T-F413 and T-F415"; smoke `CLI-042`, `CLI-043`, `EXP-015`. **1.9.0 CHANGELOG:** added - `pakko a
+  -tgzip`/`-tbzip2`/`-txz` compress one file without tar; a `.gz` of one file opens, tests and extracts.
+
+### T-F415 — `pakko x -aos`: a file kept by choice exits 1, where 7-Zip exits 0 (P3, from T-F410, decision first)
+
+- [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream A3). Measured with T-F410's wave A: Scoop's `x <arc> -o<dir> -xr!*.nsis -y -aos`
+  over files that already exist exits 0 in 7za and 1 in `pakko`, since T-F313 reports every kept
+  file as a `pakko: skipped:` warning. Scoop stops on any non-zero exit. Decide first: keep T-F313's
+  warning for the default skip but exit 0 when `-aos` asked for it (7-Zip's reading: the user chose
+  it), or keep exit 1 and record Scoop's `-aos` path as a difference. Record the decision in
+  `docs/DECISIONS.md`.
+- **Reported by:** T-F410 wave A's measurement, 2026-10-17.
+- **Result:** decided (user, 2026-10-24): `-aos` exits 0 for files kept because they exist (ZIP and tar);
+  an entry lost to an earlier one of the same run (`FileWrittenEarlierInThisRun`) and every other skip
+  keep their code. `CliExitCode`, `CliExitCodeTests`. **1.9.0 CHANGELOG:** changed - `x -aos` over existing
+  files exits 0, as 7-Zip (the kept files are still named).
+
 ### T-F418 — `tar.exe` lists a `\` in an entry name doubled, and Pakko shows it so (P3, from T-F410)
 
 - [x] **Status:** done 2026-10-25 (v1.9.0 wave, stream A2). Measured 2026-10-18 (build 26300): a tar entry `a\b.txt` lists through

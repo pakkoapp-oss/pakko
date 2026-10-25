@@ -379,7 +379,12 @@ public sealed record ArchiveOptions
 public enum ArchiveMode { SingleArchive, SeparateArchives }
 
 // Models/ArchiveContainerFormat.cs
-public enum ArchiveContainerFormat { Zip, Tar, TarGz, TarBz2, TarXz, TarZst, TarLzma, SevenZip }
+public enum ArchiveContainerFormat { Zip, Tar, TarGz, TarBz2, TarXz, TarZst, TarLzma, SevenZip, GZip, BZip2, Xz }
+// T-F413: GZip, BZip2, Xz = one file compressed without tar, CLI only (the App's
+// CreationFormatOption.IsOffered is false); ArchiveFormatPolicy.IsSingleFileFormat(format).
+// Reading: ExtractionRouter and ArchiveListingRouter hand a gzip of one file (BareGzip.IsBareGzip,
+// internal) from the tar route to BareGzipEngine (internal, no DI). MessageCode gains
+// SingleFileFormatNeedsOneFile and FileWrittenEarlierInThisRun (T-F415).
 
 // Models/SevenZipMethod.cs (T-F342)
 public enum SevenZipMethod { Lzma2, Lzma, BZip2, Deflate, Copy }
