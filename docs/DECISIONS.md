@@ -14209,6 +14209,23 @@ would then test the unshowable-name path (T-F416), not the Unicode-content one t
     the App (`j`). C through Explorer cannot be set up: "Extract here" makes a fresh numbered folder,
     so no link is inside it; `ShellResultPresenter`'s unit test covers that line.
 
+## T-F426 - the archive handle tar.exe reads is a duplicate (2026-10-25)
+
+T-F233 gives tar.exe the archive as stdin, a handle Pakko opens itself. The launcher made that
+handle inheritable with `SetHandleInformation` and named it in `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`;
+its comment said this "leaks it to no other launch". That held for launches with a handle list only.
+.NET's `Process.Windows.cs` (release/10.0) passes `true` as `bInheritHandles` on every
+`CreateProcess` and serializes only its own launches (`s_createProcessLock`), so a plain
+`Process.Start` while tar.exe ran inherited the archive handle.
+
+Chosen: `DuplicateHandle` with `bInheritHandle` TRUE, the duplicate in the handle list and in
+`hStdInput`, owned by a `SafeFileHandle` and closed when `CreateSuspendedProcess` returns. Rejected:
+clearing the flag on the caller's handle in a `finally` after `CreateProcessW` (the advisor's first
+shape) - a failure there has no good answer once the child exists: throwing orphans the suspended
+child, ignoring it keeps the leak. The duplicate leaves the caller's handle as it was opened and
+needs no step in a `finally` that can fail. SECURITY.md's claims (pipe ends, the sandbox's handle
+list) are unchanged: the leak went to an unsandboxed process Pakko itself started.
+
 ## T-F419 - a red team against every switch (2026-10-19)
 
 - **How.** Two fresh subagents (Opus, own worktrees, `src/` read-only, never shown DECISIONS or

@@ -53,7 +53,7 @@ once; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md are edited by the integra
 | A1 ZIP engine | T-F421, T-F417 | `ZipArchiveService`, `ExtractionRouter` |
 | A2 tar listing, `l` | T-F418, T-F412 (`-slt`) | tar listing parse, `pakko l`, `docs/CLI.md` |
 | A3 CLI create, exit codes | T-F413 (gzip; xz/bz2 measured), T-F415 (`-aos` exits 0) | CLI parser and creation, `docs/CLI.md` |
-| B flaky tests, ARM64 | T-F372, T-F374, T-F376, T-F396, T-F290, T-F425 (done) | tests only; load loops run alone |
+| B flaky tests, ARM64 | T-F372, T-F374, T-F376, T-F396, T-F290, T-F425 (done), T-F426 (done), T-F427, T-F428 | tests only; load loops run alone |
 | C App, on device | T-F393, T-F395, T-F354 (A/B first), T-F399 (`POL-009`), T-F392 (refuse at creation), T-F320 (closed, documented) | App, `TarSandboxedService` creation |
 | D smoke, winget | T-F394, T-F361 | `scripts/`, `scripts/smoke/`, `docs/SMOKE.md` |
 | E localization, Store text | T-F328, T-F91 (layout walk), T-F329 part 5, T-F331 ("What's new") | `.resw`/`.resx`, `Localization.cpp`, `docs/store-listing/` |
@@ -1507,32 +1507,35 @@ re-measured with T-F346's script before and after.
   filter or selection over it with `TarNameNotRepresentable`, as T-F416 does.
 - **Reported by:** T-F418's measurement, 2026-10-24.
 
-### T-F372 — The unsandboxed curl of the socket sandbox test times out on CI (P3)
+### T-F427 — The AMSI EICAR tests decide once whether AMSI is live, then fail when it stops (P3, stream B)
 
-- [ ] **Status:** open. `TarSandboxedServiceSandboxBehaviorTests.RunAsync_SocketConnectAttempt_FailsInsideAppContainerButSucceedsUnsandboxed`
-  failed twice on 2026-10-09 within an hour (tag run 37917269113, PR #31's run 37921909953) with
-  `unsandboxedExitCode` 28: curl's own `-m` timeout against the test's loopback listener, which
-  answers every connection with a 200. Both passed on a rerun of the same commit; no failure in the
-  ~20 runs before. Find what the listener or the runner does under load (accept loop, backlog,
-  Defender's network inspection), then fix the test, not the retry count. The two-attempt CI loop
-  does not cover it: `dotnet test` in the `test` job runs once.
-- **Reported by:** v1.7.2 release, 2026-10-09.
+- [ ] **Status:** open. `AntivirusScanServiceEicarTests.ScanAsync_RealEicarInZipArchive_ReturnsThreatDetected`
+  failed in a full local run on 2026-10-25 (T-F426's branch, no AMSI code touched); right after,
+  both EICAR tests skipped with `AmsiScanBuffer failed (HRESULT 0x80070015)` (`ERROR_NOT_READY`) and
+  `Get-MpComputerStatus` read `RealTimeProtectionEnabled: False`. `SkipIfTarOrAmsiUnavailableAttribute`
+  probes AMSI when the test is discovered; Defender's real-time protection went off between that probe
+  and the scan. Next: decide what a scan that finds AMSI not ready means for these tests (skip at run
+  time, or the result `AntivirusScanService` already gives a caller when AMSI is gone), with a test
+  that turns AMSI off by a fake, not by changing Defender. The failure's own message was not kept.
+- **Reported by:** stream B's full run, 2026-10-25.
 
-### T-F374 — A tar listing test fails once in a while with its archive "in use" (P3)
+### T-F428 — A cancelled launch waits for the thread pool before tar.exe is killed (P3, from stream B)
 
-- [ ] **Status:** open. `TarSandboxedServiceListEntriesTests.ListEntriesAsync_ReadsModifiedFromTheVerboseListing`
-  failed twice on this machine in full parallel runs (2026-10-10, the second time with the message
-  `IOException: The process cannot access the file 'dates.tar' because it is being used by another
-  process.`) and passed alone both times. The test writes `dates.tar`, lists it through the
-  sandboxed tar.exe, and its `TempDirectory` is deleted at the end; which of the three steps met
-  the open handle is not known (the stack was not kept). Likely the same family as T-F373 (a
-  handle held past its owner while another test class starts a process) or tar.exe still exiting.
-  Next: catch the stack, then fix the cause, not with a retry. Also check T-F372's rate: on
-  2026-10-10 it failed the first attempt of two of four PR runs.
-- **Seen again** 2026-10-18 (T-F411 wave D, a full local run alongside the CLI tests); passed alone
-  at once. Its message was not kept (the run's output was filtered to the test names), so whether
-  it is the same "in use" cause is not known. Next time, keep the full output.
-- **Reported by:** T-F275 step 4b's local run, 2026-10-10.
+- [ ] **Status:** open, hypotheses. `TarCommandLineEncodingTests.Launcher_StdInDataCancelled_ThrowsPromptly`
+  took 59.6 s against its 30 s limit on run 40099759037 (2026-10-24, branch `docs/wave-1.9.0`, a plan
+  PR with no code change), the lifetime of its `PING -n 60` child; a fuzz iteration timed out in the
+  same run, so the whole runner may have stalled. Two things in `SandboxedProcessLauncher` make that
+  possible, neither shown to be the cause: (1) the child is terminated only in `RunAsync`'s `catch`,
+  after the stdout/stderr reads raise `OperationCanceledException`, and those reads are
+  async-over-sync on pool threads (`CancelSynchronousIo`), so a cancel waits for pool progress;
+  (2) each launch keeps two or three pool threads blocked for the child's whole life (both reads,
+  `WriteStdIn`'s `Task.Run`), which a parallel test run multiplies. Candidate fix: a cancellation
+  registration that calls `TerminateProcess` itself. Product exposure is low: in the App the reads
+  start within milliseconds, so the I/O cancel lands. Product work in sandbox code: plan first.
+  Before that, the test could tell "the cancel did not kill the child" from "the call returned
+  late" (the child's PID through `OnProcessStarted`, `WaitForExit` on a dedicated thread, pool counts
+  in the message).
+- **Reported by:** stream B's survey of CI failures since 2026-10-18, 2026-10-25.
 
 ### T-F392 — Two hard links to one file in a source folder: Pakko cannot extract the tar it made (P3)
 
