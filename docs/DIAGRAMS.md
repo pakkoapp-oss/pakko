@@ -68,6 +68,8 @@ Sources read for this diagram: `src/Archiver.ShellExtension/dllmain.cpp`,
 `src/Archiver.App.Core/LaunchActivationRouter.cs` (T-F03, T-F232), `src/Archiver.Shell/AppLauncher.cs`,
 `src/Archiver.Core/Services/LaunchArguments.cs` (T-F232).
 
+Per-arrow ritual 2026-10-29 (T-F226): the menu side (`SetCommands` order, every `GetState`) holds; drawn now are the window's start (immediate for the commands that end with a result, deferred for Extract and Archive, T-F356), the 7z leaf in the archive branch, and the PAR2 verify and repair calls.
+
 **T-F99 (2026-07-13):** `Package.appxmanifest` now also registers `PakkoRootCommand`'s verb for
 `desktop10:ItemType Type="Drive"`, alongside the existing `*`/`Directory` entries this diagram
 already covers — `Explorer->>Root: CoCreateInstance(...)` is now also reachable for a drive-root
@@ -151,7 +153,7 @@ sequenceDiagram
             EH->>ShellExe: LaunchShellExe(args, paths) — BuildExtractHereArgs / BuildExtractHereFlatArgs /<br/>BuildExtractFolderArgs / BuildArchiveArgs() / BuildArchiveArgs("tar") / BuildArchiveArgs("7z") / BuildTestArgs /<br/>BuildScanArgs / BuildHashArgs("crc32"|"sha256")<br/>CreateProcessW(command --paths-stdin) — T-F235: only the stdin read end is inherited, then<br/>the paths go to the child's stdin (UTF-16LE, NUL-separated, end marker) — does NOT wait
             ShellExe->>ShellExe: StdinPathList.Read — a list cut short is refused whole
             EH-->>Explorer: S_OK, or a MessageBoxW with the HRESULT on a launch or<br/>write failure — returned once the list is written, NOT when the operation finishes
-            ShellExe->>Dlg: ui.Begin(title, Bytes, or Percent for Scan) — ONE session per Explorer command,<br/>even for a multi-archive selection (T-F268 step 3). The WinUI helper comes first<br/>(diagram 8) — Win32OperationUi, drawn here, is its fallback. Cancel is polled every 250 ms<br/>(IProgressDialog.HasUserCancelled, [PreserveSig] BOOL) and cancels the session's one token
+            ShellExe->>Dlg: ui.Begin(title, Bytes, or Percent for Scan) - Test, Verify, Repair, Hash and Scan pass endsWithResult<br/>(the window starts at once), Extract and Archive start it only after 0.5 s (T-F356, diagram 8) — ONE session per Explorer command,<br/>even for a multi-archive selection (T-F268 step 3). The WinUI helper comes first<br/>(diagram 8) — Win32OperationUi, drawn here, is its fallback. Cancel is polled every 250 ms<br/>(IProgressDialog.HasUserCancelled, [PreserveSig] BOOL) and cancels the session's one token
             alt extract commands (EHF / EH / EF)
                 loop each archive of the selection
                     ShellExe->>Dlg: session.BeginItem(name, i, n) — the title gains "name (i/n)" when n is greater than 1
@@ -162,10 +164,12 @@ sequenceDiagram
                     end
                     Core-->>ShellExe: IProgress<ProgressReport> per file/entry, then ArchiveResult
                 end
-            else AC / TAC
-                ShellExe->>Core: IArchiveCreationRouter.ArchiveAsync(SingleArchive, OnConflict=Rename, Format=zip or tar)
+            else AC / TAC / SZC
+                ShellExe->>Core: IArchiveCreationRouter.ArchiveAsync(SingleArchive, OnConflict=Rename, Format=zip, tar or 7z)
             else TC
                 ShellExe->>Core: IExtractionRouter.TestAsync(paths, progress, password via session.AskPasswordAsync)<br/>— the FULL selection, the router classifies each path, ZIP to the ZIP engine, tar-family to ITarService.TestAsync, a gzip of one file to Core's own reader (T-F261, T-F397, T-F413)
+            else RVC / RRC (T-F275)
+                ShellExe->>Core: RVC: the TC call with the PAR2 set check (--recovery-verify) / RRC: IRecoveryService.RepairAsync,<br/>a .repaired copy next to the archive (--recovery-repair)
             else SC
                 ShellExe->>Core: IAntivirusScanService.ScanAsync — diagram 7
             else hash leaf
@@ -364,10 +368,13 @@ flowchart TD
     ZD{"ExtractAsync, once per call: DestinationFolder.TryCreate fails?<br/>(a file by that name, a missing drive, bad characters — T-F406)"} -- yes --> ZDE["return: Errors += CannotExtractArchive with the OS text<br/>for every archive, nothing opened"]
     ZD -- no --> PM
     PM{"ExtractAsync outer loop, per archive:<br/>file missing? (T-F221)"} -- yes --> PM1["Errors += SourceNotFound<br/>(not 'not a recognized archive')"]
-    PM -- no --> P0{"zip blocked by Group Policy?<br/>(T-F250 — also catches an Unknown-detected ZIP)"} -- yes --> P1["SkippedFiles += policy reason,<br/>archive not opened"]
-    P0 -- no --> PW{"IsEncryptedZip? (any entry, whole central directory)"}
-    PW -- yes --> PW1["ResolveArchivePasswordAsync, once per archive, before staging:<br/>options.ResolvePasswordAsync, up to 3 attempts, each checked against<br/>the smallest encrypted entry (T-F189/T-F243)"]
-    PW1 -- "no password (none wired, cancelled, attempts used up)" --> PW2["Errors += PasswordProtectedExtract, archive not opened"]
+    PM -- no --> NZ{"IsZipFile?"}
+    NZ -- "no, a format Pakko knows (GetKnownArchiveReason)" --> NZ1["SkippedFiles += that reason"]
+    NZ -- "no, nothing known" --> NZ2["Errors += NotAnArchiveExtract"]
+    NZ -- yes --> P0{"zip blocked by Group Policy?<br/>(T-F250 — also catches an Unknown-detected ZIP)"} -- yes --> P1["SkippedFiles += policy reason,<br/>archive not opened"]
+    P0 -- no --> PW{"NeedsPassword: IsEncryptedZip (any entry, whole central directory),<br/>and with a selection or EntryFilter, an encrypted entry that passes (T-F417)"}
+    PW -- yes --> PW1["ResolveArchivePasswordAsync, once per archive, before staging:<br/>options.ResolvePasswordAsync, up to 3 attempts, each checked against<br/>the smallest encrypted entry that passes (T-F189/T-F243/T-F417)"]
+    PW1 -- "no password (none wired, cancelled, attempts used up)" --> PW2["Errors += PasswordProtectedExtract, or RememberedPasswordDoesNotFit<br/>when the remembered one was refused - archive not opened"]
     PW1 -- "resolved" --> A0
     PW -- no --> A0["ZipArchiveReader.Open: allEntries = every ZIP entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty, or T-F410:<br/>options.EntryFilter set?"}
     A1 -- no --> A2["entries = allEntries.<br/>isSingleRootFolder/isSingleRootFile computed over files AND folders<br/>(a.txt + empty/ is MultiRoot), then<br/>ExtractionDestinationPlanner.Classify → RootShape (T-F157)"]
