@@ -356,6 +356,8 @@ adding `Zip/ZipArchiveReader` and `ArchiveEntrySecurity.HasReservedName`): `Extr
 
 Updated 2026-10-17 for T-F406 from `DestinationFolder.TryCreate` and `InputPaths.Problem` at the entry of `ZipArchiveService.ExtractAsync`.
 
+Per-arrow ritual 2026-10-29 (T-F226, past the password gate) from `ExtractWithSmartFolderingAsync`/`ExtractWithSmartFolderingCoreAsync`, `TryExtractSingleEntryAsync`, `TryCreateFolderEntry`, `WriteEntryAsync` and `OpenEntryContentStream`: drawn now are the bomb outcomes (A4S/A4D), a selection that matches no entry, a path outside staging (`InvalidDataException`, to E2), a folder entry that counts only when new, `-aot`'s folder in a file's place, the Rename a trimmed name or an 8.3 alias gets, the commit's link and folder outcomes, and T-F280's warning before the `SourceResult` (it is decided in `ExtractWithSmartFolderingAsync`, the outer loop records the source after it).
+
 ```mermaid
 flowchart TD
     ZD{"ExtractAsync, once per call: DestinationFolder.TryCreate fails?<br/>(a file by that name, a missing drive, bad characters — T-F406)"} -- yes --> ZDE["return: Errors += CannotExtractArchive with the OS text<br/>for every archive, nothing opened"]
@@ -368,29 +370,33 @@ flowchart TD
     PW1 -- "resolved" --> A0
     PW -- no --> A0["ZipArchiveReader.Open: allEntries = every ZIP entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty, or T-F410:<br/>options.EntryFilter set?"}
     A1 -- no --> A2["entries = allEntries.<br/>isSingleRootFolder/isSingleRootFile computed over files AND folders<br/>(a.txt + empty/ is MultiRoot), then<br/>ExtractionDestinationPlanner.Classify → RootShape (T-F157)"]
-    A1 -- yes --> A3["entries = allEntries filtered to the selected paths<br/>+ anything nested under a selected folder path,<br/>then T-F410: each entry asked of EntryFilter on its own<br/>(none passes: return, nothing created)<br/>→ RootShape.SelectedSubset"]
+    A1 -- yes --> A3["entries = allEntries filtered to the selected paths<br/>+ anything nested under a selected folder path,<br/>then T-F410: each entry asked of EntryFilter on its own<br/>(none passes: return (destDir, false), nothing created).<br/>A selection that matches no entry: create destDir, return (destDir, true)<br/>→ RootShape.SelectedSubset"]
     A2 --> A3B["ExtractionDestinationPlanner.Resolve(alreadyIsolated, shape, destDir,<br/>unisolatedDestDir, rootDuplicatesArchiveName)<br/>→ (actualDest, stripRootPrefix). T-F205: SingleFolder keeps the root<br/>unless EliminateDuplicateRootFolder is set and the root is named like the archive"]
     A3 --> A3B
     A3B --> A4["Compression-bomb check sums allFileEntries (whole archive),<br/>never the filtered subset — T-F05/T-F94"]
-    A4 --> ST["using staging = ExtractionStaging.Create(DestinationFolder)<br/>sweeps .pakko-x-* of dead runs (T-F263), fresh hidden .pakko-x-owner-guid,<br/>never reused, disposed on every exit (T-F227)"]
+    A4 -- "InsufficientDiskSpace" --> A4S["SkippedFiles += free space vs declared size, return (destDir, false)"]
+    A4 -- "UserDeclined (no callback: declined)" --> A4D["SkippedFiles += ZipBombDeclined with the ratio, return (destDir, false)"]
+    A4 -- "NotABomb, or UserConfirmed" --> ST["using staging = ExtractionStaging.Create(DestinationFolder)<br/>sweeps .pakko-x-* of dead runs (T-F263), fresh hidden .pakko-x-owner-guid,<br/>never reused, disposed on every exit (T-F227)"]
     ST --> A["For each entry in entries"] --> CL{"CollidesAfterDecoding: other raw bytes,<br/>same decoded name as an earlier entry? (T-F234)"}
     CL -- yes --> E0["Errors += same name once decoded, entry not extracted"]
     CL -- no --> U{"HasUnsafePath: a .. segment (either separator)<br/>or a rooted / drive-relative name? (T-F228)"}
     U -- yes --> E1["Errors += unsafe path, entry not extracted"]
     U -- no --> C{"relativePath = EntryDiskName.AsPakkoWrites(name) (T-F420: a refused character as _,<br/>trailing dots and spaces dropped, an emptied part as _) — stripRootPrefix: strip leading segment"}
-    C -- "stripped to empty" --> Z["the root itself: actualDest stands in for it<br/>(counts as extracted only for a folder entry)"]
+    C -- "stripped to empty" --> Z["the root itself: actualDest stands in for it<br/>(counts as extracted only for a folder entry, when actualDest is not there yet,<br/>and records its time, T-F298)"]
     C -- "non-empty, or not applicable" --> D{"ADS marker, reserved device name (any segment,<br/>part before the first dot, T-F243) or control chars<br/>in the name without its trailing slash? T-F38/T-F39"}
     D -- yes --> S1["SkippedFiles += reason"]
     D -- no --> T["try (T-F230) — IOException, UnauthorizedAccessException and<br/>InvalidDataException fail only this entry, except a full disk"]
     T --> FD{"folder entry?"}
     FD -- yes --> FC{"inside staging, no reparse point?"}
     FC -- "reparse point" --> S4["SkippedFiles += reparse point"]
+    FC -- "outside staging: InvalidDataException" --> E2
     FC -- ok --> FK["Directory.CreateDirectory in staging"]
     FD -- no --> G{"resolved path inside staging? then<br/>PathContainsReparsePoint? (T-F37)"}
+    G -- "outside staging: InvalidDataException" --> E2
     G -- "reparse point" --> S4
-    G -- ok --> J{"file exists at finalFilePath, built from the path<br/>as resolved inside staging (T-F228), or already claimed?"}
+    G -- ok --> J{"file exists at finalFilePath, built from the path<br/>as resolved inside staging (T-F228), or already claimed,<br/>or a folder there under -aot (T-F411)?"}
     J -- no --> K
-    J -- yes --> JT{"T-F419/T-F420: ExtractionNameRegistry.MustKeepApart —<br/>claimed in this run and either side named differently<br/>(a.txt. and a.txt, a?b and a_b, an 8.3 alias)?"}
+    J -- yes --> JT{"T-F419/T-F420: ExtractionNameRegistry.MustKeepApart —<br/>claimed in this run and either side named differently<br/>(a.txt. and a.txt, a?b and a_b, an 8.3 alias),<br/>or a trimmed name or an 8.3 alias over a file this run did not write? Then Rename"}
     JT -- yes --> K2
     JT -- no --> J0["T-F06: conflictResolver.ResolveAsync(finalFilePath)<br/>Ask → options.ResolveConflictAsync, else configured value"]
     J0 -- "Skip" --> S6["ConflictSkippedEntries += path, by the user or automatic (T-F260: archive Partial)<br/>the automatic ones become ArchiveResult.KeptExistingFiles (T-F313), the user's are counted in UserSkippedEntryCount (T-F383)"]
@@ -407,21 +413,25 @@ flowchart TD
     K -- "CRC mismatch / longer than declared / I/O error /<br/>encrypted entry: wrong password, unsupported method, authentication failed" --> E2["Errors += Cannot extract name: reason<br/>(destination path, never the staging path)"]
     T -. "ERROR_DISK_FULL" .-> X["rethrown: one archive-level error"]
     K --> L["extractedCount++"]
-    FK --> L
+    FK -- "folder new at the destination" --> L
+    FK -- "already there (T-F87: a re-extract with Skip is still nothing extracted)" --> M
     E0 & E1 & S1 & S4 & S6 & E2 & Z --> M{"More entries?"}
     L --> M
     M -- yes --> A
-    M -- no --> N["staging.CommitInto(actualDest): if actualDest is new, clear Hidden<br/>then Directory.Move (T-F161). Otherwise, or on IOException, merge:<br/>folders first (T-F197), then files with File.Move overwrite —<br/>a locked target becomes a per-item ArchiveError (T-F170).<br/>Last, recorded folder-entry times on the folders the commit created (T-F298).<br/>T-F408: options.OnItemExtracted gets each folder and file that arrived,<br/>after the rename or after each file's own move, never a locked one"]
+    M -- no --> N["staging.CommitInto(actualDest): if actualDest is new, clear Hidden<br/>then Directory.Move (T-F161). Otherwise, or on IOException, merge:<br/>folders first (T-F197), then files with File.Move overwrite —<br/>a locked target becomes a per-item ArchiveError (T-F170),<br/>a file left out through a link = SkippedFiles (EntryThroughReparsePoint),<br/>a folder in a file's place = ArchiveError (DestinationIsAFolder).<br/>Last, recorded folder-entry times on the folders the commit created (T-F298).<br/>T-F408: options.OnItemExtracted gets each folder and file that arrived,<br/>after the rename or after each file's own move, never a locked one"]
     N --> N2{"extractedCount == 0?"}
     N2 -- yes --> NU{"every skip in this archive was the user's own<br/>conflict answer, no other skip or error? (T-F216)"}
     NU -- yes --> N4["no warning — archive still not in CreatedFiles"]
     NU -- no --> N3["SkippedFiles += whole-archive entry (T-F87)<br/>archive not added to CreatedFiles"]
-    N2 -- no --> O
-    N3 --> O
-    N4 --> O["T-F260: one SourceResult per archive — Completed only with no error,<br/>skip or conflict-skip and no selection. ExtractAsync removes a<br/>DestinationFolder it created when nothing was produced (T-F230)"]
-    O --> W{"extractedCount > 0 and local headers<br/>disagree with the central directory? (T-F280)"}
+    N2 -- no --> W
+    N3 --> W
+    N4 --> W
+    O["T-F260: one SourceResult per archive — Completed only with no error,<br/>skip or conflict-skip and no selection. ExtractAsync removes a<br/>DestinationFolder it created when nothing was produced (T-F230)"]
+    W{"extractedCount > 0 and local headers<br/>disagree with the central directory? (T-F280)"}
     W -- yes --> W1["Warnings += one per archive: how many entries, the first one.<br/>Not an error, not a skip: Success and the SourceResult stay as they are"]
     W -- no --> W2["no warning"]
+    W1 --> O
+    W2 --> O
 ```
 
 **T-F280 (2026-10-05).** Extraction reads by the central directory; when the local headers say
@@ -626,6 +636,8 @@ fix phase 4, 2026-09-25).
 
 Updated 2026-10-17 for T-F406 from `DestinationFolder.TryCreate` and `InputPaths.Problem` at the entry of `TarSandboxedService.ExtractAsync` and `ExtractOneArchiveAsync`.
 
+Per-arrow ritual 2026-10-29 (T-F226) from `ExtractSingleArchiveAsync`, `ScanForUnsafeEntriesAsync`, `ResolveConflictAsync` and `TryMoveSingleEntryAsync`: the selection and the filter are resolved BEFORE the bomb check (node S0; the old drawing put them after `PreDir`), gate D also refuses an entry named as another's 8.3 alias and a listing line that does not decode, the exceptions carry their real types and codes, a trimmed name is renamed apart, `-aot` meets a folder too, a failed move or a file that cannot take the destination's permissions fails only itself (T-F170/T-F389), the commit's link and folder outcomes, and Q3 follows T-F216.
+
 ```mermaid
 flowchart TD
     X0{"ExtractAsync, once per call: DestinationFolder.TryCreate fails? (T-F406)"} -- yes --> X0E["return: Errors += CannotExtractArchive with the OS text for every archive"]
@@ -634,8 +646,8 @@ flowchart TD
     A0["ExtractSingleArchiveAsync per archivePath:<br/>scope = TarSandboxScope.CreateAsync(archivePath, needsOutputDir:true)<br/>— verifies tar.exe's Authenticode signature once,<br/>opens archivePath read-only, sharing read only, for the whole scope (T-F233),<br/>ensures the AppContainer profile, sweeps quarantines of dead runs (T-F263), creates %TEMP%\PakkoTarSandbox\&lt;owner-guid&gt;\out<br/>with ACEs — no ACE, link or copy of the user's archive"]
     A0 -- "signature check fails, or the archive is open for writing elsewhere ('in use')" --> RejSig["throw TarSignatureVerificationException / IOException<br/>caught in ExtractAsync as ArchiveError — fail-closed,<br/>never a silent unsandboxed fallback"]
     A0 -- "signature OK" --> A[ExtractSingleArchiveAsync continues] --> B["scope.ListAsync(verbose:false) = tar -t -f - (archive as inherited stdin)<br/>first with --options tar:hdrcharset=UTF-8, again without it if tar.exe<br/>reports non-UTF-8 names (T-F204) — INSIDE the AppContainer + a fresh Job Object"]
-    B -- "exit != 0" --> RejIO1["throw IOException(DescribeFailure(stdErr))<br/>→ finally still runs: scope disposed —<br/>caught in ExtractAsync as ArchiveError"]
-    B -- "exit 0" --> D{"for each listed name:<br/>IsDangerousEntryName?<br/>('..' segment with either separator, rooted path,<br/>ADS ':', reserved name, control char)"}
+    B -- "exit != 0" --> RejIO1["throw CoreTextIOException(CannotReadArchive, DescribeFailure(stdErr))<br/>→ finally still runs: scope disposed —<br/>caught in ExtractAsync as ArchiveError"]
+    B -- "exit 0" --> D{"for each listed name:<br/>IsDangerousEntryName?<br/>('..' segment with either separator, rooted path,<br/>ADS ':', reserved name, control char,<br/>or T-F420: the 8.3 alias of another entry's name)<br/>(a listed line that does not decode: TarListingInconsistent, T-F418)"}
     D -- yes --> RejTar1["throw TarArchiveRejectedException<br/>WHOLE ARCHIVE rejected — finally still runs: scope disposed"]
     D -- "no, all names clean" --> E["scope.ListAsync(verbose:true) = tar -tv -f -<br/>— same scope and header charset, a fresh Job Object"]
     E -- "exit != 0" --> RejIO1
@@ -643,17 +655,20 @@ flowchart TD
     F -- no --> RejTar2["throw TarArchiveRejectedException<br/>('listing is inconsistent')"]
     F -- yes --> G{"for each -tv line:<br/>char[0] == '-' or 'd'?"}
     G -- "no (l/h/b/c/p/s)" --> RejTar3["throw TarArchiveRejectedException<br/>('symlink, hardlink, device...')<br/>⚠ THIS is the gate that blocks the confirmed<br/>symlink-escape exploit — see DECISIONS.md's T-F49 entry"]
-    G -- "yes, every entry '-' or 'd'" --> Bomb{"T-F94: ArchiveEntrySecurity.EvaluateCompressionBombAsync<br/>(declaredUncompressedSize from the scan above,<br/>compressedFileSize = archivePath's FileInfo.Length,<br/>free space at destDir, confirmCompressionBombExtraction callback)"}
+    G -- "yes, every entry '-' or 'd'" --> S0["T-F05/T-F410, BEFORE the bomb check: tarMembers =<br/>ExpandSelection(allNames, SelectedEntryPaths) when a selection is set<br/>(its exact -t name, file or dir form, plus every name it is a '/'-prefix of),<br/>built from the SAME name list gate D validated, never a second listing.<br/>With EntryFilter too: the names that pass (no ./ prefix) are what the move keeps.<br/>T-F416: a selected or filtered-over name with '?' (tar.exe could not show it):<br/>TarArgumentEncodingException. Then the root shape (ExtractionDestinationPlanner)"]
+    S0 -- "a selection that names no entry<br/>(an empty list is tar.exe's every entry)" --> S0E["create destDir, return (destDir, true) - nothing extracted"]
+    S0 -- "EntryFilter: no name passes" --> S0F["return (destDir, false) - no folder created,<br/>as 7-Zip's 'No files to process'"]
+    S0 -- "otherwise" --> Bomb{"T-F94: ArchiveEntrySecurity.EvaluateCompressionBombAsync<br/>(declaredUncompressedSize from the scan above,<br/>compressedFileSize = archivePath's FileInfo.Length,<br/>free space at destDir, confirmCompressionBombExtraction callback)"}
     Bomb -- "InsufficientDiskSpace" --> BombSkip1["SkippedFiles += 'destination has N bytes free,<br/>archive declares M uncompressed'; return (destDir, false)<br/>— scope disposed, no extraction ever runs"]
     Bomb -- "UserDeclined<br/>(callback null → defaults to declined, e.g. Archiver.Shell/CLI)" --> BombSkip2["SkippedFiles += 'suspicious ratio N:1'; return (destDir, false)<br/>— scope disposed, no extraction ever runs"]
     Bomb -- "NotABomb, or UserConfirmed" --> PreDir["Pre-create the directories an entry needs before<br/>its own directory entry (archive order), via Directory.CreateDirectory<br/>at Pakko's OWN (unsandboxed) identity under scope.OutputDirectory —<br/>libarchive's implicit parent-dir creation fails under the AppContainer<br/>(T-F52); a directory with its own entry first is left to tar.exe,<br/>which sets its time (T-F298)"]
     PreDir --> G2{"T-F05: options.SelectedEntryPaths<br/>set and non-empty? (T-F410: a filter<br/>alone takes no, the move leaves out<br/>what did not pass)<br/>(gates D-G above already ran<br/>UNCONDITIONALLY — the pre-scan<br/>never branches on this)"}
     G2 -- no --> H["scope.ExtractAsync(null)<br/>= tar -x -f - -C out (current directory = quarantine root)"]
-    G2 -- yes --> G3["ExpandSelection(allNames, SelectedEntryPaths):<br/>each selected path → its exact -t name<br/>(file or dir form) + every -t name it's<br/>a '/'-prefix of (descendants) — built from<br/>the SAME name list gate D already validated,<br/>never a second listing. T-F410: with EntryFilter<br/>too, only the names that pass (no ./ prefix)<br/>are moved out, none passes: return before<br/>the bomb check. tar.exe gets the selection,<br/>never the filter's names. A selection that<br/>names no entry extracts nothing, as in ZIP<br/>(an empty list is tar.exe's every entry).<br/>T-F416: a selected or filtered-over name<br/>with '?' (tar.exe could not show it):<br/>TarArgumentEncodingException"]
+    G2 -- yes --> G3["tarMembers from S0 - tar.exe gets the selection,<br/>never the filter's names"]
     G3 --> H2["scope.ExtractAsync(&lt;expanded members&gt;)<br/>each name escaped so tar.exe reads it as that name,<br/>not as a wildcard pattern (T-F284), written to list/members.txt<br/>in the quarantine: tar -x -T list/members.txt (T-F410:<br/>stdin is the archive, and no command-line limit)"]
     H2 -- "exit != 0 (e.g. a stale/unmatched<br/>member name — 'Not found in archive')" --> RejIO2
     H2 -- "exit 0" --> FC
-    H -- "exit != 0 (T-F239: a Job limit hit is named in front of stderr)" --> RejIO2["throw IOException(stdErr)<br/>→ finally still runs: scope disposed<br/>→ caught in ExtractAsync as ArchiveError"]
+    H -- "exit != 0 (T-F239: a Job limit hit is named in front of stderr)" --> RejIO2["throw CoreTextIOException(TarExtractionFailed, DescribeFailure(stdErr))<br/>→ finally still runs: scope disposed<br/>→ caught in ExtractAsync as ArchiveError"]
     H -- "exit 0" --> FC{"T-F171: FindDuplicateGroups - file names several<br/>extracted entries share as tar.exe writes them<br/>(EntryDiskName.AsTarExeWrites, T-F420: a?b is a_b, d./ is d/;<br/>case-insensitive, not a folder name)?"}
     FC -- "none" --> I
     FC -- "yes" --> FC2["scope.ExtractFirstOccurrencesAsync(first names)<br/>= tar -x -q -C first -- names (same AppContainer, fresh Job Object)<br/>keep a file only at the exact expected path with the first entry's -tv size.<br/>SkippedFiles += copies not extracted (3rd+ copy, or an unrecovered first copy)"]
@@ -662,12 +677,12 @@ flowchart TD
     J -- yes --> K["⚠ silently NOT descended into —<br/>no SkippedFiles entry, no ArchiveError<br/>(see Finding below)"]
     J -- no --> L[yield each file in this directory]
     K --> Mloop{More entries?}
-    L --> N{"File.Exists at actualDest + relativePath,<br/>or already claimed in this run?"}
+    L --> N{"File.Exists at actualDest + relativePath,<br/>or already claimed in this run,<br/>or a folder there under -aot (T-F411)?"}
     N -- no --> O
-    N -- yes --> NT{"T-F419/T-F420: MustKeepApart — a path where twins meet,<br/>known from the listing (EntryDiskName.TrimmedTwins)?"}
+    N -- yes --> NT{"T-F419/T-F420: MustKeepApart — a path where twins meet,<br/>known from the listing (EntryDiskName.TrimmedTwins),<br/>or a trimmed name over a file this run did not write?"}
     NT -- yes --> O2
     NT -- no --> N0["T-F06: resolvedConflict = await conflictResolver.ResolveAsync(finalFilePath)<br/>same resolver/callback shape as diagram 3's node J0 —<br/>independent ConflictResolver instance, own 'apply to all'<br/>memory scoped to this ExtractAsync call only<br/>(does not cross a mixed zip+tar-family selection)"]
-    N0 -- "resolvedConflict==Skip" --> P["SkippedFiles += 'already exists at destination'; continue"]
+    N0 -- "resolvedConflict==Skip" --> P["SkippedFiles += 'already exists' (T-F415: or 'written earlier in this run')<br/>only for an automatic Skip, never the user's own answer (T-F216), continue"]
     N0 -- "resolvedConflict==Rename" --> O2["finalFilePath = GetUniqueFilePath(finalFilePath, claimed)"]
     N0 -- "resolvedConflict==RenameExisting (T-F411)" --> O4{"already claimed in this run?"}
     O4 -- yes --> O2
@@ -676,12 +691,12 @@ flowchart TD
     N0 -- "resolvedConflict==Overwrite" --> O3["NO explicit branch — falls through to O<br/>with the ORIGINAL finalFilePath;<br/>the commit's File.Move(overwrite:true) does the actual overwrite<br/>(same asymmetry as diagram 3's ZIP OnConflict gate)"]
     O2 --> O
     O3 --> O
-    O["claim finalFilePath (T-F420: a claimed path marks its archive not wholly on disk);<br/>File.Move(the quarantined file by its literal name, staging\relative path of finalFilePath)<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFile)<br/>in EffectiveMotwMode (T-F360)<br/>— from the archive the user chose; the stream moves with the file;<br/>the file keeps the time tar.exe set (T-F298)"] --> Mloop
+    O["claim finalFilePath (T-F420: a claimed path marks its archive not wholly on disk);<br/>File.Move(the quarantined file by its literal name, staging\relative path of finalFilePath)<br/>a failed move = one ArchiveError for that file (T-F170)<br/>T-F389: the staged file takes the destination's permissions, or is not delivered<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFile)<br/>in EffectiveMotwMode (T-F360)<br/>— from the archive the user chose; the stream moves with the file;<br/>the file keeps the time tar.exe set (T-F298)"] --> Mloop
     P --> Mloop
     Mloop -- yes --> I
-    Mloop -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>staging, so empty folders arrive too"] --> CM["staging.CommitInto(actualDest) — the same commit as ZIP (diagram 3):<br/>rename when actualDest is new, else a per-file merge;<br/>each locked destination file = one ArchiveError, then the recorded<br/>folder times (T-F298). A cancel before this point leaves nothing at the destination.<br/>T-F408: OnItemExtracted as in diagram 3"]
+    Mloop -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>staging, so empty folders arrive too"] --> CM["staging.CommitInto(actualDest) — the same commit as ZIP (diagram 3):<br/>rename when actualDest is new, else a per-file merge;<br/>each locked destination file = one ArchiveError, a file left out through a link =<br/>SkippedFiles (EntryThroughReparsePoint), a folder in a file's place = ArchiveError<br/>(DestinationIsAFolder), then the recorded<br/>folder times (T-F298). A cancel before this point leaves nothing at the destination.<br/>T-F408: OnItemExtracted as in diagram 3"]
     CM --> Q2{"totalFiles &gt; 0 &&<br/>extractedCount == 0?<br/>(T-F87 - every file hit P, nothing moved)"}
-    Q2 -- yes --> Q3["SkippedFiles += whole-archive entry<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
+    Q2 -- yes --> Q3["SkippedFiles += whole-archive entry (AllEntriesSkipped),<br/>unless every skip was the user's own Skip answer (T-F216)<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
     Q2 -- no --> Q
     Q3 --> Q["return destDir<br/>(finally: staging disposed; scope.Dispose() — archive closed,<br/>quarantine root deleted, AppContainer SID handle released;<br/>the AppContainer PROFILE itself is never deleted)"]
     Q --> R{{"ArchiveResult.Success is derived (no errors) and Outcome classifies the call (fix phase 7). T-F260: the outer loop records one SourceResult per archive (same rule as diagram 3's node O); DeleteAfterOperation reads only FullyProcessedSources. ExtractAsync removes a DestinationFolder it created when nothing was produced, as ZIP does (T-F309)"}}
@@ -1070,6 +1085,8 @@ Sources read for this diagram: `src/Archiver.Shell/Program.cs`, `src/Archiver.Sh
 `src/Archiver.OperationUi/OperationWindow.cs`, `src/Archiver.OperationUi.Core/OperationWindowModel.cs`,
 `src/Archiver.OperationUi.Protocol/Messages.cs`.
 
+Per-arrow ritual 2026-10-29 (T-F226): Esc on an open prompt answers that prompt (it cancels only without one), `Complete` after the window closed or the helper failed shows the result through the fallback's `ShowMessage`, no fallback session starts once `Complete` has begun, and the fallback's `Begin` carries the style.
+
 `Program.cs` gives `ShellCommands` a `HelperOperationUi` with `Win32OperationUi` (diagram 1's
 windows) as its fallback. Conflict and password prompts are asked inside the helper window
 (step 5); step 4's hand-over of the whole operation to Win32 at the first prompt is gone.
@@ -1093,7 +1110,7 @@ sequenceDiagram
         HUI->>H: Hello(culture, RTL, labels), Begin(title, kind, elapsed ms) — queued, a pump task writes every frame
         H->>H: OperationWindowModel, window built hidden
         H-->>HUI: HelperReady(version)
-        opt no ready within 5 s, or another protocol version
+        opt no ready within 5 s, or another protocol version (no fallback session once Complete has started)
             HUI->>H: Kill
             HUI->>W: Begin(title, style) — a fallback session takes over
         end
@@ -1106,21 +1123,23 @@ sequenceDiagram
             H-->>HUI: CancelRequested, then WindowClosed — the window closes, the helper exits
             HUI->>Cmd: session.Cancellation cancelled → OperationCanceledException → Dispose — no failover
         else pipe ends without WindowClosed — helper crashed or was killed
-            HUI->>W: Begin(title) + BeginItem(current archive)<br/>Win32 carries the rest — progress, Cancel, prompts, result
+            HUI->>W: Begin(title, style) + BeginItem(current archive), unless Complete has started<br/>Win32 carries the rest — progress, Cancel, prompts, result
         else Core asks for a password, a conflict decision or a bomb confirmation
             HUI->>H: AskConflict(id, path, both files' details) / AskPassword(id, archive) / AskConfirm(id, texts) — kept by id until answered
             H->>H: the prompt replaces the progress part, the window shows at once
-            alt user answers
+            alt user answers, or presses Esc (Skip with the checkbox as ticked / no password / no, as the Win32 dialogs' IDCANCEL)
                 H-->>HUI: ConflictAnswer / PasswordAnswer / ConfirmAnswer(id) — an unknown id or the wrong kind is ignored
             else user presses Cancel or X during the prompt
                 H-->>HUI: CancelRequested, then WindowClosed
                 HUI->>Cmd: the prompt returns Skip / no password / no without asking, the operation is cancelled
             else pipe ends without WindowClosed
-                HUI->>W: Begin(title) + BeginItem, then the same prompt asked again — never decided for the user
+                HUI->>W: Begin(title, style) + BeginItem, then the same prompt asked again — never decided for the user
             end
         else operation finishes
             Cmd->>HUI: Complete(message)
-            alt null (a clean Extract/Archive) before HelperReady — nothing can be on screen yet
+            alt the window already closed (the user, as the operation finished) or the helper failed, with no takeover
+                HUI->>W: ShowMessage(message) when there is one, nothing sent to the helper
+            else null (a clean Extract/Archive) before HelperReady — nothing can be on screen yet
                 HUI->>H: Kill — no Complete is sent and nothing is waited for (T-F351)
             else null
                 HUI->>H: Complete(null)
