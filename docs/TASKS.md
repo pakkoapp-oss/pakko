@@ -57,7 +57,7 @@ once; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md are edited by the integra
 | C App, on device | T-F393, T-F395, T-F354 (A/B first), T-F399 (`POL-009`), T-F392 (refuse at creation), T-F320 (closed, documented) | App, `TarSandboxedService` creation |
 | D smoke, winget | T-F394, T-F361 | `scripts/`, `scripts/smoke/`, `docs/SMOKE.md` |
 | E localization, Store text | T-F328, T-F91 (layout walk), T-F329 part 5, T-F331 ("What's new") | `.resw`/`.resx`, `Localization.cpp`, `docs/store-listing/` |
-| F measurement, umbrellas | T-F114 (Windows 10 VM), T-F226 (diagram 6), T-F202 (keyboard, real console) | docs, tests |
+| F measurement, umbrellas | T-F114 (Windows 10 VM), T-F226 (done 2026-10-29: diagrams 3, 5, 8; 6 was redrawn by T-F292), T-F202 (keyboard, real console) | docs, tests |
 
 Decisions taken with the plan (the user approved, 2026-10-24): T-F412 keeps reading a `.tar.gz` in
 one step and adds `-slt`; T-F415 exits 0 when `-aos` asked for the skip; T-F392 refuses a tar from a
@@ -1054,47 +1054,6 @@ launches with the exact arguments each `IExplorerCommand::Invoke` builds. Paths 
 or misleading feature, **P2** = polish/consistency. Fixes belong to the follow-up fix batch, tests
 first (user decision 2026-09-24). Items marked **decision** reverse or touch an earlier documented
 choice — ask the user before implementing, like T-F118/T-F156 were.
-
-### T-F226 — Architecture review of the whole implementation against our rules (next research step)
-
-- [~] **Status:** 2026-09-24 — findings filed as T-F227..T-F244 (plus additions to T-F201 and
-  T-F232); batch 2 (2026-09-25, the sandbox files, AMSI and format detection the first pass did
-  not reach) filed T-F245..T-F249 plus additions to T-F233 and T-F244. Batch 3 (2026-09-25:
-  `GroupPolicyService`, preview/nested caches, `FileHashService`, Shell password and conflict
-  dialogs, `Localization.cpp`, `SECURITY.md` against code, check K, check L spot-check) filed
-  T-F250..T-F259; `scripts/*.ps1` were pattern-searched only (non-ASCII literals, BOMs, recursive
-  deletes). Check K ran: 7 mutants over the security gates, 6 killed by the right tests, 1
-  survivor (T-F256). **Not closed:** check L was a spot-check of diagrams 1, 2, 4, 7 (T-F258);
-  diagram 6 is unchecked and the per-arrow ground-truth ritual over `docs/DIAGRAMS.md` is still
-  deferred until the fixes for T-F227/T-F228/T-F233/T-F236 rewrite those diagrams (with T-F165/
-  T-F223) — the review's exit criterion is not met for that cell. **2026-09-29 (G5):** the ritual
-  ran for diagrams 1, 2, 3 (password gate), 4 and 7 (T-F258) and the new diagram 9 (T-F223);
-  T-F165 was already done 2026-08-12. Diagram 6 is still unchecked — now T-F292. **2026-10-03:**
-  T-F292 redrew diagram 6 per the ritual. The cell is still not closed: diagrams 5 and 8, and
-  diagram 3 beyond the password gate, have not had the per-arrow ritual since the fixes.
-  Checked with no finding: the fire-and-forget calls and `async void` (event handlers only),
-  `static` mutable state (`FileHashService._threadPoolWarmed` is a process-wide one-shot latch around
-  a process-wide setting), `ArchiveTreeIndex` recursion (iterative; memory issue is T-F237),
-  `QuotePath` quoting, Authenticode verification, Job Object/attribute-list lifetimes.
-  Performance (one run of `Category=Slow`, all 10 pass within the 3x tolerance): Archive/
-  ManySmallFiles 1.61, Archive/Hybrid 2.47, Extract/ManySmallFiles 2.08, Extract/Hybrid 2.33,
-  Hash 0.98 (Pakko/7za). The archive ratios are well above T-F35's recorded ~1.0/~1.3 — rerun
-  on an idle machine before calling it a regression.
-  Original plan text follows. Discovery only, like T-F202. A senior-architect
-  review of all projects against the written rules (global `CLAUDE.md` Code Behavior,
-  `~/.claude/dev-practices.md` sections 2-5, 7, 8, `cross-language-style.md`, this repo's Hard
-  Constraints/Do Not, `docs/CONVENTIONS.md`, `SECURITY.md`, `docs/ARCHITECTURE.md`,
-  `docs/DIAGRAMS.md`). Checks: resources, bounds provable from the line, immutability/static state,
-  recursion over untrusted input, the "never throw" error contract, concurrency and UI marshaling,
-  the three safety legs, architecture boundaries and duplicated decision logic (a four-frontend
-  parity matrix), test categories and isolation level, docs/diagrams ground truth, CI tier (fuzzing,
-  sanitizers, dependency audit), the `pakko://`/file-association activation surface as untrusted
-  input, and code-page handling at every process/console boundary (the test machine runs ANSI
-  65001, which hides code-page bugs). First pass: sweep for siblings of the bug classes T-F202 found
-  (T-F204, T-F205, T-F207, T-F211). Done = every component x check cell is checked with
-  `file:line`, filed as a finding (T-F227 onward), or N/A with a reason. Full method: the batch plan's
-  section 6.
-- **Reported by:** user request, 2026-09-24.
 
 ### T-F254 — Explorer menu stays English for Chinese and regional-variant Windows languages (P2)
 
