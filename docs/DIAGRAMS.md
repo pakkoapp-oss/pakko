@@ -973,7 +973,7 @@ Sources read for this diagram (re-derived 2026-09-29, T-F258): `src/Archiver.She
 (`ScanAsync`), `src/Archiver.Core/Services/AntivirusScanService.cs` (`ScanAsync`, `ScanZipArchiveAsync`,
 `ScanEncryptedEntryAsync`, `ScanOneEntryAsync`, `ScanTarArchiveAsync`, `ScanExtractedFilesAsync`),
 `src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs` (`CreateAsync`, `Dispose`),
-`src/Archiver.App/ViewModels/MainViewModel.cs` (`ScanArchiveFromBrowserAsync`). Two entry points
+`src/Archiver.App/ViewModels/MainViewModel.cs` (`ScanArchiveFromBrowserAsync`). Per-arrow ritual 2026-10-29 (T-F226): `TakeUsablePaths` (T-F406), `ArchiveFormatPolicy.ClassifyAsync` (T-F350), `ScanTarArchiveAsync`'s pre-created folders and its member list (T-F410) drawn now. Two entry points
 converge on the same `AntivirusScanService.ScanAsync`; `Archiver.CLI` has no scan command.
 
 ```mermaid
@@ -990,11 +990,11 @@ sequenceDiagram
     Explorer->>ScanCommand: GetState → ECS_ENABLED iff AnyPathIsSupportedArchive(paths, menu policy)
     Explorer->>ScanCommand: Invoke
     ScanCommand->>Shell: RunShellCommand(BuildScanArgs()) — "--scan --paths-stdin", paths on stdin (T-F235)
-    Shell->>Shell: ui.Begin(title, Percent) — one IOperationUi session (T-F268, diagram 8)
+    Shell->>Shell: CreateScanServiceAsync, ui.Begin(title, Percent, endsWithResult: true) - started at once, not deferred (T-F356) — one IOperationUi session (T-F268, diagram 8)
     Shell->>Service: ScanAsync(options with ResolvePasswordAsync = session.AskPasswordAsync, session.Progress, session.Cancellation)
     Browser->>Service: ScanAsync(options with ResolvePasswordAsync = BrowsePasswordResolver)<br/>(same call, different frontend)
 
-    Service->>Service: ArchiveFormatPolicy.Classify, then a policy-blocked "zip"<br/>moves every ZIP bucket path to Unsupported (T-F250)
+    Service->>Service: InputPaths.Problem per path - an empty or unparseable one is Inconclusive (T-F406)<br/>ArchiveFormatPolicy.ClassifyAsync - tar.exe is asked for its capabilities only<br/>when the policy leaves a tar-family format open (T-F350) - then a policy-blocked "zip"<br/>moves every ZIP bucket path to Unsupported (T-F250)
     Note over Service: every Unsupported path becomes an Inconclusive finding, no AMSI call
     alt no ZIP or tar-family path left
         Service-->>Dialog: result from those findings alone
@@ -1032,7 +1032,8 @@ sequenceDiagram
                 Sandbox-->>Service: throws
                 Service-->>Service: archive Inconclusive (the exception's own text)
             else accepted
-                Sandbox->>Sandbox: tar -x into "out\" (only the selected members, if any)
+                Note over Service: every folder the names imply is pre-created by its raw name<br/>(a name Windows refuses throws IOException: archive Inconclusive)
+                Sandbox->>Sandbox: tar -x into "out\" - a selection is ExpandSelection over the listing, read from list\members.txt (T-F410).<br/>A selection that matches no name is an empty list, which tar.exe reads as every entry: the whole archive is scanned
                 alt tar.exe exit code not 0
                     Service-->>Service: archive Inconclusive (ScanCannotExtract)
                 else extracted
