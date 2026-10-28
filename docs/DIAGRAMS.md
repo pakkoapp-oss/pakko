@@ -786,6 +786,8 @@ Redrawn 2026-10-03 (T-F292) from the current source, read in full this session:
 `NavigateUp`, `CloseArchive`, `RunExtractAsync`'s `closeBrowser`) and App.Core's
 `BrowseLocationState`, `BrowserEntryRouting`, `BrowseNavigation`, `NestedArchivePolicy`.
 
+Per-arrow ritual 2026-10-29 (T-F226) from `EnterBrowseModeAsync`, `CanCloseArchive` and every `*Visibility` property: the state diagram and the three checked tables hold; the element table gained the per-format items (T-F388, T-F342), the 7z method, recovery data, the mark-of-the-web option and the card summary, and Test's PAR2 case.
+
 History, in short (detail in `docs/DECISIONS.md`'s T-F05 follow-ups, T-F106, T-F107, T-F98 and wave 4
 entries): the browser started as an inline mode swap of sibling rows (T-F05, 2026-07-13, after Row 0
 never hid in browse mode); Up climbs out of the archive into real folders and "This PC" instead of
@@ -941,7 +943,7 @@ archive path (null).
 | `AppTitleBar` | always |
 | Row 0, create toolbar: Add files, Add folder, Hash, About | `IsPendingListVisibility` = not `IsBrowsingArchive` |
 | Row 0, browse toolbar: Scan, Close archive (Esc), About | `IsBrowsingArchiveVisibility`; Scan enabled when not busy and `BrowsedArchivePath` set (inside an archive) |
-| Row 0, browse toolbar: Test | `TestArchiveVisibility` = browsing and `ShowsTest` (table above) |
+| Row 0, browse toolbar: Test | `TestArchiveVisibility` = browsing and (`ShowsTest`, table above, or the PAR2 line shows, T-F275) |
 | Row 1, `FileListView` with sortable header | `IsPendingListVisibility` |
 | Row 1, empty drop zone (own Add buttons) | inside the pending grid, `IsFileListEmptyVisibility` = `FileItems.Count == 0` |
 | Row 1, `BrowseBreadcrumbRow` (Up, `BreadcrumbBar`), `BrowseHeader`, `ArchiveBrowserListView` | `IsBrowsingArchiveVisibility`; the list is disabled while busy |
@@ -949,7 +951,11 @@ archive path (null).
 | `BrowseInfoBar` | `IsBrowseInfoOpen` = browsing and (outside-archive info or the encryption badge) |
 | Row 2, `OptionsScroll` | `OptionsVisibility` = not browsing, or `ShowsOptions`; `OptionsOpacity` 0.55 on an empty create list |
 | `NewArchiveCard` | `NewArchiveCardVisibility` = not browsing; collapsed (summary shown) when the list turns archives-only, reopened when it stops |
-| Tar format items in Format | `TarFormatVisibility` = not `DisableTarExtraction` (policy, fixed per run) |
+| Format items | one `*FormatVisibility` each = `FormatVisibility(format)`: the policy lets Core create it (allowed, not blocked, tar.exe not disabled for the tar family; fixed per run, T-F388); 7z also only once tar.exe's 7z writer answered (T-F342) |
+| 7z method | `SevenZipMethodVisibility` = format 7z |
+| Recovery data (PAR2) | `RecoveryDataVisibility` = `RecoveryDataOption.IsOffered(policy)` (T-F275) |
+| Mark of the web option | `DownloadMarkVisibility` = `DownloadMarkOption.For(...)`: an extraction is the action and an archive is marked; under a policy it shows the policy's choice and cannot be changed (T-F360) |
+| New archive card summary | `NewArchiveSummaryVisibility` = the card collapsed |
 | Encrypt checkbox / "ZIP only" note | `EncryptCheckVisibility` = Zip, `EncryptZipOnlyVisibility` = not Zip |
 | Inline password panel | `EncryptionPanelVisibility` = `InlinePasswordState.Applies` (ticked and Zip) |
 | `DestinationCard` (destination, conflict, open folder) | whenever `OptionsScroll` is |
