@@ -370,7 +370,7 @@ flowchart TD
     PW1 -- "resolved" --> A0
     PW -- no --> A0["ZipArchiveReader.Open: allEntries = every ZIP entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty, or T-F410:<br/>options.EntryFilter set?"}
     A1 -- no --> A2["entries = allEntries.<br/>isSingleRootFolder/isSingleRootFile computed over files AND folders<br/>(a.txt + empty/ is MultiRoot), then<br/>ExtractionDestinationPlanner.Classify → RootShape (T-F157)"]
-    A1 -- yes --> A3["entries = allEntries filtered to the selected paths<br/>+ anything nested under a selected folder path,<br/>then T-F410: each entry asked of EntryFilter on its own<br/>(none passes: return (destDir, false), nothing created).<br/>A selection that matches no entry: create destDir, return (destDir, true)<br/>→ RootShape.SelectedSubset"]
+    A1 -- yes --> A3["entries = allEntries filtered to the selected paths<br/>+ anything nested under a selected folder path,<br/>then T-F410: each entry asked of EntryFilter on its own<br/>(none passes: return (destDir, false), nothing created).<br/>No entry left (an empty archive, or a selection that matches none): create destDir, return (destDir, true)<br/>→ RootShape.SelectedSubset"]
     A2 --> A3B["ExtractionDestinationPlanner.Resolve(alreadyIsolated, shape, destDir,<br/>unisolatedDestDir, rootDuplicatesArchiveName)<br/>→ (actualDest, stripRootPrefix). T-F205: SingleFolder keeps the root<br/>unless EliminateDuplicateRootFolder is set and the root is named like the archive"]
     A3 --> A3B
     A3B --> A4["Compression-bomb check sums allFileEntries (whole archive),<br/>never the filtered subset — T-F05/T-F94"]
@@ -418,7 +418,7 @@ flowchart TD
     E0 & E1 & S1 & S4 & S6 & E2 & Z --> M{"More entries?"}
     L --> M
     M -- yes --> A
-    M -- no --> N["staging.CommitInto(actualDest): if actualDest is new, clear Hidden<br/>then Directory.Move (T-F161). Otherwise, or on IOException, merge:<br/>folders first (T-F197), then files with File.Move overwrite —<br/>a locked target becomes a per-item ArchiveError (T-F170),<br/>a file left out through a link = SkippedFiles (EntryThroughReparsePoint),<br/>a folder in a file's place = ArchiveError (DestinationIsAFolder).<br/>Last, recorded folder-entry times on the folders the commit created (T-F298).<br/>T-F408: options.OnItemExtracted gets each folder and file that arrived,<br/>after the rename or after each file's own move, never a locked one"]
+    M -- no --> N["staging.CommitInto(actualDest): if actualDest is new and no existing file is to be renamed (T-F411), clear Hidden<br/>then Directory.Move (T-F161). An overwrite clears a read-only target first (T-F419). Otherwise, or on IOException, merge:<br/>folders first (T-F197), then files with File.Move overwrite —<br/>a locked target becomes a per-item ArchiveError (T-F170),<br/>a file left out through a link = SkippedFiles (EntryThroughReparsePoint),<br/>a folder in a file's place = ArchiveError (DestinationIsAFolder).<br/>Last, recorded folder-entry times on the folders the commit created (T-F298).<br/>T-F408: options.OnItemExtracted gets each folder and file that arrived,<br/>after the rename or after each file's own move, never a locked one"]
     N --> N2{"extractedCount == 0?"}
     N2 -- yes --> NU{"every skip in this archive was the user's own<br/>conflict answer, no other skip or error? (T-F216)"}
     NU -- yes --> N4["no warning — archive still not in CreatedFiles"]
@@ -644,7 +644,7 @@ flowchart TD
     X0 -- no --> X1{"ExtractOneArchiveAsync: InputPaths.Problem —<br/>empty or unparseable archive path? (T-F406)"} -- yes --> X1E["Errors += SourceNotFound, next archive"]
     X1 -- no --> A0
     A0["ExtractSingleArchiveAsync per archivePath:<br/>scope = TarSandboxScope.CreateAsync(archivePath, needsOutputDir:true)<br/>— verifies tar.exe's Authenticode signature once,<br/>opens archivePath read-only, sharing read only, for the whole scope (T-F233),<br/>ensures the AppContainer profile, sweeps quarantines of dead runs (T-F263), creates %TEMP%\PakkoTarSandbox\&lt;owner-guid&gt;\out<br/>with ACEs — no ACE, link or copy of the user's archive"]
-    A0 -- "signature check fails, or the archive is open for writing elsewhere ('in use')" --> RejSig["throw TarSignatureVerificationException / IOException<br/>caught in ExtractAsync as ArchiveError — fail-closed,<br/>never a silent unsandboxed fallback"]
+    A0 -- "signature check fails, or the archive is open for writing elsewhere ('in use'),<br/>or the AppContainer setup fails (SandboxSetupException)" --> RejSig["throw TarSignatureVerificationException / IOException<br/>caught in ExtractAsync as ArchiveError — fail-closed,<br/>never a silent unsandboxed fallback"]
     A0 -- "signature OK" --> A[ExtractSingleArchiveAsync continues] --> B["scope.ListAsync(verbose:false) = tar -t -f - (archive as inherited stdin)<br/>first with --options tar:hdrcharset=UTF-8, again without it if tar.exe<br/>reports non-UTF-8 names (T-F204) — INSIDE the AppContainer + a fresh Job Object"]
     B -- "exit != 0" --> RejIO1["throw CoreTextIOException(CannotReadArchive, DescribeFailure(stdErr))<br/>→ finally still runs: scope disposed —<br/>caught in ExtractAsync as ArchiveError"]
     B -- "exit 0" --> D{"for each listed name:<br/>IsDangerousEntryName?<br/>('..' segment with either separator, rooted path,<br/>ADS ':', reserved name, control char,<br/>or T-F420: the 8.3 alias of another entry's name)<br/>(a listed line that does not decode: TarListingInconsistent, T-F418)"}
@@ -666,7 +666,7 @@ flowchart TD
     G2 -- no --> H["scope.ExtractAsync(null)<br/>= tar -x -f - -C out (current directory = quarantine root)"]
     G2 -- yes --> G3["tarMembers from S0 - tar.exe gets the selection,<br/>never the filter's names"]
     G3 --> H2["scope.ExtractAsync(&lt;expanded members&gt;)<br/>each name escaped so tar.exe reads it as that name,<br/>not as a wildcard pattern (T-F284), written to list/members.txt<br/>in the quarantine: tar -x -T list/members.txt (T-F410:<br/>stdin is the archive, and no command-line limit)"]
-    H2 -- "exit != 0 (e.g. a stale/unmatched<br/>member name — 'Not found in archive')" --> RejIO2
+    H2 -- "exit != 0 (a listed name tar.exe does not match;<br/>a selected path not in the listing<br/>is dropped at S0 and never gets here)" --> RejIO2
     H2 -- "exit 0" --> FC
     H -- "exit != 0 (T-F239: a Job limit hit is named in front of stderr)" --> RejIO2["throw CoreTextIOException(TarExtractionFailed, DescribeFailure(stdErr))<br/>→ finally still runs: scope disposed<br/>→ caught in ExtractAsync as ArchiveError"]
     H -- "exit 0" --> FC{"T-F171: FindDuplicateGroups - file names several<br/>extracted entries share as tar.exe writes them<br/>(EntryDiskName.AsTarExeWrites, T-F420: a?b is a_b, d./ is d/;<br/>case-insensitive, not a folder name)?"}
@@ -674,7 +674,7 @@ flowchart TD
     FC -- "yes" --> FC2["scope.ExtractFirstOccurrencesAsync(first names)<br/>= tar -x -q -C first -- names (same AppContainer, fresh Job Object)<br/>keep a file only at the exact expected path with the first entry's -tv size.<br/>SkippedFiles += copies not extracted (3rd+ copy, or an unrecovered first copy)"]
     FC2 --> I["T-F263: staging = ExtractionStaging.Create(unisolatedDestDir),<br/>T-F298: record folder-entry times from the quarantine before any move<br/>walk the kept first copies, then EnumerateFilesGuarded(scope.OutputDirectory)<br/>- the first copy claims the name, the last meets the conflict rule"]
     I --> J{"subdirectory hit during walk:<br/>IsReparsePoint?"}
-    J -- yes --> K["⚠ silently NOT descended into —<br/>no SkippedFiles entry, no ArchiveError<br/>(see Finding below)"]
+    J -- yes --> K["⚠ silently NOT descended into (a folder that cannot be listed is passed over the same way) —<br/>no SkippedFiles entry, no ArchiveError<br/>(see Finding below)"]
     J -- no --> L[yield each file in this directory]
     K --> Mloop{More entries?}
     L --> N{"File.Exists at actualDest + relativePath,<br/>or already claimed in this run,<br/>or a folder there under -aot (T-F411)?"}
@@ -694,7 +694,7 @@ flowchart TD
     O["claim finalFilePath (T-F420: a claimed path marks its archive not wholly on disk);<br/>File.Move(the quarantined file by its literal name, staging\relative path of finalFilePath)<br/>a failed move = one ArchiveError for that file (T-F170)<br/>T-F389: the staged file takes the destination's permissions, or is not delivered<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFile)<br/>in EffectiveMotwMode (T-F360)<br/>— from the archive the user chose; the stream moves with the file;<br/>the file keeps the time tar.exe set (T-F298)"] --> Mloop
     P --> Mloop
     Mloop -- yes --> I
-    Mloop -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>staging, so empty folders arrive too"] --> CM["staging.CommitInto(actualDest) — the same commit as ZIP (diagram 3):<br/>rename when actualDest is new, else a per-file merge;<br/>each locked destination file = one ArchiveError, a file left out through a link =<br/>SkippedFiles (EntryThroughReparsePoint), a folder in a file's place = ArchiveError<br/>(DestinationIsAFolder), then the recorded<br/>folder times (T-F298). A cancel before this point leaves nothing at the destination.<br/>T-F408: OnItemExtracted as in diagram 3"]
+    Mloop -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>staging, so empty folders arrive too"] --> CM["staging.CommitInto(actualDest) — the same commit as ZIP (diagram 3):<br/>rename when actualDest is new and nothing is to be renamed (T-F411), else a per-file merge<br/>(an overwrite clears a read-only target first, T-F419);<br/>each locked destination file = one ArchiveError, a file left out through a link =<br/>SkippedFiles (EntryThroughReparsePoint), a folder in a file's place = ArchiveError<br/>(DestinationIsAFolder), then the recorded<br/>folder times (T-F298). A cancel before this point leaves nothing at the destination.<br/>T-F408: OnItemExtracted as in diagram 3"]
     CM --> Q2{"totalFiles &gt; 0 &&<br/>extractedCount == 0?<br/>(T-F87 - every file hit P, nothing moved)"}
     Q2 -- yes --> Q3["SkippedFiles += whole-archive entry (AllEntriesSkipped),<br/>unless every skip was the user's own Skip answer (T-F216)<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
     Q2 -- no --> Q
@@ -756,10 +756,10 @@ flowchart TD
   but never what the pre-scan validates.** Gates D through G run unconditionally, exactly as
   before `SelectedEntryPaths` existed — the branch at G2 only changes the member-argument list
   passed to `-xf`, never whether the whole-archive scan runs. `ExpandSelection` builds that list
-  from `allNames` (the same list gate D already validated), so a stale/mismatched selected path
-  fails the entire `-xf` call with a real tar.exe error rather than silently extracting nothing —
-  see `DECISIONS.md`'s T-F05 entry for the empirical spike confirming tar.exe's exact
-  member-matching and directory-auto-recursion behavior this relies on.
+  from `allNames` (the same list gate D already validated), so a selected path that is not in it is dropped (`ExpandSelection` adds only names it finds);
+  when none is left, nothing is extracted and the call returns `(destDir, true)` (node S0E), as
+  ZIP does. Corrected 2026-10-29 (T-F226): this paragraph used to say such a path fails the whole
+  `-xf` call with a tar.exe error. See `DECISIONS.md`'s T-F05 entry for tar.exe's member matching.
 - **Same `Success`/`SkippedFiles` asymmetry as diagram 3, fixed downstream the same way (T-F87,
   nodes Q2/Q3):** an extraction where every file was skipped (e.g. `OnConflict=Skip` and every
   entry already exists at the destination) still reports `Success=true` — `Success` itself was
