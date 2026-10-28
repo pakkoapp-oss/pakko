@@ -1192,11 +1192,13 @@ Updated 2026-10-18 for T-F411 wave E from `ArchiveCreationRouter.cs` (`Engine`, 
 `AddEntryFromFileAsync`), `Zip/ParallelSingleArchiveWriter.cs` (`CompressionSettings`, `ComputeWindowCapacity`)
 and `Archiver.CLI`'s `Program.cs` (`RunArchiveAsync`, `DeleteArchivedSourcesAsync`), `CliSourceDeleter.cs`.
 
+Per-arrow ritual 2026-10-29 (T-F226) from `ArchiveCreationRouter.cs`, `ZipArchiveService.ArchiveAsync`, `DestinationFolder.ReservedArchiveName`, `ArchiveTempFile.RemoveOldArchiveInsideSources`, `RunSourceFiles`, `TarSandboxedService.cs` (`CompressAsync`, `CreationRefusalAsync`, `SingleFileRefusal`, `WriterRefusalAsync`, `ProcessSeparateArchivesAsync`, `CompressToArchiveAsync`, `BuildCreationArgs`, `AppendCompressionFilterArgs`, `ReportCreationFailure`, `ReportVanished`): drawn now are the device-name refusal (ZR/TR, T-F419 D), the one-file formats (TSF, T-F413), a source never replaced by its own archive (T-F421), the old archive deleted first when it lies inside a source folder, and T-F396/T-F429's failure and progress reading.
+
 ```mermaid
 flowchart TD
     F1["App: Format combobox, SelectedArchiveMode,<br/>inline password when Encrypt applies (ZIP only),<br/>recovery data 5/10/20 % unless DisableRecoveryData"] --> R
     F2["Shell: Add to X.zip or Add to X.tar<br/>SingleArchive, OnConflict=Rename, no password, no recovery data"] --> R
-    F3["CLI a: -t zip / tar / tar.gz ... (default zip), SingleArchive,<br/>-y → Overwrite else Skip, -p refused by the parser for tar-family,<br/>-rr N → RecoveryPercent, -rr with -so refused by the parser.<br/>CliArchiveSources (T-F414, T-F410): sources by 7-Zip's prefix rule → SourceNameParts,<br/>masks searched once per prefix, -x → EntryFilter; a missing name is a warning (exit 1),<br/>none left → exit 2 and Core is not called.<br/>T-F411: -mmt → MaxThreads, -stl, -ssw, -sse → their options; -sdel: a volume root or a source<br/>holding the current folder → exit 7, else CliSourceSnapshot lists the sources before Core runs"] --> R
+    F3["CLI a: -t zip / tar / tar.gz ... (default zip), -tgzip / -tbzip2 / -txz: one file without tar (T-F413), SingleArchive,<br/>-y → Overwrite else Skip, -p refused by the parser for tar-family,<br/>-rr N → RecoveryPercent, -rr with -so refused by the parser.<br/>CliArchiveSources (T-F414, T-F410): sources by 7-Zip's prefix rule → SourceNameParts,<br/>masks searched once per prefix, -x → EntryFilter; a missing name is a warning (exit 1),<br/>none left → exit 2 and Core is not called.<br/>T-F411: -mmt → MaxThreads, -stl, -ssw, -sse → their options; -sdel: a volume root or a source<br/>holding the current folder → exit 7, else CliSourceSnapshot lists the sources before Core runs"] --> R
     R{"ArchiveCreationRouter: format allowed by<br/>AllowedFormats/BlockedFormats?"} -- no --> RE1["Errors += CreationFormatBlocked"]
     R -- yes --> R2{"DisableTarExtraction and format is not Zip?"}
     R2 -- yes --> RE2["Errors += TarCreationDisabled — tar.exe never starts"]
@@ -1209,7 +1211,9 @@ flowchart TD
     R3 -- yes --> Z0["ZipArchiveService.ArchiveAsync: trim trailing separators (T-F153)"]
     Z0 --> ZN{"SourceEntryNames.Create: a SourceNameParts count the path cannot give,<br/>or one source's name inside another's? (T-F414)"}
     ZN -- yes --> ZNE["return: Errors += SourceNamePartsInvalid / SourceNamesOverlap, nothing written"]
-    ZN -- no --> ZD{"DestinationFolder.TryCreate fails? (T-F406, before any prompt)"}
+    ZN -- no --> ZR{"SingleArchive and ExactFileName a device name<br/>(CON, NUL ...)? (T-F419 D, ReservedArchiveName)"}
+    ZR -- yes --> ZRE["return: Errors += ArchiveNameReserved, every source NotProcessed"]
+    ZR -- no --> ZD{"DestinationFolder.TryCreate fails? (T-F406, before any prompt)"}
     ZD -- yes --> ZDE["return: Errors += CannotCreateArchive with the OS text, nothing written"]
     ZD -- no --> Z1{"ResolvePasswordAsync set?"}
     Z1 -- yes --> Z2["ResolveEncryptionPasswordAsync — one prompt, maxAttempts 1,<br/>BEFORE any conflict step (T-F193)"]
@@ -1218,9 +1222,9 @@ flowchart TD
     Z3 -- no --> ZM
     Z1 -- no --> ZM{"Mode"}
 
-    ZM -- SingleArchive --> S1["DestinationConflictResolver on name.zip<br/>(Ask → the frontend's conflict prompt, T-F158)"]
+    ZM -- SingleArchive --> S1["DestinationConflictResolver on name.zip<br/>a source by that name, by any spelling (file identity), is a same-run clash:<br/>never replaced, numbered under Overwrite and Rename, skipped under Skip (T-F421)<br/>(Ask → the frontend's conflict prompt, T-F158)"]
     S1 -- Skip --> S1S["return: every source SkippedFiles (ArchiveAlreadyExists)"]
-    S1 -- "Overwrite / Rename" --> S2["temp = ArchiveTempFile.Create: sweep .pakko-a-* of dead runs,<br/>new .pakko-a-owner-guid.tmp — not hidden, the old archive stays (T-F312)<br/>one walk: total bytes, file count, largest file (T-F35, T-F352)"]
+    S1 -- "Overwrite / Rename" --> S2["temp = ArchiveTempFile.Create: sweep .pakko-a-* of dead runs,<br/>new .pakko-a-owner-guid.tmp — not hidden, the old archive stays (T-F312) unless it lies inside a source folder:<br/>then it is deleted first, so the walk does not pack it (RemoveOldArchiveInsideSources)<br/>one walk: total bytes, file count, largest file (T-F35, T-F352)"]
     S2 --> S3{"password set, OR level Fastest, OR file count over 64,<br/>OR a few large files: level not NoCompression, at least 8 MiB beside the<br/>largest file and at least a quarter of it, free space for twice the sources,<br/>source and destination disks known to have no seek penalty?<br/>(UsesParallelWriter, T-F299/T-F352)"}
     S3 -- yes --> S4["ParallelSingleArchiveWriter — hand-rolled writer,<br/>the only one that encrypts (AES-256 AE-2), T-F35/T-F193,<br/>and stores an entry Deflate did not shrink (T-F299).<br/>Window min(MaxThreads, 16), or the core count clamped 2-16 (T-F411)"]
     S3 -- no --> S5["sequential ZipArchive writer"]
@@ -1233,7 +1237,7 @@ flowchart TD
     S6 -- "none" --> S8["delete .tmp — no empty archive (T-F60)"]
     S4 & S5 -. "IOException / UnauthorizedAccessException / any other exception" .-> S9["delete .tmp, Errors += CannotCreateArchive /<br/>AccessDeniedCreatingArchive / UnexpectedError — never thrown"]
 
-    ZM -- SeparateArchives --> P1["sequential plan pass, sorted: a source EntryFilter leaves out gets no archive (T-F410),<br/>a reparse point is skipped (T-F23),<br/>DestinationConflictResolver per source incl. same-run name clashes (T-F12)"]
+    ZM -- SeparateArchives --> P1["sequential plan pass, sorted: a source EntryFilter leaves out gets no archive (T-F410),<br/>a reparse point is skipped (T-F23),<br/>DestinationConflictResolver per source incl. same-run name clashes (T-F12) and a source by that name (T-F421)"]
     P1 --> P2["Parallel.ForEachAsync over the plans — degree = cores,<br/>or cores / writer window for the hand-rolled writer"]
     P2 --> P3{"per source: password set, OR level Fastest?"}
     P3 -- yes --> P4["ParallelSingleArchiveWriter with that one source"]
@@ -1245,7 +1249,9 @@ flowchart TD
     R3 -- no --> T0["TarSandboxedService.CompressAsync — UNSANDBOXED (T-F105)"]
     T0 --> TN{"SourceEntryNames.Create fails? (T-F414, as ZN)"}
     TN -- yes --> TNE["return: Errors += SourceNamePartsInvalid / SourceNamesOverlap"]
-    TN -- no --> T1{"ResolvePasswordAsync set?"}
+    TN -- no --> TSF{"gzip / bzip2 / xz of one file (T-F413): a folder, or several<br/>sources in one archive? (SingleFileRefusal)"}
+    TSF -- yes --> TSFE["Errors += SingleFileFormatNeedsOneFile"]
+    TSF -- no --> T1{"ResolvePasswordAsync set?"}
     T1 -- yes --> TE1["Errors += PasswordOnlyForZip, or SevenZipEncryptionNotSupported for 7z (T-F342) — before any prompt"]
     T1 -- no --> T2{"tar.exe Authenticode signature valid?"}
     T2 -- no --> TE2["Errors += TarSignatureInvalid"]
@@ -1253,19 +1259,21 @@ flowchart TD
     T2C -- yes --> TE2C["Errors += FormatNotSupportedByTar, tar.exe never starts"]
     T2C -- no --> T2Z{"Format == SevenZip and CanCreateSevenZipAsync false?<br/>(tar.exe reads 7z by its version, and its 7z writer ran once:<br/>an empty archive to stdout, exit 0 and the 7z signature, T-F342)"}
     T2Z -- yes --> TE2Z["Errors += SevenZipWriterUnavailable, nothing written"]
-    T2Z -- no --> TD{"DestinationFolder.TryCreate fails? (T-F406)"}
+    T2Z -- no --> TR{"device name, as ZR? (T-F419 D)"}
+    TR -- yes --> TRE["return: Errors += ArchiveNameReserved"]
+    TR -- no --> TD{"DestinationFolder.TryCreate fails? (T-F406)"}
     TD -- yes --> TDE["return: Errors += CannotCreateArchive with the OS text, tar.exe never starts"]
     TD -- no --> TM{"Mode"}
-    TM -- SingleArchive --> T3["DestinationConflictResolver on name.ext, Skip returns every source skipped"]
-    TM -- SeparateArchives --> T4["SEQUENTIAL loop, sorted: missing → SourceNotFound,<br/>conflict per source, then one tar.exe per source"]
+    TM -- SingleArchive --> T3["DestinationConflictResolver on name.ext, a source by that name as in S1 (T-F421),<br/>Skip returns every source skipped"]
+    TM -- SeparateArchives --> T4["SEQUENTIAL loop, sorted: missing → SourceNotFound,<br/>conflict per source (claimed names and a source by that name, T-F421),<br/>then one tar.exe per source"]
     T3 --> T3T["temp = ArchiveTempFile.Create (T-F312)"]
     T3T --> T5
     T4 --> T5["temp = ArchiveTempFile.Create per source (T-F312).<br/>T-F286: first sweep the staging folders a killed creation left (owner process gone, links removed first).<br/>AppendSourcesToNameList, per source: reparse point skipped, missing → error,<br/>a name the ANSI code page cannot hold anywhere in the tree → error (T-F266/T-F204),<br/>a clashing name: file staged as a renamed copy, folder as a junction (T-F168, T-F171),<br/>a clashing folder on a network share → error, a link inside a source folder is reported as skipped and gets an anchored exclude pattern (T-F391),<br/>a source EntryFilter leaves out is not listed, what it leaves out inside gets an anchored exclude pattern, unreported (T-F410),<br/>then one record per source: -C, parent, name (exact -C → ./-C, T-F283) — with SourceNameParts the parent is the folder above the kept parts, the name dir/sub (T-F414)"]
     T5 --> T6{"no source left, also after the re-check right before the launch?<br/>(ReportVanished: a source gone since it was listed is SourceNotFound, T-F390)"}
     T6 -- yes --> T7["no tar.exe run"]
-    T6 -- no --> T8["tar.exe -v -cf name.tmp -T - — the name list on stdin (T-F273/T-F283), SandboxedProcessLauncher with no AppContainer and<br/>no Job Object, stderr a-lines drive progress.<br/>Links: an -X exclude-list file next to the archive (T-F391).<br/>7z: --format=7zip --options 7zip:compression=..., the child's TMP and TEMP set to a .pakko-7z-* folder<br/>next to the archive, excluded by name and removed after the run (T-F342)"]
+    T6 -- no --> T8["tar.exe -v -cf name.tmp -T - — the name list on stdin (T-F273/T-F283), SandboxedProcessLauncher with no AppContainer and<br/>no Job Object, only an 'a name' line of stderr drives progress (T-F429).<br/>The old archive inside a source folder is deleted first, as in S2.<br/>gzip / bzip2 / xz of one file: --format raw, gzip with no timestamp (T-F413).<br/>Links: an -X exclude-list file next to the archive (T-F391).<br/>7z: --format=7zip --options 7zip:compression=..., the child's TMP and TEMP set to a .pakko-7z-* folder<br/>next to the archive, excluded by name and removed after the run (T-F342)"]
     T8 --> T9{"exit code 0 and .tmp exists?"}
-    T9 -- no --> TE3["delete .tmp, Errors += TarCreationFailed without the visit-directory line of tar.exe,<br/>and for that line: SourceNotFound for each listed source now gone, else TarSourceUnreadable (T-F390)"]
+    T9 -- no --> TE3["delete .tmp. Every listed source now gone: SourceNotFound - asked of the file system<br/>on every failure (T-F396), not of tar.exe's words. None gone and the visit-directory line there:<br/>TarSourceUnreadable. Then TarCreationFailed without that line, and without the missing-file<br/>lines when a source was gone (T-F390)"]
     T9 -- yes --> T10["ArchiveTempFile.CommitAsync .tmp → name.ext — same rule as S7 (T-F321),<br/>CreatedFiles += the path it landed at"]
 
     S7 & P2 & T10 -.-> STL{"router, Engine: SetArchiveTimeFromNewestEntry, SingleArchive,<br/>one archive created? (T-F411, -stl)"}
