@@ -265,7 +265,7 @@ folder, a failed entry shows only as a warning icon.
 
 Source read for this diagram (re-derived 2026-09-29, T-F258): `src/Archiver.App/ViewModels/MainViewModel.cs`
 — `ArchiveAsync`, `ExtractAsync` → `RunExtractAsync`, `Cancel`, `CanArchive`/`CanExtract`,
-`RunCleanupAsync`. Both methods have the same try/catch/finally shape; the diagram applies to either,
+`RunCleanupAsync`. Per-arrow ritual 2026-10-29 (T-F226): the waits before the Core call (row totals, T-F419's snapshot), the conflict dialog's Cancel, and the cleanup's missing-output and snapshot rules drawn now. Both methods have the same try/catch/finally shape; the diagram applies to either,
 with the differences named in the labels. (Line numbers are no longer quoted — they went stale
 with every change above them.) `Test`/`Scan` from the browser follow the same cancel path (T-F277)
 but are not drawn here.
@@ -310,9 +310,10 @@ action (`FooterLine.Pick`). All three exit paths end in `SetOutcome` (result, er
 stateDiagram-v2
     [*] --> Idle
     Idle --> Busy: ArchiveCommand (CanArchive — !IsBusy, FileItems.Count>0, inline password usable)<br/>or ExtractCommand (CanExtract — !IsBusy, _listActions.CanExtract)<br/>or a browser Extract Selected/All (same RunExtractAsync)<br/>new CancellationTokenSource — IsBusy=true
-    Busy --> Busy: CancelCommand invoked<br/>(CanExecute: IsOperationRunning == IsBusy)<br/>→ cts.Cancel() only — IsBusy is NOT changed here —<br/>there is no dedicated Cancelling state in code
+    Busy --> Busy: before the Core call - Archive awaits every row's totals (T-F236),<br/>and with Delete after ticked, SourceSnapshot.Take of the sources or archives on the<br/>thread pool (T-F419) - both with the token, so a cancel here throws as below
+    Busy --> Busy: CancelCommand invoked, or Cancel in a conflict dialog (it calls cts.Cancel too)<br/>(CanExecute: IsOperationRunning == IsBusy)<br/>→ cts.Cancel() only — IsBusy is NOT changed here —<br/>there is no dedicated Cancelling state in code
     Busy --> AwaitingSummaryDialog: _archiveCreationRouter.ArchiveAsync / _extractionRouter.ExtractAsync<br/>returns without throwing — StatusMessage = rendered OutcomeLine
-    AwaitingSummaryDialog --> AwaitingSummaryDialog: await ShowOperationSummaryAsync (no dialog when Outcome==Completed),<br/>then, only if DeleteAfterOperation (and allowDeleteAfter for Extract):<br/>RunCleanupAsync(result.FullyProcessedSources) — Recycle Bin, a confirm before<br/>a permanent delete, a dialog listing what was not deleted (T-F207/T-F229/T-F242)<br/>IsBusy is STILL TRUE — finally has not run yet
+    AwaitingSummaryDialog --> AwaitingSummaryDialog: await ShowOperationSummaryAsync (no dialog when Outcome==Completed),<br/>then, only if DeleteAfterOperation (and allowDeleteAfter for Extract):<br/>RunCleanupAsync(result.FullyProcessedSources) — nothing deleted when an output is no longer<br/>on disk (T-F420), else only what the snapshot finds unchanged (T-F419) — Recycle Bin, a confirm before<br/>a permanent delete, a dialog listing what was not deleted (T-F207/T-F229/T-F242)<br/>IsBusy is STILL TRUE — finally has not run yet
     AwaitingSummaryDialog --> Idle: finally (dispose cts, Archive also clears the password) —<br/>wasCancelled==false so no delay — THEN IsBusy=false — THEN StatusMessage=StatusReady —<br/>Extract from the browser: CloseArchiveCore if the archive is gone — THEN SetOutcome
     Busy --> AwaitingErrorDialog: any other Exception caught (not OperationCanceledException)<br/>StatusMessage=DialogErrorTitle
     AwaitingErrorDialog --> AwaitingErrorDialog: await ShowErrorAsync(...)<br/>IsBusy is STILL TRUE while this modal is open
