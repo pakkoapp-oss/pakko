@@ -558,6 +558,8 @@ the `desktop4/5/10` verbs), the `ProjectReference`s of `Archiver.App`, `Archiver
 `src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs` (`CreateAsync`, `RunAsync`), and
 `src/Archiver.Core/Services/TarSandboxedService.cs` (`RunUnsandboxedTarAsync`, `DetectCapabilitiesAsync`).
 
+Per-arrow ritual 2026-10-29 (T-F226): the manifest's `<Application>` entries, file associations, `com:SurrogateServer` and verbs are unchanged since 2026-10-03 (only version bumps and resource names); `TarSandboxScope` gained the `first` and `list` folders (T-F171, T-F410) and Test's `-x -O` run (T-F397), drawn now.
+
 ```mermaid
 flowchart TB
     subgraph MSIX["Pakko.msix — Identity: PavloRybchenko.Pakko"]
@@ -580,7 +582,7 @@ flowchart TB
     Core["Archiver.Core — in-process library<br/>(ZipArchiveService, TarSandboxedService,<br/>AntivirusScanService → amsi.dll in-process)"]
 
     subgraph Sandbox["per archive operation: TarSandboxScope"]
-        TarBox["C:\Windows\System32\tar.exe<br/>AppContainer Pakko.TarSandbox + Job Object<br/>(1 process, RAM/CPU limits), archive as stdin (T-F233),<br/>writes only %TEMP%\PakkoTarSandbox\owner-guid\out"]
+        TarBox["C:\Windows\System32\tar.exe<br/>AppContainer Pakko.TarSandbox + Job Object<br/>(1 process, RAM/CPU limits), archive as stdin (T-F233),<br/>writes only %TEMP%\PakkoTarSandbox\owner-guid\out,<br/>or ...\first for T-F171's first copies; reads its member<br/>list from ...\list, read-only (T-F410); Test writes nothing (-x -O, T-F397)"]
     end
     TarPlain["C:\Windows\System32\tar.exe<br/>unsandboxed: no AppContainer, no Job Object"]
 
@@ -596,7 +598,7 @@ flowchart TB
     Terminal["terminal: cmd / PowerShell / pwsh"] -->|"bare pakko: first match on PATH<br/>(WindowsApps alias, usually ahead of winget's folder)"| CliPkg
     Terminal -.->|"pakko when only the zip/winget copy is installed"| Cli
     CliPkg --> Core
-    Core -->|"extract, list, scan, pre-scan (T-F49/T-F52)<br/>signature checked first"| TarBox
+    Core -->|"extract, list, test (T-F397), scan, pre-scan (T-F49/T-F52)<br/>signature checked first"| TarBox
     Core -->|"create a tar-family archive (T-F105)<br/>and the one-shot --version probe"| TarPlain
 ```
 
