@@ -62,8 +62,9 @@ function Invoke-Tool {
 function Invoke-Pakko {
     param([Parameter(Mandatory)][string[]]$Arguments, [string]$WorkingDirectory, [int]$TimeoutSeconds = 900)
     foreach ($argument in $Arguments) {
-        # T-F411: the switch name is read without case (-PSecret), the password as typed.
-        if ($argument -imatch '^-p(.+)$') { $null = $Smoke.Passwords.Add($Matches[1]) }
+        # T-F411: the switch name is read without case (-PSecret), the password as typed. -p- asks
+        # for no password (T-F409); its "-" would match every dated log line in APP-018.
+        if ($argument -imatch '^-p(.+)$' -and $Matches[1] -ne '-') { $null = $Smoke.Passwords.Add($Matches[1]) }
     }
     Invoke-Tool -Exe $Smoke.Pakko -Arguments $Arguments -WorkingDirectory $WorkingDirectory -TimeoutSeconds $TimeoutSeconds
 }
