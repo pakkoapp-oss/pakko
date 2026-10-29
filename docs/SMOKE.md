@@ -180,7 +180,7 @@ budgets, `REL` the release's files, `STO` the Store.
 
 | ID | Tier | By | On | Action | Expect | Covers |
 |---|---|---|---|---|---|---|
-| OPW-001 | quick | script | dev | `Archiver.Shell.exe --archive` on a folder of 6000 files of 16 KiB and a 200 MB file; read the window through UI Automation | The window is up within 3 seconds and shows a percentage and sizes; the archive holds 6001 files | `shell:--archive` T-F268 |
+| OPW-001 | quick | script | dev | `Archiver.Shell.exe --archive` on a folder of 6000 files of 16 KiB and a 200 MB file; read the window through UI Automation | The window is up within 3 seconds and shows a percentage and sizes, and a time left once a second has passed; the archive holds 6001 files | T-F431 `shell:--archive` T-F268 |
 | OPW-002 | release | mcp | dev | The same, with Cancel pressed halfway | No archive and no temporary file is left | T-F268 |
 | OPW-003 | release | mcp | dev | In the window: a name conflict (Rename, for all), a password prompt, a suspected bomb (Skip) | Each question is asked there and the answer takes effect | T-F217 |
 | OPW-004 | release | script | dev | Kill `Archiver.OperationUi.exe` two seconds into a large operation | The Win32 progress dialog takes over and the operation finishes | T-F268 T-F288 |

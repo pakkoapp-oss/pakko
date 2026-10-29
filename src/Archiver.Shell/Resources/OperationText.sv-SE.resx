@@ -96,4 +96,10 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Kontrollerar arkivets innehåll...</value>
   </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>~{0} s kvar</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>~{0} kvar</value>
+  </data>
 </root>

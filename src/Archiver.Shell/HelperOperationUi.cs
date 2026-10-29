@@ -77,6 +77,7 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
         private readonly ProgressStyle _style;
         private readonly CancellationTokenSource _cts = new();
         private ProgressSpeedSampler _speed = new();
+        private ProgressTimeEstimate _timeLeft = new();
         private readonly Timer _readyTimer;
 
         // Signalled when the helper can no longer show anything: it confirmed its window closed,
@@ -133,6 +134,7 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
                 _item = (name, index, count);
                 // Each archive's bytes start again from zero, which the old sampler ignores.
                 _speed = new ProgressSpeedSampler();
+                _timeLeft = new ProgressTimeEstimate();
                 fallback = _fallback;
             }
             if (fallback is not null)
@@ -418,7 +420,7 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
                         return;
                     string status = _style == ProgressStyle.Percent
                         ? $"{report.Percent}%"
-                        : ProgressText.FormatStatus(report, _speed);
+                        : ProgressText.FormatStatus(report, _speed, _timeLeft);
                     signal = _pendingProgress is null;
                     _pendingProgress = new ProgressMessage(report.Percent, report.CurrentFile, status);
                     if (!signal)

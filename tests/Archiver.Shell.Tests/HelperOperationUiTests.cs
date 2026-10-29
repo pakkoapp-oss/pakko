@@ -202,6 +202,22 @@ public sealed class HelperOperationUiTests : IDisposable
         (await ReadProgressAsync(1)).Status.Should().Be(ProgressText.FormatStatus(next, null));
     }
 
+    // T-F431: in a batch the time left is the current archive's; the next one starts its own.
+    [Fact]
+    public async Task BeginItem_StartsTheTimeLeftAgain()
+    {
+        using IOperationSession session = await BeginReadyAsync();
+        session.Progress!.Report(new ProgressReport { Percent = 0 });
+        await Task.Delay(TimeSpan.FromMilliseconds(1100));
+        session.Progress.Report(new ProgressReport { Percent = 10 });
+        (await ReadProgressAsync(10)).Status.Should().StartWith("10%  ·  ");
+
+        session.BeginItem("b.zip", 2, 2);
+        session.Progress.Report(new ProgressReport { Percent = 11 });
+
+        (await ReadProgressAsync(11)).Status.Should().Be("11%");
+    }
+
     private async Task<Progress> ReadProgressAsync(int percent)
     {
         Progress progress;

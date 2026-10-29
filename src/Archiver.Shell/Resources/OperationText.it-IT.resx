@@ -96,4 +96,10 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Verifica del contenuto dell'archivio...</value>
   </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>~{0} s rimanenti</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>~{0} rimanenti</value>
+  </data>
 </root>

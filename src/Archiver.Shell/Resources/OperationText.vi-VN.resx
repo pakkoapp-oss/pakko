@@ -96,4 +96,10 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Đang kiểm tra nội dung tệp nén...</value>
   </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>Còn ~{0} giây</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>Còn ~{0}</value>
+  </data>
 </root>
