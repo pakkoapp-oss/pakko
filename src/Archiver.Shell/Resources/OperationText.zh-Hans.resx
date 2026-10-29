@@ -96,4 +96,10 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>正在检查压缩包内容...</value>
   </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>剩余约 {0} 秒</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>剩余约 {0}</value>
+  </data>
 </root>

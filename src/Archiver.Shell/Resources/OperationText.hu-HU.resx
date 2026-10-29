@@ -96,4 +96,10 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Az archívum tartalmának ellenőrzése...</value>
   </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>Hátralévő idő: ~{0} mp</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>Hátralévő idő: ~{0}</value>
+  </data>
 </root>

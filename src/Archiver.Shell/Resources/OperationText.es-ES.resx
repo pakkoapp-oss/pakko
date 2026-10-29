@@ -96,4 +96,10 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Comprobando el contenido del archivo comprimido...</value>
   </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>Quedan ~{0} s</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>Quedan ~{0}</value>
+  </data>
 </root>

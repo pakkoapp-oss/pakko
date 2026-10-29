@@ -48,4 +48,52 @@ public sealed class ProgressTextTests : IDisposable
         ProgressText.FormatStatus(new Archiver.Core.Models.ProgressReport { Phase = Archiver.Core.Models.ProgressPhase.CheckingArchive }, null)
             .Should().Be(expected);
     }
+
+    // T-F431: the operation window's time left, worded as the App's footer.
+    [Theory]
+    [InlineData("en-US", 4.5, "~4 sec remaining")]
+    [InlineData("en-US", 59.9, "~59 sec remaining")]
+    [InlineData("en-US", 60, "~1:00 remaining")]
+    [InlineData("en-US", 125, "~2:05 remaining")]
+    [InlineData("uk-UA", 30, "Залишилось ~30 с")]
+    [InlineData("uk-UA", 3_725, "Залишилось ~62:05")]
+    public void FormatTimeLeft_UsesTheLanguagesWords(string culture, double seconds, string expected)
+    {
+        CultureInfo.CurrentUICulture = CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+
+        ProgressText.FormatTimeLeft(seconds).Should().Be(expected);
+    }
+
+    [Fact]
+    public void FormatStatus_WithAnEstimate_AddsTheTimeLeftEvenWithoutAByteTotal()
+    {
+        CultureInfo.CurrentUICulture = CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        var estimate = new ProgressTimeEstimate();
+        estimate.SecondsLeft(0, DateTime.UtcNow.AddSeconds(-10));
+
+        ProgressText.FormatStatus(new Archiver.Core.Models.ProgressReport { Percent = 50 }, null, estimate)
+            .Should().Be("50%  ·  ~10 sec remaining");
+    }
+
+    [Fact]
+    public void FormatStatus_WithoutAnEstimate_HasNoTimeLeft()
+    {
+        CultureInfo.CurrentUICulture = CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+
+        ProgressText.FormatStatus(new Archiver.Core.Models.ProgressReport { Percent = 50 }, null)
+            .Should().Be("50%");
+    }
+
+    [Fact]
+    public void FormatStatus_AfterTheChecking_StartsTheTimeLeftAgain()
+    {
+        CultureInfo.CurrentUICulture = CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en-US");
+        var estimate = new ProgressTimeEstimate();
+        estimate.SecondsLeft(0, DateTime.UtcNow.AddSeconds(-10));
+
+        ProgressText.FormatStatus(new Archiver.Core.Models.ProgressReport { Phase = Archiver.Core.Models.ProgressPhase.CheckingArchive }, null, estimate);
+
+        ProgressText.FormatStatus(new Archiver.Core.Models.ProgressReport { Percent = 50 }, null, estimate)
+            .Should().Be("50%");
+    }
 }

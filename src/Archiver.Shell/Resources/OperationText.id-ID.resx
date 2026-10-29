@@ -96,4 +96,10 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Memeriksa isi arsip...</value>
   </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>Sisa ~{0} dtk</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>Sisa ~{0}</value>
+  </data>
 </root>

@@ -57,6 +57,7 @@ once; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md are edited by the integra
 | C App, on device | 2026-10-29: T-F392 done (`EXP-016` passed), T-F395 done (PR #119), T-F354 closed (not worth it: the start is 341 ms, `x:Load` crashes the window), T-F393 deferred (no repro in 25 tries); T-F399 waits for `POL-009` (the user's elevation); T-F320 (closed, documented) | App, `TarSandboxedService` creation |
 | D smoke, winget | T-F394, T-F361 | `scripts/`, `scripts/smoke/`, `docs/SMOKE.md` |
 | E localization, Store text | T-F331 done 2026-10-29 ("What's new" for 1.9.0, 37 languages); T-F91's layout walk and T-F328's non-English look ride on the release smoke's `APP-015`/`EXP-008` (the user language list, no sign-out); T-F329 part 5 | `.resw`/`.resx`, `Localization.cpp`, `docs/store-listing/` |
+| G operation window (added 2026-10-29, the user) | T-F431 (time left; T-F432 deferred) | `Archiver.Shell` progress text, `OperationText` resx |
 | F measurement, umbrellas | T-F114 (Windows 10 VM: the user's, no file path into it), T-F226 (done 2026-10-29: check L over diagrams 1 to 9), T-F202 (real console done 2026-10-29; keyboard is `APP-012` in the release smoke) | docs, tests |
 
 Decisions taken with the plan (the user approved, 2026-10-24): T-F412 keeps reading a `.tar.gz` in
@@ -73,6 +74,7 @@ review), T-F91's native-speaker review (no native speakers), T-F202's light them
 its language without a sign-out or a system setting. Found by stream B (2026-10-25, the agent's call):
 T-F428 (a change to the sandbox launcher's cancel path that needs a plan; low exposure in the
 product), T-F427 (the real AMSI path cannot be checked while AMSI is not ready on the dev machine).
+T-F432 (the user, 2026-10-29: the taskbar progress goes in the next release).
 
 ---
 
@@ -1504,6 +1506,36 @@ re-measured with T-F346's script before and after.
   skip when the file cannot be read for that reason (as the EICAR tests do for AMSI, T-F427), or give
   the file a name that keeps the RTL override without a `.exe` ending.
 - **Reported by:** the v1.9.0 integration's full run, 2026-10-29.
+
+### T-F431 — The Explorer operation window shows no time left; in a batch, speed and time left are the current archive's (P3)
+
+- [~] **Status:** in code 2026-10-29 (v1.9.0, the user's call): `Archiver.Shell/ProgressTimeEstimate.cs`,
+  a new one per archive in `HelperOperationUi.BeginItem`, started again after a checking pass; shown
+  without a byte total too (it needs only the percent); the `IProgressDialog` fallback gets none (its
+  `AutoTime` line has one); the App's two strings copied into the Shell's 37 resx files; the App is
+  unchanged. Tests: `ProgressTimeEstimateTests`, `ProgressTextTests`,
+  `HelperOperationUiTests.BeginItem_StartsTheTimeLeftAgain` (red without the reset). Graduates after
+  `OPW-001` on the device. Before: the window started from Explorer shows the percent, the bytes and the speed
+  (`Archiver.Shell/ProgressText.cs`'s `FormatStatus`), but no time left; the App's own footer has it
+  (`Archiver.App.Core/ProgressText.Remaining`, T-F303). Wanted: a time left next to the speed. In a
+  batch (several archives selected) the speed and the time left are the archive being processed now,
+  not the whole batch: the speed already restarts with each archive (`HelperOperationUi.BeginItem`
+  makes a new `ProgressSpeedSampler`), and the time left starts again with it, as the App's estimate
+  starts after its first report (`_estimateStart`). Next: share the App's estimate with the Shell
+  (`Archiver.App.Core` is not referenced by the Shell; move it to a library both use or repeat it),
+  tests over one archive and over a batch's second archive, and a `docs/SMOKE.md` row.
+- **Reported by:** the user, 2026-10-29.
+
+### T-F432 — Pakko's taskbar button shows no progress, as Explorer's copy does (P3)
+
+- [ ] **Status:** open. While an operation runs, Explorer fills its taskbar button with a small
+  progress bar under the icon; Pakko's does not. Wanted: the same under Pakko's icon
+  (`ITaskbarList3::SetProgressValue`/`SetProgressState`; under Native AOT a `[GeneratedComInterface]`,
+  never `[ComImport]`), cleared when the operation ends, and paused or error while a prompt or a
+  failure waits for the user. Decide first: which windows (the Explorer operation window, the App,
+  or both), and whether in a batch the button follows the current archive (as T-F431's speed does)
+  or the whole batch (as Explorer's copy does).
+- **Reported by:** the user, 2026-10-29.
 
 ### T-F393 — The About button went disabled once and no dialog came (P3)
 

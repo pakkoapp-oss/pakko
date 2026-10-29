@@ -31,6 +31,8 @@ adversarial test pass over every switch and by the on-device checks of v1.8.1.
 - **T-F412** - `pakko l -slt`, 7-Zip's technical listing.
 - **T-F413** - `pakko a -tgzip`, `-tbzip2` and `-txz` compress one file without tar; a `.gz` of one
   file opens, tests and extracts in the App, the Explorer menu and `pakko`.
+- **T-F431** - the operation window started from Explorer shows the time left next to the speed;
+  over several archives, for the one being processed.
 
 ### Changed
 

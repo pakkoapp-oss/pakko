@@ -96,4 +96,10 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Tikrinamas archyvo turinys...</value>
   </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>Liko ~{0} s</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>Liko ~{0}</value>
+  </data>
 </root>

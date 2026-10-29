@@ -96,4 +96,10 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Έλεγχος περιεχομένων αρχείου συμπίεσης...</value>
   </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>Απομένουν ~{0} δευτ.</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>Απομένουν ~{0}</value>
+  </data>
 </root>

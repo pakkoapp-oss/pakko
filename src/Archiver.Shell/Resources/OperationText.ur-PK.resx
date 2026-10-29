@@ -96,4 +96,10 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>آرکائیو کے مندرجات کی جانچ ہو رہی ہے...</value>
   </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>~{0} سیکنڈ باقی</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>~{0} باقی</value>
+  </data>
 </root>

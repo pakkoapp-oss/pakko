@@ -96,4 +96,10 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>Preverjanje vsebine arhiva...</value>
   </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>Še ~{0} s</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>Še ~{0}</value>
+  </data>
 </root>

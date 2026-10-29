@@ -96,4 +96,10 @@
   <data name="StatusCheckingArchive" xml:space="preserve">
     <value>アーカイブの内容を確認中...</value>
   </data>
+  <data name="RemainingSeconds" xml:space="preserve">
+    <value>残り約 {0} 秒</value>
+  </data>
+  <data name="RemainingMinutes" xml:space="preserve">
+    <value>残り約 {0}</value>
+  </data>
 </root>
