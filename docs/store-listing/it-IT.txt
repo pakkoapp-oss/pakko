@@ -41,3 +41,6 @@ open source
 • Funzionano anche i file PAR2 creati da altri programmi; il comando pakko aggiunge i dati di ripristino con -rr e ripara con r.
 • Corretto: i tasti Canc, Invio e il tasto Menu funzionano di nuovo su una riga dell'elenco selezionata da tastiera.
 • Corretto: in Windows 10 e Windows 11 fino alla versione 23H2 gli archivi TAR non vengono più rifiutati e Pakko offre solo i formati che il tar.exe di Windows sa gestire.
+• Corretto: un archivio non viene più scritto sopra uno dei file da archiviare; riceve invece un nome numerato.
+• Corretto: non viene creato un archivio TAR su due nomi di uno stesso file (un collegamento fisico), che Pakko non riusciva a estrarre; si suggerisce ZIP o 7-Zip.
+• Il comando pakko comprende più opzioni e maschere di file di 7-Zip.

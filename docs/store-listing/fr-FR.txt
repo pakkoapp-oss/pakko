@@ -41,3 +41,6 @@ open source
 • Les fichiers PAR2 créés par d'autres programmes fonctionnent aussi ; la commande pakko ajoute des données de récupération avec -rr et répare avec r.
 • Corrigé : les touches Suppr, Entrée et la touche Menu fonctionnent de nouveau sur une ligne de la liste sélectionnée au clavier.
 • Corrigé : sous Windows 10 et Windows 11 jusqu'à la version 23H2, les archives TAR ne sont plus refusées, et Pakko ne propose que les formats que le tar.exe de Windows sait traiter.
+• Corrigé : une archive n'est plus jamais écrite par-dessus l'un des fichiers archivés ; elle reçoit un nom numéroté.
+• Corrigé : une archive TAR n'est pas créée sur deux noms d'un même fichier (un lien physique), que Pakko ne pouvait pas extraire ; ZIP ou 7-Zip est proposé.
+• La commande pakko comprend davantage de commutateurs et de masques de fichiers de 7-Zip.

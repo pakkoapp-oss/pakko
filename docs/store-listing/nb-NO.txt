@@ -41,3 +41,6 @@ zip med passord
 • PAR2-filer fra andre programmer fungerer også; kommandoen pakko legger til gjenopprettingsdata med -rr og reparerer med r.
 • Rettet: Delete, Enter og menytasten fungerer igjen på en listerad som er valgt med tastaturet.
 • Rettet: på Windows 10 og Windows 11 til og med versjon 23H2 avvises ikke TAR-arkiver lenger, og Pakko tilbyr bare formatene som Windows' egen tar.exe kan håndtere.
+• Rettet: et arkiv skrives aldri over en av filene som arkiveres; det får i stedet et nummerert navn.
+• Rettet: et TAR-arkiv opprettes ikke over to navn på én fil (en hard kobling), som Pakko ikke kunne pakke ut; ZIP eller 7-Zip foreslås.
+• Kommandoen pakko forstår flere av 7-Zips brytere og filmasker.

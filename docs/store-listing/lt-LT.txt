@@ -41,3 +41,6 @@ zip su slaptažodžiu
 • Tinka ir kitų programų sukurti PAR2 failai; komanda pakko prideda atkūrimo duomenis jungikliu -rr ir taiso komanda r.
 • Ištaisyta: klavišai „Delete“, „Enter“ ir meniu klavišas vėl veikia klaviatūra pasirinktoje sąrašo eilutėje.
 • Ištaisyta: „Windows 10“ ir „Windows 11“ iki 23H2 versijos TAR archyvai nebeatmetami, o „Pakko“ siūlo tik tuos formatus, kuriuos geba apdoroti „Windows“ tar.exe.
+• Ištaisyta: archyvas niekada nebeįrašomas ant vieno iš archyvuojamų failų; jis gauna sunumeruotą pavadinimą.
+• Ištaisyta: TAR archyvas nekuriamas iš dviejų vieno failo pavadinimų (kietosios nuorodos), kurio Pakko negalėjo išskleisti; siūlomas ZIP arba 7-Zip.
+• Komanda pakko supranta daugiau 7-Zip jungiklių ir failų kaukių.

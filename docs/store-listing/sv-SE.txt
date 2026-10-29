@@ -41,3 +41,6 @@ zip med lösenord
 • PAR2-filer från andra program fungerar också; kommandot pakko lägger till återställningsdata med -rr och reparerar med r.
 • Åtgärdat: Delete, Retur och menytangenten fungerar igen på en listrad som valts med tangentbordet.
 • Åtgärdat: i Windows 10 och Windows 11 till och med version 23H2 avvisas TAR-arkiv inte längre, och Pakko erbjuder bara de format som Windows egen tar.exe klarar.
+• Åtgärdat: ett arkiv skrivs aldrig över någon av filerna som arkiveras; det får i stället ett numrerat namn.
+• Åtgärdat: ett TAR-arkiv skapas inte över två namn på en fil (en hård länk), som Pakko inte kunde extrahera; ZIP eller 7-Zip föreslås.
+• Kommandot pakko förstår fler av 7-Zips växlar och filmasker.

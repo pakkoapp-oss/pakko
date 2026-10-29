@@ -41,3 +41,6 @@ mã nguồn mở
 • Tệp PAR2 do chương trình khác tạo cũng dùng được; lệnh pakko thêm dữ liệu khôi phục bằng -rr và sửa bằng r.
 • Đã sửa: các phím Delete, Enter và phím menu hoạt động trở lại trên hàng danh sách được chọn bằng bàn phím.
 • Đã sửa: trên Windows 10 và Windows 11 đến phiên bản 23H2, tệp nén TAR không còn bị từ chối, và Pakko chỉ cung cấp những định dạng mà tar.exe của Windows xử lý được.
+• Đã sửa: tệp nén không bao giờ còn bị ghi đè lên một trong các tệp đang được nén; thay vào đó nó nhận một tên có số.
+• Đã sửa: không tạo tệp nén TAR trên hai tên của cùng một tệp (liên kết cứng), thứ Pakko không thể giải nén; ZIP hoặc 7-Zip được đề xuất.
+• Lệnh pakko hiểu thêm nhiều khóa chuyển và mặt nạ tệp của 7-Zip.

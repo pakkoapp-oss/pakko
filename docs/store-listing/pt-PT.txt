@@ -41,3 +41,6 @@ código aberto
 • Os ficheiros PAR2 criados por outros programas também funcionam; o comando pakko adiciona dados de recuperação com -rr e repara com r.
 • Corrigido: as teclas Delete, Enter e a tecla de menu voltam a funcionar numa linha da lista selecionada com o teclado.
 • Corrigido: no Windows 10 e no Windows 11 até à versão 23H2, os arquivos TAR já não são recusados, e o Pakko oferece apenas os formatos que o tar.exe do Windows consegue tratar.
+• Corrigido: um arquivo nunca é escrito por cima de um dos ficheiros a arquivar; recebe antes um nome numerado.
+• Corrigido: não é criado um arquivo TAR sobre dois nomes do mesmo ficheiro (uma ligação física), que o Pakko não conseguia extrair; é sugerido ZIP ou 7-Zip.
+• O comando pakko entende mais opções e máscaras de ficheiros do 7-Zip.

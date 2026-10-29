@@ -41,3 +41,6 @@ Open Source
 • PAR2-Dateien anderer Programme funktionieren ebenfalls; der Befehl pakko fügt Wiederherstellungsdaten mit -rr hinzu und repariert mit r.
 • Behoben: Entf, Eingabe und die Menütaste funktionieren wieder in einer per Tastatur ausgewählten Listenzeile.
 • Behoben: Unter Windows 10 und Windows 11 bis Version 23H2 werden TAR-Archive nicht mehr abgelehnt, und Pakko bietet nur die Formate an, die das tar.exe von Windows beherrscht.
+• Behoben: Ein Archiv wird nie mehr über eine der zu archivierenden Dateien geschrieben; es erhält stattdessen einen nummerierten Namen.
+• Behoben: Ein TAR-Archiv wird nicht über zwei Namen einer Datei (einen festen Link) erstellt, das Pakko nicht extrahieren konnte; ZIP oder 7-Zip wird vorgeschlagen.
+• Der Befehl pakko versteht mehr Schalter und Dateimasken von 7-Zip.
