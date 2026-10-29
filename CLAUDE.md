@@ -15,11 +15,11 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 ## Current State
 
 v1.1 through v1.4 (shell extension, tar.exe integration, Group Policy) and the v1.5-v1.7 waves
-are complete. **v1.8.0** (PAR2 recovery data) was released 2026-10-11; **v1.8.1** (fixes, 7z
-creation T-F342, Test for tar.exe's formats T-F397, the tar.exe capability matrix T-F403) was
-released 2026-10-16. The
-Store bundle 1.7.2.0, the first Native AOT build, passed certification 2026-10-11; 1.8.1 is not
-submitted yet (`docs/DECISIONS.md`). Store listing:
+are complete. **v1.8.0** (PAR2) was released 2026-10-11, **v1.8.1** (7z creation, Test for
+tar.exe's formats) 2026-10-16; **v1.9.0** (7-Zip's command line in `pakko`, a source never replaced
+by its archive, no tar over a hard-link pair) is being cut. The Store bundle 1.7.2.0, the first
+Native AOT build, passed certification 2026-10-11; 1.8.x was never submitted, 1.9.0 is the next
+submission (`docs/DECISIONS.md`). Store listing:
 https://apps.microsoft.com/detail/9p5mw010d8pr.
 
 Per-task detail lives in `docs/TASKS_DONE.md` and `docs/DECISIONS.md`, never here. The long
@@ -29,7 +29,7 @@ narrative this section used to hold is archived verbatim in `docs/DECISIONS.md`'
 **Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
 truth; never trust a count written in a doc.
 
-**Next work:** the v1.9.0 wave (Store release), indexed at the top of `docs/TASKS.md`.
+**Next work:** after v1.9.0, "Deferred past 1.9.0" at the top of `docs/TASKS.md`.
 
 ## Roadmap Summary
 
