@@ -272,10 +272,12 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
             .Select(i => new TarBuilder.Entry { Name = $"f{i:D2}.txt", Content = Encoding.ASCII.GetBytes("x" + i) }));
         string destDir = Path.Combine(_temp.Path, "out");
 
+        // T-F395: the move's points depend on the file count.
+        TarSandboxedService.ProgressSplit split = TarSandboxedService.ExtractionProgressSplit(40, 40 * 2);
         using var cts = new CancellationTokenSource();
         var progress = new SynchronousProgress<ProgressReport>(r =>
         {
-            if (r.Percent >= 95 && r.Percent < 100)
+            if (r.Percent > split.ExtractionEnd && r.Percent <= split.MoveEnd)
                 cts.Cancel();
         });
 

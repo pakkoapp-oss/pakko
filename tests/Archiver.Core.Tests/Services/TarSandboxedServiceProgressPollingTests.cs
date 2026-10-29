@@ -145,4 +145,36 @@ public sealed class TarSandboxedServiceProgressPollingTests
 
         reports.Should().BeEmpty();
     }
+
+    // T-F395: 6000 files of 256 KiB stood at 95-99% for 10 of 22 s, the move and the commit
+    // after tar.exe having only those points.
+    [Fact]
+    public void ExtractionProgressSplit_ManySmallFiles_GivesThePerFileStepsAboutHalfTheBar()
+    {
+        TarSandboxedService.ProgressSplit split = TarSandboxedService.ExtractionProgressSplit(6000, 6000L * 256 * 1024);
+
+        split.ExtractionEnd.Should().BeInRange(45, 60);
+        split.MoveEnd.Should().BeInRange(split.ExtractionEnd + 20, 90);
+    }
+
+    [Fact]
+    public void ExtractionProgressSplit_OneLargeFile_KeepsTheOldSplit()
+    {
+        TarSandboxedService.ProgressSplit split = TarSandboxedService.ExtractionProgressSplit(1, 1L << 30);
+
+        split.Should().Be(new TarSandboxedService.ProgressSplit(94, 97));
+    }
+
+    [Theory]
+    [InlineData(0, 0L)]
+    [InlineData(100_000, 1L)]
+    [InlineData(-1, -1L)]
+    [InlineData(int.MaxValue, long.MaxValue)]
+    public void ExtractionProgressSplit_AnyInput_StaysOrderedWithinTheBar(int fileCount, long totalBytes)
+    {
+        TarSandboxedService.ProgressSplit split = TarSandboxedService.ExtractionProgressSplit(fileCount, totalBytes);
+
+        split.ExtractionEnd.Should().BeInRange(39, 94);
+        split.MoveEnd.Should().BeGreaterThan(split.ExtractionEnd).And.BeLessThan(99);
+    }
 }
