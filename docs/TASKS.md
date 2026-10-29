@@ -54,10 +54,10 @@ once; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md are edited by the integra
 | A2 tar listing, `l` | T-F418, T-F412 (`-slt`) | tar listing parse, `pakko l`, `docs/CLI.md` |
 | A3 CLI create, exit codes | T-F413 (gzip; xz/bz2 measured), T-F415 (`-aos` exits 0) | CLI parser and creation, `docs/CLI.md` |
 | B flaky tests, ARM64 | done 2026-10-25: T-F372, T-F374, T-F376, T-F396, T-F290, T-F425, T-F426, T-F429; T-F427, T-F428 deferred | tests, and three Core fixes found by them (T-F426, T-F396, T-F429); load loops run alone |
-| C App, on device | T-F393, T-F395, T-F354 (A/B first), T-F399 (`POL-009`), T-F392 (refuse at creation; code done 2026-10-29, device check owed), T-F320 (closed, documented) | App, `TarSandboxedService` creation |
+| C App, on device | 2026-10-29: T-F392 done (`EXP-016` passed), T-F395 done (PR #119), T-F354 closed (not worth it: the start is 341 ms, `x:Load` crashes the window), T-F393 deferred (no repro in 25 tries); T-F399 waits for `POL-009` (the user's elevation); T-F320 (closed, documented) | App, `TarSandboxedService` creation |
 | D smoke, winget | T-F394, T-F361 | `scripts/`, `scripts/smoke/`, `docs/SMOKE.md` |
-| E localization, Store text | T-F328, T-F91 (layout walk), T-F329 part 5, T-F331 ("What's new") | `.resw`/`.resx`, `Localization.cpp`, `docs/store-listing/` |
-| F measurement, umbrellas | T-F114 (Windows 10 VM), T-F226 (done 2026-10-29: check L over diagrams 1 to 9), T-F202 (keyboard, real console) | docs, tests |
+| E localization, Store text | T-F331 done 2026-10-29 ("What's new" for 1.9.0, 37 languages); T-F91's layout walk and T-F328's non-English look ride on the release smoke's `APP-015`/`EXP-008` (the user language list, no sign-out); T-F329 part 5 | `.resw`/`.resx`, `Localization.cpp`, `docs/store-listing/` |
+| F measurement, umbrellas | T-F114 (Windows 10 VM: the user's, no file path into it), T-F226 (done 2026-10-29: check L over diagrams 1 to 9), T-F202 (real console done 2026-10-29; keyboard is `APP-012` in the release smoke) | docs, tests |
 
 Decisions taken with the plan (the user approved, 2026-10-24): T-F412 keeps reading a `.tar.gz` in
 one step and adds `-slt`; T-F415 exits 0 when `-aos` asked for the skip; T-F392 refuses a tar from a
@@ -1021,6 +1021,12 @@ real console) and T-F226's deferred per-arrow diagram ritual — carried as open
   page is 65001, so code-page bugs 1251/1252 users would hit are invisible here. (Correction
   2026-09-25: `GetACP()`/registry now report ACP 1251, OEMCP 866 — see T-F204.) Coverage table,
   results and the N-number-to-task mapping: batch plan section 5.
+- [~] **Progress 2026-10-29 (v1.9.0, package 1.8.1.22, a real `conhost` console driven through the `windows`
+  MCP server, the screen buffer read back with `ReadConsoleOutputCharacter`):** `pakko x enc.zip -p` prompts
+  "Password for enc.zip:", echoes `*` per key, extracts with the typed password (`CLI-013`); the overwrite
+  prompt shows both sizes and times, asks again after an unknown answer, `u` renames both (`a (1).txt`),
+  `q` stops with "operation stopped by user", exit 255; Ctrl+C at the prompt exits 255 and writes
+  nothing. Windows PowerShell 5.1 is `CLI-009`; the keyboard-only pass is `APP-012`.
 - [ ] **Status:** open — a required gate for closing this batch (user instruction 2026-09-24: the
   app is live on the Microsoft Store and earlier self-testing missed real defects). Agent-driven via
   `windows` MCP against the freshly deployed MSIX, with a written checklist and a pass/fail per item:
@@ -1450,7 +1456,12 @@ re-measured with T-F346's script before and after.
 
 ### T-F354 — App: load the hidden parts of `MainWindow.xaml` on first use (P3, measure first)
 
-- [ ] **Status:** open. `LoadComponent` is ~148 ms of the start; browse mode and the password
+- [x] **Status:** closed 2026-10-29 as not worth it (the task's own rule). On the AOT App (1.8.1.19) the start
+  to a visible window is 341 ms (median of 7, `Measure-Startup.ps1`), a third of `PRF-004`'s budget. An A/B
+  build with `x:Load="False"` on the browse grid and `EncryptionPanel` crashed at start (`0xc000027b` in
+  `Microsoft.UI.Xaml.dll`): the window touches them while it starts, so deferring them means reworking
+  `MainWindow.xaml.cs` around a layout with T-F106/T-F05's history, for 30-60 ms at best.
+  Earlier: open. `LoadComponent` is ~148 ms of the start; browse mode and the password
   panel are hidden then. `x:Load` could defer them — estimate 30-60 ms, not measured. Risk: the
   layout history of T-F106/T-F05 (blank rows) and `x:Bind` targets inside deferred elements. Do
   only with an on-device A/B that shows the gain; otherwise close as not worth it. Measure against
@@ -1497,9 +1508,21 @@ re-measured with T-F346's script before and after.
   in the message).
 - **Reported by:** stream B's survey of CI failures since 2026-10-18, 2026-10-25.
 
+### T-F430 — Defender blocks the RTL-override test file, so a ZIP test fails on the dev machine (P3)
+
+- [ ] **Status:** open. `ZipArchiveServiceArchiveTests.ArchiveAsync_RtlOverrideFilename_RoundTripsWithoutCorruptionOrCrash`
+  failed twice in a row on 2026-10-29 (the full run and alone; passed in the next full run, green in CI):
+  Defender now detects the empty `invoice_‮txt.exe` the test creates, and reading it fails with
+  `0x800700E1` ("the file contains a virus or potentially unwanted software", `Get-MpThreatDetection`
+  names the file). Not a product defect: Pakko reports the file as not readable. Next: let the test
+  skip when the file cannot be read for that reason (as the EICAR tests do for AMSI, T-F427), or give
+  the file a name that keeps the RTL override without a `.exe` ending.
+- **Reported by:** the v1.9.0 integration's full run, 2026-10-29.
+
 ### T-F392 — Two hard links to one file in a source folder: Pakko cannot extract the tar it made (P3)
 
-- [~] **Status:** code done 2026-10-29 (v1.9.0 stream C), the device check is owed. Decision (2026-10-29, agent, delegated
+- [x] **Status:** done 2026-10-29: `EXP-016` passed on package 1.8.1.19 (Explorer "Add to src.tar" and the App's TAR both
+  refused naming `a.txt` and `b.txt` and suggesting ZIP or 7z, no `src.tar` left; "Add to src.zip" holds both). Code done 2026-10-29 (v1.9.0 stream C). Decision (2026-10-29, agent, delegated
   by the user; the approach was chosen with the user 2026-10-24): a tar-family archive that would hold
   two names of one file is refused before tar.exe starts, naming both and suggesting ZIP or 7z
   (`MessageCode.TarHardLinkPair`). Folder listings by file ID nominate a pair, opening both names
@@ -1527,7 +1550,11 @@ re-measured with T-F346's script before and after.
 
 ### T-F393 — The About button went disabled once and no dialog came (P3)
 
-- [ ] **Status:** open. Package 1.8.1.5 (`b146f3b`), uk-UA, 2026-10-12. The App was started with
+- [ ] **Status:** deferred past 1.9.0 (2026-10-29, agent: P3, no repro). Package 1.8.1.19, uk-UA: About opened
+  25 times out of 25 - 15 in one window through UI Automation's Invoke (the dialog in ~140 ms, the button
+  disabled while it is open, enabled after), and 10 cold starts of `Archiver.App.exe` with a topmost window
+  over the window's right half, About invoked as soon as the window had a handle (dialog in 139-159 ms).
+  Earlier: package 1.8.1.5 (`b146f3b`), uk-UA, 2026-10-12. The App was started with
   `Start-Process` on `Archiver.App.exe` in the install folder; a topmost Windows Terminal window
   covered the right half of its window, the About button included. One UI Automation click on
   About: the button reads disabled from then on, no dialog is in the UI Automation tree or on a
@@ -1544,7 +1571,13 @@ re-measured with T-F346's script before and after.
 
 ### T-F395 — The App's bar stands near its end while a tar archive of many files is finished (P3)
 
-- [ ] **Status:** open. Package 1.8.1.5 (`b146f3b`), 2026-10-12: a ZIP of three files and a
+- [x] **Status:** done 2026-10-29 (PR #119). Measured (6000 x 256 KiB tar.gz, a Core harness): tar.exe 11.7 s at
+  0-94%, the move out of the quarantine 6.4 s at 95-99%, the commit into an existing folder 3.7 s at 99%. Fix:
+  `ExtractionProgressSplit` weighs a file as ~140 KiB of tar.exe output for the move and ~84 KiB more for a
+  merge into an existing folder (a new one is one rename), within 5..60 points; the byte poll scales to its
+  share; the commit reports per file. In the App on 1.8.1.22: 0 to 97% evenly over 18.5 s, then done.
+  **1.9.0 CHANGELOG line:** fixed - extracting a tar archive of many small files, the bar no longer stands near
+  its end for half the time. Earlier: package 1.8.1.5 (`b146f3b`), 2026-10-12: a ZIP of three files and a
   tar.gz of 6000 files of 256 KiB extracted together from the App. The bar, read every 80 ms:
   0 to 3 under "checking the archive's contents", 3 to 95 in 7 s, then 95, 96, 97, 98, 99 and
   100 over 16 s, with the same speed in the text for all of them and no time left; "extracted
