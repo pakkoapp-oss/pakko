@@ -273,7 +273,7 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         string destDir = Path.Combine(_temp.Path, "out");
 
         // T-F395: the move's points depend on the file count.
-        TarSandboxedService.ProgressSplit split = TarSandboxedService.ExtractionProgressSplit(40, 40 * 2);
+        TarSandboxedService.ProgressSplit split = TarSandboxedService.ExtractionProgressSplit(40, 40 * 2, mergesIntoExisting: false);
         using var cts = new CancellationTokenSource();
         var progress = new SynchronousProgress<ProgressReport>(r =>
         {

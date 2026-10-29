@@ -605,7 +605,7 @@ public sealed class TarSandboxedService : ITarService
 
         ProgressSplit split = ExtractionProgressSplit(
             expandedSelection != null ? expandedSelection.Count(n => !n.EndsWith('/')) : fileNames.Count,
-            progressTotalBytes);
+            progressTotalBytes, mergesIntoExisting: Directory.Exists(actualDest));
         if (progress != null && progressTotalBytes > 0)
         {
             await PollExtractionProgressAsync(
@@ -1108,27 +1108,32 @@ public sealed class TarSandboxedService : ITarService
     // safety needed here, unlike ProgressTracker.
     private const long MoveReportThrottleMs = 100;
 
-    // T-F395: what one file costs after tar.exe exits (move out of the quarantine, then the commit),
-    // in bytes of tar.exe's own output that take as long. Measured 2026-10-29 on a 6000 x 256 KiB
-    // tar.gz: tar.exe 11.7 s for 1.5 GiB, then 6.4 s moving and 3.7 s committing (~1.7 ms per file
-    // against ~7.8 ms per MiB), so a file weighs ~224 KiB. The move took 63% of that time.
-    private const long PostExtractionBytesPerFile = 224 * 1024;
+    // T-F395: what one file costs after tar.exe exits, in bytes of tar.exe's own output that take as
+    // long. Measured 2026-10-29 on a 6000 x 256 KiB tar.gz: tar.exe 11.7 s for 1.5 GiB (~7.8 ms per
+    // MiB), then 6.4 s moving out of the quarantine (~1.07 ms per file, ~140 KiB) and, into an
+    // existing folder, 3.7 s committing (~0.6 ms per file); a new folder is committed by one rename.
+    private const long MoveBytesPerFile = 140 * 1024;
+    private const long MergeBytesPerFile = 84 * 1024;
     private const int PostExtractionMinPercent = 5;
     private const int PostExtractionMaxPercent = 60;
-    private const double MoveShareOfPostExtraction = 0.63;
 
     internal readonly record struct ProgressSplit(int ExtractionEnd, int MoveEnd);
 
     // The bar's split between tar.exe (0..ExtractionEnd), the move (..MoveEnd) and the commit (..99).
     // One large file keeps the old 94/97 split; thousands of small files give the per-file steps up
     // to 60 points, so the bar no longer stands near its end while they run.
-    internal static ProgressSplit ExtractionProgressSplit(int fileCount, long totalBytes)
+    internal static ProgressSplit ExtractionProgressSplit(int fileCount, long totalBytes, bool mergesIntoExisting)
     {
-        double postBytes = Math.Max(0, fileCount) * (double)PostExtractionBytesPerFile;
+        double files = Math.Max(0, fileCount);
+        double moveBytes = files * MoveBytesPerFile;
+        double postBytes = moveBytes + (mergesIntoExisting ? files * MergeBytesPerFile : 0);
         double share = postBytes / (Math.Max(0L, totalBytes) + postBytes + 1);
         int afterPoints = Math.Clamp((int)Math.Round(99 * share), PostExtractionMinPercent, PostExtractionMaxPercent);
         int extractionEnd = 99 - afterPoints;
-        return new ProgressSplit(extractionEnd, extractionEnd + (int)Math.Round(afterPoints * MoveShareOfPostExtraction));
+        int movePoints = mergesIntoExisting && postBytes > 0
+            ? (int)Math.Round(afterPoints * moveBytes / postBytes)
+            : afterPoints;
+        return new ProgressSplit(extractionEnd, extractionEnd + Math.Clamp(movePoints, 1, afterPoints - 1));
     }
 
     // T-F142: polls how many bytes tar.exe has written into the quarantine output directory while
@@ -1173,7 +1178,7 @@ public sealed class TarSandboxedService : ITarService
             long clampedBytes = Math.Max(lastReportedBytes, Math.Min(observedBytes, totalBytes));
             lastReportedBytes = clampedBytes;
 
-            int percent = (int)Math.Min(extractionPhaseMaxPercent, clampedBytes * 100L / totalBytes);
+            int percent = (int)Math.Min(extractionPhaseMaxPercent, clampedBytes * extractionPhaseMaxPercent / totalBytes);
             progress.Report(new ProgressReport
             {
                 Percent = percent,
