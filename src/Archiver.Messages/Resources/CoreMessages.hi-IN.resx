@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} केवल एक फ़ाइल को संपीड़ित करता है: ठीक एक फ़ाइल दें, कोई फ़ोल्डर या कई फ़ाइलें नहीं।</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' और '{1}' एक ही फ़ाइल के दो नाम हैं (हार्ड लिंक)। tar संग्रह दूसरे को लिंक के रूप में सहेजेगा, जिसे Pakko एक्सट्रैक्ट नहीं करता। ZIP या 7z का उपयोग करें, या किसी एक नाम को छोड़ दें।</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>फ़ाइल गंतव्य पर पहले से मौजूद है।</value>
   </data>

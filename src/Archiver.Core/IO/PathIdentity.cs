@@ -1,4 +1,6 @@
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
+using System.Text;
 using Microsoft.Win32.SafeHandles;
 
 namespace Archiver.Core.IO;
@@ -66,6 +68,60 @@ public static partial class PathIdentity
         return identities;
     }
 
+    /// <summary>
+    /// T-F392: the identity of every file directly in <paramref name="folder"/> (folders and links
+    /// left out), by name, read in one listing of the folder rather than by opening each file. Null
+    /// when the folder cannot be opened or its volume cannot list identities (FAT, some shares).
+    /// </summary>
+    internal static Dictionary<string, Identity>? FilesIn(string folder)
+    {
+        using SafeFileHandle handle = CreateFile(folder, ListDirectory, FileShareAll, 0, OpenExisting, BackupSemantics, 0);
+        if (handle.IsInvalid
+            || !GetFileInformationByHandleEx(handle, FileIdInfoClass, out FileIdInfo folderId, (uint)Marshal.SizeOf<FileIdInfo>()))
+            return null;
+
+        var files = new Dictionary<string, Identity>(StringComparer.OrdinalIgnoreCase);
+        byte[] buffer = new byte[64 * 1024];
+        int infoClass = FileIdExtdDirectoryRestartInfoClass;
+        while (true)
+        {
+            if (!GetFileInformationByHandleEx(handle, infoClass, ref buffer[0], (uint)buffer.Length))
+                return Marshal.GetLastPInvokeError() == ErrorNoMoreFiles ? files : null;
+            if (!ReadDirectoryEntries(buffer, folderId.VolumeSerialNumber, files))
+                return null;
+            infoClass = FileIdExtdDirectoryInfoClass;
+        }
+    }
+
+    // FILE_ID_EXTD_DIR_INFO (WinBase.h): NextEntryOffset at 0, FileAttributes at 56,
+    // FileNameLength at 60, FileId (128 bits) at 72, FileName at 88. False on a malformed chain.
+    private static bool ReadDirectoryEntries(byte[] buffer, ulong volume, Dictionary<string, Identity> files)
+    {
+        int offset = 0;
+        while (true)
+        {
+            if (offset < 0 || offset > buffer.Length - DirInfoNameOffset)
+                return false;
+            uint next = BinaryPrimitives.ReadUInt32LittleEndian(buffer.AsSpan(offset));
+            uint attributes = BinaryPrimitives.ReadUInt32LittleEndian(buffer.AsSpan(offset + 56));
+            uint nameBytes = BinaryPrimitives.ReadUInt32LittleEndian(buffer.AsSpan(offset + 60));
+            if (nameBytes > (uint)(buffer.Length - offset - DirInfoNameOffset) || nameBytes % 2 != 0)
+                return false;
+            if ((attributes & (FileAttributeDirectory | FileAttributeReparsePoint)) == 0)
+            {
+                string name = Encoding.Unicode.GetString(buffer, offset + DirInfoNameOffset, (int)nameBytes);
+                files[name] = new Identity(volume,
+                    BinaryPrimitives.ReadUInt64LittleEndian(buffer.AsSpan(offset + 72)),
+                    BinaryPrimitives.ReadUInt64LittleEndian(buffer.AsSpan(offset + 80)));
+            }
+            if (next == 0)
+                return true;
+            if (next > (uint)(buffer.Length - offset))
+                return false;
+            offset += (int)next;
+        }
+    }
+
     private static string WithoutLongPathPrefix(string path)
     {
         if (path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
@@ -77,6 +133,13 @@ public static partial class PathIdentity
     private const uint OpenExisting = 3;
     private const uint BackupSemantics = 0x02000000;
     private const int FileIdInfoClass = 18;
+    private const int FileIdExtdDirectoryInfoClass = 19;
+    private const int FileIdExtdDirectoryRestartInfoClass = 20;
+    private const uint ListDirectory = 1;
+    private const int ErrorNoMoreFiles = 18;
+    private const int DirInfoNameOffset = 88;
+    private const uint FileAttributeDirectory = 0x10;
+    private const uint FileAttributeReparsePoint = 0x400;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct FileIdInfo
@@ -107,6 +170,10 @@ public static partial class PathIdentity
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool GetFileInformationByHandleEx(SafeFileHandle file, int infoClass, out FileIdInfo info, uint size);
+
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetFileInformationByHandleEx(SafeFileHandle file, int infoClass, ref byte buffer, uint size);
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

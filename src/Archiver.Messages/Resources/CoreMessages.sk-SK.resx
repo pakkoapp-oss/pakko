@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} komprimuje iba jeden súbor: zadajte presne jeden súbor, nie priečinok ani viac súborov.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' a '{1}' sú dva názvy jedného súboru (pevný odkaz). Archív tar by druhý uložil ako odkaz, ktorý Pakko neextrahuje. Použite ZIP alebo 7z, alebo jeden z názvov vynechajte.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Súbor už v cieli existuje.</value>
   </data>

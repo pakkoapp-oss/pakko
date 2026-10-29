@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} компресира само един файл: посочете точно един файл, а не папка или няколко файла.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' и '{1}' са две имена на един файл (твърда връзка). Архив tar би съхранил второто като връзка, която Pakko не извлича. Използвайте ZIP или 7z или изключете едно от имената.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Файлът вече съществува в местоназначението.</value>
   </data>

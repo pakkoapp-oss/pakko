@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0}은(는) 파일 하나만 압축합니다: 폴더나 여러 파일이 아닌 파일 하나만 지정하세요.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}'와(과) '{1}'은(는) 한 파일의 두 이름(하드 링크)입니다. tar 압축 파일은 두 번째 이름을 링크로 저장하며, Pakko는 이를 추출하지 않습니다. ZIP 또는 7z를 사용하거나 이름 중 하나를 제외하세요.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>파일이 대상에 이미 있습니다.</value>
   </data>

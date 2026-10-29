@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} tihendab ainult ühe faili: andke täpselt üks fail, mitte kausta ega mitut faili.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' ja '{1}' on ühe faili kaks nime (kõva link). tar-arhiiv salvestaks teise lingina, mida Pakko lahti ei paki. Kasutage ZIP-i või 7z-d või jätke üks nimedest välja.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Fail on sihtkohas juba olemas.</value>
   </data>

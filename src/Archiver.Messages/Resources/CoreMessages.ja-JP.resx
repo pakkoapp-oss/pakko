@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} は 1 つのファイルだけを圧縮します: フォルダーや複数のファイルではなく、ファイルを 1 つだけ指定してください。</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' と '{1}' は 1 つのファイルの 2 つの名前 (ハード リンク) です。tar アーカイブは 2 つ目をリンクとして保存し、Pakko はそれを展開しません。ZIP か 7z を使うか、どちらかの名前を除外してください。</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>ファイルは出力先に既に存在します。</value>
   </data>

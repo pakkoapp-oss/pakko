@@ -164,4 +164,7 @@ public enum MessageCode
     // An entry kept because an earlier entry of this run took its path; the same words as
     // FileExistsAtDestination, apart because -aos asked only for that one (T-F415)
     FileWrittenEarlierInThisRun,
+
+    // Two names of one file in one tar-family archive: tar.exe stores the second as a link (T-F392)
+    TarHardLinkPair,
 }

@@ -193,20 +193,4 @@ public sealed class TarSandboxedServiceNestedLinkTests : IDisposable
         result.SkippedFiles.Should().ContainSingle().Which.Path.Should().Be(link);
         Entries(tarPath).Select(e => e.Name).Should().BeEquivalentTo("src");
     }
-
-    // --- Characterization: T-F392 (open) - a second hard link is a link entry Pakko will not extract ---
-
-    [Integration]
-    public async Task CompressAsync_TwoHardLinksToOneFile_StoresALinkEntryPakkoRefuses_TF392()
-    {
-        string first = NewFile("src", "first.txt");
-        HardLink.Create(Path.Combine(_temp.Path, "src", "second.txt"), first);
-
-        (ArchiveResult result, string tarPath) = await CompressAsync(Path.Combine(_temp.Path, "src"));
-
-        result.Success.Should().BeTrue();
-        Entries(tarPath).Should().Contain(e => e.Type == TarEntryType.HardLink);
-        ArchiveResult extracted = await ExtractAsync(tarPath);
-        extracted.Errors.Should().Contain(e => e.Text!.Code == MessageCode.TarSpecialEntry);
-    }
 }

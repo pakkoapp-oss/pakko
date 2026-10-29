@@ -1831,9 +1831,11 @@ public sealed class TarSandboxedService : ITarService
 
             var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
             var nameList = new List<ListedSource>();
+            // T-F392: 7z stores a file's second name as a file of its own; tar.exe's tar formats store a link.
+            List<string>? packedFiles = sevenZip || ArchiveFormatPolicy.IsSingleFileFormat(options.Format) ? null : [];
             (int entryCount, long totalEntriesForProgress, long totalBytesForProgress) =
                 AppendSourcesToNameList(nameList, sortedSourcePaths, names, new ArchiveResultLists(errors, skippedFiles), collisionStagingDir, stagedJunctions,
-                    ownPaths: [tempPath, destPath, excludeListPath, writerTempDir]);
+                    ownPaths: [tempPath, destPath, excludeListPath, writerTempDir], files: packedFiles);
 
             if (entryCount == 0)
                 return;
@@ -1843,6 +1845,12 @@ public sealed class TarSandboxedService : ITarService
             ReportVanished(nameList, errors);
             if (nameList.Count == 0)
                 return;
+
+            if (packedFiles is not null && TarHardLinkPairs.Find(packedFiles) is { } pair)
+            {
+                errors.Add(CoreMessages.Error(destPath, MessageCode.TarHardLinkPair, pair.First, pair.Second));
+                return;
+            }
 
             int reportedFiles = 0;
             void OnVerboseLine(string line)
@@ -2045,7 +2053,7 @@ public sealed class TarSandboxedService : ITarService
     // is special (the next line is the folder to change to); no other line is read as an option.
     private static (int EntryCount, long TotalEntriesForProgress, long TotalBytesForProgress) AppendSourcesToNameList(
         List<ListedSource> nameList, IReadOnlyList<string> sortedSourcePaths, SourceEntryNames names, ArchiveResultLists result,
-        string collisionStagingDir, List<string> stagedJunctions, string[] ownPaths)
+        string collisionStagingDir, List<string> stagedJunctions, string[] ownPaths, List<string>? files = null)
     {
         (List<ArchiveError> errors, List<SkippedFile> skippedFiles) = result;
         int entryCount = 0;
@@ -2071,8 +2079,9 @@ public sealed class TarSandboxedService : ITarService
             // before tar.exe runs (U+2713 crashed it, U+FF02 injected options).
             var links = new List<FileSystemInfo>();
             var leftOut = new List<FileSystemInfo>();
+            var sourceFiles = new List<string>();
             (long entries, long bytes, string? unrepresentable) = CountRecursiveEntriesAndBytes(
-                fullSource, links, names.LeaveOutBelow(fullSource, isDriveRoot ? "" : name), leftOut);
+                fullSource, links, names.LeaveOutBelow(fullSource, isDriveRoot ? "" : name), leftOut, sourceFiles);
             if (unrepresentable is not null)
             {
                 errors.Add(CoreMessages.Error(sourcePath, TarArgumentEncodingException.Describe(unrepresentable, TarCommandLineEncoding.AnsiCodePage)));
@@ -2088,6 +2097,7 @@ public sealed class TarSandboxedService : ITarService
                 continue;
 
             LeaveOutFromLines(nameList, listedBefore, links, leftOut, skippedFiles);
+            files?.AddRange(sourceFiles);
             entryCount++;
             totalEntriesForProgress += entries;
             totalBytesForProgress += bytes;
@@ -2284,13 +2294,18 @@ public sealed class TarSandboxedService : ITarService
     // source's own full path, then every name beneath it, in the same single walk.
     // T-F391: every link met inside the source is added to links.
     // T-F410: what leaveOut leaves out is added to leftOut and neither counted nor entered.
+    // T-F392: every file tar.exe will pack is added to files.
     internal static (long EntryCount, long TotalBytes, string? Unrepresentable) CountRecursiveEntriesAndBytes(
-        string sourcePath, List<FileSystemInfo>? links = null, Func<FileSystemInfo, bool>? leaveOut = null, List<FileSystemInfo>? leftOut = null)
+        string sourcePath, List<FileSystemInfo>? links = null, Func<FileSystemInfo, bool>? leaveOut = null, List<FileSystemInfo>? leftOut = null,
+        List<string>? files = null)
     {
         string? unrepresentable = TarCommandLineEncoding.IsRepresentable(sourcePath) ? null : sourcePath;
 
         if (!Directory.Exists(sourcePath))
+        {
+            files?.Add(sourcePath);
             return (1, FileLengthOrZero(sourcePath), unrepresentable); // plain file (or something that no longer exists by the time we get here)
+        }
 
         // T-F237: the shared iterative walker (the root's own Directory entry is its tar entry).
         // Every name tar.exe will meet is checked, reparse points and unreadable folders included:
@@ -2310,7 +2325,10 @@ public sealed class TarSandboxedService : ITarService
             if (unrepresentable is null && !isRoot && !TarCommandLineEncoding.IsRepresentable(entry.Info.Name))
                 unrepresentable = entry.Info.FullName;
             if (entry.Kind == WalkEntryKind.File)
+            {
                 totalBytes += FileLengthOrZero((FileInfo)entry.Info);
+                files?.Add(entry.Info.FullName);
+            }
             else if (entry.Kind == WalkEntryKind.ReparsePoint)
                 links?.Add(entry.Info);
         }

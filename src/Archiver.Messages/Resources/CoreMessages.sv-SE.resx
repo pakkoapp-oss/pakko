@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} komprimerar bara en enda fil: ange exakt en fil, inte en mapp eller flera filer.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' och '{1}' är två namn på en fil (en hård länk). Ett tar-arkiv skulle spara det andra som en länk, som Pakko inte packar upp. Använd ZIP eller 7z, eller utelämna ett av namnen.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Filen finns redan på målet.</value>
   </data>

@@ -84,7 +84,7 @@ public static class CliHints
         MessageCode.RecoveryDataRepairTooLarge, MessageCode.RecoveryDataDoesNotMatch, MessageCode.RecoveryDataUnusable,
         MessageCode.RecoveryDataForAnotherFile, MessageCode.RecoveryDataTargetNotFound, MessageCode.RecoveryDataNameMismatch,
         MessageCode.RecoveryDataIntact, MessageCode.RecoveryDataNotFound, MessageCode.RecoveryDataRepaired, MessageCode.RecoveryRepairCheckFailed,
-        MessageCode.TestedStructureOnly, MessageCode.SingleFileFormatNeedsOneFile,
+        MessageCode.TestedStructureOnly, MessageCode.SingleFileFormatNeedsOneFile, MessageCode.TarHardLinkPair,
     ];
 
     /// <summary>Every code and its hint; <see cref="CliHint.None"/> is a decision too.</summary>

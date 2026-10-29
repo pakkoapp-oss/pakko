@@ -54,7 +54,7 @@ once; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md are edited by the integra
 | A2 tar listing, `l` | T-F418, T-F412 (`-slt`) | tar listing parse, `pakko l`, `docs/CLI.md` |
 | A3 CLI create, exit codes | T-F413 (gzip; xz/bz2 measured), T-F415 (`-aos` exits 0) | CLI parser and creation, `docs/CLI.md` |
 | B flaky tests, ARM64 | done 2026-10-25: T-F372, T-F374, T-F376, T-F396, T-F290, T-F425, T-F426, T-F429; T-F427, T-F428 deferred | tests, and three Core fixes found by them (T-F426, T-F396, T-F429); load loops run alone |
-| C App, on device | T-F393, T-F395, T-F354 (A/B first), T-F399 (`POL-009`), T-F392 (refuse at creation), T-F320 (closed, documented) | App, `TarSandboxedService` creation |
+| C App, on device | T-F393, T-F395, T-F354 (A/B first), T-F399 (`POL-009`), T-F392 (refuse at creation; code done 2026-10-29, device check owed), T-F320 (closed, documented) | App, `TarSandboxedService` creation |
 | D smoke, winget | T-F394, T-F361 | `scripts/`, `scripts/smoke/`, `docs/SMOKE.md` |
 | E localization, Store text | T-F328, T-F91 (layout walk), T-F329 part 5, T-F331 ("What's new") | `.resw`/`.resx`, `Localization.cpp`, `docs/store-listing/` |
 | F measurement, umbrellas | T-F114 (Windows 10 VM), T-F226 (done 2026-10-29: check L over diagrams 1 to 9), T-F202 (keyboard, real console) | docs, tests |
@@ -1499,11 +1499,22 @@ re-measured with T-F346's script before and after.
 
 ### T-F392 — Two hard links to one file in a source folder: Pakko cannot extract the tar it made (P3)
 
-- [ ] **Status:** open. tar.exe stores the second name of a file as a hard-link entry
+- [~] **Status:** code done 2026-10-29 (v1.9.0 stream C), the device check is owed. Decision (2026-10-29, agent, delegated
+  by the user; the approach was chosen with the user 2026-10-24): a tar-family archive that would hold
+  two names of one file is refused before tar.exe starts, naming both and suggesting ZIP or 7z
+  (`MessageCode.TarHardLinkPair`). Folder listings by file ID nominate a pair, opening both names
+  confirms it; 7z and the one-file formats are not checked. Detail and measurement: `docs/DECISIONS.md`,
+  T-F392. Owed on the device with stream C: Explorer "Add to X.tar" and the App over such a folder.
+  Not changed: `SECURITY.md`'s "Hard links ... are still stored (T-F392, open)" sentence (that file
+  needs the user's word).
+  **1.9.0 CHANGELOG line:** fixed - a tar, tar.gz or other tar-family archive is no longer created
+  over two names of one file (a hard link), which tar.exe stores as a link Pakko then refused to
+  extract; Pakko names both files and suggests ZIP or 7z, which store both.
+  **Earlier status:** open. tar.exe stores the second name of a file as a hard-link entry
   (`hrw-rw-rw- ... src/hard2.txt link to src/file.txt`) in tar, tar.gz and the other tar
   filters, and Pakko refuses any archive that holds one ("Archive contains a symlink, hardlink,
   device, or other special entry"). A 7z of the same folder stores a second full file and
-  extracts. Pinned by `CompressAsync_TwoHardLinksToOneFile_StoresALinkEntryPakkoRefuses_TF392`.
+  extracts. Was pinned by `CompressAsync_TwoHardLinksToOneFile_StoresALinkEntryPakkoRefuses_TF392` (replaced by `TarSandboxedServiceHardLinkTests`).
 - **Measured 2026-10-12 (bsdtar 3.8.8):** tar.exe has no switch to store the content instead
   (`--hard-dereference`: "Option --hard-dereference is not supported"). The link is not a reparse
   point, so the pre-scan does not see it; finding one means opening every file for its link count.

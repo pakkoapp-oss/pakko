@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} kompresuje samo jednu datoteku: navedite tačno jednu datoteku, ne fasciklu ni više datoteka.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' i '{1}' su dva imena jedne datoteke (čvrsta veza). Tar arhiva bi drugo sačuvala kao vezu, koju Pakko ne raspakuje. Koristite ZIP ili 7z ili izostavite jedno od imena.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Datoteka već postoji na odredištu.</value>
   </data>

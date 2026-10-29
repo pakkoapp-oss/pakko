@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} kompresuje tylko jeden plik: podaj dokładnie jeden plik, a nie folder ani kilka plików.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' i '{1}' to dwie nazwy jednego pliku (link twardy). Archiwum tar zapisałoby drugą jako link, którego Pakko nie wypakowuje. Użyj ZIP lub 7z albo pomiń jedną z nazw.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Plik już istnieje w miejscu docelowym.</value>
   </data>
