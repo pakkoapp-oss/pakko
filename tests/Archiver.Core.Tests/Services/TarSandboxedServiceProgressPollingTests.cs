@@ -148,33 +148,68 @@ public sealed class TarSandboxedServiceProgressPollingTests
 
     // T-F395: 6000 files of 256 KiB stood at 95-99% for 10 of 22 s, the move and the commit
     // after tar.exe having only those points.
-    [Fact]
-    public void ExtractionProgressSplit_ManySmallFiles_GivesThePerFileStepsAboutHalfTheBar()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ExtractionProgressSplit_ManySmallFiles_GivesThePerFileStepsAboutHalfTheBar(bool mergesIntoExisting)
     {
-        TarSandboxedService.ProgressSplit split = TarSandboxedService.ExtractionProgressSplit(6000, 6000L * 256 * 1024);
+        TarSandboxedService.ProgressSplit split = TarSandboxedService.ExtractionProgressSplit(6000, 6000L * 256 * 1024, mergesIntoExisting);
 
-        split.ExtractionEnd.Should().BeInRange(45, 60);
-        split.MoveEnd.Should().BeInRange(split.ExtractionEnd + 20, 90);
+        split.ExtractionEnd.Should().BeInRange(45, 70);
+        split.MoveEnd.Should().BeInRange(split.ExtractionEnd + 15, 98);
+    }
+
+    // A new folder is committed by one rename, so the commit gets no share of its own.
+    [Fact]
+    public void ExtractionProgressSplit_NewFolder_GivesTheCommitOnePoint_AnExistingOneItsShare()
+    {
+        TarSandboxedService.ProgressSplit fresh = TarSandboxedService.ExtractionProgressSplit(6000, 6000L * 256 * 1024, mergesIntoExisting: false);
+        TarSandboxedService.ProgressSplit merge = TarSandboxedService.ExtractionProgressSplit(6000, 6000L * 256 * 1024, mergesIntoExisting: true);
+
+        fresh.MoveEnd.Should().Be(98);
+        (99 - merge.MoveEnd).Should().BeGreaterThan(10);
     }
 
     [Fact]
     public void ExtractionProgressSplit_OneLargeFile_KeepsTheOldSplit()
     {
-        TarSandboxedService.ProgressSplit split = TarSandboxedService.ExtractionProgressSplit(1, 1L << 30);
+        TarSandboxedService.ProgressSplit split = TarSandboxedService.ExtractionProgressSplit(1, 1L << 30, mergesIntoExisting: true);
 
         split.Should().Be(new TarSandboxedService.ProgressSplit(94, 97));
     }
 
     [Theory]
-    [InlineData(0, 0L)]
-    [InlineData(100_000, 1L)]
-    [InlineData(-1, -1L)]
-    [InlineData(int.MaxValue, long.MaxValue)]
-    public void ExtractionProgressSplit_AnyInput_StaysOrderedWithinTheBar(int fileCount, long totalBytes)
+    [InlineData(0, 0L, false)]
+    [InlineData(100_000, 1L, true)]
+    [InlineData(-1, -1L, true)]
+    [InlineData(int.MaxValue, long.MaxValue, false)]
+    public void ExtractionProgressSplit_AnyInput_StaysOrderedWithinTheBar(int fileCount, long totalBytes, bool mergesIntoExisting)
     {
-        TarSandboxedService.ProgressSplit split = TarSandboxedService.ExtractionProgressSplit(fileCount, totalBytes);
+        TarSandboxedService.ProgressSplit split = TarSandboxedService.ExtractionProgressSplit(fileCount, totalBytes, mergesIntoExisting);
 
         split.ExtractionEnd.Should().BeInRange(39, 94);
         split.MoveEnd.Should().BeGreaterThan(split.ExtractionEnd).And.BeLessThan(99);
+    }
+
+    // T-F395: the byte poll stood at its ceiling once half the bytes were written; it scales to it.
+    [Fact]
+    public async Task PollExtractionProgressAsync_HalfTheBytes_ReportsHalfTheCeiling()
+    {
+        using var temp = new TempDirectory();
+        temp.CreateFile("half.bin", new string('a', 50));
+        var reports = new List<ProgressReport>();
+        var firstReport = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var progress = new SynchronousProgress<ProgressReport>(r =>
+        {
+            reports.Add(r);
+            firstReport.TrySetResult();
+        });
+        Task<Task> extractionTask = Task.WhenAny(firstReport.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+
+        await TarSandboxedService.PollExtractionProgressAsync(
+            temp.Path, totalBytes: 100, progress, extractionTask, CancellationToken.None, extractionPhaseMaxPercent: 60);
+
+        reports.Should().NotBeEmpty();
+        reports[0].Percent.Should().Be(30);
     }
 }
