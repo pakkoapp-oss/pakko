@@ -41,3 +41,6 @@ avoin lähdekoodi
 • Myös muiden ohjelmien luomat PAR2-tiedostot käyvät; pakko-komento lisää palautustiedot valitsimella -rr ja korjaa komennolla r.
 • Korjattu: Delete, Enter ja valikkonäppäin toimivat taas näppäimistöllä valitulla luettelon rivillä.
 • Korjattu: Windows 10:ssä ja Windows 11:ssä versioon 23H2 asti TAR-arkistoja ei enää hylätä, ja Pakko tarjoaa vain muodot, joita Windowsin oma tar.exe osaa käsitellä.
+• Korjattu: arkistoa ei enää koskaan kirjoiteta arkistoitavan tiedoston päälle; se saa numeroidun nimen.
+• Korjattu: TAR-arkistoa ei luoda saman tiedoston kahden nimen (kovan linkin) yli, jota Pakko ei voinut purkaa; tilalle ehdotetaan ZIP- tai 7-Zip-muotoa.
+• pakko-komento ymmärtää useampia 7-Zipin valitsimia ja tiedostomaskeja.

@@ -41,3 +41,6 @@ otvoreni kod
 • Rade i PAR2 datoteke napravljene drugim programima; komanda pakko dodaje podatke za oporavak prekidačem -rr i popravlja komandom r.
 • Ispravljeno: tasteri Delete, Enter i taster menija ponovo rade na redu liste izabranom sa tastature.
 • Ispravljeno: na sistemima Windows 10 i Windows 11 do verzije 23H2 arhive TAR se više ne odbijaju, a Pakko nudi samo formate sa kojima radi tar.exe sistema Windows.
+• Ispravljeno: arhiva se više nikad ne upisuje preko neke od datoteka koje se arhiviraju; dobija numerisan naziv.
+• Ispravljeno: TAR arhiva se ne pravi nad dva naziva jedne datoteke (tvrda veza), koju Pakko nije mogao da raspakuje; predlaže se ZIP ili 7-Zip.
+• Komanda pakko razume više prekidača i maski datoteka 7-Zip-a.

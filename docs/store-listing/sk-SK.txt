@@ -41,3 +41,6 @@ alternatíva 7-zip
 • Fungujú aj súbory PAR2 vytvorené inými programami; príkaz pakko pridáva údaje na obnovenie prepínačom -rr a opravuje príkazom r.
 • Opravené: klávesy Delete, Enter a kláves ponuky opäť fungujú na riadku zoznamu vybranom z klávesnice.
 • Opravené: vo Windows 10 a Windows 11 do verzie 23H2 sa už archívy TAR neodmietajú a Pakko ponúka len formáty, ktoré zvládne tar.exe systému Windows.
+• Opravené: archív sa už nikdy nezapíše cez niektorý z archivovaných súborov; dostane očíslovaný názov.
+• Opravené: archív TAR sa nevytvorí nad dvoma názvami jedného súboru (pevným odkazom), ktorý Pakko nedokázal extrahovať; ponúkne sa ZIP alebo 7-Zip.
+• Príkaz pakko rozumie viacerým prepínačom a maskám súborov 7-Zip.

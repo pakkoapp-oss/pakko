@@ -41,3 +41,6 @@ sumber terbuka
 • File PAR2 buatan program lain juga dapat dipakai; perintah pakko menambahkan data pemulihan dengan -rr dan memperbaiki dengan r.
 • Diperbaiki: tombol Delete, Enter, dan tombol menu kembali berfungsi pada baris daftar yang dipilih dengan keyboard.
 • Diperbaiki: di Windows 10 dan Windows 11 hingga versi 23H2, arsip TAR tidak lagi ditolak, dan Pakko hanya menawarkan format yang dapat ditangani tar.exe milik Windows.
+• Diperbaiki: arsip tidak pernah lagi ditulis di atas salah satu file yang diarsipkan; arsip mendapat nama bernomor.
+• Diperbaiki: arsip TAR tidak dibuat atas dua nama dari satu file (tautan keras), yang tidak dapat diekstrak Pakko; ZIP atau 7-Zip disarankan.
+• Perintah pakko memahami lebih banyak sakelar dan masker file 7-Zip.

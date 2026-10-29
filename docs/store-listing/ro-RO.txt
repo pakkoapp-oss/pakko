@@ -41,3 +41,6 @@ open source
 • Funcționează și fișierele PAR2 create de alte programe; comanda pakko adaugă date de recuperare cu -rr și repară cu r.
 • Remediat: tastele Delete, Enter și tasta de meniu funcționează din nou pe un rând al listei selectat de la tastatură.
 • Remediat: pe Windows 10 și Windows 11 până la versiunea 23H2, arhivele TAR nu mai sunt refuzate, iar Pakko oferă doar formatele pe care le poate gestiona tar.exe din Windows.
+• Remediat: o arhivă nu mai este scrisă niciodată peste unul dintre fișierele arhivate; primește un nume numerotat.
+• Remediat: nu se creează o arhivă TAR peste două nume ale aceluiași fișier (o legătură fixă), pe care Pakko nu o putea extrage; se sugerează ZIP sau 7-Zip.
+• Comanda pakko înțelege mai multe comutatoare și măști de fișiere ale 7-Zip.

@@ -41,3 +41,6 @@ otwarty kod źródłowy
 • Działają też pliki PAR2 utworzone przez inne programy; polecenie pakko dodaje dane odzyskiwania przełącznikiem -rr i naprawia poleceniem r.
 • Naprawiono: klawisze Delete, Enter i klawisz menu znów działają w wierszu listy wybranym z klawiatury.
 • Naprawiono: w systemach Windows 10 i Windows 11 do wersji 23H2 archiwa TAR nie są już odrzucane, a Pakko oferuje tylko formaty, które obsługuje tar.exe systemu Windows.
+• Naprawiono: archiwum nigdy nie jest już zapisywane na jednym z archiwizowanych plików; otrzymuje numerowaną nazwę.
+• Naprawiono: archiwum TAR nie jest tworzone z dwóch nazw jednego pliku (twardego łącza), którego Pakko nie mógł wypakować; proponowany jest ZIP lub 7-Zip.
+• Polecenie pakko rozumie więcej przełączników i masek plików 7-Zip.

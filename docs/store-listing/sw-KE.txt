@@ -41,3 +41,6 @@ chanzo huria
 • Faili za PAR2 zilizoundwa na programu nyingine pia zinafanya kazi; amri ya pakko huongeza data ya urejeshaji kwa -rr na hurekebisha kwa r.
 • Imerekebishwa: vitufe vya Delete, Enter na kitufe cha menyu vinafanya kazi tena kwenye safu ya orodha iliyochaguliwa kwa kibodi.
 • Imerekebishwa: kwenye Windows 10 na Windows 11 hadi toleo la 23H2, kumbukumbu za TAR hazikataliwi tena, na Pakko inatoa tu miundo ambayo tar.exe ya Windows inaweza kushughulikia.
+• Imerekebishwa: kumbukumbu haiandikwi tena juu ya mojawapo ya faili zinazowekwa kwenye kumbukumbu; inapata jina lenye nambari.
+• Imerekebishwa: kumbukumbu ya TAR haiundwi juu ya majina mawili ya faili moja (kiungo kigumu), ambayo Pakko haikuweza kutoa; ZIP au 7-Zip inapendekezwa.
+• Amri ya pakko inaelewa swichi na barakoa za faili zaidi za 7-Zip.

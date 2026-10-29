@@ -41,3 +41,6 @@ open source
 • PAR2 files made by other programs work too; the pakko command adds recovery data with -rr and repairs with r.
 • Fixed: the Delete, Enter and menu keys work again on a list row selected from the keyboard.
 • Fixed: on Windows 10 and Windows 11 up to version 23H2, TAR archives are no longer refused, and Pakko offers only the formats that Windows' own tar.exe can handle.
+• Fixed: an archive is never written over one of the files being archived; it gets a numbered name instead.
+• Fixed: a TAR archive is not created over two names of one file (a hard link), which Pakko could not extract; ZIP or 7-Zip is suggested.
+• The pakko command understands more of 7-Zip's switches and file masks.

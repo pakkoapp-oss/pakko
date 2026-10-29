@@ -41,3 +41,6 @@ ZIP kompresní nástroj
 • Fungují i soubory PAR2 vytvořené jinými programy; příkaz pakko přidává data pro obnovení přepínačem -rr a opravuje příkazem r.
 • Opraveno: klávesy Delete, Enter a klávesa nabídky znovu fungují na řádku seznamu vybraném z klávesnice.
 • Opraveno: ve Windows 10 a Windows 11 do verze 23H2 už nejsou archivy TAR odmítány a Pakko nabízí jen formáty, které zvládne tar.exe systému Windows.
+• Opraveno: archiv se už nikdy nezapíše přes některý z archivovaných souborů; dostane očíslovaný název.
+• Opraveno: archiv TAR se nevytvoří nad dvěma názvy jednoho souboru (pevným odkazem), který Pakko nedokázal extrahovat; nabídne se ZIP nebo 7-Zip.
+• Příkaz pakko rozumí více přepínačům a maskám souborů 7-Zip.

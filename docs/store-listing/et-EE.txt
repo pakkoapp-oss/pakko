@@ -41,3 +41,6 @@ avatud lähtekood
 • Sobivad ka teiste programmidega loodud PAR2-failid; käsk pakko lisab taasteandmed lülitiga -rr ja parandab käsuga r.
 • Parandatud: klahvid Delete, Enter ja menüüklahv töötavad taas klaviatuurilt valitud loendireal.
 • Parandatud: Windows 10-s ja Windows 11-s kuni versioonini 23H2 ei lükata TAR-arhiive enam tagasi ning Pakko pakub ainult vorminguid, millega Windowsi tar.exe toime tuleb.
+• Parandatud: arhiivi ei kirjutata enam kunagi üle mõnele arhiivitavale failile; see saab hoopis nummerdatud nime.
+• Parandatud: TAR-arhiivi ei looda ühe faili kahe nime (kõvalingi) üle, mida Pakko ei saanud lahti pakkida; soovitatakse ZIP-i või 7-Zipi.
+• Käsk pakko mõistab rohkem 7-Zipi lüliteid ja failimaske.

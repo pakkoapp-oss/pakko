@@ -41,3 +41,6 @@ atvērtais pirmkods
 • Der arī citu programmu izveidoti PAR2 faili; komanda pakko pievieno atkopšanas datus ar -rr un labo ar r.
 • Novērsts: taustiņi Delete, Enter un izvēlnes taustiņš atkal darbojas saraksta rindā, kas izvēlēta ar tastatūru.
 • Novērsts: Windows 10 un Windows 11 līdz versijai 23H2 TAR arhīvi vairs netiek noraidīti, un Pakko piedāvā tikai tos formātus, ar kuriem spēj strādāt Windows tar.exe.
+• Labots: arhīvs vairs nekad netiek ierakstīts pāri kādam no arhivējamajiem failiem; tas saņem numurētu nosaukumu.
+• Labots: TAR arhīvs netiek izveidots pār diviem viena faila nosaukumiem (cieto saiti), ko Pakko nevarēja izvilkt; tiek ieteikts ZIP vai 7-Zip.
+• Komanda pakko saprot vairāk 7-Zip slēdžu un failu masku.

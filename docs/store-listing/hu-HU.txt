@@ -41,3 +41,6 @@ jelszavas zip
 • Más programokkal készült PAR2-fájlok is használhatók; a pakko parancs az -rr kapcsolóval ad hozzá helyreállítási adatokat, és az r paranccsal javít.
 • Javítva: a Delete, az Enter és a menübillentyű ismét működik a lista billentyűzettel kijelölt során.
 • Javítva: a Windows 10 és a Windows 11 23H2-es verziójáig a TAR-archívumokat már nem utasítja el, és a Pakko csak azokat a formátumokat kínálja, amelyeket a Windows saját tar.exe-je kezelni tud.
+• Javítva: az archívum már soha nem íródik az archivált fájlok egyike fölé; helyette sorszámozott nevet kap.
+• Javítva: nem készül TAR archívum egy fájl két neve (rögzített hivatkozás) fölött, amelyet a Pakko nem tudott kibontani; ZIP vagy 7-Zip a javaslat.
+• A pakko parancs több 7-Zip kapcsolót és fájlmaszkot ért.

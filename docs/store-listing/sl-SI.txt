@@ -41,3 +41,6 @@ odprta koda
 • Delujejo tudi datoteke PAR2, ustvarjene z drugimi programi; ukaz pakko doda podatke za obnovitev s stikalom -rr in popravlja z ukazom r.
 • Popravljeno: tipke Delete, Enter in menijska tipka znova delujejo v vrstici seznama, izbrani s tipkovnico.
 • Popravljeno: v sistemih Windows 10 in Windows 11 do različice 23H2 arhivi TAR niso več zavrnjeni, Pakko pa ponuja le oblike, ki jih zna obdelati tar.exe sistema Windows.
+• Popravljeno: arhiv se nikoli več ne zapiše čez eno od datotek, ki se arhivirajo; dobi oštevilčeno ime.
+• Popravljeno: arhiv TAR se ne ustvari nad dvema imenoma ene datoteke (trdo povezavo), ki je Pakko ni mogel razširiti; predlagana sta ZIP ali 7-Zip.
+• Ukaz pakko razume več stikal in mask datotek 7-Zip.
