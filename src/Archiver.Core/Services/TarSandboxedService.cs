@@ -1831,26 +1831,12 @@ public sealed class TarSandboxedService : ITarService
 
             var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
             var nameList = new List<ListedSource>();
-            // T-F392: 7z stores a file's second name as a file of its own; tar.exe's tar formats store a link.
-            List<string>? packedFiles = sevenZip || ArchiveFormatPolicy.IsSingleFileFormat(options.Format) ? null : [];
+            var scope = new NameListScope([tempPath, destPath, excludeListPath, writerTempDir], PackedFileList(options.Format));
             (int entryCount, long totalEntriesForProgress, long totalBytesForProgress) =
-                AppendSourcesToNameList(nameList, sortedSourcePaths, names, new ArchiveResultLists(errors, skippedFiles), collisionStagingDir, stagedJunctions,
-                    ownPaths: [tempPath, destPath, excludeListPath, writerTempDir], files: packedFiles);
+                AppendSourcesToNameList(nameList, sortedSourcePaths, names, new ArchiveResultLists(errors, skippedFiles), collisionStagingDir, stagedJunctions, scope);
 
-            if (entryCount == 0)
+            if (entryCount == 0 || StopsBeforeLaunch(nameList, scope.PackedFiles, errors, destPath))
                 return;
-
-            // T-F390: counting a large source takes time, and tar.exe prints a wrong name for a
-            // listed source that is gone. One gone since it was listed never reaches tar.exe.
-            ReportVanished(nameList, errors);
-            if (nameList.Count == 0)
-                return;
-
-            if (packedFiles is not null && TarHardLinkPairs.Find(packedFiles) is { } pair)
-            {
-                errors.Add(CoreMessages.Error(destPath, MessageCode.TarHardLinkPair, pair.First, pair.Second));
-                return;
-            }
 
             int reportedFiles = 0;
             void OnVerboseLine(string line)
@@ -1950,6 +1936,25 @@ public sealed class TarSandboxedService : ITarService
     // T-F391: many links make many patterns, so they go in a file ("-X"), not on the command
     // line. The file is next to the archive and is excluded by name, as the archive's own
     // temporary file is (T-F316).
+    // T-F392: 7z stores a file's second name as a file of its own; tar.exe's tar formats store a
+    // link, so only they collect the files to check. Null: nothing to check.
+    private static List<string>? PackedFileList(ArchiveContainerFormat format) =>
+        format == ArchiveContainerFormat.SevenZip || ArchiveFormatPolicy.IsSingleFileFormat(format) ? null : [];
+
+    // What ends a creation after the walk and before tar.exe starts. T-F390: counting a large source
+    // takes time, and tar.exe prints a wrong name for a listed source that is gone - one gone since
+    // it was listed never reaches tar.exe. T-F392: two names of one file are refused.
+    private static bool StopsBeforeLaunch(List<ListedSource> nameList, List<string>? packedFiles, List<ArchiveError> errors, string destPath)
+    {
+        ReportVanished(nameList, errors);
+        if (nameList.Count == 0)
+            return true;
+        if (packedFiles is null || TarHardLinkPairs.Find(packedFiles) is not { } pair)
+            return false;
+        errors.Add(CoreMessages.Error(destPath, MessageCode.TarHardLinkPair, pair.First, pair.Second));
+        return true;
+    }
+
     private static void WriteExcludeList(List<ListedSource> nameList, string excludeListPath, List<string> tarArgs)
     {
         string[] excludePatterns = [.. nameList.SelectMany(source => source.ExcludePatterns)];
@@ -2053,8 +2058,9 @@ public sealed class TarSandboxedService : ITarService
     // is special (the next line is the folder to change to); no other line is read as an option.
     private static (int EntryCount, long TotalEntriesForProgress, long TotalBytesForProgress) AppendSourcesToNameList(
         List<ListedSource> nameList, IReadOnlyList<string> sortedSourcePaths, SourceEntryNames names, ArchiveResultLists result,
-        string collisionStagingDir, List<string> stagedJunctions, string[] ownPaths, List<string>? files = null)
+        string collisionStagingDir, List<string> stagedJunctions, NameListScope scope)
     {
+        (string[] ownPaths, List<string>? files) = scope;
         (List<ArchiveError> errors, List<SkippedFile> skippedFiles) = result;
         int entryCount = 0;
         long totalEntriesForProgress = 0;
@@ -2171,6 +2177,10 @@ public sealed class TarSandboxedService : ITarService
     }
 
     private sealed record ArchiveResultLists(List<ArchiveError> Errors, List<SkippedFile> SkippedFiles);
+
+    // OwnPaths: this run's own files, never listed. PackedFiles (T-F392): every file tar.exe will
+    // pack is added to it; null when nothing is to be checked.
+    private sealed record NameListScope(string[] OwnPaths, List<string>? PackedFiles);
 
     // T-F171: every source claims its name, file or folder. A clashing file is staged as a renamed
     // copy, a clashing folder as a junction under the new name; a clashing folder on a network share
