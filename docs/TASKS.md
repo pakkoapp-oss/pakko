@@ -1512,7 +1512,7 @@ re-measured with T-F346's script before and after.
 
 - [ ] **Status:** open. `ZipArchiveServiceArchiveTests.ArchiveAsync_RtlOverrideFilename_RoundTripsWithoutCorruptionOrCrash`
   failed twice in a row on 2026-10-29 (the full run and alone; passed in the next full run, green in CI):
-  Defender now detects the empty `invoice_‮txt.exe` the test creates, and reading it fails with
+  Defender now detects the empty `invoice_\u202Etxt.exe` the test creates, and reading it fails with
   `0x800700E1` ("the file contains a virus or potentially unwanted software", `Get-MpThreatDetection`
   names the file). Not a product defect: Pakko reports the file as not readable. Next: let the test
   skip when the file cannot be read for that reason (as the EICAR tests do for AMSI, T-F427), or give
