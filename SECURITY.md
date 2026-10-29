@@ -399,7 +399,10 @@ user selected. What differs from the tar family:
 created, with the same rule and messages as ZIP (T-F23): a junction or symbolic link is not
 followed, so the archive cannot pick up files from outside the selection, and is not stored as a
 link either. tar.exe would otherwise store a junction as a folder holding everything its target
-holds. Hard links are not reparse points and are still stored (T-F392, open).
+holds. Hard links are not reparse points, so each name of a hard-linked file is stored as a
+file in ZIP and 7z. A tar-family archive that would hold two names of one file is refused before
+tar.exe starts and names both (T-F392, v1.9.0): tar.exe would store the second as a link entry,
+which Pakko refuses to extract.
 
 ### Test (T-F397, v1.8.1)
 

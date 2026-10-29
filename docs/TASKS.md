@@ -1505,8 +1505,8 @@ re-measured with T-F346's script before and after.
   (`MessageCode.TarHardLinkPair`). Folder listings by file ID nominate a pair, opening both names
   confirms it; 7z and the one-file formats are not checked. Detail and measurement: `docs/DECISIONS.md`,
   T-F392. Owed on the device with stream C: `EXP-016` (Explorer "Add to X.tar" and the App over such a folder).
-  Not changed: `SECURITY.md`'s "Hard links ... are still stored (T-F392, open)" sentence (that file
-  needs the user's word).
+  `SECURITY.md`'s hard-link sentence updated 2026-10-29 at the user's word: ZIP and 7z store each
+  name, a tar-family archive over two names is refused.
   **1.9.0 CHANGELOG line:** fixed - a tar, tar.gz or other tar-family archive is no longer created
   over two names of one file (a hard link), which tar.exe stores as a link Pakko then refused to
   extract; Pakko names both files and suggests ZIP or 7z, which store both.
