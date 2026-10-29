@@ -139,6 +139,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | EXP-013 | release | mcp | dev | Right-click a `.7z`, a `.tar.gz` and a `.rar`; click Test on the 7z, on the tar.gz, and on a 7z with changed bytes | Test is in each menu, after the Extract and Add items; the 7z ends with "No errors detected", the tar.gz with "Only the archive's structure was checked" and no "No errors", the changed 7z with an error naming it | `menu:TestCommand` T-F397 |
 | EXP-014 | release | mcp | dev | Explorer "Extract here" on a ZIP holding `What?.txt`, and on a .tar.gz holding `a?b.txt` and `a_b.txt` | `What_.txt` is there; both tar entries are there, one numbered; no error | `menu:ExtractHereCommand` T-F420 |
 | EXP-015 | release | mcp | dev | Explorer "Extract here" and the App's browse on `notes.txt.gz` (a gzip of one file) | `notes.txt` beside it, no error; the App lists one entry `notes.txt` and extracts it | `menu:ExtractHereCommand` T-F413 |
+| EXP-016 | release | mcp | dev | Make `src.txt` a hard link of `src.txt` (`mklink /H`); Explorer "Add to src.tar" on `src`, then the App: add `src`, Format tar, Compress; then Add to src.zip | Both tar attempts end with an error naming `a.txt` and `b.txt` and suggesting ZIP or 7z, and no `src.tar` is left; the ZIP holds both files | `menu:TarArchiveCommand` T-F392 |
 
 ## APP - the WinUI window
 

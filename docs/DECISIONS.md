@@ -14382,7 +14382,10 @@ refuses nothing - a missed pair is today's behaviour, a false refusal would bloc
 not checked. The refusal comes after the walk and before tar.exe starts: nothing is written.
 
 Measured (this machine, 40,000 one-byte files in 400 folders, three runs): the walk 73-109 ms, the
-pair search 86-92 ms. Known gap, accepted: a file source staged as a renamed copy for a name clash
+pair search 86-92 ms. Memory, accepted: the walk now keeps every packed file's full path until the
+search ends, about 200 bytes each (a million files, as a drive-root tar could hold, about 200 MB).
+7-Zip 26.02 stores both names of such a pair as files in a tar unless `-snh` is given (measured), so
+this is a documented difference from 7-Zip (`docs/CLI.md`, the `-snh` row). Known gap, accepted: a file source staged as a renamed copy for a name clash
 (T-F171) is checked by its original path, so two such linked sources would be refused although
 tar.exe would read the copy. Tests: `TarSandboxedServiceHardLinkTests` (seen failing before the fix:
 4 of 8), `TarHardLinkPairsTests`.
