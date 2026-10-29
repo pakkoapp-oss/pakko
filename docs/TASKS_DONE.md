@@ -13603,3 +13603,63 @@ PowerShell does natively.
   `file:line`, filed as a finding (T-F227 onward), or N/A with a reason. Full method: the batch plan's
   section 6.
 - **Reported by:** user request, 2026-09-24.
+
+### T-F392 — Two hard links to one file in a source folder: Pakko cannot extract the tar it made (P3)
+
+- [x] **Status:** done 2026-10-29: `EXP-016` passed on package 1.8.1.19 (Explorer "Add to src.tar" and the App's TAR both
+  refused naming `a.txt` and `b.txt` and suggesting ZIP or 7z, no `src.tar` left; "Add to src.zip" holds both). Code done 2026-10-29 (v1.9.0 stream C). Decision (2026-10-29, agent, delegated
+  by the user; the approach was chosen with the user 2026-10-24): a tar-family archive that would hold
+  two names of one file is refused before tar.exe starts, naming both and suggesting ZIP or 7z
+  (`MessageCode.TarHardLinkPair`). Folder listings by file ID nominate a pair, opening both names
+  confirms it; 7z and the one-file formats are not checked. Detail and measurement: `docs/DECISIONS.md`,
+  T-F392. Owed on the device with stream C: `EXP-016` (Explorer "Add to X.tar" and the App over such a folder).
+  `SECURITY.md`'s hard-link sentence updated 2026-10-29 at the user's word: ZIP and 7z store each
+  name, a tar-family archive over two names is refused.
+  **1.9.0 CHANGELOG line:** fixed - a tar, tar.gz or other tar-family archive is no longer created
+  over two names of one file (a hard link), which tar.exe stores as a link Pakko then refused to
+  extract; Pakko names both files and suggests ZIP or 7z, which store both.
+  **Earlier status:** open. tar.exe stores the second name of a file as a hard-link entry
+  (`hrw-rw-rw- ... src/hard2.txt link to src/file.txt`) in tar, tar.gz and the other tar
+  filters, and Pakko refuses any archive that holds one ("Archive contains a symlink, hardlink,
+  device, or other special entry"). A 7z of the same folder stores a second full file and
+  extracts. Was pinned by `CompressAsync_TwoHardLinksToOneFile_StoresALinkEntryPakkoRefuses_TF392` (replaced by `TarSandboxedServiceHardLinkTests`).
+- **Measured 2026-10-12 (bsdtar 3.8.8):** tar.exe has no switch to store the content instead
+  (`--hard-dereference`: "Option --hard-dereference is not supported"). The link is not a reparse
+  point, so the pre-scan does not see it; finding one means opening every file for its link count.
+- **Ways forward, none chosen:** extract a hard-link entry as a copy of the entry it names, when
+  that entry is inside the same archive and already in the quarantine (a change to the extraction
+  rules and to `SECURITY.md`); or refuse to create a tar from a folder with such a pair and
+  suggest ZIP or 7z; or leave it (two links to one file inside one selected folder are rare on
+  Windows; a package store's links point outside the folder and are stored as plain files).
+- **Reported by:** the T-F342 research (wave 0), 2026-10-12.
+
+### T-F395 — The App's bar stands near its end while a tar archive of many files is finished (P3)
+
+- [x] **Status:** done 2026-10-29 (PR #119). Measured (6000 x 256 KiB tar.gz, a Core harness): tar.exe 11.7 s at
+  0-94%, the move out of the quarantine 6.4 s at 95-99%, the commit into an existing folder 3.7 s at 99%. Fix:
+  `ExtractionProgressSplit` weighs a file as ~140 KiB of tar.exe output for the move and ~84 KiB more for a
+  merge into an existing folder (a new one is one rename), within 5..60 points; the byte poll scales to its
+  share; the commit reports per file. In the App on 1.8.1.22: 0 to 97% evenly over 18.5 s, then done.
+  **1.9.0 CHANGELOG line:** fixed - extracting a tar archive of many small files, the bar no longer stands near
+  its end for half the time. Earlier: package 1.8.1.5 (`b146f3b`), 2026-10-12: a ZIP of three files and a
+  tar.gz of 6000 files of 256 KiB extracted together from the App. The bar, read every 80 ms:
+  0 to 3 under "checking the archive's contents", 3 to 95 in 7 s, then 95, 96, 97, 98, 99 and
+  100 over 16 s, with the same speed in the text for all of them and no time left; "extracted
+  in 26 s". What runs in those 16 s was not measured (the files leave the quarantine folder
+  after tar.exe is done). Next: measure which step it is, then give it its share of the bar or
+  a text of its own.
+- **Reported by:** the release-tier smoke run of v1.8.1 (`APP-023`), 2026-10-12.
+
+### T-F354 — App: load the hidden parts of `MainWindow.xaml` on first use (P3, measure first)
+
+- [x] **Status:** closed 2026-10-29 as not worth it (the task's own rule). On the AOT App (1.8.1.19) the start
+  to a visible window is 341 ms (median of 7, `Measure-Startup.ps1`), a third of `PRF-004`'s budget. An A/B
+  build with `x:Load="False"` on the browse grid and `EncryptionPanel` crashed at start (`0xc000027b` in
+  `Microsoft.UI.Xaml.dll`): the window touches them while it starts, so deferring them means reworking
+  `MainWindow.xaml.cs` around a layout with T-F106/T-F05's history, for 30-60 ms at best.
+  Earlier: open. `LoadComponent` is ~148 ms of the start; browse mode and the password
+  panel are hidden then. `x:Load` could defer them — estimate 30-60 ms, not measured. Risk: the
+  layout history of T-F106/T-F05 (blank rows) and `x:Bind` targets inside deferred elements. Do
+  only with an on-device A/B that shows the gain; otherwise close as not worth it. Measure against
+  the Native AOT App (T-F355) - the start is already ~150 ms shorter.
+- **Reported by:** performance study, 2026-10-06.
