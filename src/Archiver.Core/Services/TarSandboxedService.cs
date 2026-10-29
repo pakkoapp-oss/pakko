@@ -603,10 +603,14 @@ public sealed class TarSandboxedService : ITarService
         // no second tar.exe listing pass is needed.
         Task<(int ExitCode, string StdOut, string StdErr)> extractionTask = scope.ExtractAsync(tarMembers, cancellationToken);
 
+        ProgressSplit split = ExtractionProgressSplit(
+            expandedSelection != null ? expandedSelection.Count(n => !n.EndsWith('/')) : fileNames.Count,
+            progressTotalBytes);
         if (progress != null && progressTotalBytes > 0)
         {
             await PollExtractionProgressAsync(
-                scope.OutputDirectory!, progressTotalBytes, progress, extractionTask, cancellationToken)
+                scope.OutputDirectory!, progressTotalBytes, progress, extractionTask, cancellationToken,
+                split.ExtractionEnd)
                 .ConfigureAwait(false);
         }
 
@@ -635,7 +639,7 @@ public sealed class TarSandboxedService : ITarService
         int userSkipsBefore = context.ConflictResolver.UserSkipCount;
         int skippedBefore = skippedFiles.Count, errorsBefore = context.Errors.Count;
         // The move phase (quarantine "out\" -> the real destination) is not free — a cross-volume
-        // move is a real copy, not a rename — so it gets its own slice of the percentage (95-99)
+        // move is a real copy, not a rename — so it gets its own slice of the percentage (split)
         // rather than leaving the dialog sitting at whatever the extraction-phase poll last saw.
         // Uses the same expandedSelection-vs-whole-archive distinction as progressTotalBytes above
         // — a subset selection only ever moves its own subset of files, not fileNames.Count.
@@ -671,10 +675,11 @@ public sealed class TarSandboxedService : ITarService
                     || extractedCount == totalFileEntries))
             {
                 lastMoveReportMs = moveReportStopwatch.ElapsedMilliseconds;
-                int movePercent = 95 + (int)(extractedCount * 4L / totalFileEntries);
+                int movePercent = split.ExtractionEnd + 1
+                    + (int)(extractedCount * (long)(split.MoveEnd - split.ExtractionEnd - 1) / totalFileEntries);
                 progress.Report(new ProgressReport
                 {
-                    Percent = Math.Min(99, movePercent),
+                    Percent = Math.Min(split.MoveEnd, movePercent),
                     BytesTransferred = progressTotalBytes,
                     TotalBytes = progressTotalBytes,
                     CurrentFile = relativePath,
@@ -685,7 +690,29 @@ public sealed class TarSandboxedService : ITarService
         CreateFolderEntries((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, staging.Path);
 
         cancellationToken.ThrowIfCancellationRequested();
-        foreach (string relativePath in staging.CommitInto(actualDest, committed: context.OnItemExtracted))
+        Action<string>? committed = context.OnItemExtracted;
+        if (progress != null && totalFileEntries > 0)
+        {
+            // T-F395: merging into an existing folder is one move per file, seconds for thousands.
+            int committedCount = 0;
+            long lastCommitReportMs = moveReportStopwatch.ElapsedMilliseconds;
+            committed = landedPath =>
+            {
+                context.OnItemExtracted?.Invoke(landedPath);
+                committedCount++;
+                if (moveReportStopwatch.ElapsedMilliseconds - lastCommitReportMs < MoveReportThrottleMs)
+                    return;
+                lastCommitReportMs = moveReportStopwatch.ElapsedMilliseconds;
+                progress.Report(new ProgressReport
+                {
+                    Percent = Math.Min(99, split.MoveEnd + (int)(committedCount * (long)(99 - split.MoveEnd) / totalFileEntries)),
+                    BytesTransferred = progressTotalBytes,
+                    TotalBytes = progressTotalBytes,
+                    CurrentFile = Path.GetRelativePath(actualDest, landedPath),
+                });
+            };
+        }
+        foreach (string relativePath in staging.CommitInto(actualDest, committed: committed))
         {
             context.Errors.Add(CoreMessages.Error(archivePath, MessageCode.DestinationFileLocked, relativePath));
         }
@@ -1081,11 +1108,34 @@ public sealed class TarSandboxedService : ITarService
     // safety needed here, unlike ProgressTracker.
     private const long MoveReportThrottleMs = 100;
 
+    // T-F395: what one file costs after tar.exe exits (move out of the quarantine, then the commit),
+    // in bytes of tar.exe's own output that take as long. Measured 2026-10-29 on a 6000 x 256 KiB
+    // tar.gz: tar.exe 11.7 s for 1.5 GiB, then 6.4 s moving and 3.7 s committing (~1.7 ms per file
+    // against ~7.8 ms per MiB), so a file weighs ~224 KiB. The move took 63% of that time.
+    private const long PostExtractionBytesPerFile = 224 * 1024;
+    private const int PostExtractionMinPercent = 5;
+    private const int PostExtractionMaxPercent = 60;
+    private const double MoveShareOfPostExtraction = 0.63;
+
+    internal readonly record struct ProgressSplit(int ExtractionEnd, int MoveEnd);
+
+    // The bar's split between tar.exe (0..ExtractionEnd), the move (..MoveEnd) and the commit (..99).
+    // One large file keeps the old 94/97 split; thousands of small files give the per-file steps up
+    // to 60 points, so the bar no longer stands near its end while they run.
+    internal static ProgressSplit ExtractionProgressSplit(int fileCount, long totalBytes)
+    {
+        double postBytes = Math.Max(0, fileCount) * (double)PostExtractionBytesPerFile;
+        double share = postBytes / (Math.Max(0L, totalBytes) + postBytes + 1);
+        int afterPoints = Math.Clamp((int)Math.Round(99 * share), PostExtractionMinPercent, PostExtractionMaxPercent);
+        int extractionEnd = 99 - afterPoints;
+        return new ProgressSplit(extractionEnd, extractionEnd + (int)Math.Round(afterPoints * MoveShareOfPostExtraction));
+    }
+
     // T-F142: polls how many bytes tar.exe has written into the quarantine output directory while
     // extractionTask runs, reporting real (not approximated) BytesTransferred against the known
-    // declaredUncompressedSize total. Reserves 94% as the ceiling for this phase — the remaining
-    // 95-99% belongs to the move-to-destination phase that runs after tar.exe exits (see the
-    // caller). Percent/BytesTransferred are clamped monotonic (never allowed to regress) since a
+    // declaredUncompressedSize total. Stops at extractionPhaseMaxPercent (94 for one large file) —
+    // the rest belongs to the move and commit that run after tar.exe exits (ExtractionProgressSplit,
+    // T-F395). Percent/BytesTransferred are clamped monotonic (never allowed to regress) since a
     // directory enumeration racing tar.exe's own writes can observe a transient dip (a file
     // renamed/replaced mid-write) — a real dip reported to the UI would look like a bug.
     //
@@ -1102,10 +1152,9 @@ public sealed class TarSandboxedService : ITarService
     // directory with a controllable "extraction" Task, without needing a real tar.exe run (T-F143).
     internal static async Task PollExtractionProgressAsync(
         string outputDirectory, long totalBytes, IProgress<ProgressReport> progress,
-        Task extractionTask, CancellationToken cancellationToken)
+        Task extractionTask, CancellationToken cancellationToken, int extractionPhaseMaxPercent = 94)
     {
         const int MinPollIntervalMs = 250;
-        const int ExtractionPhaseMaxPercent = 94;
         long lastReportedBytes = 0;
         int nextWaitMs = MinPollIntervalMs;
 
@@ -1124,7 +1173,7 @@ public sealed class TarSandboxedService : ITarService
             long clampedBytes = Math.Max(lastReportedBytes, Math.Min(observedBytes, totalBytes));
             lastReportedBytes = clampedBytes;
 
-            int percent = (int)Math.Min(ExtractionPhaseMaxPercent, clampedBytes * 100L / totalBytes);
+            int percent = (int)Math.Min(extractionPhaseMaxPercent, clampedBytes * 100L / totalBytes);
             progress.Report(new ProgressReport
             {
                 Percent = percent,
