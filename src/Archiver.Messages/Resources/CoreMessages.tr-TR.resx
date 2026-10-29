@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} yalnızca tek bir dosyayı sıkıştırır: bir klasör ya da birden çok dosya değil, tam olarak bir dosya belirtin.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' ve '{1}', tek bir dosyanın iki adıdır (sabit bağlantı). Bir tar arşivi ikincisini bağlantı olarak saklar ve Pakko bunu ayıklamaz. ZIP veya 7z kullanın ya da adlardan birini dışarıda bırakın.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Dosya hedefte zaten var.</value>
   </data>

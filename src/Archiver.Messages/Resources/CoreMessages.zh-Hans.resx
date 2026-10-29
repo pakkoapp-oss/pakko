@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} 只压缩单个文件: 请指定恰好一个文件，而不是文件夹或多个文件。</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' 和 '{1}' 是同一文件的两个名称（硬链接）。tar 压缩包会将第二个存为链接，而 Pakko 不会解压链接。请使用 ZIP 或 7z，或排除其中一个名称。</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>文件已存在于目标位置。</value>
   </data>

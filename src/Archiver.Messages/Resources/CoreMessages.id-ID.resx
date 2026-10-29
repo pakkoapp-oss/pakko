@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} hanya mengompres satu file: berikan tepat satu file, bukan folder atau beberapa file.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' dan '{1}' adalah dua nama dari satu file (tautan keras). Arsip tar akan menyimpan yang kedua sebagai tautan, yang tidak diekstrak oleh Pakko. Gunakan ZIP atau 7z, atau kecualikan salah satu nama.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>File sudah ada di tujuan.</value>
   </data>

@@ -1398,6 +1398,12 @@ progress and Cancel are checked on the device.
   `Subprocess/CliSingleFileStreamSubprocessTests`; `Archiver.Core.Tests` `BareGzipTests`,
   `BareGzipEngineTests`, `SingleFileStreamCreationTests` (its service fails before tar.exe can
   start). No new fixture files: every gzip is built in the test. Device rows: `CLI-042`, `CLI-043`, `EXP-015`.
+- T-F392 (v1.9.0): `Archiver.Core.IntegrationTests` `TarSandboxedServiceHardLinkTests` (two names of one file
+  refused for tar and tar.gz, in one folder, across folders, as two file sources; not refused across
+  SeparateArchives, with one name filtered out, for a link to a file outside the selection, for 7z);
+  `Archiver.Core.Tests` `TarHardLinkPairsTests` (the pair search over a faked listing: zero IDs, an
+  unlistable folder, another volume, an unconfirmed duplicate; `PathIdentity.FilesIn` on a real folder).
+  Links are made in the test (`HardLink.Create`), no fixture files.
 
 ---
 

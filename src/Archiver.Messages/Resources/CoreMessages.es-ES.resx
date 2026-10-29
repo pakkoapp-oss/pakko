@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} comprime un solo archivo: indique exactamente un archivo, no una carpeta ni varios archivos.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' y '{1}' son dos nombres de un mismo archivo (un vínculo físico). Un archivo tar guardaría el segundo como vínculo, que Pakko no extrae. Use ZIP o 7z, u omita uno de los nombres.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>El archivo ya existe en el destino.</value>
   </data>

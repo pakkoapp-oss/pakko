@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} hubana faili moja tu: toa faili moja hasa, si folda wala faili kadhaa.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' na '{1}' ni majina mawili ya faili moja (kiungo kigumu). Kumbukumbu ya tar ingehifadhi la pili kama kiungo, ambacho Pakko haikitoi. Tumia ZIP au 7z, au acha moja ya majina.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Faili tayari ipo mahali lengwa.</value>
   </data>

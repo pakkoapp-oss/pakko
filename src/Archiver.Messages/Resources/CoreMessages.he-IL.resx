@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} דוחס קובץ יחיד בלבד: ציין קובץ אחד בדיוק, לא תיקייה ולא כמה קבצים.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' ו-'{1}' הם שני שמות של קובץ אחד (קישור קשיח). ארכיון tar ישמור את השני כקישור, ש-Pakko אינו מחלץ. השתמשו ב-ZIP או ב-7z, או השמיטו אחד מהשמות.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>הקובץ כבר קיים ביעד.</value>
   </data>

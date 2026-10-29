@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>A(z) {0} csak egyetlen fájlt tömörít: pontosan egy fájlt adjon meg, ne mappát vagy több fájlt.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>A(z) '{0}' és a(z) '{1}' egy fájl két neve (rögzített hivatkozás). Egy tar-archívum a másodikat hivatkozásként tárolná, amelyet a Pakko nem bont ki. Használjon ZIP-et vagy 7z-t, vagy hagyja ki az egyik nevet.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>A fájl már létezik a célhelyen.</value>
   </data>

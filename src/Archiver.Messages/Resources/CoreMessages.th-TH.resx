@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} บีบอัดได้เพียงไฟล์เดียว: ระบุไฟล์เพียงหนึ่งไฟล์ ไม่ใช่โฟลเดอร์หรือหลายไฟล์</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' และ '{1}' เป็นสองชื่อของไฟล์เดียวกัน (ฮาร์ดลิงก์) ไฟล์บีบอัด tar จะเก็บชื่อที่สองเป็นลิงก์ ซึ่ง Pakko ไม่แตกออกมา ใช้ ZIP หรือ 7z หรือเว้นชื่อใดชื่อหนึ่งไว้</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>ไฟล์มีอยู่แล้วที่ปลายทาง</value>
   </data>

@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} komprimiert nur eine einzelne Datei: Geben Sie genau eine Datei an, keinen Ordner und nicht mehrere Dateien.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' und '{1}' sind zwei Namen einer Datei (ein fester Link). Ein tar-Archiv würde den zweiten als Link speichern, den Pakko nicht extrahiert. Verwenden Sie ZIP oder 7z, oder lassen Sie einen der Namen weg.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Die Datei ist am Ziel bereits vorhanden.</value>
   </data>

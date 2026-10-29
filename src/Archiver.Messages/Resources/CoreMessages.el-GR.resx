@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>Το {0} συμπιέζει μόνο ένα αρχείο: ορίστε ακριβώς ένα αρχείο, όχι φάκελο ή πολλά αρχεία.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>Τα '{0}' και '{1}' είναι δύο ονόματα ενός αρχείου (σκληρός σύνδεσμος). Ένα αρχείο συμπίεσης tar θα αποθήκευε το δεύτερο ως σύνδεσμο, τον οποίο το Pakko δεν εξάγει. Χρησιμοποιήστε ZIP ή 7z ή παραλείψτε ένα από τα ονόματα.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Το αρχείο υπάρχει ήδη στον προορισμό.</value>
   </data>

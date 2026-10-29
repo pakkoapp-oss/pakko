@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} comprimă un singur fișier: indicați exact un fișier, nu un folder sau mai multe fișiere.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' și '{1}' sunt două nume ale aceluiași fișier (o legătură fixă). O arhivă tar ar stoca al doilea ca legătură, pe care Pakko nu o extrage. Folosiți ZIP sau 7z ori omiteți unul dintre nume.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Fișierul există deja la destinație.</value>
   </data>

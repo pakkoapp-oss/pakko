@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} saspiež tikai vienu failu: norādiet tieši vienu failu, nevis mapi vai vairākus failus.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' un '{1}' ir viena faila divi nosaukumi (cietā saite). tar arhīvs otro saglabātu kā saiti, ko Pakko neizvelk. Izmantojiet ZIP vai 7z vai izlaidiet vienu no nosaukumiem.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Fails jau pastāv mērķī.</value>
   </data>

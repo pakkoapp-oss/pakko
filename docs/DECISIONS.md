@@ -14360,6 +14360,33 @@ dropped from `TarCreationFailed`: its name cannot be trusted, and keeping a deep
 line is not worth showing a piece of the user's environment. Rejected: matching the errno text alone
 as the trigger (a missing file inside a source writes it too, and no source has vanished then).
 
+## T-F392 - a tar archive is not created over two names of one file (2026-10-29)
+
+tar.exe stores the second name of a file as a hard-link entry (`h` in `-tv`), Pakko's pre-scan refuses
+every such entry on extraction (gate G of diagram 5, the T-F49 exploit class), and bsdtar 3.8.8 has no
+switch to store the content instead (`--hard-dereference` is not supported, measured 2026-10-12). Chosen
+with the user on 2026-10-24: refuse the creation, name both paths and suggest ZIP or 7z
+(`MessageCode.TarHardLinkPair`, 37 locales). Rejected: extracting a link entry as a copy of the entry
+it names (a change to the extraction rules and to `SECURITY.md`'s gate, for a case that is rare on
+Windows); leaving it (Pakko could not extract an archive it made).
+
+How the pair is found: the walk that already counts the sources (`CountRecursiveEntriesAndBytes`)
+collects every file tar.exe will pack - links and what a filter leaves out are not among them, a file
+source is - for one tar.exe run (SingleArchive: all sources; SeparateArchives: each source on its own).
+`PathIdentity.FilesIn` lists each folder once with `FileIdExtdDirectoryInfo` (the 128-bit file ID, the
+volume serial from the folder's `FILE_ID_INFO`), so no file is opened. A shared (volume, ID) only
+nominates a pair: both names are resolved (`PathIdentity.Resolve`) and must give one identity under two
+final paths. A zero ID, a folder that cannot be listed or a volume without the information class
+refuses nothing - a missed pair is today's behaviour, a false refusal would block the user for nothing.
+7z (libarchive stores both names as files, measured in T-F392's research) and the one-file formats are
+not checked. The refusal comes after the walk and before tar.exe starts: nothing is written.
+
+Measured (this machine, 40,000 one-byte files in 400 folders, three runs): the walk 73-109 ms, the
+pair search 86-92 ms. Known gap, accepted: a file source staged as a renamed copy for a name clash
+(T-F171) is checked by its original path, so two such linked sources would be refused although
+tar.exe would read the copy. Tests: `TarSandboxedServiceHardLinkTests` (seen failing before the fix:
+4 of 8), `TarHardLinkPairsTests`.
+
 ## T-F411, wave D: how `pakko` reads a command line, as 7-Zip does (2026-10-18)
 
 - **Measured first** (vendored `7za.exe` 26.02): `X a.zip`, `L`, `A` and `-y x a.zip` exit 0;

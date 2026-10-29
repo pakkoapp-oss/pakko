@@ -363,6 +363,9 @@
   <data name="SingleFileFormatNeedsOneFile" xml:space="preserve">
     <value>{0} pakkaa vain yhden tiedoston: anna täsmälleen yksi tiedosto, ei kansiota eikä useita tiedostoja.</value>
   </data>
+  <data name="TarHardLinkPair" xml:space="preserve">
+    <value>'{0}' ja '{1}' ovat saman tiedoston kaksi nimeä (kova linkki). tar-arkisto tallentaisi toisen linkkinä, jota Pakko ei pura. Käytä ZIP- tai 7z-muotoa tai jätä toinen nimistä pois.</value>
+  </data>
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Tiedosto on jo kohteessa.</value>
   </data>
