@@ -2,6 +2,7 @@ using Archiver.Core.IO;
 using Archiver.Core.Services;
 using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
+using Lister = System.Func<string, System.Collections.Generic.IReadOnlyDictionary<string, Archiver.Core.IO.PathIdentity.Identity>?>;
 
 namespace Archiver.Core.Tests.Services;
 
@@ -10,16 +11,16 @@ public sealed class TarHardLinkPairsTests
 {
     private static readonly PathIdentity.Identity Shared = new(7, 42, 0);
 
-    private static Func<string, IReadOnlyDictionary<string, PathIdentity.Identity>?> Listing(
+    private static Lister Listing(
         Dictionary<string, Dictionary<string, PathIdentity.Identity>?> byFolder) =>
         folder => byFolder.TryGetValue(folder, out Dictionary<string, PathIdentity.Identity>? files) ? files : null;
 
     [Fact]
     public void Find_TwoNamesWithOneIdentityConfirmed_ReturnsThemInOrder()
     {
-        var listing = Listing(new() { [@"C:\s"] = new() { ["a.txt"] = Shared, ["b.txt"] = Shared } });
+        Lister listing = Listing(new() { [@"C:\s"] = new() { ["a.txt"] = Shared, ["b.txt"] = Shared } });
 
-        var pair = TarHardLinkPairs.Find([@"C:\s\a.txt", @"C:\s\b.txt"], listing, (_, _) => true);
+        (string First, string Second)? pair = TarHardLinkPairs.Find([@"C:\s\a.txt", @"C:\s\b.txt"], listing, (_, _) => true);
 
         pair.Should().Be((@"C:\s\a.txt", @"C:\s\b.txt"));
     }
@@ -27,7 +28,7 @@ public sealed class TarHardLinkPairsTests
     [Fact]
     public void Find_PairAcrossTwoFolders_IsFound()
     {
-        var listing = Listing(new()
+        Lister listing = Listing(new()
         {
             [@"C:\s\x"] = new() { ["a.txt"] = Shared },
             [@"C:\s\y"] = new() { ["b.txt"] = Shared },
@@ -39,7 +40,7 @@ public sealed class TarHardLinkPairsTests
     [Fact]
     public void Find_DistinctIdentities_ReturnsNull()
     {
-        var listing = Listing(new() { [@"C:\s"] = new() { ["a.txt"] = new(7, 1, 0), ["b.txt"] = new(7, 2, 0) } });
+        Lister listing = Listing(new() { [@"C:\s"] = new() { ["a.txt"] = new(7, 1, 0), ["b.txt"] = new(7, 2, 0) } });
 
         TarHardLinkPairs.Find([@"C:\s\a.txt", @"C:\s\b.txt"], listing, (_, _) => true).Should().BeNull();
     }
@@ -47,7 +48,7 @@ public sealed class TarHardLinkPairsTests
     [Fact]
     public void Find_SameIdOnTwoVolumes_IsNotAPair()
     {
-        var listing = Listing(new()
+        Lister listing = Listing(new()
         {
             [@"C:\s"] = new() { ["a.txt"] = new(1, 42, 0) },
             [@"D:\s"] = new() { ["a.txt"] = new(2, 42, 0) },
@@ -61,8 +62,8 @@ public sealed class TarHardLinkPairsTests
     [Fact]
     public void Find_ZeroIdentities_AreNotCompared()
     {
-        var zero = new PathIdentity.Identity(7, 0, 0);
-        var listing = Listing(new() { [@"C:\s"] = new() { ["a.txt"] = zero, ["b.txt"] = zero } });
+        PathIdentity.Identity zero = new(7, 0, 0);
+        Lister listing = Listing(new() { [@"C:\s"] = new() { ["a.txt"] = zero, ["b.txt"] = zero } });
 
         TarHardLinkPairs.Find([@"C:\s\a.txt", @"C:\s\b.txt"], listing, (_, _) => true).Should().BeNull();
     }
@@ -70,7 +71,7 @@ public sealed class TarHardLinkPairsTests
     [Fact]
     public void Find_FolderThatCannotBeListed_RefusesNothing()
     {
-        var listing = Listing(new() { [@"C:\s"] = null });
+        Lister listing = Listing(new() { [@"C:\s"] = null });
 
         TarHardLinkPairs.Find([@"C:\s\a.txt", @"C:\s\b.txt"], listing, (_, _) => true).Should().BeNull();
     }
@@ -78,7 +79,7 @@ public sealed class TarHardLinkPairsTests
     [Fact]
     public void Find_NameMissingFromTheListing_IsSkipped()
     {
-        var listing = Listing(new() { [@"C:\s"] = new() { ["a.txt"] = Shared } });
+        Lister listing = Listing(new() { [@"C:\s"] = new() { ["a.txt"] = Shared } });
 
         TarHardLinkPairs.Find([@"C:\s\a.txt", @"C:\s\gone.txt"], listing, (_, _) => true).Should().BeNull();
     }
@@ -88,7 +89,7 @@ public sealed class TarHardLinkPairsTests
     [Fact]
     public void Find_DuplicateNotConfirmedByOpeningBoth_IsNotAPair()
     {
-        var listing = Listing(new() { [@"C:\s"] = new() { ["a.txt"] = Shared, ["b.txt"] = Shared } });
+        Lister listing = Listing(new() { [@"C:\s"] = new() { ["a.txt"] = Shared, ["b.txt"] = Shared } });
 
         TarHardLinkPairs.Find([@"C:\s\a.txt", @"C:\s\b.txt"], listing, (_, _) => false).Should().BeNull();
     }
@@ -97,7 +98,7 @@ public sealed class TarHardLinkPairsTests
     public void Find_EachFolderIsListedOnce()
     {
         int listed = 0;
-        var files = new Dictionary<string, PathIdentity.Identity> { ["a.txt"] = new(7, 1, 0), ["b.txt"] = new(7, 2, 0), ["c.txt"] = new(7, 3, 0) };
+        Dictionary<string, PathIdentity.Identity> files = new() { ["a.txt"] = new(7, 1, 0), ["b.txt"] = new(7, 2, 0), ["c.txt"] = new(7, 3, 0) };
 
         TarHardLinkPairs.Find([@"C:\s\a.txt", @"C:\s\b.txt", @"C:\s\c.txt"], _ => { listed++; return files; }, (_, _) => true);
 
