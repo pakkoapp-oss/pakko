@@ -1403,7 +1403,8 @@ progress and Cancel are checked on the device.
   SeparateArchives, with one name filtered out, for a link to a file outside the selection, for 7z);
   `Archiver.Core.Tests` `TarHardLinkPairsTests` (the pair search over a faked listing: zero IDs, an
   unlistable folder, another volume, an unconfirmed duplicate; `PathIdentity.FilesIn` on a real folder).
-  Links are made in the test (`HardLink.Create`), no fixture files.
+  `Archiver.CLI.Tests` `Subprocess/CliHardLinkSubprocessTests` (`a -ttar` exit 2 naming both, `-tzip` stores
+  both; the AOT exe in CI). Links are made in the test (`CreateHardLinkW`), no fixture files. Device row: `EXP-016`.
 
 ---
 

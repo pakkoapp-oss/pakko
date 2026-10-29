@@ -487,7 +487,7 @@ Chocolatey's folder lines run too.
 | `-si`, `-so` | Yes | Within the limits above; with a name filter too (T-F410) |
 | `-slp`, `-stm` | Declined | Large pages and CPU affinity tune 7-Zip's own codecs; nothing to tune here |
 | `-slt` | Yes | T-F412: the fields Pakko knows, in 7-Zip's names and order |
-| `-snh`, `-snl` | Can add | not planned; how Pakko treats links is T-F391's |
+| `-snh`, `-snl` | Can add | not planned; how Pakko treats links is T-F391's. Without `-snh` 7-Zip stores a file's second hard-link name in a tar as a full file (measured, 26.02); `pakko a -ttar` (and the tar family) instead refuses such a pair with exit 2 and names both (T-F392): tar.exe can store only a link entry, which Pakko does not extract. ZIP and 7z store both, as 7-Zip does |
 | `-sni`, `-sns` | Can't | NT security and alternate streams have no place in ZIP or in `tar.exe`'s formats as Pakko writes them |
 | `-snc`, `-snr`, `-snt`, `-snoi`, `-snon`, `-snld` | Declined | Pakko's own name and link safety rules decide these (`SECURITY.md`) |
 | `-snz` | Yes | |
