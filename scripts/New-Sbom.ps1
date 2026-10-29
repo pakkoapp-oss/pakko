@@ -83,7 +83,7 @@ try {
 
     # Not --exclude-filter: in 6.2.0 it keeps only what the root's own dependsOn reaches, and on a
     # solution filter that is one package; the exclusions are applied below instead.
-    & dotnet tool run dotnet-CycloneDX $source --exclude-dev --disable-package-restore --output-format Json --spec-version 1.6 `
+    & dotnet tool run dotnet-CycloneDX $source --disable-package-restore --output-format Json --spec-version 1.6 `
         --set-type Application --set-name $name --set-version $Version `
         --output $outputDir --filename (Split-Path $OutputPath -Leaf)
     if ($LASTEXITCODE -ne 0) { throw "CycloneDX failed (exit $LASTEXITCODE)." }
@@ -93,7 +93,12 @@ try {
 }
 
 $bom = Get-Content -LiteralPath $OutputPath -Raw | ConvertFrom-Json
-$dropped = @($bom.components | Where-Object { $excluded -contains $_.name } | ForEach-Object { $_.'bom-ref' })
+# From 6.3 the tool marks the ILCompiler packages development-only (PublishAot adds them with
+# PrivateAssets), but this architecture's one is the statically linked .NET runtime.
+foreach ($component in @($bom.components | Where-Object { $_.name -eq "runtime.$rid.Microsoft.DotNet.ILCompiler" })) {
+    $component | Add-Member -NotePropertyName scope -NotePropertyValue required -Force
+}
+$dropped = @($bom.components | Where-Object { $excluded -contains $_.name -or ($_.PSObject.Properties['scope'] -and $_.scope -eq 'excluded') } | ForEach-Object { $_.'bom-ref' })
 $bom.components = @($bom.components | Where-Object { $dropped -notcontains $_.'bom-ref' })
 $bom.dependencies = @($bom.dependencies | Where-Object { $dropped -notcontains $_.ref })
 # CycloneDX 1.6 leaves an empty dependsOn out; so does this.
