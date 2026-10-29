@@ -10,6 +10,72 @@ the technical account of any task named here.
 
 ---
 
+## v1.9.0 — 2026-10-29
+
+The `pakko` command takes most of 7-Zip's command line: name filters, list files, the output
+switches and the small switches scripts use, so the lines patool, Scoop and Chocolatey run work as
+they are. An archive is never written over one of the files it is made from, and a tar is no longer
+made from two names of one file, which Pakko then could not extract. Plus the fixes found by an
+adversarial test pass over every switch and by the on-device checks of v1.8.1.
+
+### Added
+
+- **T-F410** - 7-Zip's name filters on `x`, `l`, `t` and `a`: `-i`, `-x`, `-r`, names after the
+  archive, `@listfile`, wildcards over several archives (`-an -ai`, `-ax`), and `-stx` to leave out
+  an archive type.
+- **T-F414** - `pakko a` names what it stores as 7-Zip does (see "Changed").
+- **T-F407, T-F408, T-F409, T-F411** - `--` ends the switches; the output switches `-ba`, `-bb`,
+  `-bd`, `-bt`, `-bso`/`-bse`/`-bsp` (`x -bb1` lists each file that arrived); `-y`, `-p` and `-p-`
+  on `l` and `t`; `-aot`, `-sdel`, `-spe`, `-mmt`, `-sse`, `-ssw`, `-stl`, `-w`, `-sae`, `-sas`,
+  `-saa`; 7-Zip's spellings (`X`, `-Y`, `-MX=9`, `-mx9`, `-tZIP`, a switch before the command).
+- **T-F412** - `pakko l -slt`, 7-Zip's technical listing.
+- **T-F413** - `pakko a -tgzip`, `-tbzip2` and `-txz` compress one file without tar; a `.gz` of one
+  file opens, tests and extracts in the App, the Explorer menu and `pakko`.
+
+### Changed
+
+- **T-F414** - `pakko a out.zip dir\sub` stores `dir\sub\...` as 7-Zip does, not `sub\...`;
+  `pakko a out.zip .` stores the folder's contents, not the folder; a missing source is a warning
+  (exit 1) and the rest is archived.
+- **T-F410** - a name after the archive is a filter, no longer a second archive.
+- **T-F411** - a switch given twice is a command-line error (exit 7), except `-i`, `-x`, `-ai`,
+  `-ax`, `-m` and `-stx`; 1.8.1 took the last one.
+- **T-F415** - `x -aos` over existing files exits 0, as 7-Zip does; the kept files are still named.
+- **T-F361** - the winget package links `pakko.exe` into winget's own folder instead of putting the
+  install folder on `PATH`.
+
+### Fixed
+
+- **T-F421** - an archive named like one of its own sources (`a.txt` and `a.zip` made into separate
+  archives, or one archive named after a source) no longer replaces that source; the archive gets
+  a numbered name.
+- **T-F392** - a tar, tar.gz or other tar-family archive is no longer created over two names of one
+  file (a hard link), which tar.exe stores as a link Pakko then refused to extract; Pakko names both
+  files and suggests ZIP or 7z, which store both.
+- **T-F406** - `pakko x a.zip -o<file>` and other operations whose folder cannot be made ended in an
+  unhandled error; every Core operation now reports it.
+- **T-F417** - `t` or `x` with names on a ZIP asks for the password only when an encrypted file is
+  selected.
+- **T-F418, T-F416** - a tar name with `\` is shown, filtered and selected as stored; a tar with a
+  control character in a name is refused, as a ZIP is; on Windows 10, a filter over a tar whose
+  listing shows `?` for a name tar.exe cannot show stops with a clear message.
+- **T-F410** - a selection in a tar that names no entry no longer extracts the whole archive; a tar
+  entry whose name holds `$` no longer picks another file or fails with "Not found".
+- **T-F419, T-F420** - the fixes from an adversarial test pass over every switch: where an entry
+  name lands on disk and where a source path leads are decided in one place for ZIP and tar.
+- **T-F395** - extracting a tar archive of many small files, the bar no longer stands near its end
+  for half the time.
+- **T-F396** - when a folder being archived to a tar-family format was removed just before tar.exe
+  started, Pakko sometimes did not name it and showed a garbled tar.exe line instead.
+- **T-F429** - while creating a tar-family archive, the progress could show one of tar.exe's error
+  lines as the file being added.
+- **T-F399** - under a policy that blocks ZIP, the New archive card starts on 7Z, the first format
+  it offers, not on TAR.
+- **T-F400** - the footer line ends with an ellipsis in a narrow window instead of being cut off.
+- **T-F405** - the options panel shows a shade and a divider while more cards are below it.
+
+---
+
 ## v1.8.1 — 2026-10-16
 
 Pakko creates 7z archives, and "Test" works for every archive it reads. Plus the fixes found by
