@@ -1509,13 +1509,15 @@ re-measured with T-F346's script before and after.
 
 ### T-F431 — The Explorer operation window shows no time left; in a batch, speed and time left are the current archive's (P3)
 
-- [~] **Status:** in code 2026-10-29 (v1.9.0, the user's call): `Archiver.Shell/ProgressTimeEstimate.cs`,
+- [x] **Status:** done 2026-10-29 (v1.9.0, the user's call); `OPW-001` passed on package 1.9.0.2, which
+  now also waits for the time left, and the window read "40%  ·  320,0 МБ / 800,0 МБ  ·  27,3 МБ/с  ·
+  Залишилось ~16 с" (uk-UA, 800 MB of random data). A batch of two 800 MB ZIPs showed none, rightly:
+  each took under 5 s, so under 4 s were left after the first second. In code: `Archiver.Shell/ProgressTimeEstimate.cs`,
   a new one per archive in `HelperOperationUi.BeginItem`, started again after a checking pass; shown
   without a byte total too (it needs only the percent); the `IProgressDialog` fallback gets none (its
   `AutoTime` line has one); the App's two strings copied into the Shell's 37 resx files; the App is
   unchanged. Tests: `ProgressTimeEstimateTests`, `ProgressTextTests`,
-  `HelperOperationUiTests.BeginItem_StartsTheTimeLeftAgain` (red without the reset). Graduates after
-  `OPW-001` on the device. Before: the window started from Explorer shows the percent, the bytes and the speed
+  `HelperOperationUiTests.BeginItem_StartsTheTimeLeftAgain` (red without the reset). Before: the window started from Explorer shows the percent, the bytes and the speed
   (`Archiver.Shell/ProgressText.cs`'s `FormatStatus`), but no time left; the App's own footer has it
   (`Archiver.App.Core/ProgressText.Remaining`, T-F303). Wanted: a time left next to the speed. In a
   batch (several archives selected) the speed and the time left are the archive being processed now,

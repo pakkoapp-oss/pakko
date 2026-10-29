@@ -375,7 +375,7 @@ function Invoke-Shell {
     param(
         [Parameter(Mandatory)][string[]]$Arguments,
         [string]$Until,
-        [string]$Watch,
+        [string[]]$Watch,
         [int]$TimeoutSeconds = 60,
         [string]$StandardInput
     )
@@ -389,13 +389,16 @@ function Invoke-Shell {
         $text = ''
         $firstWindow = $null
         $matched = $false
+        # Each -Watch pattern has to match at some point, not all in one snapshot.
+        $watchSeen = [System.Collections.Generic.HashSet[string]]::new()
         $watched = $false
         while ($clock.Elapsed.TotalSeconds -lt $TimeoutSeconds) {
             $seen = (Get-ShellWindowText | ForEach-Object { "[$($_.Title)] $($_.Text)" }) -join ' || '
             if ($seen) {
                 $text = $seen
                 $firstWindow ??= $clock.Elapsed.TotalSeconds
-                $watched = $watched -or ($Watch -and $text -match $Watch)
+                foreach ($pattern in $Watch) { if ($text -match $pattern) { [void]$watchSeen.Add($pattern) } }
+                $watched = $Watch -and $watchSeen.Count -eq @($Watch).Count
                 $matched = $Until -and $text -match $Until
             }
             if ($matched -or $process.HasExited) { break }

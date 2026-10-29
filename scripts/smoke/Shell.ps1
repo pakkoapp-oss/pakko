@@ -186,10 +186,11 @@ Add-SmokeStep 'OPW-001' {
     $zip = Join-Path (Split-Path -Parent $many) ((Split-Path -Leaf (Split-Path -Parent $many)) + '.zip')
     Remove-Item -LiteralPath $zip -ErrorAction SilentlyContinue
     try {
-        $run = Invoke-Shell -Arguments @('--archive', $many, $big) -Watch '\d+\s?%' -TimeoutSeconds 120
+        # T-F431: the time left is the segment after the bytes and the speed, in any language.
+        $run = Invoke-Shell -Arguments @('--archive', $many, $big) -Watch '\d+\s?%', '\d+\s?%(\s+\xB7\s+[^\xB7|]+){3}' -TimeoutSeconds 120
         Assert-Smoke ($run.Exited -and $run.ExitCode -eq 0) "--archive on 6000 files and 200 MB: exited=$($run.Exited) code=$($run.ExitCode) $($run.Text)"
         Assert-Smoke ($null -ne $run.FirstWindow -and $run.FirstWindow -le 3) "the operation window took $($run.FirstWindow) s to appear, expected within 3"
-        Assert-Smoke $run.Watched "the operation window never showed a percentage: $($run.Text)"
+        Assert-Smoke $run.Watched "the operation window never showed a percentage with a time left: $($run.Text)"
 
         $listed = Invoke-Tool -Exe $Smoke.SevenZip -Arguments @('l', $zip)
         Assert-Smoke ($listed.Output -match '(?m)\s6001 files') "7za does not count 6001 files: $(($listed.Output -split '\r?\n')[-2])"
