@@ -126,7 +126,7 @@ Add-SmokeStep 'CLI-017' {
     $env:PAKKO_CLI_EXE = $exe
     try {
         $run = Invoke-Tool -Exe (Get-ToolPath dotnet) -Arguments @('test', (Join-Path $Smoke.Repo 'tests\Archiver.CLI.Tests'), '--nologo', '--filter',
-            'FullyQualifiedName~Subprocess&FullyQualifiedName!~DashV_ExitsZeroAndPrintsPakkoPrefixedVersion&FullyQualifiedName!~DashDashVersion_ExitsZeroAndPrintsPakkoPrefixedVersion')
+            'FullyQualifiedName~Subprocess&FullyQualifiedName!~DashV_ExitsZeroAndPrintsPakkoPrefixedVersion&FullyQualifiedName!~DashDashVersion_ExitsZeroAndPrintsPakkoPrefixedVersion') -WorkingDirectory $Smoke.Repo
     }
     finally { $env:PAKKO_CLI_EXE = $before }
     $summary = [regex]::Match($run.Text, 'Failed:\s+(\d+), Passed:\s+(\d+), Skipped:\s+(\d+)')
@@ -325,7 +325,7 @@ Add-SmokeStep 'STO-003' {
     $now = & $whatsNew $release.Tag
     Assert-Smoke ($now -ne (& $whatsNew $previousTag)) "the listing's What's new at $($release.Tag) is the text of $previousTag"
 
-    $run = Invoke-Tool -Exe (Get-ToolPath dotnet) -Arguments @('test', (Join-Path $Smoke.Repo 'tests\Archiver.Messages.Tests'), '--nologo', '--filter', 'FullyQualifiedName~StoreListingTests')
+    $run = Invoke-Tool -Exe (Get-ToolPath dotnet) -Arguments @('test', (Join-Path $Smoke.Repo 'tests\Archiver.Messages.Tests'), '--nologo', '--filter', 'FullyQualifiedName~StoreListingTests') -WorkingDirectory $Smoke.Repo
     $summary = [regex]::Match($run.Text, 'Failed:\s+(\d+), Passed:\s+(\d+)')
     Assert-Smoke ($run.ExitCode -eq 0 -and $summary.Success -and $summary.Groups[1].Value -eq '0' -and [int]$summary.Groups[2].Value -gt 0) "StoreListingTests: $($summary.Value) $($run.Text[-300..-1] -join '')"
     "What's new differs from $previousTag; StoreListingTests passed $($summary.Groups[2].Value)"

@@ -6,7 +6,7 @@ Add-SmokeStep 'CLI-001' {
     $before = $env:PAKKO_CLI_EXE
     $env:PAKKO_CLI_EXE = $Smoke.Pakko
     try {
-        $run = Invoke-Tool -Exe 'dotnet' -Arguments @('test', $project, '--filter', 'FullyQualifiedName~Subprocess', '--nologo')
+        $run = Invoke-Tool -Exe 'dotnet' -Arguments @('test', $project, '--filter', 'FullyQualifiedName~Subprocess', '--nologo') -WorkingDirectory $Smoke.Repo
     }
     finally { $env:PAKKO_CLI_EXE = $before }
 

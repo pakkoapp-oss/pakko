@@ -13165,6 +13165,40 @@ the archive.
   (read through UI Automation), held no Pakko item; the dev package 1.9.0.6 came back after it.
 - **The tag** goes on this record's merge, whose `src` is that of `50b3f4dd`.
 
+## v1.9.0 - the tag and the Store tier (2026-10-30)
+
+- **The tag.** `v1.9.0` (annotated) on `50107e05`, the merge of #126, whose `src` is that of
+  `50b3f4dd` (the gates are in the entry above). Build run 41118858115 published the GitHub Release:
+  both `.msixbundle` files (1.9.0.0), both CLI zips, `SHA256SUMS` and four `.cdx.json` files; the
+  notes begin with the tag's section of `CHANGELOG.md`. The Store bundle: `gh workflow run build.yml
+  --ref v1.9.0`, run 41122300073, artifact `pakko-store-msixbundle`.
+- **`Invoke-Smoke.ps1 -Tier store -PackageLifecycle -Tag v1.9.0`** from a checkout of the tag, the
+  release's files and v1.8.1's as the previous release: 160 rows, 92 OK, 3 FAIL, 1 skipped,
+  64 manual. The three failures (`CLI-001`, `CLI-017`, `STO-003`) were the harness: they started
+  `dotnet` without a working folder, so it took the shell's current folder, a checkout whose
+  `global.json` pins SDK 10.0.402, which this machine no longer has (10.0.403 is installed and is
+  what the tag pins). Fixed in this record's pull request (`-WorkingDirectory $Smoke.Repo`, as
+  `REL-001` already had); the three rows run again from that same folder: OK (258 and 256 subprocess
+  tests, 111 `StoreListingTests`). Skipped: `REL-002`, no canary on `50107e05`, a commit that changes
+  documents only; the canary on `50b3f4dd` (41111209416) is the one that counts. Of the store rows:
+  `REL-003..007` and `STO-001..003` OK (`STO-002`: against the 1.8.1 Store bundle, the version
+  only); `PKG-005` PASS with the two known findings. The manual rows are the release tier's, walked
+  in the record of 57a7ac41 above, and `STO-004..008`.
+- **`STO-007`** (read by the agent): the features and "What's new" of `en-US.txt` name every change
+  of 1.8.0, 1.8.1 and 1.9.0 a Store user would look for: 7-Zip creation, Test for every format,
+  PAR2, the keyboard fix, tar on Windows 10 and older Windows 11, an archive never over its sources,
+  no tar over a hard link, the CLI's 7-Zip switches. Not named, as smaller: T-F433, T-F431 (time
+  left), T-F386 (right-to-left layout) and the layout fixes. OK, as for v1.8.1.
+- **The listing CSV.** The user exported the listing on 2026-10-30. `scripts/Fill-StoreListing.py`
+  matched all 37 language columns to the files. The export still held v1.8.1's "What's new" (six
+  lines) in every language and, for sv-se, the v1.7 features and search terms under the newer
+  description: Partner Center keeps refusing that half of sv-se (T-F331). The file for import was
+  filled with `--keep-lists sv-SE`: "What's new" in 37 languages, the sv-se description and short
+  description. The sv-se lists are to be typed into Partner Center's own form, which names the field
+  it refuses.
+- **Left to the user:** `STO-004` (upload the bundle and the listing), then after certification
+  `STO-005`, `STO-006` and `STO-008` on a Store install.
+
 ## T-F343 — `pakko` in place of 7-Zip's console program: the measurement (2026-10-17)
 
 - **Question.** How far is `pakko` from a stand-in for `7z.exe` for the programs that run it? Measured
