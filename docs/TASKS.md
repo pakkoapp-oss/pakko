@@ -54,11 +54,11 @@ once; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md are edited by the integra
 | A2 tar listing, `l` | T-F418, T-F412 (`-slt`) | tar listing parse, `pakko l`, `docs/CLI.md` |
 | A3 CLI create, exit codes | T-F413 (gzip; xz/bz2 measured), T-F415 (`-aos` exits 0) | CLI parser and creation, `docs/CLI.md` |
 | B flaky tests, ARM64 | done 2026-10-25: T-F372, T-F374, T-F376, T-F396, T-F290, T-F425, T-F426, T-F429; T-F427, T-F428 deferred | tests, and three Core fixes found by them (T-F426, T-F396, T-F429); load loops run alone |
-| C App, on device | 2026-10-29: T-F392 done (`EXP-016` passed), T-F395 done (PR #119), T-F354 closed (not worth it: the start is 341 ms, `x:Load` crashes the window), T-F393 deferred (no repro in 25 tries); T-F399 waits for `POL-009` (the user's elevation); T-F320 (closed, documented) | App, `TarSandboxedService` creation |
+| C App, on device | 2026-10-29: T-F392 done (`EXP-016` passed), T-F395 done (PR #119), T-F354 closed (not worth it: the start is 341 ms, `x:Load` crashes the window), T-F393 deferred (no repro in 25 tries); T-F399 done (`POL-009` on 1.9.0.2); T-F320 (closed, documented) | App, `TarSandboxedService` creation |
 | D smoke, winget | T-F394, T-F361 | `scripts/`, `scripts/smoke/`, `docs/SMOKE.md` |
 | E localization, Store text | T-F331 done 2026-10-29 ("What's new" for 1.9.0, 37 languages); T-F91's layout walk and T-F328's non-English look ride on the release smoke's `APP-015`/`EXP-008` (the user language list, no sign-out); T-F329 part 5 | `.resw`/`.resx`, `Localization.cpp`, `docs/store-listing/` |
 | G operation window (added 2026-10-29, the user) | T-F431 (time left; T-F432 deferred) | `Archiver.Shell` progress text, `OperationText` resx |
-| F measurement, umbrellas | T-F114 (Windows 10 VM: the user's, no file path into it), T-F226 (done 2026-10-29: check L over diagrams 1 to 9), T-F202 (real console done 2026-10-29; keyboard is `APP-012` in the release smoke) | docs, tests |
+| F measurement, umbrellas | T-F114 (done 2026-10-30: the second machine was the Windows 10 VM), T-F226 (done 2026-10-29: check L over diagrams 1 to 9), T-F202 (real console done 2026-10-29; keyboard is `APP-012` in the release smoke) | docs, tests |
 
 Decisions taken with the plan (the user approved, 2026-10-24): T-F412 keeps reading a `.tar.gz` in
 one step and adds `-slt`; T-F415 exits 0 when `-aos` asked for the skip; T-F392 refuses a tar from a
@@ -74,7 +74,9 @@ review), T-F91's native-speaker review (no native speakers), T-F202's light them
 its language without a sign-out or a system setting. Found by stream B (2026-10-25, the agent's call):
 T-F428 (a change to the sandbox launcher's cancel path that needs a plan; low exposure in the
 product), T-F427 (the real AMSI path cannot be checked while AMSI is not ready on the dev machine).
-T-F432 (the user, 2026-10-29: the taskbar progress goes in the next release).
+T-F432 (the user, 2026-10-29: the taskbar progress goes in the next release). Found by the release
+smoke (2026-10-29 and 2026-10-30, none blocking): T-F433 (P2, not a regression), T-F434, T-F435,
+T-F436, T-F437 (P3), T-F438 (tests).
 
 ---
 
@@ -519,14 +521,15 @@ deprecate" rule; do not re-implement them as new work.
 ---
 
 ### T-F114 — Performance/Regression Tests vs. a 7-Zip Reference (ZIP only)
-- [~] **Status:** implemented and passing 2026-07-17 — all 9 implementation steps done (7za.exe
-      vendored, project scaffolded, fixtures/runner built, all 6 scenarios implemented and
-      calibrated against real observed ratios, doc cascade complete). Stays `[~]` rather than `[x]`
-      for one reason only: the design's own verification criterion ("run on a second,
-      differently-specced machine if available, to confirm the ratio actually travels across
-      machines") could not be exercised this session — no second machine was available. Everything
-      else is done; see `DECISIONS.md`'s T-F114 entry for the observed baseline ratios and full
-      rationale.
+- [x] **Status:** done 2026-10-30. Implemented and passing 2026-07-17 (all 9 implementation steps;
+      `DECISIONS.md`'s T-F114 entry has the baseline ratios and the rationale). The last criterion,
+      a run on a second machine, ran in the v1.9.0 release smoke on the Windows 10 VM PakkoW10 (4
+      virtual processors on this machine's Ryzen 5 PRO 4650U, which the host runs with 12 threads;
+      Windows 10 22H2): the five `Category=Slow` scenarios pass, and each ratio is within 0.44 of the
+      host's of the same day; FewLargeFiles moves most (0.62 on the host, 1.06 in the VM, where 7za
+      has fewer threads). Caveats: not a differently built processor, and the `VeryLarge` scenarios
+      were not run in the VM. Figures: `DECISIONS.md`, "v1.9.0 - the release-tier smoke run on
+      57a7ac41".
 
 **What:** automated tests that compress/extract fixture data with Pakko's own ZIP path
 (`System.IO.Compression`) and, in the same test invocation on the same machine, run `7za.exe`
@@ -1539,6 +1542,65 @@ re-measured with T-F346's script before and after.
   or the whole batch (as Explorer's copy does).
 - **Reported by:** the user, 2026-10-29.
 
+### T-F433 — The App window's minimum size is in physical pixels, so at 175 % its footer can leave the window (P2)
+
+- [ ] **Status:** open. Found 2026-10-30 by the v1.9.0 release smoke (`APP-014`); not a regression,
+  the floor dates from `03a912e6` (v1.6.0). `MainWindow.xaml.cs` sets
+  `OverlappedPresenter.PreferredMinimumWidth`/`PreferredMinimumHeight` to 900/520, which `AppWindow`
+  takes in physical pixels. At 150 % that is 600 x 347 effective pixels and the footer still fits; at
+  175 % (514 x 297) the footer with Clear, Extract and Compress is entirely outside the window and the
+  Name and Type column headers overlap. Next: scale the floor by the window's DPI and again on a DPI
+  change (`GetDpiForWindow` or `XamlRoot.RasterizationScale`), a test of the arithmetic, then
+  `APP-014` at 175 % and, on a display that offers it, 200 %.
+- **Reported by:** the release-tier smoke run of v1.9.0, 2026-10-30.
+
+### T-F434 — "Move the sources to the Recycle Bin" keeps a clean source when another source of the run is skipped (P3)
+
+- [ ] **Status:** open. Package 1.9.0.2, the App (`APP-027`): a folder archived alone, unchanged, is
+  recycled with no dialog. Archived together with a second folder that holds a junction (skipped), the
+  first folder stays too and the dialog names both as not deleted; `pakko.log` says "Not deleted after
+  operation" for it, with no "Output no longer on disk". Nothing is lost (the safe direction), but
+  neither `docs/SPEC.md` nor the dialog says that one skipped source keeps the others. Because of it
+  `APP-027` cannot tell an added or an edited file from this effect in the GUI. Next: read
+  `SourceRecycler.RecycleLocalSources` with the run's `FullyProcessedSources` for a run with a skipped
+  source; then either recycle each fully processed, unchanged source (a test per case) or write the
+  rule down and say it in the dialog.
+- **Reported by:** the release-tier smoke run of v1.9.0, 2026-10-30.
+
+### T-F435 — "Some items were not deleted" gives "they may be in use or protected" also for an archive kept on purpose (P3)
+
+- [ ] **Status:** open. Package 1.9.0.2, the App (`APP-028`): an archive one of whose entries was
+  overwritten by another entry is kept by design, and the dialog's only reason is the generic one (may
+  be in use or protected). The same reason shows when the output is gone (`APP-030`). Wanted: the reason
+  that applies, per item: kept because an entry overwrote another, the output is no longer on disk, or
+  in use. Next: carry the reason with each kept item to the dialog; the texts in 37 locales.
+- **Reported by:** the release-tier smoke run of v1.9.0, 2026-10-30.
+
+### T-F436 — An error's localized Windows text is followed by .NET's English message (P3)
+
+- [ ] **Status:** open. Package 1.9.0.2, uk-UA (`APP-022`, a ZIP entry with a 300-character name): the
+  summary line gives the Ukrainian text of 0x8007007B, then "The filename, directory name, or volume
+  label syntax is incorrect. : '<path>'" in English, then the code. Next: find where the line is
+  composed (`ArchiveError` and the App's summary text) and leave out the exception's own message when
+  the Windows text of its code is already there.
+- **Reported by:** the release-tier smoke run of v1.9.0, 2026-10-30.
+
+### T-F437 — `Archiver.Shell.exe --paths-stdin` with a list it cannot read says only "The operation failed" (P3)
+
+- [ ] **Status:** open. A harness that wrote the path list in UTF-8 instead of the UTF-16LE the
+  extension writes (T-F235) got the list refused whole, rightly, but the message names no reason. Only a
+  broken extension or a third-party caller can send such a list. Next: a message that says the path list
+  could not be read; low priority.
+- **Reported by:** the v1.9.0 release run, 2026-10-29.
+
+### T-F438 — Three test literals hold control characters where a path was meant (tests)
+
+- [ ] **Status:** open. `tests/Archiver.Shell.Tests/HelperOperationUiTests.cs:441` holds `@"C:<BS>.txt"`
+  and `:555` `@"C:<BEL>.txt"`, `OperationMessagesTests.cs:230` `@"C:<BEL>.txt"` (the bytes 0x08 and
+  0x07): written as `C:\b.txt` and `C:\a.txt` and decoded on the way in (`.claude/rules/text-encoding.md`).
+  The tests pass either way, the path is only a label. Next: put the paths back through a script.
+- **Reported by:** the v1.9.0 release run, 2026-10-29.
+
 ### T-F393 — The About button went disabled once and no dialog came (P3)
 
 - [ ] **Status:** deferred past 1.9.0 (2026-10-29, agent: P3, no repro). Package 1.8.1.19, uk-UA: About opened
@@ -1562,9 +1624,9 @@ re-measured with T-F346's script before and after.
 
 ### T-F399 — Under a policy that blocks ZIP the New archive card starts on TAR, not on 7Z (P3)
 
-- [ ] **Status:** fixed in code 2026-10-17 (`CreationFormatOption.AfterSevenZipProbe`, tests red
-  without it); graduates after `POL-009` (needs the elevation prompt) in the walk before the next
-  release. Package 1.8.1.13, 2026-10-16, `BlockedFormats` = `zip` (`POL-009`): the
+- [x] **Status:** done 2026-10-29 (v1.9.0). Fixed in code 2026-10-17
+  (`CreationFormatOption.AfterSevenZipProbe`, tests red without it); `POL-009` on package 1.9.0.2 with
+  `BlockedFormats` = `zip`: the card starts on 7Z. Package 1.8.1.13, 2026-10-16, `BlockedFormats` = `zip` (`POL-009`): the
   Format list shows 7Z, TAR, TAR.GZ ... with TAR selected. `CreationFormatOption.Default` runs at
   startup with `sevenZipWriter` false, so it picks TAR; when the probe answers,
   `OfferSevenZipWhenWritableAsync` only moves off a format that is no longer offered, and TAR

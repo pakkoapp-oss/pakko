@@ -13043,6 +13043,102 @@ the archive.
   date and `wsreset -i` did not update it in seven minutes. The same code as package 1.8.1.17,
   walked on that VM above.
 
+## v1.9.0 - the release-tier smoke run on 57a7ac41 (2026-10-29 and 2026-10-30)
+
+- **The package under test.** 1.9.0.2, from `Deploy.ps1` in a worktree holding the content of #123
+  (title "build 2026-10-29 23:32:59"). `origin/main` was `57a7ac41` throughout. The harness ran from
+  `9f37c3d9`, the same commit before its rebase onto `main` (`git diff 9f37c3d9 57a7ac41 -- src` is
+  empty). This record's pull request adds `fcaf60f7` (the smoke harness only) and documents, so its
+  merge changes nothing under `src`; that is what ties the walk below to the tag.
+- **Scripted rows** (`Invoke-Smoke.ps1 -Tier release`, 2026-10-29): 143 rows, 81 OK, 1 FAIL,
+  5 skipped, 56 manual. `APP-018` failed in the harness, which counted `-p-` (no password) as a
+  password; fixed in `fcaf60f7` (red without, green with) and run again: OK. Skipped: `REL-002` (no
+  canary yet) and `PKG-006..009` (they need `-PackageLifecycle`). `REL-001` passed 26 on `9f37c3d9`,
+  with uncommitted files in the worktree. `POL-001..008` and `PKG-005` OK under one elevation prompt
+  (`PKG-005`: PASS, 24 tests, the two known findings).
+- **`POL-009` and `POL-010`** while each policy was held (`-Hold`), walked through the `windows` MCP
+  server: all OK. `BlockedFormats` = `zip` now starts the card on 7Z, which closes T-F399. Under
+  `AllowedFormats` = `zip` the Explorer menu does not change, by design: the menu reads
+  `DisableTarExtraction`, `BlockedFormats` and `DisableRecoveryData` only (`ShellExtUtils.h`).
+- **`mcp` and `user` rows walked on 1.9.0.2** (uk-UA), through the `windows` MCP server and UI
+  Automation scripts:
+
+  | ID | Result | Note |
+  |---|---|---|
+  | OPW-002 | OK | `--archive` of 1.2 GB, Cancel at 30 % with the time left shown: only the source is left, no temp file, no window |
+  | OPW-003 | OK | conflict (both sizes and dates, "apply to all", Rename), password, bomb (1028:1, Skip): all inside the operation window |
+  | OPW-005 | OK | titles, progress (MB, GB, MB/s, time left), prompts and results in uk-UA |
+  | EXP-004 | OK | a zone-3 ZIP with Cyrillic names: the three Extract items keep the names and `ZoneId=3` |
+  | EXP-005 | OK | Open, Test, Scan; SHA-256 and CRC-32 equal `Get-FileHash` and `7za h` |
+  | EXP-006 | OK | Compress with PAR2 and AES-256: `7za` reads AES-256, a wrong password is refused, the set is beside the archive |
+  | EXP-008 | OK | de-AT first in the language list (no sign-out): the ten items in German |
+  | EXP-012 | OK | snapshot `0;tar,gzip`, `?;tar,gzip`, another size and no file: the menu as the row says each time; the original snapshot put back |
+  | APP-001 | OK | title "build 2026-10-29 23:32:59", About "Pakko v1.9.0.2" |
+  | APP-002 | OK | both pickers; ZIP, 7Z and the six tar formats each pass `7za t`; an AES-256 ZIP |
+  | APP-003 | OK | the download-mark box on and off on a zone-3 ZIP, each with its note |
+  | APP-004 | OK | folders, breadcrumb, Up to This PC; hidden system items of `C:\` not listed; every column sorts |
+  | APP-005 | OK | Extract selected and Extract all from a ZIP and a TAR holding `a[1].txt` |
+  | APP-006 | OK | Test, Scan, a text file and a picture opened, a nested ZIP browsed |
+  | APP-007 | OK | conflict with sizes and dates, Rename, Cancel all; bomb; a wrong, then the right password; a cut ZIP |
+  | APP-008 | OK | Choose folder and Parent folder |
+  | APP-009 | OK | Cancel a 1.2 GB compression: no file left; Clear; `C:\Windows\WinSxS` added and removed, no CPU after |
+  | APP-010 | OK | Show in folder; the summary again from Details |
+  | APP-011 | OK | sources moved to the Recycle Bin, the folder opened |
+  | APP-012 | OK | Enter and Backspace in the archive view, Delete and Shift+F10 in the list, Tab through the window: no unnamed focusable element |
+  | APP-013 | OK | 1000 x 560 with four rows: the cards scroll; dark to light and high contrast while the window was open |
+  | APP-014 | part | 150 % and 175 % (the most this 1920 x 1080 display offers; 200 % not reached): main view, About and archive view whole. At 175 % the smallest window puts the footer actions outside it and overlaps two headers: T-F433, since v1.6.0 |
+  | APP-015 | OK | ar-SA mirrored; de-DE and ja nothing cut; no English in the main view (T-F91's layout walk) |
+  | APP-016 | OK | Open with, Pakko: a new App on the archive |
+  | APP-017 | OK | one App for 36 minutes across APP-002 to APP-022: working set 109 to 178 MB, handles 1098 to 1540, no event-log entry |
+  | APP-018 | OK | after the password rows; the three passwords typed through MCP searched by hand as UTF-8 and UTF-16LE in the package's data folder, logs included: none |
+  | APP-022 | OK | a 300-character name: the Windows code and its text; .NET's English message follows the text (T-F436) |
+  | APP-023 | OK | a 320 MB ZIP and a 320 MB tar.gz together: one bar, 10 to 87 through both, at 49 while the tar is checked |
+  | APP-024 | OK | Cancel keeps the archive; an archive with a skipped file is kept |
+  | APP-025 | OK | 7Z second; the five methods, each read back by `7za`; Copy turns the level off; the password is ZIP only; PAR2 |
+  | APP-026 | OK | Test of a 7z, of a tar.gz (structure only), of a damaged 7z (tar.exe's own words) and of a 649 MB 7z (the bar 0 to 100) |
+  | APP-027 | part | an unchanged source alone is recycled. A summary needs a problem, so a second source holding a junction (skipped) was added; the control run (nothing changed) kept the clean source too, so an added and an edited file were not told apart in the GUI (T-F434); the snapshot rule is covered by the T-F419 tests |
+  | APP-028 | OK | an archive whose entry was overwritten by another is kept, a plain one recycled; the dialog's reason is the generic one (T-F435) |
+  | APP-029 | OK | `a?b.txt` and `a_b.txt`: the preview and the extraction keep the two contents apart |
+  | APP-030 | OK | the output moved away while the summary was open: nothing deleted, the Recycle Bin count unchanged |
+  | PAR-010 | OK | Test with the set; 60 bytes flipped, Repair writes `prot.repaired.zip` and opens it; a `.par2` row opens its archive |
+  | PAR-011 | OK | 5, 10 and 20 % on ZIP and TAR.GZ: 100, 199 and 398 recovery blocks, `pakko t` intact each time |
+  | CLI-013 | OK | `-p` without a value: the prompt masked, a wrong password gives one line, the right one extracts |
+  | CLI-042 | OK | gz, xz and bz2 of one file pass `7za t`; several sources exit 2; `-tgzip out.xz` exit 7 |
+  | CLI-043 | OK | `x`, `x -so`, `t`, `l` of a .gz; a cut copy exit 2; `-aos` exit 0; .tar.gz and .cpio.gz through tar.exe |
+  | CLI-023 | OK | below |
+  | CLI-032 | OK | below, against the row as this pull request words it |
+  | CLI-035 | OK | below |
+
+- **`CLI-032` and `CLI-035` on the Windows 10 VM (2026-10-30).** PakkoW10, 19045, tar.exe 3.5.2
+  with zlib only; the 1.9.0.2 MSIX and a standalone `pakko` published from this tree (`src` of
+  `57a7ac41`). `pakko i`: zip, tar and tar.gz supported, the rest not, no methods line. `a` of
+  tar.zst, tar.bz2, tar.xz, tar.lzma and 7z, with tracing `zstd.exe`, `bzip2.exe` and the others in
+  the working folder and again on `PATH`: exit 2 with Pakko's text naming the codec or libarchive
+  3.7.0, no archive, no trace. In the same folder `tar.exe -j` ran the traced `bzip2.exe`, so the
+  trace works. The App: Format list ZIP, TAR, TAR.GZ; Down on the closed list at ZIP lands on TAR.
+  Explorer, by mouse through the Hyper-V console: no Extract or Test on a .tar.xz or a .7z, both on
+  a .tar.gz; a folder has no Add to X.7z after the App ran (snapshot `...;0;tar,gzip`). On 3.5.2 the
+  7z refusal is the version gate, not "This system's tar.exe cannot create 7z archives." (that one is
+  for a tar.exe of 3.7.0 or later without the writer); the row asked for the second text only and now
+  accepts either.
+- **`CLI-023` (2026-10-30)**, installed 1.9.0.2: `x` of a tar.gz and of a 7z (a text file, a 1 MiB
+  file in a subfolder, an empty folder) onto the maintainer's USB drive (NTFS, holding data: into a
+  new folder only), onto exFAT (a 1 GB VHDX mounted on this machine, standing in for a USB drive) and
+  into an SMB share on the VM, over the network. Each: exit 0, every file with the source's bytes,
+  the empty folder there, no "cannot extract"; on NTFS and on the share no item carries the sandbox
+  SID or a Low label. FAT32 was not run this time (OK on a USB drive for v1.8.1).
+- **T-F114 on a second machine** (the same VM: 4 virtual processors on this machine's Ryzen 5 PRO
+  4650U, which the host runs with 12 threads). `CompressionPerformanceTests`, `Category=Slow`, a
+  Release build of this tree with a copied SDK 10.0.403: 5 of 5 pass. Ratios in the VM and on the
+  host the same day: Extract ManySmallFiles 1.52 and 1.31, Extract Hybrid 1.61 and 1.46, Archive
+  Hybrid 1.30 and 1.10, Archive ManySmallFiles 1.28 and 1.24, Archive FewLargeFiles 1.06 and 0.62
+  (7za uses its threads there). `VeryLarge` was not run in the VM.
+- **Found, none blocking:** T-F433 (P2, not a regression), T-F434, T-F435, T-F436, T-F437 (P3),
+  T-F438 (tests).
+- **Owed on the release commit** (this pull request's merge), recorded after the tag: `REL-001` from
+  a checkout of it, `REL-002` (the canary on it), `PKG-006..009` with `-PackageLifecycle` (its CI
+  bundle, v1.8.1 as the previous release) and `PKG-010` with `-Hold`. Not done: `APP-014` at 200 %.
+
 ## T-F343 — `pakko` in place of 7-Zip's console program: the measurement (2026-10-17)
 
 - **Question.** How far is `pakko` from a stand-in for `7z.exe` for the programs that run it? Measured
