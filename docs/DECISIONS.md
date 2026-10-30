@@ -13199,6 +13199,23 @@ the archive.
 - **Left to the user:** `STO-004` (upload the bundle and the listing), then after certification
   `STO-005`, `STO-006` and `STO-008` on a Store install.
 
+## v1.9.0 - the Store install (2026-10-31)
+
+- **Published.** The user submitted 1.9.0 (bundle of run 41122300073, the filled listing CSV) on
+  2026-10-30; the Store served `PavloRybchenko.Pakko_1.9.0.0` the next day (public catalog).
+- **The Store install** (this machine, Windows 11 build 26300, the development package 1.9.0.6
+  removed first, `winget install --id 9P5MW010D8PR --source msstore`): 1.9.0.0, `SignatureKind`
+  Store, the Store publisher; the App starts (title "Pakko", no build time), no Application Error
+  event. `CLI-002`, `SHL-001`, `PAR-001` (`STO-006`) and `CLI-026`, `SHL-012` (`STO-008`, x64, a
+  `tar.exe` that writes 7z): OK through `Invoke-Smoke.ps1 -Only`.
+- **Not done:** `STO-005` as written: the Store 1.8.1 was not installed again before the submission
+  (the T-F400 entry's "Packages on this machine" asked for it), so this was a first install, not an update;
+  the update path is covered by `PKG-006..008` with the dev-signed bundles. `STO-008` on ARM64 and
+  on a `tar.exe` without a 7z writer with the Store's package, as for v1.8.1.
+- **The listing, sv-se** (public catalog): the 1.9.0 "What's new" is live; the features (9) and
+  search terms (5) are still the v1.7 ones, as expected after `--keep-lists sv-SE`. They go into
+  Partner Center's own form with the next submission, or before it as a listing-only update.
+
 ## T-F343 — `pakko` in place of 7-Zip's console program: the measurement (2026-10-17)
 
 - **Question.** How far is `pakko` from a stand-in for `7z.exe` for the programs that run it? Measured
