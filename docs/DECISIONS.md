@@ -13049,7 +13049,9 @@ the archive.
   (title "build 2026-10-29 23:32:59"). `origin/main` was `57a7ac41` throughout. The harness ran from
   `9f37c3d9`, the same commit before its rebase onto `main` (`git diff 9f37c3d9 57a7ac41 -- src` is
   empty). This record's pull request adds `fcaf60f7` (the smoke harness only) and documents, so its
-  merge changes nothing under `src`; that is what ties the walk below to the tag.
+  merge changes nothing under `src`; that is what ties the walk below to the tag. Superseded: #125
+  (`50b3f4dd`, T-F433) changed `src` after this record; the next entry, "v1.9.0 - the release gates
+  on 50b3f4dd", ties the tag to that commit.
 - **Scripted rows** (`Invoke-Smoke.ps1 -Tier release`, 2026-10-29): 143 rows, 81 OK, 1 FAIL,
   5 skipped, 56 manual. `APP-018` failed in the harness, which counted `-p-` (no password) as a
   password; fixed in `fcaf60f7` (red without, green with) and run again: OK. Skipped: `REL-002` (no
@@ -13138,6 +13140,30 @@ the archive.
 - **Owed on the release commit** (this pull request's merge), recorded after the tag: `REL-001` from
   a checkout of it, `REL-002` (the canary on it), `PKG-006..009` with `-PackageLifecycle` (its CI
   bundle, v1.8.1 as the previous release) and `PKG-010` with `-Hold`. Not done: `APP-014` at 200 %.
+
+## v1.9.0 - the release gates on 50b3f4dd (2026-10-30)
+
+- **What changed after the smoke record above.** #125 (`e72b2942`, `50b3f4dd`) took T-F433, T-F430
+  and T-F438 into 1.9.0 (the user's call). `git diff --stat 57a7ac41 50b3f4dd -- src`: only
+  `src/Archiver.App.Core/WindowFloor.cs` (new, +58) and `src/Archiver.App/MainWindow.xaml.cs`
+  (+58/-5); the rest is tests and documents. The canary run on `e02e93f9` is void for the tag.
+- **Rows walked again for that change.** The code sets the App window's smallest size and moves a
+  grown window inside the work area, at start and when the window's DPI changes; nothing else reads
+  it. So `APP-014` (and the window placement of `APP-001`) is what it can break: on package 1.9.0.5,
+  fresh starts at 100 % (1100 x 720, smallest 900 x 520), 150 % (1350 x 780 inside the work area) and
+  175 % (1575 x 910 at 132,86, the footer in view); 100 % to 175 % while open (1.9.0.3): the window
+  grew to the floor; two App windows still cascade without overlapping. 1.9.0.6, the tree of
+  `50b3f4dd` (it adds only the S4200 fix: `DpiOf` reads 0 as 96), at 100 %: the same. 200 % is still
+  not reached on this display. The other rows of the record above are not walked again: they do not
+  run this code.
+- **Gates on `50b3f4dd`:** `REL-001` passed 26 from a checkout of it. `REL-002`: canary run
+  41111209416 on it, every job green, `canary-failed-day` skipped, `canary-fuzz` success. Build run
+  41111196593 green; its `pakko-msix-x64` bundle (1.9.0.0) for the package rows.
+- **`PKG-006..009`** with `-PackageLifecycle`, v1.8.1's release files as the previous release: 4 OK
+  (1.8.1.0 to 1.9.0.0). **`PKG-010`** (`-Only PKG-009 -PackageLifecycle -Hold`, OK): while the package
+  was removed, the Explorer menu of a file, a folder and a ZIP, both the menu and "Show more options"
+  (read through UI Automation), held no Pakko item; the dev package 1.9.0.6 came back after it.
+- **The tag** goes on this record's merge, whose `src` is that of `50b3f4dd`.
 
 ## T-F343 — `pakko` in place of 7-Zip's console program: the measurement (2026-10-17)
 
