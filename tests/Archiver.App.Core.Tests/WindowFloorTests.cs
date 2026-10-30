@@ -67,4 +67,38 @@ public sealed class WindowFloorTests
     {
         WindowFloor.Grow((1800, 720), (1575, 910)).Should().Be((1800, 910));
     }
+
+    private static readonly (int Left, int Top, int Right, int Bottom) Work = (0, 0, 1920, 1032);
+
+    [Fact]
+    public void KeepInside_AWindowGrownPastTheBottomRight_MovesBackIn()
+    {
+        // 175 %: Windows placed the 1100 x 720 window at 220,220; grown to 1575 x 910 it ended at y 1130.
+        WindowFloor.KeepInside((220, 220), (1575, 910), Work).Should().Be((220, 122));
+    }
+
+    [Fact]
+    public void KeepInside_AWindowInside_StaysPut()
+    {
+        WindowFloor.KeepInside((100, 80), (1100, 720), Work).Should().Be((100, 80));
+    }
+
+    [Fact]
+    public void KeepInside_AWindowLargerThanTheWorkArea_GoesToItsOrigin()
+    {
+        WindowFloor.KeepInside((300, 300), (2000, 1100), Work).Should().Be((0, 0));
+    }
+
+    [Fact]
+    public void KeepInside_AWorkAreaNotAtTheOrigin_IsRespected()
+    {
+        // A second monitor to the left: its work area starts at a negative x.
+        WindowFloor.KeepInside((-500, 900), (1575, 910), (-1920, 40, 0, 1072)).Should().Be((-1575, 162));
+    }
+
+    [Fact]
+    public void KeepInside_AWindowAboveOrLeftOfTheWorkArea_MovesToItsOrigin()
+    {
+        WindowFloor.KeepInside((-50, -20), (900, 520), Work).Should().Be((0, 0));
+    }
 }

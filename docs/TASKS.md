@@ -1549,10 +1549,18 @@ re-measured with T-F346's script before and after.
 - [x] **Status:** done 2026-10-30 (v1.9.0, the user's call). `WindowFloor` (`Archiver.App.Core`)
   scales 900 x 520 effective pixels by `GetDpiForWindow`, never past the work area, and grows a smaller
   window to it; `MainWindow` applies it at start and again when the window's DPI changes (on
-  `AppWindow.Changed`), before the cascade places the window. Tests: `WindowFloorTests` (7 of 12 red
-  with the floor unscaled). Package 1.9.0.3: at 100 % the window opens 1100 x 720 and shrinks to
-  900 x 520 as before; switched to 175 % while open it grew to 1575 x 910 and shrinks no further; a
-  fresh start at 175 % keeps Clear, Extract and Compress inside the smallest window, the headers apart.
+  `AppWindow.Changed`), before the cascade places the window. A grown window is moved back inside the
+  work area (`WindowFloor.KeepInside`), after the growth and once at the first activation, since
+  Windows places a new window only when it first shows it: without that, a fresh start at 175 % put
+  the 1575 x 910 window at 220,220, its footer under the taskbar (seen on package 1.9.0.4, found by the
+  closing review). Tests: `WindowFloorTests` (17; 7 red with the floor unscaled, 4 red without the
+  move). Package 1.9.0.5, fresh starts: 100 % opens 1100 x 720 at 26,26 and shrinks to 900 x 520 as
+  before; 150 % opens 1350 x 780 at 114,114 inside the work area (to 1008); 175 % opens 1575 x 910 at
+  132,86, its bottom on the work area's (996), Clear, Extract and Compress in view; neither shrinks
+  below the floor. Switched from 100 % to 175 % while open (1.9.0.3), the window grew to 1575 x 910 and
+  shrinks no further; a larger window is scaled by Windows itself on such a switch. Not covered: a move
+  to a monitor of the same DPI with a smaller work area does not clamp the floor again (the DPI is
+  what is cached).
   Before: found 2026-10-30 by the v1.9.0 release smoke (`APP-014`); not a regression,
   the floor dates from `03a912e6` (v1.6.0). `MainWindow.xaml.cs` sets
   `OverlappedPresenter.PreferredMinimumWidth`/`PreferredMinimumHeight` to 900/520, which `AppWindow`
