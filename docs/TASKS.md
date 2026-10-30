@@ -75,8 +75,8 @@ its language without a sign-out or a system setting. Found by stream B (2026-10-
 T-F428 (a change to the sandbox launcher's cancel path that needs a plan; low exposure in the
 product), T-F427 (the real AMSI path cannot be checked while AMSI is not ready on the dev machine).
 T-F432 (the user, 2026-10-29: the taskbar progress goes in the next release). Found by the release
-smoke (2026-10-29 and 2026-10-30, none blocking): T-F433 (P2, not a regression), T-F434, T-F435,
-T-F436, T-F437 (P3), T-F438 (tests).
+smoke (2026-10-29 and 2026-10-30, none blocking): T-F434, T-F435, T-F437 (P3) stay deferred; T-F433,
+T-F430 and T-F438 went into 1.9.0 (the user, 2026-10-30); T-F436 closed as T-F297's design.
 
 ---
 
@@ -1501,7 +1501,9 @@ re-measured with T-F346's script before and after.
 
 ### T-F430 — Defender blocks the RTL-override test file, so a ZIP test fails on the dev machine (P3)
 
-- [ ] **Status:** open. `ZipArchiveServiceArchiveTests.ArchiveAsync_RtlOverrideFilename_RoundTripsWithoutCorruptionOrCrash`
+- [x] **Status:** done 2026-10-30: the file is `invoice_<RLO>fdp.txt` (shown as `invoice_txt.pdf`, the
+  same spoof without an executable ending); red on this machine with the old name the same day, green
+  with the new one. Before: `ZipArchiveServiceArchiveTests.ArchiveAsync_RtlOverrideFilename_RoundTripsWithoutCorruptionOrCrash`
   failed twice in a row on 2026-10-29 (the full run and alone; passed in the next full run, green in CI):
   Defender now detects the empty `invoice_\u202Etxt.exe` the test creates, and reading it fails with
   `0x800700E1` ("the file contains a virus or potentially unwanted software", `Get-MpThreatDetection`
@@ -1544,7 +1546,14 @@ re-measured with T-F346's script before and after.
 
 ### T-F433 — The App window's minimum size is in physical pixels, so at 175 % its footer can leave the window (P2)
 
-- [ ] **Status:** open. Found 2026-10-30 by the v1.9.0 release smoke (`APP-014`); not a regression,
+- [x] **Status:** done 2026-10-30 (v1.9.0, the user's call). `WindowFloor` (`Archiver.App.Core`)
+  scales 900 x 520 effective pixels by `GetDpiForWindow`, never past the work area, and grows a smaller
+  window to it; `MainWindow` applies it at start and again when the window's DPI changes (on
+  `AppWindow.Changed`), before the cascade places the window. Tests: `WindowFloorTests` (7 of 12 red
+  with the floor unscaled). Package 1.9.0.3: at 100 % the window opens 1100 x 720 and shrinks to
+  900 x 520 as before; switched to 175 % while open it grew to 1575 x 910 and shrinks no further; a
+  fresh start at 175 % keeps Clear, Extract and Compress inside the smallest window, the headers apart.
+  Before: found 2026-10-30 by the v1.9.0 release smoke (`APP-014`); not a regression,
   the floor dates from `03a912e6` (v1.6.0). `MainWindow.xaml.cs` sets
   `OverlappedPresenter.PreferredMinimumWidth`/`PreferredMinimumHeight` to 900/520, which `AppWindow`
   takes in physical pixels. At 150 % that is 600 x 347 effective pixels and the footer still fits; at
@@ -1578,7 +1587,9 @@ re-measured with T-F346's script before and after.
 
 ### T-F436 — An error's localized Windows text is followed by .NET's English message (P3)
 
-- [ ] **Status:** open. Package 1.9.0.2, uk-UA (`APP-022`, a ZIP entry with a 300-character name): the
+- [x] **Status:** closed 2026-10-30, not a defect: the user's decision of 2026-10-03 (T-F297,
+  `DECISIONS.md`) keeps the English text Windows or .NET wrote, with its code, in every language and
+  puts the Ukrainian translation in front of it. Seen: package 1.9.0.2, uk-UA (`APP-022`, a ZIP entry with a 300-character name): the
   summary line gives the Ukrainian text of 0x8007007B, then "The filename, directory name, or volume
   label syntax is incorrect. : '<path>'" in English, then the code. Next: find where the line is
   composed (`ArchiveError` and the App's summary text) and leave out the exception's own message when
@@ -1595,7 +1606,8 @@ re-measured with T-F346's script before and after.
 
 ### T-F438 — Three test literals hold control characters where a path was meant (tests)
 
-- [ ] **Status:** open. `tests/Archiver.Shell.Tests/HelperOperationUiTests.cs:441` holds `@"C:<BS>.txt"`
+- [x] **Status:** done 2026-10-30: the three paths put back through a script; the 68 tests of both
+  classes pass. Before: `tests/Archiver.Shell.Tests/HelperOperationUiTests.cs:441` held `@"C:<BS>.txt"`
   and `:555` `@"C:<BEL>.txt"`, `OperationMessagesTests.cs:230` `@"C:<BEL>.txt"` (the bytes 0x08 and
   0x07): written as `C:\b.txt` and `C:\a.txt` and decoded on the way in (`.claude/rules/text-encoding.md`).
   The tests pass either way, the path is only a label. Next: put the paths back through a script.

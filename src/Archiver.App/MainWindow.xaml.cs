@@ -30,6 +30,9 @@ public sealed partial class MainWindow : Window
     public ICommand TrayLeftClickCommand { get; }
     public ICommand HashFilesCommand { get; }
 
+    // T-F433: the DPI the window floor was last set for; no DPI is uint.MaxValue, so the first call always sets it.
+    private uint _floorDpi = uint.MaxValue;
+
 
     public MainWindow()
     {
@@ -84,7 +87,6 @@ public sealed partial class MainWindow : Window
         // value's history required; see DECISIONS.md's T-F106 entry for the confirmed numbers.
         // T-F199/T-F224: 720 fits a 1366x768 screen's work area; the options now scroll.
         this.AppWindow.Resize(new Windows.Graphics.SizeInt32(1100, 720));
-        PlaceAwayFromOtherPakkoWindows();
 
         // T-F106: without an explicit floor, the window could be shrunk by the user to a height
         // where content below the file table (Shared Options' two checkboxes, the status bar)
@@ -96,11 +98,15 @@ public sealed partial class MainWindow : Window
         // follow-up noted above, re-verified with the identical on-device method.
         // T-F199/T-F224: the options scroll now (FitOptionsScroll), so the floor only has to hold
         // the title bar, toolbar, the table's 160 px, a slice of options and the footer.
-        if (this.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
+        // T-F433: in effective pixels, scaled by the window's DPI, again when it moves to another one.
+        ApplyWindowFloor();
+        // After the floor: it can grow the window, and the cascade needs the final size.
+        PlaceAwayFromOtherPakkoWindows();
+        this.AppWindow.Changed += (_, args) =>
         {
-            presenter.PreferredMinimumWidth = 900;
-            presenter.PreferredMinimumHeight = 520;
-        }
+            if (args.DidSizeChange || args.DidPositionChange)
+                ApplyWindowFloor();
+        };
         RootGrid.SizeChanged += (_, _) =>
         {
             FitOptionsScroll();
@@ -264,6 +270,25 @@ public sealed partial class MainWindow : Window
     }
 
     // T-F201: a second Pakko window used to open exactly over the first one.
+    private void ApplyWindowFloor()
+    {
+        if (this.AppWindow.Presenter is not Microsoft.UI.Windowing.OverlappedPresenter presenter)
+            return;
+        uint dpi = WindowFloor.DpiOf(Microsoft.UI.Win32Interop.GetWindowFromWindowId(this.AppWindow.Id));
+        if (dpi == _floorDpi)
+            return;
+        _floorDpi = dpi;
+        Windows.Graphics.RectInt32 work = Microsoft.UI.Windowing.DisplayArea
+            .GetFromWindowId(this.AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Nearest).WorkArea;
+        (int width, int height) = WindowFloor.Physical(dpi, (work.Width, work.Height));
+        presenter.PreferredMinimumWidth = width;
+        presenter.PreferredMinimumHeight = height;
+        Windows.Graphics.SizeInt32 size = this.AppWindow.Size;
+        (int grownWidth, int grownHeight) = WindowFloor.Grow((size.Width, size.Height), (width, height));
+        if (grownWidth != size.Width || grownHeight != size.Height)
+            this.AppWindow.Resize(new Windows.Graphics.SizeInt32(grownWidth, grownHeight));
+    }
+
     private void PlaceAwayFromOtherPakkoWindows()
     {
         IReadOnlyList<(int Left, int Top)> others = Win32PakkoWindows.OtherWindowCorners();
