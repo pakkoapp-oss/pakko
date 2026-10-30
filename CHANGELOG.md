@@ -48,6 +48,8 @@ adversarial test pass over every switch and by the on-device checks of v1.8.1.
 
 ### Fixed
 
+- **T-F433** - at a display scale of 175 % or more the App window could be made so small
+  that its Compress and Extract buttons were outside it; its smallest size now grows with the scale.
 - **T-F421** - an archive named like one of its own sources (`a.txt` and `a.zip` made into separate
   archives, or one archive named after a source) no longer replaces that source; the archive gets
   a numbered name.

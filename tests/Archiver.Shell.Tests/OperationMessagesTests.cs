@@ -227,7 +227,7 @@ public sealed class OperationMessagesTests : IDisposable
     [Fact]
     public void ForHash_IsPreformattedForBothFilesAndFolders()
     {
-        OperationMessages.ForHash("T", new HashResult { Entries = [new HashEntry(@"C:.txt", "00", null)] }, []).Preformatted.Should().BeTrue();
+        OperationMessages.ForHash("T", new HashResult { Entries = [new HashEntry(@"C:\a.txt", "00", null)] }, []).Preformatted.Should().BeTrue();
         OperationMessages.ForHash("T", new HashResult { Folder = new FolderHashSummary("AAAA", "BBBB", 1, 6) }, []).Preformatted.Should().BeTrue();
     }
 

@@ -438,7 +438,7 @@ public sealed class HelperOperationUiTests : IDisposable
         // Answered on the cancel itself, before the window reports it closed.
         (await conflict.WaitAsync(WaitLimit)).Should().Be(new ConflictDecision { Resolution = ConflictResolution.Skip, ApplyToAll = false });
         (await password.WaitAsync(WaitLimit)).Should().Be(new PasswordDecision { Password = null, ApplyToRemaining = false });
-        (await session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:.txt" }).WaitAsync(WaitLimit)).Resolution
+        (await session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\b.txt" }).WaitAsync(WaitLimit)).Resolution
             .Should().Be(ConflictResolution.Skip);
         await _helper.SendAsync(new WindowClosed());
         session.Cancellation.IsCancellationRequested.Should().BeTrue();
@@ -552,7 +552,7 @@ public sealed class HelperOperationUiTests : IDisposable
     public async Task WindowClosedWithoutACancel_AnswersOpenAndLaterPromptsSafely()
     {
         using IOperationSession session = await BeginReadyAsync();
-        Task<ConflictDecision> asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:.txt" });
+        Task<ConflictDecision> asking = session.AskConflictAsync(new ConflictInfo { ExistingPath = @"C:\a.txt" });
         await _helper.ReadUntilAsync<AskConflict>();
 
         await _helper.SendAsync(new WindowClosed());

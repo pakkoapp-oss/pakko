@@ -645,7 +645,9 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     [Fact]
     public async Task ArchiveAsync_RtlOverrideFilename_RoundTripsWithoutCorruptionOrCrash()
     {
-        string rtlName = "invoice_\u202Etxt.exe";
+        // T-F430: no executable ending - Defender detects "invoice_<RLO>txt.exe" as a spoofed
+        // executable and the source cannot be read; the override itself is what is tested.
+        string rtlName = "invoice_\u202Efdp.txt";
         string file = _temp.CreateFile(rtlName);
 
         ArchiveResult archiveResult = await _sut.ArchiveAsync(new ArchiveOptions
