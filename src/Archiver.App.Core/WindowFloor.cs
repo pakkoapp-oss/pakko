@@ -31,8 +31,23 @@ public static partial class WindowFloor
     public static (int Width, int Height) Grow((int Width, int Height) size, (int Width, int Height) floor) =>
         (Math.Max(size.Width, floor.Width), Math.Max(size.Height, floor.Height));
 
-    /// <summary>The DPI of the monitor <paramref name="hwnd"/> is on; 0 for an invalid window.</summary>
-    public static uint DpiOf(IntPtr hwnd) => GetDpiForWindow(hwnd);
+    /// <summary>
+    /// The window's top-left corner moved so that a window of <paramref name="size"/> stays inside
+    /// <paramref name="workArea"/>, never left of or above its origin. Growing to the floor happens
+    /// after Windows has placed the window, so without this its bottom could end under the taskbar.
+    /// </summary>
+    public static (int Left, int Top) KeepInside(
+        (int Left, int Top) position, (int Width, int Height) size,
+        (int Left, int Top, int Right, int Bottom) workArea) =>
+        (Math.Max(workArea.Left, Math.Min(position.Left, workArea.Right - size.Width)),
+         Math.Max(workArea.Top, Math.Min(position.Top, workArea.Bottom - size.Height)));
+
+    /// <summary>The DPI of the monitor <paramref name="hwnd"/> is on; 96 for an invalid window (the API's 0).</summary>
+    public static uint DpiOf(IntPtr hwnd)
+    {
+        uint dpi = GetDpiForWindow(hwnd);
+        return dpi == 0 ? DefaultDpi : dpi;
+    }
 
     private static int Scale(int effective, uint dpi) => (int)Math.Ceiling(effective * (double)dpi / DefaultDpi);
 

@@ -283,10 +283,32 @@ public sealed partial class MainWindow : Window
         (int width, int height) = WindowFloor.Physical(dpi, (work.Width, work.Height));
         presenter.PreferredMinimumWidth = width;
         presenter.PreferredMinimumHeight = height;
+        // A maximized or minimized window has its size from Windows; its offset borders are not "outside".
+        if (presenter.State != Microsoft.UI.Windowing.OverlappedPresenterState.Restored)
+            return;
         Windows.Graphics.SizeInt32 size = this.AppWindow.Size;
         (int grownWidth, int grownHeight) = WindowFloor.Grow((size.Width, size.Height), (width, height));
-        if (grownWidth != size.Width || grownHeight != size.Height)
-            this.AppWindow.Resize(new Windows.Graphics.SizeInt32(grownWidth, grownHeight));
+        if (grownWidth == size.Width && grownHeight == size.Height)
+            return;
+        this.AppWindow.Resize(new Windows.Graphics.SizeInt32(grownWidth, grownHeight));
+        KeepGrownWindowInside();
+    }
+
+    // T-F433: a window grown to the floor near the work area's bottom or right edge ends under the
+    // taskbar or past the screen. Called after the growth on a DPI change, and once at the first
+    // activation, since Windows places a new window only when it first shows it.
+    private void KeepGrownWindowInside()
+    {
+        if (this.AppWindow.Presenter is not Microsoft.UI.Windowing.OverlappedPresenter { State: Microsoft.UI.Windowing.OverlappedPresenterState.Restored })
+            return;
+        Windows.Graphics.RectInt32 work = Microsoft.UI.Windowing.DisplayArea
+            .GetFromWindowId(this.AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Nearest).WorkArea;
+        Windows.Graphics.PointInt32 position = this.AppWindow.Position;
+        Windows.Graphics.SizeInt32 size = this.AppWindow.Size;
+        (int left, int top) = WindowFloor.KeepInside((position.X, position.Y), (size.Width, size.Height),
+            (work.X, work.Y, work.X + work.Width, work.Y + work.Height));
+        if (left != position.X || top != position.Y)
+            this.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));
     }
 
     private void PlaceAwayFromOtherPakkoWindows()
@@ -308,6 +330,7 @@ public sealed partial class MainWindow : Window
     {
         this.Activated -= OnFirstActivated;
         TrayIcon.XamlRoot = Content.XamlRoot;
+        KeepGrownWindowInside();
     }
 
     // T-F106: opens the gate so activation-time ViewModel mutations queued before this point
