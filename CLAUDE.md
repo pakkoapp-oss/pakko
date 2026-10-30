@@ -17,9 +17,9 @@ Target audience: Ukrainian government/defense — trust, auditability, minimal a
 v1.1 through v1.4 (shell extension, tar.exe integration, Group Policy) and the v1.5-v1.7 waves
 are complete. **v1.8.0** (PAR2) was released 2026-10-11, **v1.8.1** (7z creation, Test for
 tar.exe's formats) 2026-10-16; **v1.9.0** (7-Zip's command line in `pakko`, a source never replaced
-by its archive, no tar over a hard-link pair) is being cut. The Store bundle 1.7.2.0, the first
-Native AOT build, passed certification 2026-10-11; 1.8.x was never submitted, 1.9.0 is the next
-submission (`docs/DECISIONS.md`). Store listing:
+by its archive, no tar over a hard-link pair) 2026-10-30. The Store bundle 1.7.2.0, the first
+Native AOT build, passed certification 2026-10-11; 1.8.x was never submitted; the 1.9.0 Store bundle
+is built and awaits the user's submission (`docs/DECISIONS.md`). Store listing:
 https://apps.microsoft.com/detail/9p5mw010d8pr.
 
 Per-task detail lives in `docs/TASKS_DONE.md` and `docs/DECISIONS.md`, never here. The long
