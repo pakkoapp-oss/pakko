@@ -13240,6 +13240,16 @@ stayed deletable (fail-open).
 - `docs/SPEC.md` states the rule; `docs/CLI.md`'s `-sdel` follows it (a skip keeps its own source; a
   `-x` filter or an error still keeps all).
 
+**The fresh review (2026-10-31, a read-only subagent; the user left it to the agent):** no path to
+lost data, one gap fixed - ZIP writes a skip as `FileSystemInfo.FullName`, so a source spelled
+otherwise (`C:/w/a`, `C:\w.`, a doubled separator) held none of its skips and could be `Completed`
+next to a canonical alias. Both sides are now compared after `GetFullPath`, applied only to paths
+already fully qualified, where it needs no current folder. Recorded, not changed: the rule is safe
+because every creation skip is a link or an empty drive root, which both deleters keep; a later skip
+that stands for lost data must keep the attribution exact or be an error (comment at
+`ClassifyShared`). The relative-path rows test the helper only (Core and the CLI make sources absolute
+first).  
+
 **Tests:** `SharedArchiveSourceOutcomeTests` (the rule, and ZIP through the sequential, parallel and
 AES writers), `TarSourceOutcomeTests.CompressAsync_SingleArchive_LinkSkippedInB_AIsDeletable`. Red
 with the old rule: 9 of 20 (the other 11 are the fail-closed guards, which hold either way) and the
