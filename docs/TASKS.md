@@ -57,6 +57,7 @@ TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating sessi
 | D progress | T-F432 (taskbar button and tray icon), T-F439 (window floor on a monitor move) | App `MainWindow`, tray icon, `Archiver.OperationUi`, `WindowFloor` | T-F432: plan mode (COM under Native AOT) |
 | F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
 | G long-open umbrellas (added 2026-10-31, the agent's pick) | T-F254 (regional display language: pack and sign-out on the PakkoW10 VM, not the user's machine), T-F91 (`ru-RU` falls back to en-US, on the VM; the native-speaker criterion replaced by an agent back-translation pass, since there are no native reviewers, the user's standing word), T-F328's leftovers (quote, dash and apostrophe normalisation), T-F202's light theme, en-US and tray (through the `windows` MCP, as `APP-013` and `EXP-008` already switched theme and language), T-F329 part 5 (Store screenshots retaken after D changes the window) | VM, `.resw`/`.resx`/`Localization.cpp` (after C and D's strings), `docs/assets/store/` | after C and D merge |
+| H formats tar.exe reads but Pakko does not offer (added 2026-10-31, the user) | T-F442 (measure first, per tar.exe build; then detector, policy names, capability snapshot, Explorer menu, file associations) | `ArchiveFormatDetector`, `ArchiveFormatPolicy`, `TarCapabilitySnapshot`, `ShellExtUtils.cpp`, the manifest | measurement first; plan mode + advisor at both ends (new untrusted-input formats, the manifest) |
 | E on device, release | `APP-027`, `APP-028`, `APP-030`, `APP-014`, `OPW-*`, the new taskbar/tray rows, the release-tier smoke, `STO-005` as a real Store update | `docs/SMOKE.md`, `scripts/smoke/` | after A-D merge |
 
 Decisions taken with the plan (the agent, 2026-10-31): T-F432 covers the App's taskbar button, the
@@ -1701,7 +1702,12 @@ re-measured with T-F346's script before and after.
 
 ### T-F441 — One owner per text boundary: names and paths in every encoding Pakko meets, and a test that keeps it so (P2, user-requested, research first)
 
-- [ ] **Status:** open, research first. The user, 2026-10-31: encoding bugs in names keep coming
+- [ ] **Status:** in progress, branch `fix/tf441-text-boundaries`. Researched and planned 2026-10-31:
+  `docs/DECISIONS.md` "T-F441 and T-F424" (both tar.exe builds measured; the silent case is two names
+  that collapse to one listing line). Part 1 (code-page source, owners, the scanning test), then
+  part 2 (the tar-name verdict). Follow-up, not in this task: the browse tree could show a plain or
+  gzip tar's true names from its headers.
+- **Before:** open, research first. The user, 2026-10-31: encoding bugs in names keep coming
   back; there must be one place (or a few, if needed) where names are resolved and checked, for
   tar.exe and for the whole Core, names and paths everywhere. History that justifies it: T-F204,
   T-F215, T-F234, T-F238, T-F244, T-F266, T-F283, T-F290, T-F305, T-F416, T-F418, T-F423, T-F424, and
@@ -1742,6 +1748,31 @@ re-measured with T-F346's script before and after.
 - **Gate:** silent-costly class (untrusted-input parsing, an external data contract): plan mode, the
   design in `docs/DECISIONS.md` before code, advisor at both ends, the fresh-reviewer offer at the
   close. Not in scope: mojibake from editing source files, which `.claude/rules/text-encoding.md` owns.
+- **Reported by:** the user, 2026-10-31.
+
+### T-F442 — Formats tar.exe reads that Pakko does not offer: ISO, CAB, CPIO and others, by tar.exe version (P2, user-requested, stream H)
+
+- [ ] **Status:** open, measure first. The user, 2026-10-31: check extraction and the Explorer submenu
+  for other archives that are not marked as Pakko's today (ISO, virtual machine disks, the list of a
+  Store archiver: zip, rar, 7z, tar, wim, bz2, gz, xz, apfs, ar, arj, cab, cpio, cramfs, dmg, ext, fat,
+  gpt, hfs, ihex, iso, lzh, lzma, mbr, nsis, ntfs, qcow2, rpm, squashfs, udf, uefi, vdi, vhd, vhdx, vmdk,
+  xar, z, jar, 001, z01, crx); where tar.exe's support depends on its version, adjust at run time as
+  the 7z writer (T-F342) and the readable formats (T-F403) already are.
+- **Measure** on both tar.exe builds (Windows 11 bsdtar 3.8.9 here, Windows 10 3.5.2 on PakkoW10), a
+  real file per format, each one "reads", "does not read" or "reads in part". libarchive's readers and
+  filters make these the candidates: ISO 9660 (`.iso`), CAB, CPIO, ar (`.deb`), XAR (`.pkg`), LHA
+  (`.lzh`), RPM, WARC, `.Z`, lz4, lzip, lzop, uuencode. `.jar` is a ZIP and goes the ZIP path; `.crx` is
+  a ZIP behind a header, to be checked. Almost certainly outside tar.exe: VHD/VHDX/VMDK/QCOW2/VDI,
+  DMG, WIM, APFS/ext/FAT/NTFS/HFS, SquashFS/cramfs, UDF, GPT/MBR, NSIS, ARJ, Intel HEX, UEFI, and split
+  volumes (`.001`, `.z01`); those go into `docs/SPEC.md` as not supported, with the reason (Windows
+  mounts VHD/VHDX and ISO itself).
+- **What reads gets the whole set:** `ArchiveFormatDetector` by signature, not by extension only;
+  `ArchiveFormatPolicy.TarReadableRegistryNames` and the Group Policy vocabulary (`docs/POLICIES.md`,
+  ADMX); `TarCapabilitySnapshot`; the Explorer submenu (`ShellExtUtils.cpp`); file associations in the
+  manifest; the App and `pakko`; Test (T-F397); `docs/SMOKE.md` rows.
+- **Gate:** new untrusted-input formats, even inside tar.exe's sandbox: plan mode, advisor at both
+  ends, `SECURITY.md` only with the user's word; a manifest change updates `docs/DIAGRAMS.md`; strings
+  in 37 locales through the stream that holds that resource set.
 - **Reported by:** the user, 2026-10-31.
 
 ### T-F393 — The About button went disabled once and no dialog came (P3)

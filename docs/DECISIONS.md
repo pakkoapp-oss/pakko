@@ -13216,6 +13216,83 @@ the archive.
   search terms (5) are still the v1.7 ones, as expected after `--keep-lists sv-SE`. They go into
   Partner Center's own form with the next submission, or before it as a listing-only update.
 
+## T-F441 and T-F424 - one owner per text boundary; tar.exe's best-fit names (2026-10-31)
+
+**Why.** Name-encoding bugs keep returning (T-F204, T-F215, T-F234, T-F238, T-F244, T-F266, T-F283,
+T-F290, T-F305, T-F416, T-F418, T-F423, T-F424). The user, 2026-10-31: one place, or a few, where
+names are resolved and checked, for tar.exe and for the whole Core. Each boundary uses its own code
+page on purpose, so the answer is several owners with one source of code pages and a test that keeps
+it so, not one decoder.
+
+**Measured** (PAX fixtures, uname and gname set; tar.exe run directly, no sandbox; both builds, as
+every tar.exe measurement now is):
+
+| Case | Windows 11 26300, bsdtar 3.8.9, ACP 1251 | Windows 10 19045, bsdtar 3.5.2, ACP 1252 (PakkoW10) |
+|---|---|---|
+| A name outside the page with a best-fit character | `café.txt` lists as `cafe.txt` | `cafā.txt` lists as `cafa.txt` |
+| A name with no best fit (`日.txt`) | "empty or unreadable filename ... skipping", exit 1 | `?.txt`, exit 0 |
+| `-x` of the whole archive | true names on disk | true names on disk |
+| Selecting the best-fit form of a lone entry | "Not found in archive", exit 1 | the same |
+| **`café`+`cafe` (`cafā`+`cafa`): two equal listing lines; selecting either** | **the plain file, exit 0** | **the same** |
+| A raw `?.txt` member | - | a wildcard: `Ж.txt` and `日.txt` both extracted |
+| `[?].txt`, as `EscapeMemberPattern` passes it | - | "Not found in archive", exit 1 |
+| `--format=pax -cf - @archive` (a copy to read the names from) | 0xC0000005 on `Ж` and `日`, even inside the page | not tried |
+
+So 3.5.2 lists by best fit too; T-F416's "3.5.2 lists it with `?`" holds only for a character with no
+best fit. A lone best-fit selection fails loudly. The silent case is two entries whose names collapse
+to one listing line: the user picks the row that is `café` and gets `cafe`.
+
+**Where a listed name decides something** (`TarSandboxedService`): conflicts with the destination are
+decided on the quarantine's disk names (`TryMoveSingleEntryAsync`), which are true - not affected. A
+filter's `droppedFiles`, a selection's members, T-F171's duplicate groups and Test's filtered subset
+trust the listing - affected. The pre-scan (`IsDangerousEntryName`, the 8.3 alias check) trusts it
+too; a best fit can only push toward a refusal (`．．／` lists as `../`), to be confirmed on both
+builds. Sizes, progress and the root shape only lose accuracy.
+
+**Decisions.**
+
+- **One source of code pages:** `Archiver.Core.Text.SystemCodePages` (public: the CLI has no
+  `InternalsVisibleTo`), the only code that calls `GetACP`, `GetOEMCP` or `GetLocaleInfoEx` for a code
+  page. `For(int)` is strict: UTF-8 without a BOM, otherwise `CodePagesEncodingProvider`, and an
+  unknown page throws, naming it. Before, ZIP fell back to Latin-1 and the CLI to
+  `Encoding.GetEncoding`; Windows' own pages are always in the provider, so the fallback never decided
+  anything and only hid a failure. ZIP's `Encoding.UTF8` becomes UTF-8 without a BOM; decoding is the
+  same.
+- **No process-wide cache of tar.exe's output page.** It is read once per launch and travels with that
+  launch's output to `ListedNames`, so a name's octal bytes and the rest of its line are decoded in
+  one page (T-F418). Whether a running process sees a change of regional format is not measured and
+  nothing relies on it.
+- **The tar-name boundary** (`TarNames`) owns both directions and one verdict per listing: Faithful,
+  Suspect or Lossy. T-F416's `?` refusal moves into it.
+  - Plain and gzip tar: `TarHeaderNames` returns the header names, rebuilt as libarchive does (PAX
+    `path`, then ustar prefix and name, GNU `L`, global `g` headers, `hdrcharset=BINARY`), compared
+    with the listing by index after the counts are checked. A difference is Lossy; a count mismatch
+    is Suspect. **The header names are a veto only, never a name**, so T-F305's trust statement in
+    `SECURITY.md` stands.
+  - bz2, xz, zst, lzma, 7z, RAR: no true name exists before tar.exe writes it, and Pakko extracts
+    nothing in process. A listing with a `?` or a repeated name is Suspect.
+  - After `-x` into the quarantine, every format: a file the listing does not predict is Lossy. The
+    prediction uses the move phase's own mapping (`AsTarExeWrites`, `StripLeadingDotSlash`, case,
+    trimmed dot or space, 8.3, root strip), so a name that lands differently by design stays Faithful.
+    **This check clears a Suspect only after tar.exe extracted every entry**: a selection's member
+    list `cafe.txt` puts only the real `cafe` on disk and would agree.
+- **The rule**, as T-F416's: Lossy or Suspect, and a name decides (filter, selection, a duplicate
+  group, Test's filter) - the archive is refused with `TarNameNotRepresentable`. Nothing decides
+  (extract everything) - extraction goes on; the disk names are true. A false duplicate group in an
+  extract-everything run is dropped and each file meets the conflict rule under its true name; refusing
+  the archive would stop one that extracts correctly today.
+- **Accepted cost:** a selection or filter over a genuinely repeated name in a `.tar.xz`, 7z or RAR
+  is refused, with the reason. Rare (T-F171's duplicates come from appended tars), and the
+  alternative is a silent wrong file.
+- **Rejected:** a second listing under another charset (`hdrcharset=UTF-8` changes nothing in the
+  lines, T-F418); copying the archive to pax through `@archive` (crashes, above); decoding a listed
+  name back through the page (`cafe` round-trips through 1251 exactly).
+- **Other boundaries, fixed encodings, no machine page:** PAR2 (UTF-8), the Shell's
+  `--paths-stdin` list (UTF-16LE from raw code units; T-F437's message is stream C's), `LaunchArguments`
+  (JSON, UTF-8, base64), the OperationUi pipe, the C++ extension (wide APIs only). The source-scanning
+  test `TextBoundaryOwnersTests` keeps machine code-page selection inside `SystemCodePages`.
+- Not in scope: mojibake from editing source files (`.claude/rules/text-encoding.md`).
+
 ## T-F343 — `pakko` in place of 7-Zip's console program: the measurement (2026-10-17)
 
 - **Question.** How far is `pakko` from a stand-in for `7z.exe` for the programs that run it? Measured
