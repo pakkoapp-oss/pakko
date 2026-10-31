@@ -52,7 +52,7 @@ TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating sessi
 | Stream | Tasks | Area | Gate |
 |---|---|---|---|
 | A text boundaries, analyzer | T-F441 (one owner per encoding boundary, names and paths, with its control test), T-F424 as T-F441's first case, T-F440 (SonarCloud findings, the `S3903` bug first) | `Sandbox/Tar*Encoding`, `Zip/ZipNameCodePages`, `StdinPathList`, `CliConsoleCharset`, `BareGzip*`, `Program.cs`, tests | T-F441: research, plan mode + advisor at both ends; T-F440: tests first |
-| B sandbox launcher, AMSI tests | T-F428 (cancel kills the child itself), T-F427 (AMSI not ready at scan time), T-F444 (another antivirus or none, on the VM; added 2026-10-31, the user) | `SandboxedProcessLauncher`, `AntivirusScanService` tests | T-F428: plan mode + advisor at both ends (sandbox code) |
+| B sandbox launcher, AMSI tests | T-F428 (cancel kills the child itself), T-F427 (AMSI not ready at scan time), T-F444 (another antivirus or none, on the VM; added 2026-10-31, the user), T-F446 (AMSI "blocked by admin" reads as Clean) | `SandboxedProcessLauncher`, `AntivirusScanService` tests | T-F428: plan mode + advisor at both ends (sandbox code) |
 | C after the operation | T-F434 (recycle each clean source), T-F435 (a reason per kept item), T-F437 (unreadable path list) | `SourceRecycler`, the not-deleted dialog, `Archiver.Shell` messages, `SPEC.md` rule | T-F434: plan mode (an irreversible action on user data) |
 | D progress | T-F432 (taskbar button and tray icon), T-F439 (window floor on a monitor move) | App `MainWindow`, tray icon, `Archiver.OperationUi`, `WindowFloor` | T-F432: plan mode (COM under Native AOT) |
 | F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
@@ -1887,6 +1887,17 @@ re-measured with T-F346's script before and after.
   (`CreateNamedPipe` with `FILE_FLAG_OVERLAPPED`) or one dedicated thread per launch. Sandbox code:
   plan mode + advisor at both ends.
 - **Reported by:** T-F428's hypothesis (2), 2026-10-31.
+
+### T-F446 — An AMSI "blocked by admin" result reads as Clean (P3, from T-F444's fresh review)
+
+- [ ] **Status:** open, not measured. `AmsiScanner` counts every `AMSI_RESULT` below 32768 as
+  Clean, including `AMSI_RESULT_BLOCKED_BY_ADMIN_START..END` (16384-20479), which says an admin
+  policy blocked the content, not that a scan found it clean (the code comment chose this on
+  purpose, T-F146). Next: find out from the SDK's `amsi.h` and Microsoft's docs what a provider
+  means by that range and whether any product returns it; if it is not a clean verdict, report it
+  Inconclusive with its own reason (a new message code, 37 locales). Security boundary: plan mode,
+  advisor at both ends, `SECURITY.md` only with the user's OK.
+- **Reported by:** T-F444's fresh reviewer, 2026-11-01.
 
 ### T-F393 — The About button went disabled once and no dialog came (P3)
 

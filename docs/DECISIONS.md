@@ -13283,8 +13283,9 @@ ustar holding EICAR and a clean file.
   `ScanEntryFailed`. No new message code. Defender, Avast and Avira switched on all answered S_OK in
   the probe, so the stricter check costs nothing measured.
 - Not changed: `AmsiInitialize` and `AmsiOpenSession` in the constructor still fail only on a
-  negative value. No positive answer was seen there, and throwing on one would leak a context or
-  session the call may have created; reasoning, no test.
+  negative value. No positive answer was seen there, and a context or session opened with one still
+  reaches Clean only through a scan that answers S_OK; reasoning, no test (the fresh review,
+  2026-11-01).
 - Rejected: an EICAR self-test before trusting Clean. Measured with an in-memory EICAR buffer and
   no file: Avira shows "Suspicious behavior blocked", Avast "Threat secured" (it reports moving
   the buffer to its quarantine), Defender logs events 1116/1117. Every scan of a clean archive
