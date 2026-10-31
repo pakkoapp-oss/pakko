@@ -73,14 +73,14 @@ public sealed class TarListingNameTests
         // An escaped "\n" is inside one line; tar.exe ends each line with CR LF.
         string stdOut = "a\\\\b.txt\r\nnl\\nx.txt\r\ndir/\r\n";
 
-        TarSandboxedService.ListedNames(stdOut, Cp1251)
+        TarNames.ReadListing(stdOut, Cp1251)
             .Should().Equal(@"a\b.txt", "nl" + (char)0x0A + "x.txt", "dir/");
     }
 
     [Fact]
     public void ListedNames_IsNullWhenALineHoldsAnUnknownEscape()
     {
-        TarSandboxedService.ListedNames("ok.txt\r\nbad\\q.txt\r\n", Cp1251).Should().BeNull();
+        TarNames.ReadListing("ok.txt\r\nbad\\q.txt\r\n", Cp1251).Should().BeNull();
     }
 
     [Theory]

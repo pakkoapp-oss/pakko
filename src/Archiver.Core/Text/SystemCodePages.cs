@@ -21,6 +21,10 @@ public static partial class SystemCodePages
     private const uint LocaleIDefaultAnsiCodePage = 0x00001004;
     private const uint LocaleReturnNumber = 0x20000000;
 
+    // CP_ACP, CP_OEMCP, CP_MACCP, CP_THREAD_ACP: what GetLocaleInfoEx gives for a Unicode-only
+    // locale (hi-IN), which names no code page of its own.
+    private const int HighestSentinelCodePage = 3;
+
     /// <summary>The system ANSI code page (CP_ACP): command lines of ANSI programs such as tar.exe.</summary>
     public static int Ansi => (int)GetACP();
 
@@ -32,10 +36,15 @@ public static partial class SystemCodePages
     /// <c>setlocale(LC_ALL, "")</c> (libarchive's get_current_codepage); the system ANSI page when the
     /// locale gives none, as libarchive does.
     /// </summary>
-    public static int UserAnsi => UserCodePage(LocaleIDefaultAnsiCodePage, Ansi);
+    public static int UserAnsi => UserAnsiFor(null);
 
     /// <summary>The OEM code page of the user's regional format; the system OEM page when it gives none.</summary>
-    public static int UserOem => UserCodePage(LocaleIDefaultCodePage, Oem);
+    public static int UserOem => UserOemFor(null);
+
+    // localeName null: the user's regional format; a name for tests of a locale with no page.
+    internal static int UserAnsiFor(string? localeName) => LocaleCodePage(localeName, LocaleIDefaultAnsiCodePage, Ansi);
+
+    internal static int UserOemFor(string? localeName) => LocaleCodePage(localeName, LocaleIDefaultCodePage, Oem);
 
     /// <summary>
     /// The encoding for <paramref name="codePage"/>: UTF-8 without a byte order mark, otherwise the
@@ -59,11 +68,11 @@ public static partial class SystemCodePages
     private static NotSupportedException Unknown(int codePage) =>
         new(string.Create(CultureInfo.InvariantCulture, $"Code page {codePage} is not available."));
 
-    private static int UserCodePage(uint type, int fallback)
+    private static int LocaleCodePage(string? localeName, uint type, int fallback)
     {
         int value = 0;
-        int written = GetLocaleInfoEx(null, type | LocaleReturnNumber, ref value, sizeof(int) / sizeof(char));
-        return written > 0 && value > 0 ? value : fallback;
+        int written = GetLocaleInfoEx(localeName, type | LocaleReturnNumber, ref value, sizeof(int) / sizeof(char));
+        return written > 0 && value > HighestSentinelCodePage ? value : fallback;
     }
 
     [LibraryImport("kernel32.dll")]

@@ -13277,8 +13277,12 @@ builds. Sizes, progress and the root shape only lose accuracy.
     **This check clears a Suspect only after tar.exe extracted every entry**: a selection's member
     list `cafe.txt` puts only the real `cafe` on disk and would agree.
 - **The rule**, as T-F416's: Lossy or Suspect, and a name decides (filter, selection, a duplicate
-  group, Test's filter) - the archive is refused with `TarNameNotRepresentable`. Nothing decides
-  (extract everything) - extraction goes on; the disk names are true. A false duplicate group in an
+  group, Test's filter) - the archive is refused with `TarNameNotRepresentable`. Extract everything -
+  extraction goes on; the files land under their true names. **Not quite nothing decides there:**
+  folders are pre-created in the quarantine for the sandbox (T-F52), and folder entries and folder
+  times are applied, by listed name. A folder whose listed name is a best fit may therefore also
+  appear empty under that name, or tar.exe may fail to create the true one inside the AppContainer.
+  Not measured yet (the PC was busy); an integration case and a fix are open under T-F441. A false duplicate group in an
   extract-everything run is dropped and each file meets the conflict rule under its true name; refusing
   the archive would stop one that extracts correctly today.
 - **Accepted cost:** a selection or filter over a genuinely repeated name in a `.tar.xz`, 7z or RAR
@@ -13296,6 +13300,15 @@ builds. Sizes, progress and the root shape only lose accuracy.
   unshowable name does not refuse it (as T-F416 did); a filter on every name. The refusal reuses
   `TarNameNotRepresentable`; its "Use ZIP" advice fits creation better, a message of its own (37 locales)
   is left for later. The antivirus scan of a selection is judged the same way.
+- **Costs and gaps:** a selection or filter on a `.tar.gz` now decompresses the whole archive once
+  more, in process, to read its header names (bounded by the compression-bomb ratio, as T-F310's
+  read). Test has no disk check, so a Test filter over a format without readable headers still lets
+  a lone best-fit name through (only a repeated name is refused there). "A best fit only pushes the
+  pre-scan toward refusing" is not confirmed: the 8.3-alias check (T-F420) runs on listed names, and
+  a best-fit long name could hide a real alias.
+- **A Unicode-only regional format** (hi-IN) gives no code page: `GetLocaleInfoEx` answers CP_ACP or
+  CP_OEMCP (0, 1), which `SystemCodePages` reads as "none" and replaces with the system page, as
+  libarchive does. Before, `TarOutputEncoding` would have taken 1 as a page.
 - **Not covered by an integration test:** a format without readable headers. Neither the BCL nor
   tar.exe can make the fixture here: no xz/bzip2/zstd writer in .NET, and bsdtar 3.8.9 crashes writing a
   name outside the page (T-F423), through `@archive` too. The rule is covered by unit rows

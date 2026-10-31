@@ -15,7 +15,7 @@ internal static class TarOutputEncoding
 {
     /// <summary>
     /// The encoding for tar.exe's stdout and stderr on this machine, read now (T-F441). A listing is
-    /// decoded twice - by the launcher, then its octal escapes by <c>ListedNames</c> - so one
+    /// decoded twice - by the launcher, then its octal escapes by <see cref="TarNames.ReadListing"/> - so one
     /// <see cref="TarSandboxScope"/> reads it once and uses it for both (<see cref="TarSandboxScope.OutputEncoding"/>).
     /// </summary>
     public static Encoding Current => ForCodePage(SystemCodePages.UserAnsi);
