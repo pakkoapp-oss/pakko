@@ -1841,6 +1841,12 @@ re-measured with T-F346's script before and after.
   engine, Avast's File Shield off) already gave the right verdict. SMOKE SHL-015, `SECURITY.md`
   ("Provider dependency", the user's OK). Not measured: Windows Server, `DisableAntiSpyware`, limited
   periodic scanning, Avast uninstalled again.
+- **The problem as opened:** Pakko scans through AMSI (`AmsiScanner`, `AmsiScanBuffer`) and knows
+  whether anything scans only from `HKLM\SOFTWARE\Microsoft\AMSI\Providers` having a subkey
+  (`AmsiProviderCheck`, T-F146): no subkey means Inconclusive, never Clean. That was measured only with
+  Defender active. Unknown: what a third-party antivirus does to that key and to the result. The risk
+  is a Defender subkey that stays while Defender is passive or off. Then Pakko would count a provider
+  that no longer scans, and a missed threat would read Clean instead of Inconclusive.
 - **Questions to answer by measurement, not from memory:** (1) Does a free third-party antivirus
   (Avast Free, Avira Free; AVG if one of them registers no AMSI provider) register an AMSI provider,
   and under which GUID? (2) What happens to Defender's subkey and its state (`Get-MpComputerStatus`:
@@ -1865,7 +1871,8 @@ re-measured with T-F346's script before and after.
   Native AOT `pakko` (`scripts\Publish-Cli.ps1 -Architecture x64`) and, where the App is needed,
   the MSIX. Record the measurements in `docs/DECISIONS.md` ("T-F444"). Then decide: if a stale
   subkey can give Clean, `AmsiProviderCheck` must check that the provider really scans (e.g. EICAR
-  through `AmsiScanBuffer` gives DETECTED) before trusting a clean verdict; `SECURITY.md` (with the
+  through `AmsiScanBuffer` gives DETECTED) before trusting a clean verdict (done instead: the strict
+  S_OK check; the EICAR self-test was measured and rejected, `docs/DECISIONS.md` "T-F444"); `SECURITY.md` (with the
   user's OK), `docs/SMOKE.md` rows for the third-party case, and a Windows Server row if one is
   measured. Roll the VM back to the checkpoint afterwards.
 - **Reported by:** the user, 2026-10-31.

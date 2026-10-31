@@ -13309,7 +13309,10 @@ ustar holding EICAR and a clean file.
 - The App and Explorer windows were not driven on the VM, and the packaged `--scan` was not run
   there: 0x00000426 needs Avira on the VM (the dev machine answers 0x80070015). The probe called the
   same `AntivirusScanService` and `AmsiScanner` the packaged `Archiver.Shell --scan` calls, built
-  against the changed Core, so it stood in for that path. The message codes have their own tests.
+  against the changed Core, so it stood in for that path. On the dev machine the full `Deploy.ps1`
+  build and `--scan` of the EICAR ZIP showed the operation window with the entry inconclusive (the
+  scan failed, 0x80070015): the package loads and reports, though that answer is negative and never
+  reached the new check. The message codes have their own tests.
   `docs/SMOKE.md` SHL-015 repeats both third-party cases.
 
 ## T-F434 - one archive of several sources: a skip keeps only the source it lies in (2026-10-31)
