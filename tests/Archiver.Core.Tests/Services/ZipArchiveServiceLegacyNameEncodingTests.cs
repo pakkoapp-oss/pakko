@@ -4,6 +4,7 @@ using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Core.Services.Antivirus;
 using Archiver.Core.Services.Zip;
+using Archiver.Core.Text;
 using Archiver.Core.Tests.Services.Antivirus;
 using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
@@ -25,7 +26,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
-    private static byte[] Cp866(string text) => CodePagesEncodingProvider.Instance.GetEncoding(866)!.GetBytes(text);
+    private static byte[] Cp866(string text) => SystemCodePages.For(866).GetBytes(text);
 
     private static LegacyZipBuilder.Entry Oem(string name, string content) =>
         new(Cp866(name), Encoding.ASCII.GetBytes(content));

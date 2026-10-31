@@ -1,5 +1,6 @@
 using System.Text;
 using Archiver.Core.Services.Zip;
+using Archiver.Core.Text;
 using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
 
@@ -14,7 +15,7 @@ public sealed class ZipEntryNameDecoderTests
     private static readonly ZipNameCodePages Us = ZipNameCodePages.FromCodePages(437, 1252);
 
     private static byte[] Cp(int codePage, string text) =>
-        CodePagesEncodingProvider.Instance.GetEncoding(codePage)!.GetBytes(text);
+        SystemCodePages.For(codePage).GetBytes(text);
 
     private static string Decode(byte[] raw, ushort flags, byte host, ZipNameCodePages pages, byte[]? extra = null) =>
         ZipEntryNameDecoder.Decode(raw, flags, host, extra ?? [], pages);

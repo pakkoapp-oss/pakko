@@ -1,19 +1,15 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Text;
+using Archiver.Core.Text;
 
 namespace Archiver.Core.IntegrationTests;
 
 // The code pages tar.exe uses on this machine: the system ANSI page for its command line, and
 // the user locale's ANSI/OEM pages (libarchive's get_current_codepage/oemcp after
 // setlocale(LC_ALL, "")) for the names it prints and for tar headers without a charset.
-internal static partial class TarCodePage
+internal static class TarCodePage
 {
-    private const uint LocaleIDefaultCodePage = 0x0000000B;
-    private const uint LocaleIDefaultAnsiCodePage = 0x00001004;
-    private const uint LocaleReturnNumber = 0x20000000;
-
-    public static uint Ansi => GetACP();
+    public static uint Ansi => (uint)SystemCodePages.Ansi;
 
     public static bool IsUtf8Ansi => Ansi == 65001;
 
@@ -39,9 +35,9 @@ internal static partial class TarCodePage
         return $"[{version}; ACP {Ansi}; user ANSI {UserAnsi}; user OEM {UserOem}]";
     }
 
-    public static int UserAnsi => UserCodePage(LocaleIDefaultAnsiCodePage, (int)GetACP());
+    public static int UserAnsi => SystemCodePages.UserAnsi;
 
-    public static int UserOem => UserCodePage(LocaleIDefaultCodePage, (int)GetOEMCP());
+    public static int UserOem => SystemCodePages.UserOem;
 
     // A name tar.exe can show on this machine and that a legacy tool could have written in its
     // OEM page — Cyrillic on a uk/ru machine, Latin-1 on an en-US one.
@@ -64,24 +60,5 @@ internal static partial class TarCodePage
         catch (EncoderFallbackException) { return false; }
     }
 
-    public static Encoding Encoding(int codePage) =>
-        codePage == 65001
-            ? new UTF8Encoding(false)
-            : CodePagesEncodingProvider.Instance.GetEncoding(codePage, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback)!;
-
-    private static int UserCodePage(uint type, int fallback)
-    {
-        int value = 0;
-        int written = GetLocaleInfoEx(null, type | LocaleReturnNumber, ref value, sizeof(int) / sizeof(char));
-        return written > 0 && value > 0 ? value : fallback;
-    }
-
-    [LibraryImport("kernel32.dll")]
-    private static partial uint GetACP();
-
-    [LibraryImport("kernel32.dll")]
-    private static partial uint GetOEMCP();
-
-    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
-    private static partial int GetLocaleInfoEx(string? localeName, uint type, ref int data, int dataCount);
+    public static Encoding Encoding(int codePage) => SystemCodePages.ForStrict(codePage);
 }

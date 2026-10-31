@@ -1,4 +1,5 @@
 using System.Text;
+using Archiver.Core.Text;
 using FluentAssertions;
 
 namespace Archiver.CLI.Tests.Subprocess;
@@ -37,9 +38,11 @@ public sealed class CliSevenZipSubprocessTests : IAsyncLifetime
 
     private static bool SurvivesTheAnsiCodePage(string name)
     {
-        // null: the ANSI code page is UTF-8, which carries any name.
-        Encoding? ansi = CodePagesEncodingProvider.Instance.GetEncoding(0);
-        return ansi is null || ansi.GetString(ansi.GetBytes(name)) == name;
+        // The ANSI code page UTF-8 carries any name.
+        if (SystemCodePages.Ansi == SystemCodePages.Utf8)
+            return true;
+        Encoding ansi = SystemCodePages.For(SystemCodePages.Ansi);
+        return ansi.GetString(ansi.GetBytes(name)) == name;
     }
 
     private static bool Holds(byte[] haystack, byte[] needle) => haystack.AsSpan().IndexOf(needle) >= 0;

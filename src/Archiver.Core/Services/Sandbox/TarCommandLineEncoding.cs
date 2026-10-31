@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
 using Archiver.Core.Models;
+using Archiver.Core.Text;
 
 namespace Archiver.Core.Services.Sandbox;
 
@@ -19,7 +20,7 @@ internal static partial class TarCommandLineEncoding
     private const uint MbErrInvalidChars = 0x00000008;
 
     /// <summary>The ANSI code page tar.exe converts its command line with.</summary>
-    public static uint AnsiCodePage => GetACP();
+    public static uint AnsiCodePage => (uint)SystemCodePages.Ansi;
 
     /// <summary>True when <paramref name="value"/> reaches tar.exe unchanged.</summary>
     public static bool IsRepresentable(string value) => IsRepresentable(value, AnsiCodePage);
@@ -87,9 +88,6 @@ internal static partial class TarCommandLineEncoding
         if (unrepresentable is not null)
             throw new TarArgumentEncodingException(unrepresentable, AnsiCodePage);
     }
-
-    [LibraryImport("kernel32.dll")]
-    private static partial uint GetACP();
 
     [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
     private static partial int WideCharToMultiByte(

@@ -1,5 +1,5 @@
-using System.Runtime.InteropServices;
 using System.Text;
+using Archiver.Core.Text;
 
 namespace Archiver.Core.Services.Sandbox;
 
@@ -11,33 +11,14 @@ namespace Archiver.Core.Services.Sandbox;
 /// Confirmed 2026-09-25 on uk-UA (both 1251): a 7z entry "Док" is printed as C4 EE EA. Reading
 /// that output as UTF-8 turned every non-ASCII name in a listing into U+FFFD.
 /// </summary>
-internal static partial class TarOutputEncoding
+internal static class TarOutputEncoding
 {
-    private const uint LocaleIDefaultAnsiCodePage = 0x00001004;
-    private const uint LocaleReturnNumber = 0x20000000;
-    private const int CpUtf8 = 65001;
+    /// <summary>
+    /// The encoding for tar.exe's stdout and stderr on this machine, read now (T-F441). A listing is
+    /// decoded twice - by the launcher, then its octal escapes by <c>ListedNames</c> - so one
+    /// <see cref="TarSandboxScope"/> reads it once and uses it for both (<see cref="TarSandboxScope.OutputEncoding"/>).
+    /// </summary>
+    public static Encoding Current => ForCodePage(SystemCodePages.UserAnsi);
 
-    /// <summary>The encoding for tar.exe's stdout and stderr on this machine.</summary>
-    public static Encoding Current { get; } = ForCodePage(UserAnsiCodePage());
-
-    // CodePagesEncodingProvider ships in the shared framework (no NuGet) and is used directly,
-    // not registered process-wide — same as ZipNameCodePages.
-    internal static Encoding ForCodePage(int codePage) =>
-        codePage == CpUtf8
-            ? new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
-            : CodePagesEncodingProvider.Instance.GetEncoding(codePage) ?? Encoding.Latin1;
-
-    // libarchive falls back to GetACP() when the locale gives no code page; so does this.
-    private static int UserAnsiCodePage()
-    {
-        int value = 0;
-        int written = GetLocaleInfoEx(null, LocaleIDefaultAnsiCodePage | LocaleReturnNumber, ref value, sizeof(int) / sizeof(char));
-        return written > 0 && value > 0 ? value : (int)GetACP();
-    }
-
-    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
-    private static partial int GetLocaleInfoEx(string? localeName, uint type, ref int data, int dataCount);
-
-    [LibraryImport("kernel32.dll")]
-    private static partial uint GetACP();
+    internal static Encoding ForCodePage(int codePage) => SystemCodePages.For(codePage);
 }
