@@ -52,7 +52,7 @@ TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating sessi
 | Stream | Tasks | Area | Gate |
 |---|---|---|---|
 | A text boundaries, analyzer | T-F441 (one owner per encoding boundary, names and paths, with its control test), T-F424 as T-F441's first case, T-F440 (SonarCloud findings, the `S3903` bug first) | `Sandbox/Tar*Encoding`, `Zip/ZipNameCodePages`, `StdinPathList`, `CliConsoleCharset`, `BareGzip*`, `Program.cs`, tests | T-F441: research, plan mode + advisor at both ends; T-F440: tests first |
-| B sandbox launcher, AMSI tests | T-F428 (cancel kills the child itself), T-F427 (AMSI not ready at scan time) | `SandboxedProcessLauncher`, `AntivirusScanService` tests | T-F428: plan mode + advisor at both ends (sandbox code) |
+| B sandbox launcher, AMSI tests | T-F428 (cancel kills the child itself), T-F427 (AMSI not ready at scan time), T-F444 (another antivirus or none, on the VM; added 2026-10-31, the user) | `SandboxedProcessLauncher`, `AntivirusScanService` tests | T-F428: plan mode + advisor at both ends (sandbox code) |
 | C after the operation | T-F434 (recycle each clean source), T-F435 (a reason per kept item), T-F437 (unreadable path list) | `SourceRecycler`, the not-deleted dialog, `Archiver.Shell` messages, `SPEC.md` rule | T-F434: plan mode (an irreversible action on user data) |
 | D progress | T-F432 (taskbar button and tray icon), T-F439 (window floor on a monitor move) | App `MainWindow`, tray icon, `Archiver.OperationUi`, `WindowFloor` | T-F432: plan mode (COM under Native AOT) |
 | F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
@@ -1807,6 +1807,37 @@ re-measured with T-F346's script before and after.
   Windows applies (`WideCharToMultiByte` without `WC_NO_BEST_FIT_CHARS` in the user's ANSI page, then
   back), and drop a pre-created folder that only a listed name made; measure on 3.5.2 too.
 - **Reported by:** T-F441's measurement, 2026-10-31.
+
+### T-F444 — "Scan for threats" with another antivirus instead of Defender, and with no antivirus at all (P2, user-requested, stream B, on the PakkoW10 VM)
+
+- [ ] **Status:** open. Pakko scans through AMSI (`AmsiScanner`, `AmsiScanBuffer`) and knows whether
+  anything scans only from `HKLM\SOFTWARE\Microsoft\AMSI\Providers` having a subkey
+  (`AmsiProviderCheck`, T-F146): no subkey means Inconclusive, never Clean. That was measured only with
+  Defender active. Unknown: what a third-party antivirus does to that key and to the result. The risk
+  is a Defender subkey that stays while Defender is passive or off. Then Pakko would count a provider
+  that no longer scans, and a missed threat would read Clean instead of Inconclusive.
+- **Questions to answer by measurement, not from memory:** (1) Does a free third-party antivirus
+  (Avast Free, Avira Free; AVG if one of them registers no AMSI provider) register an AMSI provider,
+  and under which GUID? (2) What happens to Defender's subkey and its state (`Get-MpComputerStatus`:
+  `AMServiceEnabled`, `AMRunningMode` = Normal/Passive/EDR Block/disabled) once the other product is
+  the registered antivirus in Windows Security? (3) What does Pakko show for EICAR (the T-F427 tests,
+  plus `APP`/`EXP` scan rows) and for a clean archive in each state: Defender only, the other product
+  only, both, the other product uninstalled again? (4) With no provider at all, is the verdict
+  Inconclusive with its message (not Clean, not a crash)? (5) Can Defender be removed at all? Measure
+  and record per edition: Windows 10/11 client (expected: it cannot be uninstalled, only turned off or
+  passive under another product; N and LTSC editions still ship it), Windows Server (expected: a
+  removable feature, `Uninstall-WindowsFeature Windows-Defender`); and whether turning it off by
+  policy (`DisableAntiSpyware`, ignored on current client builds under Tamper Protection) removes its
+  AMSI subkey.
+- **Next:** a checkpoint of PakkoW10 first; installers only from the vendor's own site, checked against
+  the vendor's signature (the host-safety rule), nothing installed on the user's machine. Use the
+  Native AOT `pakko` (`scripts\Publish-Cli.ps1 -Architecture x64`) and, where the App is needed,
+  the MSIX. Record the measurements in `docs/DECISIONS.md` ("T-F444"). Then decide: if a stale
+  subkey can give Clean, `AmsiProviderCheck` must check that the provider really scans (e.g. EICAR
+  through `AmsiScanBuffer` gives DETECTED) before trusting a clean verdict; `SECURITY.md` (with the
+  user's OK), `docs/SMOKE.md` rows for the third-party case, and a Windows Server row if one is
+  measured. Roll the VM back to the checkpoint afterwards.
+- **Reported by:** the user, 2026-10-31.
 
 ### T-F393 — The About button went disabled once and no dialog came (P3)
 
