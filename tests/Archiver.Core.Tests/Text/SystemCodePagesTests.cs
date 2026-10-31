@@ -87,7 +87,7 @@ public sealed class SystemCodePagesTests
     [Fact]
     public void ZipNames_FromCodePages_UseTheGivenPages()
     {
-        ZipNameCodePages pages = ZipNameCodePages.FromCodePages(866, 1251);
+        var pages = ZipNameCodePages.FromCodePages(866, 1251);
 
         pages.Oem.CodePage.Should().Be(866);
         pages.Ansi.CodePage.Should().Be(1251);
