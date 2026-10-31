@@ -360,7 +360,7 @@
     <value>Item ini berubah setelah operasi dimulai.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Hasil operasi tidak lagi ada di disk, jadi item ini adalah satu-satunya salinannya.</value>
+    <value>Salah satu hasil operasi tidak lagi ada di disk, jadi tidak ada yang dihapus.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Item ini tidak dapat dihapus dengan aman: jalur tidak dapat dibuka, atau folder berisi tautan di drive tanpa Keranjang Sampah.</value>

@@ -403,7 +403,7 @@
     <value>Вони змінилися після початку операції.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Результату операції вже немає на диску, тож це його єдина копія.</value>
+    <value>Одного з результатів операції вже немає на диску, тож нічого не видалено.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Їх не вдалося безпечно видалити: шлях не відкрився, або папка містить посилання на диску без Кошика.</value>

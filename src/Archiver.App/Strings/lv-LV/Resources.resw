@@ -360,7 +360,7 @@
     <value>Tie mainījās pēc darbības sākuma.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Darbības rezultāta diskā vairs nav, tāpēc šie ir tā vienīgā kopija.</value>
+    <value>Viena no darbības rezultātiem diskā vairs nav, tāpēc nekas netika izdzēsts.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Tos nevarēja droši izdzēst: ceļu nevarēja atvērt, vai mape satur saiti diskā bez atkritnes.</value>

@@ -360,7 +360,7 @@
     <value>操作开始后它们发生了更改。</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>操作的结果已不在磁盘上，因此这些是它唯一的副本。</value>
+    <value>操作的某个结果已不在磁盘上，因此未删除任何内容。</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>无法安全删除: 无法打开路径，或某个文件夹在没有回收站的驱动器上包含链接。</value>

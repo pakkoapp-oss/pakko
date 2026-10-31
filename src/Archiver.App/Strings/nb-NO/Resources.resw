@@ -360,7 +360,7 @@
     <value>De ble endret etter at operasjonen startet.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Resultatet av operasjonen er ikke lenger på disken, så disse er den eneste kopien.</value>
+    <value>Ett av resultatene av operasjonen er ikke lenger på disken, så ingenting ble slettet.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>De kunne ikke slettes trygt: banen kunne ikke åpnes, eller en mappe inneholder en kobling på en stasjon uten papirkurv.</value>

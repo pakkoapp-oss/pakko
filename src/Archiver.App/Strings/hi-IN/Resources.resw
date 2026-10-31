@@ -360,7 +360,7 @@
     <value>कार्रवाई शुरू होने के बाद ये बदल गए।</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>कार्रवाई का परिणाम अब डिस्क पर नहीं है, इसलिए ये उसकी एकमात्र प्रति हैं।</value>
+    <value>कार्रवाई का एक परिणाम अब डिस्क पर नहीं है, इसलिए कुछ भी नहीं हटाया गया।</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>इन्हें सुरक्षित रूप से हटाया नहीं जा सका: पथ खोला नहीं जा सका, या किसी फ़ोल्डर में रीसायकल बिन रहित ड्राइव पर एक लिंक है।</value>

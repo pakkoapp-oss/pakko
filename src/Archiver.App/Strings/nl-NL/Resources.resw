@@ -360,7 +360,7 @@
     <value>Ze zijn gewijzigd nadat de bewerking begon.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Het resultaat van de bewerking staat niet meer op de schijf, dus dit is de enige kopie.</value>
+    <value>Een van de resultaten van de bewerking staat niet meer op de schijf, dus er is niets verwijderd.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Ze konden niet veilig worden verwijderd: het pad kon niet worden geopend, of een map bevat een koppeling op een station zonder Prullenbak.</value>

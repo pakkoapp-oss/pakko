@@ -360,7 +360,7 @@
     <value>تغيّرت بعد بدء العملية.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>لم تعد نتيجة العملية على القرص، لذا فهذه هي نسختها الوحيدة.</value>
+    <value>إحدى نتائج العملية لم تعد على القرص، لذا لم يُحذف شيء.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>تعذّر حذفها بأمان: تعذّر فتح المسار، أو يحتوي مجلد على ارتباط على محرك أقراص بدون سلة محذوفات.</value>

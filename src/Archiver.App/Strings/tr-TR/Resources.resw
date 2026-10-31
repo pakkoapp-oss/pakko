@@ -360,7 +360,7 @@
     <value>İşlem başladıktan sonra değiştiler.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>İşlemin sonucu artık diskte değil, bu yüzden bunlar onun tek kopyası.</value>
+    <value>İşlemin sonuçlarından biri artık diskte değil, bu yüzden hiçbir şey silinmedi.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Güvenle silinemediler: yol açılamadı veya bir klasör, Geri Dönüşüm Kutusu olmayan bir sürücüde bağlantı içeriyor.</value>

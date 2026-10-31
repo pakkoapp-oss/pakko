@@ -360,7 +360,7 @@
     <value>Chúng đã thay đổi sau khi thao tác bắt đầu.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Kết quả của thao tác không còn trên đĩa, nên đây là bản sao duy nhất.</value>
+    <value>Một trong các kết quả của thao tác không còn trên đĩa, nên không có gì bị xóa.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Không thể xóa chúng một cách an toàn: không mở được đường dẫn, hoặc một thư mục chứa liên kết trên ổ đĩa không có Thùng rác.</value>

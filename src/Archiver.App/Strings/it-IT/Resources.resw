@@ -360,7 +360,7 @@
     <value>Sono cambiati dopo l'avvio dell'operazione.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Il risultato dell'operazione non è più sul disco, quindi questi ne sono l'unica copia.</value>
+    <value>Uno dei risultati dell'operazione non è più sul disco, quindi non è stato eliminato nulla.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Non è stato possibile eliminarli in sicurezza: il percorso non si è potuto aprire, oppure una cartella contiene un collegamento su un'unità senza Cestino.</value>

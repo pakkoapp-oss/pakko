@@ -360,7 +360,7 @@
     <value>הם השתנו לאחר שהפעולה התחילה.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>תוצאת הפעולה כבר אינה בדיסק, ולכן אלה העותק היחיד שלה.</value>
+    <value>אחת מתוצאות הפעולה כבר אינה בדיסק, ולכן דבר לא נמחק.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>לא ניתן היה למחוק אותם בבטחה: לא ניתן היה לפתוח את הנתיב, או שתיקייה מכילה קישור בכונן ללא סל מיחזור.</value>

@@ -360,7 +360,7 @@
     <value>De ändrades efter att åtgärden startade.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Åtgärdens resultat finns inte längre på disken, så de här är den enda kopian.</value>
+    <value>Ett av åtgärdens resultat finns inte längre på disken, så inget togs bort.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>De kunde inte tas bort på ett säkert sätt: sökvägen kunde inte öppnas, eller en mapp innehåller en länk på en enhet utan papperskorg.</value>

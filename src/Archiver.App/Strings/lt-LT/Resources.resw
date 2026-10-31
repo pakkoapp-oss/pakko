@@ -360,7 +360,7 @@
     <value>Jie pasikeitė pradėjus operaciją.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Operacijos rezultato diske nebėra, todėl tai jo vienintelė kopija.</value>
+    <value>Vieno iš operacijos rezultatų diske nebėra, todėl niekas nebuvo ištrinta.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Jų nepavyko saugiai ištrinti: kelio nepavyko atidaryti arba aplanke yra saitas diske be šiukšlinės.</value>

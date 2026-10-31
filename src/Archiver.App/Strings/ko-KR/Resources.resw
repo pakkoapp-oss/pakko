@@ -360,7 +360,7 @@
     <value>작업이 시작된 후 변경되었습니다.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>작업 결과가 더 이상 디스크에 없으므로 이 항목이 유일한 사본입니다.</value>
+    <value>작업 결과 중 하나가 더 이상 디스크에 없으므로 아무것도 삭제되지 않았습니다.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>안전하게 삭제할 수 없습니다. 경로를 열 수 없거나, 휴지통이 없는 드라이브의 폴더에 링크가 있습니다.</value>

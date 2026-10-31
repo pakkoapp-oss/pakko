@@ -360,7 +360,7 @@
     <value>Vilibadilika baada ya operesheni kuanza.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Matokeo ya operesheni hayapo tena kwenye diski, kwa hivyo hivi ndivyo nakala yake pekee.</value>
+    <value>Mojawapo ya matokeo ya operesheni haipo tena kwenye diski, kwa hivyo hakuna kilichofutwa.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Havikuweza kufutwa kwa usalama: njia haikuweza kufunguliwa, au folda ina kiungo kwenye kiendeshi kisicho na Pipa la Kuchakata.</value>

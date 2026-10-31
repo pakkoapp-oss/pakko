@@ -360,7 +360,7 @@
     <value>Need muutusid pärast toimingu algust.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Toimingu tulemust pole enam kettal, seega on need selle ainus koopia.</value>
+    <value>Üht toimingu tulemust pole enam kettal, seega ei kustutatud midagi.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Neid ei saanud ohutult kustutada: teed ei saanud avada või kaust sisaldab linki prügikastita kettal.</value>

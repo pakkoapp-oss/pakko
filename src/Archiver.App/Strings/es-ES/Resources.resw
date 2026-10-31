@@ -360,7 +360,7 @@
     <value>Cambiaron después de iniciarse la operación.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>El resultado de la operación ya no está en el disco, así que estos son su única copia.</value>
+    <value>Uno de los resultados de la operación ya no está en el disco, así que no se eliminó nada.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>No se pudieron eliminar de forma segura: no se pudo abrir la ruta, o una carpeta contiene un vínculo en una unidad sin Papelera de reciclaje.</value>
