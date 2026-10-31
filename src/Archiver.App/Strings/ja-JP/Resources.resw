@@ -360,7 +360,7 @@
     <value>操作の開始後に変更されました。</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>操作の結果がディスク上にないため、これらが唯一のコピーです。</value>
+    <value>操作の結果の 1 つがディスク上にないため、何も削除されませんでした。</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>安全に削除できませんでした: パスを開けなかったか、ごみ箱のないドライブ上のフォルダーにリンクが含まれています。</value>

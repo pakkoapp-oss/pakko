@@ -436,7 +436,7 @@
     <value>They changed after the operation started.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>The result of the operation is no longer on disk, so these are its only copy.</value>
+    <value>One of the operation's results is no longer on disk, so nothing was deleted.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>They could not be deleted safely: the path could not be opened, or a folder holds a link on a drive without a Recycle Bin.</value>

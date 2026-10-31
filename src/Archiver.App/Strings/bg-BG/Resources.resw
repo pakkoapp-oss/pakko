@@ -360,7 +360,7 @@
     <value>Променени са след началото на операцията.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Резултатът от операцията вече не е на диска, затова това е единственото му копие.</value>
+    <value>Един от резултатите от операцията вече не е на диска, затова нищо не е изтрито.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Не могат да бъдат изтрити безопасно: пътят не може да бъде отворен или папка съдържа връзка на устройство без кошче.</value>

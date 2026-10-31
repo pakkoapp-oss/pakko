@@ -360,7 +360,7 @@
     <value>มีการเปลี่ยนแปลงหลังจากการดำเนินการเริ่มต้น</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>ผลลัพธ์ของการดำเนินการไม่อยู่บนดิสก์แล้ว รายการเหล่านี้จึงเป็นสำเนาเดียว</value>
+    <value>ผลลัพธ์หนึ่งของการดำเนินการไม่อยู่บนดิสก์แล้ว จึงไม่มีการลบสิ่งใด</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>ไม่สามารถลบได้อย่างปลอดภัย: ไม่สามารถเปิดเส้นทางได้ หรือโฟลเดอร์มีลิงก์อยู่บนไดรฟ์ที่ไม่มีถังรีไซเคิล</value>

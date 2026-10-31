@@ -360,7 +360,7 @@
     <value>Po spustení operácie sa zmenili.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Výsledok operácie už na disku nie je, preto je toto jeho jediná kópia.</value>
+    <value>Jeden z výsledkov operácie už na disku nie je, preto sa nič neodstránilo.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Nedajú sa bezpečne odstrániť: cestu nemožno otvoriť alebo priečinok obsahuje prepojenie na jednotke bez Koša.</value>

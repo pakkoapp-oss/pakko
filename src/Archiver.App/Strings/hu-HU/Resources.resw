@@ -360,7 +360,7 @@
     <value>A művelet indulása után megváltoztak.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>A művelet eredménye már nincs a lemezen, így ezek az egyetlen példánya.</value>
+    <value>A művelet egyik eredménye már nincs a lemezen, ezért semmi sem lett törölve.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Nem lehetett biztonságosan törölni őket: az elérési út nem nyitható meg, vagy egy mappa hivatkozást tartalmaz egy Lomtár nélküli meghajtón.</value>

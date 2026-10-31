@@ -360,7 +360,7 @@
     <value>Zmieniły się po rozpoczęciu operacji.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Wyniku operacji nie ma już na dysku, więc to jego jedyna kopia.</value>
+    <value>Jednego z wyników operacji nie ma już na dysku, więc nic nie zostało usunięte.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Nie można ich bezpiecznie usunąć: nie udało się otworzyć ścieżki albo folder zawiera łącze na dysku bez Kosza.</value>

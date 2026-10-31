@@ -360,7 +360,7 @@
     <value>Spremenili so se po začetku operacije.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Rezultata operacije ni več na disku, zato so to njegova edina kopija.</value>
+    <value>Enega od rezultatov operacije ni več na disku, zato ni bilo nič izbrisano.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Ni jih bilo mogoče varno izbrisati: poti ni bilo mogoče odpreti ali pa mapa vsebuje povezavo na pogonu brez koša.</value>

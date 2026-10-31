@@ -360,7 +360,7 @@
     <value>Sie wurden nach dem Start des Vorgangs geändert.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Das Ergebnis des Vorgangs ist nicht mehr auf dem Datenträger, daher sind dies seine einzige Kopie.</value>
+    <value>Eines der Ergebnisse des Vorgangs ist nicht mehr auf dem Datenträger, daher wurde nichts gelöscht.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Sie konnten nicht sicher gelöscht werden: Der Pfad ließ sich nicht öffnen, oder ein Ordner enthält eine Verknüpfung auf einem Laufwerk ohne Papierkorb.</value>

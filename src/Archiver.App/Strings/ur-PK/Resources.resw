@@ -360,7 +360,7 @@
     <value>کارروائی شروع ہونے کے بعد یہ بدل گئے۔</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>کارروائی کا نتیجہ اب ڈسک پر نہیں ہے، اس لیے یہ اس کی واحد کاپی ہیں۔</value>
+    <value>کارروائی کا ایک نتیجہ اب ڈسک پر نہیں ہے، اس لیے کچھ بھی حذف نہیں کیا گیا۔</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>انہیں محفوظ طریقے سے حذف نہیں کیا جا سکا: پاتھ نہیں کھل سکا، یا کسی فولڈر میں ری سائیکل بن کے بغیر ڈرائیو پر ایک لنک ہے۔</value>

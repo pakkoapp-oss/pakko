@@ -360,7 +360,7 @@
     <value>Po zahájení operace se změnily.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Výsledek operace už na disku není, takže toto je jeho jediná kopie.</value>
+    <value>Jeden z výsledků operace už na disku není, proto nebylo nic odstraněno.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Nelze je bezpečně odstranit: cestu nelze otevřít, nebo složka obsahuje odkaz na jednotce bez Koše.</value>

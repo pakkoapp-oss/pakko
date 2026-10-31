@@ -360,7 +360,7 @@
     <value>De blev ændret, efter handlingen startede.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Handlingens resultat er ikke længere på disken, så disse er den eneste kopi.</value>
+    <value>Et af handlingens resultater er ikke længere på disken, så intet blev slettet.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>De kunne ikke slettes sikkert: stien kunne ikke åbnes, eller en mappe indeholder et link på et drev uden papirkurv.</value>

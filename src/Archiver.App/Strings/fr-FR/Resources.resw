@@ -360,7 +360,7 @@
     <value>Ils ont changé après le début de l'opération.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Le résultat de l'opération n'est plus sur le disque : ces éléments en sont donc la seule copie.</value>
+    <value>L'un des résultats de l'opération n'est plus sur le disque : rien n'a donc été supprimé.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Ils n'ont pas pu être supprimés en toute sécurité : le chemin n'a pas pu être ouvert, ou un dossier contient un lien sur un lecteur sans Corbeille.</value>

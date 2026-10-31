@@ -360,7 +360,7 @@
     <value>S-au modificat după pornirea operației.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Rezultatul operației nu mai este pe disc, deci acestea sunt singura lui copie.</value>
+    <value>Unul dintre rezultatele operației nu mai este pe disc, deci nu s-a șters nimic.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Nu au putut fi șterse în siguranță: calea nu a putut fi deschisă, sau un folder conține o legătură pe o unitate fără Coș de reciclare.</value>

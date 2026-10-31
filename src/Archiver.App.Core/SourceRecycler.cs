@@ -42,7 +42,7 @@ public enum KeepReason
     /// <summary>Changed since the operation started (T-F419).</summary>
     ChangedSinceStart,
 
-    /// <summary>The operation's output is no longer on disk, so the sources are its only copy (T-F420).</summary>
+    /// <summary>One of the operation's outputs is no longer on disk, so nothing was deleted (T-F420).</summary>
     OutputMissing,
 
     /// <summary>Its path could not be resolved, or it holds a link and its drive has no Recycle Bin.</summary>

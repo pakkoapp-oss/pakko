@@ -360,7 +360,7 @@
     <value>Ne muuttuivat toiminnon alkamisen jälkeen.</value>
   </data>
   <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
-    <value>Toiminnon tulos ei ole enää levyllä, joten nämä ovat sen ainoa kopio.</value>
+    <value>Jokin toiminnon tuloksista ei ole enää levyllä, joten mitään ei poistettu.</value>
   </data>
   <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
     <value>Niitä ei voitu poistaa turvallisesti: polkua ei voitu avata, tai kansio sisältää linkin asemalla, jolla ei ole roskakoria.</value>
