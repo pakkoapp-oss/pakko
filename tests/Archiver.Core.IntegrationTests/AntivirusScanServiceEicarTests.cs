@@ -5,6 +5,7 @@ using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Core.Services.Antivirus;
 using FluentAssertions;
+using Xunit.Abstractions;
 
 namespace Archiver.Core.IntegrationTests;
 
@@ -26,6 +27,14 @@ public sealed class SkipIfTarOrAmsiUnavailableAttribute : FactAttribute
             return;
         }
 
+        string? amsiUnavailable = UnavailableAmsiReason();
+        if (amsiUnavailable is not null)
+            Skip = amsiUnavailable;
+    }
+
+    /// <summary>Null when AMSI detects EICAR right now, otherwise why it does not.</summary>
+    internal static string? UnavailableAmsiReason()
+    {
         // T-F177 follow-up: probing with an innocuous buffer only proves ScanBuffer doesn't
         // throw, not that it still actually detects anything — a live-but-degraded AMSI provider
         // (confirmed to happen on this machine mid-session, see docs/TASKS.md's T-F177 entry)
@@ -38,12 +47,13 @@ public sealed class SkipIfTarOrAmsiUnavailableAttribute : FactAttribute
             byte[] eicar = System.Text.Encoding.ASCII.GetBytes(
                 "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*");
             (ThreatVerdict verdict, _) = scanner.ScanBuffer(eicar, eicar.Length, "probe-eicar.txt");
-            if (verdict != ThreatVerdict.ThreatDetected)
-                Skip = $"AMSI is live but not currently detecting EICAR on this machine (probe verdict: {verdict})";
+            return verdict == ThreatVerdict.ThreatDetected
+                ? null
+                : $"AMSI is live but not currently detecting EICAR on this machine (probe verdict: {verdict})";
         }
         catch (InvalidOperationException ex)
         {
-            Skip = $"AMSI scanning is not available on this machine: {ex.Message}";
+            return $"AMSI scanning is not available on this machine: {ex.Message}";
         }
     }
 }
@@ -66,7 +76,7 @@ public sealed class SkipIfTarOrAmsiUnavailableAttribute : FactAttribute
 // Windows-only; this whole test project only ever runs on Windows.
 [SupportedOSPlatform("windows")]
 [Collection("TarSandbox")]
-public sealed class AntivirusScanServiceEicarTests : IDisposable
+public sealed class AntivirusScanServiceEicarTests(ITestOutputHelper output) : IDisposable
 {
     private readonly TempDirectory _temp = new();
 
@@ -81,6 +91,19 @@ public sealed class AntivirusScanServiceEicarTests : IDisposable
     // one thing these two tests deliberately do NOT want.
     private static AntivirusScanService CreateRealService(TarCapabilities? tarCapabilities = null) =>
         new(tarCapabilities ?? new TarCapabilities(), new GroupPolicyOptions());
+
+    // T-F427: the attribute probes AMSI when the test is discovered, and AMSI can stop being ready
+    // (AmsiScanBuffer 0x80070015, then the service answers Inconclusive, T-F247) or degrade to Clean
+    // (T-F177) before the scan. Like the attribute, a scan that missed EICAR counts only while a fresh
+    // probe also misses it; with AMSI healthy again the caller's strict checks decide. xUnit 2 has no
+    // run-time skip, so the reason goes to the test output.
+    private bool AmsiNotDetectingNow()
+    {
+        string? reason = SkipIfTarOrAmsiUnavailableAttribute.UnavailableAmsiReason();
+        if (reason is not null)
+            output.WriteLine("Not judged: " + reason);
+        return reason is not null;
+    }
 
     [SkipIfTarOrAmsiUnavailable]
     public async Task ScanAsync_RealEicarInZipArchive_ReturnsThreatDetected()
@@ -108,6 +131,8 @@ public sealed class AntivirusScanServiceEicarTests : IDisposable
 
         AntivirusScanService service = CreateRealService();
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+        if (result.OverallVerdict != ThreatVerdict.ThreatDetected && AmsiNotDetectingNow())
+            return;
 
         result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected);
         result.Findings.Should().ContainSingle(f => f.EntryPath == "eicar.txt" && f.Verdict == ThreatVerdict.ThreatDetected);
@@ -145,6 +170,9 @@ public sealed class AntivirusScanServiceEicarTests : IDisposable
             // back — an accepted, documented outcome (see class doc comment above), not a failure.
             return;
         }
+
+        if (result.OverallVerdict == ThreatVerdict.Clean && AmsiNotDetectingNow())
+            return;
 
         if (result.OverallVerdict == ThreatVerdict.ThreatDetected)
         {

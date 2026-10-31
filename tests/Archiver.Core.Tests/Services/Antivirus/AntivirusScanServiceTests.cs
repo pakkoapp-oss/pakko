@@ -28,12 +28,17 @@ internal sealed class FakeAmsiScanner : IAmsiScanner
     // T-F247: entries whose scan fails the way a real AmsiScanBuffer failure surfaces.
     public HashSet<string> FailingContentNames { get; } = new(StringComparer.Ordinal);
 
+    // T-F427: AMSI stops being ready after this many scans, as it did on the dev machine.
+    public int? NotReadyAfterCalls { get; init; }
+
     public (ThreatVerdict Verdict, string? ThreatName) ScanBuffer(byte[] buffer, int length, string contentName)
     {
         // T-F247: the real AmsiScanBuffer rejects a zero-length buffer with E_INVALIDARG, which
         // AmsiScanner turns into this exception — the fake does the same.
         if (length == 0 || FailingContentNames.Contains(contentName))
             throw new InvalidOperationException("AmsiScanBuffer failed (HRESULT 0x80070057).");
+        if (Calls.Count >= NotReadyAfterCalls)
+            throw new InvalidOperationException("AmsiScanBuffer failed (HRESULT 0x80070015).");
         Calls.Add((contentName, length));
         ScannedContent[contentName] = buffer.AsSpan(0, length).ToArray();
         return DetectedContentNames.Contains(contentName)
@@ -168,6 +173,25 @@ public sealed class AntivirusScanServiceTests : IDisposable
         result.Findings.Where(f => f.EntryPath != "bad.txt").Should().HaveCount(2)
             .And.OnlyContain(f => f.Verdict == ThreatVerdict.Clean);
         scanner.Calls.Select(c => c.ContentName).Should().BeEquivalentTo(["a.txt", "c.txt"]);
+    }
+
+    [Fact]
+    public async Task ScanAsync_AmsiStopsBeingReadyMidScan_TheThreatIsInconclusiveNeverClean()
+    {
+        string zip = CreateZip("notready.zip", ("a.txt", "hello"), ("threat.txt", "boom"), ("c.txt", "world"));
+        var scanner = new FakeAmsiScanner { NotReadyAfterCalls = 1 };
+        scanner.DetectedContentNames.Add("threat.txt");
+        AntivirusScanService service = CreateService(scanner);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        ThreatFinding threat = result.Findings.Should().ContainSingle(f => f.EntryPath == "threat.txt").Subject;
+        threat.Verdict.Should().Be(ThreatVerdict.Inconclusive);
+        threat.ReasonText!.Code.Should().Be(MessageCode.ScanEntryFailed);
+        threat.Reason.Should().Contain("0x80070015");
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "c.txt").Which.Verdict.Should().Be(ThreatVerdict.Inconclusive);
+        scanner.Calls.Should().ContainSingle();
     }
 
     [Fact]
