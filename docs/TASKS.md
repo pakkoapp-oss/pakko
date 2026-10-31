@@ -1516,7 +1516,12 @@ re-measured with T-F346's script before and after.
 
 ### T-F424 — `tar.exe` lists a name outside the code page by best fit (`café.txt` as `cafe.txt`) (P3, from T-F418)
 
-- [ ] **Status:** open. Measured by T-F418 (bsdtar 3.8.9, cp1251): a tar entry `café.txt` lists
+- [ ] **Status:** in progress under T-F441 part 2 (branch `fix/tf441-tar-verdict`, 2026-10-31):
+  `TarNames` judges the listing (header names of a plain or gzip tar, repeated names otherwise, the
+  quarantine's files after a full extraction) and refuses a selection or filter it cannot trust.
+  Measured on both builds: 3.5.2 lists by best fit too; the silent case is two names collapsing
+  into one line. Open: the on-device and VM rows, a folder whose name is a best fit.
+- **Before:** open. Measured by T-F418 (bsdtar 3.8.9, cp1251): a tar entry `café.txt` lists
   through `tar -t` as `cafe.txt`, and a filter or a `-T` line naming either matches nothing. T-F416
   catches only the `?` form of a lossy name. Next: tell a best-fit name from a real one (the
   listing's name does not round-trip through the code page back to a stored name), and refuse a
@@ -1707,6 +1712,12 @@ re-measured with T-F346's script before and after.
   that collapse to one listing line). Part 1 (code-page source, owners, the scanning test), then
   part 2 (the tar-name verdict). Follow-up, not in this task: the browse tree could show a plain or
   gzip tar's true names from its headers.
+- **Open before done (2026-10-31):** both PRs green in CI and the red check seen (draft PR #131);
+  the local full run and the integration tests on both tar.exe builds once the PC is free;
+  `scripts/smoke/TarNames.ps1` with generator fixtures (the VM has no .NET) and its `docs/SMOKE.md`
+  row; a folder entry whose listed name is a best fit (pre-created and stamped by listed name,
+  DECISIONS); `SECURITY.md` for the pax records now parsed in process (the user's word); the
+  fresh-reviewer offer.
 - **Before:** open, research first. The user, 2026-10-31: encoding bugs in names keep coming
   back; there must be one place (or a few, if needed) where names are resolved and checked, for
   tar.exe and for the whole Core, names and paths everywhere. History that justifies it: T-F204,
