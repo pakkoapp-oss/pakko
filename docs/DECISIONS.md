@@ -13216,6 +13216,50 @@ the archive.
   search terms (5) are still the v1.7 ones, as expected after `--keep-lists sv-SE`. They go into
   Partner Center's own form with the next submission, or before it as a listing-only update.
 
+## T-F442 - which formats tar.exe reads, measured on both builds (2026-10-31)
+
+The user, 2026-10-31: offer extraction and the Explorer submenu for archives Pakko does not mark
+today (ISO, virtual machine disks, a Store archiver's list), adjusted at run time to what this
+Windows' tar.exe reads. Measured with tar.exe itself writing each sample (`--format=...` or a
+compression option) and `makecab.exe` for CAB, then `-tf` and `-xf` on the same machine; the samples
+hold `a.txt` and `d/b.txt`. Windows 11 26300 (bsdtar 3.8.9) and Windows 10 19045 (bsdtar 3.5.2,
+PakkoW10); 3.8.9's xar and lzip samples were also read on 3.5.2.
+
+| Format (sample) | Writes 3.8.9 / 3.5.2 | Reads 3.8.9 | Reads 3.5.2 |
+|---|---|---|---|
+| ISO 9660 (`--format=iso9660`) | yes / yes | yes | yes |
+| CAB (`makecab`, MSZIP) | - | yes | yes |
+| cpio, odc and newc | yes / yes | yes | yes |
+| ar, GNU and BSD (`.a`, the shell of `.deb`) | yes / yes | yes | yes |
+| xar (`.xar`, `.pkg`) | yes / "Xar not supported on this platform" | yes | no, "Unrecognized archive format" |
+| WARC | yes / yes (files only) | yes | yes |
+| tar.Z (`-Z`, compress) | yes / yes | yes | yes |
+| tar.lz (`--lzip`) | yes / "Unsupported compression option" | yes | no, needs an external `lzip` |
+| uuencode, base64 (`--uuencode`, `--b64encode`) | yes / yes | yes | yes |
+| lz4, lzop, grzip, lrzip | no: an external program | no | no |
+| shar | yes / yes | no, "Unrecognized archive format" | no |
+| mtree | yes / yes | lists and "extracts" | the same |
+
+- **mtree is never offered.** An mtree file describes files rather than holding them; "extracting"
+  one wrote two files of spaces here, and libarchive's reader opens a path named in the archive
+  (`contents=`) on the reading machine. Content an archive does not hold is out of Pakko's model and
+  a read of the user's own files under an attacker's choice of path.
+- **An empty file lists and extracts with exit 0 as an empty archive** (the lz4/lzop/grzip/lrzip
+  rows, whose writes left 0 bytes). The format detector must decide by signature, never hand tar.exe
+  a file of no known format.
+- **Version-dependent:** xar and lzip, so they go through the same run-time probe as the 7z writer
+  (T-F342) and the readable formats (T-F403), not a version table.
+- **Not measured, no sample without a third-party tool:** LHA/LZH, RPM, `.deb` with its inner tars
+  (ar reads the shell; the payload is a second archive), 7-Zip's own self-extractors, a UDF-only ISO
+  (most Windows install ISOs carry UDF beside ISO 9660; libarchive reads the ISO 9660 side).
+- **Outside tar.exe entirely:** VHD/VHDX/VMDK/QCOW2/VDI, DMG, WIM, APFS/ext/FAT/NTFS/HFS, SquashFS,
+  cramfs, UDF, GPT/MBR, NSIS, ARJ, Intel HEX, UEFI images and split volumes (`.001`, `.z01`).
+  Windows mounts ISO and VHD/VHDX itself. `.jar` is a ZIP for Pakko's ZIP path; `.crx` is a ZIP
+  behind its own header, not measured.
+- Next: a plan (plan mode, advisor at both ends) for detector signatures, policy names, the
+  capability snapshot, the Explorer menu and the manifest's file types; `SECURITY.md` names the new
+  parser surface (each one inside tar.exe's sandbox).
+
 ## T-F441 and T-F424 - one owner per text boundary; tar.exe's best-fit names (2026-10-31)
 
 **Why.** Name-encoding bugs keep returning (T-F204, T-F215, T-F234, T-F238, T-F244, T-F266, T-F283,
