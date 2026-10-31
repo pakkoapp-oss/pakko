@@ -82,6 +82,12 @@ These apply after a successful operation:
 | Delete source files | ✅ | — |
 | Delete archive after extraction | — | ✅ |
 
+Only a source processed in full and unchanged since is deleted (to the Recycle Bin where the volume
+has one); every other source stays and is named. Each source is judged on its own: a skip inside
+one folder keeps that folder, not the others archived with it (T-F434). An error, or a filter that
+leaves something out, keeps every source of a single archive; an output that is no longer on disk
+keeps them all.
+
 ---
 
 ## Error Handling Requirements

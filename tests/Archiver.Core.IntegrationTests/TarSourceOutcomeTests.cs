@@ -220,6 +220,41 @@ public sealed class TarSourceOutcomeTests : IDisposable
         result.FullyProcessedSources.Should().Equal(a);
     }
 
+    // T-F434: a link skipped in folder b keeps b, not the clean folder a beside it in the same archive.
+    [Integration]
+    public async Task CompressAsync_SingleArchive_LinkSkippedInB_AIsDeletable()
+    {
+        string a = Path.Combine(_temp.Path, "a");
+        string b = Path.Combine(_temp.Path, "b");
+        string target = Path.Combine(_temp.Path, "target");
+        foreach (string folder in new[] { a, b, target })
+        {
+            Directory.CreateDirectory(folder);
+            File.WriteAllText(Path.Combine(folder, "f.txt"), folder);
+        }
+        string link = Path.Combine(b, "link");
+        DirectoryJunction.Create(link, target);
+        try
+        {
+            ArchiveResult result = await _sut.CompressAsync(new ArchiveOptions
+            {
+                SourcePaths = [a, b],
+                DestinationFolder = Dest("out"),
+                ArchiveName = "all",
+                Mode = ArchiveMode.SingleArchive,
+                Format = ArchiveContainerFormat.Tar,
+            });
+
+            result.Errors.Should().BeEmpty();
+            result.SkippedFiles.Should().NotBeEmpty();
+            result.FullyProcessedSources.Should().Equal(a);
+        }
+        finally
+        {
+            Directory.Delete(link, recursive: false);
+        }
+    }
+
     [Integration]
     public async Task CompressAsync_SeparateArchives_MissingSource_OnlyThatOneNotCompleted()
     {
