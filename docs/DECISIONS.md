@@ -13282,7 +13282,16 @@ builds. Sizes, progress and the root shape only lose accuracy.
   folders are pre-created in the quarantine for the sandbox (T-F52), and folder entries and folder
   times are applied, by listed name. A folder whose listed name is a best fit may therefore also
   appear empty under that name, or tar.exe may fail to create the true one inside the AppContainer.
-  Not measured yet (the PC was busy); an integration case and a fix are open under T-F441. A false duplicate group in an
+  **Measured 2026-10-31** (bsdtar 3.8.9, ACP 1251, through Pakko and the sandbox): an archive with
+  the folder `café/`, `café/x.txt` and the empty `café/empty/` extracted to `café/x.txt` (right), an
+  empty `cafe/` and `cafe/empty/` (wrong: the empty folder under the listed name, the true one
+  missing). tar.exe created the true folder itself. No file is lost or misplaced. Open as T-F443.
+- **Checked on both builds, 2026-10-31.** The full default suite passed locally on this branch
+  (Windows 11, ACP 1251: 7,617 tests across the projects, only the T-F443 case skipped), `CLI-044`
+  passed through `Invoke-Smoke.ps1` with the branch's `pakko`, and the same three commands with a
+  Native AOT `pakko` on PakkoW10 (bsdtar 3.5.2, ACP 1252, an a-macron pair): the listing shows `cafa.txt`
+  twice; the selection and `-x!cafa.txt` exit 2 naming tar.exe, nothing written; `x` writes both files
+  under their true names with their own contents. A false duplicate group in an
   extract-everything run is dropped and each file meets the conflict rule under its true name; refusing
   the archive would stop one that extracts correctly today.
 - **Accepted cost:** a selection or filter over a genuinely repeated name in a `.tar.xz`, 7z or RAR

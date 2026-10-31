@@ -612,3 +612,41 @@ Add-SmokeStep 'CLI-041' {
     $run = Invoke-Pakko @('a', '-ssp', (Join-Path $folder 'ssp.zip'), $src)
     Assert-Smoke ($run.ExitCode -eq 7) "a -ssp: exit $($run.ExitCode), expected 7"
 }
+
+Add-SmokeStep 'CLI-044' {
+    # T-F441/T-F424: tar.exe lists a name outside the user's ANSI page by best fit, so an archive with
+    # an accented name and its plain twin lists one line twice. Built from char codes, never typed
+    # glyphs (.claude/rules/text-encoding.md): e-acute collapses on 1251 and 932, a-macron on 1252.
+    $folder = Get-StepFolder 'cli044'
+    $candidates = @(@{ Accent = [char]0xE9; Plain = 'e' }, @{ Accent = [char]0x101; Plain = 'a' })
+    $chosen = $null
+    foreach ($candidate in $candidates) {
+        $accented = "caf$($candidate.Accent).txt"
+        $plain = "caf$($candidate.Plain).txt"
+        $tar = Join-Path $folder "pair-$([int]$candidate.Accent).tar"
+        New-TarFile -Path $tar -Entries @(@{ Name = $accented; Content = 'ACCENT' }, @{ Name = $plain; Content = 'PLAIN' })
+        $listed = Invoke-Pakko @('l', $tar, '-ba')
+        if ($listed.ExitCode -eq 0 -and ([regex]::Matches($listed.Output, [regex]::Escape($plain))).Count -eq 2) {
+            $chosen = @{ Tar = $tar; Accented = $accented; Plain = $plain }
+            break
+        }
+    }
+    if (-not $chosen) { Skip-Smoke 'this machine''s code page carries both candidate names' }
+
+    $o1 = Join-Path $folder 'o1'
+    $run = Invoke-Pakko @('x', $chosen.Tar, "-o$o1", $chosen.Plain)
+    $written = @(Get-ChildItem -LiteralPath $o1 -Recurse -File -ErrorAction SilentlyContinue)
+    Assert-Smoke ($run.ExitCode -ne 0 -and $run.Text.Contains('tar.exe') -and $written.Count -eq 0) "x <the collapsed name>: exit $($run.ExitCode), $($written.Count) files $($run.Text)"
+
+    $o2 = Join-Path $folder 'o2'
+    $run = Invoke-Pakko @('x', $chosen.Tar, "-o$o2", "-x!$($chosen.Plain)")
+    $written = @(Get-ChildItem -LiteralPath $o2 -Recurse -File -ErrorAction SilentlyContinue)
+    Assert-Smoke ($run.ExitCode -ne 0 -and $written.Count -eq 0) "x -x!<the collapsed name>: exit $($run.ExitCode), $($written.Count) files $($run.Text)"
+
+    $o3 = Join-Path $folder 'o3'
+    $run = Invoke-Pakko @('x', $chosen.Tar, "-o$o3")
+    $accentText = Get-Content -LiteralPath (Join-Path $o3 $chosen.Accented) -Raw -ErrorAction SilentlyContinue
+    $plainText = Get-Content -LiteralPath (Join-Path $o3 $chosen.Plain) -Raw -ErrorAction SilentlyContinue
+    Assert-Smoke ($run.ExitCode -eq 0 -and $accentText -eq 'ACCENT' -and $plainText -eq 'PLAIN') "x everything: exit $($run.ExitCode), '$accentText' '$plainText' $($run.Text)"
+    "$($chosen.Plain) twice in the listing; selection and filter refused, everything extracted"
+}
