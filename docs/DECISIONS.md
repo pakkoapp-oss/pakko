@@ -13291,6 +13291,16 @@ builds. Sizes, progress and the root shape only lose accuracy.
   `--paths-stdin` list (UTF-16LE from raw code units; T-F437's message is stream C's), `LaunchArguments`
   (JSON, UTF-8, base64), the OperationUi pipe, the C++ extension (wide APIs only). The source-scanning
   test `TextBoundaryOwnersTests` keeps machine code-page selection inside `SystemCodePages`.
+- **Built (part 2):** `TarNames.Judge`/`JudgeExtracted`/`EnsureNamesCanDecide`, `TarHeaderNames.ReadNames`,
+  `TarSandboxScope.ReadHeaderNamesAsync`. A selection is judged on its members only, so an unrelated
+  unshowable name does not refuse it (as T-F416 did); a filter on every name. The refusal reuses
+  `TarNameNotRepresentable`; its "Use ZIP" advice fits creation better, a message of its own (37 locales)
+  is left for later. The antivirus scan of a selection is judged the same way.
+- **Not covered by an integration test:** a format without readable headers. Neither the BCL nor
+  tar.exe can make the fixture here: no xz/bzip2/zstd writer in .NET, and bsdtar 3.8.9 crashes writing a
+  name outside the page (T-F423), through `@archive` too. The rule is covered by unit rows
+  (`TarNamesTests`); the VM (3.5.2, which does not crash on such a name) can make a `.tar.xz` for the
+  smoke row.
 - Not in scope: mojibake from editing source files (`.claude/rules/text-encoding.md`).
 
 ## T-F343 — `pakko` in place of 7-Zip's console program: the measurement (2026-10-17)

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using Archiver.Core.IO;
 using Archiver.Core.Models;
+using Archiver.Core.Text;
 using Microsoft.Win32.SafeHandles;
 
 namespace Archiver.Core.Services.Sandbox;
@@ -397,6 +398,30 @@ internal sealed partial class TarSandboxScope : IDisposable
         using var compressed = new FileStream(ReopenArchive(), FileAccess.Read);
         long maxDecompressedBytes = Math.Min(long.MaxValue / ArchiveEntrySecurity.MaxCompressionRatio, _archive.Length) * ArchiveEntrySecurity.MaxCompressionRatio;
         return TarHeaderNames.AreAllUtf8InGzip(compressed, maxDecompressedBytes, cancellationToken);
+    }
+
+    /// <summary>
+    /// T-F441: a plain or gzip tar's names as its headers store them, decoded as this scope's
+    /// listings read them (<see cref="TarHeaderNames.ReadNames(TarHeaderNames.ReadAt, bool, System.Text.Encoding, CancellationToken)"/>),
+    /// to check tar.exe's listing against; null for another format, before the first listing, or
+    /// when the headers cannot decide. The same bounded read as T-F305's: nothing is kept.
+    /// </summary>
+    public Task<IReadOnlyList<string>?> ReadHeaderNamesAsync(CancellationToken cancellationToken) =>
+        _utf8Headers is not { } utf8Names
+            ? Task.FromResult<IReadOnlyList<string>?>(null)
+            : Task.Run(() => ReadHeaderNames(utf8Names, cancellationToken), cancellationToken);
+
+    private IReadOnlyList<string>? ReadHeaderNames(bool utf8Names, CancellationToken cancellationToken)
+    {
+        System.Text.Encoding legacy = SystemCodePages.For(SystemCodePages.UserOem);
+        Span<byte> magic = stackalloc byte[2];
+        bool isGzip = RandomAccess.Read(_archive.SafeFileHandle, magic, 0) == magic.Length && magic[0] == 0x1F && magic[1] == 0x8B;
+        if (!isGzip)
+            return TarHeaderNames.ReadNames(_archive.SafeFileHandle, utf8Names, legacy, cancellationToken);
+
+        using var compressed = new FileStream(ReopenArchive(), FileAccess.Read);
+        long maxDecompressedBytes = Math.Min(long.MaxValue / ArchiveEntrySecurity.MaxCompressionRatio, _archive.Length) * ArchiveEntrySecurity.MaxCompressionRatio;
+        return TarHeaderNames.ReadNamesInGzip(compressed, maxDecompressedBytes, utf8Names, legacy, cancellationToken);
     }
 
     // A second handle to the same open file (not a new lookup by path), starting at offset 0 and

@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.IO.Compression;
+using System.Text;
 using System.Text.Unicode;
 using Microsoft.Win32.SafeHandles;
 
@@ -27,19 +29,66 @@ internal static class TarHeaderNames
     /// <inheritdoc cref="AreAllUtf8(SafeFileHandle, CancellationToken)"/>
     internal static bool? AreAllUtf8(ReadAt read, CancellationToken cancellationToken)
     {
-        byte[] header = new byte[BlockSize];
         var walk = new NameWalk(read);
+        return Walk(read, walk.Visit, cancellationToken) == true ? walk.AllUtf8 : null;
+    }
+
+    /// <summary>
+    /// T-F441: every entry's name as its headers store it, in archive order, decoded as tar.exe
+    /// reads it: under hdrcharset=UTF-8 when <paramref name="utf8Names"/>, otherwise in
+    /// <paramref name="legacy"/> (the user locale's OEM page); a pax "path" is UTF-8 either way.
+    /// Only a veto on tar.exe's own listing (<see cref="TarNames.Judge"/>), never a name Pakko
+    /// uses. Null when the walk cannot decide: not an uncompressed POSIX/GNU tar, a malformed or
+    /// oversized record, sparse or another entry type libarchive may list differently, a global pax
+    /// header that names a path or a charset, bytes that do not decode.
+    /// </summary>
+    internal static IReadOnlyList<string>? ReadNames(ReadAt read, bool utf8Names, Encoding legacy, CancellationToken cancellationToken)
+    {
+        var list = new NameList(read, utf8Names, legacy);
+        return Walk(read, list.Visit, cancellationToken) == true ? list.Names : null;
+    }
+
+    /// <inheritdoc cref="ReadNames(ReadAt, bool, Encoding, CancellationToken)"/>
+    internal static IReadOnlyList<string>? ReadNames(SafeFileHandle archive, bool utf8Names, Encoding legacy, CancellationToken cancellationToken)
+        => ReadNames((buffer, offset) => RandomAccess.Read(archive, buffer, offset), utf8Names, legacy, cancellationToken);
+
+    /// <summary>
+    /// The names of a gzip-compressed tar, as <see cref="ReadNames(ReadAt, bool, Encoding, CancellationToken)"/>;
+    /// null too when the stream is not valid gzip or the tar inside is longer than
+    /// <paramref name="maxDecompressedBytes"/>.
+    /// </summary>
+    internal static IReadOnlyList<string>? ReadNamesInGzip(
+        Stream compressed, long maxDecompressedBytes, bool utf8Names, Encoding legacy, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var gzip = new GZipStream(compressed, CompressionMode.Decompress, leaveOpen: true);
+            var forward = new ForwardReader(gzip, maxDecompressedBytes, cancellationToken);
+            IReadOnlyList<string>? names = ReadNames(forward.ReadAt, utf8Names, legacy, cancellationToken);
+            return forward.LimitExceeded ? null : names;
+        }
+        catch (InvalidDataException)
+        {
+            return null; // not a gzip stream, or a damaged one
+        }
+    }
+
+    // True when the walk reached the archive's end; null when a visit could not decide, a header is
+    // malformed, or the file holds no header at all.
+    private static bool? Walk(ReadAt read, Func<byte[], bool, long, long, bool> visit, CancellationToken cancellationToken)
+    {
+        byte[] header = new byte[BlockSize];
         long offset = 0;
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
             int n = ReadFully(read, header, offset);
             if (n == 0 || (n == BlockSize && header.AsSpan().IndexOfAnyExcept((byte)0) < 0))
-                return offset == 0 ? null : walk.AllUtf8;
+                return offset == 0 ? null : true;
             if (n < BlockSize)
                 return null;
             long? size = ParseHeader(header, out bool gnu);
-            if (size is null || !walk.Visit(header, gnu, size.Value, offset + BlockSize))
+            if (size is null || !visit(header, gnu, size.Value, offset + BlockSize))
                 return null;
             offset += BlockSize + (size.Value + BlockSize - 1) / BlockSize * BlockSize;
         }
@@ -148,6 +197,111 @@ internal static class TarHeaderNames
         {
             int end = field.IndexOf((byte)0);
             return Utf8.IsValid(end < 0 ? field : field[..end]);
+        }
+    }
+
+    // libarchive's order for an entry's name: a pax "path" record, else a GNU "L" long name, else
+    // the header's own (POSIX: prefix "/" name; GNU magic keeps other fields where the prefix is).
+    private sealed class NameList(ReadAt read, bool utf8Names, Encoding legacy)
+    {
+        private string? _longName;
+        private string? _paxPath;
+
+        public List<string> Names { get; } = [];
+
+        // False when the walk cannot decide.
+        public bool Visit(byte[] header, bool gnu, long size, long contentOffset)
+        {
+            switch (header[156])
+            {
+                case (byte)'L':
+                    byte[]? longName = ReadContent(size, contentOffset);
+                    _longName = longName is null ? null : DecodeHeaderBytes(UpToNul(longName));
+                    return _longName is not null;
+                case (byte)'x':
+                    return ReadPax(size, contentOffset, global: false);
+                case (byte)'g':
+                    return ReadPax(size, contentOffset, global: true);
+                case (byte)'K':
+                    return true; // a long link target, not a name
+                case 0 or (byte)'0' or (byte)'1' or (byte)'2' or (byte)'3' or (byte)'4' or (byte)'5' or (byte)'6' or (byte)'7':
+                    string? name = _paxPath ?? _longName ?? DecodeHeaderBytes(HeaderName(header, gnu));
+                    _paxPath = null;
+                    _longName = null;
+                    if (name is null)
+                        return false;
+                    Names.Add(name);
+                    return true;
+                default:
+                    return false; // sparse, a GNU dump directory, a volume label...: left to tar.exe
+            }
+        }
+
+        private static byte[] HeaderName(byte[] header, bool gnu)
+        {
+            ReadOnlySpan<byte> name = UpToNul(header.AsSpan(0, 100));
+            ReadOnlySpan<byte> prefix = gnu ? [] : UpToNul(header.AsSpan(345, 155));
+            return prefix.IsEmpty ? name.ToArray() : [.. prefix, (byte)'/', .. name];
+        }
+
+        // Records are "<length> <key>=<value>\n", the length counting the whole record.
+        private bool ReadPax(long size, long contentOffset, bool global)
+        {
+            byte[]? content = ReadContent(size, contentOffset);
+            if (content is null)
+                return false;
+
+            byte[]? path = null;
+            bool binary = false;
+            int i = 0;
+            while (i < content.Length)
+            {
+                int space = content.AsSpan(i).IndexOf((byte)' ');
+                if (space <= 0
+                    || !int.TryParse(content.AsSpan(i, space), NumberStyles.None, CultureInfo.InvariantCulture, out int length)
+                    || length <= space + 2 || length > content.Length - i || content[i + length - 1] != (byte)'\n')
+                    return false;
+                ReadOnlySpan<byte> record = content.AsSpan(i + space + 1, length - space - 2);
+                int equals = record.IndexOf((byte)'=');
+                if (equals <= 0)
+                    return false;
+                ReadOnlySpan<byte> key = record[..equals];
+                ReadOnlySpan<byte> value = record[(equals + 1)..];
+                if (key.SequenceEqual("path"u8))
+                    path = value.ToArray();
+                else if (key.SequenceEqual("hdrcharset"u8))
+                    binary = value.SequenceEqual("BINARY"u8);
+                else if (key.StartsWith("GNU.sparse"u8))
+                    return false;
+                i += length;
+            }
+
+            if (global)
+                return path is null && !binary;
+            if (path is not null)
+            {
+                _paxPath = binary ? DecodeHeaderBytes(path) : DecodeUtf8(path);
+                return _paxPath is not null;
+            }
+            return true;
+        }
+
+        private byte[]? ReadContent(long size, long contentOffset)
+        {
+            if (size > MaxLongNameBytes)
+                return null;
+            byte[] content = new byte[size];
+            return ReadFully(read, content, contentOffset) < content.Length ? null : content;
+        }
+
+        private string? DecodeHeaderBytes(ReadOnlySpan<byte> bytes) => utf8Names ? DecodeUtf8(bytes) : legacy.GetString(bytes);
+
+        private static string? DecodeUtf8(ReadOnlySpan<byte> bytes) => Utf8.IsValid(bytes) ? Encoding.UTF8.GetString(bytes) : null;
+
+        private static ReadOnlySpan<byte> UpToNul(ReadOnlySpan<byte> field)
+        {
+            int end = field.IndexOf((byte)0);
+            return end < 0 ? field : field[..end];
         }
     }
 
