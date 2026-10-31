@@ -13238,7 +13238,10 @@ test kept PING alive 10 s past it.
   before `WaitForExitAsync` sees the cancel, and its exit code 1 would reach the caller as tar.exe's
   own. Covered by reasoning, not by a test: the window is narrow (the readers' registrations run
   before the kill, and the wait's inline cancel usually wins), and a cancel from `OnProcessStarted`
-  lands before the resume, where the old code threw too.
+  lands before the resume, where the old code threw too. Accepted side effect (the fresh review): a
+  cancel that comes after tar.exe exited and its output was read, but before `GetExitCodeProcess`,
+  now cancels a run that had finished; the window is a few instructions, and a cancel the user asked
+  for is honoured.
 - Not changed: each launch still blocks two or three pool threads for the child's life (the task's
   hypothesis 2).
 

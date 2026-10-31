@@ -109,7 +109,9 @@ public sealed class TarCommandLineEncodingTests
                 cts.Token);
 
             await run.Invoking(t => t).Should().ThrowAsync<OperationCanceledException>();
-            // T-F428: "the cancel did not kill the child" and "the call returned late" fail apart.
+            // T-F428: a child left alive and a late return fail with different messages. The kill
+            // check holds without T-F428 too (RunAsync's catch kills); the busy-reader test below
+            // is the one that needs the fix.
             child!.WaitForExit(TimeSpan.FromSeconds(5)).Should().BeTrue("a cancel kills the child");
             clock.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(30),
                 $"the pool had {ThreadPool.ThreadCount} threads and {ThreadPool.PendingWorkItemCount} queued items");
