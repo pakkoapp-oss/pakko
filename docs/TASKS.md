@@ -1838,8 +1838,14 @@ re-measured with T-F346's script before and after.
   removable feature, `Uninstall-WindowsFeature Windows-Defender`); and whether turning it off by
   policy (`DisableAntiSpyware`, ignored on current client builds under Tamper Protection) removes its
   AMSI subkey.
-- **Next:** a checkpoint of PakkoW10 first; installers only from the vendor's own site, checked against
-  the vendor's signature (the host-safety rule), nothing installed on the user's machine. Use the
+- **Next:** a checkpoint of PakkoW10 first; nothing installed on the user's machine. Install through
+  winget's `msstore` source (the user, 2026-10-31), checked 2026-10-31 with `winget show`: Avast One
+  Free Antivirus `XPDNZJFNCR1B07` (publisher AVAST Software), Avira Security `XPFD23M0L795KD`
+  (publisher Avira); `winget install --id <id> --source msstore --accept-package-agreements`, one
+  product at a time, rolling back to the checkpoint between them. The `winget` source itself has
+  neither (only ESET, Malwarebytes, Webroot, ClamAV and others). If PakkoW10 has no winget (App
+  Installer), install App Installer from the Store first, or take the vendor's own installer and check
+  its signature. Use the
   Native AOT `pakko` (`scripts\Publish-Cli.ps1 -Architecture x64`) and, where the App is needed,
   the MSIX. Record the measurements in `docs/DECISIONS.md` ("T-F444"). Then decide: if a stale
   subkey can give Clean, `AmsiProviderCheck` must check that the provider really scans (e.g. EICAR
