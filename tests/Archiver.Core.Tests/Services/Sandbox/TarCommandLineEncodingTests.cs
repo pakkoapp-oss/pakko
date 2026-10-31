@@ -98,13 +98,63 @@ public sealed class TarCommandLineEncodingTests
         });
         var clock = System.Diagnostics.Stopwatch.StartNew();
         canceller.Start();
-        Task<(int, string, string)> run = SandboxedProcessLauncher.RunAsync(
-            @"C:\Windows\System32\PING.EXE", ["-n", "60", "127.0.0.1"],
-            new ProcessLaunchOptions(StdInData: new byte[4 * 1024 * 1024]), cts.Token);
+        System.Diagnostics.Process? child = null;
+        try
+        {
+            Task<(int, string, string)> run = SandboxedProcessLauncher.RunAsync(
+                @"C:\Windows\System32\PING.EXE", ["-n", "60", "127.0.0.1"],
+                new ProcessLaunchOptions(
+                    OnProcessStarted: pid => child = System.Diagnostics.Process.GetProcessById(pid),
+                    StdInData: new byte[4 * 1024 * 1024]),
+                cts.Token);
 
-        await run.Invoking(t => t).Should().ThrowAsync<OperationCanceledException>();
-        clock.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(30));
+            await run.Invoking(t => t).Should().ThrowAsync<OperationCanceledException>();
+            // T-F428: "the cancel did not kill the child" and "the call returned late" fail apart.
+            child!.WaitForExit(TimeSpan.FromSeconds(5)).Should().BeTrue("a cancel kills the child");
+            clock.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(30),
+                $"the pool had {ThreadPool.ThreadCount} threads and {ThreadPool.PendingWorkItemCount} queued items");
+        }
+        finally
+        {
+            child?.Dispose();
+        }
         canceller.Join();
+    }
+
+    // T-F428: a reader busy in its own callback cannot observe a cancel, so the cancel itself must
+    // kill the child. Judged by the child's state, on the cancelling thread, not by a clock (T-F425).
+    [Fact]
+    public async Task Launcher_CancelWhileAReaderIsBusy_KillsTheChildWithoutTheReader()
+    {
+        using var cts = new CancellationTokenSource();
+        System.Diagnostics.Process? child = null;
+        bool called = false, aliveAtCancel = false, goneAfterCancel = false;
+        try
+        {
+            Func<Task> run = () => SandboxedProcessLauncher.RunAsync(
+                @"C:\Windows\System32\PING.EXE", ["-n", "60", "127.0.0.1"],
+                new ProcessLaunchOptions(
+                    OnProcessStarted: pid => child = System.Diagnostics.Process.GetProcessById(pid),
+                    OnStdOutDiscarded: _ =>
+                    {
+                        if (called)
+                            return;
+                        called = true;
+                        aliveAtCancel = !child!.HasExited;
+                        cts.Cancel();
+                        goneAfterCancel = child.WaitForExit(TimeSpan.FromSeconds(10));
+                    }),
+                cts.Token);
+
+            await run.Should().ThrowAsync<OperationCanceledException>();
+        }
+        finally
+        {
+            child?.Dispose();
+        }
+
+        aliveAtCancel.Should().BeTrue("the precondition: PING was still running when the cancel came");
+        goneAfterCancel.Should().BeTrue("the cancel must kill the child while the reader is busy");
     }
 
     [Fact]

@@ -196,6 +196,14 @@ internal static partial class SandboxedProcessLauncher
         if (NativeMethods.ResumeThread(threadHandle) == uint.MaxValue)
             throw new IOException($"ResumeThread failed (Win32 error {Marshal.GetLastWin32Error()}).");
 
+        // T-F428: a cancel kills the child itself, on the cancelling thread — the reads below see a
+        // cancel only through pool threads, or not at all while a callback of theirs is busy.
+        // Registered after the resume: on a token already cancelled it runs at once, and a child
+        // killed while suspended would fail AssignProcessToJobObject instead of cancelling. Disposed
+        // before this method returns, so before RunAsync closes the handle.
+        using CancellationTokenRegistration killOnCancel = cancellationToken.Register(
+            () => _ = NativeMethods.TerminateProcess(processHandle, 1));
+
         Task stdInTask = stdInWrite is null ? Task.CompletedTask : WriteStdIn(stdInWrite, options.StdInData!);
 
         using var stdOutStream = new FileStream(stdOutRead, FileAccess.Read);
@@ -214,6 +222,10 @@ internal static partial class SandboxedProcessLauncher
 
         await WaitForExitAsync(processHandle, cancellationToken).ConfigureAwait(false);
         await stdInTask.ConfigureAwait(false);
+
+        // A child the cancel killed can signal its exit before the wait sees the cancel; its exit
+        // code 1 must not reach the caller as tar.exe's own.
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (!NativeMethods.GetExitCodeProcess(processHandle, out uint exitCode))
             throw new IOException($"GetExitCodeProcess failed (Win32 error {Marshal.GetLastWin32Error()}).");

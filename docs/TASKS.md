@@ -1530,7 +1530,13 @@ re-measured with T-F346's script before and after.
 
 ### T-F427 — The AMSI EICAR tests decide once whether AMSI is live, then fail when it stops (P3, stream B)
 
-- [ ] **Status:** open. `AntivirusScanServiceEicarTests.ScanAsync_RealEicarInZipArchive_ReturnsThreatDetected`
+- [ ] **Status:** fixed 2026-10-31, branch `fix/stream-b-launcher-amsi`: when a scan misses EICAR, both
+  tests probe AMSI again as the attribute does; AMSI not detecting now (not ready, or degraded to
+  Clean as in T-F177) means not judged, with the reason in the test output (xUnit 2 has no run-time
+  skip); AMSI healthy means the strict checks. `ScanAsync_AmsiStopsBeingReadyMidScan_...` pins the
+  service's answer with a fake (0x80070015 after the first scan: the threat is Inconclusive, never
+  Clean). Both real tests passed on the dev machine with real-time protection on. History:
+  `AntivirusScanServiceEicarTests.ScanAsync_RealEicarInZipArchive_ReturnsThreatDetected`
   failed in a full local run on 2026-10-25 (T-F426's branch, no AMSI code touched); right after,
   both EICAR tests skipped with `AmsiScanBuffer failed (HRESULT 0x80070015)` (`ERROR_NOT_READY`): AMSI
   was not ready on the dev machine. `SkipIfTarOrAmsiUnavailableAttribute` probes AMSI when the test
@@ -1543,7 +1549,13 @@ re-measured with T-F346's script before and after.
 
 ### T-F428 — A cancelled launch waits for the thread pool before tar.exe is killed (P3, from stream B)
 
-- [ ] **Status:** open, hypotheses. `TarCommandLineEncodingTests.Launcher_StdInDataCancelled_ThrowsPromptly`
+- [ ] **Status:** fixed 2026-10-31, branch `fix/stream-b-launcher-amsi` (`docs/DECISIONS.md`, "T-F428"):
+  a cancellation registration made after `ResumeThread` calls `TerminateProcess` on the cancelling
+  thread. `Launcher_CancelWhileAReaderIsBusy_KillsTheChildWithoutTheReader` was red before (a reader
+  busy in its callback kept PING alive past the cancel); `Launcher_StdInDataCancelled_ThrowsPromptly`
+  now tells a child the cancel did not kill from a late return, with the pool's counts in the
+  message. Left open: hypothesis (2), the two or three pool threads each launch blocks. History:
+  `TarCommandLineEncodingTests.Launcher_StdInDataCancelled_ThrowsPromptly`
   took 59.6 s against its 30 s limit on run 40099759037 (2026-10-24, branch `docs/wave-1.9.0`, a plan
   PR with no code change), the lifetime of its `PING -n 60` child; a fuzz iteration timed out in the
   same run, so the whole runner may have stalled. Two things in `SandboxedProcessLauncher` make that
