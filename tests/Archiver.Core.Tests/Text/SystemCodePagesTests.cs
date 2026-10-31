@@ -32,6 +32,17 @@ public sealed class SystemCodePagesTests
         SystemCodePages.For(codePage).CodePage.Should().Be(codePage);
     }
 
+    // Pages .NET carries itself, which the code-page tables do not repeat.
+    [Theory]
+    [InlineData(1200)]
+    [InlineData(20127)]
+    [InlineData(28591)]
+    public void For_PageBuiltIntoDotNet_IsThatPage(int codePage)
+    {
+        SystemCodePages.For(codePage).CodePage.Should().Be(codePage);
+        SystemCodePages.ForStrict(codePage).CodePage.Should().Be(codePage);
+    }
+
     // Before T-F441 an unknown page fell back to Latin-1 without a word; a wrong decoding then
     // looked like a name.
     [Theory]

@@ -115,7 +115,8 @@ internal static class TarHeaderNames
 
     // The walk only moves forward (a header, its long-name content, the next header), so a
     // decompressing stream serves it: the bytes between two reads are decompressed and dropped.
-    // Nothing is kept, so memory stays flat however far the archive expands; the limit bounds time.
+    // No content is kept, so memory stays flat however far the archive expands; the limit bounds time.
+    // (ReadNames keeps the names themselves: no more than tar.exe's listing already held in memory.)
     private sealed class ForwardReader(Stream stream, long maxBytes, CancellationToken cancellationToken)
     {
         private readonly byte[] _discard = new byte[64 * 1024];
@@ -225,10 +226,14 @@ internal static class TarHeaderNames
                 case (byte)'K':
                     return true; // a long link target, not a name
                 case 0 or (byte)'0' or (byte)'1' or (byte)'2' or (byte)'3' or (byte)'4' or (byte)'5' or (byte)'6' or (byte)'7':
+                    // Both on one entry: libarchive 3.5.2 lets the outer one win, later versions may
+                    // not, and a forger chooses the order - so no answer.
+                    if (_paxPath is not null && _longName is not null)
+                        return false;
                     string? name = _paxPath ?? _longName ?? DecodeHeaderBytes(HeaderName(header, gnu));
                     _paxPath = null;
                     _longName = null;
-                    if (name is null)
+                    if (name is null || IsRootedOrClimbs(name))
                         return false;
                     Names.Add(name);
                     return true;
@@ -241,8 +246,17 @@ internal static class TarHeaderNames
         {
             ReadOnlySpan<byte> name = UpToNul(header.AsSpan(0, 100));
             ReadOnlySpan<byte> prefix = gnu ? [] : UpToNul(header.AsSpan(345, 155));
-            return prefix.IsEmpty ? name.ToArray() : [.. prefix, (byte)'/', .. name];
+            // libarchive adds the separator only when the prefix does not already end with one.
+            return prefix.IsEmpty ? name.ToArray()
+                : prefix[^1] == (byte)'/' ? [.. prefix, .. name]
+                : [.. prefix, (byte)'/', .. name];
         }
+
+        // bsdtar prints such a name with its leading '/', drive or "../" taken off (edit_pathname, no
+        // -P), so it would never equal the header's: the headers give no answer for this archive.
+        private static bool IsRootedOrClimbs(string name) =>
+            name.StartsWith('/') || name.StartsWith('\\') || (name.Length >= 2 && name[1] == ':')
+            || name.Split('/', '\\').Contains("..");
 
         // Records are "<length> <key>=<value>\n", the length counting the whole record.
         private bool ReadPax(long size, long contentOffset, bool global)
@@ -271,8 +285,8 @@ internal static class TarHeaderNames
                     path = value.ToArray();
                 else if (key.SequenceEqual("hdrcharset"u8))
                     binary = value.SequenceEqual("BINARY"u8);
-                else if (key.StartsWith("GNU.sparse"u8))
-                    return false;
+                else if (key.StartsWith("GNU.sparse"u8) || key.SequenceEqual("size"u8))
+                    return false; // the content is not where the header's own size field puts the next header
                 i += length;
             }
 

@@ -13306,6 +13306,15 @@ builds. Sizes, progress and the root shape only lose accuracy.
   a lone best-fit name through (only a repeated name is refused there). "A best fit only pushes the
   pre-scan toward refusing" is not confirmed: the 8.3-alias check (T-F420) runs on listed names, and
   a best-fit long name could hide a real alias.
+- **The fresh review (2026-10-31, a read-only subagent, the user's OK) found a bypass, fixed:** a pax
+  `size` record moves the next header for libarchive but not for the walk, so a forged archive could
+  make the header names agree with a best-fit listing and a selection extract the wrong entry again.
+  The walk now gives no answer on a pax `size`, on an entry with both a pax `path` and a GNU long name
+  (which wins depends on libarchive's version and the order a forger picks), and on a rooted or
+  climbing name (bsdtar lists it stripped). A ustar prefix ending in `/` no longer doubles it (a false
+  refusal). `SystemCodePages.For` also answers the pages .NET carries itself (1200, 1201, 12000,
+  12001, 20127, 28591), which the code-page tables do not repeat. Left: the refusal's wording speaks of
+  a code page also when the cause is a header mismatch.
 - **Parsing the formats in process, as 7-Zip and NanaZip do (the user asked, 2026-10-31).** They
   never meet the best fit: every name goes from the header to UTF-16 and to `CreateFileW`, and their
   code pages are only where a format has none (`-scs` for a tar without a charset, `-mcp` for legacy
