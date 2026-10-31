@@ -29,7 +29,7 @@ narrative this section used to hold is archived verbatim in `docs/DECISIONS.md`'
 **Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
 truth; never trust a count written in a doc.
 
-**Next work:** after v1.9.0, "Deferred past 1.9.0" at the top of `docs/TASKS.md`.
+**Next work:** the v1.10.0 wave (bug fixes, taskbar/tray progress) at the top of `docs/TASKS.md`.
 
 ## Roadmap Summary
 
