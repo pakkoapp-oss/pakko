@@ -48,14 +48,15 @@ public static partial class SystemCodePages
 
     /// <summary>
     /// The encoding for <paramref name="codePage"/>: UTF-8 without a byte order mark, otherwise the
-    /// framework's code-page tables (used directly, never registered process-wide). Unmappable input
-    /// becomes the page's replacement character, as Windows' own conversions do.
+    /// framework's code-page tables (used directly, never registered process-wide), then the pages
+    /// built into .NET itself (UTF-16, ASCII, Latin-1), which the tables do not repeat. Unmappable
+    /// input becomes the page's replacement character, as Windows' own conversions do.
     /// </summary>
-    /// <exception cref="NotSupportedException">The page is not in the framework's tables.</exception>
+    /// <exception cref="NotSupportedException">The page is in neither.</exception>
     public static Encoding For(int codePage) =>
         codePage == Utf8
             ? new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)
-            : CodePagesEncodingProvider.Instance.GetEncoding(codePage) ?? throw Unknown(codePage);
+            : CodePagesEncodingProvider.Instance.GetEncoding(codePage) ?? BuiltIn(codePage) ?? throw Unknown(codePage);
 
     /// <summary>As <see cref="For"/>, but a character or byte the page cannot carry throws.</summary>
     /// <exception cref="NotSupportedException">The page is not in the framework's tables.</exception>
@@ -63,7 +64,16 @@ public static partial class SystemCodePages
         codePage == Utf8
             ? new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
             : CodePagesEncodingProvider.Instance.GetEncoding(codePage, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback)
+                ?? BuiltIn(codePage, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback)
                 ?? throw Unknown(codePage);
+
+    // Encoding.GetEncoding answers these without a provider; any other page throws there.
+    private static readonly HashSet<int> BuiltInCodePages = [1200, 1201, 12000, 12001, 20127, 28591];
+
+    private static Encoding? BuiltIn(int codePage) => BuiltInCodePages.Contains(codePage) ? Encoding.GetEncoding(codePage) : null;
+
+    private static Encoding? BuiltIn(int codePage, EncoderFallback encoderFallback, DecoderFallback decoderFallback) =>
+        BuiltInCodePages.Contains(codePage) ? Encoding.GetEncoding(codePage, encoderFallback, decoderFallback) : null;
 
     private static NotSupportedException Unknown(int codePage) =>
         new(string.Create(CultureInfo.InvariantCulture, $"Code page {codePage} is not available."));

@@ -231,9 +231,8 @@ public sealed class TarHeaderNamesTests
     }
 
     [Fact]
-    public void ReadNames_PaxPath_WinsOverLongNameAndHeader_IsUtf8()
-        => Names(Tar(Entry("././@LongLink"u8.ToArray(), type: 'L', gnu: true, content: "long.txt\0"u8.ToArray()),
-                Entry("PaxHeaders/x"u8.ToArray(), type: 'x', content: Pax("path", Utf8Name)),
+    public void ReadNames_PaxPath_WinsOverTheHeader_IsUtf8()
+        => Names(Tar(Entry("PaxHeaders/x"u8.ToArray(), type: 'x', content: Pax("path", Utf8Name)),
                 Entry("short.txt"u8.ToArray())))
             .Should().Equal(Encoding.UTF8.GetString(Utf8Name));
 
@@ -299,6 +298,34 @@ public sealed class TarHeaderNamesTests
     public void ReadNames_MalformedPaxRecord_Null(string record)
         => Names(Tar(Entry("x"u8.ToArray(), type: 'x', content: Encoding.ASCII.GetBytes(record)), Entry("a"u8.ToArray())))
             .Should().BeNull();
+
+    // Found by the fresh review: a pax "size" moves the next header for libarchive but not for this
+    // walk, so a forged archive could make the header names agree with a best-fit listing.
+    [Fact]
+    public void ReadNames_PaxSize_Null()
+        => Names(Tar(Entry("x"u8.ToArray(), type: 'x', content: Pax("size", "0"u8.ToArray())),
+                Entry("cafe.txt"u8.ToArray(), content: new byte[512]), Entry("b.txt"u8.ToArray())))
+            .Should().BeNull();
+
+    // Which of the two wins depends on libarchive's version and the record order a forger picks.
+    [Fact]
+    public void ReadNames_PaxPathAndLongNameOnOneEntry_Null()
+        => Names(Tar(Entry("././@LongLink"u8.ToArray(), type: 'L', gnu: true, content: [.. "long.txt"u8, 0]),
+                Entry("x"u8.ToArray(), type: 'x', content: Pax("path", "pax.txt"u8.ToArray())),
+                Entry("short.txt"u8.ToArray())))
+            .Should().BeNull();
+
+    [Fact]
+    public void ReadNames_PrefixEndingWithSlash_NoDoubledSeparator()
+        => Names(Tar(Entry("a.txt"u8.ToArray(), prefix: "dir/"u8.ToArray()))).Should().Equal("dir/a.txt");
+
+    // bsdtar lists these with the root or the climb taken off, so they never match the header.
+    [Theory]
+    [InlineData("/etc/x")]
+    [InlineData("C:/x")]
+    [InlineData("a/../x")]
+    public void ReadNames_RootedOrClimbingName_Null(string name)
+        => Names(Tar(Entry(Encoding.ASCII.GetBytes(name)))).Should().BeNull();
 
     [Fact]
     public void ReadNames_NotATar_Null()
