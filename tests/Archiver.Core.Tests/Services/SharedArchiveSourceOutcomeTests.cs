@@ -64,6 +64,8 @@ public sealed class SharedArchiveSourceOutcomeTests : IDisposable
     [InlineData(@"C:\w\ab\x")] // a prefix of a source's name is not that source
     [InlineData(@"b\link")] // relative: placed by no current folder
     [InlineData(@"\\?\C:\w\b\link")] // another spelling: not matched, so not trusted
+    [InlineData(@"C:\w\b\..\a\x")] // literally under b, really in a
+    [InlineData(@"C:\w\a\.\x")]
     [InlineData("")]
     public void SkipNotPlacedUnderOneSource_KeepsEverySource(string skipPath)
     {
