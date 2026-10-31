@@ -40,6 +40,46 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 
 ---
 
+## v1.10.0 wave — bug fixes and the progress on the taskbar and tray (planned 2026-10-31)
+
+The next minor release (the user, 2026-10-31): the bugs left open after v1.9.0, the SonarCloud
+findings on `main`, and T-F432 (the user put it in this release on 2026-10-29 and asked again on
+2026-10-31 for the tray icon too). Same rules as the v1.9.0 wave: each stream on its own branch from
+`main` and its own PR; sandbox, integration and subprocess tests and the full suite one at a time;
+TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating session only. Strings in
+37 locales: one stream at a time per resource set (App `.resw`: C then D; Shell `.resx`: C).
+
+| Stream | Tasks | Area | Gate |
+|---|---|---|---|
+| A Core, analyzer | T-F424 (refuse a best-fit tar name), T-F440 (SonarCloud findings, the `S3903` bug first) | tar listing, `BareGzip*`, `Program.cs`, tests | tests first |
+| B sandbox launcher, AMSI tests | T-F428 (cancel kills the child itself), T-F427 (AMSI not ready at scan time) | `SandboxedProcessLauncher`, `AntivirusScanService` tests | T-F428: plan mode + advisor at both ends (sandbox code) |
+| C after the operation | T-F434 (recycle each clean source), T-F435 (a reason per kept item), T-F437 (unreadable path list) | `SourceRecycler`, the not-deleted dialog, `Archiver.Shell` messages, `SPEC.md` rule | T-F434: plan mode (an irreversible action on user data) |
+| D progress | T-F432 (taskbar button and tray icon), T-F439 (window floor on a monitor move) | App `MainWindow`, tray icon, `Archiver.OperationUi`, `WindowFloor` | T-F432: plan mode (COM under Native AOT) |
+| E on device, release | `APP-027`, `APP-028`, `APP-030`, `APP-014`, `OPW-*`, the new taskbar/tray rows, the release-tier smoke, `STO-005` as a real Store update | `docs/SMOKE.md`, `scripts/smoke/` | after A-D merge |
+
+Decisions taken with the plan (the agent, 2026-10-31): T-F432 covers the App's taskbar button, the
+App's tray icon and the Explorer operation window's taskbar button (the tray icon is the App's only;
+the operation window has none). The taskbar button and the tray icon follow the whole batch, as
+Explorer's own copy does; the window's text keeps the current archive's speed and time left
+(T-F431). Paused (yellow) while a prompt waits, error (red) when the run ends with a failure,
+cleared when the summary shows. T-F434: recycle each fully processed, unchanged source; a skipped
+source keeps only itself (written into `docs/SPEC.md`), not the others. T-F393 stays deferred
+(25 of 25 tries opened the dialog).
+
+Order: A, B, C and D's code in parallel (T-F428, T-F434 and T-F432 after their plans); **no test
+runs, smoke or device checks while the user's PC is busy** (the user, 2026-10-31: the smoke runs
+later, after the fixes); then E on the device, the user's elevated checks batched right before the
+release, the release (`.claude/rules/ci.md`) and the Store submission with the sv-se lists typed into
+Partner Center's form (DECISIONS "v1.9.0 - the Store install").
+
+**Deferred past 1.10.0**, each with its v1.9.0 reason unchanged: T-F359 (no spinning disk), T-F254
+(a regional language pack and a sign-out; could run on the PakkoW10 VM if the user wants it in),
+T-F332's super hero art (the user's image), T-F317's outward steps (CLA and Microsoft's review),
+T-F91's native-speaker review, T-F202's light theme, en-US and tray (system settings and the user's
+hands), T-F393 (no repro).
+
+---
+
 ## v1.9.0 wave — the Store release (planned 2026-10-24)
 
 One wave instead of 1.8.2 (the user, 2026-10-24): every open task that can be done now; the rest is
@@ -1479,6 +1519,8 @@ re-measured with T-F346's script before and after.
   is discovered; AMSI stopped being ready between that probe and the scan. Next: decide what a scan that finds AMSI not ready means for these tests (skip at run
   time, or the result `AntivirusScanService` already gives a caller when AMSI is gone), with a test
   that turns AMSI off by a fake, not by changing the machine's antivirus. The failure's own message was not kept.
+  2026-10-31: `Get-MpComputerStatus` reads real-time protection on again, so the real path can be
+  checked; run both EICAR tests once to confirm before relying on it.
 - **Reported by:** stream B's full run, 2026-10-25.
 
 ### T-F428 — A cancelled launch waits for the thread pool before tar.exe is killed (P3, from stream B)
@@ -1542,6 +1584,10 @@ re-measured with T-F346's script before and after.
   failure waits for the user. Decide first: which windows (the Explorer operation window, the App,
   or both), and whether in a batch the button follows the current archive (as T-F431's speed does)
   or the whole batch (as Explorer's copy does).
+- **2026-10-31, the user:** the App's tray icon (`H.NotifyIcon`, `MainWindow.xaml`'s `TrayIcon`) shows
+  the progress too. Decided in the v1.10.0 wave: the App's button and tray icon and the operation
+  window's button, all following the whole batch. Tray: an icon redrawn at a coarse step (e.g. every
+  5 %) and the percent in its tooltip; measure the redraw cost first.
 - **Reported by:** the user, 2026-10-29.
 
 ### T-F433 — The App window's minimum size is in physical pixels, so at 175 % its footer can leave the window (P2)
@@ -1620,6 +1666,26 @@ re-measured with T-F346's script before and after.
   0x07): written as `C:\b.txt` and `C:\a.txt` and decoded on the way in (`.claude/rules/text-encoding.md`).
   The tests pass either way, the path is only a label. Next: put the paths back through a script.
 - **Reported by:** the v1.9.0 release run, 2026-10-29.
+
+### T-F439 — The App window's floor is not applied again on a move to a monitor of the same DPI with a smaller work area (P3, from T-F433)
+
+- [ ] **Status:** open. `WindowFloor` caches the DPI and recomputes the floor only when it changes, so a
+  window moved to a monitor of the same DPI whose work area is smaller keeps a floor that may not fit
+  there (T-F433's "Not covered"). Next: recompute on a move between monitors (`AppWindow.Changed` with
+  `DidPositionChange`, compare the monitor, not only the DPI), a `WindowFloorTests` case, `APP-014`.
+- **Reported by:** T-F433's closing review, 2026-10-30.
+
+### T-F440 — SonarCloud: 28 open findings on `main` after v1.9.0 (P2)
+
+- [ ] **Status:** open. `issues/search` on `main`, 2026-10-31: 28 unresolved, one of type BUG
+  (`S3903`, a type outside a namespace, `src/Archiver.CLI/Program.cs:1022`). Critical: `S3776` in
+  `BareGzip.cs:61`, `BareGzipEngine.cs:72`, `Program.cs:862`, `scripts/smoke/Common.ps1:375`; `S3218`
+  in `BareGzip.cs` (339, 341, 371, 373) and `IO/PathIdentity.cs:21`. Also `S107`
+  (`BareGzipEngine.cs:185`), `S3358` (`ExtractionRouter.cs:82`), `S1192`, and test-side
+  `IDE0028`/`xUnit1042`/`xUnit1045`. Most came with T-F413 (the bare gzip engine). Next: fix each, or
+  record it in `docs/CONVENTIONS.md`'s Won't-Fix list with its reason; the full list from the API, not
+  from this entry.
+- **Reported by:** the v1.10.0 wave planning, 2026-10-31.
 
 ### T-F393 — The About button went disabled once and no dialog came (P3)
 
