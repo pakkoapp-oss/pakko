@@ -76,4 +76,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakko could not be opened. Reinstall Pakko and try again.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko did not receive the items selected in File Explorer, so nothing was done. Try again.</value>
+  </data>
 </root>

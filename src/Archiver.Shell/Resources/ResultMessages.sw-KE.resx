@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakko haikuweza kufunguliwa. Sakinisha upya Pakko kisha ujaribu tena.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko haikupokea vipengee vilivyochaguliwa katika File Explorer, kwa hiyo hakuna kilichofanyika. Jaribu tena.</value>
+  </data>
 </root>

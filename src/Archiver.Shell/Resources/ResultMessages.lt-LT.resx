@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Nepavyko atidaryti Pakko. Iš naujo įdiekite Pakko ir bandykite dar kartą.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko negavo failų naršyklėje pažymėtų elementų, todėl nieko neatlikta. Bandykite dar kartą.</value>
+  </data>
 </root>

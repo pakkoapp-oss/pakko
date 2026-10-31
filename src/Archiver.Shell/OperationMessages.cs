@@ -200,8 +200,10 @@ internal static class OperationMessages
     /// T-F235: the Explorer selection did not arrive on stdin. The DLL's own write usually fails
     /// first and says so, but not when the child got a handle that never became its stdin.
     /// </summary>
-    public static OperationMessage ForSelectionNotReceived() =>
-        new("Pakko", MessageSeverity.Error, ResultMessagesLocalizer.Get("ResultOperationFailed"));
+    // T-F437: says the Explorer selection did not arrive, then StdinPathList's reason (English, as
+    // every technical text Pakko shows: DECISIONS T-F297).
+    public static OperationMessage ForSelectionNotReceived(string reason) =>
+        new("Pakko", MessageSeverity.Error, ResultMessagesLocalizer.Get("ResultSelectionNotReceived") + "\n\n" + reason);
 
     private static OperationMessage ForErrors(string title, IReadOnlyList<ArchiveError> errors)
     {

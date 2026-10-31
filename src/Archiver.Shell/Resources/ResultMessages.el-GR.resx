@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Δεν ήταν δυνατό το άνοιγμα του Pakko. Εγκαταστήστε ξανά το Pakko και δοκιμάστε ξανά.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Το Pakko δεν έλαβε τα στοιχεία που επιλέχθηκαν στην Εξερεύνηση αρχείων, επομένως δεν έγινε τίποτα. Δοκιμάστε ξανά.</value>
+  </data>
 </root>

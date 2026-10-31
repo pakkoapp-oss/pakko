@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakkot ei saanud avada. Installige Pakko uuesti ja proovige uuesti.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko ei saanud File Exploreris valitud üksusi, seega midagi ei tehtud. Proovige uuesti.</value>
+  </data>
 </root>

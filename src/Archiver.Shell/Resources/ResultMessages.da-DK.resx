@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakko kunne ikke åbnes. Geninstaller Pakko, og prøv igen.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko modtog ikke de elementer, der er markeret i Stifinder, så der blev ikke gjort noget. Prøv igen.</value>
+  </data>
 </root>

@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakko tidak dapat dibuka. Instal ulang Pakko dan coba lagi.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko tidak menerima item yang dipilih di File Explorer, jadi tidak ada yang dilakukan. Coba lagi.</value>
+  </data>
 </root>

@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakko kunne ikke åpnes. Installer Pakko på nytt og prøv igjen.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko mottok ikke elementene som er merket i Filutforsker, så ingenting ble gjort. Prøv igjen.</value>
+  </data>
 </root>

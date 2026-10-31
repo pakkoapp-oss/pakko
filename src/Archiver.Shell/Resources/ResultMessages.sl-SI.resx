@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakka ni bilo mogoče odpreti. Znova namestite Pakko in poskusite znova.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko ni prejel elementov, izbranih v Raziskovalcu, zato se ni nič zgodilo. Poskusite znova.</value>
+  </data>
 </root>

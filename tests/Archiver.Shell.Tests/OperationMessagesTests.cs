@@ -300,14 +300,17 @@ public sealed class OperationMessagesTests : IDisposable
         OperationMessages.ForLaunch(AppLaunchResult.Launched).Should().BeNull();
     }
 
-    // T-F235: a rejected stdin path list must not end the command silently.
+    // T-F235: a rejected stdin path list must not end the command silently. T-F437: and it says that
+    // the selection was not received, with the list's own reason (English, as every technical text).
     [Fact]
-    public void ForSelectionNotReceived_IsAnErrorSayingTheOperationFailed()
+    public void ForSelectionNotReceived_SaysTheSelectionWasNotReceivedAndWhy()
     {
-        OperationMessage message = OperationMessages.ForSelectionNotReceived();
+        OperationMessage message = OperationMessages.ForSelectionNotReceived("The path list ended early.");
 
         message.Title.Should().Be("Pakko");
         message.Severity.Should().Be(MessageSeverity.Error);
-        message.Text.Should().Be(ResultMessagesLocalizer.Get("ResultOperationFailed"));
+        message.Text.Should().StartWith(ResultMessagesLocalizer.Get("ResultSelectionNotReceived"))
+            .And.EndWith("The path list ended early.");
+        message.Text.Should().NotContain(ResultMessagesLocalizer.Get("ResultOperationFailed"));
     }
 }

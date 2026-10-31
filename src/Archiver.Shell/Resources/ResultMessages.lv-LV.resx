@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakko nevarēja atvērt. Pārinstalējiet Pakko un mēģiniet vēlreiz.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko nesaņēma failu pārlūkā atlasītos vienumus, tāpēc nekas netika izdarīts. Mēģiniet vēlreiz.</value>
+  </data>
 </root>
