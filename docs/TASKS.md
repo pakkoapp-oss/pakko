@@ -1712,11 +1712,11 @@ re-measured with T-F346's script before and after.
   that collapse to one listing line). Part 1 (code-page source, owners, the scanning test), then
   part 2 (the tar-name verdict). Follow-up, not in this task: the browse tree could show a plain or
   gzip tar's true names from its headers.
-- **Open before done (2026-10-31):** both PRs green in CI and the red check seen (draft PR #131);
-  the local full run and the integration tests on both tar.exe builds once the PC is free;
-  `scripts/smoke/TarNames.ps1` with generator fixtures (the VM has no .NET) and its `docs/SMOKE.md`
-  row; a folder entry whose listed name is a best fit (pre-created and stamped by listed name,
-  DECISIONS); `SECURITY.md` for the pax records now parsed in process (the user's OK 2026-10-31,
+- **Done 2026-10-31:** part 1 merged (#130); part 2 green in CI (#132); the red check seen (draft
+  #131, closed); the local full run green; `CLI-044` (`docs/SMOKE.md`) on this machine and the same
+  commands on PakkoW10's tar.exe 3.5.2 with a Native AOT `pakko`. The folder case measured and moved
+  to T-F443.
+- **Open before done:** `SECURITY.md` for the pax records now parsed in process (the user's OK 2026-10-31,
   written); the fresh reviewer (the user's OK 2026-10-31). Next step after part 2 merges (the user,
   2026-10-31): `TarHeaderNames.ReadNames` on `System.Formats.Tar`'s `TarReader`, names only (DECISIONS).
 - **Before:** open, research first. The user, 2026-10-31: encoding bugs in names keep coming
@@ -1786,6 +1786,17 @@ re-measured with T-F346's script before and after.
   ends, `SECURITY.md` only with the user's word; a manifest change updates `docs/DIAGRAMS.md`; strings
   in 37 locales through the stream that holds that resource set.
 - **Reported by:** the user, 2026-10-31.
+
+### T-F443 — A folder whose name tar.exe lists by best fit leaves an empty twin, and an empty subfolder lands under the listed name (P3, from T-F441, stream A)
+
+- [ ] **Status:** open. Measured 2026-10-31 (bsdtar 3.8.9, ACP 1251, `Extract_Everything_FolderListedByBestFit_OnlyTheTrueFolder`,
+  skipped until fixed): files land right, but folders are pre-created in the quarantine (T-F52), given
+  their entries and their times by listed name, so the destination gets an empty `cafe/` beside the
+  true accented folder, and an empty subfolder entry goes under `cafe/` instead of the true one.
+  Next: map a listed folder name to the quarantine folder tar.exe wrote, through the same best fit
+  Windows applies (`WideCharToMultiByte` without `WC_NO_BEST_FIT_CHARS` in the user's ANSI page, then
+  back), and drop a pre-created folder that only a listed name made; measure on 3.5.2 too.
+- **Reported by:** T-F441's measurement, 2026-10-31.
 
 ### T-F393 — The About button went disabled once and no dialog came (P3)
 

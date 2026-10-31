@@ -85,6 +85,45 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         }
     }
 
+    // Folders are pre-created for the sandbox (T-F52), and folder entries and times applied, by
+    // listed name: a folder listed by best fit must not leave a second, empty folder under that name.
+    // Measured 2026-10-31 (bsdtar 3.8.9, ACP 1251): the destination held "cafe", "cafe/empty" and
+    // "caf<e-acute>" with x.txt - the files right, the empty folder under the listed name. T-F443.
+    [Integration(Skip = "T-F443: folders are still pre-created and applied by listed name")]
+    public async Task Extract_Everything_FolderListedByBestFit_OnlyTheTrueFolder()
+    {
+        foreach ((char accent, char plain) in new[] { ((char)0xE9, 'e'), ((char)0x101, 'a') })
+        {
+            string folder = "caf" + accent;
+            string path = Path.Combine(_temp.Path, $"dir-{(int)accent:x}.tar");
+            TarBuilder.WriteTar(path,
+            [
+                TarBuilder.PaxPath(folder + "/"),
+                new TarBuilder.Entry { Name = "placeholder/", TypeFlag = '5' },
+                TarBuilder.PaxPath(folder + "/x.txt"),
+                new TarBuilder.Entry { Name = "placeholder.txt", Content = Encoding.ASCII.GetBytes("X") },
+                TarBuilder.PaxPath(folder + "/empty/"),
+                new TarBuilder.Entry { Name = "placeholder2/", TypeFlag = '5' },
+            ]);
+            ArchiveListResult list = await _sut.ListEntriesAsync(path);
+            if (!list.Success || !list.Entries.Any(e => e.Path.StartsWith("caf" + plain, StringComparison.Ordinal)))
+                continue; // this page carries the name
+            string dest = NewDestination();
+
+            ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+            {
+                ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            });
+
+            result.Errors.Should().BeEmpty(TarCodePage.Describe());
+            File.ReadAllText(Path.Combine(dest, folder, "x.txt")).Should().Be("X");
+            Directory.GetDirectories(dest, "*", SearchOption.AllDirectories)
+                .Select(d => Path.GetRelativePath(dest, d).Replace('\\', '/'))
+                .Should().BeEquivalentTo([folder, folder + "/empty"], TarCodePage.Describe());
+            return;
+        }
+    }
+
     [Integration]
     public async Task Test_FilterOverTheCollapsedName_Refused()
     {
