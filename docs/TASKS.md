@@ -1716,8 +1716,9 @@ re-measured with T-F346's script before and after.
   the local full run and the integration tests on both tar.exe builds once the PC is free;
   `scripts/smoke/TarNames.ps1` with generator fixtures (the VM has no .NET) and its `docs/SMOKE.md`
   row; a folder entry whose listed name is a best fit (pre-created and stamped by listed name,
-  DECISIONS); `SECURITY.md` for the pax records now parsed in process (the user's word); the
-  fresh-reviewer offer.
+  DECISIONS); `SECURITY.md` for the pax records now parsed in process (the user's OK 2026-10-31,
+  written); the fresh reviewer (the user's OK 2026-10-31). Next step after part 2 merges (the user,
+  2026-10-31): `TarHeaderNames.ReadNames` on `System.Formats.Tar`'s `TarReader`, names only (DECISIONS).
 - **Before:** open, research first. The user, 2026-10-31: encoding bugs in names keep coming
   back; there must be one place (or a few, if needed) where names are resolved and checked, for
   tar.exe and for the whole Core, names and paths everywhere. History that justifies it: T-F204,
