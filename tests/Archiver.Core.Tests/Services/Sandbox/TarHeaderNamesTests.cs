@@ -1,5 +1,6 @@
 using System.Text;
 using Archiver.Core.Services.Sandbox;
+using Archiver.Core.Text;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services.Sandbox;
@@ -206,6 +207,125 @@ public sealed class TarHeaderNamesTests
         byte[] gzip = Gzip(Tar(Entry(Utf8Name)));
         Action act = () => TarHeaderNames.AreAllUtf8InGzip(new MemoryStream(gzip), long.MaxValue, cts.Token);
         act.Should().Throw<OperationCanceledException>();
+    }
+
+    // T-F441: the names themselves, as libarchive builds them, to check tar.exe's listing against.
+    private static readonly Encoding Cp866 = SystemCodePages.For(866);
+
+    [Fact]
+    public void ReadNames_PosixPrefixAndName_Joined()
+        => Names(Tar(Entry("a.txt"u8.ToArray(), prefix: "dir"u8.ToArray()), Entry("b.txt"u8.ToArray())))
+            .Should().Equal("dir/a.txt", "b.txt");
+
+    [Fact]
+    public void ReadNames_GnuHeader_PrefixOffsetIsNotAName()
+        => Names(Tar(Entry("a.txt"u8.ToArray(), gnu: true, prefix: "dir"u8.ToArray()))).Should().Equal("a.txt");
+
+    [Fact]
+    public void ReadNames_LongNameRecord_WinsOverTheCutHeaderName()
+    {
+        string full = new string('d', 120) + ".txt";
+        Names(Tar(Entry("././@LongLink"u8.ToArray(), type: 'L', gnu: true, content: [.. Encoding.ASCII.GetBytes(full), 0]),
+                Entry(Encoding.ASCII.GetBytes(full[..100]), gnu: true), Entry("next.txt"u8.ToArray(), gnu: true)))
+            .Should().Equal(full, "next.txt");
+    }
+
+    [Fact]
+    public void ReadNames_PaxPath_WinsOverLongNameAndHeader_IsUtf8()
+        => Names(Tar(Entry("././@LongLink"u8.ToArray(), type: 'L', gnu: true, content: "long.txt\0"u8.ToArray()),
+                Entry("PaxHeaders/x"u8.ToArray(), type: 'x', content: Pax("path", Utf8Name)),
+                Entry("short.txt"u8.ToArray())))
+            .Should().Equal(Encoding.UTF8.GetString(Utf8Name));
+
+    // A pax "path" holds for its own entry only.
+    [Fact]
+    public void ReadNames_PaxPath_AppliesToTheNextEntryOnly()
+        => Names(Tar(Entry("PaxHeaders/x"u8.ToArray(), type: 'x', content: Pax("path", "real.txt"u8.ToArray())),
+                Entry("cut.txt"u8.ToArray()), Entry("b.txt"u8.ToArray())))
+            .Should().Equal("real.txt", "b.txt");
+
+    [Fact]
+    public void ReadNames_PaxHdrcharsetBinary_DecodedLikeAHeaderName()
+        => Names(Tar(Entry("PaxHeaders/x"u8.ToArray(), type: 'x', content: [.. Pax("hdrcharset", "BINARY"u8.ToArray()), .. Pax("path", OemName)]),
+                Entry("x"u8.ToArray())))
+            .Should().Equal(Cp866.GetString(OemName));
+
+    [Fact]
+    public void ReadNames_LegacyHeader_DecodedInTheGivenPage()
+        => Names(Tar(Entry(OemName))).Should().Equal(Cp866.GetString(OemName));
+
+    [Fact]
+    public void ReadNames_Utf8Mode_Utf8Header_Decoded()
+        => Names(Tar(Entry(Utf8Name)), utf8Names: true).Should().Equal(Encoding.UTF8.GetString(Utf8Name));
+
+    [Fact]
+    public void ReadNames_Utf8Mode_InvalidBytes_Null()
+        => Names(Tar(Entry(OemName)), utf8Names: true).Should().BeNull();
+
+    [Fact]
+    public void ReadNames_LongLinkTarget_IsNotAName()
+        => Names(Tar(Entry("././@LongLink"u8.ToArray(), type: 'K', gnu: true, content: "target\0"u8.ToArray()),
+                Entry("link"u8.ToArray(), type: '2', gnu: true)))
+            .Should().Equal("link");
+
+    [Theory]
+    [InlineData('S')]
+    [InlineData('D')]
+    [InlineData('V')]
+    public void ReadNames_EntryTypeLibarchiveMayListDifferently_Null(char type)
+        => Names(Tar(Entry("a"u8.ToArray(), type: type, gnu: true))).Should().BeNull();
+
+    [Fact]
+    public void ReadNames_GlobalHeaderWithAPath_Null()
+        => Names(Tar(Entry("g"u8.ToArray(), type: 'g', content: Pax("path", "a.txt"u8.ToArray())), Entry("b.txt"u8.ToArray())))
+            .Should().BeNull();
+
+    [Fact]
+    public void ReadNames_GlobalHeaderWithoutAPath_Ignored()
+        => Names(Tar(Entry("g"u8.ToArray(), type: 'g', content: Pax("comment", "x"u8.ToArray())), Entry("b.txt"u8.ToArray())))
+            .Should().Equal("b.txt");
+
+    [Fact]
+    public void ReadNames_PaxSparse_Null()
+        => Names(Tar(Entry("x"u8.ToArray(), type: 'x', content: Pax("GNU.sparse.name", "a"u8.ToArray())), Entry("a"u8.ToArray())))
+            .Should().BeNull();
+
+    [Theory]
+    [InlineData("9 path=a.txt\n")]
+    [InlineData("12 path=a.txt\n")]
+    [InlineData("x path=a.txt\n")]
+    [InlineData("13 patha.txt\n")]
+    [InlineData("12 path=a.txt!")]
+    public void ReadNames_MalformedPaxRecord_Null(string record)
+        => Names(Tar(Entry("x"u8.ToArray(), type: 'x', content: Encoding.ASCII.GetBytes(record)), Entry("a"u8.ToArray())))
+            .Should().BeNull();
+
+    [Fact]
+    public void ReadNames_NotATar_Null()
+        => Names(RandomBytes(4096)).Should().BeNull();
+
+    [Fact]
+    public void ReadNamesInGzip_SameNames_AndBounded()
+    {
+        byte[] gzip = Gzip(Tar(Entry("a.txt"u8.ToArray(), content: new byte[2000]), Entry("b.txt"u8.ToArray())));
+
+        TarHeaderNames.ReadNamesInGzip(new MemoryStream(gzip), long.MaxValue, false, Cp866, CancellationToken.None)
+            .Should().Equal("a.txt", "b.txt");
+        TarHeaderNames.ReadNamesInGzip(new MemoryStream(gzip), 1024, false, Cp866, CancellationToken.None).Should().BeNull();
+        TarHeaderNames.ReadNamesInGzip(new MemoryStream(RandomBytes(100)), long.MaxValue, false, Cp866, CancellationToken.None).Should().BeNull();
+    }
+
+    private static IReadOnlyList<string>? Names(byte[] tar, bool utf8Names = false)
+        => TarHeaderNames.ReadNames((buffer, offset) => Read(tar, buffer, offset), utf8Names, Cp866, CancellationToken.None);
+
+    // "<length> <key>=<value>\n", the length counting itself.
+    private static byte[] Pax(string key, byte[] value)
+    {
+        int body = 1 + key.Length + 1 + value.Length + 1;
+        int length = body + 1;
+        while (length != body + length.ToString(System.Globalization.CultureInfo.InvariantCulture).Length)
+            length = body + length.ToString(System.Globalization.CultureInfo.InvariantCulture).Length;
+        return [.. Encoding.ASCII.GetBytes($"{length} {key}="), .. value, (byte)'\n'];
     }
 
     private static bool? WalkGzip(byte[] gzip, long maxDecompressedBytes = long.MaxValue)

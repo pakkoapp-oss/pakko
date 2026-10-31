@@ -489,7 +489,15 @@ public sealed class TarSandboxedService : ITarService
             Directory.CreateDirectory(destDir);
             return (destDir, true);
         }
-        RefuseUnshowableName(tarMembers ?? (context.EntryFilter is null ? null : (IEnumerable<string>)allNames));
+        // T-F441: from here names decide - a selection's members, a filter's verdicts - so the
+        // listing must name the entries they decide about. A filter alone extracts every entry, and
+        // the files on disk still settle a Suspect after the extraction (below).
+        if (tarMembers is not null || context.EntryFilter is not null)
+        {
+            TarListingVerdict verdict = TarNames.Judge(
+                allNames, await scope.ReadHeaderNamesAsync(cancellationToken).ConfigureAwait(false), tarMembers);
+            TarNames.EnsureNamesCanDecide(verdict, allowSuspect: tarMembers is null);
+        }
         List<string>? expandedSelection = tarMembers;
         // T-F410: each name on its own, as the listing shows it (no "./"), a folder without its
         // content. None passes: 7-Zip's "No files to process", which creates no folder either.
@@ -620,6 +628,21 @@ public sealed class TarSandboxedService : ITarService
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.TarExtractionFailed, DescribeFailure(stdErr)));
 
         List<DuplicateGroup> duplicateGroups = FindDuplicateGroups(fileEntries, allNames, expandedSelection);
+        // T-F441: after a run without a member list the quarantine holds every entry under its true
+        // name, so a file the listing does not account for was listed under another name. A filter's
+        // verdicts were then made on the wrong names (refused); a duplicate group was two different
+        // names (dropped: each file meets the conflict rule under its own name).
+        if (tarMembers is null && (context.EntryFilter is not null || duplicateGroups.Count > 0))
+        {
+            TarListingVerdict onDisk = TarNames.JudgeExtracted(allNames,
+                EnumerateFilesGuarded(scope.OutputDirectory!).Select(f => QuarantineRelative(scope.OutputDirectory!, f).Replace('\\', '/')));
+            if (onDisk.Trust != TarNameTrust.Faithful)
+            {
+                if (context.EntryFilter is not null)
+                    TarNames.EnsureNamesCanDecide(onDisk);
+                duplicateGroups = [];
+            }
+        }
         (string? firstCopyDir, HashSet<string> firstCopies) = await ExtractFirstCopiesAsync(
             scope, duplicateGroups, skippedFiles, cancellationToken)
             .ConfigureAwait(false);
@@ -1516,16 +1539,6 @@ public sealed class TarSandboxedService : ITarService
         return nothingRead ? TestRun.NothingPassed : TestRun.Read;
     }
 
-    // T-F416: tar.exe 3.5.2 (Windows 10) lists a name it cannot show in the ANSI code page with '?'
-    // ("????.txt", exit 0) while it extracts the real name, so a listed name with '?' matches
-    // nothing reliably: a filter's verdict on it, a selection of it, a "-T"/"-X" line for it. A
-    // real '?' is no Windows file name either. Thrown only where names decide what is done.
-    private static void RefuseUnshowableName(IEnumerable<string>? names)
-    {
-        if (names?.Select(EntryDiskName.StripLeadingDotSlash).FirstOrDefault(name => name.Contains('?')) is { } unshowable)
-            throw new TarArgumentEncodingException(unshowable, TarCommandLineEncoding.AnsiCodePage);
-    }
-
     // The pre-scan extraction runs (T-F49): an archive it refuses must not pass a test, a filter or
     // not. Then tar.exe reads what the filter passes; its declared size is what tar.exe is about to
     // write to stdout. NothingRead: no file passed, and tar.exe did not run.
@@ -1534,7 +1547,12 @@ public sealed class TarSandboxedService : ITarService
     {
         (long declaredSize, string[] names, Dictionary<string, long> sizeByName, _) =
             await ScanForUnsafeEntriesAsync(scope, cancellationToken).ConfigureAwait(false);
-        RefuseUnshowableName(entryFilter is null ? null : names);
+        if (entryFilter is not null)
+        {
+            // T-F441: Test reads no files to disk, so a Suspect listing cannot be settled.
+            TarNames.EnsureNamesCanDecide(
+                TarNames.Judge(names, await scope.ReadHeaderNamesAsync(cancellationToken).ConfigureAwait(false)));
+        }
         TestSubset subset = entryFilter is null ? new TestSubset(declaredSize, null, null) : TestSubset.Of(names, sizeByName, entryFilter);
         if (subset.NothingToRead)
             return (0, string.Empty, 0, true);
