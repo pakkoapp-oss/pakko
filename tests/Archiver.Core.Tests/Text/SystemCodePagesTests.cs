@@ -60,6 +60,23 @@ public sealed class SystemCodePagesTests
         pages.Should().AllSatisfy(page => SystemCodePages.For(page).Should().NotBeNull());
     }
 
+    // A Unicode-only locale names no page of its own: GetLocaleInfoEx answers CP_ACP/CP_OEMCP (0/1),
+    // which no table holds, so the system's page stands in, as libarchive does.
+    [Fact]
+    public void UserPages_LocaleWithoutAPage_FallBackToTheSystemPages()
+    {
+        SystemCodePages.UserOemFor("hi-IN").Should().Be(SystemCodePages.Oem);
+        SystemCodePages.UserAnsiFor("hi-IN").Should().Be(SystemCodePages.Ansi);
+    }
+
+    [Fact]
+    public void UserPages_LocaleWithPages_AreItsOwn()
+    {
+        SystemCodePages.UserOemFor("uk-UA").Should().Be(866);
+        SystemCodePages.UserAnsiFor("uk-UA").Should().Be(1251);
+        SystemCodePages.UserAnsiFor("en-US").Should().Be(1252);
+    }
+
     // Each boundary with an injected page: what passes on one page is refused on another.
     [Theory]
     [InlineData(1251, false, true, false)]
