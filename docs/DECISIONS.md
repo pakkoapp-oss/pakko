@@ -13306,6 +13306,17 @@ builds. Sizes, progress and the root shape only lose accuracy.
   a lone best-fit name through (only a repeated name is refused there). "A best fit only pushes the
   pre-scan toward refusing" is not confirmed: the 8.3-alias check (T-F420) runs on listed names, and
   a best-fit long name could hide a real alias.
+- **Parsing the formats in process, as 7-Zip and NanaZip do (the user asked, 2026-10-31).** They
+  never meet the best fit: every name goes from the header to UTF-16 and to `CreateFileW`, and their
+  code pages are only where a format has none (`-scs` for a tar without a charset, `-mcp` for legacy
+  ZIP names, `-scc` for the console). Pakko's ANSI bottleneck is tar.exe's output, the price of
+  keeping the parsers inside the AppContainer. Decided: no in-process extraction (the hard constraint
+  stands); no own decoder for xz, bzip2, zstd, LZMA, 7z or RAR (none in .NET, thousands of lines of
+  hostile-input code, RAR's decompression under the unRAR licence). Next step agreed: replace the
+  hand-written walk in `TarHeaderNames.ReadNames` with `System.Formats.Tar`'s `TarReader`, names
+  only, once checked that it skips content without buffering it and builds a name in libarchive's
+  order (pax `path` against GNU `L`, `hdrcharset`). Unlike PAR2 and the ZIP ciphers, a whole archive
+  format is a large surface; those two are narrow, fully specified, and extract no file tree.
 - **A Unicode-only regional format** (hi-IN) gives no code page: `GetLocaleInfoEx` answers CP_ACP or
   CP_OEMCP (0, 1), which `SystemCodePages` reads as "none" and replaces with the system page, as
   libarchive does. Before, `TarOutputEncoding` would have taken 1 as a page.

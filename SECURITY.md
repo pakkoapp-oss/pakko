@@ -127,6 +127,19 @@ undecided at 1000 times the archive's size; Deflate itself expands at most about
 practice a gzip that reaches this check is decompressed once in full, outside the sandbox's memory
 and processor limits (7 GiB of zeros behind a 32 MB archive: 0.9 s). bzip2, xz and zstd have no decoder in .NET, so such a tar is not
 read in-process and keeps the refusal.
+**The same walk also reads the names themselves (T-F441, v1.10.0)**, for a plain or gzip tar, when a
+selection or a filter is about to decide by name: tar.exe prints names in the user's ANSI code page
+with best fit, so two different names can list as one, and a selection then extracts the other
+file. The walk rebuilds each name as libarchive does - a pax `path` record, a GNU long-name record,
+the header's prefix and name - parsing pax records (`<length> <key>=<value>`) and long names of at
+most 64 KB each, and gives up (keeps tar.exe's reading, with the verdict's refusal where names
+decide) on any record it cannot parse, a sparse entry, a global header that names a path, or bytes
+that do not decode. The names are a **veto only**: they are compared with tar.exe's listing and
+never used as a name Pakko writes, selects or shows; extraction, the security pre-scan and every
+file name on disk still come from the sandboxed tar.exe. Rejected (2026-10-31): extracting tar or
+tar.gz in-process through `System.Formats.Tar`, which would end the best-fit problem for those two
+but add a second extraction path outside the AppContainer; and any in-process decoder for xz,
+bzip2, zstd, 7z or RAR (none in .NET; RAR's decompression is under the unRAR licence).
 
 **A gzip of one file (T-F413, v1.9.0) is decompressed in-process.** tar.exe cannot read one (its raw
 reader cannot be asked for), so Pakko does, with the same `DeflateStream` it uses for ZIP - no new
