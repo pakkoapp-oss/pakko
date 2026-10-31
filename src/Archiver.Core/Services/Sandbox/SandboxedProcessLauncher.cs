@@ -200,7 +200,8 @@ internal static partial class SandboxedProcessLauncher
         // cancel only through pool threads, or not at all while a callback of theirs is busy.
         // Registered after the resume: on a token already cancelled it runs at once, and a child
         // killed while suspended would fail AssignProcessToJobObject instead of cancelling. Disposed
-        // before this method returns, so before RunAsync closes the handle.
+        // before this method returns, so before RunAsync closes the handle. The result is dropped:
+        // it fails harmlessly once the child has exited, and the catch's TerminateAndWait waits.
         using CancellationTokenRegistration killOnCancel = cancellationToken.Register(
             () => _ = NativeMethods.TerminateProcess(processHandle, 1));
 
