@@ -342,7 +342,31 @@
     <value>มีบางรายการที่ไม่ได้ถูกลบ</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>รายการเหล่านี้ยังอยู่บนดิสก์ อาจกำลังถูกใช้งานหรือได้รับการป้องกัน</value>
+    <value>รายการเหล่านี้ยังอยู่บนดิสก์</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>เนื้อหาไม่ได้รับการประมวลผลทั้งหมด: มีบางอย่างถูกข้ามหรือล้มเหลว หรือเลือกไว้เพียงบางส่วน</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>มีไฟล์บีบอัดที่เพิ่งสร้างอยู่ภายใน</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>รากของไดรฟ์จะไม่ถูกลบ</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>รายการอื่นที่มีชื่อเดียวกันได้แทนที่ไฟล์หนึ่งของรายการเหล่านี้บนดิสก์</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>มีการเปลี่ยนแปลงหลังจากการดำเนินการเริ่มต้น</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>ผลลัพธ์ของการดำเนินการไม่อยู่บนดิสก์แล้ว รายการเหล่านี้จึงเป็นสำเนาเดียว</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>ไม่สามารถลบได้อย่างปลอดภัย: ไม่สามารถเปิดเส้นทางได้ หรือโฟลเดอร์มีลิงก์อยู่บนไดรฟ์ที่ไม่มีถังรีไซเคิล</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>อาจกำลังถูกใช้งานหรือได้รับการป้องกัน</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>ใช่</value>

@@ -342,7 +342,31 @@
     <value>Unele elemente nu au fost șterse</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Aceste elemente sunt încă pe disc. Pot fi în uz sau protejate.</value>
+    <value>Aceste elemente sunt încă pe disc.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Nu tot conținutul lor a fost procesat: ceva a fost omis sau a eșuat, sau doar o parte a fost selectată.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Conțin arhiva tocmai creată.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Rădăcina unei unități nu este ștearsă niciodată.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Un alt element cu același nume a înlocuit pe disc unul dintre fișierele lor.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>S-au modificat după pornirea operației.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Rezultatul operației nu mai este pe disc, deci acestea sunt singura lui copie.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Nu au putut fi șterse în siguranță: calea nu a putut fi deschisă, sau un folder conține o legătură pe o unitate fără Coș de reciclare.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Pot fi în uz sau protejate.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Da</value>

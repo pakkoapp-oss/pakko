@@ -342,7 +342,31 @@
     <value>部分项目未删除</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>这些项目仍在磁盘上。它们可能正在使用或受保护。</value>
+    <value>这些项目仍在磁盘上。</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>并未处理其全部内容: 有内容被跳过或失败，或只选择了一部分。</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>其中包含刚创建的压缩包。</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>驱动器的根目录永远不会被删除。</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>另一个同名条目替换了磁盘上它们的一个文件。</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>操作开始后它们发生了更改。</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>操作的结果已不在磁盘上，因此这些是它唯一的副本。</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>无法安全删除: 无法打开路径，或某个文件夹在没有回收站的驱动器上包含链接。</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>它们可能正在使用或受保护。</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>是</value>

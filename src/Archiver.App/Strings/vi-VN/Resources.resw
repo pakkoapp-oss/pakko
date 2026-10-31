@@ -342,7 +342,31 @@
     <value>Một số mục chưa được xóa</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Các mục này vẫn còn trên đĩa. Chúng có thể đang được sử dụng hoặc được bảo vệ.</value>
+    <value>Các mục này vẫn còn trên đĩa.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Không phải toàn bộ nội dung đã được xử lý: có mục bị bỏ qua hoặc thất bại, hoặc chỉ một phần được chọn.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Chúng chứa tệp nén vừa được tạo.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Thư mục gốc của ổ đĩa không bao giờ bị xóa.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Một mục khác cùng tên đã thay thế một trong các tệp của chúng trên đĩa.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Chúng đã thay đổi sau khi thao tác bắt đầu.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Kết quả của thao tác không còn trên đĩa, nên đây là bản sao duy nhất.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Không thể xóa chúng một cách an toàn: không mở được đường dẫn, hoặc một thư mục chứa liên kết trên ổ đĩa không có Thùng rác.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Chúng có thể đang được sử dụng hoặc được bảo vệ.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Có</value>

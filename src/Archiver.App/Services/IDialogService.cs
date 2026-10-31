@@ -1,3 +1,4 @@
+using Archiver.App.Core;
 using Archiver.Core.Models;
 
 namespace Archiver.App.Services;
@@ -26,5 +27,5 @@ public interface IDialogService
     // T-F207: owner for the shell's own delete UI, and the two "Delete after operation" dialogs.
     IntPtr OwnerWindowHandle { get; }
     Task<bool> ShowPermanentDeleteConfirmAsync(IReadOnlyList<string> paths);
-    Task ShowNotDeletedAsync(IReadOnlyList<string> paths);
+    Task ShowNotDeletedAsync(IReadOnlyList<KeptSource> kept);
 }

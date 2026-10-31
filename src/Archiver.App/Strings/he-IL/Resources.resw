@@ -342,7 +342,31 @@
     <value>חלק מהפריטים לא נמחקו</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>פריטים אלה עדיין בדיסק. ייתכן שהם בשימוש או מוגנים.</value>
+    <value>פריטים אלה עדיין בדיסק.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>לא כל התוכן שלהם עובד: משהו דולג או נכשל, או שנבחר רק חלק.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>הם מכילים את הארכיון שזה עתה נוצר.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>שורש של כונן לעולם אינו נמחק.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>פריט אחר באותו שם החליף את אחד הקבצים שלהם בדיסק.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>הם השתנו לאחר שהפעולה התחילה.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>תוצאת הפעולה כבר אינה בדיסק, ולכן אלה העותק היחיד שלה.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>לא ניתן היה למחוק אותם בבטחה: לא ניתן היה לפתוח את הנתיב, או שתיקייה מכילה קישור בכונן ללא סל מיחזור.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>ייתכן שהם בשימוש או מוגנים.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>כן</value>

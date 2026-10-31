@@ -342,7 +342,31 @@
     <value>Sommige items zijn niet verwijderd</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Deze items staan nog op de schijf. Ze zijn mogelijk in gebruik of beveiligd.</value>
+    <value>Deze items staan nog op de schijf.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Niet al hun inhoud is verwerkt: iets is overgeslagen of mislukt, of er was maar een deel geselecteerd.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Ze bevatten het archief dat zojuist is gemaakt.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>De hoofdmap van een station wordt nooit verwijderd.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Een ander item met dezelfde naam heeft een van hun bestanden op de schijf vervangen.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Ze zijn gewijzigd nadat de bewerking begon.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Het resultaat van de bewerking staat niet meer op de schijf, dus dit is de enige kopie.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Ze konden niet veilig worden verwijderd: het pad kon niet worden geopend, of een map bevat een koppeling op een station zonder Prullenbak.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Ze zijn mogelijk in gebruik of beveiligd.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Ja</value>

@@ -44,13 +44,17 @@ public sealed class DialogService : IDialogService
     }
 
     // T-F242: a source "Delete after operation" could not remove (locked, access denied) used to
-    // be dropped silently. Items the user chose to keep are not listed.
-    public async Task ShowNotDeletedAsync(IReadOnlyList<string> paths)
+    // be dropped silently. Items the user chose to keep are not listed. T-F435: grouped by why.
+    public async Task ShowNotDeletedAsync(IReadOnlyList<KeptSource> kept)
     {
+        var panel = new StackPanel { Spacing = 16 };
+        panel.Children.Add(new TextBlock { Text = _res.GetString("NotDeletedDialogMessage"), TextWrapping = TextWrapping.Wrap });
+        foreach (IGrouping<KeepReason, KeptSource> group in kept.GroupBy(k => k.Reason).OrderBy(g => g.Key))
+            panel.Children.Add(BuildPathPanel(_res.GetString(NotDeletedReasonKey(group.Key)), [.. group.Select(k => k.Path)]));
         var dialog = new ContentDialog
         {
             Title = _res.GetString("NotDeletedDialogTitle"),
-            Content = BuildPathList(_res.GetString("NotDeletedDialogMessage"), paths),
+            Content = new ScrollViewer { Content = panel, MaxHeight = 400, VerticalScrollBarVisibility = ScrollBarVisibility.Auto },
             CloseButtonText = _res.GetString("DialogOkButton"),
             XamlRoot = _window!.Content.XamlRoot,
             FlowDirection = CoreMessageText.FlowDirection
@@ -58,13 +62,29 @@ public sealed class DialogService : IDialogService
         await dialog.ShowAsync();
     }
 
-    private static ScrollViewer BuildPathList(string message, IReadOnlyList<string> paths)
+    private static string NotDeletedReasonKey(KeepReason reason) => reason switch
+    {
+        KeepReason.NotFullyProcessed => "NotDeletedReasonNotFullyProcessed",
+        KeepReason.HoldsAnOutput => "NotDeletedReasonHoldsAnOutput",
+        KeepReason.DriveRoot => "NotDeletedReasonDriveRoot",
+        KeepReason.EntryReplaced => "NotDeletedReasonEntryReplaced",
+        KeepReason.ChangedSinceStart => "NotDeletedReasonChangedSinceStart",
+        KeepReason.OutputMissing => "NotDeletedReasonOutputMissing",
+        KeepReason.NotSafeToDelete => "NotDeletedReasonNotSafeToDelete",
+        KeepReason.StillOnDisk => "NotDeletedReasonStillOnDisk",
+        _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "A KeepReason with no text."),
+    };
+
+    private static ScrollViewer BuildPathList(string message, IReadOnlyList<string> paths) =>
+        new() { Content = BuildPathPanel(message, paths), MaxHeight = 400, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+
+    private static StackPanel BuildPathPanel(string message, IReadOnlyList<string> paths)
     {
         var panel = new StackPanel { Spacing = 8 };
         panel.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
         foreach (string path in paths)
             panel.Children.Add(new TextBlock { Text = path, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12, 0, 0, 0) });
-        return new ScrollViewer { Content = panel, MaxHeight = 400, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        return panel;
     }
 
     public async Task ShowErrorAsync(string title, string message)

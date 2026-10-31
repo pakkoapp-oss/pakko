@@ -527,6 +527,7 @@ public sealed class CrossArchiveReplacementTests : IDisposable
         });
 
         result.FullyProcessedSources.Should().Equal(firstDeletable ? [first, second] : [second]);
+        result.Sources.Single(s => s.Path == first).Cause.Should().Be(firstDeletable ? null : PartialCause.EntryReplaced);
     }
 }
 

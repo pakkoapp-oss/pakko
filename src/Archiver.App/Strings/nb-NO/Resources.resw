@@ -342,7 +342,31 @@
     <value>Noen elementer ble ikke slettet</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Disse elementene ligger fortsatt på disken. De kan være i bruk eller beskyttet.</value>
+    <value>Disse elementene ligger fortsatt på disken.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Ikke alt innholdet ble behandlet: noe ble hoppet over eller mislyktes, eller bare en del var valgt.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>De inneholder arkivet som nettopp ble opprettet.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Roten på en stasjon slettes aldri.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>En annen oppføring med samme navn erstattet én av filene deres på disken.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>De ble endret etter at operasjonen startet.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Resultatet av operasjonen er ikke lenger på disken, så disse er den eneste kopien.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>De kunne ikke slettes trygt: banen kunne ikke åpnes, eller en mappe inneholder en kobling på en stasjon uten papirkurv.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>De kan være i bruk eller beskyttet.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Ja</value>

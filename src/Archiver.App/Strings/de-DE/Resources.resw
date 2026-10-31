@@ -342,7 +342,31 @@
     <value>Einige Elemente wurden nicht gelöscht</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Diese Elemente befinden sich noch auf dem Datenträger. Sie werden möglicherweise verwendet oder sind geschützt.</value>
+    <value>Diese Elemente befinden sich noch auf dem Datenträger.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Nicht ihr gesamter Inhalt wurde verarbeitet: Etwas wurde übersprungen oder ist fehlgeschlagen, oder nur ein Teil war ausgewählt.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Sie enthalten das gerade erstellte Archiv.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Das Stammverzeichnis eines Laufwerks wird nie gelöscht.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Ein anderer Eintrag mit demselben Namen hat eine ihrer Dateien auf dem Datenträger ersetzt.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Sie wurden nach dem Start des Vorgangs geändert.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Das Ergebnis des Vorgangs ist nicht mehr auf dem Datenträger, daher sind dies seine einzige Kopie.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Sie konnten nicht sicher gelöscht werden: Der Pfad ließ sich nicht öffnen, oder ein Ordner enthält eine Verknüpfung auf einem Laufwerk ohne Papierkorb.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Sie werden möglicherweise verwendet oder sind geschützt.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Ja</value>

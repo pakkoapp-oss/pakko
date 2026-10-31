@@ -1652,7 +1652,16 @@ re-measured with T-F346's script before and after.
 
 ### T-F435 — "Some items were not deleted" gives "they may be in use or protected" also for an archive kept on purpose (P3)
 
-- [ ] **Status:** open. Package 1.9.0.2, the App (`APP-028`): an archive one of whose entries was
+- [ ] **Status:** fixed 2026-10-31, branch `fix/tf435-kept-reasons` (on top of T-F434): each kept
+  source carries a `KeepReason` (`SourceRecycler`, App.Core) and the dialog groups the items under it:
+  not processed in full, holds the new archive, a drive root, an entry replaced on disk, changed since
+  the start, the output gone, not safe to delete (unresolvable path, or a link on a drive without a
+  Recycle Bin), still on disk (in use or protected). Core names the three cases it decides after the
+  run (`SourceResult.Cause`, a `PartialCause`); a skip, an error, a filter or a subset stays "not
+  processed in full", since the summary already names those. 8 keys in 37 locales; the intro and the
+  in-use sentence are the old `NotDeletedDialogMessage` split in two. `APP-028`/`APP-030` on the device
+  in stream E. Not in scope: the CLI's `-sdel` lines and the Explorer path keep their wording.
+- **Before:** open. Package 1.9.0.2, the App (`APP-028`): an archive one of whose entries was
   overwritten by another entry is kept by design, and the dialog's only reason is the generic one (may
   be in use or protected). The same reason shows when the output is gone (`APP-030`). Wanted: the reason
   that applies, per item: kept because an entry overwrote another, the output is no longer on disk, or

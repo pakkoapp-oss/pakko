@@ -418,7 +418,31 @@
     <value>Some items were not deleted</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>These items are still on disk. They may be in use or protected.</value>
+    <value>These items are still on disk.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Not all of their content was processed: something was skipped or failed, or only part was selected.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>They contain the archive just created.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>A drive root is never deleted.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Another entry with the same name replaced one of their files on disk.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>They changed after the operation started.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>The result of the operation is no longer on disk, so these are its only copy.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>They could not be deleted safely: the path could not be opened, or a folder holds a link on a drive without a Recycle Bin.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>They may be in use or protected.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Yes</value>

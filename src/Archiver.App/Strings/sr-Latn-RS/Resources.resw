@@ -342,7 +342,31 @@
     <value>Neke stavke nisu izbrisane</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Ove stavke su i dalje na disku. Možda se koriste ili su zaštićene.</value>
+    <value>Ove stavke su i dalje na disku.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Nije obrađen sav njihov sadržaj: nešto je preskočeno ili nije uspelo, ili je izabran samo deo.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Sadrže upravo napravljenu arhivu.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Koren diska se nikada ne briše.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Druga stavka sa istim imenom zamenila je jednu od njihovih datoteka na disku.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Promenile su se nakon početka operacije.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Rezultat operacije više nije na disku, pa su ovo njegova jedina kopija.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Nije bilo moguće bezbedno ih izbrisati: putanja nije mogla da se otvori ili fascikla sadrži vezu na disku bez Korpe za otpatke.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Možda se koriste ili su zaštićene.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Da</value>

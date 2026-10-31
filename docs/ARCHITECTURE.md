@@ -225,6 +225,7 @@ src/
 │   ├── DeferredActionGate.cs                            ← T-F106: defers activation past first layout pass
 │   ├── SourceRecycler.cs                                ← T-F207: "Delete after operation" — Recycle Bin / confirm / report;
 │   │                                                       T-F302: DeleteAsync returns RecycleResult (Deleted, NotDeleted);
+│   │                                                       T-F435: RecycleResult(Deleted, Kept), Kept = KeptSource(Path, KeepReason);
 │   │                                                       T-F419: DeleteAsync(sources, ISourceSnapshot, confirm);
 │   │                                                       T-F420: static NotFullyProcessed(candidates, fullyProcessed),
 │   │                                                       MissingOutputs(outputs) - checked before anything is deleted
@@ -723,6 +724,7 @@ public sealed record SourceResult
 {
     public string Path { get; init; } = string.Empty;   // as the engine saw it (trailing separator trimmed)
     public SourceOutcome Outcome { get; init; }
+    public PartialCause? Cause { get; init; }           // T-F435: HoldsAnOutput, DriveRoot, EntryReplaced; null otherwise
 }
 ```
 
@@ -901,7 +903,7 @@ public interface IDialogService
     // "Delete after operation" could not remove (T-F242).
     IntPtr OwnerWindowHandle { get; }
     Task<bool> ShowPermanentDeleteConfirmAsync(IReadOnlyList<string> paths);
-    Task ShowNotDeletedAsync(IReadOnlyList<string> paths);
+    Task ShowNotDeletedAsync(IReadOnlyList<KeptSource> kept);   // T-F435: grouped by KeepReason
 }
 ```
 

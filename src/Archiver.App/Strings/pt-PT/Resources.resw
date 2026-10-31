@@ -342,7 +342,31 @@
     <value>Alguns itens não foram eliminados</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Estes itens ainda estão no disco. Podem estar em utilização ou protegidos.</value>
+    <value>Estes itens ainda estão no disco.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Nem todo o seu conteúdo foi processado: algo foi ignorado ou falhou, ou apenas uma parte estava selecionada.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Contêm o arquivo acabado de criar.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>A raiz de uma unidade nunca é eliminada.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Outra entrada com o mesmo nome substituiu um dos seus ficheiros no disco.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Foram alterados depois de a operação começar.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>O resultado da operação já não está no disco, por isso estes são a sua única cópia.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Não foi possível eliminá-los em segurança: não foi possível abrir o caminho, ou uma pasta contém uma ligação numa unidade sem Reciclagem.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Podem estar em utilização ou protegidos.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Sim</value>
