@@ -518,6 +518,12 @@ public sealed class AntivirusScanService : IAntivirusScanService
             List<string>? expandedSelection = isSelectedSubset
                 ? TarSandboxedService.ExpandSelection(allNames, selectedEntryPaths!)
                 : null;
+            // T-F441: a selection names entries by their listed names; they must be the entries' own.
+            if (expandedSelection is { Count: > 0 })
+            {
+                TarNames.EnsureNamesCanDecide(TarNames.Judge(
+                    allNames, await scope.ReadHeaderNamesAsync(cancellationToken).ConfigureAwait(false), expandedSelection));
+            }
 
             // Same T-F142 "expandedSelection-vs-whole-archive" total-entry computation
             // ExtractSingleArchiveAsync already derives for its own move-phase progress — reused
