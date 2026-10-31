@@ -1637,7 +1637,9 @@ re-measured with T-F346's script before and after.
 
 ### T-F434 — "Move the sources to the Recycle Bin" keeps a clean source when another source of the run is skipped (P3)
 
-- [ ] **Status:** open. Package 1.9.0.2, the App (`APP-027`): a folder archived alone, unchanged, is
+- [ ] **Status:** fixed 2026-10-31, branch `fix/tf434-recycle-clean-sources` (`docs/DECISIONS.md`, "T-F434"): a
+  skip keeps only the source it lies in; `APP-027`'s new fourth case on the device in stream E.
+- **Before:** open. Package 1.9.0.2, the App (`APP-027`): a folder archived alone, unchanged, is
   recycled with no dialog. Archived together with a second folder that holds a junction (skipped), the
   first folder stays too and the dialog names both as not deleted; `pakko.log` says "Not deleted after
   operation" for it, with no "Output no longer on disk". Nothing is lost (the safe direction), but
@@ -1719,6 +1721,9 @@ re-measured with T-F346's script before and after.
   #131, closed); the local full run green; `CLI-044` (`docs/SMOKE.md`) on this machine and the same
   commands on PakkoW10's tar.exe 3.5.2 with a Native AOT `pakko`. The folder case measured and moved
   to T-F443.
+- **Red checks of the review's fixes, 2026-10-31:** each reverted on its own, its test failed: pax
+  `size`, a pax `path` with a GNU long name, a prefix ending in `/`, a rooted name, .NET's own pages
+  (3 cases), and hi-IN's fallback - so `GetLocaleInfoEx` does answer a sentinel for hi-IN.
 - **Open before done:** `SECURITY.md` for the pax records now parsed in process (the user's OK 2026-10-31,
   written); the fresh reviewer (the user's OK 2026-10-31). Next step after part 2 merges (the user,
   2026-10-31): `TarHeaderNames.ReadNames` on `System.Formats.Tar`'s `TarReader`, names only (DECISIONS).

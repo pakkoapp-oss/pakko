@@ -1788,9 +1788,8 @@ public sealed class TarSandboxedService : ITarService
             await CompressToArchiveAsync(options, names, (resolvedDestPath, outcome == DestinationConflictOutcome.ProceedReplacingExisting), new ArchiveResultSink(errors, createdFiles, skippedFiles), progress, cancellationToken)
                 .ConfigureAwait(false);
 
-            // T-F260: one archive for every source — see ZipArchiveService.ArchiveAsync's same rule.
-            bool clean = errors.Count == 0 && skippedFiles.Count == 0 && !names.Filters;
-            sources = options.SourcePaths.Select(p => SourceOutcomeRules.Classify(p, createdFiles.Count > 0, clean));
+            // T-F260/T-F434: one archive for every source - see ZipArchiveService.ArchiveAsync's same rule.
+            sources = SourceOutcomeRules.ClassifyShared(options.SourcePaths, createdFiles.Count > 0, errors.Count > 0 || names.Filters, skippedFiles);
         }
         else // ArchiveMode.SeparateArchives — one archive per top-level source path
         {

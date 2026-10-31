@@ -13216,6 +13216,35 @@ the archive.
   search terms (5) are still the v1.7 ones, as expected after `--keep-lists sv-SE`. They go into
   Partner Center's own form with the next submission, or before it as a listing-only update.
 
+## T-F434 - one archive of several sources: a skip keeps only the source it lies in (2026-10-31)
+
+**Found** by `APP-027` on 1.9.0.2: folders A and B archived together, a junction in B skipped, and A
+stayed too, named "not deleted". The cause was T-F260's own choice for a single archive: "every
+source gets the whole call's outcome ... per-source attribution inside one archive was not
+attempted". T-F260 had left the attribution out, not rejected it: the bug it fixed was the App
+comparing skip paths with its source list, where an entry name matched nothing and the archive
+stayed deletable (fail-open).
+
+**Decided (`SourceOutcomeRules.ClassifyShared`, both engines' single-archive branch):**
+- A skip belongs to the source whose full path it equals or lies under (case-insensitive, at a
+  separator); that source is `Partial`, the others `Completed`.
+- Fail-closed: a skip that no source holds, or a skip or source path that is not fully qualified,
+  keeps every source. The comparison resolves nothing: `GetFullPath` on a relative skip would place
+  it by the current folder (`pakko a out.zip . other`) and could delete `other` with its skipped file.
+  Another spelling (`\\?\`) matches no source, so it keeps them all too.
+- Errors and filters are not attributed: either keeps every source, as before. Errors already make
+  the run `Failed`; a filter's left-out names are not skips.
+- Every skip site of single-archive creation writes a full disk path: ZIP's link-source, nothing-to-
+  archive and reparse-point skips (the plain writer, `WorkItemEnumerator` for the parallel and the
+  AES writers), tar's listed-source, link and nothing-to-archive skips.
+- `docs/SPEC.md` states the rule; `docs/CLI.md`'s `-sdel` follows it (a skip keeps its own source; a
+  `-x` filter or an error still keeps all).
+
+**Tests:** `SharedArchiveSourceOutcomeTests` (the rule, and ZIP through the sequential, parallel and
+AES writers), `TarSourceOutcomeTests.CompressAsync_SingleArchive_LinkSkippedInB_AIsDeletable`. Red
+with the old rule: 9 of 20 (the other 11 are the fail-closed guards, which hold either way) and the
+tar test.
+
 ## T-F442 - which formats tar.exe reads, measured on both builds (2026-10-31)
 
 The user, 2026-10-31: offer extraction and the Explorer submenu for archives Pakko does not mark

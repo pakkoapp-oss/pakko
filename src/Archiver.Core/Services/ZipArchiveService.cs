@@ -117,10 +117,9 @@ public sealed class ZipArchiveService : IArchiveService
             if (skipResult is not null)
                 return skipResult;
 
-            // T-F260: one archive for every source — each is Completed only when the whole call
-            // was clean (per-source attribution of an issue inside one folder is not attempted).
-            bool clean = errors.Count == 0 && skippedFiles.Count == 0 && !names.Filters;
-            sources = options.SourcePaths.Select(p => SourceOutcomeRules.Classify(p, createdFiles.Count > 0, clean));
+            // T-F260/T-F434: one archive for every source - a skip keeps the source it lies in, an
+            // error or a filter keeps them all (SourceOutcomeRules.ClassifyShared).
+            sources = SourceOutcomeRules.ClassifyShared(options.SourcePaths, createdFiles.Count > 0, errors.Count > 0 || names.Filters, skippedFiles);
         }
         else // SeparateArchives
         {
