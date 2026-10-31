@@ -51,10 +51,11 @@ TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating sessi
 
 | Stream | Tasks | Area | Gate |
 |---|---|---|---|
-| A Core, analyzer | T-F424 (refuse a best-fit tar name), T-F440 (SonarCloud findings, the `S3903` bug first) | tar listing, `BareGzip*`, `Program.cs`, tests | tests first |
+| A text boundaries, analyzer | T-F441 (one owner per encoding boundary, names and paths, with its control test), T-F424 as T-F441's first case, T-F440 (SonarCloud findings, the `S3903` bug first) | `Sandbox/Tar*Encoding`, `Zip/ZipNameCodePages`, `StdinPathList`, `CliConsoleCharset`, `BareGzip*`, `Program.cs`, tests | T-F441: research, plan mode + advisor at both ends; T-F440: tests first |
 | B sandbox launcher, AMSI tests | T-F428 (cancel kills the child itself), T-F427 (AMSI not ready at scan time) | `SandboxedProcessLauncher`, `AntivirusScanService` tests | T-F428: plan mode + advisor at both ends (sandbox code) |
 | C after the operation | T-F434 (recycle each clean source), T-F435 (a reason per kept item), T-F437 (unreadable path list) | `SourceRecycler`, the not-deleted dialog, `Archiver.Shell` messages, `SPEC.md` rule | T-F434: plan mode (an irreversible action on user data) |
 | D progress | T-F432 (taskbar button and tray icon), T-F439 (window floor on a monitor move) | App `MainWindow`, tray icon, `Archiver.OperationUi`, `WindowFloor` | T-F432: plan mode (COM under Native AOT) |
+| F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
 | E on device, release | `APP-027`, `APP-028`, `APP-030`, `APP-014`, `OPW-*`, the new taskbar/tray rows, the release-tier smoke, `STO-005` as a real Store update | `docs/SMOKE.md`, `scripts/smoke/` | after A-D merge |
 
 Decisions taken with the plan (the agent, 2026-10-31): T-F432 covers the App's taskbar button, the
@@ -72,10 +73,18 @@ later, after the fixes); then E on the device, the user's elevated checks batche
 release, the release (`.claude/rules/ci.md`) and the Store submission with the sv-se lists typed into
 Partner Center's form (DECISIONS "v1.9.0 - the Store install").
 
+Stream F (checked 2026-10-31): winget-pkgs #446296 was closed by us as superseded by #449503
+(1.7.2), which is open since 2026-10-09 with `Validation-Completed`, `Azure-Pipeline-Passed` and the
+CLA signed by both accounts; it waits only for a community moderator. After the v1.10.0 tag:
+`New-WingetManifest.ps1` for the release's CLI zips, `winget validate`, `winget install --manifest`
+with `a`/`t`/`l`/`x`, then the new version replaces 1.7.2 in that PR (or a new PR superseding it)
+from `pakkoapp-oss`, and the moderators asked for a review. Graduates when `winget install
+PavloRybchenko.PakkoCLI` works from the public source; later versions automated from `build.yml`
+(T-F317 Part A) once the package exists.
+
 **Deferred past 1.10.0**, each with its v1.9.0 reason unchanged: T-F359 (no spinning disk), T-F254
 (a regional language pack and a sign-out; could run on the PakkoW10 VM if the user wants it in),
-T-F332's super hero art (the user's image), T-F317's outward steps (CLA and Microsoft's review),
-T-F91's native-speaker review, T-F202's light theme, en-US and tray (system settings and the user's
+T-F332's super hero art (the user's image), T-F91's native-speaker review, T-F202's light theme, en-US and tray (system settings and the user's
 hands), T-F393 (no repro).
 
 ---
@@ -1186,6 +1195,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 ### T-F317 — `pakko` in the terminal for Store and winget users (P2, user-requested)
 
 - **Deferred past 1.9.0 (2026-10-24):** the winget-pkgs PR #446296 was closed unmerged; a new one needs the user's CLA and Microsoft's review.
+- **2026-10-31:** in the v1.10.0 wave (stream F, the user). #446296 was closed by us as superseded
+  by #449503 (1.7.2), open, validated, CLA signed, waiting for a moderator.
 - [~] **Status:** done in v1.7.0 wave 8 (2026-10-03) except the outward steps. The first
   `microsoft/winget-pkgs` PR is open (user's go and identifier `PavloRybchenko.PakkoCLI`,
   2026-10-03; from `pakkoapp-oss`, manifest schema 1.12.0):
@@ -1686,6 +1697,51 @@ re-measured with T-F346's script before and after.
   record it in `docs/CONVENTIONS.md`'s Won't-Fix list with its reason; the full list from the API, not
   from this entry.
 - **Reported by:** the v1.10.0 wave planning, 2026-10-31.
+
+### T-F441 — One owner per text boundary: names and paths in every encoding Pakko meets, and a test that keeps it so (P2, user-requested, research first)
+
+- [ ] **Status:** open, research first. The user, 2026-10-31: encoding bugs in names keep coming
+  back; there must be one place (or a few, if needed) where names are resolved and checked, for
+  tar.exe and for the whole Core, names and paths everywhere. History that justifies it: T-F204,
+  T-F215, T-F234, T-F238, T-F244, T-F266, T-F283, T-F290, T-F305, T-F416, T-F418, T-F423, T-F424, and
+  three tests that named a file the runner's code page could not carry (T-F342, T-F423, T-F290).
+- **Several owners, not one decoder.** Each boundary uses its own code page on purpose, and folding
+  them into one would be a new bug: tar.exe's command line and `-T`/exclude lists (system ANSI page,
+  `TarCommandLineEncoding`); tar.exe's stdout (the user locale's ANSI page, `TarOutputEncoding`);
+  tar headers (UTF-8 or OEM, `TarSandboxScope`/`TarHeaderNames`); ZIP legacy names (OEM/ANSI by host,
+  `ZipNameCodePages`/`ZipEntryNameDecoder`); PAR2 names (UTF-8); the Shell's path list (UTF-16LE,
+  `StdinPathList`, T-F437); the CLI console (`CliConsoleCharset`, `-scc`); the OperationUi pipe and
+  launch arguments. Path rules (separators, `\\?\`, device names, trailing dot or space, case,
+  identity) already have one pipeline (T-F420: `SourcePathNormalizer`, `EntryDiskName`,
+  `ArchiveEntrySecurity`, `PathIdentity`); the inventory checks that nothing goes around it.
+- **Target (to settle in the plan):**
+  - (a) one source of this machine's code pages (ACP, OEMCP, the user locale's ANSI page), the only
+    code that P/Invokes `GetACP`/`GetOEMCP`/`GetLocaleInfoEx` for them (four files do today), and
+    injectable, as `ZipNameCodePages.FromCodePages` is;
+  - (b) one tar-name boundary owning both directions (arguments and lists out; listing decode and
+    T-F418's unescape in) and the one verdict "can this listed name be trusted", T-F416's `?` refusal
+    moved into it; T-F424 is its first new case;
+  - (c) ZIP, PAR2, console and the Shell list keep their own codecs but take pages from (a); an
+    unreadable input says which boundary refused it (T-F437).
+- **Open research question, not a mechanism:** a best-fit name cannot be seen from the listing alone
+  (`café` lists as `cafe` in cp1251, and `cafe` round-trips through 1251 exactly). It needs the true
+  name from elsewhere: the raw header bytes read in process (`TarHeaderNames` reads plain tar only
+  today; the compressed filters?) or a second listing under another charset. Measure first.
+- **Control:**
+  - a source-scanning test, in the idiom of `AgentInstructionsSizeTests`/`SmokeCatalogueTests`,
+    that fails when code-page selection (`GetACP`, `GetOEMCP`, code-page `GetLocaleInfoEx`,
+    `CodePagesEncodingProvider`, `Encoding.GetEncoding(int)`, `Encoding.Default`) appears outside the
+    owners, over `src/` and `tests/`; not `Encoding.UTF8`/`Unicode` for JSON, base64, PAR2 or wide
+    Win32 buffers; the Latin1 byte probe in `TarSandboxedService` allowed by name;
+  - tests with injected pages instead of the machine's: 1251, 1252, 932, 65001 (the "Unicode UTF-8"
+    system setting) and a system page different from the user locale's;
+  - one test helper for a non-ASCII name the runner's page can carry (from
+    `tests/Archiver.Core.IntegrationTests/TarCodePage.cs`), used by every such fixture;
+  - a smoke row with Cyrillic, CJK, `é` and a best-fit-prone name through every frontend.
+- **Gate:** silent-costly class (untrusted-input parsing, an external data contract): plan mode, the
+  design in `docs/DECISIONS.md` before code, advisor at both ends, the fresh-reviewer offer at the
+  close. Not in scope: mojibake from editing source files, which `.claude/rules/text-encoding.md` owns.
+- **Reported by:** the user, 2026-10-31.
 
 ### T-F393 — The About button went disabled once and no dialog came (P3)
 
