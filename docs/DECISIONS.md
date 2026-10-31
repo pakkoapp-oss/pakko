@@ -13245,6 +13245,73 @@ test kept PING alive 10 s past it.
 - Not changed: each launch still blocks two or three pool threads for the child's life (the task's
   hypothesis 2).
 
+## T-F444 - an AMSI answer other than S_OK is Inconclusive, never Clean (2026-10-31, 2026-11-01)
+
+Measured on PakkoW10 (Windows 10 Pro 19045, Defender platform 4.18.26100.4) from a checkpoint,
+rolled back between products and at the end. Products came from winget's `msstore` source: Avast One
+`XPDNZJFNCR1B07`, Avira Security `XPFD23M0L795KD`. The probe was a Native AOT console that called the
+public `AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions())` and
+`AmsiProviderCheck`, the App's own path, on a ZIP holding EICAR and a clean file, a clean ZIP, and a
+ustar holding EICAR and a clean file.
+
+| State | `AMSI\Providers` subkeys | Defender (`AMRunningMode`, `WinDefend`) | EICAR ZIP | clean ZIP | EICAR tar |
+|---|---|---|---|---|---|
+| Defender only | `{2781761E-...}` `MpOav.dll` | Normal, running | ThreatDetected | Clean | Inconclusive: removed or blocked (real-time protection took the quarantined file) |
+| Avast One installed | `{FB904E4E-D2C7-4C8D-8492-B620BB9896B1}` `aswAMSI.dll` only | Not running, stopped, Manual | ThreatDetected | Clean | ThreatDetected |
+| Avira Security installed | `{00000001-3DCC-4B48-A82E-E2071FE58E05}` `avamsi.dll` only | Not running, stopped, Manual | ThreatDetected | Clean | ThreatDetected |
+| No subkey (Avira's deleted) | none | Not running | Inconclusive, `NoAntivirusRegistered` | same | same |
+| Stale subkey: CLSID unregistered, or registered with its DLL gone | a made-up GUID | Not running | Inconclusive, `ScanSessionFailed`: `AmsiInitialize` 0x80070103 | same | same |
+| Defender's own subkey put back while Defender is off | `{2781761E-...}`, DLL present | Not running, stopped | Inconclusive, `ScanEntryFailed`: `AmsiScanBuffer` 0x80070015 | same | same |
+| Avira, real-time protection off in its UI (10 minutes, UAC) | Avira's | Not running | **Clean**: `AmsiScanBuffer` 0x00000426, result 1 | Clean | **Clean** |
+| Same, after the fix | Avira's | Not running | Inconclusive, `ScanEntryFailed`: 0x00000426 | same | same |
+| Avast, File Shield off in its UI (10 minutes) | Avast's | Not running | Inconclusive, `ScanEntryFailed`: 0x8007065A | same | same |
+
+- A third-party product that becomes the registered antivirus turns Defender off entirely on a
+  client, and Windows deletes Defender's AMSI
+  subkey. Both products register their own provider and detect EICAR through AMSI.
+- A stale subkey and Defender's provider without its engine do not give Clean: amsi.dll refuses a
+  session with no loadable provider (0x80070103), and the engineless provider answers 0x80070015,
+  which `AntivirusScanService` already reports as Inconclusive (T-F247).
+- **The one form that gave Clean:** Avira with its real-time protection switched off. Its provider
+  stays registered and answers `AmsiScanBuffer` with 0x00000426 (ERROR_SERVICE_NOT_ACTIVE as a
+  bare, positive Win32 code, not an HRESULT) and result 1, NOT_DETECTED, for EICAR and for clean
+  text alike. `AmsiScanner` failed only on `hr < 0`, so the answer passed as a scan. Control: once
+  the 10 minutes ran out and Avira switched itself back on (Security Center state 0x041000 again,
+  0x042000 while off; values as seen, the bits not interpreted), EICAR was ThreatDetected again.
+  Fix: `AmsiScanner.InterpretScanResult` accepts only S_OK, AMSI's documented success; any other
+  value throws the existing `InvalidOperationException`, which `AntivirusScanService` reports as
+  `ScanEntryFailed`. No new message code. Defender, Avast and Avira switched on all answered S_OK in
+  the probe, so the stricter check costs nothing measured.
+- Not changed: `AmsiInitialize` and `AmsiOpenSession` in the constructor still fail only on a
+  negative value. No positive answer was seen there, and throwing on one would leak a context or
+  session the call may have created; reasoning, no test.
+- Rejected: an EICAR self-test before trusting Clean. Measured with an in-memory EICAR buffer and
+  no file: Avira shows "Suspicious behavior blocked", Avast "Threat secured" (it reports moving
+  the buffer to its quarantine), Defender logs events 1116/1117. Every scan of a clean archive
+  would raise an alarm. Rejected too: asking Windows Security Center (`SecurityCenter2`) whether the
+  product is on. It does not exist on Server and needs a state map per vendor; the strict S_OK check
+  closes the measured case without either.
+- Hypothesis, not checked: the degraded provider T-F177 saw once on the dev machine (Clean for
+  EICAR) may have been the same kind of positive answer.
+- The dev machine's 0x80070015 (T-F427): Defender is running but its real-time protection is off
+  there (`RealTimeProtectionEnabled` False, Security Center state 0x062100). The probe gave
+  Inconclusive with `ScanEntryFailed` for every entry. The setting is the user's, left as it is.
+- Defender on Windows 10 client is not a removable feature (`Get-WindowsOptionalFeature` lists only
+  `Windows-Defender-Default-Definitions` and `Windows-Defender-ApplicationGuard`), and
+  `Get-WindowsFeature` is absent. Not measured: Windows Server (no Server VM), `DisableAntiSpyware`
+  (ignored under Tamper Protection), Defender's limited periodic scanning beside another product (a
+  Windows Security switch only), and Avast uninstalled again (its self-protection blocks a silent
+  uninstall from a non-interactive session; `icarus_ui` waited in session 0). The table covers
+  what each of those could leave behind: a subkey with no working engine.
+- Side finding: Avira quarantined the first probe build, where C# folded the EICAR pieces back into
+  one literal. Defender did not flag that exe. A fixture built from constant pieces is still the
+  whole string in the binary.
+- The App and Explorer windows were not driven on the VM, and the packaged `--scan` was not run
+  there: 0x00000426 needs Avira on the VM (the dev machine answers 0x80070015). The probe called the
+  same `AntivirusScanService` and `AmsiScanner` the packaged `Archiver.Shell --scan` calls, built
+  against the changed Core, so it stood in for that path. The message codes have their own tests.
+  `docs/SMOKE.md` SHL-015 repeats both third-party cases.
+
 ## T-F434 - one archive of several sources: a skip keeps only the source it lies in (2026-10-31)
 
 **Found** by `APP-027` on 1.9.0.2: folders A and B archived together, a junction in B skipped, and A

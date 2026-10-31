@@ -53,4 +53,29 @@ public sealed class AmsiScannerTests
         scanner.ScanBuffer(eicar, eicar.Length, "b.txt").Verdict.Should().Be(ThreatVerdict.ThreatDetected);
         scanner.ScanBuffer(clean, clean.Length, "c.txt").Verdict.Should().Be(ThreatVerdict.Clean);
     }
+
+    [Theory]
+    [InlineData(32768, ThreatVerdict.ThreatDetected)]
+    [InlineData(int.MaxValue, ThreatVerdict.ThreatDetected)]
+    [InlineData(32767, ThreatVerdict.Clean)]
+    [InlineData(1, ThreatVerdict.Clean)]
+    [InlineData(0, ThreatVerdict.Clean)]
+    public void InterpretScanResult_SOk_MapsResultByThreshold(int result, ThreatVerdict expected)
+    {
+        AmsiScanner.InterpretScanResult(0, result).Verdict.Should().Be(expected);
+    }
+
+    // T-F444: Avira Free Security with real-time protection off answered 0x00000426 (a bare Win32
+    // ERROR_SERVICE_NOT_ACTIVE, positive) with result=1 for EICAR, measured on the PakkoW10 VM.
+    [Theory]
+    [InlineData(0x00000426)]
+    [InlineData(1)]
+    [InlineData(unchecked((int)0x8007065A))]
+    [InlineData(unchecked((int)0x80070015))]
+    public void InterpretScanResult_AnythingButSOk_Throws(int hr)
+    {
+        Action act = () => AmsiScanner.InterpretScanResult(hr, 1);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage($"*0x{hr:X8}*");
+    }
 }

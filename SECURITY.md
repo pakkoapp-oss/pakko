@@ -808,7 +808,9 @@ never registers as a provider), a scan can't produce a real verdict. `AmsiScanBu
 tell this apart from "a provider is registered and says clean" — both return
 `AMSI_RESULT_NOT_DETECTED`. Pakko checks `HKLM\SOFTWARE\Microsoft\AMSI\Providers` before scanning
 and forces every finding to `Inconclusive` when it's empty, rather than risk rendering an
-unscanned archive as `Clean`. `Inconclusive` is a first-class, distinctly-labeled result — never
+unscanned archive as `Clean`. A registered provider that answers `AmsiScanBuffer` with anything but
+`S_OK` gives `Inconclusive` too (T-F444: Avira with its real-time protection off answers 0x00000426
+and "not detected" for EICAR). `Inconclusive` is a first-class, distinctly-labeled result — never
 silently collapsed into `Clean` anywhere in the UI.
 
 **Password-protected ZIP entries (T-F194).** Password-protecting a payload is a well-known way to
