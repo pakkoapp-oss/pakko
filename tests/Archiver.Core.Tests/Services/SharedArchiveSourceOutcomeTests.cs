@@ -100,6 +100,18 @@ public sealed class SharedArchiveSourceOutcomeTests : IDisposable
             .Should().Equal(new Dictionary<string, SourceOutcome> { [@"C:\w\a\"] = SourceOutcome.Completed, [@"C:\w\b"] = SourceOutcome.Partial });
     }
 
+    // The fresh review: ZIP writes a skip in GetFullPath's form (FileSystemInfo.FullName), so a source
+    // spelled otherwise must still hold it - "C:/w/a" with a link at "C:\w\a\lnk" was Completed.
+    [Theory]
+    [InlineData(@"C:/w/a")]
+    [InlineData(@"C:\w\a.")]
+    [InlineData(@"C:\w\\a")]
+    public void SourceSpelledOtherwise_StillHoldsItsSkip(string spelled)
+    {
+        Outcomes(SourceOutcomeRules.ClassifyShared([spelled, @"C:\w\c"], true, false, [Skip(@"C:\w\a\lnk")]))
+            .Should().Equal(new Dictionary<string, SourceOutcome> { [spelled] = SourceOutcome.Partial, [@"C:\w\c"] = SourceOutcome.Completed });
+    }
+
     [Fact]
     public void NestedSources_ASkipInTheInnerKeepsBoth()
     {

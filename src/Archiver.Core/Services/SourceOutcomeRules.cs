@@ -22,6 +22,10 @@ internal static class SourceOutcomeRules
     // error or a filter keeps every source (they are not attributed). Fail-closed: a skip that no
     // source holds, or a path that is not fully qualified, keeps every source - a relative path would
     // be placed by the current folder (pakko a out.zip . other), and another spelling (\\?\) by no one.
+    // Both sides go through GetFullPath only once they are fully qualified, where it needs no current
+    // folder: ZIP writes a skip as FileSystemInfo.FullName, so "C:/w/a" or "C:\w\a." must still hold it.
+    // Safe only while every creation skip is a link or an empty root (both deleters keep links): a
+    // future skip that stands for lost data must keep this attribution exact or become an error.
     internal static IReadOnlyList<SourceResult> ClassifyShared(
         IReadOnlyList<string> sourcePaths, bool produced, bool errorsOrFilters, IReadOnlyList<SkippedFile> skips)
     {
@@ -32,7 +36,7 @@ internal static class SourceOutcomeRules
         foreach (SkippedFile skip in skips)
         {
             string[] holders = IsLiteralFullPath(skip.Path) && sourcePaths.All(IsLiteralFullPath)
-                ? [.. sourcePaths.Where(source => IsSameOrUnderLiteral(skip.Path, source))]
+                ? [.. sourcePaths.Where(source => IsSameOrUnderLiteral(Path.GetFullPath(skip.Path), Path.GetFullPath(source)))]
                 : [];
             if (holders.Length == 0)
                 return [.. sourcePaths.Select(p => Classify(p, produced: true, clean: false))];
