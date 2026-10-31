@@ -13216,6 +13216,32 @@ the archive.
   search terms (5) are still the v1.7 ones, as expected after `--keep-lists sv-SE`. They go into
   Partner Center's own form with the next submission, or before it as a listing-only update.
 
+## T-F428 - a cancel kills the tar.exe child itself (2026-10-31)
+
+**Found:** `SandboxedProcessLauncher` terminated the child only in `RunAsync`'s `catch`, reached
+once the stdout/stderr reads raised `OperationCanceledException`. Those reads are async-over-sync
+on pool threads, so a cancel waited for the pool (59.6 s on CI run 40099759037), and a reader busy
+in its own callback (`OnStdOutDiscarded`, `OnStdErrLine`) never saw the cancel at all: the new
+test kept PING alive 10 s past it.
+
+**Decided:**
+- `cancellationToken.Register(() => TerminateProcess(...))` in `RunCreatedProcessAsync`, so the
+  kill runs on the cancelling thread. The `catch`'s `TerminateAndWait` stays: it waits for the
+  child to be gone before the caller deletes the folders it wrote into.
+- Registered after `ResumeThread`, not at creation: on a token already cancelled the callback runs
+  at once, and a child killed while suspended would fail `AssignProcessToJobObject` with an
+  `IOException` instead of the cancel.
+- The registration is a `using` in `RunCreatedProcessAsync`, disposed (which waits for a running
+  callback) before `RunAsync` closes the process handle, so the callback never meets a closed
+  handle and nothing throws out of the caller's `Cancel()`.
+- `ThrowIfCancellationRequested` before `GetExitCodeProcess`: a killed child can signal its exit
+  before `WaitForExitAsync` sees the cancel, and its exit code 1 would reach the caller as tar.exe's
+  own. Covered by reasoning, not by a test: the window is narrow (the readers' registrations run
+  before the kill, and the wait's inline cancel usually wins), and a cancel from `OnProcessStarted`
+  lands before the resume, where the old code threw too.
+- Not changed: each launch still blocks two or three pool threads for the child's life (the task's
+  hypothesis 2).
+
 ## T-F434 - one archive of several sources: a skip keeps only the source it lies in (2026-10-31)
 
 **Found** by `APP-027` on 1.9.0.2: folders A and B archived together, a junction in B skipped, and A
