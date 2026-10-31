@@ -35,7 +35,8 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
             });
 
             result.Success.Should().BeFalse(TarCodePage.Describe());
-            result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TarNameNotRepresentable);
+            // Extraction wraps the refusal (CannotExtractArchive), as T-F416's does; its text names the entry.
+            result.Errors.Should().ContainSingle().Which.Message.Should().Contain($"'{fixture.Plain}'").And.Contain("tar.exe");
             WrittenFiles(dest).Should().BeEmpty();
         }
     }
@@ -56,6 +57,7 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
             });
 
             result.Success.Should().BeFalse(TarCodePage.Describe());
+            result.Errors.Should().ContainSingle().Which.Message.Should().Contain($"'{fixture.Plain}'").And.Contain("tar.exe");
             WrittenFiles(dest).Should().BeEmpty();
         }
     }
