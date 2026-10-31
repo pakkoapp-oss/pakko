@@ -1281,7 +1281,7 @@ public sealed class TarSandboxedService : ITarService
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(nameStdErr)));
 
         // T-F418: the real names, so a control character is seen (T-F39) and a "-T" line names it.
-        string[] names = ListedNames(nameStdOut, scope.OutputEncoding)
+        string[] names = TarNames.ReadListing(nameStdOut, scope.OutputEncoding)
             ?? throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
 
         // T-F420 review: an entry named as another's 8.3 alias - tar.exe would write it through that
@@ -1630,7 +1630,7 @@ public sealed class TarSandboxedService : ITarService
         if (verbose)
             return (SplitLines(stdOut), null);
         // T-F418: the "-t" names as the entries have them; the "-tv" lines are read by column only.
-        return ListedNames(stdOut, scope.OutputEncoding) is { } names
+        return TarNames.ReadListing(stdOut, scope.OutputEncoding) is { } names
             ? (names, null)
             : ([], CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent)));
     }
@@ -2573,22 +2573,6 @@ public sealed class TarSandboxedService : ITarService
     {
         string[] fields = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
         return fields.Length > 4 && long.TryParse(fields[4], out long size) ? size : 0;
-    }
-
-    // T-F418: the entry names of a "-t" listing, each read back from tar.exe's escaping (an escaped
-    // line break stays inside its line, so the lines are split first); null when a line holds an
-    // escape bsdtar never writes. encoding: the one tar.exe's output was decoded with.
-    internal static string[]? ListedNames(string stdOut, Encoding encoding)
-    {
-        string[] lines = SplitLines(stdOut);
-        var names = new string[lines.Length];
-        for (int i = 0; i < lines.Length; i++)
-        {
-            if (TarListingName.Unescape(lines[i], encoding) is not { } name)
-                return null;
-            names[i] = name;
-        }
-        return names;
     }
 
     // T-F419: only the line end is dropped - "a.txt " is an entry of its own, not "a.txt".

@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Archiver.Core.Services.Sandbox;
 
 /// <summary>How far tar.exe's "-t" names can be trusted to name the entries (T-F441).</summary>
@@ -32,6 +34,26 @@ internal sealed record TarListingVerdict(TarNameTrust Trust, string? Example)
 internal static class TarNames
 {
     /// <summary>
+    /// T-F418: the entry names of a "-t" listing, each read back from tar.exe's escaping (an escaped
+    /// line break stays inside its line, so the lines are split first); null when a line holds an
+    /// escape bsdtar never writes. <paramref name="encoding"/>: the one tar.exe's output was decoded
+    /// with (<see cref="TarSandboxScope.OutputEncoding"/>). The only reader of a listing's names.
+    /// </summary>
+    public static string[]? ReadListing(string stdOut, Encoding encoding)
+    {
+        // T-F419: only the line end is dropped - "a.txt " is an entry of its own, not "a.txt".
+        string[] lines = [.. stdOut.Split('\n').Select(line => line.TrimEnd('\r')).Where(line => line.Length > 0)];
+        var names = new string[lines.Length];
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (TarListingName.Unescape(lines[i], encoding) is not { } name)
+                return null;
+            names[i] = name;
+        }
+        return names;
+    }
+
+    /// <summary>
     /// The verdict on <paramref name="listed"/> before anything is extracted, for the names that
     /// decide something: <paramref name="deciding"/> (a selection's members) or, when null, every
     /// name (a filter). <paramref name="headerNames"/>: the names a plain or gzip tar's headers
@@ -50,7 +72,7 @@ internal static class TarNames
         if (headerNames is not null)
         {
             if (headerNames.Count != listed.Count)
-                return new TarListingVerdict(TarNameTrust.Suspect, null);
+                return new TarListingVerdict(TarNameTrust.Suspect, listed.Where(Decides).Select(EntryDiskName.StripLeadingDotSlash).FirstOrDefault());
             for (int i = 0; i < listed.Count; i++)
             {
                 // A folder's trailing '/' is the listing's convention, not part of the name.

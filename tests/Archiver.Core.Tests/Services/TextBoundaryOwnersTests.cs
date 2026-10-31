@@ -41,6 +41,17 @@ public sealed partial class TextBoundaryOwnersTests
         offenders.Should().BeEmpty("take the code page from Archiver.Core.Text.SystemCodePages (docs/DECISIONS.md, T-F441)");
     }
 
+    // The tar-name boundary: tar.exe's escaped listing is read back in one place, which also judges it.
+    [Fact]
+    public void TarListing_IsReadOnlyByTarNames()
+    {
+        string owner = Path.Combine("src", "Archiver.Core", "Services", "Sandbox", "TarNames.cs");
+        SourceFiles("src")
+            .Where(file => File.ReadAllText(file).Contains("TarListingName.Unescape(", StringComparison.Ordinal))
+            .Select(file => Path.GetRelativePath(RepoRoot, file))
+            .Should().BeEquivalentTo([owner], "a listing's names are read through TarNames.ReadListing, which the verdict judges");
+    }
+
     [Fact]
     public void Scan_SeesTheOwner()
     {

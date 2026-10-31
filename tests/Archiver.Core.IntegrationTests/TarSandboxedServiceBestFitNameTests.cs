@@ -76,6 +76,8 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
             });
 
             result.Errors.Should().BeEmpty(TarCodePage.Describe());
+            // Before T-F441 the two lines made a false duplicate group: "copies not extracted".
+            result.SkippedFiles.Should().BeEmpty(TarCodePage.Describe());
             File.ReadAllText(Path.Combine(dest, fixture.Accented)).Should().Be("ACCENT");
             File.ReadAllText(Path.Combine(dest, fixture.Plain)).Should().Be("PLAIN");
         }
