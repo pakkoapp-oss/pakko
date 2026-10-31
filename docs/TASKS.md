@@ -56,6 +56,7 @@ TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating sessi
 | C after the operation | T-F434 (recycle each clean source), T-F435 (a reason per kept item), T-F437 (unreadable path list) | `SourceRecycler`, the not-deleted dialog, `Archiver.Shell` messages, `SPEC.md` rule | T-F434: plan mode (an irreversible action on user data) |
 | D progress | T-F432 (taskbar button and tray icon), T-F439 (window floor on a monitor move) | App `MainWindow`, tray icon, `Archiver.OperationUi`, `WindowFloor` | T-F432: plan mode (COM under Native AOT) |
 | F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
+| G long-open umbrellas (added 2026-10-31, the agent's pick) | T-F254 (regional display language: pack and sign-out on the PakkoW10 VM, not the user's machine), T-F91 (`ru-RU` falls back to en-US, on the VM; the native-speaker criterion replaced by an agent back-translation pass, since there are no native reviewers, the user's standing word), T-F328's leftovers (quote, dash and apostrophe normalisation), T-F202's light theme, en-US and tray (through the `windows` MCP, as `APP-013` and `EXP-008` already switched theme and language), T-F329 part 5 (Store screenshots retaken after D changes the window) | VM, `.resw`/`.resx`/`Localization.cpp` (after C and D's strings), `docs/assets/store/` | after C and D merge |
 | E on device, release | `APP-027`, `APP-028`, `APP-030`, `APP-014`, `OPW-*`, the new taskbar/tray rows, the release-tier smoke, `STO-005` as a real Store update | `docs/SMOKE.md`, `scripts/smoke/` | after A-D merge |
 
 Decisions taken with the plan (the agent, 2026-10-31): T-F432 covers the App's taskbar button, the
@@ -82,10 +83,10 @@ from `pakkoapp-oss`, and the moderators asked for a review. Graduates when `wing
 PavloRybchenko.PakkoCLI` works from the public source; later versions automated from `build.yml`
 (T-F317 Part A) once the package exists.
 
-**Deferred past 1.10.0**, each with its v1.9.0 reason unchanged: T-F359 (no spinning disk), T-F254
-(a regional language pack and a sign-out; could run on the PakkoW10 VM if the user wants it in),
-T-F332's super hero art (the user's image), T-F91's native-speaker review, T-F202's light theme, en-US and tray (system settings and the user's
-hands), T-F393 (no repro).
+**Deferred past 1.10.0:** T-F359 (no spinning disk), T-F332's super hero art (the user's image),
+T-F393 (no repro), T-F318 (waits for .NET 11), and the future items that are not fixes (T-F02,
+T-F10, T-F121, T-F127, T-F132, T-F144, T-F152). T-F254, T-F91 and T-F202's leftovers moved into
+stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine and hands.
 
 ---
 
