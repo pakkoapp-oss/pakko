@@ -1831,12 +1831,16 @@ re-measured with T-F346's script before and after.
 
 ### T-F444 — "Scan for threats" with another antivirus instead of Defender, and with no antivirus at all (P2, user-requested, stream B, on the PakkoW10 VM)
 
-- [ ] **Status:** open. Pakko scans through AMSI (`AmsiScanner`, `AmsiScanBuffer`) and knows whether
-  anything scans only from `HKLM\SOFTWARE\Microsoft\AMSI\Providers` having a subkey
-  (`AmsiProviderCheck`, T-F146): no subkey means Inconclusive, never Clean. That was measured only with
-  Defender active. Unknown: what a third-party antivirus does to that key and to the result. The risk
-  is a Defender subkey that stays while Defender is passive or off. Then Pakko would count a provider
-  that no longer scans, and a missed threat would read Clean instead of Inconclusive.
+- [ ] **Status:** fixed 2026-11-01, branch `fix/tf444-amsi-non-s-ok` (`docs/DECISIONS.md`,
+  "T-F444"): Avira with real-time protection off answered `AmsiScanBuffer` with 0x00000426, a
+  positive bare Win32 code, and NOT_DETECTED for EICAR; `AmsiScanner` checked `hr < 0`, so Pakko
+  showed an archive holding EICAR as Clean. `AmsiScanner.InterpretScanResult` now takes only S_OK;
+  anything else is `ScanEntryFailed`, Inconclusive. The new `InterpretScanResult_AnythingButSOk_Throws`
+  cases for 0x426 and S_FALSE were red before; on the VM the same probe gives Inconclusive. Every
+  other measured state (Avast, Avira, no subkey, a stale subkey, Defender's subkey without its
+  engine, Avast's File Shield off) already gave the right verdict. SMOKE SHL-015, `SECURITY.md`
+  ("Provider dependency", the user's OK). Not measured: Windows Server, `DisableAntiSpyware`, limited
+  periodic scanning, Avast uninstalled again.
 - **Questions to answer by measurement, not from memory:** (1) Does a free third-party antivirus
   (Avast Free, Avira Free; AVG if one of them registers no AMSI provider) register an AMSI provider,
   and under which GUID? (2) What happens to Defender's subkey and its state (`Get-MpComputerStatus`:

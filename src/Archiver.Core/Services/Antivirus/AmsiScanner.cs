@@ -60,20 +60,28 @@ internal sealed partial class AmsiScanner : IAmsiScanner
         {
             int hr = NativeMethods.AmsiScanBuffer(
                 _context, handle.AddrOfPinnedObject(), (uint)length, contentName, _session, out int result);
-            if (hr < 0)
-                throw new InvalidOperationException($"AmsiScanBuffer failed (HRESULT 0x{hr:X8}).");
-
-            // AMSI's own contract is a numeric verdict only — it never returns a threat name (that
-            // level of detail is provider-specific logging, e.g. Get-MpThreatDetection for
-            // Defender, not part of the AMSI API surface itself), so ThreatName is always null here.
-            return result >= AmsiResultDetectedThreshold
-                ? (ThreatVerdict.ThreatDetected, null)
-                : (ThreatVerdict.Clean, null);
+            return InterpretScanResult(hr, result);
         }
         finally
         {
             handle.Free();
         }
+    }
+
+    internal static (ThreatVerdict Verdict, string? ThreatName) InterpretScanResult(int hr, int result)
+    {
+        // T-F444: S_OK only, not hr >= 0. Avira with real-time protection off returned 0x00000426
+        // (a bare, positive Win32 code) and result=1 for EICAR without scanning anything; a
+        // `hr < 0` check let that through as Clean.
+        if (hr != 0)
+            throw new InvalidOperationException($"AmsiScanBuffer failed (HRESULT 0x{hr:X8}).");
+
+        // AMSI's own contract is a numeric verdict only — it never returns a threat name (that
+        // level of detail is provider-specific logging, e.g. Get-MpThreatDetection for
+        // Defender, not part of the AMSI API surface itself), so ThreatName is always null here.
+        return result >= AmsiResultDetectedThreshold
+            ? (ThreatVerdict.ThreatDetected, null)
+            : (ThreatVerdict.Clean, null);
     }
 
     public void Dispose()

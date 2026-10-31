@@ -1033,7 +1033,7 @@ sequenceDiagram
                     else plain entry
                         Service->>Amsi: ScanBuffer(bytes, name) — size cap first, an empty entry<br/>is Clean without a call (T-F247)
                     end
-                    Amsi-->>Service: Clean / ThreatDetected, or InvalidOperationException → this entry Inconclusive
+                    Amsi-->>Service: Clean / ThreatDetected only on S_OK, any other answer (even a positive one, T-F444)<br/>is InvalidOperationException → this entry Inconclusive
                     Note over Service: IOException / UnauthorizedAccess / InvalidData while reading → this entry Inconclusive
                 end
             end
