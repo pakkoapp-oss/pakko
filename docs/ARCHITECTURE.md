@@ -142,13 +142,18 @@ src/
 │   │       │                                  ZipArchive.Entries paired with decoded names (NamedZipEntry,
 │   │       │                                  incl. the post-decoding collision flag)
 │   │       ├── ZipEntryNameDecoder.cs   ← T-F234: 7-Zip's name rule (bit 11 / 0x7075 / host OS)
-│   │       ├── ZipNameCodePages.cs      ← T-F234: system OEM/ANSI via in-box CodePagesEncodingProvider
+│   │       ├── ZipNameCodePages.cs      ← T-F234: OEM/ANSI pages for legacy names, from SystemCodePages
 │   │       └── Decryption/              ← T-F188/T-F189: RawZipEntryLocator (central directory +
 │   │                                          local headers), EncryptedZipEntryReader, ZipCrypto, WinZip AES
 │   ├── Recovery/                   ← T-F275: the PAR 2.0 engine, internal — GF(2^16), packets,
 │   │                                  a bounded reader, create/verify/repair; RecoveryDataWriter
 │   │                                  (the router's PAR2 step), RecoveryProgressSplit, and
 │   │                                  RecoveryTestStep (the test's PAR2 check, T-F275 step 3)
+│   ├── Text/
+│   │   └── SystemCodePages.cs      ← T-F441: public; the only code that asks Windows for a
+│   │                                      code page (ACP, OEMCP, the user locale's ANSI/OEM) and
+│   │                                      turns a page into an Encoding (strict: an unknown page
+│   │                                      throws); TextBoundaryOwnersTests keeps it the only one
 │   ├── IO/
 │   │   ├── TempOwner.cs                ← T-F263/T-F312: public; the one owner of temp names —
 │   │   │                                  tag m<machine>-<pid>-<start ticks>, the sweep of entries

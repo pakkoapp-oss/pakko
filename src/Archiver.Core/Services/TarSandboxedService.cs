@@ -1258,7 +1258,7 @@ public sealed class TarSandboxedService : ITarService
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(nameStdErr)));
 
         // T-F418: the real names, so a control character is seen (T-F39) and a "-T" line names it.
-        string[] names = ListedNames(nameStdOut, TarOutputEncoding.Current)
+        string[] names = ListedNames(nameStdOut, scope.OutputEncoding)
             ?? throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
 
         // T-F420 review: an entry named as another's 8.3 alias - tar.exe would write it through that
@@ -1612,7 +1612,7 @@ public sealed class TarSandboxedService : ITarService
         if (verbose)
             return (SplitLines(stdOut), null);
         // T-F418: the "-t" names as the entries have them; the "-tv" lines are read by column only.
-        return ListedNames(stdOut, TarOutputEncoding.Current) is { } names
+        return ListedNames(stdOut, scope.OutputEncoding) is { } names
             ? (names, null)
             : ([], CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent)));
     }

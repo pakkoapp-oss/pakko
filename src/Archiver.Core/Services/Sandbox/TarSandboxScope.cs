@@ -71,6 +71,12 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// <summary>The operation-scoped quarantine directory (contains "out\" if present) — deleted whole by Dispose().</summary>
     public string QuarantineRoot { get; }
 
+    /// <summary>
+    /// T-F441: tar.exe's output encoding, read once for this scope, so a listing's lines and the
+    /// octal escapes inside them (T-F418) are decoded in the same code page.
+    /// </summary>
+    public System.Text.Encoding OutputEncoding { get; } = TarOutputEncoding.Current;
+
     private TarSandboxScope(SafeSidHandle sid, string quarantineRoot, FileStream archive, string? outputDirectory)
     {
         _sid = sid;
@@ -357,7 +363,7 @@ internal sealed partial class TarSandboxScope : IDisposable
                 TarExecutablePath,
                 [mode, "-f", "-", .. headerCharset, .. arguments],
                 new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: QuarantineRoot,
-                    OutputEncoding: TarOutputEncoding.Current, OnStdOutDiscarded: onStdOutDiscarded),
+                    OutputEncoding: OutputEncoding, OnStdOutDiscarded: onStdOutDiscarded),
                 cancellationToken)
                 .ConfigureAwait(false);
 
