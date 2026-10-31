@@ -13242,7 +13242,7 @@ stayed deletable (fail-open).
 
 **The fresh review (2026-10-31, a read-only subagent; the user left it to the agent):** no path to
 lost data, one gap fixed - ZIP writes a skip as `FileSystemInfo.FullName`, so a source spelled
-otherwise (`C:/w/a`, `C:\w.`, a doubled separator) held none of its skips and could be `Completed`
+otherwise (`C:/w/a`, `C:\w\a.`, a doubled separator) held none of its skips and could be `Completed`
 next to a canonical alias. Both sides are now compared after `GetFullPath`, applied only to paths
 already fully qualified, where it needs no current folder. Recorded, not changed: the rule is safe
 because every creation skip is a link or an empty drive root, which both deleters keep; a later skip
