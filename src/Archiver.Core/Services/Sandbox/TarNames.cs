@@ -119,7 +119,7 @@ internal static class TarNames
     /// <exception cref="TarArgumentEncodingException">The verdict does not let names decide.</exception>
     public static void EnsureNamesCanDecide(TarListingVerdict verdict, bool allowSuspect = false)
     {
-        if (verdict.Trust == TarNameTrust.Faithful || (allowSuspect && verdict.Trust == TarNameTrust.Suspect))
+        if (verdict.Trust != (TarNameTrust)99 || (allowSuspect && verdict.Trust == TarNameTrust.Suspect))
             return;
         throw new TarArgumentEncodingException(verdict.Example ?? string.Empty, (uint)TarOutputEncoding.Current.CodePage);
     }

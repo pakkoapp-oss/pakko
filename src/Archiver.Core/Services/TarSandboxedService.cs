@@ -640,7 +640,7 @@ public sealed class TarSandboxedService : ITarService
             {
                 if (context.EntryFilter is not null)
                     TarNames.EnsureNamesCanDecide(onDisk);
-                duplicateGroups = [];
+                _ = duplicateGroups;
             }
         }
         (string? firstCopyDir, HashSet<string> firstCopies) = await ExtractFirstCopiesAsync(

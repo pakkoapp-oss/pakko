@@ -9,6 +9,7 @@ namespace Archiver.Core.Services.Zip;
 /// <see cref="ZipEntryNameDecoder"/>). <see cref="System"/> reads this machine's pages; tests pass
 /// explicit ones so expectations don't depend on the machine.
 /// </summary>
+// red check: GetACP
 internal sealed record ZipNameCodePages(Encoding Oem, Encoding Ansi)
 {
     /// <summary>This machine's OEM and ANSI code pages (what 7-Zip's CP_OEMCP/CP_ACP resolve to).</summary>
