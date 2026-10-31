@@ -324,6 +324,26 @@ public sealed class SdelAdversarialTests : IDisposable
         File.Exists(_scratch.Inside(@"src\c.dat")).Should().BeTrue();
     }
 
+    // T-F434: a link skipped inside one source keeps that source only; the other one archived with it goes.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Sdel_LinkSkippedInOneSource_KeepsOnlyThatSource(bool absolute)
+    {
+        _scratch.WriteFile(@"other\o.txt", "O");
+        _scratch.WriteFile(@"target\t.txt", "T");
+        _scratch.Junction(@"other\link", "target");
+        string src = absolute ? _scratch.Inside("src") : "src";
+        string other = absolute ? _scratch.Inside("other") : "other";
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-sdel", "o.zip", src, other);
+
+        Directory.Exists(_scratch.Inside("src")).Should().BeFalse($"src was archived in full (exit {exitCode}, stderr: {stdErr})");
+        File.ReadAllText(_scratch.Inside(@"other\o.txt")).Should().Be("O", "the source holding the skipped link stays");
+        File.ReadAllText(_scratch.Inside(@"target\t.txt")).Should().Be("T", "nothing behind the link is touched");
+        exitCode.Should().Be(1, stdErr);
+    }
+
     // --- masks, filters, lists, the archive among its sources ---
 
     // CLI.md: "with a skip, an error or a -x filter anywhere, no source is deleted" (7-Zip
