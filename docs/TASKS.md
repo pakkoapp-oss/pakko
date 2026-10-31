@@ -1752,7 +1752,9 @@ re-measured with T-F346's script before and after.
 
 ### T-F442 — Formats tar.exe reads that Pakko does not offer: ISO, CAB, CPIO and others, by tar.exe version (P2, user-requested, stream H)
 
-- [ ] **Status:** open, measure first. The user, 2026-10-31: check extraction and the Explorer submenu
+- [ ] **Status:** measured 2026-10-31 on both tar.exe builds (`docs/DECISIONS.md`, "T-F442"): ISO 9660,
+  CAB, cpio, ar, WARC, tar.Z and uu/base64 read on both; xar and lzip on 3.8.9 only; mtree never. Next:
+  the plan. Before: open, measure first. The user, 2026-10-31: check extraction and the Explorer submenu
   for other archives that are not marked as Pakko's today (ISO, virtual machine disks, the list of a
   Store archiver: zip, rar, 7z, tar, wim, bz2, gz, xz, apfs, ar, arj, cab, cpio, cramfs, dmg, ext, fat,
   gpt, hfs, ihex, iso, lzh, lzma, mbr, nsis, ntfs, qcow2, rpm, squashfs, udf, uefi, vdi, vhd, vhdx, vmdk,
