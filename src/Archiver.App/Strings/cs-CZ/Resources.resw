@@ -342,7 +342,31 @@
     <value>Některé položky nebyly odstraněny</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Tyto položky jsou stále na disku. Mohou být používány nebo chráněny.</value>
+    <value>Tyto položky jsou stále na disku.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Nebyl zpracován celý jejich obsah: něco bylo přeskočeno nebo selhalo, nebo byla vybrána jen část.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Obsahují právě vytvořený archiv.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Kořen jednotky se nikdy neodstraňuje.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Jiná položka se stejným názvem nahradila na disku jeden z jejich souborů.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Po zahájení operace se změnily.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Výsledek operace už na disku není, takže toto je jeho jediná kopie.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Nelze je bezpečně odstranit: cestu nelze otevřít, nebo složka obsahuje odkaz na jednotce bez Koše.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Mohou být používány nebo chráněny.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Ano</value>

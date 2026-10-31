@@ -342,7 +342,31 @@
     <value>Beberapa item tidak dihapus</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Item ini masih ada di disk. Item mungkin sedang digunakan atau dilindungi.</value>
+    <value>Item ini masih ada di disk.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Tidak semua isinya diproses: sesuatu dilewati atau gagal, atau hanya sebagian yang dipilih.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Item ini berisi arsip yang baru dibuat.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Root drive tidak pernah dihapus.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Entri lain dengan nama yang sama menggantikan salah satu filenya di disk.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Item ini berubah setelah operasi dimulai.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Hasil operasi tidak lagi ada di disk, jadi item ini adalah satu-satunya salinannya.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Item ini tidak dapat dihapus dengan aman: jalur tidak dapat dibuka, atau folder berisi tautan di drive tanpa Keranjang Sampah.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Item mungkin sedang digunakan atau dilindungi.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Ya</value>

@@ -342,7 +342,31 @@
     <value>कुछ आइटम नहीं हटाए गए</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>ये आइटम अभी भी डिस्क पर हैं। वे उपयोग में या सुरक्षित हो सकते हैं।</value>
+    <value>ये आइटम अभी भी डिस्क पर हैं।</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>इनकी पूरी सामग्री संसाधित नहीं हुई: कुछ छोड़ा गया या विफल हुआ, या केवल एक भाग चुना गया था।</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>इनमें अभी बनाया गया संग्रह है।</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>किसी ड्राइव का रूट कभी नहीं हटाया जाता।</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>समान नाम वाली दूसरी प्रविष्टि ने डिस्क पर इनकी एक फ़ाइल को बदल दिया।</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>कार्रवाई शुरू होने के बाद ये बदल गए।</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>कार्रवाई का परिणाम अब डिस्क पर नहीं है, इसलिए ये उसकी एकमात्र प्रति हैं।</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>इन्हें सुरक्षित रूप से हटाया नहीं जा सका: पथ खोला नहीं जा सका, या किसी फ़ोल्डर में रीसायकल बिन रहित ड्राइव पर एक लिंक है।</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>वे उपयोग में या सुरक्षित हो सकते हैं।</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>हाँ</value>

@@ -342,7 +342,31 @@
     <value>Baadhi ya vipengee havikufutwa</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Vipengee hivi bado viko kwenye diski. Huenda vinatumika au vimelindwa.</value>
+    <value>Vipengee hivi bado viko kwenye diski.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Si maudhui yake yote yaliyochakatwa: kitu kimerukwa au kimeshindwa, au sehemu tu ilichaguliwa.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Vina kumbukumbu iliyoundwa sasa hivi.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Mzizi wa kiendeshi haufutwi kamwe.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Kipengee kingine chenye jina lilelile kilibadilisha mojawapo ya faili zake kwenye diski.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Vilibadilika baada ya operesheni kuanza.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Matokeo ya operesheni hayapo tena kwenye diski, kwa hivyo hivi ndivyo nakala yake pekee.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Havikuweza kufutwa kwa usalama: njia haikuweza kufunguliwa, au folda ina kiungo kwenye kiendeshi kisicho na Pipa la Kuchakata.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Huenda vinatumika au vimelindwa.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Ndiyo</value>

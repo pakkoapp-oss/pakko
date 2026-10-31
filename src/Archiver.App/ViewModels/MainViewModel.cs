@@ -2098,18 +2098,18 @@ public sealed partial class MainViewModel : ObservableObject
         // anything is deleted permanently, and every source still on disk is reported - also one
         // Core did not process in full (T-F419).
         RecycleResult recycled = missing.Count > 0
-            ? new RecycleResult([], [.. result.FullyProcessedSources])
+            ? RecycleResult.OutputsMissing(result.FullyProcessedSources)
             : await _sourceRecycler.DeleteAsync(result.FullyProcessedSources, snapshot, _dialogService.ShowPermanentDeleteConfirmAsync);
         // T-F302: a row whose source is gone would only fail the next run ("source does not
         // exist"); the tick, given for this run's sources, does not carry into the next list.
         foreach (string path in recycled.Deleted)
             RemovePath(path);
         DeleteAfterOperation = false;
-        List<string> notDeleted = [.. SourceRecycler.NotFullyProcessed(candidates, result.FullyProcessedSources), .. recycled.NotDeleted];
+        List<KeptSource> notDeleted = [.. SourceRecycler.NotFullyProcessed(candidates, result.Sources), .. recycled.Kept];
         if (notDeleted.Count == 0)
             return;
-        foreach (string path in notDeleted)
-            _logService.Warn($"Not deleted after operation: {path}");
+        foreach (KeptSource kept in notDeleted)
+            _logService.Warn($"Not deleted after operation ({kept.Reason}): {kept.Path}");
         await _dialogService.ShowNotDeletedAsync(notDeleted);
     }
 

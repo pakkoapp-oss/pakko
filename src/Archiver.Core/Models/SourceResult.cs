@@ -16,6 +16,20 @@ public enum SourceOutcome
     NotProcessed,
 }
 
+/// <summary>Why a source whose output is complete is still <see cref="SourceOutcome.Partial"/>
+/// (T-F435): nothing was skipped or failed, so the summary shows no reason of its own.</summary>
+public enum PartialCause
+{
+    /// <summary>A creation source holds one of the archives it produced.</summary>
+    HoldsAnOutput,
+
+    /// <summary>A creation source is a drive or share root, whose hidden system entries are left out.</summary>
+    DriveRoot,
+
+    /// <summary>An extracted archive's entry was replaced on disk by a later entry of the same name.</summary>
+    EntryReplaced,
+}
+
 /// <summary>The outcome of one source path of an operation (T-F260).</summary>
 public sealed record SourceResult
 {
@@ -24,4 +38,8 @@ public sealed record SourceResult
 
     /// <summary>How completely this source was processed.</summary>
     public SourceOutcome Outcome { get; init; }
+
+    /// <summary>Set only when a rule after the run made the source <see cref="SourceOutcome.Partial"/>;
+    /// null when a skip, an error, a filter or a subset did (the summary names those).</summary>
+    public PartialCause? Cause { get; init; }
 }

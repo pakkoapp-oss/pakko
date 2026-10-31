@@ -342,7 +342,31 @@
     <value>Ορισμένα στοιχεία δεν διαγράφηκαν</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Αυτά τα στοιχεία βρίσκονται ακόμη στον δίσκο. Ίσως χρησιμοποιούνται ή προστατεύονται.</value>
+    <value>Αυτά τα στοιχεία βρίσκονται ακόμη στον δίσκο.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Δεν υποβλήθηκε σε επεξεργασία όλο το περιεχόμενό τους: κάτι παραλείφθηκε ή απέτυχε, ή επιλέχθηκε μόνο ένα μέρος.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Περιέχουν το αρχείο συμπίεσης που μόλις δημιουργήθηκε.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Η ρίζα μιας μονάδας δεν διαγράφεται ποτέ.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Μια άλλη καταχώρηση με το ίδιο όνομα αντικατέστησε ένα από τα αρχεία τους στον δίσκο.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Άλλαξαν μετά την έναρξη της λειτουργίας.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Το αποτέλεσμα της λειτουργίας δεν βρίσκεται πια στον δίσκο, οπότε αυτά είναι το μοναδικό του αντίγραφο.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Δεν ήταν δυνατή η ασφαλής διαγραφή τους: η διαδρομή δεν άνοιξε, ή ένας φάκελος περιέχει σύνδεσμο σε μονάδα χωρίς Κάδο Ανακύκλωσης.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Ίσως χρησιμοποιούνται ή προστατεύονται.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Ναι</value>

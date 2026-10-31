@@ -70,9 +70,10 @@ internal static class SourceOutcomeRules
         IEnumerable<SourceResult> sources, IReadOnlyCollection<string> createdFiles)
     {
         List<HashSet<PathIdentity.Identity>?> holders = [.. createdFiles.Where(File.Exists).Select(PathIdentity.SelfAndAncestors)];
-        return [.. sources.Select(s => s.Outcome == SourceOutcome.Completed
-                && (IsRoot(s.Path) || createdFiles.Any(c => IsSameOrUnder(c, s.Path)) || HoldsAnOutput(s.Path, holders))
-            ? s with { Outcome = SourceOutcome.Partial }
+        return [.. sources.Select(s => s.Outcome != SourceOutcome.Completed ? s
+            : IsRoot(s.Path) ? s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.DriveRoot }
+            : createdFiles.Any(c => IsSameOrUnder(c, s.Path)) || HoldsAnOutput(s.Path, holders)
+                ? s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.HoldsAnOutput }
             : s)];
     }
 
@@ -80,7 +81,7 @@ internal static class SourceOutcomeRules
     // wholly on disk (ExtractionNameRegistry), so deleting it would lose that entry.
     internal static List<SourceResult> DowngradeNotWhollyOnDisk(List<SourceResult> sources, ExtractionNameRegistry names) =>
         [.. sources.Select(s => s.Outcome == SourceOutcome.Completed && names.NotWhollyOnDisk(s.Path)
-            ? s with { Outcome = SourceOutcome.Partial }
+            ? s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.EntryReplaced }
             : s)];
 
     private static bool HoldsAnOutput(string source, List<HashSet<PathIdentity.Identity>?> holders)

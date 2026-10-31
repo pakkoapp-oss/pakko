@@ -342,7 +342,31 @@
     <value>一部の項目は削除されませんでした</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>これらの項目はまだディスク上にあります。使用中または保護されている可能性があります。</value>
+    <value>これらの項目はまだディスク上にあります。</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>内容のすべては処理されませんでした: スキップまたは失敗したものがあるか、一部のみが選択されていました。</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>作成したばかりのアーカイブを含んでいます。</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>ドライブのルートは削除されません。</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>同じ名前の別のエントリが、ディスク上のファイルの 1 つを置き換えました。</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>操作の開始後に変更されました。</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>操作の結果がディスク上にないため、これらが唯一のコピーです。</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>安全に削除できませんでした: パスを開けなかったか、ごみ箱のないドライブ上のフォルダーにリンクが含まれています。</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>使用中または保護されている可能性があります。</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>はい</value>

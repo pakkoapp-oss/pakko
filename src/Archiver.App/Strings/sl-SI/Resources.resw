@@ -342,7 +342,31 @@
     <value>Nekateri elementi niso bili izbrisani</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Ti elementi so še vedno na disku. Morda so v uporabi ali zaščiteni.</value>
+    <value>Ti elementi so še vedno na disku.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Ni bila obdelana vsa njihova vsebina: nekaj je bilo preskočeno ali ni uspelo, ali pa je bil izbran le del.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Vsebujejo pravkar ustvarjeni arhiv.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Koren pogona se nikoli ne izbriše.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Drug vnos z enakim imenom je na disku zamenjal eno od njihovih datotek.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Spremenili so se po začetku operacije.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Rezultata operacije ni več na disku, zato so to njegova edina kopija.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Ni jih bilo mogoče varno izbrisati: poti ni bilo mogoče odpreti ali pa mapa vsebuje povezavo na pogonu brez koša.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Morda so v uporabi ali zaščiteni.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Da</value>

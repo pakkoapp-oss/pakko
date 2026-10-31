@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using FluentAssertions;
 
 namespace Archiver.App.Core.Tests;
@@ -288,9 +289,73 @@ public sealed class SourceRecyclerTests
     {
         string[] candidates = [@"C:\w\src", @"C:\w\b.zip", @"C:\w\c\"];
 
-        IReadOnlyList<string> left = SourceRecycler.NotFullyProcessed(candidates, [@"c:\W\B.ZIP", @"C:\w\c"]);
+        IReadOnlyList<KeptSource> left = SourceRecycler.NotFullyProcessed(candidates, [Completed(@"c:\W\B.ZIP"), Completed(@"C:\w\c")]);
 
-        left.Should().Equal([@"C:\w\src"], "case and a trailing separator do not make another source");
+        left.Select(k => k.Path).Should().Equal([@"C:\w\src"], "case and a trailing separator do not make another source");
+    }
+
+    private static SourceResult Completed(string path) => new() { Path = path, Outcome = SourceOutcome.Completed };
+
+    // T-F435: "may be in use or protected" was the only reason given, also for a source kept on
+    // purpose. Each kept source now carries the reason that applies.
+    [Theory]
+    [InlineData(PartialCause.HoldsAnOutput, KeepReason.HoldsAnOutput)]
+    [InlineData(PartialCause.DriveRoot, KeepReason.DriveRoot)]
+    [InlineData(PartialCause.EntryReplaced, KeepReason.EntryReplaced)]
+    [InlineData(null, KeepReason.NotFullyProcessed)]
+    public void NotFullyProcessed_CarriesCoresCause(PartialCause? cause, KeepReason expected)
+    {
+        SourceResult partial = new() { Path = @"C:\w\a.zip", Outcome = SourceOutcome.Partial, Cause = cause };
+
+        SourceRecycler.NotFullyProcessed([@"C:\W\A.zip\"], [partial])
+            .Should().Equal(new KeptSource(@"C:\W\A.zip\", expected));
+    }
+
+    [Fact]
+    public void NotFullyProcessed_SourceCoreNeverReported_IsNotFullyProcessed()
+    {
+        SourceRecycler.NotFullyProcessed([@"C:\w\a"], [])
+            .Should().Equal(new KeptSource(@"C:\w\a", KeepReason.NotFullyProcessed));
+    }
+
+    [Fact]
+    public void OutputsMissing_KeepsEverySourceWithThatReason()
+    {
+        RecycleResult result = RecycleResult.OutputsMissing([@"C:\w\a", @"C:\w\b"]);
+
+        result.Deleted.Should().BeEmpty();
+        result.Kept.Should().Equal(new KeptSource(@"C:\w\a", KeepReason.OutputMissing), new KeptSource(@"C:\w\b", KeepReason.OutputMissing));
+    }
+
+    private sealed class ChangedSnapshot(string changed, string withLink) : ISourceSnapshot
+    {
+        public bool Unchanged(string source) => source != changed;
+        public bool HoldsLink(string source) => source == withLink;
+    }
+
+    [Fact]
+    public async Task DeleteAsync_EveryKeptSource_CarriesItsReason()
+    {
+        _ops.Add(@"C:\changed", @"C:\changed", isFixed: true);
+        _ops.Add(@"Q:\", @"C:\", isFixed: true);
+        _ops.Add(@"Z:\linked", @"\\server\share\linked", isFixed: false);
+        _ops.Add(@"C:\stuck", @"C:\stuck", isFixed: true);
+        _ops.RecycleLeaves.Add(@"C:\stuck");
+        _ops.Add(@"E:\locked.zip", @"E:\locked.zip", isFixed: false);
+        _ops.DeleteThrows.Add(@"E:\locked.zip");
+
+        RecycleResult result = await new SourceRecycler(_ops).DeleteAsync(
+            [@"C:\changed", @"C:\gone", @"Q:\", @"Z:\linked", @"C:\stuck", @"E:\locked.zip"],
+            new ChangedSnapshot(changed: @"C:\changed", withLink: @"Z:\linked"), Confirm(true));
+
+        result.Kept.Should().BeEquivalentTo([
+            new KeptSource(@"C:\changed", KeepReason.ChangedSinceStart),
+            new KeptSource(@"C:\gone", KeepReason.NotSafeToDelete),
+            new KeptSource(@"Q:\", KeepReason.DriveRoot),
+            new KeptSource(@"Z:\linked", KeepReason.NotSafeToDelete),
+            new KeptSource(@"C:\stuck", KeepReason.StillOnDisk),
+            new KeptSource(@"E:\locked.zip", KeepReason.StillOnDisk),
+        ]);
     }
 
     // T-F420 independent review: the cleanup runs after the summary, while the user keeps working;
@@ -309,7 +374,7 @@ public sealed class SourceRecyclerTests
     [Fact]
     public void NotFullyProcessed_AllProcessed_NothingNamed()
     {
-        SourceRecycler.NotFullyProcessed([@"C:\w\a.txt"], [@"C:\w\a.txt"]).Should().BeEmpty();
+        SourceRecycler.NotFullyProcessed([@"C:\w\a.txt"], [Completed(@"C:\w\a.txt")]).Should().BeEmpty();
     }
 
     [Fact]

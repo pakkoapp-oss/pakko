@@ -342,7 +342,31 @@
     <value>کچھ آئٹمز حذف نہیں ہوئے</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>یہ آئٹمز ابھی بھی ڈسک پر ہیں۔ ہو سکتا ہے وہ استعمال میں یا محفوظ ہوں۔</value>
+    <value>یہ آئٹمز ابھی بھی ڈسک پر ہیں۔</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>ان کا تمام مواد پروسیس نہیں ہوا: کچھ نظرانداز ہوا یا ناکام رہا، یا صرف ایک حصہ منتخب تھا۔</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>ان میں ابھی بنایا گیا آرکائیو ہے۔</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>ڈرائیو کا روٹ کبھی حذف نہیں ہوتا۔</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>اسی نام کے ایک اور اندراج نے ڈسک پر ان کی ایک فائل کی جگہ لے لی۔</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>کارروائی شروع ہونے کے بعد یہ بدل گئے۔</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>کارروائی کا نتیجہ اب ڈسک پر نہیں ہے، اس لیے یہ اس کی واحد کاپی ہیں۔</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>انہیں محفوظ طریقے سے حذف نہیں کیا جا سکا: پاتھ نہیں کھل سکا، یا کسی فولڈر میں ری سائیکل بن کے بغیر ڈرائیو پر ایک لنک ہے۔</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>ہو سکتا ہے وہ استعمال میں یا محفوظ ہوں۔</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>ہاں</value>

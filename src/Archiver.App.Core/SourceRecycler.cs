@@ -1,3 +1,5 @@
+using Archiver.Core.Models;
+
 namespace Archiver.App.Core;
 
 /// <summary>The platform operations <see cref="SourceRecycler"/> needs, behind an interface so
@@ -22,11 +24,50 @@ public interface ISourceDeleteOperations
     bool Exists(string path);
 }
 
+/// <summary>Why a source "Delete after operation" should have removed is still on disk (T-F435).</summary>
+public enum KeepReason
+{
+    /// <summary>Core did not process all of it: something in it was skipped or failed, or only part was asked for.</summary>
+    NotFullyProcessed,
+
+    /// <summary>It holds one of the archives just created.</summary>
+    HoldsAnOutput,
+
+    /// <summary>A drive or share root, never deleted.</summary>
+    DriveRoot,
+
+    /// <summary>An archive one of whose entries was replaced on disk by another entry of the same name.</summary>
+    EntryReplaced,
+
+    /// <summary>Changed since the operation started (T-F419).</summary>
+    ChangedSinceStart,
+
+    /// <summary>The operation's output is no longer on disk, so the sources are its only copy (T-F420).</summary>
+    OutputMissing,
+
+    /// <summary>Its path could not be resolved, or it holds a link and its drive has no Recycle Bin.</summary>
+    NotSafeToDelete,
+
+    /// <summary>Deleting it was tried and it is still there: in use or protected.</summary>
+    StillOnDisk,
+}
+
+/// <summary>A source left on disk, by the path given, and why.</summary>
+public sealed record KeptSource(string Path, KeepReason Reason);
+
 /// <summary>What <see cref="SourceRecycler.DeleteAsync"/> did, by the paths given (T-F302).</summary>
 /// <param name="Deleted">Recycled or permanently deleted — gone from disk.</param>
-/// <param name="NotDeleted">Should have been deleted but are still on disk; a source the user chose
+/// <param name="Kept">Should have been deleted but are still on disk; a source the user chose
 /// to keep is in neither list.</param>
-public sealed record RecycleResult(IReadOnlyList<string> Deleted, IReadOnlyList<string> NotDeleted);
+public sealed record RecycleResult(IReadOnlyList<string> Deleted, IReadOnlyList<KeptSource> Kept)
+{
+    /// <summary>The paths of <see cref="Kept"/>.</summary>
+    public IReadOnlyList<string> NotDeleted => [.. Kept.Select(k => k.Path)];
+
+    /// <summary>Nothing deleted: an output is gone since the run (T-F420 review).</summary>
+    public static RecycleResult OutputsMissing(IEnumerable<string> sources) =>
+        new([], [.. sources.Select(s => new KeptSource(s, KeepReason.OutputMissing))]);
+}
 
 /// <summary>"Delete after operation" (T-F207): recycles sources on a fixed local volume, asks
 /// before permanently deleting anything else, and reports what is still on disk.</summary>
@@ -42,7 +83,7 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
         IEnumerable<string> sources, ISourceSnapshot snapshot, Func<IReadOnlyList<string>, Task<bool>> confirmPermanentDeleteAsync)
     {
         var deleted = new List<string>();
-        (List<string>? notDeleted, List<(string Source, string Final)>? permanent) = await Task.Run(() => RecycleLocalSources(sources, snapshot, deleted));
+        (List<KeptSource>? notDeleted, List<(string Source, string Final)>? permanent) = await Task.Run(() => RecycleLocalSources(sources, snapshot, deleted));
 
         // Declined items are the user's own choice, not a failure — they are not reported.
         if (permanent.Count > 0 && await confirmPermanentDeleteAsync([.. permanent.Select(p => p.Source)]))
@@ -53,11 +94,28 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
 
     /// <summary>The <paramref name="candidates"/> Core left out of its fully processed sources - with
     /// no error or skip when it holds its own archive or a later entry replaced one of its files
-    /// (T-F419). They stay on disk and are reported, as CLI's -sdel reports them.</summary>
-    public static IReadOnlyList<string> NotFullyProcessed(IEnumerable<string> candidates, IEnumerable<string> fullyProcessed)
+    /// (T-F419). They stay on disk and are reported, as CLI's -sdel reports them, with Core's cause
+    /// where it gave one (T-F435).</summary>
+    public static IReadOnlyList<KeptSource> NotFullyProcessed(IEnumerable<string> candidates, IReadOnlyList<SourceResult> sources)
     {
-        var processed = new HashSet<string>(fullyProcessed.Select(Path.TrimEndingDirectorySeparator), StringComparer.OrdinalIgnoreCase);
-        return [.. candidates.Where(path => !processed.Contains(Path.TrimEndingDirectorySeparator(path)))];
+        var byPath = new Dictionary<string, SourceResult>(StringComparer.OrdinalIgnoreCase);
+        foreach (SourceResult source in sources)
+            byPath.TryAdd(Path.TrimEndingDirectorySeparator(source.Path), source);
+        var kept = new List<KeptSource>();
+        foreach (string path in candidates)
+        {
+            SourceResult? source = byPath.GetValueOrDefault(Path.TrimEndingDirectorySeparator(path));
+            if (source?.Outcome != SourceOutcome.Completed)
+                kept.Add(new KeptSource(path, source?.Cause switch
+                {
+                    PartialCause.HoldsAnOutput => KeepReason.HoldsAnOutput,
+                    PartialCause.DriveRoot => KeepReason.DriveRoot,
+                    PartialCause.EntryReplaced => KeepReason.EntryReplaced,
+                    null => KeepReason.NotFullyProcessed,
+                    _ => throw new ArgumentOutOfRangeException(nameof(sources), source.Cause, "A PartialCause with no KeepReason."),
+                }));
+        }
+        return kept;
     }
 
     /// <summary>The <paramref name="outputs"/> no longer on disk (T-F420 review): the cleanup runs
@@ -67,10 +125,10 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
 
     // Recycles what can be recycled; returns what is still on disk plus what needs a permanent
     // delete.
-    private (List<string> NotDeleted, List<(string Source, string Final)> Permanent) RecycleLocalSources(
+    private (List<KeptSource> NotDeleted, List<(string Source, string Final)> Permanent) RecycleLocalSources(
         IEnumerable<string> sources, ISourceSnapshot snapshot, List<string> deleted)
     {
-        var notDeleted = new List<string>();
+        var notDeleted = new List<KeptSource>();
         var recycle = new List<(string Source, string Final)>();
         var permanent = new List<(string Source, string Final)>();
 
@@ -80,7 +138,7 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
             // the archive; the whole source stays.
             if (!snapshot.Unchanged(source))
             {
-                notDeleted.Add(source);
+                notDeleted.Add(new KeptSource(source, KeepReason.ChangedSinceStart));
                 continue;
             }
             // T-F207 spike: the shell's own "permanently delete?" warning never fires for a
@@ -88,14 +146,16 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
             // resolved path, and an unresolvable path is never deleted at all; nor is a volume or
             // share root (T-F419: a SUBST or mapped drive root resolves to one).
             string? final = ops.ResolveFinalPath(source);
-            if (final is null || IsRoot(final))
-                notDeleted.Add(source);
+            if (final is null)
+                notDeleted.Add(new KeptSource(source, KeepReason.NotSafeToDelete));
+            else if (IsRoot(final))
+                notDeleted.Add(new KeptSource(source, KeepReason.DriveRoot));
             else if (ops.IsOnFixedLocalVolume(final))
                 recycle.Add((source, final));
             // T-F419: a permanent recursive delete stops at a link it cannot remove, after the
             // files before it are gone; such a folder only ever goes to the Recycle Bin whole.
             else if (snapshot.HoldsLink(source))
-                notDeleted.Add(source);
+                notDeleted.Add(new KeptSource(source, KeepReason.NotSafeToDelete));
             else
                 permanent.Add((source, final));
         }
@@ -106,15 +166,20 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
             try { ops.MoveToRecycleBin([.. recycle.Select(r => r.Final).Distinct(StringComparer.OrdinalIgnoreCase)]); }
             catch { /* reported below: whatever is still on disk */ }
             foreach ((string source, string final) in recycle)
-                (ops.Exists(final) ? notDeleted : deleted).Add(source);
+            {
+                if (ops.Exists(final))
+                    notDeleted.Add(new KeptSource(source, KeepReason.StillOnDisk));
+                else
+                    deleted.Add(source);
+            }
         }
 
         return (notDeleted, permanent);
     }
 
-    private List<string> DeletePermanently(List<(string Source, string Final)> permanent, List<string> deleted)
+    private List<KeptSource> DeletePermanently(List<(string Source, string Final)> permanent, List<string> deleted)
     {
-        var notDeleted = new List<string>();
+        var notDeleted = new List<KeptSource>();
         var tried = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach ((string? source, string? final) in permanent)
         {
@@ -123,7 +188,10 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
                 try { ops.DeletePermanently(final); }
                 catch { /* reported below: still on disk */ }
             }
-            (ops.Exists(final) ? notDeleted : deleted).Add(source);
+            if (ops.Exists(final))
+                notDeleted.Add(new KeptSource(source, KeepReason.StillOnDisk));
+            else
+                deleted.Add(source);
         }
         return notDeleted;
     }

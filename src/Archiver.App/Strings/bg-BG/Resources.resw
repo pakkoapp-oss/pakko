@@ -342,7 +342,31 @@
     <value>Някои елементи не бяха изтрити</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Тези елементи все още са на диска. Може да се използват или да са защитени.</value>
+    <value>Тези елементи все още са на диска.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Не цялото им съдържание е обработено: нещо е пропуснато или неуспешно, или е избрана само част.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Съдържат току-що създадения архив.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Коренът на устройство никога не се изтрива.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Друг елемент със същото име е заменил един от файловете им на диска.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Променени са след началото на операцията.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Резултатът от операцията вече не е на диска, затова това е единственото му копие.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Не могат да бъдат изтрити безопасно: пътят не може да бъде отворен или папка съдържа връзка на устройство без кошче.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Може да се използват или да са защитени.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Да</value>

@@ -342,7 +342,31 @@
     <value>Kai kurie elementai nebuvo ištrinti</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Šie elementai vis dar diske. Jie gali būti naudojami arba apsaugoti.</value>
+    <value>Šie elementai vis dar diske.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Apdorotas ne visas jų turinys: kažkas buvo praleista arba nepavyko, arba pažymėta tik dalis.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Juose yra ką tik sukurtas archyvas.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Disko šaknis niekada netrinama.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Kitas to paties pavadinimo elementas diske pakeitė vieną iš jų failų.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Jie pasikeitė pradėjus operaciją.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Operacijos rezultato diske nebėra, todėl tai jo vienintelė kopija.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Jų nepavyko saugiai ištrinti: kelio nepavyko atidaryti arba aplanke yra saitas diske be šiukšlinės.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Jie gali būti naudojami arba apsaugoti.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Taip</value>

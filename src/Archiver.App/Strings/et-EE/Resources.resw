@@ -342,7 +342,31 @@
     <value>Mõnda üksust ei kustutatud</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Need üksused on endiselt kettal. Need võivad olla kasutusel või kaitstud.</value>
+    <value>Need üksused on endiselt kettal.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Kogu nende sisu ei töödeldud: midagi jäeti vahele või see nurjus või valiti ainult osa.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Need sisaldavad äsja loodud arhiivi.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Ketta juurkausta ei kustutata kunagi.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Teine sama nimega kirje asendas kettal ühe nende failidest.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Need muutusid pärast toimingu algust.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Toimingu tulemust pole enam kettal, seega on need selle ainus koopia.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Neid ei saanud ohutult kustutada: teed ei saanud avada või kaust sisaldab linki prügikastita kettal.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Need võivad olla kasutusel või kaitstud.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Jah</value>

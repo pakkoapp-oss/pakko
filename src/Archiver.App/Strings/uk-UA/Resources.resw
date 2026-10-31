@@ -385,7 +385,31 @@
     <value>Деякі елементи не видалено</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Ці елементи досі на диску. Можливо, вони використовуються або захищені.</value>
+    <value>Ці елементи досі на диску.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Оброблено не весь їхній вміст: щось пропущено чи не вдалося, або вибрано лише частину.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Вони містять щойно створений архів.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Корінь диска ніколи не видаляється.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Інший елемент із тим самим іменем замінив на диску один із їхніх файлів.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Вони змінилися після початку операції.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Результату операції вже немає на диску, тож це його єдина копія.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Їх не вдалося безпечно видалити: шлях не відкрився, або папка містить посилання на диску без Кошика.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Можливо, вони використовуються або захищені.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Так</value>

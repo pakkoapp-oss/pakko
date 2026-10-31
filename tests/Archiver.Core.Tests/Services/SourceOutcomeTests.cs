@@ -347,18 +347,20 @@ public sealed class SourceOutcomeTests : IDisposable
     }
 
     [Theory]
-    [InlineData(@"C:\src\dir", @"C:\src\dir\out\dir.zip", true)]
-    [InlineData(@"C:\src\dir", @"C:\src\DIR\dir.zip", true)]
-    [InlineData(@"C:\src\dir", @"C:\src\dir2\dir.zip", false)]
-    [InlineData(@"C:\src\dir", @"C:\src\dir.zip", false)]
-    [InlineData(@"C:\", @"C:\archive.zip", true)]
-    public void DowngradeSourcesContainingOutputs_OnlySourcesContainingAnOutput(string source, string created, bool downgraded)
+    [InlineData(@"C:\src\dir", @"C:\src\dir\out\dir.zip", PartialCause.HoldsAnOutput)]
+    [InlineData(@"C:\src\dir", @"C:\src\DIR\dir.zip", PartialCause.HoldsAnOutput)]
+    [InlineData(@"C:\src\dir", @"C:\src\dir2\dir.zip", null)]
+    [InlineData(@"C:\src\dir", @"C:\src\dir.zip", null)]
+    [InlineData(@"C:\", @"C:\archive.zip", PartialCause.DriveRoot)]
+    public void DowngradeSourcesContainingOutputs_OnlySourcesContainingAnOutput(string source, string created, PartialCause? cause)
     {
         SourceResult[] sources = new[] { new SourceResult { Path = source, Outcome = SourceOutcome.Completed } };
 
         IReadOnlyList<SourceResult> result = SourceOutcomeRules.DowngradeSourcesContainingOutputs(sources, [created]);
 
-        result.Single().Outcome.Should().Be(downgraded ? SourceOutcome.Partial : SourceOutcome.Completed);
+        result.Single().Outcome.Should().Be(cause is null ? SourceOutcome.Completed : SourceOutcome.Partial);
+        // T-F435: the App's not-deleted dialog names the reason a source is kept.
+        result.Single().Cause.Should().Be(cause);
     }
 
     [Fact]

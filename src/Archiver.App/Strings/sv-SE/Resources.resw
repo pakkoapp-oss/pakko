@@ -342,7 +342,31 @@
     <value>Vissa objekt togs inte bort</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>De här objekten finns fortfarande på disken. De kan vara i bruk eller skyddade.</value>
+    <value>De här objekten finns fortfarande på disken.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Inte allt innehåll bearbetades: något hoppades över eller misslyckades, eller så var bara en del markerad.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>De innehåller arkivet som just skapades.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>En enhets rot tas aldrig bort.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>En annan post med samma namn ersatte en av deras filer på disken.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>De ändrades efter att åtgärden startade.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Åtgärdens resultat finns inte längre på disken, så de här är den enda kopian.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>De kunde inte tas bort på ett säkert sätt: sökvägen kunde inte öppnas, eller en mapp innehåller en länk på en enhet utan papperskorg.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>De kan vara i bruk eller skyddade.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Ja</value>

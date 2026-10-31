@@ -342,7 +342,31 @@
     <value>Certains éléments n’ont pas été supprimés</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Ces éléments sont toujours sur le disque. Ils sont peut-être utilisés ou protégés.</value>
+    <value>Ces éléments sont toujours sur le disque.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Tout leur contenu n'a pas été traité : un élément a été ignoré ou a échoué, ou seule une partie était sélectionnée.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Ils contiennent l'archive qui vient d'être créée.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>La racine d'un lecteur n'est jamais supprimée.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Une autre entrée du même nom a remplacé l'un de leurs fichiers sur le disque.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Ils ont changé après le début de l'opération.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Le résultat de l'opération n'est plus sur le disque : ces éléments en sont donc la seule copie.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Ils n'ont pas pu être supprimés en toute sécurité : le chemin n'a pas pu être ouvert, ou un dossier contient un lien sur un lecteur sans Corbeille.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Ils sont peut-être utilisés ou protégés.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Oui</value>

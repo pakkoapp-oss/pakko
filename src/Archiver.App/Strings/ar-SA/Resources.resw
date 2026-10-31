@@ -342,7 +342,31 @@
     <value>لم يتم حذف بعض العناصر</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>لا تزال هذه العناصر على القرص. ربما تكون قيد الاستخدام أو محمية.</value>
+    <value>لا تزال هذه العناصر على القرص.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>لم تتم معالجة كل محتواها: تم تخطي شيء أو فشل، أو تم تحديد جزء فقط.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>تحتوي على الأرشيف الذي أُنشئ للتو.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>لا يُحذف جذر محرك الأقراص أبدًا.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>استبدل عنصر آخر يحمل الاسم نفسه أحد ملفاتها على القرص.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>تغيّرت بعد بدء العملية.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>لم تعد نتيجة العملية على القرص، لذا فهذه هي نسختها الوحيدة.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>تعذّر حذفها بأمان: تعذّر فتح المسار، أو يحتوي مجلد على ارتباط على محرك أقراص بدون سلة محذوفات.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>ربما تكون قيد الاستخدام أو محمية.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>نعم</value>

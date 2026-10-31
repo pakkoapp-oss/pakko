@@ -342,7 +342,31 @@
     <value>Bazı öğeler silinmedi</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Bu öğeler hâlâ diskte. Kullanımda veya korumalı olabilirler.</value>
+    <value>Bu öğeler hâlâ diskte.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>İçeriklerinin tamamı işlenmedi: bir şey atlandı veya başarısız oldu ya da yalnızca bir kısmı seçildi.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Az önce oluşturulan arşivi içeriyorlar.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Bir sürücünün kökü asla silinmez.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Aynı ada sahip başka bir öğe, diskteki dosyalarından birinin yerini aldı.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>İşlem başladıktan sonra değiştiler.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>İşlemin sonucu artık diskte değil, bu yüzden bunlar onun tek kopyası.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Güvenle silinemediler: yol açılamadı veya bir klasör, Geri Dönüşüm Kutusu olmayan bir sürücüde bağlantı içeriyor.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Kullanımda veya korumalı olabilirler.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Evet</value>

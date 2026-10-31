@@ -342,7 +342,31 @@
     <value>Joitakin kohteita ei poistettu</value>
   </data>
   <data name="NotDeletedDialogMessage" xml:space="preserve">
-    <value>Nämä kohteet ovat yhä levyllä. Ne voivat olla käytössä tai suojattuja.</value>
+    <value>Nämä kohteet ovat yhä levyllä.</value>
+  </data>
+  <data name="NotDeletedReasonNotFullyProcessed" xml:space="preserve">
+    <value>Niiden koko sisältöä ei käsitelty: jotain ohitettiin tai epäonnistui, tai vain osa valittiin.</value>
+  </data>
+  <data name="NotDeletedReasonHoldsAnOutput" xml:space="preserve">
+    <value>Ne sisältävät juuri luodun arkiston.</value>
+  </data>
+  <data name="NotDeletedReasonDriveRoot" xml:space="preserve">
+    <value>Aseman juurta ei koskaan poisteta.</value>
+  </data>
+  <data name="NotDeletedReasonEntryReplaced" xml:space="preserve">
+    <value>Toinen samanniminen kohde korvasi yhden niiden tiedostoista levyllä.</value>
+  </data>
+  <data name="NotDeletedReasonChangedSinceStart" xml:space="preserve">
+    <value>Ne muuttuivat toiminnon alkamisen jälkeen.</value>
+  </data>
+  <data name="NotDeletedReasonOutputMissing" xml:space="preserve">
+    <value>Toiminnon tulos ei ole enää levyllä, joten nämä ovat sen ainoa kopio.</value>
+  </data>
+  <data name="NotDeletedReasonNotSafeToDelete" xml:space="preserve">
+    <value>Niitä ei voitu poistaa turvallisesti: polkua ei voitu avata, tai kansio sisältää linkin asemalla, jolla ei ole roskakoria.</value>
+  </data>
+  <data name="NotDeletedReasonStillOnDisk" xml:space="preserve">
+    <value>Ne voivat olla käytössä tai suojattuja.</value>
   </data>
   <data name="DialogYesButton" xml:space="preserve">
     <value>Kyllä</value>
