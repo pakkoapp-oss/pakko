@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakko nelze otevřít. Přeinstalujte Pakko a zkuste to znovu.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko neobdržel položky vybrané v Průzkumníku souborů, proto se nic neprovedlo. Zkuste to znovu.</value>
+  </data>
 </root>

@@ -1670,7 +1670,10 @@ re-measured with T-F346's script before and after.
 
 ### T-F437 — `Archiver.Shell.exe --paths-stdin` with a list it cannot read says only "The operation failed" (P3)
 
-- [ ] **Status:** open. A harness that wrote the path list in UTF-8 instead of the UTF-16LE the
+- [ ] **Status:** fixed 2026-10-31, branch `fix/tf437-unreadable-path-list`: the message says the selection from
+  File Explorer was not received (37 locales, `ResultSelectionNotReceived`), then `StdinPathList`'s reason in
+  English; `SHL-006`'s second case on the device in stream E.
+- **Before:** open. A harness that wrote the path list in UTF-8 instead of the UTF-16LE the
   extension writes (T-F235) got the list refused whole, rightly, but the message names no reason. Only a
   broken extension or a third-party caller can send such a list. Next: a message that says the path list
   could not be read; low priority.

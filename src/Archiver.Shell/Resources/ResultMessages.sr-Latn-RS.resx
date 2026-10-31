@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakko nije moguće otvoriti. Ponovo instalirajte Pakko i pokušajte ponovo.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko nije primio stavke izabrane u File Explorer-u, pa ništa nije urađeno. Pokušajte ponovo.</value>
+  </data>
 </root>

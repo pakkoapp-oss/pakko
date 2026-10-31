@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>A Pakko nem nyitható meg. Telepítse újra a Pakkót, és próbálja újra.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>A Pakko nem kapta meg a Fájlkezelőben kijelölt elemeket, ezért nem történt semmi. Próbálja újra.</value>
+  </data>
 </root>

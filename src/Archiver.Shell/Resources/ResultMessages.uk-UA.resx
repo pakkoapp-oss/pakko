@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Не вдалося відкрити Pakko. Перевстановіть Pakko і спробуйте ще раз.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko не отримав вибрані у Провіднику елементи, тому нічого не виконано. Спробуйте ще раз.</value>
+  </data>
 </root>

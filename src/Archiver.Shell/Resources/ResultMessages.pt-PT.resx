@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Não foi possível abrir o Pakko. Reinstale o Pakko e tente novamente.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>O Pakko não recebeu os itens selecionados no Explorador de Ficheiros, por isso nada foi feito. Tente novamente.</value>
+  </data>
 </root>

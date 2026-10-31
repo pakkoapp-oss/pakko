@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakkoa ei voitu avata. Asenna Pakko uudelleen ja yritä uudelleen.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko ei saanut Resurssienhallinnassa valittuja kohteita, joten mitään ei tehty. Yritä uudelleen.</value>
+  </data>
 </root>

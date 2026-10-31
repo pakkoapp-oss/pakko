@@ -35,7 +35,7 @@ async Task RunShellAsync()
         StdinPathListResult list = StdinPathList.Read(Console.OpenStandardInput());
         if (list.Error is not null)
         {
-            new Win32OperationUi().ShowMessage(OperationMessages.ForSelectionNotReceived());
+            new Win32OperationUi().ShowMessage(OperationMessages.ForSelectionNotReceived(list.Error));
             Environment.Exit(1);
             return;
         }

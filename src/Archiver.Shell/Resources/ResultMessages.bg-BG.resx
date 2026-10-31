@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakko не може да бъде отворен. Инсталирайте отново Pakko и опитайте пак.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko не получи избраните във File Explorer елементи, затова нищо не беше направено. Опитайте отново.</value>
+  </data>
 </root>

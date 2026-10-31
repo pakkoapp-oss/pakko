@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakko کو نہیں کھولا جا سکا۔ Pakko کو دوبارہ انسٹال کریں اور دوبارہ کوشش کریں۔</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko کو فائل ایکسپلورر میں منتخب کردہ آئٹمز موصول نہیں ہوئے، اس لیے کچھ نہیں کیا گیا۔ دوبارہ کوشش کریں۔</value>
+  </data>
 </root>

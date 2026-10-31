@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>Pakko açılamadı. Pakko'yu yeniden yükleyip tekrar deneyin.</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko, Dosya Gezgini'nde seçilen öğeleri almadı; bu nedenle hiçbir işlem yapılmadı. Yeniden deneyin.</value>
+  </data>
 </root>

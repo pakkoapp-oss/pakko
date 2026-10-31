@@ -30,4 +30,7 @@
   <data name="OpenUiNoPackage" xml:space="preserve">
     <value>ไม่สามารถเปิด Pakko ได้ โปรดติดตั้ง Pakko ใหม่แล้วลองอีกครั้ง</value>
   </data>
+  <data name="ResultSelectionNotReceived" xml:space="preserve">
+    <value>Pakko ไม่ได้รับรายการที่เลือกใน File Explorer จึงไม่มีการดำเนินการใด ๆ โปรดลองอีกครั้ง</value>
+  </data>
 </root>
