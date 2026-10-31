@@ -1554,7 +1554,7 @@ re-measured with T-F346's script before and after.
   thread. `Launcher_CancelWhileAReaderIsBusy_KillsTheChildWithoutTheReader` was red before (a reader
   busy in its callback kept PING alive past the cancel); `Launcher_StdInDataCancelled_ThrowsPromptly`
   now tells a child the cancel did not kill from a late return, with the pool's counts in the
-  message. Left open: hypothesis (2), the two or three pool threads each launch blocks. History:
+  message. Hypothesis (2), the pool threads each launch blocks, moved to T-F445. History:
   `TarCommandLineEncodingTests.Launcher_StdInDataCancelled_ThrowsPromptly`
   took 59.6 s against its 30 s limit on run 40099759037 (2026-10-24, branch `docs/wave-1.9.0`, a plan
   PR with no code change), the lifetime of its `PING -n 60` child; a fuzz iteration timed out in the
@@ -1865,6 +1865,17 @@ re-measured with T-F346's script before and after.
   user's OK), `docs/SMOKE.md` rows for the third-party case, and a Windows Server row if one is
   measured. Roll the VM back to the checkpoint afterwards.
 - **Reported by:** the user, 2026-10-31.
+
+### T-F445 — Each tar.exe launch blocks two or three pool threads for the child's whole life (P3, from T-F428)
+
+- [ ] **Status:** open, not measured. `SandboxedProcessLauncher` reads stdout and stderr through
+  `FileStream`s over synchronous pipe handles, so `ReadToEndAsync`/`ReadAsync` run as blocking reads
+  on pool threads, and `WriteStdIn` holds a third through `Task.Run`. A parallel test run multiplies
+  it; T-F428 took the cancel off this path, but a starved pool still delays a launch's return. Next:
+  count pool threads during a parallel run of the sandbox tests; if it matters, overlapped pipes
+  (`CreateNamedPipe` with `FILE_FLAG_OVERLAPPED`) or one dedicated thread per launch. Sandbox code:
+  plan mode + advisor at both ends.
+- **Reported by:** T-F428's hypothesis (2), 2026-10-31.
 
 ### T-F393 — The About button went disabled once and no dialog came (P3)
 
