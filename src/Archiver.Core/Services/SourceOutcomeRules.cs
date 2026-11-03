@@ -48,7 +48,9 @@ internal static class SourceOutcomeRules
     // Fully qualified and with no "." or ".." part: compared as written, "C:\w\b\..\a\x" would sit
     // under b while it names a file of a.
     private static bool IsLiteralFullPath(string path) =>
-        Path.IsPathFullyQualified(path) && !path.Split(['\\', '/']).Any(part => part is "." or "..");
+        Path.IsPathFullyQualified(path) && !path.Split(PathSeparators).Any(part => part is "." or "..");
+
+    private static readonly char[] PathSeparators = ['\\', '/'];
 
     // As IsSameOrUnder, but on the paths as written: nothing is resolved against the current folder.
     private static bool IsSameOrUnderLiteral(string candidate, string root)
