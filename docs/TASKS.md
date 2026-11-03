@@ -1906,7 +1906,9 @@ re-measured with T-F346's script before and after.
 - [ ] **Status:** fixed, branch `fix/tf446-amsi-blocked-by-admin` (2026-11-03): the range is
   Inconclusive with `ScanEntryBlockedByPolicy` (37 locales), red-first tests on its bounds and in the
   scan service; `docs/DECISIONS.md` "T-F446". No device row: no provider met so far (T-F444's
-  three) answers in that range.
+  three) answers in that range. Fresh `opus` reviewer (the user left it to the agent, 2026-11-03): no
+  defects; the tar path has no blocked-entry test of its own, it shares `ScanOneEntryAsync` with ZIP.
+  `SECURITY.md` names the cause (the user's OK, 2026-11-03).
 - **Before:** open, not measured. `AmsiScanner` counts every `AMSI_RESULT` below 32768 as
   Clean, including `AMSI_RESULT_BLOCKED_BY_ADMIN_START..END` (16384-20479), which says an admin
   policy blocked the content, not that a scan found it clean (the code comment chose this on
