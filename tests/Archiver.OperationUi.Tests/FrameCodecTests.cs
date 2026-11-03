@@ -11,8 +11,8 @@ public sealed class FrameCodecTests
 {
     private const int MaxPathChars = 32_767;
 
-    public static TheoryData<ProtocolMessage> EveryMessage() => new()
-    {
+    public static TheoryData<ProtocolMessage> EveryMessage() =>
+    [
         new Hello(FrameCodec.ProtocolVersion, "uk-UA", RightToLeft: false,
             new Dictionary<string, string> { ["Cancel"] = "Скасувати", ["Close"] = "Закрити" }),
         new Begin("Розпакування 5 архівів", ProgressKind.Bytes),
@@ -32,12 +32,12 @@ public sealed class FrameCodecTests
         new PasswordAnswer(8, null, ApplyToRemaining: false),
         new ConfirmAnswer(9, Confirmed: true),
         new WindowClosed(),
-    };
+    ];
 
     // --- Happy path ---
 
     [Theory]
-    [MemberData(nameof(EveryMessage))]
+    [MemberData(nameof(EveryMessage), DisableDiscoveryEnumeration = true)]
     public async Task EveryMessage_RoundTrips(ProtocolMessage message)
     {
         ProtocolMessage decoded = await RoundTripAsync(message);

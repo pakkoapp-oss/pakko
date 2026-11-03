@@ -876,43 +876,55 @@ static async Task<bool> PrintArchiveListingAsync(
     // T-F418: a name holds what the archive stores; 7-Zip's rule keeps it on one line.
     bool terminal = !Console.IsOutputRedirected;
     ArchiveFormat format = ArchiveFormatDetector.Detect(archivePath);
-    if (layout.Header)
-    {
-        string shownName = report.StdinPath is not null ? "(stdin)" : archivePath;
-        long physicalSize = 0;
-        if (layout.Technical)
-        {
-            try
-            {
-                physicalSize = new FileInfo(archivePath).Length;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // The archive was listed a moment ago; gone or locked now, it is this run's error.
-                await Console.Error.WriteLineAsync($"pakko: error: {shownName}: {ex.Message}").ConfigureAwait(false);
-                return false;
-            }
-        }
-        IReadOnlyList<string> headerLines = layout.Technical
-            ? CliTechListing.ArchiveHeader(shownName, format, physicalSize, terminal)
-            : [CliEntryFormatter.Header];
-        foreach (string line in headerLines)
-            await Console.Out.WriteLineAsync(line).ConfigureAwait(false);
-    }
+    if (layout.Header && !await PrintListingHeaderAsync(archivePath, format, layout.Technical, report, terminal).ConfigureAwait(false))
+        return false;
     // T-F410: the names after the archive, -i and -x pick the rows, as 7-Zip's l.
     List<ArchiveEntryInfo> entries = [.. listResult.Entries.Where(e => filter?.Includes(e.Path, e.IsDirectory) ?? true)];
+    await PrintListingEntriesAsync(entries, format, layout.Technical, terminal).ConfigureAwait(false);
+
+    if (layout.Multiple)
+        await Console.Out.WriteLineAsync($"# total: {entries.Count} entries").ConfigureAwait(false);
+
+    return true;
+}
+
+static async Task PrintListingEntriesAsync(List<ArchiveEntryInfo> entries, ArchiveFormat format, bool technical, bool terminal)
+{
     foreach (ArchiveEntryInfo entry in entries)
     {
-        IReadOnlyList<string> lines = layout.Technical
+        IReadOnlyList<string> lines = technical
             ? CliTechListing.EntryBlock(entry, format, terminal)
             : [CliEntryFormatter.FormatRow(entry with { Path = CliTechListing.ForConsole(entry.Path, terminal) })];
         foreach (string line in lines)
             await Console.Out.WriteLineAsync(line).ConfigureAwait(false);
     }
+}
 
-    if (layout.Multiple)
-        await Console.Out.WriteLineAsync($"# total: {entries.Count} entries").ConfigureAwait(false);
-
+// The column header, or -slt's archive block. False when the archive's size cannot be read (T-F440:
+// split out of PrintArchiveListingAsync, S3776).
+static async Task<bool> PrintListingHeaderAsync(
+    string archivePath, ArchiveFormat format, bool technical, CliReportContext report, bool terminal)
+{
+    string shownName = report.StdinPath is not null ? "(stdin)" : archivePath;
+    long physicalSize = 0;
+    if (technical)
+    {
+        try
+        {
+            physicalSize = new FileInfo(archivePath).Length;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The archive was listed a moment ago; gone or locked now, it is this run's error.
+            await Console.Error.WriteLineAsync($"pakko: error: {shownName}: {ex.Message}").ConfigureAwait(false);
+            return false;
+        }
+    }
+    IReadOnlyList<string> headerLines = technical
+        ? CliTechListing.ArchiveHeader(shownName, format, physicalSize, terminal)
+        : [CliEntryFormatter.Header];
+    foreach (string line in headerLines)
+        await Console.Out.WriteLineAsync(line).ConfigureAwait(false);
     return true;
 }
 
@@ -1017,6 +1029,3 @@ static int ReportResult(ArchiveResult result, CliReportContext report)
     PrintHints(result, report);
     return CliExitCode.For(result, report.KeptExistingByChoice);
 }
-
-// T-F412: how 'l' prints one archive: the '# archive' lines, the header, 7-Zip's -slt blocks.
-internal readonly record struct ListingLayout(bool Multiple, bool Header, bool Technical);

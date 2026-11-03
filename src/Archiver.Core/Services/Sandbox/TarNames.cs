@@ -43,7 +43,7 @@ internal static class TarNames
     {
         // T-F419: only the line end is dropped - "a.txt " is an entry of its own, not "a.txt".
         string[] lines = [.. stdOut.Split('\n').Select(line => line.TrimEnd('\r')).Where(line => line.Length > 0)];
-        var names = new string[lines.Length];
+        string[] names = new string[lines.Length];
         for (int i = 0; i < lines.Length; i++)
         {
             if (TarListingName.Unescape(lines[i], encoding) is not { } name)
@@ -69,25 +69,30 @@ internal static class TarNames
         if (listed.Where(Decides).Select(EntryDiskName.StripLeadingDotSlash).FirstOrDefault(name => name.Contains('?')) is { } unshowable)
             return new TarListingVerdict(TarNameTrust.Lossy, unshowable);
 
-        if (headerNames is not null)
-        {
-            if (headerNames.Count != listed.Count)
-                return new TarListingVerdict(TarNameTrust.Suspect, listed.Where(Decides).Select(EntryDiskName.StripLeadingDotSlash).FirstOrDefault());
-            for (int i = 0; i < listed.Count; i++)
-            {
-                // A folder's trailing '/' is the listing's convention, not part of the name.
-                if (Decides(listed[i]) && !string.Equals(listed[i].TrimEnd('/'), headerNames[i].TrimEnd('/'), StringComparison.Ordinal))
-                    return new TarListingVerdict(TarNameTrust.Lossy, EntryDiskName.StripLeadingDotSlash(listed[i]));
-            }
-            return TarListingVerdict.Faithful;
-        }
+        return headerNames is not null ? JudgeByHeaders(listed, headerNames, Decides) : JudgeByRepeats(listed, Decides);
+    }
 
-        // Without the headers, two entries listed under one name may be two names tar.exe could not
-        // show, or one name stored twice (T-F171): only the files on disk can tell.
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (string name in listed)
+    private static TarListingVerdict JudgeByHeaders(IReadOnlyList<string> listed, IReadOnlyList<string> headerNames, Func<string, bool> decides)
+    {
+        if (headerNames.Count != listed.Count)
+            return new TarListingVerdict(TarNameTrust.Suspect, listed.Where(decides).Select(EntryDiskName.StripLeadingDotSlash).FirstOrDefault());
+        for (int i = 0; i < listed.Count; i++)
         {
-            if (!seen.Add(name.TrimEnd('/')) && Decides(name))
+            // A folder's trailing '/' is the listing's convention, not part of the name.
+            if (decides(listed[i]) && !string.Equals(listed[i].TrimEnd('/'), headerNames[i].TrimEnd('/'), StringComparison.Ordinal))
+                return new TarListingVerdict(TarNameTrust.Lossy, EntryDiskName.StripLeadingDotSlash(listed[i]));
+        }
+        return TarListingVerdict.Faithful;
+    }
+
+    // Without the headers, two entries listed under one name may be two names tar.exe could not
+    // show, or one name stored twice (T-F171): only the files on disk can tell.
+    private static TarListingVerdict JudgeByRepeats(IReadOnlyList<string> listed, Func<string, bool> decides)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string name in listed) // NOSONAR: S3267 - the condition adds to the set; a Where would hide that side effect.
+        {
+            if (!seen.Add(name.TrimEnd('/')) && decides(name))
                 return new TarListingVerdict(TarNameTrust.Suspect, EntryDiskName.StripLeadingDotSlash(name));
         }
         return TarListingVerdict.Faithful;

@@ -73,27 +73,13 @@ internal sealed class BareGzipEngine(GroupPolicyOptions policy)
         string archivePath, ExtractOptions options, ConflictResolver conflictResolver, ExtractionNameRegistry names,
         List<ArchiveError> errors, List<SkippedFile> skipped, CancellationToken cancellationToken)
     {
-        if (InputPaths.Problem(archivePath) is { } pathProblem)
-        {
-            errors.Add(CoreMessages.Error(archivePath, pathProblem));
+        if (WantedName(archivePath, options, errors, skipped) is not { } name)
             return null;
-        }
-        string name = BareGzip.OutputName(archivePath);
-        if ((options.SelectedEntryPaths is { } selected && !selected.Contains(name, StringComparer.OrdinalIgnoreCase))
-            || (options.EntryFilter is { } filter && !filter(name, false)))
-        {
-            return null;
-        }
-        if (ArchiveEntrySecurity.IsDeviceName(name))
-        {
-            skipped.Add(CoreMessages.Skip(name, CoreMessages.Text(MessageCode.EntryReservedName)));
-            return null;
-        }
 
         string? tempPath = null;
         try
         {
-            BareGzip.ReadResult measured = await Task.Run(() => BareGzip.Read(archivePath, null, cancellationToken), cancellationToken).ConfigureAwait(false);
+            BareGzip.ReadResult measured = await Task.Run(() => BareGzip.Inflate(archivePath, null, cancellationToken), cancellationToken).ConfigureAwait(false);
             if (measured.Damaged)
             {
                 errors.Add(CoreMessages.Error(archivePath, Damaged(MessageCode.CannotExtractArchive)));
@@ -109,7 +95,7 @@ internal sealed class BareGzipEngine(GroupPolicyOptions policy)
                 errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.UnsafeEntryPath, name)));
                 return null;
             }
-            if (await PlanAsync(archivePath, target, name, measured, conflictResolver, names, errors, skipped)
+            if (await PlanAsync(new Landing(archivePath, target, name), measured, conflictResolver, names, errors, skipped)
                 .ConfigureAwait(false) is not { } plan)
             {
                 return null;
@@ -149,11 +135,34 @@ internal sealed class BareGzipEngine(GroupPolicyOptions policy)
         }
     }
 
+    // The one file's name, or null when the path is refused (in errors), the run does not select it,
+    // or Windows reserves it (in skipped). T-F440: split out of ExtractOneAsync (S3776).
+    private static string? WantedName(string archivePath, ExtractOptions options, List<ArchiveError> errors, List<SkippedFile> skipped)
+    {
+        if (InputPaths.Problem(archivePath) is { } pathProblem)
+        {
+            errors.Add(CoreMessages.Error(archivePath, pathProblem));
+            return null;
+        }
+        string name = BareGzip.OutputName(archivePath);
+        if ((options.SelectedEntryPaths is { } selected && !selected.Contains(name, StringComparer.OrdinalIgnoreCase))
+            || (options.EntryFilter is { } filter && !filter(name, false)))
+        {
+            return null;
+        }
+        if (ArchiveEntrySecurity.IsDeviceName(name))
+        {
+            skipped.Add(CoreMessages.Skip(name, CoreMessages.Text(MessageCode.EntryReservedName)));
+            return null;
+        }
+        return name;
+    }
+
     // The second read may not give more than the first measured: a file swapped in between stops.
     private static BareGzip.ReadResult WriteTemp(string archivePath, string tempPath, long measuredLength, CancellationToken cancellationToken)
     {
         using var output = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        return BareGzip.Read(archivePath, output, cancellationToken, measuredLength);
+        return BareGzip.Inflate(archivePath, output, cancellationToken, measuredLength);
     }
 
     // T-F94: the whole stream's real size against the file's, as for a tar.
@@ -182,10 +191,14 @@ internal sealed class BareGzipEngine(GroupPolicyOptions policy)
     // Where the file goes and what happens to what is there: the conflict decision, as in the other engines.
     private sealed record Plan(string FinalPath, bool Replace, string? RenameExistingTo);
 
+    // The archive, where its file would land, and the name messages show for it.
+    private sealed record Landing(string ArchivePath, string FinalPath, string Name);
+
     private static async Task<Plan?> PlanAsync(
-        string archivePath, string finalPath, string name, BareGzip.ReadResult measured, ConflictResolver conflictResolver, ExtractionNameRegistry names,
+        Landing landing, BareGzip.ReadResult measured, ConflictResolver conflictResolver, ExtractionNameRegistry names,
         List<ArchiveError> errors, List<SkippedFile> skipped)
     {
+        (string archivePath, string finalPath, string name) = landing;
         bool inRun = names.Claimed.Contains(finalPath);
         bool fileThere = File.Exists(finalPath);
         bool folderThere = Directory.Exists(finalPath);
@@ -256,7 +269,7 @@ internal sealed class BareGzipEngine(GroupPolicyOptions policy)
                 continue;
             try
             {
-                BareGzip.ReadResult read = await Task.Run(() => BareGzip.Read(archivePath, null, cancellationToken), cancellationToken).ConfigureAwait(false);
+                BareGzip.ReadResult read = await Task.Run(() => BareGzip.Inflate(archivePath, null, cancellationToken), cancellationToken).ConfigureAwait(false);
                 if (read.Damaged)
                     errors.Add(CoreMessages.Error(archivePath, Damaged(MessageCode.CannotReadArchive)));
                 sources.Add(SourceOutcomeRules.Classify(archivePath, produced: true, clean: !read.Damaged));
@@ -281,7 +294,7 @@ internal sealed class BareGzipEngine(GroupPolicyOptions policy)
             return CoreMessages.ListFailure(pathProblem);
         try
         {
-            BareGzip.ReadResult read = await Task.Run(() => BareGzip.Read(archivePath, null, cancellationToken), cancellationToken).ConfigureAwait(false);
+            BareGzip.ReadResult read = await Task.Run(() => BareGzip.Inflate(archivePath, null, cancellationToken), cancellationToken).ConfigureAwait(false);
             if (read.Damaged)
                 return CoreMessages.ListFailure(Damaged(MessageCode.CannotReadArchive));
             return new ArchiveListResult

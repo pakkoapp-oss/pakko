@@ -35,7 +35,7 @@ public sealed class FolderHashParityTests : IDisposable
         return root;
     }
 
-    public static TheoryData<string> Algorithms => new() { "CRC32", "SHA256" };
+    public static TheoryData<string> Algorithms => ["CRC32", "SHA256"];
 
     private static async Task AssertMatchesSevenZip(string folder, string algorithm)
     {

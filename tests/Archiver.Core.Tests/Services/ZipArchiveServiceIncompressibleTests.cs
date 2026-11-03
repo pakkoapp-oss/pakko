@@ -22,11 +22,11 @@ public sealed class ZipArchiveServiceIncompressibleTests : IDisposable
 
     // One size under ParallelSingleArchiveWriter.InMemoryCompressByteThreshold (the in-memory
     // compressor), one above it (the temp-file compressor).
-    public static TheoryData<int> Sizes => new()
-    {
+    public static TheoryData<int> Sizes =>
+    [
         (int)(ParallelSingleArchiveWriter.InMemoryCompressByteThreshold / 4),
         (int)(ParallelSingleArchiveWriter.InMemoryCompressByteThreshold * 3),
-    };
+    ];
 
     private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();

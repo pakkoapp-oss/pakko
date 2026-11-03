@@ -66,11 +66,13 @@ public sealed class PasswordDialogLocalizerTests
         }
     }
 
-    public static IEnumerable<object[]> AllCultureKeyPairs()
+    public static TheoryData<string, string> AllCultureKeyPairs()
     {
+        var data = new TheoryData<string, string>();
         foreach (string culture in NonNeutralCultures)
             foreach (string key in NoArgKeys)
-                yield return [culture, key];
+                data.Add(culture, key);
+        return data;
     }
 
     [Theory]
@@ -107,9 +109,5 @@ public sealed class PasswordDialogLocalizerTests
         }
     }
 
-    public static IEnumerable<object[]> NonNeutralCulturesMemberData()
-    {
-        foreach (string culture in NonNeutralCultures)
-            yield return [culture];
-    }
+    public static TheoryData<string> NonNeutralCulturesMemberData() => [.. NonNeutralCultures];
 }
