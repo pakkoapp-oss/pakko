@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Archiver.OperationUi.Core;
 using Archiver.OperationUi.Protocol;
+using Archiver.Taskbar;
 using Microsoft.UI;
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Dispatching;
@@ -27,7 +28,7 @@ namespace Archiver.OperationUi;
 /// approved step 3 mockup: 520 px wide, title row, heading, archive line, bar, file, status, buttons.
 /// A conflict, password (step 5) or yes/no (T-F217) prompt replaces the progress part until answered.
 /// </summary>
-internal sealed partial class OperationWindow
+internal sealed partial class OperationWindow : IDisposable
 {
     private const double WidthDip = 520;
     private const double TitleBarDip = 32;
@@ -92,6 +93,7 @@ internal sealed partial class OperationWindow
     private bool _solidBackground;
     private DispatcherQueueTimer? _showTimer;
     private bool _closing;
+    private readonly TaskbarButton _taskbar;
 
     public OperationWindow(OperationWindowModel model, Action<WindowUpdate> execute)
     {
@@ -101,6 +103,7 @@ internal sealed partial class OperationWindow
         _window = new Window { Content = _root };
         BuildLayout();
         ConfigureWindow();
+        _taskbar = new TaskbarButton(Microsoft.UI.Win32Interop.GetWindowFromWindowId(_window.AppWindow.Id));
     }
 
     public DispatcherQueue DispatcherQueue => _window.DispatcherQueue;
@@ -117,6 +120,8 @@ internal sealed partial class OperationWindow
     public void Render()
     {
         _window.Title = _model.Title;
+        // T-F432: before the window shows there is no button yet; TaskbarButton shows it then.
+        _taskbar.Show((uint)_model.IndicatorState, _model.IndicatorPercent);
         _root.FlowDirection = _model.RightToLeft ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
 
         bool result = _model.Phase == WindowPhase.Result && _model.Result is not null;
@@ -213,8 +218,11 @@ internal sealed partial class OperationWindow
     {
         _closing = true;
         _showTimer?.Stop();
+        Dispose();
         _window.Close();
     }
+
+    public void Dispose() => _taskbar.Dispose();
 
     // Skip is the conflict's default, as in the Win32 dialog (Enter never overwrites).
     private void FocusDefault()

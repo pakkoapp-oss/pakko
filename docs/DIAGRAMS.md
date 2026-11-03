@@ -315,7 +315,7 @@ stateDiagram-v2
     [*] --> Idle
     Idle --> Busy: ArchiveCommand (CanArchive — !IsBusy, FileItems.Count>0, inline password usable)<br/>or ExtractCommand (CanExtract — !IsBusy, _listActions.CanExtract)<br/>or a browser Extract Selected/All (same RunExtractAsync)<br/>new CancellationTokenSource — IsBusy=true
     Busy --> Busy: before the Core call - Archive awaits every row's totals (T-F236),<br/>and with Delete after ticked, SourceSnapshot.Take of the sources or archives on the<br/>thread pool (T-F419) - both with the token, so a cancel here throws as below
-    Busy --> Busy: CancelCommand invoked, or Cancel in a conflict dialog (it calls cts.Cancel too)<br/>(CanExecute: IsOperationRunning == IsBusy)<br/>→ cts.Cancel() only — IsBusy is NOT changed here —<br/>there is no dedicated Cancelling state in code
+    Busy --> Busy: CancelCommand invoked, or Cancel in a conflict dialog (the same Cancel, since T-F432)<br/>(CanExecute: IsOperationRunning == IsBusy)<br/>→ the taskbar indicator cleared (T-F432), then cts.Cancel() — IsBusy is NOT changed here —<br/>there is no dedicated Cancelling state in code
     Busy --> AwaitingSummaryDialog: _archiveCreationRouter.ArchiveAsync / _extractionRouter.ExtractAsync<br/>returns without throwing — StatusMessage = rendered OutcomeLine
     AwaitingSummaryDialog --> AwaitingSummaryDialog: await ShowOperationSummaryAsync (no dialog when Outcome==Completed),<br/>then, only if DeleteAfterOperation (and allowDeleteAfter for Extract):<br/>RunCleanupAsync(result.FullyProcessedSources) — nothing deleted when an output is no longer<br/>on disk (T-F420), else only what the snapshot finds unchanged (T-F419) — Recycle Bin, a confirm before<br/>a permanent delete, a dialog listing what was not deleted, each item under its reason (T-F207/T-F229/T-F242/T-F435)<br/>IsBusy is STILL TRUE — finally has not run yet
     AwaitingSummaryDialog --> Idle: finally (dispose cts, Archive also clears the password) —<br/>wasCancelled==false so no delay — THEN IsBusy=false — THEN StatusMessage=StatusReady —<br/>Extract from the browser: CloseArchiveCore if the archive is gone — THEN SetOutcome
@@ -1107,6 +1107,10 @@ Per-arrow ritual 2026-10-29 (T-F226): Esc on an open prompt answers that prompt 
 `Program.cs` gives `ShellCommands` a `HelperOperationUi` with `Win32OperationUi` (diagram 1's
 windows) as its fallback. Conflict and password prompts are asked inside the helper window
 (step 5); step 4's hand-over of the whole operation to Win32 at the first prompt is gone.
+
+T-F432 adds no message and no state: the window's taskbar button is read from the model on every
+render (`IndicatorState`, `IndicatorPercent`: Running is green, or yellow while a prompt is queued;
+Result is red for `ResultSeverity.Error`, else cleared; Starting and Closed show nothing).
 
 ```mermaid
 sequenceDiagram

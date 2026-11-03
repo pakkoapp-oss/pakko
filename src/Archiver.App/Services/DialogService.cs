@@ -21,6 +21,10 @@ public sealed class DialogService : IDialogService
     private static readonly ResourceLoader _res = ResourceLoader.GetForViewIndependentUse();
 
     private Window? _window;
+    private readonly OperationIndicator _indicator;
+
+    // T-F432: the dialogs tell the taskbar button and tray icon what the run is waiting on.
+    public DialogService(OperationIndicator indicator) => _indicator = indicator;
 
     public void SetWindow(Window window) => _window = window;
 
@@ -87,7 +91,13 @@ public sealed class DialogService : IDialogService
         return panel;
     }
 
-    public async Task ShowErrorAsync(string title, string message)
+    public Task ShowErrorAsync(string title, string message)
+    {
+        _indicator.Finished(failed: true);
+        return ShowMessageAsync(title, message);
+    }
+
+    private async Task ShowMessageAsync(string title, string message)
     {
         var dialog = new ContentDialog
         {
@@ -101,9 +111,29 @@ public sealed class DialogService : IDialogService
     }
 
     // T-F241: a plain message with OK (the App's Test result).
-    public Task ShowInfoAsync(string title, string message) => ShowErrorAsync(title, message);
+    public Task ShowInfoAsync(string title, string message)
+    {
+        _indicator.Finished(failed: false);
+        return ShowMessageAsync(title, message);
+    }
 
-    public async Task<bool> ShowConfirmAsync(string title, string message)
+    public Task<bool> ShowConfirmAsync(string title, string message) => WhilePromptOpen(() => ShowConfirmCoreAsync(title, message));
+
+    // T-F432: the bar is yellow for as long as any prompt waits; prompts can overlap (Core's workers).
+    private async Task<T> WhilePromptOpen<T>(Func<Task<T>> show)
+    {
+        _indicator.PromptOpened();
+        try
+        {
+            return await show();
+        }
+        finally
+        {
+            _indicator.PromptClosed();
+        }
+    }
+
+    private async Task<bool> ShowConfirmCoreAsync(string title, string message)
     {
         var dialog = new ContentDialog
         {
@@ -123,7 +153,10 @@ public sealed class DialogService : IDialogService
     // requires the calling thread to own the window's DispatcherQueue, so the dialog itself must
     // be built and shown on the UI thread via DispatcherQueue.TryEnqueue, not called directly
     // from wherever this method happens to run. See DECISIONS.md's T-F94 entry.
-    public Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning)
+    public Task<bool> ShowCompressionBombConfirmAsync(CompressionBombWarning warning) =>
+        WhilePromptOpen(() => ShowCompressionBombConfirmCoreAsync(warning));
+
+    private Task<bool> ShowCompressionBombConfirmCoreAsync(CompressionBombWarning warning)
     {
         var tcs = new TaskCompletionSource<bool>();
 
@@ -159,7 +192,10 @@ public sealed class DialogService : IDialogService
 
     // T-F06: same DispatcherQueue-marshaling need as ShowCompressionBombConfirmAsync above — the
     // extraction/archive services call ResolveConflictAsync from a background thread.
-    public Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict, Action? cancelOperation = null)
+    public Task<ConflictDecision> ShowConflictDialogAsync(ConflictInfo conflict, Action? cancelOperation = null) =>
+        WhilePromptOpen(() => ShowConflictDialogCoreAsync(conflict, cancelOperation));
+
+    private Task<ConflictDecision> ShowConflictDialogCoreAsync(ConflictInfo conflict, Action? cancelOperation)
     {
         var tcs = new TaskCompletionSource<ConflictDecision>();
 
@@ -265,7 +301,10 @@ public sealed class DialogService : IDialogService
     // caller (a batch of >1 ArchivePaths) rather than carried on PasswordPromptInfo itself, since
     // Archiver.Core has no notion of "frontend batch shape" — Archiver.Shell's future T-F192 loop
     // calls ExtractAsync once per archive and would always see Count==1 there.
-    public Task<PasswordDecision> ShowPasswordPromptAsync(PasswordPromptInfo info, bool canApplyToRemaining)
+    public Task<PasswordDecision> ShowPasswordPromptAsync(PasswordPromptInfo info, bool canApplyToRemaining) =>
+        WhilePromptOpen(() => ShowPasswordPromptCoreAsync(info, canApplyToRemaining));
+
+    private Task<PasswordDecision> ShowPasswordPromptCoreAsync(PasswordPromptInfo info, bool canApplyToRemaining)
     {
         // T-F199 step 5: the new-archive password is typed inline in the window. This one-field
         // prompt has no confirmation, so a typo would lock the archive: never ask it for Encrypt.
@@ -402,6 +441,8 @@ public sealed class DialogService : IDialogService
 
     public async Task ShowOperationSummaryAsync(string operationName, ArchiveResult result)
     {
+        // T-F432: red only where this summary lists errors.
+        _indicator.Finished(failed: result.Errors.Count > 0);
         if (result.Outcome == OperationOutcome.Completed)
             return;
 
@@ -512,6 +553,7 @@ public sealed class DialogService : IDialogService
     // same established pattern.
     public async Task ShowThreatScanResultAsync(ThreatScanResult result)
     {
+        _indicator.Finished(failed: false);
         if (result.OverallVerdict == ThreatVerdict.Clean)
         {
             var cleanDialog = new ContentDialog

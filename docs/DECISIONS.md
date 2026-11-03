@@ -13245,6 +13245,84 @@ test kept PING alive 10 s past it.
 - Not changed: each launch still blocks two or three pool threads for the child's life (the task's
   hypothesis 2).
 
+## T-F432 - progress under the taskbar button and on the tray icon (2026-11-03)
+
+Plan: `fancy-soaring-cupcake.md` (plan mode, advisor before and after). Three surfaces, as decided
+with the v1.10.0 wave: the App's taskbar button, the App's tray icon, the Explorer operation
+window's taskbar button (`OperationWindow.ConfigureWindow` sets no owner and no tool-window style,
+so the window has a button of its own). The operation window has no tray icon.
+
+**Research (CLAUDE.md's rule for COM).** wine `include/shobjidl.idl` (master, 2026-11-03):
+
+```
+[ object, uuid(56FDF342-FD6D-11d0-958A-006097C9A090) ]
+interface ITaskbarList : IUnknown
+{ HRESULT HrInit(); HRESULT AddTab([in] HWND hwnd); HRESULT DeleteTab([in] HWND hwnd);
+  HRESULT ActivateTab([in] HWND hwnd); HRESULT SetActiveAlt([in] HWND hwnd); }
+[ object, uuid(602D4995-B13A-429B-A66E-1935E44F4317) ]
+interface ITaskbarList2 : ITaskbarList
+{ HRESULT MarkFullscreenWindow([in] HWND hwnd, [in] BOOL fullscreen); }
+[ uuid(ea1afb91-9e28-4b86-90e9-9e9f8a5eefaf), object ]
+interface ITaskbarList3 : ITaskbarList2
+{ typedef [v1_enum] enum TBPFLAG { TBPF_NOPROGRESS = 0x0000, TBPF_INDETERMINATE = 0x0001,
+    TBPF_NORMAL = 0x0002, TBPF_ERROR = 0x0004, TBPF_PAUSED = 0x0008 } TBPFLAG;
+  HRESULT SetProgressValue([in] HWND hwnd, [in] ULONGLONG ullCompleted, [in] ULONGLONG ullTotal);
+  HRESULT SetProgressState([in] HWND hwnd, [in] TBPFLAG tbpFlags); ... }
+[ uuid(56fdf344-fd6d-11d0-958a-006097c9a090) ] coclass TaskbarList
+```
+
+`TaskbarButton.cs` declares that vtable prefix as one `[GeneratedComInterface]` (the rest of
+ITaskbarList3 is never called) and creates it as `ShellCom` does (`StrategyBasedComWrappers`,
+`CoCreateInstance`, `FinalRelease`), one per window.
+
+H.NotifyIcon v2.3.2 (`src/libs/H.NotifyIcon/Core/TrayIcon.cs`, `UpdateIcon(nint handle)`): when the
+icon exists it calls `TrayIconMethods.TryModifyIcon(Id, additionalFlags, handle)` and then `Icon =
+handle`; nothing in `TrayIcon.cs` calls `DestroyIcon`. `TaskbarIcon.cs`'s `OnTaskbarCreated` runs
+`TrayIcon.TryRemove(); TrayIcon.Create();`, which shows the stored `Icon` again. So the HICONs Pakko
+draws are Pakko's: the one on show lives until the next replaces it (an Explorer restart shows it
+again), the previous is destroyed only after a successful `UpdateIcon`, and the library's own icon
+(`TaskbarIcon.Icon`) is put back with `TaskbarIcon.UpdateIcon(Icon)` before Pakko's is destroyed.
+
+**Decisions (the agent).**
+- One state per process, without WinUI: `OperationIndicator` (App.Core) and
+  `OperationWindowModel.IndicatorState`/`IndicatorPercent` (OperationUi.Core). The state enum's
+  values are `TBPFLAG`'s, so it goes to `SetProgressState` unchanged; it is declared twice, since the
+  two processes share no library.
+- The whole batch: the App's progress already spans the run (several archives report only
+  `(i+1)*100/total`, `ZipArchiveService.cs` in the extract and separate-archive loops;
+  `ExtractionRouter` maps each step into its start-end slice), so the App mirrors it. The operation
+  window gets one archive's percent with `Item(Index, Count)` and folds it:
+  `((Index-1)*100 + Percent) / Count`, clamped.
+- "Red on a failure, cleared when the summary shows" read together: a clean run clears when its
+  summary shows (or at once when there is none); a run with errors stays red while its summary or
+  error is on screen and clears after. A cancel clears at once. Red only where the summary lists
+  errors: the App's `result.Errors.Count > 0` (the summary's error section) or an error dialog; the
+  operation window's `ResultSeverity.Error`. Warnings (skipped files) are not red on either.
+- Yellow while a prompt waits: the App's conflict, password, bomb and yes/no dialogs (counted, as
+  Core's workers can ask more than one); the operation window's queued prompt.
+- Wiring: `DialogService` reports prompts and results; `MainViewModel` reports start, end, percent
+  and indeterminate through its existing `IsBusy`/`Progress`/`IsProgressIndeterminate` changes
+  (`IsBusy` spans the summary, T-F70), and a cancel. `MainWindow` forwards each change to the
+  taskbar and the tray on its own thread (prompts arrive on Core's workers).
+- A new taskbar button starts empty (first show after the operation window's delay, the App back
+  from the tray, an Explorer restart): `TaskbarButton` subclasses its window and shows the last
+  state again on `TaskbarButtonCreated`. A call before the button exists fails and is not reported.
+- `TaskbarButton.cs` lives in `Archiver.OperationUi` and is linked into the App
+  (`<Compile Include Link>`): one declaration, no new project or folder.
+- The tray icon is drawn by hand (`TrayProgressIcon`, pure, tested): the packaged `.ico` at the
+  DPI's small-icon size (`LoadImage`, `GetDIBits`), a bar in its bottom eighth (two rows at least),
+  green, yellow or red over a dark track, redrawn every 5 %; the tooltip says `Pakko: 42 %` in the
+  culture's percent format (no new strings). Not System.Drawing: the App does not call it, and its
+  Native AOT behaviour is not known.
+- Not measured yet: the cost of one tray redraw (planned before the code; moved to stream E's
+  device pass, with `APP-032`). If it is over about 2 ms, the step goes to 10 %.
+
+**Tests.** `OperationIndicatorTests` (20), `TrayProgressIconTests` (28),
+`OperationWindowModelIndicatorTests` (19). Mutants, each restored: the batch fold off (3 red), the
+prompt count ignored (3 red), the one-column minimum off (1 red). Native AOT: `dotnet publish` of
+`Archiver.OperationUi` for win-x64 with no IL warning; the App builds with its AOT analyzers clean.
+On the device: `APP-031`, `APP-032`, `OPW-006` in stream E.
+
 ## T-F444 - an AMSI answer other than S_OK is Inconclusive, never Clean (2026-10-31, 2026-11-01)
 
 Measured on PakkoW10 (Windows 10 Pro 19045, Defender platform 4.18.26100.4) from a checkpoint,

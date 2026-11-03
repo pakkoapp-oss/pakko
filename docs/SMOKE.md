@@ -177,6 +177,8 @@ budgets, `REL` the release's files, `STO` the Store.
 | APP-028 | release | mcp | dev | With "move the archives to the Recycle Bin" on: extract a ZIP that holds `a.txt` twice with Overwrite; extract an ordinary ZIP | The first archive stays (only one `a.txt` reached the disk), named under "another entry with the same name replaced one of their files" (T-F435); the second goes to the Recycle Bin | `app:Extract` T-F419 |
 | APP-029 | release | mcp | dev | Open in the App a ZIP holding `a?b.txt` and `a_b.txt`; open `a?b.txt` from the browser; extract all with Overwrite | The browser opens `a?b.txt`'s own content; the folder holds `a_b.txt` and a numbered copy, both contents | `app:Extract` T-F420 |
 | APP-030 | release | mcp | dev | With "move the sources to the Recycle Bin" on, archive two sources into one ZIP: a clean folder, and a folder holding a junction (skipped, so the summary opens); while the summary is open, move the new ZIP away, then close the summary | Nothing goes to the Recycle Bin; the clean folder is named under "one of the operation's results is no longer on disk", the other under "not all of their content was processed" (T-F435) | `app:Archive` T-F420 |
+| APP-031 | release | mcp | dev | Extract a large ZIP into a folder that already holds one of its files; answer the conflict after a few seconds; then extract a damaged ZIP; then archive a large folder and press Cancel | The App's taskbar button fills green with the progress, turns yellow while the conflict waits and green again after; red while the damaged ZIP's summary is open, cleared when it closes; cleared at once on Cancel; cleared when a clean run's summary shows | `app:Extract` `app:Archive` T-F432 |
+| APP-032 | release | mcp | dev | The same runs with the App minimized to the tray, at 100 % and 150 % display scale; time one tray redraw (`pakko.log` or a timed build) | The tray icon carries a bar along its bottom that grows in 5 % steps, yellow and red as the button is, and the plain icon comes back after the run; its tooltip reads "Pakko: 42 %" in the language's percent format; one redraw under about 2 ms (else the step goes to 10 %) | T-F432 |
 
 ## OPW - the Explorer operation window
 
@@ -187,6 +189,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | OPW-003 | release | mcp | dev | In the window: a name conflict (Rename, for all), a password prompt, a suspected bomb (Skip) | Each question is asked there and the answer takes effect | T-F217 |
 | OPW-004 | release | script | dev | Kill `Archiver.OperationUi.exe` two seconds into a large operation | The Win32 progress dialog takes over and the operation finishes | T-F268 T-F288 |
 | OPW-005 | release | mcp | dev | Titles, progress and result texts under uk-UA | All translated; sizes use the language's units | T-F268 |
+| OPW-006 | release | mcp | dev | From Explorer, extract three large ZIPs at once; in a second run, extract into a folder where a file conflicts; in a third, one damaged ZIP | The operation window's taskbar button shows the whole batch (about a third done when the second archive starts), yellow while the conflict waits, red while the damaged ZIP's result is shown | T-F432 |
 
 ## PAR - PAR2 recovery data
 

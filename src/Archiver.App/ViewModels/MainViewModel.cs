@@ -34,6 +34,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IAntivirusScanService _antivirusScanService;
     private readonly IRecoveryService _recoveryService;
     private readonly IDialogService _dialogService;
+    private readonly OperationIndicator _indicator;
     private readonly ILogService _logService;
     private readonly GroupPolicyOptions _policy;
     private readonly SourceRecycler _sourceRecycler;
@@ -123,7 +124,16 @@ public sealed partial class MainViewModel : ObservableObject
         if (value)
             ClearOutcome();
         RaiseFooter();
+        // T-F432: IsBusy spans the run and its summary (T-F70), as the taskbar button should.
+        if (value)
+            _indicator.Start();
+        else
+            _indicator.End();
     }
+
+    partial void OnProgressChanged(int value) => _indicator.Report(value);
+
+    partial void OnIsProgressIndeterminateChanged(bool value) => _indicator.SetIndeterminate(value);
 
     [ObservableProperty]
     public partial int Progress { get; set; } = 0;
@@ -857,8 +867,10 @@ public sealed partial class MainViewModel : ObservableObject
         GroupPolicyOptions groupPolicyOptions,
         SourceRecycler sourceRecycler,
         TarCapabilities tarCapabilities,
-        ITarService tarService)
+        ITarService tarService,
+        OperationIndicator indicator)
     {
+        _indicator = indicator;
         _tarCapabilities = tarCapabilities;
         _sourceRecycler = sourceRecycler;
         _archiveCreationRouter = archiveCreationRouter;
@@ -1019,7 +1031,7 @@ public sealed partial class MainViewModel : ObservableObject
                 Format = SelectedContainerFormat,
                 SevenZipMethod = SelectedSevenZipMethod,
                 RecoveryPercent = RecoveryPercent,
-                ResolveConflictAsync = conflict => _dialogService.ShowConflictDialogAsync(conflict, () => _cts?.Cancel()),
+                ResolveConflictAsync = conflict => _dialogService.ShowConflictDialogAsync(conflict, Cancel),
             };
 
             // T-F236: the rows measured themselves when they were added; this used to walk every
@@ -1146,7 +1158,7 @@ public sealed partial class MainViewModel : ObservableObject
                 OnConflict = OnConflict,
                 OpenDestinationFolder = OpenDestinationFolder,
                 ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
-                ResolveConflictAsync = conflict => _dialogService.ShowConflictDialogAsync(conflict, () => _cts?.Cancel()),
+                ResolveConflictAsync = conflict => _dialogService.ShowConflictDialogAsync(conflict, Cancel),
                 ResolvePasswordAsync = fromBrowser
                     ? BrowsePasswordResolver(archivePaths[0])
                     : info => _dialogService.ShowPasswordPromptAsync(info, archivePaths.Count > 1),
@@ -1230,7 +1242,12 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(IsOperationRunning))]
-    private void Cancel() => _cts?.Cancel();
+    private void Cancel()
+    {
+        // T-F432: a cancel clears the taskbar button at once, as Explorer's does.
+        _indicator.Finished(failed: false);
+        _cts?.Cancel();
+    }
 
     // ── Archive Browser (T-F05) ──────────────────────────────────────────────────
 

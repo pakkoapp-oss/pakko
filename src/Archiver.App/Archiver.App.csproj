@@ -100,6 +100,11 @@
     <ProjectReference Include="..\Archiver.Messages\Archiver.Messages.csproj" />
   </ItemGroup>
 
+  <!-- T-F432: the taskbar button's COM declaration, one copy for the App and the operation window. -->
+  <ItemGroup>
+    <Compile Include="..\Archiver.OperationUi\TaskbarButton.cs" Link="TaskbarButton.cs" />
+  </ItemGroup>
+
   <!--
     Declare satellite EXEs as package content so the MSIX packaging pipeline
     picks them up automatically. Conditioned on GenerateAppxPackageOnBuild=true

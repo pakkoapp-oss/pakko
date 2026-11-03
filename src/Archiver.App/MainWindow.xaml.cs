@@ -3,6 +3,7 @@ using System.Windows.Input;
 using Archiver.App.Core;
 using Archiver.App.Services;
 using Archiver.App.ViewModels;
+using Archiver.Taskbar;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
@@ -156,8 +157,30 @@ public sealed partial class MainWindow : Window
 
         this.Activated += OnFirstActivated;
         RootGrid.Loaded += RootGrid_Loaded;
+        // T-F432: the run's progress under the taskbar button and on the tray icon. Prompts change
+        // the indicator on Core's worker threads; the taskbar and the tray take calls on this thread
+        // only. A queue already shut down means the window is closing: nothing is left to show.
+        IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        var taskbarButton = new TaskbarButton(hwnd);
+        var trayProgress = new TrayProgressRenderer(TrayIcon, hwnd);
+        OperationIndicator indicator = App.Services.GetRequiredService<OperationIndicator>();
+        bool closed = false;
+        EventHandler showProgress = (_, _) => _ = DispatcherQueue.TryEnqueue(() =>
+        {
+            if (closed)
+                return;
+            TaskbarProgressState state = indicator.State;
+            int percent = indicator.Percent;
+            taskbarButton.Show((uint)state, percent);
+            trayProgress.Show(state, percent);
+        });
+        indicator.Changed += showProgress;
         this.Closed += (_, _) =>
         {
+            closed = true;
+            indicator.Changed -= showProgress;
+            taskbarButton.Dispose();
+            trayProgress.Dispose();
             TrayIcon.Dispose();
             ActivationGate.Cancel();
             PreviewCache.DeleteOwn();
