@@ -810,7 +810,9 @@ tell this apart from "a provider is registered and says clean" — both return
 and forces every finding to `Inconclusive` when it's empty, rather than risk rendering an
 unscanned archive as `Clean`. A registered provider that answers `AmsiScanBuffer` with anything but
 `S_OK` gives `Inconclusive` too (T-F444: Avira with its real-time protection off answers 0x00000426
-and "not detected" for EICAR). `Inconclusive` is a first-class, distinctly-labeled result — never
+and "not detected" for EICAR). So does an `AMSI_RESULT_BLOCKED_BY_ADMIN` answer (0x4000..0x4fff,
+T-F446): an administrator policy blocked the content, which is no clean verdict and no detection
+either. `Inconclusive` is a first-class, distinctly-labeled result — never
 silently collapsed into `Clean` anywhere in the UI.
 
 **Password-protected ZIP entries (T-F194).** Password-protecting a payload is a well-known way to
