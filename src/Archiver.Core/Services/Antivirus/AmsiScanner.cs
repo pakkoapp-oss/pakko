@@ -23,10 +23,11 @@ namespace Archiver.Core.Services.Antivirus;
 // need the attribute here, since that's where CA1416 actually originates.
 internal sealed partial class AmsiScanner : IAmsiScanner
 {
-    // The Windows SDK's amsi.h: AmsiResultIsMalware(r) is r >= AMSI_RESULT_DETECTED (32768);
-    // AmsiResultIsBlockedByAdmin(r) is AMSI_RESULT_BLOCKED_BY_ADMIN_START (0x4000) <= r <=
-    // AMSI_RESULT_BLOCKED_BY_ADMIN_END (0x4fff). T-F446: a policy block is no clean verdict, so it
-    // reads as Inconclusive; every other value below 32768 is a provider's risk level, Clean.
+    // Mirrors the Windows SDK's amsi.h macros: a result is malware from AMSI_RESULT_DETECTED
+    // (32768) up, and blocked by admin policy from AMSI_RESULT_BLOCKED_BY_ADMIN_START (0x4000)
+    // through AMSI_RESULT_BLOCKED_BY_ADMIN_END (0x4fff), both bounds inclusive. T-F446: a policy
+    // block is no clean verdict, so it reads as Inconclusive; any other value below 32768 is a
+    // provider's risk level, Clean.
     private const int AmsiResultDetectedThreshold = 32768;
     private const int AmsiResultBlockedByAdminStart = 0x4000;
     private const int AmsiResultBlockedByAdminEnd = 0x4fff;
