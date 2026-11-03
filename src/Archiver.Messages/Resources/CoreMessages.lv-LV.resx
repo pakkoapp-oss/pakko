@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Atšifrētais saturs neizturēja integritātes pārbaudi (nepareiza parole vai bojāts vienums) un netika atzīts par tīru.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Administratora politika bloķē šī vienuma saturu; pretvīrusu programma to neatzina par tīru.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Vienums ir aizsargāts ar paroli un netika skenēts.</value>
   </data>

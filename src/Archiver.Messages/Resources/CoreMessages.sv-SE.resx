@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Det dekrypterade innehållet klarade inte integritetskontrollen (fel lösenord eller skadad post) och rapporterades inte som rent.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>En administratörsprincip blockerar innehållet i den här posten; antivirusprogrammet rapporterade den inte som ren.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Posten är lösenordsskyddad och genomsöktes inte.</value>
   </data>

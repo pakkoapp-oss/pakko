@@ -19,7 +19,8 @@ public enum ThreatVerdict
 
     /// <summary>
     /// Pakko could not determine an answer (no AMSI provider registered, a provider call
-    /// failed, an entry was too large to buffer, etc.) — never treat this as Clean.
+    /// failed, an administrator policy blocked the content (T-F446), an entry was too large to
+    /// buffer, etc.) — never treat this as Clean.
     /// </summary>
     Inconclusive,
 }

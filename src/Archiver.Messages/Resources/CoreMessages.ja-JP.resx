@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>復号した内容が整合性チェックに失敗したため (パスワードの誤りまたはエントリの破損)、クリーンとは報告しませんでした。</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>管理者のポリシーがこのエントリの内容をブロックしています。ウイルス対策はクリーンとは報告しませんでした。</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>エントリはパスワードで保護されているため、スキャンしませんでした。</value>
   </data>

@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Dešifrovaný obsah neprošel kontrolou integrity (nesprávné heslo nebo poškozená položka) a nebyl označen jako čistý.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Zásada správce blokuje obsah této položky; antivirus ji neoznačil jako čistou.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Položka je chráněna heslem a nebyla zkontrolována.</value>
   </data>

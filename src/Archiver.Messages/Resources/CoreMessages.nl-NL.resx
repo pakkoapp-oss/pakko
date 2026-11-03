@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>De ontsleutelde inhoud heeft de integriteitscontrole niet doorstaan (onjuist wachtwoord of beschadigd item) en is niet als schoon gemeld.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Een beheerdersbeleid blokkeert de inhoud van dit item; de antivirus heeft het niet als schoon gemeld.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Het item is met een wachtwoord beveiligd en is niet gescand.</value>
   </data>

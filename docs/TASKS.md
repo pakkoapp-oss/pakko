@@ -1903,7 +1903,11 @@ re-measured with T-F346's script before and after.
 
 ### T-F446 — An AMSI "blocked by admin" result reads as Clean (P3, from T-F444's fresh review)
 
-- [ ] **Status:** open, not measured. `AmsiScanner` counts every `AMSI_RESULT` below 32768 as
+- [ ] **Status:** fixed, branch `fix/tf446-amsi-blocked-by-admin` (2026-11-03): the range is
+  Inconclusive with `ScanEntryBlockedByPolicy` (37 locales), red-first tests on its bounds and in the
+  scan service; `docs/DECISIONS.md` "T-F446". No device row: no provider met so far (T-F444's
+  three) answers in that range.
+- **Before:** open, not measured. `AmsiScanner` counts every `AMSI_RESULT` below 32768 as
   Clean, including `AMSI_RESULT_BLOCKED_BY_ADMIN_START..END` (16384-20479), which says an admin
   policy blocked the content, not that a scan found it clean (the code comment chose this on
   purpose, T-F146). Next: find out from the SDK's `amsi.h` and Microsoft's docs what a provider

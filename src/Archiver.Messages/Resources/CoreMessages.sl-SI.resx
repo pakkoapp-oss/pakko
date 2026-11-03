@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Dešifrirana vsebina ni prestala preverjanja celovitosti (napačno geslo ali poškodovan vnos) in ni bila sporočena kot čista.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Pravilnik skrbnika blokira vsebino tega vnosa; protivirusni program ga ni sporočil kot čistega.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Vnos je zaščiten z geslom in ni bil pregledan.</value>
   </data>

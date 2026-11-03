@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Дешифрираното съдържание не премина проверката за цялост (грешна парола или повреден елемент) и не е отчетено като чисто.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Правило на администратора блокира съдържанието на този елемент; антивирусната програма не го е отчела като чисто.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Елементът е защитен с парола и не е сканиран.</value>
   </data>

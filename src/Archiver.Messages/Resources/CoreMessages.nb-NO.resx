@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Det dekrypterte innholdet besto ikke integritetskontrollen (feil passord eller skadet oppføring) og ble ikke rapportert som rent.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>En administratorpolicy blokkerer innholdet i denne oppføringen; antivirusprogrammet rapporterte den ikke som ren.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Oppføringen er passordbeskyttet og ble ikke skannet.</value>
   </data>

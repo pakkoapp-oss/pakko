@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Puretun salauksen sisältö ei läpäissyt eheystarkistusta (väärä salasana tai vioittunut kohde), eikä sitä ilmoitettu puhtaaksi.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Järjestelmänvalvojan käytäntö estää tämän kohteen sisällön; virustorjunta ei ilmoittanut sitä puhtaaksi.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kohde on suojattu salasanalla, eikä sitä tarkistettu.</value>
   </data>

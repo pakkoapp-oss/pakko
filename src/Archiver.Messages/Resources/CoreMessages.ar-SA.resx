@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>فشل المحتوى الذي تم فك تشفيره في فحص السلامة (كلمة مرور غير صحيحة أو عنصر تالف) ولم يتم الإبلاغ عنه على أنه نظيف.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>تحظر سياسة المسؤول محتوى هذا العنصر، ولم يُبلغ برنامج مكافحة الفيروسات عنه على أنه نظيف.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>العنصر محمي بكلمة مرور ولم يتم فحصه.</value>
   </data>

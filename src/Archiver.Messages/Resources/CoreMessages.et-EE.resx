@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Dekrüptitud sisu ei läbinud terviklikkuse kontrolli (vale parool või rikutud kirje) ja seda ei märgitud puhtaks.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Administraatori poliitika blokeerib selle kirje sisu; viirusetõrje ei märkinud seda puhtaks.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kirje on parooliga kaitstud ja seda ei skannitud.</value>
   </data>

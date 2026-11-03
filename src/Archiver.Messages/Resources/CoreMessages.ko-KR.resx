@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>해독된 콘텐츠가 무결성 검사에 실패하여(잘못된 암호 또는 손상된 항목) 깨끗한 것으로 보고하지 않았습니다.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>관리자 정책이 이 항목의 콘텐츠를 차단합니다. 바이러스 백신이 깨끗한 것으로 보고하지 않았습니다.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>항목이 암호로 보호되어 있어 검사하지 않았습니다.</value>
   </data>

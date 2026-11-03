@@ -60,6 +60,12 @@ public sealed class AmsiScannerTests
     [InlineData(32767, ThreatVerdict.Clean)]
     [InlineData(1, ThreatVerdict.Clean)]
     [InlineData(0, ThreatVerdict.Clean)]
+    // T-F446: amsi.h's AmsiResultIsBlockedByAdmin, 0x4000..0x4fff inclusive: a policy blocked it, no scan called it clean.
+    [InlineData(0x4000, ThreatVerdict.Inconclusive)]
+    [InlineData(0x4800, ThreatVerdict.Inconclusive)]
+    [InlineData(0x4fff, ThreatVerdict.Inconclusive)]
+    [InlineData(0x3fff, ThreatVerdict.Clean)]
+    [InlineData(0x5000, ThreatVerdict.Clean)]
     public void InterpretScanResult_SOk_MapsResultByThreshold(int result, ThreatVerdict expected)
     {
         AmsiScanner.InterpretScanResult(0, result).Verdict.Should().Be(expected);

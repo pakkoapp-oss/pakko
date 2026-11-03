@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>El contenido descifrado no superó la comprobación de integridad (contraseña incorrecta o entrada dañada) y no se notificó como limpio.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Una directiva del administrador bloquea el contenido de esta entrada; el antivirus no la notificó como limpia.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>La entrada está protegida con contraseña y no se analizó.</value>
   </data>

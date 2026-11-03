@@ -135,6 +135,7 @@ public static class MessageTemplates
         [MessageCode.ScanCannotExtract] = "Could not extract archive for scanning: {0}",
         [MessageCode.ScanRemovedOrBlocked] = "Removed or blocked before Pakko could scan it directly.",
         [MessageCode.ScanEntryFailed] = "The antivirus scan of this entry failed: {0}",
+        [MessageCode.ScanEntryBlockedByPolicy] = "An administrator policy blocks this entry's content; the antivirus did not report it clean.",
         [MessageCode.ScanEntryIntegrityFailed] =
             "Decrypted content failed its integrity check (wrong password or corrupted entry) and was not reported clean.",
         [MessageCode.ScanEntryPasswordProtected] = "Entry is password-protected and was not scanned.",

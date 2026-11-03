@@ -16,6 +16,9 @@ internal interface IAmsiScanner : IDisposable
     /// Scans exactly <paramref name="length"/> bytes of <paramref name="buffer"/> (which may be
     /// larger than length when rented from a pool). AMSI's own contract never returns a threat
     /// name — only a numeric verdict — so ThreatName is always null; callers should not invent one.
+    /// Inconclusive means only one thing: an administrator policy blocked the content (T-F446). A
+    /// failed scan throws <see cref="InvalidOperationException"/> instead; another reason for
+    /// Inconclusive would need its own way to say so here.
     /// </summary>
     (ThreatVerdict Verdict, string? ThreatName) ScanBuffer(byte[] buffer, int length, string contentName);
 }

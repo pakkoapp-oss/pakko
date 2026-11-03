@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Iššifruotas turinys nepraėjo vientisumo patikros (neteisingas slaptažodis arba sugadintas elementas) ir nebuvo pažymėtas kaip švarus.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Administratoriaus strategija blokuoja šio elemento turinį; antivirusinė programa nepažymėjo jo kaip švaraus.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Elementas apsaugotas slaptažodžiu ir nebuvo nuskaitytas.</value>
   </data>

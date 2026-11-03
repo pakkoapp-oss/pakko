@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>डिक्रिप्ट की गई सामग्री अखंडता जाँच में विफल रही (गलत पासवर्ड या क्षतिग्रस्त प्रविष्टि) और इसे साफ़ नहीं बताया गया।</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>व्यवस्थापक की नीति इस प्रविष्टि की सामग्री को रोकती है; एंटीवायरस ने इसे साफ़ नहीं बताया।</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>प्रविष्टि पासवर्ड से सुरक्षित है और स्कैन नहीं की गई।</value>
   </data>

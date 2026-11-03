@@ -131,6 +131,21 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         result.Findings.Should().ContainSingle(f => f.EntryPath == "big.bin" && f.Verdict == ThreatVerdict.Inconclusive);
     }
 
+    // T-F446: garbage a provider's policy blocks is still garbage; the integrity failure is the reason.
+    [Fact]
+    public async Task ScanAsync_LargeEntry_CollidingWrongPasswordAndAPolicyBlock_ReportsTheIntegrityFailure()
+    {
+        (string? zip, string? colliding) = LargeZipCryptoWithCollidingPassword();
+        var scanner = new FakeAmsiScanner();
+        scanner.BlockedContentNames.Add("big.bin");
+        var service = new AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions(), () => scanner, () => true);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip], ResolvePasswordAsync = Fixed(colliding) });
+
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "big.bin")
+            .Which.ReasonText!.Code.Should().Be(MessageCode.ScanEntryIntegrityFailed);
+    }
+
     [Fact]
     public async Task ExtractAsync_LargeEntry_CheckByteCollidingWrongPassword_FailsTheEntry()
     {

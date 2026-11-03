@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Το αποκρυπτογραφημένο περιεχόμενο απέτυχε στον έλεγχο ακεραιότητας (λάθος κωδικός πρόσβασης ή κατεστραμμένη καταχώρηση) και δεν αναφέρθηκε ως καθαρό.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Μια πολιτική διαχειριστή αποκλείει το περιεχόμενο αυτής της καταχώρησης· το πρόγραμμα προστασίας από ιούς δεν την ανέφερε ως καθαρή.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Η καταχώρηση προστατεύεται με κωδικό πρόσβασης και δεν σαρώθηκε.</value>
   </data>
