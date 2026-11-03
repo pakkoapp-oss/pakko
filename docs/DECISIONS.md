@@ -13314,13 +13314,24 @@ again), the previous is destroyed only after a successful `UpdateIcon`, and the 
   green, yellow or red over a dark track, redrawn every 5 %; the tooltip says `Pakko: 42 %` in the
   culture's percent format (no new strings). Not System.Drawing: the App does not call it, and its
   Native AOT behaviour is not known.
+- Which dialogs say what (closing review): an error dialog turns the bar red (the nested-open and
+  preview ones run outside `IsBusy`, so they never reach it); the repair's "copy not written, choose
+  another folder" message is red too, and the next attempt starts the bar again; the Test and
+  repair info result, and the AMSI scan's result (a threat is the scan's answer, not a failed run)
+  clear it; a yes/no question counts as a prompt (yellow).
+- The plain tray icon is put back only when `UpdateIcon` succeeds; otherwise Pakko's HICON stays
+  alive (the library still holds it) and the next clear or the window's close tries again.
+- Checked: `SetWindowSubclass`, `RemoveWindowSubclass` and `DefSubclassProc` are exported by name
+  from `comctl32.dll` (no v6 manifest needed); `Assets/Square44x44Logo.ico` holds 32-bit PNG frames
+  of 16, 32, 48 and 256 px and is in the installed package's `Assets`; the App publishes Native AOT
+  for win-x64 with no IL warning.
 - Not measured yet: the cost of one tray redraw (planned before the code; moved to stream E's
   device pass, with `APP-032`). If it is over about 2 ms, the step goes to 10 %.
 
 **Tests.** `OperationIndicatorTests` (20), `TrayProgressIconTests` (28),
 `OperationWindowModelIndicatorTests` (19). Mutants, each restored: the batch fold off (3 red), the
 prompt count ignored (3 red), the one-column minimum off (1 red). Native AOT: `dotnet publish` of
-`Archiver.OperationUi` for win-x64 with no IL warning; the App builds with its AOT analyzers clean.
+`Archiver.OperationUi` and `Archiver.App` for win-x64 with no IL warning.
 On the device: `APP-031`, `APP-032`, `OPW-006` in stream E.
 
 ## T-F444 - an AMSI answer other than S_OK is Inconclusive, never Clean (2026-10-31, 2026-11-01)
