@@ -1029,11 +1029,11 @@ sequenceDiagram
                 loop each file entry (the selected subset, if any)
                     alt encrypted entry
                         Note over Service: no password → Inconclusive (PasswordProtected)<br/>over 256 MiB by either header → Inconclusive (TooLarge)<br/>wrong password / unsupported method / failed authentication → Inconclusive
-                        Service->>Amsi: on success: ScanBuffer(plaintext) — a Clean result<br/>stands only if the stream then reaches its verified end (else Inconclusive, T-F194)
+                        Service->>Amsi: on success: ScanBuffer(plaintext) — a Clean or policy-blocked result<br/>stands only if the stream then reaches its verified end (else Inconclusive, T-F194)
                     else plain entry
                         Service->>Amsi: ScanBuffer(bytes, name) — size cap first, an empty entry<br/>is Clean without a call (T-F247)
                     end
-                    Amsi-->>Service: Clean / ThreatDetected only on S_OK, any other answer (even a positive one, T-F444)<br/>is InvalidOperationException → this entry Inconclusive
+                    Amsi-->>Service: Clean / ThreatDetected only on S_OK, 0x4000-0x4fff blocked by admin policy is<br/>Inconclusive (ScanEntryBlockedByPolicy, T-F446), any other answer (even a positive one, T-F444)<br/>is InvalidOperationException → this entry Inconclusive
                     Note over Service: IOException / UnauthorizedAccess / InvalidData while reading → this entry Inconclusive
                 end
             end
@@ -1056,7 +1056,7 @@ sequenceDiagram
                             Service-->>Service: entry Inconclusive (ScanRemovedOrBlocked)
                         else read
                             Service->>Amsi: ScanBuffer — same size cap and empty-entry rule
-                            Amsi-->>Service: Clean / ThreatDetected, or failure → Inconclusive
+                            Amsi-->>Service: Clean / ThreatDetected, a policy block or failure → Inconclusive
                         end
                     end
                     opt T-F171: same-named file entries
