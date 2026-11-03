@@ -256,7 +256,9 @@ internal static class TarHeaderNames
         // -P), so it would never equal the header's: the headers give no answer for this archive.
         private static bool IsRootedOrClimbs(string name) =>
             name.StartsWith('/') || name.StartsWith('\\') || (name.Length >= 2 && name[1] == ':')
-            || name.Split(['/', '\\']).Contains("..");
+            || name.Split(NameSeparators).Contains("..");
+
+        private static readonly char[] NameSeparators = ['/', '\\'];
 
         // Records are "<length> <key>=<value>\n", the length counting the whole record.
         private bool ReadPax(long size, long contentOffset, bool global)
