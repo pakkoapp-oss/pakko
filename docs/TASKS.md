@@ -1713,7 +1713,11 @@ re-measured with T-F346's script before and after.
 
 ### T-F439 — The App window's floor is not applied again on a move to a monitor of the same DPI with a smaller work area (P3, from T-F433)
 
-- [ ] **Status:** open. `WindowFloor` caches the DPI and recomputes the floor only when it changes, so a
+- [ ] **Status:** fixed 2026-11-03, branch `fix/tf439-floor-work-area`: `WindowFloorCache` keys the
+  floor on the DPI and the work area's size, so a move to a monitor of the same DPI with another work
+  area sets it again (`WindowFloorCacheTests`, 3 of 6 red with the DPI-only key); `APP-014` on the device
+  in stream E.
+- **Before:** open. `WindowFloor` caches the DPI and recomputes the floor only when it changes, so a
   window moved to a monitor of the same DPI whose work area is smaller keeps a floor that may not fit
   there (T-F433's "Not covered"). Next: recompute on a move between monitors (`AppWindow.Changed` with
   `DidPositionChange`, compare the monitor, not only the DPI), a `WindowFloorTests` case, `APP-014`.

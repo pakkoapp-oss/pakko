@@ -56,3 +56,23 @@ public static partial class WindowFloor
     [LibraryImport("user32.dll")]
     private static partial uint GetDpiForWindow(IntPtr hwnd);
 }
+
+/// <summary>
+/// T-F439: what the floor was last computed for. The floor depends on the DPI and on the work area
+/// (<see cref="WindowFloor.Physical"/> never exceeds it), so a move to a monitor of the same DPI with
+/// another work area needs it again; a move within one monitor does not.
+/// </summary>
+public sealed class WindowFloorCache
+{
+    private (uint Dpi, int Width, int Height)? _last;
+
+    /// <summary>True on the first call and whenever the DPI or the work area's size differs from the last call's.</summary>
+    public bool Changed(uint dpi, (int Width, int Height) workArea)
+    {
+        (uint, int, int) current = (dpi, workArea.Width, workArea.Height);
+        if (_last == current)
+            return false;
+        _last = current;
+        return true;
+    }
+}
