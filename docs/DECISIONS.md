@@ -13445,7 +13445,59 @@ Decisions:
 
 Not measured on a device: the providers met so far (Defender here, Avast and Avira on PakkoW10,
 T-F444) answered 1 or 32768 or failed; which policy makes a provider answer in that range is not
-known. The unit tests pin the bounds (0x3fff, 0x4000, 0x4800, 0x4fff, 0x5000).
+known. The unit tests pin the bounds (0x3fff, 0x4000, 0x4800, 0x4fff, 0x5000). T-F447 added AVG,
+ESET and Trend Micro: none answered in that range either (0, 1 or 32768).
+
+## T-F447 - more AMSI providers on PakkoW10: no code change (2026-11-03)
+
+The user asked for wider coverage than T-F444's two products, installed through winget, with no
+Russian products. Same VM, same probe, rolled back to a Defender-only checkpoint before each product
+and at the end. The probe also called `AmsiScanBuffer` itself on EICAR and on clean text and
+printed the raw `AMSI_RESULT`. winget's sources do not open over PowerShell Direct on the VM
+(0x8a15000f, "Data required by the source is missing"); a scheduled task in the autologon user's
+interactive session ran `winget install` instead.
+
+| Product (winget id, source) | New `AMSI\Providers` subkey | Defender afterwards | Raw EICAR / clean | EICAR ZIP | clean ZIP | EICAR tar |
+|---|---|---|---|---|---|---|
+| Defender only (baseline) | `{2781761E-...}` `MpOav.dll` | Normal, running | 32768 / 1 | ThreatDetected | Clean | Inconclusive: removed or blocked |
+| AVG AntiVirus Free (`XP8BX2DWV7TF50`, msstore) | `{C52A311F-4B4E-4C5D-80A0-31F0DDE260AB}` `aswAMSI.dll` only | Not running, stopped, Manual | 32768 / **0** | ThreatDetected | Clean | ThreatDetected |
+| ESET NOD32 19.2 (`ESET.Nod32`, winget), not activated | `{ECC7E393-B680-4109-86BD-7779105DF1BF}` `eamsi.dll`, beside Defender's | Normal, running; Security Center lists only Defender | 32768 / 1 (Defender's answer) | ThreatDetected | Clean | Inconclusive: removed or blocked |
+| Same, Defender's subkey deleted by hand | ESET's only | Normal (its file filter still runs) | **1 / 1** | **Clean** | Clean | Inconclusive: removed or blocked |
+| Trend Micro Maximum Security 17.9 (`XPDDZT40FN9RHT`, msstore), setup waiting in its window | `{6138A34F-DCA4-48D0-95CC-51E1D8F30B58}` `TmAMSIProvider64.dll`, beside Defender's | Normal, running; Security Center: Trend 0x040000 | 32768 / 1 (Defender's answer) | ThreatDetected | Clean | Inconclusive: removed or blocked |
+| Same, Defender's subkey deleted by hand | Trend's only | Normal | **0 / 0** | **Clean** | Clean | Inconclusive: removed or blocked |
+| Huorong Internet Security (`XPDNH1FMW7NB40`, msstore, Chinese) | none, and Defender's is gone | Not running, stopped, Manual; Security Center: Huorong 0x041000 | `AmsiInitialize` 0x80070103 | Inconclusive, `NoAntivirusRegistered` | same | same |
+| Malwarebytes 5.7 (`Malwarebytes.Malwarebytes`, winget) | none | Normal, running | Defender's | as baseline | as baseline | as baseline |
+| Webroot SecureAnywhere (`Webroot.SecureAnywhere`, winget), no keycode | none | Normal, running | Defender's | as baseline | as baseline | as baseline |
+| 360 Total Security (`9NBLGGH1NP58`, msstore, Chinese) | none | Normal, running | Defender's | as baseline | as baseline | as baseline |
+
+- AVG behaves as Avast (same `aswAMSI.dll` family): it replaces Defender and detects through AMSI.
+  It answers AMSI_RESULT_CLEAN (0) for clean text where Defender, Avast and Avira answer 1; both
+  read as Clean.
+- ESET and Trend Micro register their provider at install, before activation and while Defender
+  stays the active antivirus. amsi.dll asks every registered provider, so Defender still detects
+  EICAR and the verdicts match the baseline. The rows with Defender's subkey deleted are not a state
+  Windows produced: they isolate what the newcomer's provider says on its own. ESET not activated
+  and Trend mid-setup answer S_OK with NOT_DETECTED or CLEAN for EICAR, so an archive holding EICAR
+  reads Clean. The app name does not change ESET's answer (`PowerShell_...`, `DotNet`, `OFFICE_VBA`
+  all 1), and the real PowerShell printed an EICAR string unblocked.
+- Huorong takes over from Defender but registers no AMSI provider: every scan is Inconclusive with
+  "no antivirus is registered", the honest answer, never Clean.
+- Decision: no code change. The measured Clean needs a state no product left behind: an
+  inactive provider as the only one. T-F444's two checks that would catch it stay rejected, and
+  this wave re-measured the cost of the first: one EICAR buffer through `AmsiScanBuffer` gives
+  Defender's events 1116 and 1117 ("Virus:DOS/EICAR_Test_File", Severity Severe, Detection Source
+  AMSI, the probe as the process) and an entry in `Get-MpThreatDetection`, so a self-test before
+  each scan would raise a severe alert in every monitored fleet. `SecurityCenter2` would not have
+  helped either: ESET did not appear there at all.
+- Not measured: ESET or Trend Micro activated (they would turn Defender off; activation needs a
+  vendor account or the setup window), a third-party licence expiring after activation, Bitdefender
+  Total Security (`XP9K931FWBP5V5`, msstore; its online setup waits in a window under winget's
+  `--silent`; `Bitdefender.Bitdefender` in the winget source is the same online agent), TotalAV
+  (`XPDNTPM3BG8CV1`; `install.protected.net` unreachable from the VM, 0x80072EE7, twice). Driving
+  setup windows needs the host's screen through `vmconnect`, which the user was using. Not in winget
+  at all: Norton, McAfee (only its removal tool), Sophos, Panda, G Data, F-Secure, Comodo. On-demand
+  scanners with no AMSI provider (ClamAV, Emsisoft Emergency Kit, K7) were skipped. Russian products
+  were excluded on the user's word.
 
 ## T-F434 - one archive of several sources: a skip keeps only the source it lies in (2026-10-31)
 
