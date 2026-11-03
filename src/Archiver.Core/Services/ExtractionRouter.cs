@@ -57,7 +57,7 @@ public sealed class ExtractionRouter : IExtractionRouter
         int zipSliceEnd = mixed ? ZipSharePercent(zipPaths, tarPaths) : 100;
         SliceProgress? zipSlice = mixed ? new SliceProgress(progress!, 0, zipSliceEnd, bytesBefore: 0) : null;
         // T-F413: a gzip of one file gets the bar only when it is all there is.
-        bool bareOnly = zipPaths.Count == 0 && tarPaths.Count == 0;
+        IProgress<ProgressReport>? bareProgress = zipPaths.Count == 0 && tarPaths.Count == 0 ? progress : null;
 
         // T-F420: one bookkeeping of the paths written, so a tar file replacing a ZIP's leaves that
         // ZIP not deletable (and Explorer's "Extract here" over both kinds keeps twins apart).
@@ -79,7 +79,7 @@ public sealed class ExtractionRouter : IExtractionRouter
         ArchiveResult bareResult = barePaths.Count > 0
             ? await new BareGzipEngine(_policy).ExtractAsync(
                 options with { ArchivePaths = barePaths, OpenDestinationFolder = false, SharedNames = names },
-                bareOnly ? progress : null, cancellationToken).ConfigureAwait(false)
+                bareProgress, cancellationToken).ConfigureAwait(false)
             : EmptyResult();
 
         var merged = new ArchiveResult

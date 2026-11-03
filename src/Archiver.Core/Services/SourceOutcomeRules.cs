@@ -33,10 +33,10 @@ internal static class SourceOutcomeRules
             return [.. sourcePaths.Select(p => Classify(p, produced, clean: !errorsOrFilters && skips.Count == 0))];
 
         var kept = new HashSet<string>(StringComparer.Ordinal);
-        foreach (SkippedFile skip in skips)
+        foreach (string skipPath in skips.Select(skip => skip.Path))
         {
-            string[] holders = IsLiteralFullPath(skip.Path) && sourcePaths.All(IsLiteralFullPath)
-                ? [.. sourcePaths.Where(source => IsSameOrUnderLiteral(Path.GetFullPath(skip.Path), Path.GetFullPath(source)))]
+            string[] holders = IsLiteralFullPath(skipPath) && sourcePaths.All(IsLiteralFullPath)
+                ? [.. sourcePaths.Where(source => IsSameOrUnderLiteral(Path.GetFullPath(skipPath), Path.GetFullPath(source)))]
                 : [];
             if (holders.Length == 0)
                 return [.. sourcePaths.Select(p => Classify(p, produced: true, clean: false))];
@@ -48,7 +48,7 @@ internal static class SourceOutcomeRules
     // Fully qualified and with no "." or ".." part: compared as written, "C:\w\b\..\a\x" would sit
     // under b while it names a file of a.
     private static bool IsLiteralFullPath(string path) =>
-        Path.IsPathFullyQualified(path) && !path.Split('\\', '/').Any(part => part is "." or "..");
+        Path.IsPathFullyQualified(path) && !path.Split(['\\', '/']).Any(part => part is "." or "..");
 
     // As IsSameOrUnder, but on the paths as written: nothing is resolved against the current folder.
     private static bool IsSameOrUnderLiteral(string candidate, string root)
@@ -70,11 +70,18 @@ internal static class SourceOutcomeRules
         IEnumerable<SourceResult> sources, IReadOnlyCollection<string> createdFiles)
     {
         List<HashSet<PathIdentity.Identity>?> holders = [.. createdFiles.Where(File.Exists).Select(PathIdentity.SelfAndAncestors)];
-        return [.. sources.Select(s => s.Outcome != SourceOutcome.Completed ? s
-            : IsRoot(s.Path) ? s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.DriveRoot }
-            : createdFiles.Any(c => IsSameOrUnder(c, s.Path)) || HoldsAnOutput(s.Path, holders)
-                ? s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.HoldsAnOutput }
-            : s)];
+        return [.. sources.Select(Downgrade)];
+
+        SourceResult Downgrade(SourceResult s)
+        {
+            if (s.Outcome != SourceOutcome.Completed)
+                return s;
+            if (IsRoot(s.Path))
+                return s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.DriveRoot };
+            if (createdFiles.Any(c => IsSameOrUnder(c, s.Path)) || HoldsAnOutput(s.Path, holders))
+                return s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.HoldsAnOutput };
+            return s;
+        }
     }
 
     // T-F420: an extraction's archives; one whose entry a later entry replaced is not

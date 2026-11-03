@@ -93,18 +93,22 @@ public sealed class ResultMessagesLocalizerTests
         }
     }
 
-    public static IEnumerable<object[]> OpenUiCultureKeyPairs()
+    public static TheoryData<string, string> OpenUiCultureKeyPairs()
     {
+        var data = new TheoryData<string, string>();
         foreach (string culture in NonNeutralCultures)
-            foreach (string? key in new[] { "OpenUiTooManyFiles", "OpenUiNoPackage" })
-                yield return [culture, key];
+            foreach (string key in new[] { "OpenUiTooManyFiles", "OpenUiNoPackage" })
+                data.Add(culture, key);
+        return data;
     }
 
-    public static IEnumerable<object[]> AllCultureKeyPairs()
+    public static TheoryData<string, string> AllCultureKeyPairs()
     {
+        var data = new TheoryData<string, string>();
         foreach (string culture in NonNeutralCultures)
             foreach (string key in AllKeys)
-                yield return [culture, key];
+                data.Add(culture, key);
+        return data;
     }
 
     [Theory]

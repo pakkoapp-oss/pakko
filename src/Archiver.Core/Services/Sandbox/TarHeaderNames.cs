@@ -247,16 +247,16 @@ internal static class TarHeaderNames
             ReadOnlySpan<byte> name = UpToNul(header.AsSpan(0, 100));
             ReadOnlySpan<byte> prefix = gnu ? [] : UpToNul(header.AsSpan(345, 155));
             // libarchive adds the separator only when the prefix does not already end with one.
-            return prefix.IsEmpty ? name.ToArray()
-                : prefix[^1] == (byte)'/' ? [.. prefix, .. name]
-                : [.. prefix, (byte)'/', .. name];
+            if (prefix.IsEmpty)
+                return name.ToArray();
+            return prefix[^1] == (byte)'/' ? [.. prefix, .. name] : [.. prefix, (byte)'/', .. name];
         }
 
         // bsdtar prints such a name with its leading '/', drive or "../" taken off (edit_pathname, no
         // -P), so it would never equal the header's: the headers give no answer for this archive.
         private static bool IsRootedOrClimbs(string name) =>
             name.StartsWith('/') || name.StartsWith('\\') || (name.Length >= 2 && name[1] == ':')
-            || name.Split('/', '\\').Contains("..");
+            || name.Split(['/', '\\']).Contains("..");
 
         // Records are "<length> <key>=<value>\n", the length counting the whole record.
         private bool ReadPax(long size, long contentOffset, bool global)
@@ -270,24 +270,14 @@ internal static class TarHeaderNames
             int i = 0;
             while (i < content.Length)
             {
-                int space = content.AsSpan(i).IndexOf((byte)' ');
-                if (space <= 0
-                    || !int.TryParse(content.AsSpan(i, space), NumberStyles.None, CultureInfo.InvariantCulture, out int length)
-                    || length <= space + 2 || length > content.Length - i || content[i + length - 1] != (byte)'\n')
+                if (!TryNextPaxRecord(content, ref i, out ReadOnlySpan<byte> key, out ReadOnlySpan<byte> value))
                     return false;
-                ReadOnlySpan<byte> record = content.AsSpan(i + space + 1, length - space - 2);
-                int equals = record.IndexOf((byte)'=');
-                if (equals <= 0)
-                    return false;
-                ReadOnlySpan<byte> key = record[..equals];
-                ReadOnlySpan<byte> value = record[(equals + 1)..];
                 if (key.SequenceEqual("path"u8))
                     path = value.ToArray();
                 else if (key.SequenceEqual("hdrcharset"u8))
                     binary = value.SequenceEqual("BINARY"u8);
                 else if (key.StartsWith("GNU.sparse"u8) || key.SequenceEqual("size"u8))
                     return false; // the content is not where the header's own size field puts the next header
-                i += length;
             }
 
             if (global)
@@ -297,6 +287,26 @@ internal static class TarHeaderNames
                 _paxPath = binary ? DecodeHeaderBytes(path) : DecodeUtf8(path);
                 return _paxPath is not null;
             }
+            return true;
+        }
+
+        // One "<length> <key>=<value>\n" record at i; moves i past it. False on a malformed record.
+        private static bool TryNextPaxRecord(byte[] content, ref int i, out ReadOnlySpan<byte> key, out ReadOnlySpan<byte> value)
+        {
+            key = default;
+            value = default;
+            int space = content.AsSpan(i).IndexOf((byte)' ');
+            if (space <= 0
+                || !int.TryParse(content.AsSpan(i, space), NumberStyles.None, CultureInfo.InvariantCulture, out int length)
+                || length <= space + 2 || length > content.Length - i || content[i + length - 1] != (byte)'\n')
+                return false;
+            ReadOnlySpan<byte> record = content.AsSpan(i + space + 1, length - space - 2);
+            int equals = record.IndexOf((byte)'=');
+            if (equals <= 0)
+                return false;
+            key = record[..equals];
+            value = record[(equals + 1)..];
+            i += length;
             return true;
         }
 

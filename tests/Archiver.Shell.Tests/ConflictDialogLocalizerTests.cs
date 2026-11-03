@@ -69,11 +69,13 @@ public sealed class ConflictDialogLocalizerTests
     // Advisor-flagged real gap: loop every locale x every key and prove the copied .resw values
     // survive string.Format unharmed -- a stray/unbalanced brace in any translated string throws
     // FormatException here even though it was harmless under the App's own .Replace("{0}", ...).
-    public static IEnumerable<object[]> AllCultureKeyPairs()
+    public static TheoryData<string, string> AllCultureKeyPairs()
     {
+        var data = new TheoryData<string, string>();
         foreach (string culture in NonNeutralCultures)
             foreach (string key in AllKeys)
-                yield return [culture, key];
+                data.Add(culture, key);
+        return data;
     }
 
     [Theory]

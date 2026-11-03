@@ -34,12 +34,12 @@ public static partial class PathIdentity
             identity = new Identity(info.VolumeSerialNumber, ((ulong)info.FileIndexHigh << 32) | info.FileIndexLow, 0);
         else
             return null; // neither identity can be read: where it leads is unknown
-        return FinalPath(handle) is { } finalPath ? new Resolved(identity, WithoutLongPathPrefix(finalPath)) : null;
+        return ReadFinalPath(handle) is { } finalPath ? new Resolved(identity, WithoutLongPathPrefix(finalPath)) : null;
     }
 
     // On the stack for an ordinary path (SmallFileAllocationTests); a longer one is asked for
     // again in a buffer of the size the first call reported.
-    private static string? FinalPath(SafeFileHandle handle)
+    private static string? ReadFinalPath(SafeFileHandle handle)
     {
         Span<char> small = stackalloc char[520];
         uint length = GetFinalPathNameByHandle(handle, ref MemoryMarshal.GetReference(MemoryMarshal.Cast<char, ushort>(small)), (uint)small.Length, 0);

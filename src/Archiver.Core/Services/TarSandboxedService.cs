@@ -149,6 +149,9 @@ public sealed class TarSandboxedService : ITarService
     // The first six bytes of a 7z archive ('7' 'z' BC AF 27 1C), as Latin-1 text.
     private const string SevenZipSignature = "7z\u00BC\u00AF'\u001C";
 
+    // libarchive's name for the bzip2 codec: its filter module, its 7z method, and the format's name.
+    private const string Bzip2Name = "bzip2";
+
     // T-F342: no Windows or libarchive version says whether the 7z writer is there (the same
     // libarchive ships in different Windows releases), so tar.exe writes an empty archive to its
     // stdout: 32 bytes of 7z header, then padding. An unknown format exits 1 and writes nothing.
@@ -1695,7 +1698,7 @@ public sealed class TarSandboxedService : ITarService
     private static string SingleFileFormatName(ArchiveContainerFormat format) => format switch
     {
         ArchiveContainerFormat.GZip => "gzip",
-        ArchiveContainerFormat.BZip2 => "bzip2",
+        ArchiveContainerFormat.BZip2 => Bzip2Name,
         _ => "xz",
     };
 
@@ -2460,7 +2463,7 @@ public sealed class TarSandboxedService : ITarService
         {
             SevenZipMethod.Lzma2 => "lzma2",
             SevenZipMethod.Lzma => "lzma1",
-            SevenZipMethod.BZip2 => "bzip2",
+            SevenZipMethod.BZip2 => Bzip2Name,
             SevenZipMethod.Deflate => "deflate",
             SevenZipMethod.Copy => null,
             _ => throw new ArgumentOutOfRangeException(nameof(method), method, null),
@@ -2483,12 +2486,12 @@ public sealed class TarSandboxedService : ITarService
         {
             ArchiveContainerFormat.Tar => ((string?)null, (string?)null, 0),
             ArchiveContainerFormat.TarGz => ("-z", "gzip", 9),
-            ArchiveContainerFormat.TarBz2 => ("-j", "bzip2", 9),
+            ArchiveContainerFormat.TarBz2 => ("-j", Bzip2Name, 9),
             ArchiveContainerFormat.TarXz => ("-J", "xz", 9),
             ArchiveContainerFormat.TarZst => ("--zstd", "zstd", 19),
             ArchiveContainerFormat.TarLzma => ("--lzma", "lzma", 9),
             ArchiveContainerFormat.GZip => ("-z", "gzip", 9),
-            ArchiveContainerFormat.BZip2 => ("-j", "bzip2", 9),
+            ArchiveContainerFormat.BZip2 => ("-j", Bzip2Name, 9),
             ArchiveContainerFormat.Xz => ("-J", "xz", 9),
             _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
         };

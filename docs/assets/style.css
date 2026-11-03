@@ -188,11 +188,14 @@ a:focus-visible, button:focus-visible {
   font-weight: 700;
   font-size: 0.95rem;
   border: 1px solid transparent;
-  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn { transition: transform 120ms ease, background 120ms ease, border-color 120ms ease; }
+  .btn:active { transform: translateY(1px); }
 }
 
 .btn:hover { text-decoration: none; }
-.btn:active { transform: translateY(1px); }
 
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover { background: var(--accent-ink); }
@@ -368,10 +371,14 @@ section.divider { border-top: 1px solid var(--line); }
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  transition: border-color 150ms ease, transform 150ms ease;
 }
 
-.dl-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.dl-card:hover { border-color: var(--accent); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .dl-card { transition: border-color 150ms ease, transform 150ms ease; }
+  .dl-card:hover { transform: translateY(-2px); }
+}
 .dl-card h3 { font-size: 1.15rem; }
 .dl-card .note { font-size: 0.85rem; margin-top: auto; }
 .dl-card code { font-family: var(--mono); background: var(--accent-tint); padding: 2px 6px; border-radius: 4px; font-size: 0.85em; color: var(--accent-ink); }

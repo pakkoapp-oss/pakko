@@ -321,7 +321,7 @@ public sealed class SourceRecyclerTests
     [Fact]
     public void OutputsMissing_KeepsEverySourceWithThatReason()
     {
-        RecycleResult result = RecycleResult.OutputsMissing([@"C:\w\a", @"C:\w\b"]);
+        var result = RecycleResult.OutputsMissing([@"C:\w\a", @"C:\w\b"]);
 
         result.Deleted.Should().BeEmpty();
         result.Kept.Should().Equal(new KeptSource(@"C:\w\a", KeepReason.OutputMissing), new KeptSource(@"C:\w\b", KeepReason.OutputMissing));

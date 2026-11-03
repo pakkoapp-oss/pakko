@@ -368,6 +368,13 @@ function Start-ShellProcess {
     $process
 }
 
+# Adds the -Watch patterns $Text matches to $Seen; true once every pattern has matched at some point.
+function Test-ShellWatch {
+    param([string]$Text, [string[]]$Watch, [System.Collections.Generic.HashSet[string]]$Seen)
+    foreach ($pattern in $Watch) { if ($Text -match $pattern) { [void]$Seen.Add($pattern) } }
+    [bool]($Watch -and $Seen.Count -eq @($Watch).Count)
+}
+
 # Starts Archiver.Shell.exe the way Explorer does and waits until it exits, or until the windows'
 # text matches -Until (a result window stays open until someone closes it). -Watch is a pattern
 # to look for while waiting, without stopping. Texts are in the user's language: match numbers,
@@ -398,8 +405,7 @@ function Invoke-Shell {
             if ($seen) {
                 $text = $seen
                 $firstWindow ??= $clock.Elapsed.TotalSeconds
-                foreach ($pattern in $Watch) { if ($text -match $pattern) { [void]$watchSeen.Add($pattern) } }
-                $watched = $Watch -and $watchSeen.Count -eq @($Watch).Count
+                $watched = Test-ShellWatch -Text $text -Watch $Watch -Seen $watchSeen
                 $matched = $Until -and $text -match $Until
             }
             if ($matched -or $process.HasExited) { break }

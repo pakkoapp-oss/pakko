@@ -71,7 +71,7 @@ public sealed class BareGzipTests : IDisposable
     private static (string Text, BareGzip.ReadResult Result) ReadText(string path)
     {
         using var output = new MemoryStream();
-        BareGzip.ReadResult result = BareGzip.Read(path, output, CancellationToken.None);
+        BareGzip.ReadResult result = BareGzip.Inflate(path, output, CancellationToken.None);
         return (Encoding.ASCII.GetString(output.ToArray()), result);
     }
 
@@ -205,7 +205,7 @@ public sealed class BareGzipTests : IDisposable
         byte[] member = Member(Text, name: "inner.txt", extraFlags: 0x02);
         member[10] ^= 0x20; // a letter of the stored name, which the header CRC covers
 
-        BareGzip.Read(Write("h.gz", member), null, CancellationToken.None).Damaged.Should().BeTrue();
+        BareGzip.Inflate(Write("h.gz", member), null, CancellationToken.None).Damaged.Should().BeTrue();
     }
 
     [Fact]
@@ -230,7 +230,7 @@ public sealed class BareGzipTests : IDisposable
         string path = Write("big.gz", [.. Member(data), .. Member(data)]);
 
         using var output = new MemoryStream();
-        BareGzip.ReadResult result = BareGzip.Read(path, output, CancellationToken.None);
+        BareGzip.ReadResult result = BareGzip.Inflate(path, output, CancellationToken.None);
 
         result.Damaged.Should().BeFalse();
         output.ToArray().Should().Equal([.. data, .. data]);
@@ -307,7 +307,7 @@ public sealed class BareGzipTests : IDisposable
         byte[] data = new byte[1024 * 1024];
         string path = Write("c.gz", Member(data));
 
-        Action read = () => BareGzip.Read(path, null, new CancellationToken(canceled: true));
+        Action read = () => BareGzip.Inflate(path, null, new CancellationToken(canceled: true));
 
         read.Should().Throw<OperationCanceledException>();
     }

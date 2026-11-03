@@ -81,7 +81,7 @@ public sealed class ReviewBareGzipDefectTests : IDisposable
         byte[] spliced = [.. member[..^8], .. "JUNKJUNK"u8.ToArray(), .. member[^8..]];
         string path = Write("j.gz", spliced);
 
-        BareGzip.Read(path, null, CancellationToken.None).Damaged.Should().BeTrue("gzip -t reports a CRC error here");
+        BareGzip.Inflate(path, null, CancellationToken.None).Damaged.Should().BeTrue("gzip -t reports a CRC error here");
     }
 
     [Fact]

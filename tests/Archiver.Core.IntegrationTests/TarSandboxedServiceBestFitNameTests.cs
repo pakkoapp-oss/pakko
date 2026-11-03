@@ -89,8 +89,10 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
     // listed name: a folder listed by best fit must not leave a second, empty folder under that name.
     // Measured 2026-10-31 (bsdtar 3.8.9, ACP 1251): the destination held "cafe", "cafe/empty" and
     // "caf<e-acute>" with x.txt - the files right, the empty folder under the listed name. T-F443.
+#pragma warning disable xUnit1004 // T-F443's red test, kept skipped until that task (docs/CONVENTIONS.md Won't-Fix)
     [Integration(Skip = "T-F443: folders are still pre-created and applied by listed name")]
     public async Task Extract_Everything_FolderListedByBestFit_OnlyTheTrueFolder()
+#pragma warning restore xUnit1004
     {
         foreach ((char accent, char plain) in new[] { ((char)0xE9, 'e'), ((char)0x101, 'a') })
         {

@@ -20,8 +20,7 @@ public sealed class ZipArchiveServicePropertyTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
-    public static IEnumerable<object[]> Seeds() =>
-        Enumerable.Range(1, 12).Select(seed => new object[] { seed });
+    public static TheoryData<int> Seeds() => [.. Enumerable.Range(1, 12)];
 
     [Theory]
     [MemberData(nameof(Seeds))]

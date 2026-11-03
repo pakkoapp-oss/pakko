@@ -1729,7 +1729,12 @@ re-measured with T-F346's script before and after.
 
 ### T-F440 — SonarCloud: 28 open findings on `main` after v1.9.0 (P2)
 
-- [ ] **Status:** open. `issues/search` on `main`, 2026-10-31: 28 unresolved, one of type BUG
+- [ ] **Status:** fixed, branch `fix/tf440-sonar-main`. 39 on `main` by 2026-11-03 (streams A and C
+  added 11): `S3903` by `ListingLayout.cs` with a red-first test (`CliAssemblyNamespaceTests`), the
+  complexity, shadowing, ternary, `params`, literal, CSS motion and test-data findings fixed in place;
+  `S3267` in `TarNames`, `xUnit1004` (T-F443) and the two `S1135` TODOs in `docs/CONVENTIONS.md`'s
+  Won't-Fix list. Done when the PR's and then `main`'s scan show them gone.
+- **Before:** open. `issues/search` on `main`, 2026-10-31: 28 unresolved, one of type BUG
   (`S3903`, a type outside a namespace, `src/Archiver.CLI/Program.cs:1022`). Critical: `S3776` in
   `BareGzip.cs:61`, `BareGzipEngine.cs:72`, `Program.cs:862`, `scripts/smoke/Common.ps1:375`; `S3218`
   in `BareGzip.cs` (339, 341, 371, 373) and `IO/PathIdentity.cs:21`. Also `S107`

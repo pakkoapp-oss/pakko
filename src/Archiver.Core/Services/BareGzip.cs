@@ -69,11 +69,7 @@ internal static class BareGzip
             bool memberEnded;
             try
             {
-                using var inflate = new DeflateStream(input, CompressionMode.Decompress, leaveOpen: true);
-                int read;
-                while (length < head.Length && (read = inflate.Read(head, length, head.Length - length)) > 0)
-                    length += read;
-                memberEnded = length < head.Length;
+                memberEnded = InflateMemberInto(input, head, ref length);
             }
             catch (InvalidDataException)
             {
@@ -88,6 +84,17 @@ internal static class BareGzip
             if (file.Position >= file.Length || ReadHeader(file) is null)
                 return length;
         }
+    }
+
+    // Fills head from length on with one member's data; length counts what arrived even when the
+    // member's data turns out damaged (InvalidDataException). True when the member ended first.
+    private static bool InflateMemberInto(Stream input, byte[] head, ref int length)
+    {
+        using var inflate = new DeflateStream(input, CompressionMode.Decompress, leaveOpen: true);
+        int read;
+        while (length < head.Length && (read = inflate.Read(head, length, head.Length - length)) > 0)
+            length += read;
+        return length < head.Length;
     }
 
     // What tar.exe reads inside a gzip: a tar (a header whose checksum holds, or the zero block of
@@ -193,7 +200,7 @@ internal static class BareGzip
     /// <see cref="UnauthorizedAccessException"/> when a file cannot be read or written,
     /// <see cref="OperationCanceledException"/> on cancel.
     /// </summary>
-    public static ReadResult Read(string path, Stream? destination, CancellationToken cancellationToken, long limit = long.MaxValue)
+    public static ReadResult Inflate(string path, Stream? destination, CancellationToken cancellationToken, long limit = long.MaxValue)
     {
         using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.SequentialScan);
         long total = 0;
