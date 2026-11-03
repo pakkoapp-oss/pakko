@@ -200,6 +200,8 @@ src/
 ├── Archiver.App/               ← WinUI 3 main app; packages all satellite EXEs via MSIX
 │   ├── MainWindow.xaml / .cs
 │   ├── App.xaml.cs             ← ConfigureServices (DI), OnLaunched/OnActivated (T-F83/T-F100)
+│   ├── TrayProgressRenderer.cs ← T-F432: the run's bar drawn on the tray icon (Win32 HICONs)
+│   ├── TaskbarButton.cs        ← T-F432: linked from Archiver.OperationUi; ITaskbarList3 per window
 │   ├── ViewModels/
 │   │   └── MainViewModel.cs
 │   ├── Services/
@@ -247,6 +249,8 @@ src/
 │   ├── SortIndicator.cs / NestedDisplayPath.cs          ← T-F220: header sort arrow; nested archive shown as "outer.zip > ... > l4.zip"
 │   ├── BuildStamp.cs                                    ← T-F218: title-bar build stamp from assembly metadata
 │   ├── WindowCascade.cs / Win32PakkoWindows.cs          ← T-F201: cascade a new window off other Pakko windows
+│   ├── OperationIndicator.cs / TrayProgressIcon.cs      ← T-F432: taskbar/tray state of a run; the tray icon's bar pixels
+│   ├── WindowFloor.cs                                   ← T-F433/T-F439: the window's minimum size per DPI and work area
 │   └── ProcessTempRoot.cs                               ← T-F252: per-process %TEMP% subfolder, stale sweep
 │
 ├── Archiver.Shell/             ← shell-triggered operation entry point; net10.0-windows; WinExe; no WinUI
@@ -1155,6 +1159,7 @@ GroupPolicyOptions policy = GroupPolicyService.Load();
 services.AddSingleton(policy);
 services.AddSingleton<ILogService, LogService>();
 services.AddSingleton<IArchiveService, ZipArchiveService>();
+services.AddSingleton<OperationIndicator>();   // T-F432: DialogService and MainViewModel feed it
 services.AddSingleton<IDialogService, DialogService>();
 var tarService = new TarSandboxedService(policy);
 Task<TarCapabilities> tarProbe = Task.Run(tarService.DetectCapabilitiesAsync);

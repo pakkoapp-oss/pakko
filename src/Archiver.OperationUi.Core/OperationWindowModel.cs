@@ -80,6 +80,7 @@ public sealed class OperationWindowModel
     private IReadOnlyDictionary<string, string> _strings = new Dictionary<string, string>();
     private readonly Queue<ProtocolMessage> _prompts = new();
     private int _itemCount;
+    private int _itemIndex;
 
     public WindowPhase Phase { get; private set; } = WindowPhase.Starting;
 
@@ -99,6 +100,30 @@ public sealed class OperationWindowModel
     public int Percent { get; private set; }
 
     public string? CurrentFile { get; private set; }
+
+    /// <summary>
+    /// T-F432: the taskbar button. Yellow while a prompt waits, red on a result with errors (the
+    /// App's rule: warnings are not red), nothing before the start, after a clean result or once closed.
+    /// </summary>
+    public TaskbarProgressState IndicatorState => Phase switch
+    {
+        WindowPhase.Running => Prompt is null ? TaskbarProgressState.Normal : TaskbarProgressState.Paused,
+        WindowPhase.Result => Result?.Severity == ResultSeverity.Error ? TaskbarProgressState.Error : TaskbarProgressState.None,
+        WindowPhase.Starting or WindowPhase.Closed => TaskbarProgressState.None,
+        _ => throw new InvalidOperationException($"No taskbar state for {Phase}."),
+    };
+
+    /// <summary>T-F432: the whole batch, as Explorer's copy shows it: the archives done plus this one's share.</summary>
+    public int IndicatorPercent
+    {
+        get
+        {
+            if (_itemCount <= 1)
+                return Percent;
+            long done = Math.Clamp(_itemIndex, 1, _itemCount) - 1L;
+            return (int)Math.Clamp((done * 100 + Percent) / _itemCount, 0, 100);
+        }
+    }
 
     public string? Status { get; private set; }
 
@@ -158,6 +183,7 @@ public sealed class OperationWindowModel
 
             case Item item when Phase == WindowPhase.Running:
                 _itemCount = item.Count;
+                _itemIndex = item.Index;
                 ItemLine = item.Count > 1
                     ? string.Format(CultureInfo.CurrentCulture, Text(WindowStrings.ItemOfCount), item.Index, item.Count, item.Name)
                     : null;

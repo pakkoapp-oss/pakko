@@ -75,6 +75,8 @@ public partial class App : Application
         services.AddSingleton(policy);
         services.AddSingleton<ILogService, LogService>();
         services.AddSingleton<IArchiveService, ZipArchiveService>();
+        // T-F432: one per process; the dialogs and the view model feed it, the window shows it.
+        services.AddSingleton<OperationIndicator>();
         services.AddSingleton<IDialogService, DialogService>();
 
         // T-F347: the tar.exe probe (signature check + tar.exe --version, ~100 ms) starts here on

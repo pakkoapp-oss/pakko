@@ -1607,7 +1607,11 @@ re-measured with T-F346's script before and after.
 
 ### T-F432 — Pakko's taskbar button shows no progress, as Explorer's copy does (P3)
 
-- [ ] **Status:** open. While an operation runs, Explorer fills its taskbar button with a small
+- [ ] **Status:** fixed 2026-11-03, branch `feat/tf432-taskbar-progress` (`docs/DECISIONS.md`, "T-F432"):
+  the App's button and tray icon and the operation window's button follow the whole batch; yellow
+  while a prompt waits, red while a failed run's summary shows, cleared otherwise. `APP-031`,
+  `APP-032` (with the tray redraw's cost) and `OPW-006` on the device in stream E.
+- **Before:** open. While an operation runs, Explorer fills its taskbar button with a small
   progress bar under the icon; Pakko's does not. Wanted: the same under Pakko's icon
   (`ITaskbarList3::SetProgressValue`/`SetProgressState`; under Native AOT a `[GeneratedComInterface]`,
   never `[ComImport]`), cleared when the operation ends, and paused or error while a prompt or a

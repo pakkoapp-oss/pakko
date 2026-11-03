@@ -34,7 +34,11 @@ internal sealed partial class HelperApp : Application, IXamlMetadataProvider, ID
 
     public XmlnsDefinition[] GetXmlnsDefinitions() => _provider.GetXmlnsDefinitions();
 
-    public void Dispose() => _pipe?.Dispose();
+    public void Dispose()
+    {
+        _pipe?.Dispose();
+        _window?.Dispose();
+    }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
