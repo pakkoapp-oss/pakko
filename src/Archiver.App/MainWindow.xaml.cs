@@ -30,8 +30,8 @@ public sealed partial class MainWindow : Window
     public ICommand TrayLeftClickCommand { get; }
     public ICommand HashFilesCommand { get; }
 
-    // T-F433: the DPI the window floor was last set for; no DPI is uint.MaxValue, so the first call always sets it.
-    private uint _floorDpi = uint.MaxValue;
+    // T-F433/T-F439: the DPI and work area the window floor was last set for.
+    private readonly WindowFloorCache _floorCache = new();
 
 
     public MainWindow()
@@ -99,6 +99,7 @@ public sealed partial class MainWindow : Window
         // T-F199/T-F224: the options scroll now (FitOptionsScroll), so the floor only has to hold
         // the title bar, toolbar, the table's 160 px, a slice of options and the footer.
         // T-F433: in effective pixels, scaled by the window's DPI, again when it moves to another one.
+        // T-F439: and again on a move to a monitor whose work area differs, at the same DPI.
         ApplyWindowFloor();
         // After the floor: it can grow the window, and the cascade needs the final size.
         PlaceAwayFromOtherPakkoWindows();
@@ -275,11 +276,10 @@ public sealed partial class MainWindow : Window
         if (this.AppWindow.Presenter is not Microsoft.UI.Windowing.OverlappedPresenter presenter)
             return;
         uint dpi = WindowFloor.DpiOf(Microsoft.UI.Win32Interop.GetWindowFromWindowId(this.AppWindow.Id));
-        if (dpi == _floorDpi)
-            return;
-        _floorDpi = dpi;
         Windows.Graphics.RectInt32 work = Microsoft.UI.Windowing.DisplayArea
             .GetFromWindowId(this.AppWindow.Id, Microsoft.UI.Windowing.DisplayAreaFallback.Nearest).WorkArea;
+        if (!_floorCache.Changed(dpi, (work.Width, work.Height)))
+            return;
         (int width, int height) = WindowFloor.Physical(dpi, (work.Width, work.Height));
         presenter.PreferredMinimumWidth = width;
         presenter.PreferredMinimumHeight = height;
