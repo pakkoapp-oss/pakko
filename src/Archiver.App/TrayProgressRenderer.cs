@@ -35,8 +35,8 @@ internal sealed unsafe partial class TrayProgressRenderer : IDisposable
             return;
         if (state == TaskbarProgressState.None)
         {
-            Restore();
-            _shown = wanted;
+            if (Restore())
+                _shown = wanted;
             return;
         }
 
@@ -58,16 +58,21 @@ internal sealed unsafe partial class TrayProgressRenderer : IDisposable
         _tray.ToolTipText = Name + ": " + (Math.Clamp(percent, 0, 100) / 100.0).ToString("P0", CultureInfo.CurrentCulture);
     }
 
-    public void Dispose() => Restore();
+    public void Dispose() => _ = Restore(); // a failure leaks one HICON at exit, freed with the process
 
-    private void Restore()
+    // False while the tray could not take the plain icon back (Explorer down): the library still
+    // holds Pakko's HICON and shows it again on TaskbarCreated, so it must stay alive; the next
+    // Show(None) or Dispose tries again.
+    private bool Restore()
     {
         if (_current == IntPtr.Zero)
-            return;
+            return true;
         // The library's own icon, made from IconSource; the Icon property keeps it unchanged.
-        _tray.UpdateIcon(_tray.Icon);
+        if (!_tray.UpdateIcon(_tray.Icon))
+            return false;
         _tray.ToolTipText = Name;
         DestroyCurrent();
+        return true;
     }
 
     private void DestroyCurrent()

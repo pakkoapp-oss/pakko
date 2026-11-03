@@ -1932,6 +1932,8 @@ public sealed partial class MainViewModel : ObservableObject
             outputDirectory = await _dialogService.PickDestinationFolderAsync();
             if (outputDirectory is null)
                 return null;
+            // T-F432: the "not written" message turned the bar red; another attempt runs now.
+            _indicator.Start();
             Progress = 0;
         }
         return null;
