@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Der entschlüsselte Inhalt hat die Integritätsprüfung nicht bestanden (falsches Passwort oder beschädigter Eintrag) und wurde nicht als sauber gemeldet.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Eine Administratorrichtlinie blockiert den Inhalt dieses Eintrags; das Antivirenprogramm hat ihn nicht als sauber gemeldet.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Der Eintrag ist passwortgeschützt und wurde nicht überprüft.</value>
   </data>

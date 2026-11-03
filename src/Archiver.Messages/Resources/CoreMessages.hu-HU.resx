@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>A visszafejtett tartalom nem felelt meg az integritás-ellenőrzésen (helytelen jelszó vagy sérült elem), ezért nem lett tisztaként jelentve.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Egy rendszergazdai házirend letiltja ennek az elemnek a tartalmát; a víruskereső nem jelentette tisztának.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Az elem jelszóval védett, ezért nem lett megvizsgálva.</value>
   </data>

@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>ڈیکرپٹ شدہ مواد سالمیت کی جانچ میں ناکام رہا (غلط پاس ورڈ یا خراب اندراج) اور اسے صاف رپورٹ نہیں کیا گیا۔</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>منتظم کی پالیسی اس اندراج کے مواد کو روکتی ہے؛ اینٹی وائرس نے اسے صاف رپورٹ نہیں کیا۔</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>اندراج پاس ورڈ سے محفوظ ہے اور اسکین نہیں کیا گیا۔</value>
   </data>

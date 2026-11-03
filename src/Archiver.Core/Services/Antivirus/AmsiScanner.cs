@@ -23,11 +23,13 @@ namespace Archiver.Core.Services.Antivirus;
 // need the attribute here, since that's where CA1416 actually originates.
 internal sealed partial class AmsiScanner : IAmsiScanner
 {
-    // AMSI_RESULT_DETECTED per the Windows SDK's amsi.h — everything below this is "not detected"
-    // (AMSI_RESULT_CLEAN = 0, AMSI_RESULT_NOT_DETECTED = 1, and the
-    // AMSI_RESULT_BLOCKED_BY_ADMIN_START..END range 16384-20479 all read as Clean here; Pakko has
-    // no admin-policy UI of its own to distinguish "blocked by policy" from "genuinely clean").
+    // The Windows SDK's amsi.h: AmsiResultIsMalware(r) is r >= AMSI_RESULT_DETECTED (32768);
+    // AmsiResultIsBlockedByAdmin(r) is AMSI_RESULT_BLOCKED_BY_ADMIN_START (0x4000) <= r <=
+    // AMSI_RESULT_BLOCKED_BY_ADMIN_END (0x4fff). T-F446: a policy block is no clean verdict, so it
+    // reads as Inconclusive; every other value below 32768 is a provider's risk level, Clean.
     private const int AmsiResultDetectedThreshold = 32768;
+    private const int AmsiResultBlockedByAdminStart = 0x4000;
+    private const int AmsiResultBlockedByAdminEnd = 0x4fff;
 
     private IntPtr _context;
     private IntPtr _session;
@@ -79,9 +81,11 @@ internal sealed partial class AmsiScanner : IAmsiScanner
         // AMSI's own contract is a numeric verdict only — it never returns a threat name (that
         // level of detail is provider-specific logging, e.g. Get-MpThreatDetection for
         // Defender, not part of the AMSI API surface itself), so ThreatName is always null here.
-        return result >= AmsiResultDetectedThreshold
-            ? (ThreatVerdict.ThreatDetected, null)
-            : (ThreatVerdict.Clean, null);
+        if (result >= AmsiResultDetectedThreshold)
+            return (ThreatVerdict.ThreatDetected, null);
+        if (result is >= AmsiResultBlockedByAdminStart and <= AmsiResultBlockedByAdminEnd)
+            return (ThreatVerdict.Inconclusive, null);
+        return (ThreatVerdict.Clean, null);
     }
 
     public void Dispose()

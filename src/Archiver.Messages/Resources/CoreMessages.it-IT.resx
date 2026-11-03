@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Il contenuto decrittografato non ha superato il controllo di integrità (password errata o voce danneggiata) e non è stato segnalato come pulito.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Un criterio dell’amministratore blocca il contenuto di questa voce; l’antivirus non l’ha segnalata come pulita.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>La voce è protetta da password e non è stata analizzata.</value>
   </data>

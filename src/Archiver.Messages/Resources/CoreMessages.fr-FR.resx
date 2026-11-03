@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Le contenu déchiffré a échoué au contrôle d’intégrité (mot de passe incorrect ou entrée endommagée) et n’a pas été signalé comme sain.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Une stratégie de l’administrateur bloque le contenu de cette entrée ; l’antivirus ne l’a pas signalée comme saine.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>L’entrée est protégée par mot de passe et n’a pas été analysée.</value>
   </data>

@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Dešifrovani sadržaj nije prošao proveru integriteta (pogrešna lozinka ili oštećena stavka) i nije prijavljen kao čist.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Smernica administratora blokira sadržaj ove stavke; antivirusni program je nije prijavio kao čistu.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Stavka je zaštićena lozinkom i nije skenirana.</value>
   </data>

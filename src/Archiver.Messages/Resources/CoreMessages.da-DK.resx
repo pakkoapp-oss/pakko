@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Det dekrypterede indhold bestod ikke integritetskontrollen (forkert adgangskode eller beskadiget element) og blev ikke rapporteret som rent.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>En administratorpolitik blokerer dette elements indhold; antivirusprogrammet rapporterede det ikke som rent.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Elementet er beskyttet med adgangskode og blev ikke scannet.</value>
   </data>

@@ -6639,6 +6639,9 @@ already built at `%TEMP%\pakko-tf142-verify\big.tar.gz`.
 
 ## T-F146 — Antivirus Scanning Design: AMSI Chosen Over MpCmdRun/WMI (2026-08-07)
 
+> Superseded in part by T-F446 (2026-11-03): an `AMSI_RESULT_BLOCKED_BY_ADMIN` result (0x4000..0x4fff)
+> is Inconclusive with its own reason, no longer Clean.
+
 ### Context
 
 User asked for a full design pass on antivirus scanning for Pakko — broader than T-F145's
@@ -13404,6 +13407,45 @@ ustar holding EICAR and a clean file.
   scan failed, 0x80070015): the package loads and reports, though that answer is negative and never
   reached the new check. The message codes have their own tests.
   `docs/SMOKE.md` SHL-015 repeats both third-party cases.
+
+## T-F446 - an AMSI "blocked by admin" result is Inconclusive, not Clean (2026-11-03)
+
+Found by T-F444's fresh reviewer: `AmsiScanner` read every `AMSI_RESULT` below 32768 as Clean, the
+admin-blocked range included (a deliberate T-F146 choice, written only in the code's comment:
+"Pakko has no admin-policy UI of its own"). Superseded here.
+
+Sources, read 2026-11-03:
+- The Windows SDK's `um/amsi.h` (10.0.26100.0), lines 109-119: `AMSI_RESULT_CLEAN = 0`,
+  `AMSI_RESULT_NOT_DETECTED = 1`, `AMSI_RESULT_BLOCKED_BY_ADMIN_START = 0x4000`,
+  `AMSI_RESULT_BLOCKED_BY_ADMIN_END = 0x4fff`, `AMSI_RESULT_DETECTED = 32768`;
+  `#define AmsiResultIsMalware(r) ((r) >= AMSI_RESULT_DETECTED)` and
+  `#define AmsiResultIsBlockedByAdmin(r) ((r) >= AMSI_RESULT_BLOCKED_BY_ADMIN_START) && (r) <= AMSI_RESULT_BLOCKED_BY_ADMIN_END`.
+- Microsoft Learn, `AMSI_RESULT`, Remarks: "Results within the range of
+  AMSI_RESULT_BLOCKED_BY_ADMIN_START and AMSI_RESULT_BLOCKED_BY_ADMIN_END values (inclusive) are
+  officially blocked by the admin specified policy. In these cases, the script in question will be
+  blocked from executing." And: "The antimalware provider may return a result between 1 and 32767,
+  inclusive, as an estimated risk level."
+
+Decisions:
+- `InterpretScanResult` mirrors both macros: 32768 and up is ThreatDetected; 0x4000..0x4fff is
+  Inconclusive (a policy blocked the content, no scan called it clean, and it is no detection
+  either); every other value is Clean, as `AmsiResultIsMalware` defines it - a provider's risk level
+  carries no documented meaning beyond that.
+- The reason travels as the verdict itself: `IAmsiScanner`'s contract says Inconclusive means a
+  policy block and nothing else (a failed call throws), and `AntivirusScanService` turns it into
+  `MessageCode.ScanEntryBlockedByPolicy`. A second Inconclusive cause would have to change that
+  signature. The AMSI number is not shown: carrying it would change the signature and both fakes
+  for a detail the administrator's own provider logs.
+- The ZipCrypto integrity check after the scan (T-F194) now runs for every verdict but a detection:
+  a wrong password's garbage that a policy blocks is still garbage, and the integrity failure is the
+  truer reason.
+- What a user sees: the entry in the scan's Inconclusive section (App), or as an inconclusive entry
+  (the Explorer operation window, `pakko`), with the new reason in their language; the archive's
+  overall verdict is Inconclusive unless another entry is a detection.
+
+Not measured on a device: the providers met so far (Defender here, Avast and Avira on PakkoW10,
+T-F444) answered 1 or 32768 or failed; which policy makes a provider answer in that range is not
+known. The unit tests pin the bounds (0x3fff, 0x4000, 0x4800, 0x4fff, 0x5000).
 
 ## T-F434 - one archive of several sources: a skip keeps only the source it lies in (2026-10-31)
 

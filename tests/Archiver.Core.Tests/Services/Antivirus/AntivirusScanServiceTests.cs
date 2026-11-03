@@ -28,6 +28,9 @@ internal sealed class FakeAmsiScanner : IAmsiScanner
     // T-F247: entries whose scan fails the way a real AmsiScanBuffer failure surfaces.
     public HashSet<string> FailingContentNames { get; } = new(StringComparer.Ordinal);
 
+    // T-F446: entries an administrator policy blocks, as AmsiScanner reports AMSI_RESULT_BLOCKED_BY_ADMIN.
+    public HashSet<string> BlockedContentNames { get; } = new(StringComparer.Ordinal);
+
     // T-F427: AMSI stops being ready after this many scans, as it did on the dev machine.
     public int? NotReadyAfterCalls { get; init; }
 
@@ -41,6 +44,8 @@ internal sealed class FakeAmsiScanner : IAmsiScanner
             throw new InvalidOperationException("AmsiScanBuffer failed (HRESULT 0x80070015).");
         Calls.Add((contentName, length));
         ScannedContent[contentName] = buffer.AsSpan(0, length).ToArray();
+        if (BlockedContentNames.Contains(contentName))
+            return (ThreatVerdict.Inconclusive, null);
         return DetectedContentNames.Contains(contentName)
             ? (ThreatVerdict.ThreatDetected, "Fake-Test-Threat")
             : (ThreatVerdict.Clean, null);
@@ -173,6 +178,41 @@ public sealed class AntivirusScanServiceTests : IDisposable
         result.Findings.Where(f => f.EntryPath != "bad.txt").Should().HaveCount(2)
             .And.OnlyContain(f => f.Verdict == ThreatVerdict.Clean);
         scanner.Calls.Select(c => c.ContentName).Should().BeEquivalentTo(["a.txt", "c.txt"]);
+    }
+
+    // T-F446: a policy block is no clean verdict; it is that entry's own Inconclusive, with its reason.
+    [Fact]
+    public async Task ScanAsync_PolicyBlocksOneEntry_ThatEntryInconclusiveWithItsReason()
+    {
+        string zip = CreateZip("blocked.zip", ("a.txt", "hello"), ("blocked.ps1", "x"), ("c.txt", "world"));
+        var scanner = new FakeAmsiScanner();
+        scanner.BlockedContentNames.Add("blocked.ps1");
+        AntivirusScanService service = CreateService(scanner);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        ThreatFinding blocked = result.Findings.Should().ContainSingle(f => f.EntryPath == "blocked.ps1").Subject;
+        blocked.Verdict.Should().Be(ThreatVerdict.Inconclusive);
+        blocked.ReasonText!.Code.Should().Be(MessageCode.ScanEntryBlockedByPolicy);
+        blocked.Reason.Should().NotBeNullOrWhiteSpace();
+        result.Findings.Where(f => f.EntryPath != "blocked.ps1").Should().HaveCount(2)
+            .And.OnlyContain(f => f.Verdict == ThreatVerdict.Clean);
+    }
+
+    [Fact]
+    public async Task ScanAsync_PolicyBlockBesideADetection_TheArchiveIsAThreat()
+    {
+        string zip = CreateZip("both.zip", ("blocked.ps1", "x"), ("threat.txt", "boom"));
+        var scanner = new FakeAmsiScanner();
+        scanner.BlockedContentNames.Add("blocked.ps1");
+        scanner.DetectedContentNames.Add("threat.txt");
+        AntivirusScanService service = CreateService(scanner);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected);
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "blocked.ps1").Which.Verdict.Should().Be(ThreatVerdict.Inconclusive);
     }
 
     [Fact]

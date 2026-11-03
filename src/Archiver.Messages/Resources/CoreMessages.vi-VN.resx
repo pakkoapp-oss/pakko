@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Nội dung đã giải mã không vượt qua kiểm tra toàn vẹn (sai mật khẩu hoặc mục bị hỏng) và không được báo cáo là sạch.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Chính sách của quản trị viên chặn nội dung của mục này; phần mềm diệt vi-rút không báo cáo mục này là sạch.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Mục được bảo vệ bằng mật khẩu và chưa được quét.</value>
   </data>

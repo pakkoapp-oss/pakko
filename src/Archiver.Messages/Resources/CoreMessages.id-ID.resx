@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Konten yang didekripsi gagal dalam pemeriksaan integritas (kata sandi salah atau entri rusak) dan tidak dilaporkan bersih.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Kebijakan administrator memblokir konten entri ini; antivirus tidak melaporkannya bersih.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Entri dilindungi kata sandi dan tidak dipindai.</value>
   </data>

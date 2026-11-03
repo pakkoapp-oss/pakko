@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>O conteúdo desencriptado falhou a verificação de integridade (palavra-passe incorreta ou entrada danificada) e não foi indicado como limpo.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Uma política do administrador bloqueia o conteúdo desta entrada; o antivírus não a indicou como limpa.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>A entrada está protegida por palavra-passe e não foi analisada.</value>
   </data>

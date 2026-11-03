@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Decrypted content failed its integrity check (wrong password or corrupted entry) and was not reported clean.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>An administrator policy blocks this entry's content; the antivirus did not report it clean.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Entry is password-protected and was not scanned.</value>
   </data>

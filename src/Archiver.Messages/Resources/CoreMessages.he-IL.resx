@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>התוכן המפוענח נכשל בבדיקת השלמות (סיסמה שגויה או פריט פגום) ולא דווח כנקי.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>מדיניות של מנהל המערכת חוסמת את התוכן של פריט זה; האנטי-וירוס לא דיווח עליו כנקי.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>הפריט מוגן בסיסמה ולא נסרק.</value>
   </data>

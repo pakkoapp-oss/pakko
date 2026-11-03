@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>解密后的内容未通过完整性检查(密码错误或条目已损坏)，未报告为干净。</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>管理员策略阻止了此条目的内容；防病毒软件未将其报告为干净。</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>条目受密码保护，未扫描。</value>
   </data>

@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Maudhui yaliyosimbuliwa yameshindwa ukaguzi wa uadilifu (nenosiri si sahihi au kipengee kimeharibika) na hayakuripotiwa kuwa safi.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Sera ya msimamizi inazuia maudhui ya kipengee hiki; kingavirusi hakikukiripoti kuwa safi.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kipengee kimelindwa kwa nenosiri na hakikuchunguzwa.</value>
   </data>

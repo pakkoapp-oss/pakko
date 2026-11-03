@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>เนื้อหาที่ถอดรหัสแล้วไม่ผ่านการตรวจสอบความสมบูรณ์ (รหัสผ่านไม่ถูกต้องหรือรายการเสียหาย) และไม่ได้รายงานว่าสะอาด</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>นโยบายของผู้ดูแลระบบบล็อกเนื้อหาของรายการนี้ และโปรแกรมป้องกันไวรัสไม่ได้รายงานว่าสะอาด</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>รายการป้องกันด้วยรหัสผ่านและไม่ได้ถูกสแกน</value>
   </data>

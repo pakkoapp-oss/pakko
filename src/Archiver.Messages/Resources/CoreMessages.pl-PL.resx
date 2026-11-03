@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Odszyfrowana zawartość nie przeszła kontroli integralności (nieprawidłowe hasło lub uszkodzony element) i nie została zgłoszona jako czysta.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Zasady administratora blokują zawartość tego elementu; program antywirusowy nie zgłosił go jako czystego.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Element jest chroniony hasłem i nie został przeskanowany.</value>
   </data>

@@ -273,6 +273,9 @@
   <data name="ScanEntryIntegrityFailed" xml:space="preserve">
     <value>Şifresi çözülen içerik bütünlük denetimini geçemedi (yanlış parola veya bozuk öğe) ve temiz olarak bildirilmedi.</value>
   </data>
+  <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
+    <value>Bir yönetici ilkesi bu öğenin içeriğini engelliyor; virüsten koruma programı onu temiz olarak bildirmedi.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Öğe parola korumalı ve taranmadı.</value>
   </data>

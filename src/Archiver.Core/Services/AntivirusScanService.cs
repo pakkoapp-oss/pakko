@@ -391,12 +391,17 @@ public sealed class AntivirusScanService : IAntivirusScanService
             // only fires once the stream is read to its end — stopping at exactly `length` bytes
             // never reaches it. One more read either hits end-of-stream (running that check) or
             // finds content past the declared length; both failures mean the bytes scanned are
-            // not trustworthy. A real detection stands regardless — only Clean is downgraded.
-            if (verifyIntegrityAfterScan && verdict == ThreatVerdict.Clean
+            // not trustworthy. A real detection stands regardless.
+            // T-F446: a policy block gives way to it too - garbage a policy blocks is still garbage.
+            if (verifyIntegrityAfterScan && verdict != ThreatVerdict.ThreatDetected
                 && !await ReachesVerifiedEndAsync(stream, cancellationToken).ConfigureAwait(false))
             {
                 return CoreMessages.Inconclusive(archivePath, entryPath, CoreMessages.Text(MessageCode.ScanEntryIntegrityFailed));
             }
+
+            // T-F446: the scanner's only Inconclusive (IAmsiScanner): an administrator policy blocked it.
+            if (verdict == ThreatVerdict.Inconclusive)
+                return CoreMessages.Inconclusive(archivePath, entryPath, CoreMessages.Text(MessageCode.ScanEntryBlockedByPolicy));
 
             return new ThreatFinding
             {

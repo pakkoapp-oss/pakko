@@ -167,4 +167,7 @@ public enum MessageCode
 
     // Two names of one file in one tar-family archive: tar.exe stores the second as a link (T-F392)
     TarHardLinkPair,
+
+    // An administrator policy blocked an entry's content: AMSI's own answer, not a clean scan (T-F446)
+    ScanEntryBlockedByPolicy,
 }
