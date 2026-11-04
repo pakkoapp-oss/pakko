@@ -173,4 +173,7 @@ public enum MessageCode
 
     // The only AMSI providers are ones measured to answer Clean for known test threats (T-F448)
     ScanProviderDoesNotReport,
+
+    // tar.exe named no version: missing, not signed by Microsoft, or no answer in time (T-F450)
+    TarGaveNoVersion,
 }

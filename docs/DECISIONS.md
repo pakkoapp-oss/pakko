@@ -13575,6 +13575,28 @@ entries stays Clean: it was read whole and nothing in it is a threat (both pinne
 passes an empty list (Explorer, the Archive Browser and `pakko` always name an archive), so nothing
 visible changes; an argument error was not chosen, since Core operations never throw (T-F260).
 
+## T-F450 - a tar.exe version probe that gave no answer is asked again, and says so (2026-11-04)
+
+**Found** in CI on PR #149, a test-only change: two `CliSevenZipSubprocessTests` failed on a loaded
+runner with "7-Zip requires tar.exe with libarchive >= 3.7.0 ...; this system's tar.exe (version )".
+In one `pakko` process the 7z was written (the creation gate asks through
+`TarSandboxedService.KnownCapabilitiesAsync`, which re-asks an empty answer with the 7z writer
+probe's 30 s, T-F403) and then refused on extraction, because `PakkoServices` cached the plain
+5-second `DetectCapabilitiesAsync` answer for the process. Two answers about one tar.exe.
+
+**Decision:**
+- `ITarService.KnownCapabilitiesAsync` (default: `DetectCapabilitiesAsync`, so no fake changes),
+  and `PakkoServices` (Shell, `pakko`) asks through it: nothing on screen waits there.
+- The App keeps the quick probe: its first window waits for it (T-F347).
+- The Explorer-menu snapshot recorders (`pakko`'s `RecordIfStaleAsync`, the Shell's) keep the quick
+  probe too: a snapshot is never written without a version, so on a machine whose tar.exe never
+  answers the patient probe would hold every `pakko` extract/list/test/archive run for up to 35 s.
+- An empty version is its own reason, `TarGaveNoVersion`: "Pakko could not learn what this system's
+  tar.exe supports: it is missing, not signed by Microsoft, or did not answer in time." Empty means
+  any of the three (the signature check fails closed into the same all-false capabilities), and
+  `TarCapabilities` is not split to tell them apart, so the fail-closed path stays as it was. It is
+  checked before every per-format reason, so no "(version )" text is left.
+
 ## T-F434 - one archive of several sources: a skip keeps only the source it lies in (2026-10-31)
 
 **Found** by `APP-027` on 1.9.0.2: folders A and B archived together, a junction in B skipped, and A

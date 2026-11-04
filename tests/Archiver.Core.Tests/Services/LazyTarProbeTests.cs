@@ -160,6 +160,26 @@ public sealed class LazyTarProbeTests : IDisposable
         tar.ProbeCalls.Should().Be(1);
     }
 
+    // T-F450: a --version run that gave no answer (a loaded machine) is asked again with the 7z
+    // writer probe's patience, as the creation gate already did (T-F403); Shell and pakko used to
+    // keep the empty answer and refuse a 7z with "needs a newer tar.exe".
+    [Fact]
+    public async Task Capabilities_FirstProbeGaveNoAnswer_AreAskedAgain()
+    {
+        TarCapabilities full = TarVersionParser.Parse(
+            "bsdtar 3.8.8 - libarchive 3.8.8 zlib/1.2.13 liblzma/5.8.1 bz2lib/1.0.8 libzstd/1.5.7");
+        int probes = 0;
+        var tar = new TarSandboxedService(
+            new GroupPolicyOptions(), () => Task.FromResult(probes++ == 0 ? new TarCapabilities() : full));
+        var services = PakkoServices.Create(new GroupPolicyOptions(), new QuietZipService(), tar);
+
+        TarCapabilities capabilities = await services.GetTarCapabilitiesAsync();
+
+        capabilities.Version.Should().Be(full.Version);
+        capabilities.Supports7z.Should().BeTrue();
+        probes.Should().Be(2);
+    }
+
     // --- Security & Boundary: a format policy refuses needs no probe ---
 
     [Theory]
@@ -296,11 +316,11 @@ public sealed class LazyTarProbeTests : IDisposable
         no policy | no tar | zip -> zip engine
         no policy | no tar | tar -> tar engine
         no policy | no tar | gz -> tar engine
-        no policy | no tar | bz2 -> refused: bzip2 is not supported by this system's tar.exe (version ).
-        no policy | no tar | xz -> refused: XZ is not supported by this system's tar.exe (version ).
-        no policy | no tar | zst -> refused: Zstandard requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version ) does not support it.
-        no policy | no tar | rar -> refused: RAR requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version ) does not support it.
-        no policy | no tar | 7z -> refused: 7-Zip requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version ) does not support it.
+        no policy | no tar | bz2 -> refused: Pakko could not learn what this system's tar.exe supports: it is missing, not signed by Microsoft, or did not answer in time.
+        no policy | no tar | xz -> refused: Pakko could not learn what this system's tar.exe supports: it is missing, not signed by Microsoft, or did not answer in time.
+        no policy | no tar | zst -> refused: Pakko could not learn what this system's tar.exe supports: it is missing, not signed by Microsoft, or did not answer in time.
+        no policy | no tar | rar -> refused: Pakko could not learn what this system's tar.exe supports: it is missing, not signed by Microsoft, or did not answer in time.
+        no policy | no tar | 7z -> refused: Pakko could not learn what this system's tar.exe supports: it is missing, not signed by Microsoft, or did not answer in time.
         no policy | no tar | unknown -> zip engine
         blocked rar+zip | new tar | zip -> refused: This archive format (zip) is blocked by Group Policy.
         blocked rar+zip | new tar | tar -> tar engine
@@ -314,11 +334,11 @@ public sealed class LazyTarProbeTests : IDisposable
         blocked rar+zip | no tar | zip -> refused: This archive format (zip) is blocked by Group Policy.
         blocked rar+zip | no tar | tar -> tar engine
         blocked rar+zip | no tar | gz -> tar engine
-        blocked rar+zip | no tar | bz2 -> refused: bzip2 is not supported by this system's tar.exe (version ).
-        blocked rar+zip | no tar | xz -> refused: XZ is not supported by this system's tar.exe (version ).
-        blocked rar+zip | no tar | zst -> refused: Zstandard requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version ) does not support it.
+        blocked rar+zip | no tar | bz2 -> refused: Pakko could not learn what this system's tar.exe supports: it is missing, not signed by Microsoft, or did not answer in time.
+        blocked rar+zip | no tar | xz -> refused: Pakko could not learn what this system's tar.exe supports: it is missing, not signed by Microsoft, or did not answer in time.
+        blocked rar+zip | no tar | zst -> refused: Pakko could not learn what this system's tar.exe supports: it is missing, not signed by Microsoft, or did not answer in time.
         blocked rar+zip | no tar | rar -> refused: This archive format (rar) is blocked by Group Policy.
-        blocked rar+zip | no tar | 7z -> refused: 7-Zip requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version ) does not support it.
+        blocked rar+zip | no tar | 7z -> refused: Pakko could not learn what this system's tar.exe supports: it is missing, not signed by Microsoft, or did not answer in time.
         blocked rar+zip | no tar | unknown -> zip engine
         allowed zip+tar+7z | new tar | zip -> zip engine
         allowed zip+tar+7z | new tar | tar -> tar engine

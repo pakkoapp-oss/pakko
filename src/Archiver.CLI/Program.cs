@@ -55,7 +55,9 @@ async Task<int> RunCommandAsync()
     if (command.Type is CliCommandType.Extract or CliCommandType.Test or CliCommandType.Info or CliCommandType.Archive
         or CliCommandType.List or CliCommandType.Repair)
     {
-        await TarCapabilitySnapshot.RecordIfStaleAsync(services.Policy, services.GetTarCapabilitiesAsync).ConfigureAwait(false);
+        // T-F450: the quick probe - a tar.exe that never answers never gets a snapshot, so the
+        // patient one would hold up every run of these commands.
+        await TarCapabilitySnapshot.RecordIfStaleAsync(services.Policy, services.TarService.DetectCapabilitiesAsync).ConfigureAwait(false);
     }
     await PrintTimeStatsIfAskedAsync(command).ConfigureAwait(false);
     return exitCode;

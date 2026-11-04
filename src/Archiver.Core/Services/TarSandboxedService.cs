@@ -103,7 +103,9 @@ public sealed class TarSandboxedService : ITarService
     // --version run can come back empty, which would read as a tar.exe without codecs. A run that
     // gave no version is asked again with the 7z writer probe's patience; a version, once given,
     // is kept for the service's lifetime (tar.exe does not change under a running process).
-    private async Task<TarCapabilities> KnownCapabilitiesAsync()
+    // T-F450: PakkoServices (Shell, pakko) asks through here too.
+    /// <inheritdoc/>
+    public async Task<TarCapabilities> KnownCapabilitiesAsync()
     {
         Task<TarCapabilities> answer;
         lock (_capabilitiesLock)

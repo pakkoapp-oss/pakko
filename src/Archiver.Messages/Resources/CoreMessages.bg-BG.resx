@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Регистрираната антивирусна програма не е отчела известни тестови заплахи чрез AMSI, затова Pakko не може да потвърди чист резултат; този архив не е сканиран.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko не можа да разбере какво поддържа tar.exe на тази система: липсва, не е подписан от Microsoft или не отговори навреме.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Елементът е защитен с парола и не е сканиран.</value>
   </data>

@@ -411,7 +411,9 @@ public sealed class AntivirusScanServiceTests : IDisposable
     {
         string rar = WriteRar("only.rar");
         var scanner = new FakeAmsiScanner();
-        AntivirusScanService service = CreateService(scanner, tarCapabilities: NoTarSupport);
+        // T-F450: a tar.exe that named its version, too old for RAR; no version at all has its own reason.
+        TarCapabilities windows10 = TarVersionParser.Parse("bsdtar 3.5.2 - libarchive 3.5.2 zlib/1.2.5.f-ipp ");
+        AntivirusScanService service = CreateService(scanner, tarCapabilities: windows10);
 
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [rar] });
 

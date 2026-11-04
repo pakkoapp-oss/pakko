@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>لم يُبلغ برنامج مكافحة الفيروسات المسجل عن تهديدات اختبار معروفة عبر AMSI، لذا لا يستطيع Pakko تأكيد نتيجة نظيفة؛ لم يتم فحص هذا الأرشيف.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>تعذّر على Pakko معرفة ما يدعمه tar.exe في هذا النظام: إما أنه غير موجود، أو غير موقّع من Microsoft، أو لم يستجب في الوقت المحدد.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>العنصر محمي بكلمة مرور ولم يتم فحصه.</value>
   </data>

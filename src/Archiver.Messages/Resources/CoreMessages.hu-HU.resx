@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>A regisztrált víruskereső nem jelezte az ismert tesztfenyegetéseket az AMSI-n keresztül, ezért a Pakko nem tudja megerősíteni a tiszta eredményt; ez az archívum nem lett megvizsgálva.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>A Pakko nem tudta megállapítani, mit támogat a rendszer tar.exe programja: hiányzik, nincs a Microsoft által aláírva, vagy nem válaszolt időben.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Az elem jelszóval védett, ezért nem lett megvizsgálva.</value>
   </data>

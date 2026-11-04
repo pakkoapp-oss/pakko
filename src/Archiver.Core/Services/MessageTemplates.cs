@@ -63,6 +63,7 @@ public static class MessageTemplates
             "{0} requires tar.exe with libarchive >= 3.7.0 (Windows 11 23H2+); this system's tar.exe (version {1}) does not support it.",
         [MessageCode.FormatNotSupportedByTar] = "{0} is not supported by this system's tar.exe (version {1}).",
         [MessageCode.ArchiveFormatNotSupportedByTar] = "This archive format is not supported by this system's tar.exe (version {0}).",
+        [MessageCode.TarGaveNoVersion] = "Pakko could not learn what this system's tar.exe supports: it is missing, not signed by Microsoft, or did not answer in time.",
         [MessageCode.PasswordProtectedExtract] = "This archive is password-protected and cannot be extracted.",
         [MessageCode.PasswordProtectedTest] = "This archive is password-protected and cannot be tested.",
         [MessageCode.RememberedPasswordDoesNotFit] = "The password applied to the remaining archives does not fit this archive.",

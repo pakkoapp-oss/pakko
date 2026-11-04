@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Det registrerade antivirusprogrammet rapporterade inte kända testhot via AMSI, så Pakko kan inte bekräfta ett rent resultat; det här arkivet genomsöktes inte.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko kunde inte ta reda på vad systemets tar.exe stöder: den saknas, är inte signerad av Microsoft eller svarade inte i tid.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Posten är lösenordsskyddad och genomsöktes inte.</value>
   </data>

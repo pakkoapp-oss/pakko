@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Užregistruota antivirusinė programa per AMSI nepranešė apie žinomas bandomąsias grėsmes, todėl Pakko negali patvirtinti švaraus rezultato; šis archyvas nebuvo nuskaitytas.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko nepavyko sužinoti, ką palaiko šios sistemos tar.exe: jo nėra, jis nepasirašytas „Microsoft“ arba neatsakė laiku.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Elementas apsaugotas slaptažodžiu ir nebuvo nuskaitytas.</value>
   </data>

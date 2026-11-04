@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Zaregistrovaný antivírus nenahlásil známe testovacie hrozby cez AMSI, preto Pakko nemôže potvrdiť čistý výsledok; tento archív nebol skontrolovaný.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko nezistil, čo podporuje tar.exe tohto systému: chýba, nie je podpísaný spoločnosťou Microsoft alebo neodpovedal včas.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Položka je chránená heslom a nebola skontrolovaná.</value>
   </data>

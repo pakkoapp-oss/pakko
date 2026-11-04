@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Kinga-virusi iliyosajiliwa haikuripoti vitisho vya majaribio vinavyojulikana kupitia AMSI, kwa hivyo Pakko haiwezi kuthibitisha matokeo safi; kumbukumbu hii haikuchunguzwa.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko haikuweza kujua kile ambacho tar.exe ya mfumo huu inakitumia: haipo, haijatiwa saini na Microsoft, au haikujibu kwa wakati.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kipengee kimelindwa kwa nenosiri na hakikuchunguzwa.</value>
   </data>

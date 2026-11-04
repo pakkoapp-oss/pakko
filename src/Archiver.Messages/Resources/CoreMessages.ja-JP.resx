@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>登録されているウイルス対策ソフトは既知のテスト用の脅威を AMSI で報告しなかったため、Pakko はクリーンな結果を確認できません。このアーカイブはスキャンされていません。</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko はこのシステムの tar.exe が何をサポートしているかを確認できませんでした。tar.exe がないか、Microsoft の署名がないか、時間内に応答しませんでした。</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>エントリはパスワードで保護されているため、スキャンしませんでした。</value>
   </data>

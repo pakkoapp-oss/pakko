@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Registrirani antivirusni program nije prijavio poznate testne prijetnje putem AMSI-ja, pa Pakko ne može potvrditi čist rezultat; ova arhiva nije skenirana.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko nije mogao saznati što podržava tar.exe ovog sustava: nedostaje, nije potpisan od tvrtke Microsoft ili nije odgovorio na vrijeme.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Stavka je zaštićena lozinkom i nije skenirana.</value>
   </data>

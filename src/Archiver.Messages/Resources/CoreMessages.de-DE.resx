@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Das registrierte Virenschutzprogramm hat bekannte Testbedrohungen über AMSI nicht gemeldet, daher kann Pakko kein sauberes Ergebnis bestätigen; dieses Archiv wurde nicht überprüft.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko konnte nicht ermitteln, was tar.exe auf diesem System unterstützt: Es fehlt, ist nicht von Microsoft signiert oder hat nicht rechtzeitig geantwortet.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Der Eintrag ist passwortgeschützt und wurde nicht überprüft.</value>
   </data>

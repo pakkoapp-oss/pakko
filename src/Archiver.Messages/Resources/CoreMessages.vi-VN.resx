@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Phần mềm diệt vi-rút đã đăng ký không báo cáo các mối đe dọa thử nghiệm đã biết qua AMSI, nên Pakko không thể xác nhận kết quả sạch; tệp nén này chưa được quét.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko không thể biết tar.exe của hệ thống này hỗ trợ những gì: tar.exe bị thiếu, không được Microsoft ký hoặc không phản hồi kịp thời.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Mục được bảo vệ bằng mật khẩu và chưa được quét.</value>
   </data>

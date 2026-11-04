@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Rekisteröity virustorjunta ei ilmoittanut tunnettuja testiuhkia AMSI:n kautta, joten Pakko ei voi vahvistaa puhdasta tulosta; tätä arkistoa ei tarkistettu.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko ei saanut selville, mitä tämän järjestelmän tar.exe tukee: se puuttuu, se ei ole Microsoftin allekirjoittama tai se ei vastannut ajoissa.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kohde on suojattu salasanalla, eikä sitä tarkistettu.</value>
   </data>

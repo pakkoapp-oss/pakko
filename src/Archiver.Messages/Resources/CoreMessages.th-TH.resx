@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>โปรแกรมป้องกันไวรัสที่ลงทะเบียนไว้ไม่ได้รายงานภัยคุกคามทดสอบที่รู้จักผ่าน AMSI ดังนั้น Pakko จึงยืนยันผลลัพธ์ว่าสะอาดไม่ได้ และไฟล์บีบอัดนี้ไม่ได้ถูกสแกน</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko ไม่สามารถทราบได้ว่า tar.exe ของระบบนี้รองรับอะไรบ้าง: ไม่มี tar.exe ไม่ได้ลงนามโดย Microsoft หรือไม่ตอบกลับทันเวลา</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>รายการป้องกันด้วยรหัสผ่านและไม่ได้ถูกสแกน</value>
   </data>

@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Kayıtlı virüsten koruma programı bilinen test tehditlerini AMSI üzerinden bildirmedi, bu nedenle Pakko temiz bir sonucu doğrulayamaz; bu arşiv taranmadı.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko bu sistemdeki tar.exe'nin neyi desteklediğini öğrenemedi: eksik, Microsoft tarafından imzalanmamış veya zamanında yanıt vermedi.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Öğe parola korumalı ve taranmadı.</value>
   </data>

@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Zarejestrowany program antywirusowy nie zgłosił znanych zagrożeń testowych przez AMSI, więc Pakko nie może potwierdzić czystego wyniku; to archiwum nie zostało przeskanowane.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko nie mógł ustalić, co obsługuje tar.exe w tym systemie: brakuje go, nie jest podpisany przez Microsoft lub nie odpowiedział na czas.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Element jest chroniony hasłem i nie został przeskanowany.</value>
   </data>

@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Το καταχωρημένο πρόγραμμα προστασίας από ιούς δεν ανέφερε γνωστές δοκιμαστικές απειλές μέσω AMSI, οπότε το Pakko δεν μπορεί να επιβεβαιώσει καθαρό αποτέλεσμα· αυτό το αρχείο συμπίεσης δεν ελέγχθηκε.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Το Pakko δεν μπόρεσε να μάθει τι υποστηρίζει το tar.exe αυτού του συστήματος: λείπει, δεν είναι υπογεγραμμένο από τη Microsoft ή δεν απάντησε εγκαίρως.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Η καταχώρηση προστατεύεται με κωδικό πρόσβασης και δεν σαρώθηκε.</value>
   </data>

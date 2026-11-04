@@ -42,6 +42,29 @@ public sealed class ArchiveFormatPolicyCreationTests
         reason.English.Should().Be($"{name} is not supported by this system's tar.exe (version 3.8.4).");
     }
 
+    // T-F450: no version is not an old version - tar.exe is missing, not signed by Microsoft, or
+    // did not answer in time; "requires a newer tar.exe (version )" named the wrong cause.
+    [Theory]
+    [InlineData(ArchiveContainerFormat.SevenZip)]
+    [InlineData(ArchiveContainerFormat.TarZst)]
+    [InlineData(ArchiveContainerFormat.TarXz)]
+    [InlineData(ArchiveContainerFormat.TarBz2)]
+    public void NoVersion_SaysTarGaveNoAnswer(ArchiveContainerFormat format)
+    {
+        CoreText? reason = ArchiveFormatPolicy.GetTarCreationRefusalReason(format, SevenZipMethod.Lzma2, new TarCapabilities());
+
+        reason!.Code.Should().Be(MessageCode.TarGaveNoVersion);
+        reason.English.Should().NotContain("version )");
+    }
+
+    [Theory]
+    [InlineData(ArchiveFormat.SevenZip)]
+    [InlineData(ArchiveFormat.Rar)]
+    [InlineData(ArchiveFormat.Xz)]
+    public void NoVersion_ReadingIsRefusedWithTheSameReason(ArchiveFormat format) =>
+        ArchiveFormatPolicy.GetRefusalReason(format, new TarCapabilities(), new GroupPolicyOptions())!
+            .Code.Should().Be(MessageCode.TarGaveNoVersion);
+
     [Fact]
     public void OlderVersion_ZstdAnd7z_SayANewerTarIsNeeded()
     {
