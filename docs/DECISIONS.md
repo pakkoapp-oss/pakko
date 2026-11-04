@@ -13565,6 +13565,16 @@ version starts detecting, Pakko stays Inconclusive until the list is re-measured
 `docs/TASKS.md`). `SECURITY.md`'s AMSI section no longer says Pakko is provider-agnostic (the
 user's OK, 2026-11-04).
 
+## T-F449 - a scan of no archives is Inconclusive, not Clean (2026-11-04)
+
+Found by T-F448's fresh review: `ScanAsync` with an empty `ArchivePaths` returned Clean with no
+findings, "nothing found" for nothing scanned. T-F146 pinned that in
+`ScanAsync_EmptyArchivePathsList_ReturnsCleanWithNoFindings` without a reason; it is replaced. Now
+no archive given is Inconclusive with no findings, checked at entry. An archive that holds no
+entries stays Clean: it was read whole and nothing in it is a threat (both pinned). No frontend
+passes an empty list (Explorer, the Archive Browser and `pakko` always name an archive), so nothing
+visible changes; an argument error was not chosen, since Core operations never throw (T-F260).
+
 ## T-F434 - one archive of several sources: a skip keeps only the source it lies in (2026-10-31)
 
 **Found** by `APP-027` on 1.9.0.2: folders A and B archived together, a junction in B skipped, and A

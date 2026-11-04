@@ -305,6 +305,34 @@ public sealed class AntivirusScanServiceTests : IDisposable
             "an entry exactly at the cap must still be buffered and scanned, not skipped");
     }
 
+    // T-F449: a scan of no archives at all scanned nothing - Clean would be "nothing found" for it.
+    [Fact]
+    public async Task ScanAsync_NoArchives_IsInconclusiveNotClean()
+    {
+        var scanner = new FakeAmsiScanner();
+        AntivirusScanService service = CreateService(scanner);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        result.Findings.Should().BeEmpty();
+        scanner.Calls.Should().BeEmpty();
+    }
+
+    // T-F449's other side: an archive that holds no entries was read whole, and nothing in it is a threat.
+    [Fact]
+    public async Task ScanAsync_ArchiveWithNoEntries_StaysClean()
+    {
+        string zip = CreateZip("nothing.zip");
+        var scanner = new FakeAmsiScanner();
+        AntivirusScanService service = CreateService(scanner);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
+        scanner.Calls.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task ScanAsync_NoProviderRegistered_ReturnsInconclusiveForEveryArchiveWithoutScanning()
     {
@@ -404,18 +432,6 @@ public sealed class AntivirusScanServiceTests : IDisposable
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
         result.Findings.Should().ContainSingle(f => f.ArchivePath == garbage && f.EntryPath == null);
-    }
-
-    [Fact]
-    public async Task ScanAsync_EmptyArchivePathsList_ReturnsCleanWithNoFindings()
-    {
-        var scanner = new FakeAmsiScanner();
-        AntivirusScanService service = CreateService(scanner);
-
-        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [] });
-
-        result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
-        result.Findings.Should().BeEmpty();
     }
 
     [Fact]
