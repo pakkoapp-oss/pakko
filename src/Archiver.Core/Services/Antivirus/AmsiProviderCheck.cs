@@ -1,5 +1,6 @@
 using System.Collections.Frozen;
 using System.Runtime.Versioning;
+using System.Security;
 using Microsoft.Win32;
 
 namespace Archiver.Core.Services.Antivirus;
@@ -54,7 +55,7 @@ public static class AmsiProviderCheck
         try
         {
             using RegistryKey? key = Registry.LocalMachine.OpenSubKey(ProvidersKeyPath);
-            return key is null ? AmsiProviderState.None : Classify(key.GetSubKeyNames());
+            return key is null ? AmsiProviderState.None : Classify(key.GetSubKeyNames(), IsLoadable);
         }
         catch
         {
@@ -62,16 +63,48 @@ public static class AmsiProviderCheck
         }
     }
 
-    // A subkey name that is no GUID is an unknown provider, taken as Usable like any other.
-    internal static AmsiProviderState Classify(IReadOnlyCollection<string> subKeyNames)
+    // Without a listed provider every subkey counts, as before T-F448. Beside a listed one, another
+    // subkey counts only if amsi.dll could load it: a key left behind by an uninstaller, with its
+    // DLL gone, would otherwise turn the listed provider's Clean back into a verdict.
+    internal static AmsiProviderState Classify(IReadOnlyCollection<string> subKeyNames, Func<Guid, bool> isLoadable)
     {
         if (subKeyNames.Count == 0)
             return AmsiProviderState.None;
+        var others = new List<string>();
+        bool anyListed = false;
         foreach (string name in subKeyNames)
         {
-            if (!Guid.TryParse(name, out Guid clsid) || !NonReportingProviders.Contains(clsid))
+            if (Guid.TryParse(name, out Guid clsid) && NonReportingProviders.Contains(clsid))
+                anyListed = true;
+            else
+                others.Add(name);
+        }
+        if (!anyListed)
+            return AmsiProviderState.Usable;
+        foreach (string name in others)
+        {
+            if (Guid.TryParse(name, out Guid clsid) && isLoadable(clsid))
                 return AmsiProviderState.Usable;
         }
         return AmsiProviderState.OnlyNonReporting;
+    }
+
+    // HKLM's own Classes, never Registry.ClassesRoot: that view merges HKCU, where any process of
+    // the user could plant a CLSID pointing at an existing file and undo the check above.
+    [SupportedOSPlatform("windows")]
+    private static bool IsLoadable(Guid clsid)
+    {
+        try
+        {
+            using RegistryKey? server = Registry.LocalMachine.OpenSubKey($@"SOFTWARE\Classes\CLSID\{clsid:B}\InprocServer32");
+            if (server?.GetValue(null) is not string path)
+                return false;
+            path = path.Trim().Trim('"');
+            return Path.IsPathFullyQualified(path) && File.Exists(path);
+        }
+        catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)
+        {
+            return false;
+        }
     }
 }

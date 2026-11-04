@@ -277,7 +277,7 @@
     <value>管理者のポリシーがこのエントリの内容をブロックしています。ウイルス対策はクリーンとは報告しませんでした。</value>
   </data>
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
-    <value>登録されているウイルス対策は既知のテスト用の脅威を AMSI で報告しなかったため、Pakko はクリーンな結果を確認できません。このアーカイブはスキャンされていません。</value>
+    <value>登録されているウイルス対策ソフトは既知のテスト用の脅威を AMSI で報告しなかったため、Pakko はクリーンな結果を確認できません。このアーカイブはスキャンされていません。</value>
   </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>エントリはパスワードで保護されているため、スキャンしませんでした。</value>

@@ -13537,8 +13537,16 @@ threats, so Pakko cannot vouch for it.
 that already handles "no provider registered" (`AmsiProviderCheck.GetState`, `Classify`). When
 every registered provider is on the list, every archive is Inconclusive with
 `ScanProviderDoesNotReport` and no AMSI session opens. Any other provider beside it (amsi.dll asks
-them all; Defender beside Trend detected, T-F447) leaves the scan as before. A subkey name that is
-no GUID counts as an unknown provider, as before. The list holds one CLSID.
+them all; Defender beside Trend detected, T-F447) leaves the scan as before. The list holds one
+CLSID.
+
+Beside a listed CLSID, another subkey counts only if amsi.dll could load it: it parses as a GUID and
+`HKLM\SOFTWARE\Classes\CLSID\{guid}\InprocServer32` names an existing file (read from HKLM itself,
+never the HKCU-merged `ClassesRoot`, where any user process could plant one). Found by the fresh
+review: a subkey an uninstaller left behind, its DLL gone, beside Trend would otherwise give Clean
+again. That amsi.dll skips such a provider is inferred, not measured; if it could load one this
+check rejects, the cost is a false Inconclusive on a Trend machine, never a false Clean. Without a
+listed CLSID nothing is looked up, so machines without Trend see no change.
 
 Rejected:
 - An EICAR check per provider CLSID and DLL version, cached: every Defender platform update (about

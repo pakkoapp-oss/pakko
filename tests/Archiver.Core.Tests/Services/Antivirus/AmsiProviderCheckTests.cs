@@ -34,21 +34,33 @@ public sealed class AmsiProviderCheckTests
     private const string TrendMicro = "{6138A34F-DCA4-48D0-95CC-51E1D8F30B58}";
 
     // T-F448: a provider measured to answer S_OK + AMSI_RESULT_CLEAN for EICAR, alone, gives no
-    // verdict to trust; beside any other provider amsi.dll still asks that one. The expected state
-    // goes by name: an internal enum cannot be a public theory's parameter type (CS0051).
+    // verdict to trust; beside any other provider amsi.dll could load, that one answers too. The
+    // expected state goes by name: an internal enum cannot be a public theory's parameter type (CS0051).
     [Theory]
-    [InlineData(new string[0], nameof(AmsiProviderState.None))]
-    [InlineData(new[] { TrendMicro }, nameof(AmsiProviderState.OnlyNonReporting))]
-    [InlineData(new[] { "{6138a34f-dca4-48d0-95cc-51e1d8f30b58}" }, nameof(AmsiProviderState.OnlyNonReporting))]
-    [InlineData(new[] { "6138A34F-DCA4-48D0-95CC-51E1D8F30B58" }, nameof(AmsiProviderState.OnlyNonReporting))]
-    [InlineData(new[] { TrendMicro, TrendMicro }, nameof(AmsiProviderState.OnlyNonReporting))]
-    [InlineData(new[] { Defender }, nameof(AmsiProviderState.Usable))]
-    [InlineData(new[] { TrendMicro, Defender }, nameof(AmsiProviderState.Usable))]
-    [InlineData(new[] { "not-a-guid" }, nameof(AmsiProviderState.Usable))]
-    [InlineData(new[] { "not-a-guid", TrendMicro }, nameof(AmsiProviderState.Usable))]
-    [InlineData(new[] { "" }, nameof(AmsiProviderState.Usable))]
-    public void Classify_MapsRegisteredProviders(string[] subKeyNames, string expected)
+    [InlineData(new string[0], new string[0], nameof(AmsiProviderState.None))]
+    [InlineData(new[] { TrendMicro }, new[] { TrendMicro }, nameof(AmsiProviderState.OnlyNonReporting))]
+    [InlineData(new[] { "{6138a34f-dca4-48d0-95cc-51e1d8f30b58}" }, new string[0], nameof(AmsiProviderState.OnlyNonReporting))]
+    [InlineData(new[] { "6138A34F-DCA4-48D0-95CC-51E1D8F30B58" }, new string[0], nameof(AmsiProviderState.OnlyNonReporting))]
+    [InlineData(new[] { Defender }, new[] { Defender }, nameof(AmsiProviderState.Usable))]
+    [InlineData(new[] { TrendMicro, Defender }, new[] { TrendMicro, Defender }, nameof(AmsiProviderState.Usable))]
+    [InlineData(new[] { "not-a-guid" }, new string[0], nameof(AmsiProviderState.Usable))]
+    [InlineData(new[] { "" }, new string[0], nameof(AmsiProviderState.Usable))]
+    // No listed provider: nothing is checked for loading, as before T-F448.
+    [InlineData(new[] { Defender }, new string[0], nameof(AmsiProviderState.Usable))]
+    // Beside a listed provider, only another one amsi.dll could load counts.
+    [InlineData(new[] { TrendMicro, Defender }, new[] { TrendMicro }, nameof(AmsiProviderState.OnlyNonReporting))]
+    [InlineData(new[] { TrendMicro, Defender }, new[] { Defender }, nameof(AmsiProviderState.Usable))]
+    [InlineData(new[] { "not-a-guid", TrendMicro }, new string[0], nameof(AmsiProviderState.OnlyNonReporting))]
+    [InlineData(new[] { "", TrendMicro }, new string[0], nameof(AmsiProviderState.OnlyNonReporting))]
+    public void Classify_MapsRegisteredProviders(string[] subKeyNames, string[] loadable, string expected)
     {
-        AmsiProviderCheck.Classify(subKeyNames).ToString().Should().Be(expected);
+        HashSet<Guid> loadableIds = [.. loadable.Select(Guid.Parse)];
+        var asked = new List<Guid>();
+
+        string state = AmsiProviderCheck.Classify(subKeyNames, clsid => { asked.Add(clsid); return loadableIds.Contains(clsid); }).ToString();
+
+        state.Should().Be(expected);
+        if (!subKeyNames.Any(n => Guid.TryParse(n, out Guid g) && g == Guid.Parse(TrendMicro)))
+            asked.Should().BeEmpty("without a listed provider no DLL is looked up");
     }
 }
