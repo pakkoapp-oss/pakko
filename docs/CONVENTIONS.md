@@ -478,6 +478,9 @@ Won't-fix categories recorded so far:
   PAR2 set chooses both the data and its hashes, `SECURITY.md`). Every MD5 call goes through that one
   helper, suppressed there with `#pragma warning disable CA5351` and `// NOSONAR: S4790`; the tests'
   own independent MD5 (`Par2PacketForge`) carries the same pragma.
+- **`secrets:S2068` (hard-coded credential) on `scripts/Measure-SevenZipCompat.ps1`'s `$Password`**: the
+  password of the AES ZIPs the script builds in a temporary folder to compare `pakko` with 7-Zip;
+  it protects nothing and has to be known to both tools. Marked `# NOSONAR: S2068` on that line.
 - **`pythonsecurity:S8707` (path taken from a command-line argument) on `scripts/Fill-StoreListing.py`**:
   a local tool whose whole input is the files its operator names; nothing else supplies the
   arguments. Marked `# NOSONAR S8707` on each `open`.

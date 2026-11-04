@@ -40,7 +40,7 @@ $ErrorActionPreference = 'Stop'
 $Pakko = (Resolve-Path -LiteralPath $Pakko).Path
 $Reference = (Resolve-Path -LiteralPath $Reference).Path
 $RarFixture = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\tests\Archiver.Core.IntegrationTests\Fixtures\valid.rar')).Path
-$Password = 'Right-1'
+$Password = 'Right-1' # NOSONAR: S2068 - a throwaway password for archives this script creates and deletes
 
 function Invoke-Tool {
     param([string]$Exe, [string[]]$Arguments, [string]$WorkingDirectory)
