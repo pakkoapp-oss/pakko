@@ -13469,6 +13469,8 @@ interactive session ran `winget install` instead.
 | Malwarebytes 5.7 (`Malwarebytes.Malwarebytes`, winget) | none | Normal, running | Defender's | as baseline | as baseline | as baseline |
 | Webroot SecureAnywhere (`Webroot.SecureAnywhere`, winget), no keycode | none | Normal, running | Defender's | as baseline | as baseline | as baseline |
 | 360 Total Security (`9NBLGGH1NP58`, msstore, Chinese) | none | Normal, running | Defender's | as baseline | as baseline | as baseline |
+| Bitdefender Total Security (`XP9K931FWBP5V5`, msstore), setup clicked through by the user; before the user's logon after a reboot | none, and Defender's is gone; Security Center: Bitdefender 0x041010 | Not running, stopped, Manual | `AmsiInitialize` 0x80070103 | Inconclusive, `NoAntivirusRegistered` | same | same |
+| Same, the user logged on (2026-11-04) | `{7FCB1218-D9DD-4E13-91C0-4EE04F8B8C91}` `antimalware_provider64.dll` (under `bdamsi\`) only; Security Center 0x041000 | Not running | 32768 / **0** | ThreatDetected | Clean | Inconclusive: removed or blocked (Bitdefender's file filter) |
 
 - AVG behaves as Avast (same `aswAMSI.dll` family): it replaces Defender and detects through AMSI.
   It answers AMSI_RESULT_CLEAN (0) for clean text where Defender, Avast and Avira answer 1; both
@@ -13489,10 +13491,13 @@ interactive session ran `winget install` instead.
   AMSI, the probe as the process) and an entry in `Get-MpThreatDetection`, so a self-test before
   each scan would raise a severe alert in every monitored fleet. `SecurityCenter2` would not have
   helped either: ESET did not appear there at all.
+- Bitdefender's online setup waits in a window under winget's `--silent` (`Bitdefender.Bitdefender`
+  in the winget source is the same online agent); the user clicked it through on the VM. It turns
+  Defender off at once but registers its AMSI provider only once a user logs on: until then Pakko
+  says "no antivirus is registered", Inconclusive, never Clean. Once registered it detects EICAR and
+  answers 0 for clean text, as AVG does.
 - Not measured: ESET or Trend Micro activated (they would turn Defender off; activation needs a
-  vendor account or the setup window), a third-party licence expiring after activation, Bitdefender
-  Total Security (`XP9K931FWBP5V5`, msstore; its online setup waits in a window under winget's
-  `--silent`; `Bitdefender.Bitdefender` in the winget source is the same online agent), TotalAV
+  vendor account or the setup window), a third-party licence expiring after activation, TotalAV
   (`XPDNTPM3BG8CV1`; `install.protected.net` unreachable from the VM, 0x80072EE7, twice). Driving
   setup windows needs the host's screen through `vmconnect`, which the user was using. Not in winget
   at all: Norton, McAfee (only its removal tool), Sophos, Panda, G Data, F-Secure, Comodo. On-demand
