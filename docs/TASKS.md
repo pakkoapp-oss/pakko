@@ -1946,8 +1946,9 @@ re-measured with T-F346's script before and after.
   360 register none and leave Defender on. EICAR self-test re-measured and still rejected (Defender's
   severe 1116/1117 per scan). Bitdefender (setup clicked through by the user, 2026-11-04): its
   provider appears only after a user logon, Inconclusive until then, then detects. Next, if the
-  screen is free: ESET activated (trial), TotalAV (download unreachable). Trend Micro installed in
-  full (2026-11-04): its provider answers Clean for EICAR, T-F448.
+  screen is free: TotalAV (download unreachable). Trend Micro installed in full (2026-11-04): its
+  provider answers Clean for EICAR, T-F448. ESET activated (trial, 2026-11-04): replaces Defender
+  and detects.
 - **Reported by:** the user, 2026-11-03.
 
 ### T-F393 — The About button went disabled once and no dialog came (P3)
