@@ -13470,7 +13470,7 @@ interactive session ran `winget install` instead.
 | Webroot SecureAnywhere (`Webroot.SecureAnywhere`, winget), no keycode | none | Normal, running | Defender's | as baseline | as baseline | as baseline |
 | 360 Total Security (`9NBLGGH1NP58`, msstore, Chinese) | none | Normal, running | Defender's | as baseline | as baseline | as baseline |
 | Bitdefender Total Security (`XP9K931FWBP5V5`, msstore), setup clicked through by the user; before the user's logon after a reboot | none, and Defender's is gone; Security Center: Bitdefender 0x041010 | Not running, stopped, Manual | `AmsiInitialize` 0x80070103 | Inconclusive, `NoAntivirusRegistered` | same | same |
-| Trend Micro Maximum Security 17.9, setup clicked through by the user (2026-11-04) | Trend's only, Defender's gone; Security Center: Trend 0x041000 | Not running | **0 / 0** (raw call from PowerShell; the probe exe is blocked) | **Clean** (derived, T-F448) | Clean | not run |
+| Trend Micro Maximum Security 17.9, setup clicked through by the user (2026-11-04) | Trend's only, Defender's gone; Security Center: Trend 0x041000 | Not running | **0 / 0** (raw call from PowerShell; the probe exe is blocked) | **Clean** (also the packaged 1.9.0.2 from Explorer's menu, T-F448) | Clean | not run |
 | Bitdefender, same day, the user logged on (2026-11-04) | `{7FCB1218-D9DD-4E13-91C0-4EE04F8B8C91}` `antimalware_provider64.dll` (under `bdamsi\`) only; Security Center 0x041000 | Not running | 32768 / **0** | ThreatDetected | Clean | Inconclusive: removed or blocked (Bitdefender's file filter) |
 
 - AVG behaves as Avast (same `aswAMSI.dll` family): it replaces Defender and detects through AMSI.
@@ -13506,9 +13506,11 @@ interactive session ran `winget install` instead.
   EICAR and for clean text, with the app name `PakkoProbe`, `PowerShell_...`, `DotNet`,
   `OFFICE_VBA`, `JScript` and `VBScript` alike; Microsoft's AMSI test sample string got 0 too, and
   PowerShell ran an EICAR string unblocked. The user had switched some of Trend's protection off
-  between two runs; with it back on (the probe exe blocked again) the answer was still 0. Pakko's
-  verdict was not run (the exe is blocked) but follows from `InterpretScanResult`: S_OK with 0 is
-  Clean, as with AVG and Bitdefender, whose 0 for clean text comes with 32768 for EICAR.
+  between two runs; with it back on (the probe exe blocked again) the answer was still 0. It follows
+  from `InterpretScanResult` (S_OK with 0 is Clean, as with AVG and Bitdefender, whose 0 for clean
+  text comes with 32768 for EICAR), and the shipped path confirmed it: the dev package 1.9.0.2
+  left on the VM since T-F444, signed and not blocked by Trend, scanned an EICAR ZIP on the
+  desktop from Explorer's menu, and the user saw "nothing found".
 - Not measured: ESET activated (it would turn Defender off; activation needs a
   vendor account or the setup window), a third-party licence expiring after activation, TotalAV
   (`XPDNTPM3BG8CV1`; `install.protected.net` unreachable from the VM, 0x80072EE7, twice). Driving
