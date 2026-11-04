@@ -13596,6 +13596,11 @@ probe's 30 s, T-F403) and then refused on extraction, because `PakkoServices` ca
   any of the three (the signature check fails closed into the same all-false capabilities), and
   `TarCapabilities` is not split to tell them apart, so the fail-closed path stays as it was. It is
   checked before every per-format reason, so no "(version )" text is left.
+- Checked, unchanged: Cancel during the longer probe still works, since `ArchiveFormatPolicy.ClassifyAsync`
+  awaits it with `WaitAsync(cancellationToken)` (the probe finishes in the background); under
+  `DisableTarExtraction` creation is refused with the policy's own reason before
+  `GetTarCreationRefusalReason`, and reading puts policy first in `GetRefusalReason`, so the new
+  reason never stands in for a policy.
 
 ## T-F434 - one archive of several sources: a skip keeps only the source it lies in (2026-10-31)
 
