@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Administraatori poliitika blokeerib selle kirje sisu; viirusetõrje ei märkinud seda puhtaks.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Registreeritud viirusetõrje ei teatanud AMSI kaudu teadaolevatest testohtudest, seega ei saa Pakko puhast tulemust kinnitada; seda arhiivi ei skannitud.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kirje on parooliga kaitstud ja seda ei skannitud.</value>
   </data>

@@ -1,6 +1,7 @@
 using System.Text;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
+using Archiver.Core.Services.Antivirus;
 using Archiver.Core.Services.Zip;
 using Archiver.Core.Services.Zip.Decryption;
 using Archiver.Core.Text;
@@ -124,7 +125,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
     {
         (string? zip, string? colliding) = LargeZipCryptoWithCollidingPassword();
         var scanner = new FakeAmsiScanner();
-        var service = new AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions(), () => scanner, () => true);
+        var service = new AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions(), () => scanner, () => AmsiProviderState.Usable);
 
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip], ResolvePasswordAsync = Fixed(colliding) });
 
@@ -138,7 +139,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         (string? zip, string? colliding) = LargeZipCryptoWithCollidingPassword();
         var scanner = new FakeAmsiScanner();
         scanner.BlockedContentNames.Add("big.bin");
-        var service = new AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions(), () => scanner, () => true);
+        var service = new AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions(), () => scanner, () => AmsiProviderState.Usable);
 
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip], ResolvePasswordAsync = Fixed(colliding) });
 

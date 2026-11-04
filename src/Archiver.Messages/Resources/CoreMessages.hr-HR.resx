@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Pravilo administratora blokira sadržaj ove stavke; antivirusni program nije je prijavio kao čistu.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Registrirani antivirusni program nije prijavio poznate testne prijetnje putem AMSI-ja, pa Pakko ne može potvrditi čist rezultat; ova arhiva nije skenirana.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Stavka je zaštićena lozinkom i nije skenirana.</value>
   </data>

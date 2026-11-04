@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>व्यवस्थापक की नीति इस प्रविष्टि की सामग्री को रोकती है; एंटीवायरस ने इसे साफ़ नहीं बताया।</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>पंजीकृत एंटीवायरस ने AMSI के माध्यम से ज्ञात परीक्षण खतरों की रिपोर्ट नहीं की, इसलिए Pakko साफ़ परिणाम की पुष्टि नहीं कर सकता; इस संग्रह को स्कैन नहीं किया गया।</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>प्रविष्टि पासवर्ड से सुरक्षित है और स्कैन नहीं की गई।</value>
   </data>

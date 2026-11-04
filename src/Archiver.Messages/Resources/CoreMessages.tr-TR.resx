@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Bir yönetici ilkesi bu öğenin içeriğini engelliyor; virüsten koruma programı onu temiz olarak bildirmedi.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Kayıtlı virüsten koruma programı bilinen test tehditlerini AMSI üzerinden bildirmedi, bu nedenle Pakko temiz bir sonucu doğrulayamaz; bu arşiv taranmadı.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Öğe parola korumalı ve taranmadı.</value>
   </data>

@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Zasady administratora blokują zawartość tego elementu; program antywirusowy nie zgłosił go jako czystego.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Zarejestrowany program antywirusowy nie zgłosił znanych zagrożeń testowych przez AMSI, więc Pakko nie może potwierdzić czystego wyniku; to archiwum nie zostało przeskanowane.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Element jest chroniony hasłem i nie został przeskanowany.</value>
   </data>

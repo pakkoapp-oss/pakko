@@ -170,4 +170,7 @@ public enum MessageCode
 
     // An administrator policy blocked an entry's content: AMSI's own answer, not a clean scan (T-F446)
     ScanEntryBlockedByPolicy,
+
+    // The only AMSI providers are ones measured to answer Clean for known test threats (T-F448)
+    ScanProviderDoesNotReport,
 }

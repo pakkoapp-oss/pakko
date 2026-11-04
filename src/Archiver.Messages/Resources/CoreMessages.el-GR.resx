@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Μια πολιτική διαχειριστή αποκλείει το περιεχόμενο αυτής της καταχώρησης· το πρόγραμμα προστασίας από ιούς δεν την ανέφερε ως καθαρή.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Το καταχωρημένο πρόγραμμα προστασίας από ιούς δεν ανέφερε γνωστές δοκιμαστικές απειλές μέσω AMSI, οπότε το Pakko δεν μπορεί να επιβεβαιώσει καθαρό αποτέλεσμα· αυτό το αρχείο συμπίεσης δεν ελέγχθηκε.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Η καταχώρηση προστατεύεται με κωδικό πρόσβασης και δεν σαρώθηκε.</value>
   </data>

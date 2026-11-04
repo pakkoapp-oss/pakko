@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
+using Archiver.Core.Services.Antivirus;
 using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
 
@@ -107,7 +108,7 @@ public sealed class ZipArchiveServicePolicyTests : IDisposable
     {
         string empty = WriteEmptyZip("empty.zip");
         var scanner = new AntivirusScanService(new TarCapabilities(), ZipBlocked,
-            () => throw new InvalidOperationException("no scanner may be opened"), () => true);
+            () => throw new InvalidOperationException("no scanner may be opened"), () => AmsiProviderState.Usable);
 
         ThreatScanResult result = await scanner.ScanAsync(new AntivirusScanOptions { ArchivePaths = [empty] });
 

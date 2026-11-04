@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>تحظر سياسة المسؤول محتوى هذا العنصر، ولم يُبلغ برنامج مكافحة الفيروسات عنه على أنه نظيف.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>لم يُبلغ برنامج مكافحة الفيروسات المسجل عن تهديدات اختبار معروفة عبر AMSI، لذا لا يستطيع Pakko تأكيد نتيجة نظيفة؛ لم يتم فحص هذا الأرشيف.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>العنصر محمي بكلمة مرور ولم يتم فحصه.</value>
   </data>

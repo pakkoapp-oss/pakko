@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Sera ya msimamizi inazuia maudhui ya kipengee hiki; kingavirusi hakikukiripoti kuwa safi.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Kingavirusi iliyosajiliwa haikuripoti vitisho vya majaribio vinavyojulikana kupitia AMSI, kwa hivyo Pakko haiwezi kuthibitisha matokeo safi; kumbukumbu hii haikuchunguzwa.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kipengee kimelindwa kwa nenosiri na hakikuchunguzwa.</value>
   </data>

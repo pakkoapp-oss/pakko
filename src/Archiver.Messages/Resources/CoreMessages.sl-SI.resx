@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Pravilnik skrbnika blokira vsebino tega vnosa; protivirusni program ga ni sporočil kot čistega.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Registrirani protivirusni program prek AMSI ni sporočil znanih preizkusnih groženj, zato Pakko ne more potrditi čistega rezultata; ta arhiv ni bil pregledan.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Vnos je zaščiten z geslom in ni bil pregledan.</value>
   </data>

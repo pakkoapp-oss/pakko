@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>מדיניות של מנהל המערכת חוסמת את התוכן של פריט זה; האנטי-וירוס לא דיווח עליו כנקי.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>תוכנת האנטי-וירוס הרשומה לא דיווחה על איומי בדיקה ידועים דרך AMSI, ולכן Pakko אינו יכול לאשר תוצאה נקייה; ארכיון זה לא נסרק.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>הפריט מוגן בסיסמה ולא נסרק.</value>
   </data>

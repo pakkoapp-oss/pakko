@@ -2,6 +2,7 @@ using System.Reflection;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
+using Archiver.Core.Services.Antivirus;
 using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
 
@@ -359,7 +360,7 @@ public sealed class PolicyOwnershipTests : IDisposable
     {
         string archive = WriteTar("a.tar");
         var scanner = new AntivirusScanService(new TarCapabilities(), TarRefusing(policy),
-            () => throw new InvalidOperationException("no scanner may be opened"), () => false);
+            () => throw new InvalidOperationException("no scanner may be opened"), () => AmsiProviderState.None);
 
         ThreatScanResult result = await scanner.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archive] });
 

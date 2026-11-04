@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>En administratörsprincip blockerar innehållet i den här posten; antivirusprogrammet rapporterade den inte som ren.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Det registrerade antivirusprogrammet rapporterade inte kända testhot via AMSI, så Pakko kan inte bekräfta ett rent resultat; det här arkivet genomsöktes inte.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Posten är lösenordsskyddad och genomsöktes inte.</value>
   </data>

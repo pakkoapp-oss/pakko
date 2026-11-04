@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Politika správcu blokuje obsah tejto položky; antivírus ju neoznačil ako čistú.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Zaregistrovaný antivírus nenahlásil známe testovacie hrozby cez AMSI, preto Pakko nemôže potvrdiť čistý výsledok; tento archív nebol skontrolovaný.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Položka je chránená heslom a nebola skontrolovaná.</value>
   </data>

@@ -41,10 +41,10 @@ public sealed class AntivirusScanService : IAntivirusScanService
     private readonly Func<Task<TarCapabilities>> _tarCapabilities;
     private readonly GroupPolicyOptions _policy;
     private readonly Func<IAmsiScanner> _scannerFactory;
-    private readonly Func<bool> _isProviderRegistered;
+    private readonly Func<AmsiProviderState> _providerState;
 
     // [SupportedOSPlatform("windows")] here (not on the whole class) — this is the only member
-    // that directly references AmsiProviderCheck.IsAnyProviderRegistered, which the BCL's own
+    // that directly references AmsiProviderCheck.GetState, which the BCL's own
     // Microsoft.Win32.Registry annotation makes Windows-only (same reasoning as
     // GroupPolicyService.Load()). The internal test constructor below takes that dependency as a
     // parameter instead, so it and the rest of this class stay unannotated and callable from
@@ -59,7 +59,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
     // T-F350: PakkoServices' entry - the one place the real AMSI provider is wired in.
     [SupportedOSPlatform("windows")]
     internal AntivirusScanService(Func<Task<TarCapabilities>> tarCapabilities, GroupPolicyOptions groupPolicyOptions)
-        : this(tarCapabilities, groupPolicyOptions, () => new AmsiScanner("Pakko"), AmsiProviderCheck.IsAnyProviderRegistered)
+        : this(tarCapabilities, groupPolicyOptions, () => new AmsiScanner("Pakko"), AmsiProviderCheck.GetState)
     {
     }
 
@@ -72,8 +72,8 @@ public sealed class AntivirusScanService : IAntivirusScanService
         TarCapabilities tarCapabilities,
         GroupPolicyOptions groupPolicyOptions,
         Func<IAmsiScanner> scannerFactory,
-        Func<bool> isProviderRegistered)
-        : this(() => Task.FromResult(tarCapabilities), groupPolicyOptions, scannerFactory, isProviderRegistered)
+        Func<AmsiProviderState> providerState)
+        : this(() => Task.FromResult(tarCapabilities), groupPolicyOptions, scannerFactory, providerState)
     {
     }
 
@@ -82,13 +82,13 @@ public sealed class AntivirusScanService : IAntivirusScanService
         Func<Task<TarCapabilities>> tarCapabilities,
         GroupPolicyOptions groupPolicyOptions,
         Func<IAmsiScanner> scannerFactory,
-        Func<bool> isProviderRegistered)
+        Func<AmsiProviderState> providerState)
     {
         ArgumentNullException.ThrowIfNull(groupPolicyOptions);
         _tarCapabilities = tarCapabilities;
         _policy = groupPolicyOptions;
         _scannerFactory = scannerFactory;
-        _isProviderRegistered = isProviderRegistered;
+        _providerState = providerState;
     }
 
     // T-F234: see ZipArchiveService.NameCodePages — scan reports the same names extraction writes.
@@ -145,11 +145,17 @@ public sealed class AntivirusScanService : IAntivirusScanService
         if (totalArchives == 0)
             return BuildResult(findings);
 
-        if (!_isProviderRegistered())
+        // T-F448: the same holds when the only providers are ones measured to answer Clean for
+        // known test threats - their Clean is no verdict, so nothing is scanned.
+        AmsiProviderState providerState = _providerState();
+        if (providerState != AmsiProviderState.Usable)
         {
+            MessageCode reason = providerState == AmsiProviderState.None
+                ? MessageCode.NoAntivirusRegistered
+                : MessageCode.ScanProviderDoesNotReport;
             foreach (string path in classification.ZipPaths.Concat(classification.TarPaths))
             {
-                findings.Add(CoreMessages.Inconclusive(path, null, CoreMessages.Text(MessageCode.NoAntivirusRegistered)));
+                findings.Add(CoreMessages.Inconclusive(path, null, CoreMessages.Text(reason)));
             }
             return BuildResult(findings);
         }

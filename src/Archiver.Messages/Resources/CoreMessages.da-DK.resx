@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>En administratorpolitik blokerer dette elements indhold; antivirusprogrammet rapporterede det ikke som rent.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Det registrerede antivirusprogram rapporterede ikke kendte testtrusler via AMSI, så Pakko kan ikke bekræfte et rent resultat; dette arkiv blev ikke scannet.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Elementet er beskyttet med adgangskode og blev ikke scannet.</value>
   </data>

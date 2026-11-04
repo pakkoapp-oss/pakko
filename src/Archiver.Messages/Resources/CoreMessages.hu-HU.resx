@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Egy rendszergazdai házirend letiltja ennek az elemnek a tartalmát; a víruskereső nem jelentette tisztának.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>A regisztrált víruskereső nem jelezte az ismert tesztfenyegetéseket az AMSI-n keresztül, ezért a Pakko nem tudja megerősíteni a tiszta eredményt; ez az archívum nem lett megvizsgálva.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Az elem jelszóval védett, ezért nem lett megvizsgálva.</value>
   </data>
