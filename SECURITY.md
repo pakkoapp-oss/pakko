@@ -799,10 +799,11 @@ raw reparse tag (`IO_REPARSE_TAG_CLOUD_*` vs. `IO_REPARSE_TAG_SYMLINK` /
 Interface (`amsi.dll`), the same non-elevated API PowerShell, browsers, and Office VBA/JScript
 hosts use to ask the OS's registered AV/EDR "is this content safe" before acting on it. Pakko
 never calls a specific antivirus product directly — AMSI dispatches to whichever provider is
-actually registered, so a third-party EDR shadowing Defender-only tooling is a non-issue here. The
-one exception is a short list of providers measured to answer "clean" for known test threats
-(T-F448: Trend Micro Maximum Security 17.9). When only such providers are registered, every archive
-is reported Inconclusive without being scanned, never Clean.
+actually registered, so a third-party EDR shadowing Defender-only tooling is a non-issue here.
+Pakko does, however, keep a short list of providers measured to answer "clean" for known test
+threats (T-F448: Trend Micro Maximum Security 17.9). When only such providers are registered, or
+every other registered provider cannot be loaded, every archive is reported Inconclusive without
+being scanned, never Clean.
 
 **Provider dependency.** If no AMSI provider is registered (AV disabled, uninstalled, or one that
 never registers as a provider), a scan can't produce a real verdict. `AmsiScanBuffer` alone can't
