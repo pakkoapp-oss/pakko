@@ -5,7 +5,8 @@ namespace Archiver.Core.Models;
 /// TarSandboxedService.ScanForUnsafeEntriesAsync already owns "Scan" for the unrelated T-F49
 /// traversal/symlink pre-scan; keeping the two grep-separable avoids confusing them.
 /// Inconclusive must never be silently rendered as Clean by any caller — it means "Pakko could not
-/// determine an answer" (no AMSI provider registered, a provider call failed, an entry was too
+/// determine an answer" (no AMSI provider registered, only one measured to answer Clean for test
+/// threats (T-F448), a provider call failed or a policy blocked the content (T-F446), an entry was too
 /// large to buffer, or a tar-family entry vanished/became unreadable between extraction and scan),
 /// which is a different fact from a scan that genuinely came back negative.
 /// </summary>
