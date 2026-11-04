@@ -1932,8 +1932,9 @@ re-measured with T-F346's script before and after.
   OK. Candidates to weigh, not chosen: name the provider in the result ("nothing found by Trend
   Micro", from the CLSID's name) so Clean never reads as Pakko's own guarantee; a one-off check per
   provider CLSID and DLL version cached, which alerts once per product update instead of per scan;
-  a list of providers known not to detect EICAR whose Clean becomes Inconclusive. Also measure
-  whether Trend blocks the packaged, signed `Archiver.Shell.exe --scan` the way it blocks the probe.
+  a list of providers known not to detect EICAR whose Clean becomes Inconclusive. Confirmed on the
+  shipped path: the signed package 1.9.0.2 is not blocked by Trend, and its Explorer "Scan for
+  threats" on an EICAR ZIP showed "nothing found" (the user, 2026-11-04).
 - **Reported by:** T-F447's measurement with the user's clicks on the VM, 2026-11-04.
 
 ### T-F447 — More AMSI providers on the PakkoW10 VM, through winget, no Russian products (P2, user-requested, stream B)
