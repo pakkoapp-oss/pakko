@@ -1954,7 +1954,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F448 — With Trend Micro as the antivirus, an archive holding EICAR scans Clean (P1, from T-F447)
 
-- [ ] **Status:** fixed 2026-11-04, on-device check pending (`SHL-016`; `docs/DECISIONS.md`, "T-F448"):
+- [x] **Status:** fixed 2026-11-04, `SHL-016` OK on PakkoW10 2026-11-05 (`docs/DECISIONS.md`, "T-F448"):
   a provider on the measured list, alone, makes every archive Inconclusive with a reason of its own;
   re-measure when Trend ships a new version or a business product is at hand. Before: open, measured 2026-11-04 (`docs/DECISIONS.md`, "T-F447"). Trend Micro Maximum
   Security 17.9 installed in full on PakkoW10 turns Defender off and leaves its own AMSI provider
