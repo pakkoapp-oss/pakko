@@ -30,6 +30,16 @@ public sealed class AmsiProviderCheckTests
         act.Should().NotThrow();
     }
 
+    // Shell.Application: registered in HKLM on every Windows, %SystemRoot%\system32\shell32.dll as
+    // REG_EXPAND_SZ, so this also pins that the path is expanded before the file is looked for.
+    [Fact]
+    public void IsLoadable_RegisteredSystemClass_IsTrue() =>
+        AmsiProviderCheck.IsLoadable(new Guid("13709620-C279-11CE-A49E-444553540000")).Should().BeTrue();
+
+    [Fact]
+    public void IsLoadable_UnregisteredClsid_IsFalse() =>
+        AmsiProviderCheck.IsLoadable(Guid.NewGuid()).Should().BeFalse();
+
     private const string Defender = "{2781761E-28E0-4109-99FE-B9D127C57AFE}";
     private const string TrendMicro = "{6138A34F-DCA4-48D0-95CC-51E1D8F30B58}";
 

@@ -92,7 +92,7 @@ public static class AmsiProviderCheck
     // HKLM's own Classes, never Registry.ClassesRoot: that view merges HKCU, where any process of
     // the user could plant a CLSID pointing at an existing file and undo the check above.
     [SupportedOSPlatform("windows")]
-    private static bool IsLoadable(Guid clsid)
+    internal static bool IsLoadable(Guid clsid)
     {
         try
         {
