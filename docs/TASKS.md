@@ -1922,7 +1922,8 @@ re-measured with T-F346's script before and after.
 
 - [x] **Status:** fixed 2026-11-04 (`docs/DECISIONS.md`, "T-F450"): Shell and `pakko` ask through the
   patient probe, an empty version has its own reason; the App and the menu snapshot keep the quick
-  probe. Before: seen 2026-11-04 in CI on PR #149 (a test-only change): two
+  probe. No on-device check: a tar.exe slower than five seconds cannot be produced on demand, and
+  the unit tests pin both sides (the T-F446 precedent). Before: seen 2026-11-04 in CI on PR #149 (a test-only change): two
   `CliSevenZipSubprocessTests` failed with "7-Zip requires tar.exe with libarchive >= 3.7.0 ...;
   this system's tar.exe (version ) ...", an empty version, on a loaded runner (the CLI tests took
   8 minutes). `TarSandboxedService.DetectCapabilitiesAsync` gives up after `DetectionTimeout` (5 s)
