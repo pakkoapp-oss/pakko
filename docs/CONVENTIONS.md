@@ -480,7 +480,11 @@ Won't-fix categories recorded so far:
   own independent MD5 (`Par2PacketForge`) carries the same pragma.
 - **`secrets:S2068` (hard-coded credential) on `scripts/Measure-SevenZipCompat.ps1`'s `$Password`**: the
   password of the AES ZIPs the script builds in a temporary folder to compare `pakko` with 7-Zip;
-  it protects nothing and has to be known to both tools. Marked `# NOSONAR: S2068` on that line.
+  it protects nothing and has to be known to both tools, and it is part of a probe's name in the
+  script's TSV, so a random one would make two runs differ. `# NOSONAR` does **not** reach the
+  `secrets:*` engine (measured 2026-11-05: the finding stayed open on the analysis of `712a642a`,
+  the commit that added the marker), so this finding is closed as False positive on SonarCloud
+  itself, by an account with the right to administer issues.
 - **`pythonsecurity:S8707` (path taken from a command-line argument) on `scripts/Fill-StoreListing.py`**:
   a local tool whose whole input is the files its operator names; nothing else supplies the
   arguments. Marked `# NOSONAR S8707` on each `open`.
