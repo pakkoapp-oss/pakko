@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Antivirus yang terdaftar tidak melaporkan ancaman uji yang dikenal melalui AMSI, sehingga Pakko tidak dapat memastikan hasil bersih; arsip ini tidak dipindai.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko tidak dapat mengetahui apa yang didukung tar.exe sistem ini: tar.exe tidak ada, tidak ditandatangani oleh Microsoft, atau tidak menjawab tepat waktu.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Entri dilindungi kata sandi dan tidak dipindai.</value>
   </data>

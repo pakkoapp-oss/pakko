@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Registreeritud viirusetõrje ei teatanud AMSI kaudu teadaolevatest testohtudest, seega ei saa Pakko puhast tulemust kinnitada; seda arhiivi ei skannitud.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko ei saanud teada, mida selle süsteemi tar.exe toetab: see puudub, pole Microsofti allkirjastatud või ei vastanud õigel ajal.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kirje on parooliga kaitstud ja seda ei skannitud.</value>
   </data>

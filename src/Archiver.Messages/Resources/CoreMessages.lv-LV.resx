@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Reģistrētā pretvīrusu programma caur AMSI neziņoja par zināmiem testa draudiem, tāpēc Pakko nevar apstiprināt tīru rezultātu; šis arhīvs netika skenēts.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko nevarēja noskaidrot, ko atbalsta šīs sistēmas tar.exe: tā nav, tā nav Microsoft parakstīta vai tā laikā neatbildēja.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Vienums ir aizsargāts ar paroli un netika skenēts.</value>
   </data>

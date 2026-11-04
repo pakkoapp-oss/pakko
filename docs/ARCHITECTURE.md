@@ -1301,6 +1301,9 @@ public sealed record TarCapabilities
 public interface ITarService
 {
     Task<TarCapabilities> DetectCapabilitiesAsync();
+    // T-F450: the same probe, asked again with the 7z writer probe's patience when it gave no
+    // version, and kept once it did; default: DetectCapabilitiesAsync. PakkoServices uses it.
+    Task<TarCapabilities> KnownCapabilitiesAsync();
     // T-F342: runs tar.exe's 7z writer once (an empty archive to stdout) and keeps the answer;
     // false under DisableTarExtraction or when tar.exe cannot read 7z. See "Creating 7z" below.
     Task<bool> CanCreateSevenZipAsync(CancellationToken cancellationToken = default);
@@ -1966,7 +1969,7 @@ public sealed class PakkoServices
     public IArchiveService ArchiveService { get; }
     public ITarService TarService { get; }
     public IArchiveCreationRouter CreationRouter { get; }          // needs no tar.exe probe
-    public Task<TarCapabilities> GetTarCapabilitiesAsync();        // probed once, cached (T-F85)
+    public Task<TarCapabilities> GetTarCapabilitiesAsync();        // probed once, cached (T-F85); patient (T-F450)
     public Task<IExtractionRouter> CreateExtractionRouterAsync();  // extract + test
     public Task<IArchiveListingRouter> CreateListingRouterAsync();
     [SupportedOSPlatform("windows")]

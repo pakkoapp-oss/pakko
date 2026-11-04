@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>Зареєстрований антивірус не повідомив про відомі тестові загрози через AMSI, тож Pakko не може підтвердити чистий результат; цей архів не перевірено.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko не зміг дізнатися, що підтримує tar.exe цієї системи: його немає, він не підписаний Microsoft або не відповів вчасно.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Елемент захищено паролем, тому його не перевірено.</value>
   </data>

@@ -17,6 +17,13 @@ public interface ITarService
     Task<TarCapabilities> DetectCapabilitiesAsync();
 
     /// <summary>
+    /// T-F450: <see cref="DetectCapabilitiesAsync"/> for a caller nothing on screen waits for: a
+    /// probe that gave no version (a loaded machine) is asked again with more patience, and a
+    /// version, once given, is kept. The default is for an engine whose probe always answers.
+    /// </summary>
+    Task<TarCapabilities> KnownCapabilitiesAsync() => DetectCapabilitiesAsync();
+
+    /// <summary>
     /// T-F342: whether this system's tar.exe writes 7z archives Pakko can open again. Found by
     /// having it write an empty one, not by its version (the same libarchive version ships in
     /// different Windows releases), so it starts tar.exe: ask only when 7z creation is wanted.

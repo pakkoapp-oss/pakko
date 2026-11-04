@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>תוכנת האנטי-וירוס הרשומה לא דיווחה על איומי בדיקה ידועים דרך AMSI, ולכן Pakko אינו יכול לאשר תוצאה נקייה; ארכיון זה לא נסרק.</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko לא הצליח לברר במה תומך tar.exe של מערכת זו: הוא חסר, אינו חתום על ידי Microsoft או לא ענה בזמן.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>הפריט מוגן בסיסמה ולא נסרק.</value>
   </data>

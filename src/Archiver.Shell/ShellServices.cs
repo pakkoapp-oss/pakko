@@ -38,7 +38,7 @@ internal sealed class ShellServices
             RecordSevenZipWriterAsync = async () => TarCapabilitySnapshot.TryRecord(
                 policy, await core.TarService.AskSevenZipWriterAsync().ConfigureAwait(false),
                 await core.GetTarCapabilitiesAsync().ConfigureAwait(false)),
-            RecordTarCapabilitiesIfStaleAsync = () => TarCapabilitySnapshot.RecordIfStaleAsync(policy, core.GetTarCapabilitiesAsync),
+            RecordTarCapabilitiesIfStaleAsync = () => TarCapabilitySnapshot.RecordIfStaleAsync(policy, core.TarService.DetectCapabilitiesAsync),
         };
     }
 }

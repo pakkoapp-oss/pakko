@@ -337,6 +337,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
     private static readonly Dictionary<string, string> NotPathOperations = new()
     {
         ["ITarService.DetectCapabilitiesAsync"] = "runs tar.exe --version; takes no path",
+        ["ITarService.KnownCapabilitiesAsync"] = "the same probe, asked again with more patience; takes no path",
         ["ITarService.CanCreateSevenZipAsync"] = "probes tar.exe's 7z writer in its own temp folder; takes no path",
         ["ITarService.AskSevenZipWriterAsync"] = "the same probe, keeping 'no answer' apart from 'no'; takes no path",
         ["FileHashService.ComputeStreamDigestAsync"] = "hashes a stream the caller opened",

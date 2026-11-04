@@ -238,9 +238,11 @@ public static class ArchiveFormatPolicy
     };
 
     // T-F403: "needs a newer tar.exe" only where the version is what is missing; a new enough
-    // tar.exe built without the codec gets the codec's name.
+    // tar.exe built without the codec gets the codec's name. T-F450: no version at all is no old
+    // version - tar.exe is missing, failed its signature check, or did not answer in time.
     private static CoreText BuildUnsupportedReason(ArchiveFormat format, TarCapabilities caps) => format switch
     {
+        _ when caps.Version.Length == 0 => CoreMessages.Text(MessageCode.TarGaveNoVersion),
         ArchiveFormat.Rar => NewerOrMissing("RAR", caps),
         ArchiveFormat.SevenZip => NewerOrMissing("7-Zip", caps),
         ArchiveFormat.Zstd => NewerOrMissing("Zstandard", caps),

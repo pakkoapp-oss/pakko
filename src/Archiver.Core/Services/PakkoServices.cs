@@ -24,7 +24,8 @@ public sealed class PakkoServices
         TarService = tarService;
         CreationRouter = new ArchiveCreationRouter(archiveService, tarService, policy);
         RecoveryService = new RecoveryService(policy, CreateExtractionRouterAsync);
-        _tarCapabilities = new Lazy<Task<TarCapabilities>>(tarService.DetectCapabilitiesAsync);
+        // T-F450: the patient probe - Shell and pakko have no window waiting on it.
+        _tarCapabilities = new Lazy<Task<TarCapabilities>>(tarService.KnownCapabilitiesAsync);
     }
 
     /// <summary>The Group Policy every service here was built with.</summary>

@@ -279,6 +279,9 @@
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
     <value>رجسٹرڈ اینٹی وائرس نے AMSI کے ذریعے معلوم ٹیسٹ خطرات کی اطلاع نہیں دی، اس لیے Pakko صاف نتیجے کی تصدیق نہیں کر سکتا؛ اس آرکائیو کو اسکین نہیں کیا گیا۔</value>
   </data>
+  <data name="TarGaveNoVersion" xml:space="preserve">
+    <value>Pakko یہ معلوم نہیں کر سکا کہ اس سسٹم کا tar.exe کیا سپورٹ کرتا ہے: یہ موجود نہیں، Microsoft کے دستخط شدہ نہیں، یا بروقت جواب نہیں دیا۔</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>اندراج پاس ورڈ سے محفوظ ہے اور اسکین نہیں کیا گیا۔</value>
   </data>
