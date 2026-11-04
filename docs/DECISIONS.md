@@ -13470,7 +13470,8 @@ interactive session ran `winget install` instead.
 | Webroot SecureAnywhere (`Webroot.SecureAnywhere`, winget), no keycode | none | Normal, running | Defender's | as baseline | as baseline | as baseline |
 | 360 Total Security (`9NBLGGH1NP58`, msstore, Chinese) | none | Normal, running | Defender's | as baseline | as baseline | as baseline |
 | Bitdefender Total Security (`XP9K931FWBP5V5`, msstore), setup clicked through by the user; before the user's logon after a reboot | none, and Defender's is gone; Security Center: Bitdefender 0x041010 | Not running, stopped, Manual | `AmsiInitialize` 0x80070103 | Inconclusive, `NoAntivirusRegistered` | same | same |
-| Same, the user logged on (2026-11-04) | `{7FCB1218-D9DD-4E13-91C0-4EE04F8B8C91}` `antimalware_provider64.dll` (under `bdamsi\`) only; Security Center 0x041000 | Not running | 32768 / **0** | ThreatDetected | Clean | Inconclusive: removed or blocked (Bitdefender's file filter) |
+| Trend Micro Maximum Security 17.9, setup clicked through by the user (2026-11-04) | Trend's only, Defender's gone; Security Center: Trend 0x041000 | Not running | **0 / 0** (raw call from PowerShell; the probe exe is blocked) | **Clean** (derived, T-F448) | Clean | not run |
+| Bitdefender, same day, the user logged on (2026-11-04) | `{7FCB1218-D9DD-4E13-91C0-4EE04F8B8C91}` `antimalware_provider64.dll` (under `bdamsi\`) only; Security Center 0x041000 | Not running | 32768 / **0** | ThreatDetected | Clean | Inconclusive: removed or blocked (Bitdefender's file filter) |
 
 - AVG behaves as Avast (same `aswAMSI.dll` family): it replaces Defender and detects through AMSI.
   It answers AMSI_RESULT_CLEAN (0) for clean text where Defender, Avast and Avira answer 1; both
@@ -13484,8 +13485,10 @@ interactive session ran `winget install` instead.
   all 1), and the real PowerShell printed an EICAR string unblocked.
 - Huorong takes over from Defender but registers no AMSI provider: every scan is Inconclusive with
   "no antivirus is registered", the honest answer, never Clean.
-- Decision: no code change. The measured Clean needs a state no product left behind: an
-  inactive provider as the only one. T-F444's two checks that would catch it stay rejected, and
+- Decision on 2026-11-03: no code change, since the Clean then needed a state no product left
+  behind (an inactive provider as the only one). Trend Micro installed in full on 2026-11-04 left
+  exactly that (below); the fix is T-F448, open. T-F444's two checks that would catch it stay
+  rejected, and
   this wave re-measured the cost of the first: one EICAR buffer through `AmsiScanBuffer` gives
   Defender's events 1116 and 1117 ("Virus:DOS/EICAR_Test_File", Severity Severe, Detection Source
   AMSI, the probe as the process) and an entry in `Get-MpThreatDetection`, so a self-test before
@@ -13496,7 +13499,17 @@ interactive session ran `winget install` instead.
   Defender off at once but registers its AMSI provider only once a user logs on: until then Pakko
   says "no antivirus is registered", Inconclusive, never Clean. Once registered it detects EICAR and
   answers 0 for clean text, as AVG does.
-- Not measured: ESET or Trend Micro activated (they would turn Defender off; activation needs a
+- **Trend Micro installed in full is a real state that reads EICAR as Clean (T-F448).** Defender
+  off, Trend's provider the only one, Security Center 0x041000. Trend blocks the unknown probe exe
+  ("Suspicious File Blocked"; a folder exception in its settings did not help), so the raw
+  `AmsiScanBuffer` call ran from PowerShell through `Add-Type`: S_OK and AMSI_RESULT_CLEAN (0) for
+  EICAR and for clean text, with the app name `PakkoProbe`, `PowerShell_...`, `DotNet`,
+  `OFFICE_VBA`, `JScript` and `VBScript` alike; Microsoft's AMSI test sample string got 0 too, and
+  PowerShell ran an EICAR string unblocked. The user had switched some of Trend's protection off
+  between two runs; with it back on (the probe exe blocked again) the answer was still 0. Pakko's
+  verdict was not run (the exe is blocked) but follows from `InterpretScanResult`: S_OK with 0 is
+  Clean, as with AVG and Bitdefender, whose 0 for clean text comes with 32768 for EICAR.
+- Not measured: ESET activated (it would turn Defender off; activation needs a
   vendor account or the setup window), a third-party licence expiring after activation, TotalAV
   (`XPDNTPM3BG8CV1`; `install.protected.net` unreachable from the VM, 0x80072EE7, twice). Driving
   setup windows needs the host's screen through `vmconnect`, which the user was using. Not in winget
