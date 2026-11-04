@@ -151,15 +151,11 @@ public sealed class AntivirusScanService : IAntivirusScanService
 
         // T-F448: the same holds when the only providers are ones measured to answer Clean for
         // known test threats - their Clean is no verdict, so nothing is scanned.
-        AmsiProviderState providerState = _providerState();
-        if (providerState != AmsiProviderState.Usable)
+        if (ProviderRefusal(_providerState()) is { } providerReason)
         {
-            MessageCode reason = providerState == AmsiProviderState.None
-                ? MessageCode.NoAntivirusRegistered
-                : MessageCode.ScanProviderDoesNotReport;
             foreach (string path in classification.ZipPaths.Concat(classification.TarPaths))
             {
-                findings.Add(CoreMessages.Inconclusive(path, null, CoreMessages.Text(reason)));
+                findings.Add(CoreMessages.Inconclusive(path, null, CoreMessages.Text(providerReason)));
             }
             return BuildResult(findings);
         }
@@ -245,6 +241,14 @@ public sealed class AntivirusScanService : IAntivirusScanService
             return BuildResult(findings);
         }
     }
+
+    // Any state other than Usable is no verdict to scan with; one added later reads the same way.
+    private static MessageCode? ProviderRefusal(AmsiProviderState state) => state switch
+    {
+        AmsiProviderState.Usable => null,
+        AmsiProviderState.OnlyNonReporting => MessageCode.ScanProviderDoesNotReport,
+        _ => MessageCode.NoAntivirusRegistered,
+    };
 
     private static ThreatScanResult BuildResult(List<ThreatFinding> findings)
     {

@@ -1918,6 +1918,16 @@ re-measured with T-F346's script before and after.
   advisor at both ends, `SECURITY.md` only with the user's OK.
 - **Reported by:** T-F444's fresh reviewer, 2026-11-01.
 
+### T-F451 — `RunPipelineAsync_CancelledMidFlight_NoTasksLeftRunningAfterwards` races a timer (P3, flaky test)
+
+- [ ] **Status:** open. Failed once in a full local run on 2026-11-04 (T-F450's branch, nothing
+  near the ZIP writer changed), then passed 5 of 5 alone. The test cancels after `Task.Delay(20)`
+  while 10 items of 50 ms each run three at a time: under load the delay can outlast the whole
+  pipeline, so no `OperationCanceledException` comes (cause inferred, the failing assertion was not
+  captured). T-F425's rule: never race a timer; cancel from inside `compressItem` once a few items
+  have started, and keep `maxActiveObserved` with an atomic max.
+- **Reported by:** the agent, 2026-11-04.
+
 ### T-F450 — A timed-out `tar.exe --version` probe reads as an old tar.exe (P2, CI flake on #149)
 
 - [x] **Status:** fixed 2026-11-04 (`docs/DECISIONS.md`, "T-F450"): Shell and `pakko` ask through the
