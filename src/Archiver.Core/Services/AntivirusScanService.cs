@@ -114,6 +114,10 @@ public sealed class AntivirusScanService : IAntivirusScanService
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        // T-F449: no archive given is nothing scanned, never "nothing found".
+        if (options.ArchivePaths.Count == 0)
+            return new ThreatScanResult { OverallVerdict = ThreatVerdict.Inconclusive };
+
         var findings = new List<ThreatFinding>();
         List<string> usable = TakeUsablePaths(options.ArchivePaths, findings);
         ArchiveFormatPolicy.Classification classification = await ArchiveFormatPolicy

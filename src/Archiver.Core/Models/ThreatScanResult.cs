@@ -59,7 +59,7 @@ public sealed record ThreatScanResult
 {
     /// <summary>
     /// ThreatDetected if any finding is ThreatDetected; else Inconclusive if any finding is
-    /// Inconclusive; else Clean.
+    /// Inconclusive; else Clean. Inconclusive, with no findings, when no archive was given (T-F449).
     /// </summary>
     public required ThreatVerdict OverallVerdict { get; init; }
 
