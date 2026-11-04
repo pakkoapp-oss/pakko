@@ -52,7 +52,7 @@ TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating sessi
 | Stream | Tasks | Area | Gate |
 |---|---|---|---|
 | A text boundaries, analyzer | T-F441 (one owner per encoding boundary, names and paths, with its control test), T-F424 as T-F441's first case, T-F440 (SonarCloud findings, the `S3903` bug first) | `Sandbox/Tar*Encoding`, `Zip/ZipNameCodePages`, `StdinPathList`, `CliConsoleCharset`, `BareGzip*`, `Program.cs`, tests | T-F441: research, plan mode + advisor at both ends; T-F440: tests first |
-| B sandbox launcher, AMSI tests | T-F428 (cancel kills the child itself), T-F427 (AMSI not ready at scan time), T-F444 (another antivirus or none, on the VM; added 2026-10-31, the user), T-F446 (AMSI "blocked by admin" reads as Clean), T-F447 (more providers on the VM; added 2026-11-03, the user), T-F448 (Trend Micro's provider answers Clean for EICAR), T-F449 (an empty scan reports Clean) | `SandboxedProcessLauncher`, `AntivirusScanService` tests | T-F428: plan mode + advisor at both ends (sandbox code) |
+| B sandbox launcher, AMSI tests | T-F428 (cancel kills the child itself), T-F427 (AMSI not ready at scan time), T-F444 (another antivirus or none, on the VM; added 2026-10-31, the user), T-F446 (AMSI "blocked by admin" reads as Clean), T-F447 (more providers on the VM; added 2026-11-03, the user), T-F448 (Trend Micro's provider answers Clean for EICAR), T-F449 (an empty scan reports Clean), T-F450 (a timed-out tar version probe reads as an old tar) | `SandboxedProcessLauncher`, `AntivirusScanService` tests | T-F428: plan mode + advisor at both ends (sandbox code) |
 | C after the operation | T-F434 (recycle each clean source), T-F435 (a reason per kept item), T-F437 (unreadable path list) | `SourceRecycler`, the not-deleted dialog, `Archiver.Shell` messages, `SPEC.md` rule | T-F434: plan mode (an irreversible action on user data) |
 | D progress | T-F432 (taskbar button and tray icon), T-F439 (window floor on a monitor move) | App `MainWindow`, tray icon, `Archiver.OperationUi`, `WindowFloor` | T-F432: plan mode (COM under Native AOT) |
 | F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
@@ -1917,6 +1917,18 @@ re-measured with T-F346's script before and after.
   Inconclusive with its own reason (a new message code, 37 locales). Security boundary: plan mode,
   advisor at both ends, `SECURITY.md` only with the user's OK.
 - **Reported by:** T-F444's fresh reviewer, 2026-11-01.
+
+### T-F450 — A timed-out `tar.exe --version` probe reads as an old tar.exe (P2, CI flake on #149)
+
+- [ ] **Status:** open, seen 2026-11-04 in CI on PR #149 (a test-only change): two
+  `CliSevenZipSubprocessTests` failed with "7-Zip requires tar.exe with libarchive >= 3.7.0 ...;
+  this system's tar.exe (version ) ...", an empty version, on a loaded runner (the CLI tests took
+  8 minutes). `TarSandboxedService.DetectCapabilitiesAsync` gives up after `DetectionTimeout` (5 s)
+  and any failure becomes `new TarCapabilities()`, so a slow probe is reported as a tar.exe too old
+  for 7z, the wrong reason, on a user's slow machine as well. T-F342 already separated "the 7z
+  writer probe got no answer" from "no writer"; the version probe needs the same: a probe that did
+  not answer is its own state with its own message (and maybe one retry), never "old tar.exe".
+- **Reported by:** the agent, from CI run 41887492188, 2026-11-04.
 
 ### T-F449 — A scan of no archives at all reports Clean (P3, from T-F448's review)
 
