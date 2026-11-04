@@ -13565,6 +13565,23 @@ version starts detecting, Pakko stays Inconclusive until the list is re-measured
 `docs/TASKS.md`). `SECURITY.md`'s AMSI section no longer says Pakko is provider-agnostic (the
 user's OK, 2026-11-04).
 
+**On device (`SHL-016`, 2026-11-05).** PakkoW10 from the `pre-AV-wave` checkpoint, the dev package
+1.9.0.2 built by `Deploy.ps1` from `58648fdd` (the T-F448..T-F450 code), Trend Micro Maximum
+Security 17.9 from `winget`, its setup finished by the user. `bad.zip` holds `clean.txt` and
+`eicar.txt` (68 bytes), `good.zip` only `clean.txt`; their entries were listed back before each scan.
+`Archiver.Shell.exe --scan` ran in the package's context (`Invoke-CommandInDesktopPackage`, app
+`ShellHelper`) in the user's session, its window read through UI Automation.
+
+| State | `bad.zip` | `good.zip` |
+|---|---|---|
+| Trend alone: its provider the only subkey, Security Center 0x041000 | Inconclusive, `ScanProviderDoesNotReport`; the same from Explorer's "Scan for threats" (the user) | the same |
+| Mid-setup: Defender's and Trend's subkeys, both DLLs loaded in the Shell | "eicar.txt: threat detected" | "No threats found" |
+
+A first pass of this check built the ZIPs with a script that flattened its entry list and wrote four
+one-byte entries and no EICAR; its "No threats found" beside Defender was right for that content,
+and Trend's own scan of that file finding nothing says nothing about Trend. Only the rows above, on
+the listed entries, count.
+
 ## T-F449 - a scan of no archives is Inconclusive, not Clean (2026-11-04)
 
 Found by T-F448's fresh review: `ScanAsync` with an empty `ArchivePaths` returned Clean with no
