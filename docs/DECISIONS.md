@@ -13463,6 +13463,7 @@ interactive session ran `winget install` instead.
 | AVG AntiVirus Free (`XP8BX2DWV7TF50`, msstore) | `{C52A311F-4B4E-4C5D-80A0-31F0DDE260AB}` `aswAMSI.dll` only | Not running, stopped, Manual | 32768 / **0** | ThreatDetected | Clean | ThreatDetected |
 | ESET NOD32 19.2 (`ESET.Nod32`, winget), not activated | `{ECC7E393-B680-4109-86BD-7779105DF1BF}` `eamsi.dll`, beside Defender's | Normal, running; Security Center lists only Defender | 32768 / 1 (Defender's answer) | ThreatDetected | Clean | Inconclusive: removed or blocked |
 | Same, Defender's subkey deleted by hand | ESET's only | Normal (its file filter still runs) | **1 / 1** | **Clean** | Clean | Inconclusive: removed or blocked |
+| ESET NOD32 trial activated by the user (2026-11-04), a few minutes later | ESET's only, Defender's gone; Security Center: ESET Security 0x041000 | Not running | 32768 / **0** | ThreatDetected | Clean | Inconclusive: removed or blocked (ESET's file filter) |
 | Trend Micro Maximum Security 17.9 (`XPDDZT40FN9RHT`, msstore), setup waiting in its window | `{6138A34F-DCA4-48D0-95CC-51E1D8F30B58}` `TmAMSIProvider64.dll`, beside Defender's | Normal, running; Security Center: Trend 0x040000 | 32768 / 1 (Defender's answer) | ThreatDetected | Clean | Inconclusive: removed or blocked |
 | Same, Defender's subkey deleted by hand | Trend's only | Normal | **0 / 0** | **Clean** | Clean | Inconclusive: removed or blocked |
 | Huorong Internet Security (`XPDNH1FMW7NB40`, msstore, Chinese) | none, and Defender's is gone | Not running, stopped, Manual; Security Center: Huorong 0x041000 | `AmsiInitialize` 0x80070103 | Inconclusive, `NoAntivirusRegistered` | same | same |
@@ -13511,8 +13512,11 @@ interactive session ran `winget install` instead.
   text comes with 32768 for EICAR), and the shipped path confirmed it: the dev package 1.9.0.2
   left on the VM since T-F444, signed and not blocked by Trend, scanned an EICAR ZIP on the
   desktop from Explorer's menu, and the user saw "nothing found".
-- Not measured: ESET activated (it would turn Defender off; activation needs a
-  vendor account or the setup window), a third-party licence expiring after activation, TotalAV
+- ESET activated (trial, the user, 2026-11-04) takes over from Defender a few minutes after
+  activation and detects EICAR through AMSI. Its not-activated provider's 1-for-everything was
+  therefore a pre-activation state, seen only with Defender's subkey removed by hand; Trend Micro's
+  0 for EICAR (T-F448) persisted in full install with protection on.
+- Not measured: a third-party licence expiring after activation, TotalAV
   (`XPDNTPM3BG8CV1`; `install.protected.net` unreachable from the VM, 0x80072EE7, twice). Driving
   setup windows needs the host's screen through `vmconnect`, which the user was using. Not in winget
   at all: Norton, McAfee (only its removal tool), Sophos, Panda, G Data, F-Secure, Comodo. On-demand
