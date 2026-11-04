@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Політика адміністратора блокує вміст цього елемента, тому антивірус не позначив його як чистий.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Зареєстрований антивірус не повідомив про відомі тестові загрози через AMSI, тож Pakko не може підтвердити чистий результат; цей архів не перевірено.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Елемент захищено паролем, тому його не перевірено.</value>
   </data>

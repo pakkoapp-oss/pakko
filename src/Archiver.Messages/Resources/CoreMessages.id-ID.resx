@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Kebijakan administrator memblokir konten entri ini; antivirus tidak melaporkannya bersih.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Antivirus yang terdaftar tidak melaporkan ancaman uji yang dikenal melalui AMSI, sehingga Pakko tidak dapat memastikan hasil bersih; arsip ini tidak dipindai.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Entri dilindungi kata sandi dan tidak dipindai.</value>
   </data>

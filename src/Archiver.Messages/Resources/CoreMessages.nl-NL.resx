@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Een beheerdersbeleid blokkeert de inhoud van dit item; de antivirus heeft het niet als schoon gemeld.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Het geregistreerde antivirusprogramma heeft bekende testbedreigingen niet via AMSI gemeld, dus Pakko kan geen schoon resultaat bevestigen; dit archief is niet gescand.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Het item is met een wachtwoord beveiligd en is niet gescand.</value>
   </data>

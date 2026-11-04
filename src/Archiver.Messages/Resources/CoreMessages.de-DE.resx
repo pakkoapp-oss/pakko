@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Eine Administratorrichtlinie blockiert den Inhalt dieses Eintrags; das Antivirenprogramm hat ihn nicht als sauber gemeldet.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Das registrierte Antivirenprogramm hat bekannte Testbedrohungen über AMSI nicht gemeldet, daher kann Pakko kein sauberes Ergebnis bestätigen; dieses Archiv wurde nicht überprüft.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Der Eintrag ist passwortgeschützt und wurde nicht überprüft.</value>
   </data>

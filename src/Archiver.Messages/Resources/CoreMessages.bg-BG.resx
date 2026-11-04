@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Правило на администратора блокира съдържанието на този елемент; антивирусната програма не го е отчела като чисто.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Регистрираната антивирусна програма не е отчела известни тестови заплахи чрез AMSI, затова Pakko не може да потвърди чист резултат; този архив не е сканиран.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Елементът е защитен с парола и не е сканиран.</value>
   </data>

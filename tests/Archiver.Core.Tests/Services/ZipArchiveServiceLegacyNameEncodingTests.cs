@@ -162,7 +162,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
     {
         string zip = Legacy("scan.zip", Oem("А.txt", "A"), Oem("Б.txt", "B"));
         var scanner = new FakeAmsiScanner();
-        var service = new AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions(), () => scanner, () => true) { NameCodePages = Ru };
+        var service = new AntivirusScanService(new TarCapabilities(), new GroupPolicyOptions(), () => scanner, () => AmsiProviderState.Usable) { NameCodePages = Ru };
 
         ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip], SelectedEntryPaths = ["Б.txt"] });
 

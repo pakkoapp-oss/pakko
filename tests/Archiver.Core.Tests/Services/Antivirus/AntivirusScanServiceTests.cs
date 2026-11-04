@@ -96,7 +96,8 @@ public sealed class AntivirusScanServiceTests : IDisposable
         TarCapabilities? tarCapabilities = null,
         GroupPolicyOptions? policy = null,
         bool providerRegistered = true)
-        => new(tarCapabilities ?? NoTarSupport, policy ?? new GroupPolicyOptions(), () => scanner, () => providerRegistered);
+        => new(tarCapabilities ?? NoTarSupport, policy ?? new GroupPolicyOptions(), () => scanner,
+            () => providerRegistered ? AmsiProviderState.Usable : AmsiProviderState.None);
 
     [Fact]
     public async Task ScanAsync_CleanZipArchive_ReturnsClean()
@@ -318,6 +319,43 @@ public sealed class AntivirusScanServiceTests : IDisposable
             && f.Verdict == ThreatVerdict.Inconclusive
             && f.Reason!.Contains("No antivirus"));
         scanner.Calls.Should().BeEmpty("no provider means AmsiScanBuffer must never be called at all");
+    }
+
+    // T-F448: the only registered provider is one measured to answer Clean for EICAR (Trend
+    // Micro 17.9), so its Clean would be no verdict: every archive is Inconclusive, unscanned.
+    [Fact]
+    public async Task ScanAsync_OnlyNonReportingProvider_ReturnsInconclusiveForEveryArchiveWithoutScanning()
+    {
+        string zip = CreateZip("eicar.zip", ("a.txt", "hello"));
+        string rar = WriteRar("other.rar");
+        var scanner = new FakeAmsiScanner();
+        int scannersCreated = 0;
+        var service = new AntivirusScanService(
+            NoTarSupport, new GroupPolicyOptions(), () => { scannersCreated++; return scanner; }, () => AmsiProviderState.OnlyNonReporting);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip, rar] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        result.Findings.Should().ContainSingle(f => f.ArchivePath == zip && f.EntryPath == null
+            && f.Verdict == ThreatVerdict.Inconclusive
+            && f.ReasonText!.Code == MessageCode.ScanProviderDoesNotReport);
+        result.Findings.Should().NotContain(f => f.Verdict == ThreatVerdict.Clean);
+        scannersCreated.Should().Be(0, "no AMSI session is opened for a provider whose Clean means nothing");
+        scanner.Calls.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ScanAsync_UsableProviderState_ScansAsBefore()
+    {
+        string zip = CreateZip("clean.zip", ("a.txt", "hello"));
+        var scanner = new FakeAmsiScanner();
+        var service = new AntivirusScanService(
+            NoTarSupport, new GroupPolicyOptions(), () => scanner, () => AmsiProviderState.Usable);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
+        scanner.Calls.Should().ContainSingle(c => c.ContentName == "a.txt");
     }
 
     [Fact]

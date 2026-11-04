@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Chính sách của quản trị viên chặn nội dung của mục này; phần mềm diệt vi-rút không báo cáo mục này là sạch.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Phần mềm diệt vi-rút đã đăng ký không báo cáo các mối đe dọa thử nghiệm đã biết qua AMSI, nên Pakko không thể xác nhận kết quả sạch; tệp nén này chưa được quét.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Mục được bảo vệ bằng mật khẩu và chưa được quét.</value>
   </data>

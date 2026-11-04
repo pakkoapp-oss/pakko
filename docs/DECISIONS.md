@@ -13523,6 +13523,40 @@ interactive session ran `winget install` instead.
   scanners with no AMSI provider (ClamAV, Emsisoft Emergency Kit, K7) were skipped. Russian products
   were excluded on the user's word.
 
+## T-F448 - a provider measured to answer Clean for EICAR, alone, gives Inconclusive (2026-11-04)
+
+**Measured** (T-F447): Trend Micro Maximum Security 17.9, the consumer product, installed in full on
+PakkoW10, turns Defender off and leaves its own provider `{6138A34F-DCA4-48D0-95CC-51E1D8F30B58}`
+(`TmAMSIProvider64.dll`) the only one. It answers `AmsiScanBuffer` with S_OK and AMSI_RESULT_CLEAN
+(0) for EICAR and for Microsoft's AMSI test sample, whatever the app name, with its protection on;
+the signed 1.9.0.2 package showed "nothing found" for an EICAR ZIP. Whether it reports real
+malicious scripts was not measured: the claim is only that its Clean did not hold for known test
+threats, so Pakko cannot vouch for it.
+
+**Decision:** a list of provider CLSIDs measured that way, checked once per operation at the gate
+that already handles "no provider registered" (`AmsiProviderCheck.GetState`, `Classify`). When
+every registered provider is on the list, every archive is Inconclusive with
+`ScanProviderDoesNotReport` and no AMSI session opens. Any other provider beside it (amsi.dll asks
+them all; Defender beside Trend detected, T-F447) leaves the scan as before. A subkey name that is
+no GUID counts as an unknown provider, as before. The list holds one CLSID.
+
+Rejected:
+- An EICAR check per provider CLSID and DLL version, cached: every Defender platform update (about
+  monthly) would raise one severe "Pakko - EICAR" detection on every machine of a fleet, the same
+  cost that rejected a check per scan (T-F444, T-F447), and Core has no cache store.
+- An allow-list (Clean only from measured providers): Norton, McAfee, Sophos, G Data and others are
+  not in winget and were never measured; each of their scans would become Inconclusive without
+  evidence of a problem.
+- Naming the provider in "nothing found": it moves the false Clean, it does not remove it.
+
+Limits: only the consumer product's CLSID was measured; Trend's business products (Apex One,
+Worry-Free) may register another and are not guessed. A Trend subkey left behind after uninstall
+gives the same reason, still Inconclusive. On a machine where Trend is the only antivirus, every
+scan is now Inconclusive: the feature tells the truth there and does nothing more. If a later Trend
+version starts detecting, Pakko stays Inconclusive until the list is re-measured (T-F448 in
+`docs/TASKS.md`). `SECURITY.md`'s AMSI section no longer says Pakko is provider-agnostic (the
+user's OK, 2026-11-04).
+
 ## T-F434 - one archive of several sources: a skip keeps only the source it lies in (2026-10-31)
 
 **Found** by `APP-027` on 1.9.0.2: folders A and B archived together, a junction in B skipped, and A

@@ -2,6 +2,7 @@ using System.Text;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
+using Archiver.Core.Services.Antivirus;
 using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
 
@@ -190,7 +191,7 @@ public sealed class LazyTarProbeTests : IDisposable
             () => { probes++; return Task.FromResult(EverythingSupported); },
             Policies.Single(p => p.Name == policyName).Policy,
             () => throw new InvalidOperationException("no scanner may be opened"),
-            () => false);
+            () => AmsiProviderState.None);
 
         await scanner.ScanAsync(new AntivirusScanOptions { ArchivePaths = [Write(format)] });
 

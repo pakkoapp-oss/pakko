@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>Una directiva del administrador bloquea el contenido de esta entrada; el antivirus no la notificó como limpia.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>El antivirus registrado no notificó amenazas de prueba conocidas a través de AMSI, por lo que Pakko no puede confirmar un resultado limpio; este archivo comprimido no se analizó.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>La entrada está protegida con contraseña y no se analizó.</value>
   </data>

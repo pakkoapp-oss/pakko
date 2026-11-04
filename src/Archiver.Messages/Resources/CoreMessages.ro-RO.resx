@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>O politică a administratorului blochează conținutul acestui element; antivirusul nu l-a raportat ca fiind curat.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Antivirusul înregistrat nu a raportat amenințări de test cunoscute prin AMSI, așa că Pakko nu poate confirma un rezultat curat; această arhivă nu a fost scanată.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Elementul este protejat prin parolă și nu a fost scanat.</value>
   </data>

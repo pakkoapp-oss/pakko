@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>En administratorpolicy blokkerer innholdet i denne oppføringen; antivirusprogrammet rapporterte den ikke som ren.</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>Det registrerte antivirusprogrammet rapporterte ikke kjente testtrusler gjennom AMSI, så Pakko kan ikke bekrefte et rent resultat; dette arkivet ble ikke skannet.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Oppføringen er passordbeskyttet og ble ikke skannet.</value>
   </data>

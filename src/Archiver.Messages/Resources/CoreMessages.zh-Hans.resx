@@ -276,6 +276,9 @@
   <data name="ScanEntryBlockedByPolicy" xml:space="preserve">
     <value>管理员策略阻止了此条目的内容；防病毒软件未将其报告为干净。</value>
   </data>
+  <data name="ScanProviderDoesNotReport" xml:space="preserve">
+    <value>已注册的防病毒软件未通过 AMSI 报告已知的测试威胁，因此 Pakko 无法确认结果干净；此压缩包未扫描。</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>条目受密码保护，未扫描。</value>
   </data>
