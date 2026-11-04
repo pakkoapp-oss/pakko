@@ -277,7 +277,7 @@
     <value>Zásada správce blokuje obsah této položky; antivirus ji neoznačil jako čistou.</value>
   </data>
   <data name="ScanProviderDoesNotReport" xml:space="preserve">
-    <value>Registrovaný antivirus nehlásil známé testovací hrozby přes AMSI, proto Pakko nemůže potvrdit čistý výsledek; tento archiv nebyl zkontrolován.</value>
+    <value>Zaregistrovaný antivirus nehlásil známé testovací hrozby přes AMSI, proto Pakko nemůže potvrdit čistý výsledek; tento archiv nebyl zkontrolován.</value>
   </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Položka je chráněna heslem a nebyla zkontrolována.</value>
