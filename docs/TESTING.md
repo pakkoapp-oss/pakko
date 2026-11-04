@@ -994,9 +994,9 @@ driving a conhost console, see T-F295).
   clean buffer, mirroring the probe run during design (`docs/DECISIONS.md`'s T-F146 entry).
   Environment-dependent by nature — exercises whatever AV is actually registered on the machine
   running the suite, same as any real AMSI consumer.
-- `AmsiProviderCheckTests.cs` — smoke test only (`IsAnyProviderRegistered()` never throws); the
-  actual registered-provider state isn't asserted, since that would make the suite depend on the
-  test machine's own AV configuration.
+- `AmsiProviderCheckTests.cs` — smoke tests (`IsAnyProviderRegistered()`/`GetState()` never throw);
+  the actual registered-provider state isn't asserted, since that would make the suite depend on the
+  test machine's own AV configuration. `Classify` is pure and pinned row by row (T-F448).
 - `AntivirusScanServiceTests.cs` — orchestration logic via a hand-rolled `FakeAmsiScanner` (no
   mocking library, matching repo convention): clean/`ThreatDetected` ZIP archives,
   `SelectedEntryPaths` subset scanning, the 64 MiB oversized-entry skip

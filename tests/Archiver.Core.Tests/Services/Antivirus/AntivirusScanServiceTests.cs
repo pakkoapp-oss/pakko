@@ -327,18 +327,23 @@ public sealed class AntivirusScanServiceTests : IDisposable
     public async Task ScanAsync_OnlyNonReportingProvider_ReturnsInconclusiveForEveryArchiveWithoutScanning()
     {
         string zip = CreateZip("eicar.zip", ("a.txt", "hello"));
-        string rar = WriteRar("other.rar");
+        string tar = Path.Combine(_temp.Path, "other.tar");
+        byte[] header = new byte[512];
+        "ustar"u8.CopyTo(header.AsSpan(257));
+        File.WriteAllBytes(tar, header);
         var scanner = new FakeAmsiScanner();
         int scannersCreated = 0;
         var service = new AntivirusScanService(
-            NoTarSupport, new GroupPolicyOptions(), () => { scannersCreated++; return scanner; }, () => AmsiProviderState.OnlyNonReporting);
+            LazyTarProbeTests.EverythingSupported, new GroupPolicyOptions(),
+            () => { scannersCreated++; return scanner; }, () => AmsiProviderState.OnlyNonReporting);
 
-        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip, rar] });
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip, tar] });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
-        result.Findings.Should().ContainSingle(f => f.ArchivePath == zip && f.EntryPath == null
+        result.Findings.Should().HaveCount(2).And.OnlyContain(f => f.EntryPath == null
             && f.Verdict == ThreatVerdict.Inconclusive
             && f.ReasonText!.Code == MessageCode.ScanProviderDoesNotReport);
+        result.Findings.Select(f => f.ArchivePath).Should().BeEquivalentTo([zip, tar]);
         result.Findings.Should().NotContain(f => f.Verdict == ThreatVerdict.Clean);
         scannersCreated.Should().Be(0, "no AMSI session is opened for a provider whose Clean means nothing");
         scanner.Calls.Should().BeEmpty();

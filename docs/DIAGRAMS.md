@@ -1014,6 +1014,8 @@ sequenceDiagram
         Service-->>Dialog: result from those findings alone
     else no AMSI provider registered (AmsiProviderCheck)
         Service-->>Dialog: every remaining archive Inconclusive (NoAntivirusRegistered)
+    else only providers measured to answer Clean for EICAR (AmsiProviderCheck.Classify, T-F448)
+        Service-->>Dialog: every remaining archive Inconclusive (ScanProviderDoesNotReport)
     else scanner factory throws InvalidOperationException (AmsiInitialize/OpenSession failed)
         Service-->>Dialog: every remaining archive Inconclusive (ScanSessionFailed)
     else one AMSI session for the whole call

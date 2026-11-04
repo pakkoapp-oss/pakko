@@ -2230,11 +2230,13 @@ to one of two independent scan flows via `ArchiveFormatPolicy.Classify` (see bel
   a mid-scan failure).
 
 Before scanning anything, `Archiver.Core/Services/Antivirus/AmsiProviderCheck.
-IsAnyProviderRegistered()` checks `HKLM\SOFTWARE\Microsoft\AMSI\Providers` (readable non-elevated,
+GetState()` checks `HKLM\SOFTWARE\Microsoft\AMSI\Providers` (readable non-elevated,
 same `Microsoft.Win32.Registry` access `GroupPolicyService`/`Win32RegistryReader` already
 established) — `AmsiScanBuffer` alone can't distinguish "no AV is listening" from "AV says clean"
 (both return `AMSI_RESULT_NOT_DETECTED`), so an empty key forces every finding to `Inconclusive`
-without ever calling `AmsiScanBuffer`. A 64 MiB per-entry cap (`AntivirusScanService.
+without ever calling `AmsiScanBuffer`. The same holds when every registered provider is on the
+list of CLSIDs measured to answer Clean for EICAR (`AmsiProviderState.OnlyNonReporting`, T-F448);
+the service takes the state through a `Func<AmsiProviderState>` seam. A 64 MiB per-entry cap (`AntivirusScanService.
 MaxScannableEntryBytes`) also forces `Inconclusive` for anything too large to buffer — a
 deliberately conservative first-pass constant, not AMSI's own documented limit (none is
 published); see `docs/DECISIONS.md`'s "Known limitation" note on the deferred `MpCmdRun.exe`/
