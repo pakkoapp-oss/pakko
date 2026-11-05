@@ -13733,6 +13733,12 @@ PakkoW10); 3.8.9's xar and lzip samples were also read on 3.5.2.
   folder themselves inside the AppContainer; the one Pakko pre-created by the listed name was not
   used. Pre-creation stays (T-F52 found a case where it was needed); dropping it, which would remove
   the twin at its root, is a measurement of its own, not part of this task.
+- **Closing review (advisor):** Pakko pre-creates folders without the long-path prefix, so a
+  listed `d.` is made as `d`; had that `d` counted as a folder tar.exe wrote, a faithful archive
+  would have read as lossy (a filter refused, a duplicate group dropped). Pre-created folders are now
+  recorded by the name they got on disk and left out of the folder verdict; an integration test
+  covers `d./x.txt` with a filter and a duplicate. The same test with `d /x.txt` failed on `main`
+  too, in tar.exe itself: T-F454.
 - **Found by the probe:** with the root dropped as the archive's name, a true `caf<e-acute>/` and a
   true `cafe/` merge into one destination silently (the single-root decision sees the collapsed
   listed names). Opened as T-F453.
