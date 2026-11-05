@@ -13739,6 +13739,14 @@ PakkoW10); 3.8.9's xar and lzip samples were also read on 3.5.2.
   recorded by the name they got on disk and left out of the folder verdict; an integration test
   covers `d./x.txt` with a filter and a duplicate. The same test with `d /x.txt` failed on `main`
   too, in tar.exe itself: T-F454.
+- **Fresh review (a read-only opus subagent, 2026-11-05), three findings, each seen red first:**
+  pre-creating `cafe/sub` also made `cafe`, which was not recorded as Pakko's, so the twin came back
+  for `caf<e-acute>/` + `caf<e-acute>/sub/x.txt` (every parent made along the way is now recorded);
+  a folder mismatch alone dropped an unrelated duplicate group (T-F171) and lost its first copy
+  silently (duplicate groups now go only on a file mismatch); and a folder entry listed without its
+  `/` read as a file the quarantine did not hold, so a filter was refused (the verdict now reads a
+  name that is no file entry as a folder; the empty folder itself still never arrives, on `main`
+  too: T-F455). Noted, not changed: every full extraction now walks the quarantine once more.
 - **Found by the probe:** with the root dropped as the archive's name, a true `caf<e-acute>/` and a
   true `cafe/` merge into one destination silently (the single-root decision sees the collapsed
   listed names). Opened as T-F453.

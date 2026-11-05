@@ -1927,6 +1927,22 @@ re-measured with T-F346's script before and after.
   advisor at both ends, `SECURITY.md` only with the user's OK.
 - **Reported by:** T-F444's fresh reviewer, 2026-11-01.
 
+### T-F456 — `CancelInTheWindow_CancelsTheOperationWithoutFailover` times out under a full run (P3, flaky test)
+
+- [ ] **Status:** open. Failed once in the full local run on 2026-11-05 (T-F443's branch, nothing
+  near the Shell or OperationUi changed) after 16 s; 3 of 3 alone in about 0.3 s. Next: find which
+  wait in `HelperOperationUiTests` races the loaded runner (T-F425's rule: no timer races).
+- **Reported by:** the agent, 2026-11-05.
+
+### T-F455 — A tar folder entry stored without a trailing `/` arrives as nothing (P3, from T-F443's fresh review)
+
+- [ ] **Status:** open. Found 2026-11-05, on `main` too: a type-5 header named `emptydir` lists as
+  `emptydir` (no slash), so the scan, a filter's `isFolder` and the folder entries all take it for a
+  file; tar.exe makes the folder in the quarantine, the move walks files only, and the empty folder
+  never reaches the destination. T-F443's verdict already reads such a name as a folder. Next: carry
+  the listing's type into the names, without changing the member names given back to tar.exe (T-F05).
+- **Reported by:** T-F443's fresh reviewer, 2026-11-05.
+
 ### T-F454 — A tar entry under a folder ending in a space, with no folder entry of its own, does not extract (P3, from T-F443's review)
 
 - [ ] **Status:** open. Found 2026-11-05 (bsdtar 3.8.9, on `main` too): `d /x.txt` with no `d /`
