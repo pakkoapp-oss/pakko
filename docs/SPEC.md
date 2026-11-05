@@ -48,8 +48,18 @@ is a teaser only, per `CLAUDE.md`'s Documentation Map).
 | RAR | ✅ v1.3 (read only — no libarchive writer exists) | `tar.exe` (Windows built-in) |
 | 7z | ✅ v1.3 (read), ✅ v1.8.1 (write without a password, T-F342; where Windows' tar.exe has the 7z writer) | `tar.exe` (Windows built-in) |
 | Password-protected ZIP | ✅ v1.5 (read: ZipCrypto + WinZip AES; create: WinZip AES-256 only, T-F193 — file names stay unencrypted) | `System.IO.Compression` + .NET `System.Security.Cryptography` |
+| ISO 9660, CAB, cpio, ar (`.deb`), `.Z`, lzip | ✅ v1.10 (read only, T-F442), each where the installed tar.exe reads it (lzip: not on Windows 10's tar.exe 3.5.2) | `tar.exe` (Windows built-in) |
+| UDF disc images (most Windows install ISOs) | ❌ Refused with the reason: tar.exe reads only the ISO 9660 stub beside the UDF volume. Windows mounts them itself | — |
 | Encrypted 7z/RAR | ❌ Detected and refused with a clear error (T-F113) | — |
 | Multi-volume | ❌ Out of scope | — |
+
+**Not supported, with the reason (T-F442, measured on both tar.exe builds):** xar (tar.exe 3.8 reads it,
+3.5.2 does not, and its version string does not say which, so it would need a probe of its own; `.pkg` is
+ambiguous anyway); WARC, uuencode and base64 (little value, weak signatures); mtree (it names files on
+the machine, not in the archive); LHA, RPM, lz4, lzop and the rest of libarchive's external-program
+filters (not in Windows' tar.exe); disk images and file systems (VHD/VHDX, VMDK, QCOW2, VDI, DMG, WIM,
+NTFS/FAT/ext/HFS/APFS, SquashFS) and NSIS, ARJ, split volumes: outside tar.exe. Windows mounts ISO,
+VHD and VHDX itself.
 
 ---
 
@@ -255,7 +265,7 @@ truncated copy are the realistic damage.
 | v1.8 | PAR2 recovery data next to created archives: create, verify, repair (T-F275) — **released as v1.8.0** |
 | v1.8.1 | 7z archive creation through tar.exe (T-F342) + Test for every format tar.exe reads (T-F397) + fixes |
 | v1.9 | Store release: `pakko` 7-Zip switches (T-F411 waves A-E, T-F410), one path pipeline (T-F420), a red-team suite (T-F419), and the v1.9.0 wave of `docs/TASKS.md` |
-| v1.10 | Bug fixes after v1.9.0, one owner per name/path encoding boundary (T-F441), and progress on the taskbar button and tray icon (T-F432): the v1.10.0 wave of `docs/TASKS.md` |
+| v1.10 | Bug fixes after v1.9.0, one owner per name/path encoding boundary (T-F441), progress on the taskbar button and tray icon (T-F432), and the read-only formats tar.exe opens: ISO, CAB, cpio, ar, `.Z`, lzip (T-F442): the v1.10.0 wave of `docs/TASKS.md` |
 | v2.0 | `pakko` measured as a stand-in for 7-Zip's console program, gaps closed where they fit Pakko's rules (T-F343; T-F412, T-F413 and T-F415 moved to v1.9) |
 
 Package version (`Package.appxmanifest`'s `Identity Version`) tracks MSIX packaging, not this

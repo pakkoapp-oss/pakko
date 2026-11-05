@@ -437,6 +437,29 @@ when the bytes match no other format and the name ends in `.lzma`, the file is t
 bytes always win over the name. A wrong guess reaches tar.exe inside the sandbox, which refuses
 it, where before the ZIP engine refused it.
 
+### Read-Only Formats: ISO, CAB, cpio, ar, .Z, lzip (T-F442, v1.10)
+
+These six reach more of libarchive's parser: its ISO 9660, CAB, cpio and ar readers and its
+compress and lzip filters. They run only in the same sandbox, with the same pre-scan, as the
+formats above. Pakko's own process reads only fixed fields: each format's signature (near misses
+refused) and, for a disc image, the identifiers of up to 16 volume descriptors and the primary one's
+block count and size. Each is offered only where
+the installed `tar.exe` reads it (lzip needs liblzma, absent from Windows 10's 3.5.2), never by
+starting an outside program (above).
+
+- **Hostile entries, on both builds** (3.8.9 and 3.5.2): a FIFO, a device node or a symlink in a cpio
+  or an ISO refuses the archive in the pre-scan, as in a tar; a CAB's absolute (`C:\abs.txt`) or
+  `..` name is refused with nothing written. Both are in the integration tests.
+- **UDF images are refused.** libarchive has no UDF reader, and most Windows install ISOs carry a UDF
+  volume with a small ISO 9660 stub beside it; extracting the stub would be a silent wrong result.
+- **A cut ISO is refused before `tar.exe` runs.** Cut before its root directory, `tar.exe` exits 0
+  with nothing extracted; Pakko compares the size the volume declares with the file, on the handle
+  the sandbox opened.
+- **Test checks contents only for CAB and lzip.** ISO, cpio, ar and `.Z` carry no data checksum, so
+  their test says only the structure was checked.
+- **Group Policy:** an `AllowedFormats` list keeps them refused until listed; a `BlockedFormats` list
+  written before v1.10 lets them through (`docs/POLICIES.md`). `DisableTarExtraction` covers them.
+
 ### Trust Chain
 
 ```
