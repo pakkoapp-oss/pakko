@@ -13756,6 +13756,26 @@ availability follows the installed tar.exe at run time.
   detector is the one source for routing.
 - **Still to measure, in their own steps:** the "new app can open this type" prompt for `.iso` and
   `.cab` as package file types (step 4, on an installed package); xar's run-time probe (step 3).
+- **xar is left out of v1 (2026-11-05).** `tar --version` does not say whether this tar.exe reads
+  xar (3.8.9 does, 3.5.2 answers "Unrecognized archive format"), so it would need its own probe: a
+  sandboxed tar.exe run on a sample, cached like the 7z writer's, a third "unknown" state in
+  `TarCapabilities` and in the snapshot the Explorer menu reads. That is the 7z writer's whole
+  mechanism again for a macOS installer format whose usual name, `.pkg`, is ambiguous and not taken
+  anyway. A `.xar` file stays Unknown: not offered, never handed to tar.exe. Revisit on a request.
+- **Explorer menu and file types (step 4).** Nine extensions in the detector and in
+  `ShellExtUtils.cpp`: `.iso`, `.cab`, `.cpio`, `.deb`, `.ar`, `.z`, `.taz`, `.lz`, `.tlz`; `.tar.z` and
+  `.tar.lz` are compound names (a folder for `a.tar.Z` is `a`). Not `.a` (static libraries) or `.pkg`.
+  Lower case in the manifest, matched without case everywhere. A format this tar.exe does not read
+  (lzip on 3.5.2) is hidden by the snapshot as before (T-F403), and a blocked one by policy.
+- **`.iso` and `.cab` are menu-only, not Pakko file types.** Measured on the installed package
+  (Windows 11 26300, 1.9.0.3): with `.iso` in `archivefile`, a double-click on an ISO no longer
+  mounted it but opened "Choose an app to open this .iso file" with Pakko marked "New". Without it
+  (1.9.0.4) Pakko is not in that list. On this machine the dialog still appeared, for NanaZip, also
+  "New", installed earlier; so whether Pakko alone would raise it was not isolated, but it was
+  listed as new, which is what the dialog is about. Windows opens both types itself (an ISO mounts,
+  a CAB opens as a folder), so Pakko does not compete for the double-click: both stay in the menu,
+  and `FormatListConsistencyTests` names them as the manifest's only exceptions. The other seven
+  have no Windows handler and are file types like `.7z`.
 
 ## T-F443 - a folder tar.exe lists by best fit: folder entries from the quarantine (2026-11-05)
 

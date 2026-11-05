@@ -88,6 +88,13 @@
               <uap:FileType>.zst</uap:FileType>
               <uap:FileType>.tzst</uap:FileType>
               <uap:FileType>.lzma</uap:FileType>
+              <uap:FileType>.cpio</uap:FileType>
+              <uap:FileType>.deb</uap:FileType>
+              <uap:FileType>.ar</uap:FileType>
+              <uap:FileType>.z</uap:FileType>
+              <uap:FileType>.taz</uap:FileType>
+              <uap:FileType>.lz</uap:FileType>
+              <uap:FileType>.tlz</uap:FileType>
               <uap:FileType>.jar</uap:FileType>
               <uap:FileType>.war</uap:FileType>
               <uap:FileType>.ear</uap:FileType>

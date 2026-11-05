@@ -12,7 +12,7 @@ public static class ArchiveNaming
 {
     private static readonly string[] CompoundExtensions =
     {
-        ".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".tar.lzma"
+        ".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".tar.lzma", ".tar.z", ".tar.lz"
     };
 
     internal static IReadOnlyList<string> CompoundExtensionList => CompoundExtensions;

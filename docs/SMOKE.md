@@ -144,6 +144,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | EXP-014 | release | mcp | dev | Explorer "Extract here" on a ZIP holding `What?.txt`, and on a .tar.gz holding `a?b.txt` and `a_b.txt` | `What_.txt` is there; both tar entries are there, one numbered; no error | `menu:ExtractHereCommand` T-F420 |
 | EXP-015 | release | mcp | dev | Explorer "Extract here" and the App's browse on `notes.txt.gz` (a gzip of one file) | `notes.txt` beside it, no error; the App lists one entry `notes.txt` and extracts it | `menu:ExtractHereCommand` T-F413 |
 | EXP-016 | release | mcp | dev | Make `src\b.txt` a hard link of `src\a.txt` (`mklink /H`); Explorer "Add to src.tar" on `src`, then the App: add `src`, Format tar, Compress; then Add to src.zip | Both tar attempts end with an error naming `a.txt` and `b.txt` and suggesting ZIP or 7z, and no `src.tar` is left; the ZIP holds both files | `menu:TarArchiveCommand` T-F392 |
+| EXP-017 | release | mcp | dev | Samples written by this tar.exe (`--format=iso9660`, `--format=ar` as `a.deb`, `--format=newc`, `-Z`, `--lzip`) and `makecab` (`a.cab`), each holding `a.txt`; Explorer's Pakko submenu on each, `Extract to "a\"`; then a double-click on `a.iso`. Also on the PakkoW10 VM (tar.exe 3.5.2) | Every sample has the Extract commands and `a\a.txt` reads `alpha` (`a.tar.Z` and `a.tar.lz` into `a\`, not `a.tar\`); on 3.5.2 `a.tar.lz` has no Pakko extract commands; the double-click on `a.iso` does not list Pakko (not a Pakko file type) | `menu:ExtractFolderCommand` T-F442 |
 
 ## APP - the WinUI window
 

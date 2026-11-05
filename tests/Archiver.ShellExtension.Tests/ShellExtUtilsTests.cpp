@@ -94,6 +94,14 @@ TEST(HasSupportedNonZipArchiveExtension, RecognizesEachSupportedExtension)
     EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.zst"));
     EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.tzst"));
     EXPECT_TRUE(HasSupportedNonZipArchiveExtension(L"C:\\a.lzma"));
+    // T-F442: the read-only formats tar.exe opens.
+    for (const wchar_t* path : { L"C:\\a.iso", L"C:\\a.cab", L"C:\\a.cpio", L"C:\\a.deb", L"C:\\a.ar",
+                                 L"C:\\a.tar.Z", L"C:\\a.taz", L"C:\\a.tar.lz", L"C:\\a.tlz" })
+    {
+        EXPECT_TRUE(HasSupportedNonZipArchiveExtension(path)) << path;
+    }
+    EXPECT_FALSE(HasSupportedNonZipArchiveExtension(L"C:\\libc.a"));
+    EXPECT_FALSE(HasSupportedNonZipArchiveExtension(L"C:\\installer.pkg"));
 }
 
 TEST(HasSupportedNonZipArchiveExtension, CaseInsensitive)
@@ -218,6 +226,15 @@ TEST(GetFormatRegistryName, MapsEachExtensionToTheGroupPolicyVocabulary)
     EXPECT_EQ(GetFormatRegistryName(L"C:\\a.lzma"), L"lzma");
     EXPECT_EQ(GetFormatRegistryName(L"C:\\a.rar"), L"rar");
     EXPECT_EQ(GetFormatRegistryName(L"C:\\a.7z"), L"sevenzip");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.ISO"), L"iso");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.cab"), L"cab");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.cpio"), L"cpio");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.deb"), L"ar");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.ar"), L"ar");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.tar.Z"), L"compress");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.taz"), L"compress");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.tar.lz"), L"lzip");
+    EXPECT_EQ(GetFormatRegistryName(L"C:\\a.tlz"), L"lzip");
     EXPECT_EQ(GetFormatRegistryName(L"C:\\a.docx"), L"");
     EXPECT_EQ(GetFormatRegistryName(L"C:\\noextension"), L"");
 }
@@ -1193,4 +1210,25 @@ TEST(TarCapabilitySnapshot, KnownReadabilityHidesWhatTarCannotRead)
     EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\a.tar.gz", L"C:\b.7z" }, policy));
     EXPECT_TRUE(AnyPathIsSupportedArchive({ L"C:\a.tar.gz", L"C:\b.7z" }, policy));
     EXPECT_FALSE(AnyPathIsSupportedArchive({ L"C:\a.rar", L"C:\b.tar.zst" }, policy));
+}
+
+// T-F442: tar.exe 3.5.2 reads no lzip; its snapshot names iso, cab, cpio, ar and compress only.
+TEST(TarCapabilitySnapshot, ReadOnlyFormatsFollowWhatThisTarReads)
+{
+    MenuPolicy policy;
+    policy.tarReadabilityKnown = true;
+    policy.tarReadable = { L"tar", L"gzip", L"iso", L"cab", L"cpio", L"ar", L"compress" };
+
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.iso", L"C:\\b.cab", L"C:\\c.cpio", L"C:\\d.deb", L"C:\\e.tar.Z" }, policy));
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.tar.lz" }, policy));
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.tlz" }, policy));
+}
+
+TEST(MenuPolicy, BlockedReadOnlyFormatIsHidden)
+{
+    MenuPolicy policy;
+    policy.blockedFormats = { L"iso" };
+
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.iso" }, policy));
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.cab" }, policy));
 }

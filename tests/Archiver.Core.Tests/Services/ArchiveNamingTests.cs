@@ -12,6 +12,8 @@ public sealed class ArchiveNamingTests
     [InlineData(@"C:\Docs\browse_test.tar.xz", "browse_test")]
     [InlineData(@"C:\Docs\browse_test.tar.zst", "browse_test")]
     [InlineData(@"C:\Docs\browse_test.tar.lzma", "browse_test")]
+    [InlineData(@"C:\Docs\browse_test.tar.Z", "browse_test")]
+    [InlineData(@"C:\Docs\browse_test.tar.lz", "browse_test")]
     [InlineData(@"C:\Docs\BROWSE_TEST.TAR.GZ", "BROWSE_TEST")]
     public void GetBaseName_CompoundTarExtension_StripsBothComponents(string archivePath, string expected)
     {

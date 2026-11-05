@@ -566,12 +566,12 @@ the `desktop4/5/10` verbs), the `ProjectReference`s of `Archiver.App`, `Archiver
 `src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs` (`CreateAsync`, `RunAsync`), and
 `src/Archiver.Core/Services/TarSandboxedService.cs` (`RunUnsandboxedTarAsync`, `DetectCapabilitiesAsync`).
 
-Per-arrow ritual 2026-10-29 (T-F226): the manifest's `<Application>` entries, file associations, `com:SurrogateServer` and verbs are unchanged since 2026-10-03 (only version bumps and resource names); `TarSandboxScope` gained the `first` and `list` folders (T-F171, T-F410) and Test's `-x -O` run (T-F397), drawn now.
+Per-arrow ritual 2026-10-29 (T-F226): the manifest's `<Application>` entries, file associations, `com:SurrogateServer` and verbs are unchanged since 2026-10-03 (only version bumps and resource names); `TarSandboxScope` gained the `first` and `list` folders (T-F171, T-F410) and Test's `-x -O` run (T-F397), drawn now. 2026-11-05 (T-F442): `archivefile` gained the read-only formats tar.exe opens (`.cpio`, `.deb`, `.ar`, `.z`, `.taz`, `.lz`, `.tlz`; `.iso` and `.cab` are in the Explorer menu only, `docs/DECISIONS.md`); nothing else in the manifest changed.
 
 ```mermaid
 flowchart TB
     subgraph MSIX["Pakko.msix — Identity: PavloRybchenko.Pakko"]
-        subgraph AppApp["Application Id=App — EntryPoint=$targetentrypoint$ (WindowsAppSDK)<br/>FileTypeAssociation zipfile (.zip) and archivefile (.rar .7z .tar .gz ... .jar .apk .asice ...)"]
+        subgraph AppApp["Application Id=App — EntryPoint=$targetentrypoint$ (WindowsAppSDK)<br/>FileTypeAssociation zipfile (.zip) and archivefile (.rar .7z .tar .gz ... .jar .apk .asice ... .cpio .deb .z .lz ...)"]
             App[Archiver.App.exe]
         end
         subgraph AppShell["Application Id=ShellHelper<br/>EntryPoint=Windows.FullTrustApplication<br/>AppListEntry=none"]

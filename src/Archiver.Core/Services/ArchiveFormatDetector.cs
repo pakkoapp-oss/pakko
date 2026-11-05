@@ -45,6 +45,16 @@ public static class ArchiveFormatDetector
             KeyValuePair.Create(".zst", ArchiveFormat.Zstd),
             KeyValuePair.Create(".tzst", ArchiveFormat.Zstd),
             KeyValuePair.Create(".lzma", ArchiveFormat.Lzma),
+            // T-F442: read-only through tar.exe. Not ".a" (static libraries) or ".pkg" (several formats).
+            KeyValuePair.Create(".iso", ArchiveFormat.Iso),
+            KeyValuePair.Create(".cab", ArchiveFormat.Cab),
+            KeyValuePair.Create(".cpio", ArchiveFormat.Cpio),
+            KeyValuePair.Create(".deb", ArchiveFormat.Ar),
+            KeyValuePair.Create(".ar", ArchiveFormat.Ar),
+            KeyValuePair.Create(".z", ArchiveFormat.Compress),
+            KeyValuePair.Create(".taz", ArchiveFormat.Compress),
+            KeyValuePair.Create(".lz", ArchiveFormat.Lzip),
+            KeyValuePair.Create(".tlz", ArchiveFormat.Lzip),
         ],
         StringComparer.OrdinalIgnoreCase);
 
