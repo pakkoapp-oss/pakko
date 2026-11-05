@@ -13824,6 +13824,24 @@ builds. Sizes, progress and the root shape only lose accuracy.
 - **A Unicode-only regional format** (hi-IN) gives no code page: `GetLocaleInfoEx` answers CP_ACP or
   CP_OEMCP (0, 1), which `SystemCodePages` reads as "none" and replaces with the system page, as
   libarchive does. Before, `TarOutputEncoding` would have taken 1 as a page.
+- **`TarReader` in place of the walk: rejected (2026-11-05), its precondition failed.** Read in
+  `dotnet/runtime` at tag `v10.0.14` (the runtime SDK 10.0.403 bundles), `System.Formats.Tar`:
+  - Skipping content passes: `TarHelpers.AdvanceStream` seeks, or reads forward through a rented
+    4 KB buffer (`MaxBufferLength = 4096`) on a stream that cannot seek; no content is kept.
+  - Names fail. Every name goes through `TarHelpers.ParseUtf8String` (`return
+    Encoding.UTF8.GetString(buffer);`): the header name and prefix (`TarHeader.Read.cs` 393, 569), the
+    GNU long name (703) and pax records (`Encoding.UTF8.GetString(valueSlice)`). An OEM-page name, the
+    very case this veto exists for, comes back with U+FFFD in place of its bytes; `hdrcharset=BINARY`
+    is not read; invalid UTF-8 is not reported. The raw bytes are not exposed, so no wrapper can fix it.
+  - The prefix is joined as `_name = $"{_prefix}/{_name}";` (577) even when it ends in `/`: the
+    doubled separator, a false refusal, that the fresh review had us remove.
+  - A GNU long name or pax block is read whole into `ArrayPool<byte>.Shared.Rent((int)size)` (593,
+    667), capped only by `ValidateSize` at `Array.MaxLength`: one forged header asks for about 2 GB.
+    The walk caps both at 64 KB. On untrusted input that is a regression.
+  - In `TarReader`'s favour: it honours a pax `size` record, as libarchive does (`TarHeader.Read.cs`,
+    `ReplaceNormalAttributesWithExtended`). The walk answers nothing there, so a legitimate pax-size
+    entry (a file over 8 GiB) gets a selection refused: a deliberate, conservative cost, kept.
+  - Decided: the hand-written walk stays (`SECURITY.md`'s paragraph on it holds unchanged).
 - **Not covered by an integration test:** a format without readable headers. Neither the BCL nor
   tar.exe can make the fixture here: no xz/bzip2/zstd writer in .NET, and bsdtar 3.8.9 crashes writing a
   name outside the page (T-F423), through `@archive` too. The rule is covered by unit rows

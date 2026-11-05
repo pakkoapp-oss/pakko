@@ -1516,7 +1516,9 @@ re-measured with T-F346's script before and after.
 
 ### T-F424 — `tar.exe` lists a name outside the code page by best fit (`café.txt` as `cafe.txt`) (P3, from T-F418)
 
-- [ ] **Status:** in progress under T-F441 part 2 (branch `fix/tf441-tar-verdict`, 2026-10-31):
+- [x] **Status:** done 2026-11-05 with T-F441 (part 2, #132; `CLI-044` on this machine and on
+  PakkoW10's 3.5.2). The folder case is T-F443.
+- **Before:** in progress under T-F441 part 2 (branch `fix/tf441-tar-verdict`, 2026-10-31):
   `TarNames` judges the listing (header names of a plain or gzip tar, repeated names otherwise, the
   quarantine's files after a full extraction) and refuses a selection or filter it cannot trust.
   Measured on both builds: 3.5.2 lists by best fit too; the silent case is two names collapsing
@@ -1746,7 +1748,11 @@ re-measured with T-F346's script before and after.
 
 ### T-F441 — One owner per text boundary: names and paths in every encoding Pakko meets, and a test that keeps it so (P2, user-requested, research first)
 
-- [ ] **Status:** in progress, branch `fix/tf441-text-boundaries`. Researched and planned 2026-10-31:
+- [x] **Status:** done 2026-11-05: the last open step (`TarReader` in place of the walk) was checked
+  against `dotnet/runtime` v10.0.14 and rejected, its precondition failed (`docs/DECISIONS.md`,
+  "T-F441 and T-F424": UTF-8-only names, the doubled prefix separator, ~2 GB per forged header). The
+  refusal's own message is T-F452; the folder case is T-F443.
+- **Before:** in progress, branch `fix/tf441-text-boundaries`. Researched and planned 2026-10-31:
   `docs/DECISIONS.md` "T-F441 and T-F424" (both tar.exe builds measured; the silent case is two names
   that collapse to one listing line). Part 1 (code-page source, owners, the scanning test), then
   part 2 (the tar-name verdict). Follow-up, not in this task: the browse tree could show a plain or
@@ -1917,6 +1923,14 @@ re-measured with T-F346's script before and after.
   Inconclusive with its own reason (a new message code, 37 locales). Security boundary: plan mode,
   advisor at both ends, `SECURITY.md` only with the user's OK.
 - **Reported by:** T-F444's fresh reviewer, 2026-11-01.
+
+### T-F452 — A tar selection refused for a header mismatch says "code page" and "use ZIP" (P3, from T-F441)
+
+- [ ] **Status:** open. T-F441 part 2 reuses `TarNameNotRepresentable` when `TarNames` cannot trust
+  tar.exe's listing; that message speaks of a name the code page cannot carry and advises ZIP, which
+  fits creation, not a selection from a tar whose header names disagree with the listing. Next: a
+  message of its own (37 locales, `Glossary.tsv`), through whichever stream holds the Messages set.
+- **Reported by:** T-F441's closing notes (`docs/DECISIONS.md`, "T-F441 and T-F424"), 2026-10-31.
 
 ### T-F451 — `RunPipelineAsync_CancelledMidFlight_NoTasksLeftRunningAfterwards` races a timer (P3, flaky test)
 
