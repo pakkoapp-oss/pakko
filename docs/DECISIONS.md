@@ -13702,6 +13702,46 @@ PakkoW10); 3.8.9's xar and lzip samples were also read on 3.5.2.
   capability snapshot, the Explorer menu and the manifest's file types; `SECURITY.md` names the new
   parser surface (each one inside tar.exe's sandbox).
 
+## T-F442 - scope and the measurements before the code (2026-11-05)
+
+The plan (plan mode, advisor at both ends) took seven formats, read-only: ISO 9660 (`.iso`), CAB,
+cpio (`.cpio`), ar (`.deb`, `.ar`; not `.a`), compress (`.Z`, `.taz`, `.tar.Z`), lzip (`.lz`, `.tlz`,
+`.tar.lz`) and xar (`.xar`; not the ambiguous `.pkg`). Not taken: WARC (a web archive, little value
+for the surface it adds), uuencode/base64 (text, a weak signature, false matches), mtree (above),
+shar (unreadable), the external-program codecs, and everything outside tar.exe (`docs/SPEC.md` gets
+them as unsupported, with the reason). The user, 2026-11-05: `BlockedFormats` lets the new names
+through after an update, as with every format so far - documented in `docs/POLICIES.md` and the
+CHANGELOG, with the advice to add them; `SECURITY.md` gets a paragraph on the new parser surface.
+Also the user's: every archive type gets tests of success and of failure, and each format's
+availability follows the installed tar.exe at run time.
+
+- **UDF is not read at all.** libarchive v3.8.1's `archive_read_support_format_iso9660.c` (3534
+  lines) never mentions UDF, `NSR0` or `BEA01`: it reads ISO 9660, Joliet and Rock Ridge. Microsoft's
+  oscdimg reference (learn.microsoft.com, updated 2022-02-11), verbatim: "-u1 | Produces an image that
+  has both the UDF file system and the ISO 9660 file system. The ISO 9660 file system is written by
+  using DOS-compatible 8.3 file names." and "-u2 | Produces an image that contains only the UDF file
+  system. Any system that cannot read UDF sees only a default text file that alerts the user that
+  this image is only available on computers that support UDF." Through tar.exe a UDF image gives one
+  readme or 8.3 names: a silent wrong result either way. So an ISO whose volume recognition sequence
+  (from sector 16) holds `NSR02` or `NSR03` is refused with its own reason (Windows opens it itself),
+  and only a plain ISO 9660 image is read. This corrects the 2026-10-31 entry's "libarchive reads the
+  ISO 9660 side". No real Windows ISO was at hand; the decision rests on the two sources.
+- **Hostile shapes, written by tar.exe from an mtree spec; 3.8.9 and 3.5.2 list them line for line
+  alike.** cpio (newc, odc) and ISO (Rock Ridge) list a FIFO as `p`, a character device as `c`, a
+  symlink as `l ... -> ../../outside.txt`, a hard link as `-` with link count 2; ISO adds a `.` line
+  for its root folder. Pakko's pre-scan takes only `-` and `d`, so `p`/`c`/`l` refuse the archive
+  (TarSpecialEntry); the hard link and the `.` line go through Pakko's path in the tests. A CAB from
+  `makecab` with the names `C:\abs.txt` and `..\up.txt` lists them as `C:/abs.txt` and `../up.txt`,
+  type `-`: Pakko's name checks must refuse it, with nothing written. ar from mtree did not come out
+  readable ("Incorrect file header signature"); its `/` and `..` members are built by hand.
+- **Test (T-F397), one byte of a member's data flipped, `-xOf`, both builds alike.** Caught: CAB
+  ("Checksum error CFDATA[0]", exit 1) and lzip on 3.8.9 ("Lzma library error: Corrupted input data").
+  Not caught, exit 0: cpio newc, ISO 9660, ar and `.Z`. These four report "read to the end" only.
+  tar.exe cannot write the crc cpio variant (`cpio:format` is no option). On 3.5.2 even an intact
+  lzip fails: "unable to run program "lzip -d -q"" - lzip stays hidden there, as planned.
+- **Still to measure, in their own steps:** the "new app can open this type" prompt for `.iso` and
+  `.cab` as package file types (step 4, on an installed package); xar's run-time probe (step 3).
+
 ## T-F443 - a folder tar.exe lists by best fit: folder entries from the quarantine (2026-11-05)
 
 - **Cause.** Files moved from the quarantine under their true names, but folder entries (the empty
