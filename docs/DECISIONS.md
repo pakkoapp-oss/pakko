@@ -13744,6 +13744,13 @@ availability follows the installed tar.exe at run time.
   "Truncated input file", exit 1). So the sandbox scope compares the primary volume descriptor's
   declared size (blocks times block size) with the file it opened, on that same handle, and refuses
   a shorter image before tar.exe runs.
+- **The CLI on both builds (2026-11-05).** `pakko i` follows the installed tar.exe: on 3.8.9
+  every new line reads "supported"; on PakkoW10's 3.5.2 (Native AOT `pakko`, by hand, the smoke
+  runner needs PowerShell 7) iso, cab, cpio, ar and tar.Z are supported and tar.lz is not. There, the
+  samples tar.exe 3.5.2 wrote (ISO, newc, odc, ar, tar.Z) and a `makecab` CAB extract and list with
+  exit 0, `t` exits 1 with the structure-only warning, `-stxcab` skips the CAB (exit 2), an lzip file
+  and a UDF image are skipped naming the format and the version, and a cut ISO is an error; nothing
+  is written for any refusal. Row CLI-045 runs the same here.
 - **BareGzip's signature list stays its own.** It asks a different question (does a decompressed
   `.gz` hold anything tar.exe opens, T-F413) and already names cpio, ar, compress and lzip; the
   detector is the one source for routing.

@@ -1819,7 +1819,8 @@ re-measured with T-F346's script before and after.
   detector and policy, with success and failure tests for every format and availability from the
   installed tar.exe (the user, 2026-11-05). Step 2 done on a branch: Core detection, capabilities,
   policy names, a cut ISO refused, both test classes `ReadOnlyTarFormatsTests`. Next: CLI (`pakko i`,
-  `-stx`), the run on PakkoW10, then xar and the Explorer menu. The user, 2026-10-31: check extraction and the Explorer submenu
+  `-stx`), the run on PakkoW10, then xar and the Explorer menu. CLI done on a branch (row CLI-045,
+  passed here and by hand on PakkoW10). Next: xar, then the Explorer menu and file types. The user, 2026-10-31: check extraction and the Explorer submenu
   for other archives that are not marked as Pakko's today (ISO, virtual machine disks, the list of a
   Store archiver: zip, rar, 7z, tar, wim, bz2, gz, xz, apfs, ar, arj, cab, cpio, cramfs, dmg, ext, fat,
   gpt, hfs, ihex, iso, lzh, lzma, mbr, nsis, ntfs, qcow2, rpm, squashfs, udf, uefi, vdi, vhd, vhdx, vmdk,
