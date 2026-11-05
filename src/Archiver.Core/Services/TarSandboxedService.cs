@@ -599,12 +599,13 @@ public sealed class TarSandboxedService : ITarService
         // With a selection, only the selected names are extracted: their folders' entries may not be.
         IEnumerable<string> extractedNames = (IEnumerable<string>?)tarMembers ?? allNames;
         // T-F420: by the name tar.exe gives the folder ("d?" is "d_"), or the creation fails.
+        // T-F443: kept by the name each got on disk (Windows trims "d." to "d" here, without the
+        // long-path prefix), since these folders are Pakko's own, not evidence of tar.exe's names.
         var preCreated = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (string relativeDir in DirectoriesToPreCreate(extractedNames))
         {
-            string onDisk = EntryDiskName.AsTarExeWrites(relativeDir + "/");
-            Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, onDisk));
-            preCreated.Add(onDisk.TrimEnd('/'));
+            DirectoryInfo made = Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, EntryDiskName.AsTarExeWrites(relativeDir + "/")));
+            preCreated.Add(QuarantineRelative(scope.OutputDirectory!, made.FullName).TrimEnd(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, '/'));
         }
 
 
@@ -649,7 +650,8 @@ public sealed class TarSandboxedService : ITarService
             List<(string Path, bool IsFolder)> quarantinedItems = [.. WalkGuarded(scope.OutputDirectory!)
                 .Select(item => (QuarantineRelative(scope.OutputDirectory!, item.Path).Replace('\\', '/'), item.IsFolder))];
             TarListingVerdict onDisk = TarNames.JudgeExtracted(allNames,
-                quarantinedItems.Where(i => !i.IsFolder).Select(i => i.Path), quarantinedItems.Where(i => i.IsFolder).Select(i => i.Path));
+                quarantinedItems.Where(i => !i.IsFolder).Select(i => i.Path),
+                quarantinedItems.Where(i => i.IsFolder && !preCreated.Contains(i.Path)).Select(i => i.Path));
             if (onDisk.Trust != TarNameTrust.Faithful)
             {
                 if (context.EntryFilter is not null)
