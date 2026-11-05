@@ -270,6 +270,83 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         File.ReadAllText(Path.Combine(dest, "y (1).txt")).Should().Be("B", TarCodePage.Describe());
     }
 
+    // T-F443 fresh review: Pakko pre-creates "cafe/sub" for the listed "cafe/sub/x.txt", and that
+    // also makes "cafe" - a parent made along the way is Pakko's too, and no twin may arrive.
+    [Integration]
+    public async Task Extract_Everything_ParentMadeWhilePreCreating_NoTwin()
+    {
+        if (await BestFitFolderArchiveAsync("parent", f =>
+            [
+                TarBuilder.PaxPath(f + "/"),
+                new TarBuilder.Entry { Name = "placeholder/", TypeFlag = '5' },
+                TarBuilder.PaxPath(f + "/sub/x.txt"),
+                new TarBuilder.Entry { Name = "placeholder.txt", Content = Encoding.ASCII.GetBytes("X") },
+                new TarBuilder.Entry { Name = "readme.txt", Content = Encoding.ASCII.GetBytes("R") },
+            ]) is not { } fixture)
+            return;
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [fixture.Path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Errors.Should().BeEmpty(TarCodePage.Describe());
+        Everything(dest).Should().BeEquivalentTo(
+            [fixture.Folder, fixture.Folder + "/sub", fixture.Folder + "/sub/x.txt", "readme.txt"], TarCodePage.Describe());
+    }
+
+    // T-F443 fresh review: a folder alone listed by best fit says nothing about two files of one
+    // name; their duplicate group (T-F171) stands, so the first copy is not lost.
+    [Integration]
+    public async Task Extract_Everything_BestFitFolderBesideARealDuplicate_BothCopiesKept()
+    {
+        if (await BestFitFolderArchiveAsync("dup", f =>
+            [
+                TarBuilder.PaxPath(f + "/"),
+                new TarBuilder.Entry { Name = "placeholder/", TypeFlag = '5' },
+                new TarBuilder.Entry { Name = "y.txt", Content = Encoding.ASCII.GetBytes("A") },
+                new TarBuilder.Entry { Name = "y.txt", Content = Encoding.ASCII.GetBytes("B") },
+            ]) is not { } fixture)
+            return;
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [fixture.Path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Rename,
+        });
+
+        result.Errors.Should().BeEmpty(TarCodePage.Describe());
+        File.ReadAllText(Path.Combine(dest, "y.txt")).Should().Be("A", TarCodePage.Describe());
+        File.ReadAllText(Path.Combine(dest, "y (1).txt")).Should().Be("B", TarCodePage.Describe());
+        Directory.GetDirectories(dest).Select(Path.GetFileName).Should().Equal([fixture.Folder], TarCodePage.Describe());
+    }
+
+    // T-F443 fresh review: a folder entry whose stored name has no trailing '/' (a type-5 header
+    // "emptydir") must not read as a file the quarantine does not hold.
+    [Integration]
+    public async Task Extract_FilterOverAFolderEntryWithoutTrailingSlash_NotRefused()
+    {
+        string path = Path.Combine(_temp.Path, "noslash.tar");
+        TarBuilder.WriteTar(path,
+        [
+            new TarBuilder.Entry { Name = "emptydir", TypeFlag = '5' },
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("A") },
+        ]);
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            EntryFilter = (_, _) => true,
+        });
+
+        result.Errors.Should().BeEmpty(string.Join(" | ", result.Errors.Select(e => e.Message)));
+        // The empty folder itself does not arrive, as on main before T-F443: T-F455.
+        File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("A");
+    }
+
     private sealed record FolderFixture(string Path, string Folder, string ListedFolder);
 
     // The entries built around "caf<accent>"; null when this machine's page carries that name.

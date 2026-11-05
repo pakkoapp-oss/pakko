@@ -605,7 +605,11 @@ public sealed class TarSandboxedService : ITarService
         foreach (string relativeDir in DirectoriesToPreCreate(extractedNames))
         {
             DirectoryInfo made = Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, EntryDiskName.AsTarExeWrites(relativeDir + "/")));
-            preCreated.Add(QuarantineRelative(scope.OutputDirectory!, made.FullName).TrimEnd(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, '/'));
+            // The parents CreateDirectory made along the way are Pakko's too: the quarantine starts empty.
+            string madeRelative = QuarantineRelative(scope.OutputDirectory!, made.FullName).TrimEnd(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, '/');
+            preCreated.Add(madeRelative);
+            for (int sep = madeRelative.LastIndexOf('/'); sep > 0; sep = madeRelative.LastIndexOf('/', sep - 1))
+                preCreated.Add(madeRelative[..sep]);
         }
 
 
@@ -649,14 +653,21 @@ public sealed class TarSandboxedService : ITarService
         {
             List<(string Path, bool IsFolder)> quarantinedItems = [.. WalkGuarded(scope.OutputDirectory!)
                 .Select(item => (QuarantineRelative(scope.OutputDirectory!, item.Path).Replace('\\', '/'), item.IsFolder))];
-            TarListingVerdict onDisk = TarNames.JudgeExtracted(allNames,
-                quarantinedItems.Where(i => !i.IsFolder).Select(i => i.Path),
+            // A folder entry tar.exe lists without its '/' (a type-5 header "d") is no file.
+            var listedFiles = new HashSet<string>(fileEntries.Select(e => e.Name), StringComparer.Ordinal);
+            string[] listed = [.. allNames.Select(n => n.EndsWith('/') || listedFiles.Contains(n) ? n : n + "/")];
+            string[] quarantinedFiles = [.. quarantinedItems.Where(i => !i.IsFolder).Select(i => i.Path)];
+            TarListingVerdict filesOnDisk = TarNames.JudgeExtracted(listed, quarantinedFiles, []);
+            TarListingVerdict onDisk = filesOnDisk.Trust != TarNameTrust.Faithful ? filesOnDisk : TarNames.JudgeExtracted(listed, quarantinedFiles,
                 quarantinedItems.Where(i => i.IsFolder && !preCreated.Contains(i.Path)).Select(i => i.Path));
             if (onDisk.Trust != TarNameTrust.Faithful)
             {
                 if (context.EntryFilter is not null)
                     TarNames.EnsureNamesCanDecide(onDisk);
-                duplicateGroups = [];
+                // Two files of one name are told apart only by the files: a folder named by best fit
+                // says nothing about them (the fresh review).
+                if (filesOnDisk.Trust != TarNameTrust.Faithful)
+                    duplicateGroups = [];
                 foldersFromDisk = FoldersTarExeWrote(quarantinedItems, preCreated);
             }
         }
