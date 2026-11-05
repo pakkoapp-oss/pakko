@@ -1823,7 +1823,9 @@ re-measured with T-F346's script before and after.
   the installed package here (`.iso`/`.cab` menu-only, `docs/DECISIONS.md`; SMOKE EXP-017). Docs done
   (POLICIES/ADMX, SPEC, README, site, SECURITY.md); the installed package's snapshot here names iso,
   cab, cpio, ar, compress and lzip, and a C++ test parses a 3.5.2-shaped line (no lzip) and hides
-  `.tar.lz`. Left for the release: the menu on PakkoW10, the CHANGELOG line with the BlockedFormats
+  `.tar.lz`. Fresh review 2026-11-06: a snapshot list without iso (an older Pakko's) is no longer
+  current nor trusted by the menu, and the cut-ISO check closes the handle on a read error, each
+  test seen red; the low findings are T-F457. Left for the release: the menu on PakkoW10, the CHANGELOG line with the BlockedFormats
   warning, the Store listing. The user, 2026-10-31: check extraction and the Explorer submenu
   for other archives that are not marked as Pakko's today (ISO, virtual machine disks, the list of a
   Store archiver: zip, rar, 7z, tar, wim, bz2, gz, xz, apfs, ar, arj, cab, cpio, cramfs, dmg, ext, fat,
@@ -1936,6 +1938,25 @@ re-measured with T-F346's script before and after.
   Inconclusive with its own reason (a new message code, 37 locales). Security boundary: plan mode,
   advisor at both ends, `SECURITY.md` only with the user's OK.
 - **Reported by:** T-F444's fresh reviewer, 2026-11-01.
+
+### T-F457 — Read-only formats: leftovers from T-F442's fresh review (P3)
+
+- [ ] **Status:** open. Found 2026-11-06 by the fresh read-only review of T-F442; the two medium
+  findings (a pre-T-F442 snapshot list hid the new formats in the menu; the cut-ISO check left the
+  handle open on a read error) were fixed in T-F442's docs PR. Left, each low:
+  1. An ISO inside a wrapper (`win.iso.gz`, `.cpio.Z`, `.cpio.lz`) reaches tar.exe as gzip/compress/
+     lzip: no UDF refusal, no cut check, and `BlockedFormats=iso`/`cpio`/`ar` does not see it. Decide:
+     document (policy names the outer format) or look inside.
+  2. The cut check refuses an image whose declared volume is a little longer than the file (a TAO
+     CD-R dump missing the run-out sectors) that tar.exe reads in full. Measure a real one; maybe a
+     tolerance.
+  3. `.tlz` maps to lzip, but Slackware's `.tlz` is tar.lzma (LZMA_Alone): Detect says Unknown and the
+     menu offers Extract. Let the T-F398 name fallback take `.tlz` too, and the menu's name for it.
+  4. CLI: `-stxiso` does not exclude a UDF image, `-stxudf` is an unknown type although 7-Zip has the
+     name.
+  5. TOCTOU between `Detect(path)` and the sandbox scope reopening the path (older than T-F442): a file
+     swapped in between passes `BlockedFormats`/the UDF refusal. Needs write access to the file.
+- **Reported by:** the agent, 2026-11-06.
 
 ### T-F456 — `CancelInTheWindow_CancelsTheOperationWithoutFailover` times out under a full run (P3, flaky test)
 

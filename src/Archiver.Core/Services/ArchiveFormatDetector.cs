@@ -199,7 +199,8 @@ public static class ArchiveFormatDetector
     /// T-F442: true when <paramref name="archive"/> starts with an ISO 9660 primary volume
     /// descriptor whose declared volume is longer than the file - an image cut short. tar.exe reads
     /// one cut before its root directory as an empty archive with exit code 0 (measured, bsdtar
-    /// 3.8.9). False for anything else, including a descriptor that cannot be read.
+    /// 3.8.9). False for anything else, including a file too short to hold a descriptor; a read
+    /// error propagates as <see cref="IOException"/>.
     /// </summary>
     internal static bool IsDiscImageCut(FileStream archive)
     {

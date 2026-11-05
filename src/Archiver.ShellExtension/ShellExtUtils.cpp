@@ -411,7 +411,10 @@ bool ParseTarReadableFormats(const std::string& verdict, ULONGLONG tarSize, ULON
 {
     char answer = 0;
     bool hasList = false;
-    return ParseVerdict(verdict, tarSize, tarWriteTime, answer, hasList, readable) && hasList;
+    // T-F442: every tar.exe Pakko parses reads ISO, so a list without iso came from an older Pakko
+    // and knows none of the formats added since; the Shell rewrites it on its next run.
+    return ParseVerdict(verdict, tarSize, tarWriteTime, answer, hasList, readable) && hasList
+        && std::find(readable.begin(), readable.end(), L"iso") != readable.end();
 }
 
 namespace
