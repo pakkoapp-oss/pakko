@@ -8,10 +8,10 @@ paths:
 
 Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths above is read or edited.
 
-- **Pin third-party GitHub Actions (`org/action@vX`) to a full commit SHA, not a mutable version
-  tag** — `actions/*` (first-party GitHub actions) are exempt by convention; everything else
-  (`microsoft/setup-msbuild`, `nuget/setup-nuget`, etc.) should be SHA-pinned with a `# vX.Y.Z`
-  trailing comment. Found via SonarCloud S7637 (T-F136).
+- **Pin every GitHub Action, `actions/*` included, to a full commit SHA with a `# vX.Y.Z`
+  trailing comment, never a mutable version tag** — Dependabot updates both together. Found via
+  SonarCloud S7637 (T-F136) for third-party ones; `actions/*` followed for Scorecard's
+  Pinned-Dependencies (T-F458). Every workflow also has a top-level `permissions: contents: read`.
 - **Checking current SonarCloud findings:** the dashboard
   (`sonarcloud.io/summary/overall?id=pakkoapp-oss-1_pakko&branch=main`) is a JS SPA a plain fetch
   won't render — use the public REST API instead, no auth needed for this public project:
