@@ -564,6 +564,13 @@ static async Task<int> RunInfoAsync(PakkoServices services)
     if (sevenZipWriter && ArchiveFormatPolicy.GetTarCreationRefusalReason(ArchiveContainerFormat.SevenZip, SevenZipMethod.Copy, capabilities) is null)
         await Console.Out.WriteLineAsync(CliInfoText.SevenZipMethodsLine(ArchiveFormatPolicy.CreatableSevenZipMethods(capabilities))).ConfigureAwait(false);
     await PrintFormatLineAsync("rar", "extract, list", ArchiveFormat.Rar).ConfigureAwait(false);
+    // T-F442: read-only formats tar.exe opens, each by what this tar.exe reads.
+    await PrintFormatLineAsync("iso", "extract, list", ArchiveFormat.Iso).ConfigureAwait(false);
+    await PrintFormatLineAsync("cab", "extract, list", ArchiveFormat.Cab).ConfigureAwait(false);
+    await PrintFormatLineAsync("cpio", "extract, list", ArchiveFormat.Cpio).ConfigureAwait(false);
+    await PrintFormatLineAsync("ar (.deb)", "extract, list", ArchiveFormat.Ar).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.Z", "extract, list", ArchiveFormat.Compress).ConfigureAwait(false);
+    await PrintFormatLineAsync("tar.lz", "extract, list", ArchiveFormat.Lzip).ConfigureAwait(false);
     await Console.Out.WriteLineAsync().ConfigureAwait(false);
     string tarVersion = policy.DisableTarExtraction ? "disabled by Group Policy" : $"version {capabilities.Version}";
     await Console.Out.WriteLineAsync($"tar.exe: C:\\Windows\\System32\\tar.exe ({tarVersion})").ConfigureAwait(false);

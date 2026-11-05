@@ -661,3 +661,83 @@ Add-SmokeStep 'CLI-044' {
     Assert-Smoke ($run.ExitCode -eq 0 -and ($folders -join '|') -ceq ($expected -join '|')) "x a best-fit folder: exit $($run.ExitCode), folders '$($folders -join '|')' $($run.Text)"
     "$($chosen.Plain) twice in the listing; selection and filter refused, everything extracted, no folder twin"
 }
+
+Add-SmokeStep 'CLI-045' {
+    # T-F442: read-only formats tar.exe opens, each expected by what this tar.exe reads (pakko i).
+    $folder = Get-StepFolder 'cli045'
+    $tarExe = Join-Path $env:SystemRoot 'System32\tar.exe'
+    $src = Join-Path $folder 'src'
+    New-Item -ItemType Directory -Path $src -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $src 'a.txt') -Value 'alpha' -NoNewline -Encoding ascii
+
+    $info = Invoke-Pakko @('i')
+    $lines = @{}
+    foreach ($name in 'iso', 'cab', 'cpio', 'ar (.deb)', 'tar.Z', 'tar.lz') {
+        $line = ($info.Output -split "`r?`n") | Where-Object { $_.TrimStart().StartsWith($name + ' ') } | Select-Object -First 1
+        Assert-Smoke ($null -ne $line) "i has no '$name' line: $($info.Output)"
+        $lines[$name] = $line
+    }
+    $reads = { param($name) $lines[$name] -match '\bsupported' -and $lines[$name] -notmatch 'not supported' }
+
+    $samples = @(
+        @{ Line = 'iso'; File = 'a.iso'; Args = @('--format=iso9660', '-cf') },
+        @{ Line = 'cpio'; File = 'a.cpio'; Args = @('--format=newc', '-cf') },
+        @{ Line = 'ar (.deb)'; File = 'a.ar'; Args = @('--format=ar', '-cf') },
+        @{ Line = 'tar.Z'; File = 'a.tar.Z'; Args = @('-cZf') },
+        @{ Line = 'tar.lz'; File = 'a.tar.lz'; Args = @('--lzip', '-cf') })
+    foreach ($sample in $samples) {
+        $archive = Join-Path $folder $sample.File
+        Push-Location $src
+        try { & $tarExe @($sample.Args + @($archive, 'a.txt')) 2>$null | Out-Null } finally { Pop-Location }
+        if (-not (Test-Path -LiteralPath $archive)) {
+            Assert-Smoke (-not (& $reads $sample.Line)) "$($sample.File): this tar.exe reads it but could not write it"
+            continue
+        }
+        $out = Join-Path $folder ('o-' + $sample.File)
+        $x = Invoke-Pakko @('x', $archive, "-o$out")
+        $text = Get-Content -LiteralPath (Join-Path $out 'a.txt') -Raw -ErrorAction SilentlyContinue
+        if (& $reads $sample.Line) {
+            $l = Invoke-Pakko @('l', $archive, '-ba')
+            $t = Invoke-Pakko @('t', $archive)
+            Assert-Smoke ($x.ExitCode -eq 0 -and $text -eq 'alpha' -and $l.ExitCode -eq 0 -and $l.Output.Contains('a.txt') -and $t.ExitCode -le 1) "$($sample.File): x $($x.ExitCode) '$text', l $($l.ExitCode), t $($t.ExitCode) $($x.Text) $($t.Text)"
+        } else {
+            Assert-Smoke ($x.ExitCode -ne 0 -and -not (Test-Path -LiteralPath (Join-Path $out 'a.txt'))) "$($sample.File) on a tar.exe that does not read it: exit $($x.ExitCode) $($x.Text)"
+        }
+    }
+
+    $cab = Join-Path $folder 'a.cab'
+    $ddf = Join-Path $folder 'a.ddf'
+    Set-Content -LiteralPath $ddf -Encoding ascii -Value @(
+        '.Set CabinetNameTemplate=a.cab', ".Set DiskDirectoryTemplate=$folder", '.Set InfFileName=NUL', '.Set RptFileName=NUL', "`"$(Join-Path $src 'a.txt')`" a.txt")
+    & (Join-Path $env:SystemRoot 'System32\makecab.exe') /F $ddf | Out-Null
+    $out = Join-Path $folder 'o-cab'
+    $x = Invoke-Pakko @('x', $cab, "-o$out")
+    $text = Get-Content -LiteralPath (Join-Path $out 'a.txt') -Raw -ErrorAction SilentlyContinue
+    if (& $reads 'cab') {
+        Assert-Smoke ($x.ExitCode -eq 0 -and $text -eq 'alpha') "a.cab: exit $($x.ExitCode) '$text' $($x.Text)"
+    } else {
+        Assert-Smoke ($x.ExitCode -ne 0 -and $null -eq $text) "a.cab on a tar.exe that does not read it: exit $($x.ExitCode)"
+    }
+    $out = Join-Path $folder 'o-stx'
+    $x = Invoke-Pakko @('x', $cab, "-o$out", '-stxcab')
+    Assert-Smoke ($x.ExitCode -ne 0 -and -not (Test-Path -LiteralPath (Join-Path $out 'a.txt'))) "x -stxcab: exit $($x.ExitCode) $($x.Text)"
+
+    # A UDF descriptor patched in after the ISO 9660 ones: libarchive would read only the stub.
+    $iso = Join-Path $folder 'a.iso'
+    if (Test-Path -LiteralPath $iso) {
+        $bytes = [System.IO.File]::ReadAllBytes($iso)
+        $sector = 16
+        while ([System.Text.Encoding]::ASCII.GetString($bytes, $sector * 2048 + 1, 5) -eq 'CD001') { $sector++ }
+        foreach ($id in 'BEA01', 'NSR02', 'TEA01') {
+            [Array]::Clear($bytes, $sector * 2048, 2048)
+            [System.Text.Encoding]::ASCII.GetBytes($id).CopyTo($bytes, $sector * 2048 + 1)
+            $bytes[$sector * 2048 + 6] = 1
+            $sector++
+        }
+        $udf = Join-Path $folder 'udf.iso'
+        [System.IO.File]::WriteAllBytes($udf, $bytes)
+        $out = Join-Path $folder 'o-udf'
+        $x = Invoke-Pakko @('x', $udf, "-o$out")
+        Assert-Smoke ($x.ExitCode -ne 0 -and $x.Text.Contains('UDF') -and -not (Test-Path -LiteralPath (Join-Path $out 'a.txt'))) "x udf.iso: exit $($x.ExitCode) $($x.Text)"
+    }
+}

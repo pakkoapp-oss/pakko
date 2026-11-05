@@ -23,6 +23,13 @@ public static class CliArchiveTypeExclusion
         ["lzma"] = ArchiveFormat.Lzma,
         ["rar"] = ArchiveFormat.Rar,
         ["rar5"] = ArchiveFormat.Rar,
+        // T-F442: read-only through tar.exe, under 7-Zip's names.
+        ["iso"] = ArchiveFormat.Iso,
+        ["cab"] = ArchiveFormat.Cab,
+        ["cpio"] = ArchiveFormat.Cpio,
+        ["ar"] = ArchiveFormat.Ar,
+        ["Z"] = ArchiveFormat.Compress,
+        ["lzip"] = ArchiveFormat.Lzip,
     };
 
     /// <summary>T-F412: 7-Zip's name for <paramref name="format"/> ("rar" for both RAR versions), or

@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using FluentAssertions;
 
 namespace Archiver.CLI.Tests;
@@ -49,7 +50,8 @@ public sealed class CliArchiveTypeExclusionTests
     [Theory]
     [InlineData("gz")]
     [InlineData("tgz")]
-    [InlineData("cab")]
+    [InlineData("wim")]
+    [InlineData("udf")]
     public void FirstUnknown_AnotherName_IsIt(string type) =>
         CliArchiveTypeExclusion.FirstUnknown(["zip", type]).Should().Be(type);
 
@@ -62,6 +64,44 @@ public sealed class CliArchiveTypeExclusionTests
 
         kept.Should().BeSameAs(paths);
         refused.Should().BeEmpty();
+    }
+
+    // T-F442: 7-Zip's names for the read-only formats tar.exe opens.
+    [Theory]
+    [InlineData("iso", ArchiveFormat.Iso)]
+    [InlineData("cab", ArchiveFormat.Cab)]
+    [InlineData("cpio", ArchiveFormat.Cpio)]
+    [InlineData("ar", ArchiveFormat.Ar)]
+    [InlineData("Z", ArchiveFormat.Compress)]
+    [InlineData("lzip", ArchiveFormat.Lzip)]
+    public void ReadOnlyTarFormats_HaveSevenZipsNames(string type, ArchiveFormat format)
+    {
+        CliArchiveTypeExclusion.FirstUnknown([type]).Should().BeNull();
+        CliArchiveTypeExclusion.TypeName(format).Should().Be(type);
+    }
+
+    [Fact]
+    public void Apply_ExcludedCab_IsLeftOutByItsBytes()
+    {
+        string dir = Directory.CreateTempSubdirectory("pakko-stx-").FullName;
+        try
+        {
+            string cab = Path.Combine(dir, "named.zip");
+            byte[] head = new byte[64];
+            "MSCF"u8.CopyTo(head);
+            head[24] = 3;
+            head[25] = 1;
+            File.WriteAllBytes(cab, head);
+
+            (IReadOnlyList<string> kept, IReadOnlyList<string> refused) = CliArchiveTypeExclusion.Apply([cab], ["cab"]);
+
+            kept.Should().BeEmpty();
+            refused.Should().Equal(cab);
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
     }
 
     [Fact]
