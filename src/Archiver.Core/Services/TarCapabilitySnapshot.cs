@@ -98,14 +98,18 @@ public static class TarCapabilitySnapshot
 
     /// <summary>Whether the snapshot at <paramref name="path"/> lists what the tar.exe at <paramref name="tarPath"/> reads.</summary>
     internal static bool IsCurrent(string path, string tarPath) =>
-        Read(path, tarPath) is { HasList: true };
+        Read(path, tarPath) is { HasList: true, ListsIso: true };
+
+    // T-F442: every tar.exe whose version line parses reads ISO (SupportsBuiltInReaders), so a list
+    // without it was written by an older Pakko and lacks the formats this one added.
+    private const string AlwaysListedName = "iso";
 
     private static string? PackageSnapshotPath() =>
         PathFor(AppContext.BaseDirectory, Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
 
-    // The recorded 7z answer ('0', '1' or '?') and whether a list follows, for a snapshot of exactly
-    // this tar.exe; null for none, another tar.exe or a line this class did not write.
-    private static (char Writer, bool HasList)? Read(string path, string tarPath)
+    // The recorded 7z answer ('0', '1' or '?'), whether a list follows and whether it names iso, for a
+    // snapshot of exactly this tar.exe; null for none, another tar.exe or a line this class did not write.
+    private static (char Writer, bool HasList, bool ListsIso)? Read(string path, string tarPath)
     {
         try
         {
@@ -120,7 +124,9 @@ public static class TarCapabilitySnapshot
             char writer = text[prefix.Length];
             if (writer is not ('0' or '1' or '?'))
                 return null;
-            return (writer, text.Length > prefix.Length + 1 && text[prefix.Length + 1] == ';');
+            bool hasList = text.Length > prefix.Length + 1 && text[prefix.Length + 1] == ';';
+            bool listsIso = hasList && text[(prefix.Length + 2)..].TrimEnd().Split(',').Contains(AlwaysListedName, StringComparer.Ordinal);
+            return (writer, hasList, listsIso);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

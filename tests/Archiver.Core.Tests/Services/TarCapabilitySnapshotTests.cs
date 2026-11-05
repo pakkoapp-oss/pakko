@@ -169,6 +169,25 @@ public sealed class TarCapabilitySnapshotTests : IDisposable
         TarCapabilitySnapshot.IsCurrent(path, _tar).Should().BeFalse("it names another tar.exe");
     }
 
+    // T-F442: every tar.exe whose version line parses reads ISO, so a list without iso was written
+    // by a Pakko before T-F442; kept, the menu would hide every new format until the App ran.
+    [Fact]
+    public async Task RecordIfStale_ListFromBeforeTheReadOnlyFormats_IsRewritten()
+    {
+        string path = TarCapabilitySnapshotPath();
+        TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: true, ZlibOnly).Should().BeTrue();
+        string current = File.ReadAllText(path);
+        File.WriteAllText(path, current[..current.LastIndexOf(';')] + ";tar,gzip,bz2,xz,rar,sevenzip");
+        int probes = 0;
+        Task<TarCapabilities> Probe() { probes++; return Task.FromResult(ZlibOnly); }
+
+        TarCapabilitySnapshot.IsCurrent(path, _tar).Should().BeFalse();
+        (await TarCapabilitySnapshot.RecordIfStaleAsync(new GroupPolicyOptions(), path, _tar, Probe)).Should().BeTrue();
+
+        probes.Should().Be(1);
+        File.ReadAllText(path).Should().EndWith(";1;tar,gzip,iso,cab,cpio,ar,compress");
+    }
+
     [Fact]
     public void PathFor_PackageFolder_IsTheFamilysLocalCache()
     {
