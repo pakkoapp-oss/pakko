@@ -13834,6 +13834,33 @@ availability follows the installed tar.exe at run time.
   true `cafe/` merge into one destination silently (the single-root decision sees the collapsed
   listed names). Opened as T-F453.
 
+## T-F458 - OpenSSF Scorecard's 62 open alerts: what was fixed, what is dismissed (2026-11-06)
+
+All 62 open code-scanning alerts on `main` came from Scorecard (T-F371), most opened at its first
+run on 2026-10-09.
+
+- **Fixed:** Pinned-Dependencies (52): every `actions/*` step was on a major tag (`@v7`); each is now
+  pinned to the commit its tag pointed at on 2026-11-06, with the exact version as a comment (the
+  floating `actions/setup-java@v6` was v6.1.0, not the newest v6.2.0, so the pin keeps v6.1.0 and
+  changes no code CI runs). Dependabot's github-actions updates move SHA and comment together.
+  Token-Permissions on line 1 of `build.yml` and `canary.yml`: no top-level `permissions`; every
+  job already sets its own, so a top-level `contents: read` only sets the floor.
+- **Dismissed as won't fix, with the reason in the dismissal:**
+  - Token-Permissions, `build.yml`'s `release` job `contents: write`: creating the GitHub Release
+    needs it, and only that job on a `v*` tag has it.
+  - Binary-Artifacts (2): `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/*/7za.exe`, the vendored
+    timing reference (T-F114); never packaged (`SECURITY.md`, "Vendored 7-Zip").
+  - Code-Review: Scorecard counts changes approved by a second person; the project has one
+    maintainer, and every change goes through a pull request with the required `test` check (T-F367).
+  - Fuzzing: Scorecard recognizes OSS-Fuzz, ClusterFuzzLite and language-native fuzz functions only;
+    Pakko fuzzes its readers in `Category=Fuzz` (T-F240), every run and nightly at more iterations.
+- **Left open, the owner's choice:**
+  - Branch-Protection (score 3): the T-F367 ruleset already requires pull requests and the `test`
+    check. Scorecard also wants the rules applied to administrators, branches up to date before a
+    merge (every PR rebased and re-tested when `main` moves), stale-review dismissal, approvers,
+    code-owner review and last-push approval; the last four need a second person.
+  - CII-Best-Practices (low): registering at bestpractices.dev.
+
 ## T-F441 and T-F424 - one owner per text boundary; tar.exe's best-fit names (2026-10-31)
 
 **Why.** Name-encoding bugs keep returning (T-F204, T-F215, T-F234, T-F238, T-F244, T-F266, T-F283,

@@ -13663,3 +13663,10 @@ PowerShell does natively.
   only with an on-device A/B that shows the gain; otherwise close as not worth it. Measure against
   the Native AOT App (T-F355) - the start is already ~150 ms shorter.
 - **Reported by:** performance study, 2026-10-06.
+
+### T-F458 — OpenSSF Scorecard: 62 open code-scanning alerts on `main` (P3, the user, 2026-11-06)
+
+- [x] **Status:** done 2026-11-06. Every `actions/*` step pinned by commit SHA (52 alerts), a
+  top-level `permissions: contents: read` in `build.yml` and `canary.yml`; the rest dismissed with a
+  reason or left to the owner (`docs/DECISIONS.md`, "T-F458").
+- **Reported by:** the user (a screenshot of the code-scanning page), 2026-11-06.
