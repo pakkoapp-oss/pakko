@@ -1927,6 +1927,16 @@ re-measured with T-F346's script before and after.
   advisor at both ends, `SECURITY.md` only with the user's OK.
 - **Reported by:** T-F444's fresh reviewer, 2026-11-01.
 
+### T-F454 — A tar entry under a folder ending in a space, with no folder entry of its own, does not extract (P3, from T-F443's review)
+
+- [ ] **Status:** open. Found 2026-11-05 (bsdtar 3.8.9, on `main` too): `d /x.txt` with no `d /`
+  entry fails the whole run with tar.exe's "Can't create '...\out\d \x.txt': No such file or
+  directory". Pakko pre-creates the folder (T-F52) without the long-path prefix, so Windows makes
+  `d`, and tar.exe does not make `d ` itself. `d./x.txt` extracts. Next: pre-create through the
+  long-path prefix, or measure whether pre-creation is still needed at all (T-F443 saw both tar.exe
+  builds make an implicit folder themselves); 3.5.2 too.
+- **Reported by:** T-F443's closing review, 2026-11-05.
+
 ### T-F453 — Two true root folders that tar.exe lists by one best-fit name merge when the root is dropped (P3, from T-F443)
 
 - [ ] **Status:** open. Probed 2026-11-05 (bsdtar 3.8.9, ACP 1251): a tar with `caf<e-acute>/x.txt`
