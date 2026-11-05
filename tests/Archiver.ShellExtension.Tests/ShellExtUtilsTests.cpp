@@ -1145,8 +1145,8 @@ TEST(TarCapabilitySnapshot, UnaskedSevenZipWriterShowsTheItemAndKeepsTheList)
     EXPECT_FALSE(IsSevenZipWriterVerdictAbsent("60416;133577283450000000;?;tar,gzip,sevenzip", kTarSize, kTarTime));
     EXPECT_FALSE(IsSevenZipWriterVerdictAbsent("60416;133577283450000000;?", kTarSize, kTarTime));
     std::vector<std::wstring> readable;
-    ASSERT_TRUE(ParseTarReadableFormats("60416;133577283450000000;?;tar,gzip", kTarSize, kTarTime, readable));
-    EXPECT_EQ(readable, (std::vector<std::wstring>{ L"tar", L"gzip" }));
+    ASSERT_TRUE(ParseTarReadableFormats("60416;133577283450000000;?;tar,gzip,iso", kTarSize, kTarTime, readable));
+    EXPECT_EQ(readable, (std::vector<std::wstring>{ L"tar", L"gzip", L"iso" }));
 }
 
 // Writing 7z needs reading it (Core refuses otherwise), so a list without sevenzip hides the item
@@ -1160,8 +1160,16 @@ TEST(TarCapabilitySnapshot, ListWithoutSevenZipHidesTheItemWhateverTheAnswer)
 TEST(TarCapabilitySnapshot, ReadableFormatsOfAMatchingSnapshot)
 {
     std::vector<std::wstring> readable;
-    ASSERT_TRUE(ParseTarReadableFormats("60416;133577283450000000;0;tar,gzip,bz2,rar", kTarSize, kTarTime, readable));
-    EXPECT_EQ(readable, (std::vector<std::wstring>{ L"tar", L"gzip", L"bz2", L"rar" }));
+    ASSERT_TRUE(ParseTarReadableFormats("60416;133577283450000000;0;tar,gzip,bz2,rar,iso", kTarSize, kTarTime, readable));
+    EXPECT_EQ(readable, (std::vector<std::wstring>{ L"tar", L"gzip", L"bz2", L"rar", L"iso" }));
+}
+
+// T-F442: every tar.exe Pakko can parse reads ISO, so a list without iso was written by a Pakko
+// before T-F442; trusted, it would hide every new format right after an update.
+TEST(TarCapabilitySnapshot, ListFromBeforeTheReadOnlyFormatsIsNotTrusted)
+{
+    std::vector<std::wstring> readable;
+    EXPECT_FALSE(ParseTarReadableFormats("60416;133577283450000000;1;tar,gzip,bz2,xz,rar,sevenzip", kTarSize, kTarTime, readable));
 }
 
 TEST(TarCapabilitySnapshot, NoReadableFormatsFromAnotherTarOrAnOlderFile)

@@ -124,8 +124,19 @@ internal sealed partial class TarSandboxScope : IDisposable
         FileStream archive = OpenArchive(archivePath);
 
         // T-F442: tar.exe reads an ISO cut before its root directory as an empty archive, exit 0.
-        // Checked on the handle tar.exe will read, so the verdict is about the same bytes.
-        if (ArchiveFormatDetector.IsDiscImageCut(archive))
+        // Checked on the handle tar.exe will read, so the verdict is about the same bytes. A read
+        // error (a failing USB stick or share) must not leave the handle open until finalization.
+        bool cut;
+        try
+        {
+            cut = ArchiveFormatDetector.IsDiscImageCut(archive);
+        }
+        catch
+        {
+            archive.Dispose();
+            throw;
+        }
+        if (cut)
         {
             archive.Dispose();
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive,
