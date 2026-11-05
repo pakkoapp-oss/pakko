@@ -87,6 +87,7 @@ The entire compression stack is part of the .NET Base Class Library — maintain
 | TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ read (v1.3) + create (v1.4) | `tar.exe` (Windows built-in), AppContainer-sandboxed for extraction |
 | RAR | ✅ read only, v1.3 | `tar.exe` (Windows built-in) — libarchive has no RAR writer |
 | 7z | ✅ read (v1.3) + create without a password (v1.8.1) | `tar.exe` (Windows built-in), where its libarchive has the 7z writer; methods LZMA2, LZMA, BZip2, Deflate, Copy |
+| ISO 9660, CAB, cpio, ar (`.deb`), `.Z`, lzip | ✅ read only, v1.10, where the installed `tar.exe` reads each (lzip not on Windows 10) | `tar.exe` (Windows built-in), AppContainer-sandboxed; a UDF image (most Windows install ISOs) is refused with the reason |
 | Password-protected ZIP | ✅ read (ZipCrypto, WinZip AES) and create (AES-256 only) | `System.IO.Compression` + .NET cryptography |
 | Encrypted 7z/RAR | ❌ detected and refused with a clear error | — |
 
@@ -115,7 +116,7 @@ Pakko closes gaps in Windows Explorer:
   risk-relevant features fleet-wide via a real ADMX template; see [`docs/POLICIES.md`](docs/POLICIES.md)
 
 Windows 11 23H2+ includes `tar.exe` (Microsoft-signed bsdtar), which Pakko uses — no third-party
-compression tools — to read RAR/7z/tar/gz/bz2/xz/zst/lzma, and to create tar-family archives
+compression tools — to read RAR/7z/tar/gz/bz2/xz/zst/lzma (and since v1.10 ISO, CAB, cpio, ar, .Z and lzip), and to create tar-family archives
 (plain tar plus the five compression-filter variants) and, where that `tar.exe` has the 7z
 writer, 7z archives without a password.
 

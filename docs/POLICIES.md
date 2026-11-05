@@ -46,9 +46,9 @@ an error.** Policies only take effect when explicitly set.
 | Value name | Type | Data | Effect |
 |---|---|---|---|
 | `EnforceMOTW` | `REG_DWORD` | `0` = disabled, `1` = all files, `2` = unsafe extensions only | Controls Mark-of-the-Web (`Zone.Identifier`) propagation to extracted files. Absent = Pakko's shipped default (`1`, all files) is unchanged. |
-| `AllowedFormats` | `REG_MULTI_SZ` | one format name per line — `zip`, `tar`, `gzip`, `bz2`, `xz`, `zstd`, `lzma`, `rar`, `sevenzip` | Whitelist. If set, only listed formats can be extracted, tested, listed/browsed, scanned or created. Absent = no restriction. |
+| `AllowedFormats` | `REG_MULTI_SZ` | one format name per line — `zip`, `tar`, `gzip`, `bz2`, `xz`, `zstd`, `lzma`, `rar`, `sevenzip`, and since 1.10 `iso`, `cab`, `cpio`, `ar`, `compress`, `lzip` | Whitelist. If set, only listed formats can be extracted, tested, listed/browsed, scanned or created. Absent = no restriction. |
 | `BlockedFormats` | `REG_MULTI_SZ` | same format name vocabulary as `AllowedFormats` | Blocklist. **Takes precedence over `AllowedFormats`** — a format listed in both is blocked. The Explorer menu hides the Extract/Open/Test/Scan items of a blocked format (plus "Add to X.zip" for `zip`, "Add to X.tar" for `tar`, "Add to X.7z" for `sevenzip`), T-F262. |
-| `DisableTarExtraction` | `REG_DWORD` | `0`/`1` | `1` = Pakko never spawns `tar.exe` at all — not even its startup version check (blocks RAR/7z/tar/tar.gz/tar.bz2/tar.xz/tar.zst/tar.lzma extraction, listing/browsing, scanning and creation outright, and hides the corresponding format options in the app's own UI; the Explorer menu hides the tar-family items, "Add to X.tar" and "Add to X.7z" too, T-F262). |
+| `DisableTarExtraction` | `REG_DWORD` | `0`/`1` | `1` = Pakko never spawns `tar.exe` at all — not even its startup version check (blocks RAR/7z/tar/tar.gz/tar.bz2/tar.xz/tar.zst/tar.lzma and the read-only ISO/CAB/cpio/ar/.Z/lzip extraction, listing/browsing, scanning and creation outright, and hides the corresponding format options in the app's own UI; the Explorer menu hides the tar-family items, "Add to X.tar" and "Add to X.7z" too, T-F262). |
 | `DisableRecoveryData` | `REG_DWORD` | `0`/`1` | `1` = Pakko's PAR2 recovery data is off (T-F275, Pakko 1.8): the app hides the option to add it, and `pakko a -rr` is refused with an error before any archive is written. Verifying and repairing from PAR2 files are part of the same feature and are turned off by the same policy: `pakko t` looks for no set, Explorer's "Verify with PAR2" and "Repair with PAR2" menu items are hidden, and the App shows no PAR2 line, checks no set in Test and answers a double-click on a `.par2` file with this refusal; `pakko r` refuses every path. |
 
 ### `EnforceMOTW` in detail
@@ -87,6 +87,12 @@ extensions directly:
 | `lzma` | `.lzma`, `.tar.lzma` |
 | `rar` | `.rar` (read-only in Pakko — no RAR creation) |
 | `sevenzip` | `.7z` (read, and created since Pakko 1.8.1 where Windows' tar.exe has the 7z writer, T-F342) |
+| `iso` | `.iso`, an ISO 9660 image (read-only since 1.10, T-F442; a UDF image, as most Windows install ISOs are, is refused whatever the policy) |
+| `cab` | `.cab` (read-only since 1.10) |
+| `cpio` | `.cpio` (read-only since 1.10) |
+| `ar` | `.deb`, `.ar` (the outer ar archive only; read-only since 1.10) |
+| `compress` | `.Z`, `.tar.Z`/`.taz` (read-only since 1.10) |
+| `lzip` | `.lz`, `.tar.lz`/`.tlz` (read-only since 1.10, where Windows' tar.exe reads it: not on Windows 10's 3.5.2) |
 
 If both lists mention a format, it is blocked. Leaving both absent means every format Pakko
 supports is available, same as today's shipped behavior. A typical restrictive deployment sets
@@ -94,6 +100,12 @@ only `BlockedFormats` (e.g. block `rar`,`sevenzip` to reduce third-party-parser 
 since those two formats route through `tar.exe`, a more complex parser than the built-in
 `System.IO.Compression` ZIP path — see `SECURITY.md`'s tar.exe trust model) rather than an
 exhaustive `AllowedFormats` list that has to be kept in sync with every future format Pakko adds.
+
+**A `BlockedFormats` list does not cover formats added after it was written.** Pakko 1.10 reads six
+more formats through `tar.exe` (`iso`, `cab`, `cpio`, `ar`, `compress`, `lzip`, T-F442), and a
+blocklist written for 1.9 lets them through. If the intent was "only these formats", either switch
+to `AllowedFormats` (new formats stay refused until listed) or add the six names to
+`BlockedFormats`. `DisableTarExtraction` covers them already.
 
 ### `DisableTarExtraction` in detail
 
