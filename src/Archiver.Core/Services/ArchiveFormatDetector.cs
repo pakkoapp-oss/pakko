@@ -80,6 +80,8 @@ public static class ArchiveFormatDetector
             Span<byte> header = stackalloc byte[262];
             int read = fs.Read(header);
             ArchiveFormat format = DetectFormatFromHeader(header, read);
+            if (format == ArchiveFormat.Unknown)
+                format = DetectDiscImage(fs);
             return format == ArchiveFormat.Unknown && FormatFromExtension(path) == ArchiveFormat.Lzma && IsLzmaAloneHeader(header, read)
                 ? ArchiveFormat.Lzma
                 : format;
@@ -111,7 +113,94 @@ public static class ArchiveFormatDetector
         if (IsXzSignature(header, read)) return ArchiveFormat.Xz;
         if (IsZstdSignature(header, read)) return ArchiveFormat.Zstd;
         if (IsTarSignature(header, read)) return ArchiveFormat.Tar;
+        if (IsCabSignature(header, read)) return ArchiveFormat.Cab;
+        if (IsCpioSignature(header, read)) return ArchiveFormat.Cpio;
+        if (IsArSignature(header, read)) return ArchiveFormat.Ar;
+        if (IsCompressSignature(header, read)) return ArchiveFormat.Compress;
+        if (IsLzipSignature(header, read)) return ArchiveFormat.Lzip;
         return ArchiveFormat.Unknown;
+    }
+
+    // T-F442: each signature is checked past its magic, so a text or data file that merely starts
+    // with the same bytes is not handed to tar.exe.
+
+    // "MSCF", a zero reserved field, and format version 1.3 at offset 24.
+    private static bool IsCabSignature(ReadOnlySpan<byte> h, int read) =>
+        read >= 26 && h[..4].SequenceEqual("MSCF"u8) && h[4..8].IndexOfAnyExcept((byte)0) < 0 && h[24] == 3 && h[25] == 1;
+
+    // ASCII cpio (odc "070707", newc "070701", crc "070702") and its next field in digits; the
+    // binary variant is not taken (a two-byte magic, and tar.exe writes odc/newc).
+    private static bool IsCpioSignature(ReadOnlySpan<byte> h, int read) =>
+        read >= 12
+            && (h[..6].SequenceEqual("070707"u8) || h[..6].SequenceEqual("070701"u8) || h[..6].SequenceEqual("070702"u8))
+            && h[6..12].IndexOfAnyExcept(HexDigits) < 0;
+
+    private static readonly System.Buffers.SearchValues<byte> HexDigits = System.Buffers.SearchValues.Create("0123456789ABCDEFabcdef"u8);
+
+    private static bool IsArSignature(ReadOnlySpan<byte> h, int read) =>
+        read >= 8 && h[..8].SequenceEqual("!<arch>\n"u8);
+
+    // 1F 9D, then a flags byte: 9 to 16 code bits, the two reserved bits clear.
+    private static bool IsCompressSignature(ReadOnlySpan<byte> h, int read) =>
+        read >= 3 && h[0] == 0x1F && h[1] == 0x9D && (h[2] & 0x60) == 0 && (h[2] & 0x1F) is >= 9 and <= 16;
+
+    // "LZIP" and version 1, the only one.
+    private static bool IsLzipSignature(ReadOnlySpan<byte> h, int read) =>
+        read >= 5 && h[..4].SequenceEqual("LZIP"u8) && h[4] == 1;
+
+    private const int DiscSectorSize = 2048;
+    private const int FirstVolumeDescriptor = 16 * DiscSectorSize;
+
+    // ECMA-167's volume recognition sequence lies in these sectors with the ISO 9660 descriptors.
+    private const int VolumeDescriptorsRead = 16;
+
+    // T-F442: an ISO 9660 or UDF image names itself in the descriptors from sector 16 on, each
+    // identifier at byte 1 of its sector. An NSR descriptor among them makes the image UDF,
+    // refused: libarchive reads only the ISO 9660 side, which on such an image is a readme or 8.3
+    // names (docs/DECISIONS.md, "T-F442 - scope and the measurements before the code").
+    private static ArchiveFormat DetectDiscImage(FileStream fs)
+    {
+        bool iso = false;
+        Span<byte> identifier = stackalloc byte[6];
+        for (int sector = 0; sector < VolumeDescriptorsRead; sector++)
+        {
+            long at = FirstVolumeDescriptor + (long)sector * DiscSectorSize;
+            if (at + identifier.Length > fs.Length)
+                break;
+            fs.Position = at;
+            fs.ReadExactly(identifier);
+            ReadOnlySpan<byte> id = identifier[1..];
+            if (id.SequenceEqual("NSR02"u8) || id.SequenceEqual("NSR03"u8))
+                return ArchiveFormat.Udf;
+            if (id.SequenceEqual("CD001"u8))
+                iso = true;
+            else if (!id.SequenceEqual("BEA01"u8) && !id.SequenceEqual("TEA01"u8) && !id.SequenceEqual("BOOT2"u8) && !id.SequenceEqual("CDW02"u8))
+                break;
+        }
+        return iso ? ArchiveFormat.Iso : ArchiveFormat.Unknown;
+    }
+
+    // ECMA-119 primary volume descriptor: the volume's size in logical blocks (both-endian, the
+    // little-endian half first) and the block size.
+    private const int VolumeSpaceSizeOffset = 80;
+    private const int LogicalBlockSizeOffset = 128;
+
+    /// <summary>
+    /// T-F442: true when <paramref name="archive"/> starts with an ISO 9660 primary volume
+    /// descriptor whose declared volume is longer than the file - an image cut short. tar.exe reads
+    /// one cut before its root directory as an empty archive with exit code 0 (measured, bsdtar
+    /// 3.8.9). False for anything else, including a descriptor that cannot be read.
+    /// </summary>
+    internal static bool IsDiscImageCut(FileStream archive)
+    {
+        Span<byte> descriptor = stackalloc byte[LogicalBlockSizeOffset + 2];
+        if (archive.Length < FirstVolumeDescriptor + descriptor.Length
+            || RandomAccess.Read(archive.SafeFileHandle, descriptor, FirstVolumeDescriptor) != descriptor.Length
+            || descriptor[0] != 1 || !descriptor[1..6].SequenceEqual("CD001"u8))
+            return false;
+        long blocks = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(descriptor[VolumeSpaceSizeOffset..]);
+        long blockSize = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(descriptor[LogicalBlockSizeOffset..]);
+        return blocks * blockSize > archive.Length;
     }
 
     private static bool IsZipSignature(ReadOnlySpan<byte> h, int read) =>

@@ -54,10 +54,10 @@ public sealed class TarCapabilitySnapshotTests : IDisposable
         TarCapabilitySnapshot.Format(1, 2, canCreate: false, ["tar", "gzip", "rar"]).Should().Be("1;2;0;tar,gzip,rar");
 
     [Theory]
-    [InlineData("bsdtar 3.5.2 - libarchive 3.5.2 zlib/1.2.5.f-ipp ", "tar,gzip")]
-    [InlineData("bsdtar 3.8.4 - libarchive 3.8.4 zlib/1.2.5.f-ipp cng/2.0 libb2/bundled ", "tar,gzip,rar")]
+    [InlineData("bsdtar 3.5.2 - libarchive 3.5.2 zlib/1.2.5.f-ipp ", "tar,gzip,iso,cab,cpio,ar,compress")]
+    [InlineData("bsdtar 3.8.4 - libarchive 3.8.4 zlib/1.2.5.f-ipp cng/2.0 libb2/bundled ", "tar,gzip,rar,iso,cab,cpio,ar,compress")]
     [InlineData("bsdtar 3.8.8 - libarchive 3.8.8 zlib/1.2.13 liblzma/5.8.1 bz2lib/1.0.8 libzstd/1.5.7",
-        "tar,gzip,bz2,xz,zstd,lzma,rar,sevenzip")]
+        "tar,gzip,bz2,xz,zstd,lzma,rar,sevenzip,iso,cab,cpio,ar,compress,lzip")]
     public void ReadableNames_FollowCoresRule(string version, string expected) =>
         string.Join(',', ArchiveFormatPolicy.TarReadableRegistryNames(TarVersionParser.Parse(version))).Should().Be(expected);
 
@@ -69,7 +69,7 @@ public sealed class TarCapabilitySnapshotTests : IDisposable
 
         TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: false, zlibOnly).Should().BeTrue();
 
-        File.ReadAllText(path).Should().Be(Expected(false) + ";tar,gzip");
+        File.ReadAllText(path).Should().Be(Expected(false) + ";tar,gzip,iso,cab,cpio,ar,compress");
     }
 
     private string TarCapabilitySnapshotPath() => Path.Combine(PackageData(), "LocalCache", TarCapabilitySnapshot.FileName);
@@ -85,7 +85,7 @@ public sealed class TarCapabilitySnapshotTests : IDisposable
 
         TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: null, ZlibOnly).Should().BeTrue();
 
-        File.ReadAllText(path).Should().Be($"{new FileInfo(_tar).Length};{File.GetLastWriteTimeUtc(_tar).ToFileTimeUtc()};?;tar,gzip");
+        File.ReadAllText(path).Should().Be($"{new FileInfo(_tar).Length};{File.GetLastWriteTimeUtc(_tar).ToFileTimeUtc()};?;tar,gzip,iso,cab,cpio,ar,compress");
     }
 
     [Theory]
@@ -98,7 +98,7 @@ public sealed class TarCapabilitySnapshotTests : IDisposable
 
         TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: null, ZlibOnly).Should().BeTrue();
 
-        File.ReadAllText(path).Should().Be(Expected(canCreate) + ";tar,gzip");
+        File.ReadAllText(path).Should().Be(Expected(canCreate) + ";tar,gzip,iso,cab,cpio,ar,compress");
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class TarCapabilitySnapshotTests : IDisposable
 
         TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: null, ZlibOnly).Should().BeTrue();
 
-        File.ReadAllText(path).Should().EndWith(";?;tar,gzip");
+        File.ReadAllText(path).Should().EndWith(";?;tar,gzip,iso,cab,cpio,ar,compress");
     }
 
     // No version: tar.exe gave no answer, which says nothing about what it reads.
@@ -137,7 +137,7 @@ public sealed class TarCapabilitySnapshotTests : IDisposable
         (await TarCapabilitySnapshot.RecordIfStaleAsync(new GroupPolicyOptions(), path, _tar, Probe)).Should().BeFalse();
 
         probes.Should().Be(1);
-        File.ReadAllText(path).Should().EndWith(";?;tar,gzip");
+        File.ReadAllText(path).Should().EndWith(";?;tar,gzip,iso,cab,cpio,ar,compress");
     }
 
     [Fact]

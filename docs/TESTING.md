@@ -274,6 +274,16 @@ rather than a prebuilt corpus; T-F50 still owns the full multi-format fixture se
 `TarSandboxedServiceCompressedFormatsTests.cs` and `TarSandboxedServiceExternalFormatsTests.cs`
 were renamed the same way.
 
+**T-F442, the read-only formats (`ReadOnlyTarFormatsTests.cs`, in both test projects).** The unit
+class covers detection (each signature and its near misses), the capabilities each format needs
+and the policy names. The integration class writes each sample at test time with this system's
+tar.exe (ISO 9660, cpio newc and odc, ar, compress, lzip) or `makecab.exe` (CAB) and runs Pakko's
+own path - extract, list, Test - for success and failure: a damaged member (Test fails for CAB and
+lzip, says "structure only" for the rest), a cut file, special entries and escaping names, a UDF
+image, a file named `.iso` with no image in it, and a policy block. Its expectation follows the
+installed tar.exe: a format it reads must work, one it does not must be skipped with a reason. Run
+it on both tar.exe builds (here and PakkoW10).
+
 ### Sandbox subsystem tests (T-F52, v1.4)
 
 Exercise the real Win32 AppContainer/ACL/Job-Object/Authenticode APIs directly — no mocks (this

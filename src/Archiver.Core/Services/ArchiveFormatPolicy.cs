@@ -175,7 +175,8 @@ public static class ArchiveFormatPolicy
         ArgumentNullException.ThrowIfNull(caps);
         ArchiveFormat[] tarFormats =
             [ArchiveFormat.Tar, ArchiveFormat.GZip, ArchiveFormat.Bz2, ArchiveFormat.Xz, ArchiveFormat.Zstd,
-             ArchiveFormat.Lzma, ArchiveFormat.Rar, ArchiveFormat.SevenZip];
+             ArchiveFormat.Lzma, ArchiveFormat.Rar, ArchiveFormat.SevenZip,
+             ArchiveFormat.Iso, ArchiveFormat.Cab, ArchiveFormat.Cpio, ArchiveFormat.Ar, ArchiveFormat.Compress, ArchiveFormat.Lzip];
         return [.. tarFormats.Where(format => IsSupportedByTar(format, caps)).Select(ArchiveFormatRegistryNames.ToRegistryName)];
     }
 
@@ -234,6 +235,11 @@ public static class ArchiveFormatPolicy
         ArchiveFormat.Lzma => caps.SupportsLzma,
         ArchiveFormat.Rar => caps.SupportsRar,
         ArchiveFormat.SevenZip => caps.Supports7z,
+        ArchiveFormat.Iso or ArchiveFormat.Cpio or ArchiveFormat.Ar or ArchiveFormat.Compress => caps.SupportsBuiltInReaders,
+        ArchiveFormat.Cab => caps.SupportsCab,
+        ArchiveFormat.Lzip => caps.SupportsLzip,
+        // T-F442: libarchive has no UDF reader; through tar.exe a UDF image is a readme or 8.3 names.
+        ArchiveFormat.Udf => false,
         _ => false,
     };
 
@@ -250,6 +256,9 @@ public static class ArchiveFormatPolicy
         ArchiveFormat.Lzma => CoreMessages.Text(MessageCode.FormatNotSupportedByTar, "LZMA", caps.Version),
         ArchiveFormat.Bz2 => CoreMessages.Text(MessageCode.FormatNotSupportedByTar, "bzip2", caps.Version),
         ArchiveFormat.GZip => CoreMessages.Text(MessageCode.FormatNotSupportedByTar, "gzip", caps.Version),
+        ArchiveFormat.Udf => CoreMessages.Text(MessageCode.FormatNotSupportedByTar, "UDF", caps.Version),
+        ArchiveFormat.Cab => CoreMessages.Text(MessageCode.FormatNotSupportedByTar, "CAB", caps.Version),
+        ArchiveFormat.Lzip => CoreMessages.Text(MessageCode.FormatNotSupportedByTar, "lzip", caps.Version),
         _ => CoreMessages.Text(MessageCode.ArchiveFormatNotSupportedByTar, caps.Version),
     };
 
