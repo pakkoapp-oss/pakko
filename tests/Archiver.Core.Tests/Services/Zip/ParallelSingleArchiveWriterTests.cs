@@ -320,14 +320,21 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
 
         int activeCount = 0;
         int maxActiveObserved = 0;
+        int startedCount = 0;
         using var cts = new CancellationTokenSource();
 
+        // T-F451: cancel once three items are under way (seven still wait), never after a timer
+        // that a loaded runner can outlast.
         Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressItem = async (item, ct) =>
         {
-            Interlocked.Increment(ref activeCount);
-            Interlocked.Exchange(ref maxActiveObserved, Math.Max(maxActiveObserved, activeCount));
+            int active = Interlocked.Increment(ref activeCount);
+            int seen = Volatile.Read(ref maxActiveObserved);
+            while (active > seen && Interlocked.CompareExchange(ref maxActiveObserved, active, seen) != seen)
+                seen = Volatile.Read(ref maxActiveObserved);
             try
             {
+                if (Interlocked.Increment(ref startedCount) >= 3)
+                    await cts.CancelAsync();
                 await Task.Delay(50, ct);
                 byte[] bytes = System.Text.Encoding.UTF8.GetBytes(item.EntryName);
                 using var ms = new MemoryStream(bytes);
@@ -344,9 +351,6 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         Task pipelineTask = ParallelSingleArchiveWriter.RunPipelineAsync(
             archivePath, items, compressItem, NeverCalledTempFileCompressor, windowCapacity: 3,
             totalBytes: 100, progress: null, reportError: _ => { }, cts.Token);
-
-        await Task.Delay(20); // let a few tasks start
-        cts.Cancel();
 
         Func<Task> act = async () => await pipelineTask;
         await act.Should().ThrowAsync<OperationCanceledException>();

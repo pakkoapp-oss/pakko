@@ -1920,7 +1920,9 @@ re-measured with T-F346's script before and after.
 
 ### T-F451 — `RunPipelineAsync_CancelledMidFlight_NoTasksLeftRunningAfterwards` races a timer (P3, flaky test)
 
-- [ ] **Status:** open. Failed once in a full local run on 2026-11-04 (T-F450's branch, nothing
+- [x] **Status:** fixed 2026-11-05: the third item to start cancels the run (seven still wait),
+  no timer; `maxActiveObserved` by compare-and-swap. 15 of 15 alone, the full run green.
+- **Before:** open. Failed once in a full local run on 2026-11-04 (T-F450's branch, nothing
   near the ZIP writer changed), then passed 5 of 5 alone. The test cancels after `Task.Delay(20)`
   while 10 items of 50 ms each run three at a time: under load the delay can outlast the whole
   pipeline, so no `OperationCanceledException` comes (cause inferred, the failing assertion was not
