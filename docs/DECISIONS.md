@@ -13739,6 +13739,14 @@ availability follows the installed tar.exe at run time.
   Not caught, exit 0: cpio newc, ISO 9660, ar and `.Z`. These four report "read to the end" only.
   tar.exe cannot write the crc cpio variant (`cpio:format` is no option). On 3.5.2 even an intact
   lzip fails: "unable to run program "lzip -d -q"" - lzip stays hidden there, as planned.
+- **An ISO cut before its root directory extracts as an empty archive with exit code 0**
+  (bsdtar 3.8.9; cut at 38,912 and 45,056 bytes of a 413,696-byte image; cut later, tar.exe reports
+  "Truncated input file", exit 1). So the sandbox scope compares the primary volume descriptor's
+  declared size (blocks times block size) with the file it opened, on that same handle, and refuses
+  a shorter image before tar.exe runs.
+- **BareGzip's signature list stays its own.** It asks a different question (does a decompressed
+  `.gz` hold anything tar.exe opens, T-F413) and already names cpio, ar, compress and lzip; the
+  detector is the one source for routing.
 - **Still to measure, in their own steps:** the "new app can open this type" prompt for `.iso` and
   `.cab` as package file types (step 4, on an installed package); xar's run-time probe (step 3).
 

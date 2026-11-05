@@ -123,6 +123,15 @@ internal sealed partial class TarSandboxScope : IDisposable
         // Opened first: nothing is created on disk for an archive that cannot be opened.
         FileStream archive = OpenArchive(archivePath);
 
+        // T-F442: tar.exe reads an ISO cut before its root directory as an empty archive, exit 0.
+        // Checked on the handle tar.exe will read, so the verdict is about the same bytes.
+        if (ArchiveFormatDetector.IsDiscImageCut(archive))
+        {
+            archive.Dispose();
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive,
+                "the disc image ends before the end of the volume it declares (the file is incomplete)"));
+        }
+
         // Owned by this method until the scope object exists (the very last statement) — any
         // failure before that must release them itself, since no Dispose() will ever run.
         SafeSidHandle? sid = null;

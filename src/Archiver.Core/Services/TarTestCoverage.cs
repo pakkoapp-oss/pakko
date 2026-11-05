@@ -28,7 +28,9 @@ internal static class TarTestCoverage
 
     internal static bool VerifiesContents(string archivePath) => ArchiveFormatDetector.Detect(archivePath) switch
     {
-        ArchiveFormat.SevenZip or ArchiveFormat.Bz2 => true,
+        // T-F442: CAB checks each data block and lzip its CRC32 (measured on a flipped byte); cpio,
+        // ISO 9660, ar and compress carry no checksum of the data.
+        ArchiveFormat.SevenZip or ArchiveFormat.Bz2 or ArchiveFormat.Cab or ArchiveFormat.Lzip => true,
         ArchiveFormat.Xz => HeadHas(archivePath, XzMagic, XzCheckOffset, XzCheckMask),
         ArchiveFormat.Zstd => HeadHas(archivePath, ZstdMagic, ZstdDescriptorOffset, ZstdContentChecksumFlag),
         _ => false,

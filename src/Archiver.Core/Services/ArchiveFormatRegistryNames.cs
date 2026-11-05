@@ -23,6 +23,13 @@ public static class ArchiveFormatRegistryNames
         ArchiveFormat.Lzma => "lzma",
         ArchiveFormat.Rar => "rar",
         ArchiveFormat.SevenZip => "sevenzip",
+        // T-F442: a UDF image is an .iso to an administrator; tar.exe refuses it apart.
+        ArchiveFormat.Iso or ArchiveFormat.Udf => "iso",
+        ArchiveFormat.Cab => "cab",
+        ArchiveFormat.Cpio => "cpio",
+        ArchiveFormat.Ar => "ar",
+        ArchiveFormat.Compress => "compress",
+        ArchiveFormat.Lzip => "lzip",
         _ => throw new ArgumentOutOfRangeException(nameof(format), format, null),
     };
 

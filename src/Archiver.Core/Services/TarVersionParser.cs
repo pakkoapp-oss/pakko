@@ -40,10 +40,14 @@ public static partial class TarVersionParser
         // method of nearly every 7z and the 7z writer's default. RAR needs no external library.
         // T-F403: only a library built into tar.exe counts; without one, tar.exe runs a program of
         // that name from its working folder or PATH (measured for zstd and bzip2).
+        bool hasZlib = versionOutput.Contains("zlib", StringComparison.OrdinalIgnoreCase);
         return new TarCapabilities
         {
             Version = version.ToString(),
-            SupportsGzip = versionOutput.Contains("zlib", StringComparison.OrdinalIgnoreCase),
+            SupportsGzip = hasZlib,
+            SupportsBuiltInReaders = true,
+            SupportsCab = hasZlib,
+            SupportsLzip = hasLzma,
             SupportsXz = hasLzma,
             SupportsLzma = hasLzma,
             SupportsBz2 = versionOutput.Contains("bz2lib", StringComparison.OrdinalIgnoreCase),

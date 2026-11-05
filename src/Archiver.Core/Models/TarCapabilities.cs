@@ -33,6 +33,18 @@ public sealed record TarCapabilities
     /// </summary>
     public bool SupportsGzip { get; init; } = true;
 
+    /// <summary>
+    /// T-F442: reads ISO 9660, cpio, ar and compress (.Z) - readers built into libarchive itself,
+    /// so any tar.exe that gave its version (both builds measured). False when it gave none.
+    /// </summary>
+    public bool SupportsBuiltInReaders { get; init; }
+
+    /// <summary>T-F442: reads CAB (its MSZIP blocks need zlib).</summary>
+    public bool SupportsCab { get; init; }
+
+    /// <summary>T-F442: reads lzip (needs liblzma built in; 3.5.2 runs an external <c>lzip</c> instead).</summary>
+    public bool SupportsLzip { get; init; }
+
     /// <summary>The raw <c>tar --version</c> output the probe parsed, for diagnostics.</summary>
     public string Version { get; init; } = string.Empty;
 }
