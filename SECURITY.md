@@ -447,8 +447,8 @@ block count and size. Each is offered only where
 the installed `tar.exe` reads it (lzip needs liblzma, absent from Windows 10's 3.5.2), never by
 starting an outside program (above).
 
-- **Hostile entries, on both builds** (3.8.9 and 3.5.2): a FIFO, a device node or a symlink in a cpio
-  or an ISO refuses the archive in the pre-scan, as in a tar; a CAB's absolute (`C:\abs.txt`) or
+- **Hostile entries, on both builds** (3.8.9 and 3.5.2): a FIFO, a device node or a symlink in a cpio,
+  and a FIFO or a symlink in an ISO, refuse the archive in the pre-scan, as in a tar; a CAB's absolute (`C:\abs.txt`) or
   `..` name is refused with nothing written. Both are in the integration tests.
 - **UDF images are refused.** libarchive has no UDF reader, and most Windows install ISOs carry a UDF
   volume with a small ISO 9660 stub beside it; extracting the stub would be a silent wrong result.
@@ -457,8 +457,7 @@ starting an outside program (above).
   the sandbox opened.
 - **Test checks contents only for CAB and lzip.** ISO, cpio, ar and `.Z` carry no data checksum, so
   their test says only the structure was checked.
-- **Group Policy:** an `AllowedFormats` list keeps them refused until listed; a `BlockedFormats` list
-  written before v1.10 lets them through (`docs/POLICIES.md`). `DisableTarExtraction` covers them.
+- **Group Policy:** a `BlockedFormats` list written before v1.10 does not name them; see `docs/POLICIES.md`.
 
 ### Trust Chain
 
