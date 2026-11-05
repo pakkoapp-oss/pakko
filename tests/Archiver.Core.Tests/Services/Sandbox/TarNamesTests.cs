@@ -81,7 +81,7 @@ public sealed class TarNamesTests
     public void Selection_CollapsedNameWithoutHeaders_RefusedEvenThoughTheDiskWouldAgree()
     {
         string[] listed = ["cafe.txt", "cafe.txt"];
-        TarNames.JudgeExtracted(listed, ["cafe.txt"]).Should().Be(TarListingVerdict.Faithful);
+        TarNames.JudgeExtracted(listed, ["cafe.txt"], []).Should().Be(TarListingVerdict.Faithful);
 
         Action act = () => TarNames.EnsureNamesCanDecide(TarNames.Judge(listed, null, ["cafe.txt"]));
 
@@ -91,7 +91,7 @@ public sealed class TarNamesTests
     [Fact]
     public void JudgeExtracted_FileTheListingDoesNotAccountFor_Lossy()
     {
-        TarNames.JudgeExtracted(["cafe.txt", "cafe.txt"], [Accented, "cafe.txt"])
+        TarNames.JudgeExtracted(["cafe.txt", "cafe.txt"], [Accented, "cafe.txt"], [])
             .Should().Be(new TarListingVerdict(TarNameTrust.Lossy, Accented));
     }
 
@@ -106,14 +106,34 @@ public sealed class TarNamesTests
     [InlineData("d//x.txt", "d/x.txt")]
     public void JudgeExtracted_NameWrittenDifferentlyByDesign_Faithful(string listed, string onDisk)
     {
-        TarNames.JudgeExtracted([listed], [onDisk]).Should().Be(TarListingVerdict.Faithful);
+        // T-F443: with every folder the file lies in, as the quarantine walk reports them.
+        string[] folders = [.. onDisk.Split('/').SkipLast(1).Select((_, i) => string.Join('/', onDisk.Split('/').Take(i + 1)))];
+        TarNames.JudgeExtracted([listed], [onDisk], folders).Should().Be(TarListingVerdict.Faithful);
     }
 
     [Fact]
     public void JudgeExtracted_FoldersAndRealDuplicates_Faithful()
     {
-        TarNames.JudgeExtracted(["d/", "d/a.txt", "d/a.txt"], ["d/a.txt"]).Should().Be(TarListingVerdict.Faithful);
-        TarNames.JudgeExtracted(["a.txt", "b.txt"], []).Should().Be(TarListingVerdict.Faithful);
+        TarNames.JudgeExtracted(["d/", "d/a.txt", "d/a.txt"], ["d/a.txt"], ["d"]).Should().Be(TarListingVerdict.Faithful);
+        TarNames.JudgeExtracted(["a.txt", "b.txt"], [], []).Should().Be(TarListingVerdict.Faithful);
+        TarNames.JudgeExtracted(["./d/", "./d/e/"], [], ["d", "D/E"]).Should().Be(TarListingVerdict.Faithful);
+        TarNames.JudgeExtracted(["d/e/f/x.txt"], ["d/e/f/x.txt"], ["d", "d/e", "d/e/f"]).Should().Be(TarListingVerdict.Faithful);
+    }
+
+    // T-F443: a folder listed by best fit, with no file in it, is seen by its folder alone.
+    [Fact]
+    public void JudgeExtracted_FolderTheListingDoesNotAccountFor_Lossy()
+    {
+        string accentedFolder = Accented[..^4];
+        TarNames.JudgeExtracted(["cafe/", "cafe/empty/"], [], [accentedFolder, accentedFolder + "/empty"])
+            .Should().Be(new TarListingVerdict(TarNameTrust.Lossy, accentedFolder));
+    }
+
+    // A folder only Pakko made (pre-created by a listed name) is predicted, not unaccounted.
+    [Fact]
+    public void JudgeExtracted_PreCreatedParentOfAListedFile_Faithful()
+    {
+        TarNames.JudgeExtracted(["d/x.txt"], ["d/x.txt"], ["d"]).Should().Be(TarListingVerdict.Faithful);
     }
 
     [Fact]

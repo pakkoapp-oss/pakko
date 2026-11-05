@@ -1839,7 +1839,10 @@ re-measured with T-F346's script before and after.
 
 ### T-F443 — A folder whose name tar.exe lists by best fit leaves an empty twin, and an empty subfolder lands under the listed name (P3, from T-F441, stream A)
 
-- [ ] **Status:** open. Measured 2026-10-31 (bsdtar 3.8.9, ACP 1251, `Extract_Everything_FolderListedByBestFit_OnlyTheTrueFolder`,
+- [x] **Status:** fixed 2026-11-05 (`docs/DECISIONS.md`, "T-F443"): folder entries come from the
+  quarantine when its folders disagree with the listing; the skipped test runs, with three more
+  cases; both tar.exe builds measured; `CLI-044` extended. The merge of two true roots is T-F453.
+- **Before:** open. Measured 2026-10-31 (bsdtar 3.8.9, ACP 1251, `Extract_Everything_FolderListedByBestFit_OnlyTheTrueFolder`,
   skipped until fixed): files land right, but folders are pre-created in the quarantine (T-F52), given
   their entries and their times by listed name, so the destination gets an empty `cafe/` beside the
   true accented folder, and an empty subfolder entry goes under `cafe/` instead of the true one.
@@ -1923,6 +1926,15 @@ re-measured with T-F346's script before and after.
   Inconclusive with its own reason (a new message code, 37 locales). Security boundary: plan mode,
   advisor at both ends, `SECURITY.md` only with the user's OK.
 - **Reported by:** T-F444's fresh reviewer, 2026-11-01.
+
+### T-F453 — Two true root folders that tar.exe lists by one best-fit name merge when the root is dropped (P3, from T-F443)
+
+- [ ] **Status:** open. Probed 2026-11-05 (bsdtar 3.8.9, ACP 1251): a tar with `caf<e-acute>/x.txt`
+  and `cafe/y.txt`, named `cafe.tar`, extracted with `EliminateDuplicateRootFolder`: the listing shows
+  one root `cafe`, the root is dropped, and `x.txt` and `y.txt` land side by side with no error.
+  Without the drop both folders arrive. Next: when the quarantine disagrees with the listing
+  (T-F443's verdict), decide the root shape on the quarantine's top level, or keep the root.
+- **Reported by:** T-F443's probe, 2026-11-05.
 
 ### T-F452 — A tar selection refused for a header mismatch says "code page" and "use ZIP" (P3, from T-F441)
 

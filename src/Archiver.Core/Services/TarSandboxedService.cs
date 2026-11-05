@@ -599,8 +599,13 @@ public sealed class TarSandboxedService : ITarService
         // With a selection, only the selected names are extracted: their folders' entries may not be.
         IEnumerable<string> extractedNames = (IEnumerable<string>?)tarMembers ?? allNames;
         // T-F420: by the name tar.exe gives the folder ("d?" is "d_"), or the creation fails.
+        var preCreated = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (string relativeDir in DirectoriesToPreCreate(extractedNames))
-            Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, EntryDiskName.AsTarExeWrites(relativeDir + "/")));
+        {
+            string onDisk = EntryDiskName.AsTarExeWrites(relativeDir + "/");
+            Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, onDisk));
+            preCreated.Add(onDisk.TrimEnd('/'));
+        }
 
 
         // T-F142: real byte-level progress for a single-archive extraction (progress is only
@@ -637,15 +642,20 @@ public sealed class TarSandboxedService : ITarService
         // name, so a file the listing does not account for was listed under another name. A filter's
         // verdicts were then made on the wrong names (refused); a duplicate group was two different
         // names (dropped: each file meets the conflict rule under its own name).
-        if (tarMembers is null && (context.EntryFilter is not null || duplicateGroups.Count > 0))
+        // T-F443: folders too, on every such run; a folder entry then comes from the quarantine.
+        List<string>? foldersFromDisk = null;
+        if (tarMembers is null)
         {
+            List<(string Path, bool IsFolder)> quarantinedItems = [.. WalkGuarded(scope.OutputDirectory!)
+                .Select(item => (QuarantineRelative(scope.OutputDirectory!, item.Path).Replace('\\', '/'), item.IsFolder))];
             TarListingVerdict onDisk = TarNames.JudgeExtracted(allNames,
-                EnumerateFilesGuarded(scope.OutputDirectory!).Select(f => QuarantineRelative(scope.OutputDirectory!, f).Replace('\\', '/')));
+                quarantinedItems.Where(i => !i.IsFolder).Select(i => i.Path), quarantinedItems.Where(i => i.IsFolder).Select(i => i.Path));
             if (onDisk.Trust != TarNameTrust.Faithful)
             {
                 if (context.EntryFilter is not null)
                     TarNames.EnsureNamesCanDecide(onDisk);
                 duplicateGroups = [];
+                foldersFromDisk = FoldersTarExeWrote(quarantinedItems, preCreated);
             }
         }
         (string? firstCopyDir, HashSet<string> firstCopies) = await ExtractFirstCopiesAsync(
@@ -659,7 +669,10 @@ public sealed class TarSandboxedService : ITarService
         var plan = new TarCommitPlan(staging, actualDest, stripRootPrefix,
             NameRegistry(fileEntries, actualDest, stripRootPrefix, context.Names ?? new ExtractionNameRegistry()),
             QuarantinedAs(fileEntries, EntryDiskName.Renames), QuarantinedAs(fileEntries, EntryDiskName.Trims));
-        RecordFolderTimes((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, scope.OutputDirectory!, staging);
+        if (foldersFromDisk is null)
+            RecordFolderTimes((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, scope.OutputDirectory!, staging);
+        else
+            RecordFolderTimesFromDisk(foldersFromDisk, plan, scope.OutputDirectory!);
 
         int totalFiles = 0;
         int extractedCount = 0;
@@ -715,7 +728,10 @@ public sealed class TarSandboxedService : ITarService
             }
         }
 
-        CreateFolderEntries((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, staging.Path);
+        if (foldersFromDisk is null)
+            CreateFolderEntries((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, staging.Path);
+        else
+            CreateFolderEntriesFromDisk(foldersFromDisk, plan);
 
         cancellationToken.ThrowIfCancellationRequested();
         Action<string>? committed = context.OnItemExtracted;
@@ -943,6 +959,56 @@ public sealed class TarSandboxedService : ITarService
             try
             {
                 staging.RecordFolderTime(relative, Directory.GetLastWriteTimeUtc(quarantined));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // best-effort: the folder keeps the time the commit gives it
+            }
+        }
+    }
+
+    // T-F443: the folders tar.exe wrote, by their names on disk, when the listing named some other
+    // way (best fit): every folder in the quarantine but those Pakko pre-created by a listed name.
+    // One of those that holds anything arrives with its content anyway; an empty one was only the
+    // listing's twin of a true folder. Accepted limit: a true empty folder whose entry follows its
+    // content and whose name is another folder's best fit goes with the twin (DECISIONS, "T-F443").
+    internal static List<string> FoldersTarExeWrote(IEnumerable<(string Path, bool IsFolder)> quarantined, IReadOnlySet<string> preCreated) =>
+        [.. quarantined.Where(item => item.IsFolder && !preCreated.Contains(item.Path)).Select(item => item.Path)];
+
+    // T-F443: where a folder from the quarantine lands, relative to actualDest - where a file of the
+    // same path would (TryMoveSingleEntryAsync); "" is the stripped root, which actualDest stands in for.
+    private static string FolderRelativeToDest(string quarantined, TarCommitPlan plan)
+    {
+        string relative = quarantined.Replace('/', Path.DirectorySeparatorChar);
+        if (plan.StripRootPrefix)
+        {
+            int sep = relative.IndexOf(Path.DirectorySeparatorChar);
+            if (sep < 0)
+                return string.Empty;
+            relative = relative[(sep + 1)..];
+        }
+        return Path.GetRelativePath(plan.ActualDest, Path.GetFullPath(Path.Combine(plan.ActualDest, relative)));
+    }
+
+    private static void CreateFolderEntriesFromDisk(IEnumerable<string> folders, TarCommitPlan plan)
+    {
+        foreach (string folder in folders)
+        {
+            string relative = FolderRelativeToDest(folder, plan);
+            if (relative.Length > 0 && relative != ".")
+                Directory.CreateDirectory(Path.Combine(plan.Staging.Path, relative));
+        }
+    }
+
+    private static void RecordFolderTimesFromDisk(IEnumerable<string> folders, TarCommitPlan plan, string quarantineDir)
+    {
+        foreach (string folder in folders)
+        {
+            string relative = FolderRelativeToDest(folder, plan);
+            try
+            {
+                string quarantined = Literal(Path.Combine(quarantineDir, folder.Replace('/', Path.DirectorySeparatorChar)));
+                plan.Staging.RecordFolderTime(relative == "." ? string.Empty : relative, Directory.GetLastWriteTimeUtc(quarantined));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -2630,7 +2696,11 @@ public sealed class TarSandboxedService : ITarService
     // didn't anticipate, not the primary safety mechanism.
     // T-F146: internal (was private) — AntivirusScanService walks the same quarantine output
     // directory shape and reuses this exact reparse-point-safe walk.
-    internal static IEnumerable<string> EnumerateFilesGuarded(string root)
+    internal static IEnumerable<string> EnumerateFilesGuarded(string root) =>
+        WalkGuarded(root).Where(item => !item.IsFolder).Select(item => item.Path);
+
+    // T-F443: the same walk, folders included (a reparse-point folder is neither yielded nor entered).
+    private static IEnumerable<(string Path, bool IsFolder)> WalkGuarded(string root)
     {
         var pending = new Stack<string>();
         pending.Push(root);
@@ -2652,10 +2722,13 @@ public sealed class TarSandboxedService : ITarService
             }
 
             foreach (string file in files)
-                yield return file;
+                yield return (file, false);
 
             foreach (string subDir in subDirs.Where(d => !ArchiveEntrySecurity.IsReparsePoint(d)))
+            {
+                yield return (subDir, true);
                 pending.Push(subDir);
+            }
         }
     }
 
