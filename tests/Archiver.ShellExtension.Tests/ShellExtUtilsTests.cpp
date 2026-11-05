@@ -1224,6 +1224,19 @@ TEST(TarCapabilitySnapshot, ReadOnlyFormatsFollowWhatThisTarReads)
     EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.tlz" }, policy));
 }
 
+TEST(TarCapabilitySnapshot, SnapshotOfTar352HidesLzipOnly)
+{
+    MenuPolicy policy;
+    policy.tarReadabilityKnown = ParseTarReadableFormats(
+        "60416;133577283450000000;?;tar,gzip,bz2,xz,rar,sevenzip,iso,cab,cpio,ar,compress",
+        kTarSize, kTarTime, policy.tarReadable);
+    ASSERT_TRUE(policy.tarReadabilityKnown);
+
+    EXPECT_TRUE(AllPathsAreSupportedArchive({ L"C:\\a.iso", L"C:\\b.cab", L"C:\\c.cpio", L"C:\\d.deb", L"C:\\e.tar.Z" }, policy));
+    EXPECT_FALSE(AllPathsAreSupportedArchive({ L"C:\\a.tar.lz" }, policy));
+    EXPECT_FALSE(AnyPathIsSupportedArchive({ L"C:\\a.tar.lz", L"C:\\b.tlz" }, policy));
+}
+
 TEST(MenuPolicy, BlockedReadOnlyFormatIsHidden)
 {
     MenuPolicy policy;

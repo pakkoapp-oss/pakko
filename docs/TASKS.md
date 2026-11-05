@@ -1820,8 +1820,11 @@ re-measured with T-F346's script before and after.
   installed tar.exe (the user, 2026-11-05). Step 2 done on a branch: Core detection, capabilities,
   policy names, a cut ISO refused, both test classes `ReadOnlyTarFormatsTests`. CLI (`pakko i`, `-stx`)
   merged with the run on PakkoW10. xar left out of v1; Explorer menu and file types done, checked on
-  the installed package here (`.iso`/`.cab` menu-only, `docs/DECISIONS.md`; SMOKE EXP-017). Next: the
-  menu on PakkoW10 at the release check, then the docs (POLICIES/ADMX, SPEC, README, site, SECURITY.md). The user, 2026-10-31: check extraction and the Explorer submenu
+  the installed package here (`.iso`/`.cab` menu-only, `docs/DECISIONS.md`; SMOKE EXP-017). Docs done
+  (POLICIES/ADMX, SPEC, README, site, SECURITY.md); the installed package's snapshot here names iso,
+  cab, cpio, ar, compress and lzip, and a C++ test parses a 3.5.2-shaped line (no lzip) and hides
+  `.tar.lz`. Left for the release: the menu on PakkoW10, the CHANGELOG line with the BlockedFormats
+  warning, the Store listing. The user, 2026-10-31: check extraction and the Explorer submenu
   for other archives that are not marked as Pakko's today (ISO, virtual machine disks, the list of a
   Store archiver: zip, rar, 7z, tar, wim, bz2, gz, xz, apfs, ar, arj, cab, cpio, cramfs, dmg, ext, fat,
   gpt, hfs, ihex, iso, lzh, lzma, mbr, nsis, ntfs, qcow2, rpm, squashfs, udf, uefi, vdi, vhd, vhdx, vmdk,
