@@ -88,11 +88,9 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
     // Folders are pre-created for the sandbox (T-F52), and folder entries and times applied, by
     // listed name: a folder listed by best fit must not leave a second, empty folder under that name.
     // Measured 2026-10-31 (bsdtar 3.8.9, ACP 1251): the destination held "cafe", "cafe/empty" and
-    // "caf<e-acute>" with x.txt - the files right, the empty folder under the listed name. T-F443.
-#pragma warning disable xUnit1004 // T-F443's red test, kept skipped until that task (docs/CONVENTIONS.md Won't-Fix)
-    [Integration(Skip = "T-F443: folders are still pre-created and applied by listed name")]
+    // "caf<e-acute>" with x.txt - the files right, the empty folder under the listed name. Fixed by T-F443.
+    [Integration]
     public async Task Extract_Everything_FolderListedByBestFit_OnlyTheTrueFolder()
-#pragma warning restore xUnit1004
     {
         foreach ((char accent, char plain) in new[] { ((char)0xE9, 'e'), ((char)0x101, 'a') })
         {
@@ -137,6 +135,125 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         result.Success.Should().BeFalse(TarCodePage.Describe());
         result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TarNameNotRepresentable);
     }
+
+    // T-F443: a folder with no entry of its own - tar.exe makes the true one itself (bsdtar 3.8.9 in
+    // the AppContainer, 2026-11-05), and the folder Pakko pre-created by the listed name stays behind.
+    [Integration]
+    public async Task Extract_Everything_ImplicitFolderListedByBestFit_OnlyTheTrueFolder()
+    {
+        if (await BestFitFolderArchiveAsync("implicit", f =>
+            [TarBuilder.PaxPath(f + "/x.txt"), new TarBuilder.Entry { Name = "placeholder.txt", Content = Encoding.ASCII.GetBytes("X") }])
+            is not { } fixture)
+            return;
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [fixture.Path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Errors.Should().BeEmpty(TarCodePage.Describe());
+        Everything(dest).Should().BeEquivalentTo([fixture.Folder, fixture.Folder + "/x.txt"], TarCodePage.Describe());
+    }
+
+    // T-F443: the folder's entry after its content, so Pakko pre-created the folder by its listed
+    // name and that name is also a listed folder entry; the twin must still not arrive.
+    [Integration]
+    public async Task Extract_Everything_FolderEntryAfterItsContent_OnlyTheTrueFolder()
+    {
+        if (await BestFitFolderArchiveAsync("after", f =>
+            [
+                TarBuilder.PaxPath(f + "/x.txt"),
+                new TarBuilder.Entry { Name = "placeholder.txt", Content = Encoding.ASCII.GetBytes("X") },
+                TarBuilder.PaxPath(f + "/"),
+                new TarBuilder.Entry { Name = "placeholder/", TypeFlag = '5' },
+                TarBuilder.PaxPath(f + "/empty/"),
+                new TarBuilder.Entry { Name = "placeholder2/", TypeFlag = '5' },
+            ]) is not { } fixture)
+            return;
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [fixture.Path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Errors.Should().BeEmpty(TarCodePage.Describe());
+        Everything(dest).Should().BeEquivalentTo(
+            [fixture.Folder, fixture.Folder + "/x.txt", fixture.Folder + "/empty"], TarCodePage.Describe());
+    }
+
+    // T-F443: the root dropped as the archive's own name (decided on the listed name), so a folder
+    // from the quarantine loses its root exactly as the files do.
+    [Integration]
+    public async Task Extract_Everything_BestFitRootDroppedAsTheArchiveName_FoldersStrippedLikeFiles()
+    {
+        if (await BestFitFolderArchiveAsync("root", f =>
+            [
+                TarBuilder.PaxPath(f + "/"),
+                new TarBuilder.Entry { Name = "placeholder/", TypeFlag = '5' },
+                TarBuilder.PaxPath(f + "/x.txt"),
+                new TarBuilder.Entry { Name = "placeholder.txt", Content = Encoding.ASCII.GetBytes("X") },
+                TarBuilder.PaxPath(f + "/empty/"),
+                new TarBuilder.Entry { Name = "placeholder2/", TypeFlag = '5' },
+            ]) is not { } fixture)
+            return;
+        string named = Path.Combine(_temp.Path, fixture.ListedFolder + ".tar");
+        File.Copy(fixture.Path, named);
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [named], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            EliminateDuplicateRootFolder = true,
+        });
+
+        result.Errors.Should().BeEmpty(TarCodePage.Describe());
+        Everything(dest).Should().BeEquivalentTo(["x.txt", "empty"], TarCodePage.Describe());
+    }
+
+    // A filter decides on folder names too; a folder listed by best fit makes them untrustworthy.
+    [Integration]
+    public async Task Extract_FilterOverABestFitFolder_RefusedNothingWritten()
+    {
+        if (await BestFitFolderArchiveAsync("filter", f =>
+            [
+                TarBuilder.PaxPath(f + "/"),
+                new TarBuilder.Entry { Name = "placeholder/", TypeFlag = '5' },
+                new TarBuilder.Entry { Name = "plain.txt", Content = Encoding.ASCII.GetBytes("P") },
+            ]) is not { } fixture)
+            return;
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [fixture.Path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            EntryFilter = (path, _) => path != "other.txt",
+        });
+
+        result.Success.Should().BeFalse(TarCodePage.Describe());
+        WrittenFiles(dest).Should().BeEmpty();
+    }
+
+    private sealed record FolderFixture(string Path, string Folder, string ListedFolder);
+
+    // The entries built around "caf<accent>"; null when this machine's page carries that name.
+    private async Task<FolderFixture?> BestFitFolderArchiveAsync(string tag, Func<string, TarBuilder.Entry[]> entries)
+    {
+        foreach ((char accent, char plain) in new[] { ((char)0xE9, 'e'), ((char)0x101, 'a') })
+        {
+            string folder = "caf" + accent;
+            string path = Path.Combine(_temp.Path, $"{tag}-{(int)accent:x}.tar");
+            TarBuilder.WriteTar(path, entries(folder));
+            ArchiveListResult list = await _sut.ListEntriesAsync(path);
+            if (list.Success && list.Entries.Any(e => e.Path.StartsWith("caf" + plain, StringComparison.Ordinal)))
+                return new FolderFixture(path, folder, "caf" + plain);
+        }
+        return null;
+    }
+
+    private static string[] Everything(string dest) =>
+        [.. Directory.GetFileSystemEntries(dest, "*", SearchOption.AllDirectories).Select(d => Path.GetRelativePath(dest, d).Replace(Path.DirectorySeparatorChar, '/'))];
 
     private sealed record Fixture(string Path, string Accented, string Plain);
 

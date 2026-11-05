@@ -648,5 +648,16 @@ Add-SmokeStep 'CLI-044' {
     $accentText = Get-Content -LiteralPath (Join-Path $o3 $chosen.Accented) -Raw -ErrorAction SilentlyContinue
     $plainText = Get-Content -LiteralPath (Join-Path $o3 $chosen.Plain) -Raw -ErrorAction SilentlyContinue
     Assert-Smoke ($run.ExitCode -eq 0 -and $accentText -eq 'ACCENT' -and $plainText -eq 'PLAIN') "x everything: exit $($run.ExitCode), '$accentText' '$plainText' $($run.Text)"
-    "$($chosen.Plain) twice in the listing; selection and filter refused, everything extracted"
+
+    # T-F443: a folder listed by best fit, with an empty subfolder - only the true folder arrives.
+    $trueFolder = $chosen.Accented.Substring(0, $chosen.Accented.Length - 4)
+    $folderTar = Join-Path $folder 'folder.tar'
+    New-TarFile -Path $folderTar -Entries @(
+        @{ Name = "$trueFolder/"; Folder = $true }, @{ Name = "$trueFolder/x.txt"; Content = 'X' }, @{ Name = "$trueFolder/empty/"; Folder = $true })
+    $o4 = Join-Path $folder 'o4'
+    $run = Invoke-Pakko @('x', $folderTar, "-o$o4")
+    $folders = @(Get-ChildItem -LiteralPath $o4 -Recurse -Directory -ErrorAction SilentlyContinue | ForEach-Object { [System.IO.Path]::GetRelativePath($o4, $_.FullName) }) | Sort-Object
+    $expected = @($trueFolder, (Join-Path $trueFolder 'empty')) | Sort-Object
+    Assert-Smoke ($run.ExitCode -eq 0 -and ($folders -join '|') -ceq ($expected -join '|')) "x a best-fit folder: exit $($run.ExitCode), folders '$($folders -join '|')' $($run.Text)"
+    "$($chosen.Plain) twice in the listing; selection and filter refused, everything extracted, no folder twin"
 }

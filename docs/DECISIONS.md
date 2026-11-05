@@ -13702,6 +13702,41 @@ PakkoW10); 3.8.9's xar and lzip samples were also read on 3.5.2.
   capability snapshot, the Explorer menu and the manifest's file types; `SECURITY.md` names the new
   parser surface (each one inside tar.exe's sandbox).
 
+## T-F443 - a folder tar.exe lists by best fit: folder entries from the quarantine (2026-11-05)
+
+- **Cause.** Files moved from the quarantine under their true names, but folder entries (the empty
+  ones, and every folder's time) were made from the listing: `cafe/` and `cafe/empty/` for a true
+  `caf<e-acute>/`. The destination got an empty `cafe/` twin with the empty subfolder in it.
+- **Fix.** `TarNames.JudgeExtracted` also compares the quarantine's folders with the predicted ones
+  (every listed folder and every folder a listed name lies in, through `AsTarExeWrites`), on every
+  run without a member list, not only with a filter or a duplicate group. One verdict decides all
+  three: a filter is refused, a duplicate group dropped, and folder entries come from the quarantine
+  (`FoldersTarExeWrote`): every folder there but those Pakko pre-created by a listed name. A
+  pre-created folder holding anything arrives with its content anyway; an empty one was the twin.
+  Each lands where a file of the same path would (root strip, `GetFullPath`), its time read through
+  the long-path prefix. A faithful listing keeps the old path untouched.
+- **Accepted limit.** A true empty folder whose entry follows its content, and whose name is another
+  folder's best fit (a genuine `cafe/` beside `caf<e-acute>/x.txt`), was pre-created and holds nothing:
+  it goes with the twin. Telling them apart needs the header names, readable for plain and gzip tar
+  only; not worth it for this shape.
+- **Measured on both builds** (a-macron `caf<a-macron>/`, a branch Native AOT `pakko`):
+
+  | Case | Windows 11 26300, bsdtar 3.8.9, ACP 1251 | Windows 10 19045, bsdtar 3.5.2, ACP 1252 (PakkoW10) |
+  |---|---|---|
+  | folder entry first, `x.txt`, `empty/` | true folder and `empty`, no twin | same |
+  | no folder entry, `x.txt` only | true folder, no twin | same |
+  | folder entry after its content | true folder and `empty`, no twin | same |
+
+  The folder's time: kept when its entry comes first; when it comes after its content tar.exe does not
+  set it (the folder already exists), as for any ASCII name (T-F298).
+- **T-F52's premise does not hold here.** With no folder entry, both tar.exe builds created the true
+  folder themselves inside the AppContainer; the one Pakko pre-created by the listed name was not
+  used. Pre-creation stays (T-F52 found a case where it was needed); dropping it, which would remove
+  the twin at its root, is a measurement of its own, not part of this task.
+- **Found by the probe:** with the root dropped as the archive's name, a true `caf<e-acute>/` and a
+  true `cafe/` merge into one destination silently (the single-root decision sees the collapsed
+  listed names). Opened as T-F453.
+
 ## T-F441 and T-F424 - one owner per text boundary; tar.exe's best-fit names (2026-10-31)
 
 **Why.** Name-encoding bugs keep returning (T-F204, T-F215, T-F234, T-F238, T-F244, T-F266, T-F283,

@@ -106,13 +106,28 @@ internal static class TarNames
     /// <paramref name="quarantinedFiles"/>: paths relative to the quarantine's output folder, '/'
     /// between parts. Only valid after a run without a member list: a selection of "cafe.txt"
     /// puts only the real "cafe.txt" on disk, which agrees with any listing.
+    /// T-F443: <paramref name="quarantinedFolders"/> the same way, against every listed folder and
+    /// every folder a listed name lies in (Pakko pre-creates only those), so a folder listed by best
+    /// fit is seen even when no file lies in it.
     /// </summary>
-    public static TarListingVerdict JudgeExtracted(IReadOnlyList<string> listed, IEnumerable<string> quarantinedFiles)
+    public static TarListingVerdict JudgeExtracted(
+        IReadOnlyList<string> listed, IEnumerable<string> quarantinedFiles, IEnumerable<string> quarantinedFolders)
     {
-        var predicted = new HashSet<string>(
-            listed.Where(name => !name.EndsWith('/')).Select(name => EntryDiskName.AsTarExeWrites(EntryDiskName.StripLeadingDotSlash(name))),
-            StringComparer.OrdinalIgnoreCase);
-        string? unaccounted = quarantinedFiles.FirstOrDefault(file => !predicted.Contains(file));
+        var predictedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var predictedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string name in listed)
+        {
+            string onDisk = EntryDiskName.AsTarExeWrites(EntryDiskName.StripLeadingDotSlash(name));
+            string path = onDisk.TrimEnd('/');
+            if (!name.EndsWith('/'))
+                predictedFiles.Add(path);
+            else if (path.Length > 0)
+                predictedFolders.Add(path);
+            for (int sep = path.LastIndexOf('/'); sep > 0; sep = path.LastIndexOf('/', sep - 1))
+                predictedFolders.Add(path[..sep]);
+        }
+        string? unaccounted = quarantinedFiles.FirstOrDefault(file => !predictedFiles.Contains(file))
+            ?? quarantinedFolders.FirstOrDefault(folder => !predictedFolders.Contains(folder));
         return unaccounted is null ? TarListingVerdict.Faithful : new TarListingVerdict(TarNameTrust.Lossy, unaccounted);
     }
 

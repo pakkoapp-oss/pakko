@@ -500,9 +500,6 @@ Won't-fix categories recorded so far:
 - **S3267 ("use Where") on `TarNames.JudgeByRepeats`'s loop** (T-F440): the loop's condition adds
   each name to the set it checks; a `Where` would hide that side effect in a lambda. Marked
   `// NOSONAR: S3267` on the `foreach`.
-- **xUnit1004 (skipped test) on `TarSandboxedServiceBestFitNameTests`'s folder case** (T-F440):
-  T-F443's own red test, skipped until that task lands; deleting it would lose the measured case.
-  `#pragma warning disable xUnit1004` around it (an `external_roslyn` rule); T-F443 removes both.
 - **CodeQL `cs/ecb-encryption` ("Encryption using ECB") on `AesCtrKeystream.cs`'s
   `_aes.Mode = CipherMode.ECB`** (T-F188; moved from `WinZipAesReader.cs` into the shared
   `Services/Zip/Decryption/AesCtrKeystream.cs` by T-F193, which re-raised it as a new alert): this

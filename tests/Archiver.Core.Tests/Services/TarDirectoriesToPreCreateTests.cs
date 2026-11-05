@@ -24,4 +24,20 @@ public sealed class TarDirectoriesToPreCreateTests
     {
         TarSandboxedService.DirectoriesToPreCreate(names).Should().BeEquivalentTo(expected);
     }
+
+    // T-F443: with a listing by best fit, folder entries come from the quarantine, without the
+    // folders Pakko pre-created by listed names (case-insensitive, as NTFS names are).
+    [Fact]
+    public void FoldersTarExeWrote_EveryQuarantinedFolderButThePreCreated()
+    {
+        string accented = "caf" + (char)0xE9;
+        (string, bool)[] quarantined =
+        [
+            ("cafe", true), (accented, true), (accented + "/x.txt", false), (accented + "/empty", true),
+            ("Sub", true), ("Sub/y.txt", false), ("z.txt", false),
+        ];
+
+        TarSandboxedService.FoldersTarExeWrote(quarantined, new HashSet<string>(["cafe", "sub"], StringComparer.OrdinalIgnoreCase))
+            .Should().Equal(accented, accented + "/empty");
+    }
 }
