@@ -173,8 +173,9 @@ Group Policy/ADMX support are all implemented and on-device verified. Per-releas
   manual extract, climb past the archive root into the real filesystem
 - ✅ RAR/7z/tar-family extraction runs inside an AppContainer sandbox — quarantine staging, ACL'd
   output directory, Job Object process limits, no network capability
-- ✅ Test for every format — the contents of 7z, tar.bz2, and tar.xz/tar.zst written with a check
-  are verified; tar, tar.gz, tar.lzma and RAR get a structure check that says so
+- ✅ Test for every format — the contents of 7z, tar.bz2, tar.xz/tar.zst written with a check, CAB
+  and lzip are verified; tar, tar.gz, tar.lzma, RAR, ISO, cpio, ar and .Z get a structure check that
+  says so
 - ✅ Group Policy / ADMX support — see [`docs/POLICIES.md`](docs/POLICIES.md)
 - ✅ Full automated test suite, run on every push in CI (see the Build Status badge above)
 

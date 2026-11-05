@@ -13767,6 +13767,14 @@ availability follows the installed tar.exe at run time.
   `.tar.lz` are compound names (a folder for `a.tar.Z` is `a`). Not `.a` (static libraries) or `.pkg`.
   Lower case in the manifest, matched without case everywhere. A format this tar.exe does not read
   (lzip on 3.5.2) is hidden by the snapshot as before (T-F403), and a blocked one by policy.
+- **A bare `.Z` or `.lz` (one compressed file, no archive inside) is refused with tar.exe's reason.**
+  The `.z` and `.lz` names must be in the menu for `.tar.Z` and `.tar.lz`, so Extract is offered on
+  `notes.txt.Z` too. Measured 2026-11-05 (bsdtar 3.8.9, samples from a hand-written LZW encoder and
+  Python's raw LZMA1 in an lzip member, both checked by wrapping a real tar that tar.exe then read):
+  `pakko x` and `t` exit 2 with "Unrecognized archive format", nothing written. 7-Zip would
+  decompress them; Pakko cannot the way it does a bare `.gz` (T-F413), which .NET decompresses in
+  process: there is no compress or lzip decoder in .NET, and writing one would be the in-process
+  parser this design avoids. Accepted, like a `.gz` of an unknown archive.
 - **`.iso` and `.cab` are menu-only, not Pakko file types.** Measured on the installed package
   (Windows 11 26300, 1.9.0.3): with `.iso` in `archivefile`, a double-click on an ISO no longer
   mounted it but opened "Choose an app to open this .iso file" with Pakko marked "New". Without it
