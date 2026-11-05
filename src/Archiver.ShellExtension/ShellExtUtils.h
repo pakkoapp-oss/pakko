@@ -209,7 +209,8 @@ bool ParseTarReadableFormats(const std::string& verdict, ULONGLONG tarSize, ULON
     std::vector<std::wstring>& readable);
 
 // Returns true iff path ends with a non-ZIP extension Archiver.Core can extract via ITarService
-// (rar, 7z, tar, gz, tgz, bz2, tbz2, xz, txz, zst, tzst, lzma - case-insensitive). Extension-only,
+// (rar, 7z, tar, gz, tgz, bz2, tbz2, xz, txz, zst, tzst, lzma, and the T-F442 read-only formats -
+// case-insensitive; kSupportedNonZipArchiveExtensions is the list). Extension-only,
 // no content sniffing - mirrors Archiver.App/ViewModels/MainViewModel.cs's _extractableTypes
 // allowlist (see DECISIONS.md's T-F86 entry for why an allowlist, not NanaZip's exclusion-list
 // approach, and why extension-only, not magic-byte, at gating time).

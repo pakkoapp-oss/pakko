@@ -39,14 +39,16 @@ static bool HasZipExtension(const std::wstring& path)
 // magic-byte, at gating time.
 static const wchar_t* const kSupportedNonZipArchiveExtensions[] = {
     L".rar", L".7z", L".tar", L".gz", L".tgz", L".bz2", L".tbz2",
-    L".xz", L".txz", L".zst", L".tzst", L".lzma"
+    L".xz", L".txz", L".zst", L".tzst", L".lzma",
+    // T-F442: read-only through tar.exe.
+    L".iso", L".cab", L".cpio", L".deb", L".ar", L".z", L".taz", L".lz", L".tlz"
 };
 
 // T-F103: kept in sync with Archiver.Core/Services/ArchiveNaming.cs's compound extension list.
 // Path.GetFileNameWithoutExtension-style single-dot stripping leaves ".tar" on the end of
 // "archive.tar.gz" — these must be stripped as a unit before falling back to the single-dot rule.
 static const wchar_t* const kCompoundArchiveExtensions[] = {
-    L".tar.gz", L".tar.bz2", L".tar.xz", L".tar.zst", L".tar.lzma"
+    L".tar.gz", L".tar.bz2", L".tar.xz", L".tar.zst", L".tar.lzma", L".tar.z", L".tar.lz"
 };
 
 static bool EndsWithCaseInsensitive(const std::wstring& value, const wchar_t* suffix)
@@ -242,6 +244,7 @@ std::wstring GetFormatRegistryName(const std::wstring& path)
         { L".tar", L"tar" }, { L".gz", L"gzip" }, { L".tgz", L"gzip" }, { L".bz2", L"bz2" },
         { L".tbz2", L"bz2" }, { L".xz", L"xz" }, { L".txz", L"xz" }, { L".zst", L"zstd" },
         { L".tzst", L"zstd" }, { L".lzma", L"lzma" }, { L".rar", L"rar" }, { L".7z", L"sevenzip" },
+        { L".iso", L"iso" }, { L".cab", L"cab" }, { L".cpio", L"cpio" }, { L".deb", L"ar" }, { L".ar", L"ar" }, { L".z", L"compress" }, { L".taz", L"compress" }, { L".lz", L"lzip" }, { L".tlz", L"lzip" },
     };
     const wchar_t* pExt = PathFindExtensionW(path.c_str());
     if (pExt == nullptr || *pExt == L'\0') return {};

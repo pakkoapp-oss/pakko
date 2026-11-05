@@ -13,6 +13,11 @@ public sealed partial class FormatListConsistencyTests
 {
     private static readonly string RepoRoot = FindRepoRoot();
 
+    // T-F442: Windows opens these itself (an ISO mounts, a CAB opens as a folder). Registered as
+    // Pakko's file types, the next double-click on one asked "which app" instead of mounting it
+    // (measured 2026-11-05), so they are in the Explorer menu but not in the manifest.
+    private static readonly string[] MenuOnlyExtensions = [".iso", ".cab"];
+
     private static string ShellExtUtilsSource =>
         File.ReadAllText(Path.Combine(RepoRoot, "src", "Archiver.ShellExtension", "ShellExtUtils.cpp"));
 
@@ -59,7 +64,13 @@ public sealed partial class FormatListConsistencyTests
             .Where(e => e.Name.LocalName == "FileType")
             .Select(e => e.Value.Trim());
 
-        fileTypes.Should().BeEquivalentTo(ArchiveFormatDetector.RecognizedExtensions);
+        fileTypes.Should().BeEquivalentTo(ArchiveFormatDetector.RecognizedExtensions.Except(MenuOnlyExtensions));
+    }
+
+    [Fact]
+    public void MenuOnlyExtensions_AreStillRecognized()
+    {
+        ArchiveFormatDetector.RecognizedExtensions.Should().Contain(MenuOnlyExtensions);
     }
 
     [Fact]

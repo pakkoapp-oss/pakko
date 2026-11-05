@@ -36,7 +36,8 @@ param(
 # standalone pakko.exe and the installed package in the leading sub-authorities, but both end
 # with these four (observed 2026-09-24 on both).
 $sandboxSidPattern = '^S-1-15-2-.*-3482888831-986213358-2090939803-3632948546$'
-$archiveExtensions = @('.rar', '.7z', '.tar', '.gz', '.tgz', '.bz2', '.tbz2', '.xz', '.txz', '.zst', '.tzst', '.lzma')
+$archiveExtensions = @('.rar', '.7z', '.tar', '.gz', '.tgz', '.bz2', '.tbz2', '.xz', '.txz', '.zst', '.tzst', '.lzma',
+    '.iso', '.cab', '.cpio', '.deb', '.ar', '.z', '.taz', '.lz', '.tlz')
 
 $found = 0
 foreach ($root in $Path) {
