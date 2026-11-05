@@ -235,6 +235,41 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         WrittenFiles(dest).Should().BeEmpty();
     }
 
+    // T-F443 review: a folder Pakko pre-creates by a name Windows trims ("d." made as "d") is not
+    // evidence about tar.exe's names; a faithful archive with a filter or a real duplicate still extracts.
+    // A trailing space is T-F454: tar.exe cannot make "d " beside Pakko's "d", on main as well.
+    [TarIntegrationTheory]
+    [InlineData("d.")]
+    public async Task Extract_ImplicitFolderWindowsTrims_FilterAndDuplicateStillWork(string folder)
+    {
+        string path = Path.Combine(_temp.Path, $"trim-{(int)folder[^1]:x}.tar");
+        TarBuilder.WriteTar(path,
+        [
+            new TarBuilder.Entry { Name = folder + "/x.txt", Content = Encoding.ASCII.GetBytes("1") },
+            new TarBuilder.Entry { Name = "y.txt", Content = Encoding.ASCII.GetBytes("A") },
+            new TarBuilder.Entry { Name = "y.txt", Content = Encoding.ASCII.GetBytes("B") },
+        ]);
+
+        ArchiveResult filtered = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = NewDestination(), Mode = ExtractMode.SingleFolder,
+            EntryFilter = (_, _) => true,
+        });
+        string dest = NewDestination();
+        ArchiveResult everything = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Rename,
+        });
+
+        filtered.Errors.Should().BeEmpty(string.Join(" | ", filtered.Errors.Select(e => e.Message)));
+        filtered.Success.Should().BeTrue();
+        everything.Errors.Should().BeEmpty(TarCodePage.Describe());
+        // The duplicate group stands (T-F171): the first copy takes the name, the last one is renamed.
+        File.ReadAllText(Path.Combine(dest, "y.txt")).Should().Be("A", TarCodePage.Describe());
+        File.ReadAllText(Path.Combine(dest, "y (1).txt")).Should().Be("B", TarCodePage.Describe());
+    }
+
     private sealed record FolderFixture(string Path, string Folder, string ListedFolder);
 
     // The entries built around "caf<accent>"; null when this machine's page carries that name.
