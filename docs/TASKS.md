@@ -63,6 +63,7 @@ TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating sessi
 | F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
 | G long-open umbrellas (added 2026-10-31, the agent's pick) | T-F254 (regional display language: pack and sign-out on the PakkoW10 VM, not the user's machine), T-F91 (`ru-RU` falls back to en-US, on the VM; the native-speaker criterion replaced by an agent back-translation pass, since there are no native reviewers, the user's standing word), T-F328's leftovers (quote, dash and apostrophe normalisation), T-F202's light theme, en-US and tray (through the `windows` MCP, as `APP-013` and `EXP-008` already switched theme and language), T-F329 part 5 (Store screenshots retaken after D changes the window) | VM, `.resw`/`.resx`/`Localization.cpp` (after C and D's strings), `docs/assets/store/` | after C and D merge |
 | H formats tar.exe reads but Pakko does not offer (added 2026-10-31, the user) | T-F442 (measure first, per tar.exe build; then detector, policy names, capability snapshot, Explorer menu, file associations) | `ArchiveFormatDetector`, `ArchiveFormatPolicy`, `TarCapabilitySnapshot`, `ShellExtUtils.cpp`, the manifest | measurement first; plan mode + advisor at both ends (new untrusted-input formats, the manifest) |
+| I opened during the wave (added 2026-11-06, the user: "the tasks opened during it, small fixes where possible") | Small fixes first: T-F456 (a flaky OperationUi test), T-F457 items 3-4 (`.tlz` as tar.lzma; `-stxudf`), T-F453 (two true roots under one best-fit name), T-F452 (its own message for a header mismatch, 37 locales). Then: T-F461 (the folder shapes still refused; measure on 3.5.2 and in the sandbox first), T-F457 items 1, 2 and 5 (decide or measure), T-F445 (pool threads per launch; measure first), T-F459 (`TESTING.md` regrouped, docs only) | as each task says | T-F445: plan mode + advisor at both ends (sandbox code); each fix tests first, both tar builds where tar.exe decides |
 | E on device, release | `APP-027`, `APP-028`, `APP-030`, `APP-014`, `OPW-*`, the new taskbar/tray rows, the release-tier smoke, `STO-005` as a real Store update | `docs/SMOKE.md`, `scripts/smoke/` | after A-D merge |
 
 Decisions taken with the plan (the agent, 2026-10-31): T-F432 covers the App's taskbar button, the
@@ -74,7 +75,7 @@ cleared when the summary shows. T-F434: recycle each fully processed, unchanged 
 source keeps only itself (written into `docs/SPEC.md`), not the others. T-F393 stays deferred
 (25 of 25 tries opened the dialog).
 
-Order: A, B, C and D's code in parallel (T-F428, T-F434 and T-F432 after their plans); **no test
+Stream I goes before E, so the device checks see its fixes (the agent, 2026-11-06). Order: A, B, C and D's code in parallel (T-F428, T-F434 and T-F432 after their plans); **no test
 runs, smoke or device checks while the user's PC is busy** (the user, 2026-10-31: the smoke runs
 later, after the fixes); then E on the device, the user's elevated checks batched right before the
 release, the release (`.claude/rules/ci.md`) and the Store submission with the sv-se lists typed into
