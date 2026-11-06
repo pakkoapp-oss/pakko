@@ -39,7 +39,7 @@
   "image": "https://pakkoapp-oss.github.io/pakko/assets/og-image.png",
   "description": "Архіватор для Windows з відкритим кодом для ZIP, TAR, RAR і 7-Zip, побудований на власних API стиснення .NET та ізольованій копії вбудованого tar.exe.",
   "applicationCategory": "UtilitiesApplication",
-  "operatingSystem": "Windows 10 1809+, Windows 11",
+  "operatingSystem": "Windows 10 version 2004+, Windows 11",
   "license": "https://github.com/pakkoapp-oss/pakko/blob/main/LICENSE",
   "downloadUrl": "https://github.com/pakkoapp-oss/pakko/releases/latest",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -59,7 +59,7 @@
       <a class="hide-xs" href="#why">Чому</a>
       <a class="hide-xs" href="#features">Можливості</a>
       <a class="hide-xs" href="#download">Завантажити</a>
-      <a class="hide-xs" href="../dev/">Докси</a>
+      <a class="hide-xs" href="../dev/">Документація</a>
       <a href="https://github.com/pakkoapp-oss/pakko">GitHub</a>
       <div class="lang-switch" aria-label="Мова">
         <a href="../" lang="en" hreflang="en">EN</a>
@@ -76,8 +76,8 @@
         <p class="eyebrow">Архіватор для Windows з відкритим кодом</p>
         <h1>ZIP-інструмент, якому нічого приховувати.</h1>
         <p class="lede">
-          Pakko видобуває та створює архіви ZIP, TAR, RAR і 7-Zip, використовуючи лише власні
-          API стиснення Windows та вбудований, ізольований у пісочниці <code>tar.exe</code> —
+          Pakko створює й видобуває архіви ZIP, TAR і 7-Zip та читає RAR, використовуючи лише
+          власні API стиснення .NET і вбудований у Windows, ізольований у пісочниці <code>tar.exe</code> —
           жодного 7-Zip, WinRAR чи стороннього коду стиснення в застосунку.
         </p>
         <div class="cta-row">
@@ -99,10 +99,13 @@
           <div class="term-body">
             <div><span class="term-prompt">$</span> pakko --help</div>
             <div class="term-cmds">
-              <div class="term-cmd"><b>a</b><span class="name">Archive</span><span class="desc">створити архів ZIP або одного з форматів TAR</span></div>
-              <div class="term-cmd"><b>x</b><span class="name">Extract</span><span class="desc">видобути зі збереженням шляхів</span></div>
-              <div class="term-cmd"><b>t</b><span class="name">Test</span><span class="desc">перевірити цілісність архіву</span></div>
-              <div class="term-cmd"><b>l</b><span class="name">List</span><span class="desc">показати вміст архіву</span></div>
+              <div class="term-cmd"><b>a</b><span class="name">Архів</span><span class="desc">створити архів ZIP, 7z або одного з форматів TAR</span></div>
+              <div class="term-cmd"><b>x</b><span class="name">Видобути</span><span class="desc">видобути зі збереженням шляхів</span></div>
+              <div class="term-cmd"><b>t</b><span class="name">Тест</span><span class="desc">перевірити цілісність архіву</span></div>
+              <div class="term-cmd"><b>l</b><span class="name">Список</span><span class="desc">показати вміст архіву</span></div>
+              <div class="term-cmd"><b>i</b><span class="name">Відомості</span><span class="desc">які формати ця Windows читає і записує</span></div>
+              <div class="term-cmd"><b>h</b><span class="name">Хеш</span><span class="desc">CRC-32 і SHA-256 файлів</span></div>
+              <div class="term-cmd"><b>r</b><span class="name">Відновити</span><span class="desc">відновити за даними PAR2</span></div>
             </div>
           </div>
         </div>
@@ -128,10 +131,10 @@
         <p>
           Обидва — цілком робочі інструменти, це не твердження про перевагу в безпеці. Йдеться
           про інший набір залежностей у ланцюгу постачання. Весь стек стиснення Pakko — це або
-          частина рантайму .NET, або підписаний Microsoft <code>tar.exe</code>: компоненти з
-          публічним процесом CVE, відтворюваними збірками та слідом спільнотного аудиту, який
-          вимагають деякі безпеко-орієнтовані середовища — державний сектор, оборона, регульовані
-          галузі — і з якого може скористатись будь-хто інший.
+          частина середовища .NET, або підписаний Microsoft <code>tar.exe</code>: компоненти з
+          публічним процесом CVE і відкритим аудитом спільноти, яких вимагають середовища з
+          підвищеними вимогами безпеки — державний сектор, оборона, регульовані галузі, — а
+          скористатися ними може будь-хто.
         </p>
       </div>
       <div class="pillars">
@@ -145,7 +148,7 @@
         </div>
         <div class="pillar">
           <h3>Нічого не телефонує додому</h3>
-          <p>Жодної телеметрії, аналітики, звітів про збої чи перевірок оновлень. Pakko не робить жодних мережевих запитів — так само, як і ця сторінка.</p>
+          <p>Жодної телеметрії, аналітики, звітів про збої чи перевірок оновлень. Pakko не робить жодних власних мережевих запитів, а ця сторінка не звертається до сторонніх сайтів.</p>
         </div>
         <div class="pillar">
           <h3>Відкритий для аудиту</h3>
@@ -160,19 +163,20 @@
       <div class="section-head">
         <p class="eyebrow">Що зроблено</p>
         <h2>Що реалізовано</h2>
-        <p>Нижче немає нічого з розряду «плануємо» — кожен пункт уже реалізовано і перевірено на реальному Провіднику Windows, а не лише в тестах.</p>
+        <p>Кожен пункт із позначкою нижче вже випущено й перевірено в реальному Провіднику Windows, а не лише в тестах.</p>
       </div>
       <div class="manifest">
         <div class="manifest-group">
           <h3>Формати</h3>
           <ul class="manifest-list">
             <li><span class="check">✓</span><span>ZIP — читання й запис, через <code>System.IO.Compression</code></span></li>
-            <li><span class="check">✓</span><span>TAR / GZ / BZ2 / XZ / ZST / LZMA — читання й запис, через <code>tar.exe</code></span></li>
+            <li><span class="check">✓</span><span>TAR / GZ / BZ2 / XZ / ZST / LZMA — читання й запис, через <code>tar.exe</code>; окремі файли .gz / .bz2 / .xz теж</span></li>
             <li><span class="check">✓</span><span>RAR — лише читання, через <code>tar.exe</code></span></li>
-            <li><span class="check">✓</span><span>ISO, CAB, cpio, ar (.deb), .Z, lzip — лише читання (v1.10), через <code>tar.exe</code>, де він читає кожен з них; інсталяційний ISO у форматі UDF відхиляється з поясненням причини</span></li>
             <li><span class="check">✓</span><span>7-Zip — читання й запис (без пароля), через <code>tar.exe</code>, де він уміє записувати 7z</span></li>
             <li><span class="check">✓</span><span>ZIP із паролем — читання (ZipCrypto, WinZip AES), зокрема антивірусна перевірка розшифрованого вмісту, і створення (AES-256; імена файлів лишаються видимими)</span></li>
+            <li><span class="check">✓</span><span>Зашифровані 7z і RAR — розпізнаються й відхиляються зі зрозумілим повідомленням</span></li>
           </ul>
+          <p class="note">Які формати tar читає Windows, залежить від її збірки: актуальна Windows 11 читає всі, <code>tar.exe</code> у Windows 10 — лише tar і tar.gz. Pakko пропонує те, що вміє встановлений <code>tar.exe</code>. Буде у v1.10.0 (ще не випущено): ISO, CAB, cpio, ar (.deb), .Z і lzip, лише читання.</p>
         </div>
         <div class="manifest-group">
           <h3>Інтеграція з Windows</h3>
@@ -182,8 +186,8 @@
             <li><span class="check">✓</span><span>Переглядач архівів — навігація, видобування вибраного, перегляд файлів</span></li>
             <li><span class="check">✓</span><span>Перевірка на загрози — вміст архіву перевіряє встановлений у вас антивірус</span></li>
             <li><span class="check">✓</span><span>Дані для відновлення (PAR2) — записуються поруч із новим архівом; архів можна перевірити й відновити після пошкодження, зокрема через par2cmdline чи MultiPar</span></li>
-            <li><span class="check">✓</span><span>Видобуті файли зберігають мітку Mark-of-the-Web і дати, записані в архіві</span></li>
-            <li><span class="check">✓</span><span>Адміністративні політики Group Policy / ADMX</span></li>
+            <li><span class="check">✓</span><span>Видобуті файли зберігають позначку Інтернету (Mark of the Web; для одного архіву, якому ви довіряєте, її можна не переносити, якщо групова політика не вирішує інакше) і дати, записані в архіві</span></li>
+            <li><span class="check">✓</span><span>Групові політики (ADMX) для адміністраторів</span></li>
             <li><span class="check">✓</span><span>37 мов, світла й темна теми</span></li>
           </ul>
         </div>
@@ -191,8 +195,17 @@
           <h3>Командний рядок</h3>
           <ul class="manifest-list">
             <li><span class="check">✓</span><span><code>pakko</code> у будь-якому терміналі після встановлення зі Store або <code>pakko.exe</code> окремим архівом — самодостатній, без встановлення</span></li>
-            <li><span class="check">✓</span><span>Команди у стилі 7-Zip — <code>a</code> / <code>x</code> / <code>t</code> / <code>l</code> / <code>r</code></span></li>
-            <li><span class="check">✓</span><span>Кожен реліз супроводжується файлом <code>SHA256SUMS</code></span></li>
+            <li><span class="check">✓</span><span>Команди у стилі 7-Zip — <code>a</code> / <code>x</code> / <code>t</code> / <code>l</code> / <code>i</code> / <code>h</code> / <code>r</code></span></li>
+            <li><span class="check">✓</span><span>Кожен реліз супроводжується файлом <code>SHA256SUMS</code>, переліком компонентів (SBOM) і атестацією збірки</span></li>
+          </ul>
+        </div>
+        <div class="manifest-group">
+          <h3>Чого Pakko не робить</h3>
+          <ul class="manifest-list">
+            <li><span class="check">–</span><span>Не створює архівів RAR і 7z із паролем</span></li>
+            <li><span class="check">–</span><span>Не працює з розділеними чи багатотомними архівами (.001, .z01)</span></li>
+            <li><span class="check">–</span><span>Не змінює архів на місці — Pakko записує новий</span></li>
+            <li><span class="check">–</span><span>Не монтує образи дисків — ISO і VHD/VHDX відкриває сама Windows</span></li>
           </ul>
         </div>
       </div>
@@ -204,15 +217,15 @@
       <div class="section-head">
         <p class="eyebrow">Отримати</p>
         <h2>Завантажити</h2>
-        <p>Дві незалежні збірки з одного релізу на GitHub — оберіть потрібну.</p>
+        <p>Застосунок — з Microsoft Store або GitHub Releases; окремий командний рядок — з GitHub Releases, а також разом із застосунком зі Store.</p>
       </div>
       <div class="downloads">
         <div class="dl-card">
           <h3>GUI-застосунок (MSIX)</h3>
-          <p>Нативне контекстне меню Провідника, переглядач архівів, іконка в треї. Windows 10 1809+ або Windows 11.</p>
-          <p class="note">Доступний у Microsoft Store — не потрібно окремо довіряти сертифікат. Збірка з GitHub
-          (підписана dev-сертифікатом) також залишається доступною для тих, хто її надає перевагу, або поза
-          регіонами, де доступний Store.</p>
+          <p>Контекстне меню Провідника, переглядач архівів, значок у системному лотку. Windows 10 версії 2004 або новіша чи Windows 11, x64 або ARM64.</p>
+          <p class="note">Доступний у Microsoft Store — окремо довіряти сертифікату не потрібно. Збірка з GitHub
+          лишається для тих, хто надає їй перевагу або живе поза регіонами Store; вона підписана сертифікатом
+          розробника проєкту, який перед встановленням треба додати до довірених сертифікатів Windows.</p>
           <div class="cta-row">
             <a class="btn btn-primary" href="https://apps.microsoft.com/detail/9p5mw010d8pr?hl=uk-UA&amp;gl=UA">Microsoft Store</a>
             <a class="btn btn-ghost" href="https://github.com/pakkoapp-oss/pakko/releases/latest">Реліз на GitHub</a>
@@ -221,7 +234,7 @@
         <div class="dl-card">
           <h3>Командний рядок (pakko.exe)</h3>
           <p>Самодостатній, без інсталятора, без прав адміністратора. <code>pakko x archive.7z -o .\out</code></p>
-          <p class="note">Ті самі команди у стилі 7-Zip, що й вище. Див. <a href="https://github.com/pakkoapp-oss/pakko/blob/main/docs/CLI.md">повний довідник команд</a>.</p>
+          <p class="note">Ті самі команди у стилі 7-Zip, що й вище. Подано до winget, чекає на модератора. Див. <a href="https://github.com/pakkoapp-oss/pakko/blob/main/docs/CLI.md">повний довідник команд</a>.</p>
           <div class="cta-row">
             <a class="btn btn-primary" href="https://github.com/pakkoapp-oss/pakko/releases/latest">Останній реліз</a>
           </div>

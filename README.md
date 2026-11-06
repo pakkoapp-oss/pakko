@@ -2,9 +2,9 @@
   <img src="docs/assets/pakko-mark.svg" alt="Pakko logo" width="88" height="88" />
 </p>
 
-<h1 align="center">Pakko — Windows ZIP Archiver</h1>
+<h1 align="center">Pakko — Windows Archiver</h1>
 
-<p align="center">Minimal WinUI 3 GUI wrapper for Windows built-in ZIP support.</p>
+<p align="center">ZIP through .NET's own <code>System.IO.Compression</code>; tar, 7z, RAR and the rest through Windows' own <code>tar.exe</code>, in a sandbox.</p>
 
 <p align="center"><strong>No 7-Zip. No WinRAR. No third-party compression code.</strong></p>
 
@@ -30,192 +30,129 @@
 
 ---
 
-## Why Not 7-Zip or WinRAR?
+## Install
 
-Pakko uses a different trust model — not a claim of absolute security superiority, but a different
-set of supply chain dependencies with different auditability properties. Both tools have supply
-chain characteristics (developer jurisdiction, no reproducible builds, CVE history) that some
-security-conscious environments find unacceptable.
+Requires Windows 10 version 2004 (build 19041) or later, or Windows 11, x64 or ARM64.
 
-**For the full CVE tables and rationale, see [`SECURITY.md`](SECURITY.md)** (the canonical source).
-
----
-
-## What Pakko Uses Instead
-
-| Component | Source | Auditability |
-|-----------|--------|-------------|
-| ZIP compression | `System.IO.Compression` — .NET BCL | Open source, part of .NET runtime |
-| UI framework | WinUI 3 / Windows App SDK | Open source on GitHub |
-
-The entire compression stack is part of the .NET Base Class Library — maintained by Microsoft with a public CVE process, reproducible builds, and community audit via `dotnet/runtime`.
-
-> **Trust dependency:** The .NET runtime and Windows App SDK are themselves trust dependencies. Pakko's security properties depend on the integrity of Microsoft's supply chain and build infrastructure. Organizations that trust the Microsoft/.NET ecosystem will find this architecture auditable; those that do not should evaluate accordingly.
+- **Microsoft Store** (recommended): https://apps.microsoft.com/detail/9p5mw010d8pr, or
+  `winget install 9P5MW010D8PR --source msstore`. Updates come through the Store, and the install
+  also gives the `pakko` command in any terminal.
+- **GitHub Releases**: every version tag publishes the MSIX and a standalone `pakko` command-line
+  zip per architecture, with a `SHA256SUMS` file, a component list (SBOM) and build attestations:
+  [releases](https://github.com/pakkoapp-oss/pakko/releases). The MSIX is signed with the
+  project's own development certificate, which Windows asks you to trust first (a publicly trusted
+  certificate is planned, see [`docs/SIGNING.md`](docs/SIGNING.md)).
+- **winget (command line only)**: the `pakko` zip is submitted to the winget catalog and waits for
+  a moderator; until then use the zip from GitHub Releases. See [`docs/CLI.md`](docs/CLI.md),
+  "Distribution".
 
 ---
 
-## Security Properties
+## What It Does
 
-- **No third-party compression dependencies** — attack surface limited to .NET runtime
-- **Open source** — full codebase auditable
-- **Minimal permissions** — no network access, no background services
-- **No telemetry** — no data leaves the machine
-- **Mark of the Web (MOTW) propagation** — extracted files inherit `Zone.Identifier` from the archive by default; prevents macro execution in extracted Office docs (7-Zip does not do this by default)
-- **No libarchive in-process** — tar/RAR/7z extraction via isolated `tar.exe` subprocess, sandboxed in an AppContainer with no network capability, not an in-process parser
-- **Group Policy / ADMX support** — administrators can lock down risky features (e.g. tar-family extraction) fleet-wide; see [`docs/POLICIES.md`](docs/POLICIES.md)
+### Formats
 
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| UI | WinUI 3 + Windows App SDK |
-| Language | C# 12 / .NET 10 LTS |
-| Compression | `System.IO.Compression` (ZIP) |
-| Distribution | MSIX (self-contained) |
-| Min OS | Windows 10 1809 (build 17763) / Windows Server 2019 |
-| License | Apache 2.0 |
-
----
-
-## Supported Formats
-
-| Format | Status | Method |
-|--------|--------|--------|
-| ZIP | ✅ read/write, v1.0 | `System.IO.Compression` |
-| TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ read (v1.3) + create (v1.4) | `tar.exe` (Windows built-in), AppContainer-sandboxed for extraction |
-| RAR | ✅ read only, v1.3 | `tar.exe` (Windows built-in) — libarchive has no RAR writer |
-| 7z | ✅ read (v1.3) + create without a password (v1.8.1) | `tar.exe` (Windows built-in), where its libarchive has the 7z writer; methods LZMA2, LZMA, BZip2, Deflate, Copy |
-| ISO 9660, CAB, cpio, ar (`.deb`), `.Z`, lzip | ✅ read only, v1.10, where the installed `tar.exe` reads each (lzip not on Windows 10) | `tar.exe` (Windows built-in), AppContainer-sandboxed; a UDF image (most Windows install ISOs) is refused with the reason |
+| Format | Status | Through |
+|--------|--------|---------|
+| ZIP | ✅ read and create | `System.IO.Compression` (.NET) |
 | Password-protected ZIP | ✅ read (ZipCrypto, WinZip AES) and create (AES-256 only) | `System.IO.Compression` + .NET cryptography |
-| Encrypted 7z/RAR | ❌ detected and refused with a clear error | — |
+| tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma | ✅ read and create; single `.gz`/`.bz2`/`.xz` files too (v1.9.0) | `tar.exe` |
+| 7z | ✅ read; create without a password, where `tar.exe` has the 7z writer | `tar.exe` |
+| RAR | ✅ read only — libarchive has no RAR writer | `tar.exe` |
+| Encrypted 7z/RAR | ❌ recognized and refused with a clear message | — |
+| ISO 9660, CAB, cpio, ar (`.deb`), `.Z`, lzip | Coming in v1.10.0 (not released yet): read only, where the installed `tar.exe` reads each; a UDF image (most Windows install ISOs) refused with the reason | `tar.exe` |
+
+`tar.exe` is part of Windows, and which formats it reads depends on the Windows build. A current
+Windows 11 reads all of the above; the `tar.exe` of Windows 10 is built with zlib only and reads
+tar and tar.gz. Pakko asks the installed `tar.exe` and offers only what it can do (`pakko i`
+lists it). Reading runs inside an AppContainer sandbox with no network access.
+
+### In Explorer
+
+- **Context menu** — Open, Extract here, Extract to folder, Add to `X.zip` / `X.7z` / `X.tar`,
+  Compress…, Test archive, Scan for threats, Hash (CRC-32, SHA-256); in the Windows 11 menu and
+  under "Show more options". Each command runs in a Pakko window with progress, a password prompt
+  and a conflict dialog.
+- **File types** — double-clicking any archive Pakko reads opens it in the Archive Browser.
+- **Mark of the Web** — files extracted from a downloaded archive keep its `Zone.Identifier` by
+  default, so Office still opens their macros in Protected View (7-Zip does not do this by
+  default). You may leave it off for one trusted archive, unless Group Policy decides.
+
+### In the app
+
+- **Archive** — one archive or one per item, ZIP, 7z or any tar format, with a compression level.
+- **Extract** — smart folder logic, Ask / Overwrite / Rename / Skip per conflict; the dates stored
+  in the archive are kept.
+- **Archive Browser** — browse an archive's folders, extract a selection or everything, preview an
+  image or text file without extracting by hand, climb past the archive root into the real
+  filesystem.
+- **Test** — for every format: 7z, tar.bz2, tar.xz and tar.zst written with a check have their
+  contents verified; tar, tar.gz, tar.lzma and RAR get a structure check that says so.
+- **Scan for threats** — the archive's contents go to the installed antivirus through Windows' AMSI,
+  password-protected ZIP entries included.
+- **Recovery data (PAR2)** — standard PAR 2.0 files next to a new archive (5, 10 or 20 %); verify and
+  repair into a new file. par2cmdline and MultiPar read Pakko's sets, and Pakko reads theirs.
+- System tray icon, 37 languages (follows the Windows language, English otherwise), a file log at
+  `%LocalAppData%\Pakko\logs\pakko.log`.
+
+### On the command line
+
+`pakko` has 7-Zip-familiar commands: `a`, `x`, `l`, `t`, `i`, `h` (hashes) and `r` (repair from
+PAR2), with switches such as `-p`, `-ao`, `-sdel`, `-rr`. It comes with the Store install, or as a
+standalone zip that runs without the app. Full reference: [`docs/CLI.md`](docs/CLI.md).
+
+### For administrators
+
+Group Policy (ADMX) can turn off tar-family reading, block formats, keep Mark of the Web on, and
+more, fleet-wide: [`docs/POLICIES.md`](docs/POLICIES.md).
 
 ---
 
-## Windows 11 Integration
+## What Pakko Does Not Do
 
-Pakko closes gaps in Windows Explorer:
+- Create RAR archives (no free RAR writer exists) or password-protected 7z archives.
+- Split or multi-volume archives (`.001`, `.z01`).
+- Change an archive in place (7-Zip's `u`, `d`, `rn`): Pakko writes a new archive.
+- Extract flat, without folders (7-Zip's `e`).
+- Mount disk images: Windows itself opens ISO and VHD/VHDX files.
 
-- **Native context menu** — Open, Extract here, Extract to folder, Add to `X.zip`, Add to `X.7z`, Add to `X.tar`,
-  Compress…, Test archive, Scan for threats, Hash: CRC-32 / SHA-256 (both the modern
-  `IExplorerCommand` menu and the classic "Show more options" menu); each command runs in a Pakko
-  window with progress, a password prompt and a conflict dialog
-- **File type associations** — double-click any supported archive format opens directly into
-  Pakko's Archive Browser, not just `.zip`
-- **Archive Browser** — navigate an archive's folder structure without extracting everything
-  first, extract a selection or the whole archive, then climb past the archive root into the real
-  filesystem (drives, "This PC") the same way NanaZip's classic file manager does
-- **Scan for threats** — hands an archive's contents to the antivirus installed on the machine
-  (through Windows' AMSI interface), password-protected ZIP entries included
-- **Recovery data (PAR2)** — standard PAR 2.0 files written next to a new archive (5, 10 or 20 %),
-  then "Verify with PAR2" and "Repair with PAR2" in the menu and the app; the repaired copy is a
-  new file and the original is only read. par2cmdline and MultiPar read Pakko's sets, and Pakko
-  reads theirs
-- **Group Policy / ADMX** — administrators can disable tar-family extraction and other
-  risk-relevant features fleet-wide via a real ADMX template; see [`docs/POLICIES.md`](docs/POLICIES.md)
-
-Windows 11 23H2+ includes `tar.exe` (Microsoft-signed bsdtar), which Pakko uses — no third-party
-compression tools — to read RAR/7z/tar/gz/bz2/xz/zst/lzma (and since v1.10 ISO, CAB, cpio, ar, .Z and lzip), and to create tar-family archives
-(plain tar plus the five compression-filter variants) and, where that `tar.exe` has the 7z
-writer, 7z archives without a password.
+The full list, with the reason for each format left out: [`docs/SPEC.md`](docs/SPEC.md).
 
 ---
 
-## Command-Line Interface
+## Trust and Security
 
-`pakko.exe` (project name `Archiver.CLI`) is a standalone, self-contained command-line build with
-7z-familiar commands (`x`/`t`/`i`/`a`/`l`, and `r` to repair from PAR2 files) — it runs independently of the GUI/MSIX. See
-[`docs/CLI.md`](docs/CLI.md) for the full command/switch specification. Download it as its own
-per-architecture zip (with a `SHA256SUMS` file for verification) from the
-[project's GitHub Releases page](https://github.com/pakkoapp-oss/pakko/releases) — every version
-tag is built and published there automatically. The zip is not added to `PATH`; from v1.7.0 the
-Microsoft Store/MSIX install also gives the `pakko` command in any terminal, and the zip can be
-installed with winget once the winget catalog accepts the package — see `docs/CLI.md`'s "Distribution" section.
+Pakko's compression code is the .NET runtime's and Windows' own: no 7-Zip, WinRAR or other
+third-party compression code, no telemetry, and no network requests of its own. Why that matters,
+the CVE history behind it, the sandbox, Mark of the Web and every residual risk:
+[`SECURITY.md`](SECURITY.md).
 
----
+Extraction guards against path traversal (zip slip), compression bombs (over 1000:1, extracted only
+after you confirm and the disk has room), reserved names, alternate data streams and reparse
+points, and leaves no partial files behind on cancel. No URI scheme is registered, so a web page
+cannot start Pakko through a link.
 
-## Project Status
-
-ZIP archive/extract (with passwords), the native shell extension (context menu, file
-associations, MOTW propagation), sandboxed RAR/7z/tar-family read + tar-family and 7z create via
-`tar.exe`, the Archive Browser, antivirus scan, PAR2 recovery data, the `pakko` command line and
-Group Policy/ADMX support are all implemented and on-device verified. Per-release history:
-[`CHANGELOG.md`](CHANGELOG.md).
-
-- ✅ Archive (single / separate) with compression level selector, ZIP or any tar-family format
-- ✅ Extract with smart folder logic, ZIP slip protection, and a per-conflict Ask/Overwrite/
-  Rename/Skip resolution
-- ✅ Password-protected ZIP — extract, test, browse, and threat-scan (ZipCrypto + WinZip AES),
-  with a password prompt in the app, the Explorer menu, and the CLI (`-p`); create AES-256
-  encrypted ZIPs from the app or `pakko a -p` (file names inside the archive stay visible)
-- ✅ System tray icon
-- ✅ File log (`%LocalAppData%\Pakko\logs\pakko.log`)
-- ✅ i18n — 37 locales, OS-language auto-match with English fallback
-- ✅ MSIX packaging, signed with a dev cert via `Deploy.ps1`
-- ✅ Mid-file cancellation (async streaming)
-- ✅ Safe temp file/dir pattern — no partial files on cancel
-- ✅ Compression-ratio bomb detection (1000:1 threshold), confirm-and-extract if the destination
-  has room, for ZIP and every tar-family format
-- ✅ UTF-8 filenames — Cyrillic and emoji round-trip verified
-- ✅ Native right-click context menu — Open, Extract here, Extract to folder, Add to
-  `X.zip`/`X.7z`/`X.tar`, Compress…, Test archive, Scan for threats, Hash (CRC-32, SHA-256)
-- ✅ Scan for threats — archive contents checked by the installed antivirus through AMSI
-- ✅ Extracted files and folders keep the dates stored in the archive
-- ✅ Recovery data (PAR2) — created next to an archive from the app or `pakko a -rr`, verified by
-  `pakko t`, Explorer and the app, repaired into a new file by `pakko r`, Explorer and the app
-- ✅ `pakko` command line — in any terminal after a Store install, or as a standalone zip
-- ✅ File type association (every readable format). No URI protocol is registered (the former
-  `pakko://` scheme was removed), so a web page cannot launch Pakko through a link of its own
-- ✅ MOTW propagation on extracted files by default, always for Archive Browser previews; the user may leave it off for one trusted archive, unless Group Policy decides
-- ✅ Alternate Data Stream / reserved-filename / reparse-point protections during extraction
-- ✅ Archive Browser — navigate, extract selected/all, preview an image or text file without a
-  manual extract, climb past the archive root into the real filesystem
-- ✅ RAR/7z/tar-family extraction runs inside an AppContainer sandbox — quarantine staging, ACL'd
-  output directory, Job Object process limits, no network capability
-- ✅ Test for every format — the contents of 7z, tar.bz2, tar.xz/tar.zst written with a check, CAB
-  and lzip are verified; tar, tar.gz, tar.lzma, RAR, ISO, cpio, ar and .Z get a structure check that
-  says so
-- ✅ Group Policy / ADMX support — see [`docs/POLICIES.md`](docs/POLICIES.md)
-- ✅ Full automated test suite, run on every push in CI (see the Build Status badge above)
-
-**Now available on the Microsoft Store:** https://apps.microsoft.com/detail/9p5mw010d8pr
-(also installable via `winget install 9P5MW010D8PR --source msstore`). GitHub Releases remain
-available as an alternative for every version tag.
-
-See `docs/SPEC.md`'s "Future Roadmap" section for the version-to-focus table, and `docs/TASKS.md`
-for the detailed task list.
+Every release carries `SHA256SUMS`, a CycloneDX SBOM and a build-provenance attestation you can check
+with `gh attestation verify` (see `SECURITY.md`, "Component List"). Production code signing:
+[`docs/SIGNING.md`](docs/SIGNING.md).
 
 ---
 
-## Known Issues
+## Status
 
-- **Context menu flickers on the first right-click in a newly opened Explorer window** — this is
-  a known Windows Explorer verb/icon-cache artifact (Explorer caches top-level shell-extension
-  verbs across COM DLL registrations until it requeries them), not a Pakko bug.
+Latest release: v1.9.0. Per-release history: [`CHANGELOG.md`](CHANGELOG.md). Roadmap:
+[`docs/SPEC.md`](docs/SPEC.md), "Future Roadmap". Open work: [`docs/TASKS.md`](docs/TASKS.md).
 
----
-
-## Building and Deploying
-
-Prerequisites: Visual Studio 2026 (.NET desktop + Desktop C++ workloads, MSVC v143 x64/ARM64 build tools), .NET 10 SDK.
-
-See [`scripts/README.md`](scripts/README.md) for the full build/sign/deploy steps and
-[`CONTRIBUTING.md`](CONTRIBUTING.md) for the contributor workflow. Production code signing with a
-trusted certificate is planned (T-F10) — see [`docs/SIGNING.md`](docs/SIGNING.md) for Pakko's Code
-Signing Policy (team roles, build process, and artifacts covered).
+**Known issue:** the context menu may flicker on the first right-click in a newly opened Explorer
+window. That is Explorer's own verb cache, not a Pakko bug.
 
 ---
 
-## Running Tests
+## Contributing
 
-```bash
-dotnet test --filter "Category!=Slow&Category!=VeryLarge"
-```
-
-Always run without a path argument — all projects must stay green after every change. See
-[`docs/TESTING.md`](docs/TESTING.md) for the full test plan, fixture generation, and the
-`Category=Slow`/`Category=VeryLarge` tiers.
+Build, deploy and test steps: [`CONTRIBUTING.md`](CONTRIBUTING.md) and
+[`scripts/README.md`](scripts/README.md). Tech stack: C# 14 on .NET 10 LTS, WinUI 3 and the Windows
+App SDK, Native AOT; the Explorer menu is a C++ `IExplorerCommand` DLL.
 
 ---
 

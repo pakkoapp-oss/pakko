@@ -5,10 +5,10 @@
 - **Visual Studio 2026** with the *.NET desktop* and *Desktop development with C++* workloads,
   plus the MSVC v143 (14.44) x64 and ARM64 build tools (the shell extension targets v143; the
   Native AOT link of the four exes, T-F355, uses the same C++ tools)
-- **.NET 10 SDK** (`global.json` pins the 10.0.100 feature band or later)
+- **.NET 10 SDK**, exactly the version `global.json` pins (`rollForward: disable`)
 - Language: **C# 14** (set once in `Directory.Build.props`)
 - **PowerShell 7** (`pwsh`) for `scripts/*.ps1` (T-F371)
-- **Windows 10 1809+** or Windows 11
+- **Windows 10 version 2004 (build 19041)** or later, or Windows 11 (the package's minimum)
 
 ---
 
@@ -124,7 +124,10 @@ T-F232.)
 | `Archiver.Core` | Compression/extraction logic and the tar.exe AppContainer sandbox — no UI dependencies, no NuGet packages |
 | `Archiver.App.Core` | WinUI-free helpers for `Archiver.App` (Archive Browser tree/breadcrumb building, real-filesystem browsing, file-activation routing) — kept separate so they're unit-testable without a WinUI test host |
 | `Archiver.App` | WinUI 3 main application |
-| `Archiver.Shell` | Shell-triggered operation entry point (silent CLI, launched by the shell extension); shows progress via the Windows Shell's built-in `IProgressDialog`, in-process |
+| `Archiver.Shell` | Shell-triggered operation entry point (launched by the shell extension); shows each operation in the `Archiver.OperationUi` window over a pipe, and falls back to the Windows Shell's built-in `IProgressDialog` in-process if that window cannot run (T-F268) |
+| `Archiver.OperationUi` | Code-only WinUI 3 exe: the Explorer operation window (progress, cancel, conflict and password prompts, result), driven by `Archiver.Shell` (T-F268) |
+| `Archiver.OperationUi.Core` | The window's logic (`OperationWindowModel`), WinUI-free so it is unit-testable |
+| `Archiver.OperationUi.Protocol` | The pipe messages between `Archiver.Shell` and the window, and their framing |
 | `Archiver.ShellExtension` | C++ COM DLL implementing `IExplorerCommand` (the actual right-click context menu) — built via MSBuild, not `dotnet build`; see `.claude/rules/shell-extension.md` |
 | `Archiver.CLI` | Standalone console frontend (T-F09), built as `pakko.exe` — no WinUI; ships as its own self-contained per-architecture download via `scripts/Publish-Cli.ps1` (and winget), and since T-F317 also inside the MSIX behind the `pakko` execution alias; see `docs/CLI.md` |
 | `Archiver.Messages` | Core's error/skip messages in 37 languages, shared by `Archiver.Shell` and `Archiver.App` (T-F209) |
@@ -132,11 +135,14 @@ T-F232.)
 | `Archiver.Core.IntegrationTests` | Tests that shell out to the real `C:\Windows\System32\tar.exe` (tagged `[Integration]`) |
 | `Archiver.Core.PerformanceTests` | ZIP compression/extraction performance-regression tests vs. a vendored, sandboxed `7za.exe` reference (T-F114); see `docs/TESTING.md` |
 | `Archiver.App.Core.Tests` | Unit tests for `Archiver.App.Core`'s WinUI-free helpers |
-| `Archiver.Shell.Tests` | Argument parser tests for `Archiver.Shell` |
+| `Archiver.Shell.Tests` | Tests for `Archiver.Shell`: arguments, commands, the operation-window hand-off and its fallback |
+| `Archiver.OperationUi.Tests` | Protocol framing and `OperationWindowModel` tests |
 | `Archiver.ShellExtension.Tests` | C++ Google Test suite for `Archiver.ShellExtension`'s COM-free logic — run separately, not covered by `dotnet test`; see `.claude/rules/shell-extension.md` |
 | `Archiver.Messages.Tests` | Translation parity for `Archiver.Messages` and its culture resolver |
 | `Archiver.CLI.Tests` | Parser/mapper/help-text unit tests for `Archiver.CLI` plus a `Subprocess/` layer that launches the real built `pakko.exe`; see `docs/CLI.md` |
 | `Archiver.Core.Tests.GenerateFixtures` | Fixture generator (see above) |
 
-> There is no `Archiver.ProgressWindow` project — an earlier design (a second WinUI 3 satellite
-> `.exe` talking to `Archiver.Shell` over a named pipe) was removed; see `docs/DECISIONS.md` (T-F65).
+> An earlier progress window, `Archiver.ProgressWindow` (a WinUI 3 exe started with
+> `Process.Start`), was removed in T-F65 because its activation proved unreliable;
+> `Archiver.OperationUi` is the later design that works, with the in-process fallback above
+> (`docs/DECISIONS.md`, T-F65 and T-F268).
