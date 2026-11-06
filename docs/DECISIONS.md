@@ -13841,8 +13841,8 @@ The docs audit after T-F442 (three PRs: public pages, developer docs, `TASKS.md`
 
 - **Minimum Windows, the app and the CLI apart.** Both `TargetDeviceFamily` lines of the MSIX
   manifest have required 10.0.19041 (Windows 10 version 2004) since the shell commit `1411699e`
-  (2026-07-04); `README.md`, the site and `CONTRIBUTING.md` said 1809 (17763) from the start, which
-  was never true. They now say 2004 (19041) for the app. `TargetPlatformMinVersion` 10.0.17763 in
+  (2026-07-04); `README.md`, the site and `CONTRIBUTING.md` said 1809 (17763), the manifest's floor
+  from T-01 until that commit and untrue since. They now say 2004 (19041) for the app. `TargetPlatformMinVersion` 10.0.17763 in
   `Archiver.App.csproj` and `Archiver.OperationUi.csproj` is the API floor the code compiles
   against, not an install floor, and stays. The standalone `pakko` zip has no manifest, so no floor
   is claimed for it: the pages name where it was tested (Windows 10 22H2, Windows 11, Windows Server
