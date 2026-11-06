@@ -836,7 +836,9 @@ unscanned archive as `Clean`. A registered provider that answers `AmsiScanBuffer
 `S_OK` gives `Inconclusive` too (T-F444: Avira with its real-time protection off answers 0x00000426
 and "not detected" for EICAR). So does an `AMSI_RESULT_BLOCKED_BY_ADMIN` answer (0x4000..0x4fff,
 T-F446): an administrator policy blocked the content, which is no clean verdict and no detection
-either. `Inconclusive` is a first-class, distinctly-labeled result — never
+either. A tar's files are read from the quarantine by their literal names, and a quarantine folder
+that cannot be read makes the archive `Inconclusive` (T-F460: before, a folder whose name ended in a
+space or a dot was skipped, so its files went unscanned and the archive read Clean). `Inconclusive` is a first-class, distinctly-labeled result — never
 silently collapsed into `Clean` anywhere in the UI.
 
 **Password-protected ZIP entries (T-F194).** Password-protecting a payload is a well-known way to
