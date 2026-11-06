@@ -588,8 +588,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                         CoreMessages.Text(MessageCode.ScanCannotExtract, TarSandboxedService.DescribeFailure(firstStdErr))));
                     return;
                 }
-                int mainScanned = scanned;
-                scanned = await ScanExtractedFilesAsync(
+                _ = await ScanExtractedFilesAsync(
                     firstDir, scanned, totalEntries + duplicates.Count, target, cancellationToken)
                     .ConfigureAwait(false);
                 string[] mainFiles = [.. TarSandboxedService.EnumerateFilesGuarded(scope.OutputDirectory!)
@@ -597,7 +596,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 bool faithful = TarNames.JudgeExtracted((IReadOnlyList<string>?)expandedSelection ?? allNames, mainFiles, []).Trust == TarNameTrust.Faithful;
                 string[] firstFiles = [.. TarSandboxedService.EnumerateFilesGuarded(firstDir)
                     .Select(f => TarSandboxedService.QuarantineRelative(firstDir, f).Replace('\\', '/'))];
-                credited = mainScanned + (faithful ? TarSandboxedService.FirstCopiesAtTheirPath(duplicates, firstFiles, mainFiles) : 0);
+                credited = scanned + (faithful ? TarSandboxedService.FirstCopiesAtTheirPath(duplicates, firstFiles, mainFiles) : 0);
             }
 
             // T-F462: Clean only with every file accounted for, whichever name or folder broke (the
