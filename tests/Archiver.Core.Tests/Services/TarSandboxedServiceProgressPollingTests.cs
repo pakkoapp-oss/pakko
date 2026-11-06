@@ -59,6 +59,45 @@ public sealed class TarSandboxedServiceProgressPollingTests
         mostRecentFile.Should().Be("newer.txt");
     }
 
+    // T-F463: tar.exe writes "d " and "a.txt." as they are; the snapshot sees them and names the
+    // file as written.
+    [Fact]
+    public void ComputeDirectoryStateSnapshot_NamesWindowsTrims_CountedAndNamedAsWritten()
+    {
+        using var temp = new TempDirectory();
+        string folder = @"\\?\" + Path.Combine(temp.Path, "d ");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "a.txt."), "1234");
+
+        (long totalBytes, string? mostRecentFile) = TarSandboxedService.ComputeDirectoryStateSnapshot(temp.Path);
+
+        totalBytes.Should().Be(4);
+        mostRecentFile.Should().Be(Path.Combine("d ", "a.txt."));
+    }
+
+    // T-F463: the snapshot walks as the scan does - a junction in the quarantine is not followed out.
+    [Fact]
+    public void ComputeDirectoryStateSnapshot_Junction_IsNotFollowed()
+    {
+        using var temp = new TempDirectory();
+        using var outside = new TempDirectory();
+        File.WriteAllText(Path.Combine(outside.Path, "big.bin"), "1234567890");
+        Directory.CreateDirectory(Path.Combine(temp.Path, "q"));
+        temp.CreateFile(Path.Combine("q", "a.txt"), "12");
+        string link = Path.Combine(temp.Path, "q", "link");
+        DirectoryJunction.Create(link, outside.Path);
+        try
+        {
+            (long totalBytes, _) = TarSandboxedService.ComputeDirectoryStateSnapshot(Path.Combine(temp.Path, "q"));
+
+            totalBytes.Should().Be(2);
+        }
+        finally
+        {
+            Directory.Delete(link, recursive: false);
+        }
+    }
+
     [Fact]
     public async Task PollExtractionProgressAsync_RunsUntilExtractionTaskCompletes_ReportsAtLeastOnce()
     {

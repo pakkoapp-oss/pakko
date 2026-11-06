@@ -591,11 +591,11 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 _ = await ScanExtractedFilesAsync(
                     firstDir, scanned, totalEntries + duplicates.Count, target, cancellationToken)
                     .ConfigureAwait(false);
-                string[] mainFiles = [.. TarSandboxedService.EnumerateFilesGuarded(scope.OutputDirectory!)
-                    .Select(f => TarSandboxedService.QuarantineRelative(scope.OutputDirectory!, f).Replace('\\', '/'))];
+                string[] mainFiles = [.. QuarantineFiles.EnumerateFiles(scope.OutputDirectory!)
+                    .Select(f => QuarantineFiles.Relative(scope.OutputDirectory!, f).Replace('\\', '/'))];
                 bool faithful = TarNames.JudgeExtracted((IReadOnlyList<string>?)expandedSelection ?? allNames, mainFiles, []).Trust == TarNameTrust.Faithful;
-                string[] firstFiles = [.. TarSandboxedService.EnumerateFilesGuarded(firstDir)
-                    .Select(f => TarSandboxedService.QuarantineRelative(firstDir, f).Replace('\\', '/'))];
+                string[] firstFiles = [.. QuarantineFiles.EnumerateFiles(firstDir)
+                    .Select(f => QuarantineFiles.Relative(firstDir, f).Replace('\\', '/'))];
                 credited = scanned + (faithful ? TarSandboxedService.FirstCopiesAtTheirPath(duplicates, firstFiles, mainFiles) : 0);
             }
 
@@ -629,10 +629,10 @@ public sealed class AntivirusScanService : IAntivirusScanService
     {
         (string archivePath, IAmsiScanner scanner, List<ThreatFinding> findings, Action<string?, int, int> reportProgress) = target;
         int entriesDone = startAt;
-        foreach (string file in TarSandboxedService.EnumerateFilesGuarded(outputDirectory))
+        foreach (string file in QuarantineFiles.EnumerateFiles(outputDirectory))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            string relativePath = Path.GetRelativePath(outputDirectory, file).Replace('\\', '/');
+            string relativePath = QuarantineFiles.Relative(outputDirectory, file).Replace('\\', '/');
             // T-F151: see the identical call in ScanZipArchiveAsync — advances the bar (and
             // CurrentFile) to this entry's own starting position before a potentially multi-second
             // single AmsiScanBuffer call, rather than leaving it frozen on the previous entry's
@@ -641,11 +641,10 @@ public sealed class AntivirusScanService : IAntivirusScanService
             try
             {
                 // T-F460: by its literal name - a folder "d " asked for without the prefix is "d".
-                string onDisk = TarSandboxedService.Literal(file);
-                long length = new FileInfo(onDisk).Length;
+                long length = QuarantineFiles.Info(file).Length;
                 ThreatFinding finding = await ScanOneEntryAsync(
                     archivePath, relativePath, length,
-                    () => new FileStream(onDisk, FileMode.Open, FileAccess.Read, FileShare.Read),
+                    () => QuarantineFiles.OpenRead(file),
                     scanner, cancellationToken)
                     .ConfigureAwait(false);
                 findings.Add(finding);

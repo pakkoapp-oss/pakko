@@ -404,6 +404,32 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
     }
 
+    // T-F463: tar.exe writes "a.txt." and "a.txt " as they are, beside "a.txt" (3.8.9 and 3.5.2,
+    // measured); a finding names the file that holds the threat, never the clean one Windows'
+    // path normalization would turn its name into.
+    [Integration]
+    public Task ScanAsync_ThreatInANameWithATrailingDot_NamesThatFile() => ThreatInANameWindowsTrimsAsync("a.txt.");
+
+    [Integration]
+    public Task ScanAsync_ThreatInANameWithATrailingSpace_NamesThatFile() => ThreatInANameWindowsTrimsAsync("a.txt ");
+
+    private async Task ThreatInANameWindowsTrimsAsync(string trimmed)
+    {
+        string archivePath = Path.Combine(_temp.Path, "trimmed.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("fine") },
+            new TarBuilder.Entry { Name = trimmed, Content = Encoding.ASCII.GetBytes("EVIL") },
+        ]);
+
+        ThreatScanResult result = await CreateService(new FakeAmsiScanner { DetectedText = "EVIL" })
+            .ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+        string seen = string.Join(" | ", result.Findings.Select(f => "'" + f.EntryPath + "': " + f.Verdict));
+        result.Findings.Should().ContainSingle(f => f.EntryPath == trimmed && f.Verdict == ThreatVerdict.ThreatDetected, seen);
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "a.txt" && f.Verdict == ThreatVerdict.Clean, seen);
+    }
+
     // An archive whose accented name this machine's tar.exe lists by best fit, or null (then the
     // test has nothing to show here: the name fits the code page). A non-ASCII name goes in a pax
     // header, as TarSandboxedServiceBestFitNameTests writes it; the listing must hold no accent.
