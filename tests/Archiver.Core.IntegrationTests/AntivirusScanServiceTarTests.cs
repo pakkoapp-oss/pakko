@@ -266,4 +266,60 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
 
         result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
     }
+
+    // T-F441's best-fit shapes after #169's first-copy exit check: "caf<e-acute>.txt" and "cafe.txt"
+    // list as "cafe.txt" twice, so the scan sees a duplicate group the first-copy pass may not find.
+    // Both files are in the main pass, so the threat in either must be found.
+    [Integration]
+    public async Task ScanAsync_AccentedAndPlainTwinListedAlike_FindsTheThreatInEither()
+    {
+        foreach (bool evilInAccented in new[] { true, false })
+        {
+            if (await CollapsingArchiveAsync(evilInAccented ? "acc" : "plain", (accented, plain) =>
+                [
+                    new TarBuilder.Entry { Name = accented, Content = Encoding.ASCII.GetBytes(evilInAccented ? "EVIL" : "fine") },
+                    new TarBuilder.Entry { Name = plain, Content = Encoding.ASCII.GetBytes(evilInAccented ? "fine" : "EVIL") },
+                ]) is not { } archivePath)
+                return;
+
+            var scanner = new FakeAmsiScanner { DetectedText = "EVIL" };
+            ThreatScanResult result = await CreateService(scanner).ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+            result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
+        }
+    }
+
+    // The same accented name stored twice: the first copy comes only from the first-copy pass, which
+    // asks tar.exe for the listed (best-fit) name. Never Clean while the first copy holds the threat.
+    [Integration]
+    public async Task ScanAsync_AccentedNameTwice_ThreatInTheFirstCopy_IsNeverClean()
+    {
+        if (await CollapsingArchiveAsync("twice", (accented, _) =>
+            [
+                new TarBuilder.Entry { Name = accented, Content = Encoding.ASCII.GetBytes("EVIL") },
+                new TarBuilder.Entry { Name = accented, Content = Encoding.ASCII.GetBytes("fine") },
+            ]) is not { } archivePath)
+            return;
+
+        var scanner = new FakeAmsiScanner { DetectedText = "EVIL" };
+        ThreatScanResult result = await CreateService(scanner).ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+        result.OverallVerdict.Should().NotBe(ThreatVerdict.Clean, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
+    }
+
+    // An archive whose accented name this machine's tar.exe lists by best fit, or null (then the
+    // test has nothing to show here: the name fits the code page).
+    private async Task<string?> CollapsingArchiveAsync(string tag, Func<string, string, TarBuilder.Entry[]> entries)
+    {
+        foreach ((char accent, char plain) in new[] { ((char)0xE9, 'e'), ((char)0x101, 'a') })
+        {
+            string accented = "caf" + accent + ".txt", plainName = "caf" + plain + ".txt";
+            string path = Path.Combine(_temp.Path, $"{tag}-{(int)accent:x}.tar");
+            TarBuilder.WriteTar(path, entries(accented, plainName));
+            ArchiveListResult list = await new TarSandboxedService(new GroupPolicyOptions()).ListEntriesAsync(path);
+            if (list.Success && list.Entries.Any(e => e.Path == plainName) && !list.Entries.Any(e => e.Path == accented))
+                return path;
+        }
+        return null;
+    }
 }
