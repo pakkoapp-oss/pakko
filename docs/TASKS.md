@@ -1487,7 +1487,13 @@ re-measured with T-F346's script before and after.
 
 ### T-F463 — One owner for disk access in the tar quarantine, and a test that keeps it so (P2, stream I)
 
-- [ ] **Status:** open. Agreed 2026-11-06 (the user). T-F460 fixed eight calls that reached the
+- [ ] **Status:** fixed 2026-11-06 (`fix/tf463-quarantine-owner`; `docs/DECISIONS.md`, "T-F463").
+  The device check is stream E's `SHL-018`; the smoke row is `CLI-049`. Seen red on `main`: a threat in
+  `a.txt.` beside a clean `a.txt` was named `a.txt`.
+- **Left (measure):** creation copies a colliding source with `File.Copy(fullSource, ...)` by its
+  plain name (`TarSandboxedService`, collision staging). Whether a source named `a.txt ` survives
+  that is not measured.
+- **Before:** open. Agreed 2026-11-06 (the user). T-F460 fixed eight calls that reached the
   quarantine without the long-path prefix (Windows trims `d ` to `d`); #169's fresh review found
   two more, one a false Clean. T-F420 (`EntryDiskName`) and T-F441 (`SystemCodePages`, `TarNames`,
   `TextBoundaryOwnersTests`) own the names; nothing owns the disk calls. Next: one place for every

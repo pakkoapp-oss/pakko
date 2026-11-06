@@ -638,8 +638,9 @@ installed MSIX package — invisible until on-device testing. This is exactly th
 ## 5. Activity — tar.exe whole-archive pre-scan and extraction (T-F49, sandboxed since T-F52)
 
 Source read for this diagram: `ExtractSingleArchiveAsync`, `ScanForUnsafeEntriesAsync`,
-`IsDangerousEntryName`, `EnumerateFilesGuarded`, `TryMoveSingleEntryAsync` in
-`src/Archiver.Core/Services/TarSandboxedService.cs`, `TarSandboxScope.CreateAsync`/`ListAsync`/
+`IsDangerousEntryName`, `TryMoveSingleEntryAsync` in
+`src/Archiver.Core/Services/TarSandboxedService.cs`, the walk `QuarantineFiles.EnumerateFiles` (T-F463) in
+`src/Archiver.Core/Services/Sandbox/QuarantineFiles.cs`, `TarSandboxScope.CreateAsync`/`ListAsync`/
 `ExtractAsync` in `src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs`, and
 `ExtractionStaging.CommitInto` in `src/Archiver.Core/Services/ExtractionStaging.cs` (re-read for
 fix phase 4, 2026-09-25).
@@ -682,7 +683,7 @@ flowchart TD
     H -- "exit 0" --> FC{"T-F171: FindDuplicateGroups - file names several<br/>extracted entries share as tar.exe writes them<br/>(EntryDiskName.AsTarExeWrites, T-F420: a?b is a_b, d./ is d/;<br/>case-insensitive, not a folder name)?"}
     FC -- "none" --> I
     FC -- "yes" --> FC2["scope.ExtractFirstOccurrencesAsync(first names)<br/>= tar -x -q -C first -- names (same AppContainer, fresh Job Object)<br/>keep a file only at the exact expected path with the first entry's -tv size.<br/>SkippedFiles += copies not extracted (3rd+ copy, or an unrecovered first copy)"]
-    FC2 --> I["T-F263: staging = ExtractionStaging.Create(unisolatedDestDir),<br/>T-F298: record folder-entry times from the quarantine before any move<br/>walk the kept first copies, then EnumerateFilesGuarded(scope.OutputDirectory)<br/>- the first copy claims the name, the last meets the conflict rule"]
+    FC2 --> I["T-F263: staging = ExtractionStaging.Create(unisolatedDestDir),<br/>T-F298: record folder-entry times from the quarantine before any move<br/>walk the kept first copies, then QuarantineFiles.EnumerateFiles(scope.OutputDirectory)<br/>- the first copy claims the name, the last meets the conflict rule"]
     I --> J{"subdirectory hit during walk:<br/>IsReparsePoint?"}
     J -- yes --> K["⚠ silently NOT descended into (a folder that cannot be listed is passed over the same way) —<br/>no SkippedFiles entry, no ArchiveError<br/>(see Finding below)"]
     J -- no --> L[yield each file in this directory]
@@ -746,7 +747,7 @@ flowchart TD
   means a single overly-broad future name/type check would silently reject entire legitimate
   archives rather than just skipping one entry.
 - **New finding (node K): a reparse-point subdirectory hit during the post-extraction walk is
-  silently dropped** — `EnumerateFilesGuarded` simply doesn't push it onto its traversal stack,
+  silently dropped** — `QuarantineFiles.EnumerateFiles` simply doesn't push it onto its traversal stack,
   recording neither a `SkippedFiles` entry nor an `ArchiveError`. Currently unreachable in normal
   operation, since gate G already rejects any archive containing a symlink entry before `-xf`
   ever runs — this path only matters if gate G is ever weakened, or in the already-documented
@@ -1055,7 +1056,7 @@ sequenceDiagram
                 alt tar.exe exit code not 0
                     Service-->>Service: archive Inconclusive (ScanCannotExtract)
                 else extracted
-                    loop each file in "out\" (EnumerateFilesGuarded)
+                    loop each file in "out\" (QuarantineFiles.EnumerateFiles)
                         alt file removed or locked before reading (real-time AV race)
                             Service-->>Service: entry Inconclusive (ScanRemovedOrBlocked)
                         else read

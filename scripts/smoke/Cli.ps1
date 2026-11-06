@@ -826,3 +826,18 @@ Add-SmokeStep 'CLI-048' {
     'three copies and a shadowed file accounted for; the accented name stored twice fails naming 1 of 2, nothing written'
 }
 
+Add-SmokeStep 'CLI-049' {
+    # T-F463: tar.exe writes "a.txt." and "a.txt " as they are; both reach the destination, the trimmed one numbered.
+    $folder = Get-StepFolder 'cli049'
+    foreach ($name in 'a.txt.', 'a.txt ') {
+        $code = [int][char]$name[-1]
+        $tar = Join-Path $folder "trim$code.tar"
+        New-TarFile -Path $tar -Entries @(@{ Name = 'a.txt'; Content = 'fine' }, @{ Name = $name; Content = 'other' })
+        $o = Join-Path $folder "o$code"
+        $run = Invoke-Pakko @('x', $tar, "-o$o")
+        $texts = @(Get-ChildItem -LiteralPath $o -File -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object { "$($_.Name)=$(Get-Content -LiteralPath $_.FullName -Raw)" })
+        Assert-Smoke ($run.ExitCode -eq 0 -and ($texts -join '|') -ceq 'a (1).txt=other|a.txt=fine') "'$name': exit $($run.ExitCode), '$($texts -join '|')' $($run.Text)"
+    }
+    'a.txt. and a.txt beside a.txt both extracted, the trimmed one numbered'
+}
+

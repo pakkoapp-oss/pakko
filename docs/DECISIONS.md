@@ -13862,6 +13862,46 @@ availability follows the installed tar.exe at run time.
   empty folder) and the filter test now asking for `("emptydir/", true)` and the folder; both red
   before the fix. Smoke `CLI-046`.
 
+## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
+
+- **Why.** tar.exe writes through the long-path prefix, so `a.txt.`, `a.txt ` and a folder `d ` are on
+  disk as they are. Measured on 3.8.9 and 3.5.2, in both entry orders, beside a plain `a.txt`. A call
+  without the prefix, or a path normalized by `Path.GetFullPath`/`GetRelativePath`, reaches `a.txt` or
+  `d` instead. T-F460 fixed eight such calls; #169's fresh review found two more, one of them a false
+  Clean. The names had owners (T-F420, T-F441); the disk calls had none.
+- **The owner.** `Services/Sandbox/QuarantineFiles` holds every call that reaches a name tar.exe wrote:
+  - the guarded walk, which never enters a reparse folder;
+  - `Relative` (the name below a root as written);
+  - `Info`, `OpenRead`, `FolderExists`/`FolderTime`, `CreateFolder` and `MoveOut`.
+
+  It alone adds `\\?\`; callers pass plain full paths.
+- **The guard.** `QuarantineFilesOwnerTests` scans `TarSandboxedService.cs`, `AntivirusScanService.cs`
+  and `Sandbox/*.cs`. Outside the owner, these calls must be on its allow-list:
+  - every `Directory.*`/`File.*` call;
+  - `new FileInfo`, `new DirectoryInfo` and `new FileStream`;
+  - `Path.GetFullPath` and `Path.GetRelativePath`.
+
+  The list is keyed by file and call text, with a count. Each entry says why that call never sees a
+  name tar.exe wrote: it works on the destination, a source, the archive, a handle, or Pakko's own
+  names at the quarantine root. The test fails on one more identical call, or when a listed call is
+  gone. Only the owner may spell `Literal(` or the prefix.
+
+  Seen red by mutation:
+  - `Directory.Exists` put back in `RecordFolderTimes`;
+  - `new FileInfo` put back in `DescribeIncoming`;
+  - `GetRelativePath` put back in the scan.
+- **Found on the way.** A scan finding was named through `Path.GetRelativePath`. EVIL in `a.txt.` beside
+  a clean `a.txt` was reported as a threat in `a.txt`, the clean file's name. Seen red on `main`; it is
+  now named `a.txt.`. The progress snapshot walked with `AllDirectories`, which follows a junction; it
+  now walks as the scan does (seen red with a junction).
+- **Kept outside.**
+  - The quarantine root's own recursive delete: .NET deletes `d ` and `a.txt.` below it (measured,
+    net10.0).
+  - `RecoveryService` (PAR2) and `QuarantineAcl` (the root's ACL) do not handle names tar.exe wrote.
+  - Creation copies a colliding source with `File.Copy(fullSource, ...)` by its plain name. Whether a
+    source named `a.txt ` survives that is noted under T-F463 in `docs/TASKS.md`; it is not judged
+    here.
+
 ## T-F462 - Clean only when every listed file was scanned; extraction accounts for every file (2026-11-06)
 
 - **Why one guard.** The root-cause review of T-F446, T-F448, T-F449, T-F460 and #169's fresh review

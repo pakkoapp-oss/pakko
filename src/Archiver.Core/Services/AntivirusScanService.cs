@@ -652,7 +652,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
             catch (OperationCanceledException) { throw; }
             // Phase 0 spike (docs/DECISIONS.md's T-F146 entry): Defender's real-time on-access
             // scanner can independently remove/lock a file inside the quarantine "out\" directory
-            // between EnumerateFilesGuarded listing it and this code reading it — that is a real,
+            // between QuarantineFiles.EnumerateFiles listing it and this code reading it — that is a real,
             // observed race, not a hypothetical one, and must never crash the whole scan or
             // silently drop the entry.
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FileNotFoundException)
