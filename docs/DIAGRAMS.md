@@ -704,7 +704,9 @@ flowchart TD
     O["claim finalFilePath (T-F420: a claimed path marks its archive not wholly on disk);<br/>File.Move(the quarantined file by its literal name, staging\relative path of finalFilePath)<br/>a failed move = one ArchiveError for that file (T-F170)<br/>T-F389: the staged file takes the destination's permissions, or is not delivered<br/>ArchiveEntrySecurity.TryPropagateMotw(archivePath, stagedFile)<br/>in EffectiveMotwMode (T-F360)<br/>— from the archive the user chose; the stream moves with the file;<br/>the file keeps the time tar.exe set (T-F298)"] --> Mloop
     P --> Mloop
     Mloop -- yes --> I
-    Mloop -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>staging, so empty folders arrive too"] --> CM["staging.CommitInto(actualDest) — the same commit as ZIP (diagram 3):<br/>rename when actualDest is new and nothing is to be renamed (T-F411), else a per-file merge<br/>(an overwrite clears a read-only target first, T-F419);<br/>each locked destination file = one ArchiveError, a file left out through a link =<br/>SkippedFiles (EntryThroughReparsePoint), a folder in a file's place = ArchiveError<br/>(DestinationIsAFolder), then the recorded<br/>folder times (T-F298). A cancel before this point leaves nothing at the destination.<br/>T-F408: OnItemExtracted as in diagram 3"]
+    Mloop -- no --> ACC{"T-F462: files found (filter drops included) + first copies kept<br/>+ copies reported not extracted &lt; FileEntriesInScope?"}
+    ACC -- yes --> ACCX["throw CoreTextIOException(TarFilesMissing)<br/>before the commit - the archive fails, nothing written"]
+    ACC -- no --> CF["T-F197: CreateFolderEntries — every folder entry from the pre-scanned<br/>names (or the expanded selection), same root strip, created under<br/>staging, so empty folders arrive too"] --> CM["staging.CommitInto(actualDest) — the same commit as ZIP (diagram 3):<br/>rename when actualDest is new and nothing is to be renamed (T-F411), else a per-file merge<br/>(an overwrite clears a read-only target first, T-F419);<br/>each locked destination file = one ArchiveError, a file left out through a link =<br/>SkippedFiles (EntryThroughReparsePoint), a folder in a file's place = ArchiveError<br/>(DestinationIsAFolder), then the recorded<br/>folder times (T-F298). A cancel before this point leaves nothing at the destination.<br/>T-F408: OnItemExtracted as in diagram 3"]
     CM --> Q2{"totalFiles &gt; 0 &&<br/>extractedCount == 0?<br/>(T-F87 - every file hit P, nothing moved)"}
     Q2 -- yes --> Q3["SkippedFiles += whole-archive entry (AllEntriesSkipped),<br/>unless every skip was the user's own Skip answer (T-F216)<br/>(Path == archivePath); caller does NOT<br/>add this archive to CreatedFiles"]
     Q2 -- no --> Q
@@ -1063,6 +1065,9 @@ sequenceDiagram
                     end
                     opt T-F171: same-named file entries
                         Sandbox->>Sandbox: tar -x -q into quarantine "first\"<br/>(first copies — every file there is scanned the same way)
+                    end
+                    alt T-F462: fewer files scanned than FileEntriesInScope - a first copy counts only when TarNames.JudgeExtracted finds the listing faithful
+                        Service-->>Service: archive Inconclusive (ScanFilesMissing, the count after a colon)
                     end
                 end
             end

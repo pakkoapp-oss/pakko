@@ -1120,7 +1120,7 @@ public sealed class TarSandboxedService : ITarService
 
     // A quarantined file's path below root as tar.exe wrote it: Path.GetRelativePath normalizes,
     // and "a.txt." would come back as "a.txt" (T-F420 review).
-    private static string QuarantineRelative(string root, string file)
+    internal static string QuarantineRelative(string root, string file)
     {
         string prefix = Path.TrimEndingDirectorySeparator(root) + Path.DirectorySeparatorChar;
         return file.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? file[prefix.Length..] : Path.GetRelativePath(root, file);

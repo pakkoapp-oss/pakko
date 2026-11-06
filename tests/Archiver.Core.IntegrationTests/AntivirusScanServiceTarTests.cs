@@ -326,6 +326,26 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         result.OverallVerdict.Should().NotBe(ThreatVerdict.Clean, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
     }
 
+    // T-F462: a best-fit pair lists as one name twice, so the scan sees a duplicate group whose
+    // first-copy pass returns a file the main pass already scanned. That copy must not pay for a file
+    // lost elsewhere: with the old silent walk (T-F460) the threat in "d /" is never scanned.
+    [Integration]
+    public async Task ScanAsync_BestFitPairBesideALostFile_IsNeverClean()
+    {
+        if (await CollapsingArchiveAsync("slack", (accented, plain) =>
+            [
+                (accented, "fine"),
+                (plain, "fine"),
+                ("d /x.txt", "EVIL"),
+            ]) is not { } archivePath)
+            return;
+
+        var scanner = new FakeAmsiScanner { DetectedText = "EVIL" };
+        ThreatScanResult result = await CreateService(scanner).ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+        result.OverallVerdict.Should().NotBe(ThreatVerdict.Clean, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
+    }
+
     // An archive whose accented name this machine's tar.exe lists by best fit, or null (then the
     // test has nothing to show here: the name fits the code page). A non-ASCII name goes in a pax
     // header, as TarSandboxedServiceBestFitNameTests writes it; the listing must hold no accent.
@@ -345,7 +365,8 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
             }
             TarBuilder.WriteTar(path, [.. written]);
             ArchiveListResult list = await new TarSandboxedService(new GroupPolicyOptions()).ListEntriesAsync(path);
-            if (list.Success && list.Entries.Count == written.Count(e => e.TypeFlag != 'x') && list.Entries.All(e => e.Path == plainName))
+            if (list.Success && list.Entries.Count == written.Count(e => e.TypeFlag != 'x')
+                && list.Entries.Count(e => e.Path == plainName) >= 2 && !list.Entries.Any(e => e.Path.Contains(accent)))
                 return path;
         }
         return null;
