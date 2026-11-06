@@ -14124,3 +14124,47 @@ fixture).
   selected. Next: when the probe answers and the selection is still the startup default, move to
   the new `Default`; a unit test on `CreationFormatOption`/the ViewModel for this order.
 - **Reported by:** the release-tier smoke run of v1.8.1 (`POL-009`), 2026-10-16.
+
+---
+
+### Test-Coverage Audit Follow-Ups (T-F174–T-F186)
+
+Sourced from a full three-stage QA/AppSec coverage audit (requirements extraction -> matrix vs.
+existing tests across Happy/Error/Misuse/Security/Boundary vectors -> gap analysis), 2026-08-30.
+Two gaps the audit surfaced were already tracked (T-F160 CLI conflict-dialog parity, T-F171
+Tar-family duplicate-entry-name parity) — not duplicated here, only cross-referenced. Priority
+tiers below (P0/P1/P2) reflect the audit's own ranking for a standalone security-sensitive desktop
+app, not strict execution order — `docs/DECISIONS.md` gets an entry once each task's real findings
+land, per this project's normal workflow.
+
+---
+
+### ZIP Password Support (T-F188–T-F194)
+
+Sourced from a dedicated Plan Mode + `advisor` design session, 2026-09-17 (user-directed:
+"Подготуйся до впровадження читання зіп з паролями" — prepare password-protected ZIP reading,
+covering Explorer/WinUI App/Archive Browser/CLI password-prompt UX and a test-first strategy,
+before any code). **This reverses `SPEC.md`/`SECURITY.md`'s "Encrypted archives — Out of scope"
+line** — explicitly confirmed with the user as a deliberate scope change, not an oversight. Those
+documents (`SPEC.md`, `SECURITY.md`, `docs/CLI.md`, `README.md`, `docs/index.html`+`uk/`) are
+updated when each task below actually ships, not in advance — this project's own established
+timing convention (e.g. T-F105 only flipped `SPEC.md`'s TAR row once TAR-creation actually worked).
+
+**Confirmed scope (user-directed):**
+- **ZIP only.** `tar.exe` (bsdtar 3.8.8/libarchive 3.8.8, `C:\Windows\System32\tar.exe`) has zero
+  passphrase support — confirmed empirically via `tar --help` (no password/passphrase mention at
+  all) this same session. RAR/7z stay diagnostics-only, unchanged (T-F113).
+- **Reading only, this phase.** Decrypts both legacy ZipCrypto (PKWARE traditional) and WinZip
+  AE-1/AE-2 (AES-128/256), for maximum compatibility with real-world files. Writing (creating
+  password-protected archives) is a separate future phase — AES-only, never ZipCrypto — tracked as
+  T-F193 below, not implemented alongside T-F188–T-F192.
+- **One shared resolver for both directions from day one** (T-F157→T-F158 precedent — that pair
+  had to retroactively unify a decision that was first built extraction-only; this is deliberately
+  avoided here): `PasswordResolver` and the `ResolvePasswordAsync` callback shape on
+  `ExtractOptions`/`ArchiveOptions` are designed for both `Purpose: Decrypt|Encrypt` from T-F189
+  onward, even though only `Decrypt` has a real caller until T-F193.
+
+Full design rationale — the AE-1/AE-2 CRC-zeroing pitfall, the no-fork-extraction-pipeline
+invariant, the raw-entry-locator-vs-reflection choice, and the empirical `tar.exe`/`7za.exe`
+findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; the full design plan
+(reviewed twice by `advisor`) is preserved in this session's plan file until then.

@@ -5,7 +5,8 @@
 >
 > **Graduated 2026-11-06 (after v1.9.0, docs audit):** section "Graduated 2026-11-06 (after v1.9.0)" of
 > [`TASKS_DONE.md`](TASKS_DONE.md): the v1.9.0 wave plan, the old v1.1 state, the v1.2 OS note, the
-> NanaZip menu review, the pre-2026-07-12 T-F05 and T-F09 entries, T-F114, T-F430, T-F431, T-F433, T-F436, T-F438, T-F399.
+> NanaZip menu review, the intros of the test-coverage audit (T-F174-T-F186) and of ZIP password
+> support (T-F188-T-F194), the pre-2026-07-12 T-F05 and T-F09 entries, T-F114, T-F430, T-F431, T-F433, T-F436, T-F438, T-F399.
 >
 > **Graduated 2026-09-30 (after v1.6.0):** these completed tasks now live in [`TASKS_DONE.md`](TASKS_DONE.md), section "Graduated 2026-09-30": T-F05, T-F116, T-F124, T-F125, T-F126, T-F129, T-F35, T-F51, T-F131, T-F133, T-F134, T-F136, T-F137, T-F138, T-F142, T-F143, T-F147, T-F148, T-F149, T-F159, T-F160, T-F164, T-F171, T-F172, T-F195, T-F196, T-F197, T-F198, T-F199, T-F200, T-F201, T-F203, T-F204, T-F205, T-F207, T-F208, T-F209, T-F210, T-F212, T-F213, T-F214, T-F215, T-F216, T-F217, T-F218, T-F219, T-F222, T-F224, T-F227, T-F228, T-F229, T-F230, T-F232, T-F233, T-F234, T-F237, T-F238, T-F239, T-F240, T-F242, T-F248, T-F249, T-F250, T-F252, T-F253, T-F255, T-F256, T-F257, T-F258, T-F259, T-F262, T-F264, T-F265, T-F267, T-F269, T-F270, T-F271, T-F272, T-F283, T-F287, T-F289, T-F273, T-F274, T-F276, T-F277, T-F278, T-F279, T-F223, T-F305, T-F174, T-F175, T-F176, T-F177, T-F178, T-F179, T-F180, T-F181, T-F182, T-F183, T-F184, T-F185, T-F186, T-F187, T-F188, T-F189, T-F190, T-F191, T-F193.
 >
@@ -793,48 +794,6 @@ Core contract change, or reversing a recorded decision). Each covered leaf carri
 by the phase plan. Roots that are only a grouping
 (Core message codes, directory walking, text encoding across process boundaries) have no number
 here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-F234/T-F238.
-
-## Test-Coverage Audit Follow-Ups (T-F174–T-F186)
-
-Sourced from a full three-stage QA/AppSec coverage audit (requirements extraction -> matrix vs.
-existing tests across Happy/Error/Misuse/Security/Boundary vectors -> gap analysis), 2026-08-30.
-Two gaps the audit surfaced were already tracked (T-F160 CLI conflict-dialog parity, T-F171
-Tar-family duplicate-entry-name parity) — not duplicated here, only cross-referenced. Priority
-tiers below (P0/P1/P2) reflect the audit's own ranking for a standalone security-sensitive desktop
-app, not strict execution order — `docs/DECISIONS.md` gets an entry once each task's real findings
-land, per this project's normal workflow.
-
-## ZIP Password Support (T-F188–T-F194)
-
-Sourced from a dedicated Plan Mode + `advisor` design session, 2026-09-17 (user-directed:
-"Подготуйся до впровадження читання зіп з паролями" — prepare password-protected ZIP reading,
-covering Explorer/WinUI App/Archive Browser/CLI password-prompt UX and a test-first strategy,
-before any code). **This reverses `SPEC.md`/`SECURITY.md`'s "Encrypted archives — Out of scope"
-line** — explicitly confirmed with the user as a deliberate scope change, not an oversight. Those
-documents (`SPEC.md`, `SECURITY.md`, `docs/CLI.md`, `README.md`, `docs/index.html`+`uk/`) are
-updated when each task below actually ships, not in advance — this project's own established
-timing convention (e.g. T-F105 only flipped `SPEC.md`'s TAR row once TAR-creation actually worked).
-
-**Confirmed scope (user-directed):**
-- **ZIP only.** `tar.exe` (bsdtar 3.8.8/libarchive 3.8.8, `C:\Windows\System32\tar.exe`) has zero
-  passphrase support — confirmed empirically via `tar --help` (no password/passphrase mention at
-  all) this same session. RAR/7z stay diagnostics-only, unchanged (T-F113).
-- **Reading only, this phase.** Decrypts both legacy ZipCrypto (PKWARE traditional) and WinZip
-  AE-1/AE-2 (AES-128/256), for maximum compatibility with real-world files. Writing (creating
-  password-protected archives) is a separate future phase — AES-only, never ZipCrypto — tracked as
-  T-F193 below, not implemented alongside T-F188–T-F192.
-- **One shared resolver for both directions from day one** (T-F157→T-F158 precedent — that pair
-  had to retroactively unify a decision that was first built extraction-only; this is deliberately
-  avoided here): `PasswordResolver` and the `ResolvePasswordAsync` callback shape on
-  `ExtractOptions`/`ArchiveOptions` are designed for both `Purpose: Decrypt|Encrypt` from T-F189
-  onward, even though only `Decrypt` has a real caller until T-F193.
-
-Full design rationale — the AE-1/AE-2 CRC-zeroing pitfall, the no-fork-extraction-pipeline
-invariant, the raw-entry-locator-vs-reflection choice, and the empirical `tar.exe`/`7za.exe`
-findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; the full design plan
-(reviewed twice by `advisor`) is preserved in this session's plan file until then.
-
----
 
 ### T-F317 — `pakko` in the terminal for Store and winget users (P2, user-requested)
 
