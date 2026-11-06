@@ -552,7 +552,8 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 ? expandedSelection.Count(n => !n.EndsWith('/'))
                 : allNames.Count(n => !n.EndsWith('/'));
 
-            PreCreateOutputDirectories(allNames, scope.OutputDirectory!);
+            // T-F52, as extraction does it (T-F460: the same names, through the long-path prefix).
+            TarSandboxedService.PreCreateImplicitFolders(allNames, scope.OutputDirectory!);
 
             (int exitCode, _, string stdErr) = await scope.ExtractAsync(expandedSelection, cancellationToken).ConfigureAwait(false);
             if (exitCode != 0)
@@ -594,19 +595,6 @@ public sealed class AntivirusScanService : IAntivirusScanService
         }
     }
 
-    // T-F52: pre-create every directory the archive implies, at Pakko's own (unsandboxed)
-    // identity, before tar.exe ever runs — same libarchive-under-AppContainer workaround
-    // ExtractSingleArchiveAsync already relies on.
-    private static void PreCreateOutputDirectories(string[] allNames, string outputDirectory)
-    {
-        foreach (string name in allNames)
-        {
-            string? relativeDir = name.EndsWith('/') ? name.TrimEnd('/') : Path.GetDirectoryName(name);
-            if (!string.IsNullOrEmpty(relativeDir))
-                Directory.CreateDirectory(Path.Combine(outputDirectory, relativeDir));
-        }
-    }
-
     private sealed record TarScanTarget(
         string ArchivePath, IAmsiScanner Scanner, List<ThreatFinding> Findings, Action<string?, int, int> ReportProgress);
 
@@ -627,10 +615,12 @@ public sealed class AntivirusScanService : IAntivirusScanService
             reportProgress(relativePath, entriesDone, totalEntries);
             try
             {
-                long length = new FileInfo(file).Length;
+                // T-F460: by its literal name - a folder "d " asked for without the prefix is "d".
+                string onDisk = TarSandboxedService.Literal(file);
+                long length = new FileInfo(onDisk).Length;
                 ThreatFinding finding = await ScanOneEntryAsync(
                     archivePath, relativePath, length,
-                    () => new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read),
+                    () => new FileStream(onDisk, FileMode.Open, FileAccess.Read, FileShare.Read),
                     scanner, cancellationToken)
                     .ConfigureAwait(false);
                 findings.Add(finding);

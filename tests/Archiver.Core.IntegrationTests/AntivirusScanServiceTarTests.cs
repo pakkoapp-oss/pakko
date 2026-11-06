@@ -199,4 +199,29 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         result.Findings.Should().ContainSingle(f => f.ArchivePath == archivePath && f.EntryPath == null);
         scanner.ScannedContentNames.Should().BeEmpty();
     }
+
+    // T-F460: a folder entry whose name ends in a space or a dot is made by tar.exe as it is; its
+    // files must be scanned, not skipped by a walk that asks Windows for the trimmed name.
+    [TarIntegrationTheory]
+    [InlineData("d /")]
+    [InlineData("d./")]
+    [InlineData("a/d /")]
+    public async Task ScanAsync_FileInAFolderEndingInSpaceOrDot_IsScanned(string folder)
+    {
+        string archivePath = Path.Combine(_temp.Path, $"trailing-{folder.Length}-{(int)folder[^2]:x}.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = folder, TypeFlag = '5' },
+            new TarBuilder.Entry { Name = folder + "x.txt", Content = Encoding.ASCII.GetBytes("EVIL") },
+            new TarBuilder.Entry { Name = "clean.txt", Content = Encoding.ASCII.GetBytes("fine") },
+        ]);
+
+        var scanner = new FakeAmsiScanner { DetectedText = "EVIL" };
+        AntivirusScanService service = CreateService(scanner);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
+        scanner.ScannedContentNames.Should().HaveCount(2);
+    }
 }

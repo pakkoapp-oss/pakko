@@ -237,12 +237,14 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
 
     // T-F443 review: a folder Pakko pre-creates by a name Windows trims ("d." made as "d") is not
     // evidence about tar.exe's names; a faithful archive with a filter or a real duplicate still extracts.
-    // A trailing space is T-F454: tar.exe cannot make "d " beside Pakko's "d", on main as well.
+    // T-F454: a trailing space too ("d " beside the "d" Pakko made).
     [TarIntegrationTheory]
     [InlineData("d.")]
+    [InlineData("d ")]
+    [InlineData("d. ")]
     public async Task Extract_ImplicitFolderWindowsTrims_FilterAndDuplicateStillWork(string folder)
     {
-        string path = Path.Combine(_temp.Path, $"trim-{(int)folder[^1]:x}.tar");
+        string path = Path.Combine(_temp.Path, $"trim-{folder.Length}-{(int)folder[^1]:x}.tar");
         TarBuilder.WriteTar(path,
         [
             new TarBuilder.Entry { Name = folder + "/x.txt", Content = Encoding.ASCII.GetBytes("1") },
@@ -268,6 +270,129 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         // The duplicate group stands (T-F171): the first copy takes the name, the last one is renamed.
         File.ReadAllText(Path.Combine(dest, "y.txt")).Should().Be("A", TarCodePage.Describe());
         File.ReadAllText(Path.Combine(dest, "y (1).txt")).Should().Be("B", TarCodePage.Describe());
+        File.ReadAllText(Path.Combine(dest, "d", "x.txt")).Should().Be("1");
+    }
+
+    // T-F454: a folder entry ending in a space, before its file: tar.exe makes "d " itself, and
+    // the file lands in it; the destination gets "d" (Windows' name for it), with or without a filter.
+    [TarIntegrationTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Extract_ExplicitFolderEndingInSpace_Arrives(bool filter)
+    {
+        string path = Path.Combine(_temp.Path, $"space-entry-{filter}.tar");
+        TarBuilder.WriteTar(path,
+        [
+            new TarBuilder.Entry { Name = "d /", TypeFlag = '5' },
+            new TarBuilder.Entry { Name = "d /x.txt", Content = Encoding.ASCII.GetBytes("1") },
+        ]);
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            EntryFilter = filter ? (_, _) => true : null,
+        });
+
+        result.Errors.Should().BeEmpty(string.Join(" | ", result.Errors.Select(e => e.Message)));
+        File.ReadAllText(Path.Combine(dest, "d", "x.txt")).Should().Be("1");
+    }
+
+    // T-F460: an explicit folder entry ending in a dot is made by tar.exe as "d."; its file arrives
+    // under Windows' name for it.
+    [Integration]
+    public async Task Extract_ExplicitFolderEndingInDot_Arrives()
+    {
+        string path = Path.Combine(_temp.Path, "dot-entry.tar");
+        TarBuilder.WriteTar(path,
+        [
+            new TarBuilder.Entry { Name = "d./", TypeFlag = '5' },
+            new TarBuilder.Entry { Name = "d./x.txt", Content = Encoding.ASCII.GetBytes("1") },
+        ]);
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Errors.Should().BeEmpty(string.Join(" | ", result.Errors.Select(e => e.Message)));
+        File.ReadAllText(Path.Combine(dest, "d", "x.txt")).Should().Be("1");
+    }
+
+    // T-F454/T-F461: "d ./x.txt" - Pakko makes "d " (tar.exe's name for the file's folder), and
+    // tar.exe also makes "d" asking Windows for "d .". Everything arrives in "d"; a filter is
+    // refused, since the quarantine holds a folder the listing does not name (T-F461).
+    [Integration]
+    public async Task Extract_ImplicitFolderEndingInSpaceDot_ArrivesWithoutFilter_RefusedWithOne()
+    {
+        string path = Path.Combine(_temp.Path, "space-dot.tar");
+        TarBuilder.WriteTar(path, [new TarBuilder.Entry { Name = "d ./x.txt", Content = Encoding.ASCII.GetBytes("1") }]);
+        string all = NewDestination();
+        string filtered = NewDestination();
+
+        ArchiveResult everything = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = all, Mode = ExtractMode.SingleFolder,
+        });
+        ArchiveResult withFilter = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = filtered, Mode = ExtractMode.SingleFolder,
+            EntryFilter = (_, _) => true,
+        });
+
+        everything.Errors.Should().BeEmpty(string.Join(" | ", everything.Errors.Select(e => e.Message)));
+        File.ReadAllText(Path.Combine(all, "d", "x.txt")).Should().Be("1");
+        withFilter.Success.Should().BeFalse();
+        WrittenFiles(filtered).Should().BeEmpty();
+    }
+
+    // T-F454: "d/x.txt" and "d /x.txt" are two files in the quarantine ("d" and "d "); both land in
+    // "d", so the second is kept apart under a new name (T-F419), never written over the first.
+    [Integration]
+    public async Task Extract_FileInDAndInDSpace_BothArrive()
+    {
+        string path = Path.Combine(_temp.Path, "d-and-d-space.tar");
+        TarBuilder.WriteTar(path,
+        [
+            new TarBuilder.Entry { Name = "d/x.txt", Content = Encoding.ASCII.GetBytes("A") },
+            new TarBuilder.Entry { Name = "d /x.txt", Content = Encoding.ASCII.GetBytes("B") },
+        ]);
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.Errors.Should().BeEmpty(string.Join(" | ", result.Errors.Select(e => e.Message)));
+        string[] texts = [.. Directory.GetFiles(Path.Combine(dest, "d")).Select(File.ReadAllText).Order()];
+        texts.Should().Equal("A", "B");
+    }
+
+    // T-F461: a file before its own folder entry ending in a space fails in tar.exe itself on both
+    // builds ("Can't restore time" once the folder exists, "Can't create" when it does not): the
+    // run fails naming tar.exe, and nothing is written.
+    [Integration]
+    public async Task Extract_FileBeforeItsFolderEntryEndingInSpace_FailsWithNothingWritten()
+    {
+        string path = Path.Combine(_temp.Path, "space-late.tar");
+        TarBuilder.WriteTar(path,
+        [
+            new TarBuilder.Entry { Name = "d /x.txt", Content = Encoding.ASCII.GetBytes("1") },
+            new TarBuilder.Entry { Name = "d /", TypeFlag = '5' },
+        ]);
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("tar.exe");
+        WrittenFiles(dest).Should().BeEmpty();
     }
 
     // T-F443 fresh review: Pakko pre-creates "cafe/sub" for the listed "cafe/sub/x.txt", and that
