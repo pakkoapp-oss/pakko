@@ -24,7 +24,7 @@ public static class EntryDiskName
     public static string AsPakkoWrites(string name) => Written(name, trimFileName: true);
 
     /// <summary>The name as tar.exe writes it inside the quarantine: the file name keeps its
-    /// trailing dots and spaces.</summary>
+    /// trailing dots and spaces, a folder keeps its trailing spaces.</summary>
     public static string AsTarExeWrites(string name) => Written(name, trimFileName: false);
 
     /// <summary>Whether Pakko writes <paramref name="name"/> under another name than its own parts
@@ -119,8 +119,12 @@ public static class EntryDiskName
             if (parts[i] == "..")
                 continue;
             string part = string.Concat(parts[i].Select(c => Replaced.Contains(c) ? '_' : c));
-            if (trimFileName || folder || i < parts.Length - 1)
+            if (trimFileName)
                 part = part.TrimEnd(' ', '.');
+            // T-F454: tar.exe drops a folder's trailing dots in a path it writes, not its spaces
+            // (measured on 3.8.9 and 3.5.2, docs/DECISIONS.md "T-F460 and T-F454").
+            else if (folder || i < parts.Length - 1)
+                part = part.TrimEnd('.');
             parts[i] = part.Length == 0 ? "_" : part;
         }
         return string.Join('/', parts);

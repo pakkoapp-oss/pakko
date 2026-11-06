@@ -758,3 +758,22 @@ Add-SmokeStep 'CLI-046' {
     Assert-Smoke ($run.ExitCode -eq 0 -and ($items -join '|') -ceq 'emptydir') "x emptydir: exit $($run.ExitCode), '$($items -join '|')' $($run.Text)"
     'both folders arrive; the empty one also alone'
 }
+
+Add-SmokeStep 'CLI-047' {
+    # T-F460/T-F454: folders whose names end in a space or a dot - implicit, explicit, and both.
+    $folder = Get-StepFolder 'cli047'
+    $cases = @(
+        @{ Name = 'implicit-space'; Entries = @(@{ Name = 'd /x.txt'; Content = 'X' }) },
+        @{ Name = 'explicit-space'; Entries = @(@{ Name = 'd /'; Folder = $true }, @{ Name = 'd /x.txt'; Content = 'X' }) },
+        @{ Name = 'implicit-dot-space'; Entries = @(@{ Name = 'd. /x.txt'; Content = 'X' }) },
+        @{ Name = 'explicit-dot'; Entries = @(@{ Name = 'd./'; Folder = $true }, @{ Name = 'd./x.txt'; Content = 'X' }) })
+    foreach ($case in $cases) {
+        $tar = Join-Path $folder "$($case.Name).tar"
+        New-TarFile -Path $tar -Entries $case.Entries
+        $out = Join-Path $folder "o-$($case.Name)"
+        $run = Invoke-Pakko @('x', $tar, "-o$out")
+        $text = Get-Content -LiteralPath (Join-Path $out 'd\x.txt') -Raw -ErrorAction SilentlyContinue
+        Assert-Smoke ($run.ExitCode -eq 0 -and $text -eq 'X') "x $($case.Name): exit $($run.ExitCode), d\x.txt '$text' $($run.Text)"
+    }
+    'every case delivers d\x.txt'
+}

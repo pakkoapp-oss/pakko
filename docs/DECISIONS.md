@@ -13862,6 +13862,62 @@ availability follows the installed tar.exe at run time.
   empty folder) and the filter test now asking for `("emptydir/", true)` and the folder; both red
   before the fix. Smoke `CLI-046`.
 
+## T-F460 and T-F454 - tar folders whose names end in a space or a dot (2026-11-06)
+
+- **T-F460 (P1, on `main` and in the shipped v1.9.0).** "Scan for threats" skipped every file inside
+  a tar folder entry named `d /` or `d./` and reported the archive Clean. Extraction lost the same
+  files silently: success, an empty `d` at the destination, no `x.txt`. With a filter, the run was
+  refused with T-F452's code-page message instead.
+- **Cause.** `WalkGuarded` (the quarantine walk behind extraction's move phase and the scan) asked
+  Windows for `out\d ` without the long-path prefix. Windows trims that to `out\d`, which does not
+  exist, and a bare `catch { continue; }` (from T-F52, never explained) skipped the folder. tar.exe
+  writes through `\\?\`, so the folder on disk is `d ` (or `d.`) as named.
+- **T-F454's cause.** `d /x.txt` with no `d /` entry: Pakko pre-created the folder (T-F52) without
+  the prefix, so Windows made `d`. tar.exe then asks for `d \x.txt` and fails the whole run.
+  `EntryDiskName.AsTarExeWrites` assumed tar.exe trims a folder's trailing spaces. It does not.
+- **Measured** unsandboxed, the same on bsdtar 3.8.9 (build 26300) and 3.5.2 (PakkoW10) unless noted:
+
+  | archive | no pre-creation | plain `CreateDirectory` | through `\\?\` |
+  |---|---|---|---|
+  | `d /x.txt` | exit 1: tar.exe makes `d`, asks for `d \x.txt` | exit 1 | OK: `d \x.txt` |
+  | `a/d /x.txt`, `d. /x.txt` | exit 1 | exit 1 | OK, literal name |
+  | `d ./x.txt` | exit 1, asks for `d \x.txt` (one dot dropped) | - | - |
+  | `d./x.txt` | OK: `d\x.txt` | OK | `d.\x.txt` |
+  | `d../x.txt` | exit 1, asks for `d..\x.txt` | - | - |
+  | `d /` entry, then `d /x.txt` | OK: literal `d \x.txt` | OK | exit 1 "Can't restore time" |
+  | `d./` entry, then the file | OK: literal `d.\x.txt` | OK | exit 1 "Can't restore time" |
+  | `d /x.txt`, then the `d /` entry | exit 1 | exit 1 | exit 1 "Can't restore time" |
+  | `d./x.txt`, then the `d./` entry | OK: `d\x.txt` and an empty `d.` | OK | exit 1 |
+
+  3.8.9 only: `d ./x.txt` with `d ` made through the prefix also gets an empty `d` from tar.exe; with a
+  literal `d .` made instead, tar.exe writes `d .\x.txt` and nothing else.
+- **Fix.**
+  - `WalkGuarded` enumerates through the prefix and gives paths back in the root's own form.
+  - The reparse-point check reads the literal path.
+  - A folder that cannot be read raises `CoreTextIOException` (`CannotReadArchive`): extraction
+    fails, and the scan says Inconclusive. Never a silent skip. Seen with the walk reverted to the old
+    enumeration: the scan tests went Inconclusive, not Clean.
+  - `AsTarExeWrites` keeps a folder's trailing spaces and still drops its trailing dots (the
+    measured rule for a path tar.exe writes).
+  - `PreCreateImplicitFolders` (extraction and scan) makes those names through the prefix; the scan
+    no longer pre-creates folders that have their own entry.
+  - The scan opens files through the prefix, and so do the folder times and the progress poll.
+  - At the destination, a file's folders take Pakko's names (`AsPakkoWrites`: `d \x.txt` lands in
+    `d\x.txt`, as in ZIP and 7-Zip).
+- **Rejected for now: making every pre-created folder literal** (no dot trimming). It would fix `d .`
+  with a filter, implicit `d..` and explicit `d./` with a filter, but it breaks a file followed by
+  its `d./` entry (works today) unless such a folder is not pre-created, and that leans on tar.exe's
+  implicit mkdir inside the AppContainer, which T-F52 measured failing. Needs a 3.5.2 run and a
+  sandboxed run first; kept as T-F461's lead.
+- **Left (T-F461):** a file before its own `d /` entry (tar.exe fails either way); `d ./x.txt` with a
+  filter (the extra `d` is not in the listing: refused); implicit `d..`; explicit `d./` with a filter
+  (the listing says `d`, tar.exe writes `d.`: refused). Each one refuses or fails loudly. None of
+  them loses a file silently.
+- **Tests.** The scan Theory (`d /`, `d./`, `a/d /`), the explicit-folder extraction tests, the
+  implicit Theory (`d `, `d. `) and a second tar.exe oracle with Pakko's real pre-creation: all red
+  before the fix. A mutation dropping the prefix from pre-creation turned the oracle and the
+  Theory red. Smoke `CLI-047`; `SHL-017` is the scan on PakkoW10 with Defender live (stream E).
+
 ## Docs audit (2026-11-06) - the minimum Windows, the owner of the format table
 
 The docs audit after T-F442 (three PRs: public pages, developer docs, `TASKS.md`) settled these.

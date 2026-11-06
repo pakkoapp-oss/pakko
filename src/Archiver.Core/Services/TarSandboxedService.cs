@@ -598,19 +598,7 @@ public sealed class TarSandboxedService : ITarService
         // lost that entry's time.
         // With a selection, only the selected names are extracted: their folders' entries may not be.
         IEnumerable<string> extractedNames = (IEnumerable<string>?)tarMembers ?? allNames;
-        // T-F420: by the name tar.exe gives the folder ("d?" is "d_"), or the creation fails.
-        // T-F443: kept by the name each got on disk (Windows trims "d." to "d" here, without the
-        // long-path prefix), since these folders are Pakko's own, not evidence of tar.exe's names.
-        var preCreated = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (string relativeDir in DirectoriesToPreCreate(extractedNames))
-        {
-            DirectoryInfo made = Directory.CreateDirectory(Path.Combine(scope.OutputDirectory!, EntryDiskName.AsTarExeWrites(relativeDir + "/")));
-            // The parents CreateDirectory made along the way are Pakko's too: the quarantine starts empty.
-            string madeRelative = QuarantineRelative(scope.OutputDirectory!, made.FullName).TrimEnd(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, '/');
-            preCreated.Add(madeRelative);
-            for (int sep = madeRelative.LastIndexOf('/'); sep > 0; sep = madeRelative.LastIndexOf('/', sep - 1))
-                preCreated.Add(madeRelative[..sep]);
-        }
+        HashSet<string> preCreated = PreCreateImplicitFolders(extractedNames, scope.OutputDirectory!);
 
 
         // T-F142: real byte-level progress for a single-archive extraction (progress is only
@@ -926,6 +914,24 @@ public sealed class TarSandboxedService : ITarService
     // left to tar.exe, which then sets its time. Pre-creating a directory also creates its
     // parents, so a rare archive with an implicit subfolder under an explicit one loses that
     // parent's time; it still extracts.
+    // T-F52's folders, made where tar.exe will look for them: by the name tar.exe writes ("d?" is
+    // "d_", T-F420; "d " keeps its space, T-F454) and through the long-path prefix, or Windows would
+    // make "d" for "d ". Returns their names below outputDirectory, with the parents made along the
+    // way: the quarantine starts empty, so those are Pakko's too (T-F443).
+    internal static HashSet<string> PreCreateImplicitFolders(IEnumerable<string> namesInArchiveOrder, string outputDirectory)
+    {
+        var preCreated = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string relativeDir in DirectoriesToPreCreate(namesInArchiveOrder))
+        {
+            string onDisk = EntryDiskName.AsTarExeWrites(relativeDir + "/");
+            Directory.CreateDirectory(Literal(Path.Combine(outputDirectory, onDisk.Replace('/', Path.DirectorySeparatorChar))));
+            preCreated.Add(onDisk);
+            for (int sep = onDisk.LastIndexOf('/'); sep > 0; sep = onDisk.LastIndexOf('/', sep - 1))
+                preCreated.Add(onDisk[..sep]);
+        }
+        return preCreated;
+    }
+
     internal static List<string> DirectoriesToPreCreate(IEnumerable<string> namesInArchiveOrder)
     {
         var seenDirectoryEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -957,7 +963,7 @@ public sealed class TarSandboxedService : ITarService
             if (!name.EndsWith('/'))
                 continue;
             string entryPath = EntryDiskName.AsTarExeWrites(name).Replace('/', Path.DirectorySeparatorChar);
-            string quarantined = Path.Combine(quarantineDir, entryPath);
+            string quarantined = Literal(Path.Combine(quarantineDir, entryPath));
             if (entryPath.Length == 0 || !Directory.Exists(quarantined))
                 continue;
             string relative = EntryDiskName.AsPakkoWrites(name).Replace('/', Path.DirectorySeparatorChar);
@@ -997,7 +1003,20 @@ public sealed class TarSandboxedService : ITarService
                 return string.Empty;
             relative = relative[(sep + 1)..];
         }
+        relative = EntryDiskName.AsPakkoWrites(relative.Replace(Path.DirectorySeparatorChar, '/') + "/").Replace('/', Path.DirectorySeparatorChar);
         return Path.GetRelativePath(plan.ActualDest, Path.GetFullPath(Path.Combine(plan.ActualDest, relative)));
+    }
+
+    // T-F460: a quarantined file's folders by Pakko's names ("d \x.txt" lands in "d\x.txt", as in
+    // ZIP and 7-Zip); Windows would not trim "d " in the middle of a path, and no "d " is made.
+    // The file name is left as it is: TryMoveSingleEntryAsync sees its trim itself.
+    private static string WithPakkoFolderNames(string relativePath)
+    {
+        int sep = relativePath.LastIndexOf(Path.DirectorySeparatorChar);
+        if (sep < 0)
+            return relativePath;
+        string folders = EntryDiskName.AsPakkoWrites(relativePath[..sep].Replace(Path.DirectorySeparatorChar, '/') + "/");
+        return folders.Replace('/', Path.DirectorySeparatorChar) + relativePath[sep..];
     }
 
     private static void CreateFolderEntriesFromDisk(IEnumerable<string> folders, TarCommitPlan plan)
@@ -1081,7 +1100,7 @@ public sealed class TarSandboxedService : ITarService
 
     // T-F419: a quarantined file by its exact name - tar.exe writes through the long-path prefix,
     // so "a.txt." or "a.txt " is on disk as it is, and without the prefix Windows would trim it.
-    private static string Literal(string fullPath)
+    internal static string Literal(string fullPath)
     {
         if (fullPath.StartsWith(@"\\?\", StringComparison.Ordinal))
             return fullPath;
@@ -1146,6 +1165,7 @@ public sealed class TarSandboxedService : ITarService
             }
             relativePath = relativePath[(sep + 1)..];
         }
+        relativePath = WithPakkoFolderNames(relativePath);
 
         string finalFilePath = Path.GetFullPath(Path.Combine(actualDest, relativePath));
 
@@ -1315,7 +1335,8 @@ public sealed class TarSandboxedService : ITarService
         DateTime mostRecentWriteTimeUtc = DateTime.MinValue;
         try
         {
-            foreach (string file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+            string literalDirectory = Literal(directory);
+            foreach (string file in Directory.EnumerateFiles(literalDirectory, "*", SearchOption.AllDirectories))
             {
                 try
                 {
@@ -1324,7 +1345,7 @@ public sealed class TarSandboxedService : ITarService
                     if (info.LastWriteTimeUtc > mostRecentWriteTimeUtc)
                     {
                         mostRecentWriteTimeUtc = info.LastWriteTimeUtc;
-                        mostRecentRelativePath = Path.GetRelativePath(directory, file);
+                        mostRecentRelativePath = Path.GetRelativePath(literalDirectory, file);
                     }
                 }
                 catch (IOException) { /* file mid-write or vanished since being listed — best-effort estimate */ }
@@ -2724,22 +2745,25 @@ public sealed class TarSandboxedService : ITarService
         {
             string dir = pending.Pop();
 
+            // T-F460: through the long-path prefix, as tar.exe wrote them - "d " asked for without it
+            // is "d", which is not there. A folder that cannot be read fails the walk: a silent skip
+            // left its files unscanned (Clean) and not extracted.
             List<string> files;
             List<string> subDirs;
             try
             {
-                files = Directory.EnumerateFiles(dir).ToList();
-                subDirs = Directory.EnumerateDirectories(dir).ToList();
+                files = [.. Directory.EnumerateFiles(Literal(dir)).Select(f => Path.Join(dir, Path.GetFileName(f)))];
+                subDirs = [.. Directory.EnumerateDirectories(Literal(dir)).Select(d => Path.Join(dir, Path.GetFileName(d)))];
             }
-            catch
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                continue;
+                throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, CoreMessages.Detail(ex)), ex);
             }
 
             foreach (string file in files)
                 yield return (file, false);
 
-            foreach (string subDir in subDirs.Where(d => !ArchiveEntrySecurity.IsReparsePoint(d)))
+            foreach (string subDir in subDirs.Where(d => !ArchiveEntrySecurity.IsReparsePoint(Literal(d))))
             {
                 yield return (subDir, true);
                 pending.Push(subDir);

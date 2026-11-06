@@ -57,7 +57,7 @@ TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating sessi
 | Stream | Tasks | Area | Gate |
 |---|---|---|---|
 | A text boundaries, analyzer | T-F441 (one owner per encoding boundary, names and paths, with its control test), T-F424 as T-F441's first case, T-F440 (SonarCloud findings, the `S3903` bug first), T-F455, T-F454, T-F453 (tar folder bugs on `main` found by T-F443; added 2026-11-06, the agent) | `Sandbox/Tar*Encoding`, `Zip/ZipNameCodePages`, `StdinPathList`, `CliConsoleCharset`, `BareGzip*`, `Program.cs`, tests | T-F441: research, plan mode + advisor at both ends; T-F440: tests first |
-| B sandbox launcher, AMSI tests | T-F428 (cancel kills the child itself), T-F427 (AMSI not ready at scan time), T-F444 (another antivirus or none, on the VM; added 2026-10-31, the user), T-F446 (AMSI "blocked by admin" reads as Clean), T-F447 (more providers on the VM; added 2026-11-03, the user), T-F448 (Trend Micro's provider answers Clean for EICAR), T-F449 (an empty scan reports Clean; added 2026-11-04, the user), T-F450 (a timed-out tar version probe reads as an old tar; added 2026-11-04, the user) | `SandboxedProcessLauncher`, `AntivirusScanService` tests | T-F428: plan mode + advisor at both ends (sandbox code) |
+| B sandbox launcher, AMSI tests | T-F428 (cancel kills the child itself), T-F427 (AMSI not ready at scan time), T-F444 (another antivirus or none, on the VM; added 2026-10-31, the user), T-F446 (AMSI "blocked by admin" reads as Clean), T-F447 (more providers on the VM; added 2026-11-03, the user), T-F448 (Trend Micro's provider answers Clean for EICAR), T-F449 (an empty scan reports Clean; added 2026-11-04, the user), T-F450 (a timed-out tar version probe reads as an old tar; added 2026-11-04, the user), T-F460 (a tar folder ending in a space or a dot scans Clean; P1, added 2026-11-06, the agent) | `SandboxedProcessLauncher`, `AntivirusScanService` tests | T-F428: plan mode + advisor at both ends (sandbox code) |
 | C after the operation | T-F434 (recycle each clean source), T-F435 (a reason per kept item), T-F437 (unreadable path list) | `SourceRecycler`, the not-deleted dialog, `Archiver.Shell` messages, `SPEC.md` rule | T-F434: plan mode (an irreversible action on user data) |
 | D progress | T-F432 (taskbar button and tray icon), T-F439 (window floor on a monitor move) | App `MainWindow`, tray icon, `Archiver.OperationUi`, `WindowFloor` | T-F432: plan mode (COM under Native AOT) |
 | F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
@@ -1460,6 +1460,27 @@ re-measured with T-F346's script before and after.
   advisor at both ends, `SECURITY.md` only with the user's OK.
 - **Reported by:** T-F444's fresh reviewer, 2026-11-01.
 
+### T-F460 — "Scan for threats" reports Clean for a tar whose folder name ends in a space or a dot (P1, from T-F454)
+
+- [x] **Status:** fixed 2026-11-06 (`fix/tf460-trailing-space-folder`; `docs/DECISIONS.md`, "T-F460
+  and T-F454"): the quarantine walk reads through the long-path prefix and never skips a folder it
+  cannot read; the same walk lost those files from extraction silently. On `main` and in v1.9.0.
+  Left: `SHL-017` on PakkoW10 with Defender live (stream E). Put into stream B (the agent, 2026-11-06).
+- **Reported by:** the agent, 2026-11-06, while measuring T-F454.
+
+### T-F461 — tar folders ending in a dot or a space: the shapes still refused (P3, from T-F460)
+
+- [ ] **Status:** open. Each fails loudly, none loses a file (`docs/DECISIONS.md`, "T-F460 and T-F454"):
+  1. A file before its own `d /` entry: tar.exe fails on both builds whatever Pakko makes first.
+  2. `d ./x.txt` with a filter: tar.exe also makes `d`, which the listing does not name; refused.
+  3. Implicit `d../x.txt`: tar.exe asks for `d..`, Pakko makes `d`; the run fails.
+  4. Explicit `d./` with a filter: the listing says `d`, tar.exe writes `d.`; refused.
+  Lead (3.8.9 only): a folder made by its literal name takes the file there. Making every pre-created
+  folder literal fixes 2-4 but breaks a file followed by its `d./` entry unless that folder is not
+  pre-created, which leans on tar.exe's implicit mkdir in the AppContainer (T-F52 saw it fail).
+  Next: measure both on 3.5.2 and inside the sandbox before choosing.
+- **Reported by:** the agent, 2026-11-06.
+
 ### T-F459 — Regroup `docs/TESTING.md` by project and category (P3, docs)
 
 - [ ] **Status:** open. Found by the 2026-11-05 docs audit: `TESTING.md` (about 110 KB) is ordered by
@@ -1510,7 +1531,10 @@ re-measured with T-F346's script before and after.
 
 ### T-F454 — A tar entry under a folder ending in a space, with no folder entry of its own, does not extract (P3, from T-F443's review)
 
-- [ ] **Status:** open. Found 2026-11-05 (bsdtar 3.8.9, on `main` too): `d /x.txt` with no `d /`
+- [x] **Status:** fixed 2026-11-06 with T-F460 (`docs/DECISIONS.md`, "T-F460 and T-F454"): Pakko makes
+  the folder by tar.exe's name for it (`d ` keeps its space) through the long-path prefix; measured
+  on 3.8.9 and 3.5.2, smoke `CLI-047`. The shapes still refused are T-F461.
+- **Before:** open. Found 2026-11-05 (bsdtar 3.8.9, on `main` too): `d /x.txt` with no `d /`
   entry fails the whole run with tar.exe's "Can't create '...\out\d \x.txt': No such file or
   directory". Pakko pre-creates the folder (T-F52) without the long-path prefix, so Windows makes
   `d`, and tar.exe does not make `d ` itself. `d./x.txt` extracts. Next: pre-create through the
@@ -1533,6 +1557,8 @@ re-measured with T-F346's script before and after.
   tar.exe's listing; that message speaks of a name the code page cannot carry and advises ZIP, which
   fits creation, not a selection from a tar whose header names disagree with the listing. Next: a
   message of its own (37 locales, `Glossary.tsv`), through whichever stream holds the Messages set.
+- **Also (2026-11-06):** the T-F461 refusals of a filter (a folder tar.exe wrote by another name)
+  show the same code-page message.
 - **Reported by:** T-F441's closing notes (`docs/DECISIONS.md`, "T-F441 and T-F424"), 2026-10-31.
 
 ### T-F451 — `RunPipelineAsync_CancelledMidFlight_NoTasksLeftRunningAfterwards` races a timer (P3, flaky test)

@@ -32,13 +32,20 @@ public sealed class TarDuplicateNamesTests
     [Theory]
     [InlineData("d/x.txt", "d./x.txt")]
     [InlineData("d./x.txt", "d/x.txt")]
-    [InlineData("d/x.txt", "d /x.txt")]
     public void FindDuplicateGroups_FolderWindowsTrims_IsOneGroup(string first, string second)
     {
         List<TarSandboxedService.DuplicateGroup> groups = TarSandboxedService.FindDuplicateGroups(
             [(first, 1), (second, 2)], [first, second], null);
 
         groups.Should().Equal(new TarSandboxedService.DuplicateGroup(first, 1, 2));
+    }
+
+    // T-F454: Pakko makes "d " by its own name before tar.exe runs, so "d /x.txt" is a file of its
+    // own in the quarantine, not a second copy of "d/x.txt".
+    [Fact]
+    public void FindDuplicateGroups_FolderEndingInSpace_IsNoGroup()
+    {
+        TarSandboxedService.FindDuplicateGroups([("d/x.txt", 1), ("d /x.txt", 2)], ["d/x.txt", "d /x.txt"], null).Should().BeEmpty();
     }
 
     [Fact]
