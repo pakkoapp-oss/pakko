@@ -13,10 +13,14 @@ namespace Archiver.Core.Services.Sandbox;
 internal static class QuarantineFiles
 {
     /// <summary>A quarantined file's path below <paramref name="root"/> as tar.exe wrote it.</summary>
+    /// <exception cref="IOException"><paramref name="file"/> is not below <paramref name="root"/>
+    /// as spelled; Path.GetRelativePath would quietly turn "a.txt." into "a.txt".</exception>
     public static string Relative(string root, string file)
     {
         string prefix = Path.TrimEndingDirectorySeparator(root) + Path.DirectorySeparatorChar;
-        return file.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? file[prefix.Length..] : Path.GetRelativePath(root, file);
+        return file.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? file[prefix.Length..]
+            : throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, file));
     }
 
     /// <summary>The files below <paramref name="root"/>, never entering a reparse-point folder.</summary>

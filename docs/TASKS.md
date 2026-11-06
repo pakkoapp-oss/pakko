@@ -1493,6 +1493,10 @@ re-measured with T-F346's script before and after.
 - **Left (measure):** creation copies a colliding source with `File.Copy(fullSource, ...)` by its
   plain name (`TarSandboxedService`, collision staging). Whether a source named `a.txt ` survives
   that is not measured.
+- **Left (older than T-F463, from #172's fresh review):** `ArchiveEntrySecurity.IsReparsePoint`
+  returns false on any exception (fails open); the walk never checks whether a *file* is a reparse
+  point, so `OpenRead` would follow a file symlink (the pre-scan rejects symlink entries first); the
+  walk does not observe cancellation.
 - **Before:** open. Agreed 2026-11-06 (the user). T-F460 fixed eight calls that reached the
   quarantine without the long-path prefix (Windows trims `d ` to `d`); #169's fresh review found
   two more, one a false Clean. T-F420 (`EntryDiskName`) and T-F441 (`SystemCodePages`, `TarNames`,
