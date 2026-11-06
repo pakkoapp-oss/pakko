@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko nezjistil, co podporuje tar.exe tohoto systému: chybí, není podepsán společností Microsoft, nebo neodpověděl včas.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Z tohoto archivu nebylo možné získat všechny soubory, proto nebyly zkontrolovány všechny. Zkontrolované soubory: {0} z {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Z tohoto archivu nevyšly všechny soubory, proto z něj nebylo nic extrahováno. Soubory, které vyšly: {0} z {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Položka je chráněna heslem a nebyla zkontrolována.</value>
   </data>

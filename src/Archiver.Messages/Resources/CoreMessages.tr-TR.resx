@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko bu sistemdeki tar.exe'nin neyi desteklediğini öğrenemedi: eksik, Microsoft tarafından imzalanmamış veya zamanında yanıt vermedi.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Bu arşivden tüm dosyalar alınamadı, bu yüzden her dosya taranmadı. Taranan dosyalar: {0}/{1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Bu arşivden tüm dosyalar çıkmadı, bu yüzden arşivden hiçbir şey ayıklanmadı. Çıkan dosyalar: {0}/{1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Öğe parola korumalı ve taranmadı.</value>
   </data>

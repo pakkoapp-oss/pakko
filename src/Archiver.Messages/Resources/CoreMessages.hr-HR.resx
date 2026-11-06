@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko nije mogao saznati što podržava tar.exe ovog sustava: nedostaje, nije potpisan od tvrtke Microsoft ili nije odgovorio na vrijeme.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Iz ove arhive nisu se mogle uzeti sve datoteke, pa nije skenirana svaka. Skenirane datoteke: {0} od {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Iz ove arhive nisu izašle sve datoteke, pa iz nje ništa nije raspakirano. Datoteke koje su izašle: {0} od {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Stavka je zaštićena lozinkom i nije skenirana.</value>
   </data>

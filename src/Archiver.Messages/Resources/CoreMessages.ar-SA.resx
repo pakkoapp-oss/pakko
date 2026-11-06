@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>تعذّر على Pakko معرفة ما يدعمه tar.exe في هذا النظام: إما أنه غير موجود، أو غير موقّع من Microsoft، أو لم يستجب في الوقت المحدد.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>تعذر أخذ كل الملفات من هذا الأرشيف، لذلك لم يُفحص كل ملف. الملفات المفحوصة: {0} من {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>لم تخرج كل الملفات من هذا الأرشيف، لذلك لم يُستخرج منه شيء. الملفات التي خرجت: {0} من {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>العنصر محمي بكلمة مرور ولم يتم فحصه.</value>
   </data>

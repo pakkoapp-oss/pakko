@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko kon niet achterhalen wat tar.exe op dit systeem ondersteunt: het ontbreekt, is niet door Microsoft ondertekend of antwoordde niet op tijd.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Niet alle bestanden konden uit dit archief worden gehaald, dus niet elk bestand is gescand. Gescande bestanden: {0} van {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Niet alle bestanden kwamen uit dit archief, dus er is niets uit uitgepakt. Bestanden die eruit kwamen: {0} van {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Het item is met een wachtwoord beveiligd en is niet gescand.</value>
   </data>

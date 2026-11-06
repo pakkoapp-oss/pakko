@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko không thể biết tar.exe của hệ thống này hỗ trợ những gì: tar.exe bị thiếu, không được Microsoft ký hoặc không phản hồi kịp thời.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Không thể lấy tất cả tệp ra khỏi tệp nén này, nên không phải tệp nào cũng được quét. Số tệp đã quét: {0}/{1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Không phải tất cả tệp đều ra khỏi tệp nén này, nên không giải nén gì từ nó. Số tệp đã ra: {0}/{1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Mục được bảo vệ bằng mật khẩu và chưa được quét.</value>
   </data>

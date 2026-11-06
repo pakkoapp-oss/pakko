@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko가 이 시스템의 tar.exe가 지원하는 기능을 확인할 수 없습니다. tar.exe가 없거나, Microsoft 서명이 없거나, 제시간에 응답하지 않았습니다.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>이 압축 파일에서 모든 파일을 꺼낼 수 없어 모든 파일을 검사하지 못했습니다. 검사한 파일: {0} / {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>이 압축 파일에서 모든 파일이 나오지 않아 아무것도 풀지 않았습니다. 나온 파일: {0} / {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>항목이 암호로 보호되어 있어 검사하지 않았습니다.</value>
   </data>

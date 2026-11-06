@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko tidak dapat mengetahui apa yang didukung tar.exe sistem ini: tar.exe tidak ada, tidak ditandatangani oleh Microsoft, atau tidak menjawab tepat waktu.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Tidak semua file dapat diambil dari arsip ini, jadi tidak semua file dipindai. File yang dipindai: {0} dari {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Tidak semua file keluar dari arsip ini, jadi tidak ada yang diekstrak darinya. File yang keluar: {0} dari {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Entri dilindungi kata sandi dan tidak dipindai.</value>
   </data>

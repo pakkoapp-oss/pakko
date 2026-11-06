@@ -307,6 +307,25 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         result.OverallVerdict.Should().NotBe(ThreatVerdict.Clean, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
     }
 
+    // Three copies of one name: tar.exe keeps the last, the first-copy pass the first; the middle
+    // copy reaches neither. Its threat must not read as Clean (T-F462).
+    [Integration]
+    public async Task ScanAsync_ThreeCopies_ThreatInTheMiddle_IsNeverClean()
+    {
+        string archivePath = Path.Combine(_temp.Path, "three-copies.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "x.txt", Content = Encoding.ASCII.GetBytes("one") },
+            new TarBuilder.Entry { Name = "x.txt", Content = Encoding.ASCII.GetBytes("EVIL") },
+            new TarBuilder.Entry { Name = "x.txt", Content = Encoding.ASCII.GetBytes("three") },
+        ]);
+
+        var scanner = new FakeAmsiScanner { DetectedText = "EVIL" };
+        ThreatScanResult result = await CreateService(scanner).ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+        result.OverallVerdict.Should().NotBe(ThreatVerdict.Clean, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
+    }
+
     // An archive whose accented name this machine's tar.exe lists by best fit, or null (then the
     // test has nothing to show here: the name fits the code page). A non-ASCII name goes in a pax
     // header, as TarSandboxedServiceBestFitNameTests writes it; the listing must hold no accent.

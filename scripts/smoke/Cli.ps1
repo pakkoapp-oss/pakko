@@ -791,3 +791,30 @@ Add-SmokeStep 'CLI-047' {
     }
     'every case delivers d\x.txt'
 }
+Add-SmokeStep 'CLI-048' {
+    # T-F462: every listed file is accounted for - extracted, kept apart, or reported; never lost silently.
+    $folder = Get-StepFolder 'cli048'
+    $tar = Join-Path $folder 'three.tar'
+    New-TarFile -Path $tar -Entries @(@{ Name = 'x.txt'; Content = 'one' }, @{ Name = 'x.txt'; Content = 'two' }, @{ Name = 'x.txt'; Content = 'three' })
+    $o1 = Join-Path $folder 'o1'
+    $run = Invoke-Pakko @('x', $tar, "-o$o1", '-aou')
+    $texts = @(Get-ChildItem -LiteralPath $o1 -File -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) | Sort-Object
+    Assert-Smoke ($run.ExitCode -le 1 -and ($texts -join '|') -ceq 'one|three' -and $run.Text.Contains('not extracted (1)')) "three copies: exit $($run.ExitCode), '$($texts -join '|')' $($run.Text)"
+
+    # Built from char codes, as CLI-044 does: e-acute collapses on 1251 and 932, a-macron on 1252.
+    $chosen = $null
+    foreach ($candidate in @(@{ Accent = [char]0xE9; Plain = 'e' }, @{ Accent = [char]0x101; Plain = 'a' })) {
+        $accented = "caf$($candidate.Accent).txt"
+        $twice = Join-Path $folder "twice-$([int]$candidate.Accent).tar"
+        New-TarFile -Path $twice -Entries @(@{ Name = $accented; Content = 'first' }, @{ Name = $accented; Content = 'last' })
+        $listed = Invoke-Pakko @('l', $twice, '-ba')
+        if ($listed.ExitCode -eq 0 -and ([regex]::Matches($listed.Output, [regex]::Escape("caf$($candidate.Plain).txt"))).Count -eq 2) { $chosen = $twice; break }
+    }
+    if (-not $chosen) { 'three copies accounted for; this code page carries both accented candidates'; return }
+    $o2 = Join-Path $folder 'o2'
+    $run = Invoke-Pakko @('x', $chosen, "-o$o2")
+    $written = @(Get-ChildItem -LiteralPath $o2 -Recurse -File -ErrorAction SilentlyContinue)
+    Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text.Contains('1 of 2') -and $written.Count -eq 0) "accented twice: exit $($run.ExitCode), $($written.Count) written $($run.Text)"
+    'three copies accounted for; the accented name stored twice fails naming 1 of 2, nothing written'
+}
+

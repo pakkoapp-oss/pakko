@@ -64,6 +64,8 @@ public static class MessageTemplates
         [MessageCode.FormatNotSupportedByTar] = "{0} is not supported by this system's tar.exe (version {1}).",
         [MessageCode.ArchiveFormatNotSupportedByTar] = "This archive format is not supported by this system's tar.exe (version {0}).",
         [MessageCode.TarGaveNoVersion] = "Pakko could not learn what this system's tar.exe supports: it is missing, not signed by Microsoft, or did not answer in time.",
+        [MessageCode.ScanFilesMissing] = "Not every file could be taken out of this archive, so not every file was scanned. Files scanned: {0} of {1}.",
+        [MessageCode.TarFilesMissing] = "Not every file came out of this archive, so nothing was extracted from it. Files that came out: {0} of {1}.",
         [MessageCode.PasswordProtectedExtract] = "This archive is password-protected and cannot be extracted.",
         [MessageCode.PasswordProtectedTest] = "This archive is password-protected and cannot be tested.",
         [MessageCode.RememberedPasswordDoesNotFit] = "The password applied to the remaining archives does not fit this archive.",

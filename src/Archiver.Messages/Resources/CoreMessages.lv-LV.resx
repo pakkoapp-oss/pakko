@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko nevarēja noskaidrot, ko atbalsta šīs sistēmas tar.exe: tā nav, tā nav Microsoft parakstīta vai tā laikā neatbildēja.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>No šī arhīva nevarēja paņemt visus failus, tāpēc ne visi faili tika skenēti. Skenētie faili: {0} no {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>No šī arhīva neiznāca visi faili, tāpēc no tā nekas netika izvilkts. Iznākušie faili: {0} no {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Vienums ir aizsargāts ar paroli un netika skenēts.</value>
   </data>
