@@ -82,7 +82,7 @@ public sealed partial class QuarantineFilesOwnerTests
         foreach (string file in ScannedFiles())
             foreach (string call in Calls(Code(file)))
                 found[(file, call)] = found.GetValueOrDefault((file, call)) + 1;
-        var allowed = Allowed.ToDictionary(a => (a.File, a.Call), a => a.Count);
+        Dictionary<(string File, string Call), int> allowed = Allowed.ToDictionary(a => (a.File, a.Call), a => a.Count);
 
         string[] unlisted = [.. found.Where(f => f.Value > allowed.GetValueOrDefault(f.Key))
             .Select(f => $"{f.Key.File}: {f.Key.Call} x{f.Value}")];
