@@ -13883,6 +13883,14 @@ availability follows the installed tar.exe at run time.
     "first copy" is a file the main pass already scanned. Credited, it would stand in for a file lost
     elsewhere. Found by the closing review and seen as Clean under the old walk with the pair beside
     a lost `d /x.txt`; now Inconclusive. The copy is still scanned, just not counted.
+  - A first copy also counts only at its group's own path, and only while the main pass holds at
+    most one file under the group's key (`TarSandboxedService.FirstCopiesAtTheirPath`, used by scan
+    and extraction alike). Two reasons, both found closing #170:
+    - A member matches as a folder prefix: `-q y` took `y/z.txt` (measured on 3.8.9).
+    - .NET's case-insensitive comparer folds pairs that NTFS keeps apart (U+01C5/U+01C6, Georgian,
+      Cherokee, U+00B5/U+039C; measured by the re-check). Such a "group" is already two files on
+      disk, so crediting its first copy too would give a third credit for two entries. With a faithful
+      listing, which needs an ANSI page holding both names (UTF-8), that slack hid a lost file.
 - **A file named as a folder entry (fresh review of #170).** At first such a file was left out of
   the count, on the belief that the two cannot both be on disk. The fresh opus review showed that
   belief was wrong twice over.
@@ -13939,6 +13947,9 @@ availability follows the installed tar.exe at run time.
   here. On PakkoW10 (3.5.2), each format it reads extracted by hand with an AOT `pakko`. ZIP is
   scanned and extracted in-process, entry by entry, and is not part of this.
 - **Left.** On PakkoW10, `SHL-018` (stream E) runs the three-copies scan with Defender live.
+  `FindDuplicateGroups` still leaves out a group named as a folder entry through `FolderKeys`
+  (`AsPakkoWrites`, which trims a trailing space). The result is a false Inconclusive or a failure on
+  an unusual archive (`x`, `x`, `x /`), never a hole; T-F464 replaces the prediction.
 
 ## T-F460 and T-F454 - tar folders whose names end in a space or a dot (2026-11-06)
 
