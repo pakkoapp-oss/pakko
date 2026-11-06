@@ -653,12 +653,9 @@ public sealed class TarSandboxedService : ITarService
         {
             List<(string Path, bool IsFolder)> quarantinedItems = [.. WalkGuarded(scope.OutputDirectory!)
                 .Select(item => (QuarantineRelative(scope.OutputDirectory!, item.Path).Replace('\\', '/'), item.IsFolder))];
-            // A folder entry tar.exe lists without its '/' (a type-5 header "d") is no file.
-            var listedFiles = new HashSet<string>(fileEntries.Select(e => e.Name), StringComparer.Ordinal);
-            string[] listed = [.. allNames.Select(n => n.EndsWith('/') || listedFiles.Contains(n) ? n : n + "/")];
             string[] quarantinedFiles = [.. quarantinedItems.Where(i => !i.IsFolder).Select(i => i.Path)];
-            TarListingVerdict filesOnDisk = TarNames.JudgeExtracted(listed, quarantinedFiles, []);
-            TarListingVerdict onDisk = filesOnDisk.Trust != TarNameTrust.Faithful ? filesOnDisk : TarNames.JudgeExtracted(listed, quarantinedFiles,
+            TarListingVerdict filesOnDisk = TarNames.JudgeExtracted(allNames, quarantinedFiles, []);
+            TarListingVerdict onDisk = filesOnDisk.Trust != TarNameTrust.Faithful ? filesOnDisk : TarNames.JudgeExtracted(allNames, quarantinedFiles,
                 quarantinedItems.Where(i => i.IsFolder && !preCreated.Contains(i.Path)).Select(i => i.Path));
             if (onDisk.Trust != TarNameTrust.Faithful)
             {
@@ -1403,6 +1400,11 @@ public sealed class TarSandboxedService : ITarService
             char typeChar = line.Length > 0 ? line[0] : '?';
             if (typeChar != '-' && typeChar != 'd')
                 throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarSpecialEntry));
+
+            // T-F455: a type-5 header stored without its '/' ("emptydir") lists without it; every
+            // consumer tells a folder by the '/', and tar.exe matches "emptydir/" to that header.
+            if (typeChar == 'd' && !names[i].EndsWith('/'))
+                names[i] += "/";
 
             if (typeChar == '-')
             {

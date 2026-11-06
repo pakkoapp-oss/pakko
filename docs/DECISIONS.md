@@ -13835,6 +13835,33 @@ availability follows the installed tar.exe at run time.
   true `cafe/` merge into one destination silently (the single-root decision sees the collapsed
   listed names). Opened as T-F453.
 
+## T-F455 - a folder entry stored without its '/' is a folder (2026-11-06)
+
+- **Cause.** A type-5 header named `emptydir` (no trailing `/`; some writers store folders so)
+  lists in `tar -tf` as `emptydir`. Every consumer of `ScanForUnsafeEntriesAsync`'s names tells a
+  folder by the `/`, so the root shape, a filter's `isFolder`, the Test subset and the folder entries
+  all took it for a file. tar.exe made the folder in the quarantine, the move walked files only, and
+  the empty folder never reached the destination. The browser listing was right: it reads the
+  `-tvf` type column. T-F443 had patched one consumer (its verdict) with the same idea.
+- **Measured** (ustar with `emptydir` and `full` as slash-less type-5 headers and `full/x.txt`):
+
+  | | bsdtar 3.8.9 (build 26300) | bsdtar 3.5.2 (PakkoW10) |
+  |---|---|---|
+  | `-tf` | `emptydir`, `full`, `full/x.txt` | same |
+  | `-tvf` column 0 | `d`, `d`, `-` | same |
+  | `-xf a.tar emptydir/` | exit 0, `emptydir` made | same |
+  | `-xf a.tar full/` | exit 0, `full` and `full/x.txt` | same |
+  | `-xf a.tar emptydir` / `full` | the same as with the `/` | same |
+
+- **Fix.** The scan appends the `/` to a name whose `-tvf` type is `d`, in the one place the type is
+  read, so every consumer (extraction, Test, the antivirus scan) sees a folder. Names given back to
+  tar.exe as members may now carry that `/`; both builds match it to the slash-less header (the
+  table), so T-F05's rule (the member names as tar.exe lists them) holds in effect. `TarNames.Judge`
+  already compares names without the trailing `/`. T-F443's local patch went.
+- **Tests.** `Extract_FolderEntriesWithoutTrailingSlash_Arrive` (everything, and a selection of the
+  empty folder) and the filter test now asking for `("emptydir/", true)` and the folder; both red
+  before the fix. Smoke `CLI-046`.
+
 ## Docs audit (2026-11-06) - the minimum Windows, the owner of the format table
 
 The docs audit after T-F442 (three PRs: public pages, developer docs, `TASKS.md`) settled these.

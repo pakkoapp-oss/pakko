@@ -335,16 +335,50 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
             new TarBuilder.Entry { Name = "a.txt", Content = Encoding.ASCII.GetBytes("A") },
         ]);
         string dest = NewDestination();
+        var asked = new List<(string Path, bool IsFolder)>();
 
         ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
         {
             ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
-            EntryFilter = (_, _) => true,
+            EntryFilter = (entry, isFolder) => { asked.Add((entry, isFolder)); return true; },
         });
 
         result.Errors.Should().BeEmpty(string.Join(" | ", result.Errors.Select(e => e.Message)));
-        // The empty folder itself does not arrive, as on main before T-F443: T-F455.
         File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("A");
+        // T-F455: the folder is asked about as a folder, and it arrives.
+        asked.Should().Contain(("emptydir/", true));
+        Directory.Exists(Path.Combine(dest, "emptydir")).Should().BeTrue();
+    }
+
+    // T-F455: folder entries stored without a trailing '/' (one empty, one with a file) arrive as
+    // folders on a plain extraction, and the selected-folder path passes them back to tar.exe.
+    [Integration]
+    public async Task Extract_FolderEntriesWithoutTrailingSlash_Arrive()
+    {
+        string path = Path.Combine(_temp.Path, "noslash-all.tar");
+        TarBuilder.WriteTar(path,
+        [
+            new TarBuilder.Entry { Name = "emptydir", TypeFlag = '5' },
+            new TarBuilder.Entry { Name = "full", TypeFlag = '5' },
+            new TarBuilder.Entry { Name = "full/x.txt", Content = Encoding.ASCII.GetBytes("X") },
+        ]);
+        string all = NewDestination();
+        string selected = NewDestination();
+
+        ArchiveResult everything = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = all, Mode = ExtractMode.SingleFolder,
+        });
+        ArchiveResult subset = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = selected, Mode = ExtractMode.SingleFolder,
+            SelectedEntryPaths = ["emptydir"],
+        });
+
+        everything.Errors.Should().BeEmpty(string.Join(" | ", everything.Errors.Select(e => e.Message)));
+        Everything(all).Should().BeEquivalentTo(["emptydir", "full", "full/x.txt"]);
+        subset.Errors.Should().BeEmpty(string.Join(" | ", subset.Errors.Select(e => e.Message)));
+        Everything(selected).Should().BeEquivalentTo(["emptydir"]);
     }
 
     private sealed record FolderFixture(string Path, string Folder, string ListedFolder);

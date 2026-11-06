@@ -741,3 +741,20 @@ Add-SmokeStep 'CLI-045' {
         Assert-Smoke ($x.ExitCode -ne 0 -and $x.Text.Contains('UDF') -and -not (Test-Path -LiteralPath (Join-Path $out 'a.txt'))) "x udf.iso: exit $($x.ExitCode) $($x.Text)"
     }
 }
+
+Add-SmokeStep 'CLI-046' {
+    # T-F455: folder entries stored without a trailing '/' (type-5 headers "emptydir" and "full").
+    $folder = Get-StepFolder 'cli046'
+    $tar = Join-Path $folder 'noslash.tar'
+    New-TarFile -Path $tar -Entries @(
+        @{ Name = 'emptydir'; Folder = $true }, @{ Name = 'full'; Folder = $true }, @{ Name = 'full/x.txt'; Content = 'X' })
+    $o1 = Join-Path $folder 'o1'
+    $run = Invoke-Pakko @('x', $tar, "-o$o1")
+    $items = @(Get-ChildItem -LiteralPath $o1 -Recurse -ErrorAction SilentlyContinue | ForEach-Object { [System.IO.Path]::GetRelativePath($o1, $_.FullName) }) | Sort-Object
+    Assert-Smoke ($run.ExitCode -eq 0 -and ($items -join '|') -ceq 'emptydir|full|full\x.txt') "x everything: exit $($run.ExitCode), '$($items -join '|')' $($run.Text)"
+    $o2 = Join-Path $folder 'o2'
+    $run = Invoke-Pakko @('x', $tar, "-o$o2", 'emptydir')
+    $items = @(Get-ChildItem -LiteralPath $o2 -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.Name })
+    Assert-Smoke ($run.ExitCode -eq 0 -and ($items -join '|') -ceq 'emptydir') "x emptydir: exit $($run.ExitCode), '$($items -join '|')' $($run.Text)"
+    'both folders arrive; the empty one also alone'
+}
