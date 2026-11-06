@@ -3,7 +3,7 @@
 > **Status: shipped 2026-07-18.** Every policy below is implemented, covered by `dotnet test`, and
 > confirmed on real hardware — a `gpedit.msc` import and each key's real effect against the
 > installed app — matching this document exactly. See `DECISIONS.md`'s T-F51 entry and
-> [`T-F51`](TASKS.md) in `TASKS.md` for the full trail.
+> [`T-F51`](https://github.com/pakkoapp-oss/pakko/blob/main/docs/TASKS_DONE.md) in `TASKS_DONE.md` for the full trail.
 > **2026-09-27 (T-F250/T-F261):** listing/browsing, testing and scanning now honor
 > `AllowedFormats`/`BlockedFormats`/`DisableTarExtraction` too, and `DisableTarExtraction` also
 > stops the tar.exe version check. Re-checked on device 2026-09-28 for `DisableTarExtraction` and
@@ -128,8 +128,8 @@ Policy and applies unconditionally, regardless of any of the keys above.
 
 ## Deployment (ADMX/ADML)
 
-Once implemented, Pakko will ship `deploy/Pakko.admx` and `deploy/Pakko.adml` (English) alongside
-a short `deploy/README.md` covering both usage paths:
+The repository ships `deploy/Pakko.admx` and `deploy/en-US/Pakko.adml` (English) with a short
+`deploy/README.md` covering both usage paths:
 
 - **Local Group Policy** (single machine, testing): `gpedit.msc` after copying the two files into
   `%SystemRoot%\PolicyDefinitions` (`.admx`) and `%SystemRoot%\PolicyDefinitions\en-US` (`.adml`).
@@ -137,7 +137,7 @@ a short `deploy/README.md` covering both usage paths:
   (`\\<domain>\SYSVOL\<domain>\Policies\PolicyDefinitions`) so they appear automatically in Group
   Policy Management Console on every domain controller — no per-machine copy needed.
 
-Until `deploy/Pakko.admx`/`deploy/Pakko.adml` ship, the same effect can be achieved manually via
+Without the templates, the same effect can be achieved manually via
 `reg add`/`New-ItemProperty` directly against `HKLM\Software\Policies\Pakko\`, or any existing GPO
 "Registry" preference item pointed at the same path/value names in the table above.
 
@@ -147,5 +147,5 @@ Until `deploy/Pakko.admx`/`deploy/Pakko.adml` ship, the same effect can be achie
 
 - [`SECURITY.md`](../SECURITY.md) — threat model and rationale behind MOTW propagation, the tar.exe
   sandbox, and format-related risk classification.
-- [`TASKS.md`](TASKS.md) — `T-F51` entry: full implementation design, current status, and
+- [`TASKS_DONE.md`](https://github.com/pakkoapp-oss/pakko/blob/main/docs/TASKS_DONE.md) — `T-F51` entry: full implementation design, status, and
   real-world grounding research behind this policy set.

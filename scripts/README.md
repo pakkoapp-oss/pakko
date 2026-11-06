@@ -429,6 +429,13 @@ call Claude Code makes in this repo. It blocks bare `python`/`python3` (use `py 
 command position only, so quoted text and heredoc bodies pass. Exit 2 blocks; a payload that is
 not JSON exits 1 and does not block. Tests: `AgentBashHookTests`.
 
+## Developer docs site (DocFX, T-F172)
+
+`docfx` is a pinned local tool (`.config/dotnet-tools.json`); the first use on a machine needs
+`dotnet tool restore`. `dotnet docfx docfx.json` builds into `_site/` (gitignored);
+`dotnet docfx docfx.json --serve` also serves it at `localhost:8080`. CI's `docs` job builds the
+same site for Pages on every push to `main`.
+
 ## Notes
 
 - `PakkoDev.cer` and `PakkoStore.cer` are gitignored — never commit certificates to the repository.

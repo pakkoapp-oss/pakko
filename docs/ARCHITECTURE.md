@@ -51,14 +51,17 @@ interface, `IOperationUi` (`Begin` → an `IOperationSession` per operation: pro
 conflict/password prompts asked while it runs, and one `Complete(OperationMessage?)` result;
 `ShowMessage` only for a failed open-in-Pakko hand-off). `ShellCommands` holds the commands and
 never calls a dialog directly; `OperationMessages` builds the result text; `ShellServices` holds
-the Core factories so tests use a ZIP-only router. The implementation today is
-`Win32OperationUi`.
+the Core factories so tests use a ZIP-only router. Two implementations: `HelperOperationUi`
+(the WinUI `Archiver.OperationUi` window over a pipe) and `Win32OperationUi`, its fallback.
 
-**Progress UI** — `Win32OperationUi` shows progress via the Windows Shell's built-in
-`IProgressDialog` COM object (`NativeProgressDialog.cs`), in-process — no satellite process,
-no IPC. An earlier design (`Archiver.ProgressWindow`, a second WinUI 3 `.exe` talking to
-`Archiver.Shell` over a named pipe) was removed in T-F65 after its WinUI/WindowsAppRuntime
-activation proved unreliable when spawned via `Process.Start`; see `DECISIONS.md`.
+**Progress UI** — `HelperOperationUi` starts the code-only WinUI exe `Archiver.OperationUi` and
+drives it over a named pipe (`Archiver.OperationUi.Protocol`): progress, cancel, the conflict and
+password prompts, the result. When that window cannot start, is not ready in time, or its pipe
+ends without the user closing it, `Win32OperationUi` takes over: the Windows Shell's
+`IProgressDialog` (`NativeProgressDialog.cs`, in-process), TaskDialog and MessageBoxW. Closing the
+window is a cancel, never a failover. An earlier helper, `Archiver.ProgressWindow`, was removed in
+T-F65 when its activation via `Process.Start` proved unreliable; T-F268 brought the design back
+with the fallback (`DECISIONS.md`).
 
 **Archiver.Package** — created and deleted during v1.2 development. The `.wapproj` approach
 was abandoned due to PRI resource conflicts when packaging multiple WinUI 3 apps in one
@@ -176,7 +179,7 @@ src/
 │   │   │                                  parallel then fold results back together in order
 │   │   ├── VerifyingReadStream.cs      ← T-F246/T-F231: CRC-32 at end of stream + declared-size
 │   │   │                                  cap for every extracted ZIP entry, plain or decrypted
-│   │   ├── ProgressStream.cs           ← T-F16: byte-accurate IProgress<int> wrapper, per-stream
+│   │   ├── ProgressStream.cs           ← T-F16: byte-accurate IProgress<ProgressReport> wrapper, per-stream
 │   │   ├── AggregateProgressTracker.cs ← T-F128 follow-up: shared byte counter across many
 │   │   │                                  concurrently-hashed files, folder-wide total (not
 │   │   │                                  per-file) — fixes ComputeFolderAsync's progress bug
@@ -824,8 +827,8 @@ sends 100 only after the last set), the byte counts are 0. The App shows its own
 the test gets the part of the climb its ZIP bytes are, the check the rest, by the archives' sizes;
 the byte counts are 0.
 
-T-F275 step 4a: repair. Built only by `PakkoServices` (`RecoveryService` property); the frontends
-call nothing else to repair.
+T-F275 step 4a: repair. Shell and CLI get it from `PakkoServices` (`RecoveryService` property), the
+App from its DI (below); no frontend calls anything else to repair.
 
 ```csharp
 public interface IRecoveryService
@@ -875,13 +878,15 @@ public static class RecoveryDataLookup { public static bool IsRecoveryFile(strin
 public interface IDialogService
 {
     Task ShowErrorAsync(string title, string message);
+    Task ShowInfoAsync(string title, string message);
     Task<bool> ShowConfirmAsync(string title, string message);
     Task<string?> PickDestinationFolderAsync();
     Task<IReadOnlyList<string>> PickFilesAsync();
     Task<IReadOnlyList<string>> PickFoldersAsync();
     Task ShowOperationSummaryAsync(string operationName, ArchiveResult result);
+    Task ShowThreatScanResultAsync(ThreatScanResult result);   // T-F146
     Task ShowAboutAsync();
-    Task ShowFileHashAsync();
+    Task ShowFileHashAsync(IReadOnlyList<string> listed);
 
     // T-F94: called from a thread-pool thread by the extractors — implementation must marshal
     // onto the window's DispatcherQueue before showing a ContentDialog. See DECISIONS.md's
@@ -932,9 +937,8 @@ public interface ILogService
 - **Known non-ZIP formats:** RAR, 7-Zip, GZip, BZip2, XZ, LZ4 detected by magic bytes → `SkippedFiles`
 - **Smart extract (T-14):** single root folder → strips prefix; multiple roots → creates subfolder; single root file → direct
 - **ZIP slip protection:** every entry path validated against destination before extraction
-- **Progress:** `progress?.Report((i+1)*100/total)` per file in both Archive and Extract
+- **Progress:** `IProgress<ProgressReport>` (percent, phase and byte counts; see `ProgressReport` above), reported per file in both Archive and Extract
 - **Threading:** `Task.Run` wraps all IO — never blocks UI thread
-- **Indeterminate:** single source/archive >10 MB → `progress?.Report(-1)`
 - **Lazy enumeration:** `Directory.EnumerateFiles` — no upfront collection for large directories
 - **Commit resilience (T-F161):** `internal static ZipArchiveService.
   CommitTempDestToActualDest(string tempDest, string actualDest, Action<string,string>?
@@ -1164,10 +1168,17 @@ services.AddSingleton<IDialogService, DialogService>();
 var tarService = new TarSandboxedService(policy);
 Task<TarCapabilities> tarProbe = Task.Run(tarService.DetectCapabilitiesAsync);
 services.AddSingleton<ITarService>(tarService);
+// T-F342/T-F403: the 7z-writer answer and the readable formats go to TarCapabilitySnapshot's file,
+// which the Explorer menu reads (fire and forget; TryRecord never throws).
+_ = Task.Run(async () => TarCapabilitySnapshot.TryRecord(
+    policy, await tarService.AskSevenZipWriterAsync().ConfigureAwait(false), await tarProbe.ConfigureAwait(false)));
 services.AddSingleton<TarCapabilities>(_ => tarProbe.GetAwaiter().GetResult());
 services.AddSingleton<IExtractionRouter, ExtractionRouter>();
 services.AddSingleton<IArchiveListingRouter, ArchiveListingRouter>();
 services.AddSingleton<IArchiveCreationRouter, ArchiveCreationRouter>();
+// T-F275 step 4c: repair and the PAR2 lookups, with the router the Test button uses.
+services.AddSingleton<IRecoveryService>(sp => new RecoveryService(
+    policy, () => Task.FromResult(sp.GetRequiredService<IExtractionRouter>())));
 services.AddSingleton<IAntivirusScanService, AntivirusScanService>();
 // T-F207: the owner window is read at delete time, after DialogService.SetWindow has run.
 services.AddSingleton(sp => new SourceRecycler(new Win32SourceDeleteOperations(
@@ -1190,6 +1201,10 @@ services.AddTransient<MainViewModel>();
 | `TarSandboxedService` | Singleton, built by hand | Stateless (per-call sandbox scope, not per-instance state); built before the container so the probe can start at once (T-F347) |
 | `TarCapabilities` | Singleton, factory-resolved | Probed once at startup on the thread pool (T-F48, T-F347), never changes at runtime |
 | `ExtractionRouter` / `ArchiveListingRouter` / `ArchiveCreationRouter` | Singleton | Stateless — route by detected/requested format only |
+| `OperationIndicator` | Singleton | One per process: the dialogs and the view model feed it, the window shows it on the taskbar button and tray icon (T-F432) |
+| `RecoveryService` | Singleton, factory | Stateless; takes the same policy and `IExtractionRouter` as the Test button (T-F275) |
+| `AntivirusScanService` | Singleton | Stateless per scan; the AMSI session is per call (T-F146) |
+| `SourceRecycler` | Singleton, factory | Reads the owner window at delete time, after `DialogService.SetWindow` (T-F207) |
 | `MainViewModel` | Transient | Fresh state per window |
 
 ### ViewModel Resolution
@@ -1246,12 +1261,18 @@ incomplete layout, leaving rows permanently blank (T-F106).
 
 ---
 
-## Planned Layer Additions (v1.2+)
+## Layer Additions by Version (v1.2+, all shipped)
+
+Each subsection records what a version added; later changes are noted in place or in `DECISIONS.md`.
 
 ### v1.2 — Shell Extension
 
-`Archiver.Shell` (net10.0-windows, WinExe) is implemented and included in the MSIX package,
-showing progress via the in-process `IProgressDialog` COM object (`NativeProgressDialog.cs`).
+`Archiver.Shell` (net10.0-windows, WinExe) is included in the MSIX package. Since T-F268 it shows
+each operation in the `Archiver.OperationUi` window over a pipe, and falls back to the in-process
+`IProgressDialog` COM object (`NativeProgressDialog.cs`) only when that window cannot run.
+
+The T-F61 command list below is the v1.2 state; the current commands and every enable/visibility
+condition: `DIAGRAMS.md`'s diagram 1.
 
 **T-F61 — `Archiver.ShellExtension` (in-process COM DLL, C++/WRL):**
 - One registered CLSID: `PakkoRootCommand` (`1EABC7CE-20A4-48EE-A99F-43D4E0F58D6A`), `ThreadingModel STA`
@@ -1292,6 +1313,10 @@ public sealed record TarCapabilities
     public bool SupportsXz { get; init; }
     public bool SupportsLzma { get; init; }
     public bool SupportsBz2 { get; init; }
+    public bool SupportsGzip { get; init; } = true;   // T-F403: zlib built in
+    public bool SupportsBuiltInReaders { get; init; } // T-F442: ISO 9660, cpio, ar, .Z
+    public bool SupportsCab { get; init; }            // T-F442
+    public bool SupportsLzip { get; init; }           // T-F442
     public string Version { get; init; } = string.Empty;
 }
 ```
@@ -1325,7 +1350,7 @@ public interface ITarService
 
     Task<ArchiveResult> ExtractAsync(
         ExtractOptions options,
-        IProgress<int>? progress = null,
+        IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default);
 
     // T-F05: built on the RunTarAsync primitive (-tf + -tvf) — deliberately does NOT reuse
@@ -1336,9 +1361,7 @@ public interface ITarService
         CancellationToken cancellationToken = default);
 
     // T-F105 (v1.4): archive CREATION, not extraction — deliberately unsandboxed (trusted local
-    // input, not an untrusted archive; see SECURITY.md's tar.exe Trust Model). IProgress<
-    // ProgressReport>, not IProgress<int> like ExtractAsync above, to match
-    // IArchiveService.ArchiveAsync's contract for IArchiveCreationRouter below.
+    // input, not an untrusted archive; see SECURITY.md's tar.exe Trust Model).
     Task<ArchiveResult> CompressAsync(
         ArchiveOptions options,
         IProgress<ProgressReport>? progress = null,
@@ -1346,21 +1369,18 @@ public interface ITarService
 }
 ```
 
-**Correction (T-F142, 2026-08-04):** `ExtractAsync`'s `progress` parameter is now
-`IProgress<ProgressReport>?`, not `IProgress<int>?` as shown above — matching `CompressAsync`'s
-and `IArchiveService.ExtractAsync`'s contract exactly, so `IExtractionRouter` passes `progress`
-straight through to both sub-services with no adapter in between (the `AdaptProgress` method
-described below, under IExtractionRouter, no longer exists). `TarSandboxedService.ExtractAsync`
-reports real `BytesTransferred`/`TotalBytes`/`CurrentFile` — not just `Percent` — for a
-single-archive extraction, via a poll of the sandboxed quarantine output directory rather than a
-streamed subprocess channel (see `DECISIONS.md`'s T-F142 entry for why: tar.exe runs inside the
-AppContainer for extraction, unlike `CompressAsync`'s unsandboxed launch, so there is no per-entry
-stderr line to hook the way T-F140 did for archiving). **T-F306 (2026-10-01):** with ZIP and tar-family archives in one selection,
+`ExtractAsync` takes the same `IProgress<ProgressReport>` as `CompressAsync` and
+`IArchiveService.ExtractAsync` (T-F142; the `IProgress<int>` it had before is in `DECISIONS.md`'s
+T-F142 entry), so `IExtractionRouter` passes `progress` straight through. For a single-archive
+extraction `TarSandboxedService` reports real `BytesTransferred`/`TotalBytes`/`CurrentFile` from a
+poll of the sandboxed quarantine directory: tar.exe runs inside the AppContainer there, with no
+per-entry stderr line to hook as archiving has (T-F140). **T-F306 (2026-10-01):** with ZIP and tar-family archives in one selection,
 `ExtractionRouter` wraps `progress` per engine: each gets a slice of the percent sized by the
 archives' sizes on disk, and tar's bytes continue after ZIP's total; a selection of one kind
 passes through untouched.
 
-Implementation: `TarProcessService` in `Archiver.Core/Services/`.
+Implementation: `TarSandboxedService` in `Archiver.Core/Services/` (it replaced `TarProcessService`
+outright in T-F52).
 
 - Always invokes `C:\Windows\System32\tar.exe` (absolute path)
 - Quarantine/staging: same pattern as T-F26/T-F27 (temp dir on same disk, atomic move)
@@ -1969,6 +1989,7 @@ public sealed class PakkoServices
     public IArchiveService ArchiveService { get; }
     public ITarService TarService { get; }
     public IArchiveCreationRouter CreationRouter { get; }          // needs no tar.exe probe
+    public IRecoveryService RecoveryService { get; }               // PAR2 repair and lookups (T-F275)
     public Task<TarCapabilities> GetTarCapabilitiesAsync();        // probed once, cached (T-F85); patient (T-F450)
     public Task<IExtractionRouter> CreateExtractionRouterAsync();  // extract + test
     public Task<IArchiveListingRouter> CreateListingRouterAsync();

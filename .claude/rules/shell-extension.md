@@ -44,6 +44,8 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   `taskkill /F /IM dllhost.exe` (or find the specific PID) before rebuilding if this happens.
   The same surrogate can also lock unrelated scratch files/folders touched during that
   right-click (e.g. a smoke-test directory) — same fix if cleanup fails with "in use".
+- **Toolchain:** Visual Studio 2026 (18.x) with MSVC v143 (14.44), x64 and ARM64; `msbuild.exe`
+  (found via `vswhere -latest`) builds only the `.vcxproj` files, every C# build goes through `dotnet`.
 ```
 # Archiver.ShellExtension (C++ COM DLL) — not built or tested by dotnet build/test
 # Build via Visual Studio / MSBuild (x64 or ARM64 platform).

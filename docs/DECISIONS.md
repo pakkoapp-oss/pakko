@@ -9835,6 +9835,7 @@ policy) — record it here with the evidence.
 **Windows 10.** .NET 10's supported-OS list names Windows 10 only as Enterprise/IoT (1607, 1809,
 21H2); consumer Windows 10 22H2 is absent, as the OS itself left support on 2025-10-14 (.NET 8 was
 formally unsupported there too). Pakko's minimum stays 10.0.17763 (1809); no docs change.
+(Corrected 2026-11-06: the manifest already required 10.0.19041; see "Docs audit (2026-11-06)".)
 
 **Verification.** Clean build (all `bin`/`obj` deleted first), zero C# warnings; default suite
 2238/2238 (the net8 baseline 2232 + T-F270's 6 `ZipWriterCharacterizationTests`, written and green
@@ -13833,6 +13834,32 @@ availability follows the installed tar.exe at run time.
 - **Found by the probe:** with the root dropped as the archive's name, a true `caf<e-acute>/` and a
   true `cafe/` merge into one destination silently (the single-root decision sees the collapsed
   listed names). Opened as T-F453.
+
+## Docs audit (2026-11-06) - the minimum Windows, the owner of the format table
+
+The docs audit after T-F442 (three PRs: public pages, developer docs, `TASKS.md`) settled these.
+
+- **Minimum Windows, the app and the CLI apart.** Both `TargetDeviceFamily` lines of the MSIX
+  manifest have required 10.0.19041 (Windows 10 version 2004) since the shell commit `1411699e`
+  (2026-07-04); `README.md`, the site and `CONTRIBUTING.md` said 1809 (17763) from the start, which
+  was never true. They now say 2004 (19041) for the app. `TargetPlatformMinVersion` 10.0.17763 in
+  `Archiver.App.csproj` and `Archiver.OperationUi.csproj` is the API floor the code compiles
+  against, not an install floor, and stays. The standalone `pakko` zip has no manifest, so no floor
+  is claimed for it: the pages name where it was tested (Windows 10 22H2, Windows 11, Windows Server
+  2022; `SMOKE.md` row CLI-035 covers the zlib-only tar.exe of the first and last). The app is not
+  claimed for Windows Server 2022: no MSIX install was measured there.
+  **Correction:** the T-F270 entry's "Pakko's minimum stays 10.0.17763 (1809); no docs change" was
+  wrong when written; the manifest already said 10.0.19041.
+- **The format table has one owner, `README.md`.** `docs/SPEC.md` kept its own copy, and it drifted:
+  it showed the v1.10 formats as done before their release. SPEC now links to the README's table
+  and keeps what is its own: the non-goals and the reasoned list of formats left out. `.claude/
+  rules/docs.md` and `CLAUDE.md`'s owner list say so.
+- **Unreleased work on public pages.** What is merged but not tagged (the v1.10.0 wave) appears on
+  `README.md`, `README.uk.md` and the site only as "coming in v1.10.0 (not released yet)"; the
+  markers go at the tag (a T-F442 release leftover).
+- **v1.9.0's date.** Its `CHANGELOG.md` heading says 2026-10-29 (written in the bump commit); the tag
+  and the GitHub Release are 2026-10-30. The heading stays, as the release job has read it;
+  `CLAUDE.md` says 2026-10-30.
 
 ## T-F458 - OpenSSF Scorecard's 62 open alerts: what was fixed, what is dismissed (2026-11-06)
 
