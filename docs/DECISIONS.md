@@ -13877,8 +13877,9 @@ availability follows the installed tar.exe at run time.
   It alone adds `\\?\`; callers pass plain full paths.
 - **The guard.** `QuarantineFilesOwnerTests` scans `TarSandboxedService.cs`, `AntivirusScanService.cs`
   and `Sandbox/*.cs`. Outside the owner, these calls must be on its allow-list:
-  - every `Directory.*`/`File.*` call;
-  - `new FileInfo`, `new DirectoryInfo` and `new FileStream`;
+  - every `Directory.*`/`File.*` call, and the same names as a method group (`.Any(Directory.Exists)`);
+  - a `FileInfo`, `DirectoryInfo` or `FileStream` built with `new` explicitly or target-typed (`FileInfo
+    info = new(...)`, or an expression-bodied member returning `new(...)`);
   - `Path.GetFullPath` and `Path.GetRelativePath`.
 
   The list is keyed by file and call text, with a count. Each entry says why that call never sees a
@@ -13889,7 +13890,9 @@ availability follows the installed tar.exe at run time.
   Seen red by mutation:
   - `Directory.Exists` put back in `RecordFolderTimes`;
   - `new FileInfo` put back in `DescribeIncoming`;
-  - `GetRelativePath` put back in the scan.
+  - `GetRelativePath` put back in the scan;
+  - `FileInfo info = new(file)` and `.All(Directory.Exists)` in place of the owner's calls (the closing
+    review's two bypasses).
 - **Found on the way.** A scan finding was named through `Path.GetRelativePath`. EVIL in `a.txt.` beside
   a clean `a.txt` was reported as a threat in `a.txt`, the clean file's name. Seen red on `main`; it is
   now named `a.txt.`. The progress snapshot walked with `AllDirectories`, which follows a junction; it
