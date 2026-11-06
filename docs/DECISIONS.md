@@ -13904,6 +13904,9 @@ availability follows the installed tar.exe at run time.
   - The scan opens files through the prefix, and so do the folder times and the progress poll.
   - At the destination, a file's folders take Pakko's names (`AsPakkoWrites`: `d \x.txt` lands in
     `d\x.txt`, as in ZIP and 7-Zip).
+- **Walk order.** The walk takes subfolders in the order listed (it pushed them last-first), so `d`
+  comes before `d `: with `d/x.txt` and `d /x.txt` the plain one keeps `x.txt` and the other becomes
+  `x (1).txt`, as ZIP does (measured with `pakko x` on a ZIP of the same two entries).
 - **Rejected for now: making every pre-created folder literal** (no dot trimming). It would fix `d .`
   with a filter, implicit `d..` and explicit `d./` with a filter, but it breaks a file followed by
   its `d./` entry (works today) unless such a folder is not pre-created, and that leans on tar.exe's

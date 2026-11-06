@@ -2763,7 +2763,10 @@ public sealed class TarSandboxedService : ITarService
             foreach (string file in files)
                 yield return (file, false);
 
-            foreach (string subDir in subDirs.Where(d => !ArchiveEntrySecurity.IsReparsePoint(Literal(d))))
+            // Pushed last to first, so they are walked in the order listed: "d" before "d " (a name
+            // sorts before itself with a trailing space or dot), and the plain one takes the name at
+            // the destination, as in ZIP (T-F460).
+            foreach (string subDir in Enumerable.Reverse(subDirs).Where(d => !ArchiveEntrySecurity.IsReparsePoint(Literal(d))))
             {
                 yield return (subDir, true);
                 pending.Push(subDir);

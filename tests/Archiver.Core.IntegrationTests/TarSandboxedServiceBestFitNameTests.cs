@@ -348,7 +348,7 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
     }
 
     // T-F454: "d/x.txt" and "d /x.txt" are two files in the quarantine ("d" and "d "); both land in
-    // "d", so the second is kept apart under a new name (T-F419), never written over the first.
+    // "d", so the trimmed one is kept apart under a new name (T-F419), never written over the first.
     [Integration]
     public async Task Extract_FileInDAndInDSpace_BothArrive()
     {
@@ -367,8 +367,9 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         });
 
         result.Errors.Should().BeEmpty(string.Join(" | ", result.Errors.Select(e => e.Message)));
-        string[] texts = [.. Directory.GetFiles(Path.Combine(dest, "d")).Select(File.ReadAllText).Order()];
-        texts.Should().Equal("A", "B");
+        // As ZIP: the plain "d/x.txt" keeps the name, the trimmed twin is kept apart.
+        File.ReadAllText(Path.Combine(dest, "d", "x.txt")).Should().Be("A");
+        File.ReadAllText(Path.Combine(dest, "d", "x (1).txt")).Should().Be("B");
     }
 
     // T-F461: a file before its own folder entry ending in a space fails in tar.exe itself on both

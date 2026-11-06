@@ -1462,10 +1462,10 @@ re-measured with T-F346's script before and after.
 
 ### T-F460 — "Scan for threats" reports Clean for a tar whose folder name ends in a space or a dot (P1, from T-F454)
 
-- [x] **Status:** fixed 2026-11-06 (`fix/tf460-trailing-space-folder`; `docs/DECISIONS.md`, "T-F460
-  and T-F454"): the quarantine walk reads through the long-path prefix and never skips a folder it
+- [ ] **Status:** fixed 2026-11-06 (#169, `fix/tf460-trailing-space-folder`), awaiting the device check
+  (stream E: `SHL-017`) (`docs/DECISIONS.md`, "T-F460 and T-F454"): the quarantine walk reads through the long-path prefix and never skips a folder it
   cannot read; the same walk lost those files from extraction silently. On `main` and in v1.9.0.
-  Left: `SHL-017` on PakkoW10 with Defender live (stream E). Put into stream B (the agent, 2026-11-06).
+  Put into stream B (the agent, 2026-11-06); ships with v1.10.0, no v1.9.x hotfix (the agent, as T-F448).
 - **Reported by:** the agent, 2026-11-06, while measuring T-F454.
 
 ### T-F461 — tar folders ending in a dot or a space: the shapes still refused (P3, from T-F460)
