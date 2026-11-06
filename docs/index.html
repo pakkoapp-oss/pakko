@@ -38,7 +38,7 @@
   "image": "https://pakkoapp-oss.github.io/pakko/assets/og-image.png",
   "description": "Open-source Windows archiver for ZIP, TAR, RAR, and 7-Zip archives, built on .NET's own compression APIs and a sandboxed copy of Windows' built-in tar.exe.",
   "applicationCategory": "UtilitiesApplication",
-  "operatingSystem": "Windows 10 1809+, Windows 11",
+  "operatingSystem": "Windows 10 version 2004+, Windows 11",
   "license": "https://github.com/pakkoapp-oss/pakko/blob/main/LICENSE",
   "downloadUrl": "https://github.com/pakkoapp-oss/pakko/releases/latest",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -75,9 +75,9 @@
         <p class="eyebrow">Open-source Windows archiver</p>
         <h1>A ZIP tool with nothing to hide.</h1>
         <p class="lede">
-          Pakko extracts and creates ZIP, TAR, RAR, and 7-Zip archives using only Windows' own
-          compression APIs and its built-in, sandboxed <code>tar.exe</code> — no 7-Zip, no
-          WinRAR, no third-party compression code anywhere in the app.
+          Pakko creates and extracts ZIP, TAR and 7-Zip archives and reads RAR, using only .NET's
+          own compression APIs and Windows' built-in, sandboxed <code>tar.exe</code> — no 7-Zip,
+          no WinRAR, no third-party compression code anywhere in the app.
         </p>
         <div class="cta-row">
           <a class="btn btn-primary" href="https://apps.microsoft.com/detail/9p5mw010d8pr">Get it from Microsoft Store</a>
@@ -98,10 +98,13 @@
           <div class="term-body">
             <div><span class="term-prompt">$</span> pakko --help</div>
             <div class="term-cmds">
-              <div class="term-cmd"><b>a</b><span class="name">Archive</span><span class="desc">create a ZIP or TAR-family archive</span></div>
+              <div class="term-cmd"><b>a</b><span class="name">Archive</span><span class="desc">create a ZIP, 7z or TAR-family archive</span></div>
               <div class="term-cmd"><b>x</b><span class="name">Extract</span><span class="desc">extract with full paths</span></div>
               <div class="term-cmd"><b>t</b><span class="name">Test</span><span class="desc">verify archive integrity</span></div>
               <div class="term-cmd"><b>l</b><span class="name">List</span><span class="desc">show what's inside</span></div>
+              <div class="term-cmd"><b>i</b><span class="name">Info</span><span class="desc">formats this Windows can read and write</span></div>
+              <div class="term-cmd"><b>h</b><span class="name">Hash</span><span class="desc">CRC-32 and SHA-256 of files</span></div>
+              <div class="term-cmd"><b>r</b><span class="name">Repair</span><span class="desc">repair from PAR2 recovery data</span></div>
             </div>
           </div>
         </div>
@@ -128,7 +131,7 @@
           Both are capable tools — this isn't a claim of security superiority. It's a different
           set of supply-chain dependencies. Pakko's entire compression stack is either part of
           the .NET runtime or Microsoft's own signed <code>tar.exe</code>: components with a
-          public CVE process, reproducible builds, and a community audit trail that some
+          public CVE process and a community audit trail that some
           security-conscious environments — government, defense, regulated industries — require
           and everyone else can still benefit from.
         </p>
@@ -144,7 +147,7 @@
         </div>
         <div class="pillar">
           <h3>Nothing phones home</h3>
-          <p>No telemetry, no analytics, no crash reporting, no update checks. Pakko makes zero network requests — and so does this page.</p>
+          <p>No telemetry, no analytics, no crash reporting, no update checks. Pakko makes no network requests of its own — and this page makes none to third parties.</p>
         </div>
         <div class="pillar">
           <h3>Open to audit</h3>
@@ -159,19 +162,20 @@
       <div class="section-head">
         <p class="eyebrow">What's built</p>
         <h2>What's implemented</h2>
-        <p>Nothing below is aspirational — every item has shipped and been verified against the real Windows shell, not just a test suite.</p>
+        <p>Everything ticked below has shipped and been verified against the real Windows shell, not just a test suite.</p>
       </div>
       <div class="manifest">
         <div class="manifest-group">
           <h3>Formats</h3>
           <ul class="manifest-list">
             <li><span class="check">✓</span><span>ZIP — read &amp; write, via <code>System.IO.Compression</code></span></li>
-            <li><span class="check">✓</span><span>TAR / GZ / BZ2 / XZ / ZST / LZMA — read &amp; write, via <code>tar.exe</code></span></li>
+            <li><span class="check">✓</span><span>TAR / GZ / BZ2 / XZ / ZST / LZMA — read &amp; write, via <code>tar.exe</code>; single .gz / .bz2 / .xz files too</span></li>
             <li><span class="check">✓</span><span>RAR — read only, via <code>tar.exe</code></span></li>
-            <li><span class="check">✓</span><span>ISO, CAB, cpio, ar (.deb), .Z, lzip — read only (v1.10), via <code>tar.exe</code> where it reads each; a UDF install ISO is refused with the reason</span></li>
             <li><span class="check">✓</span><span>7-Zip — read &amp; write (no password), via <code>tar.exe</code> where it has the 7z writer</span></li>
             <li><span class="check">✓</span><span>Password-protected ZIP — read (ZipCrypto, WinZip AES), including antivirus scan of the decrypted contents, and create (AES-256; file names stay visible)</span></li>
+            <li><span class="check">✓</span><span>Encrypted 7z and RAR — recognized and refused with a clear message</span></li>
           </ul>
+          <p class="note">Which tar formats Windows reads depends on its build: a current Windows 11 reads all of them, Windows 10's <code>tar.exe</code> only tar and tar.gz. Pakko offers what the installed <code>tar.exe</code> can do. Coming in v1.10.0 (not released yet): ISO, CAB, cpio, ar (.deb), .Z and lzip, read only.</p>
         </div>
         <div class="manifest-group">
           <h3>Windows integration</h3>
@@ -181,7 +185,7 @@
             <li><span class="check">✓</span><span>Archive Browser — navigate, extract a selection, preview files</span></li>
             <li><span class="check">✓</span><span>Scan for threats — the archive's contents are checked by your installed antivirus</span></li>
             <li><span class="check">✓</span><span>Recovery data (PAR2) — written next to a new archive; verify the archive and repair it after damage, also with par2cmdline or MultiPar</span></li>
-            <li><span class="check">✓</span><span>Extracted files keep the Mark-of-the-Web tag and the dates stored in the archive</span></li>
+            <li><span class="check">✓</span><span>Extracted files keep the Mark-of-the-Web tag (you may leave it off for one trusted archive, unless Group Policy decides) and the dates stored in the archive</span></li>
             <li><span class="check">✓</span><span>Group Policy / ADMX administrative controls</span></li>
             <li><span class="check">✓</span><span>37 languages, light and dark theme</span></li>
           </ul>
@@ -190,8 +194,17 @@
           <h3>Command line</h3>
           <ul class="manifest-list">
             <li><span class="check">✓</span><span><code>pakko</code> in any terminal after a Store install, or <code>pakko.exe</code> as a standalone zip — self-contained, no install</span></li>
-            <li><span class="check">✓</span><span>7-Zip-familiar commands — <code>a</code> / <code>x</code> / <code>t</code> / <code>l</code> / <code>r</code></span></li>
-            <li><span class="check">✓</span><span>Every release ships a <code>SHA256SUMS</code> file</span></li>
+            <li><span class="check">✓</span><span>7-Zip-familiar commands — <code>a</code> / <code>x</code> / <code>t</code> / <code>l</code> / <code>i</code> / <code>h</code> / <code>r</code></span></li>
+            <li><span class="check">✓</span><span>Every release ships a <code>SHA256SUMS</code> file, an SBOM and a build attestation</span></li>
+          </ul>
+        </div>
+        <div class="manifest-group">
+          <h3>What Pakko does not do</h3>
+          <ul class="manifest-list">
+            <li><span class="check">–</span><span>Create RAR archives or password-protected 7z</span></li>
+            <li><span class="check">–</span><span>Split or multi-volume archives (.001, .z01)</span></li>
+            <li><span class="check">–</span><span>Change an archive in place — Pakko writes a new one</span></li>
+            <li><span class="check">–</span><span>Mount disk images — Windows opens ISO and VHD/VHDX itself</span></li>
           </ul>
         </div>
       </div>
@@ -203,15 +216,15 @@
       <div class="section-head">
         <p class="eyebrow">Get it</p>
         <h2>Download</h2>
-        <p>Two independent builds, both from the same GitHub Release — pick the one you need.</p>
+        <p>The app comes from the Microsoft Store or GitHub Releases; the standalone command line from GitHub Releases, and with the Store app.</p>
       </div>
       <div class="downloads">
         <div class="dl-card">
           <h3>GUI app (MSIX)</h3>
-          <p>Right-click Explorer integration, Archive Browser, system tray. Windows 10 1809+ or Windows 11.</p>
+          <p>Right-click Explorer integration, Archive Browser, system tray. Windows 10 version 2004+ or Windows 11, x64 or ARM64.</p>
           <p class="note">Available on the Microsoft Store — no certificate trust step needed. A GitHub Release build
-          (signed with a development certificate) remains available for anyone who prefers it or is outside
-          Store-supported regions.</p>
+          remains available for anyone who prefers it or is outside Store-supported regions; it is signed with the
+          project's development certificate, which you add to Windows' trusted certificates before installing.</p>
           <div class="cta-row">
             <a class="btn btn-primary" href="https://apps.microsoft.com/detail/9p5mw010d8pr">Microsoft Store</a>
             <a class="btn btn-ghost" href="https://github.com/pakkoapp-oss/pakko/releases/latest">GitHub release</a>
@@ -220,7 +233,7 @@
         <div class="dl-card">
           <h3>Command line (pakko.exe)</h3>
           <p>Self-contained, no installer, no admin rights. <code>pakko x archive.7z -o .\out</code></p>
-          <p class="note">Same 7-Zip-familiar commands shown above. See the <a href="https://github.com/pakkoapp-oss/pakko/blob/main/docs/CLI.md">full command reference</a>.</p>
+          <p class="note">Same 7-Zip-familiar commands shown above. Submitted to winget, waiting for a moderator. See the <a href="https://github.com/pakkoapp-oss/pakko/blob/main/docs/CLI.md">full command reference</a>.</p>
           <div class="cta-row">
             <a class="btn btn-primary" href="https://github.com/pakkoapp-oss/pakko/releases/latest">Latest release</a>
           </div>
