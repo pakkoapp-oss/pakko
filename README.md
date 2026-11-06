@@ -32,7 +32,8 @@
 
 ## Install
 
-Requires Windows 10 version 2004 (build 19041) or later, or Windows 11, x64 or ARM64.
+The app needs Windows 10 version 2004 (build 19041) or later, or Windows 11, x64 or ARM64. The
+standalone `pakko` zip has been tested on Windows 10 22H2, Windows 11 and Windows Server 2022.
 
 - **Microsoft Store** (recommended): https://apps.microsoft.com/detail/9p5mw010d8pr, or
   `winget install 9P5MW010D8PR --source msstore`. Updates come through the Store, and the install
@@ -40,8 +41,9 @@ Requires Windows 10 version 2004 (build 19041) or later, or Windows 11, x64 or A
 - **GitHub Releases**: every version tag publishes the MSIX and a standalone `pakko` command-line
   zip per architecture, with a `SHA256SUMS` file, a component list (SBOM) and build attestations:
   [releases](https://github.com/pakkoapp-oss/pakko/releases). The MSIX is signed with the
-  project's own development certificate, which Windows asks you to trust first (a publicly trusted
-  certificate is planned, see [`docs/SIGNING.md`](docs/SIGNING.md)).
+  project's own development certificate, which you add to Windows' trusted certificates before
+  installing ([`scripts/README.md`](scripts/README.md); a publicly trusted certificate is planned,
+  see [`docs/SIGNING.md`](docs/SIGNING.md)).
 - **winget (command line only)**: the `pakko` zip is submitted to the winget catalog and waits for
   a moderator; until then use the zip from GitHub Releases. See [`docs/CLI.md`](docs/CLI.md),
   "Distribution".
@@ -55,7 +57,7 @@ Requires Windows 10 version 2004 (build 19041) or later, or Windows 11, x64 or A
 | Format | Status | Through |
 |--------|--------|---------|
 | ZIP | ✅ read and create | `System.IO.Compression` (.NET) |
-| Password-protected ZIP | ✅ read (ZipCrypto, WinZip AES) and create (AES-256 only) | `System.IO.Compression` + .NET cryptography |
+| Password-protected ZIP | ✅ read (ZipCrypto, WinZip AES) and create (AES-256 only; file names inside stay visible) | `System.IO.Compression` + .NET cryptography |
 | tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma | ✅ read and create; single `.gz`/`.bz2`/`.xz` files too (v1.9.0) | `tar.exe` |
 | 7z | ✅ read; create without a password, where `tar.exe` has the 7z writer | `tar.exe` |
 | RAR | ✅ read only — libarchive has no RAR writer | `tar.exe` |
@@ -75,7 +77,8 @@ lists it). Reading runs inside an AppContainer sandbox with no network access.
   and a conflict dialog.
 - **File types** — double-clicking any archive Pakko reads opens it in the Archive Browser.
 - **Mark of the Web** — files extracted from a downloaded archive keep its `Zone.Identifier` by
-  default, so Office still opens their macros in Protected View (7-Zip does not do this by
+  default, so Office opens an extracted document in Protected View instead of running its macros,
+  and SmartScreen still warns before an extracted program runs (7-Zip does not do this by
   default). You may leave it off for one trusted archive, unless Group Policy decides.
 
 ### In the app
