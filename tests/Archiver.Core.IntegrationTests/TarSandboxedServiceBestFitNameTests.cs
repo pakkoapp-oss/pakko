@@ -372,6 +372,31 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         File.ReadAllText(Path.Combine(dest, "d", "x (1).txt")).Should().Be("B");
     }
 
+    // T-F460 (fresh review): the first of two same-named copies under "d /" comes from a second pass
+    // (T-F171), which must make "d " by its own name too, or that copy is reported lost.
+    [Integration]
+    public async Task Extract_TwoCopiesInAFolderEndingInSpace_BothArrive()
+    {
+        string path = Path.Combine(_temp.Path, "twice-space.tar");
+        TarBuilder.WriteTar(path,
+        [
+            new TarBuilder.Entry { Name = "d /", TypeFlag = '5' },
+            new TarBuilder.Entry { Name = "d /x.txt", Content = Encoding.ASCII.GetBytes("A") },
+            new TarBuilder.Entry { Name = "d /x.txt", Content = Encoding.ASCII.GetBytes("B") },
+        ]);
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            OnConflict = ConflictBehavior.Overwrite,
+        });
+
+        result.Errors.Should().BeEmpty(string.Join(" | ", result.Errors.Select(e => e.Message)));
+        string[] texts = [.. Directory.GetFiles(Path.Combine(dest, "d")).Select(File.ReadAllText).Order()];
+        texts.Should().Equal("A", "B");
+    }
+
     // T-F461: a file before its own folder entry ending in a space fails in tar.exe itself on both
     // builds ("Can't restore time" once the folder exists, "Can't create" when it does not): the
     // run fails naming tar.exe, and nothing is written.
