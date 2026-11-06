@@ -13904,6 +13904,18 @@ availability follows the installed tar.exe at run time.
   - Creation copies a colliding source with `File.Copy(fullSource, ...)` by its plain name. Whether a
     source named `a.txt ` survives that is noted under T-F463 in `docs/TASKS.md`; it is not judged
     here.
+- **Fresh review (2026-11-07, two read-only opus reviewers, no P1).** Applied: the scanner also sees
+  every target-typed `new(...)` with arguments (a ternary branch or lambda body hid a `FileInfo`;
+  mutant `b ? null : new(file)` seen red), `Path.Exists`, the Core helpers that touch a path
+  themselves (`ArchiveEntrySecurity.IsReparsePoint`/`TryPropagateMotw`, `QuarantineAcl.*`) and an
+  interpolated verbatim prefix; the scanned files are found by the class they declare, and every
+  Services file using `QuarantineFiles` or `TarSandboxScope` must be among them. `QuarantineFiles.
+  Relative` throws an `IOException` for a path not below its root instead of falling back to
+  `Path.GetRelativePath` (seen red; every caller already turns the walk's `IOException` into an
+  `ArchiveError` or an Inconclusive finding). The junction snapshot test first asserts the
+  junction reaches outside. Not changed: `ComputeDirectoryStateSnapshot_NamesWindowsTrims_*` also
+  passes on `main` (it guards the prefix, it is not a regression test); `IsReparsePoint` failing
+  open, a file-level reparse point, and the walk not checking cancellation are older than T-F463.
 
 ## T-F462 - Clean only when every listed file was scanned; extraction accounts for every file (2026-11-06)
 

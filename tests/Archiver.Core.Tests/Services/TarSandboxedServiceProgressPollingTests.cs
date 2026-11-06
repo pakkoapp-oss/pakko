@@ -88,6 +88,7 @@ public sealed class TarSandboxedServiceProgressPollingTests
         DirectoryJunction.Create(link, outside.Path);
         try
         {
+            File.Exists(Path.Combine(link, "big.bin")).Should().BeTrue("the junction must reach outside, or the test passes for the wrong reason");
             (long totalBytes, _) = TarSandboxedService.ComputeDirectoryStateSnapshot(Path.Combine(temp.Path, "q"));
 
             totalBytes.Should().Be(2);
