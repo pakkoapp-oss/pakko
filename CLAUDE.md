@@ -6,7 +6,7 @@ This file is automatically read by Claude Code at session start.
 
 ## Project
 
-**Pakko** — WinUI 3 desktop ZIP archiver for Windows with a completed shell extension (IExplorerCommand) and in-progress tar.exe integration for RAR/7z/tar extraction.
+**Pakko** — WinUI 3 desktop ZIP archiver for Windows with a shell extension (IExplorerCommand); tar, 7z, RAR and the other formats go through Windows' own `tar.exe` in an AppContainer sandbox.
 Minimal GUI over `System.IO.Compression`. No 7-Zip. No WinRAR. No third-party compression code.
 Target audience: Ukrainian government/defense — trust, auditability, minimal attack surface.
 
@@ -19,7 +19,7 @@ are complete. **v1.8.0** (PAR2) was released 2026-10-11, **v1.8.1** (7z creation
 tar.exe's formats) 2026-10-16; **v1.9.0** (7-Zip's command line in `pakko`, a source never replaced
 by its archive, no tar over a hard-link pair) 2026-10-30. The Store bundle 1.7.2.0, the first
 Native AOT build, passed certification 2026-10-11; 1.8.x was never submitted; the 1.9.0 Store bundle
-is built and awaits the user's submission (`docs/DECISIONS.md`). Store listing:
+went live 2026-10-31 (`docs/DECISIONS.md`). Store listing:
 https://apps.microsoft.com/detail/9p5mw010d8pr.
 
 Per-task detail lives in `docs/TASKS_DONE.md` and `docs/DECISIONS.md`, never here. The long
@@ -29,12 +29,12 @@ narrative this section used to hold is archived verbatim in `docs/DECISIONS.md`'
 **Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
 truth; never trust a count written in a doc.
 
-**Next work:** the v1.10.0 wave (bug fixes, taskbar/tray progress) at the top of `docs/TASKS.md`.
+**Next work:** the v1.10.0 wave (bug fixes, taskbar/tray progress, read-only ISO/CAB/cpio/ar/.Z/lzip)
+at the top of `docs/TASKS.md`; merged, unreleased until its tag.
 
 ## Roadmap Summary
 
-Version-to-focus table: see `docs/SPEC.md`'s "Future Roadmap" section (the sole owner, per T-F72 —
-`README.md`'s roadmap links there too now).
+Version-to-focus table: `docs/SPEC.md`'s "Future Roadmap" section, the sole owner.
 
 ---
 
@@ -70,10 +70,11 @@ Full table (purpose, read when, update when): `.claude/rules/docs.md`.
 
 **Canonical topic owners — do not duplicate, link instead:**
 - Security/threat-model/CVE/supply-chain rationale → `SECURITY.md` only. `docs/SPEC.md`/`README.md` keep at most a 2-line teaser with a link.
-- Version roadmap table → `docs/SPEC.md` only. `CLAUDE.md`/`README.md`/`docs/TASKS.md` reference it by version number instead of repeating the table (existing duplicates tracked as `T-F72`).
+- Version roadmap table → `docs/SPEC.md` only. `CLAUDE.md`/`README.md`/`docs/TASKS.md` reference it by version number instead of repeating the table.
 - Build/sign/deploy steps → `scripts/README.md` only. `CONTRIBUTING.md` and this file's "Build Commands" section link to it rather than repeating steps.
 - Hard constraints → `CLAUDE.md` (this file) only — the richest and most current copy.
-- Current C# signatures and DI wiring → `docs/ARCHITECTURE.md` only (stale signature there tracked as `T-F73`).
+- Format support table (what reads/creates what) → `README.md` only; `docs/SPEC.md` and the site link to it.
+- Current C# signatures and DI wiring → `docs/ARCHITECTURE.md` only.
 
 If you're updating a doc and find yourself retyping a table that already exists elsewhere in
 this list, stop — link to the canonical owner instead. If no owner is obvious for a new topic,
@@ -136,8 +137,8 @@ this file or in one of these (grep `.claude/rules/`).
 - **Shell extension:** `IExplorerCommand` only — no legacy `IContextMenu` COM shell extensions
 - **Low IL sandbox:** P/Invoke is acceptable for security-critical process isolation code (v1.4)
 - **Every intentionally-empty `catch` block needs a one-line comment stating why** (e.g.
-  `/* best-effort */`) — an empty catch's WHY is exactly the non-obvious case this file's own
-  comment policy already carves out an exception for. Also satisfies SonarCloud's S108/S2486 by
+  `/* best-effort */`) — an empty catch's WHY is exactly the non-obvious case the no-comments
+  rule (global `CLAUDE.md`) carves out. Also satisfies SonarCloud's S108/S2486 by
   construction instead of accumulating findings (44 found at once in one first scan, T-F136).
 - **Solution platforms:** the `.sln` has `Any CPU`/`x64`/`x86` solution configs, every C# project
   mapped to `Any CPU` (ARM64 builds go through `dotnet publish -r`, not the `.sln`). Add a project
@@ -169,8 +170,8 @@ this file or in one of these (grep `.claude/rules/`).
   number **across the entire repo**, not just `TASKS.md`/`TASKS_DONE.md`/`CLAUDE.md`/
   `DECISIONS.md` — don't guess a number. Some `T-Fxx` tags exist only as code comments with no
   `TASKS.md` entry (e.g. `T-F66` in `ZipArchiveService.cs`, `T-F67` in `Program.cs`); a
-  markdown-only grep misses them and risks a collision. `T-F62`/`T-F63` are already claimed by
-  *different* future tasks in `TASKS.md`; reusing them for an unrelated fix creates a lasting
+  markdown-only grep misses them and risks a collision. `T-F62`/`T-F63` are claimed by
+  *different* tasks (`TASKS_DONE.md`); reusing them for an unrelated fix creates a lasting
   mismatch between code comments and the task log.
 - **Non-ASCII glyphs in string literals and tool parameters** (C++, PowerShell, C#, Markdown): never
   type a literal glyph or a `\uXXXX` escape through Edit/Write; use a `py -3` script. Full rule:
@@ -180,59 +181,9 @@ this file or in one of these (grep `.claude/rules/`).
 
 ## Repo Layout
 
-```
-windows-archiver-wrapper/
-├── src/
-│   ├── Archiver.Core/              ← net10.0 class library, no UI deps
-│   ├── Archiver.App.Core/          ← net10.0 class library, no WinUI deps (T-F05: ArchiveEntryViewModel,
-│   │                                  ArchiveTreeIndex — split out so the flat-to-tree helper is
-│   │                                  unit-testable without a WinUI test host)
-│   ├── Archiver.App/               ← WinUI 3 app
-│   │   └── Strings/en-US/          ← ResW localization
-│   ├── Archiver.Shell/             ← net10.0-windows WinExe, shell-triggered ops, no WinUI
-│   │   └── NativeProgressDialog.cs ← IProgressDialog COM interop (in-process progress UI)
-│   ├── Archiver.CLI/                ← net10.0 Exe (real console), 7z-familiar CLI (T-F09), no
-│   │                                   WinUI, standalone self-contained distribution
-│   ├── Archiver.OperationUi/        ← code-only WinUI 3 exe, Explorer operation window (T-F268)
-│   ├── Archiver.OperationUi.Core/   ← net10.0, OperationWindowModel (window logic, no WinUI)
-│   ├── Archiver.OperationUi.Protocol/ ← net10.0, Shell <-> window pipe messages + framing
-│   ├── Archiver.Messages/           ← net10.0, Core's message codes in 37 locales (T-F209)
-│   └── Archiver.ShellExtension/    ← C++ COM DLL, IExplorerCommand (T-F61), x64+ARM64
-├── tests/
-│   ├── Archiver.Core.Tests/        ← xunit (see "Current State" for current count)
-│   ├── Archiver.App.Core.Tests/    ← xunit, ArchiveTreeIndex coverage (T-F05)
-│   ├── Archiver.Core.IntegrationTests/ ← xunit, real tar.exe via [Integration]/TarBuilder
-│   ├── Archiver.Core.PerformanceTests/ ← xunit, T-F114: ZIP perf vs. vendored 7za.exe reference,
-│   │                                     [Trait("Category","Slow")], see docs/TESTING.md
-│   ├── Archiver.Shell.Tests/       ← xunit (see "Current State" for current count)
-│   ├── Archiver.OperationUi.Tests/ ← xunit, protocol framing + OperationWindowModel (T-F268)
-│   ├── Archiver.Messages.Tests/    ← xunit, translation parity + culture resolver (T-F209)
-│   ├── Archiver.CLI.Tests/          ← xunit, parser/mapper unit tests + a Subprocess/ layer that
-│   │                                  Process.Starts the real built exe (T-F09), see docs/TESTING.md
-│   ├── Archiver.ShellExtension.Tests/  ← C++ Google Test, run separately (see Build Commands)
-│   └── Archiver.Core.Tests.GenerateFixtures/  ← fixture generator
-├── docs/                            ← everything except the root-convention files below (T-F126)
-│   ├── TASKS.md                     ← active/future tasks
-│   ├── TASKS_DONE.md                ← completed tasks archive
-│   ├── ARCHITECTURE.md
-│   ├── CONVENTIONS.md
-│   ├── DECISIONS.md
-│   ├── DIAGRAMS.md
-│   ├── SPEC.md
-│   ├── CLI.md
-│   ├── POLICIES.md
-│   ├── SIGNING.md
-│   ├── TESTING.md
-│   ├── SMOKE.md
-│   ├── XAML.md
-│   ├── index.html / uk/index.html  ← public project website (GitHub Pages serves /docs directly)
-│   ├── privacy.html                ← Privacy Policy (linked from the app's About dialog)
-│   └── assets/                     ← site-only CSS/OG image/brand-mark copy, no build step
-├── .claude/rules/                  ← area rules for agents, each loaded only for matching paths (T-F369)
-├── CLAUDE.md                        ← you are here — stays at root, Claude Code only auto-loads it here
-├── SECURITY.md                      ← stays at root — GitHub-recognized community-health file
-└── README.md
-```
+Every project and its role: `CONTRIBUTING.md`'s "Project structure" table; files inside
+`Archiver.Core`: `docs/ARCHITECTURE.md`'s "Folder Structure". All docs except the root-convention files
+live under `docs/` (T-F126); `.claude/rules/` holds the area rules.
 
 ---
 
@@ -247,8 +198,7 @@ dotnet test --filter "Category!=Slow&Category!=VeryLarge"  # the actual default 
 dotnet test --filter "Category=Slow"    # Zip64 + T-F114 perf tests — real multi-second cost
 dotnet test -c Release --filter "Category=VeryLarge"  # >4 GiB Zip64 test + T-F114's one-large-file
                                             # scenarios — on demand only, Release only (T-F272)
-# Fuzz (T-F240) is in the default run at 10 iterations; a longer run (knobs: docs/TESTING.md):
-$env:PAKKO_FUZZ_ITERATIONS='300'; dotnet test tests/Archiver.Core.Tests --filter "Category=Fuzz"
+# Fuzz (T-F240): 10 iterations in the default run; longer runs and knobs: docs/TESTING.md
 
 # Build core only
 dotnet build src/Archiver.Core
@@ -256,10 +206,7 @@ dotnet build src/Archiver.Core
 # Generate test fixtures
 dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
 
-# Build/preview the DocFX developer docs site (T-F172) — docfx is a pinned local tool
-# (.config/dotnet-tools.json), first use on a machine needs `dotnet tool restore`.
-dotnet docfx docfx.json           # build only, output to _site/ (gitignored)
-dotnet docfx docfx.json --serve   # build + serve at localhost:8080 for local preview
+# DocFX developer site (T-F172): dotnet docfx docfx.json, steps in scripts/README.md
 
 # Build MSIX (requires Windows SDK)
 dotnet publish src/Archiver.App/Archiver.App.csproj \
@@ -275,18 +222,14 @@ dotnet publish src/Archiver.App/Archiver.App.csproj \
 
 C++ build and test commands: `.claude/rules/shell-extension.md`.
 
-> **Toolchain (T-F270, 2026-09-26):** .NET 10 LTS — `global.json` pins SDK `10.0.402` exactly
-> (`rollForward: disable`; the lock files carry its ILCompiler version, T-F364; bump: `scripts/README.md`); **C# 14** (T-F363) — `LangVersion` set once in
-> `Directory.Build.props`, never per project (a test reads them). Write C# 13/14: `[ObservableProperty]`
-> on a `partial` property, never a field (MVVMTK0045 is an error); `System.Threading.Lock`, never a
-> bare `object`, to lock on; `field` over a hand-written backing field; IDE0330/0340/0360/0032/0031
-> are errors (`.editorconfig`); **Visual Studio 2026** (18.x) with MSVC **v143** (14.44) x64+ARM64 for the C++
-> projects. Every C# build goes through `dotnet`; `msbuild.exe` (found via `vswhere -latest`) builds
-> only the `.vcxproj` files. CI: `setup-dotnet` from `global.json` (the canary floats it).
-> `dotnet test` and `dotnet build src/Archiver.Core` work freely from terminal.
-> `dotnet build src/Archiver.App` also compiles via CLI (confirmed producing ARM64 output) —
-> useful for a quick compile-check on ViewModel/DI changes without opening VS. Full MSIX
-> packaging/signing/run still needs Deploy.ps1 or VS.
+> **Toolchain (T-F270):** .NET 10 LTS; `global.json` pins the SDK exactly (`rollForward: disable`;
+> the lock files carry its ILCompiler version, T-F364; bump: `scripts/README.md`). **C# 14** (T-F363),
+> `LangVersion` set once in `Directory.Build.props`; the idioms whose absence fails the build (partial
+> `[ObservableProperty]`, `Lock`, `field`, IDE0330/0340/0360/0032/0031): `docs/CONVENTIONS.md`.
+> Every C# build goes through `dotnet`; `msbuild.exe` builds only the `.vcxproj` files (Visual Studio
+> and MSVC versions: `.claude/rules/shell-extension.md`). CI: `setup-dotnet` from `global.json` (the
+> canary floats it). `dotnet build src/Archiver.App` is a quick compile check for ViewModel/DI changes;
+> MSIX packaging, signing and running need Deploy.ps1 or VS.
 
 Agent tool notes (the rest are in `.claude/rules/scripts.md` and `device-verification.md`):
 - `dotnet` with `/p:` flags and any `.ps1` go through the PowerShell tool, never Bash (Git Bash
@@ -308,31 +251,10 @@ Agent tool notes (the rest are in `.claude/rules/scripts.md` and `device-verific
 
 ---
 
-## Key Current Signatures (quick reference)
+## Key Current Signatures
 
-```csharp
-// IArchiveService
-Task<ArchiveResult> ArchiveAsync(ArchiveOptions, IProgress<int>?, CancellationToken);
-Task<ArchiveResult> ExtractAsync(ExtractOptions, IProgress<int>?, CancellationToken);
-
-// ArchiveResult
-bool Success
-IReadOnlyList<string> CreatedFiles
-IReadOnlyList<ArchiveError> Errors
-IReadOnlyList<SkippedFile> SkippedFiles
-
-// ILogService
-void Info(string message)
-void Warn(string message)
-void Error(string message, Exception? ex = null)
-
-// IDialogService
-Task ShowOperationSummaryAsync(string operationName, ArchiveResult result)
-Task ShowErrorAsync(string title, string message)
-Task<string?> PickDestinationFolderAsync()
-Task<IReadOnlyList<string>> PickFilesAsync()
-Task<IReadOnlyList<string>> PickFoldersAsync()
-```
+`docs/ARCHITECTURE.md` is the only owner (interfaces, `ArchiveResult`, `ILogService`,
+`IDialogService`, DI wiring); read it, or the interface file itself, before relying on a signature.
 
 ---
 

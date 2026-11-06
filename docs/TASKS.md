@@ -1939,6 +1939,15 @@ re-measured with T-F346's script before and after.
   advisor at both ends, `SECURITY.md` only with the user's OK.
 - **Reported by:** T-F444's fresh reviewer, 2026-11-01.
 
+### T-F459 — Regroup `docs/TESTING.md` by project and category (P3, docs)
+
+- [ ] **Status:** open. Found by the 2026-11-05 docs audit: `TESTING.md` (about 110 KB) is ordered by
+  wave and date, so a reader looks for a test project's plan in many places. The audit's PR fixed
+  only the stale lines (scope, commands, versions, the old count). Next: one section per test
+  project, then per category (`Slow`, `VeryLarge`, `Fuzz`, `Integration`), keeping every fact and
+  fixture; history goes to `DECISIONS.md`. A script moves the text, then a check for lost lines.
+- **Reported by:** the agent, 2026-11-06.
+
 ### T-F457 — Read-only formats: leftovers from T-F442's fresh review (P3)
 
 - [ ] **Status:** open. Found 2026-11-06 by the fresh read-only review of T-F442; the two medium

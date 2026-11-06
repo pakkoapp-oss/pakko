@@ -1,6 +1,6 @@
 # SPEC.md — Project Specification
 
-**Version:** 1.0  
+**Status:** released through v1.9.0; v1.10.0 in work (`CHANGELOG.md` per release)  
 **License:** Apache 2.0  
 **Distribution:** GitHub source + Microsoft Store (MSIX)
 
@@ -8,7 +8,8 @@
 
 ## Goal
 
-Create a lightweight GUI wrapper over Windows built-in ZIP functionality.  
+A lightweight archiver over what .NET and Windows already ship: ZIP through `System.IO.Compression`,
+the other formats through Windows' own `tar.exe`.  
 Fill the usability gap in Windows Explorer — not replace advanced archivers like 7-Zip.
 
 **Target:** covers ~90% of everyday archive tasks with zero third-party dependencies.
@@ -17,7 +18,7 @@ Fill the usability gap in Windows Explorer — not replace advanced archivers li
 
 ## Security Rationale
 
-Pakko uses only `System.IO.Compression` (.NET BCL) instead of 7-Zip/WinRAR — a deliberate
+Pakko uses only `System.IO.Compression` (.NET BCL) and Windows' own `tar.exe` instead of 7-Zip/WinRAR — a deliberate
 architectural constraint driven by supply-chain trust concerns (developer jurisdiction, lack of
 reproducible builds, CVE history), not a technical limitation.
 
@@ -32,26 +33,19 @@ is a teaser only, per `CLAUDE.md`'s Documentation Map).
 | Layer | Technology |
 |-------|-----------|
 | UI Framework | WinUI 3 + Windows App SDK |
-| Language | C# 12 |
+| Language | C# 14 |
 | Runtime | .NET 10 LTS (supported to 2028-11-14) |
 | Compression | `System.IO.Compression` (built-in) |
-| Optional | `tar.exe` (Windows built-in, future) |
+| Other formats | `tar.exe` (Windows built-in), in an AppContainer sandbox |
 
 ---
 
 ## Supported Formats
 
-| Format | Status | Method |
-|--------|--------|--------|
-| ZIP | ✅ v1.0 (read+write) | `System.IO.Compression.ZipFile` |
-| TAR/GZ/BZ2/XZ/ZST/LZMA | ✅ v1.3 (read), ✅ v1.4 (write, T-F105) | `tar.exe` (Windows built-in) |
-| RAR | ✅ v1.3 (read only — no libarchive writer exists) | `tar.exe` (Windows built-in) |
-| 7z | ✅ v1.3 (read), ✅ v1.8.1 (write without a password, T-F342; where Windows' tar.exe has the 7z writer) | `tar.exe` (Windows built-in) |
-| Password-protected ZIP | ✅ v1.5 (read: ZipCrypto + WinZip AES; create: WinZip AES-256 only, T-F193 — file names stay unencrypted) | `System.IO.Compression` + .NET `System.Security.Cryptography` |
-| ISO 9660, CAB, cpio, ar (`.deb`), `.Z`, lzip | ✅ v1.10 (read only, T-F442), each where the installed tar.exe reads it (lzip: not on Windows 10's tar.exe 3.5.2) | `tar.exe` (Windows built-in) |
-| UDF disc images (most Windows install ISOs) | ❌ Refused with the reason: tar.exe reads only the ISO 9660 stub beside the UDF volume. Windows mounts them itself | — |
-| Encrypted 7z/RAR | ❌ Detected and refused with a clear error (T-F113) | — |
-| Multi-volume | ❌ Out of scope | — |
+The table of what Pakko reads and creates, and through which engine, is `README.md`'s "Formats"
+(the one owner; link to it, don't copy it). Which tar-family formats work depends on the installed
+`tar.exe` build (`SECURITY.md`); Pakko offers only what that build reads. Encrypted 7z/RAR are
+detected and refused with a clear error (T-F113); UDF disc images are refused with the reason (T-F442).
 
 **Not supported, with the reason (T-F442, measured on both tar.exe builds):** xar (tar.exe 3.8 reads it,
 3.5.2 does not, and its version string does not say which, so it would need a probe of its own; `.pkg` is
@@ -114,19 +108,22 @@ Errors must **never crash the app**. Each failed item should be reported individ
 
 ---
 
-## Non-Goals (v1.0)
+## Non-Goals
 
-- Advanced compression level tuning
 - Background or scheduled archiving
-- Archive encryption
-- Preview of archive contents
+- Per-method tuning (dictionary size, solid blocks, threads): a compression level only
+- Creating RAR archives (no free RAR writer exists) or password-protected 7z archives
+- Split or multi-volume archives
+- Changing an archive in place (7-Zip's `u`, `d`, `rn`): Pakko writes a new archive
+- Flat extraction without folders (7-Zip's `e`)
+- Mounting disk images: Windows mounts ISO, VHD and VHDX itself
 
 ---
 
 ## Windows Explorer Gap Analysis
 
 ### What Explorer Provides
-- Read many formats (ZIP natively; RAR/7z/tar via built-in `tar.exe` on Win 11 23H2+)
+- Read many formats (ZIP natively; RAR, 7z and the tar family in Explorer itself since Windows 11 23H2)
 - Basic extract (right-click → Extract All)
 
 ### What Explorer Lacks
@@ -135,7 +132,6 @@ Errors must **never crash the app**. Each failed item should be reported individ
 - No batch extraction to separate folders
 - No compression level selection
 - No conflict handling (overwrites silently)
-- No MOTW propagation — extracted files lose Mark of the Web
 - No per-file progress or extraction log
 - No GPO policy for format restrictions
 
@@ -150,14 +146,18 @@ Errors must **never crash the app**. Each failed item should be reported individ
 
 ## Shell Extension
 
-Pakko v1.2 adds a native Windows 11 context menu via `IExplorerCommand`:
+Since v1.2 Pakko has an Explorer context menu through `IExplorerCommand`, in the Windows 11 menu and
+under "Show more options":
 
 - Registered via packaged COM (`com:SurrogateServer` in `Package.appxmanifest`) — appears in the
   modern context menu (no "Show more options" click required)
-- **Commands available on a supported archive:** Extract… (dialog) · Extract here (flat) · Extract
-  to current folder (intelligently) · Extract to `<folder_name>\` · Test archive
-- **Commands available on any files/folders:** Compress… (dialog) · Add to `<name>.zip` · Add to
-  `<name>.tar`
+- **On a supported archive:** Open · Extract… (dialog) · Extract here · Extract to current folder
+  (intelligently) · Extract to `<folder_name>\` · Extract each to its own folder (several archives) ·
+  Test archive · Scan for threats
+- **On a `.par2` file, or an archive with its set beside it:** Verify with PAR2 · Repair with PAR2
+- **On any files/folders:** Compress… (dialog) · Add to `<name>.zip` / `<name>.7z` / `<name>.tar` ·
+  Hash (CRC-32, SHA-256)
+- Each command runs in the Pakko operation window (`Archiver.OperationUi`, T-F268)
 
 Implementation: `Archiver.ShellExtension` project, COM-based `IExplorerCommand`, registered in `Package.appxmanifest`. See `DIAGRAMS.md`'s diagram 1 for the full sequence and every command's exact enable/visibility condition.
 
@@ -193,10 +193,11 @@ Implementation: `FileStream` opened with ADS path `file.txt:Zone.Identifier`.
 ### Design
 
 - Always uses absolute path `C:\Windows\System32\tar.exe` — no PATH lookup, prevents EXE hijacking
-- Capability detection at app startup — probes which formats the current `tar.exe` supports
-- UI shows only formats the detected `tar.exe` supports
-- Unsupported formats shown greyed with tooltip "Requires Windows 11 23H2+"
-- Argument whitelist: only `-xf` and `-C` allowed — no arbitrary flag injection
+- Capability detection — Pakko asks the installed `tar.exe` which formats it reads
+  (`TarCapabilitySnapshot`, also read by the Explorer menu); only those are offered
+- Opening a format that `tar.exe` cannot read gets a message naming its version
+- Pakko builds every argument list itself; source names reach `tar.exe` on a `-T -` list (T-F283),
+  never as arguments
 
 ### Process Isolation
 
@@ -214,18 +215,9 @@ Same as ZIP extraction (T-F26/T-F27): extract to staging directory on same disk,
 
 ## Group Policy Support (v1.4)
 
-Registry path: `HKLM\Software\Policies\Pakko\`
-
-| Key | Type | Effect |
-|-----|------|--------|
-| `EnforceMOTW` | DWORD | Controls MOTW propagation (`0`=disabled, `1`=all files, `2`=unsafe extensions only) |
-| `AllowedFormats` | multi-string | Whitelist of allowed formats |
-| `BlockedFormats` | multi-string | Blocklist — takes precedence over `AllowedFormats` |
-| `DisableTarExtraction` | DWORD | Block all tar.exe extraction and creation, hide those formats in the UI |
-
-ADMX/ADML template provided for enterprise Group Policy deployment. `POLICIES.md` is the canonical
-spec for this table (full value vocabulary, defaults, interaction rules) — this section is a
-teaser only; don't let it drift from `POLICIES.md` again.
+Machine policies under `HKLM\Software\Policies\Pakko\`, with an ADMX/ADML template: Mark of the
+Web, allowed and blocked formats, tar.exe off, recovery data off and more. `POLICIES.md` is the one
+owner of the list, the values and how they interact; this section only points there.
 
 ---
 
@@ -261,11 +253,12 @@ truncated copy are the realistic damage.
 | v1.3 | tar.exe integration — RAR/7z/tar extraction + capability detection — **complete** |
 | v1.4 | GPO/ADMX + AppContainer sandbox (P/Invoke, T-F52) + strict mode policy + Archive Browser (T-F05) + TAR creation via tar.exe (T-F105, pulled forward from v1.5 2026-07-16) — **complete, including GPO/ADMX (T-F51, done 2026-07-18)** |
 | v1.5 | Password-protected ZIP (read ZipCrypto + WinZip AES, create AES-256; T-F188–T-F194) + `pakko://` scheme removed (T-F232) + extraction/sandbox correctness and security fixes (fix phases 1–4a) — **released as v1.5.0** |
-| v1.6 | Remaining fix-batch phases (5–10, `docs/TASKS.md`'s fix-batch index) + additional format fixtures |
+| v1.6 | Remaining fix-batch phases (5–10) + additional format fixtures — **released as v1.6.0** |
+| v1.7 | `pakko` in any terminal after a Store install (T-F317), extracted files keep their dates (T-F298), the v1.6.0 device-campaign fixes, the first Native AOT Store build — **released as v1.7.0–v1.7.2** |
 | v1.8 | PAR2 recovery data next to created archives: create, verify, repair (T-F275) — **released as v1.8.0** |
-| v1.8.1 | 7z archive creation through tar.exe (T-F342) + Test for every format tar.exe reads (T-F397) + fixes |
-| v1.9 | Store release: `pakko` 7-Zip switches (T-F411 waves A-E, T-F410), one path pipeline (T-F420), a red-team suite (T-F419), and the v1.9.0 wave of `docs/TASKS.md` |
-| v1.10 | Bug fixes after v1.9.0, one owner per name/path encoding boundary (T-F441), progress on the taskbar button and tray icon (T-F432), and the read-only formats tar.exe opens: ISO, CAB, cpio, ar, `.Z`, lzip (T-F442): the v1.10.0 wave of `docs/TASKS.md` |
+| v1.8.1 | 7z archive creation through tar.exe (T-F342) + Test for every format tar.exe reads (T-F397) + fixes — **released** |
+| v1.9 | Store release: `pakko` 7-Zip switches (T-F411 waves A-E, T-F410), one path pipeline (T-F420), a red-team suite (T-F419), and the v1.9.0 wave — **released as v1.9.0** |
+| v1.10 | Bug fixes after v1.9.0, one owner per name/path encoding boundary (T-F441), progress on the taskbar button and tray icon (T-F432), and the read-only formats tar.exe opens: ISO, CAB, cpio, ar, `.Z`, lzip (T-F442): the v1.10.0 wave of `docs/TASKS.md` — **in work, not released** |
 | v2.0 | `pakko` measured as a stand-in for 7-Zip's console program, gaps closed where they fit Pakko's rules (T-F343; T-F412, T-F413 and T-F415 moved to v1.9) |
 
 Package version (`Package.appxmanifest`'s `Identity Version`) tracks MSIX packaging, not this

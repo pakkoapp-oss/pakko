@@ -1,23 +1,26 @@
 # TESTING.md — Test Plan
 
-Covers `Archiver.Core` only. UI layer (`Archiver.App`) is not unit-tested in v1.0.
+The test plan for every test project (the list: `CONTRIBUTING.md`'s "Project structure"). The App's
+WinUI layer has no unit tests; its WinUI-free logic lives in `Archiver.App.Core` and is tested there.
+This file grew by wave and date; regrouping it by project and category is T-F459.
 
 ---
 
 ## Running Tests
 
 ```bash
-# Run all tests (skips T-F20's Zip64 Slow tests AND the VeryLarge tier — see below)
-dotnet test tests/Archiver.Core.Tests --filter "Category!=Slow&Category!=VeryLarge"
+# The default run: every test project, without the Slow and VeryLarge tiers (see below).
+# Never pass a project path: the filter must reach every project.
+dotnet test --filter "Category!=Slow&Category!=VeryLarge"
 
 # With verbose output
-dotnet test tests/Archiver.Core.Tests --filter "Category!=Slow&Category!=VeryLarge" --logger "console;verbosity=normal"
+dotnet test --filter "Category!=Slow&Category!=VeryLarge" --logger "console;verbosity=normal"
 
-# Zip64 tests only — real multi-second cost, not run by default
-dotnet test tests/Archiver.Core.Tests --filter "Category=Slow"
+# Zip64 and T-F114 performance tests: real multi-second cost, before a release
+dotnet test --filter "Category=Slow"
 
-# The one genuinely oversized (>4 GiB) test — on demand only, never part of Category=Slow
-dotnet test tests/Archiver.Core.Tests --filter "Category=VeryLarge"
+# The genuinely oversized (>4 GiB) tests: on demand only, Release only (T-F272)
+dotnet test -c Release --filter "Category=VeryLarge"
 ```
 
 **Plain `Category!=Slow` alone is NOT the correct "default" filter — it does not exclude
@@ -64,41 +67,16 @@ that shouldn't run just because someone ran the "Slow" tier.
 
 ## Test Project Setup
 
-```xml
-<!-- tests/Archiver.Core.Tests/Archiver.Core.Tests.csproj -->
-<TargetFramework>net10.0</TargetFramework>  <!-- NOT net10.0-windows — pure .NET -->
-<PackageReference Include="xunit" Version="2.5.3" />
-<PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
-<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-<PackageReference Include="FluentAssertions" Version="6.*" />
-```
+Test projects target `net10.0` (`Archiver.Shell.Tests`: `net10.0-windows`) and use xunit with
+FluentAssertions; no mocking library (hand-rolled fakes, `CLAUDE.md`). Package versions live in each
+`.csproj` and its lock file only, kept current by Dependabot.
 
 ---
 
-## Current Test Count
+## Test Count
 
-**48 tests total** — all pass as of v1.1.
-
-| File | Tests | Coverage |
-|------|-------|---------|
-| `ZipArchiveServiceArchiveTests.cs` | ~17 | Archive modes, conflicts, progress, cancellation, delete source, temp file pattern (T-F26), UTF-8 filenames (T-F29) |
-| `ZipArchiveServiceExtractTests.cs` | ~14 | Extract modes, smart foldering, password detection, conflict, delete archive, temp dir pattern (T-F27), bomb protection (T-F28) |
-| `ZipArchiveServiceFixtureTests.cs` | 18 | Fixture-based: valid archives, corrupted, encrypted, ZIP slip |
-| `ZipArchiveServiceTestAsyncTests.cs` | 4 | T-F62: `TestAsync` CRC-32 verification — valid archive passes, corrupted-CRC fixture fails, encrypted archive errors, mixed valid+corrupted selection reports only the corrupted one |
-| `ZipArchiveServicePropertyTests.cs` | 16 | T-F24: property-based archive/extract round-trip — random directory trees (12 seeds) + named all-small/all-large/mixed/deep-nesting scenarios, SHA-256 hash comparison per file |
-| `ZipArchiveServiceZip64Tests.cs` | 3 | T-F20: Zip64 boundaries — `[Trait("Category","Slow")]`, excluded from default `dotnet test` (see "Running Tests" above) |
-| `ArchiveOptionsTests.cs` | ~2 | Model defaults |
-
-This table (and the "48 tests total" figure below) predates several rounds of additions
-(T-F37/38/39/45/58/59/60, etc.) and is known stale beyond the `TestAsync` row just added —
-tracked as its own cleanup, not fixed wholesale here. Current true count: run `dotnet test`.
-
-Tests added in v1.1:
-- `ArchiveAsync_Cancelled_LeavesNoTempFile` (T-F26)
-- `ExtractAsync_Cancelled_LeavesNoTempDirectory` (T-F27)
-- `ExtractAsync_SuspiciousCompressionRatio_SkipsEntry` (T-F28)
-- `CyrillicFilename_PreservedAfterRoundTrip` (T-F29)
-- `EmojiFilename_PreservedAfterRoundTrip` (T-F29)
+Never written down, since it changes with every task: run the default command above. The per-file
+tables this section held went stale after v1.1 and were removed (T-F459 regroups this file).
 
 ---
 

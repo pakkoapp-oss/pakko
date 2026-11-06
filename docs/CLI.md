@@ -1,10 +1,10 @@
 # CLI.md — Archiver.CLI Command Specification (T-F09)
 
-> **Status: implementation complete, on-device verification pending.** `Archiver.CLI` exists at
-> `src/Archiver.CLI/` — T-F09 in `TASKS.md` is `[~]`. This document is the command/switch
-> specification it's built against, kept separate from `TASKS.md` so it can be read as reference
+> **Status: shipped** (T-F09 in `TASKS_DONE.md`; inside the MSIX since v1.7.0, 7-Zip's switches
+> since v1.9.0). On-device checks: the `CLI-` rows of `SMOKE.md`. This document is the command/switch
+> specification `src/Archiver.CLI/` is built against, kept separate from `TASKS.md` so it can be read as reference
 > documentation (and shipped as the CLI's own `--help` content) without wading through
-> task-tracking prose. `TASKS.md`'s T-F09 entry owns acceptance criteria and status; this file
+> task-tracking prose. Task history lives in `TASKS_DONE.md`; this file
 > owns the command/switch tables — don't duplicate one into the other.
 
 ---
