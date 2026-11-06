@@ -13670,3 +13670,457 @@ PowerShell does natively.
   top-level `permissions: contents: read` in `build.yml` and `canary.yml`; the rest dismissed with a
   reason or left to the owner (`docs/DECISIONS.md`, "T-F458").
 - **Reported by:** the user (a screenshot of the code-scanning page), 2026-11-06.
+
+---
+
+## Graduated 2026-11-06 (after v1.9.0)
+
+Moved verbatim from `TASKS.md` by the docs audit (2026-11-06): the v1.9.0 wave's plan and the
+tasks it finished, and old blocks that only recorded history. The v1.10.0 wave graduates at its
+release.
+
+### v1.9.0 wave — the Store release (planned 2026-10-24)
+
+One wave instead of 1.8.2 (the user, 2026-10-24): every open task that can be done now; the rest is
+deferred below with its reason. Wave E's 1.8.2 CHANGELOG notes (`TASKS_DONE.md`, T-F411) go into
+v1.9.0's. Streams run in parallel, each on its own branch from `main` and its own PR; sandbox,
+integration and subprocess tests and the full suite run one at a time, never from two worktrees at
+once; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md are edited by the integrating session only.
+
+| Stream | Tasks | Area |
+|---|---|---|
+| A1 ZIP engine | T-F421, T-F417 | `ZipArchiveService`, `ExtractionRouter` |
+| A2 tar listing, `l` | T-F418, T-F412 (`-slt`) | tar listing parse, `pakko l`, `docs/CLI.md` |
+| A3 CLI create, exit codes | T-F413 (gzip; xz/bz2 measured), T-F415 (`-aos` exits 0) | CLI parser and creation, `docs/CLI.md` |
+| B flaky tests, ARM64 | done 2026-10-25: T-F372, T-F374, T-F376, T-F396, T-F290, T-F425, T-F426, T-F429; T-F427, T-F428 deferred | tests, and three Core fixes found by them (T-F426, T-F396, T-F429); load loops run alone |
+| C App, on device | 2026-10-29: T-F392 done (`EXP-016` passed), T-F395 done (PR #119), T-F354 closed (not worth it: the start is 341 ms, `x:Load` crashes the window), T-F393 deferred (no repro in 25 tries); T-F399 done (`POL-009` on 1.9.0.2); T-F320 (closed, documented) | App, `TarSandboxedService` creation |
+| D smoke, winget | T-F394, T-F361 | `scripts/`, `scripts/smoke/`, `docs/SMOKE.md` |
+| E localization, Store text | T-F331 done 2026-10-29 ("What's new" for 1.9.0, 37 languages); T-F91's layout walk and T-F328's non-English look ride on the release smoke's `APP-015`/`EXP-008` (the user language list, no sign-out); T-F329 part 5 | `.resw`/`.resx`, `Localization.cpp`, `docs/store-listing/` |
+| G operation window (added 2026-10-29, the user) | T-F431 (time left; T-F432 deferred) | `Archiver.Shell` progress text, `OperationText` resx |
+| F measurement, umbrellas | T-F114 (done 2026-10-30: the second machine was the Windows 10 VM), T-F226 (done 2026-10-29: check L over diagrams 1 to 9), T-F202 (real console done 2026-10-29; keyboard is `APP-012` in the release smoke) | docs, tests |
+
+Decisions taken with the plan (the user approved, 2026-10-24): T-F412 keeps reading a `.tar.gz` in
+one step and adds `-slt`; T-F415 exits 0 when `-aos` asked for the skip; T-F392 refuses a tar from a
+folder holding two hard links to one file; T-F320 adds no restricted capability. Order: streams A, B,
+D, F in parallel; C, then E on the device; then the user's elevated checks (`POL-009`, `winget install
+--manifest`); then the release (`.claude/rules/ci.md`) and the Store submission.
+
+**Deferred past 1.9.0** (the user, 2026-10-24: what cannot be done now): T-F359 (no spinning disk),
+T-F254 (a language pack and a sign-out), T-F332's super hero art (needs the user's image), T-F317's
+outward steps (the winget-pkgs PR was closed unmerged; a new one needs the user's CLA and Microsoft's
+review), T-F91's native-speaker review (no native speakers), T-F202's light theme, en-US and tray
+(system settings and the user's hands). T-F91's layout walk moves here too if the App cannot switch
+its language without a sign-out or a system setting. Found by stream B (2026-10-25, the agent's call):
+T-F428 (a change to the sandbox launcher's cancel path that needs a plan; low exposure in the
+product), T-F427 (the real AMSI path cannot be checked while AMSI is not ready on the dev machine).
+T-F432 (the user, 2026-10-29: the taskbar progress goes in the next release). Found by the release
+smoke (2026-10-29 and 2026-10-30, none blocking): T-F434, T-F435, T-F437 (P3) stay deferred; T-F433,
+T-F430 and T-F438 went into 1.9.0 (the user, 2026-10-30); T-F436 closed as T-F297's design.
+
+---
+
+### Current State — v1.1 Complete
+
+- All T-01 through T-35 + T-11, and T-F16/T-F17/T-F18/T-F26–T-F29/T-F37–T-F39 complete and committed
+- 95/95 tests pass (`dotnet test`)
+- MSIX builds at `src/Archiver.App/AppPackages/` via `Deploy.ps1` (signed with dev cert)
+- Satellite EXEs (Archiver.Shell.exe, Archiver.ProgressWindow.exe) included via Content Include in Archiver.App.csproj
+- Git tag: `v1.1.0` — GitHub-only release for early testers
+- **Store release planned for v1.3** (when shell extension + MOTW + tar.exe complete)
+
+---
+
+### T-F05 (original, pre-2026-07-12 scope, superseded by the expanded entry above — kept per the
+"never silently deprecate" rule)
+
+Click ZIP in list → read-only tree view of contents via `ZipFile.OpenRead`. No extraction.
+
+---
+
+### T-F09 (original, pre-2026-07-12 scope, superseded by the expanded entry above — kept per the
+"never silently deprecate" rule)
+
+Expose `Archiver.Core` as standalone CLI executable for scripting, using a GNU-style
+`--long-flag` syntax instead of 7z-familiar single-letter commands:
+
+```
+archiver archive --src C:\files --dest C:\output --name backup
+archiver extract --src C:\backup.zip --dest C:\output
+```
+
+---
+
+### v1.2 — Shell Extension
+
+> **Minimum supported OS:** Windows 10 1809 (10.0.17763.0).
+> Shell extension uses dual registration:
+> - `desktop4:FileExplorerContextMenus` — Win10 1809+, classic context menu
+> - `IExplorerCommand` via COM — Win11 22000+, modern context menu
+>
+> Both mechanisms invoke `Archiver.Shell.exe`. No separate code paths needed.
+
+---
+
+### Context Menu — NanaZip Parity Review (2026-07-04)
+
+Per project direction, NanaZip is the reference implementation for what the Pakko context
+menu should offer. Reviewed NanaZip's actual modern (`IExplorerCommand`-based) shell
+extension source —
+[`NanaZip.UI.Modern/NanaZip.ShellExtension.cpp`](https://github.com/M2Team/NanaZip/blob/main/NanaZip.UI.Modern/NanaZip.ShellExtension.cpp)
+— the direct architectural equivalent of `Archiver.ShellExtension`, not the legacy classic
+`IContextMenu` implementation (`NanaZip.UI.Classic/.../ContextMenu.cpp`), which is
+irrelevant here per this project's `IExplorerCommand`-only constraint.
+
+**NanaZip's full modern-menu command set** (flat list, no separate folder/file/mixed
+submenus — conditions are evaluated per-command against the selection, not via distinct
+menu trees):
+
+| Command | Condition | Pakko status |
+|---|---|---|
+| Open | single file, needs extraction | done differently — double-click file association (T-F44); no explicit context-menu verb |
+| Test | ≥1 file needs extraction | done — `TestCommand` (see `TASKS_DONE.md`'s T-F62) |
+| Extract (dialog, picks destination) | ≥1 file needs extraction | done — `ExtractDialogCommand` (see `TASKS_DONE.md`'s T-F63) |
+| Extract Here | ≥1 file needs extraction | done — `ExtractHereCommand` (already smart: `SeparateFolders` mode strips/wraps as needed, equivalent to NanaZip's separate "Extract Here (Smart)") |
+| Extract Here (Smart) | ≥1 file needs extraction | n/a — folded into Pakko's "Extract here" above, not a separate verb |
+| Extract to "\<folder\>" | ≥1 file needs extraction | done — `ExtractFolderCommand` |
+| Compress (dialog, format/options) | any selection | done — `CompressDialogCommand` (see `TASKS_DONE.md`'s T-F63) |
+| Compress to "\<name\>.zip" (one click) | any selection | done, but see T-F64 (label says "Add to archive…" though behavior is already the one-click no-dialog path) |
+| Compress to "\<name\>.7z" | any selection | done — `SevenZipArchiveCommand` (T-F342), hidden where tar.exe is known not to write 7z (was "out of scope — 7z creation forbidden", from the belief that tar.exe cannot write 7z) |
+| Compress + Email variants (×4) | any selection | **out of scope, deliberately** — mail client integration adds attack surface and a dependency the gov/defense trust model doesn't need; not tracked as a task |
+| CRC/Checksum submenu (CRC-32/64, SHA-1/256/384/512, BLAKE2/3, etc.) | any selection | covered by existing T-F46 (File Hash Viewer), which already targets SHA-256; T-F46 is in-app UI only today, not a context-menu verb — cross-referenced, no new task |
+
+**Note on T-F41/T-F42/T-F43:** these three older task entries (below, still `future`/unchecked)
+describe "Extract Here", "Extract to Folder", and "Archive with Pakko" as if unimplemented.
+They predate T-F61 and are now superseded by it — all three behaviors are implemented and
+smoke-tested there. Left in place with a note rather than deleted, per the "never silently
+deprecate" rule; do not re-implement them as new work.
+
+---
+
+### T-F114 — Performance/Regression Tests vs. a 7-Zip Reference (ZIP only)
+- [x] **Status:** done 2026-10-30. Implemented and passing 2026-07-17 (all 9 implementation steps;
+      `DECISIONS.md`'s T-F114 entry has the baseline ratios and the rationale). The last criterion,
+      a run on a second machine, ran in the v1.9.0 release smoke on the Windows 10 VM PakkoW10 (4
+      virtual processors on this machine's Ryzen 5 PRO 4650U, which the host runs with 12 threads;
+      Windows 10 22H2): the five `Category=Slow` scenarios pass, and each ratio is within 0.44 of the
+      host's of the same day; FewLargeFiles moves most (0.62 on the host, 1.06 in the VM, where 7za
+      has fewer threads). Caveats: not a differently built processor, and the `VeryLarge` scenarios
+      were not run in the VM. Figures: `DECISIONS.md`, "v1.9.0 - the release-tier smoke run on
+      57a7ac41".
+
+**What:** automated tests that compress/extract fixture data with Pakko's own ZIP path
+(`System.IO.Compression`) and, in the same test invocation on the same machine, run `7za.exe`
+against the identical fixture — then assert on the **ratio** between the two elapsed times. Goal:
+catch a code change that silently makes compression/extraction meaningfully slower (the project's
+actual regression history — accidental sync-over-async, wrong buffer sizes — has been gross, not
+subtle), without a flaky absolute-time threshold that breaks the moment the test runs on a
+different machine.
+
+**Real-world grounding (research done before designing, not invented scope):**
+- Checked whether end users/sysadmins actually track version-over-version archiver speed
+  regressions as a demand signal: **thin evidence.** The genre that exists is cross-tool
+  comparison ("which archiver is fastest" — 7-Zip's own `7z b` benchmark subcommand, various
+  zstd-vs-7z-vs-zip speed/ratio comparison articles), not "this specific tool got slower in its
+  last release." Conclusion: this is a sound *internal engineering discipline* to self-impose, not
+  something externally demanded — not framed as a user-requested feature.
+- Checked how BenchmarkDotNet (.NET's own microbenchmarking library), Rust's `criterion.rs`, and
+  Go's `benchstat` solve "compare speed fairly across unknown machines." **None of the three
+  attempt true cross-machine baseline portability.** BenchmarkDotNet's `[Benchmark(Baseline =
+  true)]` reports every other result as a ratio computed *within the same run on the same
+  machine*. `criterion.rs`/`benchstat` compare against a *stored baseline from a prior run on the
+  same machine* (not cross-machine). **The only mechanism that generalizes to an arbitrary,
+  never-before-seen machine is running the reference and the subject side-by-side, right now, in
+  the same invocation, and taking the ratio** — this directly resolves the "what do we compare
+  against, given all machines are different speeds" question raised when scoping this task.
+- The user's own tentative idea — cache a result in a temp file and compare against it going
+  forward — was explicitly considered and **dropped**: that pattern's one legitimate use (per
+  `criterion.rs`) is catching drift on the *same machine over time* (e.g. a persistent CI runner),
+  and this repo has no CI today (confirmed — manual, occasionally-different-machine, pre-release
+  testing cadence per `TESTING.md`). Building that infrastructure now would be speculative; revisit
+  only if Pakko ever gets a persistent CI runner.
+- 7-Zip's core code is LGPL v2.1+; bundling a portable `7za.exe` for test-only use requires
+  attribution (state 7-Zip is used, state LGPL, link to 7-zip.org, include license text) — real,
+  small, non-blocking.
+- Known pitfalls confirmed from the same research: JIT/cold-start skew (needs one discarded
+  warmup pass per engine before timing); process-spawn overhead for the `7za.exe` subprocess
+  (fixed per-invocation cost, negligible for large files, noisiest for the many-small-files
+  shape — argues for real tolerance headroom, not for dropping that shape); Windows Defender/AV
+  interference is real but largely self-cancelling within one ratio (both engines get scanned in
+  the same run) — documented as a known flakiness source, not coded around.
+
+**Decisions (confirmed with user, not left as advisor-only recommendations):**
+- **Bundle `7za.exe`** (portable, console-only, LGPL) directly in the new test project — pinned
+  exact version, SHA-256 verified against the official 7-zip.org release, committed alongside a
+  `LICENSE-7-Zip.txt` and a `NOTICE.md` (version/source URL/hash/vendored date). Rejected
+  "require a system-installed 7-Zip, skip if absent": `CLAUDE.md`'s own hard constraint is
+  "No 7-Zip" for the *shipped product* — the population of machines that build/test Pakko is
+  disproportionately likely to not have 7-Zip installed, so "skip if absent" would silently turn
+  the gate into decoration on most contributor machines. Explicitly document (code comment near
+  the runner + `DECISIONS.md`) that this is a test-only, dev-time dependency, never shipped in the
+  MSIX — distinct from the "zero third-party dependencies" rule, which governs `Archiver.Core`'s
+  shipped surface only. Absolute-path-only to the bundled binary, mirroring `tar.exe`'s existing
+  "never via PATH" convention. Still add a thin `File.Exists` presence guard as defense-in-depth
+  (someone deleted the file / `.gitignore` mistake) — documented as an edge case, not the routine
+  path `IntegrationAttribute` represents for tar.exe.
+- **Drop the cache-in-a-temp-file/persistent-baseline idea entirely** — not built, not stubbed.
+  Revisit only if a persistent CI runner is ever added.
+- **ZIP only for this task** (`System.IO.Compression` vs. `7za.exe -tzip`), both archive creation
+  and extraction. Explicitly **excludes tar-family** — `TarSandboxedService` routes through
+  AppContainer/ACL/Job-Object sandbox machinery (T-F52), a deliberate, accepted security cost; a
+  shared tolerance band against unsandboxed `7za.exe` would almost certainly "fail" on sandbox
+  setup overhead alone, not a real regression. A future tar-family perf task would need its own
+  separate calibration accounting for sandbox overhead as a known constant — not bolted onto this
+  one.
+
+**Core comparison mechanism:**
+- Per (fixture shape × operation): one discarded warmup pass + one timed pass, for both Pakko and
+  `7za.exe`, on the identical fixture, in the same test method. Assert
+  `r = pakkoElapsed / referenceElapsed <= calibratedBaselineRatio * toleranceMultiplier` — 6
+  hardcoded constants total (3 shapes × archive/extract), each derived by running the suite
+  locally a few times first and observing real ratios, then picking a multiplier with generous
+  headroom (starting point ~2–3x) to absorb machine-to-machine noise. Document the observed
+  baseline numbers and chosen multiplier's rationale in `DECISIONS.md` — no bare unexplained magic
+  constants.
+- Also assert basic sanity (operation succeeded, output entry count/size matches expectation,
+  elapsed > 0) alongside the ratio — cheap insurance against a broken timer or short-circuited
+  operation silently "passing" on garbage data.
+- No repeated-iteration statistics (medians/confidence intervals, criterion/benchstat-style) — a
+  single timed run per engine after one warmup is proportionate for a coarse "catch a gross
+  slowdown" gate; this repo has no CI to make repeated-run statistics meaningful anyway. Realistic
+  sensitivity: catches a ~2x+ slowdown, not a 5–10% regression — matches the actual ask.
+- Known residual risk to document, not solve: the ratio assumption holds well for raw clock-speed
+  differences between machines, only approximately for *core-count* differences, since `7za.exe`
+  is multi-threaded and Pakko's `System.IO.Compression` path is single-threaded — another reason
+  the tolerance band needs real headroom rather than a tight one.
+
+**Fixture shapes (generated at test-run time into a `TempDirectory`, matching
+`ZipArchiveServiceZip64Tests`' precedent — never committed to git, distinct from
+`GenerateFixtures`' small committed correctness fixtures; state this distinction explicitly in
+`TESTING.md` so the two mechanisms aren't conflated):**
+- **Many small files:** 5,000 files, 1–10 KB each (~25–30 MB total) — deliberately not Zip64's
+  65,600 (that count targets the 16-bit entry-count boundary, not perf; at that scale fixture
+  creation itself would dominate the perf test's own wall-clock). Kept despite being the noisiest
+  shape (process-spawn overhead) because it exercises a genuinely distinct code path (per-entry
+  overhead across many small Deflate streams) and was explicitly requested.
+- **One large file:** ~300 MB of semi-compressible generated content (a repeating pseudo-text
+  pattern — not all-zeros, not pure random noise; either extreme misrepresents realistic
+  throughput/ratio behavior), streamed to disk.
+- **Hybrid:** ~500 small files (1–50 KB) + 3–5 medium files (5–20 MB), total ~50–80 MB —
+  resembles a realistic project-folder archive, kept smaller than the large-file fixture so its
+  cost stays proportionate.
+- All three hardcoded as `const` fixture parameters directly in the test class, matching
+  `ZipArchiveServiceZip64Tests`' `const int fileCount = 65_600` style — no configurable sizing
+  system.
+
+**Test project placement:** new dedicated project, `Archiver.Core.PerformanceTests` — not folded
+into `Archiver.Core.IntegrationTests`, even though that project already spawns real external
+processes (the closest existing precedent). `IntegrationTests` has a settled identity as
+"deterministic correctness/security proofs against real OS/tar.exe behavior"; mixing in a timing
+assertion with inherent (if small) flake risk blurs that meaning and risks a real regression being
+dismissed as "oh, that's the flaky suite." A dedicated project also cleanly owns the bundled
+`7za.exe` + its license file rather than attaching an unrelated binary to the sandbox/tar.exe test
+project. Every test tagged `[Trait("Category","Slow")]` — picked up automatically by the existing
+`dotnet test --filter "Category!=Slow"`/`"Category=Slow"` convention, no new filtering mechanism.
+Add to the `.sln` with `Debug|x64`/`Release|x64`-only config entries per `CLAUDE.md`'s hard
+constraint (never `Any CPU`/`x86`).
+
+**Category/tagging and failure-handling note (differs from Zip64's Slow tests, document
+distinctly in `TESTING.md`):** a Zip64 test failure is always a real bug (deterministic, no
+timing) — "just rerun it" is never right there. A perf-test failure carries a nonzero chance of
+being a one-off machine hiccup (background scan, thermal throttling, a stray process). Document:
+rerun once before treating a perf-test failure as a real regression; a *repeatable* failure across
+reruns is the real signal. This repo has no CI — this suite is a manual pre-release gate, same
+cadence as the existing Zip64 Slow tests (`TESTING.md`'s Manual Smoke Test Cycle step 6).
+
+**Ordered implementation steps:**
+1. Pin an exact 7-Zip release, verify `7za.exe`'s SHA-256, commit it + `LICENSE-7-Zip.txt` +
+   `NOTICE.md` (version/URL/hash/date) under `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/`.
+2. Scaffold `Archiver.Core.PerformanceTests` (net8.0, xunit, FluentAssertions — matching every
+   other test project), add to `.sln` with correct x64-only config entries.
+3. Shared fixture-generation helper (in a `TempDirectory`, the three shapes as named
+   methods/constants).
+4. `7za.exe` runner wrapper (absolute path only, `Stopwatch`-timed `Process` invocation for
+   `a -tzip` / `x`) plus the thin presence-check safety net.
+5. Implement **one** scenario end-to-end first (recommend large-file archive) — get the ratio
+   math, warmup handling, and assertion shape right before replicating.
+6. Calibrate: run that one scenario locally several times, record observed `r`, pick and hardcode
+   the tolerance constant with documented rationale.
+7. Replicate across the remaining 5 combinations (2 more shapes × archive+extract, plus extract
+   for the first shape).
+8. Update docs (see below).
+9. Run the full new Slow-tagged suite at least once end-to-end; if a second, differently-specced
+   machine is available, run it there too — the whole premise is that the ratio travels across
+   machines, worth actually checking once rather than just asserting it.
+
+**Overbuilding — explicitly avoid:** no generic pluggable-benchmark-harness abstraction (e.g. an
+`IPerformanceReference` interface anticipating a future WinRAR comparison); no persisted-
+history/trend-tracking mechanism (no CI to make it valuable); no statistical rigor beyond one
+warmup + one timed run per engine; no configurable fixture-size system; no tar-family coverage in
+this task; no auto-download/bootstrap mechanism for the reference binary (commit it like any other
+fixture).
+
+**Doc/cascade touches:**
+- `TESTING.md` — new section (mirroring the Zip64/Integration structure), update "Running
+  Tests"/Manual Smoke Test Cycle step 6, the rerun-once-before-treating-as-regression caveat, and
+  the GenerateFixtures-vs-this-suite distinction.
+- `CLAUDE.md` — add `tests/Archiver.Core.PerformanceTests/` to Repo Layout; a "Current State"
+  entry once implemented; confirm Build Commands' `Category=Slow` line still accurately describes
+  what it covers.
+- `DECISIONS.md` — new T-F114 entry: why same-run ratio over cross-machine cached baseline (citing
+  the BenchmarkDotNet/criterion/benchstat research), why the cache-in-temp-file idea was
+  considered and dropped, why `7za.exe` bundled vs. system-installed (with the LGPL attribution
+  note), why ZIP-only/tar-family excluded, the calibrated tolerance constants and how they were
+  derived, why a dedicated new test project rather than folding into `Archiver.Core.IntegrationTests`.
+- `CONVENTIONS.md` — note that `Archiver.Core.PerformanceTests` bundles a test-only, LGPL-licensed
+  native binary (`7za.exe`), explicitly distinct from the "zero third-party dependencies" rule
+  (shipped product only) — otherwise a future reader hitting `CLAUDE.md`'s "No 7-Zip" hard
+  constraint could reasonably be confused finding a 7-Zip binary checked into the repo.
+- `tests/Archiver.Core.Tests.GenerateFixtures/README.md` — not modified directly, but the
+  distinction from this suite's throwaway perf fixtures should be stated in `TESTING.md`.
+
+**Acceptance criteria:**
+- [x] `7za.exe` (x64 + arm64) + `LICENSE-7-Zip.txt` + `NOTICE.md` committed under
+      `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/`, hash-verified against the official
+      GitHub release digest before extraction
+- [x] `Archiver.Core.PerformanceTests` project scaffolded, added to `.sln` — mirrors every other
+      C# test project's existing Any CPU/x64/x86-all-map-to-Any-CPU config block (not literally
+      "x64-only": that reading of the hard constraint doesn't match how any existing C# project in
+      this `.sln` is actually configured — see `DECISIONS.md`'s T-F114 entry)
+- [x] All 6 scenarios (3 fixture shapes × archive/extract) implemented, each asserting a
+      calibrated ratio + basic operation-sanity checks
+- [x] Tolerance constants calibrated from real local runs, documented with rationale in
+      `DECISIONS.md` (observed ratios 1.06-6.02 depending on scenario, 3x multiplier)
+- [x] **Revised same day, user-directed:** the many-small-files/hybrid scenarios (4 tests) tagged
+      `[Trait("Category","Slow")]` as originally designed; the one-large-file scenarios (2 tests)
+      moved to a new `[Trait("Category","VeryLarge")]` instead — on demand only, never part of the
+      normal `Category=Slow` pre-release run. Zip64's own >4 GiB test
+      (`ArchiveAndExtract_FileOver4Gb_RoundTripsWithoutError`) moved to `VeryLarge` the same way,
+      for consistency (same "genuinely oversized, opt-in only" reasoning). `dotnet test --filter
+      "Category!=Slow"` unaffected (confirmed: 43+55+280+55 still pass); `Category=Slow` now runs 4
+      perf tests + 3 Zip64 tests (was 6+4); `Category=VeryLarge` runs exactly the 3 gated tests (2
+      perf + 1 Zip64), confirmed by name in test output, all passing
+- [x] **7za.exe launches sandboxed, user-directed:** every `7za.exe` invocation now runs under a
+      basic sandbox reusing `SandboxJobObject`/`SandboxedProcessLauncher` from tar.exe's own T-F52
+      subsystem — Job Object only (no child-process creation, 2 GiB RAM / 10 min CPU caps),
+      deliberately **without** the AppContainer/quarantine-staging layer (that layer defends
+      against untrusted *input*, which doesn't apply to Pakko's own generated fixtures — adding it
+      would also risk biasing the very timing being measured via ACL/staging overhead). Mitigates
+      the risk of the vendored binary itself being compromised (bounds worst-case resource use,
+      blocks spawning further processes) without touching filesystem access. Required adding
+      `Archiver.Core.PerformanceTests` to `Archiver.Core.csproj`'s `InternalsVisibleTo` list (same
+      mechanism as the two existing entries) since the Sandbox classes are `internal`. Re-ran all 6
+      scenarios after the switch — ratios unchanged within normal run-to-run variance (e.g.
+      Archive/Hybrid 3.463 vs. the original 3.469-3.519 range), confirming negligible overhead;
+      existing calibrated constants did not need adjusting
+- [~] Full suite run at least once end-to-end (done, multiple times, confirmed stable both before
+      and after the sandboxing change) — a second, differently-specced machine was **not available
+      this session** to confirm the ratio actually travels across machines as designed; this
+      remains the one open item
+- [x] `TESTING.md`, `CLAUDE.md`, `DECISIONS.md`, `CONVENTIONS.md`, `SECURITY.md` updated per the
+      cascade above
+
+---
+
+### T-F430 — Defender blocks the RTL-override test file, so a ZIP test fails on the dev machine (P3)
+
+- [x] **Status:** done 2026-10-30: the file is `invoice_<RLO>fdp.txt` (shown as `invoice_txt.pdf`, the
+  same spoof without an executable ending); red on this machine with the old name the same day, green
+  with the new one. Before: `ZipArchiveServiceArchiveTests.ArchiveAsync_RtlOverrideFilename_RoundTripsWithoutCorruptionOrCrash`
+  failed twice in a row on 2026-10-29 (the full run and alone; passed in the next full run, green in CI):
+  Defender now detects the empty `invoice_\u202Etxt.exe` the test creates, and reading it fails with
+  `0x800700E1` ("the file contains a virus or potentially unwanted software", `Get-MpThreatDetection`
+  names the file). Not a product defect: Pakko reports the file as not readable. Next: let the test
+  skip when the file cannot be read for that reason (as the EICAR tests do for AMSI, T-F427), or give
+  the file a name that keeps the RTL override without a `.exe` ending.
+- **Reported by:** the v1.9.0 integration's full run, 2026-10-29.
+
+---
+
+### T-F431 — The Explorer operation window shows no time left; in a batch, speed and time left are the current archive's (P3)
+
+- [x] **Status:** done 2026-10-29 (v1.9.0, the user's call); `OPW-001` passed on package 1.9.0.2, which
+  now also waits for the time left, and the window read "40%  ·  320,0 МБ / 800,0 МБ  ·  27,3 МБ/с  ·
+  Залишилось ~16 с" (uk-UA, 800 MB of random data). A batch of two 800 MB ZIPs showed none, rightly:
+  each took under 5 s, so under 4 s were left after the first second. In code: `Archiver.Shell/ProgressTimeEstimate.cs`,
+  a new one per archive in `HelperOperationUi.BeginItem`, started again after a checking pass; shown
+  without a byte total too (it needs only the percent); the `IProgressDialog` fallback gets none (its
+  `AutoTime` line has one); the App's two strings copied into the Shell's 37 resx files; the App is
+  unchanged. Tests: `ProgressTimeEstimateTests`, `ProgressTextTests`,
+  `HelperOperationUiTests.BeginItem_StartsTheTimeLeftAgain` (red without the reset). Before: the window started from Explorer shows the percent, the bytes and the speed
+  (`Archiver.Shell/ProgressText.cs`'s `FormatStatus`), but no time left; the App's own footer has it
+  (`Archiver.App.Core/ProgressText.Remaining`, T-F303). Wanted: a time left next to the speed. In a
+  batch (several archives selected) the speed and the time left are the archive being processed now,
+  not the whole batch: the speed already restarts with each archive (`HelperOperationUi.BeginItem`
+  makes a new `ProgressSpeedSampler`), and the time left starts again with it, as the App's estimate
+  starts after its first report (`_estimateStart`). Next: share the App's estimate with the Shell
+  (`Archiver.App.Core` is not referenced by the Shell; move it to a library both use or repeat it),
+  tests over one archive and over a batch's second archive, and a `docs/SMOKE.md` row.
+- **Reported by:** the user, 2026-10-29.
+
+---
+
+### T-F433 — The App window's minimum size is in physical pixels, so at 175 % its footer can leave the window (P2)
+
+- [x] **Status:** done 2026-10-30 (v1.9.0, the user's call). `WindowFloor` (`Archiver.App.Core`)
+  scales 900 x 520 effective pixels by `GetDpiForWindow`, never past the work area, and grows a smaller
+  window to it; `MainWindow` applies it at start and again when the window's DPI changes (on
+  `AppWindow.Changed`), before the cascade places the window. A grown window is moved back inside the
+  work area (`WindowFloor.KeepInside`), after the growth and once at the first activation, since
+  Windows places a new window only when it first shows it: without that, a fresh start at 175 % put
+  the 1575 x 910 window at 220,220, its footer under the taskbar (seen on package 1.9.0.4, found by the
+  closing review). Tests: `WindowFloorTests` (17; 7 red with the floor unscaled, 4 red without the
+  move). Package 1.9.0.5, fresh starts: 100 % opens 1100 x 720 at 26,26 and shrinks to 900 x 520 as
+  before; 150 % opens 1350 x 780 at 114,114 inside the work area (to 1008); 175 % opens 1575 x 910 at
+  132,86, its bottom on the work area's (996), Clear, Extract and Compress in view; neither shrinks
+  below the floor. Switched from 100 % to 175 % while open (1.9.0.3), the window grew to 1575 x 910 and
+  shrinks no further; a larger window is scaled by Windows itself on such a switch. Not covered: a move
+  to a monitor of the same DPI with a smaller work area does not clamp the floor again (the DPI is
+  what is cached).
+  Before: found 2026-10-30 by the v1.9.0 release smoke (`APP-014`); not a regression,
+  the floor dates from `03a912e6` (v1.6.0). `MainWindow.xaml.cs` sets
+  `OverlappedPresenter.PreferredMinimumWidth`/`PreferredMinimumHeight` to 900/520, which `AppWindow`
+  takes in physical pixels. At 150 % that is 600 x 347 effective pixels and the footer still fits; at
+  175 % (514 x 297) the footer with Clear, Extract and Compress is entirely outside the window and the
+  Name and Type column headers overlap. Next: scale the floor by the window's DPI and again on a DPI
+  change (`GetDpiForWindow` or `XamlRoot.RasterizationScale`), a test of the arithmetic, then
+  `APP-014` at 175 % and, on a display that offers it, 200 %.
+- **Reported by:** the release-tier smoke run of v1.9.0, 2026-10-30.
+
+---
+
+### T-F436 — An error's localized Windows text is followed by .NET's English message (P3)
+
+- [x] **Status:** closed 2026-10-30, not a defect: the user's decision of 2026-10-03 (T-F297,
+  `DECISIONS.md`) keeps the English text Windows or .NET wrote, with its code, in every language and
+  puts the Ukrainian translation in front of it. Seen: package 1.9.0.2, uk-UA (`APP-022`, a ZIP entry with a 300-character name): the
+  summary line gives the Ukrainian text of 0x8007007B, then "The filename, directory name, or volume
+  label syntax is incorrect. : '<path>'" in English, then the code. Next: find where the line is
+  composed (`ArchiveError` and the App's summary text) and leave out the exception's own message when
+  the Windows text of its code is already there.
+- **Reported by:** the release-tier smoke run of v1.9.0, 2026-10-30.
+
+---
+
+### T-F438 — Three test literals hold control characters where a path was meant (tests)
+
+- [x] **Status:** done 2026-10-30: the three paths put back through a script; the 68 tests of both
+  classes pass. Before: `tests/Archiver.Shell.Tests/HelperOperationUiTests.cs:441` held `@"C:<BS>.txt"`
+  and `:555` `@"C:<BEL>.txt"`, `OperationMessagesTests.cs:230` `@"C:<BEL>.txt"` (the bytes 0x08 and
+  0x07): written as `C:\b.txt` and `C:\a.txt` and decoded on the way in (`.claude/rules/text-encoding.md`).
+  The tests pass either way, the path is only a label. Next: put the paths back through a script.
+- **Reported by:** the v1.9.0 release run, 2026-10-29.
+
+---
+
+### T-F399 — Under a policy that blocks ZIP the New archive card starts on TAR, not on 7Z (P3)
+
+- [x] **Status:** done 2026-10-29 (v1.9.0). Fixed in code 2026-10-17
+  (`CreationFormatOption.AfterSevenZipProbe`, tests red without it); `POL-009` on package 1.9.0.2 with
+  `BlockedFormats` = `zip`: the card starts on 7Z. Package 1.8.1.13, 2026-10-16, `BlockedFormats` = `zip` (`POL-009`): the
+  Format list shows 7Z, TAR, TAR.GZ ... with TAR selected. `CreationFormatOption.Default` runs at
+  startup with `sevenZipWriter` false, so it picks TAR; when the probe answers,
+  `OfferSevenZipWhenWritableAsync` only moves off a format that is no longer offered, and TAR
+  still is. Nothing is refused and the policy holds; the first format shown is just not the one
+  selected. Next: when the probe answers and the selection is still the startup default, move to
+  the new `Default`; a unit test on `CreationFormatOption`/the ViewModel for this order.
+- **Reported by:** the release-tier smoke run of v1.8.1 (`POL-009`), 2026-10-16.
