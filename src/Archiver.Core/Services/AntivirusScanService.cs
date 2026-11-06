@@ -572,6 +572,10 @@ public sealed class AntivirusScanService : IAntivirusScanService
             int scanned = await ScanExtractedFilesAsync(
                 scope.OutputDirectory!, 0, totalEntries + duplicates.Count, target, cancellationToken)
                 .ConfigureAwait(false);
+            // T-F462: a first copy counts only when the listing names the main pass's files truly. A
+            // best-fit pair lists as one name twice, and its "first copy" is a file already scanned,
+            // which must not stand in for a file lost elsewhere; it is still scanned.
+            int credited = scanned;
             if (duplicates.Count > 0)
             {
                 (string firstDir, int firstExitCode, string firstStdErr) = await scope.ExtractFirstOccurrencesAsync(
@@ -583,17 +587,22 @@ public sealed class AntivirusScanService : IAntivirusScanService
                         CoreMessages.Text(MessageCode.ScanCannotExtract, TarSandboxedService.DescribeFailure(firstStdErr))));
                     return;
                 }
+                int mainScanned = scanned;
                 scanned = await ScanExtractedFilesAsync(
                     firstDir, scanned, totalEntries + duplicates.Count, target, cancellationToken)
                     .ConfigureAwait(false);
+                string[] mainFiles = [.. TarSandboxedService.EnumerateFilesGuarded(scope.OutputDirectory!)
+                    .Select(f => TarSandboxedService.QuarantineRelative(scope.OutputDirectory!, f).Replace('\\', '/'))];
+                bool faithful = TarNames.JudgeExtracted((IReadOnlyList<string>?)expandedSelection ?? allNames, mainFiles, []).Trust == TarNameTrust.Faithful;
+                credited = faithful ? scanned : mainScanned;
             }
 
             // T-F462: Clean only with every file accounted for, whichever name or folder broke (the
             // middle of three same-named copies, a folder Windows trims, a pass that failed).
             int expected = TarSandboxedService.FileEntriesInScope(fileEntries, allNames, expandedSelection);
-            if (scanned < expected)
+            if (credited < expected)
                 findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Text(MessageCode.ScanFilesMissing,
-                    scanned.ToString(CultureInfo.CurrentCulture), expected.ToString(CultureInfo.CurrentCulture))));
+                    credited.ToString(CultureInfo.CurrentCulture), expected.ToString(CultureInfo.CurrentCulture))));
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is TarSandboxedService.TarArchiveRejectedException

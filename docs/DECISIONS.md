@@ -13878,6 +13878,14 @@ availability follows the installed tar.exe at run time.
   - Seen red on `main`: `x.txt` three times with EICAR in the middle scanned Clean.
   - The scan never drops a duplicate group. A dropped group is a copy nobody scans, so it would be
     silent. Extraction may drop one (T-F441), because there a missing copy shows.
+  - A first copy counts only when `TarNames.JudgeExtracted` finds that the listing names the main
+    pass's files truly. A best-fit pair (`café` beside `cafe`) lists as one name twice, and its
+    "first copy" is a file the main pass already scanned. Credited, it would stand in for a file lost
+    elsewhere. Found by the closing review and seen as Clean under the old walk with the pair beside
+    a lost `d /x.txt`; now Inconclusive. The copy is still scanned, just not counted.
+- **What the count proves.** A number, not identities. Every file entry in scope reached disk or
+  was reported, but not which file is which; a file lost in the same run as an unlisted extra one
+  would still balance. Accounting by name is T-F464's research.
 - **Extraction.** Every file found in the main quarantine counts, the ones a filter drops included,
   as do the first copies recovered and the copies reported `TarDuplicateCopiesNotExtracted`. The sum
   must reach the count before staging is committed, or the archive fails with `TarFilesMissing` and
@@ -13898,9 +13906,11 @@ availability follows the installed tar.exe at run time.
   `Entry.Name` cannot carry it, so the name never collapsed and two of #169's best-fit scan tests
   passed without testing anything. Fixed in #169, and checked by forcing the helper to fail when
   nothing collapses.
-- **Left.** ZIP and 7z scans already scan every entry of the central directory or the listing, and
-  are not part of this. On PakkoW10, `SHL-018` (stream E) runs the three-copies scan with Defender
-  live.
+- **Scope.** Every format read through tar.exe takes this path: tar, its compressed forms, 7z, RAR,
+  ISO, CAB, cpio, ar, .Z and lzip. Smoke ran CLI-004, 022, 024, 026, 027, 033, 036, 037 and 044-048
+  here. On PakkoW10 (3.5.2), each format it reads extracted by hand with an AOT `pakko`. ZIP is
+  scanned and extracted in-process, entry by entry, and is not part of this.
+- **Left.** On PakkoW10, `SHL-018` (stream E) runs the three-copies scan with Defender live.
 
 ## T-F460 and T-F454 - tar folders whose names end in a space or a dot (2026-11-06)
 
