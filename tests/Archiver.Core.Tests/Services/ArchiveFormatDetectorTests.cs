@@ -133,6 +133,7 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
     [InlineData("a.tar.lzma")]
     [InlineData("A.TAR.LZMA")]
     [InlineData("a.lzma")]
+    [InlineData("slackware.tlz")] // T-F457: Slackware's .tlz is tar.lzma; an lzip .tlz has its magic
     public void Detect_LzmaAloneHeaderNamedLzma_ReturnsLzma(string name)
     {
         string path = WriteBytes(name, LzmaAloneHeader);

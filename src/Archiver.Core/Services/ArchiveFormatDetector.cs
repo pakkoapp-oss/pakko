@@ -92,7 +92,7 @@ public static class ArchiveFormatDetector
             ArchiveFormat format = DetectFormatFromHeader(header, read);
             if (format == ArchiveFormat.Unknown)
                 format = DetectDiscImage(fs);
-            return format == ArchiveFormat.Unknown && FormatFromExtension(path) == ArchiveFormat.Lzma && IsLzmaAloneHeader(header, read)
+            return format == ArchiveFormat.Unknown && NamesLzmaAlone(path) && IsLzmaAloneHeader(header, read)
                 ? ArchiveFormat.Lzma
                 : format;
         }
@@ -109,6 +109,11 @@ public static class ArchiveFormatDetector
 
     // The properties byte is (pb * 5 + lp) * 9 + lc with lc < 9, lp < 5, pb < 5.
     private const byte LzmaPropertiesLimit = 9 * 5 * 5;
+
+    // T-F457: Slackware's .tlz is tar.lzma; an lzip .tlz has a magic number and is decided above.
+    private static bool NamesLzmaAlone(string path) =>
+        FormatFromExtension(path) == ArchiveFormat.Lzma
+        || Path.GetExtension(path).Equals(".tlz", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsLzmaAloneHeader(ReadOnlySpan<byte> h, int read) =>
         read >= LzmaAloneHeaderLength && h[0] < LzmaPropertiesLimit;

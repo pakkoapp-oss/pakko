@@ -63,7 +63,7 @@ TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating sessi
 | F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
 | G long-open umbrellas (added 2026-10-31, the agent's pick) | T-F254 (regional display language: pack and sign-out on the PakkoW10 VM, not the user's machine), T-F91 (`ru-RU` falls back to en-US, on the VM; the native-speaker criterion replaced by an agent back-translation pass, since there are no native reviewers, the user's standing word), T-F328's leftovers (quote, dash and apostrophe normalisation), T-F202's light theme, en-US and tray (through the `windows` MCP, as `APP-013` and `EXP-008` already switched theme and language), T-F329 part 5 (Store screenshots retaken after D changes the window) | VM, `.resw`/`.resx`/`Localization.cpp` (after C and D's strings), `docs/assets/store/` | after C and D merge |
 | H formats tar.exe reads but Pakko does not offer (added 2026-10-31, the user) | T-F442 (measure first, per tar.exe build; then detector, policy names, capability snapshot, Explorer menu, file associations) | `ArchiveFormatDetector`, `ArchiveFormatPolicy`, `TarCapabilitySnapshot`, `ShellExtUtils.cpp`, the manifest | measurement first; plan mode + advisor at both ends (new untrusted-input formats, the manifest) |
-| I opened during the wave (added 2026-11-06, the user: "the tasks opened during it, small fixes where possible") | Small fixes first: T-F456 (a flaky OperationUi test), T-F457 items 3-4 (`.tlz` as tar.lzma; `-stxudf`), T-F453 (two true roots under one best-fit name), T-F452 (its own message for a header mismatch, 37 locales). Then: T-F461 (the folder shapes still refused; measure on 3.5.2 and in the sandbox first), T-F457 items 1, 2 and 5 (decide or measure), T-F445 (pool threads per launch; measure first), T-F459 (`TESTING.md` regrouped, docs only) | as each task says | T-F445: plan mode + advisor at both ends (sandbox code); each fix tests first, both tar builds where tar.exe decides |
+| I opened during the wave (added 2026-11-06, the user: "the tasks opened during it, small fixes where possible") | First, from the root-cause review (the user, 2026-11-06: "in this wave"): T-F462 (Clean only with every file scanned, P1), T-F463 (one owner for quarantine disk access), T-F464 (the quarantine as source of truth, research). Small fixes: T-F456 (a flaky OperationUi test), T-F457 items 3-4 (`.tlz` as tar.lzma; `-stxudf`; done in #169), T-F453 (two true roots under one best-fit name), T-F452 (its own message for a header mismatch, 37 locales). Then: T-F461 (the folder shapes still refused; measure on 3.5.2 and in the sandbox first), T-F457 items 1, 2 and 5 (decide or measure), T-F445 (pool threads per launch; measure first), T-F459 (`TESTING.md` regrouped, docs only) | as each task says | T-F445: plan mode + advisor at both ends (sandbox code); each fix tests first, both tar builds where tar.exe decides |
 | E on device, release | `APP-027`, `APP-028`, `APP-030`, `APP-014`, `OPW-*`, the new taskbar/tray rows, the release-tier smoke, `STO-005` as a real Store update | `docs/SMOKE.md`, `scripts/smoke/` | after A-D merge |
 
 Decisions taken with the plan (the agent, 2026-10-31): T-F432 covers the App's taskbar button, the
@@ -1469,6 +1469,39 @@ re-measured with T-F346's script before and after.
   Put into stream B (the agent, 2026-11-06); ships with v1.10.0, no v1.9.x hotfix (the agent, as T-F448).
 - **Reported by:** the agent, 2026-11-06, while measuring T-F454.
 
+### T-F462 — "Clean" only when every listed file was scanned; extraction moves every listed file (P1, stream I)
+
+- [ ] **Status:** open. Agreed 2026-11-06 (the user, "in this wave"). Root-cause review of T-F446,
+  T-F448, T-F449, T-F460 and #169's fresh review: each false Clean was "found nothing bad" where it
+  should be "proved everything was looked at", and each was closed on its own. One guard for the
+  class: the tar scan counts the files it scanned against the listing's file entries plus the first
+  copies (T-F171); any shortfall is Inconclusive naming the count, whatever name or folder broke.
+  Extraction the same way: files committed plus files reported skipped equal the listing's files,
+  or the run fails. Tests: each known shape (T-F460's folders, the first-copy pass, T-F455) with
+  its own fix reverted must come out Inconclusive or failed, never Clean or success. Plan mode +
+  advisor at both ends (the scan verdict); fresh opus reviewer offered once.
+- **Reported by:** the agent's root-cause review, 2026-11-06.
+
+### T-F463 — One owner for disk access in the tar quarantine, and a test that keeps it so (P2, stream I)
+
+- [ ] **Status:** open. Agreed 2026-11-06 (the user). T-F460 fixed eight calls that reached the
+  quarantine without the long-path prefix (Windows trims `d ` to `d`); #169's fresh review found
+  two more, one a false Clean. T-F420 (`EntryDiskName`) and T-F441 (`SystemCodePages`, `TarNames`,
+  `TextBoundaryOwnersTests`) own the names; nothing owns the disk calls. Next: one place for every
+  quarantine `Directory`/`File`/`FileInfo`/`FileStream` call (always `\\?\`), and a scanning test
+  in the style of `TextBoundaryOwnersTests` that fails on a quarantine path used around it in
+  `TarSandboxedService`, `Sandbox/` and `AntivirusScanService`.
+- **Reported by:** the agent's root-cause review, 2026-11-06.
+
+### T-F464 — The quarantine as the source of truth instead of predicting tar.exe's names (P3, stream I, research first)
+
+- [ ] **Status:** open. Agreed 2026-11-06 (the user). `EntryDiskName.AsTarExeWrites` is a measured
+  model of another program; T-F454 found it wrong and T-F461 is still open. Research: match what is
+  actually in the quarantine (walked through the prefix) to the listing's entries, as T-F443's
+  verdict already does in part, and decide whether that replaces the prediction for the move phase,
+  the first copies and the filter. Both tar builds; decision in `docs/DECISIONS.md` before code.
+- **Reported by:** the agent's root-cause review, 2026-11-06.
+
 ### T-F461 — tar folders ending in a dot or a space: the shapes still refused (P3, from T-F460)
 
 - [ ] **Status:** open. Each fails loudly, none loses a file (`docs/DECISIONS.md`, "T-F460 and T-F454"):
@@ -1476,6 +1509,9 @@ re-measured with T-F346's script before and after.
   2. `d ./x.txt` with a filter: tar.exe also makes `d`, which the listing does not name; refused.
   3. Implicit `d../x.txt`: tar.exe asks for `d..`, Pakko makes `d`; the run fails.
   4. Explicit `d./` with a filter: the listing says `d`, tar.exe writes `d.`; refused.
+  5. Explicit `d./` then `d./x.txt`, with `d\x.txt` already at the destination and Overwrite: the
+     plan keys the trimmed name `d/x.txt`, the quarantine holds `d./x.txt`, so T-F419's "a trimmed name
+     never replaces a file" misses and the file is replaced (ZIP keeps it apart). From #169's fresh review.
   Lead (3.8.9 only): a folder made by its literal name takes the file there. Making every pre-created
   folder literal fixes 2-4 but breaks a file followed by its `d./` entry unless that folder is not
   pre-created, which leans on tar.exe's implicit mkdir in the AppContainer (T-F52 saw it fail).
@@ -1502,10 +1538,11 @@ re-measured with T-F346's script before and after.
   2. The cut check refuses an image whose declared volume is a little longer than the file (a TAO
      CD-R dump missing the run-out sectors) that tar.exe reads in full. Measure a real one; maybe a
      tolerance.
-  3. `.tlz` maps to lzip, but Slackware's `.tlz` is tar.lzma (LZMA_Alone): Detect says Unknown and the
-     menu offers Extract. Let the T-F398 name fallback take `.tlz` too, and the menu's name for it.
-  4. CLI: `-stxiso` does not exclude a UDF image, `-stxudf` is an unknown type although 7-Zip has the
-     name.
+  3. Fixed 2026-11-06 (stream I): T-F398's name fallback takes `.tlz` too, so Slackware's tar.lzma
+     `.tlz` is detected as LZMA and extracts (smoke `CLI-045`). Left: the menu still names `.tlz`
+     `lzip` for `BlockedFormats`, so `BlockedFormats=lzip` hides a tar.lzma `.tlz` (C++, low).
+  4. Fixed 2026-11-06 (stream I): `-stxudf` is a known type; a UDF image is `udf`, as Pakko detects
+     it, so `-stxiso` leaves it alone (`docs/CLI.md`; smoke `CLI-045`).
   5. TOCTOU between `Detect(path)` and the sandbox scope reopening the path (older than T-F442): a file
      swapped in between passes `BlockedFormats`/the UDF refusal. Needs write access to the file.
 - **Reported by:** the agent, 2026-11-06.

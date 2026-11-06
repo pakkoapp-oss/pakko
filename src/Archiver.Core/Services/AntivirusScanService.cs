@@ -553,7 +553,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 : allNames.Count(n => !n.EndsWith('/'));
 
             // T-F52, as extraction does it (T-F460: the same names, through the long-path prefix).
-            TarSandboxedService.PreCreateImplicitFolders(allNames, scope.OutputDirectory!);
+            TarSandboxedService.PreCreateImplicitFolders((IEnumerable<string>?)expandedSelection ?? allNames, scope.OutputDirectory!);
 
             (int exitCode, _, string stdErr) = await scope.ExtractAsync(expandedSelection, cancellationToken).ConfigureAwait(false);
             if (exitCode != 0)
@@ -574,8 +574,15 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 .ConfigureAwait(false);
             if (duplicates.Count > 0)
             {
-                (string firstDir, _, _) = await scope.ExtractFirstOccurrencesAsync(
+                (string firstDir, int firstExitCode, string firstStdErr) = await scope.ExtractFirstOccurrencesAsync(
                     duplicates.Select(g => g.FirstName).ToList(), cancellationToken).ConfigureAwait(false);
+                // T-F460 (fresh review): a first copy tar.exe did not write was never scanned.
+                if (firstExitCode != 0)
+                {
+                    findings.Add(CoreMessages.Inconclusive(archivePath, null,
+                        CoreMessages.Text(MessageCode.ScanCannotExtract, TarSandboxedService.DescribeFailure(firstStdErr))));
+                    return;
+                }
                 await ScanExtractedFilesAsync(
                     firstDir, scanned, totalEntries + duplicates.Count, target, cancellationToken)
                     .ConfigureAwait(false);

@@ -30,6 +30,8 @@ public static class CliArchiveTypeExclusion
         ["ar"] = ArchiveFormat.Ar,
         ["Z"] = ArchiveFormat.Compress,
         ["lzip"] = ArchiveFormat.Lzip,
+        // T-F457: Pakko refuses a UDF image, but -stxudf must still be a known type.
+        ["udf"] = ArchiveFormat.Udf,
     };
 
     /// <summary>T-F412: 7-Zip's name for <paramref name="format"/> ("rar" for both RAR versions), or

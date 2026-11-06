@@ -739,6 +739,20 @@ Add-SmokeStep 'CLI-045' {
         $out = Join-Path $folder 'o-udf'
         $x = Invoke-Pakko @('x', $udf, "-o$out")
         Assert-Smoke ($x.ExitCode -ne 0 -and $x.Text.Contains('UDF') -and -not (Test-Path -LiteralPath (Join-Path $out 'a.txt'))) "x udf.iso: exit $($x.ExitCode) $($x.Text)"
+        # T-F457: -stxudf is a type 7-Zip knows; the image is left out, not refused as unknown.
+        $x = Invoke-Pakko @('x', $udf, "-o$out", '-stxudf')
+        Assert-Smoke ($x.ExitCode -eq 2 -and $x.Text.Contains('Cannot open the file as archive')) "x -stxudf: exit $($x.ExitCode) $($x.Text)"
+    }
+
+    # T-F457: Slackware's .tlz is tar.lzma.
+    $tlz = Join-Path $folder 's.tlz'
+    Push-Location $src
+    try { & $tarExe --lzma -cf $tlz a.txt 2>$null | Out-Null } finally { Pop-Location }
+    if (Test-Path -LiteralPath $tlz) {
+        $out = Join-Path $folder 'o-tlz'
+        $x = Invoke-Pakko @('x', $tlz, "-o$out")
+        $text = Get-Content -LiteralPath (Join-Path $out 'a.txt') -Raw -ErrorAction SilentlyContinue
+        Assert-Smoke ($x.ExitCode -eq 0 -and $text -eq 'alpha') "s.tlz (tar.lzma): exit $($x.ExitCode) '$text' $($x.Text)"
     }
 }
 

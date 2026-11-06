@@ -13906,7 +13906,13 @@ availability follows the installed tar.exe at run time.
     `d\x.txt`, as in ZIP and 7-Zip).
 - **Walk order.** The walk takes subfolders in the order listed (it pushed them last-first), so `d`
   comes before `d `: with `d/x.txt` and `d /x.txt` the plain one keeps `x.txt` and the other becomes
-  `x (1).txt`, as ZIP does (measured with `pakko x` on a ZIP of the same two entries).
+  `x (1).txt`, as ZIP does (measured with `pakko x` on a ZIP of the same two entries). The order is
+  NTFS's sorted enumeration; on another file system for TEMP the other copy may take the name (still
+  kept apart, nothing lost).
+- **Fresh review (#169).** The first-copy pass (T-F171) made its folders the old way, so a duplicate
+  under `d /` failed there, and the scan, which ignored that pass's exit code, said Clean. It now uses
+  `PreCreateImplicitFolders`, and a failed first-copy pass is Inconclusive. The scan pre-creates for
+  the selection, as extraction does (a selection under `d /` failed before).
 - **Rejected for now: making every pre-created folder literal** (no dot trimming). It would fix `d .`
   with a filter, implicit `d..` and explicit `d./` with a filter, but it breaks a file followed by
   its `d./` entry (works today) unless such a folder is not pre-created, and that leans on tar.exe's

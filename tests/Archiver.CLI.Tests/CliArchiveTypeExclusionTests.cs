@@ -51,7 +51,6 @@ public sealed class CliArchiveTypeExclusionTests
     [InlineData("gz")]
     [InlineData("tgz")]
     [InlineData("wim")]
-    [InlineData("udf")]
     public void FirstUnknown_AnotherName_IsIt(string type) =>
         CliArchiveTypeExclusion.FirstUnknown(["zip", type]).Should().Be(type);
 
@@ -74,6 +73,7 @@ public sealed class CliArchiveTypeExclusionTests
     [InlineData("ar", ArchiveFormat.Ar)]
     [InlineData("Z", ArchiveFormat.Compress)]
     [InlineData("lzip", ArchiveFormat.Lzip)]
+    [InlineData("udf", ArchiveFormat.Udf)] // T-F457: refused anyway, but 7-Zip knows the name
     public void ReadOnlyTarFormats_HaveSevenZipsNames(string type, ArchiveFormat format)
     {
         CliArchiveTypeExclusion.FirstUnknown([type]).Should().BeNull();

@@ -224,4 +224,46 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
         scanner.ScannedContentNames.Should().HaveCount(2);
     }
+
+    // T-F460 (fresh review): the first of two same-named copies in such a folder is extracted by a
+    // second pass, which must make the folder by tar.exe's name for it too, or it scans nothing.
+    [TarIntegrationTheory]
+    [InlineData("d /")]
+    [InlineData("a/d /")]
+    public async Task ScanAsync_FirstOfTwoCopiesInAFolderEndingInSpace_IsScanned(string folder)
+    {
+        string archivePath = Path.Combine(_temp.Path, $"twice-{folder.Length}.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = folder, TypeFlag = '5' },
+            new TarBuilder.Entry { Name = folder + "x.txt", Content = Encoding.ASCII.GetBytes("EVIL") },
+            new TarBuilder.Entry { Name = folder + "x.txt", Content = Encoding.ASCII.GetBytes("fine") },
+        ]);
+
+        var scanner = new FakeAmsiScanner { DetectedText = "EVIL" };
+        AntivirusScanService service = CreateService(scanner);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
+    }
+
+    // T-F460 (fresh review): a selection inside such a folder, as Extract Selected does it.
+    [Integration]
+    public async Task ScanAsync_SelectionInAFolderEndingInSpace_IsScanned()
+    {
+        string archivePath = Path.Combine(_temp.Path, "selected-space.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "d /", TypeFlag = '5' },
+            new TarBuilder.Entry { Name = "d /x.txt", Content = Encoding.ASCII.GetBytes("EVIL") },
+        ]);
+
+        var scanner = new FakeAmsiScanner { DetectedText = "EVIL" };
+        AntivirusScanService service = CreateService(scanner);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath], SelectedEntryPaths = ["d /x.txt"] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
+    }
 }
