@@ -801,6 +801,14 @@ Add-SmokeStep 'CLI-048' {
     $texts = @(Get-ChildItem -LiteralPath $o1 -File -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) | Sort-Object
     Assert-Smoke ($run.ExitCode -le 1 -and ($texts -join '|') -ceq 'one|three' -and $run.Text.Contains('not extracted (1)')) "three copies: exit $($run.ExitCode), '$($texts -join '|')' $($run.Text)"
 
+    # tar.exe replaces the file "x" with the folder "x/" after it and exits 0: the file is lost.
+    $shadow = Join-Path $folder 'shadow.tar'
+    New-TarFile -Path $shadow -Entries @(@{ Name = 'x'; Content = 'file' }, @{ Name = 'x/'; Folder = $true }, @{ Name = 'y.txt'; Content = 'y' })
+    $o3 = Join-Path $folder 'o3'
+    $run = Invoke-Pakko @('x', $shadow, "-o$o3")
+    $written = @(Get-ChildItem -LiteralPath $o3 -Recurse -File -ErrorAction SilentlyContinue)
+    Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text.Contains('1 of 2') -and $written.Count -eq 0) "file under a folder of its name: exit $($run.ExitCode), $($written.Count) written $($run.Text)"
+
     # Built from char codes, as CLI-044 does: e-acute collapses on 1251 and 932, a-macron on 1252.
     $chosen = $null
     foreach ($candidate in @(@{ Accent = [char]0xE9; Plain = 'e' }, @{ Accent = [char]0x101; Plain = 'a' })) {
@@ -810,11 +818,11 @@ Add-SmokeStep 'CLI-048' {
         $listed = Invoke-Pakko @('l', $twice, '-ba')
         if ($listed.ExitCode -eq 0 -and ([regex]::Matches($listed.Output, [regex]::Escape("caf$($candidate.Plain).txt"))).Count -eq 2) { $chosen = $twice; break }
     }
-    if (-not $chosen) { 'three copies accounted for; this code page carries both accented candidates'; return }
+    if (-not $chosen) { 'three copies and a shadowed file accounted for; this code page carries both accented candidates'; return }
     $o2 = Join-Path $folder 'o2'
     $run = Invoke-Pakko @('x', $chosen, "-o$o2")
     $written = @(Get-ChildItem -LiteralPath $o2 -Recurse -File -ErrorAction SilentlyContinue)
     Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text.Contains('1 of 2') -and $written.Count -eq 0) "accented twice: exit $($run.ExitCode), $($written.Count) written $($run.Text)"
-    'three copies accounted for; the accented name stored twice fails naming 1 of 2, nothing written'
+    'three copies and a shadowed file accounted for; the accented name stored twice fails naming 1 of 2, nothing written'
 }
 

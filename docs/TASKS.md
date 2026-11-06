@@ -1503,6 +1503,10 @@ re-measured with T-F346's script before and after.
   actually in the quarantine (walked through the prefix) to the listing's entries, as T-F443's
   verdict already does in part, and decide whether that replaces the prediction for the move phase,
   the first copies and the filter. Both tar builds; decision in `docs/DECISIONS.md` before code.
+  Also from #170's fresh review: judge a duplicate group's first copy per group, not per archive
+  (today one best-fit name anywhere fails the archive; DECISIONS, T-F462). Any rule mapping a file
+  on disk to the listed name it could be shown as must be measured as a superset of tar.exe's
+  mapping on both builds (raw UTF-8 names in ustar, a DBCS page), since it would guard Clean.
 - **Reported by:** the agent's root-cause review, 2026-11-06.
 
 ### T-F461 — tar folders ending in a dot or a space: the shapes still refused (P3, from T-F460)

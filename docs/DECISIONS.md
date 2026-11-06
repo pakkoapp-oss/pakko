@@ -13869,8 +13869,8 @@ availability follows the installed tar.exe at run time.
   closed on its own. The same held for extraction: T-F460 and the first-copy pass lost files while
   reporting success. The user asked for it in the v1.10.0 wave.
 - **The count.** `TarSandboxedService.FileEntriesInScope` gives every file entry of the listing in
-  scope (the selection, or the whole archive), repeats included. A name that is also a folder entry
-  is left out, as `FindDuplicateGroups` leaves it out, since the two cannot both be on disk.
+  scope (the selection, or the whole archive), repeats included, a file named as a folder entry too
+  (below).
   Counting per entry, not per distinct name, is what catches the middle of three same-named copies:
   tar.exe keeps the last, the first-copy pass (T-F171) the first, and the middle one reaches neither.
 - **Scan.** Files scanned in both passes must reach the count, or the archive is Inconclusive
@@ -13883,6 +13883,34 @@ availability follows the installed tar.exe at run time.
     "first copy" is a file the main pass already scanned. Credited, it would stand in for a file lost
     elsewhere. Found by the closing review and seen as Clean under the old walk with the pair beside
     a lost `d /x.txt`; now Inconclusive. The copy is still scanned, just not counted.
+- **A file named as a folder entry (fresh review of #170).** At first such a file was left out of
+  the count, on the belief that the two cannot both be on disk. The fresh opus review showed that
+  belief was wrong twice over.
+  - The folder key trimmed a trailing space and the file did not, so a folder `x /` took the file
+    `x` out of the count. tar.exe writes both, the folder `x ` and the file `x`, and the file is
+    scanned. That one file of slack hid a lost copy: `[x /, x, y.txt×3 with EVIL in the middle]`
+    scanned Clean.
+  - Measured on 3.8.9 and 3.5.2:
+    - `[x=EVIL, x/]`: tar.exe replaces the file with the folder and exits 0, so the file is lost
+      without a word. With the file left out of the count, the scan was Clean.
+    - `[x/, x]`, `[x /, x]` and `[x./, x]`: the file lands, beside a folder `x ` or `x.`.
+  - Now every such file counts. The shadowed one makes the scan Inconclusive and extraction fail
+    ("0 of 1", "1 of 2"). The other three shapes still fail in staging, as before (T-F461).
+    `FindDuplicateGroups` keeps leaving such a group out: a group it misses now shows in the count.
+- **A best-fit name beside a duplicate group (fresh review of #170, accepted as fail-closed).**
+  `[café.txt, y.txt, y.txt]` on ACP 1251 (`café` listed as `cafe`):
+  - The scan is Inconclusive, "2 of 3", though all three files were scanned. Faithfulness is judged
+    per archive, so no first copy is credited, and the number counts the files the run can match to
+    the listing.
+  - Extraction fails with nothing written, because T-F441 drops every group. Before #170 it reported
+    success without the first `y.txt`.
+  - Judging per group needs a rule that says which listed name a file on disk could be shown as.
+    That rule would guard Clean, so it must hold for every best-fit table and every format tar.exe
+    reads. The rule considered ("ASCII stays, a non-ASCII unit becomes 0-2 characters") is
+    unmeasured. A raw UTF-8 name read in 1251 already breaks it, and a decoy entry could switch off
+    any fallback. Moved to T-F464 with its measurement. Until then this shape fails closed, pinned
+    by `ScanAsync_BestFitNameBesideADuplicateGroup_IsInconclusive` and
+    `Extract_BestFitNameBesideADuplicateGroup_FailsNothingWritten`.
 - **What the count proves.** A number, not identities. Every file entry in scope reached disk or
   was reported, but not which file is which; a file lost in the same run as an unlisted extra one
   would still balance. Accounting by name is T-F464's research.

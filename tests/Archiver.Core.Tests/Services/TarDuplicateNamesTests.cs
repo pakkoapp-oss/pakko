@@ -159,14 +159,9 @@ public sealed class TarDuplicateNamesTests
     [InlineData(new[] { "A.txt", "a.txt" }, 2)]
     [InlineData(new[] { "d/x.txt", "d./x.txt" }, 2)]
     public void FileEntriesInScope_CountsEveryEntry(string[] files, int expected) =>
-        TarSandboxedService.FileEntriesInScope([.. files.Select(f => (f, 1L))], files, null).Should().Be(expected);
+        TarSandboxedService.FileEntriesInScope([.. files.Select(f => (f, 1L))], null).Should().Be(expected);
 
     [Fact]
     public void FileEntriesInScope_Selection_CountsOnlyIt() =>
-        TarSandboxedService.FileEntriesInScope([("a.txt", 1), ("b.txt", 1), ("b.txt", 1)], ["a.txt", "b.txt"], ["b.txt"]).Should().Be(2);
-
-    // A file "x" beside a folder "x/" cannot both be on disk (FindDuplicateGroups leaves it out too).
-    [Fact]
-    public void FileEntriesInScope_FileNamedAsAFolder_IsNotCounted() =>
-        TarSandboxedService.FileEntriesInScope([("x", 1), ("y.txt", 1)], ["x/", "x", "y.txt"], null).Should().Be(1);
+        TarSandboxedService.FileEntriesInScope([("a.txt", 1), ("b.txt", 1), ("b.txt", 1)], ["b.txt"]).Should().Be(2);
 }
