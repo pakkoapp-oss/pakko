@@ -136,6 +136,7 @@ src/
 │   │   │   ├── AppContainerProfile.cs / QuarantineAcl.cs / SandboxHandles.cs
 │   │   │   ├── SandboxJobObject.cs / SandboxedProcessLauncher.cs / ProcessLaunchOptions.cs
 │   │   │   ├── LaunchAttributeList.cs / TarCommandLineEncoding.cs / TarOutputEncoding.cs
+│   │   │   ├── QuarantineFiles.cs      ← T-F463: every disk call on a name tar.exe wrote (long-path prefix)
 │   │   │   └── TarSandboxScope.cs / TarSignatureVerifier.cs
 │   │   └── Zip/                        ← T-F35: parallel SingleArchive compression pipeline
 │   │       ├── WorkItemEnumerator.cs / FileWorkItem.cs / WorkResult.cs
