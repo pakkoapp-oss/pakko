@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko はこのシステムの tar.exe が何をサポートしているかを確認できませんでした。tar.exe がないか、Microsoft の署名がないか、時間内に応答しませんでした。</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>このアーカイブからすべてのファイルを取り出せなかったため、すべてはスキャンされていません。スキャンしたファイル: {0} / {1}。</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>このアーカイブからすべてのファイルが出てこなかったため、何も展開しませんでした。出てきたファイル: {0} / {1}。</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>エントリはパスワードで保護されているため、スキャンしませんでした。</value>
   </data>

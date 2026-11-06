@@ -176,4 +176,8 @@ public enum MessageCode
 
     // tar.exe named no version: missing, not signed by Microsoft, or no answer in time (T-F450)
     TarGaveNoVersion,
+
+    // Fewer files came out of a tar-family archive than its listing holds (T-F462)
+    ScanFilesMissing,
+    TarFilesMissing,
 }

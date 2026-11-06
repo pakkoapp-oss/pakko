@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko nie mógł ustalić, co obsługuje tar.exe w tym systemie: brakuje go, nie jest podpisany przez Microsoft lub nie odpowiedział na czas.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Nie wszystkie pliki dało się wyjąć z tego archiwum, więc nie każdy został przeskanowany. Przeskanowane pliki: {0} z {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Nie wszystkie pliki wyszły z tego archiwum, więc nic z niego nie wypakowano. Pliki, które wyszły: {0} z {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Element jest chroniony hasłem i nie został przeskanowany.</value>
   </data>

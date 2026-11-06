@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko ni mogel ugotoviti, kaj podpira tar.exe tega sistema: manjka, ni podpisan s strani Microsofta ali ni pravočasno odgovoril.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Iz tega arhiva ni bilo mogoče vzeti vseh datotek, zato niso bile pregledane vse. Pregledane datoteke: {0} od {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Iz tega arhiva niso prišle vse datoteke, zato iz njega ni bilo nič razširjeno. Datoteke, ki so prišle: {0} od {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Vnos je zaščiten z geslom in ni bil pregledan.</value>
   </data>

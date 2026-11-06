@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko nepavyko sužinoti, ką palaiko šios sistemos tar.exe: jo nėra, jis nepasirašytas „Microsoft“ arba neatsakė laiku.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Iš šio archyvo nepavyko paimti visų failų, todėl ne visi failai nuskaityti. Nuskaityti failai: {0} iš {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Iš šio archyvo išėjo ne visi failai, todėl iš jo nieko neišskleista. Išėję failai: {0} iš {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Elementas apsaugotas slaptažodžiu ir nebuvo nuskaitytas.</value>
   </data>

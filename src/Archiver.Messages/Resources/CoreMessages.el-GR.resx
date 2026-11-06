@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Το Pakko δεν μπόρεσε να μάθει τι υποστηρίζει το tar.exe αυτού του συστήματος: λείπει, δεν είναι υπογεγραμμένο από τη Microsoft ή δεν απάντησε εγκαίρως.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Δεν ήταν δυνατό να ληφθούν όλα τα αρχεία από αυτό το αρχείο συμπίεσης, οπότε δεν σαρώθηκαν όλα. Αρχεία που σαρώθηκαν: {0} από {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Δεν βγήκαν όλα τα αρχεία από αυτό το αρχείο συμπίεσης, οπότε δεν εξήχθη τίποτα από αυτό. Αρχεία που βγήκαν: {0} από {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Η καταχώρηση προστατεύεται με κωδικό πρόσβασης και δεν σαρώθηκε.</value>
   </data>

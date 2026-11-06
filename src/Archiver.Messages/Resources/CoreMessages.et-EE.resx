@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko ei saanud teada, mida selle süsteemi tar.exe toetab: see puudub, pole Microsofti allkirjastatud või ei vastanud õigel ajal.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Sellest arhiivist ei saanud kõiki faile võtta, seega ei skannitud kõiki faile. Skannitud failid: {0}/{1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Sellest arhiivist ei tulnud kõik failid välja, seega ei pakitud sellest midagi lahti. Välja tulnud failid: {0}/{1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kirje on parooliga kaitstud ja seda ei skannitud.</value>
   </data>

@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko nu a putut afla ce acceptă tar.exe din acest sistem: lipsește, nu este semnat de Microsoft sau nu a răspuns la timp.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Nu toate fișierele au putut fi luate din această arhivă, așa că nu toate au fost scanate. Fișiere scanate: {0} din {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Nu toate fișierele au ieșit din această arhivă, așa că nu s-a extras nimic din ea. Fișiere ieșite: {0} din {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Elementul este protejat prin parolă și nu a fost scanat.</value>
   </data>

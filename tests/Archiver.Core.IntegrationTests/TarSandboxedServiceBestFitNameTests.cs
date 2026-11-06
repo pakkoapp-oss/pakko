@@ -397,6 +397,40 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         texts.Should().Equal("A", "B");
     }
 
+    // T-F462: an accented name stored twice lists as its best-fit name twice; T-F441 drops the
+    // duplicate group (the listing cannot tell the copies apart), so the first copy never comes out.
+    // Before, the archive reported success without it; now nothing is written and the run says why.
+    [Integration]
+    public async Task Extract_AccentedNameTwice_FailsWithTheCountNothingWritten()
+    {
+        foreach ((char accent, char plain) in new[] { ((char)0xE9, 'e'), ((char)0x101, 'a') })
+        {
+            string accented = "caf" + accent + ".txt";
+            string path = Path.Combine(_temp.Path, $"twice-{(int)accent:x}.tar");
+            TarBuilder.WriteTar(path,
+            [
+                TarBuilder.PaxPath(accented),
+                new TarBuilder.Entry { Name = "placeholder.txt", Content = Encoding.ASCII.GetBytes("first") },
+                TarBuilder.PaxPath(accented),
+                new TarBuilder.Entry { Name = "placeholder.txt", Content = Encoding.ASCII.GetBytes("last") },
+            ]);
+            ArchiveListResult list = await _sut.ListEntriesAsync(path);
+            if (!list.Success || list.Entries.Count != 2 || !list.Entries.All(e => e.Path == "caf" + plain + ".txt"))
+                continue;
+            string dest = NewDestination();
+
+            ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+            {
+                ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            });
+
+            result.Success.Should().BeFalse(TarCodePage.Describe());
+            result.Errors.Should().ContainSingle().Which.Message.Should().Contain("1 of 2");
+            WrittenFiles(dest).Should().BeEmpty();
+            return;
+        }
+    }
+
     // T-F461: a file before its own folder entry ending in a space fails in tar.exe itself on both
     // builds ("Can't restore time" once the folder exists, "Can't create" when it does not): the
     // run fails naming tar.exe, and nothing is written.

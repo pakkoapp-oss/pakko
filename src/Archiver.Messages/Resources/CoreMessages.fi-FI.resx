@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko ei saanut selville, mitä tämän järjestelmän tar.exe tukee: se puuttuu, se ei ole Microsoftin allekirjoittama tai se ei vastannut ajoissa.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Kaikkia tiedostoja ei saatu otettua tästä arkistosta, joten kaikkia ei tarkistettu. Tarkistetut tiedostot: {0}/{1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Kaikki tiedostot eivät tulleet ulos tästä arkistosta, joten siitä ei purettu mitään. Ulos tulleet tiedostot: {0}/{1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kohde on suojattu salasanalla, eikä sitä tarkistettu.</value>
   </data>

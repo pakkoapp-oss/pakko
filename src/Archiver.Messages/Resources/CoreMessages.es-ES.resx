@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko no pudo saber qué admite el tar.exe de este sistema: falta, no está firmado por Microsoft o no respondió a tiempo.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>No se pudieron sacar todos los archivos de este archivo comprimido, así que no se analizó cada uno. Archivos analizados: {0} de {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>No salieron todos los archivos de este archivo comprimido, así que no se extrajo nada de él. Archivos que salieron: {0} de {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>La entrada está protegida con contraseña y no se analizó.</value>
   </data>

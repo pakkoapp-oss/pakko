@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko یہ معلوم نہیں کر سکا کہ اس سسٹم کا tar.exe کیا سپورٹ کرتا ہے: یہ موجود نہیں، Microsoft کے دستخط شدہ نہیں، یا بروقت جواب نہیں دیا۔</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>اس آرکائیو سے تمام فائلیں نہیں نکالی جا سکیں، اس لیے ہر فائل اسکین نہیں ہوئی۔ اسکین شدہ فائلیں: {1} میں سے {0}۔</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>اس آرکائیو سے تمام فائلیں نہیں نکلیں، اس لیے اس سے کچھ بھی نہیں نکالا گیا۔ نکلنے والی فائلیں: {1} میں سے {0}۔</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>اندراج پاس ورڈ سے محفوظ ہے اور اسکین نہیں کیا گیا۔</value>
   </data>

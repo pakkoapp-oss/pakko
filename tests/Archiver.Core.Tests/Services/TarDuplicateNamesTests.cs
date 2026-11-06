@@ -150,4 +150,23 @@ public sealed class TarDuplicateNamesTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    // T-F462: every file entry in scope counts, repeats included; what tar.exe writes into one file
+    // (a name and its case or trimmed twin) still counts twice, since the first-copy pass takes one.
+    [Theory]
+    [InlineData(new[] { "a.txt", "b.txt" }, 2)]
+    [InlineData(new[] { "x.txt", "x.txt", "x.txt" }, 3)]
+    [InlineData(new[] { "A.txt", "a.txt" }, 2)]
+    [InlineData(new[] { "d/x.txt", "d./x.txt" }, 2)]
+    public void FileEntriesInScope_CountsEveryEntry(string[] files, int expected) =>
+        TarSandboxedService.FileEntriesInScope([.. files.Select(f => (f, 1L))], files, null).Should().Be(expected);
+
+    [Fact]
+    public void FileEntriesInScope_Selection_CountsOnlyIt() =>
+        TarSandboxedService.FileEntriesInScope([("a.txt", 1), ("b.txt", 1), ("b.txt", 1)], ["a.txt", "b.txt"], ["b.txt"]).Should().Be(2);
+
+    // A file "x" beside a folder "x/" cannot both be on disk (FindDuplicateGroups leaves it out too).
+    [Fact]
+    public void FileEntriesInScope_FileNamedAsAFolder_IsNotCounted() =>
+        TarSandboxedService.FileEntriesInScope([("x", 1), ("y.txt", 1)], ["x/", "x", "y.txt"], null).Should().Be(1);
 }

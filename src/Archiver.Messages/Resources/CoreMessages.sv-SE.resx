@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko kunde inte ta reda på vad systemets tar.exe stöder: den saknas, är inte signerad av Microsoft eller svarade inte i tid.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Alla filer kunde inte tas ut ur det här arkivet, så alla genomsöktes inte. Genomsökta filer: {0} av {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Alla filer kom inte ut ur det här arkivet, så inget extraherades ur det. Filer som kom ut: {0} av {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Posten är lösenordsskyddad och genomsöktes inte.</value>
   </data>

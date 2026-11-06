@@ -1471,7 +1471,10 @@ re-measured with T-F346's script before and after.
 
 ### T-F462 — "Clean" only when every listed file was scanned; extraction moves every listed file (P1, stream I)
 
-- [ ] **Status:** open. Agreed 2026-11-06 (the user, "in this wave"). Root-cause review of T-F446,
+- [ ] **Status:** fixed 2026-11-06 (`fix/tf462-scan-accounting`; `docs/DECISIONS.md`, "T-F462"), awaiting
+  the device check (stream E: `SHL-018`); smoke `CLI-048`. Seen red on `main`: three same-named copies
+  with EICAR in the middle scanned Clean.
+- **Before:** open. Agreed 2026-11-06 (the user, "in this wave"). Root-cause review of T-F446,
   T-F448, T-F449, T-F460 and #169's fresh review: each false Clean was "found nothing bad" where it
   should be "proved everything was looked at", and each was closed on its own. One guard for the
   class: the tar scan counts the files it scanned against the listing's file entries plus the first

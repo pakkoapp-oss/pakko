@@ -13862,6 +13862,46 @@ availability follows the installed tar.exe at run time.
   empty folder) and the filter test now asking for `("emptydir/", true)` and the folder; both red
   before the fix. Smoke `CLI-046`.
 
+## T-F462 - Clean only when every listed file was scanned; extraction accounts for every file (2026-11-06)
+
+- **Why one guard.** The root-cause review of T-F446, T-F448, T-F449, T-F460 and #169's fresh review
+  found one shape: Clean meant "found nothing bad", never "looked at everything", and each hole was
+  closed on its own. The same held for extraction: T-F460 and the first-copy pass lost files while
+  reporting success. The user asked for it in the v1.10.0 wave.
+- **The count.** `TarSandboxedService.FileEntriesInScope` gives every file entry of the listing in
+  scope (the selection, or the whole archive), repeats included. A name that is also a folder entry
+  is left out, as `FindDuplicateGroups` leaves it out, since the two cannot both be on disk.
+  Counting per entry, not per distinct name, is what catches the middle of three same-named copies:
+  tar.exe keeps the last, the first-copy pass (T-F171) the first, and the middle one reaches neither.
+- **Scan.** Files scanned in both passes must reach the count, or the archive is Inconclusive
+  (`ScanFilesMissing`, the count after a colon per T-F329).
+  - Seen red on `main`: `x.txt` three times with EICAR in the middle scanned Clean.
+  - The scan never drops a duplicate group. A dropped group is a copy nobody scans, so it would be
+    silent. Extraction may drop one (T-F441), because there a missing copy shows.
+- **Extraction.** Every file found in the main quarantine counts, the ones a filter drops included,
+  as do the first copies recovered and the copies reported `TarDuplicateCopiesNotExtracted`. The sum
+  must reach the count before staging is committed, or the archive fails with `TarFilesMissing` and
+  nothing is written.
+- **A change of behaviour.** An accented name stored twice, which tar.exe lists by best fit as one
+  plain name twice:
+  - Before, T-F441 dropped the group, the first copy never came out, and the archive reported
+    success with one file.
+  - Now it fails, naming 1 of 2.
+  - A best-fit pair (`café` beside `cafe`) still works: both are in the main quarantine.
+- **Mutations.** Each was run with the old code put back:
+  - The old walk (a silent `continue` without the prefix): the T-F460 scans came out Inconclusive,
+    never Clean, and extraction failed "0 of 1" with nothing written.
+  - The old first-copy folders with the exit check removed: the scan was Inconclusive. Extraction
+    reported the lost first copy as not extracted, which is a report, not silence.
+  - Each new check turned off: its own test went red.
+- **Test fixtures (caught here).** A non-ASCII name must be written through `TarBuilder.PaxPath`.
+  `Entry.Name` cannot carry it, so the name never collapsed and two of #169's best-fit scan tests
+  passed without testing anything. Fixed in #169, and checked by forcing the helper to fail when
+  nothing collapses.
+- **Left.** ZIP and 7z scans already scan every entry of the central directory or the listing, and
+  are not part of this. On PakkoW10, `SHL-018` (stream E) runs the three-copies scan with Defender
+  live.
+
 ## T-F460 and T-F454 - tar folders whose names end in a space or a dot (2026-11-06)
 
 - **T-F460 (P1, on `main` and in the shipped v1.9.0).** "Scan for threats" skipped every file inside

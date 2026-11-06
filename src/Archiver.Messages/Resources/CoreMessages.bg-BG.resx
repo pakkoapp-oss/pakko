@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko не можа да разбере какво поддържа tar.exe на тази система: липсва, не е подписан от Microsoft или не отговори навреме.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Не всички файлове можаха да бъдат извлечени от този архив, затова не всеки файл беше сканиран. Сканирани файлове: {0} от {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Не всички файлове излязоха от този архив, затова нищо не беше извлечено от него. Излезли файлове: {0} от {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Елементът е защитен с парола и не е сканиран.</value>
   </data>

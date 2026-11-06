@@ -656,7 +656,7 @@ public sealed class TarSandboxedService : ITarService
                 foldersFromDisk = FoldersTarExeWrote(quarantinedItems, preCreated);
             }
         }
-        (string? firstCopyDir, HashSet<string> firstCopies) = await ExtractFirstCopiesAsync(
+        (string? firstCopyDir, HashSet<string> firstCopies, int copiesReported) = await ExtractFirstCopiesAsync(
             scope, duplicateGroups, skippedFiles, cancellationToken)
             .ConfigureAwait(false);
 
@@ -674,6 +674,8 @@ public sealed class TarSandboxedService : ITarService
 
         int totalFiles = 0;
         int extractedCount = 0;
+        // T-F462: every file tar.exe gave back, the filter's dropped ones too.
+        int filesFound = 0;
         // T-F216: see ZipArchiveService — to tell "the user skipped everything" apart.
         int userSkipsBefore = context.ConflictResolver.UserSkipCount;
         int skippedBefore = skippedFiles.Count, errorsBefore = context.Errors.Count;
@@ -698,6 +700,7 @@ public sealed class TarSandboxedService : ITarService
         foreach ((string file, string root) in quarantined)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            filesFound++;
             if (droppedFiles is not null && droppedFiles.Contains(QuarantineRelative(root, file).Replace('\\', '/')))
                 continue;
             totalFiles++;
@@ -725,6 +728,13 @@ public sealed class TarSandboxedService : ITarService
                 });
             }
         }
+
+        // T-F462: nothing is committed unless every file entry reached the quarantine or was reported
+        // (a copy past the first and the last); a file lost on the way fails the archive.
+        int expectedFiles = FileEntriesInScope(fileEntries, allNames, expandedSelection);
+        if (filesFound + copiesReported < expectedFiles)
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.TarFilesMissing,
+                (filesFound + copiesReported).ToString(CultureInfo.CurrentCulture), expectedFiles.ToString(CultureInfo.CurrentCulture)));
 
         if (foldersFromDisk is null)
             CreateFolderEntries((IEnumerable<string>?)expandedSelection ?? allNames, stripRootPrefix, staging.Path);
@@ -795,9 +805,7 @@ public sealed class TarSandboxedService : ITarService
         IReadOnlyList<(string Name, long Size)> fileEntries, IReadOnlyList<string> allNames, IReadOnlyCollection<string>? selection)
     {
         HashSet<string>? selected = selection is null ? null : new HashSet<string>(selection, StringComparer.Ordinal);
-        var folders = new HashSet<string>(
-            allNames.Where(n => n.EndsWith('/')).Select(n => EntryDiskName.AsPakkoWrites(n.TrimEnd('/'))),
-            StringComparer.OrdinalIgnoreCase);
+        HashSet<string> folders = FolderKeys(allNames);
         var groups = new Dictionary<string, DuplicateGroup>(StringComparer.OrdinalIgnoreCase);
         foreach ((string name, long size) in fileEntries)
         {
@@ -811,17 +819,36 @@ public sealed class TarSandboxedService : ITarService
         return groups.Where(g => g.Value.Count > 1 && !folders.Contains(g.Key)).Select(g => g.Value).ToList();
     }
 
+    /// <summary>
+    /// T-F462: how many files the run must account for - every file entry being extracted (the
+    /// selection, or the whole archive), repeats included, except a name that is also a folder entry
+    /// (the two cannot both be on disk). What reaches disk, plus first copies and copies reported
+    /// not extracted, must reach this, or something was lost without a word.
+    /// </summary>
+    internal static int FileEntriesInScope(
+        IReadOnlyList<(string Name, long Size)> fileEntries, IReadOnlyList<string> allNames, IReadOnlyCollection<string>? selection)
+    {
+        HashSet<string>? selected = selection is null ? null : new HashSet<string>(selection, StringComparer.Ordinal);
+        HashSet<string> folders = FolderKeys(allNames);
+        return fileEntries.Count(e => (selected is null || selected.Contains(e.Name)) && !folders.Contains(EntryDiskName.AsTarExeWrites(e.Name)));
+    }
+
+    private static HashSet<string> FolderKeys(IReadOnlyList<string> allNames) => new(
+        allNames.Where(n => n.EndsWith('/')).Select(n => EntryDiskName.AsPakkoWrites(n.TrimEnd('/'))),
+        StringComparer.OrdinalIgnoreCase);
+
 
     // T-F171: runs the first-copy pass and keeps only files at a group's exact path with the first
     // entry's listed size. A member is a pattern (T-F284), so "a[1].txt" can pull in "a1.txt"
     // instead; anything unexpected stays in the quarantine. A group whose first copy is not
     // recovered keeps only its last copy, and every copy not extracted is reported.
-    private static async Task<(string? Directory, HashSet<string> Files)> ExtractFirstCopiesAsync(
+    private static async Task<(string? Directory, HashSet<string> Files, int Reported)> ExtractFirstCopiesAsync(
         TarSandboxScope scope, List<DuplicateGroup> groups, List<SkippedFile> skippedFiles, CancellationToken cancellationToken)
     {
         var accepted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (groups.Count == 0)
-            return (null, accepted);
+            return (null, accepted, 0);
+        int reported = 0;
 
         string? firstDir;
         try
@@ -846,11 +873,12 @@ public sealed class TarSandboxedService : ITarService
             if (recovered)
                 accepted.Add(firstPath!);
             int notExtracted = group.Count - (recovered ? 2 : 1);
+            reported += Math.Max(0, notExtracted);
             if (notExtracted > 0)
                 skippedFiles.Add(CoreMessages.Skip(displayName, MessageCode.TarDuplicateCopiesNotExtracted,
                     notExtracted.ToString(CultureInfo.CurrentCulture)));
         }
-        return (firstDir, accepted);
+        return (firstDir, accepted, reported);
     }
 
     // Where ExtractSingleArchiveAsync's move phase puts each file: into Staging under the path it

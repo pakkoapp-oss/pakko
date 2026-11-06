@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko не зміг дізнатися, що підтримує tar.exe цієї системи: його немає, він не підписаний Microsoft або не відповів вчасно.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Не всі файли вдалося взяти з цього архіву, тож перевірено не кожен файл. Перевірено файлів: {0} з {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>З цього архіву вийшли не всі файли, тож із нього нічого не видобуто. Вийшло файлів: {0} з {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Елемент захищено паролем, тому його не перевірено.</value>
   </data>

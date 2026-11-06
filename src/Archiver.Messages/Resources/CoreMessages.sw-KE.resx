@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko haikuweza kujua kile ambacho tar.exe ya mfumo huu inaauni: haipo, haijatiwa saini na Microsoft, au haikujibu kwa wakati.</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>Si faili zote zingeweza kutolewa kwenye kumbukumbu hii, kwa hiyo si kila faili ilichunguzwa. Faili zilizochunguzwa: {0} kati ya {1}.</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>Si faili zote zilizotoka kwenye kumbukumbu hii, kwa hiyo hakuna kilichotolewa kutoka humo. Faili zilizotoka: {0} kati ya {1}.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kipengee kimelindwa kwa nenosiri na hakikuchunguzwa.</value>
   </data>

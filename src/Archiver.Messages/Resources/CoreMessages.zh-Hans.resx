@@ -282,6 +282,12 @@
   <data name="TarGaveNoVersion" xml:space="preserve">
     <value>Pakko 无法得知此系统的 tar.exe 支持哪些功能：它不存在、未经 Microsoft 签名，或未及时响应。</value>
   </data>
+  <data name="ScanFilesMissing" xml:space="preserve">
+    <value>无法从此压缩包中取出所有文件，因此并非每个文件都已扫描。已扫描文件: {0} / {1}。</value>
+  </data>
+  <data name="TarFilesMissing" xml:space="preserve">
+    <value>并非所有文件都从此压缩包中取出，因此没有从中解压任何内容。已取出文件: {0} / {1}。</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>条目受密码保护，未扫描。</value>
   </data>
