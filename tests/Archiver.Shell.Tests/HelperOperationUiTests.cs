@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using Archiver.Core.Models;
 using Archiver.OperationUi.Protocol;
 using Archiver.Shell;
@@ -53,7 +54,14 @@ public sealed class HelperOperationUiTests : IDisposable
         await _helper.ReadUntilAsync<Begin>();
         await _helper.SendReadyAsync();
         // T-F351: a clean end before HelperReady was taken in ends the helper instead of closing its window.
-        await _readySeen.Task.WaitAsync(WaitLimit);
+        try
+        {
+            await _readySeen.Task.WaitAsync(WaitLimit);
+        }
+        catch (TimeoutException ex)
+        {
+            throw new TimeoutException("HelperBecameReady never ran after HelperReady was sent.", ex);
+        }
         return session;
     }
 
@@ -61,13 +69,14 @@ public sealed class HelperOperationUiTests : IDisposable
     // HelperOperationUi has finished setting it up; ending the helper comes after that.
     private Task WaitUntilTakenOverAsync() => WaitUntilAsync(() => _fallback.Sessions.Count == 1 && _helper.Killed);
 
-    private static async Task WaitUntilAsync(Func<bool> condition)
+    // T-F456: a timeout names the condition, so a failure under a loaded run says which wait it was.
+    private static async Task WaitUntilAsync(Func<bool> condition, [CallerArgumentExpression(nameof(condition))] string what = "")
     {
         DateTime limit = DateTime.UtcNow + WaitLimit;
         while (!condition())
         {
             if (DateTime.UtcNow > limit)
-                throw new TimeoutException("The condition never became true.");
+                throw new TimeoutException($"The condition never became true: {what}");
             await Task.Delay(20);
         }
     }
