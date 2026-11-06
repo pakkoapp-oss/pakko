@@ -1552,6 +1552,11 @@ re-measured with T-F346's script before and after.
 - [ ] **Status:** open. Failed once in the full local run on 2026-11-05 (T-F443's branch, nothing
   near the Shell or OperationUi changed) after 16 s; 3 of 3 alone in about 0.3 s. Next: find which
   wait in `HelperOperationUiTests` races the loaded runner (T-F425's rule: no timer races).
+- **2026-11-06:** not reproduced: 6 runs of `Archiver.Shell.Tests` beside `Archiver.Core.Tests`, all
+  green. Rather than a guessed fix, every wait now names itself on timeout (`WaitUntilAsync` carries
+  its condition through `CallerArgumentExpression`, the fake's read names the message it waited for,
+  `BeginReadyAsync` says HelperBecameReady never ran); seen by forcing one condition false. Next
+  failure: read the message, then fix that wait.
 - **Reported by:** the agent, 2026-11-05.
 
 ### T-F455 — A tar folder entry stored without a trailing `/` arrives as nothing (P3, from T-F443's fresh review)

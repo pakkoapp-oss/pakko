@@ -45,7 +45,15 @@ internal sealed class FakeHelper : IHelperLauncher, IDisposable
     {
         while (true)
         {
-            ProtocolMessage? message = await ReadAsync();
+            ProtocolMessage? message;
+            try
+            {
+                message = await ReadAsync();
+            }
+            catch (TimeoutException ex)
+            {
+                throw new TimeoutException($"Shell sent no message within {ReadTimeout} while the fake waited for {typeof(T).Name}.", ex);
+            }
             if (message is T wanted)
                 return wanted;
             if (message is null)
