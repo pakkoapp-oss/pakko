@@ -62,7 +62,7 @@ Full table (purpose, read when, update when): `.claude/rules/docs.md`.
 | `docs/POLICIES.md` / `docs/SIGNING.md` | Group Policy reference / code-signing policy |
 | `scripts/README.md` | build/sign/deploy steps |
 | `CHANGELOG.md` | per-release history |
-| `README.md`, `CONTRIBUTING.md`, `docs/index.html`, `docs/uk/index.html` | public pages — not agent instructions |
+| `README.md`, `CONTRIBUTING.md`, `docs/index.html`, `docs/uk/index.html`, `docs/privacy.html` | public pages — not agent instructions |
 | `docfx.json` + `toc.yml` | the DocFX developer site |
 | `tests/Archiver.Messages.Tests/Glossary.tsv` | the term each locale uses — before any translated string |
 | `docs/store-listing/` | Store listing text in 37 languages |
@@ -225,7 +225,8 @@ C++ build and test commands: `.claude/rules/shell-extension.md`.
 > **Toolchain (T-F270):** .NET 10 LTS; `global.json` pins the SDK exactly (`rollForward: disable`;
 > the lock files carry its ILCompiler version, T-F364; bump: `scripts/README.md`). **C# 14** (T-F363),
 > `LangVersion` set once in `Directory.Build.props`; the idioms whose absence fails the build (partial
-> `[ObservableProperty]`, `Lock`, `field`, IDE0330/0340/0360/0032/0031): `docs/CONVENTIONS.md`.
+> `[ObservableProperty]`, `Lock`, `field`, IDE0330/0340/0360/0032/0031 under `TreatWarningsAsErrors`):
+> `docs/CONVENTIONS.md` and `.editorconfig`.
 > Every C# build goes through `dotnet`; `msbuild.exe` builds only the `.vcxproj` files (Visual Studio
 > and MSVC versions: `.claude/rules/shell-extension.md`). CI: `setup-dotnet` from `global.json` (the
 > canary floats it). `dotnet build src/Archiver.App` is a quick compile check for ViewModel/DI changes;
