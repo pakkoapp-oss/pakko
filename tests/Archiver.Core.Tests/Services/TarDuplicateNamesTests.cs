@@ -161,6 +161,33 @@ public sealed class TarDuplicateNamesTests
     public void FileEntriesInScope_CountsEveryEntry(string[] files, int expected) =>
         TarSandboxedService.FileEntriesInScope([.. files.Select(f => (f, 1L))], null).Should().Be(expected);
 
+    // T-F462 (closing review): only a file at the group's own path is its first copy; the member "y"
+    // also takes "y/z.txt" (bsdtar 3.8.9), a file the main pass scanned.
+    [Theory]
+    [InlineData(new[] { "y" }, 1)]
+    [InlineData(new[] { "y/z.txt" }, 0)]
+    [InlineData(new[] { "y", "y/z.txt", "other.txt" }, 1)]
+    [InlineData(new[] { "Y" }, 1)]
+    [InlineData(new string[0], 0)]
+    public void FirstCopiesAtTheirPath_CountsOnlyTheGroupsOwnPath(string[] firstFiles, int expected) =>
+        TarSandboxedService.FirstCopiesAtTheirPath([new TarSandboxedService.DuplicateGroup("y", 1, 2)], firstFiles, ["y"]).Should().Be(expected);
+
+    // T-F462 (re-check): .NET's case-insensitive comparer folds some pairs NTFS keeps apart
+    // ("ǅ" and "ǆ", measured); the main pass then wrote both, and a first copy would be
+    // a third credit for two entries. One main file under the key, or none, lets it count.
+    [Theory]
+    [InlineData(new[] { "x.txt" }, 1)]
+    [InlineData(new string[0], 1)]
+    [InlineData(new[] { "x.txt", "X.TXT" }, 0)]
+    public void FirstCopiesAtTheirPath_MainPassHoldsTheGroupApart_IsNotCredited(string[] mainFiles, int expected) =>
+        TarSandboxedService.FirstCopiesAtTheirPath([new TarSandboxedService.DuplicateGroup("x.txt", 1, 2)], ["x.txt"], mainFiles).Should().Be(expected);
+
+    [Fact]
+    public void FirstCopiesAtTheirPath_DotSlashAndTrailingDot_MatchAsTarExeWrites() =>
+        TarSandboxedService.FirstCopiesAtTheirPath(
+            [new TarSandboxedService.DuplicateGroup("./a.txt.", 1, 2), new TarSandboxedService.DuplicateGroup("d /b.txt", 1, 2)],
+            ["a.txt.", "d /b.txt"], []).Should().Be(2);
+
     [Fact]
     public void FileEntriesInScope_Selection_CountsOnlyIt() =>
         TarSandboxedService.FileEntriesInScope([("a.txt", 1), ("b.txt", 1), ("b.txt", 1)], ["b.txt"]).Should().Be(2);

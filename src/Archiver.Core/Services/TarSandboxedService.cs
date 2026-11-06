@@ -674,8 +674,6 @@ public sealed class TarSandboxedService : ITarService
 
         int totalFiles = 0;
         int extractedCount = 0;
-        // T-F462: every file tar.exe gave back, the filter's dropped ones too.
-        int filesFound = 0;
         // T-F216: see ZipArchiveService — to tell "the user skipped everything" apart.
         int userSkipsBefore = context.ConflictResolver.UserSkipCount;
         int skippedBefore = skippedFiles.Count, errorsBefore = context.Errors.Count;
@@ -695,12 +693,15 @@ public sealed class TarSandboxedService : ITarService
         IEnumerable<(string File, string Root)> quarantined = firstCopyDir is null
             ? []
             : EnumerateFilesGuarded(firstCopyDir).Where(firstCopies.Contains).Select(f => (f, firstCopyDir));
+        // T-F462: the main pass's files, and the first copies that may count beside them.
+        string[] mainFiles = [.. EnumerateFilesGuarded(scope.OutputDirectory!).Select(f => QuarantineRelative(scope.OutputDirectory!, f).Replace('\\', '/'))];
+        int filesFound = mainFiles.Length + (firstCopyDir is null ? 0
+            : FirstCopiesAtTheirPath(duplicateGroups, firstCopies.Select(f => QuarantineRelative(firstCopyDir, f).Replace('\\', '/')), mainFiles));
         quarantined = quarantined.Concat(EnumerateFilesGuarded(scope.OutputDirectory!).Select(f => (f, scope.OutputDirectory!)));
 
         foreach ((string file, string root) in quarantined)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            filesFound++;
             if (droppedFiles is not null && droppedFiles.Contains(QuarantineRelative(root, file).Replace('\\', '/')))
                 continue;
             totalFiles++;
@@ -817,6 +818,24 @@ public sealed class TarSandboxedService : ITarService
                 : new DuplicateGroup(name, size, 1);
         }
         return groups.Where(g => g.Value.Count > 1 && !folders.Contains(g.Key)).Select(g => g.Value).ToList();
+    }
+
+    // T-F462 (closing review): the first copies a run may count - a file of the first-copy pass at its
+    // group's own path, one per group, and only while the main pass holds at most one file under the
+    // group's key. A member also matches as a folder prefix ("y" took "y/z.txt", bsdtar 3.8.9), a file
+    // the main pass already has; and .NET's case-insensitive comparer folds pairs NTFS keeps apart
+    // (U+01C5/U+01C6, measured), so such a "group" is two files on disk already. Paths: '/' between
+    // parts, relative to their pass's folder.
+    internal static int FirstCopiesAtTheirPath(
+        IEnumerable<DuplicateGroup> groups, IEnumerable<string> firstFiles, IEnumerable<string> mainFiles)
+    {
+        var first = new HashSet<string>(firstFiles, StringComparer.OrdinalIgnoreCase);
+        var mainPerKey = mainFiles.GroupBy(f => f, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+        return groups.Count(g =>
+        {
+            string path = EntryDiskName.AsTarExeWrites(EntryDiskName.StripLeadingDotSlash(g.FirstName));
+            return first.Contains(path) && mainPerKey.GetValueOrDefault(path) <= 1;
+        });
     }
 
     /// <summary>

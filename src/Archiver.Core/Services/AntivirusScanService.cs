@@ -572,9 +572,10 @@ public sealed class AntivirusScanService : IAntivirusScanService
             int scanned = await ScanExtractedFilesAsync(
                 scope.OutputDirectory!, 0, totalEntries + duplicates.Count, target, cancellationToken)
                 .ConfigureAwait(false);
-            // T-F462: a first copy counts only when the listing names the main pass's files truly. A
-            // best-fit pair lists as one name twice, and its "first copy" is a file already scanned,
-            // which must not stand in for a file lost elsewhere; it is still scanned.
+            // T-F462: a first copy counts only when the listing names the main pass's files truly, and
+            // only at its group's own path (TarSandboxedService.FirstCopiesAtTheirPath). A best-fit pair
+            // lists as one name twice, and its "first copy" is a file already scanned, which must not
+            // stand in for a file lost elsewhere; it is still scanned.
             int credited = scanned;
             if (duplicates.Count > 0)
             {
@@ -594,7 +595,9 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 string[] mainFiles = [.. TarSandboxedService.EnumerateFilesGuarded(scope.OutputDirectory!)
                     .Select(f => TarSandboxedService.QuarantineRelative(scope.OutputDirectory!, f).Replace('\\', '/'))];
                 bool faithful = TarNames.JudgeExtracted((IReadOnlyList<string>?)expandedSelection ?? allNames, mainFiles, []).Trust == TarNameTrust.Faithful;
-                credited = faithful ? scanned : mainScanned;
+                string[] firstFiles = [.. TarSandboxedService.EnumerateFilesGuarded(firstDir)
+                    .Select(f => TarSandboxedService.QuarantineRelative(firstDir, f).Replace('\\', '/'))];
+                credited = mainScanned + (faithful ? TarSandboxedService.FirstCopiesAtTheirPath(duplicates, firstFiles, mainFiles) : 0);
             }
 
             // T-F462: Clean only with every file accounted for, whichever name or folder broke (the
