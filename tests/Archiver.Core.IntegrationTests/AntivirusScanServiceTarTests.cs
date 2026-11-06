@@ -326,6 +326,45 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         result.OverallVerdict.Should().NotBe(ThreatVerdict.Clean, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
     }
 
+    // T-F462 (fresh review): tar.exe replaces the file "x" with the folder "x/" listed after it and
+    // exits 0 (bsdtar 3.8.9), so the file is never scanned.
+    [Integration]
+    public async Task ScanAsync_FileReplacedByAFolderOfItsName_IsNeverClean()
+    {
+        string archivePath = Path.Combine(_temp.Path, "file-then-folder.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "x", Content = Encoding.ASCII.GetBytes("EVIL") },
+            new TarBuilder.Entry { Name = "x/", TypeFlag = '5' },
+        ]);
+
+        var scanner = new FakeAmsiScanner { DetectedText = "EVIL" };
+        ThreatScanResult result = await CreateService(scanner).ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+        result.OverallVerdict.Should().NotBe(ThreatVerdict.Clean, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
+    }
+
+    // T-F462 (fresh review): a folder "x /" is a folder of its own beside the file "x", which is
+    // scanned; leaving "x" out of the count gave one file of slack, enough to hide the middle copy.
+    [Integration]
+    public async Task ScanAsync_FileBesideAFolderWithATrailingSpace_ThreatInTheMiddleCopy_IsNeverClean()
+    {
+        string archivePath = Path.Combine(_temp.Path, "space-folder-slack.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "x /", TypeFlag = '5' },
+            new TarBuilder.Entry { Name = "x", Content = Encoding.ASCII.GetBytes("fine") },
+            new TarBuilder.Entry { Name = "y.txt", Content = Encoding.ASCII.GetBytes("one") },
+            new TarBuilder.Entry { Name = "y.txt", Content = Encoding.ASCII.GetBytes("EVIL") },
+            new TarBuilder.Entry { Name = "y.txt", Content = Encoding.ASCII.GetBytes("three") },
+        ]);
+
+        var scanner = new FakeAmsiScanner { DetectedText = "EVIL" };
+        ThreatScanResult result = await CreateService(scanner).ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+        result.OverallVerdict.Should().NotBe(ThreatVerdict.Clean, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
+    }
+
     // T-F462: a best-fit pair lists as one name twice, so the scan sees a duplicate group whose
     // first-copy pass returns a file the main pass already scanned. That copy must not pay for a file
     // lost elsewhere: with the old silent walk (T-F460) the threat in "d /" is never scanned.
@@ -344,6 +383,25 @@ public sealed class AntivirusScanServiceTarTests : IDisposable
         ThreatScanResult result = await CreateService(scanner).ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
 
         result.OverallVerdict.Should().NotBe(ThreatVerdict.Clean, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
+    }
+
+    // T-F462 (fresh review, accepted fail-closed): with any name listed by best fit, no first copy
+    // is credited, so a duplicate group elsewhere is not shown to be scanned in full. Per-group
+    // judgment is T-F464's; until then this shape is Inconclusive, never Clean.
+    [Integration]
+    public async Task ScanAsync_BestFitNameBesideADuplicateGroup_IsInconclusive()
+    {
+        if (await CollapsingArchiveAsync("beside-group", (accented, _) =>
+            [
+                (accented, "fine"),
+                ("y.txt", "one"),
+                ("y.txt", "two"),
+            ]) is not { } archivePath)
+            return;
+
+        ThreatScanResult result = await CreateService(new FakeAmsiScanner()).ScanAsync(new AntivirusScanOptions { ArchivePaths = [archivePath] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive, string.Join(" | ", result.Findings.Select(f => f.EntryPath + ": " + f.Verdict)));
     }
 
     // An archive whose accented name this machine's tar.exe lists by best fit, or null (then the

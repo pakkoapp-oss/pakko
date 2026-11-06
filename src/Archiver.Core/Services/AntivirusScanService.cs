@@ -599,7 +599,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
 
             // T-F462: Clean only with every file accounted for, whichever name or folder broke (the
             // middle of three same-named copies, a folder Windows trims, a pass that failed).
-            int expected = TarSandboxedService.FileEntriesInScope(fileEntries, allNames, expandedSelection);
+            int expected = TarSandboxedService.FileEntriesInScope(fileEntries, expandedSelection);
             if (credited < expected)
                 findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Text(MessageCode.ScanFilesMissing,
                     credited.ToString(CultureInfo.CurrentCulture), expected.ToString(CultureInfo.CurrentCulture))));

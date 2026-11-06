@@ -431,6 +431,63 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         }
     }
 
+    // T-F462 (fresh review, accepted fail-closed): a name listed by best fit drops every duplicate
+    // group (T-F441), so the first "y.txt" never comes out and nothing is written. Per-group
+    // judgment is T-F464's.
+    [Integration]
+    public async Task Extract_BestFitNameBesideADuplicateGroup_FailsNothingWritten()
+    {
+        foreach ((char accent, char plain) in new[] { ((char)0xE9, 'e'), ((char)0x101, 'a') })
+        {
+            string path = Path.Combine(_temp.Path, $"beside-group-{(int)accent:x}.tar");
+            TarBuilder.WriteTar(path,
+            [
+                TarBuilder.PaxPath("caf" + accent + ".txt"),
+                new TarBuilder.Entry { Name = "placeholder.txt", Content = Encoding.ASCII.GetBytes("cafe") },
+                new TarBuilder.Entry { Name = "y.txt", Content = Encoding.ASCII.GetBytes("one") },
+                new TarBuilder.Entry { Name = "y.txt", Content = Encoding.ASCII.GetBytes("two") },
+            ]);
+            ArchiveListResult list = await _sut.ListEntriesAsync(path);
+            if (!list.Success || !list.Entries.Any(e => e.Path == "caf" + plain + ".txt"))
+                continue;
+            string dest = NewDestination();
+
+            ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+            {
+                ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            });
+
+            result.Success.Should().BeFalse(TarCodePage.Describe());
+            result.Errors.Should().ContainSingle().Which.Message.Should().Contain("2 of 3");
+            WrittenFiles(dest).Should().BeEmpty();
+            return;
+        }
+    }
+
+    // T-F462 (fresh review): tar.exe replaces the file "x" with the folder "x/" listed after it and
+    // exits 0 (bsdtar 3.8.9); the file is lost, so nothing is written and the run says why.
+    [Integration]
+    public async Task Extract_FileReplacedByAFolderOfItsName_FailsNothingWritten()
+    {
+        string path = Path.Combine(_temp.Path, "file-then-folder.tar");
+        TarBuilder.WriteTar(path,
+        [
+            new TarBuilder.Entry { Name = "x", Content = Encoding.ASCII.GetBytes("file") },
+            new TarBuilder.Entry { Name = "x/", TypeFlag = '5' },
+            new TarBuilder.Entry { Name = "y.txt", Content = Encoding.ASCII.GetBytes("y") },
+        ]);
+        string dest = NewDestination();
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+        });
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("1 of 2");
+        WrittenFiles(dest).Should().BeEmpty();
+    }
+
     // T-F461: a file before its own folder entry ending in a space fails in tar.exe itself on both
     // builds ("Can't restore time" once the folder exists, "Can't create" when it does not): the
     // run fails naming tar.exe, and nothing is written.

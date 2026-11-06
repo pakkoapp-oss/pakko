@@ -731,7 +731,7 @@ public sealed class TarSandboxedService : ITarService
 
         // T-F462: nothing is committed unless every file entry reached the quarantine or was reported
         // (a copy past the first and the last); a file lost on the way fails the archive.
-        int expectedFiles = FileEntriesInScope(fileEntries, allNames, expandedSelection);
+        int expectedFiles = FileEntriesInScope(fileEntries, expandedSelection);
         if (filesFound + copiesReported < expectedFiles)
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.TarFilesMissing,
                 (filesFound + copiesReported).ToString(CultureInfo.CurrentCulture), expectedFiles.ToString(CultureInfo.CurrentCulture)));
@@ -821,16 +821,16 @@ public sealed class TarSandboxedService : ITarService
 
     /// <summary>
     /// T-F462: how many files the run must account for - every file entry being extracted (the
-    /// selection, or the whole archive), repeats included, except a name that is also a folder entry
-    /// (the two cannot both be on disk). What reaches disk, plus first copies and copies reported
-    /// not extracted, must reach this, or something was lost without a word.
+    /// selection, or the whole archive), repeats included. What reaches disk, plus first copies and
+    /// copies reported not extracted, must reach this, or something was lost without a word.
+    /// A file named as a folder entry counts too (fresh review): tar.exe replaces the file "x" with
+    /// a folder "x/" after it and exits 0, and "x /" or "x./" is a folder of its own beside "x".
     /// </summary>
     internal static int FileEntriesInScope(
-        IReadOnlyList<(string Name, long Size)> fileEntries, IReadOnlyList<string> allNames, IReadOnlyCollection<string>? selection)
+        IReadOnlyList<(string Name, long Size)> fileEntries, IReadOnlyCollection<string>? selection)
     {
         HashSet<string>? selected = selection is null ? null : new HashSet<string>(selection, StringComparer.Ordinal);
-        HashSet<string> folders = FolderKeys(allNames);
-        return fileEntries.Count(e => (selected is null || selected.Contains(e.Name)) && !folders.Contains(EntryDiskName.AsTarExeWrites(e.Name)));
+        return fileEntries.Count(e => selected is null || selected.Contains(e.Name));
     }
 
     private static HashSet<string> FolderKeys(IReadOnlyList<string> allNames) => new(
