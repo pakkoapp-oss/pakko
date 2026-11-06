@@ -49,6 +49,7 @@ public sealed partial class QuarantineFilesOwnerTests
         ("TarSandboxedService.cs", "Directory.Delete(stagingDir, recursive: true)", 1, "creation's staging folder, Pakko's name"),
         ("TarSandboxedService.cs", "File.Delete(path)", 1, "creation's own temp file"),
         ("TarSandboxedService.cs", "Path.GetFullPath(sourcePath)", 1, "a source the user chose (creation)"),
+        ("TarSandboxedService.cs", "Directory.Exists", 1, "a method group over the sources the user chose (creation)"),
         ("TarSandboxedService.cs", "Directory.Exists(fullSource)", 2, "a source the user chose (creation)"),
         ("TarSandboxedService.cs", "new DirectoryInfo(root)", 1, "a source the user chose (creation) (a drive root)"),
         ("TarSandboxedService.cs", "Path.GetFullPath(path)", 1, "a source the user chose (creation)"),
@@ -121,11 +122,17 @@ public sealed partial class QuarantineFilesOwnerTests
         string.Join('\n', File.ReadAllLines(Path.Combine(ServicesDir, file.Replace('/', Path.DirectorySeparatorChar)))
             .Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
 
-    // Each call from its name to its closing parenthesis, joined across lines, spaces collapsed.
+    // Each call from its name to its closing parenthesis, joined across lines, spaces collapsed; a
+    // method group as it is.
     private static IEnumerable<string> Calls(string code)
     {
         foreach (Match match in DiskCall().Matches(code))
         {
+            if (!match.Value.EndsWith('('))
+            {
+                yield return match.Value;
+                continue;
+            }
             int depth = 1;
             int end = match.Index + match.Length;
             while (end < code.Length && depth > 0)
@@ -138,7 +145,10 @@ public sealed partial class QuarantineFilesOwnerTests
         }
     }
 
-    [GeneratedRegex(@"\b(?:Directory|File)\.\w+\(|\bnew\s+(?:FileInfo|DirectoryInfo|FileStream)\(|\bPath\.(?:GetRelativePath|GetFullPath)\(")]
+    // A call; a method group (.Any(Directory.Exists)), which has no parenthesis of its own; an explicit
+    // or target-typed construction of a FileInfo, DirectoryInfo or FileStream, as a variable or as an
+    // expression-bodied member; Path's two normalizing calls.
+    [GeneratedRegex(@"\b(?:Directory|File)\.\w+\(|\b(?:Directory|File)\.(?>\w+)(?!\s*\()|\bnew\s+(?:FileInfo|DirectoryInfo|FileStream)\(|\b(?:FileInfo|DirectoryInfo|FileStream)\??\s+\w+\s*=\s*new\s*\(|\b(?:FileInfo|DirectoryInfo|FileStream)\??\s+\w+\s*\([^()]*\)\s*=>\s*new\s*\(|\bPath\.(?:GetRelativePath|GetFullPath)\(")]
     private static partial Regex DiskCall();
 
     [GeneratedRegex(@"\bLiteral\(")]
