@@ -351,7 +351,7 @@ internal sealed partial class TarSandboxScope : IDisposable
             string key = name.TrimEnd('/');
             if (TarCommandLineEncoding.Encode(key, CommandLinePage) is not { } sent
                 || !TarNames.ReachesTheListedEntry(key, listed, byText, CommandLinePage, sent))
-                throw new TarArgumentEncodingException(EntryDiskName.StripLeadingDotSlash(name), CommandLinePage);
+                throw TarArgumentEncodingException.ListedNameUntrusted(EntryDiskName.StripLeadingDotSlash(name), CommandLinePage);
         }
     }
 

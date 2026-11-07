@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>لم تخرج كل الملفات من هذا الأرشيف، لذلك لم يُستخرج منه شيء. الملفات التي خرجت: {0} من {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>لا يمكن استخدام الاسم '{0}' لاختيار عناصر من هذا الأرشيف: يعرض tar.exe على هذا النظام (صفحة الترميز ANSI {1}) أسماء الأرشيف بشكل مختلف عن طريقة تخزينها. نفّذ العملية على الأرشيف كاملاً، دون تحديد أو عامل تصفية.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>العنصر محمي بكلمة مرور ولم يتم فحصه.</value>
   </data>

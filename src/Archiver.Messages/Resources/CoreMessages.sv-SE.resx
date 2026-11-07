@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Alla filer kom inte ut ur det här arkivet, så inget extraherades ur det. Filer som kom ut: {0} av {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Namnet '{0}' kan inte användas för att välja objekt i det här arkivet: tar.exe i det här systemet (ANSI-teckentabell {1}) visar arkivets namn på ett annat sätt än de är lagrade. Utför åtgärden på hela arkivet, utan markering eller filter.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Posten är lösenordsskyddad och genomsöktes inte.</value>
   </data>

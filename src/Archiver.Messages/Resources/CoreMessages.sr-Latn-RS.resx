@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Iz ove arhive nisu izašle sve datoteke, pa iz nje ništa nije raspakovano. Datoteke koje su izašle: {0} od {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Naziv „{0}” ne može se koristiti za izbor stavki iz ove arhive: tar.exe na ovom sistemu (ANSI kodna stranica {1}) prikazuje nazive u arhivi drugačije nego što su sačuvani. Izvršite radnju nad celom arhivom, bez izbora i bez filtera.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Stavka je zaštićena lozinkom i nije skenirana.</value>
   </data>

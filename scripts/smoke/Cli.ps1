@@ -636,12 +636,12 @@ Add-SmokeStep 'CLI-044' {
     $o1 = Join-Path $folder 'o1'
     $run = Invoke-Pakko @('x', $chosen.Tar, "-o$o1", $chosen.Plain)
     $written = @(Get-ChildItem -LiteralPath $o1 -Recurse -File -ErrorAction SilentlyContinue)
-    Assert-Smoke ($run.ExitCode -ne 0 -and $run.Text.Contains('tar.exe') -and $written.Count -eq 0) "x <the collapsed name>: exit $($run.ExitCode), $($written.Count) files $($run.Text)"
+    Assert-Smoke ($run.ExitCode -ne 0 -and $run.Text.Contains('tar.exe') -and -not $run.Text.Contains('ZIP') -and $written.Count -eq 0) "x <the collapsed name>: exit $($run.ExitCode), $($written.Count) files $($run.Text)"
 
     $o2 = Join-Path $folder 'o2'
     $run = Invoke-Pakko @('x', $chosen.Tar, "-o$o2", "-x!$($chosen.Plain)")
     $written = @(Get-ChildItem -LiteralPath $o2 -Recurse -File -ErrorAction SilentlyContinue)
-    Assert-Smoke ($run.ExitCode -ne 0 -and $written.Count -eq 0) "x -x!<the collapsed name>: exit $($run.ExitCode), $($written.Count) files $($run.Text)"
+    Assert-Smoke ($run.ExitCode -ne 0 -and $run.Text.Contains('tar.exe') -and -not $run.Text.Contains('ZIP') -and $written.Count -eq 0) "x -x!<the collapsed name>: exit $($run.ExitCode), $($written.Count) files $($run.Text)"
 
     $o3 = Join-Path $folder 'o3'
     $run = Invoke-Pakko @('x', $chosen.Tar, "-o$o3")

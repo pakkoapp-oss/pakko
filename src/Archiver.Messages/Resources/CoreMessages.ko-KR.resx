@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>이 압축 파일에서 모든 파일이 나오지 않아 아무것도 풀지 않았습니다. 나온 파일: {0} / {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>이름 '{0}'은(는) 이 압축 파일에서 항목을 선택하는 데 사용할 수 없습니다. 이 시스템의 tar.exe(ANSI 코드 페이지 {1})는 압축 파일의 이름을 저장된 형태와 다르게 표시합니다. 선택이나 필터 없이 전체 압축 파일에 대해 작업을 실행하세요.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>항목이 암호로 보호되어 있어 검사하지 않았습니다.</value>
   </data>

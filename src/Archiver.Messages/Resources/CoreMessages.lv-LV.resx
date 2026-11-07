@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>No šī arhīva neiznāca visi faili, tāpēc no tā nekas netika izvilkts. Iznākušie faili: {0} no {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Nosaukumu “{0}” nevar izmantot vienumu atlasei no šī arhīva: šīs sistēmas tar.exe (ANSI koda lappuse {1}) arhīva nosaukumus parāda citādi, nekā tie ir saglabāti. Veiciet darbību ar visu arhīvu, bez atlases un filtra.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Vienums ir aizsargāts ar paroli un netika skenēts.</value>
   </data>

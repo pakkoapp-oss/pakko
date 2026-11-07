@@ -180,4 +180,7 @@ public enum MessageCode
     // Fewer files came out of a tar-family archive than its listing holds (T-F462)
     ScanFilesMissing,
     TarFilesMissing,
+
+    // tar.exe's listing cannot name the entries, so a selection or filter is refused (T-F452)
+    TarListedNameUntrusted,
 }

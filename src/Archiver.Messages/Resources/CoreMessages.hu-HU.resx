@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Nem minden fájl jött ki ebből az archívumból, ezért semmi sem lett kibontva belőle. Kijött fájlok: {0}/{1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>A(z) „{0}” név nem használható elemek kiválasztására ebből az archívumból: a rendszer tar.exe programja (ANSI kódlap: {1}) másként listázza az archívum neveit, mint ahogyan tárolva vannak. Hajtsa végre a műveletet a teljes archívumon, kijelölés és szűrő nélkül.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Az elem jelszóval védett, ezért nem lett megvizsgálva.</value>
   </data>

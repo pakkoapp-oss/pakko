@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Ikke alle filer kom ud af dette arkiv, så intet blev udpakket fra det. Filer, der kom ud: {0} af {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Navnet '{0}' kan ikke bruges til at vælge elementer fra dette arkiv: tar.exe på dette system (ANSI-tegntabel {1}) viser arkivets navne anderledes, end de er gemt. Udfør handlingen på hele arkivet uden markering eller filter.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Elementet er beskyttet med adgangskode og blev ikke scannet.</value>
   </data>

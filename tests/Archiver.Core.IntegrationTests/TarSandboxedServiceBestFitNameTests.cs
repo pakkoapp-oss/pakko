@@ -133,7 +133,7 @@ public sealed class TarSandboxedServiceBestFitNameTests : IDisposable
         ArchiveResult result = await _sut.TestAsync([fixture.Path], entryFilter: (path, _) => path != fixture.Plain);
 
         result.Success.Should().BeFalse(TarCodePage.Describe());
-        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TarNameNotRepresentable);
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TarListedNameUntrusted);
     }
 
     // T-F443: a folder with no entry of its own - tar.exe makes the true one itself (bsdtar 3.8.9 in

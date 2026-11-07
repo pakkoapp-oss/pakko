@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>このアーカイブからすべてのファイルが出てこなかったため、何も展開しませんでした。出てきたファイル: {0} / {1}。</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>名前「{0}」は、このアーカイブから項目を選ぶために使用できません。このシステムの tar.exe (ANSI コード ページ {1}) は、アーカイブ内の名前を保存されている形とは異なる形で表示します。選択やフィルターを使わずに、アーカイブ全体に対して操作を実行してください。</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>エントリはパスワードで保護されているため、スキャンしませんでした。</value>
   </data>
