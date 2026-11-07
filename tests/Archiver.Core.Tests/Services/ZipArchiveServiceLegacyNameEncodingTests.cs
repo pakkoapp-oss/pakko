@@ -26,7 +26,7 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
-    private static byte[] Cp866(string text) => SystemCodePages.For(866).GetBytes(text);
+    private static byte[] Cp866(string text) => new TextBoundary(866).Lenient.GetBytes(text);
 
     private static LegacyZipBuilder.Entry Oem(string name, string content) =>
         new(Cp866(name), Encoding.ASCII.GetBytes(content));

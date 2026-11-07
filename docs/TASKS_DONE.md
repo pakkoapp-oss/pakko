@@ -14202,3 +14202,24 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   Lossy: a filter or Test with a filter refuses the whole archive, and a selection of that entry is
   refused. Compare after NFC normalization; tests first, on both builds.
 - **Reported by:** the agent, 2026-11-07.
+
+### T-F467 - One encoding provider: a named handler per text boundary, one standard (P2, stream I, after T-F465)
+
+- [x] **Status:** done 2026-11-07 (`docs/DECISIONS.md`, "T-F467 done"). The user, 2026-11-07: one provider with one standard of handling, possibly with several handlers,
+  so today's and tomorrow's encoding problems stop. Design in `docs/DECISIONS.md`, "T-F464 and T-F465":
+  - Handlers, each with its measured source: tar.exe's output, command line, raw header names and messages;
+    ZIP's legacy names; the console; PAR2; the Shell's stdin paths; the launch arguments.
+  - One standard for all of them:
+    - pages are chosen only in the provider;
+    - a deciding name must byte-match what the other program printed;
+    - decoding is strict at a contract boundary;
+    - every handler gets the same test matrix (equal pages, format != system, 65001, 932, both tar builds).
+  - `SystemCodePages` becomes the provider's private source. Plan mode and advisor before the PR.
+  - From T-F465: raw tar names read in libarchive's OEM page - the `acp_ocp_map` row by the UCRT locale
+    name (measure that name first, zh-CN above all), otherwise `GetOEMCP()`; today `UserOem`.
+  - `SystemCodePages.UserAnsi` has no production reader since T-F465: drop it or keep it private.
+  - From T-F465's review: on a DBCS page (932) `ReadListedNameBytes` checks the round trip with .NET's
+    tables while the guard encodes with kernel32; a character with two byte forms printed in the other
+    one would be refused (a false refusal). Measure with the provider's 932 matrix; the `-q` guard has
+    no test that fails without it (the main `-T` guard and `JudgeExtracted` reach first).
+- **Reported by:** the agent, 2026-11-07.

@@ -210,7 +210,7 @@ public sealed class TarHeaderNamesTests
     }
 
     // T-F441: the names themselves, as libarchive builds them, to check tar.exe's listing against.
-    private static readonly Encoding Cp866 = SystemCodePages.For(866);
+    private static readonly Encoding Cp866 = new TextBoundary(866).Lenient;
 
     [Fact]
     public void ReadNames_PosixPrefixAndName_Joined()

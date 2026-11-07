@@ -146,6 +146,16 @@ catch (IOException ex)
    carries the operation on with the native dialogs (T-F268).
    Cancellation (`OperationCanceledException`) is never turned into an error by these handlers.
 
+### Text encodings (T-F467)
+
+A new text boundary (another program's output or command line, a file format's names, a console)
+gets a named handler in `Archiver.Core.Text.TextBoundaries`, with its measured source in the doc
+comment; the consumer takes its page or encoding from it and never from `SystemCodePages` or
+`Encoding.GetEncoding` (`TextBoundaryOwnersTests`). A name that decides something goes back to
+another program only as the bytes that program printed for it, and a deciding read is strict or
+guarded. The handler gets a row in `TextBoundariesTests`' matrix (equal pages, format != system,
+65001, 932).
+
 ---
 
 ## MVVM Rules

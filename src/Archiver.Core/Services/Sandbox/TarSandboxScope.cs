@@ -69,6 +69,7 @@ internal sealed partial class TarSandboxScope : IDisposable
     // T-F465: the last plain listing's stdout as tar.exe wrote it, and the bytes it printed for each name.
     private byte[]? _listingBytes;
     private Dictionary<string, byte[]?>? _listedNameBytes;
+    private Dictionary<string, byte[]?>? _listedByText;
 
     /// <summary>Null when this scope was created with needsOutputDir: false (listing only).</summary>
     public string? OutputDirectory { get; }
@@ -82,9 +83,15 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// </summary>
     public System.Text.Encoding OutputEncoding { get; }
 
+    // T-F467: the machine's pages, read once, so this scope's output, command line and raw header
+    // names come from one snapshot.
+    private readonly MachinePages _machine = MachinePages.Current;
+
+    private uint CommandLinePage => (uint)TextBoundaries.TarExeCommandLine(_machine).CodePage;
+
     private TarSandboxScope(SafeSidHandle sid, string quarantineRoot, FileStream archive, string? outputDirectory, System.Text.Encoding? outputEncoding)
     {
-        OutputEncoding = outputEncoding ?? TarOutputEncoding.Current;
+        OutputEncoding = outputEncoding ?? TextBoundaries.TarExeOutput(_machine).Lenient;
         _sid = sid;
         QuarantineRoot = quarantineRoot;
         _archive = archive;
@@ -338,12 +345,13 @@ internal sealed partial class TarSandboxScope : IDisposable
         if (_listingBytes is null)
             await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
         Dictionary<string, byte[]?> listed = _listedNameBytes ??= TarNames.ReadListedNameBytes(_listingBytes ?? [], OutputEncoding);
+        Dictionary<string, byte[]?> byText = _listedByText ??= TarNames.IndexByText(listed, CommandLinePage);
         foreach (string name in names)
         {
             string key = name.TrimEnd('/');
-            if (!listed.TryGetValue(key, out byte[]? printed) || printed is null
-                || TarCommandLineEncoding.Encode(key) is not { } sent || !sent.AsSpan().SequenceEqual(printed))
-                throw new TarArgumentEncodingException(EntryDiskName.StripLeadingDotSlash(name), TarCommandLineEncoding.AnsiCodePage);
+            if (TarCommandLineEncoding.Encode(key, CommandLinePage) is not { } sent
+                || !TarNames.ReachesTheListedEntry(key, listed, byText, CommandLinePage, sent))
+                throw new TarArgumentEncodingException(EntryDiskName.StripLeadingDotSlash(name), CommandLinePage);
         }
     }
 
@@ -367,7 +375,7 @@ internal sealed partial class TarSandboxScope : IDisposable
             throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
         }
         string relativePath = Path.Combine(MemberListFolderName, fileName);
-        File.WriteAllBytes(Path.Combine(QuarantineRoot, relativePath), TarCommandLineEncoding.EncodeLines(lines));
+        File.WriteAllBytes(Path.Combine(QuarantineRoot, relativePath), TarCommandLineEncoding.EncodeLines(lines, CommandLinePage));
         return relativePath;
     }
 
@@ -430,6 +438,7 @@ internal sealed partial class TarSandboxScope : IDisposable
                 // The last plain listing is the one the scope's header choice settled on (ListAsync).
                 _listingBytes = listing;
                 _listedNameBytes = null;
+                _listedByText = null;
             }
 
             // T-F239: say which sandbox limit stopped tar.exe — its own words ("Cannot allocate
@@ -477,7 +486,7 @@ internal sealed partial class TarSandboxScope : IDisposable
 
     private IReadOnlyList<string>? ReadHeaderNames(bool utf8Names, CancellationToken cancellationToken)
     {
-        System.Text.Encoding legacy = SystemCodePages.For(SystemCodePages.UserOem);
+        System.Text.Encoding legacy = TextBoundaries.TarRawHeaderNames(_machine).Lenient;
         Span<byte> magic = stackalloc byte[2];
         bool isGzip = RandomAccess.Read(_archive.SafeFileHandle, magic, 0) == magic.Length && magic[0] == 0x1F && magic[1] == 0x8B;
         if (!isGzip)

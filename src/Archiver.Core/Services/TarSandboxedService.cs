@@ -5,6 +5,7 @@ using Archiver.Core.Interfaces;
 using Archiver.Core.IO;
 using Archiver.Core.Models;
 using Archiver.Core.Services.Sandbox;
+using Archiver.Core.Text;
 
 namespace Archiver.Core.Services;
 
@@ -2522,7 +2523,9 @@ public sealed class TarSandboxedService : ITarService
         string sourcePath, List<FileSystemInfo>? links = null, Func<FileSystemInfo, bool>? leaveOut = null, List<FileSystemInfo>? leftOut = null,
         List<string>? files = null)
     {
-        string? unrepresentable = TarCommandLineEncoding.IsRepresentable(sourcePath) ? null : sourcePath;
+        // T-F467: the page read once for the whole walk.
+        uint commandLinePage = TarCommandLineEncoding.AnsiCodePage;
+        string? unrepresentable = TarCommandLineEncoding.IsRepresentable(sourcePath, commandLinePage) ? null : sourcePath;
 
         if (!Directory.Exists(sourcePath))
         {
@@ -2545,7 +2548,7 @@ public sealed class TarSandboxedService : ITarService
             }
             bool isRoot = count == 0; // the walk always starts with the root itself
             count++;
-            if (unrepresentable is null && !isRoot && !TarCommandLineEncoding.IsRepresentable(entry.Info.Name))
+            if (unrepresentable is null && !isRoot && !TarCommandLineEncoding.IsRepresentable(entry.Info.Name, commandLinePage))
                 unrepresentable = entry.Info.FullName;
             if (entry.Kind == WalkEntryKind.File)
             {
@@ -2678,7 +2681,7 @@ public sealed class TarSandboxedService : ITarService
         CancellationToken cancellationToken)
         => SandboxedProcessLauncher.RunAsync(
             TarExecutablePath, arguments,
-            new ProcessLaunchOptions(OnStdErrLine: onStdErrLine, OutputEncoding: TarOutputEncoding.Current, StdInData: stdInData,
+            new ProcessLaunchOptions(OnStdErrLine: onStdErrLine, OutputEncoding: TextBoundaries.TarExeMessages(MachinePages.Current).Lenient, StdInData: stdInData,
                 EnvironmentOverrides: environment), cancellationToken);
 
     // T-F204: tar.exe's own words for a name it cannot show in the locale's code page (or an
@@ -2689,7 +2692,7 @@ public sealed class TarSandboxedService : ITarService
     {
         string text = stdErr.Trim();
         return text.Contains(UnreadableNameMessage, StringComparison.Ordinal)
-            ? CoreMessages.Text(MessageCode.TarUnreadableNames, TarOutputEncoding.Current.CodePage.ToString(CultureInfo.InvariantCulture), text)
+            ? CoreMessages.Text(MessageCode.TarUnreadableNames, TextBoundaries.TarExeMessages(MachinePages.Current).CodePage.ToString(CultureInfo.InvariantCulture), text)
             : CoreText.Raw(text);
     }
 

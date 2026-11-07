@@ -6,24 +6,19 @@ namespace Archiver.Core.Text;
 
 /// <summary>
 /// T-F441: the one place that asks Windows for this machine's code pages, and the one rule that
-/// turns a code page into an <see cref="Encoding"/>. Every text boundary that depends on the machine
-/// (tar.exe's command line and output, legacy ZIP names, the CLI console) takes its page from here;
-/// <c>TextBoundaryOwnersTests</c> fails when code-page selection appears anywhere else. Values are
-/// read on every call, never cached: a caller that needs one page for a whole operation reads it once
-/// and keeps it.
+/// turns a code page into an <see cref="Encoding"/>. T-F467: read only by the provider,
+/// <see cref="MachinePages"/> and <see cref="TextBoundary"/>; every boundary takes its page from a
+/// handler of <see cref="TextBoundaries"/> (<c>TextBoundaryOwnersTests</c>). Values are read on every
+/// call, never cached: a caller that needs one page for a whole operation keeps one
+/// <see cref="MachinePages"/>.
 /// </summary>
-public static partial class SystemCodePages
+internal static partial class SystemCodePages
 {
     /// <summary>UTF-8 (the "Beta: Unicode UTF-8" system setting gives it as the ANSI page).</summary>
     public const int Utf8 = 65001;
 
-    private const uint LocaleIDefaultCodePage = 0x0000000B;
-    private const uint LocaleIDefaultAnsiCodePage = 0x00001004;
-    private const uint LocaleReturnNumber = 0x20000000;
-
-    // CP_ACP, CP_OEMCP, CP_MACCP, CP_THREAD_ACP: what GetLocaleInfoEx gives for a Unicode-only
-    // locale (hi-IN), which names no code page of its own.
-    private const int HighestSentinelCodePage = 3;
+    private const uint LocaleSEnglishLanguageName = 0x00001001;
+    private const uint LocaleSEnglishCountryName = 0x00001002;
 
     /// <summary>The system ANSI code page (CP_ACP): command lines of ANSI programs such as tar.exe.</summary>
     public static int Ansi => (int)GetACP();
@@ -32,19 +27,14 @@ public static partial class SystemCodePages
     public static int Oem => (int)GetOEMCP();
 
     /// <summary>
-    /// The ANSI code page of the user's regional format; the system ANSI page when the locale gives
-    /// none. Not what a C runtime gets from <c>setlocale(LC_ALL, "")</c>: the UCRT pairs the format's
-    /// name with the system ANSI page (T-F465, measured), so tar.exe's output is <see cref="Ansi"/>.
+    /// T-F467: the name the C runtime gives the user's regional format in <c>setlocale(LC_ALL, "")</c>,
+    /// "&lt;English language&gt;_&lt;English country&gt;" (measured against <c>ucrtbase</c> for 12 formats);
+    /// null when Windows gives either part empty.
     /// </summary>
-    public static int UserAnsi => UserAnsiFor(null);
-
-    /// <summary>The OEM code page of the user's regional format; the system OEM page when it gives none.</summary>
-    public static int UserOem => UserOemFor(null);
-
-    // localeName null: the user's regional format; a name for tests of a locale with no page.
-    internal static int UserAnsiFor(string? localeName) => LocaleCodePage(localeName, LocaleIDefaultAnsiCodePage, Ansi);
-
-    internal static int UserOemFor(string? localeName) => LocaleCodePage(localeName, LocaleIDefaultCodePage, Oem);
+    public static string? UcrtLocaleName =>
+        LocaleText(LocaleSEnglishLanguageName) is { Length: > 0 } language && LocaleText(LocaleSEnglishCountryName) is { Length: > 0 } country
+            ? language + "_" + country
+            : null;
 
     /// <summary>
     /// The encoding for <paramref name="codePage"/>: UTF-8 without a byte order mark, otherwise the
@@ -78,11 +68,15 @@ public static partial class SystemCodePages
     private static NotSupportedException Unknown(int codePage) =>
         new(string.Create(CultureInfo.InvariantCulture, $"Code page {codePage} is not available."));
 
-    private static int LocaleCodePage(string? localeName, uint type, int fallback)
+    // The user's regional format's text for type; null when GetLocaleInfoEx fails.
+    private static string? LocaleText(uint type)
     {
-        int value = 0;
-        int written = GetLocaleInfoEx(localeName, type | LocaleReturnNumber, ref value, sizeof(int) / sizeof(char));
-        return written > 0 && value > HighestSentinelCodePage ? value : fallback;
+        int needed = GetLocaleInfoEx(null, type, [], 0);
+        if (needed <= 0)
+            return null;
+        char[] buffer = new char[needed];
+        int written = GetLocaleInfoEx(null, type, buffer, buffer.Length);
+        return written > 0 && written <= buffer.Length ? new string(buffer, 0, written - 1) : null;
     }
 
     [LibraryImport("kernel32.dll")]
@@ -92,5 +86,5 @@ public static partial class SystemCodePages
     private static partial uint GetOEMCP();
 
     [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
-    private static partial int GetLocaleInfoEx(string? localeName, uint type, ref int data, int dataCount);
+    private static partial int GetLocaleInfoEx(string? localeName, uint type, [Out] char[] data, int dataCount);
 }

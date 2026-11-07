@@ -9,9 +9,9 @@ namespace Archiver.Core.Tests.Services.Sandbox;
 // bytes a name sent back to tar.exe may have.
 public sealed class TarListedNameBytesTests
 {
-    private static readonly Encoding Cyrillic = SystemCodePages.For(1251);
-    private static readonly Encoding Western = SystemCodePages.For(1252);
-    private static readonly Encoding Utf8 = SystemCodePages.For(SystemCodePages.Utf8);
+    private static readonly Encoding Cyrillic = new TextBoundary(1251).Lenient;
+    private static readonly Encoding Western = new TextBoundary(1252).Lenient;
+    private static readonly Encoding Utf8 = new TextBoundary(65001).Lenient;
 
     [Fact]
     public void PlainNames_TheirOwnBytes()

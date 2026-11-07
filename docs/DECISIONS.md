@@ -14134,6 +14134,126 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
   - The integration tests ran on 3.8.9; on 3.5.2 the tar.exe behaviour they rest on was measured
     directly (PakkoW10 has no .NET).
 
+**T-F467 done (2026-11-07): one encoding provider.**
+- **The provider.** `Archiver.Core.Text.TextBoundaries` holds a named handler per text boundary, each
+  built from one `MachinePages` snapshot (system ANSI page, system OEM page, UCRT locale name):
+  `TarExeOutput`, `TarExeCommandLine`, `TarExeMessages`, `TarRawHeaderNames`, `ZipLegacyNames`,
+  `Console` (the CLI's `-scc`), `Par2FileNames`, `LaunchArgumentPayload`. A handler gives a
+  `TextBoundary` (its page, `Strict` and `Lenient`) or a fixed encoding. `SystemCodePages` is
+  internal and read only by the provider; `TextBoundaryOwnersTests` keeps every `src` file outside
+  `Text/` off it, and the PAR2 and launch-payload files on their handlers. `TarSandboxScope` takes
+  one snapshot for its output, command line and raw header names; the `ForcedTarOutputEncoding`
+  seam stays, the one way to set the output apart from the command line for `TarOutputPageTests`.
+  The Shell's stdin path list stays raw UTF-16 code units (an unpaired surrogate survives).
+- **Raw tar names follow libarchive, measured.** `get_current_oemcp` (`archive_string.c`, fetched
+  for v3.5.2 and v3.8.9, the 41-row `acp_ocp_map` identical in both): the first row whose locale
+  begins with the UCRT locale name (`strncmp` over the name's length up to the '.'), otherwise
+  `GetOEMCP()`. The table is copied in order, repeats included. The UCRT name is
+  `<SENGLISHLANGUAGENAME>_<SENGLISHCOUNTRYNAME>` of the user's format: `ucrtbase.setlocale(LC_ALL, "")`
+  and `GetLocaleInfoEx` agreed for all 12 formats below.
+- **The oracle, in Pakko's sandbox on 3.5.2** (PakkoW10, system 1252/437, a self-contained probe
+  listing a ustar with raw name bytes 0x80-0xFF through `TarSandboxedService`, each format set with
+  `Set-Culture` and read back; restored to en-US):
+
+  | Format | UCRT name | Page libarchive read the bytes in |
+  |---|---|---|
+  | en-US | English_United States | 437 |
+  | en-GB, de-DE, pt-BR | English_United Kingdom, German_Germany, Portuguese_Brazil | 850 |
+  | pl-PL | Polish_Poland | 852 |
+  | ru-RU | Russian_Russia | 866 |
+  | ja-JP, ko-KR | Japanese_Japan, Korean_Korea | DBCS (932, 949): a lead byte took the '.' |
+  | uk-UA, zh-CN, zh-TW, nb-NO | Ukrainian_Ukraine, Chinese (Simplified)_China, Chinese (Traditional)_Taiwan, Norwegian Bokmål_Norway | 437 (no row: `GetOEMCP()`) |
+
+  The host (3.8.9, uk-UA over 1251/866) read them in 866, `GetOEMCP()` again. The old rule
+  (`UserOem`, the format's own OEM page) said 866 for uk-UA over 1252, where tar.exe reads 437: the
+  header veto then refused a tar it could have read (a false refusal, never a false Clean).
+  `TextBoundariesTests` holds every row, a prefix hit, and a name longer than every row; the uk-UA
+  row was red on a stub returning `UserOem`.
+- **Checked end to end on 3.5.2** (PakkoW10, format uk-UA over en-US, a ustar whose names are raw
+  437 bytes, `caf` 0x82 `.txt` and `plain.txt`; self-contained builds, each row extracted alone):
+  `main` refused `café.txt` ("cannot handle safely ... 1252"); this branch extracted its own
+  12-byte file. Restored to en-US.
+- **Also from source:** libarchive composes NFC only for names it converts from UTF-8 or UTF-16
+  (`SCONV_NORMALIZATION_C`), which T-F466's comparison follows.
+- **Removed:** `SystemCodePages.UserAnsi`/`UserOem` and their locale lookups, `TarOutputEncoding`,
+  `ZipNameCodePages.System` (now `Current()`), and the substring test
+  `TarOutput_UsesTheCommandLinePage`. `TextBoundariesTests` checks the same thing as behaviour, for
+  every machine row.
+- **The 932 note from T-F465's review, measured and fixed (the user, 2026-11-07: "check it").**
+  - **Two tables.** Win32's 932 has 398 double-byte codes that decode to a character whose own form
+    is another code: NEC row 13 (0x8790..0x879C, e.g. 0x87 0x90 = U+2252, own form 0x81 0xE0) and
+    NEC's selection of IBM's extension (0xED40..0xEEFC, e.g. 0xED 0x40 = U+7E8A, own form 0xFA 0x5C).
+    .NET's `CodePagesEncodingProvider` decodes all of them as Win32 does, but its strict encoder has
+    no reverse for them, and its strict decoder throws on 0x87 0x90.
+  - **tar.exe, PakkoW10, system and format ja-JP, 3.5.2.** It prints a raw ustar name as stored:
+    NEC row 13 escaped (`a.t`), 0xED 0x40 raw. `-T` with the own form `a 0x81 0xE0 .t` and
+    with the stored form both extracted that entry, exit 0. tar.exe matches as text in its page.
+  - **Pakko before.** `ReadListedNameBytes` re-encoded the name to its own form and compared bytes, so
+    both rows were refused: false refusals, as the note said. A pax name (UTF-8, U+2252) was not.
+  - **The fix.** The listing keeps the bytes as printed. The line is unescaped byte by byte, and a
+    0x5C after a lead byte (`IsDBCSLeadByteEx`; 0x83 0x5C is katakana SO) is no escape. Text is
+    compared with Win32's table (`TarCommandLineEncoding.Decode`), the one the C runtime reads
+    tar.exe's names with. The guard (`TarNames.ReachesTheListedEntry`) admits a name when what Pakko
+    sends and what tar.exe printed read as the same text in tar.exe's page. It also requires that no
+    other listed entry prints that text in other bytes (`IndexByText`): with both forms present, `-T`
+    takes both entries (measured), the same rule T-F466 applies to NFC and NFD.
+  - **After, on the VM.** The NEC and IBM-selected rows extract their own file. Two forms of one name
+    are refused, raw or escaped. Katakana SO extracts. T-F465's 1251/1252 swap is still refused (its
+    printed bytes read as another text in tar.exe's page): unit test and `TarOutputPageTests`.
+    Restored to en-US.
+  - **Fresh opus review (read-only, 2026-11-07): one fail-open, fixed.** 0x81 0xBE and NEC's 0x87 0x9C
+    are both U+222A. bsdtar escapes each byte of an unprintable character and prints a printable trail
+    byte raw, so the first lists as `` plus a raw 0xBE (measured on the VM). The text unescape read
+    that line as two other characters, so it was missing from the uniqueness index, and selecting the
+    `u∪.t` row extracted the other entry's content (measured: `X-81BE`). Now every line's printed bytes
+    also count under the text they read as in the page, so the two collide and both are refused. A
+    line whose printed bytes are no text in the page makes no name of that listing sendable. The
+    reviewer counted 11 such texts in 932, one in 950, and none in 936 or 949. Red tests:
+    `FormListedWithARawTrailByte_StillSharesTheText`, `LineThatIsNoText_NoNameIsSendable` (mutant). The
+    VM rerun of the 932 set gave the same results as above. Restored to en-US.
+- **Every character of every page, in tests (the user, 2026-11-07).**
+  - **The model.** `BsdtarListingModel` (tests) transcribes how bsdtar lists a name: tar/util.c's
+    `safe_fprintf` and `bsdtar_expand_char`, the same logic in v3.5.2 and v3.8.9. It runs on the C
+    runtime's own `_mbtowc_l`/`_iswprint_l`/`_isprint_l` for one page. Before printing, it reads a raw
+    header name the way libarchive does (archive_string.c, `strncat_in_codepage`, the same in both
+    versions): bytes as they are when the header page is the output page, otherwise
+    `MultiByteToWideChar(header page, MB_ERR_INVALID_CHARS)` then `WideCharToMultiByte(ANSI, 0)` (best
+    fit, default character).
+  - **Checked against the real tar.exe, byte for byte.** One ustar per machine holds every character
+    of its header page in every byte form Windows decodes (`<unit>.t`). The machines: 874, 932, 936,
+    949, 950, 1250..1258 with their libarchive header pages (852, 866, 437, 737, 857, 862, 720, 775,
+    1258).
+    - PakkoW10, system locale and format per row, in-box 3.5.2 and the host's 3.8.9 binary with its
+      `archiveint.dll`: all 28 listings equal the model.
+    - The host (3.8.9, uk-UA over 1251/866) equals it too. `TarListingModelTests` keeps that check on
+      every run, on whatever machine runs it (CI: en-US).
+    - Where `Set-Culture` did not take (th-TH, he-IL, ar-SA, vi-VN stayed en-US), libarchive used the
+      system OEM page, as `LibarchiveOemPage`'s fallback says.
+  - **One difference between the builds, measured.** Where `WideCharToMultiByte` used the default
+    character, 3.8.9 leaves the entry out ("Archive entry has empty or unreadable filename ...
+    skipping", exit 1; el-GR, lt-LT, he-IL, ar-SA), while the in-box 3.5.2 prints the name with `?`.
+    The upstream source of both returns NULL there, so Microsoft's 3.5.2 build differs. The model takes
+    the build as a parameter.
+  - **The test.** `TarSendsAsListedExhaustiveTests`, 17 machines × both builds, about 70,000 names per
+    run. For every listed row: a selection reaches tar.exe only if tar.exe, which matches `-T` as text
+    in its page, takes exactly that row's entry. Every row whose name no other entry shares, read
+    without loss, must reach it; a real `?` is excluded (T-F416).
+  - **Found and fixed by it.** `TarListingName.Unescape` decoded an escaped lead byte apart from the raw
+    trail byte bsdtar prints after it (932: `\201J` for U+309B). That is 2,163 characters in 932, and
+    more in 936 and 950, shown as two wrong characters and refused. An escaped lead byte now joins the
+    next character's bytes before the run is decoded. Red: the three DBCS rows before the fix, and a
+    unit test.
+  - **Seen red on mutants:** same-key collision off (932, 950), the header verdict off (10 SBCS
+    machines), the `Unescape` fix off (932, 936, 950), and the model's header conversion off (the
+    integration test).
+  - **Left open (T-F469).** With 3.8.9 an archive holding one name it leaves out lists fewer names
+    than its headers, so T-F441's count check refuses every selection from it. That fails closed but
+    refuses names that are fine.
+- **The tests read the machine's pages as the product does.** They take a literal page through
+  `new TextBoundary(n)` and the machine's through `MachinePages.Current`. `SystemCodePages_IsReadOnlyByTheProvider`
+  now covers `tests` too, with the provider's own tests (`tests/Archiver.Core.Tests/Text/`) as the
+  only exception. Seen red on a mutant.
+
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
 - **Why.** tar.exe writes through the long-path prefix, so `a.txt.`, `a.txt ` and a folder `d ` are on

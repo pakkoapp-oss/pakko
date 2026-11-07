@@ -20,7 +20,7 @@ internal static partial class TarCommandLineEncoding
     private const uint MbErrInvalidChars = 0x00000008;
 
     /// <summary>The ANSI code page tar.exe converts its command line with.</summary>
-    public static uint AnsiCodePage => (uint)SystemCodePages.Ansi;
+    public static uint AnsiCodePage => (uint)TextBoundaries.TarExeCommandLine(MachinePages.Current).CodePage;
 
     /// <summary>True when <paramref name="value"/> reaches tar.exe unchanged.</summary>
     public static bool IsRepresentable(string value) => IsRepresentable(value, AnsiCodePage);
@@ -50,6 +50,33 @@ internal static partial class TarCommandLineEncoding
 
     /// <summary>T-F465: the exact bytes <paramref name="value"/> reaches tar.exe as, or null when it would not reach it unchanged.</summary>
     public static byte[]? Encode(string value) => TryEncode(value, AnsiCodePage);
+
+    internal static byte[]? Encode(string value, uint codePage) => TryEncode(value, codePage);
+
+    /// <summary>
+    /// T-F467: <paramref name="bytes"/> read as text in <paramref name="codePage"/> with the operating
+    /// system's own table, the one the C runtime reads tar.exe's names with; null when they are not text
+    /// there. .NET's strict table is not it: it has no NEC duplicates of 932 (0x87 0x90 reads only by best fit).
+    /// </summary>
+    internal static string? Decode(byte[] bytes, uint codePage)
+    {
+        if (bytes.Length == 0)
+            return string.Empty;
+        int charCount = MultiByteToWideChar(codePage, MbErrInvalidChars, bytes, bytes.Length, null, 0);
+        if (charCount <= 0)
+            return null;
+        char[] text = new char[charCount];
+        return MultiByteToWideChar(codePage, MbErrInvalidChars, bytes, bytes.Length, text, text.Length) == charCount ? new string(text) : null;
+    }
+
+    /// <summary>T-F467: whether <paramref name="value"/> opens a double-byte character in <paramref name="codePage"/> (system table).</summary>
+    internal static bool IsLeadByte(uint codePage, byte value)
+    {
+        // An ASCII byte opens no character in any Windows page, and UTF-8 is no double-byte page.
+        if (codePage == CpUtf8 || value < 0x80)
+            return false;
+        return IsDBCSLeadByteEx(codePage, value);
+    }
 
     // The exact bytes of value in codePage, or null when it would not convert back to itself.
     private static byte[]? TryEncode(string value, uint codePage)
@@ -87,9 +114,10 @@ internal static partial class TarCommandLineEncoding
     /// <summary>Throws <see cref="TarArgumentEncodingException"/> for the first argument that would not reach tar.exe unchanged.</summary>
     public static void EnsureRepresentable(IEnumerable<string> arguments)
     {
-        string? unrepresentable = arguments.FirstOrDefault(argument => !IsRepresentable(argument));
+        uint codePage = AnsiCodePage;
+        string? unrepresentable = arguments.FirstOrDefault(argument => !IsRepresentable(argument, codePage));
         if (unrepresentable is not null)
-            throw new TarArgumentEncodingException(unrepresentable, AnsiCodePage);
+            throw new TarArgumentEncodingException(unrepresentable, codePage);
     }
 
     [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
@@ -101,6 +129,10 @@ internal static partial class TarCommandLineEncoding
     private static partial int WideCharToMultiByteUsedDefault(
         uint codePage, uint flags, string wideChars, int wideCharCount,
         [Out] byte[] multiByte, int multiByteCount, IntPtr defaultChar, out int usedDefaultChar);
+
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool IsDBCSLeadByteEx(uint codePage, byte testChar);
 
     // StringMarshalling.Utf16 matters: a char[] must go through as UTF-16, one wide char per char.
     [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]

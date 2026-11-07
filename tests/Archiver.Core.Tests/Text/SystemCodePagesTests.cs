@@ -67,25 +67,8 @@ public sealed class SystemCodePagesTests
     [Fact]
     public void MachinePages_HaveEncodings()
     {
-        int[] pages = [SystemCodePages.Ansi, SystemCodePages.Oem, SystemCodePages.UserAnsi, SystemCodePages.UserOem];
+        int[] pages = [SystemCodePages.Ansi, SystemCodePages.Oem];
         pages.Should().AllSatisfy(page => SystemCodePages.For(page).Should().NotBeNull());
-    }
-
-    // A Unicode-only locale names no page of its own: GetLocaleInfoEx answers CP_ACP/CP_OEMCP (0/1),
-    // which no table holds, so the system's page stands in, as libarchive does.
-    [Fact]
-    public void UserPages_LocaleWithoutAPage_FallBackToTheSystemPages()
-    {
-        SystemCodePages.UserOemFor("hi-IN").Should().Be(SystemCodePages.Oem);
-        SystemCodePages.UserAnsiFor("hi-IN").Should().Be(SystemCodePages.Ansi);
-    }
-
-    [Fact]
-    public void UserPages_LocaleWithPages_AreItsOwn()
-    {
-        SystemCodePages.UserOemFor("uk-UA").Should().Be(866);
-        SystemCodePages.UserAnsiFor("uk-UA").Should().Be(1251);
-        SystemCodePages.UserAnsiFor("en-US").Should().Be(1252);
     }
 
     // Each boundary with an injected page: what passes on one page is refused on another.
@@ -99,17 +82,6 @@ public sealed class SystemCodePagesTests
         TarCommandLineEncoding.IsRepresentable(ECafe + ".txt", (uint)codePage).Should().Be(eAcute);
         TarCommandLineEncoding.IsRepresentable(Zhe + ".txt", (uint)codePage).Should().Be(zhe);
         TarCommandLineEncoding.IsRepresentable(Sun + ".txt", (uint)codePage).Should().Be(sun);
-    }
-
-    // tar.exe prints names in the user locale's ANSI page, which need not be the system page its
-    // command line uses: the same bytes read as two different names.
-    [Fact]
-    public void TarOutput_UserPageDiffersFromSystemPage_DecodesByTheUserPage()
-    {
-        byte[] printed = SystemCodePages.For(1251).GetBytes(Zhe + ".txt");
-
-        TarOutputEncoding.ForCodePage(1251).GetString(printed).Should().Be(Zhe + ".txt");
-        TarOutputEncoding.ForCodePage(1252).GetString(printed).Should().NotBe(Zhe + ".txt");
     }
 
     [Fact]

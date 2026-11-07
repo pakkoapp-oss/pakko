@@ -77,7 +77,7 @@ public sealed partial class QuarantineFilesOwnerTests
         ("Sandbox/TarSandboxScope.cs", "new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read)", 1, "the archive itself"),
         ("Sandbox/TarSandboxScope.cs", "Directory.CreateDirectory(firstDir)", 1, "a Pakko-named folder or file at the quarantine root"),
         ("Sandbox/TarSandboxScope.cs", "Directory.CreateDirectory(folder)", 1, "a Pakko-named folder or file at the quarantine root"),
-        ("Sandbox/TarSandboxScope.cs", "File.WriteAllBytes(Path.Combine(QuarantineRoot, relativePath), TarCommandLineEncoding.EncodeLines(lines))", 1, "a Pakko-named folder or file at the quarantine root"),
+        ("Sandbox/TarSandboxScope.cs", "File.WriteAllBytes(Path.Combine(QuarantineRoot, relativePath), TarCommandLineEncoding.EncodeLines(lines, CommandLinePage))", 1, "a Pakko-named folder or file at the quarantine root"),
         ("Sandbox/TarSandboxScope.cs", "new FileStream(ReopenArchive(), FileAccess.Read)", 2, "a handle, not a path (the archive)"),
         ("Sandbox/TarSandboxScope.cs", "Directory.Exists(QuarantineRoot)", 1, "a Pakko-named folder or file at the quarantine root"),
         ("Sandbox/TarSandboxScope.cs", "Directory.Delete(QuarantineRoot, recursive: true)", 1, "the quarantine root; .NET deletes names such as \"d \" and \"a.txt.\" below it (measured)"),

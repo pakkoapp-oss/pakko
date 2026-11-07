@@ -30,8 +30,7 @@ internal static class TarListingName
         {
             if (listed[i] != '\\')
             {
-                FlushBytes(name, bytes, encoding);
-                name.Append(listed[i]);
+                AppendCharacter(name, bytes, encoding, listed[i]);
                 i++;
                 continue;
             }
@@ -49,8 +48,7 @@ internal static class TarListingName
             char? control = Control(next);
             if (control is null)
                 return null;
-            FlushBytes(name, bytes, encoding);
-            name.Append(control.Value);
+            AppendCharacter(name, bytes, encoding, control.Value);
             i += 2;
         }
         FlushBytes(name, bytes, encoding);
@@ -125,6 +123,34 @@ internal static class TarListingName
             value = (value * 8) + (digit - '0');
         }
         return value <= byte.MaxValue ? (byte)value : null;
+    }
+
+    // T-F467: bsdtar escapes each byte of a character it finds unprintable, and a trail byte it finds
+    // printable comes out raw ("\201J" is 0x81 0x4A in 932): a character after an escaped lead byte
+    // joins it before the run is decoded.
+    private static void AppendCharacter(StringBuilder name, List<byte> bytes, Encoding encoding, char character)
+    {
+        if (EndsInLeadByte(bytes, encoding))
+        {
+            bytes.AddRange(encoding.GetBytes(character.ToString()));
+            return;
+        }
+        FlushBytes(name, bytes, encoding);
+        name.Append(character);
+    }
+
+    // Whether the escaped bytes so far end in a lead byte with no trail byte yet.
+    private static bool EndsInLeadByte(List<byte> bytes, Encoding encoding)
+    {
+        uint codePage = (uint)encoding.CodePage;
+        int k = 0;
+        bool open = false;
+        while (k < bytes.Count)
+        {
+            open = Sandbox.TarCommandLineEncoding.IsLeadByte(codePage, bytes[k]) && k + 1 >= bytes.Count;
+            k += Sandbox.TarCommandLineEncoding.IsLeadByte(codePage, bytes[k]) ? 2 : 1;
+        }
+        return open;
     }
 
     private static void FlushBytes(StringBuilder name, List<byte> bytes, Encoding encoding)

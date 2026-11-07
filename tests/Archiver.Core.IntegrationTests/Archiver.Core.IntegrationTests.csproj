@@ -23,6 +23,11 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- T-F467: the bsdtar listing model the unit tests run on, checked here against the real tar.exe. -->
+  <ItemGroup>
+    <Compile Include="..\Archiver.Core.Tests\Services\Sandbox\BsdtarListingModel.cs" Link="BsdtarListingModel.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\Archiver.Core\Archiver.Core.csproj" />
   </ItemGroup>

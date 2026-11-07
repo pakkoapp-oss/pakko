@@ -1,6 +1,7 @@
 using System.Text;
 using Archiver.Core.Services;
 using Archiver.Core.Services.Sandbox;
+using Archiver.Core.Text;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
@@ -12,8 +13,8 @@ namespace Archiver.Core.Tests.Services;
 /// </summary>
 public sealed class TarListingNameTests
 {
-    private static readonly Encoding Cp1251 = TarOutputEncoding.ForCodePage(1251);
-    private static readonly Encoding Utf8 = TarOutputEncoding.ForCodePage(65001);
+    private static readonly Encoding Cp1251 = new TextBoundary(1251).Lenient;
+    private static readonly Encoding Utf8 = new TextBoundary(65001).Lenient;
 
     [Theory]
     [InlineData(@"plain.txt", @"plain.txt")]
@@ -27,6 +28,18 @@ public sealed class TarListingNameTests
     public void Unescape_ReadsBackslashesAsTheNameHasThem(string listed, string expected)
     {
         TarListingName.Unescape(listed, Cp1251).Should().Be(expected);
+    }
+
+    // T-F467: bsdtar escapes each byte of a character it finds unprintable and prints a printable trail
+    // byte raw: U+309B (932: 0x81 0x4A) lists as "\201J". The two bytes are one character.
+    [Fact]
+    public void EscapedLeadByte_WithARawTrailByte_IsOneCharacter()
+    {
+        Encoding japanese = new TextBoundary(932).Lenient;
+
+        TarListingName.Unescape("\\201J.t", japanese).Should().Be((char)0x309B + ".t");
+        TarListingName.Unescape("\\201\\\\.t", japanese).Should().Be(japanese.GetString([0x81, 0x5C]) + ".t");
+        TarListingName.Unescape("a\\201J", Cp1251).Should().Be("a" + (char)0x0403 + "J");
     }
 
     [Fact]
