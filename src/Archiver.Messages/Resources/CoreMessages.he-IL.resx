@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>לא כל הקבצים יצאו מארכיון זה, ולכן דבר לא חולץ ממנו. קבצים שיצאו: {0} מתוך {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>לא ניתן להשתמש בשם '{0}' כדי לבחור פריטים מארכיון זה: tar.exe במערכת זו (דף קוד ANSI {1}) מציג את שמות הארכיון באופן שונה מהאופן שבו הם מאוחסנים. בצע את הפעולה על הארכיון כולו, ללא בחירה או מסנן.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>הפריט מוגן בסיסמה ולא נסרק.</value>
   </data>

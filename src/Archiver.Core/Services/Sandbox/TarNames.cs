@@ -295,6 +295,6 @@ internal static class TarNames
     {
         if (verdict.Trust == TarNameTrust.Faithful || (allowSuspect && verdict.Trust == TarNameTrust.Suspect))
             return;
-        throw new TarArgumentEncodingException(verdict.Example ?? string.Empty, (uint)TextBoundaries.TarExeOutput(MachinePages.Current).CodePage);
+        throw TarArgumentEncodingException.ListedNameUntrusted(verdict.Example ?? string.Empty, (uint)TextBoundaries.TarExeOutput(MachinePages.Current).CodePage);
     }
 }

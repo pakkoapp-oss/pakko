@@ -50,6 +50,10 @@ public static class MessageTemplates
         [MessageCode.TarNameNotRepresentable] =
             "The name '{0}' contains characters that tar.exe cannot handle safely on this system " +
             "(ANSI code page {1}). Use ZIP for this content.",
+        [MessageCode.TarListedNameUntrusted] =
+            "The name '{0}' cannot be used to pick entries from this archive: tar.exe on this system " +
+            "(ANSI code page {1}) lists the archive's names differently from how they are stored. " +
+            "Run the operation on the whole archive, without a selection or a filter.",
         [MessageCode.TarSignatureInvalid] = "tar.exe failed Authenticode signature verification; refusing to run it.",
         [MessageCode.TarSignatureVerificationFailed] = "'{0}' failed Authenticode signature verification.",
 

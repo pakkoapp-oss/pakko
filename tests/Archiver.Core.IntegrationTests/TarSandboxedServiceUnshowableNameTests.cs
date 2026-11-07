@@ -9,7 +9,7 @@ namespace Archiver.Core.IntegrationTests;
 /// T-F416: tar.exe 3.5.2 (Windows 10, ACP 1252) lists a UTF-8 name it cannot show in the ANSI code
 /// page as "????.txt", exit 0, while extraction writes the real name. A name with '?' from the
 /// listing therefore matches nothing reliably: a filter or a selection that depends on it is refused
-/// with TarNameNotRepresentable; a whole-archive extraction or test goes on. A real '?' in a name
+/// with TarListedNameUntrusted (T-F452); a whole-archive extraction or test goes on. A real '?' in a name
 /// (it cannot be a Windows file name either) stands in for the lossy one on every machine.
 /// </summary>
 [Collection("TarSandbox")]
@@ -81,7 +81,7 @@ public sealed class TarSandboxedServiceUnshowableNameTests : IDisposable
     {
         ArchiveResult result = await _sut.TestAsync([Tar()], entryFilter: (_, _) => true);
 
-        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TarNameNotRepresentable);
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TarListedNameUntrusted);
     }
 
     [Integration]
@@ -106,7 +106,7 @@ public sealed class TarSandboxedServiceUnshowableNameTests : IDisposable
             ArchivePaths = [path], DestinationFolder = NewDestination(), Mode = ExtractMode.SingleFolder, EntryFilter = (_, _) => true,
         });
 
-        tested.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TarNameNotRepresentable);
+        tested.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TarListedNameUntrusted);
         extracted.Errors.Should().ContainSingle().Which.Text!.Code.Should().NotBe(MessageCode.PasswordProtectedFormatNotSupported);
     }
 

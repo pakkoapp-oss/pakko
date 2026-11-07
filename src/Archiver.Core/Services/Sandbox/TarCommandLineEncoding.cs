@@ -144,11 +144,26 @@ internal static partial class TarCommandLineEncoding
 /// A name that tar.exe would receive altered (T-F266) — refused before tar.exe runs. An
 /// <see cref="IOException"/>, so every tar call site reports it as an ordinary per-archive error.
 /// </summary>
-internal sealed class TarArgumentEncodingException(string argument, uint codePage) // NOSONAR: S3871 — deliberately internal, always caught and turned into an ArchiveError (same as SandboxSetupException)
-    : IOException(Describe(argument, codePage).English), ICoreTextSource
+internal sealed class TarArgumentEncodingException : IOException, ICoreTextSource // NOSONAR: S3871 — deliberately internal, always caught and turned into an ArchiveError (same as SandboxSetupException)
 {
-    public CoreText Text { get; } = Describe(argument, codePage);
+    public TarArgumentEncodingException(string argument, uint codePage)
+        : this(Describe(argument, codePage))
+    {
+    }
+
+    private TarArgumentEncodingException(CoreText text)
+        : base(text.English) => Text = text;
+
+    public CoreText Text { get; }
 
     internal static CoreText Describe(string argument, uint codePage) =>
         CoreMessages.Text(MessageCode.TarNameNotRepresentable, argument, codePage.ToString(CultureInfo.InvariantCulture));
+
+    /// <summary>
+    /// T-F452: a name from tar.exe's listing that cannot pick out its entry (the listing disagrees
+    /// with the headers, or tar.exe printed it in other bytes): no code-page or ZIP advice, which fits
+    /// only a name Pakko sends while creating.
+    /// </summary>
+    internal static TarArgumentEncodingException ListedNameUntrusted(string name, uint codePage) =>
+        new TarArgumentEncodingException(CoreMessages.Text(MessageCode.TarListedNameUntrusted, name, codePage.ToString(CultureInfo.InvariantCulture)));
 }

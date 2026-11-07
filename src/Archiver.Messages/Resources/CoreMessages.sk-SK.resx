@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Z tohto archívu nevyšli všetky súbory, preto z neho nebolo nič extrahované. Súbory, ktoré vyšli: {0} z {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Názov „{0}“ nemožno použiť na výber položiek z tohto archívu: tar.exe v tomto systéme (znaková stránka ANSI {1}) zobrazuje názvy v archíve inak, než ako sú uložené. Vykonajte operáciu s celým archívom, bez výberu a bez filtra.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Položka je chránená heslom a nebola skontrolovaná.</value>
   </data>

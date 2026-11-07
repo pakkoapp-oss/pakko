@@ -14355,6 +14355,22 @@ constraint "only tar.exe" stands until the user decides (below).
   the shape these runs point to (its launch was measured, its listing was not). It would be a task of
   its own, with plan mode and the advisor gate at both ends.
 
+## T-F452 - A refused listed name has its own message (2026-11-07)
+
+- **What changed.** A name from tar.exe's listing that cannot pick out its entry now says so:
+  `TarListedNameUntrusted` ("cannot be used to pick entries ... lists the archive's names differently
+  from how they are stored ... run the operation on the whole archive"). Before, it reused
+  `TarNameNotRepresentable`, whose "use ZIP for this content" fits only a name Pakko sends while
+  creating.
+- **Where.** The same `TarArgumentEncodingException` (a factory, `ListedNameUntrusted`), so every
+  catch that treats it as an ordinary per-archive error and not as a password failure stays as it
+  is. Two throw sites: `TarNames.EnsureNamesCanDecide` and `TarSandboxScope.EnsureSentAsListedAsync`.
+  `EncodeLines`/`EnsureRepresentable` (creation) keep the old message.
+- **Seen red.** The unit test per verdict, the 3.5.2 '?' tests, the best-fit filter test and both
+  swap-pair byte-guard tests failed on the old code; with the byte guard alone reverted, the two
+  swap-pair tests failed again. Four first translations used the replaced word for "archive"
+  (ko, th, vi, zh); `GlossaryTests` caught them.
+
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
 - **Why.** tar.exe writes through the long-path prefix, so `a.txt.`, `a.txt ` and a folder `d ` are on

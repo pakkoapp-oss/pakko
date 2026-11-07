@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Bu arşivden tüm dosyalar çıkmadı, bu yüzden arşivden hiçbir şey ayıklanmadı. Çıkan dosyalar: {0}/{1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>'{0}' adı bu arşivden öğe seçmek için kullanılamaz: bu sistemdeki tar.exe (ANSI kod sayfası {1}) arşivdeki adları depolandıklarından farklı biçimde listeliyor. İşlemi seçim veya filtre olmadan arşivin tamamında çalıştırın.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Öğe parola korumalı ve taranmadı.</value>
   </data>

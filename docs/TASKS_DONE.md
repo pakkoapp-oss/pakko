@@ -14223,3 +14223,19 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     one would be refused (a false refusal). Measure with the provider's 932 matrix; the `-q` guard has
     no test that fails without it (the main `-T` guard and `JudgeExtracted` reach first).
 - **Reported by:** the agent, 2026-11-07.
+
+### T-F452 — A tar selection refused for a header mismatch says "code page" and "use ZIP" (P3, from T-F441)
+
+- [x] **Status:** done 2026-11-07: `MessageCode.TarListedNameUntrusted` (37 locales) for the two
+  refusals of a listed name: `TarNames.EnsureNamesCanDecide` (a selection, a filter, the T-F461 folder
+  case, a scan selection) and the byte guard. Creation keeps `TarNameNotRepresentable`.
+  `docs/DECISIONS.md`, "T-F452".
+- **Before:** open. T-F441 part 2 reuses `TarNameNotRepresentable` when `TarNames` cannot trust
+  tar.exe's listing; that message speaks of a name the code page cannot carry and advises ZIP, which
+  fits creation, not a selection from a tar whose header names disagree with the listing. Next: a
+  message of its own (37 locales, `Glossary.tsv`), through whichever stream holds the Messages set.
+- **Also (2026-11-06):** the T-F461 refusals of a filter (a folder tar.exe wrote by another name)
+  show the same code-page message.
+- **Also (2026-11-07, T-F465's review):** the byte guard (`TarSandboxScope.EnsureSentAsListedAsync`)
+  refuses a name that is representable but was printed in other bytes, and says the same thing.
+- **Reported by:** T-F441's closing notes (`docs/DECISIONS.md`, "T-F441 and T-F424"), 2026-10-31.

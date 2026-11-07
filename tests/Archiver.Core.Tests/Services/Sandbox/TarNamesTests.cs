@@ -1,3 +1,4 @@
+using Archiver.Core.Models;
 using Archiver.Core.Services.Sandbox;
 using FluentAssertions;
 
@@ -186,8 +187,11 @@ public sealed class TarNamesTests
         Action lossy = () => TarNames.EnsureNamesCanDecide(new TarListingVerdict(TarNameTrust.Lossy, "cafe.txt"), allowSuspect: true);
         Action noExample = () => TarNames.EnsureNamesCanDecide(new TarListingVerdict(TarNameTrust.Suspect, null));
 
-        suspect.Should().Throw<TarArgumentEncodingException>().WithMessage("*a.txt*");
-        lossy.Should().Throw<TarArgumentEncodingException>().WithMessage("*cafe.txt*");
-        noExample.Should().Throw<TarArgumentEncodingException>();
+        suspect.Should().Throw<TarArgumentEncodingException>().WithMessage("*a.txt*")
+            .Which.Text.Code.Should().Be(MessageCode.TarListedNameUntrusted);
+        lossy.Should().Throw<TarArgumentEncodingException>().WithMessage("*cafe.txt*")
+            .Which.Text.Code.Should().Be(MessageCode.TarListedNameUntrusted);
+        noExample.Should().Throw<TarArgumentEncodingException>()
+            .Which.Text.Code.Should().Be(MessageCode.TarListedNameUntrusted);
     }
 }

@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Nu toate fișierele au ieșit din această arhivă, așa că nu s-a extras nimic din ea. Fișiere ieșite: {0} din {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Numele „{0}” nu poate fi folosit pentru a alege elemente din această arhivă: tar.exe de pe acest sistem (pagina de coduri ANSI {1}) afișează numele din arhivă altfel decât sunt stocate. Efectuați operațiunea pe întreaga arhivă, fără selecție și fără filtru.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Elementul este protejat prin parolă și nu a fost scanat.</value>
   </data>

@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Не всички файлове излязоха от този архив, затова нищо не беше извлечено от него. Излезли файлове: {0} от {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Името „{0}“ не може да се използва за избор на елементи от този архив: tar.exe в тази система (ANSI кодова страница {1}) показва имената в архива различно от начина, по който са съхранени. Изпълнете операцията върху целия архив, без избор и без филтър.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Елементът е защитен с парола и не е сканиран.</value>
   </data>

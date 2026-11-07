@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>اس آرکائیو سے تمام فائلیں نہیں نکلیں، اس لیے اس سے کچھ بھی نہیں نکالا گیا۔ نکلنے والی فائلیں: {1} میں سے {0}۔</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>نام '{0}' کو اس آرکائیو سے آئٹمز منتخب کرنے کے لیے استعمال نہیں کیا جا سکتا: اس سسٹم پر tar.exe (ANSI کوڈ پیج {1}) آرکائیو کے ناموں کو ان کی محفوظ شکل سے مختلف دکھاتا ہے۔ کارروائی پورے آرکائیو پر چلائیں، بغیر انتخاب یا فلٹر کے۔</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>اندراج پاس ورڈ سے محفوظ ہے اور اسکین نہیں کیا گیا۔</value>
   </data>

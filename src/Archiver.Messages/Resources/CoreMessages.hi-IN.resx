@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>इस संग्रह से सभी फ़ाइलें नहीं निकलीं, इसलिए इससे कुछ भी नहीं निकाला गया। निकली फ़ाइलें: {1} में से {0}।</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>नाम '{0}' का उपयोग इस संग्रह से आइटम चुनने के लिए नहीं किया जा सकता: इस सिस्टम पर tar.exe (ANSI कोड पेज {1}) संग्रह के नामों को उनके संग्रहीत रूप से अलग दिखाता है। ऑपरेशन को पूरे संग्रह पर चलाएँ, बिना चयन या फ़िल्टर के।</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>प्रविष्टि पासवर्ड से सुरक्षित है और स्कैन नहीं की गई।</value>
   </data>

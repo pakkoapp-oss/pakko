@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Iš šio archyvo išėjo ne visi failai, todėl iš jo nieko neišskleista. Išėję failai: {0} iš {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Pavadinimo „{0}“ negalima naudoti šio archyvo elementams pasirinkti: šios sistemos tar.exe (ANSI kodų puslapis {1}) archyvo pavadinimus rodo kitaip, nei jie išsaugoti. Atlikite veiksmą su visu archyvu, be pasirinkimo ir filtro.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Elementas apsaugotas slaptažodžiu ir nebuvo nuskaitytas.</value>
   </data>

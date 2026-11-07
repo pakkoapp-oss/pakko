@@ -62,6 +62,7 @@ public sealed class TarOutputPageTests : IDisposable
         ArchiveResult result = await sut.TestAsync([fixture.Path], entryFilter: (path, _) => path == fixture.ShownName);
 
         result.Success.Should().BeFalse(fixture.Describe());
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TarListedNameUntrusted, fixture.Describe());
     }
 
     // A filter that leaves the shown name out goes to tar.exe as an exclusion ("-X"): the same guard.
@@ -74,6 +75,7 @@ public sealed class TarOutputPageTests : IDisposable
         ArchiveResult result = await sut.TestAsync([fixture.Path], entryFilter: (path, _) => path != fixture.ShownName);
 
         result.Success.Should().BeFalse(fixture.Describe());
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.TarListedNameUntrusted, fixture.Describe());
     }
 
     // The "-q" first copies: the threat is only in the first of two same-named entries, so only the
