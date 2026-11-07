@@ -605,6 +605,10 @@ uses), not merely untested (the first four since T-F149, the last two since T-F2
   (`Get-Par2Oracles.ps1`, PR #33). `AgentBashHookTests` runs the agent hook through pwsh on every
   case, the same child-process shape as `Archiver.CLI/Program.cs`; the other scripts are checked by
   `DevOpsHygieneTests` and the `lint-ps1` job.
+- **`src/Archiver.ArchiveHelper/**`** (T-F470): the C helper over `archiveint.dll`. It is under real
+  test, by `ArchiveHelperProtocolTests` running the built exe in the sandbox and
+  `ArchiveHelperBinaryTests` reading its PE, but coverlet measures neither C nor a child process, so
+  PR #184 failed the gate at 0 %.
 
 Adding another exclusion needs the same bar as adding a new won't-fix rule above: a specific,
 verified reason the collector (or a unit test) genuinely cannot reach the code — not "coverage is

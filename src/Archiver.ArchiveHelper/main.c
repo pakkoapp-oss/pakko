@@ -7,7 +7,7 @@
  * No name from the archive ever becomes a path here: a selected regular file is written as
  * out\<index>, and Pakko lays the files out itself. Protocol: docs/ARCHITECTURE.md, "Archive helper".
  */
-#include <windows.h>
+#include <Windows.h>
 
 typedef __int64 la_int64_t;
 typedef __int64 la_ssize_t;
@@ -159,6 +159,9 @@ static struct {
     const char *(__cdecl *error_string)(void *);
     int(__cdecl *errno_)(void *);
     int(__cdecl *read_free)(void *);
+} la;
+
+static struct {
     const wchar_t *(__cdecl *pathname_w)(void *);
     const wchar_t *(__cdecl *symlink_w)(void *);
     const wchar_t *(__cdecl *hardlink_w)(void *);
@@ -170,19 +173,21 @@ static struct {
     int(__cdecl *mtime_is_set)(void *);
     int(__cdecl *is_encrypted)(void *);
     int(__cdecl *sparse_count)(void *);
-} la;
+} entry;
 
 /* The formats and filters Pakko may name. Never support_*_all: that adds mtree, which reads
    local files, and filters that start an external program (DECISIONS, "T-F470"). */
 #define KIND_FORMAT 0
 #define KIND_FILTER 1
 
-static struct support {
+struct support {
     const char *name;
     const char *exportName;
     int kind;
     support_fn fn;
-} g_supports[] = {
+};
+
+static struct support g_supports[] = {
     { "tar", "archive_read_support_format_tar", KIND_FORMAT, NULL },
     { "cpio", "archive_read_support_format_cpio", KIND_FORMAT, NULL },
     { "7zip", "archive_read_support_format_7zip", KIND_FORMAT, NULL },
@@ -206,43 +211,42 @@ static int g_missingCount;
 static int load(void)
 {
     int missing = 0;
-    int i;
     const HMODULE m = LoadLibraryExW(L"C:\\Windows\\System32\\archiveint.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
     if (m == NULL)
         return EXIT_LOAD;
 #define BIND(field, name)                                       \
-    *(FARPROC *)&la.field = GetProcAddress(m, name);            \
-    if (la.field == NULL) {                                     \
+    *(FARPROC *)&(field) = GetProcAddress(m, name);             \
+    if ((field) == NULL) {                                      \
         if (g_missingCount < (int)(sizeof g_missing / sizeof g_missing[0])) \
             g_missing[g_missingCount++] = name;                 \
         missing = 1;                                            \
     }
-    BIND(version_details, "archive_version_details")
-    BIND(read_new, "archive_read_new")
-    BIND(set_options, "archive_read_set_options")
-    BIND(set_seek_callback, "archive_read_set_seek_callback")
-    BIND(read_open, "archive_read_open")
-    BIND(next_header, "archive_read_next_header")
-    BIND(data_block, "archive_read_data_block")
-    BIND(data_skip, "archive_read_data_skip")
-    BIND(error_string, "archive_error_string")
-    BIND(errno_, "archive_errno")
-    BIND(read_free, "archive_read_free")
-    BIND(pathname_w, "archive_entry_pathname_w")
-    BIND(symlink_w, "archive_entry_symlink_w")
-    BIND(hardlink_w, "archive_entry_hardlink_w")
-    BIND(filetype, "archive_entry_filetype")
-    BIND(size, "archive_entry_size")
-    BIND(size_is_set, "archive_entry_size_is_set")
-    BIND(mtime, "archive_entry_mtime")
-    BIND(mtime_nsec, "archive_entry_mtime_nsec")
-    BIND(mtime_is_set, "archive_entry_mtime_is_set")
-    BIND(is_encrypted, "archive_entry_is_encrypted")
-    BIND(sparse_count, "archive_entry_sparse_count")
+    BIND(la.version_details, "archive_version_details")
+    BIND(la.read_new, "archive_read_new")
+    BIND(la.set_options, "archive_read_set_options")
+    BIND(la.set_seek_callback, "archive_read_set_seek_callback")
+    BIND(la.read_open, "archive_read_open")
+    BIND(la.next_header, "archive_read_next_header")
+    BIND(la.data_block, "archive_read_data_block")
+    BIND(la.data_skip, "archive_read_data_skip")
+    BIND(la.error_string, "archive_error_string")
+    BIND(la.errno_, "archive_errno")
+    BIND(la.read_free, "archive_read_free")
+    BIND(entry.pathname_w, "archive_entry_pathname_w")
+    BIND(entry.symlink_w, "archive_entry_symlink_w")
+    BIND(entry.hardlink_w, "archive_entry_hardlink_w")
+    BIND(entry.filetype, "archive_entry_filetype")
+    BIND(entry.size, "archive_entry_size")
+    BIND(entry.size_is_set, "archive_entry_size_is_set")
+    BIND(entry.mtime, "archive_entry_mtime")
+    BIND(entry.mtime_nsec, "archive_entry_mtime_nsec")
+    BIND(entry.mtime_is_set, "archive_entry_mtime_is_set")
+    BIND(entry.is_encrypted, "archive_entry_is_encrypted")
+    BIND(entry.sparse_count, "archive_entry_sparse_count")
 #undef BIND
     /* A build without one format or filter still serves the others: probe reports it as "-",
        and only a run that asks for it is refused. */
-    for (i = 0; i < SUPPORT_COUNT; i++)
+    for (int i = 0; i < SUPPORT_COUNT; i++)
         g_supports[i].fn = (support_fn)(void *)GetProcAddress(m, g_supports[i].exportName);
     return missing ? EXIT_EXPORT : EXIT_DONE;
 }
@@ -267,59 +271,54 @@ static int report_own_failure(__int64 code)
 
 /* The selection: ASCII decimal indices, one per line ending in '\n', strictly increasing, no
    leading zeros. Anything else refuses the run. */
+static int parse_selection(const unsigned char *text, DWORD length, unsigned __int64 *indices, DWORD capacity, DWORD *count)
+{
+    DWORD n = 0;
+    unsigned __int64 current = 0;
+    int digits = 0;
+    for (DWORD i = 0; i < length; i++) {
+        const unsigned char c = text[i];
+        if (c >= '0' && c <= '9') {
+            if (digits >= 18 || (digits >= 1 && current == 0))
+                return 0;
+            current = current * 10 + (unsigned)(c - '0');
+            digits++;
+        } else if (c != '\n' || digits == 0 || n >= capacity || n >= MAX_SELECTED) {
+            return 0;
+        } else if (n > 0 && current <= indices[n - 1]) {
+            return 0;
+        } else {
+            indices[n++] = current;
+            current = 0;
+            digits = 0;
+        }
+    }
+    if (digits != 0 || n == 0)
+        return 0;
+    *count = n;
+    return 1;
+}
+
 static int read_selection(const char *path, unsigned __int64 **selected, DWORD *count)
 {
     int result = EXIT_SELECTION;
     unsigned char *text = NULL;
     unsigned __int64 *indices = NULL;
     DWORD got = 0;
-    DWORD n = 0;
-    DWORD i;
-    DWORD capacity;
-    unsigned __int64 current = 0;
-    int digits = 0;
     LARGE_INTEGER size;
     const HANDLE h = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
                                  FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
     if (h == INVALID_HANDLE_VALUE)
         return EXIT_SELECTION;
-    if (!GetFileSizeEx(h, &size) || size.QuadPart <= 0 || size.QuadPart > (LONGLONG)MAX_SELECTION_BYTES)
-        goto done;
-    text = (unsigned char *)HeapAlloc(GetProcessHeap(), 0, (SIZE_T)size.QuadPart);
-    if (text == NULL)
-        goto done;
-    if (!ReadFile(h, text, (DWORD)size.QuadPart, &got, NULL) || got != (DWORD)size.QuadPart)
-        goto done;
-    capacity = got / 2 + 1;
-    indices = (unsigned __int64 *)HeapAlloc(GetProcessHeap(), 0, (SIZE_T)capacity * sizeof *indices);
-    if (indices == NULL)
-        goto done;
-    for (i = 0; i < got; i++) {
-        const unsigned char c = text[i];
-        if (c >= '0' && c <= '9') {
-            if (digits >= 18 || (digits >= 1 && current == 0))
-                goto done;
-            current = current * 10 + (unsigned)(c - '0');
-            digits++;
-        } else if (c == '\n') {
-            if (digits == 0 || n >= capacity || n >= MAX_SELECTED)
-                goto done;
-            if (n > 0 && current <= indices[n - 1])
-                goto done;
-            indices[n++] = current;
-            current = 0;
-            digits = 0;
-        } else {
-            goto done;
-        }
+    if (GetFileSizeEx(h, &size) && size.QuadPart > 0 && size.QuadPart <= (LONGLONG)MAX_SELECTION_BYTES)
+        text = (unsigned char *)HeapAlloc(GetProcessHeap(), 0, (SIZE_T)size.QuadPart);
+    if (text != NULL && ReadFile(h, text, (DWORD)size.QuadPart, &got, NULL) && got == (DWORD)size.QuadPart)
+        indices = (unsigned __int64 *)HeapAlloc(GetProcessHeap(), 0, ((SIZE_T)got / 2 + 1) * sizeof *indices);
+    if (indices != NULL && parse_selection(text, got, indices, got / 2 + 1, count)) {
+        *selected = indices;
+        indices = NULL;
+        result = EXIT_DONE;
     }
-    if (digits != 0 || n == 0)
-        goto done;
-    *selected = indices;
-    *count = n;
-    indices = NULL;
-    result = EXIT_DONE;
-done:
     if (indices != NULL)
         HeapFree(GetProcessHeap(), 0, indices);
     if (text != NULL)
@@ -330,36 +329,36 @@ done:
 
 static void put_entry(unsigned __int64 index, void *e)
 {
-    const int encrypted = la.is_encrypted(e);
-    const int hasTime = la.mtime_is_set(e);
-    const wchar_t *link = la.symlink_w(e);
+    const int encrypted = entry.is_encrypted(e);
+    const int hasTime = entry.mtime_is_set(e);
+    const wchar_t *link = entry.symlink_w(e);
     if (link == NULL)
-        link = la.hardlink_w(e);
+        link = entry.hardlink_w(e);
     put_str("E ");
     put_u64(index);
     put_str(" ");
-    put_u64(la.filetype(e));
+    put_u64(entry.filetype(e));
     put_str(" ");
-    if (la.size_is_set(e))
-        put_i64(la.size(e));
+    if (entry.size_is_set(e))
+        put_i64(entry.size(e));
     else
         put("-", 1);
     put_str(" ");
     if (hasTime)
-        put_i64(la.mtime(e));
+        put_i64(entry.mtime(e));
     else
         put("-", 1);
     put_str(" ");
-    put_i64(hasTime ? la.mtime_nsec(e) : 0);
+    put_i64(hasTime ? entry.mtime_nsec(e) : 0);
     put_str(" ");
     if (encrypted < 0)
         put("-", 1);
     else
         put_u64((unsigned)encrypted);
     put_str(" ");
-    put_i64(la.sparse_count(e));
+    put_i64(entry.sparse_count(e));
     put_str(" ");
-    put_hex16(la.pathname_w(e));
+    put_hex16(entry.pathname_w(e));
     put_str(" ");
     put_hex16(link);
     put_str("\n");
@@ -367,7 +366,7 @@ static void put_entry(unsigned __int64 index, void *e)
 
 static int is_plain_file(void *e)
 {
-    return la.filetype(e) == AE_IFREG && la.symlink_w(e) == NULL && la.hardlink_w(e) == NULL;
+    return entry.filetype(e) == AE_IFREG && entry.symlink_w(e) == NULL && entry.hardlink_w(e) == NULL;
 }
 
 /* FILETIME counts 100 ns from 1601 and SetFileTime takes it below 2^63: anything outside is not
@@ -421,13 +420,26 @@ static int write_at(HANDLE file, la_int64_t offset, const void *block, size_t le
     return EXIT_DONE;
 }
 
+/* Sets out\<index>'s length to the entry's end and its time to the entry's, when FILETIME holds it. */
+static int finish_output(HANDLE file, void *e, unsigned __int64 end)
+{
+    LARGE_INTEGER position;
+    FILETIME ft;
+    position.QuadPart = (LONGLONG)end;
+    if (!SetFilePointerEx(file, position, NULL, FILE_BEGIN) || !SetEndOfFile(file))
+        return EXIT_WRITE;
+    if (entry.mtime_is_set(e) && to_filetime(entry.mtime(e), entry.mtime_nsec(e), &ft) && !SetFileTime(file, NULL, NULL, &ft))
+        return EXIT_WRITE;
+    return EXIT_DONE;
+}
+
 /* Reads one entry's data; writes it to out\<index> when file is not INVALID_HANDLE_VALUE. The
    total is charged with the entry's logical end, not its data bytes: a hole costs the disk what data
    does (NTFS zero-fills up to the end), so a sparse entry claiming terabytes is stopped before the
    write that would reach them. */
 static int copy_entry(void *ar, void *e, HANDLE file, unsigned __int64 *total, unsigned __int64 maxTotal, unsigned __int64 *bytes)
 {
-    const la_int64_t declared = la.size_is_set(e) ? la.size(e) : -1;
+    const la_int64_t declared = entry.size_is_set(e) ? entry.size(e) : -1;
     const unsigned __int64 room = maxTotal >= *total ? maxTotal - *total : 0;
     unsigned __int64 end = 0;
     *bytes = 0;
@@ -453,24 +465,13 @@ static int copy_entry(void *ar, void *e, HANDLE file, unsigned __int64 *total, u
     }
     /* Only a sparse entry ends in a hole; a plain one keeps the length its data gave, which Pakko
        compares with the listed size. */
-    if (la.sparse_count(e) > 0 && declared >= 0 && end < (unsigned __int64)declared)
+    if (entry.sparse_count(e) > 0 && declared >= 0 && end < (unsigned __int64)declared)
         end = (unsigned __int64)declared;
     if (end > room)
         return report_own_failure(FAIL_TOTAL);
     *total += end;
     *bytes = end;
-    if (file != INVALID_HANDLE_VALUE) {
-        LARGE_INTEGER position;
-        position.QuadPart = (LONGLONG)end;
-        if (!SetFilePointerEx(file, position, NULL, FILE_BEGIN) || !SetEndOfFile(file))
-            return EXIT_WRITE;
-        if (la.mtime_is_set(e)) {
-            FILETIME ft;
-            if (to_filetime(la.mtime(e), la.mtime_nsec(e), &ft) && !SetFileTime(file, NULL, NULL, &ft))
-                return EXIT_WRITE;
-        }
-    }
-    return EXIT_DONE;
+    return file != INVALID_HANDLE_VALUE ? finish_output(file, e, end) : EXIT_DONE;
 }
 
 static int extract_one(void *ar, void *e, unsigned __int64 index, int write, unsigned __int64 *total, unsigned __int64 maxTotal)
@@ -508,6 +509,20 @@ static int parse_u64(const char *s, unsigned __int64 *value)
     return n > 0;
 }
 
+/* The g_supports index of the len-character name of this kind, or -1. */
+static int find_support(const char *name, int len, int kind)
+{
+    for (int i = 0; i < SUPPORT_COUNT; i++) {
+        const char *known = g_supports[i].name;
+        int k = 0;
+        while (k < len && known[k] == name[k])
+            k++;
+        if (g_supports[i].kind == kind && k == len && known[len] == 0)
+            return i;
+    }
+    return -1;
+}
+
 /* Marks each comma-separated name of list in wanted; an empty list, a name of the other kind, an
    unknown or a repeated name is a usage error. */
 static int parse_supports(const char *list, int kind, int *wanted)
@@ -516,25 +531,12 @@ static int parse_supports(const char *list, int kind, int *wanted)
         return 0;
     while (*list != 0) {
         int len = 0;
-        int i;
-        int found = 0;
         while (list[len] != 0 && list[len] != ',')
             len++;
-        for (i = 0; i < SUPPORT_COUNT; i++) {
-            if (g_supports[i].kind == kind && lstrlenA(g_supports[i].name) == len) {
-                int k = 0;
-                while (k < len && g_supports[i].name[k] == list[k])
-                    k++;
-                if (k == len) {
-                    if (wanted[i])
-                        return 0;
-                    wanted[i] = 1;
-                    found = 1;
-                }
-            }
-        }
-        if (!found || len == 0)
+        const int i = len > 0 ? find_support(list, len, kind) : -1;
+        if (i < 0 || wanted[i])
             return 0;
+        wanted[i] = 1;
         list += len;
         if (*list == ',') {
             list++;
@@ -558,8 +560,7 @@ static int valid_charset(const char *s)
 
 static int probe(void)
 {
-    int i;
-    for (i = 0; i < SUPPORT_COUNT; i++) {
+    for (int i = 0; i < SUPPORT_COUNT; i++) {
         void *ar = la.read_new();
         if (ar == NULL)
             return report_own_failure(FAIL_NO_READER);
@@ -578,13 +579,12 @@ static int probe(void)
 
 static int run(void *ar, int extract, int test, const unsigned __int64 *selected, DWORD selectedCount, unsigned __int64 maxTotal)
 {
-    unsigned __int64 index;
     unsigned __int64 total = 0;
     DWORD next = 0;
     int r = la.read_open(ar, NULL, NULL, on_read, NULL);
     if (r != ARCHIVE_OK)
         return report_failure(ar, r);
-    for (index = 0;; index++) {
+    for (unsigned __int64 index = 0;; index++) {
         void *e = NULL;
         r = la.next_header(ar, &e);
         if (r == ARCHIVE_EOF)
@@ -619,67 +619,107 @@ static int run(void *ar, int extract, int test, const unsigned __int64 *selected
     return EXIT_DONE;
 }
 
+struct args {
+    const char *mode;
+    const char *charset;
+    const char *selectPath;
+    const char *formats;
+    const char *filters;
+    const char *maxTotal;
+    int probe;
+    int extract;
+    int test;
+    int wanted[SUPPORT_COUNT];
+};
+
+/* Takes a switch's value; a switch given twice is a usage error. */
+static int take(const char **slot, const char *value)
+{
+    if (*slot != NULL)
+        return 0;
+    *slot = value;
+    return 1;
+}
+
+/* Fills a from argv; 0 when the command line is not one docs/ARCHITECTURE.md allows. */
+static int parse_args(int argc, char **argv, struct args *a)
+{
+    if (argc < 2 || (argc - 2) % 2 != 0)
+        return 0;
+    a->mode = argv[1];
+    for (int i = 2; i < argc; i += 2) {
+        const char *name = argv[i];
+        const char *value = argv[i + 1];
+        const char **slot = NULL;
+        if (lstrcmpA(name, "--hdrcharset") == 0)
+            slot = &a->charset;
+        else if (lstrcmpA(name, "--select") == 0)
+            slot = &a->selectPath;
+        else if (lstrcmpA(name, "--format") == 0)
+            slot = &a->formats;
+        else if (lstrcmpA(name, "--filter") == 0)
+            slot = &a->filters;
+        else if (lstrcmpA(name, "--max-total") == 0)
+            slot = &a->maxTotal;
+        if (slot == NULL || !take(slot, value))
+            return 0;
+    }
+    a->probe = lstrcmpA(a->mode, "probe") == 0;
+    if (a->probe)
+        return argc == 2;
+    a->extract = lstrcmpA(a->mode, "extract") == 0;
+    a->test = lstrcmpA(a->mode, "test") == 0;
+    const int extract = a->extract;
+    const int test = a->test;
+    if (lstrcmpA(a->mode, "list") != 0 && !extract && !test)
+        return 0;
+    if (a->formats == NULL || !parse_supports(a->formats, KIND_FORMAT, a->wanted))
+        return 0;
+    if (a->filters != NULL && !parse_supports(a->filters, KIND_FILTER, a->wanted))
+        return 0;
+    if ((extract || test) != (a->selectPath != NULL) || extract != (a->maxTotal != NULL))
+        return 0;
+    return a->charset == NULL || valid_charset(a->charset);
+}
+
+/* Enables the requested formats and filters and the header charset on ar. */
+static int prepare_reader(void *ar, const struct args *a)
+{
+    for (int i = 0; i < SUPPORT_COUNT; i++) {
+        if (a->wanted[i] && (g_supports[i].fn == NULL || g_supports[i].fn(ar) != ARCHIVE_OK)) {
+            put_str("F 0 .\n");
+            return EXIT_CAPABILITY;
+        }
+    }
+    if (a->charset != NULL) {
+        char option[32] = "hdrcharset=";
+        int k = lstrlenA(option);
+        int c = 0;
+        while (a->charset[c] != 0 && k < (int)sizeof option - 1)
+            option[k++] = a->charset[c++];
+        option[k] = 0;
+        if (a->charset[c] != 0)
+            return EXIT_USAGE;
+        if (la.set_options(ar, option) != ARCHIVE_OK)
+            return report_failure(ar, FAIL_OPTION);
+    }
+    const int r = la.set_seek_callback(ar, on_seek);
+    return r == ARCHIVE_OK ? EXIT_DONE : report_failure(ar, r);
+}
+
 int __cdecl main(int argc, char **argv)
 {
-    const char *mode;
-    const char *charset = NULL;
-    const char *selectPath = NULL;
-    const char *formats = NULL;
-    const char *filters = NULL;
+    struct args a = { 0 };
     unsigned __int64 maxTotal = ~0ULL;
     unsigned __int64 *selected = NULL;
     DWORD selectedCount = 0;
-    int haveMax = 0;
-    int isProbe;
-    int extract;
-    int test;
-    int wanted[SUPPORT_COUNT] = { 0 };
-    int result = EXIT_USAGE;
-    int i;
+    int result;
     void *ar = NULL;
 
     g_in = GetStdHandle(STD_INPUT_HANDLE);
     g_out = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (argc < 2)
+    if (!parse_args(argc, argv, &a) || (a.maxTotal != NULL && !parse_u64(a.maxTotal, &maxTotal)))
         return EXIT_USAGE;
-    mode = argv[1];
-    for (i = 2; i < argc; i++) {
-        if (i + 1 >= argc)
-            return EXIT_USAGE;
-        if (lstrcmpA(argv[i], "--hdrcharset") == 0 && charset == NULL)
-            charset = argv[++i];
-        else if (lstrcmpA(argv[i], "--select") == 0 && selectPath == NULL)
-            selectPath = argv[++i];
-        else if (lstrcmpA(argv[i], "--format") == 0 && formats == NULL)
-            formats = argv[++i];
-        else if (lstrcmpA(argv[i], "--filter") == 0 && filters == NULL)
-            filters = argv[++i];
-        else if (lstrcmpA(argv[i], "--max-total") == 0 && !haveMax) {
-            if (!parse_u64(argv[++i], &maxTotal))
-                return EXIT_USAGE;
-            haveMax = 1;
-        } else {
-            return EXIT_USAGE;
-        }
-    }
-    isProbe = lstrcmpA(mode, "probe") == 0;
-    extract = lstrcmpA(mode, "extract") == 0;
-    test = lstrcmpA(mode, "test") == 0;
-    if (isProbe) {
-        if (argc != 2)
-            return EXIT_USAGE;
-    } else {
-        if (lstrcmpA(mode, "list") != 0 && !extract && !test)
-            return EXIT_USAGE;
-        if (formats == NULL || !parse_supports(formats, KIND_FORMAT, wanted))
-            return EXIT_USAGE;
-        if (filters != NULL && !parse_supports(filters, KIND_FILTER, wanted))
-            return EXIT_USAGE;
-        if ((extract || test) != (selectPath != NULL) || extract != haveMax)
-            return EXIT_USAGE;
-        if (charset != NULL && !valid_charset(charset))
-            return EXIT_USAGE;
-    }
 
     result = load();
     if (result == EXIT_LOAD)
@@ -687,21 +727,21 @@ int __cdecl main(int argc, char **argv)
     put_str("V ");
     put_hex8(la.version_details != NULL ? la.version_details() : NULL);
     put_str("\n");
-    for (i = 0; i < g_missingCount; i++) {
+    for (int i = 0; i < g_missingCount; i++) {
         put_str("X ");
         put_str(g_missing[i]);
         put_str("\n");
     }
     if (result != EXIT_DONE)
         goto done;
-    if (isProbe) {
+    if (a.probe) {
         result = probe();
         if (result == EXIT_DONE)
             put_str("D\n");
         goto done;
     }
-    if (selectPath != NULL) {
-        result = read_selection(selectPath, &selected, &selectedCount);
+    if (a.selectPath != NULL) {
+        result = read_selection(a.selectPath, &selected, &selectedCount);
         if (result != EXIT_DONE)
             goto done;
     }
@@ -711,31 +751,10 @@ int __cdecl main(int argc, char **argv)
         result = report_own_failure(FAIL_NO_READER);
         goto done;
     }
-    for (i = 0; i < SUPPORT_COUNT; i++) {
-        if (wanted[i] && (g_supports[i].fn == NULL || g_supports[i].fn(ar) != ARCHIVE_OK)) {
-            put_str("F 0 .\n");
-            result = EXIT_CAPABILITY;
-            goto done;
-        }
-    }
-    if (charset != NULL) {
-        char option[32] = "hdrcharset=";
-        int k = lstrlenA(option);
-        int c = 0;
-        while (charset[c] != 0 && k < (int)sizeof option - 1)
-            option[k++] = charset[c++];
-        option[k] = 0;
-        if (charset[c] != 0) {
-            result = EXIT_USAGE;
-            goto done;
-        }
-        if (la.set_options(ar, option) != ARCHIVE_OK) {
-            result = report_failure(ar, FAIL_OPTION);
-            goto done;
-        }
-    }
-    la.set_seek_callback(ar, on_seek);
-    result = run(ar, extract, test, selected, selectedCount, maxTotal);
+    result = prepare_reader(ar, &a);
+    if (result != EXIT_DONE)
+        goto done;
+    result = run(ar, a.extract, a.test, selected, selectedCount, maxTotal);
     if (result == EXIT_DONE)
         put_str("D\n");
 
