@@ -2,7 +2,8 @@
 
 The test plan for every test project (the list: `CONTRIBUTING.md`'s "Project structure"). The App's
 WinUI layer has no unit tests; its WinUI-free logic lives in `Archiver.App.Core` and is tested there.
-This file grew by wave and date; regrouping it by project and category is T-F459.
+First what applies to every project, then one section per test project, each by topic and
+then by category (`Slow`, `VeryLarge`, `Fuzz`); regrouped from the old wave-and-date order by T-F459.
 
 ---
 
@@ -55,12 +56,6 @@ meant to be on-demand-only). Always combine both: `Category!=Slow&Category!=Very
   First finding (seed 777): a local-header offset past the end of the archive escaped
   `LocateAll` as `ArgumentOutOfRangeException`; regression test in `RawZipEntryLocatorTests`.
 
-`ZipArchiveServiceZip64Tests.cs` (T-F20) creates 65,600 real files (the `Slow`-tagged tests) and a
->4 GiB sparse file (the `VeryLarge`-tagged test) to exercise Zip64's entry-count and large-size
-boundaries — the sparse-file test itself is fast wall-clock-wise (no real disk I/O for the all-zero
-content), but is still gated behind `VeryLarge` since a multi-GiB round trip is the kind of thing
-that shouldn't run just because someone ran the "Slow" tier.
-
 **Note:** Do not run from Visual Studio Test Explorer when WinUI project is in the same solution — VS Test Explorer has a known issue with WinUI + mixed solution. Use CLI.
 
 ---
@@ -76,13 +71,103 @@ FluentAssertions; no mocking library (hand-rolled fakes, `CLAUDE.md`). Package v
 ## Test Count
 
 Never written down, since it changes with every task: run the default command above. The per-file
-tables this section held went stale after v1.1 and were removed (T-F459 regroups this file).
+tables this section held went stale after v1.1 and were removed (T-F459 regrouped this file).
 
 ---
 
-## Test Helpers
+## Key Patterns
 
-### TempDirectory
+```csharp
+// Standard test structure
+public sealed class ZipArchiveServiceArchiveTests : IDisposable
+{
+    private readonly ZipArchiveService _sut = new();
+    private readonly TempDirectory _temp = new();
+    public void Dispose() => _temp.Dispose();
+
+    [Fact]
+    public async Task ArchiveAsync_SingleFile_CreatesZip()
+    {
+        var file = _temp.CreateFile("document.txt");
+        var options = new ArchiveOptions
+        {
+            SourcePaths = [file],
+            DestinationFolder = _temp.Path,
+            ArchiveName = "output"
+        };
+
+        var result = await _sut.ArchiveAsync(options);
+
+        result.Success.Should().BeTrue();
+        result.CreatedFiles.Should().HaveCount(1);
+        File.Exists(result.CreatedFiles[0]).Should().BeTrue();
+    }
+}
+```
+
+---
+
+## Rules
+
+- No `Thread.Sleep` — use `await Task.Delay` if needed
+- Each test cleans up via `TempDirectory.Dispose()`
+- No test depends on another test's state
+- `dotnet test` never writes files outside `%TEMP%`
+
+---
+
+## PAR2 Oracles (T-F275, v1.8)
+
+The recovery-data tests check Pakko's PAR2 files against three independent tools, downloaded by
+`scripts/Get-Par2Oracles.ps1` into `artifacts/par2-oracles/` (git-ignored; each release asset pinned
+to the SHA-256 GitHub publishes). They are GPL-2.0 programs, so they are never committed, and
+par2cmdline's own test archives are not copied either — fixtures are generated from Pakko-owned data.
+
+| Tool | Folder | Use |
+|---|---|---|
+| par2cmdline 1.4.0 | `par2cmdline\par2.exe` | reference packets (same `-s`/`-c` gives the same bytes); `verify --full-hash` (without it 1.4.0 skips the whole-file MD5); repair only for contiguous exponent sets — it takes the first k recovery blocks and fails on a singular choice |
+| par2cmdline-turbo 1.5.0 | `par2cmdline-turbo\par2.exe` | repair of any set (retries another block on a singular matrix) |
+| MultiPar 1.3.3.6 | `multipar\par2j64.exe` | a second, Windows-native implementation; x64 only (emulated on ARM64); exit code is a bit mask (16 = repaired). From Git Bash set `MSYS_NO_PATHCONV=1`, or `/ss4096` becomes a path |
+
+---
+
+## On-Device Smoke Checks (T-F378)
+
+The checks run on an installed build live in `docs/SMOKE.md`: one catalogue with stable row IDs,
+three tiers (`quick`, `release`, `store`) and, for each row, who can run it and on which artifact.
+It replaces the "Manual Smoke Test Cycle" this section held (last run in full 2026-07-06) and the
+per-release scenario files that were kept outside the repository.
+
+`SmokeCatalogueTests` (Core) keeps it in step with the app. It reads the entry points from the
+source (`pakko`'s commands and switches from `CliArgumentParser.cs`, `Archiver.Shell`'s
+arguments, the Explorer command classes, `MainViewModel`'s commands, the Group Policy values) and
+fails when one has no live row or a row names one that is gone; IDs are unique and numbered
+without gaps per surface, so a row is retired, not deleted; a `quick` row needs no person and no
+release. Mutation-checked nine ways (2026-10-11): a missing command, menu item and policy, an
+unknown name and task, a repeated and a removed ID, a wrong tier, a `quick` row for a person.
+
+`scripts/Invoke-Smoke.ps1` runs the rows that have a step in `scripts/smoke/`. The test requires
+a live row marked `script` or `uac` for every step, and a step for every such row (its
+`StepsOwed` list of rows still without one has been empty since step 4). A step is checked
+the way a regression test is: green on the installed package, then red with a fault put into
+its own fixture (the damage left out, the folder left open, the process not killed), since the
+program under test cannot be broken to order. The runner's own
+check is a run: the `quick` tier green on the installed package, and
+its PAR2 speed rows red with the Debug build of `pakko` given as `-PakkoExe` (13 s against
+par2cmdline's 3 s, the size of T-F375).
+
+**Known non-bug finding:** `.zip`'s `UserChoice` file association may still point at Windows'
+built-in `CompressedFolder` handler even after Pakko is installed. Windows requires the user to
+choose a default app in Settings before a double-click reaches another handler (the UserChoice
+hash), so this is not a Pakko defect.
+
+---
+
+## Archiver.Core.Tests
+
+### Test Helpers
+
+#### TempDirectory
 
 ```csharp
 // Helpers/TempDirectory.cs
@@ -95,7 +180,7 @@ public sealed class TempDirectory : IDisposable
 }
 ```
 
-### FixtureHelper
+#### FixtureHelper
 
 ```csharp
 // Helpers/FixtureHelper.cs
@@ -113,9 +198,7 @@ Fixture missing: created_by_macos.zip
 Run: dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
 ```
 
----
-
-## Test Fixtures
+### Test Fixtures
 
 Located at `tests/Archiver.Core.Tests/Fixtures/`.
 
@@ -195,41 +278,512 @@ code, real method.
 **Tests with missing manual fixtures are skipped (yellow), not failed.**
 `dotnet test` returns success even with skipped tests.
 
----
+### Tar Fixtures (v1.3+)
 
-## Key Patterns
+Located at `tests/Archiver.Core.Tests/Fixtures/tar/`.
 
-```csharp
-// Standard test structure
-public sealed class ZipArchiveServiceArchiveTests : IDisposable
-{
-    private readonly ZipArchiveService _sut = new();
-    private readonly TempDirectory _temp = new();
-    public void Dispose() => _temp.Dispose();
+Generated by `GenerateFixtures` project (where tar.exe can create them). Manual fixtures needed for formats only tar.exe can read (RAR, certain 7z variants).
 
-    [Fact]
-    public async Task ArchiveAsync_SingleFile_CreatesZip()
-    {
-        var file = _temp.CreateFile("document.txt");
-        var options = new ArchiveOptions
-        {
-            SourcePaths = [file],
-            DestinationFolder = _temp.Path,
-            ArchiveName = "output"
-        };
+| Fixture | Notes |
+|---------|-------|
+| `valid_tar.tar` | Plain tar, no compression |
+| `valid_tar_gz.tar.gz` | gzip compressed |
+| `valid_tar_bz2.tar.bz2` | bzip2 compressed |
+| `valid_tar_xz.tar.xz` | xz compressed |
+| `valid_tar_zst.tar.zst` | zstd compressed — requires Win 11 23H2+ tar.exe |
+| `valid_tar_lzma.tar.lzma` | lzma compressed |
+| `valid_7z.7z` | 7z archive — requires Win 11 23H2+ tar.exe |
+| `valid_rar4.rar` | RAR4 — requires Win 11 23H2+ tar.exe |
+| `valid_rar5.rar` | RAR5 — requires Win 11 23H2+ tar.exe |
+| `corrupted_tar.tar` | Intentionally corrupted header |
+| `zipslip_tar.tar` | Path traversal entry (`../../evil.txt`) |
+| `bomb_tar.tar.gz` | Highly compressed, triggers bomb detection |
+| `unicode_cyrillic.tar` | Cyrillic filename entries |
+| `unicode_emoji.tar` | Emoji filename entries |
 
-        var result = await _sut.ArchiveAsync(options);
-
-        result.Success.Should().BeTrue();
-        result.CreatedFiles.Should().HaveCount(1);
-        File.Exists(result.CreatedFiles[0]).Should().BeTrue();
-    }
-}
+To regenerate:
+```bash
+dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
 ```
 
+### Sandbox Subsystem Unit Tests (T-F52, v1.4)
+
+- `tests/Archiver.Core.Tests/Services/Sandbox/` — pure/fast unit tests: `SandboxedProcessLauncherTests.cs`
+  (raw `CreateProcessW` launcher, no AppContainer; fix phase 4: an unrelated inheritable pipe is
+  not inherited by the child — `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`; a cancelled child has exited
+  when the call returns), `SandboxedProcessLauncherHandleLeakTests.cs` (a failing launch leaks no
+  handles — its own `DisableParallelization` collection, since it counts the whole process's
+  handles), `AppContainerLaunchTests.cs` (`tar.exe --version` inside a real AppContainer),
+  `TarCommandLineEncodingTests.cs` (T-F266: best-fit/unrepresentable strings per explicit code
+  page, the launcher refuses before creating a process), `TarSandboxScopeLimitMessageTests.cs`
+  (T-F239 messages, the memory/CPU limit rules), `TarHeaderNamesTests.cs` (T-F305: the header-byte
+  UTF-8 check, incl. GNU `L`/pax records and malformed headers giving "unknown"; T-F310: the same through gzip, with the size limit and a damaged stream), `AppContainerProfileTests.cs` (profile
+  create/reuse/delete, using its own throwaway test profile name — never the shared production
+  `Pakko.TarSandbox` profile — plus a real forced-failure case: a >64-char profile name makes
+  `CreateAppContainerProfile` throw `InvalidOperationException`, the exact failure shape
+  `TarSandboxScope` now rewraps as `SandboxSetupException`), `TarSignatureVerifierTests.cs` (real
+  tar.exe passes; T-F401: a system binary signed through a catalog only, chosen by its empty PE
+  certificate table, passes, and so does an unchanged copy of it; an unsigned decoy and copies of
+  that binary and of tar.exe with a byte changed inside their first section fail).
+
+### T-F35 Parallel SingleArchive Pipeline Tests (v1.4+)
+
+Three test classes cover the gated `Archiver.Core/Services/Zip/` subsystem (see `ARCHITECTURE.md`'s
+own section for it, `DECISIONS.md`'s T-F35 entry for the design rationale and two real bugs these
+tests caught before shipping):
+
+- `DosDateTimeTests` (`Archiver.Core.Tests/Services/Zip/`) — round-trip encode/decode, 1980/2107
+  clamping, and a byte-for-byte comparison against a real `ZipArchiveEntry`'s own DOS date/time
+  encoding.
+- `ParallelSingleArchiveWriterTests` (`Archiver.Core.Tests/Services/Zip/`) — two layers:
+  - Unit-level, against `RunPipelineAsync` directly with injectable compress delegates (not real
+    file I/O): enqueue-order-not-completion-order write proof, a whitebox concurrency-ceiling test
+    (a controllable blocking gate proves at most `windowCapacity` compress tasks ever run
+    concurrently — this caught a real bug: the bounded channel alone did not bound concurrency),
+    already-cancelled-token graceful no-op, mid-flight cancellation with no orphaned background
+    tasks left running afterward, and per-file error isolation.
+  - Real-file-I/O level, against `WriteAsync` with actual files/temp directories (added when the
+    original "large files stream sequentially" design was replaced by per-worker temp-file
+    compression — no more file-size ceiling): successful cleanup after a normal run (no leftover
+    `*.chunk-*.tmp` files), cleanup after a locked-file compression error with the rest of the
+    batch still archived, and cleanup after mid-flight cancellation — this last one caught a real
+    concurrency bug (temp-file cleanup racing against a still-running straggler task) that failed
+    intermittently only under full-suite parallel load, never in isolation; fixed by awaiting
+    every dispatched compress task before sweeping leftover temp files.
+  - Allocation guard (T-F271): `CompressSmallFile` on a 4 KiB file allocates under 32 KiB on the
+    calling thread (`GC.GetAllocatedBytesForCurrentThread`, isolated from parallel tests) — pins
+    the unbuffered read; a 64 KiB `FileStream` buffer per file made it 70 KiB.
+- `ZipEntryWriterCompatibilityTests` (`Archiver.Core.PerformanceTests/` — lives there specifically
+  to reuse the vendored, hash-verified `7za.exe` binary rather than duplicating it into a second
+  test project; a correctness suite, not a performance one, despite the location) — proves the
+  hand-rolled ZIP bytes are independently readable, not just self-consistent: a
+  `System.IO.Compression.ZipFile.OpenRead` round trip, an independent `7za.exe t` integrity check
+  (this caught a real Zip64 local-header field-offset swap bug — `ZipFile.OpenRead` accepted the
+  corrupted bytes silently, `7za.exe` rejected them outright), a raw structural byte parser written
+  independently of `ZipEntryWriter`'s own code, and a forced-Zip64 test (deliberately-synthetic
+  declared sizes on a tiny real stream, exercising `WriteCompressedEntryFromStreamAsync`'s Zip64
+  path without needing gigabytes of test data — verified via the raw parser only, since a real
+  reader would reasonably reject content whose actual length doesn't match its declared length).
+  The shared `BuildMixedArchiveAsync` helper (reused by the three tests above) also includes a
+  zero-byte real file compressed at `CompressionLevel.Optimal`, added after a real on-device
+  NanaZip cross-check found `ZipEntryCompressor` tagged empty files as `Deflate` even though
+  `DeflateStream` writes 0 output bytes for zero input — invalid to a real deflate reader though
+  invisible to .NET's own lenient one; see `DECISIONS.md`'s T-F35 follow-up entry. A separate test,
+  `ArchiveAsync_RealFolderWithEmptyFilesAndFoldersAboveParallelThreshold_PassesSevenZipIntegrityCheck`,
+  reproduces that exact bug report end-to-end through the real public `ZipArchiveService.ArchiveAsync`
+  API (not just `ZipEntryCompressor`/`ZipEntryWriter` called directly) — a real folder with 70+
+  files, several genuinely empty ones, and an empty subdirectory, above the parallel threshold,
+  verified with `7za.exe t`. Confirmed to actually catch the regression (temporarily reverted the
+  fix and re-ran — both this test and the shared-helper one failed with the exact same "Data Error"
+  NanaZip reported).
+- `ZipArchiveServiceParallelPipelineTests` (`Archiver.Core.Tests/Services/`) — the same properties
+  re-verified through the real public `ArchiveAsync` API at gate-triggering scale (120 files, above
+  `ParallelPipelineFileCountThreshold`'s 64): byte-identical/entry-order-identical determinism,
+  already-cancelled and mid-flight cancellation, one locked file mid-batch, and a mixed
+  small+large-file archive in one run.
+
+All four run as part of the default `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
+pass (untagged, fast) — no new Slow/VeryLarge tier was needed for T-F35 itself.
+
+### ZIP Writers: Choice, Allocation, Stored Entries
+
+- `SmallFileAllocationTests` (`Archiver.Core.Tests/Services/`, T-F271 follow-up) — its own
+  `DisableParallelization` collection, since it measures `GC.GetTotalAllocatedBytes` for the whole
+  process: hashing (CRC-32, SHA-256) and sequential archiving of 40 x 4 KiB files stay under 64 KiB
+  allocated per file. Hashing failed at ~264 KiB per file before `ReadAndDigestAsync` pooled its
+  buffer; the archive case is a guard (it passed before the change).
+- `ZipArchiveServiceWriterChoiceTests` (`Archiver.Core.Tests/Services/`, T-F352) - the rule that
+  picks the writer, on its boundaries (`UsesParallelWriter`), and 9 MiB random files through
+  `ArchiveAsync`: two of them take the parallel writer (entries stored, content round-trips),
+  one beside a small file stays sequential (as files and inside a folder); same-name sources, a
+  locked file and a link give what the sequential writer gives; Cancel leaves nothing; progress
+  never goes back; a source or destination disk with a seek penalty keeps the sequential writer.
+  The service's disk answer is pinned in these tests (`HasNoSeekPenalty`), since a runner's
+  virtual disk may not answer. `DiskSeekPenaltyTests` (`IO/`): a network path, a missing drive and
+  a non-path are false and never throw; what a real disk answers is machine-dependent and was
+  checked by hand (NVMe: true, `\\localhost\C$`: false). T-F359, same classes:
+  `AnyDiskHasSeekPenalty` asks once per folder and about the destination; with a pinned "has a
+  penalty" (`HasSeekPenalty`) the first large file to report holds its worker for a second and no
+  other large file may report meanwhile, in both archive modes, and the plain archive is
+  byte-identical to the one made without it; `OneAtATime_*` (writer) - never two at once, a
+  failure or a cancel while waiting does not block the next.
+  `ArchiveAsync_FewLargeFiles_WithinToleranceOfSevenZipReference` (`Category=Slow`) adds `7za t`
+  and the timing ratio. `ParallelSingleArchiveWriterTests.RunPipelineAsync_CancelledWhileChunks
+  AreCopiedIntoTheArchive_...` pins Cancel in the copy phase (the bar at 99%), which a few large
+  files make seconds long.
+- T-F357 (`ParallelSingleArchiveWriterTests`): a Stored entry at NoCompression, Optimal and Fastest
+  (random data) keeps its source open (write and delete refused) and writes no chunk; a
+  compressible file and an encrypted incompressible one keep the chunk and free the source; a
+  `SourceStored` whose CRC, length or end of file disagrees throws in the drain; Cancel while
+  sources wait for the drain releases every one. `ZipArchiveServiceIncompressibleTests.
+  ArchiveAsync_LargeStoredAndDeflatedFiles_...` (single and separate): methods, round trip,
+  sources deletable when `ArchiveAsync` returns. `WriteAsync_StoredFileOver4GiB_...`
+  (`Category=VeryLarge`, on demand) takes this path with Zip64 and reads back with its CRC
+  checked - `ZipArchiveServiceZip64Tests`' >4 GiB test takes `ZipArchive` instead. Nine of ten mutants caught; rewriting the chunk
+  anyway changes only the bytes written, which the measurement in TASKS.md shows, not a test.
+
+**T-F299:** `ZipArchiveServiceIncompressibleTests` (`Archiver.Core.Tests/Services/`) — random data
+through `ArchiveAsync` is stored, not grown: one file at Fastest (in-memory and temp-file sizes),
+SeparateArchives at Fastest, a password at Optimal (Stored inside AES), 80 files at Optimal; a text
+file at Fastest stays Deflate. Method and sizes are read with `RawZipEntryLocator`; each case
+round-trips through Pakko's reader.
+
+### ZIP Extraction: Times, Headers, Destination
+
+**T-F298:** `ZipArchiveServiceExtractTimesTests` (`Archiver.Core.Tests/Services/`) — archives from
+`LegacyZipBuilder` (now with DOS time/date and `NtfsTimeExtra`/`UnixTimeExtra` helpers): DOS, NTFS
+and Unix times, NTFS winning over a disagreeing Unix field, six hostile time fields (extraction
+succeeds with the DOS time), folder entries in a new and in a merged destination (an existing folder
+keeps its time), the SeparateFolders root folder, MOTW plus time, an AES entry.
+`TarDirectoriesToPreCreateTests` — which quarantine directories are pre-created, by archive order.
+`TarSandboxedServiceExtractTimesTests` (`Archiver.Core.IntegrationTests`, real tar.exe; `TarBuilder`
+now takes `ModifiedUnixSeconds`) — MOTW plus file time, folder times new/merged/root, and a file ahead
+of its folder entry plus an implicit subfolder still extracting (the T-F52 guard).
+
+**T-F280:** `ZipArchiveServiceTestHeadersTests` (`Archiver.Core.Tests/Services/`) — Test reports a
+local CRC plus a local name flip as one error (count 2, first entry named), a changed local size, and
+a local header whose signature is gone; and reports nothing for every repo fixture, a data-descriptor
+archive and Pakko's own writers (Optimal, Fastest, Stored, AES). `ZipHeaderCheckCorpusTests`
+(`Archiver.Core.PerformanceTests`, vendored 7za) — 7-Zip's plain, AES-256 and `-si` archives report
+nothing.
+Extraction half (warning channel): `ZipArchiveServiceExtractHeaderWarningTests` — the same tampered
+archive extracts by the central directory with one `ArchiveWarning` (`Success`, outcome
+`CompletedWithWarnings`, the archive still deletable), a selection warns too, nothing extracted
+means no warning, and the same false-positive corpus as Test extracts with no warning.
+`OperationOutcomeTests` (warnings against errors and skips), `ExtractionRouterTests` (merge keeps
+both engines' warnings), `OperationMessagesWarningTests` in `Archiver.Shell.Tests` (alone, under an
+error, under the skipped list, capped at ten, `Combine`, and a real extraction rendered in
+Ukrainian), two `Subprocess/` tests of `pakko x` (warning line and exit 1; with a failed archive,
+both lines and exit 2), `OutcomeAndEncryptionSummaryTests` (the App's footer line counts warnings).
+Ten mutants killed. The App's summary dialog section has no automated test (WinUI).
+
+**Wave 1 after v1.7.0 (2026-10-05).** `EntryRegionStreamTests` and two cases in
+`VerifyingReadStreamTests`: the size and truncated-entry errors carry their codes (T-F333), also
+checked through `TestAsync`/`ExtractAsync` in `ZipArchiveServicePasswordTests`.
+`ZipArchiveServiceDestinationInsideSourceTests` (four writers x two modes), three tests in
+`TarSandboxedServiceCompressTests` and two in `TempOwnerTests` (`IsOwnBelow`): an archive created
+inside its own source folder holds only the user's files (T-F316).
+
+### ZIP Extraction Safety and Integrity (fix phase 2, 2026-09-25)
+
+One test class per fixed defect, each written red first (see `docs/DECISIONS.md`'s fix-phase-2
+entry): `ZipArchiveServiceExtractStagingTests` (T-F227 — a user's `<dest>_tmp` survives, no
+`.pakko-x-*` leftover, concurrent runs, extracted folder not Hidden),
+`ZipArchiveServiceExtractUnsafePathTests` (T-F228), `ZipArchiveServiceExtractPerEntryFailureTests`
+(T-F230, incl. the disk-full classifier), `ZipArchiveServiceExtractIntegrityTests` (T-F246/T-F231 —
+fixtures are built in the test by patching CRC/size fields of a fresh archive, not stored),
+`IO/VerifyingReadStreamTests`, `ZipArchiveServiceExtractRootFolderTests` +
+`TarSandboxedServiceRootFolderTests` (T-F205), `ZipArchiveServiceExtractEmptyFolderTests` +
+`TarSandboxedServiceEmptyFolderTests` (T-F197). Staging-leftover assertions look for
+`.pakko-x-*`; an assertion on the old `*_tmp` name would now pass vacuously.
+
+### ZIP Names and Reader Hardening (fix phase 3, 2026-09-25)
+
+Written red first (see `docs/DECISIONS.md`'s fix-phase-3 entry). `Zip/ZipEntryNameDecoderTests`
+(explicit code pages only — 866/437/1252/1251/932, never the machine's) and
+`ZipArchiveServiceLegacyNameEncodingTests` (service pinned to 866/1251 through the internal
+`NameCodePages` seam, because the en-US CI runner has 437/1252). Fixtures: `legacy_oem866_7za.zip`
+(committed, vendored `7za -mcp=866`: cp866 names, flag clear, plus 0x7075) and
+`Helpers/LegacyZipBuilder` (raw name bytes, flag, host OS, central extra, local-name override —
+for shapes 7za cannot write). `ZipArchiveServiceZipCryptoCompatTests` with
+`Helpers/ZipCryptoFixture` (ZipCrypto written from APPNOTE, independent of `ZipCryptoStream`;
+data descriptor and raw password bytes; cross-checked with 7za) covers T-F243 items 2-3 and the
+ANSI/UTF-8 password candidates. `ArchiveEntrySecurityReservedNameTests` (T-F243 item 4),
+`ZipArchiveServiceLongEntryNameTests` (T-F243 item 6, end to end; returns early without
+`LongPathsEnabled`), `CliSubprocessTests.Extract_LegacyOemNamedZip_WritesRealNames` (asserts files
+on disk, not console output, so it is code-page independent).
+
+### 7-Zip's Switches That Core Carries Out (T-F411 wave E, 2026-10-18)
+
+- `RenameExistingConflictTests` (-aot, ZIP): the existing file renamed and the new one in its place
+  through a plain extraction, a selection, a filter, T-F154's single-file unwrap and duplicate
+  names; a numbered name the archive still writes (`readme (1)` comes after `readme` on NTFS, the
+  case that needs the run's claimed names); a locked existing file left as it was; a run cancelled
+  before the commit; `ExtractionStaging.CommitInto` directly, where a staged file held open makes
+  the existing one get its name back. `TarSandboxedServiceRenameExistingTests`: the same through
+  tar.exe.
+- `ZipArchiveServiceExtractRootFolderTests`/`TarSandboxedServiceRootFolderTests` (-spe):
+  `DuplicateRootName` with case, a file root, a second root, a filter, a selection;
+  `ExtractionDestinationPlannerTests.AllEntriesUnderRoot_FollowsSevenZip`.
+- `ZipArchiveServiceStopOnUnreadableTests` (-sse): sequential, parallel, Fastest and SeparateArchives
+  writers, the existing archive kept byte for byte, a link still a skip.
+  `ZipArchiveServiceShareForWriteTests` (-ssw): each way a source is opened, a file locked with no
+  sharing still an error. `ArchiveTimeFromNewestEntryTests` (-stl): through the router for ZIP and a
+  fake tar engine; filter, junction, SeparateArchives. `-mmt`: the window function and the same
+  bytes at 1 and 3 threads.
+
+### What `a` Archives, Under Which Name (T-F414, T-F410 wave C, 2026-10-18)
+
+- Core: `ZipArchiveServiceSourceNamePartsTests` and `ZipArchiveServiceEntryFilterTests` (both ZIP
+  writers through `CompressionLevel.Optimal` and `Fastest`, and separate archives);
+  `TarSandboxedServiceSourceNamePartsTests` and `TarSandboxedServiceCreationFilterTests`
+  (IntegrationTests, real `tar.exe`, a 7z leg under `SevenZipWriterFact`; a name with `[`, `]`, `$`,
+  and `dir/sub` against `dir/sub2`, for the `-X` lines); two `CoreNeverThrowsContractTests` rows.
+
+### Probes, Policy and the Download Mark
+
+- `LazyTarProbeTests` (`Archiver.Core.Tests/Services/`, T-F350) - through `PakkoServices` with a
+  probe-counting `ITarService`: extract/test/list of a ZIP or of a format policy refuses never
+  probe, a tar-family archive probes once across operations, Cancel ends the wait for a probe
+  still running; `Classify` and `ClassifyAsync` against 72 pinned verdicts with their texts
+  (9 formats by magic bytes x 4 policies x 2 capability sets, captured before the change).
+- `ArchiveEntrySecurityMotwTests` (`Archiver.Core.Tests/Services/`, T-F358) - `ReadMotw` returns
+  the archive's mark, null for `Disabled`, an unmarked archive or a path that cannot be read;
+  `TryWriteMotw` marks any file under `AllFiles` and only the listed extensions under
+  `UnsafeExtensionsOnly`, replaces a mark already there, works while the file is still open for
+  writing, never throws; `TryPropagateMotw` (tar's path) still keeps the file's time.
+  `ZipArchiveServiceExtractTimesTests.ExtractAsync_WithOrWithoutProgressAndMark_...` covers both
+  copy branches with and without the mark. Ten of eleven mutants caught; the one that survives
+  drops the flush before the time is set - NTFS keeps a time set through a handle when that handle
+  writes later, so no test on this machine can see it (kept for a share).
+- T-F360: `DownloadMarkChoiceTests` (`Archiver.Core.Tests/Services/`) - through
+  `PakkoServices.Create(policy)`'s router (the App and CLI path, so a copy of `ExtractOptions`
+  that drops the choice shows): mark on/off on a marked ZIP, off keeps the entry time, a set
+  `AllFiles` policy marks despite off, a set `Disabled` does not mark despite on; the 8-case
+  `EffectiveMotwMode` matrix; `ArchiveDownloadMark.IsPresent` on marked, unmarked, empty, missing,
+  invalid and folder paths. `GroupPolicyServiceTests`: `MotwModeSetByPolicy` only for 0/1/2.
+  `TarSandboxedServiceExtractTests.ExtractThroughRouter_DownloadMarkChoice_...` (Integration):
+  the same through tar.exe. App.Core `DownloadMarkOptionTests`: hidden, checked with the cost
+  note, unchecked with the risk note, locked with the policy note. CLI `CliDownloadMarkTests`:
+  `-snz`/`-snz1`/`-snz0`, last wins, `-snz2` and unknown values exit 7, `-snz0` on `t`/`l`/`a`/`h`
+  exits 7, the policy warning; subprocess `Extract_MarkedZip_SnzDecidesTheMark`. Seven mutants:
+  five caught; the two survivors were redundant checks and were removed.
+- `PolicyOwnershipTests` (`Archiver.Core.Tests/Services/`, T-F261/T-F250) — Group Policy has one
+  owner: every engine/router constructor requires a non-null `GroupPolicyOptions` (reflection);
+  `TarSandboxedService` refuses Extract/List/Compress under `DisableTarExtraction` and never runs
+  its version probe (injected probe seam — no tar.exe started); `PakkoServices` probes once and
+  hands the policy to every service; extract/create/list/test under `BlockedFormats=tar` and
+  `DisableTarExtraction` never reach a tar fake that fails when called; scan reports the policy
+  (checked with no AV provider, so a gate regression shows as a different reason, not a tar run).
+- `ZipArchiveServicePolicyTests` (`Archiver.Core.Tests/Services/`, T-F250) — the ZIP engine and
+  scan refuse a blocked `zip` themselves, including an entry-less ZIP the magic-byte detector
+  calls `Unknown` (the case no router check sees).
+- `ZipArchiveServiceUserSkipTests` (`Archiver.Core.Tests/Services/`, T-F216) — the user's own
+  conflict Skip (one by one or "apply to all") gives no "every entry was skipped" warning, while
+  the no-prompt default Skip or an added safety skip still does, and a partly skipped archive
+  stays `Partial`. The tar equivalents are two `[Integration]` tests in
+  `TarSandboxedServiceExtractTests.cs` (`ExtractAsync_UserChoseSkipAll_...`,
+  `ExtractAsync_UserSkippedOneEntry_SourcePartial`).
+- `FormatListConsistencyTests` (`Archiver.Core.Tests/Services/`, T-F264) — parses
+  `ShellExtUtils.cpp` (ZIP-container and non-ZIP extension arrays, compound extensions, the T-F262
+  extension-to-policy-name table) and `Package.appxmanifest`'s file types and compares them with
+  the C# lists; seen red by removing `.bdoc` from the manifest and `.txz` from the C++ list.
+
+### PAR2 Recovery Data (T-F275)
+
+The tests (T-F275 step 1):
+
+- `Archiver.Core.Tests/Recovery/`: `Gf16Tests` (the specification's constants; multiplication against
+  a carry-less multiply), `Gf16RegionTests` (the vector and scalar kernels called directly, against
+  the per-word definition, every length modulo 32), `Par2CreatorTests` (packets equal to the golden
+  par2cmdline sets in `Fixtures/par2/`, parameters, volume names, every writer shape inside the
+  reader's limits), `Par2PacketReaderTests` (hostile packets from `Par2PacketForge`, which recomputes
+  the packet MD5 so the field checks are reached), `Par2SetLocatorTests`, `RecoveryMatrixTests` (the
+  [2, 48, 237] x {1, 2, 4, 5} case, seen red against first-k), `Par2SliceCombinerTests` (range and
+  batch seams forced small), `Par2RepairTests` (flipped, zeroed, cut, appended and deleted data;
+  damaged PAR2 files; forged recovery data caught by the final check; cancellation at each phase; an
+  unwritable output folder; one `Slow` test with slices larger than one range).
+- `Archiver.Core.Tests/Services/ArchiveCreationRouterRecoveryTests` (step 2): a hand-rolled engine
+  writes real archive files, so the router's PAR2 step runs for real — a set per created archive
+  (also with errors, also SeparateArchives), none for a skipped one, percent and policy refused before
+  the engine, a failed set downgrading the sources, cancellation leaving no partial file, one rising
+  percent with 100 last, the PAR2 work off the caller's thread, stale volumes removed and a stuck one
+  a warning; an archive rewritten without a percent losing its earlier set (also one named `a.par2`),
+  two earlier sets, one under each name, and with a percent the earlier set gone even when the new
+  one is cancelled or not created,
+  while a content match, another file's set, unreadable or mixed files and the policy keep theirs. `GroupPolicyServiceTests` reads `DisableRecoveryData`; `RecoveryDataOptionTests` and
+  `CreateModeTextTests` (App.Core) the card's option; `CliArgumentParserTests` and two
+  `CliSubprocessTests` the `-rr[N]` switch.
+- `Archiver.Core.Tests/Services/ExtractionRouterRecoveryTests` (step 3): a ZIP engine that passes
+  or fails named paths, real archives and Pakko's own sets — intact (ZIP, tar.gz, a `.par2` or
+  volume path, a set named `a.par2`), flag off and policy unchanged, a `.par2` refused under the
+  policy, archive plus its `.par2` checked once, renamed archive and set, a set for another file, a
+  ZIP rewritten without a set (warning, not damage), repairable and beyond-repair damage, a missing
+  archive, damaged set files, a set left incomplete (no index, no volume, a volume cut short at
+  every length, only the writer's temporary files), a locked archive and unlistable folders (errors, never a throw), one
+  rising percent ending at 100, cancellation. `CliSubprocessTests` runs `pakko a -rr10` then `t`
+  over intact, repairable, beyond-repair and damaged sets for ZIP and tar.gz, a `.par2` path, and
+  a ZIP and a tar.gz rewritten without `-rr` (the old set is gone, no recovery verdict), and
+  `pakko a -rr100` killed while the set is being written (no false verdict from `t`, the next run
+  sweeps the temporary files and writes a set that checks).
+- Step 4a, repair. `Archiver.Core.Tests/Services/RecoveryServiceTests` runs
+  `IRecoveryService.RepairAsync` on real sets with a fake ZIP engine: the copy's name and bytes for
+  ZIP, tar-family, no extension and several dots; the original's bytes and time unchanged; a
+  `.par2` or a volume alone; archive and set files together repaired once; an intact archive read
+  once and nothing written; the output folder created; the archive gone and rebuilt from a full
+  set; several archives each with its verdict; progress to 100 once. A theory runs `t` and `r` on
+  the same nine scenarios and requires a copy exactly when `t` said repairable. Failure paths: no
+  set, only the writer's temporary files, an unreadable set, another file's set under this name,
+  paths that are not there, damage beyond the set, a recovery block forged with a valid packet
+  hash (the copy is not kept), a volume cut short with enough and with too few whole blocks, the
+  index gone, the volume gone, archive and set renamed, the repaired name taken (twice), a folder
+  where files cannot be created and another folder that works, an output path that is a file,
+  cancel at five points leaving no file, `DisableRecoveryData`, `BlockedFormats`, the download
+  mark (carried, taken from the set files when the archive is gone, absent, left off by the user,
+  enforced by policy, kept under the narrow policy), and par2cmdline's golden set under both of
+  its names. `Archiver.CLI.Tests`: the parser's `r`, the two new hints, and the real `pakko.exe`
+  (`Repair_*` in `CliSubprocessTests`): a ZIP and a tar.gz repaired, `.par2` with `-o`, nothing to
+  repair, beyond the set, no set, set files zeroed, a ZIP another tool rewrote beside its old set
+  (the real ZIP test passes, `r` warns as `t` does and writes nothing), the name taken, the
+  denied folder with its hint and `-o`, bad command lines, paths that are not there, and the
+  process killed while the copy is built (no copy, the original as it was, the next run repairs
+  and sweeps the temporary file).
+
+### AMSI Antivirus Scan Tests (T-F146, v1.4+)
+
+`tests/Archiver.Core.Tests/Services/Antivirus/`:
+- `AmsiScannerTests.cs` — real `amsi.dll` P/Invoke against a runtime-generated EICAR buffer (never
+  committed to disk — Defender would quarantine a committed EICAR fixture on clone/build) and a
+  clean buffer, mirroring the probe run during design (`docs/DECISIONS.md`'s T-F146 entry).
+  Environment-dependent by nature — exercises whatever AV is actually registered on the machine
+  running the suite, same as any real AMSI consumer.
+- `AmsiProviderCheckTests.cs` — smoke tests (`IsAnyProviderRegistered()`/`GetState()` never throw);
+  the actual registered-provider state isn't asserted, since that would make the suite depend on the
+  test machine's own AV configuration. `Classify` is pure and pinned row by row (T-F448).
+- `AntivirusScanServiceTests.cs` — orchestration logic via a hand-rolled `FakeAmsiScanner` (no
+  mocking library, matching repo convention): clean/`ThreatDetected` ZIP archives,
+  `SelectedEntryPaths` subset scanning, the 64 MiB oversized-entry skip
+  (`AntivirusScanService.MaxScannableEntryBytes`), the no-provider-registered gate, Group Policy
+  blocked-format handling, and an unrecognized-file-doesn't-throw case. T-F194 adds
+  password-protected ZIP coverage: no resolver / cancel / exhausted retries stay `Inconclusive`
+  with zero AMSI calls; a correct password hands AMSI the byte-exact decrypted plaintext (the fake
+  records scanned bytes, not just name+length); mixed archives prompt once; "apply to remaining"
+  spans a multi-archive call; a ZipCrypto check-byte collision is never `Clean`; BZip2-under-AES
+  and a local-header size past end-of-file end `Inconclusive` without throwing. The same file's
+  `AntivirusScanServiceEncryptedEicarTests` (gated by `[SkipIfAmsiScanUnavailable]`) runs real EICAR
+  from `encrypted_aes256_eicar.zip` through the real AMSI provider.
+
+**Not covered by `dotnet test`, needs on-device verification** (per this project's standing rule —
+shell-triggered/UI behavior never graduates on automated tests alone):
+- A real EICAR-in-archive detection through both *shell-triggered UI* entry points (Explorer
+  `Scan for threats`, Archive Browser's scan button) — for the tar-family case specifically, this
+  needs a temporary Defender exclusion folder added by the user first (`docs/DECISIONS.md`'s
+  Phase 0 finding: real-time protection intercepts a plain on-disk EICAR file before tar.exe can
+  even read it, independent of Pakko's own AMSI call). **Partially superseded by T-F177
+  (2026-08-31):** the underlying `Core.AntivirusScanService.ScanAsync` orchestration itself (both
+  Zip in-memory and Tar quarantine paths) now has an automated regression test with real AMSI —
+  `AntivirusScanServiceEicarTests.cs` — so what's left uncovered here is specifically the two WinUI/
+  Shell UI entry points' own glue code, not the underlying scan logic.
+- The `Inconclusive` path with no AMSI provider registered (e.g. Defender real-time protection
+  temporarily disabled) — confirms the three-state dialog never renders it as `Clean`.
+- A clean real-world archive through both entry points, confirming "No threats found in this
+  archive" copy and that nothing is left on disk afterward (tar-family quarantine cleanup).
+
+### Core Messages and Outcome (fix phase 7, 2026-09-28)
+
+- v1.7.0 wave 4 (2026-10-03): `CoreMessageSourceGuardTests` also fails on a raw `ex.Message` inside
+  `CoreMessages.Text(` and covers `CoreMessages.Detail` (each mapped Windows code, inner exception,
+  unmapped code, non-Windows HRESULT, rewrite); `MessageTextTests` checks the Ukrainian-only codes
+  (uk has them and keeps the English text, the other 35 do not, de-DE renders English + code);
+  `VerifyingReadStreamTests` pins the CRC code; a real `What?.txt` extraction ends in
+  `(0x8007007B)`. A cancelled conflict prompt throws `OperationCanceledException` on ZIP extract
+  (`SourceOutcomeTests`), ZIP create in both modes (`ZipArchiveServiceArchiveTests`) and tar
+  extract/create (`TarSourceOutcomeTests`). App.Core: `ProgressTextTests`, `ConflictTextTests`,
+  `SortIndicatorTests`, `NestedDisplayPathTests`, and `SourceRecyclerTests`' `Deleted` list.
+- `CoreMessageSourceGuardTests` (Core) reads `src/Archiver.Core` and fails on any `Message =`/
+  `Reason =`/`ErrorMessage =` outside `CoreMessages` (red on the unconverted code: 113 sites);
+  `CoreMessageCodeTests` pins the codes users meet (corrupted ZIP, GZip, not an archive, missing
+  source, all skipped, bomb declined, blocked listing) with byte-identical English.
+- `OperationOutcomeTests` (Core): each `OperationOutcome` from real ZIP/router runs, including a Test
+  that read nothing (T-F274). Shell `OperationMessagesTests.ForTestResult_*` and
+  `ShellCommandsTests.Test_NothingTested_DoesNotClaimNoErrors` (red before the fix).
+- T-F221: `CliFacingMessagesTests` (Core) and `CliMessagesSubprocessTests` (real `pakko.exe`):
+  missing input, -p hint and one wrong-password line, -aoa hint, empty and garbage stdin shown as
+  "(stdin)", explicit names written the 7-Zip way, `h <folder>` relative names; `CliProgressTests`
+  for the console-only percentage.
+
+### Temporary Names and Commits (v1.7.0 wave 6, T-F263/T-F312)
+
+`IO/TempOwnerTests` (tag and name shape, `IsRunningHere` incl. a reused pid and v1.6.0's
+`<pid>-<ticks>`, the sweep by place: this machine's dead/live/reused owners, another machine's and
+v1.6.0's pid-only names by age next to a destination but by process under `%TEMP%`, owner-less
+names by age, a held entry, a junction deep inside, a read-only file), `ArchiveTempFileTests`
+(the name, a dead run's file swept, the commit with either file held briefly, held throughout,
+missing, cancelled). Through the engines: `ZipArchiveServiceArchiveTests` (an old fixed `.tmp`
+held, the archive name taken by a folder, a ~240-character archive name, Overwrite onto an archive
+held briefly and throughout), `TarSandboxedServiceCompressTests` (the same old `.tmp` and held
+Overwrite cases through real tar.exe), `ZipArchiveServiceExtractStagingTests`,
+`ParallelSingleArchiveWriterTests` and `TarSandboxScopeTests` (a dead run's staging, chunk folder
+and quarantine swept). Overwrite of an archive inside the folder being archived, ZIP (both
+modes) and tar: the old archive is not packed. `ProcessTempRootTests.CurrentOwnerName_IsTheV160Shape`.
+The dead owner is the current pid with another start time (`Helpers/DeadOwner`). Mutants killed: liveness always false, the machine check removed, link
+removal removed, each of the four sweeps removed, the fixed `.tmp` name, the narrow retry predicate,
+the delete-first Overwrite in tar.
+
+T-F321 (wave 9): `ArchiveTempFileTests` (an archive that appeared during the run is kept and the
+commit takes `a (1).zip`; a free name commits there; Overwrite replaces the archive that existed at
+the start) and two runs creating one name at once, every reported archive holding its own entries:
+`ZipArchiveServiceArchiveTests` (SingleArchive and SeparateArchives) and
+`TarSandboxedServiceCompressTests` (real tar.exe). Mutants killed: `replacesExisting = true` at each
+of the three commit sites.
+
+T-F236: `IO/FolderTotalsTests` (bytes and count, a link not followed, an unreadable subfolder, a
+cancelled walk) and `FileItemTests` in `Archiver.App.Core.Tests` (a folder's totals with a link, a
+file's, disposing the item stops the walk and its totals still complete). Mutants killed: the token
+ignored, `Dispose` not cancelling. The queued CRC-32 read's cancel is enforced by CA2016, not a test.
+
+### Repository, Packaging and Workflow Guards (v1.7.0 wave 8, T-F317)
+
+- `PackagingManifestTests` (Core.Tests, tests first): the source `Package.appxmanifest` has one
+  hidden FullTrust `<Application>` for `pakko.exe` with the only `ExecutionAlias` (`pakko.exe`), and
+  `Archiver.App.csproj` packages `pakko.exe` alone from `Archiver.CLI`'s output (T-F355: Native
+  AOT; before it, the apphost's `.dll`/`.deps.json`/`.runtimeconfig.json` too). Mutation-checked
+  (2026-10-03): alias removed — red. `CI-Build-Msix.ps1` checks the same in the built package.
+- **Native AOT (T-F355)**, `PackagingManifestTests` and `WinUiAotSourceGuardTests` (Core.Tests,
+  tests first, read the repo's files): each satellite packaged as its exe alone; `PublishAot` in
+  the four exe projects and no `PublishReadyToRun`/`PublishTrimmed`; `AllowUnsafeBlocks` and
+  `CsWinRTAotWarningLevel` 2 in App and OperationUi; `IsAotCompatible` in the five libraries; no
+  `(T)` or `as T` on a resource-dictionary read in App or OperationUi (only `WinRT.CastExtensions.As<T>`).
+  Seven mutants killed (2026-10-08): a `pakko.dll` item back, `(Style)` and `as Brush` back,
+  `PublishAot` dropped from Shell, `IsAotCompatible` dropped from Messages, the warning level dropped
+  from OperationUi, `PublishReadyToRun` added to the CLI. `dotnet test` runs under JIT, so the
+  Subprocess layer also runs against the published AOT `pakko.exe` (`build.yml`'s `build-cli`, and
+  nightly on x64 and arm64 in `canary.yml`).
+- **C# 14 (T-F363)**, `PackagingManifestTests.Repo_PinsCSharp14Once` and `LockSourceGuardTests`
+  (Core.Tests, read the repo's files): `LangVersion` 14 only in `Directory.Build.props`, no
+  `.csproj` overriding it; no bare `object x = new()` (a lock object) in `src/`. Mutants killed
+  (2026-10-09): `LangVersion` added to the CLI project, `FileHashService`'s lock back to `object`.
+- **Lock files (T-F364)**, `BuildReproducibilityTests` (Core.Tests, read the repo's files): no `*`
+  in any `PackageReference` version, a `packages.lock.json` next to every `.csproj` under `src/`,
+  `tests/`, `tools/`, lock restore on and locked mode conditioned on `CI` in
+  `Directory.Build.props`, `global.json` exact with `rollForward: disable`, `build.yml` taking the
+  SDK from `global.json`. All five red before the change (2026-10-09).
+- **SBOM (T-F365)**, `SbomWorkflowTests` (Core.Tests, read the repo's files): the CycloneDX tool
+  pinned exactly; `build.yml`'s `sbom` job read-only with no secrets; no job holding a secret or
+  `id-token` restores tools or runs the generator; `build-msix`/`build-cli` need `sbom` and attest
+  with `actions/attest` and `sbom-path`; `release` publishes the `.cdx.json` files; the script
+  restores locked and drops the build-only and Windows ML packages. Six of seven red before the
+  change (2026-10-09; the seventh, no privileged job runs the generator, held already).
+- **Agent hook (T-F370)**, `AgentBashHookTests` (Core.Tests): runs `scripts/hooks/Test-AgentBashCommand.ps1`
+  through pwsh (found on PATH) with the payload Claude Code sends — bare `python`/`python3` and
+  `dotnet ... /p:` at command position (after `;`, `&&`, `|`, `$(`, a newline, an env assignment, a
+  backslash continuation) exit 2; quoted text, a heredoc body, `py -3` and `echo dotnet /p:` exit 0; a
+  non-JSON payload exits 1; `.claude/settings.json` wires the hook to `Bash`. Mutation-checked.
+- **Tracked manifest revision (T-F368)**, `PackagingManifestTests.Manifest_KeepsTheRevisionAtZero`:
+  `Package.appxmanifest`'s Identity revision is 0. Red on 1.7.1.24 before the change.
+- **Job limits (T-F366)**, `WorkflowLimitsTests` (Core.Tests; both share `WorkflowJobs`, the job
+  splitter): every job in `build.yml` and `canary.yml` has a job-level `timeout-minutes` of 1-120;
+  `build.yml`'s concurrency group falls back to `run_id` outside branch pushes and PRs;
+  `canary.yml` has none; canary-status reads check-run annotations for a timeout. All four red
+  before the change; mutants killed: one timeout removed, the `run_id` fallback, the annotation text.
+
+### Fuzz
+
+- `Archiver.Core.Tests/Fuzz/Par2FuzzTests` (`Category=Fuzz`): raw mutations of the golden sets, and
+  mutations with the packet MD5 recomputed; reader, verifier and repairer must not throw or write
+  anything but the output they are given.
+
+### Slow and VeryLarge
+
+`ZipArchiveServiceZip64Tests.cs` (T-F20) creates 65,600 real files (the `Slow`-tagged tests) and a
+>4 GiB sparse file (the `VeryLarge`-tagged test) to exercise Zip64's entry-count and large-size
+boundaries — the sparse-file test itself is fast wall-clock-wise (no real disk I/O for the all-zero
+content), but is still gated behind `VeryLarge` since a multi-GiB round trip is the kind of thing
+that shouldn't run just because someone ran the "Slow" tier.
+
 ---
 
-## Integration Tests (v1.3+)
+## Archiver.Core.IntegrationTests (Integration Tests, v1.3+)
 
 Project: `tests/Archiver.Core.IntegrationTests/` (created in T-F49).
 
@@ -248,7 +802,7 @@ the last is a regression test for the exploit documented in `DECISIONS.md`'s T-F
 Fixtures are self-generated per-test via `TarBuilder.cs` (raw USTAR bytes, or GNU magic via
 `gnuMagic` (T-F305), no third-party tooling
 — needed since a `..`-entry or a symlink escape target isn't a representable real source path)
-rather than a prebuilt corpus; T-F50 still owns the full multi-format fixture set below.
+rather than a prebuilt corpus; T-F50 still owns the full multi-format fixture set ("Tar Fixtures" above).
 `TarSandboxedServiceCompressedFormatsTests.cs` and `TarSandboxedServiceExternalFormatsTests.cs`
 were renamed the same way.
 
@@ -276,23 +830,6 @@ own entry, and a name read without loss that no other entry shares must be senda
 Exercise the real Win32 AppContainer/ACL/Job-Object/Authenticode APIs directly — no mocks (this
 repo's convention), every assertion is against real OS behavior:
 
-- `tests/Archiver.Core.Tests/Services/Sandbox/` — pure/fast unit tests: `SandboxedProcessLauncherTests.cs`
-  (raw `CreateProcessW` launcher, no AppContainer; fix phase 4: an unrelated inheritable pipe is
-  not inherited by the child — `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`; a cancelled child has exited
-  when the call returns), `SandboxedProcessLauncherHandleLeakTests.cs` (a failing launch leaks no
-  handles — its own `DisableParallelization` collection, since it counts the whole process's
-  handles), `AppContainerLaunchTests.cs` (`tar.exe --version` inside a real AppContainer),
-  `TarCommandLineEncodingTests.cs` (T-F266: best-fit/unrepresentable strings per explicit code
-  page, the launcher refuses before creating a process), `TarSandboxScopeLimitMessageTests.cs`
-  (T-F239 messages, the memory/CPU limit rules), `TarHeaderNamesTests.cs` (T-F305: the header-byte
-  UTF-8 check, incl. GNU `L`/pax records and malformed headers giving "unknown"; T-F310: the same through gzip, with the size limit and a damaged stream), `AppContainerProfileTests.cs` (profile
-  create/reuse/delete, using its own throwaway test profile name — never the shared production
-  `Pakko.TarSandbox` profile — plus a real forced-failure case: a >64-char profile name makes
-  `CreateAppContainerProfile` throw `InvalidOperationException`, the exact failure shape
-  `TarSandboxScope` now rewraps as `SandboxSetupException`), `TarSignatureVerifierTests.cs` (real
-  tar.exe passes; T-F401: a system binary signed through a catalog only, chosen by its empty PE
-  certificate table, passes, and so does an unchanged copy of it; an unsigned decoy and copies of
-  that binary and of tar.exe with a byte changed inside their first section fail).
 - `tests/Archiver.Core.IntegrationTests/` — `QuarantineAclTests.cs` (3 tests: a granted quarantine
   lets a real sandboxed extraction succeed; an un-granted sibling folder is denied — the actual
   security proof; and a nonexistent path makes `GetNamedSecurityInfoW` throw
@@ -380,39 +917,64 @@ regression worth investigating, not the old expected noise.
 - RAR5 and 7z tests require Windows 11 23H2+ (tar.exe with libarchive 3.7+)
 - CI: run separately from unit tests; tag as `[Integration]` so `dotnet test tests/Archiver.Core.Tests` remains fast
 
+### Testing Through tar.exe (T-F397)
+
+**Testing through tar.exe (T-F397).** `TarSandboxedServiceTestTests`
+  (`Archiver.Core.IntegrationTests/`, the real tar.exe): a whole archive of each format, a byte
+  flipped and a file cut short, the formats whose pass carries the structure-only warning (with a
+  flipped gzip that tar.exe does not notice, pinned so a later tar.exe that does is seen), the
+  encrypted fixtures, an escaping name and a link entry, policy, progress, cancellation.
+  `SandboxDiscardedStdOutTests`: the launcher drops stdout and counts it.
+  `SevenZipRecoveryEndToEndTests`: a 7z with a PAR2 set damaged three ways, tested, repaired,
+  extracted and compared with the source, and the two sides of the "passes its own test" rule.
+  `TarTestCoverageTests` (`Archiver.Core.Tests/`, no tar.exe): which formats count as verified,
+  from header bytes. The Shell's and the App's recovery tests keep starting no tar.exe through
+  `StructureOnlyTarEngine`; `CliSevenZipSubprocessTests` has `t` on a whole, a changed and a cut
+  7z and the create, damage, repair, extract road.
+
+### PAR2 Oracle Checks (T-F275)
+
+- `Archiver.Core.IntegrationTests/Recovery/Par2OracleTests`: `[Par2OracleFact]` skips a test when a
+  tool is missing, unless `PAKKO_PAR2_ORACLES_REQUIRED=1`, where the test runs and fails. CI's `test`
+  job downloads the tools first (two attempts) and sets the variable; the nightly canary does not
+  download them, so these tests skip there. `ArchiveWithRecoveryData_Par2cmdlineVerifiesTheSet`
+  runs the whole router path (real ZIP engine) and has par2cmdline verify the result.
+
+### AMSI Over the Tar Quarantine (T-F146)
+
+`tests/Archiver.Core.IntegrationTests/AntivirusScanServiceTarTests.cs` (`[Collection("TarSandbox")]`,
+same T-F130 serialization as every other real-sandbox test class) — the tar-family quarantine-scan
+path against real `tar.exe`: clean/threat-detected archives, subset scanning, and a symlink-entry
+archive confirming T-F49's pre-scan rejection becomes an `Inconclusive` finding rather than an
+unhandled throw.
+
+### Core Never Throws (T-F406, 2026-10-17)
+
+- `CoreNeverThrowsContractTests` (IntegrationTests, real engines and `tar.exe`): every public Core
+  operation against nine hostile paths (a file as the folder, a missing drive, bad characters, an
+  empty string, a locked file, a non-archive, an empty file, ...) must return, never throw. A
+  written table maps each (interface, method) to its cases; a reflection check over the public
+  Core services fails when a member is added without a row or a stated reason.
+- `DestinationIsAFileTests` (Core.Tests), `CliLastResortTests` and the subprocess
+  `Extract_OutputFolderIsAFile_ExitsTwoWithAnError` (CLI.Tests), `ShellLastResortTests`
+  (Shell.Tests), `AsyncVoidHandlersTests` (App.Core.Tests: reads every `.cs` of the App and
+  OperationUi: each `async void` body catches). Device rows: `CLI-036`, `SHL-014`.
+
+### Hard Links (T-F392, v1.9.0)
+
+- T-F392 (v1.9.0): `Archiver.Core.IntegrationTests` `TarSandboxedServiceHardLinkTests` (two names of one file
+  refused for tar and tar.gz, in one folder, across folders, as two file sources; not refused across
+  SeparateArchives, with one name filtered out, for a link to a file outside the selection, for 7z);
+  `Archiver.Core.Tests` `TarHardLinkPairsTests` (the pair search over a faked listing: zero IDs, an
+  unlistable folder, another volume, an unconfirmed duplicate; `PathIdentity.FilesIn` on a real folder).
+  `Archiver.CLI.Tests` `Subprocess/CliHardLinkSubprocessTests` (`a -ttar` exit 2 naming both, `-tzip` stores
+  both; the AOT exe in CI). Links are made in the test (`CreateHardLinkW`), no fixture files. Device row: `EXP-016`.
+
 ---
 
-## Tar Fixtures (v1.3+)
+## Archiver.Core.PerformanceTests
 
-Located at `tests/Archiver.Core.Tests/Fixtures/tar/`.
-
-Generated by `GenerateFixtures` project (where tar.exe can create them). Manual fixtures needed for formats only tar.exe can read (RAR, certain 7z variants).
-
-| Fixture | Notes |
-|---------|-------|
-| `valid_tar.tar` | Plain tar, no compression |
-| `valid_tar_gz.tar.gz` | gzip compressed |
-| `valid_tar_bz2.tar.bz2` | bzip2 compressed |
-| `valid_tar_xz.tar.xz` | xz compressed |
-| `valid_tar_zst.tar.zst` | zstd compressed — requires Win 11 23H2+ tar.exe |
-| `valid_tar_lzma.tar.lzma` | lzma compressed |
-| `valid_7z.7z` | 7z archive — requires Win 11 23H2+ tar.exe |
-| `valid_rar4.rar` | RAR4 — requires Win 11 23H2+ tar.exe |
-| `valid_rar5.rar` | RAR5 — requires Win 11 23H2+ tar.exe |
-| `corrupted_tar.tar` | Intentionally corrupted header |
-| `zipslip_tar.tar` | Path traversal entry (`../../evil.txt`) |
-| `bomb_tar.tar.gz` | Highly compressed, triggers bomb detection |
-| `unicode_cyrillic.tar` | Cyrillic filename entries |
-| `unicode_emoji.tar` | Emoji filename entries |
-
-To regenerate:
-```bash
-dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
-```
-
----
-
-## Performance/Regression Tests vs. a 7-Zip Reference (T-F114, v1.4+)
+### Performance/Regression Tests vs. a 7-Zip Reference (T-F114, v1.4+)
 
 Project: `tests/Archiver.Core.PerformanceTests/` — `CompressionPerformanceTests.cs`, 6 tests
 (archive + extract × one-large-file / many-small-files / hybrid). The many-small-files and hybrid
@@ -481,278 +1043,8 @@ along the way, and why the remaining gap (likely 7-Zip's own hardware-accelerate
 chased further this round. New `SevenZipRunner.Hash(path, algorithm, recursive)` method alongside
 the existing `Archive`/`Extract`/`Test` wrappers.
 
----
+### Correctness Against the Vendored 7za.exe (untagged)
 
-## PAR2 Oracles (T-F275, v1.8)
-
-The recovery-data tests check Pakko's PAR2 files against three independent tools, downloaded by
-`scripts/Get-Par2Oracles.ps1` into `artifacts/par2-oracles/` (git-ignored; each release asset pinned
-to the SHA-256 GitHub publishes). They are GPL-2.0 programs, so they are never committed, and
-par2cmdline's own test archives are not copied either — fixtures are generated from Pakko-owned data.
-
-| Tool | Folder | Use |
-|---|---|---|
-| par2cmdline 1.4.0 | `par2cmdline\par2.exe` | reference packets (same `-s`/`-c` gives the same bytes); `verify --full-hash` (without it 1.4.0 skips the whole-file MD5); repair only for contiguous exponent sets — it takes the first k recovery blocks and fails on a singular choice |
-| par2cmdline-turbo 1.5.0 | `par2cmdline-turbo\par2.exe` | repair of any set (retries another block on a singular matrix) |
-| MultiPar 1.3.3.6 | `multipar\par2j64.exe` | a second, Windows-native implementation; x64 only (emulated on ARM64); exit code is a bit mask (16 = repaired). From Git Bash set `MSYS_NO_PATHCONV=1`, or `/ss4096` becomes a path |
-
-The tests (T-F275 step 1):
-
-- `Archiver.Core.Tests/Recovery/`: `Gf16Tests` (the specification's constants; multiplication against
-  a carry-less multiply), `Gf16RegionTests` (the vector and scalar kernels called directly, against
-  the per-word definition, every length modulo 32), `Par2CreatorTests` (packets equal to the golden
-  par2cmdline sets in `Fixtures/par2/`, parameters, volume names, every writer shape inside the
-  reader's limits), `Par2PacketReaderTests` (hostile packets from `Par2PacketForge`, which recomputes
-  the packet MD5 so the field checks are reached), `Par2SetLocatorTests`, `RecoveryMatrixTests` (the
-  [2, 48, 237] x {1, 2, 4, 5} case, seen red against first-k), `Par2SliceCombinerTests` (range and
-  batch seams forced small), `Par2RepairTests` (flipped, zeroed, cut, appended and deleted data;
-  damaged PAR2 files; forged recovery data caught by the final check; cancellation at each phase; an
-  unwritable output folder; one `Slow` test with slices larger than one range).
-- `Archiver.Core.Tests/Services/ArchiveCreationRouterRecoveryTests` (step 2): a hand-rolled engine
-  writes real archive files, so the router's PAR2 step runs for real — a set per created archive
-  (also with errors, also SeparateArchives), none for a skipped one, percent and policy refused before
-  the engine, a failed set downgrading the sources, cancellation leaving no partial file, one rising
-  percent with 100 last, the PAR2 work off the caller's thread, stale volumes removed and a stuck one
-  a warning; an archive rewritten without a percent losing its earlier set (also one named `a.par2`),
-  two earlier sets, one under each name, and with a percent the earlier set gone even when the new
-  one is cancelled or not created,
-  while a content match, another file's set, unreadable or mixed files and the policy keep theirs. `GroupPolicyServiceTests` reads `DisableRecoveryData`; `RecoveryDataOptionTests` and
-  `CreateModeTextTests` (App.Core) the card's option; `CliArgumentParserTests` and two
-  `CliSubprocessTests` the `-rr[N]` switch.
-- `Archiver.Core.Tests/Services/ExtractionRouterRecoveryTests` (step 3): a ZIP engine that passes
-  or fails named paths, real archives and Pakko's own sets — intact (ZIP, tar.gz, a `.par2` or
-  volume path, a set named `a.par2`), flag off and policy unchanged, a `.par2` refused under the
-  policy, archive plus its `.par2` checked once, renamed archive and set, a set for another file, a
-  ZIP rewritten without a set (warning, not damage), repairable and beyond-repair damage, a missing
-  archive, damaged set files, a set left incomplete (no index, no volume, a volume cut short at
-  every length, only the writer's temporary files), a locked archive and unlistable folders (errors, never a throw), one
-  rising percent ending at 100, cancellation. `CliSubprocessTests` runs `pakko a -rr10` then `t`
-  over intact, repairable, beyond-repair and damaged sets for ZIP and tar.gz, a `.par2` path, and
-  a ZIP and a tar.gz rewritten without `-rr` (the old set is gone, no recovery verdict), and
-  `pakko a -rr100` killed while the set is being written (no false verdict from `t`, the next run
-  sweeps the temporary files and writes a set that checks).
-- Step 3b, Explorer's "Verify with PAR2". `Archiver.Shell.Tests/ShellCommandsRecoveryTests` runs
-  `ShellCommands.VerifyRecoveryAsync` on real sets with the fake UI: a tar-family archive that
-  matches, a `.par2` or a volume alone, archive plus index plus volume checked once, the Ukrainian
-  text, "Test archive" unchanged, damage a set can and cannot repair (nothing written next to the
-  archive), one message for a mixed selection, another file's set, an unreadable set (warning next
-  to an archive, error when selected itself), no index, no volume, a volume cut short, only the
-  writer's temporary files, a `.par2` whose archive is gone, `DisableRecoveryData`, a set check that still runs under
-  `BlockedFormats`, cancel; and on a real ZIP: test passed and set matches, a rewritten ZIP beside its
-  old set (a warning, never "damaged"), a damaged ZIP its set can repair.
-  `ShellArgumentParserTests` has the switch. C++ `ShellExtUtilsTests` (`AnyPathHasRecoveryData`,
-  `IsRecoverySetFileName`, `ListFolderNames`) decides the item's visibility with a fake folder
-  listing and once on a real folder: a `.par2` alone without touching the disk, a set under either
-  name, volumes without an index, temporary files, names that only start alike, non-archives, the
-  16-archive cap, the policy value, a blocked format. `ComLoadTests` pins the item's place after
-  Test; `LocalizationTests` and `Archiver.Messages.Tests` hold the 37 translations.
-- Step 3c, the App. `Archiver.Core.Tests/Services/RecoveryDataLookupTests`: `HasFilesFor` (a set
-  under either name, a volume without its index, temporary files and names that only start alike,
-  the policy, unusable paths) and `FindArchive` (index or volume, two files sharing a base chosen by
-  content, an unreadable set, another file's set, the archive gone, the policy, cancel).
-  `Archiver.App.Core.Tests/RecoveryPanelTests`: the line's rules on hand-built results (each verdict
-  code as error and as warning, another archive's verdict never taken, the archive's own errors
-  left to the dialog, unusable paths) and on the real router with real sets (a ZIP and a tar-family
-  archive that match, damage a set can and cannot repair, an archive cut short going from the
-  listing error to the verdict, an archive rewritten beside its old set, an unreadable set, another
-  file's set under this name, only the writer's temporary files, a volume cut short, the policy, a
-  test without the set check, a cancelled test). `BrowseModeTests` has `WithoutListing`,
-  `BrowseNavigationTests` `KeepsOpenUnlisted` (never for a policy refusal),
-  `BrowserEntryRoutingTests` the `.par2` row. `MainViewModel`'s wiring is a device check.
-- Step 4a, repair. `Archiver.Core.Tests/Services/RecoveryServiceTests` runs
-  `IRecoveryService.RepairAsync` on real sets with a fake ZIP engine: the copy's name and bytes for
-  ZIP, tar-family, no extension and several dots; the original's bytes and time unchanged; a
-  `.par2` or a volume alone; archive and set files together repaired once; an intact archive read
-  once and nothing written; the output folder created; the archive gone and rebuilt from a full
-  set; several archives each with its verdict; progress to 100 once. A theory runs `t` and `r` on
-  the same nine scenarios and requires a copy exactly when `t` said repairable. Failure paths: no
-  set, only the writer's temporary files, an unreadable set, another file's set under this name,
-  paths that are not there, damage beyond the set, a recovery block forged with a valid packet
-  hash (the copy is not kept), a volume cut short with enough and with too few whole blocks, the
-  index gone, the volume gone, archive and set renamed, the repaired name taken (twice), a folder
-  where files cannot be created and another folder that works, an output path that is a file,
-  cancel at five points leaving no file, `DisableRecoveryData`, `BlockedFormats`, the download
-  mark (carried, taken from the set files when the archive is gone, absent, left off by the user,
-  enforced by policy, kept under the narrow policy), and par2cmdline's golden set under both of
-  its names. `Archiver.CLI.Tests`: the parser's `r`, the two new hints, and the real `pakko.exe`
-  (`Repair_*` in `CliSubprocessTests`): a ZIP and a tar.gz repaired, `.par2` with `-o`, nothing to
-  repair, beyond the set, no set, set files zeroed, a ZIP another tool rewrote beside its old set
-  (the real ZIP test passes, `r` warns as `t` does and writes nothing), the name taken, the
-  denied folder with its hint and `-o`, bad command lines, paths that are not there, and the
-  process killed while the copy is built (no copy, the original as it was, the next run repairs
-  and sweeps the temporary file).
-- Step 4b, Explorer's "Repair with PAR2". `ShellCommandsRecoveryTests` (`Repair_*`) runs
-  `ShellCommands.RepairRecoveryAsync` on real sets with the fake UI: the copy written and named in
-  the message with the original unchanged, a `.par2` or a volume alone, archive plus set files
-  repaired once, an intact archive, the Ukrainian text, damage beyond the set, one message for a
-  repaired, a beyond-repair and a set-less archive together, a ZIP rewritten beside its old set
-  (the real ZIP test passes: a warning, nothing written), a damaged real ZIP repaired to one that
-  tests clean, no set and an unreadable set, only the writer's temporary files,
-  `DisableRecoveryData`, cancel, a folder where files cannot be created, and a repaired check
-  never shown as a match by `ForTestResult`. `ShellArgumentParserTests` has the switch. C++:
-  `ComLoadTests` pins the item's place after "Verify with PAR2" (fourteen leaves),
-  `LocalizationTests` the 37 texts (each names PAR2 and differs from the verify text),
-  `ShellExtUtilsTests` the switch. The item's visibility is `AnyPathHasRecoveryData`, tested in 3b.
-- Step 4c, the App's Repair. `RecoveryPanelTests`: when Repair is offered (before any check, only
-  for repairable damage after a test, never for another archive's damage or without files), and
-  the real service on real sets: a ZIP and a tar-family archive repaired (the line names the
-  copy, no second offer, a repaired check never read as a match), an archive cut short going from
-  the listing error to a copy that tests clean, an intact archive, damage beyond the set, the set
-  deleted between the open and the click, a forged recovery block (the copy not kept), a folder
-  where nothing can be created followed by another folder that works, and another archive's
-  result never taken. `RecoveryServiceTests` has the service's `HasFilesFor`/`FindArchive` with
-  its policy and cancel. The wiring in `MainViewModel` is a device check.
-- T-F375, the AOT exe's speed. `CliSubprocessTests.Archive_RecoveryData_TakesNoLongerThanTwiceParTwoCmdLine`
-  (`[PublishedExeSpeedFact]`) is skipped unless `PAKKO_CLI_EXE` names a published exe, and then
-  needs par2cmdline from `Get-Par2Oracles.ps1`: `pakko a -rr5` on 96 MB must take less than twice
-  par2cmdline's `create -r5` on the same file. `build-cli` runs it after the publish. Locally:
-  `.\scripts\Publish-Cli.ps1 -Architecture x64`, set `PAKKO_CLI_EXE` to
-  `artifacts\cli\win-x64\pakko.exe`, run the default filter.
-- `Archiver.Core.Tests/Fuzz/Par2FuzzTests` (`Category=Fuzz`): raw mutations of the golden sets, and
-  mutations with the packet MD5 recomputed; reader, verifier and repairer must not throw or write
-  anything but the output they are given.
-- `Archiver.Core.IntegrationTests/Recovery/Par2OracleTests`: `[Par2OracleFact]` skips a test when a
-  tool is missing, unless `PAKKO_PAR2_ORACLES_REQUIRED=1`, where the test runs and fails. CI's `test`
-  job downloads the tools first (two attempts) and sets the variable; the nightly canary does not
-  download them, so these tests skip there. `ArchiveWithRecoveryData_Par2cmdlineVerifiesTheSet`
-  runs the whole router path (real ZIP engine) and has par2cmdline verify the result.
-- `Archiver.Core.PerformanceTests/Par2PerformanceTests` (`Category=VeryLarge`, Release only):
-  512 MiB at 5 % against par2cmdline (Pakko must not be slower; 4.3 s against 9.3 s on 2026-10-09),
-  a repair of 100 slices (6.9 s), and a round trip over a file above 4 GiB.
-
-## T-F35 Parallel SingleArchive Pipeline Tests (v1.4+)
-
-Three test classes cover the gated `Archiver.Core/Services/Zip/` subsystem (see `ARCHITECTURE.md`'s
-own section for it, `DECISIONS.md`'s T-F35 entry for the design rationale and two real bugs these
-tests caught before shipping):
-
-- `DosDateTimeTests` (`Archiver.Core.Tests/Services/Zip/`) — round-trip encode/decode, 1980/2107
-  clamping, and a byte-for-byte comparison against a real `ZipArchiveEntry`'s own DOS date/time
-  encoding.
-- `ParallelSingleArchiveWriterTests` (`Archiver.Core.Tests/Services/Zip/`) — two layers:
-  - Unit-level, against `RunPipelineAsync` directly with injectable compress delegates (not real
-    file I/O): enqueue-order-not-completion-order write proof, a whitebox concurrency-ceiling test
-    (a controllable blocking gate proves at most `windowCapacity` compress tasks ever run
-    concurrently — this caught a real bug: the bounded channel alone did not bound concurrency),
-    already-cancelled-token graceful no-op, mid-flight cancellation with no orphaned background
-    tasks left running afterward, and per-file error isolation.
-  - Real-file-I/O level, against `WriteAsync` with actual files/temp directories (added when the
-    original "large files stream sequentially" design was replaced by per-worker temp-file
-    compression — no more file-size ceiling): successful cleanup after a normal run (no leftover
-    `*.chunk-*.tmp` files), cleanup after a locked-file compression error with the rest of the
-    batch still archived, and cleanup after mid-flight cancellation — this last one caught a real
-    concurrency bug (temp-file cleanup racing against a still-running straggler task) that failed
-    intermittently only under full-suite parallel load, never in isolation; fixed by awaiting
-    every dispatched compress task before sweeping leftover temp files.
-  - Allocation guard (T-F271): `CompressSmallFile` on a 4 KiB file allocates under 32 KiB on the
-    calling thread (`GC.GetAllocatedBytesForCurrentThread`, isolated from parallel tests) — pins
-    the unbuffered read; a 64 KiB `FileStream` buffer per file made it 70 KiB.
-- `SmallFileAllocationTests` (`Archiver.Core.Tests/Services/`, T-F271 follow-up) — its own
-  `DisableParallelization` collection, since it measures `GC.GetTotalAllocatedBytes` for the whole
-  process: hashing (CRC-32, SHA-256) and sequential archiving of 40 x 4 KiB files stay under 64 KiB
-  allocated per file. Hashing failed at ~264 KiB per file before `ReadAndDigestAsync` pooled its
-  buffer; the archive case is a guard (it passed before the change).
-- `ZipArchiveServiceWriterChoiceTests` (`Archiver.Core.Tests/Services/`, T-F352) - the rule that
-  picks the writer, on its boundaries (`UsesParallelWriter`), and 9 MiB random files through
-  `ArchiveAsync`: two of them take the parallel writer (entries stored, content round-trips),
-  one beside a small file stays sequential (as files and inside a folder); same-name sources, a
-  locked file and a link give what the sequential writer gives; Cancel leaves nothing; progress
-  never goes back; a source or destination disk with a seek penalty keeps the sequential writer.
-  The service's disk answer is pinned in these tests (`HasNoSeekPenalty`), since a runner's
-  virtual disk may not answer. `DiskSeekPenaltyTests` (`IO/`): a network path, a missing drive and
-  a non-path are false and never throw; what a real disk answers is machine-dependent and was
-  checked by hand (NVMe: true, `\\localhost\C$`: false). T-F359, same classes:
-  `AnyDiskHasSeekPenalty` asks once per folder and about the destination; with a pinned "has a
-  penalty" (`HasSeekPenalty`) the first large file to report holds its worker for a second and no
-  other large file may report meanwhile, in both archive modes, and the plain archive is
-  byte-identical to the one made without it; `OneAtATime_*` (writer) - never two at once, a
-  failure or a cancel while waiting does not block the next.
-  `ArchiveAsync_FewLargeFiles_WithinToleranceOfSevenZipReference` (`Category=Slow`) adds `7za t`
-  and the timing ratio. `ParallelSingleArchiveWriterTests.RunPipelineAsync_CancelledWhileChunks
-  AreCopiedIntoTheArchive_...` pins Cancel in the copy phase (the bar at 99%), which a few large
-  files make seconds long.
-- `LazyTarProbeTests` (`Archiver.Core.Tests/Services/`, T-F350) - through `PakkoServices` with a
-  probe-counting `ITarService`: extract/test/list of a ZIP or of a format policy refuses never
-  probe, a tar-family archive probes once across operations, Cancel ends the wait for a probe
-  still running; `Classify` and `ClassifyAsync` against 72 pinned verdicts with their texts
-  (9 formats by magic bytes x 4 policies x 2 capability sets, captured before the change).
-  `HelperOperationUiTests.*BeforeTheHelperIsReady*` (T-F351): a clean end before `HelperReady`
-  ends the helper without waiting; a result still waits for the window.
-  T-F356: `DeferredOperationSessionTests` (the window is `FakeOperationUi`'s) - a fast clean
-  operation starts no window, a longer one starts it once with the current archive and the latest
-  progress, a prompt or a result starts it at once, Cancel in the window cancels the operation,
-  nothing starts after the end, eight prompts racing the timer share one window;
-  `HelperOperationUiTests` - the helper is not launched for a fast operation, `Begin` carries the
-  elapsed time, `endsWithResult` launches at once, a launch that fails when needed goes to the
-  fallback (the 37 older tests pin `StartDelay = 0`); `ShellCommandsTests.Begin_ExtractAndArchiveCanWait_...` (Scan's flag has no test);
-  `OperationWindowModelTests.ShowDelayFor_*`; `HandleListProcessTests` - a real child (`ping.exe`)
-  on real pipes does not hold an inheritable handle it was not given (fails when the handle list
-  is dropped), holds the one it was given, and the command line reads back through
-  `CommandLineToArgvW`. Twelve mutants, all caught.
-- T-F357 (`ParallelSingleArchiveWriterTests`): a Stored entry at NoCompression, Optimal and Fastest
-  (random data) keeps its source open (write and delete refused) and writes no chunk; a
-  compressible file and an encrypted incompressible one keep the chunk and free the source; a
-  `SourceStored` whose CRC, length or end of file disagrees throws in the drain; Cancel while
-  sources wait for the drain releases every one. `ZipArchiveServiceIncompressibleTests.
-  ArchiveAsync_LargeStoredAndDeflatedFiles_...` (single and separate): methods, round trip,
-  sources deletable when `ArchiveAsync` returns. `WriteAsync_StoredFileOver4GiB_...`
-  (`Category=VeryLarge`, on demand) takes this path with Zip64 and reads back with its CRC
-  checked - `ZipArchiveServiceZip64Tests`' >4 GiB test takes `ZipArchive` instead. Nine of ten mutants caught; rewriting the chunk
-  anyway changes only the bytes written, which the measurement in TASKS.md shows, not a test.
-- `ArchiveEntrySecurityMotwTests` (`Archiver.Core.Tests/Services/`, T-F358) - `ReadMotw` returns
-  the archive's mark, null for `Disabled`, an unmarked archive or a path that cannot be read;
-  `TryWriteMotw` marks any file under `AllFiles` and only the listed extensions under
-  `UnsafeExtensionsOnly`, replaces a mark already there, works while the file is still open for
-  writing, never throws; `TryPropagateMotw` (tar's path) still keeps the file's time.
-  `ZipArchiveServiceExtractTimesTests.ExtractAsync_WithOrWithoutProgressAndMark_...` covers both
-  copy branches with and without the mark. Ten of eleven mutants caught; the one that survives
-  drops the flush before the time is set - NTFS keeps a time set through a handle when that handle
-  writes later, so no test on this machine can see it (kept for a share).
-- T-F360: `DownloadMarkChoiceTests` (`Archiver.Core.Tests/Services/`) - through
-  `PakkoServices.Create(policy)`'s router (the App and CLI path, so a copy of `ExtractOptions`
-  that drops the choice shows): mark on/off on a marked ZIP, off keeps the entry time, a set
-  `AllFiles` policy marks despite off, a set `Disabled` does not mark despite on; the 8-case
-  `EffectiveMotwMode` matrix; `ArchiveDownloadMark.IsPresent` on marked, unmarked, empty, missing,
-  invalid and folder paths. `GroupPolicyServiceTests`: `MotwModeSetByPolicy` only for 0/1/2.
-  `TarSandboxedServiceExtractTests.ExtractThroughRouter_DownloadMarkChoice_...` (Integration):
-  the same through tar.exe. App.Core `DownloadMarkOptionTests`: hidden, checked with the cost
-  note, unchecked with the risk note, locked with the policy note. CLI `CliDownloadMarkTests`:
-  `-snz`/`-snz1`/`-snz0`, last wins, `-snz2` and unknown values exit 7, `-snz0` on `t`/`l`/`a`/`h`
-  exits 7, the policy warning; subprocess `Extract_MarkedZip_SnzDecidesTheMark`. Seven mutants:
-  five caught; the two survivors were redundant checks and were removed.
-- `PolicyOwnershipTests` (`Archiver.Core.Tests/Services/`, T-F261/T-F250) — Group Policy has one
-  owner: every engine/router constructor requires a non-null `GroupPolicyOptions` (reflection);
-  `TarSandboxedService` refuses Extract/List/Compress under `DisableTarExtraction` and never runs
-  its version probe (injected probe seam — no tar.exe started); `PakkoServices` probes once and
-  hands the policy to every service; extract/create/list/test under `BlockedFormats=tar` and
-  `DisableTarExtraction` never reach a tar fake that fails when called; scan reports the policy
-  (checked with no AV provider, so a gate regression shows as a different reason, not a tar run).
-- `ZipArchiveServicePolicyTests` (`Archiver.Core.Tests/Services/`, T-F250) — the ZIP engine and
-  scan refuse a blocked `zip` themselves, including an entry-less ZIP the magic-byte detector
-  calls `Unknown` (the case no router check sees).
-- `ZipArchiveServiceUserSkipTests` (`Archiver.Core.Tests/Services/`, T-F216) — the user's own
-  conflict Skip (one by one or "apply to all") gives no "every entry was skipped" warning, while
-  the no-prompt default Skip or an added safety skip still does, and a partly skipped archive
-  stays `Partial`. The tar equivalents are two `[Integration]` tests in
-  `TarSandboxedServiceExtractTests.cs` (`ExtractAsync_UserChoseSkipAll_...`,
-  `ExtractAsync_UserSkippedOneEntry_SourcePartial`).
-- `FormatListConsistencyTests` (`Archiver.Core.Tests/Services/`, T-F264) — parses
-  `ShellExtUtils.cpp` (ZIP-container and non-ZIP extension arrays, compound extensions, the T-F262
-  extension-to-policy-name table) and `Package.appxmanifest`'s file types and compares them with
-  the C# lists; seen red by removing `.bdoc` from the manifest and `.txz` from the C++ list.
-- `StdinPathListTests` (`Archiver.Shell.Tests/`, T-F235) — the Explorer selection read from stdin
-  (`--paths-stdin`): the exact bytes the C++ builder writes, 10,000 paths, quotes/Unicode/an
-  unpaired surrogate, the size cap; no stdin, end marker only, empty entry, UTF-8 text; a stream
-  that ends after a complete entry without the end marker (mutation-checked), inside a path, on an
-  odd byte count, or with a throwing read.
-- C++ suites added to `Archiver.ShellExtension.Tests` (T-F235/T-F262): `PathListTransport` and
-  `LaunchWithPathList` (payload format, 300 x 95-character repro, only the read end inheritable,
-  10,000 paths through a real pipe, a real child process receiving the payload, a write with no
-  reader failing), `GetSelectionPaths` (an array with a non-filesystem item is incomplete),
-  `MenuPolicy` (each `DisableTarExtraction`/`BlockedFormats` value hides exactly the documented
-  items; missing or unreadable values hide nothing) and `Win32PolicyRegistryReader` (missing key,
-  wrong type, a real DWORD). Build from a short path: a worktree path can exceed MAX_PATH for the
-  gtest lib (`LNK1104`).
 - `FolderHashParityTests` (`Archiver.Core.PerformanceTests/`, T-F225; untagged, so it runs in the
   default filter) — folder DataSum/NamesSum against the vendored `7za.exe h` run live on the same
   folder, CRC-32 and SHA-256: one file, flat, nested with an empty subfolder and Cyrillic names,
@@ -772,89 +1064,12 @@ tests caught before shipping):
   stream for `-m0=bzip2`, stored text at `-mx=0`, `-so`, `-rr5`, an existing archive with and
   without `-y`, a missing source, the exit-7 refusals, `i`). That project has no 7-Zip, so the
   method is read from the archive's own bytes there.
-  **Testing through tar.exe (T-F397).** `TarSandboxedServiceTestTests`
-  (`Archiver.Core.IntegrationTests/`, the real tar.exe): a whole archive of each format, a byte
-  flipped and a file cut short, the formats whose pass carries the structure-only warning (with a
-  flipped gzip that tar.exe does not notice, pinned so a later tar.exe that does is seen), the
-  encrypted fixtures, an escaping name and a link entry, policy, progress, cancellation.
-  `SandboxDiscardedStdOutTests`: the launcher drops stdout and counts it.
-  `SevenZipRecoveryEndToEndTests`: a 7z with a PAR2 set damaged three ways, tested, repaired,
-  extracted and compared with the source, and the two sides of the "passes its own test" rule.
-  `TarTestCoverageTests` (`Archiver.Core.Tests/`, no tar.exe): which formats count as verified,
-  from header bytes. The Shell's and the App's recovery tests keep starting no tar.exe through
-  `StructureOnlyTarEngine`; `CliSevenZipSubprocessTests` has `t` on a whole, a changed and a cut
-  7z and the create, damage, repair, extract road.
-- `ZipEntryWriterCompatibilityTests` (`Archiver.Core.PerformanceTests/` — lives there specifically
-  to reuse the vendored, hash-verified `7za.exe` binary rather than duplicating it into a second
-  test project; a correctness suite, not a performance one, despite the location) — proves the
-  hand-rolled ZIP bytes are independently readable, not just self-consistent: a
-  `System.IO.Compression.ZipFile.OpenRead` round trip, an independent `7za.exe t` integrity check
-  (this caught a real Zip64 local-header field-offset swap bug — `ZipFile.OpenRead` accepted the
-  corrupted bytes silently, `7za.exe` rejected them outright), a raw structural byte parser written
-  independently of `ZipEntryWriter`'s own code, and a forced-Zip64 test (deliberately-synthetic
-  declared sizes on a tiny real stream, exercising `WriteCompressedEntryFromStreamAsync`'s Zip64
-  path without needing gigabytes of test data — verified via the raw parser only, since a real
-  reader would reasonably reject content whose actual length doesn't match its declared length).
-  The shared `BuildMixedArchiveAsync` helper (reused by the three tests above) also includes a
-  zero-byte real file compressed at `CompressionLevel.Optimal`, added after a real on-device
-  NanaZip cross-check found `ZipEntryCompressor` tagged empty files as `Deflate` even though
-  `DeflateStream` writes 0 output bytes for zero input — invalid to a real deflate reader though
-  invisible to .NET's own lenient one; see `DECISIONS.md`'s T-F35 follow-up entry. A separate test,
-  `ArchiveAsync_RealFolderWithEmptyFilesAndFoldersAboveParallelThreshold_PassesSevenZipIntegrityCheck`,
-  reproduces that exact bug report end-to-end through the real public `ZipArchiveService.ArchiveAsync`
-  API (not just `ZipEntryCompressor`/`ZipEntryWriter` called directly) — a real folder with 70+
-  files, several genuinely empty ones, and an empty subdirectory, above the parallel threshold,
-  verified with `7za.exe t`. Confirmed to actually catch the regression (temporarily reverted the
-  fix and re-ran — both this test and the shared-helper one failed with the exact same "Data Error"
-  NanaZip reported).
-- `ZipArchiveServiceParallelPipelineTests` (`Archiver.Core.Tests/Services/`) — the same properties
-  re-verified through the real public `ArchiveAsync` API at gate-triggering scale (120 files, above
-  `ParallelPipelineFileCountThreshold`'s 64): byte-identical/entry-order-identical determinism,
-  already-cancelled and mid-flight cancellation, one locked file mid-batch, and a mixed
-  small+large-file archive in one run.
 
-All four run as part of the default `dotnet test --filter "Category!=Slow&Category!=VeryLarge"`
-pass (untagged, fast) — no new Slow/VeryLarge tier was needed for T-F35 itself.
+### VeryLarge: PAR2 Speed
 
-**T-F299:** `ZipArchiveServiceIncompressibleTests` (`Archiver.Core.Tests/Services/`) — random data
-through `ArchiveAsync` is stored, not grown: one file at Fastest (in-memory and temp-file sizes),
-SeparateArchives at Fastest, a password at Optimal (Stored inside AES), 80 files at Optimal; a text
-file at Fastest stays Deflate. Method and sizes are read with `RawZipEntryLocator`; each case
-round-trips through Pakko's reader.
-
-**T-F298:** `ZipArchiveServiceExtractTimesTests` (`Archiver.Core.Tests/Services/`) — archives from
-`LegacyZipBuilder` (now with DOS time/date and `NtfsTimeExtra`/`UnixTimeExtra` helpers): DOS, NTFS
-and Unix times, NTFS winning over a disagreeing Unix field, six hostile time fields (extraction
-succeeds with the DOS time), folder entries in a new and in a merged destination (an existing folder
-keeps its time), the SeparateFolders root folder, MOTW plus time, an AES entry.
-`TarDirectoriesToPreCreateTests` — which quarantine directories are pre-created, by archive order.
-`TarSandboxedServiceExtractTimesTests` (`Archiver.Core.IntegrationTests`, real tar.exe; `TarBuilder`
-now takes `ModifiedUnixSeconds`) — MOTW plus file time, folder times new/merged/root, and a file ahead
-of its folder entry plus an implicit subfolder still extracting (the T-F52 guard).
-
-**T-F280:** `ZipArchiveServiceTestHeadersTests` (`Archiver.Core.Tests/Services/`) — Test reports a
-local CRC plus a local name flip as one error (count 2, first entry named), a changed local size, and
-a local header whose signature is gone; and reports nothing for every repo fixture, a data-descriptor
-archive and Pakko's own writers (Optimal, Fastest, Stored, AES). `ZipHeaderCheckCorpusTests`
-(`Archiver.Core.PerformanceTests`, vendored 7za) — 7-Zip's plain, AES-256 and `-si` archives report
-nothing.
-Extraction half (warning channel): `ZipArchiveServiceExtractHeaderWarningTests` — the same tampered
-archive extracts by the central directory with one `ArchiveWarning` (`Success`, outcome
-`CompletedWithWarnings`, the archive still deletable), a selection warns too, nothing extracted
-means no warning, and the same false-positive corpus as Test extracts with no warning.
-`OperationOutcomeTests` (warnings against errors and skips), `ExtractionRouterTests` (merge keeps
-both engines' warnings), `OperationMessagesWarningTests` in `Archiver.Shell.Tests` (alone, under an
-error, under the skipped list, capped at ten, `Combine`, and a real extraction rendered in
-Ukrainian), two `Subprocess/` tests of `pakko x` (warning line and exit 1; with a failed archive,
-both lines and exit 2), `OutcomeAndEncryptionSummaryTests` (the App's footer line counts warnings).
-Ten mutants killed. The App's summary dialog section has no automated test (WinUI).
-
-**Wave 1 after v1.7.0 (2026-10-05).** `EntryRegionStreamTests` and two cases in
-`VerifyingReadStreamTests`: the size and truncated-entry errors carry their codes (T-F333), also
-checked through `TestAsync`/`ExtractAsync` in `ZipArchiveServicePasswordTests`.
-`ZipArchiveServiceDestinationInsideSourceTests` (four writers x two modes), three tests in
-`TarSandboxedServiceCompressTests` and two in `TempOwnerTests` (`IsOwnBelow`): an archive created
-inside its own source folder holds only the user's files (T-F316).
+- `Archiver.Core.PerformanceTests/Par2PerformanceTests` (`Category=VeryLarge`, Release only):
+  512 MiB at 5 % against par2cmdline (Pakko must not be slower; 4.3 s against 9.3 s on 2026-10-09),
+  a repair of 100 slices (6.9 s), and a round trip over a file above 4 GiB.
 
 ---
 
@@ -981,60 +1196,271 @@ through `TestTempFolder` (retrying, T-F300; `TestTempFolderTests`); `CliPassword
 "input is masked" wording (T-F295). Not automated: real-console Ctrl+C (checked on device by
 driving a conhost console, see T-F295).
 
+### `pakko` in the Package (T-F317)
+
+- `CliVersionTextTests.WithPackage_*`: `pakko -v` appends `(package <full name>)` only when packaged.
+- `PAKKO_CLI_EXE` points `CliProcessRunner` at another `pakko.exe`; set it to
+  `%LOCALAPPDATA%\Microsoft\WindowsApps\pakko.exe` to run the whole `Subprocess/` layer against the
+  installed package (68/68 on 2026-10-03). The `-v` pattern accepts the package suffix.
+
+### PAR2 Speed of the AOT Exe (T-F375)
+
+- T-F375, the AOT exe's speed. `CliSubprocessTests.Archive_RecoveryData_TakesNoLongerThanTwiceParTwoCmdLine`
+  (`[PublishedExeSpeedFact]`) is skipped unless `PAKKO_CLI_EXE` names a published exe, and then
+  needs par2cmdline from `Get-Par2Oracles.ps1`: `pakko a -rr5` on 96 MB must take less than twice
+  par2cmdline's `create -r5` on the same file. `build-cli` runs it after the publish. Locally:
+  `.\scripts\Publish-Cli.ps1 -Architecture x64`, set `PAKKO_CLI_EXE` to
+  `artifacts\cli\win-x64\pakko.exe`, run the default filter.
+
+### What `a` Archives (T-F414)
+
+- CLI: `CliArchiveSourcesTests` (the names and masks 7za 26.02 gave for one tree, a link not
+  entered, the archive being written never taken) and `CliArchiveSourcesSubprocessTests` (the same
+  7za lines through the real exe, ZIP and tar). Device row: `CLI-039`.
+
+### How `pakko` Reads a Command Line (T-F411 wave D, 2026-10-18)
+
+- `CliSwitchNamesTests`: the command and switch names in capitals, a switch before the command,
+  `--` first, values keeping their case, a non-ASCII letter in a name or the command matching
+  nothing (U+0131, U+0130, U+017F: the last one is what catches a `ToUpperInvariant` fold), the
+  longest name winning (`-rr5` is not `-r`, `-scrc` is not `-scc`), a postfix letter kept
+  case-sensitive (`-AOA`), every single switch refused when repeated and the Multi ones taken, a
+  password never printed in that error, every `-mx` spelling 7za takes. The 1.8.1 "last one wins"
+  tests now expect exit 7. `CliSevenZipCallerSubprocessTests`: `-Y X ... -O<dir>`, `-o` twice
+  (exit 7, nothing written), `-saa` on ZIP and tar, through the real exe. Device row: `CLI-040`.
+
+### 7-Zip's Switches Through the Exe (T-F411 wave E, T-F413/T-F415)
+
+- CLI: `CliCoreSwitchesTests` (every spelling 7za takes or refuses), `CliSourceDeleterTests`
+  (refusals; only unchanged files; empty folders; read-only; junction inside and as the source;
+  a held file; an unlisted folder), `CliCoreSwitchesSubprocessTests` on the real exe (`-sdel` with
+  a folder, `s\*`, `*.txt -r`, `-x`, `..`, `.`, a locked file, a missing source, a junction; `-aot`,
+  `-spe`, `-sse`, `-ssw`, `-stl`, `-w`). Device row: `CLI-041`.
+- T-F413/T-F415 (v1.9.0): `Archiver.CLI.Tests` `CliExitCodeTests`, `CliSingleFileTypeTests`,
+  `Subprocess/CliSingleFileStreamSubprocessTests`; `Archiver.Core.Tests` `BareGzipTests`,
+  `BareGzipEngineTests`, `SingleFileStreamCreationTests` (its service fails before tar.exe can
+  start). No new fixture files: every gzip is built in the test. Device rows: `CLI-042`, `CLI-043`, `EXP-015`.
+
 ---
 
-## AMSI Antivirus Scan Tests (T-F146, v1.4+)
+## Archiver.Shell.Tests
 
-`tests/Archiver.Core.Tests/Services/Antivirus/`:
-- `AmsiScannerTests.cs` — real `amsi.dll` P/Invoke against a runtime-generated EICAR buffer (never
-  committed to disk — Defender would quarantine a committed EICAR fixture on clone/build) and a
-  clean buffer, mirroring the probe run during design (`docs/DECISIONS.md`'s T-F146 entry).
-  Environment-dependent by nature — exercises whatever AV is actually registered on the machine
-  running the suite, same as any real AMSI consumer.
-- `AmsiProviderCheckTests.cs` — smoke tests (`IsAnyProviderRegistered()`/`GetState()` never throw);
-  the actual registered-provider state isn't asserted, since that would make the suite depend on the
-  test machine's own AV configuration. `Classify` is pure and pinned row by row (T-F448).
-- `AntivirusScanServiceTests.cs` — orchestration logic via a hand-rolled `FakeAmsiScanner` (no
-  mocking library, matching repo convention): clean/`ThreatDetected` ZIP archives,
-  `SelectedEntryPaths` subset scanning, the 64 MiB oversized-entry skip
-  (`AntivirusScanService.MaxScannableEntryBytes`), the no-provider-registered gate, Group Policy
-  blocked-format handling, and an unrecognized-file-doesn't-throw case. T-F194 adds
-  password-protected ZIP coverage: no resolver / cancel / exhausted retries stay `Inconclusive`
-  with zero AMSI calls; a correct password hands AMSI the byte-exact decrypted plaintext (the fake
-  records scanned bytes, not just name+length); mixed archives prompt once; "apply to remaining"
-  spans a multi-archive call; a ZipCrypto check-byte collision is never `Clean`; BZip2-under-AES
-  and a local-header size past end-of-file end `Inconclusive` without throwing. The same file's
-  `AntivirusScanServiceEncryptedEicarTests` (gated by `[SkipIfAmsiScanUnavailable]`) runs real EICAR
-  from `encrypted_aes256_eicar.zip` through the real AMSI provider.
+### Explorer Operation Window (T-F268 step 3, 2026-09-26)
 
-`tests/Archiver.Core.IntegrationTests/AntivirusScanServiceTarTests.cs` (`[Collection("TarSandbox")]`,
-same T-F130 serialization as every other real-sandbox test class) — the tar-family quarantine-scan
-path against real `tar.exe`: clean/threat-detected archives, subset scanning, and a symlink-entry
-archive confirming T-F49's pre-scan rejection becomes an `Inconclusive` finding rather than an
-unhandled throw.
+`ShellCommandsTests` (Shell): the three extract commands open ONE session for a multi-archive
+selection, name each archive through `BeginItem`, and show one combined result; cancelling the
+first archive never starts the second (T-F269) — 8 tests red on the old per-archive code.
+
+### Explorer Operation Window Strings (T-F268 step 6, 2026-09-27)
+
+`ShellResourceParityTests` (Shell): for all six Shell `.resx` families and all 36 non-English
+locales, every English key exists in the locale's own resource set (read with `tryParents:
+false`, so a silent fallback to English fails) with the same `{n}` placeholders; and under uk-UA
+`OperationWindowText.CreateHello()` carries every `WindowStrings` key, none left English. Both
+mutation-checked (a renamed key in uk-UA, a `{1}` for `{0}` in ja-JP). `ProgressTextTests`: size
+units per language (`2 КБ`, `3,0 Go`, `2,0 МБ/с`). `ShellCommandsTests.Test_UnderUkrainian_
+TitlesAreTranslated`, `OperationMessagesTests` (hash size without "bytes", several clean scanned
+archives). Tests that assert English pin `CurrentUICulture` to en-US: this dev machine runs a
+Ukrainian UI, CI an English one.
+
+### Helper Window and Deferred Session (T-F351, T-F356)
+
+- `HelperOperationUiTests.*BeforeTheHelperIsReady*` (T-F351): a clean end before `HelperReady`
+  ends the helper without waiting; a result still waits for the window.
+- T-F356: `DeferredOperationSessionTests` (the window is `FakeOperationUi`'s) - a fast clean
+  operation starts no window, a longer one starts it once with the current archive and the latest
+  progress, a prompt or a result starts it at once, Cancel in the window cancels the operation,
+  nothing starts after the end, eight prompts racing the timer share one window;
+  `HelperOperationUiTests` - the helper is not launched for a fast operation, `Begin` carries the
+  elapsed time, `endsWithResult` launches at once, a launch that fails when needed goes to the
+  fallback (the 37 older tests pin `StartDelay = 0`); `ShellCommandsTests.Begin_ExtractAndArchiveCanWait_...` (Scan's flag has no test);
+  `OperationWindowModelTests.ShowDelayFor_*`; `HandleListProcessTests` - a real child (`ping.exe`)
+  on real pipes does not hold an inheritable handle it was not given (fails when the handle list
+  is dropped), holds the one it was given, and the command line reads back through
+  `CommandLineToArgvW`. Twelve mutants, all caught.
+
+### Explorer Selection, Messages and Dialogs
+
+- `StdinPathListTests` (`Archiver.Shell.Tests/`, T-F235) — the Explorer selection read from stdin
+  (`--paths-stdin`): the exact bytes the C++ builder writes, 10,000 paths, quotes/Unicode/an
+  unpaired surrogate, the size cap; no stdin, end marker only, empty entry, UTF-8 text; a stream
+  that ends after a complete entry without the end marker (mutation-checked), inside a path, on an
+  odd byte count, or with a throwing read.
+- T-F330: `ShellUiLanguageTests` (Shell) and four `PickLanguageTag` tests (C++): the first
+  language of the user's list that Pakko ships wins over the display language.
+- T-F217: `OperationWindowModelConfirmTests`, `HelperOperationUiTests.AQuestion_*`,
+  `ShellCommandsTests.Extract_SuspectedBomb_*` (50 MB of zeros, all three extract commands),
+  `ShellConflictDialogTests.ConfirmMapResult_*`. T-F255: `PasswordDialogReadTextTests` with a real
+  EDIT control (0-4096 characters; a 256-cap mutant fails three). T-F253: `BuildContent_*`.
 
 `tests/Archiver.Shell.Tests/ShellArgumentParserTests.cs` gained a `--scan` block (`Scan_SingleFile_
 ReturnsScan`/`Scan_MultipleFiles_ReturnsAllFiles`/`Scan_NoFiles_ReturnsInvalid`), mirroring the
 existing `--test` block exactly.
 
+T-F288: `Archiver.Shell.Tests/ShellComTests` creates the progress dialog and the activation
+manager through `ShellCom` (title, line, `HasUserCancelled` before start; an unknown AUMID returns a
+failure HRESULT; an unregistered class throws `COMException`). It cannot see a wrong vtable order;
+progress and Cancel are checked on the device.
+
+### PAR2 in Explorer (T-F275 steps 3b, 4b)
+
+- Step 3b, Explorer's "Verify with PAR2". `Archiver.Shell.Tests/ShellCommandsRecoveryTests` runs
+  `ShellCommands.VerifyRecoveryAsync` on real sets with the fake UI: a tar-family archive that
+  matches, a `.par2` or a volume alone, archive plus index plus volume checked once, the Ukrainian
+  text, "Test archive" unchanged, damage a set can and cannot repair (nothing written next to the
+  archive), one message for a mixed selection, another file's set, an unreadable set (warning next
+  to an archive, error when selected itself), no index, no volume, a volume cut short, only the
+  writer's temporary files, a `.par2` whose archive is gone, `DisableRecoveryData`, a set check that still runs under
+  `BlockedFormats`, cancel; and on a real ZIP: test passed and set matches, a rewritten ZIP beside its
+  old set (a warning, never "damaged"), a damaged ZIP its set can repair.
+  `ShellArgumentParserTests` has the switch. C++ `ShellExtUtilsTests` (`AnyPathHasRecoveryData`,
+  `IsRecoverySetFileName`, `ListFolderNames`) decides the item's visibility with a fake folder
+  listing and once on a real folder: a `.par2` alone without touching the disk, a set under either
+  name, volumes without an index, temporary files, names that only start alike, non-archives, the
+  16-archive cap, the policy value, a blocked format. `ComLoadTests` pins the item's place after
+  Test; `LocalizationTests` and `Archiver.Messages.Tests` hold the 37 translations.
+- Step 4b, Explorer's "Repair with PAR2". `ShellCommandsRecoveryTests` (`Repair_*`) runs
+  `ShellCommands.RepairRecoveryAsync` on real sets with the fake UI: the copy written and named in
+  the message with the original unchanged, a `.par2` or a volume alone, archive plus set files
+  repaired once, an intact archive, the Ukrainian text, damage beyond the set, one message for a
+  repaired, a beyond-repair and a set-less archive together, a ZIP rewritten beside its old set
+  (the real ZIP test passes: a warning, nothing written), a damaged real ZIP repaired to one that
+  tests clean, no set and an unreadable set, only the writer's temporary files,
+  `DisableRecoveryData`, cancel, a folder where files cannot be created, and a repaired check
+  never shown as a match by `ForTestResult`. `ShellArgumentParserTests` has the switch. C++:
+  `ComLoadTests` pins the item's place after "Verify with PAR2" (fourteen leaves),
+  `LocalizationTests` the 37 texts (each names PAR2 and differs from the verify text),
+  `ShellExtUtilsTests` the switch. The item's visibility is `AnyPathHasRecoveryData`, tested in 3b.
+
+---
+
+## Archiver.OperationUi.Tests
+
+`tests/Archiver.OperationUi.Tests` (new project, references only `Archiver.OperationUi.Protocol`):
+`FrameCodecTests` round-trip every Shell<->helper message, the frame format over a real
+`AnonymousPipeServerStream`/`ClientStream` pair, the size boundary (a 32,767-char Cyrillic path in
+a conflict, a result listing ten of them, a message over `MaxFrameBytes`, invalid length fields),
+malformed payloads (unknown type, missing field, `null` for a non-null field, invalid JSON),
+truncated header/payload vs. a clean end of stream, 200 concurrent `MessageWriter` writes, and
+that neither `PasswordAnswer.ToString()` nor a `ProtocolException` quotes a password. All seven
+guards were mutation-checked (each removed in turn, its test turned red).
+
+---
+
+## Archiver.App.Core.Tests
+
+### Explorer to App Hand-Off (fix phase 4a, T-F232, 2026-09-26)
+
+`LaunchArgumentsTests` (Core: format/parse round trip incl. Cyrillic and UNC paths, malformed or
+unknown input, blank entries, the 32000-character limit, 80 long Cyrillic paths fitting — red on
+the default `\uXXXX` JSON escaping), `LaunchActivationRouterTests` (App.Core: browse vs. pending
+list, plain Start-menu launch, a leftover `pakko://` string is not recognized), `AppLauncherTests`
+(Shell: the length guard at the base64 boundary — no string formats to exactly 32000, so the test
+finds the longest fitting path and the next one), `FileItemTests` (App.Core: `TryCreate` returns
+null for a missing/invalid path — red before the fix; waits for the background CRC so the temp
+folder can be deleted), and `ResultMessagesLocalizerTests.Get_OpenUiKey_IsTranslatedInEveryLocale`.
+The `ActivateApplication` call itself is device-only (it needs package identity): see
+`docs/DECISIONS.md`'s T-F232 entry for the checks.
+
+### App Messages, Layout Logic and Resources
+
+- T-F237 item 2 (App.Core, tests first): `ArchiveTreeIndexTests` — a 20,000-segment entry name
+  builds and opens its deepest folder under a 32 MiB allocation budget
+  (`GC.GetAllocatedBytesForCurrentThread`; 1.6 GB before the fix), plus pinned odd shapes (explicit
+  folder after its implied one, a file and a folder with one name, `a//b`, a leading `/`). Core:
+  `CoreTextTests` (a long argument keeps head and tail, surrogate pairs whole) and
+  `ExtractAsync_TwentyThousandSegmentName_OthersExtractAndTheErrorIsShort` (80 KB error before);
+  `MaxEntryDepth`: `HasUnsafePath_Depth*` (limit and limit+1, both separators, `a//b`),
+  `ExtractAsync_NameDeeperThanTheLimit_*` (ZIP, that entry only) and
+  `NameDeeperThanTheLimit_RejectedByThePreScan` (tar, pax path).
+- T-F198: `AppResourceKeysTests` (App.Core) — the twelve new App keys in all 37 `.resw` files with
+  English's placeholders.
+- Wave 4 / T-F199 (App.Core, tests first, mutation-checked): `PrimaryActionPolicyTests`,
+  `CreateModeTextTests`, `InlinePasswordStateTests`, `OutcomeAndEncryptionSummaryTests`
+  (`OutcomeLine`, `FooterLine.Pick`, `EncryptionSummary`), `BrowseModeTests`
+  (`BrowseLocationState`, `BrowseWork`, badge and notes, the tree carrying encryption to the row), row UIA names
+  via `ToString()` in `FileItemTests`/`ArchiveEntryViewModelTests`, `SessionPasswordMemoryTests`
+  (T-F200), `WindowCascadeTests` (T-F201), `ProcessTempRootTests` (T-F252), `BuildStampTests`
+  (T-F218), `BrowserEntryRoutingTests` (T-F242). `AppResourceKeysTests` now requires every en-US
+  key in all 37 `.resw` files with English's placeholders (only the About URLs are exempt), every
+  key to be used and every `x:Uid` to have a key. Core/CLI: the per-entry `Encryption` marker and
+  `pakko l`'s Encrypted column. The window layout itself (cards, scroll fit, 900x520 floor) is
+  checked on device, not by tests.
+
+### Diagram 6 as a Checked Contract (v1.7.0 wave 7, T-F112)
+
+- Wave 3 after v1.7.0 (2026-10-06): `BrowseNavigationTests` also covers `DecideListFailure` (T-F319: back to the real folder only when one was browsed before the open; five other prior states go to the pending list); `FileSystemBrowserTests` covers T-F324 (a Hidden+System folder and file are left out; Hidden-only and System-only ones are listed).
+- `BrowseNavigationTests` (App.Core, tests first): every `BrowseUpStep` of `DecideUp`, a drive
+  root, no archive path.
+- `DiagramSixTests` reads `docs/DIAGRAMS.md`'s diagram 6 and checks its three `check:` tables
+  (`browse-location`, `row-open`, `browse-up`) against `BrowseLocationState.For`,
+  `BrowserEntryRouting` and `BrowseNavigation.DecideUp`. It requires the full 2x2x2 domain of
+  `For` exactly once, every `RowOpenAction` and `BrowseUpStep`, that the probe runs exactly when the
+  table gives it a value, and an `Up` arrow in the state diagram for each Up row. Mutation-checked
+  both ways (2026-10-03): 2 code mutants and 5 document edits, all red. Entry, exit, breadcrumb and
+  drill-in transitions stay in the WinUI view model and are checked on device.
+
+### PAR2 in the App (T-F275 steps 3c, 4c)
+
+- Step 3c, the App. `Archiver.Core.Tests/Services/RecoveryDataLookupTests`: `HasFilesFor` (a set
+  under either name, a volume without its index, temporary files and names that only start alike,
+  the policy, unusable paths) and `FindArchive` (index or volume, two files sharing a base chosen by
+  content, an unreadable set, another file's set, the archive gone, the policy, cancel).
+  `Archiver.App.Core.Tests/RecoveryPanelTests`: the line's rules on hand-built results (each verdict
+  code as error and as warning, another archive's verdict never taken, the archive's own errors
+  left to the dialog, unusable paths) and on the real router with real sets (a ZIP and a tar-family
+  archive that match, damage a set can and cannot repair, an archive cut short going from the
+  listing error to the verdict, an archive rewritten beside its old set, an unreadable set, another
+  file's set under this name, only the writer's temporary files, a volume cut short, the policy, a
+  test without the set check, a cancelled test). `BrowseModeTests` has `WithoutListing`,
+  `BrowseNavigationTests` `KeepsOpenUnlisted` (never for a policy refusal),
+  `BrowserEntryRoutingTests` the `.par2` row. `MainViewModel`'s wiring is a device check.
+- Step 4c, the App's Repair. `RecoveryPanelTests`: when Repair is offered (before any check, only
+  for repairable damage after a test, never for another archive's damage or without files), and
+  the real service on real sets: a ZIP and a tar-family archive repaired (the line names the
+  copy, no second offer, a repaired check never read as a match), an archive cut short going from
+  the listing error to a copy that tests clean, an intact archive, damage beyond the set, the set
+  deleted between the open and the click, a forged recovery block (the copy not kept), a folder
+  where nothing can be created followed by another folder that works, and another archive's
+  result never taken. `RecoveryServiceTests` has the service's `HasFilesFor`/`FindArchive` with
+  its policy and cancel. The wiring in `MainViewModel` is a device check.
+
+---
+
+## Archiver.Messages.Tests
+
+- `Archiver.Messages.Tests` (new project): the neutral `CoreMessages.resx` equals Core's templates;
+  every one of 36 locales translates every code with the same placeholders; nested rendering;
+  `UiCulture` table (zh-CN/SG -> zh-Hans, zh-TW -> English, de-AT -> de-DE, English listed first
+  wins).
+- T-F329, same project: `LocalizedSources` reads all nine string sources from the files;
+  `GlossaryTests` (one word per concept per locale, from `Glossary.tsv`), `SharedStringTests`
+  (one English string, one translation), `CountTemplateTests` (no count before a noun in
+  English UI text; no inflected word for "bytes" after a number in the seven locales where it
+  would disagree).
+- T-F331, same project: `StoreListingTests` reads `docs/store-listing/<locale>.txt`: every field
+  within Partner Center's limits, the menu items named as `Localization.cpp` has them, no word
+  that `Glossary.tsv` lists as replaced.
+
+---
+
+## Archiver.ShellExtension.Tests (C++)
+
+- C++ suites added to `Archiver.ShellExtension.Tests` (T-F235/T-F262): `PathListTransport` and
+  `LaunchWithPathList` (payload format, 300 x 95-character repro, only the read end inheritable,
+  10,000 paths through a real pipe, a real child process receiving the payload, a write with no
+  reader failing), `GetSelectionPaths` (an array with a non-filesystem item is incomplete),
+  `MenuPolicy` (each `DisableTarExtraction`/`BlockedFormats` value hides exactly the documented
+  items; missing or unreadable values hide nothing) and `Win32PolicyRegistryReader` (missing key,
+  wrong type, a real DWORD). Build from a short path: a worktree path can exceed MAX_PATH for the
+  gtest lib (`LNK1104`).
+- T-F254 (C++): `LocalizationTests` — zh-CN/zh-SG/zh-Hans-CN, Traditional stays English, regional
+  variants, tag case (three red before the fix).
+
 `tests/Archiver.ShellExtension.Tests/ShellExtUtilsTests.cpp` gained `BuildScanArgs` cases
 (`SingleFile`/`MultipleFiles`), mirroring `BuildTestArgs`.
 
-**Not covered by `dotnet test`, needs on-device verification** (per this project's standing rule —
-shell-triggered/UI behavior never graduates on automated tests alone):
-- A real EICAR-in-archive detection through both *shell-triggered UI* entry points (Explorer
-  `Scan for threats`, Archive Browser's scan button) — for the tar-family case specifically, this
-  needs a temporary Defender exclusion folder added by the user first (`docs/DECISIONS.md`'s
-  Phase 0 finding: real-time protection intercepts a plain on-disk EICAR file before tar.exe can
-  even read it, independent of Pakko's own AMSI call). **Partially superseded by T-F177
-  (2026-08-31):** the underlying `Core.AntivirusScanService.ScanAsync` orchestration itself (both
-  Zip in-memory and Tar quarantine paths) now has an automated regression test with real AMSI —
-  `AntivirusScanServiceEicarTests.cs` — so what's left uncovered here is specifically the two WinUI/
-  Shell UI entry points' own glue code, not the underlying scan logic.
-- The `Inconclusive` path with no AMSI provider registered (e.g. Defender real-time protection
-  temporarily disabled) — confirms the three-state dialog never renders it as `Clean`.
-- A clean real-world archive through both entry points, confirming "No threats found in this
-  archive" copy and that nothing is left on disk afterward (tar-family quarantine cleanup).
+---
 
 ## Test-Coverage Audit Follow-Ups (T-F174–T-F186, 2026-08-31)
 
@@ -1070,344 +1496,3 @@ into an existing section above.
   the `ZipArchiveService` layer with no special handling. This is .NET Core's own built-in
   long-path File I/O support (present since .NET Core 2.1, independent of any Win32 manifest
   declaration) — see `docs/DECISIONS.md`'s T-F178 entry for the full account.
-
-## ZIP Extraction Safety and Integrity (fix phase 2, 2026-09-25)
-
-One test class per fixed defect, each written red first (see `docs/DECISIONS.md`'s fix-phase-2
-entry): `ZipArchiveServiceExtractStagingTests` (T-F227 — a user's `<dest>_tmp` survives, no
-`.pakko-x-*` leftover, concurrent runs, extracted folder not Hidden),
-`ZipArchiveServiceExtractUnsafePathTests` (T-F228), `ZipArchiveServiceExtractPerEntryFailureTests`
-(T-F230, incl. the disk-full classifier), `ZipArchiveServiceExtractIntegrityTests` (T-F246/T-F231 —
-fixtures are built in the test by patching CRC/size fields of a fresh archive, not stored),
-`IO/VerifyingReadStreamTests`, `ZipArchiveServiceExtractRootFolderTests` +
-`TarSandboxedServiceRootFolderTests` (T-F205), `ZipArchiveServiceExtractEmptyFolderTests` +
-`TarSandboxedServiceEmptyFolderTests` (T-F197). Staging-leftover assertions look for
-`.pakko-x-*`; an assertion on the old `*_tmp` name would now pass vacuously.
-
-## ZIP Names and Reader Hardening (fix phase 3, 2026-09-25)
-
-Written red first (see `docs/DECISIONS.md`'s fix-phase-3 entry). `Zip/ZipEntryNameDecoderTests`
-(explicit code pages only — 866/437/1252/1251/932, never the machine's) and
-`ZipArchiveServiceLegacyNameEncodingTests` (service pinned to 866/1251 through the internal
-`NameCodePages` seam, because the en-US CI runner has 437/1252). Fixtures: `legacy_oem866_7za.zip`
-(committed, vendored `7za -mcp=866`: cp866 names, flag clear, plus 0x7075) and
-`Helpers/LegacyZipBuilder` (raw name bytes, flag, host OS, central extra, local-name override —
-for shapes 7za cannot write). `ZipArchiveServiceZipCryptoCompatTests` with
-`Helpers/ZipCryptoFixture` (ZipCrypto written from APPNOTE, independent of `ZipCryptoStream`;
-data descriptor and raw password bytes; cross-checked with 7za) covers T-F243 items 2-3 and the
-ANSI/UTF-8 password candidates. `ArchiveEntrySecurityReservedNameTests` (T-F243 item 4),
-`ZipArchiveServiceLongEntryNameTests` (T-F243 item 6, end to end; returns early without
-`LongPathsEnabled`), `CliSubprocessTests.Extract_LegacyOemNamedZip_WritesRealNames` (asserts files
-on disk, not console output, so it is code-page independent).
-
-## Explorer to App Hand-Off (fix phase 4a, T-F232, 2026-09-26)
-
-`LaunchArgumentsTests` (Core: format/parse round trip incl. Cyrillic and UNC paths, malformed or
-unknown input, blank entries, the 32000-character limit, 80 long Cyrillic paths fitting — red on
-the default `\uXXXX` JSON escaping), `LaunchActivationRouterTests` (App.Core: browse vs. pending
-list, plain Start-menu launch, a leftover `pakko://` string is not recognized), `AppLauncherTests`
-(Shell: the length guard at the base64 boundary — no string formats to exactly 32000, so the test
-finds the longest fitting path and the next one), `FileItemTests` (App.Core: `TryCreate` returns
-null for a missing/invalid path — red before the fix; waits for the background CRC so the temp
-folder can be deleted), and `ResultMessagesLocalizerTests.Get_OpenUiKey_IsTranslatedInEveryLocale`.
-The `ActivateApplication` call itself is device-only (it needs package identity): see
-`docs/DECISIONS.md`'s T-F232 entry for the checks.
-
-## Explorer Operation Window (T-F268 step 3, 2026-09-26)
-
-`ShellCommandsTests` (Shell): the three extract commands open ONE session for a multi-archive
-selection, name each archive through `BeginItem`, and show one combined result; cancelling the
-first archive never starts the second (T-F269) — 8 tests red on the old per-archive code.
-
-`tests/Archiver.OperationUi.Tests` (new project, references only `Archiver.OperationUi.Protocol`):
-`FrameCodecTests` round-trip every Shell<->helper message, the frame format over a real
-`AnonymousPipeServerStream`/`ClientStream` pair, the size boundary (a 32,767-char Cyrillic path in
-a conflict, a result listing ten of them, a message over `MaxFrameBytes`, invalid length fields),
-malformed payloads (unknown type, missing field, `null` for a non-null field, invalid JSON),
-truncated header/payload vs. a clean end of stream, 200 concurrent `MessageWriter` writes, and
-that neither `PasswordAnswer.ToString()` nor a `ProtocolException` quotes a password. All seven
-guards were mutation-checked (each removed in turn, its test turned red).
-
-## On-Device Smoke Checks (T-F378)
-
-The checks run on an installed build live in `docs/SMOKE.md`: one catalogue with stable row IDs,
-three tiers (`quick`, `release`, `store`) and, for each row, who can run it and on which artifact.
-It replaces the "Manual Smoke Test Cycle" this section held (last run in full 2026-07-06) and the
-per-release scenario files that were kept outside the repository.
-
-`SmokeCatalogueTests` (Core) keeps it in step with the app. It reads the entry points from the
-source (`pakko`'s commands and switches from `CliArgumentParser.cs`, `Archiver.Shell`'s
-arguments, the Explorer command classes, `MainViewModel`'s commands, the Group Policy values) and
-fails when one has no live row or a row names one that is gone; IDs are unique and numbered
-without gaps per surface, so a row is retired, not deleted; a `quick` row needs no person and no
-release. Mutation-checked nine ways (2026-10-11): a missing command, menu item and policy, an
-unknown name and task, a repeated and a removed ID, a wrong tier, a `quick` row for a person.
-
-`scripts/Invoke-Smoke.ps1` runs the rows that have a step in `scripts/smoke/`. The test requires
-a live row marked `script` or `uac` for every step, and a step for every such row (its
-`StepsOwed` list of rows still without one has been empty since step 4). A step is checked
-the way a regression test is: green on the installed package, then red with a fault put into
-its own fixture (the damage left out, the folder left open, the process not killed), since the
-program under test cannot be broken to order. The runner's own
-check is a run: the `quick` tier green on the installed package, and
-its PAR2 speed rows red with the Debug build of `pakko` given as `-PakkoExe` (13 s against
-par2cmdline's 3 s, the size of T-F375).
-
-**Known non-bug finding:** `.zip`'s `UserChoice` file association may still point at Windows'
-built-in `CompressedFolder` handler even after Pakko is installed. Windows requires the user to
-choose a default app in Settings before a double-click reaches another handler (the UserChoice
-hash), so this is not a Pakko defect.
-
-## Explorer Operation Window Strings (T-F268 step 6, 2026-09-27)
-
-`ShellResourceParityTests` (Shell): for all six Shell `.resx` families and all 36 non-English
-locales, every English key exists in the locale's own resource set (read with `tryParents:
-false`, so a silent fallback to English fails) with the same `{n}` placeholders; and under uk-UA
-`OperationWindowText.CreateHello()` carries every `WindowStrings` key, none left English. Both
-mutation-checked (a renamed key in uk-UA, a `{1}` for `{0}` in ja-JP). `ProgressTextTests`: size
-units per language (`2 КБ`, `3,0 Go`, `2,0 МБ/с`). `ShellCommandsTests.Test_UnderUkrainian_
-TitlesAreTranslated`, `OperationMessagesTests` (hash size without "bytes", several clean scanned
-archives). Tests that assert English pin `CurrentUICulture` to en-US: this dev machine runs a
-Ukrainian UI, CI an English one.
-
----
-
-## Core Messages, Outcome and CLI Messages (fix phase 7, 2026-09-28)
-
-- v1.7.0 wave 4 (2026-10-03): `CoreMessageSourceGuardTests` also fails on a raw `ex.Message` inside
-  `CoreMessages.Text(` and covers `CoreMessages.Detail` (each mapped Windows code, inner exception,
-  unmapped code, non-Windows HRESULT, rewrite); `MessageTextTests` checks the Ukrainian-only codes
-  (uk has them and keeps the English text, the other 35 do not, de-DE renders English + code);
-  `VerifyingReadStreamTests` pins the CRC code; a real `What?.txt` extraction ends in
-  `(0x8007007B)`. A cancelled conflict prompt throws `OperationCanceledException` on ZIP extract
-  (`SourceOutcomeTests`), ZIP create in both modes (`ZipArchiveServiceArchiveTests`) and tar
-  extract/create (`TarSourceOutcomeTests`). App.Core: `ProgressTextTests`, `ConflictTextTests`,
-  `SortIndicatorTests`, `NestedDisplayPathTests`, and `SourceRecyclerTests`' `Deleted` list.
-- `CoreMessageSourceGuardTests` (Core) reads `src/Archiver.Core` and fails on any `Message =`/
-  `Reason =`/`ErrorMessage =` outside `CoreMessages` (red on the unconverted code: 113 sites);
-  `CoreMessageCodeTests` pins the codes users meet (corrupted ZIP, GZip, not an archive, missing
-  source, all skipped, bomb declined, blocked listing) with byte-identical English.
-- `Archiver.Messages.Tests` (new project): the neutral `CoreMessages.resx` equals Core's templates;
-  every one of 36 locales translates every code with the same placeholders; nested rendering;
-  `UiCulture` table (zh-CN/SG -> zh-Hans, zh-TW -> English, de-AT -> de-DE, English listed first
-  wins).
-- T-F329, same project: `LocalizedSources` reads all nine string sources from the files;
-  `GlossaryTests` (one word per concept per locale, from `Glossary.tsv`), `SharedStringTests`
-  (one English string, one translation), `CountTemplateTests` (no count before a noun in
-  English UI text; no inflected word for "bytes" after a number in the seven locales where it
-  would disagree).
-- T-F331, same project: `StoreListingTests` reads `docs/store-listing/<locale>.txt`: every field
-  within Partner Center's limits, the menu items named as `Localization.cpp` has them, no word
-  that `Glossary.tsv` lists as replaced.
-- T-F330: `ShellUiLanguageTests` (Shell) and four `PickLanguageTag` tests (C++): the first
-  language of the user's list that Pakko ships wins over the display language.
-- `OperationOutcomeTests` (Core): each `OperationOutcome` from real ZIP/router runs, including a Test
-  that read nothing (T-F274). Shell `OperationMessagesTests.ForTestResult_*` and
-  `ShellCommandsTests.Test_NothingTested_DoesNotClaimNoErrors` (red before the fix).
-- T-F217: `OperationWindowModelConfirmTests`, `HelperOperationUiTests.AQuestion_*`,
-  `ShellCommandsTests.Extract_SuspectedBomb_*` (50 MB of zeros, all three extract commands),
-  `ShellConflictDialogTests.ConfirmMapResult_*`. T-F255: `PasswordDialogReadTextTests` with a real
-  EDIT control (0-4096 characters; a 256-cap mutant fails three). T-F253: `BuildContent_*`.
-- T-F254 (C++): `LocalizationTests` — zh-CN/zh-SG/zh-Hans-CN, Traditional stays English, regional
-  variants, tag case (three red before the fix).
-- T-F237 item 2 (App.Core, tests first): `ArchiveTreeIndexTests` — a 20,000-segment entry name
-  builds and opens its deepest folder under a 32 MiB allocation budget
-  (`GC.GetAllocatedBytesForCurrentThread`; 1.6 GB before the fix), plus pinned odd shapes (explicit
-  folder after its implied one, a file and a folder with one name, `a//b`, a leading `/`). Core:
-  `CoreTextTests` (a long argument keeps head and tail, surrogate pairs whole) and
-  `ExtractAsync_TwentyThousandSegmentName_OthersExtractAndTheErrorIsShort` (80 KB error before);
-  `MaxEntryDepth`: `HasUnsafePath_Depth*` (limit and limit+1, both separators, `a//b`),
-  `ExtractAsync_NameDeeperThanTheLimit_*` (ZIP, that entry only) and
-  `NameDeeperThanTheLimit_RejectedByThePreScan` (tar, pax path).
-- T-F198: `AppResourceKeysTests` (App.Core) — the twelve new App keys in all 37 `.resw` files with
-  English's placeholders.
-- T-F221: `CliFacingMessagesTests` (Core) and `CliMessagesSubprocessTests` (real `pakko.exe`):
-  missing input, -p hint and one wrong-password line, -aoa hint, empty and garbage stdin shown as
-  "(stdin)", explicit names written the 7-Zip way, `h <folder>` relative names; `CliProgressTests`
-  for the console-only percentage.
-- Wave 4 / T-F199 (App.Core, tests first, mutation-checked): `PrimaryActionPolicyTests`,
-  `CreateModeTextTests`, `InlinePasswordStateTests`, `OutcomeAndEncryptionSummaryTests`
-  (`OutcomeLine`, `FooterLine.Pick`, `EncryptionSummary`), `BrowseModeTests`
-  (`BrowseLocationState`, `BrowseWork`, badge and notes, the tree carrying encryption to the row), row UIA names
-  via `ToString()` in `FileItemTests`/`ArchiveEntryViewModelTests`, `SessionPasswordMemoryTests`
-  (T-F200), `WindowCascadeTests` (T-F201), `ProcessTempRootTests` (T-F252), `BuildStampTests`
-  (T-F218), `BrowserEntryRoutingTests` (T-F242). `AppResourceKeysTests` now requires every en-US
-  key in all 37 `.resw` files with English's placeholders (only the About URLs are exempt), every
-  key to be used and every `x:Uid` to have a key. Core/CLI: the per-entry `Encryption` marker and
-  `pakko l`'s Encrypted column. The window layout itself (cards, scroll fit, 900x520 floor) is
-  checked on device, not by tests.
-
-## Diagram 6 as a Checked Contract (v1.7.0 wave 7, T-F112)
-
-- Wave 3 after v1.7.0 (2026-10-06): `BrowseNavigationTests` also covers `DecideListFailure` (T-F319: back to the real folder only when one was browsed before the open; five other prior states go to the pending list); `FileSystemBrowserTests` covers T-F324 (a Hidden+System folder and file are left out; Hidden-only and System-only ones are listed).
-- `BrowseNavigationTests` (App.Core, tests first): every `BrowseUpStep` of `DecideUp`, a drive
-  root, no archive path.
-- `DiagramSixTests` reads `docs/DIAGRAMS.md`'s diagram 6 and checks its three `check:` tables
-  (`browse-location`, `row-open`, `browse-up`) against `BrowseLocationState.For`,
-  `BrowserEntryRouting` and `BrowseNavigation.DecideUp`. It requires the full 2x2x2 domain of
-  `For` exactly once, every `RowOpenAction` and `BrowseUpStep`, that the probe runs exactly when the
-  table gives it a value, and an `Up` arrow in the state diagram for each Up row. Mutation-checked
-  both ways (2026-10-03): 2 code mutants and 5 document edits, all red. Entry, exit, breadcrumb and
-  drill-in transitions stay in the WinUI view model and are checked on device.
-
-## `pakko` in the Package (v1.7.0 wave 8, T-F317)
-
-- `PackagingManifestTests` (Core.Tests, tests first): the source `Package.appxmanifest` has one
-  hidden FullTrust `<Application>` for `pakko.exe` with the only `ExecutionAlias` (`pakko.exe`), and
-  `Archiver.App.csproj` packages `pakko.exe` alone from `Archiver.CLI`'s output (T-F355: Native
-  AOT; before it, the apphost's `.dll`/`.deps.json`/`.runtimeconfig.json` too). Mutation-checked
-  (2026-10-03): alias removed — red. `CI-Build-Msix.ps1` checks the same in the built package.
-- **Native AOT (T-F355)**, `PackagingManifestTests` and `WinUiAotSourceGuardTests` (Core.Tests,
-  tests first, read the repo's files): each satellite packaged as its exe alone; `PublishAot` in
-  the four exe projects and no `PublishReadyToRun`/`PublishTrimmed`; `AllowUnsafeBlocks` and
-  `CsWinRTAotWarningLevel` 2 in App and OperationUi; `IsAotCompatible` in the five libraries; no
-  `(T)` or `as T` on a resource-dictionary read in App or OperationUi (only `WinRT.CastExtensions.As<T>`).
-  Seven mutants killed (2026-10-08): a `pakko.dll` item back, `(Style)` and `as Brush` back,
-  `PublishAot` dropped from Shell, `IsAotCompatible` dropped from Messages, the warning level dropped
-  from OperationUi, `PublishReadyToRun` added to the CLI. `dotnet test` runs under JIT, so the
-  Subprocess layer also runs against the published AOT `pakko.exe` (`build.yml`'s `build-cli`, and
-  nightly on x64 and arm64 in `canary.yml`).
-- **C# 14 (T-F363)**, `PackagingManifestTests.Repo_PinsCSharp14Once` and `LockSourceGuardTests`
-  (Core.Tests, read the repo's files): `LangVersion` 14 only in `Directory.Build.props`, no
-  `.csproj` overriding it; no bare `object x = new()` (a lock object) in `src/`. Mutants killed
-  (2026-10-09): `LangVersion` added to the CLI project, `FileHashService`'s lock back to `object`.
-- **Lock files (T-F364)**, `BuildReproducibilityTests` (Core.Tests, read the repo's files): no `*`
-  in any `PackageReference` version, a `packages.lock.json` next to every `.csproj` under `src/`,
-  `tests/`, `tools/`, lock restore on and locked mode conditioned on `CI` in
-  `Directory.Build.props`, `global.json` exact with `rollForward: disable`, `build.yml` taking the
-  SDK from `global.json`. All five red before the change (2026-10-09).
-- **SBOM (T-F365)**, `SbomWorkflowTests` (Core.Tests, read the repo's files): the CycloneDX tool
-  pinned exactly; `build.yml`'s `sbom` job read-only with no secrets; no job holding a secret or
-  `id-token` restores tools or runs the generator; `build-msix`/`build-cli` need `sbom` and attest
-  with `actions/attest` and `sbom-path`; `release` publishes the `.cdx.json` files; the script
-  restores locked and drops the build-only and Windows ML packages. Six of seven red before the
-  change (2026-10-09; the seventh, no privileged job runs the generator, held already).
-- **Agent hook (T-F370)**, `AgentBashHookTests` (Core.Tests): runs `scripts/hooks/Test-AgentBashCommand.ps1`
-  through pwsh (found on PATH) with the payload Claude Code sends — bare `python`/`python3` and
-  `dotnet ... /p:` at command position (after `;`, `&&`, `|`, `$(`, a newline, an env assignment, a
-  backslash continuation) exit 2; quoted text, a heredoc body, `py -3` and `echo dotnet /p:` exit 0; a
-  non-JSON payload exits 1; `.claude/settings.json` wires the hook to `Bash`. Mutation-checked.
-- **Tracked manifest revision (T-F368)**, `PackagingManifestTests.Manifest_KeepsTheRevisionAtZero`:
-  `Package.appxmanifest`'s Identity revision is 0. Red on 1.7.1.24 before the change.
-- **Job limits (T-F366)**, `WorkflowLimitsTests` (Core.Tests; both share `WorkflowJobs`, the job
-  splitter): every job in `build.yml` and `canary.yml` has a job-level `timeout-minutes` of 1-120;
-  `build.yml`'s concurrency group falls back to `run_id` outside branch pushes and PRs;
-  `canary.yml` has none; canary-status reads check-run annotations for a timeout. All four red
-  before the change; mutants killed: one timeout removed, the `run_id` fallback, the annotation text.
-- `CliVersionTextTests.WithPackage_*`: `pakko -v` appends `(package <full name>)` only when packaged.
-- `PAKKO_CLI_EXE` points `CliProcessRunner` at another `pakko.exe`; set it to
-  `%LOCALAPPDATA%\Microsoft\WindowsApps\pakko.exe` to run the whole `Subprocess/` layer against the
-  installed package (68/68 on 2026-10-03). The `-v` pattern accepts the package suffix.
-
-## Temporary Names and Commits (v1.7.0 wave 6, T-F263/T-F312)
-
-`IO/TempOwnerTests` (tag and name shape, `IsRunningHere` incl. a reused pid and v1.6.0's
-`<pid>-<ticks>`, the sweep by place: this machine's dead/live/reused owners, another machine's and
-v1.6.0's pid-only names by age next to a destination but by process under `%TEMP%`, owner-less
-names by age, a held entry, a junction deep inside, a read-only file), `ArchiveTempFileTests`
-(the name, a dead run's file swept, the commit with either file held briefly, held throughout,
-missing, cancelled). Through the engines: `ZipArchiveServiceArchiveTests` (an old fixed `.tmp`
-held, the archive name taken by a folder, a ~240-character archive name, Overwrite onto an archive
-held briefly and throughout), `TarSandboxedServiceCompressTests` (the same old `.tmp` and held
-Overwrite cases through real tar.exe), `ZipArchiveServiceExtractStagingTests`,
-`ParallelSingleArchiveWriterTests` and `TarSandboxScopeTests` (a dead run's staging, chunk folder
-and quarantine swept). Overwrite of an archive inside the folder being archived, ZIP (both
-modes) and tar: the old archive is not packed. `ProcessTempRootTests.CurrentOwnerName_IsTheV160Shape`.
-The dead owner is the current pid with another start time (`Helpers/DeadOwner`). Mutants killed: liveness always false, the machine check removed, link
-removal removed, each of the four sweeps removed, the fixed `.tmp` name, the narrow retry predicate,
-the delete-first Overwrite in tar.
-
-T-F321 (wave 9): `ArchiveTempFileTests` (an archive that appeared during the run is kept and the
-commit takes `a (1).zip`; a free name commits there; Overwrite replaces the archive that existed at
-the start) and two runs creating one name at once, every reported archive holding its own entries:
-`ZipArchiveServiceArchiveTests` (SingleArchive and SeparateArchives) and
-`TarSandboxedServiceCompressTests` (real tar.exe). Mutants killed: `replacesExisting = true` at each
-of the three commit sites.
-
-T-F236: `IO/FolderTotalsTests` (bytes and count, a link not followed, an unreadable subfolder, a
-cancelled walk) and `FileItemTests` in `Archiver.App.Core.Tests` (a folder's totals with a link, a
-file's, disposing the item stops the walk and its totals still complete). Mutants killed: the token
-ignored, `Dispose` not cancelling. The queued CRC-32 read's cancel is enforced by CA2016, not a test.
-
-T-F288: `Archiver.Shell.Tests/ShellComTests` creates the progress dialog and the activation
-manager through `ShellCom` (title, line, `HasUserCancelled` before start; an unknown AUMID returns a
-failure HRESULT; an unregistered class throws `COMException`). It cannot see a wrong vtable order;
-progress and Cancel are checked on the device.
-
-## Core Never Throws (T-F406, 2026-10-17)
-
-- `CoreNeverThrowsContractTests` (IntegrationTests, real engines and `tar.exe`): every public Core
-  operation against nine hostile paths (a file as the folder, a missing drive, bad characters, an
-  empty string, a locked file, a non-archive, an empty file, ...) must return, never throw. A
-  written table maps each (interface, method) to its cases; a reflection check over the public
-  Core services fails when a member is added without a row or a stated reason.
-- `DestinationIsAFileTests` (Core.Tests), `CliLastResortTests` and the subprocess
-  `Extract_OutputFolderIsAFile_ExitsTwoWithAnError` (CLI.Tests), `ShellLastResortTests`
-  (Shell.Tests), `AsyncVoidHandlersTests` (App.Core.Tests: reads every `.cs` of the App and
-  OperationUi: each `async void` body catches). Device rows: `CLI-036`, `SHL-014`.
-
-## What `a` Archives, Under Which Name (T-F414, T-F410 wave C, 2026-10-18)
-
-- Core: `ZipArchiveServiceSourceNamePartsTests` and `ZipArchiveServiceEntryFilterTests` (both ZIP
-  writers through `CompressionLevel.Optimal` and `Fastest`, and separate archives);
-  `TarSandboxedServiceSourceNamePartsTests` and `TarSandboxedServiceCreationFilterTests`
-  (IntegrationTests, real `tar.exe`, a 7z leg under `SevenZipWriterFact`; a name with `[`, `]`, `$`,
-  and `dir/sub` against `dir/sub2`, for the `-X` lines); two `CoreNeverThrowsContractTests` rows.
-- CLI: `CliArchiveSourcesTests` (the names and masks 7za 26.02 gave for one tree, a link not
-  entered, the archive being written never taken) and `CliArchiveSourcesSubprocessTests` (the same
-  7za lines through the real exe, ZIP and tar). Device row: `CLI-039`.
-
-## How `pakko` Reads a Command Line (T-F411 wave D, 2026-10-18)
-
-- `CliSwitchNamesTests`: the command and switch names in capitals, a switch before the command,
-  `--` first, values keeping their case, a non-ASCII letter in a name or the command matching
-  nothing (U+0131, U+0130, U+017F: the last one is what catches a `ToUpperInvariant` fold), the
-  longest name winning (`-rr5` is not `-r`, `-scrc` is not `-scc`), a postfix letter kept
-  case-sensitive (`-AOA`), every single switch refused when repeated and the Multi ones taken, a
-  password never printed in that error, every `-mx` spelling 7za takes. The 1.8.1 "last one wins"
-  tests now expect exit 7. `CliSevenZipCallerSubprocessTests`: `-Y X ... -O<dir>`, `-o` twice
-  (exit 7, nothing written), `-saa` on ZIP and tar, through the real exe. Device row: `CLI-040`.
-
-## 7-Zip's Switches That Core Carries Out (T-F411 wave E, 2026-10-18)
-
-- `RenameExistingConflictTests` (-aot, ZIP): the existing file renamed and the new one in its place
-  through a plain extraction, a selection, a filter, T-F154's single-file unwrap and duplicate
-  names; a numbered name the archive still writes (`readme (1)` comes after `readme` on NTFS, the
-  case that needs the run's claimed names); a locked existing file left as it was; a run cancelled
-  before the commit; `ExtractionStaging.CommitInto` directly, where a staged file held open makes
-  the existing one get its name back. `TarSandboxedServiceRenameExistingTests`: the same through
-  tar.exe.
-- `ZipArchiveServiceExtractRootFolderTests`/`TarSandboxedServiceRootFolderTests` (-spe):
-  `DuplicateRootName` with case, a file root, a second root, a filter, a selection;
-  `ExtractionDestinationPlannerTests.AllEntriesUnderRoot_FollowsSevenZip`.
-- `ZipArchiveServiceStopOnUnreadableTests` (-sse): sequential, parallel, Fastest and SeparateArchives
-  writers, the existing archive kept byte for byte, a link still a skip.
-  `ZipArchiveServiceShareForWriteTests` (-ssw): each way a source is opened, a file locked with no
-  sharing still an error. `ArchiveTimeFromNewestEntryTests` (-stl): through the router for ZIP and a
-  fake tar engine; filter, junction, SeparateArchives. `-mmt`: the window function and the same
-  bytes at 1 and 3 threads.
-- CLI: `CliCoreSwitchesTests` (every spelling 7za takes or refuses), `CliSourceDeleterTests`
-  (refusals; only unchanged files; empty folders; read-only; junction inside and as the source;
-  a held file; an unlisted folder), `CliCoreSwitchesSubprocessTests` on the real exe (`-sdel` with
-  a folder, `s\*`, `*.txt -r`, `-x`, `..`, `.`, a locked file, a missing source, a junction; `-aot`,
-  `-spe`, `-sse`, `-ssw`, `-stl`, `-w`). Device row: `CLI-041`.
-- T-F413/T-F415 (v1.9.0): `Archiver.CLI.Tests` `CliExitCodeTests`, `CliSingleFileTypeTests`,
-  `Subprocess/CliSingleFileStreamSubprocessTests`; `Archiver.Core.Tests` `BareGzipTests`,
-  `BareGzipEngineTests`, `SingleFileStreamCreationTests` (its service fails before tar.exe can
-  start). No new fixture files: every gzip is built in the test. Device rows: `CLI-042`, `CLI-043`, `EXP-015`.
-- T-F392 (v1.9.0): `Archiver.Core.IntegrationTests` `TarSandboxedServiceHardLinkTests` (two names of one file
-  refused for tar and tar.gz, in one folder, across folders, as two file sources; not refused across
-  SeparateArchives, with one name filtered out, for a link to a file outside the selection, for 7z);
-  `Archiver.Core.Tests` `TarHardLinkPairsTests` (the pair search over a faked listing: zero IDs, an
-  unlistable folder, another volume, an unconfirmed duplicate; `PathIdentity.FilesIn` on a real folder).
-  `Archiver.CLI.Tests` `Subprocess/CliHardLinkSubprocessTests` (`a -ttar` exit 2 naming both, `-tzip` stores
-  both; the AOT exe in CI). Links are made in the test (`CreateHardLinkW`), no fixture files. Device row: `EXP-016`.
-
----
-
-## Rules
-
-- No `Thread.Sleep` — use `await Task.Delay` if needed
-- Each test cleans up via `TempDirectory.Dispose()`
-- No test depends on another test's state
-- `dotnet test` never writes files outside `%TEMP%`
