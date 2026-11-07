@@ -14111,6 +14111,25 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
   zh-CN above all. The rule quoted from source is `acp_ocp_map`, the same table in v3.5.2 and v3.8.9;
   `strncmp` on the name before the '.', the first row in table order wins; otherwise `GetOEMCP()`.
 
+**T-F466 done (2026-11-07).**
+- **Measured on both builds** (pax tars written by Python's `tarfile`, `a` + U+0438 U+0306 on
+  the host's 1251 and `a` + `e` U+0301 on PakkoW10's 1252):
+  - 3.8.9 and 3.5.2 list an NFD name in NFC, and `-T` with the NFC name in the ANSI page extracts the
+    NFD entry, written in NFC.
+  - An archive holding the NFC and the NFD form of one name lists the name twice, and `-T` with it
+    takes both entries: the second lands on the first, exit 0.
+- **The fix.** `TarNames.JudgeByHeaders` compares the listed name with the header name in NFC. A name
+  two different stored forms share is Lossy wherever it decides: it cannot pick one of them.
+- **Tests, seen red.**
+  - `TarNamesTests`: the NFD header and the NFD folder agree with the NFC listing (red on the old
+    code); the two-forms pin goes red with the collision check switched off.
+  - `TarNfdNamesTests` (integration, a letter the machine's ANSI page holds, skipped visibly
+    otherwise): a selection of the NFD entry extracts its own file, a filter extracts both files,
+    Test with a filter succeeds - all three refused on the old code. A selection of a name stored in
+    both forms is refused; with the collision check off it succeeded, with whichever copy landed last.
+  - The integration tests ran on 3.8.9; on 3.5.2 the tar.exe behaviour they rest on was measured
+    directly (PakkoW10 has no .NET).
+
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
 - **Why.** tar.exe writes through the long-path prefix, so `a.txt.`, `a.txt ` and a folder `d ` are on

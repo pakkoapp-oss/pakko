@@ -1541,14 +1541,6 @@ re-measured with T-F346's script before and after.
   The decision goes in DECISIONS. Changing the hard constraint "only tar.exe" needs the user's separate OK.
 - **Reported by:** the agent, 2026-11-07.
 
-### T-F466 - A tar from macOS (NFD names) is refused under a filter (P3, stream I)
-
-- [ ] **Status:** open. Found 2026-11-07 (`docs/DECISIONS.md`, "T-F464 and T-F465"). tar.exe lists and
-  writes names in NFC. `TarHeaderNames` compares the NFD header name, so the veto calls the listing
-  Lossy: a filter or Test with a filter refuses the whole archive, and a selection of that entry is
-  refused. Compare after NFC normalization; tests first, on both builds.
-- **Reported by:** the agent, 2026-11-07.
-
 ### T-F464 - The quarantine as the source of truth instead of predicting tar.exe's names (P3, stream I, research done)
 
 - [ ] **Status:** research done 2026-11-07, decided in `docs/DECISIONS.md`, "T-F464 and T-F465". Code

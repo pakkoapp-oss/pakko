@@ -117,10 +117,25 @@ internal static class TarNames
     {
         if (headerNames.Count != listed.Count)
             return new TarListingVerdict(TarNameTrust.Suspect, listed.Where(decides).Select(EntryDiskName.StripLeadingDotSlash).FirstOrDefault());
+        // T-F466: tar.exe lists and matches a name in NFC (measured, 3.8.9 and 3.5.2), so a header
+        // stored in NFD agrees in NFC. Two stored forms of one NFC name list alike and "-T" takes
+        // both (measured): such a name cannot decide. Normalize cannot throw here: header names come
+        // from valid UTF-8 or a code page's decoder, neither of which yields a lone surrogate.
+        var storedForm = new Dictionary<string, string>(StringComparer.Ordinal);
+        var collapsed = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string header in headerNames)
+        {
+            string stored = header.TrimEnd('/');
+            string nfc = stored.Normalize(NormalizationForm.FormC);
+            if (!storedForm.TryAdd(nfc, stored) && !string.Equals(storedForm[nfc], stored, StringComparison.Ordinal))
+                collapsed.Add(nfc);
+        }
         for (int i = 0; i < listed.Count; i++)
         {
             // A folder's trailing '/' is the listing's convention, not part of the name.
-            if (decides(listed[i]) && !string.Equals(listed[i].TrimEnd('/'), headerNames[i].TrimEnd('/'), StringComparison.Ordinal))
+            string name = listed[i].TrimEnd('/');
+            string header = headerNames[i].TrimEnd('/').Normalize(NormalizationForm.FormC);
+            if (decides(listed[i]) && (!string.Equals(name, header, StringComparison.Ordinal) || collapsed.Contains(header)))
                 return new TarListingVerdict(TarNameTrust.Lossy, EntryDiskName.StripLeadingDotSlash(listed[i]));
         }
         return TarListingVerdict.Faithful;
