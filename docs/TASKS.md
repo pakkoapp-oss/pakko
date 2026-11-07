@@ -1517,22 +1517,29 @@ re-measured with T-F346's script before and after.
   it fail closed. Both builds; `TarSendsAsListedExhaustiveTests` asserts today's behaviour.
 - **Reported by:** the agent, 2026-11-07.
 
-### T-F468 - `archiveint.dll` (Windows' libarchive) as the name source instead of tar.exe's ANSI listing (P2, stream I, research)
+### T-F470 - A sandboxed helper over Windows' own `archiveint.dll` (P3, a future release)
 
-- [ ] **Status:** research done 2026-11-07, measured and recorded in `docs/DECISIONS.md`, "T-F468 research
-  done". The agent recommends keeping "only tar.exe" for v1.10.0; the user decides. Open: names on 3.5.2 inside
-  the sandbox, a helper inside an installed MSIX, ARM64. The research (the user, 2026-11-07: in this
-  wave): both builds export libarchive's API
-  (3.5.2: 422 exports, 3.8.9: 455, `archive_entry_pathname_w` included). An AOT probe in Pakko's AppContainer
-  measures, on both builds:
-  - names as UTF-16 against the disk names;
-  - raw names (`hdrcharset`);
-  - passphrases;
-  - ABI and version gating;
-  - launching from MSIX and from the standalone `pakko`.
+- [ ] **Status:** open, after v1.10.0 (the user, 2026-11-07: "an option for future releases"). Measured
+  in `docs/DECISIONS.md`, "T-F468 research done". The user's conditions:
+  - only the DLL Windows ships (`C:\Windows\System32\archiveint.dll`, absolute path), with the
+    signature checks tar.exe gets (T-F401's catalog case included);
+  - the version read from the DLL (`archive_version_details`);
+  - its capabilities decided at run time from that version and from probing, as T-F403 does for
+    tar.exe.
 
-  The decision goes in DECISIONS. Changing the hard constraint "only tar.exe" needs the user's separate OK.
-- **Reported by:** the agent, 2026-11-07.
+  The shape the measurements point to:
+  - a C helper importing only `kernel32.dll` (an AOT .NET helper fails with 0xC0000142 in the sandbox
+    without a desktop);
+  - copied into the quarantine before each launch (an exe in place in `WindowsApps` fails with error
+    87);
+  - names through `hdrcharset` set by the provider;
+  - used as the lister first.
+
+  Changing the hard constraint "only tar.exe" (`CLAUDE.md`) and `SECURITY.md`'s trust model needs the
+  user's OK at that time. Plan mode and the advisor gate at both ends, plus a fresh reviewer (sandbox
+  and untrusted-input class). Not measured yet: ARM64's `archiveint.dll`, and a launch from a process
+  proven to hold package identity.
+- **Reported by:** the user, 2026-11-07.
 
 ### T-F464 - The quarantine as the source of truth instead of predicting tar.exe's names (P3, stream I, research done)
 
