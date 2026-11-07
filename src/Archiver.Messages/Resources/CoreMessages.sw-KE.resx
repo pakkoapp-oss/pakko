@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Si faili zote zilizotoka kwenye kumbukumbu hii, kwa hiyo hakuna kilichotolewa kutoka humo. Faili zilizotoka: {0} kati ya {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Jina '{0}' haliwezi kutumika kuchagua vipengee kutoka kwenye kumbukumbu hii: tar.exe kwenye mfumo huu (ukurasa wa msimbo wa ANSI {1}) huonyesha majina ya kumbukumbu tofauti na jinsi yalivyohifadhiwa. Endesha operesheni kwenye kumbukumbu nzima, bila uteuzi wala kichujio.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kipengee kimelindwa kwa nenosiri na hakikuchunguzwa.</value>
   </data>

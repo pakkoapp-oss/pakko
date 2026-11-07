@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Kaikki tiedostot eivät tulleet ulos tästä arkistosta, joten siitä ei purettu mitään. Ulos tulleet tiedostot: {0}/{1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Nimeä '{0}' ei voi käyttää kohteiden valitsemiseen tästä arkistosta: tämän järjestelmän tar.exe (ANSI-koodisivu {1}) näyttää arkiston nimet eri tavalla kuin ne on tallennettu. Suorita toiminto koko arkistolle ilman valintaa tai suodatinta.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kohde on suojattu salasanalla, eikä sitä tarkistettu.</value>
   </data>

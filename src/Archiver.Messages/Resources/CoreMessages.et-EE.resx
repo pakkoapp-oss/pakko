@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Sellest arhiivist ei tulnud kõik failid välja, seega ei pakitud sellest midagi lahti. Välja tulnud failid: {0}/{1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Nime „{0}” ei saa kasutada selle arhiivi kirjete valimiseks: selle süsteemi tar.exe (ANSI koodileht {1}) näitab arhiivi nimesid teisiti, kui need on salvestatud. Tehke toiming kogu arhiiviga, ilma valiku ja filtrita.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Kirje on parooliga kaitstud ja seda ei skannitud.</value>
   </data>

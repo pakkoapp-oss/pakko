@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Nem todos os ficheiros saíram deste arquivo, por isso nada foi extraído dele. Ficheiros que saíram: {0} de {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>O nome '{0}' não pode ser usado para escolher itens deste arquivo: o tar.exe neste sistema (página de códigos ANSI {1}) apresenta os nomes do arquivo de forma diferente da forma como estão guardados. Execute a operação no arquivo completo, sem seleção nem filtro.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>A entrada está protegida por palavra-passe e não foi analisada.</value>
   </data>

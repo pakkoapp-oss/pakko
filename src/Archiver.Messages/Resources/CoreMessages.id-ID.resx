@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Tidak semua file keluar dari arsip ini, jadi tidak ada yang diekstrak darinya. File yang keluar: {0} dari {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Nama '{0}' tidak dapat digunakan untuk memilih item dari arsip ini: tar.exe di sistem ini (halaman kode ANSI {1}) menampilkan nama-nama arsip secara berbeda dari cara nama itu disimpan. Jalankan operasi pada seluruh arsip, tanpa pilihan atau filter.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Entri dilindungi kata sandi dan tidak dipindai.</value>
   </data>

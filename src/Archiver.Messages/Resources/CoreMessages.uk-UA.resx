@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>З цього архіву вийшли не всі файли, тож із нього нічого не видобуто. Вийшло файлів: {0} з {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Ім’я «{0}» не можна використати, щоб вибрати елементи з цього архіву: tar.exe у цій системі (кодова сторінка ANSI {1}) показує імена в архіві інакше, ніж вони збережені. Виконайте дію з усім архівом, без вибору та без фільтра.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Елемент захищено паролем, тому його не перевірено.</value>
   </data>

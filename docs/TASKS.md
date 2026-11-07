@@ -1652,18 +1652,6 @@ re-measured with T-F346's script before and after.
   (T-F443's verdict), decide the root shape on the quarantine's top level, or keep the root.
 - **Reported by:** T-F443's probe, 2026-11-05.
 
-### T-F452 — A tar selection refused for a header mismatch says "code page" and "use ZIP" (P3, from T-F441)
-
-- [ ] **Status:** open. T-F441 part 2 reuses `TarNameNotRepresentable` when `TarNames` cannot trust
-  tar.exe's listing; that message speaks of a name the code page cannot carry and advises ZIP, which
-  fits creation, not a selection from a tar whose header names disagree with the listing. Next: a
-  message of its own (37 locales, `Glossary.tsv`), through whichever stream holds the Messages set.
-- **Also (2026-11-06):** the T-F461 refusals of a filter (a folder tar.exe wrote by another name)
-  show the same code-page message.
-- **Also (2026-11-07, T-F465's review):** the byte guard (`TarSandboxScope.EnsureSentAsListedAsync`)
-  refuses a name that is representable but was printed in other bytes, and says the same thing.
-- **Reported by:** T-F441's closing notes (`docs/DECISIONS.md`, "T-F441 and T-F424"), 2026-10-31.
-
 ### T-F451 — `RunPipelineAsync_CancelledMidFlight_NoTasksLeftRunningAfterwards` races a timer (P3, flaky test)
 
 - [x] **Status:** fixed 2026-11-05: the third item to start cancels the run (seven still wait),

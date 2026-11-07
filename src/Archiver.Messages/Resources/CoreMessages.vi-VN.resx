@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Không phải tất cả tệp đều ra khỏi tệp nén này, nên không giải nén gì từ nó. Số tệp đã ra: {0}/{1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Không thể dùng tên '{0}' để chọn mục từ tệp nén này: tar.exe trên hệ thống này (trang mã ANSI {1}) liệt kê tên trong tệp nén khác với cách chúng được lưu. Hãy thực hiện thao tác trên toàn bộ tệp nén, không chọn và không dùng bộ lọc.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Mục được bảo vệ bằng mật khẩu và chưa được quét.</value>
   </data>

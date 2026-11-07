@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Niet alle bestanden kwamen uit dit archief, dus er is niets uit uitgepakt. Bestanden die eruit kwamen: {0} van {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>De naam '{0}' kan niet worden gebruikt om items uit dit archief te kiezen: tar.exe op dit systeem (ANSI-codepagina {1}) toont de namen in het archief anders dan ze zijn opgeslagen. Voer de bewerking uit op het hele archief, zonder selectie of filter.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Het item is met een wachtwoord beveiligd en is niet gescand.</value>
   </data>

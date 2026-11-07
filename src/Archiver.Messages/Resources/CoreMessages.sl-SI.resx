@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>Iz tega arhiva niso prišle vse datoteke, zato iz njega ni bilo nič razširjeno. Datoteke, ki so prišle: {0} od {1}.</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>Imena »{0}« ni mogoče uporabiti za izbiro elementov iz tega arhiva: tar.exe v tem sistemu (kodna stran ANSI {1}) prikazuje imena v arhivu drugače, kot so shranjena. Izvedite postopek na celotnem arhivu, brez izbire in brez filtra.</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>Vnos je zaščiten z geslom in ni bil pregledan.</value>
   </data>

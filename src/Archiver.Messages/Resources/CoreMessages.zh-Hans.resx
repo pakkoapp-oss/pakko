@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>并非所有文件都从此压缩包中取出，因此没有从中解压任何内容。已取出文件: {0} / {1}。</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>无法使用名称“{0}”从此压缩包中选取项目：此系统上的 tar.exe（ANSI 代码页 {1}）显示的压缩包名称与其存储方式不同。请对整个压缩包执行该操作，不要使用选择或筛选器。</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>条目受密码保护，未扫描。</value>
   </data>

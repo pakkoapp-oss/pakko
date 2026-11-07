@@ -288,6 +288,9 @@
   <data name="TarFilesMissing" xml:space="preserve">
     <value>ไฟล์ไม่ได้ออกมาจากไฟล์บีบอัดนี้ครบทุกไฟล์ จึงไม่ได้แตกไฟล์ใดออกมา ไฟล์ที่ออกมา: {0} จาก {1}</value>
   </data>
+  <data name="TarListedNameUntrusted" xml:space="preserve">
+    <value>ไม่สามารถใช้ชื่อ '{0}' เพื่อเลือกรายการจากไฟล์บีบอัดนี้ได้: tar.exe บนระบบนี้ (โค้ดเพจ ANSI {1}) แสดงชื่อในไฟล์บีบอัดแตกต่างจากที่บันทึกไว้ ให้ดำเนินการกับไฟล์บีบอัดทั้งไฟล์ โดยไม่มีการเลือกหรือตัวกรอง</value>
+  </data>
   <data name="ScanEntryPasswordProtected" xml:space="preserve">
     <value>รายการป้องกันด้วยรหัสผ่านและไม่ได้ถูกสแกน</value>
   </data>
