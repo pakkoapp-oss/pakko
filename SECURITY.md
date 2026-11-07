@@ -128,7 +128,7 @@ practice a gzip that reaches this check is decompressed once in full, outside th
 and processor limits (7 GiB of zeros behind a 32 MB archive: 0.9 s). bzip2, xz and zstd have no decoder in .NET, so such a tar is not
 read in-process and keeps the refusal.
 **The same walk also reads the names themselves (T-F441, v1.10.0)**, for a plain or gzip tar, when a
-selection or a filter is about to decide by name: tar.exe prints names in the user's ANSI code page
+selection or a filter is about to decide by name: tar.exe prints names in the system ANSI code page
 with best fit, so two different names can list as one, and a selection then extracts the other
 file. The walk rebuilds each name as libarchive does - a pax `path` record, a GNU long-name record,
 the header's prefix and name - parsing pax records (`<length> <key>=<value>`) and long names of at
@@ -140,6 +140,12 @@ file name on disk still come from the sandboxed tar.exe. Rejected (2026-10-31): 
 tar.gz in-process through `System.Formats.Tar`, which would end the best-fit problem for those two
 but add a second extraction path outside the AppContainer; and any in-process decoder for xz,
 bzip2, zstd, 7z or RAR (none in .NET; RAR's decompression is under the unRAR licence).
+**The listing is read in that same system page (T-F465, v1.10.0).** Versions from v1.5.0 read it in
+the page of the user's regional format; where the two differ, a listed name could be another
+entry's name, so a selection extracted the other file with success and a selection scan could
+report a threat clean. Now every name Pakko sends back to tar.exe - a selection, Test's exclusions,
+the first copies of a repeated name - must go out as exactly the bytes tar.exe printed for it, or
+the operation is refused.
 
 **A gzip of one file (T-F413, v1.9.0) is decompressed in-process.** tar.exe cannot read one (its raw
 reader cannot be asked for), so Pakko does, with the same `DeflateStream` it uses for ZIP - no new
