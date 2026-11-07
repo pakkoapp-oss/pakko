@@ -14399,6 +14399,93 @@ constraint "only tar.exe" stands until the user decides (below).
   swap-pair tests failed again. Four first translations used the replaced word for "archive"
   (ko, th, vi, zh); `GlossaryTests` caught them.
 
+## T-F470 - a helper over `archiveint.dll` as lister and extractor (2026-11-07)
+
+**The user's decisions (2026-11-07).** The helper both lists and extracts ("lister + extractor");
+where it is unavailable, Pakko falls back to tar.exe without a word. T-F468's conditions stand: only
+`C:\Windows\System32\archiveint.dll` by absolute path, the signature check tar.exe gets (T-F401's
+catalog case included), the version from `archive_version_details`, and capabilities decided at run
+time. The hard constraint "only via tar.exe" in `CLAUDE.md` and the trust model in `SECURITY.md`
+change inside this task (the user's explicit OK, 2026-11-07). The plan was approved in plan mode with
+the advisor gate at the start.
+
+**Why extraction too, not only the listing.** A selection reaches tar.exe through `-T`/`-X` on its
+ANSI command line, and tar.exe 3.8.9 skips every Unicode-stored name outside the system ANSI page in
+`-x` as in `-t` (T-F464's table: at 1251, 62,822 of 63,446 pax names). A helper that only lists
+would show the right names and still fail on them.
+
+**The shape (plan).**
+- The helper is C, `/MT`, importing only `kernel32.dll`. It never uses `archive_write_disk`: it reads
+  data with `archive_read_data_block` and writes each selected regular file as `out\<index>`, so no
+  name from the archive is ever a path inside the sandbox. Pakko lays the files out by the exact
+  UTF-16 names, through the checks the ZIP engine uses (`ArchiveEntrySecurity`,
+  `EntryDiskName.AsPakkoWrites`, its collision rules).
+- One parser per operation: a listing from the helper is never followed by a tar.exe extraction by
+  name, and a browse and the extraction it feeds use the same backend.
+- The fallback is decided only at the gate, before the helper reads the archive. Any verdict the
+  helper reaches on an archive is final.
+- The helper is treated as compromisable, like tar.exe: its output is parsed strictly and `out\` is
+  read only through `QuarantineFiles`.
+
+**Step 1, measured (2026-11-07).** A prototype with the planned protocol (scratch,
+`~/.claude-work/tf470`), launched in the `Pakko.TarSandbox` AppContainer from a quarantine laid out as
+the product would (`bin\` RX, `list\` RX, `out\` Modify), the archive as stdin. Host: Windows 11 26300,
+3.8.9, uk-UA. PakkoW10: Windows 10 19045, in-box 3.5.2, en-US, over PowerShell Direct (no desktop).
+- **Imports.** Built `/MT /O2 /W4 /WX /sdl /guard:cf` and linked `/DYNAMICBASE /HIGHENTROPYVA
+  /NXCOMPAT /CETCOMPAT`, its only import is `KERNEL32.dll`. It runs in the AppContainer on both
+  builds, PakkoW10's desktop-less session included.
+- **Names, 30 fixtures by 4 settings (none, `UTF-8`, `CP1251`, `CP866`).** Fixtures:
+  - T-F468's 22;
+  - raw 1251 names in ustar, cpio newc and odc, ar and CAB (makecab from an ANSI DDF);
+  - Unicode names in pax, a tar.exe 7z and a tar.exe ISO;
+  - special entries (folder, symlink, hard link, character device, `../`, `/abs`, `C:/`, `a:b`,
+    `CON`);
+  - a GNU sparse entry.
+
+  The two builds agree in all 116 cells both can read. The 16 that differ are 3.5.2's missing LZMA
+  (NanaZip's and tar.exe's 7z: "LZMA codec is unsupported") and a period 3.8.9 adds to the warning
+  text.
+- **`hdrcharset`, by format.**
+  - Applied: tar, cpio and CAB (measured); RAR4, LHA and ZIP per the source.
+    `archive_read_support_format_{tar,cpio,cab,rar,lha,zip}.c` handle the option at v3.5.2 and v3.8.9.
+  - Unicode-only, so the option does not matter: 7z (UTF-16) and RAR5 (UTF-8).
+  - **Ignored:** `iso9660` and `ar`. They have no `hdrcharset` in either version's source. Measured:
+    a tar.exe ISO's Rock Ridge names and an ar's names came back as bytes widened one to one under
+    every setting. These two formats stay on tar.exe, decided by format before the helper runs.
+  - `hdrcharset=UTF-8` is strict on both builds: a name that is not UTF-8 gives `ARCHIVE_WARN`
+    (errno 42) and a NULL name. A wrong single-byte page decodes without a signal (T-F468).
+- **Entries.**
+  - A hard link lists with `filetype` 0, not 0100000, plus its target. Pakko treats any entry with a
+    link target as special, whatever its type.
+  - A symlink is 0120000 and a character device 020000; `..`, absolute, drive, ADS and device names
+    come back as stored.
+  - An ISO lists its root as `.`.
+- **Extraction and Test, same results on both builds.**
+  - The sparse entry (192 KiB real, two 512-byte runs) lands with the right size and SHA-256.
+  - The archive's mtime is set when the entry has one.
+  - A selected symlink or hard link is refused (`F -5`, exit 1).
+  - `--max-total` below the data stops the run (`F -3`) and leaves a partial `out\` file. Pakko then
+    fails the operation and the quarantine is removed.
+  - A selection out of order or past the last entry is refused (exit 5).
+  - Test of an encrypted ZIP entry gives `-25` "Passphrase required". An encrypted 7z on 3.8.9 gives
+    "The file content is encrypted, but currently not supported". On 3.5.2 an encrypted RAR5 lists as
+    not encrypted and fails "Unsupported block header size". So Pakko's byte check for an encrypted
+    RAR (`ArchiveFormatDetector.IsEncryptedRar`) stays in front of the helper.
+- **`archive_read_support_*`, both builds, outside the sandbox.**
+  - 3.8.9 returns `ARCHIVE_OK` for tar, cpio, 7zip, rar, rar5 and cab, and for the gzip, bzip2,
+    compress, xz, lzma, lzip and zstd filters.
+  - 3.5.2 does the same for the formats, gzip and compress. For bzip2, xz, lzma, lzip and zstd it
+    returns `ARCHIVE_WARN` "Using external ... program": the filter registers an external program.
+  - `support_format_all`/`support_filter_all` would also enable mtree (which can read local files)
+    and the external-program filters (lrzip, lzop, grzip).
+  - **So the helper enables only the formats and filters Pakko names.** A filter whose support call
+    is not `ARCHIVE_OK` is never used. The probe records which ones are, and a mismatch at run time is
+    a refusal.
+- **Not measured here:** a launch from a packaged process with proven identity. T-F468 launched a copy
+  through `Invoke-CommandInDesktopPackage` without proof of identity. It is verified on the device
+  once the helper ships in the package (step 2). ARM64 stays unmeasured; the gate sends ARM64 machines,
+  and an x64 `pakko` emulated on them, to tar.exe.
+
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
 - **Why.** tar.exe writes through the long-path prefix, so `a.txt.`, `a.txt ` and a folder `d ` are on
