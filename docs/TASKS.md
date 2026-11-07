@@ -1520,6 +1520,7 @@ re-measured with T-F346's script before and after.
   - `SystemCodePages` becomes the provider's private source. Plan mode and advisor before the PR.
   - From T-F465: raw tar names read in libarchive's OEM page - the `acp_ocp_map` row by the UCRT locale
     name (measure that name first, zh-CN above all), otherwise `GetOEMCP()`; today `UserOem`.
+  - `SystemCodePages.UserAnsi` has no production reader since T-F465: drop it or keep it private.
 - **Reported by:** the agent, 2026-11-07.
 
 ### T-F468 - `archiveint.dll` (Windows' libarchive) as the name source instead of tar.exe's ANSI listing (P2, stream I, research)

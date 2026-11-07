@@ -14088,8 +14088,11 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
   - Selection extract, selection scan, Test through `-T` and through `-X`: all four were wrong on the
     old code (wrong file, success, Clean) and are refused now. With the guard alone switched off they
     went red again. A control extracts the threat itself in the true page.
-  - The `-q` first copies have the same guard but no test of their own: they need a duplicate group
-    under a forced page.
+  - The `-q` first copies: `Scan_FirstCopyUnderAnotherPage_NeverClean` (the threat only in the first of
+    two same-named entries) is not Clean with the guard, and also without it: T-F462's count already
+    makes it Inconclusive there. It pins that; it is not a red test of the guard. A refusal on that
+    path is an `IOException`: the scan reports Inconclusive, extraction reports the first copies as
+    not extracted.
   - `TarListedNameBytesTests` covers the reader: escapes, a lossy UTF-8 line, CRLF, empty lines, a
     bad escape.
 - **Measured on 3.5.2, production code, no seam.** PakkoW10 with format uk-UA over system 1252, the
@@ -14098,7 +14101,11 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
   - `main` shows the 10-byte entry as `a` + U+20AC and extracts the 5-byte file for it, with success.
   - This branch lists both under their true names and extracts each one's own file.
 
-  So the bug reaches a plain tar in released versions too, not only 7z and xz. VM restored (en-US/en-US).
+  So the bug reaches a plain tar in released versions too, not only 7z and xz: any tar whose headers
+  the walk gives up on, on Windows 10 as on Windows 11. VM restored (en-US/en-US).
+- **Comments corrected:** `SystemCodePages.UserAnsi` no longer claims to be the C runtime's page;
+  `TarNames` says the system page. SECURITY.md's T-F441 paragraph still says "the user's ANSI code
+  page" - changed only with the user's OK.
 - **Moved to T-F467: the OEM rule for raw tar names.** A wrong OEM page makes the header veto refuse
   (a false refusal, never a false Clean), and the UCRT's locale name needs measuring first,
   zh-CN above all. The rule quoted from source is `acp_ocp_map`, the same table in v3.5.2 and v3.8.9;

@@ -23,8 +23,8 @@ internal sealed record TarListingVerdict(TarNameTrust Trust, string? Example)
 }
 
 /// <summary>
-/// T-F441/T-F424: the one judge of tar.exe's listed names. tar.exe prints a name in the user
-/// locale's ANSI page with best fit ("café" as "cafe" in 1251, "cafā" as "cafa" in 1252, measured
+/// T-F441/T-F424: the one judge of tar.exe's listed names. tar.exe prints a name in the system
+/// ANSI page (T-F465) with best fit ("café" as "cafe" in 1251, "cafā" as "cafa" in 1252, measured
 /// on bsdtar 3.8.9 and 3.5.2), and as '?' where no character fits (3.5.2). Such a name still
 /// extracts under its true name, but it cannot decide anything: a filter's verdict on it, a
 /// selection of it, a duplicate group. Two names that collapse to one line make a selection
