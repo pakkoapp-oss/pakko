@@ -14256,3 +14256,20 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 - **Also (2026-11-07, T-F465's review):** the byte guard (`TarSandboxScope.EnsureSentAsListedAsync`)
   refuses a name that is representable but was printed in other bytes, and says the same thing.
 - **Reported by:** T-F441's closing notes (`docs/DECISIONS.md`, "T-F441 and T-F424"), 2026-10-31.
+
+### T-F459 — Regroup `docs/TESTING.md` by project and category (P3, docs)
+
+- [x] **Status:** done 2026-11-07 (`docs/tf459-testing-regroup`): `docs/TESTING.md` regrouped by a
+  script: what applies to every project first (running, setup, count, patterns, rules, PAR2 oracles,
+  smoke), then one section per test project, each by topic and then by category (`Fuzz`, `Slow`,
+  `VeryLarge`; `Archiver.Core.IntegrationTests` is the Integration one). Every sentence kept, checked by
+  the multiset of non-blank lines before and after: only headings, `---` separators, a bullet marker
+  or indent where a sentence became its own bullet, and three edited lines (the intro, "regrouped" in
+  "Test Count", "Tar Fixtures" now above) differ. History stayed in place rather than moving to
+  `DECISIONS.md`: it sits inside sentences, and moving it would have meant rewording them.
+- **Before:** open. Found by the 2026-11-05 docs audit: `TESTING.md` (about 110 KB) is ordered by
+  wave and date, so a reader looks for a test project's plan in many places. The audit's PR fixed
+  only the stale lines (scope, commands, versions, the old count). Next: one section per test
+  project, then per category (`Slow`, `VeryLarge`, `Fuzz`, `Integration`), keeping every fact and
+  fixture; history goes to `DECISIONS.md`. A script moves the text, then a check for lost lines.
+- **Reported by:** the agent, 2026-11-06.
