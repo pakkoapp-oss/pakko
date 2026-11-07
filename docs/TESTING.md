@@ -262,6 +262,15 @@ image, a file named `.iso` with no image in it, and a policy block. Its expectat
 installed tar.exe: a format it reads must work, one it does not must be skipped with a reason. Run
 it on both tar.exe builds (here and PakkoW10).
 
+**T-F467, every character of every page.** `BsdtarListingModel` (in `Archiver.Core.Tests`, linked into
+the integration project) says byte for byte what tar.exe lists for a raw header name: libarchive's
+conversion from the header page, then bsdtar's escaping through the C runtime of one page.
+`TarListingModelTests` (integration) checks it against this machine's tar.exe for every character of
+the header page; PakkoW10 checked 14 more locales on both builds (`docs/DECISIONS.md`, "T-F467 done").
+`TarSendsAsListedExhaustiveTests` (unit, about a second) runs the guard and the header verdict over
+every character in every byte form on 17 machines and both builds: a selection must take exactly its
+own entry, and a name read without loss that no other entry shares must be sendable.
+
 ### Sandbox subsystem tests (T-F52, v1.4)
 
 Exercise the real Win32 AppContainer/ACL/Job-Object/Authenticode APIs directly — no mocks (this

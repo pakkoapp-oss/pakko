@@ -30,6 +30,18 @@ public sealed class TarListingNameTests
         TarListingName.Unescape(listed, Cp1251).Should().Be(expected);
     }
 
+    // T-F467: bsdtar escapes each byte of a character it finds unprintable and prints a printable trail
+    // byte raw: U+309B (932: 0x81 0x4A) lists as "\201J". The two bytes are one character.
+    [Fact]
+    public void EscapedLeadByte_WithARawTrailByte_IsOneCharacter()
+    {
+        Encoding japanese = new TextBoundary(932).Lenient;
+
+        TarListingName.Unescape("\\201J.t", japanese).Should().Be((char)0x309B + ".t");
+        TarListingName.Unescape("\\201\\\\.t", japanese).Should().Be(japanese.GetString([0x81, 0x5C]) + ".t");
+        TarListingName.Unescape("a\\201J", Cp1251).Should().Be("a" + (char)0x0403 + "J");
+    }
+
     [Fact]
     public void Unescape_ReadsTheNamedControls()
     {

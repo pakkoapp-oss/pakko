@@ -1506,6 +1506,17 @@ re-measured with T-F346's script before and after.
   `TarSandboxedService`, `Sandbox/` and `AntivirusScanService`.
 - **Reported by:** the agent's root-cause review, 2026-11-06.
 
+### T-F469 - A tar.exe 3.8.9 listing that leaves out an unreadable name refuses every selection (P3, stream I)
+
+- [ ] **Status:** open (found by T-F467's exhaustive test, 2026-11-07). Where libarchive reads a raw
+  header name only with the default character, 3.8.9 skips that entry ("Archive entry has empty or
+  unreadable filename ... skipping", exit 1; measured on el-GR, lt-LT, he-IL, ar-SA). The listing then
+  holds fewer names than the headers, and T-F441's count check refuses every selection and filter from
+  that archive, including names that are fine. Decide whether the header walk can account for the
+  skipped entries (same conversion, `TextBoundaries.TarRawHeaderNames`) so only they are refused; keep
+  it fail closed. Both builds; `TarSendsAsListedExhaustiveTests` asserts today's behaviour.
+- **Reported by:** the agent, 2026-11-07.
+
 ### T-F468 - `archiveint.dll` (Windows' libarchive) as the name source instead of tar.exe's ANSI listing (P2, stream I, research)
 
 - [ ] **Status:** open, research only (the user, 2026-11-07: in this wave). Both builds export libarchive's API
