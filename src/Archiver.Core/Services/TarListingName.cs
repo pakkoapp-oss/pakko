@@ -30,8 +30,16 @@ internal static class TarListingName
         {
             if (listed[i] != '\\')
             {
-                FlushBytes(name, bytes, encoding);
-                name.Append(listed[i]);
+                // T-F467: bsdtar escapes each byte of a character it finds unprintable, and a trail
+                // byte it finds printable comes out raw ("\201J" is 0x81 0x4A in 932); it joins the
+                // escaped lead byte before the run is decoded.
+                if (EndsInLeadByte(bytes, encoding))
+                    bytes.AddRange(encoding.GetBytes(listed[i].ToString()));
+                else
+                {
+                    FlushBytes(name, bytes, encoding);
+                    name.Append(listed[i]);
+                }
                 i++;
                 continue;
             }
@@ -49,8 +57,13 @@ internal static class TarListingName
             char? control = Control(next);
             if (control is null)
                 return null;
-            FlushBytes(name, bytes, encoding);
-            name.Append(control.Value);
+            if (EndsInLeadByte(bytes, encoding))
+                bytes.Add((byte)control.Value);
+            else
+            {
+                FlushBytes(name, bytes, encoding);
+                name.Append(control.Value);
+            }
             i += 2;
         }
         FlushBytes(name, bytes, encoding);
@@ -125,6 +138,20 @@ internal static class TarListingName
             value = (value * 8) + (digit - '0');
         }
         return value <= byte.MaxValue ? (byte)value : null;
+    }
+
+    // Whether the escaped bytes so far end in a lead byte with no trail byte yet.
+    private static bool EndsInLeadByte(List<byte> bytes, Encoding encoding)
+    {
+        uint codePage = (uint)encoding.CodePage;
+        int k = 0;
+        bool open = false;
+        while (k < bytes.Count)
+        {
+            open = Sandbox.TarCommandLineEncoding.IsLeadByte(codePage, bytes[k]) && k + 1 >= bytes.Count;
+            k += Sandbox.TarCommandLineEncoding.IsLeadByte(codePage, bytes[k]) ? 2 : 1;
+        }
+        return open;
     }
 
     private static void FlushBytes(StringBuilder name, List<byte> bytes, Encoding encoding)

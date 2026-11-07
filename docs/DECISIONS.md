@@ -14211,6 +14211,44 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
     reviewer counted 11 such texts in 932, one in 950, and none in 936 or 949. Red tests:
     `FormListedWithARawTrailByte_StillSharesTheText`, `LineThatIsNoText_NoNameIsSendable` (mutant). The
     VM rerun of the 932 set gave the same results as above. Restored to en-US.
+- **Every character of every page, in tests (the user, 2026-11-07).**
+  - **The model.** `BsdtarListingModel` (tests) transcribes how bsdtar lists a name: tar/util.c's
+    `safe_fprintf` and `bsdtar_expand_char`, the same logic in v3.5.2 and v3.8.9. It runs on the C
+    runtime's own `_mbtowc_l`/`_iswprint_l`/`_isprint_l` for one page. Before printing, it reads a raw
+    header name the way libarchive does (archive_string.c, `strncat_in_codepage`, the same in both
+    versions): bytes as they are when the header page is the output page, otherwise
+    `MultiByteToWideChar(header page, MB_ERR_INVALID_CHARS)` then `WideCharToMultiByte(ANSI, 0)` (best
+    fit, default character).
+  - **Checked against the real tar.exe, byte for byte.** One ustar per machine holds every character
+    of its header page in every byte form Windows decodes (`<unit>.t`). The machines: 874, 932, 936,
+    949, 950, 1250..1258 with their libarchive header pages (852, 866, 437, 737, 857, 862, 720, 775,
+    1258).
+    - PakkoW10, system locale and format per row, in-box 3.5.2 and the host's 3.8.9 binary with its
+      `archiveint.dll`: all 28 listings equal the model.
+    - The host (3.8.9, uk-UA over 1251/866) equals it too. `TarListingModelTests` keeps that check on
+      every run, on whatever machine runs it (CI: en-US).
+    - Where `Set-Culture` did not take (th-TH, he-IL, ar-SA, vi-VN stayed en-US), libarchive used the
+      system OEM page, as `LibarchiveOemPage`'s fallback says.
+  - **One difference between the builds, measured.** Where `WideCharToMultiByte` used the default
+    character, 3.8.9 leaves the entry out ("Archive entry has empty or unreadable filename ...
+    skipping", exit 1; el-GR, lt-LT, he-IL, ar-SA), while the in-box 3.5.2 prints the name with `?`.
+    The upstream source of both returns NULL there, so Microsoft's 3.5.2 build differs. The model takes
+    the build as a parameter.
+  - **The test.** `TarSendsAsListedExhaustiveTests`, 17 machines × both builds, about 70,000 names per
+    run. For every listed row: a selection reaches tar.exe only if tar.exe, which matches `-T` as text
+    in its page, takes exactly that row's entry. Every row whose name no other entry shares, read
+    without loss, must reach it; a real `?` is excluded (T-F416).
+  - **Found and fixed by it.** `TarListingName.Unescape` decoded an escaped lead byte apart from the raw
+    trail byte bsdtar prints after it (932: `\201J` for U+309B). That is 2,163 characters in 932, and
+    more in 936 and 950, shown as two wrong characters and refused. An escaped lead byte now joins the
+    next character's bytes before the run is decoded. Red: the three DBCS rows before the fix, and a
+    unit test.
+  - **Seen red on mutants:** same-key collision off (932, 950), the header verdict off (10 SBCS
+    machines), the `Unescape` fix off (932, 936, 950), and the model's header conversion off (the
+    integration test).
+  - **Left open (T-F469).** With 3.8.9 an archive holding one name it leaves out lists fewer names
+    than its headers, so T-F441's count check refuses every selection from it. That fails closed but
+    refuses names that are fine.
 - **The tests read the machine's pages as the product does.** They take a literal page through
   `new TextBoundary(n)` and the machine's through `MachinePages.Current`. `SystemCodePages_IsReadOnlyByTheProvider`
   now covers `tests` too, with the provider's own tests (`tests/Archiver.Core.Tests/Text/`) as the
