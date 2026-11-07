@@ -14352,8 +14352,33 @@ constraint "only tar.exe" stands until the user decides (below).
   The lister-only role keeps all of the selection machinery and adds a second parser to keep in step
   with the first. The extractor role is a security-boundary change too large for this wave. If the
   user wants the helper later, a C helper importing only `kernel32.dll`, used as the lister first, is
-  the shape these runs point to (its launch was measured, its listing was not). It would be a task of
-  its own, with plan mode and the advisor gate at both ends.
+  the shape these runs point to (its launch and its listing were measured, see below). It would be a
+  task of its own, with plan mode and the advisor gate at both ends.
+- **Follow-up runs (the user, 2026-11-07: "measure" the open items).**
+  - **Names on 3.5.2 inside the sandbox.** A kernel32-only C lister (`/MT`, the same calls and output as
+    the AOT probe) ran in the AppContainer over PowerShell Direct, so no interactive session was needed.
+    PakkoW10: all 22 archives under all 7 settings equal the same lister outside the sandbox and the AOT
+    probe outside it (0 differing cells). The host gives the same result on 3.8.9. The sandbox changes no
+    name on either build.
+  - **A helper inside the installed MSIX.** `CreateProcessW` with the AppContainer attribute fails with
+    error 87 (ERROR_INVALID_PARAMETER) for an exe at its place in `WindowsApps` (`pakko.exe` of
+    1.9.0.5). The same bytes copied out and granted RX in a quarantine folder start and run. Launched
+    through `Invoke-CommandInDesktopPackage` (Pakko's `Cli` app ID), the results were the same: tar.exe,
+    the C lister and the copy ran; the in-place exe failed with 87. A PowerShell started in that context
+    reported no package identity, so that run does not prove a packaged parent. Pakko's own packaged
+    processes already launch tar.exe this way in the shipped product. A shipped helper must therefore be
+    copied out of the package (into the quarantine) before each launch.
+  - **ARM64.** Winbindex lists `archiveint.dll` for x64 (64 builds) and x86 (62 builds), none for ARM64.
+    There is no ARM64 copy to inspect without an ARM64 Windows image. Still not measured.
+- **Decision (the user, 2026-11-07).** A helper over `archiveint.dll` is an option for a future release,
+  not for v1.10.0. Its conditions:
+  - only the DLL Windows ships (System32, absolute path), under the same checks tar.exe has: the
+    signature check (T-F401's catalog-signed case included);
+  - the version read from the DLL;
+  - its capabilities decided at run time from that version, as T-F403 does for tar.exe.
+
+  "Only tar.exe" stays a hard constraint until that task changes it with the user's OK. The task is
+  T-F470.
 
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 

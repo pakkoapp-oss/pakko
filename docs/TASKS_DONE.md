@@ -14223,3 +14223,20 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     one would be refused (a false refusal). Measure with the provider's 932 matrix; the `-q` guard has
     no test that fails without it (the main `-T` guard and `JudgeExtracted` reach first).
 - **Reported by:** the agent, 2026-11-07.
+
+### T-F468 - `archiveint.dll` (Windows' libarchive) as the name source instead of tar.exe's ANSI listing (P2, stream I, research)
+
+- [x] **Status:** done 2026-11-07 (`docs/DECISIONS.md`, "T-F468 research done"). The user decided the
+  same day: an option for a future release under conditions, tracked as T-F470; "only tar.exe" stays
+  until then. ARM64 is not measured (no ARM64 build of the DLL to inspect). The research (the user, 2026-11-07: in this
+  wave): both builds export libarchive's API
+  (3.5.2: 422 exports, 3.8.9: 455, `archive_entry_pathname_w` included). An AOT probe in Pakko's AppContainer
+  measures, on both builds:
+  - names as UTF-16 against the disk names;
+  - raw names (`hdrcharset`);
+  - passphrases;
+  - ABI and version gating;
+  - launching from MSIX and from the standalone `pakko`.
+
+  The decision goes in DECISIONS. Changing the hard constraint "only tar.exe" needs the user's separate OK.
+- **Reported by:** the agent, 2026-11-07.
