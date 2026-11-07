@@ -13940,8 +13940,10 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
       (`acca0de5`, 2026-09-25), which is in every tag from v1.5.0 to v1.9.0, the Store's 1.9.0 included.
     - Formats whose headers Pakko does not read have only `JudgeByRepeats`. The member names go to
       tar.exe in the system page, and a selection run has no disk check, so nothing sees the swap.
-    - On 3.5.2 the swap needs such a format, and Windows 10's tar.exe has only zlib (Pakko refuses 7z
-      there), so it is a 3.8.9 case: Windows 11 with a format whose page differs from the system's.
+    - Scope (corrected by the fresh review below): any machine whose format page differs from the
+      system's, for every format the header veto does not cover. That is a 7z, xz, bz2, zst, lzma and
+      RAR on 3.8.9; a plain tar or tar.gz wherever the header walk gives no answer; and on `main`, ISO,
+      cpio, ar, .Z and CAB on 3.5.2 too.
   - Test harness note: a `dotnet test` started right after `Set-Culture` back to uk-UA still saw
     en-US; a later run saw uk-UA. Always check the page a run used (the refusal text or a probe).
 - **NFD names (macOS tars).** tar.exe lists and writes a name in NFC, while `TarHeaderNames` compares the
@@ -13979,6 +13981,7 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
   Not measured:
   - native 3.8.9 at any page but 1251;
   - characters outside the BMP;
+  - anything through the AppContainer (only the triage ran there);
   - names longer than one ustar field;
   - 936, 949, 950 and 65001;
   - RAR, cpio, ISO, CAB and ar.
@@ -13990,37 +13993,79 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
   dot or a space is observably trimmed, so that keying needs no prediction. Items 1-4 happen before
   tar.exe runs (the folders Pakko makes first), where no quarantine exists yet. They stay T-F461's.
 
-**Decisions (2026-11-07).**
-- **T-F465 first (P1).** The listing is decoded in the system ACP, the page `TarCommandLineEncoding`
-  already uses, and the refusal names that page.
-  - A guard on bytes, not names. A name relation cannot see the swap: the wrong decode is exactly
-    what makes the shown name equal the other file's name. Instead, every member name sent to tar.exe
-    must encode in the command-line page to the same bytes it has in the output page. Measured on the
-    probe fixture with format en-US and system 1251:
-    - the two swapped rows fail it;
-    - `plain.txt` and `a.log` pass;
-    - with format uk-UA every row passes.
+**The fresh review (2026-11-07, a read-only opus subagent, the user's OK) changed six things:**
+- **The byte guard compares what tar.exe printed, not two pages.** Once the output page is the
+  command-line page, "the same bytes in both pages" always holds and can never fire. Built against
+  `UserAnsi` instead, it refuses every non-ASCII selection on such a machine. Neither form sees a
+  drift between Pakko and tar.exe (a UCRT change, ACP 65001's `.utf8`).
+- **The scope was too narrow.**
+  - A plain tar or tar.gz loses the header veto wherever `TarHeaderNames` gives no answer: a sparse
+    entry, a global pax header naming a path or charset, a volume label, a gzip past the expansion
+    bound. `Judge` then falls back to `JudgeByRepeats` alone, so anyone who can add one sparse entry
+    can strip the header check.
+  - On `main`, 3.5.2 reads ISO, cpio, ar and .Z as built-in formats (`SupportsBuiltInReaders`, T-F442
+    step 2, not in a tag yet), plus CAB through zlib.
+  - A 3.5.2 swap pair exists: format uk-UA over system 1252 shows byte 0x88 (`ˆ`) as U+20AC, which
+    1252 sends as 0x80.
+- **T-F464's "Clean never rests on it" did not hold for drops.** Wherever the relation picks a file
+  to drop, a unique but wrong match in an unmeasured case drops the threat unscanned while the count
+  still balances.
+- **Unmeasured:** the 63k-name relation ran outside the AppContainer (its environment block, its
+  reads of the user's locale).
+- **The OEM page follows libarchive's source, not one example.** `get_current_oemcp` looks the format's
+  locale name up in its 41-row `acp_ocp_map`; it has no `Ukrainian_Ukraine` and no `Chinese_China`
+  row, and for those returns `GetOEMCP()`. So format uk-UA over system en-US reads a raw ustar name
+  as 437, while `UserOem` says 866. That one fails closed (the header veto refuses).
+- **The regression test must run in CI**, where the two pages are equal.
 
-    This also catches any later drift between the two pages, whichever is right.
-  - The regression test that fails anywhere: extend `TextBoundaryOwnersTests` so the tar boundary takes
-    its output page from the source `TarCommandLineEncoding` uses, never `UserAnsi`. Today's code
-    fails it. The culture-flip integration test stays as the behavioural check and states the page
-    pair it covers.
-  - `TarSandboxScope`'s `UserOem` against libarchive's `acp_ocp_map` is checked in the same task.
-- **T-F466 (P3):** compare `TarHeaderNames`' names with the listing after NFC normalization, which
-  tar.exe applies (measured), so a macOS tar is not refused.
+**Decisions (2026-11-07, after the review).**
+- **T-F465 first (P1).**
+  - The listing is decoded in the system ANSI page (65001 as UTF-8, as the UCRT's `.utf8`).
+  - Raw tar names follow libarchive's OEM rule: the `acp_ocp_map` row by the format's locale name,
+    quoted from source; otherwise `GetOEMCP()`.
+  - The refusal names the page tar.exe used.
+  - **The byte guard:** `TarNames.ReadListing` keeps each line's raw bytes (after `\ooo`, before
+    decoding). Wherever a listed name goes back to tar.exe (a selection's members, a selection scan,
+    the `-q` first copies), its bytes from `TarCommandLineEncoding` must equal the bytes tar.exe
+    printed for that entry, or the archive is refused. That catches the measured swap (listed `a`
+    0x80, sent `a` 0x88), whichever page is wrong.
+  - **Tests, red first:**
+    - An integration test that runs in CI forces the scope's output page away from the system's
+      (through an internal seam) with the measured pairs, in a 7z or `.tar.xz` and in a plain tar
+      with a sparse entry. A selection extract, a selection scan (a fake AMSI flagging the threat)
+      and Test with a filter must refuse or be Inconclusive.
+    - `TextBoundaryOwnersTests` keeps the tar output page on the command-line page's source.
+    - The culture-flip check stays on both machines and records the page each run used.
+- **T-F466 (P3, this wave):** compare `TarHeaderNames`' names with the listing after NFC normalization,
+  which tar.exe applies (measured), so a macOS tar is not refused.
+- **One encoding provider** (after T-F465; the user, 2026-11-07: one provider with one standard,
+  several handlers). Each boundary is a named handler with its measured source: tar.exe's output,
+  command line, raw header names and messages; ZIP's legacy names; the console; PAR2; the Shell's
+  stdin paths; the launch arguments. One standard applies to all of them:
+  - A page is chosen only in the provider.
+  - A name that decides something must byte-match what the other program printed.
+  - Decoding is strict where the boundary is a contract.
+  - Every handler gets the same test matrix.
+- **`archiveint.dll` research (this wave, no product code).** Windows ships libarchive as
+  `archiveint.dll`, with 422 exports in 3.5.2 and 455 in 3.8.9, `archive_entry_pathname_w` and
+  `_utf8` included. Explorer and 7-Zip take names straight to UTF-16. A Pakko helper in the same
+  AppContainer could do the same and drop the ANSI step and its best fit. Measure first: names inside
+  the sandbox on both builds, raw names, ABI and version gating, launching from MSIX and the
+  standalone `pakko`. Changing the hard constraint "only tar.exe" needs the user's separate OK.
 - **T-F464: option A, bounded.** After a run without a member list:
   - The quarantine's files are matched to the file entries in scope by the relation, one file to one
     entry, and an entry left unmatched fails as `TarFilesMissing` / Inconclusive.
-  - This is **in addition to** T-F462's count, never in place of it. A wrong relation can only add a
-    false failure; Clean never rests on it.
-  - Where a name picks a file (a filter's drop, a duplicate group's first copy judged per group, the
-    trimmed and renamed keying), only a unique match decides. Anything ambiguous, such as the 932
-    raw class, falls back to today's fail-closed path.
+  - This is **in addition to** T-F462's count, never in place of it.
+  - **Every file in the quarantine is scanned before anything is dropped.** The relation decides only
+    moves and the report, never what is scanned. On a page or build not in the measured table, a
+    choice by name is Inconclusive.
+  - Where a name picks a file to move (a duplicate group's first copy judged per group, the trimmed
+    and renamed keying), only a unique match decides. Anything ambiguous, such as the 932 raw class,
+    falls back to today's fail-closed path.
   - Checks before tar.exe runs (folders made first, the 8.3 alias check, `-q` names, `TarNames.Judge`)
     are unchanged.
-- **Order:** T-F465, T-F466, then T-F464's code. Tests come first, on both builds, and an integration
-  test of tar.exe's output states the build and the page it covers.
+- **Order:** T-F465, T-F466, the provider, the `archiveint.dll` research, then T-F464's code. Tests
+  come first, on both builds, and a test of tar.exe's output states the build and the page it covers.
 
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 

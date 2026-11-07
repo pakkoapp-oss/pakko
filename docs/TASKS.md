@@ -63,7 +63,7 @@ TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating sessi
 | F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
 | G long-open umbrellas (added 2026-10-31, the agent's pick) | T-F254 (regional display language: pack and sign-out on the PakkoW10 VM, not the user's machine), T-F91 (`ru-RU` falls back to en-US, on the VM; the native-speaker criterion replaced by an agent back-translation pass, since there are no native reviewers, the user's standing word), T-F328's leftovers (quote, dash and apostrophe normalisation), T-F202's light theme, en-US and tray (through the `windows` MCP, as `APP-013` and `EXP-008` already switched theme and language), T-F329 part 5 (Store screenshots retaken after D changes the window) | VM, `.resw`/`.resx`/`Localization.cpp` (after C and D's strings), `docs/assets/store/` | after C and D merge |
 | H formats tar.exe reads but Pakko does not offer (added 2026-10-31, the user) | T-F442 (measure first, per tar.exe build; then detector, policy names, capability snapshot, Explorer menu, file associations) | `ArchiveFormatDetector`, `ArchiveFormatPolicy`, `TarCapabilitySnapshot`, `ShellExtUtils.cpp`, the manifest | measurement first; plan mode + advisor at both ends (new untrusted-input formats, the manifest) |
-| I opened during the wave (added 2026-11-06, the user: "the tasks opened during it, small fixes where possible") | First, from the root-cause review (the user, 2026-11-06: "in this wave"): T-F462 (Clean only with every file scanned, P1), T-F463 (one owner for quarantine disk access), T-F464 (the quarantine as source of truth, research). From T-F464's research (2026-11-07): T-F465 (tar.exe's listing decoded in the wrong page, P1), T-F466 (NFD names refused). Small fixes: T-F456 (a flaky OperationUi test), T-F457 items 3-4 (`.tlz` as tar.lzma; `-stxudf`; done in #169), T-F453 (two true roots under one best-fit name), T-F452 (its own message for a header mismatch, 37 locales). Then: T-F461 (the folder shapes still refused; measure on 3.5.2 and in the sandbox first), T-F457 items 1, 2 and 5 (decide or measure), T-F445 (pool threads per launch; measure first), T-F459 (`TESTING.md` regrouped, docs only) | as each task says | T-F445: plan mode + advisor at both ends (sandbox code); each fix tests first, both tar builds where tar.exe decides |
+| I opened during the wave (added 2026-11-06, the user: "the tasks opened during it, small fixes where possible") | First, from the root-cause review (the user, 2026-11-06: "in this wave"): T-F462 (Clean only with every file scanned, P1), T-F463 (one owner for quarantine disk access), T-F464 (the quarantine as source of truth, research). From T-F464's research (2026-11-07): T-F465 (tar.exe's listing decoded in the wrong page, P1), T-F466 (NFD names refused), T-F467 (one encoding provider), T-F468 (`archiveint.dll` research). Small fixes: T-F456 (a flaky OperationUi test), T-F457 items 3-4 (`.tlz` as tar.lzma; `-stxudf`; done in #169), T-F453 (two true roots under one best-fit name), T-F452 (its own message for a header mismatch, 37 locales). Then: T-F461 (the folder shapes still refused; measure on 3.5.2 and in the sandbox first), T-F457 items 1, 2 and 5 (decide or measure), T-F445 (pool threads per launch; measure first), T-F459 (`TESTING.md` regrouped, docs only) | as each task says | T-F445: plan mode + advisor at both ends (sandbox code); each fix tests first, both tar builds where tar.exe decides |
 | E on device, release | `APP-027`, `APP-028`, `APP-030`, `APP-014`, `OPW-*`, the new taskbar/tray rows, the release-tier smoke, `STO-005` as a real Store update | `docs/SMOKE.md`, `scripts/smoke/` | after A-D merge |
 
 Decisions taken with the plan (the agent, 2026-10-31): T-F432 covers the App's taskbar button, the
@@ -1511,22 +1511,50 @@ re-measured with T-F346's script before and after.
 - [ ] **Status:** open, triaged 2026-11-07 (`docs/DECISIONS.md`, "T-F464 and T-F465"). Shipped since v1.5.0.
   - The bug: `TarOutputEncoding.Current` uses `SystemCodePages.UserAnsi`, but bsdtar's
     `setlocale(LC_ALL, "")` gives `<format's locale>.<GetACP()>`.
-  - Who: Windows 11 with a format page other than the system's, using a 7z, `.tar.xz` or another
-    format whose headers Pakko does not read.
+  - Who: any machine whose format page differs from the system's, for formats the header veto
+    misses: 7z, xz, bz2, zst, lzma and RAR on 3.8.9; a plain tar or tar.gz the header walk gives up on
+    (one sparse entry is enough); and on `main`, ISO, cpio, ar, .Z and CAB on 3.5.2.
   - What goes wrong:
     - a browser selection extracts another entry with success;
     - **a selection scan reports Clean for the threat**;
     - Test's filter tests another entry;
     - the names shown are wrong.
-  - Fix, tests first:
-    1. `TextBoundaryOwnersTests` keeps the output page on the command-line page's source (red today).
-    2. The listing is decoded in `SystemCodePages.Ansi`.
-    3. A byte guard: a member name must encode to the same bytes in both pages.
-    4. The refusal names the right page.
-    5. A culture-flip integration test of the selection scan. Its seed is in the agent's work folder,
-       `tf464/`.
-  - Also check ACP 65001 (`.utf8`) and `TarSandboxScope`'s `UserOem` against `acp_ocp_map`.
-  - SECURITY.md changes only with the user's OK.
+  - Fix, tests first (`docs/DECISIONS.md`, "Decisions ... after the review"):
+    1. A CI-runnable integration test forcing the scope's output page away from the system's
+       (selection extract, selection scan, Test filter; 7z or xz, and a plain tar with a sparse entry).
+    2. `TextBoundaryOwnersTests` keeps the output page on the command-line page's source.
+    3. The listing is decoded in the system ANSI page (65001 as UTF-8); raw names follow libarchive's
+       `acp_ocp_map` rule.
+    4. The byte guard: the raw listed bytes must equal the bytes sent to tar.exe for that member.
+    5. The refusal names the page tar.exe used. SECURITY.md only with the user's OK.
+- **Reported by:** the agent, 2026-11-07.
+
+### T-F467 - One encoding provider: a named handler per text boundary, one standard (P2, stream I, after T-F465)
+
+- [ ] **Status:** open. The user, 2026-11-07: one provider with one standard of handling, possibly with several handlers,
+  so today's and tomorrow's encoding problems stop. Design in `docs/DECISIONS.md`, "T-F464 and T-F465":
+  - Handlers, each with its measured source: tar.exe's output, command line, raw header names and messages;
+    ZIP's legacy names; the console; PAR2; the Shell's stdin paths; the launch arguments.
+  - One standard for all of them:
+    - pages are chosen only in the provider;
+    - a deciding name must byte-match what the other program printed;
+    - decoding is strict at a contract boundary;
+    - every handler gets the same test matrix (equal pages, format != system, 65001, 932, both tar builds).
+  - `SystemCodePages` becomes the provider's private source. Plan mode and advisor before the PR.
+- **Reported by:** the agent, 2026-11-07.
+
+### T-F468 - `archiveint.dll` (Windows' libarchive) as the name source instead of tar.exe's ANSI listing (P2, stream I, research)
+
+- [ ] **Status:** open, research only (the user, 2026-11-07: in this wave). Both builds export libarchive's API
+  (3.5.2: 422 exports, 3.8.9: 455, `archive_entry_pathname_w` included). An AOT probe in Pakko's AppContainer
+  measures, on both builds:
+  - names as UTF-16 against the disk names;
+  - raw names (`hdrcharset`);
+  - passphrases;
+  - ABI and version gating;
+  - launching from MSIX and from the standalone `pakko`.
+
+  The decision goes in DECISIONS. Changing the hard constraint "only tar.exe" needs the user's separate OK.
 - **Reported by:** the agent, 2026-11-07.
 
 ### T-F466 - A tar from macOS (NFD names) is refused under a filter (P3, stream I)
@@ -1540,10 +1568,12 @@ re-measured with T-F346's script before and after.
 ### T-F464 - The quarantine as the source of truth instead of predicting tar.exe's names (P3, stream I, research done)
 
 - [ ] **Status:** research done 2026-11-07, decided in `docs/DECISIONS.md`, "T-F464 and T-F465". Code
-  after T-F465 and T-F466. The quarantine's files are matched to the file entries in scope by the
+  after T-F465, T-F466, T-F467 and T-F468. The quarantine's files are matched to the file entries in scope by the
   measured relation: the decoded listed name is the disk name or its best-fit round trip through the
   system ACP. Rules:
   - The match is in addition to T-F462's count, never in place of it.
+  - Every quarantine file is scanned before anything is dropped (fresh review): the relation decides moves
+    and the report, never what is scanned; on an unmeasured page or build a choice by name is Inconclusive.
   - A unique match is required wherever a name picks a file. These cases come from #170's review and
     from T-F461 item 5:
     - the filter's drop;
