@@ -42,6 +42,14 @@ public sealed class TarNamesTests
         TarNames.Judge([folderNfc, folderNfc + "a.txt"], [folderNfd, folderNfd + "/a.txt"]).Should().Be(TarListingVerdict.Faithful);
     }
 
+    // libarchive composes only names it converts from UTF-8 or UTF-16 (archive_string.c,
+    // SCONV_NORMALIZATION_C): a raw name in a legacy page with a combining mark (1258) lists as stored.
+    [Fact]
+    public void Judge_LegacyNameListedAsStored_Faithful()
+    {
+        TarNames.Judge([AccentedNfd, Accented], [AccentedNfd, Accented]).Should().Be(TarListingVerdict.Faithful);
+    }
+
     [Fact]
     public void Judge_QuestionMark_Lossy()
     {

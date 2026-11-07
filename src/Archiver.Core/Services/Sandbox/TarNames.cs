@@ -117,27 +117,28 @@ internal static class TarNames
     {
         if (headerNames.Count != listed.Count)
             return new TarListingVerdict(TarNameTrust.Suspect, listed.Where(decides).Select(EntryDiskName.StripLeadingDotSlash).FirstOrDefault());
-        // T-F466: tar.exe lists and matches a name in NFC (measured, 3.8.9 and 3.5.2), so a header
-        // stored in NFD agrees in NFC. Two stored forms of one NFC name list alike and "-T" takes
-        // both (measured): such a name cannot decide. Normalize cannot throw here: header names come
-        // from valid UTF-8 or a code page's decoder, neither of which yields a lone surrogate.
-        var storedForm = new Dictionary<string, string>(StringComparer.Ordinal);
-        var collapsed = new HashSet<string>(StringComparer.Ordinal);
-        foreach (string header in headerNames)
-        {
-            string stored = header.TrimEnd('/');
-            string nfc = stored.Normalize(NormalizationForm.FormC);
-            if (!storedForm.TryAdd(nfc, stored) && !string.Equals(storedForm[nfc], stored, StringComparison.Ordinal))
-                collapsed.Add(nfc);
-        }
+        // T-F466: libarchive composes a name it converts from UTF-8 or UTF-16 to NFC (archive_string.c,
+        // SCONV_NORMALIZATION_C) and lists a legacy page's name as stored, so a listed name agrees
+        // with its header as stored or in NFC (measured on 3.8.9 and 3.5.2). Two different stored
+        // names listed alike are taken together by "-T" (measured): such a name cannot decide.
+        // Normalize cannot throw: header names come from valid UTF-8 or a code page's decoder,
+        // neither of which yields a lone surrogate.
+        var storedFor = new Dictionary<string, string>(StringComparer.Ordinal);
+        var ambiguous = new HashSet<string>(StringComparer.Ordinal);
         for (int i = 0; i < listed.Count; i++)
         {
             // A folder's trailing '/' is the listing's convention, not part of the name.
             string name = listed[i].TrimEnd('/');
-            string header = headerNames[i].TrimEnd('/').Normalize(NormalizationForm.FormC);
-            if (decides(listed[i]) && (!string.Equals(name, header, StringComparison.Ordinal) || collapsed.Contains(header)))
+            string stored = headerNames[i].TrimEnd('/');
+            bool agrees = string.Equals(name, stored, StringComparison.Ordinal)
+                || string.Equals(name, stored.Normalize(NormalizationForm.FormC), StringComparison.Ordinal);
+            if (decides(listed[i]) && !agrees)
                 return new TarListingVerdict(TarNameTrust.Lossy, EntryDiskName.StripLeadingDotSlash(listed[i]));
+            if (!storedFor.TryAdd(name, stored) && !string.Equals(storedFor[name], stored, StringComparison.Ordinal))
+                ambiguous.Add(name);
         }
+        if (listed.FirstOrDefault(entry => decides(entry) && ambiguous.Contains(entry.TrimEnd('/'))) is { } shared)
+            return new TarListingVerdict(TarNameTrust.Lossy, EntryDiskName.StripLeadingDotSlash(shared));
         return TarListingVerdict.Faithful;
     }
 
