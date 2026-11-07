@@ -2523,7 +2523,9 @@ public sealed class TarSandboxedService : ITarService
         string sourcePath, List<FileSystemInfo>? links = null, Func<FileSystemInfo, bool>? leaveOut = null, List<FileSystemInfo>? leftOut = null,
         List<string>? files = null)
     {
-        string? unrepresentable = TarCommandLineEncoding.IsRepresentable(sourcePath) ? null : sourcePath;
+        // T-F467: the page read once for the whole walk.
+        uint commandLinePage = TarCommandLineEncoding.AnsiCodePage;
+        string? unrepresentable = TarCommandLineEncoding.IsRepresentable(sourcePath, commandLinePage) ? null : sourcePath;
 
         if (!Directory.Exists(sourcePath))
         {
@@ -2546,7 +2548,7 @@ public sealed class TarSandboxedService : ITarService
             }
             bool isRoot = count == 0; // the walk always starts with the root itself
             count++;
-            if (unrepresentable is null && !isRoot && !TarCommandLineEncoding.IsRepresentable(entry.Info.Name))
+            if (unrepresentable is null && !isRoot && !TarCommandLineEncoding.IsRepresentable(entry.Info.Name, commandLinePage))
                 unrepresentable = entry.Info.FullName;
             if (entry.Kind == WalkEntryKind.File)
             {
