@@ -14256,3 +14256,16 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
 - **Also (2026-11-07, T-F465's review):** the byte guard (`TarSandboxScope.EnsureSentAsListedAsync`)
   refuses a name that is representable but was printed in other bytes, and says the same thing.
 - **Reported by:** T-F441's closing notes (`docs/DECISIONS.md`, "T-F441 and T-F424"), 2026-10-31.
+
+### T-F471 - `CreateAsync_StagingFails_LeavesNoQuarantineFolderBehind` races other test processes (P4)
+
+- [x] **Status:** done 2026-11-07: the test judges only new folders named for this process
+  (`TempOwner.CurrentTag`); the TarSandbox collection serializes the rest of the assembly. A
+  folder named for another process, made between the snapshot and the call, stands in for the
+  race; seen red without the filter.
+- **Before:** open. Failed once in a full `dotnet test` run on 2026-11-07, passed on rerun. The test
+  diffs the shared `%TEMP%\PakkoTarSandbox` before and after, while `Archiver.CLI.Tests` and
+  `Archiver.Shell.Tests` run in parallel processes that create quarantines there too (the
+  cross-project vector `.claude/rules/tests.md` names). Fix: judge only folders this call could have
+  made (e.g. a test seam for the quarantine parent), not the shared folder.
+- **Reported by:** the agent, 2026-11-07, during T-F470 step 2.

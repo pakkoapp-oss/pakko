@@ -1517,15 +1517,6 @@ re-measured with T-F346's script before and after.
   it fail closed. Both builds; `TarSendsAsListedExhaustiveTests` asserts today's behaviour.
 - **Reported by:** the agent, 2026-11-07.
 
-### T-F471 - `CreateAsync_StagingFails_LeavesNoQuarantineFolderBehind` races other test processes (P4)
-
-- [ ] **Status:** open. Failed once in a full `dotnet test` run on 2026-11-07, passed on rerun. The test
-  diffs the shared `%TEMP%\PakkoTarSandbox` before and after, while `Archiver.CLI.Tests` and
-  `Archiver.Shell.Tests` run in parallel processes that create quarantines there too (the
-  cross-project vector `.claude/rules/tests.md` names). Fix: judge only folders this call could have
-  made (e.g. a test seam for the quarantine parent), not the shared folder.
-- **Reported by:** the agent, 2026-11-07, during T-F470 step 2.
-
 ### T-F470 - A sandboxed helper over Windows' own `archiveint.dll` (P2, v1.10.0 stream I)
 
 - [ ] **Status:** in progress, in the v1.10.0 wave (the user, 2026-11-07, first "an option for future
