@@ -1534,7 +1534,9 @@ re-measured with T-F346's script before and after.
   (measurements) and step 2 (`src/Archiver.ArchiveHelper`, packaging, protocol tests,
   `docs/ARCHITECTURE.md`'s protocol) done; Pakko does not launch it yet. Next: step 3, Core's gate,
   listing and extract/Test/scan by index in one PR; step 4, T-F469/T-F453/T-F464/T-F461 narrowed to
-  the tar.exe fallback, `docs/SMOKE.md`, `docs/TESTING.md`. Measured
+  the tar.exe fallback, `docs/SMOKE.md`, `docs/TESTING.md`. Step 3 also verifies on the
+  device a launch from the packaged App, Shell and `pakko` (identity proven), and reads the `V` line
+  of CI's test job to see which libarchive its image runs. Measured
   in `docs/DECISIONS.md`, "T-F468 research done". The user's conditions:
   - only the DLL Windows ships (`C:\Windows\System32\archiveint.dll`, absolute path), with the
     signature checks tar.exe gets (T-F401's catalog case included);

@@ -9,6 +9,7 @@ namespace Archiver.Core.IntegrationTests;
 /// its one import (a user32 or ole32 import fails it with 0xC0000142, docs/DECISIONS.md "T-F468
 /// research done"), and it hosts an untrusted-input parser, so its mitigations are pinned too.
 /// </summary>
+[Collection("TarSandbox")]
 public sealed class ArchiveHelperBinaryTests
 {
     private const ushort DynamicBase = 0x0040;

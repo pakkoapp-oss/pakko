@@ -39,7 +39,9 @@
 
   <PropertyGroup Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+    <!-- Unlike Archiver.ShellExtension, not pinned: plain C over kernel32 builds with any MSVC, and the
+         default is the toolset whose ARM64 tools each image has (build-cli runs on windows-latest). -->
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">

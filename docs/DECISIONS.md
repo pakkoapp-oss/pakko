@@ -14426,10 +14426,12 @@ would show the right names and still fail on them.
   helper reaches on an archive is final.
 - The helper is treated as compromisable, like tar.exe: its output is parsed strictly and `out\` is
   read only through `QuarantineFiles`.
-- One centralized handler, not a branch at every call site (the user, 2026-11-07): one reader
-  interface (list; extract a selection into the quarantine; test) with two implementations, the
-  helper and tar.exe, chosen once per process by the gate and both launched only through
-  `TarSandboxScope`. Both return the entries and the quarantine's files under their final names, so
+- One centralized handler, not a branch at every call site (the user, 2026-11-07). The existing
+  owners stay the only owners and gain no second copy: `TarSandboxScope` launches every sandboxed
+  process (the helper too), `QuarantineFiles` (T-F463) makes every disk call on a name in the
+  quarantine (`out\` too), `TextBoundaries` gives every code page (`hdrcharset` too). Above them, one
+  reader interface (list; extract a selection into the quarantine; test) with two implementations,
+  the helper and tar.exe, chosen once per process by the gate. Both return the entries and the quarantine's files under their final names, so
   every tar.exe name prediction (`EntryDiskName.AsTarExeWrites`, `JudgeExtracted`,
   `FoldersTarExeWrote`, the NFC landing, T-F464's best-fit relation) moves inside the tar.exe
   implementation; `TarSandboxedService`, `AntivirusScanService`, the layout and the report never ask
@@ -14492,8 +14494,29 @@ the product would (`bin\` RX, `list\` RX, `out\` Modify), the archive as stdin. 
     a refusal.
 - **Not measured here:** a launch from a packaged process with proven identity. T-F468 launched a copy
   through `Invoke-CommandInDesktopPackage` without proof of identity. It is verified on the device
-  once the helper ships in the package (step 2). ARM64 stays unmeasured; the gate sends ARM64 machines,
-  and an x64 `pakko` emulated on them, to tar.exe.
+  once Core launches the helper (step 3; step 2 only packages it). ARM64 stays unmeasured; the gate
+  sends ARM64 machines, and an x64 `pakko` emulated on them, to tar.exe.
+
+**Step 2, the production helper (2026-11-07).** `src/Archiver.ArchiveHelper`, protocol in
+`docs/ARCHITECTURE.md`. Changes against the prototype, each from a finding:
+- **`--max-total` counts each entry's logical end, holes included, before the write that reaches
+  it.** The prototype charged data bytes only: a GNU sparse entry with 1 KiB of data and an 8 GiB
+  real size, or a block placed at 4 GiB, passed a 1 MB limit and NTFS zero-filled the file toward
+  its end (the Job Object does not bound disk). Seen red on both shapes, then stopped with `F -3` on
+  3.8.9 and 3.5.2. Only a sparse entry is padded to its declared size; a plain one reports the length
+  its data gave, for Pakko to compare with the listing.
+- **A missing `support_*` export disables that name only** (probe prints `-`, a run that asks for it
+  exits 7); a missing core export is still exit 4. An older DLL without, say, rar5 or zstd keeps the
+  rest.
+- **Only named formats and filters** (`--format`, `--filter`), per step 1.
+- **Not pinned to v143**, unlike the shell extension: plain C over kernel32 builds with each
+  image's default toolset, whose ARM64 tools that image has (`build-cli` runs on windows-latest).
+
+The same scenarios through the sandbox (probe; every tar, cpio, cab, rar and 7z fixture listed under
+no charset, UTF-8, CP1251, CP866 and CP932; sparse; both bombs; a cut tar; links; Test; encrypted
+7z and RAR) on 3.8.9 and 3.5.2: 83 of 120 identical. The 37 others are step 1's known differences:
+no LZMA in 3.5.2 (7z), encrypted RAR5 not flagged, no RAR sub-second times, DBCS pages not strict,
+error texts, and bzip2/xz/lzma/lzip/zstd returning `ARCHIVE_WARN` (a run naming them exits 7).
 
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
