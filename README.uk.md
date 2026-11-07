@@ -19,6 +19,7 @@
 <p align="center">
   <a href="https://pakkoapp-oss.github.io/pakko/uk/">🌐 Сайт проєкту</a> ·
   <a href="https://apps.microsoft.com/detail/9p5mw010d8pr">🛒 Отримати в Microsoft Store</a> ·
+  <a href="https://github.com/microsoft/winget-pkgs/pull/449503">⌨️ Командний рядок <code>pakko</code> у winget (на розгляді)</a> ·
   <a href="https://ko-fi.com/pakko_app">☕ Підтримати проєкт на Ko-fi</a> ·
   <a href="README.md">🇬🇧 English</a>
 </p>
@@ -41,8 +42,9 @@
   розробника проєкту, який перед встановленням треба додати до довірених сертифікатів Windows
   ([`scripts/README.md`](scripts/README.md); публічно довірений сертифікат заплановано, див.
   [`docs/SIGNING.md`](docs/SIGNING.md)).
-- **winget (лише командний рядок)**: zip `pakko` подано до каталогу winget, він чекає на
-  модератора; доти беріть zip із GitHub Releases. Див. [`docs/CLI.md`](docs/CLI.md), розділ
+- **winget (лише командний рядок)**: zip `pakko` подано до каталогу winget як
+  `PavloRybchenko.PakkoCLI` ([запит на злиття](https://github.com/microsoft/winget-pkgs/pull/449503)), він чекає на модератора; після
+  прийняття - `winget install PavloRybchenko.PakkoCLI`. Доти беріть zip із GitHub Releases. Див. [`docs/CLI.md`](docs/CLI.md), розділ
   «Distribution».
 
 ---
