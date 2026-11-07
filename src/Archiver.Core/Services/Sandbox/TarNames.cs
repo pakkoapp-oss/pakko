@@ -58,6 +58,24 @@ internal static class TarNames
     public static Dictionary<string, byte[]?> ReadListedNameBytes(byte[] listing, System.Text.Encoding encoding)
     {
         var listed = new Dictionary<string, byte[]?>(StringComparer.Ordinal);
+        foreach (byte[] line in ListingLines(listing))
+        {
+            string text = encoding.GetString(line);
+            if (TarListingName.Unescape(text, encoding) is not { } name)
+                continue; // not a name: the service refuses such a listing before anything is sent
+            string key = name.TrimEnd('/');
+            byte[]? bytes = IsLossless(line, text, name, encoding) ? encoding.GetBytes(key) : null;
+            if (!listed.TryGetValue(key, out byte[]? known))
+                listed[key] = bytes;
+            else if (known is not null && (bytes is null || !known.AsSpan().SequenceEqual(bytes)))
+                listed[key] = null;
+        }
+        return listed;
+    }
+
+    // The listing's non-empty lines, a trailing '\r' dropped.
+    private static IEnumerable<byte[]> ListingLines(byte[] listing)
+    {
         int start = 0;
         while (start < listing.Length)
         {
@@ -66,23 +84,15 @@ internal static class TarNames
                 end = listing.Length;
             byte[] line = listing[start..(end > start && listing[end - 1] == (byte)'\r' ? end - 1 : end)];
             start = end + 1;
-            if (line.Length == 0)
-                continue;
-            string text = encoding.GetString(line);
-            if (TarListingName.Unescape(text, encoding) is not { } name)
-                continue; // not a name: the service refuses such a listing before anything is sent
-            string key = name.TrimEnd('/');
-            bool lossless = encoding.GetBytes(text).AsSpan().SequenceEqual(line)
-                && TarListingName.UnescapeBytes(text, encoding) is { } printed
-                && encoding.GetBytes(name).AsSpan().SequenceEqual(printed);
-            byte[]? bytes = lossless ? encoding.GetBytes(key) : null;
-            if (!listed.TryGetValue(key, out byte[]? known))
-                listed[key] = bytes;
-            else if (known is not null && (bytes is null || !known.AsSpan().SequenceEqual(bytes)))
-                listed[key] = null;
+            if (line.Length > 0)
+                yield return line;
         }
-        return listed;
     }
+
+    private static bool IsLossless(byte[] line, string text, string name, System.Text.Encoding encoding) =>
+        encoding.GetBytes(text).AsSpan().SequenceEqual(line)
+        && TarListingName.UnescapeBytes(text, encoding) is { } printed
+        && encoding.GetBytes(name).AsSpan().SequenceEqual(printed);
 
     /// <summary>
     /// The verdict on <paramref name="listed"/> before anything is extracted, for the names that

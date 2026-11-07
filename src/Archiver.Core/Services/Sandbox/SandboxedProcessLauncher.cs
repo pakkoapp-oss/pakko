@@ -213,11 +213,13 @@ internal static partial class SandboxedProcessLauncher
         using var stdOutReader = new StreamReader(stdOutStream, outputEncoding);
         using var stdErrReader = new StreamReader(stdErrStream, outputEncoding);
 
-        Task<string> stdOutTask = options.OnStdOutDiscarded is { } onDiscarded
-            ? DiscardAsync(stdOutStream, onDiscarded, cancellationToken)
-            : options.OnStdOutBytes is { } onBytes
-                ? ReadBytesAsync(stdOutStream, outputEncoding, onBytes, cancellationToken)
-                : stdOutReader.ReadToEndAsync(cancellationToken);
+        Task<string> stdOutTask;
+        if (options.OnStdOutDiscarded is { } onDiscarded)
+            stdOutTask = DiscardAsync(stdOutStream, onDiscarded, cancellationToken);
+        else if (options.OnStdOutBytes is { } onBytes)
+            stdOutTask = ReadBytesAsync(stdOutStream, outputEncoding, onBytes, cancellationToken);
+        else
+            stdOutTask = stdOutReader.ReadToEndAsync(cancellationToken);
         Task<string> stdErrTask = options.OnStdErrLine is { } onLine
             ? ReadLinesAsync(stdErrReader, onLine, cancellationToken)
             : stdErrReader.ReadToEndAsync(cancellationToken);
