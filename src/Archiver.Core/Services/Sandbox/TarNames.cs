@@ -58,9 +58,14 @@ internal static class TarNames
     // of its lines does not decode to it without loss, or two lines print it in different bytes, so that
     // name can never be sent back. T-F467: the printed bytes need not be the page's own form of the
     // name - tar.exe prints a raw 932 name in the form the archive stored (NEC's 0x87 0x90, measured).
+    // Each line's printed bytes also count under the text they read as in the page, which tar.exe
+    // matches by: "" plus a raw 0xBE is U+222A, as NEC's 0x87 0x9C is, though the text unescape reads
+    // it as two other characters (fresh review). A line whose printed bytes are no text there makes no
+    // name sendable: what tar.exe would match it with is unknown.
     public static Dictionary<string, byte[]?> ReadListedNameBytes(byte[] listing, System.Text.Encoding encoding)
     {
         var listed = new Dictionary<string, byte[]?>(StringComparer.Ordinal);
+        bool unknownText = false;
         foreach (byte[] line in ListingLines(listing))
         {
             string text = encoding.GetString(line);
@@ -68,12 +73,31 @@ internal static class TarNames
                 continue; // not a name: the service refuses such a listing before anything is sent
             string key = name.TrimEnd('/');
             byte[]? bytes = PrintedBytes(line, text, name, encoding) is { } printed ? printed[..^(name.Length - key.Length)] : null;
-            if (!listed.TryGetValue(key, out byte[]? known))
-                listed[key] = bytes;
-            else if (known is not null && (bytes is null || !known.AsSpan().SequenceEqual(bytes)))
+            Add(listed, key, bytes);
+            if (UnescapePrinted(line, encoding) is not { } raw
+                || TarCommandLineEncoding.Decode(raw, (uint)encoding.CodePage) is not { } rawText)
+            {
+                unknownText = true;
+                continue;
+            }
+            string rawKey = rawText.TrimEnd('/');
+            if (!string.Equals(rawKey, key, StringComparison.Ordinal))
+                Add(listed, rawKey, raw[..^(rawText.Length - rawKey.Length)]);
+        }
+        if (unknownText)
+        {
+            foreach (string key in listed.Keys.ToList())
                 listed[key] = null;
         }
         return listed;
+    }
+
+    private static void Add(Dictionary<string, byte[]?> listed, string key, byte[]? bytes)
+    {
+        if (!listed.TryGetValue(key, out byte[]? known))
+            listed[key] = bytes;
+        else if (known is not null && (bytes is null || !known.AsSpan().SequenceEqual(bytes)))
+            listed[key] = null;
     }
 
     /// <summary>
