@@ -13,6 +13,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// <param name="WorkingDirectory">The child's current directory; relative arguments resolve against it.</param>
 /// <param name="OutputEncoding">How stdout/stderr are decoded; null reads them as UTF-8.</param>
 /// <param name="OnStdOutDiscarded">Non-null: stdout is read and thrown away, never kept, and this is called with the size of each piece (T-F397: "tar -x -O" writes every file's content there); the returned stdout is then empty.</param>
+/// <param name="OnStdOutBytes">Non-null: called with stdout's bytes as the child wrote them, before decoding (T-F465: the names tar.exe printed, which a name sent back to it must equal).</param>
 /// <param name="EnvironmentOverrides">Variables the child gets with these values, on top of this process's whole environment (T-F342: TMP/TEMP for libarchive's 7z writer); null hands the environment over unchanged.</param>
 internal sealed record ProcessLaunchOptions(
     SafeSidHandle? AppContainerSid = null,
@@ -24,4 +25,5 @@ internal sealed record ProcessLaunchOptions(
     System.Text.Encoding? OutputEncoding = null,
     byte[]? StdInData = null,
     IReadOnlyDictionary<string, string>? EnvironmentOverrides = null,
-    Action<int>? OnStdOutDiscarded = null);
+    Action<int>? OnStdOutDiscarded = null,
+    Action<byte[]>? OnStdOutBytes = null);

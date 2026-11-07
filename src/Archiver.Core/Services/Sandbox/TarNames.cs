@@ -53,6 +53,37 @@ internal static class TarNames
         return names;
     }
 
+    // T-F465: each listed name (a folder's '/' dropped) and the bytes tar.exe printed for it; null where one
+    // of its lines does not decode to it without loss, so that name can never be sent back.
+    public static Dictionary<string, byte[]?> ReadListedNameBytes(byte[] listing, System.Text.Encoding encoding)
+    {
+        var listed = new Dictionary<string, byte[]?>(StringComparer.Ordinal);
+        int start = 0;
+        while (start < listing.Length)
+        {
+            int end = Array.IndexOf(listing, (byte)'\n', start);
+            if (end < 0)
+                end = listing.Length;
+            byte[] line = listing[start..(end > start && listing[end - 1] == (byte)'\r' ? end - 1 : end)];
+            start = end + 1;
+            if (line.Length == 0)
+                continue;
+            string text = encoding.GetString(line);
+            if (TarListingName.Unescape(text, encoding) is not { } name)
+                continue; // not a name: the service refuses such a listing before anything is sent
+            string key = name.TrimEnd('/');
+            bool lossless = encoding.GetBytes(text).AsSpan().SequenceEqual(line)
+                && TarListingName.UnescapeBytes(text, encoding) is { } printed
+                && encoding.GetBytes(name).AsSpan().SequenceEqual(printed);
+            byte[]? bytes = lossless ? encoding.GetBytes(key) : null;
+            if (!listed.TryGetValue(key, out byte[]? known))
+                listed[key] = bytes;
+            else if (known is not null && (bytes is null || !known.AsSpan().SequenceEqual(bytes)))
+                listed[key] = null;
+        }
+        return listed;
+    }
+
     /// <summary>
     /// The verdict on <paramref name="listed"/> before anything is extracted, for the names that
     /// decide something: <paramref name="deciding"/> (a selection's members) or, when null, every

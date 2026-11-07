@@ -52,6 +52,18 @@ public sealed partial class TextBoundaryOwnersTests
             .Should().BeEquivalentTo([owner], "a listing's names are read through TarNames.ReadListing, which the verdict judges");
     }
 
+    // T-F465: tar.exe prints in the system ANSI page (UCRT setlocale(LC_ALL, "") is "<format>.<GetACP()>",
+    // measured on 3.8.9 and 3.5.2), the page its command line goes through. The regional format's page
+    // read a listed name as another entry's name wherever the two differ.
+    [Fact]
+    public void TarOutput_UsesTheCommandLinePage()
+    {
+        string source = File.ReadAllText(Path.Combine(RepoRoot, "src", "Archiver.Core", "Services", "Sandbox", "TarOutputEncoding.cs"));
+
+        source.Should().Contain("TarCommandLineEncoding.AnsiCodePage", "tar.exe's output and command line share one page (docs/DECISIONS.md, T-F465)")
+            .And.NotContain("UserAnsi");
+    }
+
     [Fact]
     public void Scan_SeesTheOwner()
     {

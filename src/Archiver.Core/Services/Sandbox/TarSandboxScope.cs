@@ -66,6 +66,10 @@ internal sealed partial class TarSandboxScope : IDisposable
     // Null until the first listing decides it (see ListAsync).
     private bool? _utf8Headers;
 
+    // T-F465: the last plain listing's stdout as tar.exe wrote it, and the bytes it printed for each name.
+    private byte[]? _listingBytes;
+    private Dictionary<string, byte[]?>? _listedNameBytes;
+
     /// <summary>Null when this scope was created with needsOutputDir: false (listing only).</summary>
     public string? OutputDirectory { get; }
 
@@ -76,10 +80,11 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// T-F441: tar.exe's output encoding, read once for this scope, so a listing's lines and the
     /// octal escapes inside them (T-F418) are decoded in the same code page.
     /// </summary>
-    public System.Text.Encoding OutputEncoding { get; } = TarOutputEncoding.Current;
+    public System.Text.Encoding OutputEncoding { get; }
 
-    private TarSandboxScope(SafeSidHandle sid, string quarantineRoot, FileStream archive, string? outputDirectory)
+    private TarSandboxScope(SafeSidHandle sid, string quarantineRoot, FileStream archive, string? outputDirectory, System.Text.Encoding? outputEncoding)
     {
+        OutputEncoding = outputEncoding ?? TarOutputEncoding.Current;
         _sid = sid;
         QuarantineRoot = quarantineRoot;
         _archive = archive;
@@ -106,7 +111,7 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// from "out\" to the user's destination happens later, at Pakko's normal process identity.
     /// </summary>
     public static Task<TarSandboxScope> CreateAsync(
-        string archivePath, bool needsOutputDir, CancellationToken cancellationToken)
+        string archivePath, bool needsOutputDir, CancellationToken cancellationToken, System.Text.Encoding? outputEncoding = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -171,7 +176,7 @@ internal sealed partial class TarSandboxScope : IDisposable
                 QuarantineAcl.GrantModify(outDir, sid);
             }
 
-            return Task.FromResult(new TarSandboxScope(sid, quarantineRoot, archive, outDir));
+            return Task.FromResult(new TarSandboxScope(sid, quarantineRoot, archive, outDir, outputEncoding));
         }
         catch (Exception ex)
         {
@@ -254,7 +259,12 @@ internal sealed partial class TarSandboxScope : IDisposable
         // T-F410: the names go in a file. Thousands of them would overflow the command line, and
         // "-T -" cannot carry them: stdin is the archive. No "-n": bsdtar 3.3.2 (Windows 10) takes it
         // only in c/r/u mode, and ExpandSelection lists every descendant of a folder anyway.
-        string[] memberArguments = members is { Count: > 0 } ? ["-T", WriteMemberList(members)] : [];
+        string[] memberArguments = [];
+        if (members is { Count: > 0 })
+        {
+            await EnsureSentAsListedAsync(members, cancellationToken).ConfigureAwait(false);
+            memberArguments = ["-T", WriteMemberList(members)];
+        }
         return await RunAsync("-x", ["-C", OutputFolderName, .. memberArguments], cancellationToken).ConfigureAwait(false);
     }
 
@@ -272,9 +282,15 @@ internal sealed partial class TarSandboxScope : IDisposable
             await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
         string[] subsetArguments = [];
         if (members is { Count: > 0 })
+        {
+            await EnsureSentAsListedAsync(members, cancellationToken).ConfigureAwait(false);
             subsetArguments = ["-T", WriteMemberList(members)];
+        }
         else if (excludedFiles is { Count: > 0 })
+        {
+            await EnsureSentAsListedAsync(excludedFiles, cancellationToken).ConfigureAwait(false);
             subsetArguments = ["-X", WriteList("excludes.txt", excludedFiles.Select(TarExcludePattern.ForEntry))];
+        }
         (int exitCode, _, string stdErr) = await RunAsync("-x", ["-O", .. subsetArguments], cancellationToken, onContentBytes).ConfigureAwait(false);
         return (exitCode, stdErr);
     }
@@ -290,6 +306,7 @@ internal sealed partial class TarSandboxScope : IDisposable
     {
         if (OutputDirectory is null)
             throw new InvalidOperationException("This scope was created without an output folder.");
+        await EnsureSentAsListedAsync(members, cancellationToken).ConfigureAwait(false);
         string firstDir = Path.Combine(QuarantineRoot, FirstCopyFolderName);
         Directory.CreateDirectory(firstDir);
         try
@@ -306,6 +323,28 @@ internal sealed partial class TarSandboxScope : IDisposable
         (int exitCode, _, string stdErr) = await RunAsync(
             "-x", ["-q", "-C", FirstCopyFolderName, "--", .. members.Select(EscapeMemberPattern)], cancellationToken).ConfigureAwait(false);
         return (firstDir, exitCode, stdErr);
+    }
+
+    /// <summary>
+    /// T-F465: refuses unless every one of <paramref name="names"/> reaches tar.exe as the very bytes
+    /// tar.exe printed for it in this scope's listing. A listed name decoded in another page than
+    /// tar.exe's own can be another entry's name, and sending it takes that entry (measured: a
+    /// selection extracted the other file, and a selection scan said Clean for a threat). The bytes,
+    /// not the page, decide, so a later drift between the two pages is caught as well.
+    /// </summary>
+    /// <exception cref="TarArgumentEncodingException">A name tar.exe did not print in those bytes.</exception>
+    private async Task EnsureSentAsListedAsync(IEnumerable<string> names, CancellationToken cancellationToken)
+    {
+        if (_listingBytes is null)
+            await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
+        Dictionary<string, byte[]?> listed = _listedNameBytes ??= TarNames.ReadListedNameBytes(_listingBytes ?? [], OutputEncoding);
+        foreach (string name in names)
+        {
+            string key = name.TrimEnd('/');
+            if (!listed.TryGetValue(key, out byte[]? printed) || printed is null
+                || TarCommandLineEncoding.Encode(key) is not { } sent || !sent.AsSpan().SequenceEqual(printed))
+                throw new TarArgumentEncodingException(EntryDiskName.StripLeadingDotSlash(name), TarCommandLineEncoding.AnsiCodePage);
+        }
     }
 
     // The list in the quarantine, readable by the AppContainer, in the code page tar.exe reads
@@ -363,6 +402,8 @@ internal sealed partial class TarSandboxScope : IDisposable
         string mode, IReadOnlyList<string> arguments, CancellationToken cancellationToken, Action<int>? onStdOutDiscarded = null)
     {
         string[] headerCharset = _utf8Headers == true ? ["--options", Utf8HeaderOption] : [];
+        bool plainListing = mode == "-t";
+        byte[]? listing = null;
         SandboxJobObject job;
         try
         {
@@ -380,9 +421,16 @@ internal sealed partial class TarSandboxScope : IDisposable
                 TarExecutablePath,
                 [mode, "-f", "-", .. headerCharset, .. arguments],
                 new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: QuarantineRoot,
-                    OutputEncoding: OutputEncoding, OnStdOutDiscarded: onStdOutDiscarded),
+                    OutputEncoding: OutputEncoding, OnStdOutDiscarded: onStdOutDiscarded,
+                    OnStdOutBytes: plainListing ? bytes => listing = bytes : null),
                 cancellationToken)
                 .ConfigureAwait(false);
+            if (plainListing)
+            {
+                // The last plain listing is the one the scope's header choice settled on (ListAsync).
+                _listingBytes = listing;
+                _listedNameBytes = null;
+            }
 
             // T-F239: say which sandbox limit stopped tar.exe — its own words ("Cannot allocate
             // memory", or nothing at all for a CPU-time kill) blame the machine, not the sandbox.

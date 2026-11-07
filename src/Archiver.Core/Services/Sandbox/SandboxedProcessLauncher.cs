@@ -215,7 +215,9 @@ internal static partial class SandboxedProcessLauncher
 
         Task<string> stdOutTask = options.OnStdOutDiscarded is { } onDiscarded
             ? DiscardAsync(stdOutStream, onDiscarded, cancellationToken)
-            : stdOutReader.ReadToEndAsync(cancellationToken);
+            : options.OnStdOutBytes is { } onBytes
+                ? ReadBytesAsync(stdOutStream, outputEncoding, onBytes, cancellationToken)
+                : stdOutReader.ReadToEndAsync(cancellationToken);
         Task<string> stdErrTask = options.OnStdErrLine is { } onLine
             ? ReadLinesAsync(stdErrReader, onLine, cancellationToken)
             : stdErrReader.ReadToEndAsync(cancellationToken);
@@ -265,6 +267,16 @@ internal static partial class SandboxedProcessLauncher
             ArrayPool<byte>.Shared.Return(buffer);
         }
         return string.Empty;
+    }
+
+    // T-F465: the bytes first, then the text decoded from exactly those bytes.
+    private static async Task<string> ReadBytesAsync(FileStream stream, Encoding encoding, Action<byte[]> onBytes, CancellationToken cancellationToken)
+    {
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+        byte[] bytes = buffer.ToArray();
+        onBytes(bytes);
+        return encoding.GetString(bytes);
     }
 
     // tar.exe's "-v" writes one "a <name>" line per entry to stderr during creation — streamed so

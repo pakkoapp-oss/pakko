@@ -94,6 +94,9 @@ public sealed class AntivirusScanService : IAntivirusScanService
     // T-F234: see ZipArchiveService.NameCodePages — scan reports the same names extraction writes.
     internal ZipNameCodePages NameCodePages { get; init; } = ZipNameCodePages.System;
 
+    // T-F465: see TarSandboxedService.ForcedTarOutputEncoding.
+    internal System.Text.Encoding? ForcedTarOutputEncoding { get; init; }
+
     // T-F406: a path that cannot be opened at all is reported, not handed to a reader.
     private static List<string> TakeUsablePaths(IReadOnlyList<string> paths, List<ThreatFinding> findings)
     {
@@ -232,7 +235,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 cancellationToken.ThrowIfCancellationRequested();
                 await ScanTarArchiveAsync(
                     archivePath, options.SelectedEntryPaths, scanner, findings,
-                    (entry, done, total) => ReportProgress(archivePath, entry, done, total), cancellationToken)
+                    (entry, done, total) => ReportProgress(archivePath, entry, done, total), ForcedTarOutputEncoding, cancellationToken)
                     .ConfigureAwait(false);
                 archivesCompleted++;
                 progress?.Report(new ProgressReport { Percent = archivesCompleted * 100 / totalArchives, CurrentFile = archivePath });
@@ -522,12 +525,13 @@ public sealed class AntivirusScanService : IAntivirusScanService
         IAmsiScanner scanner,
         List<ThreatFinding> findings,
         Action<string?, int, int> reportProgress,
+        System.Text.Encoding? tarOutputEncoding,
         CancellationToken cancellationToken)
     {
         TarSandboxScope? scope = null;
         try
         {
-            scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, cancellationToken)
+            scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, cancellationToken, tarOutputEncoding)
                 .ConfigureAwait(false);
 
             (_, string[] allNames, _, List<(string Name, long Size)> fileEntries) = await TarSandboxedService.ScanForUnsafeEntriesAsync(scope, cancellationToken)

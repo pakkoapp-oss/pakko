@@ -676,7 +676,7 @@ flowchart TD
     PreDir --> G2{"T-F05: options.SelectedEntryPaths<br/>set and non-empty? (T-F410: a filter<br/>alone takes no, the move leaves out<br/>what did not pass)<br/>(gates D-G above already ran<br/>UNCONDITIONALLY — the pre-scan<br/>never branches on this)"}
     G2 -- no --> H["scope.ExtractAsync(null)<br/>= tar -x -f - -C out (current directory = quarantine root)"]
     G2 -- yes --> G3["tarMembers from S0 - tar.exe gets the selection,<br/>never the filter's names"]
-    G3 --> H2["scope.ExtractAsync(&lt;expanded members&gt;)<br/>each name escaped so tar.exe reads it as that name,<br/>not as a wildcard pattern (T-F284), written to list/members.txt<br/>in the quarantine: tar -x -T list/members.txt (T-F410:<br/>stdin is the archive, and no command-line limit)"]
+    G3 --> H2["scope.ExtractAsync(&lt;expanded members&gt;)<br/>each name escaped so tar.exe reads it as that name,<br/>not as a wildcard pattern (T-F284), written to list/members.txt<br/>in the quarantine: tar -x -T list/members.txt (T-F410:<br/>stdin is the archive, and no command-line limit).<br/>T-F465: refused unless each name goes out as the very bytes<br/>tar.exe printed for it in the listing"]
     H2 -- "exit != 0 (a listed name tar.exe does not match;<br/>a selected path not in the listing<br/>is dropped at S0 and never gets here)" --> RejIO2
     H2 -- "exit 0" --> FC
     H -- "exit != 0 (T-F239: a Job limit hit is named in front of stderr)" --> RejIO2["throw CoreTextIOException(TarExtractionFailed, DescribeFailure(stdErr))<br/>→ finally still runs: scope disposed<br/>→ caught in ExtractAsync as ArchiveError"]
@@ -1052,7 +1052,7 @@ sequenceDiagram
                 Service-->>Service: archive Inconclusive (the exception's own text)
             else accepted
                 Note over Service: every folder the names imply is pre-created by its raw name<br/>(a name Windows refuses throws IOException: archive Inconclusive)
-                Sandbox->>Sandbox: tar -x into "out\" - a selection is ExpandSelection over the listing, read from list\members.txt (T-F410).<br/>A selection that matches no name is an empty list, which tar.exe reads as every entry: the whole archive is scanned
+                Sandbox->>Sandbox: tar -x into "out\" - a selection is ExpandSelection over the listing, read from list\members.txt (T-F410), each name as the bytes tar.exe printed for it, else refused (T-F465).<br/>A selection that matches no name is an empty list, which tar.exe reads as every entry: the whole archive is scanned
                 alt tar.exe exit code not 0
                     Service-->>Service: archive Inconclusive (ScanCannotExtract)
                 else extracted
