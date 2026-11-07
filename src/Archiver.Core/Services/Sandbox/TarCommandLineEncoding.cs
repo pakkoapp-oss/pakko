@@ -70,7 +70,13 @@ internal static partial class TarCommandLineEncoding
     }
 
     /// <summary>T-F467: whether <paramref name="value"/> opens a double-byte character in <paramref name="codePage"/> (system table).</summary>
-    internal static bool IsLeadByte(uint codePage, byte value) => codePage != CpUtf8 && value >= 0x80 && IsDBCSLeadByteEx(codePage, value);
+    internal static bool IsLeadByte(uint codePage, byte value)
+    {
+        // An ASCII byte opens no character in any Windows page, and UTF-8 is no double-byte page.
+        if (codePage == CpUtf8 || value < 0x80)
+            return false;
+        return IsDBCSLeadByteEx(codePage, value);
+    }
 
     // The exact bytes of value in codePage, or null when it would not convert back to itself.
     private static byte[]? TryEncode(string value, uint codePage)

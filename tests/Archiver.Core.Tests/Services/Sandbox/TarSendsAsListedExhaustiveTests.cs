@@ -78,7 +78,7 @@ public sealed class TarSendsAsListedExhaustiveTests
         string[] headers = [.. raw.Select(name => headerDecoding.GetString(name))];
         HashSet<string> lossy = entriesLeftOut ? new HashSet<string>(shown, StringComparer.Ordinal) : LossyNames(shown, allHeaders);
         string?[] texts = [.. read.Select(name => TarCommandLineEncoding.Decode(name, page))];
-        Dictionary<string, int> entriesOf = texts.Where(text => text is not null)
+        var entriesOf = texts.Where(text => text is not null)
             .GroupBy(text => text!, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
 
         var takesAnother = new List<string>();
