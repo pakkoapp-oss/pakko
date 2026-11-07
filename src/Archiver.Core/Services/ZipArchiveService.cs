@@ -52,7 +52,7 @@ public sealed class ZipArchiveService : IArchiveService
 
     // T-F234: the OEM/ANSI pages entry names without the UTF-8 flag are decoded with. Tests pin
     // them so expectations hold on a machine with other pages (the en-US CI runner).
-    internal ZipNameCodePages NameCodePages { get; init; } = ZipNameCodePages.System;
+    internal ZipNameCodePages NameCodePages { get; init; } = ZipNameCodePages.Current();
 
     // T-F352: whether the disk under a path is known to have no seek penalty. Tests pin it: a CI
     // runner's virtual disk may not answer.

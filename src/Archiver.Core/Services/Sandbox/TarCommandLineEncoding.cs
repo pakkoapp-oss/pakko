@@ -20,7 +20,7 @@ internal static partial class TarCommandLineEncoding
     private const uint MbErrInvalidChars = 0x00000008;
 
     /// <summary>The ANSI code page tar.exe converts its command line with.</summary>
-    public static uint AnsiCodePage => (uint)SystemCodePages.Ansi;
+    public static uint AnsiCodePage => (uint)TextBoundaries.TarExeCommandLine(MachinePages.Current).CodePage;
 
     /// <summary>True when <paramref name="value"/> reaches tar.exe unchanged.</summary>
     public static bool IsRepresentable(string value) => IsRepresentable(value, AnsiCodePage);
@@ -50,6 +50,8 @@ internal static partial class TarCommandLineEncoding
 
     /// <summary>T-F465: the exact bytes <paramref name="value"/> reaches tar.exe as, or null when it would not reach it unchanged.</summary>
     public static byte[]? Encode(string value) => TryEncode(value, AnsiCodePage);
+
+    internal static byte[]? Encode(string value, uint codePage) => TryEncode(value, codePage);
 
     // The exact bytes of value in codePage, or null when it would not convert back to itself.
     private static byte[]? TryEncode(string value, uint codePage)

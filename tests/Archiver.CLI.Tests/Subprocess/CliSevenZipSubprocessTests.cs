@@ -39,9 +39,10 @@ public sealed class CliSevenZipSubprocessTests : IAsyncLifetime
     private static bool SurvivesTheAnsiCodePage(string name)
     {
         // The ANSI code page UTF-8 carries any name.
-        if (SystemCodePages.Ansi == SystemCodePages.Utf8)
+        TextBoundary system = TextBoundaries.Console(CliConsoleCharset.Ansi);
+        if (system.CodePage == CliConsoleCharset.Utf8)
             return true;
-        Encoding ansi = SystemCodePages.For(SystemCodePages.Ansi);
+        Encoding ansi = system.Lenient;
         return ansi.GetString(ansi.GetBytes(name)) == name;
     }
 

@@ -3,19 +3,29 @@ using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
 
-// T-F441: every text boundary that depends on this machine's code pages takes them from
-// Archiver.Core.Text.SystemCodePages. A second place that asks Windows for a code page, or turns
-// one into an Encoding by its own rule, is how the encoding bugs of T-F204..T-F424 kept coming back.
-// Codecs for a literal page (SystemCodePages.For(866)) and fixed encodings (UTF-8, UTF-16, Latin-1)
-// are not code-page selection and are not matched.
+// T-F441/T-F467: every text boundary takes its page from a handler of Archiver.Core.Text.TextBoundaries,
+// the one provider; only the provider reads SystemCodePages. A second place that asks Windows for a
+// code page, or turns one into an Encoding by its own rule, is how the encoding bugs of
+// T-F204..T-F466 kept coming back. Codecs for a literal page (new TextBoundary(866)) and fixed
+// encodings inside a file format (ZIP's UTF-8 flag, Latin-1) are not page selection and are not matched.
 public sealed partial class TextBoundaryOwnersTests
 {
     private static readonly string RepoRoot = FindRepoRoot();
+
+    private static readonly string ProviderFolder = Path.Combine("src", "Archiver.Core", "Text") + Path.DirectorySeparatorChar;
 
     private static readonly string[] Owners =
     [
         Path.Combine("src", "Archiver.Core", "Text", "SystemCodePages.cs"),
         Path.Combine("tests", "Archiver.Core.Tests", "Services", "TextBoundaryOwnersTests.cs"),
+    ];
+
+    // The boundaries with a fixed encoding of their own: they take it from their handler.
+    private static readonly string[] FixedBoundaryFiles =
+    [
+        Path.Combine("src", "Archiver.Core", "Recovery", "Par2Creator.cs"),
+        Path.Combine("src", "Archiver.Core", "Recovery", "Par2SetLocator.cs"),
+        Path.Combine("src", "Archiver.Core", "Services", "LaunchArguments.cs"),
     ];
 
     [Theory]
@@ -38,7 +48,28 @@ public sealed partial class TextBoundaryOwnersTests
             }
         }
 
-        offenders.Should().BeEmpty("take the code page from Archiver.Core.Text.SystemCodePages (docs/DECISIONS.md, T-F441)");
+        offenders.Should().BeEmpty("take the code page from a handler of Archiver.Core.Text.TextBoundaries (docs/DECISIONS.md, T-F441, T-F467)");
+    }
+
+    // T-F467: the machine's pages reach a consumer only through a handler.
+    [Fact]
+    public void SystemCodePages_IsReadOnlyByTheProvider()
+    {
+        SourceFiles("src")
+            .Select(file => Path.GetRelativePath(RepoRoot, file))
+            .Where(relative => !relative.StartsWith(ProviderFolder, StringComparison.OrdinalIgnoreCase))
+            .Where(relative => File.ReadAllText(Path.Combine(RepoRoot, relative)).Contains("SystemCodePages.", StringComparison.Ordinal))
+            .Should().BeEmpty("a page reaches a boundary through a handler of TextBoundaries (docs/DECISIONS.md, T-F467)");
+    }
+
+    [Fact]
+    public void FixedBoundaries_TakeTheirHandler()
+    {
+        FixedBoundaryFiles
+            .Where(relative => FixedEncoding().IsMatch(File.ReadAllText(Path.Combine(RepoRoot, relative))))
+            .Should().BeEmpty("PAR2 names and the launch payload take TextBoundaries.Par2FileNames/LaunchArgumentPayload (T-F467)");
+        FixedBoundaryFiles.Should().AllSatisfy(relative =>
+            File.ReadAllText(Path.Combine(RepoRoot, relative)).Should().Contain("TextBoundaries."));
     }
 
     // The tar-name boundary: tar.exe's escaped listing is read back in one place, which also judges it.
@@ -50,18 +81,6 @@ public sealed partial class TextBoundaryOwnersTests
             .Where(file => File.ReadAllText(file).Contains("TarListingName.Unescape(", StringComparison.Ordinal))
             .Select(file => Path.GetRelativePath(RepoRoot, file))
             .Should().BeEquivalentTo([owner], "a listing's names are read through TarNames.ReadListing, which the verdict judges");
-    }
-
-    // T-F465: tar.exe prints in the system ANSI page (UCRT setlocale(LC_ALL, "") is "<format>.<GetACP()>",
-    // measured on 3.8.9 and 3.5.2), the page its command line goes through. The regional format's page
-    // read a listed name as another entry's name wherever the two differ.
-    [Fact]
-    public void TarOutput_UsesTheCommandLinePage()
-    {
-        string source = File.ReadAllText(Path.Combine(RepoRoot, "src", "Archiver.Core", "Services", "Sandbox", "TarOutputEncoding.cs"));
-
-        source.Should().Contain("TarCommandLineEncoding.AnsiCodePage", "tar.exe's output and command line share one page (docs/DECISIONS.md, T-F465)")
-            .And.NotContain("UserAnsi");
     }
 
     [Fact]
@@ -77,8 +96,11 @@ public sealed partial class TextBoundaryOwnersTests
 
     // GetACP/GetOEMCP, the GetLocaleInfoEx code-page constants by name or value, the framework's
     // code-page tables, and the "current page" spellings of Encoding.
-    [GeneratedRegex(@"\bGetACP\b|\bGetOEMCP\b|LocaleIDefault(Ansi)?CodePage|0x0*1004\b|CodePagesEncodingProvider|Encoding\.GetEncoding\(|Encoding\.Default\b")]
+    [GeneratedRegex(@"\bGetACP\b|\bGetOEMCP\b|LocaleIDefault(Ansi)?CodePage|0x0*1004\b|LocaleSEnglish(Language|Country)Name|CodePagesEncodingProvider|Encoding\.GetEncoding\(|Encoding\.Default\b")]
     private static partial Regex CodePageSelection();
+
+    [GeneratedRegex(@"Encoding\.(UTF8|Unicode|ASCII)\b|new UTF8Encoding")]
+    private static partial Regex FixedEncoding();
 
     private static string FindRepoRoot()
     {

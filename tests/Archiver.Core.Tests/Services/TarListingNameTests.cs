@@ -1,6 +1,7 @@
 using System.Text;
 using Archiver.Core.Services;
 using Archiver.Core.Services.Sandbox;
+using Archiver.Core.Text;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
@@ -12,8 +13,8 @@ namespace Archiver.Core.Tests.Services;
 /// </summary>
 public sealed class TarListingNameTests
 {
-    private static readonly Encoding Cp1251 = TarOutputEncoding.ForCodePage(1251);
-    private static readonly Encoding Utf8 = TarOutputEncoding.ForCodePage(65001);
+    private static readonly Encoding Cp1251 = new TextBoundary(1251).Lenient;
+    private static readonly Encoding Utf8 = new TextBoundary(65001).Lenient;
 
     [Theory]
     [InlineData(@"plain.txt", @"plain.txt")]

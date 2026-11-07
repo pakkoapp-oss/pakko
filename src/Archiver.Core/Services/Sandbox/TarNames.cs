@@ -1,4 +1,5 @@
 using System.Text;
+using Archiver.Core.Text;
 
 namespace Archiver.Core.Services.Sandbox;
 
@@ -198,6 +199,6 @@ internal static class TarNames
     {
         if (verdict.Trust == TarNameTrust.Faithful || (allowSuspect && verdict.Trust == TarNameTrust.Suspect))
             return;
-        throw new TarArgumentEncodingException(verdict.Example ?? string.Empty, (uint)TarOutputEncoding.Current.CodePage);
+        throw new TarArgumentEncodingException(verdict.Example ?? string.Empty, (uint)TextBoundaries.TarExeOutput(MachinePages.Current).CodePage);
     }
 }

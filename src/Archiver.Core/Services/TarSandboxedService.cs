@@ -5,6 +5,7 @@ using Archiver.Core.Interfaces;
 using Archiver.Core.IO;
 using Archiver.Core.Models;
 using Archiver.Core.Services.Sandbox;
+using Archiver.Core.Text;
 
 namespace Archiver.Core.Services;
 
@@ -2678,7 +2679,7 @@ public sealed class TarSandboxedService : ITarService
         CancellationToken cancellationToken)
         => SandboxedProcessLauncher.RunAsync(
             TarExecutablePath, arguments,
-            new ProcessLaunchOptions(OnStdErrLine: onStdErrLine, OutputEncoding: TarOutputEncoding.Current, StdInData: stdInData,
+            new ProcessLaunchOptions(OnStdErrLine: onStdErrLine, OutputEncoding: TextBoundaries.TarExeMessages(MachinePages.Current).Lenient, StdInData: stdInData,
                 EnvironmentOverrides: environment), cancellationToken);
 
     // T-F204: tar.exe's own words for a name it cannot show in the locale's code page (or an
@@ -2689,7 +2690,7 @@ public sealed class TarSandboxedService : ITarService
     {
         string text = stdErr.Trim();
         return text.Contains(UnreadableNameMessage, StringComparison.Ordinal)
-            ? CoreMessages.Text(MessageCode.TarUnreadableNames, TarOutputEncoding.Current.CodePage.ToString(CultureInfo.InvariantCulture), text)
+            ? CoreMessages.Text(MessageCode.TarUnreadableNames, TextBoundaries.TarExeMessages(MachinePages.Current).CodePage.ToString(CultureInfo.InvariantCulture), text)
             : CoreText.Raw(text);
     }
 

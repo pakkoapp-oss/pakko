@@ -14134,6 +14134,53 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
   - The integration tests ran on 3.8.9; on 3.5.2 the tar.exe behaviour they rest on was measured
     directly (PakkoW10 has no .NET).
 
+**T-F467 done (2026-11-07): one encoding provider.**
+- **The provider.** `Archiver.Core.Text.TextBoundaries` holds a named handler per text boundary, each
+  built from one `MachinePages` snapshot (system ANSI page, system OEM page, UCRT locale name):
+  `TarExeOutput`, `TarExeCommandLine`, `TarExeMessages`, `TarRawHeaderNames`, `ZipLegacyNames`,
+  `Console` (the CLI's `-scc`), `Par2FileNames`, `LaunchArgumentPayload`. A handler gives a
+  `TextBoundary` (its page, `Strict` and `Lenient`) or a fixed encoding. `SystemCodePages` is
+  internal and read only by the provider; `TextBoundaryOwnersTests` keeps every `src` file outside
+  `Text/` off it, and the PAR2 and launch-payload files on their handlers. `TarSandboxScope` takes
+  one snapshot for its output, command line and raw header names; the `ForcedTarOutputEncoding`
+  seam stays, the one way to set the output apart from the command line for `TarOutputPageTests`.
+  The Shell's stdin path list stays raw UTF-16 code units (an unpaired surrogate survives).
+- **Raw tar names follow libarchive, measured.** `get_current_oemcp` (`archive_string.c`, fetched
+  for v3.5.2 and v3.8.9, the 41-row `acp_ocp_map` identical in both): the first row whose locale
+  begins with the UCRT locale name (`strncmp` over the name's length up to the '.'), otherwise
+  `GetOEMCP()`. The table is copied in order, repeats included. The UCRT name is
+  `<SENGLISHLANGUAGENAME>_<SENGLISHCOUNTRYNAME>` of the user's format: `ucrtbase.setlocale(LC_ALL, "")`
+  and `GetLocaleInfoEx` agreed for all 12 formats below.
+- **The oracle, in Pakko's sandbox on 3.5.2** (PakkoW10, system 1252/437, a self-contained probe
+  listing a ustar with raw name bytes 0x80-0xFF through `TarSandboxedService`, each format set with
+  `Set-Culture` and read back; restored to en-US):
+
+  | Format | UCRT name | Page libarchive read the bytes in |
+  |---|---|---|
+  | en-US | English_United States | 437 |
+  | en-GB, de-DE, pt-BR | English_United Kingdom, German_Germany, Portuguese_Brazil | 850 |
+  | pl-PL | Polish_Poland | 852 |
+  | ru-RU | Russian_Russia | 866 |
+  | ja-JP, ko-KR | Japanese_Japan, Korean_Korea | DBCS (932, 949): a lead byte took the '.' |
+  | uk-UA, zh-CN, zh-TW, nb-NO | Ukrainian_Ukraine, Chinese (Simplified)_China, Chinese (Traditional)_Taiwan, Norwegian Bokmål_Norway | 437 (no row: `GetOEMCP()`) |
+
+  The host (3.8.9, uk-UA over 1251/866) read them in 866, `GetOEMCP()` again. The old rule
+  (`UserOem`, the format's own OEM page) said 866 for uk-UA over 1252, where tar.exe reads 437: the
+  header veto then refused a tar it could have read (a false refusal, never a false Clean).
+  `TextBoundariesTests` holds every row, a prefix hit, and a name longer than every row; the uk-UA
+  row was red on a stub returning `UserOem`.
+- **Also from source:** libarchive composes NFC only for names it converts from UTF-8 or UTF-16
+  (`SCONV_NORMALIZATION_C`), which T-F466's comparison follows.
+- **Removed:** `SystemCodePages.UserAnsi`/`UserOem` and their locale lookups, `TarOutputEncoding`,
+  `ZipNameCodePages.System` (now `Current()`), and the substring test
+  `TarOutput_UsesTheCommandLinePage`. `TextBoundariesTests` checks the same thing as behaviour, for
+  every machine row.
+- **Not done, on record:**
+  - The 932 note from T-F465's review: `ReadListedNameBytes` refuses a name tar.exe printed in a
+    second byte form. That would be a false refusal, and it is unmeasured.
+  - The integration tests still read `SystemCodePages` (internal, through `InternalsVisibleTo`). The
+    ban covers `src` only.
+
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
 - **Why.** tar.exe writes through the long-path prefix, so `a.txt.`, `a.txt ` and a folder `d ` are on

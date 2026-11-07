@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Win32.SafeHandles;
+using Archiver.Core.Text;
 
 namespace Archiver.Core.Recovery;
 
@@ -91,7 +92,7 @@ internal static partial class Par2SetLocator
 
     /// <summary>Whether the file name inside <paramref name="set"/> is that of <paramref name="targetPath"/>.</summary>
     internal static bool Names(Par2Set set, string targetPath) =>
-        string.Equals(Encoding.UTF8.GetString(set.Name), Path.GetFileName(targetPath), StringComparison.OrdinalIgnoreCase);
+        string.Equals(TextBoundaries.Par2FileNames.GetString(set.Name), Path.GetFileName(targetPath), StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The files a set opened through <paramref name="par2Path"/> may protect: the base
     /// itself, whether it exists or not, then any other <c>&lt;base&gt;.*</c> file that is not a

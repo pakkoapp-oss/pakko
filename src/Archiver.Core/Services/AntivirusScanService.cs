@@ -92,7 +92,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
     }
 
     // T-F234: see ZipArchiveService.NameCodePages — scan reports the same names extraction writes.
-    internal ZipNameCodePages NameCodePages { get; init; } = ZipNameCodePages.System;
+    internal ZipNameCodePages NameCodePages { get; init; } = ZipNameCodePages.Current();
 
     // T-F465: see TarSandboxedService.ForcedTarOutputEncoding.
     internal System.Text.Encoding? ForcedTarOutputEncoding { get; init; }

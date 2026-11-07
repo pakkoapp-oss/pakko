@@ -135,7 +135,7 @@ src/
 │   │   ├── Sandbox/                    ← T-F52: AppContainer subsystem for tar.exe
 │   │   │   ├── AppContainerProfile.cs / QuarantineAcl.cs / SandboxHandles.cs
 │   │   │   ├── SandboxJobObject.cs / SandboxedProcessLauncher.cs / ProcessLaunchOptions.cs
-│   │   │   ├── LaunchAttributeList.cs / TarCommandLineEncoding.cs / TarOutputEncoding.cs
+│   │   │   ├── LaunchAttributeList.cs / TarCommandLineEncoding.cs
 │   │   │   ├── QuarantineFiles.cs      ← T-F463: every disk call on a name tar.exe wrote (long-path prefix)
 │   │   │   └── TarSandboxScope.cs / TarSignatureVerifier.cs
 │   │   └── Zip/                        ← T-F35: parallel SingleArchive compression pipeline
@@ -146,18 +146,22 @@ src/
 │   │       │                                  ZipArchive.Entries paired with decoded names (NamedZipEntry,
 │   │       │                                  incl. the post-decoding collision flag)
 │   │       ├── ZipEntryNameDecoder.cs   ← T-F234: 7-Zip's name rule (bit 11 / 0x7075 / host OS)
-│   │       ├── ZipNameCodePages.cs      ← T-F234: OEM/ANSI pages for legacy names, from SystemCodePages
+│   │       ├── ZipNameCodePages.cs      ← T-F234: OEM/ANSI pages for legacy names, from TextBoundaries
 │   │       └── Decryption/              ← T-F188/T-F189: RawZipEntryLocator (central directory +
 │   │                                          local headers), EncryptedZipEntryReader, ZipCrypto, WinZip AES
 │   ├── Recovery/                   ← T-F275: the PAR 2.0 engine, internal — GF(2^16), packets,
 │   │                                  a bounded reader, create/verify/repair; RecoveryDataWriter
 │   │                                  (the router's PAR2 step), RecoveryProgressSplit, and
 │   │                                  RecoveryTestStep (the test's PAR2 check, T-F275 step 3)
-│   ├── Text/
-│   │   └── SystemCodePages.cs      ← T-F441: public; the only code that asks Windows for a
-│   │                                      code page (ACP, OEMCP, the user locale's ANSI/OEM) and
-│   │                                      turns a page into an Encoding (strict: an unknown page
-│   │                                      throws); TextBoundaryOwnersTests keeps it the only one
+│   ├── Text/                       ← T-F467: the one encoding provider
+│   │   ├── TextBoundaries.cs       ← public; a named handler per text boundary (tar.exe's output,
+│   │   │                                  command line, messages, raw header names; ZIP legacy names;
+│   │   │                                  the CLI console; PAR2 names; the launch payload)
+│   │   ├── TextBoundary.cs         ← public; a handler's page, Strict and Lenient
+│   │   ├── MachinePages.cs         ← ACP, OEMCP and the UCRT locale name, one snapshot
+│   │   └── SystemCodePages.cs      ← T-F441: internal; the only code that asks Windows for a
+│   │                                      page or the locale name, read only by the provider;
+│   │                                      TextBoundaryOwnersTests keeps it so
 │   ├── IO/
 │   │   ├── TempOwner.cs                ← T-F263/T-F312: public; the one owner of temp names —
 │   │   │                                  tag m<machine>-<pid>-<start ticks>, the sweep of entries
@@ -1486,7 +1490,7 @@ services.AddSingleton<ITarService, TarSandboxedService>(); // was TarProcessServ
 `src/Archiver.Core/Services/Sandbox/` — single-concern classes, no P/Invoke god-class:
 `SandboxHandles.cs` (`SafeHandle` types), `AppContainerProfile.cs`, `QuarantineAcl.cs`,
 `SandboxJobObject.cs`, `SandboxedProcessLauncher.cs` + `ProcessLaunchOptions.cs`,
-`LaunchAttributeList.cs`, `TarCommandLineEncoding.cs`, `TarOutputEncoding.cs`,
+`LaunchAttributeList.cs`, `TarCommandLineEncoding.cs`,
 `TarSignatureVerifier.cs`, and `TarSandboxScope.cs` — the disposable orchestration class every
 sandboxed tar.exe run goes through (`ListAsync`/`ExtractAsync`), tying profile + ACL + the open
 archive + Job Object + signature check together per archive operation. Fix phase 4 (2026-09-25)
@@ -1533,7 +1537,7 @@ Flow (`TarSandboxScope.CreateAsync` + `ListAsync`/`ExtractAsync`):
    root as current directory, `-f -` and (once decided) `--options tar:hdrcharset=UTF-8`
 6. The first listing decides the tar header charset: UTF-8, or the OEM code page when tar.exe
    reports the names are not valid UTF-8 (T-F204); tar.exe's output is decoded with the system
-   ANSI code page, the one its command line goes through (`TarOutputEncoding`, T-F465). The plain
+   ANSI code page, the one its command line goes through (`TextBoundaries.TarExeOutput`, T-F465). The plain
    listing's bytes are kept: a name sent back to tar.exe (`-T`, `-X`, `-q`) must go out as exactly
    the bytes tar.exe printed for it (`TarNames.ReadListedNameBytes`), or the archive is refused
    (on extraction's `-q` pass only the first copies are reported as not extracted)

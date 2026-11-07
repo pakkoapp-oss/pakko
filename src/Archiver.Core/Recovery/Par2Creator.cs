@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text;
 using Archiver.Core.Services;
 using Microsoft.Win32.SafeHandles;
+using Archiver.Core.Text;
 
 namespace Archiver.Core.Recovery;
 
@@ -74,7 +75,7 @@ internal static class Par2Creator
 
                 var tracker = new Par2Progress(progress, (double)length * (1 + parameters.RecoveryCount));
                 Par2FileHashes hashes = Par2FileHasher.Hash(source, length, parameters.SliceSize, bytes => tracker.Add(bytes), cancellationToken);
-                byte[] name = Encoding.UTF8.GetBytes(Path.GetFileName(filePath));
+                byte[] name = TextBoundaries.Par2FileNames.GetBytes(Path.GetFileName(filePath));
                 byte[] fileId = Par2Packets.FileId(hashes.Md5First16k, length, name);
                 byte[] mainBody = Par2Packets.MainBody(parameters.SliceSize, fileId);
                 byte[] setId = Par2Md5.Hash(mainBody);

@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Unicode;
+using Archiver.Core.Text;
 
 namespace Archiver.Core.Services;
 
@@ -48,7 +49,7 @@ public static class LaunchArguments
         if (files.Count == 0)
             throw new ArgumentException("At least one file is required.", nameof(files));
 
-        string payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(files, Json.IReadOnlyListString)));
+        string payload = Convert.ToBase64String(TextBoundaries.LaunchArgumentPayload.GetBytes(JsonSerializer.Serialize(files, Json.IReadOnlyListString)));
         return $"{SwitchFor(operation)} {payload}";
     }
 
@@ -72,7 +73,7 @@ public static class LaunchArguments
         string?[]? decoded;
         try
         {
-            decoded = JsonSerializer.Deserialize(Encoding.UTF8.GetString(Convert.FromBase64String(parts[1])), Json.StringArray);
+            decoded = JsonSerializer.Deserialize(TextBoundaries.LaunchArgumentPayload.GetString(Convert.FromBase64String(parts[1])), Json.StringArray);
         }
         catch (Exception ex) when (ex is FormatException or JsonException)
         {

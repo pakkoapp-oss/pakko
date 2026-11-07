@@ -39,7 +39,7 @@ public sealed class TarSandboxedServiceNameEncodingTests : IDisposable
         TarBuilder.Entry[] entries = layout switch
         {
             "utf8" or "gnu-utf8" or "gz-gnu-utf8" => [new TarBuilder.Entry { Name = "x", NameBytes = Encoding.UTF8.GetBytes(name), Content = content }],
-            "oem" or "gnu-oem" or "gz-gnu-oem" => [new TarBuilder.Entry { Name = "x", NameBytes = TarCodePage.Encoding(TarCodePage.UserOem).GetBytes(name), Content = content }],
+            "oem" or "gnu-oem" or "gz-gnu-oem" => [new TarBuilder.Entry { Name = "x", NameBytes = TarCodePage.Encoding(TarCodePage.RawNameOem).GetBytes(name), Content = content }],
             _ => [TarBuilder.PaxPath(name), new TarBuilder.Entry { Name = "placeholder.txt", Content = content }],
         };
         TarBuilder.WriteTar(archivePath, entries, gnuMagic: layout.Contains("gnu-", StringComparison.Ordinal));
