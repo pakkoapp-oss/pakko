@@ -69,11 +69,27 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         Directory.CreateDirectory(parent);
         HashSet<string> before = Directory.GetDirectories(parent).ToHashSet(StringComparer.OrdinalIgnoreCase);
         string missingArchive = Path.Combine(_temp.Path, "does-not-exist.tar");
+        // Another test process's quarantine, made meanwhile, as in T-F471's failure.
+        string foreign = Path.Combine(parent, "m0-0-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(foreign);
 
         Func<Task> act = () => TarSandboxScope.CreateAsync(missingArchive, needsOutputDir: true, CancellationToken.None);
 
-        await act.Should().ThrowAsync<Exception>();
-        Directory.GetDirectories(parent).Where(d => !before.Contains(d)).Should().BeEmpty();
+        try
+        {
+            await act.Should().ThrowAsync<Exception>();
+            // T-F471: other test processes make quarantines here at the same time; only this
+            // process's can be this call's (the TarSandbox collection serializes the rest of this one).
+            string ownPrefix = Archiver.Core.IO.TempOwner.CurrentTag + "-";
+            Directory.GetDirectories(parent)
+                .Where(d => !before.Contains(d) && Path.GetFileName(d).StartsWith(ownPrefix, StringComparison.Ordinal))
+                .Should().BeEmpty();
+        }
+        finally
+        {
+            if (Directory.Exists(foreign))
+                Directory.Delete(foreign);
+        }
     }
 
     [Fact]
