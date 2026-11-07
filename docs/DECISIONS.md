@@ -14169,6 +14169,10 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
   header veto then refused a tar it could have read (a false refusal, never a false Clean).
   `TextBoundariesTests` holds every row, a prefix hit, and a name longer than every row; the uk-UA
   row was red on a stub returning `UserOem`.
+- **Checked end to end on 3.5.2** (PakkoW10, format uk-UA over en-US, a ustar whose names are raw
+  437 bytes, `caf` 0x82 `.txt` and `plain.txt`; self-contained builds, each row extracted alone):
+  `main` refused `café.txt` ("cannot handle safely ... 1252"); this branch extracted its own
+  12-byte file. Restored to en-US.
 - **Also from source:** libarchive composes NFC only for names it converts from UTF-8 or UTF-16
   (`SCONV_NORMALIZATION_C`), which T-F466's comparison follows.
 - **Removed:** `SystemCodePages.UserAnsi`/`UserOem` and their locale lookups, `TarOutputEncoding`,
