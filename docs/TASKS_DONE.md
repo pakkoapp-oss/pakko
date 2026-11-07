@@ -14186,6 +14186,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   - Fix, tests first (`docs/DECISIONS.md`, "Decisions ... after the review"):
     1. A CI-runnable integration test forcing the scope's output page away from the system's
        (selection extract, selection scan, Test filter; 7z or xz, and a plain tar with a sparse entry).
+       Delivered on a pax tar with a volume label only: the guard is the same for every format, and
+       the label is what the header walk gives up on.
     2. `TextBoundaryOwnersTests` keeps the output page on the command-line page's source.
     3. The listing is decoded in the system ANSI page (65001 as UTF-8). The `acp_ocp_map` rule for raw
        names moved to T-F467 (a false refusal, not a false Clean).

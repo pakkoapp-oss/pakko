@@ -23,11 +23,10 @@ public sealed class TarOutputPageTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
-    [Integration]
+    [SwapPairIntegration]
     public async Task Extract_SelectionUnderAnotherPage_RefusedNothingWritten()
     {
-        if (Fixture() is not { } fixture)
-            return;
+        SwapFixture fixture = Fixture();
         var sut = new TarSandboxedService(new GroupPolicyOptions()) { ForcedTarOutputEncoding = fixture.Listing };
         string dest = Path.Combine(_temp.Path, "out");
 
@@ -41,11 +40,10 @@ public sealed class TarOutputPageTests : IDisposable
         (Directory.Exists(dest) ? Directory.GetFiles(dest, "*", SearchOption.AllDirectories) : []).Should().BeEmpty(fixture.Describe());
     }
 
-    [Integration]
+    [SwapPairIntegration]
     public async Task Scan_SelectionUnderAnotherPage_NeverClean()
     {
-        if (Fixture() is not { } fixture)
-            return;
+        SwapFixture fixture = Fixture();
         var scanner = new FakeAmsiScanner { DetectedText = "DJE" };
         var sut = new AntivirusScanService(new TarCapabilities(), groupPolicyOptions: new GroupPolicyOptions(), () => scanner,
             providerState: () => AmsiProviderState.Usable) { ForcedTarOutputEncoding = fixture.Listing };
@@ -55,11 +53,10 @@ public sealed class TarOutputPageTests : IDisposable
         result.OverallVerdict.Should().NotBe(ThreatVerdict.Clean, fixture.Describe());
     }
 
-    [Integration]
+    [SwapPairIntegration]
     public async Task Test_FilterUnderAnotherPage_Refused()
     {
-        if (Fixture() is not { } fixture)
-            return;
+        SwapFixture fixture = Fixture();
         var sut = new TarSandboxedService(new GroupPolicyOptions()) { ForcedTarOutputEncoding = fixture.Listing };
 
         ArchiveResult result = await sut.TestAsync([fixture.Path], entryFilter: (path, _) => path == fixture.ShownName);
@@ -68,11 +65,10 @@ public sealed class TarOutputPageTests : IDisposable
     }
 
     // A filter that leaves the shown name out goes to tar.exe as an exclusion ("-X"): the same guard.
-    [Integration]
+    [SwapPairIntegration]
     public async Task Test_FilterLeavingTheNameOutUnderAnotherPage_Refused()
     {
-        if (Fixture() is not { } fixture)
-            return;
+        SwapFixture fixture = Fixture();
         var sut = new TarSandboxedService(new GroupPolicyOptions()) { ForcedTarOutputEncoding = fixture.Listing };
 
         ArchiveResult result = await sut.TestAsync([fixture.Path], entryFilter: (path, _) => path != fixture.ShownName);
@@ -82,11 +78,10 @@ public sealed class TarOutputPageTests : IDisposable
 
     // The "-q" first copies: the threat is only in the first of two same-named entries, so only the
     // first-copy pass can reach it, and it sends the listed name back to tar.exe.
-    [Integration]
+    [SwapPairIntegration]
     public async Task Scan_FirstCopyUnderAnotherPage_NeverClean()
     {
-        if (Fixture(threatTwice: true) is not { } fixture)
-            return;
+        SwapFixture fixture = Fixture(threatTwice: true);
         var scanner = new FakeAmsiScanner { DetectedText = "DJE" };
         var sut = new AntivirusScanService(new TarCapabilities(), groupPolicyOptions: new GroupPolicyOptions(), () => scanner,
             providerState: () => AmsiProviderState.Usable) { ForcedTarOutputEncoding = fixture.Listing };
@@ -97,11 +92,10 @@ public sealed class TarOutputPageTests : IDisposable
     }
 
     // The control: in the page tar.exe prints in, the same selection extracts the threat itself.
-    [Integration]
+    [SwapPairIntegration]
     public async Task Extract_SelectionInTheSystemPage_TheSelectedFile()
     {
-        if (Fixture() is not { } fixture)
-            return;
+        SwapFixture fixture = Fixture();
         var sut = new TarSandboxedService(new GroupPolicyOptions());
         string dest = Path.Combine(_temp.Path, "out");
 
@@ -126,8 +120,8 @@ public sealed class TarOutputPageTests : IDisposable
     // Two names a swap needs, in this machine's ANSI page P: the threat "a" + P(b), which a listing
     // read in page W shows as "a" + W(b), and the plain file under exactly that shown name, whose
     // bytes in P differ from b. 1251 and 1252 each give one (0x80/0x88 both ways, measured). Null
-    // on a page with no such pair (UTF-8, for one).
-    private SwapFixture? Fixture(bool threatTwice = false)
+    // on a page with no such pair (UTF-8, for one): the tests are then skipped, visibly.
+    private static (string Threat, string Shown, Encoding Listing)? SwapPair()
     {
         int system = SystemCodePages.Ansi;
         int other = system == 1252 ? 1251 : 1252;
@@ -135,39 +129,52 @@ public sealed class TarOutputPageTests : IDisposable
         Encoding listing = SystemCodePages.For(other);
         for (int b = 0x80; b <= 0xFF; b++)
         {
-            string threat, shown;
             try
             {
-                threat = "a" + page.GetString([(byte)b]);
-                shown = "a" + listing.GetString([(byte)b]);
-                if (threat == shown || page.GetBytes(shown) is not [(byte)'a', var plainByte] || plainByte == b)
-                    continue;
+                string threat = "a" + page.GetString([(byte)b]);
+                string shown = "a" + listing.GetString([(byte)b]);
+                if (threat != shown && page.GetBytes(shown) is [(byte)'a', var plainByte] && plainByte != b)
+                    return (threat, shown, listing);
             }
             catch (DecoderFallbackException)
             {
-                continue; // undefined in this page
+                // undefined in this page: try the next byte
             }
             catch (EncoderFallbackException)
             {
-                continue; // the shown name is no name in this page
+                // the shown name is no name in this page: try the next byte
             }
-
-            string path = System.IO.Path.Combine(_temp.Path, "swap.tar");
-            TarBuilder.WriteTar(path,
-            [
-                new TarBuilder.Entry { Name = "label", TypeFlag = 'V' },
-                TarBuilder.PaxPath(threat),
-                new TarBuilder.Entry { Name = "threat", Content = Encoding.ASCII.GetBytes(ThreatText) },
-                .. (threatTwice
-                    ? (TarBuilder.Entry[])[TarBuilder.PaxPath(threat), new TarBuilder.Entry { Name = "copy", Content = Encoding.ASCII.GetBytes("second copy") }]
-                    : []),
-                TarBuilder.PaxPath(shown),
-                new TarBuilder.Entry { Name = "plain", Content = Encoding.ASCII.GetBytes("plain") },
-                // A third file, so a filter leaving out one name is sent as "-X" (TestSubset: the shorter list).
-                new TarBuilder.Entry { Name = "b.txt", Content = Encoding.ASCII.GetBytes("b") },
-            ]);
-            return new SwapFixture(path, threat, shown, listing);
         }
         return null;
+    }
+
+    private SwapFixture Fixture(bool threatTwice = false)
+    {
+        var (threat, shown, listing) = SwapPair() ?? throw new InvalidOperationException("no swap pair; the attribute skips this test");
+        string path = System.IO.Path.Combine(_temp.Path, "swap.tar");
+        TarBuilder.WriteTar(path,
+        [
+            new TarBuilder.Entry { Name = "label", TypeFlag = 'V' },
+            TarBuilder.PaxPath(threat),
+            new TarBuilder.Entry { Name = "threat", Content = Encoding.ASCII.GetBytes(ThreatText) },
+            .. (threatTwice
+                ? (TarBuilder.Entry[])[TarBuilder.PaxPath(threat), new TarBuilder.Entry { Name = "copy", Content = Encoding.ASCII.GetBytes("second copy") }]
+                : []),
+            TarBuilder.PaxPath(shown),
+            new TarBuilder.Entry { Name = "plain", Content = Encoding.ASCII.GetBytes("plain") },
+            // A third file, so a filter leaving out one name is sent as "-X" (TestSubset: the shorter list).
+            new TarBuilder.Entry { Name = "b.txt", Content = Encoding.ASCII.GetBytes("b") },
+        ]);
+        return new SwapFixture(path, threat, shown, listing);
+    }
+
+    private sealed class SwapPairIntegrationAttribute : FactAttribute
+    {
+        public SwapPairIntegrationAttribute()
+        {
+            Skip = new IntegrationAttribute().Skip;
+            if (Skip is null && SwapPair() is null)
+                Skip = $"no byte swaps two names between system page {SystemCodePages.Ansi} and its pair page";
+        }
     }
 }
