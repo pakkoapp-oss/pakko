@@ -4,12 +4,11 @@ using Archiver.Core.Text;
 
 namespace Archiver.Core.IntegrationTests;
 
-// The code pages tar.exe uses on this machine: the system ANSI page for its command line, and
-// the user locale's ANSI/OEM pages (libarchive's get_current_codepage/oemcp after
-// setlocale(LC_ALL, "")) for the names it prints and for tar headers without a charset.
+// The code pages tar.exe uses on this machine (T-F467's handlers): the system ANSI page for its
+// command line and the names it prints, and libarchive's OEM page for tar headers without a charset.
 internal static class TarCodePage
 {
-    public static uint Ansi => (uint)SystemCodePages.Ansi;
+    public static uint Ansi => (uint)TextBoundaries.TarExeCommandLine(MachinePages.Current).CodePage;
 
     public static bool IsUtf8Ansi => Ansi == 65001;
 
@@ -32,12 +31,10 @@ internal static class TarCodePage
         {
             version = ex.Message;
         }
-        return $"[{version}; ACP {Ansi}; user ANSI {UserAnsi}; user OEM {UserOem}]";
+        return $"[{version}; ACP {Ansi}; raw-name OEM {RawNameOem}; UCRT {MachinePages.Current.UcrtLocaleName}]";
     }
 
-    public static int UserAnsi => SystemCodePages.UserAnsi;
-
-    public static int UserOem => SystemCodePages.UserOem;
+    public static int RawNameOem => TextBoundaries.TarRawHeaderNames(MachinePages.Current).CodePage;
 
     // A name tar.exe can show on this machine and that a legacy tool could have written in its
     // OEM page — Cyrillic on a uk/ru machine, Latin-1 on an en-US one.
@@ -45,7 +42,7 @@ internal static class TarCodePage
     {
         foreach (string candidate in new[] { "Док.txt", "café.txt" })
         {
-            if (RoundTrips(candidate, UserAnsi) && RoundTrips(candidate, UserOem) && RoundTrips(candidate, (int)Ansi))
+            if (RoundTrips(candidate, RawNameOem) && RoundTrips(candidate, (int)Ansi))
                 return candidate;
         }
         return null;
@@ -60,5 +57,5 @@ internal static class TarCodePage
         catch (EncoderFallbackException) { return false; }
     }
 
-    public static Encoding Encoding(int codePage) => SystemCodePages.ForStrict(codePage);
+    public static Encoding Encoding(int codePage) => new TextBoundary(codePage).Strict;
 }

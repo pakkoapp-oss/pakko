@@ -65,8 +65,9 @@ internal static class RawZipEntryLocator
     {
         // T-F234: matched by decoded name, the name every caller sees — a raw UTF-8 byte compare
         // missed every legacy (OEM/ANSI) name.
+        ZipNameCodePages pages = ZipNameCodePages.Current();
         CentralDirectoryRecord record = ReadCentralDirectory(zipStream).FirstOrDefault(r =>
-                ZipEntryNameDecoder.Decode(r.NameBytes, r.GeneralPurposeFlag, r.HostOs, r.Extra, ZipNameCodePages.System) == entryFullName)
+                ZipEntryNameDecoder.Decode(r.NameBytes, r.GeneralPurposeFlag, r.HostOs, r.Extra, pages) == entryFullName)
             ?? throw new FileNotFoundException($"Entry not found in ZIP central directory: {entryFullName}");
         return BuildFromLocalHeader(zipStream, record);
     }

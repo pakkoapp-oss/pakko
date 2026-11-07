@@ -31,16 +31,7 @@ public static class CliConsoleCharset
 
     /// <summary>The encoding for a sentinel. Never has a preamble: stdout is not seekable, so a
     /// <see cref="StreamWriter"/> would otherwise write a BOM into <c>&gt; list.txt</c>.</summary>
-    public static Encoding CreateEncoding(int charset)
-    {
-        int codePage = charset switch
-        {
-            Ansi => SystemCodePages.Ansi,
-            Oem => SystemCodePages.Oem,
-            _ => charset,
-        };
-        return SystemCodePages.For(codePage);
-    }
+    public static Encoding CreateEncoding(int charset) => TextBoundaries.Console(charset).Lenient;
 
     /// <summary>Replaces Console.Out and Console.Error with writers in <paramref name="charset"/>.
     /// Console.OutputEncoding is deliberately not set: on a real console that calls
