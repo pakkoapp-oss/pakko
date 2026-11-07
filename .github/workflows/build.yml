@@ -181,6 +181,15 @@ jobs:
           }
           throw "PAR2 oracle download failed after $attempts attempt(s)."
 
+      - name: Build Archiver.ArchiveHelper (T-F470)
+        # ArchiveHelperProtocolTests run the real helper; built here so a compile failure shows as
+        # its own step, not as every helper test failing.
+        shell: pwsh
+        run: |
+          $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\Current\Bin\MSBuild.exe' | Select-Object -First 1
+          & $msbuild src\Archiver.ArchiveHelper\Archiver.ArchiveHelper.vcxproj /p:Configuration=Release /p:Platform=x64 "/p:SolutionDir=$PWD\" /m /nodeReuse:false
+          if ($LASTEXITCODE -ne 0) { throw "Archiver.ArchiveHelper build failed (exit $LASTEXITCODE)" }
+
       - name: Run .NET test suite
         # --collect:"XPlat Code Coverage" uses the coverlet.collector package already referenced
         # by every test project (T-F135) — no new package, just feeds SonarCloud's

@@ -129,6 +129,7 @@ T-F232.)
 | `Archiver.OperationUi.Core` | The window's logic (`OperationWindowModel`), WinUI-free so it is unit-testable |
 | `Archiver.OperationUi.Protocol` | The pipe messages between `Archiver.Shell` and the window, and their framing |
 | `Archiver.ShellExtension` | C++ COM DLL implementing `IExplorerCommand` (the actual right-click context menu) — built via MSBuild, not `dotnet build`; see `.claude/rules/shell-extension.md` |
+| `Archiver.ArchiveHelper` | C console exe (T-F470): reads tar-family archives through Windows' own `archiveint.dll` inside the tar sandbox — built via MSBuild, not `dotnet build`; `Archiver.Core.IntegrationTests` builds it on demand; see `docs/ARCHITECTURE.md` |
 | `Archiver.CLI` | Standalone console frontend (T-F09), built as `pakko.exe` — no WinUI; ships as its own self-contained per-architecture download via `scripts/Publish-Cli.ps1` (and winget), and since T-F317 also inside the MSIX behind the `pakko` execution alias; see `docs/CLI.md` |
 | `Archiver.Messages` | Core's error/skip messages in 37 languages, shared by `Archiver.Shell` and `Archiver.App` (T-F209) |
 | `Archiver.Core.Tests` | Unit tests for core compression/extraction logic |

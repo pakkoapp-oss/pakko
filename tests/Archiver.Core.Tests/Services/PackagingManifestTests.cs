@@ -58,7 +58,15 @@ public sealed class PackagingManifestTests
     public void AppProject_PackagesEachSatelliteAsItsExeAlone()
     {
         SatelliteContent().Select(c => c.Link).Should().BeEquivalentTo(
-            ["Archiver.Shell.exe", "Archiver.OperationUi.exe", "pakko.exe"]);
+            ["Archiver.Shell.exe", "Archiver.OperationUi.exe", "pakko.exe", "Archiver.ArchiveHelper.exe"]);
+    }
+
+    // T-F470: a C exe built by msbuild; only the /MT Release build may enter a package.
+    [Fact]
+    public void AppProject_PackagesTheReleaseArchiveHelper()
+    {
+        SatelliteContent().Where(c => c.Link == "Archiver.ArchiveHelper.exe").Select(c => c.Include)
+            .Should().Equal(@"..\Archiver.ArchiveHelper\bin\$(Platform)\Release\Archiver.ArchiveHelper.exe");
     }
 
     [Theory]
@@ -156,7 +164,7 @@ public sealed class PackagingManifestTests
             .Select(e => ((string?)e.Attribute("Include") ?? "", e.Elements().FirstOrDefault(c => c.Name.LocalName == "Link")?.Value ?? ""))
             .Where(c => SatelliteProjects.Any(p => c.Item1.StartsWith(@"..\" + p + @"\bin\", StringComparison.Ordinal)))];
 
-    private static readonly string[] SatelliteProjects = ["Archiver.Shell", "Archiver.OperationUi", "Archiver.CLI"];
+    private static readonly string[] SatelliteProjects = ["Archiver.Shell", "Archiver.OperationUi", "Archiver.CLI", "Archiver.ArchiveHelper"];
 
     private static XDocument LoadProject(string name) =>
         XDocument.Load(Path.Combine(RepoRoot, "src", name, name + ".csproj"));

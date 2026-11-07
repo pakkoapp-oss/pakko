@@ -141,6 +141,11 @@
       <Link>Archiver.ShellExtension.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <!-- T-F470: the C reader over archiveint.dll, run in the tar sandbox; Release only, like the DLL above. -->
+    <Content Include="..\Archiver.ArchiveHelper\bin\$(Platform)\Release\Archiver.ArchiveHelper.exe">
+      <Link>Archiver.ArchiveHelper.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <!--

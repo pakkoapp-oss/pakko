@@ -465,6 +465,36 @@ starting an outside program (above).
   their test says only the structure was checked.
 - **Group Policy:** a `BlockedFormats` list written before v1.10 does not name them; see `docs/POLICIES.md`.
 
+### Archive Helper over `archiveint.dll` (T-F470, v1.10)
+
+`tar.exe` prints entry names in the system's ANSI code page with best fit and takes a selection back
+the same way, so a name outside that page is changed, refused or skipped (`docs/DECISIONS.md`,
+T-F464-T-F469). `Archiver.ArchiveHelper.exe` reads the same archives through the same parser, Windows'
+own libarchive (`C:\Windows\System32\archiveint.dll`, the library `tar.exe` is built on), and
+reports names as exact UTF-16. **Status: built, packaged and tested; Pakko does not launch it yet.**
+The gate that turns it on and the fallback to `tar.exe` come in the next step and are described here
+when they land.
+
+What does not change, and what is new:
+
+- **The parser is the one `tar.exe` already runs**, not new code: Microsoft-signed, serviced by
+  Windows Update. It is loaded by absolute path with `LOAD_LIBRARY_SEARCH_SYSTEM32`, only into the
+  helper, never into a Pakko .NET process.
+- **New code that handles archive data:** the helper itself, one C file (`src/Archiver.ArchiveHelper/main.c`),
+  `/MT`, `/W4 /WX /analyze /sdl`, CFG, ASLR, NX and CET, importing only `kernel32.dll` (pinned by a
+  test). It is built from this repository and signed with the package; it adds no third-party code.
+- **Same sandbox as `tar.exe`:** the same AppContainer (no capabilities, no network), Job Object and
+  quarantine; the archive arrives as an inherited read-only stdin handle.
+- **No name from the archive becomes a path in the sandbox.** The helper never calls
+  `archive_write_disk`; it writes each selected regular file as `out\<index>` and refuses a selected
+  link or device entry. Pakko then places the files by their exact names through the same checks as
+  ZIP (`ArchiveEntrySecurity`, `EntryDiskName`), so traversal, absolute, ADS and reserved names, links
+  and case or Unicode collisions are judged in one place.
+- **Only the formats and filters Pakko names are enabled**, never libarchive's "all": that would add
+  mtree, which reads local files by the paths it lists, and filters that start an external program.
+- **The helper is treated as compromisable**, like `tar.exe`: everything it prints is parsed as
+  untrusted input, and `out\` is read only for the expected file names.
+
 ### Trust Chain
 
 ```
@@ -630,7 +660,8 @@ one-click and unencrypted.
 
 ### Absolute Path Requirement
 
-Always invoked as `C:\Windows\System32\tar.exe` — never as `tar` via PATH search. Prevents:
+Always invoked as `C:\Windows\System32\tar.exe` — never as `tar` via PATH search; the archive helper
+loads `C:\Windows\System32\archiveint.dll` by the same absolute path (T-F470). Prevents:
 - EXE hijacking via PATH manipulation
 - DLL side-loading from working directory
 - User-placed `tar.exe` taking precedence over system binary

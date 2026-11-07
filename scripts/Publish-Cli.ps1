@@ -11,8 +11,10 @@
          with no .NET install and without Pakko's GUI/MSIX installed — see docs/CLI.md's
          "Distribution" section. Needs the Visual Studio C++ build tools for the target
          architecture.
-      2. Zips pakko.exe alone as pakko-<rid>.zip; its pakko.pdb (native symbols, for crash
-         dumps) stays next to it in the publish folder, outside the zip.
+      2. Builds Archiver.ArchiveHelper.exe (T-F470, C, msbuild found by vswhere) into the
+         publish folder, next to pakko.exe, where Core looks for it.
+      3. Zips pakko.exe and Archiver.ArchiveHelper.exe as pakko-<rid>.zip; the .pdb files
+         (native symbols, for crash dumps) stay in the publish folder, outside the zip.
     Then writes a SHA256SUMS file covering every zip produced, so a script or a user
     can verify the download before running it.
 .PARAMETER Architecture
@@ -71,6 +73,13 @@ New-Item -ItemType File -Path $ownerMarker | Out-Null
 # ILCompiler's link step finds the C++ toolchain through vswhere.exe on PATH.
 $env:PATH = (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer') + ";$env:PATH"
 
+$msbuild = & (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe') -latest -requires Microsoft.Component.MSBuild -find 'MSBuild\Current\Bin\MSBuild.exe' |
+    Select-Object -First 1
+if (-not $msbuild) {
+    throw 'MSBuild.exe not found; install the Visual Studio C++ build tools (needed for Archiver.ArchiveHelper).'
+}
+$helperProj = Join-Path $repoRoot 'src\Archiver.ArchiveHelper\Archiver.ArchiveHelper.vcxproj'
+
 $architectures = if ($Architecture -eq 'both') { @('x64', 'arm64') } else { @($Architecture) }
 $zipPaths = @()
 
@@ -94,8 +103,16 @@ foreach ($arch in $architectures) {
         throw "dotnet publish failed for $rid (exit code $LASTEXITCODE)"
     }
 
+    Write-Host "Building Archiver.ArchiveHelper for $platform ..."
+    & $msbuild $helperProj /p:Configuration=Release "/p:Platform=$platform" "/p:SolutionDir=$repoRoot\" /m /nodeReuse:false
+    if ($LASTEXITCODE -ne 0) {
+        throw "Archiver.ArchiveHelper build failed for $platform (exit code $LASTEXITCODE)"
+    }
+    $helperBin = Join-Path $repoRoot "src\Archiver.ArchiveHelper\bin\$platform\Release"
+    Copy-Item -LiteralPath (Join-Path $helperBin 'Archiver.ArchiveHelper.exe'), (Join-Path $helperBin 'Archiver.ArchiveHelper.pdb') -Destination $publishDir
+
     $zipPath = Join-Path $OutputRoot "pakko-$rid.zip"
-    Compress-Archive -Path (Join-Path $publishDir 'pakko.exe') -DestinationPath $zipPath -Force
+    Compress-Archive -Path (Join-Path $publishDir 'pakko.exe'), (Join-Path $publishDir 'Archiver.ArchiveHelper.exe') -DestinationPath $zipPath -Force
     $zipPaths += $zipPath
     Write-Host "  -> $zipPath"
 }

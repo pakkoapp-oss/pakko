@@ -319,6 +319,8 @@ src/
 │   │                                      injected line source; Q/EOF/Ctrl+C -> exit 255
 │   ├── CliCompressionLevelMapper.cs / CliEntryFormatter.cs / CliHelpText.cs
 │
+├── Archiver.ArchiveHelper/     ← T-F470: C reader over archiveint.dll, run in the tar sandbox; main.c only
+│
 └── Archiver.ShellExtension/    ← IExplorerCommand COM DLL (T-F61); C++/WRL, x64+ARM64, static CRT
     ├── dllmain.cpp                     ← DllGetClassObject, DllCanUnloadNow
     ├── ExplorerCommands.cpp/.h         ← PakkoRootCommand, SubCommandEnum, and every leaf command
@@ -2152,6 +2154,65 @@ English error — decides the report: cancelled → 255, refused/mismatch → 2.
 redirected stdin exits 7 before dispatch (`RejectBarePasswordWithoutConsole`).
 
 ---
+
+### v1.10 — Archive helper over `archiveint.dll` (T-F470)
+
+**Status: the helper and its packaging are in; nothing in Core launches it yet** (the gate, listing
+and extraction by index are the next step, `docs/TASKS.md` T-F470). Why and the measurements:
+`docs/DECISIONS.md`, "T-F470"; trust model: `SECURITY.md`.
+
+`src/Archiver.ArchiveHelper/` — one C file, `/MT`, imports only `kernel32.dll` (an AppContainer
+child importing user32/ole32 fails with 0xC0000142 without a desktop; `ArchiveHelperBinaryTests`
+pins the import table and the CFG/ASLR/NX/CET flags). It loads
+`C:\Windows\System32\archiveint.dll` by absolute path with `LOAD_LIBRARY_SEARCH_SYSTEM32` and
+binds every export before the first call. Packaged next to the other satellites
+(`Archiver.App.csproj`, Release build only) and zipped next to `pakko.exe` (`Publish-Cli.ps1`).
+
+It is launched like `tar.exe`: copied into `bin\` of the quarantine (read-execute for the sandbox
+SID), working directory = the quarantine root, the archive as inherited stdin, `list\` read-execute
+(the selection file), `out\` modify. No name from the archive ever becomes a path: a selected
+regular file is written as `out\<index>` (`CREATE_NEW`, data at the offsets
+`archive_read_data_block` gives, holes left as zeros, `SetEndOfFile`, mtime set when the entry has
+one). `archive_write_disk` is never used.
+
+**Command line** (any other shape, a repeated switch or an unknown name is exit 2):
+
+| Mode | Switches |
+|---|---|
+| `probe` | none |
+| `list` | `--format <names>` (required), `--filter <names>`, `--hdrcharset <CHARSET>` |
+| `test` | as `list`, plus `--select list\<file>` |
+| `extract` | as `test`, plus `--max-total <bytes>` |
+
+`<names>` is a comma list from `tar, cpio, 7zip, rar, rar5, cab` (formats) and `gzip, bzip2,
+compress, xz, lzma, lzip, zstd` (filters); only these are enabled, never `support_*_all` (that
+adds mtree and filters that start an external program). Any name that does not return `ARCHIVE_OK`
+from its `support_*` call stops the run with exit 7. `<CHARSET>` is 1-16 of `[0-9A-Z-]` and
+becomes `hdrcharset=<CHARSET>`. The selection file holds ASCII decimal indices, one per line ending
+in `\n`, strictly increasing, no leading zeros, at most 4,000,000; anything else is exit 5.
+
+**Output** — ASCII only, one record per line, numbers in decimal, text as hex (`-` = NULL,
+`.` = empty):
+
+| Line | Meaning |
+|---|---|
+| `V <hex8>` | `archive_version_details()`; first line of every run that loaded the DLL |
+| `X <export>` | a missing export (then exit 4) |
+| `C <name> <rc>` | `probe`: the return of each `support_*` call |
+| `W <index> <errno> <hex8>` | `archive_read_next_header` returned `ARCHIVE_WARN` for this entry |
+| `E <index> <filetype> <size\|-> <mtime\|-> <nsec> <encrypted\|-> <sparse> <name hex16> <link hex16>` | one entry; the link is the symlink target, else the hard-link target |
+| `K <index> <bytes>` | a selected entry read in full (and written, in `extract`) |
+| `F <code> <hex8>` | the run failed: a libarchive status with its error string, or one of the helper's own codes below |
+| `D` | the run completed; absent on any failure |
+
+A hard link lists with `filetype` 0 and a link target; Pakko treats any entry with a link target as
+special. Own failure codes: `-1` negative or overflowing data offset, `-2` data past the declared
+size, `-3` past `--max-total`, `-4` `hdrcharset` refused, `-5` a selected entry is not a plain file,
+`-6` the selection names an index past the last entry (exit 5); `F 0` is a format or filter that failed its
+`support_*` call.
+
+**Exit codes:** 0 done, 1 archive (an `F` line), 2 usage, 3 `archiveint.dll` did not load, 4 missing
+export, 5 selection, 6 write (`out\` or stdout), 7 a requested format or filter is unavailable.
 
 ## FileItem Model (UI layer)
 

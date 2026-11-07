@@ -137,6 +137,14 @@ if (-not $DeployOnly) {
     # T-F102: kept for the post-publish completeness check below.
     $shellExtDllSourcePath = Join-Path $shellExtBinDir 'Archiver.ShellExtension.dll'
 
+    # T-F470: the archive helper (C exe), same build shape as the DLL above.
+    $helperProj = Join-Path $repoRoot 'src\Archiver.ArchiveHelper\Archiver.ArchiveHelper.vcxproj'
+    $helperBinDir = Join-Path $repoRoot "src\Archiver.ArchiveHelper\bin\$platform\Release"
+    Remove-Item -Recurse -Force (Join-Path $repoRoot "src\Archiver.ArchiveHelper\obj\$platform\Release"), $helperBinDir -ErrorAction SilentlyContinue
+    & $msbuildPath $helperProj /p:Configuration=Release "/p:Platform=$platform" "/p:SolutionDir=$repoRoot\" /m /nodeReuse:false
+    if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.ArchiveHelper build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
+    $helperExeSourcePath = Join-Path $helperBinDir 'Archiver.ArchiveHelper.exe'
+
     # ── dotnet publish: package and sign ─────────────────────────────────────
     # Content Include items in Archiver.App.csproj (conditioned on
     # GenerateAppxPackageOnBuild=true) declare satellite EXEs as package content.
@@ -243,6 +251,7 @@ if (-not $DeployOnly) {
                 foreach ($check in @(
                     @{ Name = 'Archiver.Shell.exe'; SourcePath = $shellExeSourcePath },
                     @{ Name = 'Archiver.ShellExtension.dll'; SourcePath = $shellExtDllSourcePath },
+                    @{ Name = 'Archiver.ArchiveHelper.exe'; SourcePath = $helperExeSourcePath },
                     @{ Name = 'Archiver.OperationUi.exe'; SourcePath = $operationUiExeSourcePath },
                     @{ Name = 'pakko.exe'; SourcePath = $cliExeSourcePath }
                 )) {

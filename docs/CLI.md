@@ -47,7 +47,8 @@ a user can verify the download before running it. This is a packaging/release-en
 layered on top of the Architecture section above, not a change to it: `Archiver.CLI` itself stays
 exactly what's described there — a third thin frontend consuming `Archiver.Core` in-process,
 compiled Native AOT (T-F355): one native exe with the runtime and `Archiver.Core` inside, so it
-runs on a machine with no .NET install, and the zip holds `pakko.exe` alone. The built exe
+runs on a machine with no .NET install. The zip holds `pakko.exe` and, next to it,
+`Archiver.ArchiveHelper.exe` (T-F470, a small C reader run in the tar sandbox). The built exe
 is named `pakko.exe` (`Archiver.CLI.csproj`'s `AssemblyName`, distinct from the project/folder
 name) — short, matches the product name, and matches the `pakko:` prefix already used in every
 stderr message and in `--help`'s own `USAGE:` line.

@@ -95,6 +95,12 @@ Remove-Item -Recurse -Force $shellExtObjDir, $shellExtBinDir -ErrorAction Silent
 & $MsBuildPath $shellExtProj /p:Configuration=Release "/p:Platform=$platform" "/p:SolutionDir=$repoRoot\" /m /nodeReuse:false
 if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.ShellExtension build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
 
+# T-F470: the archive helper, a C exe packaged next to the DLL.
+$helperProj = Join-Path $repoRoot 'src\Archiver.ArchiveHelper\Archiver.ArchiveHelper.vcxproj'
+Remove-Item -Recurse -Force (Join-Path $repoRoot "src\Archiver.ArchiveHelper\obj\$platform\Release"), (Join-Path $repoRoot "src\Archiver.ArchiveHelper\bin\$platform\Release") -ErrorAction SilentlyContinue
+& $MsBuildPath $helperProj /p:Configuration=Release "/p:Platform=$platform" "/p:SolutionDir=$repoRoot\" /m /nodeReuse:false
+if ($LASTEXITCODE -ne 0) { Write-Error "Archiver.ArchiveHelper build failed (exit $LASTEXITCODE)."; exit $LASTEXITCODE }
+
 # ── dotnet publish: package and sign ──────────────────────────────────────────
 # Archiver.App.csproj's DeployMsix target (AfterTargets="Build") tries to Add-AppxPackage the
 # freshly built package whenever Configuration=Release, unless PAKKO_DEPLOYING=1 — the same guard
@@ -137,7 +143,7 @@ Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 function Test-PakkoInPackage([System.IO.Compression.ZipArchive] $package) {
     $names = @($package.Entries | ForEach-Object { $_.FullName })
-    $required = @('pakko.exe', 'Archiver.Shell.exe', 'Archiver.OperationUi.exe', 'AppxManifest.xml')
+    $required = @('pakko.exe', 'Archiver.Shell.exe', 'Archiver.OperationUi.exe', 'Archiver.ArchiveHelper.exe', 'AppxManifest.xml')
     foreach ($name in $required) {
         if ($names -notcontains $name) { return $false }
     }
@@ -176,7 +182,7 @@ try {
     $outer.Dispose()
 }
 if (-not $pakkoFound) {
-    Write-Error "The built package $($msix.Name) has no pakko.exe, Archiver.Shell.exe, Archiver.OperationUi.exe and the pakko.exe execution alias (T-F317, T-F355)."
+    Write-Error "The built package $($msix.Name) has no pakko.exe, Archiver.Shell.exe, Archiver.OperationUi.exe, Archiver.ArchiveHelper.exe and the pakko.exe execution alias (T-F317, T-F355, T-F470)."
     exit 1
 }
 

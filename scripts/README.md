@@ -124,8 +124,9 @@ dumps.)
 
 Publishes a Native AOT build per architecture to `artifacts/cli/<rid>/` (gitignored; T-F355, needs
 the C++ build tools of each architecture) — the built exe is `pakko.exe` (`AssemblyName`, distinct
-from the `Archiver.CLI` project/folder name) — zips `pakko.exe` alone as `pakko-<rid>.zip` (its
-`pakko.pdb` stays in the folder), and writes a `SHA256SUMS` file covering both zips — ready to
+from the `Archiver.CLI` project/folder name) — builds `Archiver.ArchiveHelper.exe` (T-F470) with
+msbuild found by vswhere, zips `pakko.exe` and it as `pakko-<rid>.zip` (the `.pdb` files stay in
+the folder), and writes a `SHA256SUMS` file covering both zips — ready to
 attach directly to a GitHub Release. See `CLI.md`'s "Distribution" section for why no `tar.exe`
 copy is bundled alongside it.
 
