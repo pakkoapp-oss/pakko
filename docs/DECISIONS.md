@@ -14118,11 +14118,15 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
     NFD entry, written in NFC.
   - An archive holding the NFC and the NFD form of one name lists the name twice, and `-T` with it
     takes both entries: the second lands on the first, exit 0.
-- **The fix.** `TarNames.JudgeByHeaders` compares the listed name with the header name in NFC. A name
-  two different stored forms share is Lossy wherever it decides: it cannot pick one of them.
+- **The fix.** `TarNames.JudgeByHeaders` takes a listed name as agreeing with its header when it
+  equals the stored name or its NFC form: libarchive composes only names it converts from UTF-8 or
+  UTF-16 (`archive_string.c`, `SCONV_NORMALIZATION_C`, quoted from v3.8.9), and lists a legacy
+  page's name as stored (a 1258 name with a combining mark). A listed name two different stored
+  names share is Lossy wherever it decides: it cannot pick one of them.
 - **Tests, seen red.**
   - `TarNamesTests`: the NFD header and the NFD folder agree with the NFC listing (red on the old
-    code); the two-forms pin goes red with the collision check switched off.
+    code); a legacy name listed as stored agrees (red on a first draft that normalized every header
+    name); the two-forms pin goes red with the collision check switched off.
   - `TarNfdNamesTests` (integration, a letter the machine's ANSI page holds, skipped visibly
     otherwise): a selection of the NFD entry extracts its own file, a filter extracts both files,
     Test with a filter succeeds - all three refused on the old code. A selection of a name stored in
