@@ -3,16 +3,25 @@ using System.Diagnostics;
 namespace Archiver.Core.IntegrationTests;
 
 /// <summary>
-/// T-F470: the Release x64 Archiver.ArchiveHelper.exe from this checkout. `dotnet test` cannot
+/// T-F470: the Release Archiver.ArchiveHelper.exe from this checkout, per platform (x64 runs here;
+/// ARM64 is checked as a file). `dotnet test` cannot
 /// build a .vcxproj, so a missing or stale exe (older than its sources) is built here through
 /// msbuild found by vswhere, once per checkout across test processes. CI builds it in a step
 /// before the tests, so this only builds on a developer's machine.
 /// </summary>
 internal static class ArchiveHelperBuild
 {
-    private static readonly Lazy<string> Built = new(BuildIfStale, LazyThreadSafetyMode.ExecutionAndPublication);
+    private static readonly Lazy<string> X64 = new(() => BuildIfStale("x64"), LazyThreadSafetyMode.ExecutionAndPublication);
+    private static readonly Lazy<string> Arm64 = new(() => BuildIfStale("ARM64"), LazyThreadSafetyMode.ExecutionAndPublication);
 
-    public static string ExePath => Built.Value;
+    public static string ExePath => X64.Value;
+
+    public static string ExePathFor(string platform) => platform switch
+    {
+        "x64" => X64.Value,
+        "ARM64" => Arm64.Value,
+        _ => throw new ArgumentOutOfRangeException(nameof(platform), platform, "x64 or ARM64"),
+    };
 
     public static string RepoRoot
     {
@@ -25,11 +34,11 @@ internal static class ArchiveHelperBuild
         }
     }
 
-    private static string BuildIfStale()
+    private static string BuildIfStale(string platform)
     {
         string root = RepoRoot;
         string project = Path.Combine(root, "src", "Archiver.ArchiveHelper", "Archiver.ArchiveHelper.vcxproj");
-        string exe = Path.Combine(root, "src", "Archiver.ArchiveHelper", "bin", "x64", "Release", "Archiver.ArchiveHelper.exe");
+        string exe = Path.Combine(root, "src", "Archiver.ArchiveHelper", "bin", platform, "Release", "Archiver.ArchiveHelper.exe");
 
         using var mutex = new Mutex(false, @"Local\Pakko.ArchiveHelperBuild");
         try
@@ -44,7 +53,7 @@ internal static class ArchiveHelperBuild
         {
             if (IsFresh(exe, Path.GetDirectoryName(project)!))
                 return exe;
-            RunMsBuild(project, root);
+            RunMsBuild(project, root, platform);
             if (!IsFresh(exe, Path.GetDirectoryName(project)!))
                 throw new InvalidOperationException("msbuild succeeded but " + exe + " is still missing or stale");
             return exe;
@@ -62,21 +71,21 @@ internal static class ArchiveHelperBuild
         DateTime built = File.GetLastWriteTimeUtc(exe);
         return Directory.EnumerateFiles(sourceDir, "*.*", SearchOption.TopDirectoryOnly)
             .Where(f => f.EndsWith(".c", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".h", StringComparison.OrdinalIgnoreCase)
-                || f.EndsWith(".vcxproj", StringComparison.OrdinalIgnoreCase))
+                || f.EndsWith(".vcxproj", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".manifest", StringComparison.OrdinalIgnoreCase))
             .All(f => File.GetLastWriteTimeUtc(f) <= built);
     }
 
-    private static void RunMsBuild(string project, string root)
+    private static void RunMsBuild(string project, string root, string platform)
     {
         string vswhere = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
             "Microsoft Visual Studio", "Installer", "vswhere.exe");
         string msbuild = Run(vswhere, ["-latest", "-requires", "Microsoft.Component.MSBuild", "-find", @"MSBuild\Current\Bin\MSBuild.exe"],
             TimeSpan.FromMinutes(1)).Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault()
             ?? throw new InvalidOperationException("vswhere found no MSBuild; build Archiver.ArchiveHelper.vcxproj first");
-        string log = Path.Combine(Path.GetTempPath(), "Pakko.ArchiveHelperBuild." + Environment.ProcessId + ".log");
+        string log = Path.Combine(Path.GetTempPath(), "Pakko.ArchiveHelperBuild." + platform + "." + Environment.ProcessId + ".log");
         try
         {
-            Run(msbuild, [project, "/p:Configuration=Release", "/p:Platform=x64", "/p:SolutionDir=" + root + Path.DirectorySeparatorChar,
+            Run(msbuild, [project, "/p:Configuration=Release", "/p:Platform=" + platform, "/p:SolutionDir=" + root + Path.DirectorySeparatorChar,
                 "/nologo", "/noconsolelogger", "/flp:LogFile=" + log + ";Verbosity=minimal", "/nodeReuse:false"], TimeSpan.FromMinutes(5));
         }
         catch (InvalidOperationException e) when (File.Exists(log))

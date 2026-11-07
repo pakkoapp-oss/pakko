@@ -170,6 +170,47 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
     }
 
     [Fact]
+    public async Task Extract_TheTotalRunsAcrossEntries()
+    {
+        string archive = Tar([File("a.txt", "abc"), File("b.txt", "def")]);
+
+        Run run = await RunAsync(archive, ["extract", "--format", "tar", "--select", @"list\sel.txt", "--max-total", "5"], "0\n1\n");
+
+        run.ExitCode.Should().Be(1);
+        run.Lines.Should().Contain(["K 0 3", "F -3 ."]);
+        run.Lines.Should().NotContain(l => l.StartsWith("K 1 ", StringComparison.Ordinal));
+    }
+
+    // A time FILETIME cannot hold (before 1601, or past year 30828) is not a write failure: the
+    // file lands, without its time.
+    [Theory]
+    [InlineData("-20000000000")]
+    [InlineData("4611686018427387904")]
+    public async Task Extract_AnMtimeOutsideFileTime_StillLands(string mtime)
+    {
+        string archive = Tar([Pax("mtime", mtime), File("a.txt", "A")]);
+
+        Run run = await RunAsync(archive, ["extract", "--format", "tar", "--select", @"list\sel.txt", "--max-total", "100"], "0\n");
+
+        run.ExitCode.Should().Be(0);
+        run.Lines.Should().Contain(["K 0 1", "D"]);
+        System.IO.File.ReadAllText(run.Out("0")).Should().Be("A");
+        System.IO.File.GetLastWriteTimeUtc(run.Out("0")).Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromHours(1), "an unrepresentable time is not set, never wrapped");
+    }
+
+    [Fact]
+    public async Task List_ACharsetLibarchiveRefuses_FailsWithItsCode()
+    {
+        string archive = Tar([File("a.txt")]);
+
+        Run run = await RunAsync(archive, ["list", "--format", "tar", "--hdrcharset", "NOPE-XX"]);
+
+        run.ExitCode.Should().Be(1);
+        run.Lines.Should().Contain(l => l.StartsWith("F -4 ", StringComparison.Ordinal));
+        run.Lines.Should().NotContain(l => l.StartsWith("E ", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Extract_PastTheTotal_Stops()
     {
         string archive = Tar([File("a.txt", "0123456789")]);
@@ -211,6 +252,10 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
         @"list|--format|tar|--hdrcharset|cp1251;x",
         @"list|--format|tar|--hdrcharset",
         @"list|--format|tar|--select|list\sel.txt",
+        @"list|--format|gzip",
+        @"list|--format|tar|--filter|cpio",
+        @"list|--format|tar|--filter|",
+        @"list|--format|tar|--filter|gzip|--filter|xz",
         @"extract|--format|tar|--select|list\sel.txt",
         @"extract|--format|tar|--max-total|10",
         @"extract|--format|tar|--select|list\sel.txt|--max-total|1e3",
@@ -282,6 +327,20 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
 
     private static TarBuilder.Entry File(string name, string content = "hello\n") =>
         new() { Name = name, Content = Encoding.ASCII.GetBytes(content), ModifiedUnixSeconds = Mtime };
+
+    // A pax extended header ('x') with one "key=value" record for the entry that follows it.
+    private static TarBuilder.Entry Pax(string key, string value)
+    {
+        byte[] body = Encoding.UTF8.GetBytes(" " + key + "=" + value + "\n");
+        int length = body.Length;
+        while (length.ToString(System.Globalization.CultureInfo.InvariantCulture).Length + body.Length != length)
+            length = length.ToString(System.Globalization.CultureInfo.InvariantCulture).Length + body.Length;
+        return new TarBuilder.Entry
+        {
+            Name = "PaxHeader", TypeFlag = 'x',
+            Content = [.. Encoding.ASCII.GetBytes(length.ToString(System.Globalization.CultureInfo.InvariantCulture)), .. body],
+        };
+    }
 
     private string Tar(IEnumerable<TarBuilder.Entry> entries)
     {
