@@ -707,6 +707,18 @@ static int prepare_reader(void *ar, const struct args *a)
     return r == ARCHIVE_OK ? EXIT_DONE : report_failure(ar, r);
 }
 
+static void put_version(void)
+{
+    put_str("V ");
+    put_hex8(la.version_details != NULL ? la.version_details() : NULL);
+    put_str("\n");
+    for (int i = 0; i < g_missingCount; i++) {
+        put_str("X ");
+        put_str(g_missing[i]);
+        put_str("\n");
+    }
+}
+
 int __cdecl main(int argc, char **argv)
 {
     struct args a = { 0 };
@@ -724,14 +736,7 @@ int __cdecl main(int argc, char **argv)
     result = load();
     if (result == EXIT_LOAD)
         goto done;
-    put_str("V ");
-    put_hex8(la.version_details != NULL ? la.version_details() : NULL);
-    put_str("\n");
-    for (int i = 0; i < g_missingCount; i++) {
-        put_str("X ");
-        put_str(g_missing[i]);
-        put_str("\n");
-    }
+    put_version();
     if (result != EXIT_DONE)
         goto done;
     if (a.probe) {
