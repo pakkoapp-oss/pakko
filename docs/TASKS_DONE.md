@@ -14194,3 +14194,11 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     4. The byte guard: the raw listed bytes must equal the bytes sent to tar.exe for that member.
     5. The refusal names the page tar.exe used. SECURITY.md only with the user's OK.
 - **Reported by:** the agent, 2026-11-07.
+
+### T-F466 - A tar from macOS (NFD names) is refused under a filter (P3, stream I)
+
+- [x] **Status:** done 2026-11-07 (`docs/DECISIONS.md`, "T-F466 done"). Found 2026-11-07 (`docs/DECISIONS.md`, "T-F464 and T-F465"). tar.exe lists and
+  writes names in NFC. `TarHeaderNames` compares the NFD header name, so the veto calls the listing
+  Lossy: a filter or Test with a filter refuses the whole archive, and a selection of that entry is
+  refused. Compare after NFC normalization; tests first, on both builds.
+- **Reported by:** the agent, 2026-11-07.

@@ -10,6 +10,38 @@ public sealed class TarNamesTests
 {
     private static readonly string Accented = "caf" + (char)0xE9 + ".txt";
 
+    // T-F466: tar.exe lists and writes a name in NFC (measured on 3.8.9 and 3.5.2); a macOS tar
+    // stores it in NFD.
+    private static readonly string AccentedNfd = "cafe" + (char)0x301 + ".txt";
+
+    [Fact]
+    public void Judge_HeaderInNfdListedInNfc_Faithful()
+    {
+        TarNames.Judge([Accented, "plain.txt"], [AccentedNfd, "plain.txt"]).Should().Be(TarListingVerdict.Faithful);
+        TarNames.Judge([Accented, "plain.txt"], [AccentedNfd, "plain.txt"], [Accented]).Should().Be(TarListingVerdict.Faithful);
+    }
+
+    // Both forms list as one name, and tar.exe's "-T" takes both entries (measured): the name
+    // cannot pick either.
+    [Fact]
+    public void Judge_NfcAndNfdOfOneName_Lossy()
+    {
+        TarNames.Judge([Accented, Accented, "plain.txt"], [Accented, AccentedNfd, "plain.txt"])
+            .Should().Be(new TarListingVerdict(TarNameTrust.Lossy, Accented));
+        TarNames.Judge([Accented, Accented, "plain.txt"], [Accented, AccentedNfd, "plain.txt"], [Accented]).Trust
+            .Should().Be(TarNameTrust.Lossy);
+        TarNames.Judge([Accented, Accented, "plain.txt"], [Accented, AccentedNfd, "plain.txt"], ["plain.txt"])
+            .Should().Be(TarListingVerdict.Faithful);
+    }
+
+    [Fact]
+    public void Judge_NfdFolderListedInNfc_Faithful()
+    {
+        string folderNfc = "caf" + (char)0xE9 + "/";
+        string folderNfd = "cafe" + (char)0x301;
+        TarNames.Judge([folderNfc, folderNfc + "a.txt"], [folderNfd, folderNfd + "/a.txt"]).Should().Be(TarListingVerdict.Faithful);
+    }
+
     [Fact]
     public void Judge_QuestionMark_Lossy()
     {
