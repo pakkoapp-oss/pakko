@@ -32,7 +32,7 @@ public sealed class TextBoundariesTests
     [Fact]
     public void TarExeOutput_Utf8System_ReadsUtf8WithoutPreamble()
     {
-        var output = TextBoundaries.TarExeOutput(new MachinePages(65001, 437, "English_United States"));
+        TextBoundary output = TextBoundaries.TarExeOutput(new MachinePages(65001, 437, "English_United States"));
 
         output.Lenient.GetString([0xD0, 0x96]).Should().Be(((char)0x416).ToString());
         output.Lenient.GetPreamble().Should().BeEmpty();
@@ -79,7 +79,7 @@ public sealed class TextBoundariesTests
     [MemberData(nameof(Machines))]
     public void ZipLegacyNames_TheSystemPair(int ansi, int oem, string? ucrt)
     {
-        var (zipOem, zipAnsi) = TextBoundaries.ZipLegacyNames(new MachinePages(ansi, oem, ucrt));
+        (TextBoundary zipOem, TextBoundary zipAnsi) = TextBoundaries.ZipLegacyNames(new MachinePages(ansi, oem, ucrt));
 
         zipOem.CodePage.Should().Be(oem);
         zipAnsi.CodePage.Should().Be(ansi);
