@@ -14379,6 +14379,9 @@ constraint "only tar.exe" stands until the user decides (below).
 
   "Only tar.exe" stays a hard constraint until that task changes it with the user's OK. The task is
   T-F470.
+- **Moved into v1.10.0 (the user, 2026-11-07, later the same day):** "add the libarchive task to this
+  wave; the constant file-name errors bother me". T-F470 joins stream I. The conditions above stand;
+  the constraint and `SECURITY.md` change inside that task, after its plan is approved.
 
 ## T-F452 - A refused listed name has its own message (2026-11-07)
 
