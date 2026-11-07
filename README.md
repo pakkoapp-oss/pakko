@@ -19,6 +19,7 @@
 <p align="center">
   <a href="https://pakkoapp-oss.github.io/pakko/">🌐 Project website</a> ·
   <a href="https://apps.microsoft.com/detail/9p5mw010d8pr">🛒 Get it from Microsoft Store</a> ·
+  <a href="https://github.com/microsoft/winget-pkgs/pull/449503">⌨️ <code>pakko</code> command line on winget (in review)</a> ·
   <a href="https://ko-fi.com/pakko_app">☕ Support the project on Ko-fi</a> ·
   <a href="README.uk.md">🇺🇦 Українською</a>
 </p>
@@ -44,8 +45,9 @@ standalone `pakko` zip has been tested on Windows 10 22H2, Windows 11 and Window
   project's own development certificate, which you add to Windows' trusted certificates before
   installing ([`scripts/README.md`](scripts/README.md); a publicly trusted certificate is planned,
   see [`docs/SIGNING.md`](docs/SIGNING.md)).
-- **winget (command line only)**: the `pakko` zip is submitted to the winget catalog and waits for
-  a moderator; until then use the zip from GitHub Releases. See [`docs/CLI.md`](docs/CLI.md),
+- **winget (command line only)**: the `pakko` zip is submitted to the winget catalog as
+  `PavloRybchenko.PakkoCLI` ([pull request](https://github.com/microsoft/winget-pkgs/pull/449503)) and waits for a moderator; once it is
+  accepted, `winget install PavloRybchenko.PakkoCLI`. Until then use the zip from GitHub Releases. See [`docs/CLI.md`](docs/CLI.md),
   "Distribution".
 
 ---
