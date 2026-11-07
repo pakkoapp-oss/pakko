@@ -21,7 +21,7 @@ public sealed class TarNfdNamesTests : IDisposable
     [NfdIntegration]
     public async Task Extract_SelectionOfAnNfdEntry_ItsOwnFile()
     {
-        var (nfc, nfd) = Names();
+        (string nfc, string nfd) = Names();
         string archive = Write(nfdOnly: true, nfd, nfc);
         string dest = Path.Combine(_temp.Path, "out");
 
@@ -38,7 +38,7 @@ public sealed class TarNfdNamesTests : IDisposable
     [NfdIntegration]
     public async Task Extract_FilterOverAnNfdEntry_EveryFile()
     {
-        var (nfc, nfd) = Names();
+        (string nfc, string nfd) = Names();
         string archive = Write(nfdOnly: true, nfd, nfc);
         string dest = Path.Combine(_temp.Path, "out");
 
@@ -55,7 +55,7 @@ public sealed class TarNfdNamesTests : IDisposable
     [NfdIntegration]
     public async Task Test_FilterOverAnNfdEntry_Succeeds()
     {
-        var (nfc, nfd) = Names();
+        (string nfc, string nfd) = Names();
         string archive = Write(nfdOnly: true, nfd, nfc);
 
         ArchiveResult result = await _sut.TestAsync([archive], entryFilter: (path, _) => path != "plain.txt");
@@ -67,7 +67,7 @@ public sealed class TarNfdNamesTests : IDisposable
     [NfdIntegration]
     public async Task Extract_SelectionOfANameStoredInBothForms_Refused()
     {
-        var (nfc, nfd) = Names();
+        (string nfc, string nfd) = Names();
         string archive = Write(nfdOnly: false, nfd, nfc);
         string dest = Path.Combine(_temp.Path, "out");
 
