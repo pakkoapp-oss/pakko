@@ -53,6 +53,25 @@ internal static partial class TarCommandLineEncoding
 
     internal static byte[]? Encode(string value, uint codePage) => TryEncode(value, codePage);
 
+    /// <summary>
+    /// T-F467: <paramref name="bytes"/> read as text in <paramref name="codePage"/> with the operating
+    /// system's own table, the one the C runtime reads tar.exe's names with; null when they are not text
+    /// there. .NET's strict table is not it: it has no NEC duplicates of 932 (0x87 0x90 reads only by best fit).
+    /// </summary>
+    internal static string? Decode(byte[] bytes, uint codePage)
+    {
+        if (bytes.Length == 0)
+            return string.Empty;
+        int charCount = MultiByteToWideChar(codePage, MbErrInvalidChars, bytes, bytes.Length, null, 0);
+        if (charCount <= 0)
+            return null;
+        char[] text = new char[charCount];
+        return MultiByteToWideChar(codePage, MbErrInvalidChars, bytes, bytes.Length, text, text.Length) == charCount ? new string(text) : null;
+    }
+
+    /// <summary>T-F467: whether <paramref name="value"/> opens a double-byte character in <paramref name="codePage"/> (system table).</summary>
+    internal static bool IsLeadByte(uint codePage, byte value) => IsDBCSLeadByteEx(codePage, value);
+
     // The exact bytes of value in codePage, or null when it would not convert back to itself.
     private static byte[]? TryEncode(string value, uint codePage)
     {
@@ -104,6 +123,10 @@ internal static partial class TarCommandLineEncoding
     private static partial int WideCharToMultiByteUsedDefault(
         uint codePage, uint flags, string wideChars, int wideCharCount,
         [Out] byte[] multiByte, int multiByteCount, IntPtr defaultChar, out int usedDefaultChar);
+
+    [LibraryImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool IsDBCSLeadByteEx(uint codePage, byte testChar);
 
     // StringMarshalling.Utf16 matters: a char[] must go through as UTF-16, one wide char per char.
     [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
