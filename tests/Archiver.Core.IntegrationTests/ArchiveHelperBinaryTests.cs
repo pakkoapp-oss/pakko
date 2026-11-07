@@ -24,7 +24,7 @@ public sealed class ArchiveHelperBinaryTests
     [InlineData("ARM64")]
     public void Imports_OnlyKernel32(string platform)
     {
-        Pe pe = Pe.Read(ArchiveHelperBuild.ExePathFor(platform));
+        var pe = Pe.Read(ArchiveHelperBuild.ExePathFor(platform));
 
         pe.ImportedDlls.Should().Equal(["KERNEL32.dll"], "an AppContainer child importing anything else fails to start without a desktop");
         pe.HasDelayImports.Should().BeFalse("a delay-loaded user32/ole32 would fail at first call instead of at start");
@@ -35,7 +35,7 @@ public sealed class ArchiveHelperBinaryTests
     [InlineData("ARM64", 0xAA64)]
     public void Mitigations_AreOn(string platform, int machine)
     {
-        Pe pe = Pe.Read(ArchiveHelperBuild.ExePathFor(platform));
+        var pe = Pe.Read(ArchiveHelperBuild.ExePathFor(platform));
 
         pe.Machine.Should().Be((ushort)machine);
         foreach (ushort flag in Required)
