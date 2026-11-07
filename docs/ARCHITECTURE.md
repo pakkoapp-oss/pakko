@@ -2186,8 +2186,8 @@ one). `archive_write_disk` is never used.
 
 `<names>` is a comma list from `tar, cpio, 7zip, rar, rar5, cab` (formats) and `gzip, bzip2,
 compress, xz, lzma, lzip, zstd` (filters); only these are enabled, never `support_*_all` (that
-adds mtree and filters that start an external program). Any name that does not return `ARCHIVE_OK`
-from its `support_*` call stops the run with exit 7. `<CHARSET>` is 1-16 of `[0-9A-Z-]` and
+adds mtree and filters that start an external program). Any name whose `support_*` export is missing or does not
+return `ARCHIVE_OK` stops the run with exit 7. `<CHARSET>` is 1-16 of `[0-9A-Z-]` and
 becomes `hdrcharset=<CHARSET>`. The selection file holds ASCII decimal indices, one per line ending
 in `\n`, strictly increasing, no leading zeros, at most 4,000,000; anything else is exit 5.
 
@@ -2197,8 +2197,8 @@ in `\n`, strictly increasing, no leading zeros, at most 4,000,000; anything else
 | Line | Meaning |
 |---|---|
 | `V <hex8>` | `archive_version_details()`; first line of every run that loaded the DLL |
-| `X <export>` | a missing export (then exit 4) |
-| `C <name> <rc>` | `probe`: the return of each `support_*` call |
+| `X <export>` | a missing core export (then exit 4); a missing `support_*` export is not one |
+| `C <name> <rc\|->` | `probe`: the return of each `support_*` call, `-` when the DLL lacks that export |
 | `W <index> <errno> <hex8>` | `archive_read_next_header` returned `ARCHIVE_WARN` for this entry |
 | `E <index> <filetype> <size\|-> <mtime\|-> <nsec> <encrypted\|-> <sparse> <name hex16> <link hex16>` | one entry; the link is the symlink target, else the hard-link target |
 | `K <index> <bytes>` | a selected entry read in full (and written, in `extract`) |
@@ -2207,7 +2207,7 @@ in `\n`, strictly increasing, no leading zeros, at most 4,000,000; anything else
 
 A hard link lists with `filetype` 0 and a link target; Pakko treats any entry with a link target as
 special. Own failure codes: `-1` negative or overflowing data offset, `-2` data past the declared
-size, `-3` past `--max-total`, `-4` `hdrcharset` refused, `-5` a selected entry is not a plain file,
+size, `-3` past `--max-total` (counted by each entry's logical end, holes included), `-4` `hdrcharset` refused, `-5` a selected entry is not a plain file,
 `-6` the selection names an index past the last entry (exit 5); `F 0` is a format or filter that failed its
 `support_*` call.
 

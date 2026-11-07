@@ -232,15 +232,10 @@ static int load(void)
     BIND(is_encrypted, "archive_entry_is_encrypted")
     BIND(sparse_count, "archive_entry_sparse_count")
 #undef BIND
-    for (i = 0; i < SUPPORT_COUNT; i++) {
+    /* A build without one format or filter still serves the others: probe reports it as "-",
+       and only a run that asks for it is refused. */
+    for (i = 0; i < SUPPORT_COUNT; i++)
         g_supports[i].fn = (support_fn)(void *)GetProcAddress(m, g_supports[i].exportName);
-        if (g_supports[i].fn == NULL) {
-            put_str("X ");
-            put_str(g_supports[i].exportName);
-            put_str("\n");
-            missing = 1;
-        }
-    }
     return missing ? EXIT_EXPORT : EXIT_DONE;
 }
 
@@ -410,10 +405,14 @@ static int write_at(HANDLE file, la_int64_t offset, const void *block, size_t le
     return EXIT_DONE;
 }
 
-/* Reads one entry's data; writes it to out\<index> when file is not INVALID_HANDLE_VALUE. */
+/* Reads one entry's data; writes it to out\<index> when file is not INVALID_HANDLE_VALUE. The
+   total is charged with the entry's logical end, not its data bytes: a hole costs the disk what data
+   does (NTFS zero-fills up to the end), so a sparse entry claiming terabytes is stopped before the
+   write that would reach them. */
 static int copy_entry(void *ar, void *e, HANDLE file, unsigned __int64 *total, unsigned __int64 maxTotal, unsigned __int64 *bytes)
 {
     const la_int64_t declared = la.size_is_set(e) ? la.size(e) : -1;
+    const unsigned __int64 room = maxTotal >= *total ? maxTotal - *total : 0;
     unsigned __int64 end = 0;
     *bytes = 0;
     for (;;) {
@@ -431,14 +430,18 @@ static int copy_entry(void *ar, void *e, HANDLE file, unsigned __int64 *total, u
             end = (unsigned __int64)offset + length;
         if (declared >= 0 && end > (unsigned __int64)declared)
             return report_own_failure(FAIL_OVERRUN);
-        if (length > maxTotal - *total)
+        if (end > room)
             return report_own_failure(FAIL_TOTAL);
-        *total += length;
         if (file != INVALID_HANDLE_VALUE && length > 0 && write_at(file, offset, block, length) != EXIT_DONE)
             return EXIT_WRITE;
     }
-    if (declared >= 0 && end < (unsigned __int64)declared)
+    /* Only a sparse entry ends in a hole; a plain one keeps the length its data gave, which Pakko
+       compares with the listed size. */
+    if (la.sparse_count(e) > 0 && declared >= 0 && end < (unsigned __int64)declared)
         end = (unsigned __int64)declared;
+    if (end > room)
+        return report_own_failure(FAIL_TOTAL);
+    *total += end;
     *bytes = end;
     if (file != INVALID_HANDLE_VALUE) {
         LARGE_INTEGER position;
@@ -545,7 +548,10 @@ static int probe(void)
         put_str("C ");
         put_str(g_supports[i].name);
         put_str(" ");
-        put_i64(g_supports[i].fn(ar));
+        if (g_supports[i].fn == NULL)
+            put("-", 1);
+        else
+            put_i64(g_supports[i].fn(ar));
         put_str("\n");
         la.read_free(ar);
     }
@@ -683,7 +689,7 @@ int __cdecl main(int argc, char **argv)
         goto done;
     }
     for (i = 0; i < SUPPORT_COUNT; i++) {
-        if (wanted[i] && g_supports[i].fn(ar) != ARCHIVE_OK) {
+        if (wanted[i] && (g_supports[i].fn == NULL || g_supports[i].fn(ar) != ARCHIVE_OK)) {
             put_str("F 0 .\n");
             result = EXIT_CAPABILITY;
             goto done;

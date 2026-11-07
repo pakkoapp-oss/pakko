@@ -99,6 +99,22 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
         Enumerable.Range(0, actual.Length).FirstOrDefault(i => actual[i] != expected[i], -1).Should().Be(-1, "the first differing offset");
     }
 
+    // A hole costs the disk what data does: NTFS zero-fills up to the end the archive claims.
+    [Theory]
+    [InlineData(4096L, 8L << 30)]
+    [InlineData(4L << 30, (4L << 30) + 512)]
+    public async Task Extract_ASparseEntryClaimingMoreThanTheTotal_Stops(long secondOffset, long realSize)
+    {
+        string archive = Path.Combine(_temp.Path, "bomb.tar");
+        System.IO.File.WriteAllBytes(archive, GnuSparseTar(secondOffset, realSize));
+
+        Run run = await RunAsync(archive, ["extract", "--format", "tar", "--select", @"list\sel.txt", "--max-total", "1000000"], "0\n");
+
+        run.ExitCode.Should().Be(1);
+        run.Lines.Should().Contain("F -3 .");
+        new FileInfo(run.Out("0")).Length.Should().BeLessThanOrEqualTo(1000000);
+    }
+
     [Fact]
     public async Task Test_ReadsTheSelectionWithoutWriting()
     {
@@ -324,9 +340,11 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
         };
     }
 
-    // A GNU old-style sparse entry: 192 KiB real, 'A' x 512 at 0 and 'B' x 512 at 128 KiB.
-    private static byte[] GnuSparseTar()
+    // A GNU old-style sparse entry: 'A' x 512 at 0 and 'B' x 512 at secondOffset, realSize long
+    // (by default 192 KiB with the second block at 128 KiB).
+    private static byte[] GnuSparseTar(long secondOffset = 131072, long realSize = 196608)
     {
+        static string Octal(long v) => Convert.ToString(v, 8).PadLeft(11, '0') + "\0";
         byte[] header = new byte[512];
         void Field(int offset, string value) => Encoding.ASCII.GetBytes(value).CopyTo(header, offset);
         Field(0, "sparse.bin");
@@ -338,8 +356,8 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
         header[156] = (byte)'S';
         Field(257, "ustar  \0");
         Field(386, "00000000000\0" + "00000001000\0");
-        Field(410, "00000400000\0" + "00000001000\0");
-        Field(483, "00000600000\0");
+        Field(410, Octal(secondOffset) + "00000001000\0");
+        Field(483, Octal(realSize));
         Field(148, "        ");
         int sum = header.Sum(b => b);
         Field(148, Convert.ToString(sum, 8).PadLeft(6, '0') + "\0 ");
