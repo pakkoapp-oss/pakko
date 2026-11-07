@@ -123,10 +123,10 @@ public sealed class TarOutputPageTests : IDisposable
     // on a page with no such pair (UTF-8, for one): the tests are then skipped, visibly.
     private static (string Threat, string Shown, Encoding Listing)? SwapPair()
     {
-        int system = SystemCodePages.Ansi;
+        int system = MachinePages.Current.Ansi;
         int other = system == 1252 ? 1251 : 1252;
-        Encoding page = SystemCodePages.ForStrict(system);
-        Encoding listing = SystemCodePages.For(other);
+        Encoding page = new TextBoundary(system).Strict;
+        Encoding listing = new TextBoundary(other).Lenient;
         for (int b = 0x80; b <= 0xFF; b++)
         {
             try
@@ -174,7 +174,7 @@ public sealed class TarOutputPageTests : IDisposable
         {
             Skip = new IntegrationAttribute().Skip;
             if (Skip is null && SwapPair() is null)
-                Skip = $"no byte swaps two names between system page {SystemCodePages.Ansi} and its pair page";
+                Skip = $"no byte swaps two names between system page {MachinePages.Current.Ansi} and its pair page";
         }
     }
 }

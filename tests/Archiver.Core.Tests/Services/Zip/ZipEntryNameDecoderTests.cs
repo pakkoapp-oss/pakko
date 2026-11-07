@@ -15,7 +15,7 @@ public sealed class ZipEntryNameDecoderTests
     private static readonly ZipNameCodePages Us = ZipNameCodePages.FromCodePages(437, 1252);
 
     private static byte[] Cp(int codePage, string text) =>
-        SystemCodePages.For(codePage).GetBytes(text);
+        new TextBoundary(codePage).Lenient.GetBytes(text);
 
     private static string Decode(byte[] raw, ushort flags, byte host, ZipNameCodePages pages, byte[]? extra = null) =>
         ZipEntryNameDecoder.Decode(raw, flags, host, extra ?? [], pages);

@@ -12,7 +12,12 @@ public sealed partial class TextBoundaryOwnersTests
 {
     private static readonly string RepoRoot = FindRepoRoot();
 
-    private static readonly string ProviderFolder = Path.Combine("src", "Archiver.Core", "Text") + Path.DirectorySeparatorChar;
+    // The provider and the tests of the provider itself.
+    private static readonly string[] ProviderFolders =
+    [
+        Path.Combine("src", "Archiver.Core", "Text") + Path.DirectorySeparatorChar,
+        Path.Combine("tests", "Archiver.Core.Tests", "Text") + Path.DirectorySeparatorChar,
+    ];
 
     private static readonly string[] Owners =
     [
@@ -51,13 +56,17 @@ public sealed partial class TextBoundaryOwnersTests
         offenders.Should().BeEmpty("take the code page from a handler of Archiver.Core.Text.TextBoundaries (docs/DECISIONS.md, T-F441, T-F467)");
     }
 
-    // T-F467: the machine's pages reach a consumer only through a handler.
-    [Fact]
-    public void SystemCodePages_IsReadOnlyByTheProvider()
+    // T-F467: the machine's pages reach a consumer only through a handler; a test takes a literal
+    // page through TextBoundary and the machine's through MachinePages, as the product does.
+    [Theory]
+    [InlineData("src")]
+    [InlineData("tests")]
+    public void SystemCodePages_IsReadOnlyByTheProvider(string dir)
     {
-        SourceFiles("src")
+        SourceFiles(dir)
             .Select(file => Path.GetRelativePath(RepoRoot, file))
-            .Where(relative => !relative.StartsWith(ProviderFolder, StringComparison.OrdinalIgnoreCase))
+            .Where(relative => !ProviderFolders.Any(folder => relative.StartsWith(folder, StringComparison.OrdinalIgnoreCase)))
+            .Where(relative => !Owners.Contains(relative, StringComparer.OrdinalIgnoreCase))
             .Where(relative => File.ReadAllText(Path.Combine(RepoRoot, relative)).Contains("SystemCodePages.", StringComparison.Ordinal))
             .Should().BeEmpty("a page reaches a boundary through a handler of TextBoundaries (docs/DECISIONS.md, T-F467)");
     }

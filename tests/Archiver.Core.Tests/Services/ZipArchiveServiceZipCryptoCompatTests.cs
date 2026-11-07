@@ -170,7 +170,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
         const string cyrillic = "пароль";
         byte[] passwordBytes = passwordCodePage == 65001
             ? Encoding.UTF8.GetBytes(cyrillic)
-            : SystemCodePages.For(passwordCodePage).GetBytes(cyrillic);
+            : new TextBoundary(passwordCodePage).Lenient.GetBytes(cyrillic);
         string zip = ZipCryptoFixture.Write(Path.Combine(_temp.Path, $"cyr{passwordCodePage}.zip"), "a.txt",
             Encoding.ASCII.GetBytes("secret"), passwordBytes, dataDescriptor: false);
         var sut = new ZipArchiveService(new GroupPolicyOptions()) { NameCodePages = ZipNameCodePages.FromCodePages(866, 1251) };
@@ -196,7 +196,7 @@ public sealed class ZipArchiveServiceZipCryptoCompatTests : IDisposable
     public async Task ExtractAsync_Utf8Password_WhoseAnsiBytesAlsoPassTheCheckByte_Extracts()
     {
         const string cyrillic = "пароль";
-        Encoding ansi = SystemCodePages.For(1251);
+        Encoding ansi = new TextBoundary(1251).Lenient;
         string zip = Path.Combine(_temp.Path, "ambiguous.zip");
         int seed = Enumerable.Range(0, 100_000).First(candidateSeed =>
         {

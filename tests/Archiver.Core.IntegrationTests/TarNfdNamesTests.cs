@@ -98,7 +98,7 @@ public sealed class TarNfdNamesTests : IDisposable
     // A precomposed letter this machine's ANSI page holds: e-acute (1252, 1250, UTF-8), short i (1251).
     private static (string Nfc, string Nfd)? Pick()
     {
-        Encoding page = SystemCodePages.ForStrict(SystemCodePages.Ansi);
+        Encoding page = new TextBoundary(MachinePages.Current.Ansi).Strict;
         foreach (string nfd in new[] { "cafe" + (char)0x301 + ".txt", "ka" + (char)0x438 + (char)0x306 + ".txt" })
         {
             string nfc = nfd.Normalize(NormalizationForm.FormC);
@@ -123,7 +123,7 @@ public sealed class TarNfdNamesTests : IDisposable
         {
             Skip = new IntegrationAttribute().Skip;
             if (Skip is null && Pick() is null)
-                Skip = $"system page {SystemCodePages.Ansi} holds none of the precomposed letters";
+                Skip = $"system page {MachinePages.Current.Ansi} holds none of the precomposed letters";
         }
     }
 }
