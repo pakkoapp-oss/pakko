@@ -1520,8 +1520,8 @@ re-measured with T-F346's script before and after.
 ### T-F468 - `archiveint.dll` (Windows' libarchive) as the name source instead of tar.exe's ANSI listing (P2, stream I, research)
 
 - [ ] **Status:** research done 2026-11-07, measured and recorded in `docs/DECISIONS.md`, "T-F468 research
-  done". The agent recommends keeping "only tar.exe" for v1.10.0; the user decides. Open: 3.5.2 in the sandbox
-  from an interactive session, a helper inside an installed MSIX, ARM64. The research (the user, 2026-11-07: in this
+  done". The agent recommends keeping "only tar.exe" for v1.10.0; the user decides. Open: names on 3.5.2 inside
+  the sandbox, a helper inside an installed MSIX, ARM64. The research (the user, 2026-11-07: in this
   wave): both builds export libarchive's API
   (3.5.2: 422 exports, 3.8.9: 455, `archive_entry_pathname_w` included). An AOT probe in Pakko's AppContainer
   measures, on both builds:

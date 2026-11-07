@@ -14268,8 +14268,10 @@ constraint "only tar.exe" stands until the user decides (below).
   - Tar: pax UTF-8, and ustar with raw names in UTF-8, 1251, 1252, 866, 437 and 932.
   - ZIP: with the UTF-8 flag, UTF-8 bytes without it, and 866/437/932/1251 without it.
   - NanaZip: a 7z (LZMA2) and a ZIP.
-  - Encrypted: ZIP in AES-256 and in ZipCrypto (ASCII and UTF-8 passphrases), a 7z, and the repo's
-    RAR5.
+  - Encrypted: ZIP in AES-256 (ASCII and UTF-8 passphrases) and in ZipCrypto (ASCII only: NanaZip
+    refused a UTF-8 passphrase for ZipCrypto), a NanaZip 7z, and the repo's `encrypted.7z` and
+    `encrypted.rar` (RAR5).
+  - Also the repo's `valid.rar`. 22 archives in all.
 - **The helper does not control the CRT locale libarchive reads.**
   - `archiveint.dll` imports `_o_setlocale` (api-ms-win-crt-private), and
     `get_current_codepage`/`get_current_oemcp` read that state.
@@ -14286,42 +14288,53 @@ constraint "only tar.exe" stands until the user decides (below).
     "Pathname can't be converted from UTF-8 to current locale" and `_w` NULL.
   - A single-byte page decodes every byte, so a wrong page gives no signal.
   - 932 differs between the builds. 3.8.9 warns and returns NULL for a byte sequence that is no 932
-    text. 3.5.2 returns U+30FB for it without a warning. This is the only conversion difference
-    between the builds; the other differing cells are the 7z row under ABI below.
+    text. 3.5.2 returns U+30FB for it without a warning. The source explains it:
+    `archive_wstring_append_from_mbs_in_codepage` adds `MB_ERR_INVALID_CHARS` in v3.8.9 and not in
+    v3.5.2. This is the only conversion difference between the builds; the other differing cells are
+    the 7z row under ABI below.
 - **`_pathname_utf8` is not usable.** In the C state, 3.5.2 returns NULL for a non-Latin-1 name that
   3.8.9 returns. `_pathname` is NULL wherever the C state cannot hold the name.
 - **The sandbox changes no name.** On 3.8.9, the output inside and outside the AppContainer was
-  identical for all 23 fixtures under all 7 settings.
-- **Count against tar.exe (T-F469).** In the same sandbox on the host (uk-UA), tar.exe 3.8.9 left out
-  two of the seven names in every Unicode-stored fixture ("empty or unreadable filename ... skipping",
-  exit 1). The helper listed all seven, exact. On 3.5.2 (en-US), tar.exe listed seven rows.
-- **Passphrases** (`archive_read_add_passphrase`, bytes as given).
-  - ZIP AES-256 and ZipCrypto decrypt with an ASCII or a UTF-8 passphrase; the data's SHA-256
-    matched. A wrong passphrase gives "Incorrect passphrase", and none gives "Passphrase required for
-    this entry".
+  identical for all 22 archives under all 7 settings. On 3.5.2 the names were measured outside the
+  sandbox only (see the failure below).
+- **Count against tar.exe (T-F469).** In the same sandbox on the host (3.8.9, uk-UA 1251), tar.exe left
+  out two of the seven names in every Unicode-stored fixture ("empty or unreadable filename ...
+  skipping", exit 1). The helper listed all seven, exact. On PakkoW10 (3.5.2, en-US 1252), tar.exe
+  listed seven rows; the two machines differ in page as well as build.
+- **Passphrases** (`archive_read_add_passphrase`, bytes as given; outside the sandbox, on both builds).
+  - ZIP AES-256 decrypts with an ASCII or a UTF-8 passphrase, and ZipCrypto with an ASCII one; the
+    data's SHA-256 matched. A wrong passphrase gives "Incorrect passphrase", and none gives
+    "Passphrase required for this entry".
   - With the right passphrase, 7z gives "The file content is encrypted, but currently not supported"
-    and RAR5 gives "Reading encrypted data is not currently supported".
+    on both builds. RAR5 gives "Reading encrypted data is not currently supported" on 3.8.9. On 3.5.2,
+    RAR5 reports the entry as not encrypted and fails with "Unsupported block header size (was 5, max
+    is 2)".
   - Pakko reads ZIP in-process, so libarchive's passphrases add nothing for the formats only tar.exe
     reads.
 - **ABI and version gating.** All 20 exports exist in both builds, and `archive_version_details` names
   the build. 3.5.2 has no LZMA: a NanaZip LZMA2 7z fails with "LZMA codec is unsupported" in the
   helper and in tar.exe alike. Gating stays per codec (T-F403).
-- **Launching.** `CreateProcess` opens the image with the caller's token.
-  - The helper started inside the AppContainer from a folder with no AppContainer ACE (an owner-only
-    ACL). A copy granted RX in the quarantine behaved the same.
+- **Launching.**
+  - Observed: the helper started inside the AppContainer from a folder with no AppContainer ACE (an
+    owner-only ACL), and a copy granted RX in the quarantine behaved the same. The likely reason is
+    that `CreateProcess` maps the image with the caller's access (not verified in documentation).
   - The installed package folder grants the package's capability SIDs and `Users`, not the SID of
-    `Pakko.TarSandbox`. A single-file helper does not need it; a DLL beside the helper would.
+    `Pakko.TarSandbox`. A single-file helper did not need that grant here; a DLL loaded from beside
+    the helper would be opened by the child.
   - Not run: a helper inside an installed MSIX.
 - **A failure tar.exe does not have.**
-  - On PakkoW10 over PowerShell Direct (no interactive session), the helper exited 0xC0000142
+  - On PakkoW10 over PowerShell Direct (no interactive session), the AOT helper exited 0xC0000142
     (STATUS_DLL_INIT_FAILED) in the AppContainer. So did `whoami.exe` and `certutil.exe`, while
-    tar.exe and `cmd.exe` ran. Outside the AppContainer, the helper ran.
-  - In the host's interactive session, all of them ran.
-  - The AOT runtime imports `ole32.dll`; tar.exe imports no window-station DLL. A .NET helper would
-    therefore fail in the sandbox wherever `pakko` runs without a desktop (a service, a scheduled
-    task, a remote shell), where tar.exe works. A C helper with tar.exe's imports would not.
-  - Not measured: 3.5.2 in the sandbox from an interactive session. The VM's autologon stops at
-    LogonUI.
+    tar.exe and `cmd.exe` ran. Outside the AppContainer, the helper ran. In the host's interactive
+    session, all of them ran.
+  - Three C probes (`/MT`, load `archiveint.dll` and print `archive_version_details`), the same way:
+    importing only `kernel32.dll` it ran on 3.5.2; adding one `user32.dll` call, or
+    `CoInitializeEx` from `ole32.dll`, gave 0xC0000142. The AOT runtime imports `ole32.dll`.
+  - So a .NET helper fails in the sandbox without a desktop, while tar.exe and a kernel32-only C
+    helper run. Only PowerShell Direct was measured; a service, a scheduled task or a remote shell
+    running `pakko` is the same kind of context but was not tried.
+  - Not measured: names on 3.5.2 inside the sandbox (the VM's autologon stops at LogonUI, so no
+    interactive session).
 - **What the helper would replace, and what it would not.**
   - **As the lister only.** It gives exact UTF-16 names and the full entry count, with no ANSI round
     trip and no best fit. But a selection still reaches tar.exe through `-T`/`-X` on its ANSI command
@@ -14338,8 +14351,9 @@ constraint "only tar.exe" stands until the user decides (below).
 - **Recommendation (the agent; the constraint is the user's call).** Keep "only tar.exe" for v1.10.0.
   The lister-only role keeps all of the selection machinery and adds a second parser to keep in step
   with the first. The extractor role is a security-boundary change too large for this wave. If the
-  user wants the helper later, a C helper with tar.exe's imports, used as the lister first, is the
-  measured path. It would be a task of its own, with plan mode and the advisor gate at both ends.
+  user wants the helper later, a C helper importing only `kernel32.dll`, used as the lister first, is
+  the shape these runs point to (its launch was measured, its listing was not). It would be a task of
+  its own, with plan mode and the advisor gate at both ends.
 
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
