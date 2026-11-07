@@ -35,6 +35,7 @@ typedef int(__cdecl *support_fn)(void *);
 #define FAIL_OPTION (-4)
 #define FAIL_NOT_REGULAR (-5)
 #define FAIL_SELECTION_LEFT (-6)
+#define FAIL_NO_READER (-7)
 
 #define MAX_SELECTED 4000000u
 #define MAX_SELECTION_BYTES (MAX_SELECTED * 21u)
@@ -161,7 +162,7 @@ static struct {
     const wchar_t *(__cdecl *pathname_w)(void *);
     const wchar_t *(__cdecl *symlink_w)(void *);
     const wchar_t *(__cdecl *hardlink_w)(void *);
-    unsigned(__cdecl *filetype)(void *);
+    unsigned short(__cdecl *filetype)(void *); /* __LA_MODE_T is unsigned short on _WIN32 */
     la_int64_t(__cdecl *size)(void *);
     int(__cdecl *size_is_set)(void *);
     __int64(__cdecl *mtime)(void *);
@@ -173,26 +174,34 @@ static struct {
 
 /* The formats and filters Pakko may name. Never support_*_all: that adds mtree, which reads
    local files, and filters that start an external program (DECISIONS, "T-F470"). */
+#define KIND_FORMAT 0
+#define KIND_FILTER 1
+
 static struct support {
     const char *name;
     const char *exportName;
+    int kind;
     support_fn fn;
 } g_supports[] = {
-    { "tar", "archive_read_support_format_tar", NULL },
-    { "cpio", "archive_read_support_format_cpio", NULL },
-    { "7zip", "archive_read_support_format_7zip", NULL },
-    { "rar", "archive_read_support_format_rar", NULL },
-    { "rar5", "archive_read_support_format_rar5", NULL },
-    { "cab", "archive_read_support_format_cab", NULL },
-    { "gzip", "archive_read_support_filter_gzip", NULL },
-    { "bzip2", "archive_read_support_filter_bzip2", NULL },
-    { "compress", "archive_read_support_filter_compress", NULL },
-    { "xz", "archive_read_support_filter_xz", NULL },
-    { "lzma", "archive_read_support_filter_lzma", NULL },
-    { "lzip", "archive_read_support_filter_lzip", NULL },
-    { "zstd", "archive_read_support_filter_zstd", NULL },
+    { "tar", "archive_read_support_format_tar", KIND_FORMAT, NULL },
+    { "cpio", "archive_read_support_format_cpio", KIND_FORMAT, NULL },
+    { "7zip", "archive_read_support_format_7zip", KIND_FORMAT, NULL },
+    { "rar", "archive_read_support_format_rar", KIND_FORMAT, NULL },
+    { "rar5", "archive_read_support_format_rar5", KIND_FORMAT, NULL },
+    { "cab", "archive_read_support_format_cab", KIND_FORMAT, NULL },
+    { "gzip", "archive_read_support_filter_gzip", KIND_FILTER, NULL },
+    { "bzip2", "archive_read_support_filter_bzip2", KIND_FILTER, NULL },
+    { "compress", "archive_read_support_filter_compress", KIND_FILTER, NULL },
+    { "xz", "archive_read_support_filter_xz", KIND_FILTER, NULL },
+    { "lzma", "archive_read_support_filter_lzma", KIND_FILTER, NULL },
+    { "lzip", "archive_read_support_filter_lzip", KIND_FILTER, NULL },
+    { "zstd", "archive_read_support_filter_zstd", KIND_FILTER, NULL },
 };
 #define SUPPORT_COUNT ((int)(sizeof g_supports / sizeof g_supports[0]))
+
+/* The core exports load() found missing, printed after the V line. */
+static const char *g_missing[32];
+static int g_missingCount;
 
 static int load(void)
 {
@@ -204,9 +213,8 @@ static int load(void)
 #define BIND(field, name)                                       \
     *(FARPROC *)&la.field = GetProcAddress(m, name);            \
     if (la.field == NULL) {                                     \
-        put_str("X ");                                          \
-        put_str(name);                                          \
-        put_str("\n");                                          \
+        if (g_missingCount < (int)(sizeof g_missing / sizeof g_missing[0])) \
+            g_missing[g_missingCount++] = name;                 \
         missing = 1;                                            \
     }
     BIND(version_details, "archive_version_details")
@@ -362,12 +370,20 @@ static int is_plain_file(void *e)
     return la.filetype(e) == AE_IFREG && la.symlink_w(e) == NULL && la.hardlink_w(e) == NULL;
 }
 
-static void to_filetime(__int64 seconds, long nanoseconds, FILETIME *ft)
+/* FILETIME counts 100 ns from 1601 and SetFileTime takes it below 2^63: anything outside is not
+   representable, and the file keeps the time it was written at. */
+#define UNIX_TO_1601 11644473600LL
+#define MAX_FILETIME_SECONDS (0x7FFFFFFFFFFFFFFFLL / 10000000LL - UNIX_TO_1601 - 1)
+
+static int to_filetime(__int64 seconds, long nanoseconds, FILETIME *ft)
 {
     ULARGE_INTEGER u;
-    u.QuadPart = (unsigned __int64)(seconds + 11644473600LL) * 10000000ULL + (unsigned __int64)nanoseconds / 100;
+    if (seconds < -UNIX_TO_1601 || seconds > MAX_FILETIME_SECONDS || nanoseconds < 0 || nanoseconds >= 1000000000L)
+        return 0;
+    u.QuadPart = (unsigned __int64)(seconds + UNIX_TO_1601) * 10000000ULL + (unsigned __int64)nanoseconds / 100;
     ft->dwLowDateTime = u.LowPart;
     ft->dwHighDateTime = u.HighPart;
+    return 1;
 }
 
 static int open_output(unsigned __int64 index, HANDLE *file)
@@ -422,7 +438,7 @@ static int copy_entry(void *ar, void *e, HANDLE file, unsigned __int64 *total, u
         const int r = la.data_block(ar, &block, &length, &offset);
         if (r == ARCHIVE_EOF)
             break;
-        if (r < ARCHIVE_WARN)
+        if (r != ARCHIVE_OK && r != ARCHIVE_WARN)
             return report_failure(ar, r);
         if (offset < 0 || (unsigned __int64)offset + length < (unsigned __int64)offset)
             return report_own_failure(FAIL_OFFSET);
@@ -450,8 +466,7 @@ static int copy_entry(void *ar, void *e, HANDLE file, unsigned __int64 *total, u
             return EXIT_WRITE;
         if (la.mtime_is_set(e)) {
             FILETIME ft;
-            to_filetime(la.mtime(e), la.mtime_nsec(e), &ft);
-            if (!SetFileTime(file, NULL, NULL, &ft))
+            if (to_filetime(la.mtime(e), la.mtime_nsec(e), &ft) && !SetFileTime(file, NULL, NULL, &ft))
                 return EXIT_WRITE;
         }
     }
@@ -493,9 +508,12 @@ static int parse_u64(const char *s, unsigned __int64 *value)
     return n > 0;
 }
 
-/* Marks each comma-separated name of list in wanted; an unknown or repeated name is a usage error. */
-static int parse_supports(const char *list, int *wanted)
+/* Marks each comma-separated name of list in wanted; an empty list, a name of the other kind, an
+   unknown or a repeated name is a usage error. */
+static int parse_supports(const char *list, int kind, int *wanted)
 {
+    if (*list == 0)
+        return 0;
     while (*list != 0) {
         int len = 0;
         int i;
@@ -503,7 +521,7 @@ static int parse_supports(const char *list, int *wanted)
         while (list[len] != 0 && list[len] != ',')
             len++;
         for (i = 0; i < SUPPORT_COUNT; i++) {
-            if (lstrlenA(g_supports[i].name) == len) {
+            if (g_supports[i].kind == kind && lstrlenA(g_supports[i].name) == len) {
                 int k = 0;
                 while (k < len && g_supports[i].name[k] == list[k])
                     k++;
@@ -544,7 +562,7 @@ static int probe(void)
     for (i = 0; i < SUPPORT_COUNT; i++) {
         void *ar = la.read_new();
         if (ar == NULL)
-            return EXIT_ARCHIVE;
+            return report_own_failure(FAIL_NO_READER);
         put_str("C ");
         put_str(g_supports[i].name);
         put_str(" ");
@@ -571,7 +589,7 @@ static int run(void *ar, int extract, int test, const unsigned __int64 *selected
         r = la.next_header(ar, &e);
         if (r == ARCHIVE_EOF)
             break;
-        if (r < ARCHIVE_WARN)
+        if (r != ARCHIVE_OK && r != ARCHIVE_WARN)
             return report_failure(ar, r);
         if (r == ARCHIVE_WARN) {
             put_str("W ");
@@ -590,7 +608,7 @@ static int run(void *ar, int extract, int test, const unsigned __int64 *selected
                 return r;
         } else {
             r = la.data_skip(ar);
-            if (r < ARCHIVE_WARN)
+            if (r != ARCHIVE_OK && r != ARCHIVE_WARN)
                 return report_failure(ar, r);
         }
     }
@@ -653,9 +671,9 @@ int __cdecl main(int argc, char **argv)
     } else {
         if (lstrcmpA(mode, "list") != 0 && !extract && !test)
             return EXIT_USAGE;
-        if (formats == NULL || formats[0] == 0 || !parse_supports(formats, wanted))
+        if (formats == NULL || !parse_supports(formats, KIND_FORMAT, wanted))
             return EXIT_USAGE;
-        if (filters != NULL && !parse_supports(filters, wanted))
+        if (filters != NULL && !parse_supports(filters, KIND_FILTER, wanted))
             return EXIT_USAGE;
         if ((extract || test) != (selectPath != NULL) || extract != haveMax)
             return EXIT_USAGE;
@@ -667,8 +685,13 @@ int __cdecl main(int argc, char **argv)
     if (result == EXIT_LOAD)
         goto done;
     put_str("V ");
-    put_hex8(result == EXIT_DONE ? la.version_details() : NULL);
+    put_hex8(la.version_details != NULL ? la.version_details() : NULL);
     put_str("\n");
+    for (i = 0; i < g_missingCount; i++) {
+        put_str("X ");
+        put_str(g_missing[i]);
+        put_str("\n");
+    }
     if (result != EXIT_DONE)
         goto done;
     if (isProbe) {
@@ -685,7 +708,7 @@ int __cdecl main(int argc, char **argv)
 
     ar = la.read_new();
     if (ar == NULL) {
-        result = EXIT_ARCHIVE;
+        result = report_own_failure(FAIL_NO_READER);
         goto done;
     }
     for (i = 0; i < SUPPORT_COUNT; i++) {
@@ -697,7 +720,15 @@ int __cdecl main(int argc, char **argv)
     }
     if (charset != NULL) {
         char option[32] = "hdrcharset=";
-        lstrcatA(option, charset);
+        int k = lstrlenA(option);
+        int c = 0;
+        while (charset[c] != 0 && k < (int)sizeof option - 1)
+            option[k++] = charset[c++];
+        option[k] = 0;
+        if (charset[c] != 0) {
+            result = EXIT_USAGE;
+            goto done;
+        }
         if (la.set_options(ar, option) != ARCHIVE_OK) {
             result = report_failure(ar, FAIL_OPTION);
             goto done;

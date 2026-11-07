@@ -17,27 +17,46 @@ public sealed class ArchiveHelperBinaryTests
     private const ushort NxCompat = 0x0100;
     private const ushort GuardCf = 0x4000;
     private static readonly ushort[] Required = [DynamicBase, HighEntropyVa, NxCompat, GuardCf];
+    private const uint CetCompat = 0x0001;
 
-    [Fact]
-    public void Imports_OnlyKernel32()
+    [Theory]
+    [InlineData("x64")]
+    [InlineData("ARM64")]
+    public void Imports_OnlyKernel32(string platform)
     {
-        Pe pe = Pe.Read(ArchiveHelperBuild.ExePath);
+        Pe pe = Pe.Read(ArchiveHelperBuild.ExePathFor(platform));
 
         pe.ImportedDlls.Should().Equal(["KERNEL32.dll"], "an AppContainer child importing anything else fails to start without a desktop");
         pe.HasDelayImports.Should().BeFalse("a delay-loaded user32/ole32 would fail at first call instead of at start");
     }
 
-    [Fact]
-    public void Mitigations_AreOn()
+    [Theory]
+    [InlineData("x64", 0x8664)]
+    [InlineData("ARM64", 0xAA64)]
+    public void Mitigations_AreOn(string platform, int machine)
     {
-        Pe pe = Pe.Read(ArchiveHelperBuild.ExePath);
+        Pe pe = Pe.Read(ArchiveHelperBuild.ExePathFor(platform));
 
-        pe.Machine.Should().Be(0x8664);
+        pe.Machine.Should().Be((ushort)machine);
         foreach (ushort flag in Required)
             (pe.DllCharacteristics & flag).Should().Be(flag, $"DLL characteristic 0x{flag:X4} must be set");
+        if (platform == "x64")
+            (pe.ExtendedDllCharacteristics & CetCompat).Should().Be(CetCompat, "x64 is linked /CETCOMPAT");
     }
 
-    private sealed record Pe(ushort Machine, ushort DllCharacteristics, IReadOnlyList<string> ImportedDlls, bool HasDelayImports)
+    // T-F377: the certification kit flags a packaged exe that declares no DPI awareness.
+    [Theory]
+    [InlineData("x64")]
+    [InlineData("ARM64")]
+    public void Manifest_DeclaresPerMonitorV2(string platform)
+    {
+        byte[] exe = File.ReadAllBytes(ArchiveHelperBuild.ExePathFor(platform));
+
+        Encoding.ASCII.GetString(exe).Should().Contain(">PerMonitorV2</dpiAwareness>");
+    }
+
+    private sealed record Pe(ushort Machine, ushort DllCharacteristics, uint ExtendedDllCharacteristics, IReadOnlyList<string> ImportedDlls,
+        bool HasDelayImports)
     {
         public static Pe Read(string path)
         {
@@ -52,6 +71,8 @@ public sealed class ArchiveHelperBinaryTests
             ushort characteristics = BinaryPrimitives.ReadUInt16LittleEndian(b.AsSpan(optional + 70));
             int directories = optional + 112;
             uint importRva = BinaryPrimitives.ReadUInt32LittleEndian(b.AsSpan(directories + 8));
+            uint debugRva = BinaryPrimitives.ReadUInt32LittleEndian(b.AsSpan(directories + 6 * 8));
+            uint debugSize = BinaryPrimitives.ReadUInt32LittleEndian(b.AsSpan(directories + 6 * 8 + 4));
             uint delayRva = BinaryPrimitives.ReadUInt32LittleEndian(b.AsSpan(directories + 13 * 8));
             int sectionTable = optional + optionalSize;
 
@@ -79,7 +100,17 @@ public sealed class ArchiveHelperBinaryTests
                 int n = Offset(nameRva);
                 dlls.Add(Encoding.ASCII.GetString(b, n, Array.IndexOf(b, (byte)0, n) - n));
             }
-            return new Pe(machine, characteristics, dlls, delayRva != 0);
+            // IMAGE_DEBUG_TYPE_EX_DLLCHARACTERISTICS (20) carries the CET bit.
+            uint extended = 0;
+            if (debugRva != 0)
+            {
+                for (int d = Offset(debugRva), stop = d + (int)debugSize; d + 28 <= stop; d += 28)
+                {
+                    if (BinaryPrimitives.ReadUInt32LittleEndian(b.AsSpan(d + 12)) == 20)
+                        extended = BinaryPrimitives.ReadUInt32LittleEndian(b.AsSpan((int)BinaryPrimitives.ReadUInt32LittleEndian(b.AsSpan(d + 24))));
+                }
+            }
+            return new Pe(machine, characteristics, extended, dlls, delayRva != 0);
         }
     }
 }
