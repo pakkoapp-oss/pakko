@@ -1536,6 +1536,7 @@ Flow (`TarSandboxScope.CreateAsync` + `ListAsync`/`ExtractAsync`):
    ANSI code page, the one its command line goes through (`TarOutputEncoding`, T-F465). The plain
    listing's bytes are kept: a name sent back to tar.exe (`-T`, `-X`, `-q`) must go out as exactly
    the bytes tar.exe printed for it (`TarNames.ReadListedNameBytes`), or the archive is refused
+   (on extraction's `-q` pass only the first copies are reported as not extracted)
 7. Run tar.exe inside the AppContainer for **both** the T-F49 whole-archive pre-scan (`-t`/`-tv`)
    and the extraction (`-x -C out`). Before extraction, Pakko itself pre-creates every directory
    the archive implies (libarchive's implicit parent-directory creation fails under the

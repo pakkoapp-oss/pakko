@@ -1521,6 +1521,10 @@ re-measured with T-F346's script before and after.
   - From T-F465: raw tar names read in libarchive's OEM page - the `acp_ocp_map` row by the UCRT locale
     name (measure that name first, zh-CN above all), otherwise `GetOEMCP()`; today `UserOem`.
   - `SystemCodePages.UserAnsi` has no production reader since T-F465: drop it or keep it private.
+  - From T-F465's review: on a DBCS page (932) `ReadListedNameBytes` checks the round trip with .NET's
+    tables while the guard encodes with kernel32; a character with two byte forms printed in the other
+    one would be refused (a false refusal). Measure with the provider's 932 matrix; the `-q` guard has
+    no test that fails without it (the main `-T` guard and `JudgeExtracted` reach first).
 - **Reported by:** the agent, 2026-11-07.
 
 ### T-F468 - `archiveint.dll` (Windows' libarchive) as the name source instead of tar.exe's ANSI listing (P2, stream I, research)
@@ -1664,6 +1668,8 @@ re-measured with T-F346's script before and after.
   message of its own (37 locales, `Glossary.tsv`), through whichever stream holds the Messages set.
 - **Also (2026-11-06):** the T-F461 refusals of a filter (a folder tar.exe wrote by another name)
   show the same code-page message.
+- **Also (2026-11-07, T-F465's review):** the byte guard (`TarSandboxScope.EnsureSentAsListedAsync`)
+  refuses a name that is representable but was printed in other bytes, and says the same thing.
 - **Reported by:** T-F441's closing notes (`docs/DECISIONS.md`, "T-F441 and T-F424"), 2026-10-31.
 
 ### T-F451 — `RunPipelineAsync_CancelledMidFlight_NoTasksLeftRunningAfterwards` races a timer (P3, flaky test)
