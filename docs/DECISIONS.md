@@ -14426,6 +14426,15 @@ would show the right names and still fail on them.
   helper reaches on an archive is final.
 - The helper is treated as compromisable, like tar.exe: its output is parsed strictly and `out\` is
   read only through `QuarantineFiles`.
+- One centralized handler, not a branch at every call site (the user, 2026-11-07): one reader
+  interface (list; extract a selection into the quarantine; test) with two implementations, the
+  helper and tar.exe, chosen once per process by the gate and both launched only through
+  `TarSandboxScope`. Both return the entries and the quarantine's files under their final names, so
+  every tar.exe name prediction (`EntryDiskName.AsTarExeWrites`, `JudgeExtracted`,
+  `FoldersTarExeWrote`, the NFC landing, T-F464's best-fit relation) moves inside the tar.exe
+  implementation; `TarSandboxedService`, `AntivirusScanService`, the layout and the report never ask
+  which backend ran. An owner test, like `QuarantineFilesOwnerTests`, keeps launches and the
+  predictions inside the handler's files.
 
 **Step 1, measured (2026-11-07).** A prototype with the planned protocol (scratch,
 `~/.claude-work/tf470`), launched in the `Pakko.TarSandbox` AppContainer from a quarantine laid out as

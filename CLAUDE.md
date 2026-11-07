@@ -127,7 +127,8 @@ this file or in one of these (grep `.claude/rules/`).
   `[GeneratedComInterface]`) or reflection JSON (use a `JsonSerializerContext`). Never
   `UseSystemResourceKeys`/`InvariantGlobalization`. Verify on the deployed package, not under the
   debugger. WinUI detail: `.claude/rules/app-winui.md`.
-- **tar.exe:** always use `C:\Windows\System32\tar.exe` (absolute path) — never via PATH
+- **tar.exe:** always use `C:\Windows\System32\tar.exe` (absolute path) — never via PATH; likewise
+  `C:\Windows\System32\archiveint.dll`, loaded only by `Archiver.ArchiveHelper.exe` (T-F470)
 - **Any `Process.Start` of a system-provided executable uses an absolute path** (PATH-hijack
   resistance, S4036); helper: `Archiver.Core/Services/ExplorerLauncher.cs` (T-F136).
 - **tar.exe format support:** creates tar/gz/bz2/xz/zst/lzma, and on a new enough Windows also
@@ -270,8 +271,8 @@ Agent tool notes (the rest are in `.claude/rules/scripts.md` and `device-verific
 - Do not use `Thread.Sleep` — use `await Task.Delay` if needed
 - Do not use `static` mutable fields in services
 - Do not use legacy `IContextMenu` shell extension — use `IExplorerCommand`
-- Do not call `tar.exe` via PATH — always absolute path `C:\Windows\System32\tar.exe`
-- Do not extract tar/RAR/7z formats in-process — only via `tar.exe` subprocess
+- Do not read tar/RAR/7z formats in-process — only in a sandboxed subprocess: `tar.exe` or
+  `Archiver.ArchiveHelper.exe` (T-F470); `archiveint.dll` never loads into a Pakko .NET process
 
 **Public-repo hygiene (this repo is public — audited 2026-07-24, clean, keep it that way):**
 - Do not commit real secret/credential/token/private-key *values* into any file. GitHub Actions

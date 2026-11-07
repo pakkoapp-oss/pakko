@@ -10,7 +10,8 @@
     architectures' ILCompiler packages are left out, and the result is checked before it is written.
     CI runs this in a job of its own with no secrets (build.yml's sbom job); see scripts/README.md.
 .PARAMETER Artifact
-    Msix (Archiver.App with the three satellite exes) or Cli (pakko.exe alone).
+    Msix (Archiver.App with the three satellite exes) or Cli (pakko.exe). The C parts (the shell
+    extension, the archive helper) use no packages and add nothing here.
 .PARAMETER Architecture
     x64 or arm64.
 .PARAMETER Version

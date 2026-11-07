@@ -1517,11 +1517,24 @@ re-measured with T-F346's script before and after.
   it fail closed. Both builds; `TarSendsAsListedExhaustiveTests` asserts today's behaviour.
 - **Reported by:** the agent, 2026-11-07.
 
+### T-F471 - `CreateAsync_StagingFails_LeavesNoQuarantineFolderBehind` races other test processes (P4)
+
+- [ ] **Status:** open. Failed once in a full `dotnet test` run on 2026-11-07, passed on rerun. The test
+  diffs the shared `%TEMP%\PakkoTarSandbox` before and after, while `Archiver.CLI.Tests` and
+  `Archiver.Shell.Tests` run in parallel processes that create quarantines there too (the
+  cross-project vector `.claude/rules/tests.md` names). Fix: judge only folders this call could have
+  made (e.g. a test seam for the quarantine parent), not the shared folder.
+- **Reported by:** the agent, 2026-11-07, during T-F470 step 2.
+
 ### T-F470 - A sandboxed helper over Windows' own `archiveint.dll` (P2, v1.10.0 stream I)
 
-- [ ] **Status:** open, in the v1.10.0 wave (the user, 2026-11-07, first "an option for future
+- [ ] **Status:** in progress, in the v1.10.0 wave (the user, 2026-11-07, first "an option for future
   releases", then the same day: "add the libarchive task to this wave; the constant file-name errors
-  bother me"). Measured
+  bother me"; lister and extractor, quiet fallback to tar.exe, `docs/DECISIONS.md`, "T-F470"). Step 1
+  (measurements) and step 2 (`src/Archiver.ArchiveHelper`, packaging, protocol tests,
+  `docs/ARCHITECTURE.md`'s protocol) done; Pakko does not launch it yet. Next: step 3, Core's gate,
+  listing and extract/Test/scan by index in one PR; step 4, T-F469/T-F453/T-F464/T-F461 narrowed to
+  the tar.exe fallback, `docs/SMOKE.md`, `docs/TESTING.md`. Measured
   in `docs/DECISIONS.md`, "T-F468 research done". The user's conditions:
   - only the DLL Windows ships (`C:\Windows\System32\archiveint.dll`, absolute path), with the
     signature checks tar.exe gets (T-F401's catalog case included);
@@ -1537,8 +1550,7 @@ re-measured with T-F346's script before and after.
   - names through `hdrcharset` set by the provider;
   - used as the lister first.
 
-  Changing the hard constraint "only tar.exe" (`CLAUDE.md`) and `SECURITY.md`'s trust model needs the
-  user's OK at that time. Plan mode and the advisor gate at both ends, plus a fresh reviewer (sandbox
+  The user OK'd the `CLAUDE.md` and `SECURITY.md` changes (2026-11-07; made in step 2). Plan mode and the advisor gate at both ends, plus a fresh reviewer (sandbox
   and untrusted-input class). Not measured yet: ARM64's `archiveint.dll`, and a launch from a process
   proven to hold package identity.
 - **Reported by:** the user, 2026-11-07.
