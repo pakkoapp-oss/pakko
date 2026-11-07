@@ -13862,6 +13862,166 @@ availability follows the installed tar.exe at run time.
   empty folder) and the filter test now asking for `("emptydir/", true)` and the folder; both red
   before the fix. Smoke `CLI-046`.
 
+## T-F464 and T-F465 - what tar.exe's listing is, measured against the names on disk (2026-11-07)
+
+**Status: research done, decided below** (no product code in this entry). The
+question: is there a rule from a file in the quarantine to the listed name it is shown as, measured
+on both tar builds, that could replace `EntryDiskName.AsTarExeWrites` after extraction (the move
+phase, first copies, the filter) and let T-F462's count become accounting by name?
+
+**Source** (libarchive at `v3.5.2` and `v3.8.9`, `libarchive/archive_string.c`, `tar/util.c`):
+- Every name leaves libarchive through `archive_string_append_from_wcs_in_codepage` or
+  `win_strncat_from_utf16`, which call `WideCharToMultiByte(to_cp, 0, ...)`: flags 0, so Windows' own
+  best-fit table, in both versions.
+- 3.5.2: `if (to_cp == CP_UTF8 || sc == NULL) dp = NULL;` - a character with no mapping becomes the
+  page's default `?`, without an error. 3.8.9: `if (to_cp == CP_UTF8) dp = NULL;` - `defchar_used`
+  makes the conversion fail, and bsdtar skips the entry ("unreadable filename").
+- `archive_mstring_copy_mbs_len_l` (Windows): a header name read through a converter is kept as
+  UTF-16 (`MultiByteToWideChar` from the format's page); with no converter the raw bytes are kept.
+  A tar without a charset is read from `CP<current_oemcp>`, with no conversion when the current page
+  equals it (`archive_string_default_conversion_for_read`).
+- `get_current_codepage` takes the page from `setlocale(LC_CTYPE, NULL)`'s suffix;
+  `get_current_oemcp` looks the locale *name* up in `acp_ocp_map`.
+- `safe_fprintf` writes a byte it cannot print as `\ooo` (and `\` as `\\`), so the listing's bytes
+  round-trip through `TarNames.ReadListing`.
+
+**Measured** (tar.exe run directly, no sandbox; fixtures of one entry per BMP character, 63,446
+names `<4 hex digits><character>z`, through pax with a UTF-8 path, ustar with raw UTF-8 bytes, ustar
+with raw bytes of the OEM page, and 7z written by the vendored 7za with `-m0=Copy -mhc=off`; 3.5.2
+has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a listed name's bytes equal
+`WideCharToMultiByte(page, 0, name on disk)`.
+
+| Fixture | Windows 11 26300, bsdtar 3.8.9, ACP 1251 | Windows 10 19045, bsdtar 3.5.2, ACP 1252 (PakkoW10) |
+|---|---|---|
+| pax, UTF-8 path | 624 listed and 624 extracted, every one equal; the other 62,822 skipped by both `-t` and `-x`, exit 1 | 63,443 of 63,443 equal (`?` where no character maps), exit 0 |
+| ustar, raw UTF-8 bytes | 63,446 of 63,446 equal | 63,446 of 63,446 equal |
+| ustar, raw OEM bytes (866 / 437) | 128 of 128 equal | 128 of 128 equal |
+| 7z (UTF-16 names) | as pax | as pax, 63,443 of 63,443 |
+
+- The three rows left unmatched in each run were the fixture's: U+030A, U+030C and U+032D are
+  combining marks, and tar.exe lands names in NFC (`030a` plus U+030A lands as `030` plus U+00E5),
+  so the key moved; their bytes were equal.
+- **tar.exe prints in the system ANSI page, not the regional format's (T-F465).**
+  - Host, `Set-Culture en-US` and `ja-JP` (the user's OK, restored at once): the UCRT's
+    `setlocale(LC_ALL, "")` answers `English_United States.1251` and `Japanese_Japan.1251`. The
+    listing stayed 1251 best fit.
+  - PakkoW10, format uk-UA on system en-US, also after a reboot: the listing matches 1252 (63,443)
+    and not 1251 (63,056).
+  - The OEM page follows the locale's name (en-US format on the host: a raw ustar name was read as
+    437, not 866).
+  - `TarOutputEncoding.Current` decodes with `SystemCodePages.UserAnsi`, the format's page; T-F244's
+    "the regional format's ANSI page" was confirmed only on uk-UA, where both pages are 1251.
+
+- **T-F465 triage, 2026-11-07.**
+  - Through a Native AOT `pakko` on PakkoW10 (3.5.2, format uk-UA, system 1252) and on the host (3.8.9,
+    format en-US for the run, system 1251):
+    - `l` shows wrong names: `caf` plus U+00E9 as `caf` plus U+0439, U+00DC as U+042C. The refusal
+      message names the format's page, not the one tar.exe used.
+    - Extracting everything is right: the files land under their true names.
+    - `pakko`'s names after the archive are a filter (`EntryFilter`), not a member list. A filter, and
+      Test with a filter, on a plain tar are refused on 3.5.2, because the header veto sees the wrong
+      names. On 3.8.9 they are refused after the full extraction, which shows the true names.
+  - **The App's member path swaps files silently (P1).** A throwaway integration test through
+    `TarSandboxedService` on the host, format en-US, system 1251, bsdtar 3.8.9. The archive holds
+    `a` plus U+0402 (3 bytes, `DJE`; byte 0x80 in 1251, which 1252 shows as U+20AC) and the true `a`
+    plus U+20AC (4 bytes, `EURO`; byte 0x88 in 1251). The listing shows the 3-byte row as `a` plus
+    U+20AC.
+    - Selecting that row through `SelectedEntryPaths`, as the browser does, extracted the 4-byte
+      `EURO` file with success. That held for a 7z and for a `.tar.xz`.
+    - Test with a filter on U+20AC passed, having tested the wrong entry.
+    - Format uk-UA: the same row gave `DJE`.
+    - **The selection scan reports Clean for the threat.** Through `AntivirusScanService` with a fake
+      AMSI scanner that flags the `DJE` content, scanning the 3-byte row by `SelectedEntryPaths` gave:
+      - format en-US: Clean, after scanning the true `a` plus U+20AC file (`EURO`);
+      - format uk-UA: ThreatDetected.
+
+      That held for a 7z and for a `.tar.xz`.
+    - In every version since v1.5.0: `TarOutputEncoding` has used the format's page since T-F244
+      (`acca0de5`, 2026-09-25), which is in every tag from v1.5.0 to v1.9.0, the Store's 1.9.0 included.
+    - Formats whose headers Pakko does not read have only `JudgeByRepeats`. The member names go to
+      tar.exe in the system page, and a selection run has no disk check, so nothing sees the swap.
+    - On 3.5.2 the swap needs such a format, and Windows 10's tar.exe has only zlib (Pakko refuses 7z
+      there), so it is a 3.8.9 case: Windows 11 with a format whose page differs from the system's.
+  - Test harness note: a `dotnet test` started right after `Set-Culture` back to uk-UA still saw
+    en-US; a later run saw uk-UA. Always check the page a run used (the refusal text or a probe).
+- **NFD names (macOS tars).** tar.exe lists and writes a name in NFC, while `TarHeaderNames` compares the
+  NFD header name, so the veto calls the listing Lossy.
+  - A filter or Test with a filter over such an archive is refused, whatever it selects.
+  - On the member path only a selection of the NFD entry itself is refused; `plain.txt` beside it
+    extracts.
+  - An archive holding the NFC and the NFD form of one name fails extraction "2 of 3", nothing
+    written: T-F462's count catches the second copy landing on the first.
+
+- **A DBCS system page (PakkoW10, system and format ja-JP, ACP and OEM 932).**
+  - 3.5.2 matches the hypothesis exactly:
+    - pax and 7z: 63,443 of 63,443;
+    - ustar with raw OEM bytes: 9,274 of 9,274.
+  - Raw UTF-8 in ustar: 24,210 of 63,446 differ. With ACP equal to OEM, libarchive keeps the raw bytes,
+    so the listing is the raw bytes and the name on disk is `MultiByteToWideChar(932, raw)`, which is
+    lossy. An invalid pair ends with U+30FB, and the next byte (`z` here) goes into it. Every one of
+    those rows satisfies the other direction: the decoded listing is the disk name. .NET's
+    `CodePagesEncodingProvider` 932 (what `SystemCodePages.For` uses) decodes all of them as Win32 does.
+  - Windows 11's bsdtar 3.8.9 copied to the VM, labelled as such (Windows 10's NLS tables, not 3.8.9's
+    own system):
+    - The relation holds for every file it wrote.
+    - It listed entries it then did not write: 1,608 pax names (characters whose 932 mapping
+      fails), 19,413 raw UTF-8 names, and 4 raw OEM names that 932 maps to the private use area
+      ("Invalid empty pathname").
+    - Each such run ended with exit 1, so it is loud.
+- **The relation, as measured.** Let the decoded listed name be L and the name on disk D. Then L equals
+  D, or L equals D's best-fit round trip through the system ACP (`WideCharToMultiByte(ACP, 0)`, then
+  back). It held for every entry that reached disk:
+  - 3.8.9 at 1251;
+  - 3.5.2 at 1252 and 932;
+  - the 3.8.9 binary at 932;
+  - formats: pax, ustar raw UTF-8, ustar raw OEM and 7z.
+
+  Not measured:
+  - native 3.8.9 at any page but 1251;
+  - characters outside the BMP;
+  - names longer than one ustar field;
+  - 936, 949, 950 and 65001;
+  - RAR, cpio, ISO, CAB and ar.
+
+  The 932 raw class is many-to-one: several names decode to one disk name.
+- **Not run: plan step 3** (T-F461's shapes through the sandbox). Those shapes were measured in the
+  sandbox for T-F460 ("T-F460 and T-F454"), and none changes the relation. Item 5 is the move phase
+  keying the trimmed name `d/x.txt` while the quarantine holds `d./x.txt`. A part on disk ending in a
+  dot or a space is observably trimmed, so that keying needs no prediction. Items 1-4 happen before
+  tar.exe runs (the folders Pakko makes first), where no quarantine exists yet. They stay T-F461's.
+
+**Decisions (2026-11-07).**
+- **T-F465 first (P1).** The listing is decoded in the system ACP, the page `TarCommandLineEncoding`
+  already uses, and the refusal names that page.
+  - A guard on bytes, not names. A name relation cannot see the swap: the wrong decode is exactly
+    what makes the shown name equal the other file's name. Instead, every member name sent to tar.exe
+    must encode in the command-line page to the same bytes it has in the output page. Measured on the
+    probe fixture with format en-US and system 1251:
+    - the two swapped rows fail it;
+    - `plain.txt` and `a.log` pass;
+    - with format uk-UA every row passes.
+
+    This also catches any later drift between the two pages, whichever is right.
+  - The regression test that fails anywhere: extend `TextBoundaryOwnersTests` so the tar boundary takes
+    its output page from the source `TarCommandLineEncoding` uses, never `UserAnsi`. Today's code
+    fails it. The culture-flip integration test stays as the behavioural check and states the page
+    pair it covers.
+  - `TarSandboxScope`'s `UserOem` against libarchive's `acp_ocp_map` is checked in the same task.
+- **T-F466 (P3):** compare `TarHeaderNames`' names with the listing after NFC normalization, which
+  tar.exe applies (measured), so a macOS tar is not refused.
+- **T-F464: option A, bounded.** After a run without a member list:
+  - The quarantine's files are matched to the file entries in scope by the relation, one file to one
+    entry, and an entry left unmatched fails as `TarFilesMissing` / Inconclusive.
+  - This is **in addition to** T-F462's count, never in place of it. A wrong relation can only add a
+    false failure; Clean never rests on it.
+  - Where a name picks a file (a filter's drop, a duplicate group's first copy judged per group, the
+    trimmed and renamed keying), only a unique match decides. Anything ambiguous, such as the 932
+    raw class, falls back to today's fail-closed path.
+  - Checks before tar.exe runs (folders made first, the 8.3 alias check, `-q` names, `TarNames.Judge`)
+    are unchanged.
+- **Order:** T-F465, T-F466, then T-F464's code. Tests come first, on both builds, and an integration
+  test of tar.exe's output states the build and the page it covers.
+
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
 - **Why.** tar.exe writes through the long-path prefix, so `a.txt.`, `a.txt ` and a folder `d ` are on
