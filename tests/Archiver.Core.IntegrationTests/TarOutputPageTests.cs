@@ -80,6 +80,22 @@ public sealed class TarOutputPageTests : IDisposable
         result.Success.Should().BeFalse(fixture.Describe());
     }
 
+    // The "-q" first copies: the threat is only in the first of two same-named entries, so only the
+    // first-copy pass can reach it, and it sends the listed name back to tar.exe.
+    [Integration]
+    public async Task Scan_FirstCopyUnderAnotherPage_NeverClean()
+    {
+        if (Fixture(threatTwice: true) is not { } fixture)
+            return;
+        var scanner = new FakeAmsiScanner { DetectedText = "DJE" };
+        var sut = new AntivirusScanService(new TarCapabilities(), groupPolicyOptions: new GroupPolicyOptions(), () => scanner,
+            providerState: () => AmsiProviderState.Usable) { ForcedTarOutputEncoding = fixture.Listing };
+
+        ThreatScanResult result = await sut.ScanAsync(new AntivirusScanOptions { ArchivePaths = [fixture.Path] });
+
+        result.OverallVerdict.Should().NotBe(ThreatVerdict.Clean, fixture.Describe());
+    }
+
     // The control: in the page tar.exe prints in, the same selection extracts the threat itself.
     [Integration]
     public async Task Extract_SelectionInTheSystemPage_TheSelectedFile()
@@ -111,7 +127,7 @@ public sealed class TarOutputPageTests : IDisposable
     // read in page W shows as "a" + W(b), and the plain file under exactly that shown name, whose
     // bytes in P differ from b. 1251 and 1252 each give one (0x80/0x88 both ways, measured). Null
     // on a page with no such pair (UTF-8, for one).
-    private SwapFixture? Fixture()
+    private SwapFixture? Fixture(bool threatTwice = false)
     {
         int system = SystemCodePages.Ansi;
         int other = system == 1252 ? 1251 : 1252;
@@ -142,6 +158,9 @@ public sealed class TarOutputPageTests : IDisposable
                 new TarBuilder.Entry { Name = "label", TypeFlag = 'V' },
                 TarBuilder.PaxPath(threat),
                 new TarBuilder.Entry { Name = "threat", Content = Encoding.ASCII.GetBytes(ThreatText) },
+                .. (threatTwice
+                    ? (TarBuilder.Entry[])[TarBuilder.PaxPath(threat), new TarBuilder.Entry { Name = "copy", Content = Encoding.ASCII.GetBytes("second copy") }]
+                    : []),
                 TarBuilder.PaxPath(shown),
                 new TarBuilder.Entry { Name = "plain", Content = Encoding.ASCII.GetBytes("plain") },
                 // A third file, so a filter leaving out one name is sent as "-X" (TestSubset: the shorter list).

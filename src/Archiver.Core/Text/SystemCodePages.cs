@@ -32,9 +32,9 @@ public static partial class SystemCodePages
     public static int Oem => (int)GetOEMCP();
 
     /// <summary>
-    /// The ANSI code page of the user's regional format, which a C runtime gets from
-    /// <c>setlocale(LC_ALL, "")</c> (libarchive's get_current_codepage); the system ANSI page when the
-    /// locale gives none, as libarchive does.
+    /// The ANSI code page of the user's regional format; the system ANSI page when the locale gives
+    /// none. Not what a C runtime gets from <c>setlocale(LC_ALL, "")</c>: the UCRT pairs the format's
+    /// name with the system ANSI page (T-F465, measured), so tar.exe's output is <see cref="Ansi"/>.
     /// </summary>
     public static int UserAnsi => UserAnsiFor(null);
 

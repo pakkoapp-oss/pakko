@@ -14176,7 +14176,8 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
     `setlocale(LC_ALL, "")` gives `<format's locale>.<GetACP()>`.
   - Who: any machine whose format page differs from the system's, for formats the header veto
     misses: 7z, xz, bz2, zst, lzma and RAR on 3.8.9; a plain tar or tar.gz the header walk gives up on
-    (one sparse entry is enough); and on `main`, ISO, cpio, ar, .Z and CAB on 3.5.2.
+    (one sparse entry or volume label is enough) on 3.8.9 and 3.5.2 alike, in released builds
+    (measured on PakkoW10 against `main`); and on `main`, ISO, cpio, ar, .Z and CAB on 3.5.2.
   - What goes wrong:
     - a browser selection extracts another entry with success;
     - **a selection scan reports Clean for the threat**;
