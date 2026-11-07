@@ -14201,6 +14201,16 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
     are refused, raw or escaped. Katakana SO extracts. T-F465's 1251/1252 swap is still refused (its
     printed bytes read as another text in tar.exe's page): unit test and `TarOutputPageTests`.
     Restored to en-US.
+  - **Fresh opus review (read-only, 2026-11-07): one fail-open, fixed.** 0x81 0xBE and NEC's 0x87 0x9C
+    are both U+222A. bsdtar escapes each byte of an unprintable character and prints a printable trail
+    byte raw, so the first lists as `` plus a raw 0xBE (measured on the VM). The text unescape read
+    that line as two other characters, so it was missing from the uniqueness index, and selecting the
+    `u∪.t` row extracted the other entry's content (measured: `X-81BE`). Now every line's printed bytes
+    also count under the text they read as in the page, so the two collide and both are refused. A
+    line whose printed bytes are no text in the page makes no name of that listing sendable. The
+    reviewer counted 11 such texts in 932, one in 950, and none in 936 or 949. Red tests:
+    `FormListedWithARawTrailByte_StillSharesTheText`, `LineThatIsNoText_NoNameIsSendable` (mutant). The
+    VM rerun of the 932 set gave the same results as above. Restored to en-US.
 - **The tests read the machine's pages as the product does.** They take a literal page through
   `new TextBoundary(n)` and the machine's through `MachinePages.Current`. `SystemCodePages_IsReadOnlyByTheProvider`
   now covers `tests` too, with the provider's own tests (`tests/Archiver.Core.Tests/Text/`) as the

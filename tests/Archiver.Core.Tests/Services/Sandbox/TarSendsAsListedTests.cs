@@ -55,6 +55,29 @@ public sealed class TarSendsAsListedTests
         listed["s" + (char)0x30BD + "n"].Should().Equal([(byte)'s', 0x83, 0x5C, (byte)'n']);
     }
 
+    // Fresh review of T-F467: 0x81 0xBE and NEC's 0x87 0x9C are both U+222A. bsdtar escapes each byte of
+    // an unprintable character and prints a printable trail byte raw, so the first lists as "" plus
+    // a raw 0xBE, which .NET's text unescape reads as two other characters. That entry must still count
+    // against the text, or a selection of the second takes both.
+    [Fact]
+    public void FormListedWithARawTrailByte_StillSharesTheText()
+    {
+        byte[] listing = [0x5C, 0x32, 0x30, 0x31, 0xBE, 0x0A, 0x5C, 0x32, 0x30, 0x37, 0x5C, 0x32, 0x33, 0x34, 0x0A];
+        Dictionary<string, byte[]?> listed = TarNames.ReadListedNameBytes(listing, Japanese);
+        string union = ((char)0x222A).ToString();
+
+        Reaches(union, listed, JapanesePage, [0x81, 0xBE]).Should().BeFalse();
+    }
+
+    // A lone lead byte is no text in 932: what tar.exe would match that entry with is unknown.
+    [Fact]
+    public void LineThatIsNoText_NoNameIsSendable()
+    {
+        Dictionary<string, byte[]?> listed = TarNames.ReadListedNameBytes("plain.t\n\\201\n"u8.ToArray(), Japanese);
+
+        Reaches("plain.t", listed, JapanesePage, "plain.t"u8.ToArray()).Should().BeFalse();
+    }
+
     [Fact]
     public void CanonicalBytes_ReachTheEntryPrintedInTheNecForm()
     {
