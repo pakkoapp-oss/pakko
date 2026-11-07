@@ -14067,6 +14067,43 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
 - **Order:** T-F465, T-F466, the provider, the `archiveint.dll` research, then T-F464's code. Tests
   come first, on both builds, and a test of tar.exe's output states the build and the page it covers.
 
+**T-F465 done (2026-11-07).**
+- **The page.** `TarOutputEncoding.Current` takes `TarCommandLineEncoding.AnsiCodePage`, so tar.exe's
+  output and its command line share one source; `TextBoundaryOwnersTests.TarOutput_UsesTheCommandLinePage`
+  keeps it so (red on the old code).
+- **The guard.** The launcher hands over a plain listing's stdout bytes before decoding
+  (`ProcessLaunchOptions.OnStdOutBytes`). `TarNames.ReadListedNameBytes` reads back, for each listed
+  name, the bytes tar.exe printed for it (`TarListingName.UnescapeBytes`). A line that does not decode
+  without loss marks its name as never sendable. `TarSandboxScope` refuses with
+  `TarArgumentEncodingException` unless every name it sends goes out as exactly those bytes:
+  - the `-T` list of an extraction and of Test;
+  - Test's `-X` exclusions;
+  - the `-q` first copies.
+
+  A selection scan goes through the extraction's list, so it is covered too.
+- **Tests, seen red.**
+  - `TarOutputPageTests`, CI-runnable: a pax tar with a volume label, which the header walk does not
+    read. A test seam (`ForcedTarOutputEncoding`, init-only, on both services) reads the listing in
+    1252 on a 1251 machine and the other way round.
+  - Selection extract, selection scan, Test through `-T` and through `-X`: all four were wrong on the
+    old code (wrong file, success, Clean) and are refused now. With the guard alone switched off they
+    went red again. A control extracts the threat itself in the true page.
+  - The `-q` first copies have the same guard but no test of their own: they need a duplicate group
+    under a forced page.
+  - `TarListedNameBytesTests` covers the reader: escapes, a lossy UTF-8 line, CRLF, empty lines, a
+    bad escape.
+- **Measured on 3.5.2, production code, no seam.** PakkoW10 with format uk-UA over system 1252, the
+  same pax tar with a volume label (`a` + U+02C6, 10 bytes; `a` + U+20AC, 5 bytes), each listed row
+  extracted alone through a self-contained build of `main` and of this branch:
+  - `main` shows the 10-byte entry as `a` + U+20AC and extracts the 5-byte file for it, with success.
+  - This branch lists both under their true names and extracts each one's own file.
+
+  So the bug reaches a plain tar in released versions too, not only 7z and xz. VM restored (en-US/en-US).
+- **Moved to T-F467: the OEM rule for raw tar names.** A wrong OEM page makes the header veto refuse
+  (a false refusal, never a false Clean), and the UCRT's locale name needs measuring first,
+  zh-CN above all. The rule quoted from source is `acp_ocp_map`, the same table in v3.5.2 and v3.8.9;
+  `strncmp` on the name before the '.', the first row in table order wins; otherwise `GetOEMCP()`.
+
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
 - **Why.** tar.exe writes through the long-path prefix, so `a.txt.`, `a.txt ` and a folder `d ` are on

@@ -57,6 +57,47 @@ internal static class TarListingName
         return name.ToString();
     }
 
+    /// <summary>
+    /// T-F465: the bytes tar.exe printed for the name <paramref name="listed"/> stands for: its plain
+    /// characters encoded back through <paramref name="encoding"/>, its escapes as the bytes they
+    /// stand for. Exact only when <paramref name="listed"/> was decoded from those bytes without
+    /// loss, which the caller checks. Null where <see cref="Unescape"/> gives null.
+    /// </summary>
+    public static byte[]? UnescapeBytes(string listed, Encoding encoding)
+    {
+        var bytes = new List<byte>(listed.Length);
+        int plainStart = 0;
+        int i = 0;
+        while (i < listed.Length)
+        {
+            if (listed[i] != '\\')
+            {
+                i++;
+                continue;
+            }
+            bytes.AddRange(encoding.GetBytes(listed[plainStart..i]));
+            if (i + 1 >= listed.Length)
+                return null;
+            if (OctalByte(listed, i + 1) is { } octal)
+            {
+                bytes.Add(octal);
+                i += 4;
+            }
+            else if (Control(listed[i + 1]) is { } control)
+            {
+                bytes.Add((byte)control);
+                i += 2;
+            }
+            else
+            {
+                return null;
+            }
+            plainStart = i;
+        }
+        bytes.AddRange(encoding.GetBytes(listed[plainStart..]));
+        return [.. bytes];
+    }
+
     private static char? Control(char letter) => letter switch
     {
         '\\' => '\\',

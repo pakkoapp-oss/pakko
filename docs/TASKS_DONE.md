@@ -14168,3 +14168,26 @@ Full design rationale — the AE-1/AE-2 CRC-zeroing pitfall, the no-fork-extract
 invariant, the raw-entry-locator-vs-reflection choice, and the empirical `tar.exe`/`7za.exe`
 findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; the full design plan
 (reviewed twice by `advisor`) is preserved in this session's plan file until then.
+
+### T-F465 - tar.exe's listing decoded in the regional format's page; tar.exe writes the system page (P1, stream I)
+
+- [x] **Status:** done 2026-11-07 (`docs/DECISIONS.md`, "T-F465 done"). Shipped since v1.5.0.
+  - The bug: `TarOutputEncoding.Current` uses `SystemCodePages.UserAnsi`, but bsdtar's
+    `setlocale(LC_ALL, "")` gives `<format's locale>.<GetACP()>`.
+  - Who: any machine whose format page differs from the system's, for formats the header veto
+    misses: 7z, xz, bz2, zst, lzma and RAR on 3.8.9; a plain tar or tar.gz the header walk gives up on
+    (one sparse entry is enough); and on `main`, ISO, cpio, ar, .Z and CAB on 3.5.2.
+  - What goes wrong:
+    - a browser selection extracts another entry with success;
+    - **a selection scan reports Clean for the threat**;
+    - Test's filter tests another entry;
+    - the names shown are wrong.
+  - Fix, tests first (`docs/DECISIONS.md`, "Decisions ... after the review"):
+    1. A CI-runnable integration test forcing the scope's output page away from the system's
+       (selection extract, selection scan, Test filter; 7z or xz, and a plain tar with a sparse entry).
+    2. `TextBoundaryOwnersTests` keeps the output page on the command-line page's source.
+    3. The listing is decoded in the system ANSI page (65001 as UTF-8). The `acp_ocp_map` rule for raw
+       names moved to T-F467 (a false refusal, not a false Clean).
+    4. The byte guard: the raw listed bytes must equal the bytes sent to tar.exe for that member.
+    5. The refusal names the page tar.exe used. SECURITY.md only with the user's OK.
+- **Reported by:** the agent, 2026-11-07.

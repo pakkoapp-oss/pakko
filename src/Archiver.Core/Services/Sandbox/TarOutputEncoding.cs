@@ -6,10 +6,12 @@ namespace Archiver.Core.Services.Sandbox;
 /// <summary>
 /// T-F244 item 2 / T-F204: the encoding tar.exe writes names and messages in. bsdtar calls
 /// setlocale(LC_ALL, "") and libarchive converts with that locale's code page
-/// (get_current_codepage) — the ANSI code page of the user's regional format, not UTF-8, and not
-/// necessarily the system ANSI code page its command line goes through (<see cref="TarCommandLineEncoding"/>).
-/// Confirmed 2026-09-25 on uk-UA (both 1251): a 7z entry "Док" is printed as C4 EE EA. Reading
-/// that output as UTF-8 turned every non-ASCII name in a listing into U+FFFD.
+/// (get_current_codepage). T-F465: the UCRT names that locale "&lt;regional format&gt;.&lt;system ANSI page&gt;", so
+/// the page is the system ANSI page, the one its command line goes through
+/// (<see cref="TarCommandLineEncoding"/>), not the regional format's (measured 2026-11-07 on 3.8.9
+/// with formats en-US and ja-JP over system 1251, and on 3.5.2 with uk-UA over 1252). Reading it in
+/// the format's page showed one entry under another's name, and a selection took that other entry.
+/// Reading it as UTF-8 turned every non-ASCII name into U+FFFD (T-F244).
 /// </summary>
 internal static class TarOutputEncoding
 {
@@ -18,7 +20,7 @@ internal static class TarOutputEncoding
     /// decoded twice - by the launcher, then its octal escapes by <see cref="TarNames.ReadListing"/> - so one
     /// <see cref="TarSandboxScope"/> reads it once and uses it for both (<see cref="TarSandboxScope.OutputEncoding"/>).
     /// </summary>
-    public static Encoding Current => ForCodePage(SystemCodePages.UserAnsi);
+    public static Encoding Current => ForCodePage((int)TarCommandLineEncoding.AnsiCodePage);
 
     internal static Encoding ForCodePage(int codePage) => SystemCodePages.For(codePage);
 }

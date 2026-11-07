@@ -48,6 +48,9 @@ internal static partial class TarCommandLineEncoding
         return [.. result];
     }
 
+    /// <summary>T-F465: the exact bytes <paramref name="value"/> reaches tar.exe as, or null when it would not reach it unchanged.</summary>
+    public static byte[]? Encode(string value) => TryEncode(value, AnsiCodePage);
+
     // The exact bytes of value in codePage, or null when it would not convert back to itself.
     private static byte[]? TryEncode(string value, uint codePage)
     {

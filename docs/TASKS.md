@@ -1506,29 +1506,6 @@ re-measured with T-F346's script before and after.
   `TarSandboxedService`, `Sandbox/` and `AntivirusScanService`.
 - **Reported by:** the agent's root-cause review, 2026-11-06.
 
-### T-F465 - tar.exe's listing decoded in the regional format's page; tar.exe writes the system page (P1, stream I)
-
-- [ ] **Status:** open, triaged 2026-11-07 (`docs/DECISIONS.md`, "T-F464 and T-F465"). Shipped since v1.5.0.
-  - The bug: `TarOutputEncoding.Current` uses `SystemCodePages.UserAnsi`, but bsdtar's
-    `setlocale(LC_ALL, "")` gives `<format's locale>.<GetACP()>`.
-  - Who: any machine whose format page differs from the system's, for formats the header veto
-    misses: 7z, xz, bz2, zst, lzma and RAR on 3.8.9; a plain tar or tar.gz the header walk gives up on
-    (one sparse entry is enough); and on `main`, ISO, cpio, ar, .Z and CAB on 3.5.2.
-  - What goes wrong:
-    - a browser selection extracts another entry with success;
-    - **a selection scan reports Clean for the threat**;
-    - Test's filter tests another entry;
-    - the names shown are wrong.
-  - Fix, tests first (`docs/DECISIONS.md`, "Decisions ... after the review"):
-    1. A CI-runnable integration test forcing the scope's output page away from the system's
-       (selection extract, selection scan, Test filter; 7z or xz, and a plain tar with a sparse entry).
-    2. `TextBoundaryOwnersTests` keeps the output page on the command-line page's source.
-    3. The listing is decoded in the system ANSI page (65001 as UTF-8); raw names follow libarchive's
-       `acp_ocp_map` rule.
-    4. The byte guard: the raw listed bytes must equal the bytes sent to tar.exe for that member.
-    5. The refusal names the page tar.exe used. SECURITY.md only with the user's OK.
-- **Reported by:** the agent, 2026-11-07.
-
 ### T-F467 - One encoding provider: a named handler per text boundary, one standard (P2, stream I, after T-F465)
 
 - [ ] **Status:** open. The user, 2026-11-07: one provider with one standard of handling, possibly with several handlers,
@@ -1541,6 +1518,8 @@ re-measured with T-F346's script before and after.
     - decoding is strict at a contract boundary;
     - every handler gets the same test matrix (equal pages, format != system, 65001, 932, both tar builds).
   - `SystemCodePages` becomes the provider's private source. Plan mode and advisor before the PR.
+  - From T-F465: raw tar names read in libarchive's OEM page - the `acp_ocp_map` row by the UCRT locale
+    name (measure that name first, zh-CN above all), otherwise `GetOEMCP()`; today `UserOem`.
 - **Reported by:** the agent, 2026-11-07.
 
 ### T-F468 - `archiveint.dll` (Windows' libarchive) as the name source instead of tar.exe's ANSI listing (P2, stream I, research)
