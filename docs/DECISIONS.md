@@ -14179,11 +14179,32 @@ has no LZMA and cannot read a 7z header compressed with it). Hypothesis: a liste
   `ZipNameCodePages.System` (now `Current()`), and the substring test
   `TarOutput_UsesTheCommandLinePage`. `TextBoundariesTests` checks the same thing as behaviour, for
   every machine row.
-- **Not done, on record:**
-  - The 932 note from T-F465's review: `ReadListedNameBytes` refuses a name tar.exe printed in a
-    second byte form. That would be a false refusal, and it is unmeasured.
-  - The integration tests still read `SystemCodePages` (internal, through `InternalsVisibleTo`). The
-    ban covers `src` only.
+- **The 932 note from T-F465's review, measured and fixed (the user, 2026-11-07: "check it").**
+  - **Two tables.** Win32's 932 has 398 double-byte codes that decode to a character whose own form
+    is another code: NEC row 13 (0x8790..0x879C, e.g. 0x87 0x90 = U+2252, own form 0x81 0xE0) and
+    NEC's selection of IBM's extension (0xED40..0xEEFC, e.g. 0xED 0x40 = U+7E8A, own form 0xFA 0x5C).
+    .NET's `CodePagesEncodingProvider` decodes all of them as Win32 does, but its strict encoder has
+    no reverse for them, and its strict decoder throws on 0x87 0x90.
+  - **tar.exe, PakkoW10, system and format ja-JP, 3.5.2.** It prints a raw ustar name as stored:
+    NEC row 13 escaped (`a.t`), 0xED 0x40 raw. `-T` with the own form `a 0x81 0xE0 .t` and
+    with the stored form both extracted that entry, exit 0. tar.exe matches as text in its page.
+  - **Pakko before.** `ReadListedNameBytes` re-encoded the name to its own form and compared bytes, so
+    both rows were refused: false refusals, as the note said. A pax name (UTF-8, U+2252) was not.
+  - **The fix.** The listing keeps the bytes as printed. The line is unescaped byte by byte, and a
+    0x5C after a lead byte (`IsDBCSLeadByteEx`; 0x83 0x5C is katakana SO) is no escape. Text is
+    compared with Win32's table (`TarCommandLineEncoding.Decode`), the one the C runtime reads
+    tar.exe's names with. The guard (`TarNames.ReachesTheListedEntry`) admits a name when what Pakko
+    sends and what tar.exe printed read as the same text in tar.exe's page. It also requires that no
+    other listed entry prints that text in other bytes (`IndexByText`): with both forms present, `-T`
+    takes both entries (measured), the same rule T-F466 applies to NFC and NFD.
+  - **After, on the VM.** The NEC and IBM-selected rows extract their own file. Two forms of one name
+    are refused, raw or escaped. Katakana SO extracts. T-F465's 1251/1252 swap is still refused (its
+    printed bytes read as another text in tar.exe's page): unit test and `TarOutputPageTests`.
+    Restored to en-US.
+- **The tests read the machine's pages as the product does.** They take a literal page through
+  `new TextBoundary(n)` and the machine's through `MachinePages.Current`. `SystemCodePages_IsReadOnlyByTheProvider`
+  now covers `tests` too, with the provider's own tests (`tests/Archiver.Core.Tests/Text/`) as the
+  only exception. Seen red on a mutant.
 
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
