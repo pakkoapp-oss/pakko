@@ -13593,6 +13593,34 @@ entries stays Clean: it was read whole and nothing in it is a threat (both pinne
 passes an empty list (Explorer, the Archive Browser and `pakko` always name an archive), so nothing
 visible changes; an argument error was not chosen, since Core operations never throw (T-F260).
 
+## T-F456 - the operation window's pipe is read on its own thread (2026-11-08)
+
+`CancelInTheWindow_CancelsTheOperationWithoutFailover` timed out once in a full run. The cause is
+T-F425's pattern, in Shell's own code. The pipes to `Archiver.OperationUi.exe` are anonymous, so
+synchronous. On a synchronous stream, `ReadAsync` is a work item that blocks a thread-pool thread in
+`ReadFile` until the other side writes. `HelperOperationUi`'s session read that way for its whole
+life, and `FakeHelper` read and wrote the same way. In a loaded run the pool had no thread left for
+the next frame. Thread injection is slow, so some 10-second wait expired.
+
+Shown deterministically. `HelperOperationUiStarvedPoolTests` caps the pool at its minimum and holds
+every thread but one. The session then gets its `Begin` across. A pool work item queued after that
+must run within 5 s.
+- Before the fix: the reader's blocked read took the last thread, and the item never ran (3 of 3).
+- After the fix: it runs.
+
+The probe is waited on, not awaited. An await would hand the test's own pool thread to the probe,
+and the check would pass for the wrong reason. That happened in the first draft.
+
+**Fix.** A new synchronous `FrameCodec.Read` (`Stream.ReadAtLeast`, the same frame checks as
+`ReadAsync`). The session's reader runs on a dedicated background thread (`Session.ReadFrames`).
+`FakeHelper` reads on a `LongRunning` task and writes synchronously.
+
+Not changed:
+- The pump's writes are still `WriteAsync`. A write to the helper returns once the pipe buffer takes
+  it, so it only borrows a thread.
+- The helper's own reader (`Archiver.OperationUi/ShellPipe.cs`) still uses `ReadAsync`. It holds one
+  pool thread in a process that has little else for the pool.
+
 ## T-F450 - a tar.exe version probe that gave no answer is asked again, and says so (2026-11-04)
 
 **Found** in CI on PR #149, a test-only change: two `CliSevenZipSubprocessTests` failed on a loaded
