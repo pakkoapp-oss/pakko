@@ -1523,11 +1523,13 @@ re-measured with T-F346's script before and after.
   releases", then the same day: "add the libarchive task to this wave; the constant file-name errors
   bother me"; lister and extractor, quiet fallback to tar.exe, `docs/DECISIONS.md`, "T-F470"). Step 1
   (measurements) and step 2 (`src/Archiver.ArchiveHelper`, packaging, protocol tests,
-  `docs/ARCHITECTURE.md`'s protocol) done; Pakko does not launch it yet. Step 3 goes in two PRs: 3a
-  (`refactor/tf470-reader-interface`) puts every tar-family read behind `ISandboxedArchiveReader` with
-  tar.exe as its one backend, no behavior change, guarded by `SandboxedReaderOwnerTests`; 3b adds the
-  helper backend and `ArchiveintGate` (sticky per process, helper path as a parameter) with listing
-  and extract/Test/scan by index, and turns the gate on. Then step 4, T-F469/T-F453/T-F464/T-F461 narrowed to
+  `docs/ARCHITECTURE.md`'s protocol) done. Step 3a (#189) put every tar-family read behind
+  `ISandboxedArchiveReader` with tar.exe as its one backend, no behavior change, guarded by
+  `SandboxedReaderOwnerTests`. Step 3b goes in two PRs (advisor, 2026-11-08): 3b-i
+  (`feat/tf470-helper-reader`) adds the helper's launch in `TarSandboxScope`, its strict output
+  parser and `HelperReader` (listing and extract/Test/scan by index), reachable only from tests;
+  3b-ii adds `ArchiveintGate` (sticky per process, helper path as a parameter), wires it into
+  `PakkoServices` and the App, sweeps the tar suite under the helper, and turns the gate on. Then step 4, T-F469/T-F453/T-F464/T-F461 narrowed to
   the tar.exe fallback, `docs/SMOKE.md`, `docs/TESTING.md`. Step 3 also verifies on the
   device a launch from the packaged App, Shell and `pakko` (identity proven), and reads the `V` line
   of CI's test job to see which libarchive its image runs. Measured
