@@ -228,14 +228,14 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 
         (int exitCode, _, string stdErr) = await _scope.ExtractAsync(expandedSelection, cancellationToken).ConfigureAwait(false);
         if (exitCode != 0)
-            return new ScanQuarantine(DescribeFailure(stdErr), outDir, totalEntries, 0, false);
+            return new ScanQuarantine(DescribeFailure(stdErr), [], totalEntries, 0, false);
 
         // T-F171: extraction also takes out the first of several same-named copies, so it is
         // scanned too. Everything the first-copy pass wrote is scanned, not only the files
         // extraction would keep.
         _expandedSelection = expandedSelection;
         _scanDuplicates = FindDuplicateGroups(fileEntries, allNames, expandedSelection);
-        return new ScanQuarantine(null, outDir, totalEntries + _scanDuplicates.Count,
+        return new ScanQuarantine(null, ScanFilesBelow(outDir), totalEntries + _scanDuplicates.Count,
             FileEntriesInScope(fileEntries, expandedSelection), _scanDuplicates.Count > 0);
     }
 
@@ -249,18 +249,22 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             duplicates.Select(g => g.FirstName).ToList(), cancellationToken).ConfigureAwait(false);
         // T-F460 (fresh review): a first copy tar.exe did not write was never scanned.
         if (firstExitCode != 0)
-            return new FirstCopiesForScan(firstDir, DescribeFailure(firstStdErr), () => 0);
+            return new FirstCopiesForScan([], DescribeFailure(firstStdErr), () => 0);
         // T-F462: a first copy counts only when the listing names the main pass's files truly, and
         // only at its group's own path (FirstCopiesAtTheirPath). A best-fit pair lists as one name
         // twice, and its "first copy" is a file already scanned, which must not stand in for a file
         // lost elsewhere; it is still scanned. Counted once the first copies are scanned.
-        return new FirstCopiesForScan(firstDir, null, () =>
+        return new FirstCopiesForScan(ScanFilesBelow(firstDir), null, () =>
         {
             string[] mainFiles = FilesBelow(outDir);
             bool faithful = TarNames.JudgeExtracted((IReadOnlyList<string>?)_expandedSelection ?? allNames, mainFiles, []).Trust == TarNameTrust.Faithful;
             return faithful ? FirstCopiesAtTheirPath(duplicates, FilesBelow(firstDir), mainFiles) : 0;
         });
     }
+
+    // A pass's files for the scan, each under its name below the pass's folder, '/' between parts.
+    private static ScanFile[] ScanFilesBelow(string directory) =>
+        [.. QuarantineFiles.EnumerateFiles(directory).Select(f => new ScanFile(f, QuarantineFiles.Relative(directory, f).Replace('\\', '/')))];
 
     // A quarantine folder's files, relative to it, '/' between parts.
     private static string[] FilesBelow(string directory) =>

@@ -544,7 +544,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
 
             var target = new TarScanTarget(archivePath, scanner, findings, reportProgress);
             int scanned = await ScanExtractedFilesAsync(
-                quarantine.MainDirectory, 0, quarantine.TotalEntries, target, cancellationToken)
+                quarantine.Files, 0, quarantine.TotalEntries, target, cancellationToken)
                 .ConfigureAwait(false);
             int credited = scanned;
             if (quarantine.HasFirstCopies)
@@ -556,7 +556,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                     return;
                 }
                 _ = await ScanExtractedFilesAsync(
-                    firstCopies.Directory, scanned, quarantine.TotalEntries, target, cancellationToken)
+                    firstCopies.Files, scanned, quarantine.TotalEntries, target, cancellationToken)
                     .ConfigureAwait(false);
                 credited = scanned + firstCopies.CreditedCopies();
             }
@@ -586,14 +586,13 @@ public sealed class AntivirusScanService : IAntivirusScanService
 
     // Returns the running count of scanned files; startAt continues it across a second folder.
     private static async Task<int> ScanExtractedFilesAsync(
-        string outputDirectory, int startAt, int totalEntries, TarScanTarget target, CancellationToken cancellationToken)
+        IReadOnlyList<ScanFile> files, int startAt, int totalEntries, TarScanTarget target, CancellationToken cancellationToken)
     {
         (string archivePath, IAmsiScanner scanner, List<ThreatFinding> findings, Action<string?, int, int> reportProgress) = target;
         int entriesDone = startAt;
-        foreach (string file in QuarantineFiles.EnumerateFiles(outputDirectory))
+        foreach ((string file, string relativePath) in files)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            string relativePath = QuarantineFiles.Relative(outputDirectory, file).Replace('\\', '/');
             // T-F151: see the identical call in ScanZipArchiveAsync — advances the bar (and
             // CurrentFile) to this entry's own starting position before a potentially multi-second
             // single AmsiScanBuffer call, rather than leaving it frozen on the previous entry's
