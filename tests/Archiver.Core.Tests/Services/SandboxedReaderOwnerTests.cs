@@ -12,10 +12,12 @@ public sealed partial class SandboxedReaderOwnerTests
 {
     private static readonly string SrcDir = Path.Combine(FindRepoRoot(), "src");
     private const string Reader = "Archiver.Core/Services/Sandbox/TarExeReader.cs";
+    private const string HelperReader = "Archiver.Core/Services/Sandbox/HelperReader.cs";
 
     private static readonly string[] Owners =
     [
         Reader,
+        HelperReader,
         "Archiver.Core/Services/Sandbox/TarSandboxScope.cs",
         "Archiver.Core/Services/Sandbox/TarNames.cs",
         "Archiver.Core/Services/EntryDiskName.cs",
@@ -43,6 +45,30 @@ public sealed partial class SandboxedReaderOwnerTests
         seen.Should().Contain("ExtractFirstOccurrencesAsync(");
         SourceFiles().Should().Contain(Owners);
     }
+
+    // The archive helper's output is read only by its reader, and the helper runs only through the
+    // scope: a second reader of its lines would be a second parser to keep in step.
+    private static readonly string[] HelperOwners =
+    [
+        HelperReader,
+        "Archiver.Core/Services/Sandbox/TarSandboxScope.cs",
+        "Archiver.Core/Services/Sandbox/ArchiveHelperOutput.cs",
+    ];
+
+    [Fact]
+    public void TheHelpersOutput_IsReadOnlyByItsReader()
+    {
+        string[] offenders = [.. SourceFiles()
+            .Where(file => !HelperOwners.Contains(file))
+            .SelectMany(file => HelperCall().Matches(Code(file)).Select(m => $"{file}: {m.Value}"))];
+
+        string.Join(Environment.NewLine, offenders).Should().BeEmpty(
+            "the archive helper's lines are parsed by ArchiveHelperOutput for HelperReader alone (T-F470)");
+        HelperCall().Matches(Code(HelperReader)).Select(m => m.Value).Should().Contain(["ArchiveHelperOutput", "RunHelperAsync("]);
+    }
+
+    [GeneratedRegex(@"\bArchiveHelperOutput\b|\bRunHelperAsync\(")]
+    private static partial Regex HelperCall();
 
     private static IEnumerable<string> SourceFiles() =>
         Directory.EnumerateFiles(SrcDir, "*.cs", SearchOption.AllDirectories)

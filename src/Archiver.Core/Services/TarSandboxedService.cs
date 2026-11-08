@@ -37,6 +37,9 @@ public sealed class TarSandboxedService : ITarService
     // T-F465: test seam - the page a scope reads tar.exe's output in, forced away from the system's so
     // the guard on names sent back to tar.exe can be seen working on any machine.
     internal System.Text.Encoding? ForcedTarOutputEncoding { get; init; }
+
+    // T-F470: the archive helper this service reads with; null reads with tar.exe.
+    internal Sandbox.HelperSetup? Helper { get; init; }
     // The --version probe as the 7z writer question runs it: with the writer probe's patience.
     private readonly Func<Task<TarCapabilities>> _sevenZipReaderProbe;
     private readonly Func<Task<bool?>> _sevenZipWriterProbe;
@@ -383,7 +386,7 @@ public sealed class TarSandboxedService : ITarService
             var context = new TarExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,
                 options.EliminateDuplicateRootFolder, options.OnItemExtracted, options.EntryFilter, options.DuplicateRootName,
-                sink.Names, ForcedTarOutputEncoding);
+                sink.Names, ForcedTarOutputEncoding, Helper);
             (string? actualDest, bool anyExtracted) = await ExtractSingleArchiveAsync(
                 archivePath, destDir, alreadyIsolated, options.DestinationFolder, options.SelectedEntryPaths, context, cancellationToken)
                 .ConfigureAwait(false);
@@ -456,7 +459,7 @@ public sealed class TarSandboxedService : ITarService
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction = context.ConfirmCompressionBombExtraction;
         IProgress<ProgressReport>? progress = context.Progress;
 
-        using ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: true, context.TarOutputEncoding, cancellationToken)
+        using ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: true, context.TarOutputEncoding, cancellationToken, context.Helper)
             .ConfigureAwait(false);
 
         // T-F05: the whole-archive pre-scan below runs unconditionally, exactly as it did before
@@ -733,7 +736,9 @@ public sealed class TarSandboxedService : ITarService
         // T-F420: see ArchiveResultSink.Names; null for one archive on its own.
         ExtractionNameRegistry? Names = null,
         // T-F465: ForcedTarOutputEncoding.
-        System.Text.Encoding? TarOutputEncoding = null);
+        System.Text.Encoding? TarOutputEncoding = null,
+        // T-F470: TarSandboxedService.Helper.
+        HelperSetup? Helper = null);
 
     // One file of ExtractSingleArchiveAsync's move-phase loop (quarantine "out\" -> staging, then
     // committed) — conflict-resolve, move, propagate MOTW. Returns whether the file was
@@ -1024,7 +1029,7 @@ public sealed class TarSandboxedService : ITarService
 
         try
         {
-            using ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: false, ForcedTarOutputEncoding, cancellationToken)
+            using ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: false, ForcedTarOutputEncoding, cancellationToken, Helper)
                 .ConfigureAwait(false);
             return await reader.ListAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -1063,7 +1068,7 @@ public sealed class TarSandboxedService : ITarService
             string archivePath = archivePaths[i];
             int errorsBefore = errors.Count;
             // As ExtractAsync: bytes within the archive for one, a step for each of several.
-            TestRun run = await TestOneArchiveAsync(archivePath, total == 1 ? progress : null, entryFilter, errors, ForcedTarOutputEncoding, cancellationToken).ConfigureAwait(false);
+            TestRun run = await TestOneArchiveAsync(archivePath, total == 1 ? progress : null, entryFilter, errors, (ForcedTarOutputEncoding, Helper), cancellationToken).ConfigureAwait(false);
             if (run != TestRun.NoFile)
             {
                 bool passed = errors.Count == errorsBefore;
@@ -1094,7 +1099,7 @@ public sealed class TarSandboxedService : ITarService
     // One archive of TestAsync's loop. Every outcome but a cancel (T-F260) ends up in errors.
     private static async Task<TestRun> TestOneArchiveAsync(
         string archivePath, IProgress<ProgressReport>? progress, Func<string, bool, bool>? entryFilter,
-        List<ArchiveError> errors, System.Text.Encoding? tarOutputEncoding, CancellationToken cancellationToken)
+        List<ArchiveError> errors, (System.Text.Encoding? Encoding, HelperSetup? Helper) readWith, CancellationToken cancellationToken)
     {
         if (!File.Exists(archivePath))
         {
@@ -1111,7 +1116,7 @@ public sealed class TarSandboxedService : ITarService
         bool nothingRead = false;
         try
         {
-            using ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: false, tarOutputEncoding, cancellationToken)
+            using ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: false, readWith.Encoding, cancellationToken, readWith.Helper)
                 .ConfigureAwait(false);
 
             (CoreText? failure, long declaredSize, nothingRead) = await reader.TestAsync(progress, entryFilter, cancellationToken)
