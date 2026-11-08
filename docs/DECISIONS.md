@@ -14603,6 +14603,14 @@ in the product. Choices in 3b-i:
   the trimmed flag, folder times, the copy's hash and archiveint.dll's signature (scope). Survives:
   removing the call that checks `out\` - the helper writes nothing else there, so no run reaches it;
   the check itself is red against a planted file, a missing one, a wrong size and a folder.
+- **`ArchiveHelperProtocolTests` keep their own launcher** (the plan said to move them onto the
+  scope). They test the exe's protocol itself - malformed command lines (exit 2), raw lines the
+  strict parser would refuse - which `RunHelperAsync` cannot send or return by design. Product code
+  launches the helper only through the scope (`SandboxedReaderOwnerTests`); the scope's own launch
+  is tested in `TarSandboxScopeHelperTests`.
+- **A cancelled run leaves no helper**: three paths kill it (the cancel registration, the stdout
+  reader's failure, the Job Object's close); the test checks the end state, a helper seen running
+  and then its image deletable, so removing one path alone stays green.
 
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 

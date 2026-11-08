@@ -17,7 +17,6 @@ public sealed partial class SandboxedReaderOwnerTests
     private static readonly string[] Owners =
     [
         Reader,
-        HelperReader,
         "Archiver.Core/Services/Sandbox/TarSandboxScope.cs",
         "Archiver.Core/Services/Sandbox/TarNames.cs",
         "Archiver.Core/Services/EntryDiskName.cs",
@@ -28,7 +27,10 @@ public sealed partial class SandboxedReaderOwnerTests
     {
         string[] offenders = [.. SourceFiles()
             .Where(file => !Owners.Contains(file))
-            .SelectMany(file => TarExeCall().Matches(Code(file)).Select(m => $"{file}: {m.Value}"))];
+            .SelectMany(file => TarExeCall().Matches(Code(file))
+                // The helper's reader opens its own sandbox, and knows nothing else of tar.exe's.
+                .Where(m => file != HelperReader || m.Value != ScopeOpen)
+                .Select(m => $"{file}: {m.Value}"))];
 
         string.Join(Environment.NewLine, offenders).Should().BeEmpty(
             "a tar-family archive is read only through ISandboxedArchiveReader (T-F470); tar.exe's names stay in its reader");
@@ -48,6 +50,8 @@ public sealed partial class SandboxedReaderOwnerTests
 
     // The archive helper's output is read only by its reader, and the helper runs only through the
     // scope: a second reader of its lines would be a second parser to keep in step.
+    private const string ScopeOpen = "TarSandboxScope.CreateAsync(";
+
     private static readonly string[] HelperOwners =
     [
         HelperReader,
@@ -65,6 +69,7 @@ public sealed partial class SandboxedReaderOwnerTests
         string.Join(Environment.NewLine, offenders).Should().BeEmpty(
             "the archive helper's lines are parsed by ArchiveHelperOutput for HelperReader alone (T-F470)");
         HelperCall().Matches(Code(HelperReader)).Select(m => m.Value).Should().Contain(["ArchiveHelperOutput", "RunHelperAsync("]);
+        TarExeCall().Matches(Code(HelperReader)).Select(m => m.Value).Should().Equal([ScopeOpen], "the helper's reader names nothing as tar.exe does");
     }
 
     [GeneratedRegex(@"\bArchiveHelperOutput\b|\bRunHelperAsync\(")]

@@ -191,6 +191,9 @@ public sealed class HelperReaderTests : IDisposable
         string archive = Path.Combine(_temp.Path, "raw.tar");
         TarBuilder.WriteTar(archive, [new TarBuilder.Entry { Name = "x", NameBytes = raw, Content = "R"u8.ToArray() }]);
         string expected = new Archiver.Core.Text.TextBoundary(TarCodePage.RawNameOem).Strict.GetString(raw);
+        // tar.exe prints names in the ANSI page: one that page cannot hold lists by best fit there.
+        if (backend == TarExe && !RoundTripsThroughAnsi(expected))
+            return;
 
         ArchiveListResult list = await Service(backend).ListEntriesAsync(archive);
 
@@ -351,7 +354,48 @@ public sealed class HelperReaderTests : IDisposable
         folder.Should().Throw<ArchiveHelperProtocolException>();
     }
 
+    // --- Both backends: error path ---
+
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task Extract_ACutArchive_IsAnError_NotAThrow(string backend)
+    {
+        string sound = Tar(("a.txt", new string('x', 5000)), ("b.txt", "B"));
+        string cut = Path.Combine(_temp.Path, "cut-" + backend + ".tar");
+        File.WriteAllBytes(cut, File.ReadAllBytes(sound)[..2048]);
+
+        (ArchiveResult result, string dest) = await ExtractAsync(backend, cut);
+
+        result.Errors.Should().NotBeEmpty();
+        (Directory.Exists(dest) ? Directory.GetFiles(dest, "*", SearchOption.AllDirectories) : []).Should().BeEmpty();
+    }
+
+    // A file and a folder of one name: they cannot both land; the operation reports it, never throws.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task Extract_AFileAndAFolderOfOneName_IsReported_NotAThrow(string backend)
+    {
+        string archive = Tar(("x", "file"), ("x/y.txt", "inside"));
+
+        (ArchiveResult result, _) = await ExtractAsync(backend, archive);
+
+        (result.Errors.Count + result.SkippedFiles.Count).Should().BeGreaterThan(0);
+    }
+
     // --- Harness ---
+
+    private static bool RoundTripsThroughAnsi(string name)
+    {
+        Encoding ansi = new Archiver.Core.Text.TextBoundary((int)TarCodePage.Ansi).Strict;
+        try
+        {
+            return ansi.GetString(ansi.GetBytes(name)) == name;
+        }
+        catch (EncoderFallbackException)
+        {
+            return false;
+        }
+    }
 
     private static ArchiveHelperOutput Listed(params string[] entries) => Fed(ArchiveHelperMode.List, entries, 0);
 

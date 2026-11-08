@@ -38,6 +38,20 @@ public static class TextBoundaries
     /// </summary>
     internal static TextBoundary TarRawHeaderNames(MachinePages machine) => new(LibarchiveOemPage(machine));
 
+    /// <summary>T-F470: the archive helper's first "--hdrcharset" for names stored in no charset.</summary>
+    internal const string ArchiveHelperUtf8Names = "UTF-8";
+
+    /// <summary>
+    /// T-F470: the archive helper's "--hdrcharset" for raw names UTF-8 did not read - the page
+    /// tar.exe reads them in (<see cref="TarRawHeaderNames"/>), as libarchive names it; null when that
+    /// page is UTF-8 itself.
+    /// </summary>
+    internal static (string Charset, TextBoundary Boundary)? ArchiveHelperRawNames(MachinePages machine)
+    {
+        TextBoundary raw = TarRawHeaderNames(machine);
+        return raw.CodePage == Utf8NoBom.CodePage ? null : ("CP" + raw.CodePage.ToString(System.Globalization.CultureInfo.InvariantCulture), raw);
+    }
+
     /// <summary>A ZIP name without the UTF-8 flag: OEM from FAT/NTFS hosts, ANSI from others (T-F234, 7-Zip's rule).</summary>
     internal static (TextBoundary Oem, TextBoundary Ansi) ZipLegacyNames(MachinePages machine) => (new(machine.Oem), new(machine.Ansi));
 
