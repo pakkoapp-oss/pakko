@@ -118,6 +118,60 @@ public sealed class BareGzipTests : IDisposable
     public void IsBareGzip_AGzipInside_IsFalse() =>
         BareGzip.IsBareGzip(Write("x.gz.gz", Member(Member(Text)))).Should().BeFalse();
 
+    // T-F457 item 1: an ISO 9660 or UDF image starts with a zero system area, which reads as the
+    // zero block of an empty tar; through tar.exe it would miss the UDF refusal and the cut check
+    // (measured). It is one file, the image, as 7-Zip sees it.
+    private const int Sector = 2048;
+
+    private static byte[] DiscImage(int length, params string[] identifiers)
+    {
+        byte[] bytes = new byte[length];
+        for (int i = 0; i < identifiers.Length; i++)
+        {
+            int at = (16 + i) * Sector;
+            bytes[at] = identifiers[i] == "CD001" ? (byte)1 : (byte)0;
+            Encoding.ASCII.GetBytes(identifiers[i]).CopyTo(bytes, at + 1);
+            bytes[at + 6] = 1;
+        }
+        return bytes;
+    }
+
+    [Fact]
+    public void IsBareGzip_AnIso9660ImageInside_IsTrue() =>
+        BareGzip.IsBareGzip(Write("a.iso.gz", Member(DiscImage(80 * Sector, "CD001")))).Should().BeTrue();
+
+    [Fact]
+    public void IsBareGzip_AUdfImageInside_IsTrue() =>
+        BareGzip.IsBareGzip(Write("win.iso.gz", Member(DiscImage(80 * Sector, "CD001", "BEA01", "NSR02", "TEA01")))).Should().BeTrue();
+
+    [Fact]
+    public void IsBareGzip_AnImageWhoseLastDescriptorIsTheSixteenth_IsTrue() =>
+        BareGzip.IsBareGzip(Write("a.iso.gz", Member(DiscImage(32 * Sector, [.. Enumerable.Repeat("BEA01", 15), "NSR03"])))).Should().BeTrue();
+
+    [Fact]
+    public void IsBareGzip_ZerosWithoutADescriptor_StaysOnTheTarRoute() =>
+        BareGzip.IsBareGzip(Write("z.gz", Member(new byte[80 * Sector]))).Should().BeFalse();
+
+    // A stream that ends before sector 16 holds no image to name; tar.exe gets it as before.
+    [Fact]
+    public void IsBareGzip_ZerosEndingBeforeTheDescriptors_StaysOnTheTarRoute() =>
+        BareGzip.IsBareGzip(Write("z.gz", Member(new byte[16 * Sector + 3]))).Should().BeFalse();
+
+    // Only the zero system area is looked past: a tar whose data holds an image's identifier at the
+    // image's offset stays a tar.
+    [Fact]
+    public void IsBareGzip_ATarHoldingADescriptorAtTheImageOffset_IsFalse()
+    {
+        byte[] tar = [.. Tar(), .. new byte[40 * Sector]];
+        "\u0001CD001\u0001"u8.CopyTo(tar.AsSpan(16 * Sector));
+        BareGzip.IsBareGzip(Write("x.tar.gz", Member(tar))).Should().BeFalse();
+    }
+
+    // The image may come after an empty member, as bsdtar reads past one.
+    [Fact]
+    public void IsBareGzip_AnImageAfterAnEmptyMember_IsTrue() =>
+        BareGzip.IsBareGzip(Write("a.iso.gz", [.. Member([]), .. Member(DiscImage(40 * Sector, "CD001"))])).Should().BeTrue();
+
     // --- Security & Boundary ---
 
     [Fact]

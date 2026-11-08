@@ -107,6 +107,14 @@ blocklist written for 1.9 lets them through. If the intent was "only these forma
 to `AllowedFormats` (new formats stay refused until listed) or add the six names to
 `BlockedFormats`. `DisableTarExtraction` covers them already.
 
+**A format name is the outer format.** A `.tar.gz` is `gzip`, and so is an ISO, cpio or ar archive
+inside a compression wrapper (`.iso.gz`, `.cpio.Z`, `.cpio.lz`). Pakko gives an ISO inside gzip as
+the image file itself, which `iso` and the UDF refusal govern when it is opened. tar.exe reads any
+other archive inside a wrapper directly (a `.cpio.gz`, or an ISO inside compress, lzip, bzip2, xz,
+zstd or lzma): `BlockedFormats=iso`, `cpio` or `ar` does not see it, and a UDF image inside one of
+those gives its ISO 9660 side. To keep those out,
+block the wrapper names too, or list only the formats you allow in `AllowedFormats` (T-F457).
+
 ### `DisableTarExtraction` in detail
 
 This is a coarser lever than `BlockedFormats`: instead of naming individual formats, it stops

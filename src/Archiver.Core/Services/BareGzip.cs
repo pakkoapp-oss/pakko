@@ -33,7 +33,10 @@ internal static class BareGzip
     /// <summary>
     /// True when <paramref name="path"/> is a gzip stream whose start decompresses to nothing
     /// tar.exe opens: no tar header and no signature of another format libarchive reads (cpio and
-    /// zip inside gzip list today, measured). False on any read problem, so the tar route reports
+    /// zip inside gzip list today, measured). Also true for an ISO 9660 or UDF image (T-F457): its
+    /// zero system area reads as an empty tar, but through tar.exe a UDF image gives its ISO side
+    /// and a cut one an empty archive with exit code 0 (measured), so the image comes out as one
+    /// file and is judged when it is opened. False on any read problem, so the tar route reports
     /// it as before.
     /// </summary>
     public static bool IsBareGzip(string path)
@@ -44,14 +47,28 @@ internal static class BareGzip
             if (ReadHeader(file) is null)
                 return false;
             byte[] head = new byte[TarBlock];
-            int? length = ReadHead(file, head);
-            return length is { } read && !OpensAsAnArchive(head.AsSpan(0, read));
+            if (ReadHead(file, head) is not { } read)
+                return false;
+            if (!OpensAsAnArchive(head.AsSpan(0, read)))
+                return true;
+            return read == TarBlock && !head.AsSpan().ContainsAnyExcept((byte)0) && HoldsDiscImage(file);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException
             or ArgumentException or NotSupportedException)
         {
             return false;
         }
+    }
+
+    // Read again from the first member, far enough for every volume descriptor the detector reads.
+    private static bool HoldsDiscImage(FileStream file)
+    {
+        file.Position = 0;
+        if (ReadHeader(file) is null)
+            return false;
+        byte[] start = new byte[ArchiveFormatDetector.DiscImageStartLength];
+        return ReadHead(file, start) is { } read
+            && ArchiveFormatDetector.DetectDiscImage(start.AsSpan(0, read)) != Models.ArchiveFormat.Unknown;
     }
 
     // As much of the start as decompresses, member after member (no trailer is checked here): a

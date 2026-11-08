@@ -151,6 +151,69 @@ public sealed class ReadOnlyTarFormatsTests : IDisposable
     public void Detect_ArMagicWithoutItsLineEnd_ReturnsUnknown() =>
         ArchiveFormatDetector.Detect(WriteBytes("a.ar", Padded("!<arch> "u8.ToArray()))).Should().Be(ArchiveFormat.Unknown);
 
+    // --- The cut check (T-F457 item 2): refused only where tar.exe would not fail by itself ---
+
+    // libarchive's ISO 9660 reader bids only with 16 + 8 sectors readable; with fewer, tar.exe takes
+    // the zero system area for an empty tar and exits 0 (measured on 3.8.9 and 3.5.2).
+    private const int IsoBidBytes = 24 * Sector;
+
+    // A primary volume descriptor declaring declaredSectors, its root directory at rootSector,
+    // rootLength bytes long; the file is fileLength bytes.
+    private static byte[] IsoImage(int fileLength, long declaredSectors, uint rootSector, uint rootLength, ushort blockSize = Sector)
+    {
+        byte[] bytes = new byte[fileLength];
+        bytes[FirstDescriptor] = 1;
+        "CD001"u8.CopyTo(bytes.AsSpan(FirstDescriptor + 1));
+        bytes[FirstDescriptor + 6] = 1;
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(FirstDescriptor + 80), (uint)declaredSectors);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(bytes.AsSpan(FirstDescriptor + 128), blockSize);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(FirstDescriptor + 156 + 2), rootSector);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(FirstDescriptor + 156 + 10), rootLength);
+        return bytes;
+    }
+
+    private bool IsCut(byte[] image)
+    {
+        using FileStream file = File.OpenRead(WriteBytes("cut.iso", image));
+        return ArchiveFormatDetector.IsDiscImageCut(file);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]   // a track-at-once CD-R dump without its two run-out sectors
+    [InlineData(150)] // tar.exe's and mkisofs' padding cut off
+    public void IsDiscImageCut_ShorterThanDeclaredButPastItsDirectory_IsLeftToTar(int missingSectors) =>
+        IsCut(IsoImage(926 * Sector, 926 + missingSectors, rootSector: 28, rootLength: Sector)).Should().BeFalse();
+
+    [Fact]
+    public void IsDiscImageCut_Whole_IsNotCut() =>
+        IsCut(IsoImage(926 * Sector, 926, rootSector: 28, rootLength: Sector)).Should().BeFalse();
+
+    [Fact]
+    public void IsDiscImageCut_EndsBeforeItsRootDirectory_IsCut() =>
+        IsCut(IsoImage(28 * Sector + Sector - 1, 926, rootSector: 28, rootLength: Sector)).Should().BeTrue();
+
+    [Fact]
+    public void IsDiscImageCut_EndsWhereItsRootDirectoryEnds_IsNotCut() =>
+        IsCut(IsoImage(29 * Sector, 926, rootSector: 28, rootLength: Sector)).Should().BeFalse();
+
+    [Fact]
+    public void IsDiscImageCut_RootDirectoryInsideButShorterThanTheReaderBids_IsCut() =>
+        IsCut(IsoImage(IsoBidBytes - 1, 926, rootSector: 18, rootLength: Sector)).Should().BeTrue();
+
+    [Fact]
+    public void IsDiscImageCut_RootDirectoryInsideAndJustLongEnoughForTheReader_IsNotCut() =>
+        IsCut(IsoImage(IsoBidBytes, 926, rootSector: 18, rootLength: Sector)).Should().BeFalse();
+
+    // A whole image shorter than the bid stays out of this check: its message says "incomplete".
+    [Fact]
+    public void IsDiscImageCut_WholeButShorterThanTheReaderBids_IsNotCut() =>
+        IsCut(IsoImage(20 * Sector, 20, rootSector: 18, rootLength: Sector)).Should().BeFalse();
+
+    [Fact]
+    public void IsDiscImageCut_HostileRootRecord_IsCutWithoutOverflow() =>
+        IsCut(IsoImage(926 * Sector, 927, rootSector: uint.MaxValue, rootLength: uint.MaxValue, blockSize: ushort.MaxValue)).Should().BeTrue();
+
     // --- Availability follows the installed tar.exe ---
 
     [Theory]

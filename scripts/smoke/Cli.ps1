@@ -742,6 +742,19 @@ Add-SmokeStep 'CLI-045' {
         # T-F457: -stxudf is a type 7-Zip knows; the image is left out, not refused as unknown.
         $x = Invoke-Pakko @('x', $udf, "-o$out", '-stxudf')
         Assert-Smoke ($x.ExitCode -eq 2 -and $x.Text.Contains('Cannot open the file as archive')) "x -stxudf: exit $($x.ExitCode) $($x.Text)"
+
+        # T-F457: an ISO inside gzip comes out as the image, which then takes the bare image's checks.
+        $isoGz = Join-Path $folder 'a.iso.gz'
+        $output = [System.IO.File]::Create($isoGz)
+        try {
+            $gzip = [System.IO.Compression.GZipStream]::new($output, [System.IO.Compression.CompressionLevel]::Optimal)
+            try { $gzip.Write([System.IO.File]::ReadAllBytes($iso)) } finally { $gzip.Dispose() }
+        } finally { $output.Dispose() }
+        $out = Join-Path $folder 'o-isogz'
+        $x = Invoke-Pakko @('x', $isoGz, "-o$out")
+        $image = Join-Path $out 'a.iso'
+        $same = (Test-Path -LiteralPath $image) -and ((Get-FileHash -LiteralPath $image).Hash -eq (Get-FileHash -LiteralPath $iso).Hash)
+        Assert-Smoke ($x.ExitCode -eq 0 -and $same) "x a.iso.gz: exit $($x.ExitCode) image same: $same $($x.Text)"
     }
 
     # T-F457: Slackware's .tlz is tar.lzma.

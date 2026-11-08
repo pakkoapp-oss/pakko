@@ -328,6 +328,112 @@ public sealed class ReadOnlyTarFormatsTests : IDisposable
         Directory.Exists(destination).Should().BeFalse();
     }
 
+    // T-F457 item 2: an image shorter than it declares, but past its directory, is left to tar.exe,
+    // which reads it in full when only padding is missing and fails when data is (measured on 3.8.9
+    // and 3.5.2, docs/DECISIONS.md "T-F457").
+    [Integration]
+    public async Task Extract_IsoDeclaringTwoSectorsMoreThanItHolds_ExtractsInFull()
+    {
+        string archive = Sample("iso")!;
+        byte[] bytes = File.ReadAllBytes(archive);
+        uint declared = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(16 * 2048 + 80));
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(16 * 2048 + 80), declared + 2);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(16 * 2048 + 84), declared + 2);
+        File.WriteAllBytes(archive, bytes);
+        string destination = NewDestination();
+
+        ArchiveResult result = await ExtractAsync(archive, destination);
+
+        result.Errors.Should().BeEmpty(Errors(result));
+        File.ReadAllText(Path.Combine(destination, "a.txt")).Should().Be("alpha");
+        File.ReadAllBytes(Path.Combine(destination, "b.bin")).Should().Equal(RandomBytes(40_000, 442));
+    }
+
+    [Integration]
+    public async Task Extract_IsoWithoutItsLastTwoPaddingSectors_ExtractsInFull()
+    {
+        string archive = Sample("iso")!;
+        byte[] bytes = File.ReadAllBytes(archive);
+        bytes.AsSpan(bytes.Length - 2 * 2048).ContainsAnyExcept((byte)0).Should().BeFalse("tar.exe pads its images with zero sectors");
+        File.WriteAllBytes(archive, bytes[..^(2 * 2048)]);
+        string destination = NewDestination();
+
+        ArchiveResult result = await ExtractAsync(archive, destination);
+
+        result.Errors.Should().BeEmpty(Errors(result));
+        File.ReadAllBytes(Path.Combine(destination, "b.bin")).Should().Equal(RandomBytes(40_000, 442));
+    }
+
+    // T-F457 item 1: tar.exe reads an ISO inside gzip as an ISO, with no UDF refusal and no cut check
+    // (measured on 3.8.9 and 3.5.2). Pakko gives the image itself, as 7-Zip does; opening it then
+    // takes the bare image's checks.
+    private static string GzipOf(string file)
+    {
+        string gz = file + ".gz";
+        using (FileStream input = File.OpenRead(file))
+        using (FileStream output = File.Create(gz))
+        using (var gzip = new System.IO.Compression.GZipStream(output, System.IO.Compression.CompressionLevel.Optimal))
+            input.CopyTo(gzip);
+        return gz;
+    }
+
+    [Integration]
+    public async Task Extract_IsoInsideGzip_GivesTheImage()
+    {
+        string image = Sample("iso")!;
+        string archive = GzipOf(image);
+        string destination = NewDestination();
+
+        ArchiveResult result = await ExtractAsync(archive, destination);
+
+        result.Errors.Should().BeEmpty(Errors(result));
+        Directory.GetFileSystemEntries(destination).Select(Path.GetFileName).Should().Equal("sample.iso");
+        File.ReadAllBytes(Path.Combine(destination, "sample.iso")).Should().Equal(File.ReadAllBytes(image));
+    }
+
+    [Integration]
+    public async Task Extract_CutIsoInsideGzip_GivesTheImageWhichIsThenRefused()
+    {
+        string image = Sample("iso")!;
+        File.WriteAllBytes(image, File.ReadAllBytes(image)[..(19 * 2048)]);
+        string destination = NewDestination();
+
+        ArchiveResult unwrapped = await ExtractAsync(GzipOf(image), destination);
+        ArchiveResult opened = await ExtractAsync(Path.Combine(destination, "sample.iso"), NewDestination());
+
+        unwrapped.Errors.Should().BeEmpty(Errors(unwrapped));
+        opened.Errors.Should().ContainSingle().Which.Message.Should().Contain("incomplete");
+    }
+
+    [Integration]
+    public async Task List_IsoInsideGzip_IsTheImage()
+    {
+        string archive = GzipOf(Sample("iso")!);
+        IArchiveListingRouter router = await _services.CreateListingRouterAsync();
+
+        ArchiveListResult result = await router.ListEntriesAsync(archive);
+
+        result.Success.Should().BeTrue(result.ErrorMessage);
+        result.Entries.Select(e => e.Path).Should().Equal("sample.iso");
+    }
+
+    [Integration]
+    public async Task Extract_IsoCutInsideFileData_IsAnError()
+    {
+        string archive = Sample("iso")!;
+        byte[] bytes = File.ReadAllBytes(archive);
+        int data = bytes.AsSpan().IndexOf(RandomBytes(40_000, 442).AsSpan(0, 64));
+        data.Should().BePositive();
+        File.WriteAllBytes(archive, bytes[..(data + 4096)]);
+        string destination = NewDestination();
+
+        ArchiveResult result = await ExtractAsync(archive, destination);
+
+        result.Errors.Should().NotBeEmpty();
+        string extracted = Path.Combine(destination, "b.bin");
+        (File.Exists(extracted) && File.ReadAllBytes(extracted).AsSpan().SequenceEqual(RandomBytes(40_000, 442))).Should().BeFalse();
+    }
+
     [Integration]
     public async Task Extract_BlockedByPolicy_RefusedNamingTheFormat()
     {
