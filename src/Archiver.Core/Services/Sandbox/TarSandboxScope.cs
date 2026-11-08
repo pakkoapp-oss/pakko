@@ -81,6 +81,9 @@ internal sealed partial class TarSandboxScope : IDisposable
     private readonly string? _helperSource;
     private byte[]? _helperHash;
 
+    /// <summary>T-F470: the signature check archiveint.dll passes before the first helper run; a test may replace it.</summary>
+    internal Func<string, bool> VerifyArchiveint { get; set; } = TarSignatureVerifier.Verify;
+
     // T-F465: the last plain listing's stdout as tar.exe wrote it, and the bytes it printed for each name.
     private byte[]? _listingBytes;
     private Dictionary<string, byte[]?>? _listedNameBytes;
@@ -480,6 +483,8 @@ internal sealed partial class TarSandboxScope : IDisposable
         ArchiveHelperMode mode, IReadOnlyList<string> arguments, IReadOnlyList<long>? selection, ArchiveHelperOutput output,
         CancellationToken cancellationToken)
     {
+        if (mode == ArchiveHelperMode.Extract && OutputDirectory is null)
+            throw new InvalidOperationException("This scope was created without an output folder.");
         string helper = EnsureHelperCopy();
         string[] selectArguments = [];
         if (selection is not null)
@@ -491,8 +496,6 @@ internal sealed partial class TarSandboxScope : IDisposable
             File.WriteAllBytes(Path.Combine(QuarantineRoot, relative), SelectionBytes(selection));
             selectArguments = ["--select", relative];
         }
-        if (mode == ArchiveHelperMode.Extract && OutputDirectory is null)
-            throw new InvalidOperationException("This scope was created without an output folder.");
 
         // The copy is read again right before each launch: what runs is what was hashed.
         if (!SHA256.HashData(File.ReadAllBytes(helper)).AsSpan().SequenceEqual(_helperHash))
@@ -533,7 +536,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         string copy = Path.Combine(folder, HelperFileName);
         if (_helperHash is not null)
             return copy;
-        if (!TarSignatureVerifier.Verify(ArchiveintPath))
+        if (!VerifyArchiveint(ArchiveintPath))
             throw new TarSignatureVerificationException(ArchiveintPath);
         byte[] bytes = File.ReadAllBytes(helperSource);
         Directory.CreateDirectory(folder);
