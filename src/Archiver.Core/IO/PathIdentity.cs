@@ -123,15 +123,21 @@ public static partial class PathIdentity
     }
 
     /// <summary>
-    /// T-F470: whether <paramref name="file"/> has one name and only its unnamed data stream. What
-    /// the calls cannot show - a failed call, a second stream, a malformed record - is false.
+    /// T-F470: whether the file at <paramref name="path"/> (a long-path spelling is taken as it is)
+    /// has one name and only its unnamed data stream. Opened for attributes only, sharing all and not
+    /// following a link: no data is read, so no scan-on-open and no conflict with another reader.
+    /// What the calls cannot show - a failed open or call, a second stream, a malformed record - is false.
     /// </summary>
-    internal static bool HasOneLinkAndOneStream(SafeFileHandle file)
+    internal static bool HasOneLinkAndOneStream(string path)
     {
+        using SafeFileHandle file = CreateFile(path, ReadAttributes, FileShareAll, 0, OpenExisting, OpenReparsePoint, 0);
+        if (file.IsInvalid)
+            return false;
         if (!GetFileInformationByHandle(file, out ByHandleFileInformation info) || info.NumberOfLinks != 1)
             return false;
-        // FILE_STREAM_INFO (WinBase.h): NextEntryOffset at 0, StreamNameLength at 4, StreamName at 24.
-        Span<byte> buffer = stackalloc byte[256];
+        // FILE_STREAM_INFO (WinBase.h): NextEntryOffset at 0, StreamNameLength at 4, StreamName at 24;
+        // its LARGE_INTEGERs want 8-byte alignment, which a long buffer gives.
+        Span<byte> buffer = MemoryMarshal.AsBytes(stackalloc long[32]);
         if (!GetFileInformationByHandleEx(file, FileStreamInfoClass, ref MemoryMarshal.GetReference(buffer), (uint)buffer.Length))
             return false;
         uint next = BinaryPrimitives.ReadUInt32LittleEndian(buffer);
@@ -160,6 +166,8 @@ public static partial class PathIdentity
     private const uint FileAttributeDirectory = 0x10;
     private const uint FileAttributeReparsePoint = 0x400;
     private const int FileStreamInfoClass = 7;
+    private const uint ReadAttributes = 0x80;
+    private const uint OpenReparsePoint = 0x00200000;
     private const int StreamInfoNameOffset = 24;
     private const string UnnamedDataStream = "::$DATA";
 
