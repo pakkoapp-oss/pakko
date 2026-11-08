@@ -13595,8 +13595,9 @@ visible changes; an argument error was not chosen, since Core operations never t
 
 ## T-F456 - the operation window's pipe is read on its own thread (2026-11-08)
 
-`CancelInTheWindow_CancelsTheOperationWithoutFailover` timed out once in a full run. The cause is
-T-F425's pattern, in Shell's own code. The pipes to `Archiver.OperationUi.exe` are anonymous, so
+`CancelInTheWindow_CancelsTheOperationWithoutFailover` timed out once in a full run, and never
+again. What was found is a mechanism consistent with that 16 s timeout: T-F425's pattern, in
+Shell's own code. The pipes to `Archiver.OperationUi.exe` are anonymous, so
 synchronous. On a synchronous stream, `ReadAsync` is a work item that blocks a thread-pool thread in
 `ReadFile` until the other side writes. `HelperOperationUi`'s session read that way for its whole
 life, and `FakeHelper` read and wrote the same way. In a loaded run the pool had no thread left for
@@ -13611,8 +13612,24 @@ must run within 5 s.
 The probe is waited on, not awaited. An await would hand the test's own pool thread to the probe,
 and the check would pass for the wrong reason. That happened in the first draft.
 
+The named test's own body, run in scratch under the same hold:
+- With main's code and no pool thread free beyond the test's own, it hung for over 7 minutes.
+  Its timeouts could not fire either: their timers need the pool.
+- With the fix it passed.
+- With one thread free, both passed.
+
+The 2026-11-06 self-naming messages were therefore not seen. The flake's exact wait stays unproven.
+
 **Fix.** A new synchronous `FrameCodec.Read` (`Stream.ReadAtLeast`, the same frame checks as
-`ReadAsync`). The session's reader runs on a dedicated background thread (`Session.ReadFrames`).
+`ReadAsync`). The session's reader (`Session.ReadFrames`) runs as a `LongRunning` task, which gets a
+thread of its own.
+- Not a bare `Thread`. An exception outside the reader's catch (`ProtocolException`, `IOException`,
+  `ObjectDisposedException`) would end Shell with no message, past `ShellLastResort`.
+- As a task, it faults unobserved, as it did before. The behaviour on such an exception is
+  unchanged.
+- Known gap, not fixed here: `CancelOperation` catches only `ObjectDisposedException`. A
+  cancellation callback that throws therefore ends the reader without `Fail()`. A `Complete`
+  with a message then waits for `_ended` without end.
 `FakeHelper` reads on a `LongRunning` task and writes synchronously.
 
 Not changed:
@@ -13620,6 +13637,11 @@ Not changed:
   it, so it only borrows a thread.
 - The helper's own reader (`Archiver.OperationUi/ShellPipe.cs`) still uses `ReadAsync`. It holds one
   pool thread in a process that has little else for the pool.
+
+On device: the failover (`Fail()`, which creates the Win32 `NativeProgressDialog`) now runs on that
+dedicated thread, which then ends. It used to run on a pool thread that lives on. Shell has no
+`[STAThread]`, so the object lives in the process MTA either way, and that outlives the thread.
+This is unverified on device: `OPW-004` (the helper killed mid-operation) is the check.
 
 ## T-F450 - a tar.exe version probe that gave no answer is asked again, and says so (2026-11-04)
 
