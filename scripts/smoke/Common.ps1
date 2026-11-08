@@ -82,7 +82,7 @@ function New-TarFile {
         Justification = 'Writes a fixture inside the run''s own temporary folder.')]
     param(
         [Parameter(Mandatory)][string]$Path,
-        # Each: @{ Name = [byte[]] or string; Content = string; Modified = [datetime]; Folder = $true }
+        # Each: @{ Name = [byte[]] or string; Content = string; Modified = [datetime]; Folder = $true; Type = 'x' }
         [Parameter(Mandatory)][hashtable[]]$Entries
     )
     $stream = [System.IO.File]::Create($Path)
@@ -97,7 +97,7 @@ function New-TarFile {
                 @{ Offset = 100; Text = '0000644' }, @{ Offset = 108; Text = '0000000' }, @{ Offset = 116; Text = '0000000' }
                 @{ Offset = 124; Text = [System.Convert]::ToString($content.Length, 8).PadLeft(11, '0') }
                 @{ Offset = 136; Text = [System.Convert]::ToString([System.DateTimeOffset]::new($modified.ToUniversalTime()).ToUnixTimeSeconds(), 8).PadLeft(11, '0') }
-                @{ Offset = 148; Text = '        ' }, @{ Offset = 156; Text = $entry.Folder ? '5' : '0' }, @{ Offset = 257; Text = 'ustar' }, @{ Offset = 263; Text = '00' }
+                @{ Offset = 148; Text = '        ' }, @{ Offset = 156; Text = $entry.Type ? [string]$entry.Type : ($entry.Folder ? '5' : '0') }, @{ Offset = 257; Text = 'ustar' }, @{ Offset = 263; Text = '00' }
             )
             foreach ($field in $fields) {
                 $bytes = [System.Text.Encoding]::ASCII.GetBytes($field.Text)

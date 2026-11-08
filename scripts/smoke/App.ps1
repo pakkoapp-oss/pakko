@@ -56,3 +56,35 @@ Add-SmokeStep 'APP-018' -AtEnd {
 
     "$($passwords.Count) passwords; $($commandLines.Count) command lines; pakko.log: $lines lines, $fresh since the run began; $($events.Count) events"
 }
+
+# T-F470: the App writes which tar-family reader it took once at start; on the dev package that is
+# the archive helper. The line comes from the packaged process, so it proves the helper runs with
+# the package's identity. Skipped when the App is already open: its line is from an earlier start.
+Add-SmokeStep 'APP-037' {
+    if (Get-Process -Name 'Archiver.App' -ErrorAction SilentlyContinue) { Skip-Smoke 'the App is already open: close it and run the row again' }
+    $log = Join-Path (Get-PakkoDataFolder) 'LocalCache\Local\Pakko\logs\pakko.log'
+    $started = [datetime]::Now.AddSeconds(-1)
+    Start-PakkoApp
+    $found = [ref]$null
+    try {
+        Wait-Smoke -What 'the reader line in pakko.log' -TimeoutSeconds 60 -Condition {
+            if (-not (Test-Path -LiteralPath $log)) { return $false }
+            # The App holds the log open for writing.
+            $stream = [System.IO.FileStream]::new($log, 'Open', 'Read', 'ReadWrite')
+            try { $lines = [System.IO.StreamReader]::new($stream).ReadToEnd() -split '\r?\n' }
+            finally { $stream.Dispose() }
+            foreach ($text in $lines) {
+                $stamp = [datetime]::MinValue
+                if ($text.Contains('tar-family reader:') -and $text.Length -ge 19 -and [datetime]::TryParse($text.Substring(0, 19), [ref]$stamp) -and $stamp -ge $started) {
+                    $found.Value = $text
+                }
+            }
+            $null -ne $found.Value
+        }
+    }
+    finally {
+        Get-Process -Name 'Archiver.App' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    }
+    Assert-Smoke ($found.Value -match 'tar-family reader: archive helper; archiveint\.dll: libarchive 3\.[5-8]\.\d+.*; the probe passed$') "the App's reader line: $($found.Value)"
+    $found.Value.Substring(20)
+}
