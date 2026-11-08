@@ -4,6 +4,7 @@ using Archiver.App.ViewModels;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
+using Archiver.Core.Services.Sandbox;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
@@ -32,6 +33,14 @@ public partial class App : Application
             ReportUnexpected(e.Exception, "Unobserved task exception");
         };
         Services = ConfigureServices();
+        _ = LogTarReaderAsync(Services);
+    }
+
+    // T-F470: the backend line in the log is the device's proof of which reader this package uses.
+    private static async Task LogTarReaderAsync(IServiceProvider services)
+    {
+        ArchiveintDecision decision = await services.GetRequiredService<ArchiveintGate>().DecideAsync().ConfigureAwait(false);
+        services.GetRequiredService<ILogService>().Info(decision.Describe());
     }
 
     /// <summary>
@@ -82,9 +91,13 @@ public partial class App : Application
         // T-F347: the tar.exe probe (signature check + tar.exe --version, ~100 ms) starts here on
         // the thread pool and runs beside XAML loading; the first consumer (MainViewModel, built
         // after the window's LoadComponent) takes its result, waiting only if it is not ready yet.
-        var tarService = new TarSandboxedService(policy);
+        // T-F470: one gate per process, shared by every tar-family reader; decided beside XAML loading
+        // and logged, so the device shows which backend this package reads with.
+        var archiveintGate = new ArchiveintGate(policy);
+        var tarService = new TarSandboxedService(policy, archiveintGate);
         Task<TarCapabilities> tarProbe = Task.Run(tarService.DetectCapabilitiesAsync);
         services.AddSingleton<ITarService>(tarService);
+        services.AddSingleton(archiveintGate);
         // T-F342: whether tar.exe writes 7z is found by running it once more. Started here so the
         // "New archive" card has the answer early; it also goes to a file, for the Explorer menu.
         // T-F403: with what it reads, so the menu offers no archive item tar.exe cannot open.
@@ -98,7 +111,8 @@ public partial class App : Application
         // Test button uses.
         services.AddSingleton<IRecoveryService>(sp => new RecoveryService(
             policy, () => Task.FromResult(sp.GetRequiredService<IExtractionRouter>())));
-        services.AddSingleton<IAntivirusScanService, AntivirusScanService>();
+        services.AddSingleton<IAntivirusScanService>(sp => new AntivirusScanService(
+            sp.GetRequiredService<TarCapabilities>(), policy, sp.GetRequiredService<ArchiveintGate>()));
         // T-F207: "Delete after operation" — the owner window is read at delete time, after
         // SetWindow has run.
         services.AddSingleton(sp => new SourceRecycler(new Win32SourceDeleteOperations(

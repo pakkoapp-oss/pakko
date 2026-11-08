@@ -56,10 +56,17 @@ public sealed class AntivirusScanService : IAntivirusScanService
     {
     }
 
+    /// <summary>Creates a scanner wired to the real AMSI provider, reading through the process's <paramref name="gate"/> (T-F470).</summary>
+    [SupportedOSPlatform("windows")]
+    public AntivirusScanService(TarCapabilities tarCapabilities, GroupPolicyOptions groupPolicyOptions, Sandbox.ArchiveintGate gate)
+        : this(() => Task.FromResult(tarCapabilities), groupPolicyOptions, gate)
+    {
+    }
+
     // T-F350: PakkoServices' entry - the one place the real AMSI provider is wired in.
     [SupportedOSPlatform("windows")]
-    internal AntivirusScanService(Func<Task<TarCapabilities>> tarCapabilities, GroupPolicyOptions groupPolicyOptions)
-        : this(tarCapabilities, groupPolicyOptions, () => new AmsiScanner("Pakko"), AmsiProviderCheck.GetState)
+    internal AntivirusScanService(Func<Task<TarCapabilities>> tarCapabilities, GroupPolicyOptions groupPolicyOptions, Sandbox.ArchiveintGate? gate = null)
+        : this(tarCapabilities, groupPolicyOptions, () => new AmsiScanner("Pakko"), AmsiProviderCheck.GetState, gate)
     {
     }
 
@@ -82,9 +89,11 @@ public sealed class AntivirusScanService : IAntivirusScanService
         Func<Task<TarCapabilities>> tarCapabilities,
         GroupPolicyOptions groupPolicyOptions,
         Func<IAmsiScanner> scannerFactory,
-        Func<AmsiProviderState> providerState)
+        Func<AmsiProviderState> providerState,
+        Sandbox.ArchiveintGate? gate = null)
     {
         ArgumentNullException.ThrowIfNull(groupPolicyOptions);
+        _gate = gate;
         _tarCapabilities = tarCapabilities;
         _policy = groupPolicyOptions;
         _scannerFactory = scannerFactory;
@@ -97,8 +106,11 @@ public sealed class AntivirusScanService : IAntivirusScanService
     // T-F465: see TarSandboxedService.ForcedTarOutputEncoding.
     internal System.Text.Encoding? ForcedTarOutputEncoding { get; init; }
 
-    // T-F470: the archive helper this service reads with; null reads with tar.exe.
+    // T-F470: the archive helper this service reads with (tests); null leaves the choice to the gate.
     internal Sandbox.HelperSetup? Helper { get; init; }
+
+    // T-F470: the process's one gate; null reads with tar.exe.
+    private readonly Sandbox.ArchiveintGate? _gate;
 
     // T-F406: a path that cannot be opened at all is reported, not handed to a reader.
     private static List<string> TakeUsablePaths(IReadOnlyList<string> paths, List<ThreatFinding> findings)
@@ -238,7 +250,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 cancellationToken.ThrowIfCancellationRequested();
                 await ScanTarArchiveAsync(
                     archivePath, options.SelectedEntryPaths, scanner, findings,
-                    (entry, done, total) => ReportProgress(archivePath, entry, done, total), (ForcedTarOutputEncoding, Helper), cancellationToken)
+                    (entry, done, total) => ReportProgress(archivePath, entry, done, total), (ForcedTarOutputEncoding, Helper, _gate), cancellationToken)
                     .ConfigureAwait(false);
                 archivesCompleted++;
                 progress?.Report(new ProgressReport { Percent = archivesCompleted * 100 / totalArchives, CurrentFile = archivePath });
@@ -528,13 +540,13 @@ public sealed class AntivirusScanService : IAntivirusScanService
         IAmsiScanner scanner,
         List<ThreatFinding> findings,
         Action<string?, int, int> reportProgress,
-        (System.Text.Encoding? Encoding, HelperSetup? Helper) readWith,
+        (System.Text.Encoding? Encoding, HelperSetup? Helper, ArchiveintGate? Gate) readWith,
         CancellationToken cancellationToken)
     {
         ISandboxedArchiveReader? reader = null;
         try
         {
-            reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: true, readWith.Encoding, cancellationToken, readWith.Helper)
+            reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: true, readWith.Encoding, cancellationToken, readWith.Helper, readWith.Gate)
                 .ConfigureAwait(false);
             _ = await reader.ScanAsync(cancellationToken).ConfigureAwait(false);
 

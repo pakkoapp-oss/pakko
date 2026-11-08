@@ -989,6 +989,17 @@ public sealed class CliSubprocessTests
         stdOut.Should().Contain("zip");
     }
 
+    // T-F470: the line that tells which backend reads tar-family archives; no helper sits beside a
+    // test build of pakko, so tar.exe.
+    [Fact]
+    public void Info_NamesTheTarFamilyReader()
+    {
+        (int exitCode, string stdOut, _) = CliProcessRunner.Run("i");
+
+        exitCode.Should().Be(0);
+        stdOut.Should().Contain("tar-family reader: tar.exe; archiveint.dll: not probed; no archive helper beside Pakko");
+    }
+
     // --- --version / -v ---
 
     // T-F222: tests build without Publish-Cli.ps1's /p:Version, so this is always a dev build — it

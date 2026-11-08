@@ -574,6 +574,9 @@ static async Task<int> RunInfoAsync(PakkoServices services)
     await Console.Out.WriteLineAsync().ConfigureAwait(false);
     string tarVersion = policy.DisableTarExtraction ? "disabled by Group Policy" : $"version {capabilities.Version}";
     await Console.Out.WriteLineAsync($"tar.exe: C:\\Windows\\System32\\tar.exe ({tarVersion})").ConfigureAwait(false);
+    // T-F470: which backend reads tar-family archives in this process - the device's proof.
+    if (services.GetTarReaderAsync() is { } reader)
+        await Console.Out.WriteLineAsync((await reader.ConfigureAwait(false)).Describe()).ConfigureAwait(false);
 
     return 0;
 
