@@ -854,3 +854,68 @@ Add-SmokeStep 'CLI-049' {
     'a.txt. and a.txt beside a.txt both extracted, the trimmed one numbered'
 }
 
+# T-F470: on a native x64 Windows with a measured libarchive the tar-family reader is the archive
+# helper over archiveint.dll, and names outside the ANSI page arrive exactly (tar.exe lists them
+# by best fit, CLI-044). Pakko's own 'a -ttar' refuses such names, so the archive is written here,
+# each name in a pax 'path' record (UTF-8).
+Add-SmokeStep 'CLI-050' {
+    $info = Invoke-Pakko @('i')
+    $line = @($info.Output -split '\r?\n' | Where-Object { $_ -match '^tar-family reader:' })
+    Assert-Smoke ($info.ExitCode -eq 0 -and $line.Count -eq 1) "i: exit $($info.ExitCode), $($line.Count) reader lines: $($info.Text)"
+    Assert-Smoke ($line[0] -match '^tar-family reader: archive helper; archiveint\.dll: libarchive 3\.[5-8]\.\d+.*; the probe passed$') "the reader line of i: $($line[0])"
+
+    $folder = Get-StepFolder 'cli050'
+    # Japanese, Greek, Hebrew and an emoji (a surrogate pair): none is on a Western or Cyrillic page.
+    $names = @(
+        ([string][char]0x65E5 + [char]0x672C + [char]0x8A9E + '.txt')
+        ([string][char]0x0395 + [char]0x03BB + [char]0x03BB + [char]0x03B7 + [char]0x03BD + '.txt')
+        ([string][char]0x05E2 + [char]0x05D1 + [char]0x05E8 + '.txt')
+        ('emoji-' + [char]::ConvertFromUtf32(0x1F600) + '.txt')
+    )
+    $entries = @()
+    for ($i = 0; $i -lt $names.Count; $i++) {
+        $body = " path=$($names[$i])`n"
+        $length = [System.Text.Encoding]::UTF8.GetByteCount($body)
+        $digits = "$length".Length
+        while ("$($length + $digits)".Length -ne $digits) { $digits++ }
+        $entries += @{ Name = "PaxHeaders/$i"; Type = 'x'; Content = "$($length + $digits)$body" }
+        $entries += @{ Name = "plain$i.txt"; Content = "content of $($names[$i])" }
+    }
+    $tar = Join-Path $folder 'names.tar'
+    New-TarFile -Path $tar -Entries $entries
+
+    $list = Invoke-Pakko @('l', '-sccUTF-8', $tar)
+    Assert-Smoke ($list.ExitCode -eq 0) "l: exit $($list.ExitCode) $($list.Text)"
+    foreach ($name in $names) { Assert-Smoke ($list.Output.Contains($name)) "l does not show $name exactly: $($list.Output)" }
+
+    $o = Join-Path $folder 'o'
+    $run = Invoke-Pakko @('x', $tar, "-o$o")
+    $texts = @(Get-ChildItem -LiteralPath $o -File -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object { "$($_.Name)=$([System.IO.File]::ReadAllText($_.FullName))" })
+    $expected = @($names | Sort-Object | ForEach-Object { "$_=content of $_" })
+    Assert-Smoke ($run.ExitCode -eq 0 -and ($texts -join '|') -ceq ($expected -join '|')) "x: exit $($run.ExitCode), '$($texts -join '|')' $($run.Text)"
+    "$($line[0]); $($names.Count) names outside the ANSI page listed and extracted exactly"
+}
+
+# T-F470: without the helper beside it Pakko reads tar-family archives through tar.exe, quietly.
+# A copy of pakko.exe alone in a folder stands in for a build with no helper (ARM64 takes the same
+# path through its own check, covered by ArchiveintGateTests).
+Add-SmokeStep 'CLI-051' {
+    $folder = Get-StepFolder 'cli051'
+    $alone = Join-Path $folder 'bin\pakko.exe'
+    $null = [System.IO.Directory]::CreateDirectory((Split-Path $alone))
+    Copy-Item -LiteralPath $Smoke.Pakko -Destination $alone
+    $info = Invoke-Tool -Exe $alone -Arguments @('i')
+    $line = @($info.Output -split '\r?\n' | Where-Object { $_ -match '^tar-family reader:' })
+    Assert-Smoke ($info.ExitCode -eq 0 -and $line.Count -eq 1) "i: exit $($info.ExitCode), $($line.Count) reader lines: $($info.Text)"
+    Assert-Smoke ($line[0] -ceq 'tar-family reader: tar.exe; archiveint.dll: not probed; no archive helper beside Pakko') "the reader line of i: $($line[0])"
+
+    $tar = Join-Path $folder 'plain.tar'
+    New-TarFile -Path $tar -Entries @(@{ Name = 'd/a.txt'; Content = 'A' }, @{ Name = 'b.txt'; Content = 'B' })
+    $o = Join-Path $folder 'o'
+    $run = Invoke-Tool -Exe $alone -Arguments @('x', $tar, "-o$o")
+    $texts = @(Get-ChildItem -LiteralPath $o -File -Recurse -ErrorAction SilentlyContinue | Sort-Object FullName | ForEach-Object { "$($_.FullName.Substring($o.Length + 1))=$([System.IO.File]::ReadAllText($_.FullName))" })
+    Assert-Smoke ($run.ExitCode -eq 0 -and ($texts -join '|') -ceq 'b.txt=B|d\a.txt=A') "x through tar.exe: exit $($run.ExitCode), '$($texts -join '|')' $($run.Text)"
+    $test = Invoke-Tool -Exe $alone -Arguments @('t', $tar)
+    Assert-Smoke ($test.ExitCode -le 1) "t through tar.exe: exit $($test.ExitCode) $($test.Text)"
+    "$($line[0]); a tar extracted and tested through tar.exe"
+}

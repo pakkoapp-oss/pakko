@@ -355,6 +355,11 @@ dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
     the real probe; each condition falls back to tar.exe (policy, no helper, not native x64, an
     unsigned DLL, a version not measured, a missing export, an unfinished, forged or hung probe);
     the decision is made once, a failure is not retried, a cancelled first caller is not the verdict.
+- T-F470 step 4, on the installed build (`docs/SMOKE.md`): `CLI-050` (`pakko i` names the helper,
+  names outside the ANSI page list and extract exactly), `CLI-051` (a `pakko.exe` with no helper
+  beside it reads through tar.exe) and `APP-037` (the App's reader line, from the packaged process).
+  `CLI-050` was seen red on a `pakko.exe` copied alone: at the `i` line, and with that check off at
+  the names, which tar.exe skips as unreadable.
 
 ### T-F35 Parallel SingleArchive Pipeline Tests (v1.4+)
 
