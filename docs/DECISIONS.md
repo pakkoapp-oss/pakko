@@ -14720,6 +14720,34 @@ in the product. Choices in 3b-i:
   the hash-then-launch gap on the helper copy (writable only by the same user's medium-integrity
   processes).
 
+**Step 4 (2026-11-08): what the fallback keeps, and why it was missed.** T-F469, T-F464, T-F461 and
+T-F453 now cover the tar.exe fallback only (P4, TASKS). They share one root cause: from v1.1 Pakko
+spoke to tar.exe in names, and that channel loses information. tar.exe lists names in the system ANSI
+page (best fit, or "unreadable ... skipping" in 3.8.9), Pakko handed those names back for a selection
+or a filter, and Win32 trims a trailing dot or space that tar.exe writes as it is. So the listing,
+the quarantine and Pakko's plan could name one file three ways:
+- T-F469: a skipped name leaves the listing shorter than the headers; T-F441's count check then
+  refuses every selection from the archive;
+- T-F453: `caf<e-acute>/` and `cafe/` list as one root, and dropping it merges them silently (the
+  only one of the four that gives a wrong result rather than a refusal);
+- T-F461: a folder Pakko makes first is trimmed, tar.exe's is not; five shapes refuse, one replaces a
+  file under Overwrite;
+- T-F464: the fix in kind, take names from the quarantine instead of predicting them.
+
+Why the earlier waves missed it:
+- the fixtures came from tar.exe itself or from .NET in pax/UTF-8, names tar.exe is sure to read; raw
+  headers in a foreign page arrived only with T-F465 and T-F467's exhaustive test;
+- tar.exe was treated as a black box whose names round-trip; nobody measured the channel until
+  T-F441 (best fit) and T-F465 (the listing decoded in the wrong page);
+- one machine and one page (1251), mostly one tar.exe build; 3.5.2 and el-GR, he-IL, ja-JP later;
+- each shape found got its own check (T-F441, T-F443, T-F460, T-F462, T-F463) while the interface
+  stayed name-based, so the shapes kept coming.
+
+**Lesson:** measure the channel to an external program (its encoding, what it drops, what the OS
+does to its output) before building on it, with inputs that program did not make itself. T-F470
+changes the interface instead of adding a check: UTF-16 names from `archiveint.dll` and a selection
+by index, so no name passes through tar.exe on the helper's path.
+
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
 - **Why.** tar.exe writes through the long-path prefix, so `a.txt.`, `a.txt ` and a folder `d ` are on
