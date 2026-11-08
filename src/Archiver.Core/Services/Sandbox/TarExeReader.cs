@@ -15,6 +15,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// </summary>
 internal sealed class TarExeReader : ISandboxedArchiveReader
 {
+    private const string ScanFirst = "ScanAsync comes first.";
     private readonly TarSandboxScope _scope;
     private long _totalDeclaredSize;
     private string[]? _allNames;
@@ -68,7 +69,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     public async Task<SelectionOutcome> SelectForExtractAsync(
         IReadOnlyList<string>? selectedEntryPaths, Func<string, bool, bool>? entryFilter, CancellationToken cancellationToken)
     {
-        string[] allNames = _allNames ?? throw new InvalidOperationException("ScanAsync comes first.");
+        string[] allNames = _allNames ?? throw new InvalidOperationException(ScanFirst);
         _filter = entryFilter;
         List<string>? tarMembers = selectedEntryPaths is { Count: > 0 } ? ExpandSelection(allNames, selectedEntryPaths) : null;
         // A selection that names no entry selects nothing, as in ZIP: an empty member list is
@@ -122,7 +123,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     public async Task<IQuarantinedEntries> ExtractAsync(
         ExtractionPoll? poll, List<SkippedFile> skippedFiles, CancellationToken cancellationToken)
     {
-        string[] allNames = _allNames ?? throw new InvalidOperationException("ScanAsync comes first.");
+        string[] allNames = _allNames ?? throw new InvalidOperationException(ScanFirst);
         List<(string Name, long Size)> fileEntries = _fileEntries!;
         string outDir = _scope.OutputDirectory!;
 
@@ -203,7 +204,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 
     public async Task<ScanQuarantine> ExtractForScanAsync(IReadOnlyList<string>? selectedEntryPaths, CancellationToken cancellationToken)
     {
-        string[] allNames = _allNames ?? throw new InvalidOperationException("ScanAsync comes first.");
+        string[] allNames = _allNames ?? throw new InvalidOperationException(ScanFirst);
         List<(string Name, long Size)> fileEntries = _fileEntries!;
         string outDir = _scope.OutputDirectory!;
 
@@ -240,7 +241,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 
     public async Task<FirstCopiesForScan> ExtractFirstCopiesForScanAsync(CancellationToken cancellationToken)
     {
-        string[] allNames = _allNames ?? throw new InvalidOperationException("ScanAsync comes first.");
+        string[] allNames = _allNames ?? throw new InvalidOperationException(ScanFirst);
         List<DuplicateGroup> duplicates = _scanDuplicates ?? throw new InvalidOperationException("ExtractForScanAsync comes first.");
         string outDir = _scope.OutputDirectory!;
 
@@ -270,10 +271,11 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     {
         (int exitCode, string stdErr, long declaredSize, bool nothingRead) = await ScanAndTestAsync(_scope, progress, entryFilter, cancellationToken)
             .ConfigureAwait(false);
-        CoreText? failure = exitCode == 0 ? null
-            : IsLikelyEncryptionFailure(stdErr)
-                ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
-                : CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(stdErr));
+        if (exitCode == 0)
+            return new TestOutcome(null, declaredSize, nothingRead);
+        CoreText failure = IsLikelyEncryptionFailure(stdErr)
+            ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
+            : CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(stdErr));
         return new TestOutcome(failure, declaredSize, nothingRead);
     }
 
@@ -333,6 +335,104 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
                 CreateFolderEntries(_folderNames, placement.StripRootPrefix, placement.Staging.Path);
             else
                 CreateFolderEntriesFromDisk(foldersFromDisk, placement);
+        }
+
+        private static HashSet<string> QuarantinedAs(IReadOnlyList<(string Name, long Size)> fileEntries, Func<string, bool> which) =>
+            new(fileEntries.Where(e => which(e.Name)).Select(e => EntryDiskName.AsTarExeWrites(EntryDiskName.StripLeadingDotSlash(e.Name))),
+                StringComparer.OrdinalIgnoreCase);
+
+        // T-F197: the move phase walks files only, so folder entries are created here — from the
+        // names the pre-scan already validated (no "..", rooted, ADS or reserved names), with the
+        // same root strip the files get. Moving files first means a folder that also holds files
+        // already exists; only the empty ones are new.
+        private static void CreateFolderEntries(IEnumerable<string> names, bool stripRootPrefix, string actualDest)
+        {
+            foreach (string name in names)
+            {
+                if (!name.EndsWith('/'))
+                    continue;
+                string relative = EntryDiskName.AsPakkoWrites(name).Replace('/', Path.DirectorySeparatorChar);
+                if (stripRootPrefix)
+                {
+                    int sep = relative.IndexOf(Path.DirectorySeparatorChar);
+                    relative = sep < 0 ? string.Empty : relative[(sep + 1)..];
+                }
+                if (relative.Length > 0)
+                    Directory.CreateDirectory(Path.Combine(actualDest, relative));
+            }
+        }
+
+        // T-F298: a folder entry takes the time tar.exe gave it in the quarantine — read before the
+        // move phase, since moving a folder's files out changes that time. Same names and root strip
+        // as CreateFolderEntries; "" is the stripped root, which actualDest stands in for.
+        private static void RecordFolderTimes(IEnumerable<string> names, bool stripRootPrefix, string quarantineDir, ExtractionStaging staging)
+        {
+            foreach (string name in names)
+            {
+                if (!name.EndsWith('/'))
+                    continue;
+                string entryPath = EntryDiskName.AsTarExeWrites(name).Replace('/', Path.DirectorySeparatorChar);
+                string quarantined = Path.Combine(quarantineDir, entryPath);
+                if (entryPath.Length == 0 || !QuarantineFiles.FolderExists(quarantined))
+                    continue;
+                string relative = EntryDiskName.AsPakkoWrites(name).Replace('/', Path.DirectorySeparatorChar);
+                if (stripRootPrefix)
+                {
+                    int sep = relative.IndexOf(Path.DirectorySeparatorChar);
+                    relative = sep < 0 ? string.Empty : relative[(sep + 1)..];
+                }
+                try
+                {
+                    staging.RecordFolderTime(relative, QuarantineFiles.FolderTime(quarantined));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // best-effort: the folder keeps the time the commit gives it
+                }
+            }
+        }
+
+        // T-F443: where a folder from the quarantine lands, relative to actualDest - where a file of the
+        // same path would (TryMoveSingleEntryAsync); "" is the stripped root, which actualDest stands in for.
+        private static string FolderRelativeToDest(string quarantined, FolderPlacement plan)
+        {
+            string relative = quarantined.Replace('/', Path.DirectorySeparatorChar);
+            if (plan.StripRootPrefix)
+            {
+                int sep = relative.IndexOf(Path.DirectorySeparatorChar);
+                if (sep < 0)
+                    return string.Empty;
+                relative = relative[(sep + 1)..];
+            }
+            relative = EntryDiskName.AsPakkoWrites(relative.Replace(Path.DirectorySeparatorChar, '/') + "/").Replace('/', Path.DirectorySeparatorChar);
+            return Path.GetRelativePath(plan.ActualDest, Path.GetFullPath(Path.Combine(plan.ActualDest, relative)));
+        }
+
+        private static void CreateFolderEntriesFromDisk(IEnumerable<string> folders, FolderPlacement plan)
+        {
+            foreach (string folder in folders)
+            {
+                string relative = FolderRelativeToDest(folder, plan);
+                if (relative.Length > 0 && relative != ".")
+                    Directory.CreateDirectory(Path.Combine(plan.Staging.Path, relative));
+            }
+        }
+
+        private static void RecordFolderTimesFromDisk(IEnumerable<string> folders, FolderPlacement plan, string quarantineDir)
+        {
+            foreach (string folder in folders)
+            {
+                string relative = FolderRelativeToDest(folder, plan);
+                try
+                {
+                    string quarantined = Path.Combine(quarantineDir, folder.Replace('/', Path.DirectorySeparatorChar));
+                    plan.Staging.RecordFolderTime(relative == "." ? string.Empty : relative, QuarantineFiles.FolderTime(quarantined));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // best-effort: the folder keeps the time the commit gives it
+                }
+            }
         }
     }
 
@@ -669,31 +769,6 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         return (firstDir, accepted, reported);
     }
 
-    private static HashSet<string> QuarantinedAs(IReadOnlyList<(string Name, long Size)> fileEntries, Func<string, bool> which) =>
-        new(fileEntries.Where(e => which(e.Name)).Select(e => EntryDiskName.AsTarExeWrites(EntryDiskName.StripLeadingDotSlash(e.Name))),
-            StringComparer.OrdinalIgnoreCase);
-
-    // T-F197: the move phase walks files only, so folder entries are created here — from the
-    // names the pre-scan already validated (no "..", rooted, ADS or reserved names), with the
-    // same root strip the files get. Moving files first means a folder that also holds files
-    // already exists; only the empty ones are new.
-    private static void CreateFolderEntries(IEnumerable<string> names, bool stripRootPrefix, string actualDest)
-    {
-        foreach (string name in names)
-        {
-            if (!name.EndsWith('/'))
-                continue;
-            string relative = EntryDiskName.AsPakkoWrites(name).Replace('/', Path.DirectorySeparatorChar);
-            if (stripRootPrefix)
-            {
-                int sep = relative.IndexOf(Path.DirectorySeparatorChar);
-                relative = sep < 0 ? string.Empty : relative[(sep + 1)..];
-            }
-            if (relative.Length > 0)
-                Directory.CreateDirectory(Path.Combine(actualDest, relative));
-        }
-    }
-
     // T-F52/T-F298: the directories an entry needs before its own directory entry has been seen,
     // in archive order — tar.exe cannot create those itself inside the AppContainer. A directory
     // whose entry comes before everything inside it (what GNU tar, bsdtar and 7-Zip write) is
@@ -739,36 +814,6 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         return [.. preCreate];
     }
 
-    // T-F298: a folder entry takes the time tar.exe gave it in the quarantine — read before the
-    // move phase, since moving a folder's files out changes that time. Same names and root strip
-    // as CreateFolderEntries; "" is the stripped root, which actualDest stands in for.
-    private static void RecordFolderTimes(IEnumerable<string> names, bool stripRootPrefix, string quarantineDir, ExtractionStaging staging)
-    {
-        foreach (string name in names)
-        {
-            if (!name.EndsWith('/'))
-                continue;
-            string entryPath = EntryDiskName.AsTarExeWrites(name).Replace('/', Path.DirectorySeparatorChar);
-            string quarantined = Path.Combine(quarantineDir, entryPath);
-            if (entryPath.Length == 0 || !QuarantineFiles.FolderExists(quarantined))
-                continue;
-            string relative = EntryDiskName.AsPakkoWrites(name).Replace('/', Path.DirectorySeparatorChar);
-            if (stripRootPrefix)
-            {
-                int sep = relative.IndexOf(Path.DirectorySeparatorChar);
-                relative = sep < 0 ? string.Empty : relative[(sep + 1)..];
-            }
-            try
-            {
-                staging.RecordFolderTime(relative, QuarantineFiles.FolderTime(quarantined));
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // best-effort: the folder keeps the time the commit gives it
-            }
-        }
-    }
-
     // T-F443: the folders tar.exe wrote, by their names on disk, when the listing named some other
     // way (best fit): every folder in the quarantine but those Pakko pre-created by a listed name.
     // One of those that holds anything arrives with its content anyway; an empty one was only the
@@ -777,46 +822,4 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     internal static List<string> FoldersTarExeWrote(IEnumerable<(string Path, bool IsFolder)> quarantined, IReadOnlySet<string> preCreated) =>
         [.. quarantined.Where(item => item.IsFolder && !preCreated.Contains(item.Path)).Select(item => item.Path)];
 
-    // T-F443: where a folder from the quarantine lands, relative to actualDest - where a file of the
-    // same path would (TryMoveSingleEntryAsync); "" is the stripped root, which actualDest stands in for.
-    private static string FolderRelativeToDest(string quarantined, FolderPlacement plan)
-    {
-        string relative = quarantined.Replace('/', Path.DirectorySeparatorChar);
-        if (plan.StripRootPrefix)
-        {
-            int sep = relative.IndexOf(Path.DirectorySeparatorChar);
-            if (sep < 0)
-                return string.Empty;
-            relative = relative[(sep + 1)..];
-        }
-        relative = EntryDiskName.AsPakkoWrites(relative.Replace(Path.DirectorySeparatorChar, '/') + "/").Replace('/', Path.DirectorySeparatorChar);
-        return Path.GetRelativePath(plan.ActualDest, Path.GetFullPath(Path.Combine(plan.ActualDest, relative)));
-    }
-
-    private static void CreateFolderEntriesFromDisk(IEnumerable<string> folders, FolderPlacement plan)
-    {
-        foreach (string folder in folders)
-        {
-            string relative = FolderRelativeToDest(folder, plan);
-            if (relative.Length > 0 && relative != ".")
-                Directory.CreateDirectory(Path.Combine(plan.Staging.Path, relative));
-        }
-    }
-
-    private static void RecordFolderTimesFromDisk(IEnumerable<string> folders, FolderPlacement plan, string quarantineDir)
-    {
-        foreach (string folder in folders)
-        {
-            string relative = FolderRelativeToDest(folder, plan);
-            try
-            {
-                string quarantined = Path.Combine(quarantineDir, folder.Replace('/', Path.DirectorySeparatorChar));
-                plan.Staging.RecordFolderTime(relative == "." ? string.Empty : relative, QuarantineFiles.FolderTime(quarantined));
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // best-effort: the folder keeps the time the commit gives it
-            }
-        }
-    }
 }
