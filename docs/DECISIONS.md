@@ -14688,8 +14688,14 @@ in the product. Choices in 3b-i:
 - What still differs under the helper, by design (18 tests of the tar.exe suite, which stays the
   tar.exe suite: no helper sits in the test folders):
   - names tar.exe cannot show or select are read exactly (`TarSandboxedServiceUnshowableNameTests`,
-    `TarOutputPageTests`, `TarNfdNamesTests`, three of `TarSandboxedServiceBestFitNameTests`): what
-    tar.exe refuses, the helper extracts, lists, tests and scans;
+    `TarOutputPageTests`, `TarNfdNamesTests`, two of `TarSandboxedServiceBestFitNameTests`): what
+    tar.exe refuses, the helper extracts, lists, tests and scans. In `TarOutputPageTests`' scan the
+    selection is the name tar.exe would have shown, which names no entry under the helper: nothing
+    is scanned and the verdict is Clean, as ZIP's scan gives for a selection naming nothing;
+  - a file and a folder of one name (`Extract_FileReplacedByAFolderOfItsName_...`) fail the archive
+    under both backends and nothing lands (`Extract_AFileAndAFolderOfOneName_IsReported_NotAThrow`),
+    but the helper's error is the OS text of the failed move, which names the internal `.pakko-x-`
+    staging folder instead of tar.exe's "1 of 2" - left for the release batch (TASKS, T-F470);
   - every same-named copy meets the conflict rule (`ExtractAsync_ThreeCopies_...`, T-F30), and a
     rename follows archive order, as ZIP does (`ExtractAsync_RenameOnConflict_...`: nothing is
     overwritten, the renamed copies take the other names);

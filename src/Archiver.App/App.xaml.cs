@@ -33,6 +33,7 @@ public partial class App : Application
             ReportUnexpected(e.Exception, "Unobserved task exception");
         };
         Services = ConfigureServices();
+        // DecideAsync never faults; a log write that throws reaches the UnobservedTaskException handler above.
         _ = LogTarReaderAsync(Services);
     }
 

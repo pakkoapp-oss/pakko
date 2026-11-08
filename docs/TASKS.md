@@ -1530,9 +1530,16 @@ re-measured with T-F346's script before and after.
   parser and `HelperReader` (listing and extract/Test/scan by index), reachable only from tests
   (#193); 3b-ii (`feat/tf470-archiveint-gate`) adds `ArchiveintGate` (sticky per process), wires it
   into `PakkoServices` and the App, `pakko i` prints its line, and the suite was swept under the
-  helper (`docs/DECISIONS.md`, step 3b-ii): the gate is on. Left for the release: the CHANGELOG
-  line (names read exactly, a trailing dot or space trimmed as in ZIP, every same-named copy meets
-  the conflict rule, a damaged 7z fails Test). Then step 4, T-F469/T-F453/T-F464/T-F461 narrowed to
+  helper (`docs/DECISIONS.md`, step 3b-ii): the gate is on. Left for the release batch:
+  - the CHANGELOG line (names read exactly, a trailing dot or space trimmed as in ZIP, every
+    same-named copy meets the conflict rule, a damaged 7z fails Test);
+  - `Category=Slow` normally and once under the sweep patch (`--max-total`, the stdout cap, the
+    entry limits on large archives);
+  - the sweep on libarchive 3.5.2 (PakkoW10, or CI's windows-2022), since the gate is on for Win10;
+  - the packaged launch: `Deploy.ps1`, then the packaged `pakko i` line and the App log's reader
+    line (identity proven), with `docs/SMOKE.md` rows; CI's `V` line, read from the test log;
+  - a Pakko text for the helper's failed move of a file over a folder of its name (the OS text now
+    names the `.pakko-x-` staging folder). Then step 4, T-F469/T-F453/T-F464/T-F461 narrowed to
   the tar.exe fallback, `docs/SMOKE.md`, `docs/TESTING.md`. Step 3 also verifies on the
   device a launch from the packaged App, Shell and `pakko` (identity proven), and reads the `V` line
   of CI's test job to see which libarchive its image runs. Measured
