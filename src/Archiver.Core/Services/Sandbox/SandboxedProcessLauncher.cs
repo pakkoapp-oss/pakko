@@ -214,7 +214,9 @@ internal static partial class SandboxedProcessLauncher
         using var stdErrReader = new StreamReader(stdErrStream, outputEncoding);
 
         Task<string> stdOutTask;
-        if (options.OnStdOutDiscarded is { } onDiscarded)
+        if (options.StdOutLines is { } lines)
+            stdOutTask = ReadStdOutLinesAsync(stdOutStream, lines, processHandle, cancellationToken);
+        else if (options.OnStdOutDiscarded is { } onDiscarded)
             stdOutTask = DiscardAsync(stdOutStream, onDiscarded, cancellationToken);
         else if (options.OnStdOutBytes is { } onBytes)
             stdOutTask = ReadBytesAsync(stdOutStream, outputEncoding, onBytes, cancellationToken);
@@ -269,6 +271,66 @@ internal static partial class SandboxedProcessLauncher
             ArrayPool<byte>.Shared.Return(buffer);
         }
         return string.Empty;
+    }
+
+    // T-F470: a child whose output breaks the limits or the caller's checks is killed at once. Left
+    // running, it would block on a full stdout pipe, and stderr - read until the child exits - would
+    // never end.
+    private static async Task<string> ReadStdOutLinesAsync(
+        FileStream stream, StdOutLines lines, SafeProcessOrThreadHandle processHandle, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await ReadLinesWithinAsync(stream, lines, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _ = NativeMethods.TerminateProcess(processHandle, 1);
+            throw;
+        }
+        return string.Empty;
+    }
+
+    internal static async Task ReadLinesWithinAsync(Stream stream, StdOutLines lines, CancellationToken cancellationToken)
+    {
+        byte[] buffer = ArrayPool<byte>.Shared.Rent(DiscardBufferBytes);
+        byte[] line = ArrayPool<byte>.Shared.Rent(lines.MaxLineBytes);
+        try
+        {
+            int lineLength = 0;
+            long total = 0;
+            int read;
+            while ((read = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                total += read;
+                if (total > lines.MaxTotalBytes)
+                    throw new IOException($"The child wrote more than {lines.MaxTotalBytes} bytes to stdout.");
+                for (int i = 0; i < read; i++)
+                {
+                    byte b = buffer[i];
+                    if (b == (byte)'\n')
+                    {
+                        lines.OnLine(line.AsSpan(0, lineLength));
+                        lineLength = 0;
+                    }
+                    else if (lineLength >= lines.MaxLineBytes)
+                    {
+                        throw new IOException($"The child wrote a stdout line longer than {lines.MaxLineBytes} bytes.");
+                    }
+                    else
+                    {
+                        line[lineLength++] = b;
+                    }
+                }
+            }
+            if (lineLength > 0)
+                throw new IOException("The child's stdout ended inside a line.");
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(line);
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
     // T-F465: the bytes first, then the text decoded from exactly those bytes.
