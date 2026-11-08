@@ -375,11 +375,12 @@ public sealed class HelperReaderTests : IDisposable
     [MemberData(nameof(Backends))]
     public async Task Extract_AFileAndAFolderOfOneName_IsReported_NotAThrow(string backend)
     {
-        string archive = Tar(("x", "file"), ("x/y.txt", "inside"));
+        string archive = Tar(("x", "file"), ("x/y.txt", "inside"), ("z.txt", "Z"));
 
-        (ArchiveResult result, _) = await ExtractAsync(backend, archive);
+        (ArchiveResult result, string dest) = await ExtractAsync(backend, archive);
 
-        (result.Errors.Count + result.SkippedFiles.Count).Should().BeGreaterThan(0);
+        result.Errors.Should().ContainSingle().Which.SourcePath.Should().Be(archive);
+        (Directory.Exists(dest) ? Tree(dest) : []).Should().BeEmpty("a failed archive leaves nothing at the destination");
     }
 
     // --- Through the process's gate (T-F470 3b-ii): the services ask it, and read as it decided ---
@@ -452,6 +453,8 @@ public sealed class HelperReaderTests : IDisposable
     [MemberData(nameof(Backends))]
     public async Task Test_ASevenZipWithAFlippedDataByte_Fails(string backend)
     {
+        if (backend == TarExe && !await TarReadsSevenZipAsync())
+            return;
         string archive = Path.Combine(_temp.Path, "damaged-" + backend + ".7z");
         byte[] bytes = File.ReadAllBytes(Fixture("valid.7z"));
         bytes[40] ^= 0x55;
@@ -469,6 +472,8 @@ public sealed class HelperReaderTests : IDisposable
     [InlineData(Helper, "encrypted_headers.7z")]
     public async Task Extract_AnEncryptedSevenZip_SaysPasswordProtected(string backend, string fixture)
     {
+        if (backend == TarExe && !await TarReadsSevenZipAsync())
+            return;
         (ArchiveResult result, _) = await ExtractAsync(backend, Fixture(fixture));
 
         result.Errors.Should().ContainSingle().Which.Message.Should().Be(
@@ -476,6 +481,10 @@ public sealed class HelperReaderTests : IDisposable
     }
 
     // --- Harness ---
+
+    // SkipIfFormatUnsupported("7z")'s check, for the tar.exe leg of a theory.
+    private static async Task<bool> TarReadsSevenZipAsync() =>
+        (await new TarSandboxedService(new GroupPolicyOptions()).DetectCapabilitiesAsync()).Supports7z;
 
     private static string Fixture(string name) =>
         Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Fixtures", name);

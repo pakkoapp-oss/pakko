@@ -2103,7 +2103,7 @@ real, supported command with an unsupported switch). Never a silent no-op.
 |---|---|---|
 | `x` | `IExtractionRouter.ExtractAsync` | `ExtractMode.SingleFolder`; `OnConflict = -ao ?? (-y ? Overwrite : Skip)`; `ConfirmCompressionBombExtraction` set only when `-y` |
 | `t` | `IExtractionRouter.TestAsync` (T-F261; T-F397: a tar-family archive is tested by `ITarService.TestAsync`) with `verifyRecoveryData` (T-F275), except for `-si` | a format whose contents tar.exe does not verify (tar, tar.gz, RAR) passes with the `TestedStructureOnly` warning, exit 1, unless a PAR2 set next to it checked it; Group Policy applies |
-| `i` | `PakkoServices.GetTarCapabilitiesAsync` + `ArchiveFormatPolicy` | each line's status (supported / not supported / blocked by Group Policy) comes from the shared classifier; no probe under `DisableTarExtraction` |
+| `i` | `PakkoServices.GetTarCapabilitiesAsync` + `ArchiveFormatPolicy`; `PakkoServices.GetTarReaderAsync` (T-F470) | each line's status (supported / not supported / blocked by Group Policy) comes from the shared classifier; no probe under `DisableTarExtraction`; the last line is the gate's `ArchiveintDecision.Describe()` |
 | `a` | `IArchiveCreationRouter.ArchiveAsync` | always `ArchiveMode.SingleArchive`; `ArchiveNaming.GetBaseName` derives the name |
 | `l` | `IArchiveListingRouter.ListEntriesAsync` | looped once per archive path (the router itself takes one path at a time) |
 
