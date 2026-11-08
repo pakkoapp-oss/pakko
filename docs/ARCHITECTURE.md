@@ -2199,6 +2199,9 @@ SID), working directory = the quarantine root, the archive as inherited stdin, `
 regular file is written as `out\<index>` (`CREATE_NEW`, data at the offsets
 `archive_read_data_block` gives, holes left as zeros, `SetEndOfFile`, mtime set when the entry has
 one that `FILETIME` can hold; any other time leaves the write time). `archive_write_disk` is never used.
+After a run Pakko accepts `out\` only as exactly the files read, each a plain file of the size read,
+with one link and no named stream (`HelperReader.EnsureOutDirHoldsExactly`); the copy in `bin\` is
+held open (read-share only) from its hash until the helper ends.
 
 **Command line** (any other shape, a repeated switch or an unknown name is exit 2):
 

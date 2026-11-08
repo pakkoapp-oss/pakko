@@ -14748,6 +14748,43 @@ does to its output) before building on it, with inputs that program did not make
 changes the interface instead of adding a check: UTF-16 names from `archiveint.dll` and a selection
 by index, so no name passes through tar.exe on the helper's path.
 
+**Release batch (2026-11-08): the fresh review's leftovers.** Plan mode with the advisor at both ends.
+Each test seen red first; mutants for each half of the `out\` check.
+- **`out\` holds plain files only.** A compromised helper could hang a named stream on `out\<idx>`
+  (it moves with the file on one volume, and the antivirus scan reads only the unnamed stream) or
+  make two outputs one file through a hard link. `QuarantineFiles.IsPlainFile` opens each file and
+  `PathIdentity.HasOneLinkAndOneStream` asks for one link and exactly the `::$DATA` stream; a file
+  that cannot be opened or shown plain refuses the run (`Checks_OutHoldingANamedStreamOrAHardLink_Fails`,
+  `Checks_AnEmptyFileInOut_Passes`, `Checks_AFileInOutThatCannotBeOpened_...`). The check stays in the
+  quarantine (NTFS): a destination on exFAT or a share cannot be asked about streams. After it the
+  helper is gone: its job allows one process, and the run waits for its exit. The sandbox SID is
+  shared with a concurrent operation's helper, as it is with tar.exe.
+- **A latent layout bug found on the way:** `PathIdentity.ByHandleFileInformation` declared its
+  FILETIMEs as `ulong` without `Pack = 4`, so every field after `FileAttributes` was read 4 bytes
+  off. The new link count read garbage (every plain file refused, caught by the tests); the same
+  struct backs `Resolve`'s fallback when a volume gives no `FileIdInfo`, where the volume serial and
+  file index were wrong. Fixed with `Pack = 4`.
+- **The helper copy is held** (`FileShare.Read`) from its hash until the helper ends, and hashed
+  through that handle: it cannot be written, renamed or deleted between the hash and the launch
+  (`TheCopy_CannotBeRenamedWhileItRuns`; a running exe can otherwise be renamed). Measured:
+  `CreateProcess` in the AppContainer starts the image with the handle held. `bin\` itself can still
+  be swapped through its parent by a process of the same user at medium integrity, which is outside
+  the threat model (`SECURITY.md`, "Threat Actors Considered"); the hold narrows the window, it does
+  not close that.
+- **No wall-clock bound**, as for tar.exe: the CPU-time limit stops a helper that spins; one that
+  sleeps holds nothing and moves nothing, and the user's cancel ends it.
+- **A file and a folder of one name** (`x` and `x/y.txt`, also `X` or `x.`): `Directory.CreateDirectory`
+  in `TryMoveSingleEntryAsync` stood outside the per-file `try`, so the whole archive failed with the
+  OS text naming the `.pakko-x-` staging folder. Now the entry under the file fails alone, with the
+  staging prefix replaced by the destination, as ZIP's `WriteEntryAsync` does (measured on ZIP: the
+  same entry fails, `x` and `z.txt` land). tar.exe's run still fails as a whole before this point
+  ("1 of 2"). A behaviour change on the helper's path, for the CHANGELOG.
+- **Memory, measured** (two listings held at once, as extract holds them; the reader's catalog comes
+  on top): 4,000,000 short names take 581 MiB per listing, 1,162 MiB for two (working set 1,270 MiB);
+  stdout at its 1 GiB cap with names of 32,767 units holds about 512 MiB of names per listing. Below
+  the 2 GB line set in the plan, so no change; the cost sits in the Pakko process, which has no job
+  limit.
+
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
 - **Why.** tar.exe writes through the long-path prefix, so `a.txt.`, `a.txt ` and a folder `d ` are on

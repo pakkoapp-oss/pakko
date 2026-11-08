@@ -1546,17 +1546,17 @@ re-measured with T-F346's script before and after.
   into `PakkoServices` and the App, `pakko i` prints its line, and the suite was swept under the
   helper (`docs/DECISIONS.md`, step 3b-ii): the gate is on. Left for the release batch:
   - the CHANGELOG line (names read exactly, a trailing dot or space trimmed as in ZIP, every
-    same-named copy meets the conflict rule, a damaged 7z fails Test);
+    same-named copy meets the conflict rule, a damaged 7z fails Test, a file and a folder of one
+    name fail only the entry under the file, as in ZIP);
   - `Category=Slow` normally and once under the sweep patch (`--max-total`, the stdout cap, the
     entry limits on large archives);
   - the sweep on libarchive 3.5.2 (PakkoW10, or CI's windows-2022), since the gate is on for Win10;
   - the packaged launch: `Deploy.ps1`, then the packaged `pakko i` line and the App log's reader
     line (identity proven), with `docs/SMOKE.md` rows; CI's `V` line, read from the test log;
-  - a Pakko text for the helper's failed move of a file over a folder of its name (the OS text now
-    names the `.pakko-x-` staging folder);
-  - from the fresh review (`docs/DECISIONS.md`, 3b-ii): `out\` checked for named streams and hard
-    links (`QuarantineFiles`), a wall-clock bound on a helper run, the helper copy held open from
-    hash to launch, and the memory of two listings of millions of entries measured.
+  - done in `feat/tf470-release-fixes` (`docs/DECISIONS.md`, T-F470 "Release batch"): `out\`
+    refused with a named stream or a hard link, the helper copy held from its hash to the helper's
+    end, a file over a folder of its name failing only that entry with the destination's path, the
+    memory of two listings measured, no wall-clock bound (as tar.exe);
   Step 4 (`feat/tf470-step4`): T-F469, T-F464, T-F461 and T-F453 narrowed to the tar.exe fallback
   (P4); smoke `CLI-050` (the helper reads names exactly), `CLI-051` (no helper: tar.exe, quietly) and
   `APP-037` (the App's reader line from the packaged process), run with the release batch's device

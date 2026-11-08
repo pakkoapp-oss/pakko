@@ -502,7 +502,10 @@ What does not change, and what is new:
 - **Only the formats and filters Pakko names are enabled**, never libarchive's "all": that would add
   mtree, which reads local files by the paths it lists, and filters that start an external program.
 - **The helper is treated as compromisable**, like `tar.exe`: everything it prints is parsed as
-  untrusted input, and `out\` is read only for the expected file names.
+  untrusted input, and `out\` is read only for the expected file names, each a plain file with one
+  name and no named stream (a stream would move out with it unseen by the antivirus scan). The copy
+  in `bin\` is held open from its hash until the helper ends; a process of the same user could still
+  replace `bin\` itself, which is outside this threat model.
 
 ### Trust Chain
 
