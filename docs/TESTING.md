@@ -816,6 +816,14 @@ image, a file named `.iso` with no image in it, and a policy block. Its expectat
 installed tar.exe: a format it reads must work, one it does not must be skipped with a reason. Run
 it on both tar.exe builds (here and PakkoW10).
 
+**T-F457.** `ReadOnlyTarFormatsTests` (unit) pins `IsDiscImageCut` on hand-made descriptors: a volume
+declared 1, 2 or 150 sectors longer than the file, the root directory's end and the 24-sector bid as
+boundaries, and a hostile root record. The integration class extracts a tar.exe image that declares two
+sectors more, one without its last padding sectors, one cut inside file data (an error), an ISO inside
+gzip (the image itself, also listed) and a cut one (the image, then refused when opened).
+`BareGzipTests` covers the image inside gzip: ISO, UDF, the sixteenth descriptor, after an empty member,
+zeros without a descriptor and a tar holding one at the image offset.
+
 **T-F467, every character of every page.** `BsdtarListingModel` (in `Archiver.Core.Tests`, linked into
 the integration project) says byte for byte what tar.exe lists for a raw header name: libarchive's
 conversion from the header page, then bsdtar's escaping through the C runtime of one page.

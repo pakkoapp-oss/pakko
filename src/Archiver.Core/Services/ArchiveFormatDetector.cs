@@ -184,39 +184,94 @@ public static class ArchiveFormatDetector
                 break;
             fs.Position = at;
             fs.ReadExactly(identifier);
-            ReadOnlySpan<byte> id = identifier[1..];
-            if (id.SequenceEqual("NSR02"u8) || id.SequenceEqual("NSR03"u8))
+            ArchiveFormat? named = DescriptorFormat(identifier[1..]);
+            if (named == ArchiveFormat.Udf)
                 return ArchiveFormat.Udf;
-            if (id.SequenceEqual("CD001"u8))
+            if (named == ArchiveFormat.Iso)
                 iso = true;
-            else if (!id.SequenceEqual("BEA01"u8) && !id.SequenceEqual("TEA01"u8) && !id.SequenceEqual("BOOT2"u8) && !id.SequenceEqual("CDW02"u8))
+            else if (named is null)
                 break;
         }
         return iso ? ArchiveFormat.Iso : ArchiveFormat.Unknown;
     }
 
-    // ECMA-119 primary volume descriptor: the volume's size in logical blocks (both-endian, the
-    // little-endian half first) and the block size.
-    private const int VolumeSpaceSizeOffset = 80;
-    private const int LogicalBlockSizeOffset = 128;
+    /// <summary>The bytes a stream must start with to hold every descriptor <see cref="DetectDiscImage(ReadOnlySpan{byte})"/> reads.</summary>
+    internal const int DiscImageStartLength = FirstVolumeDescriptor + VolumeDescriptorsRead * DiscSectorSize;
 
     /// <summary>
-    /// T-F442: true when <paramref name="archive"/> starts with an ISO 9660 primary volume
-    /// descriptor whose declared volume is longer than the file - an image cut short. tar.exe reads
-    /// one cut before its root directory as an empty archive with exit code 0 (measured, bsdtar
-    /// 3.8.9). False for anything else, including a file too short to hold a descriptor; a read
-    /// error propagates as <see cref="IOException"/>.
+    /// T-F457: <see cref="ArchiveFormat.Iso"/>, <see cref="ArchiveFormat.Udf"/> or
+    /// <see cref="ArchiveFormat.Unknown"/> for the first bytes of a stream that has no file to seek
+    /// in (the start of a gzip's content, <see cref="BareGzip"/>), by the same reading as a file's.
+    /// </summary>
+    internal static ArchiveFormat DetectDiscImage(ReadOnlySpan<byte> start)
+    {
+        bool iso = false;
+        for (int sector = 0; sector < VolumeDescriptorsRead; sector++)
+        {
+            int at = FirstVolumeDescriptor + sector * DiscSectorSize;
+            if (start.Length - at < 6)
+                break;
+            ArchiveFormat? named = DescriptorFormat(start.Slice(at + 1, 5));
+            if (named == ArchiveFormat.Udf)
+                return ArchiveFormat.Udf;
+            if (named == ArchiveFormat.Iso)
+                iso = true;
+            else if (named is null)
+                break;
+        }
+        return iso ? ArchiveFormat.Iso : ArchiveFormat.Unknown;
+    }
+
+    // Udf for an NSR descriptor, Iso for CD001, Unknown for another descriptor of the sequence,
+    // null for anything else: the descriptors have ended.
+    private static ArchiveFormat? DescriptorFormat(ReadOnlySpan<byte> id)
+    {
+        if (id.SequenceEqual("NSR02"u8) || id.SequenceEqual("NSR03"u8))
+            return ArchiveFormat.Udf;
+        if (id.SequenceEqual("CD001"u8))
+            return ArchiveFormat.Iso;
+        if (id.SequenceEqual("BEA01"u8) || id.SequenceEqual("TEA01"u8) || id.SequenceEqual("BOOT2"u8) || id.SequenceEqual("CDW02"u8))
+            return ArchiveFormat.Unknown;
+        return null;
+    }
+
+    // ECMA-119 primary volume descriptor: the volume's size in logical blocks (both-endian, the
+    // little-endian half first), the block size, and the root directory record's extent and length.
+    private const int VolumeSpaceSizeOffset = 80;
+    private const int LogicalBlockSizeOffset = 128;
+    private const int RootExtentOffset = 156 + 2;
+    private const int RootLengthOffset = 156 + 10;
+
+    // libarchive's ISO 9660 reader bids only with RESERVED_AREA + 8 * LOGICAL_BLOCK_SIZE readable
+    // (archive_read_support_format_iso9660.c, 3.5.2 and 3.8.1); a shorter file falls to the tar
+    // reader, which takes the zero system area for an empty archive.
+    private const int Iso9660BidBytes = 24 * DiscSectorSize;
+
+    /// <summary>
+    /// T-F442, T-F457: true when <paramref name="archive"/> starts with an ISO 9660 primary volume
+    /// descriptor whose declared volume is longer than the file, and the file ends before tar.exe can
+    /// read the directory tree: before libarchive's reader bids, or before the root directory ends.
+    /// tar.exe reads such an image as an empty archive with exit code 0. A shorter image past that
+    /// point is tar.exe's to judge: it reads it in full when only padding or a CD-R's run-out sectors
+    /// are missing, and fails when data is (measured on bsdtar 3.8.9 and 3.5.2). False for anything
+    /// else, including a file too short to hold a descriptor; a read error propagates as
+    /// <see cref="IOException"/>.
     /// </summary>
     internal static bool IsDiscImageCut(FileStream archive)
     {
-        Span<byte> descriptor = stackalloc byte[LogicalBlockSizeOffset + 2];
+        Span<byte> descriptor = stackalloc byte[RootLengthOffset + 4];
         if (archive.Length < FirstVolumeDescriptor + descriptor.Length
             || RandomAccess.Read(archive.SafeFileHandle, descriptor, FirstVolumeDescriptor) != descriptor.Length
             || descriptor[0] != 1 || !descriptor[1..6].SequenceEqual("CD001"u8))
             return false;
         long blocks = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(descriptor[VolumeSpaceSizeOffset..]);
         long blockSize = System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(descriptor[LogicalBlockSizeOffset..]);
-        return blocks * blockSize > archive.Length;
+        if (blocks * blockSize <= archive.Length)
+            return false;
+        // At most 2^32 * 2^16 + 2^32: no overflow in a long, whatever the record says.
+        long rootEnd = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(descriptor[RootExtentOffset..]) * blockSize
+            + System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(descriptor[RootLengthOffset..]);
+        return archive.Length < Math.Max(Iso9660BidBytes, rootEnd);
     }
 
     private static bool IsZipSignature(ReadOnlySpan<byte> h, int read) =>

@@ -13786,6 +13786,60 @@ availability follows the installed tar.exe at run time.
   and `FormatListConsistencyTests` names them as the manifest's only exceptions. The other seven
   have no Windows handler and are file types like `.7z`.
 
+## T-F457 - a short ISO left to tar.exe past its directory; an ISO inside gzip comes out as the image (2026-11-08)
+
+Items 1 and 2 of T-F442's fresh-review leftovers, measured on both builds (bsdtar 3.8.9 here,
+3.5.2 on PakkoW10 through PowerShell Direct). Samples: an ISO 9660 image tar.exe wrote
+(`--format=iso9660`; five files in three folders, one of 1.5 MB; 926 sectors, root directory at
+sector 28, the last 150 sectors zero padding).
+
+- **Item 2, the cut check, swept at every sector.** Each row is `tar -tvf` / `tar -xf`.
+
+  | The file | 3.8.9 | 3.5.2 |
+  |---|---|---|
+  | whole; declared volume 1, 2 or 150 sectors longer than the file (a track-at-once dump without its run-out sectors) | exit 0 / 0, every file exact | the same |
+  | cut at sectors 17-23 (under 49,152 bytes) | exit 0 / 0, **nothing listed or written** | the same |
+  | cut at 24-31 (descriptors, path tables, directories) | exit 1 / 1 ("Truncated input file", "Failed to read full block when scanning ISO9660 directory list") | the same |
+  | cut at 32-775 (file data) | exit 1 / 1, the file named ("Truncated input file") | list exit 0 with every entry, extract exit 1 |
+  | cut at 776-925 (only padding missing) | exit 0 / 0, every file exact | the same |
+
+  The silent case is exactly where libarchive's reader does not bid. `archive_read_format_iso9660_bid`
+  (`archive_read_support_format_iso9660.c`, the same in v3.5.2 and v3.8.1) asks for
+  `__archive_read_ahead(a, RESERVED_AREA + 8 * LOGICAL_BLOCK_SIZE, &bytes_read)` and returns -1
+  when that is not there. The zero system area is then read as the end blocks of an empty tar.
+  Everything past that point fails loudly or reads in full, so the check refused images tar.exe
+  reads whole: one missing a CD-R's run-out sectors, or its padding. **Decision:** an image whose
+  declared volume is longer than the file is refused only when the file ends before 24 sectors or
+  before its root directory ends (`ArchiveFormatDetector.IsDiscImageCut`). The rest is tar.exe's
+  to judge. The message is unchanged ("the file is incomplete": the declared volume is still
+  longer than the file). Not changed: a *whole* image under 24 sectors would also be read as
+  empty. tar.exe and mkisofs both pad 150 sectors, so none was seen, and refusing one needs its own
+  message.
+- **Item 1, an ISO inside a wrapper.** tar.exe reads an image inside every wrapper it can
+  decompress:
+  - On 3.8.9: gzip, bzip2, xz, compress, lzip, zstd and lzma (each written by tar.exe's own
+    filter).
+  - On 3.5.2, a zlib-only build: gzip and compress. The others fail with "unable to run program".
+  - In each, a UDF-marked image (BEA01/NSR02/TEA01 after the terminator) gives its ISO 9660 side.
+  - In each, an image cut at sector 19 gives an empty archive, exit 0.
+
+  So inside a wrapper, Pakko's UDF refusal, its cut check and `BlockedFormats=iso` never run.
+
+  **Decision, gzip: look inside.** `BareGzip` already decompresses the start of every `.gz` in
+  process (T-F413) to tell a tar from one compressed file. A tar.exe or oscdimg image starts with a
+  zero system area, which read as an empty tar, so it went to tar.exe. A hybrid image (an MBR in
+  sector 0) already counted as one file. Now, when the first 512 bytes are zero, `BareGzip` reads on
+  to the 16 volume-descriptor sectors and asks the detector's own reading
+  (`ArchiveFormatDetector.DetectDiscImage(ReadOnlySpan<byte>)`). An ISO 9660 or UDF image is one
+  file, the image, as 7-Zip shows `win.iso.gz`. Opening that `.iso` then takes the UDF refusal, the
+  cut check and the `iso` policy name. No new message.
+
+  **compress, lzip, bzip2, xz, zstd, lzma: documented, not looked into.** .NET has no decoder for
+  them, and writing one is the in-process parser T-F442 rejected (".Z and .lz are refused with
+  tar.exe's reason"). tar.exe gives no way to see the inner format. Likewise for the policy:
+  `BlockedFormats` names the outer format, as `tar.gz` has always been `gzip`
+  (`docs/POLICIES.md`).
+
 ## T-F443 - a folder tar.exe lists by best fit: folder entries from the quarantine (2026-11-05)
 
 - **Cause.** Files moved from the quarantine under their true names, but folder entries (the empty
