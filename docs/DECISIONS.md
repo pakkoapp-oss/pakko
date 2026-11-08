@@ -13894,6 +13894,19 @@ sector 28, the last 150 sectors zero padding).
   tar.exe's reason"). tar.exe gives no way to see the inner format. Likewise for the policy:
   `BlockedFormats` names the outer format, as `tar.gz` has always been `gzip`
   (`docs/POLICIES.md`).
+- **Item 5, the time between `Detect(path)` and the sandbox opening the archive: accepted, no code**
+  (2026-11-08). `ArchiveFormatPolicy` reads each file's format by path when the operation starts;
+  `TarSandboxScope.OpenArchive` opens it again later, and from then on holds it with read sharing
+  only, so nothing can write, rename or delete it until the run ends (the comment on
+  `OpenArchive`). A file swapped in between passes `BlockedFormats` and the UDF refusal under the
+  first file's format. Doing that needs write access to the file or its folder at the right moment:
+  a process of the same user, which the threat model leaves out (`SECURITY.md`, "Threat Actors
+  Considered"). For the policy it opens no new way around: a `.cpio.Z` or `.iso.xz` already passes
+  `BlockedFormats=cpio`/`iso` under its outer format (item 1, documented), with no race. For the
+  UDF refusal the only one misled is the user who swapped the file. Closing it would mean detecting
+  through the scope's held handle and judging the policy again in every reader's open: a second
+  owner of the policy verdict, for a case outside the threat model. Revisit if `BlockedFormats` is
+  ever documented as a security boundary against the user.
 
 ## T-F443 - a folder tar.exe lists by best fit: folder entries from the quarantine (2026-11-05)
 
