@@ -222,9 +222,13 @@ internal static partial class SandboxedProcessLauncher
             stdOutTask = ReadBytesAsync(stdOutStream, outputEncoding, onBytes, cancellationToken);
         else
             stdOutTask = stdOutReader.ReadToEndAsync(cancellationToken);
-        Task<string> stdErrTask = options.OnStdErrLine is { } onLine
-            ? ReadLinesAsync(stdErrReader, onLine, cancellationToken)
-            : stdErrReader.ReadToEndAsync(cancellationToken);
+        Task<string> stdErrTask;
+        if (options.DiscardStdErr)
+            stdErrTask = DiscardAsync(stdErrStream, static _ => { }, cancellationToken);
+        else if (options.OnStdErrLine is { } onLine)
+            stdErrTask = ReadLinesAsync(stdErrReader, onLine, cancellationToken);
+        else
+            stdErrTask = stdErrReader.ReadToEndAsync(cancellationToken);
         await Task.WhenAll(stdOutTask, stdErrTask).ConfigureAwait(false);
 
         await WaitForExitAsync(processHandle, cancellationToken).ConfigureAwait(false);

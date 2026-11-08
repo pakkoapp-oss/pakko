@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using Archiver.Core.IO;
 using Archiver.Core.Models;
 using Archiver.Core.Text;
@@ -51,6 +52,16 @@ internal sealed partial class TarSandboxScope : IDisposable
     // T-F410: the names an extraction is limited to, read by tar.exe ("-T"), beside "out".
     private const string MemberListFolderName = "list";
 
+    // T-F470: the archive helper runs from a copy in "bin" (read-execute for the sandbox), reads
+    // archiveint.dll by its absolute path, and takes its selection from "list".
+    private const string ArchiveintPath = @"C:\Windows\System32\archiveint.dll"; // NOSONAR: S1075 — the helper loads exactly this system DLL by absolute path; its signature is checked here
+    private const string HelperFolderName = "bin";
+    private const string HelperFileName = "Archiver.ArchiveHelper.exe";
+    private const string SelectionFileName = "sel.txt";
+    // A listing of 4,000,000 entries with long names stays far below this; it bounds what a
+    // compromised helper can make Pakko read.
+    private const long MaxHelperStdOutBytes = 1L << 30;
+
     private const int ErrorSharingViolation = unchecked((int)0x80070020);
     private const uint GenericRead = 0x80000000;
     private const uint FileShareRead = 0x00000001;
@@ -65,6 +76,10 @@ internal sealed partial class TarSandboxScope : IDisposable
 
     // Null until the first listing decides it (see ListAsync).
     private bool? _utf8Headers;
+
+    // T-F470: the helper this scope may run (null: tar.exe only), and the SHA-256 of its copy in "bin".
+    private readonly string? _helperSource;
+    private byte[]? _helperHash;
 
     // T-F465: the last plain listing's stdout as tar.exe wrote it, and the bytes it printed for each name.
     private byte[]? _listingBytes;
@@ -89,8 +104,10 @@ internal sealed partial class TarSandboxScope : IDisposable
 
     private uint CommandLinePage => (uint)TextBoundaries.TarExeCommandLine(_machine).CodePage;
 
-    private TarSandboxScope(SafeSidHandle sid, string quarantineRoot, FileStream archive, string? outputDirectory, System.Text.Encoding? outputEncoding)
+    private TarSandboxScope(
+        SafeSidHandle sid, string quarantineRoot, FileStream archive, string? outputDirectory, System.Text.Encoding? outputEncoding, string? helperSource)
     {
+        _helperSource = helperSource;
         OutputEncoding = outputEncoding ?? TextBoundaries.TarExeOutput(_machine).Lenient;
         _sid = sid;
         QuarantineRoot = quarantineRoot;
@@ -116,9 +133,11 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// if needed — ACL'd to the (lazily-ensured, reused) production AppContainer profile. The
     /// profile itself is created once and reused for the lifetime of the install. The final move
     /// from "out\" to the user's destination happens later, at Pakko's normal process identity.
+    /// T-F470: a non-null helperSource is the archive helper this scope may run (<see cref="RunHelperAsync"/>).
     /// </summary>
     public static Task<TarSandboxScope> CreateAsync(
-        string archivePath, bool needsOutputDir, CancellationToken cancellationToken, System.Text.Encoding? outputEncoding = null)
+        string archivePath, bool needsOutputDir, CancellationToken cancellationToken, System.Text.Encoding? outputEncoding = null,
+        string? helperSource = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -183,7 +202,7 @@ internal sealed partial class TarSandboxScope : IDisposable
                 QuarantineAcl.GrantModify(outDir, sid);
             }
 
-            return Task.FromResult(new TarSandboxScope(sid, quarantineRoot, archive, outDir, outputEncoding));
+            return Task.FromResult(new TarSandboxScope(sid, quarantineRoot, archive, outDir, outputEncoding, helperSource));
         }
         catch (Exception ex)
         {
@@ -447,6 +466,102 @@ internal sealed partial class TarSandboxScope : IDisposable
                 stdErr = DescribeLimitHit(job.ReadLimitHit(), CpuTimeLimitFor(_archive.Length)) + stdErr;
             return (exitCode, stdOut, stdErr);
         }
+    }
+
+    /// <summary>
+    /// T-F470: one archive helper run inside this scope's AppContainer, under a fresh Job Object, on
+    /// the archive as stdin. <paramref name="output"/> takes every stdout line as it arrives and
+    /// throws <see cref="ArchiveHelperProtocolException"/> at the first that breaks the protocol, which
+    /// kills the helper. <paramref name="selection"/> (indices, increasing) goes to "list" as the
+    /// helper's "--select". Returns the exit code, checked against the output, and which sandbox
+    /// limit stopped the helper, if one did.
+    /// </summary>
+    public async Task<(ArchiveHelperExit Exit, string LimitHit)> RunHelperAsync(
+        ArchiveHelperMode mode, IReadOnlyList<string> arguments, IReadOnlyList<long>? selection, ArchiveHelperOutput output,
+        CancellationToken cancellationToken)
+    {
+        string helper = EnsureHelperCopy();
+        string[] selectArguments = [];
+        if (selection is not null)
+        {
+            string folder = Path.Combine(QuarantineRoot, MemberListFolderName);
+            Directory.CreateDirectory(folder);
+            GrantOrFailSetup(() => QuarantineAcl.GrantReadExecute(folder, _sid));
+            string relative = Path.Combine(MemberListFolderName, SelectionFileName);
+            File.WriteAllBytes(Path.Combine(QuarantineRoot, relative), SelectionBytes(selection));
+            selectArguments = ["--select", relative];
+        }
+        if (mode == ArchiveHelperMode.Extract && OutputDirectory is null)
+            throw new InvalidOperationException("This scope was created without an output folder.");
+
+        // The copy is read again right before each launch: what runs is what was hashed.
+        if (!SHA256.HashData(File.ReadAllBytes(helper)).AsSpan().SequenceEqual(_helperHash))
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, "the archive helper's copy changed before it ran"));
+
+        SandboxJobObject job;
+        try
+        {
+            job = SandboxJobObject.Create(RamLimitBytes, CpuTimeLimitFor(_archive.Length));
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
+        }
+        using (job)
+        using (SafeFileHandle stdIn = ReopenArchive())
+        {
+            (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
+                helper,
+                [mode.ToString().ToLowerInvariant(), .. arguments, .. selectArguments],
+                new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: QuarantineRoot,
+                    StdOutLines: new StdOutLines(output.Feed, ArchiveHelperOutput.MaxLineBytes, MaxHelperStdOutBytes),
+                    DiscardStdErr: true),
+                cancellationToken)
+                .ConfigureAwait(false);
+            string limitHit = exitCode == 0 ? string.Empty : DescribeLimitHit(job.ReadLimitHit(), CpuTimeLimitFor(_archive.Length));
+            return (output.Finish(exitCode), limitHit);
+        }
+    }
+
+    // The first run copies the helper into "bin": the source is read once, and the copy is written
+    // from the bytes that were hashed. archiveint.dll is checked the way tar.exe is (once per scope,
+    // T-F401's catalog case included); Windows Update can replace it between two scopes.
+    private string EnsureHelperCopy()
+    {
+        string helperSource = _helperSource ?? throw new InvalidOperationException("This scope was created without the archive helper.");
+        string folder = Path.Combine(QuarantineRoot, HelperFolderName);
+        string copy = Path.Combine(folder, HelperFileName);
+        if (_helperHash is not null)
+            return copy;
+        if (!TarSignatureVerifier.Verify(ArchiveintPath))
+            throw new TarSignatureVerificationException(ArchiveintPath);
+        byte[] bytes = File.ReadAllBytes(helperSource);
+        Directory.CreateDirectory(folder);
+        GrantOrFailSetup(() => QuarantineAcl.GrantReadExecute(folder, _sid));
+        File.WriteAllBytes(copy, bytes);
+        _helperHash = SHA256.HashData(bytes);
+        return copy;
+    }
+
+    private static void GrantOrFailSetup(Action grant)
+    {
+        try
+        {
+            grant();
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new SandboxSetupException(CoreMessages.Text(MessageCode.SandboxSetupFailed, CoreMessages.Detail(ex)), ex);
+        }
+    }
+
+    // ASCII decimal indices, one per line ending in '\n': the helper's selection file.
+    internal static byte[] SelectionBytes(IReadOnlyList<long> selection)
+    {
+        var text = new System.Text.StringBuilder(selection.Count * 8);
+        foreach (long index in selection)
+            text.Append(index.ToString(CultureInfo.InvariantCulture)).Append('\n');
+        return System.Text.Encoding.ASCII.GetBytes(text.ToString());
     }
 
     internal static string DescribeLimitHit(SandboxJobObject.LimitHit hit, TimeSpan? cpuTimeLimit = null) => hit switch
