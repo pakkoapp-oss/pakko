@@ -1506,6 +1506,15 @@ re-measured with T-F346's script before and after.
   `TarSandboxedService`, `Sandbox/` and `AntivirusScanService`.
 - **Reported by:** the agent's root-cause review, 2026-11-06.
 
+### T-F473 - A listing of millions of entries costs over 2 GiB in the Pakko process (P3)
+
+- [ ] **Status:** open. Measured 2026-11-08 (T-F470's release batch, `docs/DECISIONS.md`): `TestAsync`
+  on 1,000,000 empty tar entries peaks at 557 MiB private bytes through the helper and 620 MiB through
+  tar.exe, so about 2.2 GiB at the 4,000,000-entry limit; the memory sits in the App, Shell or `pakko`,
+  outside the sandbox's job limit. Next: decide a lower entry limit, or a leaner catalog (one copy of
+  each name, the second listing compared as it streams instead of held).
+- **Reported by:** the agent, 2026-11-08.
+
 ### T-F472 - `CommitAsync_MissingTemp_ThrowsAtOnce` races a 90 ms clock (P3, flaky test)
 
 - [ ] **Status:** open. Failed once in a full local run on 2026-11-08 (T-F470 step 3b-ii's branch,
@@ -1556,7 +1565,7 @@ re-measured with T-F346's script before and after.
   - done in `feat/tf470-release-fixes` (`docs/DECISIONS.md`, T-F470 "Release batch"): `out\`
     refused with a named stream or a hard link, the helper copy held from its hash to the helper's
     end, a file over a folder of its name failing only that entry with the destination's path, the
-    memory of two listings measured, no wall-clock bound (as tar.exe);
+    memory measured (T-F473 for both backends), no wall-clock bound (as tar.exe);
   Step 4 (`feat/tf470-step4`): T-F469, T-F464, T-F461 and T-F453 narrowed to the tar.exe fallback
   (P4); smoke `CLI-050` (the helper reads names exactly), `CLI-051` (no helper: tar.exe, quietly) and
   `APP-037` (the App's reader line from the packaged process), run with the release batch's device

@@ -386,8 +386,9 @@ public sealed class HelperReaderTests : IDisposable
         HelperReader.EnsureOutDirHoldsExactly(outDir, output);
     }
 
+    // The check opens for attributes only: a file another process holds (a scanner) still passes.
     [Fact]
-    public void Checks_AFileInOutThatCannotBeOpened_FailsTheRun_NotAnIOException()
+    public void Checks_AFileInOutHeldByAnotherReader_Passes()
     {
         ArchiveHelperOutput output = Run("E 0 32768 1 - 0 0 0 0061 -", "K 0 1");
         string outDir = Directory.CreateDirectory(Path.Combine(_temp.Path, "out")).FullName;
@@ -395,10 +396,12 @@ public sealed class HelperReaderTests : IDisposable
         File.WriteAllText(zero, "a");
         using var held = new FileStream(zero, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
 
-        Action check = () => HelperReader.EnsureOutDirHoldsExactly(outDir, output);
-
-        check.Should().Throw<ArchiveHelperProtocolException>();
+        HelperReader.EnsureOutDirHoldsExactly(outDir, output);
     }
+
+    [Fact]
+    public void IsPlainFile_OnAFileThatIsGone_IsFalse_NotAnException()
+        => QuarantineFiles.IsPlainFile(Path.Combine(_temp.Path, "gone")).Should().BeFalse();
 
     private static void RunCmd(params string[] arguments)
     {
