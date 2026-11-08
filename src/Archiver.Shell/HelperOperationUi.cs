@@ -119,7 +119,8 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
             // has to be told to close, and its WindowClosed still has to be read.
             _ = Task.Run(PumpAsync, CancellationToken.None);
             // T-F456: its own thread, as the pipe is synchronous and a pool thread would wait in it.
-            new Thread(ReadFrames) { IsBackground = true, Name = "Operation window reader" }.Start();
+            // A task, not a bare Thread: an unexpected exception faults it as before instead of ending Shell.
+            _ = Task.Factory.StartNew(ReadFrames, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
             _readyTimer = new Timer(_ => OnReadyTimeout(), null, owner.ReadyTimeout, Timeout.InfiniteTimeSpan);
         }
 
