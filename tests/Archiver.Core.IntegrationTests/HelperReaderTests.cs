@@ -354,6 +354,62 @@ public sealed class HelperReaderTests : IDisposable
         folder.Should().Throw<ArchiveHelperProtocolException>();
     }
 
+    // A named stream would move out with its file, unseen by the scan; a hard link would make two
+    // destinations share one file's data.
+    [Fact]
+    public void Checks_OutHoldingANamedStreamOrAHardLink_Fails()
+    {
+        ArchiveHelperOutput output = Run("E 0 32768 1 - 0 0 0 0061 -", "K 0 1", "E 1 32768 1 - 0 0 0 0062 -", "K 1 1");
+        string outDir = Directory.CreateDirectory(Path.Combine(_temp.Path, "out")).FullName;
+        string zero = Path.Combine(outDir, "0");
+        string one = Path.Combine(outDir, "1");
+        File.WriteAllText(zero, "a");
+        File.WriteAllText(one, "b");
+        File.WriteAllText(one + ":hidden", "payload");
+        Action stream = () => HelperReader.EnsureOutDirHoldsExactly(outDir, output);
+        stream.Should().Throw<ArchiveHelperProtocolException>();
+
+        File.Delete(one);
+        RunCmd("mklink", "/H", one, zero);
+        File.ReadAllText(one).Should().Be("a", "the link was made");
+        Action link = () => HelperReader.EnsureOutDirHoldsExactly(outDir, output);
+        link.Should().Throw<ArchiveHelperProtocolException>();
+    }
+
+    [Fact]
+    public void Checks_AnEmptyFileInOut_Passes()
+    {
+        ArchiveHelperOutput output = Run("E 0 32768 0 - 0 0 0 0061 -", "K 0 0");
+        string outDir = Directory.CreateDirectory(Path.Combine(_temp.Path, "out")).FullName;
+        File.WriteAllBytes(Path.Combine(outDir, "0"), []);
+
+        HelperReader.EnsureOutDirHoldsExactly(outDir, output);
+    }
+
+    [Fact]
+    public void Checks_AFileInOutThatCannotBeOpened_FailsTheRun_NotAnIOException()
+    {
+        ArchiveHelperOutput output = Run("E 0 32768 1 - 0 0 0 0061 -", "K 0 1");
+        string outDir = Directory.CreateDirectory(Path.Combine(_temp.Path, "out")).FullName;
+        string zero = Path.Combine(outDir, "0");
+        File.WriteAllText(zero, "a");
+        using var held = new FileStream(zero, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+        Action check = () => HelperReader.EnsureOutDirHoldsExactly(outDir, output);
+
+        check.Should().Throw<ArchiveHelperProtocolException>();
+    }
+
+    private static void RunCmd(params string[] arguments)
+    {
+        using System.Diagnostics.Process process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+            Path.Combine(Environment.SystemDirectory, "cmd.exe"), ["/d", "/c", .. arguments])
+        { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true })!;
+        process.StandardOutput.ReadToEnd();
+        process.WaitForExit();
+        process.ExitCode.Should().Be(0, string.Join(' ', arguments));
+    }
+
     // --- Both backends: error path ---
 
     [Theory]
@@ -370,7 +426,23 @@ public sealed class HelperReaderTests : IDisposable
         (Directory.Exists(dest) ? Directory.GetFiles(dest, "*", SearchOption.AllDirectories) : []).Should().BeEmpty();
     }
 
-    // A file and a folder of one name: they cannot both land; the operation reports it, never throws.
+    // The same through case and a trimmed dot: Windows makes one name of "X", "x." and "x".
+    [Theory]
+    [InlineData("X")]
+    [InlineData("x.")]
+    public async Task Helper_AFileAndAFolderOfOneNameOnDisk_FailsOnlyTheEntryUnderIt(string fileName)
+    {
+        string archive = Tar((fileName, "file"), ("x/y.txt", "inside"), ("z.txt", "Z"));
+
+        (ArchiveResult result, string dest) = await ExtractAsync(Helper, archive);
+
+        result.Errors.Should().ContainSingle().Which.Message.Should().NotContain(".pakko-");
+        Tree(dest).Should().HaveCount(2).And.ContainKey("z.txt");
+    }
+
+    // A file and a folder of one name: they cannot both land; the operation reports it, never throws,
+    // and never names Pakko's staging folder. tar.exe's run fails as a whole ("1 of 2"); the helper
+    // fails only the entry under the file, as ZIP does, and the rest lands.
     [Theory]
     [MemberData(nameof(Backends))]
     public async Task Extract_AFileAndAFolderOfOneName_IsReported_NotAThrow(string backend)
@@ -379,8 +451,18 @@ public sealed class HelperReaderTests : IDisposable
 
         (ArchiveResult result, string dest) = await ExtractAsync(backend, archive);
 
-        result.Errors.Should().ContainSingle().Which.SourcePath.Should().Be(archive);
-        (Directory.Exists(dest) ? Tree(dest) : []).Should().BeEmpty("a failed archive leaves nothing at the destination");
+        ArchiveError error = result.Errors.Should().ContainSingle().Which;
+        error.SourcePath.Should().Be(archive);
+        error.Message.Should().NotContain(".pakko-");
+        if (backend == TarExe)
+        {
+            (Directory.Exists(dest) ? Tree(dest) : []).Should().BeEmpty("tar.exe's failed run leaves nothing at the destination");
+        }
+        else
+        {
+            error.Message.Should().Contain(Path.Combine(dest, "x"));
+            Tree(dest).Should().Equal(new Dictionary<string, string> { ["x"] = "file", ["z.txt"] = "Z" });
+        }
     }
 
     // --- Through the process's gate (T-F470 3b-ii): the services ask it, and read as it decided ---

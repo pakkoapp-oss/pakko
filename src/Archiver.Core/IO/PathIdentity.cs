@@ -122,6 +122,25 @@ public static partial class PathIdentity
         }
     }
 
+    /// <summary>
+    /// T-F470: whether <paramref name="file"/> has one name and only its unnamed data stream. What
+    /// the calls cannot show - a failed call, a second stream, a malformed record - is false.
+    /// </summary>
+    internal static bool HasOneLinkAndOneStream(SafeFileHandle file)
+    {
+        if (!GetFileInformationByHandle(file, out ByHandleFileInformation info) || info.NumberOfLinks != 1)
+            return false;
+        // FILE_STREAM_INFO (WinBase.h): NextEntryOffset at 0, StreamNameLength at 4, StreamName at 24.
+        Span<byte> buffer = stackalloc byte[256];
+        if (!GetFileInformationByHandleEx(file, FileStreamInfoClass, ref MemoryMarshal.GetReference(buffer), (uint)buffer.Length))
+            return false;
+        uint next = BinaryPrimitives.ReadUInt32LittleEndian(buffer);
+        uint nameBytes = BinaryPrimitives.ReadUInt32LittleEndian(buffer[4..]);
+        if (next != 0 || nameBytes != UnnamedDataStream.Length * 2)
+            return false;
+        return MemoryMarshal.Cast<byte, char>(buffer.Slice(StreamInfoNameOffset, (int)nameBytes)).SequenceEqual(UnnamedDataStream);
+    }
+
     private static string WithoutLongPathPrefix(string path)
     {
         if (path.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
@@ -140,6 +159,9 @@ public static partial class PathIdentity
     private const int DirInfoNameOffset = 88;
     private const uint FileAttributeDirectory = 0x10;
     private const uint FileAttributeReparsePoint = 0x400;
+    private const int FileStreamInfoClass = 7;
+    private const int StreamInfoNameOffset = 24;
+    private const string UnnamedDataStream = "::$DATA";
 
     [StructLayout(LayoutKind.Sequential)]
     private struct FileIdInfo
@@ -149,7 +171,9 @@ public static partial class PathIdentity
         public ulong IdHigh;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    // BY_HANDLE_FILE_INFORMATION's FILETIMEs are two DWORDs, 4-byte aligned: without Pack = 4 each
+    // ulong here would be padded to 8 and every field after FileAttributes read 4 bytes off.
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     private struct ByHandleFileInformation
     {
         public uint FileAttributes;
