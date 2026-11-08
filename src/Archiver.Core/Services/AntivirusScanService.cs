@@ -547,17 +547,18 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 quarantine.MainDirectory, 0, quarantine.TotalEntries, target, cancellationToken)
                 .ConfigureAwait(false);
             int credited = scanned;
-            if (quarantine.FirstCopiesDirectory is { } firstDir)
+            if (quarantine.HasFirstCopies)
             {
-                if (quarantine.FirstCopiesFailure is { } firstFailure)
+                FirstCopiesForScan firstCopies = await reader.ExtractFirstCopiesForScanAsync(cancellationToken).ConfigureAwait(false);
+                if (firstCopies.Failure is { } firstFailure)
                 {
                     findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Text(MessageCode.ScanCannotExtract, firstFailure)));
                     return;
                 }
                 _ = await ScanExtractedFilesAsync(
-                    firstDir, scanned, quarantine.TotalEntries, target, cancellationToken)
+                    firstCopies.Directory, scanned, quarantine.TotalEntries, target, cancellationToken)
                     .ConfigureAwait(false);
-                credited = scanned + quarantine.CreditedFirstCopies;
+                credited = scanned + firstCopies.CreditedCopies();
             }
 
             // T-F462: Clean only with every file accounted for, whichever name or folder broke (the

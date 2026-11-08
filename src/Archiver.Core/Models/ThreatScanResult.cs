@@ -2,7 +2,7 @@ namespace Archiver.Core.Models;
 
 /// <summary>
 /// T-F146. Named ThreatVerdict/ThreatFinding/ThreatScanResult (not "Scan*") deliberately —
-/// TarSandboxedService.ScanForUnsafeEntriesAsync already owns "Scan" for the unrelated T-F49
+/// TarExeReader.ScanForUnsafeEntriesAsync already owns "Scan" for the unrelated T-F49
 /// traversal/symlink pre-scan; keeping the two grep-separable avoids confusing them.
 /// Inconclusive must never be silently rendered as Clean by any caller — it means "Pakko could not
 /// determine an answer" (no AMSI provider registered, only one measured to answer Clean for test
