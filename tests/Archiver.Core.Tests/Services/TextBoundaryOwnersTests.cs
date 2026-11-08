@@ -81,6 +81,21 @@ public sealed partial class TextBoundaryOwnersTests
             File.ReadAllText(Path.Combine(RepoRoot, relative)).Should().Contain("TextBoundaries."));
     }
 
+    // T-F470: the archive helper's charset names, like every page, come from the provider.
+    [Fact]
+    public void HelperCharsetNames_ComeFromTheProvider()
+    {
+        SourceFiles("src")
+            .Select(file => Path.GetRelativePath(RepoRoot, file))
+            .Where(relative => !ProviderFolders.Any(folder => relative.StartsWith(folder, StringComparison.OrdinalIgnoreCase)))
+            .Where(relative => relative.Contains(Path.Combine("Archiver.Core", "Services"), StringComparison.OrdinalIgnoreCase))
+            .Where(relative => HelperCharsetLiteral().IsMatch(File.ReadAllText(Path.Combine(RepoRoot, relative))))
+            .Should().BeEmpty("the helper's --hdrcharset comes from TextBoundaries.ArchiveHelperUtf8Names/ArchiveHelperRawNames (T-F470)");
+    }
+
+    [GeneratedRegex("\"UTF-8\"|\"CP\"\\s*\\+")]
+    private static partial Regex HelperCharsetLiteral();
+
     // The tar-name boundary: tar.exe's escaped listing is read back in one place, which also judges it.
     [Fact]
     public void TarListing_IsReadOnlyByTarNames()

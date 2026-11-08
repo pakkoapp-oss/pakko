@@ -155,8 +155,8 @@ public sealed class TarSandboxScopeHelperTests : IDisposable
         Directory.Exists(Path.Combine(scope.QuarantineRoot, "bin")).Should().BeFalse();
     }
 
-    // Cancelled while the helper reads a large stream: once the run ends, its copy in bin\ is no
-    // longer a mapped image, so it can be deleted - the proof that no helper is left running.
+    // Cancelled while the helper runs - seen running: its copy in bin\ is a mapped image, which
+    // cannot be opened for writing. Once the run ends the copy can be deleted: no helper is left.
     [Fact]
     public async Task ACancelledRun_LeavesNoHelperRunning()
     {
@@ -164,20 +164,44 @@ public sealed class TarSandboxScopeHelperTests : IDisposable
         using (FileStream file = File.Create(archive))
         using (var gzip = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionLevel.Fastest))
         {
-            gzip.Write(UstarHeader("big.bin", 8L << 30));
+            gzip.Write(UstarHeader("big.bin", 2L << 30));
             byte[] zeros = new byte[1 << 20];
-            for (int i = 0; i < 8192; i++)
+            for (int i = 0; i < 2048; i++)
                 gzip.Write(zeros);
         }
         using TarSandboxScope scope = await Scope(archive, needsOutputDir: false);
-        using var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(400));
-        long started = Environment.TickCount64;
+        string copy = Path.Combine(scope.QuarantineRoot, "bin", "Archiver.ArchiveHelper.exe");
+        using var cancel = new CancellationTokenSource();
 
-        Func<Task> run = () => scope.RunHelperAsync(ArchiveHelperMode.Test, ["--format", "tar", "--filter", "gzip"], [0], new ArchiveHelperOutput(ArchiveHelperMode.Test), cancel.Token);
+        Task run = scope.RunHelperAsync(ArchiveHelperMode.Test, ["--format", "tar", "--filter", "gzip"], [0], new ArchiveHelperOutput(ArchiveHelperMode.Test), cancel.Token);
+        bool seenRunning = false;
+        for (long until = Environment.TickCount64 + 10_000; !seenRunning && !run.IsCompleted && Environment.TickCount64 < until;)
+        {
+            seenRunning = IsMappedImage(copy);
+            if (!seenRunning)
+                await Task.Delay(10);
+        }
+        await cancel.CancelAsync();
 
-        await run.Should().ThrowAsync<OperationCanceledException>();
-        (Environment.TickCount64 - started).Should().BeInRange(300, 10_000, "the run was cancelled while the helper read, not before it started");
-        File.Delete(Path.Combine(scope.QuarantineRoot, "bin", "Archiver.ArchiveHelper.exe"));
+        seenRunning.Should().BeTrue("the helper must be running when the run is cancelled");
+        Func<Task> ended = () => run;
+        await ended.Should().ThrowAsync<OperationCanceledException>();
+        File.Delete(copy);
+    }
+
+    private static bool IsMappedImage(string file)
+    {
+        if (!File.Exists(file))
+            return false;
+        try
+        {
+            using var probe = new FileStream(file, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete);
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return true;
+        }
     }
 
     // --- Harness ---

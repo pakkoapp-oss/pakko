@@ -19,7 +19,7 @@ namespace Archiver.Core.Services.Sandbox;
 internal sealed class HelperReader : ISandboxedArchiveReader
 {
     private const int RegularFile = 0x8000;
-    private const int Directory = 0x4000;
+    private const int FolderType = 0x4000;
     private const string ScanFirst = "ScanAsync comes first.";
 
     private readonly TarSandboxScope _scope;
@@ -59,19 +59,17 @@ internal sealed class HelperReader : ISandboxedArchiveReader
 
     public async Task<ArchiveListResult> ListAsync(CancellationToken cancellationToken)
     {
-        ArchiveHelperOutput output;
+        ArchiveHelperOutput? output;
         try
         {
             output = await ListWithCharsetAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (HelperRunFailed failed)
+        catch (CoreTextIOException failed)
         {
             return CoreMessages.ListFailure(failed.Text);
         }
-        catch (NamesUnreadable)
-        {
+        if (output is null)
             return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent));
-        }
 
         var entries = new List<ArchiveEntryInfo>(output.Entries.Count);
         foreach (ArchiveHelperEntry e in output.Entries)
@@ -84,7 +82,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
                 Path = path,
                 Size = e.FileType == RegularFile ? e.Size ?? 0 : 0,
                 Modified = ModifiedUtc(e)?.ToLocalTime(),
-                IsDirectory = e.FileType == Directory && e.Link is null,
+                IsDirectory = e.FileType == FolderType && e.Link is null,
             });
         }
         return new ArchiveListResult { Success = true, Entries = entries };
@@ -150,7 +148,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         {
             output = await ExtractFilesAsync(files, cancellationToken).ConfigureAwait(false);
         }
-        catch (HelperRunFailed failed)
+        catch (CoreTextIOException failed)
         {
             return new ScanQuarantine(failed.Text, [], files.Count, files.Count, false);
         }
@@ -186,7 +184,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         {
             await RunAsync(ArchiveHelperMode.Test, _charset, [.. files.Select(e => e.Index)], output, cancellationToken).ConfigureAwait(false);
         }
-        catch (HelperRunFailed failed)
+        catch (CoreTextIOException failed)
         {
             return new TestOutcome(failed.Text, declared, false);
         }
@@ -198,28 +196,28 @@ internal sealed class HelperReader : ISandboxedArchiveReader
 
     // T-F204's order: UTF-8 first; names stored in no charset that are not UTF-8 come back NULL
     // with a warning, and the archive is listed again in the page tar.exe reads raw names in.
-    private async Task<ArchiveHelperOutput> ListWithCharsetAsync(CancellationToken cancellationToken)
+    // Null: a name no charset reads, so the listing cannot name the entries.
+    private async Task<ArchiveHelperOutput?> ListWithCharsetAsync(CancellationToken cancellationToken)
     {
         bool charsetApplies = HelperFormats.TakesHeaderCharset(_formatArguments);
-        string? charset = charsetApplies ? "UTF-8" : null;
+        string? charset = charsetApplies ? TextBoundaries.ArchiveHelperUtf8Names : null;
         ArchiveHelperOutput output = await ListOnceAsync(charset, cancellationToken).ConfigureAwait(false);
         if (charsetApplies && output.Entries.Any(e => e.Name is null))
         {
-            TextBoundary raw = TextBoundaries.TarRawHeaderNames(MachinePages.Current);
-            if (raw.CodePage == Encoding.UTF8.CodePage)
-                throw new NamesUnreadable();
-            charset = "CP" + raw.CodePage.ToString(CultureInfo.InvariantCulture);
+            if (TextBoundaries.ArchiveHelperRawNames(MachinePages.Current) is not { } raw)
+                return null;
+            charset = raw.Charset;
             output = await ListOnceAsync(charset, cancellationToken).ConfigureAwait(false);
             // libarchive 3.5.2 decodes a sequence a multi-byte page lacks as U+30FB without a
             // warning (3.8.9 warns): such a name cannot be told from a true one (docs/DECISIONS.md).
-            bool silentReplacement = !raw.Strict.IsSingleByte
+            bool silentReplacement = !raw.Boundary.Strict.IsSingleByte
                 && output.Version?.StartsWith("libarchive 3.5.", StringComparison.Ordinal) == true
-                && output.Entries.Any(e => e.Name?.Contains('・', StringComparison.Ordinal) == true);
+                && output.Entries.Any(e => e.Name?.Contains('\u30FB', StringComparison.Ordinal) == true);
             if (silentReplacement)
-                throw new NamesUnreadable();
+                return null;
         }
         if (output.Entries.Any(e => e.Name is null))
-            throw new NamesUnreadable();
+            return null;
         _charset = charset;
         _listed = output.Entries;
         return output;
@@ -236,19 +234,8 @@ internal sealed class HelperReader : ISandboxedArchiveReader
     // entry, an unsafe name, an 8.3 alias of another name refuse it.
     private async Task<List<Entry>> ScanEntriesAsync(bool refuseEncrypted, CancellationToken cancellationToken)
     {
-        ArchiveHelperOutput output;
-        try
-        {
-            output = await ListWithCharsetAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (HelperRunFailed failed)
-        {
-            throw new CoreTextIOException(failed.Text);
-        }
-        catch (NamesUnreadable)
-        {
-            throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
-        }
+        ArchiveHelperOutput output = await ListWithCharsetAsync(cancellationToken).ConfigureAwait(false)
+            ?? throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
 
         string[] rawNames = [.. output.Entries.Select(e => e.Name!)];
         string? unsafeName = rawNames.FirstOrDefault(IsDangerousEntryName) ?? EntryDiskName.ShortNameAliasOfAnother(rawNames);
@@ -258,11 +245,11 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         var entries = new List<Entry>(output.Entries.Count);
         foreach (ArchiveHelperEntry e in output.Entries)
         {
-            if (e.Link is not null || e.FileType is not (RegularFile or Directory))
+            if (e.Link is not null || e.FileType is not (RegularFile or FolderType))
                 throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarSpecialEntry));
             if (refuseEncrypted && e.Encrypted == true)
                 throw new CoreTextIOException(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported));
-            bool isFolder = e.FileType == Directory;
+            bool isFolder = e.FileType == FolderType;
             string name = EntryDiskName.StripLeadingDotSlash(e.Name!);
             // T-F455: a folder stored without its '/' is still a folder.
             if (isFolder && !name.EndsWith('/'))
@@ -323,7 +310,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
             : mode == ArchiveHelperMode.Extract
                 ? CoreMessages.Text(MessageCode.TarExtractionFailed, CoreText.Raw(detail))
                 : CoreMessages.Text(MessageCode.CannotReadArchive, detail);
-        throw new HelperRunFailed(text);
+        throw new CoreTextIOException(text);
     }
 
     private void EnsureListingAndReadsAgree(List<Entry> files, ArchiveHelperOutput output) =>
@@ -378,15 +365,6 @@ internal sealed class HelperReader : ISandboxedArchiveReader
             ? DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime.AddTicks(e.MtimeNanoseconds / 100)
             : null;
 
-    // A run that ended in the archive's failure; its words are the operation's.
-    private sealed class HelperRunFailed(CoreText text) : Exception(text.English)
-    {
-        public CoreText Text { get; } = text;
-    }
-
-    // A name no charset reads: the listing cannot name the entries.
-    private sealed class NamesUnreadable : Exception;
-
     // The byte poll names the newest file in out\, an index; the user sees the entry's name.
     private sealed class NamedProgress(IProgress<ProgressReport> inner, Dictionary<string, string> names) : IProgress<ProgressReport>
     {
@@ -433,7 +411,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
             foreach (Entry folder in folders)
             {
                 if (Placed(folder.Name, placement.StripRootPrefix) is { Length: > 0 } relative)
-                    System.IO.Directory.CreateDirectory(Path.Combine(placement.Staging.Path, relative));
+                    Directory.CreateDirectory(Path.Combine(placement.Staging.Path, relative));
             }
         }
 

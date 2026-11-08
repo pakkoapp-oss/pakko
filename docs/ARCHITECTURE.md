@@ -138,6 +138,7 @@ src/
 │   │   │   ├── LaunchAttributeList.cs / TarCommandLineEncoding.cs
 │   │   │   ├── QuarantineFiles.cs      ← T-F463: every disk call on a name tar.exe wrote (long-path prefix)
 │   │   │   ├── ISandboxedArchiveReader.cs / TarExeReader.cs ← T-F470: the one reader handler, tar.exe backend
+│   │   │   ├── HelperReader.cs / ArchiveHelperOutput.cs ← T-F470: the archive helper's backend, its output parser
 │   │   │   └── TarSandboxScope.cs / TarSignatureVerifier.cs
 │   │   └── Zip/                        ← T-F35: parallel SingleArchive compression pipeline
 │   │       ├── WorkItemEnumerator.cs / FileWorkItem.cs / WorkResult.cs
@@ -1500,10 +1501,15 @@ archive + Job Object + signature check together per archive operation.
 `ISandboxedArchiveReader.cs` (T-F470) is the one handler every list, extract, Test and antivirus
 scan of a tar-family archive reads through: `ListAsync` (browsing, never refuses), `ScanAsync`
 (the T-F49 pre-scan), `SelectForExtractAsync`, `ExtractAsync` (files to move with the path each
-lands at, folder entries, the T-F462 count), `ExtractForScanAsync`, `TestAsync`; `OpenAsync`
-picks the backend. `TarExeReader.cs` is the tar.exe backend and the only home of what knows how
+lands at, folder entries, the T-F462 count), `ExtractForScanAsync` (files with the entry name a
+finding names), `TestAsync`; `OpenAsync` picks the backend: the archive helper when given a
+`HelperSetup` (helper path, probe results) and the format is one it reads (`HelperFormats`),
+tar.exe otherwise. `TarExeReader.cs` is the tar.exe backend and the only home of what knows how
 tar.exe lists, names and writes entries (`AsTarExeWrites`, `TarNames.Judge*`, the first-copy
-pass); `SandboxedReaderOwnerTests` keeps it so. Placement, the bomb gate, staging and commit,
+pass). `HelperReader.cs` is the helper's backend: entries by index, `out\<index>` files placed
+under their exact names, every run checked against the scan's listing, the selection and `out\`;
+only it reads the helper's lines (`ArchiveHelperOutput`), and only `TarSandboxScope.RunHelperAsync`
+launches the helper. `SandboxedReaderOwnerTests` keeps both so. Placement, the bomb gate, staging and commit,
 MOTW and the AMSI scan stay in `TarSandboxedService`/`AntivirusScanService`. Fix phase 4 (2026-09-25)
 removed `QuarantineStaging.cs` (hardlink staging, T-F233) — see `DECISIONS.md`'s fix-phase-4 entry.
 
