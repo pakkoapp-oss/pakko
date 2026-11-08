@@ -357,46 +357,92 @@ public sealed class HelperReaderTests : IDisposable
     // A named stream would move out with its file, unseen by the scan; a hard link would make two
     // destinations share one file's data.
     [Fact]
-    public void Checks_OutHoldingANamedStreamOrAHardLink_Fails()
+    public void IsPlainFile_ANamedStreamOrAHardLink_IsFalse()
     {
-        ArchiveHelperOutput output = Run("E 0 32768 1 - 0 0 0 0061 -", "K 0 1", "E 1 32768 1 - 0 0 0 0062 -", "K 1 1");
-        string outDir = Directory.CreateDirectory(Path.Combine(_temp.Path, "out")).FullName;
-        string zero = Path.Combine(outDir, "0");
-        string one = Path.Combine(outDir, "1");
+        string zero = Path.Combine(_temp.Path, "0");
+        string one = Path.Combine(_temp.Path, "1");
         File.WriteAllText(zero, "a");
         File.WriteAllText(one, "b");
+        QuarantineFiles.IsPlainFile(one).Should().BeTrue();
         File.WriteAllText(one + ":hidden", "payload");
-        Action stream = () => HelperReader.EnsureOutDirHoldsExactly(outDir, output);
-        stream.Should().Throw<ArchiveHelperProtocolException>();
+        QuarantineFiles.IsPlainFile(one).Should().BeFalse("a named stream");
 
         File.Delete(one);
         RunCmd("mklink", "/H", one, zero);
         File.ReadAllText(one).Should().Be("a", "the link was made");
-        Action link = () => HelperReader.EnsureOutDirHoldsExactly(outDir, output);
-        link.Should().Throw<ArchiveHelperProtocolException>();
+        QuarantineFiles.IsPlainFile(one).Should().BeFalse("a second name");
+        QuarantineFiles.IsPlainFile(zero).Should().BeFalse("a second name");
     }
 
     [Fact]
-    public void Checks_AnEmptyFileInOut_Passes()
+    public void IsPlainFile_AnEmptyFile_IsTrue()
     {
-        ArchiveHelperOutput output = Run("E 0 32768 0 - 0 0 0 0061 -", "K 0 0");
-        string outDir = Directory.CreateDirectory(Path.Combine(_temp.Path, "out")).FullName;
-        File.WriteAllBytes(Path.Combine(outDir, "0"), []);
+        string empty = Path.Combine(_temp.Path, "0");
+        File.WriteAllBytes(empty, []);
 
-        HelperReader.EnsureOutDirHoldsExactly(outDir, output);
+        QuarantineFiles.IsPlainFile(empty).Should().BeTrue();
     }
 
-    // The check opens for attributes only: a file another process holds (a scanner) still passes.
+    // Opened for attributes only: a file another process holds (a scanner) is still plain.
     [Fact]
-    public void Checks_AFileInOutHeldByAnotherReader_Passes()
+    public void IsPlainFile_AFileHeldByAnotherReader_IsTrue()
     {
-        ArchiveHelperOutput output = Run("E 0 32768 1 - 0 0 0 0061 -", "K 0 1");
-        string outDir = Directory.CreateDirectory(Path.Combine(_temp.Path, "out")).FullName;
-        string zero = Path.Combine(outDir, "0");
+        string zero = Path.Combine(_temp.Path, "0");
         File.WriteAllText(zero, "a");
         using var held = new FileStream(zero, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
 
-        HelperReader.EnsureOutDirHoldsExactly(outDir, output);
+        QuarantineFiles.IsPlainFile(zero).Should().BeTrue();
+    }
+
+    // Asked right before each move, for both readers: a stream planted in the quarantine after the
+    // run (here by the test, standing in for a sandbox that broke its rules) fails the whole archive
+    // and nothing lands. The planted file is found by its unique content, never by the shared
+    // PakkoTarSandbox folder's names, so a parallel run of another project is never touched.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task Extract_AStreamPlantedBeforeTheMove_FailsTheArchive_NothingLands(string backend)
+    {
+        string marker = Guid.NewGuid().ToString("N");
+        string archive = Tar(("a.txt", "A"), ("b.txt", marker), ("c.txt", "C"));
+        string sandboxes = Path.Combine(Path.GetTempPath(), "PakkoTarSandbox");
+        bool planted = false;
+        var progress = new SyncProgress(_ =>
+        {
+            if (planted || !Directory.Exists(sandboxes))
+                return;
+            foreach (string file in Directory.EnumerateFiles(sandboxes, "*", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
+            {
+                try
+                {
+                    if (new FileInfo(file).Length != marker.Length || File.ReadAllText(file) != marker)
+                        continue;
+                    File.WriteAllText(file + ":planted", "payload");
+                    planted = true;
+                    return;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // another run's file, or one still being written: not the one to plant on
+                }
+            }
+        });
+        string dest = Path.Combine(_temp.Path, "dest-planted");
+
+        ArchiveResult result = await Service(backend).ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archive],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+        }, progress);
+
+        planted.Should().BeTrue("the test planted the stream before b.txt moved");
+        result.Errors.Should().ContainSingle().Which.SourcePath.Should().Be(archive);
+        (Directory.Exists(dest) ? Directory.GetFiles(dest, "*", SearchOption.AllDirectories) : []).Should().BeEmpty();
+    }
+
+    private sealed class SyncProgress(Action<ProgressReport> onReport) : IProgress<ProgressReport>
+    {
+        public void Report(ProgressReport value) => onReport(value);
     }
 
     [Fact]
@@ -466,6 +512,20 @@ public sealed class HelperReaderTests : IDisposable
             error.Message.Should().Contain(Path.Combine(dest, "x"));
             Tree(dest).Should().Equal(new Dictionary<string, string> { ["x"] = "file", ["z.txt"] = "Z" });
         }
+    }
+
+    // The folder first, then the file of its name: the file fails alone, by its entry name.
+    [Fact]
+    public async Task Helper_AFolderThenAFileOfItsName_FailsOnlyTheFile()
+    {
+        string archive = Tar(("x/y.txt", "inside"), ("x", "file"), ("z.txt", "Z"));
+
+        (ArchiveResult result, string dest) = await ExtractAsync(Helper, archive);
+
+        ArchiveError error = result.Errors.Should().ContainSingle().Which;
+        error.SourcePath.Should().Be(archive);
+        error.Message.Should().NotContain(".pakko-").And.Contain("'x'");
+        Tree(dest).Should().Equal(new Dictionary<string, string> { ["x/y.txt"] = "inside", ["z.txt"] = "Z" });
     }
 
     // --- Through the process's gate (T-F470 3b-ii): the services ask it, and read as it decided ---

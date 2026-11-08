@@ -71,7 +71,7 @@ internal static class QuarantineFiles
 
     public static FileInfo Info(string file) => new(Literal(file));
 
-    /// <summary>T-F470: a regular file with one name and no named stream; false when that cannot be shown.</summary>
+    /// <summary>T-F470: a file with one name and no named stream (its attributes are not asked); false when that cannot be shown.</summary>
     public static bool IsPlainFile(string file) => Archiver.Core.IO.PathIdentity.HasOneLinkAndOneStream(Literal(file));
 
     public static FileStream OpenRead(string file) => new(Literal(file), FileMode.Open, FileAccess.Read, FileShare.Read);
