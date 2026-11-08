@@ -497,8 +497,12 @@ internal sealed partial class TarSandboxScope : IDisposable
             selectArguments = ["--select", relative];
         }
 
-        // The copy is read again right before each launch: what runs is what was hashed.
-        if (!SHA256.HashData(await File.ReadAllBytesAsync(helper, cancellationToken).ConfigureAwait(false)).AsSpan().SequenceEqual(_helperHash))
+        // The copy is read again right before each launch, through a handle held until the helper
+        // ends and shared for reading only: it cannot be written, renamed or deleted between the
+        // hash and the launch. bin\ itself is the sandbox's; a process of the same user can still
+        // swap it, which is outside the threat model (SECURITY.md).
+        await using FileStream heldCopy = new(helper, FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (!(await SHA256.HashDataAsync(heldCopy, cancellationToken).ConfigureAwait(false)).AsSpan().SequenceEqual(_helperHash))
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, "the archive helper's copy changed before it ran"));
 
         SandboxJobObject job;

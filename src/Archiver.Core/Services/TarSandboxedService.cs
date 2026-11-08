@@ -848,17 +848,21 @@ public sealed class TarSandboxedService : ITarService
 
         // T-F263: staged under the path it will have in actualDest; the commit moves it there.
         string stagedFilePath = Path.Combine(plan.Staging.Path, Path.GetRelativePath(actualDest, finalFilePath));
-        Directory.CreateDirectory(Path.GetDirectoryName(stagedFilePath)!);
 
-        // T-F170: a file that cannot be written fails only itself. A locked destination file is
-        // reported by the commit (ExtractionStaging.CommitInto), the same way as for ZIP.
+        // T-F170: a file that cannot be written fails only itself - a file of the archive standing
+        // where its folder must be too (T-F470, as ZIP). A locked destination file is reported by the
+        // commit (ExtractionStaging.CommitInto), the same way as for ZIP. As ZIP's WriteEntryAsync,
+        // the message names the destination, never the staging folder that mirrors it.
         try
         {
+            Directory.CreateDirectory(Path.GetDirectoryName(stagedFilePath)!);
             QuarantineFiles.MoveOut(file, stagedFilePath);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotExtractEntry, relativePath, CoreMessages.Detail(ex)), ex));
+            CoreText detail = CoreMessages.Detail(ex, text => text.Replace(
+                Path.TrimEndingDirectorySeparator(plan.Staging.Path), Path.TrimEndingDirectorySeparator(actualDest), StringComparison.OrdinalIgnoreCase));
+            context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotExtractEntry, relativePath, detail), ex));
             return (false, relativePath);
         }
 

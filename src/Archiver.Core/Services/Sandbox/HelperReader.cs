@@ -360,7 +360,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         }
     }
 
-    /// <summary>out\ holds exactly the files the run read, each named by its index, a plain file of the bytes read.</summary>
+    /// <summary>out\ holds exactly the files the run read, each named by its index, a plain file of the bytes read with one name and no named stream.</summary>
     internal static void EnsureOutDirHoldsExactly(string outDir, ArchiveHelperOutput output)
     {
         var expected = output.Read.ToDictionary(r => IndexName(r.Index), r => r.Bytes, StringComparer.OrdinalIgnoreCase);
@@ -369,7 +369,8 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         {
             string name = QuarantineFiles.Relative(outDir, path);
             FileInfo info = QuarantineFiles.Info(path);
-            if (isFolder || !expected.TryGetValue(name, out long bytes) || (info.Attributes & FileAttributes.ReparsePoint) != 0 || info.Length != bytes)
+            if (isFolder || !expected.TryGetValue(name, out long bytes) || (info.Attributes & FileAttributes.ReparsePoint) != 0 || info.Length != bytes
+                || !QuarantineFiles.IsPlainFile(path))
                 throw new ArchiveHelperProtocolException("out\\ holds a file the run did not account for");
             found++;
         }

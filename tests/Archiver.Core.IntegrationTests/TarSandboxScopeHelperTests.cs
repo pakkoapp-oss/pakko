@@ -192,6 +192,36 @@ public sealed class TarSandboxScopeHelperTests : IDisposable
         File.Delete(Path.Combine(scope.QuarantineRoot, "bin", "Archiver.ArchiveHelper.exe"));
     }
 
+    // The copy is held from its hash until the helper ends: a running exe can be renamed, and a name
+    // freed that way could take another file between the hash and the launch.
+    [Fact]
+    public async Task TheCopy_CannotBeRenamedWhileItRuns()
+    {
+        string archive = Tar(("a.txt", "A"));
+        using TarSandboxScope scope = await Scope(archive, needsOutputDir: false);
+        string copy = Path.Combine(scope.QuarantineRoot, "bin", "Archiver.ArchiveHelper.exe");
+        Exception? renameFailure = null;
+        bool renamed = false;
+        var output = new ArchiveHelperOutput(ArchiveHelperMode.Test, (_, _) =>
+        {
+            try
+            {
+                File.Move(copy, copy + ".old");
+                renamed = true;
+            }
+            catch (IOException ex)
+            {
+                renameFailure = ex;
+            }
+        });
+
+        (ArchiveHelperExit exit, _) = await scope.RunHelperAsync(ArchiveHelperMode.Test, ["--format", "tar"], [0], output, CancellationToken.None);
+
+        exit.Should().Be(ArchiveHelperExit.Done);
+        renamed.Should().BeFalse();
+        renameFailure.Should().NotBeNull();
+    }
+
     // --- Harness ---
 
     private static byte[] Gzip(byte[] data)

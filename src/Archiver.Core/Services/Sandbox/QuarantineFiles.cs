@@ -1,4 +1,5 @@
 using Archiver.Core.Models;
+using Microsoft.Win32.SafeHandles;
 
 namespace Archiver.Core.Services.Sandbox;
 
@@ -70,6 +71,20 @@ internal static class QuarantineFiles
     }
 
     public static FileInfo Info(string file) => new(Literal(file));
+
+    /// <summary>T-F470: a regular file with one name and no named stream; false when it cannot be opened.</summary>
+    public static bool IsPlainFile(string file)
+    {
+        try
+        {
+            using SafeFileHandle handle = File.OpenHandle(Literal(file), FileMode.Open, FileAccess.Read, FileShare.Read);
+            return Archiver.Core.IO.PathIdentity.HasOneLinkAndOneStream(handle);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false; // what cannot be opened cannot be shown plain: the run is refused
+        }
+    }
 
     public static FileStream OpenRead(string file) => new(Literal(file), FileMode.Open, FileAccess.Read, FileShare.Read);
 

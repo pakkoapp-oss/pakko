@@ -81,7 +81,7 @@ public sealed partial class QuarantineFilesOwnerTests
         ("Sandbox/TarSandboxScope.cs", "File.WriteAllBytes(Path.Combine(QuarantineRoot, relativePath), TarCommandLineEncoding.EncodeLines(lines, CommandLinePage))", 1, "a Pakko-named folder or file at the quarantine root"),
         ("Sandbox/TarSandboxScope.cs", "new FileStream(ReopenArchive(), FileAccess.Read)", 2, "a handle, not a path (the archive)"),
         ("Sandbox/TarSandboxScope.cs", "File.WriteAllBytesAsync(Path.Combine(QuarantineRoot, relative), SelectionBytes(selection), cancellationToken)", 1, "a Pakko-named folder or file at the quarantine root"),
-        ("Sandbox/TarSandboxScope.cs", "File.ReadAllBytesAsync(helper, cancellationToken)", 1, "the archive helper's copy in bin, a Pakko-named file"),
+        ("Sandbox/TarSandboxScope.cs", "new(helper, FileMode.Open, FileAccess.Read, FileShare.Read)", 1, "the archive helper's copy in bin, a Pakko-named file, held from its hash to the helper's end"),
         ("Sandbox/TarSandboxScope.cs", "File.WriteAllBytes(copy, bytes)", 1, "the archive helper's copy in bin, a Pakko-named file"),
         ("Sandbox/TarSandboxScope.cs", "File.ReadAllBytes(helperSource)", 1, "the archive helper beside Pakko's own binaries, not the quarantine"),
         ("Sandbox/ArchiveintGate.cs", "File.Exists(_helperPath)", 1, "the archive helper beside Pakko's own binaries, not the quarantine"),
