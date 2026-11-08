@@ -1527,9 +1527,12 @@ re-measured with T-F346's script before and after.
   `ISandboxedArchiveReader` with tar.exe as its one backend, no behavior change, guarded by
   `SandboxedReaderOwnerTests`. Step 3b goes in two PRs (advisor, 2026-11-08): 3b-i
   (`feat/tf470-helper-reader`) adds the helper's launch in `TarSandboxScope`, its strict output
-  parser and `HelperReader` (listing and extract/Test/scan by index), reachable only from tests;
-  3b-ii adds `ArchiveintGate` (sticky per process, helper path as a parameter), wires it into
-  `PakkoServices` and the App, sweeps the tar suite under the helper, and turns the gate on. Then step 4, T-F469/T-F453/T-F464/T-F461 narrowed to
+  parser and `HelperReader` (listing and extract/Test/scan by index), reachable only from tests
+  (#193); 3b-ii (`feat/tf470-archiveint-gate`) adds `ArchiveintGate` (sticky per process), wires it
+  into `PakkoServices` and the App, `pakko i` prints its line, and the suite was swept under the
+  helper (`docs/DECISIONS.md`, step 3b-ii): the gate is on. Left for the release: the CHANGELOG
+  line (names read exactly, a trailing dot or space trimmed as in ZIP, every same-named copy meets
+  the conflict rule, a damaged 7z fails Test). Then step 4, T-F469/T-F453/T-F464/T-F461 narrowed to
   the tar.exe fallback, `docs/SMOKE.md`, `docs/TESTING.md`. Step 3 also verifies on the
   device a launch from the packaged App, Shell and `pakko` (identity proven), and reads the `V` line
   of CI's test job to see which libarchive its image runs. Measured

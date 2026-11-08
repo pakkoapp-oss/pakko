@@ -426,8 +426,11 @@ public sealed class TarSandboxedService : ITarService
             // T-F113: covers 7z (both encryption modes) and RAR's header-encrypted case — the
             // proactive check above only catches RAR's more common data-only case before staging
             // even begins.
+            // T-F470: the archive helper's reader names the encryption itself.
+            bool passwordProtected = ex is CoreTextIOException { Text.Code: MessageCode.PasswordProtectedFormatNotSupported }
+                || (ex is not TarArgumentEncodingException && IsLikelyEncryptionFailure(ex.Message));
             sink.Errors.Add(CoreMessages.Error(archivePath,
-                ex is not TarArgumentEncodingException && IsLikelyEncryptionFailure(ex.Message)
+                passwordProtected
                     ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
                     : CoreMessages.Wrap(MessageCode.CannotExtractArchive, ex),
                 ex));

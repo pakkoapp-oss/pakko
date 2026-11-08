@@ -450,7 +450,8 @@ static int copy_entry(void *ar, void *e, HANDLE file, unsigned __int64 *total, u
         const int r = la.data_block(ar, &block, &length, &offset);
         if (r == ARCHIVE_EOF)
             break;
-        if (r != ARCHIVE_OK && r != ARCHIVE_WARN)
+        /* A warning on the data is the entry's damage (a 7z or RAR CRC mismatch): a failure. */
+        if (r != ARCHIVE_OK)
             return report_failure(ar, r);
         if (offset < 0 || (unsigned __int64)offset + length < (unsigned __int64)offset)
             return report_own_failure(FAIL_OFFSET);
