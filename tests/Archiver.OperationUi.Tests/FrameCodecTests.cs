@@ -231,6 +231,96 @@ public sealed class FrameCodecTests
         seen.Should().HaveCount(200).And.OnlyHaveUniqueItems();
     }
 
+    // --- The synchronous reader (T-F456): a reader on its own thread, never a pool thread ---
+
+    [Theory]
+    [MemberData(nameof(EveryMessage), DisableDiscoveryEnumeration = true)]
+    public void Read_EveryMessage_RoundTrips(ProtocolMessage message)
+    {
+        using var stream = new MemoryStream(FrameCodec.Encode(message));
+
+        ProtocolMessage decoded = FrameCodec.Read(stream)!;
+
+        decoded.Should().BeOfType(message.GetType());
+        if (message is Hello hello)
+            ((Hello)decoded).Strings.Should().Equal(hello.Strings);
+        else
+            decoded.Should().Be(message);
+    }
+
+    [Fact]
+    public void Read_SeveralFrames_InOrderThenCleanEndOfStream()
+    {
+        using var stream = new MemoryStream();
+        foreach (ProtocolMessage m in new ProtocolMessage[] { new Item("a.zip", 1, 2), new WindowClosed() })
+            stream.Write(FrameCodec.Encode(m));
+        stream.Position = 0;
+
+        FrameCodec.Read(stream).Should().Be(new Item("a.zip", 1, 2));
+        FrameCodec.Read(stream).Should().Be(new WindowClosed());
+        FrameCodec.Read(stream).Should().BeNull();
+    }
+
+    [Fact]
+    public void Read_FrameArrivingInPiecesOverARealPipe_IsWhole()
+    {
+        using var server = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.None);
+        using var client = new AnonymousPipeClientStream(PipeDirection.In, server.ClientSafePipeHandle);
+        byte[] frame = FrameCodec.Encode(new AskPassword(1, "секрет.zip", 1, false, false));
+        var writer = new Thread(() =>
+        {
+            server.Write(frame, 0, 2);
+            Thread.Sleep(50);
+            server.Write(frame, 2, 5);
+            Thread.Sleep(50);
+            server.Write(frame, 7, frame.Length - 7);
+            server.Dispose();
+        });
+        writer.Start();
+
+        FrameCodec.Read(client).Should().Be(new AskPassword(1, "секрет.zip", 1, false, false));
+        FrameCodec.Read(client).Should().BeNull();
+        writer.Join();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(FrameCodec.MaxFrameBytes + 1)]
+    [InlineData(int.MaxValue)]
+    public void Read_InvalidLengthField_IsRejected(int length)
+    {
+        byte[] header = new byte[4];
+        BinaryPrimitives.WriteInt32LittleEndian(header, length);
+
+        FluentActions.Invoking(() => FrameCodec.Read(new MemoryStream(header))).Should().Throw<ProtocolException>();
+    }
+
+    [Fact]
+    public void Read_StreamEndingInsideTheHeader_IsAProtocolException()
+    {
+        FluentActions.Invoking(() => FrameCodec.Read(new MemoryStream([5, 0]))).Should().Throw<ProtocolException>();
+    }
+
+    [Fact]
+    public void Read_StreamEndingInsideThePayload_IsAProtocolException()
+    {
+        byte[] frame = FrameCodec.Encode(new Item("a.zip", 1, 1));
+
+        FluentActions.Invoking(() => FrameCodec.Read(new MemoryStream(frame[..^3]))).Should().Throw<ProtocolException>();
+    }
+
+    [Fact]
+    public void Read_GarbagePayload_IsAProtocolException()
+    {
+        byte[] payload = Encoding.UTF8.GetBytes("not json");
+        byte[] frame = new byte[4 + payload.Length];
+        BinaryPrimitives.WriteInt32LittleEndian(frame, payload.Length);
+        payload.CopyTo(frame, 4);
+
+        FluentActions.Invoking(() => FrameCodec.Read(new MemoryStream(frame))).Should().Throw<ProtocolException>();
+    }
+
     private static async Task<ProtocolMessage> RoundTripAsync(ProtocolMessage message)
     {
         using var stream = new MemoryStream(FrameCodec.Encode(message));

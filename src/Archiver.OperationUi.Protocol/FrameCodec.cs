@@ -68,6 +68,30 @@ public static class FrameCodec
         return Decode(payload);
     }
 
+    /// <summary>
+    /// <see cref="ReadAsync"/> for a reader on its own thread. On an anonymous pipe, which is
+    /// synchronous, ReadAsync blocks a thread-pool thread until the other side writes (T-F456).
+    /// </summary>
+    public static ProtocolMessage? Read(Stream stream)
+    {
+        byte[] header = new byte[HeaderBytes];
+        int headerRead = stream.ReadAtLeast(header, HeaderBytes, throwOnEndOfStream: false);
+        if (headerRead == 0)
+            return null;
+        if (headerRead < HeaderBytes)
+            throw new ProtocolException("The stream ended inside a frame header.");
+
+        int length = BinaryPrimitives.ReadInt32LittleEndian(header);
+        if (length <= 0 || length > MaxFrameBytes)
+            throw new ProtocolException($"Invalid frame length {length}.");
+
+        byte[] payload = new byte[length];
+        if (stream.ReadAtLeast(payload, length, throwOnEndOfStream: false) < length)
+            throw new ProtocolException("The stream ended inside a frame.");
+
+        return Decode(payload);
+    }
+
     internal static ProtocolMessage Decode(ReadOnlySpan<byte> payload)
     {
         try
