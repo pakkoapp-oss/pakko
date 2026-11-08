@@ -118,7 +118,8 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
             // The operation's own token is not passed anywhere here: after Cancel the window still
             // has to be told to close, and its WindowClosed still has to be read.
             _ = Task.Run(PumpAsync, CancellationToken.None);
-            _ = Task.Run(ReadAsync, CancellationToken.None);
+            // T-F456: its own thread, as the pipe is synchronous and a pool thread would wait in it.
+            new Thread(ReadFrames) { IsBackground = true, Name = "Operation window reader" }.Start();
             _readyTimer = new Timer(_ => OnReadyTimeout(), null, owner.ReadyTimeout, Timeout.InfiniteTimeSpan);
         }
 
@@ -469,11 +470,11 @@ internal sealed class HelperOperationUi(IHelperLauncher launcher, IOperationUi f
             }
         }
 
-        private async Task ReadAsync()
+        private void ReadFrames()
         {
             try
             {
-                while (await FrameCodec.ReadAsync(_connection.FromHelper, CancellationToken.None).ConfigureAwait(false) is { } message)
+                while (FrameCodec.Read(_connection.FromHelper) is { } message)
                 {
                     switch (message)
                     {

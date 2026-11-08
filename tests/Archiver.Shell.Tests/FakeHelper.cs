@@ -37,8 +37,13 @@ internal sealed class FakeHelper : IHelperLauncher, IDisposable
     }
 
     /// <summary>The next message Shell sent, or null at EOF.</summary>
-    public Task<ProtocolMessage?> ReadAsync() =>
-        FrameCodec.ReadAsync(_in!, CancellationToken.None).WaitAsync(ReadTimeout);
+    /// <remarks>On its own thread: ReadAsync on this synchronous pipe would hold a pool thread (T-F456).</remarks>
+    public Task<ProtocolMessage?> ReadAsync()
+    {
+        AnonymousPipeClientStream input = _in!;
+        return Task.Factory.StartNew(() => FrameCodec.Read(input), CancellationToken.None,
+            TaskCreationOptions.LongRunning, TaskScheduler.Default).WaitAsync(ReadTimeout);
+    }
 
     /// <summary>Skips progress until a message of type <typeparamref name="T"/>.</summary>
     public async Task<T> ReadUntilAsync<T>() where T : ProtocolMessage
@@ -61,11 +66,13 @@ internal sealed class FakeHelper : IHelperLauncher, IDisposable
         }
     }
 
-    public async Task SendAsync(ProtocolMessage message)
+    public Task SendAsync(ProtocolMessage message)
     {
         // No flush: an anonymous pipe has no write buffer, and Shell may end this fake (Kill) the
         // moment it reads the frame, which would fail a flush after a write that already arrived.
-        await _out!.WriteAsync(FrameCodec.Encode(message));
+        // Written here, not through WriteAsync, which would wait on a pool thread (T-F456).
+        _out!.Write(FrameCodec.Encode(message));
+        return Task.CompletedTask;
     }
 
     public Task SendReadyAsync() => SendAsync(new HelperReady(FrameCodec.ProtocolVersion));
