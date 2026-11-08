@@ -15,6 +15,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// <param name="OnStdOutDiscarded">Non-null: stdout is read and thrown away, never kept, and this is called with the size of each piece (T-F397: "tar -x -O" writes every file's content there); the returned stdout is then empty.</param>
 /// <param name="OnStdOutBytes">Non-null: called with stdout's bytes as the child wrote them, before decoding (T-F465: the names tar.exe printed, which a name sent back to it must equal).</param>
 /// <param name="StdOutLines">Non-null: stdout is read line by line, each line given to it as it arrives and never kept, within its limits; the returned stdout is then empty (T-F470: the archive helper's protocol).</param>
+/// <param name="DiscardStdErr">True: stderr is read and thrown away, never kept; the returned stderr is then empty (T-F470: a child Pakko does not trust).</param>
 /// <param name="EnvironmentOverrides">Variables the child gets with these values, on top of this process's whole environment (T-F342: TMP/TEMP for libarchive's 7z writer); null hands the environment over unchanged.</param>
 internal sealed record ProcessLaunchOptions(
     SafeSidHandle? AppContainerSid = null,
@@ -28,7 +29,8 @@ internal sealed record ProcessLaunchOptions(
     IReadOnlyDictionary<string, string>? EnvironmentOverrides = null,
     Action<int>? OnStdOutDiscarded = null,
     Action<byte[]>? OnStdOutBytes = null,
-    StdOutLines? StdOutLines = null);
+    StdOutLines? StdOutLines = null,
+    bool DiscardStdErr = false);
 
 /// <summary>Takes one stdout line, without its '\n'.</summary>
 internal delegate void StdOutLineHandler(ReadOnlySpan<byte> line);
