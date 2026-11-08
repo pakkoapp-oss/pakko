@@ -267,7 +267,7 @@ public sealed class FrameCodecTests
         using var server = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.None);
         using var client = new AnonymousPipeClientStream(PipeDirection.In, server.ClientSafePipeHandle);
         byte[] frame = FrameCodec.Encode(new AskPassword(1, "секрет.zip", 1, false, false));
-        Task writer = Task.Run(async () =>
+        var writer = Task.Run(async () =>
         {
             server.Write(frame, 0, 2);
             await Task.Delay(50);
