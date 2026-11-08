@@ -262,25 +262,24 @@ public sealed class FrameCodecTests
     }
 
     [Fact]
-    public void Read_FrameArrivingInPiecesOverARealPipe_IsWhole()
+    public async Task Read_FrameArrivingInPiecesOverARealPipe_IsWhole()
     {
         using var server = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.None);
         using var client = new AnonymousPipeClientStream(PipeDirection.In, server.ClientSafePipeHandle);
         byte[] frame = FrameCodec.Encode(new AskPassword(1, "секрет.zip", 1, false, false));
-        var writer = new Thread(() =>
+        Task writer = Task.Run(async () =>
         {
             server.Write(frame, 0, 2);
-            Thread.Sleep(50);
+            await Task.Delay(50);
             server.Write(frame, 2, 5);
-            Thread.Sleep(50);
+            await Task.Delay(50);
             server.Write(frame, 7, frame.Length - 7);
             server.Dispose();
         });
-        writer.Start();
 
         FrameCodec.Read(client).Should().Be(new AskPassword(1, "секрет.zip", 1, false, false));
         FrameCodec.Read(client).Should().BeNull();
-        writer.Join();
+        await writer;
     }
 
     [Theory]
