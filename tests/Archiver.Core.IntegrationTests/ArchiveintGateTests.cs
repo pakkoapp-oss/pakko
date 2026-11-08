@@ -33,7 +33,7 @@ public sealed class ArchiveintGateTests
     [Fact]
     public async Task AForgedGoodProbe_ChoosesTheHelper_WithItsCapabilities()
     {
-        var gate = Gate(probe: (_, _) => Task.FromResult(Probe("libarchive 3.8.8 zlib/1.3.1")));
+        ArchiveintGate gate = Gate(probe: (_, _) => Task.FromResult(Probe("libarchive 3.8.8 zlib/1.3.1")));
 
         ArchiveintDecision decision = await gate.DecideAsync();
 
@@ -47,7 +47,7 @@ public sealed class ArchiveintGateTests
     public async Task GroupPolicy_DisablingTar_NeverProbes()
     {
         int probes = 0;
-        var gate = Gate(new GroupPolicyOptions { DisableTarExtraction = true }, probe: (_, _) => { probes++; return Task.FromResult(Probe("libarchive 3.8.8")); });
+        ArchiveintGate gate = Gate(new GroupPolicyOptions { DisableTarExtraction = true }, probe: (_, _) => { probes++; return Task.FromResult(Probe("libarchive 3.8.8")); });
 
         (await gate.DecideAsync()).UsesHelper.Should().BeFalse();
         probes.Should().Be(0);
@@ -56,7 +56,7 @@ public sealed class ArchiveintGateTests
     [Fact]
     public async Task NoHelperFile_ReadsWithTarExe()
     {
-        var gate = Gate(helperPath: Path.Combine(Path.GetTempPath(), "no-such-helper-" + Guid.NewGuid().ToString("N") + ".exe"));
+        ArchiveintGate gate = Gate(helperPath: Path.Combine(Path.GetTempPath(), "no-such-helper-" + Guid.NewGuid().ToString("N") + ".exe"));
 
         ArchiveintDecision decision = await gate.DecideAsync();
 
@@ -69,7 +69,7 @@ public sealed class ArchiveintGateTests
     [InlineData((ushort)0x014C)]
     public async Task NotANativeX64Machine_ReadsWithTarExe(ushort machine)
     {
-        var gate = Gate(machine: () => machine);
+        ArchiveintGate gate = Gate(machine: () => machine);
 
         ArchiveintDecision decision = await gate.DecideAsync();
 
@@ -84,7 +84,7 @@ public sealed class ArchiveintGateTests
     [Fact]
     public async Task AnUnsignedArchiveint_ReadsWithTarExe()
     {
-        var gate = Gate(verify: _ => false);
+        ArchiveintGate gate = Gate(verify: _ => false);
 
         ArchiveintDecision decision = await gate.DecideAsync();
 
@@ -135,7 +135,7 @@ public sealed class ArchiveintGateTests
     [Fact]
     public async Task AForgedProbeLine_ReadsWithTarExe()
     {
-        var gate = Gate(probe: (_, _) =>
+        ArchiveintGate gate = Gate(probe: (_, _) =>
         {
             var output = new ArchiveHelperOutput(ArchiveHelperMode.Probe);
             output.Feed("E 0 0 0 0 - - - - -"u8);
@@ -151,7 +151,7 @@ public sealed class ArchiveintGateTests
     [Fact]
     public async Task AProbeThatHangs_TimesOut_ToTarExe()
     {
-        var gate = Gate(probe: (_, ct) => Task.Delay(Timeout.Infinite, ct).ContinueWith(_ => Probe("libarchive 3.8.8"), TaskScheduler.Default), timeout: TimeSpan.FromMilliseconds(200));
+        ArchiveintGate gate = Gate(probe: (_, ct) => Task.Delay(Timeout.Infinite, ct).ContinueWith(_ => Probe("libarchive 3.8.8"), TaskScheduler.Default), timeout: TimeSpan.FromMilliseconds(200));
 
         ArchiveintDecision decision = await gate.DecideAsync().WaitAsync(TimeSpan.FromSeconds(30));
 
@@ -163,7 +163,7 @@ public sealed class ArchiveintGateTests
     public async Task AProbeThatIgnoresItsToken_StillTimesOut()
     {
         var never = new TaskCompletionSource<ArchiveHelperOutput>();
-        var gate = Gate(probe: (_, _) => never.Task, timeout: TimeSpan.FromMilliseconds(200));
+        ArchiveintGate gate = Gate(probe: (_, _) => never.Task, timeout: TimeSpan.FromMilliseconds(200));
 
         (await gate.DecideAsync().WaitAsync(TimeSpan.FromSeconds(30))).Cause.Should().Contain("timed out");
     }
@@ -174,7 +174,7 @@ public sealed class ArchiveintGateTests
     public async Task TheDecision_IsMadeOnce()
     {
         int probes = 0;
-        var gate = Gate(probe: (_, _) => { Interlocked.Increment(ref probes); return Task.FromResult(Probe("libarchive 3.8.8")); });
+        ArchiveintGate gate = Gate(probe: (_, _) => { Interlocked.Increment(ref probes); return Task.FromResult(Probe("libarchive 3.8.8")); });
 
         await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => gate.DecideAsync()));
         await gate.HelperAsync(CancellationToken.None);
@@ -186,7 +186,7 @@ public sealed class ArchiveintGateTests
     public async Task AFailedProbe_IsNotRetried()
     {
         int probes = 0;
-        var gate = Gate(probe: (_, _) => { probes++; throw new IOException("the sandbox would not start"); });
+        ArchiveintGate gate = Gate(probe: (_, _) => { probes++; throw new IOException("the sandbox would not start"); });
 
         (await gate.DecideAsync()).UsesHelper.Should().BeFalse();
         (await gate.DecideAsync()).UsesHelper.Should().BeFalse();
@@ -199,7 +199,7 @@ public sealed class ArchiveintGateTests
     public async Task ACancelledFirstCaller_DoesNotBecomeTheVerdict()
     {
         var release = new TaskCompletionSource();
-        var gate = Gate(probe: async (_, _) => { await release.Task; return Probe("libarchive 3.8.8"); });
+        ArchiveintGate gate = Gate(probe: async (_, _) => { await release.Task; return Probe("libarchive 3.8.8"); });
         using var cancelled = new CancellationTokenSource();
         await cancelled.CancelAsync();
 
