@@ -14750,19 +14750,26 @@ by index, so no name passes through tar.exe on the helper's path.
 
 **Release batch (2026-11-08): the fresh review's leftovers.** Plan mode with the advisor at both ends.
 Each test seen red first; mutants for each half of the `out\` check.
-- **`out\` holds plain files only.** A compromised helper could hang a named stream on `out\<idx>`
-  (it moves with the file on one volume, and the antivirus scan reads only the unnamed stream) or
-  make two outputs one file through a hard link. `QuarantineFiles.IsPlainFile` has
-  `PathIdentity.HasOneLinkAndOneStream` open each file for attributes only (`FILE_READ_ATTRIBUTES`,
-  share all, the link itself not followed: no data access, so no scan-on-open, and a scanner holding
-  the file does not refuse the run; advisor) and ask for one link and exactly the `::$DATA` stream; a
-  file that cannot be shown plain refuses the run (`Checks_OutHoldingANamedStreamOrAHardLink_Fails`,
-  `Checks_AnEmptyFileInOut_Passes`, `Checks_AFileInOutHeldByAnotherReader_Passes`,
-  `IsPlainFile_OnAFileThatIsGone_...`). Its cost, measured on 50,000 files of 100 bytes: the helper's
-  extract 112 s without it, 128 s with it (tar.exe 137 s). The check stays in the
-  quarantine (NTFS): a destination on exFAT or a share cannot be asked about streams. After it the
-  helper is gone: its job allows one process, and the run waits for its exit. The sandbox SID is
-  shared with a concurrent operation's helper, as it is with tar.exe.
+- **The quarantine moves out plain files only, for both readers.** A compromised sandbox could hang
+  a named stream on a quarantined file (it moves with the file on one volume, and the antivirus scan
+  reads only the unnamed stream) or make two outputs one file through a hard link.
+  `QuarantineFiles.IsPlainFile` has `PathIdentity.HasOneLinkAndOneStream` open the file for
+  attributes only (`FILE_READ_ATTRIBUTES`, share all, the link itself not followed: no data access,
+  so no scan-on-open, and a scanner holding the file does not refuse the run; advisor) and ask for
+  one link and exactly the `::$DATA` stream. `TarSandboxedService.TryMoveSingleEntryAsync` asks it
+  right before each move, outside the per-entry catch: a file that cannot be shown plain fails the
+  whole archive and nothing lands (`Extract_AStreamPlantedBeforeTheMove_...`, both readers; the
+  mutant without the call turns both red; `IsPlainFile_*`). First placed in the helper's `out\`
+  check only; the fresh review found tar.exe's fallback had the same hole (same threat model), and
+  a check before the scan leaves the time until the move open, so it moved to the move. Legitimate
+  tar.exe writes no named stream: a pax tar with `SCHILY.xattr`/`LIBARCHIVE.xattr` records (user,
+  `com.apple.ResourceFork`, `com.apple.quarantine`) extracts to `::$DATA` only on 3.8.9 and on 3.5.2
+  (PakkoW10). Its cost, measured on 50,000 files of 100 bytes: the helper's extract 112 s without
+  it, 128 s with it (tar.exe 137 s). Asked in the quarantine (NTFS) only: a destination on exFAT or
+  a share cannot be asked about streams. Attributes are not asked: an EFS-encrypted or compressed
+  `%TEMP%` gives legitimate files those bits, so a sandbox can still mark a file it wrote Hidden or
+  ReadOnly (residual). The check and the move are two calls: a process holding a handle into the
+  quarantine could still change the file between them, which is T-F474.
 - **A latent layout bug found on the way:** `PathIdentity.ByHandleFileInformation` declared its
   FILETIMEs as `ulong` without `Pack = 4`, so every field after `FileAttributes` was read 4 bytes
   off. The new link count read garbage (every plain file refused, caught by the tests); the same
@@ -14779,10 +14786,11 @@ Each test seen red first; mutants for each half of the `out\` check.
   sleeps holds nothing and moves nothing, and the user's cancel ends it.
 - **A file and a folder of one name** (`x` and `x/y.txt`, also `X` or `x.`): `Directory.CreateDirectory`
   in `TryMoveSingleEntryAsync` stood outside the per-file `try`, so the whole archive failed with the
-  OS text naming the `.pakko-x-` staging folder. Now the entry under the file fails alone, with the
-  staging prefix replaced by the destination, as ZIP's `WriteEntryAsync` does (measured on ZIP: the
-  same entry fails, `x` and `z.txt` land). tar.exe's run still fails as a whole before this point
-  ("1 of 2"). A behaviour change on the helper's path, for the CHANGELOG.
+  OS text naming the `.pakko-x-` staging folder. Now whichever entry comes second fails alone, as in
+  ZIP (measured on ZIP in both orders): the entry under the file names the destination (the staging
+  prefix replaced, as ZIP's `WriteEntryAsync`); a file after its folder fails with the OS's "Access
+  to the path is denied", where ZIP's text also names the path. tar.exe's run still fails as a whole
+  before this point ("1 of 2"). A behaviour change on the helper's path, for the CHANGELOG.
 - **Memory, measured.** Raw listings: 4,000,000 short names take 581 MiB per parsed listing; stdout
   at its 1 GiB cap with names of 32,767 units holds about 512 MiB of names per listing. Through the
   real path (`TestAsync` on a tar.gz of 1,000,000 empty entries: scan catalog and second listing at

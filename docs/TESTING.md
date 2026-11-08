@@ -355,10 +355,13 @@ dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
     the real probe; each condition falls back to tar.exe (policy, no helper, not native x64, an
     unsigned DLL, a version not measured, a missing export, an unfinished, forged or hung probe);
     the decision is made once, a failure is not retried, a cancelled first caller is not the verdict.
-- T-F470 release batch: `HelperReaderTests.Checks_*` refuse an `out\` file with a named stream or a
-  hard link, and pass an empty one and one another reader holds (`IsPlainFile` on a gone file is false); `Extract_AFileAndAFolderOfOneName_...`
+- T-F470 release batch: `HelperReaderTests.IsPlainFile_*` (false with a named stream, a hard link or
+  a gone file; true for an empty one and one another reader holds);
+  `Extract_AStreamPlantedBeforeTheMove_...` (both readers: a stream planted from the progress callback,
+  found by its unique content, fails the archive and nothing lands); `Extract_AFileAndAFolderOfOneName_...`
   and `Helper_AFileAndAFolderOfOneNameOnDisk_...` (`X`, `x.`) fail only the entry under the file,
-  naming the destination; `TarSandboxScopeHelperTests.TheCopy_CannotBeRenamedWhileItRuns`.
+  naming the destination; `Helper_AFolderThenAFileOfItsName_...` fails only the file;
+  `TarSandboxScopeHelperTests.TheCopy_CannotBeRenamedWhileItRuns`.
 - T-F470 step 4, on the installed build (`docs/SMOKE.md`): `CLI-050` (`pakko i` names the helper,
   names outside the ANSI page list and extract exactly), `CLI-051` (a `pakko.exe` with no helper
   beside it reads through tar.exe) and `APP-037` (the App's reader line, from the packaged process).

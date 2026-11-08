@@ -849,6 +849,13 @@ public sealed class TarSandboxedService : ITarService
         // T-F263: staged under the path it will have in actualDest; the commit moves it there.
         string stagedFilePath = Path.Combine(plan.Staging.Path, Path.GetRelativePath(actualDest, finalFilePath));
 
+        // T-F470: a second name would make two destinations share one file's data; a named stream would
+        // move out with it, unseen by the scan. Neither is a file that cannot be written: the sandbox,
+        // tar.exe or the helper, broke its rules, so the whole archive fails, outside the per-entry
+        // catch. Asked here, the last moment before the move, for both readers.
+        if (!QuarantineFiles.IsPlainFile(file))
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, "the sandbox left a file with a second name or a named stream"));
+
         // T-F170: a file that cannot be written fails only itself - a file of the archive standing
         // where its folder must be too (T-F470, as ZIP). A locked destination file is reported by the
         // commit (ExtractionStaging.CommitInto), the same way as for ZIP. As ZIP's WriteEntryAsync,
