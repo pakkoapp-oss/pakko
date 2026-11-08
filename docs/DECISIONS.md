@@ -14702,6 +14702,23 @@ in the product. Choices in 3b-i:
   - an entry's time is read whole: tar.exe's listing shows only a date for an old entry
     (`ListEntriesAsync_ReadsModifiedFromTheVerboseListing`, `ListEntriesAsync_OldAndRecentEntries_...`);
   - `pakko i` names the helper; the owner test lists the sweep's own patch.
+- **The fresh reviewer (opus, read-only, 2026-11-08)** found no write outside the destination, no
+  link followed, no content under a wrong name. Fixed, each test seen red first:
+  - two forged sizes near 2^62 made the reader's `Sum` throw `OverflowException` out of a public Core
+    method; an `E` size and a `K` count are now bounded by `MaxEntrySize` (`long.MaxValue /
+    MaxEntries`), so no sum over a run can overflow (`ASizePastTheEntryLimit_BreaksTheProtocol`);
+  - a helper the Job Object stopped (memory, CPU time) read as "the output broke its protocol": its
+    output is cut short or its exit code is a crash code, and `Finish` threw before the job's record
+    was read. `TarSandboxScope.SettleHelperRunAsync` asks the job first after a failed run and names
+    the limit (`TarSandboxScopeLimitMessageTests`);
+  - a name with an unpaired surrogate (a 7z stores UTF-16; tar.exe's listing could never carry one)
+    passed the scan, though the parser's comment said the reader refused it; the scan refuses it now.
+  Left for the release batch (TASKS, T-F470): named streams and hard links in `out\` (a compromised
+  helper could hang a stream on a file, carried by the move and unseen by the scan, or link two
+  outputs; the permissions reset after the move, so no sandbox escape), the memory of a listing of
+  millions of entries held twice, no wall-clock bound on a helper that sleeps with stdout open, and
+  the hash-then-launch gap on the helper copy (writable only by the same user's medium-integrity
+  processes).
 
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
