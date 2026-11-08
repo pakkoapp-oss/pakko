@@ -120,16 +120,16 @@ public sealed class ArchiveTempFileTests : IDisposable
         File.Exists(temp).Should().BeTrue("the caller removes the temporary file");
     }
 
+    // T-F472: no clock. The cancellation is seen only by the wait between attempts, so a cancelled
+    // token turns any retry into OperationCanceledException: the file's own error proves none happened.
     [Fact]
     public async Task CommitAsync_MissingTemp_ThrowsAtOnce()
     {
         string dest = Path.Combine(_temp.Path, "a.zip");
-        DateTime started = DateTime.UtcNow;
 
-        Func<Task> act = () => ArchiveTempFile.CommitAsync(Path.Combine(_temp.Path, "none.tmp"), dest, replaceExisting: false, CancellationToken.None);
+        Func<Task> act = () => ArchiveTempFile.CommitAsync(Path.Combine(_temp.Path, "none.tmp"), dest, replaceExisting: false, new CancellationToken(canceled: true));
 
-        await act.Should().ThrowAsync<FileNotFoundException>();
-        (DateTime.UtcNow - started).Should().BeLessThan(TimeSpan.FromMilliseconds(90), "only a held file is worth waiting for");
+        await act.Should().ThrowAsync<FileNotFoundException>("only a held file is worth waiting for");
     }
 
     [Fact]

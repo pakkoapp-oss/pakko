@@ -14286,3 +14286,16 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   project, then per category (`Slow`, `VeryLarge`, `Fuzz`, `Integration`), keeping every fact and
   fixture; history goes to `DECISIONS.md`. A script moves the text, then a check for lost lines.
 - **Reported by:** the agent, 2026-11-06.
+
+### T-F472 - `CommitAsync_MissingTemp_ThrowsAtOnce` raced a 90 ms clock (P3, flaky test)
+
+- [x] **Status:** done 2026-11-08, no seam needed. `CommitAsync` sees the cancellation only in the
+  wait between attempts, so the test passes a cancelled token: any retry would throw
+  `OperationCanceledException`, and the file's own `FileNotFoundException` proves none happened. No
+  clock left in the test. Seen red with a mutant that treats every `IOException` as a held file
+  (`TaskCanceledException` instead).
+- **Before:** open. Failed once in a full local run on 2026-11-08 (T-F470 step 3b-ii's branch,
+  nothing near `ArchiveTempFile` changed); green alone. The test proved "no retry on a missing
+  temporary file" by elapsed wall time, which a loaded runner can exceed (T-F425's rule: no timer
+  races). Next was: count the attempts instead (a seam for the retry delay or its count), as T-F451 did.
+- **Reported by:** the agent, 2026-11-08.
