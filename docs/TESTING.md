@@ -325,6 +325,12 @@ dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
   tar.exe passes; T-F401: a system binary signed through a catalog only, chosen by its empty PE
   certificate table, passes, and so does an unchanged copy of it; an unsigned decoy and copies of
   that binary and of tar.exe with a byte changed inside their first section fail).
+- `tests/Archiver.Core.Tests/Services/SandboxedReaderOwnerTests.cs` (T-F470): a source scan of `src/`
+  (comment lines left out) - opening a sandbox on an archive, `AsTarExeWrites`, `TarNames.Judge*`/
+  `ReadListing`, `ReadHeaderNamesAsync` and the first-copy pass appear only in `Sandbox/TarExeReader.cs`
+  and the owners it builds on, so every tar-family read goes through `ISandboxedArchiveReader`;
+  `Scan_SeesTheReader` keeps the scan from passing vacuously. Seen red on a mutant call in
+  `TarSandboxedService`.
 
 ### T-F35 Parallel SingleArchive Pipeline Tests (v1.4+)
 
