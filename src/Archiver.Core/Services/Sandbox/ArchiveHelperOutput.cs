@@ -54,6 +54,12 @@ internal sealed class ArchiveHelperOutput
     /// <summary>Entries one run may list; the helper's own selection limit.</summary>
     internal const int MaxEntries = 4_000_000;
 
+    /// <summary>
+    /// The largest size an entry may declare or a read may report: the sum over <see cref="MaxEntries"/>
+    /// entries still fits a long (about 2 TiB each).
+    /// </summary>
+    internal const long MaxEntrySize = long.MaxValue / MaxEntries;
+
     /// <summary>A name or link target in UTF-16 code units: the longest Windows path.</summary>
     internal const int MaxNameUnits = 32_767;
 
@@ -223,7 +229,7 @@ internal sealed class ArchiveHelperOutput
         if (index != _entries.Count)
             throw Broken("an entry index out of sequence");
         int fileType = (int)Unsigned(f[2], ushort.MaxValue);
-        long? size = f[3] == "-" ? null : Unsigned(f[3], long.MaxValue);
+        long? size = f[3] == "-" ? null : Unsigned(f[3], MaxEntrySize);
         long? mtime = f[4] == "-" ? null : Signed(f[4], long.MinValue + 1, long.MaxValue);
         int nanoseconds = (int)Unsigned(f[5], 999_999_999);
         if (mtime is null && nanoseconds != 0)
@@ -244,7 +250,7 @@ internal sealed class ArchiveHelperOutput
         long index = Unsigned(fields[1], MaxEntries - 1);
         if (index >= _entries.Count || index <= _lastRead)
             throw Broken("a read entry not listed or out of order");
-        long bytes = Unsigned(fields[2], long.MaxValue);
+        long bytes = Unsigned(fields[2], MaxEntrySize);
         _lastRead = index;
         _read.Add((index, bytes));
         _onRead?.Invoke(index, bytes);
@@ -291,7 +297,7 @@ internal sealed class ArchiveHelperOutput
     }
 
     // "-" null, "." empty, else uppercase hex, four digits per UTF-16 code unit. A lone surrogate is
-    // kept as it is: the reader refuses such a name, the parser only reads it.
+    // kept as it is: the reader refuses such a name (HelperReader.FirstUnsafeName), the parser only reads it.
     private static string? Hex16(string s)
     {
         if (s == "-")

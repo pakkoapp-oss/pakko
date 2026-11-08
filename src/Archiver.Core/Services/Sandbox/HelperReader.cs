@@ -237,8 +237,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         ArchiveHelperOutput output = await ListWithCharsetAsync(cancellationToken).ConfigureAwait(false)
             ?? throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
 
-        string[] rawNames = [.. output.Entries.Select(e => e.Name!)];
-        string? unsafeName = rawNames.FirstOrDefault(IsDangerousEntryName) ?? EntryDiskName.ShortNameAliasOfAnother(rawNames);
+        string? unsafeName = FirstUnsafeName([.. output.Entries.Select(e => e.Name!)]);
         if (unsafeName != null)
             throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarUnsafeEntryPath, unsafeName));
 
@@ -250,6 +249,23 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         }
         _entries = entries;
         return entries;
+    }
+
+    // tar.exe's scan rules (T-F49, T-F420), and a name with an unpaired surrogate: no file name a
+    // reader of it can rely on (tar.exe's listing could never carry one).
+    internal static string? FirstUnsafeName(string[] rawNames) =>
+        rawNames.FirstOrDefault(n => IsDangerousEntryName(n) || HasLoneSurrogate(n)) ?? EntryDiskName.ShortNameAliasOfAnother(rawNames);
+
+    private static bool HasLoneSurrogate(string name)
+    {
+        for (int i = 0; i < name.Length; i++)
+        {
+            if (char.IsHighSurrogate(name[i]) && i + 1 < name.Length && char.IsLowSurrogate(name[i + 1]))
+                i++;
+            else if (char.IsSurrogate(name[i]))
+                return true;
+        }
+        return false;
     }
 
     // One listed entry as the scan takes it; null for the archive's root itself.

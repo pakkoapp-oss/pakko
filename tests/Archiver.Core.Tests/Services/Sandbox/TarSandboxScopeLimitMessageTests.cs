@@ -31,6 +31,73 @@ public sealed class TarSandboxScopeLimitMessageTests
         TarSandboxScope.MemoryLimitFor(physicalGiB * GiB).Should().Be(expectedGiB * GiB);
     }
 
+    // --- T-F470 review: a helper the job stopped ---
+    // Its output is cut short (or it exits with a crash code); the job's record of the limit is the
+    // cause to report, not "the output broke the protocol".
+
+    [Fact]
+    public async Task SettleHelperRun_OutputCutByTheMemoryLimit_NamesTheLimit()
+    {
+        var output = new ArchiveHelperOutput(ArchiveHelperMode.List);
+        output.Feed("V 6C696261726368697665"u8.ToArray());
+
+        (ArchiveHelperExit exit, string limitHit) = await TarSandboxScope.SettleHelperRunAsync(
+            Task.FromException<int>(new IOException("The child's stdout ended inside a line.")), output,
+            () => SandboxJobObject.LimitHit.Memory, TimeSpan.FromMinutes(60));
+
+        exit.Should().NotBe(ArchiveHelperExit.Done);
+        limitHit.Should().Contain("memory").And.Contain(TarSandboxScope.HelperProgram);
+    }
+
+    [Fact]
+    public async Task SettleHelperRun_ACrashCodeUnderTheCpuLimit_NamesTheLimit()
+    {
+        (ArchiveHelperExit exit, string limitHit) = await TarSandboxScope.SettleHelperRunAsync(
+            Task.FromResult(unchecked((int)0xC0000005)), new ArchiveHelperOutput(ArchiveHelperMode.List),
+            () => SandboxJobObject.LimitHit.CpuTime, TimeSpan.FromMinutes(60));
+
+        exit.Should().NotBe(ArchiveHelperExit.Done);
+        limitHit.Should().Contain("processor time").And.Contain(TarSandboxScope.HelperProgram);
+    }
+
+    [Fact]
+    public async Task SettleHelperRun_OutputCutWithoutALimit_KeepsTheFailure()
+    {
+        var cut = new IOException("The child's stdout ended inside a line.");
+
+        Func<Task> settle = () => TarSandboxScope.SettleHelperRunAsync(
+            Task.FromException<int>(cut), new ArchiveHelperOutput(ArchiveHelperMode.List),
+            () => SandboxJobObject.LimitHit.None, TimeSpan.FromMinutes(60));
+
+        (await settle.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(cut);
+    }
+
+    [Fact]
+    public async Task SettleHelperRun_ACrashCodeWithoutALimit_BreaksTheProtocol()
+    {
+        Func<Task> settle = () => TarSandboxScope.SettleHelperRunAsync(
+            Task.FromResult(-1), new ArchiveHelperOutput(ArchiveHelperMode.List),
+            () => SandboxJobObject.LimitHit.None, TimeSpan.FromMinutes(60));
+
+        await settle.Should().ThrowAsync<ArchiveHelperProtocolException>();
+    }
+
+    [Fact]
+    public async Task SettleHelperRun_Done_AsksTheJobNothing()
+    {
+        var output = new ArchiveHelperOutput(ArchiveHelperMode.List);
+        output.Feed("V 6C696261726368697665"u8.ToArray());
+        output.Feed("D"u8.ToArray());
+        int asked = 0;
+
+        (ArchiveHelperExit exit, string limitHit) = await TarSandboxScope.SettleHelperRunAsync(
+            Task.FromResult(0), output, () => { asked++; return SandboxJobObject.LimitHit.Memory; }, TimeSpan.FromMinutes(60));
+
+        exit.Should().Be(ArchiveHelperExit.Done);
+        limitHit.Should().BeEmpty();
+        asked.Should().Be(0);
+    }
+
     [Fact]
     public void DescribeLimitHit_None_AddsNothing()
         => TarSandboxScope.DescribeLimitHit(SandboxJobObject.LimitHit.None).Should().BeEmpty();

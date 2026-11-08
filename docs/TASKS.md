@@ -1539,7 +1539,10 @@ re-measured with T-F346's script before and after.
   - the packaged launch: `Deploy.ps1`, then the packaged `pakko i` line and the App log's reader
     line (identity proven), with `docs/SMOKE.md` rows; CI's `V` line, read from the test log;
   - a Pakko text for the helper's failed move of a file over a folder of its name (the OS text now
-    names the `.pakko-x-` staging folder). Then step 4, T-F469/T-F453/T-F464/T-F461 narrowed to
+    names the `.pakko-x-` staging folder);
+  - from the fresh review (`docs/DECISIONS.md`, 3b-ii): `out\` checked for named streams and hard
+    links (`QuarantineFiles`), a wall-clock bound on a helper run, the helper copy held open from
+    hash to launch, and the memory of two listings of millions of entries measured. Then step 4, T-F469/T-F453/T-F464/T-F461 narrowed to
   the tar.exe fallback, `docs/SMOKE.md`, `docs/TESTING.md`. Step 3 also verifies on the
   device a launch from the packaged App, Shell and `pakko` (identity proven), and reads the `V` line
   of CI's test job to see which libarchive its image runs. Measured

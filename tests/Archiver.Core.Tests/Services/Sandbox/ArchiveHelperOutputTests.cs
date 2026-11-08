@@ -122,6 +122,20 @@ public sealed class ArchiveHelperOutputTests
     public void AMalformedEntry_BreaksTheProtocol(string line)
         => Breaks(ArchiveHelperMode.List, V, line);
 
+    // Review of T-F470: a size is bounded so that the sum over every entry a run may list fits a
+    // long; two forged sizes near 2^62 made the reader's sum throw OverflowException out of Core.
+    [Fact]
+    public void ASizePastTheEntryLimit_BreaksTheProtocol()
+    {
+        Breaks(ArchiveHelperMode.List, V, $"E 0 32768 {ArchiveHelperOutput.MaxEntrySize + 1} - 0 0 0 0061 -");
+        Breaks(ArchiveHelperMode.Extract, V, Plain, $"K 0 {ArchiveHelperOutput.MaxEntrySize + 1}");
+
+        Parse(ArchiveHelperMode.List, V, $"E 0 32768 {ArchiveHelperOutput.MaxEntrySize} - 0 0 0 0061 -")
+            .Entries.Single().Size.Should().Be(ArchiveHelperOutput.MaxEntrySize);
+        ((System.Numerics.BigInteger)ArchiveHelperOutput.MaxEntrySize * ArchiveHelperOutput.MaxEntries)
+            .Should().BeLessThanOrEqualTo(long.MaxValue);
+    }
+
     [Fact]
     public void ANameLongerThanAnyWindowsPath_BreaksTheProtocol()
     {
@@ -209,6 +223,31 @@ public sealed class ArchiveHelperOutputTests
     }
 
     // --- Harness ---
+
+    // T-F470 review: an unpaired surrogate is no name Windows or a reader of it can rely on; the
+    // parser keeps it (it reads, it does not judge), the scan refuses the archive.
+    // Built from code units: xUnit carries a lone surrogate in InlineData as U+FFFD.
+    [Theory]
+    [InlineData("a", 0xD800, "b")]
+    [InlineData("a", 0xDC00, "")]
+    [InlineData("", 0xDC00, "x")]
+    [InlineData("d/", 0xD83D, "")]
+    public void TheScan_RefusesANameWithALoneSurrogate(string before, int unit, string after)
+    {
+        string name = before + (char)unit + after;
+        HelperReader.FirstUnsafeName(["ok.txt", name]).Should().Be(name);
+    }
+
+    [Fact]
+    public void TheScan_RefusesAPairInTheWrongOrder()
+    {
+        string name = "" + (char)0xDC00 + (char)0xD800;
+        HelperReader.FirstUnsafeName(["ok.txt", name]).Should().Be(name);
+    }
+
+    [Fact]
+    public void TheScan_TakesASurrogatePair()
+        => HelperReader.FirstUnsafeName(["ok.txt", "\U0001F600.txt"]).Should().BeNull();
 
     private static ArchiveHelperOutput Parse(ArchiveHelperMode mode, params string[] lines)
     {

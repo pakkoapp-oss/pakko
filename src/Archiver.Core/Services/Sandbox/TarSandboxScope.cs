@@ -513,17 +513,48 @@ internal sealed partial class TarSandboxScope : IDisposable
         using (job)
         using (SafeFileHandle stdIn = ReopenArchive())
         {
-            (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
-                helper,
-                [mode.ToString().ToLowerInvariant(), .. arguments, .. selectArguments],
-                new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: QuarantineRoot,
-                    StdOutLines: new StdOutLines(output.Feed, ArchiveHelperOutput.MaxLineBytes, MaxHelperStdOutBytes),
-                    DiscardStdErr: true),
-                cancellationToken)
-                .ConfigureAwait(false);
-            string limitHit = exitCode == 0 ? string.Empty : DescribeLimitHit(job.ReadLimitHit(), CpuTimeLimitFor(_archive.Length));
-            return (output.Finish(exitCode), limitHit);
+            async Task<int> LaunchAsync()
+            {
+                (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
+                    helper,
+                    [mode.ToString().ToLowerInvariant(), .. arguments, .. selectArguments],
+                    new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: QuarantineRoot,
+                        StdOutLines: new StdOutLines(output.Feed, ArchiveHelperOutput.MaxLineBytes, MaxHelperStdOutBytes),
+                        DiscardStdErr: true),
+                    cancellationToken)
+                    .ConfigureAwait(false);
+                return exitCode;
+            }
+            return await SettleHelperRunAsync(LaunchAsync(), output, job.ReadLimitHit, CpuTimeLimitFor(_archive.Length)).ConfigureAwait(false);
         }
+    }
+
+    internal const string HelperProgram = "Archiver.ArchiveHelper.exe";
+
+    /// <summary>
+    /// How a helper run ended. A helper the job stopped leaves its output cut short or exits with a
+    /// crash code: the job's record of the limit is then the cause, not a protocol breach. The job is
+    /// asked once (reading its record consumes it), and only after a failed run.
+    /// </summary>
+    internal static async Task<(ArchiveHelperExit Exit, string LimitHit)> SettleHelperRunAsync(
+        Task<int> run, ArchiveHelperOutput output, Func<SandboxJobObject.LimitHit> readLimitHit, TimeSpan cpuTimeLimit)
+    {
+        int exitCode;
+        try
+        {
+            exitCode = await run.ConfigureAwait(false);
+        }
+        catch (IOException)
+        {
+            string killed = DescribeLimitHit(readLimitHit(), cpuTimeLimit, HelperProgram);
+            if (killed.Length == 0)
+                throw;
+            return (ArchiveHelperExit.Archive, killed);
+        }
+        if (exitCode == 0)
+            return (output.Finish(exitCode), string.Empty);
+        string limitHit = DescribeLimitHit(readLimitHit(), cpuTimeLimit, HelperProgram);
+        return limitHit.Length > 0 ? (ArchiveHelperExit.Archive, limitHit) : (output.Finish(exitCode), string.Empty);
     }
 
     // The first run copies the helper into "bin": the source is read once, and the copy is written
@@ -567,12 +598,12 @@ internal sealed partial class TarSandboxScope : IDisposable
         return System.Text.Encoding.ASCII.GetBytes(text.ToString());
     }
 
-    internal static string DescribeLimitHit(SandboxJobObject.LimitHit hit, TimeSpan? cpuTimeLimit = null) => hit switch
+    internal static string DescribeLimitHit(SandboxJobObject.LimitHit hit, TimeSpan? cpuTimeLimit = null, string program = "tar.exe") => hit switch
     {
         SandboxJobObject.LimitHit.Memory =>
-            $"The archive needs more memory than Pakko's sandbox allows tar.exe ({RamLimitBytes / (1024 * 1024)} MB). ",
+            $"The archive needs more memory than Pakko's sandbox allows {program} ({RamLimitBytes / (1024 * 1024)} MB). ",
         SandboxJobObject.LimitHit.CpuTime =>
-            $"tar.exe used more processor time than Pakko's sandbox allows ({(cpuTimeLimit ?? CpuTimeLimitFor(0)).TotalMinutes:0} minutes). ",
+            $"{program} used more processor time than Pakko's sandbox allows ({(cpuTimeLimit ?? CpuTimeLimitFor(0)).TotalMinutes:0} minutes). ",
         _ => string.Empty,
     };
 

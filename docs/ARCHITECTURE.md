@@ -2225,8 +2225,8 @@ in `\n`, strictly increasing, no leading zeros, at most 4,000,000; anything else
 | `X <export>` | after `V`: a missing core export (then exit 4); a missing `support_*` export is not one |
 | `C <name> <rc\|->` | `probe`: the return of each `support_*` call, `-` when the DLL lacks that export |
 | `W <index> <errno> <hex8>` | `archive_read_next_header` returned `ARCHIVE_WARN` for this entry; any status but `ARCHIVE_OK`, `ARCHIVE_WARN` and `ARCHIVE_EOF` (`ARCHIVE_RETRY` included) is an `F`. On an entry's data (`archive_read_data_block`) a warning is an `F` too: it is how libarchive reports a 7z or RAR CRC mismatch |
-| `E <index> <filetype> <size\|-> <mtime\|-> <nsec> <encrypted\|-> <sparse> <name hex16> <link hex16>` | one entry; the link is the symlink target, else the hard-link target |
-| `K <index> <bytes>` | a selected entry read in full (and written, in `extract`) |
+| `E <index> <filetype> <size\|-> <mtime\|-> <nsec> <encrypted\|-> <sparse> <name hex16> <link hex16>` | one entry; the link is the symlink target, else the hard-link target. A size is at most `long.MaxValue / 4,000,000` (about 2 TiB), so a sum over every entry fits a long; a name with an unpaired surrogate refuses the archive at the scan |
+| `K <index> <bytes>` | a selected entry read in full (and written, in `extract`); bytes bounded as an `E` size |
 | `F <code> <hex8>` | the run failed: a libarchive status with its error string, or one of the helper's own codes below |
 | `D` | the run completed; absent on any failure |
 
