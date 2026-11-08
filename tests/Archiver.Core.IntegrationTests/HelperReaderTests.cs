@@ -382,6 +382,69 @@ public sealed class HelperReaderTests : IDisposable
         (result.Errors.Count + result.SkippedFiles.Count).Should().BeGreaterThan(0);
     }
 
+    // --- Through the process's gate (T-F470 3b-ii): the services ask it, and read as it decided ---
+
+    [Fact]
+    public async Task Gate_ExtractionAndTheScan_ReadThroughTheBackendItChose()
+    {
+        var gate = new ArchiveintGate(new GroupPolicyOptions(), ArchiveHelperBuild.ExePath);
+        (await gate.DecideAsync()).UsesHelper.Should().BeTrue();
+        string archive = Tar(("日本語.txt", "EVIL"), ("emoji-\U0001F600.txt", "fine"));
+        string dest = Path.Combine(_temp.Path, "dest-gate");
+
+        ArchiveResult result = await new TarSandboxedService(new GroupPolicyOptions(), gate).ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archive],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+        });
+        var scanner = new FakeAmsiScanner { DetectedText = "EVIL" };
+        ThreatScanResult scan = await new AntivirusScanService(
+            () => Task.FromResult(new TarCapabilities()), new GroupPolicyOptions(), () => scanner, () => AmsiProviderState.Usable, gate)
+            .ScanAsync(new AntivirusScanOptions { ArchivePaths = [archive] });
+
+        result.Errors.Should().BeEmpty();
+        Tree(dest).Should().BeEquivalentTo(new Dictionary<string, string> { ["日本語.txt"] = "EVIL", ["emoji-\U0001F600.txt"] = "fine" });
+        scan.Findings.Should().ContainSingle(f => f.Verdict == ThreatVerdict.ThreatDetected).Which.EntryPath.Should().Be("日本語.txt");
+    }
+
+    // The listing and Test take the gate too: names tar.exe prints only in the ANSI page come back exact.
+    [Fact]
+    public async Task Gate_ListingAndTest_ReadThroughTheBackendItChose()
+    {
+        var gate = new ArchiveintGate(new GroupPolicyOptions(), ArchiveHelperBuild.ExePath);
+        string[] names = ["日本語.txt", "emoji-\U0001F600.txt"];
+        string archive = Tar([.. names.Select(n => (n, (string?)n))]);
+        var service = new TarSandboxedService(new GroupPolicyOptions(), gate);
+        var tested = new List<string>();
+
+        ArchiveListResult list = await service.ListEntriesAsync(archive);
+        ArchiveResult test = await service.TestAsync([archive], entryFilter: (name, isFolder) => { tested.Add(name); return true; });
+
+        list.Entries.Select(e => e.Path).Should().BeEquivalentTo(names);
+        test.Errors.Should().BeEmpty();
+        tested.Should().BeEquivalentTo(names, "the filter is asked about the entries as the helper names them");
+    }
+
+    [Fact]
+    public async Task Gate_ThatChoseTarExe_ReadsWithTarExe()
+    {
+        var gate = new ArchiveintGate(new GroupPolicyOptions(), Path.Combine(_temp.Path, "no-helper.exe"));
+        string archive = Tar(("a.txt", "A"));
+        string dest = Path.Combine(_temp.Path, "dest-tar");
+
+        ArchiveResult result = await new TarSandboxedService(new GroupPolicyOptions(), gate).ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archive],
+            DestinationFolder = dest,
+            Mode = ExtractMode.SingleFolder,
+        });
+
+        (await gate.DecideAsync()).Cause.Should().Contain("no archive helper");
+        result.Errors.Should().BeEmpty();
+        Tree(dest).Should().BeEquivalentTo(new Dictionary<string, string> { ["a.txt"] = "A" });
+    }
+
     // --- Harness ---
 
     private static bool RoundTripsThroughAnsi(string name)

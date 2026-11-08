@@ -13,6 +13,7 @@ public sealed partial class SandboxedReaderOwnerTests
     private static readonly string SrcDir = Path.Combine(FindRepoRoot(), "src");
     private const string Reader = "Archiver.Core/Services/Sandbox/TarExeReader.cs";
     private const string HelperReader = "Archiver.Core/Services/Sandbox/HelperReader.cs";
+    private const string Gate = "Archiver.Core/Services/Sandbox/ArchiveintGate.cs";
 
     private static readonly string[] Owners =
     [
@@ -28,8 +29,9 @@ public sealed partial class SandboxedReaderOwnerTests
         string[] offenders = [.. SourceFiles()
             .Where(file => !Owners.Contains(file))
             .SelectMany(file => TarExeCall().Matches(Code(file))
-                // The helper's reader opens its own sandbox, and knows nothing else of tar.exe's.
-                .Where(m => file != HelperReader || m.Value != ScopeOpen)
+                // The helper's reader and the gate's probe open their own sandbox, and know nothing
+                // else of tar.exe's.
+                .Where(m => (file != HelperReader && file != Gate) || m.Value != ScopeOpen)
                 .Select(m => $"{file}: {m.Value}"))];
 
         string.Join(Environment.NewLine, offenders).Should().BeEmpty(
@@ -63,14 +65,39 @@ public sealed partial class SandboxedReaderOwnerTests
     public void TheHelpersOutput_IsReadOnlyByItsReader()
     {
         string[] offenders = [.. SourceFiles()
-            .Where(file => !HelperOwners.Contains(file))
+            .Where(file => !HelperOwners.Contains(file) && file != Gate)
             .SelectMany(file => HelperCall().Matches(Code(file)).Select(m => $"{file}: {m.Value}"))];
 
         string.Join(Environment.NewLine, offenders).Should().BeEmpty(
             "the archive helper's lines are parsed by ArchiveHelperOutput for HelperReader alone (T-F470)");
         HelperCall().Matches(Code(HelperReader)).Select(m => m.Value).Should().Contain(["ArchiveHelperOutput", "RunHelperAsync("]);
         TarExeCall().Matches(Code(HelperReader)).Select(m => m.Value).Should().Equal([ScopeOpen], "the helper's reader names nothing as tar.exe does");
+        TarExeCall().Matches(Code(Gate)).Select(m => m.Value).Should().Equal([ScopeOpen], "the gate only probes");
     }
+
+    // The gate runs the helper only to probe it: never a listing, a test or an extraction.
+    [Fact]
+    public void TheGate_RunsTheHelperOnlyToProbe()
+    {
+        string code = Code(Gate);
+        HelperMode().Matches(code).Select(m => m.Value).Distinct().Should().Equal(["ArchiveHelperMode.Probe"]);
+        code.Should().Contain("RunHelperAsync(ArchiveHelperMode.Probe,");
+    }
+
+    // T-F470: the gate's decision is asked for in one place, the reader's OpenAsync.
+    [Fact]
+    public void TheGatesHelper_IsAskedForOnlyWhereAReaderOpens()
+    {
+        const string Open = "Archiver.Core/Services/Sandbox/ISandboxedArchiveReader.cs";
+        string[] askers = [.. SourceFiles().Where(file => file != Gate && GateHelperCall().IsMatch(Code(file)))];
+        askers.Should().Equal([Open], "a service hands the gate to OpenAsync and never resolves it itself");
+    }
+
+    [GeneratedRegex(@"\bArchiveHelperMode\.\w+")]
+    private static partial Regex HelperMode();
+
+    [GeneratedRegex(@"\.HelperAsync\(")]
+    private static partial Regex GateHelperCall();
 
     [GeneratedRegex(@"\bArchiveHelperOutput\b|\bRunHelperAsync\(")]
     private static partial Regex HelperCall();

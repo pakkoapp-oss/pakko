@@ -15,9 +15,11 @@ namespace Archiver.Core.Services;
 public sealed class PakkoServices
 {
     private readonly Lazy<Task<TarCapabilities>> _tarCapabilities;
+    private readonly Sandbox.ArchiveintGate? _gate;
 
-    private PakkoServices(GroupPolicyOptions policy, IArchiveService archiveService, ITarService tarService)
+    private PakkoServices(GroupPolicyOptions policy, IArchiveService archiveService, ITarService tarService, Sandbox.ArchiveintGate? gate)
     {
+        _gate = gate;
         ArgumentNullException.ThrowIfNull(policy);
         Policy = policy;
         ArchiveService = archiveService;
@@ -43,13 +45,22 @@ public sealed class PakkoServices
     /// <summary>Repair from PAR2 recovery data (T-F275 step 4); needs no tar.exe probe.</summary>
     public IRecoveryService RecoveryService { get; }
 
-    /// <summary>Builds the real engines under <paramref name="policy"/>.</summary>
-    public static PakkoServices Create(GroupPolicyOptions policy) =>
-        new(policy, new ZipArchiveService(policy), new TarSandboxedService(policy));
+    /// <summary>
+    /// Builds the real engines under <paramref name="policy"/>, reading tar-family archives through
+    /// one <see cref="Sandbox.ArchiveintGate"/> for this process (T-F470).
+    /// </summary>
+    public static PakkoServices Create(GroupPolicyOptions policy)
+    {
+        var gate = new Sandbox.ArchiveintGate(policy);
+        return new(policy, new ZipArchiveService(policy), new TarSandboxedService(policy, gate), gate);
+    }
 
     // Test seam: hand-rolled engines, so a test can fail on any tar.exe call.
     internal static PakkoServices Create(GroupPolicyOptions policy, IArchiveService archiveService, ITarService tarService) =>
-        new(policy, archiveService, tarService);
+        new(policy, archiveService, tarService, null);
+
+    /// <summary>Which backend reads tar-family archives in this process, and why (T-F470); decided on first use.</summary>
+    public Task<Sandbox.ArchiveintDecision>? GetTarReaderAsync() => _gate?.DecideAsync();
 
     /// <summary>What tar.exe can read — probed on first use, then cached.</summary>
     public Task<TarCapabilities> GetTarCapabilitiesAsync() => _tarCapabilities.Value;
@@ -65,5 +76,5 @@ public sealed class PakkoServices
     /// <summary>AMSI scanning, wired to the real AMSI provider.</summary>
     [SupportedOSPlatform("windows")]
     public Task<IAntivirusScanService> CreateScanServiceAsync() =>
-        Task.FromResult<IAntivirusScanService>(new AntivirusScanService(GetTarCapabilitiesAsync, Policy));
+        Task.FromResult<IAntivirusScanService>(new AntivirusScanService(GetTarCapabilitiesAsync, Policy, _gate));
 }

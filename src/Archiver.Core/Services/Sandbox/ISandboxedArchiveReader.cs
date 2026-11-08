@@ -15,13 +15,19 @@ internal interface ISandboxedArchiveReader : IDisposable
 {
     /// <summary>
     /// Opens the backend this process reads with, on the archive: the archive helper when
-    /// <paramref name="helper"/> is given and reads the archive's format, tar.exe otherwise.
+    /// <paramref name="helper"/> is given, or <paramref name="gate"/> chose it, and it reads the
+    /// archive's format; tar.exe otherwise. The one place the gate's decision is asked for.
     /// </summary>
-    static Task<ISandboxedArchiveReader> OpenAsync(
-        string archivePath, bool needsOutputDir, Encoding? outputEncoding, CancellationToken cancellationToken, HelperSetup? helper = null) =>
-        helper is null
-            ? TarExeReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, cancellationToken)
-            : HelperReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, helper, cancellationToken);
+    static async Task<ISandboxedArchiveReader> OpenAsync(
+        string archivePath, bool needsOutputDir, Encoding? outputEncoding, CancellationToken cancellationToken,
+        HelperSetup? helper = null, ArchiveintGate? gate = null)
+    {
+        if (helper is null && gate is not null)
+            helper = await gate.HelperAsync(cancellationToken).ConfigureAwait(false);
+        return helper is null
+            ? await TarExeReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, cancellationToken).ConfigureAwait(false)
+            : await HelperReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, helper, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>The entries for browsing: an unsafe name or a link lists, as before; only extraction refuses it.</summary>
     Task<ArchiveListResult> ListAsync(CancellationToken cancellationToken);
