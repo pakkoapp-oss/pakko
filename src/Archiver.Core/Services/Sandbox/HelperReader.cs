@@ -258,12 +258,12 @@ internal sealed class HelperReader : ISandboxedArchiveReader
 
     private static bool HasLoneSurrogate(string name)
     {
-        for (int i = 0; i < name.Length; i++)
+        ReadOnlySpan<char> rest = name;
+        while (!rest.IsEmpty)
         {
-            if (char.IsHighSurrogate(name[i]) && i + 1 < name.Length && char.IsLowSurrogate(name[i + 1]))
-                i++;
-            else if (char.IsSurrogate(name[i]))
+            if (System.Text.Rune.DecodeFromUtf16(rest, out _, out int used) != System.Buffers.OperationStatus.Done)
                 return true;
+            rest = rest[used..];
         }
         return false;
     }
