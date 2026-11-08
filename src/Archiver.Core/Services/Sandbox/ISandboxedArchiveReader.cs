@@ -34,6 +34,9 @@ internal interface ISandboxedArchiveReader : IDisposable
     /// <summary>Extracts a selection (or everything) into the quarantine for the antivirus scan.</summary>
     Task<ScanQuarantine> ExtractForScanAsync(IReadOnlyList<string>? selectedEntryPaths, CancellationToken cancellationToken);
 
+    /// <summary>After the main pass is scanned: the first of several same-named copies, for the scan too (T-F171).</summary>
+    Task<FirstCopiesForScan> ExtractFirstCopiesForScanAsync(CancellationToken cancellationToken);
+
     /// <summary>Scans, then reads every entry the filter passes without writing it.</summary>
     Task<TestOutcome> TestAsync(IProgress<ProgressReport>? progress, Func<string, bool, bool>? entryFilter, CancellationToken cancellationToken);
 }
@@ -41,9 +44,8 @@ internal interface ISandboxedArchiveReader : IDisposable
 /// <summary>What placement and the compression-bomb gate need from a scan.</summary>
 /// <param name="TotalDeclaredSize">Every file entry's declared size (T-F94).</param>
 /// <param name="RootNames">Entry names as they land, folders included, for the root-shape decision.</param>
-/// <param name="FileCount">How many file entries the archive holds.</param>
 /// <param name="FileEntryNames">Every file entry's name, repeats included, for the trimmed twins (T-F419).</param>
-internal sealed record ReaderCatalog(long TotalDeclaredSize, IReadOnlyList<string> RootNames, int FileCount, IReadOnlyList<string> FileEntryNames);
+internal sealed record ReaderCatalog(long TotalDeclaredSize, IReadOnlyList<string> RootNames, IReadOnlyList<string> FileEntryNames);
 
 internal enum SelectionKind
 {
@@ -92,17 +94,19 @@ internal interface IQuarantinedEntries
     void CreateFolderEntriesIn(FolderPlacement placement);
 }
 
-/// <summary>What an extraction for the antivirus scan left in the quarantine.</summary>
+/// <summary>What the main pass of an extraction for the antivirus scan left in the quarantine.</summary>
 /// <param name="Failure">Why the main pass failed, or null.</param>
 /// <param name="MainDirectory">The main pass's folder.</param>
-/// <param name="FirstCopiesDirectory">The first-copy pass's folder, when one ran (T-F171).</param>
-/// <param name="FirstCopiesFailure">Why the first-copy pass failed, or null.</param>
-/// <param name="TotalEntries">Files to scan, for progress.</param>
-/// <param name="CreditedFirstCopies">First copies that may count beside the main pass's files (T-F462).</param>
+/// <param name="TotalEntries">Files to scan, first copies included, for progress.</param>
 /// <param name="ExpectedFiles">Files the scan must account for (T-F462).</param>
-internal sealed record ScanQuarantine(
-    CoreText? Failure, string MainDirectory, string? FirstCopiesDirectory, CoreText? FirstCopiesFailure,
-    int TotalEntries, int CreditedFirstCopies, int ExpectedFiles);
+/// <param name="HasFirstCopies">Same-named copies wait for <see cref="ISandboxedArchiveReader.ExtractFirstCopiesForScanAsync"/>.</param>
+internal sealed record ScanQuarantine(CoreText? Failure, string MainDirectory, int TotalEntries, int ExpectedFiles, bool HasFirstCopies);
+
+/// <summary>The first-copy pass for the antivirus scan (T-F171).</summary>
+/// <param name="Directory">Its folder.</param>
+/// <param name="Failure">Why it failed, or null.</param>
+/// <param name="CreditedCopies">After the scan: the first copies that may count beside the main pass's files (T-F462).</param>
+internal sealed record FirstCopiesForScan(string Directory, CoreText? Failure, Func<int> CreditedCopies);
 
 /// <summary>A test's result: why it failed, or null; the bytes read; whether the filter passed nothing (T-F410).</summary>
 internal sealed record TestOutcome(CoreText? Failure, long DeclaredSize, bool NothingRead);

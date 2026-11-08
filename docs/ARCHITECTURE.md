@@ -2309,7 +2309,7 @@ public sealed record ThreatScanResult
 ```
 
 Named `ThreatVerdict`/`ThreatFinding`/`ThreatScanResult` (not `Scan*`) deliberately —
-`TarSandboxedService.ScanForUnsafeEntriesAsync` already owns "Scan" for the unrelated T-F49
+`TarExeReader.ScanForUnsafeEntriesAsync` already owns "Scan" for the unrelated T-F49
 traversal/symlink pre-scan; keeping the two grep-separable avoids confusing them.
 
 **Implementation (`Archiver.Core/Services/AntivirusScanService.cs`)** dispatches each archive path

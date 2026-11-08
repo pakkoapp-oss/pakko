@@ -24,6 +24,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     private List<string>? _tarMembers;
     private List<string>? _expandedSelection;
     private HashSet<string>? _droppedFiles;
+    private List<DuplicateGroup>? _scanDuplicates;
 
     private TarExeReader(TarSandboxScope scope) => _scope = scope;
 
@@ -61,7 +62,6 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         return new ReaderCatalog(
             _totalDeclaredSize,
             [.. _allNames.Select(EntryDiskName.StripLeadingDotSlash).Where(n => n.Length > 0)],
-            _allNames.Count(n => !n.EndsWith('/')),
             [.. _fileEntries.Select(e => e.Name)]);
     }
 
@@ -156,44 +156,49 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.TarExtractionFailed, DescribeFailure(stdErr)));
 
         List<DuplicateGroup> duplicateGroups = FindDuplicateGroups(fileEntries, allNames, _expandedSelection);
-        // T-F441: after a run without a member list the quarantine holds every entry under its true
-        // name, so a file the listing does not account for was listed under another name. A filter's
-        // verdicts were then made on the wrong names (refused); a duplicate group was two different
-        // names (dropped: each file meets the conflict rule under its own name).
-        // T-F443: folders too, on every such run; a folder entry then comes from the quarantine.
-        List<string>? foldersFromDisk = null;
-        if (_tarMembers is null)
-        {
-            List<(string Path, bool IsFolder)> quarantinedItems = [.. QuarantineFiles.Walk(outDir)
-                .Select(item => (QuarantineFiles.Relative(outDir, item.Path).Replace('\\', '/'), item.IsFolder))];
-            string[] quarantinedFiles = [.. quarantinedItems.Where(i => !i.IsFolder).Select(i => i.Path)];
-            TarListingVerdict filesOnDisk = TarNames.JudgeExtracted(allNames, quarantinedFiles, []);
-            TarListingVerdict onDisk = filesOnDisk.Trust != TarNameTrust.Faithful ? filesOnDisk : TarNames.JudgeExtracted(allNames, quarantinedFiles,
-                quarantinedItems.Where(i => i.IsFolder && !preCreated.Contains(i.Path)).Select(i => i.Path));
-            if (onDisk.Trust != TarNameTrust.Faithful)
-            {
-                if (_filter is not null)
-                    TarNames.EnsureNamesCanDecide(onDisk);
-                // Two files of one name are told apart only by the files: a folder named by best fit
-                // says nothing about them (the fresh review).
-                if (filesOnDisk.Trust != TarNameTrust.Faithful)
-                    duplicateGroups = [];
-                foldersFromDisk = FoldersTarExeWrote(quarantinedItems, preCreated);
-            }
-        }
+        List<string>? foldersFromDisk = JudgeWhatTarExeWrote(allNames, outDir, preCreated, ref duplicateGroups);
         (string? firstCopyDir, HashSet<string> firstCopies, int copiesReported) = await ExtractFirstCopiesAsync(
             _scope, duplicateGroups, skippedFiles, cancellationToken)
             .ConfigureAwait(false);
 
         // T-F462: the main pass's files, and the first copies that may count beside them.
-        string[] mainFiles = [.. QuarantineFiles.EnumerateFiles(outDir).Select(f => QuarantineFiles.Relative(outDir, f).Replace('\\', '/'))];
+        string[] mainFiles = FilesBelow(outDir);
         int filesFound = mainFiles.Length + (firstCopyDir is null ? 0
             : FirstCopiesAtTheirPath(duplicateGroups, firstCopies.Select(f => QuarantineFiles.Relative(firstCopyDir, f).Replace('\\', '/')), mainFiles));
         int expectedMoves = (_expandedSelection != null
             ? _expandedSelection.Count(n => !n.EndsWith('/'))
             : allNames.Count(n => !n.EndsWith('/'))) + firstCopies.Count;
-        return new TarQuarantine(this, outDir, foldersFromDisk, firstCopyDir, firstCopies,
-            filesFound + copiesReported, FileEntriesInScope(fileEntries, _expandedSelection), expectedMoves);
+        return new TarQuarantine(this, outDir, foldersFromDisk, (firstCopyDir, firstCopies),
+            new TarQuarantineCounts(filesFound + copiesReported, FileEntriesInScope(fileEntries, _expandedSelection), expectedMoves));
+    }
+
+    private List<string>? JudgeWhatTarExeWrote(
+        string[] allNames, string outDir, HashSet<string> preCreated, ref List<DuplicateGroup> duplicateGroups)
+    {
+        // T-F441: after a run without a member list the quarantine holds every entry under its true
+        // name, so a file the listing does not account for was listed under another name. A filter's
+        // verdicts were then made on the wrong names (refused); a duplicate group was two different
+        // names (dropped: each file meets the conflict rule under its own name).
+        // T-F443: folders too, on every such run; a folder entry then comes from the quarantine.
+        if (_tarMembers is not null)
+            return null;
+        List<(string Path, bool IsFolder)> quarantinedItems = [.. QuarantineFiles.Walk(outDir)
+            .Select(item => (QuarantineFiles.Relative(outDir, item.Path).Replace('\\', '/'), item.IsFolder))];
+        string[] quarantinedFiles = [.. quarantinedItems.Where(i => !i.IsFolder).Select(i => i.Path)];
+        TarListingVerdict filesOnDisk = TarNames.JudgeExtracted(allNames, quarantinedFiles, []);
+        TarListingVerdict onDisk = filesOnDisk.Trust != TarNameTrust.Faithful ? filesOnDisk : TarNames.JudgeExtracted(allNames, quarantinedFiles,
+            quarantinedItems.Where(i => i.IsFolder && !preCreated.Contains(i.Path)).Select(i => i.Path));
+        if (onDisk.Trust != TarNameTrust.Faithful)
+        {
+            if (_filter is not null)
+                TarNames.EnsureNamesCanDecide(onDisk);
+            // Two files of one name are told apart only by the files: a folder named by best fit
+            // says nothing about them (the fresh review).
+            if (filesOnDisk.Trust != TarNameTrust.Faithful)
+                duplicateGroups = [];
+            return FoldersTarExeWrote(quarantinedItems, preCreated);
+        }
+        return null;
     }
 
     public async Task<ScanQuarantine> ExtractForScanAsync(IReadOnlyList<string>? selectedEntryPaths, CancellationToken cancellationToken)
@@ -222,33 +227,43 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 
         (int exitCode, _, string stdErr) = await _scope.ExtractAsync(expandedSelection, cancellationToken).ConfigureAwait(false);
         if (exitCode != 0)
-            return new ScanQuarantine(DescribeFailure(stdErr), outDir, null, null, totalEntries, 0, 0);
+            return new ScanQuarantine(DescribeFailure(stdErr), outDir, totalEntries, 0, false);
 
         // T-F171: extraction also takes out the first of several same-named copies, so it is
         // scanned too. Everything the first-copy pass wrote is scanned, not only the files
         // extraction would keep.
-        List<DuplicateGroup> duplicates = FindDuplicateGroups(fileEntries, allNames, expandedSelection);
-        int expected = FileEntriesInScope(fileEntries, expandedSelection);
-        if (duplicates.Count == 0)
-            return new ScanQuarantine(null, outDir, null, null, totalEntries, 0, expected);
+        _expandedSelection = expandedSelection;
+        _scanDuplicates = FindDuplicateGroups(fileEntries, allNames, expandedSelection);
+        return new ScanQuarantine(null, outDir, totalEntries + _scanDuplicates.Count,
+            FileEntriesInScope(fileEntries, expandedSelection), _scanDuplicates.Count > 0);
+    }
+
+    public async Task<FirstCopiesForScan> ExtractFirstCopiesForScanAsync(CancellationToken cancellationToken)
+    {
+        string[] allNames = _allNames ?? throw new InvalidOperationException("ScanAsync comes first.");
+        List<DuplicateGroup> duplicates = _scanDuplicates ?? throw new InvalidOperationException("ExtractForScanAsync comes first.");
+        string outDir = _scope.OutputDirectory!;
 
         (string firstDir, int firstExitCode, string firstStdErr) = await _scope.ExtractFirstOccurrencesAsync(
             duplicates.Select(g => g.FirstName).ToList(), cancellationToken).ConfigureAwait(false);
         // T-F460 (fresh review): a first copy tar.exe did not write was never scanned.
         if (firstExitCode != 0)
-            return new ScanQuarantine(null, outDir, firstDir, DescribeFailure(firstStdErr), totalEntries + duplicates.Count, 0, expected);
+            return new FirstCopiesForScan(firstDir, DescribeFailure(firstStdErr), () => 0);
         // T-F462: a first copy counts only when the listing names the main pass's files truly, and
         // only at its group's own path (FirstCopiesAtTheirPath). A best-fit pair lists as one name
         // twice, and its "first copy" is a file already scanned, which must not stand in for a file
-        // lost elsewhere; it is still scanned.
-        string[] mainFiles = [.. QuarantineFiles.EnumerateFiles(outDir)
-            .Select(f => QuarantineFiles.Relative(outDir, f).Replace('\\', '/'))];
-        bool faithful = TarNames.JudgeExtracted((IReadOnlyList<string>?)expandedSelection ?? allNames, mainFiles, []).Trust == TarNameTrust.Faithful;
-        string[] firstFiles = [.. QuarantineFiles.EnumerateFiles(firstDir)
-            .Select(f => QuarantineFiles.Relative(firstDir, f).Replace('\\', '/'))];
-        int credited = faithful ? FirstCopiesAtTheirPath(duplicates, firstFiles, mainFiles) : 0;
-        return new ScanQuarantine(null, outDir, firstDir, null, totalEntries + duplicates.Count, credited, expected);
+        // lost elsewhere; it is still scanned. Counted once the first copies are scanned.
+        return new FirstCopiesForScan(firstDir, null, () =>
+        {
+            string[] mainFiles = FilesBelow(outDir);
+            bool faithful = TarNames.JudgeExtracted((IReadOnlyList<string>?)_expandedSelection ?? allNames, mainFiles, []).Trust == TarNameTrust.Faithful;
+            return faithful ? FirstCopiesAtTheirPath(duplicates, FilesBelow(firstDir), mainFiles) : 0;
+        });
     }
+
+    // A quarantine folder's files, relative to it, '/' between parts.
+    private static string[] FilesBelow(string directory) =>
+        [.. QuarantineFiles.EnumerateFiles(directory).Select(f => QuarantineFiles.Relative(directory, f).Replace('\\', '/'))];
 
     public async Task<TestOutcome> TestAsync(
         IProgress<ProgressReport>? progress, Func<string, bool, bool>? entryFilter, CancellationToken cancellationToken)
@@ -262,25 +277,28 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         return new TestOutcome(failure, declaredSize, nothingRead);
     }
 
+    // T-F462: the files a run accounted for, the files it must, and the most the move phase handles.
+    private readonly record struct TarQuarantineCounts(int AccountedFor, int Expected, int Moves);
+
     // What one tar.exe run left in the quarantine, by tar.exe's names: Files walks the first copies,
     // then the main pass (T-F171), leaving out what the filter dropped (T-F410).
     private sealed class TarQuarantine(
         TarExeReader reader, string outDir, List<string>? foldersFromDisk,
-        string? firstCopyDir, HashSet<string> firstCopies, int filesAccountedFor, int expectedFiles, int expectedMoves) : IQuarantinedEntries
+        (string? Directory, HashSet<string> Files) firstCopies, TarQuarantineCounts counts) : IQuarantinedEntries
     {
         private readonly HashSet<string> _renamed = QuarantinedAs(reader._fileEntries!, EntryDiskName.Renames);
         private readonly HashSet<string> _trimmed = QuarantinedAs(reader._fileEntries!, EntryDiskName.Trims);
         private readonly IEnumerable<string> _folderNames = (IEnumerable<string>?)reader._expandedSelection ?? reader._allNames!;
 
-        public int ExpectedMoves => expectedMoves;
+        public int ExpectedMoves => counts.Moves;
 
         public IEnumerable<QuarantinedFile> Files()
         {
             // T-F171: first copies move first, so the first copy takes the name and the last one meets
             // the conflict rule, as a duplicate ZIP entry does (T-F30).
-            IEnumerable<(string File, string Root)> quarantined = firstCopyDir is null
+            IEnumerable<(string File, string Root)> quarantined = firstCopies.Directory is not { } firstCopyDir
                 ? []
-                : QuarantineFiles.EnumerateFiles(firstCopyDir).Where(firstCopies.Contains).Select(f => (f, firstCopyDir));
+                : QuarantineFiles.EnumerateFiles(firstCopyDir).Where(firstCopies.Files.Contains).Select(f => (f, firstCopyDir));
             quarantined = quarantined.Concat(QuarantineFiles.EnumerateFiles(outDir).Select(f => (f, outDir)));
             foreach ((string file, string root) in quarantined)
             {
@@ -296,9 +314,9 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         {
             // T-F462: nothing is committed unless every file entry reached the quarantine or was reported
             // (a copy past the first and the last); a file lost on the way fails the archive.
-            if (filesAccountedFor < expectedFiles)
+            if (counts.AccountedFor < counts.Expected)
                 throw new CoreTextIOException(CoreMessages.Text(MessageCode.TarFilesMissing,
-                    filesAccountedFor.ToString(CultureInfo.CurrentCulture), expectedFiles.ToString(CultureInfo.CurrentCulture)));
+                    counts.AccountedFor.ToString(CultureInfo.CurrentCulture), counts.Expected.ToString(CultureInfo.CurrentCulture)));
         }
 
         public void RecordFolderTimesInto(FolderPlacement placement)
