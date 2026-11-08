@@ -348,8 +348,13 @@ dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
     gzip, folder times), test, a raw-name page and the antivirus scan under both backends (theory
     over tar.exe and the helper); the helper alone: names outside the ANSI page, every same-named
     copy through the conflict rule, a trailing dot, byte-exact content, the format routing, and the
-    checks of a run against the listing and `out\` on forged output. Mutants:
+    checks of a run against the listing and `out\` on forged output; a damaged 7z and an encrypted
+    one under both; extract, scan, list and Test through a real `ArchiveintGate`. Mutants:
     `docs/DECISIONS.md`, T-F470 step 3.
+  - `tests/Archiver.Core.IntegrationTests/ArchiveintGateTests.cs`: the gate chooses the helper with
+    the real probe; each condition falls back to tar.exe (policy, no helper, not native x64, an
+    unsigned DLL, a version not measured, a missing export, an unfinished, forged or hung probe);
+    the decision is made once, a failure is not retried, a cancelled first caller is not the verdict.
 
 ### T-F35 Parallel SingleArchive Pipeline Tests (v1.4+)
 

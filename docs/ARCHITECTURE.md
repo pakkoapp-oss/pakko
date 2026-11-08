@@ -139,6 +139,7 @@ src/
 │   │   │   ├── QuarantineFiles.cs      ← T-F463: every disk call on a name tar.exe wrote (long-path prefix)
 │   │   │   ├── ISandboxedArchiveReader.cs / TarExeReader.cs ← T-F470: the one reader handler, tar.exe backend
 │   │   │   ├── HelperReader.cs / ArchiveHelperOutput.cs ← T-F470: the archive helper's backend, its output parser
+│   │   │   ├── ArchiveintGate.cs / ArchiveintDecision.cs ← T-F470: the helper or tar.exe, decided once per process
 │   │   │   └── TarSandboxScope.cs / TarSignatureVerifier.cs
 │   │   └── Zip/                        ← T-F35: parallel SingleArchive compression pipeline
 │   │       ├── WorkItemEnumerator.cs / FileWorkItem.cs / WorkResult.cs
@@ -1207,12 +1208,13 @@ services.AddTransient<MainViewModel>();
 | `LogService` | Singleton | Holds file path, lock object |
 | `ZipArchiveService` | Singleton | Stateless (besides the injected `GroupPolicyOptions`) |
 | `DialogService` | Singleton | Holds window reference |
-| `TarSandboxedService` | Singleton, built by hand | Stateless (per-call sandbox scope, not per-instance state); built before the container so the probe can start at once (T-F347) |
+| `ArchiveintGate` | Singleton, built by hand | One decision per process, the helper or tar.exe (T-F470); the same instance goes to `TarSandboxedService` and `AntivirusScanService`; its decision is logged once at startup |
+| `TarSandboxedService` | Singleton, built by hand (`new TarSandboxedService(policy, gate)`) | Stateless (per-call sandbox scope, not per-instance state); built before the container so the probe can start at once (T-F347) |
 | `TarCapabilities` | Singleton, factory-resolved | Probed once at startup on the thread pool (T-F48, T-F347), never changes at runtime |
 | `ExtractionRouter` / `ArchiveListingRouter` / `ArchiveCreationRouter` | Singleton | Stateless — route by detected/requested format only |
 | `OperationIndicator` | Singleton | One per process: the dialogs and the view model feed it, the window shows it on the taskbar button and tray icon (T-F432) |
 | `RecoveryService` | Singleton, factory | Stateless; takes the same policy and `IExtractionRouter` as the Test button (T-F275) |
-| `AntivirusScanService` | Singleton | Stateless per scan; the AMSI session is per call (T-F146) |
+| `AntivirusScanService` | Singleton, factory (`TarCapabilities`, policy, the gate) | Stateless per scan; the AMSI session is per call (T-F146) |
 | `SourceRecycler` | Singleton, factory | Reads the owner window at delete time, after `DialogService.SetWindow` (T-F207) |
 | `MainViewModel` | Transient | Fresh state per window |
 
@@ -1503,8 +1505,15 @@ scan of a tar-family archive reads through: `ListAsync` (browsing, never refuses
 (the T-F49 pre-scan), `SelectForExtractAsync`, `ExtractAsync` (files to move with the path each
 lands at, folder entries, the T-F462 count), `ExtractForScanAsync` (files with the entry name a
 finding names), `TestAsync`; `OpenAsync` picks the backend: the archive helper when given a
-`HelperSetup` (helper path, probe results) and the format is one it reads (`HelperFormats`),
-tar.exe otherwise. `TarExeReader.cs` is the tar.exe backend and the only home of what knows how
+`HelperSetup` (helper path, probe results; tests) or when the process's `ArchiveintGate` chose it,
+and the format is one it reads (`HelperFormats`); tar.exe otherwise. `OpenAsync` is the one place
+the gate is asked (`SandboxedReaderOwnerTests`).
+`ArchiveintGate` (public, one per process): `new ArchiveintGate(policy)` looks for the helper in
+`AppContext.BaseDirectory`; `DecideAsync()` returns the `ArchiveintDecision` (`UsesHelper`,
+`DllVersion`, `Cause`, `Describe()` - the line the App logs and `pakko i` prints), made on the first
+call on the gate's own 30-second timeout, never a caller's token, and kept for the process. Wiring:
+`TarSandboxedService(policy, gate)` and `AntivirusScanService(tarCapabilities, policy, gate)`;
+`PakkoServices.Create` builds one gate for its services and exposes `GetTarReaderAsync()`. `TarExeReader.cs` is the tar.exe backend and the only home of what knows how
 tar.exe lists, names and writes entries (`AsTarExeWrites`, `TarNames.Judge*`, the first-copy
 pass). `HelperReader.cs` is the helper's backend: entries by index, `out\<index>` files placed
 under their exact names, every run checked against the scan's listing, the selection and `out\`;
@@ -2215,7 +2224,7 @@ in `\n`, strictly increasing, no leading zeros, at most 4,000,000; anything else
 | `V <hex8>` | `archive_version_details()` (`-` when that export is missing); first line of every run that loaded the DLL |
 | `X <export>` | after `V`: a missing core export (then exit 4); a missing `support_*` export is not one |
 | `C <name> <rc\|->` | `probe`: the return of each `support_*` call, `-` when the DLL lacks that export |
-| `W <index> <errno> <hex8>` | `archive_read_next_header` returned `ARCHIVE_WARN` for this entry; any status but `ARCHIVE_OK`, `ARCHIVE_WARN` and `ARCHIVE_EOF` (`ARCHIVE_RETRY` included) is an `F` |
+| `W <index> <errno> <hex8>` | `archive_read_next_header` returned `ARCHIVE_WARN` for this entry; any status but `ARCHIVE_OK`, `ARCHIVE_WARN` and `ARCHIVE_EOF` (`ARCHIVE_RETRY` included) is an `F`. On an entry's data (`archive_read_data_block`) a warning is an `F` too: it is how libarchive reports a 7z or RAR CRC mismatch |
 | `E <index> <filetype> <size\|-> <mtime\|-> <nsec> <encrypted\|-> <sparse> <name hex16> <link hex16>` | one entry; the link is the symlink target, else the hard-link target |
 | `K <index> <bytes>` | a selected entry read in full (and written, in `extract`) |
 | `F <code> <hex8>` | the run failed: a libarchive status with its error string, or one of the helper's own codes below |

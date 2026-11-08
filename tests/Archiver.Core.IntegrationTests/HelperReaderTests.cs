@@ -445,7 +445,40 @@ public sealed class HelperReaderTests : IDisposable
         Tree(dest).Should().BeEquivalentTo(new Dictionary<string, string> { ["a.txt"] = "A" });
     }
 
+    // --- Both backends: what the sweep under the helper found (3b-ii) ---
+
+    // A 7z's CRC mismatch is libarchive's ARCHIVE_WARN on the entry's data: a failure, never a pass.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task Test_ASevenZipWithAFlippedDataByte_Fails(string backend)
+    {
+        string archive = Path.Combine(_temp.Path, "damaged-" + backend + ".7z");
+        byte[] bytes = File.ReadAllBytes(Fixture("valid.7z"));
+        bytes[40] ^= 0x55;
+        File.WriteAllBytes(archive, bytes);
+
+        ArchiveResult result = await Service(backend).TestAsync([archive]);
+
+        result.Errors.Should().ContainSingle().Which.SourcePath.Should().Be(archive);
+    }
+
+    [Theory]
+    [InlineData(TarExe, "encrypted.7z")]
+    [InlineData(Helper, "encrypted.7z")]
+    [InlineData(TarExe, "encrypted_headers.7z")]
+    [InlineData(Helper, "encrypted_headers.7z")]
+    public async Task Extract_AnEncryptedSevenZip_SaysPasswordProtected(string backend, string fixture)
+    {
+        (ArchiveResult result, _) = await ExtractAsync(backend, Fixture(fixture));
+
+        result.Errors.Should().ContainSingle().Which.Message.Should().Be(
+            "This archive is password-protected. Passwords are supported for ZIP archives only.");
+    }
+
     // --- Harness ---
+
+    private static string Fixture(string name) =>
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Fixtures", name);
 
     private static bool RoundTripsThroughAnsi(string name)
     {

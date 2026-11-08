@@ -14670,6 +14670,33 @@ in the product. Choices in 3b-i:
   stdout pipe. Timing it failed: libarchive inflates gigabytes of zeros in under a second, and
   probing the copy for a mapped image raced the scope's own reads of it.
 
+**Step 3b-ii: the gate, and the suite run under the helper (2026-11-08).**
+- `ArchiveintGate` is one object per process, made by `PakkoServices.Create` and by the App beside its
+  tar service; `ISandboxedArchiveReader.OpenAsync` is the one place that asks it. The decision runs on
+  its own 30-second timeout (as patient as T-F450's probe: a cold AppContainer must not fix tar.exe
+  for the process), never on a caller's token, and is kept, a failure included: a listing and the
+  extraction after it read through one parser. Once it chose the helper, a scope whose signature
+  check of `archiveint.dll` fails errors and does not fall back (rule 2).
+- The plan's `PAKKO_TEST_READER` sweep is a scratch script, not a switch in Core: it points the
+  gate's default at the built helper and gives every service built without a gate one process-wide
+  gate, runs the default suite, and restores the files. The first run found two bugs:
+  - **The helper passed a damaged 7z.** libarchive reports a 7z CRC mismatch as `ARCHIVE_WARN` from
+    `archive_read_data_block`, and `copy_entry` took a warning as success. A warning on an entry's
+    data is now an `F` (`Test_ASevenZipWithAFlippedDataByte_Fails`, both backends).
+  - **An encrypted 7z read "Cannot extract archive: This archive is password-protected...".** The
+    service wrapped the helper's own text; it now keeps the code (`Extract_AnEncryptedSevenZip_SaysPasswordProtected`).
+- What still differs under the helper, by design (18 tests of the tar.exe suite, which stays the
+  tar.exe suite: no helper sits in the test folders):
+  - names tar.exe cannot show or select are read exactly (`TarSandboxedServiceUnshowableNameTests`,
+    `TarOutputPageTests`, `TarNfdNamesTests`, three of `TarSandboxedServiceBestFitNameTests`): what
+    tar.exe refuses, the helper extracts, lists, tests and scans;
+  - every same-named copy meets the conflict rule (`ExtractAsync_ThreeCopies_...`, T-F30), and a
+    rename follows archive order, as ZIP does (`ExtractAsync_RenameOnConflict_...`: nothing is
+    overwritten, the renamed copies take the other names);
+  - an entry's time is read whole: tar.exe's listing shows only a date for an old entry
+    (`ListEntriesAsync_ReadsModifiedFromTheVerboseListing`, `ListEntriesAsync_OldAndRecentEntries_...`);
+  - `pakko i` names the helper; the owner test lists the sweep's own patch.
+
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
 - **Why.** tar.exe writes through the long-path prefix, so `a.txt.`, `a.txt ` and a folder `d ` are on

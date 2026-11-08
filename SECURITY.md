@@ -471,9 +471,18 @@ starting an outside program (above).
 the same way, so a name outside that page is changed, refused or skipped (`docs/DECISIONS.md`,
 T-F464-T-F469). `Archiver.ArchiveHelper.exe` reads the same archives through the same parser, Windows'
 own libarchive (`C:\Windows\System32\archiveint.dll`, the library `tar.exe` is built on), and
-reports names as exact UTF-16. **Status: built, packaged and tested; Pakko does not launch it yet.**
-The gate that turns it on and the fallback to `tar.exe` come in the next step and are described here
-when they land.
+reports names as exact UTF-16.
+
+**The gate (`ArchiveintGate`, one per process):** the helper reads only when Group Policy allows
+tar-family archives, the helper sits beside Pakko's own binaries, the process is native x64 (ARM64's
+`archiveint.dll` is not measured; an x64 process under emulation is not x64), `archiveint.dll` is
+present and passes the signature check `tar.exe` gets, and a probe in the sandbox finishes with every
+export Pakko calls and libarchive 3.5 to 3.8 (the measured versions). Anything else - a missing file,
+a failed or timed-out probe - reads with `tar.exe`. The decision is made once and kept for the life of
+the process, so a listing and the extraction after it never go through different parsers; it is
+logged by the App and printed by `pakko i`. Once the helper is chosen, its verdict on an archive is
+final: a failure there is an error, never a second read through `tar.exe`. Each sandbox still checks
+the DLL's signature before the helper runs.
 
 What does not change, and what is new:
 

@@ -640,7 +640,7 @@ installed MSIX package — invisible until on-device testing. This is exactly th
 Source read for this diagram: `ExtractSingleArchiveAsync`, `IsDangerousEntryName`,
 `TryMoveSingleEntryAsync` in `src/Archiver.Core/Services/TarSandboxedService.cs`, `ScanForUnsafeEntriesAsync`
 and the select/extract steps in `src/Archiver.Core/Services/Sandbox/TarExeReader.cs` (T-F470: every
-step that knows tar.exe's names runs behind `ISandboxedArchiveReader`; the steps and their order are unchanged), the walk `QuarantineFiles.EnumerateFiles` (T-F463) in
+step that knows tar.exe's names runs behind `ISandboxedArchiveReader`; the steps and their order are unchanged. T-F470 3b-ii: `OpenAsync` asks the process's `ArchiveintGate` first; when it chose the archive helper and the format is one the helper reads, `HelperReader` reads by entry index instead - not drawn here, its checks are in `docs/ARCHITECTURE.md`; this diagram is the tar.exe path), the walk `QuarantineFiles.EnumerateFiles` (T-F463) in
 `src/Archiver.Core/Services/Sandbox/QuarantineFiles.cs`, `TarSandboxScope.CreateAsync`/`ListAsync`/
 `ExtractAsync` in `src/Archiver.Core/Services/Sandbox/TarSandboxScope.cs`, and
 `ExtractionStaging.CommitInto` in `src/Archiver.Core/Services/ExtractionStaging.cs` (re-read for
@@ -655,7 +655,7 @@ flowchart TD
     X0{"ExtractAsync, once per call: DestinationFolder.TryCreate fails? (T-F406)"} -- yes --> X0E["return: Errors += CannotExtractArchive with the OS text for every archive"]
     X0 -- no --> X1{"ExtractOneArchiveAsync: InputPaths.Problem —<br/>empty or unparseable archive path? (T-F406)"} -- yes --> X1E["Errors += SourceNotFound, next archive"]
     X1 -- no --> A0
-    A0["ExtractSingleArchiveAsync per archivePath:<br/>reader = ISandboxedArchiveReader.OpenAsync → TarExeReader:<br/>scope = TarSandboxScope.CreateAsync(archivePath, needsOutputDir:true)<br/>— verifies tar.exe's Authenticode signature once,<br/>opens archivePath read-only, sharing read only, for the whole scope (T-F233),<br/>ensures the AppContainer profile, sweeps quarantines of dead runs (T-F263), creates %TEMP%\PakkoTarSandbox\&lt;owner-guid&gt;\out<br/>with ACEs — no ACE, link or copy of the user's archive"]
+    A0["ExtractSingleArchiveAsync per archivePath:<br/>reader = ISandboxedArchiveReader.OpenAsync - the gate chose tar.exe, or the format is not the helper's (T-F470) → TarExeReader:<br/>scope = TarSandboxScope.CreateAsync(archivePath, needsOutputDir:true)<br/>— verifies tar.exe's Authenticode signature once,<br/>opens archivePath read-only, sharing read only, for the whole scope (T-F233),<br/>ensures the AppContainer profile, sweeps quarantines of dead runs (T-F263), creates %TEMP%\PakkoTarSandbox\&lt;owner-guid&gt;\out<br/>with ACEs — no ACE, link or copy of the user's archive"]
     A0 -- "signature check fails, or the archive is open for writing elsewhere ('in use'),<br/>or the AppContainer setup fails (SandboxSetupException)" --> RejSig["throw TarSignatureVerificationException / IOException<br/>caught in ExtractAsync as ArchiveError — fail-closed,<br/>never a silent unsandboxed fallback"]
     A0 -- "signature OK" --> A[ExtractSingleArchiveAsync continues] --> B["scope.ListAsync(verbose:false) = tar -t -f - (archive as inherited stdin)<br/>first with --options tar:hdrcharset=UTF-8, again without it if tar.exe<br/>reports non-UTF-8 names (T-F204) — INSIDE the AppContainer + a fresh Job Object"]
     B -- "exit != 0" --> RejIO1["throw CoreTextIOException(CannotReadArchive, DescribeFailure(stdErr))<br/>→ finally still runs: scope disposed —<br/>caught in ExtractAsync as ArchiveError"]
@@ -1046,7 +1046,7 @@ sequenceDiagram
         end
 
         loop each tar-family archive (strictly sequential)
-            Service->>Sandbox: ISandboxedArchiveReader.OpenAsync → TarExeReader → CreateAsync(needsOutputDir: true) — tar.exe signature check,<br/>archive opened read-only (tar.exe gets it as stdin, T-F233), quarantine + "out\"
+            Service->>Sandbox: ISandboxedArchiveReader.OpenAsync (the gate chose tar.exe, T-F470) → TarExeReader → CreateAsync(needsOutputDir: true) — tar.exe signature check,<br/>archive opened read-only (tar.exe gets it as stdin, T-F233), quarantine + "out\"
             Service->>Sandbox: ScanForUnsafeEntriesAsync (T-F49 pre-scan, a listing run)
             alt rejected, signature failure, sandbox setup failure or IOException
                 Sandbox-->>Service: throws
