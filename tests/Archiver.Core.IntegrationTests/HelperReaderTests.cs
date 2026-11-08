@@ -414,7 +414,7 @@ public sealed class HelperReaderTests : IDisposable
             {
                 try
                 {
-                    if (new FileInfo(file).Length != marker.Length || File.ReadAllText(file) != marker)
+                    if (new FileInfo(file).Length != marker.Length || !HoldsMarker(file, marker))
                         continue;
                     File.WriteAllText(file + ":planted", "payload");
                     planted = true;
@@ -438,6 +438,31 @@ public sealed class HelperReaderTests : IDisposable
         planted.Should().BeTrue("the test planted the stream before b.txt moved");
         result.Errors.Should().ContainSingle().Which.SourcePath.Should().Be(archive);
         (Directory.Exists(dest) ? Directory.GetFiles(dest, "*", SearchOption.AllDirectories) : []).Should().BeEmpty();
+    }
+
+    // The plain-file check runs before the mark is copied: a downloaded archive still extracts on both
+    // readers, and each file gets the archive's mark.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task Extract_AMarkedArchive_Lands_WithTheMark(string backend)
+    {
+        string archive = Tar(("a.txt", "A"), ("d/b.txt", "B"));
+        File.WriteAllText(archive + ":Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n");
+
+        (ArchiveResult result, string dest) = await ExtractAsync(backend, archive);
+
+        result.Errors.Should().BeEmpty();
+        Tree(dest).Should().Equal(new Dictionary<string, string> { ["a.txt"] = "A", ["d/b.txt"] = "B" });
+        foreach (string file in Directory.GetFiles(dest, "*", SearchOption.AllDirectories))
+            File.ReadAllText(file + ":Zone.Identifier").Should().Contain("ZoneId=3", file);
+    }
+
+    // Shares everything, so another run's file being read here can still be moved or deleted.
+    private static bool HoldsMarker(string file, string marker)
+    {
+        using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd() == marker;
     }
 
     private sealed class SyncProgress(Action<ProgressReport> onReport) : IProgress<ProgressReport>

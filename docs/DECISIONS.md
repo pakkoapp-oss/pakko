@@ -14764,8 +14764,10 @@ Each test seen red first; mutants for each half of the `out\` check.
   a check before the scan leaves the time until the move open, so it moved to the move. Legitimate
   tar.exe writes no named stream: a pax tar with `SCHILY.xattr`/`LIBARCHIVE.xattr` records (user,
   `com.apple.ResourceFork`, `com.apple.quarantine`) extracts to `::$DATA` only on 3.8.9 and on 3.5.2
-  (PakkoW10). Its cost, measured on 50,000 files of 100 bytes: the helper's extract 112 s without
-  it, 128 s with it (tar.exe 137 s). Asked in the quarantine (NTFS) only: a destination on exFAT or
+  (PakkoW10). Its cost, measured on 50,000 files of 100 bytes while it ran in the helper's `out\`
+  check: the helper's extract 112 s without it, 128 s with it; tar.exe took 137 s then, without it,
+  and pays about the same per file now. A marked archive still extracts on both readers, each file
+  marked (`Extract_AMarkedArchive_Lands_WithTheMark`): the mark is copied after the check. Asked in the quarantine (NTFS) only: a destination on exFAT or
   a share cannot be asked about streams. Attributes are not asked: an EFS-encrypted or compressed
   `%TEMP%` gives legitimate files those bits, so a sandbox can still mark a file it wrote Hidden or
   ReadOnly (residual). The check and the move are two calls: a process holding a handle into the

@@ -358,7 +358,8 @@ dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
 - T-F470 release batch: `HelperReaderTests.IsPlainFile_*` (false with a named stream, a hard link or
   a gone file; true for an empty one and one another reader holds);
   `Extract_AStreamPlantedBeforeTheMove_...` (both readers: a stream planted from the progress callback,
-  found by its unique content, fails the archive and nothing lands); `Extract_AFileAndAFolderOfOneName_...`
+  found by its unique content, fails the archive and nothing lands); `Extract_AMarkedArchive_...`
+  (both readers: the check does not refuse a downloaded archive); `Extract_AFileAndAFolderOfOneName_...`
   and `Helper_AFileAndAFolderOfOneNameOnDisk_...` (`X`, `x.`) fail only the entry under the file,
   naming the destination; `Helper_AFolderThenAFileOfItsName_...` fails only the file;
   `TarSandboxScopeHelperTests.TheCopy_CannotBeRenamedWhileItRuns`.
