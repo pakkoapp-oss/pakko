@@ -143,22 +143,60 @@ public sealed class TarSandboxScopeHelperTests : IDisposable
     }
 
     [Fact]
-    public async Task ACancelledRun_LeavesNoHelperRunning()
+    public async Task AnUnsignedArchiveint_IsRefused_BeforeTheHelperIsCopied()
     {
         string archive = Tar(("a.txt", "A"));
         using TarSandboxScope scope = await Scope(archive, needsOutputDir: false);
-        using var cancelled = new CancellationTokenSource();
-        await cancelled.CancelAsync();
+        scope.VerifyArchiveint = _ => false;
 
-        Func<Task> run = () => scope.RunHelperAsync(ArchiveHelperMode.List, ["--format", "tar"], null, new ArchiveHelperOutput(ArchiveHelperMode.List), cancelled.Token);
+        Func<Task> run = () => scope.RunHelperAsync(ArchiveHelperMode.List, ["--format", "tar"], null, new ArchiveHelperOutput(ArchiveHelperMode.List), CancellationToken.None);
+
+        (await run.Should().ThrowAsync<TarSignatureVerificationException>()).WithMessage("*archiveint.dll*");
+        Directory.Exists(Path.Combine(scope.QuarantineRoot, "bin")).Should().BeFalse();
+    }
+
+    // Cancelled while the helper reads a large stream: once the run ends, its copy in bin\ is no
+    // longer a mapped image, so it can be deleted - the proof that no helper is left running.
+    [Fact]
+    public async Task ACancelledRun_LeavesNoHelperRunning()
+    {
+        string archive = Path.Combine(_temp.Path, "big.tar.gz");
+        using (FileStream file = File.Create(archive))
+        using (var gzip = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionLevel.Fastest))
+        {
+            gzip.Write(UstarHeader("big.bin", 8L << 30));
+            byte[] zeros = new byte[1 << 20];
+            for (int i = 0; i < 8192; i++)
+                gzip.Write(zeros);
+        }
+        using TarSandboxScope scope = await Scope(archive, needsOutputDir: false);
+        using var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(400));
+        long started = Environment.TickCount64;
+
+        Func<Task> run = () => scope.RunHelperAsync(ArchiveHelperMode.Test, ["--format", "tar", "--filter", "gzip"], [0], new ArchiveHelperOutput(ArchiveHelperMode.Test), cancel.Token);
 
         await run.Should().ThrowAsync<OperationCanceledException>();
-        System.Diagnostics.Process.GetProcessesByName("Archiver.ArchiveHelper")
-            .Where(p => { try { return p.MainModule?.FileName?.StartsWith(scope.QuarantineRoot, StringComparison.OrdinalIgnoreCase) == true; } catch (System.ComponentModel.Win32Exception) { return false; } })
-            .Should().BeEmpty();
+        (Environment.TickCount64 - started).Should().BeInRange(300, 10_000, "the run was cancelled while the helper read, not before it started");
+        File.Delete(Path.Combine(scope.QuarantineRoot, "bin", "Archiver.ArchiveHelper.exe"));
     }
 
     // --- Harness ---
+
+    // One ustar header for a regular file of the given size (octal, 11 digits).
+    private static byte[] UstarHeader(string name, long size)
+    {
+        byte[] h = new byte[512];
+        Encoding.ASCII.GetBytes(name).CopyTo(h, 0);
+        Encoding.ASCII.GetBytes("0000644\0").CopyTo(h, 100);
+        Encoding.ASCII.GetBytes(Convert.ToString(size, 8).PadLeft(11, '0') + "\0").CopyTo(h, 124);
+        Encoding.ASCII.GetBytes("14540000000\0").CopyTo(h, 136);
+        h[156] = (byte)'0';
+        Encoding.ASCII.GetBytes("ustar\000").CopyTo(h, 257);
+        "        "u8.CopyTo(h.AsSpan(148));
+        int sum = h.Sum(b => b);
+        Encoding.ASCII.GetBytes(Convert.ToString(sum, 8).PadLeft(6, '0') + "\0 ").CopyTo(h, 148);
+        return h;
+    }
 
     private static Task<TarSandboxScope> Scope(string archive, bool needsOutputDir) =>
         TarSandboxScope.CreateAsync(archive, needsOutputDir, CancellationToken.None, helperSource: ArchiveHelperBuild.ExePath);
