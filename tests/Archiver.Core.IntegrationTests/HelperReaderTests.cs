@@ -20,7 +20,7 @@ public sealed class HelperReaderTests : IDisposable
     public const string TarExe = "tar.exe";
     public const string Helper = "helper";
 
-    public static TheoryData<string> Backends => new() { TarExe, Helper };
+    public static TheoryData<string> Backends => [TarExe, Helper];
 
     private static readonly Lazy<HelperSetup> Setup = new(Probe, LazyThreadSafetyMode.ExecutionAndPublication);
     private readonly TempDirectory _temp = new();
@@ -280,7 +280,7 @@ public sealed class HelperReaderTests : IDisposable
         string tar = Gzip(Tar(("a.txt", "A")));
         string zipInGzip = Path.Combine(_temp.Path, "z.gz");
         string zip = Path.Combine(_temp.Path, "inner.zip");
-        using (var z = System.IO.Compression.ZipFile.Open(zip, System.IO.Compression.ZipArchiveMode.Create))
+        using (System.IO.Compression.ZipArchive z = System.IO.Compression.ZipFile.Open(zip, System.IO.Compression.ZipArchiveMode.Create))
             z.CreateEntry("a.txt");
         File.Move(Gzip(zip), zipInGzip);
 
@@ -293,7 +293,7 @@ public sealed class HelperReaderTests : IDisposable
     [Fact]
     public void HelperFormats_MapsEachFormat_AndRefusesWhatTheHelperLacks()
     {
-        var all = Setup.Value.Capabilities;
+        IReadOnlyDictionary<string, int?> all = Setup.Value.Capabilities;
         HelperFormats.ArgumentsFor(ArchiveFormat.Tar, all).Should().Equal("--format", "tar");
         HelperFormats.ArgumentsFor(ArchiveFormat.Rar, all).Should().Equal("--format", "rar,rar5");
         HelperFormats.ArgumentsFor(ArchiveFormat.GZip, all).Should().Equal("--format", "tar,cpio", "--filter", "gzip");

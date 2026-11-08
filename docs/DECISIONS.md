@@ -14610,7 +14610,10 @@ in the product. Choices in 3b-i:
   is tested in `TarSandboxScopeHelperTests`.
 - **A cancelled run leaves no helper**: three paths kill it (the cancel registration, the stdout
   reader's failure, the Job Object's close); the test checks the end state, a helper seen running
-  and then its image deletable, so removing one path alone stays green.
+  and then its image deletable, so removing one path alone stays green. "Seen running" is made, not
+  timed: Pakko holds the first `K` line of a 20,000-entry Test, so the helper waits on its full
+  stdout pipe. Timing it failed: libarchive inflates gigabytes of zeros in under a second, and
+  probing the copy for a mapped image raced the scope's own reads of it.
 
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 

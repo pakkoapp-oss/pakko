@@ -81,7 +81,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
             {
                 Path = path,
                 Size = e.FileType == RegularFile ? e.Size ?? 0 : 0,
-                Modified = ModifiedUtc(e)?.ToLocalTime(),
+                Modified = ModifiedTimeOf(e)?.ToLocalTime(),
                 IsDirectory = e.FileType == FolderType && e.Link is null,
             });
         }
@@ -127,7 +127,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
             Task<ArchiveHelperOutput> run = ExtractFilesAsync(files, cancellationToken);
             if (poll is { } p)
             {
-                Dictionary<string, string> names = files.ToDictionary(e => IndexName(e.Index), e => e.Name, StringComparer.Ordinal);
+                var names = files.ToDictionary(e => IndexName(e.Index), e => e.Name, StringComparer.Ordinal);
                 await PollExtractionProgressAsync(outDir, p.TotalBytes, new NamedProgress(p.Progress, names), run, cancellationToken, p.ExtractionEnd)
                     .ConfigureAwait(false);
             }
@@ -245,23 +245,30 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         var entries = new List<Entry>(output.Entries.Count);
         foreach (ArchiveHelperEntry e in output.Entries)
         {
-            if (e.Link is not null || e.FileType is not (RegularFile or FolderType))
-                throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarSpecialEntry));
-            if (refuseEncrypted && e.Encrypted == true)
-                throw new CoreTextIOException(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported));
-            bool isFolder = e.FileType == FolderType;
-            string name = EntryDiskName.StripLeadingDotSlash(e.Name!);
-            // T-F455: a folder stored without its '/' is still a folder.
-            if (isFolder && !name.EndsWith('/'))
-                name += "/";
-            if (name.TrimEnd('/').Length == 0)
-                continue;
-            if (!isFolder && e.Size is null)
-                throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
-            entries.Add(new Entry(e.Index, name, isFolder, isFolder ? 0 : e.Size!.Value, e.SparseCount > 0, ModifiedUtc(e)));
+            if (Checked(e, refuseEncrypted) is { } entry)
+                entries.Add(entry);
         }
         _entries = entries;
         return entries;
+    }
+
+    // One listed entry as the scan takes it; null for the archive's root itself.
+    private static Entry? Checked(ArchiveHelperEntry e, bool refuseEncrypted)
+    {
+        if (e.Link is not null || e.FileType is not (RegularFile or FolderType))
+            throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarSpecialEntry));
+        if (refuseEncrypted && e.Encrypted == true)
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported));
+        bool isFolder = e.FileType == FolderType;
+        string name = EntryDiskName.StripLeadingDotSlash(e.Name!);
+        // T-F455: a folder stored without its '/' is still a folder.
+        if (isFolder && !name.EndsWith('/'))
+            name += "/";
+        if (name.TrimEnd('/').Length == 0)
+            return null;
+        if (!isFolder && e.Size is null)
+            throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
+        return new Entry(e.Index, name, isFolder, isFolder ? 0 : e.Size!.Value, e.SparseCount > 0, ModifiedTimeOf(e));
     }
 
     // ExpandSelection's rule (T-F05) by name: an entry named as requested, and everything below it.
@@ -271,11 +278,8 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         foreach (string path in requested)
         {
             string folder = path.TrimEnd('/') + "/";
-            foreach (Entry e in entries)
-            {
-                if (e.Name.TrimEnd('/') == path.TrimEnd('/') || e.Name.StartsWith(folder, StringComparison.Ordinal))
-                    picked.Add(e.Index);
-            }
+            foreach (Entry e in entries.Where(e => e.Name.TrimEnd('/') == path.TrimEnd('/') || e.Name.StartsWith(folder, StringComparison.Ordinal)))
+                picked.Add(e.Index);
         }
         return [.. entries.Where(e => picked.Contains(e.Index))];
     }
@@ -305,12 +309,11 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         if (exit == ArchiveHelperExit.Done)
             return;
         string detail = limitHit.Length > 0 ? limitHit : output.Failure?.Message ?? "exit " + ((int)exit).ToString(CultureInfo.InvariantCulture);
-        CoreText text = IsLikelyEncryptionFailure(detail)
-            ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
-            : mode == ArchiveHelperMode.Extract
-                ? CoreMessages.Text(MessageCode.TarExtractionFailed, CoreText.Raw(detail))
-                : CoreMessages.Text(MessageCode.CannotReadArchive, detail);
-        throw new CoreTextIOException(text);
+        if (IsLikelyEncryptionFailure(detail))
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported));
+        throw new CoreTextIOException(mode == ArchiveHelperMode.Extract
+            ? CoreMessages.Text(MessageCode.TarExtractionFailed, CoreText.Raw(detail))
+            : CoreMessages.Text(MessageCode.CannotReadArchive, detail));
     }
 
     private void EnsureListingAndReadsAgree(List<Entry> files, ArchiveHelperOutput output) =>
@@ -344,7 +347,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
     /// <summary>out\ holds exactly the files the run read, each named by its index, a plain file of the bytes read.</summary>
     internal static void EnsureOutDirHoldsExactly(string outDir, ArchiveHelperOutput output)
     {
-        Dictionary<string, long> expected = output.Read.ToDictionary(r => IndexName(r.Index), r => r.Bytes, StringComparer.OrdinalIgnoreCase);
+        var expected = output.Read.ToDictionary(r => IndexName(r.Index), r => r.Bytes, StringComparer.OrdinalIgnoreCase);
         int found = 0;
         foreach ((string path, bool isFolder) in QuarantineFiles.Walk(outDir))
         {
@@ -360,7 +363,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
 
     private static string IndexName(long index) => index.ToString(CultureInfo.InvariantCulture);
 
-    private static DateTime? ModifiedUtc(ArchiveHelperEntry e) =>
+    private static DateTime? ModifiedTimeOf(ArchiveHelperEntry e) =>
         e.MtimeSeconds is { } seconds && seconds >= -62135596800L && seconds <= 253402300799L
             ? DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime.AddTicks(e.MtimeNanoseconds / 100)
             : null;

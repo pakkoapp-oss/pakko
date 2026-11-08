@@ -118,29 +118,37 @@ internal sealed class ArchiveHelperOutput
             throw Broken("a line after the run's last one");
         if (line.Length == 0 || line.Length > MaxLineBytes)
             throw Broken("an empty or overlong line");
-        foreach (byte b in line)
-        {
-            if (b is < 0x20 or > 0x7E)
-                throw Broken("a byte outside printable ASCII");
-        }
+        if (line.ContainsAnyExceptInRange((byte)0x20, (byte)0x7E))
+            throw Broken("a byte outside printable ASCII");
 
-        string text = Encoding.ASCII.GetString(line);
-        string[] fields = text.Split(' ');
-        bool first = _lines++ == 0;
+        string[] fields = Encoding.ASCII.GetString(line).Split(' ');
+        if (TakePreamble(fields, first: _lines++ == 0))
+            return;
+        if (!_versionSeen)
+            throw Broken("no version line first");
+        _pastPreamble = true;
+        TakeBody(fields);
+    }
+
+    // "V" first, then any "X": true when the line was one of them.
+    private bool TakePreamble(string[] fields, bool first)
+    {
         switch (fields[0])
         {
             case "V" when first && fields.Length == 2:
                 _versionSeen = true;
                 Version = Hex8(fields[1], MaxVersionBytes);
-                return;
+                return true;
             case "X" when _versionSeen && !_pastPreamble && fields.Length == 2:
                 _missingExports.Add(ExportName(fields[1]));
-                return;
+                return true;
+            default:
+                return false;
         }
+    }
 
-        if (!_versionSeen)
-            throw Broken("no version line first");
-        _pastPreamble = true;
+    private void TakeBody(string[] fields)
+    {
         switch (fields[0])
         {
             case "C" when _mode == ArchiveHelperMode.Probe && fields.Length == 3:
@@ -299,25 +307,12 @@ internal sealed class ArchiveHelperOutput
         });
     }
 
-    private static bool IsUpperHex(string s)
-    {
-        foreach (char c in s)
-        {
-            if (c is not ((>= '0' and <= '9') or (>= 'A' and <= 'F')))
-                return false;
-        }
-        return true;
-    }
+    private static bool IsUpperHex(string s) => s.All(char.IsAsciiHexDigitUpper);
 
     private static string ExportName(string s)
     {
-        if (s.Length is 0 or > MaxExportNameLength)
+        if (s.Length is 0 or > MaxExportNameLength || s.Any(c => c is not ((>= 'a' and <= 'z') or (>= '0' and <= '9') or '_')))
             throw Broken("a malformed export name");
-        foreach (char c in s)
-        {
-            if (c is not ((>= 'a' and <= 'z') or (>= '0' and <= '9') or '_'))
-                throw Broken("a malformed export name");
-        }
         return s;
     }
 
