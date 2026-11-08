@@ -63,7 +63,7 @@ TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating sessi
 | F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
 | G long-open umbrellas (added 2026-10-31, the agent's pick) | T-F254 (regional display language: pack and sign-out on the PakkoW10 VM, not the user's machine), T-F91 (`ru-RU` falls back to en-US, on the VM; the native-speaker criterion replaced by an agent back-translation pass, since there are no native reviewers, the user's standing word), T-F328's leftovers (quote, dash and apostrophe normalisation), T-F202's light theme, en-US and tray (through the `windows` MCP, as `APP-013` and `EXP-008` already switched theme and language), T-F329 part 5 (Store screenshots retaken after D changes the window) | VM, `.resw`/`.resx`/`Localization.cpp` (after C and D's strings), `docs/assets/store/` | after C and D merge |
 | H formats tar.exe reads but Pakko does not offer (added 2026-10-31, the user) | T-F442 (measure first, per tar.exe build; then detector, policy names, capability snapshot, Explorer menu, file associations) | `ArchiveFormatDetector`, `ArchiveFormatPolicy`, `TarCapabilitySnapshot`, `ShellExtUtils.cpp`, the manifest | measurement first; plan mode + advisor at both ends (new untrusted-input formats, the manifest) |
-| I opened during the wave (added 2026-11-06, the user: "the tasks opened during it, small fixes where possible") | First, from the root-cause review (the user, 2026-11-06: "in this wave"): T-F462 (Clean only with every file scanned, P1), T-F463 (one owner for quarantine disk access), T-F464 (the quarantine as source of truth, research). From T-F464's research (2026-11-07): T-F465 (tar.exe's listing decoded in the wrong page, P1), T-F466 (NFD names refused), T-F467 (one encoding provider), T-F468 (`archiveint.dll` research). Moved in by the user (2026-11-07): T-F470 (a sandboxed helper over Windows' own `archiveint.dll`, the name source; plan mode + advisor at both ends + a fresh reviewer). Small fixes: T-F456 (a flaky OperationUi test; fixed 2026-11-08, OPW-004 on device pending), T-F457 items 3-4 (`.tlz` as tar.lzma; `-stxudf`; done in #169), T-F453 (two true roots under one best-fit name), T-F452 (its own message for a header mismatch, 37 locales), T-F472 (a test racing a 90 ms clock; done 2026-11-08). Then: T-F461 (the folder shapes still refused; measure on 3.5.2 and in the sandbox first), T-F457 items 1, 2 and 5 (decide or measure; all three done 2026-11-08), T-F445 (pool threads per launch; measure first), T-F459 (`TESTING.md` regrouped, docs only; done 2026-11-07). Since T-F470 step 4 (2026-11-08) T-F464, T-F469, T-F461 and T-F453 cover the tar.exe fallback only: P4, after the wave | as each task says | T-F445: plan mode + advisor at both ends (sandbox code); each fix tests first, both tar builds where tar.exe decides |
+| I opened during the wave (added 2026-11-06, the user: "the tasks opened during it, small fixes where possible") | First, from the root-cause review (the user, 2026-11-06: "in this wave"): T-F462 (Clean only with every file scanned, P1), T-F463 (one owner for quarantine disk access), T-F464 (the quarantine as source of truth, research). From T-F464's research (2026-11-07): T-F465 (tar.exe's listing decoded in the wrong page, P1), T-F466 (NFD names refused), T-F467 (one encoding provider), T-F468 (`archiveint.dll` research). Moved in by the user (2026-11-07): T-F470 (a sandboxed helper over Windows' own `archiveint.dll`, the name source; plan mode + advisor at both ends + a fresh reviewer). Small fixes: T-F456 (a flaky OperationUi test; fixed 2026-11-08, OPW-004 on device pending), T-F457 items 3-4 (`.tlz` as tar.lzma; `-stxudf`; done in #169), T-F453 (two true roots under one best-fit name), T-F452 (its own message for a header mismatch, 37 locales), T-F472 (a test racing a 90 ms clock; done 2026-11-08). Then: T-F461 (the folder shapes still refused; measure on 3.5.2 and in the sandbox first), T-F457 items 1, 2 and 5 (decide or measure; all three done 2026-11-08), T-F445 (pool threads per launch; measured 2026-11-08: no effect for one launch, P4 after the wave), T-F459 (`TESTING.md` regrouped, docs only; done 2026-11-07). Since T-F470 step 4 (2026-11-08) T-F464, T-F469, T-F461 and T-F453 cover the tar.exe fallback only: P4, after the wave | as each task says | T-F445: plan mode + advisor at both ends (sandbox code); each fix tests first, both tar builds where tar.exe decides |
 | E on device, release | `APP-027`, `APP-028`, `APP-030`, `APP-014`, `OPW-*`, the new taskbar/tray rows, the release-tier smoke, `STO-005` as a real Store update | `docs/SMOKE.md`, `scripts/smoke/` | after A-D merge |
 
 Decisions taken with the plan (the agent, 2026-10-31): T-F432 covers the App's taskbar button, the
@@ -1433,9 +1433,24 @@ re-measured with T-F346's script before and after.
   measured. Roll the VM back to the checkpoint afterwards.
 - **Reported by:** the user, 2026-10-31.
 
-### T-F445 — Each tar.exe launch blocks two or three pool threads for the child's whole life (P3, from T-F428)
+### T-F445 — Each tar.exe launch blocks two or three pool threads for the child's whole life (P4, from T-F428)
 
-- [ ] **Status:** open, not measured. `SandboxedProcessLauncher` reads stdout and stderr through
+- [ ] **Status:** open, measured 2026-11-08, no code for v1.10.0. A temporary test listed a tar.gz of
+  150,000 entries through `TarSandboxedService.ListEntriesAsync`, N launches at once, while a
+  dedicated thread sampled the pool and the start delay of a queued work item (12 CPUs, minimum 12
+  workers):
+
+  | Launches at once | Pool threads | Longest start delay |
+  |---|---|---|
+  | 1 (what an operation does) | 11, unchanged | 0 ms |
+  | 8, pool already grown | 41, unchanged | 9 ms |
+  | 16, cold pool | 20 -> 41 | 6.2 s |
+  | 16, six 256 MB zero entries (little output, 1 s) | 11 -> 20 | 0.4 s |
+
+  The delay is the pool's injection ramp under many launches, with the listing's own parsing on the
+  same pool; one operation reads one archive at a time, so only a parallel test run meets it (as
+  T-F428 and T-F425 did). P4: revisit if Pakko ever runs launches in parallel.
+- **Before:** open, not measured. `SandboxedProcessLauncher` reads stdout and stderr through
   `FileStream`s over synchronous pipe handles, so `ReadToEndAsync`/`ReadAsync` run as blocking reads
   on pool threads, and `WriteStdIn` holds a third through `Task.Run`. A parallel test run multiplies
   it; T-F428 took the cancel off this path, but a starved pool still delays a launch's return. Next:
