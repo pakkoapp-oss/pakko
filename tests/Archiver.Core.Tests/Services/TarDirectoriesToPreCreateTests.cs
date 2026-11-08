@@ -1,4 +1,5 @@
 using Archiver.Core.Services;
+using Archiver.Core.Services.Sandbox;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
@@ -22,7 +23,7 @@ public sealed class TarDirectoriesToPreCreateTests
     [InlineData(new[] { "a/b/f.txt" }, new[] { "a", "a/b" })]
     public void DirectoriesToPreCreate_OnlyDirectoriesWithoutAnEarlierEntry(string[] names, string[] expected)
     {
-        TarSandboxedService.DirectoriesToPreCreate(names).Should().BeEquivalentTo(expected);
+        TarExeReader.DirectoriesToPreCreate(names).Should().BeEquivalentTo(expected);
     }
 
     // T-F443: with a listing by best fit, folder entries come from the quarantine, without the
@@ -37,7 +38,7 @@ public sealed class TarDirectoriesToPreCreateTests
             ("Sub", true), ("Sub/y.txt", false), ("z.txt", false),
         ];
 
-        TarSandboxedService.FoldersTarExeWrote(quarantined, new HashSet<string>(["cafe", "sub"], StringComparer.OrdinalIgnoreCase))
+        TarExeReader.FoldersTarExeWrote(quarantined, new HashSet<string>(["cafe", "sub"], StringComparer.OrdinalIgnoreCase))
             .Should().Equal(accented, accented + "/empty");
     }
 }

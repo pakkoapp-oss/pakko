@@ -326,7 +326,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         }
         // T-F52: libarchive cannot create a missing parent folder inside the AppContainer; T-F460:
         // by tar.exe's name for it ("d " keeps its space), as the main pass does.
-        TarSandboxedService.PreCreateImplicitFolders(members, firstDir);
+        TarExeReader.PreCreateImplicitFolders(members, firstDir);
         (int exitCode, _, string stdErr) = await RunAsync(
             "-x", ["-q", "-C", FirstCopyFolderName, "--", .. members.Select(EscapeMemberPattern)], cancellationToken).ConfigureAwait(false);
         return (firstDir, exitCode, stdErr);
