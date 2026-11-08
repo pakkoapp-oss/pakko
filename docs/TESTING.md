@@ -331,6 +331,25 @@ dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
   and the owners it builds on, so every tar-family read goes through `ISandboxedArchiveReader`;
   `Scan_SeesTheReader` keeps the scan from passing vacuously. Seen red on a mutant call in
   `TarSandboxedService`.
+  `TheHelpersOutput_IsReadOnlyByItsReader`: `ArchiveHelperOutput` and `RunHelperAsync` appear only in
+  `HelperReader.cs`, the scope and the parser itself.
+- T-F470 step 3b-i, the archive helper's reader:
+  - `tests/Archiver.Core.Tests/Services/Sandbox/ArchiveHelperOutputTests.cs`: the strict parser of the
+    helper's stdout on forged output - every record out of place, numbers and hex out of range,
+    non-ASCII, too many entries, and each exit code against how the output ended.
+  - `tests/Archiver.Core.Tests/Services/Sandbox/StdOutLinesTests.cs`: the launcher's line reader -
+    lines split across reads, the line and total limits, output ending inside a line, a handler's
+    exception, and a real child killed for breaking a limit.
+  - `tests/Archiver.Core.IntegrationTests/TarSandboxScopeHelperTests.cs`: `RunHelperAsync` with the
+    real helper in the production sandbox - exact names, a selection by index, the copy in `bin\`
+    re-hashed before each run, an unsigned `archiveint.dll` refused, read-execute only on `bin\` and
+    `list\`, a cancel mid-run leaving no helper running.
+  - `tests/Archiver.Core.IntegrationTests/HelperReaderTests.cs`: list, extract (selection, filter,
+    gzip, folder times), test, a raw-name page and the antivirus scan under both backends (theory
+    over tar.exe and the helper); the helper alone: names outside the ANSI page, every same-named
+    copy through the conflict rule, a trailing dot, byte-exact content, the format routing, and the
+    checks of a run against the listing and `out\` on forged output. Mutants:
+    `docs/DECISIONS.md`, T-F470 step 3.
 
 ### T-F35 Parallel SingleArchive Pipeline Tests (v1.4+)
 
