@@ -97,6 +97,9 @@ public sealed class AntivirusScanService : IAntivirusScanService
     // T-F465: see TarSandboxedService.ForcedTarOutputEncoding.
     internal System.Text.Encoding? ForcedTarOutputEncoding { get; init; }
 
+    // T-F470: the archive helper this service reads with; null reads with tar.exe.
+    internal Sandbox.HelperSetup? Helper { get; init; }
+
     // T-F406: a path that cannot be opened at all is reported, not handed to a reader.
     private static List<string> TakeUsablePaths(IReadOnlyList<string> paths, List<ThreatFinding> findings)
     {
@@ -235,7 +238,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 cancellationToken.ThrowIfCancellationRequested();
                 await ScanTarArchiveAsync(
                     archivePath, options.SelectedEntryPaths, scanner, findings,
-                    (entry, done, total) => ReportProgress(archivePath, entry, done, total), ForcedTarOutputEncoding, cancellationToken)
+                    (entry, done, total) => ReportProgress(archivePath, entry, done, total), (ForcedTarOutputEncoding, Helper), cancellationToken)
                     .ConfigureAwait(false);
                 archivesCompleted++;
                 progress?.Report(new ProgressReport { Percent = archivesCompleted * 100 / totalArchives, CurrentFile = archivePath });
@@ -525,13 +528,13 @@ public sealed class AntivirusScanService : IAntivirusScanService
         IAmsiScanner scanner,
         List<ThreatFinding> findings,
         Action<string?, int, int> reportProgress,
-        System.Text.Encoding? tarOutputEncoding,
+        (System.Text.Encoding? Encoding, HelperSetup? Helper) readWith,
         CancellationToken cancellationToken)
     {
         ISandboxedArchiveReader? reader = null;
         try
         {
-            reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: true, tarOutputEncoding, cancellationToken)
+            reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: true, readWith.Encoding, cancellationToken, readWith.Helper)
                 .ConfigureAwait(false);
             _ = await reader.ScanAsync(cancellationToken).ConfigureAwait(false);
 

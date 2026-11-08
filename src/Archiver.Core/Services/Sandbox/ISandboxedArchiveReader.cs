@@ -13,10 +13,15 @@ namespace Archiver.Core.Services.Sandbox;
 /// </summary>
 internal interface ISandboxedArchiveReader : IDisposable
 {
-    /// <summary>Opens the backend this process reads with, on the archive.</summary>
+    /// <summary>
+    /// Opens the backend this process reads with, on the archive: the archive helper when
+    /// <paramref name="helper"/> is given and reads the archive's format, tar.exe otherwise.
+    /// </summary>
     static Task<ISandboxedArchiveReader> OpenAsync(
-        string archivePath, bool needsOutputDir, Encoding? outputEncoding, CancellationToken cancellationToken) =>
-        TarExeReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, cancellationToken);
+        string archivePath, bool needsOutputDir, Encoding? outputEncoding, CancellationToken cancellationToken, HelperSetup? helper = null) =>
+        helper is null
+            ? TarExeReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, cancellationToken)
+            : HelperReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, helper, cancellationToken);
 
     /// <summary>The entries for browsing: an unsafe name or a link lists, as before; only extraction refuses it.</summary>
     Task<ArchiveListResult> ListAsync(CancellationToken cancellationToken);
@@ -40,6 +45,9 @@ internal interface ISandboxedArchiveReader : IDisposable
     /// <summary>Scans, then reads every entry the filter passes without writing it.</summary>
     Task<TestOutcome> TestAsync(IProgress<ProgressReport>? progress, Func<string, bool, bool>? entryFilter, CancellationToken cancellationToken);
 }
+
+/// <summary>T-F470: the archive helper a process reads with, and its probe's <c>support_*</c> results by name.</summary>
+internal sealed record HelperSetup(string HelperPath, IReadOnlyDictionary<string, int?> Capabilities);
 
 /// <summary>What placement and the compression-bomb gate need from a scan.</summary>
 /// <param name="TotalDeclaredSize">Every file entry's declared size (T-F94).</param>

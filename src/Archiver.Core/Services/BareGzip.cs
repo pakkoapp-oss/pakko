@@ -60,6 +60,32 @@ internal static class BareGzip
         }
     }
 
+    /// <summary>
+    /// T-F470: true when <paramref name="path"/> is a gzip stream whose content starts as a tar (a
+    /// header whose checksum holds, or an empty tar's zero block) or an ASCII cpio - the formats the
+    /// archive helper reads inside a gzip. False for any other content and on any read problem.
+    /// </summary>
+    public static bool HoldsTarOrCpio(string path)
+    {
+        try
+        {
+            using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            if (ReadHeader(file) is null)
+                return false;
+            byte[] head = new byte[TarBlock];
+            if (ReadHead(file, head) is not { } read)
+                return false;
+            ReadOnlySpan<byte> start = head.AsSpan(0, read);
+            return (read == TarBlock && (IsTarHeader(start) || !start.ContainsAnyExcept((byte)0)))
+                || start.StartsWith("070707"u8) || start.StartsWith("070701"u8) || start.StartsWith("070702"u8);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException
+            or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
     // Read again from the first member, far enough for every volume descriptor the detector reads.
     private static bool HoldsDiscImage(FileStream file)
     {

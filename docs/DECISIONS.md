@@ -14627,6 +14627,38 @@ no charset, UTF-8, CP1251, CP866 and CP932; sparse; both bombs; a cut tar; links
 no LZMA in 3.5.2 (7z), encrypted RAR5 not flagged, no RAR sub-second times, DBCS pages not strict,
 error texts, and bzip2/xz/lzma/lzip/zstd returning `ARCHIVE_WARN` (a run naming them exits 7).
 
+**Step 3, split in two (2026-11-08, advisor).** 3a moved every tar.exe step behind
+`ISandboxedArchiveReader` with no behavior change (#189). 3b-i adds the helper's reader, reachable
+only when a service is given a `HelperSetup` (tests); 3b-ii adds `ArchiveintGate`, which gives it
+in the product. Choices in 3b-i:
+- **Every same-named copy is extracted, by its index, and meets the conflict rule in archive order**
+  (T-F30's rule for duplicate ZIP entries). There is no first-copy pass and no "copies not
+  extracted" report on this path; under Overwrite the last copy stays, under Skip the first.
+- **Names land as Pakko writes them** (`EntryDiskName.AsPakkoWrites`): a trailing dot or space of a
+  file name is dropped, as for ZIP, where tar.exe kept it in the quarantine (T-F419). The entry is
+  marked renamed and trimmed, so it never replaces a file it does not name (T-F420 review).
+- **Charset: UTF-8 first, then the raw-name page** (`TextBoundaries.TarRawHeaderNames`, the page
+  tar.exe reads such names in). A name UTF-8 cannot read comes back NULL with a warning (step 1), so
+  the archive is listed again in that page; a NULL name after that, or a U+30FB on 3.5.x under a
+  multi-byte page (step 1: no warning there), refuses the archive. Later runs use the scan's charset,
+  so the second listing is compared under the same one. 7z and RAR5 store Unicode: no charset is
+  passed when no format of the run reads one (`-4` otherwise).
+- **Formats by what the archive is, before it is read.** tar, cpio, 7z, RAR (rar,rar5) and CAB name
+  their format; a gzip goes to the helper only when its content starts as a tar or an ASCII cpio
+  (`BareGzip.HoldsTarOrCpio`), so a zip or an LHA inside a gzip stays on tar.exe; ISO, UDF and ar
+  never reach the helper (no `hdrcharset` there, step 1). Accepted limit: the content of a bzip2,
+  xz, zstd, lzma, lzip or compress stream is not known before it is read, so such a stream is given
+  every container the helper has; an ar or ISO inside one fails on the helper where tar.exe read it.
+- **The helper's output is checked against itself.** An extraction or a test lists the archive again
+  as it reads: the entries must equal the scan's field for field, the K lines must be exactly the
+  selection, each non-sparse one its declared size, and `out\` must hold exactly those `<index>`
+  files, plain, of the bytes read. `--max-total` is the selection's declared sum. A finding, a
+  progress line and a placed file carry the entry's name, never the index.
+- **Mutants.** Red: name and alias checks, the link and special-entry check, the charset fallback,
+  the trimmed flag, folder times, the copy's hash and archiveint.dll's signature (scope). Survives:
+  removing the call that checks `out\` - the helper writes nothing else there, so no run reaches it;
+  the check itself is red against a planted file, a missing one, a wrong size and a folder.
+
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 
 - **Why.** tar.exe writes through the long-path prefix, so `a.txt.`, `a.txt ` and a folder `d ` are on
