@@ -15,102 +15,74 @@ public sealed class StarvedThreadPoolCollection;
 /// and passed alone in 0.3 s. The session read the helper's pipe through ReadAsync, which on an
 /// anonymous (synchronous) pipe blocks a pool thread for as long as the helper says nothing, and the
 /// fake helper read the same way; a loaded run had no pool thread left for the next frame (T-F425).
-/// Here every pool thread but one is held, as a loaded run holds them: a session waiting for its
-/// helper must leave that one free.
+/// Here the pool is capped and more sessions wait for their helpers than it has threads: a reader
+/// that holds a pool thread starves it for good, while the runner's own work only delays the probe.
 /// </summary>
 [Collection("StarvedThreadPool")]
 public sealed class HelperOperationUiStarvedPoolTests
 {
     private static readonly TimeSpan WaitLimit = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan ProbeLimit = TimeSpan.FromSeconds(5);
+    private const int Headroom = 2;
 
     [Fact]
-    public async Task SessionWaitingForItsHelper_LeavesThePoolItsLastThread()
+    public async Task SessionsWaitingForTheirHelpers_LeaveThePoolFree()
     {
-        using var helper = new FakeHelper();
-        var ui = new HelperOperationUi(helper, new FakeOperationUi())
-        {
-            ReadyTimeout = WaitLimit,
-            ProgressInterval = TimeSpan.Zero,
-            StartDelay = TimeSpan.Zero,
-        };
+        // On a thread of its own and with synchronous waits: an await's continuation, or Task.Delay's
+        // timer, would need the capped pool itself and could hang the test instead of failing it.
+        string? starved = await Task.Factory.StartNew(StarvedBySessions, CancellationToken.None,
+            TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
-        bool poolThreadFree;
-        using (PoolHold.AllButOne())
-        {
-            using IOperationSession session = ui.Begin("Extracting: a.zip", ProgressStyle.Bytes);
-            await helper.ReadUntilAsync<Begin>();
-            // The reader is started after the pump; let it reach its read.
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
+        starved.Should().BeNull("a session waiting for its helper must not hold a pool thread");
+    }
 
-            // Waited on here, not awaited: an await would hand this test's own pool thread to the probe.
+    private static string? StarvedBySessions()
+    {
+        // The cap leaves the threads the runner already keeps busy (testhost blocks some for good: on
+        // two cores a cap at the minimum left none) plus a little headroom; the sessions outnumber it.
+        ThreadPool.GetMaxThreads(out int maxWorkers, out int maxIo);
+        ThreadPool.GetMinThreads(out int minWorkers, out _);
+        ThreadPool.GetAvailableThreads(out int available, out _);
+        int cap = Math.Max(minWorkers, maxWorkers - available + Headroom);
+        int sessionCount = cap - (maxWorkers - available) + 2;
+        if (!ThreadPool.SetMaxThreads(cap, maxIo))
+            throw new InvalidOperationException($"The pool's maximum could not be set to {cap}.");
+        var helpers = new List<FakeHelper>();
+        var sessions = new List<IOperationSession>();
+        try
+        {
+            for (int i = 0; i < sessionCount; i++)
+            {
+                var helper = new FakeHelper();
+                helpers.Add(helper);
+                var ui = new HelperOperationUi(helper, new FakeOperationUi())
+                {
+                    ReadyTimeout = WaitLimit,
+                    ProgressInterval = TimeSpan.Zero,
+                    StartDelay = TimeSpan.Zero,
+                };
+                sessions.Add(ui.Begin($"Extracting: {i}.zip", ProgressStyle.Bytes));
+                if (!helper.ReadUntilAsync<Begin>().Wait(WaitLimit))
+                    return $"session {i} of {sessionCount} sent no Begin within {WaitLimit} (pool capped at {cap})";
+            }
+            // Each reader is started after its pump; let the last ones reach their read. Not
+            // Task.Delay: its timer completes on the capped pool.
+            Thread.Sleep(TimeSpan.FromMilliseconds(200));
+
             // Never disposed: the probe may still run after the wait gave up.
             var probe = new ManualResetEventSlim();
             ThreadPool.UnsafeQueueUserWorkItem(_ => probe.Set(), null);
-            poolThreadFree = probe.Wait(ProbeLimit);
+            return probe.Wait(ProbeLimit)
+                ? null
+                : $"no pool thread ran a work item within {ProbeLimit} beside {sessions.Count} sessions (pool capped at {cap})";
         }
-
-        poolThreadFree.Should().BeTrue("a session waiting for its helper must not hold a pool thread");
-    }
-
-    // Caps the pool at its minimum and holds all of it but one thread, the way a loaded run does.
-    private sealed class PoolHold : IDisposable
-    {
-        private static readonly TimeSpan Settle = TimeSpan.FromSeconds(1);
-
-        // Never disposed: a holder may still be waking from it after Dispose.
-        private readonly ManualResetEventSlim _release = new();
-        private readonly int _maxWorkers;
-        private readonly int _maxIo;
-
-        private PoolHold()
+        finally
         {
-            ThreadPool.GetMaxThreads(out _maxWorkers, out _maxIo);
-            ThreadPool.GetMinThreads(out int minWorkers, out _);
-            if (!ThreadPool.SetMaxThreads(minWorkers, _maxIo))
-                throw new InvalidOperationException($"The pool's maximum could not be set to {minWorkers}.");
-            try
-            {
-                // Threads busy with the runner's own work come and go: hold until one stays free.
-                DateTime until = DateTime.UtcNow + Settle;
-                while (DateTime.UtcNow < until)
-                {
-                    ThreadPool.GetAvailableThreads(out int available, out _);
-                    if (available > 1)
-                        HoldMore(available - 1);
-                    else
-                        Thread.Sleep(20);
-                }
-            }
-            catch
-            {
-                Dispose();
-                throw;
-            }
-        }
-
-        public static PoolHold AllButOne() => new();
-
-        private void HoldMore(int count)
-        {
-            // Not disposed: after a timeout a late holder still signals it.
-            var started = new CountdownEvent(count);
-            for (int i = 0; i < count; i++)
-            {
-                ThreadPool.UnsafeQueueUserWorkItem(_ =>
-                {
-                    started.Signal();
-                    _release.Wait();
-                }, null);
-            }
-            if (!started.Wait(WaitLimit))
-                throw new TimeoutException($"The pool did not start {count} threads to hold.");
-        }
-
-        public void Dispose()
-        {
-            _release.Set();
-            ThreadPool.SetMaxThreads(_maxWorkers, _maxIo);
+            ThreadPool.SetMaxThreads(maxWorkers, maxIo);
+            foreach (IOperationSession session in sessions)
+                session.Dispose();
+            foreach (FakeHelper helper in helpers)
+                helper.Dispose();
         }
     }
 }

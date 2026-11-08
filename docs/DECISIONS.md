@@ -13603,14 +13603,19 @@ synchronous. On a synchronous stream, `ReadAsync` is a work item that blocks a t
 life, and `FakeHelper` read and wrote the same way. In a loaded run the pool had no thread left for
 the next frame. Thread injection is slow, so some 10-second wait expired.
 
-Shown deterministically. `HelperOperationUiStarvedPoolTests` caps the pool at its minimum and holds
-every thread but one. The session then gets its `Begin` across. A pool work item queued after that
-must run within 5 s.
-- Before the fix: the reader's blocked read took the last thread, and the item never ran (3 of 3).
-- After the fix: it runs.
+Shown deterministically. `HelperOperationUiStarvedPoolTests` caps the pool at the threads already
+busy plus two, then opens two sessions more than that headroom, each waiting for its fake helper.
+Every session must get its `Begin` across, and a pool work item queued after them must run within 5 s.
+- Before the fix: each reader's blocked read keeps a thread for good, the last session's `Begin`
+  never leaves (red at 2 and 4 cores via `DOTNET_PROCESSOR_COUNT` and at the host's 12).
+- After the fix: green at all three.
 
-The probe is waited on, not awaited. An await would hand the test's own pool thread to the probe,
-and the check would pass for the wrong reason. That happened in the first draft.
+The test body runs on a thread of its own with synchronous waits: an await's continuation or
+`Task.Delay`'s timer needs the capped pool itself. Two earlier drafts held every pool thread but one
+and needed exactly that one to stay free. The first awaited inside the hold and hung on two cores.
+The second still failed in CI (PR #191, 2026-11-08). The runner keeps pool threads busy for good:
+two cores left none free after the hold. A cap above what is already busy needs no free thread to
+survive the runner's own work; that work only delays the probe.
 
 The named test's own body, run in scratch under the same hold:
 - With main's code and no pool thread free beyond the test's own, it hung for over 7 minutes.
