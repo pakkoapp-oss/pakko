@@ -493,12 +493,12 @@ internal sealed partial class TarSandboxScope : IDisposable
             Directory.CreateDirectory(folder);
             GrantOrFailSetup(() => QuarantineAcl.GrantReadExecute(folder, _sid));
             string relative = Path.Combine(MemberListFolderName, SelectionFileName);
-            File.WriteAllBytes(Path.Combine(QuarantineRoot, relative), SelectionBytes(selection));
+            await File.WriteAllBytesAsync(Path.Combine(QuarantineRoot, relative), SelectionBytes(selection), cancellationToken).ConfigureAwait(false);
             selectArguments = ["--select", relative];
         }
 
         // The copy is read again right before each launch: what runs is what was hashed.
-        if (!SHA256.HashData(File.ReadAllBytes(helper)).AsSpan().SequenceEqual(_helperHash))
+        if (!SHA256.HashData(await File.ReadAllBytesAsync(helper, cancellationToken).ConfigureAwait(false)).AsSpan().SequenceEqual(_helperHash))
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, "the archive helper's copy changed before it ran"));
 
         SandboxJobObject job;

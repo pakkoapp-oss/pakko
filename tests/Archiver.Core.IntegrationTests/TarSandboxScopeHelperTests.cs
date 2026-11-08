@@ -155,56 +155,52 @@ public sealed class TarSandboxScopeHelperTests : IDisposable
         Directory.Exists(Path.Combine(scope.QuarantineRoot, "bin")).Should().BeFalse();
     }
 
-    // Cancelled while the helper runs - seen running: its copy in bin\ is a mapped image, which
-    // cannot be opened for writing. Once the run ends the copy can be deleted: no helper is left.
+    // Cancelled while the helper runs, seen running: Pakko holds its first "K" line, so the helper
+    // fills its stdout pipe and waits. Once the run ends, its copy in bin\ is no longer a mapped image
+    // and can be deleted: no helper is left.
     [Fact]
     public async Task ACancelledRun_LeavesNoHelperRunning()
     {
-        string archive = Path.Combine(_temp.Path, "big.tar.gz");
-        using (FileStream file = File.Create(archive))
-        using (var gzip = new System.IO.Compression.GZipStream(file, System.IO.Compression.CompressionLevel.Fastest))
+        const int Entries = 20_000;
+        string archive = Path.Combine(_temp.Path, "many.tar.gz");
+        using (var tar = new MemoryStream())
         {
-            gzip.Write(UstarHeader("big.bin", 2L << 30));
-            byte[] zeros = new byte[1 << 20];
-            for (int i = 0; i < 2048; i++)
-                gzip.Write(zeros);
+            for (int i = 0; i < Entries; i++)
+                tar.Write(UstarHeader("f" + i.ToString("D5", System.Globalization.CultureInfo.InvariantCulture), 0));
+            tar.Write(new byte[1024]);
+            File.WriteAllBytes(archive, Gzip(tar.ToArray()));
         }
         using TarSandboxScope scope = await Scope(archive, needsOutputDir: false);
-        string copy = Path.Combine(scope.QuarantineRoot, "bin", "Archiver.ArchiveHelper.exe");
+        var firstRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new ManualResetEventSlim();
+        var output = new ArchiveHelperOutput(ArchiveHelperMode.Test, (_, _) =>
+        {
+            firstRead.TrySetResult();
+            release.Wait(TimeSpan.FromSeconds(30));
+        });
         using var cancel = new CancellationTokenSource();
 
-        Task run = scope.RunHelperAsync(ArchiveHelperMode.Test, ["--format", "tar", "--filter", "gzip"], [0], new ArchiveHelperOutput(ArchiveHelperMode.Test), cancel.Token);
-        bool seenRunning = false;
-        for (long until = Environment.TickCount64 + 10_000; !seenRunning && !run.IsCompleted && Environment.TickCount64 < until;)
-        {
-            seenRunning = IsMappedImage(copy);
-            if (!seenRunning)
-                await Task.Delay(10);
-        }
+        Task run = scope.RunHelperAsync(ArchiveHelperMode.Test, ["--format", "tar", "--filter", "gzip"], [.. Enumerable.Range(0, Entries).Select(i => (long)i)], output, cancel.Token);
+        await firstRead.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        bool seenRunning = !run.IsCompleted;
         await cancel.CancelAsync();
+        release.Set();
 
-        seenRunning.Should().BeTrue("the helper must be running when the run is cancelled");
+        seenRunning.Should().BeTrue("the helper waits on its full stdout pipe");
         Func<Task> ended = () => run;
         await ended.Should().ThrowAsync<OperationCanceledException>();
-        File.Delete(copy);
-    }
-
-    private static bool IsMappedImage(string file)
-    {
-        if (!File.Exists(file))
-            return false;
-        try
-        {
-            using var probe = new FileStream(file, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete);
-            return false;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return true;
-        }
+        File.Delete(Path.Combine(scope.QuarantineRoot, "bin", "Archiver.ArchiveHelper.exe"));
     }
 
     // --- Harness ---
+
+    private static byte[] Gzip(byte[] data)
+    {
+        using var buffer = new MemoryStream();
+        using (var gzip = new System.IO.Compression.GZipStream(buffer, System.IO.Compression.CompressionLevel.Fastest))
+            gzip.Write(data);
+        return buffer.ToArray();
+    }
 
     // One ustar header for a regular file of the given size (octal, 11 digits).
     private static byte[] UstarHeader(string name, long size)
