@@ -1608,8 +1608,8 @@ re-measured with T-F346's script before and after.
 - [ ] **Status:** fixed 2026-11-08, awaiting the on-device check `OPW-004` (a helper killed mid-
   operation now switches to the Win32 dialog on the reader's own thread): the session's pipe reader
   runs on its own thread over a new synchronous `FrameCodec.Read`; the fake helper reads and writes
-  the same way. Shown deterministically by `HelperOperationUiStarvedPoolTests` (all pool threads
-  but one held). `docs/DECISIONS.md`, "T-F456".
+  the same way. Shown deterministically by `HelperOperationUiStarvedPoolTests` (more waiting
+  sessions than a capped pool has threads). `docs/DECISIONS.md`, "T-F456".
 - **Before:** open. Failed once in the full local run on 2026-11-05 (T-F443's branch, nothing
   near the Shell or OperationUi changed) after 16 s; 3 of 3 alone in about 0.3 s. Next: find which
   wait in `HelperOperationUiTests` races the loaded runner (T-F425's rule: no timer races).
