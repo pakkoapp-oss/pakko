@@ -104,6 +104,25 @@ public sealed class TarSandboxedServiceExtractTests : IDisposable
         listing.Entries.Single(e => e.Path == "recent.txt").ModifiedHasTime.Should().BeTrue();
     }
 
+    // T-F470: browsing lists what extraction refuses (T-F49) - a link and a name leaving the root show
+    // in the listing, so the user sees why the archive is refused instead of an empty view.
+    [Integration]
+    public async Task ListEntriesAsync_LinkAndParentEntries_StillList()
+    {
+        string archivePath = Path.Combine(_temp.Path, "unsafe.tar");
+        TarBuilder.WriteTar(archivePath,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = [1] },
+            new TarBuilder.Entry { Name = "link", TypeFlag = '2', LinkName = "a.txt" },
+            new TarBuilder.Entry { Name = "../evil.txt", Content = [2] },
+        ]);
+
+        ArchiveListResult listing = await _sut.ListEntriesAsync(archivePath);
+
+        listing.Success.Should().BeTrue();
+        listing.Entries.Select(e => e.Path).Should().BeEquivalentTo(["a.txt", "link", "../evil.txt"]);
+    }
+
     // T-F196: the Archive Browser path. Listing used to report tar's own "./"-prefixed names
     // verbatim, so the browser's root showed a lone folder named "." (confirmed on device). The
     // listing now reports the same paths as the plain archive, and a subset extraction using

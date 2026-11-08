@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Formats.Tar;
 using System.Text;
 using Archiver.Core.Services;
+using Archiver.Core.Services.Sandbox;
 using FluentAssertions;
 
 namespace Archiver.Core.IntegrationTests;
@@ -55,7 +56,7 @@ public sealed class EntryDiskNameTarExeTests : IDisposable
                 writer.WriteEntry(new PaxTarEntry(TarEntryType.RegularFile, names[i]) { DataStream = new MemoryStream(Encoding.UTF8.GetBytes("x")) });
             string output = Path.Combine(_temp.Path, "pre" + i.ToString(System.Globalization.CultureInfo.InvariantCulture));
             Directory.CreateDirectory(output);
-            TarSandboxedService.PreCreateImplicitFolders([names[i]], output);
+            TarExeReader.PreCreateImplicitFolders([names[i]], output);
             if (!TryRunTar(archive, output, out string stdErr))
             {
                 mismatches.Add($"'{names[i]}': tar.exe failed: {stdErr}");

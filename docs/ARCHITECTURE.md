@@ -137,6 +137,7 @@ src/
 │   │   │   ├── SandboxJobObject.cs / SandboxedProcessLauncher.cs / ProcessLaunchOptions.cs
 │   │   │   ├── LaunchAttributeList.cs / TarCommandLineEncoding.cs
 │   │   │   ├── QuarantineFiles.cs      ← T-F463: every disk call on a name tar.exe wrote (long-path prefix)
+│   │   │   ├── ISandboxedArchiveReader.cs / TarExeReader.cs ← T-F470: the one reader handler, tar.exe backend
 │   │   │   └── TarSandboxScope.cs / TarSignatureVerifier.cs
 │   │   └── Zip/                        ← T-F35: parallel SingleArchive compression pipeline
 │   │       ├── WorkItemEnumerator.cs / FileWorkItem.cs / WorkResult.cs
@@ -1495,7 +1496,15 @@ services.AddSingleton<ITarService, TarSandboxedService>(); // was TarProcessServ
 `LaunchAttributeList.cs`, `TarCommandLineEncoding.cs`,
 `TarSignatureVerifier.cs`, and `TarSandboxScope.cs` — the disposable orchestration class every
 sandboxed tar.exe run goes through (`ListAsync`/`ExtractAsync`), tying profile + ACL + the open
-archive + Job Object + signature check together per archive operation. Fix phase 4 (2026-09-25)
+archive + Job Object + signature check together per archive operation.
+`ISandboxedArchiveReader.cs` (T-F470) is the one handler every list, extract, Test and antivirus
+scan of a tar-family archive reads through: `ListAsync` (browsing, never refuses), `ScanAsync`
+(the T-F49 pre-scan), `SelectForExtractAsync`, `ExtractAsync` (files to move with the path each
+lands at, folder entries, the T-F462 count), `ExtractForScanAsync`, `TestAsync`; `OpenAsync`
+picks the backend. `TarExeReader.cs` is the tar.exe backend and the only home of what knows how
+tar.exe lists, names and writes entries (`AsTarExeWrites`, `TarNames.Judge*`, the first-copy
+pass); `SandboxedReaderOwnerTests` keeps it so. Placement, the bomb gate, staging and commit,
+MOTW and the AMSI scan stay in `TarSandboxedService`/`AntivirusScanService`. Fix phase 4 (2026-09-25)
 removed `QuarantineStaging.cs` (hardlink staging, T-F233) — see `DECISIONS.md`'s fix-phase-4 entry.
 
 P/Invoke surface:

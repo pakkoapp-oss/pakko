@@ -528,87 +528,43 @@ public sealed class AntivirusScanService : IAntivirusScanService
         System.Text.Encoding? tarOutputEncoding,
         CancellationToken cancellationToken)
     {
-        TarSandboxScope? scope = null;
+        ISandboxedArchiveReader? reader = null;
         try
         {
-            scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, cancellationToken, tarOutputEncoding)
+            reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: true, tarOutputEncoding, cancellationToken)
                 .ConfigureAwait(false);
+            _ = await reader.ScanAsync(cancellationToken).ConfigureAwait(false);
 
-            (_, string[] allNames, _, List<(string Name, long Size)> fileEntries) = await TarSandboxedService.ScanForUnsafeEntriesAsync(scope, cancellationToken)
-                .ConfigureAwait(false);
-
-            bool isSelectedSubset = selectedEntryPaths is { Count: > 0 };
-            List<string>? expandedSelection = isSelectedSubset
-                ? TarSandboxedService.ExpandSelection(allNames, selectedEntryPaths!)
-                : null;
-            // T-F441: a selection names entries by their listed names; they must be the entries' own.
-            if (expandedSelection is { Count: > 0 })
+            ScanQuarantine quarantine = await reader.ExtractForScanAsync(selectedEntryPaths, cancellationToken).ConfigureAwait(false);
+            if (quarantine.Failure is { } failure)
             {
-                TarNames.EnsureNamesCanDecide(TarNames.Judge(
-                    allNames, await scope.ReadHeaderNamesAsync(cancellationToken).ConfigureAwait(false), expandedSelection));
-            }
-
-            // Same T-F142 "expandedSelection-vs-whole-archive" total-entry computation
-            // ExtractSingleArchiveAsync already derives for its own move-phase progress — reused
-            // here, not re-listed via a second tar.exe call, so real per-entry progress costs
-            // nothing extra beyond what the pre-scan above already fetched.
-            int totalEntries = expandedSelection != null
-                ? expandedSelection.Count(n => !n.EndsWith('/'))
-                : allNames.Count(n => !n.EndsWith('/'));
-
-            // T-F52, as extraction does it (T-F460: the same names, through the long-path prefix).
-            TarSandboxedService.PreCreateImplicitFolders((IEnumerable<string>?)expandedSelection ?? allNames, scope.OutputDirectory!);
-
-            (int exitCode, _, string stdErr) = await scope.ExtractAsync(expandedSelection, cancellationToken).ConfigureAwait(false);
-            if (exitCode != 0)
-            {
-                findings.Add(CoreMessages.Inconclusive(archivePath, null,
-                    CoreMessages.Text(MessageCode.ScanCannotExtract, TarSandboxedService.DescribeFailure(stdErr))));
+                findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Text(MessageCode.ScanCannotExtract, failure)));
                 return;
             }
 
-            // T-F171: extraction also takes out the first of several same-named copies, so it is
-            // scanned too. Everything the first-copy pass wrote is scanned, not only the files
-            // extraction would keep.
-            List<TarSandboxedService.DuplicateGroup> duplicates =
-                TarSandboxedService.FindDuplicateGroups(fileEntries, allNames, expandedSelection);
             var target = new TarScanTarget(archivePath, scanner, findings, reportProgress);
             int scanned = await ScanExtractedFilesAsync(
-                scope.OutputDirectory!, 0, totalEntries + duplicates.Count, target, cancellationToken)
+                quarantine.MainDirectory, 0, quarantine.TotalEntries, target, cancellationToken)
                 .ConfigureAwait(false);
-            // T-F462: a first copy counts only when the listing names the main pass's files truly, and
-            // only at its group's own path (TarSandboxedService.FirstCopiesAtTheirPath). A best-fit pair
-            // lists as one name twice, and its "first copy" is a file already scanned, which must not
-            // stand in for a file lost elsewhere; it is still scanned.
             int credited = scanned;
-            if (duplicates.Count > 0)
+            if (quarantine.FirstCopiesDirectory is { } firstDir)
             {
-                (string firstDir, int firstExitCode, string firstStdErr) = await scope.ExtractFirstOccurrencesAsync(
-                    duplicates.Select(g => g.FirstName).ToList(), cancellationToken).ConfigureAwait(false);
-                // T-F460 (fresh review): a first copy tar.exe did not write was never scanned.
-                if (firstExitCode != 0)
+                if (quarantine.FirstCopiesFailure is { } firstFailure)
                 {
-                    findings.Add(CoreMessages.Inconclusive(archivePath, null,
-                        CoreMessages.Text(MessageCode.ScanCannotExtract, TarSandboxedService.DescribeFailure(firstStdErr))));
+                    findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Text(MessageCode.ScanCannotExtract, firstFailure)));
                     return;
                 }
                 _ = await ScanExtractedFilesAsync(
-                    firstDir, scanned, totalEntries + duplicates.Count, target, cancellationToken)
+                    firstDir, scanned, quarantine.TotalEntries, target, cancellationToken)
                     .ConfigureAwait(false);
-                string[] mainFiles = [.. QuarantineFiles.EnumerateFiles(scope.OutputDirectory!)
-                    .Select(f => QuarantineFiles.Relative(scope.OutputDirectory!, f).Replace('\\', '/'))];
-                bool faithful = TarNames.JudgeExtracted((IReadOnlyList<string>?)expandedSelection ?? allNames, mainFiles, []).Trust == TarNameTrust.Faithful;
-                string[] firstFiles = [.. QuarantineFiles.EnumerateFiles(firstDir)
-                    .Select(f => QuarantineFiles.Relative(firstDir, f).Replace('\\', '/'))];
-                credited = scanned + (faithful ? TarSandboxedService.FirstCopiesAtTheirPath(duplicates, firstFiles, mainFiles) : 0);
+                credited = scanned + quarantine.CreditedFirstCopies;
             }
 
             // T-F462: Clean only with every file accounted for, whichever name or folder broke (the
             // middle of three same-named copies, a folder Windows trims, a pass that failed).
-            int expected = TarSandboxedService.FileEntriesInScope(fileEntries, expandedSelection);
-            if (credited < expected)
+            if (credited < quarantine.ExpectedFiles)
                 findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Text(MessageCode.ScanFilesMissing,
-                    credited.ToString(CultureInfo.CurrentCulture), expected.ToString(CultureInfo.CurrentCulture))));
+                    credited.ToString(CultureInfo.CurrentCulture), quarantine.ExpectedFiles.ToString(CultureInfo.CurrentCulture))));
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is TarSandboxedService.TarArchiveRejectedException
@@ -620,7 +576,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
         }
         finally
         {
-            scope?.Dispose();
+            reader?.Dispose();
         }
     }
 

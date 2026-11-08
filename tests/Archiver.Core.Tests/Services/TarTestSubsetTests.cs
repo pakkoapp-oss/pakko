@@ -1,4 +1,5 @@
 using Archiver.Core.Services;
+using Archiver.Core.Services.Sandbox;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
@@ -16,7 +17,7 @@ public sealed class TarTestSubsetTests
     [Fact]
     public void Of_FewerPass_ListsThePassedFilesForMinusT()
     {
-        var subset = TarSandboxedService.TestSubset.Of(Names, Sizes, (name, _) => name == "c.txt");
+        var subset = TarExeReader.TestSubset.Of(Names, Sizes, (name, _) => name == "c.txt");
 
         subset.Members.Should().Equal("./c.txt");
         subset.ExcludedFiles.Should().BeNull();
@@ -27,7 +28,7 @@ public sealed class TarTestSubsetTests
     [Fact]
     public void Of_FewerLeftOut_ListsTheLeftOutFilesForMinusX()
     {
-        var subset = TarSandboxedService.TestSubset.Of(Names, Sizes, (name, _) => name != "c.txt");
+        var subset = TarExeReader.TestSubset.Of(Names, Sizes, (name, _) => name != "c.txt");
 
         subset.Members.Should().BeNull();
         subset.ExcludedFiles.Should().Equal("./c.txt");
@@ -37,7 +38,7 @@ public sealed class TarTestSubsetTests
     [Fact]
     public void Of_EveryFilePasses_NoList()
     {
-        var subset = TarSandboxedService.TestSubset.Of(Names, Sizes, (_, isFolder) => !isFolder);
+        var subset = TarExeReader.TestSubset.Of(Names, Sizes, (_, isFolder) => !isFolder);
 
         subset.Members.Should().BeNull();
         subset.ExcludedFiles.Should().BeNull();
@@ -47,7 +48,7 @@ public sealed class TarTestSubsetTests
     [Fact]
     public void Of_OnlyFoldersPass_NothingToRead()
     {
-        var subset = TarSandboxedService.TestSubset.Of(Names, Sizes, (_, isFolder) => isFolder);
+        var subset = TarExeReader.TestSubset.Of(Names, Sizes, (_, isFolder) => isFolder);
 
         subset.NothingToRead.Should().BeTrue();
     }
@@ -57,7 +58,7 @@ public sealed class TarTestSubsetTests
     {
         var asked = new List<string>();
 
-        TarSandboxedService.TestSubset.Of(Names, Sizes, (name, _) =>
+        TarExeReader.TestSubset.Of(Names, Sizes, (name, _) =>
         {
             asked.Add(name);
             return true;
