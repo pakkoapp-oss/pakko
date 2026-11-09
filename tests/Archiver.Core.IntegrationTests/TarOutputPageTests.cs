@@ -152,7 +152,7 @@ public sealed class TarOutputPageTests : IDisposable
 
     private SwapFixture Fixture(bool threatTwice = false)
     {
-        var (threat, shown, listing) = SwapPair() ?? throw new InvalidOperationException("no swap pair; the attribute skips this test");
+        (string threat, string shown, Encoding listing) = SwapPair() ?? throw new InvalidOperationException("no swap pair; the attribute skips this test");
         string path = System.IO.Path.Combine(_temp.Path, "swap.tar");
         TarBuilder.WriteTar(path,
         [

@@ -4,12 +4,13 @@ namespace Archiver.CLI;
 public static class CliInfoText
 {
     public const string CreateExtractList = "create, extract, list";
+    public const string ExtractList = "extract, list";
 
     /// <summary>
     /// T-F342: 7z is created only where this system's tar.exe has a 7z writer; reading it does not
     /// depend on that.
     /// </summary>
-    public static string SevenZipActions(bool writerAvailable) => writerAvailable ? CreateExtractList : "extract, list";
+    public static string SevenZipActions(bool writerAvailable) => writerAvailable ? CreateExtractList : ExtractList;
 
     /// <summary>T-F403: the 7z methods this system's tar.exe can write.</summary>
     public static string SevenZipMethodsLine(IReadOnlyList<Archiver.Core.Models.SevenZipMethod> methods) =>
