@@ -179,7 +179,16 @@ internal sealed class HelperReader : ISandboxedArchiveReader
             return new TestOutcome(CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported), declared, false);
 
         Action<int> onBytes = ContentProgress(progress, declared);
-        var output = new ArchiveHelperOutput(ArchiveHelperMode.Test, (_, bytes) => onBytes((int)Math.Min(int.MaxValue, bytes)));
+        // T-F479: "P" says how far the entry under way got, its "K" where it ended; the bar takes the growth.
+        long counted = 0;
+        void Grow(long bytes)
+        {
+            onBytes((int)Math.Min(int.MaxValue, bytes - counted));
+            counted = bytes;
+        }
+        var output = new ArchiveHelperOutput(ArchiveHelperMode.Test,
+            onRead: (_, bytes) => { Grow(bytes); counted = 0; },
+            onReading: (_, bytes) => Grow(bytes));
         try
         {
             await RunAsync(ArchiveHelperMode.Test, _charset, [.. files.Select(e => e.Index)], output, cancellationToken).ConfigureAwait(false);

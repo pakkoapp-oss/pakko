@@ -2230,6 +2230,7 @@ in `\n`, strictly increasing, no leading zeros, at most 4,000,000; anything else
 | `C <name> <rc\|->` | `probe`: the return of each `support_*` call, `-` when the DLL lacks that export |
 | `W <index> <errno> <hex8>` | `archive_read_next_header` returned `ARCHIVE_WARN` for this entry; any status but `ARCHIVE_OK`, `ARCHIVE_WARN` and `ARCHIVE_EOF` (`ARCHIVE_RETRY` included) is an `F`. On an entry's data (`archive_read_data_block`) a warning is an `F` too: it is how libarchive reports a 7z or RAR CRC mismatch |
 | `E <index> <filetype> <size\|-> <mtime\|-> <nsec> <encrypted\|-> <sparse> <name hex16> <link hex16>` | one entry; the link is the symlink target, else the hard-link target. A size is at most `long.MaxValue / 4,000,000` (about 2 TiB), so a sum over every entry fits a long; a name with an unpaired surrogate refuses the archive at the scan |
+| `P <index> <bytes>` | `test` only (T-F479): the selected entry under way has been read to this logical end, written each time it grew by 1 MiB; growing, and the same entry's `K` follows, no shorter. Each `P` and `K` of a `test` is written through at once |
 | `K <index> <bytes>` | a selected entry read in full (and written, in `extract`); bytes bounded as an `E` size |
 | `F <code> <hex8>` | the run failed: a libarchive status with its error string, or one of the helper's own codes below |
 | `D` | the run completed; absent on any failure |

@@ -465,6 +465,59 @@ public sealed class HelperReaderTests : IDisposable
         return reader.ReadToEnd() == marker;
     }
 
+    // T-F479: every backend moves the bar of every operation whose bar a reader drives, for many
+    // entries and for one large one. Extract of one large entry is left out: its bar is a poll of
+    // the output folder, so it moves only as fast as a clock (a size-poll test would be timed).
+    public static TheoryData<string, string, bool> ProgressRows
+    {
+        get
+        {
+            var rows = new TheoryData<string, string, bool>();
+            foreach (string backend in new[] { TarExe, Helper })
+            {
+                rows.Add(backend, "Test", false);
+                rows.Add(backend, "Test", true);
+                rows.Add(backend, "Extract", false);
+            }
+            return rows;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(ProgressRows))]
+    public async Task Progress_MovesBetweenTheEnds(string backend, string operation, bool oneLargeEntry)
+    {
+        string archive = Path.Combine(_temp.Path, Guid.NewGuid().ToString("N")[..8] + ".tar");
+        TarBuilder.WriteTar(archive, oneLargeEntry
+            ? [new TarBuilder.Entry { Name = "big.bin", Content = new byte[16 << 20], ModifiedUnixSeconds = 1700000000 }]
+            : Enumerable.Range(0, 20).Select(i => new TarBuilder.Entry { Name = $"f{i:D2}.bin", Content = new byte[64 << 10], ModifiedUnixSeconds = 1700000000 }));
+        var percents = new List<int>();
+        var progress = new SyncProgress(r => { lock (percents) percents.Add(r.Percent); });
+
+        ArchiveResult result = operation == "Test"
+            ? await Service(backend).TestAsync([archive], progress)
+            : await Service(backend).ExtractAsync(new ExtractOptions
+            {
+                ArchivePaths = [archive],
+                DestinationFolder = Path.Combine(_temp.Path, "dest-" + Path.GetRandomFileName()),
+                Mode = ExtractMode.SingleFolder,
+            }, progress: progress);
+
+        result.Errors.Should().BeEmpty();
+        percents.Should().Contain(p => p > 0 && p < 99, "the bar moves between its ends, not only at them");
+    }
+
+    [Fact]
+    public void ProgressRows_CoverEveryReader()
+    {
+        string[] readers = [.. typeof(ISandboxedArchiveReader).Assembly.GetTypes()
+            .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(ISandboxedArchiveReader).IsAssignableFrom(t))
+            .Select(t => t.Name)];
+
+        readers.Should().BeEquivalentTo(["TarExeReader", "HelperReader"],
+            "a new reader gets its rows in ProgressRows (T-F479) and its name here");
+    }
+
     private sealed class SyncProgress(Action<ProgressReport> onReport) : IProgress<ProgressReport>
     {
         public void Report(ProgressReport value) => onReport(value);

@@ -1521,6 +1521,40 @@ re-measured with T-F346's script before and after.
   `TarSandboxedService`, `Sandbox/` and `AntivirusScanService`.
 - **Reported by:** the agent's root-cause review, 2026-11-06.
 
+### T-F479 - Test through the archive helper moved no progress bar (P1, a T-F470 regression, v1.10.0)
+
+- [x] **Status:** fixed 2026-11-09 (`fix/T-F479-helper-test-progress`; `docs/DECISIONS.md`, "T-F479").
+  Found by the v1.10.0 release smoke (`APP-026` on CI bundle 1.10.0.0): Test of a 1 GB 7z of 16
+  files left the App's bar empty for its whole minute. `Archiver.ArchiveHelper` buffered stdout to
+  64 KB, so every `K` line arrived at exit; and a `K` comes only after a whole entry, so one large
+  entry could not move the bar even unbuffered. tar.exe's path counted its stdout bytes as they
+  came (v1.9.0's `APP-026`: "the bar 0 to 100"). Now `test` writes `P <index> <bytes>` each MiB of
+  an entry and writes each `P` and `K` through at once; Pakko's parser takes `P` in Test only.
+  Seen red on `main`: the protocol tests (no `P`, and a `K 0` held back while the helper waits on
+  stdin) and `HelperReaderTests.Progress_MovesBetweenTheEnds` (helper, Test, one large entry: only
+  99 and 100). Left: the device rerun of `APP-026` on the new bundle.
+- **Reported by:** the agent's release smoke, 2026-11-09; in this release by the user's call ("no
+  regressions in releases").
+
+### T-F478 - Test's structure-only warning names tar.exe when the archive helper read the archive (P3)
+
+- [ ] **Status:** open. Found 2026-11-09 by the v1.10.0 release smoke (`EXP-013`, `APP-006`):
+  `MessageCode.TestedStructureOnly` says "tar.exe cannot verify the contents of files in this
+  format" in the App, Explorer's window and `pakko t`, also when the helper (T-F470) did the
+  reading. The fact holds (the format has no content checksums); the actor named is wrong. Next:
+  a text without the reader's name, in 37 locales. Not a release blocker: it is not a regression of
+  what the text says, only of whom it names.
+- **Reported by:** the agent, 2026-11-09.
+
+### T-F477 - A typed archive name with the format's extension gets it twice (P3)
+
+- [ ] **Status:** open. Found 2026-11-09 by the v1.10.0 release smoke (`APP-028` setup): the App's
+  Name field shows "archive.zip" as its placeholder, but a typed "case4.zip" writes `case4.zip.zip`,
+  since `ArchiveNaming.SingleArchiveFileName` always appends the format's extension. Since T-F199
+  step 4 (2026-09-28), not a v1.10.0 regression. Next: drop a typed extension that matches the
+  chosen format (and decide what a typed different extension means), with tests.
+- **Reported by:** the agent, 2026-11-09.
+
 ### T-F476 - CI's `windows-2022` image now has a tar.exe 3.8.9 without xz or LZMA (P3)
 
 - [ ] **Status:** open. Found 2026-11-09 by T-F470's release-batch sweep on a throwaway branch:

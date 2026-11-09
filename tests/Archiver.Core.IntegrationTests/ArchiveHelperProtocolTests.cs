@@ -127,6 +127,79 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
         run.OutFiles.Should().BeEmpty();
     }
 
+    // T-F479: Test reports a large entry's progress as it reads it; block boundaries are libarchive's
+    // own (they may differ between 3.8.x and 3.5.2), so only the properties are pinned.
+    [Fact]
+    public async Task Test_ReportsALargeEntrysProgress_BeforeItsRead()
+    {
+        const int size = (3 << 20) + 1;
+        string archive = Tar([new TarBuilder.Entry { Name = "big.bin", Content = new byte[size], ModifiedUnixSeconds = Mtime }]);
+
+        Run run = await RunAsync(archive, ["test", "--format", "tar", "--select", @"list\sel.txt"], "0\n");
+
+        run.ExitCode.Should().Be(0);
+        long[] progress = [.. run.Lines.Where(l => l.StartsWith("P 0 ", StringComparison.Ordinal)).Select(l => long.Parse(l[4..], System.Globalization.CultureInfo.InvariantCulture))];
+        progress.Should().HaveCountGreaterThanOrEqualTo(2);
+        progress.Zip(progress.Skip(1)).Should().OnlyContain(p => p.Second - p.First >= 1 << 20, "a step is at least 1 MiB");
+        progress[0].Should().BeGreaterThanOrEqualTo(1 << 20);
+        progress[^1].Should().BeLessThanOrEqualTo(size);
+        int read = Array.IndexOf(run.Lines, $"K 0 {size}");
+        read.Should().BeGreaterThan(Array.LastIndexOf(run.Lines, $"P 0 {progress[^1]}"), "progress comes before the read");
+    }
+
+    [Fact]
+    public async Task ProgressLines_AreTestsAlone_AndNotForASmallEntry()
+    {
+        string big = Tar([new TarBuilder.Entry { Name = "big.bin", Content = new byte[(2 << 20) + 1], ModifiedUnixSeconds = Mtime }]);
+        string small = Tar([new TarBuilder.Entry { Name = "s.bin", Content = new byte[(1 << 20) - 1], ModifiedUnixSeconds = Mtime }]);
+
+        Run extract = await RunAsync(big, ["extract", "--format", "tar", "--select", @"list\sel.txt", "--max-total", "10000000"], "0\n");
+        Run test = await RunAsync(small, ["test", "--format", "tar", "--select", @"list\sel.txt"], "0\n");
+
+        extract.ExitCode.Should().Be(0);
+        extract.Lines.Should().NotContain(l => l.StartsWith("P ", StringComparison.Ordinal));
+        test.Lines.Should().Contain($"K 0 {(1 << 20) - 1}").And.NotContain(l => l.StartsWith("P ", StringComparison.Ordinal));
+    }
+
+    // T-F479: a Test's lines reach Pakko as each is written, not when the run ends. Made, not timed:
+    // the archive comes through a pipe that holds back everything after the first entry, so the
+    // helper waits on stdin; its "K 0" either arrives now or (buffered) only after the rest is sent.
+    [Fact]
+    public async Task Test_ALineArrives_WhileTheHelperStillReads()
+    {
+        const int size = 2 << 20;
+        string whole = Tar([new TarBuilder.Entry { Name = "a.bin", Content = new byte[size], ModifiedUnixSeconds = Mtime }, File("b.txt", "B")]);
+        byte[] bytes = System.IO.File.ReadAllBytes(whole);
+        int firstPart = 512 + size + 512;
+
+        using var stdin = new System.IO.Pipes.AnonymousPipeServerStream(System.IO.Pipes.PipeDirection.Out, HandleInheritability.None);
+        var firstRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var lines = new List<string>();
+        Task<Run> running = RunAsync(null, ["test", "--format", "tar", "--select", @"list\sel.txt"], "0\n1\n",
+            new Microsoft.Win32.SafeHandles.SafeFileHandle(stdin.ClientSafePipeHandle.DangerousGetHandle(), ownsHandle: false), // NOSONAR: S3869 — the pipe outlives the run
+            line =>
+            {
+                string text = Encoding.ASCII.GetString(line);
+                lock (lines)
+                    lines.Add(text);
+                if (text == $"K 0 {size}")
+                    firstRead.TrySetResult();
+            },
+            stdin.DisposeLocalCopyOfClientHandle);
+        await stdin.WriteAsync(bytes.AsMemory(0, firstPart));
+        await stdin.FlushAsync();
+
+        Task arrived = await Task.WhenAny(firstRead.Task, running, Task.Delay(TimeSpan.FromSeconds(60)));
+        bool sawItEarly = arrived == firstRead.Task;
+        await stdin.WriteAsync(bytes.AsMemory(firstPart));
+        stdin.Dispose();
+        Run run = await running;
+
+        sawItEarly.Should().BeTrue("the helper writes each read line through, while it still waits for the rest");
+        run.ExitCode.Should().Be(0);
+        lines.Should().Contain(["K 0 " + size, "K 1 1", "D"]);
+    }
+
     // --- Security & boundary ---
 
     [Fact]
@@ -349,7 +422,8 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
         return path;
     }
 
-    private async Task<Run> RunAsync(string? archive, string[] arguments, string? selection = null)
+    private async Task<Run> RunAsync(string? archive, string[] arguments, string? selection = null,
+        Microsoft.Win32.SafeHandles.SafeFileHandle? stdinPipe = null, StdOutLineHandler? onLine = null, Action? onStarted = null)
     {
         _profile.EnsureExists();
         using SafeSidHandle sid = _profile.GetSid();
@@ -368,6 +442,15 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
 
         using var job = SandboxJobObject.Create(1L << 30, TimeSpan.FromMinutes(1));
         using FileStream? stdin = archive is null ? null : new FileStream(archive, FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (onLine is not null)
+        {
+            (int lineExit, _, _) = await SandboxedProcessLauncher.RunAsync(helper, arguments,
+                new ProcessLaunchOptions(AppContainerSid: sid, Job: job.Handle, StdIn: stdinPipe, WorkingDirectory: root,
+                    OutputEncoding: Encoding.Latin1, OnProcessStarted: _ => onStarted?.Invoke(),
+                    StdOutLines: new StdOutLines(onLine, ArchiveHelperOutput.MaxLineBytes, 1L << 30)),
+                CancellationToken.None);
+            return new Run(lineExit, [], root);
+        }
         byte[] stdout = [];
         (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(helper, arguments,
             new ProcessLaunchOptions(AppContainerSid: sid, Job: job.Handle, StdIn: stdin?.SafeFileHandle, WorkingDirectory: root,

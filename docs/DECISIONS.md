@@ -14521,6 +14521,60 @@ constraint "only tar.exe" stands until the user decides (below).
   swap-pair tests failed again. Four first translations used the replaced word for "archive"
   (ko, th, vi, zh); `GlossaryTests` caught them.
 
+## T-F479 - Test's progress through the archive helper (2026-11-09)
+
+**Found** by the v1.10.0 release smoke on CI bundle 1.10.0.0 (8fa31f34), `APP-026`. Test of a
+1 GB 7z of 16 files of 64 MB, written by tar.exe -a, in the App: the bar stayed an empty track for
+the whole test (frames every ~0.7 s from the click), then the result. v1.9.0's `APP-026` on a
+649 MB 7z through tar.exe: "the bar 0 to 100". Two causes, both in the helper:
+- `main.c` writes stdout through a 64 KB buffer (`put`) flushed when full or at exit, so every `K`
+  line of a Test reached `HelperReader.TestAsync`'s `ContentProgress` at the end;
+- a `K` comes only after a whole entry, so an archive of one large file could not move the bar
+  even unbuffered. tar.exe's path counted stdout bytes as they streamed, within a file too.
+
+**Chosen.** In `test` only, `copy_entry` writes `P <index> <bytes>` each time the entry's logical
+end (the measure `K` uses) has grown by 1 MiB since the last `P`, and `test` writes each `P` and
+each `K` through at once (`flush_out`). Pakko's parser takes `P` only in Test, only for the entry
+under way (listed, past the last `K`), only growing, and wants that entry's `K` next and no
+shorter; `D` with a read under way breaks the protocol. `HelperReader.TestAsync` feeds the growth
+of each `P` and `K` to the same `ContentProgress`.
+- Not `extract`: its bar is Pakko's poll of `out\` (`PollExtractionProgressAsync`), unchanged, so
+  extract, list and probe keep their output and buffering.
+- Not the antivirus scan: its extraction into the quarantine had no progress on tar.exe either
+  (`AntivirusScanService.ScanTarArchiveAsync` counts files as AMSI takes them); not a regression.
+- 1 MiB: at most ~2,000 lines a GiB, a step visible on a 50 MB entry.
+- A per-line write is ~20,000 `WriteFile` calls for a 20,000-entry Test: no measurable cost; the
+  cancel test that holds the first `K` line still fills the pipe.
+
+**One owner for progress (the user's question).** Test, Extract and Scan each compute their bar in
+their own place (`ContentProgress`, the `out\` poll, AMSI's file count). Merging them was not done
+for this release: this regression was in the helper's protocol, not in the arithmetic, and one
+class would not have caught it. What would have: a matrix that every reader moves every bar it
+drives. `HelperReaderTests.Progress_MovesBetweenTheEnds`, both backends x {Test, Extract} x {20
+entries, one 16 MiB entry}, wants a percent strictly between 0 and 99; `ProgressRows_CoverEveryReader`
+fails when a new `ISandboxedArchiveReader` has no rows. It lives beside the other two-backend
+tests rather than in a new file (the plan's `TarProgressOwnerTests`), since that file has the
+backends and the synchronous progress fake. Extract of one large entry is out of the matrix: its
+bar is a size poll, which a test could only time.
+
+**Tests, each seen red on 8fa31f34:**
+- `ArchiveHelperProtocolTests.Test_ReportsALargeEntrysProgress_BeforeItsRead`: properties only
+  (at least two `P`, each step at least 1 MiB, the last no more than the `K` after it), since
+  libarchive's block sizes may differ between 3.8.x and 3.5.2.
+- `ProgressLines_AreTestsAlone_AndNotForASmallEntry`: no `P` in extract, none under 1 MiB.
+- `Test_ALineArrives_WhileTheHelperStillReads`: made, not timed. The archive comes through a pipe
+  that holds back all but the first entry and the next header, so the helper waits on stdin; its
+  `K 0` either arrives then or (buffered) only after the test sends the rest. 60 s is only a guard.
+  Red without the fix after the guard, deterministic.
+- `HelperReaderTests.Progress_MovesBetweenTheEnds` (helper, Test, one large entry): only 99 and 100.
+- `ArchiveHelperOutputTests`: `P` read in order; at `MaxEntrySize`; refused in list, extract and
+  probe, for an entry not listed, already read or not the one under way, standing still or going
+  back, with a shorter `K`, with a field too many or few, a leading zero, after `D`, and a `D` with
+  a read under way.
+
+Mutants, each killed: no flush after `K` (the pipe test), a `P` per block instead of per MiB (the
+two property tests), no "shorter `K`" check (the parser row).
+
 ## T-F470 - a helper over `archiveint.dll` as lister and extractor (2026-11-07)
 
 **The user's decisions (2026-11-07).** The helper both lists and extracts ("lister + extractor");
