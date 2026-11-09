@@ -1191,9 +1191,11 @@ public sealed class TarSandboxedService : ITarService
         int lastPercent = -1;
         return count =>
         {
-            read += count;
+            // T-F479 review: never past the declared size, and the percent in double, so a helper's
+            // forged counts cannot wrap the product into a negative or oversized percent.
+            read += Math.Min(Math.Max(count, 0), Math.Max(declaredSize - read, 0));
             // 99 at most: 100 is said once tar.exe has exited with no error.
-            int percent = declaredSize > 0 ? (int)Math.Min(99, read * 100 / declaredSize) : 0;
+            int percent = declaredSize > 0 ? (int)Math.Min(99, read * 100.0 / declaredSize) : 0;
             if (percent == lastPercent)
                 return;
             lastPercent = percent;

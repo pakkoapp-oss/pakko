@@ -14550,8 +14550,8 @@ of each `P` and `K` to the same `ContentProgress`.
 their own place (`ContentProgress`, the `out\` poll, AMSI's file count). Merging them was not done
 for this release: this regression was in the helper's protocol, not in the arithmetic, and one
 class would not have caught it. What would have: a matrix that every reader moves every bar it
-drives. `HelperReaderTests.Progress_MovesBetweenTheEnds`, both backends x {Test, Extract} x {20
-entries, one 16 MiB entry}, wants a percent strictly between 0 and 99; `ProgressRows_CoverEveryReader`
+drives. `HelperReaderTests.Progress_MovesBetweenTheEnds`, both backends x {Test x {20 entries, one
+16 MiB entry}, Extract x 20 entries}, wants a percent strictly between 0 and 99; `ProgressRows_CoverEveryReader`
 fails when a new `ISandboxedArchiveReader` has no rows. It lives beside the other two-backend
 tests rather than in a new file (the plan's `TarProgressOwnerTests`), since that file has the
 backends and the synchronous progress fake. Extract of one large entry is out of the matrix: its
@@ -14574,6 +14574,15 @@ between 0 and 99.
   probe, for an entry not listed, already read or not the one under way, standing still or going
   back, with a shorter `K`, with a field too many or few, a leading zero, after `D`, and a `D` with
   a read under way.
+
+**The fresh review (opus, read-only, 2026-11-09)** found nothing serious and two low ones, both
+fixed: `ContentProgress` multiplied the count by 100 in a long, so a compromised helper listing
+~2^61 bytes and sending `P` lines in `int.MaxValue` steps could wrap the product into a negative
+percent before the listing check rejected the run (before `P`, one `K` per entry could not get
+there); the count now stops at the declared size and the percent is computed in double
+(`TarSandboxedServiceProgressPollingTests.ContentProgress_HugeCounts_StayWithinTheBar`, red at -3
+first). And the pipe test's first write could block for ever if the launch failed before the
+helper started; the launch's failure is now awaited first.
 
 Mutants, each killed: no flush after `K` (the pipe test's `K` row), no flush after `P` (its `P`
 row; the matrix alone lets it live, since late `P` lines still give middle percents), a `P` per

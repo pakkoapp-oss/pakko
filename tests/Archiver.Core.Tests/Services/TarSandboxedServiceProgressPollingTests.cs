@@ -252,4 +252,19 @@ public sealed class TarSandboxedServiceProgressPollingTests
         reports.Should().NotBeEmpty();
         reports[0].Percent.Should().Be(30);
     }
+
+    // T-F479 review: a compromised archive helper may list ~2^61 bytes and then report reads in
+    // int.MaxValue steps (a "P" line each); the count times 100 must not wrap into a negative or
+    // oversized percent before the listing check rejects the run.
+    [Fact]
+    public void ContentProgress_HugeCounts_StayWithinTheBar()
+    {
+        var percents = new List<int>();
+        Action<int> onBytes = TarSandboxedService.ContentProgress(new SynchronousProgress<ProgressReport>(r => percents.Add(r.Percent)), long.MaxValue / 4);
+
+        for (int i = 0; i < 50_000_000; i++)
+            onBytes(int.MaxValue);
+
+        percents.Should().NotBeEmpty().And.OnlyContain(p => p >= 0 && p <= 99);
+    }
 }
