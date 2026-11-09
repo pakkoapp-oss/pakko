@@ -60,13 +60,25 @@ function Invoke-Tool {
 }
 
 function Invoke-Pakko {
-    param([Parameter(Mandatory)][string[]]$Arguments, [string]$WorkingDirectory, [int]$TimeoutSeconds = 900)
+    param([Parameter(Mandatory)][string[]]$Arguments, [string]$WorkingDirectory, [int]$TimeoutSeconds = 900, [string]$Exe = $Smoke.Pakko)
     foreach ($argument in $Arguments) {
         # T-F411: the switch name is read without case (-PSecret), the password as typed. -p- asks
         # for no password (T-F409); its "-" would match every dated log line in APP-018.
         if ($argument -imatch '^-p(.+)$' -and $Matches[1] -ne '-') { $null = $Smoke.Passwords.Add($Matches[1]) }
     }
-    Invoke-Tool -Exe $Smoke.Pakko -Arguments $Arguments -WorkingDirectory $WorkingDirectory -TimeoutSeconds $TimeoutSeconds
+    Invoke-Tool -Exe $Exe -Arguments $Arguments -WorkingDirectory $WorkingDirectory -TimeoutSeconds $TimeoutSeconds
+}
+
+# T-F470: a copy of pakko.exe alone in a folder, with no archive helper beside it, so it reads
+# tar-family archives through tar.exe: the fallback, and the rows about tar.exe's own names.
+function Get-TarExePakko {
+    param([Parameter(Mandatory)][string]$Folder)
+    $alone = Join-Path $Folder 'tarexe-bin\pakko.exe'
+    if (-not (Test-Path -LiteralPath $alone)) {
+        $null = [System.IO.Directory]::CreateDirectory((Split-Path $alone))
+        Copy-Item -LiteralPath $Smoke.Pakko -Destination $alone
+    }
+    $alone
 }
 
 # One line as typed at cmd.exe's prompt: pipes and redirections are cmd's.
