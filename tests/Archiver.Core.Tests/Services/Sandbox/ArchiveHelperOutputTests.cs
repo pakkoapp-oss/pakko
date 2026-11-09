@@ -10,6 +10,7 @@ public sealed class ArchiveHelperOutputTests
 {
     private const string V = "V 6C696261726368697665";
     private const string Plain = "E 0 32768 5 1700000000 0 0 0 0061 -";
+    private const string Big = "E 0 32768 3000000 1700000000 0 0 0 0061 -";
 
     // --- Happy path ---
 
@@ -44,6 +45,20 @@ public sealed class ArchiveHelperOutputTests
 
         seen.Should().Equal((0L, 5L), (1L, 7L));
         run.Read.Should().Equal((0L, 5L), (1L, 7L));
+    }
+
+    // T-F479: Test reports how far into an entry the read got, so one large entry moves the bar.
+    [Fact]
+    public void Test_ReportsProgressWithinAnEntry_ThenItsRead()
+    {
+        var reading = new List<(long, long)>();
+        var read = new List<(long, long)>();
+        var run = new ArchiveHelperOutput(ArchiveHelperMode.Test, (i, b) => read.Add((i, b)), (i, b) => reading.Add((i, b)));
+        Feed(run, V, Big, "E 1 32768 7 - 0 0 0 0062 -", "P 0 1048576", "P 0 2097152", "K 0 3000000", "K 1 7", "D");
+
+        reading.Should().Equal((0L, 1048576L), (0L, 2097152L));
+        read.Should().Equal((0L, 3000000L), (1L, 7L));
+        run.Finish(0).Should().Be(ArchiveHelperExit.Done);
     }
 
     [Fact]
@@ -129,6 +144,9 @@ public sealed class ArchiveHelperOutputTests
     {
         Breaks(ArchiveHelperMode.List, V, $"E 0 32768 {ArchiveHelperOutput.MaxEntrySize + 1} - 0 0 0 0061 -");
         Breaks(ArchiveHelperMode.Extract, V, Plain, $"K 0 {ArchiveHelperOutput.MaxEntrySize + 1}");
+        Breaks(ArchiveHelperMode.Test, V, Plain, $"P 0 {ArchiveHelperOutput.MaxEntrySize + 1}");
+        Parse(ArchiveHelperMode.Test, V, Plain, $"P 0 {ArchiveHelperOutput.MaxEntrySize}", $"K 0 {ArchiveHelperOutput.MaxEntrySize}")
+            .Read.Should().Equal((0L, ArchiveHelperOutput.MaxEntrySize));
 
         Parse(ArchiveHelperMode.List, V, $"E 0 32768 {ArchiveHelperOutput.MaxEntrySize} - 0 0 0 0061 -")
             .Entries.Single().Size.Should().Be(ArchiveHelperOutput.MaxEntrySize);
@@ -185,6 +203,22 @@ public sealed class ArchiveHelperOutputTests
         { "List", [V, "W 1 42 ."] },                             // a warning not for the next entry
         { "List", [V, "W 0 42 .", "W 0 42 ."] },                 // two warnings for one entry
         { "List", [V, "W 0 42 41"+ "4"] },                       // half a hex byte
+        { "List", [V, Plain, "P 0 5"] },                         // T-F479: progress in list
+        { "Extract", [V, Plain, "P 0 5"] },                      // progress in extract
+        { "Probe", [V, "P 0 5"] },                               // progress in probe
+        { "Test", [V, Plain, "P 1 5"] },                         // progress of an entry not listed
+        { "Test", [V, Plain, "K 0 5", "P 0 6"] },                // progress of an entry already read
+        { "Test", [V, Plain, "P 0 6", "P 0 5"] },                // progress going back
+        { "Test", [V, Plain, "P 0 6", "P 0 6"] },                // progress standing still
+        { "Test", [V, Plain, "P 0 0"] },                         // progress of nothing
+        { "Test", [V, Plain, "E 1 32768 5 - 0 0 0 0062 -", "P 0 6", "P 1 6"] }, // another entry's progress mid-read
+        { "Test", [V, Plain, "E 1 32768 5 - 0 0 0 0062 -", "P 0 6", "K 1 6"] }, // another entry's read mid-read
+        { "Test", [V, Plain, "P 0 6", "K 0 5"] },                // a read shorter than its progress
+        { "Test", [V, Plain, "P 00 6"] },                        // leading zero
+        { "Test", [V, Plain, "P 0 6 1"] },                       // a field too many
+        { "Test", [V, Plain, "P 0"] },                           // a field too few
+        { "Test", [V, Plain, "P 0 6", "D"] },                    // done with a read under way
+        { "Test", [V, Plain, "D", "P 0 6"] },                    // progress after done
         { "List", [V, "D", Plain] },                             // a line after done
         { "List", [V, "F -30 .", "D"] },                         // done after a failure
         { "List", [V, "Q 1"] },                                  // a line the protocol does not have

@@ -37,6 +37,9 @@ typedef int(__cdecl *support_fn)(void *);
 #define FAIL_SELECTION_LEFT (-6)
 #define FAIL_NO_READER (-7)
 
+/* T-F479: in test, how far an entry's read must grow before Pakko hears of it again ("P"). */
+#define PROGRESS_STEP (1u << 20)
+
 #define MAX_SELECTED 4000000u
 #define MAX_SELECTION_BYTES (MAX_SELECTED * 21u)
 
@@ -437,11 +440,12 @@ static int finish_output(HANDLE file, void *e, unsigned __int64 end)
    total is charged with the entry's logical end, not its data bytes: a hole costs the disk what data
    does (NTFS zero-fills up to the end), so a sparse entry claiming terabytes is stopped before the
    write that would reach them. */
-static int copy_entry(void *ar, void *e, HANDLE file, unsigned __int64 *total, unsigned __int64 maxTotal, unsigned __int64 *bytes)
+static int copy_entry(void *ar, void *e, unsigned __int64 index, int test, HANDLE file, unsigned __int64 *total, unsigned __int64 maxTotal, unsigned __int64 *bytes)
 {
     const la_int64_t declared = entry.size_is_set(e) ? entry.size(e) : -1;
     const unsigned __int64 room = maxTotal >= *total ? maxTotal - *total : 0;
     unsigned __int64 end = 0;
+    unsigned __int64 reported = 0;
     *bytes = 0;
     for (;;) {
         const void *block = NULL;
@@ -463,6 +467,16 @@ static int copy_entry(void *ar, void *e, HANDLE file, unsigned __int64 *total, u
             return report_own_failure(FAIL_TOTAL);
         if (file != INVALID_HANDLE_VALUE && length > 0 && write_at(file, offset, block, length) != EXIT_DONE)
             return EXIT_WRITE;
+        /* Extract's bar is Pakko's poll of out\; only a test has no file to poll. */
+        if (test && end - reported >= PROGRESS_STEP) {
+            put_str("P ");
+            put_u64(index);
+            put_str(" ");
+            put_u64(end);
+            put_str("\n");
+            flush_out();
+            reported = end;
+        }
     }
     /* Only a sparse entry ends in a hole; a plain one keeps the length its data gave, which Pakko
        compares with the listed size. */
@@ -475,7 +489,7 @@ static int copy_entry(void *ar, void *e, HANDLE file, unsigned __int64 *total, u
     return file != INVALID_HANDLE_VALUE ? finish_output(file, e, end) : EXIT_DONE;
 }
 
-static int extract_one(void *ar, void *e, unsigned __int64 index, int write, unsigned __int64 *total, unsigned __int64 maxTotal)
+static int extract_one(void *ar, void *e, unsigned __int64 index, int write, int test, unsigned __int64 *total, unsigned __int64 maxTotal)
 {
     HANDLE file = INVALID_HANDLE_VALUE;
     unsigned __int64 bytes = 0;
@@ -484,7 +498,7 @@ static int extract_one(void *ar, void *e, unsigned __int64 index, int write, uns
         return report_own_failure(FAIL_NOT_REGULAR);
     if (write && open_output(index, &file) != EXIT_DONE)
         return EXIT_WRITE;
-    r = copy_entry(ar, e, file, total, maxTotal, &bytes);
+    r = copy_entry(ar, e, index, test, file, total, maxTotal, &bytes);
     if (file != INVALID_HANDLE_VALUE && !CloseHandle(file) && r == EXIT_DONE)
         r = EXIT_WRITE;
     if (r == EXIT_DONE) {
@@ -493,6 +507,9 @@ static int extract_one(void *ar, void *e, unsigned __int64 index, int write, uns
         put_str(" ");
         put_u64(bytes);
         put_str("\n");
+        /* T-F479: a test's percents come from these lines; buffered, they all arrived at exit. */
+        if (test)
+            flush_out();
     }
     return r;
 }
@@ -604,7 +621,7 @@ static int run(void *ar, int extract, int test, const unsigned __int64 *selected
         put_entry(index, e);
         if ((extract || test) && next < selectedCount && selected[next] == index) {
             next++;
-            r = extract_one(ar, e, index, extract, &total, maxTotal);
+            r = extract_one(ar, e, index, extract, test, &total, maxTotal);
             if (r != EXIT_DONE)
                 return r;
         } else {

@@ -79,16 +79,21 @@ internal sealed class ArchiveHelperOutput
     private readonly List<string> _missingExports = [];
     private readonly Dictionary<string, int?> _capabilities = new(StringComparer.Ordinal);
     private readonly Action<long, long>? _onRead;
+    private readonly Action<long, long>? _onReading;
     private int _lines;
     private long _lastRead = -1;
+    private long _readingIndex = -1;
+    private long _readingBytes;
     private bool _versionSeen;
     private bool _pastPreamble;
     private bool _ended;
 
     /// <param name="mode">The mode the helper ran in.</param>
     /// <param name="onRead">Called for each "K" line with the entry's index and its bytes, as it arrives.</param>
-    public ArchiveHelperOutput(ArchiveHelperMode mode, Action<long, long>? onRead = null)
+    /// <param name="onReading">Test: called for each "P" line with the entry's index and how far its read got.</param>
+    public ArchiveHelperOutput(ArchiveHelperMode mode, Action<long, long>? onRead = null, Action<long, long>? onReading = null)
     {
+        _onReading = onReading;
         _mode = mode;
         _onRead = onRead;
     }
@@ -169,6 +174,9 @@ internal sealed class ArchiveHelperOutput
             case "K" when _mode is ArchiveHelperMode.Test or ArchiveHelperMode.Extract && fields.Length == 3:
                 TakeRead(fields);
                 break;
+            case "P" when _mode == ArchiveHelperMode.Test && fields.Length == 3:
+                TakeReading(fields);
+                break;
             case "F" when fields.Length == 3:
                 Failure = new ArchiveHelperFailure(Signed(fields[1], long.MinValue + 1, long.MaxValue), Hex8(fields[2], MaxMessageBytes));
                 _ended = true;
@@ -176,6 +184,8 @@ internal sealed class ArchiveHelperOutput
             case "D" when fields.Length == 1:
                 if (_mode == ArchiveHelperMode.Probe && _capabilities.Count != SupportNames.Length)
                     throw Broken("a probe that did not report every support call");
+                if (_readingIndex >= 0)
+                    throw Broken("done with a read under way");
                 Done = true;
                 _ended = true;
                 break;
@@ -251,9 +261,27 @@ internal sealed class ArchiveHelperOutput
         if (index >= _entries.Count || index <= _lastRead)
             throw Broken("a read entry not listed or out of order");
         long bytes = Unsigned(fields[2], MaxEntrySize);
+        if (_readingIndex >= 0 && (index != _readingIndex || bytes < _readingBytes))
+            throw Broken("a read that disagrees with its progress");
+        _readingIndex = -1;
+        _readingBytes = 0;
         _lastRead = index;
         _read.Add((index, bytes));
         _onRead?.Invoke(index, bytes);
+    }
+
+    // T-F479: "P", how far the read of the entry under way got; it only grows, and its "K" follows.
+    private void TakeReading(string[] fields)
+    {
+        long index = Unsigned(fields[1], MaxEntries - 1);
+        if (index >= _entries.Count || index <= _lastRead || (_readingIndex >= 0 && index != _readingIndex))
+            throw Broken("progress of an entry not listed, already read, or not the one being read");
+        long bytes = Unsigned(fields[2], MaxEntrySize);
+        if (bytes <= (_readingIndex == index ? _readingBytes : 0))
+            throw Broken("progress that does not grow");
+        _readingIndex = index;
+        _readingBytes = bytes;
+        _onReading?.Invoke(index, bytes);
     }
 
     // Decimal, no sign, no leading zero but "0" itself, at most max.
