@@ -436,11 +436,25 @@ static int finish_output(HANDLE file, void *e, unsigned __int64 end)
     return EXIT_DONE;
 }
 
+/* T-F479: a "P" line, written through, each time the entry's end grew by PROGRESS_STEP. */
+static void report_progress(unsigned __int64 index, unsigned __int64 end, unsigned __int64 *reported)
+{
+    if (end - *reported < PROGRESS_STEP)
+        return;
+    put_str("P ");
+    put_u64(index);
+    put_str(" ");
+    put_u64(end);
+    put_str("\n");
+    flush_out();
+    *reported = end;
+}
+
 /* Reads one entry's data; writes it to out\<index> when file is not INVALID_HANDLE_VALUE. The
    total is charged with the entry's logical end, not its data bytes: a hole costs the disk what data
    does (NTFS zero-fills up to the end), so a sparse entry claiming terabytes is stopped before the
    write that would reach them. */
-static int copy_entry(void *ar, void *e, unsigned __int64 index, int test, HANDLE file, unsigned __int64 *total, unsigned __int64 maxTotal, unsigned __int64 *bytes)
+static int copy_entry(void *ar, void *e, const unsigned __int64 *testIndex, HANDLE file, unsigned __int64 *total, unsigned __int64 maxTotal, unsigned __int64 *bytes)
 {
     const la_int64_t declared = entry.size_is_set(e) ? entry.size(e) : -1;
     const unsigned __int64 room = maxTotal >= *total ? maxTotal - *total : 0;
@@ -467,16 +481,9 @@ static int copy_entry(void *ar, void *e, unsigned __int64 index, int test, HANDL
             return report_own_failure(FAIL_TOTAL);
         if (file != INVALID_HANDLE_VALUE && length > 0 && write_at(file, offset, block, length) != EXIT_DONE)
             return EXIT_WRITE;
-        /* Extract's bar is Pakko's poll of out\; only a test has no file to poll. */
-        if (test && end - reported >= PROGRESS_STEP) {
-            put_str("P ");
-            put_u64(index);
-            put_str(" ");
-            put_u64(end);
-            put_str("\n");
-            flush_out();
-            reported = end;
-        }
+        /* Extract's bar is Pakko's poll of out\; only a test (testIndex set) has no file to poll. */
+        if (testIndex != NULL)
+            report_progress(*testIndex, end, &reported);
     }
     /* Only a sparse entry ends in a hole; a plain one keeps the length its data gave, which Pakko
        compares with the listed size. */
@@ -498,7 +505,7 @@ static int extract_one(void *ar, void *e, unsigned __int64 index, int write, int
         return report_own_failure(FAIL_NOT_REGULAR);
     if (write && open_output(index, &file) != EXIT_DONE)
         return EXIT_WRITE;
-    r = copy_entry(ar, e, index, test, file, total, maxTotal, &bytes);
+    r = copy_entry(ar, e, test ? &index : NULL, file, total, maxTotal, &bytes);
     if (file != INVALID_HANDLE_VALUE && !CloseHandle(file) && r == EXIT_DONE)
         r = EXIT_WRITE;
     if (r == EXIT_DONE) {

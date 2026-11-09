@@ -200,7 +200,7 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
             await running;
         await sent;
 
-        Task arrived = await Task.WhenAny(firstRead.Task, running, Task.Delay(TimeSpan.FromSeconds(60)));
+        var arrived = await Task.WhenAny(firstRead.Task, running, Task.Delay(TimeSpan.FromSeconds(60)));
         bool sawItEarly = arrived == firstRead.Task;
         await stdin.WriteAsync(bytes.AsMemory(firstPart));
         stdin.Dispose();
