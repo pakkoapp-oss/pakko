@@ -10,6 +10,88 @@ the technical account of any task named here.
 
 ---
 
+## v1.10.0 — 2026-11-09
+
+Pakko reads tar, 7z and the other tar-family archives through Windows' own `archiveint.dll` in a
+small sandboxed helper, so every file name arrives exactly as stored, whatever the code page; where
+the helper cannot run, tar.exe reads them as before. Six more formats open read-only: ISO, CAB,
+cpio, ar (.deb), tar.Z and lzip. The taskbar button and the tray icon show an operation's progress.
+"Scan for threats" no longer reports "nothing found" where it could not look at everything: with
+some antivirus products, for tar folders ending in a space or a dot, and for same-named copies in a
+tar. Plus the fixes found by the on-device checks of v1.9.0.
+
+### Added
+
+- **T-F470** - tar, 7z, RAR and the other tar-family archives are listed, extracted, tested and
+  scanned by `Archiver.ArchiveHelper.exe`, a small program that uses only Windows' own
+  `C:\Windows\System32\archiveint.dll` (checked for Microsoft's signature, as tar.exe is) and runs
+  in the same sandbox as tar.exe. Names are read exactly: Japanese, Greek, Hebrew or emoji names
+  in a tar arrive under their own names on any system language. A trailing dot or space is trimmed
+  as for ZIP, every same-named copy meets the conflict setting, a damaged 7z fails "Test", and a
+  file and a folder of one name fail only the second of the two, as in ZIP. Where the helper is
+  missing, the process is not native x64 (ARM64's `archiveint.dll` is not measured yet), Group
+  Policy disables tar-family archives or the probe fails, Pakko uses tar.exe quietly. `pakko i`
+  and the App's log name the reader in use.
+- **T-F442** - ISO 9660 images, CAB, cpio, ar (`.deb`), tar.Z and lzip open, list, extract and test
+  read-only, through the App, the Explorer menu and `pakko`, each where this system's tar.exe reads
+  it (lzip not on Windows 10's tar.exe). A UDF image, as most Windows install ISOs are, is refused
+  with its reason. `.iso` and `.cab` get Pakko's menu but are not registered as Pakko files, so a
+  double-click still opens them as before. New Group Policy format names: `iso`, `cab`, `cpio`,
+  `ar`, `compress`, `lzip`. **A `BlockedFormats` list written for 1.9 does not block these six:**
+  add them, or use `AllowedFormats` (`docs/POLICIES.md`).
+- **T-F457** - a tar.lzma named `.tlz` (Slackware) extracts; `pakko -stxudf` skips UDF images; an
+  ISO inside gzip (`win.iso.gz`) gives the `.iso` file.
+- **T-F432** - the App's taskbar button and tray icon, and the taskbar button of the operation
+  window started from Explorer, show the progress of the whole batch: yellow while a question
+  waits, red while a failed run's summary shows.
+
+### Fixed
+
+- **T-F448** - with Trend Micro as the only antivirus, "Scan for threats" reported "nothing found"
+  for an archive holding a known test threat: its AMSI provider answers "clean" for everything.
+  Such a scan is now inconclusive and says the registered antivirus did not report known test
+  threats.
+- **T-F444, T-F446** - with Avira's real-time protection switched off, or an answer blocked by
+  administrator policy, a scan reported "nothing found"; both are inconclusive now.
+- **T-F449** - a scan given no archive at all is inconclusive, not "nothing found".
+- **T-F460, T-F454** - files inside a tar folder whose name ends in a space or a dot were skipped by
+  "Scan for threats" (reported clean) and left out of the extraction without an error; they are
+  scanned and extracted now. Such a folder without an entry of its own extracts too.
+- **T-F462** - a scan says "clean" only when every file of the archive was scanned: a tar holding
+  three copies of one name with a threat in the middle one scanned clean.
+- **T-F455** - a tar folder entry stored without a trailing `/` arrives as a folder; it arrived as
+  nothing.
+- **T-F441, T-F424, T-F443, T-F465, T-F466, T-F467** - on tar.exe, names outside the system code
+  page: a name tar.exe lists by best fit (`café.txt` as `cafe.txt`) is no longer extracted under
+  the wrong name, and a selection or filter that cannot be trusted is refused, naming tar.exe
+  (T-F452), instead of writing the wrong file; a folder listed by best fit no longer leaves an empty
+  twin; listings are read in the code page tar.exe writes, where the regional format and the system
+  language differ; a tar from macOS (decomposed names) is no longer refused under a filter.
+- **T-F434** - "Move the sources to the Recycle Bin" recycles every clean source when another source
+  of the run is skipped; before, it kept them all.
+- **T-F435** - "Some items were not deleted" gives each kept item its own reason (not processed in
+  full, holds the new archive, changed since the start, and so on), not "they may be in use or
+  protected" for all.
+- **T-F437** - a path list from Explorer that cannot be read says the selection was not received,
+  and why.
+- **T-F439** - the App window fits again when moved to a monitor of the same scaling with a smaller
+  work area.
+- **T-F450** - a slow `tar.exe --version` on a loaded system no longer reads as an old tar.exe that
+  cannot write 7z.
+- **T-F428** - cancelling a tar.exe operation ends tar.exe at once, even while Pakko is busy reading
+  its output.
+
+### Known issues
+
+- **T-F473** - a tar-family archive near the 4,000,000-entry limit takes about 2 GiB of memory in
+  Pakko's own process while it is listed or tested.
+- **T-F475** - on Windows 10 and Server 2022, `pakko a CON.zip ...` (a device name as the
+  destination) stops with "Unexpected error" instead of a clear refusal (exit 2).
+- **T-F453, T-F461, T-F464, T-F469** - with the tar.exe fallback only (no helper), some names and
+  folder shapes outside the code page are still refused; none is extracted under a wrong name.
+
+---
+
 ## v1.9.0 — 2026-10-29
 
 The `pakko` command takes most of 7-Zip's command line: name filters, list files, the output
