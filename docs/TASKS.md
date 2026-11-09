@@ -1521,6 +1521,36 @@ re-measured with T-F346's script before and after.
   `TarSandboxedService`, `Sandbox/` and `AntivirusScanService`.
 - **Reported by:** the agent's root-cause review, 2026-11-06.
 
+### T-F476 - CI's `windows-2022` image now has a tar.exe 3.8.9 without xz or LZMA (P3)
+
+- [ ] **Status:** open. Found 2026-11-09 by T-F470's release-batch sweep on a throwaway branch:
+  `windows-2022` printed `bsdtar 3.8.9 - libarchive 3.8.9 zlib/1.2.5.f-ipp cng/2.0 libb2/bundled`
+  and `archiveint.dll` 3.8.9, where it used to be 3.5.2. So `canary.yml`'s `canary-server2022` job
+  no longer tests 3.5.2; Windows 10's 3.5.2 is reachable only on PakkoW10. That build has no xz or
+  LZMA ("Unsupported compression option --xz", "LZMA codec is unsupported"): 16 tests assume tar.exe
+  writes or reads xz or a 7z (`TarSandboxedServiceTestTests` checked-format and truncation rows,
+  `TarExeWritesXzWithACheck`, `TestAsync_OneArchive_ReportsBytesReadAgainstTheDeclaredSize`, the
+  7z row of `SandboxStdinTests`, `CompressAsync_RenameConflictOnCompoundExtension_...`) and fail
+  instead of skipping, as `CliSingleFileStreamSubprocessTests` already does. Next: skip those by
+  the capability probe, and re-point the canary's comment and `docs/TESTING.md` (Server 2022 is no
+  longer the 3.5.2 leg).
+- **Reported by:** the agent, 2026-11-09.
+
+### T-F475 - On Windows 10 a destination through a device name throws out of `ZipArchiveService` (P3)
+
+- [ ] **Status:** open. Found 2026-11-09 on CI's `windows-2022` (same device-name rules as Windows
+  10): `pakko a CON.zip ...` exits 2 with "Unexpected error: ArgumentNullException: Value cannot be
+  null. (Parameter 'path')". `ArchiveTempFile.Create` takes
+  `Path.GetDirectoryName(Path.GetFullPath(destPath))!`; where `CON.zip` or `x\CON\o.zip` is the
+  device `\\.\CON`, the folder is null and `TempOwner.SweepStale` throws from `DirectoryInfo`, past
+  the hard constraint that a Core method never throws to its caller. On Windows 11 the name is an
+  ordinary file, so `FixesAdversarialTests.ConDotZip_WithoutSae_IsAnOrdinaryArchive` and
+  `DeviceFolderInTheArchivePath_MatchesSevenZip` pass there and fail on Server 2022 (the second
+  with a clean "Could not find a part of the path '\\.\CON'"). Next: refuse a destination that
+  resolves to a device at the entry check (`DestinationFolder`/`InputPaths`, a new row in
+  `CoreNeverThrowsContractTests`), and make the two tests state which rules they cover.
+- **Reported by:** the agent, 2026-11-09.
+
 ### T-F474 - The plain-file check and the move out of the quarantine are two calls (P3)
 
 - [ ] **Status:** open. Found by T-F470's fresh review (2026-11-08, `docs/DECISIONS.md`, "Release
