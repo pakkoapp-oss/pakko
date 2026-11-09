@@ -618,6 +618,7 @@ Add-SmokeStep 'CLI-044' {
     # an accented name and its plain twin lists one line twice. Built from char codes, never typed
     # glyphs (.claude/rules/text-encoding.md): e-acute collapses on 1251 and 932, a-macron on 1252.
     $folder = Get-StepFolder 'cli044'
+    $tarExe = Get-TarExePakko $folder
     $candidates = @(@{ Accent = [char]0xE9; Plain = 'e' }, @{ Accent = [char]0x101; Plain = 'a' })
     $chosen = $null
     foreach ($candidate in $candidates) {
@@ -625,7 +626,7 @@ Add-SmokeStep 'CLI-044' {
         $plain = "caf$($candidate.Plain).txt"
         $tar = Join-Path $folder "pair-$([int]$candidate.Accent).tar"
         New-TarFile -Path $tar -Entries @(@{ Name = $accented; Content = 'ACCENT' }, @{ Name = $plain; Content = 'PLAIN' })
-        $listed = Invoke-Pakko @('l', $tar, '-ba')
+        $listed = Invoke-Pakko -Exe $tarExe @('l', $tar, '-ba')
         if ($listed.ExitCode -eq 0 -and ([regex]::Matches($listed.Output, [regex]::Escape($plain))).Count -eq 2) {
             $chosen = @{ Tar = $tar; Accented = $accented; Plain = $plain }
             break
@@ -634,17 +635,17 @@ Add-SmokeStep 'CLI-044' {
     if (-not $chosen) { Skip-Smoke 'this machine''s code page carries both candidate names' }
 
     $o1 = Join-Path $folder 'o1'
-    $run = Invoke-Pakko @('x', $chosen.Tar, "-o$o1", $chosen.Plain)
+    $run = Invoke-Pakko -Exe $tarExe @('x', $chosen.Tar, "-o$o1", $chosen.Plain)
     $written = @(Get-ChildItem -LiteralPath $o1 -Recurse -File -ErrorAction SilentlyContinue)
     Assert-Smoke ($run.ExitCode -ne 0 -and $run.Text.Contains('tar.exe') -and -not $run.Text.Contains('ZIP') -and $written.Count -eq 0) "x <the collapsed name>: exit $($run.ExitCode), $($written.Count) files $($run.Text)"
 
     $o2 = Join-Path $folder 'o2'
-    $run = Invoke-Pakko @('x', $chosen.Tar, "-o$o2", "-x!$($chosen.Plain)")
+    $run = Invoke-Pakko -Exe $tarExe @('x', $chosen.Tar, "-o$o2", "-x!$($chosen.Plain)")
     $written = @(Get-ChildItem -LiteralPath $o2 -Recurse -File -ErrorAction SilentlyContinue)
     Assert-Smoke ($run.ExitCode -ne 0 -and $run.Text.Contains('tar.exe') -and -not $run.Text.Contains('ZIP') -and $written.Count -eq 0) "x -x!<the collapsed name>: exit $($run.ExitCode), $($written.Count) files $($run.Text)"
 
     $o3 = Join-Path $folder 'o3'
-    $run = Invoke-Pakko @('x', $chosen.Tar, "-o$o3")
+    $run = Invoke-Pakko -Exe $tarExe @('x', $chosen.Tar, "-o$o3")
     $accentText = Get-Content -LiteralPath (Join-Path $o3 $chosen.Accented) -Raw -ErrorAction SilentlyContinue
     $plainText = Get-Content -LiteralPath (Join-Path $o3 $chosen.Plain) -Raw -ErrorAction SilentlyContinue
     Assert-Smoke ($run.ExitCode -eq 0 -and $accentText -eq 'ACCENT' -and $plainText -eq 'PLAIN') "x everything: exit $($run.ExitCode), '$accentText' '$plainText' $($run.Text)"
@@ -655,7 +656,7 @@ Add-SmokeStep 'CLI-044' {
     New-TarFile -Path $folderTar -Entries @(
         @{ Name = "$trueFolder/"; Folder = $true }, @{ Name = "$trueFolder/x.txt"; Content = 'X' }, @{ Name = "$trueFolder/empty/"; Folder = $true })
     $o4 = Join-Path $folder 'o4'
-    $run = Invoke-Pakko @('x', $folderTar, "-o$o4")
+    $run = Invoke-Pakko -Exe $tarExe @('x', $folderTar, "-o$o4")
     $folders = @(Get-ChildItem -LiteralPath $o4 -Recurse -Directory -ErrorAction SilentlyContinue | ForEach-Object { [System.IO.Path]::GetRelativePath($o4, $_.FullName) }) | Sort-Object
     $expected = @($trueFolder, (Join-Path $trueFolder 'empty')) | Sort-Object
     Assert-Smoke ($run.ExitCode -eq 0 -and ($folders -join '|') -ceq ($expected -join '|')) "x a best-fit folder: exit $($run.ExitCode), folders '$($folders -join '|')' $($run.Text)"
@@ -807,18 +808,25 @@ Add-SmokeStep 'CLI-047' {
 Add-SmokeStep 'CLI-048' {
     # T-F462: every listed file is accounted for - extracted, kept apart, or reported; never lost silently.
     $folder = Get-StepFolder 'cli048'
+    $tarExe = Get-TarExePakko $folder
     $tar = Join-Path $folder 'three.tar'
     New-TarFile -Path $tar -Entries @(@{ Name = 'x.txt'; Content = 'one' }, @{ Name = 'x.txt'; Content = 'two' }, @{ Name = 'x.txt'; Content = 'three' })
     $o1 = Join-Path $folder 'o1'
-    $run = Invoke-Pakko @('x', $tar, "-o$o1", '-aou')
+    $run = Invoke-Pakko -Exe $tarExe @('x', $tar, "-o$o1", '-aou')
     $texts = @(Get-ChildItem -LiteralPath $o1 -File -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) | Sort-Object
-    Assert-Smoke ($run.ExitCode -le 1 -and ($texts -join '|') -ceq 'one|three' -and $run.Text.Contains('not extracted (1)')) "three copies: exit $($run.ExitCode), '$($texts -join '|')' $($run.Text)"
+    Assert-Smoke ($run.ExitCode -le 1 -and ($texts -join '|') -ceq 'one|three' -and $run.Text.Contains('not extracted (1)')) "three copies through tar.exe: exit $($run.ExitCode), '$($texts -join '|')' $($run.Text)"
+
+    # T-F470: the helper writes each copy apart, so every copy meets the conflict rule.
+    $o5 = Join-Path $folder 'o5'
+    $run = Invoke-Pakko @('x', $tar, "-o$o5", '-aou')
+    $texts = @(Get-ChildItem -LiteralPath $o5 -File -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) | Sort-Object
+    Assert-Smoke ($run.ExitCode -eq 0 -and ($texts -join '|') -ceq 'one|three|two') "three copies through the helper: exit $($run.ExitCode), '$($texts -join '|')' $($run.Text)"
 
     # tar.exe replaces the file "x" with the folder "x/" after it and exits 0: the file is lost.
     $shadow = Join-Path $folder 'shadow.tar'
     New-TarFile -Path $shadow -Entries @(@{ Name = 'x'; Content = 'file' }, @{ Name = 'x/'; Folder = $true }, @{ Name = 'y.txt'; Content = 'y' })
     $o3 = Join-Path $folder 'o3'
-    $run = Invoke-Pakko @('x', $shadow, "-o$o3")
+    $run = Invoke-Pakko -Exe $tarExe @('x', $shadow, "-o$o3")
     $written = @(Get-ChildItem -LiteralPath $o3 -Recurse -File -ErrorAction SilentlyContinue)
     Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text.Contains('1 of 2') -and $written.Count -eq 0) "file under a folder of its name: exit $($run.ExitCode), $($written.Count) written $($run.Text)"
 
@@ -828,12 +836,12 @@ Add-SmokeStep 'CLI-048' {
         $accented = "caf$($candidate.Accent).txt"
         $twice = Join-Path $folder "twice-$([int]$candidate.Accent).tar"
         New-TarFile -Path $twice -Entries @(@{ Name = $accented; Content = 'first' }, @{ Name = $accented; Content = 'last' })
-        $listed = Invoke-Pakko @('l', $twice, '-ba')
+        $listed = Invoke-Pakko -Exe $tarExe @('l', $twice, '-ba')
         if ($listed.ExitCode -eq 0 -and ([regex]::Matches($listed.Output, [regex]::Escape("caf$($candidate.Plain).txt"))).Count -eq 2) { $chosen = $twice; break }
     }
     if (-not $chosen) { 'three copies and a shadowed file accounted for; this code page carries both accented candidates'; return }
     $o2 = Join-Path $folder 'o2'
-    $run = Invoke-Pakko @('x', $chosen, "-o$o2")
+    $run = Invoke-Pakko -Exe $tarExe @('x', $chosen, "-o$o2")
     $written = @(Get-ChildItem -LiteralPath $o2 -Recurse -File -ErrorAction SilentlyContinue)
     Assert-Smoke ($run.ExitCode -eq 2 -and $run.Text.Contains('1 of 2') -and $written.Count -eq 0) "accented twice: exit $($run.ExitCode), $($written.Count) written $($run.Text)"
     'three copies and a shadowed file accounted for; the accented name stored twice fails naming 1 of 2, nothing written'

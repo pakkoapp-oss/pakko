@@ -16,9 +16,10 @@ Add-SmokeStep 'PKG-001' {
     $files = @(Get-ChildItem -LiteralPath $Smoke.Install -Recurse -File)
     Assert-Smoke (-not ($files | Where-Object Name -eq 'coreclr.dll')) 'the package carries coreclr.dll'
 
-    # The last record (v1.8.0, x64): update both numbers when a release changes them on purpose.
-    $recordFiles = 27
-    $recordMegabytes = 34.7
+    # The last record (v1.10.0, x64; +1 file, the archive helper): update both numbers when a release
+    # changes them on purpose.
+    $recordFiles = 28
+    $recordMegabytes = 38.2
     $megabytes = ($files | Measure-Object Length -Sum).Sum / 1MB
     Assert-Smoke ([Math]::Abs($files.Count - $recordFiles) -le $recordFiles / 10) "the package has $($files.Count) files; the last record is $recordFiles"
     Assert-Smoke ([Math]::Abs($megabytes - $recordMegabytes) -le $recordMegabytes / 10) ('the package is {0:n1} MB; the last record is {1:n1} MB' -f $megabytes, $recordMegabytes)
