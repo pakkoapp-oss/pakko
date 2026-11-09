@@ -18,7 +18,7 @@ public sealed class ArchiveintGateTests
 
     // --- Happy path: the real probe, the real DLL ---
 
-    [Fact]
+    [NativeX64Fact]
     public async Task EveryConditionMet_ChoosesTheHelper()
     {
         var gate = new ArchiveintGate(new GroupPolicyOptions(), ArchiveHelperBuild.ExePath);

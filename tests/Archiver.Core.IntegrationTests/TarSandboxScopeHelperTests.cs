@@ -56,7 +56,7 @@ public sealed class TarSandboxScopeHelperTests : IDisposable
 
     // --- Security & boundary ---
 
-    [Fact]
+    [NativeX64Fact]
     public async Task ACopyChangedBetweenRuns_IsNotRun()
     {
         string archive = Tar(("a.txt", "A"));
@@ -158,7 +158,7 @@ public sealed class TarSandboxScopeHelperTests : IDisposable
     // Cancelled while the helper runs, seen running: Pakko holds its first "K" line, so the helper
     // fills its stdout pipe and waits. Once the run ends, its copy in bin\ is no longer a mapped image
     // and can be deleted: no helper is left.
-    [Fact]
+    [NativeX64Fact]
     public async Task ACancelledRun_LeavesNoHelperRunning()
     {
         const int Entries = 20_000;

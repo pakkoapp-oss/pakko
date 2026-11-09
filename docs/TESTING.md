@@ -945,6 +945,8 @@ regression worth investigating, not the old expected noise.
   (`SkipIfFormatUnsupportedAttribute.cs`), skipped if `DetectCapabilitiesAsync` reports the named
   format unsupported. Not yet exercised by any test — T-F50's format-specific fixtures will use it.
 - `[SevenZipWriterFact]` (T-F342) — skipped where `CanCreateSevenZipAsync` is false.
+- `[NativeX64Fact]` (T-F470) — the tests that need the real gate to choose the helper, or that touch
+  the helper's copy right after it ran; skipped outside a native x64 process (the ARM64 canary).
   T-F342, the App and the Explorer menu: `TarCapabilitySnapshotTests` (Core, renamed at T-F403: the file's line, the
   package folder's name, no write without an answer or under `DisableTarExtraction`, a read-only
   or blocked target), `CreationFormatOptionTests`, `SevenZipMethodOptionTests` and
