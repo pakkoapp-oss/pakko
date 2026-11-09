@@ -164,13 +164,16 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
     // T-F479: a Test's lines reach Pakko as each is written, not when the run ends. Made, not timed:
     // the archive comes through a pipe that holds back everything after the first entry, so the
     // helper waits on stdin; its "K 0" either arrives now or (buffered) only after the rest is sent.
-    [Fact]
-    public async Task Test_ALineArrives_WhileTheHelperStillReads()
+    // Held back: after the first entry and the next header (its "K"), or halfway through the first
+    // entry (its "P", the one large file of a 7z).
+    [Theory]
+    [InlineData(512 + (2 << 20) + 512, "K 0 2097152")]
+    [InlineData(512 + (3 << 19), "P 0 ")]
+    public async Task Test_ALineArrives_WhileTheHelperStillReads(int firstPart, string awaited)
     {
         const int size = 2 << 20;
         string whole = Tar([new TarBuilder.Entry { Name = "a.bin", Content = new byte[size], ModifiedUnixSeconds = Mtime }, File("b.txt", "B")]);
         byte[] bytes = System.IO.File.ReadAllBytes(whole);
-        int firstPart = 512 + size + 512;
 
         using var stdin = new System.IO.Pipes.AnonymousPipeServerStream(System.IO.Pipes.PipeDirection.Out, HandleInheritability.None);
         var firstRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -182,7 +185,7 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
                 string text = Encoding.ASCII.GetString(line);
                 lock (lines)
                     lines.Add(text);
-                if (text == $"K 0 {size}")
+                if (text.StartsWith(awaited, StringComparison.Ordinal))
                     firstRead.TrySetResult();
             },
             stdin.DisposeLocalCopyOfClientHandle);

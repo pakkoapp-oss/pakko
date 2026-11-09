@@ -1523,7 +1523,8 @@ re-measured with T-F346's script before and after.
 
 ### T-F479 - Test through the archive helper moved no progress bar (P1, a T-F470 regression, v1.10.0)
 
-- [x] **Status:** fixed 2026-11-09 (`fix/T-F479-helper-test-progress`; `docs/DECISIONS.md`, "T-F479").
+- [ ] **Status:** fixed 2026-11-09 (`fix/T-F479-helper-test-progress`; `docs/DECISIONS.md`, "T-F479"); the
+  device check is `APP-026` on the new bundle, `[x]` after it.
   Found by the v1.10.0 release smoke (`APP-026` on CI bundle 1.10.0.0): Test of a 1 GB 7z of 16
   files left the App's bar empty for its whole minute. `Archiver.ArchiveHelper` buffered stdout to
   64 KB, so every `K` line arrived at exit; and a `K` comes only after a whole entry, so one large
@@ -1532,7 +1533,7 @@ re-measured with T-F346's script before and after.
   an entry and writes each `P` and `K` through at once; Pakko's parser takes `P` in Test only.
   Seen red on `main`: the protocol tests (no `P`, and a `K 0` held back while the helper waits on
   stdin) and `HelperReaderTests.Progress_MovesBetweenTheEnds` (helper, Test, one large entry: only
-  99 and 100). Left: the device rerun of `APP-026` on the new bundle.
+  99 and 100).
 - **Reported by:** the agent's release smoke, 2026-11-09; in this release by the user's call ("no
   regressions in releases").
 
