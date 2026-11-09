@@ -14813,6 +14813,18 @@ Each test seen red first; mutants for each half of the `out\` check.
   4,000,000-entry limit that is about 2.2 GiB, over the plan's 2 GB line, but no worse than tar.exe,
   which ships so today: not a regression of the helper, so it does not hold this batch. Bounding the
   memory of a huge listing for both backends is T-F473.
+- **The release-batch runs (2026-11-09).** `Category=Slow`: green (CLI 1, Integration 1, Performance
+  12 once `ZipSandboxSpike` is published as its README says, Core 11, App.Core 1); the same under the
+  sweep (every tar-family read through the helper). The default suite under the sweep on 3.8.9 here:
+  19 failures, each a known difference (the 3b-ii list, the owner test seeing the sweep's patch,
+  `pakko i` naming the helper). On 3.5.2, on PakkoW10 (a portable SDK whose SHA-512 matched
+  Microsoft's `releases.json`, a `git archive` of `main` with the sweep patch, the built helper):
+  the same 19 fail and none passes that fails here; the helper is the reader there (the old entry's
+  time reads whole). The rest is the VM: no Visual Studio for the test-side helper build (98, rerun
+  with the built helper: 147 of 151 pass, the 3 ARM64 rows lack that build, the fourth is the
+  sweep's own difference), no desktop for COM activation, the hook tests' script host, a zlib-only
+  tar.exe without xz or LZMA (T-F476's tests), and T-F475 (a device-name destination, the same on
+  CI's Server 2022). CI's `windows-2022` was meant to be the 3.5.2 leg: it now ships 3.8.9 (T-F476).
 
 ## T-F463 - One owner for disk access in the tar quarantine (2026-11-06)
 

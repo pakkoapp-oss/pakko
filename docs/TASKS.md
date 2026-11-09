@@ -1608,9 +1608,9 @@ re-measured with T-F346's script before and after.
     same-named copy meets the conflict rule, a damaged 7z fails Test, a file and a folder of one
     name fail only the second of the two, as in ZIP; a quarantined file with a named stream or a
     second name fails the archive, for both readers);
-  - `Category=Slow` normally and once under the sweep patch (`--max-total`, the stdout cap, the
-    entry limits on large archives);
-  - the sweep on libarchive 3.5.2 (PakkoW10, or CI's windows-2022), since the gate is on for Win10;
+  - done 2026-11-09 (`docs/DECISIONS.md`, T-F470 "The release-batch runs"): `Category=Slow`
+    normally and under the sweep; the sweep on libarchive 3.5.2 on PakkoW10 (CI's windows-2022 now
+    ships 3.8.9, T-F476), no difference from 3.8.9;
   - the packaged launch: `Deploy.ps1`, then the packaged `pakko i` line and the App log's reader
     line (identity proven), with `docs/SMOKE.md` rows; CI's `V` line, read from the test log;
   - done in `feat/tf470-release-fixes` (`docs/DECISIONS.md`, T-F470 "Release batch"): a quarantined
