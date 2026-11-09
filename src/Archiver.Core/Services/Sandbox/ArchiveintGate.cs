@@ -42,7 +42,7 @@ public sealed partial class ArchiveintGate
         ArgumentNullException.ThrowIfNull(policy);
         _policy = policy;
         _helperPath = helperPath;
-        _nativeMachine = nativeMachine ?? NativeMachine;
+        _nativeMachine = nativeMachine ?? NativeMachineOfAnX64Process;
         _verifyArchiveint = verifyArchiveint ?? TarSignatureVerifier.Verify;
         _probe = probe ?? ProbeAsync;
         _probeTimeout = probeTimeout ?? ProbeTimeout;
@@ -66,7 +66,7 @@ public sealed partial class ArchiveintGate
             if (!File.Exists(_helperPath))
                 return ArchiveintDecision.ForTarExe(null, "no archive helper beside Pakko");
             // ARM64's archiveint.dll is not measured; an x64 process under emulation is not x64.
-            if (_nativeMachine() != MachineAmd64 || RuntimeInformation.ProcessArchitecture != Architecture.X64)
+            if (_nativeMachine() != MachineAmd64)
                 return ArchiveintDecision.ForTarExe(null, "not a native x64 process");
             if (!File.Exists(ArchiveintPath) || !_verifyArchiveint(ArchiveintPath))
                 return ArchiveintDecision.ForTarExe(null, "archiveint.dll is missing or not signed by Microsoft");
@@ -123,8 +123,10 @@ public sealed partial class ArchiveintGate
         }
     }
 
-    private static ushort? NativeMachine() =>
-        IsWow64Process2(-1, out _, out ushort native) ? native : null;
+    // Null for a process that is not x64 itself, so one seam stands for both conditions and a test
+    // that fakes the machine decides the same on an ARM64 runner (the canary).
+    private static ushort? NativeMachineOfAnX64Process() =>
+        RuntimeInformation.ProcessArchitecture == Architecture.X64 && IsWow64Process2(-1, out _, out ushort native) ? native : null;
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
