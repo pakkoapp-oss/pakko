@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using FluentAssertions;
 
@@ -989,15 +990,23 @@ public sealed class CliSubprocessTests
         stdOut.Should().Contain("zip");
     }
 
-    // T-F470: the line that tells which backend reads tar-family archives; no helper sits beside a
-    // test build of pakko, so tar.exe.
+    // T-F470: the line that tells which backend reads tar-family archives. A test build of pakko has
+    // no helper beside it (tar.exe); Publish-Cli.ps1's output and the packaged alias do, and there
+    // the helper reads on native x64 only.
     [Fact]
     public void Info_NamesTheTarFamilyReader()
     {
         (int exitCode, string stdOut, _) = CliProcessRunner.Run("i");
 
         exitCode.Should().Be(0);
-        stdOut.Should().Contain("tar-family reader: tar.exe; archiveint.dll: not probed; no archive helper beside Pakko");
+        string exeDirectory = Path.GetDirectoryName(Path.GetFullPath(CliProcessRunner.ExePath))!;
+        bool packagedAlias = exeDirectory.EndsWith(@"\Microsoft\WindowsApps", StringComparison.OrdinalIgnoreCase);
+        if (!packagedAlias && !File.Exists(Path.Combine(exeDirectory, "Archiver.ArchiveHelper.exe")))
+            stdOut.Should().Contain("tar-family reader: tar.exe; archiveint.dll: not probed; no archive helper beside Pakko");
+        else if (RuntimeInformation.OSArchitecture != Architecture.X64)
+            stdOut.Should().Contain("tar-family reader: tar.exe; archiveint.dll: not probed; not a native x64 process");
+        else
+            stdOut.Should().MatchRegex(@"(?m)^tar-family reader: archive helper; archiveint\.dll: libarchive 3\.[5-8]\.\d+.*; the probe passed\r?$");
     }
 
     // --- --version / -v ---
