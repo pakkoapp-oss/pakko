@@ -191,7 +191,7 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
             stdin.DisposeLocalCopyOfClientHandle);
         // The write blocks until the helper reads; a launch that failed would leave it blocked, so
         // the launch's own failure is awaited first (review of T-F479).
-        Task sent = Task.Run(async () =>
+        var sent = Task.Run(async () =>
         {
             await stdin.WriteAsync(bytes.AsMemory(0, firstPart));
             await stdin.FlushAsync();
@@ -200,7 +200,7 @@ public sealed class ArchiveHelperProtocolTests : IDisposable
             await running;
         await sent;
 
-        var arrived = await Task.WhenAny(firstRead.Task, running, Task.Delay(TimeSpan.FromSeconds(60)));
+        Task arrived = await Task.WhenAny(firstRead.Task, running, Task.Delay(TimeSpan.FromSeconds(60)));
         bool sawItEarly = arrived == firstRead.Task;
         await stdin.WriteAsync(bytes.AsMemory(firstPart));
         stdin.Dispose();

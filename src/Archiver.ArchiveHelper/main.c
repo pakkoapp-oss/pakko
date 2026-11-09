@@ -436,13 +436,14 @@ static int finish_output(HANDLE file, void *e, unsigned __int64 end)
     return EXIT_DONE;
 }
 
-/* T-F479: a "P" line, written through, each time the entry's end grew by PROGRESS_STEP. */
-static void report_progress(unsigned __int64 index, unsigned __int64 end, unsigned __int64 *reported)
+/* T-F479: in a test (testIndex set), a "P" line, written through, each time the entry's end grew by
+   PROGRESS_STEP. Extract's bar is Pakko's poll of out\; only a test has no file to poll. */
+static void report_progress(const unsigned __int64 *testIndex, unsigned __int64 end, unsigned __int64 *reported)
 {
-    if (end - *reported < PROGRESS_STEP)
+    if (testIndex == NULL || end - *reported < PROGRESS_STEP)
         return;
     put_str("P ");
-    put_u64(index);
+    put_u64(*testIndex);
     put_str(" ");
     put_u64(end);
     put_str("\n");
@@ -481,9 +482,7 @@ static int copy_entry(void *ar, void *e, const unsigned __int64 *testIndex, HAND
             return report_own_failure(FAIL_TOTAL);
         if (file != INVALID_HANDLE_VALUE && length > 0 && write_at(file, offset, block, length) != EXIT_DONE)
             return EXIT_WRITE;
-        /* Extract's bar is Pakko's poll of out\; only a test (testIndex set) has no file to poll. */
-        if (testIndex != NULL)
-            report_progress(*testIndex, end, &reported);
+        report_progress(testIndex, end, &reported);
     }
     /* Only a sparse entry ends in a hole; a plain one keeps the length its data gave, which Pakko
        compares with the listed size. */
