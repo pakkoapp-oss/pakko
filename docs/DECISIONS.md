@@ -14542,9 +14542,9 @@ of each `P` and `K` to the same `ContentProgress`.
   extract, list and probe keep their output and buffering.
 - Not the antivirus scan: its extraction into the quarantine had no progress on tar.exe either
   (`AntivirusScanService.ScanTarArchiveAsync` counts files as AMSI takes them); not a regression.
-- 1 MiB: at most ~2,000 lines a GiB, a step visible on a 50 MB entry.
-- A per-line write is ~20,000 `WriteFile` calls for a 20,000-entry Test: no measurable cost; the
-  cancel test that holds the first `K` line still fills the pipe.
+- 1 MiB: about 1,024 lines a GiB, a step visible on a 50 MB entry.
+- A per-line write is one `WriteFile` per entry of a Test (20,000 for a 20,000-entry one); its cost
+  is not measured. The cancel test that holds the first `K` line still fills the pipe.
 
 **One owner for progress (the user's question).** Test, Extract and Scan each compute their bar in
 their own place (`ContentProgress`, the `out\` poll, AMSI's file count). Merging them was not done
@@ -14555,7 +14555,9 @@ entries, one 16 MiB entry}, wants a percent strictly between 0 and 99; `Progress
 fails when a new `ISandboxedArchiveReader` has no rows. It lives beside the other two-backend
 tests rather than in a new file (the plan's `TarProgressOwnerTests`), since that file has the
 backends and the synchronous progress fake. Extract of one large entry is out of the matrix: its
-bar is a size poll, which a test could only time.
+bar is a size poll, which a test could only time. The Extract rows do not depend on that poll: the
+move loop's last report (`extractedCount == totalFileEntries`) is always `MoveEnd`, strictly
+between 0 and 99.
 
 **Tests, each seen red on 8fa31f34:**
 - `ArchiveHelperProtocolTests.Test_ReportsALargeEntrysProgress_BeforeItsRead`: properties only
@@ -14563,17 +14565,19 @@ bar is a size poll, which a test could only time.
   libarchive's block sizes may differ between 3.8.x and 3.5.2.
 - `ProgressLines_AreTestsAlone_AndNotForASmallEntry`: no `P` in extract, none under 1 MiB.
 - `Test_ALineArrives_WhileTheHelperStillReads`: made, not timed. The archive comes through a pipe
-  that holds back all but the first entry and the next header, so the helper waits on stdin; its
-  `K 0` either arrives then or (buffered) only after the test sends the rest. 60 s is only a guard.
-  Red without the fix after the guard, deterministic.
+  that holds back all but the first entry and the next header (awaiting `K 0`), or all but the
+  first 1.5 MiB of the first entry (awaiting a `P 0`, the one-large-file case), so the helper waits
+  on stdin; the line either arrives then or (buffered) only after the test sends the rest. 60 s is
+  only a guard. Red without the fix after the guard, deterministic.
 - `HelperReaderTests.Progress_MovesBetweenTheEnds` (helper, Test, one large entry): only 99 and 100.
 - `ArchiveHelperOutputTests`: `P` read in order; at `MaxEntrySize`; refused in list, extract and
   probe, for an entry not listed, already read or not the one under way, standing still or going
   back, with a shorter `K`, with a field too many or few, a leading zero, after `D`, and a `D` with
   a read under way.
 
-Mutants, each killed: no flush after `K` (the pipe test), a `P` per block instead of per MiB (the
-two property tests), no "shorter `K`" check (the parser row).
+Mutants, each killed: no flush after `K` (the pipe test's `K` row), no flush after `P` (its `P`
+row; the matrix alone lets it live, since late `P` lines still give middle percents), a `P` per
+block instead of per MiB (the two property tests), no "shorter `K`" check (the parser row).
 
 ## T-F470 - a helper over `archiveint.dll` as lister and extractor (2026-11-07)
 
