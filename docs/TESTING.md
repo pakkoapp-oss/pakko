@@ -354,7 +354,9 @@ dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
   - `tests/Archiver.Core.IntegrationTests/ArchiveintGateTests.cs`: the gate chooses the helper with
     the real probe; each condition falls back to tar.exe (policy, no helper, not native x64, an
     unsigned DLL, a version not measured, a missing export, an unfinished, forged or hung probe);
-    the decision is made once, a failure is not retried, a cancelled first caller is not the verdict.
+    the decision is made once, a failure is not retried, a cancelled first caller is not the verdict;
+    `DecideAsync` returns while the signature check still runs (T-F490: the checks before the
+    probe's first await had held the caller's thread, the App's UI thread; seen red).
 - T-F470 release batch: `HelperReaderTests.IsPlainFile_*` (false with a named stream, a hard link or
   a gone file; true for an empty one and one another reader holds);
   `Extract_AStreamPlantedBeforeTheMove_...` (both readers: a stream planted from the progress callback,
@@ -1054,7 +1056,8 @@ fresh into a `TempDirectory` at test-run time and never committed to git, follow
 **Mechanism:** each test runs one discarded warmup pass, then one timed pass, for both Pakko
 (`ZipArchiveService`) and a vendored `7za.exe` reference — back-to-back, on the same machine, in
 the same test method — then asserts on the *ratio* between their elapsed times against a
-per-scenario calibrated constant with a 3x tolerance multiplier. This is the only pattern of the
+per-scenario calibrated constant with a 1.5x tolerance multiplier (3x until the 2026-11-10
+recalibration on the dev machine, `DECISIONS.md`; recalibrate after a hardware change). This is the only pattern of the
 three researched precedents (BenchmarkDotNet, criterion.rs, benchstat) that generalizes to an
 arbitrary, never-before-seen machine — see `DECISIONS.md`'s T-F114 entry for the full research and
 the observed baseline ratios. Extraction scenarios extract from one shared reference ZIP (built
@@ -1398,6 +1401,9 @@ truncated header/payload vs. a clean end of stream, 200 concurrent `MessageWrite
 that neither `PasswordAnswer.ToString()` nor a `ProtocolException` quotes a password. All seven
 guards were mutation-checked (each removed in turn, its test turned red).
 
+T-F487: `OperationWindowSourceTests` reads `OperationWindow.cs` (WinUI, no test host here): the
+title bar Grid is pinned left to right whatever the locale. Seen red without the pin.
+
 ---
 
 ## Archiver.App.Core.Tests
@@ -1494,6 +1500,9 @@ The `ActivateApplication` call itself is device-only (it needs package identity)
 - T-F331, same project: `StoreListingTests` reads `docs/store-listing/<locale>.txt`: every field
   within Partner Center's limits, the menu items named as `Localization.cpp` has them, no word
   that `Glossary.tsv` lists as replaced.
+- T-F488, same project: `CombiningMarkTests`: in every string of all 37 locales a combining mark
+  (a Devanagari or Thai vowel sign, an Arabic or Hebrew point) follows a letter or another mark, or
+  Windows draws it on a dotted circle. Seen red on hi-IN's old "archive(s)" string.
 
 ---
 

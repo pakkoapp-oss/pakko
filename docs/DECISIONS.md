@@ -14521,6 +14521,55 @@ constraint "only tar.exe" stands until the user decides (below).
   swap-pair tests failed again. Four first translations used the replaced word for "archive"
   (ko, th, vi, zh); `GlossaryTests` caught them.
 
+## v1.10.0 - performance against v1.9.0 and 7-Zip; the 7za ratios recalibrated (2026-11-10)
+
+**Asked** by the user before the tag: no regression since the performance work, in the engines
+and in the UI. `Category=Slow` alone (REL-001) cannot say it: its ceiling was 3x each July ratio.
+
+- **A/B of the engines.** `pakko.exe` of each bundle (v1.9.0, v1.10.0 of b280c984), run
+  unpackaged and alternating, five runs per case, the first dropped; the vendored `7za` the same
+  way. Fixtures on the Dev Drive: 8000 x 16 KiB random, 16 x 64 MiB random, 6 x 50 MiB text.
+  Medians, v1.9.0 / v1.10.0 / 7za, in ms: `a` zip small 1248 / 1282 / 815; zip 1 GB random
+  5819 / 5608 / 6233; zip text 1344 / 1344 / 4433 (7za's default level is higher); tar.gz text
+  5998 / 6008 / -; `x` zip small 11741 / 11627 / 3021; zip text 1641 / 1636 / 2048; tar.gz text
+  3134 / 2457 / -; 7z text 5330 / 5507 / 3650; `t` 7z text 5003 / 5131 / 3457. No regression:
+  all within 4 %, and tar.gz extraction through the archive helper (T-F470) is 22 % faster than
+  through tar.exe. Two gaps to 7-Zip went to tasks: many small files extracted (T-F481) and the
+  drift below (T-F480).
+- **A/B of the UI.** `scripts/Measure-Startup.ps1 -Runs 8` on the installed CI bundle of each
+  version (v1.10.0, then v1.9.0 over it with `-ForceUpdateFromAnyVersion`, then v1.10.0 back),
+  medians in ms, v1.9.0 / v1.10.0: App start to window 390 / 422 (a second v1.10.0 run of 12: 423),
+  Explorer Open to window 496 / 541 (542), Extract here 200 files 276 / 271, `pakko --help`
+  112 / 112, `pakko l` 147 / 144, long extraction to the operation window 1415 / 1407, conflict
+  prompt 368 / 360; App threads 28 / 30, working set 110 / 112 MB. One regression: the App's
+  first window is 30-45 ms (8-9 %) later. Its likely cause, unconfirmed: since T-F470 the App's
+  constructor starts `ArchiveintGate.DecideAsync` (`LogTarReaderAsync`), which probes the helper
+  in its AppContainer while the window is being built; the log shows the probe at every start.
+  T-F490.
+- **T-F490 confirmed and fixed.** The synchronous part of `DecideOnceAsync` before its first await,
+  the WinVerifyTrust check of archiveint.dll, ran on the caller's thread: the App's UI thread, in
+  its constructor. Not a choice of T-F470, an async method's prefix nobody looked at. The gate now
+  starts the decision with `Task.Run` itself, so no caller has to know (a `Task.Run` in the App
+  alone was tried first and dropped: it fixed one caller, and a first tar-family listing from the
+  UI thread would still have paid). The App asks after its first window (`OnLaunched`), so the
+  sandboxed probe does not compete with building it. Installed 1.10.0.3, `Measure-Startup.ps1`:
+  App start to window 376 ms (12 runs; v1.9.0 390, v1.10.0.0 422), Explorer Open 509 (496 / 541),
+  threads 29. Rejected: deciding on the first tar-family use only, which would
+  put the probe (up to its 30 s timeout on a cold AppContainer) in front of the first listing;
+  after the window it costs the start nothing.
+- **Recalibration.** `CompressionPerformanceTests` and `HashPerformanceTests` ran five times each,
+  `Slow` in Debug (as the release run does) and `VeryLarge` in Release. Medians (range): Archive
+  ManySmallFiles 1.18 (1.13-1.21), FewLargeFiles 1.61 (1.52-1.70), Hybrid 1.46 (1.42-1.51), Extract
+  ManySmallFiles 1.45 (1.37-1.50), Hybrid 1.77 (1.70-1.84), Hash ManyFilesAndFolders 0.53
+  (0.45-0.64); Release: Archive OneLargeFile 1.07 (1.00-1.08), Extract OneLargeFile 1.63
+  (1.15-1.82), Hash OneLargeFile 0.56 (0.52-0.65). Each baseline is now the median and the
+  multiplier 1.5 (was 3.0): every ceiling sits 24-50 % above the worst of its five runs.
+- **Why the tighter band holds.** The classes run only on this machine before a release;
+  `canary-slow` leaves them out (a shared runner measured Hybrid at 5.23). A hardware change needs a
+  new calibration, said in the class comment. A failure still gets one rerun (`docs/TESTING.md`).
+- **Rejected.** Keeping 3.0 with the new medians: FewLargeFiles' 34 % drift since July passed
+  under it unseen. A per-scenario multiplier: the spread is 3-21 %, one value covers all with room.
+
 ## T-F479 - Test's progress through the archive helper (2026-11-09)
 
 **Found** by the v1.10.0 release smoke on CI bundle 1.10.0.0 (8fa31f34), `APP-026`. Test of a

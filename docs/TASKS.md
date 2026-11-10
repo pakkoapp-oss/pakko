@@ -1521,6 +1521,69 @@ re-measured with T-F346's script before and after.
   `TarSandboxedService`, `Sandbox/` and `AntivirusScanService`.
 - **Reported by:** the agent's root-cause review, 2026-11-06.
 
+### T-F486 - High contrast: the App's window twice started empty (P2)
+
+- [ ] **Status:** open. Found 2026-11-10 by the v1.10.0 release smoke (`APP-013`, second look on
+  1.10.0.0 of b280c984): 2 of 13 launches under a high-contrast theme drew an empty window while its
+  UIA tree was complete; it redrew only when high contrast went off. The other 11 and every view
+  (main, browse with the PAR2 line, Test summary, About, OperationUi) drew fine. Cause not found after
+  three approaches (start before/after the switch, behind another window). Next: a trace of the
+  first frames (WinUI `CompositionTarget` / DWM) on a failing start, and compare with v1.9.0.
+- **Reported by:** the agent, 2026-11-10.
+
+### T-F485 - High contrast: the accent button's text sits on a dark box (P3)
+
+- [ ] **Status:** open. Found 2026-11-10 (`APP-013` under high contrast): the accent (primary)
+  button's label shows on a dark rectangle instead of the theme's button colours. Next: compare with
+  Windows' own WinUI apps (Settings) under the same theme; if they differ, take the HC resources
+  for `AccentButtonStyle` from the system brushes.
+- **Reported by:** the agent, 2026-11-10.
+
+### T-F484 - uk-UA: the PAR2 messages use one plural form for every count (P3)
+
+- [ ] **Status:** open. Found 2026-11-10 (`EXP-003` in uk-UA): the PAR2 lines put a single noun form
+  after every number, where Ukrainian needs three (1 / 2-4 / 5+). Next: check which PAR2 strings take
+  a count, route them through the plural helper the other counted strings use, and add the
+  case to the localization tests.
+- **Reported by:** the agent, 2026-11-10.
+
+### T-F483 - A 7z created from a nested folder once lacked the inner folder's entry (P2, unreproduced)
+
+- [ ] **Status:** open. Found 2026-11-10 (`APP-025`, 7z LZMA2 from a folder with a Cyrillic name and
+  one nested folder): the first archive listed the files but not the nested folder's own entry;
+  every later attempt (same source, same options) had it. The sample is kept with the release smoke
+  log. Next: diff its headers against a good one (`7za l -slt`), then look at how the folder list
+  is handed to tar.exe `--format=7zip` (T-F342) for an ordering or race that could drop a directory.
+- **Reported by:** the agent, 2026-11-10.
+
+### T-F482 - The main list has no keyboard way to open an entry (P3, accessibility)
+
+- [ ] **Status:** open. Found 2026-11-10 (`APP-012`): in the main window's file list Enter does
+  nothing and the context menu holds only Remove, so a keyboard user cannot open a selected archive
+  or file. Next: Enter (and a menu item) opens the selected entry the same way a double click does;
+  a UI test that drives it.
+- **Reported by:** the agent, 2026-11-10.
+
+### T-F481 - Extracting many small files costs ~1.4 ms a file, 3.85x 7-Zip on a Dev Drive (P3)
+
+- [ ] **Status:** open. Found 2026-11-10 by the v1.10.0 performance A/B (`docs/DECISIONS.md`,
+  "v1.10.0 - performance against v1.9.0 and 7-Zip"): `pakko x` of a ZIP of 8000 x 16 KiB onto a
+  Dev Drive takes 11.6 s against 7za's 3.0 s; v1.9.0 takes the same 11.7 s, so not a regression.
+  In `%TEMP%` on C: (`ExtractAsync_ManySmallFiles`) the gap is 1.45x, since Defender scans each of
+  7za's files there too. Each Pakko file is written in the staging folder, opened again for its time
+  (`FileTimes`) and moved (`ExtractionStaging`). Next: profile one file's path and measure setting the
+  time on the open handle before close; keep T-F161's staging guarantees.
+- **Reported by:** the agent, 2026-11-10.
+
+### T-F480 - Archive/FewLargeFiles and the Hybrid ratios drifted since July (P3)
+
+- [ ] **Status:** open. The 2026-11-10 calibration (`CompressionPerformanceTests`, five runs each)
+  measured Archive/FewLargeFiles at 1.61 (1.2 when T-F352 set it), Archive/Hybrid 1.46 (1.3),
+  Extract/Hybrid 1.77 (1.56); v1.9.0 and v1.10.0 are equal, so the drift is older. The ceilings now
+  follow the new numbers. Next: the same scenarios through older release CLIs (v1.6-v1.9) to find
+  the version, then the change.
+- **Reported by:** the agent, 2026-11-10.
+
 ### T-F479 - Test through the archive helper moved no progress bar (P1, a T-F470 regression, v1.10.0)
 
 - [x] **Status:** done 2026-11-10 (PR #204, b280c984; `docs/DECISIONS.md`, "T-F479"). On the CI bundle of

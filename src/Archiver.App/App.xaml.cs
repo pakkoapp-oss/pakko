@@ -33,8 +33,6 @@ public partial class App : Application
             ReportUnexpected(e.Exception, "Unobserved task exception");
         };
         Services = ConfigureServices();
-        // DecideAsync never faults; a log write that throws reaches the UnobservedTaskException handler above.
-        _ = LogTarReaderAsync(Services);
     }
 
     // T-F470: the backend line in the log is the device's proof of which reader this package uses.
@@ -146,6 +144,10 @@ public partial class App : Application
         // "Extract…"/double-click launch fell through to a blank window, silently ignoring the
         // files it was invoked with.
         HandleActivation(AppInstance.GetCurrent().GetActivatedEventArgs(), "Pakko started");
+
+        // T-F490: after the window, so the sandboxed probe does not compete with building it. DecideAsync
+        // never faults; a log write that throws reaches the UnobservedTaskException handler.
+        _ = LogTarReaderAsync(Services);
     }
 
     private void HandleActivation(AppActivationArguments args, string defaultLogMessage)

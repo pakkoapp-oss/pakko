@@ -14299,3 +14299,47 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   temporary file" by elapsed wall time, which a loaded runner can exceed (T-F425's rule: no timer
   races). Next was: count the attempts instead (a seam for the retry delay or its count), as T-F451 did.
 - **Reported by:** the agent, 2026-11-08.
+
+### T-F487 - OperationUi in RTL locales: the "Pakko" caption sits under the window buttons (P3)
+
+- [x] **Status:** done 2026-11-10: OperationUi's title bar Grid is pinned `FlowDirection.LeftToRight` (`OperationWindow.cs`, `BuildLayout`), as the App's `AppTitleBar`. `OperationWindowSourceTests` reads the source (OperationWindow has no test host); seen red without the pin. Checked on the installed 1.10.0.1 in ar-SA, he-IL and ur-PK: "Pakko" on the left, the content still right to left.
+- **Before:** open. Found 2026-11-10 (37-locale smoke, ar-SA, he-IL, ur-PK): the operation window's
+  own title bar inherits the root's `FlowDirection.RightToLeft` (`OperationWindow.cs`, since v1.6.0),
+  so its "Pakko" text moves to the right edge, over the minimize/maximize/close buttons, which stay
+  on the right. The App pins its title bar to LeftToRight (`MainWindow.xaml`, `AppTitleBar`) and
+  is fine. Next: the same pin on OperationUi's title bar Grid, and a test that the title bar is LTR
+  whatever the locale.
+- **Reported by:** the agent, 2026-11-10.
+
+### T-F488 - hi-IN: the Test result shows a dotted circle in "archive(s)" (P3)
+
+- [x] **Status:** done 2026-11-10: the string reads "sangrah (sangrahon)" in Devanagari, the noun and its plural in brackets as de-DE, uk-UA and pl-PL write it; no other hi-IN string had the pattern. `CombiningMarkTests` (Archiver.Messages.Tests) checks every string of all 37 locales: a combining mark follows a letter or another mark; seen red on the old string (hi-IN only). Checked on the installed 1.10.0.1: no dotted circle in the Test result.
+- **Before:** open. Found 2026-11-10 (37-locale smoke, OperationUi's Test result):
+  `ResultNoErrorsDetected` in `ResultMessages.hi-IN.resx` writes the plural ending in brackets right
+  after the noun; the bracket separates the vowel sign from its consonant, so it renders on a
+  dotted circle. Next: reword without the bracketed ending (for example "archive or archives"),
+  and check the other hi-IN strings for the same "(...)" plural pattern.
+- **Reported by:** the agent, 2026-11-10.
+
+### T-F489 - Archive view: a long "Packed" header runs into "CRC-32" in eight locales (P3)
+
+- [x] **Status:** done 2026-11-10: the Packed column is 150 instead of 100 (`MainWindow.xaml`, header and rows together, `docs/XAML.md`). 130 was tried first: hu-HU "Tömörített méret" and sw-KE "Ukubwa uliobana" (about 125 DIP) still touched CRC-32. Checked on the installed 1.10.0.2 at 150 %: the eight locales and ar-SA in the browse view at the default and the minimum size, every header with a gap. No unit test: the width a header needs is a rendering fact; the host smoke is the check.
+- **Before:** open. Found 2026-11-10 by the 37-locale UI smoke on the host (1.10.0.0 of b280c984,
+  150 %): the browse header's columns are fixed (`MainWindow.xaml`, `ColumnDefinitions="Auto,*,100,100,90,140"`,
+  since T-F199), so `PackedColumnHeader` is cut with no gap before CRC-32 in bg-BG, cs-CZ, hr-HR, hu-HU,
+  nl-NL, sk-SK, sr-Latn-RS and sw-KE (es, el, it, hi, ur touch it). Same at the default and the
+  minimum size. Next: `TextTrimming` with a tooltip on the headers, or a wider column fed by the
+  longest locale; the list rows share the widths, so change both together.
+- **Reported by:** the agent, 2026-11-10.
+
+### T-F490 - The App's first window is 30-45 ms later than in v1.9.0 (P2, a T-F470 regression, v1.10.0)
+
+- [x] **Status:** done 2026-11-10: the cause was not only the probe: `DecideOnceAsync` ran `File.Exists` and `TarSignatureVerifier.Verify` (WinVerifyTrust on archiveint.dll) synchronously up to its first await, on the caller's thread, here the App's UI thread before the window. No reason for it in T-F470's record: an async method's prefix, unnoticed. Fixed where the work is: `ArchiveintGate`'s `Lazy` starts `DecideOnceAsync` with `Task.Run`, so no caller (the App, a first tar-family listing from the UI thread, Shell, OperationUi) runs the checks on its own thread; `ArchiveintGateTests.DecideAsync_ReturnsBeforeTheSignatureCheckEnds`, seen red. The App's log call moved from the constructor to the end of `OnLaunched`, so the sandboxed probe does not compete with building the window. Measured on the installed 1.10.0.3 (`Measure-Startup.ps1`): App start to window 422 -> 376 ms (12 runs; v1.9.0: 390), Explorer Open 541 -> 509 ms (v1.9.0: 496), threads 30 -> 29; the log still carries the backend line after "Pakko started" (`docs/DECISIONS.md`, "v1.10.0 - performance against v1.9.0 and 7-Zip").
+- **Before:** open. Found 2026-11-10 by the UI A/B (`docs/DECISIONS.md`, "v1.10.0 - performance
+  against v1.9.0 and 7-Zip"): App start to window 390 -> 422 ms, Explorer Open 496 -> 541 ms, two
+  more threads; everything else equal. Suspect: `App`'s constructor starts
+  `ArchiveintGate.DecideAsync` (`LogTarReaderAsync`), whose sandboxed helper probe runs at every
+  start alongside the first window. Next: confirm by measuring a build that starts the decision
+  only after the first window is shown (or on first tar-family use), then keep that if the gap
+  closes; the log line stays (T-F470's device proof), only later.
+- **Reported by:** the agent, 2026-11-10.
