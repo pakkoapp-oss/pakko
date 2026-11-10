@@ -13,10 +13,14 @@ namespace Archiver.Core.PerformanceTests;
 /// algorithm this project's own hashing reproduces, so it's the same valid reference T-F114
 /// already established for compression/extraction.
 /// </summary>
+[Collection("SevenZipRatios")]
 public sealed class HashPerformanceTests : IDisposable
 {
     // 3.0 until 2026-11-10, as CompressionPerformanceTests; 1.5 over the last calibration's median.
     private const double ToleranceMultiplier = 1.5;
+
+    // Hash/ManyFilesAndFolders only: its passes are under a second each.
+    private const int TimedPasses = 5;
 
     private readonly TempDirectory _temp = new();
     private readonly ITestOutputHelper _output;
@@ -76,18 +80,32 @@ public sealed class HashPerformanceTests : IDisposable
         // — small absolute times (~200-280ms) mean run-to-run noise dominates more here than in
         // OneLargeFile; 1.3 sits in the middle of the observed range, same convention T-F114's own
         // ManySmallFiles/Hybrid scenarios already use for this reason.
-        // 2026-11-10 (v1.10.0, Debug, 5 runs): 0.53, 0.64, 0.52, 0.60, 0.45.
-        const double calibratedBaselineRatio = 0.53;
+        // 2026-11-10 (v1.10.0, Debug, 5 runs): 0.53, 0.64, 0.52, 0.60, 0.45, one pass each, beside
+        // CompressionPerformanceTests. Then the SevenZipRatios collection and the median of five
+        // passes (4 runs): 0.494, 0.425, 0.441, 0.420.
+        const double calibratedBaselineRatio = 0.43;
         string sourceDir = PerformanceFixtures.CreateManyFilesAndFoldersFolder(_temp.Path);
 
         await HashWithPakkoTimed(sourceDir); // warmup
         SevenZipRunner.Hash(sourceDir, "CRC32", recursive: true); // warmup
 
-        TimeSpan pakkoElapsed = await HashWithPakkoTimed(sourceDir);
-        TimeSpan referenceElapsed = SevenZipRunner.Hash(sourceDir, "CRC32", recursive: true);
+        // Under a second each: one pass read 0.56 and the next 0.90 on one machine (2026-11-10), so
+        // the medians of alternating passes are compared; a drift of the machine meets both tools.
+        var pakkoPasses = new List<TimeSpan>();
+        var referencePasses = new List<TimeSpan>();
+        for (int pass = 0; pass < TimedPasses; pass++)
+        {
+            pakkoPasses.Add(await HashWithPakkoTimed(sourceDir));
+            referencePasses.Add(SevenZipRunner.Hash(sourceDir, "CRC32", recursive: true));
+        }
+
+        TimeSpan pakkoElapsed = Median(pakkoPasses);
+        TimeSpan referenceElapsed = Median(referencePasses);
 
         AssertRatio("Hash/ManyFilesAndFolders", pakkoElapsed, referenceElapsed, calibratedBaselineRatio);
     }
+
+    private static TimeSpan Median(List<TimeSpan> passes) => passes.Order().ElementAt(passes.Count / 2);
 
     private static async Task<TimeSpan> HashWithPakkoTimed(string path)
     {

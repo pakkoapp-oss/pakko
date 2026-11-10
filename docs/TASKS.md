@@ -1521,6 +1521,23 @@ re-measured with T-F346's script before and after.
   `TarSandboxedService`, `Sandbox/` and `AntivirusScanService`.
 - **Reported by:** the agent's root-cause review, 2026-11-06.
 
+### T-F491 - Hash/ManyFilesAndFolders sometimes runs 7x slower after the project's other tests (P3)
+
+- [ ] **Status:** open. Found 2026-11-10 by the v1.10.0 release smoke (`REL-001`). In a run of the whole
+  performance project, Pakko's CRC-32 of 3,000 files once took 0.74 s in all five timed passes
+  (median), against about 0.10 s otherwise, while 7za took its usual 0.23 s: ratio 3.18 against a
+  0.65 ceiling. Not noise (every pass slow, 7za normal) and not the thread pool: 40 fresh-process
+  runs of the test alone, 20 as they are and 20 with `DOTNET_ThreadPool_ForceMinWorkerThreads=C`,
+  read 0.32-0.61 with no slow run (`FileHashService` already raises the pool minimum, T-F128). It
+  showed only after the other classes of the project had run in the same process (the
+  `SevenZipRatios` collection runs after them). Suspects: GC after the compression tests' large
+  buffers, background work a previous test left running, Defender scanning the fresh fixture.
+  Next: reproduce in whole-project runs with an ETW/`dotnet-counters` trace (GC, thread pool,
+  CPU of other processes), then decide whether it is the test or `FileHashService`. Until then a
+  failure of this scenario gets the one rerun `docs/TESTING.md` allows, recorded in the release
+  record. Not a reason for .NET 11: the slow mode does not follow the pool minimum.
+- **Reported by:** the agent, 2026-11-10.
+
 ### T-F486 - High contrast: the App's window twice started empty (P2)
 
 - [ ] **Status:** open. Found 2026-11-10 by the v1.10.0 release smoke (`APP-013`, second look on

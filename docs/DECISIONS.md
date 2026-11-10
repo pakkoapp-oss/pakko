@@ -14569,6 +14569,30 @@ and in the UI. `Category=Slow` alone (REL-001) cannot say it: its ceiling was 3x
   new calibration, said in the class comment. A failure still gets one rerun (`docs/TESTING.md`).
 - **Rejected.** Keeping 3.0 with the new medians: FewLargeFiles' 34 % drift since July passed
   under it unseen. A per-scenario multiplier: the spread is 3-21 %, one value covers all with room.
+- **The calibration holds only on an idle machine.** The release smoke ran `REL-001` as a single
+  `dotnet test --filter Category=Slow`, the performance project beside the others, and Hash
+  ManyFilesAndFolders failed: 0.91 against its 0.795 ceiling. Three such full runs: 1.51, 1.01, 1.45
+  (alone 0.44-0.64); the scenario is under a second of parallel hashing, so cores busy with other
+  projects swing it threefold. Every other scenario stayed under its ceiling. `REL-001` now runs the
+  rest first and the performance project alone after it (`scripts/smoke/Release.ps1`, `docs/SMOKE.md`).
+  That was not all: the project alone still read 0.56, then 0.90. xUnit ran `HashPerformanceTests`
+  beside `CompressionPerformanceTests` in one process, so the 0.1 s hash of 3,000 files was timed
+  while gigabytes were compressed next to it (the scenario alone: 0.43-0.51). Both classes are now
+  in the `SevenZipRatios` collection with parallelization disabled, which xUnit runs on its own
+  after the parallel ones; Hash/ManyFilesAndFolders compares the medians of five alternating
+  passes. The morning calibration had the classes in parallel too, so all seven were measured
+  again serialized (Slow: 4 runs, Debug; VeryLarge: 3, Release): Archive ManySmallFiles 1.12-1.17,
+  FewLargeFiles 1.48-1.62, Hybrid 1.45-1.48, Extract ManySmallFiles 1.42-1.47, Hybrid 1.80-2.02,
+  Archive OneLargeFile 1.05-1.09, Extract OneLargeFile 1.42-1.87, Hash OneLargeFile 0.57-0.64:
+  each under its ceiling, the medians within 5 % of the morning baselines, which stay. Hash
+  ManyFilesAndFolders, a different measurement now: 0.42-0.49, baseline 0.43 (was 0.53), ceiling
+  0.65. Rejected: a ceiling for the loaded run (about 2.2), which would let a fourfold slowdown
+  pass on a quiet one.
+- **One slow mode is left: T-F491.** A whole-project check run read Hash ManyFilesAndFolders at
+  3.18, every one of its five passes slow (0.74 s against 0.10) and 7za normal. 40 runs of the test
+  alone, with and without a raised thread-pool minimum, never showed it, so it is not the pool (and
+  not a reason to move to .NET 11 early) but something the earlier tests of the process leave
+  behind. Until it is understood, a failure there gets the one documented rerun.
 
 ## T-F479 - Test's progress through the archive helper (2026-11-09)
 

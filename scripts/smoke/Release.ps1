@@ -36,11 +36,19 @@ function Assert-CanaryRun {
 Add-SmokeStep 'REL-001' {
     $commit = Get-SmokeCommit
     $dotnet = (Get-Command -Name dotnet -CommandType Application | Select-Object -First 1).Source
-    $run = Invoke-Tool -Exe $dotnet -Arguments @('test', '--nologo', '--filter', 'Category=Slow') -WorkingDirectory $Smoke.Repo -TimeoutSeconds 5400
-    $failed = @($run.Output -split '\r?\n' | Where-Object { $_ -match '^\s*Failed\s|Failed!|error ' } | Select-Object -First 3)
-    Assert-Smoke ($run.ExitCode -eq 0) "dotnet test --filter Category=Slow: exit $($run.ExitCode) $($failed -join ' / ')"
+    # The 7za ratios are calibrated on a machine doing nothing else; beside the other projects' Slow
+    # tests, Hash/ManyFilesAndFolders (under a second, parallel hashing) read 0.9-1.5 against 0.44-0.64
+    # alone. So the performance project runs on its own, after the rest.
+    $perf = 'tests/Archiver.Core.PerformanceTests'
     $passed = 0
-    foreach ($match in [regex]::Matches($run.Output, 'Passed:\s+(\d+)')) { $passed += [int]$match.Groups[1].Value }
+    foreach ($arguments in @(
+            @('test', '--nologo', '--filter', 'Category=Slow&FullyQualifiedName!~Archiver.Core.PerformanceTests'),
+            @('test', $perf, '--nologo', '--filter', 'Category=Slow'))) {
+        $run = Invoke-Tool -Exe $dotnet -Arguments $arguments -WorkingDirectory $Smoke.Repo -TimeoutSeconds 5400
+        $failed = @($run.Output -split '\r?\n' | Where-Object { $_ -match '^\s*Failed\s|Failed!|error ' } | Select-Object -First 3)
+        Assert-Smoke ($run.ExitCode -eq 0) "dotnet $($arguments -join ' '): exit $($run.ExitCode) $($failed -join ' / ')"
+        foreach ($match in [regex]::Matches($run.Output, 'Passed:\s+(\d+)')) { $passed += [int]$match.Groups[1].Value }
+    }
     Assert-Smoke ($passed -gt 0) 'dotnet test --filter Category=Slow ran no test'
     "passed $passed on $($commit.Sha.Substring(0, 7))$($commit.Clean ? '' : ' with uncommitted changes')"
 }

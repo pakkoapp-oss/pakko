@@ -277,7 +277,7 @@ size in PKG-001). The factors were set from a measured run (`docs/DECISIONS.md`,
 
 | ID | Tier | By | On | Action | Expect | Covers |
 |---|---|---|---|---|---|---|
-| REL-001 | release | script | dev | `dotnet test --filter "Category=Slow"` on the checked-out commit | Green; the note names the commit | T-F114 |
+| REL-001 | release | script | dev | `dotnet test --filter "Category=Slow"` on the checked-out commit, the performance project alone after the rest (its 7za ratios are calibrated on an idle machine) | Green; the note names the commit | T-F114 |
 | REL-002 | release | script | dev | Read the jobs of the newest finished canary run on the checked-out commit; when there is none (the row is skipped), start one with `gh workflow run canary.yml --ref main` and run the row again | `canary-failed-day` skipped, `canary-fuzz` success; the ARM64 subprocess step passed | T-F240 |
 | REL-003 | store | script | tag | `SHA256SUMS` against every file it lists; `gh attestation verify` for the bundles and the CLI zips | All match; the attestations are valid | T-F364 |
 | REL-004 | store | script | tag | Signature, version and architecture of both `.msixbundle` files, named as the tag names them | Valid, signed by the dev certificate, the tag's version, one application package of the bundle's architecture | T-F129 |
