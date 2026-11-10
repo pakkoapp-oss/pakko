@@ -1,7 +1,7 @@
 [Description]
 Pakko è un archiviatore ZIP gratuito e open source per Windows, costruito interamente sulle API di compressione proprie di .NET: niente 7-Zip, niente WinRAR e nessun codice di compressione di terze parti in alcuna parte dell'app.
 
-Crea ed estrai archivi ZIP direttamente tramite System.IO.Compression, con o senza password: Pakko apre gli archivi ZipCrypto e WinZip AES e crea archivi cifrati con AES-256, leggibili da 7-Zip e dagli altri programmi ZIP. Gli archivi RAR, 7-Zip e della famiglia TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) vengono letti tramite il tar.exe integrato in Windows, eseguito in una sandbox AppContainer isolata e senza accesso alla rete. Lo stesso tar.exe crea anche archivi della famiglia TAR e 7-Zip (7-Zip senza password, nelle versioni di Windows il cui tar.exe sa scriverli).
+Crea ed estrai archivi ZIP direttamente tramite System.IO.Compression, con o senza password: Pakko apre gli archivi ZipCrypto e WinZip AES e crea archivi cifrati con AES-256, leggibili da 7-Zip e dagli altri programmi ZIP. Gli archivi RAR, 7-Zip e della famiglia TAR (TAR, GZ, BZ2, XZ, ZST, LZMA), oltre a ISO, CAB, cpio, ar (.deb), tar.Z e lzip, vengono letti con la libreria di archivi di Windows stesso (archiveint.dll, quella su cui si basa il tar.exe integrato) in una sandbox AppContainer isolata e senza accesso alla rete. Il tar.exe integrato in Windows crea anche archivi della famiglia TAR e 7-Zip (7-Zip senza password, nelle versioni di Windows il cui tar.exe sa scriverli).
 
 Pakko si integra in modo nativo con Esplora file: fai clic con il pulsante destro per estrarre, comprimere, testare un archivio, verificare con il tuo antivirus se contiene minacce o calcolarne l'hash SHA-256, e fai doppio clic su qualsiasi archivio supportato per sfogliarne il contenuto senza dover prima estrarre tutto. Ogni file estratto conserva il contrassegno di sicurezza Mark-of-the-Web dell'archivio da cui proviene.
 
@@ -14,7 +14,7 @@ Un archiviatore gratuito e open source che si affida soltanto al codice di compr
 ZIP: creazione ed estrazione con la libreria di compressione propria di .NET
 ZIP con password: apre ZipCrypto e WinZip AES, crea AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: estrazione e creazione, tramite il tar.exe integrato in Windows
-7-Zip: estrazione e creazione (senza password); RAR: sola estrazione — tramite il tar.exe integrato in Windows
+7-Zip: estrazione e creazione (senza password); RAR, ISO, CAB, cpio, ar (.deb), tar.Z, lzip: sola estrazione
 Menu contestuale di Esplora file: Apri, Estrai qui, Comprimi, Testa archivio, Verifica minacce, Hash
 Browser degli archivi: guarda dentro un archivio, visualizza in anteprima immagini e testo, estrai solo ciò che selezioni
 Verifica minacce: il contenuto dell'archivio viene controllato dal tuo antivirus installato
@@ -35,12 +35,12 @@ zip con password
 open source
 
 [What's new in this version]
-• Novità: crea archivi 7-Zip nell'app, dal menu di Esplora file e con pakko a -t7z (senza password; serve una versione di Windows il cui tar.exe sappia scrivere 7-Zip).
-• «Testa archivio» ora controlla anche gli archivi 7-Zip, RAR e TAR, non solo ZIP.
-• Novità: dati di ripristino (PAR2). Attiva «Aggiungi dati di ripristino (PAR2)» quando crei un archivio, e potrai ripararlo dopo un danno.
-• Funzionano anche i file PAR2 creati da altri programmi; il comando pakko aggiunge i dati di ripristino con -rr e ripara con r.
-• Corretto: i tasti Canc, Invio e il tasto Menu funzionano di nuovo su una riga dell'elenco selezionata da tastiera.
-• Corretto: in Windows 10 e Windows 11 fino alla versione 23H2 gli archivi TAR non vengono più rifiutati e Pakko offre solo i formati che il tar.exe di Windows sa gestire.
-• Corretto: un archivio non viene più scritto sopra uno dei file da archiviare; riceve invece un nome numerato.
-• Corretto: non viene creato un archivio TAR su due nomi di uno stesso file (un collegamento fisico), che Pakko non riusciva a estrarre; si suggerisce ZIP o 7-Zip.
-• Il comando pakko comprende più opzioni e maschere di file di 7-Zip.
+• Novità: gli archivi ISO, CAB, cpio, ar (.deb), tar.Z e lzip si aprono, si estraggono e si testano (sola lettura; lzip non su Windows 10).
+• Gli archivi TAR, 7-Zip e RAR ora vengono letti con la libreria di Windows stesso in un piccolo programma di supporto nella sandbox: i nomi dei file in qualsiasi lingua arrivano esattamente come sono stati salvati.
+• Novità: il pulsante sulla barra delle applicazioni e l'icona nell'area di notifica mostrano l'avanzamento di un'operazione.
+• "Verifica minacce" non segnala più "nessuna minaccia trovata" quando non ha potuto controllare ogni file, o quando l'antivirus non segnala le minacce di prova note.
+• Corretto: i file nelle cartelle TAR il cui nome termina con uno spazio o un punto vengono estratti e verificati.
+• Corretto: dove il tar.exe di Windows legge un archivio, un nome fuori dalla lingua del sistema non viene mai estratto con un nome sbagliato.
+• Corretto: spostare le origini nel Cestino non le conserva più tutte quando una viene saltata, e ogni elemento conservato ha il proprio motivo.
+• Corretto: l'annullamento chiude subito tar.exe, e la finestra torna a stare su un monitor con un'area di lavoro più piccola.
+• Corretto: testo tagliato o fuori posto in arabo, ebraico, urdu, hindi e altre otto lingue.

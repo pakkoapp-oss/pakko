@@ -1,7 +1,7 @@
 [Description]
 Pakko este un arhivator ZIP gratuit și open source pentru Windows, construit în întregime pe API-urile de compresie proprii ale .NET — fără 7-Zip, fără WinRAR și fără niciun cod de compresie de la terți nicăieri în aplicație.
 
-Creați și extrageți arhive ZIP direct prin System.IO.Compression, cu sau fără parolă: Pakko deschide arhive ZipCrypto și WinZip AES și creează arhive criptate cu AES-256, pe care 7-Zip și alte programe ZIP le pot citi. Arhivele RAR, 7-Zip și cele din familia TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) sunt citite prin instrumentul tar.exe integrat în Windows, lansat într-un sandbox AppContainer izolat, fără acces la rețea. Același tar.exe creează și arhive din familia TAR și 7-Zip (7-Zip fără parolă, în versiunile de Windows al căror tar.exe le poate scrie).
+Creați și extrageți arhive ZIP direct prin System.IO.Compression, cu sau fără parolă: Pakko deschide arhive ZipCrypto și WinZip AES și creează arhive criptate cu AES-256, pe care 7-Zip și alte programe ZIP le pot citi. Arhivele RAR, 7-Zip și cele din familia TAR (TAR, GZ, BZ2, XZ, ZST, LZMA), precum și ISO, CAB, cpio, ar (.deb), tar.Z și lzip, sunt citite cu biblioteca de arhive a sistemului Windows (archiveint.dll, pe care se bazează tar.exe integrat) într-un sandbox AppContainer izolat, fără acces la rețea. Instrumentul tar.exe integrat în Windows creează și arhive din familia TAR și 7-Zip (7-Zip fără parolă, în versiunile de Windows al căror tar.exe le poate scrie).
 
 Pakko se integrează nativ în Explorer: faceți clic dreapta pentru a extrage, a comprima, a testa o arhivă, a verifica dacă are amenințări cu antivirusul dvs. sau a-i calcula suma de control SHA-256 și faceți dublu clic pe orice arhivă acceptată pentru a-i răsfoi conținutul fără a fi nevoie să extrageți totul mai întâi. Fiecare fișier extras păstrează eticheta de securitate Mark-of-the-Web a arhivei din care provine.
 
@@ -14,7 +14,7 @@ Un arhivator gratuit și open source care se bazează numai pe codul de compresi
 ZIP: creare și extragere cu biblioteca de compresie proprie a .NET
 ZIP cu parolă: deschide ZipCrypto și WinZip AES, creează AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: extragere și creare, prin instrumentul tar.exe integrat în Windows
-7-Zip: extragere și creare (fără parolă); RAR: numai extragere — prin instrumentul tar.exe integrat în Windows
+7-Zip: extragere și creare (fără parolă); RAR, ISO, CAB, cpio, ar (.deb), tar.Z, lzip: numai extragere
 Meniul contextual din Explorer: Deschide, Extrage aici, Comprimă, Testează arhiva, Verifică amenințările, Sumă de control
 Exploratorul de arhive: priviți în interiorul unei arhive, previzualizați imagini și text, extrageți doar ce selectați
 Verificarea amenințărilor: conținutul arhivei este verificat de antivirusul instalat
@@ -35,12 +35,12 @@ zip cu parolă
 open source
 
 [What's new in this version]
-• Nou: creați arhive 7-Zip în aplicație, din meniul din Explorer și cu pakko a -t7z (fără parolă; este necesară o versiune de Windows al cărei tar.exe poate scrie 7-Zip).
-• „Testează arhiva” verifică acum și arhive 7-Zip, RAR și TAR, nu doar ZIP.
-• Nou: date de recuperare (PAR2). Activați „Adăugare date de recuperare (PAR2)” la crearea unei arhive, iar arhiva va putea fi reparată după deteriorare.
-• Funcționează și fișierele PAR2 create de alte programe; comanda pakko adaugă date de recuperare cu -rr și repară cu r.
-• Remediat: tastele Delete, Enter și tasta de meniu funcționează din nou pe un rând al listei selectat de la tastatură.
-• Remediat: pe Windows 10 și Windows 11 până la versiunea 23H2, arhivele TAR nu mai sunt refuzate, iar Pakko oferă doar formatele pe care le poate gestiona tar.exe din Windows.
-• Remediat: o arhivă nu mai este scrisă niciodată peste unul dintre fișierele arhivate; primește un nume numerotat.
-• Remediat: nu se creează o arhivă TAR peste două nume ale aceluiași fișier (o legătură fixă), pe care Pakko nu o putea extrage; se sugerează ZIP sau 7-Zip.
-• Comanda pakko înțelege mai multe comutatoare și măști de fișiere ale 7-Zip.
+• Nou: arhivele ISO, CAB, cpio, ar (.deb), tar.Z și lzip se deschid, se extrag și se testează (numai citire; lzip nu pe Windows 10).
+• Arhivele TAR, 7-Zip și RAR sunt citite acum cu biblioteca sistemului Windows într-un mic program ajutător dintr-un sandbox: numele fișierelor în orice limbă ajung exact cum au fost stocate.
+• Nou: butonul din bara de activități și pictograma din zona de notificare arată progresul unei operații.
+• „Verifică amenințările” nu mai raportează „nu s-a găsit nimic” când nu a putut verifica fiecare fișier sau când antivirusul nu raportează amenințările de test cunoscute.
+• Remediat: fișierele din folderele TAR al căror nume se termină cu un spațiu sau un punct sunt extrase și scanate.
+• Remediat: acolo unde tar.exe din Windows citește o arhivă, un nume din afara limbii sistemului nu mai este extras niciodată sub un nume greșit.
+• Remediat: mutarea surselor în Coșul de reciclare nu le mai păstrează pe toate când una este omisă, iar fiecare element păstrat are propriul motiv.
+• Remediat: anularea oprește tar.exe imediat, iar fereastra încape din nou pe un monitor cu o zonă de lucru mai mică.
+• Remediat: text tăiat sau deplasat în arabă, ebraică, urdu, hindi și alte opt limbi.

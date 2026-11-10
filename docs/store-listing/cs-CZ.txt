@@ -1,7 +1,7 @@
 [Description]
 Pakko je bezplatný archivátor ZIP s otevřeným zdrojovým kódem pro Windows, postavený zcela na vlastních kompresních rozhraních API platformy .NET — bez 7-Zipu, bez WinRARu a bez jakéhokoli kompresního kódu třetích stran kdekoli v aplikaci.
 
-Vytvářejte a extrahujte archivy ZIP přímo pomocí System.IO.Compression, s heslem i bez něj: Pakko otevírá archivy ZipCrypto a WinZip AES a vytváří archivy šifrované pomocí AES-256, které přečte 7-Zip i další programy pro ZIP. Archivy RAR, 7-Zip a archivy rodiny TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) se čtou pomocí nástroje tar.exe vestavěného ve Windows, spuštěného v izolovaném sandboxu AppContainer bez přístupu k síti. Stejný nástroj tar.exe vytváří také archivy rodiny TAR a 7-Zip (7-Zip bez hesla, ve verzích Windows, jejichž tar.exe je umí zapsat).
+Vytvářejte a extrahujte archivy ZIP přímo pomocí System.IO.Compression, s heslem i bez něj: Pakko otevírá archivy ZipCrypto a WinZip AES a vytváří archivy šifrované pomocí AES-256, které přečte 7-Zip i další programy pro ZIP. Archivy RAR, 7-Zip a archivy rodiny TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) a také ISO, CAB, cpio, ar (.deb), tar.Z a lzip se čtou vlastní knihovnou archivů Windows (archiveint.dll, na které stojí vestavěný tar.exe) v izolovaném sandboxu AppContainer bez přístupu k síti. Nástroj tar.exe vestavěný ve Windows vytváří také archivy rodiny TAR a 7-Zip (7-Zip bez hesla, ve verzích Windows, jejichž tar.exe je umí zapsat).
 
 Pakko se nativně integruje s Průzkumníkem souborů: kliknutím pravým tlačítkem můžete extrahovat, komprimovat, otestovat archiv, nechat ho antivirovým programem zkontrolovat na hrozby nebo vypočítat jeho hash SHA-256 a dvojitým kliknutím na jakýkoli podporovaný archiv procházet jeho obsah, aniž byste museli nejprve všechno extrahovat. Každý extrahovaný soubor si zachová bezpečnostní značku Mark-of-the-Web archivu, ze kterého pochází.
 
@@ -14,7 +14,7 @@ Bezplatný archivátor s otevřeným zdrojovým kódem, který spoléhá pouze n
 ZIP: vytváření a extrahování pomocí vlastní kompresní knihovny .NET
 ZIP s heslem: otevírá ZipCrypto a WinZip AES, vytváří AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: extrahování a vytváření pomocí nástroje tar.exe vestavěného ve Windows
-7-Zip: extrahování a vytváření (bez hesla); RAR: pouze extrahování — pomocí nástroje tar.exe vestavěného ve Windows
+7-Zip: extrahování a vytváření (bez hesla); RAR, ISO, CAB, cpio, ar (.deb), tar.Z, lzip: pouze extrahování
 Kontextová nabídka Průzkumníka souborů: Otevřít, Extrahovat sem, Komprimovat, Otestovat archiv, Zkontrolovat hrozby, Hash
 Prohlížeč archivů: nahlédněte do archivu, zobrazte náhled obrázků a textu, extrahujte jen to, co vyberete
 Kontrola hrozeb: obsah archivu zkontroluje váš nainstalovaný antivirový program
@@ -35,12 +35,12 @@ ZIP s heslem
 ZIP kompresní nástroj
 
 [What's new in this version]
-• Novinka: vytváření archivů 7-Zip v aplikaci, z nabídky Průzkumníka souborů a příkazem pakko a -t7z (bez hesla; je potřeba verze Windows, jejíž tar.exe umí zapsat 7-Zip).
-• „Otestovat archiv“ nyní kontroluje i archivy 7-Zip, RAR a TAR, nejen ZIP.
-• Novinka: data pro obnovení (PAR2). Při vytváření archivu zapněte „Přidat data pro obnovení (PAR2)“ a archiv půjde po poškození opravit.
-• Fungují i soubory PAR2 vytvořené jinými programy; příkaz pakko přidává data pro obnovení přepínačem -rr a opravuje příkazem r.
-• Opraveno: klávesy Delete, Enter a klávesa nabídky znovu fungují na řádku seznamu vybraném z klávesnice.
-• Opraveno: ve Windows 10 a Windows 11 do verze 23H2 už nejsou archivy TAR odmítány a Pakko nabízí jen formáty, které zvládne tar.exe systému Windows.
-• Opraveno: archiv se už nikdy nezapíše přes některý z archivovaných souborů; dostane očíslovaný název.
-• Opraveno: archiv TAR se nevytvoří nad dvěma názvy jednoho souboru (pevným odkazem), který Pakko nedokázal extrahovat; nabídne se ZIP nebo 7-Zip.
-• Příkaz pakko rozumí více přepínačům a maskám souborů 7-Zip.
+• Nové: archivy ISO, CAB, cpio, ar (.deb), tar.Z a lzip lze otevřít, extrahovat a otestovat (jen pro čtení; lzip ne ve Windows 10).
+• Archivy TAR, 7-Zip a RAR teď čte vlastní knihovna archivů Windows v malém pomocníkovi v sandboxu: názvy souborů v jakémkoli jazyce dorazí přesně tak, jak jsou uložené.
+• Nové: tlačítko na hlavním panelu a ikona v oznamovací oblasti ukazují průběh operace.
+• „Zkontrolovat hrozby“ už nehlásí „nic nenalezeno“, když nemohla zkontrolovat každý soubor nebo když antivirus nehlásí známé testovací hrozby.
+• Opraveno: soubory ve složkách TAR, jejichž název končí mezerou nebo tečkou, se extrahují i kontrolují.
+• Opraveno: kde archiv čte tar.exe z Windows, název mimo jazyk systému se nikdy neextrahuje pod chybným názvem.
+• Opraveno: přesun zdrojů do Koše už je nenechá všechny, když je jeden zdroj přeskočen, a každá ponechaná položka má vlastní důvod.
+• Opraveno: zrušení hned ukončí tar.exe a okno se opět vejde na monitor s menší pracovní plochou.
+• Opraveno: oříznutý nebo posunutý text v arabštině, hebrejštině, urdštině, hindštině a dalších osmi jazycích.

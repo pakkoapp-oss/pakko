@@ -1,7 +1,7 @@
 [Description]
 Pakko is a free, open-source ZIP archiver for Windows built entirely on .NET's own compression APIs — no 7-Zip, no WinRAR, and no third-party compression code anywhere in the app.
 
-Create and extract ZIP archives directly through System.IO.Compression, with or without a password: Pakko opens ZipCrypto and WinZip AES archives and creates AES-256 encrypted ones that 7-Zip and other ZIP tools can read. RAR, 7-Zip and TAR-family archives (TAR, GZ, BZ2, XZ, ZST, LZMA) are read through Windows' own built-in tar.exe, launched inside an isolated AppContainer sandbox with no network access. The same tar.exe also creates TAR-family and 7-Zip archives (7-Zip without a password, on Windows versions whose tar.exe can write it).
+Create and extract ZIP archives directly through System.IO.Compression, with or without a password: Pakko opens ZipCrypto and WinZip AES archives and creates AES-256 encrypted ones that 7-Zip and other ZIP tools can read. RAR, 7-Zip and TAR-family archives (TAR, GZ, BZ2, XZ, ZST, LZMA), as well as ISO, CAB, cpio, ar (.deb), tar.Z and lzip, are read with Windows' own archive library (archiveint.dll, the one behind its built-in tar.exe) inside an isolated AppContainer sandbox with no network access. Windows' built-in tar.exe also creates TAR-family and 7-Zip archives (7-Zip without a password, on Windows versions whose tar.exe can write it).
 
 Pakko integrates natively with File Explorer: right-click to extract, compress, test an archive, scan it for threats with your antivirus or compute its SHA-256 hash, and double-click any supported archive to browse its contents without extracting everything first. Every extracted file keeps the Mark-of-the-Web security tag of the archive it came from.
 
@@ -14,7 +14,7 @@ A free, open-source archiver that relies only on the compression code built into
 ZIP: create and extract with .NET's own compression library
 Password-protected ZIP: opens ZipCrypto and WinZip AES, creates AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: extract and create, via Windows' built-in tar.exe
-7-Zip: extract and create (without a password); RAR: extract only — via Windows' built-in tar.exe
+7-Zip: extract and create (without a password); RAR, ISO, CAB, cpio, ar (.deb), tar.Z, lzip: extract only
 File Explorer right-click menu: Open, Extract here, Compress, Test archive, Scan for threats, Hash
 Archive browser: look inside an archive, preview pictures and text, extract only what you select
 Scan for threats: the archive's contents are checked by your installed antivirus
@@ -35,12 +35,12 @@ sandboxed archive extraction
 open source
 
 [What's new in this version]
-• New: create 7-Zip archives in the app, from the File Explorer menu and with pakko a -t7z (without a password; needs a Windows version whose tar.exe can write 7-Zip).
-• "Test archive" now also checks 7-Zip, RAR and TAR archives, not only ZIP.
-• New: recovery data (PAR2). Turn on "Add recovery data (PAR2)" when creating an archive, and the archive can be repaired after damage.
-• PAR2 files made by other programs work too; the pakko command adds recovery data with -rr and repairs with r.
-• Fixed: the Delete, Enter and menu keys work again on a list row selected from the keyboard.
-• Fixed: on Windows 10 and Windows 11 up to version 23H2, TAR archives are no longer refused, and Pakko offers only the formats that Windows' own tar.exe can handle.
-• Fixed: an archive is never written over one of the files being archived; it gets a numbered name instead.
-• Fixed: a TAR archive is not created over two names of one file (a hard link), which Pakko could not extract; ZIP or 7-Zip is suggested.
-• The pakko command understands more of 7-Zip's switches and file masks.
+• New: ISO, CAB, cpio, ar (.deb), tar.Z and lzip archives open, extract and test (read-only; lzip not on Windows 10).
+• TAR, 7-Zip and RAR archives are now read with Windows' own archive library in a small sandboxed helper: file names in any language arrive exactly as stored.
+• New: the taskbar button and the tray icon show the progress of an operation.
+• "Scan for threats" no longer reports "nothing found" when it could not check every file, or when the antivirus does not report known test threats.
+• Fixed: files in TAR folders whose name ends in a space or a dot are extracted and scanned.
+• Fixed: where Windows' tar.exe reads an archive, a name outside the system language is never extracted under a wrong name.
+• Fixed: moving sources to the Recycle Bin no longer keeps them all when one source is skipped, and each kept item gets its own reason.
+• Fixed: cancelling ends tar.exe at once, and the window fits again on a monitor with a smaller work area.
+• Fixed: text that was cut off or misplaced in Arabic, Hebrew, Urdu, Hindi and eight other languages.
