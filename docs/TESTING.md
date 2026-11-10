@@ -1057,7 +1057,11 @@ fresh into a `TempDirectory` at test-run time and never committed to git, follow
 (`ZipArchiveService`) and a vendored `7za.exe` reference — back-to-back, on the same machine, in
 the same test method — then asserts on the *ratio* between their elapsed times against a
 per-scenario calibrated constant with a 1.5x tolerance multiplier (3x until the 2026-11-10
-recalibration on the dev machine, `DECISIONS.md`; recalibrate after a hardware change). This is the only pattern of the
+recalibration on the dev machine, `DECISIONS.md`; recalibrate after a hardware change). The ratios
+are calibrated on an idle machine: the two classes share the `SevenZipRatios` collection
+(parallelization disabled), so no other test of the project runs during a timing, and the project
+runs alone, not beside the other projects' `Slow` tests (REL-001 does both). Hash/ManyFilesAndFolders,
+under a second a pass, compares the medians of five alternating passes. This is the only pattern of the
 three researched precedents (BenchmarkDotNet, criterion.rs, benchstat) that generalizes to an
 arbitrary, never-before-seen machine — see `DECISIONS.md`'s T-F114 entry for the full research and
 the observed baseline ratios. Extraction scenarios extract from one shared reference ZIP (built

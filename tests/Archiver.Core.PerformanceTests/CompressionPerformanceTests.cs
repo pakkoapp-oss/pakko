@@ -20,6 +20,7 @@ namespace Archiver.Core.PerformanceTests;
 /// single shared reference ZIP (built once via 7za, untimed) so both engines process byte-identical
 /// input rather than each extracting their own separately-created archive.
 /// </summary>
+[Collection("SevenZipRatios")]
 public sealed class CompressionPerformanceTests : IDisposable
 {
     // 3.0 until 2026-11-10: so wide that FewLargeFiles' drift from 1.2 to 1.6 passed unnoticed.
