@@ -46,7 +46,9 @@ public sealed partial class ArchiveintGate
         _verifyArchiveint = verifyArchiveint ?? TarSignatureVerifier.Verify;
         _probe = probe ?? ProbeAsync;
         _probeTimeout = probeTimeout ?? ProbeTimeout;
-        _decision = new Lazy<Task<ArchiveintDecision>>(DecideOnceAsync, LazyThreadSafetyMode.ExecutionAndPublication);
+        // T-F490: on the thread pool from the start; the checks before the probe's first await (the
+        // signature check of archiveint.dll) would otherwise hold the first caller's thread, a UI thread.
+        _decision = new Lazy<Task<ArchiveintDecision>>(() => Task.Run(DecideOnceAsync), LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
     /// <summary>The decision, made on the first call; never faults.</summary>

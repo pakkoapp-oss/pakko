@@ -13,15 +13,18 @@ namespace Archiver.Core.PerformanceTests;
 /// the BenchmarkDotNet/criterion.rs/benchstat research behind this choice). A single discarded
 /// warmup pass precedes the timed pass for both engines, absorbing JIT/cold-start skew.
 ///
-/// Realistic sensitivity is "catches a ~2x+ slowdown," not a fine-grained regression detector —
-/// intentional, matching this repo's actual regression history (gross, not subtle) and the lack
-/// of any CI here to make repeated-run statistics meaningful. Extraction scenarios extract from a
+/// Realistic sensitivity is "catches a ~1.5x slowdown against the median of the last calibration"
+/// (2026-11-10: five runs per scenario, the worst run 3-24 % below each ceiling). These classes run
+/// only locally before a release (canary-slow leaves them out), so the ceiling follows this
+/// machine's numbers; recalibrate after a hardware change. Extraction scenarios extract from a
 /// single shared reference ZIP (built once via 7za, untimed) so both engines process byte-identical
 /// input rather than each extracting their own separately-created archive.
 /// </summary>
 public sealed class CompressionPerformanceTests : IDisposable
 {
-    private const double ToleranceMultiplier = 3.0;
+    // 3.0 until 2026-11-10: so wide that FewLargeFiles' drift from 1.2 to 1.6 passed unnoticed.
+    // 1.5 over the median leaves 24-50 % above the worst calibration run.
+    private const double ToleranceMultiplier = 1.5;
 
     private readonly ZipArchiveService _sut = new(new GroupPolicyOptions());
     private readonly TempDirectory _temp = new();
@@ -46,7 +49,8 @@ public sealed class CompressionPerformanceTests : IDisposable
         // always stays on the completely untouched original sequential path regardless of anything
         // done inside the parallel pipeline itself, by design. T-F352 keeps it there: one file has
         // nothing beside it to compress in parallel.
-        const double calibratedBaselineRatio = 1.22;
+        // 2026-11-10 (v1.10.0, Release, 5 runs): 1.07, 1.00, 1.08, 1.08, 1.07.
+        const double calibratedBaselineRatio = 1.07;
         ReleaseBuildGuard.RequireOptimizedCore();
         string sourceDir = PerformanceFixtures.CreateOneLargeFileFolder(_temp.Path);
 
@@ -66,7 +70,9 @@ public sealed class CompressionPerformanceTests : IDisposable
     [Trait("Category", "VeryLarge")]
     public async Task ExtractAsync_OneLargeFile_WithinToleranceOfSevenZipReference()
     {
-        const double calibratedBaselineRatio = 1.06; // observed 2026-07-17, see DECISIONS.md
+        // 1.06 observed 2026-07-17 (DECISIONS.md). 2026-11-10 (v1.10.0, Release, 5 runs): 1.32,
+        // 1.15, 1.80, 1.63, 1.82 - both engines take 0.3-0.5 s here, so the spread is wide.
+        const double calibratedBaselineRatio = 1.63;
         ReleaseBuildGuard.RequireOptimizedCore();
         string sourceDir = PerformanceFixtures.CreateOneLargeFileFolder(_temp.Path);
         string referenceZip = Path.Combine(_temp.Path, "shared.zip");
@@ -111,7 +117,8 @@ public sealed class CompressionPerformanceTests : IDisposable
         //         re-faulted per entry, plus a 64 KiB FileStream buffer per file (gen0 churn).
         //   ~1.1  after T-F271 dropped that buffer (0.94/1.31/1.09, Release); the zlib-ng part is
         //         not fixable through DeflateStream — see DECISIONS.md's T-F271 entry.
-        const double calibratedBaselineRatio = 1.1;
+        //   1.18  2026-11-10 (v1.10.0, Debug as Category=Slow runs it, 5 runs: 1.13-1.21)
+        const double calibratedBaselineRatio = 1.18;
         string sourceDir = PerformanceFixtures.CreateManySmallFilesFolder(_temp.Path);
 
         await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"));
@@ -134,7 +141,9 @@ public sealed class CompressionPerformanceTests : IDisposable
         // 32 KiB window, so every entry also takes T-F299's second, Stored pass):
         //   ~2.9  on the sequential writer, before T-F352 (one core; measured at 3 x 100 MB)
         //   ~1.2  on the parallel writer (1.20, 1.17; Release)
-        const double calibratedBaselineRatio = 1.2;
+        //   1.61  2026-11-10 (v1.10.0, Debug, 5 runs: 1.52-1.70); the drift from 1.2 is unexplained
+        //         and identical in v1.9.0 (T-F480)
+        const double calibratedBaselineRatio = 1.61;
         string sourceDir = PerformanceFixtures.CreateFewLargeFilesFolder(_temp.Path);
         // The disk answer is pinned: a runner's virtual disk may not report "no seek penalty".
         var sut = new ZipArchiveService(new GroupPolicyOptions()) { HasNoSeekPenalty = _ => true };
@@ -158,7 +167,8 @@ public sealed class CompressionPerformanceTests : IDisposable
     [Trait("Category", "Slow")]
     public async Task ExtractAsync_ManySmallFiles_WithinToleranceOfSevenZipReference()
     {
-        const double calibratedBaselineRatio = 1.58; // observed 2026-07-17, see DECISIONS.md
+        // 1.58 observed 2026-07-17 (DECISIONS.md); 2026-11-10 (v1.10.0, Debug, 5 runs: 1.37-1.50).
+        const double calibratedBaselineRatio = 1.45;
         string sourceDir = PerformanceFixtures.CreateManySmallFilesFolder(_temp.Path);
         string referenceZip = Path.Combine(_temp.Path, "shared.zip");
         SevenZipRunner.Archive(sourceDir, referenceZip);
@@ -192,7 +202,8 @@ public sealed class CompressionPerformanceTests : IDisposable
         //         ManySmallFiles' this whole session); now parallel too. 0.93-1.54 observed across
         //         5 runs — more variance than ManySmallFiles since 4 medium-file compressions
         //         landing in different relative positions across runs shifts the total more.
-        const double calibratedBaselineRatio = 1.3;
+        //   1.46  2026-11-10 (v1.10.0, Debug, 5 runs: 1.42-1.51)
+        const double calibratedBaselineRatio = 1.46;
         string sourceDir = PerformanceFixtures.CreateHybridFolder(_temp.Path);
 
         await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"));
@@ -211,7 +222,8 @@ public sealed class CompressionPerformanceTests : IDisposable
     [Trait("Category", "Slow")]
     public async Task ExtractAsync_Hybrid_WithinToleranceOfSevenZipReference()
     {
-        const double calibratedBaselineRatio = 1.56; // observed 2026-07-17, see DECISIONS.md
+        // 1.56 observed 2026-07-17 (DECISIONS.md); 2026-11-10 (v1.10.0, Debug, 5 runs: 1.70-1.84).
+        const double calibratedBaselineRatio = 1.77;
         string sourceDir = PerformanceFixtures.CreateHybridFolder(_temp.Path);
         string referenceZip = Path.Combine(_temp.Path, "shared.zip");
         SevenZipRunner.Archive(sourceDir, referenceZip);

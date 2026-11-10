@@ -80,6 +80,10 @@ tar. Plus the fixes found by the on-device checks of v1.9.0.
   cannot write 7z.
 - **T-F428** - cancelling a tar.exe operation ends tar.exe at once, even while Pakko is busy reading
   its output.
+- **T-F487** - in Arabic, Hebrew and Urdu, "Pakko" in the title bar of the operation window from
+  Explorer no longer sits under the window buttons.
+- **T-F488** - in Hindi, "No errors detected in the archive(s)" no longer shows a dotted circle.
+- **T-F489** - the archive view's "Packed" header is no longer cut off in eight languages.
 
 ### Known issues
 

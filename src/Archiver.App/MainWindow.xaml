@@ -350,7 +350,7 @@
                     Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                     BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
                     BorderThickness="0,0,0,1">
-                    <Grid ColumnDefinitions="Auto,*,100,100,90,140" Margin="12,0,12,0">
+                    <Grid ColumnDefinitions="Auto,*,100,150,90,140" Margin="12,0,12,0">
                         <TextBlock Grid.Column="1" x:Uid="BrowseNameColumnHeader" Padding="0,6,0,6" FontWeight="SemiBold"/>
                         <TextBlock Grid.Column="2" x:Uid="BrowseSizeColumnHeader" Padding="0,6,0,6" FontWeight="SemiBold"/>
                         <TextBlock Grid.Column="3" x:Uid="PackedColumnHeader" Padding="0,6,0,6" FontWeight="SemiBold"/>
@@ -383,7 +383,7 @@
                     </ListView.ItemContainerStyle>
                     <ListView.ItemTemplate>
                         <DataTemplate x:DataType="appcore:ArchiveEntryViewModel">
-                            <Grid ColumnDefinitions="Auto,*,100,100,90,140">
+                            <Grid ColumnDefinitions="Auto,*,100,150,90,140">
                                 <FontIcon
                                     Grid.Column="0"
                                     Glyph="{x:Bind Icon}"

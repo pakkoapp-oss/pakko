@@ -373,7 +373,9 @@ internal sealed partial class OperationWindow : IDisposable
         _root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(TitleBarDip) });
         _root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        var titleBar = new Grid { Padding = new Thickness(12, 0, 0, 0) };
+        // T-F487: the caption buttons stay on the right in every language, so the title bar stays
+        // left to right as the App's AppTitleBar does; _root's RightToLeft would lay "Pakko" under them.
+        var titleBar = new Grid { Padding = new Thickness(12, 0, 0, 0), FlowDirection = FlowDirection.LeftToRight };
         titleBar.Children.Add(_titleBarText);
         _root.Children.Add(titleBar);
 

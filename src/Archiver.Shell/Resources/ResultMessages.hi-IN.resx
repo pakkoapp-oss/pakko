@@ -19,7 +19,7 @@
     <value>…और {0} अन्य</value>
   </data>
   <data name="ResultNoErrorsDetected" xml:space="preserve">
-    <value>संग्रह(ों) में कोई त्रुटि नहीं मिली।</value>
+    <value>संग्रह (संग्रहों) में कोई त्रुटि नहीं मिली।</value>
   </data>
   <data name="ResultOperationFailed" xml:space="preserve">
     <value>ऑपरेशन विफल हो गया।</value>

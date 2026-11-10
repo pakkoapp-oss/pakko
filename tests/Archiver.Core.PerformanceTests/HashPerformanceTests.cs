@@ -15,7 +15,8 @@ namespace Archiver.Core.PerformanceTests;
 /// </summary>
 public sealed class HashPerformanceTests : IDisposable
 {
-    private const double ToleranceMultiplier = 3.0;
+    // 3.0 until 2026-11-10, as CompressionPerformanceTests; 1.5 over the last calibration's median.
+    private const double ToleranceMultiplier = 1.5;
 
     private readonly TempDirectory _temp = new();
     private readonly ITestOutputHelper _output;
@@ -51,7 +52,9 @@ public sealed class HashPerformanceTests : IDisposable
         //         (likely hardware SSE4.2/PCLMULQDQ-accelerated) would need SIMD intrinsics — a
         //         materially bigger, platform-specific undertaking explicitly out of scope; see
         //         DECISIONS.md's T-F128 entry.
-        const double calibratedBaselineRatio = 1.35;
+        //   0.56  2026-11-10 (v1.10.0, Release, 5 runs: 0.52-0.65); no slow mode seen in them. If
+        //         the bimodal ~2.5x mode returns, it now fails: rerun once, as docs/TESTING.md says.
+        const double calibratedBaselineRatio = 0.56;
         ReleaseBuildGuard.RequireOptimizedCore();
         string sourceDir = PerformanceFixtures.CreateOneLargeFileFolder(_temp.Path);
         string filePath = Directory.GetFiles(sourceDir)[0];
@@ -73,7 +76,8 @@ public sealed class HashPerformanceTests : IDisposable
         // — small absolute times (~200-280ms) mean run-to-run noise dominates more here than in
         // OneLargeFile; 1.3 sits in the middle of the observed range, same convention T-F114's own
         // ManySmallFiles/Hybrid scenarios already use for this reason.
-        const double calibratedBaselineRatio = 1.3;
+        // 2026-11-10 (v1.10.0, Debug, 5 runs): 0.53, 0.64, 0.52, 0.60, 0.45.
+        const double calibratedBaselineRatio = 0.53;
         string sourceDir = PerformanceFixtures.CreateManyFilesAndFoldersFolder(_temp.Path);
 
         await HashWithPakkoTimed(sourceDir); // warmup

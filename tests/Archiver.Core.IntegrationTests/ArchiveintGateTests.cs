@@ -210,6 +210,25 @@ public sealed class ArchiveintGateTests
         (await gate.HelperAsync(CancellationToken.None)).Should().NotBeNull();
     }
 
+    // T-F490: the checks before the probe's first await (the signature check of archiveint.dll
+    // among them) ran on the caller's thread, the App's UI thread before its first window.
+    [Fact]
+    public async Task DecideAsync_ReturnsBeforeTheSignatureCheckEnds()
+    {
+        using var release = new ManualResetEventSlim();
+        bool checkEnded = false;
+        ArchiveintGate gate = Gate(
+            verify: _ => { release.Wait(TimeSpan.FromSeconds(10)); Volatile.Write(ref checkEnded, true); return true; },
+            probe: (_, _) => Task.FromResult(Probe("libarchive 3.8.8")));
+
+        Task<ArchiveintDecision> decision = gate.DecideAsync();
+        bool endedBeforeReturn = Volatile.Read(ref checkEnded);
+        release.Set();
+
+        endedBeforeReturn.Should().BeFalse();
+        (await decision).UsesHelper.Should().BeTrue();
+    }
+
     // --- Harness ---
 
     // Every condition but the one a test changes: a helper file that exists, native x64, a signed
