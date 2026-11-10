@@ -64,7 +64,7 @@ standalone `pakko` zip has been tested on Windows 10 22H2, Windows 11 and Window
 | 7z | ✅ read; create without a password, where `tar.exe` has the 7z writer | `tar.exe` |
 | RAR | ✅ read only — libarchive has no RAR writer | `tar.exe` |
 | Encrypted 7z/RAR | ❌ recognized and refused with a clear message | — |
-| ISO 9660, CAB, cpio, ar (`.deb`), `.Z`, lzip | Coming in v1.10.0 (not released yet): read only, where the installed `tar.exe` reads each; a UDF image (most Windows install ISOs) refused with the reason | `tar.exe` |
+| ISO 9660, CAB, cpio, ar (`.deb`), `.Z`, lzip | Since v1.10.0: read only, where the installed `tar.exe` reads each; a UDF image (most Windows install ISOs) refused with the reason | `tar.exe` |
 
 `tar.exe` is part of Windows, and which formats it reads depends on the Windows build. A current
 Windows 11 reads all of the above; the `tar.exe` of Windows 10 is built with zlib only and reads

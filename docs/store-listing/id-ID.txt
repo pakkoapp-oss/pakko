@@ -1,7 +1,7 @@
 [Description]
 Pakko adalah pengarsip ZIP gratis dan sumber terbuka untuk Windows, dibangun sepenuhnya di atas API kompresi milik .NET sendiri — tanpa 7-Zip, tanpa WinRAR, dan tanpa kode kompresi pihak ketiga di mana pun dalam aplikasi.
 
-Buat dan ekstrak arsip ZIP langsung melalui System.IO.Compression, dengan atau tanpa kata sandi: Pakko membuka arsip ZipCrypto dan WinZip AES serta membuat arsip terenkripsi AES-256 yang dapat dibaca 7-Zip dan program ZIP lainnya. Arsip RAR, 7-Zip, dan keluarga TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) dibaca melalui tar.exe bawaan Windows, yang dijalankan di dalam sandbox AppContainer terisolasi tanpa akses jaringan. tar.exe yang sama juga membuat arsip keluarga TAR dan 7-Zip (7-Zip tanpa kata sandi, pada versi Windows yang tar.exe-nya dapat menulisnya).
+Buat dan ekstrak arsip ZIP langsung melalui System.IO.Compression, dengan atau tanpa kata sandi: Pakko membuka arsip ZipCrypto dan WinZip AES serta membuat arsip terenkripsi AES-256 yang dapat dibaca 7-Zip dan program ZIP lainnya. Arsip RAR, 7-Zip, dan keluarga TAR (TAR, GZ, BZ2, XZ, ZST, LZMA), serta ISO, CAB, cpio, ar (.deb), tar.Z, dan lzip, dibaca dengan pustaka arsip milik Windows sendiri (archiveint.dll, yang digunakan oleh tar.exe bawaannya) di dalam sandbox AppContainer terisolasi tanpa akses jaringan. tar.exe bawaan Windows juga membuat arsip keluarga TAR dan 7-Zip (7-Zip tanpa kata sandi, pada versi Windows yang tar.exe-nya dapat menulisnya).
 
 Pakko menyatu dengan File Explorer: klik kanan untuk mengekstrak, mengompres, menguji arsip, memindainya dari ancaman dengan antivirus Anda, atau menghitung hash SHA-256-nya, dan klik dua kali arsip apa pun yang didukung untuk menelusuri isinya tanpa harus mengekstrak semuanya terlebih dahulu. Setiap file yang diekstrak mempertahankan tag keamanan Mark-of-the-Web dari arsip asalnya.
 
@@ -14,7 +14,7 @@ Pengarsip gratis dan sumber terbuka yang hanya mengandalkan kode kompresi bawaan
 ZIP: membuat dan mengekstrak dengan pustaka kompresi milik .NET sendiri
 ZIP berkata sandi: membuka ZipCrypto dan WinZip AES, membuat AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: mengekstrak dan membuat, melalui tar.exe bawaan Windows
-7-Zip: mengekstrak dan membuat (tanpa kata sandi); RAR: hanya mengekstrak — melalui tar.exe bawaan Windows
+7-Zip: mengekstrak dan membuat (tanpa kata sandi); RAR, ISO, CAB, cpio, ar (.deb), tar.Z, lzip: hanya mengekstrak
 Menu klik kanan File Explorer: Buka, Ekstrak di sini, Kompres, Uji arsip, Pindai ancaman, Hash
 Penjelajah arsip: lihat isi arsip, pratinjau gambar dan teks, ekstrak hanya yang Anda pilih
 Pindai ancaman: isi arsip diperiksa oleh antivirus yang terpasang di komputer Anda
@@ -35,12 +35,12 @@ zip dengan kata sandi
 sumber terbuka
 
 [What's new in this version]
-• Baru: buat arsip 7-Zip di aplikasi, dari menu File Explorer, dan dengan pakko a -t7z (tanpa kata sandi; memerlukan versi Windows yang tar.exe-nya dapat menulis 7-Zip).
-• "Uji arsip" kini juga memeriksa arsip 7-Zip, RAR, dan TAR, tidak hanya ZIP.
-• Baru: data pemulihan (PAR2). Aktifkan "Tambahkan data pemulihan (PAR2)" saat membuat arsip, dan arsip dapat diperbaiki setelah rusak.
-• File PAR2 buatan program lain juga dapat dipakai; perintah pakko menambahkan data pemulihan dengan -rr dan memperbaiki dengan r.
-• Diperbaiki: tombol Delete, Enter, dan tombol menu kembali berfungsi pada baris daftar yang dipilih dengan keyboard.
-• Diperbaiki: di Windows 10 dan Windows 11 hingga versi 23H2, arsip TAR tidak lagi ditolak, dan Pakko hanya menawarkan format yang dapat ditangani tar.exe milik Windows.
-• Diperbaiki: arsip tidak pernah lagi ditulis di atas salah satu file yang diarsipkan; arsip mendapat nama bernomor.
-• Diperbaiki: arsip TAR tidak dibuat atas dua nama dari satu file (tautan keras), yang tidak dapat diekstrak Pakko; ZIP atau 7-Zip disarankan.
-• Perintah pakko memahami lebih banyak sakelar dan masker file 7-Zip.
+• Baru: arsip ISO, CAB, cpio, ar (.deb), tar.Z, dan lzip dapat dibuka, diekstrak, dan diuji (hanya baca; lzip tidak di Windows 10).
+• Arsip TAR, 7-Zip, dan RAR kini dibaca dengan pustaka arsip milik Windows dalam program pembantu kecil di sandbox: nama file dalam bahasa apa pun tiba persis seperti yang disimpan.
+• Baru: tombol di taskbar dan ikon di area notifikasi menampilkan kemajuan operasi.
+• "Pindai ancaman" tidak lagi melaporkan "tidak ada yang ditemukan" bila tidak dapat memeriksa setiap file, atau bila antivirus tidak melaporkan ancaman uji yang dikenal.
+• Diperbaiki: file dalam folder TAR yang namanya diakhiri spasi atau titik diekstrak dan dipindai.
+• Diperbaiki: bila tar.exe milik Windows membaca arsip, nama di luar bahasa sistem tidak pernah diekstrak dengan nama yang salah.
+• Diperbaiki: memindahkan sumber ke Recycle Bin tidak lagi menyimpan semuanya bila satu sumber dilewati, dan setiap item yang disimpan mendapat alasannya sendiri.
+• Diperbaiki: pembatalan langsung menghentikan tar.exe, dan jendela kembali muat pada monitor dengan area kerja lebih kecil.
+• Diperbaiki: teks yang terpotong atau salah letak dalam bahasa Arab, Ibrani, Urdu, Hindi, dan delapan bahasa lain.

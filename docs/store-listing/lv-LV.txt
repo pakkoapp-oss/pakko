@@ -1,7 +1,7 @@
 [Description]
 Pakko ir bezmaksas atvērtā pirmkoda ZIP arhivators operētājsistēmai Windows, kas pilnībā balstīts uz .NET pašas saspiešanas API — bez 7-Zip, bez WinRAR un bez jebkāda trešo pušu saspiešanas koda lietotnē.
 
-Izveidojiet un izvelciet ZIP arhīvus tieši, izmantojot System.IO.Compression, ar paroli vai bez tās: Pakko atver ZipCrypto un WinZip AES arhīvus un izveido ar AES-256 šifrētus arhīvus, kurus var nolasīt 7-Zip un citas ZIP programmas. RAR, 7-Zip un TAR saimes arhīvi (TAR, GZ, BZ2, XZ, ZST, LZMA) tiek lasīti ar Windows iebūvēto rīku tar.exe, kas tiek palaists izolētā AppContainer smilškastē bez piekļuves tīklam. Tas pats tar.exe izveido arī TAR saimes un 7-Zip arhīvus (7-Zip bez paroles, tajās Windows versijās, kuru tar.exe tos spēj ierakstīt).
+Izveidojiet un izvelciet ZIP arhīvus tieši, izmantojot System.IO.Compression, ar paroli vai bez tās: Pakko atver ZipCrypto un WinZip AES arhīvus un izveido ar AES-256 šifrētus arhīvus, kurus var nolasīt 7-Zip un citas ZIP programmas. RAR, 7-Zip un TAR saimes arhīvi (TAR, GZ, BZ2, XZ, ZST, LZMA), kā arī ISO, CAB, cpio, ar (.deb), tar.Z un lzip tiek lasīti ar pašas Windows arhīvu bibliotēku (archiveint.dll, uz kuras balstās iebūvētais tar.exe) izolētā AppContainer smilškastē bez piekļuves tīklam. Windows iebūvētais tar.exe izveido arī TAR saimes un 7-Zip arhīvus (7-Zip bez paroles, tajās Windows versijās, kuru tar.exe tos spēj ierakstīt).
 
 Pakko ir integrēts failu pārlūkā: noklikšķiniet ar peles labo pogu, lai izvilktu vai saspiestu failus, testētu arhīvu, ar savu pretvīrusu programmu pārbaudītu, vai tajā nav draudu, vai aprēķinātu tā SHA-256 kontrolsummu, un veiciet dubultklikšķi uz jebkura atbalstīta arhīva, lai pārlūkotu tā saturu, vispirms neizvelkot visu. Katrs izvilktais fails saglabā tā arhīva Mark-of-the-Web drošības atzīmi, no kura tas nācis.
 
@@ -14,7 +14,7 @@ Bezmaksas atvērtā pirmkoda arhivators, kas izmanto tikai .NET un Windows iebū
 ZIP: izveide un izvilkšana ar .NET pašas saspiešanas bibliotēku
 ZIP ar paroli: atver ZipCrypto un WinZip AES, izveido AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: izvilkšana un izveide ar Windows iebūvēto rīku tar.exe
-7-Zip: izvilkšana un izveide (bez paroles); RAR: tikai izvilkšana — ar Windows iebūvēto rīku tar.exe
+7-Zip: izvilkšana un izveide (bez paroles); RAR, ISO, CAB, cpio, ar (.deb), tar.Z, lzip: tikai izvilkšana
 Failu pārlūka kontekstizvēlne: Atvērt, Izvilkt šeit, Saspiest, Testēt arhīvu, Pārbaudīt draudus, Kontrolsumma
 Arhīvu pārlūks: ieskatieties arhīvā, priekšskatiet attēlus un tekstu, izvelciet tikai atlasīto
 Draudu pārbaude: arhīva saturu pārbauda jūsu instalētā pretvīrusu programma
@@ -35,12 +35,12 @@ zip ar paroli
 atvērtais pirmkods
 
 [What's new in this version]
-• Jaunums: 7-Zip arhīvu izveide lietotnē, Failu pārlūka izvēlnē un ar pakko a -t7z (bez paroles; vajadzīga Windows versija, kuras tar.exe spēj ierakstīt 7-Zip).
-• “Testēt arhīvu” tagad pārbauda arī 7-Zip, RAR un TAR arhīvus, ne tikai ZIP.
-• Jaunums: atkopšanas dati (PAR2). Veidojot arhīvu, ieslēdziet “Pievienot atkopšanas datus (PAR2)”, un arhīvu pēc bojājuma varēs salabot.
-• Der arī citu programmu izveidoti PAR2 faili; komanda pakko pievieno atkopšanas datus ar -rr un labo ar r.
-• Novērsts: taustiņi Delete, Enter un izvēlnes taustiņš atkal darbojas saraksta rindā, kas izvēlēta ar tastatūru.
-• Novērsts: Windows 10 un Windows 11 līdz versijai 23H2 TAR arhīvi vairs netiek noraidīti, un Pakko piedāvā tikai tos formātus, ar kuriem spēj strādāt Windows tar.exe.
-• Labots: arhīvs vairs nekad netiek ierakstīts pāri kādam no arhivējamajiem failiem; tas saņem numurētu nosaukumu.
-• Labots: TAR arhīvs netiek izveidots pār diviem viena faila nosaukumiem (cieto saiti), ko Pakko nevarēja izvilkt; tiek ieteikts ZIP vai 7-Zip.
-• Komanda pakko saprot vairāk 7-Zip slēdžu un failu masku.
+• Jaunums: ISO, CAB, cpio, ar (.deb), tar.Z un lzip arhīvus var atvērt, izvilkt un testēt (tikai lasīšanai; lzip ne Windows 10).
+• TAR, 7-Zip un RAR arhīvi tagad tiek lasīti ar pašas Windows arhīvu bibliotēku nelielā palīgprogrammā smilškastē: failu nosaukumi jebkurā valodā nonāk tieši tādi, kādi saglabāti.
+• Jaunums: uzdevumjoslas poga un paziņojumu apgabala ikona rāda darbības norisi.
+• „Pārbaudīt draudus“ vairs neziņo „nekas nav atrasts“, ja nevarēja pārbaudīt katru failu vai ja pretvīrusu programma neziņo par zināmiem testa draudiem.
+• Labots: faili TAR mapēs, kuru nosaukums beidzas ar atstarpi vai punktu, tiek izvilkti un pārbaudīti.
+• Labots: ja arhīvu lasa Windows tar.exe, nosaukums ārpus sistēmas valodas nekad netiek izvilkts ar nepareizu nosaukumu.
+• Labots: avotu pārvietošana uz Atkritni vairs nepatur tos visus, ja viens avots ir izlaists, un katram paturētajam vienumam ir savs iemesls.
+• Labots: atcelšana uzreiz aptur tar.exe, un logs atkal ietilpst monitorā ar mazāku darba apgabalu.
+• Labots: nogriezts vai nobīdīts teksts arābu, ivritā, urdu, hindi un vēl astoņās valodās.

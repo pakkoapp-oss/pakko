@@ -1,7 +1,7 @@
 [Description]
 „Pakko“ yra nemokamas atvirojo kodo ZIP archyvatorius, skirtas „Windows“, sukurtas remiantis vien pačios .NET suspaudimo API — be „7-Zip“, be „WinRAR“ ir be jokio trečiųjų šalių suspaudimo kodo programoje.
 
-Kurkite ir išskleiskite ZIP archyvus tiesiogiai per „System.IO.Compression“, su slaptažodžiu arba be jo: „Pakko“ atveria „ZipCrypto“ ir „WinZip AES“ archyvus ir kuria AES-256 šifruotus archyvus, kuriuos perskaito „7-Zip“ ir kitos ZIP programos. RAR, 7-Zip ir TAR šeimos archyvai (TAR, GZ, BZ2, XZ, ZST, LZMA) skaitomi „Windows“ įtaisytuoju įrankiu tar.exe, paleidžiamu izoliuotoje „AppContainer“ smėlio dėžėje be prieigos prie tinklo. Tas pats tar.exe kuria ir TAR šeimos bei 7-Zip archyvus (7-Zip be slaptažodžio, tose „Windows“ versijose, kurių tar.exe gali juos įrašyti).
+Kurkite ir išskleiskite ZIP archyvus tiesiogiai per „System.IO.Compression“, su slaptažodžiu arba be jo: „Pakko“ atveria „ZipCrypto“ ir „WinZip AES“ archyvus ir kuria AES-256 šifruotus archyvus, kuriuos perskaito „7-Zip“ ir kitos ZIP programos. RAR, 7-Zip ir TAR šeimos archyvai (TAR, GZ, BZ2, XZ, ZST, LZMA), taip pat ISO, CAB, cpio, ar (.deb), tar.Z ir lzip, skaitomi pačios „Windows“ archyvų biblioteka (archiveint.dll, kuria remiasi įtaisytasis tar.exe) izoliuotoje „AppContainer“ smėlio dėžėje be prieigos prie tinklo. „Windows“ įtaisytasis tar.exe kuria ir TAR šeimos bei 7-Zip archyvus (7-Zip be slaptažodžio, tose „Windows“ versijose, kurių tar.exe gali juos įrašyti).
 
 „Pakko“ integruota į failų naršyklę: spustelėkite dešiniuoju pelės mygtuku, kad išskleistumėte ar suspaustumėte failus, testuotumėte archyvą, antivirusine programa patikrintumėte, ar jame nėra grėsmių, arba apskaičiuotumėte jo SHA-256 maišą, o dukart spustelėję bet kurį palaikomą archyvą naršykite jo turinį iš pradžių visko neišskleidę. Kiekvienas išskleistas failas išlaiko archyvo, iš kurio jis paimtas, saugos žymą „Mark-of-the-Web“.
 
@@ -14,7 +14,7 @@ Nemokamas atvirojo kodo archyvatorius, kuris remiasi tik .NET ir „Windows“ �
 ZIP: kūrimas ir išskleidimas pačios .NET suspaudimo biblioteka
 ZIP su slaptažodžiu: atveria „ZipCrypto“ ir „WinZip AES“, kuria AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: išskleidimas ir kūrimas „Windows“ įtaisytuoju įrankiu tar.exe
-7-Zip: išskleidimas ir kūrimas (be slaptažodžio); RAR: tik išskleidimas — „Windows“ įtaisytuoju įrankiu tar.exe
+7-Zip: išskleidimas ir kūrimas (be slaptažodžio); RAR, ISO, CAB, cpio, ar (.deb), tar.Z, lzip: tik išskleidimas
 Failų naršyklės kontekstinis meniu: Atverti, Išskleisti čia, Suspausti, Testuoti archyvą, Tikrinti grėsmes, Maiša
 Archyvų naršyklė: pažvelkite į archyvo vidų, peržiūrėkite paveikslėlius ir tekstą, išskleiskite tik tai, ką pažymėjote
 Grėsmių tikrinimas: archyvo turinį patikrina jūsų įdiegta antivirusinė programa
@@ -35,12 +35,12 @@ tar gz
 zip su slaptažodžiu
 
 [What's new in this version]
-• Nauja: 7-Zip archyvų kūrimas programoje, Failų naršyklės meniu ir komanda pakko a -t7z (be slaptažodžio; reikia „Windows“ versijos, kurios tar.exe gali įrašyti 7-Zip).
-• „Testuoti archyvą“ dabar tikrina ir 7-Zip, RAR bei TAR archyvus, ne tik ZIP.
-• Nauja: atkūrimo duomenys (PAR2). Kurdami archyvą įjunkite „Pridėti atkūrimo duomenis (PAR2)“, ir archyvą bus galima pataisyti po pažeidimo.
-• Tinka ir kitų programų sukurti PAR2 failai; komanda pakko prideda atkūrimo duomenis jungikliu -rr ir taiso komanda r.
-• Ištaisyta: klavišai „Delete“, „Enter“ ir meniu klavišas vėl veikia klaviatūra pasirinktoje sąrašo eilutėje.
-• Ištaisyta: „Windows 10“ ir „Windows 11“ iki 23H2 versijos TAR archyvai nebeatmetami, o „Pakko“ siūlo tik tuos formatus, kuriuos geba apdoroti „Windows“ tar.exe.
-• Ištaisyta: archyvas niekada nebeįrašomas ant vieno iš archyvuojamų failų; jis gauna sunumeruotą pavadinimą.
-• Ištaisyta: TAR archyvas nekuriamas iš dviejų vieno failo pavadinimų (kietosios nuorodos), kurio Pakko negalėjo išskleisti; siūlomas ZIP arba 7-Zip.
-• Komanda pakko supranta daugiau 7-Zip jungiklių ir failų kaukių.
+• Nauja: ISO, CAB, cpio, ar (.deb), tar.Z ir lzip archyvus galima atverti, išskleisti ir testuoti (tik skaityti; lzip ne „Windows 10“).
+• TAR, 7-Zip ir RAR archyvai dabar skaitomi pačios „Windows“ archyvų biblioteka mažoje pagalbinėje programoje smėlio dėžėje: failų vardai bet kuria kalba atkeliauja tiksliai tokie, kokie išsaugoti.
+• Nauja: užduočių juostos mygtukas ir pranešimų srities piktograma rodo operacijos eigą.
+• „Tikrinti grėsmes“ nebepraneša „nieko nerasta“, kai nepavyko patikrinti kiekvieno failo arba kai antivirusinė programa nepraneša apie žinomas bandomąsias grėsmes.
+• Pataisyta: failai TAR aplankuose, kurių pavadinimas baigiasi tarpu arba tašku, išskleidžiami ir tikrinami.
+• Pataisyta: kai archyvą skaito „Windows“ tar.exe, vardas už sistemos kalbos ribų niekada neišskleidžiamas klaidingu vardu.
+• Pataisyta: šaltinių perkėlimas į Šiukšlinę nebepalieka jų visų, kai vienas praleidžiamas, o kiekvienas paliktas elementas gauna savo priežastį.
+• Pataisyta: atšaukimas iškart sustabdo tar.exe, o langas vėl telpa monitoriuje su mažesne darbo sritimi.
+• Pataisyta: nukirptas ar pasislinkęs tekstas arabų, hebrajų, urdu, hindi ir dar aštuoniomis kalbomis.

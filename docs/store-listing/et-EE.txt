@@ -1,7 +1,7 @@
 [Description]
 Pakko on tasuta avatud lähtekoodiga ZIP-arhiveerija Windowsile, mis põhineb täielikult .NET-i enda tihendus-API-del — ei 7-Zipi, ei WinRARi ega ühtegi kolmanda osapoole tihenduskoodi kusagil rakenduses.
 
-Loo ja paki lahti ZIP-arhiive otse System.IO.Compressioni kaudu, parooliga või ilma: Pakko avab ZipCrypto ja WinZip AES-i arhiive ning loob AES-256-ga krüptitud arhiive, mida loevad 7-Zip ja teised ZIP-programmid. RAR-, 7-Zip- ja TAR-perekonna arhiive (TAR, GZ, BZ2, XZ, ZST, LZMA) loetakse Windowsi sisseehitatud tööriistaga tar.exe, mis käivitatakse isoleeritud AppContaineri liivakastis ilma võrguühenduseta. Sama tar.exe loob ka TAR-perekonna ja 7-Zip-arhiive (7-Zip ilma paroolita, Windowsi versioonides, mille tar.exe oskab neid kirjutada).
+Loo ja paki lahti ZIP-arhiive otse System.IO.Compressioni kaudu, parooliga või ilma: Pakko avab ZipCrypto ja WinZip AES-i arhiive ning loob AES-256-ga krüptitud arhiive, mida loevad 7-Zip ja teised ZIP-programmid. RAR-, 7-Zip- ja TAR-perekonna arhiive (TAR, GZ, BZ2, XZ, ZST, LZMA) ning ISO, CAB, cpio, ar (.deb), tar.Z ja lzip arhiive loetakse Windowsi enda arhiiviteegiga (archiveint.dll, millel põhineb sisseehitatud tar.exe) isoleeritud AppContaineri liivakastis ilma võrguühenduseta. Windowsi sisseehitatud tar.exe loob ka TAR-perekonna ja 7-Zip-arhiive (7-Zip ilma paroolita, Windowsi versioonides, mille tar.exe oskab neid kirjutada).
 
 Pakko lõimub File Exploreriga: paremklõpsa, et faile lahti pakkida või tihendada, arhiivi testida, lasta viirusetõrjel seda ohtude suhtes kontrollida või arvutada selle SHA-256 räsi, ning topeltklõpsa mis tahes toetatud arhiivi, et sirvida selle sisu ilma kõike enne lahti pakkimata. Iga lahtipakitud fail säilitab selle arhiivi Mark-of-the-Web turvamärgise, millest ta pärineb.
 
@@ -14,7 +14,7 @@ Tasuta avatud lähtekoodiga arhiveerija, mis toetub ainult .NET-i ja Windowsi si
 ZIP: loomine ja lahtipakkimine .NET-i enda tihendusteegiga
 Parooliga ZIP: avab ZipCrypto ja WinZip AES-i, loob AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: lahtipakkimine ja loomine Windowsi sisseehitatud tööriistaga tar.exe
-7-Zip: lahtipakkimine ja loomine (ilma paroolita); RAR: ainult lahtipakkimine — Windowsi sisseehitatud tööriistaga tar.exe
+7-Zip: lahtipakkimine ja loomine (ilma paroolita); RAR, ISO, CAB, cpio, ar (.deb), tar.Z, lzip: ainult lahtipakkimine
 File Exploreri kontekstimenüü: Ava, Paki lahti siia, Tihenda, Testi arhiivi, Kontrolli ohte, Räsi
 Arhiivisirvija: vaata arhiivi sisse, kuva piltide ja teksti eelvaadet, paki lahti ainult valitu
 Ohtude kontroll: arhiivi sisu kontrollib sinu arvutisse installitud viirusetõrje
@@ -35,12 +35,12 @@ parooliga zip
 avatud lähtekood
 
 [What's new in this version]
-• Uus: 7-Zip-arhiivide loomine rakenduses, File Exploreri menüüst ja käsuga pakko a -t7z (ilma paroolita; vaja on Windowsi versiooni, mille tar.exe oskab 7-Zip-i kirjutada).
-• „Testi arhiivi“ kontrollib nüüd ka 7-Zip-, RAR- ja TAR-arhiive, mitte ainult ZIP-i.
-• Uus: taasteandmed (PAR2). Lülitage arhiivi loomisel sisse „Lisa taasteandmed (PAR2)“ ja arhiivi saab pärast kahjustust parandada.
-• Sobivad ka teiste programmidega loodud PAR2-failid; käsk pakko lisab taasteandmed lülitiga -rr ja parandab käsuga r.
-• Parandatud: klahvid Delete, Enter ja menüüklahv töötavad taas klaviatuurilt valitud loendireal.
-• Parandatud: Windows 10-s ja Windows 11-s kuni versioonini 23H2 ei lükata TAR-arhiive enam tagasi ning Pakko pakub ainult vorminguid, millega Windowsi tar.exe toime tuleb.
-• Parandatud: arhiivi ei kirjutata enam kunagi üle mõnele arhiivitavale failile; see saab hoopis nummerdatud nime.
-• Parandatud: TAR-arhiivi ei looda ühe faili kahe nime (kõvalingi) üle, mida Pakko ei saanud lahti pakkida; soovitatakse ZIP-i või 7-Zipi.
-• Käsk pakko mõistab rohkem 7-Zipi lüliteid ja failimaske.
+• Uus: ISO, CAB, cpio, ar (.deb), tar.Z ja lzip arhiive saab avada, lahti pakkida ja testida (ainult lugemiseks; lzip mitte Windows 10-s).
+• TAR-, 7-Zip- ja RAR-arhiive loetakse nüüd Windowsi enda arhiiviteegiga väikeses liivakastis abiprogrammis: failinimed mis tahes keeles jõuavad kohale täpselt nii, nagu need on salvestatud.
+• Uus: tegumiriba nupp ja teavitusala ikoon näitavad toimingu edenemist.
+• „Kontrolli ohte“ ei teata enam „midagi ei leitud“, kui see ei saanud iga faili kontrollida või kui viirusetõrje ei teata tuntud testohtudest.
+• Parandatud: TAR-kaustades, mille nimi lõpeb tühiku või punktiga, olevad failid pakitakse lahti ja kontrollitakse.
+• Parandatud: kui arhiivi loeb Windowsi tar.exe, ei pakita süsteemikeelest väljapoolset nime kunagi lahti vale nimega.
+• Parandatud: lähtefailide teisaldamine Prügikasti ei jäta neid enam kõiki alles, kui üks jäetakse vahele, ja igal allesjäänud üksusel on oma põhjus.
+• Parandatud: tühistamine lõpetab tar.exe kohe ja aken mahub taas väiksema tööalaga monitorile.
+• Parandatud: kärbitud või nihkunud tekst araabia, heebrea, urdu, hindi ja veel kaheksas keeles.

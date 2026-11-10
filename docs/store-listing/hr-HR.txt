@@ -1,7 +1,7 @@
 [Description]
 Pakko je besplatan ZIP arhiver otvorenog koda za Windows, u cijelosti izgrađen na vlastitim API-jima platforme .NET za komprimiranje — bez 7-Zipa, bez WinRAR-a i bez ikakvog koda za komprimiranje trećih strana igdje u aplikaciji.
 
-Stvarajte i raspakirajte ZIP arhive izravno putem System.IO.Compression, s lozinkom ili bez nje: Pakko otvara arhive ZipCrypto i WinZip AES te stvara arhive šifrirane algoritmom AES-256 koje mogu čitati 7-Zip i drugi ZIP programi. Arhive RAR, 7-Zip i arhive iz obitelji TAR (TAR, GZ, BZ2, XZ, ZST, LZMA) čitaju se alatom tar.exe ugrađenim u Windows, pokrenutim u izoliranom sandboxu AppContainer bez pristupa mreži. Isti tar.exe stvara i arhive iz obitelji TAR i 7-Zip (7-Zip bez lozinke, u verzijama sustava Windows čiji ih tar.exe može zapisati).
+Stvarajte i raspakirajte ZIP arhive izravno putem System.IO.Compression, s lozinkom ili bez nje: Pakko otvara arhive ZipCrypto i WinZip AES te stvara arhive šifrirane algoritmom AES-256 koje mogu čitati 7-Zip i drugi ZIP programi. Arhive RAR, 7-Zip i arhive iz obitelji TAR (TAR, GZ, BZ2, XZ, ZST, LZMA), kao i ISO, CAB, cpio, ar (.deb), tar.Z i lzip, čitaju se vlastitom bibliotekom arhiva sustava Windows (archiveint.dll, na kojoj radi ugrađeni tar.exe) u izoliranom sandboxu AppContainer bez pristupa mreži. Alat tar.exe ugrađen u Windows stvara i arhive iz obitelji TAR i 7-Zip (7-Zip bez lozinke, u verzijama sustava Windows čiji ih tar.exe može zapisati).
 
 Pakko se ugrađuje u Eksplorer za datoteke: kliknite desnom tipkom miša da biste raspakirali ili komprimirali datoteke, testirali arhivu, provjerili ima li u njoj prijetnji svojim antivirusnim programom ili izračunali njezin SHA-256 sažetak, a dvoklikom na bilo koju podržanu arhivu pregledajte njezin sadržaj bez prethodnog raspakiravanja svega. Svaka raspakirana datoteka zadržava sigurnosnu oznaku Mark-of-the-Web arhive iz koje potječe.
 
@@ -14,7 +14,7 @@ Besplatan arhiver otvorenog koda koji se oslanja samo na kod za komprimiranje ug
 ZIP: stvaranje i raspakiravanje vlastitom bibliotekom platforme .NET za komprimiranje
 ZIP s lozinkom: otvara ZipCrypto i WinZip AES, stvara AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: raspakiravanje i stvaranje alatom tar.exe ugrađenim u Windows
-7-Zip: raspakiravanje i stvaranje (bez lozinke); RAR: samo raspakiravanje — alatom tar.exe ugrađenim u Windows
+7-Zip: raspakiravanje i stvaranje (bez lozinke); RAR, ISO, CAB, cpio, ar (.deb), tar.Z, lzip: samo raspakiravanje
 Kontekstni izbornik Eksplorera za datoteke: Otvori, Raspakiraj ovdje, Komprimiraj, Testiraj arhivu, Provjeri prijetnje, Sažetak
 Preglednik arhiva: zavirite u arhivu, pretpregledajte slike i tekst, raspakirajte samo ono što odaberete
 Provjera prijetnji: sadržaj arhive provjerava vaš instalirani antivirusni program
@@ -35,12 +35,12 @@ zip s lozinkom
 otvoreni kod
 
 [What's new in this version]
-• Novo: stvaranje arhiva 7-Zip u aplikaciji, iz izbornika Eksplorera za datoteke i naredbom pakko a -t7z (bez lozinke; potrebna je verzija sustava Windows čiji tar.exe može zapisati 7-Zip).
-• „Testiraj arhivu” sada provjerava i arhive 7-Zip, RAR i TAR, ne samo ZIP.
-• Novo: podaci za oporavak (PAR2). Uključite „Dodaj podatke za oporavak (PAR2)” pri stvaranju arhive i arhiva će se nakon oštećenja moći popraviti.
-• Rade i PAR2 datoteke stvorene drugim programima; naredba pakko dodaje podatke za oporavak prekidačem -rr i popravlja naredbom r.
-• Ispravljeno: tipke Delete, Enter i tipka izbornika ponovno rade na retku popisa odabranom tipkovnicom.
-• Ispravljeno: na sustavima Windows 10 i Windows 11 do verzije 23H2 arhive TAR više se ne odbijaju, a Pakko nudi samo formate s kojima radi tar.exe sustava Windows.
-• Ispravljeno: arhiva se više nikad ne zapisuje preko neke od datoteka koje se arhiviraju; dobiva numerirani naziv.
-• Ispravljeno: TAR arhiva ne stvara se nad dva naziva jedne datoteke (čvrsta veza), koju Pakko nije mogao raspakirati; predlaže se ZIP ili 7-Zip.
-• Naredba pakko razumije više prekidača i maski datoteka 7-Zipa.
+• Novo: arhive ISO, CAB, cpio, ar (.deb), tar.Z i lzip otvaraju se, raspakiravaju i testiraju (samo za čitanje; lzip ne u sustavu Windows 10).
+• Arhive TAR, 7-Zip i RAR sada se čitaju vlastitom bibliotekom sustava Windows u malom pomoćnom programu u sandboxu: nazivi datoteka na bilo kojem jeziku stižu točno onako kako su spremljeni.
+• Novo: gumb na programskoj traci i ikona u području obavijesti prikazuju napredak operacije.
+• „Provjeri prijetnje” više ne javlja „ništa nije pronađeno” kada nije mogla provjeriti svaku datoteku ili kada antivirusni program ne javlja poznate testne prijetnje.
+• Ispravljeno: datoteke u mapama TAR čiji naziv završava razmakom ili točkom raspakiravaju se i provjeravaju.
+• Ispravljeno: kada arhivu čita tar.exe sustava Windows, naziv izvan jezika sustava nikada se ne raspakirava pod pogrešnim nazivom.
+• Ispravljeno: premještanje izvora u Koš za smeće više ih ne zadržava sve kada je jedan izvor preskočen, a svaka zadržana stavka ima vlastiti razlog.
+• Ispravljeno: odustajanje odmah zaustavlja tar.exe, a prozor ponovno stane na monitor s manjim radnim područjem.
+• Ispravljeno: odrezan ili pomaknut tekst na arapskom, hebrejskom, urdu, hindskom i još osam jezika.

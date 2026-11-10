@@ -1,7 +1,7 @@
 [Description]
 Pakko is een gratis, opensource ZIP-archiveerprogramma voor Windows, volledig gebouwd op de eigen compressie-API's van .NET — geen 7-Zip, geen WinRAR en nergens in de app compressiecode van derden.
 
-Maak ZIP-archieven en pak ze uit, rechtstreeks via System.IO.Compression, met of zonder wachtwoord: Pakko opent ZipCrypto- en WinZip AES-archieven en maakt met AES-256 versleutelde archieven die 7-Zip en andere ZIP-programma's kunnen lezen. RAR-, 7-Zip- en TAR-archieven (TAR, GZ, BZ2, XZ, ZST, LZMA) worden gelezen via de in Windows ingebouwde tar.exe, uitgevoerd in een geïsoleerde AppContainer-sandbox zonder netwerktoegang. Dezelfde tar.exe maakt ook TAR- en 7-Zip-archieven (7-Zip zonder wachtwoord, in Windows-versies waarvan de tar.exe ze kan schrijven).
+Maak ZIP-archieven en pak ze uit, rechtstreeks via System.IO.Compression, met of zonder wachtwoord: Pakko opent ZipCrypto- en WinZip AES-archieven en maakt met AES-256 versleutelde archieven die 7-Zip en andere ZIP-programma's kunnen lezen. RAR-, 7-Zip- en TAR-archieven (TAR, GZ, BZ2, XZ, ZST, LZMA), en ook ISO, CAB, cpio, ar (.deb), tar.Z en lzip, worden gelezen met de eigen archiefbibliotheek van Windows (archiveint.dll, waar de ingebouwde tar.exe op draait) in een geïsoleerde AppContainer-sandbox zonder netwerktoegang. De in Windows ingebouwde tar.exe maakt ook TAR- en 7-Zip-archieven (7-Zip zonder wachtwoord, in Windows-versies waarvan de tar.exe ze kan schrijven).
 
 Pakko is geïntegreerd in Verkenner: klik met de rechtermuisknop om uit te pakken, te comprimeren, een archief te testen, het met uw antivirusprogramma op bedreigingen te scannen of de SHA-256-hash te berekenen, en dubbelklik op een ondersteund archief om door de inhoud te bladeren zonder eerst alles uit te pakken. Elk uitgepakt bestand behoudt het Mark-of-the-Web-beveiligingslabel van het archief waaruit het komt.
 
@@ -14,7 +14,7 @@ Een gratis, opensource archiveerprogramma dat alleen steunt op de compressiecode
 ZIP: maken en uitpakken met de eigen compressiebibliotheek van .NET
 ZIP met wachtwoord: opent ZipCrypto en WinZip AES, maakt AES-256
 TAR, GZ, BZ2, XZ, ZST, LZMA: uitpakken en maken via de in Windows ingebouwde tar.exe
-7-Zip: uitpakken en maken (zonder wachtwoord); RAR: alleen uitpakken — via de in Windows ingebouwde tar.exe
+7-Zip: uitpakken en maken (zonder wachtwoord); RAR, ISO, CAB, cpio, ar (.deb), tar.Z, lzip: alleen uitpakken
 Contextmenu van Verkenner: Openen, Hier uitpakken, Comprimeren, Archief testen, Scannen op bedreigingen, Hash
 Archiefverkenner: kijk in een archief, bekijk voorbeelden van afbeeldingen en tekst, pak alleen uit wat u selecteert
 Scannen op bedreigingen: de inhoud van het archief wordt gecontroleerd door uw geïnstalleerde antivirusprogramma
@@ -35,12 +35,12 @@ tar gz
 zip met wachtwoord
 
 [What's new in this version]
-• Nieuw: maak 7-Zip-archieven in de app, vanuit het menu van Verkenner en met pakko a -t7z (zonder wachtwoord; vereist een Windows-versie waarvan de tar.exe 7-Zip kan schrijven).
-• 'Archief testen' controleert nu ook 7-Zip-, RAR- en TAR-archieven, niet alleen ZIP.
-• Nieuw: herstelgegevens (PAR2). Schakel 'Herstelgegevens toevoegen (PAR2)' in bij het maken van een archief, dan kan het archief na beschadiging worden hersteld.
-• PAR2-bestanden van andere programma's werken ook; de opdracht pakko voegt herstelgegevens toe met -rr en herstelt met r.
-• Opgelost: Delete, Enter en de menutoets werken weer op een lijstrij die met het toetsenbord is geselecteerd.
-• Opgelost: op Windows 10 en Windows 11 tot en met versie 23H2 worden TAR-archieven niet meer geweigerd, en Pakko biedt alleen de indelingen aan die de eigen tar.exe van Windows aankan.
-• Opgelost: een archief wordt nooit meer over een van de te archiveren bestanden geschreven; het krijgt een genummerde naam.
-• Opgelost: er wordt geen TAR-archief gemaakt over twee namen van één bestand (een harde koppeling), dat Pakko niet kon uitpakken; ZIP of 7-Zip wordt voorgesteld.
-• De opdracht pakko begrijpt meer schakelopties en bestandsmaskers van 7-Zip.
+• Nieuw: ISO-, CAB-, cpio-, ar- (.deb), tar.Z- en lzip-archieven openen, uitpakken en testen (alleen lezen; lzip niet op Windows 10).
+• TAR-, 7-Zip- en RAR-archieven worden nu gelezen met de eigen bibliotheek van Windows in een klein hulpprogramma in een sandbox: bestandsnamen in elke taal komen precies zo aan als ze zijn opgeslagen.
+• Nieuw: de knop op de taakbalk en het pictogram in het systeemvak tonen de voortgang van een bewerking.
+• "Scannen op bedreigingen" meldt niet langer "niets gevonden" als niet elk bestand kon worden gecontroleerd, of als de antivirussoftware bekende testbedreigingen niet meldt.
+• Opgelost: bestanden in TAR-mappen waarvan de naam eindigt op een spatie of een punt, worden uitgepakt en gescand.
+• Opgelost: waar de tar.exe van Windows een archief leest, wordt een naam buiten de systeemtaal nooit onder een verkeerde naam uitgepakt.
+• Opgelost: bronnen naar de Prullenbak verplaatsen houdt ze niet langer allemaal als één bron wordt overgeslagen, en elk behouden item krijgt een eigen reden.
+• Opgelost: annuleren stopt tar.exe meteen, en het venster past weer op een monitor met een kleiner werkgebied.
+• Opgelost: afgekapte of verschoven tekst in het Arabisch, Hebreeuws, Urdu, Hindi en acht andere talen.

@@ -1,7 +1,7 @@
 [Description]
 A Pakko ingyenes, nyílt forráskódú ZIP-archiváló Windowsra, amely teljes egészében a .NET saját tömörítési API-jaira épül — nincs benne 7-Zip, nincs WinRAR, és sehol az alkalmazásban nincs harmadik féltől származó tömörítő kód.
 
-Hozzon létre és bontson ki ZIP-archívumokat közvetlenül a System.IO.Compression segítségével, jelszóval vagy anélkül: a Pakko megnyitja a ZipCrypto és a WinZip AES archívumokat, és AES-256 titkosítású archívumokat hoz létre, amelyeket a 7-Zip és más ZIP-programok is olvasnak. A RAR-, 7-Zip- és a TAR-családba tartozó archívumokat (TAR, GZ, BZ2, XZ, ZST, LZMA) a Windows beépített tar.exe eszköze olvassa, amely elszigetelt, hálózati hozzáférés nélküli AppContainer sandboxban fut. Ugyanez a tar.exe TAR-családba tartozó és 7-Zip-archívumokat is létrehoz (a 7-Zip-archívumokat jelszó nélkül, azokon a Windows-verziókon, amelyek tar.exe eszköze írni tudja őket).
+Hozzon létre és bontson ki ZIP-archívumokat közvetlenül a System.IO.Compression segítségével, jelszóval vagy anélkül: a Pakko megnyitja a ZipCrypto és a WinZip AES archívumokat, és AES-256 titkosítású archívumokat hoz létre, amelyeket a 7-Zip és más ZIP-programok is olvasnak. A RAR-, 7-Zip- és a TAR-családba tartozó archívumokat (TAR, GZ, BZ2, XZ, ZST, LZMA), valamint az ISO, CAB, cpio, ar (.deb), tar.Z és lzip archívumokat a Windows saját archívumkönyvtára olvassa (az archiveint.dll, amelyre a beépített tar.exe is épül) elszigetelt, hálózati hozzáférés nélküli AppContainer sandboxban. A Windows beépített tar.exe eszköze TAR-családba tartozó és 7-Zip-archívumokat is létrehoz (a 7-Zip-archívumokat jelszó nélkül, azokon a Windows-verziókon, amelyek tar.exe eszköze írni tudja őket).
 
 A Pakko natívan beépül a Fájlkezelőbe: jobb gombbal kattintva kibonthat, tömöríthet, tesztelhet egy archívumot, a víruskeresőjével fenyegetéseket kereshet benne, vagy kiszámíthatja az SHA-256 hashét, bármely támogatott archívumra duplán kattintva pedig böngészheti annak tartalmát anélkül, hogy előbb mindent ki kellene bontania. Minden kibontott fájl megőrzi annak az archívumnak a Mark-of-the-Web biztonsági jelölését, amelyből származik.
 
@@ -14,7 +14,7 @@ Ingyenes, nyílt forráskódú archiváló, amely kizárólag a .NET-be és a Wi
 ZIP: létrehozás és kibontás a .NET saját tömörítési könyvtárával
 Jelszóval védett ZIP: megnyitja a ZipCrypto és a WinZip AES archívumokat, AES-256 archívumot hoz létre
 TAR, GZ, BZ2, XZ, ZST, LZMA: kibontás és létrehozás a Windows beépített tar.exe eszközével
-7-Zip: kibontás és létrehozás (jelszó nélkül); RAR: csak kibontás — a Windows beépített tar.exe eszközével
+7-Zip: kibontás és létrehozás (jelszó nélkül); RAR, ISO, CAB, cpio, ar (.deb), tar.Z, lzip: csak kibontás
 A Fájlkezelő helyi menüje: Megnyitás, Kibontás ide, Tömörítés, Archívum tesztelése, Fenyegetések keresése, Hash
 Archívumböngésző: nézzen bele az archívumba, tekintse meg a képek és szövegek előnézetét, és csak a kijelölt elemeket bontsa ki
 Fenyegetések keresése: az archívum tartalmát a telepített víruskeresője ellenőrzi
@@ -35,12 +35,12 @@ tar gz
 jelszavas zip
 
 [What's new in this version]
-• Újdonság: 7-Zip-archívumok létrehozása az alkalmazásban, a Fájlkezelő menüjéből és a pakko a -t7z paranccsal (jelszó nélkül; olyan Windows-verzió kell, amelynek tar.exe eszköze tud 7-Zip-et írni).
-• Az „Archívum tesztelése” mostantól a 7-Zip-, RAR- és TAR-archívumokat is ellenőrzi, nem csak a ZIP-et.
-• Újdonság: helyreállítási adatok (PAR2). Archívum létrehozásakor kapcsolja be a „Helyreállítási adatok hozzáadása (PAR2)” beállítást, és az archívum sérülés után javítható lesz.
-• Más programokkal készült PAR2-fájlok is használhatók; a pakko parancs az -rr kapcsolóval ad hozzá helyreállítási adatokat, és az r paranccsal javít.
-• Javítva: a Delete, az Enter és a menübillentyű ismét működik a lista billentyűzettel kijelölt során.
-• Javítva: a Windows 10 és a Windows 11 23H2-es verziójáig a TAR-archívumokat már nem utasítja el, és a Pakko csak azokat a formátumokat kínálja, amelyeket a Windows saját tar.exe-je kezelni tud.
-• Javítva: az archívum már soha nem íródik az archivált fájlok egyike fölé; helyette sorszámozott nevet kap.
-• Javítva: nem készül TAR archívum egy fájl két neve (rögzített hivatkozás) fölött, amelyet a Pakko nem tudott kibontani; ZIP vagy 7-Zip a javaslat.
-• A pakko parancs több 7-Zip kapcsolót és fájlmaszkot ért.
+• Új: az ISO, CAB, cpio, ar (.deb), tar.Z és lzip archívumok megnyithatók, kibonthatók és tesztelhetők (csak olvasás; lzip nem Windows 10-en).
+• A TAR-, 7-Zip- és RAR-archívumokat mostantól a Windows saját archívumkönyvtára olvassa egy kis, sandboxban futó segédprogramban: a fájlnevek bármely nyelven pontosan úgy érkeznek, ahogy tárolták őket.
+• Új: a tálcán lévő gomb és az értesítési terület ikonja mutatja a művelet előrehaladását.
+• A „Fenyegetések keresése” már nem jelzi, hogy „nem talált semmit”, ha nem tudott minden fájlt ellenőrizni, vagy ha a víruskereső nem jelzi az ismert tesztfenyegetéseket.
+• Javítva: a szóközre vagy pontra végződő nevű TAR-mappák fájljai kibonthatók és ellenőrizhetők.
+• Javítva: ahol a Windows tar.exe eszköze olvassa az archívumot, a rendszer nyelvén kívüli név soha nem bontható ki hibás néven.
+• Javítva: a forrásfájlok Lomtárba helyezése már nem tartja meg mindet, ha egy forrás kimarad, és minden megtartott elem saját okot kap.
+• Javítva: a megszakítás azonnal leállítja a tar.exe-t, és az ablak ismét elfér a kisebb munkaterületű monitoron.
+• Javítva: levágott vagy elcsúszott szöveg arab, héber, urdu, hindi és további nyolc nyelven.
