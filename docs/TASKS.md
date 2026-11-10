@@ -1523,8 +1523,9 @@ re-measured with T-F346's script before and after.
 
 ### T-F479 - Test through the archive helper moved no progress bar (P1, a T-F470 regression, v1.10.0)
 
-- [ ] **Status:** fixed 2026-11-09 (`fix/T-F479-helper-test-progress`; `docs/DECISIONS.md`, "T-F479"); the
-  device check is `APP-026` on the new bundle, `[x]` after it.
+- [x] **Status:** done 2026-11-10 (PR #204, b280c984; `docs/DECISIONS.md`, "T-F479"). On the CI bundle of
+  b280c984: `APP-026` on a 16-file and a one-file 7z, Test and Extract of big.7z from the Explorer menu,
+  `EXP-013` and a cancelled Test (no helper left) all OK.
   Found by the v1.10.0 release smoke (`APP-026` on CI bundle 1.10.0.0): Test of a 1 GB 7z of 16
   files left the App's bar empty for its whole minute. `Archiver.ArchiveHelper` buffered stdout to
   64 KB, so every `K` line arrived at exit; and a `K` comes only after a whole entry, so one large
