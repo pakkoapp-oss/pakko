@@ -453,8 +453,12 @@ public sealed class ZipArchiveService : IArchiveService
         int threadBudget = options.MaxThreads > 0 ? options.MaxThreads : Environment.ProcessorCount;
         int degreeOfParallelism = threadBudget;
         int workersPerFolder = 0;
+        // T-F497: one set of deflaters for every archive of the run, not one per archive (T-F318's
+        // page-fault storm, with many small archives written side by side).
+        using var deflaters = new Zip.DeflateEncoderPool(settings.Level);
         if (settings.RequiresHandRolledWriter)
         {
+            settings = settings with { Deflaters = deflaters };
             var written = plans.Where(p => p.DestPath is not null).ToList();
             (degreeOfParallelism, workersPerFolder) = HandRolledSeparateParallelism(
                 threadBudget, written.Count, written.Count(p => Directory.Exists(p.SourcePath)));

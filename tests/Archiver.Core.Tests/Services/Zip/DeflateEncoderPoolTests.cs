@@ -251,4 +251,41 @@ public sealed class DeflateEncoderPoolTests : IDisposable
             content.ToArray().Should().Equal(File.ReadAllBytes(Path.Combine(_tempDir, entry.Name)));
         }
     }
+
+    // T-F497: one archive per item shares one pool across its archives; the run owns it.
+    [Fact]
+    public async Task WriteAsync_TwoArchivesWithASharedPool_BuildOneDeflaterAndLeaveThePoolOpen()
+    {
+        using var pool = new DeflateEncoderPool(CompressionLevel.Fastest);
+        var settings = new ParallelSingleArchiveWriter.CompressionSettings(CompressionLevel.Fastest) { Deflaters = pool };
+        var callbacks = new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, e => throw new InvalidOperationException(e.Message));
+        for (int i = 0; i < 2; i++)
+        {
+            string source = Path.Combine(_tempDir, $"s{i}.txt");
+            File.WriteAllBytes(source, Text(5_000, i));
+            int entries = await ParallelSingleArchiveWriter.WriteAsync(
+                Path.Combine(_tempDir, $"a{i}.zip"), [source], settings, 5_000, callbacks, progress: null, CancellationToken.None);
+            entries.Should().Be(1);
+        }
+
+        pool.Created.Should().Be(1);
+        DeflateEncoderPool.Deflater still = pool.Rent();
+        Inflate(still.Compress(Text(100, 9))).Should().Equal(Text(100, 9));
+        pool.Return(still);
+    }
+
+    [Fact]
+    public async Task WriteAsync_APoolOfAnotherLevel_IsRefused()
+    {
+        using var pool = new DeflateEncoderPool(CompressionLevel.Optimal);
+        var settings = new ParallelSingleArchiveWriter.CompressionSettings(CompressionLevel.Fastest) { Deflaters = pool };
+        string source = Path.Combine(_tempDir, "s.txt");
+        File.WriteAllText(source, "s");
+
+        Func<Task> act = () => ParallelSingleArchiveWriter.WriteAsync(
+            Path.Combine(_tempDir, "a.zip"), [source], settings, 1,
+            new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
 }
