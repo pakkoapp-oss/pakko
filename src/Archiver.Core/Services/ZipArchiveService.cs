@@ -62,6 +62,9 @@ public sealed class ZipArchiveService : IArchiveService
     // a share or a disk that does not answer is neither.
     internal Func<string, bool> HasSeekPenalty { get; init; } = DiskSeekPenalty.IsKnownPresent;
 
+    // T-F497: one archive per item sweeps each destination folder once per run. Tests count the calls.
+    internal Action<string> SweepTemporaries { get; init; } = ArchiveTempFile.Sweep;
+
     /// <inheritdoc/>
     public async Task<ArchiveResult> ArchiveAsync(
         ArchiveOptions options,
@@ -104,7 +107,10 @@ public sealed class ZipArchiveService : IArchiveService
             if (passwordError is not null)
                 return new ArchiveResult { CreatedFiles = [], Errors = [passwordError], SkippedFiles = [] };
         }
-        var run = new ArchiveRunContext(conflictResolver, password, HasNoSeekPenalty, HasSeekPenalty, names, new RunSourceFiles(options.SourcePaths));
+        var run = new ArchiveRunContext(conflictResolver, password, HasNoSeekPenalty, HasSeekPenalty, names, new RunSourceFiles(options.SourcePaths))
+        {
+            SweepTemporaries = SweepTemporaries,
+        };
         IEnumerable<SourceResult> sources;
 
         if (options.Mode == ArchiveMode.SingleArchive)
@@ -147,7 +153,10 @@ public sealed class ZipArchiveService : IArchiveService
     // Password is null for an ordinary unencrypted archive (T-F193).
     private sealed record ArchiveRunContext(
         ConflictResolver ConflictResolver, string? Password, Func<string, bool> HasNoSeekPenalty, Func<string, bool> HasSeekPenalty,
-        SourceEntryNames Names, RunSourceFiles Sources);
+        SourceEntryNames Names, RunSourceFiles Sources)
+    {
+        public Action<string> SweepTemporaries { get; init; } = ArchiveTempFile.Sweep;
+    }
 
     // T-F193: one prompt per ArchiveAsync call, never retried — there is nothing to verify a new
     // password against, so a wrong attempt cannot exist (maxAttempts: 1). The App/CLI prompts ask
@@ -415,6 +424,12 @@ public sealed class ZipArchiveService : IArchiveService
         List<(string SourcePath, string? DestPath, bool ReplacesExisting)> plans = await ResolveSeparateArchivePlansAsync(
             sortedSourcePaths, options.DestinationFolder, run, skippedFiles).ConfigureAwait(false);
 
+        // T-F497: before any archive of this run is written; ArchiveSingleSeparatePathAsync then
+        // only names its temporary file. A killed run's leftovers go here, as before.
+        foreach (string folder in plans.Where(p => p.DestPath is not null)
+                     .Select(p => ArchiveTempFile.FolderOf(p.DestPath!)).Distinct(StringComparer.OrdinalIgnoreCase))
+            run.SweepTemporaries(folder);
+
         var concurrentSink = new ArchiveResultSink([], [], [], []);
         var progressContext = new SeparateArchiveProgressContext(totalSourceBytes, [0], progress);
 
@@ -567,7 +582,7 @@ public sealed class ZipArchiveService : IArchiveService
         long pathSize = ComputeSourceBytesBestEffort(sourcePath);
 
         long baseOffset = Interlocked.Read(ref completedBytesBox[0]);
-        string separateTempPath = ArchiveTempFile.Create(destPath);
+        string separateTempPath = ArchiveTempFile.NewPath(destPath);
         CompressionLevel compressionLevel = settings.Level;
         // T-F260: this worker's own issue count — the shared bags are written by every worker at
         // once, so a before/after delta on them would not attribute issues to this source.

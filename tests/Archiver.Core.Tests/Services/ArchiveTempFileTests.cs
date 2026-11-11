@@ -58,6 +58,32 @@ public sealed class ArchiveTempFileTests : IDisposable
         Directory.Exists(live).Should().BeTrue("its owner is this process");
     }
 
+    // T-F497: the parallel writer no longer sweeps by itself; ArchiveTempFile.Create does it for it.
+    [Fact]
+    public async Task ArchiveAsync_ParallelWriterRun_RemovesTheChunkFolderOfADeadRun()
+    {
+        string machine = TempOwner.CurrentTag.Split('-')[0];
+        string output = Path.Combine(_temp.Path, "out");
+        string dead = Path.Combine(output, $".pakko-tmp-{machine}-{Environment.ProcessId}-1-0123456789abcdef0123456789abcdef");
+        Directory.CreateDirectory(dead);
+        File.WriteAllText(Path.Combine(dead, "chunk.bin"), "compressed");
+        string sourceDir = Path.Combine(_temp.Path, "many");
+        Directory.CreateDirectory(sourceDir);
+        for (int i = 0; i < 100; i++)
+            File.WriteAllText(Path.Combine(sourceDir, $"f{i}.txt"), $"file {i}");
+
+        ArchiveResult result = await new ZipArchiveService(new GroupPolicyOptions()) { HasNoSeekPenalty = _ => true }.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [sourceDir],
+            DestinationFolder = output,
+            ArchiveName = "many",
+            Mode = ArchiveMode.SingleArchive,
+        });
+
+        result.Success.Should().BeTrue();
+        Directory.GetFileSystemEntries(output).Select(Path.GetFileName).Should().Equal("many.zip");
+    }
+
     [Fact]
     public async Task ArchiveAsync_SmallArchive_RemovesTheChunkFolderOfADeadRun()
     {

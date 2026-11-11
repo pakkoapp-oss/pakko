@@ -201,12 +201,16 @@ internal static class ParallelSingleArchiveWriter
         // %TEMP% either (a different, possibly smaller/fuller volume than the destination, which
         // matters now that there's no per-file size ceiling). The unique part keeps two concurrent
         // archive operations targeting the same destination folder from colliding; the owner tag
-        // lets the next run remove a folder a killed run left (T-F263).
+        // lets the next run remove a folder a killed run left (T-F263): the callers sweep the folder
+        // through ArchiveTempFile before they come here. T-F497: made only when a file needs it.
         string destinationDir = Path.GetDirectoryName(tempPath) is { Length: > 0 } dir ? dir : ".";
-        TempOwner.SweepStale(destinationDir, ChunkFolderPrefix, "", TempScope.Destination);
-        string chunkDirectory = Path.Combine(destinationDir, TempOwner.NewName(ChunkFolderPrefix));
-        Directory.CreateDirectory(chunkDirectory);
-        File.SetAttributes(chunkDirectory, File.GetAttributes(chunkDirectory) | FileAttributes.Hidden);
+        var chunkDirectory = new Lazy<string>(() =>
+        {
+            string path = Path.Combine(destinationDir, TempOwner.NewName(ChunkFolderPrefix));
+            Directory.CreateDirectory(path);
+            File.SetAttributes(path, File.GetAttributes(path) | FileAttributes.Hidden);
+            return path;
+        }, LazyThreadSafetyMode.ExecutionAndPublication);
 
         var tracker = new ProgressTracker(progress, totalBytes);
 
@@ -214,7 +218,7 @@ internal static class ParallelSingleArchiveWriter
         using var deflaters = new DeflateEncoderPool(settings.Level);
         using SemaphoreSlim? largeFileGate = settings.OneLargeFileAtATime ? new SemaphoreSlim(1, 1) : null;
         Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressToTempFile =
-            (item, ct) => CompressToTempFileAsync(item, chunkDirectory, settings, tracker, ct);
+            (item, ct) => CompressToTempFileAsync(item, chunkDirectory.Value, settings, tracker, ct);
         if (largeFileGate is not null)
             compressToTempFile = OneAtATime(compressToTempFile, largeFileGate);
 
@@ -232,7 +236,8 @@ internal static class ParallelSingleArchiveWriter
             // The inner pipeline already deletes every individual chunk file it created (see
             // RunPipelineAsync's own cleanup) — this just removes the now-empty per-operation
             // folder itself.
-            await TryDeleteEmptyDirectoryWithRetryAsync(chunkDirectory).ConfigureAwait(false);
+            if (chunkDirectory.IsValueCreated)
+                await TryDeleteEmptyDirectoryWithRetryAsync(chunkDirectory.Value).ConfigureAwait(false);
         }
     }
 

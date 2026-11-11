@@ -697,10 +697,12 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         Path.GetFileName(chunkDir).Should().StartWith(".pakko-tmp-" + Archiver.Core.IO.TempOwner.CurrentTag + "-");
     }
 
-    // T-F263: a killed run's chunk folder (big compressed chunks) used to stay next to the archive
-    // for good.
+    // T-F263's sweep of a killed run's chunk folder is the callers' (ArchiveTempFile.Create, or
+    // ArchiveTempFile.Sweep once per run for one archive per item; ArchiveTempFileTests and
+    // ZipArchiveServiceSeparateLeftoversTests). T-F497: the writer no longer lists the folder per
+    // archive, and makes no chunk folder of its own for files compressed in memory.
     [Fact]
-    public async Task WriteAsync_ChunkFolderOfADeadRun_IsSwept()
+    public async Task WriteAsync_SmallFilesOnly_NeitherSweepsNorMakesAChunkFolder()
     {
         string leftover = Path.Combine(_tempDir, Helpers.DeadOwner.Name(".pakko-tmp-"));
         Directory.CreateDirectory(leftover);
@@ -713,7 +715,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
             TempArchivePath, [sourceDir], CompressionLevel.Optimal, totalBytes: 1,
             new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, CancellationToken.None);
 
-        Directory.Exists(leftover).Should().BeFalse();
+        Directory.GetDirectories(_tempDir, ".pakko-tmp-*").Should().Equal(leftover);
     }
 
     // T-F140 regression: CompressToTempFileAsync's two ZipEntryWriter.CopyWithCrcAsync calls used
