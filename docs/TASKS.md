@@ -61,7 +61,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | Stream | Tasks | Area | Gate |
 |---|---|---|---|
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
-| N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then **T-F502** (one archive per item is quadratic) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
+| N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then **T-F502** (one archive per item is quadratic), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm), T-F504 (password allocations), T-F505 (extraction per file), T-F507 (tar process count), T-F506 (AMSI buffer), T-F500 (writer failure paths, the flaky chunk-folder test), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
 | B bugs from v1.10.0 | T-F475 (P2, a Core throw), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
@@ -1560,7 +1560,7 @@ re-measured with T-F346's script before and after.
      leaves no `.pakko-*` file or folder and no final `.zip` for the cancelled archives; folders get
      `workersPerFolder` and files one worker (today only the pure function is tested); the run's
      `LargeFileGate` actually reaches each archive (the writer honouring it is tested).
-- **Reported by:** the agent (T-F497's reviewer), 2026-11-11.
+- **Reported by:** the agent (T-F497's reviewer), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
 - **Flaky, seen 2026-11-11 (T-F498's run):** `ParallelSingleArchiveWriterTests.WriteAsync_WhileRunning_ChunkFolderIsHiddenAndNextToDestination` failed once in the full quick tier, passed 5/5 alone. It waits only 2 s for the chunk folder, against 64 MiB compressed under the whole suite's load; hold the run with a gate (a blocking source stream) instead of a clock (`.claude/rules/tests.md`, T-F425).
 
 ### T-F502 - One archive per item is quadratic in the sources against the outputs (P2, from T-F498)
@@ -1580,7 +1580,7 @@ re-measured with T-F346's script before and after.
   per entry against 4.15 for Fastest (the hand-rolled writer with T-F497's shared pool), the
   #134700 storm; time is about the same. Measure whether routing single-file sources of this mode
   through the hand-rolled writer with the run's pool keeps the bytes (T-F31) and the speed.
-- **Reported by:** the agent (T-F498), 2026-11-11.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
 
 ### T-F504 - The password path allocates about 200-300 KB per entry (P3, from T-F498)
 
@@ -1589,7 +1589,7 @@ re-measured with T-F346's script before and after.
   and takes 1.9x plain extraction. Profile the
   allocations (`dotnet-trace --profile gc-verbose`) to name the per-entry buffer or key setup
   (WinZip AES streams, PBKDF2), then pool or size it; the litmus run before and after.
-- **Reported by:** the agent (T-F498), 2026-11-11.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
 
 ### T-F505 - Extraction costs about 1.3 ms and 88 KB per file (P3, from T-F498)
 
@@ -1597,7 +1597,7 @@ re-measured with T-F346's script before and after.
   them; 176 MiB allocated (1.76 GB at 20,000). The sweep names candidates: an 80 KiB buffer per
   entry, a reparse-point walk of every ancestor per entry, `Directory.CreateDirectory` per entry,
   the staging commit's per-file walk. Profile, then fix what the profile names.
-- **Reported by:** the agent (T-F498), 2026-11-11.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
 
 ### T-F506 - The AMSI scan hands each entry over in one buffer (P3, from T-F498)
 
@@ -1605,7 +1605,7 @@ re-measured with T-F346's script before and after.
   (`MaxScannableEntryBytes` bounds it). Check what AMSI allows (`AmsiScanBuffer` needs the whole
   content; a stream through `IAmsiStream`?) before changing anything; SECURITY.md owns the
   rationale of what is scanned.
-- **Reported by:** the agent (T-F498), 2026-11-11.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
 
 ### T-F507 - Four to six tar.exe and helper processes per tar operation (P3, from T-F498)
 
@@ -1613,7 +1613,7 @@ re-measured with T-F346's script before and after.
   faults each whatever the input (11.5 k of the 16 k faults of extracting 2,000 files). Trace which
   launches one operation makes (capability probe, listing, type listing, extraction) and whether
   any repeats what an earlier one already learned.
-- **Reported by:** the agent (T-F498), 2026-11-11.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
 
 ### T-F508 - The litmus paper that stays, and the device-side candidates (P3, from T-F498)
 
@@ -1627,7 +1627,7 @@ re-measured with T-F346's script before and after.
        in each of about 18 `GetState`/`GetTitle` calls).
 
      Measure both, and fix only what is felt.
-- **Reported by:** the agent (T-F498), 2026-11-11.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
 
 ### T-F491 - Hash/ManyFilesAndFolders sometimes runs 7x slower after the project's other tests (P3)
 
