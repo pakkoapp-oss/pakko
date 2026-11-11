@@ -14571,4 +14571,27 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   zeros over what the previous input filled (plus 2 KiB, at most 65 KiB) before each reuse; 0 of
   15,178 sweeps differ from a fresh encoder at qualities 1, 6 and 9; cost within noise on 5,000
   small files. Red test on the real trigger pair; the ManySmallFiles bench now compares its two
-  archives' bytes. Upstream report waits for the user's OK.
+  archives' bytes. Reported upstream as dotnet/runtime#137354.
+
+### T-F497 - One archive per item for many small files: ~6 ms an archive, and the deflate fault storm (P3, v1.11.0 stream N)
+
+- [x] **Status:** done 2026-11-11. Measured first (T-F318's harness over `ZipArchiveService`, Release, 12
+  logical cores): `ArchiveMode.SeparateArchives` of 2,000 files of 1-10 KB takes 11.6-13.3 s, about
+  6 ms an archive, with 38-40 k page faults (about 20 an archive, #134700's storm: each source gets
+  its own `ZipArchive` and so its own `DeflateStream`, at a degree of parallelism of the core count).
+  The storm is a small part of the time (deflating 2,000 such files takes well under a second even
+  with it); the rest is per archive: conflict planning, the temp file, the commit, Defender on each
+  new `.zip`. Next: profile one archive's path (as T-F481 does for extraction), then decide whether
+  single-file sources go through `ZipEntryWriter` with one `DeflateEncoderPool` for the whole run
+  (it already writes the `Fastest` and password cases), measured against today.
+- **Reported by:** the agent, answering the user's question whether the storm is anywhere else,
+  2026-11-11.
+- **Scheduled (2026-11-11):** v1.11.0 stream N, after T-F318 (the user: "497 в цій хвилі").
+- **Graduated 2026-11-11** (`docs/DECISIONS.md`, "T-F497 measured"): 2,000 archives beside their
+  sources, `Optimal` 16.2 -> 4.1 s, `Fastest` 49.4 -> 4.1 s, with a password 58.5 -> 4.3 s. The
+  storm was not the cost: three sweeps of the destination folder per archive, a second open of
+  each written zip, a quadratic check of which sources hold an output, and the hand-rolled writer
+  running one archive at a time. Each destination folder is swept once per run; entries are counted
+  while writing; ancestor identities are cached; the hand-rolled writer runs archives side by side
+  and shares one deflater pool. Byte-identical to `main`; a run killed mid-way leaves only valid
+  archives and owner-tagged temp files, which the next run sweeps before finishing the rest.

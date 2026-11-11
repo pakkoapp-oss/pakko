@@ -61,7 +61,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | Stream | Tasks | Area | Gate |
 |---|---|---|---|
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
-| N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files: profile first, then the same pool if it pays; in this wave, the user, 2026-11-11), then T-F498 (a page-fault litmus run over every Core operation; research, fixes as their own tasks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
+| N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then T-F498 (a page-fault litmus run over every Core operation; research, fixes as their own tasks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
 | B bugs from v1.10.0 | T-F475 (P2, a Core throw), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
@@ -1546,21 +1546,6 @@ re-measured with T-F346's script before and after.
   Before code: plan mode + advisor (irreversible writes from untrusted input), tests of every guard
   seen red first, a `docs/SMOKE.md` row, and the trade-off in `SECURITY.md` (the user's OK for that edit: 2026-11-11, "Дозвіл даю"). The answer for an archive that must come back whole stays PAR2 (`pakko r`).
 - **Reported by:** the user, 2026-11-11.
-
-### T-F497 - One archive per item for many small files: ~6 ms an archive, and the deflate fault storm (P3, v1.11.0 stream N)
-
-- [ ] **Status:** open, measured 2026-11-11 (T-F318's harness over `ZipArchiveService`, Release, 12
-  logical cores): `ArchiveMode.SeparateArchives` of 2,000 files of 1-10 KB takes 11.6-13.3 s, about
-  6 ms an archive, with 38-40 k page faults (about 20 an archive, #134700's storm: each source gets
-  its own `ZipArchive` and so its own `DeflateStream`, at a degree of parallelism of the core count).
-  The storm is a small part of the time (deflating 2,000 such files takes well under a second even
-  with it); the rest is per archive: conflict planning, the temp file, the commit, Defender on each
-  new `.zip`. Next: profile one archive's path (as T-F481 does for extraction), then decide whether
-  single-file sources go through `ZipEntryWriter` with one `DeflateEncoderPool` for the whole run
-  (it already writes the `Fastest` and password cases), measured against today.
-- **Reported by:** the agent, answering the user's question whether the storm is anywhere else,
-  2026-11-11.
-- **Scheduled (2026-11-11):** v1.11.0 stream N, after T-F318 (the user: "497 в цій хвилі").
 
 ### T-F498 - A page-fault litmus test for every Core operation: where Pakko re-creates what it could keep (P3, v1.11.0 stream N, research)
 

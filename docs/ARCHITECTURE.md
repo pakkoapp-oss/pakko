@@ -122,7 +122,9 @@ src/
 │   │   │                                  T-F161/T-F170 commit (CommitInto); ZIP and tar
 │   │   ├── ArchiveTempFile.cs          ← T-F312: the temp file a new archive is written to
 │   │   │                                  (.pakko-a-<owner>-<guid>.tmp, not hidden) and its commit,
-│   │   │                                  retried ~1.5 s while either file is held; ZIP and tar
+│   │   │                                  retried ~1.5 s while either file is held; ZIP and tar.
+│   │   │                                  Create = Sweep(folder) + NewPath; one archive per item
+│   │   │                                  sweeps each destination folder once per run (T-F497)
 │   │   ├── DestinationConflictResolver.cs ← T-F158: archive-creation-side analogue of T-F157 —
 │   │   │                                  shared Skip/Overwrite/Rename decision for a candidate
 │   │   │                                  archive destination path
@@ -1024,6 +1026,8 @@ internal static class ZipEntryCompressor
 
 // DeflateEncoderPool.cs — T-F318: the deflaters of one parallel run (Rent/Return, disposed with
 // the run); never more than the run's window, since the compute gate bounds concurrency.
+// Each deflater scrubs its window between entries, since Reset() alone is not a fresh encoder
+// (T-F499). One archive per item shares one pool across the run's archives (T-F497).
 internal sealed class DeflateEncoderPool : IDisposable
 
 // ParallelSingleArchiveWriter.cs — dispatch/drain orchestration
@@ -1034,15 +1038,18 @@ internal static class ParallelSingleArchiveWriter
     public static int ComputeWindowCapacity(); // Clamp(ProcessorCount, 2, 16)
     public static int ComputeWindowCapacity(int maxThreads); // T-F411: min(N, 16), or the above when N <= 0
 
-    public static Task WriteAsync(
-        string tempPath, IReadOnlyList<string> sortedSourcePaths, CompressionLevel compressionLevel,
-        long totalBytes, Action<SkippedFile> reportSkipped, Action<ArchiveError> reportError,
+    // Returns the entries written (T-F497: the caller commits without reopening the zip).
+    // settings.Deflaters (T-F497): a pool the caller owns and shares across archives of one run,
+    // never disposed here, refused when its level is not settings.Level; null builds one per call.
+    public static Task<int> WriteAsync(
+        string tempPath, IReadOnlyList<string> sortedSourcePaths, CompressionSettings settings,
+        long totalBytes, ReportCallbacks callbacks,
         IProgress<ProgressReport>? progress, CancellationToken cancellationToken);
 
     // Decoupled from real compression so whitebox tests can inject controllable delegates for
     // both compress paths — see ParallelSingleArchiveWriterTests (including the whitebox test
     // that caught a real "bounded channel alone doesn't bound concurrency" bug).
-    internal static Task RunPipelineAsync(
+    internal static Task<int> RunPipelineAsync(
         string tempPath, IEnumerable<FileWorkItem> items,
         Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressInMemory,
         Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressToTempFile,
@@ -1091,7 +1098,9 @@ internal static class DosDateTime
 `Finish()`) alongside its existing whole-stream `Compute(Stream)`, so uncompressed bytes can be
 hashed in the same single read pass as compression instead of a second full file read.
 
-**Temp-file lifecycle (T-F35 follow-up, twice-revised):** `WriteAsync` creates a per-operation,
+**Temp-file lifecycle (T-F35 follow-up, twice-revised; T-F497: the folder is created for the first
+entry above the in-memory threshold only, and a dead run's folder is swept by the run, not by each
+`WriteAsync`):** `WriteAsync` creates a per-operation,
 uniquely-named, **hidden** subfolder next to the destination archive —
 `{destinationDir}\.pakko-tmp-{Guid}\` — not loose files scattered in that folder (on-device
 verification showed those visibly flickering in Explorer mid-operation) and not a shared
