@@ -14668,3 +14668,19 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   - 7z's speed is tar.exe's own (7za single-threaded is slower).
   - **Profiled:** F8 only. F2/F3, F4 and F6 have no profile yet; it is the first step of T-F504,
     T-F505 and T-F507.
+
+### T-F502 - One archive per item is quadratic in the sources against the outputs (P2, from T-F498)
+
+- [x] **Status:** done 2026-11-11. `SourceOutcomeRules.DowngradeSourcesContainingOutputs` asks, for each
+  source, whether any output lies under it (`IsAnyUnder`, a `List.Exists` over every output): O(S x C).
+  20,000 separate archives take 38-40 s where 10x of 2,000 would be 25-26 s (`docs/DECISIONS.md`,
+  "T-F498 measured"). Build the set of every output
+  and every ancestor folder of an output once (O(C x depth)), then ask the set per source; keep
+  the rule exactly (case, separators, the unresolvable-output branch T-F497 pinned), test first with
+  a counter or a scaling check, and the litmus run at x10 before and after.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N.
+- **Graduated 2026-11-11** (`docs/DECISIONS.md`, "T-F502"):
+  - **Change:** one set of every output's path and its folders, built once per run.
+  - **Result:** 20,000 sources against 20,000 outputs take 1 s instead of 9 s (the old code's
+    test timed out).
+  - **Not measured:** the end-to-end gain could not be read with Defender's real-time protection on.

@@ -14715,6 +14715,39 @@ baseline goes from 1.18 to 0.96. #134700's own benchmark on .NET 11.0.0 GA, dop 
 against 147-148 ms) - the regression is still in 11.0.0 for `DeflateStream`. The numbers go
 upstream in a comment only after the user reads its text.
 
+## T-F502 - one archive per item compared every source with every output (2026-11-11)
+
+**Cause.** `SourceOutcomeRules.DowngradeSourcesContainingOutputs` asked, for each completed source,
+whether any output path lay under it (`IsAnyUnder`, a `List.Exists` with `StartsWith`): O(S x C).
+One archive per item has as many outputs as sources. T-F497's step 4 cached the identities but
+kept this comparison; T-F498's x10 run showed it (14-15x time for 10x files).
+
+**Fix.** The full path of every output and of each folder above it go into one case-insensitive set,
+once per run. A source holds an output when its own full path is in the set. The walk up a path
+stops at the first folder already in the set, so its cost is O(C x depth) in total.
+
+- A trailing separator is trimmed from both sides, so "C:\" and "C:" and a share root match.
+- The rule is otherwise unchanged:
+  - case-insensitive;
+  - a sibling with a shared prefix (`dir` against `di`) is not under it;
+  - the identity check (`HoldsAnOutput`, T-F419) runs as before.
+
+**Tests.**
+- Seven more cases of `DowngradeSourcesContainingOutputs_OnlySourcesContainingAnOutput`: the same
+  path, a trailing separator, forward slashes, a shared-prefix sibling, an output above the source,
+  and a UNC share. They pass on the old code too; they pin the rule.
+- `DowngradeSourcesContainingOutputs_ManySourcesAndOutputs_IsNotQuadratic`: 20,000 sources and
+  20,000 outputs (paths that do not exist, so only the comparison runs) within 5 s. Seen red: the
+  old code timed out. With a 300 s timeout the old code took 9 s, the new 1 s, most of it the
+  per-source `Directory.Exists`.
+
+**End to end.** The litmus run could not show the gain. Defender's real-time protection was back
+on for these runs, and under it the floor's write of the same files varied between 10 and 20 s from
+run to run. separate-fastest at 20,000 files took 44.1 s on `main` and 44.3 s with the fix. A
+thread-time profile of the fixed build shows only per-item calls: `File.Exists`,
+`PathIdentity.Resolve` and `Directory.Exists` per source and per output. Each of these is linear,
+but costly while Defender scans.
+
 ## T-F498 measured - the page-fault litmus run and the complexity pass (2026-11-11)
 
 The user asked for a litmus paper over the whole code: counters per operation, relative values
