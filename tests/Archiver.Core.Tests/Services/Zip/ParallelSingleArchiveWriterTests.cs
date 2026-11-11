@@ -29,10 +29,11 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         new Random(42).NextBytes(data.AsSpan(0, 2048));
         File.WriteAllBytes(path, data);
         var settings = new ParallelSingleArchiveWriter.CompressionSettings(CompressionLevel.Optimal);
-        ParallelSingleArchiveWriter.CompressSmallFile(path, settings); // JIT and pool warm-up
+        using var deflaters = new DeflateEncoderPool(settings.Level);
+        ParallelSingleArchiveWriter.CompressSmallFile(path, settings, deflaters); // JIT and pool warm-up
 
         long before = GC.GetAllocatedBytesForCurrentThread();
-        CompressedEntryData result = ParallelSingleArchiveWriter.CompressSmallFile(path, settings);
+        CompressedEntryData result = ParallelSingleArchiveWriter.CompressSmallFile(path, settings, deflaters);
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
         result.UncompressedLength.Should().Be(data.Length);

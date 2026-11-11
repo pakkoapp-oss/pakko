@@ -144,7 +144,7 @@ src/
 │   │   └── Zip/                        ← T-F35: parallel SingleArchive compression pipeline
 │   │       ├── WorkItemEnumerator.cs / FileWorkItem.cs / WorkResult.cs
 │   │       ├── ParallelSingleArchiveWriter.cs
-│   │       ├── ZipEntryWriter.cs / ZipEntryCompressor.cs / DosDateTime.cs
+│   │       ├── ZipEntryWriter.cs / ZipEntryCompressor.cs / DeflateEncoderPool.cs / DosDateTime.cs
 │   │       ├── ZipArchiveReader.cs      ← T-F234: the one ZIP read path (list/test/extract/scan) —
 │   │       │                                  ZipArchive.Entries paired with decoded names (NamedZipEntry,
 │   │       │                                  incl. the post-decoding collision flag)
@@ -1011,14 +1011,20 @@ internal static class WorkItemEnumerator
 internal enum WorkResultKind { Compressed, TempFileCompressed, SourceStored, DirectoryPlaceholder, Error }
 internal sealed record WorkResult { /* Kind + payload; static WorkResult.For*() factories */ }
 
-// ZipEntryCompressor.cs — compresses a file's bytes fully into memory via DeflateStream directly
-// (no ZipArchiveEntry involved), for the in-memory (≤1 MiB) parallel path.
+// ZipEntryCompressor.cs — compresses a file's bytes fully into memory through a DeflateEncoder
+// (no ZipArchiveEntry involved), for the in-memory (≤1 MiB) parallel path; the parallel run passes
+// a deflater from its DeflateEncoderPool (T-F318), other callers get a fresh one.
 internal readonly record struct CompressedEntryData(
     byte[] CompressedBytes, uint Crc32, long UncompressedLength, ushort Method);
 internal static class ZipEntryCompressor
 {
-    public static CompressedEntryData Compress(Stream sourceStream, CompressionLevel compressionLevel);
+    public static CompressedEntryData Compress(Stream sourceStream, CompressionLevel compressionLevel,
+        string? password = null, DeflateEncoderPool.Deflater? deflater = null);
 }
+
+// DeflateEncoderPool.cs — T-F318: the deflaters of one parallel run (Rent/Return, disposed with
+// the run); never more than the run's window, since the compute gate bounds concurrency.
+internal sealed class DeflateEncoderPool : IDisposable
 
 // ParallelSingleArchiveWriter.cs — dispatch/drain orchestration
 internal static class ParallelSingleArchiveWriter

@@ -848,21 +848,6 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   packaged exe where it can be.
 - **Reported by:** the user, 2026-10-03.
 
-### T-F318 — Reusable deflate compressor for the parallel ZIP writer (P3, future)
-
-- [ ] **Status:** future, waits for the target .NET. Upstream answer to T-F271's report
-  (dotnet/runtime#134700, milestone Future, 2026-10-01): .NET 11 adds `DeflateEncoder` with
-  `Reset()`, so one compressor per worker can produce independent deflate streams instead of a new
-  `DeflateStream` (and new zlib-ng state) per entry. The project is on .NET 10 LTS (T-F270); .NET 11
-  is an STS release. Decide when the target moves: then switch `ZipEntryCompressor`'s small-file
-  path to a per-worker `DeflateEncoder`, measured with T-F114's `Archive/ManySmallFiles` against
-  .NET 8's ~0.86 ratio. Check that an empty entry still writes `Store` (CLAUDE.md, zero-byte rule)
-  and that 7za reads the result.
-  Our reply (user-approved, from `pakkoapp-oss`, 2026-10-03):
-  https://github.com/dotnet/runtime/issues/134700#issuecomment-5970925304 — promises the numbers.
-- **Reported by:** upstream reply to dotnet/runtime#134700, 2026-10-01.
-- **Scheduled (2026-11-11):** v1.11.0 stream N, right after T-F492, required in the wave (the user: "the updated pool for zip so they are not re-created every time"). Measure with `Archive/ManySmallFiles` and #134700's benchmark (faults per op, ~0.02 against ~18), then report the numbers upstream.
-
 ### T-F328 — Localization audit fixes: wrong meanings and one term per action in 36 locales (P2)
 
 - [~] **Status:** in progress. A read-through of every translated string (339 keys, 36 locales,
@@ -1559,8 +1544,7 @@ re-measured with T-F346's script before and after.
      leave on disk for a damaged entry today, on both tar builds (Win11 3.8.x and PakkoW10 3.5.2);
      the same guards apply, or the option is ZIP-only and says so.
   Before code: plan mode + advisor (irreversible writes from untrusted input), tests of every guard
-  seen red first, a `docs/SMOKE.md` row, and the trade-off in `SECURITY.md` with the user's separate
-  OK. The answer for an archive that must come back whole stays PAR2 (`pakko r`).
+  seen red first, a `docs/SMOKE.md` row, and the trade-off in `SECURITY.md` (the user's OK for that edit: 2026-11-11, "Дозвіл даю"). The answer for an archive that must come back whole stays PAR2 (`pakko r`).
 - **Reported by:** the user, 2026-11-11.
 
 ### T-F491 - Hash/ManyFilesAndFolders sometimes runs 7x slower after the project's other tests (P3)

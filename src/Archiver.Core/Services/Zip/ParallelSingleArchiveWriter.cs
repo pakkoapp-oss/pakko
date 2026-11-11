@@ -210,7 +210,8 @@ internal static class ParallelSingleArchiveWriter
 
         var tracker = new ProgressTracker(progress, totalBytes);
 
-        // Disposed only after RunPipelineAsync, which waits for every compression it started.
+        // Both disposed only after RunPipelineAsync, which waits for every compression it started.
+        using var deflaters = new DeflateEncoderPool(settings.Level);
         using SemaphoreSlim? largeFileGate = settings.OneLargeFileAtATime ? new SemaphoreSlim(1, 1) : null;
         Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressToTempFile =
             (item, ct) => CompressToTempFileAsync(item, chunkDirectory, settings, tracker, ct);
@@ -221,7 +222,7 @@ internal static class ParallelSingleArchiveWriter
         {
             await RunPipelineAsync(
                     tempPath, items,
-                    (item, ct) => CompressEligibleFileAsync(item, settings, tracker, ct),
+                    (item, ct) => CompressEligibleFileAsync(item, settings, deflaters, tracker, ct),
                     compressToTempFile,
                     settings.WindowCapacity, totalBytes, progress, callbacks.ReportError, cancellationToken)
                 .ConfigureAwait(false);
@@ -483,14 +484,15 @@ internal static class ParallelSingleArchiveWriter
         }
     }
 
-    private static Task<WorkResult> CompressEligibleFileAsync(
-        FileWorkItem item, CompressionSettings settings, ProgressTracker? tracker, CancellationToken cancellationToken) =>
+    internal static Task<WorkResult> CompressEligibleFileAsync(
+        FileWorkItem item, CompressionSettings settings, DeflateEncoderPool deflaters, ProgressTracker? tracker,
+        CancellationToken cancellationToken) =>
         Task.Run(() =>
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                CompressedEntryData compressed = CompressSmallFile(item.SourcePath, settings);
+                CompressedEntryData compressed = CompressSmallFile(item.SourcePath, settings, deflaters);
                 // In-memory files are small (<= InMemoryCompressByteThreshold) and compressed in one
                 // shot, not chunked — a single report on completion is enough; they never cause the
                 // "frozen mid-file" symptom the temp-file path's per-chunk reporting below fixes.
@@ -509,11 +511,27 @@ internal static class ParallelSingleArchiveWriter
 
     // T-F271: unbuffered — ZipEntryCompressor reads in its own 8 KiB chunks, so a FileStream buffer
     // only added a fresh 64 KiB array per file (gen0 churn across thousands of small files).
-    internal static CompressedEntryData CompressSmallFile(string sourcePath, CompressionSettings settings)
+    // T-F318: a deflater whose compression threw is disposed, never returned to the pool.
+    internal static CompressedEntryData CompressSmallFile(string sourcePath, CompressionSettings settings, DeflateEncoderPool deflaters)
     {
         using var fileStream = new FileStream(sourcePath, FileMode.Open, FileAccess.Read,
             settings.SourceShare, bufferSize: 0, useAsync: false);
-        return ZipEntryCompressor.Compress(fileStream, settings.Level, settings.Password);
+        if (settings.Level == CompressionLevel.NoCompression)
+            return ZipEntryCompressor.Compress(fileStream, settings.Level, settings.Password);
+
+        DeflateEncoderPool.Deflater deflater = deflaters.Rent();
+        CompressedEntryData compressed;
+        try
+        {
+            compressed = ZipEntryCompressor.Compress(fileStream, settings.Level, settings.Password, deflater);
+        }
+        catch
+        {
+            deflater.Dispose();
+            throw;
+        }
+        deflaters.Return(deflater);
+        return compressed;
     }
 
     // internal (not private) so a test can drive the disk-space pre-check directly with a
