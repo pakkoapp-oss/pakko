@@ -2037,8 +2037,8 @@ public sealed class ZipArchiveService : IArchiveService
                 FileMode.Create,
                 FileAccess.Write,
                 FileShare.None,
-                bufferSize: CopyBufferSize,
-                useAsync: true);
+                bufferSize: 0, // T-F505: CopyToAsync writes in its own 80 KiB chunks; a FileStream buffer was 80 KiB more per file
+                useAsync: false); // T-F505: MarkAndSetTime's Flush is synchronous; on an async handle it waits per write
             await ps.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
             MarkAndSetTime(fileStream, destFilePath, named.ModifiedUtc, plan.Motw, context.MotwMode);
         }
@@ -2051,8 +2051,8 @@ public sealed class ZipArchiveService : IArchiveService
                     FileMode.Create,
                     FileAccess.Write,
                     FileShare.None,
-                    bufferSize: CopyBufferSize,
-                    useAsync: true);
+                    bufferSize: 0,
+                    useAsync: false);
                 await entryStream.CopyToAsync(fileStream, CopyBufferSize, cancellationToken).ConfigureAwait(false);
                 MarkAndSetTime(fileStream, destFilePath, named.ModifiedUtc, plan.Motw, context.MotwMode);
             }

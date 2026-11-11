@@ -14713,3 +14713,17 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   - **Creating:** 424 -> 69 MiB for 2,000 entries, 4.2 GB -> 703 MiB for 20,000.
   - **Extracting:** 590 -> 201 MiB, 5.9 -> 2.0 GB.
   - **Unchanged:** the bytes.
+
+### T-F505 - Extraction costs about 1.3 ms and 88 KB per file (P3, from T-F498)
+
+- [x] **Status:** done 2026-11-12. 2,000 small files extract in 2.9 s against a 0.75 s floor for writing
+  them; 176 MiB allocated (1.76 GB at 20,000). The sweep names candidates: an 80 KiB buffer per
+  entry, a reparse-point walk of every ancestor per entry, `Directory.CreateDirectory` per entry,
+  the staging commit's per-file walk. Profile, then fix what the profile names.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
+- **Graduated 2026-11-12** (`docs/DECISIONS.md`, "T-F505"):
+  - **Changes:** one attribute query per folder in the reparse-point walk; the destination
+    `FileStream` unbuffered and synchronous.
+  - **Allocations:** 1.76 GB -> 207 MiB for 20,000 files.
+  - **Time:** unchanged. It is the file system's and Defender's, with the safety checks kept per
+    entry.
