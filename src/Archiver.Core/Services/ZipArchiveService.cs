@@ -401,6 +401,13 @@ public sealed class ZipArchiveService : IArchiveService
         return pathSize;
     }
 
+    private static bool SeparateArchivesTakeHandRolledWriter(Zip.ParallelSingleArchiveWriter.CompressionSettings settings) =>
+        settings.RequiresHandRolledWriter || settings.Level is CompressionLevel.Optimal or CompressionLevel.SmallestSize;
+
+    // The run's shared deflaters are set only when one archive per item takes the hand-rolled writer (T-F503).
+    private static bool TakesHandRolledWriter(Zip.ParallelSingleArchiveWriter.CompressionSettings settings, string sourcePath) =>
+        (settings.RequiresHandRolledWriter || settings.Deflaters is not null) && (Directory.Exists(sourcePath) || File.Exists(sourcePath));
+
     private static async Task<IReadOnlyList<SourceResult>> ArchiveSeparateArchivesModeAsync(
         ArchiveOptions options, ArchiveRunContext run,
         List<ArchiveError> errors, List<string> createdFiles, List<SkippedFile> skippedFiles,
@@ -446,8 +453,7 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F503: Optimal and SmallestSize too - ZipArchive builds a DeflateStream per archive, which
         // with many small archives side by side is T-F318's page-fault storm; the hand-rolled writer
         // shares the run's deflaters. Stored archives keep ZipArchive: they deflate nothing.
-        bool handRolled = settings.RequiresHandRolledWriter
-            || settings.Level is CompressionLevel.Optimal or CompressionLevel.SmallestSize;
+        bool handRolled = SeparateArchivesTakeHandRolledWriter(settings);
         if (handRolled)
         {
             settings = settings with
@@ -638,7 +644,7 @@ public sealed class ZipArchiveService : IArchiveService
         try
         {
             ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, [sourcePath]);
-            if ((settings.RequiresHandRolledWriter || settings.Deflaters is not null) && (Directory.Exists(sourcePath) || File.Exists(sourcePath)))
+            if (TakesHandRolledWriter(settings, sourcePath))
             {
                 // T-F193/T-F299: the only writer that can encrypt or store an entry Deflate grew. A
                 // one-source "single archive" of its own; WorkItemEnumerator names the entries

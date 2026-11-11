@@ -370,19 +370,21 @@ public sealed class SourceOutcomeTests : IDisposable
         result.Single().Cause.Should().Be(cause);
     }
 
-    // T-F502: one archive per item compared every source with every output path (O(S x C)); 20,000
-    // of each took seconds on that alone. Paths that do not exist reach only the path comparison.
+    // T-F502: one archive per item compared every source with every output path (O(S x C)): 20,000
+    // of each took 9 s on that alone, 60,000 well over a minute; the set takes a few seconds even under
+    // the whole suite's load (a 20,000 / 5 s version failed there once). Paths that do not exist reach
+    // only the path comparison and one Directory.Exists per source.
     [Fact]
     public async Task DowngradeSourcesContainingOutputs_ManySourcesAndOutputs_IsNotQuadratic()
     {
-        const int count = 20_000;
+        const int count = 60_000;
         string root = Path.Combine(_temp.Path, "missing");
         SourceResult[] sources = [.. Enumerable.Range(0, count).Select(i =>
             new SourceResult { Path = Path.Combine(root, "src", $"item-{i}"), Outcome = SourceOutcome.Completed })];
         string[] outputs = [.. Enumerable.Range(0, count).Select(i => Path.Combine(root, "src", $"item-{i}.zip"))];
 
         Task<IReadOnlyList<SourceResult>> run = Task.Run(() => SourceOutcomeRules.DowngradeSourcesContainingOutputs(sources, outputs));
-        IReadOnlyList<SourceResult> result = await run.WaitAsync(TimeSpan.FromSeconds(5));
+        IReadOnlyList<SourceResult> result = await run.WaitAsync(TimeSpan.FromSeconds(45));
 
         result.Should().OnlyContain(s => s.Outcome == SourceOutcome.Completed);
     }
