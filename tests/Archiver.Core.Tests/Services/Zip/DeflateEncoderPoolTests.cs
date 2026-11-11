@@ -158,7 +158,7 @@ public sealed class DeflateEncoderPoolTests : IDisposable
     {
         const string words = "alpha beta gamma delta archive entry deflate zlib window pool worker ";
         var rng = new Random(7);
-        var files = new byte[count][];
+        byte[][] files = new byte[count][];
         for (int i = 0; i < count; i++)
         {
             byte[] data = new byte[rng.Next(1024, 10241)];
