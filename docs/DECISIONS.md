@@ -14643,6 +14643,27 @@ packaged the 36 `Archiver.Messages.resources.dll`, which ILCompiler compiles int
 12 files, the four native exes, the helper, the shell extension DLL, no DLL of .NET. `Deploy.ps1`
 installed 1.10.0.5; `Invoke-Smoke.ps1 -Tier quick`: 51 rows OK.
 
+**The satellites were not compiled in either.** The closing review asked to prove the 36 locales
+were inside the exe before shipping without the DLLs. They were not: 0 of 5 uk-UA messages of
+`Archiver.Messages` in the .NET 11 `Archiver.App.exe` (5 of 5 in the .NET 10 one), and
+`Archiver.App.ilc.rsp` had no `--satellite`. ILCompiler 11's `_ComputeIlcCompileInputs` takes
+`IlcSatelliteAssembly` only from `ResolvedFileToPublish` items with `AssetType` "resources";
+a `ProjectReference`'s satellites have none (ILCompiler 10 took `_SatelliteAssembliesToPublish`).
+App's `PakkoAotProjectSatellites` adds them back: 36 `--satellite`, uk-UA, ja-JP and ar-SA 5 of 5.
+1.10.0.5 would have shown every Core message in English in 36 languages; quick smoke runs in
+en-US and passed it. `scripts/MsixPayload.ps1` now fails such a package (seen red on the 1.10.0.5
+bundle, green on the .NET 10 one and on 1.10.0.6) and one that carries the runtime, a `.pdb` or a
+satellite (seen red on hand-made packages). `CI-Build-Msix.ps1` green for x64 and ARM64 with it.
+
+**Also checked.** An empty `DeflateStream` on .NET 11 writes `03 00` (2 bytes), not 0 as up to
+.NET 10; both writers still store a zero-byte entry as `Store` (the length is checked, not the
+output), `ZipWriterCharacterizationTests` green; `.claude/rules/core.md` rewritten. The AOT
+`pakko` on PakkoW10 (Windows 10 Pro 22H2, 19045, libarchive 3.5.2): `i` (helper probe passed),
+ZIP `a`/`t`/`x`, tar `a`/`x`, the patched-CRC archive refused with the computed CRC. .NET 11's
+supported-OS page (2026-09-28) lists Windows 10 only as 21H2/1809/1607 (E) and (IoT), not 22H2
+Pro, which Microsoft itself no longer supports. PRF rows against v1.10.0: `x` of 6000 files 9.1 s
+(9.7), PRF-004 375 ms (345).
+
 ## v1.10.0 - the release record (2026-11-10 and 2026-11-11)
 
 - **Commits.** PR #207 (`28cf3e8d`, T-F487..T-F490, the REL-001 split, T-F491 filed) and PR #208

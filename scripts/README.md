@@ -223,6 +223,11 @@ which is why the SDK is pinned as well (`docs/DECISIONS.md`, T-F364).
 - **Dependabot's NuGet PRs:** a week with none may mean its updater failed (e.g. it lacks the
   pinned SDK), not that nothing is outdated; read its job log under Insights, Dependency graph,
   Dependabot, nuget "/".
+- **What an AOT package may carry (T-F492):** `Deploy.ps1` (before installing) and
+  `CI-Build-Msix.ps1` dot-source `MsixPayload.ps1`, which fails on a package holding the .NET
+  runtime (`coreclr.dll`, `clrjit.dll`, `System.Private.CoreLib.dll`), a `.pdb` or a
+  `*.resources.dll`, or whose `Archiver.App.exe` lacks a uk-UA message of `Archiver.Messages`. A
+  new SDK or `Microsoft.Windows.SDK.BuildTools.MSIX` that breaks either shows here first.
 
 ---
 

@@ -176,9 +176,18 @@
     <AssemblyMetadata Include="PakkoBuildTimeUtc" Value="$([System.DateTime]::UtcNow.ToString('o'))" />
   </ItemGroup>
 
-  <!-- T-F492: ILCompiler 11 compiles satellite assemblies into the native exe (IlcSatelliteAssembly)
-       but BuildTools.MSIX 1.7.261102100 still packages the per-locale .resources.dll beside it, which
-       the .NET 10 package never had. -->
+  <!-- T-F492: ILCompiler 11 takes into IlcSatelliteAssembly only ResolvedFileToPublish items with
+       AssetType "resources", which a ProjectReference's satellites (Archiver.Messages, 36 locales) do
+       not carry; ILCompiler 10 took them all. Without this the AOT exe has English messages only. -->
+  <Target Name="PakkoAotProjectSatellites" AfterTargets="_ComputeIlcCompileInputs" Condition="'$(PublishAot)' == 'true'">
+    <ItemGroup>
+      <IlcSatelliteAssembly Include="@(ResolvedFileToPublish)"
+                            Condition="'%(ResolvedFileToPublish.AssetType)' == '' and $([System.String]::Copy('%(Filename)%(Extension)').EndsWith('.resources.dll'))" />
+    </ItemGroup>
+  </Target>
+
+  <!-- T-F492: the satellites are compiled into the native exe, but BuildTools.MSIX 1.7.261102100
+       still packages the per-locale .resources.dll beside it, which the .NET 10 package never had. -->
   <Target Name="PakkoRemoveAotSatellitesFromPayload" AfterTargets="WinAppSdkRemoveLinkedFilesFromPayload"
           BeforeTargets="_ComputeAppxPackagePayload" Condition="'$(PublishAot)' == 'true' and '$(IncludePublishItemsOutputGroup)' == 'true'">
     <ItemGroup>

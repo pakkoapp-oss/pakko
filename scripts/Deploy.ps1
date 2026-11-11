@@ -314,6 +314,16 @@ if (-not $msix) {
 
 Write-Host "Package: $($msix.FullName)"
 
+# T-F492: the package must be the native one (no .NET runtime, symbols or satellites beside the
+# AOT exes; Archiver.Messages' locales compiled into Archiver.App.exe).
+. (Join-Path $PSScriptRoot 'MsixPayload.ps1')
+try {
+    Assert-NativeAotPackageFile $msix.FullName $repoRoot
+} catch {
+    Write-Error "$_"
+    exit 1
+}
+
 # ── Uninstall existing Pakko package ──────────────────────────────────────────
 Write-Host ""
 Write-Host "Uninstalling existing Pakko package (if any)..."

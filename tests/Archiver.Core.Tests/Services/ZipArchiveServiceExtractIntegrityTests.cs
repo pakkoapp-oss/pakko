@@ -7,9 +7,10 @@ using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
 
-// T-F246: extraction only copied the entry stream — .NET does not check CRC-32 on read — so a
-// corrupted entry was written and reported as success. T-F231: a decrypted entry was not capped
-// at its declared size, which the compression-bomb and free-space gates rely on.
+// T-F246: extraction only copied the entry stream (.NET 10 did not check CRC-32 on read), so a
+// corrupted entry was written and reported as success; .NET 11 checks it, Core names it (T-F492).
+// T-F231: a decrypted entry was not capped at its declared size, which the compression-bomb and
+// free-space gates rely on.
 public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
 {
     private const string Password = "s3cret-pass";
@@ -113,8 +114,8 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
         AssertOnlyDocFailed(result, dest, "CRC-32");
     }
 
-    // Stored: .NET returns every stored byte, so the length cap fires. Deflated: .NET silently
-    // truncates to the declared size, so the CRC of the full content no longer matches.
+    // Stored: one read returns more than the declared size, so the length check fires. Deflated:
+    // the decompressor stops at the declared size, so the CRC of the truncated content differs.
     [Theory]
     [InlineData(CompressionLevel.NoCompression, "declared size")]
     [InlineData(CompressionLevel.Optimal, "CRC-32")]

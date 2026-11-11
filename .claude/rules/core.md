@@ -60,14 +60,12 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   merged existing folder** (the GUI app's tested behavior) — it does NOT mean "always create a
   fresh whole folder." For shell-only "always fresh" behavior (numbered folder), use
   `ExtractOptions.SeparateFolderName` computed by the caller instead of changing this semantic.
-- **`System.IO.Compression.DeflateStream` writes literally 0 output bytes for zero-byte input**
-  (not a minimal valid empty final block) — confirmed empirically. Any hand-rolled ZIP writer
-  that tags a zero-length entry's method as Deflate based on the requested compression level
-  (instead of checking actual output length) produces an entry real deflate readers (7-Zip)
-  reject as corrupt, while .NET's own lenient reader accepts it silently — invisible to
-  `dotnet test` unless checked against an independent reader. Real `ZipArchiveEntry` always
-  uses `Store` for empty entries regardless of requested level; match that. Real bug: found via
-  on-device NanaZip cross-check on `ZipEntryCompressor` (T-F35 follow-up, `DECISIONS.md`).
+- **A zero-byte entry is always written as `Store`** (method 0), never Deflate, in both writers
+  (`ZipEntryCompressor` checks the input length, not the requested level), as `ZipArchiveEntry`
+  does. Up to .NET 10, `DeflateStream` wrote 0 bytes for empty input, which 7-Zip rejects as
+  corrupt while .NET's own reader accepts it (T-F35 follow-up, found by a NanaZip cross-check);
+  .NET 11 writes `03 00`, a valid empty block (measured 2026-11-11, T-F492), but the rule stays:
+  `ZipWriterCharacterizationTests.ArchiveAsync_EmptyFile_IsStoredNotDeflated` checks both writers.
 - **Diagnosing ZIP format bugs:** `7za.exe l -slt <archive>` (the vendored copy under
   `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/x64/`) dumps per-entry technical fields
   (Method, Size, Packed Size, CRC, Attributes) — the fastest way to see exactly what a hand-rolled
