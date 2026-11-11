@@ -713,7 +713,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         get
         {
-            BrowseLocationState state = BrowseLocationState.For(
+            var state = BrowseLocationState.For(
                 IsBrowsingArchive && BrowseScope == ArchiveBrowseScope.Archive, _browseStack.Count > 0);
             return _browseUnlisted ? state.WithoutListing() : state;
         }
