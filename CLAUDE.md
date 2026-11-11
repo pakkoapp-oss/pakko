@@ -223,8 +223,8 @@ dotnet publish src/Archiver.App/Archiver.App.csproj \
 
 C++ build and test commands: `.claude/rules/shell-extension.md`.
 
-> **Toolchain (T-F270):** .NET 10 LTS; `global.json` pins the SDK exactly (`rollForward: disable`;
-> the lock files carry its ILCompiler version, T-F364; bump: `scripts/README.md`). **C# 14** (T-F363),
+> **Toolchain (T-F492):** .NET 11; `global.json` pins the SDK exactly (`rollForward: disable`;
+> the lock files carry its ILCompiler version, T-F364; bump: `scripts/README.md`). **C# 15** (T-F492),
 > `LangVersion` set once in `Directory.Build.props`; the idioms whose absence fails the build (partial
 > `[ObservableProperty]`, `Lock`, `field`, IDE0330/0340/0360/0032/0031 under `TreatWarningsAsErrors`):
 > `docs/CONVENTIONS.md` and `.editorconfig`.

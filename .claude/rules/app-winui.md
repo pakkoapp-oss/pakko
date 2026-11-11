@@ -66,5 +66,5 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   `Resources.resw` falls back to `en-US` automatically, so non-translatable keys (URLs) should
   be omitted from locale files, not duplicated. Verify a new locale is wired without opening VS:
   `dotnet build src/Archiver.App/Archiver.App.csproj /p:Platform=x64`, then check
-  `bin/x64/Release/net10.0-windows10.0.17763.0/win-x64/AppxManifest.xml` for the `<Resource
+  `bin/x64/Release/net11.0-windows10.0.17763.0/win-x64/AppxManifest.xml` for the `<Resource
   Language>` entries.

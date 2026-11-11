@@ -26,8 +26,8 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   (still invisible outside the assembly without `InternalsVisibleTo`). Hit adding
   `ParallelSingleArchiveWriter.ProgressTracker` as a parameter on the existing `internal static
   CompressToTempFileAsync` (T-F140).
-- **`Microsoft.Win32.Registry` (`RegistryKey`) is usable from `Archiver.Core` (plain `net10.0`,
-  not `net10.0-windows`) with zero new NuGet package reference** — confirmed via a throwaway probe
+- **`Microsoft.Win32.Registry` (`RegistryKey`) is usable from `Archiver.Core` (plain `net11.0`,
+  not `net11.0-windows`) with zero new NuGet package reference** — confirmed via a throwaway probe
   build; it's already part of the Windows runtime pack pulled in transitively, not something this
   project's "zero dependencies" constraint blocks. Mark the call site
   `[SupportedOSPlatform("windows")]` to make the resulting `CA1416` warning meaningful instead of
@@ -36,7 +36,7 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   `[SupportedOSPlatform("windows")]` — a raw P/Invoke wrapper class calling its own `[LibraryImport]`s
   (e.g. `Services/Sandbox/`, `Services/Antivirus/AmsiScanner.cs`) needs no annotation at all, since
   `DllImport` itself isn't BCL-platform-tagged. Annotating the whole class anyway makes `CA1416`
-  propagate into every caller, including test projects on a plain `net10.0` TFM — confirmed
+  propagate into every caller, including test projects on a plain `net11.0` TFM — confirmed
   T-F146, where a class-level annotation forced two unrelated test classes to also carry the
   attribute before the warnings cleared.
 - **A public Core operation checks its paths at entry** (`InputPaths.Problem`,
