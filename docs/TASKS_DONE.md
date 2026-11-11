@@ -14754,3 +14754,17 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
     - `DeviceNamedArchiveTests`, red then green under Windows 10's rules on PakkoW10;
     - the two CLI tests state their rules;
     - `CLI-053`, also run on PakkoW10.
+
+### T-F507 - Four to six tar.exe and helper processes per tar operation (P3, from T-F498)
+
+- [x] **Status:** done 2026-11-12. A tar.gz extract or test starts 6 processes, a listing 4, about 2 k page
+  faults each whatever the input (11.5 k of the 16 k faults of extracting 2,000 files). Trace which
+  launches one operation makes (capability probe, listing, type listing, extraction) and whether
+  any repeats what an earlier one already learned.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
+- **Graduated 2026-11-12** (`docs/DECISIONS.md`, "T-F507"):
+  - **Launches:** three `tar.exe` per extraction and test (names, types, the run); the two listings
+    are deliberate.
+  - **Change:** each launch had a hidden `conhost.exe`; children now start with `DETACHED_PROCESS`.
+  - **Result:** half the processes and the children's page faults, 30-50 ms less per launch.
+  - **Checked:** identical results on bsdtar 3.8.9 and on PakkoW10's 3.5.2.

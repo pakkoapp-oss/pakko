@@ -17,7 +17,10 @@ namespace Archiver.Core.Services.Sandbox;
 internal static partial class SandboxedProcessLauncher
 {
     private const uint STARTF_USESTDHANDLES = 0x00000100;
-    private const uint CREATE_NO_WINDOW = 0x08000000;
+    // T-F507: no console at all. CREATE_NO_WINDOW still gave every tar.exe and helper a hidden
+    // conhost.exe in the same job, about 2,000 page faults and 30-50 ms each; the child's standard
+    // handles are pipes from STARTUPINFO either way.
+    private const uint DETACHED_PROCESS = 0x00000008;
     private const uint CREATE_SUSPENDED = 0x00000004;
     private const uint EXTENDED_STARTUPINFO_PRESENT = 0x00080000;
     private const uint CREATE_UNICODE_ENVIRONMENT = 0x00000400;
@@ -150,7 +153,7 @@ internal static partial class SandboxedProcessLauncher
                     lpProcessAttributes: IntPtr.Zero,
                     lpThreadAttributes: IntPtr.Zero,
                     bInheritHandles: true,
-                    CREATE_NO_WINDOW | CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT | (environment is null ? 0 : CREATE_UNICODE_ENVIRONMENT),
+                    DETACHED_PROCESS | CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT | (environment is null ? 0 : CREATE_UNICODE_ENVIRONMENT),
                     environment,
                     options.WorkingDirectory,
                     ref startupInfoEx,
