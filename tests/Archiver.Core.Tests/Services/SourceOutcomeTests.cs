@@ -352,6 +352,13 @@ public sealed class SourceOutcomeTests : IDisposable
     [InlineData(@"C:\src\dir", @"C:\src\dir2\dir.zip", null)]
     [InlineData(@"C:\src\dir", @"C:\src\dir.zip", null)]
     [InlineData(@"C:\", @"C:\archive.zip", PartialCause.DriveRoot)]
+    [InlineData(@"C:\src\dir.zip", @"C:\src\dir.zip", PartialCause.HoldsAnOutput)]
+    [InlineData(@"C:\src\dir\", @"C:\src\dir\dir.zip", PartialCause.HoldsAnOutput)]
+    [InlineData(@"C:/src/dir", @"C:\src\dir\a\b\dir.zip", PartialCause.HoldsAnOutput)]
+    [InlineData(@"C:\src\di", @"C:\src\dir\dir.zip", null)]
+    [InlineData(@"C:\src\dir\out", @"C:\src\dir\dir.zip", null)]
+    [InlineData(@"\\server\share\dir", @"\\server\share\dir\dir.zip", PartialCause.HoldsAnOutput)]
+    [InlineData(@"\\server\share\dir", @"\\server\share\other\dir.zip", null)]
     public void DowngradeSourcesContainingOutputs_OnlySourcesContainingAnOutput(string source, string created, PartialCause? cause)
     {
         SourceResult[] sources = new[] { new SourceResult { Path = source, Outcome = SourceOutcome.Completed } };
@@ -361,6 +368,23 @@ public sealed class SourceOutcomeTests : IDisposable
         result.Single().Outcome.Should().Be(cause is null ? SourceOutcome.Completed : SourceOutcome.Partial);
         // T-F435: the App's not-deleted dialog names the reason a source is kept.
         result.Single().Cause.Should().Be(cause);
+    }
+
+    // T-F502: one archive per item compared every source with every output path (O(S x C)); 20,000
+    // of each took seconds on that alone. Paths that do not exist reach only the path comparison.
+    [Fact]
+    public async Task DowngradeSourcesContainingOutputs_ManySourcesAndOutputs_IsNotQuadratic()
+    {
+        const int count = 20_000;
+        string root = Path.Combine(_temp.Path, "missing");
+        SourceResult[] sources = [.. Enumerable.Range(0, count).Select(i =>
+            new SourceResult { Path = Path.Combine(root, "src", $"item-{i}"), Outcome = SourceOutcome.Completed })];
+        string[] outputs = [.. Enumerable.Range(0, count).Select(i => Path.Combine(root, "src", $"item-{i}.zip"))];
+
+        Task<IReadOnlyList<SourceResult>> run = Task.Run(() => SourceOutcomeRules.DowngradeSourcesContainingOutputs(sources, outputs));
+        IReadOnlyList<SourceResult> result = await run.WaitAsync(TimeSpan.FromSeconds(5));
+
+        result.Should().OnlyContain(s => s.Outcome == SourceOutcome.Completed);
     }
 
     // T-F419: an output that exists but cannot be resolved may lie anywhere, so every existing

@@ -84,7 +84,7 @@ internal static class SourceOutcomeRules
         var holders = new Holders();
         foreach (string created in createdFiles.Where(File.Exists))
             holders.Add(selfAndAncestors(created, folders));
-        List<string> createdFull = [.. createdFiles.Select(Path.GetFullPath)];
+        HashSet<string> createdAndTheirFolders = SelfAndAncestorPaths(createdFiles);
         return [.. sources.Select(Downgrade)];
 
         SourceResult Downgrade(SourceResult s)
@@ -93,7 +93,7 @@ internal static class SourceOutcomeRules
                 return s;
             if (IsRoot(s.Path))
                 return s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.DriveRoot };
-            if (IsAnyUnder(createdFull, s.Path) || HoldsAnOutput(s.Path, holders))
+            if (createdAndTheirFolders.Contains(PathKey(Path.GetFullPath(s.Path))) || HoldsAnOutput(s.Path, holders))
                 return s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.HoldsAnOutput };
             return s;
         }
@@ -137,12 +137,24 @@ internal static class SourceOutcomeRules
 
     private static bool IsRoot(string path) => Directory.Exists(path) && new DirectoryInfo(path).Parent is null;
 
-    private static bool IsAnyUnder(List<string> candidatesFull, string root)
+    // T-F502: every output's full path and each folder above it, once - a source is the same as or
+    // above an output when its own full path is in the set. Comparing each source with each output
+    // was O(S x C), seconds for one archive per item of 20,000. A path has at most a few thousand
+    // parts, so the walk up is bounded.
+    private static HashSet<string> SelfAndAncestorPaths(IReadOnlyCollection<string> paths)
     {
-        string rootFull = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
-        // A drive root ("C:\") keeps its separator after trimming — don't append a second one.
-        string prefix = Path.EndsInDirectorySeparator(rootFull) ? rootFull : rootFull + Path.DirectorySeparatorChar;
-        return candidatesFull.Exists(full => full.Equals(rootFull, StringComparison.OrdinalIgnoreCase)
-            || full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        var keys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string path in paths)
+        {
+            for (string? current = Path.GetFullPath(path); current is not null; current = Path.GetDirectoryName(current))
+            {
+                if (!keys.Add(PathKey(current)))
+                    break;
+            }
+        }
+        return keys;
     }
+
+    // One spelling for a folder with or without its trailing separator ("C:\" and "C:", a share root).
+    private static string PathKey(string fullPath) => fullPath.TrimEnd(PathSeparators);
 }
