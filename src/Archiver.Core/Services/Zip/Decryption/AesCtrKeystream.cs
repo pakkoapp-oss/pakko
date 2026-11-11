@@ -12,17 +12,23 @@ namespace Archiver.Core.Services.Zip.Decryption;
 internal sealed class AesCtrKeystream : IDisposable
 {
     private const int BlockSize = 16;
-    private const int BlocksPerBatch = 4096; // 64 KiB of keystream per ECB call
+    private const int MaxBlocksPerBatch = 4096; // 64 KiB of keystream per ECB call
 
     private readonly Aes _aes;
     private readonly ICryptoTransform _encryptor;
     private readonly byte[] _counter = new byte[BlockSize];
-    private readonly byte[] _counterBatch = new byte[BlockSize * BlocksPerBatch];
-    private readonly byte[] _keystream = new byte[BlockSize * BlocksPerBatch];
-    private int _keystreamOffset = BlockSize * BlocksPerBatch;
+    private readonly byte[] _counterBatch;
+    private readonly byte[] _keystream;
+    private int _keystreamOffset;
 
-    public AesCtrKeystream(byte[] key)
+    // T-F504: a batch no larger than the data needs - a small entry built 128 KiB of keystream
+    // buffers. More bytes than expected only refill again; the keystream does not depend on it.
+    public AesCtrKeystream(byte[] key, long expectedBytes = long.MaxValue)
     {
+        int blocksPerBatch = (int)Math.Clamp(expectedBytes / BlockSize + 1, 1, MaxBlocksPerBatch);
+        _counterBatch = new byte[BlockSize * blocksPerBatch];
+        _keystream = new byte[BlockSize * blocksPerBatch];
+        _keystreamOffset = _keystream.Length;
         _aes = Aes.Create();
         _aes.Key = key;
         _aes.Mode = CipherMode.ECB;
@@ -47,7 +53,7 @@ internal sealed class AesCtrKeystream : IDisposable
 
     private void RefillKeystream()
     {
-        for (int block = 0; block < BlocksPerBatch; block++)
+        for (int block = 0; block < _counterBatch.Length / BlockSize; block++)
         {
             Buffer.BlockCopy(_counter, 0, _counterBatch, block * BlockSize, BlockSize);
             IncrementCounter();

@@ -40,7 +40,7 @@ internal static class ZipEntryCompressor
             return plain;
 
         using var encrypted = new MemoryStream(plain.CompressedBytes.Length + WinZipAesEncryptStream.Overhead);
-        using (var aes = new WinZipAesEncryptStream(encrypted, password))
+        using (var aes = new WinZipAesEncryptStream(encrypted, password, plain.CompressedBytes.Length))
             aes.Write(plain.CompressedBytes);
         return plain with { CompressedBytes = encrypted.ToArray(), IsAesEncrypted = true };
     }

@@ -71,12 +71,12 @@ internal static class WinZipAesReader
     /// Pass 1: HMAC-SHA1 over the whole ciphertext, streamed in fixed-size chunks, compared in
     /// constant time with the 10-byte stored tag. Produces no plaintext.
     /// </summary>
-    public static bool Authenticate(Stream ciphertext, byte[] authenticationKey, ReadOnlySpan<byte> storedTag)
+    public static bool Authenticate(Stream ciphertext, byte[] authenticationKey, ReadOnlySpan<byte> storedTag, long ciphertextLength = long.MaxValue)
     {
 #pragma warning disable CA5350
         using var hmac = IncrementalHash.CreateHMAC(HashAlgorithmName.SHA1, authenticationKey); // NOSONAR: S4790 — HMAC-SHA1 is fixed by the WinZip AE spec (see CONVENTIONS.md)
 #pragma warning restore CA5350
-        byte[] buffer = new byte[HashChunkSize];
+        byte[] buffer = new byte[Math.Clamp(ciphertextLength, 1, HashChunkSize)];
         int read;
         while ((read = ciphertext.Read(buffer, 0, buffer.Length)) > 0)
             hmac.AppendData(buffer, 0, read);
@@ -94,10 +94,10 @@ internal sealed class WinZipAesCtrStream : Stream
     private readonly Stream _ciphertext;
     private readonly AesCtrKeystream _keystream;
 
-    public WinZipAesCtrStream(Stream ciphertext, byte[] key)
+    public WinZipAesCtrStream(Stream ciphertext, byte[] key, long ciphertextLength = long.MaxValue)
     {
         _ciphertext = ciphertext;
-        _keystream = new AesCtrKeystream(key);
+        _keystream = new AesCtrKeystream(key, ciphertextLength);
     }
 
     public override int Read(byte[] buffer, int offset, int count)

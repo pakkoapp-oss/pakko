@@ -14715,6 +14715,42 @@ baseline goes from 1.18 to 0.96. #134700's own benchmark on .NET 11.0.0 GA, dop 
 against 147-148 ms) - the regression is still in 11.0.0 for `DeflateStream`. The numbers go
 upstream in a comment only after the user reads its text.
 
+## T-F504 - the AES streams sized their buffers for 64 KiB whatever the entry (2026-11-12)
+
+**Cause.** Writing, each encrypted entry built three 64 KiB arrays: `WinZipAesEncryptStream`'s
+scratch, and `AesCtrKeystream`'s counter batch and keystream. Reading built the two keystream arrays
+and an 80 KiB HMAC buffer in `WinZipAesReader.Authenticate`. That is about 200 KB per entry each
+way, measured 200,272 and 216,848 bytes for a 1,000-byte entry. 2,000 small files allocated 424 MiB
+creating and 590 MiB extracting. This was churn, not memory held: the peak stayed at 60-172 MiB.
+
+**Fix.** Each stream takes the entry's length as a hint:
+- the plaintext length when writing (`ZipEntryCompressor`);
+- the ciphertext length when reading (`EncryptedZipEntryReader`).
+
+Buffers are no larger than it, capped at the old sizes. The chunk-file path for large entries passes
+no hint and keeps 64 KiB. The keystream does not depend on the batch size (the counter runs on), so
+the bytes are unchanged. More data than the hint only refills again.
+
+**Tests** (`WinZipAesAllocationTests`):
+- **Allocation:** a 1,000-byte entry, after a warm-up, allocates under 24 KiB to encrypt and under
+  24 KiB to decrypt. Seen red at 200,272 and 216,848 bytes.
+- **Round trip:** at sizes around the 16-byte block and the 64 KiB batch.
+- **Short hint:** a hint shorter than the data gives the same keystream as no hint.
+
+**Measured** (probe in-process, `GC.GetTotalAllocatedBytes`, Defender real-time protection on):
+
+| password, many small files | before | after |
+|---|---|---|
+| create, 2,000 files | 424 MiB | 69 MiB |
+| create, 20,000 files | 4,241 MiB | 703 MiB |
+| extract, 2,000 files | 590 MiB | 201 MiB |
+| extract, 20,000 files | 5,899 MiB | 2,009 MiB |
+
+Extraction with a password now allocates about what plain extraction does (176 MiB and 1.76 GB,
+T-F505's subject). Its time stays about 1.7x plain extraction: two passes over each entry (HMAC, then
+decrypt) and a keystream XOR one byte at a time. That loop is a candidate if T-F505's profile
+shows it.
+
 ## T-F503 - one archive per item at Optimal takes the hand-rolled writer (2026-11-11)
 
 **Cause.** Without a password, one archive per item at Optimal or SmallestSize went through
