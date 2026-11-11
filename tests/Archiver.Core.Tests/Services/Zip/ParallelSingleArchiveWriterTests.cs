@@ -6,6 +6,12 @@ using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services.Zip;
 
+// Reports run on the writer's own thread, so a test can look at the disk while the run is in that state.
+file sealed class InlineProgress(Action<ProgressReport> onReport) : IProgress<ProgressReport>
+{
+    public void Report(ProgressReport value) => onReport(value);
+}
+
 public sealed class ParallelSingleArchiveWriterTests : IDisposable
 {
     private readonly string _tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
@@ -727,20 +733,30 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
             File.WriteAllBytes(Path.Combine(sourceDir, $"f{i}.bin"), BuildContent(8 * 1024 * 1024));
 
         string archivePath = TempArchivePath;
-        Task task = ParallelSingleArchiveWriter.WriteAsync(
-            archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes: 64 * 1024 * 1024,
-            new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress: null, CancellationToken.None);
-
+        // T-F500: looked at from inside the run (a synchronous progress report while a large file is
+        // compressed through its chunk), not by polling a clock - a 2 s poll lost the race once under
+        // the whole suite's load.
         string[] seenDuringRun = [];
-        await WaitUntilAsync(() => (seenDuringRun = FindChunkDirectories()).Length > 0, TimeSpan.FromSeconds(2));
+        FileAttributes attributesDuringRun = 0;
+        var progress = new InlineProgress(_ =>
+        {
+            if (seenDuringRun.Length > 0)
+                return;
+            seenDuringRun = FindChunkDirectories();
+            if (seenDuringRun.Length == 1)
+                attributesDuringRun = File.GetAttributes(seenDuringRun[0]);
+        });
+        await ParallelSingleArchiveWriter.WriteAsync(
+            archivePath, [sourceDir], CompressionLevel.Optimal, totalBytes: 64 * 1024 * 1024,
+            new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, _ => { }), progress, CancellationToken.None);
+
         seenDuringRun.Should().ContainSingle("exactly one per-operation chunk folder should exist while archiving runs");
         string chunkDir = seenDuringRun[0];
         Path.GetDirectoryName(chunkDir).Should().Be(_tempDir.TrimEnd(Path.DirectorySeparatorChar),
             "the chunk folder must sit next to the destination archive, not in a shared system location");
-        File.GetAttributes(chunkDir).HasFlag(FileAttributes.Hidden).Should().BeTrue(
+        attributesDuringRun.HasFlag(FileAttributes.Hidden).Should().BeTrue(
             "the chunk folder must be hidden so it doesn't visibly flicker in Explorer by default");
 
-        await task;
         FindChunkDirectories().Should().BeEmpty("the folder must be gone once archiving completes");
         Path.GetFileName(chunkDir).Should().StartWith(".pakko-tmp-" + Archiver.Core.IO.TempOwner.CurrentTag + "-");
     }

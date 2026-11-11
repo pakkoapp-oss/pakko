@@ -415,6 +415,12 @@ public sealed class ZipArchiveService : IArchiveService
         return pathSize;
     }
 
+    // A file's archive has one entry, so one worker; a folder's gets its share (T-F497). Everything
+    // else - the run's deflaters, its large-file gate - is the run's (T-F500 tests that it carries).
+    internal static Zip.ParallelSingleArchiveWriter.CompressionSettings SeparateArchiveSettings(
+        Zip.ParallelSingleArchiveWriter.CompressionSettings run, int workersPerFolder, bool isFolder) =>
+        workersPerFolder == 0 ? run : run with { MaxThreads = isFolder ? workersPerFolder : 1 };
+
     private static bool SeparateArchivesTakeHandRolledWriter(Zip.ParallelSingleArchiveWriter.CompressionSettings settings) =>
         settings.RequiresHandRolledWriter || settings.Level is CompressionLevel.Optimal or CompressionLevel.SmallestSize;
 
@@ -493,14 +499,8 @@ public sealed class ZipArchiveService : IArchiveService
                 threadBudget, written.Count, written.Count(p => Directory.Exists(p.SourcePath)), budgetIsALimit: options.MaxThreads > 0);
         }
 
-        // A file's archive has one entry, so one worker; a folder's gets its share (T-F497).
-        Zip.ParallelSingleArchiveWriter.CompressionSettings SettingsFor(string source)
-        {
-            if (workersPerFolder == 0)
-                return settings;
-            int threads = Directory.Exists(source) ? workersPerFolder : 1;
-            return settings with { MaxThreads = threads };
-        }
+        Zip.ParallelSingleArchiveWriter.CompressionSettings SettingsFor(string source) =>
+            SeparateArchiveSettings(settings, workersPerFolder, Directory.Exists(source));
 
         await Parallel.ForEachAsync(
             plans.Where(p => p.DestPath is not null),

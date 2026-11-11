@@ -15373,6 +15373,32 @@ buffer. Two ways around that were considered and rejected:
 - **2,000 small entries:** 1,128 ms against T-F498's 133 ms. That is not this change: Defender's real-time
   protection was off during T-F498's runs and on now, so AMSI really scans each entry.
 
+## T-F500 - the hand-rolled writer's failure paths, and the chunk-folder test without a clock (2026-11-12)
+
+**The disposal.** `ZipEntryWriter.DisposeAsync` wrote the central directory and flushed before it closed
+the output. A failure in either (a full disk) skipped the close, and the handle (`FileShare.None`)
+then stopped the caller's best-effort delete of the temp file. No data was at risk: the archive is
+not committed and the next run sweeps the file. The close now runs in a `finally`. An internal
+constructor that takes a `Stream` lets the test hand in one whose flush fails.
+`ZipEntryWriterDisposalTests` checks the failure is still thrown, the output is closed and the file
+can be deleted. Seen red: the output stayed open.
+
+**One archive per item, the hand-rolled path.** Tests the T-F497 review found missing:
+- **Settings per archive.** `SeparateArchiveSettings` is now a function. It gives a folder its
+  `workersPerFolder` and a file one worker, and keeps the run's `Deflaters` and `LargeFileGate`;
+  tested directly.
+- **Unreadable sources.** A source locked open at Fastest, and at Optimal with a password, both
+  over 1 MiB (the chunk path, then stored from the source because Deflate grew the random bytes) and
+  small (in memory). Each costs only its own archive. No `.pakko-*` file or folder is left.
+- **A cancel midway.** It throws, leaves no temp file or chunk folder, and every archive left behind
+  is whole: it opens, and its entry equals its source.
+
+**The flaky test.** `WriteAsync_WhileRunning_ChunkFolderIsHiddenAndNextToDestination` failed once
+under the whole quick tier: it polled for the chunk folder for 2 s while 64 MiB was compressed. It
+now looks from inside the run, in a synchronous progress report while a large file goes through its
+chunk, and reads the folder's attributes there too. Passed three times in a row. A mutant that does
+not hide the folder turns it red.
+
 ## T-F503 - one archive per item at Optimal takes the hand-rolled writer (2026-11-11)
 
 **Cause.** Without a password, one archive per item at Optimal or SmallestSize went through

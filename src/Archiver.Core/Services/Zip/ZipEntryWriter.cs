@@ -71,15 +71,17 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
     private const uint DirectoryExternalAttributes = 0x10; // FILE_ATTRIBUTE_DIRECTORY
     private const uint FileExternalAttributes = 0x20; // FILE_ATTRIBUTE_ARCHIVE
 
-    private readonly FileStream _output;
+    private readonly Stream _output;
     private readonly List<CentralDirectoryRecord> _records = [];
     private bool _disposed;
 
     public ZipEntryWriter(string path)
+        : this(new FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096, useAsync: false))
     {
-        _output = new FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.None,
-            bufferSize: 4096, useAsync: false);
     }
+
+    // T-F500: tests hand in a stream whose flush fails.
+    internal ZipEntryWriter(Stream output) => _output = output;
 
     public int EntryCount => _records.Count;
 
@@ -270,15 +272,23 @@ internal sealed class ZipEntryWriter : IAsyncDisposable
         if (_disposed) return;
         _disposed = true;
 
-        long centralDirectoryOffset = _output.Position;
-        foreach (CentralDirectoryRecord record in _records)
-            WriteCentralDirectoryRecord(record);
-        long centralDirectorySize = _output.Position - centralDirectoryOffset;
+        // T-F500: the output closes even when the central directory, the flush or the close fails -
+        // an open handle (FileShare.None) kept the caller's cleanup from deleting the temp file.
+        try
+        {
+            long centralDirectoryOffset = _output.Position;
+            foreach (CentralDirectoryRecord record in _records)
+                WriteCentralDirectoryRecord(record);
+            long centralDirectorySize = _output.Position - centralDirectoryOffset;
 
-        WriteEndOfCentralDirectory(centralDirectoryOffset, centralDirectorySize, _records.Count);
+            WriteEndOfCentralDirectory(centralDirectoryOffset, centralDirectorySize, _records.Count);
 
-        await _output.FlushAsync().ConfigureAwait(false);
-        await _output.DisposeAsync().ConfigureAwait(false);
+            await _output.FlushAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            await _output.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     private void WriteCentralDirectoryRecord(CentralDirectoryRecord record)
