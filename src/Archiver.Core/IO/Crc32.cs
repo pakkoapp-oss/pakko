@@ -6,7 +6,7 @@ namespace Archiver.Core.IO;
 /// Standalone CRC-32 (ISO 3309 / ZIP polynomial 0xEDB88320) — Archiver.Core takes no NuGet
 /// dependencies, so <c>System.IO.Hashing.Crc32</c> is not an option, and
 /// <see cref="System.IO.Compression.ZipArchiveEntry.Crc32"/> only exposes the value stored in
-/// the entry's header; .NET does not verify it against the decompressed bytes on read.
+/// the entry's header (.NET 11 checks it on read, T-F492; Pakko's own readers still need this one).
 /// Public (not internal) so Archiver.App's FileItem can reuse it for the pending-list CRC-32
 /// column instead of adding a second implementation or a hashing NuGet package there.
 /// </summary>

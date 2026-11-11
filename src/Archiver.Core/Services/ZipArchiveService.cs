@@ -1911,8 +1911,8 @@ public sealed class ZipArchiveService : IArchiveService
             };
         }
 
-        // T-F246: .NET does not check CRC-32 on read (and silently truncates a deflated entry to
-        // its declared size) — without this a corrupted entry is written and reported as success.
+        // T-F246: a corrupted entry must never be written and reported as success; since .NET 11 the
+        // runtime detects CRC-32 and size errors and VerifyingReadStream names them (T-F492).
         return (true, new VerifyingReadStream(named.Entry.Open(), named.Entry.Length, named.Entry.Crc32), null);
     }
 

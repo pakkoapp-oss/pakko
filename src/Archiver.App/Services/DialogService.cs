@@ -54,7 +54,7 @@ public sealed class DialogService : IDialogService
         var panel = new StackPanel { Spacing = 16 };
         panel.Children.Add(new TextBlock { Text = _res.GetString("NotDeletedDialogMessage"), TextWrapping = TextWrapping.Wrap });
         foreach (IGrouping<KeepReason, KeptSource> group in kept.GroupBy(k => k.Reason).OrderBy(g => g.Key))
-            panel.Children.Add(BuildPathPanel(_res.GetString(NotDeletedReasonKey(group.Key)), [.. group.Select(k => k.Path)]));
+            panel.Children.Add(BuildPathPanel(_res.GetString(NotDeletedReasonKey(group.Key)), (string[])[.. group.Select(k => k.Path)]));
         var dialog = new ContentDialog
         {
             Title = _res.GetString("NotDeletedDialogTitle"),
@@ -436,7 +436,7 @@ public sealed class DialogService : IDialogService
         picker.SuggestedStartLocation = PickerLocationId.Desktop;
         WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(_window));
         StorageFolder? folder = await picker.PickSingleFolderAsync();
-        return folder is null ? [] : [folder.Path];
+        return folder is null ? (string[])[] : (string[])[folder.Path];
     }
 
     public async Task ShowOperationSummaryAsync(string operationName, ArchiveResult result)

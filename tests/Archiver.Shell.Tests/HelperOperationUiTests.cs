@@ -635,7 +635,9 @@ public sealed class HelperOperationUiTests : IDisposable
         session.Progress!.Report(new ProgressReport { Percent = 99 });
 
         Task<ProtocolMessage?> next = _helper.ReadAsync();
-        (await Task.WhenAny(next, Task.Delay(300))).Should().NotBe(next);
+        using var delayCancel = new CancellationTokenSource();
+        (await Task.WhenAny(next, Task.Delay(300, delayCancel.Token))).Should().NotBe(next);
+        await delayCancel.CancelAsync();
         await _helper.SendAsync(new WindowClosed());
         await complete.WaitAsync(WaitLimit);
     }

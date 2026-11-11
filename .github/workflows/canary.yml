@@ -69,7 +69,7 @@ jobs:
       - name: Float the SDK
         shell: pwsh
         run: |
-          Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
+          Set-Content global.json '{ "sdk": { "version": "11.0.100", "rollForward": "latestFeature" } }'
 
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         continue-on-error: true
@@ -214,7 +214,7 @@ jobs:
       - name: Float the SDK
         shell: pwsh
         run: |
-          Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
+          Set-Content global.json '{ "sdk": { "version": "11.0.100", "rollForward": "latestFeature" } }'
 
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         continue-on-error: true
@@ -279,7 +279,7 @@ jobs:
       - name: Float the SDK
         shell: pwsh
         run: |
-          Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
+          Set-Content global.json '{ "sdk": { "version": "11.0.100", "rollForward": "latestFeature" } }'
 
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         continue-on-error: true
@@ -335,7 +335,7 @@ jobs:
       - name: Float the SDK
         shell: pwsh
         run: |
-          Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
+          Set-Content global.json '{ "sdk": { "version": "11.0.100", "rollForward": "latestFeature" } }'
 
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         continue-on-error: true
@@ -486,7 +486,7 @@ jobs:
       - name: Float the SDK
         shell: pwsh
         run: |
-          Set-Content global.json '{ "sdk": { "version": "10.0.100", "rollForward": "latestFeature" } }'
+          Set-Content global.json '{ "sdk": { "version": "11.0.100", "rollForward": "latestFeature" } }'
 
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:

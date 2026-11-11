@@ -80,7 +80,9 @@ public sealed class TarCommandLineEncodingTests
             @"C:\Windows\System32\hostname.exe", [],
             new ProcessLaunchOptions(StdInData: new byte[4 * 1024 * 1024]), CancellationToken.None);
 
-        (await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(30)))).Should().BeSameAs(run);
+        using var delayCancel = new CancellationTokenSource();
+        (await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(30), delayCancel.Token))).Should().BeSameAs(run);
+        await delayCancel.CancelAsync();
         (await run).Item1.Should().Be(0);
     }
 

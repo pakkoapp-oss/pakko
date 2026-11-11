@@ -428,7 +428,9 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
 
         Task<bool> task = Task.Run(() => ArchiveFormatDetector.IsEncryptedRar(path));
 
-        (await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(5)))).Should().BeSameAs(task, "the parse must not loop");
+        using var delayCancel = new CancellationTokenSource();
+        (await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(5), delayCancel.Token))).Should().BeSameAs(task, "the parse must not loop");
+        await delayCancel.CancelAsync();
         (await task).Should().BeFalse();
     }
 

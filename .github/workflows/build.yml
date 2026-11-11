@@ -747,7 +747,7 @@ jobs:
 
   # DocFX developer/API docs site (docfx.json at repo root -- see index.md/toc.yml/api/index.md
   # for the book+API structure). runs-on: ubuntu-latest, unlike every other job in this file --
-  # Archiver.Core and Archiver.App.Core are both plain net10.0 with zero WinUI/Windows-only deps
+  # Archiver.Core and Archiver.App.Core are both plain net11.0 with zero WinUI/Windows-only deps
   # (a repo hard constraint already, for unrelated reasons), so docfx's design-time build of them
   # is genuinely portable and doesn't need a Windows runner's licensing cost.
   docs:

@@ -14,7 +14,7 @@ async Task<int> RunCommandAsync()
     // T-F51/T-F261: loaded once per invocation; every command gets its services from Core's one
     // factory built with it — Archiver.CLI has no DI container, same as Archiver.Shell.
     // pakko.exe only ships for Windows (tar.exe/AppContainer are already Windows-only throughout
-    // this file) despite this project's plain net10.0 (not net10.0-windows) TargetFramework.
+    // this file) despite this project's plain net11.0 (not net11.0-windows) TargetFramework.
     #pragma warning disable CA1416
     var services = PakkoServices.Create(GroupPolicyService.Load());
     #pragma warning restore CA1416
@@ -451,7 +451,7 @@ static async Task<int> ReportAndStreamAsync(
     string? streamError = await CliStreamStaging.StreamSingleFileToStdoutAsync(stdoutFolder.Path, cancellationToken).ConfigureAwait(false);
     if (streamError is null)
         return code;
-    await Console.Error.WriteLineAsync($"pakko: error: {streamError}").ConfigureAwait(false);
+    await Console.Error.WriteLineAsync($"pakko: error: {streamError}", CancellationToken.None).ConfigureAwait(false);
     return 2;
 }
 
@@ -700,7 +700,7 @@ static async Task<int> ReportArchiveResultAsync(
         return Math.Max(code, await ReportNothingToArchiveAsync().ConfigureAwait(false));
     // T-F411: Core's errors name the file; this says why nothing else was archived.
     if (options.StopOnUnreadableSource && result.CreatedFiles.Count == 0 && result.Errors.Count > 0)
-        await Console.Error.WriteLineAsync("pakko: error: no archive written: -sse stops at a file that cannot be read").ConfigureAwait(false);
+        await Console.Error.WriteLineAsync("pakko: error: no archive written: -sse stops at a file that cannot be read", CancellationToken.None).ConfigureAwait(false);
     return stdoutFolder is null ? await ReportTakenNameAsync(code, options, result).ConfigureAwait(false) : code;
 }
 
@@ -875,13 +875,13 @@ static async Task<bool> PrintArchiveListingAsync(
     string archivePath, IArchiveListingRouter router, ListingLayout layout, CliNameFilter? filter, CliReportContext report, CancellationToken cancellationToken)
 {
     if (layout.Multiple)
-        await Console.Out.WriteLineAsync($"# archive: {archivePath}").ConfigureAwait(false);
+        await Console.Out.WriteLineAsync($"# archive: {archivePath}", cancellationToken).ConfigureAwait(false);
 
     ArchiveListResult listResult = await router.ListEntriesAsync(archivePath, cancellationToken).ConfigureAwait(false);
     if (!listResult.Success)
     {
         string name = report.StdinPath is not null ? "(stdin)" : archivePath;
-        await Console.Error.WriteLineAsync($"pakko: error: {name}: {listResult.ErrorMessage}").ConfigureAwait(false);
+        await Console.Error.WriteLineAsync($"pakko: error: {name}: {listResult.ErrorMessage}", CancellationToken.None).ConfigureAwait(false);
         return false;
     }
 
@@ -895,7 +895,7 @@ static async Task<bool> PrintArchiveListingAsync(
     await PrintListingEntriesAsync(entries, format, layout.Technical, terminal).ConfigureAwait(false);
 
     if (layout.Multiple)
-        await Console.Out.WriteLineAsync($"# total: {entries.Count} entries").ConfigureAwait(false);
+        await Console.Out.WriteLineAsync($"# total: {entries.Count} entries", cancellationToken).ConfigureAwait(false);
 
     return true;
 }

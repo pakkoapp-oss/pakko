@@ -90,9 +90,9 @@ if (-not $DeployOnly) {
     # into the same bin folder Archiver.App.csproj's Content items read (T-F128: keep the paths).
     # ILCompiler's link step finds the C++ toolchain through vswhere.exe on PATH.
     $env:PATH = (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer') + ";$env:PATH"
-    $shellExeSourcePath = Join-Path $repoRoot "src\Archiver.Shell\bin\$platform\Release\net10.0-windows\$rid\Archiver.Shell.exe"
-    $operationUiExeSourcePath = Join-Path $repoRoot "src\Archiver.OperationUi\bin\$platform\Release\net10.0-windows10.0.17763.0\$rid\Archiver.OperationUi.exe"
-    $cliExeSourcePath = Join-Path $repoRoot "src\Archiver.CLI\bin\$platform\Release\net10.0\$rid\pakko.exe"
+    $shellExeSourcePath = Join-Path $repoRoot "src\Archiver.Shell\bin\$platform\Release\net11.0-windows\$rid\Archiver.Shell.exe"
+    $operationUiExeSourcePath = Join-Path $repoRoot "src\Archiver.OperationUi\bin\$platform\Release\net11.0-windows10.0.17763.0\$rid\Archiver.OperationUi.exe"
+    $cliExeSourcePath = Join-Path $repoRoot "src\Archiver.CLI\bin\$platform\Release\net11.0\$rid\pakko.exe"
     foreach ($satellite in @(
         @{ Project = 'src\Archiver.Shell\Archiver.Shell.csproj'; Exe = $shellExeSourcePath },
         @{ Project = 'src\Archiver.OperationUi\Archiver.OperationUi.csproj'; Exe = $operationUiExeSourcePath },
