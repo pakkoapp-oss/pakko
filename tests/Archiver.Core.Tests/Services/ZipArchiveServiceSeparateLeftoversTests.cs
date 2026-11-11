@@ -114,6 +114,90 @@ public sealed class ZipArchiveServiceSeparateLeftoversTests : IDisposable
         Directory.GetFileSystemEntries(_dir, ".pakko-*").Should().BeEmpty("no chunk folder is made for files this small");
     }
 
+    // T-F497 step 2: whether an archive got an entry is known from writing it, not from opening
+    // it again. These pin the answer the second open gave: an archive is committed (and its source
+    // can go to the Recycle Bin or -sdel) only when it holds what its source holds.
+    private static ArchiveOptions Separate(string[] sources, string destination, CompressionLevel level) => new()
+    {
+        SourcePaths = sources,
+        DestinationFolder = destination,
+        Mode = ArchiveMode.SeparateArchives,
+        CompressionLevel = level,
+    };
+
+    private static byte[] Compressible(int length)
+    {
+        byte[] data = new byte[length];
+        for (int i = 0; i < data.Length; i++)
+            data[i] = (byte)('a' + i % 23);
+        return data;
+    }
+
+    [Theory]
+    [InlineData(CompressionLevel.Optimal)]
+    [InlineData(CompressionLevel.Fastest)]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public async Task ArchiveAsync_OneArchivePerItem_ASourceWhoseReadFailsMidCopy_GetsNoArchiveAndIsNotCompleted(CompressionLevel level)
+    {
+        string[] good = Sources(3);
+        string broken = Path.Combine(_dir, "broken.bin");
+        File.WriteAllBytes(broken, Compressible(900_000));
+        ArchiveResult result;
+        using (var holder = new FileStream(broken, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        {
+            holder.Lock(400_000, 100_000); // ReadFile past 400,000 fails with a lock violation
+            result = await new ZipArchiveService(new GroupPolicyOptions())
+                .ArchiveAsync(Separate([.. good, broken], _dir, level));
+        }
+
+        File.Exists(Path.Combine(_dir, "broken.zip")).Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.SourcePath.Should().Be(broken);
+        result.Sources.Single(s => s.Path == broken).Outcome.Should().NotBe(SourceOutcome.Completed);
+        result.Sources.Where(s => s.Path != broken).Should().OnlyContain(s => s.Outcome == SourceOutcome.Completed);
+        good.Should().OnlyContain(g => File.Exists(Path.ChangeExtension(g, ".zip")));
+        Directory.GetFileSystemEntries(_dir, ".pakko-*").Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(CompressionLevel.Optimal)]
+    [InlineData(CompressionLevel.Fastest)]
+    public async Task ArchiveAsync_OneArchivePerItem_EmptyFileAndEmptyFolder_EachGetAnArchive(CompressionLevel level)
+    {
+        string empty = Path.Combine(_dir, "empty.txt");
+        File.WriteAllBytes(empty, []);
+        string emptyFolder = Path.Combine(_dir, "nothing");
+        Directory.CreateDirectory(emptyFolder);
+
+        ArchiveResult result = await new ZipArchiveService(new GroupPolicyOptions())
+            .ArchiveAsync(Separate([empty, emptyFolder], _dir, level));
+
+        result.Success.Should().BeTrue();
+        result.Sources.Should().OnlyContain(s => s.Outcome == SourceOutcome.Completed);
+        using (ZipArchive file = ZipFile.OpenRead(Path.Combine(_dir, "empty.zip")))
+            file.Entries.Should().ContainSingle().Which.Length.Should().Be(0);
+        using (ZipArchive folder = ZipFile.OpenRead(Path.Combine(_dir, "nothing.zip")))
+            folder.Entries.Should().ContainSingle().Which.FullName.Should().Be("nothing/"); // T-F66
+    }
+
+    // T-F60: a folder whose every file fails gets no archive at all.
+    [Theory]
+    [InlineData(CompressionLevel.Optimal)]
+    [InlineData(CompressionLevel.Fastest)]
+    public async Task ArchiveAsync_OneArchivePerItem_AFolderWhoseOnlyFileFails_GetsNoArchive(CompressionLevel level)
+    {
+        string folder = Path.Combine(_dir, "locked");
+        Directory.CreateDirectory(folder);
+        string only = Path.Combine(folder, "only.txt");
+        File.WriteAllText(only, "held");
+        ArchiveResult result;
+        using (new FileStream(only, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            result = await new ZipArchiveService(new GroupPolicyOptions()).ArchiveAsync(Separate([folder], _dir, level));
+
+        File.Exists(Path.Combine(_dir, "locked.zip")).Should().BeFalse();
+        result.Sources.Should().ContainSingle().Which.Outcome.Should().NotBe(SourceOutcome.Completed);
+        Directory.GetFileSystemEntries(_dir, ".pakko-*").Should().BeEmpty();
+    }
+
     // A live run's temporary files are never swept by another run in the same folder.
     [Fact]
     public async Task ArchiveAsync_OneArchivePerItem_KeepsALiveRunsTemporaryFile()

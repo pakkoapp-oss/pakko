@@ -175,7 +175,8 @@ internal static class ParallelSingleArchiveWriter
     // cut S107's parameter count on this public entry point.
     public sealed record ReportCallbacks(Action<SkippedFile> ReportSkipped, Action<ArchiveError> ReportError);
 
-    public static async Task WriteAsync(
+    /// <returns>T-F497: how many entries the archive holds - what a second open of it would read.</returns>
+    public static async Task<int> WriteAsync(
         string tempPath,
         IReadOnlyList<string> sortedSourcePaths,
         CompressionSettings settings,
@@ -191,7 +192,7 @@ internal static class ParallelSingleArchiveWriter
         if (cancellationToken.IsCancellationRequested)
         {
             await using var _ = new ZipEntryWriter(tempPath);
-            return;
+            return 0;
         }
 
         IEnumerable<FileWorkItem> items = WorkItemEnumerator.Enumerate(sortedSourcePaths, settings.Names, callbacks.ReportSkipped, callbacks.ReportError);
@@ -224,7 +225,7 @@ internal static class ParallelSingleArchiveWriter
 
         try
         {
-            await RunPipelineAsync(
+            return await RunPipelineAsync(
                     tempPath, items,
                     (item, ct) => CompressEligibleFileAsync(item, settings, deflaters, tracker, ct),
                     compressToTempFile,
@@ -293,7 +294,7 @@ internal static class ParallelSingleArchiveWriter
     // above) — see CONVENTIONS.md's "Method Complexity & Parameter Count" section for why this
     // project doesn't force a split here. The 9 parameters are the same "decoupled for whitebox
     // testing" design this method's own doc comment already explains, not accidental sprawl.
-    internal static async Task RunPipelineAsync( // NOSONAR: S3776, S107 — see comment above
+    internal static async Task<int> RunPipelineAsync( // NOSONAR: S3776, S107 — see comment above
         string tempPath,
         IEnumerable<FileWorkItem> items,
         Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressInMemory,
@@ -365,6 +366,7 @@ internal static class ParallelSingleArchiveWriter
             }
         }, cancellationToken);
 
+        int entries;
         try
         {
             await using var writer = new ZipEntryWriter(tempPath);
@@ -401,6 +403,7 @@ internal static class ParallelSingleArchiveWriter
             }
 
             await producer.ConfigureAwait(false);
+            entries = writer.EntryCount;
 
             // Real progress (see ProgressTracker) is reported live by the compression workers
             // themselves and clamped to 99% there — this is the only place that ever reports 100%,
@@ -437,6 +440,7 @@ internal static class ParallelSingleArchiveWriter
                 try { File.Delete(leftoverPath); } catch { /* best-effort */ }
             }
         }
+        return entries;
     }
 
     // T-F141: FileShare.Read, not FileShare.None. This chunk file was already fully written and

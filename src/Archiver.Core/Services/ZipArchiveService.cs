@@ -589,6 +589,8 @@ public sealed class ZipArchiveService : IArchiveService
         int issues = 0;
         int errorCount = 0;
         bool committed = false;
+        // T-F497: whether the archive got an entry, known from writing it; null opens it again.
+        bool? hasEntries;
         void AddSkipped(SkippedFile f) { Interlocked.Increment(ref issues); sink.SkippedFiles.Add(f); }
         void AddError(ArchiveError e) { Interlocked.Increment(ref issues); Interlocked.Increment(ref errorCount); sink.Errors.Add(e); }
         try
@@ -601,9 +603,10 @@ public sealed class ZipArchiveService : IArchiveService
                 // exactly as the branches below do.
                 var callbacks = new Zip.ParallelSingleArchiveWriter.ReportCallbacks(AddSkipped, AddError);
                 OffsetProgress? offsetProgress = progress is null ? null : new OffsetProgress(progress, baseOffset, totalSourceBytes);
-                await Zip.ParallelSingleArchiveWriter.WriteAsync(
+                int entries = await Zip.ParallelSingleArchiveWriter.WriteAsync(
                     separateTempPath, [sourcePath], settings, pathSize, callbacks, offsetProgress, cancellationToken)
                     .ConfigureAwait(false);
+                hasEntries = entries > 0;
             }
             else if (Directory.Exists(sourcePath))
             {
@@ -616,6 +619,7 @@ public sealed class ZipArchiveService : IArchiveService
                 };
                 await AddDirectoryToArchiveAsync(archive, sourcePath, context, baseOffset, cancellationToken)
                     .ConfigureAwait(false);
+                hasEntries = null; // a file that failed below the folder is reported, not thrown
             }
             else if (File.Exists(sourcePath))
             {
@@ -623,6 +627,7 @@ public sealed class ZipArchiveService : IArchiveService
                 await AddEntryFromFileAsync(archive, sourcePath, settings.NameOf(sourcePath),
                     compressionLevel, new EntryWriteProgress(totalSourceBytes, baseOffset, progress), settings.SourceShare, cancellationToken)
                     .ConfigureAwait(false);
+                hasEntries = true; // any failure of the one entry throws before the commit
             }
             else
             {
@@ -637,7 +642,8 @@ public sealed class ZipArchiveService : IArchiveService
             cancellationToken.ThrowIfCancellationRequested();
             bool stoppedAtUnreadable = settings.StopOnUnreadableSource && Interlocked.CompareExchange(ref errorCount, 0, 0) > 0;
             committed = await CommitSeparateIfWrittenAsync(
-                separateTempPath, destPath, replacesExisting, stoppedAtUnreadable, sink, cancellationToken).ConfigureAwait(false);
+                separateTempPath, destPath, replacesExisting, stoppedAtUnreadable || hasEntries == false, hasEntries is null, sink, cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -668,10 +674,10 @@ public sealed class ZipArchiveService : IArchiveService
     }
 
     private static async Task<bool> CommitSeparateIfWrittenAsync(
-        string tempPath, string destPath, bool replacesExisting, bool stoppedAtUnreadable,
+        string tempPath, string destPath, bool replacesExisting, bool discard, bool openToCount,
         ArchiveResultSink sink, CancellationToken cancellationToken)
     {
-        if (stoppedAtUnreadable || !HasTempEntries(tempPath))
+        if (discard || (openToCount && !HasTempEntries(tempPath)))
         {
             TryDeleteBestEffort(tempPath);
             return false;
