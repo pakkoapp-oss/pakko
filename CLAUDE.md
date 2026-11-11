@@ -29,8 +29,8 @@ narrative this section used to hold is archived verbatim in `docs/DECISIONS.md`'
 **Test count:** run `dotnet test --filter "Category!=Slow&Category!=VeryLarge"` for current ground
 truth; never trust a count written in a doc.
 
-**Next work:** the v1.10.0 wave (bug fixes, taskbar/tray progress, read-only ISO/CAB/cpio/ar/.Z/lzip)
-at the top of `docs/TASKS.md`; merged, unreleased until its tag.
+**v1.10.0** (the `archiveint.dll` helper, read-only ISO/CAB/cpio/ar/.Z/lzip, taskbar/tray progress;
+SDK 10.0.404) tagged 2026-11-11. **Next work:** the open tasks at the top of `docs/TASKS.md`.
 
 ## Roadmap Summary
 

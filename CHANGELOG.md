@@ -10,7 +10,7 @@ the technical account of any task named here.
 
 ---
 
-## v1.10.0 — 2026-11-10
+## v1.10.0 — 2026-11-11
 
 Pakko reads tar, 7z and the other tar-family archives through Windows' own `archiveint.dll` in a
 small sandboxed helper, so every file name arrives exactly as stored, whatever the code page; where

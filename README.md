@@ -4,7 +4,7 @@
 
 <h1 align="center">Pakko — Windows Archiver</h1>
 
-<p align="center">ZIP through .NET's own <code>System.IO.Compression</code>; tar, 7z, RAR and the rest through Windows' own <code>tar.exe</code>, in a sandbox.</p>
+<p align="center">ZIP through .NET's own <code>System.IO.Compression</code>; tar, 7z, RAR and the rest through Windows' own <code>archiveint.dll</code> and <code>tar.exe</code>, in a sandbox.</p>
 
 <p align="center"><strong>No 7-Zip. No WinRAR. No third-party compression code.</strong></p>
 
@@ -60,23 +60,28 @@ standalone `pakko` zip has been tested on Windows 10 22H2, Windows 11 and Window
 |--------|--------|---------|
 | ZIP | ✅ read and create | `System.IO.Compression` (.NET) |
 | Password-protected ZIP | ✅ read (ZipCrypto, WinZip AES) and create (AES-256 only; file names inside stay visible) | `System.IO.Compression` + .NET cryptography |
-| tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma | ✅ read and create; single `.gz`/`.bz2`/`.xz` files too (v1.9.0) | `tar.exe` |
-| 7z | ✅ read; create without a password, where `tar.exe` has the 7z writer | `tar.exe` |
-| RAR | ✅ read only — libarchive has no RAR writer | `tar.exe` |
+| tar, tar.gz, tar.bz2, tar.xz, tar.zst, tar.lzma | ✅ read and create; single `.gz`/`.bz2`/`.xz` files too (v1.9.0) | `archiveint.dll` (read), `tar.exe` (create) |
+| 7z | ✅ read; create without a password, where `tar.exe` has the 7z writer | `archiveint.dll` (read), `tar.exe` (create) |
+| RAR | ✅ read only — libarchive has no RAR writer | `archiveint.dll` |
 | Encrypted 7z/RAR | ❌ recognized and refused with a clear message | — |
-| ISO 9660, CAB, cpio, ar (`.deb`), `.Z`, lzip | Since v1.10.0: read only, where the installed `tar.exe` reads each; a UDF image (most Windows install ISOs) refused with the reason | `tar.exe` |
+| ISO 9660, CAB, cpio, ar (`.deb`), `.Z`, lzip | Since v1.10.0: read only, where this Windows reads each; a UDF image (most Windows install ISOs) refused with the reason | `archiveint.dll` |
 
-`tar.exe` is part of Windows, and which formats it reads depends on the Windows build. A current
-Windows 11 reads all of the above; the `tar.exe` of Windows 10 is built with zlib only and reads
-tar and tar.gz. Pakko asks the installed `tar.exe` and offers only what it can do (`pakko i`
-lists it). Reading runs inside an AppContainer sandbox with no network access.
+`tar.exe` and `archiveint.dll`, the libarchive build behind it, are part of Windows, and which
+formats they handle depends on the Windows build. A current Windows 11 reads all of the above;
+Windows 10's build has zlib only and reads tar, tar.gz and the read-only formats except lzip.
+Since v1.10.0 Pakko reads through a small helper over `archiveint.dll` (checked for Microsoft's
+signature, as `tar.exe` is), so file names arrive exactly as stored; where the helper cannot run
+(on ARM64 for now, or when its startup check fails) it reads with `tar.exe` as before. Archives
+are created with `tar.exe`. Pakko asks the installed `tar.exe` and offers only what it can do
+(`pakko i` lists it and names the reader). Reading runs inside an AppContainer sandbox with no
+network access.
 
 ### In Explorer
 
 - **Context menu** — Open, Extract here, Extract to folder, Add to `X.zip` / `X.7z` / `X.tar`,
   Compress…, Test archive, Scan for threats, Hash (CRC-32, SHA-256); in the Windows 11 menu and
   under "Show more options". Each command runs in a Pakko window with progress, a password prompt
-  and a conflict dialog.
+  and a conflict dialog; its taskbar button shows the progress too (v1.10.0).
 - **File types** — double-clicking any archive Pakko reads opens it in the Archive Browser.
 - **Mark of the Web** — files extracted from a downloaded archive keep its `Zone.Identifier` by
   default, so Office opens an extracted document in Protected View instead of running its macros,
@@ -145,7 +150,7 @@ with `gh attestation verify` (see `SECURITY.md`, "Component List"). Production c
 
 ## Status
 
-Latest release: v1.9.0. Per-release history: [`CHANGELOG.md`](CHANGELOG.md). Roadmap:
+Latest release: v1.10.0. Per-release history: [`CHANGELOG.md`](CHANGELOG.md). Roadmap:
 [`docs/SPEC.md`](docs/SPEC.md), "Future Roadmap". Open work: [`docs/TASKS.md`](docs/TASKS.md).
 
 **Known issue:** the context menu may flicker on the first right-click in a newly opened Explorer

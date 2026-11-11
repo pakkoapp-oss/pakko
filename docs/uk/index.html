@@ -131,7 +131,7 @@
         <p>
           Обидва — цілком робочі інструменти, це не твердження про перевагу в безпеці. Йдеться
           про інший набір залежностей у ланцюгу постачання. Весь стек стиснення Pakko — це або
-          частина середовища .NET, або підписаний Microsoft <code>tar.exe</code>: компоненти з
+          частина середовища .NET, або підписані Microsoft <code>tar.exe</code> і <code>archiveint.dll</code>: компоненти з
           публічним процесом CVE і відкритим аудитом спільноти, яких вимагають середовища з
           підвищеними вимогами безпеки — державний сектор, оборона, регульовані галузі, — а
           скористатися ними може будь-хто.
@@ -144,7 +144,7 @@
         </div>
         <div class="pillar">
           <h3>Ізоляція під час видобування</h3>
-          <p>Архіви RAR, 7-Zip і TAR читаються через підписаний Windows <code>tar.exe</code>, запущений в AppContainer без мережевих можливостей і з обмеженням процесів через Job Object.</p>
+          <p>Архіви RAR, 7-Zip, TAR та інші архіви родини tar читає власна підписана бібліотека Windows <code>archiveint.dll</code> (на ній працює <code>tar.exe</code>) у невеликому помічнику, а там, де помічник не запускається, — сам <code>tar.exe</code>; обидва працюють в AppContainer без мережевих можливостей і з обмеженням процесів через Job Object.</p>
         </div>
         <div class="pillar">
           <h3>Нічого не телефонує додому</h3>
@@ -170,13 +170,13 @@
           <h3>Формати</h3>
           <ul class="manifest-list">
             <li><span class="check">✓</span><span>ZIP — читання й запис, через <code>System.IO.Compression</code></span></li>
-            <li><span class="check">✓</span><span>TAR / GZ / BZ2 / XZ / ZST / LZMA — читання й запис, через <code>tar.exe</code>; окремі файли .gz / .bz2 / .xz теж</span></li>
-            <li><span class="check">✓</span><span>RAR — лише читання, через <code>tar.exe</code></span></li>
-            <li><span class="check">✓</span><span>7-Zip — читання й запис (без пароля), через <code>tar.exe</code>, де він уміє записувати 7z</span></li>
+            <li><span class="check">✓</span><span>TAR / GZ / BZ2 / XZ / ZST / LZMA — читання й запис (читання через <code>archiveint.dll</code>, запис через <code>tar.exe</code>); окремі файли .gz / .bz2 / .xz теж</span></li>
+            <li><span class="check">✓</span><span>RAR — лише читання, через <code>archiveint.dll</code></span></li>
+            <li><span class="check">✓</span><span>7-Zip — читання й запис (без пароля); запис через <code>tar.exe</code>, де він уміє записувати 7z</span></li>
             <li><span class="check">✓</span><span>ZIP із паролем — читання (ZipCrypto, WinZip AES), зокрема антивірусна перевірка розшифрованого вмісту, і створення (AES-256; імена файлів лишаються видимими)</span></li>
             <li><span class="check">✓</span><span>Зашифровані 7z і RAR — розпізнаються й відхиляються зі зрозумілим повідомленням</span></li>
           </ul>
-          <p class="note">Які формати tar читає Windows, залежить від її збірки: актуальна Windows 11 читає всі, <code>tar.exe</code> у Windows 10 — лише tar і tar.gz. Pakko пропонує те, що вміє встановлений <code>tar.exe</code>. З v1.10.0: ISO, CAB, cpio, ar (.deb), .Z і lzip, лише читання.</p>
+          <p class="note">Які формати tar читає Windows, залежить від її збірки: актуальна Windows 11 читає всі, Windows 10 — лише tar і tar.gz (а також ISO, CAB, cpio, ar і .Z). Pakko пропонує те, що вміє встановлений <code>tar.exe</code>. З v1.10.0: ISO, CAB, cpio, ar (.deb), .Z і lzip, лише читання; імена приходять точно такими, як записані, бо їх читає <code>archiveint.dll</code>.</p>
         </div>
         <div class="manifest-group">
           <h3>Інтеграція з Windows</h3>
