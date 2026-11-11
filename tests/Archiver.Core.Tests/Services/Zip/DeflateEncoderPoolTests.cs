@@ -63,6 +63,56 @@ public sealed class DeflateEncoderPoolTests : IDisposable
         pool.Created.Should().Be(2);
     }
 
+    [Fact]
+    public void Dispose_DisposesTheDeflatersItHolds()
+    {
+        var pool = new DeflateEncoderPool(CompressionLevel.Optimal);
+        DeflateEncoderPool.Deflater deflater = pool.Rent();
+        pool.Return(deflater);
+
+        pool.Dispose();
+
+        Action use = () => deflater.Compress(Text(1_000, 6));
+        use.Should().Throw<ObjectDisposedException>();
+    }
+
+    // A source that fails mid-read leaves the deflater usable: every compression resets first.
+    [Fact]
+    public void Compress_AfterASourceThatFailedMidRead_TheDeflaterStillGivesWhatAFreshOneGives()
+    {
+        byte[] next = Text(30_000, 7);
+        using var fresh = new DeflateEncoderPool.Deflater(6);
+        byte[] expected = fresh.Compress(next).ToArray();
+        using var deflater = new DeflateEncoderPool.Deflater(6);
+
+        Action failing = () => ZipEntryCompressor.Compress(new FailingStream(), CompressionLevel.Optimal, deflater: deflater);
+        failing.Should().Throw<IOException>();
+        CompressedEntryData after = ZipEntryCompressor.Compress(new MemoryStream(next), CompressionLevel.Optimal, deflater: deflater);
+
+        after.CompressedBytes.Should().Equal(expected);
+    }
+
+    private sealed class FailingStream : Stream
+    {
+        private int _reads;
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
+        public override int Read(Span<byte> buffer)
+        {
+            if (++_reads > 2) throw new IOException("The device is not ready.");
+            buffer.Fill((byte)'a');
+            return buffer.Length;
+        }
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
     [Theory]
     [InlineData(CompressionLevel.Fastest)]
     [InlineData(CompressionLevel.Optimal)]
