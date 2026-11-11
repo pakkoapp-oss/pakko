@@ -32,12 +32,27 @@ internal static class ArchiveTempFile
     /// path there. The file itself is not created.</summary>
     public static string Create(string destPath)
     {
-        string folder = Path.GetDirectoryName(Path.GetFullPath(destPath))!;
+        Sweep(FolderOf(destPath));
+        return NewPath(destPath);
+    }
+
+    /// <summary>T-F497: removes what runs that no longer run left in <paramref name="folder"/>: their
+    /// temporary files, chunk folders and 7z writer folders. One archive per item calls it once per
+    /// destination folder at the start of the run, then names each archive's file with
+    /// <see cref="NewPath"/> - a sweep per archive listed a folder of thousands of entries thousands
+    /// of times.</summary>
+    public static void Sweep(string folder)
+    {
         TempOwner.SweepStale(folder, Prefix, Suffix, TempScope.Destination);
         TempOwner.SweepStale(folder, ChunkFolderPrefix, "", TempScope.Destination);
         TempOwner.SweepStale(folder, WriterFolderPrefix, "", TempScope.Destination);
-        return Path.Combine(folder, TempOwner.NewName(Prefix, Suffix));
     }
+
+    /// <summary>A new temporary path in <paramref name="destPath"/>'s folder, without a sweep: only
+    /// after <see cref="Sweep"/> ran for that folder in this run.</summary>
+    public static string NewPath(string destPath) => Path.Combine(FolderOf(destPath), TempOwner.NewName(Prefix, Suffix));
+
+    internal static string FolderOf(string destPath) => Path.GetDirectoryName(Path.GetFullPath(destPath))!;
 
     /// <summary>Another temporary path in <paramref name="tempPath"/>'s folder, swept like it
     /// (T-F391: the list of names tar.exe leaves out).</summary>
