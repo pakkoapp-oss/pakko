@@ -468,14 +468,21 @@ public sealed class ZipArchiveService : IArchiveService
                 threadBudget, written.Count, written.Count(p => Directory.Exists(p.SourcePath)), budgetIsALimit: options.MaxThreads > 0);
         }
 
+        // A file's archive has one entry, so one worker; a folder's gets its share (T-F497).
+        Zip.ParallelSingleArchiveWriter.CompressionSettings SettingsFor(string source)
+        {
+            if (workersPerFolder == 0)
+                return settings;
+            int threads = Directory.Exists(source) ? workersPerFolder : 1;
+            return settings with { MaxThreads = threads };
+        }
+
         await Parallel.ForEachAsync(
             plans.Where(p => p.DestPath is not null),
             new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism, CancellationToken = cancellationToken },
             async (plan, token) => await ArchiveSingleSeparatePathAsync(
                 plan.SourcePath, plan.DestPath!, plan.ReplacesExisting,
-                workersPerFolder == 0 ? settings
-                    : settings with { MaxThreads = Directory.Exists(plan.SourcePath) ? workersPerFolder : 1 },
-                concurrentSink, progressContext, token).ConfigureAwait(false)
+                SettingsFor(plan.SourcePath), concurrentSink, progressContext, token).ConfigureAwait(false)
         ).ConfigureAwait(false);
 
         foreach (ArchiveError e in concurrentSink.Errors) errors.Add(e);
