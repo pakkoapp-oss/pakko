@@ -272,7 +272,7 @@ size in PKG-001). The factors were set from a measured run (`docs/DECISIONS.md`,
 | PRF-003 | quick | script | dev | `pakko a` and `pakko x` on 6000 files of 16 KiB against the vendored `7za` | Under three times 7-Zip's time for each | `cli:a` `cli:x` T-F114 T-F318 |
 | PRF-004 | quick | script | dev | `scripts/Measure-Startup.ps1 -Scenario App` on the installed App | The window is visible within a second of the start (median of three) | T-F347 |
 | PRF-005 | quick | script | dev | `pakko l` and `pakko t` on a ZIP of 6000 entries against `7za l` and `7za t` | Under twice 7-Zip's time | `cli:l` `cli:t` T-F237 |
-| PRF-006 | release | mcp | dev | In the App: add 2,000 files of 1-10 KB from one folder, "a separate archive for each", destination that folder, Compress; then again with Fastest | Each run finishes in under 15 s; 2,000 archives beside the files, `7za t` passes on each (T-F497 measured about 4 s in Core) | T-F497 |
+| PRF-006 | release | mcp | dev | In the App: add 2,000 files of 1-10 KB from one folder, "Separate archives", destination that folder, Compress; then again with Fastest | Each run finishes in under 15 s; 2,000 archives beside the files, `7za t` passes on each (T-F497 measured about 4 s in Core) | T-F497 |
 
 ## REL - the release's files
 

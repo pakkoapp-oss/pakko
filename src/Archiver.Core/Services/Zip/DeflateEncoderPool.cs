@@ -8,8 +8,9 @@ namespace Archiver.Core.Services.Zip;
 /// T-F318: the deflate compressors of one parallel archive run, reused across its small entries.
 /// A new <see cref="DeflateStream"/> per entry builds a new zlib-ng state (about 330 KB) each time,
 /// and under parallel load that costs a page-fault storm (dotnet/runtime#134700); a
-/// <see cref="DeflateEncoder"/> reset between entries keeps its state. Concurrency is bounded by the
-/// run's compute gate, so the pool never holds more deflaters than the run's window.
+/// <see cref="DeflateEncoder"/> reset between entries keeps its state. Concurrency is bounded by each
+/// archive's compute gate, so the pool holds at most the windows of the archives that share it
+/// (one archive per item writes several side by side, T-F497).
 /// </summary>
 internal sealed class DeflateEncoderPool : IDisposable
 {
