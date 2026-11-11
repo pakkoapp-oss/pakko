@@ -258,7 +258,8 @@ truncated copy are the realistic damage.
 | v1.8 | PAR2 recovery data next to created archives: create, verify, repair (T-F275) — **released as v1.8.0** |
 | v1.8.1 | 7z archive creation through tar.exe (T-F342) + Test for every format tar.exe reads (T-F397) + fixes — **released** |
 | v1.9 | Store release: `pakko` 7-Zip switches (T-F411 waves A-E, T-F410), one path pipeline (T-F420), a red-team suite (T-F419), and the v1.9.0 wave — **released as v1.9.0** |
-| v1.10 | Bug fixes after v1.9.0, one owner per name/path encoding boundary (T-F441), progress on the taskbar button and tray icon (T-F432), and the read-only formats tar.exe opens: ISO, CAB, cpio, ar, `.Z`, lzip (T-F442): the v1.10.0 wave of `docs/TASKS.md` — **in work, not released** |
+| v1.10 | Bug fixes after v1.9.0, one owner per name/path encoding boundary (T-F441), progress on the taskbar button and tray icon (T-F432), and the read-only formats tar.exe opens: ISO, CAB, cpio, ar, `.Z`, lzip (T-F442) — **released as v1.10.0** |
+| v1.11 | .NET 11 and C# 15 (T-F492), the deflate encoder reused per ZIP worker (T-F318), ZIP encryption through the BCL where backward compatible (T-F493), the bugs left after v1.10.0: the v1.11.0 wave of `docs/TASKS.md` — **in work, not released** |
 | v2.0 | `pakko` measured as a stand-in for 7-Zip's console program, gaps closed where they fit Pakko's rules (T-F343; T-F412, T-F413 and T-F415 moved to v1.9) |
 
 Package version (`Package.appxmanifest`'s `Identity Version`) tracks MSIX packaging, not this

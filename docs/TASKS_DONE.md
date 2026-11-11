@@ -14343,3 +14343,156 @@ findings — gets its own `docs/DECISIONS.md` entry once T-F188 actually lands; 
   only after the first window is shown (or on first tar-family use), then keep that if the gap
   closes; the log line stays (T-F470's device proof), only later.
 - **Reported by:** the agent, 2026-11-10.
+
+---
+
+## Graduated 2026-11-11 (after v1.10.0)
+
+v1.10.0 was tagged 2026-11-11 on 05a4cddb.
+
+## v1.10.0 wave — bug fixes and the progress on the taskbar and tray (planned 2026-10-31)
+
+The next minor release (the user, 2026-10-31): the bugs left open after v1.9.0, the SonarCloud
+findings on `main`, and T-F432 (the user put it in this release on 2026-10-29 and asked again on
+2026-10-31 for the tray icon too). Same rules as the v1.9.0 wave: each stream on its own branch from
+`main` and its own PR; sandbox, integration and subprocess tests and the full suite one at a time;
+TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating session only. Strings in
+37 locales: one stream at a time per resource set (App `.resw`: C then D; Shell `.resx`: C).
+
+| Stream | Tasks | Area | Gate |
+|---|---|---|---|
+| A text boundaries, analyzer | T-F441 (one owner per encoding boundary, names and paths, with its control test), T-F424 as T-F441's first case, T-F440 (SonarCloud findings, the `S3903` bug first), T-F455, T-F454, T-F453 (tar folder bugs on `main` found by T-F443; added 2026-11-06, the agent) | `Sandbox/Tar*Encoding`, `Zip/ZipNameCodePages`, `StdinPathList`, `CliConsoleCharset`, `BareGzip*`, `Program.cs`, tests | T-F441: research, plan mode + advisor at both ends; T-F440: tests first |
+| B sandbox launcher, AMSI tests | T-F428 (cancel kills the child itself), T-F427 (AMSI not ready at scan time), T-F444 (another antivirus or none, on the VM; added 2026-10-31, the user), T-F446 (AMSI "blocked by admin" reads as Clean), T-F447 (more providers on the VM; added 2026-11-03, the user), T-F448 (Trend Micro's provider answers Clean for EICAR), T-F449 (an empty scan reports Clean; added 2026-11-04, the user), T-F450 (a timed-out tar version probe reads as an old tar; added 2026-11-04, the user), T-F460 (a tar folder ending in a space or a dot scans Clean; P1, added 2026-11-06, the agent) | `SandboxedProcessLauncher`, `AntivirusScanService` tests | T-F428: plan mode + advisor at both ends (sandbox code) |
+| C after the operation | T-F434 (recycle each clean source), T-F435 (a reason per kept item), T-F437 (unreadable path list) | `SourceRecycler`, the not-deleted dialog, `Archiver.Shell` messages, `SPEC.md` rule | T-F434: plan mode (an irreversible action on user data) |
+| D progress | T-F432 (taskbar button and tray icon), T-F439 (window floor on a monitor move) | App `MainWindow`, tray icon, `Archiver.OperationUi`, `WindowFloor` | T-F432: plan mode (COM under Native AOT) |
+| F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
+| G long-open umbrellas (added 2026-10-31, the agent's pick) | T-F254 (regional display language: pack and sign-out on the PakkoW10 VM, not the user's machine), T-F91 (`ru-RU` falls back to en-US, on the VM; the native-speaker criterion replaced by an agent back-translation pass, since there are no native reviewers, the user's standing word), T-F328's leftovers (quote, dash and apostrophe normalisation), T-F202's light theme, en-US and tray (through the `windows` MCP, as `APP-013` and `EXP-008` already switched theme and language), T-F329 part 5 (Store screenshots retaken after D changes the window) | VM, `.resw`/`.resx`/`Localization.cpp` (after C and D's strings), `docs/assets/store/` | after C and D merge |
+| H formats tar.exe reads but Pakko does not offer (added 2026-10-31, the user) | T-F442 (measure first, per tar.exe build; then detector, policy names, capability snapshot, Explorer menu, file associations) | `ArchiveFormatDetector`, `ArchiveFormatPolicy`, `TarCapabilitySnapshot`, `ShellExtUtils.cpp`, the manifest | measurement first; plan mode + advisor at both ends (new untrusted-input formats, the manifest) |
+| I opened during the wave (added 2026-11-06, the user: "the tasks opened during it, small fixes where possible") | First, from the root-cause review (the user, 2026-11-06: "in this wave"): T-F462 (Clean only with every file scanned, P1), T-F463 (one owner for quarantine disk access), T-F464 (the quarantine as source of truth, research). From T-F464's research (2026-11-07): T-F465 (tar.exe's listing decoded in the wrong page, P1), T-F466 (NFD names refused), T-F467 (one encoding provider), T-F468 (`archiveint.dll` research). Moved in by the user (2026-11-07): T-F470 (a sandboxed helper over Windows' own `archiveint.dll`, the name source; plan mode + advisor at both ends + a fresh reviewer). Small fixes: T-F456 (a flaky OperationUi test; fixed 2026-11-08, OPW-004 on device pending), T-F457 items 3-4 (`.tlz` as tar.lzma; `-stxudf`; done in #169), T-F453 (two true roots under one best-fit name), T-F452 (its own message for a header mismatch, 37 locales), T-F472 (a test racing a 90 ms clock; done 2026-11-08). Then: T-F461 (the folder shapes still refused; measure on 3.5.2 and in the sandbox first), T-F457 items 1, 2 and 5 (decide or measure; all three done 2026-11-08), T-F445 (pool threads per launch; measured 2026-11-08: no effect for one launch, P4 after the wave), T-F459 (`TESTING.md` regrouped, docs only; done 2026-11-07). Since T-F470 step 4 (2026-11-08) T-F464, T-F469, T-F461 and T-F453 cover the tar.exe fallback only: P4, after the wave | as each task says | T-F445: plan mode + advisor at both ends (sandbox code); each fix tests first, both tar builds where tar.exe decides |
+| E on device, release | `APP-027`, `APP-028`, `APP-030`, `APP-014`, `OPW-*`, the new taskbar/tray rows, the release-tier smoke, `STO-005` as a real Store update | `docs/SMOKE.md`, `scripts/smoke/` | after A-D merge |
+
+Decisions taken with the plan (the agent, 2026-10-31): T-F432 covers the App's taskbar button, the
+App's tray icon and the Explorer operation window's taskbar button (the tray icon is the App's only;
+the operation window has none). The taskbar button and the tray icon follow the whole batch, as
+Explorer's own copy does; the window's text keeps the current archive's speed and time left
+(T-F431). Paused (yellow) while a prompt waits, error (red) when the run ends with a failure,
+cleared when the summary shows. T-F434: recycle each fully processed, unchanged source; a skipped
+source keeps only itself (written into `docs/SPEC.md`), not the others. T-F393 stays deferred
+(25 of 25 tries opened the dialog).
+
+Stream I goes before E, so the device checks see its fixes (the agent, 2026-11-06). Order: A, B, C and D's code in parallel (T-F428, T-F434 and T-F432 after their plans); **no test
+runs, smoke or device checks while the user's PC is busy** (the user, 2026-10-31: the smoke runs
+later, after the fixes); then E on the device, the user's elevated checks batched right before the
+release, the release (`.claude/rules/ci.md`) and the Store submission with the sv-se lists typed into
+Partner Center's form (DECISIONS "v1.9.0 - the Store install").
+
+Stream F (checked 2026-10-31): winget-pkgs #446296 was closed by us as superseded by #449503
+(1.7.2), which is open since 2026-10-09 with `Validation-Completed`, `Azure-Pipeline-Passed` and the
+CLA signed by both accounts; it waits only for a community moderator. After the v1.10.0 tag:
+`New-WingetManifest.ps1` for the release's CLI zips, `winget validate`, `winget install --manifest`
+with `a`/`t`/`l`/`x`, then the new version replaces 1.7.2 in that PR (or a new PR superseding it)
+from `pakkoapp-oss`, and the moderators asked for a review. Graduates when `winget install
+PavloRybchenko.PakkoCLI` works from the public source; later versions automated from `build.yml`
+(T-F317 Part A) once the package exists.
+
+**Deferred past 1.10.0:** T-F359 (no spinning disk), T-F332's super hero art (the user's image),
+T-F393 (no repro), T-F318 (waits for .NET 11), and the future items that are not fixes (T-F02,
+T-F10, T-F121, T-F127, T-F132, T-F144, T-F152). T-F254, T-F91 and T-F202's leftovers moved into
+stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine and hands.
+
+### T-F460 — "Scan for threats" reports Clean for a tar whose folder name ends in a space or a dot (P1, from T-F454)
+
+- [x] **Status:** fixed 2026-11-06 (#169, `fix/tf460-trailing-space-folder`), awaiting the device check
+  (stream E: `SHL-017`) (`docs/DECISIONS.md`, "T-F460 and T-F454"): the quarantine walk reads through the long-path prefix and never skips a folder it
+  cannot read; the same walk lost those files from extraction silently. On `main` and in v1.9.0.
+  Put into stream B (the agent, 2026-11-06); ships with v1.10.0, no v1.9.x hotfix (the agent, as T-F448).
+- **Reported by:** the agent, 2026-11-06, while measuring T-F454.
+- **Graduated 2026-11-11:** device check `SHL-017` passed in the v1.10.0 release smoke (host and PakkoW10); released in v1.10.0.
+
+### T-F462 — "Clean" only when every listed file was scanned; extraction moves every listed file (P1, stream I)
+
+- [x] **Status:** fixed 2026-11-06 (`fix/tf462-scan-accounting`; `docs/DECISIONS.md`, "T-F462"), awaiting
+  the device check (stream E: `SHL-018`); smoke `CLI-048`. Seen red on `main`: three same-named copies
+  with EICAR in the middle scanned Clean.
+- **Before:** open. Agreed 2026-11-06 (the user, "in this wave"). Root-cause review of T-F446,
+  T-F448, T-F449, T-F460 and #169's fresh review: each false Clean was "found nothing bad" where it
+  should be "proved everything was looked at", and each was closed on its own. One guard for the
+  class: the tar scan counts the files it scanned against the listing's file entries plus the first
+  copies (T-F171); any shortfall is Inconclusive naming the count, whatever name or folder broke.
+  Extraction the same way: files committed plus files reported skipped equal the listing's files,
+  or the run fails. Tests: each known shape (T-F460's folders, the first-copy pass, T-F455) with
+  its own fix reverted must come out Inconclusive or failed, never Clean or success. Plan mode +
+  advisor at both ends (the scan verdict); fresh opus reviewer offered once.
+- **Reported by:** the agent's root-cause review, 2026-11-06.
+- **Graduated 2026-11-11:** device check `SHL-018` and smoke `CLI-048` passed in the v1.10.0 release smoke; released in v1.10.0.
+
+### T-F479 - Test through the archive helper moved no progress bar (P1, a T-F470 regression, v1.10.0)
+
+- [x] **Status:** done 2026-11-10 (PR #204, b280c984; `docs/DECISIONS.md`, "T-F479"). On the CI bundle of
+  b280c984: `APP-026` on a 16-file and a one-file 7z, Test and Extract of big.7z from the Explorer menu,
+  `EXP-013` and a cancelled Test (no helper left) all OK.
+  Found by the v1.10.0 release smoke (`APP-026` on CI bundle 1.10.0.0): Test of a 1 GB 7z of 16
+  files left the App's bar empty for its whole minute. `Archiver.ArchiveHelper` buffered stdout to
+  64 KB, so every `K` line arrived at exit; and a `K` comes only after a whole entry, so one large
+  entry could not move the bar even unbuffered. tar.exe's path counted its stdout bytes as they
+  came (v1.9.0's `APP-026`: "the bar 0 to 100"). Now `test` writes `P <index> <bytes>` each MiB of
+  an entry and writes each `P` and `K` through at once; Pakko's parser takes `P` in Test only.
+  Seen red on `main`: the protocol tests (no `P`, and a `K 0` held back while the helper waits on
+  stdin) and `HelperReaderTests.Progress_MovesBetweenTheEnds` (helper, Test, one large entry: only
+  99 and 100).
+- **Reported by:** the agent's release smoke, 2026-11-09; in this release by the user's call ("no
+  regressions in releases").
+- **Graduated 2026-11-11:** released in v1.10.0.
+
+### T-F470 - A sandboxed helper over Windows' own `archiveint.dll` (P2, v1.10.0 stream I)
+
+- [x] **Status:** in progress, in the v1.10.0 wave (the user, 2026-11-07, first "an option for future
+  releases", then the same day: "add the libarchive task to this wave; the constant file-name errors
+  bother me"; lister and extractor, quiet fallback to tar.exe, `docs/DECISIONS.md`, "T-F470"). Step 1
+  (measurements) and step 2 (`src/Archiver.ArchiveHelper`, packaging, protocol tests,
+  `docs/ARCHITECTURE.md`'s protocol) done. Step 3a (#189) put every tar-family read behind
+  `ISandboxedArchiveReader` with tar.exe as its one backend, no behavior change, guarded by
+  `SandboxedReaderOwnerTests`. Step 3b goes in two PRs (advisor, 2026-11-08): 3b-i
+  (`feat/tf470-helper-reader`) adds the helper's launch in `TarSandboxScope`, its strict output
+  parser and `HelperReader` (listing and extract/Test/scan by index), reachable only from tests
+  (#193); 3b-ii (`feat/tf470-archiveint-gate`) adds `ArchiveintGate` (sticky per process), wires it
+  into `PakkoServices` and the App, `pakko i` prints its line, and the suite was swept under the
+  helper (`docs/DECISIONS.md`, step 3b-ii): the gate is on. Left for the release batch:
+  - the CHANGELOG line (names read exactly, a trailing dot or space trimmed as in ZIP, every
+    same-named copy meets the conflict rule, a damaged 7z fails Test, a file and a folder of one
+    name fail only the second of the two, as in ZIP; a quarantined file with a named stream or a
+    second name fails the archive, for both readers);
+  - done 2026-11-09 (`docs/DECISIONS.md`, T-F470 "The release-batch runs"): `Category=Slow`
+    normally and under the sweep; the sweep on libarchive 3.5.2 on PakkoW10 (CI's windows-2022 now
+    ships 3.8.9, T-F476), no difference from 3.8.9;
+  - the packaged launch: `Deploy.ps1`, then the packaged `pakko i` line and the App log's reader
+    line (identity proven), with `docs/SMOKE.md` rows; CI's `V` line, read from the test log;
+  - done in `feat/tf470-release-fixes` (`docs/DECISIONS.md`, T-F470 "Release batch"): a quarantined
+    file with a named stream or a hard link fails the archive right before its move, for both
+    readers; the helper copy held from its hash to the helper's end; a file and a folder of one name
+    failing only the second entry, as ZIP; the
+    memory measured (T-F473 for both backends), no wall-clock bound (as tar.exe);
+  Step 4 (`feat/tf470-step4`): T-F469, T-F464, T-F461 and T-F453 narrowed to the tar.exe fallback
+  (P4); smoke `CLI-050` (the helper reads names exactly), `CLI-051` (no helper: tar.exe, quietly) and
+  `APP-037` (the App's reader line from the packaged process), run with the release batch's device
+  checks; `docs/TESTING.md`. CI's `V` line is read from the test job's log. Measured
+  in `docs/DECISIONS.md`, "T-F468 research done". The user's conditions:
+  - only the DLL Windows ships (`C:\Windows\System32\archiveint.dll`, absolute path), with the
+    signature checks tar.exe gets (T-F401's catalog case included);
+  - the version read from the DLL (`archive_version_details`);
+  - its capabilities decided at run time from that version and from probing, as T-F403 does for
+    tar.exe.
+
+  The shape the measurements point to:
+  - a C helper importing only `kernel32.dll` (an AOT .NET helper fails with 0xC0000142 in the sandbox
+    without a desktop);
+  - copied into the quarantine before each launch (an exe in place in `WindowsApps` fails with error
+    87);
+  - names through `hdrcharset` set by the provider;
+  - used as the lister first.
+
+  The user OK'd the `CLAUDE.md` and `SECURITY.md` changes (2026-11-07; made in step 2). Plan mode and the advisor gate at both ends, plus a fresh reviewer (sandbox
+  and untrusted-input class). Not measured yet: ARM64's `archiveint.dll`, and a launch from a process
+  proven to hold package identity.
+- **Reported by:** the user, 2026-11-07.
+- **Graduated 2026-11-11:** released in v1.10.0; the packaged launch, `CLI-050`, `CLI-051` and `APP-037` passed on the host and PakkoW10 (`docs/DECISIONS.md`, "v1.10.0 - the release record"). The one open item, ARM64's `archiveint.dll`, moved to T-F494.
