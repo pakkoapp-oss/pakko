@@ -140,6 +140,54 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         archive.Entries.Select(e => e.Name).Should().Equal("a.txt", "b.txt", "c.txt");
     }
 
+    // T-F501: every dispatched task stayed in a bag until the run ended, and a finished one holds
+    // its entry's compressed bytes, so memory grew with the sum of every small file (2,000 files of
+    // 900 KB peaked at 2.5 GB). An entry already written must be collectable while later ones are
+    // still compressing; the window and the channel bound what may stay alive.
+    [Fact]
+    public async Task RunPipelineAsync_EntriesAlreadyWritten_AreNotKeptAliveByTheRun()
+    {
+        const int windowCapacity = 4;
+        const int lag = 3 * windowCapacity + 4; // in flight + undrained in the channel + the one being written
+        const int count = 60;
+        var items = Enumerable.Range(0, count)
+            .Select(i => new FileWorkItem($"s{i}", $"e{i:D2}.bin", FileWorkKind.File, 4096, DateTime.Now)).ToList();
+        var written = new WeakReference?[count];
+        int keptAlive = 0;
+        int checkedCount = 0;
+        Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressItem = (item, ct) =>
+        {
+            int index = int.Parse(item.EntryName[1..3], System.Globalization.CultureInfo.InvariantCulture);
+            if (index >= lag)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+                if (Volatile.Read(ref written[index - lag]) is { } earlier)
+                {
+                    Interlocked.Increment(ref checkedCount);
+                    if (earlier.IsAlive)
+                        Interlocked.Increment(ref keptAlive);
+                }
+            }
+            byte[] bytes = new byte[4096];
+            Random.Shared.NextBytes(bytes);
+            using var ms = new MemoryStream(bytes);
+            CompressedEntryData compressed = ZipEntryCompressor.Compress(ms, CompressionLevel.NoCompression);
+            Volatile.Write(ref written[index], new WeakReference(compressed.CompressedBytes));
+            return Task.FromResult(WorkResult.ForCompressed(item.EntryName, compressed, item.LastWriteTime));
+        };
+
+        await ParallelSingleArchiveWriter.RunPipelineAsync(
+            TempArchivePath, items, compressItem, NeverCalledTempFileCompressor, windowCapacity,
+            totalBytes: count * 4096L, progress: null, reportError: _ => { }, CancellationToken.None);
+
+        checkedCount.Should().Be(count - lag);
+        // At most a constant few: the output FileStream may keep the last array it wrote from
+        // directly (an entry as large as its buffer). Before T-F501 every one was alive.
+        keptAlive.Should().BeLessThanOrEqualTo(2, "an entry {0} places behind is written and its bytes are no longer needed", lag);
+    }
+
     // T-F243 item 6: the ZIP name-length field is 16-bit. A longer UTF-8 name (reachable with
     // long paths and non-Latin names, e.g. 3-byte CJK) was written with a truncated length —
     // a corrupt archive. Now that one entry is an error and the rest of the archive is intact.
