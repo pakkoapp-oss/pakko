@@ -312,6 +312,39 @@ public sealed class ZipArchiveServiceWriterChoiceTests : IDisposable
         return CreateFileIn(folder, name, content);
     }
 
+    // T-F503: one archive per item at Optimal and SmallestSize goes through the hand-rolled writer and
+    // the run's shared deflaters, as Fastest does (T-F497); ZipArchive built a DeflateStream per
+    // archive (T-F318's page-fault storm). Seen through what only that writer does: it stores an entry
+    // Deflate grew, where ZipArchive keeps the grown stream.
+    [Theory]
+    [InlineData(CompressionLevel.Optimal)]
+    [InlineData(CompressionLevel.SmallestSize)]
+    public async Task ArchiveAsync_SeparateArchives_DeflatingLevels_TakeTheHandRolledWriter(CompressionLevel level)
+    {
+        string[] sources = [.. Enumerable.Range(0, 6).Select(i =>
+        {
+            byte[] content = new byte[64 * 1024];
+            new Random(i).NextBytes(content);
+            return CreateFileIn("small", $"r{i}.bin", content);
+        })];
+
+        ArchiveResult result = await _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = sources, DestinationFolder = Path.Combine(_temp.Path, "out"),
+            Mode = ArchiveMode.SeparateArchives, CompressionLevel = level,
+        });
+
+        result.Errors.Should().BeEmpty();
+        result.CreatedFiles.Should().HaveCount(6);
+        foreach (string created in result.CreatedFiles)
+        {
+            using ZipArchive zip = ZipFile.OpenRead(created);
+            ZipArchiveEntry entry = zip.Entries.Single();
+            entry.CompressedLength.Should().Be(entry.Length, "the hand-rolled writer stores what Deflate did not shrink");
+            ReadEntry(zip, entry.FullName).Should().Equal(File.ReadAllBytes(sources.Single(s => Path.GetFileName(s) == entry.FullName)));
+        }
+    }
+
     private Task<ArchiveResult> ArchiveAsync(string[] sources, string name) =>
         _sut.ArchiveAsync(new ArchiveOptions
         {

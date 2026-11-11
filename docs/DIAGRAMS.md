@@ -1269,8 +1269,8 @@ flowchart TD
 
     ZM -- SeparateArchives --> P1["sequential plan pass, sorted: a source EntryFilter leaves out gets no archive (T-F410),<br/>a reparse point is skipped (T-F23),<br/>DestinationConflictResolver per source incl. same-run name clashes (T-F12) and a source by that name (T-F421)"]
     P1 --> P2["Parallel.ForEachAsync over the plans — degree = cores,<br/>or cores / writer window for the hand-rolled writer"]
-    P2 --> P3{"per source: password set, OR level Fastest?"}
-    P3 -- yes --> P4["ParallelSingleArchiveWriter with that one source"]
+    P2 --> P3{"per source: password set, OR level Fastest, Optimal or SmallestSize?<br/>(only NoCompression without a password stays on ZipArchive, T-F503)"}
+    P3 -- yes --> P4["ParallelSingleArchiveWriter with that one source,<br/>the run's shared deflaters (T-F497)"]
     P3 -- "no, folder" --> P5["ZipArchive + AddDirectoryToArchiveAsync"]
     P3 -- "no, file" --> P6["ZipArchive + AddEntryFromFileAsync"]
     P3 -- "neither exists" --> P7["Errors += SourceNotFound"]

@@ -14715,6 +14715,33 @@ baseline goes from 1.18 to 0.96. #134700's own benchmark on .NET 11.0.0 GA, dop 
 against 147-148 ms) - the regression is still in 11.0.0 for `DeflateStream`. The numbers go
 upstream in a comment only after the user reads its text.
 
+## T-F503 - one archive per item at Optimal takes the hand-rolled writer (2026-11-11)
+
+**Cause.** Without a password, one archive per item at Optimal or SmallestSize went through
+`ZipArchive`, with a new `DeflateStream` and a new zlib-ng state for each archive. That is T-F318's
+page-fault storm (dotnet/runtime#134700) with many small archives written side by side. T-F497's
+shared `DeflateEncoderPool` covered only the hand-rolled path: Fastest and any password.
+
+**Fix.** In this mode every deflating level takes `ParallelSingleArchiveWriter` with the run's shared
+deflaters, the large-file gate and T-F497's thread split. Only NoCompression without a password stays
+on `ZipArchive`, since it deflates nothing. One visible change: an entry Deflate grew is now stored
+(T-F299), as at Fastest and as in one archive of more than 64 files. Output stays deterministic (T-F31).
+
+**Test.** `ArchiveAsync_SeparateArchives_DeflatingLevels_TakeTheHandRolledWriter` checks Optimal
+and SmallestSize on six files of 64 KiB of random bytes. Each entry is stored and round-trips. Seen
+red: `ZipArchive` kept the grown stream (65,556 bytes for 65,536).
+
+**Measured** (litmus run, three runs, Defender real-time protection on):
+
+| one archive per item | faults x1 (2,000 files) | faults x10 (20,000) | ms x10 |
+|---|---|---|---|
+| Optimal before | 49,186 | 241,576 | 42,943 |
+| Optimal after | 4,745 | 12,432 | 43,629 |
+| Fastest (unchanged) | 5,635 | 12,925 | 44,134 |
+
+The page faults dropped 10-19x, to Fastest's level. The time did not move: under real-time scanning
+it is the per-file cost of the file system and Defender (the floor's write of the same files took 20 s).
+
 ## T-F502 - one archive per item compared every source with every output (2026-11-11)
 
 **Cause.** `SourceOutcomeRules.DowngradeSourcesContainingOutputs` asked, for each completed source,
