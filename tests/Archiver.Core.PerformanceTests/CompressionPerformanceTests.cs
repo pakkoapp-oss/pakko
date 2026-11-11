@@ -133,6 +133,9 @@ public sealed class CompressionPerformanceTests : IDisposable
 
         File.Exists(pakkoZip).Should().BeTrue();
         new FileInfo(pakkoZip).Length.Should().BeGreaterThan(0);
+        // T-F31/T-F499: the parallel writer's deflaters are reused in whatever order the workers
+        // take them; the same files must still give the same bytes (a reset encoder once did not).
+        File.ReadAllBytes(pakkoZip).Should().Equal(File.ReadAllBytes(Path.Combine(_temp.Path, "warmup_pakko.zip")));
         AssertRatio("Archive/ManySmallFiles", pakkoElapsed, referenceElapsed, calibratedBaselineRatio);
     }
 

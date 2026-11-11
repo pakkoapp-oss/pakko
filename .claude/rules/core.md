@@ -68,7 +68,10 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   `ZipWriterCharacterizationTests.ArchiveAsync_EmptyFile_IsStoredNotDeflated` checks both writers.
 - **The parallel writer's in-memory entries deflate through the run's `DeflateEncoderPool`**
   (T-F318): a `DeflateStream` per entry there brings back dotnet/runtime#134700's page-fault storm
-  (about 18 faults per entry, `Archive/ManySmallFiles` 1.2 against 0.96).
+  (about 18 faults per entry, `Archive/ManySmallFiles` 1.2 against 0.96). `DeflateEncoder.Reset()`
+  is not a fresh encoder (T-F499): the pool's `Deflater` scrubs the window between entries, so
+  never call an encoder's `Reset()` and reuse it directly - the bytes then depend on what it
+  compressed before, and T-F31's byte-identical archives break.
 - **Diagnosing ZIP format bugs:** `7za.exe l -slt <archive>` (the vendored copy under
   `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/x64/`) dumps per-entry technical fields
   (Method, Size, Packed Size, CRC, Attributes) — the fastest way to see exactly what a hand-rolled

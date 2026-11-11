@@ -31,6 +31,7 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         var settings = new ParallelSingleArchiveWriter.CompressionSettings(CompressionLevel.Optimal);
         using var deflaters = new DeflateEncoderPool(settings.Level);
         ParallelSingleArchiveWriter.CompressSmallFile(path, settings, deflaters); // JIT and pool warm-up
+        ParallelSingleArchiveWriter.CompressSmallFile(path, settings, deflaters); // the deflater's buffer grows once to its window (T-F499)
 
         long before = GC.GetAllocatedBytesForCurrentThread();
         CompressedEntryData result = ParallelSingleArchiveWriter.CompressSmallFile(path, settings, deflaters);
