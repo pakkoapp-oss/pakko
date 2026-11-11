@@ -927,3 +927,17 @@ Add-SmokeStep 'CLI-051' {
     Assert-Smoke ($test.ExitCode -le 1) "t through tar.exe: exit $($test.ExitCode) $($test.Text)"
     "$($line[0]); a tar extracted and tested through tar.exe"
 }
+
+Add-SmokeStep 'CLI-052' {
+    $folder = Get-StepFolder 'cli052'
+    $many = Get-Fixture Many
+    $hashes = foreach ($run in @('a1', 'a2', 'f1', 'f2')) {
+        $zip = Join-Path $folder "$run.zip"
+        $switches = if ($run -like 'f*') { @('-mx1') } else { @() }
+        $null = Assert-Exit (Invoke-Pakko (@('a') + $switches + @($zip, $many))) "pakko a $run"
+        Get-Sha256 $zip
+    }
+    Assert-Smoke ($hashes[0] -eq $hashes[1]) "two pakko a of the same folder differ: $($hashes[0]) $($hashes[1])"
+    Assert-Smoke ($hashes[2] -eq $hashes[3]) "two pakko a -mx1 of the same folder differ: $($hashes[2]) $($hashes[3])"
+    'both pairs byte-identical'
+}

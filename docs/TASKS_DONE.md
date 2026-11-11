@@ -14666,3 +14666,5 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
     storm), T-F504 (password allocations), T-F505 (extraction per file), T-F506 (AMSI buffer),
     T-F507 (tar process count), T-F508 (the Slow paper and the device candidates).
   - 7z's speed is tar.exe's own (7za single-threaded is slower).
+  - **Profiled:** F8 only. F2/F3, F4 and F6 have no profile yet; it is the first step of T-F504,
+    T-F505 and T-F507.

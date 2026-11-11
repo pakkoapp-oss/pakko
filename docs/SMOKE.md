@@ -108,6 +108,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | CLI-049 | quick | script | dev | Names Windows trims, as tar.exe writes them (T-F463): a ustar with `a.txt` (`fine`) then `a.txt.` (`other`); one with `a.txt` then `a.txt ` (trailing space); `x <tar> -o<o>` each | Exit 0; `a.txt` holds `fine`, the other arrives numbered as `a (1).txt` holding `other` | `cli:x` T-F463 |
 | CLI-050 | quick | script | dev | The tar-family reader (T-F470): `pakko i`; a pax tar (written by the step: `a -ttar` refuses such names) of files named in Japanese, Greek, Hebrew and with an emoji; `l -sccUTF-8` and `x <tar> -o<o>` on it. Also on the PakkoW10 VM (libarchive 3.5.2) by hand until the runner reaches it | `i` prints `tar-family reader: archive helper; archiveint.dll: libarchive 3.<5-8>...; the probe passed`; the listing shows every name exactly; each file arrives under its exact name with its own content, exit 0 | `cli:i` `cli:l` `cli:x` T-F470 |
 | CLI-051 | quick | script | dev | The tar.exe fallback (T-F470): a copy of the installed `pakko.exe` alone in an empty folder (no helper beside it, as on a build without one); `i`, then `x -o<o>` and `t` on a plain tar | `i` prints `tar-family reader: tar.exe; archiveint.dll: not probed; no archive helper beside Pakko`; the tar extracts through tar.exe with its contents, exit 0; `t` exits 0 or 1 | `cli:i` `cli:x` `cli:t` T-F470 |
+| CLI-052 | quick | script | dev | `pakko a` of the 6000-file folder twice, and twice more with `-mx1`, each into a new archive | Each pair is byte-identical (the reused deflater keeps no state from the entry before it) | `cli:a` T-F31 T-F318 T-F499 |
 
 ## SHL - `Archiver.Shell.exe`, started as Explorer starts it
 
@@ -273,6 +274,7 @@ size in PKG-001). The factors were set from a measured run (`docs/DECISIONS.md`,
 | PRF-004 | quick | script | dev | `scripts/Measure-Startup.ps1 -Scenario App` on the installed App | The window is visible within a second of the start (median of three) | T-F347 |
 | PRF-005 | quick | script | dev | `pakko l` and `pakko t` on a ZIP of 6000 entries against `7za l` and `7za t` | Under twice 7-Zip's time | `cli:l` `cli:t` T-F237 |
 | PRF-006 | release | mcp | dev | In the App: add 2,000 files of 1-10 KB from one folder, "Separate archives", destination that folder, Compress; then again with Fastest | Each run finishes in under 15 s; 2,000 archives beside the files, `7za t` passes on each (T-F497 measured about 4 s in Core) | T-F497 |
+| PRF-007 | release | mcp | dev | In the App: add 2,000 files of about 900 KB (random bytes), Compress into one archive at Fastest; watch the App's memory in Task Manager | The peak stays well under 1 GB (T-F501 measured 165 MiB in Core; 2.5 GB before) | T-F501 |
 
 ## REL - the release's files
 
