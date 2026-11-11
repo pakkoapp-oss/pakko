@@ -14715,6 +14715,50 @@ baseline goes from 1.18 to 0.96. #134700's own benchmark on .NET 11.0.0 GA, dop 
 against 147-148 ms) - the regression is still in 11.0.0 for `DeflateStream`. The numbers go
 upstream in a comment only after the user reads its text.
 
+## T-F497 measured - one archive per item, 2,000 small files (2026-11-11)
+
+**Scenario.** Explorer's "Add to X.zip" on each of 2,000 files of 1-10 KB: `ArchiveMode.SeparateArchives`,
+the archives beside their sources (so the destination folder grows to 4,000 files). T-F318's harness
+over `ZipArchiveService`, Release, 12 logical cores, median of three or five. The bare file system
+(create, write, rename on 12 threads) takes 2.2 s for the same 2,000 files.
+
+**Profile before** (`dotnet-trace`, thread time of the workers): 42 % `ArchiveTempFile.Create`, which
+swept the destination folder three times per archive (quadratic: the folder grows); 31 % opening the
+new file; 21 % `HasTempEntries`, a second open of each written zip; 12 % the commit; about 9 % of the
+whole run in `DowngradeSourcesContainingOutputs`, which opened a handle on every output and on each
+of its ancestor folders, for every source. `Fastest` and a password go through the hand-rolled
+writer, whose outer degree was `threadBudget / WindowCapacity` = 1: one archive at a time.
+
+| Step | Optimal | Fastest | Optimal + password |
+|---|---|---|---|
+| `main` (with T-F318) | 16.2 s | 49.4 s | 58.5 s |
+| 1. sweep each destination folder once per run; the writer's chunk folder only when a > 1 MiB entry needs it | 11.7 s | 34.8 s | |
+| 2. entries counted while writing, no second open | 10.4 s | 18.9 s | |
+| 4. ancestor identities cached within a call; one union set | 4.4 s | 13.1 s | |
+| 3. the hand-rolled writer runs archives side by side | | 4.1 s | |
+| 5. one deflater pool for the run (faults 49.6 k -> 4.9 k) | 4.3 s | 4.2 s | 4.4 s |
+| final, after T-F499 (rebased) | 4.1 s | 4.1 s | 4.3 s |
+
+`NoCompression` follows `Optimal` (17.0 s before). Step 3 gives the outer level `min(budget,
+archives)` and each folder source `budget / min(folders, budget)` inner workers
+(`HandRolledSeparateParallelism`); a first version that gave every source one inner worker made a
+folder of 60 mid-size files plus 100 files slower (0.79 -> 1.23 s); with the folder's share it is
+0.47 s, two folders 0.58 -> 0.49 s.
+
+**Same bytes.** The 2,000 `Optimal` and 2,000 `Fastest` archives of the final build are byte-identical
+to `main`'s (T-F499 merged); with a password (random AES salt) all 2,000 have `main`'s sizes.
+
+**Killed mid-run** (`Process.Kill` after 1.5 s and 3 s, archives beside 2,000 sources, after steps
+1, 2, 4 and on the final build): every committed `.zip` passes `7za t`, all 2,000 sources are there,
+the leftovers are owner-tagged `.pakko-a-*.tmp` files (10-11), and the next run sweeps them, skips
+the 717 or 1,618 archives already there and writes the rest: 2,000 valid archives, no leftovers.
+
+**What decides `-sdel` and the Recycle Bin is unchanged:** an archive is committed only after its
+writer closed and it has entries; step 2's count is taken where `HasTempEntries` looked (an entry
+created), with characterization tests for a read failing mid-copy, an empty file and folder (T-F66)
+and a folder whose only file fails (T-F60); step 4 keeps the rule for any input (a new test pins
+that an output whose identity cannot be read keeps every existing source).
+
 ## T-F499 - a reset DeflateEncoder is not a fresh one (2026-11-11)
 
 **Found** while measuring T-F497's step 5: one archive out of 2,000, written with a password, was a
@@ -14728,8 +14772,8 @@ possible predecessors on a new encoder made its stream 6,121 bytes instead of a 
 6,120 (quality 6; quality 9 also differs, quality 1 not for these pairs). Every deviating stream
 inflated back to the input (the 42, and 43,000 reused compressions in random order at qualities 1,
 6 and 9 plus 3,000 of 200-900 KB files): valid data, different bytes. zlib documents
-`deflateReset` as `deflateEnd` plus `deflateInit`, so this is an upstream bug; a report waits for
-the user's OK.
+`deflateReset` as `deflateEnd` plus `deflateInit`, so this is an upstream bug: reported as
+dotnet/runtime#137354 (pakkoapp-oss, 2026-11-11, with the user's OK).
 
 **Fix.** Before each reuse the deflater compresses zeros over what the previous input filled (its
 length plus 2 KiB for the match finder's lookahead, at most 65 KiB, the whole 2 x 32 KiB window
