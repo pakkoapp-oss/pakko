@@ -150,6 +150,8 @@ tests\Archiver.Core.Litmus\bin\Release\net11.0\Archiver.Core.Litmus.exe --runs 5
 - Read a growth at `--scale 10` well over 10x as super-linear.
 - Read a row far above its floor, or far above its neighbours of the same kind, as a finding.
 - The first results and their verdicts: `docs/DECISIONS.md`, "T-F498 measured".
+- `LitmusPaperTests` (`Archiver.Core.PerformanceTests`, `Category=Slow`, T-F508) runs it for ZIP creation over
+  2,000 files and fails above 15 times the floor's page faults; the canary runs it nightly.
 
 ---
 

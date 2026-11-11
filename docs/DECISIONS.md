@@ -15399,6 +15399,20 @@ now looks from inside the run, in a synchronous progress report while a large fi
 chunk, and reads the folder's attributes there too. Passed three times in a row. A mutant that does
 not hide the folder turns it red.
 
+## T-F508 step 1 - the litmus paper that stays: a Slow test in the canary (2026-11-12)
+
+`LitmusPaperTests` (in `Archiver.Core.PerformanceTests`, `Category=Slow`):
+- **What it runs.** The litmus tool (a project reference, copied beside the tests) for ZIP
+  creation at Optimal and Fastest over 2,000 small files, three runs.
+- **What it checks.** Each row's page faults against the floor of the same files, with a limit of
+  15 times. Here: 3-4 times today, 68 times on the build before T-F318.
+- **Seen red.** A mutant that builds a new deflater per entry (the pool bypassed) gave 108,502
+  faults against a floor of 2,007, 54 times. 38 s with the fixtures built, a few minutes more the
+  first time on a runner.
+- **Where it runs.** The canary's `canary-slow` job runs it nightly, masked like the rest of that
+  job, so it gates nothing. Step 2 of T-F508 makes it a gate, or drops the limit to what the runners
+  show, after five nights there.
+
 ## T-F503 - one archive per item at Optimal takes the hand-rolled writer (2026-11-11)
 
 **Cause.** Without a password, one archive per item at Optimal or SmallestSize went through
