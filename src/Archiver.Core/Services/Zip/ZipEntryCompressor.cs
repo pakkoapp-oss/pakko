@@ -30,9 +30,12 @@ internal static class ZipEntryCompressor
     private const ushort StoredMethod = 0;
     private const ushort DeflateMethod = 8;
 
-    public static CompressedEntryData Compress(Stream sourceStream, CompressionLevel compressionLevel, string? password = null)
+    // T-F318: deflater is a reused compressor from the run's
+    // DeflateEncoderPool; null builds one for this entry.
+    public static CompressedEntryData Compress(Stream sourceStream, CompressionLevel compressionLevel, string? password = null,
+        DeflateEncoderPool.Deflater? deflater = null)
     {
-        CompressedEntryData plain = CompressPlain(sourceStream, compressionLevel);
+        CompressedEntryData plain = CompressPlain(sourceStream, compressionLevel, deflater);
         if (password is null)
             return plain;
 
@@ -42,7 +45,8 @@ internal static class ZipEntryCompressor
         return plain with { CompressedBytes = encrypted.ToArray(), IsAesEncrypted = true };
     }
 
-    private static CompressedEntryData CompressPlain(Stream sourceStream, CompressionLevel compressionLevel)
+    private static CompressedEntryData CompressPlain(Stream sourceStream, CompressionLevel compressionLevel,
+        DeflateEncoderPool.Deflater? deflater)
     {
         var acc = new Crc32.Accumulator();
         using var buffer = new MemoryStream();
@@ -57,23 +61,23 @@ internal static class ZipEntryCompressor
             using var raw = new MemoryStream();
             long uncompressedLength = CopyWithCrc(sourceStream, raw, ref acc);
 
-            // A zero-length input never causes DeflateStream to write anything at all (0 bytes
-            // out, not even a minimal empty final block) — tagging that as the Deflate method
-            // produces a ZIP entry real deflate readers (7-Zip) reject as corrupt, even though
-            // .NET's own lenient reader accepts it silently. Real ZipArchiveEntry always uses
-            // Stored for empty entries regardless of requested level; match that here.
+            // Up to .NET 10 a zero-length input made DeflateStream write nothing at all, which
+            // 7-Zip rejects as corrupt; ZipArchiveEntry stores empty entries at every level, and
+            // so does this writer (.claude/rules/core.md, the zero-byte rule).
             if (uncompressedLength == 0)
                 return new CompressedEntryData(Array.Empty<byte>(), acc.Finish(), 0, StoredMethod);
 
-            using (var deflate = new DeflateStream(buffer, compressionLevel, leaveOpen: true))
-                deflate.Write(raw.GetBuffer(), 0, (int)raw.Length);
+            using DeflateEncoderPool.Deflater? own = deflater is null
+                ? new DeflateEncoderPool.Deflater(DeflateEncoderPool.QualityOf(compressionLevel))
+                : null;
+            ReadOnlySpan<byte> packed = (deflater ?? own!).Compress(raw.GetBuffer().AsSpan(0, (int)raw.Length));
 
             // T-F299: Fastest (zlib-ng level 1) grows random data by ~5.5% and the other levels by
             // a few KB; 7-Zip stores such an entry instead, and so does this writer.
-            if (buffer.Length >= uncompressedLength)
+            if (packed.Length >= uncompressedLength)
                 return new CompressedEntryData(raw.ToArray(), acc.Finish(), uncompressedLength, StoredMethod);
 
-            return new CompressedEntryData(buffer.ToArray(), acc.Finish(), uncompressedLength, DeflateMethod);
+            return new CompressedEntryData(packed.ToArray(), acc.Finish(), uncompressedLength, DeflateMethod);
         }
     }
 

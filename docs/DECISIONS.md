@@ -14676,6 +14676,45 @@ constraint). `VerifyingReadStream.OpenEntry` is now the one way Core opens a pla
 Extract, the AV scan) and turns that throw into `ContentDamaged`. Two tests with the same
 mutations, seen red first.
 
+## T-F318 - one DeflateEncoder per parallel worker (2026-11-11)
+
+**Why.** dotnet/runtime#134700: a new `DeflateStream` per entry builds a new zlib-ng state each
+time, and parallel short-lived states cost a page-fault storm (about 18 faults per entry at dop 8).
+.NET 11's `DeflateEncoder` with `Reset()` keeps its state; we promised upstream to use it on the
+move to .NET 11 (our comment of 2026-10-29).
+
+**Shape.** `Services/Zip/DeflateEncoderPool.cs`, one pool per `ParallelSingleArchiveWriter` run
+(a `ConcurrentBag` of deflaters, built lazily, disposed after `RunPipelineAsync` has awaited every
+compression). The run's compute gate bounds concurrency, so the pool never builds more than the
+window (a test with 300 files and a window of 4). Each deflater keeps its output buffer, grown to
+`GetMaxCompressedLength` of the largest entry it saw, so a 85 KB-1 MiB entry does not allocate a
+new LOH array. Reset happens at the start of every compression, so a deflater is fresh from the
+line itself. A compression that throws disposes its deflater instead of returning it; a status
+other than `Done` with all input consumed throws `InvalidOperationException`, which `ArchiveAsync`'s
+outer catch turns into the archive's error (a bug, not user data). Rejected: `[ThreadStatic]` (a
+static mutable field in a service, and native state kept alive by pool threads after the run). The
+chunk-file path (files over 1 MiB) keeps the streaming `DeflateStream`. Empty and grown entries
+stay `Store`.
+
+**Levels.** `DeflateStream`'s levels are zlib 1 (`Fastest`), 6 (`Optimal`) and 9 (`SmallestSize`).
+Not byte for byte: at qualities 1, 5 and 6 the encoder's stream ends a byte shorter than
+`DeflateStream`'s on the same input (200 KB of text, .NET 11.0.0); 2-4 and 7-9 are identical. The
+tests check size within 8 bytes and the round trip; 7za's integrity rows pass.
+
+**Measured** (Windows 11 26300, 12 logical cores, Release, harness over `ZipArchiveService`,
+median of 5 after a warm-up, two alternating rounds against `main` the same day):
+
+| Set | `main` | T-F318 |
+|---|---|---|
+| 5,000 files of 1-10 KB | 449-482 ms, 28-70 k faults | 405-415 ms, 3.7-5.7 k faults |
+| 300 files of 200-900 KB | 752-807 ms, 50-52 k faults | 735-755 ms, 30-37 k faults |
+
+`Archive/ManySmallFiles` against 7za (Debug, 5 runs): `main` 1.16-1.25, T-F318 0.93-0.99; the
+baseline goes from 1.18 to 0.96. #134700's own benchmark on .NET 11.0.0 GA, dop 8: `DeflateStream`
+489-490 ms at 18.4 faults per entry, a reused encoder 188-190 ms at 0.01-0.02 (dop 12: 189-227 ms
+against 147-148 ms) - the regression is still in 11.0.0 for `DeflateStream`. The numbers go
+upstream in a comment only after the user reads its text.
+
 ## v1.10.0 - the release record (2026-11-10 and 2026-11-11)
 
 - **Commits.** PR #207 (`28cf3e8d`, T-F487..T-F490, the REL-001 split, T-F491 filed) and PR #208

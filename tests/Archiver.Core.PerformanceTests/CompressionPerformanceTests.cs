@@ -119,7 +119,9 @@ public sealed class CompressionPerformanceTests : IDisposable
         //   ~1.1  after T-F271 dropped that buffer (0.94/1.31/1.09, Release); the zlib-ng part is
         //         not fixable through DeflateStream — see DECISIONS.md's T-F271 entry.
         //   1.18  2026-11-10 (v1.10.0, Debug as Category=Slow runs it, 5 runs: 1.13-1.21)
-        const double calibratedBaselineRatio = 1.18;
+        //   0.96  2026-11-11, T-F318: one DeflateEncoder per worker, reset between entries (5 runs:
+        //         0.93-0.99; main on .NET 11 the same day 1.16-1.25)
+        const double calibratedBaselineRatio = 0.96;
         string sourceDir = PerformanceFixtures.CreateManySmallFilesFolder(_temp.Path);
 
         await ArchiveWithPakkoTimed(sourceDir, Path.Combine(_temp.Path, "warmup_pakko.zip"));

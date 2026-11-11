@@ -66,6 +66,9 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   corrupt while .NET's own reader accepts it (T-F35 follow-up, found by a NanaZip cross-check);
   .NET 11 writes `03 00`, a valid empty block (measured 2026-11-11, T-F492), but the rule stays:
   `ZipWriterCharacterizationTests.ArchiveAsync_EmptyFile_IsStoredNotDeflated` checks both writers.
+- **The parallel writer's in-memory entries deflate through the run's `DeflateEncoderPool`**
+  (T-F318): a `DeflateStream` per entry there brings back dotnet/runtime#134700's page-fault storm
+  (about 18 faults per entry, `Archive/ManySmallFiles` 1.2 against 0.96).
 - **Diagnosing ZIP format bugs:** `7za.exe l -slt <archive>` (the vendored copy under
   `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/x64/`) dumps per-entry technical fields
   (Method, Size, Packed Size, CRC, Attributes) — the fastest way to see exactly what a hand-rolled
