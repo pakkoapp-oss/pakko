@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- T-F498: the page-fault litmus run. A console tool, not a test project: each operation runs in
+       its own child process inside a Job object, so the counters see one operation and every
+       process it starts (tar.exe, the archive helper). Run it in Release: docs/TESTING.md. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net11.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <IsPackable>false</IsPackable>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Archiver.Core\Archiver.Core.csproj" />
+  </ItemGroup>
+
+</Project>
