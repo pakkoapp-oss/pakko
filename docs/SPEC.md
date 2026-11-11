@@ -1,6 +1,6 @@
 # SPEC.md — Project Specification
 
-**Status:** released through v1.9.0; v1.10.0 in work (`CHANGELOG.md` per release)  
+**Status:** released through v1.10.0; v1.11.0 in work (`CHANGELOG.md` per release)  
 **License:** Apache 2.0  
 **Distribution:** GitHub source + Microsoft Store (MSIX)
 
