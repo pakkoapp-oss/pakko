@@ -485,7 +485,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 return null;
             }
 
-            map = new Dictionary<ZipArchiveEntry, LocatedZipEntry>(archive.Entries.Count);
+            map = [with(archive.Entries.Count)];
             for (int i = 0; i < archive.Entries.Count; i++)
                 map[archive.Entries[i]] = located[i];
             return raw;

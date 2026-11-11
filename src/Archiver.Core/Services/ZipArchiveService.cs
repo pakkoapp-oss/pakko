@@ -1416,7 +1416,7 @@ public sealed class ZipArchiveService : IArchiveService
                 throw new InvalidDataException(
                     "ZIP central directory entry count mismatch while resolving encrypted entries.");
 
-            encryptedEntryMap = new Dictionary<ZipArchiveEntry, LocatedZipEntry>(archive.Entries.Count);
+            encryptedEntryMap = [with(archive.Entries.Count)];
             for (int i = 0; i < archive.Entries.Count; i++)
                 encryptedEntryMap[archive.Entries[i]] = located[i];
         }

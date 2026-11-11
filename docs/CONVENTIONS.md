@@ -346,7 +346,10 @@ public sealed partial class BoolToVisibilityConverter : IValueConverter { ... }
   declare its instantiation:
   `[assembly: WinRT.GeneratedWinRTExposedExternalType(typeof(ObservableCollection<Foo>))]`.
 - No collection expression (`[]`) passed straight to a WinRT API: its compiler-made type has no
-  WinRT vtable.
+  WinRT vtable. Since the CsWinRT of the .NET 11 SDK (CsWinRT1032, T-F492) App also names the type
+  of any collection expression whose target is an interface: `(string[])[path]`.
+- C# 15 collection arguments (`[with(StringComparer.Ordinal)]`, `[with(capacity)]`) where IDE0028
+  asks for them in code a change touches; untouched code is not converted for its own sake (T-F492).
 - JSON goes through a `JsonSerializerContext` (`ProtocolJsonContext`, `LaunchArgumentsJsonContext`);
   COM through `[GeneratedComInterface]` (`Archiver.Shell/ShellCom.cs`); P/Invoke through
   `[LibraryImport]`.

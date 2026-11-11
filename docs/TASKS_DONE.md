@@ -14512,3 +14512,33 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   commercial licence).
 - **Reported by:** the agent, 2026-11-11.
 - **Graduated 2026-11-11:** `System.Security.Permissions` removed (no user in the code; build, quick tier and the AOT publish for x64 and arm64 green without it); `dotnet-sonarscanner` pinned to 12.0.0 (12.1.0 was under a week old), `PSScriptAnalyzer` installed and imported at 1.25.0; `ZipCryptoStream` steps through `Crc32.UpdateByte`; DI 10.0.15 (the .NET 11 one comes with T-F492).
+
+### T-F492 - Pakko on .NET 11 and C# 15 (P2, v1.11.0 stream N)
+
+- [x] **Status:** done. The user, 2026-11-11: "we write for .NET 11 and the matching language
+  version". .NET 11 (STS) and .NET 10 (LTS) both end on 2028-11-14 (`releases-index.json`).
+  Steps: (1) SDK 11.0.100 and a throwaway branch: WinAppSDK 2.5.1 and CsWinRT on `net11.0`, AOT
+  publish of App, Shell, OperationUi and `pakko` for x64 and arm64; (2) `global.json`, every TFM and
+  the `net10` literals in scripts, the manifest's TFM paths and CI by a script that rewrites TFM and
+  version tokens only (prose in `docs/ARCHITECTURE.md` and `.claude/rules` read by hand), lock files;
+  `MinVersion`/`MaxVersionTested` untouched; (3) the .NET 11 analyzer rules under
+  `TreatWarningsAsErrors`, fixed, not silenced; (4) the behaviour changes, each with a test seen
+  red: ZIP reads now verify CRC-32 and throw `InvalidDataException`, which must stay a per-item
+  `ArchiveError` with `VerifyingReadStream`'s code (one owner of the verdict); `DeflateStream` now
+  writes a header for empty input, while a zero-byte entry still writes `Store`; `Crc32.cs`'s
+  comment that .NET does not verify CRC on read; (5) C# 15 only after reading the compiler
+  breaking-changes page for .NET 11 (T-F270 met silent rebinding once); (6) the full suite,
+  `Category=Slow`, the 7za rows, `Deploy.ps1` and the quick tier, the CLI zip on PakkoW10, the
+  canary on the branch; (7) docs: `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/TESTING.md`,
+  `.claude/rules`, `scripts/README.md`, README's Install (x64 needs x86-64-v2, which every CPU
+  Windows 10 supports has: Microsoft's "minimum hardware requirements" page for .NET 11) and
+  Contributing. If WinUI/CsWinRT/AOT blocks after three different approaches: stop, report, and the
+  wave ships on .NET 10.
+- **Reported by:** the user, 2026-11-11.
+- **Graduated 2026-11-11** (PR #213; `docs/DECISIONS.md`, "T-F492"): SDK 11.0.100, `net11.0*`,
+  C# 15, DI 11.0.0; CsWinRT1032, CA2016 and CA2027 fixed; .NET 11's own CRC-32/size check and its
+  `NotSupportedException` from `Open()` (found by the canary's fuzzer) named per entry by
+  `VerifyingReadStream`; the MSIX payload under ILCompiler 11 (BuildTools.MSIX 1.7.261102100, the
+  managed pdb out, the compiled-in satellites, and `Archiver.Messages`' 36 locales put back into the
+  AOT App), guarded by `scripts/MsixPayload.ps1`. Quick, Slow, AOT x64/arm64, `CI-Build-Msix.ps1`
+  x64/ARM64, Deploy + quick smoke 51/51, PakkoW10 CLI, the canary on the branch.
