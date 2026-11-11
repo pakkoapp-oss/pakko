@@ -61,7 +61,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | Stream | Tasks | Area | Gate |
 |---|---|---|---|
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
-| N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (a page-fault litmus run over every Core operation; research, fixes as their own tasks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
+| N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then **T-F502** (one archive per item is quadratic) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
 | B bugs from v1.10.0 | T-F475 (P2, a Core throw), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
@@ -1562,49 +1562,70 @@ re-measured with T-F346's script before and after.
      `LargeFileGate` actually reaches each archive (the writer honouring it is tested).
 - **Reported by:** the agent (T-F497's reviewer), 2026-11-11.
 
-### T-F498 - A page-fault litmus test for every Core operation: where Pakko re-creates what it could keep (P3, v1.11.0 stream N, research)
+### T-F502 - One archive per item is quadratic in the sources against the outputs (P2, from T-F498)
 
-- [ ] **Status:** open. The user, 2026-11-11, after T-F318 and T-F497: put counters on the whole
-  code and see where page faults (and the work behind them) can be cut or removed - a litmus
-  paper, relative values first, absolute ones too.
-  1. **Harness, not a timing test.** A console project under `tests/` (or a Slow-tagged test
-     class) that runs each public Core operation on fixed fixtures and reads the process's
-     `PageFaultCount` (`GetProcessMemoryInfo`), with GC allocations
-     (`GC.GetTotalAllocatedBytes`), handle count and wall time beside it: ZIP archive (single,
-     separate, each level, password), extract, test, list, preview, hash (CRC-32, SHA-256), PAR2
-     create/verify/repair, the AMSI scan, bare gzip, and the tar family through the archive helper
-     and `tar.exe` (the child's faults through its own handle). Each in two shapes: many small
-     items and one large one.
-  2. **Relative numbers decide.** Per entry and per MiB of input, each against a reference the same
-     run measures: a plain read of the same files and a plain write of the same bytes (the floor
-     the file system costs). An operation far above its floor is a finding; the absolute counts go
-     beside them for the record.
-  3. **Then a profile per finding** (`dotnet-trace`, as T-F497 did) to name the object or call that
-     is re-created per item (a native state, a buffer, a handle, a listing, a second open), and a
-     task per fix with its own before/after.
-  4. **The litmus paper that stays:** once the numbers are known, a Slow-tagged check of
-     faults-per-entry against the operation's own floor with a generous margin (ratios are machine
-     independent where absolute counts and times are not; the canary leaves timing out for the same
-     reason, T-F491). Kept only if it proves stable across five runs and the canary's runners.
-  5. **A complexity pass over the whole code, beside the counters** (the user, 2026-11-11): the
-     algorithmic (time) and memory complexity of every loop over input-sized data, and whether each
-     is adequate where it sits.
-     - **Sweep, `haiku` subagents, one per area** (Core/Zip, extraction, tar and the sandbox, PAR2,
-       hashing, App.Core, Shell, CLI): a table of `path:line`, the shape (a loop inside a loop, LINQ
-       or `List.Contains`/`IndexOf` inside a loop, recursion, a per-item allocation, a buffer that
-       grows with the input, a whole file read into memory), a rough O() in time and memory, and
-       the N it grows with (entries, files, bytes, path depth). Extraction only, no verdicts; the
-       report is data: spot-check its lines.
-     - **Verdict, the agent or a `sonnet` subagent:** for each candidate the realistic N (2,000
-       files to select, 65,535+ entries in a ZIP64, a 4 GiB file, a path 32 k long), whether the
-       path is hot, and whether something bounds it. Adequate stays as it is, with one line why.
-     - **Measured before fixed:** a candidate becomes a fix task only when the counters of items 1-2
-       (or a scaling run at 10x N) confirm it, as T-F497's quadratic sweep was confirmed; the rest is
-       a note in "T-F498 measured".
-  Results in `docs/DECISIONS.md`, "T-F498 measured". Known so far: the parallel writer's deflate
-  states (T-F318, fixed: 28-70 k -> 3.7-5.7 k faults for 5,000 files), one archive per item
-  (T-F497: folder listing per archive, a second open of each new zip).
-- **Reported by:** the user, 2026-11-11.
+- [ ] **Status:** open. `SourceOutcomeRules.DowngradeSourcesContainingOutputs` asks, for each
+  source, whether any output lies under it (`IsAnyUnder`, a `List.Exists` over every output): O(S x C).
+  20,000 separate archives take 38-40 s where 10x of 2,000 would be 25-26 s; a profile puts 72 % of
+  the run in that function (`docs/DECISIONS.md`, "T-F498 measured"). Build the set of every output
+  and every ancestor folder of an output once (O(C x depth)), then ask the set per source; keep
+  the rule exactly (case, separators, the unresolvable-output branch T-F497 pinned), test first with
+  a counter or a scaling check, and the litmus run at x10 before and after.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N.
+
+### T-F503 - One archive per item at Optimal builds a DeflateStream per archive (P3, from T-F498)
+
+- [ ] **Status:** open. Without a password, Optimal goes through `ZipArchive`: 21.7 page faults
+  per entry against 4.15 for Fastest (the hand-rolled writer with T-F497's shared pool), the
+  #134700 storm; time is about the same. Measure whether routing single-file sources of this mode
+  through the hand-rolled writer with the run's pool keeps the bytes (T-F31) and the speed.
+- **Reported by:** the agent (T-F498), 2026-11-11.
+
+### T-F504 - The password path allocates about 200-300 KB per entry (P2, from T-F498)
+
+- [ ] **Status:** open. zip-password over 2,000 files of 1-10 KB allocates 424 MiB (4.2 GB at
+  20,000), zip-extract-password 590 MiB (5.9 GB) and takes 1.9x plain extraction. Profile the
+  allocations (`dotnet-trace --profile gc-verbose`) to name the per-entry buffer or key setup
+  (WinZip AES streams, PBKDF2), then pool or size it; the litmus run before and after.
+- **Reported by:** the agent (T-F498), 2026-11-11.
+
+### T-F505 - Extraction costs about 1.3 ms and 88 KB per file (P3, from T-F498)
+
+- [ ] **Status:** open. 2,000 small files extract in 2.9 s against a 0.75 s floor for writing
+  them; 176 MiB allocated (1.76 GB at 20,000). The sweep names candidates: an 80 KiB buffer per
+  entry, a reparse-point walk of every ancestor per entry, `Directory.CreateDirectory` per entry,
+  the staging commit's per-file walk. Profile, then fix what the profile names.
+- **Reported by:** the agent (T-F498), 2026-11-11.
+
+### T-F506 - The AMSI scan hands each entry over in one buffer (P3, from T-F498)
+
+- [ ] **Status:** open. One 256 MiB entry costs 67 k page faults and a 262 MiB buffer
+  (`MaxScannableEntryBytes` bounds it). Check what AMSI allows (`AmsiScanBuffer` needs the whole
+  content; a stream through `IAmsiStream`?) before changing anything; SECURITY.md owns the
+  rationale of what is scanned.
+- **Reported by:** the agent (T-F498), 2026-11-11.
+
+### T-F507 - Four to six tar.exe and helper processes per tar operation (P3, from T-F498)
+
+- [ ] **Status:** open. A tar.gz extract or test starts 6 processes, a listing 4, about 2 k page
+  faults each whatever the input (11.5 k of the 16 k faults of extracting 2,000 files). Trace which
+  launches one operation makes (capability probe, listing, type listing, extraction) and whether
+  any repeats what an earlier one already learned.
+- **Reported by:** the agent (T-F498), 2026-11-11.
+
+### T-F508 - The litmus paper that stays, and the device-side candidates (P3, from T-F498)
+
+- [ ] **Status:** open.
+  1. A Slow-tagged check that runs the litmus tool for zip-optimal and zip-fastest over 2,000 files
+     and fails when faults per entry exceed, say, 15x the floor (today 3-4x, 68x before T-F318).
+     Gate it only after five canary runs show it stable on the runners.
+  2. On a device:
+     - the App's sort over 2,000 rows (`ApplySort`, `IndexOf` plus `Move` per row, O(N^2));
+     - Explorer's right-click with 2,000 files selected (the shell extension resolves the selection
+       in each of about 18 `GetState`/`GetTitle` calls).
+
+     Measure both, and fix only what is felt.
+- **Reported by:** the agent (T-F498), 2026-11-11.
 
 ### T-F491 - Hash/ManyFilesAndFolders sometimes runs 7x slower after the project's other tests (P3)
 

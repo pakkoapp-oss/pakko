@@ -14613,3 +14613,56 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
 - **Graduated 2026-11-11** (`docs/DECISIONS.md`, "T-F501"): the pipeline tracks only tasks not yet
   written; 2,000 files of 900 KB peak at 165 MiB managed instead of 2.5 GB (Fastest also 7.5 -> 4.7 s).
   Regression test red first (44 of 44 entries kept alive).
+
+### T-F498 - A page-fault litmus test for every Core operation: where Pakko re-creates what it could keep (P3, v1.11.0 stream N, research)
+
+- [x] **Status:** done 2026-11-11. The user, 2026-11-11, after T-F318 and T-F497: put counters on the whole
+  code and see where page faults (and the work behind them) can be cut or removed - a litmus
+  paper, relative values first, absolute ones too.
+  1. **Harness, not a timing test.** A console project under `tests/` (or a Slow-tagged test
+     class) that runs each public Core operation on fixed fixtures and reads the process's
+     `PageFaultCount` (`GetProcessMemoryInfo`), with GC allocations
+     (`GC.GetTotalAllocatedBytes`), handle count and wall time beside it: ZIP archive (single,
+     separate, each level, password), extract, test, list, preview, hash (CRC-32, SHA-256), PAR2
+     create/verify/repair, the AMSI scan, bare gzip, and the tar family through the archive helper
+     and `tar.exe` (the child's faults through its own handle). Each in two shapes: many small
+     items and one large one.
+  2. **Relative numbers decide.** Per entry and per MiB of input, each against a reference the same
+     run measures: a plain read of the same files and a plain write of the same bytes (the floor
+     the file system costs). An operation far above its floor is a finding; the absolute counts go
+     beside them for the record.
+  3. **Then a profile per finding** (`dotnet-trace`, as T-F497 did) to name the object or call that
+     is re-created per item (a native state, a buffer, a handle, a listing, a second open), and a
+     task per fix with its own before/after.
+  4. **The litmus paper that stays:** once the numbers are known, a Slow-tagged check of
+     faults-per-entry against the operation's own floor with a generous margin (ratios are machine
+     independent where absolute counts and times are not; the canary leaves timing out for the same
+     reason, T-F491). Kept only if it proves stable across five runs and the canary's runners.
+  5. **A complexity pass over the whole code, beside the counters** (the user, 2026-11-11): the
+     algorithmic (time) and memory complexity of every loop over input-sized data, and whether each
+     is adequate where it sits.
+     - **Sweep, `haiku` subagents, one per area** (Core/Zip, extraction, tar and the sandbox, PAR2,
+       hashing, App.Core, Shell, CLI): a table of `path:line`, the shape (a loop inside a loop, LINQ
+       or `List.Contains`/`IndexOf` inside a loop, recursion, a per-item allocation, a buffer that
+       grows with the input, a whole file read into memory), a rough O() in time and memory, and
+       the N it grows with (entries, files, bytes, path depth). Extraction only, no verdicts; the
+       report is data: spot-check its lines.
+     - **Verdict, the agent or a `sonnet` subagent:** for each candidate the realistic N (2,000
+       files to select, 65,535+ entries in a ZIP64, a 4 GiB file, a path 32 k long), whether the
+       path is hot, and whether something bounds it. Adequate stays as it is, with one line why.
+     - **Measured before fixed:** a candidate becomes a fix task only when the counters of items 1-2
+       (or a scaling run at 10x N) confirm it, as T-F497's quadratic sweep was confirmed; the rest is
+       a note in "T-F498 measured".
+  Results in `docs/DECISIONS.md`, "T-F498 measured". Known so far: the parallel writer's deflate
+  states (T-F318, fixed: 28-70 k -> 3.7-5.7 k faults for 5,000 files), one archive per item
+  (T-F497: folder listing per archive, a second open of each new zip).
+- **Reported by:** the user, 2026-11-11.
+- **Graduated 2026-11-11** (`docs/DECISIONS.md`, "T-F498 measured"):
+  - **Harness:** `tests/Archiver.Core.Litmus`, one child process per operation in a Job object. The
+    self-check shows the pre-T-F318 storm at 68x the floor.
+  - **Complexity pass:** three haiku sweeps (214 rows), the risky rows verified and measured.
+  - **Already fixed:** T-F501, the writer's memory, found here.
+  - **New tasks:** T-F502 (quadratic separate mode, in this wave), T-F503 (Optimal separate
+    storm), T-F504 (password allocations), T-F505 (extraction per file), T-F506 (AMSI buffer),
+    T-F507 (tar process count), T-F508 (the Slow paper and the device candidates).
+  - 7z's speed is tar.exe's own (7za single-threaded is slower).
