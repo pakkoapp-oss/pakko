@@ -1,7 +1,10 @@
 # TASKS.md — Active and Future Tasks
 
-> Open work only: the v1.10.0 wave first, then the future tasks. Finished tasks live in
+> Open work only: the v1.11.0 wave first, then the future tasks. Finished tasks live in
 > [`TASKS_DONE.md`](TASKS_DONE.md); each graduation below names its section there.
+>
+> **Graduated 2026-11-11 (after v1.10.0):** section "Graduated 2026-11-11 (after v1.10.0)" of
+> [`TASKS_DONE.md`](TASKS_DONE.md): the v1.10.0 wave plan, T-F460, T-F462, T-F479, T-F470.
 >
 > **Graduated 2026-11-06 (after v1.9.0, docs audit):** section "Graduated 2026-11-06 (after v1.9.0)" of
 > [`TASKS_DONE.md`](TASKS_DONE.md): the v1.9.0 wave plan, the old v1.1 state, the v1.2 OS note, the
@@ -45,55 +48,33 @@ These rules apply to ALL tasks. Violating them = task is NOT complete.
 
 ---
 
-## v1.10.0 wave — bug fixes and the progress on the taskbar and tray (planned 2026-10-31)
+## v1.11.0 wave - .NET 11, the deflate encoder per worker, ZIP encryption from the BCL, the v1.10.0 bugs (planned 2026-11-11)
 
-The next minor release (the user, 2026-10-31): the bugs left open after v1.9.0, the SonarCloud
-findings on `main`, and T-F432 (the user put it in this release on 2026-10-29 and asked again on
-2026-10-31 for the tray icon too). Same rules as the v1.9.0 wave: each stream on its own branch from
-`main` and its own PR; sandbox, integration and subprocess tests and the full suite one at a time;
-TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating session only. Strings in
-37 locales: one stream at a time per resource set (App `.resw`: C then D; Shell `.resx`: C).
+The next minor release (the user, 2026-11-11): Pakko is written for .NET 11 and C# 15 from here on
+(.NET 11 STS and .NET 10 LTS both end on 2028-11-14, so the T-F270 reason for LTS no longer holds);
+the reused deflate compressor per ZIP worker (T-F318, promised upstream in dotnet/runtime#134700);
+ZIP encryption through the BCL's `ZipEncryptionMethod` where it is backward compatible with ours
+(T-F493); and the bugs the v1.10.0 release left open. Inventory and the .NET 9-11 table:
+`docs/DECISIONS.md`, "v1.11.0 wave plan". Same rules as before: each stream on its own branch and
+PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating session only.
 
 | Stream | Tasks | Area | Gate |
 |---|---|---|---|
-| A text boundaries, analyzer | T-F441 (one owner per encoding boundary, names and paths, with its control test), T-F424 as T-F441's first case, T-F440 (SonarCloud findings, the `S3903` bug first), T-F455, T-F454, T-F453 (tar folder bugs on `main` found by T-F443; added 2026-11-06, the agent) | `Sandbox/Tar*Encoding`, `Zip/ZipNameCodePages`, `StdinPathList`, `CliConsoleCharset`, `BareGzip*`, `Program.cs`, tests | T-F441: research, plan mode + advisor at both ends; T-F440: tests first |
-| B sandbox launcher, AMSI tests | T-F428 (cancel kills the child itself), T-F427 (AMSI not ready at scan time), T-F444 (another antivirus or none, on the VM; added 2026-10-31, the user), T-F446 (AMSI "blocked by admin" reads as Clean), T-F447 (more providers on the VM; added 2026-11-03, the user), T-F448 (Trend Micro's provider answers Clean for EICAR), T-F449 (an empty scan reports Clean; added 2026-11-04, the user), T-F450 (a timed-out tar version probe reads as an old tar; added 2026-11-04, the user), T-F460 (a tar folder ending in a space or a dot scans Clean; P1, added 2026-11-06, the agent) | `SandboxedProcessLauncher`, `AntivirusScanService` tests | T-F428: plan mode + advisor at both ends (sandbox code) |
-| C after the operation | T-F434 (recycle each clean source), T-F435 (a reason per kept item), T-F437 (unreadable path list) | `SourceRecycler`, the not-deleted dialog, `Archiver.Shell` messages, `SPEC.md` rule | T-F434: plan mode (an irreversible action on user data) |
-| D progress | T-F432 (taskbar button and tray icon), T-F439 (window floor on a monitor move) | App `MainWindow`, tray icon, `Archiver.OperationUi`, `WindowFloor` | T-F432: plan mode (COM under Native AOT) |
-| F winget | T-F317's outward step: `PavloRybchenko.PakkoCLI` in `microsoft/winget-pkgs` (the user, 2026-10-31) | `scripts/New-WingetManifest.ps1`, the winget-pkgs PR | after the v1.10.0 release |
-| G long-open umbrellas (added 2026-10-31, the agent's pick) | T-F254 (regional display language: pack and sign-out on the PakkoW10 VM, not the user's machine), T-F91 (`ru-RU` falls back to en-US, on the VM; the native-speaker criterion replaced by an agent back-translation pass, since there are no native reviewers, the user's standing word), T-F328's leftovers (quote, dash and apostrophe normalisation), T-F202's light theme, en-US and tray (through the `windows` MCP, as `APP-013` and `EXP-008` already switched theme and language), T-F329 part 5 (Store screenshots retaken after D changes the window) | VM, `.resw`/`.resx`/`Localization.cpp` (after C and D's strings), `docs/assets/store/` | after C and D merge |
-| H formats tar.exe reads but Pakko does not offer (added 2026-10-31, the user) | T-F442 (measure first, per tar.exe build; then detector, policy names, capability snapshot, Explorer menu, file associations) | `ArchiveFormatDetector`, `ArchiveFormatPolicy`, `TarCapabilitySnapshot`, `ShellExtUtils.cpp`, the manifest | measurement first; plan mode + advisor at both ends (new untrusted-input formats, the manifest) |
-| I opened during the wave (added 2026-11-06, the user: "the tasks opened during it, small fixes where possible") | First, from the root-cause review (the user, 2026-11-06: "in this wave"): T-F462 (Clean only with every file scanned, P1), T-F463 (one owner for quarantine disk access), T-F464 (the quarantine as source of truth, research). From T-F464's research (2026-11-07): T-F465 (tar.exe's listing decoded in the wrong page, P1), T-F466 (NFD names refused), T-F467 (one encoding provider), T-F468 (`archiveint.dll` research). Moved in by the user (2026-11-07): T-F470 (a sandboxed helper over Windows' own `archiveint.dll`, the name source; plan mode + advisor at both ends + a fresh reviewer). Small fixes: T-F456 (a flaky OperationUi test; fixed 2026-11-08, OPW-004 on device pending), T-F457 items 3-4 (`.tlz` as tar.lzma; `-stxudf`; done in #169), T-F453 (two true roots under one best-fit name), T-F452 (its own message for a header mismatch, 37 locales), T-F472 (a test racing a 90 ms clock; done 2026-11-08). Then: T-F461 (the folder shapes still refused; measure on 3.5.2 and in the sandbox first), T-F457 items 1, 2 and 5 (decide or measure; all three done 2026-11-08), T-F445 (pool threads per launch; measured 2026-11-08: no effect for one launch, P4 after the wave), T-F459 (`TESTING.md` regrouped, docs only; done 2026-11-07). Since T-F470 step 4 (2026-11-08) T-F464, T-F469, T-F461 and T-F453 cover the tar.exe fallback only: P4, after the wave | as each task says | T-F445: plan mode + advisor at both ends (sandbox code); each fix tests first, both tar builds where tar.exe decides |
-| E on device, release | `APP-027`, `APP-028`, `APP-030`, `APP-014`, `OPW-*`, the new taskbar/tray rows, the release-tier smoke, `STO-005` as a real Store update | `docs/SMOKE.md`, `scripts/smoke/` | after A-D merge |
+| H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
+| N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
+| Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
+| B bugs from v1.10.0 | T-F475 (P2, a Core throw), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
+| F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
+| E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
 
-Decisions taken with the plan (the agent, 2026-10-31): T-F432 covers the App's taskbar button, the
-App's tray icon and the Explorer operation window's taskbar button (the tray icon is the App's only;
-the operation window has none). The taskbar button and the tray icon follow the whole batch, as
-Explorer's own copy does; the window's text keeps the current archive's speed and time left
-(T-F431). Paused (yellow) while a prompt waits, error (red) when the run ends with a failure,
-cleared when the summary shows. T-F434: recycle each fully processed, unchanged source; a skipped
-source keeps only itself (written into `docs/SPEC.md`), not the others. T-F393 stays deferred
-(25 of 25 tries opened the dialog).
+Order: H and F now; N's spike beside B; Z after N (it needs .NET 11); D before E. Test runs that load
+the machine one at a time.
 
-Stream I goes before E, so the device checks see its fixes (the agent, 2026-11-06). Order: A, B, C and D's code in parallel (T-F428, T-F434 and T-F432 after their plans); **no test
-runs, smoke or device checks while the user's PC is busy** (the user, 2026-10-31: the smoke runs
-later, after the fixes); then E on the device, the user's elevated checks batched right before the
-release, the release (`.claude/rules/ci.md`) and the Store submission with the sv-se lists typed into
-Partner Center's form (DECISIONS "v1.9.0 - the Store install").
-
-Stream F (checked 2026-10-31): winget-pkgs #446296 was closed by us as superseded by #449503
-(1.7.2), which is open since 2026-10-09 with `Validation-Completed`, `Azure-Pipeline-Passed` and the
-CLA signed by both accounts; it waits only for a community moderator. After the v1.10.0 tag:
-`New-WingetManifest.ps1` for the release's CLI zips, `winget validate`, `winget install --manifest`
-with `a`/`t`/`l`/`x`, then the new version replaces 1.7.2 in that PR (or a new PR superseding it)
-from `pakkoapp-oss`, and the moderators asked for a review. Graduates when `winget install
-PavloRybchenko.PakkoCLI` works from the public source; later versions automated from `build.yml`
-(T-F317 Part A) once the package exists.
-
-**Deferred past 1.10.0:** T-F359 (no spinning disk), T-F332's super hero art (the user's image),
-T-F393 (no repro), T-F318 (waits for .NET 11), and the future items that are not fixes (T-F02,
-T-F10, T-F121, T-F127, T-F132, T-F144, T-F152). T-F254, T-F91 and T-F202's leftovers moved into
-stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine and hands.
+**Not in this wave:** runtime async (preview), Zstandard (tar in-process is forbidden), the new
+`Process` APIs (no AppContainer), C# 15 features for their own sake, async ZIP APIs, the P4 tar.exe
+fallback tasks (T-F464, T-F469, T-F461, T-F453), T-F359, and the future items that are not fixes
+(T-F02, T-F10, T-F121, T-F127, T-F132, T-F144, T-F152).
 
 ---
 
@@ -876,6 +857,7 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
   Our reply (user-approved, from `pakkoapp-oss`, 2026-10-03):
   https://github.com/dotnet/runtime/issues/134700#issuecomment-5970925304 — promises the numbers.
 - **Reported by:** upstream reply to dotnet/runtime#134700, 2026-10-01.
+- **Scheduled (2026-11-11):** v1.11.0 stream N, right after T-F492, required in the wave (the user: "the updated pool for zip so they are not re-created every time"). Measure with `Archive/ManySmallFiles` and #134700's benchmark (faults per op, ~0.02 against ~18), then report the numbers upstream.
 
 ### T-F328 — Localization audit fixes: wrong meanings and one term per action in 36 locales (P2)
 
@@ -1476,30 +1458,6 @@ re-measured with T-F346's script before and after.
   advisor at both ends, `SECURITY.md` only with the user's OK.
 - **Reported by:** T-F444's fresh reviewer, 2026-11-01.
 
-### T-F460 — "Scan for threats" reports Clean for a tar whose folder name ends in a space or a dot (P1, from T-F454)
-
-- [ ] **Status:** fixed 2026-11-06 (#169, `fix/tf460-trailing-space-folder`), awaiting the device check
-  (stream E: `SHL-017`) (`docs/DECISIONS.md`, "T-F460 and T-F454"): the quarantine walk reads through the long-path prefix and never skips a folder it
-  cannot read; the same walk lost those files from extraction silently. On `main` and in v1.9.0.
-  Put into stream B (the agent, 2026-11-06); ships with v1.10.0, no v1.9.x hotfix (the agent, as T-F448).
-- **Reported by:** the agent, 2026-11-06, while measuring T-F454.
-
-### T-F462 — "Clean" only when every listed file was scanned; extraction moves every listed file (P1, stream I)
-
-- [ ] **Status:** fixed 2026-11-06 (`fix/tf462-scan-accounting`; `docs/DECISIONS.md`, "T-F462"), awaiting
-  the device check (stream E: `SHL-018`); smoke `CLI-048`. Seen red on `main`: three same-named copies
-  with EICAR in the middle scanned Clean.
-- **Before:** open. Agreed 2026-11-06 (the user, "in this wave"). Root-cause review of T-F446,
-  T-F448, T-F449, T-F460 and #169's fresh review: each false Clean was "found nothing bad" where it
-  should be "proved everything was looked at", and each was closed on its own. One guard for the
-  class: the tar scan counts the files it scanned against the listing's file entries plus the first
-  copies (T-F171); any shortfall is Inconclusive naming the count, whatever name or folder broke.
-  Extraction the same way: files committed plus files reported skipped equal the listing's files,
-  or the run fails. Tests: each known shape (T-F460's folders, the first-copy pass, T-F455) with
-  its own fix reverted must come out Inconclusive or failed, never Clean or success. Plan mode +
-  advisor at both ends (the scan verdict); fresh opus reviewer offered once.
-- **Reported by:** the agent's root-cause review, 2026-11-06.
-
 ### T-F463 — One owner for disk access in the tar quarantine, and a test that keeps it so (P2, stream I)
 
 - [ ] **Status:** fixed 2026-11-06 (`fix/tf463-quarantine-owner`; `docs/DECISIONS.md`, "T-F463").
@@ -1520,6 +1478,84 @@ re-measured with T-F346's script before and after.
   in the style of `TextBoundaryOwnersTests` that fails on a quarantine path used around it in
   `TarSandboxedService`, `Sandbox/` and `AntivirusScanService`.
 - **Reported by:** the agent's root-cause review, 2026-11-06.
+
+### T-F492 - Pakko on .NET 11 and C# 15 (P2, v1.11.0 stream N)
+
+- [ ] **Status:** open. The user, 2026-11-11: "we write for .NET 11 and the matching language
+  version". .NET 11 (STS) and .NET 10 (LTS) both end on 2028-11-14 (`releases-index.json`).
+  Steps: (1) SDK 11.0.100 and a throwaway branch: WinAppSDK 2.5.1 and CsWinRT on `net11.0`, AOT
+  publish of App, Shell, OperationUi and `pakko` for x64 and arm64; (2) `global.json`, every TFM and
+  the `net10` literals in scripts, the manifest's TFM paths and CI by a script that rewrites TFM and
+  version tokens only (prose in `docs/ARCHITECTURE.md` and `.claude/rules` read by hand), lock files;
+  `MinVersion`/`MaxVersionTested` untouched; (3) the .NET 11 analyzer rules under
+  `TreatWarningsAsErrors`, fixed, not silenced; (4) the behaviour changes, each with a test seen
+  red: ZIP reads now verify CRC-32 and throw `InvalidDataException`, which must stay a per-item
+  `ArchiveError` with `VerifyingReadStream`'s code (one owner of the verdict); `DeflateStream` now
+  writes a header for empty input, while a zero-byte entry still writes `Store`; `Crc32.cs`'s
+  comment that .NET does not verify CRC on read; (5) C# 15 only after reading the compiler
+  breaking-changes page for .NET 11 (T-F270 met silent rebinding once); (6) the full suite,
+  `Category=Slow`, the 7za rows, `Deploy.ps1` and the quick tier, the CLI zip on PakkoW10, the
+  canary on the branch; (7) docs: `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/TESTING.md`,
+  `.claude/rules`, `scripts/README.md`, README's Install (x64 needs x86-64-v2, which every CPU
+  Windows 10 supports has: Microsoft's "minimum hardware requirements" page for .NET 11) and
+  Contributing. If WinUI/CsWinRT/AOT blocks after three different approaches: stop, report, and the
+  wave ships on .NET 10.
+- **Reported by:** the user, 2026-11-11.
+
+### T-F493 - ZIP encryption through the BCL, where it is backward compatible with ours (P2, v1.11.0 stream Z)
+
+- [ ] **Status:** open. The user, 2026-11-11: "switch to the built-in ZIP encryption, and check it
+  is backward compatible with ours". .NET 11's `System.IO.Compression` has `ZipEncryptionMethod`
+  (`None`, `ZipCrypto`, `Aes128`, `Aes192`, `Aes256`, `Unknown`), `ZipArchive.CreateEntry(name,
+  [level,] ReadOnlySpan<char> password, method)`, `ZipArchiveEntry.Open([access,] password)`,
+  `IsEncrypted` and `EncryptionMethod` (read from the GA reference pack's metadata, 2026-11-11).
+  Ours: the reader in `Services/Zip/Decryption` (about 1,200 lines) and `WinZipAesEncryptStream`
+  (AE-2, AES-256) in the sequential and the parallel writer. Unknown until measured: which AE
+  version the BCL writes, how it encodes a `char` password, and whether it checks the HMAC before
+  the first plaintext byte.
+  1. **Matrix first (tests that stay):** archives of `pakko.exe` v1.10.0 and of today's writer
+     read by the BCL; the BCL's archives read by today's reader, v1.10.0 and 7za; the fixtures
+     (ZipCrypto, AES-128/192, AE-1, data descriptors, other tools' archives) through both; a
+     password in cp866, cp1251, cp437 and UTF-8; a wrong password and one that passes the 2-byte
+     verifier but not the HMAC; a forged HMAC, a truncated entry, a lying size (T-F231); a million
+     entries and one large file against the parallel writer; FIPS policy. Results in
+     `docs/DECISIONS.md`, "T-F493 measured".
+  2. **Gate:** reading moves to the BCL only for consumers that commit after a clean end of stream
+     if the BCL hands out bytes before the HMAC (extraction stages, T-F161; `pakko x -so` stages,
+     `CliStreamStaging.cs`; preview, the AMSI scan, Hash and Test each checked); our reader stays
+     where a consumer streams on, so the deletion of our code is not promised. Writing moves only
+     if v1.10.0 and 7za read it, the BCL writes AE-2 (AE-1 puts the plaintext's CRC-32 in the
+     header, a confidentiality loss against today), and the matrix's timing is within 10 % of
+     T-F114's ceiling; otherwise `WinZipAesEncryptStream` stays and the reason is recorded.
+  3. **Then:** one owner of entry decryption (an internal interface, today's code its first
+     backend, an owner test in the style of `SandboxedReaderOwnerTests`); the BCL backend chosen in
+     one place; the full suite under both; the switch; our reader kept one release as the matrix's
+     oracle; creating ZipCrypto refused by a test; the v1.10.0 and 7za rows as permanent tests.
+     `SECURITY.md` needs the user's separate OK. Key zeroing inside the BCL cannot be checked from
+     outside: an accepted residual, not a gate row.
+- **Reported by:** the user, 2026-11-11.
+
+### T-F494 - The device checks the v1.10.0 release did not walk (P3, v1.11.0 stream D)
+
+- [ ] **Status:** open (`docs/DECISIONS.md`, "v1.10.0 - the release record"): the Explorer menu on
+  PakkoW10 for `CLI-032`/`CLI-035` (a background task cannot open it and the Hyper-V console runs
+  elevated, out of the `windows` MCP server's reach: find a non-elevated way in, such as an
+  enhanced session as `tester`); `PKG-010`'s "Show more options" menu; the archive helper on ARM64
+  (`archiveint.dll` there was never measured, T-F470: the canary's `windows-11-arm` job); `REL-001`
+  run as written (an elevated `testhost` held `Archiver.App.Core.Tests`' bin, so the release ran it
+  project by project).
+- **Reported by:** the agent, 2026-11-11.
+
+### T-F495 - Housekeeping after v1.10.0: an unexplained package, unpinned CI tools, a second CRC table (P3, v1.11.0 stream H)
+
+- [ ] **Status:** open. Found by the 2026-11-11 inventory: `System.Security.Permissions` 8.0.0 in
+  `Archiver.App.csproj`, added with the first shell-extension commit (1411699e) with no recorded
+  reason: remove it if the build and the AOT publish stay green; `dotnet-sonarscanner` and
+  `PSScriptAnalyzer` installed without a version in `build.yml`: pin them; `ZipCryptoStream` builds
+  its own CRC-32 table beside `Crc32`'s: one table; `Microsoft.Extensions.DependencyInjection`
+  10.0.3: current (with T-F492, the .NET 11 one). FluentAssertions stays on 7.x (8.x is under a
+  commercial licence).
+- **Reported by:** the agent, 2026-11-11.
 
 ### T-F491 - Hash/ManyFilesAndFolders sometimes runs 7x slower after the project's other tests (P3)
 
@@ -1601,23 +1637,6 @@ re-measured with T-F346's script before and after.
   the version, then the change.
 - **Reported by:** the agent, 2026-11-10.
 
-### T-F479 - Test through the archive helper moved no progress bar (P1, a T-F470 regression, v1.10.0)
-
-- [x] **Status:** done 2026-11-10 (PR #204, b280c984; `docs/DECISIONS.md`, "T-F479"). On the CI bundle of
-  b280c984: `APP-026` on a 16-file and a one-file 7z, Test and Extract of big.7z from the Explorer menu,
-  `EXP-013` and a cancelled Test (no helper left) all OK.
-  Found by the v1.10.0 release smoke (`APP-026` on CI bundle 1.10.0.0): Test of a 1 GB 7z of 16
-  files left the App's bar empty for its whole minute. `Archiver.ArchiveHelper` buffered stdout to
-  64 KB, so every `K` line arrived at exit; and a `K` comes only after a whole entry, so one large
-  entry could not move the bar even unbuffered. tar.exe's path counted its stdout bytes as they
-  came (v1.9.0's `APP-026`: "the bar 0 to 100"). Now `test` writes `P <index> <bytes>` each MiB of
-  an entry and writes each `P` and `K` through at once; Pakko's parser takes `P` in Test only.
-  Seen red on `main`: the protocol tests (no `P`, and a `K 0` held back while the helper waits on
-  stdin) and `HelperReaderTests.Progress_MovesBetweenTheEnds` (helper, Test, one large entry: only
-  99 and 100).
-- **Reported by:** the agent's release smoke, 2026-11-09; in this release by the user's call ("no
-  regressions in releases").
-
 ### T-F478 - Test's structure-only warning names tar.exe when the archive helper read the archive (P3)
 
 - [ ] **Status:** open. Found 2026-11-09 by the v1.10.0 release smoke (`EXP-013`, `APP-006`):
@@ -1652,7 +1671,7 @@ re-measured with T-F346's script before and after.
   longer the 3.5.2 leg).
 - **Reported by:** the agent, 2026-11-09.
 
-### T-F475 - On Windows 10 a destination through a device name throws out of `ZipArchiveService` (P3)
+### T-F475 - On Windows 10 a destination through a device name throws out of `ZipArchiveService` (P2, v1.11.0 stream B)
 
 - [ ] **Status:** open. Found 2026-11-09 on CI's `windows-2022` (same device-name rules as Windows
   10): `pakko a CON.zip ...` exits 2 with "Unexpected error: ArgumentNullException: Value cannot be
@@ -1666,6 +1685,7 @@ re-measured with T-F346's script before and after.
   resolves to a device at the entry check (`DestinationFolder`/`InputPaths`, a new row in
   `CoreNeverThrowsContractTests`), and make the two tests state which rules they cover.
 - **Reported by:** the agent, 2026-11-09.
+- **Raised to P2 (2026-11-11):** a Core method throwing to its caller breaks a hard constraint.
 
 ### T-F474 - The plain-file check and the move out of the quarantine are two calls (P3)
 
@@ -1705,58 +1725,6 @@ re-measured with T-F346's script before and after.
   and a build or run without the helper (`pakko i` and the App log name the reader; smoke `CLI-050`,
   `CLI-051`, `APP-037`). P4: the fallback reaches few machines. The same holds for T-F464, T-F461 and T-F453.
 - **Reported by:** the agent, 2026-11-07.
-
-### T-F470 - A sandboxed helper over Windows' own `archiveint.dll` (P2, v1.10.0 stream I)
-
-- [ ] **Status:** in progress, in the v1.10.0 wave (the user, 2026-11-07, first "an option for future
-  releases", then the same day: "add the libarchive task to this wave; the constant file-name errors
-  bother me"; lister and extractor, quiet fallback to tar.exe, `docs/DECISIONS.md`, "T-F470"). Step 1
-  (measurements) and step 2 (`src/Archiver.ArchiveHelper`, packaging, protocol tests,
-  `docs/ARCHITECTURE.md`'s protocol) done. Step 3a (#189) put every tar-family read behind
-  `ISandboxedArchiveReader` with tar.exe as its one backend, no behavior change, guarded by
-  `SandboxedReaderOwnerTests`. Step 3b goes in two PRs (advisor, 2026-11-08): 3b-i
-  (`feat/tf470-helper-reader`) adds the helper's launch in `TarSandboxScope`, its strict output
-  parser and `HelperReader` (listing and extract/Test/scan by index), reachable only from tests
-  (#193); 3b-ii (`feat/tf470-archiveint-gate`) adds `ArchiveintGate` (sticky per process), wires it
-  into `PakkoServices` and the App, `pakko i` prints its line, and the suite was swept under the
-  helper (`docs/DECISIONS.md`, step 3b-ii): the gate is on. Left for the release batch:
-  - the CHANGELOG line (names read exactly, a trailing dot or space trimmed as in ZIP, every
-    same-named copy meets the conflict rule, a damaged 7z fails Test, a file and a folder of one
-    name fail only the second of the two, as in ZIP; a quarantined file with a named stream or a
-    second name fails the archive, for both readers);
-  - done 2026-11-09 (`docs/DECISIONS.md`, T-F470 "The release-batch runs"): `Category=Slow`
-    normally and under the sweep; the sweep on libarchive 3.5.2 on PakkoW10 (CI's windows-2022 now
-    ships 3.8.9, T-F476), no difference from 3.8.9;
-  - the packaged launch: `Deploy.ps1`, then the packaged `pakko i` line and the App log's reader
-    line (identity proven), with `docs/SMOKE.md` rows; CI's `V` line, read from the test log;
-  - done in `feat/tf470-release-fixes` (`docs/DECISIONS.md`, T-F470 "Release batch"): a quarantined
-    file with a named stream or a hard link fails the archive right before its move, for both
-    readers; the helper copy held from its hash to the helper's end; a file and a folder of one name
-    failing only the second entry, as ZIP; the
-    memory measured (T-F473 for both backends), no wall-clock bound (as tar.exe);
-  Step 4 (`feat/tf470-step4`): T-F469, T-F464, T-F461 and T-F453 narrowed to the tar.exe fallback
-  (P4); smoke `CLI-050` (the helper reads names exactly), `CLI-051` (no helper: tar.exe, quietly) and
-  `APP-037` (the App's reader line from the packaged process), run with the release batch's device
-  checks; `docs/TESTING.md`. CI's `V` line is read from the test job's log. Measured
-  in `docs/DECISIONS.md`, "T-F468 research done". The user's conditions:
-  - only the DLL Windows ships (`C:\Windows\System32\archiveint.dll`, absolute path), with the
-    signature checks tar.exe gets (T-F401's catalog case included);
-  - the version read from the DLL (`archive_version_details`);
-  - its capabilities decided at run time from that version and from probing, as T-F403 does for
-    tar.exe.
-
-  The shape the measurements point to:
-  - a C helper importing only `kernel32.dll` (an AOT .NET helper fails with 0xC0000142 in the sandbox
-    without a desktop);
-  - copied into the quarantine before each launch (an exe in place in `WindowsApps` fails with error
-    87);
-  - names through `hdrcharset` set by the provider;
-  - used as the lister first.
-
-  The user OK'd the `CLAUDE.md` and `SECURITY.md` changes (2026-11-07; made in step 2). Plan mode and the advisor gate at both ends, plus a fresh reviewer (sandbox
-  and untrusted-input class). Not measured yet: ARM64's `archiveint.dll`, and a launch from a process
-  proven to hold package identity.
-- **Reported by:** the user, 2026-11-07.
 
 ### T-F464 - The quarantine as the source of truth instead of predicting tar.exe's names (P4, stream I, research done, the tar.exe fallback)
 

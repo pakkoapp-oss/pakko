@@ -14521,6 +14521,51 @@ constraint "only tar.exe" stands until the user decides (below).
   swap-pair tests failed again. Four first translations used the replaced word for "archive"
   (ko, th, vi, zh); `GlossaryTests` caught them.
 
+## v1.11.0 wave plan (2026-11-11)
+
+The user, 2026-11-11: plan the next wave around .NET 11 (released 2026-11-10), with an inventory of
+the methods and tools Pakko uses and what .NET 9, 10 and 11 added since the project started on
+.NET 8; add the bugs the v1.10.0 release left open; Pakko is written for .NET 11 and C# 15 from
+here on; the reused deflate compressor per ZIP worker; ZIP encryption from the BCL where it is
+backward compatible with ours.
+
+Sources: two read-only inventories of `src` (Core/CLI/Messages; App/Shell/OperationUi and the
+build), Microsoft's "What's new" pages for .NET 9, 10 and 11 and C# 13-15, the .NET 11 minimum
+hardware page, and the GA reference pack `Microsoft.NETCore.App.Ref` 11.0.0 from nuget.org, whose
+metadata settled every .NET 11 API row below (the "What's new" pages still describe RC 2).
+
+**Support.** `releases-index.json`: .NET 11 (STS) and .NET 10 (LTS) both reach end of support on
+2028-11-14, so the reason T-F270 and T-F318 gave for staying on the LTS no longer holds. The
+question is compatibility only, hence T-F492's spike first.
+
+| Area | Pakko today | New in .NET 9-11 | Decision |
+|---|---|---|---|
+| Deflate for small entries | a new `DeflateStream` per entry (`ZipEntryCompressor.cs`), the page-fault storm of dotnet/runtime#134700 | 11: `DeflateEncoder`/`DeflateDecoder` with `Reset()`, `Compress`, `Flush`, `TryCompress` | T-F318 in this wave, required |
+| ZIP CRC on read | our `VerifyingReadStream` and `Crc32` | 11: ZIP reads verify CRC-32 and throw `InvalidDataException` | T-F492 keeps it a per-item `ArchiveError`, one owner of the verdict |
+| ZIP encryption | our WinZip AES reader and writer, ZipCrypto reader; PBKDF2 already the BCL one-shot (`WinZipAesReader.cs:57`) | 11: `ZipEncryptionMethod`, password overloads of `CreateEntry`, `CreateEntryFromFile`, `Open`, `OpenAsync`; `IsEncrypted`, `EncryptionMethod` | T-F493: compatibility matrix, then per half |
+| ZIP API shape | sync `ZipArchive` on a pool thread; our parallel writer | 10: async ZIP APIs, less memory in Update mode; 11: `CompressionMethod`, `Open(FileAccess)` | not taken: the work is CPU-bound, already off the UI thread |
+| CRC-32 | our slice-by-8 with `Combine` | the BCL's `Crc32` is only in the `System.IO.Hashing` package | ours stays (Core takes no packages); one table (T-F495) |
+| Zstandard | tar.zst through `tar.exe` | 11: `ZstandardStream`, encoder, decoder, dictionaries | not taken: no tar in-process; a zstd ZIP method is not what Explorer reads |
+| Processes | `CreateProcessW` with STARTUPINFOEX, AppContainer and a Job object | 11: `ProcessStartInfo.InheritedHandles`, `KillOnParentExit`, `StartSuspended`, `StartDetached`, `Process.RunAndCaptureText` | not taken: `Process` cannot start into an AppContainer; the Job already kills the child |
+| Async | `Task`, `ValueTask`, `Channel`, `Parallel.ForEachAsync` | 11: runtime async (preview) | not taken while preview |
+| Language | C# 14 (`field`, partial properties, `Lock`) | C# 15: unions, `closed`, labeled `break`/`continue`, `with(...)` in collection expressions | `LangVersion 15` after the compiler breaking-changes page; no features for their own sake |
+| Analyzers | `latest-recommended`, warnings as errors | 11: `latest` means the .NET 11 rules | fixed in T-F492 |
+| Hardware | x64 baseline x86-64-v1 | 11: x86-64-v2 (CX16, POPCNT, SSE3, SSSE3, SSE4.1, SSE4.2); Windows ARM64 unchanged | the page: "required by Windows 11 and by all x86/x64 CPUs officially supported on Windows 10"; a line in README's Install |
+| Small idioms | `Convert.ToHexString(...).ToLowerInvariant()` | 9/10: `Convert.ToHexStringLower`, `Base64Url`, `Task.WhenEach`, `OrderedDictionary<,>` | only where code is touched anyway |
+
+Already in use from .NET 9/10 or C# 13/14, nothing missed since .NET 8: `System.Threading.Lock`,
+`field`, partial `[ObservableProperty]`, `SearchValues`, `[GeneratedRegex]`, `FrozenSet`,
+`[LibraryImport]` everywhere (no `DllImport`), `[GeneratedComInterface]` (no `[ComImport]`), source
+generated JSON with `RespectNullableAnnotations` and `RespectRequiredConstructorParameters`.
+
+**Tooling** (the second inventory): SDK pinned; WinAppSDK 2.5.1; SDK.BuildTools 10.0.28000;
+CommunityToolkit.Mvvm 8.4.2; H.NotifyIcon 2.3.2; xUnit 2.9.3; FluentAssertions 7.2.2 (8.x is
+commercial); coverlet; docfx; CycloneDX; SonarCloud; Scorecard; no CodeQL analysis job. Findings:
+`System.Security.Permissions` 8.0.0 with no recorded reason, `dotnet-sonarscanner` and
+`PSScriptAnalyzer` unpinned in `build.yml`, a second CRC-32 table in `ZipCryptoStream` (T-F495).
+
+The wave and its streams: `docs/TASKS.md`, "v1.11.0 wave".
+
 ## v1.10.0 - the release record (2026-11-10 and 2026-11-11)
 
 - **Commits.** PR #207 (`28cf3e8d`, T-F487..T-F490, the REL-001 split, T-F491 filed) and PR #208
