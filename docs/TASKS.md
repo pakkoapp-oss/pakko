@@ -1546,17 +1546,6 @@ re-measured with T-F346's script before and after.
   project by project).
 - **Reported by:** the agent, 2026-11-11.
 
-### T-F495 - Housekeeping after v1.10.0: an unexplained package, unpinned CI tools, a second CRC table (P3, v1.11.0 stream H)
-
-- [ ] **Status:** open. Found by the 2026-11-11 inventory: `System.Security.Permissions` 8.0.0 in
-  `Archiver.App.csproj`, added with the first shell-extension commit (1411699e) with no recorded
-  reason: remove it if the build and the AOT publish stay green; `dotnet-sonarscanner` and
-  `PSScriptAnalyzer` installed without a version in `build.yml`: pin them; `ZipCryptoStream` builds
-  its own CRC-32 table beside `Crc32`'s: one table; `Microsoft.Extensions.DependencyInjection`
-  10.0.3: current (with T-F492, the .NET 11 one). FluentAssertions stays on 7.x (8.x is under a
-  commercial licence).
-- **Reported by:** the agent, 2026-11-11.
-
 ### T-F491 - Hash/ManyFilesAndFolders sometimes runs 7x slower after the project's other tests (P3)
 
 - [ ] **Status:** open. Found 2026-11-10 by the v1.10.0 release smoke (`REL-001`). In a run of the whole
