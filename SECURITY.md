@@ -163,7 +163,8 @@ decompression bug would run with the user's rights). bzip2 and xz of one file ar
 - **Integrity.** Every extracted entry's content CRC-32 is checked against its header (AE-2
   encrypted entries carry no CRC — their HMAC authenticates them instead), and no entry may produce
   more than its declared uncompressed size; a failing entry is reported and never
-  reaches the destination (T-F246, T-F231). .NET does not check CRC-32 on read by itself.
+  reaches the destination (T-F246, T-F231). Up to .NET 10 the runtime did not check CRC-32 on read;
+  .NET 11 does, and Core still checks it itself and names the failure (T-F492).
 - **Unsafe names.** An entry name with a `..` segment (either separator) or a rooted/drive-relative
   path is rejected per entry and reported as an error, never normalized (T-F228) — the tar path
   rejects such archives whole.
