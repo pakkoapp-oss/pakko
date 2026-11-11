@@ -14768,3 +14768,16 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   - **Change:** each launch had a hidden `conhost.exe`; children now start with `DETACHED_PROCESS`.
   - **Result:** half the processes and the children's page faults, 30-50 ms less per launch.
   - **Checked:** identical results on bsdtar 3.8.9 and on PakkoW10's 3.5.2.
+
+### T-F506 - The AMSI scan hands each entry over in one buffer (P3, from T-F498)
+
+- [x] **Status:** done 2026-11-12. One 256 MiB entry costs 67 k page faults and a 262 MiB buffer
+  (`MaxScannableEntryBytes` bounds it). Check what AMSI allows (`AmsiScanBuffer` needs the whole
+  content; a stream through `IAmsiStream`?) before changing anything; SECURITY.md owns the
+  rationale of what is scanned.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
+- **Graduated 2026-11-12** (`docs/DECISIONS.md`, "T-F506"):
+  - **Faults:** one per page of the one buffer `AmsiScanBuffer` needs. Chunking would weaken the scan
+    and a COM stream is not worth it under the 256 MiB cap.
+  - **Pool:** entries over 1 MiB no longer go through the shared pool, which kept up to 256 MiB.
+  - **Plaintext:** the content scanned is zeroed after the scan.

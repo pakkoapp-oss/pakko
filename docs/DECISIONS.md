@@ -15342,6 +15342,37 @@ and Pakko decodes its output by the machine's pages (`TextBoundaries`). Checked 
 | targz-extract | 6 -> 3 | 11,501 -> 5,033 | 4,390 -> 4,511 (noise; the writing dominates) |
 | targz-create | 2 -> 1 | 3,816 -> 1,703 | 597 -> 569 |
 
+## T-F506 - the AMSI scan buffer: page faults inherent, the pool no longer keeps it (2026-11-12)
+
+**The faults.** 67,458 page faults for one 256 MiB entry is one per 4 KiB page of the buffer (65,536
+pages). They come from touching the buffer once, and `AmsiScanBuffer` needs the whole content in one
+buffer. Two ways around that were considered and rejected:
+- **Several calls over chunks.** A signature that spans two chunks would be scanned by neither. That
+  weakens the scan, which `SECURITY.md` owns.
+- **`IAntimalware::Scan` with an `IAmsiStream`.** A COM stream the provider reads from would avoid
+  the buffer, but it means a new COM surface under Native AOT for a cost that `MaxScannableEntryBytes`
+  already bounds.
+
+**Two problems the profile showed beside the faults.**
+- **The pool kept the buffer.** The buffer came from `ArrayPool<byte>.Shared`, which rounds up to a
+  power of two and keeps returned arrays. One scan of a 200 MiB entry left a 256 MiB array in the
+  pool for the process's life. Entries over 1 MiB now get an array of their own size, dropped after
+  the scan. Smaller ones still rent.
+- **The content stayed in memory.** The array went back holding the content it scanned: for an
+  encrypted ZIP, the plaintext (T-F194). The bytes read are now zeroed before the array is returned
+  or dropped, so the plaintext does not outlive its scan. `SECURITY.md` makes no claim either way, so
+  it is unchanged.
+
+**Tests.** In `AntivirusScanServiceTests` the fake scanner keeps the array itself.
+- `ScanAsync_AfterTheScan_TheEntrysBytesAreZeroed`: seen red, the content was still there.
+- `ScanAsync_LargeEntry_GetsAnArrayOfItsOwnSize`: an entry of 3 MiB + 1 byte. Seen red, it got the
+  pool's 4,194,304 bytes.
+
+**Measured** (litmus, three runs):
+- **The 256 MiB entry:** 67,500 faults as before. 1,857 ms against 1,706, which is the zeroing.
+- **2,000 small entries:** 1,128 ms against T-F498's 133 ms. That is not this change: Defender's real-time
+  protection was off during T-F498's runs and on now, so AMSI really scans each entry.
+
 ## T-F503 - one archive per item at Optimal takes the hand-rolled writer (2026-11-11)
 
 **Cause.** Without a password, one archive per item at Optimal or SmallestSize went through
