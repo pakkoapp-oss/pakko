@@ -451,15 +451,22 @@ public sealed class ZipArchiveService : IArchiveService
             };
         }
         int threadBudget = options.MaxThreads > 0 ? options.MaxThreads : Environment.ProcessorCount;
-        int degreeOfParallelism = settings.RequiresHandRolledWriter
-            ? Math.Max(1, threadBudget / settings.WindowCapacity)
-            : threadBudget;
+        int degreeOfParallelism = threadBudget;
+        int workersPerFolder = 0;
+        if (settings.RequiresHandRolledWriter)
+        {
+            var written = plans.Where(p => p.DestPath is not null).ToList();
+            (degreeOfParallelism, workersPerFolder) = HandRolledSeparateParallelism(
+                threadBudget, written.Count, written.Count(p => Directory.Exists(p.SourcePath)));
+        }
 
         await Parallel.ForEachAsync(
             plans.Where(p => p.DestPath is not null),
             new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism, CancellationToken = cancellationToken },
             async (plan, token) => await ArchiveSingleSeparatePathAsync(
-                plan.SourcePath, plan.DestPath!, plan.ReplacesExisting, settings,
+                plan.SourcePath, plan.DestPath!, plan.ReplacesExisting,
+                workersPerFolder == 0 ? settings
+                    : settings with { MaxThreads = Directory.Exists(plan.SourcePath) ? workersPerFolder : 1 },
                 concurrentSink, progressContext, token).ConfigureAwait(false)
         ).ConfigureAwait(false);
 
@@ -565,6 +572,18 @@ public sealed class ZipArchiveService : IArchiveService
     // single long field) since every worker mutates it via Interlocked on the same shared instance.
     private sealed record SeparateArchiveProgressContext(
         long TotalSourceBytes, long[] CompletedBytesBox, IProgress<ProgressReport>? Progress);
+
+    // T-F497: how one archive per item splits the thread budget (the core count, or -mmt) between
+    // archives written at once and the workers inside each. Dividing by the window alone left
+    // thousands of one-file archives to one thread at a time; now as many archives as the budget
+    // allows run at once. A file's archive has one entry, so one worker; the folders share the
+    // budget (two on 12 cores: 6 each; one beside many files keeps all 12, as before).
+    internal static (int Archives, int WorkersPerFolder) HandRolledSeparateParallelism(int threadBudget, int archiveCount, int folderCount)
+    {
+        int budget = Math.Max(1, threadBudget);
+        int archives = Math.Clamp(archiveCount, 1, budget);
+        return (archives, Math.Max(1, budget / Math.Clamp(folderCount, 1, budget)));
+    }
 
     private static async Task ArchiveSingleSeparatePathAsync(
         string sourcePath,
