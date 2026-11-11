@@ -341,8 +341,10 @@ internal static class ParallelSingleArchiveWriter
         // still writing its temp file at the moment the consumer loop exits (e.g. cancellation)
         // could add to pendingTempFiles AFTER the sweep already ran and returned — a real race
         // caught by a test that failed intermittently under full-suite parallel load, not just
-        // in isolation, before this fix.
-        var dispatchedTasks = new ConcurrentBag<Task<WorkResult>>();
+        // in isolation, before this fix. T-F501: only the tasks not yet written - a written one
+        // has finished and its result holds the entry's compressed bytes, so keeping every one
+        // until the end held the sum of all small files in memory (2,000 of 900 KB: 2.5 GB).
+        var dispatchedTasks = new ConcurrentDictionary<Task<WorkResult>, byte>();
 
         var producer = Task.Run(async () =>
         {
@@ -367,7 +369,7 @@ internal static class ParallelSingleArchiveWriter
                         bool inMemory = item.FileSize <= InMemoryCompressByteThreshold;
                         Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressor = inMemory ? compressInMemory : compressToTempFile;
                         resultTask = RunGatedAsync(item, compressor, computeGate, pendingTempFiles, cancellationToken);
-                        dispatchedTasks.Add(resultTask);
+                        dispatchedTasks.TryAdd(resultTask, 0);
                     }
 
                     await pipeline.Writer.WriteAsync(resultTask, cancellationToken).ConfigureAwait(false);
@@ -414,6 +416,7 @@ internal static class ParallelSingleArchiveWriter
                             result.ErrorText ?? CoreMessages.Text(MessageCode.UnknownArchivingError), result.ErrorException));
                         break;
                 }
+                dispatchedTasks.TryRemove(task, out _);
             }
 
             await producer.ConfigureAwait(false);
@@ -437,7 +440,7 @@ internal static class ParallelSingleArchiveWriter
             // everything the producer had already dispatched) could add to pendingTempFiles AFTER
             // the sweep below already ran, leaving a real orphaned temp file on disk.
             try { await producer.ConfigureAwait(false); } catch { /* best-effort */ }
-            foreach (Task<WorkResult> dispatched in dispatchedTasks)
+            foreach (Task<WorkResult> dispatched in dispatchedTasks.Keys)
             {
                 try { await dispatched.ConfigureAwait(false); } catch { /* best-effort */ }
                 // T-F357: a source never copied (cancel, failure) is released here; a copied one
