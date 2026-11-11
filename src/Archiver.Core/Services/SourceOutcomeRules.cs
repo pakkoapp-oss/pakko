@@ -79,7 +79,8 @@ internal static class SourceOutcomeRules
     {
         // T-F497: each output and folder resolved once, each output's full path computed once - a
         // run of thousands of archives compared every source with every output path by path.
-        var folders = new Dictionary<string, PathIdentity.Identity?>(StringComparer.OrdinalIgnoreCase);
+        // Ordinal: the keys are final paths in their canonical case; a case-sensitive folder may hold two.
+        var folders = new Dictionary<string, PathIdentity.Identity?>(StringComparer.Ordinal);
         var holders = new Holders();
         foreach (string created in createdFiles.Where(File.Exists))
             holders.Add(selfAndAncestors(created, folders));

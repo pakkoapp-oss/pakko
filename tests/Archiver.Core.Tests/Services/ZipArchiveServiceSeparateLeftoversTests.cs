@@ -48,6 +48,30 @@ public sealed class ZipArchiveServiceSeparateLeftoversTests : IDisposable
         return (tempArchive, chunkFolder, sevenZipFolder);
     }
 
+    // T-F497 review: the run's shared deflater pool maps the level to a quality and throws on an
+    // undefined one; built outside every per-source catch, that escaped ArchiveAsync, which never
+    // throws to callers. As on main, each source reports the error instead.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ArchiveAsync_OneArchivePerItemAtAnUndefinedLevel_ReportsEachSourceAndDoesNotThrow(bool withPassword)
+    {
+        string[] sources = Sources(2);
+
+        ArchiveResult result = await new ZipArchiveService(new GroupPolicyOptions()).ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = sources,
+            DestinationFolder = _dir,
+            Mode = ArchiveMode.SeparateArchives,
+            CompressionLevel = (CompressionLevel)7,
+            ResolvePasswordAsync = withPassword ? _ => Task.FromResult(new PasswordDecision { Password = "pw1" }) : null,
+        });
+
+        result.Success.Should().BeFalse();
+        result.Errors.Select(e => e.SourcePath).Should().BeEquivalentTo(sources);
+        Directory.GetFiles(_dir, "*.zip").Should().BeEmpty();
+    }
+
     [Theory]
     [InlineData(CompressionLevel.Optimal, false)]
     [InlineData(CompressionLevel.Fastest, false)]

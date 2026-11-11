@@ -14747,6 +14747,19 @@ share the budget, so at most twice the budget, 24 deflaters of about 330 KB on 1
 folder of 60 mid-size files plus 100 files slower (0.79 -> 1.23 s); with the folder's share it is
 0.47 s, two folders 0.58 -> 0.49 s.
 
+**Closing review** (a fresh opus reviewer, read-only, 2026-11-11, the user's yes): no path to data
+loss. Four fixes, each test red first:
+- the run's shared pool was built for every level outside any per-source catch, so an undefined
+  `CompressionLevel` escaped `ArchiveAsync`; now only a defined level gets a shared pool, and each
+  source reports the error, as on `main`;
+- with `-mmt N` the folders' extra workers came on top of the archives (up to 2N - 1 workers);
+  under a user's limit the folders get only what the archives leave (`budgetIsALimit`). The core
+  count alone keeps the faster split above;
+- T-F359's one large file at a time held per archive once archives ran side by side; the run
+  shares one gate (`CompressionSettings.LargeFileGate`);
+- the ancestor cache compared paths ignoring case; final paths are canonical, so `Ordinal`.
+The rest went to T-F500.
+
 **Same bytes.** The 2,000 `Optimal` and 2,000 `Fastest` archives of the final build are byte-identical
 to `main`'s (T-F499 merged); with a password (random AES salt) all 2,000 have `main`'s sizes.
 

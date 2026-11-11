@@ -274,6 +274,33 @@ public sealed class DeflateEncoderPoolTests : IDisposable
         pool.Return(still);
     }
 
+    // T-F497 review: T-F359's one large file at a time on a disk with a seek penalty held for the
+    // whole run when one-archive-per-item wrote one archive at a time; with archives side by side the
+    // run shares one gate, so a large file waits while another archive holds it.
+    [Fact]
+    public async Task WriteAsync_ALargeFileWithASharedGateHeldElsewhere_WaitsForIt()
+    {
+        string source = Path.Combine(_tempDir, "large.bin");
+        File.WriteAllBytes(source, Text(1_500_000, 3));
+        using var gate = new SemaphoreSlim(1, 1);
+        await gate.WaitAsync();
+        var settings = new ParallelSingleArchiveWriter.CompressionSettings(CompressionLevel.Fastest)
+        {
+            OneLargeFileAtATime = true,
+            LargeFileGate = gate,
+        };
+
+        Task<int> write = ParallelSingleArchiveWriter.WriteAsync(
+            Path.Combine(_tempDir, "a.zip"), [source], settings, 1_500_000,
+            new ParallelSingleArchiveWriter.ReportCallbacks(_ => { }, e => throw new InvalidOperationException(e.Message)),
+            progress: null, CancellationToken.None);
+        Func<Task> early = () => write.WaitAsync(TimeSpan.FromSeconds(1));
+        await early.Should().ThrowAsync<TimeoutException>("the large file waits while another archive holds the gate");
+
+        gate.Release();
+        (await write).Should().Be(1);
+    }
+
     [Fact]
     public async Task WriteAsync_APoolOfAnotherLevel_IsRefused()
     {

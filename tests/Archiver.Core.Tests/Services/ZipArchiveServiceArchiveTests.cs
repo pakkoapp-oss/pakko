@@ -1099,13 +1099,12 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     }
 
     // T-F321: an archive that appears after the run chose its names, and before the worker of that
-    // name starts, was taken for one the user had agreed to overwrite. Fastest runs the sources one
-    // after another, so the foreign b.zip written during a's progress is there when b's turn comes.
+    // name starts, was taken for one the user had agreed to overwrite. With one thread the sources
+    // run one after another, so the foreign b.zip written during a's progress is there when b's turn
+    // comes.
     [Fact]
     public async Task ArchiveAsync_SeparateArchives_ArchiveAppearsAfterTheNamesWereChosen_IsNotReplaced()
     {
-        (Environment.ProcessorCount / Archiver.Core.Services.Zip.ParallelSingleArchiveWriter.ComputeWindowCapacity())
-            .Should().BeLessThanOrEqualTo(1, "the trigger needs the sources archived one after another");
         string a = _temp.CreateFile("a.txt", new string('a', 200_000));
         string b = _temp.CreateFile("b.txt", "b");
         string destination = Path.Combine(_temp.Path, "out");
@@ -1124,6 +1123,9 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
             Mode = ArchiveMode.SeparateArchives,
             CompressionLevel = CompressionLevel.Fastest,
             OnConflict = ConflictBehavior.Skip,
+            // The trigger needs the sources archived one after another; since T-F497 the
+            // hand-rolled writer runs archives side by side up to the thread budget.
+            MaxThreads = 1,
         }, progress);
 
         File.ReadAllText(foreign).Should().Be("another run's archive");

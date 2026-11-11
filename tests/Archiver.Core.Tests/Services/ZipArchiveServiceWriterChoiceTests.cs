@@ -374,7 +374,26 @@ public sealed class ZipArchiveServiceWriterChoiceTests : IDisposable
     public void HandRolledSeparateParallelism_SplitsTheBudgetBetweenArchivesAndFolders(
         int budget, int archives, int folders, int expectedArchives, int expectedWorkersPerFolder)
     {
-        ZipArchiveService.HandRolledSeparateParallelism(budget, archives, folders)
+        ZipArchiveService.HandRolledSeparateParallelism(budget, archives, folders, budgetIsALimit: false)
             .Should().Be((expectedArchives, expectedWorkersPerFolder));
+    }
+
+    // T-F497 review: with -mmt the budget is a limit the user set, so the archives written at once
+    // and the folders' extra workers together stay within it (with the core count the folders may
+    // take up to the budget again: at most twice the cores, measured faster).
+    [Theory]
+    [InlineData(4, 50, 1, 4, 1)]      // a folder beside many files: no worker to spare
+    [InlineData(4, 1, 1, 1, 4)]       // the folder alone takes the limit
+    [InlineData(12, 2, 2, 2, 6)]
+    [InlineData(12, 5, 2, 5, 4)]      // 5 + 2 x 3 extra = 11
+    [InlineData(1, 50, 3, 1, 1)]
+    [InlineData(12, 0, 0, 1, 12)]
+    public void HandRolledSeparateParallelism_UnderMmt_NeverRunsMoreWorkersThanTheLimit(
+        int budget, int archives, int folders, int expectedArchives, int expectedWorkersPerFolder)
+    {
+        (int a, int w) = ZipArchiveService.HandRolledSeparateParallelism(budget, archives, folders, budgetIsALimit: true);
+        (a, w).Should().Be((expectedArchives, expectedWorkersPerFolder));
+        int foldersAtOnce = Math.Min(folders, a);
+        (a + foldersAtOnce * (w - 1)).Should().BeLessThanOrEqualTo(budget);
     }
 }
