@@ -89,6 +89,11 @@ internal static class ParallelSingleArchiveWriter
         /// and disposed by that run; null makes each <see cref="WriteAsync"/> build its own.</summary>
         public DeflateEncoderPool? Deflaters { get; init; }
 
+        /// <summary>T-F497: <see cref="OneLargeFileAtATime"/>'s gate shared by every archive of a
+        /// one-archive-per-item run, owned by that run; null makes each <see cref="WriteAsync"/>
+        /// use its own.</summary>
+        public SemaphoreSlim? LargeFileGate { get; init; }
+
         /// <summary>T-F411: <see cref="ArchiveOptions.ReadFilesOpenForWriting"/>.</summary>
         public bool ReadFilesOpenForWriting { get; init; }
 
@@ -225,7 +230,8 @@ internal static class ParallelSingleArchiveWriter
             throw new ArgumentException($"A {shared.Level} pool for a {settings.Level} archive.", nameof(settings));
         using DeflateEncoderPool? own = settings.Deflaters is null ? new DeflateEncoderPool(settings.Level) : null;
         DeflateEncoderPool deflaters = settings.Deflaters ?? own!;
-        using SemaphoreSlim? largeFileGate = settings.OneLargeFileAtATime ? new SemaphoreSlim(1, 1) : null;
+        using SemaphoreSlim? ownGate = settings.OneLargeFileAtATime && settings.LargeFileGate is null ? new SemaphoreSlim(1, 1) : null;
+        SemaphoreSlim? largeFileGate = settings.OneLargeFileAtATime ? settings.LargeFileGate ?? ownGate : null;
         Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressToTempFile =
             (item, ct) => CompressToTempFileAsync(item, chunkDirectory.Value, settings, tracker, ct);
         if (largeFileGate is not null)

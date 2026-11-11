@@ -1547,6 +1547,21 @@ re-measured with T-F346's script before and after.
   seen red first, a `docs/SMOKE.md` row, and the trade-off in `SECURITY.md` (the user's OK for that edit: 2026-11-11, "Дозвіл даю"). The answer for an archive that must come back whole stays PAR2 (`pakko r`).
 - **Reported by:** the user, 2026-11-11.
 
+### T-F500 - The hand-rolled writer's failure paths in one archive per item: a disposal failure and the untested shapes (P3, from T-F497's review)
+
+- [ ] **Status:** open. Found by T-F497's closing review, 2026-11-11.
+  1. `ZipEntryWriter.DisposeAsync` lets a central-directory, flush or close failure escape before
+     `_output.DisposeAsync()`, so the temp file's handle (`FileShare.None`) stays open and the
+     caller's best-effort delete fails; the next run sweeps it. The archive is not committed (the
+     per-source catch), so no data is at risk. Close the output in a `finally`, with a test that a
+     disposal failure commits nothing and leaves no temp file. Predates T-F497 (single archive too).
+  2. Tests one archive per item lacks on the hand-rolled path (Fastest, a password): a read failing
+     on the chunk path (> 1 MiB) and on the stored-from-source path; a run cancelled midway
+     leaves no `.pakko-*` file or folder and no final `.zip` for the cancelled archives; folders get
+     `workersPerFolder` and files one worker (today only the pure function is tested); the run's
+     `LargeFileGate` actually reaches each archive (the writer honouring it is tested).
+- **Reported by:** the agent (T-F497's reviewer), 2026-11-11.
+
 ### T-F498 - A page-fault litmus test for every Core operation: where Pakko re-creates what it could keep (P3, v1.11.0 stream N, research)
 
 - [ ] **Status:** open. The user, 2026-11-11, after T-F318 and T-F497: put counters on the whole

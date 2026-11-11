@@ -1042,6 +1042,7 @@ internal static class ParallelSingleArchiveWriter
     // Returns the entries written (T-F497: the caller commits without reopening the zip).
     // settings.Deflaters (T-F497): a pool the caller owns and shares across archives of one run,
     // never disposed here, refused when its level is not settings.Level; null builds one per call.
+    // settings.LargeFileGate (T-F497): likewise the run's one-large-file-at-a-time gate (T-F359).
     public static Task<int> WriteAsync(
         string tempPath, IReadOnlyList<string> sortedSourcePaths, CompressionSettings settings,
         long totalBytes, ReportCallbacks callbacks,

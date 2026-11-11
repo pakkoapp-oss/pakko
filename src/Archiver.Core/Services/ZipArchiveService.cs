@@ -454,14 +454,18 @@ public sealed class ZipArchiveService : IArchiveService
         int degreeOfParallelism = threadBudget;
         int workersPerFolder = 0;
         // T-F497: one set of deflaters for every archive of the run, not one per archive (T-F318's
-        // page-fault storm, with many small archives written side by side).
-        using var deflaters = new Zip.DeflateEncoderPool(settings.Level);
+        // page-fault storm, with many small archives written side by side), and one gate for T-F359's
+        // one large file at a time. An undefined level gets no shared pool: each archive's writer
+        // then reports it as that source's error, inside its catch, as before.
+        using Zip.DeflateEncoderPool? deflaters = settings.RequiresHandRolledWriter && Enum.IsDefined(settings.Level)
+            ? new Zip.DeflateEncoderPool(settings.Level) : null;
+        using SemaphoreSlim? largeFileGate = settings.OneLargeFileAtATime ? new SemaphoreSlim(1, 1) : null;
         if (settings.RequiresHandRolledWriter)
         {
-            settings = settings with { Deflaters = deflaters };
+            settings = settings with { Deflaters = deflaters, LargeFileGate = largeFileGate };
             var written = plans.Where(p => p.DestPath is not null).ToList();
             (degreeOfParallelism, workersPerFolder) = HandRolledSeparateParallelism(
-                threadBudget, written.Count, written.Count(p => Directory.Exists(p.SourcePath)));
+                threadBudget, written.Count, written.Count(p => Directory.Exists(p.SourcePath)), budgetIsALimit: options.MaxThreads > 0);
         }
 
         await Parallel.ForEachAsync(
@@ -581,12 +585,15 @@ public sealed class ZipArchiveService : IArchiveService
     // archives written at once and the workers inside each. Dividing by the window alone left
     // thousands of one-file archives to one thread at a time; now as many archives as the budget
     // allows run at once. A file's archive has one entry, so one worker; the folders share the
-    // budget (two on 12 cores: 6 each; one beside many files keeps all 12, as before).
-    internal static (int Archives, int WorkersPerFolder) HandRolledSeparateParallelism(int threadBudget, int archiveCount, int folderCount)
+    // budget (two on 12 cores: 6 each; one beside many files keeps all 12, as before). With -mmt the
+    // budget is the user's limit: the folders get only the workers the archives leave over.
+    internal static (int Archives, int WorkersPerFolder) HandRolledSeparateParallelism(int threadBudget, int archiveCount, int folderCount, bool budgetIsALimit)
     {
         int budget = Math.Max(1, threadBudget);
         int archives = Math.Clamp(archiveCount, 1, budget);
-        return (archives, Math.Max(1, budget / Math.Clamp(folderCount, 1, budget)));
+        int folders = Math.Clamp(folderCount, 1, budget);
+        int workersPerFolder = budgetIsALimit ? 1 + (budget - archives) / folders : budget / folders;
+        return (archives, Math.Max(1, workersPerFolder));
     }
 
     private static async Task ArchiveSingleSeparatePathAsync(
