@@ -61,7 +61,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | Stream | Tasks | Area | Gate |
 |---|---|---|---|
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
-| N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grows with every small entry: P1, fixed in this wave), then T-F498 (a page-fault litmus run over every Core operation; research, fixes as their own tasks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
+| N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (a page-fault litmus run over every Core operation; research, fixes as their own tasks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
 | B bugs from v1.10.0 | T-F475 (P2, a Core throw), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
@@ -1546,21 +1546,6 @@ re-measured with T-F346's script before and after.
   Before code: plan mode + advisor (irreversible writes from untrusted input), tests of every guard
   seen red first, a `docs/SMOKE.md` row, and the trade-off in `SECURITY.md` (the user's OK for that edit: 2026-11-11, "Дозвіл даю"). The answer for an archive that must come back whole stays PAR2 (`pakko r`).
 - **Reported by:** the user, 2026-11-11.
-
-### T-F501 - The parallel ZIP writer holds every small entry's compressed bytes until the run ends (P1, from T-F498)
-
-- [ ] **Status:** open. Found 2026-11-11 by T-F498's complexity pass (haiku sweep, confirmed by
-  reading and measuring). `ParallelSingleArchiveWriter.RunPipelineAsync` keeps every dispatched
-  `Task<WorkResult>` in `dispatchedTasks` until its `finally`, and a finished task's result holds
-  the entry's `CompressedBytes` (every file up to 1 MiB). Peak memory therefore grows with the sum
-  of all small entries, not with the window: 500 files of 900 KB (439 MiB) peak at 827 MiB managed,
-  2,000 (1.76 GB) at 2.5 GB, Fastest and Optimal alike. A folder of 20,000 photos of 900 KB would
-  need about 25 GB: out of memory on most machines, the whole archive lost.
-  Fix: release each result once the consumer wrote it (the `finally` still needs the tasks not yet
-  consumed, for T-F357's sources and the temp-file sweep), with a test that peak managed memory
-  stays near the window's worth on a few hundred incompressible files, red first. Then the
-  memprobe numbers again, in `docs/DECISIONS.md`.
-- **Reported by:** the agent (T-F498), 2026-11-11.
 
 ### T-F500 - The hand-rolled writer's failure paths in one archive per item: a disposal failure and the untested shapes (P3, from T-F497's review)
 

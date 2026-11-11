@@ -14715,6 +14715,36 @@ baseline goes from 1.18 to 0.96. #134700's own benchmark on .NET 11.0.0 GA, dop 
 against 147-148 ms) - the regression is still in 11.0.0 for `DeflateStream`. The numbers go
 upstream in a comment only after the user reads its text.
 
+## T-F501 - the parallel writer kept every small entry's bytes until the run ended (2026-11-11)
+
+**Found** by T-F498's complexity pass (a haiku sweep of Core's ZIP path, row "dispatchedTasks keeps
+every Task<WorkResult>"), confirmed by reading and measuring. `RunPipelineAsync` tracked every
+dispatched compression in a `ConcurrentBag` so its `finally` could wait for stragglers before sweeping
+temp files (the race that bag was added for). A finished task's result holds the entry's
+`CompressedBytes`, so every entry up to 1 MiB stayed reachable until the run ended: memory grew with
+the sum of all small files, not with the window. Present since the in-memory path existed; T-F318
+and T-F497 did not change it.
+
+**Fix.** The set holds only tasks not yet written: the consumer removes a task once its result is in
+the archive. A written task has finished, so the `finally` still waits for every task that could
+touch a temp file, and still releases the sources of tasks never copied (T-F357).
+
+**Measured** (scratch `memprobe`, Release, files of 900 KB of random bytes, one archive):
+
+| Run | Before: peak managed / working set | After |
+|---|---|---|
+| 500 files (439 MiB), Fastest | 827 MiB / 862 MiB | 116 MiB / 198 MiB |
+| 2,000 files (1.76 GB), Fastest | 2.49 GB / 2.59 GB, 7.5 s | 165 MiB / 205 MiB, 4.7 s |
+| 2,000 files (1.76 GB), Optimal | 2.48 GB / 2.57 GB | 89 MiB / 172 MiB |
+
+A folder of 20,000 photos of 900 KB would have needed about 25 GB.
+
+**Test.** `RunPipelineAsync_EntriesAlreadyWritten_AreNotKeptAliveByTheRun`: 60 entries through a
+window of 4; while compressing entry i, the bytes of entry i - 16 must be collectable. 44 of 44 were
+alive before the fix (and on the mutant without the removal). At most two may stay: the output
+`FileStream` (a 4 KiB buffer) keeps the last array it wrote from directly, a constant: one array, at
+entry 13 or 14, in each of three diagnostic runs.
+
 ## T-F497 measured - one archive per item, 2,000 small files (2026-11-11)
 
 **Scenario.** The App's "Separate archives" mode (`ArchiveMode.SeparateArchives`; Explorer's "Add to
