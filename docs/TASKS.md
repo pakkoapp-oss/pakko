@@ -1547,6 +1547,20 @@ re-measured with T-F346's script before and after.
   seen red first, a `docs/SMOKE.md` row, and the trade-off in `SECURITY.md` (the user's OK for that edit: 2026-11-11, "Дозвіл даю"). The answer for an archive that must come back whole stays PAR2 (`pakko r`).
 - **Reported by:** the user, 2026-11-11.
 
+### T-F497 - One archive per item for many small files: ~6 ms an archive, and the deflate fault storm (P3, from T-F318)
+
+- [ ] **Status:** open, measured 2026-11-11 (T-F318's harness over `ZipArchiveService`, Release, 12
+  logical cores): `ArchiveMode.SeparateArchives` of 2,000 files of 1-10 KB takes 11.6-13.3 s, about
+  6 ms an archive, with 38-40 k page faults (about 20 an archive, #134700's storm: each source gets
+  its own `ZipArchive` and so its own `DeflateStream`, at a degree of parallelism of the core count).
+  The storm is a small part of the time (deflating 2,000 such files takes well under a second even
+  with it); the rest is per archive: conflict planning, the temp file, the commit, Defender on each
+  new `.zip`. Next: profile one archive's path (as T-F481 does for extraction), then decide whether
+  single-file sources go through `ZipEntryWriter` with one `DeflateEncoderPool` for the whole run
+  (it already writes the `Fastest` and password cases), measured against today.
+- **Reported by:** the agent, answering the user's question whether the storm is anywhere else,
+  2026-11-11.
+
 ### T-F491 - Hash/ManyFilesAndFolders sometimes runs 7x slower after the project's other tests (P3)
 
 - [ ] **Status:** open. Found 2026-11-10 by the v1.10.0 release smoke (`REL-001`). In a run of the whole
