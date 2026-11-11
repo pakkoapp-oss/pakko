@@ -1586,6 +1586,21 @@ re-measured with T-F346's script before and after.
      faults-per-entry against the operation's own floor with a generous margin (ratios are machine
      independent where absolute counts and times are not; the canary leaves timing out for the same
      reason, T-F491). Kept only if it proves stable across five runs and the canary's runners.
+  5. **A complexity pass over the whole code, beside the counters** (the user, 2026-11-11): the
+     algorithmic (time) and memory complexity of every loop over input-sized data, and whether each
+     is adequate where it sits.
+     - **Sweep, `haiku` subagents, one per area** (Core/Zip, extraction, tar and the sandbox, PAR2,
+       hashing, App.Core, Shell, CLI): a table of `path:line`, the shape (a loop inside a loop, LINQ
+       or `List.Contains`/`IndexOf` inside a loop, recursion, a per-item allocation, a buffer that
+       grows with the input, a whole file read into memory), a rough O() in time and memory, and
+       the N it grows with (entries, files, bytes, path depth). Extraction only, no verdicts; the
+       report is data: spot-check its lines.
+     - **Verdict, the agent or a `sonnet` subagent:** for each candidate the realistic N (2,000
+       files to select, 65,535+ entries in a ZIP64, a 4 GiB file, a path 32 k long), whether the
+       path is hot, and whether something bounds it. Adequate stays as it is, with one line why.
+     - **Measured before fixed:** a candidate becomes a fix task only when the counters of items 1-2
+       (or a scaling run at 10x N) confirm it, as T-F497's quadratic sweep was confirmed; the rest is
+       a note in "T-F498 measured".
   Results in `docs/DECISIONS.md`, "T-F498 measured". Known so far: the parallel writer's deflate
   states (T-F318, fixed: 28-70 k -> 3.7-5.7 k faults for 5,000 files), one archive per item
   (T-F497: folder listing per archive, a second open of each new zip).
