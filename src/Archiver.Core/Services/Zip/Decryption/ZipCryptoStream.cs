@@ -1,3 +1,5 @@
+using Archiver.Core.IO;
+
 namespace Archiver.Core.Services.Zip.Decryption;
 
 /// <summary>
@@ -10,7 +12,6 @@ namespace Archiver.Core.Services.Zip.Decryption;
 internal sealed class ZipCryptoStream : Stream
 {
     public const int EncryptionHeaderLength = 12;
-    private static readonly uint[] Table = BuildTable();
 
     private readonly Stream _ciphertext;
     private uint _key0;
@@ -68,9 +69,9 @@ internal sealed class ZipCryptoStream : Stream
 
     private static void UpdateKeys(byte plainByte, ref uint key0, ref uint key1, ref uint key2)
     {
-        key0 = Crc32Step(key0, plainByte);
+        key0 = Crc32.UpdateByte(key0, plainByte);
         key1 = unchecked((key1 + (key0 & 0xFF)) * 134775813 + 1);
-        key2 = Crc32Step(key2, (byte)(key1 >> 24));
+        key2 = Crc32.UpdateByte(key2, (byte)(key1 >> 24));
     }
 
     private static byte DecryptByte(byte cipherByte, ref uint key0, ref uint key1, ref uint key2)
@@ -80,21 +81,6 @@ internal sealed class ZipCryptoStream : Stream
         byte plainByte = (byte)(cipherByte ^ keystreamByte);
         UpdateKeys(plainByte, ref key0, ref key1, ref key2);
         return plainByte;
-    }
-
-    private static uint Crc32Step(uint crc, byte b) => (crc >> 8) ^ Table[(crc ^ b) & 0xFF];
-
-    private static uint[] BuildTable()
-    {
-        uint[] table = new uint[256];
-        for (uint i = 0; i < 256; i++)
-        {
-            uint c = i;
-            for (int k = 0; k < 8; k++)
-                c = (c & 1) != 0 ? 0xEDB88320 ^ (c >> 1) : c >> 1;
-            table[i] = c;
-        }
-        return table;
     }
 
     public override bool CanRead => true;

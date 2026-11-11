@@ -129,7 +129,7 @@ jobs:
       - name: Install dotnet-sonarscanner
         if: (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor != 'dependabot[bot]'
         shell: pwsh
-        run: dotnet tool update dotnet-sonarscanner --tool-path .\.sonar\scanner
+        run: dotnet tool update dotnet-sonarscanner --version 12.0.0 --tool-path .\.sonar\scanner
 
       - name: Begin SonarCloud analysis
         if: (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor != 'dependabot[bot]'
@@ -240,13 +240,14 @@ jobs:
       - name: Ensure PSScriptAnalyzer is available
         shell: pwsh
         run: |
-          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) {
-            Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -SkipPublisherCheck
+          if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer | Where-Object Version -eq '1.25.0')) {
+            Install-Module -Name PSScriptAnalyzer -RequiredVersion 1.25.0 -Force -Scope CurrentUser -SkipPublisherCheck
           }
 
       - name: Run PSScriptAnalyzer against scripts/*.ps1
         shell: pwsh
         run: |
+          Import-Module PSScriptAnalyzer -RequiredVersion 1.25.0
           $results = Invoke-ScriptAnalyzer -Path scripts -Recurse -Settings scripts\PSScriptAnalyzerSettings.psd1
           if ($results.Count -gt 0) {
             $results | Format-Table -AutoSize | Out-String | Write-Output
