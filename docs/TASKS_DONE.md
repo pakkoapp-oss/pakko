@@ -14496,3 +14496,19 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   proven to hold package identity.
 - **Reported by:** the user, 2026-11-07.
 - **Graduated 2026-11-11:** released in v1.10.0; the packaged launch, `CLI-050`, `CLI-051` and `APP-037` passed on the host and PakkoW10 (`docs/DECISIONS.md`, "v1.10.0 - the release record"). The one open item, ARM64's `archiveint.dll`, moved to T-F494.
+
+---
+
+## v1.11.0 wave (planned 2026-11-11)
+
+### T-F495 - Housekeeping after v1.10.0: an unexplained package, unpinned CI tools, a second CRC table (P3, v1.11.0 stream H)
+
+- [x] **Status:** done. Found by the 2026-11-11 inventory: `System.Security.Permissions` 8.0.0 in
+  `Archiver.App.csproj`, added with the first shell-extension commit (1411699e) with no recorded
+  reason: remove it if the build and the AOT publish stay green; `dotnet-sonarscanner` and
+  `PSScriptAnalyzer` installed without a version in `build.yml`: pin them; `ZipCryptoStream` builds
+  its own CRC-32 table beside `Crc32`'s: one table; `Microsoft.Extensions.DependencyInjection`
+  10.0.3: current (with T-F492, the .NET 11 one). FluentAssertions stays on 7.x (8.x is under a
+  commercial licence).
+- **Reported by:** the agent, 2026-11-11.
+- **Graduated 2026-11-11:** `System.Security.Permissions` removed (no user in the code; build, quick tier and the AOT publish for x64 and arm64 green without it); `dotnet-sonarscanner` pinned to 12.0.0 (12.1.0 was under a week old), `PSScriptAnalyzer` installed and imported at 1.25.0; `ZipCryptoStream` steps through `Crc32.UpdateByte`; DI 10.0.15 (the .NET 11 one comes with T-F492).
