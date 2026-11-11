@@ -115,7 +115,7 @@ internal sealed unsafe partial class TrayProgressRenderer : IDisposable
             return null;
         try
         {
-            var pixels = new uint[size * size];
+            uint[] pixels = new uint[size * size];
             BitmapInfoHeader header = TopDown32(size);
             IntPtr screen = GetDC(IntPtr.Zero);
             try

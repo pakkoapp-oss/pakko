@@ -13,9 +13,9 @@ insert_final_newline = true
 csharp_style_namespace_declarations = file_scoped:error
 
 # var preferences
-csharp_style_var_for_built_in_types = false:suggestion
-csharp_style_var_when_type_is_apparent = true:suggestion
-csharp_style_var_elsewhere = false:suggestion
+csharp_style_var_for_built_in_types = false:warning
+csharp_style_var_when_type_is_apparent = true:warning
+csharp_style_var_elsewhere = false:warning
 
 # Expression-bodied members
 csharp_style_expression_bodied_methods = false:silent
