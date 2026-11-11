@@ -14684,3 +14684,18 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   - **Result:** 20,000 sources against 20,000 outputs take 1 s instead of 9 s (the old code's
     test timed out).
   - **Not measured:** the end-to-end gain could not be read with Defender's real-time protection on.
+
+### T-F503 - One archive per item at Optimal builds a DeflateStream per archive (P3, from T-F498)
+
+- [x] **Status:** done 2026-11-11. Without a password, Optimal goes through `ZipArchive`: 21.7 page faults
+  per entry against 4.15 for Fastest (the hand-rolled writer with T-F497's shared pool), the
+  #134700 storm; time is about the same. Measure whether routing single-file sources of this mode
+  through the hand-rolled writer with the run's pool keeps the bytes (T-F31) and the speed.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
+- **Graduated 2026-11-11** (`docs/DECISIONS.md`, "T-F503"):
+  - **Change:** one archive per item at Optimal and SmallestSize takes the hand-rolled writer with
+    the run's shared deflaters.
+  - **Result:** page faults 49k -> 4.7k for 2,000 archives and 242k -> 12.4k for 20,000, now
+    Fastest's level.
+  - **Time:** unchanged under Defender.
+  - **Visible change:** an entry Deflate grew is stored.

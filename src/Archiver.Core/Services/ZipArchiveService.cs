@@ -443,7 +443,12 @@ public sealed class ZipArchiveService : IArchiveService
             ReadFilesOpenForWriting = options.ReadFilesOpenForWriting,
             StopOnUnreadableSource = options.StopOnUnreadableSource,
         };
-        if (settings.RequiresHandRolledWriter)
+        // T-F503: Optimal and SmallestSize too - ZipArchive builds a DeflateStream per archive, which
+        // with many small archives side by side is T-F318's page-fault storm; the hand-rolled writer
+        // shares the run's deflaters. Stored archives keep ZipArchive: they deflate nothing.
+        bool handRolled = settings.RequiresHandRolledWriter
+            || settings.Level is CompressionLevel.Optimal or CompressionLevel.SmallestSize;
+        if (handRolled)
         {
             settings = settings with
             {
@@ -457,10 +462,10 @@ public sealed class ZipArchiveService : IArchiveService
         // page-fault storm, with many small archives written side by side), and one gate for T-F359's
         // one large file at a time. An undefined level gets no shared pool: each archive's writer
         // then reports it as that source's error, inside its catch, as before.
-        using Zip.DeflateEncoderPool? deflaters = settings.RequiresHandRolledWriter && Enum.IsDefined(settings.Level)
+        using Zip.DeflateEncoderPool? deflaters = handRolled && Enum.IsDefined(settings.Level)
             ? new Zip.DeflateEncoderPool(settings.Level) : null;
         using SemaphoreSlim? largeFileGate = settings.OneLargeFileAtATime ? new SemaphoreSlim(1, 1) : null;
-        if (settings.RequiresHandRolledWriter)
+        if (handRolled)
         {
             settings = settings with { Deflaters = deflaters, LargeFileGate = largeFileGate };
             var written = plans.Where(p => p.DestPath is not null).ToList();
@@ -633,7 +638,7 @@ public sealed class ZipArchiveService : IArchiveService
         try
         {
             ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, [sourcePath]);
-            if (settings.RequiresHandRolledWriter && (Directory.Exists(sourcePath) || File.Exists(sourcePath)))
+            if ((settings.RequiresHandRolledWriter || settings.Deflaters is not null) && (Directory.Exists(sourcePath) || File.Exists(sourcePath)))
             {
                 // T-F193/T-F299: the only writer that can encrypt or store an entry Deflate grew. A
                 // one-source "single archive" of its own; WorkItemEnumerator names the entries
