@@ -269,7 +269,7 @@ size in PKG-001). The factors were set from a measured run (`docs/DECISIONS.md`,
 |---|---|---|---|---|---|---|
 | PRF-001 | quick | script | dev | `pakko a -rr5 -mx=0` on 200 MB against `par2 create -r5` on the same file | Under twice par2cmdline's time | `cli:-rr` T-F375 |
 | PRF-002 | quick | script | dev | `pakko r` of 8 MiB of damage in 200 MB against `par2 repair` | Under three times par2cmdline's time (it patches in place; Pakko writes and checks a second file) | `cli:r` T-F375 |
-| PRF-003 | quick | script | dev | `pakko a` and `pakko x` on 6000 files of 16 KiB against the vendored `7za` | Under three times 7-Zip's time for each | `cli:a` `cli:x` T-F114 |
+| PRF-003 | quick | script | dev | `pakko a` and `pakko x` on 6000 files of 16 KiB against the vendored `7za` | Under three times 7-Zip's time for each | `cli:a` `cli:x` T-F114 T-F318 |
 | PRF-004 | quick | script | dev | `scripts/Measure-Startup.ps1 -Scenario App` on the installed App | The window is visible within a second of the start (median of three) | T-F347 |
 | PRF-005 | quick | script | dev | `pakko l` and `pakko t` on a ZIP of 6000 entries against `7za l` and `7za t` | Under twice 7-Zip's time | `cli:l` `cli:t` T-F237 |
 
