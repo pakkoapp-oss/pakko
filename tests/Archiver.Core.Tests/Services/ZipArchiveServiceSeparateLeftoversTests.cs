@@ -24,7 +24,7 @@ public sealed class ZipArchiveServiceSeparateLeftoversTests : IDisposable
 
     private string[] Sources(int count)
     {
-        var paths = new string[count];
+        string[] paths = new string[count];
         for (int i = 0; i < count; i++)
         {
             paths[i] = Path.Combine(_dir, $"s{i:D3}.txt");

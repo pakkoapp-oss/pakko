@@ -1025,7 +1025,8 @@ internal static class ZipEntryCompressor
 }
 
 // DeflateEncoderPool.cs — T-F318: the deflaters of one parallel run (Rent/Return, disposed with
-// the run); never more than the run's window, since the compute gate bounds concurrency.
+// the run); at most the windows of the archives sharing it, since each archive's compute gate
+// bounds concurrency.
 // Each deflater scrubs its window between entries, since Reset() alone is not a fresh encoder
 // (T-F499). One archive per item shares one pool across the run's archives (T-F497).
 internal sealed class DeflateEncoderPool : IDisposable

@@ -14717,8 +14717,8 @@ upstream in a comment only after the user reads its text.
 
 ## T-F497 measured - one archive per item, 2,000 small files (2026-11-11)
 
-**Scenario.** Explorer's "Add to X.zip" on each of 2,000 files of 1-10 KB: `ArchiveMode.SeparateArchives`,
-the archives beside their sources (so the destination folder grows to 4,000 files). T-F318's harness
+**Scenario.** The App's "Separate archives" mode (`ArchiveMode.SeparateArchives`; Explorer's "Add to
+X.zip" writes one archive) on 2,000 files of 1-10 KB, the archives beside their sources (so the destination folder grows to 4,000 files). T-F318's harness
 over `ZipArchiveService`, Release, 12 logical cores, median of three or five. The bare file system
 (create, write, rename on 12 threads) takes 2.2 s for the same 2,000 files.
 
@@ -14741,7 +14741,9 @@ writer, whose outer degree was `threadBudget / WindowCapacity` = 1: one archive 
 
 `NoCompression` follows `Optimal` (17.0 s before). Step 3 gives the outer level `min(budget,
 archives)` and each folder source `budget / min(folders, budget)` inner workers
-(`HandRolledSeparateParallelism`); a first version that gave every source one inner worker made a
+(`HandRolledSeparateParallelism`). The shared pool then holds up to the sum of the archives' windows
+written side by side (each `WriteAsync` has its own compute gate): files get one each and the folders
+share the budget, so at most twice the budget, 24 deflaters of about 330 KB on 12 cores; a first version that gave every source one inner worker made a
 folder of 60 mid-size files plus 100 files slower (0.79 -> 1.23 s); with the folder's share it is
 0.47 s, two folders 0.58 -> 0.49 s.
 

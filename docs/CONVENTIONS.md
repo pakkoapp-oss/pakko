@@ -14,7 +14,7 @@ AI agents must follow these rules in all generated code.
 | Nullable reference types | `enable` (all projects) |
 | Implicit usings | `enable` |
 | File-scoped namespaces | Required |
-| `var` | Only for `new SomeClass(...)` of a non-built-in type (IDE0007 wants `var` there). Everything else gets its explicit type: built-in types and their arrays even with `new` (`byte[][] files = new byte[n][];`), tuples, method results, `await`, LINQ (IDE0008). SonarCloud reports both on every PR; they kept costing fix-up commits (T-F463, T-F466, T-F467, T-F499) |
+| `var` | Only where the type is apparent and not built-in: `new SomeClass(...)`, a cast, or a static factory of the type itself (`var state = BrowseLocationState.For(...)`) - IDE0007 wants `var` there. Everything else gets its explicit type: built-in types and their arrays even with `new` (`byte[][] files = new byte[n][];`), tuples, other method results, `await`, LINQ (IDE0008). SonarCloud reports both on every PR; they kept costing fix-up commits (T-F463, T-F466, T-F467, T-F499) |
 | String interpolation | Prefer over `string.Format` |
 | `record` vs `class` | Use `record` for data-only types (models, options) |
 | `sealed` | Apply to all classes not designed for inheritance |
