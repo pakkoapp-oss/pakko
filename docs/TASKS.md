@@ -61,7 +61,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | Stream | Tasks | Area | Gate |
 |---|---|---|---|
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
-| N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files: profile first, then the same pool if it pays; in this wave, the user, 2026-11-11) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
+| N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files: profile first, then the same pool if it pays; in this wave, the user, 2026-11-11), then T-F498 (a page-fault litmus run over every Core operation; research, fixes as their own tasks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
 | B bugs from v1.10.0 | T-F475 (P2, a Core throw), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
@@ -1561,6 +1561,35 @@ re-measured with T-F346's script before and after.
 - **Reported by:** the agent, answering the user's question whether the storm is anywhere else,
   2026-11-11.
 - **Scheduled (2026-11-11):** v1.11.0 stream N, after T-F318 (the user: "497 в цій хвилі").
+
+### T-F498 - A page-fault litmus test for every Core operation: where Pakko re-creates what it could keep (P3, v1.11.0 stream N, research)
+
+- [ ] **Status:** open. The user, 2026-11-11, after T-F318 and T-F497: put counters on the whole
+  code and see where page faults (and the work behind them) can be cut or removed - a litmus
+  paper, relative values first, absolute ones too.
+  1. **Harness, not a timing test.** A console project under `tests/` (or a Slow-tagged test
+     class) that runs each public Core operation on fixed fixtures and reads the process's
+     `PageFaultCount` (`GetProcessMemoryInfo`), with GC allocations
+     (`GC.GetTotalAllocatedBytes`), handle count and wall time beside it: ZIP archive (single,
+     separate, each level, password), extract, test, list, preview, hash (CRC-32, SHA-256), PAR2
+     create/verify/repair, the AMSI scan, bare gzip, and the tar family through the archive helper
+     and `tar.exe` (the child's faults through its own handle). Each in two shapes: many small
+     items and one large one.
+  2. **Relative numbers decide.** Per entry and per MiB of input, each against a reference the same
+     run measures: a plain read of the same files and a plain write of the same bytes (the floor
+     the file system costs). An operation far above its floor is a finding; the absolute counts go
+     beside them for the record.
+  3. **Then a profile per finding** (`dotnet-trace`, as T-F497 did) to name the object or call that
+     is re-created per item (a native state, a buffer, a handle, a listing, a second open), and a
+     task per fix with its own before/after.
+  4. **The litmus paper that stays:** once the numbers are known, a Slow-tagged check of
+     faults-per-entry against the operation's own floor with a generous margin (ratios are machine
+     independent where absolute counts and times are not; the canary leaves timing out for the same
+     reason, T-F491). Kept only if it proves stable across five runs and the canary's runners.
+  Results in `docs/DECISIONS.md`, "T-F498 measured". Known so far: the parallel writer's deflate
+  states (T-F318, fixed: 28-70 k -> 3.7-5.7 k faults for 5,000 files), one archive per item
+  (T-F497: folder listing per archive, a second open of each new zip).
+- **Reported by:** the user, 2026-11-11.
 
 ### T-F491 - Hash/ManyFilesAndFolders sometimes runs 7x slower after the project's other tests (P3)
 
