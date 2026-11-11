@@ -14595,3 +14595,21 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   while writing; ancestor identities are cached; the hand-rolled writer runs archives side by side
   and shares one deflater pool. Byte-identical to `main`; a run killed mid-way leaves only valid
   archives and owner-tagged temp files, which the next run sweeps before finishing the rest.
+
+### T-F501 - The parallel ZIP writer holds every small entry's compressed bytes until the run ends (P1, from T-F498)
+
+- [x] **Status:** done 2026-11-11. Found 2026-11-11 by T-F498's complexity pass (haiku sweep, confirmed by
+  reading and measuring). `ParallelSingleArchiveWriter.RunPipelineAsync` keeps every dispatched
+  `Task<WorkResult>` in `dispatchedTasks` until its `finally`, and a finished task's result holds
+  the entry's `CompressedBytes` (every file up to 1 MiB). Peak memory therefore grows with the sum
+  of all small entries, not with the window: 500 files of 900 KB (439 MiB) peak at 827 MiB managed,
+  2,000 (1.76 GB) at 2.5 GB, Fastest and Optimal alike. A folder of 20,000 photos of 900 KB would
+  need about 25 GB: out of memory on most machines, the whole archive lost.
+  Fix: release each result once the consumer wrote it (the `finally` still needs the tasks not yet
+  consumed, for T-F357's sources and the temp-file sweep), with a test that peak managed memory
+  stays near the window's worth on a few hundred incompressible files, red first. Then the
+  memprobe numbers again, in `docs/DECISIONS.md`.
+- **Reported by:** the agent (T-F498), 2026-11-11.
+- **Graduated 2026-11-11** (`docs/DECISIONS.md`, "T-F501"): the pipeline tracks only tasks not yet
+  written; 2,000 files of 900 KB peak at 165 MiB managed instead of 2.5 GB (Fastest also 7.5 -> 4.7 s).
+  Regression test red first (44 of 44 entries kept alive).
