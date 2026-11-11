@@ -360,4 +360,21 @@ public sealed class ZipArchiveServiceWriterChoiceTests : IDisposable
     {
         public void Report(ProgressReport value) => onReport(value);
     }
+
+    // T-F497: one archive per item through the hand-rolled writer (Fastest, a password) used to
+    // divide the budget by the window - one archive at a time on any machine up to 16 cores.
+    [Theory]
+    [InlineData(12, 2000, 0, 12, 12)]   // thousands of files: twelve archives at once
+    [InlineData(12, 2, 2, 2, 6)]        // two folders share the budget
+    [InlineData(12, 1, 1, 1, 12)]       // one folder: as before
+    [InlineData(12, 101, 1, 12, 12)]    // a folder beside 100 files keeps all twelve
+    [InlineData(1, 50, 3, 1, 1)]        // -mmt1
+    [InlineData(32, 3, 3, 3, 10)]
+    [InlineData(12, 0, 0, 1, 12)]
+    public void HandRolledSeparateParallelism_SplitsTheBudgetBetweenArchivesAndFolders(
+        int budget, int archives, int folders, int expectedArchives, int expectedWorkersPerFolder)
+    {
+        ZipArchiveService.HandRolledSeparateParallelism(budget, archives, folders)
+            .Should().Be((expectedArchives, expectedWorkersPerFolder));
+    }
 }
