@@ -15303,6 +15303,45 @@ reaches it:
   archive held. It now requires the refusal, and both files stay.
 - `SMOKE.md` `CLI-054`.
 
+## T-F507 - tar.exe and the helper start with no console (2026-11-12)
+
+**Which processes a tar operation starts.** A launch log over a debug build (stack per
+`SandboxedProcessLauncher.RunAsync`, 2,000 files, tar.gz) gives three `tar.exe` per extraction and per
+test: `-t` for the exact names, `-tv` for the entry types and sizes, then `-x` or `-x -O`. A listing
+starts two (`-t`, `-tv`), creation one, and `--version` runs once per process (cached). The two
+listing passes are deliberate: `-tv` cannot give names exactly (T-F418, T-F90). The litmus run counted
+twice that many processes (6, 6, 4, 2) because each launch also had a hidden `conhost.exe`.
+`CREATE_NO_WINDOW` gives a console without a window. The console host is started for the parent
+and counted in Pakko's own job; the sandbox job's one-process limit never sees it.
+
+**Fix.** `DETACHED_PROCESS` instead of `CREATE_NO_WINDOW`: the child has no console at all. Its
+standard handles are the launcher's pipes from `STARTUPINFO` either way. One difference is visible:
+the console code page. With a hidden console, tar.exe's `GetConsoleCP` was 866 here (OEM). Detached
+it has none. bsdtar converts names through the C runtime's locale (the ANSI page), not the console's,
+and Pakko decodes its output by the machine's pages (`TextBoundaries`). Checked rather than assumed:
+- **This machine** (build 26300, bsdtar 3.8.9, ACP 1251): the whole quick tier passes with the change,
+  including `TarListingModelTests` (every character of the header page against the real tar.exe), the
+  name, selection and code-page tests, and the helper's protocol tests.
+- **PakkoW10** (19045, bsdtar 3.5.2, ACP 1252): Native AOT `pakko` from `main` and from this branch,
+  `l`, `t` and `x` of a tar and a tar.gz written by that tar.exe. The names were Latin, Cyrillic,
+  `cafe` with an accent, Greek, Japanese, an emoji and a space. Exit codes, listing, test and
+  extraction output, and the extracted names and contents are identical between the two builds. The
+  names outside 1252 are lost the same way in both: 3.5.2's own `?` (T-F416).
+
+**Test.** `SandboxNoConsoleTests`:
+- `cmd /c mode con` started through the launcher prints nothing, because there is no console device.
+  With the hidden console it printed the device status. Seen red.
+- `echo` to stdout and stderr still arrives through the pipes.
+
+**Measured** (litmus, 2,000 files, three runs; the same build switched by an environment variable):
+
+| operation | processes | children's faults | ms |
+|---|---|---|---|
+| targz-list | 4 -> 2 | 7,668 -> 3,359 | 194 -> 163 |
+| targz-test | 6 -> 3 | 11,486 -> 5,016 | 334 -> 280 |
+| targz-extract | 6 -> 3 | 11,501 -> 5,033 | 4,390 -> 4,511 (noise; the writing dominates) |
+| targz-create | 2 -> 1 | 3,816 -> 1,703 | 597 -> 569 |
+
 ## T-F503 - one archive per item at Optimal takes the hand-rolled writer (2026-11-11)
 
 **Cause.** Without a password, one archive per item at Optimal or SmallestSize went through
