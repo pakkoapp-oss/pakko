@@ -17,19 +17,19 @@ namespace Archiver.Core.Tests.Services.Antivirus;
 // parameter type in CreateService's signature below, which file-local types cannot be (CS9051).
 internal sealed class FakeAmsiScanner : IAmsiScanner
 {
-    public HashSet<string> DetectedContentNames { get; } = new(StringComparer.Ordinal);
+    public HashSet<string> DetectedContentNames { get; } = [with(StringComparer.Ordinal)];
     public List<(string ContentName, int Length)> Calls { get; } = [];
 
     // T-F194: the exact bytes handed to AMSI — name+length alone would pass for same-length
     // garbage from a wrong-but-accepted ZipCrypto password, the exact bug class being guarded.
-    public Dictionary<string, byte[]> ScannedContent { get; } = new(StringComparer.Ordinal);
+    public Dictionary<string, byte[]> ScannedContent { get; } = [with(StringComparer.Ordinal)];
     public bool Disposed { get; private set; }
 
     // T-F247: entries whose scan fails the way a real AmsiScanBuffer failure surfaces.
-    public HashSet<string> FailingContentNames { get; } = new(StringComparer.Ordinal);
+    public HashSet<string> FailingContentNames { get; } = [with(StringComparer.Ordinal)];
 
     // T-F446: entries an administrator policy blocks, as AmsiScanner reports AMSI_RESULT_BLOCKED_BY_ADMIN.
-    public HashSet<string> BlockedContentNames { get; } = new(StringComparer.Ordinal);
+    public HashSet<string> BlockedContentNames { get; } = [with(StringComparer.Ordinal)];
 
     // T-F427: AMSI stops being ready after this many scans, as it did on the dev machine.
     public int? NotReadyAfterCalls { get; init; }
