@@ -74,7 +74,7 @@ the machine one at a time.
 **Not in this wave:** runtime async (preview), Zstandard (tar in-process is forbidden), the new
 `Process` APIs (no AppContainer), C# 15 features for their own sake, async ZIP APIs, the P4 tar.exe
 fallback tasks (T-F464, T-F469, T-F461, T-F453), T-F359, and the future items that are not fixes
-(T-F02, T-F10, T-F121, T-F127, T-F132, T-F144, T-F152).
+(T-F02, T-F10, T-F121, T-F127, T-F132, T-F144, T-F152), and T-F496 (keeping a damaged file).
 
 ---
 
@@ -1526,6 +1526,42 @@ re-measured with T-F346's script before and after.
   run as written (an elevated `testhost` held `Archiver.App.Core.Tests`' bin, so the release ran it
   project by project).
 - **Reported by:** the agent, 2026-11-11.
+
+### T-F496 - Keep a damaged file on request: what is left of an entry whose data or CRC-32 is bad (P3, user-requested, after v1.11.0)
+
+- [ ] **Status:** open, not before v1.11.0 ships. The user, 2026-11-11: an archive with one bad block
+  still holds data someone may need at any cost. Today a ZIP entry that fails its CRC-32 (T-F246),
+  runs longer than declared (T-F231) or has a damaged deflate stream fails alone, the other entries
+  are extracted, and its half-written file is deleted (`CopyEntryToDestinationAsync`, T-F230). .NET 11
+  checks the CRC too (T-F492); that changed the message's source, not the outcome. What a kept file
+  can hold: a CRC mismatch only - the whole decoded data (a flipped bit in a stored entry, or a bad
+  CRC field); a deflate stream broken midway - the bytes before the break (deflate does not
+  resynchronise after it); AES - the same, decryption is per block. A damaged central directory
+  stays out of reach: the BCL does not scan local headers, and a scanner of our own is not this task.
+  WinRAR has "Keep broken files", 7-Zip keeps them by default.
+  **Guards, each a test, so the option never becomes a hole in a later release:**
+  1. Off by default and per operation only: an explicit switch in the App's extract dialog and
+     `pakko x` (`-kb` or similar, checked against 7-Zip's switches first), never remembered as a
+     setting, never on for Explorer's one-click "Extract here". A Group Policy can forbid it.
+  2. A kept file is never mistaken for a good one: a suffix in its name (e.g. `name.damaged.ext`,
+     so no program opens it by its old association), the operation `Partial` with the reason per
+     entry, exit code 2 in the CLI, the log line.
+  3. Every other guard runs unchanged before and while the file is written: path traversal,
+     reserved names, ADS, reparse points, the compression-ratio and disk-space checks (a damaged
+     entry's declared size is untrusted; the bytes written stay capped by it, T-F231), Mark of the
+     Web on the kept file.
+  4. Only the decoded bytes: nothing is guessed, padded or zero-filled past the break.
+  5. Encrypted entries: a file is kept only if the password was verified (AES's HMAC failing on a
+     damaged block is the damage; a wrong password is not and keeps nothing). The decision is
+     recorded with T-F493's gate, since the BCL reader may hand out bytes before the HMAC.
+  6. Test, Hash, preview and the AMSI scan never use it: they report the damage as today.
+  7. tar, 7z, RAR and the read-only formats: first measure what the archive helper and `tar.exe`
+     leave on disk for a damaged entry today, on both tar builds (Win11 3.8.x and PakkoW10 3.5.2);
+     the same guards apply, or the option is ZIP-only and says so.
+  Before code: plan mode + advisor (irreversible writes from untrusted input), tests of every guard
+  seen red first, a `docs/SMOKE.md` row, and the trade-off in `SECURITY.md` with the user's separate
+  OK. The answer for an archive that must come back whole stays PAR2 (`pakko r`).
+- **Reported by:** the user, 2026-11-11.
 
 ### T-F491 - Hash/ManyFilesAndFolders sometimes runs 7x slower after the project's other tests (P3)
 
