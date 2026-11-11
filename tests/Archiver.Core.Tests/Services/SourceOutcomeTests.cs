@@ -363,6 +363,25 @@ public sealed class SourceOutcomeTests : IDisposable
         result.Single().Cause.Should().Be(cause);
     }
 
+    // T-F419: an output that exists but cannot be resolved may lie anywhere, so every existing
+    // source counts as holding it; one that resolves elsewhere holds none (T-F497 keeps both).
+    [Theory]
+    [InlineData(false, PartialCause.HoldsAnOutput)]
+    [InlineData(true, null)]
+    public void DowngradeSourcesContainingOutputs_AnOutputThatCannotBeResolved_KeepsEveryExistingSource(bool resolves, PartialCause? cause)
+    {
+        string source = _temp.CreateFile("source.txt", "s");
+        Directory.CreateDirectory(Path.Combine(_temp.Path, "elsewhere"));
+        string output = _temp.CreateFile(Path.Combine("elsewhere", "out.zip"), "zip");
+        SourceResult[] sources = [new SourceResult { Path = source, Outcome = SourceOutcome.Completed }];
+
+        IReadOnlyList<SourceResult> result = SourceOutcomeRules.DowngradeSourcesContainingOutputs(
+            sources, [output], (path, folders) => resolves ? Archiver.Core.IO.PathIdentity.SelfAndAncestors(path, folders) : null);
+
+        result.Single().Outcome.Should().Be(cause is null ? SourceOutcome.Completed : SourceOutcome.Partial);
+        result.Single().Cause.Should().Be(cause);
+    }
+
     [Fact]
     public async Task ArchiveAsync_SingleArchive_Clean_EverySourceCompleted()
     {
