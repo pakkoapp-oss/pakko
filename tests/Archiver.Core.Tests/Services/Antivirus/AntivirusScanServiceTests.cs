@@ -25,6 +25,9 @@ internal sealed class FakeAmsiScanner : IAmsiScanner
     public Dictionary<string, byte[]> ScannedContent { get; } = [with(StringComparer.Ordinal)];
     public bool Disposed { get; private set; }
 
+    // T-F506: the array itself, to see what the service does with it after the scan.
+    public Dictionary<string, byte[]> Buffers { get; } = [with(StringComparer.Ordinal)];
+
     // T-F247: entries whose scan fails the way a real AmsiScanBuffer failure surfaces.
     public HashSet<string> FailingContentNames { get; } = [with(StringComparer.Ordinal)];
 
@@ -44,6 +47,7 @@ internal sealed class FakeAmsiScanner : IAmsiScanner
             throw new InvalidOperationException("AmsiScanBuffer failed (HRESULT 0x80070015).");
         Calls.Add((contentName, length));
         ScannedContent[contentName] = buffer.AsSpan(0, length).ToArray();
+        Buffers[contentName] = buffer;
         if (BlockedContentNames.Contains(contentName))
             return (ThreatVerdict.Inconclusive, null);
         return DetectedContentNames.Contains(contentName)
@@ -98,6 +102,37 @@ public sealed class AntivirusScanServiceTests : IDisposable
         bool providerRegistered = true)
         => new(tarCapabilities ?? NoTarSupport, policy ?? new GroupPolicyOptions(), () => scanner,
             () => providerRegistered ? AmsiProviderState.Usable : AmsiProviderState.None);
+
+    // T-F506: the content handed to AMSI (the plaintext of an encrypted entry) does not stay in memory
+    // after its scan - the buffer is zeroed before it goes back.
+    [Fact]
+    public async Task ScanAsync_AfterTheScan_TheEntrysBytesAreZeroed()
+    {
+        string zip = CreateZip("secret.zip", ("secret.txt", "plaintext that should not linger"));
+        var scanner = new FakeAmsiScanner();
+
+        await CreateService(scanner).ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        scanner.ScannedContent["secret.txt"].Should().NotBeEmpty();
+        scanner.Buffers["secret.txt"].AsSpan(0, scanner.Calls.Single().Length).ToArray().Should().OnlyContain(b => b == 0);
+    }
+
+    // T-F506: a large entry gets an array of its own size, not the shared pool's next power of two,
+    // which the pool then kept (up to 256 MiB) after the scan.
+    [Fact]
+    public async Task ScanAsync_LargeEntry_GetsAnArrayOfItsOwnSize()
+    {
+        const int size = 3 * 1024 * 1024 + 1;
+        string zip = Path.Combine(_temp.Path, "large.zip");
+        using (ZipArchive archive = ZipFile.Open(zip, ZipArchiveMode.Create))
+        using (Stream stream = archive.CreateEntry("large.bin", CompressionLevel.NoCompression).Open())
+            stream.Write(new byte[size]);
+        var scanner = new FakeAmsiScanner();
+
+        await CreateService(scanner).ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        scanner.Buffers["large.bin"].Length.Should().Be(size);
+    }
 
     [Fact]
     public async Task ScanAsync_CleanZipArchive_ReturnsClean()

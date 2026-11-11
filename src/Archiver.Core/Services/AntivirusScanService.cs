@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Security.Cryptography;
 using System.Globalization;
 using System.IO.Compression;
 using System.Runtime.Versioning;
@@ -38,6 +39,10 @@ public sealed class AntivirusScanService : IAntivirusScanService
     // also the one with more headroom. Raised from the original 64 MiB per T-F146 on that
     // basis. See docs/DECISIONS.md's T-F151 entry for the full spike account.
     internal const long MaxScannableEntryBytes = 256L * 1024 * 1024;
+
+    // T-F506: larger entries get an array of their own size. The shared pool rounds up to a power of
+    // two and keeps what is returned, so one scan of a 200 MiB entry held 256 MiB for the process's life.
+    private const int PooledScanBufferMaxBytes = 1024 * 1024;
 
     private readonly Func<Task<TarCapabilities>> _tarCapabilities;
     private readonly GroupPolicyOptions _policy;
@@ -385,11 +390,12 @@ public sealed class AntivirusScanService : IAntivirusScanService
             return OversizedFinding(archivePath, entryPath);
 
         int intLength = (int)length;
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(Math.Max(intLength, 1));
+        bool pooled = intLength <= PooledScanBufferMaxBytes;
+        byte[] buffer = pooled ? ArrayPool<byte>.Shared.Rent(Math.Max(intLength, 1)) : GC.AllocateUninitializedArray<byte>(intLength);
+        int totalRead = 0;
         try
         {
             using Stream stream = openStream();
-            int totalRead = 0;
             while (totalRead < intLength)
             {
                 int read = await stream.ReadAsync(buffer.AsMemory(totalRead, intLength - totalRead), cancellationToken)
@@ -446,7 +452,10 @@ public sealed class AntivirusScanService : IAntivirusScanService
         }
         finally
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            // T-F506: the plaintext of an encrypted entry does not outlive its scan.
+            CryptographicOperations.ZeroMemory(buffer.AsSpan(0, totalRead));
+            if (pooled)
+                ArrayPool<byte>.Shared.Return(buffer);
         }
     }
 
