@@ -135,6 +135,7 @@ T-F232.)
 | `Archiver.Core.Tests` | Unit tests for core compression/extraction logic |
 | `Archiver.Core.IntegrationTests` | Tests that shell out to the real `C:\Windows\System32\tar.exe` (tagged `[Integration]`) |
 | `Archiver.Core.PerformanceTests` | ZIP compression/extraction performance-regression tests vs. a vendored, sandboxed `7za.exe` reference (T-F114); see `docs/TESTING.md` |
+| `Archiver.Core.Litmus` | console tool, not a test project: page faults, allocations and time of every Core operation against the file system's floor (T-F498); see `docs/TESTING.md` |
 | `Archiver.App.Core.Tests` | Unit tests for `Archiver.App.Core`'s WinUI-free helpers |
 | `Archiver.Shell.Tests` | Tests for `Archiver.Shell`: arguments, commands, the operation-window hand-off and its fallback |
 | `Archiver.OperationUi.Tests` | Protocol framing and `OperationWindowModel` tests |

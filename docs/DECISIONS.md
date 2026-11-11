@@ -14715,6 +14715,119 @@ baseline goes from 1.18 to 0.96. #134700's own benchmark on .NET 11.0.0 GA, dop 
 against 147-148 ms) - the regression is still in 11.0.0 for `DeflateStream`. The numbers go
 upstream in a comment only after the user reads its text.
 
+## T-F498 measured - the page-fault litmus run and the complexity pass (2026-11-11)
+
+The user asked for a litmus paper over the whole code: counters per operation, relative values
+first, and a pass over the algorithmic and memory complexity of every input-sized loop with a
+verdict on each.
+
+### The harness (`tests/Archiver.Core.Litmus`, how to run: `docs/TESTING.md`)
+
+- Each operation runs in a child process inside a Job object. It is warmed up on a small input
+  first, then measured: own page faults, faults of every process it starts (`tar.exe`, the helper,
+  nested in Core's own jobs, which count in the parent job), allocations, handles, processes, time.
+- AMSI's own scanning faults happen in Defender's process and are not counted.
+- **Floor:** the same input read once (80 KiB buffers) and files of the same sizes written, in the
+  same run. For 2,000 files it is 1,336-1,646 faults (0.7-0.8 per entry), large enough for a ratio.
+  For one 256 MiB file it is 311, nearly trivial, so read the excess there.
+- **Self-check:** on the build before T-F318 (`153819ca~1`), zip-optimal over 2,000 files gives
+  111 k faults (55.6 per entry, 68x the floor); today 6.1-6.4 k (3.0-3.2, 3.7-4.8x). The paper
+  shows the known storm.
+- **Stability:** five runs at x1, the min-max of faults within about 15 % (zip-password wider).
+
+### Numbers (Release, 12 logical cores; medians; faults are own + children)
+
+2,000 files of 1-10 KB (10.5 MiB), five runs, and the same at x10 (20,000 files, 107.6 MiB), three runs:
+
+| operation | ms x1 | ms x10 (ratio) | faults per entry x1 | x floor x1 | alloc x1 -> x10 |
+|---|---|---|---|---|---|
+| zip-optimal | 167 | 1,468 (8.8) | 3.03 | 3.7 | 31 -> 308 MiB |
+| zip-fastest | 115 | 1,307 (11.4) | 3.26 | 4.0 | 34 -> 342 MiB |
+| zip-password | 610 | 6,159 (10.1) | 5.85 | 7.1 | **424 MiB -> 4.2 GB** |
+| zip-separate-optimal | 2,552 | 37,977 (**14.9**) | **21.7** | **26.3** | 48 -> 485 MiB |
+| zip-separate-fastest | 2,636 | 40,345 (**15.3**) | 4.15 | 5.0 | 62 -> 622 MiB |
+| zip-extract | 2,876 | 26,259 (9.1) | 2.77 | 3.4 | **176 MiB -> 1.76 GB** |
+| zip-extract-password | 5,435 | 51,441 (9.5) | 5.04 | 6.1 | **590 MiB -> 5.9 GB** |
+| zip-test | 103 | 1,141 (11.1) | 0.45 | 0.5 | 4.5 -> 42 MiB |
+| zip-list | 10 | 115 (11.5) | 0.45 | 0.5 | 3.1 -> 30 MiB |
+| hash-crc32 | 51 | 485 (9.5) | 0.44 | 0.5 | 3.1 -> 32 MiB |
+| floor (read + write) | 929 | 8,583 (9.2) | 0.82 | 1 | - |
+
+Three runs over 2,000 files: zip-scan 133 ms (1.0 faults/entry), preview 32 ms, recovery verify
+156 ms, repair 262 ms, all near the floor. The tar family is dominated by its processes:
+
+| tar.gz, 2,000 files | ms | own faults | children's faults | processes |
+|---|---|---|---|---|
+| create | 580 | 1,302 | 3,817 | 2 |
+| extract | 4,165 | 4,836 | 11,504 | 6 |
+| test | 327 | 2,677 | 11,476 | 6 |
+| list | 194 | 1,170 | 7,673 | 4 |
+
+The children's faults are about 2 k per process start, whatever the input.
+
+One file of 256 MiB:
+
+| operation | ms | faults | note |
+|---|---|---|---|
+| zip-optimal / fastest / smallest | 7,237 / 3,458 / 12,796 | 1,320-1,442 | compression-bound |
+| zip-store | 308 | 614 | |
+| zip-recovery (5 % PAR2) | 9,569 | 5,634 | +2.3 s and +4.3 k faults over Optimal |
+| zip-extract / test | 2,154 / 1,585 | 1,579 / 788 | |
+| zip-scan | 1,706 | **67,458** | allocates 262 MiB: the whole entry in one buffer |
+| targz-create / extract | 6,604 / 3,524 | 4,247 / 11,970 | |
+| sevenzip-create | **198,394** | 28,731 | tar.exe's single-threaded LZMA2 |
+| gz-test / hash-sha256 | 2,739 / 196 | 580 / 322 | |
+
+### Findings
+
+| # | finding | evidence | task |
+|---|---|---|---|
+| F8 | one archive per item is quadratic: `SourceOutcomeRules.IsAnyUnder` compares every source with every output, O(S x C). T-F497's step 4 cached the identities but did not remove it; calling it linear there was wrong | 14.9-15.3x time at 10x files; a profile of 20,000 separate archives: 72 % in `DowngradeSourcesContainingOutputs`, half of it the `IsAnyUnder` lambda | T-F502 |
+| F1 | one archive per item at Optimal without a password goes through `ZipArchive`, a `DeflateStream` per archive: #134700's storm, which T-F497's shared pool covers only on the hand-rolled path | 21.7 faults per entry against 4.15 for Fastest; time about equal | T-F503 |
+| F2/F3 | the password path allocates about 212 KB per entry writing and 295 KB reading | 424 MiB / 590 MiB at x1, 4.2 / 5.9 GB at x10, linear; extract-password 1.9x extract | T-F504 |
+| F4 | extraction costs about 1.3 ms and 88 KB per file | 2,876 ms for 2,000 files against a 755 ms write floor; 1.76 GB allocated at x10 | T-F505 |
+| F5 | the AMSI scan hands each entry over in one buffer | 67 k faults and 262 MiB for one 256 MiB entry | T-F506 |
+| F6 | four to six `tar.exe`/helper processes per tar operation, about 2 k faults each | the table above | T-F507 |
+| F7 | 7z creation at 1.3 MB/s | Not Pakko's: `7za -m0=lzma2 -mx6 -mmt1` on the same file takes 318 s (`tar.exe` 198 s); the fixture's random seventh byte is hard for LZMA, and libarchive has no multithreaded LZMA2 | none |
+
+### The complexity pass (item 5)
+
+Three haiku sweeps, read-only, one per area:
+- A, Core's ZIP path: 68 rows;
+- B, tar, the sandbox, PAR2, hashing, AMSI and text: 91 rows;
+- C, the CLI, Shell, App, App.Core, OperationUi and the C++: 55 rows.
+
+Each report was data. I spot-checked the risky rows in the code and measured where N is realistic.
+
+| place | time | memory | N and its realistic bound | verdict |
+|---|---|---|---|---|
+| `ParallelSingleArchiveWriter.RunPipelineAsync`, `dispatchedTasks` | O(N) | was O(sum of entries <= 1 MiB) | files of a run, any size | **fixed, T-F501** (2.5 GB -> 165 MiB for 2,000 x 900 KB) |
+| `SourceOutcomeRules.IsAnyUnder` per source | O(S x C) | O(C) | sources and outputs of one run, 10^4-10^5 | **T-F502** (measured above) |
+| extraction selection filter (`ZipArchiveService` ~1542, `ExtractionPasses`; tar/helper/AMSI alike) | O(E x S) | O(E) | the App's browser can select every row (`SelectionMode="Multiple"`) | adequate. A flat 20,000-entry zip, all selected: 22.4 s against 22.6 s unselected, because `Contains` hits first. The `Any` runs only for entries outside the set; many selected folders cost a few seconds at most |
+| the "(1)", "(2)" probe restarting at 1 (`ArchiveNaming`) | O(N^2) for N same-named outputs | O(N) | same name in one folder, rare | adequate, noted |
+| PAR2 matrix (`RecoveryMatrix`, `Par2Repairer`) | O(m^2 N_s) | O(m N_s) | bounded by `Par2Limits` | inherent to Reed-Solomon; PRF-002 compares with par2cmdline |
+| `AnyPathHasRecoveryData` (shell) | O(N) listings | - | selected items | bounded by `kMaxRecoveryProbes` |
+| `MainViewModel.ApplySort`: `IndexOf` and `Move` per row | O(N^2), N UI notifications | O(N) | rows added to the App (2,000+) | candidate; device check, T-F508 |
+| shell extension: `GetPathsFromShellItemArray` in each of about 18 `GetState`/`GetTitle` | O(18 N) COM calls per right-click | O(N) | items selected in Explorer | candidate; device check, T-F508 |
+| bare gzip test inflates each member twice (`ExactDataEnd`) | O(2 bytes) | O(1) | file size | measured: 2.7 s for 256 MiB, inside budget; noted |
+| `ComputeDirectoryStateSnapshot` walks the quarantine per poll (back-off x2) | O(F) per poll, polls back off | O(1) | files extracted so far | part of F6/T-F507's tar costs; noted |
+
+The other rows of the three sweeps follow one of three patterns:
+- linear: a per-item allocation of a bounded size, a stat per entry;
+- O(N log N) sorts;
+- whole listings kept in memory where the operation needs the index anyway (an archive's entries, a central directory).
+
+The x10 run shows them linear (the table above).
+
+### Item 4: the paper that stays
+
+Deferred to T-F508. A Slow check of faults per entry against the floor works on this machine:
+- today 3-4x the floor;
+- 68x before T-F318;
+- 15 % run-to-run variation.
+
+It is not yet shown stable on the canary's runners, which the task requires before it gates anything.
+
 ## T-F501 - the parallel writer kept every small entry's bytes until the run ended (2026-11-11)
 
 **Found** by T-F498's complexity pass (a haiku sweep of Core's ZIP path, row "dispatchedTasks keeps
@@ -14764,7 +14877,7 @@ writer, whose outer degree was `threadBudget / WindowCapacity` = 1: one archive 
 | `main` (with T-F318) | 16.2 s | 49.4 s | 58.5 s |
 | 1. sweep each destination folder once per run; the writer's chunk folder only when a > 1 MiB entry needs it | 11.7 s | 34.8 s | |
 | 2. entries counted while writing, no second open | 10.4 s | 18.9 s | |
-| 4. ancestor identities cached within a call; one union set | 4.4 s | 13.1 s | |
+| 4. ancestor identities cached within a call; one union set (still O(S x C) in `IsAnyUnder`, found by T-F498: T-F502) | 4.4 s | 13.1 s | |
 | 3. the hand-rolled writer runs archives side by side | | 4.1 s | |
 | 5. one deflater pool for the run (faults 49.6 k -> 4.9 k) | 4.3 s | 4.2 s | 4.4 s |
 | final, after T-F499 (rebased) | 4.1 s | 4.1 s | 4.3 s |

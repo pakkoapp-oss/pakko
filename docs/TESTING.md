@@ -131,6 +131,28 @@ par2cmdline's own test archives are not copied either — fixtures are generated
 
 ---
 
+## The Page-Fault Litmus Run (T-F498)
+
+`tests/Archiver.Core.Litmus` is a console tool, not a test project: `dotnet test` never runs it.
+It measures every Core operation in a child process of its own, inside a Job object, so the counters
+include `tar.exe` and the helper. Each row is warmed up on a small input and then measured: page
+faults (own and children's), allocations, handles, processes, time. Each is set against the floor
+the file system costs for the same input (read once, then the same sizes written).
+
+```powershell
+dotnet build tests/Archiver.Core.Litmus -c Release
+tests\Archiver.Core.Litmus\bin\Release\net11.0\Archiver.Core.Litmus.exe --runs 5            # every row, both shapes
+... --ops zip-optimal,zip-extract --shapes many --scale 10 --csv out.csv                         # a subset at 20,000 files
+```
+
+- Fixtures (2,000 files of 1-10 KB, one file of 256 MiB, their archives) are built once per scale
+  under `%TEMP%\pakko-litmus`.
+- Read a growth at `--scale 10` well over 10x as super-linear.
+- Read a row far above its floor, or far above its neighbours of the same kind, as a finding.
+- The first results and their verdicts: `docs/DECISIONS.md`, "T-F498 measured".
+
+---
+
 ## On-Device Smoke Checks (T-F378)
 
 The checks run on an installed build live in `docs/SMOKE.md`: one catalogue with stable row IDs,
