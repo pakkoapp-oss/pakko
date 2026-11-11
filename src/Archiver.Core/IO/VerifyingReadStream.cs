@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO.Compression;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 
@@ -23,6 +24,27 @@ internal sealed class VerifyingReadStream(Stream inner, long declaredLength, uin
     // SR.UnexpectedStreamLength, .NET 11). VerifyingReadStreamTests pins them against ZipArchive.
     internal const string BclCrcMismatchText = "The CRC32 checksum of the extracted data does not match the expected value from the archive.";
     internal const string BclLengthMismatchText = "The decompressed data length does not match the expected value from the archive.";
+
+    /// <summary>
+    /// Opens a plain (not Pakko-decrypted) entry for reading, checked against its declared size and
+    /// CRC-32. Since .NET 11, <c>Open()</c> reads the entry's encryption itself and throws
+    /// <see cref="NotSupportedException"/> on a header it cannot use (T-F492, found by the fuzzer);
+    /// that becomes <see cref="MessageCode.ContentDamaged"/>, an <see cref="InvalidDataException"/>
+    /// every per-entry catch already handles.
+    /// </summary>
+    internal static VerifyingReadStream OpenEntry(ZipArchiveEntry entry)
+    {
+        Stream inner;
+        try
+        {
+            inner = entry.Open();
+        }
+        catch (NotSupportedException ex)
+        {
+            throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.ContentDamaged), ex);
+        }
+        return new VerifyingReadStream(inner, entry.Length, entry.Crc32);
+    }
 
     public override int Read(byte[] buffer, int offset, int count) => Read(buffer.AsSpan(offset, count));
 
