@@ -782,6 +782,10 @@ here — see the `**Root:**` notes on T-F209, T-F236/T-F237/T-F251 and T-F204/T-
 - **Deferred past 1.9.0 (2026-10-24):** the winget-pkgs PR #446296 was closed unmerged; a new one needs the user's CLA and Microsoft's review.
 - **2026-10-31:** in the v1.10.0 wave (stream F, the user). #446296 was closed by us as superseded
   by #449503 (1.7.2), open, validated, CLA signed, waiting for a moderator.
+- **2026-11-11 (v1.11.0 stream F, decided by the agent on the user's "your call"):** #449503 is
+  still open and validated, untouched by a moderator since 2026-10-09. No second outward PR while
+  it waits; at the v1.11.0 release (stream E) its manifest moves to 1.11.0 (the .NET 11 build), or,
+  if it has merged by then, a version-update PR for 1.11.0 follows.
 - [~] **Status:** done in v1.7.0 wave 8 (2026-10-03) except the outward steps. The first
   `microsoft/winget-pkgs` PR is open (user's go and identifier `PavloRybchenko.PakkoCLI`,
   2026-10-03; from `pakkoapp-oss`, manifest schema 1.12.0):

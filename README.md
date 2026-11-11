@@ -36,6 +36,9 @@
 The app needs Windows 10 version 2004 (build 19041) or later, or Windows 11, x64 or ARM64; on x64 a
 processor with SSE4.2 and POPCNT (x86-64-v2, which .NET 11 requires; every processor Windows 11
 supports has them). The standalone `pakko` zip has been tested on Windows 10 22H2, Windows 11 and Windows Server 2022.
+.NET 11's own support list names Windows 10 only in its LTSC and IoT editions; Pakko keeps
+running on Windows 10 22H2 and is tested there, but a runtime problem specific to it may not be
+fixed upstream.
 
 - **Microsoft Store** (recommended): https://apps.microsoft.com/detail/9p5mw010d8pr, or
   `winget install 9P5MW010D8PR --source msstore`. Updates come through the Store, and the install
