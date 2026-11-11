@@ -54,16 +54,26 @@ public static partial class PathIdentity
 
     /// <summary>The identities of <paramref name="path"/> and every folder holding it, by its final
     /// path; null when it cannot be resolved. Bounded by the path's depth.</summary>
-    public static HashSet<Identity>? SelfAndAncestors(string path)
+    public static HashSet<Identity>? SelfAndAncestors(string path) => SelfAndAncestors(path, folders: []);
+
+    /// <summary>As <see cref="SelfAndAncestors(string)"/>, with the folders already resolved in this
+    /// pass kept in <paramref name="folders"/> (T-F497: a thousand archives in one folder resolved
+    /// that folder and each of its parents a thousand times).</summary>
+    internal static HashSet<Identity>? SelfAndAncestors(string path, Dictionary<string, Identity?> folders)
     {
         if (Resolve(path) is not { } resolved)
             return null;
         var identities = new HashSet<Identity> { resolved.Id };
         for (string? folder = Path.GetDirectoryName(resolved.FinalPath); folder is not null; folder = Path.GetDirectoryName(folder))
         {
-            if (Resolve(folder) is not { } step)
+            if (!folders.TryGetValue(folder, out Identity? id))
+            {
+                id = Resolve(folder)?.Id;
+                folders[folder] = id;
+            }
+            if (id is not { } step)
                 return null;
-            identities.Add(step.Id);
+            identities.Add(step);
         }
         return identities;
     }

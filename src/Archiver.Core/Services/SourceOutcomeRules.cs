@@ -69,9 +69,21 @@ internal static class SourceOutcomeRules
     // A drive or share root is never deletable either: its Hidden+System entries are left out
     // (DirectoryWalker, T-F345), so it is never wholly in the archive.
     internal static IReadOnlyList<SourceResult> DowngradeSourcesContainingOutputs(
-        IEnumerable<SourceResult> sources, IReadOnlyCollection<string> createdFiles)
+        IEnumerable<SourceResult> sources, IReadOnlyCollection<string> createdFiles) =>
+        DowngradeSourcesContainingOutputs(sources, createdFiles, PathIdentity.SelfAndAncestors);
+
+    // Tests pass an output that exists but cannot be resolved, which a real disk rarely gives.
+    internal static IReadOnlyList<SourceResult> DowngradeSourcesContainingOutputs(
+        IEnumerable<SourceResult> sources, IReadOnlyCollection<string> createdFiles,
+        Func<string, Dictionary<string, PathIdentity.Identity?>, HashSet<PathIdentity.Identity>?> selfAndAncestors)
     {
-        List<HashSet<PathIdentity.Identity>?> holders = [.. createdFiles.Where(File.Exists).Select(PathIdentity.SelfAndAncestors)];
+        // T-F497: each output and folder resolved once, each output's full path computed once - a
+        // run of thousands of archives compared every source with every output path by path.
+        var folders = new Dictionary<string, PathIdentity.Identity?>(StringComparer.OrdinalIgnoreCase);
+        var holders = new Holders();
+        foreach (string created in createdFiles.Where(File.Exists))
+            holders.Add(selfAndAncestors(created, folders));
+        List<string> createdFull = [.. createdFiles.Select(Path.GetFullPath)];
         return [.. sources.Select(Downgrade)];
 
         SourceResult Downgrade(SourceResult s)
@@ -80,7 +92,7 @@ internal static class SourceOutcomeRules
                 return s;
             if (IsRoot(s.Path))
                 return s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.DriveRoot };
-            if (createdFiles.Any(c => IsSameOrUnder(c, s.Path)) || HoldsAnOutput(s.Path, holders))
+            if (IsAnyUnder(createdFull, s.Path) || HoldsAnOutput(s.Path, holders))
                 return s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.HoldsAnOutput };
             return s;
         }
@@ -93,24 +105,43 @@ internal static class SourceOutcomeRules
             ? s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.EntryReplaced }
             : s)];
 
-    private static bool HoldsAnOutput(string source, List<HashSet<PathIdentity.Identity>?> holders)
+    // Every output's identity and those of the folders holding it, in one set: a source holds an
+    // output when its identity is among them, or when some output could not be resolved.
+    private sealed class Holders
+    {
+        private readonly HashSet<PathIdentity.Identity> _identities = [];
+        public int Count { get; private set; }
+        public bool AnyUnresolved { get; private set; }
+
+        public void Add(HashSet<PathIdentity.Identity>? selfAndAncestors)
+        {
+            Count++;
+            if (selfAndAncestors is null)
+                AnyUnresolved = true;
+            else
+                _identities.UnionWith(selfAndAncestors);
+        }
+
+        public bool Contains(PathIdentity.Identity id) => _identities.Contains(id);
+    }
+
+    private static bool HoldsAnOutput(string source, Holders holders)
     {
         if (holders.Count == 0 || (!File.Exists(source) && !Directory.Exists(source)))
             return false;
         if (PathIdentity.Resolve(source) is not { } resolved)
             return true;
-        return holders.Exists(h => h is null || h.Contains(resolved.Id));
+        return holders.AnyUnresolved || holders.Contains(resolved.Id);
     }
 
     private static bool IsRoot(string path) => Directory.Exists(path) && new DirectoryInfo(path).Parent is null;
 
-    private static bool IsSameOrUnder(string candidate, string root)
+    private static bool IsAnyUnder(List<string> candidatesFull, string root)
     {
-        string full = Path.GetFullPath(candidate);
         string rootFull = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
         // A drive root ("C:\") keeps its separator after trimming — don't append a second one.
         string prefix = Path.EndsInDirectorySeparator(rootFull) ? rootFull : rootFull + Path.DirectorySeparatorChar;
-        return full.Equals(rootFull, StringComparison.OrdinalIgnoreCase)
-            || full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+        return candidatesFull.Exists(full => full.Equals(rootFull, StringComparison.OrdinalIgnoreCase)
+            || full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
     }
 }
