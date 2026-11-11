@@ -14734,6 +14734,13 @@ verdict on each.
   111 k faults (55.6 per entry, 68x the floor); today 6.1-6.4 k (3.0-3.2, 3.7-4.8x). The paper
   shows the known storm.
 - **Stability:** five runs at x1, the min-max of faults within about 15 % (zip-password wider).
+- **Defender:** real-time protection was off on this machine when it was checked after the runs.
+  Its state during the first runs was not recorded. A recheck under the known state
+  (separate-fastest and extract, x1 and x10, three runs each) matches them within 10 %:
+  - separate-fastest 2,746 -> 38,923 ms (14.2x);
+  - extract 3,036 -> 25,707 ms (8.5x).
+
+  Per-file costs on a machine with real-time scanning on will be higher.
 
 ### Numbers (Release, 12 logical cores; medians; faults are own + children)
 
@@ -14765,6 +14772,25 @@ Three runs over 2,000 files: zip-scan 133 ms (1.0 faults/entry), preview 32 ms, 
 
 The children's faults are about 2 k per process start, whatever the input.
 
+**Memory held** is the child's peak working set over its whole life, warm-up included. `alloc`
+above is cumulative allocation, which is churn, not memory held.
+
+| operation | peak x1 | peak x10 |
+|---|---|---|
+| noop (process start) | 24 MiB | 28 MiB |
+| floor-write | 29 MiB | 35 MiB |
+| zip-optimal | 53 MiB | 139 MiB |
+| zip-fastest | 57 MiB | 175 MiB |
+| zip-password | 60 MiB | 172 MiB |
+| zip-separate-optimal / fastest | 48 / 55 MiB | 70 / 74 MiB |
+| zip-extract / extract-password | 46 / 56 MiB | 74 / 80 MiB |
+| zip-test / list / hash-crc32 | 31 / 30 / 33 MiB | 67 / 62 / 56 MiB |
+
+10x the files gives 1.3-3x the peak. Memory follows the window, not the input, and T-F501's fix
+holds. Single-archive creation grows the most (the central directory, and one record per entry
+that the writer keeps until the end), at about 6 KB per entry.
+
+
 One file of 256 MiB:
 
 | operation | ms | faults | note |
@@ -14782,13 +14808,17 @@ One file of 256 MiB:
 
 | # | finding | evidence | task |
 |---|---|---|---|
-| F8 | one archive per item is quadratic: `SourceOutcomeRules.IsAnyUnder` compares every source with every output, O(S x C). T-F497's step 4 cached the identities but did not remove it; calling it linear there was wrong | 14.9-15.3x time at 10x files; a profile of 20,000 separate archives: 72 % in `DowngradeSourcesContainingOutputs`, half of it the `IsAnyUnder` lambda | T-F502 |
+| F8 | one archive per item is quadratic: `SourceOutcomeRules.IsAnyUnder` compares every source with every output, O(S x C). T-F497's step 4 cached the identities but did not remove it; calling it linear there was wrong | 14.9-15.3x time at 10x files, and the O(S x C) `IsAnyUnder` read in the code; T-F502's red-first test measures the rest | T-F502 |
 | F1 | one archive per item at Optimal without a password goes through `ZipArchive`, a `DeflateStream` per archive: #134700's storm, which T-F497's shared pool covers only on the hand-rolled path | 21.7 faults per entry against 4.15 for Fastest; time about equal | T-F503 |
-| F2/F3 | the password path allocates about 212 KB per entry writing and 295 KB reading | 424 MiB / 590 MiB at x1, 4.2 / 5.9 GB at x10, linear; extract-password 1.9x extract | T-F504 |
+| F2/F3 | the password path allocates (churn, not memory held) about 212 KB per entry writing and 295 KB reading | 424 MiB / 590 MiB allocated at x1, 4.2 / 5.9 GB at x10, linear; peak working set stays at 60 / 172 MiB; extract-password 1.9x extract | T-F504 |
 | F4 | extraction costs about 1.3 ms and 88 KB per file | 2,876 ms for 2,000 files against a 755 ms write floor; 1.76 GB allocated at x10 | T-F505 |
 | F5 | the AMSI scan hands each entry over in one buffer | 67 k faults and 262 MiB for one 256 MiB entry | T-F506 |
 | F6 | four to six `tar.exe`/helper processes per tar operation, about 2 k faults each | the table above | T-F507 |
 | F7 | 7z creation at 1.3 MB/s | Not Pakko's: `7za -m0=lzma2 -mx6 -mmt1` on the same file takes 318 s (`tar.exe` 198 s); the fixture's random seventh byte is hard for LZMA, and libarchive has no multithreaded LZMA2 | none |
+
+Profiled so far: F8 (thread time). F1 and F5 are explained by the code (`ZipArchive` per archive;
+one AMSI buffer per entry). F7 is closed by the `7za` comparison. Profiling F2/F3, F4 and F6 is
+the first step of T-F504, T-F505 and T-F507.
 
 ### The complexity pass (item 5)
 

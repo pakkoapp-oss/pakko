@@ -1561,13 +1561,14 @@ re-measured with T-F346's script before and after.
      `workersPerFolder` and files one worker (today only the pure function is tested); the run's
      `LargeFileGate` actually reaches each archive (the writer honouring it is tested).
 - **Reported by:** the agent (T-F497's reviewer), 2026-11-11.
+- **Flaky, seen 2026-11-11 (T-F498's run):** `ParallelSingleArchiveWriterTests.WriteAsync_WhileRunning_ChunkFolderIsHiddenAndNextToDestination` failed once in the full quick tier, passed 5/5 alone. It waits only 2 s for the chunk folder, against 64 MiB compressed under the whole suite's load; hold the run with a gate (a blocking source stream) instead of a clock (`.claude/rules/tests.md`, T-F425).
 
 ### T-F502 - One archive per item is quadratic in the sources against the outputs (P2, from T-F498)
 
 - [ ] **Status:** open. `SourceOutcomeRules.DowngradeSourcesContainingOutputs` asks, for each
   source, whether any output lies under it (`IsAnyUnder`, a `List.Exists` over every output): O(S x C).
-  20,000 separate archives take 38-40 s where 10x of 2,000 would be 25-26 s; a profile puts 72 % of
-  the run in that function (`docs/DECISIONS.md`, "T-F498 measured"). Build the set of every output
+  20,000 separate archives take 38-40 s where 10x of 2,000 would be 25-26 s (`docs/DECISIONS.md`,
+  "T-F498 measured"). Build the set of every output
   and every ancestor folder of an output once (O(C x depth)), then ask the set per source; keep
   the rule exactly (case, separators, the unresolvable-output branch T-F497 pinned), test first with
   a counter or a scaling check, and the litmus run at x10 before and after.
@@ -1581,10 +1582,11 @@ re-measured with T-F346's script before and after.
   through the hand-rolled writer with the run's pool keeps the bytes (T-F31) and the speed.
 - **Reported by:** the agent (T-F498), 2026-11-11.
 
-### T-F504 - The password path allocates about 200-300 KB per entry (P2, from T-F498)
+### T-F504 - The password path allocates about 200-300 KB per entry (P3, from T-F498)
 
 - [ ] **Status:** open. zip-password over 2,000 files of 1-10 KB allocates 424 MiB (4.2 GB at
-  20,000), zip-extract-password 590 MiB (5.9 GB) and takes 1.9x plain extraction. Profile the
+  20,000; churn, the peak working set stays at 172 MiB), zip-extract-password 590 MiB (5.9 GB)
+  and takes 1.9x plain extraction. Profile the
   allocations (`dotnet-trace --profile gc-verbose`) to name the per-entry buffer or key setup
   (WinZip AES streams, PBKDF2), then pool or size it; the litmus run before and after.
 - **Reported by:** the agent (T-F498), 2026-11-11.
