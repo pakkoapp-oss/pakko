@@ -75,7 +75,7 @@ jobs:
         continue-on-error: true
         id: setup_dotnet
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "11.0.x"
 
       # Same command as build.yml's own `test` job -- `dotnet test` builds first, so no separate
       # `dotnet build` step is needed. Retried once (matches this repo's own documented
@@ -220,7 +220,7 @@ jobs:
         continue-on-error: true
         id: setup_dotnet
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "11.0.x"
 
       - name: Run Category=Slow tests (2 attempts)
         id: slow_test
@@ -285,7 +285,7 @@ jobs:
         continue-on-error: true
         id: setup_dotnet
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "11.0.x"
 
       - name: Signature and sandboxed tar.exe tests (2 attempts)
         id: tar_test
@@ -341,7 +341,7 @@ jobs:
         continue-on-error: true
         id: setup_dotnet
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "11.0.x"
 
       - name: Run .NET test suite on ARM64 (2 attempts)
         id: build_test
@@ -490,7 +490,7 @@ jobs:
 
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "11.0.x"
 
       # --blame-hang-timeout is per test case (one seed archive x all iterations); a single
       # iteration is already bounded to 30 s by FuzzRunner.
