@@ -1940,7 +1940,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F508 - The litmus paper that stays, and the device-side candidates (P3, from T-F498)
 
-- [ ] **Status:** open.
+- [~] **Status:** step 1 done 2026-11-12 (`LitmusPaperTests`, Slow, in the canary; `docs/DECISIONS.md`, "T-F508 step 1"). Left: five canary nights, then a gate; the two device checks.
   1. A Slow-tagged check that runs the litmus tool for zip-optimal and zip-fastest over 2,000 files
      and fails when faults per entry exceed, say, 15x the floor (today 3-4x, 68x before T-F318).
      Gate it only after five canary runs show it stable on the runners.

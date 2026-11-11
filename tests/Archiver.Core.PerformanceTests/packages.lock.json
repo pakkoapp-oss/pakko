@@ -147,6 +147,12 @@
       },
       "archiver.core": {
         "type": "Project"
+      },
+      "archiver.core.litmus": {
+        "type": "Project",
+        "dependencies": {
+          "Archiver.Core": "[1.0.0, )"
+        }
       }
     },
     "net11.0/win-arm64": {
