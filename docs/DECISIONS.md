@@ -14627,6 +14627,22 @@ Shell, OperationUi and `pakko` green for win-x64 and win-arm64; the AOT `pakko.e
 patched CRC as "Content failed CRC-32 check (expected DEADBEEF, got 3E271655)" on `t` and `x`, and
 `x` leaves the bad entry out.
 
+**The MSIX payload under ILCompiler 11.** The first `Deploy.ps1` failed with APPX1101 (two
+`Archiver.App.pdb`, the managed and the native one). With the managed symbols kept out
+(`CopyOutputSymbolsToPublishDirectory` false in App; `CI-Build-Msix.ps1` still collects the native
+pdb from `native\`), the package built but held the whole JIT runtime (239 files: `coreclr.dll`,
+`clrjit.dll`, every managed DLL) beside the AOT exe. Cause: ILCompiler 10's
+`ComputeLinkedFilesToPublish` produced `_AssembliesToSkipPublish`, the item WinAppSDK's
+`WinAppSdkRemoveLinkedFilesFromPayload` subtracts; ILCompiler 11 does the replacement inside
+`NativeCompile` and no longer produces it. `Microsoft.Windows.SDK.BuildTools.MSIX` 1.7.261102100
+(2026-11-03) removes the .NET 11 items (`_RuntimePackFilesToSkipPublish`, `_IlcManagedInputAssemblies`);
+WinAppSDK 2.5.1 and even 2.6.5 still bring 1.7.251221100, so App references it directly. It still
+packaged the 36 `Archiver.Messages.resources.dll`, which ILCompiler compiles into the exe; App's
+`PakkoRemoveAotSatellitesFromPayload` drops every `*.resources.dll` from an AOT payload (removing
+`@(IlcSatelliteAssembly)` by identity matched nothing). The x64 payload is back to the .NET 10 shape:
+12 files, the four native exes, the helper, the shell extension DLL, no DLL of .NET. `Deploy.ps1`
+installed 1.10.0.5; `Invoke-Smoke.ps1 -Tier quick`: 51 rows OK.
+
 ## v1.10.0 - the release record (2026-11-10 and 2026-11-11)
 
 - **Commits.** PR #207 (`28cf3e8d`, T-F487..T-F490, the REL-001 split, T-F491 filed) and PR #208
