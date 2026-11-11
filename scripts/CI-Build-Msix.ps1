@@ -185,6 +185,8 @@ if (-not $pakkoFound) {
     Write-Error "The built package $($msix.Name) has no pakko.exe, Archiver.Shell.exe, Archiver.OperationUi.exe, Archiver.ArchiveHelper.exe and the pakko.exe execution alias (T-F317, T-F355, T-F470)."
     exit 1
 }
+. (Join-Path $PSScriptRoot 'MsixPayload.ps1')
+Assert-NativeAotPackageFile $msix.FullName $repoRoot
 
 # ── T-F355: native symbols of the four AOT exes, for crash dumps; never packaged ──
 $pdbOutDir = Join-Path $repoRoot "artifacts\pdb\$Architecture"
