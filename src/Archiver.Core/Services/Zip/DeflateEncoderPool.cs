@@ -17,7 +17,13 @@ internal sealed class DeflateEncoderPool : IDisposable
     private readonly int _quality;
     private int _created;
 
-    public DeflateEncoderPool(CompressionLevel level) => _quality = QualityOf(level);
+    public DeflateEncoderPool(CompressionLevel level)
+    {
+        Level = level;
+        _quality = QualityOf(level);
+    }
+
+    public CompressionLevel Level { get; }
 
     /// <summary>How many deflaters this pool has built.</summary>
     internal int Created => Volatile.Read(ref _created);

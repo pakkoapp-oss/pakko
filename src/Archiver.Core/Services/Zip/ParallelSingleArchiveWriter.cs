@@ -85,6 +85,10 @@ internal static class ParallelSingleArchiveWriter
 
         public int WindowCapacity => ComputeWindowCapacity(MaxThreads);
 
+        /// <summary>T-F497: deflaters shared by every archive of a one-archive-per-item run, owned
+        /// and disposed by that run; null makes each <see cref="WriteAsync"/> build its own.</summary>
+        public DeflateEncoderPool? Deflaters { get; init; }
+
         /// <summary>T-F411: <see cref="ArchiveOptions.ReadFilesOpenForWriting"/>.</summary>
         public bool ReadFilesOpenForWriting { get; init; }
 
@@ -215,8 +219,12 @@ internal static class ParallelSingleArchiveWriter
 
         var tracker = new ProgressTracker(progress, totalBytes);
 
-        // Both disposed only after RunPipelineAsync, which waits for every compression it started.
-        using var deflaters = new DeflateEncoderPool(settings.Level);
+        // Both disposed only after RunPipelineAsync, which waits for every compression it started;
+        // a shared pool is its run's to dispose.
+        if (settings.Deflaters is { } shared && shared.Level != settings.Level)
+            throw new ArgumentException($"A {shared.Level} pool for a {settings.Level} archive.", nameof(settings));
+        using DeflateEncoderPool? own = settings.Deflaters is null ? new DeflateEncoderPool(settings.Level) : null;
+        DeflateEncoderPool deflaters = settings.Deflaters ?? own!;
         using SemaphoreSlim? largeFileGate = settings.OneLargeFileAtATime ? new SemaphoreSlim(1, 1) : null;
         Func<FileWorkItem, CancellationToken, Task<WorkResult>> compressToTempFile =
             (item, ct) => CompressToTempFileAsync(item, chunkDirectory.Value, settings, tracker, ct);
