@@ -52,6 +52,10 @@
     <PublishAot>true</PublishAot>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CsWinRTAotWarningLevel>2</CsWinRTAotWarningLevel>
+    <!-- T-F492: on .NET 11 the publish payload carries both the managed and the native
+         Archiver.App.pdb, which MSIX rejects (APPX1101, one destination). An AOT exe's managed
+         pdb is useless; CI-Build-Msix.ps1 keeps the native one for crash dumps. -->
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
 	<ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
@@ -89,6 +93,10 @@
     <PackageReference Include="H.NotifyIcon.WinUI" Version="2.3.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+    <!-- T-F492: ILCompiler 11 no longer produces _AssembliesToSkipPublish; 1.7.251221100 (what
+         WinAppSDK 2.5.1 brings) then packages the JIT runtime beside the AOT exe. This one removes
+         _RuntimePackFilesToSkipPublish and _IlcManagedInputAssemblies from the payload. -->
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools.MSIX" Version="1.7.261102100" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
     <!-- T-F363: the 2.x metapackage publishes Windows ML's onnxruntime/DirectML DLLs (16 MB); Pakko never calls them. -->
     <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" ExcludeAssets="native" />
@@ -167,4 +175,16 @@
   <ItemGroup>
     <AssemblyMetadata Include="PakkoBuildTimeUtc" Value="$([System.DateTime]::UtcNow.ToString('o'))" />
   </ItemGroup>
+
+  <!-- T-F492: ILCompiler 11 compiles satellite assemblies into the native exe (IlcSatelliteAssembly)
+       but BuildTools.MSIX 1.7.261102100 still packages the per-locale .resources.dll beside it, which
+       the .NET 10 package never had. -->
+  <Target Name="PakkoRemoveAotSatellitesFromPayload" AfterTargets="WinAppSdkRemoveLinkedFilesFromPayload"
+          BeforeTargets="_ComputeAppxPackagePayload" Condition="'$(PublishAot)' == 'true' and '$(IncludePublishItemsOutputGroup)' == 'true'">
+    <ItemGroup>
+      <_PakkoAotSatellite Include="@(PackagingOutputs)" Condition="$([System.String]::Copy('%(Filename)%(Extension)').EndsWith('.resources.dll'))" />
+      <PackagingOutputs Remove="@(_PakkoAotSatellite)" />
+    </ItemGroup>
+    <Message Importance="high" Text="T-F492: removed @(_PakkoAotSatellite->Count()) satellite assemblies from the AOT payload" />
+  </Target>
 </Project>
