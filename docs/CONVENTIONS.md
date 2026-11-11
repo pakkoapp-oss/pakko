@@ -8,7 +8,7 @@ AI agents must follow these rules in all generated code.
 
 | Rule | Value |
 |------|-------|
-| Language version | C# 14 (set once in `Directory.Build.props`, never per project; .NET 10 SDK; T-F363) |
+| Language version | C# 15 (set once in `Directory.Build.props`, never per project; .NET 11 SDK; T-F363, T-F492) |
 | Locks | `System.Threading.Lock` (`private readonly Lock _lock = new();`), never a bare `object` (a test reads `src/`) |
 | Properties | Auto property or `field` keyword instead of a hand-written backing field (IDE0032/IDE0360 are errors) |
 | Nullable reference types | `enable` (all projects) |

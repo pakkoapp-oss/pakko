@@ -14566,6 +14566,67 @@ commercial); coverlet; docfx; CycloneDX; SonarCloud; Scorecard; no CodeQL analys
 
 The wave and its streams: `docs/TASKS.md`, "v1.11.0 wave".
 
+## T-F492 - Pakko on .NET 11 and C# 15 (2026-11-11)
+
+**Why .NET 11.** The user, 2026-11-11: "we write for .NET 11 and the matching language version".
+.NET 11 (STS) and .NET 10 (LTS) both end on 2028-11-14 (`release-metadata/releases-index.json`), so
+T-F270's LTS argument no longer holds. SDK 11.0.100 (released 2026-11-10; installer and zip checked
+against `releases.json`'s SHA-512, Authenticode "Microsoft Corporation").
+
+**What the move needed.**
+- TFMs and their literals (`.csproj`, publish profiles, `Deploy.ps1`, `CI-Build-Msix.ps1`,
+  `build.yml`, `canary.yml`, `global.json`) rewritten by a script over an explicit file list; lock
+  files restored; DI 11.0.0. `MinVersion`/`MaxVersionTested` untouched.
+- CsWinRT1032: SDK 11 brings a newer Windows SDK projection (`10.0.17763.87`) whose analyzer, at
+  T-F355's `CsWinRTAotWarningLevel` 2, rejects a collection expression whose target is an interface
+  (no defined concrete type for AOT). 19 places in App now name the array type (`(string[])[...]`),
+  the fix the analyzer itself suggests; level 2 stays.
+- CA2016 (`pakko`): the two listing lines forward the token; the three error lines pass
+  `CancellationToken.None`, so a reported error never turns into "stopped".
+- CA2027 (tests): every `Task.Delay` raced in `Task.WhenAny` gets a token cancelled afterwards.
+- C# 15: the compiler breaking changes page ("Breaking changes in Roslyn after .NET 10.0.100 through
+  .NET 11.0.100") lists no silent rebinding; its C# 15 items (`with(...)` as a collection element,
+  `closed` and `union` as contextual keywords) are compile errors, and none occurs here.
+  `LangVersion` 15 in `Directory.Build.props`.
+
+**.NET 11 checks CRC-32 on read.** `ZipArchiveEntry.Open()` now wraps the decompressed stream in
+`CrcValidatingReadStream` (`ZipCustomStreams.cs`, `release/11.0`), except for AE-2 entries. Its
+`ProcessBytesRead` validates when the running count reaches the declared size, on that same read:
+
+```cs
+_runningCrc = Crc32Helper.UpdateCrc32(_runningCrc, data);
+_totalBytesRead += data.Length;
+
+if (_totalBytesRead == _expectedLength)
+{
+    ValidateCrc();
+}
+else if (_totalBytesRead > _expectedLength)
+{
+    throw new InvalidDataException(SR.UnexpectedStreamLength);
+}
+```
+
+So the last chunk never reaches a wrapper, the old texts became "The compressed data is damaged",
+and there is no switch to turn the check off. Decision: the runtime detects, `VerifyingReadStream`
+names. It recognises the two runtime texts (pinned by `VerifyingReadStreamTests` against a real
+`ZipArchive`; if a servicing release changes them, those tests go red and production falls back to
+`ContentDamaged`, still per item), and for a CRC mismatch feeds the bytes that read wrote (exactly
+the declared size minus what it had counted) to its own CRC, so the message keeps the computed
+value. Rejected: decompressing raw entry data ourselves (more untrusted-input parsing, against
+T-F493's direction); a `Position` set to abandon the check (only for seekable streams, not Deflate).
+Every `entry.Open()` in `src` that reads goes through `VerifyingReadStream` (Extract, Test) except
+the AV scan's, where the throw is caught per entry: a wrong-CRC entry is now Inconclusive, never
+Clean (a test). Seen red: seven tests in `Archiver.Core.Tests`/`Archiver.CLI.Tests` failed on the
+first .NET 11 run with the generic text, before the translation.
+
+**Measured on the host (2026-11-11).** Quick tier green in all eight projects (C# 15, 0 warnings);
+`Category=Slow` green (26 tests, T-F114's 7za ratios among them): the CRC-32 that both the runtime and
+`VerifyingReadStream` now compute on a plain entry stays inside the ceilings. AOT publish of App,
+Shell, OperationUi and `pakko` green for win-x64 and win-arm64; the AOT `pakko.exe` reports a
+patched CRC as "Content failed CRC-32 check (expected DEADBEEF, got 3E271655)" on `t` and `x`, and
+`x` leaves the bad entry out.
+
 ## v1.10.0 - the release record (2026-11-10 and 2026-11-11)
 
 - **Commits.** PR #207 (`28cf3e8d`, T-F487..T-F490, the REL-001 split, T-F491 filed) and PR #208

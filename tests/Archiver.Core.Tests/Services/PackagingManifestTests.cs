@@ -120,9 +120,9 @@ public sealed class PackagingManifestTests
     }
 
     [Fact]
-    public void Repo_PinsCSharp14Once()
+    public void Repo_PinsCSharp15Once()
     {
-        Property(XDocument.Load(Path.Combine(RepoRoot, "Directory.Build.props")), "LangVersion").Should().Equal("14");
+        Property(XDocument.Load(Path.Combine(RepoRoot, "Directory.Build.props")), "LangVersion").Should().Equal("15");
 
         string[] overriding = [.. Directory.EnumerateFiles(Path.Combine(RepoRoot, "src"), "*.csproj", SearchOption.AllDirectories)
             .Concat(Directory.EnumerateFiles(Path.Combine(RepoRoot, "tests"), "*.csproj", SearchOption.AllDirectories))

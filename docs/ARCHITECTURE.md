@@ -18,7 +18,7 @@
 ```
 ┌─────────────────────────────────────┐  ┌──────────────────────────────────────┐
 │           Archiver.App              │  │         Archiver.Shell               │
-│           (WinUI 3, net10.0-win)    │  │  (net10.0-windows, WinExe, no WinUI) │
+│           (WinUI 3, net11.0-win)    │  │  (net11.0-windows, WinExe, no WinUI) │
 │                                     │  │                                      │
 │  MainWindow.xaml / .cs              │  │  Program.cs (entry point)            │
 │  ViewModels/MainViewModel.cs        │  │  ShellArgumentParser.cs              │
@@ -31,7 +31,7 @@
                                ▼
 ┌─────────────────────────────────────┐
 │           Archiver.Core             │
-│         (net10.0, no UI deps)       │
+│         (net11.0, no UI deps)       │
 │                                     │
 │  Interfaces/IArchiveService.cs      │
 │  Services/ZipArchiveService.cs      │
@@ -77,7 +77,7 @@ Windows.ApplicationModel.Resources, or any UI assembly.
 
 ```
 src/
-├── Archiver.Core/              ← net10.0, zero UI deps, zero NuGet packages
+├── Archiver.Core/              ← net11.0, zero UI deps, zero NuGet packages
 │   ├── Interfaces/
 │   │   ├── IArchiveService.cs
 │   │   ├── IArchiveCreationRouter.cs   ← T-F105: routes ArchiveAsync by ArchiveContainerFormat
@@ -223,10 +223,10 @@ src/
 │   └── Strings/                ← 37 locales (T-F91), en-US is the fallback
 │       └── en-US/Resources.resw
 │
-├── Archiver.Messages/          ← net10.0 -> Core (T-F209): renders Core's MessageCode texts in 37
+├── Archiver.Messages/          ← net11.0 -> Core (T-F209): renders Core's MessageCode texts in 37
 │                                  locales (MessageText, UiCulture, Resources/CoreMessages*.resx)
 │
-├── Archiver.App.Core/          ← net10.0, WinUI-free helpers for Archiver.App (T-F05), unit-testable
+├── Archiver.App.Core/          ← net11.0, WinUI-free helpers for Archiver.App (T-F05), unit-testable
 │   │                              without a WinUI test host
 │   ├── ArchiveEntryViewModel.cs / ArchiveTreeIndex.cs   ← Archive Browser tree/breadcrumb building
 │   ├── FileSystemBrowser.cs                             ← T-F107: real-filesystem climb past archive root
@@ -264,7 +264,7 @@ src/
 │   ├── WindowFloor.cs                                   ← T-F433/T-F439: the window's minimum size per DPI and work area
 │   └── ProcessTempRoot.cs                               ← T-F252: per-process %TEMP% subfolder, stale sweep
 │
-├── Archiver.Shell/             ← shell-triggered operation entry point; net10.0-windows; WinExe; no WinUI
+├── Archiver.Shell/             ← shell-triggered operation entry point; net11.0-windows; WinExe; no WinUI
 │   ├── Program.cs                      ← T-F268: parse, then dispatch to ShellCommands
 │   ├── ShellArgumentParser.cs          ← T-F235: `--paths-stdin` in place of the path list
 │   ├── StdinPathList.cs                ← T-F235: reads Explorer's UTF-16LE NUL-separated list from stdin
@@ -305,7 +305,7 @@ src/
 │       │                                                             Archiver.App/Strings/'s own set
 │       └── PasswordMessages.resx / PasswordMessages.<locale>.resx  ← 36 locales, same reuse pattern
 │
-├── Archiver.CLI/                ← standalone console frontend (T-F09); net10.0; Exe (real console,
+├── Archiver.CLI/                ← standalone console frontend (T-F09); net11.0; Exe (real console,
 │   │                                not WinExe); no WinUI; built as pakko.exe; ships as its own zip
 │   │                                (scripts/Publish-Cli.ps1, winget) and, since T-F317, also inside
 │   │                                the MSIX behind the "pakko" execution alias
@@ -776,7 +776,7 @@ public sealed record SkippedFile
 **T-F209 — messages.** Core builds every user-visible message through the internal
 `Services/CoreMessages` from a `MessageCode` (`Models/MessageCode.cs`); `Services/MessageTemplates`
 is the one English table; `ArchiveListResult.ErrorText`, `ThreatFinding.ReasonText` and
-`HashEntry.ErrorText` carry the same `CoreText`. `Archiver.Messages` (net10.0 -> Core) renders a
+`HashEntry.ErrorText` carry the same `CoreText`. `Archiver.Messages` (net11.0 -> Core) renders a
 `CoreText` in a UI language (`MessageText.Render`, `UiCulture.Resolve`/`ResolveFirst`) from
 `Resources/CoreMessages.resx` (37 locales); Shell and the App use it, the CLI prints English.
 T-F297: an exception's text enters a message only through `CoreMessages.Detail`, which keeps the
@@ -1278,7 +1278,7 @@ Each subsection records what a version added; later changes are noted in place o
 
 ### v1.2 — Shell Extension
 
-`Archiver.Shell` (net10.0-windows, WinExe) is included in the MSIX package. Since T-F268 it shows
+`Archiver.Shell` (net11.0-windows, WinExe) is included in the MSIX package. Since T-F268 it shows
 each operation in the `Archiver.OperationUi` window over a pipe, and falls back to the in-process
 `IProgressDialog` COM object (`NativeProgressDialog.cs`) only when that window cannot run.
 

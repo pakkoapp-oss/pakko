@@ -66,5 +66,5 @@ Two more, not duplicated elsewhere:
   "installed successfully" with a fresh version number and a fresh `.exe` apphost timestamp while
   silently installing a stale managed `.dll`. Caught only by comparing the `.dll`'s file *size*,
   not the `.exe`'s timestamp (the apphost stub barely changes across builds). Grep every
-  `net10.0-windows`-style TFM literal across `.csproj`/`.ps1` files before changing any project's
+  `net11.0-windows`-style TFM literal across `.csproj`/`.ps1` files before changing any project's
   TFM, not just the one project's own file (T-F128).

@@ -62,7 +62,7 @@ meant to be on-demand-only). Always combine both: `Category!=Slow&Category!=Very
 
 ## Test Project Setup
 
-Test projects target `net10.0` (`Archiver.Shell.Tests`: `net10.0-windows`) and use xunit with
+Test projects target `net11.0` (`Archiver.Shell.Tests`: `net11.0-windows`) and use xunit with
 FluentAssertions; no mocking library (hand-rolled fakes, `CLAUDE.md`). Package versions live in each
 `.csproj` and its lock file only, kept current by Dependabot.
 
@@ -784,8 +784,8 @@ ignored, `Dispose` not cancelling. The queued CRC-32 read's cancel is enforced b
   from OperationUi, `PublishReadyToRun` added to the CLI. `dotnet test` runs under JIT, so the
   Subprocess layer also runs against the published AOT `pakko.exe` (`build.yml`'s `build-cli`, and
   nightly on x64 and arm64 in `canary.yml`).
-- **C# 14 (T-F363)**, `PackagingManifestTests.Repo_PinsCSharp14Once` and `LockSourceGuardTests`
-  (Core.Tests, read the repo's files): `LangVersion` 14 only in `Directory.Build.props`, no
+- **C# 15 (T-F363, T-F492)**, `PackagingManifestTests.Repo_PinsCSharp15Once` and `LockSourceGuardTests`
+  (Core.Tests, read the repo's files): `LangVersion` 15 only in `Directory.Build.props`, no
   `.csproj` overriding it; no bare `object x = new()` (a lock object) in `src/`. Mutants killed
   (2026-10-09): `LangVersion` added to the CLI project, `FileHashService`'s lock back to `object`.
 - **Lock files (T-F364)**, `BuildReproducibilityTests` (Core.Tests, read the repo's files): no `*`

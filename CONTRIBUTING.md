@@ -5,8 +5,8 @@
 - **Visual Studio 2026** with the *.NET desktop* and *Desktop development with C++* workloads,
   plus the MSVC v143 (14.44) x64 and ARM64 build tools (the shell extension targets v143; the
   Native AOT link of the four exes, T-F355, uses the same C++ tools)
-- **.NET 10 SDK**, exactly the version `global.json` pins (`rollForward: disable`)
-- Language: **C# 14** (set once in `Directory.Build.props`)
+- **.NET 11 SDK**, exactly the version `global.json` pins (`rollForward: disable`)
+- Language: **C# 15** (set once in `Directory.Build.props`)
 - **PowerShell 7** (`pwsh`) for `scripts/*.ps1` (T-F371)
 - **Windows 10 version 2004 (build 19041)** or later, or Windows 11 (the package's minimum)
 

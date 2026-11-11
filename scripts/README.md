@@ -8,7 +8,7 @@ They are not part of the build pipeline — run them manually from a PowerShell 
 ## Prerequisites
 
 - Windows 10/11 with Developer Mode enabled, **or** sideloading allowed via Group Policy
-- .NET 10 SDK
+- .NET 11 SDK
 - PowerShell 7 (`pwsh`): the developer scripts have `#Requires -Version 7.0`, and the Release
   post-build deploy in Visual Studio runs `pwsh.exe` (T-F371). The two end-user scripts in
   "Permission repair for archives opened by older Pakko versions" below stay on
@@ -249,7 +249,7 @@ and `pakko-win-<arch>.cdx.json`.
 
 A separate workflow, `.github/workflows/canary.yml`, runs daily (`cron: "17 6 * * *"`) plus
 `workflow_dispatch` on demand. Unlike `build.yml` above, it runs on a deliberately **floating**
-toolchain (`windows-latest`, a floating .NET 10 SDK, T-F364) instead of the pinned
+toolchain (`windows-latest`, a floating .NET 11 SDK, T-F364) instead of the pinned
 `windows-2022`/MSVC `v143` combination `build-msix` relies on for stability. The goal is to catch
 SDK/NuGet/MSVC toolset drift on the day it actually happens, rather than waiting for someone to
 eventually bump `build.yml`'s pin and discover the break then (the exact class of surprise T-F122

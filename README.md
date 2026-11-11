@@ -33,8 +33,9 @@
 
 ## Install
 
-The app needs Windows 10 version 2004 (build 19041) or later, or Windows 11, x64 or ARM64. The
-standalone `pakko` zip has been tested on Windows 10 22H2, Windows 11 and Windows Server 2022.
+The app needs Windows 10 version 2004 (build 19041) or later, or Windows 11, x64 or ARM64; on x64 a
+processor with SSE4.2 and POPCNT (x86-64-v2, which .NET 11 requires; every processor Windows 11
+supports has them). The standalone `pakko` zip has been tested on Windows 10 22H2, Windows 11 and Windows Server 2022.
 
 - **Microsoft Store** (recommended): https://apps.microsoft.com/detail/9p5mw010d8pr, or
   `winget install 9P5MW010D8PR --source msstore`. Updates come through the Store, and the install
@@ -161,7 +162,7 @@ window. That is Explorer's own verb cache, not a Pakko bug.
 ## Contributing
 
 Build, deploy and test steps: [`CONTRIBUTING.md`](CONTRIBUTING.md) and
-[`scripts/README.md`](scripts/README.md). Tech stack: C# 14 on .NET 10 LTS, WinUI 3 and the Windows
+[`scripts/README.md`](scripts/README.md). Tech stack: C# 15 on .NET 11, WinUI 3 and the Windows
 App SDK, Native AOT; the Explorer menu is a C++ `IExplorerCommand` DLL.
 
 ---
