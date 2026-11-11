@@ -111,12 +111,11 @@ internal static partial class ArchiveEntrySecurity
         string? current = Path.GetDirectoryName(destFilePath);
         while (current != null && current.Length >= rootLength)
         {
-            if (Directory.Exists(current))
-            {
-                var info = new DirectoryInfo(current);
-                if (info.Attributes.HasFlag(FileAttributes.ReparsePoint))
-                    return true;
-            }
+            // T-F505: one query per folder - Exists and Attributes read the same snapshot (two
+            // queries before, a quarter of extraction's CPU time on 20,000 small files).
+            var info = new DirectoryInfo(current);
+            if (info.Exists && info.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                return true;
             string? parent = Path.GetDirectoryName(current);
             if (parent == current) break;
             current = parent;

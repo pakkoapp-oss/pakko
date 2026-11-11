@@ -14751,6 +14751,46 @@ T-F505's subject). Its time stays about 1.7x plain extraction: two passes over e
 decrypt) and a keystream XOR one byte at a time. That loop is a candidate if T-F505's profile
 shows it.
 
+## T-F505 - extraction's per-file cost: profiled, two allocations and a double query removed (2026-11-12)
+
+**Profile.** Thread time over 20,000 small entries, by the deepest real frame per sample (the async
+stack reconstruction of the earlier parser was unreliable). The CPU time goes to the file system:
+- creating, writing and closing each file;
+- `Directory.CreateDirectory`;
+- `GetFileAttributesEx` from `ArchiveEntrySecurity.PathContainsReparsePoint`'s walk over the entry's
+  folders;
+- setting the file time;
+- Inflate itself is under 1 s.
+
+Three costs are Pakko's own and removable without weakening a check:
+- `PathContainsReparsePoint` asked each folder twice, `Directory.Exists` then
+  `DirectoryInfo.Attributes`. Now one `DirectoryInfo` gives both from one query. The check stays per
+  entry at the point of action: a cached answer would be a TOCTOU against a junction planted during
+  the extraction (T-F37, T-F166).
+- Each destination `FileStream` had its own 80 KiB buffer, though `CopyToAsync` already writes in
+  80 KiB chunks. That was 1.6 GB of churn for 20,000 files. Now unbuffered (`bufferSize: 0`).
+- The destination was opened `useAsync: true`, but `MarkAndSetTime`'s `Flush` is synchronous: each
+  small file's write took the async handle's slow synchronous path (`WriteSyncUsingAsyncHandle`).
+  Now `useAsync: false`, as the convention for local disks asks.
+
+**Measured** (litmus, 20,000 files, five runs, Defender real-time protection on):
+
+| zip-extract | ms | CPU ms | alloc | faults |
+|---|---|---|---|---|
+| before | 42,969 | 43,625 | 1,760 MiB | 15,959 |
+| after | 41,621 | 43,312 | 207 MiB | 14,997 |
+| floor-write of the same files | 20,880 | 20,969 | 14 MiB | 2,372 |
+
+Allocation fell 8.5x; time and CPU did not move beyond noise. Extraction costs about twice the
+floor of writing the same files, because each file is also:
+- created in staging, then moved by the commit;
+- timed and marked;
+- checked for reparse points.
+
+Under real-time scanning most of that is kernel and filter time. No further change here without
+giving up a check. The password path's 1.7x over plain extraction (two passes, a byte-wise keystream
+XOR) stays as T-F504 recorded.
+
 ## T-F503 - one archive per item at Optimal takes the hand-rolled writer (2026-11-11)
 
 **Cause.** Without a password, one archive per item at Optimal or SmallestSize went through
