@@ -48,6 +48,9 @@ public static class Crc32
         return tables;
     }
 
+    /// <summary>One byte of the raw table step, no pre/post inversion: ZipCrypto's key schedule uses it.</summary>
+    internal static uint UpdateByte(uint crc, byte b) => Tables[(int)((crc ^ b) & 0xFF)] ^ (crc >> 8);
+
     /// <summary>Computes the CRC-32 of all remaining bytes in <paramref name="stream"/>.</summary>
     public static uint Compute(Stream stream)
     {
