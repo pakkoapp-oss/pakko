@@ -150,6 +150,51 @@ public sealed class DeflateEncoderPoolTests : IDisposable
         Inflate(actual).Should().Equal(second);
     }
 
+    // T-F499: DeflateEncoder.Reset() leaves state behind - a reset encoder's output for an input
+    // depended on what it compressed before, so the parallel writer's archives were not
+    // byte-identical across runs (T-F31). The pair is a real trigger from T-F318's bench data:
+    // seeded files of 1-10 KB, file #7 then file #1865 (one byte longer than a fresh encoder's).
+    private static byte[][] BenchFiles(int count)
+    {
+        const string words = "alpha beta gamma delta archive entry deflate zlib window pool worker ";
+        var rng = new Random(7);
+        var files = new byte[count][];
+        for (int i = 0; i < count; i++)
+        {
+            byte[] data = new byte[rng.Next(1024, 10241)];
+            for (int j = 0; j < data.Length; j++)
+                data[j] = j % 7 == 0 ? (byte)rng.Next(256) : (byte)words[rng.Next(words.Length)];
+            files[i] = data;
+        }
+        return files;
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(6)]
+    [InlineData(9)]
+    public void Compress_AfterAnyEarlierInput_GivesWhatAFreshDeflaterGives(int quality)
+    {
+        byte[][] files = BenchFiles(1866);
+        byte[] target = files[1865];
+        using var fresh = new DeflateEncoderPool.Deflater(quality);
+        byte[] expected = fresh.Compress(target).ToArray();
+
+        foreach (int earlier in new[] { 7, 41, 48, 0, 1000 })
+        {
+            using var reused = new DeflateEncoderPool.Deflater(quality);
+            _ = reused.Compress(files[earlier]);
+            reused.Compress(target).ToArray().Should().Equal(expected, $"after file #{earlier}, at quality {quality}");
+        }
+
+        // Only what the previous input filled is scrubbed: a large input, then a small one, must
+        // still leave nothing of the large one behind.
+        using var chained = new DeflateEncoderPool.Deflater(quality);
+        _ = chained.Compress(Text(300_000, 11));
+        _ = chained.Compress(files[7]);
+        chained.Compress(target).ToArray().Should().Equal(expected, $"after a large input and file #7, at quality {quality}");
+    }
+
     [Fact]
     public void Compress_ThroughAPoolDeflater_EmptyAndIncompressibleEntriesStayStored()
     {

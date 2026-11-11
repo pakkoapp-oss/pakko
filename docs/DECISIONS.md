@@ -14689,7 +14689,7 @@ compression). The run's compute gate bounds concurrency, so the pool never build
 window (a test with 300 files and a window of 4). Each deflater keeps its output buffer, grown to
 `GetMaxCompressedLength` of the largest entry it saw, so a 85 KB-1 MiB entry does not allocate a
 new LOH array. Reset happens at the start of every compression, so a deflater is fresh from the
-line itself. A compression that throws disposes its deflater instead of returning it; a status
+line itself (wrong: `Reset()` keeps the window, see "T-F499" below). A compression that throws disposes its deflater instead of returning it; a status
 other than `Done` with all input consumed throws `InvalidOperationException`, which `ArchiveAsync`'s
 outer catch turns into the archive's error (a bug, not user data). Rejected: `[ThreadStatic]` (a
 static mutable field in a service, and native state kept alive by pool threads after the run). The
@@ -14714,6 +14714,39 @@ baseline goes from 1.18 to 0.96. #134700's own benchmark on .NET 11.0.0 GA, dop 
 489-490 ms at 18.4 faults per entry, a reused encoder 188-190 ms at 0.01-0.02 (dop 12: 189-227 ms
 against 147-148 ms) - the regression is still in 11.0.0 for `DeflateStream`. The numbers go
 upstream in a comment only after the user reads its text.
+
+## T-F499 - a reset DeflateEncoder is not a fresh one (2026-11-11)
+
+**Found** while measuring T-F497's step 5: one archive out of 2,000, written with a password, was a
+byte longer than the same file's archive from `main`; T-F318's own bench had shown 19,224,233
+against 19,224,232 bytes for the same 5,000 files on two runs, unnoticed then. So T-F318 broke
+T-F31 (identical inputs, byte-identical ZIPs) for the parallel writer's compressed entries.
+
+**Cause.** `DeflateEncoder.Reset()` in .NET 11.0.0 leaves the previous input in the window, and
+the match finder still reads it. For seeded file #1865 of the bench (9,190 bytes), 42 of 2,000
+possible predecessors on a new encoder made its stream 6,121 bytes instead of a fresh encoder's
+6,120 (quality 6; quality 9 also differs, quality 1 not for these pairs). Every deviating stream
+inflated back to the input (the 42, and 43,000 reused compressions in random order at qualities 1,
+6 and 9 plus 3,000 of 200-900 KB files): valid data, different bytes. zlib documents
+`deflateReset` as `deflateEnd` plus `deflateInit`, so this is an upstream bug; a report waits for
+the user's OK.
+
+**Fix.** Before each reuse the deflater compresses zeros over what the previous input filled (its
+length plus 2 KiB for the match finder's lookahead, at most 65 KiB, the whole 2 x 32 KiB window
+and 1 KiB beyond), which leaves the window as a fresh encoder's. Swept before choosing it: zeros of
+the whole window, then of the previous length alone (no slack) and with 2 KiB, each against all
+2,000 predecessors of five targets, 40 large predecessors chained before small ones, and large
+targets, at qualities 1, 6 and 9: 0 of 15,178 differ from a fresh encoder. Cost, 5,000 files of
+1-10 KB (Release, median of five, alternating): 410-411 ms without the fix, 419-449 ms with it
+(a whole-window scrub cost 469-482 ms); page faults unchanged; the archive is 19,224,232 bytes on
+every run, where the unfixed build gave 231 and 232.
+
+**Tests.** `Compress_AfterAnyEarlierInput_GivesWhatAFreshDeflaterGives` regenerates the bench's
+seeded files and checks the real trigger pairs and a large-then-small chain at qualities 1, 6 and
+9 (red without the scrub at 6 and 9). `ArchiveAsync_ManySmallFiles_…` now also compares the bytes
+of its two archives of the same files; its fixture does not hit the bug (four runs on the unfixed
+build passed), so it is a net, not the guard. The T-F31 test archives with `NoCompression` and the
+sequential writer, so it never saw this path.
 
 ## v1.10.0 - the release record (2026-11-10 and 2026-11-11)
 

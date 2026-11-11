@@ -14558,3 +14558,17 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
 - **Reported by:** upstream reply to dotnet/runtime#134700, 2026-10-01.
 - **Scheduled (2026-11-11):** v1.11.0 stream N, right after T-F492, required in the wave (the user: "the updated pool for zip so they are not re-created every time"). Measure with `Archive/ManySmallFiles` and #134700's benchmark (faults per op, ~0.02 against ~18), then report the numbers upstream.
 - **Graduated 2026-11-11** (`docs/DECISIONS.md`, "T-F318"): `DeflateEncoderPool`, one per parallel run; a deflater is rented per in-memory entry, reset before each use, returned after a compression that finished and disposed after one that threw; the chunk-file path keeps `DeflateStream`. 5,000 small files: page faults 28-70 k -> 3.7-5.7 k per archive, `Archive/ManySmallFiles` 1.16-1.25 -> 0.93-0.99 (baseline 0.96); 300 files of 200-900 KB no slower; output within 3 bytes of `DeflateStream`'s, 7za reads it.
+
+### T-F499 - The parallel ZIP writer's archives were not byte-identical across runs (P1, from T-F318)
+
+- [x] **Status:** done. Found 2026-11-11 by the agent while measuring T-F497: .NET 11's
+  `DeflateEncoder.Reset()` keeps the previous input in the window, so a reused encoder's stream for
+  an entry sometimes came out a byte longer than a fresh one's. The data stayed valid (every
+  deviating stream inflated back; 7za tested the archives), but T-F31's identical inputs, identical
+  ZIP no longer held for the parallel writer's compressed entries since T-F318.
+- **Reported by:** the agent, 2026-11-11.
+- **Graduated 2026-11-11** (`docs/DECISIONS.md`, "T-F499"): `DeflateEncoderPool.Deflater` compresses
+  zeros over what the previous input filled (plus 2 KiB, at most 65 KiB) before each reuse; 0 of
+  15,178 sweeps differ from a fresh encoder at qualities 1, 6 and 9; cost within noise on 5,000
+  small files. Red test on the real trigger pair; the ManySmallFiles bench now compares its two
+  archives' bytes. Upstream report waits for the user's OK.

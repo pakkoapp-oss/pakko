@@ -1366,8 +1366,9 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
     {
         // Byte-identical output requires: (1) sorted entry order, (2) deterministic timestamps
         // (entry.LastWriteTime pinned to source file's LastWriteTime), (3) deterministic
-        // compression (Deflate is deterministic). NoCompression avoids any compression
-        // variance and keeps the test fast.
+        // compression (Deflate is deterministic for a fresh state; a reused DeflateEncoder is only
+        // after DeflateEncoderPool's scrub, T-F499, tested in DeflateEncoderPoolTests).
+        // NoCompression keeps this test on the sequential writer and fast.
         string sourceDir = Path.Combine(_temp.Path, "source");
         Directory.CreateDirectory(sourceDir);
 
