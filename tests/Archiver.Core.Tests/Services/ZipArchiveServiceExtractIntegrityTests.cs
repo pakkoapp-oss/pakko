@@ -132,6 +132,44 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
             .Which.Message.Should().Contain("doc.txt").And.Contain(expected);
     }
 
+    // T-F492: .NET 11's ZipArchiveEntry.Open() reads encryption itself and throws
+    // NotSupportedException on a header it cannot use; Core must keep that per entry. The canary's
+    // fuzzer found it (PAKKO_FUZZ_SEED=14117502, iteration 40): these are its two mutations.
+    private string MutatedMixedEncryptedZip()
+    {
+        byte[] bytes = File.ReadAllBytes(FixtureHelper.Archive("mixed_encrypted_and_plain.zip"));
+        bytes[664] = 95;
+        bytes[491] = 0xFF;
+        bytes[492] = 0xFF;
+        string zip = Path.Combine(_temp.Path, "mutated.zip");
+        File.WriteAllBytes(zip, bytes);
+        return zip;
+    }
+
+    [Fact]
+    public async Task TestAsync_HeaderDotNetCannotDecrypt_FailsPerEntryNeverThrows()
+    {
+        string zip = MutatedMixedEncryptedZip();
+
+        Func<Task<ArchiveResult>> act = () => _sut.TestAsync([zip], resolvePasswordAsync: _ => Task.FromResult(new PasswordDecision { Password = "testpassword" }));
+
+        ArchiveResult result = (await act.Should().NotThrowAsync()).Subject;
+        result.Success.Should().BeFalse();
+        result.Errors.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task ExtractAsync_HeaderDotNetCannotDecrypt_FailsPerEntryNeverThrows()
+    {
+        string zip = MutatedMixedEncryptedZip();
+
+        Func<Task<(ArchiveResult, string)>> act = () => ExtractAsync(zip, "testpassword");
+
+        (ArchiveResult result, _) = (await act.Should().NotThrowAsync()).Subject;
+        result.Success.Should().BeFalse();
+        result.Errors.Should().NotBeEmpty();
+    }
+
     [Fact]
     public async Task TestAsync_Ae2EntryLargerThanDeclared_ReportsDeclaredSizeNotCrc()
     {

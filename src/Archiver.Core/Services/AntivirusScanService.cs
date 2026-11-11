@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Runtime.Versioning;
 using System.Text;
 using Archiver.Core.Interfaces;
+using Archiver.Core.IO;
 using Archiver.Core.Models;
 using Archiver.Core.Services.Antivirus;
 using Archiver.Core.Services.Sandbox;
@@ -355,7 +356,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                             archivePath, named, located, rawArchiveStream!, password, scanner, cancellationToken)
                             .ConfigureAwait(false)
                         : await ScanOneEntryAsync(
-                            archivePath, named.FullName, entry.Length, entry.Open, scanner, cancellationToken)
+                            archivePath, named.FullName, entry.Length, () => VerifyingReadStream.OpenEntry(entry), scanner, cancellationToken)
                             .ConfigureAwait(false);
                     findings.Add(finding);
                 }

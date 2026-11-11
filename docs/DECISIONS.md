@@ -14664,6 +14664,18 @@ supported-OS page (2026-09-28) lists Windows 10 only as 21H2/1809/1607 (E) and (
 Pro, which Microsoft itself no longer supports. PRF rows against v1.10.0: `x` of 6000 files 9.1 s
 (9.7), PRF-004 375 ms (345).
 
+**The canary on the branch.** The first dispatch failed in every job but read green except the
+fuzzer: `canary.yml`'s five `setup-dotnet` steps still asked for `10.0.x` while `global.json`
+asked for 11 (the retarget script rewrote `"10.0.100"`, not `"10.0.x"`); `canary-failed-day` ran.
+With `11.0.x`, ARM64, ASan, Slow, Server 2022 and the shell extension passed (`canary-failed-day`
+skipped), and the fuzzer found a real .NET 11 change: on a mutated `mixed_encrypted_and_plain.zip`
+(seed 14117502, iteration 40: `set 664=95`, `int16 491=0xFFFF`) `ZipArchiveEntry.Open()`, which
+now reads encryption itself, throws `NotSupportedException` ("The entry's encryption method is not
+supported"), which no per-entry catch took, so `TestAsync` and `ExtractAsync` threw (the hard
+constraint). `VerifyingReadStream.OpenEntry` is now the one way Core opens a plain entry (Test,
+Extract, the AV scan) and turns that throw into `ContentDamaged`. Two tests with the same
+mutations, seen red first.
+
 ## v1.10.0 - the release record (2026-11-10 and 2026-11-11)
 
 - **Commits.** PR #207 (`28cf3e8d`, T-F487..T-F490, the REL-001 split, T-F491 filed) and PR #208

@@ -1322,7 +1322,7 @@ public sealed class ZipArchiveService : IArchiveService
             // entry longer than declared fails both).
             try
             {
-                using var verified = new VerifyingReadStream(entry.Open(), entry.Length, entry.Crc32);
+                using var verified = VerifyingReadStream.OpenEntry(entry);
                 DrainForTest(verified, cancellationToken);
             }
             catch (InvalidDataException ex)
@@ -1913,7 +1913,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         // T-F246: a corrupted entry must never be written and reported as success; since .NET 11 the
         // runtime detects CRC-32 and size errors and VerifyingReadStream names them (T-F492).
-        return (true, new VerifyingReadStream(named.Entry.Open(), named.Entry.Length, named.Entry.Crc32), null);
+        return (true, VerifyingReadStream.OpenEntry(named.Entry), null);
     }
 
     private static CoreText CollisionMessage(string entryName) => CoreMessages.Text(MessageCode.EntryNameCollision, entryName);
