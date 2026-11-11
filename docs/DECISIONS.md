@@ -14521,6 +14521,70 @@ constraint "only tar.exe" stands until the user decides (below).
   swap-pair tests failed again. Four first translations used the replaced word for "archive"
   (ko, th, vi, zh); `GlossaryTests` caught them.
 
+## v1.10.0 - the release record (2026-11-10 and 2026-11-11)
+
+- **Commits.** PR #207 (`28cf3e8d`, T-F487..T-F490, the REL-001 split, T-F491 filed) and PR #208
+  (`f91a221e`: the Store listing in 37 languages, the "coming in v1.10.0" markers dropped from
+  `README.md`, `README.uk.md` and both site pages, CHANGELOG dated) changed no `src` after the
+  smoke below, except PR #209 (`77b4b9c8`): **SDK 10.0.403 to 10.0.404**. The canary on
+  `f91a221e` (run 42893081531) failed only "Lock files match the floating SDK": .NET 10.0.15 came out
+  the same day as a security release (16 CVEs, `release-metadata/10.0/releases.json`), and Native
+  AOT ships the pinned SDK's runtime, so the tag was not to carry 10.0.14. `global.json` and the
+  nine lock files (ILCompiler/ILLink 10.0.14 to 10.0.15); the default suite passed on 10.0.404 in
+  all eight test projects.
+- **Smoke on the host** (Windows 11 26300, tar.exe 3.8.9), dev packages 1.10.0.1 to .3 (SDK 10.0.403):
+  - `Invoke-Smoke.ps1 -Tier release`: 162 rows, 81 OK, 66 manual, 14 skipped, 1 FAIL (`REL-001`,
+    fixed by #207's split; see "v1.10.0 - performance ...").
+  - `POL-*`, `PKG-005` with `-Hold` (one elevation): 9 OK; `POL-009`/`POL-010` walked through the
+    `windows` MCP server under each held policy: the download-mark box locked at 0/1/2; Format list
+    ZIP only (`AllowedFormats`, `DisableTarExtraction`), no ZIP and the card on 7Z
+    (`BlockedFormats=zip`), no 7Z and Down from ZIP to TAR (`sevenzip,rar`), a `.7z` and a `.par2`
+    refused on open; Explorer: blocked formats hidden, no Test or Add to X.7z/X.tar on a `.7z` under
+    `DisableTarExtraction`, no PAR2 items under `DisableRecoveryData`, the ZIP without and its `.par2`
+    with PAR2 items under `BlockedFormats=zip`. FIPS on: the App starts.
+  - The gate rows on nine formats through the Shell and `pakko t`, the Explorer menu's Open and Test;
+    the 37-locale rerun of T-F487..T-F489.
+  - `CLI-023`: a 2 GB VHDX hot-added to PakkoW10 (exFAT and FAT32) and an NTFS share there; from the
+    host over SMB, tar.gz, a LZMA2 7z and a Copy 7z: 9 of 9 exit 0, every byte equal, no "cannot
+    extract". On the VM itself tar.gz to all three: OK; a 7z of any method is the 3.5.2 version gate
+    (T-F48), as before.
+- **Gates on the release commit** (`f91a221e`, SDK 10.0.403): `REL-001`: the elevated `testhost`
+  (pid 23328) still held `Archiver.App.Core.Tests`' bin, so the row ran by hand as its two runs,
+  project by project, `Archiver.App.Core.Tests` into another output folder: 14 Slow passed, then
+  `Archiver.Core.PerformanceTests` alone: 12 passed (26, as for v1.9.0). Build run 42893006108
+  green; its `pakko-msix-x64` (1.10.0.0) for `PKG-006..009` with `-PackageLifecycle`, v1.9.0's
+  release as the previous one: 4 OK. `PKG-010` (`-Hold`): with the package removed, the menu of a
+  ZIP and of a folder held no Pakko item; "Show more options" was not read this time.
+- **After the SDK bump** (1.10.0.4 from `Deploy.ps1` on 10.0.404): quick tier 51 of 51 OK; the
+  release tier's rows without elevation: 81 of 81 OK (`Invoke-Smoke.ps1 -Only`, every `script` row of the tier except `POL-*`, `REL-*` and `PKG-005..010`). Canary on `77b4b9c8`: run 42902390256, every job green, `canary-failed-day` skipped, `canary-fuzz` success, the ARM64 subprocess step success.
+- **PakkoW10** (Windows 10 19045, tar.exe 3.5.2, the CI bundle of `28cf3e8d`), by interactive
+  scheduled tasks and PowerShell Direct:
+  - `APP-037`, the log line: "archive helper; archiveint.dll: libarchive 3.5.2 ...; the probe
+    passed". `EXP-017` (3.5.2 half): iso, deb, cpio, tar.Z, cab extract right; no lzip writer on 3.5.2.
+  - `SHL-017`/`SHL-018`: the EICAR rows "removed or blocked before Pakko could scan it directly",
+    named, never clean; a clean tar "No threats found".
+  - `APP-033` (format uk-UA over en-US 1252), `APP-034`, `APP-035` (cp437 bytes), through `pakko x`
+    of each row alone and `pakko t` (structure only, exit 1, nothing refused) rather than the Archive
+    Browser: every row its own name and content; the `a` + U+02C6 row with EICAR scanned "removed
+    or blocked", not clean.
+  - `APP-036` (system and format ja-JP, 932): the NEC row 13, NEC-selected IBM and `s` 0x83 0x5C
+    `n.t` rows extract their own file. The two forms of one name (`d`, `u`) are no longer refused:
+    the helper reads both as `d≒.t`/`u∪.t`, so the second copy meets the conflict setting (`-y`
+    keeps d2, `-aos` d1, `-aou` both with their own content); no row gets the other's content. The
+    refusal was tar.exe's `-T` guard (T-F467); `SMOKE.md`'s row now says both. Restored to en-US.
+  - `CLI-032`/`CLI-035`: `pakko i` tar and tar.gz (plus the read-only formats) supported, no methods
+    line; `a` of tar.zst, tar.bz2, tar.xz, tar.lzma and 7z in a folder with tracing `zstd.exe`,
+    `bzip2.exe`, `xz.exe`, `lzma.exe` and with it on `PATH`: exit 2 with Pakko's text, no file, no
+    trace (tar.exe -j ran the traced `bzip2.exe`, so the trace works). The App: Format list ZIP, TAR,
+    TAR.GZ; Down at ZIP lands on TAR. **Not walked: the Explorer menu on the VM** (a background task
+    cannot open it, and the Hyper-V console runs elevated, out of the MCP server's reach).
+- **Store listing:** `docs/store-listing` filled into the user's export of 2026-11-10 with
+  `--keep-lists sv-SE`, as for v1.9.0.
+- **README, README.uk and both site pages** (this record's pull request): tar, 7z, RAR and the
+  read-only formats are read through `archiveint.dll` and created with `tar.exe`, the helper and its
+  fallback named; latest release v1.10.0; the taskbar progress.
+- **The tag** goes on this record's merge, whose `src` is that of `77b4b9c8`.
+
 ## v1.10.0 - performance against v1.9.0 and 7-Zip; the 7za ratios recalibrated (2026-11-10)
 
 **Asked** by the user before the tag: no regression since the performance work, in the engines

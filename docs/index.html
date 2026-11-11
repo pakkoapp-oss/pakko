@@ -130,7 +130,7 @@
         <p>
           Both are capable tools — this isn't a claim of security superiority. It's a different
           set of supply-chain dependencies. Pakko's entire compression stack is either part of
-          the .NET runtime or Microsoft's own signed <code>tar.exe</code>: components with a
+          the .NET runtime or Microsoft's own signed <code>tar.exe</code> and <code>archiveint.dll</code>: components with a
           public CVE process and a community audit trail that some
           security-conscious environments — government, defense, regulated industries — require
           and everyone else can still benefit from.
@@ -143,7 +143,7 @@
         </div>
         <div class="pillar">
           <h3>Sandboxed extraction</h3>
-          <p>RAR, 7-Zip, and TAR archives are read via Windows' signed <code>tar.exe</code>, launched inside an AppContainer with no network capability and a Job Object process limit.</p>
+          <p>RAR, 7-Zip, TAR and the other tar-family archives are read through Windows' own signed <code>archiveint.dll</code> (the library behind <code>tar.exe</code>) in a small helper, or through <code>tar.exe</code> itself where the helper cannot run; either runs inside an AppContainer with no network capability and a Job Object process limit.</p>
         </div>
         <div class="pillar">
           <h3>Nothing phones home</h3>
@@ -169,13 +169,13 @@
           <h3>Formats</h3>
           <ul class="manifest-list">
             <li><span class="check">✓</span><span>ZIP — read &amp; write, via <code>System.IO.Compression</code></span></li>
-            <li><span class="check">✓</span><span>TAR / GZ / BZ2 / XZ / ZST / LZMA — read &amp; write, via <code>tar.exe</code>; single .gz / .bz2 / .xz files too</span></li>
-            <li><span class="check">✓</span><span>RAR — read only, via <code>tar.exe</code></span></li>
-            <li><span class="check">✓</span><span>7-Zip — read &amp; write (no password), via <code>tar.exe</code> where it has the 7z writer</span></li>
+            <li><span class="check">✓</span><span>TAR / GZ / BZ2 / XZ / ZST / LZMA — read &amp; write (read via <code>archiveint.dll</code>, write via <code>tar.exe</code>); single .gz / .bz2 / .xz files too</span></li>
+            <li><span class="check">✓</span><span>RAR — read only, via <code>archiveint.dll</code></span></li>
+            <li><span class="check">✓</span><span>7-Zip — read &amp; write (no password); written via <code>tar.exe</code> where it has the 7z writer</span></li>
             <li><span class="check">✓</span><span>Password-protected ZIP — read (ZipCrypto, WinZip AES), including antivirus scan of the decrypted contents, and create (AES-256; file names stay visible)</span></li>
             <li><span class="check">✓</span><span>Encrypted 7z and RAR — recognized and refused with a clear message</span></li>
           </ul>
-          <p class="note">Which tar formats Windows reads depends on its build: a current Windows 11 reads all of them, Windows 10's <code>tar.exe</code> only tar and tar.gz. Pakko offers what the installed <code>tar.exe</code> can do. Since v1.10.0: ISO, CAB, cpio, ar (.deb), .Z and lzip, read only.</p>
+          <p class="note">Which tar formats Windows reads depends on its build: a current Windows 11 reads all of them, Windows 10's only tar and tar.gz (plus ISO, CAB, cpio, ar and .Z). Pakko offers what the installed <code>tar.exe</code> can do. Since v1.10.0: ISO, CAB, cpio, ar (.deb), .Z and lzip, read only; names arrive exactly as stored, read through <code>archiveint.dll</code>.</p>
         </div>
         <div class="manifest-group">
           <h3>Windows integration</h3>
