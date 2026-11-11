@@ -345,6 +345,95 @@ public sealed class ZipArchiveServiceWriterChoiceTests : IDisposable
         }
     }
 
+    // T-F500: each archive of one archive per item gets the run's deflaters and large-file gate, a
+    // folder its share of workers and a file one.
+    [Theory]
+    [InlineData(0, true, 0)]
+    [InlineData(0, false, 0)]
+    [InlineData(4, true, 4)]
+    [InlineData(4, false, 1)]
+    public void SeparateArchiveSettings_SplitsWorkersAndKeepsTheRunsSharedState(int workersPerFolder, bool isFolder, int expectedThreads)
+    {
+        using var pool = new DeflateEncoderPool(CompressionLevel.Fastest);
+        using var gate = new SemaphoreSlim(1, 1);
+        ParallelSingleArchiveWriter.CompressionSettings run = new(CompressionLevel.Fastest) { Deflaters = pool, LargeFileGate = gate };
+
+        ParallelSingleArchiveWriter.CompressionSettings settings = ZipArchiveService.SeparateArchiveSettings(run, workersPerFolder, isFolder);
+
+        settings.MaxThreads.Should().Be(expectedThreads);
+        settings.Deflaters.Should().BeSameAs(pool);
+        settings.LargeFileGate.Should().BeSameAs(gate);
+    }
+
+    // T-F500: a source that cannot be read, on the chunk path (over 1 MiB, then stored from the
+    // source since Deflate grew it) and in memory, costs only its own archive.
+    [Theory]
+    [InlineData(CompressionLevel.Fastest, null)]
+    [InlineData(CompressionLevel.Optimal, "pw-500")]
+    public async Task ArchiveAsync_SeparateArchives_UnreadableSources_CostOnlyTheirOwnArchives(CompressionLevel level, string? password)
+    {
+        string bigLocked = CreateRandomFile("big-locked.bin", 1);
+        string bigOk = CreateRandomFile("big-ok.bin", 2);
+        string smallLocked = CreateFileIn("small", "small-locked.txt", [1, 2, 3]);
+        string smallOk = CreateFileIn("small", "small-ok.txt", [4, 5, 6]);
+        string output = Path.Combine(_temp.Path, "out");
+
+        ArchiveResult result;
+        using (new FileStream(bigLocked, FileMode.Open, FileAccess.Read, FileShare.None))
+        using (new FileStream(smallLocked, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            result = await _sut.ArchiveAsync(new ArchiveOptions
+            {
+                SourcePaths = [bigLocked, bigOk, smallLocked, smallOk], DestinationFolder = output,
+                Mode = ArchiveMode.SeparateArchives, CompressionLevel = level,
+                ResolvePasswordAsync = password is null ? null : _ => Task.FromResult(new PasswordDecision { Password = password }),
+            });
+        }
+
+        result.Errors.Select(e => e.SourcePath).Should().BeEquivalentTo([bigLocked, smallLocked]);
+        result.CreatedFiles.Select(Path.GetFileName).Should().BeEquivalentTo(["big-ok.zip", "small-ok.zip"]);
+        Directory.GetFileSystemEntries(output, ".pakko-*").Should().BeEmpty();
+        Directory.GetDirectories(_temp.Path, ".pakko-*", SearchOption.AllDirectories).Should().BeEmpty();
+    }
+
+    // T-F500: a cancel in the middle of one archive per item throws, leaves no temp file or chunk
+    // folder, and every archive it left is a whole one.
+    [Fact]
+    public async Task ArchiveAsync_SeparateArchives_CancelledMidway_LeavesOnlyWholeArchives()
+    {
+        string[] sources = [.. Enumerable.Range(0, 6).Select(i => CreateRandomFile($"f{i}.bin", 10 + i))];
+        string output = Path.Combine(_temp.Path, "out");
+        using var cts = new CancellationTokenSource();
+        var progress = new CancelOnFirstReport(cts);
+
+        Func<Task> run = () => _sut.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = sources, DestinationFolder = output,
+            Mode = ArchiveMode.SeparateArchives, CompressionLevel = CompressionLevel.Fastest,
+        }, progress, cts.Token);
+
+        await run.Should().ThrowAsync<OperationCanceledException>();
+        Directory.GetFileSystemEntries(output, ".pakko-*").Should().BeEmpty();
+        Directory.GetDirectories(_temp.Path, ".pakko-*", SearchOption.AllDirectories).Should().BeEmpty();
+        string[] left = Directory.GetFiles(output, "*.zip");
+        left.Length.Should().BeLessThan(sources.Length);
+        foreach (string zip in left)
+        {
+            using ZipArchive archive = ZipFile.OpenRead(zip);
+            ZipArchiveEntry entry = archive.Entries.Single();
+            ReadEntry(archive, entry.FullName).Should().Equal(File.ReadAllBytes(sources.Single(s => Path.GetFileName(s) == entry.FullName)));
+        }
+    }
+
+    private sealed class CancelOnFirstReport(CancellationTokenSource cts) : IProgress<ProgressReport>
+    {
+        public void Report(ProgressReport value)
+        {
+            if (value.Percent > 0)
+                cts.Cancel();
+        }
+    }
+
     private Task<ArchiveResult> ArchiveAsync(string[] sources, string name) =>
         _sut.ArchiveAsync(new ArchiveOptions
         {

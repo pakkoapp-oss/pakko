@@ -14781,3 +14781,26 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
     and a COM stream is not worth it under the 256 MiB cap.
   - **Pool:** entries over 1 MiB no longer go through the shared pool, which kept up to 256 MiB.
   - **Plaintext:** the content scanned is zeroed after the scan.
+
+### T-F500 - The hand-rolled writer's failure paths in one archive per item: a disposal failure and the untested shapes (P3, from T-F497's review)
+
+- [x] **Status:** done 2026-11-12. Found by T-F497's closing review, 2026-11-11.
+  1. `ZipEntryWriter.DisposeAsync` lets a central-directory, flush or close failure escape before
+     `_output.DisposeAsync()`, so the temp file's handle (`FileShare.None`) stays open and the
+     caller's best-effort delete fails; the next run sweeps it. The archive is not committed (the
+     per-source catch), so no data is at risk. Close the output in a `finally`, with a test that a
+     disposal failure commits nothing and leaves no temp file. Predates T-F497 (single archive too).
+  2. Tests one archive per item lacks on the hand-rolled path (Fastest, a password): a read failing
+     on the chunk path (> 1 MiB) and on the stored-from-source path; a run cancelled midway
+     leaves no `.pakko-*` file or folder and no final `.zip` for the cancelled archives; folders get
+     `workersPerFolder` and files one worker (today only the pure function is tested); the run's
+     `LargeFileGate` actually reaches each archive (the writer honouring it is tested).
+- **Reported by:** the agent (T-F497's reviewer), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
+- **Flaky, seen 2026-11-11 (T-F498's run):** `ParallelSingleArchiveWriterTests.WriteAsync_WhileRunning_ChunkFolderIsHiddenAndNextToDestination` failed once in the full quick tier, passed 5/5 alone. It waits only 2 s for the chunk folder, against 64 MiB compressed under the whole suite's load; hold the run with a gate (a blocking source stream) instead of a clock (`.claude/rules/tests.md`, T-F425).
+- **Graduated 2026-11-12** (`docs/DECISIONS.md`, "T-F500"):
+  - **Disposal:** the writer's output closes in a `finally`.
+  - **Tests added:**
+    - per-archive settings;
+    - unreadable sources on the chunk and in-memory paths, with and without a password;
+    - a cancel midway.
+  - **Flaky test:** the chunk-folder test looks from inside the run instead of polling.
