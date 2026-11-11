@@ -33,18 +33,20 @@ internal sealed class WinZipAesEncryptStream : Stream
     private readonly Stream _output;
     private readonly AesCtrKeystream _keystream;
     private readonly IncrementalHash _hmac;
-    private readonly byte[] _scratch = new byte[ScratchSize];
+    private readonly byte[] _scratch;
     private bool _disposed;
 
-    public WinZipAesEncryptStream(Stream output, string password)
+    // T-F504: plaintextLength sizes the buffers to the entry (a longer write still works).
+    public WinZipAesEncryptStream(Stream output, string password, long plaintextLength = long.MaxValue)
     {
         _output = output;
+        _scratch = new byte[Math.Clamp(plaintextLength, 1, ScratchSize)];
 
         byte[] salt = new byte[WinZipAesReader.SaltLength(StrengthBits)];
         RandomNumberGenerator.Fill(salt);
         (byte[]? encryptionKey, byte[]? authenticationKey, byte[]? passwordVerify) = WinZipAesReader.DeriveKeys(password, salt, StrengthBits);
 
-        _keystream = new AesCtrKeystream(encryptionKey);
+        _keystream = new AesCtrKeystream(encryptionKey, plaintextLength);
         // CA5350 + S4790: HMAC-SHA1 is fixed by the WinZip AE spec — see WinZipAesReader.Authenticate.
 #pragma warning disable CA5350
         _hmac = IncrementalHash.CreateHMAC(HashAlgorithmName.SHA1, authenticationKey); // NOSONAR: S4790 — fixed by the WinZip AE spec (see CONVENTIONS.md)

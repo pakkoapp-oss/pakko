@@ -216,7 +216,7 @@ internal static class EncryptedZipEntryReader
 
             using (var pass1 = new EntryRegionStream(zipStream, offset + headerLength, ciphertextLength, ownsSource: false))
             {
-                if (!WinZipAesReader.Authenticate(pass1, authenticationKey, storedTag))
+                if (!WinZipAesReader.Authenticate(pass1, authenticationKey, storedTag, ciphertextLength))
                     return (EncryptedZipReadResult.Corrupted, null);
             }
 
@@ -229,7 +229,7 @@ internal static class EncryptedZipEntryReader
             var pass2 = new EntryRegionStream(zipStream, offset + headerLength, ciphertextLength, ownsStream);
             uint? expectedCrc = located.AeVersion == 1 ? located.StoredCrc32 : null;
             return (EncryptedZipReadResult.Success,
-                WrapDecompression(new WinZipAesCtrStream(pass2, encryptionKey), located.RealCompressionMethod, expectedCrc,
+                WrapDecompression(new WinZipAesCtrStream(pass2, encryptionKey, ciphertextLength), located.RealCompressionMethod, expectedCrc,
                     located.UncompressedSize));
         }
         finally

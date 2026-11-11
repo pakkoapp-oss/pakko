@@ -14699,3 +14699,17 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
     Fastest's level.
   - **Time:** unchanged under Defender.
   - **Visible change:** an entry Deflate grew is stored.
+
+### T-F504 - The password path allocates about 200-300 KB per entry (P3, from T-F498)
+
+- [x] **Status:** done 2026-11-12. zip-password over 2,000 files of 1-10 KB allocates 424 MiB (4.2 GB at
+  20,000; churn, the peak working set stays at 172 MiB), zip-extract-password 590 MiB (5.9 GB)
+  and takes 1.9x plain extraction. Profile the
+  allocations (`dotnet-trace --profile gc-verbose`) to name the per-entry buffer or key setup
+  (WinZip AES streams, PBKDF2), then pool or size it; the litmus run before and after.
+- **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
+- **Graduated 2026-11-12** (`docs/DECISIONS.md`, "T-F504"):
+  - **Change:** the AES streams size their buffers to the entry.
+  - **Creating:** 424 -> 69 MiB for 2,000 entries, 4.2 GB -> 703 MiB for 20,000.
+  - **Extracting:** 590 -> 201 MiB, 5.9 -> 2.0 GB.
+  - **Unchanged:** the bytes.
