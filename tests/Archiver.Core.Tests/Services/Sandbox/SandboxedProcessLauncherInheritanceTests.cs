@@ -51,7 +51,9 @@ public sealed class SandboxedProcessLauncherInheritanceTests
             },
             CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
-        Task finished = await Task.WhenAny(eof, Task.Delay(TimeSpan.FromSeconds(30)));
+        using var delayCancel = new CancellationTokenSource();
+        Task finished = await Task.WhenAny(eof, Task.Delay(TimeSpan.FromSeconds(30), delayCancel.Token));
+        await delayCancel.CancelAsync();
         finished.Should().BeSameAs(eof,
             $"something holds the pipe open (pool threads {ThreadPool.ThreadCount}, pending {ThreadPool.PendingWorkItemCount})");
         (int bytes, TimeSpan eofAt, bool childAliveAfter) = await eof;

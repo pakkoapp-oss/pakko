@@ -162,6 +162,33 @@ public sealed class AntivirusScanServiceTests : IDisposable
         scanner.Calls.Should().ContainSingle().Which.ContentName.Should().Be("a.txt");
     }
 
+    // T-F492: on .NET 11 entry.Open() throws on the read that reaches the declared size when the
+    // CRC-32 differs, so the last chunk is never handed to AMSI: that entry must not read as Clean.
+    [Fact]
+    public async Task ScanAsync_EntryWithWrongCrc_ThatEntryInconclusiveNeverClean()
+    {
+        string zip = CreateZip("badcrc.zip", ("ok.txt", "fine"), ("bad.txt", "content whose crc is patched"));
+        byte[] bytes = File.ReadAllBytes(zip);
+        byte[] name = Encoding.UTF8.GetBytes("bad.txt");
+        for (int i = 0; i + 4 <= bytes.Length; i++)
+        {
+            uint sig = BitConverter.ToUInt32(bytes, i);
+            if (sig == 0x04034b50 && bytes.AsSpan(i + 30).StartsWith(name))
+                BitConverter.GetBytes(0xDEADBEEFu).CopyTo(bytes, i + 14);
+            else if (sig == 0x02014b50 && bytes.AsSpan(i + 46).StartsWith(name))
+                BitConverter.GetBytes(0xDEADBEEFu).CopyTo(bytes, i + 16);
+        }
+        File.WriteAllBytes(zip, bytes);
+        var scanner = new FakeAmsiScanner();
+        AntivirusScanService service = CreateService(scanner);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "bad.txt").Which.Verdict.Should().Be(ThreatVerdict.Inconclusive);
+        result.Findings.Should().ContainSingle(f => f.EntryPath == "ok.txt").Which.Verdict.Should().Be(ThreatVerdict.Clean);
+    }
+
     [Fact]
     public async Task ScanAsync_ScannerFailsOnOneEntry_ThatEntryInconclusiveAndTheRestScanned()
     {

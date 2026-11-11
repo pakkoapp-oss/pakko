@@ -71,7 +71,7 @@ public sealed partial class MainWindow : Window
         RootGrid.FlowDirection = CoreMessageText.FlowDirection;
         ViewModel = App.Services.GetRequiredService<MainViewModel>();
         HashFilesCommand = new AsyncRelayCommand(async () =>
-            await App.Services.GetRequiredService<IDialogService>().ShowFileHashAsync([.. ViewModel.FileItems.Select(x => x.FullPath)]));
+            await App.Services.GetRequiredService<IDialogService>().ShowFileHashAsync((string[])[.. ViewModel.FileItems.Select(x => x.FullPath)]));
         // Widened from the original 800x700 (design review 2026-07-13): a file/archive listing
         // is inherently tabular — the Name column needs width far more than the window needs
         // height, matching every reference file manager (Explorer, NanaZip, 7-Zip all default to
@@ -515,7 +515,7 @@ public sealed partial class MainWindow : Window
     private void ArchiveBrowserList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (sender is not ListView listView) return;
-        ViewModel.SetSelectedBrowserEntries([.. listView.SelectedItems.OfType<ArchiveEntryViewModel>()]);
+        ViewModel.SetSelectedBrowserEntries((ArchiveEntryViewModel[])[.. listView.SelectedItems.OfType<ArchiveEntryViewModel>()]);
     }
 
     private async void ArchiveBrowserList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)

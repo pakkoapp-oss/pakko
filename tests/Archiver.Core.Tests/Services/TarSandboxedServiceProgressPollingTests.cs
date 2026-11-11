@@ -115,10 +115,12 @@ public sealed class TarSandboxedServiceProgressPollingTests
         // A fixed Task.Delay(400) raced CI scheduling jitter (the first 250ms tick landing after
         // the delay had already ended). Ending on the first report removes the race; the delay is
         // only a cap so a poller that never reports fails instead of hanging.
-        Task<Task> extractionTask = Task.WhenAny(firstReport.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+        using var delayCancel = new CancellationTokenSource();
+        Task<Task> extractionTask = Task.WhenAny(firstReport.Task, Task.Delay(TimeSpan.FromSeconds(10), delayCancel.Token));
 
         await TarSandboxedService.PollExtractionProgressAsync(
             temp.Path, totalBytes: 100, progress, extractionTask, CancellationToken.None);
+        await delayCancel.CancelAsync();
 
         reports.Should().NotBeEmpty();
         reports.Should().OnlyContain(r => r.TotalBytes == 100);
@@ -142,10 +144,12 @@ public sealed class TarSandboxedServiceProgressPollingTests
 
         // Ends on the first report, not after a fixed margin: a fixed Task.Delay raced CI
         // scheduling jitter (zero reports intermittently on GitHub Actions runners).
-        Task<Task> extractionTask = Task.WhenAny(firstReport.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+        using var delayCancel = new CancellationTokenSource();
+        Task<Task> extractionTask = Task.WhenAny(firstReport.Task, Task.Delay(TimeSpan.FromSeconds(10), delayCancel.Token));
 
         await TarSandboxedService.PollExtractionProgressAsync(
             temp.Path, totalBytes: 100, progress, extractionTask, CancellationToken.None);
+        await delayCancel.CancelAsync();
 
         reports.Should().NotBeEmpty();
         reports.Should().OnlyContain(r => r.Percent <= 94);
@@ -244,10 +248,12 @@ public sealed class TarSandboxedServiceProgressPollingTests
             reports.Add(r);
             firstReport.TrySetResult();
         });
-        Task<Task> extractionTask = Task.WhenAny(firstReport.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+        using var delayCancel = new CancellationTokenSource();
+        Task<Task> extractionTask = Task.WhenAny(firstReport.Task, Task.Delay(TimeSpan.FromSeconds(10), delayCancel.Token));
 
         await TarSandboxedService.PollExtractionProgressAsync(
             temp.Path, totalBytes: 100, progress, extractionTask, CancellationToken.None, extractionPhaseMaxPercent: 60);
+        await delayCancel.CancelAsync();
 
         reports.Should().NotBeEmpty();
         reports[0].Percent.Should().Be(30);

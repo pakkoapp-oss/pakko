@@ -62,9 +62,9 @@ if (Test-Path $pkgOutDir) {
 # otherwise the csproj's 0.0.0-dev marker stays (T-F222).
 $env:PATH = (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer') + ";$env:PATH"
 foreach ($satellite in @(
-    @{ Project = 'src\Archiver.Shell\Archiver.Shell.csproj'; Out = "src\Archiver.Shell\bin\$platform\Release\net10.0-windows\$rid" },
-    @{ Project = 'src\Archiver.OperationUi\Archiver.OperationUi.csproj'; Out = "src\Archiver.OperationUi\bin\$platform\Release\net10.0-windows10.0.17763.0\$rid" },
-    @{ Project = 'src\Archiver.CLI\Archiver.CLI.csproj'; Out = "src\Archiver.CLI\bin\$platform\Release\net10.0\$rid" }
+    @{ Project = 'src\Archiver.Shell\Archiver.Shell.csproj'; Out = "src\Archiver.Shell\bin\$platform\Release\net11.0-windows\$rid" },
+    @{ Project = 'src\Archiver.OperationUi\Archiver.OperationUi.csproj'; Out = "src\Archiver.OperationUi\bin\$platform\Release\net11.0-windows10.0.17763.0\$rid" },
+    @{ Project = 'src\Archiver.CLI\Archiver.CLI.csproj'; Out = "src\Archiver.CLI\bin\$platform\Release\net11.0\$rid" }
 )) {
     Write-Host "Publishing $($satellite.Project) ($Architecture, Native AOT)..." -ForegroundColor Cyan
     $satelliteArgs = @((Join-Path $repoRoot $satellite.Project), '/p:Configuration=Release', "/p:Platform=$platform", "/p:RuntimeIdentifier=$rid", '-o', (Join-Path $repoRoot $satellite.Out))
@@ -190,10 +190,10 @@ if (-not $pakkoFound) {
 $pdbOutDir = Join-Path $repoRoot "artifacts\pdb\$Architecture"
 New-Item -ItemType Directory -Force -Path $pdbOutDir | Out-Null
 foreach ($nativeDir in @(
-    "src\Archiver.App\bin\$platform\Release\net10.0-windows10.0.17763.0\$rid\native",
-    "src\Archiver.Shell\bin\$platform\Release\net10.0-windows\$rid\native",
-    "src\Archiver.OperationUi\bin\$platform\Release\net10.0-windows10.0.17763.0\$rid\native",
-    "src\Archiver.CLI\bin\$platform\Release\net10.0\$rid\native"
+    "src\Archiver.App\bin\$platform\Release\net11.0-windows10.0.17763.0\$rid\native",
+    "src\Archiver.Shell\bin\$platform\Release\net11.0-windows\$rid\native",
+    "src\Archiver.OperationUi\bin\$platform\Release\net11.0-windows10.0.17763.0\$rid\native",
+    "src\Archiver.CLI\bin\$platform\Release\net11.0\$rid\native"
 )) {
     $pdb = Get-ChildItem -LiteralPath (Join-Path $repoRoot $nativeDir) -Filter '*.pdb' | Select-Object -First 1
     if (-not $pdb) { Write-Error "No native .pdb under $nativeDir (T-F355)."; exit 1 }

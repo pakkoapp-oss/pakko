@@ -295,7 +295,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public string ArchiveNamePlaceholder => string.Format(System.Globalization.CultureInfo.CurrentCulture,
         _res.GetString(SelectedArchiveMode == ArchiveMode.SeparateArchives ? "ArchiveNamePerItemPlaceholder" : "ArchiveNameAutoPlaceholder"),
-        CreateModeText.AutoName([.. FileItems.Select(x => x.FullPath)], SelectedArchiveMode, SelectedContainerFormat));
+        CreateModeText.AutoName((string[])[.. FileItems.Select(x => x.FullPath)], SelectedArchiveMode, SelectedContainerFormat));
 
     public string DestinationLabel =>
         _res.GetString(CreateModeText.DestinationLabelKey(IsExtractAccent ? PrimaryAction.Extract : PrimaryAction.Compress));
@@ -905,7 +905,7 @@ public sealed partial class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(IsFileListEmptyVisibility));
             bool wasArchivesOnly = _listActions.ArchivesOnly;
             _listActions = PrimaryActionPolicy.Evaluate(
-                [.. FileItems.Select(x => (x.FullPath, x.IsFolder))],
+                ((string Path, bool IsFolder)[])[.. FileItems.Select(x => (x.FullPath, x.IsFolder))],
                 path => ArchiveFormatPolicy.CanOpenByExtension(path, _tarCapabilities, _policy));
             if (_listActions.ArchivesOnly != wasArchivesOnly)
                 IsNewArchiveCardExpanded = !_listActions.ArchivesOnly;
@@ -1021,7 +1021,7 @@ public sealed partial class MainViewModel : ObservableObject
                 ResolvePasswordAsync = encryptionPassword is null
                     ? null
                     : _ => Task.FromResult(new global::Archiver.Core.Models.PasswordDecision { Password = encryptionPassword }),
-                SourcePaths = [.. FileItems.Select(x => x.FullPath)],
+                SourcePaths = (string[])[.. FileItems.Select(x => x.FullPath)],
                 DestinationFolder = DestinationPath,
                 ArchiveName = string.IsNullOrWhiteSpace(ArchiveName) ? null : ArchiveName.Trim(),
                 Mode = SelectedArchiveMode,
@@ -1414,10 +1414,10 @@ public sealed partial class MainViewModel : ObservableObject
         string scopeDir = NestedArchiveCache.CreateScope();
         var options = new ExtractOptions
         {
-            ArchivePaths = [BrowsedArchivePath],
+            ArchivePaths = (string[])[BrowsedArchivePath],
             DestinationFolder = scopeDir,
             Mode = ExtractMode.SingleFolder,
-            SelectedEntryPaths = [entry.FullPath],
+            SelectedEntryPaths = (string[])[entry.FullPath],
             ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
             ResolvePasswordAsync = BrowsePasswordResolver(BrowsedArchivePath),
         };
@@ -1518,7 +1518,7 @@ public sealed partial class MainViewModel : ObservableObject
     private string ForDisplay(string text) => _currentNestedScopeDir is null
         ? text
         : NestedDisplayPath.Map(text, BrowsedArchivePath,
-            NestedDisplayPath.Chain([.. _nestedBreadcrumbAncestry, _currentLevelDisplayName ?? Path.GetFileName(BrowsedArchivePath ?? string.Empty)]));
+            NestedDisplayPath.Chain((string[])[.. _nestedBreadcrumbAncestry, _currentLevelDisplayName ?? Path.GetFileName(BrowsedArchivePath ?? string.Empty)]));
 
     private void RebuildBreadcrumb()
     {
@@ -1752,14 +1752,14 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand(CanExecute = nameof(CanExtractSelectedFromBrowser))]
     private Task ExtractSelectedFromBrowserAsync() =>
-        RunExtractAsync([BrowsedArchivePath!], [.. SelectedBrowserEntries.Select(e => e.FullPath)], fromBrowser: true,
+        RunExtractAsync((string[])[BrowsedArchivePath!], (string[])[.. SelectedBrowserEntries.Select(e => e.FullPath)], fromBrowser: true,
             allowDeleteAfter: Location.OffersDeleteAfter);
 
     private bool CanExtractAllFromBrowser() => !IsBusy && BrowsedArchivePath is not null;
 
     [RelayCommand(CanExecute = nameof(CanExtractAllFromBrowser))]
     private Task ExtractAllFromBrowserAsync() =>
-        RunExtractAsync([BrowsedArchivePath!], selectedEntryPaths: null, fromBrowser: true,
+        RunExtractAsync((string[])[BrowsedArchivePath!], selectedEntryPaths: null, fromBrowser: true,
             allowDeleteAfter: Location.OffersDeleteAfter);
 
     // T-F210: back to create mode (the button and Esc). Off while a listing, drill-in or preview
@@ -1811,7 +1811,7 @@ public sealed partial class MainViewModel : ObservableObject
             // T-F275 step 3c: the archive opened from disk is also checked against a PAR2 set next
             // to it. A nested one is a temporary copy; no set is its set.
             bool verifyRecoveryData = _browseStack.Count == 0;
-            ArchiveResult result = await _extractionRouter.TestAsync([archivePath], progress, BrowsePasswordResolver(archivePath), verifyRecoveryData, cancellationToken: _cts.Token);
+            ArchiveResult result = await _extractionRouter.TestAsync((string[])[archivePath], progress, BrowsePasswordResolver(archivePath), verifyRecoveryData, cancellationToken: _cts.Token);
             _browsePasswords.Complete(archivePath, result);
             // Only a finished test changes the line: a cancelled one throws above and leaves it.
             if (verifyRecoveryData && BrowsedArchivePath == archivePath)
@@ -1912,7 +1912,7 @@ public sealed partial class MainViewModel : ObservableObject
         for (int choice = 0; choice <= MaxRepairFolderChoices; choice++)
         {
             ArchiveResult result = await _recoveryService.RepairAsync(
-                new RepairOptions { Paths = [archivePath], OutputDirectory = outputDirectory, ApplyDownloadMark = ApplyDownloadMark },
+                new RepairOptions { Paths = (string[])[archivePath], OutputDirectory = outputDirectory, ApplyDownloadMark = ApplyDownloadMark },
                 progress, cancellationToken);
             _logService.Info($"Repair completed — {archivePath} — {result.Outcome}");
             foreach (ArchiveError error in result.Errors)
@@ -1975,9 +1975,9 @@ public sealed partial class MainViewModel : ObservableObject
         {
             var options = new AntivirusScanOptions
             {
-                ArchivePaths = [BrowsedArchivePath!],
+                ArchivePaths = (string[])[BrowsedArchivePath!],
                 SelectedEntryPaths = SelectedBrowserEntries.Count > 0
-                    ? [.. SelectedBrowserEntries.Select(e => e.FullPath)]
+                    ? (string[])[.. SelectedBrowserEntries.Select(e => e.FullPath)]
                     : null,
                 ResolvePasswordAsync = BrowsePasswordResolver(BrowsedArchivePath!),
             };
@@ -2041,7 +2041,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         string archiveDir = Path.GetDirectoryName(BrowsedArchivePath) ?? DestinationPath;
         string destDir = Path.Combine(archiveDir, ArchiveNaming.GetBaseName(BrowsedArchivePath));
-        await RunExtractAsync([BrowsedArchivePath], [entry.FullPath], destDir, fromBrowser: true,
+        await RunExtractAsync((string[])[BrowsedArchivePath], (string[])[entry.FullPath], destDir, fromBrowser: true,
             allowDeleteAfter: Location.OffersDeleteAfter);
     }
 
@@ -2061,10 +2061,10 @@ public sealed partial class MainViewModel : ObservableObject
             string scopeDir = PreviewCache.CreateScope();
             var options = new ExtractOptions
             {
-                ArchivePaths = [BrowsedArchivePath],
+                ArchivePaths = (string[])[BrowsedArchivePath],
                 DestinationFolder = scopeDir,
                 Mode = ExtractMode.SingleFolder,
-                SelectedEntryPaths = [entry.FullPath],
+                SelectedEntryPaths = (string[])[entry.FullPath],
                 ConfirmCompressionBombExtraction = _dialogService.ShowCompressionBombConfirmAsync,
                 ResolvePasswordAsync = BrowsePasswordResolver(BrowsedArchivePath),
             };
