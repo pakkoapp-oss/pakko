@@ -38,17 +38,38 @@ internal static class DestinationFolder
 
     /// <summary>T-F419: a single archive named exactly as a device ("NUL", "CON ", only with an
     /// exact name, -sae): Windows opens the device instead, or a long path writes a file Explorer
-    /// cannot remove. Null when the name can be used; nothing is written otherwise.</summary>
+    /// cannot remove. T-F475: or any single archive whose path <see cref="IsDevice"/>. Null when the
+    /// name can be used; nothing is written otherwise.</summary>
     internal static ArchiveResult? ReservedArchiveName(ArchiveOptions options)
     {
-        if (options.Mode != ArchiveMode.SingleArchive || options.ExactFileName is not { } name
-            || !ArchiveEntrySecurity.IsDeviceName(Path.GetFileName(name)))
+        if (options.Mode != ArchiveMode.SingleArchive)
+            return null;
+        string name = ArchiveNaming.SingleArchiveFileName(options);
+        bool exactDeviceName = options.ExactFileName is not null && ArchiveEntrySecurity.IsDeviceName(Path.GetFileName(name));
+        if (!exactDeviceName && !IsDevice(Path.Combine(options.DestinationFolder, name)))
             return null;
         return new()
         {
             Errors = [CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.ArchiveNameReserved, name)],
             Sources = [.. options.SourcePaths.Select(path => new SourceResult { Path = path, Outcome = SourceOutcome.NotProcessed })],
         };
+    }
+
+    /// <summary>T-F475: whether Windows opens <paramref name="archivePath"/> as a device - the path
+    /// itself (no folder above it; "CON.zip" in any folder on Windows 10 and Server 2022) or a path
+    /// under a device's root (<c>\\.\NUL\o.zip</c>). <see cref="Path.GetFullPath(string)"/> applies
+    /// the rules of the Windows it runs on. False for a path that cannot be parsed: the folder's
+    /// own check reports that one.</summary>
+    internal static bool IsDevice(string archivePath)
+    {
+        if (InputPaths.Problem(archivePath) is not null)
+            return false;
+        string fullPath = Path.GetFullPath(archivePath);
+        if (Path.GetDirectoryName(fullPath) is null)
+            return true;
+        string root = Path.GetPathRoot(fullPath)!; // has a folder above it, so a root too
+        return (root.StartsWith(@"\\.\", StringComparison.Ordinal) || root.StartsWith(@"\\?\", StringComparison.Ordinal))
+            && ArchiveEntrySecurity.IsDeviceName(root[4..].TrimEnd('\\'));
     }
 
     /// <summary>The result of an archive creation whose folder could not be made.</summary>

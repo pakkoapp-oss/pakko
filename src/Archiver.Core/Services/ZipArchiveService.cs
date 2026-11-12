@@ -429,7 +429,7 @@ public sealed class ZipArchiveService : IArchiveService
         sortedSourcePaths.RemoveAll(path => !run.Names.Keeps(run.Names.For(path), Directory.Exists(path)));
 
         List<(string SourcePath, string? DestPath, bool ReplacesExisting)> plans = await ResolveSeparateArchivePlansAsync(
-            sortedSourcePaths, options.DestinationFolder, run, skippedFiles).ConfigureAwait(false);
+            sortedSourcePaths, options.DestinationFolder, run, errors, skippedFiles).ConfigureAwait(false);
 
         // T-F497: before any archive of this run is written; ArchiveSingleSeparatePathAsync then
         // only names its temporary file. A killed run's leftovers go here, as before.
@@ -521,7 +521,7 @@ public sealed class ZipArchiveService : IArchiveService
     // outcome deterministically before any parallel work starts. See DECISIONS.md's T-F12 entry
     // for the one behavior change this introduces (Overwrite + same-run collision).
     private static async Task<List<(string SourcePath, string? DestPath, bool ReplacesExisting)>> ResolveSeparateArchivePlansAsync(
-        List<string> sortedSourcePaths, string destinationFolder, ArchiveRunContext run, List<SkippedFile> skippedFiles)
+        List<string> sortedSourcePaths, string destinationFolder, ArchiveRunContext run, List<ArchiveError> errors, List<SkippedFile> skippedFiles)
     {
         var claimedDestPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var plans = new List<(string SourcePath, string? DestPath, bool ReplacesExisting)>();
@@ -538,6 +538,13 @@ public sealed class ZipArchiveService : IArchiveService
 
             string baseName = Path.GetFileNameWithoutExtension(sourcePath);
             string destPath = Path.Combine(destinationFolder, baseName + ArchiveNaming.GetExtension(ArchiveContainerFormat.Zip));
+            // T-F475: "CON.txt" makes "CON.zip", a device on Windows 10 and Server 2022.
+            if (DestinationFolder.IsDevice(destPath))
+            {
+                errors.Add(CoreMessages.Error(sourcePath, MessageCode.ArchiveNameReserved, Path.GetFileName(destPath)));
+                plans.Add((sourcePath, null, false));
+                continue;
+            }
             bool onDiskConflict = File.Exists(destPath);
             // T-F421: "a.txt" and "a.zip" both map to "a.zip", and "a.zip" alone to itself - a
             // source of the run is never replaced, whatever the conflict choice.

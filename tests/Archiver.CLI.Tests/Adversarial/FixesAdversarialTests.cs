@@ -610,6 +610,8 @@ public sealed class FixesAdversarialTests : IDisposable
             $"a folder named as a device is one Explorer cannot remove (exit {exitCode}, stderr: {stdErr})");
     }
 
+    // T-F475: on Windows 11 both paths are ordinary (7-Zip makes the folder and the archive); on
+    // Windows 10 and Server 2022 the folder "x\CON" is the device ("\\.\CON"): an error, exit 2.
     [Theory]
     [InlineData(@"x\CON\o.zip")]
     [InlineData(@"x\COM1\o.zip")]
@@ -619,21 +621,35 @@ public sealed class FixesAdversarialTests : IDisposable
 
         (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-sae", archive, "b.txt");
 
-        exitCode.Should().Be(0, stdErr);
-        using ZipArchive zip = ZipFile.OpenRead(@"\\?\" + _scratch.Inside(archive));
-        zip.Entries.Select(e => e.FullName).Should().Equal("b.txt");
+        AnArchiveOrARefusal(archive, exitCode, stdErr);
     }
 
-    // Not a device on Windows 11: CON.zip is an ordinary file name (DestinationFolder's comment).
+    // T-F475: CON.zip is an ordinary file name on Windows 11 (DestinationFolder's comment) and the
+    // console device on Windows 10 and Server 2022, where it threw out of the engine before.
     [Fact]
-    public void ConDotZip_WithoutSae_IsAnOrdinaryArchive()
+    public void ConDotZip_WithoutSae_IsAnOrdinaryArchiveOnlyWhereItIsAFile()
     {
         _scratch.WriteFile("b.txt", "B");
 
         (int exitCode, _, string stdErr) = _scratch.Pakko("a", "CON.zip", "b.txt");
 
+        AnArchiveOrARefusal("CON.zip", exitCode, stdErr);
+    }
+
+    private static bool IsDeviceHere(string path) => Path.GetFullPath(path).StartsWith(@"\\.\", StringComparison.Ordinal);
+
+    private void AnArchiveOrARefusal(string archive, int exitCode, string stdErr)
+    {
+        stdErr.Should().NotContain("Exception").And.NotContain("Unexpected error");
+        string path = _scratch.Inside(archive);
+        if (IsDeviceHere(path) || IsDeviceHere(Path.GetDirectoryName(path)!))
+        {
+            exitCode.Should().Be(2, stdErr);
+            AllNames().Should().Equal(["b.txt"]);
+            return;
+        }
         exitCode.Should().Be(0, stdErr);
-        using ZipArchive zip = ZipFile.OpenRead(@"\\?\" + _scratch.Inside("CON.zip"));
+        using ZipArchive zip = ZipFile.OpenRead(@"\\?\" + _scratch.Inside(archive));
         zip.Entries.Select(e => e.FullName).Should().Equal("b.txt");
     }
 
