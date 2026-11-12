@@ -132,6 +132,27 @@ public sealed class CliSourceDeleterTests : IDisposable
         }
     }
 
+    // T-F511 PR 4 (closing review): in a case-sensitive folder "A.TXT" and "a.txt" are two files; the
+    // snapshot is keyed without case, so listing both and deleting "a.txt" must not take "A.TXT".
+    // Red when written: the listing of "A.TXT" answered for "a.txt" and A.TXT was deleted (T-F515).
+    [RequiresCaseSensitiveFolderFact(Skip = "T-F515: -sdel in a case-sensitive folder deletes the other spelling; un-skip with the fix")]
+    public void Delete_CaseSensitiveFolder_OnlyTheNamedSpellingGoes()
+    {
+        string folder = Path.Combine(_dir, "cs");
+        Directory.CreateDirectory(folder);
+        CaseSensitiveFolder.Enable(folder).Should().BeTrue();
+        string upper = Path.Combine(folder, "A.TXT");
+        string lower = Path.Combine(folder, "a.txt");
+        File.WriteAllText(upper, "UPPER");
+        File.WriteAllText(lower, "lower");
+        var snapshot = CliSourceSnapshot.Take([upper, lower]);
+
+        snapshot.DeleteUnchanged([lower]);
+
+        File.Exists(upper).Should().BeTrue("A.TXT was not reported completed");
+        File.ReadAllText(upper).Should().Be("UPPER");
+    }
+
     [Fact]
     public void Refusal_PrefixThatIsNotAParent_IsAllowed()
     {
@@ -326,6 +347,49 @@ public sealed class CliSourceDeleterTests : IDisposable
         {
             security.RemoveAccessRule(rule);
             new DirectoryInfo(denied).SetAccessControl(security);
+        }
+    }
+}
+
+/// <summary>fsutil's per-folder case sensitivity (Windows 10 1803+, no admin on a folder the user owns).</summary>
+internal static class CaseSensitiveFolder
+{
+    public static bool Enable(string folder)
+    {
+        try
+        {
+            using var fsutil = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                Path.Combine(Environment.SystemDirectory, "fsutil.exe"), ["file", "setCaseSensitiveInfo", folder, "enable"])
+            { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true });
+            if (fsutil is null)
+                return false;
+            fsutil.StandardOutput.ReadToEnd();
+            fsutil.StandardError.ReadToEnd();
+            fsutil.WaitForExit();
+            return fsutil.ExitCode == 0;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return false; // no fsutil: the test is skipped
+        }
+    }
+}
+
+/// <summary>A test that needs a case-sensitive folder; skipped where fsutil cannot make one.</summary>
+public sealed class RequiresCaseSensitiveFolderFactAttribute : FactAttribute
+{
+    public RequiresCaseSensitiveFolderFactAttribute()
+    {
+        string probe = Path.Combine(Path.GetTempPath(), "pakko-cs-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(probe);
+        try
+        {
+            if (!CaseSensitiveFolder.Enable(probe))
+                Skip = "fsutil cannot make a case-sensitive folder here (no WSL support or not NTFS)";
+        }
+        finally
+        {
+            Directory.Delete(probe);
         }
     }
 }

@@ -841,6 +841,9 @@ ignored, `Dispose` not cancelling. The queued CRC-32 read's cancel is enforced b
     characters, Unicode forms, 255/256 long, switch-like names...) and `PathForms` (12 spellings:
     `\\?\`, `\\.\`, UNC, `/`, doubled, trailing separator, `..`, `.`, over 260, relative) in two
     positions.
+  - `PathMatrixPureTests.SourceKey_OfTheSpellingGiven_IsTheKeyOfWhatCoreReports` (T-F511 PR 4): in every
+    shape, form and position the key App and CLI match a source by is the key of Core's form of it.
+    `PathIdentityOwnerTests` fails on a final-path resolver outside `PathIdentity`.
   - `PathMatrixPureTests` runs the owners' pure rules over the full product (about 1,100 cases
     each, under a second) and reports every failing case at once.
   - `AllPairs` builds pairwise cases for the disk operations under a pairwise constraint;
