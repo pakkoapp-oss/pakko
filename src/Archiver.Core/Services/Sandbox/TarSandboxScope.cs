@@ -231,7 +231,12 @@ internal sealed partial class TarSandboxScope : IDisposable
     {
         try
         {
-            return new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var archive = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            if (archive.CanSeek)
+                return archive;
+            // T-F475: a device (\\.\NUL) opens but is no file; tar.exe would read it as an empty archive.
+            archive.Dispose();
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.SourceNotFound, archivePath));
         }
         catch (IOException ex) when (ex.HResult == ErrorSharingViolation)
         {

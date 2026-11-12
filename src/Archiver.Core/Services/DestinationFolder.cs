@@ -46,7 +46,8 @@ internal static class DestinationFolder
             return null;
         string name = ArchiveNaming.SingleArchiveFileName(options);
         bool exactDeviceName = options.ExactFileName is not null && ArchiveEntrySecurity.IsDeviceName(Path.GetFileName(name));
-        if (!exactDeviceName && !IsDevice(Path.Combine(options.DestinationFolder, name)))
+        // A folder that is a device fails TryCreate with its own error; the name is not the problem.
+        if (!exactDeviceName && (IsDevice(options.DestinationFolder) || !IsDevice(Path.Combine(options.DestinationFolder, name))))
             return null;
         return new()
         {

@@ -33,6 +33,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
     public static TheoryData<string> Hostile =>
     [
         "a file", "a folder", "missing", "a missing drive", "bad characters", "empty", "locked", "not an archive", "an empty file",
+        "a device",
     ];
 
     // A path of the named kind. Where an archive is wanted, "a file" is a real archive.
@@ -76,6 +77,9 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
                 string text = System.IO.Path.Combine(root, "text" + extension);
                 File.WriteAllText(text, "this is not an archive");
                 return text;
+            // T-F475: NUL, not CON - a console source can wait for input.
+            case "a device":
+                return @"\\.\NUL";
             case "an empty file":
                 string empty = System.IO.Path.Combine(root, "empty" + extension);
                 File.WriteAllBytes(empty, []);
@@ -336,6 +340,21 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         {
             SourcePaths = [Path(kind, ".txt")], DestinationFolder = Destination(), ArchiveName = "out", Format = ArchiveContainerFormat.SevenZip,
         }));
+
+    // T-F475: where the folder is the device, the error is the folder's, not one about a fine name.
+    [Theory]
+    [InlineData(ArchiveContainerFormat.Zip)]
+    [InlineData(ArchiveContainerFormat.TarGz)]
+    public async Task Create_DeviceFolder_IsTheFoldersError(ArchiveContainerFormat format)
+    {
+        ArchiveResult result = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [Source()], DestinationFolder = @"\\.\NUL", ArchiveName = "out", Format = format,
+        });
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.CannotCreateArchive);
+        result.CreatedFiles.Should().BeEmpty();
+    }
 
     // --- Completeness: every public operation has rows above -------------------------------
 
