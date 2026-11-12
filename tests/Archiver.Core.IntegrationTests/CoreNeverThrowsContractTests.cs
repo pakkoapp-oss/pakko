@@ -269,6 +269,40 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
             SourcePaths = [Source()], DestinationFolder = Path(kind, ""), Mode = ArchiveMode.SeparateArchives,
         }));
 
+    // T-F475: an archive path that is a device itself (no folder above it: ArchiveTempFile's folder
+    // was null and the engine threw) or lies under a device's root (the archive went to the device
+    // and the run reported success). On Windows 10 and Server 2022 "CON.zip" in any folder is the
+    // first kind; these reach both kinds on any Windows.
+    public static TheoryData<string> DevicePaths => [@"\\.\NUL", @"\\.\CON", @"\\.\NUL\o.zip", @"\\?\nul\o.zip"];
+
+    [Theory, MemberData(nameof(DevicePaths))]
+    public Task ZipEngineCreate_DevicePath(string path) => NoThrow(() =>
+        _services.ArchiveService.ArchiveAsync(new ArchiveOptions { SourcePaths = [Source()], DestinationFolder = Destination(), ExactFileName = path }));
+
+    [Theory, MemberData(nameof(DevicePaths))]
+    public Task TarEngineCompress_DevicePath(string path) => NoThrow(() =>
+        _services.TarService.CompressAsync(new ArchiveOptions
+        {
+            SourcePaths = [Source()], DestinationFolder = Destination(), ExactFileName = path, Format = ArchiveContainerFormat.TarGz,
+        }));
+
+    [Theory, MemberData(nameof(DevicePaths))]
+    public async Task Create_DevicePath_RefusedWithItsOwnCode_NothingWritten(string path)
+    {
+        string destination = Destination();
+        foreach (ArchiveContainerFormat format in new[] { ArchiveContainerFormat.Zip, ArchiveContainerFormat.TarGz })
+        {
+            ArchiveResult result = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+            {
+                SourcePaths = [Source()], DestinationFolder = destination, ExactFileName = path, Format = format,
+            });
+
+            result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.ArchiveNameReserved);
+            result.CreatedFiles.Should().BeEmpty();
+        }
+        Directory.Exists(destination).Should().BeFalse("nothing is written, not even the folder");
+    }
+
     [Theory, MemberData(nameof(Hostile))]
     public Task TarCreate_Destination(string kind) => NoThrow(() =>
         _services.CreationRouter.ArchiveAsync(new ArchiveOptions
@@ -309,14 +343,14 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
     // these types fails CompletenessTable_MatchesThePublicOperations until it gets rows here.
     private static readonly Dictionary<string, string[]> Coverage = new()
     {
-        ["IArchiveService.ArchiveAsync"] = [nameof(ZipEngineCreate_Destination), nameof(ZipEngineCreate_Source)],
+        ["IArchiveService.ArchiveAsync"] = [nameof(ZipEngineCreate_Destination), nameof(ZipEngineCreate_Source), nameof(ZipEngineCreate_DevicePath)],
         ["IArchiveService.ExtractAsync"] = [nameof(ZipExtract_Archive), nameof(ZipExtract_Destination)],
         ["IArchiveService.TestAsync"] = [nameof(ZipTest_Archive)],
         ["IArchiveService.ListEntriesAsync"] = [nameof(ZipList_Archive)],
         ["ITarService.ExtractAsync"] = [nameof(TarExtract_Archive), nameof(TarExtract_Destination)],
         ["ITarService.TestAsync"] = [nameof(TarTest_Archive)],
         ["ITarService.ListEntriesAsync"] = [nameof(TarList_Archive)],
-        ["ITarService.CompressAsync"] = [nameof(TarEngineCompress_Destination), nameof(TarEngineCompress_Source)],
+        ["ITarService.CompressAsync"] = [nameof(TarEngineCompress_Destination), nameof(TarEngineCompress_Source), nameof(TarEngineCompress_DevicePath)],
         ["IExtractionRouter.ExtractAsync"] = [nameof(RouterExtract_Archive)],
         ["IExtractionRouter.TestAsync"] = [nameof(RouterTest_Archive)],
         ["IArchiveCreationRouter.ArchiveAsync"] =

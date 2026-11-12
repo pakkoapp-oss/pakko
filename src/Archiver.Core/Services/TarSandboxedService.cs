@@ -1388,6 +1388,12 @@ public sealed class TarSandboxedService : ITarService
 
             string baseName = Path.GetFileNameWithoutExtension(sourcePath);
             string destPath = Path.Combine(options.DestinationFolder, baseName + extension);
+            // T-F475: as the ZIP engine - "CON.txt" makes a device name on Windows 10 and Server 2022.
+            if (DestinationFolder.IsDevice(destPath))
+            {
+                sink.Errors.Add(CoreMessages.Error(sourcePath, MessageCode.ArchiveNameReserved, Path.GetFileName(destPath)));
+                continue;
+            }
 
             (DestinationConflictOutcome outcome, string? resolvedDestPath) = await DestinationConflictResolver.ResolveAsync(
                 destPath, onDiskConflict: File.Exists(destPath), sameRunConflict: claimedDestPaths.Contains(destPath) || runSources.Contains(destPath),
