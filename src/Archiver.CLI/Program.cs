@@ -248,10 +248,12 @@ static IReadOnlyList<string> ArchivePathsFor(ParsedCliCommand command, CliStagin
 // T-F419 made -o "out2 " the folder "out2", as Windows reads it; with a folder "out2" there, the files
 // went into it and -aoa overwrote its own. T-F512 (the user's decision, 2026-11-12): such a name goes
 // to Core as typed, which refuses it, as `r -o` already was. A \\?\ path stays literal.
-static string ResolveExtractDestination(ParsedCliCommand command) =>
-    command.OutputDirectory is { } output
-        ? (InputPaths.NameTrimmed(output) ? output : FullPathOrAsTyped(output))
-        : Directory.GetCurrentDirectory();
+static string ResolveExtractDestination(ParsedCliCommand command)
+{
+    if (command.OutputDirectory is not { } output)
+        return Directory.GetCurrentDirectory();
+    return InputPaths.NameTrimmed(output) ? output : FullPathOrAsTyped(output);
+}
 
 // A path GetFullPath refuses goes on as typed: Core's entry check reports it (T-F406).
 static string FullPathOrAsTyped(string path)
