@@ -84,6 +84,10 @@ public static class ArchiveFormatDetector
     /// </summary>
     public static ArchiveFormat Detect(string path)
     {
+        // T-F511: a path Windows reads as another file ("x.zip " is the twin "x.zip") has no format
+        // of its own; the operation that takes it refuses it by name.
+        if (InputPaths.Problem(path) is not null)
+            return ArchiveFormat.Unknown;
         try
         {
             using FileStream fs = File.OpenRead(path);

@@ -108,7 +108,9 @@ public sealed partial class ErrorClassificationOwnerTests
             "catch", "{", "    Cleanup();", "    throw;", "}",
             "catch (Exception ex) when (ex is IOException)", "{", "}",
             "catch", "{", "    // why", "    return false;", "}",
-        ]).Should().Equal(1);
+            "try { x = f(); } catch { x = 0; }",
+            "try { x = f(); } catch { /* best-effort */ }",
+        ]).Should().Equal(1, 22);
     }
 
     // The 1-based lines of each catch of everything (bare, or Exception with no filter) that has no
@@ -118,7 +120,17 @@ public sealed partial class ErrorClassificationOwnerTests
         for (int i = 0; i < lines.Length; i++)
         {
             string line = lines[i].Trim();
-            if (line.StartsWith("//", StringComparison.Ordinal) || !CatchAll().IsMatch(line))
+            if (line.StartsWith("//", StringComparison.Ordinal))
+                continue;
+            // A one-line "try { ... } catch { ... }": its reason is on the line, after the catch.
+            if (CatchAllInLine().Match(line) is { Success: true } inLine)
+            {
+                string rest = line[inLine.Index..];
+                if (!rest.Contains("//", StringComparison.Ordinal) && !rest.Contains("/*", StringComparison.Ordinal))
+                    yield return i + 1;
+                continue;
+            }
+            if (!CatchAll().IsMatch(line))
                 continue;
             if (line.Contains("//", StringComparison.Ordinal) || line.Contains("/*", StringComparison.Ordinal))
                 continue;
@@ -173,6 +185,10 @@ public sealed partial class ErrorClassificationOwnerTests
     // "catch", "catch (Exception)" or "catch (Exception ex)" with no "when" filter.
     [GeneratedRegex(@"^(\}\s*)?catch(\s*$|\s*\{|\s*\(Exception(\s+\w+)?\)(?!\s*when))")]
     private static partial Regex CatchAll();
+
+    // The same catch after a statement or a block on the same line.
+    [GeneratedRegex(@"(?<=[;}])\s*catch(\s*$|\s*\{|\s*\(Exception(\s+\w+)?\)(?!\s*when))")]
+    private static partial Regex CatchAllInLine();
 
     [GeneratedRegex(@"\bthrow\s*;|\bthrow\s+\w")]
     private static partial Regex Rethrow();
