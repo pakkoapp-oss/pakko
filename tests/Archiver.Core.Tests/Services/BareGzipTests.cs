@@ -226,6 +226,11 @@ public sealed class BareGzipTests : IDisposable
     [InlineData("noext", "noext~")]
     [InlineData(".gz", ".gz~")]
     [InlineData("a .gz", "a")]
+    // T-F511: a name Windows would write as the destination's parent, itself, or another name.
+    [InlineData("...gz", "_")]
+    [InlineData("..gz", "_")]
+    [InlineData(" .gz", "_")]
+    [InlineData("a. .gz", "a")]
     public void OutputName_IsSevenZipsDefaultName(string archive, string expected) =>
         BareGzip.OutputName(Path.Combine(_temp.Path, archive)).Should().Be(expected);
 
