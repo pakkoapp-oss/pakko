@@ -14983,6 +14983,26 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F511 PR 5 - two trailing dot/space rules, one outcome owner (2026-11-12)
+
+**Two rules, kept apart.** `EntryDiskName.Trims` says whether Pakko writes an archive entry under
+another name: every part with a trailing dot or space, because Pakko trims every part it writes, as
+7-Zip's `Correct_FsPath` does (T-F420). `InputPaths.NameTrimmed` says whether Windows opens a path the
+user gave as another file: it asks `GetFullPath` one part at a time, and Windows drops every trailing
+dot and space only from the last part, and one dot from a part in the middle. So the entry `d /x.txt`
+trims (Pakko writes `d/x.txt`) while the path `C:\w\d \x.txt` does not (Windows opens the folder `d `);
+`d../x.txt` and `C:\w\d..\x.txt` likewise. Merging them would either refuse paths Windows opens as
+typed or write entries under names Pakko does not use. `InputPathsOwnerTests` pins the difference and
+lists every other `TrimEnd` of dots or spaces in `src` (only `ArchiveEntrySecurity`'s device rule).
+
+**Outcome.** `RecoveryDataWriter` made a completed source `Partial` itself when a PAR2 set failed. The
+rule moved to `SourceOutcomeRules.DowngradeAfterLaterError`, unchanged: still no `Cause`, because the
+failure is an `ArchiveError` the summary shows, and `SourceResult.Cause` is for a rule that left none.
+`SourceOutcomeOwnerTests` fails on `Completed` or `Partial` given anywhere else.
+
+**`BareGzip.Usable`** already asks `EntryDiskName.SingleName` (PR 1); the header's FNAME is never used
+for the name (T-F413), so the single-name rule covers every bare gzip.
+
 ## T-F511 PR 3 - the CLI's searches walk through DirectoryWalker (2026-11-12)
 
 **What was there.** `a`'s wildcard search (`CliArchiveSources.MaskSearch`) and `x`/`l`/`t`'s

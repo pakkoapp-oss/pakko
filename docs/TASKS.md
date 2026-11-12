@@ -1784,7 +1784,11 @@ re-measured with T-F346's script before and after.
       the twin `out`, and the T-F475 and T-F509 checks never see it. The `Hostile` oracle's
       `Repair_Output` row stays green only because nothing is repaired there; add a row with a set
       that does need repair. **Data-safety; do this first.**
-    - **`RecoveryDataWriter.cs:53`** sets `Partial` by its own rule, past `SourceOutcomeRules` and
+    - **Done (PR 5):** the outcome rule moved to `SourceOutcomeRules.DowngradeAfterLaterError`
+      (still no `Cause`: the failure is an error in the summary); `SourceOutcomeOwnerTests`. The two
+      trailing dot/space rules stay two, with the reason in DECISIONS and `InputPathsOwnerTests`
+      pinning `d ` in the middle of a path. No smoke or PakkoW10 run: no behaviour changed.
+    - ~~**`RecoveryDataWriter.cs:53`**~~ sets `Partial` by its own rule, past `SourceOutcomeRules` and
       with no `Cause`.
     - ~~**`BareGzip.Usable`**~~ (`BareGzip.cs:229`) copies `EntryDiskName`'s trim and "_" rule.
     - **Done (PR 3):** both CLI searches walk through `DirectoryWalker`, now public (a refused root
@@ -1827,7 +1831,7 @@ re-measured with T-F346's script before and after.
     - ~~**One source key written three times:**~~ `CliSourceDeleter.Normalize`, `SourceSnapshot.Key`
       (App) and `SourcePathNormalizer` (Core). Deletion depends on Core's reported path matching
       the snapshot key, so this belongs to one Core function.
-    - **The trailing dot/space rule in two forms:**
+    - ~~**The trailing dot/space rule in two forms:**~~ (PR 5: kept two, reason recorded)
       - `EntryDiskName.Trims` (any part, all dots and spaces);
       - `InputPaths.NameTrimmed` (asks `GetFullPath`).
 
@@ -1853,7 +1857,7 @@ re-measured with T-F346's script before and after.
   - **Owners without a guard test.** The new ones are held by discipline only, which T-F509 showed
     is not enough:
     - ~~`DirectoryWalker`~~ (PR 3);
-    - `InputPaths`;
+    - ~~`InputPaths`~~ (PR 5);
     - ~~`TempOwner`~~ (PR 2);
     - ~~`PathIdentity`~~ (PR 4);
     - ~~`DestinationFolder.TryCreate`~~ (PR 1).

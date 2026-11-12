@@ -50,9 +50,7 @@ internal static partial class RecoveryDataWriter
             Errors = errors,
             Warnings = warnings,
             RecoveryFiles = recoveryFiles,
-            Sources = failed
-                ? [.. result.Sources.Select(s => s.Outcome == SourceOutcome.Completed ? s with { Outcome = SourceOutcome.Partial } : s)]
-                : result.Sources,
+            Sources = failed ? SourceOutcomeRules.DowngradeAfterLaterError(result.Sources) : result.Sources,
         };
     }
 
