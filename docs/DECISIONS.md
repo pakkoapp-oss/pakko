@@ -14983,6 +14983,36 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F518 - an encrypted archive is told by libarchive's phrases, not the word (2026-11-12)
+
+**What was there.** `TarSandboxedService.IsLikelyEncryptionFailure` (T-F113) took any stderr with
+"encrypt" in it as an encrypted archive. bsdtar prints an entry's error after the entry's name, so a
+plain 7z with a damaged `encrypted_notes.txt` (`tar -xf`: `encrypted_notes.txt: Decompression failed
+(9): Unknown error`) was reported as password-protected.
+
+**libarchive (libarchive/libarchive, tags v3.5.2 and v3.8.1, fetched 2026-11-12).** Every
+`archive_set_error` text that says an entry or header is encrypted and unsupported, the same in both:
+
+```c
+/* archive_read_support_format_7zip.c */
+const char *cname = (header)?"archive header":"file content";
+archive_set_error(&(a->archive), ARCHIVE_ERRNO_MISC,
+    "The %s is encrypted, "
+    "but currently not supported", cname);
+/* archive_read_support_format_rar.c */
+    "RAR encryption support unavailable.");
+    "Encryption is not supported");
+/* archive_read_support_format_rar5.c */
+    "Reading encrypted data is not currently supported");
+/* archive_read_support_format_zip.c */
+    "Encrypted file is unsupported");
+```
+
+bsdtar's own `tar/read.c` adds none. **Decision:** match these six phrases. The archive helper
+reports `archive_error_string` without an entry name, so it was right before and matches the same
+phrases now. A name built to read as one of the phrases only changes which error is shown; nothing
+is written or deleted on it.
+
 ## T-F511 PR 5 - two trailing dot/space rules, one outcome owner (2026-11-12)
 
 **Two rules, kept apart.** `EntryDiskName.Trims` says whether Pakko writes an archive entry under

@@ -2202,13 +2202,24 @@ public sealed class TarSandboxedService : ITarService
     // data-only case is caught proactively instead; see ExtractAsync/ListEntriesAsync). Unlike
     // the RAR byte check, 7z's header metadata is itself typically LZMA-compressed, so a
     // fixed-offset check isn't feasible without a partial 7z reader — see DECISIONS.md's T-F113
-    // entry. Confirmed empirically against real 7-Zip/WinRAR-encrypted fixtures that libarchive's
-    // own stderr always contains "encrypt" (case-insensitive) for every encryption-related
-    // failure it produces: "The file content is encrypted, but currently not supported",
-    // "The archive header is encrypted, but currently not supported",
-    // "Reading encrypted data is not currently supported", "Encryption is not supported".
+    // entry. T-F518: libarchive's own phrases, not the word "encrypt": tar.exe prefixes an error with
+    // the entry it failed on ("encrypted_notes.txt: Decompression failed (9)"), so the word alone
+    // called a damaged plain archive password-protected. The phrases are libarchive's
+    // archive_set_error texts that say an entry or header is encrypted, the same in 3.5.2 (Windows 10)
+    // and 3.8.1 (format_7zip.c, format_rar.c, format_rar5.c, format_zip.c; DECISIONS.md T-F518).
+    // A name built to read as one of them only changes which error is shown.
     internal static bool IsLikelyEncryptionFailure(string stdErr)
-        => stdErr.Contains("encrypt", StringComparison.OrdinalIgnoreCase);
+        => Array.Exists(EncryptionFailures, phrase => stdErr.Contains(phrase, StringComparison.OrdinalIgnoreCase));
+
+    private static readonly string[] EncryptionFailures =
+    [
+        "The archive header is encrypted, but currently not supported",
+        "The file content is encrypted, but currently not supported",
+        "Reading encrypted data is not currently supported",
+        "Encryption is not supported",
+        "RAR encryption support unavailable",
+        "Encrypted file is unsupported",
+    ];
 
     // T-F146: internal (was private) — AntivirusScanService catches this the same way
     // ExtractSingleArchiveAsync's own callers do, to map a rejected archive to an Inconclusive

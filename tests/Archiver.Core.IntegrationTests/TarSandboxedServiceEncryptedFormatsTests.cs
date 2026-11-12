@@ -121,4 +121,22 @@ public sealed class TarSandboxedServiceEncryptedFormatsTests : IDisposable
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Be(ExpectedBrowseMessage);
     }
+
+    // T-F518: tar.exe's stderr names the entry it failed on ("encrypted_notes.txt: Decompression
+    // failed (9)"), so a bare "encrypt" in it called a damaged plain 7z password-protected. The
+    // listing reads no data, so it passes; extraction and Test fail on the damaged data.
+    [SkipIfFormatUnsupported("7z")]
+    public async Task DamagedPlain7z_EntryNamedEncrypted_IsNotPasswordProtected()
+    {
+        ArchiveResult extracted = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [FixturePath("damaged_data.7z")],
+            DestinationFolder = Path.Combine(_temp.Path, "out"),
+            Mode = ExtractMode.SingleFolder,
+        });
+        ArchiveResult tested = await _sut.TestAsync([FixturePath("damaged_data.7z")]);
+
+        extracted.Errors.Should().ContainSingle().Which.Message.Should().NotBe(ExpectedExtractMessage);
+        tested.Errors.Should().ContainSingle().Which.Message.Should().NotBe(ExpectedExtractMessage);
+    }
 }

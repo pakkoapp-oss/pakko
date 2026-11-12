@@ -23,6 +23,20 @@ Single entry `seven.txt`, content `"hello from a real 7z fixture\n"` (29 bytes, 
 Used by `TarProcessServiceExternalFormatsTests.ExtractAsync_Valid7z_ExtractsFileWithContent`,
 gated `[SkipIfFormatUnsupported("7z")]`.
 
+## `damaged_data.7z` (T-F518)
+
+A plain (not encrypted) 7z whose one entry is named `encrypted_notes.txt`, with two bytes of its
+packed data flipped: `tar -tf` lists it (exit 0), `tar -xf` fails with `encrypted_notes.txt:
+Decompression failed (9)`. Built on Windows 11 (bsdtar 3.8.8) from a 20,000-byte file whose byte i
+is `(i * 7 + (i >> 5)) % 256`:
+
+```
+tar.exe --format=7zip -cf plain.7z encrypted_notes.txt
+# then XOR 0xFF the bytes at offsets 40 and 200 (612 bytes in all)
+```
+
+Used by `TarSandboxedServiceEncryptedFormatsTests.DamagedPlain7z_EntryNamedEncrypted_IsNotPasswordProtected`.
+
 ## `valid.rar`
 
 Committed as a binary fixture because `tar.exe`/libarchive can only **read** RAR, never create
