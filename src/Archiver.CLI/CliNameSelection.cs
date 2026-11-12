@@ -1,4 +1,5 @@
 using System.IO.Enumeration;
+using Archiver.Core.Services;
 using System.Text;
 
 namespace Archiver.CLI;
@@ -121,12 +122,17 @@ public static class CliNameSelection
         if (includes.TrueForAll(m => !Searches(m)) && excludes.Count == 0)
             return ([.. includes.Select(m => m.Path)], null);
 
+        // T-F512 (c): a name Windows trims goes to Core as typed, which refuses it; made a full path
+        // it named its twin ("a.zip." opened "a.zip").
+        List<CliNameMask> trimmed = includes.FindAll(m => InputPaths.NameTrimmed(Path.Combine(currentDirectory, m.Path)));
+        includes.RemoveAll(trimmed.Contains);
         List<CliNameMask> full = FullPathMasks(includes, excludes, currentDirectory);
         var filter = CliNameFilter.Create(full, switches.CaseSensitive, startFromAll: false);
         var found = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (CliNameMask mask in full.Where(m => m.Include))
             found.UnionWith(Searches(mask) ? ((IEnumerable<string>?)Candidates(mask) ?? []) : [mask.Path]);
         found.RemoveWhere(file => !filter.Includes(file, isFolder: false));
+        found.UnionWith(trimmed.Select(m => m.Path));
 
         return found.Count == 0 ? ([], "Cannot find archive") : ([.. found], null);
     }

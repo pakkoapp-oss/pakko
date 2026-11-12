@@ -14930,7 +14930,20 @@ become a folder Explorer cannot open; Core has refused such a folder since T-F50
 was refused (CLI-055). Asked, the user chose refusal: `ResolveExtractDestination` passes a name
 `InputPaths.NameTrimmed` flags as typed, and Core refuses it, exit 2, nothing made. T-F419's test
 `Zip_OutputWithTrailingSpace_...` now expects the refusal; `Zip_OutputWindowsTrims_BesideItsTwin_...`
-was seen red first. T-F511's PR 3 and
+was seen red first. T-F419's spellings in `FixesAdversarialTests` (`out. `, `out .`, `out..`, `..\x `,
+`..\x.`, `. `, and `-oout ` with `-spe`) now expect exit 2 and nothing written.
+
+**The closing review** (a fresh read-only reviewer, on the user's yes) found nothing serious and three
+small things:
+1. An archive name Windows trims, given to `x`/`t`/`l` with `-ax` (or as a searched mask), went
+   through `CliNameSelection.FullPathMasks` and opened its twin (`x "a.zip." -ax!b.zip -aoa` extracted
+   `a.zip`). Fixed the same way: `ResolveArchives` passes such a name to Core as typed. Seen red first
+   (`Zip_ArchiveNameWindowsTrims_WithAnExcludeOrAMask_...`).
+2. `a x.zip d "d\a.txt."`: the typed source sits under `d`, which is taken whole, so it is dropped
+   before Core and its refusal is not reported. Nothing is lost (`d` is archived, and the walk refuses a
+   real `a.txt.` in it, so `-sdel` keeps `d`); left as is.
+3. `-r "a.txt."` or a mask ending in a dot used to search for a literal name and warn "not found"
+   (exit 1); it is now refused (exit 2), as a name Windows trims is everywhere else. T-F511's PR 3 and
 PR 4 take the CLI's other path work (wildcard walks, the `-sdel` key).
 
 ## T-F509 retrospective - a rule added at call sites, and owners that were not single (2026-11-12)
