@@ -196,6 +196,28 @@ public sealed class SourceRecyclerAdversarialTests : IDisposable
         result.Deleted.Should().Equal(viaLink);
     }
 
+    // T-F519: the source's own spelling is one Windows keeps, its final path is not. Through a
+    // junction to "abc." (made through \\?\), link\x.txt resolves to ...\abc.\x.txt, which Windows
+    // reads as ...\abc\x.txt - the twin. The delete went to the twin.
+    [Fact]
+    public async Task SourceWhoseFinalPathWindowsTrims_IsKept_TheTwinSurvives()
+    {
+        string dotted = Path.Combine(_root, "abc.");
+        Directory.CreateDirectory(@"\\?\" + dotted);
+        File.WriteAllText(@"\\?\" + Path.Combine(dotted, "x.txt"), "archived");
+        string twin = WriteFile(Scratch("abc"), "x.txt", "the twin's");
+        string link = Junction(Path.Combine(_root, "link"), dotted);
+        string source = Path.Combine(link, "x.txt");
+        File.ReadAllText(source).Should().Be("archived", "precondition: the link reaches abc., not its twin");
+
+        RecycleResult result = await new SourceRecycler(_ops).DeleteAsync([source], SourceSnapshot.Take([source]), Confirm(true));
+
+        File.ReadAllText(twin).Should().Be("the twin's", "the twin was never a source");
+        result.Deleted.Should().BeEmpty();
+        result.Kept.Should().ContainSingle().Which.Reason.Should().Be(KeepReason.NotSafeToDelete);
+        _ops.PermanentlyDeleted.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task SourceReplacedByJunctionWhileConfirmIsOpen_TargetContentSurvives()
     {

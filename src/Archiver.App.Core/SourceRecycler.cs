@@ -153,7 +153,9 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
             // resolved path, and an unresolvable path is never deleted at all; nor is a volume or
             // share root (T-F419: a SUBST or mapped drive root resolves to one).
             string? final = ops.ResolveFinalPath(source);
-            if (final is null)
+            // T-F519: a final path Windows reads as another one ("abc.\x.txt" through a junction is
+            // "abc\x.txt") is handed to the shell and to File.Delete as is: the twin would go.
+            if (final is null || InputPaths.NameTrimmed(final))
                 notDeleted.Add(new KeptSource(source, KeepReason.NotSafeToDelete));
             else if (IsRoot(final))
                 notDeleted.Add(new KeptSource(source, KeepReason.DriveRoot));
