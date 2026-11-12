@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count), T-F506 (AMSI buffer), T-F500 (writer failure paths, the flaky chunk-folder test), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job), T-F512 (P2, the path matrix: before T-F511's PR 4, which it checks), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -1623,6 +1623,70 @@ re-measured with T-F346's script before and after.
      `CoreNeverThrowsContractTests`' `Coverage` table: extract, test, list, hash, scan,
      `SourceTree`, `PathIdentity`.
 - **Reported by:** the agent, 2026-11-12.
+
+### T-F513 - Memory bounded everywhere: batches where the work allows, a stated limit where it does not (P2, user, 2026-11-12)
+
+- [ ] **Status:** open.
+  - **Asked by the user:** "can most places where a pipeline processes large arrays move to
+    batches of a small fixed size, and so remove memory overflow altogether?"
+  - **Where it stands.** T-F498 measured the data side (`docs/DECISIONS.md`, "T-F498 measured"):
+    10x the files gives 1.3-3x the peak, and T-F501 took the parallel writer from 2.5 GB to
+    165 MiB. One whole-entry buffer is left: the AMSI scan (T-F506, queued; 262 MiB for one 256 MiB
+    entry). What still grows with the input is per-entry metadata.
+  - **The answer, to keep:** batches remove the overflow only where the work needs no view of the
+    whole input. Each O(N) holder gets one of three verdicts:
+    1. **Streamable** (a walk materialized with `ToList()`, source lists, result lists that are
+       only reported): process in batches of a fixed K through a bounded channel. Memory is O(K).
+    2. **Global by nature** (the ZIP central directory, which the format writes at the end;
+       extraction's claimed names, since `a.txt` and `A.TXT` may be the first and the last entry;
+       T-F392's hard-link pairs; 8.3 aliases; the `-sdel` snapshot): batching would break
+       correctness. Make each record compact and give an explicit limit that fails with a typed
+       error before memory runs out. A disk-backed index only if a measurement shows the limit
+       hits real input.
+    3. **Already bounded:** recorded, with the measurement.
+  - **Steps:**
+    1. Inventory every input-sized collection in `src` (a script, not a model), with the verdict
+       and the bound in `docs/DECISIONS.md`.
+    2. A scale test built on T-F512's generator (N files, depth, name length): peak working set at
+       N and 10N. Flat for the streamable ones; linear up to the limit, then the typed refusal, for
+       the global ones. In `Archiver.Core.PerformanceTests`, `Category=Slow`.
+    3. Batches for the streamable ones, each seen red first by the scale test.
+    4. Limits for the global ones, with the error text in all 37 locales.
+  - **Not promised:** that any input passes. Promised: Pakko never dies of memory; it streams, or
+    it refuses with a reason.
+
+### T-F512 - The path matrix: generated names and paths in combination (P2, user, 2026-11-12)
+
+- [~] **Status:** PR (a) done on its branch: the generator and the full product of the pure rules.
+  - **Asked by the user:** "add generation of possible names and addresses to the tests, a
+    combinatorial matrix, to go through as many variants as possible". T-F509, T-F463, T-F475 and
+    T-F511's `a .zip` regression were each found by hand, one shape at a time.
+  - **The generator** (`tests/Archiver.Core.Tests/PathMatrix/`):
+    - `NameShapes`: 45 name shapes, each with why;
+    - `PathForms`: 12 spellings of the same place;
+    - two positions (last part, a folder on the way);
+    - `AllPairs`: deterministic pairwise cases under a pairwise constraint, with a self-test that
+      every allowed pair is covered.
+  - **PR (a), pure rules over the full product (about 1,100 cases each, under a second):**
+    - `InputPaths.Problem` refuses exactly what `GetFullPath` trims, in every spelling;
+    - `SingleName` and `GetFolderName` give a name Windows keeps;
+    - `AsPakkoWrites` follows the 7-Zip rule;
+    - `IsDevice` never throws.
+    The `InputPaths` mutant turns 108 cases red.
+  - **Found by PR (a), fixed in the owner:** `EntryDiskName.SingleName` left a device name as it
+    was. `nul.zip` extracted with "Extract to folder" failed (`NUL` is the null device on every
+    Windows), and `CON.zip` would have used the console folder on Windows 10 and Server 2022. Now
+    such a name gets `_` in front, as 7-Zip's `Get_Correct_FsFile_Name` does
+    (`ExtractingFilePath.cpp`, `CorrectUnsupportedName`), with `ArchiveEntrySecurity`'s list. `:`
+    and control characters become `_` too. Seen red in `ShellCommandsTests` first.
+  - **Next:**
+    - (b) disk operations all-pairs, with marker bytes per role, the twin oracle and nothing outside
+      the root; a quick subset of shapes and the full set under `Category=Fuzz`;
+    - (c) `CLI-056`, the CLI cases from an exported list, on Win11 and PakkoW10 (tar 3.5.2);
+    - key equality of App, CLI and the engines belongs to T-F511's PR 4.
+  - **`KnownFindings`** may hold only a safe outcome (another refusal code, or a refusal where
+    acceptance would be better). Never a throw, a touched twin, another file's bytes or a write
+    outside the destination.
 
 ### T-F511 - One owner per job: the code that does an owner's job itself (P2, from T-F509)
 

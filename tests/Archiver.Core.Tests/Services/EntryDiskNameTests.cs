@@ -19,6 +19,13 @@ public sealed class EntryDiskNameTests
     [InlineData("a/b", "a_b")]
     [InlineData("a\\b", "a_b")]
     [InlineData("a?b", "a_b")]
+    [InlineData("a:b", "a_b")]
+    [InlineData("a\tb", "a_b")]
+    [InlineData("nul", "_nul")]
+    [InlineData("CON", "_CON")]
+    [InlineData("CON .txt", "_CON .txt")]
+    [InlineData("com1.x", "_com1.x")]
+    [InlineData("CONSOLE", "CONSOLE")]
     public void SingleName_IsOneNameWindowsKeeps(string name, string expected)
     {
         EntryDiskName.SingleName(name).Should().Be(expected);
