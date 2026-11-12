@@ -50,7 +50,7 @@ Full table (purpose, read when, update when): `.claude/rules/docs.md`.
 | File | Owns / read when |
 |---|---|
 | `docs/TASKS.md` / `docs/TASKS_DONE.md` | open tasks, `T-Fxx` numbering / finished tasks (append-only) |
-| `docs/ARCHITECTURE.md` | C# layers, public signatures, DI wiring — before touching a public signature or DI |
+| `docs/ARCHITECTURE.md` | C# layers, signatures, DI, single owners — before a signature, DI, or any path/walk/temp/error rule |
 | `docs/XAML.md` | `MainWindow.xaml` structure, WinUI 3 gotchas |
 | `docs/CONVENTIONS.md` | coding style, naming, per-project package whitelist, Won't-Fix analyzer findings — before writing code |
 | `SECURITY.md` | threat model, all security/CVE/supply-chain/MOTW rationale |
@@ -194,8 +194,8 @@ live under `docs/` (T-F126); `.claude/rules/` holds the area rules.
 # Run tests (always works from CLI)
 dotnet test --filter "Category!=Slow&Category!=VeryLarge"  # the actual default — plain
                                             # "Category!=Slow" alone does NOT exclude VeryLarge
-                                            # tests, since they aren't tagged Slow (confirmed
-                                            # 2026-07-17; see the hard-constraint note above)
+                                            # tests, since they aren't tagged Slow (see the
+                                            # hard-constraint note above)
 dotnet test --filter "Category=Slow"    # Zip64 + T-F114 perf tests — real multi-second cost
 dotnet test -c Release --filter "Category=VeryLarge"  # >4 GiB Zip64 test + T-F114's one-large-file
                                             # scenarios — on demand only, Release only (T-F272)

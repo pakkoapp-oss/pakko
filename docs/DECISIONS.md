@@ -14852,6 +14852,43 @@ refuses `CON.txt` as an unsafe path, exit 2.
   - `a -sae x\CON\o.zip`: exit 2, "Could not find a part of the path '\\.\CON'".
   - Both leave only `b.txt`. `SMOKE.md` `CLI-053`.
 
+## T-F509 retrospective - a rule added at call sites, and owners that were not single (2026-11-12)
+
+**What happened.** T-F509's first version put the trimmed-name rule into 2 of `DirectoryWalker`'s 9
+consumers, plus separate checks at 4 reading entries and 2 recovery spots. That made 8 places.
+`DirectoryWalker` already called itself "the one walk". Hash, the deletion listing and tar still met
+"a.txt " as a plain file, and `-sdel` over tar still deleted the twin. The user asked whether this was
+one owner or another patch. A fresh opus reviewer and the advisor then found more holes:
+- a rule hand-written with `TrimEnd(' ', '.')` that over-refused `d ` in the middle of a path;
+- a trailing separator that got past the rule;
+- a hashed dotted folder.
+
+A haiku sweep of 14 owners found seven more bypasses and no owner for error classification (T-F511).
+
+**Why:**
+- **No index of owners.** Each owner was named only in its own doc comment ("the one walk", "the
+  one place"). Planning grepped the symptom's call sites, not the job's owner.
+- **Owners without guard tests.** `DirectoryWalker`, `InputPaths`, `TempOwner` and `PathIdentity` had
+  none, so nothing failed when a consumer did their job itself.
+- **The platform was not asked first.** The rule was re-derived by hand instead of asking
+  `GetFullPath`. The "platform primitives first" practice existed but was applied only after review.
+- **The same fact had been met before.** T-F463 found "d " is "d" for the quarantine and gave that
+  folder an owner with a guard test (`QuarantineFilesOwnerTests`). Nobody generalized it to the input
+  side.
+- **Closing reviews found what the opening plan should have named.** Each one found more, because the
+  plan never asked "who owns this job?".
+
+**Changes:**
+- **An index.** `docs/ARCHITECTURE.md`'s "Single Owners" table lists each job's owner, the primitive
+  it builds on, its guard test and its known bypasses. `.claude/rules/core.md` makes reading it the
+  first step of any such change, and `docs.md` cascades a new owner into it.
+- **A plan for a path, name, walk, temp or error change names its owner and the primitive it asks.**
+  If the plan says "add a check at each call site", it is redesigned.
+- **Every owner gets a guard test that fails on a bypass** (T-F511), as `CoreMessageSourceGuardTests`
+  and `QuarantineFilesOwnerTests` already do.
+- **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
+  operation inherits the check.
+
 ## T-F509 - a name Windows trims is refused, never read through its twin (2026-11-12)
 
 **Cause.** A file or folder can be named `a.txt ` or `d.` (by WSL, a share, or a `\\?\` path). Win32
