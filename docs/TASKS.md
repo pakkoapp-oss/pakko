@@ -1722,7 +1722,10 @@ re-measured with T-F346's script before and after.
   - **PR (c), `CLI-056`:** the CLI cases (the quick shapes, as source, `-sdel` source, archive and
     destination) are exported to `scripts/smoke/PathMatrixCases.json`; `CliCases_TheSmokeListIsTheGeneratorsOwn`
     fails when the file drifts from the generator (`PAKKO_PATHMATRIX_WRITE=1` rewrites it).
-  - `CLI-056` passed on Windows 11 and PakkoW10 (tar.exe 3.5.2), 109 cases each (2026-11-12).
+  - `CLI-056` passed on Windows 11 and PakkoW10 (tar.exe 3.5.2), 109 cases each (2026-11-12). Then
+    fixed cases joined the pairs (every role and engine with a twin, plain spelling; 125 in all): 4
+    fail, all `x -o<dir>\out.` with a twin `out`, which is written into (T-F419 makes `-o` a full
+    path). Waits for the user's decision (DECISIONS, T-F512).
   - **Next:**
     - keep `CLI-056` in the release smoke, on Win11 and on PakkoW10 (tar 3.5.2);
     - key equality of App, CLI and the engines belongs to T-F511's PR 4.

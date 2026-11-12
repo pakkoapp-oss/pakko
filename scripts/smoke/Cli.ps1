@@ -1037,7 +1037,7 @@ Add-SmokeStep 'CLI-056' {
         if ($null -eq $path) { return $null }
         $path.Replace('localhost\Z$\R', $share).Replace('Z:\R', $root).Replace('Z:/R', $root.Replace('\', '/'))
     }
-    function New-Marked([string]$at, [string]$ext, [string]$mark, [string]$scratch) {
+    function Write-MarkedArchive([string]$At, [string]$Ext, [string]$Mark, [string]$Scratch) {
         $null = [System.IO.Directory]::CreateDirectory($long + (Get-Parent $at))
         if ($ext -eq 'zip') {
             $bytes = [System.IO.MemoryStream]::new()
@@ -1104,14 +1104,14 @@ Add-SmokeStep 'CLI-056' {
                 $null = [System.IO.Directory]::CreateDirectory($long + (Get-Parent $place))
                 [System.IO.File]::WriteAllText($long + $place, $lit)
             } elseif ($case.role -eq 'x-archive') {
-                New-Marked $place $ext $lit (Join-Path $root "s$i-l")
+                Write-MarkedArchive -At $place -Ext $ext -Mark $lit -Scratch (Join-Path $root "s$i-l")
             }
             if ($twin) {
                 if ($isSource) {
                     $null = [System.IO.Directory]::CreateDirectory($long + (Get-Parent $twin))
                     [System.IO.File]::WriteAllText($long + $twin, $mark)
                 } elseif ($case.role -eq 'x-archive') {
-                    New-Marked $twin $ext $mark (Join-Path $root "s$i-t")
+                    Write-MarkedArchive -At $twin -Ext $ext -Mark $mark -Scratch (Join-Path $root "s$i-t")
                 } else {
                     $null = [System.IO.Directory]::CreateDirectory($long + $twin)
                     [System.IO.File]::WriteAllText($long + (Join-Path $twin 't.txt'), $mark)
@@ -1130,7 +1130,7 @@ Add-SmokeStep 'CLI-056' {
             'a-sdel' { @('a', $type, '-sdel', $made, $path) }
             'x-archive' { @('x', $path, "-o$out") }
             'x-destination' {
-                New-Marked (Join-Path $folder "in.$ext") $ext $lit (Join-Path $folder 'seed')
+                Write-MarkedArchive -At (Join-Path $folder "in.$ext") -Ext $ext -Mark $lit -Scratch (Join-Path $folder 'seed')
                 if ([System.IO.Directory]::Exists((Join-Path $folder 'seed'))) { [System.IO.Directory]::Delete((Join-Path $folder 'seed'), $true) }
                 @('x', (Join-Path $folder "in.$ext"), "-o$path")
             }
