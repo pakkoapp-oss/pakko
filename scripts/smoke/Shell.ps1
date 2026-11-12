@@ -292,5 +292,13 @@ Add-SmokeStep 'SHL-020' {
     }
     Assert-Smoke (Test-Path -LiteralPath (Join-Path $folder 'a\two.txt')) "--extract-folder did not make the folder 'a'"
     Assert-Smoke (Test-Path -LiteralPath (Join-Path $folder 'a (1)\two.txt')) "--extract-here did not make the folder 'a (1)'"
-    "the folders 'a' and 'a (1)'"
+    [System.IO.File]::WriteAllText($one, 'one')
+    [System.IO.File]::WriteAllText($two, 'two')
+    $device = Join-Path $folder 'nul.zip'
+    $made = Invoke-Pakko @('a', $device, $one, $two)
+    Assert-Smoke ($made.ExitCode -eq 0) "fixture nul.zip: exit $($made.ExitCode) $($made.Text)"
+    $run = Invoke-Shell -Arguments @('--extract-folder', $device) -TimeoutSeconds 30
+    Assert-Smoke ($run.Exited -and $run.ExitCode -eq 0) "--extract-folder on nul.zip: exited=$($run.Exited) code=$($run.ExitCode) $($run.Text)"
+    Assert-Smoke (Test-Path -LiteralPath (Join-Path $folder '_nul\two.txt')) "--extract-folder did not make the folder '_nul'"
+    "the folders 'a', 'a (1)' and '_nul'"
 }

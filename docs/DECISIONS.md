@@ -14852,6 +14852,43 @@ refuses `CON.txt` as an unsafe path, exit 2.
   - `a -sae x\CON\o.zip`: exit 2, "Could not find a part of the path '\\.\CON'".
   - Both leave only `b.txt`. `SMOKE.md` `CLI-053`.
 
+## T-F512 - the path matrix, and a device name as a folder Pakko names (2026-11-12)
+
+**Why a matrix.** The user asked for generated names and paths in combination. T-F463, T-F475,
+T-F509 and the `a .zip` regression of T-F511's PR 1 were each found by hand, one shape at a time.
+The matrix (`tests/Archiver.Core.Tests/PathMatrix/`, `docs/TESTING.md`) runs every shape in every
+spelling and position. Windows is the oracle where Windows is the rule (`Path.GetFullPath`). For
+entry names the oracle is the 7-Zip rule Pakko chose.
+
+**Its first finding.** `EntryDiskName.SingleName`, the owner of the folder named after an archive
+since T-F511, kept a device name:
+- `nul.zip` with "Extract to folder" failed, because `NUL` is the null device on every Windows;
+- `CON.zip` would have been the console on Windows 10 and Server 2022.
+
+**7-Zip, quoted** (`CPP/7zip/UI/Common/ExtractingFilePath.cpp`, ip7z/7zip main):
+
+```cpp
+static const char * const g_ReservedNames[] =
+{
+  "CON", "PRN", "AUX", "NUL",
+  "COM", "LPT"
+};
+...
+static void CorrectUnsupportedName(UString &name)
+{
+  if (!IsSupportedName(name))
+    name.InsertAtFront(L'_');
+}
+```
+
+`IsSupportedName` matches a reserved name, or COM/LPT with a digit, followed by spaces and then the
+end or a dot. `Get_Correct_FsFile_Name` applies it to a single name.
+
+**Pakko does the same.** The list comes from `ArchiveEntrySecurity` (`HasReservedName`). It is a
+superset of 7-Zip's (`CONIN$`, `CONOUT$`, COM and LPT with superscript digits, COM0 and LPT0), so
+`nul.zip` extracts into `_nul`. `:` and control characters become `_`, as refused characters do.
+`SingleName` names one thing, so it has no earlier entry check to rely on.
+
 ## T-F509 retrospective - a rule added at call sites, and owners that were not single (2026-11-12)
 
 **What happened.** T-F509's first version put the trimmed-name rule into 2 of `DirectoryWalker`'s 9

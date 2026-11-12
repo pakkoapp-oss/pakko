@@ -85,6 +85,25 @@ public sealed class ShellCommandsTests : IDisposable
         File.ReadAllText(Path.Combine(_root, baseName.TrimEnd(' ', '.'), "b.txt")).Should().Be("B");
     }
 
+    // T-F512: "nul.zip" or "CON.zip" gets the folder "_nul" or "_CON" (7-Zip's rule): a folder "NUL"
+    // is the null device on every Windows, "CON" the console on Windows 10 and Server 2022.
+    [Theory]
+    [InlineData("here", "nul")]
+    [InlineData("here", "CON")]
+    [InlineData("folder", "nul")]
+    [InlineData("folder", "CON")]
+    public async Task Extract_ArchiveNamedAsADevice_IntoAFolderThatIsNotOne(string command, string baseName)
+    {
+        string zip = MakeZip(baseName + ".zip", ("a.txt", "A"), ("b.txt", "B"));
+        var ui = new FakeOperationUi();
+        ShellCommands commands = Create(ui);
+
+        await (command == "here" ? commands.ExtractHereAsync([zip]) : commands.ExtractFolderAsync([zip]));
+
+        ui.Messages.Should().BeEmpty();
+        File.ReadAllText(Path.Combine(_root, "_" + baseName, "b.txt")).Should().Be("B");
+    }
+
     // T-F268 step 3: one window per Explorer command, naming each archive as it starts.
     [Theory]
     [InlineData("here")]

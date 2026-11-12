@@ -834,6 +834,19 @@ ignored, `Dispose` not cancelling. The queued CRC-32 read's cancel is enforced b
   `canary.yml` has none; canary-status reads check-run annotations for a timeout. All four red
   before the change; mutants killed: one timeout removed, the `run_id` fallback, the annotation text.
 
+### Path matrix (T-F512)
+
+- `Archiver.Core.Tests/PathMatrix/`: generated names and paths, judged by Windows itself.
+  - `NameShapes` (45 shapes, each with why: trailing dots and spaces, devices, ADS, refused
+    characters, Unicode forms, 255/256 long, switch-like names...) and `PathForms` (12 spellings:
+    `\\?\`, `\\.\`, UNC, `/`, doubled, trailing separator, `..`, `.`, over 260, relative) in two
+    positions.
+  - `PathMatrixPureTests` runs the owners' pure rules over the full product (about 1,100 cases
+    each, under a second) and reports every failing case at once.
+  - `AllPairs` builds pairwise cases for the disk operations (PR (b)) under a pairwise constraint;
+    `AllPairsTests` checks that every allowed pair is covered.
+- A new shape or spelling goes into `NameShapes` or `PathForms`, never into one test.
+
 ### Fuzz
 
 - `Archiver.Core.Tests/Fuzz/Par2FuzzTests` (`Category=Fuzz`): raw mutations of the golden sets, and

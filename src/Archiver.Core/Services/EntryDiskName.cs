@@ -28,12 +28,16 @@ public static class EntryDiskName
     public static string AsTarExeWrites(string name) => Written(name, trimFileName: false);
 
     /// <summary>T-F511: one name Pakko writes on its own (a folder named after an archive, a bare
-    /// gzip's output): never a path, so a separator is a character like any refused one, and "." or
-    /// ".." is no step - each becomes '_', as an empty name does.</summary>
+    /// gzip's output): never a path, so a separator, ':' or a control character is a character like
+    /// any refused one, and "." or ".." is no step - each becomes '_', as an empty name does. T-F512:
+    /// a device name gets '_' in front ("nul.zip" extracts into "_nul"), as 7-Zip's
+    /// <c>Get_Correct_FsFile_Name</c> does (ExtractingFilePath.cpp, <c>CorrectUnsupportedName</c>).</summary>
     public static string SingleName(string name)
     {
-        string part = string.Concat(name.Select(c => Replaced.Contains(c) || c is '/' or '\\' ? '_' : c)).TrimEnd(' ', '.');
-        return part.Length == 0 ? "_" : part;
+        string part = string.Concat(name.Select(c => Replaced.Contains(c) || c is '/' or '\\' or ':' || c < 0x20 ? '_' : c)).TrimEnd(' ', '.');
+        if (part.Length == 0)
+            return "_";
+        return ArchiveEntrySecurity.HasReservedName(part) ? "_" + part : part;
     }
 
     /// <summary>Whether Pakko writes <paramref name="name"/> under another name than its own parts
