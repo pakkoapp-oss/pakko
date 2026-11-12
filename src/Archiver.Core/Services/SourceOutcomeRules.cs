@@ -106,6 +106,12 @@ internal static class SourceOutcomeRules
             ? s with { Outcome = SourceOutcome.Partial, Cause = PartialCause.EntryReplaced }
             : s)];
 
+    // T-F511: a step after the run failed for some archive (its recovery data, T-F275). A result does
+    // not say which source went into which archive, so every completed source is kept. No Cause: the
+    // error is in the summary, and SourceResult.Cause is for a rule that left no error.
+    internal static IReadOnlyList<SourceResult> DowngradeAfterLaterError(IReadOnlyList<SourceResult> sources) =>
+        [.. sources.Select(s => s.Outcome == SourceOutcome.Completed ? s with { Outcome = SourceOutcome.Partial } : s)];
+
     // Every output's identity and those of the folders holding it, in one set: a source holds an
     // output when its identity is among them, or when some output could not be resolved.
     private sealed class Holders
