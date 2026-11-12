@@ -374,6 +374,8 @@ public sealed class SourceOutcomeTests : IDisposable
     // of each took 9 s on that alone, 60,000 well over a minute; the set takes a few seconds even under
     // the whole suite's load (a 20,000 / 5 s version failed there once). Paths that do not exist reach
     // only the path comparison and one Directory.Exists per source.
+    // T-F516: on a pool thread (Task.Run) it waited for one behind the whole suite's blocking tests
+    // and timed out at 45 s three runs in a row, while alone it took 3 s; it runs on its own thread.
     [Fact]
     public async Task DowngradeSourcesContainingOutputs_ManySourcesAndOutputs_IsNotQuadratic()
     {
@@ -383,7 +385,9 @@ public sealed class SourceOutcomeTests : IDisposable
             new SourceResult { Path = Path.Combine(root, "src", $"item-{i}"), Outcome = SourceOutcome.Completed })];
         string[] outputs = [.. Enumerable.Range(0, count).Select(i => Path.Combine(root, "src", $"item-{i}.zip"))];
 
-        Task<IReadOnlyList<SourceResult>> run = Task.Run(() => SourceOutcomeRules.DowngradeSourcesContainingOutputs(sources, outputs));
+        Task<IReadOnlyList<SourceResult>> run = Task.Factory.StartNew(
+            () => SourceOutcomeRules.DowngradeSourcesContainingOutputs(sources, outputs),
+            CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         IReadOnlyList<SourceResult> result = await run.WaitAsync(TimeSpan.FromSeconds(45));
 
         result.Should().OnlyContain(s => s.Outcome == SourceOutcome.Completed);
