@@ -61,6 +61,28 @@ public sealed class ProcessTempRootTests : IDisposable
         File.Exists(Path.Combine(_shared, "stray.txt")).Should().BeFalse();
     }
 
+    // T-F511 PR 2: a recursive Directory.Delete stops at a read-only file, so a previewed file the
+    // user or the opening app marked read-only stayed in %TEMP% for good. TempOwner clears it.
+    [Fact]
+    public void DeleteOwnAndSweepStale_ReadOnlyFile_AreRemoved()
+    {
+        ProcessTempRoot mine = Root("100-1");
+        string myScope = mine.CreateScope();
+        string deadScope = Root("300-3").CreateScope();
+        foreach (string scope in new[] { myScope, deadScope })
+        {
+            string file = Path.Combine(scope, "previewed.txt");
+            File.WriteAllText(file, "plaintext");
+            File.SetAttributes(file, FileAttributes.ReadOnly);
+        }
+
+        mine.SweepStale();
+        mine.DeleteOwn();
+
+        Directory.Exists(deadScope).Should().BeFalse();
+        Directory.Exists(myScope).Should().BeFalse();
+    }
+
     [Fact]
     public void SweepStale_MissingRoot_DoesNotThrow()
     {

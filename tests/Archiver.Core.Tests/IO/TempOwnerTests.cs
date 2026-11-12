@@ -205,6 +205,34 @@ public sealed class TempOwnerTests : IDisposable
         Directory.Exists(dead).Should().BeFalse();
     }
 
+    // T-F511: the CLI and the App remove their temp files and folders through TryRemove; a name
+    // Windows trims would reach its twin, so it is refused and both stay.
+    [Fact]
+    public void TryRemove_NameWindowsTrims_LeavesTheTwin()
+    {
+        string twin = FileIn("a.txt");
+        string literal = Path.Combine(_temp.Path, "a.txt.");
+        File.WriteAllText(@"\\?\" + literal, "literal");
+
+        TempOwner.TryRemove(literal).Should().BeFalse();
+
+        File.Exists(twin).Should().BeTrue();
+        File.Exists(@"\\?\" + literal).Should().BeTrue();
+        File.Delete(@"\\?\" + literal);
+    }
+
+    [Fact]
+    public void TryRemove_FolderWithReadOnlyFileAndMissingPath_Removed()
+    {
+        string folder = Dir("staging");
+        File.SetAttributes(Path.Combine(folder, "sub", "staged.txt"), FileAttributes.ReadOnly);
+
+        TempOwner.TryRemove(folder).Should().BeTrue();
+        TempOwner.TryRemove(folder).Should().BeTrue("a path already gone is removed");
+
+        Directory.Exists(folder).Should().BeFalse();
+    }
+
     [Fact]
     public void Sweep_OtherNamesAndMissingFolder_Untouched()
     {

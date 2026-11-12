@@ -1008,6 +1008,48 @@ Add-SmokeStep 'CLI-057' {
     'a.txt archived and deleted; A.TXT kept'
 }
 
+Add-SmokeStep 'CLI-058' {
+    $folder = Get-StepFolder 'cli058'
+    $source = Join-Path $folder 'a.txt'
+    [System.IO.File]::WriteAllText($source, 'listed')
+    $zip = Join-Path $folder 'a.zip'
+    $made = Invoke-Pakko @('a', $zip, $source)
+    Assert-Smoke ($made.ExitCode -eq 0) "pakko a: exit $($made.ExitCode) $($made.Text)"
+    $stdinRoot = Join-Path ([System.IO.Path]::GetTempPath()) 'Archiver.CLI.Stdin'
+    $info = New-Object System.Diagnostics.ProcessStartInfo
+    $info.FileName = $Smoke.Pakko
+    $info.Arguments = 't -si'
+    $info.UseShellExecute = $false
+    $info.RedirectStandardInput = $true
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $killed = [System.Diagnostics.Process]::Start($info)
+    try {
+        $killed.StandardInput.BaseStream.Write([byte[]]::new(4096), 0, 4096)
+        $killed.StandardInput.BaseStream.Flush()
+        $marker = "-$($killed.Id)-"
+        $left = $null
+        for ($i = 0; $i -lt 100 -and -not $left; $i++) {
+            if ([System.IO.Directory]::Exists($stdinRoot)) {
+                $left = [System.IO.Directory]::GetDirectories($stdinRoot) | Where-Object { (Split-Path $_ -Leaf).Contains($marker) } | Select-Object -First 1
+            }
+            if (-not $left) { [System.Threading.Thread]::Sleep(100) }
+        }
+        Assert-Smoke ($null -ne $left) "no -si staging folder for pid $($killed.Id) under $stdinRoot"
+        $killed.Kill()
+        $null = $killed.WaitForExit(10000)
+    }
+    finally {
+        if (-not $killed.HasExited) { $killed.Kill() }
+        $killed.Dispose()
+    }
+    Assert-Smoke ([System.IO.Directory]::Exists($left)) 'the killed run left no folder to sweep'
+    $listed = Invoke-Pakko @('l', $zip)
+    Assert-Smoke ($listed.ExitCode -eq 0) "pakko l: exit $($listed.ExitCode) $($listed.Text)"
+    Assert-Smoke (-not [System.IO.Directory]::Exists($left)) "the next pakko left the killed run's folder: $left"
+    'the killed -si run left its folder; the next pakko swept it'
+}
+
 Add-SmokeStep 'CLI-055' {
     $folder = Get-StepFolder 'cli055'
     $content = Join-Path $folder 'content'

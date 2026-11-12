@@ -1,3 +1,4 @@
+using Archiver.Core.IO;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 using FluentAssertions;
@@ -39,6 +40,30 @@ public sealed class TarCapabilitySnapshotTests : IDisposable
 
     private string Expected(bool canCreate) =>
         $"{new FileInfo(_tar).Length};{File.GetLastWriteTimeUtc(_tar).ToFileTimeUtc()};{(canCreate ? 1 : 0)}";
+
+    // T-F511 PR 2: a run killed between writing its temp file and the move left it in the package's
+    // LocalCache for good. The next write sweeps it once its owner is gone; v1.10's unowned
+    // "<verdict>.<guid>.tmp" goes once it is a day old.
+    [Fact]
+    public void TryWrite_TempFileOfAKilledRun_IsSwept()
+    {
+        string path = VerdictPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        string machine = TempOwner.CurrentTag.Split('-')[0];
+        string dead = $"{path}.{machine}-{int.MaxValue}-1-{Guid.NewGuid():N}.tmp";
+        string legacy = $"{path}.{Guid.NewGuid():N}.tmp";
+        string young = $"{path}.{Guid.NewGuid():N}.tmp";
+        foreach (string file in new[] { dead, legacy, young })
+            File.WriteAllText(file, "1;2;0");
+        File.SetCreationTimeUtc(legacy, DateTime.UtcNow.AddDays(-2));
+
+        TarCapabilitySnapshot.TryWrite(new GroupPolicyOptions(), path, _tar, answer: true).Should().BeTrue();
+
+        File.Exists(dead).Should().BeFalse();
+        File.Exists(legacy).Should().BeFalse();
+        File.Exists(young).Should().BeTrue("an unowned file is removed by age only: it may be a v1.10 run's, still writing");
+        File.ReadAllText(path).Should().Be(Expected(canCreate: true));
+    }
 
     [Fact]
     public void Format_IsSizeTimeAndOneDigit()

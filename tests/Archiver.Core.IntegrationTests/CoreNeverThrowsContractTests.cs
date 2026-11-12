@@ -216,6 +216,16 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         return Task.CompletedTask;
     });
 
+    // T-F511: the removal and sweep of Pakko's temp names, which the CLI and the App call.
+    [Theory, MemberData(nameof(Hostile))]
+    public Task TempOwner_Path(string kind) => NoThrow(() =>
+    {
+        string path = Path(kind);
+        Archiver.Core.IO.TempOwner.SweepStaleInTemp(path, "", TimeSpan.FromDays(1));
+        _ = Archiver.Core.IO.TempOwner.TryRemove(path);
+        return Task.CompletedTask;
+    });
+
     [Theory, MemberData(nameof(Hostile))]
     public Task SourceTree_Path(string kind) => NoThrow(() =>
     {
@@ -437,6 +447,8 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["PathIdentity.SelfAndAncestors"] = [nameof(PathIdentity_Path)],
         ["PathIdentity.FinalPathOfItself"] = [nameof(PathIdentity_Path)],
         ["SourceKey.Of"] = [nameof(PathIdentity_Path)],
+        ["TempOwner.SweepStaleInTemp"] = [nameof(TempOwner_Path)],
+        ["TempOwner.TryRemove"] = [nameof(TempOwner_Path)],
         ["SourceTree.List"] = [nameof(SourceTree_Path)],
     };
 
@@ -453,6 +465,8 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["EntryDiskName.Renames"] = "a name inside an archive, never opened",
         ["EntryDiskName.SingleName"] = "one name Pakko writes, never opened",
         ["InputPaths.NameTrimmed"] = "a question about a path's spelling, never opened",
+        ["TempOwner.NewName"] = "a new name, never opened",
+        ["TempOwner.IsRunningHere"] = "a question about a process, never a path",
         ["EntryDiskName.SameName"] = "names inside an archive, never opened",
         ["EntryDiskName.TrimmedTwins"] = "names inside an archive, never opened",
         ["EntryDiskName.Trims"] = "a name inside an archive, never opened",
@@ -468,7 +482,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
             typeof(IArchiveService), typeof(ITarService), typeof(IExtractionRouter), typeof(IArchiveCreationRouter),
             typeof(IArchiveListingRouter), typeof(IRecoveryService), typeof(IAntivirusScanService), typeof(FileHashService),
             typeof(Archiver.Core.IO.PathIdentity), typeof(Archiver.Core.IO.SourceTree), typeof(EntryDiskName),
-            typeof(InputPaths), typeof(SourceKey),
+            typeof(InputPaths), typeof(SourceKey), typeof(Archiver.Core.IO.TempOwner),
         ];
         HashSet<string> operations = [.. types.SelectMany(type => type
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance

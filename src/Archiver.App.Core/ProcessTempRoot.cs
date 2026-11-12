@@ -62,26 +62,12 @@ public sealed class ProcessTempRoot
         {
             if (string.Equals(entry, OwnRoot, StringComparison.OrdinalIgnoreCase))
                 continue;
-            if (File.Exists(entry))
-            {
-                try { File.Delete(entry); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* best-effort */ }
-                continue;
-            }
-            if (!_isOwnerAlive(Path.GetFileName(entry)))
+            if (File.Exists(entry) || !_isOwnerAlive(Path.GetFileName(entry)))
                 TryDelete(entry);
         }
     }
 
-    internal static void TryDelete(string directory)
-    {
-        try
-        {
-            if (Directory.Exists(directory))
-                Directory.Delete(directory, recursive: true);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // best-effort — a file still open in the previewing app blocks it; SweepStale retries
-        }
-    }
+    // T-F511: TempOwner removes a read-only file too; a file still open in the previewing app
+    // blocks it, and SweepStale retries.
+    internal static void TryDelete(string path) => _ = TempOwner.TryRemove(path);
 }

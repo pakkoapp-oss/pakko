@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using Archiver.Core.Services;
 
 namespace Archiver.Core.IO;
 
@@ -63,6 +64,40 @@ public static class TempOwner
     /// </summary>
     public static bool IsRunningHere(string tag) =>
         Parse(tag, requireUnique: false) is { Pid: { } pid } owner && IsProcessAlive(pid, owner.StartTicks);
+
+    /// <summary>
+    /// T-F511: sweeps a Pakko folder under %TEMP% of the entries named with <paramref name="prefix"/>
+    /// whose owner no longer runs here; an entry whose owner cannot be told goes once older than
+    /// <paramref name="unownedMaxAge"/>. Best-effort.
+    /// </summary>
+    public static void SweepStaleInTemp(string directory, string prefix, TimeSpan unownedMaxAge)
+    {
+        // A name Windows trims would list, and sweep, its twin.
+        if (InputPaths.Problem(directory) is null)
+            SweepStale(directory, prefix, "", TempScope.LocalTemp(unownedMaxAge));
+    }
+
+    /// <summary>
+    /// T-F511: removes a temporary file or folder Pakko named: each link on its own, never its target,
+    /// and a read-only file too. Best-effort: false when something in it is held, for a later sweep.
+    /// A path Windows cannot open as spelled is refused: a name it trims would remove the twin.
+    /// </summary>
+    public static bool TryRemove(string path)
+    {
+        if (InputPaths.Problem(path) is not null)
+            return false;
+        try
+        {
+            FileSystemInfo entry = Directory.Exists(path) ? new DirectoryInfo(path) : new FileInfo(path);
+            if (entry.Exists)
+                Remove(entry);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
 
     internal static void SweepStale(string directory, string prefix, string suffix, TempScope scope) =>
         SweepStale(directory, prefix, suffix, scope, new TempOwnerProbe(MachineHash, IsProcessAlive, DateTime.UtcNow));

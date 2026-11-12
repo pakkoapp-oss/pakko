@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Archiver.Core.IO;
 using Microsoft.Win32.SafeHandles;
 
 namespace Archiver.CLI;
@@ -43,81 +44,14 @@ public static partial class CliStreamStaging
         }
     }
 
-    /// <summary>Sweeps both staging roots, checking owners against the running processes.</summary>
+    private static readonly TimeSpan UnownedMaxAge = TimeSpan.FromDays(1);
+
+    /// <summary>T-F511: removes, through <see cref="TempOwner"/>, the staging folders of runs that no
+    /// longer run; v1.10's <c>&lt;pid&gt;-&lt;guid&gt;</c> folders included.</summary>
     public static void SweepAbandoned()
     {
-        SweepAbandoned(StdinRoot, IsOwnerAlive);
-        SweepAbandoned(StdoutRoot, IsOwnerAlive);
-    }
-
-    /// <summary>Deletes the staging folders under <paramref name="root"/> whose owning process
-    /// is gone (<paramref name="isOwnerAlive"/> gets the PID from the folder name and the
-    /// folder's creation time). Only <c>&lt;pid&gt;-&lt;32 hex&gt;</c> names are touched.</summary>
-    public static void SweepAbandoned(string root, Func<int, DateTime, bool> isOwnerAlive)
-    {
-        DirectoryInfo[] folders;
-        try
-        {
-            DirectoryInfo rootInfo = new(root);
-            if (!rootInfo.Exists)
-                return;
-            folders = rootInfo.GetDirectories();
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return; // Best-effort: a sweep that cannot run is retried by the next pakko.
-        }
-
-        foreach (DirectoryInfo folder in folders)
-        {
-            if (TryGetOwnerProcessId(folder.Name) is not { } processId
-                || isOwnerAlive(processId, folder.CreationTimeUtc))
-                continue;
-            try
-            {
-                folder.Delete(recursive: true);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                // Best-effort: still in use or locked; the next run tries again.
-            }
-        }
-    }
-
-    // "<pid>-<guid:N>", exactly what CliStagingFolder.Create makes; anything else is not ours.
-    private static int? TryGetOwnerProcessId(string name)
-    {
-        int dash = name.IndexOf('-');
-        if (dash <= 0 || !Guid.TryParseExact(name.AsSpan(dash + 1), "N", out _))
-            return null;
-        return int.TryParse(name.AsSpan(0, dash), System.Globalization.NumberStyles.None, null, out int processId)
-            ? processId
-            : null;
-    }
-
-    /// <summary>Whether the process that created a staging folder at
-    /// <paramref name="folderCreatedUtc"/> is still running. A process that started after the
-    /// folder was made reuses the PID and is not its owner. When it cannot be told (e.g. another
-    /// user's process), the folder is kept.</summary>
-    public static bool IsOwnerAlive(int processId, DateTime folderCreatedUtc)
-    {
-        try
-        {
-            using var process = System.Diagnostics.Process.GetProcessById(processId);
-            return process.StartTime.ToUniversalTime() <= folderCreatedUtc;
-        }
-        catch (ArgumentException)
-        {
-            return false; // no process with that id
-        }
-        catch (InvalidOperationException)
-        {
-            return false; // exited while being looked at
-        }
-        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or NotSupportedException)
-        {
-            return true;
-        }
+        TempOwner.SweepStaleInTemp(StdinRoot, "", UnownedMaxAge);
+        TempOwner.SweepStaleInTemp(StdoutRoot, "", UnownedMaxAge);
     }
 
     /// <summary>
