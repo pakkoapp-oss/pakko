@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>A fájl már létezik a célhelyen.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>A(z) „{0}” szóközre vagy pontra végződik, amelyet a Windows a név megnyitásakor elhagy; nem lett felhasználva.</value>
+  </data>
 </root>

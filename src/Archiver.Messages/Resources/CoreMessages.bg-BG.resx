@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Файлът вече съществува в местоназначението.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>„{0}“ завършва с интервал или точка, които Windows премахва при отваряне на името; не е използвано.</value>
+  </data>
 </root>

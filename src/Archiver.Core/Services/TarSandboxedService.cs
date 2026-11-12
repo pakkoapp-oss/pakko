@@ -1127,6 +1127,12 @@ public sealed class TarSandboxedService : ITarService
         string archivePath, IProgress<ProgressReport>? progress, Func<string, bool, bool>? entryFilter,
         List<ArchiveError> errors, (System.Text.Encoding? Encoding, HelperSetup? Helper, ArchiveintGate? Gate) readWith, CancellationToken cancellationToken)
     {
+        // T-F509: "x.tar " opens a twin "x.tar"; its test then counted the twin done.
+        if (InputPaths.Problem(archivePath) is { } pathProblem)
+        {
+            errors.Add(CoreMessages.Error(archivePath, pathProblem));
+            return TestRun.NoFile;
+        }
         if (!File.Exists(archivePath))
         {
             errors.Add(CoreMessages.Error(archivePath, MessageCode.SourceNotFound, archivePath));
@@ -1278,6 +1284,20 @@ public sealed class TarSandboxedService : ITarService
                 Errors = [CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), MessageCode.TarCreationDisabled)],
             };
 
+        // T-F509: as the ZIP engine - tar.exe would read a twin, or fail the whole run through \\?\.
+        (ArchiveOptions kept, ArchiveResult? refused) = TrimmedSourceNames.Split(options);
+        if (refused is null)
+            return await CompressKeptSourcesAsync(options, progress, cancellationToken).ConfigureAwait(false);
+        if (kept.SourcePaths.Count == 0)
+            return refused;
+        return TrimmedSourceNames.Merge(refused, await CompressKeptSourcesAsync(kept, progress, cancellationToken).ConfigureAwait(false));
+    }
+
+    private async Task<ArchiveResult> CompressKeptSourcesAsync(
+        ArchiveOptions options,
+        IProgress<ProgressReport>? progress,
+        CancellationToken cancellationToken)
+    {
         // T-F153: see ZipArchiveService.ArchiveAsync's identical normalization for the full
         // rationale — a trailing separator on a source path made Path.GetFileName(sourcePath)
         // return "" in AppendSourcesToNameList, which this class's own comment there already

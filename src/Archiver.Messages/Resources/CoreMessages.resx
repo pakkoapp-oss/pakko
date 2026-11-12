@@ -414,4 +414,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>File already exists at destination.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>'{0}' ends in a space or a dot, which Windows drops when it opens the name; it was not used.</value>
+  </data>
 </root>

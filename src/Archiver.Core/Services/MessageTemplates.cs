@@ -54,6 +54,8 @@ public static class MessageTemplates
             "The name '{0}' cannot be used to pick entries from this archive: tar.exe on this system " +
             "(ANSI code page {1}) lists the archive's names differently from how they are stored. " +
             "Run the operation on the whole archive, without a selection or a filter.",
+        [MessageCode.SourceNameTrimmed] =
+            "'{0}' ends in a space or a dot, which Windows drops when it opens the name; it was not used.",
         [MessageCode.TarSignatureInvalid] = "tar.exe failed Authenticode signature verification; refusing to run it.",
         [MessageCode.TarSignatureVerificationFailed] = "'{0}' failed Authenticode signature verification.",
 

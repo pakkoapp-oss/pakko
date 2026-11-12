@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>הקובץ כבר קיים ביעד.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>"{0}" מסתיים ברווח או בנקודה, ש-Windows משמיט בעת פתיחת השם; לא נעשה בו שימוש.</value>
+  </data>
 </root>

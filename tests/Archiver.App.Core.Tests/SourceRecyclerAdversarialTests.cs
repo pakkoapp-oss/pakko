@@ -499,17 +499,14 @@ public sealed class SourceRecyclerAdversarialTests : IDisposable
                 DestinationFolder = dest,
                 ArchiveName = "dots",
             });
-            string archivedText;
-            using (System.IO.Compression.ZipArchive zip = System.IO.Compression.ZipFile.OpenRead(Path.Combine(dest, "dots.zip")))
-            using (StreamReader reader = new(zip.Entries.Single().Open()))
-                archivedText = reader.ReadToEnd();
 
             await new SourceRecycler(_ops).DeleteAsync(archived.FullyProcessedSources, snapshot, Confirm(true));
 
-            if (!File.Exists(plain))
-                archivedText.Should().Be("plain a", "'a' was deleted, so 'a' must be what the archive holds");
-            if (!File.Exists(@"\\?\" + dotted))
-                archivedText.Should().Be("the dotted one", "'a.' was deleted, so 'a.' must be what the archive holds");
+            // T-F509: Core read the twin "a" for "a."; it now refuses the source, so nothing is deleted.
+            archived.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.SourceNameTrimmed);
+            File.Exists(Path.Combine(dest, "dots.zip")).Should().BeFalse();
+            File.ReadAllText(plain).Should().Be("plain a");
+            File.ReadAllText(@"\\?\" + dotted).Should().Be("the dotted one");
         }
         finally
         {

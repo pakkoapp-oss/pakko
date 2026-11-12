@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Filen findes allerede på destinationen.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>„{0}“ slutter med et mellemrum eller et punktum, som Windows fjerner, når navnet åbnes; det blev ikke brugt.</value>
+  </data>
 </root>

@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Failas jau yra paskirties vietoje.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>„{0}“ baigiasi tarpu arba tašku, kurį Windows atidarydama pavadinimą pašalina; nebuvo naudojama.</value>
+  </data>
 </root>

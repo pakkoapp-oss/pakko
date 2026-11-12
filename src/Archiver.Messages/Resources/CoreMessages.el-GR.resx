@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Το αρχείο υπάρχει ήδη στον προορισμό.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>Το «{0}» τελειώνει σε κενό ή τελεία, που τα Windows αφαιρούν όταν ανοίγουν το όνομα· δεν χρησιμοποιήθηκε.</value>
+  </data>
 </root>

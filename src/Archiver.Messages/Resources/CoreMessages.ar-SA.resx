@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>الملف موجود بالفعل في الوجهة.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>"{0}" ينتهي بمسافة أو نقطة يحذفها Windows عند فتح الاسم؛ لم يُستخدم.</value>
+  </data>
 </root>

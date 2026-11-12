@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Datoteka že obstaja na cilju.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>»{0}« se konča s presledkom ali piko, ki ju Windows pri odpiranju imena izpusti; ni bilo uporabljeno.</value>
+  </data>
 </root>

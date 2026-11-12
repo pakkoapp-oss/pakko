@@ -414,4 +414,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Файл уже існує в папці призначення.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>«{0}» закінчується пробілом або крапкою, які Windows відкидає, відкриваючи ім’я; його не використано.</value>
+  </data>
 </root>

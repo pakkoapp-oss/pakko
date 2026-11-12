@@ -183,4 +183,7 @@ public enum MessageCode
 
     // tar.exe's listing cannot name the entries, so a selection or filter is refused (T-F452)
     TarListedNameUntrusted,
+
+    // A path whose name Windows trims ("a.txt ", "d.") opens its twin by that path (T-F509)
+    SourceNameTrimmed,
 }

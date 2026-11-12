@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Tiedosto on jo kohteessa.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>”{0}” päättyy välilyöntiin tai pisteeseen, jonka Windows poistaa nimeä avatessaan; sitä ei käytetty.</value>
+  </data>
 </root>

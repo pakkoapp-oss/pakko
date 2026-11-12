@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>O ficheiro já existe no destino.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>«{0}» termina num espaço ou num ponto, que o Windows remove ao abrir o nome; não foi utilizado.</value>
+  </data>
 </root>

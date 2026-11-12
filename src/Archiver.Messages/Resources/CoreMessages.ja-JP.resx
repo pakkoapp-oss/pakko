@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>ファイルは出力先に既に存在します。</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>「{0}」は末尾がスペースまたはピリオドで、Windows は名前を開くときにこれを削除します。使用されませんでした。</value>
+  </data>
 </root>

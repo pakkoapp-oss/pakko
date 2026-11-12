@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>फ़ाइल गंतव्य पर पहले से मौजूद है।</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>"{0}" के अंत में स्पेस या बिंदु है, जिसे Windows नाम खोलते समय हटा देता है; इसका उपयोग नहीं किया गया।</value>
+  </data>
 </root>

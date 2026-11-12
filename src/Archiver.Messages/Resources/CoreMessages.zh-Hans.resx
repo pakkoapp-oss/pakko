@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>文件已存在于目标位置。</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>“{0}”以空格或句点结尾，Windows 打开该名称时会将其去掉；未使用。</value>
+  </data>
 </root>

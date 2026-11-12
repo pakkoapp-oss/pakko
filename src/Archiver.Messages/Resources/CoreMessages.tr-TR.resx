@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Dosya hedefte zaten var.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>“{0}” bir boşluk veya noktayla bitiyor; Windows adı açarken bunu atar. Kullanılmadı.</value>
+  </data>
 </root>
