@@ -9,7 +9,7 @@ namespace Archiver.Core.Services;
 /// missing path already gives. <c>ArgumentException</c> is caught only around
 /// <see cref="Path.GetFullPath(string)"/>, where the path is its one possible cause.
 /// </summary>
-internal static class InputPaths
+public static class InputPaths
 {
     private static readonly char[] Separators = ['\\', '/'];
 
@@ -21,7 +21,7 @@ internal static class InputPaths
     /// trimmed. A <c>\\?\</c> path is judged the same way (T-F510 is where such names get archived).
     /// Trailing separators do not make the last name a middle one: Core normalizes them away
     /// (<c>TrimEndingDirectorySeparator</c>), and "d \" then opens "d".</summary>
-    internal static bool NameTrimmed(string path)
+    public static bool NameTrimmed(string path)
     {
         string[] parts = path[(Path.GetPathRoot(path) ?? "").Length..].TrimEnd(Separators).Split(Separators);
         for (int i = 0; i < parts.Length; i++)

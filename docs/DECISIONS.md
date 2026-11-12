@@ -14907,6 +14907,25 @@ next step failed), so no data was at risk. `DestinationFolder.TryCreate`, the ow
 the matrix and in `TrimmedSourceNameTests` first; the matrix also turns red when `TryCreate`'s
 trimmed-name refusal is removed.
 
+**PR (c), `CLI-056`, and a second finding (P1, user data).** The CLI cases of the matrix run
+through the installed `pakko` (`scripts/smoke/PathMatrixCases.json`, exported by the generator and
+kept current by a test; the PakkoW10 VM has no dotnet). `pakko a -ttar.gz -sdel out.tar.gz
+<folder>\a.txt.` beside a twin `a.txt` archived the twin and then deleted it; ZIP archived the twin
+for `\\.\` spellings and for `d.\f.txt`. `CliArchiveSources` made each typed source a full path
+(`Path.GetFullPath`) before Core saw it, and that is where Windows' trim happens: Core's T-F509 check
+then met the twin's own, untrimmed name. T-F509's tests passed a folder holding such a name, so the
+CLI's own path work was never between. Now `CliArchiveSources.Resolve` asks the owner,
+`InputPaths.NameTrimmed` (made public for this), first, and gives such a source to Core as typed;
+Core refuses it with its message, exit 2, nothing deleted. Seen red first in
+`SdelAdversarialTests.Sdel_SourceTypedWithANameWindowsTrims_IsRefusedAndTheTwinKept` (zip and tar.gz,
+`a.txt.`, `a.txt `, `\\.\`, `d.\f.txt`). `CLI-056` then passed on Windows 11 and on PakkoW10
+(Windows 10, tar.exe 3.5.2): 109 cases each.
+
+Left as decided: `-o` is still made a full path (T-F419, "out2 " is "out2", as Windows reads it), so
+an extraction into `out.` goes into `out`, which is the folder Windows opens for it; nothing is
+deleted there. T-F511's PR 3 and PR 4 take the CLI's other path work (wildcard walks, the `-sdel`
+key).
+
 ## T-F509 retrospective - a rule added at call sites, and owners that were not single (2026-11-12)
 
 **What happened.** T-F509's first version put the trimmed-name rule into 2 of `DirectoryWalker`'s 9

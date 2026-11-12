@@ -1685,8 +1685,8 @@ re-measured with T-F346's script before and after.
 
 ### T-F512 - The path matrix: generated names and paths in combination (P2, user, 2026-11-12)
 
-- [~] **Status:** PR (a) merged (#232): the generator and the full product of the pure rules.
-  PR (b) done on its branch: the disk operations.
+- [~] **Status:** PR (a) merged (#232); PR (b) and (c) done on their branch (the disk operations,
+  `CLI-056`); the task closes when the PR merges.
   - **Asked by the user:** "add generation of possible names and addresses to the tests, a
     combinatorial matrix, to go through as many variants as possible". T-F509, T-F463, T-F475 and
     T-F511's `a .zip` regression were each found by hand, one shape at a time.
@@ -1715,11 +1715,16 @@ re-measured with T-F346's script before and after.
   - **Found by PR (b), fixed in the owner:** a destination `\\.\C:\w\a \f` left an empty `C:\w\a`
     and failed: .NET passes a `\\.\` path to Win32 as is, which reads each missing folder as a last
     name. `DestinationFolder.TryCreate` now makes it as the plain path is made (DECISIONS, T-F512).
+  - **Found by PR (c), fixed in the owner (P1, user data):** `pakko a -sdel` with a source typed
+    as `a.txt.` (or `d.\f.txt`, or through `\\.\`) beside a twin `a.txt` archived the twin and
+    deleted it: `CliArchiveSources` made the path full before Core's T-F509 check. It now asks
+    `InputPaths.NameTrimmed` first and gives such a source to Core as typed (DECISIONS, T-F512).
   - **PR (c), `CLI-056`:** the CLI cases (the quick shapes, as source, `-sdel` source, archive and
     destination) are exported to `scripts/smoke/PathMatrixCases.json`; `CliCases_TheSmokeListIsTheGeneratorsOwn`
     fails when the file drifts from the generator (`PAKKO_PATHMATRIX_WRITE=1` rewrites it).
+  - `CLI-056` passed on Windows 11 and PakkoW10 (tar.exe 3.5.2), 109 cases each (2026-11-12).
   - **Next:**
-    - (c) run `CLI-056`, the CLI cases from an exported list, on Win11 and PakkoW10 (tar 3.5.2);
+    - keep `CLI-056` in the release smoke, on Win11 and on PakkoW10 (tar 3.5.2);
     - key equality of App, CLI and the engines belongs to T-F511's PR 4.
   - **`KnownFindings`** may hold only a safe outcome (another refusal code, or a refusal where
     acceptance would be better). Never a throw, a touched twin, another file's bytes or a write

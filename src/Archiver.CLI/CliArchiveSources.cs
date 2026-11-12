@@ -1,3 +1,5 @@
+using Archiver.Core.Services;
+
 namespace Archiver.CLI;
 
 /// <summary>T-F414: one source of 'a', and how many of its last path parts name it in the archive.</summary>
@@ -50,6 +52,15 @@ public static class CliArchiveSources
 
         foreach (CliNameMask mask in includes)
         {
+            // T-F512 (c): a name Windows trims ("a.txt.", "d.\f.txt") goes to Core as typed. Made a
+            // full path first, it named its twin, which was archived and then deleted by -sdel;
+            // Core refuses it (T-F509).
+            string typed = Path.Combine(baseFolder, mask.Path);
+            if (InputPaths.NameTrimmed(typed))
+            {
+                sources.Add(new CliArchiveSource(typed, 1));
+                continue;
+            }
             (string prefix, string[] rest, bool everything) = Split(mask, baseFolder);
             // A drive root stays one source: Core lists it, leaving out the system's own entries (T-F285).
             if (everything && Path.GetDirectoryName(prefix) is null)

@@ -104,6 +104,35 @@ public sealed class SdelAdversarialTests : IDisposable
         File.Delete(@"\\?\" + Path.Combine(folder, "a.txt "));
     }
 
+    // T-F512 (c), found by CLI-056: a name Windows trims typed as the source itself ("a.txt.", a
+    // folder on the way "d.\f.txt", or through \\.\). The CLI made it a full path before Core saw it,
+    // which turned it into the twin: the twin was archived and -sdel deleted it.
+    [Theory]
+    [InlineData("zip", "a.txt.", "")]
+    [InlineData("tar.gz", "a.txt.", "")]
+    [InlineData("zip", "a.txt ", "")]
+    [InlineData("zip", "a.txt.", @"\\.\")]
+    [InlineData("tar.gz", @"d.\f.txt", "")]
+    public void Sdel_SourceTypedWithANameWindowsTrims_IsRefusedAndTheTwinKept(string type, string name, string prefix)
+    {
+        string folder = _scratch.Inside("ts");
+        string typed = Path.Combine(folder, name);
+        string twin = Path.GetFullPath(typed);
+        Directory.CreateDirectory(@"\\?\" + Path.GetDirectoryName(typed));
+        File.WriteAllText(@"\\?\" + typed, "NAMED");
+        Directory.CreateDirectory(Path.GetDirectoryName(twin)!);
+        File.WriteAllText(twin, "TWIN");
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-t" + type, "-sdel", _scratch.Inside("ts." + type), prefix + typed);
+
+        exitCode.Should().Be(2, stdErr);
+        stdErr.Should().Contain("ends in a space or a dot");
+        File.ReadAllText(twin).Should().Be("TWIN", "the twin is never the source, so never deleted");
+        File.ReadAllText(@"\\?\" + typed).Should().Be("NAMED");
+        File.Delete(@"\\?\" + typed);
+        Directory.Delete(@"\\?\" + folder, recursive: true);
+    }
+
     // --- the current-folder refusal, spelled other ways ---
 
     // CLI.md: "Refused with exit 7 before anything is written: ... a source that is or holds the
