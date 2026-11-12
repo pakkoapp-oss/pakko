@@ -25,7 +25,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
             // an existing destination folder (that's the GUI app's merge behavior). The shell
             // command instead wants a brand-new numbered folder so re-extracting never silently
             // merges into — or does nothing to — a folder from a previous run.
-            string folderName = ArchiveNaming.GetUniqueFolderName(destFolder, ArchiveNaming.GetBaseName(archivePath));
+            string folderName = ArchiveNaming.GetUniqueFolderName(destFolder, ArchiveNaming.GetFolderName(archivePath));
             return new ExtractOptions
             {
                 ArchivePaths = [archivePath],
@@ -73,7 +73,7 @@ internal sealed class ShellCommands(IOperationUi ui, ShellServices services)
         RunExtractSelectionAsync(archivePaths, (archivePath, prompts) =>
         {
             string archiveDir = Path.GetDirectoryName(archivePath) ?? ".";
-            string folderName = ArchiveNaming.GetUniqueFolderName(archiveDir, ArchiveNaming.GetBaseName(archivePath));
+            string folderName = ArchiveNaming.GetUniqueFolderName(archiveDir, ArchiveNaming.GetFolderName(archivePath));
             return new ExtractOptions
             {
                 ArchivePaths = [archivePath],

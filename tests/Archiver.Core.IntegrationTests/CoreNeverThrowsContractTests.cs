@@ -356,9 +356,16 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
             SourcePaths = [Source()], DestinationFolder = Path(kind, ""), ArchiveName = "out", Format = ArchiveContainerFormat.TarGz,
         }));
 
+    // T-F511: a set that needs repair, or nothing is written to the folder and the row checks nothing.
     [Theory, MemberData(nameof(Hostile))]
-    public Task Repair_Output(string kind) => NoThrow(async () =>
-        await _services.RecoveryService.RepairAsync(new RepairOptions { Paths = [await Par2()], OutputDirectory = Path(kind, "") }));
+    public async Task Repair_Output(string kind)
+    {
+        ArchiveResult? repaired = null;
+        await NoThrow(async () =>
+            repaired = await _services.RecoveryService.RepairAsync(new RepairOptions { Paths = [await DamagedPar2()], OutputDirectory = Path(kind, "") }));
+        if (kind == "a folder")
+            repaired!.CreatedFiles.Should().ContainSingle("the damaged archive is repaired into a folder that can be used");
+    }
 
     // --- What an operation archives ------------------------------------------------------
 
@@ -439,6 +446,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["EntryDiskName.AsPakkoWrites"] = "a name inside an archive, never opened",
         ["EntryDiskName.AsTarExeWrites"] = "a name inside an archive, never opened",
         ["EntryDiskName.Renames"] = "a name inside an archive, never opened",
+        ["EntryDiskName.SingleName"] = "one name Pakko writes, never opened",
         ["EntryDiskName.SameName"] = "names inside an archive, never opened",
         ["EntryDiskName.TrimmedTwins"] = "names inside an archive, never opened",
         ["EntryDiskName.Trims"] = "a name inside an archive, never opened",
@@ -474,6 +482,21 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
             SourcePaths = [Source()], DestinationFolder = destination, ArchiveName = "fixture", Format = ArchiveContainerFormat.TarGz,
         });
         return made.CreatedFiles.Single();
+    }
+
+    // An archive whose data is damaged, beside its set.
+    private async Task<string> DamagedPar2()
+    {
+        string content = System.IO.Path.Combine(_temp.Path, "damaged-content");
+        Directory.CreateDirectory(content);
+        File.WriteAllText(System.IO.Path.Combine(content, "a.txt"), string.Concat(Enumerable.Repeat("recoverable line\n", 4000)));
+        string destination = Destination();
+        ArchiveResult made = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [content], DestinationFolder = destination, ArchiveName = "damaged", RecoveryPercent = 10,
+        });
+        TrimmedSourceNameTests.DamageData(System.IO.Path.Combine(destination, "damaged.zip"));
+        return made.RecoveryFiles[0];
     }
 
     private async Task<string> Par2()

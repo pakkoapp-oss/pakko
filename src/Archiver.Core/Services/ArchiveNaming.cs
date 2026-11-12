@@ -117,6 +117,10 @@ public static class ArchiveNaming
             ? options.SourcePaths[0]
             : Path.Combine(options.DestinationFolder, SingleArchiveFileName(options));
 
+    /// <summary>T-F511: the folder an archive extracts into by its own name - its base name as
+    /// Windows keeps it ("x..zip" and "x.zip" both give "x"; a folder "x." is refused, T-F509).</summary>
+    public static string GetFolderName(string archivePath) => EntryDiskName.SingleName(GetBaseName(archivePath));
+
     /// <summary>Strips an archive's extension, compound tar extensions included (see class remarks).</summary>
     public static string GetBaseName(string archivePath)
     {

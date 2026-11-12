@@ -67,6 +67,24 @@ public sealed class ShellCommandsTests : IDisposable
         ui.Messages.Should().BeEmpty();
     }
 
+    // T-F511: "a .zip" or "x..zip" gets the folder "a" or "x" - a folder named "a " or "x." is refused (T-F509).
+    [Theory]
+    [InlineData("here", "a ")]
+    [InlineData("here", "x.")]
+    [InlineData("folder", "a ")]
+    [InlineData("folder", "x.")]
+    public async Task Extract_ArchiveNamedWithATrailingSpaceOrDot_IntoTheFolderWindowsKeeps(string command, string baseName)
+    {
+        string zip = MakeZip(baseName + ".zip", ("a.txt", "A"), ("b.txt", "B"));
+        var ui = new FakeOperationUi();
+        ShellCommands commands = Create(ui);
+
+        await (command == "here" ? commands.ExtractHereAsync([zip]) : commands.ExtractFolderAsync([zip]));
+
+        ui.Messages.Should().BeEmpty();
+        File.ReadAllText(Path.Combine(_root, baseName.TrimEnd(' ', '.'), "b.txt")).Should().Be("B");
+    }
+
     // T-F268 step 3: one window per Explorer command, naming each archive as it starts.
     [Theory]
     [InlineData("here")]

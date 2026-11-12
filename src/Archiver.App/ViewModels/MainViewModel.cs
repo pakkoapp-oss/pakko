@@ -2040,7 +2040,7 @@ public sealed partial class MainViewModel : ObservableObject
         if (!confirmed) return;
 
         string archiveDir = Path.GetDirectoryName(BrowsedArchivePath) ?? DestinationPath;
-        string destDir = Path.Combine(archiveDir, ArchiveNaming.GetBaseName(BrowsedArchivePath));
+        string destDir = Path.Combine(archiveDir, ArchiveNaming.GetFolderName(BrowsedArchivePath));
         await RunExtractAsync((string[])[BrowsedArchivePath], (string[])[entry.FullPath], destDir, fromBrowser: true,
             allowDeleteAfter: Location.OffersDeleteAfter);
     }

@@ -27,6 +27,15 @@ public static class EntryDiskName
     /// trailing dots and spaces, a folder keeps its trailing spaces.</summary>
     public static string AsTarExeWrites(string name) => Written(name, trimFileName: false);
 
+    /// <summary>T-F511: one name Pakko writes on its own (a folder named after an archive, a bare
+    /// gzip's output): never a path, so a separator is a character like any refused one, and "." or
+    /// ".." is no step - each becomes '_', as an empty name does.</summary>
+    public static string SingleName(string name)
+    {
+        string part = string.Concat(name.Select(c => Replaced.Contains(c) || c is '/' or '\\' ? '_' : c)).TrimEnd(' ', '.');
+        return part.Length == 0 ? "_" : part;
+    }
+
     /// <summary>Whether Pakko writes <paramref name="name"/> under another name than its own parts
     /// ("a?b.txt" as "a_b.txt", "d./x.txt" as "d\x.txt"); a doubled separator or a "./" step is
     /// the same name.</summary>

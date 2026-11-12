@@ -246,6 +246,76 @@ public sealed class TrimmedSourceNameTests : IDisposable
         File.ReadAllBytes(twin).Should().Equal(twinBefore);
     }
 
+    // T-F511: an archive named "x..zip" or "a .zip" extracts into its own folder "x" or "a", not into a
+    // folder named as Windows does not keep it (refused since T-F509, or the twin before it).
+    [Theory]
+    [InlineData(ArchiveContainerFormat.Zip, "x.")]
+    [InlineData(ArchiveContainerFormat.Zip, "a ")]
+    [InlineData(ArchiveContainerFormat.TarGz, "x.")]
+    public async Task Extract_SeparateFolderOfAnArchiveNamedWithATrailingDotOrSpace_IsTheNameWindowsKeeps(ArchiveContainerFormat format, string baseName)
+    {
+        string folder = Folder("sf");
+        WriteLiteral(Path.Combine(folder, "content", "inner.txt"), "inner");
+        WriteLiteral(Path.Combine(folder, "content", "other.txt"), "other"); // two roots: they get a folder
+        string extension = format == ArchiveContainerFormat.Zip ? ".zip" : ".tar.gz";
+        string archive = Path.Combine(folder, baseName + extension);
+        if (format == ArchiveContainerFormat.Zip)
+        {
+            ZipFile.CreateFromDirectory(Path.Combine(folder, "content"), archive);
+        }
+        else
+        {
+            using FileStream file = File.Create(archive);
+            using var gzip = new GZipStream(file, CompressionLevel.Fastest);
+            TarFile.CreateFromDirectory(Path.Combine(folder, "content"), gzip, includeBaseDirectory: false);
+        }
+        string destination = Path.Combine(folder, "out");
+        IExtractionRouter extraction = await _services.CreateExtractionRouterAsync();
+
+        ArchiveResult extracted = await extraction.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archive], DestinationFolder = destination, Mode = ExtractMode.SeparateFolders,
+        });
+
+        extracted.Errors.Should().BeEmpty();
+        string kept = baseName.TrimEnd(' ', '.');
+        Directory.GetFileSystemEntries(Literal + destination, "*", SearchOption.AllDirectories)
+            .Select(entry => entry[(Literal.Length + destination.Length + 1)..])
+            .Should().BeEquivalentTo([kept, Path.Combine(kept, "inner.txt"), Path.Combine(kept, "other.txt")]);
+    }
+
+    // T-F511: a repair's output folder "out." is "out" to Windows: the repaired copy went into the twin.
+    [Fact]
+    public async Task Repair_OutputFolderWindowsTrims_IsRefusedAndNothingLandsInTheTwin()
+    {
+        string folder = Folder("ro");
+        WriteLiteral(Path.Combine(folder, "content", "inner.txt"), string.Concat(Enumerable.Repeat("recoverable line\n", 4000)));
+        ArchiveResult created = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [Path.Combine(folder, "content")], DestinationFolder = folder, ArchiveName = "x", RecoveryPercent = 10,
+        });
+        created.Errors.Should().BeEmpty();
+        string archive = Path.Combine(folder, "x.zip");
+        DamageData(archive);
+        string twin = Directory.CreateDirectory(Path.Combine(folder, "out")).FullName;
+
+        ArchiveResult repaired = await _services.RecoveryService.RepairAsync(new RepairOptions { Paths = [archive], OutputDirectory = twin + "." });
+
+        repaired.Errors.Should().ContainSingle().Which.Message.Should().Contain("ends in a space or a dot");
+        repaired.CreatedFiles.Should().BeEmpty();
+        Directory.GetFileSystemEntries(twin).Should().BeEmpty("nothing is written into the twin");
+    }
+
+    // One byte in the middle of the only entry's data: the ZIP test fails on its CRC, the set sees damage.
+    internal static void DamageData(string archive)
+    {
+        using var stream = new FileStream(archive, FileMode.Open, FileAccess.ReadWrite);
+        stream.Position = stream.Length / 3;
+        int value = stream.ReadByte();
+        stream.Position--;
+        stream.WriteByte((byte)(value ^ 0xFF));
+    }
+
     // Hashing reads the bytes: "a.txt " hashed its twin, given alone or met inside a folder.
     [Fact]
     public async Task Hash_FolderNamedWithATrailingDot_IsAnErrorNeverTheTwinsFolder()

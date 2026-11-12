@@ -342,7 +342,7 @@ public sealed class TarSandboxedService : ITarService
         string archivePath = options.ArchivePaths[i];
         string destDir = options.Mode == ExtractMode.SeparateFolders
             ? Path.Combine(options.DestinationFolder,
-                options.SeparateFolderName ?? ArchiveNaming.GetBaseName(archivePath))
+                options.SeparateFolderName ?? ArchiveNaming.GetFolderName(archivePath))
             : options.DestinationFolder;
 
         // T-F113: cheap proactive check, no sandbox/tar.exe launch needed for a known-encrypted

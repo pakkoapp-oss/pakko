@@ -1106,7 +1106,7 @@ public sealed class ZipArchiveService : IArchiveService
             bool alreadyIsolated = options.Mode == ExtractMode.SeparateFolders;
             string destDir = alreadyIsolated
                 ? Path.Combine(options.DestinationFolder,
-                    options.SeparateFolderName ?? ArchiveNaming.GetBaseName(archivePath))
+                    options.SeparateFolderName ?? ArchiveNaming.GetFolderName(archivePath))
                 : options.DestinationFolder;
             var context = new ZipExtractionContext(
                 conflictResolver, sink.SkippedFiles, options.ConfirmCompressionBombExtraction, _policy.EffectiveMotwMode(options.ApplyDownloadMark), archiveProgress, sink.Errors,

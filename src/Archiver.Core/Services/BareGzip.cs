@@ -224,13 +224,8 @@ internal static class BareGzip
     }
 
     // A name Windows writes as itself: "...gz" would be "..", " .gz" empty - the destination's
-    // parent or the destination itself. Trailing dots and spaces go, as Windows drops them; a name
-    // left empty is '_' (7-Zip's k_EmptyReplaceName, as EntryDiskName).
-    private static string Usable(string name)
-    {
-        string trimmed = name.TrimEnd(' ', '.');
-        return trimmed.Length == 0 ? "_" : trimmed;
-    }
+    // parent or the destination itself.
+    private static string Usable(string name) => EntryDiskName.SingleName(name);
 
     private static readonly (string Extension, string Added)[] Extensions =
         [("gz", ""), ("gzip", ""), ("tgz", ".tar"), ("tpz", ".tar"), ("apk", ".tar")];
