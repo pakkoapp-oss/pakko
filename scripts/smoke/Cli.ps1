@@ -1028,15 +1028,17 @@ Add-SmokeStep 'CLI-055' {
 Add-SmokeStep 'CLI-056' {
     $root = Get-StepFolder 'cli056'
     $cases = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'PathMatrixCases.json') -Raw -Encoding utf8 | ConvertFrom-Json
-    $unc = '\\localhost\' + $root[0] + '$' + $root.Substring(2)
+    $share = 'localhost\' + $root[0] + '$' + $root.Substring(2)
     $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
     $long = '\\?\'
+    # By the string: .NET Framework (Windows PowerShell on the VM) refuses a path over 260 here.
+    function Get-Parent([string]$path) { $path.Substring(0, $path.LastIndexOf([char]92)) }
     function Resolve-CasePath([string]$path) {
         if ($null -eq $path) { return $null }
-        $path.Replace('\\localhost\Z$\R', $unc).Replace('Z:\R', $root)
+        $path.Replace('localhost\Z$\R', $share).Replace('Z:\R', $root).Replace('Z:/R', $root.Replace('\', '/'))
     }
     function New-Marked([string]$at, [string]$ext, [string]$mark, [string]$scratch) {
-        $null = [System.IO.Directory]::CreateDirectory($long + [System.IO.Path]::GetDirectoryName($at))
+        $null = [System.IO.Directory]::CreateDirectory($long + (Get-Parent $at))
         if ($ext -eq 'zip') {
             $bytes = [System.IO.MemoryStream]::new()
             $zip = [System.IO.Compression.ZipArchive]::new($bytes, [System.IO.Compression.ZipArchiveMode]::Create, $true)
@@ -1099,14 +1101,14 @@ Add-SmokeStep 'CLI-056' {
         $isSource = $case.role -in 'a-source', 'a-sdel'
         if ($case.onDisk) {
             if ($isSource) {
-                $null = [System.IO.Directory]::CreateDirectory($long + [System.IO.Path]::GetDirectoryName($place))
+                $null = [System.IO.Directory]::CreateDirectory($long + (Get-Parent $place))
                 [System.IO.File]::WriteAllText($long + $place, $lit)
             } elseif ($case.role -eq 'x-archive') {
                 New-Marked $place $ext $lit (Join-Path $root "s$i-l")
             }
             if ($twin) {
                 if ($isSource) {
-                    $null = [System.IO.Directory]::CreateDirectory($long + [System.IO.Path]::GetDirectoryName($twin))
+                    $null = [System.IO.Directory]::CreateDirectory($long + (Get-Parent $twin))
                     [System.IO.File]::WriteAllText($long + $twin, $mark)
                 } elseif ($case.role -eq 'x-archive') {
                     New-Marked $twin $ext $mark (Join-Path $root "s$i-t")
@@ -1129,7 +1131,7 @@ Add-SmokeStep 'CLI-056' {
             'x-archive' { @('x', $path, "-o$out") }
             'x-destination' {
                 New-Marked (Join-Path $folder "in.$ext") $ext $lit (Join-Path $folder 'seed')
-                [System.IO.Directory]::Delete((Join-Path $folder 'seed'), $true)
+                if ([System.IO.Directory]::Exists((Join-Path $folder 'seed'))) { [System.IO.Directory]::Delete((Join-Path $folder 'seed'), $true) }
                 @('x', (Join-Path $folder "in.$ext"), "-o$path")
             }
         }
@@ -1151,11 +1153,15 @@ Add-SmokeStep 'CLI-056' {
             if ($run.ExitCode -eq 0 -and -not $gone) { $failures.Add("${id}: -sdel kept the source after exit 0") }
             if ($run.ExitCode -ne 0 -and $gone) { $failures.Add("${id}: -sdel deleted the source of a failed run") }
         }
-        if ($case.plain -and $run.ExitCode -ne 0) { $failures.Add("${id}: the plain name failed, exit $($run.ExitCode) $($run.Text)") }
+        # "ok.txt\" names a folder: a file under that spelling is refused, as 7-Zip refuses it.
+        $folderOnly = $case.id.Contains(':trailing-separator:') -and $case.role -ne 'x-destination'
+        if ($case.plain -and -not $folderOnly -and $run.ExitCode -ne 0) { $failures.Add("${id}: the plain name failed, exit $($run.ExitCode) $($run.Text)") }
         foreach ($name in @([System.IO.Directory]::GetFileSystemEntries($long + $root) | ForEach-Object { [System.IO.Path]::GetFileName($_) })) {
             if ($seen.Add($name)) { $failures.Add("${id}: written outside the case's folder: $name") }
         }
     }
     Assert-Smoke ($failures.Count -eq 0) ("$($failures.Count) of $($cases.Count) cases:`n" + ($failures -join "`n"))
+    # Names made through \\?\ go only through \\?\; a failed run keeps them to look at.
+    [System.IO.Directory]::Delete($long + $root, $true)
     "$($cases.Count) cases, every one safe; the plain name works in each role"
 }

@@ -447,6 +447,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["EntryDiskName.AsTarExeWrites"] = "a name inside an archive, never opened",
         ["EntryDiskName.Renames"] = "a name inside an archive, never opened",
         ["EntryDiskName.SingleName"] = "one name Pakko writes, never opened",
+        ["InputPaths.NameTrimmed"] = "a question about a path's spelling, never opened",
         ["EntryDiskName.SameName"] = "names inside an archive, never opened",
         ["EntryDiskName.TrimmedTwins"] = "names inside an archive, never opened",
         ["EntryDiskName.Trims"] = "a name inside an archive, never opened",
@@ -462,6 +463,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
             typeof(IArchiveService), typeof(ITarService), typeof(IExtractionRouter), typeof(IArchiveCreationRouter),
             typeof(IArchiveListingRouter), typeof(IRecoveryService), typeof(IAntivirusScanService), typeof(FileHashService),
             typeof(Archiver.Core.IO.PathIdentity), typeof(Archiver.Core.IO.SourceTree), typeof(EntryDiskName),
+            typeof(InputPaths),
         ];
         HashSet<string> operations = [.. types.SelectMany(type => type
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance
