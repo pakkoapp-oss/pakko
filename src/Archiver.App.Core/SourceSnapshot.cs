@@ -1,4 +1,5 @@
 using Archiver.Core.IO;
+using Archiver.Core.Services;
 
 namespace Archiver.App.Core;
 
@@ -57,19 +58,8 @@ public sealed class SourceSnapshot : ISourceSnapshot
     public bool HoldsLink(string source) =>
         Key(source) is not { } key || !_sources.TryGetValue(key, out Listing? then) || then.HoldsLink;
 
-    // The same spelling for Take and the lookups: Core reports a source as it processed it, with
-    // its trailing separators trimmed.
-    private static string? Key(string path)
-    {
-        try
-        {
-            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
-        }
-        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
-        {
-            return null; // a path Windows cannot parse was never listed, so it is never deleted
-        }
-    }
+    // T-F511: Core's one source key, for Take and the lookups; a source with none is never listed.
+    private static string? Key(string path) => SourceKey.Of(path);
 
     // One line per entry of Core's SourceTree (the listing -sdel works from too, T-F420): a file
     // with its size and times, a folder, a link by its path alone.

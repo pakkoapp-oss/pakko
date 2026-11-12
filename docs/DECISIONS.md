@@ -14983,6 +14983,45 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F511 PR 4 - one source key, one final path (2026-11-12)
+
+**What was there.** "Delete after" (App) and `-sdel` (CLI) match the sources they gave Core with what
+Core reported in `SourceResult.Path`, and with a listing taken before the run. Core reports a source
+in `SourcePathNormalizer`'s form: separators trimmed, and the full path only for a relative or
+dot-named one. The App keyed its snapshot by `TrimEndingDirectorySeparator(GetFullPath)` and
+`NotFullyProcessed` by the trimmed spelling alone; the CLI by its own `Normalize`. Where a path really
+leads was read three times: `PathIdentity`, `Win32SourceDeleteOperations.ResolveFinalPath` (its own
+`CreateFileW` and `GetFinalPathNameByHandleW`) and `CliSourceDeleter.RealPath`.
+
+**Seen red before the change:**
+- `NotFullyProcessed(["C:\w\b\."], Completed("C:\w\b"))` named the folder "not fully processed"
+  while the same run deleted it as completed: a wrong report, not a loss.
+- Both snapshots keyed `a.txt.` by its full path, the twin `a.txt`. The App called `a.txt.`
+  unchanged; the CLI, given `a.txt.` as completed, deleted the twin. Core refuses such a source
+  (T-F509), so no run reached it, but the snapshot did not know it.
+- The matrix row `NUL\`: the key of the spelling given was `C:\pm\x\NUL`, the key of Core's form
+  `\\.\NUL`. `SourceKey` trims before `GetFullPath`, as Core does.
+
+**Changes:**
+- `SourceKey.Of` (public, Core): the full path without trailing separators, trimmed before and
+  after; null for a name Windows trims or a path Windows cannot parse. A source with no key is never
+  listed, so never deleted. App's `SourceSnapshot`, `SourceRecycler.NotFullyProcessed`, the CLI's
+  `CliSourceSnapshot` and its completed set call it. The path matrix checks, in every shape, form
+  and position, that the key of the spelling given is the key of Core's form of it.
+- `PathIdentity.FinalPathOfItself`: the final path with the handle opened on the link itself
+  (`FILE_FLAG_OPEN_REPARSE_POINT`). `Resolve` follows a link; used by the App it would recycle what
+  a junction or symbolic link points to. Seen red by opening without the flag: the three
+  `JunctionAsSource_*` tests fail.
+- `PathIdentityOwnerTests`: `GetFinalPathNameByHandle`, `ResolveLinkTarget` and `LinkTarget` outside
+  `PathIdentity` fail, except the two listed calls in `RealPath`.
+
+**Why `CliSourceDeleter.RealPath` stays.** `-sdel`'s refusal compares where a source would lead
+with the current folder before anything is written, part by part, and answers for a path that does
+not exist (a missing source, the fictitious folders of `CliSourceDeleterTests`). `PathIdentity`
+answers only for what it can open, and `GetFinalPathNameByHandle` also rewrites a SUBST drive and
+an 8.3 name, so `LeadsElsewhere` would call every such source a link and keep it. The refusal
+already asks `PathIdentity` for file identity wherever the source exists.
+
 ## T-F509 - a name Windows trims is refused, never read through its twin (2026-11-12)
 
 **Cause.** A file or folder can be named `a.txt ` or `d.` (by WSL, a share, or a `\\?\` path). Win32

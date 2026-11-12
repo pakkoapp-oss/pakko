@@ -37,6 +37,17 @@ public static partial class PathIdentity
         return ReadFinalPath(handle) is { } finalPath ? new Resolved(identity, WithoutLongPathPrefix(finalPath)) : null;
     }
 
+    /// <summary>T-F511: the final path of the file or folder itself, a link opened as the link (its
+    /// target is never what is meant: "Delete after" deletes the link, never what is behind it); the
+    /// folders on the way, SUBST drives and \\?\ spellings resolved. Null when it cannot be opened or read.</summary>
+    public static string? FinalPathOfItself(string path)
+    {
+        using SafeFileHandle handle = CreateFile(path, 0, FileShareAll, 0, OpenExisting, BackupSemantics | OpenReparsePoint, 0);
+        if (handle.IsInvalid)
+            return null;
+        return ReadFinalPath(handle) is { } finalPath ? WithoutLongPathPrefix(finalPath) : null;
+    }
+
     // On the stack for an ordinary path (SmallFileAllocationTests); a longer one is asked for
     // again in a buffer of the size the first call reported.
     private static string? ReadFinalPath(SafeFileHandle handle)

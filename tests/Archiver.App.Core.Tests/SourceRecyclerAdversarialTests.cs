@@ -479,6 +479,25 @@ public sealed class SourceRecyclerAdversarialTests : IDisposable
         }
     }
 
+    // T-F511 PR 4: the snapshot keyed "a." by its full path, which is the twin "a": it listed "a" and
+    // called "a." unchanged. A name Windows trims has no key, so it is never listed or deleted.
+    [Fact]
+    public void Snapshot_TrailingDotSpelling_IsNeverUnchanged()
+    {
+        string folder = Scratch("dots2");
+        WriteFile(folder, "a", "plain a");
+        string dotted = Path.Combine(folder, "a.");
+        File.WriteAllText(@"\\?\" + dotted, "the dotted one");
+        try
+        {
+            SourceSnapshot.Take([dotted]).Unchanged(dotted).Should().BeFalse("by its plain path \"a.\" is the twin \"a\"");
+        }
+        finally
+        {
+            File.Delete(@"\\?\" + dotted);
+        }
+    }
+
     [Fact]
     public async Task EndToEnd_TrailingDotSource_DeletesOnlyWhatWasArchived()
     {

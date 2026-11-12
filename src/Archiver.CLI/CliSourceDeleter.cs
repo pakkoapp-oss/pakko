@@ -1,4 +1,5 @@
 using Archiver.Core.IO;
+using Archiver.Core.Services;
 
 namespace Archiver.CLI;
 
@@ -140,8 +141,8 @@ public sealed class CliSourceSnapshot
         var snapshot = new CliSourceSnapshot();
         foreach (string source in sources)
         {
-            string full = CliSourceDeleter.Normalize(source);
-            if (!snapshot._sources.ContainsKey(full))
+            // T-F511: Core's one source key; a source with none (a name Windows trims) is never listed.
+            if (SourceKey.Of(source) is { } full && !snapshot._sources.ContainsKey(full))
                 snapshot._sources[full] = List(full);
         }
         return snapshot;
@@ -168,8 +169,7 @@ public sealed class CliSourceSnapshot
         var trimmed = new List<string>();
         foreach (string completed in completedSources)
         {
-            string full = CliSourceDeleter.Normalize(completed);
-            if (!_sources.TryGetValue(full, out Source? source))
+            if (SourceKey.Of(completed) is not { } full || !_sources.TryGetValue(full, out Source? source))
                 continue;
             if (source.IsLink)
                 links.Add(full);

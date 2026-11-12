@@ -179,6 +179,39 @@ public sealed class PathMatrixPureTests
         Report(failures);
     }
 
+    // T-F511 PR 4: App and CLI match the sources they gave with what Core reported by SourceKey. In
+    // every spelling the key of the path given is the key of Core's form of it (SourcePathNormalizer),
+    // and a name Windows trims has no key, so neither it nor its twin is matched by it.
+    [Fact]
+    public void SourceKey_OfTheSpellingGiven_IsTheKeyOfWhatCoreReports()
+    {
+        var failures = new List<string>();
+        foreach (NameShape shape in NameShapes.All)
+            foreach (ShapePosition position in Enum.GetValues<ShapePosition>())
+                foreach (PathForm form in PathForms.All)
+                {
+                    string path = form.Spell(Folder, PathForms.Parts(shape, position));
+                    string id = $"SourceKey:{shape.Id}:{position}:{form.Id}";
+                    try
+                    {
+                        string? given = SourceKey.Of(path);
+                        string? reported = SourceKey.Of(SourcePathNormalizer.Normalize(path));
+                        if (InputPaths.NameTrimmed(path))
+                        {
+                            if (given is not null)
+                                failures.Add($"{id} ({Show(path)}): a name Windows trims has the key {Show(given)}");
+                        }
+                        else if (!string.Equals(given, reported, StringComparison.OrdinalIgnoreCase))
+                            failures.Add($"{id} ({Show(path)}): given {Show(given ?? "null")}, Core's form {Show(reported ?? "null")}");
+                    }
+                    catch (Exception ex)
+                    {
+                        failures.Add($"{id} threw {ex.GetType().Name}: {ex.Message}");
+                    }
+                }
+        Report(failures);
+    }
+
     // A known finding that still fails is skipped; one that no longer fails is reported, so the
     // list only shrinks with the code.
     private static void Report(List<string> failures)

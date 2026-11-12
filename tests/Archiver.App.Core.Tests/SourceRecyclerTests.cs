@@ -294,6 +294,24 @@ public sealed class SourceRecyclerTests
         left.Select(k => k.Path).Should().Equal([@"C:\w\src"], "case and a trailing separator do not make another source");
     }
 
+    // T-F511 PR 4: the candidates and Core's report meet on one key (SourceKey). "C:\w\b\." is the
+    // folder Core reports as "C:\w\b" (SourcePathNormalizer resolves a dot-named last part); keyed by
+    // its separators alone it was named "not fully processed" while it was deleted as completed.
+    [Fact]
+    public void NotFullyProcessed_DotNamedCandidate_IsTheFolderCoreReported()
+    {
+        SourceRecycler.NotFullyProcessed([@"C:\w\b\.", @"C:\w\x\..\c"], [Completed(@"C:\w\b"), Completed(@"C:\w\c")])
+            .Should().BeEmpty();
+    }
+
+    // A name Windows trims is never its twin: a completed "a.txt" says nothing of "a.txt.".
+    [Fact]
+    public void NotFullyProcessed_TrimmedName_IsNotItsCompletedTwin()
+    {
+        SourceRecycler.NotFullyProcessed([@"C:\w\a.txt."], [Completed(@"C:\w\a.txt")])
+            .Should().Equal(new KeptSource(@"C:\w\a.txt.", KeepReason.NotFullyProcessed));
+    }
+
     private static SourceResult Completed(string path) => new() { Path = path, Outcome = SourceOutcome.Completed };
 
     // T-F435: "may be in use or protected" was the only reason given, also for a source kept on
