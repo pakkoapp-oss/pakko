@@ -29,6 +29,8 @@ public static class CliArchiveSources
 {
     public const string NotFound = "The system cannot find the file specified.";
     public const string NotAFolder = "A name ending in a path separator names a folder, and this is a file.";
+    /// <summary>A folder a search meets whose name Windows trims ("d."): it is not entered (T-F509, T-F510).</summary>
+    public const string NameTrimmed = "Windows reads this folder's name as another one; it is left out.";
 
     private static readonly char[] Separators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
 
@@ -42,9 +44,16 @@ public static class CliArchiveSources
     /// <param name="baseFolder">What a relative name is relative to.</param>
     /// <param name="archivePath">The archive being written: never taken.</param>
     public static CliArchiveSourceList Resolve(
-        IReadOnlyList<CliNameMask> includes, CliNameFilter? excludes, bool caseSensitive, string baseFolder, string archivePath)
+        IReadOnlyList<CliNameMask> includes, CliNameFilter? excludes, bool caseSensitive, string baseFolder, string archivePath) =>
+        Resolve(includes, excludes, caseSensitive, baseFolder, archivePath, static path => PathIdentity.Resolve(path)?.Id);
+
+    // Tests pass a file system that gives no identity (some network redirectors, RAM disks), which
+    // a local disk never does.
+    internal static CliArchiveSourceList Resolve(
+        IReadOnlyList<CliNameMask> includes, CliNameFilter? excludes, bool caseSensitive, string baseFolder, string archivePath,
+        Func<string, PathIdentity.Identity?> identityOf)
     {
-        var archive = new WrittenArchive(Path.GetFullPath(archivePath, baseFolder));
+        var archive = new WrittenArchive(Path.GetFullPath(archivePath, baseFolder), identityOf);
         var sources = new List<CliArchiveSource>();
         var problems = new List<CliSourceProblem>();
         var searches = new Dictionary<(string Prefix, string Literal), List<(CliNameMask Mask, string Under)>>(PrefixComparer.Instance);
@@ -89,7 +98,7 @@ public static class CliArchiveSources
         foreach (((string prefix, string literal), List<(CliNameMask Mask, string Under)> masks) in searches)
             Search(new SearchRoot(prefix, literal, archive), masks, excludes, caseSensitive, sources, problems);
 
-        return new CliArchiveSourceList(WithoutDuplicates(sources, excludes), problems);
+        return new CliArchiveSourceList(WithoutDuplicates(sources, excludes, identityOf), problems);
     }
 
     // CCensor::AddItem: the folder on disk the mask hangs under, the mask's parts below it, and
@@ -146,20 +155,34 @@ public static class CliArchiveSources
     // another case is another file. Only a file of its size is opened to ask.
     private sealed class WrittenArchive
     {
+        private readonly string _fullPath;
+        private readonly Func<string, PathIdentity.Identity?> _identityOf;
+        private readonly bool _exists;
         private readonly PathIdentity.Identity? _id;
         private readonly long _length;
 
-        public WrittenArchive(string fullPath)
+        public WrittenArchive(string fullPath, Func<string, PathIdentity.Identity?> identityOf)
         {
+            _fullPath = fullPath;
+            _identityOf = identityOf;
             var file = new FileInfo(fullPath);
             if (!file.Exists)
                 return;
+            _exists = true;
             _length = file.Length;
-            _id = PathIdentity.Resolve(fullPath)?.Id;
+            _id = identityOf(fullPath);
         }
 
-        public bool Is(FileSystemInfo entry) =>
-            _id is { } id && entry is FileInfo file && file.Length == _length && PathIdentity.Resolve(file.FullName)?.Id == id;
+        // By identity; where the file system gives none, by its spelling, as before T-F511 (the
+        // review found the archive taken as its own source there).
+        public bool Is(FileSystemInfo entry)
+        {
+            if (!_exists || entry is not FileInfo file || file.Length != _length)
+                return false;
+            if (_id is { } id && _identityOf(file.FullName) is { } other)
+                return other == id;
+            return string.Equals(file.FullName, _fullPath, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     private static void Search(
@@ -205,7 +228,11 @@ public static class CliArchiveSources
                     case WalkEntryKind.UnreadableDirectory:
                         _problems.Add(new CliSourceProblem(entry.Info.FullName, entry.Error?.Message ?? ""));
                         break;
-                    // Taken or skipped in LeaveOut; a link or a name Windows trims is not entered.
+                    // A folder the search would enter: its files are not taken, and that is said.
+                    case WalkEntryKind.TrimmedName when entry.Info is DirectoryInfo:
+                        _problems.Add(new CliSourceProblem(entry.Info.FullName, NameTrimmed));
+                        break;
+                    // Taken or skipped in LeaveOut; a link is not entered.
                     case WalkEntryKind.Directory:
                     case WalkEntryKind.File:
                     case WalkEntryKind.LeftOut:
@@ -237,9 +264,10 @@ public static class CliArchiveSources
     // A source -x leaves out goes (Core would leave it out anyway, and it takes nothing below it
     // with it); a path given twice is taken once; one under a folder taken whole is already in it,
     // unless -x leaves it out there: then it stays a source of its own, as 7-Zip archives it.
-    private static List<CliArchiveSource> WithoutDuplicates(List<CliArchiveSource> sources, CliNameFilter? excludes)
+    private static List<CliArchiveSource> WithoutDuplicates(
+        List<CliArchiveSource> sources, CliNameFilter? excludes, Func<string, PathIdentity.Identity?> identityOf)
     {
-        var taken = new TakenSources();
+        var taken = new TakenSources(identityOf);
         foreach (CliArchiveSource source in sources.Where(s => excludes is null || excludes.Includes(NameOf(s), Directory.Exists(s.FullPath))))
             taken.TryAdd(source);
 
@@ -272,7 +300,7 @@ public static class CliArchiveSources
     // case-sensitive folder, where A.TXT and a.txt are two files, and the second was dropped. Two
     // spellings that differ only in case are one source only when they are one file (PathIdentity),
     // asked only on such a collision.
-    private sealed class TakenSources
+    private sealed class TakenSources(Func<string, PathIdentity.Identity?> identityOf)
     {
         private readonly Dictionary<string, CliArchiveSource> _exact = [with(StringComparer.Ordinal)];
         private readonly Dictionary<string, List<string>> _byFoldedCase = [with(StringComparer.OrdinalIgnoreCase)];
@@ -300,8 +328,10 @@ public static class CliArchiveSources
                 _byFoldedCase.Add(source.FullPath, [source.FullPath]);
         }
 
-        private static bool SameFile(string a, string b) =>
-            PathIdentity.Resolve(a) is { } first && PathIdentity.Resolve(b) is { } second && first.Id == second.Id;
+        // Where the file system gives no identity, two spellings differing only in case are one
+        // source, as before T-F517: the case-insensitive folder is the common one.
+        private bool SameFile(string a, string b) =>
+            identityOf(a) is not { } first || identityOf(b) is not { } second || first == second;
     }
 
     // The source's name in the archive: its last NameParts parts.

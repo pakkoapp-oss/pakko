@@ -73,9 +73,33 @@ public static class TempOwner
     /// </summary>
     public static void SweepStaleInTemp(string directory, string prefix, TimeSpan unownedMaxAge)
     {
-        // A name Windows trims would list, and sweep, its twin.
-        if (InputPaths.Problem(directory) is null && IsBelowTemp(directory))
+        // A name Windows trims would list, and sweep, its twin; a link would list, and sweep, the
+        // folder it reaches (the T-F511 review: %TEMP%\Archiver.CLI.Stdin planted as a junction).
+        if (InputPaths.Problem(directory) is null && IsBelowTemp(directory) && !AnyLinkBelowTemp(directory))
             SweepStale(directory, prefix, "", TempScope.LocalTemp(unownedMaxAge));
+    }
+
+    // The folder itself or one between it and %TEMP% is a link; one that cannot be read counts as
+    // one. %TEMP% itself is the user's to place.
+    private static bool AnyLinkBelowTemp(string directory)
+    {
+        string temp = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath()));
+        try
+        {
+            for (string? folder = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
+                 folder is not null && folder.Length > temp.Length;
+                 folder = Path.GetDirectoryName(folder))
+            {
+                var info = new DirectoryInfo(folder);
+                if (info.Exists && (info.Attributes & FileAttributes.ReparsePoint) != 0)
+                    return true;
+            }
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return true; // fail closed: nothing is swept
+        }
     }
 
     private static bool IsBelowTemp(string directory)

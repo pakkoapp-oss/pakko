@@ -19,4 +19,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Archiver.Core\Archiver.Core.csproj" />
   </ItemGroup>
+
+  <!-- A seam a test needs (a file system that gives no file identity) stays internal. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Archiver.CLI.Tests" />
+  </ItemGroup>
 </Project>
