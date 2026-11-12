@@ -91,7 +91,10 @@ public static class FileHashService
         var fileIndices = new List<int>();
         for (int i = 0; i < paths.Count; i++)
         {
-            if (Directory.Exists(paths[i]))
+            // T-F509: "a.txt " (and a path Windows cannot parse) by its plain path is its twin's or none.
+            if (InputPaths.Problem(paths[i]) is { } problem)
+                ordered[i] = CoreMessages.HashError(paths[i], problem);
+            else if (Directory.Exists(paths[i]))
                 ordered[i] = CoreMessages.HashError(paths[i], CoreMessages.Text(MessageCode.HashFolderSkipped));
             else if (!File.Exists(paths[i]))
                 ordered[i] = CoreMessages.HashError(paths[i], CoreMessages.Text(MessageCode.SourceNotFound, paths[i]));
@@ -205,6 +208,9 @@ public static class FileHashService
                     break;
                 case WalkEntryKind.UnreadableDirectory:
                     entries.Add(CoreMessages.HashError(entry.Info.FullName, CoreMessages.FromException(entry.Error!)));
+                    break;
+                case WalkEntryKind.TrimmedName:
+                    entries.Add(CoreMessages.HashError(entry.Info.FullName, CoreMessages.Text(MessageCode.SourceNameTrimmed, entry.Info.FullName)));
                     break;
             }
         }

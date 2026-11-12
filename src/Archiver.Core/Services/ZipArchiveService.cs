@@ -908,15 +908,9 @@ public sealed class ZipArchiveService : IArchiveService
         PasswordResolver passwordResolver, IReadOnlyList<string>? selectedEntryPaths, Func<string, bool, bool>? entryFilter)
     {
         // T-F509: "x.zip " opens a twin "x.zip"; extracting it, then recycling the archive, took the twin.
-        if (InputPaths.Problem(archivePath) is { } pathProblem)
+        if (InputPaths.ArchiveProblem(archivePath) is { } pathProblem)
         {
             errors.Add(CoreMessages.Error(archivePath, pathProblem));
-            return (true, null);
-        }
-        // T-F221: a path that is not there is "not found", not "not a recognized archive".
-        if (!File.Exists(archivePath))
-        {
-            errors.Add(CoreMessages.Error(archivePath, MessageCode.SourceNotFound, archivePath));
             return (true, null);
         }
 
@@ -1181,14 +1175,9 @@ public sealed class ZipArchiveService : IArchiveService
         string archivePath, PasswordResolver passwordResolver, Func<string, bool, bool>? entryFilter, List<ArchiveError> errors,
         List<SkippedFile> skippedFiles, List<SourceResult> sources, CancellationToken cancellationToken)
     {
-        if (InputPaths.Problem(archivePath) is { } pathProblem)
+        if (InputPaths.ArchiveProblem(archivePath) is { } pathProblem)
         {
             errors.Add(CoreMessages.Error(archivePath, pathProblem));
-            return;
-        }
-        if (!File.Exists(archivePath))
-        {
-            errors.Add(CoreMessages.Error(archivePath, MessageCode.SourceNotFound, archivePath));
             return;
         }
 
@@ -1249,10 +1238,8 @@ public sealed class ZipArchiveService : IArchiveService
     {
         if (IsZipBlocked)
             return CoreMessages.ListFailure(ZipBlockedReason);
-        if (InputPaths.Problem(archivePath) is { } pathProblem)
+        if (InputPaths.ArchiveProblem(archivePath) is { } pathProblem)
             return CoreMessages.ListFailure(pathProblem);
-        if (!File.Exists(archivePath))
-            return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.SourceNotFound, archivePath));
 
         try
         {
@@ -2190,14 +2177,6 @@ public sealed class ZipArchiveService : IArchiveService
                 break;
             if (TempOwner.IsOwnBelow(fullRoot, entry.Info.FullName))
                 continue;
-            // T-F509: as WorkItemEnumerator - never the bytes of a twin under a trimmed name.
-            if (entry.Kind is WalkEntryKind.File or WalkEntryKind.Directory && InputPaths.NameTrimmedBelow(fullRoot, entry.Info.FullName))
-            {
-                if (entry.Kind == WalkEntryKind.File || entry.IsEmptyDirectory)
-                    context.ReportError(CoreMessages.Error(entry.Info.FullName, MessageCode.SourceNameTrimmed, entry.Info.FullName));
-                continue;
-            }
-
             switch (entry.Kind)
             {
                 // T-F66: A directory with no files and no subdirectories writes no entry at all
@@ -2226,11 +2205,18 @@ public sealed class ZipArchiveService : IArchiveService
                 case WalkEntryKind.UnreadableDirectory:
                     context.ReportError(UnreadableDirectoryError(entry.Info.FullName, entry.Error!));
                     break;
+                case WalkEntryKind.TrimmedName:
+                    context.ReportError(TrimmedNameError(entry.Info.FullName));
+                    break;
             }
         }
 
         return startOffset;
     }
+
+    // T-F509: by its plain path the walk's entry is its twin's ("a.txt " is "a.txt"); the folder
+    // holding it is then not archived in full, so nothing deletes it.
+    internal static ArchiveError TrimmedNameError(string path) => CoreMessages.Error(path, MessageCode.SourceNameTrimmed, path);
 
     private static async Task<long> AddFileFromWalkAsync(
         ZipArchive archive, FileInfo file, DirectoryArchiveContext context, long startOffset, CancellationToken cancellationToken)

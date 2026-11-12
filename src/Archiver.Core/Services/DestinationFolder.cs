@@ -13,6 +13,11 @@ internal static class DestinationFolder
     /// <summary>Creates <paramref name="folder"/> when it is missing; returns what stopped it, or null.</summary>
     internal static Exception? TryCreate(string folder)
     {
+        // T-F509: "C:\w\out." is "C:\w\out" to Windows: the files would go into the twin, and the
+        // folder checks (T-F475's device rule) would judge a path that is not the one written. A
+        // "\\?\" folder is used as typed (CLI.md), and every path below it is literal too.
+        if (!folder.StartsWith(@"\\?\", StringComparison.Ordinal) && InputPaths.Problem(folder) is { Code: MessageCode.SourceNameTrimmed } trimmed)
+            return new CoreTextIOException(trimmed);
         try
         {
             Directory.CreateDirectory(folder);

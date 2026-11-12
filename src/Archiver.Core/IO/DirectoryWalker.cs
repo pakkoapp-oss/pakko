@@ -17,6 +17,11 @@ internal enum WalkEntryKind
     /// <summary>T-F410: an entry the caller's filter left out — never entered, and not counted
     /// when its folder is asked whether it is empty.</summary>
     LeftOut,
+
+    /// <summary>T-F509: a file or folder whose name Windows changes when it opens the plain path
+    /// ("a.txt ", "d."), which then names a twin ("a.txt", "d") or nothing. Never entered: listing
+    /// "d." lists "d". A filter's <see cref="LeftOut"/> and a <see cref="ReparsePoint"/> come first.</summary>
+    TrimmedName,
 }
 
 /// <summary>One step of <see cref="DirectoryWalker.Walk"/>.</summary>
@@ -86,17 +91,25 @@ internal static class DirectoryWalker
             yield return new WalkEntry(WalkEntryKind.Directory, dir, IsEmptyDirectory: children.Length == 0);
 
             foreach (FileInfo file in children.OfType<FileInfo>().OrderBy(f => f.FullName, StringComparer.OrdinalIgnoreCase))
-            {
-                yield return IsReparsePoint(file)
-                    ? new WalkEntry(WalkEntryKind.ReparsePoint, file)
-                    : new WalkEntry(WalkEntryKind.File, file);
-            }
+                yield return new WalkEntry(KindOf(file, WalkEntryKind.File), file);
 
             DirectoryInfo[] subDirs = [.. children.OfType<DirectoryInfo>().OrderBy(d => d.FullName, StringComparer.OrdinalIgnoreCase)];
+            foreach (DirectoryInfo trimmed in subDirs.Where(d => KindOf(d, WalkEntryKind.Directory) == WalkEntryKind.TrimmedName))
+                yield return new WalkEntry(WalkEntryKind.TrimmedName, trimmed);
             for (int i = subDirs.Length - 1; i >= 0; i--)
-                pending.Push((subDirs[i], IsReparsePoint(subDirs[i])));
+            {
+                WalkEntryKind kind = KindOf(subDirs[i], WalkEntryKind.Directory);
+                if (kind != WalkEntryKind.TrimmedName)
+                    pending.Push((subDirs[i], kind == WalkEntryKind.ReparsePoint));
+            }
         }
     }
+
+    // A link first: it is never entered or opened as what it points to, whatever its name.
+    private static WalkEntryKind KindOf(FileSystemInfo child, WalkEntryKind plain) =>
+        IsReparsePoint(child) ? WalkEntryKind.ReparsePoint
+        : Archiver.Core.Services.InputPaths.OwnNameTrimmed(child.Name) ? WalkEntryKind.TrimmedName
+        : plain;
 
     // T-F410: the children leaveOut keeps; leftOut gets the others, in the walk's order.
     private static FileSystemInfo[] WithoutLeftOut(FileSystemInfo[] children, Func<FileSystemInfo, bool>? leaveOut, out FileSystemInfo[] leftOut)

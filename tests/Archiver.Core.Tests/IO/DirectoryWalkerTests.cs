@@ -106,4 +106,68 @@ public sealed class DirectoryWalkerTests : IDisposable
             Directory.Delete(loop, recursive: false);
         }
     }
+
+    // T-F509: a name Windows changes ("a.txt ", "d.") opens its twin by the plain path a consumer
+    // gets. The walk reports it as TrimmedName and never enters it: listing "d." lists "d".
+    [Fact]
+    public void Walk_NamesWindowsTrims_AreTrimmedNameAndNeverEntered()
+    {
+        string root = _temp.Path;
+        File.WriteAllText(@"\\?\" + Path.Combine(root, "a.txt "), "spaced");
+        File.WriteAllText(Path.Combine(root, "a.txt"), "twin");
+        Directory.CreateDirectory(@"\\?\" + Path.Combine(root, "d."));
+        File.WriteAllText(@"\\?\" + Path.Combine(root, "d.", "in.txt"), "in dotted");
+        Directory.CreateDirectory(Path.Combine(root, "d"));
+        File.WriteAllText(Path.Combine(root, "d", "twin.txt"), "twin");
+        Directory.CreateDirectory(@"\\?\" + Path.Combine(root, "e "));
+        File.WriteAllText(@"\\?\" + Path.Combine(root, "e ", "e.txt"), "e");
+        try
+        {
+            List<string> order = [.. DirectoryWalker.Walk(root).Select(e => $"{e.Kind}:{e.Info.FullName[Math.Min(root.Length + 1, e.Info.FullName.Length)..].Replace('\\', '/')}")];
+
+            order.Should().Equal(
+                "Directory:", "File:a.txt", "TrimmedName:a.txt ",
+                "TrimmedName:d.", "TrimmedName:e ",
+                "Directory:d", "File:d/twin.txt");
+        }
+        finally
+        {
+            File.Delete(@"\\?\" + Path.Combine(root, "a.txt "));
+            Directory.Delete(@"\\?\" + Path.Combine(root, "d."), recursive: true);
+            Directory.Delete(@"\\?\" + Path.Combine(root, "e "), recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Walk_FolderHoldingOnlyATrimmedName_IsNotEmpty()
+    {
+        string folder = Path.Combine(_temp.Path, "f");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(@"\\?\" + Path.Combine(folder, "x."), "dotted");
+        try
+        {
+            DirectoryWalker.Walk(folder).First().IsEmptyDirectory.Should().BeFalse();
+        }
+        finally
+        {
+            File.Delete(@"\\?\" + Path.Combine(folder, "x."));
+        }
+    }
+
+    // The filter is the user's: a name it leaves out is LeftOut, never an error.
+    [Fact]
+    public void Walk_TrimmedNameTheFilterLeavesOut_IsLeftOut()
+    {
+        File.WriteAllText(@"\\?\" + Path.Combine(_temp.Path, "skip."), "dotted");
+        try
+        {
+            List<WalkEntry> entries = [.. DirectoryWalker.Walk(_temp.Path, info => info.Name.StartsWith("skip", StringComparison.Ordinal))];
+
+            entries.Should().ContainSingle(e => e.Info.Name == "skip.").Which.Kind.Should().Be(WalkEntryKind.LeftOut);
+        }
+        finally
+        {
+            File.Delete(@"\\?\" + Path.Combine(_temp.Path, "skip."));
+        }
+    }
 }

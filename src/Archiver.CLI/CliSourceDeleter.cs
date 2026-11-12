@@ -9,11 +9,14 @@ namespace Archiver.CLI;
 /// <param name="Links">Sources that are links: never entered, never deleted.</param>
 /// <param name="Unlisted">Sources with a folder that could not be listed: what they hold is unknown,
 /// so nothing of them is deleted.</param>
+/// <param name="TrimmedNames">T-F509: sources holding a name Windows trims ("a.txt "): deleting by
+/// that name would take its twin, so nothing of them is deleted.</param>
 public sealed record CliDeleteOutcome(
     IReadOnlyList<string> Kept,
     IReadOnlyList<(string Path, string Reason)> Failed,
     IReadOnlyList<string> Links,
-    IReadOnlyList<string> Unlisted);
+    IReadOnlyList<string> Unlisted,
+    IReadOnlyList<string> TrimmedNames);
 
 /// <summary>
 /// T-F411: 7-Zip's -sdel (Update.cpp 26.02, the DeleteAfterCompressing pass of UpdateArchive): the
@@ -123,7 +126,7 @@ public static class CliSourceDeleter
 public sealed class CliSourceSnapshot
 {
     // T-F420: the listing is Core's SourceTree, which the App's snapshot uses too.
-    private sealed record Source(IReadOnlyList<SourceFileStamp> Files, IReadOnlyList<string> Folders, bool IsLink, bool Unlisted);
+    private sealed record Source(IReadOnlyList<SourceFileStamp> Files, IReadOnlyList<string> Folders, bool IsLink, bool Unlisted, bool HoldsTrimmedName = false);
 
     private readonly Dictionary<string, Source> _sources = new(StringComparer.OrdinalIgnoreCase);
 
@@ -151,7 +154,7 @@ public sealed class CliSourceSnapshot
             return new Source([], [], IsLink: false, Unlisted: false);
         if (tree.IsLink || CliSourceDeleter.LeadsElsewhere(full))
             return new Source([], [], IsLink: true, Unlisted: false);
-        return new Source(tree.Files, tree.Folders, IsLink: false, Unlisted: tree.Unreadable);
+        return new Source(tree.Files, tree.Folders, IsLink: false, Unlisted: tree.Unreadable, HoldsTrimmedName: tree.TrimmedNames.Count > 0);
     }
 
     /// <summary>Deletes what is unchanged of <paramref name="completedSources"/> (the sources the
@@ -162,6 +165,7 @@ public sealed class CliSourceSnapshot
         var failed = new List<(string, string)>();
         var links = new List<string>();
         var unlisted = new List<string>();
+        var trimmed = new List<string>();
         foreach (string completed in completedSources)
         {
             string full = CliSourceDeleter.Normalize(completed);
@@ -171,10 +175,12 @@ public sealed class CliSourceSnapshot
                 links.Add(full);
             else if (source.Unlisted)
                 unlisted.Add(full);
+            else if (source.HoldsTrimmedName)
+                trimmed.Add(full);
             else
                 DeleteSource(source, kept, failed);
         }
-        return new CliDeleteOutcome(kept, failed, links, unlisted);
+        return new CliDeleteOutcome(kept, failed, links, unlisted, trimmed);
     }
 
     private static void DeleteSource(Source source, List<string> kept, List<(string, string)> failed)

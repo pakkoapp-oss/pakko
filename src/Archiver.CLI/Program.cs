@@ -674,6 +674,7 @@ static async Task<int> DeleteArchivedSourcesAsync(CliSourceSnapshot snapshot, Ar
     kept.AddRange(outcome.Kept.Select(path => (path, "it changed while it was being archived")));
     kept.AddRange(outcome.Links.Select(path => (path, "a link is never deleted")));
     kept.AddRange(outcome.Unlisted.Select(path => (path, "a folder in it could not be listed")));
+    kept.AddRange(outcome.TrimmedNames.Select(path => (path, "a name in it ends in a space or a dot, which Windows drops")));
     foreach ((string path, string reason) in kept)
         await Console.Error.WriteLineAsync($"pakko: warning: -sdel kept {path}: {reason}").ConfigureAwait(false);
     foreach ((string path, string reason) in outcome.Failed)

@@ -12,7 +12,12 @@ public readonly record struct SourceFileStamp(string Path, long Length, DateTime
 /// <param name="Unreadable">A folder could not be listed: what the source holds is not known.</param>
 public sealed record SourceListing(
     bool Exists, bool IsLink, IReadOnlyList<SourceFileStamp> Files, IReadOnlyList<string> Folders,
-    IReadOnlyList<string> Links, bool Unreadable);
+    IReadOnlyList<string> Links, bool Unreadable)
+{
+    /// <summary>T-F509: names below the source Windows trims ("a.txt "): by its plain path each is its
+    /// twin's, so deleting the source by its listing would take the twin and keep the file.</summary>
+    public IReadOnlyList<string> TrimmedNames { get; init; } = [];
+}
 
 /// <summary>
 /// T-F420: one source as it is on disk now - the one listing "delete the sources afterwards" works
@@ -45,6 +50,7 @@ public static class SourceTree
             var files = new List<SourceFileStamp>();
             var folders = new List<string>();
             var links = new List<string>();
+            var trimmed = new List<string>();
             bool unreadable = false;
             foreach (WalkEntry entry in DirectoryWalker.Walk(fullPath))
             {
@@ -62,11 +68,14 @@ public static class SourceTree
                     case WalkEntryKind.UnreadableDirectory:
                         unreadable = true;
                         break;
-                    default:
-                        break; // LeftOut: no filter is given here
+                    case WalkEntryKind.TrimmedName:
+                        trimmed.Add(entry.Info.FullName);
+                        break;
+                    case WalkEntryKind.LeftOut:
+                        break; // no filter is given here
                 }
             }
-            return new SourceListing(true, false, files, folders, links, unreadable);
+            return new SourceListing(true, false, files, folders, links, unreadable) { TrimmedNames = trimmed };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

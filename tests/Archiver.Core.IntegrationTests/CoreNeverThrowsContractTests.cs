@@ -27,14 +27,20 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
     {
         foreach (IDisposable held in _locks)
             held.Dispose();
+        // T-F509: "twin-0.zip." can be removed only by its \\?\ path.
+        if (_twins.Count > 0 && Directory.Exists(_temp.Path))
+            Directory.Delete(@"\\?\" + _temp.Path, recursive: true);
         _temp.Dispose();
     }
 
     public static TheoryData<string> Hostile =>
     [
         "a file", "a folder", "missing", "a missing drive", "bad characters", "empty", "locked", "not an archive", "an empty file",
-        "a device",
+        "a device", "a trimmed name",
     ];
+
+    // T-F509: what each "a trimmed name" path's twin was before the operation.
+    private readonly List<(string Path, string State)> _twins = [];
 
     // A path of the named kind. Where an archive is wanted, "a file" is a real archive.
     private string Path(string kind, string extension = ".zip")
@@ -77,6 +83,28 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
                 string text = System.IO.Path.Combine(root, "text" + extension);
                 File.WriteAllText(text, "this is not an archive");
                 return text;
+            // T-F509: "x.zip." beside a twin "x.zip" (a dot: Windows drops it in the middle of a path too) (a real archive, as "a file" is): by its plain
+            // path every operation would reach the twin. NoThrow checks the twin is untouched.
+            case "a trimmed name":
+            {
+                string twin = System.IO.Path.Combine(root, "twin-" + _twins.Count + extension);
+                if (extension.Length == 0)
+                {
+                    Directory.CreateDirectory(twin);
+                    File.WriteAllText(System.IO.Path.Combine(twin, "a.txt"), "twin");
+                    Directory.CreateDirectory(@"\\?\" + twin + ".");
+                }
+                else
+                {
+                    string content = System.IO.Path.Combine(root, "twin-content");
+                    Directory.CreateDirectory(content);
+                    File.WriteAllText(System.IO.Path.Combine(content, "a.txt"), "twin");
+                    ZipFile.CreateFromDirectory(content, twin);
+                    File.Copy(twin, @"\\?\" + twin + ".");
+                }
+                _twins.Add((twin, StateOf(twin)));
+                return twin + ".";
+            }
             // T-F475: NUL, not CON - a console source can wait for input.
             case "a device":
                 return @"\\.\NUL";
@@ -98,12 +126,26 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
 
     private string Destination() => System.IO.Path.Combine(_temp.Path, "out-" + Guid.NewGuid().ToString("N")[..6]);
 
-    private static async Task NoThrow(Func<Task> operation)
+    private async Task NoThrow(Func<Task> operation)
     {
         Exception? escaped = null;
         try { await operation(); }
         catch (Exception ex) { escaped = ex; }
         escaped.Should().BeNull("a Core operation reports errors in its result and never throws");
+        foreach ((string twin, string state) in _twins)
+            StateOf(twin).Should().Be(state, "the operation was given a name Windows trims, never its twin " + twin);
+    }
+
+    // A file's bytes and time; a folder's files, each with its bytes and time.
+    private static string StateOf(string path)
+    {
+        if (File.Exists(path))
+            return Convert.ToHexString(File.ReadAllBytes(path)) + "@" + File.GetLastWriteTimeUtc(path).Ticks;
+        if (!Directory.Exists(path))
+            return "gone";
+        return string.Join("|", Directory.GetFileSystemEntries(path, "*", SearchOption.AllDirectories)
+            .Order(StringComparer.Ordinal)
+            .Select(entry => entry + "=" + StateOf(entry)));
     }
 
     // --- The archive (or archives) an operation reads ------------------------------------

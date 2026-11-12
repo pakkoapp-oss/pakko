@@ -48,9 +48,9 @@ internal static class RecoveryTestStep
         {
             cancellationToken.ThrowIfCancellationRequested();
             // T-F509: "x.zip " opens a twin "x.zip"; a repair would write over a file nobody chose.
-            if (InputPaths.NameTrimmed(path))
+            if (InputPaths.Problem(path) is { Code: MessageCode.SourceNameTrimmed } trimmed)
             {
-                plan.Errors.Add(CoreMessages.Error(path, MessageCode.SourceNameTrimmed, path));
+                plan.Errors.Add(CoreMessages.Error(path, trimmed));
                 continue;
             }
             if (!IsPar2Path(path))
@@ -134,9 +134,9 @@ internal static class RecoveryTestStep
             if (Par2SetLocator.Select(read.Sets, candidate) is { } match)
             {
                 // T-F509: a set made elsewhere can name "x.zip "; by that path a repair reaches "x.zip".
-                if (InputPaths.NameTrimmed(candidate))
+                if (InputPaths.Problem(candidate) is { Code: MessageCode.SourceNameTrimmed } trimmed)
                 {
-                    plan.Errors.Add(CoreMessages.Error(par2Path, MessageCode.SourceNameTrimmed, candidate));
+                    plan.Errors.Add(CoreMessages.Error(par2Path, trimmed));
                     return;
                 }
                 if (seen.Add(Key(candidate)))
