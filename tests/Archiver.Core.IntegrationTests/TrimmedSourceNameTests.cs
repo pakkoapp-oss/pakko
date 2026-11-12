@@ -171,6 +171,34 @@ public sealed class TrimmedSourceNameTests : IDisposable
         Directory.Exists(destination).Should().BeFalse("nothing is extracted");
     }
 
+    // Repair writes: "x.zip " opened its twin "x.zip", whose set is beside it. Refused, the twin untouched.
+    [Fact]
+    public async Task Recovery_ArchiveNamedWithATrailingSpace_IsRefusedAndTheTwinUntouched()
+    {
+        string folder = Folder("rec");
+        WriteLiteral(Path.Combine(folder, "content", "inner.txt"), "inner");
+        ArchiveResult created = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [Path.Combine(folder, "content")], DestinationFolder = folder, ArchiveName = "x", RecoveryPercent = 5,
+        });
+        created.Errors.Should().BeEmpty();
+        string twin = Path.Combine(folder, "x.zip");
+        string trimmed = twin + " ";
+        File.Copy(twin, Literal + trimmed);
+        byte[] twinBefore = File.ReadAllBytes(twin);
+        IExtractionRouter extraction = await _services.CreateExtractionRouterAsync();
+
+        ArchiveResult repaired = await _services.RecoveryService.RepairAsync(new RepairOptions { Paths = [trimmed] });
+        ArchiveResult tested = await extraction.TestAsync([trimmed], verifyRecoveryData: true);
+
+        foreach (ArchiveResult result in new[] { repaired, tested })
+        {
+            result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.SourceNameTrimmed);
+            result.CreatedFiles.Should().BeEmpty();
+        }
+        File.ReadAllBytes(twin).Should().Equal(twinBefore);
+    }
+
     private string Folder(string relative)
     {
         string folder = Path.Combine(_temp.Path, relative);

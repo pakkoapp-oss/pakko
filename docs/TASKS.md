@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count), T-F506 (AMSI buffer), T-F500 (writer failure paths, the flaky chunk-folder test), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: done), T-F510 (P3, archive such names properly), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -1581,6 +1581,49 @@ re-measured with T-F346's script before and after.
   any repeats what an earlier one already learned.
 - **Reported by:** the agent (T-F498), 2026-11-11. **Scheduled:** v1.11.0, stream N (the user, 2026-11-11: every task found in T-F497/T-F498 goes in this wave).
 
+### T-F509 - A source whose name Windows trims archives its twin's bytes, and the twin can be deleted (P1, v1.11.0 stream B)
+
+- [~] **Status:** code done 2026-11-12 (`docs/DECISIONS.md`, "T-F509"); left: the device row `SHL-019` (Explorer and the App with "move the sources to the Recycle Bin"), with stream E's batch. Found: Found 2026-11-12 while measuring T-F463's leftover. A file or folder can be
+  named `a.txt ` or `d.` (made by WSL, a share, or a `\\?\` path), but its plain path names
+  something else: Win32 drops a trailing space or dot. Where a twin (`a.txt`, `d`) sits beside it, the
+  plain path reads the twin. Measured on Windows 11 with Native AOT `pakko` and through
+  `CreationRouter`:
+  - **A source named `a.txt ` or `d.txt.`, by its plain path, ZIP and tar.** Exit 0, no error. The
+    entry has the source's name and the twin's bytes. With no twin: "Source path does not exist".
+  - **ZIP, a folder holding `a.txt ` and `a.txt`.** Two entries `src/a.txt`, both with the twin's
+    bytes. The spaced file's content is in neither. A folder `d.` beside `d` fails its files ("Could not
+    find file ...\d\in-dotted.txt"). tar.exe walks the folder itself and writes every name and its
+    bytes correctly.
+  - **Deletion afterwards.** `Win32SourceDeleteOperations.ResolveFinalPath` opens the plain path with
+    `CreateFileW`, so the App's and Explorer's "move the sources to the Recycle Bin" would recycle the
+    twin, a file nobody selected. Read from the code, not yet run.
+  - **CLI.** `pakko a -sdel x.zip "a.txt "` archived the twin as `a.txt` and deleted it permanently.
+    For a typed path this is Win32's own reading: `del "a.txt "` deletes `a.txt` too. So the CLI half
+    is a decision to record, not necessarily a bug.
+  - **Through `\\?\`**, tar.exe cannot read such a name. The whole run fails with "A selected item
+    could not be read. It may have been moved or deleted", which is untrue, and costs every other
+    source its archive.
+- **Next (plan mode, advisor at both ends, a fresh reviewer offered: irreversible actions on user
+  data):**
+  1. One resolution per source at Core's existing owner (`SourcePathNormalizer`). The literal name
+     wins where it exists (checked through `\\?\`, before `GetFullPath` trims), so the entry name
+     and the bytes come from the same file.
+  2. The ZIP walk opens children by their literal paths.
+  3. tar refuses such a source per item, with a true message, and keeps the others.
+  4. A source whose name Windows trims is never classified deletable until the deleters are shown
+     to address the literal name.
+  5. The test matrix:
+     - ZIP and tar;
+     - a file, and a folder with a file inside;
+     - with a twin and without;
+     - a plain path and `\\?\`;
+     - content asserted;
+     - an interaction test for the deletion.
+  6. Then the same "trimmed twin" fixture over every path-taking operation in
+     `CoreNeverThrowsContractTests`' `Coverage` table: extract, test, list, hash, scan,
+     `SourceTree`, `PathIdentity`.
+- **Reported by:** the agent, 2026-11-12.
+
 ### T-F510 - Archive a name Windows trims properly, and the rest of its operations (P3, from T-F509)
 
 - [ ] **Status:** open. T-F509 refuses such names: no twin's bytes, nothing deleted. Left:
@@ -1591,6 +1634,10 @@ re-measured with T-F346's script before and after.
   - **A destination folder whose name trims**, such as `-o"out."`.
   - **The other operations that take a path:** run the twin fixture over hash
     (`FileHashService.ComputeAsync`), `PathIdentity` and the scan's walk, and record what each does.
+    Recovery (repair, and a test with the set) is covered by T-F509.
+  - **`pakko a -ttar -sdel` of a folder holding `a.txt ` and `a.txt`.** tar.exe archives both with
+    their own bytes. `-sdel` then deletes the twin (whose bytes are in the archive) and keeps
+    `a.txt ` with no warning. No data is lost, but the report says nothing about the file kept.
 - **Reported by:** the agent, 2026-11-12.
 
 ### T-F508 - The litmus paper that stays, and the device-side candidates (P3, from T-F498)

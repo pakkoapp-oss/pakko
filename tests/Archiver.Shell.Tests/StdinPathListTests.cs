@@ -25,6 +25,17 @@ public sealed class StdinPathListTests
         result.Paths.Should().Equal("C:\\a.zip", "D:\\b c\\d.txt");
     }
 
+    // T-F509: Core refuses "a.txt " and "d." only if the name reaches it as Explorer gave it; a trim
+    // here would hand Core the twin's path ("a.txt"), archived and then recycled.
+    [Fact]
+    public void Read_NamesEndingInASpaceOrADot_ArriveUnchanged()
+    {
+        StdinPathListResult result = StdinPathList.Read(PayloadOf(["C:\\x\\a.txt ", "C:\\x\\d.", "C:\\x\\e. \\f.txt"]));
+
+        result.Error.Should().BeNull();
+        result.Paths.Should().Equal("C:\\x\\a.txt ", "C:\\x\\d.", "C:\\x\\e. \\f.txt");
+    }
+
     [Fact]
     public void Read_SameBytesAsTheNativeBuilder_ParsesIdentically()
     {

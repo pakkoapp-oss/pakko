@@ -14880,6 +14880,17 @@ never through `GetFullPath`, with `EntryDiskName.Trims`. It is used in three pla
   processed, so nothing deletes it. How entry names are made (T-F75) is not changed.
 - **Reading.** `InputPaths.Problem` returns the new code. ZIP extract, test and list, and tar test,
   now call it. Before, they checked only `File.Exists`, which the twin satisfies.
+- **Recovery.** `RecoveryTestStep.Locate` refuses such an archive path, and a set's target that is
+  such a name. A set made by another tool can name `x.zip `, and a repair writes. Seen red: with the
+  check removed, a repair of `x.zip ` beside `x.zip` and its set ran with no error.
+
+**The frontends deliver the literal name.** This was traced, because Core can refuse only what
+reaches it:
+- **Explorer:** `SIGDN_FILESYSPATH`, then `StdinPathList`, which splits on NUL and trims nothing (a
+  test pins it).
+- **The App:** `FileItem.FullPath` is the path as given.
+- **A CLI wildcard (`tw\*`)** is expanded from the file system, so the literal names reach Core,
+  which refuses them: exit 2, both files kept.
 
 **Decisions:**
 - **The `\\?\` form is refused too**, although ZIP already read `\\?\...\a.txt ` correctly
