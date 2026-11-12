@@ -19,7 +19,7 @@ public sealed class PathMatrixPureTests
     // Only safe outcomes may be listed here: a different refusal, or a refusal where acceptance
     // would be better. Never a throw, another file's bytes, or a write outside the destination.
     // Empty: every finding so far was fixed in its owner.
-    private static readonly Dictionary<string, string> KnownFindings = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, string> KnownFindings = [with(StringComparer.Ordinal)];
 
     private enum WindowsOutcome { Unchanged, Trimmed, Device, Step }
 
