@@ -1804,7 +1804,8 @@ re-measured with T-F346's script before and after.
 
 ### T-F516 - `IsNotQuadratic` timed out under the whole suite (P3, test only, from T-F511 PR 2)
 
-- [x] **Status:** done (on T-F511's long branch). `SourceOutcomeTests.DowngradeSourcesContainingOutputs_ManySourcesAndOutputs_IsNotQuadratic`
+- [x] **Status:** done (on T-F511's long branch). `SourceOutcomeTests.DowngradeSourcesContainingOutputs_ManySourcesAndOutputs_IsNotQuadratic` It timed out once more on its own thread
+  (2026-11-13, PR #235): it moved to `Category=Slow` (the nightly canary), as the user decided.
   ran its 60,000 x 60,000 check through `Task.Run` and timed out at 45 s in three full runs in a
   row, while alone it took 3 s: the work waited for a pool thread behind the suite's blocking
   tests (the T-F425 lesson). It now runs on its own thread (`TaskCreationOptions.LongRunning`);

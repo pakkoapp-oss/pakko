@@ -376,7 +376,10 @@ public sealed class SourceOutcomeTests : IDisposable
     // only the path comparison and one Directory.Exists per source.
     // T-F516: on a pool thread (Task.Run) it waited for one behind the whole suite's blocking tests
     // and timed out at 45 s three runs in a row, while alone it took 3 s; it runs on its own thread.
+    // It timed out once more on its own thread (2026-11-13, PR #235's last run), so it runs in the
+    // nightly Slow tier, as the user decided: a time bound under the whole suite's load is no signal.
     [Fact]
+    [Trait("Category", "Slow")]
     public async Task DowngradeSourcesContainingOutputs_ManySourcesAndOutputs_IsNotQuadratic()
     {
         const int count = 60_000;
