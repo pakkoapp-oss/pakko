@@ -29,7 +29,7 @@ internal static class TrimmedSourceNames
                 sources.Add(new SourceResult { Path = path, Outcome = SourceOutcome.NotProcessed });
                 continue;
             }
-            keptPaths.Add(path!);
+            keptPaths.Add(path);
             if (keptParts is not null && i < options.SourceNameParts!.Count)
                 keptParts.Add(options.SourceNameParts[i]);
         }
