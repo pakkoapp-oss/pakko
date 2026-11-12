@@ -221,6 +221,38 @@ public sealed class TempOwnerTests : IDisposable
         File.Delete(@"\\?\" + literal);
     }
 
+    // T-F511: SweepStaleInTemp is public and, with no prefix, removes any old entry it cannot read
+    // an owner from; outside %TEMP% such an entry may be the user's.
+    [Fact]
+    public void SweepStaleInTemp_FolderOutsideTemp_LeavesItsOldEntries()
+    {
+        string outside = Path.Combine(AppContext.BaseDirectory, "sweep-outside-" + Guid32);
+        Directory.CreateDirectory(Path.Combine(outside, "photos"));
+        try
+        {
+            Directory.SetCreationTimeUtc(Path.Combine(outside, "photos"), _now.AddDays(-30));
+
+            TempOwner.SweepStaleInTemp(outside, "", TimeSpan.FromDays(1));
+
+            Directory.Exists(Path.Combine(outside, "photos")).Should().BeTrue();
+        }
+        finally
+        {
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void SweepStaleInTemp_OldUnownedEntryInTemp_Removed()
+    {
+        string old = Dir("photos");
+        Directory.SetCreationTimeUtc(old, _now.AddDays(-30));
+
+        TempOwner.SweepStaleInTemp(_temp.Path, "", TimeSpan.FromDays(1));
+
+        Directory.Exists(old).Should().BeFalse();
+    }
+
     [Fact]
     public void TryRemove_FolderWithReadOnlyFileAndMissingPath_Removed()
     {

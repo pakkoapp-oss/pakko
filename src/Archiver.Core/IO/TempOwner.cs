@@ -68,13 +68,20 @@ public static class TempOwner
     /// <summary>
     /// T-F511: sweeps a Pakko folder under %TEMP% of the entries named with <paramref name="prefix"/>
     /// whose owner no longer runs here; an entry whose owner cannot be told goes once older than
-    /// <paramref name="unownedMaxAge"/>. Best-effort.
+    /// <paramref name="unownedMaxAge"/>. Best-effort. A folder outside %TEMP% is left alone: there an
+    /// old entry may be the user's.
     /// </summary>
     public static void SweepStaleInTemp(string directory, string prefix, TimeSpan unownedMaxAge)
     {
         // A name Windows trims would list, and sweep, its twin.
-        if (InputPaths.Problem(directory) is null)
+        if (InputPaths.Problem(directory) is null && IsBelowTemp(directory))
             SweepStale(directory, prefix, "", TempScope.LocalTemp(unownedMaxAge));
+    }
+
+    private static bool IsBelowTemp(string directory)
+    {
+        string temp = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath())) + Path.DirectorySeparatorChar;
+        return Path.GetFullPath(directory).StartsWith(temp, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
