@@ -354,6 +354,23 @@ public sealed class ExtractAdversarialTests : IDisposable
         Directory.EnumerateDirectories(@"\\?\" + _scratch.Root).Should().BeEmpty("nothing is made for a refused -o");
     }
 
+    // T-F512 (c), found by the closing review: an archive name Windows trims, given with -ax (or with
+    // -r), went through GetFullPath and opened its twin "a.zip"; alone it was already refused.
+    [Theory]
+    [InlineData("-ax!b.zip")]
+    [InlineData("-r")]
+    public void Zip_ArchiveNameWindowsTrims_WithAnExcludeOrAMask_IsRefusedAndTheTwinNotRead(string with)
+    {
+        string twin = _scratch.Zip("a.zip", ("t.txt", "TWIN"));
+        File.Copy(twin, @"\\?\" + twin + ".");
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("x", _scratch.Root + Path.DirectorySeparatorChar + "a.zip.", with, "-o" + _scratch.Inside("out"));
+
+        exitCode.Should().NotBe(0, stdErr);
+        File.Exists(_scratch.Inside(@"out\t.txt")).Should().BeFalse("the twin a.zip was never the archive named");
+        File.Delete(@"\\?\" + twin + ".");
+    }
+
     // T-F512 (c), found by CLI-056: -o"<dir>\out." beside a folder "out" overwrote out's files (-aoa).
     [Theory]
     [InlineData("out.")]

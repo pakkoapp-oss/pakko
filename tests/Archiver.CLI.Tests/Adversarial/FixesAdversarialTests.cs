@@ -1022,32 +1022,34 @@ public sealed class FixesAdversarialTests : IDisposable
     }
 
     // =====================================================================================
-    // 9. -o as Windows reads it
+    // 9. -o as Windows reads it, a name Windows trims refused
     // =====================================================================================
 
+    // T-F419 read these as Windows does ("out. " was "out"); with a folder "out" there the files went
+    // into it. T-F512 (the user's decision, 2026-11-12): refused, as on `r` and in Core.
     [Theory]
-    [InlineData("out. ", "out")]
-    [InlineData("out .", "out")]
-    [InlineData("out..", "out")]
-    [InlineData(@"..\x ", @"..\x")]
-    [InlineData(@"..\x.", @"..\x")]
-    public void Output_TrailingDotsAndSpaces_LandWhereWindowsReadsThem(string output, string expected)
+    [InlineData("out. ")]
+    [InlineData("out .")]
+    [InlineData("out..")]
+    [InlineData(@"..\x ")]
+    [InlineData(@"..\x.")]
+    [InlineData(". ")]
+    public void Output_TrailingDotsAndSpaces_AreRefusedAndWriteNothing(string output)
     {
         _scratch.Zip("arc.zip", ("a.txt", "A"));
         _scratch.Folder("cwd");
 
         (int exitCode, _, string stdErr) = _scratch.PakkoIn("cwd", "x", _scratch.Inside("arc.zip"), "-o" + output);
 
-        exitCode.Should().Be(0, stdErr);
-        string landed = Path.GetFullPath(Path.Combine(_scratch.Inside("cwd"), expected, "a.txt"));
-        File.ReadAllText(landed).Should().Be("A");
-        AllNames().Should().NotContain(n => n.EndsWith(' ') || n.EndsWith('.'), "no folder of a name Explorer cannot open");
+        exitCode.Should().Be(2, stdErr);
+        stdErr.Should().Contain("ends in a space or a dot");
+        _scratch.FilesUnder("cwd").Should().BeEmpty();
+        AllNames().Should().NotContain(n => n == "out" || n == "x" || n.EndsWith(' ') || n.EndsWith('.'), "nothing is made for a refused -o");
     }
 
     // A blank -o is the current folder as Windows reads it.
     [Theory]
     [InlineData(".")]
-    [InlineData(". ")]
     public void Output_BlankOrDot_IsTheCurrentFolder(string output)
     {
         _scratch.Zip("arc.zip", ("a.txt", "A"));
@@ -1077,18 +1079,18 @@ public sealed class FixesAdversarialTests : IDisposable
         AllNames().Should().NotContain(" ");
     }
 
-    // CLI.md, -spe: "the last part of -o as typed" (7-Zip's SplitPathToParts_Smart). -o"out "
-    // extracts into out, but its typed last part is "out ", which no root folder has: the root
-    // stays (7za writes "out \out\a.txt"). Pinned as documented.
+    // CLI.md, -spe: "the last part of -o as typed" (7-Zip's SplitPathToParts_Smart). -o"out " with
+    // -spe extracted into out with the root kept (7za writes "out \out\a.txt"); since T-F512 a
+    // name Windows trims is refused before -spe is weighed.
     [Fact]
-    public void Output_TrailingSpace_WithSpe_ComparesTheTypedName_RootStays()
+    public void Output_TrailingSpace_WithSpe_IsRefused()
     {
         _scratch.Zip("arc.zip", ("out/a.txt", "A"));
 
         (int exitCode, _, string stdErr) = _scratch.Pakko("x", "arc.zip", "-oout ", "-spe");
 
-        exitCode.Should().Be(0, stdErr);
-        _scratch.FilesUnder("out").Should().Equal(@"out\a.txt");
+        exitCode.Should().Be(2, stdErr);
+        _scratch.FilesUnder("out").Should().BeEmpty();
     }
 
     // CLI.md: "a \\?\ path stays as typed".
