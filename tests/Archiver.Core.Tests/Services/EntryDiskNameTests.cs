@@ -7,6 +7,23 @@ namespace Archiver.Core.Tests.Services;
 // engines share when two entries meet on one path.
 public sealed class EntryDiskNameTests
 {
+    // T-F511: one name, never a path: its separators are characters, and "." or ".." is no step.
+    [Theory]
+    [InlineData("ok", "ok")]
+    [InlineData("x.", "x")]
+    [InlineData("a ", "a")]
+    [InlineData("a. .", "a")]
+    [InlineData(".", "_")]
+    [InlineData("..", "_")]
+    [InlineData("", "_")]
+    [InlineData("a/b", "a_b")]
+    [InlineData("a\\b", "a_b")]
+    [InlineData("a?b", "a_b")]
+    public void SingleName_IsOneNameWindowsKeeps(string name, string expected)
+    {
+        EntryDiskName.SingleName(name).Should().Be(expected);
+    }
+
     [Theory]
     [InlineData("a.txt", "a.txt")]
     [InlineData("a.txt.", "a.txt")]

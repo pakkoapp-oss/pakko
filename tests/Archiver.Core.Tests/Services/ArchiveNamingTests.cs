@@ -6,6 +6,18 @@ namespace Archiver.Core.Tests.Services;
 
 public sealed class ArchiveNamingTests
 {
+    // T-F511: the folder named after an archive is a name Windows keeps - "x..zip" is not a folder "x.".
+    [Theory]
+    [InlineData(@"C:\Docs\x.zip", "x")]
+    [InlineData(@"C:\Docs\x..zip", "x")]
+    [InlineData(@"C:\Docs\a .zip", "a")]
+    [InlineData(@"C:\Docs\a. .tar.gz", "a")]
+    [InlineData(@"C:\Docs\...zip", "_")]
+    public void GetFolderName_IsTheBaseNameAsWindowsKeepsIt(string archivePath, string expected)
+    {
+        ArchiveNaming.GetFolderName(archivePath).Should().Be(expected);
+    }
+
     [Theory]
     [InlineData(@"C:\Docs\browse_test.tar.gz", "browse_test")]
     [InlineData(@"C:\Docs\browse_test.tar.bz2", "browse_test")]

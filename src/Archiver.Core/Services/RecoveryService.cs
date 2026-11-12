@@ -163,7 +163,9 @@ public sealed class RecoveryService : IRecoveryService
         try
         {
             string folder = options.OutputDirectory ?? Path.GetDirectoryName(Path.GetFullPath(found.ArchivePath))!;
-            Directory.CreateDirectory(folder);
+            // T-F511: the destination's owner - "out." is the twin "out" to Windows (T-F509).
+            if (DestinationFolder.TryCreate(folder) is { } refused)
+                return (null, output, CoreMessages.Error(found.ArchivePath, CoreMessages.Text(MessageCode.RecoveryRepairNotWritten, CoreMessages.FromException(refused)), refused));
             string preferred = Path.Combine(Path.GetFullPath(folder), RepairedName(found.ArchivePath));
             for (int attempt = 0; attempt < MaxNameAttempts; attempt++)
             {
