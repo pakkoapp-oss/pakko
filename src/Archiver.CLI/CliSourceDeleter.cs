@@ -131,7 +131,7 @@ public sealed class CliSourceSnapshot
 
     // T-F515: with case. Core reports a source in the spelling the CLI gave it, so the match is exact;
     // without case, in a case-sensitive folder "a.txt" found the listing of "A.TXT" and deleted A.TXT.
-    private readonly Dictionary<string, Source> _sources = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Source> _sources = [with(StringComparer.Ordinal)];
 
     private CliSourceSnapshot() { }
 
