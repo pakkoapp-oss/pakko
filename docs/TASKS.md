@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count), T-F506 (AMSI buffer), T-F500 (writer failure paths, the flaky chunk-folder test), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F475 (P2, a Core throw), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -1706,22 +1706,6 @@ re-measured with T-F346's script before and after.
   the capability probe, and re-point the canary's comment and `docs/TESTING.md` (Server 2022 is no
   longer the 3.5.2 leg).
 - **Reported by:** the agent, 2026-11-09.
-
-### T-F475 - On Windows 10 a destination through a device name throws out of `ZipArchiveService` (P2, v1.11.0 stream B)
-
-- [ ] **Status:** open. Found 2026-11-09 on CI's `windows-2022` (same device-name rules as Windows
-  10): `pakko a CON.zip ...` exits 2 with "Unexpected error: ArgumentNullException: Value cannot be
-  null. (Parameter 'path')". `ArchiveTempFile.Create` takes
-  `Path.GetDirectoryName(Path.GetFullPath(destPath))!`; where `CON.zip` or `x\CON\o.zip` is the
-  device `\\.\CON`, the folder is null and `TempOwner.SweepStale` throws from `DirectoryInfo`, past
-  the hard constraint that a Core method never throws to its caller. On Windows 11 the name is an
-  ordinary file, so `FixesAdversarialTests.ConDotZip_WithoutSae_IsAnOrdinaryArchive` and
-  `DeviceFolderInTheArchivePath_MatchesSevenZip` pass there and fail on Server 2022 (the second
-  with a clean "Could not find a part of the path '\\.\CON'"). Next: refuse a destination that
-  resolves to a device at the entry check (`DestinationFolder`/`InputPaths`, a new row in
-  `CoreNeverThrowsContractTests`), and make the two tests state which rules they cover.
-- **Reported by:** the agent, 2026-11-09.
-- **Raised to P2 (2026-11-11):** a Core method throwing to its caller breaks a hard constraint.
 
 ### T-F474 - The plain-file check and the move out of the quarantine are two calls (P3)
 

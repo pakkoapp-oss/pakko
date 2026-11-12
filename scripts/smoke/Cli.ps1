@@ -941,3 +941,29 @@ Add-SmokeStep 'CLI-052' {
     Assert-Smoke ($hashes[2] -eq $hashes[3]) "two pakko a -mx1 of the same folder differ: $($hashes[2]) $($hashes[3])"
     'both pairs byte-identical'
 }
+
+# T-F475: a device name as the archive. On Windows 10 and Server 2022 "CON.zip" in any folder is
+# the console, and a folder "x\CON" is too; on Windows 11 both are ordinary names.
+Add-SmokeStep 'CLI-053' {
+    $results = foreach ($case in @(@('a', 'CON.zip', 'b.txt'), @('a', '-sae', 'x\CON\o.zip', 'b.txt'))) {
+        $folder = Get-StepFolder ('cli053-' + [guid]::NewGuid().ToString('N').Substring(0, 6))
+        [System.IO.File]::WriteAllText((Join-Path $folder 'b.txt'), 'B')
+        $run = Invoke-Pakko $case -WorkingDirectory $folder
+        $archive = Join-Path $folder $case[-2]
+        $device = [System.IO.Path]::GetFullPath($archive).StartsWith('\\.\') -or
+            [System.IO.Path]::GetFullPath([System.IO.Path]::GetDirectoryName($archive)).StartsWith('\\.\')
+        Assert-Smoke ($run.Text -notmatch 'Exception|Unexpected error') "pakko $($case -join ' '): $($run.Text)"
+        $names = @([System.IO.Directory]::EnumerateFileSystemEntries('\\?\' + $folder, '*', 'AllDirectories') | ForEach-Object { [System.IO.Path]::GetFileName($_) })
+        if ($device) {
+            Assert-Smoke ($run.ExitCode -eq 2) "pakko $($case -join ' '): a device here, exit $($run.ExitCode) $($run.Text)"
+            Assert-Smoke (($names -join ',') -eq 'b.txt') "pakko $($case -join ' '): left $($names -join ',')"
+            "$($case[-2]): a device here, refused"
+        }
+        else {
+            Assert-Smoke ($run.ExitCode -eq 0) "pakko $($case -join ' '): exit $($run.ExitCode) $($run.Text)"
+            Assert-Smoke ([System.IO.File]::Exists('\\?\' + $archive)) "pakko $($case -join ' '): no archive"
+            "$($case[-2]): an ordinary file here, written"
+        }
+    }
+    $results -join '; '
+}

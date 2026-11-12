@@ -14727,3 +14727,26 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   - **Allocations:** 1.76 GB -> 207 MiB for 20,000 files.
   - **Time:** unchanged. It is the file system's and Defender's, with the safety checks kept per
     entry.
+
+### T-F475 - On Windows 10 a destination through a device name throws out of `ZipArchiveService` (P2, v1.11.0 stream B)
+
+- [x] **Status:** done 2026-11-12. Found 2026-11-09 on CI's `windows-2022` (same device-name rules as Windows
+  10): `pakko a CON.zip ...` exits 2 with "Unexpected error: ArgumentNullException: Value cannot be
+  null. (Parameter 'path')". `ArchiveTempFile.Create` takes
+  `Path.GetDirectoryName(Path.GetFullPath(destPath))!`; where `CON.zip` or `x\CON\o.zip` is the
+  device `\\.\CON`, the folder is null and `TempOwner.SweepStale` throws from `DirectoryInfo`, past
+  the hard constraint that a Core method never throws to its caller. On Windows 11 the name is an
+  ordinary file, so `FixesAdversarialTests.ConDotZip_WithoutSae_IsAnOrdinaryArchive` and
+  `DeviceFolderInTheArchivePath_MatchesSevenZip` pass there and fail on Server 2022 (the second
+  with a clean "Could not find a part of the path '\\.\CON'"). Next: refuse a destination that
+  resolves to a device at the entry check (`DestinationFolder`/`InputPaths`, a new row in
+  `CoreNeverThrowsContractTests`), and make the two tests state which rules they cover.
+- **Reported by:** the agent, 2026-11-09.
+- **Raised to P2 (2026-11-11):** a Core method throwing to its caller breaks a hard constraint.
+- **Graduated 2026-11-12** (`docs/DECISIONS.md`, "T-F475"):
+  - **The check:** `DestinationFolder.IsDevice`. It runs at the entry for one archive and per source
+    for one archive per item, in both engines.
+  - **Also fixed:** a path under a device's root (`\\.\NUL\o.zip`) no longer ends as a silent
+    success.
+  - **Tests:** the contract rows and `DeviceNamedArchiveTests`; the two CLI tests state their
+    rules; `CLI-053`, also run on PakkoW10.

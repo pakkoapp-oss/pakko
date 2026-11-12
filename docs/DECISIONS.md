@@ -14791,6 +14791,49 @@ Under real-time scanning most of that is kernel and filter time. No further chan
 giving up a check. The password path's 1.7x over plain extraction (two passes, a byte-wise keystream
 XOR) stays as T-F504 recorded.
 
+## T-F475 - an archive path Windows opens as a device is refused at the entry (2026-11-12)
+
+**Cause.** `ArchiveTempFile.FolderOf` took `Path.GetDirectoryName(Path.GetFullPath(destPath))!`.
+Where the archive's path is a device itself, `GetFullPath` gives `\\.\CON` and the folder is null:
+`TempOwner.SweepStale` then threw `ArgumentNullException` out of the engine, past the hard
+constraint that a Core method never throws. This happens with `CON.zip` in any folder on Windows 10
+and Server 2022 (CI's canary), and on any Windows with an exact name `\\.\NUL` or `\\.\CON`.
+Reproduced on Windows 11 with the second form.
+
+**Found next to it.** `\\.\NUL\o.zip` (a path under a device's root) ended with no error and no
+created file. The archive went to the device, and the run looked finished.
+
+**The check.** `DestinationFolder.IsDevice(path)` returns true when either holds:
+- the full path has no folder above it;
+- its root is `\\.\<device>\` or `\\?\<device>\`.
+
+`GetFullPath` applies the rules of the Windows it runs on, so the check needs no list of Windows
+versions.
+
+**Where it runs:**
+- One archive: at the entry check, for any name (not only an exact one), in both engines.
+  `ArchiveNameReserved`, nothing written, not even the folder.
+- One archive per item: per source. A source "CON.txt" gets that error, and the other sources get
+  their archives.
+
+**Not changed.** A destination folder that is a device (`x\CON` on Windows 10) already ended in a
+clean error, "Could not find a part of the path", from the folder's own check.
+
+**Tests:**
+- `DestinationFolderTests`: the check itself, plus the "CON.zip" case judged by
+  `GetFullPath` on the Windows it runs on.
+- `CoreNeverThrowsContractTests`: device paths through both engines and the router. Seen red: 8
+  failed, either a throw or no refusal.
+- `DeviceNamedArchiveTests`: a source made as `\\?\...\CON.txt`, both modes, ZIP and tar.gz. On
+  Windows 11 the archive is written. The canary's Server 2022 job runs the refusal branch. The
+  `\\?\` source that branch takes was run here on Windows 11 by forcing it.
+- The two CLI tests now say which rules they cover.
+- PakkoW10 (Native AOT `pakko`):
+  - `a CON.zip b.txt`: before the fix, CI saw "Unexpected error: ArgumentNullException". Now it is
+    refused with the reserved-name error, exit 2.
+  - `a -sae x\CON\o.zip`: exit 2, "Could not find a part of the path '\\.\CON'".
+  - Both leave only `b.txt`. `SMOKE.md` `CLI-053`.
+
 ## T-F503 - one archive per item at Optimal takes the hand-rolled writer (2026-11-11)
 
 **Cause.** Without a password, one archive per item at Optimal or SmallestSize went through
