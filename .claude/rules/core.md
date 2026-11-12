@@ -39,6 +39,10 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   propagate into every caller, including test projects on a plain `net11.0` TFM — confirmed
   T-F146, where a class-level annotation forced two unrelated test classes to also carry the
   attribute before the warnings cleared.
+- **One owner per job (T-F511).** Before writing a path or name rule, a folder walk, a temp name,
+  an outcome rule or an error rule, find the job in `docs/ARCHITECTURE.md`'s "Single Owners" table.
+  Extend that owner or call it; never repeat its logic at a call site. Ask the BCL first (its
+  "Builds on" column). A new owner gets a row there and a guard test in the same change.
 - **A public Core operation checks its paths at entry** (`InputPaths.Problem`,
   `DestinationFolder.TryCreate`) and never catches `ArgumentException` as a family per item; a new
   public method gets rows in `CoreNeverThrowsContractTests` or its completeness test fails

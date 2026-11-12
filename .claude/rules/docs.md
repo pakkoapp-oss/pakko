@@ -49,6 +49,7 @@ DI duplication happened).
 |---|---|---|
 | Public signature/model change in `Archiver.Core` | `docs/ARCHITECTURE.md` | `docs/CONVENTIONS.md` (XML-doc example), `docs/TASKS.md` (mark task done) |
 | DI registration or lifetime change | `docs/ARCHITECTURE.md` | — (single owner now, no cascade) |
+| A new single owner, or a job moved into one | `docs/ARCHITECTURE.md` ("Single Owners") | its guard test; `.claude/rules/core.md` only if the rule itself changes |
 | `MainWindow.xaml` structure or new WinUI 3 gotcha | `docs/XAML.md` | — (leaf doc) |
 | New coding convention adopted | `docs/CONVENTIONS.md` | — |
 | Threat model or mitigation changes | `SECURITY.md` | `docs/SPEC.md` (teaser), `README.md` (teaser) |

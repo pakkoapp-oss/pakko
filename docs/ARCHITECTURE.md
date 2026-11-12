@@ -73,6 +73,41 @@ Windows.ApplicationModel.Resources, or any UI assembly.
 
 ---
 
+## Single Owners
+
+One class owns each job below. **Before writing a check, a walk, a temp name, a path rule or an
+error rule, find its row: extend that owner, or call it. Never add the same logic at a call site.**
+A new owner gets a row here and a guard test in the same change.
+
+The "Builds on" column is the BCL or Win32 primitive the owner wraps. Reach for the primitive first;
+an owner exists only for what the primitive lacks, and that is the reason the column gives. "Known
+bypasses" is code that does an owner's job itself; it is listed in T-F511 and goes away there.
+
+| Job | Owner | Builds on, and what it adds | Guard test | Known bypasses (T-F511) |
+|---|---|---|---|---|
+| Walk a user's folder tree | `IO/DirectoryWalker` | `DirectoryInfo.EnumerateFileSystemInfos`, one level at a time. Adds a deterministic order, an explicit stack, an unreadable folder as an entry (`EnumerationOptions` only throws or silently skips), links never entered, a drive root's OS entries left out, the filter's `LeftOut`, and `TrimmedName` (T-F509). Every consumer handles every `WalkEntryKind`. | none yet | `CLI/CliArchiveSources` (wildcards), `CLI/CliNameSelection` (masks, `IgnoreInaccessible`) |
+| A path given to a public Core operation | `Services/InputPaths` (`Problem`, `ArchiveProblem`, `NameTrimmed`, `OwnNameTrimmed`) | `Path.GetFullPath` as the oracle: whether a path parses, and whether Windows changes a part of it (T-F406, T-F509). | `CoreNeverThrowsContractTests` (completeness, and the `Hostile` kind "a trimmed name" with its twin oracle) | `ArchiveFormatDetector.Detect` and others still to trace |
+| Create the destination folder | `Services/DestinationFolder` (`TryCreate`, `ReservedArchiveName`, `IsDevice`) | `Directory.CreateDirectory`. Adds the refusal of a device (T-F475) or a trimmed name (T-F509), and Core's own error text. | via `CoreNeverThrowsContractTests` | `Recovery/RecoveryService` (repair output folder) |
+| The sources of a creation | `Services/SourcePathNormalizer` (the form), `TrimmedSourceNames` (refusals), `SourceEntryNames` (entry names) | `Path.GetFullPath`, `Path.TrimEndingDirectorySeparator` | `SourcePathNormalizerTests` | the source key written again in `CLI/CliSourceDeleter.Normalize` and `App.Core/SourceSnapshot.Key` |
+| What "delete the sources afterwards" works from | `IO/SourceTree` | `DirectoryWalker` | none yet | - |
+| Whether two paths are one file, and where a path leads | `IO/PathIdentity` | `GetFileInformationByHandleEx` (file ID) and `GetFinalPathNameByHandle`: the BCL has no file identity, and `ResolveLinkTarget` resolves no SUBST drive or `\\?\` spelling | none yet | `App.Core/Win32SourceDeleteOperations.ResolveFinalPath`, `CLI/CliSourceDeleter.RealPath`, string compares in `CLI/CliArchiveSources` and `CLI/CliCreatedName` |
+| Pakko's temp names and their sweep | `IO/TempOwner` | `Path.GetTempPath`. `Directory.CreateTempSubdirectory` does not carry the owner's PID, which the sweep of abandoned folders needs. | none yet | `Sandbox/ArchiveintGate` probe file, `TarCapabilitySnapshot`, `CLI/CliStreamStaging` and `App.Core/ProcessTempRoot` (their own sweeps) |
+| A source's outcome (Completed, Partial, ...) | `Services/SourceOutcomeRules` | - | `SourceOutcomeTests`, `SharedArchiveSourceOutcomeTests` | `Recovery/RecoveryDataWriter` (sets `Partial` itself) |
+| User-visible message text | `Services/CoreMessages` (factories), `MessageTemplates` (English), `Archiver.Messages` resx | `ResourceManager` | `CoreMessageSourceGuardTests` | - |
+| What counts as a per-item failure; Windows error codes (`HResult`) | **none yet** (T-F511) | `IOException` subtypes. Sharing violation, disk full and "already exists" have no type, only an `HResult`. | - | about 75 `catch ... when` filters of 12 shapes; `HResult` checks in 5 files |
+| An archive entry's name on disk | `Services/EntryDiskName` | - (judges every part strictly; see T-F511 for its relation to `InputPaths`) | - | `BareGzip.Usable` |
+| Entry traversal and device names | `Services/ArchiveEntrySecurity` | - | its own tests | - |
+| Default archive name, "name (1)" | `Services/ArchiveNaming` | - | its own tests | - |
+| Reading tar.exe's formats (list, extract, test, scan) | `Sandbox/ISandboxedArchiveReader` (`TarExeReader`, `HelperReader`) over `TarSandboxScope` | `SandboxedProcessLauncher` (AppContainer, Job Object) | `SandboxedReaderOwnerTests` | - |
+| Names tar.exe wrote in the quarantine | `Sandbox/QuarantineFiles` | literal `\\?\` paths | `QuarantineFilesOwnerTests` | - |
+| This machine's code pages | `Text/SystemCodePages`, `MachinePages`, `TextBoundaries` | `GetACP`/`GetOEMCP`: `CultureInfo...TextInfo.ANSICodePage` is the user's locale, not the system page tar.exe uses | its own tests | - |
+| Starting a system executable | `Services/ExplorerLauncher`, absolute paths (S4036) | `Process.Start` | - | - |
+| Services for Shell and CLI | `Services/PakkoServices.Create` | - | `PolicyOwnershipTests` (Group Policy reaches every engine) | - |
+| CRC-32 | `IO/Crc32` | none: `System.IO.Hashing` is a NuGet package, not in the .NET 11 runtime, and Core takes no packages | - | - |
+
+"none yet" in the guard column means the owner is held by discipline only; T-F509 showed that is
+not enough. T-F511 adds them.
+
 ## Folder Structure
 
 ```
