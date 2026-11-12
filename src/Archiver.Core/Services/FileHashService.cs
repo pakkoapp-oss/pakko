@@ -79,7 +79,8 @@ public static class FileHashService
         IProgress<ProgressReport>? progress,
         CancellationToken ct)
     {
-        if (paths.Count == 1 && Directory.Exists(paths[0]))
+        // T-F509: before Directory.Exists, which takes "d." for its twin "d".
+        if (paths.Count == 1 && InputPaths.Problem(paths[0]) is null && Directory.Exists(paths[0]))
             return await ComputeFolderAsync(paths[0], algorithm, progress, ct).ConfigureAwait(false);
 
         // Directory checks stay sequential (cheap, and there are usually only a handful of

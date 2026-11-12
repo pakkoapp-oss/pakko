@@ -15,6 +15,9 @@ internal static class NewestSourceTime
         DateTime? newest = null;
         foreach (string source in sourcePaths)
         {
+            // T-F509: a refused source ("a.txt ") by its plain path is its twin's.
+            if (InputPaths.Problem(source) is not null)
+                continue;
             bool isFolder = Directory.Exists(source);
             string name = names.For(source);
             if (name.Length > 0 && !names.Keeps(name, isFolder))
