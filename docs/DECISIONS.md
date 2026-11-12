@@ -14816,17 +14816,35 @@ versions.
 - One archive per item: per source. A source "CON.txt" gets that error, and the other sources get
   their archives.
 
-**Not changed.** A destination folder that is a device (`x\CON` on Windows 10) already ended in a
-clean error, "Could not find a part of the path", from the folder's own check.
+**A folder that is a device** (`x\CON` on Windows 10, `\\.\NUL` anywhere) keeps the folder's own
+error, "Could not find a part of the path". The name check skips such a folder. Before that
+exception was added, the first version of the check named a fine `out.zip` as reserved; a contract
+test caught it.
+
+**The same class, on the reading side.** A `\\.\NUL` archive, added as one more hostile kind to the
+contract suite, made tar extraction and listing throw `NotSupportedException` from
+`ArchiveFormatDetector.IsDiscImageCut`: a device opens, but it cannot seek. `TarSandboxScope.OpenArchive`
+now refuses a stream that cannot seek with the missing-path error that `InputPaths` already gives a
+path that is not a file. The ZIP engine already reported it.
+
+**Checked, not a bug.** On PakkoW10, `BareGzipEngine` with `CON.txt.gz` (made through `\\?\`)
+refuses `CON.txt` as an unsafe path, exit 2.
 
 **Tests:**
 - `DestinationFolderTests`: the check itself, plus the "CON.zip" case judged by
-  `GetFullPath` on the Windows it runs on.
+  `GetFullPath` on the Windows it runs on. Seen red: with `IsDevice` returning false, the five
+  device rows failed.
 - `CoreNeverThrowsContractTests`: device paths through both engines and the router. Seen red: 8
   failed, either a throw or no refusal.
 - `DeviceNamedArchiveTests`: a source made as `\\?\...\CON.txt`, both modes, ZIP and tar.gz. On
-  Windows 11 the archive is written. The canary's Server 2022 job runs the refusal branch. The
-  `\\?\` source that branch takes was run here on Windows 11 by forcing it.
+  Windows 11 the archive is written. The canary's Server 2022 job runs the refusal branch nightly.
+- **Red and green under Windows 10's rules.** No .NET on PakkoW10 and xunit v2 has no test exe, so a
+  throwaway console (not in the repo) took those same four cases through `CreationRouter`, built
+  self-contained once against main and once against this branch:
+  - **main:** all four threw `ArgumentNullException`, one archive per item included;
+  - **branch:** each refused `CON.zip` or `CON.tar.gz` with `ArchiveNameReserved`; one archive per
+    item still wrote `b`; one archive left no folder.
+- `CoreNeverThrowsContractTests` has a `\\.\NUL` hostile kind and a device-folder row.
 - The two CLI tests now say which rules they cover.
 - PakkoW10 (Native AOT `pakko`):
   - `a CON.zip b.txt`: before the fix, CI saw "Unexpected error: ArgumentNullException". Now it is

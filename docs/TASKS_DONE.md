@@ -14746,7 +14746,11 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
 - **Graduated 2026-11-12** (`docs/DECISIONS.md`, "T-F475"):
   - **The check:** `DestinationFolder.IsDevice`. It runs at the entry for one archive and per source
     for one archive per item, in both engines.
-  - **Also fixed:** a path under a device's root (`\\.\NUL\o.zip`) no longer ends as a silent
-    success.
-  - **Tests:** the contract rows and `DeviceNamedArchiveTests`; the two CLI tests state their
-    rules; `CLI-053`, also run on PakkoW10.
+  - **Also fixed:**
+    - a path under a device's root (`\\.\NUL\o.zip`) no longer ends as a silent success;
+    - tar extraction and listing of a `\\.\NUL` archive no longer throw.
+  - **Tests:**
+    - the contract rows (a device hostile kind, device paths, a device folder);
+    - `DeviceNamedArchiveTests`, red then green under Windows 10's rules on PakkoW10;
+    - the two CLI tests state their rules;
+    - `CLI-053`, also run on PakkoW10.
