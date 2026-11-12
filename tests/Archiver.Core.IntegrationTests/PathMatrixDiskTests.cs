@@ -76,7 +76,15 @@ public sealed class PathMatrixDiskTests : IDisposable
                 ? Trims(shapes[shape], positions[position])
                 : positions.Any(at => Trims(shapes[shape], at));
         }
-        return (shapes, AllPairs.Generate(sizes, Allowed));
+        List<int[]> cases = AllPairs.Generate(sizes, Allowed);
+        // Both findings so far needed three values at once (a role, a twin, a spelling), which
+        // pairs alone may never meet: every role and engine also meets a twin in the plain spelling.
+        for (int shape = 0; shape < shapes.Length; shape++)
+            if (Trims(shapes[shape], ShapePosition.Last))
+                for (int role = 0; role < roles; role++)
+                    for (int engine = 0; engine < 2; engine++)
+                        cases.Add([shape, 0, (int)ShapePosition.Last, 1, role, engine]);
+        return (shapes, cases);
     }
 
     // Windows opens another name in the same folder: a twin can stand there.

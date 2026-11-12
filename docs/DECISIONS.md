@@ -14921,10 +14921,11 @@ Core refuses it with its message, exit 2, nothing deleted. Seen red first in
 `a.txt.`, `a.txt `, `\\.\`, `d.\f.txt`). `CLI-056` then passed on Windows 11 and on PakkoW10
 (Windows 10, tar.exe 3.5.2): 109 cases each.
 
-Left as decided: `-o` is still made a full path (T-F419, "out2 " is "out2", as Windows reads it), so
-an extraction into `out.` goes into `out`, which is the folder Windows opens for it; nothing is
-deleted there. T-F511's PR 3 and PR 4 take the CLI's other path work (wildcard walks, the `-sdel`
-key).
+Open, for the user: `-o` is still made a full path (T-F419, "out2 " is "out2"), so `x in.zip -aoa
+-o<dir>\out.` overwrote `out\m.txt` in an existing `out` (probe, 2026-11-12), while Core refuses such
+a folder (`DestinationFolder.TryCreate`) and `r -o out.` is refused (CLI-055). The matrix's fixed
+cases (every role and engine with a twin, plain spelling) turn `CLI-056` red on it. T-F511's PR 3 and
+PR 4 take the CLI's other path work (wildcard walks, the `-sdel` key).
 
 ## T-F509 retrospective - a rule added at call sites, and owners that were not single (2026-11-12)
 
