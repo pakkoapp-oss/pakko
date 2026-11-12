@@ -14953,6 +14953,11 @@ listing and tar still read the twin. The rule now lives in its owners:
 - **The destination: `DestinationFolder.TryCreate`.** `-o"out."` would write into `out`, and T-F475's
   device check judged a path that is not the one written. A `\\?\` folder is literal and stays
   allowed, as `CLI.md` says.
+  **Corrected in T-F511 (PR 1).** This refusal also hit a folder Pakko named itself. Shell's
+  `--extract-folder` on `a .zip` passed the folder `a `, which was refused. Since T-F511 the folder
+  named after an archive comes from `ArchiveNaming.GetFolderName` (`EntryDiskName.SingleName`), so
+  it is `a`; Shell, the App and both engines all use it. A repair's output folder now goes through
+  `TryCreate` too.
 - **The owner test.** `CoreNeverThrowsContractTests` has a `Hostile` kind "a trimmed name": `x.zip.`
   beside a real `x.zip`. `NoThrow` checks the twin's bytes and time after every operation. With the
   rule mutated away, 6 operations wrote into the twin.

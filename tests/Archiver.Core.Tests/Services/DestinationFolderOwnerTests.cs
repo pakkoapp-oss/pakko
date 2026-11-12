@@ -48,8 +48,8 @@ public sealed partial class DestinationFolderOwnerTests
     {
         var found = new Dictionary<(string File, string Call), int>();
         foreach (string file in SourceFiles().Where(f => f != Owner))
-            foreach (Match match in CreateCall().Matches(Code(file)))
-                found[(file, match.Value)] = found.GetValueOrDefault((file, match.Value)) + 1;
+            foreach (string call in Calls(Code(file)))
+                found[(file, call)] = found.GetValueOrDefault((file, call)) + 1;
         Dictionary<(string File, string Call), int> allowed = Allowed.ToDictionary(a => (a.File, a.Call), a => a.Count);
 
         string[] unlisted = [.. found.Where(f => f.Value > allowed.GetValueOrDefault(f.Key)).Select(f => $"{f.Key.File}: {f.Key.Call} x{f.Value}")];
@@ -63,7 +63,9 @@ public sealed partial class DestinationFolderOwnerTests
     public void Scan_SeesTheOwner()
     {
         // Guards the scan itself: if the owner's own call stops matching, the test above passes vacuously.
-        CreateCall().Matches(Code(Owner)).Select(m => m.Value).Should().Equal("Directory.CreateDirectory(folder)");
+        Calls(Code(Owner)).Should().Equal("Directory.CreateDirectory(folder)");
+        Calls("Directory.CreateDirectory(Path.Combine(a, Path.GetFileName(b)))").Should().ContainSingle()
+            .Which.Should().Be("Directory.CreateDirectory(Path.Combine(a, Path.GetFileName(b)))", "a call is read to its own closing parenthesis, however deep");
     }
 
     private static IEnumerable<string> SourceFiles() =>
@@ -76,9 +78,27 @@ public sealed partial class DestinationFolderOwnerTests
         string.Join('\n', File.ReadAllLines(Path.Combine(SrcRoot, file.Replace('/', Path.DirectorySeparatorChar)))
             .Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
 
-    // A creation call to its closing parenthesis on the line (one nesting level: GetDirectoryName(...)!).
-    [GeneratedRegex(@"\bDirectory\.CreateDirectory\((?:[^()]|\([^()]*\))*\)|\.CreateSubdirectory\((?:[^()]|\([^()]*\))*\)")]
+    // Each creation call from its name to its own closing parenthesis, at any depth, spaces collapsed.
+    private static IEnumerable<string> Calls(string code)
+    {
+        foreach (Match match in CreateCall().Matches(code))
+        {
+            int depth = 1;
+            int end = match.Index + match.Length;
+            while (end < code.Length && depth > 0)
+            {
+                depth += code[end] switch { '(' => 1, ')' => -1, _ => 0 };
+                end++;
+            }
+            yield return Spaces().Replace(code[match.Index..end], " ");
+        }
+    }
+
+    [GeneratedRegex(@"\bDirectory\.CreateDirectory\(|\.CreateSubdirectory\(")]
     private static partial Regex CreateCall();
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex Spaces();
 
     private static string FindRepoRoot()
     {
