@@ -32,7 +32,7 @@ public sealed partial class DestinationFolderOwnerTests
         ("Archiver.Core/Services/Sandbox/TarSandboxScope.cs", "Directory.CreateDirectory(outDir)", 1, "a folder at the quarantine root, Pakko's name"),
         ("Archiver.Core/Services/Sandbox/TarSandboxScope.cs", "Directory.CreateDirectory(firstDir)", 1, "a folder at the quarantine root, Pakko's name"),
         ("Archiver.Core/Services/Sandbox/TarSandboxScope.cs", "Directory.CreateDirectory(folder)", 3, "a folder at the quarantine root, Pakko's name"),
-        ("Archiver.Core/Services/TarCapabilitySnapshot.cs", "Directory.CreateDirectory(Path.GetDirectoryName(verdictPath)!)", 1, "Pakko's LocalAppData folder"),
+        ("Archiver.Core/Services/TarCapabilitySnapshot.cs", "Directory.CreateDirectory(folder)", 1, "Pakko's LocalAppData folder"),
         ("Archiver.Core/Services/TarSandboxedService.cs", "Directory.CreateDirectory(destDir)", 1, "the destination after TryCreate, or its subfolder named by ArchiveNaming.GetFolderName"),
         ("Archiver.Core/Services/TarSandboxedService.cs", "Directory.CreateDirectory(Path.GetDirectoryName(stagedFilePath)!)", 1, "the staging folder, entry names by EntryDiskName"),
         ("Archiver.Core/Services/TarSandboxedService.cs", "Directory.CreateDirectory(writerTempDir)", 1, "creation's temp folder, Pakko's name"),

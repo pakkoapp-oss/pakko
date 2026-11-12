@@ -1,10 +1,12 @@
+using Archiver.Core.IO;
+
 namespace Archiver.CLI;
 
 /// <summary>
 /// T-F244 item 4 / T-F263: one private %TEMP% folder owned by this pakko run for -si/-so staging.
-/// Named <c>&lt;pid&gt;-&lt;guid&gt;</c> so a later run can tell a dead process's leftover from a
-/// live run's folder (<see cref="CliStreamStaging.SweepAbandoned(string, Func{int, DateTime, bool})"/>);
-/// <see cref="Dispose"/> removes it, best-effort.
+/// Named by <see cref="TempOwner"/> (T-F511) so a later run can tell a dead process's leftover from a
+/// live run's folder (<see cref="CliStreamStaging.SweepAbandoned"/>); <see cref="Dispose"/> removes
+/// it, best-effort.
 /// </summary>
 public sealed class CliStagingFolder : IDisposable
 {
@@ -16,22 +18,11 @@ public sealed class CliStagingFolder : IDisposable
     /// <summary>Creates a new, never-reused folder under <paramref name="root"/>.</summary>
     public static CliStagingFolder Create(string root)
     {
-        string path = System.IO.Path.Combine(root, $"{Environment.ProcessId}-{Guid.NewGuid():N}");
+        string path = System.IO.Path.Combine(root, TempOwner.NewName(""));
         Directory.CreateDirectory(path);
         return new CliStagingFolder(path);
     }
 
-    /// <summary>Deletes the folder and everything in it; a failure is ignored.</summary>
-    public void Dispose()
-    {
-        try
-        {
-            if (Directory.Exists(Path))
-                Directory.Delete(Path, recursive: true);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // Best-effort: the next run's sweep removes what is left once this process has exited.
-        }
-    }
+    /// <summary>Deletes the folder and everything in it; what is held stays for the next run's sweep.</summary>
+    public void Dispose() => _ = TempOwner.TryRemove(Path);
 }

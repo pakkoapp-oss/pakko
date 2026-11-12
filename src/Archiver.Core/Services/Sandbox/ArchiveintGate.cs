@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using Archiver.Core.IO;
 using Archiver.Core.Models;
 
 namespace Archiver.Core.Services.Sandbox;
@@ -99,10 +100,21 @@ public sealed partial class ArchiveintGate
         return ArchiveintDecision.ForHelper(version, new HelperSetup(helperPath, output.Capabilities));
     }
 
+    private const string ProbePrefix = "pakko-probe-";
+    private const string ProbeSuffix = ".tar";
+
+    /// <summary>T-F511: the probe's empty archive, named by <see cref="TempOwner"/>.</summary>
+    internal static string NewProbePath(string tempRoot) => Path.Combine(tempRoot, TempOwner.NewName(ProbePrefix, ProbeSuffix));
+
+    /// <summary>T-F511: removes the probe archives of runs killed mid-probe.</summary>
+    internal static void SweepStaleProbes(string tempRoot) =>
+        TempOwner.SweepStale(tempRoot, ProbePrefix, ProbeSuffix, TempScope.LocalTemp(TimeSpan.FromDays(1)));
+
     private static async Task<ArchiveHelperOutput> ProbeAsync(string helperPath, CancellationToken cancellationToken)
     {
         // The scope reads an archive on the helper's stdin; the probe reads none, so an empty tar.
-        string archive = Path.Combine(Path.GetTempPath(), "pakko-probe-" + Guid.NewGuid().ToString("N") + ".tar");
+        SweepStaleProbes(Path.GetTempPath());
+        string archive = NewProbePath(Path.GetTempPath());
         await File.WriteAllBytesAsync(archive, new byte[1024], cancellationToken).ConfigureAwait(false);
         try
         {

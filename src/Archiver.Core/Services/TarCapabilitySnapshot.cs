@@ -1,4 +1,5 @@
 using System.Globalization;
+using Archiver.Core.IO;
 using Archiver.Core.Models;
 
 namespace Archiver.Core.Services;
@@ -142,7 +143,11 @@ public static class TarCapabilitySnapshot
         if (verdictPath is null || policy.DisableTarExtraction || (answer is null && !hasCapabilities))
             return false;
 
-        string temp = verdictPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        // T-F511: a run killed before the move leaves its temp file; the next write sweeps it.
+        string folder = Path.GetDirectoryName(verdictPath)!;
+        string tempPrefix = Path.GetFileName(verdictPath) + ".";
+        TempOwner.SweepStale(folder, tempPrefix, ".tmp", TempScope.LocalTemp(TimeSpan.FromDays(1)));
+        string temp = Path.Combine(folder, TempOwner.NewName(tempPrefix, ".tmp"));
         try
         {
             var tar = new FileInfo(tarPath);
@@ -155,7 +160,7 @@ public static class TarCapabilitySnapshot
                 false => '0',
                 null => Read(verdictPath, tarPath)?.Writer ?? '?',
             };
-            Directory.CreateDirectory(Path.GetDirectoryName(verdictPath)!);
+            Directory.CreateDirectory(folder);
             File.WriteAllText(temp, Format(
                 tar.Length, tar.LastWriteTimeUtc.ToFileTimeUtc(), writer,
                 hasCapabilities ? ArchiveFormatPolicy.TarReadableRegistryNames(capabilities!) : null));

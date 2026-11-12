@@ -1776,7 +1776,18 @@ re-measured with T-F346's script before and after.
         "the archive being written" (`:199`, not `PathIdentity`);
       - `CliNameSelection.cs:181` (masks), whose `IgnoreInaccessible = true` silently drops a folder
         the walker would report as `UnreadableDirectory`.
-    - **Temp names and sweeps outside `TempOwner`:**
+    - **Done (PR 2):** the archiveint probe file and the tar verdict's temp file are named by
+      `TempOwner.NewName` and swept before each write (both left a file for good when their run
+      was killed). The CLI's `-si`/`-so` staging is named, swept and removed by `TempOwner`
+      (`SweepStaleInTemp`, `TryRemove`); v1.10's `<pid>-<guid>` folders are still swept, by pid
+      alone. `ProcessTempRoot` keeps its sweep (its folders are named per process, with an injected
+      liveness check) and removes through `TryRemove`. Both had stopped at a read-only file, which
+      `TempOwner` clears; tar.exe 3.8.8 does not mark a 0444 entry read-only (measured), so such a
+      file comes from the user or the app the preview opened in. `TryRemove` and
+      `SweepStaleInTemp` refuse a path `InputPaths.Problem` refuses (a trimmed name reached the
+      twin). `TempOwnerOwnerTests`; smoke CLI-058 (new) and CLI-007 (`-so` into `-si`) passed on
+      Windows 11. No PakkoW10 run: tar is untouched.
+    - ~~**Temp names and sweeps outside `TempOwner`:**~~
       - `ArchiveintGate.cs:105` (`pakko-probe-*.tar`, never swept);
       - `TarCapabilitySnapshot.cs:145` (`*.tmp`);
       - `CliStreamStaging.SweepAbandoned` and `ProcessTempRoot` (`:54`), which reimplement
@@ -1819,7 +1830,7 @@ re-measured with T-F346's script before and after.
     is not enough:
     - `DirectoryWalker` (no `Enumerate*` outside it);
     - `InputPaths`;
-    - `TempOwner`;
+    - ~~`TempOwner`~~ (PR 2);
     - ~~`PathIdentity`~~ (PR 4);
     - ~~`DestinationFolder.TryCreate`~~ (PR 1).
 

@@ -1,3 +1,4 @@
+using Archiver.Core.IO;
 using Archiver.CLI;
 using FluentAssertions;
 
@@ -70,7 +71,7 @@ public sealed class CliStreamStagingTests
 
         using (CliStagingFolder folder = await CliStreamStaging.StageStdinAsync(root, new MemoryStream(content), CancellationToken.None))
         {
-            Path.GetFileName(folder.Path).Should().StartWith($"{Environment.ProcessId}-");
+            Path.GetFileName(folder.Path).Should().StartWith(TempOwner.CurrentTag + "-");
             File.ReadAllBytes(Path.Combine(folder.Path, CliStreamStaging.StdinFileName)).Should().Equal(content);
         }
 
@@ -108,61 +109,48 @@ public sealed class CliStreamStagingTests
         Directory.GetFileSystemEntries(root).Should().BeEmpty();
     }
 
+    // T-F511 PR 2: a read-only file stopped the recursive delete and left the staging in %TEMP%.
     [Fact]
-    public void SweepAbandoned_DeletesOnlyFoldersOfDeadProcesses()
+    public void Dispose_ReadOnlyFile_RemovesTheFolder()
     {
         string root = CreateScratchDir();
-        string dead = Directory.CreateDirectory(Path.Combine(root, $"111-{Guid.NewGuid():N}")).FullName;
-        File.WriteAllText(Path.Combine(dead, "decrypted.txt"), "plaintext left by a killed x -so");
-        string alive = Directory.CreateDirectory(Path.Combine(root, $"222-{Guid.NewGuid():N}")).FullName;
+        var folder = CliStagingFolder.Create(root);
+        string file = Path.Combine(folder.Path, "decrypted.txt");
+        File.WriteAllText(file, "plaintext");
+        File.SetAttributes(file, FileAttributes.ReadOnly);
 
-        CliStreamStaging.SweepAbandoned(root, isOwnerAlive: (pid, _) => pid == 222);
+        folder.Dispose();
 
-        Directory.Exists(dead).Should().BeFalse();
-        Directory.Exists(alive).Should().BeTrue();
+        Directory.Exists(folder.Path).Should().BeFalse();
     }
 
-    [Theory]
-    [InlineData("notes")]
-    [InlineData("111-notahexguid")]
-    [InlineData("0123456789abcdef0123456789abcdef")]
-    public void SweepAbandoned_IgnoresNamesItDidNotCreate(string name)
+    // T-F511 PR 2: the sweep is TempOwner's. A dead run's folder goes, in this version's name and in
+    // v1.10's "<pid>-<guid>"; a live run's stays; a name it cannot read goes only once a day old.
+    [Fact]
+    public void SweepStaleInTemp_DeadRunsGo_LiveAndUnreadableStay()
     {
         string root = CreateScratchDir();
-        string other = Directory.CreateDirectory(Path.Combine(root, name)).FullName;
+        string machine = TempOwner.CurrentTag.Split('-')[0];
+        string dead = Directory.CreateDirectory(Path.Combine(root, $"{machine}-{int.MaxValue}-1-{Guid.NewGuid():N}")).FullName;
+        File.WriteAllText(Path.Combine(dead, "decrypted.txt"), "plaintext left by a killed x -so");
+        string legacyDead = Directory.CreateDirectory(Path.Combine(root, $"{int.MaxValue}-{Guid.NewGuid():N}")).FullName;
+        string live = CliStagingFolder.Create(root).Path;
+        string other = Directory.CreateDirectory(Path.Combine(root, "notes")).FullName;
 
-        CliStreamStaging.SweepAbandoned(root, isOwnerAlive: (_, _) => false);
+        TempOwner.SweepStaleInTemp(root, "", TimeSpan.FromDays(1));
 
+        Directory.Exists(dead).Should().BeFalse();
+        Directory.Exists(legacyDead).Should().BeFalse();
+        Directory.Exists(live).Should().BeTrue();
         Directory.Exists(other).Should().BeTrue();
     }
 
     [Fact]
-    public void SweepAbandoned_MissingRoot_DoesNothing()
+    public void SweepAbandoned_RunsOverBothRootsWithoutThrowing()
     {
-        string root = Path.Combine(CreateScratchDir(), "absent");
-
-        Action act = () => CliStreamStaging.SweepAbandoned(root, isOwnerAlive: (_, _) => false);
+        Action act = CliStreamStaging.SweepAbandoned;
 
         act.Should().NotThrow();
-    }
-
-    [Fact]
-    public void IsOwnerAlive_ThisProcess_IsAlive()
-    {
-        CliStreamStaging.IsOwnerAlive(Environment.ProcessId, DateTime.UtcNow).Should().BeTrue();
-    }
-
-    [Fact]
-    public void IsOwnerAlive_NoSuchProcess_IsDead()
-    {
-        CliStreamStaging.IsOwnerAlive(int.MaxValue, DateTime.UtcNow).Should().BeFalse();
-    }
-
-    // PID reuse: a live process that started after the folder was made cannot be its owner.
-    [Fact]
-    public void IsOwnerAlive_ProcessStartedAfterTheFolder_IsDead()
-    {
-        CliStreamStaging.IsOwnerAlive(Environment.ProcessId, DateTime.UtcNow.AddYears(-10)).Should().BeFalse();
     }
 
     private static string CreateScratchDir() => CliTestTemp.NewDir();
