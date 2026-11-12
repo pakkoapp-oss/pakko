@@ -1847,7 +1847,13 @@ re-measured with T-F346's script before and after.
       - `InputPaths.NameTrimmed` (asks `GetFullPath`).
 
       Either one rule, or a recorded reason why archive entries are judged more strictly.
-  - **Error handling has an owner for text (`CoreMessages`, guarded) but none for classification:**
+  - **Done (PR 6):** `CoreMessages.IsDiskFull`, `IsSharingViolation`, `IsAlreadyExists`, asked by
+    every place that read `HResult`; the text decisions traced (T-F518 found on the way); fourteen
+    silent catches of everything in Core say why; the 21 `ArgumentException` catches kept, each
+    listed with why. `ErrorClassificationOwnerTests` guards all four. The two tar.exe probes take no
+    caller's token (a shared, lazy probe): the "swallows the caller's cancellation" below was wrong,
+    and no token is added (DECISIONS, T-F511 PR 6).
+  - ~~**Error handling has an owner for text (`CoreMessages`, guarded) but none for classification:**~~
     - **About 75 `catch ... when` filters of 12 shapes.** 12 of them catch `ArgumentException or
       NotSupportedException` per item (`FileTimes` x3, `RecoveryDataWriter` x2,
       `RecoveryDataLookup` x2, `RecoveryTestStep:82`, `ExtractionRouter:266`,

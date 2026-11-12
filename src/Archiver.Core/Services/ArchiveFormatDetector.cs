@@ -96,7 +96,7 @@ public static class ArchiveFormatDetector
                 ? ArchiveFormat.Lzma
                 : format;
         }
-        catch
+        catch // A file that cannot be opened or read is no format; the caller reports it (T-F221)
         {
             return ArchiveFormat.Unknown;
         }
@@ -330,7 +330,7 @@ public static class ArchiveFormatDetector
 
             return headerType == 4;
         }
-        catch
+        catch // An unreadable header proves no encryption; tar.exe's own error follows
         {
             return false;
         }
@@ -408,7 +408,7 @@ public static class ArchiveFormatDetector
 
             return false;
         }
-        catch
+        catch // An unreadable header proves no encryption; tar.exe's own error follows
         {
             return false;
         }

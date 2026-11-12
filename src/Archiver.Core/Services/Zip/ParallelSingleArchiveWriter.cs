@@ -376,7 +376,7 @@ internal static class ParallelSingleArchiveWriter
                 }
                 pipeline.Writer.Complete();
             }
-            catch (Exception ex)
+            catch (Exception ex) // The producer's failure, a cancel included, completes the pipeline; the consumer rethrows it
             {
                 pipeline.Writer.Complete(ex);
             }

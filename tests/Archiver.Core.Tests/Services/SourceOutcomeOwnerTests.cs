@@ -25,8 +25,12 @@ public sealed partial class SourceOutcomeOwnerTests
     public void Scan_SeesTheOwner()
     {
         Setting().Matches(Code(Owner)).Should().NotBeEmpty();
-        Setting().Matches("s with { Outcome = SourceOutcome.Partial }; Outcome = SourceOutcome.NotProcessed; x => SourceOutcome.Completed,")
-            .Select(m => m.Value).Should().Equal("SourceOutcome.Partial", "SourceOutcome.Completed");
+        Setting().Matches("s with { Outcome = SourceOutcome.Partial }; Outcome = SourceOutcome.NotProcessed; x => SourceOutcome.Completed,"
+                + " ok ? SourceOutcome.Completed : SourceOutcome.Partial; return SourceOutcome.Partial; outcome: SourceOutcome.Completed;"
+                + " if (s.Outcome == SourceOutcome.Completed) {} case SourceOutcome.Partial: break;")
+            .Select(m => m.Value).Should().Equal(
+                "SourceOutcome.Partial", "SourceOutcome.Completed", "SourceOutcome.Completed", "SourceOutcome.Partial",
+                "SourceOutcome.Partial", "SourceOutcome.Completed");
     }
 
     [Fact]
@@ -55,8 +59,9 @@ public sealed partial class SourceOutcomeOwnerTests
         string.Join('\n', File.ReadAllLines(Path.Combine(SrcRoot, file.Replace('/', Path.DirectorySeparatorChar)))
             .Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
 
-    // A use of Completed or Partial as a value: after "=" or "=>", not a comparison ("== ...", "!= ...").
-    [GeneratedRegex(@"(?<=(?<![=!<>])=\s*|=>\s*)SourceOutcome\.(Completed|Partial)\b")]
+    // A use of Completed or Partial as a value: after "=", "=>", "?", ":" or "return"; not a comparison
+    // ("== ...", "!= ...") or a case label.
+    [GeneratedRegex(@"(?<=(?<![=!<>])=\s*|=>\s*|[?:]\s*|\breturn\s+)SourceOutcome\.(Completed|Partial)\b")]
     private static partial Regex Setting();
 
     private static string FindRepoRoot()

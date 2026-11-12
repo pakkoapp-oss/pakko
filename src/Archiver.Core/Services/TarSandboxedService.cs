@@ -192,7 +192,7 @@ public sealed class TarSandboxedService : ITarService
                 new ProcessLaunchOptions(OutputEncoding: Encoding.Latin1), timeoutCts.Token).ConfigureAwait(false);
             return IsSevenZipWriterOutput(exitCode, output);
         }
-        catch (Exception)
+        catch (Exception) // No answer (its own timeout included): null. No caller's token; the probe is shared by the process
         {
             return null;
         }
@@ -232,7 +232,7 @@ public sealed class TarSandboxedService : ITarService
                 tarExecutablePath, ["--version"], new ProcessLaunchOptions(), timeoutCts.Token).ConfigureAwait(false);
             return TarVersionParser.Parse(output);
         }
-        catch (Exception)
+        catch (Exception) // Fail closed to all-false (its own timeout included). No caller's token; the probe is shared by the process
         {
             return new TarCapabilities();
         }

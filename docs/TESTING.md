@@ -846,7 +846,9 @@ ignored, `Dispose` not cancelling. The queued CRC-32 read's cancel is enforced b
     `PathIdentityOwnerTests` fails on a final-path resolver outside `PathIdentity`;
     `TempOwnerOwnerTests` on a temporary name made outside `TempOwner` (T-F511 PR 2); `InputPathsOwnerTests` on a `TrimEnd` of dots or spaces
     outside `EntryDiskName` and `InputPaths`, `SourceOutcomeOwnerTests` on `Completed` or `Partial` given
-    outside `SourceOutcomeRules` (T-F511 PR 5).
+    outside `SourceOutcomeRules` (T-F511 PR 5); `ErrorClassificationOwnerTests` on `.HResult` outside
+    `CoreMessages`, an unlisted decision on an exception's text, a silent catch of everything in Core,
+    or an unlisted `ArgumentException` catch in Core (T-F511 PR 6).
   - `PathMatrixPureTests` runs the owners' pure rules over the full product (about 1,100 cases
     each, under a second) and reports every failing case at once.
   - `AllPairs` builds pairwise cases for the disk operations under a pairwise constraint;

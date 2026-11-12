@@ -31,7 +31,7 @@ public static class AmsiProviderCheck
             using RegistryKey? key = Registry.LocalMachine.OpenSubKey(ProvidersKeyPath);
             return key is not null && key.SubKeyCount > 0;
         }
-        catch
+        catch // Any registry failure is "no provider", the Inconclusive-leaning direction
         {
             return false;
         }
@@ -57,7 +57,7 @@ public static class AmsiProviderCheck
             using RegistryKey? key = Registry.LocalMachine.OpenSubKey(ProvidersKeyPath);
             return key is null ? AmsiProviderState.None : Classify(key.GetSubKeyNames(), IsLoadable);
         }
-        catch
+        catch // Any registry failure is "no provider", the Inconclusive-leaning direction
         {
             return AmsiProviderState.None;
         }

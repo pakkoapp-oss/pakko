@@ -1829,7 +1829,7 @@ public sealed class ZipArchiveService : IArchiveService
                 .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or InvalidDataException
-                                   || (ex is IOException io && !IsDiskFull(io)))
+                                   || (ex is IOException io && !CoreMessages.IsDiskFull(io)))
         {
             // T-F230: an entry Windows cannot write (a name legal elsewhere, e.g. "What?.txt", or a
             // locked/denied path) fails only itself — as does corrupt content (T-F246: CRC-32,
@@ -2007,11 +2007,6 @@ public sealed class ZipArchiveService : IArchiveService
     }
 
     private static CoreText CollisionMessage(string entryName) => CoreMessages.Text(MessageCode.EntryNameCollision, entryName);
-
-    // T-F230: a full disk fails every remaining entry the same way — one archive-level error, not
-    // one per entry.
-    internal static bool IsDiskFull(IOException ex) =>
-        ex.HResult is unchecked((int)0x80070070) or unchecked((int)0x80070027); // ERROR_DISK_FULL, ERROR_HANDLE_DISK_FULL
 
     private static CoreText? GetEntryNameRejectionReason(string entryFullName)
     {
@@ -2416,7 +2411,7 @@ public sealed class ZipArchiveService : IArchiveService
             return header[0] == 0x50 && header[1] == 0x4B
                 && header[2] == 0x03 && header[3] == 0x04;
         }
-        catch
+        catch // A file that cannot be read is not taken as a ZIP; the open that follows reports why
         {
             return false;
         }
@@ -2444,7 +2439,7 @@ public sealed class ZipArchiveService : IArchiveService
             // flags are at offset 6 (little-endian); bit 0 = encryption flag
             return (header[6] & 0x01) != 0;
         }
-        catch
+        catch // An unreadable header proves no encryption; the read that follows reports why
         {
             return false;
         }
@@ -2457,7 +2452,7 @@ public sealed class ZipArchiveService : IArchiveService
             using FileStream fs = File.OpenRead(path);
             return RawZipEntryLocator.HasAnyEncryptedEntry(fs);
         }
-        catch
+        catch // An unreadable central directory proves no encryption; the read that follows reports why
         {
             return false;
         }
@@ -2499,7 +2494,7 @@ public sealed class ZipArchiveService : IArchiveService
 
             return null;
         }
-        catch
+        catch // No other format recognised: the ZIP reader's own error stands
         {
             return null;
         }
@@ -2517,7 +2512,7 @@ public sealed class ZipArchiveService : IArchiveService
             using ZipArchive zip = ZipFile.OpenRead(path);
             return zip.Entries.Count > 0;
         }
-        catch
+        catch // An archive that cannot be opened has no entries: it is discarded, never committed
         {
             return false;
         }

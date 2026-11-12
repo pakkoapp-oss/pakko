@@ -76,6 +76,26 @@ internal static class CoreMessages
         [unchecked((int)0x80070027)] = MessageCode.SystemDiskFull,         // ERROR_HANDLE_DISK_FULL
     };
 
+    /// <summary>T-F511: <paramref name="exception"/> itself (not what it wraps) is Windows' "disk full".</summary>
+    internal static bool IsDiskFull(Exception exception) => Win32Code(exception) is ErrorDiskFull or ErrorHandleDiskFull;
+
+    /// <summary>T-F511: another handle holds the file (a sharing or a lock violation).</summary>
+    internal static bool IsSharingViolation(Exception exception) => Win32Code(exception) is ErrorSharingViolation or ErrorLockViolation;
+
+    /// <summary>T-F511: the name is taken (ERROR_FILE_EXISTS, or ERROR_ALREADY_EXISTS from a move).</summary>
+    internal static bool IsAlreadyExists(Exception exception) => Win32Code(exception) is ErrorFileExists or ErrorAlreadyExists;
+
+    private const int ErrorSharingViolation = 0x20;
+    private const int ErrorLockViolation = 0x21;
+    private const int ErrorHandleDiskFull = 0x27;
+    private const int ErrorFileExists = 0x50;
+    private const int ErrorDiskFull = 0x70;
+    private const int ErrorAlreadyExists = 0xB7;
+
+    // The Win32 code of an HRESULT_FROM_WIN32, as .NET gives every I/O failure it maps from Windows.
+    private static int? Win32Code(Exception exception) =>
+        ((uint)exception.HResult & 0xFFFF0000u) == 0x80070000u ? exception.HResult & 0xFFFF : null;
+
     // A rewrap (new IOException(..., inner)) keeps the Windows code on the inner exception.
     private static int? WindowsErrorCode(Exception exception)
     {
