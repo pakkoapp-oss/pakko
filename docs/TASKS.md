@@ -71,6 +71,30 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 Order: H and F now; N's spike beside B; Z after N (it needs .NET 11); D before E. Test runs that load
 the machine one at a time.
 
+**Batches (the user, 2026-11-13: "робити їх батчами або декількома за раз").** From here the wave's
+open work goes in batches. A batch is a set of tasks with one way of checking them: one deploy, one
+pass over the 37 locales, one session on PakkoW10 or in the App. Each batch gets one branch and one
+PR, with one commit per task and Sonar's rules checked locally before the push. The stream table
+above stays as the record of what each stream holds.
+
+| # | Batch | Tasks | What they share | Checked once per batch |
+|---|---|---|---|---|
+| 1 | Owners | T-F511, T-F516, T-F517, T-F518, T-F519 | done on `refactor/tf511-owners-rest` | an opus review, then the PR |
+| 2 | N's leftovers | T-F507, T-F506, T-F500 (with the flaky `ChunkFolderIsHidden` test), T-F508 | one or two commits each on their own branches already: rebased onto one | one `Category=Slow` run, one performance run |
+| 3 | Texts and names | T-F520, T-F484, T-F477, T-F478 | messages and names: one pass over the glossary and the 37 locales | `Archiver.Messages.Tests`, CLI and Explorer smoke |
+| 4 | The App on the device | T-F486, T-F485, T-F482, T-F483 | high contrast, the keyboard, 7z from the App | one deploy, one `windows` MCP session |
+| 5 | tar, quarantine, memory | T-F513, T-F473, T-F474, T-F510 | the quarantine and the tar readers | one run on PakkoW10 (both tar builds) |
+| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476 | calibration and the CI image | one series on an idle machine |
+| 7 | Z | T-F493 | crypto: its own gates and its own opus reviewer | as stream Z says |
+| 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the release tier | what needs the device or the user | one batch right before the tag |
+| - | F winget | T-F317's outward step | an external PR | only with the user's OK |
+
+Order: 1, 2, then 3 and 4 (independent), 5 (after T-F506 in batch 2), 6, 7, 8.
+
+**Findings during a batch.** A P1 or P2 from the batch's own area is fixed in the batch, test first.
+One from another area goes to the batch of that area, or to a new one before batch 8. A P3 is filed
+in this file and goes to the next wave, unless a batch not yet started already covers its area.
+
 **Not in this wave:** runtime async (preview), Zstandard (tar in-process is forbidden), the new
 `Process` APIs (no AppContainer), C# 15 features for their own sake, async ZIP APIs, the P4 tar.exe
 fallback tasks (T-F464, T-F469, T-F461, T-F453), T-F359, and the future items that are not fixes
