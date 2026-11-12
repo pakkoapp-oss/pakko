@@ -129,7 +129,9 @@ public sealed class CliSourceSnapshot
     // T-F420: the listing is Core's SourceTree, which the App's snapshot uses too.
     private sealed record Source(IReadOnlyList<SourceFileStamp> Files, IReadOnlyList<string> Folders, bool IsLink, bool Unlisted, bool HoldsTrimmedName = false);
 
-    private readonly Dictionary<string, Source> _sources = new(StringComparer.OrdinalIgnoreCase);
+    // T-F515: with case. Core reports a source in the spelling the CLI gave it, so the match is exact;
+    // without case, in a case-sensitive folder "a.txt" found the listing of "A.TXT" and deleted A.TXT.
+    private readonly Dictionary<string, Source> _sources = new(StringComparer.Ordinal);
 
     private CliSourceSnapshot() { }
 

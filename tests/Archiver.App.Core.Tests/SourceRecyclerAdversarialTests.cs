@@ -498,6 +498,37 @@ public sealed class SourceRecyclerAdversarialTests : IDisposable
         }
     }
 
+    // T-F515: in a case-sensitive folder "A.TXT" and "a.txt" are two files and the snapshot keeps one
+    // listing for both; each line of it carries its path, so a.txt is never judged unchanged by A.TXT's.
+    [Fact]
+    public void Snapshot_CaseSensitiveFolder_JudgesEachSpellingByItsOwnListing()
+    {
+        string folder = Scratch("cs");
+        if (!CaseSensitive(folder))
+            return; // no case-sensitive folder on this volume: nothing to judge
+        string upper = WriteFile(folder, "A.TXT", "UPPER");
+        string lower = WriteFile(folder, "a.txt", "lower");
+        var snapshot = SourceSnapshot.Take([upper, lower]);
+        File.WriteAllText(lower, "lower, edited after the start");
+        File.SetLastWriteTimeUtc(lower, DateTime.UtcNow.AddMinutes(1));
+
+        snapshot.Unchanged(lower).Should().BeFalse("a.txt changed; A.TXT's listing says nothing about it");
+        snapshot.Unchanged(upper).Should().BeTrue();
+    }
+
+    private static bool CaseSensitive(string folder)
+    {
+        using var fsutil = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+            Path.Combine(Environment.SystemDirectory, "fsutil.exe"), ["file", "setCaseSensitiveInfo", folder, "enable"])
+        { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true });
+        if (fsutil is null)
+            return false;
+        fsutil.StandardOutput.ReadToEnd();
+        fsutil.StandardError.ReadToEnd();
+        fsutil.WaitForExit();
+        return fsutil.ExitCode == 0;
+    }
+
     [Fact]
     public async Task EndToEnd_TrailingDotSource_DeletesOnlyWhatWasArchived()
     {

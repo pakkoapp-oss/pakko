@@ -201,7 +201,7 @@ public sealed class PathMatrixPureTests
                             if (given is not null)
                                 failures.Add($"{id} ({Show(path)}): a name Windows trims has the key {Show(given)}");
                         }
-                        else if (!string.Equals(given, reported, StringComparison.OrdinalIgnoreCase))
+                        else if (!string.Equals(given, reported, StringComparison.Ordinal))
                             failures.Add($"{id} ({Show(path)}): given {Show(given ?? "null")}, Core's form {Show(reported ?? "null")}");
                     }
                     catch (Exception ex)

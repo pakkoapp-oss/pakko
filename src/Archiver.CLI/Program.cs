@@ -671,7 +671,7 @@ static async Task<int> DeleteArchivedSourcesAsync(CliSourceSnapshot snapshot, Ar
         await Console.Error.WriteLineAsync("pakko: warning: -sdel deleted nothing: the archive was not written in full").ConfigureAwait(false);
         return Math.Max(code, 1);
     }
-    var completed = new HashSet<string>(result.FullyProcessedSources.Select(SourceKey.Of).OfType<string>(), StringComparer.OrdinalIgnoreCase);
+    var completed = new HashSet<string>(result.FullyProcessedSources.Select(SourceKey.Of).OfType<string>(), StringComparer.Ordinal);
     CliDeleteOutcome outcome = snapshot.DeleteUnchanged(completed);
     var kept = new List<(string Path, string Reason)>();
     kept.AddRange(snapshot.SourcePaths.Where(source => !completed.Contains(source)).Select(source => (source, "not all of it went into the archive")));

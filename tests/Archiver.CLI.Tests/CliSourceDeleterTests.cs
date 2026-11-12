@@ -135,7 +135,7 @@ public sealed class CliSourceDeleterTests : IDisposable
     // T-F511 PR 4 (closing review): in a case-sensitive folder "A.TXT" and "a.txt" are two files; the
     // snapshot is keyed without case, so listing both and deleting "a.txt" must not take "A.TXT".
     // Red when written: the listing of "A.TXT" answered for "a.txt" and A.TXT was deleted (T-F515).
-    [RequiresCaseSensitiveFolderFact(Skip = "T-F515: -sdel in a case-sensitive folder deletes the other spelling; un-skip with the fix")]
+    [RequiresCaseSensitiveFolderFact]
     public void Delete_CaseSensitiveFolder_OnlyTheNamedSpellingGoes()
     {
         string folder = Path.Combine(_dir, "cs");
@@ -262,14 +262,27 @@ public sealed class CliSourceDeleterTests : IDisposable
     }
 
     [Fact]
-    public void Delete_CompletedPathSpelledDifferently_StillMatches()
+    public void Delete_CompletedPathWithATrailingSeparator_StillMatches()
     {
         string src = CreateTree();
         var snapshot = CliSourceSnapshot.Take([src + Path.DirectorySeparatorChar]);
 
-        snapshot.DeleteUnchanged([src.ToUpperInvariant()]);
+        snapshot.DeleteUnchanged([src]);
 
         Directory.Exists(src).Should().BeFalse();
+    }
+
+    // T-F515: Core reports a source in the spelling it was given; another case is another file in a
+    // case-sensitive folder, so it never matches a listing (it was matched before, see T-F515).
+    [Fact]
+    public void Delete_CompletedPathInAnotherCase_IsNotTheListedSource()
+    {
+        string src = CreateTree();
+        var snapshot = CliSourceSnapshot.Take([src]);
+
+        snapshot.DeleteUnchanged([src.ToUpperInvariant()]);
+
+        Directory.Exists(src).Should().BeTrue();
     }
 
     [Fact]
