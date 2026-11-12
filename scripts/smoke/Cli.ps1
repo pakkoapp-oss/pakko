@@ -990,3 +990,31 @@ Add-SmokeStep 'CLI-054' {
     [System.IO.File]::Delete('\\?\' + (Join-Path $source 'a.txt '))
     'refused, exit 2; both files kept; the archive holds only the twin under its own name'
 }
+
+Add-SmokeStep 'CLI-055' {
+    $folder = Get-StepFolder 'cli055'
+    $content = Join-Path $folder 'content'
+    $null = [System.IO.Directory]::CreateDirectory($content)
+    [System.IO.File]::WriteAllText((Join-Path $content 'a.txt'), ('recoverable line' + "`n") * 4000)
+    $zip = Join-Path $folder 'x.zip'
+    $made = Invoke-Pakko @('a', '-rr10', $zip, $content)
+    Assert-Smoke ($made.ExitCode -eq 0) "pakko a -rr10: exit $($made.ExitCode) $($made.Text)"
+    $stream = [System.IO.File]::Open($zip, 'Open', 'ReadWrite')
+    try {
+        $stream.Position = [long]($stream.Length / 3)
+        $value = $stream.ReadByte()
+        $stream.Position--
+        $stream.WriteByte([byte]($value -bxor 0xFF))
+    } finally { $stream.Dispose() }
+    $twin = Join-Path $folder 'out'
+    $null = [System.IO.Directory]::CreateDirectory($twin)
+    $refused = Invoke-Pakko @('r', $zip, "-o$twin.")
+    Assert-Smoke ($refused.ExitCode -eq 2) "pakko r -o out.: exit $($refused.ExitCode) $($refused.Text)"
+    Assert-Smoke ($refused.Text -match 'ends in a space or a dot') "no refusal for the trimmed folder: $($refused.Text)"
+    Assert-Smoke (@(Get-ChildItem -LiteralPath $twin -Force).Count -eq 0) 'something was written into the twin out'
+    $fixed = Join-Path $folder 'fixed'
+    $repaired = Invoke-Pakko @('r', $zip, "-o$fixed")
+    Assert-Smoke ($repaired.ExitCode -eq 0) "pakko r -o fixed: exit $($repaired.ExitCode) $($repaired.Text)"
+    Assert-Smoke (@(Get-ChildItem -LiteralPath $fixed -File).Count -eq 1) 'no repaired copy in fixed'
+    'out. refused, exit 2, out empty; the repair into fixed writes its copy'
+}

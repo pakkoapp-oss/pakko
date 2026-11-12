@@ -275,3 +275,22 @@ Add-SmokeStep 'SHL-014' {
     }
     Assert-Smoke ([System.IO.File]::ReadAllText($blocker) -eq 'keep me') 'the file holding the folder name changed'
 }
+
+Add-SmokeStep 'SHL-020' {
+    $folder = Get-StepFolder 'shl020'
+    $one = Join-Path $folder 'one.txt'
+    $two = Join-Path $folder 'two.txt'
+    [System.IO.File]::WriteAllText($one, 'one')
+    [System.IO.File]::WriteAllText($two, 'two')
+    $zip = Join-Path $folder 'a .zip'
+    $made = Invoke-Pakko @('a', $zip, $one, $two)
+    Assert-Smoke ($made.ExitCode -eq 0) "fixture ZIP: exit $($made.ExitCode) $($made.Text)"
+    Remove-Item -LiteralPath $one, $two
+    foreach ($command in '--extract-folder', '--extract-here') {
+        $run = Invoke-Shell -Arguments @($command, $zip) -TimeoutSeconds 30
+        Assert-Smoke ($run.Exited -and $run.ExitCode -eq 0) "$command on 'a .zip': exited=$($run.Exited) code=$($run.ExitCode) $($run.Text)"
+    }
+    Assert-Smoke (Test-Path -LiteralPath (Join-Path $folder 'a\two.txt')) "--extract-folder did not make the folder 'a'"
+    Assert-Smoke (Test-Path -LiteralPath (Join-Path $folder 'a (1)\two.txt')) "--extract-here did not make the folder 'a (1)'"
+    "the folders 'a' and 'a (1)'"
+}

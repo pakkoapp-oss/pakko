@@ -87,7 +87,7 @@ bypasses" is code that does an owner's job itself; it is listed in T-F511 and go
 |---|---|---|---|---|
 | Walk a user's folder tree | `IO/DirectoryWalker` | `DirectoryInfo.EnumerateFileSystemInfos`, one level at a time. Adds a deterministic order, an explicit stack, an unreadable folder as an entry (`EnumerationOptions` only throws or silently skips), links never entered, a drive root's OS entries left out, the filter's `LeftOut`, and `TrimmedName` (T-F509). Every consumer handles every `WalkEntryKind`. | none yet | `CLI/CliArchiveSources` (wildcards), `CLI/CliNameSelection` (masks, `IgnoreInaccessible`) |
 | A path given to a public Core operation | `Services/InputPaths` (`Problem`, `ArchiveProblem`, `NameTrimmed`, `OwnNameTrimmed`) | `Path.GetFullPath` as the oracle: whether a path parses, and whether Windows changes a part of it (T-F406, T-F509). | `CoreNeverThrowsContractTests` (completeness, and the `Hostile` kind "a trimmed name" with its twin oracle) | `ArchiveFormatDetector.Detect` and others still to trace |
-| Create the destination folder | `Services/DestinationFolder` (`TryCreate`, `ReservedArchiveName`, `IsDevice`) | `Directory.CreateDirectory`. Adds the refusal of a device (T-F475) or a trimmed name (T-F509), and Core's own error text. | via `CoreNeverThrowsContractTests` | `Recovery/RecoveryService` (repair output folder) |
+| Create the destination folder | `Services/DestinationFolder` (`TryCreate`, `ReservedArchiveName`, `IsDevice`) | `Directory.CreateDirectory`. Adds the refusal of a device (T-F475) or a trimmed name (T-F509), and Core's own error text. | `DestinationFolderOwnerTests` (every other `CreateDirectory` in `src`, with why); `CoreNeverThrowsContractTests` | - |
 | The sources of a creation | `Services/SourcePathNormalizer` (the form), `TrimmedSourceNames` (refusals), `SourceEntryNames` (entry names) | `Path.GetFullPath`, `Path.TrimEndingDirectorySeparator` | `SourcePathNormalizerTests` | the source key written again in `CLI/CliSourceDeleter.Normalize` and `App.Core/SourceSnapshot.Key` |
 | What "delete the sources afterwards" works from | `IO/SourceTree` | `DirectoryWalker` | none yet | - |
 | Whether two paths are one file, and where a path leads | `IO/PathIdentity` | `GetFileInformationByHandleEx` (file ID) and `GetFinalPathNameByHandle`: the BCL has no file identity, and `ResolveLinkTarget` resolves no SUBST drive or `\\?\` spelling | none yet | `App.Core/Win32SourceDeleteOperations.ResolveFinalPath`, `CLI/CliSourceDeleter.RealPath`, string compares in `CLI/CliArchiveSources` and `CLI/CliCreatedName` |
@@ -95,9 +95,9 @@ bypasses" is code that does an owner's job itself; it is listed in T-F511 and go
 | A source's outcome (Completed, Partial, ...) | `Services/SourceOutcomeRules` | - | `SourceOutcomeTests`, `SharedArchiveSourceOutcomeTests` | `Recovery/RecoveryDataWriter` (sets `Partial` itself) |
 | User-visible message text | `Services/CoreMessages` (factories), `MessageTemplates` (English), `Archiver.Messages` resx | `ResourceManager` | `CoreMessageSourceGuardTests` | - |
 | What counts as a per-item failure; Windows error codes (`HResult`) | **none yet** (T-F511) | `IOException` subtypes. Sharing violation, disk full and "already exists" have no type, only an `HResult`. | - | about 75 `catch ... when` filters of 12 shapes; `HResult` checks in 5 files |
-| An archive entry's name on disk | `Services/EntryDiskName` | - (judges every part strictly; see T-F511 for its relation to `InputPaths`) | - | `BareGzip.Usable` |
+| An archive entry's name on disk; one name Pakko writes (`SingleName`) | `Services/EntryDiskName` | - (judges every part strictly; see T-F511 for its relation to `InputPaths`) | its own tests | - |
 | Entry traversal and device names | `Services/ArchiveEntrySecurity` | - | its own tests | - |
-| Default archive name, "name (1)" | `Services/ArchiveNaming` | - | its own tests | - |
+| Default archive name, "name (1)", the folder an archive extracts into (`GetFolderName`) | `Services/ArchiveNaming` | `EntryDiskName.SingleName` for the folder | its own tests | - |
 | Reading tar.exe's formats (list, extract, test, scan) | `Sandbox/ISandboxedArchiveReader` (`TarExeReader`, `HelperReader`) over `TarSandboxScope` | `SandboxedProcessLauncher` (AppContainer, Job Object) | `SandboxedReaderOwnerTests` | - |
 | Names tar.exe wrote in the quarantine | `Sandbox/QuarantineFiles` | literal `\\?\` paths | `QuarantineFilesOwnerTests` | - |
 | This machine's code pages | `Text/SystemCodePages`, `MachinePages`, `TextBoundaries` | `GetACP`/`GetOEMCP`: `CultureInfo...TextInfo.ANSICodePage` is the user's locale, not the system page tar.exe uses | its own tests | - |
@@ -132,7 +132,7 @@ src/
 │   │   ├── PakkoServices.cs            ← T-F261: Core factory for Shell/CLI, one policy for everything
 │   │   ├── ArchiveEntrySecurity.cs     ← ADS/reserved-name/reparse-point/bomb checks, shared
 │   │   ├── EntryDiskName.cs            ← T-F420: public; how an entry name lands on disk (AsPakkoWrites,
-│   │   │                                  AsTarExeWrites, Renames, Trims, SameName, TrimmedTwins,
+│   │   │                                  AsTarExeWrites, SingleName, Renames, Trims, SameName, TrimmedTwins,
 │   │   │                                  ShortNameAliasOfAnother); ExtractionNameRegistry.cs (internal):
 │   │   │                                  one extraction's claimed paths, twins and replaced archives
 │   │   ├── ArchiveFormatDetector.cs    ← magic-byte sniffing, not extension-based (.lzma by name, T-F398)
