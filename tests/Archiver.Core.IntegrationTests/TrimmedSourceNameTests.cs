@@ -76,6 +76,24 @@ public sealed class TrimmedSourceNameTests : IDisposable
     }
 
     // ZIP walks the folder itself: the file is refused inside it and the folder is not done.
+    // "C:\w\d \" is "d " with a separator; normalized (GetFullPath, the separator trimmed) it opens "d".
+    [Theory]
+    [InlineData(ArchiveContainerFormat.Zip)]
+    [InlineData(ArchiveContainerFormat.TarGz)]
+    public async Task Create_FolderNamedWithATrailingSpaceAndASeparator_IsRefused(ArchiveContainerFormat format)
+    {
+        string folder = Folder("sep" + format);
+        WriteLiteral(Path.Combine(folder, "d ", "in.txt"), "IN SPACED");
+        WriteLiteral(Path.Combine(folder, "d", "twin.txt"), TwinBytes);
+        string source = Path.Combine(folder, "d ") + Path.DirectorySeparatorChar;
+
+        ArchiveResult result = await CreateAsync(format, source);
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.SourceNameTrimmed);
+        result.FullyProcessedSources.Should().BeEmpty();
+        result.CreatedFiles.Should().BeEmpty();
+    }
+
     // Each ZIP writer walks the folder: the sequential one (Optimal), the parallel one (Fastest, or
     // over 64 files) and the one-archive-per-item one (T-F503).
     [Theory]
@@ -229,6 +247,20 @@ public sealed class TrimmedSourceNameTests : IDisposable
     }
 
     // Hashing reads the bytes: "a.txt " hashed its twin, given alone or met inside a folder.
+    [Fact]
+    public async Task Hash_FolderNamedWithATrailingDot_IsAnErrorNeverTheTwinsFolder()
+    {
+        string folder = Folder("hd");
+        string trimmed = WriteLiteral(Path.Combine(folder, "d.", "in.txt"), "IN DOTTED");
+        WriteLiteral(Path.Combine(folder, "d", "twin.txt"), TwinBytes);
+        string dotted = Path.GetDirectoryName(trimmed)!;
+
+        HashResult result = await FileHashService.ComputeAsync([dotted], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+
+        result.Folder.Should().BeNull("the twin's folder is never summed");
+        result.Entries.Should().ContainSingle().Which.ErrorText!.Code.Should().Be(MessageCode.SourceNameTrimmed);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -287,6 +319,26 @@ public sealed class TrimmedSourceNameTests : IDisposable
         Path.GetFileName(zip.CreatedFiles.Should().ContainSingle().Subject).Should().Be("named.zip");
         gz.CreatedFiles.Should().BeEmpty();
         gz.Errors.Select(e => e.Text!.Code).Should().Contain(MessageCode.SingleFileFormatNeedsOneFile);
+    }
+
+    // -stl: the archive's time is the newest of what it holds; a refused source's twin is not in it.
+    [Fact]
+    public async Task Create_RefusedSource_DoesNotSetTheArchiveTime()
+    {
+        string folder = Folder("stl");
+        WriteLiteral(Path.Combine(folder, "a.txt "), "SPACED");
+        string twin = WriteLiteral(Path.Combine(folder, "a.txt"), TwinBytes);
+        string kept = WriteLiteral(Path.Combine(folder, "b.txt"), "B");
+        File.SetLastWriteTimeUtc(twin, new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.SetLastWriteTimeUtc(kept, new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        ArchiveResult result = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [Path.Combine(folder, "a.txt "), kept], DestinationFolder = Path.Combine(_temp.Path, "out-stl"), ArchiveName = "x",
+            SetArchiveTimeFromNewestEntry = true,
+        });
+
+        File.GetLastWriteTimeUtc(result.CreatedFiles.Should().ContainSingle().Subject).Year.Should().Be(2020);
     }
 
     private string Folder(string relative)

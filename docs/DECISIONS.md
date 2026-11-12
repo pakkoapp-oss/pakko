@@ -14874,7 +14874,14 @@ on Windows 11, with Native AOT `pakko` and through `CreationRouter`:
   `d. \x` stay as they are.
 
 The first version judged both kinds of part alike (`EntryDiskName.Trims`) and refused a folder `d `
-in the middle of a path, which Windows keeps. A fresh opus review found it.
+in the middle of a path, which Windows keeps. A fresh opus review found it. Only a path given to Core
+was relaxed:
+- **A path given to Core:** `C:\w\d \f.txt` is accepted.
+- **Trailing separators** are dropped before judging, because Core normalizes them away
+  (`TrimEndingDirectorySeparator`), and `d \` then opens `d`.
+- **A folder `d ` met inside a source** is still refused, by the last-part rule. That is deliberate:
+  `-sdel`'s `DeleteFolderIfEmpty` and the empty-folder entry use the folder's own plain path, which
+  is `d`.
 
 **One owner per boundary.** The user asked during T-F509 why the rule was a check at every call site.
 The first version had put it into 2 of the 9 consumers of `DirectoryWalker`, so hash, the deletion
@@ -14886,9 +14893,12 @@ listing and tar still read the twin. The rule now lives in its owners:
     `GetFullPath` trims) and before entry names are claimed. Each such source gets
     `SourceNameTrimmed` and `NotProcessed`; the rest are archived.
   - The archive name and a single-file format's refusal still count every source asked for.
+  - The `-stl` time skips a refused source (`NewestSourceTime`).
+  - A run with a refused source does not open its folder as a success would.
   - Reading: `InputPaths.ArchiveProblem` serves ZIP extract, test and list, and tar test. Before, it
     was only `File.Exists`, which the twin satisfies.
-  - Hash takes `Problem` for each path.
+  - Hash takes `Problem` for each path, before its single-folder branch: `Directory.Exists("d.")`
+    is true for the twin `d`.
   - `RecoveryTestStep.Locate` takes it for the archive and for a set's target. A set made elsewhere
     can name `x.zip `, and a repair writes.
 - **The walk: `DirectoryWalker`.** Such an entry is `WalkEntryKind.TrimmedName` and is never entered,

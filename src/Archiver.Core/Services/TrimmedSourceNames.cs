@@ -39,7 +39,8 @@ internal static class TrimmedSourceNames
         string? archiveName = options.ArchiveName ?? (options.Mode == ArchiveMode.SingleArchive && options.ExactFileName is null
             ? ArchiveNaming.GetDefaultArchiveName(options.SourcePaths)
             : null);
-        return (options with { SourcePaths = keptPaths, SourceNameParts = keptParts, ArchiveName = archiveName },
+        // The run is not a success, so its folder is not opened as if it were.
+        return (options with { SourcePaths = keptPaths, SourceNameParts = keptParts, ArchiveName = archiveName, OpenDestinationFolder = false },
             new ArchiveResult { Errors = errors, Sources = sources });
     }
 

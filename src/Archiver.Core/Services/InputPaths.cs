@@ -18,10 +18,12 @@ internal static class InputPaths
     /// drops every trailing dot and space of the last part, but only one trailing dot of a part in the
     /// middle ("d." is "d"; "d ", "d.." stay). Asked of <see cref="Path.GetFullPath(string)"/> one part
     /// at a time, so the rule is the running Windows' own; the whole path through it would already be
-    /// trimmed. A <c>\\?\</c> path is judged the same way (T-F510 is where such names get archived).</summary>
+    /// trimmed. A <c>\\?\</c> path is judged the same way (T-F510 is where such names get archived).
+    /// Trailing separators do not make the last name a middle one: Core normalizes them away
+    /// (<c>TrimEndingDirectorySeparator</c>), and "d \" then opens "d".</summary>
     internal static bool NameTrimmed(string path)
     {
-        string[] parts = path[(Path.GetPathRoot(path) ?? "").Length..].Split(Separators);
+        string[] parts = path[(Path.GetPathRoot(path) ?? "").Length..].TrimEnd(Separators).Split(Separators);
         for (int i = 0; i < parts.Length; i++)
         {
             if (PartTrimmed(parts[i], last: i == parts.Length - 1))
