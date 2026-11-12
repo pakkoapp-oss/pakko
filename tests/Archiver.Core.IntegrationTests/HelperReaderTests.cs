@@ -703,6 +703,20 @@ public sealed class HelperReaderTests : IDisposable
             "This archive is password-protected. Passwords are supported for ZIP archives only.");
     }
 
+    // T-F518: a plain 7z whose entry is named "encrypted_notes.txt", its data damaged: the error
+    // names the entry, and is still no password.
+    [Theory]
+    [InlineData(TarExe)]
+    [InlineData(Helper)]
+    public async Task Extract_ADamagedPlainSevenZip_EntryNamedEncrypted_IsNoPassword(string backend)
+    {
+        if (backend == TarExe && !await TarReadsSevenZipAsync())
+            return;
+        (ArchiveResult result, _) = await ExtractAsync(backend, Fixture("damaged_data.7z"));
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().NotBe(MessageCode.PasswordProtectedFormatNotSupported);
+    }
+
     // --- Harness ---
 
     // SkipIfFormatUnsupported("7z")'s check, for the tar.exe leg of a theory.
