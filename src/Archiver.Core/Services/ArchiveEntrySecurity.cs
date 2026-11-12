@@ -251,7 +251,7 @@ internal static partial class ArchiveEntrySecurity
                 return checked((long)freeBytesAvailable);
             return 0;
         }
-        catch
+        catch // No free-space figure (an unready drive, a share): 0 means unknown, and the caller skips the check
         {
             return 0;
         }

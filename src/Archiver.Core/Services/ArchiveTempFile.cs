@@ -17,10 +17,6 @@ internal static class ArchiveTempFile
     internal const string ChunkFolderPrefix = ".pakko-tmp-";
     /// <summary>The folder tar.exe's 7z writer keeps its temporary file in (T-F342).</summary>
     internal const string WriterFolderPrefix = ".pakko-7z-";
-    private const int SharingViolation = 0x20;
-    private const int LockViolation = 0x21;
-    private const int FileExists = 0x50;
-    private const int AlreadyExists = 0xB7;
     // Each attempt takes the next free "name (N)"; another run would have to claim every one first.
     private const int MaxFreeNameAttempts = 10;
 
@@ -127,7 +123,7 @@ internal static class ArchiveTempFile
                 File.Move(tempPath, target, overwrite: false);
                 return target;
             }
-            catch (IOException ex) when (IsAlreadyExists(ex) && File.Exists(target) && File.Exists(tempPath))
+            catch (IOException ex) when (CoreMessages.IsAlreadyExists(ex) && File.Exists(target) && File.Exists(tempPath))
             {
                 target = ArchiveNaming.GetUniqueFilePath(destPath);
             }
@@ -141,9 +137,7 @@ internal static class ArchiveTempFile
     private static bool IsHeld(Exception ex, string destPath) => ex switch
     {
         UnauthorizedAccessException => File.Exists(destPath),
-        IOException io => (io.HResult & 0xFFFF) is SharingViolation or LockViolation,
+        IOException io => CoreMessages.IsSharingViolation(io),
         _ => false,
     };
-
-    private static bool IsAlreadyExists(IOException ex) => (ex.HResult & 0xFFFF) is FileExists or AlreadyExists;
 }

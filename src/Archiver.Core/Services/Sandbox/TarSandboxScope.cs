@@ -62,7 +62,6 @@ internal sealed partial class TarSandboxScope : IDisposable
     // compromised helper can make Pakko read.
     private const long MaxHelperStdOutBytes = 1L << 30;
 
-    private const int ErrorSharingViolation = unchecked((int)0x80070020);
     private const uint GenericRead = 0x80000000;
     private const uint FileShareRead = 0x00000001;
 
@@ -238,7 +237,7 @@ internal sealed partial class TarSandboxScope : IDisposable
             archive.Dispose();
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.SourceNotFound, archivePath));
         }
-        catch (IOException ex) when (ex.HResult == ErrorSharingViolation)
+        catch (IOException ex) when (CoreMessages.IsSharingViolation(ex))
         {
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.ArchiveInUse, archivePath), ex);
         }

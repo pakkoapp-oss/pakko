@@ -14983,6 +14983,36 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F511 PR 6 - one owner for what kind of error it is (2026-11-12)
+
+**Codes.** Four places read `HResult` themselves, with three different shapes: `(HResult & 0xFFFF)`
+(`ArchiveTempFile`, `RecoveryService`), full equality (`TarSandboxScope`, `ZipArchiveService`). They
+ask `CoreMessages.IsDiskFull`, `IsSharingViolation` and `IsAlreadyExists` now, which read the Win32
+code of an `HRESULT_FROM_WIN32` (the shape .NET gives every I/O failure it maps from Windows) on the
+exception itself, never on what it wraps: a rewrap is Core's own, already classified. One behaviour
+widens on purpose: `TarSandboxScope` called only `ERROR_SHARING_VIOLATION` "archive in use" and now
+also `ERROR_LOCK_VIOLATION`, as `ArchiveTempFile` already did.
+
+**Text.** Three decisions read an exception's text. `VerifyingReadStream` compares the BCL's own two
+texts, pinned against the exceptions `ZipArchive` really throws (an SDK that rewords them goes red).
+`TarSandboxedService` asks `IsLikelyEncryptionFailure` of libarchive's stderr, carried in the
+exception (T-F518 made that phrase-exact). `ArchiveintGate:85` only builds a reason string for the
+log; it decides nothing.
+
+**Catch of everything.** Fourteen catches in Core took every exception with no word of why; each says
+why on its line now. The two tar.exe probes (`ProbeSevenZipWriterAsync`, `DetectCapabilitiesAsync`)
+were listed as swallowing the caller's cancellation: they take no caller's token, the probe is shared
+by the process (lazy), and their own timeout is the cancellation they catch, failing closed. A
+caller's token there would cache "no capabilities" for everyone after one cancelled operation, so
+none is added.
+
+**`ArgumentException` per item.** Twenty-one catches in Core take it. None was removed: each is a gate
+itself (`InputPaths`, `DestinationFolder`), runs before any gate (a lookup the frontends make, the
+normalizer), or is best-effort metadata or a hint where a failure must not fail the operation
+(`FileTimes`, the archive's time, the progress total, the seek-penalty hint). Removing one needs a
+test that its gate catches every case first; `ErrorClassificationOwnerTests` lists each with why, and
+a new one fails.
+
 ## T-F518 - an encrypted archive is told by libarchive's phrases, not the word (2026-11-12)
 
 **What was there.** `TarSandboxedService.IsLikelyEncryptionFailure` (T-F113) took any stderr with

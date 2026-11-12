@@ -11,8 +11,6 @@ public sealed class RecoveryService : IRecoveryService
     // A name taken between choosing it and the rename gets the next number; another process would
     // have to take every one of these first.
     private const int MaxNameAttempts = 10;
-    private const int FileExists = 0x50;
-    private const int AlreadyExists = 0xB7;
 
     private readonly GroupPolicyOptions _policy;
     private readonly Func<Task<IExtractionRouter>> _router;
@@ -174,7 +172,7 @@ public sealed class RecoveryService : IRecoveryService
                 {
                     return (Par2Repairer.Repair(found.ArchivePath, found.Match.Set, verification, output, progress, cancellationToken), output, null);
                 }
-                catch (IOException ex) when ((ex.HResult & 0xFFFF) is FileExists or AlreadyExists)
+                catch (IOException ex) when (CoreMessages.IsAlreadyExists(ex))
                 {
                     // the name was taken after it was chosen: the existing file stays, the next number is tried
                 }

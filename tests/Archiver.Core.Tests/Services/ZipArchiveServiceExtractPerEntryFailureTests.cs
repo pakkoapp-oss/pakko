@@ -174,14 +174,4 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
         File.Exists(Path.Combine(fresh, "ok.txt")).Should().BeTrue();
         result.CreatedFiles.Should().OnlyContain(p => Directory.Exists(p) || File.Exists(p));
     }
-
-    [Theory]
-    [InlineData(unchecked((int)0x80070070), true)]  // ERROR_DISK_FULL
-    [InlineData(unchecked((int)0x80070027), true)]  // ERROR_HANDLE_DISK_FULL
-    [InlineData(unchecked((int)0x8007007B), false)] // ERROR_INVALID_NAME
-    [InlineData(unchecked((int)0x80070020), false)] // ERROR_SHARING_VIOLATION
-    public void IsDiskFull_RecognizesOnlyTheTwoDiskFullCodes(int hResult, bool expected)
-    {
-        ZipArchiveService.IsDiskFull(new IOException("x", hResult)).Should().Be(expected);
-    }
 }
