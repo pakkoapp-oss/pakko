@@ -967,3 +967,26 @@ Add-SmokeStep 'CLI-053' {
     }
     $results -join '; '
 }
+
+# T-F509: a folder holding "a.txt " (made through \\?\) beside "a.txt". Its plain path is the twin's,
+# so the file is refused: the archive never holds the twin's bytes under the spaced name, and -sdel
+# deletes nothing.
+Add-SmokeStep 'CLI-054' {
+    $folder = Get-StepFolder 'cli054'
+    $source = Join-Path $folder 'tw'
+    $null = [System.IO.Directory]::CreateDirectory($source)
+    [System.IO.File]::WriteAllText('\\?\' + (Join-Path $source 'a.txt '), 'SPACED')
+    [System.IO.File]::WriteAllText((Join-Path $source 'a.txt'), 'TWIN')
+    $zip = Join-Path $folder 'tw.zip'
+    $run = Invoke-Pakko @('a', '-sdel', $zip, $source)
+    Assert-Smoke ($run.ExitCode -eq 2) "pakko a -sdel: exit $($run.ExitCode) $($run.Text)"
+    Assert-Smoke ($run.Text -match 'ends in a space or a dot') "no refusal for the trimmed name: $($run.Text)"
+    Assert-Smoke ([System.IO.File]::ReadAllText('\\?\' + (Join-Path $source 'a.txt ')) -eq 'SPACED') 'the spaced file changed or went'
+    Assert-Smoke ([System.IO.File]::ReadAllText((Join-Path $source 'a.txt')) -eq 'TWIN') 'the twin changed or went'
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
+    try { $names = @($archive.Entries | ForEach-Object { $_.FullName }) } finally { $archive.Dispose() }
+    Assert-Smoke (($names -join ',') -eq 'tw/a.txt') "archive entries: $($names -join ',')"
+    [System.IO.File]::Delete('\\?\' + (Join-Path $source 'a.txt '))
+    'refused, exit 2; both files kept; the archive holds only the twin under its own name'
+}

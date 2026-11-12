@@ -14852,6 +14852,62 @@ refuses `CON.txt` as an unsafe path, exit 2.
   - `a -sae x\CON\o.zip`: exit 2, "Could not find a part of the path '\\.\CON'".
   - Both leave only `b.txt`. `SMOKE.md` `CLI-053`.
 
+## T-F509 - a name Windows trims is refused, never read through its twin (2026-11-12)
+
+**Cause.** A file or folder can be named `a.txt ` or `d.` (by WSL, a share, or a `\\?\` path). Win32
+drops the trailing space or dot from a plain path, so that path names `a.txt`, or nothing. Measured
+on Windows 11, with Native AOT `pakko` and through `CreationRouter`:
+- **Such a source with a twin beside it, ZIP and tar.** Exit 0. The entry had the source's name and
+  the twin's bytes.
+- **ZIP, a folder holding both.** `Path.GetRelativePath` trims, so it wrote `src/a.txt` twice, both
+  with the twin's bytes. The spaced file was in neither.
+- **Deletion.** The run counted these sources done. `Win32SourceDeleteOperations.ResolveFinalPath`
+  opens the plain path, so "move the sources to the Recycle Bin" would have recycled the twin.
+  `pakko a -sdel` deleted it permanently.
+- **Reading.** An archive `x.zip ` beside `x.zip` behaved the same way: extraction read the twin, and
+  then the twin was recycled.
+
+tar.exe's own walk of a folder reads these names correctly. A probe confirmed it with a filter and
+with two folders of one name, and the tests keep it.
+
+**The rule: fail closed.** `InputPaths.NameTrimmed` judges the string as given, below its root and
+never through `GetFullPath`, with `EntryDiskName.Trims`. It is used in three places:
+- **Creation.** `TrimmedSourceNames.Split` runs at the entry of both engines, before
+  `SourcePathNormalizer` (whose `GetFullPath` trims) and before the entry names are claimed. Each such
+  source gets `SourceNameTrimmed` and `NotProcessed`; the others are archived. With none left,
+  nothing is written.
+- **The two ZIP walks.** Such a file inside a folder gets the error, and the folder is then not fully
+  processed, so nothing deletes it. How entry names are made (T-F75) is not changed.
+- **Reading.** `InputPaths.Problem` returns the new code. ZIP extract, test and list, and tar test,
+  now call it. Before, they checked only `File.Exists`, which the twin satisfies.
+
+**Decisions:**
+- **The `\\?\` form is refused too**, although ZIP already read `\\?\...\a.txt ` correctly
+  (probed). The reasons:
+  - tar.exe cannot read such a name, and the whole run failed with an untrue "moved or deleted";
+  - one rule keeps the frontends' deletion keys simple.
+
+  Archiving these names properly is T-F510.
+- **The CLI is unchanged.** It resolves a typed path itself, so `pakko a "a.txt "` means `a.txt`, as
+  `del "a.txt "` does in cmd. Win32's reading of a typed path is the user's.
+
+**Tests, each seen red first:**
+- `TrimmedSourceNameTests` (25 cases):
+  - ZIP and tar.gz; a file and a dotted folder, each with a twin and without, by plain path and by
+    `\\?\`;
+  - the ZIP folder with the file and with a nested `d./x/y.txt`;
+  - the tar folder plain, with a filter, and with a collision;
+  - reading `x.zip ` and `x.tar `.
+
+  22 were red before the fix: twin bytes, counted done, nothing refused. The 3 tar folder rows were
+  green before and stay green.
+- `InputPathsNameTrimmedTests`: 10 rows were red against a mutant.
+- `SdelAdversarialTests.Sdel_FolderHoldingANameWindowsTrims_...`: with the walk check mutated
+  away, exit 0 and the folder deleted.
+- `SourceRecyclerAdversarialTests.EndToEnd_TrailingDotSource_...` used to accept whichever file the
+  archive held. It now requires the refusal, and both files stay.
+- `SMOKE.md` `CLI-054`.
+
 ## T-F503 - one archive per item at Optimal takes the hand-rolled writer (2026-11-11)
 
 **Cause.** Without a password, one archive per item at Optimal or SmallestSize went through
