@@ -153,12 +153,9 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
             // resolved path, and an unresolvable path is never deleted at all; nor is a volume or
             // share root (T-F419: a SUBST or mapped drive root resolves to one).
             string? final = ops.ResolveFinalPath(source);
-            // T-F519: a final path Windows reads as another one ("abc.\x.txt" through a junction is
-            // "abc\x.txt") is handed to the shell and to File.Delete as is: the twin would go.
-            if (final is null || InputPaths.NameTrimmed(final))
-                notDeleted.Add(new KeptSource(source, KeepReason.NotSafeToDelete));
-            else if (IsRoot(final))
-                notDeleted.Add(new KeptSource(source, KeepReason.DriveRoot));
+            KeepReason? refused = Refused(final);
+            if (refused is not null || final is null)
+                notDeleted.Add(new KeptSource(source, refused ?? KeepReason.NotSafeToDelete));
             else if (ops.IsOnFixedLocalVolume(final))
                 recycle.Add((source, final));
             // T-F419: a permanent recursive delete stops at a link it cannot remove, after the
@@ -185,6 +182,16 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
 
         return (notDeleted, permanent);
     }
+
+    // A final path never handed to the shell or File.Delete: none, a root, or one Windows reads as
+    // another (T-F519: "abc.\x.txt" through a junction is "abc\x.txt", and the twin would go).
+    private static KeepReason? Refused(string? final) => final switch
+    {
+        null => KeepReason.NotSafeToDelete,
+        _ when InputPaths.NameTrimmed(final) => KeepReason.NotSafeToDelete,
+        _ when IsRoot(final) => KeepReason.DriveRoot,
+        _ => null,
+    };
 
     private List<KeptSource> DeletePermanently(List<(string Source, string Final)> permanent, List<string> deleted)
     {

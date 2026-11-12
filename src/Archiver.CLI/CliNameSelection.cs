@@ -129,20 +129,30 @@ public static class CliNameSelection
         includes.RemoveAll(trimmed.Contains);
         List<CliNameMask> full = FullPathMasks(includes, excludes, currentDirectory);
         var filter = CliNameFilter.Create(full, switches.CaseSensitive, startFromAll: false);
+        if (Found(full, out string? unreadable) is not { } found)
+            return ([], unreadable, true);
+        found.RemoveWhere(file => !filter.Includes(file, isFolder: false));
+        found.UnionWith(trimmed.Select(m => m.Path));
+
+        return found.Count == 0 ? ([], "Cannot find archive", false) : ([.. found], null, false);
+    }
+
+    // What the include masks name or find, sorted; null, with the folder's reason, when a search
+    // could not list a folder.
+    private static SortedSet<string>? Found(List<CliNameMask> full, out string? unreadable)
+    {
+        unreadable = null;
         var found = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (CliNameMask mask in full.Where(m => m.Include))
         {
             if (!Searches(mask))
                 found.Add(mask.Path);
-            else if (Candidates(mask, out string? unreadable) is { } files)
+            else if (Candidates(mask, out unreadable) is { } files)
                 found.UnionWith(files);
             else if (unreadable is not null)
-                return ([], unreadable, true);
+                return null;
         }
-        found.RemoveWhere(file => !filter.Includes(file, isFolder: false));
-        found.UnionWith(trimmed.Select(m => m.Path));
-
-        return found.Count == 0 ? ([], "Cannot find archive", false) : ([.. found], null, false);
+        return found;
     }
 
     // Every mask as a full path, so a mask's literal folders become the filter's sub-nodes. A
