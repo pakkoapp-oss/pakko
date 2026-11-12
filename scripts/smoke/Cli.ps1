@@ -991,6 +991,23 @@ Add-SmokeStep 'CLI-054' {
     'refused, exit 2; both files kept; the archive holds only the twin under its own name'
 }
 
+Add-SmokeStep 'CLI-057' {
+    $folder = Get-StepFolder 'cli057'
+    $source = Join-Path $folder 'cs'
+    $null = [System.IO.Directory]::CreateDirectory($source)
+    $fsutil = Join-Path ([System.Environment]::SystemDirectory) 'fsutil.exe'
+    $null = & $fsutil file setCaseSensitiveInfo $source enable
+    if ($LASTEXITCODE -ne 0) { return 'skipped: fsutil cannot make a case-sensitive folder here' }
+    [System.IO.File]::WriteAllText((Join-Path $source 'A.TXT'), 'UPPER')
+    [System.IO.File]::WriteAllText((Join-Path $source 'a.txt'), 'lower')
+    $zip = Join-Path $folder 'cs.zip'
+    $run = Invoke-Pakko @('a', '-sdel', $zip, (Join-Path $source 'a.txt'))
+    Assert-Smoke ($run.ExitCode -eq 0) "pakko a -sdel: exit $($run.ExitCode) $($run.Text)"
+    Assert-Smoke (-not [System.IO.File]::Exists((Join-Path $source 'a.txt'))) 'a.txt was archived but not deleted'
+    Assert-Smoke ([System.IO.File]::ReadAllText((Join-Path $source 'A.TXT')) -eq 'UPPER') 'A.TXT changed or went'
+    'a.txt archived and deleted; A.TXT kept'
+}
+
 Add-SmokeStep 'CLI-055' {
     $folder = Get-StepFolder 'cli055'
     $content = Join-Path $folder 'content'
