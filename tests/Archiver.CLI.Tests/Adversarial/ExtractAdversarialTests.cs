@@ -339,18 +339,35 @@ public sealed class ExtractAdversarialTests : IDisposable
             File.ReadAllBytes(archive).Should().Equal(before, stdErr);
     }
 
-    // -o"out2 " (a trailing space): 7za makes one folder, "out2 ", and puts the files in it. Pakko
-    // makes an empty "out2" as well, so the folder a user opens is the empty one.
+    // -o"out2 " (a trailing space): 7za makes one folder, "out2 ", and puts the files in it, which
+    // Explorer cannot open. T-F419 made it "out2", as Windows reads it; T-F512 (the user's decision,
+    // 2026-11-12) refuses it, as `r -o` and Core do: with a folder "out2" there, the files went into it.
     [Fact]
-    public void Zip_OutputWithTrailingSpace_DoesNotLeaveASecondEmptyFolder()
+    public void Zip_OutputWithTrailingSpace_IsRefusedAndMakesNoFolder()
     {
         string archive = _scratch.Zip("arc.zip", ("a.txt", "A"));
 
         (int exitCode, _, string stdErr) = _scratch.Pakko("x", archive, "-oout2 ");
 
-        exitCode.Should().Be(0, stdErr);
-        string[] folders = [.. Directory.EnumerateDirectories(@"\\?\" + _scratch.Root).Select(Path.GetFileName)!];
-        folders.Should().ContainSingle($"one -o folder, not two (found: {string.Join(", ", folders.Select(f => $"'{f}'"))})");
+        exitCode.Should().Be(2, stdErr);
+        stdErr.Should().Contain("ends in a space or a dot");
+        Directory.EnumerateDirectories(@"\\?\" + _scratch.Root).Should().BeEmpty("nothing is made for a refused -o");
+    }
+
+    // T-F512 (c), found by CLI-056: -o"<dir>\out." beside a folder "out" overwrote out's files (-aoa).
+    [Theory]
+    [InlineData("out.")]
+    [InlineData("out ")]
+    public void Zip_OutputWindowsTrims_BesideItsTwin_IsRefusedAndTheTwinKept(string typed)
+    {
+        string archive = _scratch.Zip("arc.zip", ("a.txt", "NEW"));
+        _scratch.WriteFile(@"out\a.txt", "TWIN");
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("x", archive, "-aoa", "-o" + _scratch.Root + Path.DirectorySeparatorChar + typed); // Inside() would trim it
+
+        exitCode.Should().Be(2, stdErr);
+        stdErr.Should().Contain("ends in a space or a dot");
+        File.ReadAllText(_scratch.Inside(@"out\a.txt")).Should().Be("TWIN");
     }
 
     [Theory]

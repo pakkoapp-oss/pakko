@@ -14921,10 +14921,16 @@ Core refuses it with its message, exit 2, nothing deleted. Seen red first in
 `a.txt.`, `a.txt `, `\\.\`, `d.\f.txt`). `CLI-056` then passed on Windows 11 and on PakkoW10
 (Windows 10, tar.exe 3.5.2): 109 cases each.
 
-Open, for the user: `-o` is still made a full path (T-F419, "out2 " is "out2"), so `x in.zip -aoa
--o<dir>\out.` overwrote `out\m.txt` in an existing `out` (probe, 2026-11-12), while Core refuses such
-a folder (`DestinationFolder.TryCreate`) and `r -o out.` is refused (CLI-055). The matrix's fixed
-cases (every role and engine with a twin, plain spelling) turn `CLI-056` red on it. T-F511's PR 3 and
+**A third finding, and T-F419 reversed (the user's decision, 2026-11-12).** The matrix then got
+fixed cases beside its pairs (every role and engine with a twin, in the plain spelling): both real
+findings had needed three values at once, which pairs alone may never meet. They turned `CLI-056`
+red on `x -aoa -o<dir>\out.` (and `out `) beside a folder `out`: the files went into `out`,
+overwriting its own (probe, 2026-11-12). T-F419 had made `-o` a full path so that `out2 ` would not
+become a folder Explorer cannot open; Core has refused such a folder since T-F509, and `r -o out.`
+was refused (CLI-055). Asked, the user chose refusal: `ResolveExtractDestination` passes a name
+`InputPaths.NameTrimmed` flags as typed, and Core refuses it, exit 2, nothing made. T-F419's test
+`Zip_OutputWithTrailingSpace_...` now expects the refusal; `Zip_OutputWindowsTrims_BesideItsTwin_...`
+was seen red first. T-F511's PR 3 and
 PR 4 take the CLI's other path work (wildcard walks, the `-sdel` key).
 
 ## T-F509 retrospective - a rule added at call sites, and owners that were not single (2026-11-12)

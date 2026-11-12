@@ -245,11 +245,13 @@ static IReadOnlyList<string> ArchivePathsFor(ParsedCliCommand command, CliStagin
     stdinFolder is null ? command.ArchivePaths : [Path.Combine(stdinFolder.Path, CliStreamStaging.StdinFileName)];
 
 // T-F206: like `7z x`, no -o means the current directory, not the archive's own folder.
-// T-F419: -o as Windows reads it - "out2 " is "out2". Left as typed, the trailing space made a
-// folder of each spelling: "out2" empty, and the files in "out2 ", which Explorer cannot open
-// (7-Zip writes only "out2 "). A \\?\ path stays literal.
+// T-F419 made -o "out2 " the folder "out2", as Windows reads it; with a folder "out2" there, the files
+// went into it and -aoa overwrote its own. T-F512 (the user's decision, 2026-11-12): such a name goes
+// to Core as typed, which refuses it, as `r -o` already was. A \\?\ path stays literal.
 static string ResolveExtractDestination(ParsedCliCommand command) =>
-    command.OutputDirectory is { } output ? FullPathOrAsTyped(output) : Directory.GetCurrentDirectory();
+    command.OutputDirectory is { } output
+        ? (InputPaths.NameTrimmed(output) ? output : FullPathOrAsTyped(output))
+        : Directory.GetCurrentDirectory();
 
 // A path GetFullPath refuses goes on as typed: Core's entry check reports it (T-F406).
 static string FullPathOrAsTyped(string path)
