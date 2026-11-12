@@ -3,7 +3,7 @@ namespace Archiver.Core.Services;
 /// <summary>
 /// T-F511: the one key a source is known by when a frontend matches what it gave Core with what Core
 /// reported (<c>SourceResult.Path</c>) and with what it listed before the operation: the full path
-/// without trailing separators, case-insensitive by the callers' comparers. Core reports a source in
+/// without trailing separators, compared with case by the callers (T-F515). Core reports a source in
 /// <see cref="SourcePathNormalizer"/>'s form, which this key maps onto the same string as the
 /// spelling given. A name Windows trims ("a.txt.") has no key: by its full path it is its twin
 /// "a.txt", and a source known by its twin's key could be listed or deleted as the twin (T-F509).

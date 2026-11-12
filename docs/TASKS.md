@@ -1737,8 +1737,9 @@ re-measured with T-F346's script before and after.
 
 - [x] **Status:** done (on T-F511 PR 4's branch). `CliSourceSnapshot` and the completed set key with
   case (`Ordinal`): Core reports a source in the spelling the CLI gave, so the match is exact, and the
-  matrix row compares the keys with case. The App was not affected (each line of its listing carries
-  its path); `Snapshot_CaseSensitiveFolder_JudgesEachSpellingByItsOwnListing` pins it.
+  matrix row compares the keys with case. The App deleted nothing wrong (each line of its listing
+  carries its path), but `NotFullyProcessed` took A.TXT's result for a.txt and did not report it
+  kept; its snapshot and recycler lists now key with case too (the closing opus review).
   Found by the closing review of T-F511's PR 4, seen red on Windows 11.
   - **Cause.** In a folder made case-sensitive (`fsutil file setCaseSensitiveInfo`, as WSL does),
     `A.TXT` and `a.txt` are two files. `CliSourceSnapshot` keys its listings with

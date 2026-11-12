@@ -99,7 +99,9 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
     /// where it gave one (T-F435).</summary>
     public static IReadOnlyList<KeptSource> NotFullyProcessed(IEnumerable<string> candidates, IReadOnlyList<SourceResult> sources)
     {
-        var byPath = new Dictionary<string, SourceResult>(StringComparer.OrdinalIgnoreCase);
+        // T-F515: with case; Core reports a source in the spelling it was given, and in a
+        // case-sensitive folder another case is another source.
+        var byPath = new Dictionary<string, SourceResult>(StringComparer.Ordinal);
         foreach (SourceResult source in sources)
         {
             if (SourceKey.Of(source.Path) is { } key)
@@ -137,7 +139,7 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
         var recycle = new List<(string Source, string Final)>();
         var permanent = new List<(string Source, string Final)>();
 
-        foreach (string source in sources.Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (string source in sources.Distinct(StringComparer.Ordinal))
         {
             // T-F419: a file written into the source or edited since it was archived is not in
             // the archive; the whole source stays.
@@ -168,7 +170,7 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
         if (recycle.Count > 0)
         {
             // T-F419: two spellings of one item are one entry in the delete list.
-            try { ops.MoveToRecycleBin([.. recycle.Select(r => r.Final).Distinct(StringComparer.OrdinalIgnoreCase)]); }
+            try { ops.MoveToRecycleBin([.. recycle.Select(r => r.Final).Distinct(StringComparer.Ordinal)]); }
             catch { /* reported below: whatever is still on disk */ }
             foreach ((string source, string final) in recycle)
             {
@@ -185,7 +187,7 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
     private List<KeptSource> DeletePermanently(List<(string Source, string Final)> permanent, List<string> deleted)
     {
         var notDeleted = new List<KeptSource>();
-        var tried = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var tried = new HashSet<string>(StringComparer.Ordinal);
         foreach ((string? source, string? final) in permanent)
         {
             if (tried.Add(final))
