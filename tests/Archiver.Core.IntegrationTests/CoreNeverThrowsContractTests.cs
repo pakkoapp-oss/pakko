@@ -203,13 +203,16 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
     public Task Hash_Path(string kind) => NoThrow(() =>
         FileHashService.ComputeAsync([Path(kind, ".bin")], HashAlgorithmKind.Sha256, null, CancellationToken.None));
 
-    // T-F420: where a source path leads, and what it holds (-sdel and "Delete after").
+    // T-F420: where a source path leads, and what it holds (-sdel and "Delete after"); T-F511: the
+    // key a frontend matches it by.
     [Theory, MemberData(nameof(Hostile))]
     public Task PathIdentity_Path(string kind) => NoThrow(() =>
     {
         string path = Path(kind);
         _ = Archiver.Core.IO.PathIdentity.Resolve(path);
         _ = Archiver.Core.IO.PathIdentity.SelfAndAncestors(path);
+        _ = Archiver.Core.IO.PathIdentity.FinalPathOfItself(path);
+        _ = SourceKey.Of(path);
         return Task.CompletedTask;
     });
 
@@ -432,6 +435,8 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["FileHashService.ComputeAsync"] = [nameof(Hash_Path)],
         ["PathIdentity.Resolve"] = [nameof(PathIdentity_Path)],
         ["PathIdentity.SelfAndAncestors"] = [nameof(PathIdentity_Path)],
+        ["PathIdentity.FinalPathOfItself"] = [nameof(PathIdentity_Path)],
+        ["SourceKey.Of"] = [nameof(PathIdentity_Path)],
         ["SourceTree.List"] = [nameof(SourceTree_Path)],
     };
 
@@ -463,7 +468,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
             typeof(IArchiveService), typeof(ITarService), typeof(IExtractionRouter), typeof(IArchiveCreationRouter),
             typeof(IArchiveListingRouter), typeof(IRecoveryService), typeof(IAntivirusScanService), typeof(FileHashService),
             typeof(Archiver.Core.IO.PathIdentity), typeof(Archiver.Core.IO.SourceTree), typeof(EntryDiskName),
-            typeof(InputPaths),
+            typeof(InputPaths), typeof(SourceKey),
         ];
         HashSet<string> operations = [.. types.SelectMany(type => type
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance

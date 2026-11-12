@@ -1,4 +1,5 @@
 using Archiver.Core.Models;
+using Archiver.Core.Services;
 
 namespace Archiver.App.Core;
 
@@ -100,11 +101,15 @@ public sealed class SourceRecycler(ISourceDeleteOperations ops)
     {
         var byPath = new Dictionary<string, SourceResult>(StringComparer.OrdinalIgnoreCase);
         foreach (SourceResult source in sources)
-            byPath.TryAdd(Path.TrimEndingDirectorySeparator(source.Path), source);
+        {
+            if (SourceKey.Of(source.Path) is { } key)
+                byPath.TryAdd(key, source);
+        }
         var kept = new List<KeptSource>();
         foreach (string path in candidates)
         {
-            SourceResult? source = byPath.GetValueOrDefault(Path.TrimEndingDirectorySeparator(path));
+            // T-F511: one key for the candidate and Core's report; a source with none is not matched.
+            SourceResult? source = SourceKey.Of(path) is { } key ? byPath.GetValueOrDefault(key) : null;
             if (source?.Outcome != SourceOutcome.Completed)
                 kept.Add(new KeptSource(path, source?.Cause switch
                 {

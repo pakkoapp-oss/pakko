@@ -108,6 +108,30 @@ public sealed class CliSourceDeleterTests : IDisposable
         File.Exists(Path.Combine(src, "d", "b.txt")).Should().BeTrue();
     }
 
+    // T-F511 PR 4: the snapshot keyed "a.txt." by its full path, the twin "a.txt", and deleted the
+    // twin when "a.txt." was reported completed. A name Windows trims has no key: nothing is listed.
+    [Fact]
+    public void Delete_SourceWithANameWindowsTrims_LeavesTheTwin()
+    {
+        string src = CreateTree();
+        string twin = Path.Combine(src, "a.txt");
+        string dotted = twin + ".";
+        File.WriteAllText(@"\\?\" + dotted, "dotted");
+        try
+        {
+            var snapshot = CliSourceSnapshot.Take([dotted]);
+
+            snapshot.DeleteUnchanged([dotted]);
+
+            File.Exists(twin).Should().BeTrue("the twin was never the source named");
+            File.Exists(@"\\?\" + dotted).Should().BeTrue();
+        }
+        finally
+        {
+            File.Delete(@"\\?\" + dotted);
+        }
+    }
+
     [Fact]
     public void Refusal_PrefixThatIsNotAParent_IsAllowed()
     {

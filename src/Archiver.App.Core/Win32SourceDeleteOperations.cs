@@ -1,15 +1,11 @@
 using System.Runtime.InteropServices;
-using Microsoft.Win32.SafeHandles;
+using Archiver.Core.IO;
 
 namespace Archiver.App.Core;
 
 /// <summary>Real <see cref="ISourceDeleteOperations"/> over Win32 (T-F207).</summary>
 public sealed partial class Win32SourceDeleteOperations(Func<IntPtr> ownerWindow) : ISourceDeleteOperations
 {
-    private const uint FileShareAll = 0x7;              // READ | WRITE | DELETE
-    private const uint OpenExisting = 3;
-    private const uint FileFlagBackupSemantics = 0x02000000;  // lets CreateFileW open a folder
-    private const uint FileFlagOpenReparsePoint = 0x00200000; // a link source resolves to the link, not its target
     private const uint DriveFixed = 3;
     private const uint FoDelete = 3;
     private const ushort FofSilent = 0x0004, FofNoConfirmation = 0x0010, FofAllowUndo = 0x0040,
@@ -31,13 +27,6 @@ public sealed partial class Win32SourceDeleteOperations(Func<IntPtr> ownerWindow
     }
 
     [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
-    private static partial SafeFileHandle CreateFileW(
-        string fileName, uint access, uint share, IntPtr security, uint creation, uint flags, IntPtr template);
-
-    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
-    private static partial uint GetFinalPathNameByHandleW(SafeFileHandle file, [Out] char[] path, uint length, uint flags);
-
-    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool GetVolumePathNameW(string fileName, [Out] char[] volumePath, uint length);
 
@@ -48,23 +37,7 @@ public sealed partial class Win32SourceDeleteOperations(Func<IntPtr> ownerWindow
     private static partial int SHFileOperationW(ref ShFileOpStruct operation);
 
     /// <inheritdoc/>
-    public string? ResolveFinalPath(string path)
-    {
-        using SafeFileHandle handle = CreateFileW(
-            path, 0, FileShareAll, IntPtr.Zero, OpenExisting, FileFlagBackupSemantics | FileFlagOpenReparsePoint, IntPtr.Zero);
-        if (handle.IsInvalid)
-            return null;
-
-        char[] buffer = new char[32768];
-        uint length = GetFinalPathNameByHandleW(handle, buffer, (uint)buffer.Length, 0);
-        if (length == 0 || length >= buffer.Length)
-            return null;
-
-        string final = new(buffer, 0, (int)length);
-        if (final.StartsWith(@"\\?\UNC\", StringComparison.OrdinalIgnoreCase))
-            return @"\\" + final[8..];
-        return final.StartsWith(@"\\?\", StringComparison.Ordinal) ? final[4..] : final;
-    }
+    public string? ResolveFinalPath(string path) => PathIdentity.FinalPathOfItself(path);
 
     /// <inheritdoc/>
     public bool IsOnFixedLocalVolume(string finalPath)

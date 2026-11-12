@@ -1762,7 +1762,11 @@ re-measured with T-F346's script before and after.
       - `TarCapabilitySnapshot.cs:145` (`*.tmp`);
       - `CliStreamStaging.SweepAbandoned` and `ProcessTempRoot` (`:54`), which reimplement
         `TempOwner`'s sweep.
-    - **One source key written three times:** `CliSourceDeleter.Normalize`, `SourceSnapshot.Key`
+    - **Done (PR 4):** one source key, `SourceKey.Of`, for App's snapshot and `NotFullyProcessed`
+      and the CLI's `-sdel` snapshot, with none for a name Windows trims; the App's final path from
+      `PathIdentity.FinalPathOfItself`; `PathIdentityOwnerTests`. `CliSourceDeleter.RealPath` stays
+      (DECISIONS, T-F511 PR 4).
+    - ~~**One source key written three times:**~~ `CliSourceDeleter.Normalize`, `SourceSnapshot.Key`
       (App) and `SourcePathNormalizer` (Core). Deletion depends on Core's reported path matching
       the snapshot key, so this belongs to one Core function.
     - **The trailing dot/space rule in two forms:**
@@ -1793,8 +1797,8 @@ re-measured with T-F346's script before and after.
     - `DirectoryWalker` (no `Enumerate*` outside it);
     - `InputPaths`;
     - `TempOwner`;
-    - `PathIdentity`;
-    - `DestinationFolder.TryCreate`.
+    - ~~`PathIdentity`~~ (PR 4);
+    - ~~`DestinationFolder.TryCreate`~~ (PR 1).
 
     Model them on `CoreMessageSourceGuardTests`, `QuarantineFilesOwnerTests` and
     `SandboxedReaderOwnerTests`.
