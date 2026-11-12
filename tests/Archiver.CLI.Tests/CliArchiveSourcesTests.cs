@@ -60,6 +60,19 @@ public sealed class CliArchiveSourcesTests : IAsyncLifetime
         list.Sources.Should().Equal(new CliArchiveSource(Full("t.txt"), 1));
     }
 
+    // T-F512 (c): a name Windows trims goes to Core as typed, not as its full path (the twin "t.txt").
+    [Theory]
+    [InlineData("t.txt.")]
+    [InlineData("t.txt ")]
+    [InlineData(@"d.\t.txt")]
+    public void Resolve_NameWindowsTrims_IsKeptAsTyped(string typed)
+    {
+        CliArchiveSourceList list = CliArchiveSources.Resolve([typed], _temp.Path, Full("o.zip"));
+
+        list.Sources.Should().Equal(new CliArchiveSource(Path.Combine(_temp.Path, typed), 1));
+        list.Problems.Should().BeEmpty("Core refuses it and says why");
+    }
+
     [Theory]
     [InlineData(".")]
     [InlineData(@".\")]
