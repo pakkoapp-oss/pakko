@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>파일이 대상에 이미 있습니다.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>"{0}"은(는) 공백이나 마침표로 끝나며, Windows는 이름을 열 때 이를 제거합니다. 사용되지 않았습니다.</value>
+  </data>
 </root>

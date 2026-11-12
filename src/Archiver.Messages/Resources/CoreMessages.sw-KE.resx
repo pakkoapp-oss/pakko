@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Faili tayari ipo mahali lengwa.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>"{0}" inaishia kwa nafasi au nukta, ambayo Windows huiondoa inapofungua jina; haikutumika.</value>
+  </data>
 </root>

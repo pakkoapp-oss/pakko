@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Soubor již v cíli existuje.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>„{0}“ končí mezerou nebo tečkou, kterou Windows při otevírání názvu vynechá; nebylo použito.</value>
+  </data>
 </root>

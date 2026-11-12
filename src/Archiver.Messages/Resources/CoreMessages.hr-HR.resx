@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Datoteka već postoji na odredištu.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>„{0}” završava razmakom ili točkom, koje Windows uklanja pri otvaranju naziva; nije korišteno.</value>
+  </data>
 </root>

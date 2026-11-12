@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Fail on sihtkohas juba olemas.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>„{0}” lõpeb tühiku või punktiga, mille Windows nime avamisel ära jätab; seda ei kasutatud.</value>
+  </data>
 </root>

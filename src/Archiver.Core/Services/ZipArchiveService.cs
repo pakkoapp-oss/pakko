@@ -71,6 +71,20 @@ public sealed class ZipArchiveService : IArchiveService
         IProgress<ProgressReport>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        // T-F509: a source whose name Windows trims is refused before anything reads it.
+        (ArchiveOptions kept, ArchiveResult? refused) = TrimmedSourceNames.Split(options);
+        if (refused is null)
+            return await ArchiveKeptSourcesAsync(options, progress, cancellationToken).ConfigureAwait(false);
+        if (kept.SourcePaths.Count == 0)
+            return refused;
+        return TrimmedSourceNames.Merge(refused, await ArchiveKeptSourcesAsync(kept, progress, cancellationToken).ConfigureAwait(false));
+    }
+
+    private async Task<ArchiveResult> ArchiveKeptSourcesAsync(
+        ArchiveOptions options,
+        IProgress<ProgressReport>? progress,
+        CancellationToken cancellationToken)
+    {
         // T-F153: a source path ending in a directory separator (e.g. "src/" or "src\" — common
         // from shell tab-completion or a manually-typed CLI argument) made every downstream
         // Path.GetFileName(sourcePath) call return "" instead of the real folder name, silently
@@ -893,6 +907,12 @@ public sealed class ZipArchiveService : IArchiveService
         string archivePath, List<ArchiveError> errors, List<SkippedFile> skippedFiles,
         PasswordResolver passwordResolver, IReadOnlyList<string>? selectedEntryPaths, Func<string, bool, bool>? entryFilter)
     {
+        // T-F509: "x.zip " opens a twin "x.zip"; extracting it, then recycling the archive, took the twin.
+        if (InputPaths.Problem(archivePath) is { } pathProblem)
+        {
+            errors.Add(CoreMessages.Error(archivePath, pathProblem));
+            return (true, null);
+        }
         // T-F221: a path that is not there is "not found", not "not a recognized archive".
         if (!File.Exists(archivePath))
         {
@@ -1161,6 +1181,11 @@ public sealed class ZipArchiveService : IArchiveService
         string archivePath, PasswordResolver passwordResolver, Func<string, bool, bool>? entryFilter, List<ArchiveError> errors,
         List<SkippedFile> skippedFiles, List<SourceResult> sources, CancellationToken cancellationToken)
     {
+        if (InputPaths.Problem(archivePath) is { } pathProblem)
+        {
+            errors.Add(CoreMessages.Error(archivePath, pathProblem));
+            return;
+        }
         if (!File.Exists(archivePath))
         {
             errors.Add(CoreMessages.Error(archivePath, MessageCode.SourceNotFound, archivePath));
@@ -1224,6 +1249,8 @@ public sealed class ZipArchiveService : IArchiveService
     {
         if (IsZipBlocked)
             return CoreMessages.ListFailure(ZipBlockedReason);
+        if (InputPaths.Problem(archivePath) is { } pathProblem)
+            return CoreMessages.ListFailure(pathProblem);
         if (!File.Exists(archivePath))
             return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.SourceNotFound, archivePath));
 
@@ -2163,6 +2190,13 @@ public sealed class ZipArchiveService : IArchiveService
                 break;
             if (TempOwner.IsOwnBelow(fullRoot, entry.Info.FullName))
                 continue;
+            // T-F509: as WorkItemEnumerator - never the bytes of a twin under a trimmed name.
+            if (entry.Kind is WalkEntryKind.File or WalkEntryKind.Directory && InputPaths.NameTrimmedBelow(fullRoot, entry.Info.FullName))
+            {
+                if (entry.Kind == WalkEntryKind.File || entry.IsEmptyDirectory)
+                    context.ReportError(CoreMessages.Error(entry.Info.FullName, MessageCode.SourceNameTrimmed, entry.Info.FullName));
+                continue;
+            }
 
             switch (entry.Kind)
             {

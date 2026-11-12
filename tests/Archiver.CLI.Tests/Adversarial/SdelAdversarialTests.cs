@@ -64,6 +64,27 @@ public sealed class SdelAdversarialTests : IDisposable
         Directory.Exists(_scratch.Inside("src")).Should().BeFalse("CLI.md: the folders go too, deepest first, once empty");
     }
 
+    // T-F509: "a.txt " beside "a.txt" in the folder. Its plain path opened the twin, so the archive
+    // held the twin's bytes twice and -sdel then deleted the folder with the spaced file's bytes in
+    // no archive. The file is refused, so the folder is not fully archived and nothing is deleted.
+    [Fact]
+    public void Sdel_FolderHoldingANameWindowsTrims_DeletesNothingAndNeverArchivesTheTwinForIt()
+    {
+        string folder = _scratch.Inside("tw");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(@"\\?\" + Path.Combine(folder, "a.txt "), "SPACED");
+        File.WriteAllText(Path.Combine(folder, "a.txt"), "TWIN");
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-sdel", "tw.zip", "tw");
+
+        exitCode.Should().Be(2, stdErr);
+        stdErr.Should().Contain("ends in a space or a dot");
+        File.ReadAllText(@"\\?\" + Path.Combine(folder, "a.txt ")).Should().Be("SPACED");
+        File.ReadAllText(Path.Combine(folder, "a.txt")).Should().Be("TWIN");
+        ZipFiles(_scratch.Inside("tw.zip")).Should().Equal("a.txt=TWIN");
+        File.Delete(@"\\?\" + Path.Combine(folder, "a.txt "));
+    }
+
     // --- the current-folder refusal, spelled other ways ---
 
     // CLI.md: "Refused with exit 7 before anything is written: ... a source that is or holds the

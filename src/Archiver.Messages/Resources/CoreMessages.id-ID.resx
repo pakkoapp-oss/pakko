@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>File sudah ada di tujuan.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>"{0}" diakhiri spasi atau titik, yang dihapus Windows saat membuka nama tersebut; tidak digunakan.</value>
+  </data>
 </root>

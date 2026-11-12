@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Fails jau pastāv mērķī.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>“{0}” beidzas ar atstarpi vai punktu, ko Windows, atverot nosaukumu, atmet; tas netika izmantots.</value>
+  </data>
 </root>

@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>Tệp đã tồn tại ở đích.</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>"{0}" kết thúc bằng dấu cách hoặc dấu chấm, mà Windows bỏ đi khi mở tên; tên này không được dùng.</value>
+  </data>
 </root>

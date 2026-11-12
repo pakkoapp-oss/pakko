@@ -387,4 +387,7 @@
   <data name="FileWrittenEarlierInThisRun" xml:space="preserve">
     <value>فائل منزل پر پہلے سے موجود ہے۔</value>
   </data>
+  <data name="SourceNameTrimmed" xml:space="preserve">
+    <value>"{0}" کے آخر میں اسپیس یا نقطہ ہے، جسے Windows نام کھولتے وقت ہٹا دیتا ہے؛ اسے استعمال نہیں کیا گیا۔</value>
+  </data>
 </root>
