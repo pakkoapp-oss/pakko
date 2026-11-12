@@ -90,6 +90,16 @@ public sealed class ArchiveFormatDetectorTests : IDisposable
         ArchiveFormatDetector.Detect(Path.Combine(_temp.Path, "does_not_exist.zip")).Should().Be(ArchiveFormat.Unknown);
     }
 
+    // T-F511: "x.zip " opens the twin "x.zip"; its type is not the named file's (-stx left the
+    // named file out by the twin's type, where Core would refuse it by name).
+    [Fact]
+    public void Detect_NameWindowsTrims_DoesNotReadTheTwin()
+    {
+        File.WriteAllBytes(Path.Combine(_temp.Path, "x.zip"), [0x50, 0x4B, 0x03, 0x04, 0, 0, 0, 0]);
+
+        ArchiveFormatDetector.Detect(Path.Combine(_temp.Path, "x.zip ")).Should().Be(ArchiveFormat.Unknown);
+    }
+
     // T-F180 (test-coverage audit): Detect() trusts only the leading signature bytes — by design,
     // per this file's own doc comment ("magic bytes only, no extension reliance"). A file with a
     // forged ZIP signature prepended to real 7z content therefore classifies as Zip, not SevenZip

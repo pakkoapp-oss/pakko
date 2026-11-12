@@ -109,7 +109,7 @@ internal static class WorkItemEnumerator
         // as local time (LastWriteTime, not LastWriteTimeUtc) to match the existing
         // ZipArchiveEntry.LastWriteTime convention exactly (DOS date/time has no timezone concept).
         DateTime lastWriteTime;
-        try { lastWriteTime = fileInfo.LastWriteTime; } catch { lastWriteTime = DateTime.Now; }
+        try { lastWriteTime = fileInfo.LastWriteTime; } catch { lastWriteTime = DateTime.Now; } // best-effort: the entry's time only, as ZipArchive's own CreateEntryFromFile
 
         return new FileWorkItem(fileInfo.FullName, entryName, FileWorkKind.File, size, lastWriteTime);
     }

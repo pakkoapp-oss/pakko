@@ -14983,6 +14983,22 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F519 - the App never hands Windows a final path it trims (2026-11-13)
+
+**What was there.** "Delete after" resolves each source to its final path
+(`PathIdentity.FinalPathOfItself`, `GetFinalPathNameByHandle` without the `\\?\` prefix) and hands
+that path to `SHFileOperationW` (Recycle Bin), `File.Delete`/`Directory.Delete` and `Exists`. The
+final path is the name on disk, which may end in a dot or a space that Windows drops when it parses a
+plain path: a source `link\x.txt`, through a junction to `abc.`, resolves to `...\abc.\x.txt`, read
+as `...\abc\x.txt`. The twin's file was deleted. The source key (T-F511 PR 4) does not catch it: the
+typed spelling is one Windows keeps.
+
+**Decision.** The recycler asks `InputPaths.NameTrimmed` of the final path and keeps such a source
+as not safe to delete, before either delete. Prefixing `\\?\` instead was not taken: the shell's
+Recycle Bin call is documented for plain fully qualified paths and was not tried with the prefix, and
+a source with such a name is rare enough that keeping it, named, costs nothing.
+The CLI does not need it: `-sdel` deletes the typed path and never a source reached through a link.
+
 ## T-F511 PR 6 - one owner for what kind of error it is (2026-11-12)
 
 **Codes.** Four places read `HResult` themselves, with three different shapes: `(HResult & 0xFFFF)`
@@ -15006,12 +15022,15 @@ by the process (lazy), and their own timeout is the cancellation they catch, fai
 caller's token there would cache "no capabilities" for everyone after one cancelled operation, so
 none is added.
 
-**`ArgumentException` per item.** Twenty-one catches in Core take it. None was removed: each is a gate
-itself (`InputPaths`, `DestinationFolder`), runs before any gate (a lookup the frontends make, the
-normalizer), or is best-effort metadata or a hint where a failure must not fail the operation
-(`FileTimes`, the archive's time, the progress total, the seek-penalty hint). Removing one needs a
-test that its gate catches every case first; `ErrorClassificationOwnerTests` lists each with why, and
-a new one fails.
+**`ArgumentException` per item.** Twenty-one catches in Core take it. None was removed. Each is one
+of: a gate itself (`InputPaths`, `DestinationFolder`); a step before any gate (a lookup the frontends
+make, `SourceKey`, the normalizer, a `.par2` given to Test); a path Core builds after the run (the
+PAR2 listing beside a written archive, a warning; the repaired copy's name, reported as
+`RecoveryRepairNotWritten`); best-effort metadata or a hint where a failure must not fail the
+operation (`FileTimes`, the archive's time, the progress total, the seek-penalty hint, the bare-gzip
+probe); or a BCL call's documented "no such" (`Process.GetProcessById`, `DriveInfo`). Removing one
+needs a test that its gate catches every case first; `ErrorClassificationOwnerTests` lists each with
+why, and a new one fails.
 
 ## T-F518 - an encrypted archive is told by libarchive's phrases, not the word (2026-11-12)
 
@@ -15021,7 +15040,9 @@ plain 7z with a damaged `encrypted_notes.txt` (`tar -xf`: `encrypted_notes.txt: 
 (9): Unknown error`) was reported as password-protected.
 
 **libarchive (libarchive/libarchive, tags v3.5.2 and v3.8.1, fetched 2026-11-12).** Every
-`archive_set_error` text that says an entry or header is encrypted and unsupported, the same in both:
+`archive_set_error` text that says an entry or header is encrypted and unsupported, the same in both
+tags. Windows 11's own tar.exe (bsdtar 3.8.8) was checked by running it: the encrypted 7z and RAR
+fixtures still read as password-protected on its leg, and PakkoW10's 3.5.2 prints the same phrases:
 
 ```c
 /* archive_read_support_format_7zip.c */
