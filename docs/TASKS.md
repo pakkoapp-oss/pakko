@@ -1833,7 +1833,8 @@ re-measured with T-F346's script before and after.
 
 - [x] **Status:** done 2026-11-13 (PR 1 #231, PR 4 #234, PR 2/3/5/6 and the trace on one branch).
   Every confirmed bypass went into its owner, every owner has a guard test, and every UNSURE item is
-  traced. Found on the way: T-F515, T-F517, T-F518, T-F519 (P1) and T-F520 (open, this wave).
+  traced. A fresh opus review of the branch found three defects, all fixed test first (DECISIONS,
+  "T-F511 - the closing review"). Found on the way: T-F515, T-F517, T-F518, T-F519 (P1) and T-F520 (open, this wave).
   - **Origin.** After T-F509 the user asked whether the other single owners are really single. A
     haiku sweep (2026-11-12) checked 14 owners and error handling; the agent spot-checked every
     BYPASS below against the code.
@@ -1958,7 +1959,8 @@ re-measured with T-F346's script before and after.
 
 ### T-F510 - Archive a name Windows trims properly, and the rest of its operations (P3, from T-F509)
 
-- [ ] **Status:** open. T-F509 refuses such names: no twin's bytes, nothing deleted. Left:
+- [ ] **Status:** open. Also: the CLI's archive-name search (`x`/`l`/`t` with `-r` or a mask)
+  passes a folder Windows trims by in silence (T-F511's closing review). T-F509 refuses such names: no twin's bytes, nothing deleted. Left:
   - **ZIP could archive them.** It can read `\\?\...\a.txt ` (probed 2026-11-12); the walk would
     open each file through `\\?\` and name the entry from the file's own name. Before that, every
     key built from a source path must match: `SourceResult`, the App's and the CLI's deletion

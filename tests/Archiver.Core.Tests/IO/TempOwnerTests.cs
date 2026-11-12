@@ -242,6 +242,31 @@ public sealed class TempOwnerTests : IDisposable
         }
     }
 
+    // T-F511 review: the -si/-so staging root (%TEMP%\Archiver.CLI.Stdin) planted as a junction to a
+    // user's folder. The sweep listed through it and removed every old entry it found there.
+    [Fact]
+    public void SweepStaleInTemp_RootIsALinkOutOfTemp_LeavesWhatIsBehindIt()
+    {
+        string outside = Path.Combine(AppContext.BaseDirectory, "sweep-behind-link-" + Guid32);
+        Directory.CreateDirectory(Path.Combine(outside, "photos"));
+        string link = Path.Combine(_temp.Path, "Archiver.CLI.Stdin");
+        try
+        {
+            Directory.SetCreationTimeUtc(Path.Combine(outside, "photos"), _now.AddDays(-30));
+            DirectoryJunction.Create(link, outside);
+
+            TempOwner.SweepStaleInTemp(link, "", TimeSpan.FromDays(1));
+
+            Directory.Exists(Path.Combine(outside, "photos")).Should().BeTrue("what a link reaches is not Pakko's");
+        }
+        finally
+        {
+            if (Directory.Exists(link))
+                Directory.Delete(link);
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
     [Fact]
     public void SweepStaleInTemp_OldUnownedEntryInTemp_Removed()
     {

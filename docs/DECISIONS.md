@@ -14983,6 +14983,28 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F511 - the closing review (a fresh opus reviewer, 2026-11-13)
+
+A read-only reviewer was given the branch (PR 2, 3, 5, 6, T-F516 to T-F519) and the rules, not the
+plan. Three findings, each fixed test first and seen red:
+
+- **The archive being written taken as its own source where the file system gives no identity**
+  (`PathIdentity.Resolve` is null on some network redirectors and RAM disks). PR 3 judged it by
+  identity alone. Where there is none, `WrittenArchive` and `TakenSources` fall back to the
+  spelling, as before T-F511 (two cases of one name are then one source). A test seam passes a
+  resolver that gives none (`InternalsVisibleTo Archiver.CLI.Tests`).
+- **A folder Windows trims ("d.") met by `a`'s recursive search was left out in silence.** Before
+  the walk moved to `DirectoryWalker`, listing it failed and was a warning (exit 1); it is again,
+  `CliArchiveSources.NameTrimmed`. The archive-name search of `x`/`l`/`t` also passes such a folder
+  by; that read-only case goes with T-F510.
+- **The `-si`/`-so` staging sweep through a planted junction.** `%TEMP%\Archiver.CLI.Stdin` as a
+  junction to a user's folder: the sweep listed through it and removed every entry older than a day
+  there. `SweepStaleInTemp` now sweeps nothing when the folder, or one between it and `%TEMP%`, is
+  a link (an unreadable one counts as one).
+
+Left as is: a v1.10 `<pid>-<guid>` staging folder is judged by its pid alone, so a reused pid
+keeps it until that process ends; it is swept then.
+
 ## T-F519 - the App never hands Windows a final path it trims (2026-11-13)
 
 **What was there.** "Delete after" resolves each source to its final path

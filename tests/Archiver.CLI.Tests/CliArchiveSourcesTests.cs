@@ -144,6 +144,32 @@ public sealed class CliArchiveSourcesTests : IAsyncLifetime
 
     private static CliNameMask Mask(string path, CliRecursion recursion = CliRecursion.None) => new(path, Include: true, recursion);
 
+    // T-F511 review: a file system that gives no file identity (some network redirectors, RAM
+    // disks). Judged by identity alone, the archive being written was taken as its own source there,
+    // and A.TXT and a.txt typed for one file were two sources.
+    [Fact]
+    public void Search_NoFileIdentity_TheArchiveIsStillNotTaken()
+    {
+        File.WriteAllText(Full("a.txt"), "a");
+        File.WriteAllText(Full("o.zip"), "the old archive");
+
+        CliArchiveSourceList list = CliArchiveSources.Resolve(
+            [Mask("*")], null, caseSensitive: false, _temp.Path, Full("o.zip"), static _ => null);
+
+        list.Sources.Select(s => s.FullPath).Should().Contain(Full("a.txt")).And.NotContain(Full("o.zip"));
+    }
+
+    [Fact]
+    public void Resolve_NoFileIdentity_TwoCasesOfOneFile_AreOneSource()
+    {
+        File.WriteAllText(Full("a.txt"), "a");
+
+        CliArchiveSourceList list = CliArchiveSources.Resolve(
+            [Mask("A.TXT"), Mask("a.txt")], null, caseSensitive: false, _temp.Path, Full("o.zip"), static _ => null);
+
+        list.Sources.Should().ContainSingle();
+    }
+
     private void AddLog() => File.WriteAllText(Full(@"dir\c.log"), "l");
 
     [Fact]
@@ -336,6 +362,29 @@ public sealed class CliArchiveSourcesTests : IAsyncLifetime
         finally
         {
             Directory.Delete(@"\\?\" + Path.Combine(_temp.Path, "d."));
+        }
+    }
+
+    // T-F511 review: a folder Windows trims, met by a recursive search, was left out in silence (exit
+    // 0, its files not archived). Before the walk moved to DirectoryWalker, listing it failed and
+    // was a warning; it is one again.
+    [Fact]
+    public void Search_FolderWithANameWindowsTrims_NoTwin_IsAProblem()
+    {
+        string dotted = Path.Combine(_temp.Path, "d.");
+        Directory.CreateDirectory(@"\\?\" + dotted);
+        File.WriteAllText(@"\\?\" + Path.Combine(dotted, "f.txt"), "inside d.");
+        try
+        {
+            CliArchiveSourceList list = Search([Mask("*.txt", CliRecursion.Recursive)]);
+
+            list.Sources.Should().NotContain(s => s.FullPath.EndsWith("f.txt", StringComparison.Ordinal));
+            list.Problems.Should().ContainSingle().Which.Should().Be(new CliSourceProblem(dotted, CliArchiveSources.NameTrimmed));
+        }
+        finally
+        {
+            File.Delete(@"\\?\" + Path.Combine(dotted, "f.txt"));
+            Directory.Delete(@"\\?\" + dotted);
         }
     }
 
