@@ -16,8 +16,11 @@ public sealed partial class PathIdentityOwnerTests
         // -sdel's refusal compares where a path would lead before anything exists to open: a source
         // that is not there, or the fictitious folders of its unit tests, are walked part by part
         // (T-F419). PathIdentity answers only for what can be opened; its file identity is asked too.
-        ("Archiver.CLI/CliSourceDeleter.cs", ".LinkTarget", 1, "RealPath: a path that need not exist, one part at a time"),
+        ("Archiver.CLI/CliSourceDeleter.cs", "LinkTarget", 1, "RealPath: a path that need not exist, one part at a time"),
         ("Archiver.CLI/CliSourceDeleter.cs", ".ResolveLinkTarget(", 1, "RealPath: a path that need not exist, one part at a time"),
+        // tar.exe fails on a file at a SUBST drive's root (T-F285); the path string is rewritten
+        // before tar.exe opens anything, so there is no handle to ask.
+        ("Archiver.Core/Services/SubstDrive.cs", "QueryDosDevice", 2, "a SUBST drive's folder for tar.exe's command line (T-F285)"),
     ];
 
     [Fact]
@@ -41,7 +44,8 @@ public sealed partial class PathIdentityOwnerTests
     {
         // Guards the scan itself: if the owner's own import stops matching, the test above passes vacuously.
         Resolver().Matches(Code(Owner)).Select(m => m.Value).Should().Contain("GetFinalPathNameByHandle");
-        Resolver().Matches("x.ResolveLinkTarget(true); y.LinkTarget is null").Select(m => m.Value).Should().Equal(".ResolveLinkTarget(", ".LinkTarget");
+        Resolver().Matches("x.ResolveLinkTarget(true); y.LinkTarget is null; z is { LinkTarget: not null }").Select(m => m.Value)
+            .Should().Equal(".ResolveLinkTarget(", "LinkTarget", "LinkTarget");
     }
 
     private static IEnumerable<string> SourceFiles() =>
@@ -54,7 +58,9 @@ public sealed partial class PathIdentityOwnerTests
         string.Join('\n', File.ReadAllLines(Path.Combine(SrcRoot, file.Replace('/', Path.DirectorySeparatorChar)))
             .Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
 
-    [GeneratedRegex(@"\bGetFinalPathNameByHandle|\.ResolveLinkTarget\(|\.LinkTarget\b")]
+    // A resolver by the calls that ask where a path leads: the final name, a link's target, a DOS
+    // device's target, the reparse data, or the name through a handle.
+    [GeneratedRegex(@"\bGetFinalPathNameByHandle|\.ResolveLinkTarget\(|(?<!Resolve)\bLinkTarget\b|\bQueryDosDevice|\bNtQueryInformationFile|\bFSCTL_GET_REPARSE_POINT|\bFileNameInfo\b")]
     private static partial Regex Resolver();
 
     private static string FindRepoRoot()

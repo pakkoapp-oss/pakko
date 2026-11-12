@@ -289,9 +289,20 @@ public sealed class SourceRecyclerTests
     {
         string[] candidates = [@"C:\w\src", @"C:\w\b.zip", @"C:\w\c\"];
 
-        IReadOnlyList<KeptSource> left = SourceRecycler.NotFullyProcessed(candidates, [Completed(@"c:\W\B.ZIP"), Completed(@"C:\w\c")]);
+        IReadOnlyList<KeptSource> left = SourceRecycler.NotFullyProcessed(candidates, [Completed(@"C:\w\b.zip"), Completed(@"C:\w\c")]);
 
-        left.Select(k => k.Path).Should().Equal([@"C:\w\src"], "case and a trailing separator do not make another source");
+        left.Select(k => k.Path).Should().Equal([@"C:\w\src"], "a trailing separator does not make another source");
+    }
+
+    // T-F515 (closing review): Core reports a source in the spelling it was given. In a case-sensitive
+    // folder "A.TXT" and "a.txt" are two sources; a.txt not processed was hidden by A.TXT's result.
+    [Fact]
+    public void NotFullyProcessed_AnotherCase_IsAnotherSource()
+    {
+        SourceResult notProcessed = new() { Path = @"C:\w\a.txt", Outcome = SourceOutcome.NotProcessed };
+
+        SourceRecycler.NotFullyProcessed([@"C:\w\A.TXT", @"C:\w\a.txt"], [Completed(@"C:\w\A.TXT"), notProcessed])
+            .Should().Equal(new KeptSource(@"C:\w\a.txt", KeepReason.NotFullyProcessed));
     }
 
     // T-F511 PR 4: the candidates and Core's report meet on one key (SourceKey). "C:\w\b\." is the
@@ -325,8 +336,8 @@ public sealed class SourceRecyclerTests
     {
         SourceResult partial = new() { Path = @"C:\w\a.zip", Outcome = SourceOutcome.Partial, Cause = cause };
 
-        SourceRecycler.NotFullyProcessed([@"C:\W\A.zip\"], [partial])
-            .Should().Equal(new KeptSource(@"C:\W\A.zip\", expected));
+        SourceRecycler.NotFullyProcessed([@"C:\w\a.zip\"], [partial])
+            .Should().Equal(new KeptSource(@"C:\w\a.zip\", expected));
     }
 
     [Fact]

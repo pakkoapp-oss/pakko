@@ -29,7 +29,8 @@ public sealed class SourceSnapshot : ISourceSnapshot
 {
     private sealed record Listing(HashSet<string> Entries, bool HoldsLink, bool Unreadable);
 
-    private readonly Dictionary<string, Listing> _sources = new(StringComparer.OrdinalIgnoreCase);
+    // T-F515: with case, as Core reports a source in the spelling it was given.
+    private readonly Dictionary<string, Listing> _sources = new(StringComparer.Ordinal);
 
     private SourceSnapshot() { }
 
@@ -69,8 +70,8 @@ public sealed class SourceSnapshot : ISourceSnapshot
         if (!tree.Exists)
             return new Listing([], HoldsLink: false, Unreadable: true);
         if (tree.IsLink)
-            return new Listing(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "l|" + root }, HoldsLink: false, Unreadable: false);
-        var entries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            return new Listing(new HashSet<string>(StringComparer.Ordinal) { "l|" + root }, HoldsLink: false, Unreadable: false);
+        var entries = new HashSet<string>(StringComparer.Ordinal);
         foreach (SourceFileStamp file in tree.Files)
             entries.Add($"f|{file.Path}|{file.Length}|{file.ModifiedUtc.Ticks}|{file.CreatedUtc.Ticks}");
         foreach (string folder in tree.Folders)
