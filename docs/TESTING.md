@@ -843,8 +843,20 @@ ignored, `Dispose` not cancelling. The queued CRC-32 read's cancel is enforced b
     positions.
   - `PathMatrixPureTests` runs the owners' pure rules over the full product (about 1,100 cases
     each, under a second) and reports every failing case at once.
-  - `AllPairs` builds pairwise cases for the disk operations (PR (b)) under a pairwise constraint;
+  - `AllPairs` builds pairwise cases for the disk operations under a pairwise constraint;
     `AllPairsTests` checks that every allowed pair is covered.
+- `Archiver.Core.IntegrationTests/PathMatrixDiskTests` (the generator linked in): creation and
+  extraction, ZIP and tar.gz, the path as source, archive or destination, over all pairs of shape,
+  spelling, position and twin. Per case: no throw, the twin unchanged, no twin bytes written,
+  nothing new outside the case's folder, a clean result holds the named place's bytes, the plain
+  name always works.
+  - Quick tier: the 9 quick shapes, 109 cases, about 5 s.
+  - `Category=Fuzz`: every shape, `PAKKO_FUZZ_ITERATIONS` cases sampled by `PAKKO_FUZZ_SEED`
+    (default 10); a budget of 1000 runs every pair once, about 30 s. A failure names its
+    `PAKKO_FUZZ_ONLY_ITERATION`.
+  - The CLI's cases go to `scripts/smoke/PathMatrixCases.json` for the smoke row `CLI-056` (the
+    PakkoW10 VM has no dotnet); `CliCases_TheSmokeListIsTheGeneratorsOwn` keeps the file current,
+    `PAKKO_PATHMATRIX_WRITE=1` rewrites it.
 - A new shape or spelling goes into `NameShapes` or `PathForms`, never into one test.
 
 ### Fuzz
