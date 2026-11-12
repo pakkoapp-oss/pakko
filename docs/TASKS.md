@@ -1735,7 +1735,11 @@ re-measured with T-F346's script before and after.
 
 ### T-F515 - `-sdel` in a case-sensitive folder deletes the other spelling (P2, from T-F511 PR 4)
 
-- [ ] **Status:** open. Found by the closing review of T-F511's PR 4, seen red on Windows 11.
+- [x] **Status:** done (on T-F511 PR 4's branch). `CliSourceSnapshot` and the completed set key with
+  case (`Ordinal`): Core reports a source in the spelling the CLI gave, so the match is exact, and the
+  matrix row compares the keys with case. The App was not affected (each line of its listing carries
+  its path); `Snapshot_CaseSensitiveFolder_JudgesEachSpellingByItsOwnListing` pins it.
+  Found by the closing review of T-F511's PR 4, seen red on Windows 11.
   - **Cause.** In a folder made case-sensitive (`fsutil file setCaseSensitiveInfo`, as WSL does),
     `A.TXT` and `a.txt` are two files. `CliSourceSnapshot` keys its listings with
     `OrdinalIgnoreCase`, so `Take([A.TXT, a.txt])` lists only `A.TXT`, and `DeleteUnchanged([a.txt])`
