@@ -1050,6 +1050,21 @@ Add-SmokeStep 'CLI-058' {
     'the killed -si run left its folder; the next pakko swept it'
 }
 
+Add-SmokeStep 'CLI-060' {
+    $fixtures = Join-Path $PSScriptRoot '..\..\tests\Archiver.Core.IntegrationTests\Fixtures'
+    $damaged = Join-Path $fixtures 'damaged_data.7z'
+    $out = Join-Path (Get-StepFolder 'cli060') 'out'
+    $extract = Invoke-Pakko @('x', $damaged, "-o$out")
+    $test = Invoke-Pakko @('t', $damaged)
+    $encrypted = Invoke-Pakko @('t', (Join-Path $fixtures 'encrypted.7z'))
+    foreach ($run in $extract, $test) {
+        Assert-Smoke ($run.ExitCode -eq 2) "damaged_data.7z: exit $($run.ExitCode) $($run.Text)"
+        Assert-Smoke (-not $run.Text.Contains('password-protected')) "a damaged plain 7z reads as password-protected: $($run.Text)"
+    }
+    Assert-Smoke ($encrypted.ExitCode -eq 2 -and $encrypted.Text.Contains('password-protected')) "encrypted.7z: exit $($encrypted.ExitCode) $($encrypted.Text)"
+    'the damaged plain 7z fails with its own error; encrypted.7z still reads as password-protected'
+}
+
 Add-SmokeStep 'CLI-059' {
     $folder = Get-StepFolder 'cli059'
     $arcs = Join-Path $folder 'arcs'

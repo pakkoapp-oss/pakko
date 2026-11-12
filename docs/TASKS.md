@@ -1742,7 +1742,10 @@ re-measured with T-F346's script before and after.
   phrases for an encrypted entry or header (the same in 3.5.2 and 3.8.1, quoted in DECISIONS). The
   archive helper's text names no entry, so only the tar.exe path was wrong. Seen red on Windows 11
   (`DamagedPlain7z_EntryNamedEncrypted_IsNotPasswordProtected`, fixture `damaged_data.7z`); the
-  encrypted 7z and RAR fixtures still say password-protected on both backends.
+  encrypted 7z and RAR fixtures still say password-protected on both backends. PakkoW10 (tar 3.5.2):
+  `damaged_data.7z` fails as `encrypted_notes.txt: LZMA codec is unsupported` (the name again), and
+  the encrypted fixtures print the listed phrases (the data-only RAR is caught by its bytes first).
+  Smoke CLI-060 (new) passed on Windows 11 (1.10.0.16).
 
 ### T-F517 - `a cs\*` in a case-sensitive folder drops one of `A.TXT` and `a.txt` (P2, from T-F511 PR 3)
 
