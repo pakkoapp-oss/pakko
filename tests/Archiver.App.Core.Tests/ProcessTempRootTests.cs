@@ -69,7 +69,7 @@ public sealed class ProcessTempRootTests : IDisposable
         ProcessTempRoot mine = Root("100-1");
         string myScope = mine.CreateScope();
         string deadScope = Root("300-3").CreateScope();
-        foreach (string scope in new[] { myScope, deadScope })
+        foreach (string scope in (string[])[myScope, deadScope])
         {
             string file = Path.Combine(scope, "previewed.txt");
             File.WriteAllText(file, "plaintext");

@@ -53,7 +53,7 @@ public sealed class TarCapabilitySnapshotTests : IDisposable
         string dead = $"{path}.{machine}-{int.MaxValue}-1-{Guid.NewGuid():N}.tmp";
         string legacy = $"{path}.{Guid.NewGuid():N}.tmp";
         string young = $"{path}.{Guid.NewGuid():N}.tmp";
-        foreach (string file in new[] { dead, legacy, young })
+        foreach (string file in (string[])[dead, legacy, young])
             File.WriteAllText(file, "1;2;0");
         File.SetCreationTimeUtc(legacy, DateTime.UtcNow.AddDays(-2));
 
