@@ -1631,13 +1631,8 @@ re-measured with T-F346's script before and after.
     open each file through `\\?\` and name the entry from the file's own name. Before that, every
     key built from a source path must match: `SourceResult`, the App's and the CLI's deletion
     snapshots, `ResolveFinalPath`. tar.exe cannot read such a top-level name; tar keeps refusing it.
-  - **A destination folder whose name trims**, such as `-o"out."`.
-  - **The other operations that take a path:** run the twin fixture over hash
-    (`FileHashService.ComputeAsync`), `PathIdentity` and the scan's walk, and record what each does.
-    Recovery (repair, and a test with the set) is covered by T-F509.
-  - **`pakko a -ttar -sdel` of a folder holding `a.txt ` and `a.txt`.** tar.exe archives both with
-    their own bytes. `-sdel` then deletes the twin (whose bytes are in the archive) and keeps
-    `a.txt ` with no warning. No data is lost, but the report says nothing about the file kept.
+  - **`PathIdentity` and the extraction side** were not probed with the twin fixture. The `Hostile`
+    oracle covers every public operation for writes, not for reads.
 - **Reported by:** the agent, 2026-11-12.
 
 ### T-F508 - The litmus paper that stays, and the device-side candidates (P3, from T-F498)

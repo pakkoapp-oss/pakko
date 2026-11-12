@@ -87,6 +87,7 @@ public sealed class SourceSnapshot : ISourceSnapshot
             entries.Add("d|" + folder);
         foreach (string link in tree.Links)
             entries.Add("l|" + link);
-        return new Listing(entries, HoldsLink: tree.Links.Count > 0, tree.Unreadable);
+        // T-F509: by its plain path "a.txt " is its twin; such a source is not known well enough to delete.
+        return new Listing(entries, HoldsLink: tree.Links.Count > 0, tree.Unreadable || tree.TrimmedNames.Count > 0);
     }
 }

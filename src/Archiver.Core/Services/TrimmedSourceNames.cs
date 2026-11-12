@@ -17,15 +17,15 @@ internal static class TrimmedSourceNames
     internal static (ArchiveOptions Kept, ArchiveResult? Refused) Split(ArchiveOptions options)
     {
         var keptPaths = new List<string>(options.SourcePaths.Count);
-        List<int>? keptParts = options.SourceNameParts is null ? null : new List<int>(options.SourceNameParts.Count);
+        List<int>? keptParts = options.SourceNameParts is null ? null : [];
         var errors = new List<ArchiveError>();
         var sources = new List<SourceResult>();
         for (int i = 0; i < options.SourcePaths.Count; i++)
         {
             string path = options.SourcePaths[i];
-            if (path is not null && InputPaths.NameTrimmed(path))
+            if (InputPaths.Problem(path) is { Code: MessageCode.SourceNameTrimmed } trimmed)
             {
-                errors.Add(CoreMessages.Error(path, MessageCode.SourceNameTrimmed, path));
+                errors.Add(CoreMessages.Error(path, trimmed));
                 sources.Add(new SourceResult { Path = path, Outcome = SourceOutcome.NotProcessed });
                 continue;
             }
@@ -35,7 +35,12 @@ internal static class TrimmedSourceNames
         }
         if (errors.Count == 0)
             return (options, null);
-        return (options with { SourcePaths = keptPaths, SourceNameParts = keptParts }, new ArchiveResult { Errors = errors, Sources = sources });
+        // The default name counts every source asked for: two sources name the archive after their folder.
+        string? archiveName = options.ArchiveName ?? (options.Mode == ArchiveMode.SingleArchive && options.ExactFileName is null
+            ? ArchiveNaming.GetDefaultArchiveName(options.SourcePaths)
+            : null);
+        return (options with { SourcePaths = keptPaths, SourceNameParts = keptParts, ArchiveName = archiveName },
+            new ArchiveResult { Errors = errors, Sources = sources });
     }
 
     /// <summary>The engine's result for the kept sources, with the refused ones added.</summary>

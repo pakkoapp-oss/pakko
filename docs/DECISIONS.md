@@ -14867,22 +14867,48 @@ on Windows 11, with Native AOT `pakko` and through `CreationRouter`:
 - **Reading.** An archive `x.zip ` beside `x.zip` behaved the same way: extraction read the twin, and
   then the twin was recycled.
 
-tar.exe's own walk of a folder reads these names correctly. A probe confirmed it with a filter and
-with two folders of one name, and the tests keep it.
+**What Windows changes (measured with `GetFullPath`, which the open uses).**
+- **The last part of a path:** every trailing dot and space goes (`a.txt ` is `a.txt`, `...` is
+  nothing).
+- **A part in the middle:** only one trailing dot goes. `d.\x` is `d\x`, while `d \x`, `d..\x` and
+  `d. \x` stay as they are.
 
-**The rule: fail closed.** `InputPaths.NameTrimmed` judges the string as given, below its root and
-never through `GetFullPath`, with `EntryDiskName.Trims`. It is used in three places:
-- **Creation.** `TrimmedSourceNames.Split` runs at the entry of both engines, before
-  `SourcePathNormalizer` (whose `GetFullPath` trims) and before the entry names are claimed. Each such
-  source gets `SourceNameTrimmed` and `NotProcessed`; the others are archived. With none left,
-  nothing is written.
-- **The two ZIP walks.** Such a file inside a folder gets the error, and the folder is then not fully
-  processed, so nothing deletes it. How entry names are made (T-F75) is not changed.
-- **Reading.** `InputPaths.Problem` returns the new code. ZIP extract, test and list, and tar test,
-  now call it. Before, they checked only `File.Exists`, which the twin satisfies.
-- **Recovery.** `RecoveryTestStep.Locate` refuses such an archive path, and a set's target that is
-  such a name. A set made by another tool can name `x.zip `, and a repair writes. Seen red: with the
-  check removed, a repair of `x.zip ` beside `x.zip` and its set ran with no error.
+The first version judged both kinds of part alike (`EntryDiskName.Trims`) and refused a folder `d `
+in the middle of a path, which Windows keeps. A fresh opus review found it.
+
+**One owner per boundary.** The user asked during T-F509 why the rule was a check at every call site.
+The first version had put it into 2 of the 9 consumers of `DirectoryWalker`, so hash, the deletion
+listing and tar still read the twin. The rule now lives in its owners:
+- **The rule:** `InputPaths.NameTrimmed` (a path) and `OwnNameTrimmed` (one name in a folder). They
+  ask `GetFullPath` one part at a time, so the running Windows decides.
+- **A path entering Core: `InputPaths.Problem`.**
+  - Creation: `TrimmedSourceNames.Split` at both engines' entry, before `SourcePathNormalizer` (whose
+    `GetFullPath` trims) and before entry names are claimed. Each such source gets
+    `SourceNameTrimmed` and `NotProcessed`; the rest are archived.
+  - The archive name and a single-file format's refusal still count every source asked for.
+  - Reading: `InputPaths.ArchiveProblem` serves ZIP extract, test and list, and tar test. Before, it
+    was only `File.Exists`, which the twin satisfies.
+  - Hash takes `Problem` for each path.
+  - `RecoveryTestStep.Locate` takes it for the archive and for a set's target. A set made elsewhere
+    can name `x.zip `, and a repair writes.
+- **The walk: `DirectoryWalker`.** Such an entry is `WalkEntryKind.TrimmedName` and is never entered,
+  because listing `d.` lists `d`. A filter's `LeftOut` and a link come first. Every consumer handles
+  the kind in its own `case`:
+  - **ZIP:** an error for the entry; the folder is then not fully processed.
+  - **tar:** the whole source gets the error. tar.exe would read the name itself, but what Core checks
+    of the names it meets (the filter, links, the code page, the T-F392 hard-link pairs) opens them by
+    their plain paths. The first version left tar alone, and `-sdel` then deleted the twin and kept
+    the file, unreported.
+  - **Hash:** an error for the entry.
+  - **`SourceTree`:** `TrimmedNames`. The CLI's `-sdel` keeps such a source ("a name in it ends in a
+    space or a dot"); the App's snapshot treats it as unreadable. This is a second line, whatever an
+    engine reports.
+- **The destination: `DestinationFolder.TryCreate`.** `-o"out."` would write into `out`, and T-F475's
+  device check judged a path that is not the one written. A `\\?\` folder is literal and stays
+  allowed, as `CLI.md` says.
+- **The owner test.** `CoreNeverThrowsContractTests` has a `Hostile` kind "a trimmed name": `x.zip.`
+  beside a real `x.zip`. `NoThrow` checks the twin's bytes and time after every operation. With the
+  rule mutated away, 6 operations wrote into the twin.
 
 **The frontends deliver the literal name.** This was traced, because Core can refuse only what
 reaches it:
@@ -14903,18 +14929,21 @@ reaches it:
   `del "a.txt "` does in cmd. Win32's reading of a typed path is the user's.
 
 **Tests, each seen red first:**
-- `TrimmedSourceNameTests` (25 cases):
+- `TrimmedSourceNameTests`:
   - ZIP and tar.gz; a file and a dotted folder, each with a twin and without, by plain path and by
     `\\?\`;
-  - the ZIP folder with the file and with a nested `d./x/y.txt`;
-  - the tar folder plain, with a filter, and with a collision;
-  - reading `x.zip ` and `x.tar `.
+  - the ZIP folder in every writer (Optimal, Fastest, over 64 files, one archive per item);
+  - the tar folder holding a file or a folder, with a filter, with a collision;
+  - reading; recovery; hash;
+  - the destination; naming.
 
-  22 were red before the fix: twin bytes, counted done, nothing refused. The 3 tar folder rows were
-  green before and stay green.
-- `InputPathsNameTrimmedTests`: 10 rows were red against a mutant.
-- `SdelAdversarialTests.Sdel_FolderHoldingANameWindowsTrims_...`: with the walk check mutated
-  away, exit 0 and the folder deleted.
+  With the rule mutated away, 36 of them fail.
+- `InputPathsNameTrimmedTests` rows, including the middle-part ones Windows keeps.
+- `DirectoryWalkerTests`: the kind, the order, never entered, a folder holding only such a name is
+  not empty, and `LeftOut` comes first.
+- The `Hostile` kind with its twin oracle.
+- `SdelAdversarialTests`, ZIP and tar: with the walk's rule mutated away, exit 0 and the twin
+  deleted.
 - `SourceRecyclerAdversarialTests.EndToEnd_TrailingDotSource_...` used to accept whichever file the
   archive held. It now requires the refusal, and both files stay.
 - `SMOKE.md` `CLI-054`.

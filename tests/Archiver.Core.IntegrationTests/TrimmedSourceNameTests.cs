@@ -76,51 +76,74 @@ public sealed class TrimmedSourceNameTests : IDisposable
     }
 
     // ZIP walks the folder itself: the file is refused inside it and the folder is not done.
+    // Each ZIP writer walks the folder: the sequential one (Optimal), the parallel one (Fastest, or
+    // over 64 files) and the one-archive-per-item one (T-F503).
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Create_ZipFolderHoldingTwins_RefusesTheTrimmedFileAndKeepsTheFolder(bool nested)
+    [InlineData(false, "sequential")]
+    [InlineData(true, "sequential")]
+    [InlineData(false, "fastest")]
+    [InlineData(true, "fastest")]
+    [InlineData(false, "many")]
+    [InlineData(false, "separate")]
+    [InlineData(true, "separate")]
+    public async Task Create_ZipFolderHoldingTwins_RefusesTheTrimmedFileAndKeepsTheFolder(bool nested, string writer)
     {
         string src = Folder(Path.Combine("z", "src"));
+        string trimmedFolder = Path.Combine(src, "d.");
         string trimmed = nested
-            ? WriteLiteral(Path.Combine(src, "d.", "x", "y.txt"), "IN DOTTED")
+            ? WriteLiteral(Path.Combine(trimmedFolder, "x", "y.txt"), "IN DOTTED")
             : WriteLiteral(Path.Combine(src, "a.txt "), "SPACED");
         string twinName = nested ? "d/x/y.txt" : "a.txt";
         WriteLiteral(Path.Combine(src, twinName.Replace('/', '\\')), TwinBytes);
+        var expected = new Dictionary<string, string> { ["src/" + twinName] = TwinBytes };
+        if (writer == "many")
+        {
+            for (int i = 0; i < 70; i++)
+            {
+                File.WriteAllText(Path.Combine(src, $"f{i:D2}.txt"), "F");
+                expected[$"src/f{i:D2}.txt"] = "F";
+            }
+        }
 
-        ArchiveResult result = await CreateAsync(ArchiveContainerFormat.Zip, src);
+        ArchiveResult result = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [src], DestinationFolder = Path.Combine(_temp.Path, "out-" + writer + nested), ArchiveName = "x",
+            CompressionLevel = writer == "fastest" ? System.IO.Compression.CompressionLevel.Fastest : System.IO.Compression.CompressionLevel.Optimal,
+            Mode = writer == "separate" ? ArchiveMode.SeparateArchives : ArchiveMode.SingleArchive,
+        });
 
         result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.SourceNameTrimmed);
-        result.Errors[0].SourcePath.Should().Be(trimmed);
+        result.Errors[0].SourcePath.Should().Be(nested ? trimmedFolder : trimmed);
         result.FullyProcessedSources.Should().BeEmpty("a folder with a file left out is never deleted");
-        Contents(result, ArchiveContainerFormat.Zip).Should().Equal(new Dictionary<string, string> { ["src/" + twinName] = TwinBytes });
+        Contents(result, ArchiveContainerFormat.Zip).Should().Equal(expected);
     }
 
-    // tar.exe walks the folder itself and reads both names; through Core's own walk too, which a
-    // filter or a second folder of the same name brings in.
+    // tar.exe walks the folder itself and would read both names, but Core's checks of what it will
+    // meet (the filter, links, the code page, hard-link pairs) open them by their plain paths: the
+    // source holding such a name is refused whole, the others archived.
     [Theory]
-    [InlineData("plain")]
+    [InlineData("file")]
+    [InlineData("folder")]
     [InlineData("filter")]
     [InlineData("collision")]
-    public async Task Create_TarFolderHoldingTwins_ArchivesBothWithTheirOwnBytes(string shape)
+    public async Task Create_TarFolderHoldingATrimmedName_IsRefusedWhole(string shape)
     {
         string src = Folder(Path.Combine("t1", "src"));
-        WriteLiteral(Path.Combine(src, "a.txt "), "SPACED 1");
+        string trimmed = shape == "folder" ? Path.Combine(src, "d.") : Path.Combine(src, "a.txt ");
+        if (shape == "folder")
+            WriteLiteral(Path.Combine(trimmed, "in.txt"), "IN DOTTED");
+        else
+            WriteLiteral(trimmed, "SPACED 1");
         WriteLiteral(Path.Combine(src, "a.txt"), "PLAIN 1");
         WriteLiteral(Path.Combine(src, "skip.log"), "LOG");
-        var expected = new Dictionary<string, string> { ["src/a.txt "] = "SPACED 1", ["src/a.txt"] = "PLAIN 1", ["src/skip.log"] = "LOG" };
-        string[] sources = [src];
+        string other = WriteLiteral(Path.Combine(_temp.Path, "t3", "other.txt"), "OTHER");
+        string[] sources = [src, other];
         if (shape == "collision")
         {
             string second = Folder(Path.Combine("t2", "src"));
-            WriteLiteral(Path.Combine(second, "a.txt "), "SPACED 2");
             WriteLiteral(Path.Combine(second, "a.txt"), "PLAIN 2");
-            sources = [src, second];
-            expected["src (1)/a.txt "] = "SPACED 2";
-            expected["src (1)/a.txt"] = "PLAIN 2";
+            sources = [src, second, other];
         }
-        if (shape == "filter")
-            expected.Remove("src/skip.log");
 
         ArchiveResult result = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
         {
@@ -128,8 +151,14 @@ public sealed class TrimmedSourceNameTests : IDisposable
             EntryFilter = shape == "filter" ? (name, _) => !name.EndsWith(".log", StringComparison.OrdinalIgnoreCase) : null,
         });
 
-        result.Errors.Should().BeEmpty();
-        Contents(result, ArchiveContainerFormat.Tar).Should().BeEquivalentTo(expected);
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.SourceNameTrimmed);
+        result.Errors[0].SourcePath.Should().Be(src);
+        result.FullyProcessedSources.Should().NotContain(src);
+        Dictionary<string, string> contents = Contents(result, ArchiveContainerFormat.Tar);
+        contents.Values.Should().NotContain(["SPACED 1", "PLAIN 1", "IN DOTTED", "LOG"], "nothing of the refused source is archived");
+        contents["other.txt"].Should().Be("OTHER");
+        if (shape == "collision")
+            contents["src/a.txt"].Should().Be("PLAIN 2", "the second folder no longer collides with the refused one");
     }
 
     // The archive read is the one named: "x.zip " beside "x.zip" opened the twin, and the twin was
@@ -197,6 +226,67 @@ public sealed class TrimmedSourceNameTests : IDisposable
             result.CreatedFiles.Should().BeEmpty();
         }
         File.ReadAllBytes(twin).Should().Equal(twinBefore);
+    }
+
+    // Hashing reads the bytes: "a.txt " hashed its twin, given alone or met inside a folder.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Hash_NameWindowsTrims_IsAnErrorNeverTheTwinsHash(bool inFolder)
+    {
+        string src = Folder(Path.Combine("h", "src"));
+        string trimmed = WriteLiteral(Path.Combine(src, "a.txt "), "SPACED");
+        WriteLiteral(Path.Combine(src, "a.txt"), TwinBytes);
+
+        HashResult result = await FileHashService.ComputeAsync([inFolder ? src : trimmed], HashAlgorithmKind.Crc32, null, CancellationToken.None);
+
+        HashEntry entry = result.Entries.Should().ContainSingle(e => e.SourcePath == trimmed).Subject;
+        entry.Hash.Should().BeNull();
+        entry.ErrorText!.Code.Should().Be(MessageCode.SourceNameTrimmed);
+    }
+
+    // T-F475 refused "CON.zip" in a folder; "C:\w\d." is "C:\w\d" to Windows, so no folder check
+    // judged the path the archive would really get. Such a destination is refused.
+    [Theory]
+    [InlineData(ArchiveContainerFormat.Zip)]
+    [InlineData(ArchiveContainerFormat.TarGz)]
+    public async Task Create_DestinationWindowsTrims_IsRefused(ArchiveContainerFormat format)
+    {
+        string source = WriteLiteral(Path.Combine(_temp.Path, "dst", "a.txt"), "A");
+        string destination = Path.Combine(_temp.Path, "dst", "out.");
+
+        ArchiveResult result = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = [source], DestinationFolder = destination, ArchiveName = "x", Format = format,
+        });
+
+        result.Errors.Should().ContainSingle().Which.Message.Should().Contain("ends in a space or a dot");
+        result.CreatedFiles.Should().BeEmpty();
+        Directory.Exists(Path.Combine(_temp.Path, "dst", "out")).Should().BeFalse("nothing is written through the trimmed name");
+    }
+
+    // A refused source still counts for what the run was asked: two sources name the archive after
+    // their folder, and a single-file format still refuses two.
+    [Fact]
+    public async Task Create_RefusedSource_StillCountsForNamingAndForASingleFileFormat()
+    {
+        string folder = Folder("named");
+        WriteLiteral(Path.Combine(folder, "a.txt "), "SPACED");
+        string kept = WriteLiteral(Path.Combine(folder, "b.txt"), "B");
+        string[] sources = [Path.Combine(folder, "a.txt "), kept];
+
+        ArchiveResult zip = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = sources, DestinationFolder = Path.Combine(_temp.Path, "out-named"),
+        });
+        ArchiveResult gz = await _services.CreationRouter.ArchiveAsync(new ArchiveOptions
+        {
+            SourcePaths = sources, DestinationFolder = Path.Combine(_temp.Path, "out-gz"), Format = ArchiveContainerFormat.GZip,
+        });
+
+        Path.GetFileName(zip.CreatedFiles.Should().ContainSingle().Subject).Should().Be("named.zip");
+        gz.CreatedFiles.Should().BeEmpty();
+        gz.Errors.Select(e => e.Text!.Code).Should().Contain(MessageCode.SingleFileFormatNeedsOneFile);
     }
 
     private string Folder(string relative)

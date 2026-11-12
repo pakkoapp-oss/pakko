@@ -1285,6 +1285,9 @@ public sealed class TarSandboxedService : ITarService
             };
 
         // T-F509: as the ZIP engine - tar.exe would read a twin, or fail the whole run through \\?\.
+        // Two sources stay two for a single-file format, whatever happens to one of them.
+        if (SingleFileRefusal(options) is { } singleFile)
+            return new ArchiveResult { Errors = [CoreMessages.Error(ArchiveNaming.RefusedArchivePath(options), singleFile)] };
         (ArchiveOptions kept, ArchiveResult? refused) = TrimmedSourceNames.Split(options);
         if (refused is null)
             return await CompressKeptSourcesAsync(options, progress, cancellationToken).ConfigureAwait(false);
@@ -1728,8 +1731,16 @@ public sealed class TarSandboxedService : ITarService
             var links = new List<FileSystemInfo>();
             var leftOut = new List<FileSystemInfo>();
             var sourceFiles = new List<string>();
+            var trimmedNames = new List<string>();
             (long entries, long bytes, string? unrepresentable) = CountRecursiveEntriesAndBytes(
-                fullSource, links, names.LeaveOutBelow(fullSource, isDriveRoot ? "" : name), leftOut, sourceFiles);
+                fullSource, links, names.LeaveOutBelow(fullSource, isDriveRoot ? "" : name), leftOut, sourceFiles, trimmedNames);
+            // T-F509: tar.exe would read "a.txt " itself, but what Core checks of the names it meets
+            // (the filter, links, the code page, hard-link pairs) opens them by their plain paths.
+            if (trimmedNames.Count > 0)
+            {
+                errors.Add(CoreMessages.Error(sourcePath, MessageCode.SourceNameTrimmed, trimmedNames[0]));
+                continue;
+            }
             if (unrepresentable is not null)
             {
                 errors.Add(CoreMessages.Error(sourcePath, TarArgumentEncodingException.Describe(unrepresentable, TarCommandLineEncoding.AnsiCodePage)));
@@ -1947,9 +1958,10 @@ public sealed class TarSandboxedService : ITarService
     // T-F391: every link met inside the source is added to links.
     // T-F410: what leaveOut leaves out is added to leftOut and neither counted nor entered.
     // T-F392: every file tar.exe will pack is added to files.
+    // T-F509: every name Windows trims is added to trimmed, and not entered.
     internal static (long EntryCount, long TotalBytes, string? Unrepresentable) CountRecursiveEntriesAndBytes(
         string sourcePath, List<FileSystemInfo>? links = null, Func<FileSystemInfo, bool>? leaveOut = null, List<FileSystemInfo>? leftOut = null,
-        List<string>? files = null)
+        List<string>? files = null, List<string>? trimmed = null)
     {
         // T-F467: the page read once for the whole walk.
         uint commandLinePage = TarCommandLineEncoding.AnsiCodePage;
@@ -1974,6 +1986,8 @@ public sealed class TarSandboxedService : ITarService
                 leftOut?.Add(entry.Info);
                 continue;
             }
+            if (entry.Kind == WalkEntryKind.TrimmedName)
+                trimmed?.Add(entry.Info.FullName);
             bool isRoot = count == 0; // the walk always starts with the root itself
             count++;
             if (unrepresentable is null && !isRoot && !TarCommandLineEncoding.IsRepresentable(entry.Info.Name, commandLinePage))

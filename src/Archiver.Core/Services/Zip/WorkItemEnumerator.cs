@@ -74,14 +74,6 @@ internal static class WorkItemEnumerator
         {
             if (TempOwner.IsOwnBelow(fullRoot, entry.Info.FullName))
                 continue;
-            // T-F509: "a.txt " beside "a.txt" opened the twin by its plain path, under its own name.
-            if (entry.Kind is WalkEntryKind.File or WalkEntryKind.Directory && InputPaths.NameTrimmedBelow(fullRoot, entry.Info.FullName))
-            {
-                if (entry.Kind == WalkEntryKind.File || entry.IsEmptyDirectory)
-                    reportError(CoreMessages.Error(entry.Info.FullName, MessageCode.SourceNameTrimmed, entry.Info.FullName));
-                continue;
-            }
-
             switch (entry.Kind)
             {
                 case WalkEntryKind.Directory when entry.IsEmptyDirectory:
@@ -100,6 +92,9 @@ internal static class WorkItemEnumerator
                     break;
                 case WalkEntryKind.UnreadableDirectory:
                     reportError(ZipArchiveService.UnreadableDirectoryError(entry.Info.FullName, entry.Error!));
+                    break;
+                case WalkEntryKind.TrimmedName:
+                    reportError(ZipArchiveService.TrimmedNameError(entry.Info.FullName));
                     break;
             }
         }

@@ -3,15 +3,19 @@ using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
 
-// T-F509: a path with a part that ends in a space or a dot names, by its plain form, another file
-// ("a.txt " opens "a.txt"). Judged on the string as given, never through GetFullPath, which trims.
+// T-F509: a path with a part Windows changes names, by its plain form, another file ("a.txt " opens
+// "a.txt"). Windows drops every trailing dot and space of the last part, but of a part in the middle
+// only one trailing dot ("d." is "d"; "d ", "d.." and "d. " stay), measured with GetFullPath.
+// Judged part by part on the string as given: GetFullPath of the whole path would already have trimmed it.
 public sealed class InputPathsNameTrimmedTests
 {
     [Theory]
     [InlineData(@"C:\x\a.txt ")]
     [InlineData(@"C:\x\a.txt.")]
     [InlineData(@"C:\x\d.\a.txt")]
-    [InlineData(@"C:\x\d \a.txt")]
+    [InlineData(@"C:\x\d .\a.txt")]
+    [InlineData(@"C:\x\d ")]
+    [InlineData(@"C:\x\...")]
     [InlineData(@"C:\x\d.\")]
     [InlineData(@"C:\x\d.")]
     [InlineData(@"\\?\C:\x\a.txt ")]
@@ -27,6 +31,11 @@ public sealed class InputPathsNameTrimmedTests
     [InlineData(@"C:\x\..\a.txt")]
     [InlineData(@"C:\x\\a.txt")]
     [InlineData(@"C:\x\d\")]
+    [InlineData(@"C:\x\d \a.txt")]
+    [InlineData(@"C:\x\d \")]
+    [InlineData(@"C:\x\d..\a.txt")]
+    [InlineData(@"C:\x\d. \a.txt")]
+    [InlineData(@"C:\x\...\a.txt")]
     [InlineData(@"C:\")]
     [InlineData(@"\\?\C:\")]
     [InlineData(@"\\.\C:\x\a.txt")]

@@ -85,6 +85,25 @@ public sealed class SdelAdversarialTests : IDisposable
         File.Delete(@"\\?\" + Path.Combine(folder, "a.txt "));
     }
 
+    // T-F509: tar.exe read both names, and -sdel then deleted "a.txt" by its plain path and kept
+    // "a.txt " unreported. The source is refused whole: nothing archived from it, nothing deleted.
+    [Fact]
+    public void Sdel_TarFolderHoldingANameWindowsTrims_DeletesNothing()
+    {
+        string folder = _scratch.Inside("tt");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(@"\\?\" + Path.Combine(folder, "a.txt "), "SPACED");
+        File.WriteAllText(Path.Combine(folder, "a.txt"), "TWIN");
+
+        (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-ttar", "-sdel", "tt.tar", "tt");
+
+        exitCode.Should().Be(2, stdErr);
+        stdErr.Should().Contain("ends in a space or a dot");
+        File.ReadAllText(@"\\?\" + Path.Combine(folder, "a.txt ")).Should().Be("SPACED");
+        File.ReadAllText(Path.Combine(folder, "a.txt")).Should().Be("TWIN");
+        File.Delete(@"\\?\" + Path.Combine(folder, "a.txt "));
+    }
+
     // --- the current-folder refusal, spelled other ways ---
 
     // CLI.md: "Refused with exit 7 before anything is written: ... a source that is or holds the
