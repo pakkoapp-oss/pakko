@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count), T-F506 (AMSI buffer), T-F500 (writer failure paths, the flaky chunk-folder test), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job), T-F512 (P2, the path matrix: before T-F511's PR 4, which it checks), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder), T-F516 (P3, a test timed out under load: done), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job), T-F512 (P2, the path matrix: before T-F511's PR 4, which it checks), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -1733,6 +1733,14 @@ re-measured with T-F346's script before and after.
     acceptance would be better). Never a throw, a touched twin, another file's bytes or a write
     outside the destination.
 
+### T-F517 - `a cs\*` in a case-sensitive folder drops one of `A.TXT` and `a.txt` (P2, from T-F511 PR 3)
+
+- [x] **Status:** done (on T-F511's long branch). `CliArchiveSources.WithoutDuplicates` kept the
+  sources by path compared without case, so the second of two files differing only in case was
+  dropped in silence: not archived (and so not deleted by `-sdel`). Sources are now kept by exact
+  spelling; two spellings that differ only in case are one source only when `PathIdentity` says they
+  are one file. Seen red on Windows 11 (`Search_CaseSensitiveFolder_BothSpellingsAreTaken`).
+
 ### T-F516 - `IsNotQuadratic` timed out under the whole suite (P3, test only, from T-F511 PR 2)
 
 - [x] **Status:** done (on T-F511's long branch). `SourceOutcomeTests.DowngradeSourcesContainingOutputs_ManySourcesAndOutputs_IsNotQuadratic`
@@ -1779,7 +1787,15 @@ re-measured with T-F346's script before and after.
     - **`RecoveryDataWriter.cs:53`** sets `Partial` by its own rule, past `SourceOutcomeRules` and
       with no `Cause`.
     - ~~**`BareGzip.Usable`**~~ (`BareGzip.cs:229`) copies `EntryDiskName`'s trim and "_" rule.
-    - **Two CLI walks beside `DirectoryWalker`:**
+    - **Done (PR 3):** both CLI searches walk through `DirectoryWalker`, now public (a refused root
+      walks nothing). The archive-name search stopped skipping a folder it cannot list: exit 2 with
+      the folder and the reason, as 7-Zip 26's `ScanError` (quoted in DECISIONS). The archive being
+      written is judged by `PathIdentity`: a `\\?\` spelling no longer takes the old archive as a
+      source of itself, and in a case-sensitive folder `x.zip` is no longer left out when `X.ZIP` is
+      written. T-F517 found on the way. `DirectoryWalkerOwnerTests`; smoke CLI-059 (new), CLI-007,
+      CLI-038, CLI-041, CLI-054, CLI-056, CLI-057 and CLI-058 passed on Windows 11 (1.10.0.15). No
+      PakkoW10 run: the walks are the CLI's own, tar is untouched.
+    - ~~**Two CLI walks beside `DirectoryWalker`:**~~
       - `CliArchiveSources.cs:185` (wildcards), with its own drive-root rule and a string check for
         "the archive being written" (`:199`, not `PathIdentity`);
       - `CliNameSelection.cs:181` (masks), whose `IgnoreInaccessible = true` silently drops a folder
@@ -1836,7 +1852,7 @@ re-measured with T-F346's script before and after.
       cancellation).
   - **Owners without a guard test.** The new ones are held by discipline only, which T-F509 showed
     is not enough:
-    - `DirectoryWalker` (no `Enumerate*` outside it);
+    - ~~`DirectoryWalker`~~ (PR 3);
     - `InputPaths`;
     - ~~`TempOwner`~~ (PR 2);
     - ~~`PathIdentity`~~ (PR 4);

@@ -1050,6 +1050,36 @@ Add-SmokeStep 'CLI-058' {
     'the killed -si run left its folder; the next pakko swept it'
 }
 
+Add-SmokeStep 'CLI-059' {
+    $folder = Get-StepFolder 'cli059'
+    $arcs = Join-Path $folder 'arcs'
+    $deep = Join-Path $arcs 'deep'
+    $null = [System.IO.Directory]::CreateDirectory($deep)
+    $source = Join-Path $folder 'a.txt'
+    [System.IO.File]::WriteAllText($source, 'archived')
+    $made = Invoke-Pakko @('a', (Join-Path $arcs 'one.zip'), $source)
+    Assert-Smoke ($made.ExitCode -eq 0) "pakko a: exit $($made.ExitCode) $($made.Text)"
+    $out = Join-Path $folder 'out'
+    $security = Get-Acl -LiteralPath $deep
+    $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+        [System.Security.Principal.WindowsIdentity]::GetCurrent().User, 'ListDirectory', 'Deny')
+    $security.AddAccessRule($rule)
+    Set-Acl -LiteralPath $deep -AclObject $security
+    try {
+        $run = Invoke-Pakko @('x', '-an', "-air!$arcs\*.zip", "-o$out") -WorkingDirectory $folder
+        Assert-Smoke ($run.ExitCode -eq 2) "an unreadable folder: exit $($run.ExitCode) $($run.Text)"
+        Assert-Smoke ($run.Text.Contains($deep)) "stderr does not name the folder: $($run.Text)"
+        Assert-Smoke (-not [System.IO.Directory]::Exists($out)) 'something was extracted'
+    }
+    finally {
+        $null = $security.RemoveAccessRule($rule)
+        Set-Acl -LiteralPath $deep -AclObject $security
+    }
+    $again = Invoke-Pakko @('x', '-an', "-air!$arcs\*.zip", "-o$out") -WorkingDirectory $folder
+    Assert-Smoke ($again.ExitCode -eq 0) "readable again: exit $($again.ExitCode) $($again.Text)"
+    'an unreadable folder stops the search with exit 2 and its name; readable, exit 0'
+}
+
 Add-SmokeStep 'CLI-055' {
     $folder = Get-StepFolder 'cli055'
     $content = Join-Path $folder 'content'

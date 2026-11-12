@@ -1,6 +1,7 @@
 namespace Archiver.Core.IO;
 
-internal enum WalkEntryKind
+/// <summary>What one step of <see cref="DirectoryWalker.Walk"/> found.</summary>
+public enum WalkEntryKind
 {
     /// <summary>A directory that was listed (the root included), reported before its contents.</summary>
     Directory,
@@ -32,7 +33,7 @@ internal enum WalkEntryKind
 /// <param name="IsEmptyDirectory">For <see cref="WalkEntryKind.Directory"/>: the listing held no
 /// entries at all (a folder holding only a reparse point is not empty).</param>
 /// <param name="Error">For <see cref="WalkEntryKind.UnreadableDirectory"/>: why the listing failed.</param>
-internal readonly record struct WalkEntry(
+public readonly record struct WalkEntry(
     WalkEntryKind Kind, FileSystemInfo Info, bool IsEmptyDirectory = false, Exception? Error = null);
 
 /// <summary>
@@ -55,14 +56,21 @@ internal readonly record struct WalkEntry(
 /// TAR creation (T-F285). Deeper down such an entry is the user's and is walked.
 /// </para>
 /// </summary>
-internal static class DirectoryWalker
+public static class DirectoryWalker
 {
     private const FileAttributes OsOwned = FileAttributes.Hidden | FileAttributes.System;
 
+    /// <summary>The entries of the tree under <paramref name="root"/>, as the class describes. A root
+    /// <see cref="Archiver.Core.Services.InputPaths"/> refuses (empty, unparsable, a name Windows trims,
+    /// which would list its twin) gives no entry at all (T-F511).</summary>
     /// <param name="root">The folder to walk; its own entry comes first.</param>
-    /// <param name="leaveOut">T-F410: true for an entry below the root to leave out.</param>
+    /// <param name="leaveOut">T-F410: true for an entry below the root to leave out. Called once per
+    /// entry, in the folder's listing order, before the entry is entered (T-F511: the CLI's searches
+    /// take a match there).</param>
     public static IEnumerable<WalkEntry> Walk(string root, Func<FileSystemInfo, bool>? leaveOut = null)
     {
+        if (Archiver.Core.Services.InputPaths.Problem(root) is not null)
+            yield break;
         var rootDir = new DirectoryInfo(root);
         bool isDriveRoot = rootDir.Parent is null;
         var pending = new Stack<(DirectoryInfo Dir, bool IsReparsePoint)>();
