@@ -1631,14 +1631,18 @@ re-measured with T-F346's script before and after.
     haiku sweep (2026-11-12) checked 14 owners and error handling; the agent spot-checked every
     BYPASS below against the code.
   - **Confirmed bypasses:**
-    - **Recovery output folder.** `RecoveryService.cs:166` creates `RepairOptions.OutputDirectory`
+    - **Done (PR 1):** the recovery output folder, `BareGzip.Usable`, and the folder named after an
+      archive. That last one was a regression from T-F509: `a .zip` gave Shell's `--extract-folder`
+      the folder `a `, which T-F509 refuses. Now `ArchiveNaming.GetFolderName` names it in Shell,
+      App and both engines. `DestinationFolderOwnerTests` lists every other folder creation.
+    - ~~**Recovery output folder.**~~ `RecoveryService.cs:166` creates `RepairOptions.OutputDirectory`
       with `Directory.CreateDirectory`, not `DestinationFolder.TryCreate`. So `-o"out."` writes into
       the twin `out`, and the T-F475 and T-F509 checks never see it. The `Hostile` oracle's
       `Repair_Output` row stays green only because nothing is repaired there; add a row with a set
       that does need repair. **Data-safety; do this first.**
     - **`RecoveryDataWriter.cs:53`** sets `Partial` by its own rule, past `SourceOutcomeRules` and
       with no `Cause`.
-    - **`BareGzip.Usable`** (`BareGzip.cs:229`) copies `EntryDiskName`'s trim and "_" rule.
+    - ~~**`BareGzip.Usable`**~~ (`BareGzip.cs:229`) copies `EntryDiskName`'s trim and "_" rule.
     - **Two CLI walks beside `DirectoryWalker`:**
       - `CliArchiveSources.cs:185` (wildcards), with its own drive-root rule and a string check for
         "the archive being written" (`:199`, not `PathIdentity`);
@@ -1686,10 +1690,11 @@ re-measured with T-F346's script before and after.
     Model them on `CoreMessageSourceGuardTests`, `QuarantineFilesOwnerTests` and
     `SandboxedReaderOwnerTests`.
   - **Left to trace (UNSURE in the sweep):**
-    - `ZipArchiveService:1590` and `TarSandboxedService:506` (`CreateDirectory(destDir)`);
+    - ~~`ZipArchiveService:1590` and `TarSandboxedService:506`~~ (traced in PR 1: the destination, or
+      its folder from `GetFolderName`);
     - `AntivirusScanService:480`;
     - `ArchiveFormatDetector.Detect` (public, no entry check);
-    - `ArchiveNaming.GetUniqueFolderName`;
+    - ~~`ArchiveNaming.GetUniqueFolderName`~~ (PR 1: given `GetFolderName`'s name);
     - `Win32SourceDeleteOperations:112`;
     - `CliSourceDeleter:228`;
     - English exception text in `RawZipEntryLocator`, `ZipArchiveService:1904`,
