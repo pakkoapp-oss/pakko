@@ -114,7 +114,7 @@ public sealed class CliNameSelectionTests
     [Fact]
     public void ResolveArchives_NoWildcard_KeepsTheNamesAsTyped()
     {
-        (IReadOnlyList<string> paths, string? error) = Resolve("x", "missing.zip", "-ai!other.zip");
+        (IReadOnlyList<string> paths, string? error, _) = Resolve("x", "missing.zip", "-ai!other.zip");
 
         error.Should().BeNull();
         paths.Should().Equal("missing.zip", "other.zip");
@@ -124,7 +124,7 @@ public sealed class CliNameSelectionTests
     [Fact]
     public void ResolveArchives_LongPathPrefix_KeptAsTyped()
     {
-        (IReadOnlyList<string> paths, string? error) = Resolve("x", @"\\?\C:\w\a.zip");
+        (IReadOnlyList<string> paths, string? error, _) = Resolve("x", @"\\?\C:\w\a.zip");
 
         error.Should().BeNull();
         paths.Should().Equal(@"\\?\C:\w\a.zip");
@@ -135,7 +135,7 @@ public sealed class CliNameSelectionTests
     {
         Archives();
 
-        (IReadOnlyList<string> paths, _) = Resolve("x", "arcs\\*.zip");
+        (IReadOnlyList<string> paths, _, _) = Resolve("x", "arcs\\*.zip");
 
         paths.Select(Path.GetFileName).Should().Equal("one.zip", "two.zip");
     }
@@ -145,7 +145,7 @@ public sealed class CliNameSelectionTests
     {
         Archives();
 
-        (IReadOnlyList<string> paths, _) = Resolve("x", "-an", "-air!arcs\\*.zip", "-ax!arcs\\two.zip");
+        (IReadOnlyList<string> paths, _, _) = Resolve("x", "-an", "-air!arcs\\*.zip", "-ax!arcs\\two.zip");
 
         paths.Select(Path.GetFileName).Should().Equal("three.zip", "one.zip");
     }
@@ -164,7 +164,7 @@ public sealed class CliNameSelectionTests
             mklink.ExitCode.Should().Be(0);
         }
 
-        (IReadOnlyList<string> paths, _) = Resolve("x", "-an", "-air!arcs\\*.zip");
+        (IReadOnlyList<string> paths, _, _) = Resolve("x", "-an", "-air!arcs\\*.zip");
 
         paths.Select(Path.GetFileName).Should().Equal("three.zip", "one.zip", "two.zip");
     }
@@ -175,7 +175,7 @@ public sealed class CliNameSelectionTests
         // 7-Zip's arcCensor.ExtendExclude: a relative -ax holds in every folder an -ai names.
         Archives();
 
-        (IReadOnlyList<string> paths, _) = Resolve("x", "-an", $"-ai!{Path.Combine(_dir, "arcs")}\\*.zip", "-ax!two.zip");
+        (IReadOnlyList<string> paths, _, _) = Resolve("x", "-an", $"-ai!{Path.Combine(_dir, "arcs")}\\*.zip", "-ax!two.zip");
 
         paths.Select(Path.GetFileName).Should().Equal("one.zip");
     }
@@ -185,7 +185,7 @@ public sealed class CliNameSelectionTests
     {
         Write("empty.txt", []);
 
-        (IReadOnlyList<string> paths, string? error) = Resolve("x", "-an", "-ai@" + Path.Combine(_dir, "empty.txt"));
+        (IReadOnlyList<string> paths, string? error, _) = Resolve("x", "-an", "-ai@" + Path.Combine(_dir, "empty.txt"));
 
         paths.Should().BeEmpty();
         error.Should().Be("Cannot find archive");
@@ -194,7 +194,7 @@ public sealed class CliNameSelectionTests
     [Fact]
     public void ResolveArchives_WildcardMatchesNothing_CannotFindArchive()
     {
-        (IReadOnlyList<string> paths, string? error) = Resolve("x", "none*.zip");
+        (IReadOnlyList<string> paths, string? error, _) = Resolve("x", "none*.zip");
 
         paths.Should().BeEmpty();
         error.Should().Be("Cannot find archive");
@@ -204,6 +204,36 @@ public sealed class CliNameSelectionTests
     public void ResolveArchives_Stdin_HasNoArchiveName() =>
         Resolve("x", "-si", "dir").Paths.Should().BeEmpty();
 
+    // T-F511 PR 3: a folder the search cannot list was dropped in silence (IgnoreInaccessible), so
+    // "x -air!arcs\*.zip" quietly skipped the archives in it. 7-Zip 26 stops the scan there with
+    // "ERROR: <reason>" and the folder, and exits 2 (CExtractScanConsole::ScanError, DECISIONS).
+    [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public void ResolveArchives_FolderThatCannotBeListed_StopsWithItsReason()
+    {
+        Archives();
+        string denied = Path.Combine(_dir, "arcs", "deep");
+        System.Security.AccessControl.DirectorySecurity security = new DirectoryInfo(denied).GetAccessControl();
+        var rule = new System.Security.AccessControl.FileSystemAccessRule(
+            System.Security.Principal.WindowsIdentity.GetCurrent().User!,
+            System.Security.AccessControl.FileSystemRights.ListDirectory, System.Security.AccessControl.AccessControlType.Deny);
+        security.AddAccessRule(rule);
+        new DirectoryInfo(denied).SetAccessControl(security);
+        try
+        {
+            (IReadOnlyList<string> paths, string? error, bool cannotList) = Resolve("x", "-an", @"-air!arcs\*.zip");
+
+            paths.Should().BeEmpty();
+            error.Should().Contain(denied);
+            cannotList.Should().BeTrue("7-Zip ends the run with exit 2, not as a command-line error");
+        }
+        finally
+        {
+            security.RemoveAccessRule(rule);
+            new DirectoryInfo(denied).SetAccessControl(security);
+        }
+    }
+
     private void Archives()
     {
         Directory.CreateDirectory(Path.Combine(_dir, "arcs", "deep"));
@@ -211,7 +241,7 @@ public sealed class CliNameSelectionTests
             File.WriteAllText(Path.Combine(_dir, name), "x");
     }
 
-    private (IReadOnlyList<string> Paths, string? Error) Resolve(params string[] args) =>
+    private (IReadOnlyList<string> Paths, string? Error, bool CannotList) Resolve(params string[] args) =>
         CliNameSelection.ResolveArchives(CliArgumentParser.Parse(args), _dir);
 
     private static CliNameFilter Filter(params string[] args)

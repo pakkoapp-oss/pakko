@@ -216,6 +216,16 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         return Task.CompletedTask;
     });
 
+    // T-F511 PR 3: the walk the CLI's searches go through; a refused root walks nothing.
+    [Theory, MemberData(nameof(Hostile))]
+    public Task DirectoryWalker_Path(string kind) => NoThrow(() =>
+    {
+        string path = Path(kind);
+        _ = Archiver.Core.IO.DirectoryWalker.Walk(path).ToList();
+        _ = Archiver.Core.IO.DirectoryWalker.Walk(path, _ => true).ToList();
+        return Task.CompletedTask;
+    });
+
     // T-F511: the removal and sweep of Pakko's temp names, which the CLI and the App call.
     [Theory, MemberData(nameof(Hostile))]
     public Task TempOwner_Path(string kind) => NoThrow(() =>
@@ -448,6 +458,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
         ["PathIdentity.FinalPathOfItself"] = [nameof(PathIdentity_Path)],
         ["SourceKey.Of"] = [nameof(PathIdentity_Path)],
         ["TempOwner.SweepStaleInTemp"] = [nameof(TempOwner_Path)],
+        ["DirectoryWalker.Walk"] = [nameof(DirectoryWalker_Path)],
         ["TempOwner.TryRemove"] = [nameof(TempOwner_Path)],
         ["SourceTree.List"] = [nameof(SourceTree_Path)],
     };
@@ -482,7 +493,7 @@ public sealed class CoreNeverThrowsContractTests : IDisposable
             typeof(IArchiveService), typeof(ITarService), typeof(IExtractionRouter), typeof(IArchiveCreationRouter),
             typeof(IArchiveListingRouter), typeof(IRecoveryService), typeof(IAntivirusScanService), typeof(FileHashService),
             typeof(Archiver.Core.IO.PathIdentity), typeof(Archiver.Core.IO.SourceTree), typeof(EntryDiskName),
-            typeof(InputPaths), typeof(SourceKey), typeof(Archiver.Core.IO.TempOwner),
+            typeof(InputPaths), typeof(SourceKey), typeof(Archiver.Core.IO.TempOwner), typeof(Archiver.Core.IO.DirectoryWalker),
         ];
         HashSet<string> operations = [.. types.SelectMany(type => type
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance

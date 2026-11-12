@@ -274,6 +274,71 @@ public sealed class CliArchiveSourcesTests : IAsyncLifetime
         list.Sources.Should().BeEmpty();
     }
 
+    // T-F511 PR 3: the archive being written is judged by what it is (PathIdentity), not by its
+    // spelling. Given as \\?\, the old archive was taken as a source of itself.
+    [Fact]
+    public void Search_TheArchiveSpelledAnotherWay_IsNotTaken()
+    {
+        File.WriteAllText(Full("o.zip"), "old");
+
+        CliArchiveSourceList list = CliArchiveSources.Resolve(
+            [Mask("*.zip")], null, caseSensitive: false, _temp.Path, @"\\?\" + Full("o.zip"));
+
+        list.Sources.Should().BeEmpty();
+    }
+
+    // T-F511 PR 3: in a case-sensitive folder X.ZIP and x.zip are two files; writing X.ZIP left x.zip
+    // out, as a name compared without case.
+    [RequiresCaseSensitiveFolderFact]
+    public void Search_CaseSensitiveFolder_AnotherFileInAnotherCase_IsTaken()
+    {
+        string folder = Full("cs");
+        Directory.CreateDirectory(folder);
+        CaseSensitiveFolder.Enable(folder).Should().BeTrue();
+        File.WriteAllText(Path.Combine(folder, "x.zip"), "another file");
+
+        CliArchiveSourceList list = CliArchiveSources.Resolve(
+            [Mask(@"cs\*")], null, caseSensitive: false, _temp.Path, Path.Combine(folder, "X.ZIP"));
+
+        list.Sources.Select(s => s.FullPath).Should().Equal(Path.Combine(folder, "x.zip"));
+    }
+
+    // T-F511 PR 3: A.TXT and a.txt in a case-sensitive folder are two sources.
+    [RequiresCaseSensitiveFolderFact]
+    public void Search_CaseSensitiveFolder_BothSpellingsAreTaken()
+    {
+        string folder = Full("cs");
+        Directory.CreateDirectory(folder);
+        CaseSensitiveFolder.Enable(folder).Should().BeTrue();
+        File.WriteAllText(Path.Combine(folder, "A.TXT"), "UPPER");
+        File.WriteAllText(Path.Combine(folder, "a.txt"), "lower");
+
+        CliArchiveSourceList list = Search([Mask(@"cs\*")]);
+
+        list.Sources.Select(s => s.FullPath).Should().BeEquivalentTo([Path.Combine(folder, "A.TXT"), Path.Combine(folder, "a.txt")]);
+    }
+
+    // T-F511 PR 3 (pins, never red): a folder "d." beside its twin "d". DirectoryWalker does not
+    // enter it; before, listing "d." listed "d" under d's own names, and the duplicate went.
+    [Fact]
+    public void Search_FolderWithANameWindowsTrims_TwinsFileTakenOnce()
+    {
+        Directory.CreateDirectory(Full("d"));
+        File.WriteAllText(Full(@"d\f.txt"), "twin");
+        Directory.CreateDirectory(@"\\?\" + Path.Combine(_temp.Path, "d."));
+        try
+        {
+            CliArchiveSourceList list = Search([Mask("*.txt", CliRecursion.Recursive)]);
+
+            list.Sources.Select(s => s.FullPath).Where(path => path.EndsWith("f.txt", StringComparison.Ordinal))
+                .Should().Equal(Full(@"d\f.txt"));
+        }
+        finally
+        {
+            Directory.Delete(@"\\?\" + Path.Combine(_temp.Path, "d."));
+        }
+    }
+
     [Fact]
     public void Search_DoesNotEnterALinkedFolder()
     {

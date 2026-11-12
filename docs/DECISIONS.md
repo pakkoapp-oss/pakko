@@ -14983,6 +14983,53 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F511 PR 3 - the CLI's searches walk through DirectoryWalker (2026-11-12)
+
+**What was there.** `a`'s wildcard search (`CliArchiveSources.MaskSearch`) and `x`/`l`/`t`'s
+archive-name search (`CliNameSelection.Candidates`) listed folders themselves. The second used
+`IgnoreInaccessible = true`, so a folder it could not list was dropped without a word: `x
+-air!arcs\*.zip` skipped the archives in it and exited 0. The first left the archive being written
+out by its spelling (`OrdinalIgnoreCase` against the full path), so a `\\?\` spelling took the old
+archive as a source of itself, and in a case-sensitive folder writing `X.ZIP` left another file
+`x.zip` out. Its duplicate check compared paths without case too, so `A.TXT` and `a.txt` in a
+case-sensitive folder came to one source (T-F517).
+
+**7-Zip (ip7z/7zip, main, fetched 2026-11-12).** The archive scan of `x`/`l`/`t` runs
+`EnumerateDirItemsAndSort(options.arcCensor, ...)` with a `CExtractScanConsole` (`UI/Console/Main.cpp`).
+A folder it cannot open goes to `CDirItems::AddError`, which calls the callback:
+
+```cpp
+HRESULT CExtractScanConsole::ScanError(const FString &path, DWORD systemError)
+{
+  // 22.00:
+  // ScanErrors.AddError(path, systemError);
+  ClosePercentsAndFlush();
+  if (_se)
+  {
+    *_se << endl << kError << NError::MyFormatMessage(systemError) << endl;
+    _se->NormalizePrint_UString_Path(fs2us(path));
+    *_se << endl << endl;
+    _se->Flush();
+  }
+  return HRESULT_FROM_WIN32(systemError);
+```
+
+The error ends the scan (`RINOK`), no archive is opened, and `ThrowException_if_Error(hresultMain)`
+ends in `MainAr.cpp`'s `CSystemException` catch with `NExitCode::kFatalError` (2).
+
+**Decision.** Both searches walk through `DirectoryWalker`, now public: it enters no link and no
+name Windows trims, and reports a folder it cannot list. The archive-name search stops on such a
+folder, `pakko: error: <folder>: <reason>`, exit 2, nothing opened, as 7-Zip. `a`'s search keeps
+reporting it as a problem, as before. A match is taken in the walk's `leaveOut`,
+so a matched folder is still not entered. The archive being written is resolved once
+(`PathIdentity.Resolve`), and a file of its size is asked whether it is the same file. Sources are
+kept by their exact spelling; two that differ only in case are one source only when `PathIdentity`
+says they are one file, asked only on such a collision. The archive-name search now leaves a drive
+root's Hidden+System entries out, as every other walk does; none of them is an archive.
+
+**Not done.** The 8.3 spelling of the archive is covered by the same identity check but has no test
+of its own: short names are off on many volumes, and the `\\?\` row checks the same code.
+
 ## T-F511 PR 4 - one source key, one final path (2026-11-12)
 
 **What was there.** "Delete after" (App) and `-sdel` (CLI) match the sources they gave Core with what

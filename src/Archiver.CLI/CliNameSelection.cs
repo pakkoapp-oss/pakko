@@ -1,4 +1,4 @@
-using System.IO.Enumeration;
+using Archiver.Core.IO;
 using Archiver.Core.Services;
 using System.Text;
 
@@ -96,13 +96,14 @@ public static class CliNameSelection
     /// The archives to open: the archive name and -ai's names as typed when none has a wildcard or
     /// recurses (a missing one is the command's own error, exit 2, as in 7-Zip); otherwise every
     /// file they match under <paramref name="currentDirectory"/>, without -ax's, sorted. A
-    /// wildcard that matches no file is "Cannot find archive".
+    /// wildcard that matches no file is "Cannot find archive". CannotList: a folder the search had to
+    /// list could not be (Error names it), which 7-Zip ends with exit 2, not as a command-line error.
     /// </summary>
-    public static (IReadOnlyList<string> Paths, string? Error) ResolveArchives(ParsedCliCommand command, string currentDirectory)
+    public static (IReadOnlyList<string> Paths, string? Error, bool CannotList) ResolveArchives(ParsedCliCommand command, string currentDirectory)
     {
         CliNameSwitches switches = command.NameSwitches;
         if (command.ReadFromStdin)
-            return (command.ArchivePaths, null);
+            return (command.ArchivePaths, null, false);
 
         var includes = new List<CliNameMask>();
         var excludes = new List<CliNameMask>();
@@ -111,16 +112,16 @@ public static class CliNameSelection
         foreach (CliWildcardSwitch item in switches.Archives)
         {
             if (NamesOf(item.Text, item.IsListFile, switches.ListFileCharset) is not { } names)
-                return ([], ListFileError(item.Text));
+                return ([], ListFileError(item.Text), false);
             // 7-Zip's nopArc: an archive name never recurses unless its own switch says r.
             (item.Include ? includes : excludes).AddRange(names.Select(n => new CliNameMask(
                 n, item.Include, item.Recursion ?? CliRecursion.None, item.WildcardMatching ?? switches.WildcardMatching)));
         }
 
         if (includes.Count == 0)
-            return ([], "Cannot find archive");
+            return ([], "Cannot find archive", false);
         if (includes.TrueForAll(m => !Searches(m)) && excludes.Count == 0)
-            return ([.. includes.Select(m => m.Path)], null);
+            return ([.. includes.Select(m => m.Path)], null, false);
 
         // T-F512 (c): a name Windows trims goes to Core as typed, which refuses it; made a full path
         // it named its twin ("a.zip." opened "a.zip").
@@ -130,11 +131,18 @@ public static class CliNameSelection
         var filter = CliNameFilter.Create(full, switches.CaseSensitive, startFromAll: false);
         var found = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (CliNameMask mask in full.Where(m => m.Include))
-            found.UnionWith(Searches(mask) ? ((IEnumerable<string>?)Candidates(mask) ?? []) : [mask.Path]);
+        {
+            if (!Searches(mask))
+                found.Add(mask.Path);
+            else if (Candidates(mask, out string? unreadable) is { } files)
+                found.UnionWith(files);
+            else if (unreadable is not null)
+                return ([], unreadable, true);
+        }
         found.RemoveWhere(file => !filter.Includes(file, isFolder: false));
         found.UnionWith(trimmed.Select(m => m.Path));
 
-        return found.Count == 0 ? ([], "Cannot find archive") : ([.. found], null);
+        return found.Count == 0 ? ([], "Cannot find archive", false) : ([.. found], null, false);
     }
 
     // Every mask as a full path, so a mask's literal folders become the filter's sub-nodes. A
@@ -168,27 +176,40 @@ public static class CliNameSelection
         return driveAfterPrefix ? fullPath[4..] : fullPath;
     }
 
-    // The files under the mask's literal leading folders; deeper only when it recurses or a
-    // folder part holds a wildcard. Linked folders are not followed, so a junction loop ends the walk;
-    // null when the folder does not exist.
-    private static FileSystemEnumerable<string>? Candidates(CliNameMask mask)
+    // The files under the mask's literal leading folders; deeper only when it recurses or a folder
+    // part holds a wildcard. DirectoryWalker enters no link, so a junction loop ends the walk; a
+    // linked file stays (a OneDrive placeholder carries the reparse attribute too). Null when the
+    // folder does not exist. T-F511: a folder that cannot be listed stops the search, as 7-Zip's
+    // ScanError does (unreadable says which and why); IgnoreInaccessible dropped it in silence.
+    private static List<string>? Candidates(CliNameMask mask, out string? unreadable)
     {
+        unreadable = null;
         string root = LiteralRoot(mask);
-        var options = new EnumerationOptions
-        {
-            RecurseSubdirectories = mask.Recursion != CliRecursion.None || LiteralFolderCount(mask) < mask.Path.Split(PathSeparators).Length - 1,
-            IgnoreInaccessible = true,
-            AttributesToSkip = 0,
-        };
         if (!Directory.Exists(root))
             return null;
-        // A linked file stays (a OneDrive placeholder carries the reparse attribute too); only a
-        // linked folder is not walked into.
-        return new FileSystemEnumerable<string>(root, static (ref FileSystemEntry entry) => entry.ToFullPath(), options)
+        bool recurse = mask.Recursion != CliRecursion.None || LiteralFolderCount(mask) < mask.Path.Split(PathSeparators).Length - 1;
+        var files = new List<string>();
+        foreach (WalkEntry entry in DirectoryWalker.Walk(root, recurse ? null : static child => child is DirectoryInfo))
         {
-            ShouldIncludePredicate = static (ref FileSystemEntry entry) => !entry.IsDirectory,
-            ShouldRecursePredicate = static (ref FileSystemEntry entry) => (entry.Attributes & FileAttributes.ReparsePoint) == 0,
-        };
+            switch (entry.Kind)
+            {
+                case WalkEntryKind.UnreadableDirectory:
+                    unreadable = entry.Info.FullName + ": " + entry.Error?.Message;
+                    return null;
+                case WalkEntryKind.File:
+                case WalkEntryKind.ReparsePoint when entry.Info is FileInfo:
+                case WalkEntryKind.TrimmedName when entry.Info is FileInfo:
+                    // A file Windows trims goes to Core as found, which refuses it (T-F509).
+                    files.Add(entry.Info.FullName);
+                    break;
+                case WalkEntryKind.Directory:
+                case WalkEntryKind.LeftOut:
+                case WalkEntryKind.ReparsePoint:
+                case WalkEntryKind.TrimmedName:
+                    break;
+            }
+        }
+        return files;
     }
 
     // The mask's leading folders up to the first one with a wildcard (never its last part).

@@ -26,7 +26,7 @@ async Task<int> RunCommandAsync()
     (TextWriter messages, TextWriter errors) = command.Output.Writers(Console.Out, Console.Error, command.WriteToStdout);
     Console.SetOut(messages);
     Console.SetError(errors);
-    (command, string? nameError) = ResolveNames(command);
+    (command, string? nameError, bool cannotList) = ResolveNames(command);
     // T-F263: -si/-so staging left by a pakko that was killed (e.g. `x -so` plaintext) goes now.
     if (command.Type is CliCommandType.Extract or CliCommandType.Test or CliCommandType.List or CliCommandType.Archive)
         CliStreamStaging.SweepAbandoned();
@@ -36,6 +36,7 @@ async Task<int> RunCommandAsync()
         CliCommandType.Help => RunHelp(),
         CliCommandType.Version => RunVersion(),
         CliCommandType.Invalid => RunInvalid(command),
+        _ when nameError is not null && cannotList => RunCannotList(nameError),
         _ when nameError is not null => RunInvalid(command with { ErrorMessage = nameError }),
         _ when CliArchiveTypeExclusion.FirstUnknown(command.NameSwitches.ExcludedTypes) is { } unknownType => RejectUnknownArchiveType(unknownType),
         _ when command.PromptForPassword && Console.IsInputRedirected => RejectBarePasswordWithoutConsole(),
@@ -64,16 +65,17 @@ async Task<int> RunCommandAsync()
 }
 
 // T-F410: the archives on disk and the filter for the entries inside them, from the name switches;
-// a list file that cannot be read or a wildcard that finds no archive is a command-line error.
-static (ParsedCliCommand Command, string? Error) ResolveNames(ParsedCliCommand command)
+// a list file that cannot be read or a wildcard that finds no archive is a command-line error; a
+// folder the search cannot list is not (CannotList, T-F511).
+static (ParsedCliCommand Command, string? Error, bool CannotList) ResolveNames(ParsedCliCommand command)
 {
     if (command.Type is not (CliCommandType.Extract or CliCommandType.List or CliCommandType.Test))
-        return (command, null);
-    (IReadOnlyList<string> archives, string? archiveError) = CliNameSelection.ResolveArchives(command, Directory.GetCurrentDirectory());
+        return (command, null, false);
+    (IReadOnlyList<string> archives, string? archiveError, bool cannotList) = CliNameSelection.ResolveArchives(command, Directory.GetCurrentDirectory());
     if (archiveError is not null)
-        return (command, archiveError);
+        return (command, archiveError, cannotList);
     (CliNameFilter? filter, string? filterError) = CliNameSelection.BuildEntryFilter(command);
-    return (command with { ArchivePaths = archives, EntryFilter = filter }, filterError);
+    return (command with { ArchivePaths = archives, EntryFilter = filter }, filterError, false);
 }
 
 // T-F408: -bt, after the command, as 7-Zip's PrintStat.
@@ -106,6 +108,14 @@ static int RunInvalid(ParsedCliCommand command)
 {
     Console.Error.WriteLine($"pakko: {command.ErrorMessage}");
     return 7;
+}
+
+// T-F511: a folder the archive search cannot list ends the run before any archive is opened, as
+// 7-Zip's scan error does (ERROR: <reason>, exit 2).
+static int RunCannotList(string message)
+{
+    Console.Error.WriteLine($"pakko: error: {message}");
+    return 2;
 }
 
 // T-F410: 7-Zip's "Unsupported archive type" for a -stx type it does not know is exit 2, not 7.

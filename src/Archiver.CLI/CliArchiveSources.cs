@@ -1,3 +1,4 @@
+using Archiver.Core.IO;
 using Archiver.Core.Services;
 
 namespace Archiver.CLI;
@@ -29,8 +30,6 @@ public static class CliArchiveSources
     public const string NotFound = "The system cannot find the file specified.";
     public const string NotAFolder = "A name ending in a path separator names a folder, and this is a file.";
 
-    private const FileAttributes OsOwned = FileAttributes.Hidden | FileAttributes.System;
-
     private static readonly char[] Separators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
 
     /// <summary>Plain names, none recursing: the names after the archive with no switch.</summary>
@@ -45,7 +44,7 @@ public static class CliArchiveSources
     public static CliArchiveSourceList Resolve(
         IReadOnlyList<CliNameMask> includes, CliNameFilter? excludes, bool caseSensitive, string baseFolder, string archivePath)
     {
-        string archiveFull = Path.GetFullPath(archivePath, baseFolder);
+        var archive = new WrittenArchive(Path.GetFullPath(archivePath, baseFolder));
         var sources = new List<CliArchiveSource>();
         var problems = new List<CliSourceProblem>();
         var searches = new Dictionary<(string Prefix, string Literal), List<(CliNameMask Mask, string Under)>>(PrefixComparer.Instance);
@@ -88,7 +87,7 @@ public static class CliArchiveSources
         }
 
         foreach (((string prefix, string literal), List<(CliNameMask Mask, string Under)> masks) in searches)
-            Search(new SearchRoot(prefix, literal, archiveFull), masks, excludes, caseSensitive, sources, problems);
+            Search(new SearchRoot(prefix, literal, archive), masks, excludes, caseSensitive, sources, problems);
 
         return new CliArchiveSourceList(WithoutDuplicates(sources, excludes), problems);
     }
@@ -140,19 +139,40 @@ public static class CliArchiveSources
 
     // Where one walk starts: Prefix names the entries, Literal ('/' between parts) is the folder
     // under it the masks' literal parts already reach.
-    private sealed record SearchRoot(string Prefix, string Literal, string ArchiveFull);
+    private sealed record SearchRoot(string Prefix, string Literal, WrittenArchive Archive);
+
+    // T-F511 PR 3: the archive being written, by what it is (PathIdentity), resolved once. Its
+    // spelling may differ from the walk's (\\?\, 8.3, another case), and in a case-sensitive folder
+    // another case is another file. Only a file of its size is opened to ask.
+    private sealed class WrittenArchive
+    {
+        private readonly PathIdentity.Identity? _id;
+        private readonly long _length;
+
+        public WrittenArchive(string fullPath)
+        {
+            var file = new FileInfo(fullPath);
+            if (!file.Exists)
+                return;
+            _length = file.Length;
+            _id = PathIdentity.Resolve(fullPath)?.Id;
+        }
+
+        public bool Is(FileSystemInfo entry) =>
+            _id is { } id && entry is FileInfo file && file.Length == _length && PathIdentity.Resolve(file.FullName)?.Id == id;
+    }
 
     private static void Search(
         SearchRoot root, List<(CliNameMask Mask, string Under)> masks, CliNameFilter? excludes, bool caseSensitive,
         List<CliArchiveSource> sources, List<CliSourceProblem> problems) =>
         new MaskSearch(root, masks, excludes, caseSensitive, sources, problems).Run();
 
-    // One walk of Search: a match is a source and is not entered; a folder is entered while a mask
-    // can still match below it, never through a link.
+    // One walk of Search through DirectoryWalker (T-F511): a match is a source and is not entered;
+    // a folder is entered while a mask can still match below it, never through a link, never by a
+    // name Windows trims (listing "d." lists its twin "d"); a folder that cannot be listed is a
+    // problem. The walk leaves the system's own entries of a drive root out (T-F285/T-F324).
     private sealed class MaskSearch
     {
-        private static readonly EnumerationOptions Options = new() { AttributesToSkip = 0, IgnoreInaccessible = false };
-
         private readonly SearchRoot _root;
         private readonly CliNameFilter _includes;
         private readonly CliNameFilter? _excludes;
@@ -160,7 +180,6 @@ public static class CliArchiveSources
         private readonly int _deepest;
         private readonly List<CliArchiveSource> _sources;
         private readonly List<CliSourceProblem> _problems;
-        private readonly Stack<(DirectoryInfo Folder, string Name, int Depth)> _pending = new();
 
         public MaskSearch(
             SearchRoot root, List<(CliNameMask Mask, string Under)> masks, CliNameFilter? excludes, bool caseSensitive,
@@ -178,47 +197,40 @@ public static class CliArchiveSources
 
         public void Run()
         {
-            int literalDepth = _root.Literal.Length == 0 ? 0 : _root.Literal.Split('/').Length;
-            _pending.Push((new DirectoryInfo(Path.Combine(_root.Prefix, _root.Literal)), _root.Literal, literalDepth));
-            while (_pending.Count > 0)
+            string start = Path.Combine(_root.Prefix, _root.Literal.Replace('/', Path.DirectorySeparatorChar));
+            foreach (WalkEntry entry in DirectoryWalker.Walk(start, LeaveOut))
             {
-                (DirectoryInfo folder, string folderName, int depth) = _pending.Pop();
-                if (ListChildren(folder) is not { } children)
-                    continue;
-                // T-F285/T-F324: in a drive root the system's own entries (Hidden and System) are left
-                // out, as Core leaves them out of a drive root given whole.
-                bool driveRoot = folder.Parent is null;
-                foreach (FileSystemInfo child in children.Where(c => !IsLeftOut(c, driveRoot)))
-                    Visit(child, folderName.Length == 0 ? child.Name : folderName + "/" + child.Name, depth + 1);
+                switch (entry.Kind)
+                {
+                    case WalkEntryKind.UnreadableDirectory:
+                        _problems.Add(new CliSourceProblem(entry.Info.FullName, entry.Error?.Message ?? ""));
+                        break;
+                    // Taken or skipped in LeaveOut; a link or a name Windows trims is not entered.
+                    case WalkEntryKind.Directory:
+                    case WalkEntryKind.File:
+                    case WalkEntryKind.LeftOut:
+                    case WalkEntryKind.ReparsePoint:
+                    case WalkEntryKind.TrimmedName:
+                        break;
+                }
             }
         }
 
-        private FileSystemInfo[]? ListChildren(DirectoryInfo folder)
+        // Once per entry below the start, before it is entered: the archive and what -x leaves out
+        // are skipped, a match is taken, a folder no mask reaches below is not entered.
+        private bool LeaveOut(FileSystemInfo child)
         {
-            try
-            {
-                return [.. folder.EnumerateFileSystemInfos("*", Options)];
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                _problems.Add(new CliSourceProblem(folder.FullName, ex.Message));
-                return null;
-            }
-        }
-
-        private bool IsLeftOut(FileSystemInfo child, bool driveRoot) =>
-            string.Equals(child.FullName, _root.ArchiveFull, StringComparison.OrdinalIgnoreCase)
-            || (driveRoot && (child.Attributes & OsOwned) == OsOwned);
-
-        private void Visit(FileSystemInfo child, string name, int depth)
-        {
+            string name = child.FullName[_root.Prefix.Length..].TrimStart(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, '/');
+            int depth = name.Split('/').Length;
             bool isFolder = child is DirectoryInfo;
-            if (_excludes is not null && !_excludes.Includes(name, isFolder))
-                return;
+            if (_root.Archive.Is(child) || (_excludes is not null && !_excludes.Includes(name, isFolder)))
+                return true;
             if (_includes.Includes(name, isFolder))
+            {
                 _sources.Add(new CliArchiveSource(child.FullName, depth));
-            else if (isFolder && (_anyRecursive || depth < _deepest) && (child.Attributes & FileAttributes.ReparsePoint) == 0)
-                _pending.Push(((DirectoryInfo)child, name, depth));
+                return true;
+            }
+            return !isFolder || !(_anyRecursive || depth < _deepest);
         }
     }
 
@@ -227,12 +239,12 @@ public static class CliArchiveSources
     // unless -x leaves it out there: then it stays a source of its own, as 7-Zip archives it.
     private static List<CliArchiveSource> WithoutDuplicates(List<CliArchiveSource> sources, CliNameFilter? excludes)
     {
-        var taken = new Dictionary<string, CliArchiveSource>(StringComparer.OrdinalIgnoreCase);
+        var taken = new TakenSources();
         foreach (CliArchiveSource source in sources.Where(s => excludes is null || excludes.Includes(NameOf(s), Directory.Exists(s.FullPath))))
-            taken.TryAdd(source.FullPath, source);
+            taken.TryAdd(source);
 
-        var kept = new List<CliArchiveSource>(taken.Count);
-        foreach (CliArchiveSource source in taken.Values)
+        var kept = new List<CliArchiveSource>();
+        foreach (CliArchiveSource source in taken.All)
         {
             if (TakenAncestor(source.FullPath, taken) is not { } ancestor)
             {
@@ -246,14 +258,50 @@ public static class CliArchiveSources
         return kept;
     }
 
-    private static CliArchiveSource? TakenAncestor(string path, Dictionary<string, CliArchiveSource> taken)
+    private static CliArchiveSource? TakenAncestor(string path, TakenSources taken)
     {
         for (string? folder = Path.GetDirectoryName(path); folder is not null; folder = Path.GetDirectoryName(folder))
         {
-            if (taken.TryGetValue(folder, out CliArchiveSource? ancestor))
+            if (taken.Find(folder) is { } ancestor)
                 return ancestor;
         }
         return null;
+    }
+
+    // T-F517: the sources taken, each once. A path compared without case named one source twice in a
+    // case-sensitive folder, where A.TXT and a.txt are two files, and the second was dropped. Two
+    // spellings that differ only in case are one source only when they are one file (PathIdentity),
+    // asked only on such a collision.
+    private sealed class TakenSources
+    {
+        private readonly Dictionary<string, CliArchiveSource> _exact = [with(StringComparer.Ordinal)];
+        private readonly Dictionary<string, List<string>> _byFoldedCase = [with(StringComparer.OrdinalIgnoreCase)];
+
+        public IEnumerable<CliArchiveSource> All => _exact.Values;
+
+        public CliArchiveSource? Find(string path)
+        {
+            if (_exact.TryGetValue(path, out CliArchiveSource? source))
+                return source;
+            if (!_byFoldedCase.TryGetValue(path, out List<string>? spellings))
+                return null;
+            string? same = spellings.Find(other => SameFile(other, path));
+            return same is null ? null : _exact[same];
+        }
+
+        public void TryAdd(CliArchiveSource source)
+        {
+            if (Find(source.FullPath) is not null)
+                return;
+            _exact.Add(source.FullPath, source);
+            if (_byFoldedCase.TryGetValue(source.FullPath, out List<string>? spellings))
+                spellings.Add(source.FullPath);
+            else
+                _byFoldedCase.Add(source.FullPath, [source.FullPath]);
+        }
+
+        private static bool SameFile(string a, string b) =>
+            PathIdentity.Resolve(a) is { } first && PathIdentity.Resolve(b) is { } second && first.Id == second.Id;
     }
 
     // The source's name in the archive: its last NameParts parts.
