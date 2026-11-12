@@ -93,23 +93,36 @@ internal static class DirectoryWalker
             foreach (FileInfo file in children.OfType<FileInfo>().OrderBy(f => f.FullName, StringComparer.OrdinalIgnoreCase))
                 yield return new WalkEntry(KindOf(file, WalkEntryKind.File), file);
 
-            DirectoryInfo[] subDirs = [.. children.OfType<DirectoryInfo>().OrderBy(d => d.FullName, StringComparer.OrdinalIgnoreCase)];
-            foreach (DirectoryInfo trimmed in subDirs.Where(d => KindOf(d, WalkEntryKind.Directory) == WalkEntryKind.TrimmedName))
-                yield return new WalkEntry(WalkEntryKind.TrimmedName, trimmed);
-            for (int i = subDirs.Length - 1; i >= 0; i--)
-            {
-                WalkEntryKind kind = KindOf(subDirs[i], WalkEntryKind.Directory);
-                if (kind != WalkEntryKind.TrimmedName)
-                    pending.Push((subDirs[i], kind == WalkEntryKind.ReparsePoint));
-            }
+            foreach (WalkEntry trimmed in PushSubfolders(children, pending))
+                yield return trimmed;
         }
     }
 
+    // The subfolders to walk go on the stack, first one on top; those with a name Windows trims are
+    // returned instead, in order, and never entered.
+    private static List<WalkEntry> PushSubfolders(FileSystemInfo[] children, Stack<(DirectoryInfo Dir, bool IsReparsePoint)> pending)
+    {
+        DirectoryInfo[] subDirs = [.. children.OfType<DirectoryInfo>().OrderBy(d => d.FullName, StringComparer.OrdinalIgnoreCase)];
+        var trimmed = new List<WalkEntry>();
+        for (int i = subDirs.Length - 1; i >= 0; i--)
+        {
+            WalkEntryKind kind = KindOf(subDirs[i], WalkEntryKind.Directory);
+            if (kind == WalkEntryKind.TrimmedName)
+                trimmed.Add(new WalkEntry(kind, subDirs[i]));
+            else
+                pending.Push((subDirs[i], kind == WalkEntryKind.ReparsePoint));
+        }
+        trimmed.Reverse();
+        return trimmed;
+    }
+
     // A link first: it is never entered or opened as what it points to, whatever its name.
-    private static WalkEntryKind KindOf(FileSystemInfo child, WalkEntryKind plain) =>
-        IsReparsePoint(child) ? WalkEntryKind.ReparsePoint
-        : Archiver.Core.Services.InputPaths.OwnNameTrimmed(child.Name) ? WalkEntryKind.TrimmedName
-        : plain;
+    private static WalkEntryKind KindOf(FileSystemInfo child, WalkEntryKind plain)
+    {
+        if (IsReparsePoint(child))
+            return WalkEntryKind.ReparsePoint;
+        return Archiver.Core.Services.InputPaths.OwnNameTrimmed(child.Name) ? WalkEntryKind.TrimmedName : plain;
+    }
 
     // T-F410: the children leaveOut keeps; leftOut gets the others, in the walk's order.
     private static FileSystemInfo[] WithoutLeftOut(FileSystemInfo[] children, Func<FileSystemInfo, bool>? leaveOut, out FileSystemInfo[] leftOut)

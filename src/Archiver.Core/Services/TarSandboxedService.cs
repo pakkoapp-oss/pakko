@@ -1734,16 +1734,9 @@ public sealed class TarSandboxedService : ITarService
             var trimmedNames = new List<string>();
             (long entries, long bytes, string? unrepresentable) = CountRecursiveEntriesAndBytes(
                 fullSource, links, names.LeaveOutBelow(fullSource, isDriveRoot ? "" : name), leftOut, sourceFiles, trimmedNames);
-            // T-F509: tar.exe would read "a.txt " itself, but what Core checks of the names it meets
-            // (the filter, links, the code page, hard-link pairs) opens them by their plain paths.
-            if (trimmedNames.Count > 0)
+            if (WalkRefusal(sourcePath, trimmedNames, unrepresentable) is { } refusal)
             {
-                errors.Add(CoreMessages.Error(sourcePath, MessageCode.SourceNameTrimmed, trimmedNames[0]));
-                continue;
-            }
-            if (unrepresentable is not null)
-            {
-                errors.Add(CoreMessages.Error(sourcePath, TarArgumentEncodingException.Describe(unrepresentable, TarCommandLineEncoding.AnsiCodePage)));
+                errors.Add(refusal);
                 continue;
             }
 
@@ -1763,6 +1756,18 @@ public sealed class TarSandboxedService : ITarService
         }
 
         return (entryCount, totalEntriesForProgress, totalBytesForProgress);
+    }
+
+    // Why tar.exe must not get this source, from what Core's walk of it met; null when it may.
+    // T-F509: tar.exe would read "a.txt " itself, but what Core checks of the names it meets (the
+    // filter, links, the code page, hard-link pairs) opens them by their plain paths.
+    private static ArchiveError? WalkRefusal(string sourcePath, List<string> trimmedNames, string? unrepresentable)
+    {
+        if (trimmedNames.Count > 0)
+            return CoreMessages.Error(sourcePath, MessageCode.SourceNameTrimmed, trimmedNames[0]);
+        return unrepresentable is null
+            ? null
+            : CoreMessages.Error(sourcePath, TarArgumentEncodingException.Describe(unrepresentable, TarCommandLineEncoding.AnsiCodePage));
     }
 
     // The lines one source added, from listedBefore on: its links and what the filter leaves out excluded.
