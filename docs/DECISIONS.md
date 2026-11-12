@@ -14889,6 +14889,24 @@ superset of 7-Zip's (`CONIN$`, `CONOUT$`, COM and LPT with superscript digits, C
 `nul.zip` extracts into `_nul`. `:` and control characters become `_`, as refused characters do.
 `SingleName` names one thing, so it has no earlier entry check to rely on.
 
+**PR (b), the disk operations, and their finding.** `PathMatrixDiskTests` (Core.IntegrationTests)
+runs creation and extraction, ZIP and tar, with the path as source, archive or destination, over all
+pairs of shape, spelling, position and twin. Each case has its own folder; the named place holds
+bytes marked LITERAL, a twin Windows would open in its place bytes marked TWIN. Oracles: no throw,
+the twin unchanged, no TWIN bytes in anything written, nothing new outside the case's folder, a clean
+result holds the LITERAL bytes. `.` and `..` stay with the pure tests: they name the folder itself
+and its parent, so a write there is what was asked.
+
+It found one: a destination `\\.\C:\w\a \f` (a space at the end of a folder on the way, which
+Windows keeps there) left an empty `C:\w\a` and failed. `Directory.CreateDirectory` makes the
+missing folders one at a time. For a plain path .NET makes them through `\\?\` from the full path
+(the probe: `C:\w\a \f` made `a ` and `f`); a `\\.\` path it passes as is, and Win32 reads each
+missing folder as a last name, so `a ` became `a`. A twin `a` already there was not written into (the
+next step failed), so no data was at risk. `DestinationFolder.TryCreate`, the owner, now makes a
+`\\.\` folder from its normalized full path through `\\?\`, as .NET makes a plain one. Seen red in
+the matrix and in `TrimmedSourceNameTests` first; the matrix also turns red when `TryCreate`'s
+trimmed-name refusal is removed.
+
 ## T-F509 retrospective - a rule added at call sites, and owners that were not single (2026-11-12)
 
 **What happened.** T-F509's first version put the trimmed-name rule into 2 of `DirectoryWalker`'s 9

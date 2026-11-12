@@ -1685,7 +1685,8 @@ re-measured with T-F346's script before and after.
 
 ### T-F512 - The path matrix: generated names and paths in combination (P2, user, 2026-11-12)
 
-- [~] **Status:** PR (a) done on its branch: the generator and the full product of the pure rules.
+- [~] **Status:** PR (a) merged (#232): the generator and the full product of the pure rules.
+  PR (b) done on its branch: the disk operations.
   - **Asked by the user:** "add generation of possible names and addresses to the tests, a
     combinatorial matrix, to go through as many variants as possible". T-F509, T-F463, T-F475 and
     T-F511's `a .zip` regression were each found by hand, one shape at a time.
@@ -1707,10 +1708,18 @@ re-measured with T-F346's script before and after.
     such a name gets `_` in front, as 7-Zip's `Get_Correct_FsFile_Name` does
     (`ExtractingFilePath.cpp`, `CorrectUnsupportedName`), with `ArchiveEntrySecurity`'s list. `:`
     and control characters become `_` too. Seen red in `ShellCommandsTests` first.
+  - **PR (b), the disk operations** (`PathMatrixDiskTests`): creation and extraction, ZIP and
+    tar.gz, the path as source, archive or destination, all pairs with marker bytes per place, the
+    twin oracle and nothing outside the case's folder. 109 quick cases in about 5 s; every pair
+    (`PAKKO_FUZZ_ITERATIONS=1000`, `Category=Fuzz`) in about 30 s. Mutants of `TryCreate` turn it red.
+  - **Found by PR (b), fixed in the owner:** a destination `\\.\C:\w\a \f` left an empty `C:\w\a`
+    and failed: .NET passes a `\\.\` path to Win32 as is, which reads each missing folder as a last
+    name. `DestinationFolder.TryCreate` now makes it as the plain path is made (DECISIONS, T-F512).
+  - **PR (c), `CLI-056`:** the CLI cases (the quick shapes, as source, `-sdel` source, archive and
+    destination) are exported to `scripts/smoke/PathMatrixCases.json`; `CliCases_TheSmokeListIsTheGeneratorsOwn`
+    fails when the file drifts from the generator (`PAKKO_PATHMATRIX_WRITE=1` rewrites it).
   - **Next:**
-    - (b) disk operations all-pairs, with marker bytes per role, the twin oracle and nothing outside
-      the root; a quick subset of shapes and the full set under `Category=Fuzz`;
-    - (c) `CLI-056`, the CLI cases from an exported list, on Win11 and PakkoW10 (tar 3.5.2);
+    - (c) run `CLI-056`, the CLI cases from an exported list, on Win11 and PakkoW10 (tar 3.5.2);
     - key equality of App, CLI and the engines belongs to T-F511's PR 4.
   - **`KnownFindings`** may hold only a safe outcome (another refusal code, or a refusal where
     acceptance would be better). Never a throw, a touched twin, another file's bytes or a write

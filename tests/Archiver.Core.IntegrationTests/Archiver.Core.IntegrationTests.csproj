@@ -26,6 +26,10 @@
   <!-- T-F467: the bsdtar listing model the unit tests run on, checked here against the real tar.exe. -->
   <ItemGroup>
     <Compile Include="..\Archiver.Core.Tests\Services\Sandbox\BsdtarListingModel.cs" Link="BsdtarListingModel.cs" />
+    <!-- T-F512 (b): the path matrix generator, run here against the real operations on disk. -->
+    <Compile Include="..\Archiver.Core.Tests\PathMatrix\NameShapes.cs" Link="PathMatrix\NameShapes.cs" />
+    <Compile Include="..\Archiver.Core.Tests\PathMatrix\PathForms.cs" Link="PathMatrix\PathForms.cs" />
+    <Compile Include="..\Archiver.Core.Tests\PathMatrix\AllPairs.cs" Link="PathMatrix\AllPairs.cs" />
   </ItemGroup>
 
   <ItemGroup>

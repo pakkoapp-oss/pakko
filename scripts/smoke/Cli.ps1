@@ -1018,3 +1018,144 @@ Add-SmokeStep 'CLI-055' {
     Assert-Smoke (@(Get-ChildItem -LiteralPath $fixed -File).Count -eq 1) 'no repaired copy in fixed'
     'out. refused, exit 2, out empty; the repair into fixed writes its copy'
 }
+
+# T-F512 (c): the path matrix through the installed pakko. The cases are the generator's own
+# (scripts/smoke/PathMatrixCases.json, kept current by PathMatrixDiskTests): a name shape in a
+# spelling, as a source (with and without -sdel), an archive or a destination, ZIP or tar.gz, with or
+# without a twin Windows would open in its place. Per case: no crash, the twin untouched, no twin
+# bytes written, nothing outside the case's folder, exit 0 holds the named place's bytes (and -sdel
+# then removed it, and only it), the plain name works.
+Add-SmokeStep 'CLI-056' {
+    $root = Get-StepFolder 'cli056'
+    $cases = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'PathMatrixCases.json') -Raw -Encoding utf8 | ConvertFrom-Json
+    $unc = '\\localhost\' + $root[0] + '$' + $root.Substring(2)
+    $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+    $long = '\\?\'
+    function Resolve-CasePath([string]$path) {
+        if ($null -eq $path) { return $null }
+        $path.Replace('\\localhost\Z$\R', $unc).Replace('Z:\R', $root)
+    }
+    function New-Marked([string]$at, [string]$ext, [string]$mark, [string]$scratch) {
+        $null = [System.IO.Directory]::CreateDirectory($long + [System.IO.Path]::GetDirectoryName($at))
+        if ($ext -eq 'zip') {
+            $bytes = [System.IO.MemoryStream]::new()
+            $zip = [System.IO.Compression.ZipArchive]::new($bytes, [System.IO.Compression.ZipArchiveMode]::Create, $true)
+            $writer = [System.IO.StreamWriter]::new($zip.CreateEntry('m.txt').Open())
+            $writer.Write($mark); $writer.Dispose(); $zip.Dispose()
+            [System.IO.File]::WriteAllBytes($long + $at, $bytes.ToArray())
+            return
+        }
+        $null = [System.IO.Directory]::CreateDirectory($scratch)
+        [System.IO.File]::WriteAllText((Join-Path $scratch 'm.txt'), $mark)
+        $made = Invoke-Tool -Exe $tar -Arguments @('-czf', (Join-Path $scratch 'm.tar.gz'), '-C', $scratch, 'm.txt')
+        Assert-Smoke ($made.ExitCode -eq 0) "tar.exe could not make the case's archive: $($made.Text)"
+        [System.IO.File]::Copy((Join-Path $scratch 'm.tar.gz'), $long + $at)
+    }
+    function Get-State([string]$path) {
+        $at = $long + $path
+        if ([System.IO.File]::Exists($at)) {
+            return [System.BitConverter]::ToString([System.IO.File]::ReadAllBytes($at)) + '@' + [System.IO.File]::GetLastWriteTimeUtc($at).Ticks
+        }
+        if (-not [System.IO.Directory]::Exists($at)) { return 'gone' }
+        (@([System.IO.Directory]::GetFileSystemEntries($at, '*', 'AllDirectories') | Sort-Object -CaseSensitive | ForEach-Object {
+            $_ + '=' + $(if ([System.IO.File]::Exists($_)) { [System.BitConverter]::ToString([System.IO.File]::ReadAllBytes($_)) } else { 'dir' })
+        })) -join '|'
+    }
+    function Get-ArchiveText([string]$file) {
+        $stream = [System.IO.File]::OpenRead($file)
+        try {
+            if ($file.EndsWith('.zip')) {
+                $zip = [System.IO.Compression.ZipArchive]::new($stream)
+                (@($zip.Entries | Where-Object { -not $_.FullName.EndsWith('/') } | ForEach-Object {
+                    $reader = [System.IO.StreamReader]::new($_.Open()); $reader.ReadToEnd(); $reader.Dispose()
+                })) -join ''
+                $zip.Dispose()
+                return
+            }
+            $gzip = [System.IO.Compression.GZipStream]::new($stream, [System.IO.Compression.CompressionMode]::Decompress)
+            $bytes = [System.IO.MemoryStream]::new()
+            $gzip.CopyTo($bytes); $gzip.Dispose()
+            [System.Text.Encoding]::GetEncoding(28591).GetString($bytes.ToArray())
+        } finally { $stream.Dispose() }
+    }
+    function Get-FilesText([string]$folder) {
+        if (-not [System.IO.Directory]::Exists($long + $folder)) { return '' }
+        (@([System.IO.Directory]::GetFiles($long + $folder, '*', 'AllDirectories') | ForEach-Object { [System.IO.File]::ReadAllText($_) })) -join ''
+    }
+
+    $failures = [System.Collections.Generic.List[string]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    for ($i = 0; $i -lt $cases.Count; $i++) {
+        $case = $cases[$i]
+        $folder = Join-Path $root "c$i"
+        $null = [System.IO.Directory]::CreateDirectory($folder)
+        $null = $seen.Add("c$i")
+        $path = Resolve-CasePath $case.path
+        $place = Resolve-CasePath $case.place
+        $twin = Resolve-CasePath $case.twin
+        $lit = "LITERAL-$i"
+        $mark = "TWIN-$i"
+        $ext = $case.ext
+        $isSource = $case.role -in 'a-source', 'a-sdel'
+        if ($case.onDisk) {
+            if ($isSource) {
+                $null = [System.IO.Directory]::CreateDirectory($long + [System.IO.Path]::GetDirectoryName($place))
+                [System.IO.File]::WriteAllText($long + $place, $lit)
+            } elseif ($case.role -eq 'x-archive') {
+                New-Marked $place $ext $lit (Join-Path $root "s$i-l")
+            }
+            if ($twin) {
+                if ($isSource) {
+                    $null = [System.IO.Directory]::CreateDirectory($long + [System.IO.Path]::GetDirectoryName($twin))
+                    [System.IO.File]::WriteAllText($long + $twin, $mark)
+                } elseif ($case.role -eq 'x-archive') {
+                    New-Marked $twin $ext $mark (Join-Path $root "s$i-t")
+                } else {
+                    $null = [System.IO.Directory]::CreateDirectory($long + $twin)
+                    [System.IO.File]::WriteAllText($long + (Join-Path $twin 't.txt'), $mark)
+                }
+            }
+        }
+        foreach ($scratch in "s$i-l", "s$i-t") {
+            if ([System.IO.Directory]::Exists((Join-Path $root $scratch))) { [System.IO.Directory]::Delete((Join-Path $root $scratch), $true) }
+        }
+        $twinBefore = if ($twin) { Get-State $twin } else { '' }
+        $out = Join-Path $folder 'out'
+        $made = Join-Path $folder "out.$ext"
+        $type = if ($ext -eq 'zip') { '-tzip' } else { '-ttar.gz' }
+        $arguments = switch ($case.role) {
+            'a-source' { @('a', $type, $made, $path) }
+            'a-sdel' { @('a', $type, '-sdel', $made, $path) }
+            'x-archive' { @('x', $path, "-o$out") }
+            'x-destination' {
+                New-Marked (Join-Path $folder "in.$ext") $ext $lit (Join-Path $folder 'seed')
+                [System.IO.Directory]::Delete((Join-Path $folder 'seed'), $true)
+                @('x', (Join-Path $folder "in.$ext"), "-o$path")
+            }
+        }
+        $run = Invoke-Pakko $arguments -WorkingDirectory $root -TimeoutSeconds 120
+        $id = "$($case.id) ($path)"
+        if ($run.ExitCode -notin 0, 1, 2, 7 -or $run.Text -match 'Unhandled exception') {
+            $failures.Add("${id}: exit $($run.ExitCode) $($run.Text)")
+            continue
+        }
+        if ($twin -and (Get-State $twin) -ne $twinBefore) { $failures.Add("${id}: the twin changed") }
+        $written = ''
+        if ([System.IO.File]::Exists($made)) { $written += Get-ArchiveText $made }
+        $written += Get-FilesText $out
+        if ($case.role -eq 'x-destination') { $written += Get-FilesText $place }
+        if ($written.Contains('TWIN-')) { $failures.Add("${id}: the twin's bytes were written") }
+        if ($run.ExitCode -eq 0 -and $case.onDisk -and -not $written.Contains($lit)) { $failures.Add("${id}: exit 0 without the named place's bytes") }
+        if ($case.role -eq 'a-sdel' -and $case.onDisk) {
+            $gone = -not [System.IO.File]::Exists($long + $place)
+            if ($run.ExitCode -eq 0 -and -not $gone) { $failures.Add("${id}: -sdel kept the source after exit 0") }
+            if ($run.ExitCode -ne 0 -and $gone) { $failures.Add("${id}: -sdel deleted the source of a failed run") }
+        }
+        if ($case.plain -and $run.ExitCode -ne 0) { $failures.Add("${id}: the plain name failed, exit $($run.ExitCode) $($run.Text)") }
+        foreach ($name in @([System.IO.Directory]::GetFileSystemEntries($long + $root) | ForEach-Object { [System.IO.Path]::GetFileName($_) })) {
+            if ($seen.Add($name)) { $failures.Add("${id}: written outside the case's folder: $name") }
+        }
+    }
+    Assert-Smoke ($failures.Count -eq 0) ("$($failures.Count) of $($cases.Count) cases:`n" + ($failures -join "`n"))
+    "$($cases.Count) cases, every one safe; the plain name works in each role"
+}

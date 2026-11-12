@@ -284,6 +284,52 @@ public sealed class TrimmedSourceNameTests : IDisposable
             .Should().BeEquivalentTo([kept, Path.Combine(kept, "inner.txt"), Path.Combine(kept, "other.txt")]);
     }
 
+    // T-F512 (b), found by the path matrix: "C:\w\a \f" keeps its space to Windows (only the last
+    // name loses it), but Directory.CreateDirectory makes "C:\w\a " first, as a last name: Windows
+    // made "C:\w\a", and then could not find "a \f". The folder is now made as Windows reads it.
+    // A plain path, and the same through "\\.\".
+    [Theory]
+    [InlineData(ArchiveContainerFormat.Zip, "a ", "")]
+    [InlineData(ArchiveContainerFormat.Zip, "a.", "")]
+    [InlineData(ArchiveContainerFormat.Zip, "a ", @"\\.\")]
+    [InlineData(ArchiveContainerFormat.Zip, "a.", @"\\.\")]
+    [InlineData(ArchiveContainerFormat.TarGz, "a ", "")]
+    [InlineData(ArchiveContainerFormat.TarGz, "a ", @"\\.\")]
+    public async Task Extract_IntoAFolderUnderANameEndingInASpaceOrDot_MakesThatNameAndNoTwin(ArchiveContainerFormat format, string middle, string prefix)
+    {
+        string folder = Folder("mid" + format + (middle.EndsWith(' ') ? "space" : "dot") + (prefix.Length > 0 ? "device" : ""));
+        string archive = Path.Combine(folder, format == ArchiveContainerFormat.Zip ? "in.zip" : "in.tar.gz");
+        WriteLiteral(Path.Combine(folder, "content", "m.txt"), "M");
+        if (format == ArchiveContainerFormat.Zip)
+        {
+            ZipFile.CreateFromDirectory(Path.Combine(folder, "content"), archive);
+        }
+        else
+        {
+            using FileStream file = File.Create(archive);
+            using var gzip = new GZipStream(file, CompressionLevel.Fastest);
+            TarFile.CreateFromDirectory(Path.Combine(folder, "content"), gzip, includeBaseDirectory: false);
+        }
+        string destination = Path.Combine(folder, middle, "f");
+        bool kept = string.Equals(Path.GetFullPath(destination), destination, StringComparison.Ordinal);
+        var options = new ExtractOptions { ArchivePaths = [archive], DestinationFolder = prefix + destination };
+
+        ArchiveResult extracted = format == ArchiveContainerFormat.Zip
+            ? await _services.ArchiveService.ExtractAsync(options)
+            : await _services.TarService.ExtractAsync(options);
+
+        Directory.Exists(Literal + Path.Combine(folder, middle.TrimEnd(' ', '.'))).Should().BeFalse("nothing is made under the name Windows trims it to");
+        if (kept)
+        {
+            extracted.Errors.Should().BeEmpty();
+            File.ReadAllText(Literal + Path.Combine(destination, "m.txt")).Should().Be("M");
+        }
+        else
+        {
+            extracted.Errors.Should().ContainSingle();
+        }
+    }
+
     // T-F511: a repair's output folder "out." is "out" to Windows: the repaired copy went into the twin.
     [Fact]
     public async Task Repair_OutputFolderWindowsTrims_IsRefusedAndNothingLandsInTheTwin()

@@ -63,7 +63,7 @@ public sealed partial class DestinationFolderOwnerTests
     public void Scan_SeesTheOwner()
     {
         // Guards the scan itself: if the owner's own call stops matching, the test above passes vacuously.
-        Calls(Code(Owner)).Should().Equal("Directory.CreateDirectory(folder)");
+        Calls(Code(Owner)).Should().Equal("Directory.CreateDirectory(Creatable(folder))");
         Calls("Directory.CreateDirectory(Path.Combine(a, Path.GetFileName(b)))").Should().ContainSingle()
             .Which.Should().Be("Directory.CreateDirectory(Path.Combine(a, Path.GetFileName(b)))", "a call is read to its own closing parenthesis, however deep");
     }

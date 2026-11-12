@@ -20,7 +20,7 @@ internal static class DestinationFolder
             return new CoreTextIOException(trimmed);
         try
         {
-            Directory.CreateDirectory(folder);
+            Directory.CreateDirectory(Creatable(folder));
             return null;
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
@@ -32,6 +32,17 @@ internal static class DestinationFolder
         {
             return ex;
         }
+    }
+
+    // T-F512 (b): .NET makes a plain path's missing folders through "\\?\", each as Windows read the
+    // whole path; a "\\.\C:\" path it passes as is, and Win32 then reads each missing folder as a
+    // last name: "\\.\C:\w\a \f" made "C:\w\a" and failed. Normalized first, it is made as the plain one.
+    private static string Creatable(string folder)
+    {
+        if (!folder.StartsWith(@"\\.\", StringComparison.Ordinal))
+            return folder;
+        string full = Path.GetFullPath(folder);
+        return full.StartsWith(@"\\.\", StringComparison.Ordinal) ? @"\\?\" + full[4..] : full;
     }
 
     /// <summary>The result of an extraction whose folder could not be made: an error per archive.</summary>
