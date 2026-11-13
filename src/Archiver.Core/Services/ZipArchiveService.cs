@@ -1878,7 +1878,7 @@ public sealed class ZipArchiveService : IArchiveService
         string folder = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.Combine(plan.TempDest, relativePath)));
 
         if (!folder.StartsWith(plan.FullTempDest, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException($"ZIP entry '{named.FullName}' would extract outside destination directory.");
+            throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.UnsafeEntryPath, named.FullName));
 
         if (ArchiveEntrySecurity.PathContainsReparsePoint(folder, plan.FullTempDest))
         {
@@ -1905,7 +1905,7 @@ public sealed class ZipArchiveService : IArchiveService
         string destFilePath = Path.GetFullPath(Path.Combine(plan.TempDest, relativePath));
 
         if (!destFilePath.StartsWith(fullTempDest, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException($"ZIP entry '{named.FullName}' would extract outside destination directory.");
+            throw CoreMessages.InvalidData(CoreMessages.Text(MessageCode.UnsafeEntryPath, named.FullName));
 
         Directory.CreateDirectory(Path.GetDirectoryName(destFilePath)!);
 
