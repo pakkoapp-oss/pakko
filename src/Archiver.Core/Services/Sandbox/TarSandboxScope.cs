@@ -88,6 +88,28 @@ internal sealed partial class TarSandboxScope : IDisposable
     private Dictionary<string, byte[]?>? _listedNameBytes;
     private Dictionary<string, byte[]?>? _listedByText;
 
+    // T-F523: this scope's own AppContainer, deleted with it.
+    private readonly AppContainerProfile _profile;
+
+    internal const string SandboxNamePrefix = "Pakko.Tar.";
+
+    /// <summary>
+    /// T-F523: the name of the AppContainer profile of the scope rooted at <paramref name="quarantineRoot"/>:
+    /// "Pakko.Tar." and the root's own name (TempOwner's owner tag, then its unique part) cut to 8 hex of
+    /// that part, within the 64 characters a profile name may have. The owner tag lets
+    /// <see cref="AppContainerProfile.SweepStale"/> tell a killed run's profile.
+    /// </summary>
+    internal static string SandboxNameFor(string quarantineRoot) => SandboxNamePrefix + Path.GetFileName(quarantineRoot)[..^24];
+
+    // Once per process, before its first scope: the profiles of runs that were killed.
+    private static readonly Lazy<bool> StaleProfilesSwept = new(SweepStaleProfiles);
+
+    private static bool SweepStaleProfiles()
+    {
+        AppContainerProfile.SweepStale(SandboxNamePrefix, TempOwner.IsRunningHere);
+        return true;
+    }
+
     /// <summary>Null when this scope was created with needsOutputDir: false (listing only).</summary>
     public string? OutputDirectory { get; }
 
@@ -107,8 +129,10 @@ internal sealed partial class TarSandboxScope : IDisposable
     private uint CommandLinePage => (uint)TextBoundaries.TarExeCommandLine(_machine).CodePage;
 
     private TarSandboxScope(
-        SafeSidHandle sid, string quarantineRoot, FileStream archive, string? outputDirectory, System.Text.Encoding? outputEncoding, string? helperSource)
+        SafeSidHandle sid, AppContainerProfile profile, string quarantineRoot, FileStream archive, string? outputDirectory,
+        System.Text.Encoding? outputEncoding, string? helperSource)
     {
+        _profile = profile;
         _helperSource = helperSource;
         OutputEncoding = outputEncoding ?? TextBoundaries.TarExeOutput(_machine).Lenient;
         _sid = sid;
@@ -180,20 +204,24 @@ internal sealed partial class TarSandboxScope : IDisposable
         // failure before that must release them itself, since no Dispose() will ever run.
         SafeSidHandle? sid = null;
         string? quarantineRoot = null;
+        AppContainerProfile? profile = null;
         try
         {
-            var profile = new AppContainerProfile(AppContainerProfile.ProductionProfileName);
-            profile.EnsureExists();
-            sid = profile.GetSid();
-
             Directory.CreateDirectory(SandboxParentDirectory);
-            QuarantineAcl.EnsureSharedParentTraverse(SandboxParentDirectory, sid);
+            QuarantineAcl.EnsureSharedParentTraverseForEveryAppContainer(SandboxParentDirectory);
 
             // T-F263: a killed run's quarantine holds the archive's plaintext; the next one removes it.
             // Older quarantines are named by a GUID alone, so only their age can tell.
             TempOwner.SweepStale(SandboxParentDirectory, "", "", TempScope.LocalTemp(TimeSpan.FromDays(1)));
+            _ = StaleProfilesSwept.Value;
             quarantineRoot = Path.Combine(SandboxParentDirectory, TempOwner.NewName(""));
             Directory.CreateDirectory(quarantineRoot);
+
+            // T-F523: a sandbox of this scope's own; created last, so a failure above leaves no profile.
+            var created = new AppContainerProfile(SandboxNameFor(quarantineRoot));
+            created.Create();
+            profile = created;
+            sid = profile.GetSid();
             QuarantineAcl.GrantTraverseListReadAttributes(quarantineRoot, sid);
 
             string? outDir = null;
@@ -204,7 +232,7 @@ internal sealed partial class TarSandboxScope : IDisposable
                 QuarantineAcl.GrantModify(outDir, sid);
             }
 
-            return Task.FromResult(new TarSandboxScope(sid, quarantineRoot, archive, outDir, outputEncoding, helperSource));
+            return Task.FromResult(new TarSandboxScope(sid, profile, quarantineRoot, archive, outDir, outputEncoding, helperSource));
         }
         catch (Exception ex)
         {
@@ -213,6 +241,7 @@ internal sealed partial class TarSandboxScope : IDisposable
             sid?.Dispose();
             if (quarantineRoot is not null)
                 try { Directory.Delete(quarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
+            _ = profile?.TryDelete(); // only one this method created; the sweep takes it otherwise
 
             // AppContainer/ACL/attribute-list setup can fail at runtime (e.g. group policy
             // blocking profile creation) — fail closed as an ordinary per-archive error, never
@@ -702,9 +731,10 @@ internal sealed partial class TarSandboxScope : IDisposable
     {
         _archive.Dispose();
         _sid.Dispose();
-        // The AppContainer profile itself is never deleted here — it's created once, lazily,
-        // and reused for the lifetime of the install (see DECISIONS.md's T-F52 follow-up entry).
         try { if (Directory.Exists(QuarantineRoot)) Directory.Delete(QuarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
+        // T-F523: every run of this scope has ended (each waits for its process, and its job kills
+        // what is left when it closes), so nothing holds the profile's SID.
+        _ = _profile.TryDelete(); // best-effort: the next process's sweep removes one Windows kept
     }
 
     private static partial class NativeMethods

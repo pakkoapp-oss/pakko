@@ -108,25 +108,72 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         stdOut.Should().Contain("a.txt");
     }
 
+    // T-F523: each scope has its own AppContainer profile, gone with the scope.
     [Fact]
-    public async Task Dispose_DeletesQuarantineDirectoryButNotAppContainerProfile()
+    public async Task Dispose_DeletesTheQuarantineAndTheScopesOwnProfile()
     {
         string archivePath = Path.Combine(_temp.Path, "fixture.tar");
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "dispose test")]);
 
         TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
         string quarantineRoot = scope.QuarantineRoot;
+        var profile = new AppContainerProfile(TarSandboxScope.SandboxNameFor(quarantineRoot));
         Directory.Exists(quarantineRoot).Should().BeTrue();
+        profile.IsRegisteredOnWindows().Should().BeTrue();
 
         scope.Dispose();
 
         Directory.Exists(quarantineRoot).Should().BeFalse();
+        profile.IsRegisteredOnWindows().Should().BeFalse();
+    }
 
-        // The shared production profile must still exist and be reusable — Dispose() must never
-        // delete it (see DECISIONS.md's T-F52 follow-up entry: create-once-reuse-forever).
-        var profile = new AppContainerProfile(AppContainerProfile.ProductionProfileName);
-        Action reuseProfile = () => profile.EnsureExists();
-        reuseProfile.Should().NotThrow();
+    // T-F523: processes in one AppContainer open each other with every right (measured), so one
+    // operation's compromised reader must not share another's: here the other scope's sandbox,
+    // before any run of this one (when out\ still grants its SID Modify), cannot write into it.
+    [Fact]
+    public async Task TwoScopes_AnotherOperationsSandbox_CannotWriteIntoThisQuarantine()
+    {
+        string archivePath = Path.Combine(_temp.Path, "fixture.tar");
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "two scopes")]);
+        using TarSandboxScope mine = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
+        using TarSandboxScope other = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
+        string target = @"..\" + Path.GetFileName(mine.QuarantineRoot) + @"\out\planted.txt";
+
+        (await CmdInSandboxOfAsync(mine, @"echo x> out\own.txt")).Should().Be(0, "a scope's own sandbox writes its out\\");
+        (await CmdInSandboxOfAsync(other, "echo x> " + target)).Should().NotBe(0, "another scope's sandbox is another AppContainer");
+        (await CmdInSandboxOfAsync(other, "dir ..")).Should().NotBe(0, "the shared parent grants every AppContainer traverse, never a listing");
+
+        File.Exists(Path.Combine(mine.OutputDirectory!, "planted.txt")).Should().BeFalse();
+    }
+
+    // T-F244's class: scopes started at the same time each get a profile of their own.
+    [Fact]
+    public async Task ScopesCreatedInParallel_EachGetsItsOwnProfile()
+    {
+        string archivePath = Path.Combine(_temp.Path, "fixture.tar");
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "parallel")]);
+
+        TarSandboxScope[] scopes = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ =>
+            Task.Run(() => TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None))));
+        try
+        {
+            scopes.Select(s => TarSandboxScope.SandboxNameFor(s.QuarantineRoot)).Should().OnlyHaveUniqueItems();
+            scopes.Should().OnlyContain(s => new AppContainerProfile(TarSandboxScope.SandboxNameFor(s.QuarantineRoot)).IsRegisteredOnWindows());
+        }
+        finally
+        {
+            foreach (TarSandboxScope scope in scopes)
+                scope.Dispose();
+        }
+    }
+
+    private static async Task<int> CmdInSandboxOfAsync(TarSandboxScope scope, string command)
+    {
+        using SafeSidHandle sid = new AppContainerProfile(TarSandboxScope.SandboxNameFor(scope.QuarantineRoot)).GetSid();
+        (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
+            @"C:\Windows\System32\cmd.exe", ["/d", "/c", command],
+            new ProcessLaunchOptions(AppContainerSid: sid, WorkingDirectory: scope.QuarantineRoot), CancellationToken.None);
+        return exitCode;
     }
 
     // T-F233: hardlink staging made quarantine\in\ a second name for the user's own file, and the

@@ -4,18 +4,17 @@ using Microsoft.Win32;
 namespace Archiver.Core.Services.Sandbox;
 
 /// <summary>
-/// Owns the lifecycle of a single named AppContainer profile. Production code always uses
-/// <see cref="ProductionProfileName"/> and only ever calls <see cref="EnsureExists"/> — the
-/// profile is created once, lazily, on first use and reused for the lifetime of the install
-/// (see DECISIONS.md's T-F52 follow-up entry). <see cref="Delete"/> exists only for test teardown
-/// of a throwaway test-only profile name; it must never be called against
-/// <see cref="ProductionProfileName"/>.
+/// Owns the lifecycle of a single named AppContainer profile. T-F523: every sandbox scope has a
+/// profile of its own (<see cref="Create"/> when the scope starts, <see cref="TryDelete"/> when it
+/// ends, <see cref="SweepStale"/> for one a killed run left): processes in one AppContainer can open
+/// each other with every right, so one operation's compromised reader could read or write another's
+/// (measured, docs/DECISIONS.md). <see cref="EnsureExists"/> and <see cref="Delete"/> serve the tests'
+/// own throwaway profiles.
 /// </summary>
 internal sealed partial class AppContainerProfile
 {
-    // Fixed, safe-to-share identity for every sandboxed tar.exe launch. Not per-operation —
-    // see the Flow section of TASKS.md's T-F52 entry for why a per-operation profile would be
-    // both slower (registry churn) and unsafe under T-F12's parallel SeparateArchives mode.
+    // The one profile every operation shared from v1.4 to v1.10 (T-F52). No longer used (T-F523);
+    // left registered, since an older Pakko still running may use it.
     public const string ProductionProfileName = "Pakko.TarSandbox";
 
     private const int HResultAlreadyExists = unchecked((int)0x800700B7); // HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS)
@@ -63,7 +62,65 @@ internal sealed partial class AppContainerProfile
         }
     }
 
-    private bool IsRegisteredOnWindows() => OperatingSystem.IsWindows() && IsRegistered();
+    /// <summary>
+    /// T-F523: registers this profile, which must be new. A name that exists already throws, never
+    /// counts as success: two operations must never share one sandbox. Serialized in-process (T-F244).
+    /// </summary>
+    public void Create()
+    {
+        lock (CreateLock)
+        {
+            int hr = NativeMethods.CreateAppContainerProfile(
+                _profileName, _profileName, _profileName, pCapabilities: IntPtr.Zero, dwCapabilityCount: 0, out IntPtr sid);
+            if (hr < 0)
+                throw new InvalidOperationException($"CreateAppContainerProfile failed (HRESULT 0x{hr:X8}).");
+            NativeMethods.FreeSid(sid);
+        }
+    }
+
+    /// <summary>T-F523: removes this profile; false when Windows refused (a sweep removes it later).</summary>
+    public bool TryDelete() => NativeMethods.DeleteAppContainerProfile(_profileName) >= 0;
+
+    /// <summary>
+    /// T-F523: removes the profiles named <paramref name="prefix"/> + an owner tag whose owner
+    /// (<see cref="Archiver.Core.IO.TempOwner"/>'s "m&lt;machine&gt;-&lt;pid&gt;-&lt;ticks&gt;", then
+    /// "-" and 8 hex) <paramref name="isOwnerRunning"/> says has ended: a run killed before its scope
+    /// ended left them. A name of any other shape is never touched. Best-effort.
+    /// </summary>
+    public static void SweepStale(string prefix, Func<string, bool> isOwnerRunning)
+    {
+        if (OperatingSystem.IsWindows())
+            SweepStaleOnWindows(prefix, isOwnerRunning);
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void SweepStaleOnWindows(string prefix, Func<string, bool> isOwnerRunning)
+    {
+        try
+        {
+            using RegistryKey? mappings = Registry.CurrentUser.OpenSubKey(MappingsKey.TrimEnd('\\'));
+            if (mappings is null)
+                return;
+            foreach (string sidText in mappings.GetSubKeyNames())
+            {
+                string? moniker;
+                using (RegistryKey? key = mappings.OpenSubKey(sidText))
+                    moniker = key?.GetValue("Moniker") as string;
+                if (moniker is not null && moniker.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                    && OwnedName().IsMatch(moniker[prefix.Length..]) && !isOwnerRunning(moniker[prefix.Length..^9]))
+                    _ = NativeMethods.DeleteAppContainerProfile(moniker);
+            }
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            // best-effort: the next scope sweeps again
+        }
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex("^m[0-9a-f]{8}-[0-9]+-[0-9]+-[0-9a-f]{8}$", System.Text.RegularExpressions.RegexOptions.CultureInvariant)]
+    private static partial System.Text.RegularExpressions.Regex OwnedName();
+
+    internal bool IsRegisteredOnWindows() => OperatingSystem.IsWindows() && IsRegistered();
 
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private bool IsRegistered()

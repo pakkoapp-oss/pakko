@@ -14983,6 +14983,62 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F523 - a sandbox of its own for every operation (2026-11-13)
+
+Reverses T-F52's "one profile, created once, never per operation" (`Pakko.TarSandbox`), for a reason
+T-F52 did not measure.
+
+**Measured** (Windows 11 26300; a Native AOT probe calling `OpenProcess` from inside an AppContainer):
+
+| Target | QUERY_LIMITED, QUERY_INFORMATION, VM_READ, DUP_HANDLE, VM_WRITE+VM_OPERATION, CREATE_THREAD, TERMINATE, READ_CONTROL |
+|---|---|
+| a process in the same AppContainer | every one opened |
+| Pakko's own process (outside the sandbox) | every one denied (5) |
+| a process in another AppContainer | every one denied (5) |
+
+So until v1.10 a reader (tar.exe or the helper) compromised by one archive could read the memory of
+another operation's reader running at the same time (that archive's plaintext), write into it, start
+a thread in it, or take its handles. T-F474's seal does not reach that.
+
+**Why a registered profile per scope, not only a derived SID:** a SID derived from a name nobody
+registered (`DeriveAppContainerSidFromAppContainerName` alone) does not start: `CreateProcessW`
+fails with error 2 (measured twice; the second time with the root straight under `%TEMP%`, so not a
+traverse problem), while the same layout with the profile registered extracts.
+
+**What changed:**
+- `TarSandboxScope.CreateAsync` creates the root first, then a new profile named
+  `Pakko.Tar.` + the root's name cut to 8 hex of its unique part (`SandboxNameFor`, at most 64
+  characters); `AppContainerProfile.Create` throws on a name that exists (never "already exists
+  counts as success", which would give two operations one sandbox). `Dispose` deletes the quarantine,
+  then the profile; nothing holds the SID by then (each run waits for its process, and its job has
+  `KILL_ON_JOB_CLOSE`).
+- A killed run leaves its profile: once per process, before the first scope,
+  `AppContainerProfile.SweepStale` reads `AppContainer\Mappings\*\Moniker`, and deletes a
+  `pakko.tar.` profile of exactly the owned shape whose owner (`TempOwner.IsRunningHere`) has ended.
+  Any other name, the old `pakko.tarsandbox` included, is left alone (an older Pakko may still run).
+- The shared parent `PakkoTarSandbox` gives traverse to ALL APPLICATION PACKAGES, written once
+  (T-F195's no-propagation write), instead of an entry per SID: no per-scope write to race, and the
+  DACL does not grow. Any AppContainer may pass through it; none can list it (`dir ..` from a
+  scope's sandbox is denied, a test), and each root grants only its own SID.
+- T-F474's seal stays: after a run no process holds the scope's SID, so it guards only against one
+  that outlived its job; its cost (about 0.13 ms per file) is the price of that.
+
+**Cost:** `CreateAppContainerProfile` about 31 ms, `DeleteAppContainerProfile` about 19 ms (20 of
+each, measured; again in the test run: 37 ms and 20 ms); nothing is left in
+`%LOCALAPPDATA%\Packages` after a delete. The once-per-process sweep reads 125 `Mappings` keys on
+this machine in 2 to 6 ms. One `pakko x` makes two scopes (the `archiveint` gate's probe and the
+operation), so a small `.tar.gz` went from 358 ms to 448 ms (median of 10, the two builds taking
+turns); 100 small tars in one command from 12.9 s to 17.7 s, about 48 ms an archive. A large
+archive does not notice it (1 GiB `.tar.gz`: 1.80 s and 1.77 s).
+
+**Tests, each seen red by a mutant:** another scope's sandbox cannot write into this scope's `out\`
+(red with one shared profile), nor list the parent; a scope's profile exists while it lives and is
+gone after `Dispose` (red without the delete); eight scopes created in parallel get eight profiles;
+`Create` on an existing name throws (red when "exists" counts as success); the sweep removes only
+an ended owner's profile of the owned shape (red when it ignores the owner, or the shape). T-F474's
+attack tests now run as the operation's own SID (`SandboxNameFor`), so the seal is still what they
+check.
+
 ## T-F474, T-F463's leftovers - batch 5a, the quarantine sealed after each run (2026-11-13)
 
 **Threat assumed:** a process in Pakko's AppContainer that knows a quarantine path: another operation's
@@ -14992,8 +15048,8 @@ tar.exe or helper, compromised by its own archive, running at the same time. The
 quarantine root and `echo x> ..\planted.txt` are all "Access is denied" (the shared parent grants
 traverse only, T-F195), and a root's name carries a random 128-bit part (`TempOwner.NewName`). So a
 guess or a listing does not give it; reading it out of the other operation's own sandboxed process
-(its working directory is the root) would, if one AppContainer process can open another - still not
-measured (T-F523).
+would, and one AppContainer process can open another with every right (measured, T-F523, which
+gives each operation its own).
 
 **Measured on Windows 11 26300** (a temporary probe test, cmd.exe in a test AppContainer, `out\` with
 the SID's inherited Modify):
@@ -15046,13 +15102,9 @@ the SID's inherited Modify):
 extraction's part of the bar, which does not move meanwhile; worth folding into the split only if a
 user sees it.
 
-**What the seal does not close (T-F523):** the window while an operation's own tar.exe or helper
-runs. Its `out\` then grants the shared SID Modify, so a concurrent sandboxed process that has the
-path can write there, and a run without a selection moves what a fresh walk finds. Only a SID per
-operation closes that window; it was not taken here: a profile per operation adds an entry per scope
-on the shared `PakkoTarSandbox` parent (T-F195's propagation race) and leaves profiles behind when a
-run is killed. The seal narrows the window from "until the last file has moved" to "while the run
-lasts", and T-F523 decides whether the rest needs one.
+**What the seal does not close:** the window while an operation's own tar.exe or helper runs, and
+any reader of another operation sharing the SID. T-F523 closes both with a sandbox per operation
+(above); the seal then guards against a process of the operation's own that outlived its run.
 
 **Assumed:** no AppContainer entry, of any rights, reaches a quarantine file from `%TEMP%` (true on
 Windows' default `%TEMP%` ACL, and the whole suite runs with it); a machine whose `%TEMP%` passes one
