@@ -80,7 +80,7 @@ above stays as the record of what each stream holds.
 | # | Batch | Tasks | What they share | Checked once per batch |
 |---|---|---|---|---|
 | 1 | Owners | T-F511, T-F516, T-F517, T-F518, T-F519 | done on `refactor/tf511-owners-rest` | an opus review, then the PR |
-| 2 | N's leftovers | T-F507, T-F506, T-F500 (with the flaky `ChunkFolderIsHidden` test), T-F508 | one or two commits each on their own branches already: rebased onto one | one `Category=Slow` run, one performance run |
+| 2 | N's leftovers | T-F507, T-F506, T-F500 (with the flaky `ChunkFolderIsHidden` test), T-F508 | one or two commits each on their own branches already: rebased onto one | done on `perf/batch2-n-leftovers`: the quiet suite and `Category=Slow` (28 tests, the litmus paper and the performance ratios among them) green; smoke CLI-001, CLI-004, CLI-026, CLI-033, CLI-058 and SHL-008 on 1.10.0.18; T-F507 was run on PakkoW10 on its own branch |
 | 3 | Texts and names | T-F520, T-F484, T-F477, T-F478 | messages and names: one pass over the glossary and the 37 locales | `Archiver.Messages.Tests`, CLI and Explorer smoke |
 | 4 | The App on the device | T-F486, T-F485, T-F482, T-F483 | high contrast, the keyboard, 7z from the App | one deploy, one `windows` MCP session |
 | 5 | tar, quarantine, memory | T-F513, T-F473, T-F474, T-F510 | the quarantine and the tar readers | one run on PakkoW10 (both tar builds) |
