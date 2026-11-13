@@ -14983,6 +14983,27 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F482, T-F485 - batch 4, the App on the device (2026-11-13)
+
+**T-F482.** Enter on a row of the main list now does what a double click does: an archive opens to
+browse; a file or folder does nothing, as with a double click. The handler mirrors the archive
+view's (T-F308): `RowIndex` asks the list for the row, `e.Handled` before the await, the async-void
+catch. No menu item: Enter already reaches the action, and the row menu would need an "Open"
+string in 37 locales for the same thing. Checked on the device.
+
+**T-F485.** Under a high-contrast theme the "Extract all" button showed white text on a black box
+inside the theme's highlight colour. That box is WinUI's high-contrast backplate, drawn when
+`HighContrastAdjustment` is Auto (the default) behind text whose colours it does not trust. The
+accent style already takes `SystemColorHighlightColor` and its text colour, so the button turns the
+adjustment off; `MainWindowLayoutTests` requires it of every accent button. Not set for the whole
+App: other text (an error line in red) may still need the backplate.
+
+**T-F486, T-F483 (still open).** 15 cold starts under High Contrast Black, each captured from the
+screen with the App in front, all drew the whole window. The first series of 15 measured the
+browser window on top of the App (`SetForegroundWindow` refused; an Alt press before it and a check
+of the foreground window fixed the method). T-F483's sample is no longer on the disk. Both wait for
+batch 8's `APP-013` and `APP-025`.
+
 ## T-F477, T-F478, T-F484, T-F520 - batch 3, the texts and the names (2026-11-13)
 
 **T-F477.** The App's Name field showed "archive.zip" as its placeholder, and a typed "case4.zip"
