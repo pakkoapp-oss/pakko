@@ -65,13 +65,15 @@ internal sealed partial class AppContainerProfile
     /// <summary>
     /// T-F523: registers this profile, which must be new. A name that exists already throws, never
     /// counts as success: two operations must never share one sandbox. Serialized in-process (T-F244).
+    /// <paramref name="owner"/> is its display name (the name when null): <see cref="SweepStale"/> reads
+    /// a run's owner tag there.
     /// </summary>
-    public void Create()
+    public void Create(string? owner = null)
     {
         lock (CreateLock)
         {
             int hr = NativeMethods.CreateAppContainerProfile(
-                _profileName, _profileName, _profileName, pCapabilities: IntPtr.Zero, dwCapabilityCount: 0, out IntPtr sid);
+                _profileName, owner ?? _profileName, _profileName, pCapabilities: IntPtr.Zero, dwCapabilityCount: 0, out IntPtr sid);
             if (hr < 0)
                 throw new InvalidOperationException($"CreateAppContainerProfile failed (HRESULT 0x{hr:X8}).");
             NativeMethods.FreeSid(sid);
@@ -82,10 +84,13 @@ internal sealed partial class AppContainerProfile
     public bool TryDelete() => NativeMethods.DeleteAppContainerProfile(_profileName) >= 0;
 
     /// <summary>
-    /// T-F523: removes the profiles named <paramref name="prefix"/> + an owner tag whose owner
-    /// (<see cref="Archiver.Core.IO.TempOwner"/>'s "m&lt;machine&gt;-&lt;pid&gt;-&lt;ticks&gt;", then
-    /// "-" and 8 hex) <paramref name="isOwnerRunning"/> says has ended: a run killed before its scope
-    /// ended left them. A name of any other shape is never touched. Best-effort.
+    /// T-F523: removes the profiles named <paramref name="prefix"/> + 24 hex whose display name is an
+    /// owner tag (<see cref="Archiver.Core.IO.TempOwner"/>'s "m&lt;machine&gt;-&lt;pid&gt;-&lt;ticks&gt;")
+    /// that <paramref name="isOwnerRunning"/> says has ended: a run killed before its scope ended left
+    /// them. Both where an unpackaged process's profiles are and under each package's Children, where a
+    /// packaged process's are (measured); a profile of the other kind is not this process's to delete,
+    /// and Windows does not find it by its name. Any other name or display name is never touched.
+    /// Best-effort.
     /// </summary>
     public static void SweepStale(string prefix, Func<string, bool> isOwnerRunning)
     {
@@ -103,12 +108,19 @@ internal sealed partial class AppContainerProfile
                 return;
             foreach (string sidText in mappings.GetSubKeyNames())
             {
-                string? moniker;
-                using (RegistryKey? key = mappings.OpenSubKey(sidText))
-                    moniker = key?.GetValue("Moniker") as string;
-                if (moniker is not null && moniker.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-                    && OwnedName().IsMatch(moniker[prefix.Length..]) && !isOwnerRunning(moniker[prefix.Length..^9]))
-                    _ = NativeMethods.DeleteAppContainerProfile(moniker);
+                using RegistryKey? key = mappings.OpenSubKey(sidText);
+                if (key is null)
+                    continue;
+                DeleteIfStale(key, prefix, isOwnerRunning);
+                using RegistryKey? children = key.OpenSubKey("Children");
+                if (children is null)
+                    continue;
+                foreach (string childSid in children.GetSubKeyNames())
+                {
+                    using RegistryKey? child = children.OpenSubKey(childSid);
+                    if (child is not null)
+                        DeleteIfStale(child, prefix, isOwnerRunning);
+                }
             }
         }
         catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException)
@@ -117,8 +129,20 @@ internal sealed partial class AppContainerProfile
         }
     }
 
-    [System.Text.RegularExpressions.GeneratedRegex("^m[0-9a-f]{8}-[0-9]+-[0-9]+-[0-9a-f]{8}$", System.Text.RegularExpressions.RegexOptions.CultureInvariant)]
-    private static partial System.Text.RegularExpressions.Regex OwnedName();
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void DeleteIfStale(RegistryKey key, string prefix, Func<string, bool> isOwnerRunning)
+    {
+        if (key.GetValue("Moniker") is string moniker && moniker.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            && UniquePart().IsMatch(moniker[prefix.Length..])
+            && key.GetValue("DisplayName") is string owner && OwnerTag().IsMatch(owner) && !isOwnerRunning(owner))
+            _ = NativeMethods.DeleteAppContainerProfile(moniker);
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex("^[0-9a-f]{24}$", System.Text.RegularExpressions.RegexOptions.CultureInvariant)]
+    private static partial System.Text.RegularExpressions.Regex UniquePart();
+
+    [System.Text.RegularExpressions.GeneratedRegex("^m[0-9a-f]{8}-[0-9]+-[0-9]+$", System.Text.RegularExpressions.RegexOptions.CultureInvariant)]
+    private static partial System.Text.RegularExpressions.Regex OwnerTag();
 
     internal bool IsRegisteredOnWindows() => OperatingSystem.IsWindows() && IsRegistered();
 

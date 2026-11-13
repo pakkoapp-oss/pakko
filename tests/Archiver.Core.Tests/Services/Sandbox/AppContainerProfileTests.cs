@@ -41,17 +41,21 @@ public sealed partial class AppContainerProfileTests : IDisposable
         _sut.IsRegisteredOnWindows().Should().BeFalse();
     }
 
-    // T-F523: a killed run's profile goes; a running owner's, and a name of another shape, stay.
+    // T-F523: a killed run's profile goes; a running owner's, a name of another shape, and one whose
+    // owner is not a tag, stay. The owner is the profile's display name: in a packaged process a
+    // profile name may have 50 characters (measured), too few for the tag and a unique part.
     [Fact]
     public void SweepStale_RemovesOnlyAnEndedOwnersProfiles()
     {
-        string prefix = "Pakko.SweepTest." + Guid.NewGuid().ToString("N")[..8] + ".";
-        var ended = new AppContainerProfile(prefix + "m0123abcd-111-222-deadbeef");
-        var running = new AppContainerProfile(prefix + "m0123abcd-333-444-feedface");
+        string prefix = "Pakko.Sweep" + Guid.NewGuid().ToString("N")[..4] + ".";
+        var ended = new AppContainerProfile(prefix + Hex24());
+        var running = new AppContainerProfile(prefix + Hex24());
         var otherShape = new AppContainerProfile(prefix + "someone-elses-profile");
-        ended.Create();
-        running.Create();
-        otherShape.Create();
+        var noTag = new AppContainerProfile(prefix + Hex24());
+        ended.Create("m0123abcd-111-222");
+        running.Create("m0123abcd-333-444");
+        otherShape.Create("m0123abcd-111-222");
+        noTag.Create("a display name");
         try
         {
             AppContainerProfile.SweepStale(prefix, tag => tag == "m0123abcd-333-444");
@@ -59,14 +63,18 @@ public sealed partial class AppContainerProfileTests : IDisposable
             ended.IsRegisteredOnWindows().Should().BeFalse();
             running.IsRegisteredOnWindows().Should().BeTrue();
             otherShape.IsRegisteredOnWindows().Should().BeTrue();
+            noTag.IsRegisteredOnWindows().Should().BeTrue();
         }
         finally
         {
             _ = ended.TryDelete();
             _ = running.TryDelete();
             _ = otherShape.TryDelete();
+            _ = noTag.TryDelete();
         }
     }
+
+    private static string Hex24() => Guid.NewGuid().ToString("N")[..24];
 
     [Fact]
     public void EnsureExists_FirstCall_Succeeds()
