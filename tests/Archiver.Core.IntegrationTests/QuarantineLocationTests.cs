@@ -406,7 +406,7 @@ public sealed class QuarantineLocationTests : IDisposable
     private sealed class FakeRegistry : IRegistryReader
     {
         // Registry names are case-insensitive, as Windows reads them.
-        private readonly Dictionary<string, object> _values = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, object> _values = [with(StringComparer.OrdinalIgnoreCase)];
 
         public FakeRegistry With(string key, int value, string name = "EnableControlledFolderAccess")
         {

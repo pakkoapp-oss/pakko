@@ -215,7 +215,6 @@ public static partial class PathIdentity
     private const uint FileAttributeDirectory = 0x10;
     private const uint FileAttributeReparsePoint = 0x400;
     private const int FileStreamInfoClass = 7;
-    private const uint ReadAttributes = 0x80;
     private const uint OpenReparsePoint = 0x00200000;
     private const int StreamInfoNameOffset = 24;
     private const string UnnamedDataStream = "::$DATA";
