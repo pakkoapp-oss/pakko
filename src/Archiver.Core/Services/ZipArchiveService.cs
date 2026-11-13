@@ -418,8 +418,12 @@ public sealed class ZipArchiveService : IArchiveService
     // A file's archive has one entry, so one worker; a folder's gets its share (T-F497). Everything
     // else - the run's deflaters, its large-file gate - is the run's (T-F500 tests that it carries).
     internal static Zip.ParallelSingleArchiveWriter.CompressionSettings SeparateArchiveSettings(
-        Zip.ParallelSingleArchiveWriter.CompressionSettings run, int workersPerFolder, bool isFolder) =>
-        workersPerFolder == 0 ? run : run with { MaxThreads = isFolder ? workersPerFolder : 1 };
+        Zip.ParallelSingleArchiveWriter.CompressionSettings run, int workersPerFolder, bool isFolder)
+    {
+        if (workersPerFolder == 0)
+            return run;
+        return run with { MaxThreads = isFolder ? workersPerFolder : 1 };
+    }
 
     private static bool SeparateArchivesTakeHandRolledWriter(Zip.ParallelSingleArchiveWriter.CompressionSettings settings) =>
         settings.RequiresHandRolledWriter || settings.Level is CompressionLevel.Optimal or CompressionLevel.SmallestSize;
