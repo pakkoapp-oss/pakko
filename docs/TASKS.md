@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count: done, no conhost per launch, half the processes), T-F506 (AMSI buffer: done, the faults are inherent; large buffers no longer pooled, content zeroed), T-F500 (writer failure paths, the flaky chunk-folder test: done), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: before T-F511's PR 4, which it checks), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: before T-F511's PR 4, which it checks), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -81,8 +81,8 @@ above stays as the record of what each stream holds.
 |---|---|---|---|---|
 | 1 | Owners | T-F511, T-F516, T-F517, T-F518, T-F519 | done on `refactor/tf511-owners-rest` | an opus review, then the PR |
 | 2 | N's leftovers | T-F507, T-F506, T-F500 (with the flaky `ChunkFolderIsHidden` test), T-F508 | one or two commits each on their own branches already: rebased onto one | done on `perf/batch2-n-leftovers`: the quiet suite and `Category=Slow` (28 tests, the litmus paper and the performance ratios among them) green; smoke CLI-001, CLI-004, CLI-026, CLI-033, CLI-058 and SHL-008 on 1.10.0.18; T-F507 was run on PakkoW10 on its own branch |
-| 3 | Texts and names | T-F520, T-F484, T-F477, T-F478 | messages and names: one pass over the glossary and the 37 locales | done on `fix/batch3-texts`: the quiet suite green; smoke CLI-001, CLI-033, PAR-001-PAR-009, PAR-012, SHL-004, SHL-014 on 1.10.0.20; the App and Explorer rows that show these texts (`EXP-003` in uk-UA, `EXP-013`, `APP-006`, a typed name) go with batch 4's `windows` MCP session |
-| 4 | The App on the device | T-F486, T-F485, T-F482, T-F483 | high contrast, the keyboard, 7z from the App | one deploy, one `windows` MCP session |
+| 3 | Texts and names | T-F520, T-F484, T-F477, T-F478 | messages and names: one pass over the glossary and the 37 locales | done on `fix/batch3-texts`: the quiet suite green; smoke CLI-001, CLI-033, PAR-001-PAR-009, PAR-012, SHL-004, SHL-014 on 1.10.0.20; the App and Explorer rows that show these texts (`EXP-003` in uk-UA, `EXP-013`, `APP-006`, a typed name) checked in batch 4's session on 1.10.0.21: the uk-UA PAR2 line "(блоків: 168, блоків відновлення: 9)", the structure-only text in uk-UA, a typed `case4.zip` wrote `case4.zip` |
+| 4 | The App on the device | T-F486, T-F485, T-F482, T-F483 | high contrast, the keyboard, 7z from the App | done on `fix/batch4-app-device`: T-F482 and T-F485 fixed and seen on the device (1.10.0.21/22); T-F486 15 of 15 starts drawn under high contrast, T-F483's sample gone: both stay open for batch 8 |
 | 5 | tar, quarantine, memory | T-F513, T-F473, T-F474, T-F510 | the quarantine and the tar readers | one run on PakkoW10 (both tar builds) |
 | 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476 | calibration and the CI image | one series on an idle machine |
 | 7 | Z | T-F493 | crypto: its own gates and its own opus reviewer | as stream Z says |
@@ -1979,14 +1979,10 @@ re-measured with T-F346's script before and after.
   (main, browse with the PAR2 line, Test summary, About, OperationUi) drew fine. Cause not found after
   three approaches (start before/after the switch, behind another window). Next: a trace of the
   first frames (WinUI `CompositionTarget` / DWM) on a failing start, and compare with v1.9.0.
-- **Reported by:** the agent, 2026-11-10.
-
-### T-F485 - High contrast: the accent button's text sits on a dark box (P3)
-
-- [ ] **Status:** open. Found 2026-11-10 (`APP-013` under high contrast): the accent (primary)
-  button's label shows on a dark rectangle instead of the theme's button colours. Next: compare with
-  Windows' own WinUI apps (Settings) under the same theme; if they differ, take the HC resources
-  for `AccentButtonStyle` from the system brushes.
+- **Not reproduced (2026-11-13, batch 4):** 15 cold starts under High Contrast Black on 1.10.0.22,
+  each brought to the front and captured from the screen: every window drawn whole (42-43 colours
+  sampled, against 1-3 for an empty one). A first series without the foreground check measured a
+  browser window on top instead and is void. Stays open; `APP-013` in batch 8 repeats the starts.
 - **Reported by:** the agent, 2026-11-10.
 
 ### T-F483 - A 7z created from a nested folder once lacked the inner folder's entry (P2, unreproduced)
@@ -2004,14 +2000,8 @@ re-measured with T-F346's script before and after.
   - 50 archives with recovery data on.
 
   Every archive had the nested folder's entry. Stays open until the sample is found or it recurs.
-- **Reported by:** the agent, 2026-11-10.
-
-### T-F482 - The main list has no keyboard way to open an entry (P3, accessibility)
-
-- [ ] **Status:** open. Found 2026-11-10 (`APP-012`): in the main window's file list Enter does
-  nothing and the context menu holds only Remove, so a keyboard user cannot open a selected archive
-  or file. Next: Enter (and a menu item) opens the selected entry the same way a double click does;
-  a UI test that drives it.
+- **Sample gone (2026-11-13, batch 4):** no 7z of 2026-11-09 to 11-11 is left under the user's
+  folders or the smoke folders. `APP-025` in batch 8 is the next chance to see it again.
 - **Reported by:** the agent, 2026-11-10.
 
 ### T-F481 - Extracting many small files costs ~1.4 ms a file, 3.85x 7-Zip on a Dev Drive (P3)

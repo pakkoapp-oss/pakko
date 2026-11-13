@@ -14867,3 +14867,31 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   - **Changed:** `ZipArchiveService`'s two containment throws use `UnsafeEntryPath`, translated.
   - **Test:** `TestAsync_LocalHeaderPastTheEnd_ShowsNoTextOfPakkosOwnReader` pins the plain test.
   - **Found:** T-F521.
+
+### T-F482 - The main list has no keyboard way to open an entry (P3, accessibility)
+
+- [x] **Status:** done 2026-11-13. Found 2026-11-10 (`APP-012`): in the main window's file list Enter does
+  nothing and the context menu holds only Remove, so a keyboard user cannot open a selected archive
+  or file. Next: Enter (and a menu item) opens the selected entry the same way a double click does;
+  a UI test that drives it.
+- **Reported by:** the agent, 2026-11-10.
+- **Graduated 2026-11-13** (`docs/DECISIONS.md`, "T-F482, T-F485"):
+  - **Change:** Enter on a row of the main list does what a double click does (an archive opens to
+    browse), as Enter already did in the archive view (T-F308).
+  - **Decided:** no menu item: Enter reaches the action from the keyboard, and the row's menu stays
+    Remove only (no new string in 37 locales).
+  - **Checked:** on the device (1.10.0.21), Enter on `notes.zip` opened it; `APP-012` says so now.
+
+### T-F485 - High contrast: the accent button's text sits on a dark box (P3)
+
+- [x] **Status:** done 2026-11-13. Found 2026-11-10 (`APP-013` under high contrast): the accent (primary)
+  button's label shows on a dark rectangle instead of the theme's button colours. Next: compare with
+  Windows' own WinUI apps (Settings) under the same theme; if they differ, take the HC resources
+  for `AccentButtonStyle` from the system brushes.
+- **Reported by:** the agent, 2026-11-10.
+- **Graduated 2026-11-13** (`docs/DECISIONS.md`, "T-F482, T-F485"):
+  - **Cause:** WinUI's automatic high-contrast adjustment draws a backplate behind text whose
+    colours it does not trust; the accent style already takes the theme's highlight colours.
+  - **Change:** `HighContrastAdjustment="None"` on the accent button; a markup test holds it for
+    every accent button (seen red).
+  - **Checked:** under High Contrast Black on 1.10.0.22, black text on the highlight, no box.
