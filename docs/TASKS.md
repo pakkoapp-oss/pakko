@@ -2002,6 +2002,10 @@ re-measured with T-F346's script before and after.
   Every archive had the nested folder's entry. Stays open until the sample is found or it recurs.
 - **Sample gone (2026-11-13, batch 4):** no 7z of 2026-11-09 to 11-11 is left under the user's
   folders or the smoke folders. `APP-025` in batch 8 is the next chance to see it again.
+- **Not reproduced through the App either (2026-11-13, batch 4, NanaZip 7.0 installed by the
+  user):** five cold starts of the App on 1.10.0.22, each given the folder `Звіти 2026` (holding
+  `a.txt` and `Вкладена тека.txt`) by `--open-ui --archive`, 7Z picked in the Format list,
+  LZMA2: `NanaZipC l -slt` lists both folders and both files in all five.
 - **Reported by:** the agent, 2026-11-10.
 
 ### T-F481 - Extracting many small files costs ~1.4 ms a file, 3.85x 7-Zip on a Dev Drive (P3)
