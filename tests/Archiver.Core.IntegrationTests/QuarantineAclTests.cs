@@ -23,6 +23,30 @@ public sealed class QuarantineAclTests : IDisposable
         try { _profile.Delete(); } catch { }
     }
 
+    // Batch 5a's review: each entry's SID is read, not the SDDL text, so a capability SID and a
+    // conditional entry for ALL APPLICATION PACKAGES count as letting an AppContainer in.
+    [Theory]
+    [InlineData("", false)]
+    [InlineData("(A;;FA;;;AC)", true)]
+    [InlineData("(A;;FA;;;S-1-15-2-1-2-3-4-5-6-7)", true)]
+    [InlineData("(A;;FA;;;S-1-15-3-1024-1065365936-1281604716-3511738428-1654721687-432734479-3232135806-4053264122-3456934681)", true)]
+    [InlineData("(XA;;FA;;;AC;(WIN://SYSAPPID Contains \"x\"))", true)]
+    [InlineData("(D;;FA;;;S-1-15-2-1)", true)]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public void HasAppContainerEntry_ReadsEachEntrysSid(string extraEntry, bool expected)
+    {
+        string file = Path.Combine(_temp.Path, "f.txt");
+        File.WriteAllText(file, "x");
+        string user = System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;
+        var security = new System.Security.AccessControl.FileSecurity();
+        security.SetSecurityDescriptorSddlForm($"D:P(A;;FA;;;{user}){extraEntry}", System.Security.AccessControl.AccessControlSections.Access);
+        new FileInfo(file).SetAccessControl(security);
+
+        using Microsoft.Win32.SafeHandles.SafeFileHandle handle = File.OpenHandle(file, FileMode.Open, FileAccess.Read);
+
+        QuarantineAcl.HasAppContainerEntry(handle).Should().Be(expected);
+    }
+
     [Fact]
     public async Task GrantReadExecuteAndModify_RealSandboxedTarExtraction_Succeeds()
     {

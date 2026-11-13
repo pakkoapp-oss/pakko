@@ -158,6 +158,34 @@ internal static partial class QuarantineFiles
         return false;
     }
 
+    /// <summary>
+    /// After <see cref="QuarantineAcl.Revoke"/> on <paramref name="root"/>: nothing in it may still let
+    /// an AppContainer in. Revoke takes the sandbox's entry off the root and off what inherits it, but a
+    /// folder or file a run created with a protected DACL of its own (no WRITE_DAC is needed for that)
+    /// keeps its entry, and a later run of the scope (the first-copies run) could then add files to it,
+    /// or rewrite one after the checks and the scan (batch 5a's review). An honest reader sets no DACL,
+    /// so such an entry fails the archive. No run of the scope is alive here: each run is waited for.
+    /// </summary>
+    public static void EnsureSealed(string root, CancellationToken cancellationToken = default)
+    {
+        foreach ((string path, bool isFolder) in Walk(root, cancellationToken))
+        {
+            using SafeFileHandle handle = OpenForSecurity(path, isFolder);
+            if (QuarantineAcl.HasAppContainerEntry(handle))
+                throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, "the sandbox gave an entry a DACL of its own"));
+        }
+    }
+
+    private static SafeFileHandle OpenForSecurity(string path, bool isFolder)
+    {
+        SafeFileHandle handle = CreateFile(Literal(path), ReadControl, FileShareAll, 0, OpenExisting, OpenReparsePoint | (isFolder ? BackupSemantics : 0), 0);
+        if (!handle.IsInvalid)
+            return handle;
+        int error = Marshal.GetLastPInvokeError();
+        handle.Dispose();
+        throw ErrorFor(error);
+    }
+
     private static void TryDeleteBestEffort(string path)
     {
         try { File.Delete(path); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* best-effort: staging is not committed for a failed archive */ }
@@ -241,6 +269,8 @@ internal static partial class QuarantineFiles
     private const uint ReadAttributes = 0x0080;
     private const uint GenericRead = 0x80000000;
     private const uint FileShareRead = 1;
+    private const uint FileShareAll = 7;
+    private const uint BackupSemantics = 0x02000000;
     private const uint OpenExisting = 3;
     private const uint OpenReparsePoint = 0x00200000;
     private const int FileRenameInfoClass = 3;

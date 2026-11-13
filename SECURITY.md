@@ -513,14 +513,18 @@ What does not change, and what is new:
 
 ### The Quarantine After Each Run (T-F474, v1.11)
 
-Every operation's `tar.exe` and helper run as one AppContainer SID, so a compromised reader of one
-archive, running at the same time as another operation, is the attacker considered here.
+A compromised reader of the archive is the attacker considered here: a later run of the same
+operation (the first-copies run), a process a run left behind, and, until v1.10, when every operation
+ran as one AppContainer SID, a reader of another operation running at the same time.
 
 - **The sandbox loses each folder once its run ends.** After the extraction run (`out\`) and the
   first-copies run (`first\`), Pakko takes the SID's entry off the folder, and Windows takes the
-  inherited entries off everything in it. From then on no sandboxed process can rewrite a file, give
-  it a second name or a named stream, or add a file (measured with a sandboxed `cmd.exe`). The scan
-  and the move run only after this.
+  inherited entries off everything in it. A folder or file a run created with a DACL of its own (no
+  right to change a DACL is needed at creation) would keep its entry, so after that every folder and
+  file in it is checked, and any entry for an AppContainer or capability SID fails the archive
+  (batch 5a's review). From then on no sandboxed process can rewrite a file, give it a second name or
+  a named stream, or add a file (measured with a sandboxed `cmd.exe`). The scan and the move run only
+  after this.
 - **Each file is checked and moved through one handle.** The handle shares reading only: it cannot
   be opened while anything else may write the file, and nothing can open the file for writing while
   it is held. On that handle the file must be no link, have one name and one stream, and carry no
@@ -536,10 +540,10 @@ archive, running at the same time as another operation, is the attacker consider
   can open no process of another operation, nor reach its quarantine, nor list the quarantine parent.
 - **The quarantine sits next to the destination (T-F524, v1.11).** An extraction's quarantine is a
   hidden `.pakko-sandbox-<owner>-<random>` folder in the destination's nearest existing folder,
-  when that folder is on another volume than `%TEMP%`, so the files leave it by a rename on one
-  volume and nothing of the archive is written to the system drive first. On the volume of `%TEMP%`
-  it stays in `%TEMP%`, as before: a rename works from there, and the profile's protected and synced
-  folders (Documents, Desktop, OneDrive) never get a hidden quarantine. It is created in one call with its own protected DACL (the user, SYSTEM,
+  when that folder is on another volume than `%TEMP%`'s and the user profile's, so the files leave it
+  by a rename on one volume and nothing of the archive is written to the system drive first. On those
+  volumes it stays in `%TEMP%`, as before: a rename works from there, and the profile's protected and
+  synced folders (Documents, Desktop, OneDrive) never get a hidden quarantine. It is created in one call with its own protected DACL (the user, SYSTEM,
   Administrators), never with the entries the destination's folder passes down: a drive root gives
   Authenticated Users Modify, a folder may let ALL APPLICATION PACKAGES in. Only a fixed local volume
   that keeps permissions qualifies, asked of a handle to that folder (a junction is judged by where

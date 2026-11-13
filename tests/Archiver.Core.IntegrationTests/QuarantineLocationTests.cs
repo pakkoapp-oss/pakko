@@ -367,9 +367,10 @@ public sealed class QuarantineLocationTests : IDisposable
     public void NearDestination_OnTheVolumeOfTemp_IsNone()
     {
         string tempVolume = PathIdentity.VolumeOf(_temp.Path)!.Value.VolumeRoot;
+        string profileVolume = PathIdentity.VolumeOf(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile))!.Value.VolumeRoot;
 
-        QuarantineLocation.NearDestination(Path.Combine(_temp.Path, "x"), byHelper: false, new FakeRegistry(), tempVolume).Should().BeNull();
-        QuarantineLocation.TempVolume.Should().Be(tempVolume);
+        QuarantineLocation.NearDestination(Path.Combine(_temp.Path, "x"), byHelper: false, new FakeRegistry(), [tempVolume]).Should().BeNull();
+        QuarantineLocation.VolumesKeptInTemp.Should().Equal(tempVolume, profileVolume);
     }
 
     [Fact]
@@ -380,7 +381,7 @@ public sealed class QuarantineLocationTests : IDisposable
             return; // one volume only
         try
         {
-            QuarantineLocation.NearDestination(Path.Combine(other, "x"), byHelper: false, new FakeRegistry(), QuarantineLocation.TempVolume)
+            QuarantineLocation.NearDestination(Path.Combine(other, "x"), byHelper: false, new FakeRegistry(), QuarantineLocation.VolumesKeptInTemp!)
                 .Should().Be(other);
         }
         finally
@@ -394,9 +395,9 @@ public sealed class QuarantineLocationTests : IDisposable
     {
         FakeRegistry blocking = new FakeRegistry().With(CfaLocalKey, 1);
 
-        QuarantineLocation.NearDestination(Path.Combine(_temp.Path, "x"), byHelper: true, blocking, tempVolume: null).Should().BeNull();
-        QuarantineLocation.NearDestination(Path.Combine(_temp.Path, "x"), byHelper: false, blocking, tempVolume: null).Should().Be(_temp.Path);
-        QuarantineLocation.NearDestination(Path.Combine(_temp.Path, "x"), byHelper: true, new FakeRegistry(), tempVolume: null).Should().Be(_temp.Path);
+        QuarantineLocation.NearDestination(Path.Combine(_temp.Path, "x"), byHelper: true, blocking, keptInTemp: []).Should().BeNull();
+        QuarantineLocation.NearDestination(Path.Combine(_temp.Path, "x"), byHelper: false, blocking, keptInTemp: []).Should().Be(_temp.Path);
+        QuarantineLocation.NearDestination(Path.Combine(_temp.Path, "x"), byHelper: true, new FakeRegistry(), keptInTemp: []).Should().Be(_temp.Path);
     }
 
     private const string CfaLocalKey = @"SOFTWARE\Microsoft\Windows Defender\Windows Defender Exploit Guard\Controlled Folder Access";
@@ -430,9 +431,9 @@ public sealed class QuarantineLocationTests : IDisposable
 
     // --- Harness ---
 
-    // tempVolume null: these tests run under %TEMP%, and judge the rest of the rule there.
+    // No volume kept in %TEMP%: these tests run under %TEMP%, and judge the rest of the rule there.
     private static string? Near(string destination) =>
-        QuarantineLocation.NearDestination(destination, byHelper: false, new FakeRegistry(), tempVolume: null);
+        QuarantineLocation.NearDestination(destination, byHelper: false, new FakeRegistry(), keptInTemp: []);
 
     // A folder on another fixed volume than %TEMP%, where an extraction quarantines next to its
     // destination; %TEMP% on a machine with one volume.

@@ -183,42 +183,42 @@ internal static partial class QuarantineAcl
     }
 
     /// <summary>
-    /// T-F474: true when the DACL of the file open as <paramref name="file"/> (opened with READ_CONTROL)
-    /// lets any AppContainer in: an AppContainer SID or ALL APPLICATION PACKAGES. True too when the
-    /// DACL cannot be read, so a file that cannot be shown sealed is never taken out.
+    /// T-F474: true when the DACL of the file or folder open as <paramref name="file"/> (opened with
+    /// READ_CONTROL) lets an AppContainer in or could: an entry for an AppContainer or capability SID
+    /// (S-1-15-2-*, S-1-15-3-*, ALL APPLICATION PACKAGES included), conditional ones too, an entry this
+    /// parser does not know, or no DACL at all. True too when the DACL cannot be read, so what cannot be
+    /// shown sealed is never taken out. Each entry's SID is read, not its SDDL text (batch 5a's review:
+    /// a substring missed capability SIDs and conditional entries).
     /// </summary>
     public static bool HasAppContainerEntry(Microsoft.Win32.SafeHandles.SafeFileHandle file)
     {
         const int SE_FILE_OBJECT = 1;
         const uint DACL_SECURITY_INFORMATION = 0x00000004;
-        const uint SDDL_REVISION_1 = 1;
-        const string AppContainerSidPrefix = "S-1-15-2-";
-        const string AllApplicationPackages = ";AC)";
 
-        if (NativeMethods.GetSecurityInfo(file, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
+        if (!OperatingSystem.IsWindows()
+            || NativeMethods.GetSecurityInfo(file, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
                 IntPtr.Zero, IntPtr.Zero, out _, IntPtr.Zero, out IntPtr securityDescriptor) != 0)
             return true;
         try
         {
-            if (!NativeMethods.ConvertSecurityDescriptorToStringSecurityDescriptorW(
-                    securityDescriptor, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, out IntPtr text, out _))
-                return true;
-            try
-            {
-                string sddl = Marshal.PtrToStringUni(text) ?? string.Empty;
-                return sddl.Contains(AppContainerSidPrefix, StringComparison.Ordinal)
-                    || sddl.Contains(AllApplicationPackages, StringComparison.Ordinal);
-            }
-            finally
-            {
-                NativeMethods.LocalFree(text);
-            }
+            uint length = NativeMethods.GetSecurityDescriptorLength(securityDescriptor);
+            byte[] bytes = new byte[length];
+            Marshal.Copy(securityDescriptor, bytes, 0, bytes.Length);
+            System.Security.AccessControl.RawAcl? dacl = new System.Security.AccessControl.RawSecurityDescriptor(bytes, 0).DiscretionaryAcl;
+            return dacl is null || dacl.Cast<System.Security.AccessControl.GenericAce>().Any(LetsAnAppContainerIn);
         }
         finally
         {
             NativeMethods.LocalFree(securityDescriptor);
         }
     }
+
+    // An entry this parser does not know counts too: what cannot be shown sealed is never taken out.
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static bool LetsAnAppContainerIn(System.Security.AccessControl.GenericAce ace) =>
+        ace is not System.Security.AccessControl.KnownAce known
+        || known.SecurityIdentifier.Value.StartsWith("S-1-15-2-", StringComparison.Ordinal)
+        || known.SecurityIdentifier.Value.StartsWith("S-1-15-3-", StringComparison.Ordinal);
 
     private static void Grant(string path, SafeSidHandle sid, uint accessMask, int inheritance, int accessMode = GrantAccess)
     {
@@ -359,5 +359,8 @@ internal static partial class QuarantineAcl
         public static partial uint GetSecurityInfo(
             Microsoft.Win32.SafeHandles.SafeFileHandle handle, int objectType, uint securityInfo,
             IntPtr ppsidOwner, IntPtr ppsidGroup, out IntPtr ppDacl, IntPtr ppSacl, out IntPtr ppSecurityDescriptor);
+
+        [LibraryImport("advapi32.dll")]
+        public static partial uint GetSecurityDescriptorLength(IntPtr securityDescriptor);
     }
 }
