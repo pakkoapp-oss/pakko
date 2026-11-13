@@ -44,9 +44,10 @@ internal sealed class HelperReader : ISandboxedArchiveReader
     /// read. A format the helper does not read goes to tar.exe, before anything is read.
     /// </summary>
     internal static async Task<ISandboxedArchiveReader> OpenAsync(
-        string archivePath, bool needsOutputDir, Encoding? outputEncoding, HelperSetup helper, CancellationToken cancellationToken)
+        string archivePath, bool needsOutputDir, Encoding? outputEncoding, HelperSetup helper, CancellationToken cancellationToken,
+        string? nearFolder = null)
     {
-        TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir, cancellationToken, outputEncoding, helper.HelperPath)
+        TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir, cancellationToken, outputEncoding, helper.HelperPath, nearFolder)
             .ConfigureAwait(false);
         ArchiveFormat format = ArchiveFormatDetector.Detect(archivePath);
         IReadOnlyList<string>? arguments = format == ArchiveFormat.GZip && !BareGzip.HoldsTarOrCpio(archivePath)

@@ -983,8 +983,11 @@ reuse means no registry-provisioning cost per test), so there was nothing to gai
 filterable-but-not-excluded category; add one later only if a real cost is measured.
 
 **T-F195 correction (2026-09-24):** the remaining cross-*process* flakiness was in fact a real
-product race on the shared `%TEMP%\PakkoTarSandbox` parent's ACL, now fixed and pinned by
-`QuarantineAclParentRaceTests` (in-process reproduction, 300 scopes x 4 threads). T-F196 added
+product race on the shared `%TEMP%\PakkoTarSandbox` parent's ACL, then fixed and pinned by
+`QuarantineAclParentRaceTests` (in-process reproduction, 300 scopes x 4 threads). T-F524 removed
+the parent's entry altogether (no folder above a quarantine needs one), and those tests with it.
+`QuarantineLocationTests` (T-F524) covers where an extraction's quarantine goes and its root's
+protected DACL. T-F196 added
 `ExternalTarFixtureBuilder.CreateCompressedTarOfDotRoot` (the everyday `tar -C dir .` shape) and
 three `ExtractAsync_DotRoot*_MatchesPlainArchiveTree` parity tests.
 

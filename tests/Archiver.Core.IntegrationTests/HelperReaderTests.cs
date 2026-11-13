@@ -23,6 +23,8 @@ public sealed class HelperReaderTests : IDisposable
     public static TheoryData<string> Backends => [TarExe, Helper];
 
     private static readonly Lazy<HelperSetup> Setup = new(Probe, LazyThreadSafetyMode.ExecutionAndPublication);
+
+    internal static HelperSetup SharedSetup => Setup.Value;
     private readonly TempDirectory _temp = new();
 
     public void Dispose() => _temp.Dispose();
@@ -560,13 +562,17 @@ public sealed class HelperReaderTests : IDisposable
     {
         string marker = Guid.NewGuid().ToString("N");
         string archive = Tar(("a.txt", "A"), ("b.txt", marker), ("c.txt", "C"));
-        string sandboxes = Path.Combine(Path.GetTempPath(), "PakkoTarSandbox");
+        // T-F524: the quarantine is next to the destination (here, in this test's folder), or in %TEMP%.
+        string tempSandboxes = Path.Combine(Path.GetTempPath(), "PakkoTarSandbox");
         bool planted = false;
         var progress = new SyncProgress(_ =>
         {
-            if (planted || !Directory.Exists(sandboxes))
+            if (planted)
                 return;
-            foreach (string file in Directory.EnumerateFiles(sandboxes, "*", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
+            IEnumerable<string> sandboxes = Directory.GetDirectories(_temp.Path, QuarantineLocation.RootPrefix + "*", SearchOption.AllDirectories)
+                .Concat(Directory.Exists(tempSandboxes) ? [tempSandboxes] : []);
+            foreach (string file in sandboxes.SelectMany(folder =>
+                         Directory.EnumerateFiles(folder, "*", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true })))
             {
                 try
                 {
@@ -1019,7 +1025,8 @@ public sealed class HelperReaderTests : IDisposable
     private static async Task<int> SandboxedCmdAsync(string folder, string command)
     {
         string root = folder;
-        while (!string.Equals(Path.GetFileName(Path.GetDirectoryName(root)), "PakkoTarSandbox", StringComparison.OrdinalIgnoreCase))
+        while (!string.Equals(Path.GetFileName(Path.GetDirectoryName(root)), "PakkoTarSandbox", StringComparison.OrdinalIgnoreCase)
+               && !Path.GetFileName(root).StartsWith(QuarantineLocation.RootPrefix, StringComparison.Ordinal))
             root = Path.GetDirectoryName(root)!;
         using SafeSidHandle sid = new AppContainerProfile(TarSandboxScope.SandboxNameFor(root)).GetSid();
         (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(

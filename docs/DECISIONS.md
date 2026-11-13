@@ -14983,6 +14983,84 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F524 - the quarantine next to the destination (2026-11-13)
+
+The user, after the T-F474 bench: "Чому ми тягаємо файли між дисками? Чому темп не створювати там
+куди копіюємо?", then a temp folder at the drive root, then "Біля призначення" (offered once a
+measurement showed no folder above the quarantine needs an entry).
+
+**Reverses T-F52's premise.** T-F52 rooted every quarantine in `%TEMP%` because "an AppContainer
+token has no bypass-traverse-checking privilege, so `FILE_TRAVERSE` is enforced on every ancestor".
+Measured 2026-11-13, a temporary probe test: a sandboxed `tar.exe` with a SID of its own extracts
+into `<folder>\<root>\out` with **no** entry on `<folder>` or anything above it - at the root of D:
+(ReFS) and of C:, and in `C:\Users\<user>\Documents` - on Windows 11 26300 and Windows 10 19045
+(bsdtar 3.5.2, PakkoW10); `dir` of the drive root or of `<folder>` from the sandbox is denied, and so
+is writing next to `<root>`. T-F195's own test already said it: the token keeps
+`SeChangeNotifyPrivilege`. So the shared parent's entry (T-F52's per-SID grant, T-F195's
+no-propagation write, T-F523's ALL APPLICATION PACKAGES) is gone, with
+`QuarantineAcl.EnsureSharedParentTraverse`, its `SetFileSecurityW` path and
+`QuarantineAclParentRaceTests`. The seal, `TakeOut` and the one-stream check work the same on ReFS.
+
+**Where (`QuarantineLocation`, the owner):** in the destination's **nearest existing folder** - the
+scope opens before the pre-scan, so a folder created for the quarantine would outlive a refused
+archive (in practice the service has made the destination itself by then, so the quarantine is a
+hidden folder inside it, next to staging). It qualifies when, asked of a handle to it (a junction or
+a mount point is judged by the volume it leads to): `GetVolumeInformationByHandleW` reports
+`FILE_PERSISTENT_ACLS` (NTFS, ReFS; not FAT/exFAT), `GetFinalPathNameByHandleW(VOLUME_NAME_GUID)`
+gives a volume (a network folder has none) and `GetDriveTypeW` of it is `DRIVE_FIXED` (a removable
+drive is not measured); and the root, every run's working folder, stays under 240 characters:
+`CreateProcessW` refuses a longer working folder (error 267, measured with a 200-character
+destination); and **its volume is not the one `%TEMP%` is on** (volume GUID roots compared, `%TEMP%`'s
+asked once per process). On that volume the quarantine in `%TEMP%` leaves by a rename already, and the
+profile's folders that Controlled Folder Access protects by default and OneDrive syncs are there, so
+nothing is gained and a hidden folder would appear in them (rule added after the MDM measurement
+below; the user's cross-drive bench, scenario 6, keeps its gain). Otherwise `%TEMP%\PakkoTarSandbox`,
+as before; operations without a destination (list, test, scan, the gate's probe) always.
+
+**The root:** `.pakko-sandbox-<owner tag>-<guid>`, hidden, created by `CreateDirectoryW` with a
+protected DACL (`D:P`, the user, SYSTEM, Administrators) in the same call - never the entries the
+destination's folder passes down (a drive root: Authenticated Users Modify; a folder may let ALL
+APPLICATION PACKAGES in); an existing name throws. A test gives the folder Everyone and ALL
+APPLICATION PACKAGES Modify: the root carries neither, and another operation's sandbox cannot write
+into it. A killed run's root is swept by the next scope there (`TempScope.Destination`, as staging).
+The profile name drops the prefix (`SandboxNameFor`), so it stays within 64 characters.
+
+**The helper:** the gate picks it on every libarchive 3.5 to 3.8, and it reads tar, the compressed
+tars, 7z, RAR, cpio, so it is the usual backend; keeping it in `%TEMP%` would have kept most
+extractions there. Its `out\` goes next to the destination as tar.exe's does; its copy (`bin\`) stays
+in a `%TEMP%\PakkoTarSandbox` folder of the scope's own, so it runs from where it ran before, never
+from a folder of the user's (AppLocker/WDAC). The approved plan had kept the helper's `out\` in
+`%TEMP%` too, citing Controlled Folder Access; it moved next to the destination in the
+implementation, for the reason above, and the measurement below bounds it.
+
+**Controlled Folder Access** (off on the dev machine, not changed there; the user chose a measurement
+on PakkoW10 only, switched on for the run and back off after it, `Set-MpPreference`): extracting into
+`Documents` in block mode, tar.exe (signed by Microsoft) wrote its `out\` there and the archive
+landed; the helper's copy, run from `%TEMP%`, was refused (event 1123 names its `out\0`, the run
+exits 6). With CFA off both landed. Then CFA set by Group Policy's key only, and by MDM only (the
+WMI bridge, `MDM_Policy_Config01_Defender02`, run as SYSTEM; both undone after, the keys compared
+with the baseline): `Get-MpPreference` said 1 each time. MDM leaves the local key and Group Policy's
+key at 0 or absent; it writes the value under
+`PolicyManager\Providers\<winning provider>\default\Device\Defender` (readable by `Users`) and
+Defender's copy under `Policies\...\Windows Defender\Policy Manager` (SYSTEM and Administrators
+only). A first rule that read the two keys alone missed MDM, and the helper failed (exit 6).
+
+So the helper keeps its quarantine in `%TEMP%` when CFA is in block mode (1) by the local key, Group
+Policy's key, or MDM's winning provider; tar.exe stays next to the destination. Measured with the
+rule, Group Policy and MDM: blocks = True, both backends landed. Audit mode (2) and the
+disk-sector modes (3, 4) block no file write. **Left open:** CFA set by a channel none of these keys
+show, together with a protected folder on another volume than `%TEMP%` (an administrator's list, a
+redirected known folder), fails the helper's extraction there with a Defender notice; a retry in
+`%TEMP%` after a refused write would touch the order-sensitive extraction method, filed as T-F526.
+
+**`TakeOut`:** the move out is a rename on one volume again; T-F474's `CopyFile` branch is left for a
+destination that keeps the quarantine in `%TEMP%` (`TakeOut_ToAnotherVolume_CopiesWithItsTime`).
+
+**Errors:** a folder the user may not create in fails the archive as before (`UnauthorizedAccessException`
+from `CreatePrivateFolder`, the service's access error), never "Sandbox setup failed"; a test for both
+backends. A refused archive leaves no quarantine. The service makes the destination's parent folder
+for a refused archive too, as before (measured with the quarantine in `%TEMP%`).
+
 ## T-F523 - a sandbox of its own for every operation (2026-11-13)
 
 Reverses T-F52's "one profile, created once, never per operation" (`Pakko.TarSandbox`), for a reason

@@ -22,6 +22,9 @@ public sealed class Win32RegistryReader : IRegistryReader
         return value as string[];
     }
 
+    /// <inheritdoc/>
+    public string? GetString(string keyPath, string valueName) => ReadValue(keyPath, valueName) as string;
+
     private static object? ReadValue(string keyPath, string valueName)
     {
         try

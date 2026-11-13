@@ -473,7 +473,8 @@ public sealed class TarSandboxedService : ITarService
         Func<CompressionBombWarning, Task<bool>>? confirmCompressionBombExtraction = context.ConfirmCompressionBombExtraction;
         IProgress<ProgressReport>? progress = context.Progress;
 
-        using ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(archivePath, needsOutputDir: true, context.TarOutputEncoding, cancellationToken, context.Helper, context.Gate)
+        using ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(
+                archivePath, needsOutputDir: true, context.TarOutputEncoding, cancellationToken, context.Helper, context.Gate, destination: unisolatedDestDir)
             .ConfigureAwait(false);
 
         // T-F05: the whole-archive pre-scan below runs unconditionally, exactly as it did before

@@ -1082,6 +1082,8 @@ Add-SmokeStep 'CLI-061' {
         Assert-Smoke ($run.ExitCode -eq 0 -and (Test-Path -LiteralPath $file)) "exit $($run.ExitCode) $($run.Text)"
         Assert-Smoke ((Get-Content -LiteralPath $file -Raw) -ceq 'across') "a.txt holds '$(Get-Content -LiteralPath $file -Raw)'"
         Assert-Smoke ((Get-Item -LiteralPath $file).LastWriteTimeUtc -eq $modified) "a.txt's time: $((Get-Item -LiteralPath $file).LastWriteTimeUtc.ToString('o'))"
+        $left = @(Get-ChildItem -LiteralPath $o -Force -Directory -Filter '.pakko-sandbox-*')
+        Assert-Smoke ($left.Count -eq 0) "a quarantine was left next to the destination: $($left.Name -join ', ')"
     }
     finally {
         if (Test-Path -LiteralPath $o) { Remove-Item -LiteralPath $o -Recurse -Force }

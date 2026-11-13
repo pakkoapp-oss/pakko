@@ -101,6 +101,7 @@ bypasses" is code that does an owner's job itself; it is listed in T-F511 and go
 | Default archive name, "name (1)", the folder an archive extracts into (`GetFolderName`) | `Services/ArchiveNaming` | `EntryDiskName.SingleName` for the folder | its own tests; the path matrix (T-F512) | - |
 | Reading tar.exe's formats (list, extract, test, scan) | `Sandbox/ISandboxedArchiveReader` (`TarExeReader`, `HelperReader`) over `TarSandboxScope` | `SandboxedProcessLauncher` (AppContainer, Job Object) | `SandboxedReaderOwnerTests` | - |
 | Names tar.exe wrote in the quarantine, and the move out (T-F474: one handle checks and moves each file) | `Sandbox/QuarantineFiles` | literal `\\?\` paths | `QuarantineFilesOwnerTests` | - |
+| Where an extraction's quarantine goes: next to its destination on another volume than `%TEMP%`, or `%TEMP%` (T-F524) | `Sandbox/QuarantineLocation` | `GetVolumeInformationByHandleW`, `GetFinalPathNameByHandleW` | `QuarantineLocationTests`, `QuarantineFilesOwnerTests` | - |
 | This machine's code pages | `Text/SystemCodePages`, `MachinePages`, `TextBoundaries` | `GetACP`/`GetOEMCP`: `CultureInfo...TextInfo.ANSICodePage` is the user's locale, not the system page tar.exe uses | its own tests | - |
 | Starting a system executable | `Services/ExplorerLauncher`, absolute paths (S4036) | `Process.Start` | - | - |
 | Services for Shell and CLI | `Services/PakkoServices.Create` | - | `PolicyOwnershipTests` (Group Policy reaches every engine) | - |
@@ -1592,8 +1593,14 @@ P/Invoke surface:
   every tar.exe argument must survive the ANSI command-line conversion unchanged (T-F266)
 - `SetEntriesInAclW`/`SetNamedSecurityInfoW` — grants the AppContainer SID access to Pakko's own
   quarantine folders only: `out\` = Modify (`0x1301BF`), the quarantine root = traverse/list/read
-  attributes, the shared parent = traverse-only, for ALL APPLICATION PACKAGES once (T-F523), never
-  an entry per scope. Never an ACE on the user's archive
+  attributes; no folder above a quarantine root gets an entry (an AppContainer token keeps "Bypass
+  traverse checking", T-F524). Never an ACE on the user's archive
+- `CreateDirectoryW` with a security descriptor from `ConvertStringSecurityDescriptorToSecurityDescriptorW`
+  (`QuarantineAcl.CreatePrivateFolder`, T-F524): a quarantine root next to a destination is born
+  with a protected DACL (the user, SYSTEM, Administrators), nothing inherited from the destination
+- `GetVolumeInformationByHandleW`, `GetFinalPathNameByHandleW(VOLUME_NAME_GUID)`, `GetDriveTypeW`
+  (`QuarantineLocation`, T-F524): whether the destination's nearest existing folder is on another
+  fixed local volume than `%TEMP%` that keeps permissions, asked of a handle to it
 - `ReOpenFile` — each tar.exe run reads the archive from its own synchronous handle to the file
   the scope holds open, inherited as stdin (`-f -`)
 - `CreateJobObject`/`SetInformationJobObject`/`AssignProcessToJobObject` — `ActiveProcessLimit = 1`
@@ -1609,11 +1616,13 @@ Flow (`TarSandboxScope.CreateAsync` + `ListAsync`/`ExtractAsync`):
 2. Open the archive read-only, sharing read only, for the whole scope — nobody can write, rename
    or delete it until the scope ends, so the pre-scan and the extraction read the same bytes; a
    file another program still has open for writing is refused as "in use" (T-F233)
-3. Ensure the AppContainer profile exists (lazy, once, never deleted)
-4. Create a quarantine directory under a fixed, Pakko-owned `%TEMP%\PakkoTarSandbox\<guid>\` —
-   **not** "same disk as the destination" (an AppContainer token has no bypass-traverse-checking
-   privilege, so `FILE_TRAVERSE` is enforced on every ancestor directory — see `DECISIONS.md`'s
-   T-F52 entry) — with `out\` if the scope extracts
+3. A new AppContainer profile of the scope's own, deleted with it (T-F523)
+4. Create the quarantine directory, with `out\` if the scope extracts: for an extraction whose
+   destination's nearest existing folder is on another fixed local volume than `%TEMP%` that keeps
+   permissions (and leaves the root short enough to be a working folder; for the helper, Controlled
+   Folder Access not in block mode), a hidden `.pakko-sandbox-<owner>-<guid>\`
+   in that folder, created with a protected DACL (T-F524, `QuarantineLocation`); otherwise
+   `%TEMP%\PakkoTarSandbox\<owner>-<guid>\`. The helper's copy always runs from `%TEMP%`
 5. Per tar.exe run: a fresh Job Object (`ActiveProcessLimit = 1`; memory = half the machine's
    memory within 1–4 GiB; CPU time = at least 60 minutes, plus one per 10 MB of archive;
    `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`), a fresh `ReOpenFile` handle as stdin, the quarantine
