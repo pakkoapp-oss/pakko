@@ -15010,11 +15010,13 @@ a mount point is judged by the volume it leads to): `GetVolumeInformationByHandl
 gives a volume (a network folder has none) and `GetDriveTypeW` of it is `DRIVE_FIXED` (a removable
 drive is not measured); and the root, every run's working folder, stays under 240 characters:
 `CreateProcessW` refuses a longer working folder (error 267, measured with a 200-character
-destination); and **its volume is not the one `%TEMP%` is on** (volume GUID roots compared, `%TEMP%`'s
-asked once per process). On that volume the quarantine in `%TEMP%` leaves by a rename already, and the
-profile's folders that Controlled Folder Access protects by default and OneDrive syncs are there, so
+destination); and **its volume is neither `%TEMP%`'s nor the user profile's** (volume GUID roots
+compared, asked once per process; when either cannot be asked, every extraction quarantines in
+`%TEMP%`). On `%TEMP%`'s volume the quarantine there leaves by a rename already, and the profile's
+folders that Controlled Folder Access protects by default and OneDrive syncs are on the profile's, so
 nothing is gained and a hidden folder would appear in them (rule added after the MDM measurement
-below; the user's cross-drive bench, scenario 6, keeps its gain). Otherwise `%TEMP%\PakkoTarSandbox`,
+below; the profile's volume and the "cannot be asked" case after the closing review, for a `%TEMP%`
+moved to another drive; the user's cross-drive bench, scenario 6, keeps its gain). Otherwise `%TEMP%\PakkoTarSandbox`,
 as before; operations without a destination (list, test, scan, the gate's probe) always.
 
 **The root:** `.pakko-sandbox-<owner tag>-<guid>`, hidden, created by `CreateDirectoryW` with a
@@ -15052,6 +15054,20 @@ disk-sector modes (3, 4) block no file write. **Left open:** CFA set by a channe
 show, together with a protected folder on another volume than `%TEMP%` (an administrator's list, a
 redirected known folder), fails the helper's extraction there with a Defender notice; a retry in
 `%TEMP%` after a refused write would touch the order-sensitive extraction method, filed as T-F526.
+
+**The closing review (opus, read-only, all of batch 5a):** no P1. P2, fixed here (T-F474's seal): the
+seal took the SID's entry off `out\` and what inherits it, but a folder or file a compromised run
+created with a protected DACL of its own (no WRITE_DAC is needed at creation) kept its entry, so the
+first-copies run, after the checks and the scan, could add files there or rewrite one. Now every
+folder and file is checked after the seal (`QuarantineFiles.EnsureSealed`), and any AppContainer or
+capability entry fails the archive; `HasAppContainerEntry` reads each entry's SID instead of the SDDL
+text, which missed capability SIDs (S-1-15-3-*) and conditional entries. `icacls` in the sandbox
+cannot set an existing folder's DACL and PowerShell does not start there, so the test builds the state
+such a run leaves (a protected folder the sandbox can write) and sees the run fail. Measured cost:
+none to see, 10,000 files 30.0 s with the check against 30.4 s without it (main 28.4 s, alternating
+runs, medians of 5). Also fixed: the profile volume rule above; a failed profile sweep is no longer
+remembered for the process (T-F523). Filed: T-F527 (a run can leave an entry its owner cannot delete,
+now in the destination's folder).
 
 **`TakeOut`:** the move out is a rename on one volume again; T-F474's `CopyFile` branch is left for a
 destination that keeps the quarantine in `%TEMP%` (`TakeOut_ToAnotherVolume_CopiesWithItsTime`).

@@ -113,8 +113,9 @@ internal sealed partial class TarSandboxScope : IDisposable
         return SandboxNamePrefix + name[..^24];
     }
 
-    // Once per process, before its first scope: the profiles of runs that were killed.
-    private static readonly Lazy<bool> StaleProfilesSwept = new(SweepStaleProfiles);
+    // Once per process, before its first scope: the profiles of runs that were killed. A failed sweep
+    // is not remembered (PublicationOnly), so it never fails every later scope of the process.
+    private static readonly Lazy<bool> StaleProfilesSwept = new(SweepStaleProfiles, LazyThreadSafetyMode.PublicationOnly);
 
     private static bool SweepStaleProfiles()
     {
@@ -163,8 +164,8 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// <summary>
     /// Opens the archive (read-only, sharing read only), then sets up a fresh operation-scoped
     /// quarantine directory beneath <see cref="SandboxParentDirectory"/> — with an "out\" folder
-    /// if needed — ACL'd to the (lazily-ensured, reused) production AppContainer profile. The
-    /// profile itself is created once and reused for the lifetime of the install. The final move
+    /// if needed — ACL'd to a new AppContainer profile of this scope's own, deleted with it (T-F523).
+    /// The final move
     /// from "out\" to the user's destination happens later, at Pakko's normal process identity.
     /// T-F470: a non-null helperSource is the archive helper this scope may run (<see cref="RunHelperAsync"/>).
     /// T-F524: a non-null <paramref name="nearFolder"/> (<see cref="QuarantineLocation.NearDestination"/>)
@@ -412,13 +413,15 @@ internal sealed partial class TarSandboxScope : IDisposable
 
     /// <summary>
     /// T-F474: once a run that writes into <paramref name="folder"/> ends, the sandbox's entry comes off
-    /// it and off everything in it. The SID is every operation's, so a concurrent operation's tar.exe or
-    /// helper could otherwise rewrite a file, give it a second name or a named stream, or add a file,
-    /// between the checks, the scan and the move. No run writes into a folder after this.
+    /// it and off everything in it, and nothing in it may keep one (<see cref="QuarantineFiles.EnsureSealed"/>).
+    /// A later run of this scope (the first-copies run), or a process a run left behind, could otherwise
+    /// rewrite a file, give it a second name or a named stream, or add a file, between the checks, the
+    /// scan and the move. No run writes into a folder after this.
     /// </summary>
     private void Seal(string folder)
     {
         GrantOrFailSetup(() => QuarantineAcl.Revoke(folder, _sid));
+        QuarantineFiles.EnsureSealed(folder);
         _sealed.Add(folder);
     }
 

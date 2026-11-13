@@ -20,10 +20,10 @@ internal static partial class QuarantineLocation
     internal const string RootPrefix = ".pakko-sandbox-";
 
     /// <summary>The folder, by its final plain path, to hold the quarantine of an extraction into
-    /// <paramref name="destination"/>; null for <c>%TEMP%</c>, whose volume root is
-    /// <paramref name="tempVolume"/> (<see cref="TempVolume"/>). The archive helper writes it only where
+    /// <paramref name="destination"/>; null for <c>%TEMP%</c>. A folder on one of <paramref name="keptInTemp"/>
+    /// (<see cref="VolumesKeptInTemp"/>) never qualifies. The archive helper writes it only where
     /// Controlled Folder Access does not block it (<see cref="ControlledFolderAccessBlocks"/>).</summary>
-    public static string? NearDestination(string destination, bool byHelper, IRegistryReader registry, string? tempVolume)
+    public static string? NearDestination(string destination, bool byHelper, IRegistryReader registry, IReadOnlyList<string> keptInTemp)
     {
         if ((byHelper && ControlledFolderAccessBlocks(registry)) || NearestExisting(destination) is not { } existing || PathIdentity.Resolve(existing) is not { } resolved)
             return null;
@@ -32,20 +32,27 @@ internal static partial class QuarantineLocation
         string folder = resolved.FinalPath;
         if (folder.StartsWith(@"\\", StringComparison.Ordinal) || InputPaths.NameTrimmed(folder) || !RootFits(folder))
             return null;
-        // On the volume of %TEMP% the quarantine there leaves by a rename already. The default
-        // protected folders of Controlled Folder Access, and the folders OneDrive syncs, are in the
-        // profile on that volume: a hidden quarantine never goes into them.
         return PathIdentity.VolumeOf(folder) is { } volume
-            && !string.Equals(volume.VolumeRoot, tempVolume, StringComparison.OrdinalIgnoreCase)
+            && !keptInTemp.Contains(volume.VolumeRoot, StringComparer.OrdinalIgnoreCase)
             && Accepts(volume.VolumeRoot, volume.FileSystemFlags, GetDriveType)
             ? folder
             : null;
     }
 
-    /// <summary>The volume root (<c>\\?\Volume{...}\</c>) of <c>%TEMP%</c>, asked once per process.</summary>
-    internal static string? TempVolume => TempVolumeOf.Value;
+    /// <summary>
+    /// The volume roots (<c>\\?\Volume{...}\</c>) where an extraction quarantines in <c>%TEMP%</c>,
+    /// asked once per process: <c>%TEMP%</c>'s, where a rename out of it works already, and the user
+    /// profile's, where the folders Controlled Folder Access protects by default and OneDrive syncs are
+    /// (a hidden quarantine never goes into them, %TEMP% moved to another drive or not). Null when either
+    /// cannot be asked: then every extraction quarantines in %TEMP% (batch 5a's review).
+    /// </summary>
+    internal static IReadOnlyList<string>? VolumesKeptInTemp => KeptInTemp.Value;
 
-    private static readonly Lazy<string?> TempVolumeOf = new(() => PathIdentity.VolumeOf(Path.GetTempPath())?.VolumeRoot);
+    private static readonly Lazy<IReadOnlyList<string>?> KeptInTemp = new(() =>
+        PathIdentity.VolumeOf(Path.GetTempPath())?.VolumeRoot is { } temp
+        && PathIdentity.VolumeOf(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile))?.VolumeRoot is { } profile
+            ? [temp, profile]
+            : null);
 
     // The destination is created only after the archive passed its checks: a folder that is not
     // there yet must not appear for an archive that is refused.

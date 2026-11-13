@@ -26,9 +26,9 @@ internal interface ISandboxedArchiveReader : IDisposable
     {
         if (helper is null && gate is not null)
             helper = await gate.HelperAsync(cancellationToken).ConfigureAwait(false);
-        string? nearFolder = destination is null || !OperatingSystem.IsWindows()
+        string? nearFolder = destination is null || !OperatingSystem.IsWindows() || QuarantineLocation.VolumesKeptInTemp is not { } keptInTemp
             ? null
-            : QuarantineLocation.NearDestination(destination, byHelper: helper is not null, new Win32RegistryReader(), QuarantineLocation.TempVolume);
+            : QuarantineLocation.NearDestination(destination, byHelper: helper is not null, new Win32RegistryReader(), keptInTemp);
         return helper is null
             ? await TarExeReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, cancellationToken, nearFolder).ConfigureAwait(false)
             : await HelperReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, helper, cancellationToken, nearFolder).ConfigureAwait(false);

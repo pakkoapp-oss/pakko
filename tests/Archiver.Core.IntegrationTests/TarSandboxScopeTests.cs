@@ -167,6 +167,36 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         }
     }
 
+    // Batch 5a's review: the seal takes the SID's entry off out\ and off what inherits it. A folder
+    // the sandbox gave a protected DACL of its own kept the SID's entry, so a later run of the scope
+    // (the first-copies run) could still add files to it, after the checks of what was written.
+    [Fact]
+    public async Task Seal_AFolderTheSandboxProtected_FailsTheRun()
+    {
+        string archivePath = Path.Combine(_temp.Path, "fixture.tar");
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "seal")]);
+        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
+        string sidText;
+        using (SafeSidHandle sid = new AppContainerProfile(TarSandboxScope.SandboxNameFor(scope.QuarantineRoot)).GetSid())
+            sidText = new System.Security.Principal.SecurityIdentifier(sid.DangerousGetHandle()).Value;
+        // What a compromised run leaves: CreateDirectory takes a DACL with no WRITE_DAC needed (icacls
+        // on an existing folder is refused in the sandbox, and PowerShell does not start there, so
+        // the test makes the folder as the run would have): protected, the SID's and the user's.
+        var security = new System.Security.AccessControl.DirectorySecurity();
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+        foreach (string id in new[] { sidText, System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value })
+            security.AddAccessRule(new System.Security.AccessControl.FileSystemAccessRule(new System.Security.Principal.SecurityIdentifier(id),
+                System.Security.AccessControl.FileSystemRights.FullControl,
+                System.Security.AccessControl.InheritanceFlags.ContainerInherit | System.Security.AccessControl.InheritanceFlags.ObjectInherit,
+                System.Security.AccessControl.PropagationFlags.None, System.Security.AccessControl.AccessControlType.Allow));
+        new DirectoryInfo(Path.Combine(scope.OutputDirectory!, "x")).Create(security);
+        (await CmdInSandboxOfAsync(scope, @"echo x> out\x\before.txt")).Should().Be(0, "the folder lets the sandbox in");
+
+        Func<Task> extract = () => scope.ExtractAsync(null, CancellationToken.None);
+
+        await extract.Should().ThrowAsync<IOException>();
+    }
+
     private static async Task<int> CmdInSandboxOfAsync(TarSandboxScope scope, string command)
     {
         using SafeSidHandle sid = new AppContainerProfile(TarSandboxScope.SandboxNameFor(scope.QuarantineRoot)).GetSid();
