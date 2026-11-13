@@ -121,7 +121,7 @@
     <value>Dette arkivformat understøttes ikke af dette systems tar.exe (version {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Kun arkivets struktur blev kontrolleret: tar.exe kan ikke kontrollere indholdet af filerne i dette format.</value>
+    <value>Kun arkivets struktur blev kontrolleret: indholdet af filerne i dette format kan ikke kontrolleres.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Dette arkiv er beskyttet med adgangskode og kan ikke udpakkes.</value>
@@ -325,16 +325,16 @@
     <value>En gendannelsesfil fra en tidligere version af arkivet kunne ikke slettes: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Arkivet er beskadiget ({0} af {1} blokke); dets gendannelsesdata kan reparere det ({2} gendannelsesblokke).</value>
+    <value>Arkivet er beskadiget (beskadigede blokke: {0}/{1}); dets gendannelsesdata kan reparere det (gendannelsesblokke: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Arkivet er beskadiget ({0} af {1} blokke) mere, end dets gendannelsesdata kan reparere ({2} gendannelsesblokke).</value>
+    <value>Arkivet er beskadiget (beskadigede blokke: {0}/{1}) mere, end dets gendannelsesdata kan reparere (gendannelsesblokke: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Arkivet er beskadiget ({0} af {1} blokke); at reparere så meget er mere, end Pakko kan.</value>
+    <value>Arkivet er beskadiget (beskadigede blokke: {0}/{1}); at reparere så meget er mere, end Pakko kan.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Gendannelsesdataene passer ikke til arkivet ({0} af {1} blokke er forskellige), men selve arkivet består testen: gendannelsesdataene stammer sandsynligvis fra en tidligere version af det.</value>
+    <value>Gendannelsesdataene passer ikke til arkivet (forskellige blokke: {0}/{1}), men selve arkivet består testen: gendannelsesdataene stammer sandsynligvis fra en tidligere version af det.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Gendannelsesdataene er beskadigede eller i et format, Pakko ikke kan læse.</value>
@@ -349,13 +349,13 @@
     <value>Gendannelsesdataene blev lavet til en fil med et andet navn; de passer til dette arkiv efter indhold.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Arkivet stemmer med dets gendannelsesdata ({0} blokke, {1} gendannelsesblokke).</value>
+    <value>Arkivet stemmer med dets gendannelsesdata (blokke: {0}, gendannelsesblokke: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Der blev ikke fundet gendannelsesdata ved siden af arkivet.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Arkivet blev repareret ({0} af {1} blokke). Den reparerede kopi er {2}; originalen blev ikke ændret.</value>
+    <value>Arkivet blev repareret (reparerede blokke: {0}/{1}). Den reparerede kopi er {2}; originalen blev ikke ændret.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Den reparerede kopi stemte ikke overens med gendannelsesdataene og blev ikke beholdt.</value>

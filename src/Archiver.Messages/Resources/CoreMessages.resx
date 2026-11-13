@@ -121,7 +121,7 @@
     <value>This archive format is not supported by this system's tar.exe (version {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Only the archive's structure was checked: tar.exe cannot verify the contents of files in this format.</value>
+    <value>Only the archive's structure was checked: the contents of files in this format cannot be verified.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>This archive is password-protected and cannot be extracted.</value>
@@ -352,16 +352,16 @@
     <value>A recovery file left from an earlier version of the archive could not be deleted: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>The archive is damaged ({0} of {1} blocks); its recovery data can repair it ({2} recovery blocks).</value>
+    <value>The archive is damaged (damaged blocks: {0} of {1}); its recovery data can repair it (recovery blocks: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>The archive is damaged ({0} of {1} blocks) beyond what its recovery data can repair ({2} recovery blocks).</value>
+    <value>The archive is damaged (damaged blocks: {0} of {1}) beyond what its recovery data can repair (recovery blocks: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>The archive is damaged ({0} of {1} blocks); repairing this much is beyond what Pakko can do.</value>
+    <value>The archive is damaged (damaged blocks: {0} of {1}); repairing this much is beyond what Pakko can do.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>The recovery data does not match the archive ({0} of {1} blocks differ), but the archive itself tests as intact: the recovery data is probably from an earlier version of it.</value>
+    <value>The recovery data does not match the archive (differing blocks: {0} of {1}), but the archive itself tests as intact: the recovery data is probably from an earlier version of it.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>The recovery data is damaged or in a form Pakko cannot read.</value>
@@ -376,13 +376,13 @@
     <value>The recovery data was made for a file with another name; it matches this archive by its content.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>The archive matches its recovery data ({0} blocks, {1} recovery blocks).</value>
+    <value>The archive matches its recovery data (blocks: {0}, recovery blocks: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>No recovery data was found next to the archive.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>The archive was repaired ({0} of {1} blocks). The repaired copy is {2}; the original was not changed.</value>
+    <value>The archive was repaired (repaired blocks: {0} of {1}). The repaired copy is {2}; the original was not changed.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>The repaired copy did not match the recovery data and was not kept.</value>

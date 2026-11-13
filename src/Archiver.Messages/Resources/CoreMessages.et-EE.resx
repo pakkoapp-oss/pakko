@@ -121,7 +121,7 @@
     <value>Selle süsteemi tar.exe (versioon {0}) ei toeta seda arhiivivormingut.</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Kontrolliti ainult arhiivi struktuuri: tar.exe ei saa selles vormingus failide sisu kontrollida.</value>
+    <value>Kontrolliti ainult arhiivi struktuuri: selles vormingus failide sisu ei saa kontrollida.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>See arhiiv on parooliga kaitstud ja seda ei saa lahti pakkida.</value>
@@ -325,16 +325,16 @@
     <value>Arhiivi varasemast versioonist jäänud taastefaili ei saanud kustutada: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Arhiiv on kahjustatud ({0} plokki {1}-st); selle taasteandmed saavad selle parandada ({2} taasteplokki).</value>
+    <value>Arhiiv on kahjustatud (kahjustatud plokke: {0}/{1}); selle taasteandmed saavad selle parandada (taasteplokke: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Arhiiv on kahjustatud ({0} plokki {1}-st) rohkem, kui selle taasteandmed parandada saavad ({2} taasteplokki).</value>
+    <value>Arhiiv on kahjustatud (kahjustatud plokke: {0}/{1}) rohkem, kui selle taasteandmed parandada saavad (taasteplokke: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Arhiiv on kahjustatud ({0} plokki {1}-st); nii palju parandada ei suuda Pakko.</value>
+    <value>Arhiiv on kahjustatud (kahjustatud plokke: {0}/{1}); nii palju parandada ei suuda Pakko.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Taasteandmed ei vasta arhiivile ({0} plokki {1}-st erinevad), kuid arhiiv ise läbib testi: taasteandmed on tõenäoliselt selle varasemast versioonist.</value>
+    <value>Taasteandmed ei vasta arhiivile (erinevaid plokke: {0}/{1}), kuid arhiiv ise läbib testi: taasteandmed on tõenäoliselt selle varasemast versioonist.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Taasteandmed on kahjustatud või vormingus, mida Pakko ei suuda lugeda.</value>
@@ -349,13 +349,13 @@
     <value>Taasteandmed on loodud teise nimega faili jaoks; need vastavad sellele arhiivile sisu järgi.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Arhiiv vastab oma taasteandmetele ({0} plokki, {1} taasteplokki).</value>
+    <value>Arhiiv vastab oma taasteandmetele (plokke: {0}, taasteplokke: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Arhiivi kõrvalt ei leitud taasteandmeid.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Arhiiv parandati ({0} plokki {1}-st). Parandatud koopia on {2}; algset arhiivi ei muudetud.</value>
+    <value>Arhiiv parandati (parandatud plokke: {0}/{1}). Parandatud koopia on {2}; algset arhiivi ei muudetud.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Parandatud koopia ei vastanud taasteandmetele ja seda ei säilitatud.</value>

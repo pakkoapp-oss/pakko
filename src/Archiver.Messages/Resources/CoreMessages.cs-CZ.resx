@@ -121,7 +121,7 @@
     <value>Tento formát archivu není podporován programem tar.exe tohoto systému (verze {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Byla zkontrolována pouze struktura archivu: tar.exe nedokáže ověřit obsah souborů v tomto formátu.</value>
+    <value>Byla zkontrolována pouze struktura archivu: obsah souborů v tomto formátu nelze ověřit.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Tento archiv je chráněn heslem a nelze jej extrahovat.</value>
@@ -325,16 +325,16 @@
     <value>Soubor pro obnovení z dřívější verze archivu nelze odstranit: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Archiv je poškozený ({0} z {1} bloků); data pro obnovení ho dokážou opravit ({2} bloků pro obnovení).</value>
+    <value>Archiv je poškozený (poškozené bloky: {0}/{1}); data pro obnovení ho dokážou opravit (bloky pro obnovení: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Archiv je poškozený ({0} z {1} bloků) víc, než data pro obnovení dokážou opravit ({2} bloků pro obnovení).</value>
+    <value>Archiv je poškozený (poškozené bloky: {0}/{1}) víc, než data pro obnovení dokážou opravit (bloky pro obnovení: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Archiv je poškozený ({0} z {1} bloků); opravit tolik je nad možnosti Pakko.</value>
+    <value>Archiv je poškozený (poškozené bloky: {0}/{1}); opravit tolik je nad možnosti Pakko.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Data pro obnovení neodpovídají archivu (liší se {0} z {1} bloků), ale samotný archiv testem prošel: data pro obnovení jsou nejspíš z jeho dřívější verze.</value>
+    <value>Data pro obnovení neodpovídají archivu (lišící se bloky: {0}/{1}), ale samotný archiv testem prošel: data pro obnovení jsou nejspíš z jeho dřívější verze.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Data pro obnovení jsou poškozená nebo ve formátu, který Pakko neumí přečíst.</value>
@@ -349,13 +349,13 @@
     <value>Data pro obnovení byla vytvořena pro soubor s jiným názvem; tomuto archivu odpovídají obsahem.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Archiv odpovídá svým datům pro obnovení ({0} bloků, {1} bloků pro obnovení).</value>
+    <value>Archiv odpovídá svým datům pro obnovení (bloky: {0}, bloky pro obnovení: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Vedle archivu nebyla nalezena žádná data pro obnovení.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Archiv byl opraven ({0} z {1} bloků). Opravená kopie je {2}; původní archiv nebyl změněn.</value>
+    <value>Archiv byl opraven (opravené bloky: {0}/{1}). Opravená kopie je {2}; původní archiv nebyl změněn.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Opravená kopie neodpovídala datům pro obnovení a nebyla zachována.</value>

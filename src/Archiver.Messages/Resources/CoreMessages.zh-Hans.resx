@@ -121,7 +121,7 @@
     <value>此系统的 tar.exe(版本 {0})不支持此压缩包格式。</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>仅检查了压缩包的结构：tar.exe 无法校验此格式中文件的内容。</value>
+    <value>仅检查了压缩包的结构：无法校验此格式中文件的内容。</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>此压缩包受密码保护，无法解压。</value>
@@ -325,16 +325,16 @@
     <value>无法删除压缩包早期版本遗留的恢复文件: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>压缩包已损坏（{1} 个块中有 {0} 个）；其恢复数据可以修复它（{2} 个恢复块）。</value>
+    <value>压缩包已损坏（损坏的块：{0}/{1}）；其恢复数据可以修复它（恢复块：{2}）。</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>压缩包的损坏（{1} 个块中有 {0} 个）超出了其恢复数据能修复的范围（{2} 个恢复块）。</value>
+    <value>压缩包的损坏（损坏的块：{0}/{1}）超出了其恢复数据能修复的范围（恢复块：{2}）。</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>压缩包已损坏（{1} 个块中有 {0} 个）；修复这么多超出了 Pakko 的能力。</value>
+    <value>压缩包已损坏（损坏的块：{0}/{1}）；修复这么多超出了 Pakko 的能力。</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>恢复数据与压缩包不匹配（{1} 个块中有 {0} 个不同），但压缩包本身通过了测试：恢复数据可能来自它的早期版本。</value>
+    <value>恢复数据与压缩包不匹配（不同的块：{0}/{1}），但压缩包本身通过了测试：恢复数据可能来自它的早期版本。</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>恢复数据已损坏，或其格式 Pakko 无法读取。</value>
@@ -349,13 +349,13 @@
     <value>恢复数据是为另一个名称的文件创建的；按内容它与此压缩包匹配。</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>压缩包与其恢复数据一致（{0} 个块，{1} 个恢复块）。</value>
+    <value>压缩包与其恢复数据一致（块：{0}，恢复块：{1}）。</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>在压缩包旁边找不到恢复数据。</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>压缩包已修复（{1} 个块中有 {0} 个）。修复后的副本为 {2}；原文件未更改。</value>
+    <value>压缩包已修复（修复的块：{0}/{1}）。修复后的副本为 {2}；原文件未更改。</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>修复后的副本与恢复数据不一致，未保留。</value>

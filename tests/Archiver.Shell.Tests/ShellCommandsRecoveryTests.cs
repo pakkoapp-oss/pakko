@@ -46,7 +46,7 @@ public sealed class ShellCommandsRecoveryTests : IDisposable
         OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Information);
         message.Text.Should().MatchRegex(
-            @"^No errors detected in the archive\(s\)\.\r?\n\r?\nnotes\.tar\.gz: The archive matches its recovery data \(\d+ blocks, \d+ recovery blocks\)\.$");
+            @"^No errors detected in the archive\(s\)\.\r?\n\r?\nnotes\.tar\.gz: The archive matches its recovery data \(blocks: \d+, recovery blocks: \d+\)\.$");
     }
 
     // The item is offered on a .par2 file too: the message names the archive the set protects.
@@ -267,7 +267,7 @@ public sealed class ShellCommandsRecoveryTests : IDisposable
 
         OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Error);
-        message.Text.Should().Contain("beyond what its recovery data can repair (0 recovery blocks)");
+        message.Text.Should().Contain("beyond what its recovery data can repair (recovery blocks: 0)");
     }
 
     [Theory]
@@ -389,7 +389,7 @@ public sealed class ShellCommandsRecoveryTests : IDisposable
         OperationMessage message = ui.Messages.Should().ContainSingle().Subject;
         message.Severity.Should().Be(MessageSeverity.Information);
         message.Text.Should().MatchRegex(
-            @"^notes\.tar\.gz: The archive was repaired \(1 of \d+ blocks\)\. The repaired copy is notes\.repaired\.tar\.gz; the original was not changed\.$");
+            @"^notes\.tar\.gz: The archive was repaired \(repaired blocks: 1 of \d+\)\. The repaired copy is notes\.repaired\.tar\.gz; the original was not changed\.$");
         File.ReadAllBytes(Path.Combine(_root, "notes.repaired.tar.gz")).Should().Equal(good);
         File.ReadAllBytes(archive).Should().Equal(damaged);
         Listing().Should().HaveCount(before.Length + 1).And.Contain(before);

@@ -121,7 +121,7 @@
     <value>Este formato de archivo comprimido no es compatible con el tar.exe de este sistema (versión {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Solo se comprobó la estructura del archivo comprimido: tar.exe no puede verificar el contenido de los archivos en este formato.</value>
+    <value>Solo se comprobó la estructura del archivo comprimido: el contenido de los archivos en este formato no se puede verificar.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Este archivo comprimido está protegido con contraseña y no se puede extraer.</value>
@@ -325,16 +325,16 @@
     <value>No se pudo eliminar un archivo de recuperación de una versión anterior del archivo comprimido: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>El archivo comprimido está dañado ({0} de {1} bloques); sus datos de recuperación pueden repararlo ({2} bloques de recuperación).</value>
+    <value>El archivo comprimido está dañado (bloques dañados: {0}/{1}); sus datos de recuperación pueden repararlo (bloques de recuperación: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>El archivo comprimido está dañado ({0} de {1} bloques) más de lo que sus datos de recuperación pueden reparar ({2} bloques de recuperación).</value>
+    <value>El archivo comprimido está dañado (bloques dañados: {0}/{1}) más de lo que sus datos de recuperación pueden reparar (bloques de recuperación: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>El archivo comprimido está dañado ({0} de {1} bloques); reparar tanto supera lo que Pakko puede hacer.</value>
+    <value>El archivo comprimido está dañado (bloques dañados: {0}/{1}); reparar tanto supera lo que Pakko puede hacer.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Los datos de recuperación no coinciden con el archivo comprimido ({0} de {1} bloques difieren), pero el propio archivo comprimido supera la prueba: probablemente los datos de recuperación son de una versión anterior.</value>
+    <value>Los datos de recuperación no coinciden con el archivo comprimido (bloques distintos: {0}/{1}), pero el propio archivo comprimido supera la prueba: probablemente los datos de recuperación son de una versión anterior.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Los datos de recuperación están dañados o en un formato que Pakko no puede leer.</value>
@@ -349,13 +349,13 @@
     <value>Los datos de recuperación se crearon para un archivo con otro nombre; coinciden con este archivo comprimido por su contenido.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>El archivo comprimido coincide con sus datos de recuperación ({0} bloques, {1} bloques de recuperación).</value>
+    <value>El archivo comprimido coincide con sus datos de recuperación (bloques: {0}, bloques de recuperación: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>No se encontraron datos de recuperación junto al archivo comprimido.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>El archivo comprimido se reparó ({0} de {1} bloques). La copia reparada es {2}; el original no se modificó.</value>
+    <value>El archivo comprimido se reparó (bloques reparados: {0}/{1}). La copia reparada es {2}; el original no se modificó.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>La copia reparada no coincidía con los datos de recuperación y no se conservó.</value>

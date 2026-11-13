@@ -121,7 +121,7 @@
     <value>Este formato de arquivo não é suportado pelo tar.exe deste sistema (versão {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Só a estrutura do arquivo foi verificada: o tar.exe não consegue verificar o conteúdo dos ficheiros neste formato.</value>
+    <value>Só a estrutura do arquivo foi verificada: o conteúdo dos ficheiros neste formato não pode ser verificado.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Este arquivo está protegido por palavra-passe e não pode ser extraído.</value>
@@ -325,16 +325,16 @@
     <value>Não foi possível eliminar um ficheiro de recuperação de uma versão anterior do arquivo: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>O arquivo está danificado ({0} de {1} blocos); os seus dados de recuperação podem repará-lo ({2} blocos de recuperação).</value>
+    <value>O arquivo está danificado (blocos danificados: {0}/{1}); os seus dados de recuperação podem repará-lo (blocos de recuperação: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>O arquivo está danificado ({0} de {1} blocos) além do que os seus dados de recuperação podem reparar ({2} blocos de recuperação).</value>
+    <value>O arquivo está danificado (blocos danificados: {0}/{1}) além do que os seus dados de recuperação podem reparar (blocos de recuperação: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>O arquivo está danificado ({0} de {1} blocos); reparar tanto está além do que o Pakko consegue fazer.</value>
+    <value>O arquivo está danificado (blocos danificados: {0}/{1}); reparar tanto está além do que o Pakko consegue fazer.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Os dados de recuperação não correspondem ao arquivo ({0} de {1} blocos diferem), mas o próprio arquivo passa no teste: os dados de recuperação são provavelmente de uma versão anterior.</value>
+    <value>Os dados de recuperação não correspondem ao arquivo (blocos diferentes: {0}/{1}), mas o próprio arquivo passa no teste: os dados de recuperação são provavelmente de uma versão anterior.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Os dados de recuperação estão danificados ou num formato que o Pakko não consegue ler.</value>
@@ -349,13 +349,13 @@
     <value>Os dados de recuperação foram criados para um ficheiro com outro nome; correspondem a este arquivo pelo conteúdo.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>O arquivo corresponde aos seus dados de recuperação ({0} blocos, {1} blocos de recuperação).</value>
+    <value>O arquivo corresponde aos seus dados de recuperação (blocos: {0}, blocos de recuperação: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Não foram encontrados dados de recuperação junto ao arquivo.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>O arquivo foi reparado ({0} de {1} blocos). A cópia reparada é {2}; o original não foi alterado.</value>
+    <value>O arquivo foi reparado (blocos reparados: {0}/{1}). A cópia reparada é {2}; o original não foi alterado.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>A cópia reparada não correspondia aos dados de recuperação e não foi mantida.</value>

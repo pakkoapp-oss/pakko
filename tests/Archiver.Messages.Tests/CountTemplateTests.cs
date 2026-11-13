@@ -19,6 +19,8 @@ public sealed partial class CountTemplateTests
     [InlineData("Extracting {0} archives", true)]
     [InlineData("{0}: {1} files", true)]
     [InlineData("{0} more copies were skipped", true)]
+    [InlineData("({0} of {1} blocks)", true)]
+    [InlineData("(damaged blocks: {0} of {1})", false)]
     [InlineData("Extracting archives: {0}", false)]
     [InlineData("Archive {0} of {1}", false)]
     [InlineData("{0} of {1} selected", false)]
@@ -50,9 +52,18 @@ public sealed partial class CountTemplateTests
         }
     }
 
+    // T-F478: the helper reads some formats too, and a gzip or RAR has a checksum tar.exe does not
+    // compare, so the warning names neither a reader nor a missing checksum.
+    [Fact]
+    public void StructureOnlyWarning_NamesNoReader()
+    {
+        foreach (string locale in LocalizedSources.Locales())
+            LocalizedSources.Read(locale)["CoreMessages/TestedStructureOnly"].Should().NotContain("tar.exe", locale);
+    }
+
     [GeneratedRegex(@"\{\d\} (?:de )?(?:bajt|bait|octe)", RegexOptions.IgnoreCase)]
     private static partial Regex InflectedByteNoun();
 
-    [GeneratedRegex(@"\{\d\} (?:more )?(?:archive\(s\)|item\(s\)|archives|items|files|folders|entries|copies|threats|errors)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\{\d\} (?:more )?(?:archive\(s\)|item\(s\)|archives|items|files|folders|entries|copies|threats|errors|blocks)", RegexOptions.IgnoreCase)]
     private static partial Regex CountBeforeNoun();
 }

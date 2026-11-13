@@ -121,7 +121,7 @@
     <value>یہ آرکائیو فارمیٹ اس سسٹم کے tar.exe (ورژن {0}) میں تعاون یافتہ نہیں ہے۔</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>صرف آرکائیو کی ساخت جانچی گئی: tar.exe اس فارمیٹ میں فائلوں کے مواد کی تصدیق نہیں کر سکتا۔</value>
+    <value>صرف آرکائیو کی ساخت جانچی گئی: اس فارمیٹ میں فائلوں کے مواد کی تصدیق نہیں کی جا سکتی۔</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>یہ آرکائیو پاس ورڈ سے محفوظ ہے اور نکالا نہیں جا سکتا۔</value>
@@ -325,16 +325,16 @@
     <value>آرکائیو کے پچھلے ورژن سے بچی بازیابی فائل حذف نہیں کی جا سکی: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>آرکائیو خراب ہے ({1} میں سے {0} بلاک)؛ اس کا بازیابی ڈیٹا اسے ٹھیک کر سکتا ہے ({2} بازیابی بلاک)۔</value>
+    <value>آرکائیو خراب ہے (خراب بلاک: {0}/{1})؛ اس کا بازیابی ڈیٹا اسے ٹھیک کر سکتا ہے (بازیابی بلاک: {2})۔</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>آرکائیو اتنا خراب ہے ({1} میں سے {0} بلاک) کہ اس کا بازیابی ڈیٹا اسے ٹھیک نہیں کر سکتا ({2} بازیابی بلاک)۔</value>
+    <value>آرکائیو اتنا خراب ہے (خراب بلاک: {0}/{1}) کہ اس کا بازیابی ڈیٹا اسے ٹھیک نہیں کر سکتا (بازیابی بلاک: {2})۔</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>آرکائیو خراب ہے ({1} میں سے {0} بلاک)؛ اتنی مرمت Pakko کی صلاحیت سے باہر ہے۔</value>
+    <value>آرکائیو خراب ہے (خراب بلاک: {0}/{1})؛ اتنی مرمت Pakko کی صلاحیت سے باہر ہے۔</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>بازیابی ڈیٹا آرکائیو سے میل نہیں کھاتا ({1} میں سے {0} بلاک مختلف ہیں)، لیکن آرکائیو خود ٹیسٹ میں درست ہے: بازیابی ڈیٹا غالباً اس کے کسی پچھلے ورژن کا ہے۔</value>
+    <value>بازیابی ڈیٹا آرکائیو سے میل نہیں کھاتا (مختلف بلاک: {0}/{1})، لیکن آرکائیو خود ٹیسٹ میں درست ہے: بازیابی ڈیٹا غالباً اس کے کسی پچھلے ورژن کا ہے۔</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>بازیابی ڈیٹا خراب ہے یا ایسی شکل میں ہے جسے Pakko پڑھ نہیں سکتا۔</value>
@@ -349,13 +349,13 @@
     <value>بازیابی ڈیٹا کسی دوسرے نام والی فائل کے لیے بنایا گیا تھا؛ یہ مواد کے لحاظ سے اس آرکائیو سے میل کھاتا ہے۔</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>آرکائیو اپنے بازیابی ڈیٹا سے میل کھاتا ہے ({0} بلاک، {1} بازیابی بلاک)۔</value>
+    <value>آرکائیو اپنے بازیابی ڈیٹا سے میل کھاتا ہے (بلاک: {0}، بازیابی بلاک: {1})۔</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>آرکائیو کے ساتھ کوئی بازیابی ڈیٹا نہیں ملا۔</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>آرکائیو ٹھیک کر دی گئی ({1} میں سے {0} بلاک)۔ ٹھیک کی گئی نقل {2} ہے؛ اصل تبدیل نہیں ہوئی۔</value>
+    <value>آرکائیو ٹھیک کر دی گئی (ٹھیک کیے گئے بلاک: {0}/{1})۔ ٹھیک کی گئی نقل {2} ہے؛ اصل تبدیل نہیں ہوئی۔</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>ٹھیک کی گئی نقل بازیابی ڈیٹا سے مطابقت نہیں رکھتی تھی اور اسے نہیں رکھا گیا۔</value>

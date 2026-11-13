@@ -121,7 +121,7 @@
     <value>Định dạng tệp nén này không được tar.exe của hệ thống này (phiên bản {0}) hỗ trợ.</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Chỉ kiểm tra cấu trúc của tệp nén: tar.exe không thể xác minh nội dung các tệp ở định dạng này.</value>
+    <value>Chỉ kiểm tra cấu trúc của tệp nén: không thể xác minh nội dung các tệp ở định dạng này.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Tệp nén này được bảo vệ bằng mật khẩu và không thể giải nén.</value>
@@ -325,16 +325,16 @@
     <value>Không thể xóa tệp khôi phục còn lại từ phiên bản trước của tệp nén: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Tệp nén bị hỏng ({0}/{1} khối); dữ liệu khôi phục của nó có thể sửa được ({2} khối khôi phục).</value>
+    <value>Tệp nén bị hỏng (khối bị hỏng: {0}/{1}); dữ liệu khôi phục của nó có thể sửa được (khối khôi phục: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Tệp nén bị hỏng ({0}/{1} khối) quá mức dữ liệu khôi phục của nó có thể sửa ({2} khối khôi phục).</value>
+    <value>Tệp nén bị hỏng (khối bị hỏng: {0}/{1}) quá mức dữ liệu khôi phục của nó có thể sửa (khối khôi phục: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Tệp nén bị hỏng ({0}/{1} khối); sửa nhiều như vậy vượt quá khả năng của Pakko.</value>
+    <value>Tệp nén bị hỏng (khối bị hỏng: {0}/{1}); sửa nhiều như vậy vượt quá khả năng của Pakko.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Dữ liệu khôi phục không khớp với tệp nén ({0}/{1} khối khác nhau), nhưng bản thân tệp nén vượt qua kiểm tra: dữ liệu khôi phục có lẽ thuộc một phiên bản trước của nó.</value>
+    <value>Dữ liệu khôi phục không khớp với tệp nén (khối khác nhau: {0}/{1}), nhưng bản thân tệp nén vượt qua kiểm tra: dữ liệu khôi phục có lẽ thuộc một phiên bản trước của nó.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Dữ liệu khôi phục bị hỏng hoặc ở định dạng Pakko không đọc được.</value>
@@ -349,13 +349,13 @@
     <value>Dữ liệu khôi phục được tạo cho một tệp có tên khác; nó khớp với tệp nén này theo nội dung.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Tệp nén khớp với dữ liệu khôi phục của nó ({0} khối, {1} khối khôi phục).</value>
+    <value>Tệp nén khớp với dữ liệu khôi phục của nó (khối: {0}, khối khôi phục: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Không tìm thấy dữ liệu khôi phục bên cạnh tệp nén.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Đã sửa tệp nén ({0}/{1} khối). Bản sao đã sửa là {2}; tệp gốc không bị thay đổi.</value>
+    <value>Đã sửa tệp nén (khối đã sửa: {0}/{1}). Bản sao đã sửa là {2}; tệp gốc không bị thay đổi.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Bản sao đã sửa không khớp với dữ liệu khôi phục nên không được giữ lại.</value>

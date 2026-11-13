@@ -121,7 +121,7 @@
     <value>تنسيق الأرشيف هذا غير مدعوم في tar.exe على هذا النظام (الإصدار {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>تم التحقق من بنية الأرشيف فقط: لا يستطيع tar.exe التحقق من محتوى الملفات في هذا التنسيق.</value>
+    <value>تم التحقق من بنية الأرشيف فقط: لا يمكن التحقق من محتوى الملفات في هذا التنسيق.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>هذا الأرشيف محمي بكلمة مرور ولا يمكن استخراجه.</value>
@@ -325,16 +325,16 @@
     <value>تعذر حذف ملف استرداد متبقٍ من إصدار سابق من الأرشيف: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>الأرشيف تالف ({0} من {1} كتلة)؛ يمكن لبيانات الاسترداد الخاصة به إصلاحه ({2} كتلة استرداد).</value>
+    <value>الأرشيف تالف (الكتل التالفة: {0}/{1})؛ يمكن لبيانات الاسترداد الخاصة به إصلاحه (كتل الاسترداد: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>الأرشيف تالف ({0} من {1} كتلة) بما يتجاوز ما يمكن لبيانات الاسترداد الخاصة به إصلاحه ({2} كتلة استرداد).</value>
+    <value>الأرشيف تالف (الكتل التالفة: {0}/{1}) بما يتجاوز ما يمكن لبيانات الاسترداد الخاصة به إصلاحه (كتل الاسترداد: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>الأرشيف تالف ({0} من {1} كتلة)؛ إصلاح هذا القدر يتجاوز قدرة Pakko.</value>
+    <value>الأرشيف تالف (الكتل التالفة: {0}/{1})؛ إصلاح هذا القدر يتجاوز قدرة Pakko.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>لا تطابق بيانات الاسترداد الأرشيف ({0} من {1} كتلة مختلفة)، لكن اختبار الأرشيف نفسه سليم: على الأرجح أن بيانات الاسترداد من إصدار سابق منه.</value>
+    <value>لا تطابق بيانات الاسترداد الأرشيف (الكتل المختلفة: {0}/{1})، لكن اختبار الأرشيف نفسه سليم: على الأرجح أن بيانات الاسترداد من إصدار سابق منه.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>بيانات الاسترداد تالفة أو بتنسيق لا يستطيع Pakko قراءته.</value>
@@ -349,13 +349,13 @@
     <value>أُنشئت بيانات الاسترداد لملف باسم آخر؛ وهي تطابق هذا الأرشيف بمحتواه.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>الأرشيف يطابق بيانات الاسترداد الخاصة به ({0} كتلة، {1} كتلة استرداد).</value>
+    <value>الأرشيف يطابق بيانات الاسترداد الخاصة به (الكتل: {0}، كتل الاسترداد: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>لم يتم العثور على بيانات استرداد بجانب الأرشيف.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>تم إصلاح الأرشيف ({0} من {1} كتلة). النسخة المُصلَحة هي {2}؛ الأصل لم يتغير.</value>
+    <value>تم إصلاح الأرشيف (الكتل المُصلَحة: {0}/{1}). النسخة المُصلَحة هي {2}؛ الأصل لم يتغير.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>النسخة المُصلَحة لم تطابق بيانات الاسترداد ولم يتم الاحتفاظ بها.</value>

@@ -121,7 +121,7 @@
     <value>Acest format de arhivă nu este acceptat de tar.exe de pe acest sistem (versiunea {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>A fost verificată doar structura arhivei: tar.exe nu poate verifica conținutul fișierelor în acest format.</value>
+    <value>A fost verificată doar structura arhivei: conținutul fișierelor în acest format nu poate fi verificat.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Această arhivă este protejată prin parolă și nu poate fi extrasă.</value>
@@ -325,16 +325,16 @@
     <value>Un fișier de recuperare rămas de la o versiune anterioară a arhivei nu a putut fi șters: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Arhiva este deteriorată ({0} din {1} blocuri); datele de recuperare o pot repara ({2} blocuri de recuperare).</value>
+    <value>Arhiva este deteriorată (blocuri deteriorate: {0}/{1}); datele de recuperare o pot repara (blocuri de recuperare: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Arhiva este deteriorată ({0} din {1} blocuri) peste ce pot repara datele de recuperare ({2} blocuri de recuperare).</value>
+    <value>Arhiva este deteriorată (blocuri deteriorate: {0}/{1}) peste ce pot repara datele de recuperare (blocuri de recuperare: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Arhiva este deteriorată ({0} din {1} blocuri); repararea atât de multor blocuri depășește posibilitățile Pakko.</value>
+    <value>Arhiva este deteriorată (blocuri deteriorate: {0}/{1}); repararea atât de multor blocuri depășește posibilitățile Pakko.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Datele de recuperare nu corespund arhivei ({0} din {1} blocuri diferă), dar arhiva însăși trece testul: datele de recuperare provin probabil dintr-o versiune anterioară a ei.</value>
+    <value>Datele de recuperare nu corespund arhivei (blocuri diferite: {0}/{1}), dar arhiva însăși trece testul: datele de recuperare provin probabil dintr-o versiune anterioară a ei.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Datele de recuperare sunt deteriorate sau într-un format pe care Pakko nu îl poate citi.</value>
@@ -349,13 +349,13 @@
     <value>Datele de recuperare au fost create pentru un fișier cu alt nume; corespund acestei arhive după conținut.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Arhiva corespunde datelor sale de recuperare ({0} blocuri, {1} blocuri de recuperare).</value>
+    <value>Arhiva corespunde datelor sale de recuperare (blocuri: {0}, blocuri de recuperare: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Nu au fost găsite date de recuperare lângă arhivă.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Arhiva a fost reparată ({0} din {1} blocuri). Copia reparată este {2}; originalul nu a fost modificat.</value>
+    <value>Arhiva a fost reparată (blocuri reparate: {0}/{1}). Copia reparată este {2}; originalul nu a fost modificat.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Copia reparată nu corespundea cu datele de recuperare și nu a fost păstrată.</value>

@@ -121,7 +121,7 @@
     <value>Deze archiefindeling wordt niet ondersteund door tar.exe van dit systeem (versie {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Alleen de structuur van het archief is gecontroleerd: tar.exe kan de inhoud van bestanden in deze indeling niet verifiëren.</value>
+    <value>Alleen de structuur van het archief is gecontroleerd: de inhoud van bestanden in deze indeling kan niet worden geverifieerd.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Dit archief is met een wachtwoord beveiligd en kan niet worden uitgepakt.</value>
@@ -325,16 +325,16 @@
     <value>Een herstelbestand van een eerdere versie van het archief kon niet worden verwijderd: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Het archief is beschadigd ({0} van {1} blokken); de herstelgegevens kunnen het herstellen ({2} herstelblokken).</value>
+    <value>Het archief is beschadigd (beschadigde blokken: {0}/{1}); de herstelgegevens kunnen het herstellen (herstelblokken: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Het archief is meer beschadigd ({0} van {1} blokken) dan de herstelgegevens kunnen herstellen ({2} herstelblokken).</value>
+    <value>Het archief is meer beschadigd (beschadigde blokken: {0}/{1}) dan de herstelgegevens kunnen herstellen (herstelblokken: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Het archief is beschadigd ({0} van {1} blokken); zoveel herstellen gaat de mogelijkheden van Pakko te boven.</value>
+    <value>Het archief is beschadigd (beschadigde blokken: {0}/{1}); zoveel herstellen gaat de mogelijkheden van Pakko te boven.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>De herstelgegevens komen niet overeen met het archief ({0} van {1} blokken wijken af), maar het archief zelf doorstaat de test: de herstelgegevens zijn waarschijnlijk van een eerdere versie ervan.</value>
+    <value>De herstelgegevens komen niet overeen met het archief (afwijkende blokken: {0}/{1}), maar het archief zelf doorstaat de test: de herstelgegevens zijn waarschijnlijk van een eerdere versie ervan.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>De herstelgegevens zijn beschadigd of in een indeling die Pakko niet kan lezen.</value>
@@ -349,13 +349,13 @@
     <value>De herstelgegevens zijn gemaakt voor een bestand met een andere naam; ze komen op inhoud overeen met dit archief.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Het archief komt overeen met de herstelgegevens ({0} blokken, {1} herstelblokken).</value>
+    <value>Het archief komt overeen met de herstelgegevens (blokken: {0}, herstelblokken: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Er zijn geen herstelgegevens naast het archief gevonden.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Het archief is hersteld ({0} van {1} blokken). De herstelde kopie is {2}; het origineel is niet gewijzigd.</value>
+    <value>Het archief is hersteld (herstelde blokken: {0}/{1}). De herstelde kopie is {2}; het origineel is niet gewijzigd.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>De herstelde kopie kwam niet overeen met de herstelgegevens en is niet bewaard.</value>
