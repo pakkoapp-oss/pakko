@@ -146,6 +146,21 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         File.Exists(Path.Combine(mine.OutputDirectory!, "planted.txt")).Should().BeFalse();
     }
 
+    // A packaged process (the installed app) may give a profile name 50 characters (measured: 50
+    // created, 51 E_INVALIDARG); a longer name failed every tar operation there, never unpackaged.
+    [Fact]
+    public async Task SandboxName_FitsAPackagedProcess_ForEitherRoot()
+    {
+        string archivePath = Path.Combine(_temp.Path, "fixture.tar");
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "name")]);
+        using TarSandboxScope inTemp = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
+        using TarSandboxScope near = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None, nearFolder: _temp.Path);
+
+        foreach (TarSandboxScope scope in new[] { inTemp, near })
+            TarSandboxScope.SandboxNameFor(scope.QuarantineRoot).Length.Should().BeLessThanOrEqualTo(40, "packaged names stop at 50; the margin is the package name's");
+        TarSandboxScope.SandboxNameFor(inTemp.QuarantineRoot).Should().NotBe(TarSandboxScope.SandboxNameFor(near.QuarantineRoot));
+    }
+
     // T-F244's class: scopes started at the same time each get a profile of their own.
     [Fact]
     public async Task ScopesCreatedInParallel_EachGetsItsOwnProfile()

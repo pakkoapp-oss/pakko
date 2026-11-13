@@ -15025,7 +15025,7 @@ destination's folder passes down (a drive root: Authenticated Users Modify; a fo
 APPLICATION PACKAGES in); an existing name throws. A test gives the folder Everyone and ALL
 APPLICATION PACKAGES Modify: the root carries neither, and another operation's sandbox cannot write
 into it. A killed run's root is swept by the next scope there (`TempScope.Destination`, as staging).
-The profile name drops the prefix (`SandboxNameFor`), so it stays within 64 characters.
+The profile name takes 24 hex of the root's unique part (`SandboxNameFor`, T-F523).
 
 **The helper:** the gate picks it on every libarchive 3.5 to 3.8, and it reads tar, the compressed
 tars, 7z, RAR, cpio, so it is the usual backend; keeping it in `%TEMP%` would have kept most
@@ -15110,6 +15110,19 @@ traverse problem), while the same layout with the profile registered extracts.
   `AppContainerProfile.SweepStale` reads `AppContainer\Mappings\*\Moniker`, and deletes a
   `pakko.tar.` profile of exactly the owned shape whose owner (`TempOwner.IsRunningHere`) has ended.
   Any other name, the old `pakko.tarsandbox` included, is left alone (an older Pakko may still run).
+- **Found by the device smoke (2026-11-14), before the push:** in the installed (packaged) app every
+  tar operation failed, "CreateAppContainerProfile failed (HRESULT 0x80070057)"; unpackaged (tests,
+  the standalone CLI) it worked. Measured in the package's context (`Invoke-CommandInDesktopPackage`,
+  package family name 34 characters): a profile name of 50 characters is created, 51 is
+  E_INVALIDARG, and the owner-tag name had about 53. A packaged process's profiles are the
+  package's children, under `Mappings\<package SID>\Children\<SID>`, in a registry view only the
+  package sees. Now the name is `Pakko.Tar.` + 24 hex of the root's unique part (34 characters, 96
+  bits), the owner tag is the profile's display name, and the sweep reads `Moniker` and
+  `DisplayName` at both levels; a display name that is no owner tag is never touched. On the device:
+  the smoke's 62 rows pass, no profile is left in either view after them, and a profile planted in
+  the package's view with a dead owner was removed by the next `pakko x` while one whose display
+  name is not a tag stayed. `SandboxName_FitsAPackagedProcess_ForEitherRoot` keeps the name at 40
+  or less.
 - The shared parent `PakkoTarSandbox` gives traverse to ALL APPLICATION PACKAGES, written once
   (T-F195's no-propagation write), instead of an entry per SID: no per-scope write to race, and the
   DACL does not grow. Any AppContainer may pass through it; none can list it (`dir ..` from a

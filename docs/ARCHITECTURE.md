@@ -1579,10 +1579,11 @@ removed `QuarantineStaging.cs` (hardlink staging, T-F233) — see `DECISIONS.md`
 
 P/Invoke surface:
 - `CreateAppContainerProfile`/`DeleteAppContainerProfile` — T-F523: one profile per scope,
-  `Pakko.Tar.<owner tag>-<8 hex>` (`TarSandboxScope.SandboxNameFor`), created new (an existing name
-  throws) and deleted with the scope; a killed run's profile is swept once per process through the
-  `AppContainer\Mappings\<SID>` `Moniker` values (`AppContainerProfile.SweepStale`, the owner tag
-  read as `TempOwner` reads it). Until v1.10 every scope shared one profile, `Pakko.TarSandbox`
+  `Pakko.Tar.<24 hex>` (`TarSandboxScope.SandboxNameFor`; a packaged process takes at most 50
+  characters), the owner tag as its display name, created new (an existing name throws) and deleted
+  with the scope; a killed run's profile is swept once per process through the
+  `AppContainer\Mappings\<SID>` and `Mappings\<package SID>\Children\<SID>` `Moniker` and
+  `DisplayName` values (`AppContainerProfile.SweepStale`, the owner tag read as `TempOwner` reads it). Until v1.10 every scope shared one profile, `Pakko.TarSandbox`
   (T-F52), and processes in one AppContainer open each other with every right
 - `PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES` + `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`
   (`LaunchAttributeList`, built per launch) — the AppContainer SID with an empty capability list

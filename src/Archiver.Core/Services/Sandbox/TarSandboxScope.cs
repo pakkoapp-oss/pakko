@@ -101,17 +101,12 @@ internal sealed partial class TarSandboxScope : IDisposable
 
     /// <summary>
     /// T-F523: the name of the AppContainer profile of the scope rooted at <paramref name="quarantineRoot"/>:
-    /// "Pakko.Tar." and the root's own name (TempOwner's owner tag, then its unique part) cut to 8 hex of
-    /// that part, within the 64 characters a profile name may have. The owner tag lets
-    /// <see cref="AppContainerProfile.SweepStale"/> tell a killed run's profile.
+    /// "Pakko.Tar." and 24 hex (96 bits) of the root's unique part, 34 characters. A packaged process
+    /// (the installed app) may give a profile name 50 (measured: 51 is E_INVALIDARG), so the owner tag
+    /// goes in the profile's display name, where <see cref="AppContainerProfile.SweepStale"/> reads it.
     /// </summary>
-    internal static string SandboxNameFor(string quarantineRoot)
-    {
-        string name = Path.GetFileName(quarantineRoot);
-        if (name.StartsWith(QuarantineLocation.RootPrefix, StringComparison.Ordinal))
-            name = name[QuarantineLocation.RootPrefix.Length..];
-        return SandboxNamePrefix + name[..^24];
-    }
+    internal static string SandboxNameFor(string quarantineRoot) =>
+        SandboxNamePrefix + Path.GetFileName(quarantineRoot)[^32..^8];
 
     // Once per process, before its first scope: the profiles of runs that were killed. A failed sweep
     // is not remembered (PublicationOnly), so it never fails every later scope of the process.
@@ -238,7 +233,7 @@ internal sealed partial class TarSandboxScope : IDisposable
 
             // T-F523: a sandbox of this scope's own; created last, so a failure above leaves no profile.
             var created = new AppContainerProfile(SandboxNameFor(quarantineRoot));
-            created.Create();
+            created.Create(TempOwner.CurrentTag);
             profile = created;
             sid = profile.GetSid();
             QuarantineAcl.GrantTraverseListReadAttributes(quarantineRoot, sid);
