@@ -14895,3 +14895,74 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   - **Change:** `HighContrastAdjustment="None"` on the accent button; a markup test holds it for
     every accent button (seen red).
   - **Checked:** under High Contrast Black on 1.10.0.22, black text on the highlight, no box.
+
+### T-F512 - The path matrix: generated names and paths in combination (P2, user, 2026-11-12)
+
+- [~] **Status:** PR (a) merged (#232); PR (b) and (c) done on their branch (the disk operations,
+  `CLI-056`); the task closes when the PR merges.
+  - **Asked by the user:** "add generation of possible names and addresses to the tests, a
+    combinatorial matrix, to go through as many variants as possible". T-F509, T-F463, T-F475 and
+    T-F511's `a .zip` regression were each found by hand, one shape at a time.
+  - **The generator** (`tests/Archiver.Core.Tests/PathMatrix/`):
+    - `NameShapes`: 45 name shapes, each with why;
+    - `PathForms`: 12 spellings of the same place;
+    - two positions (last part, a folder on the way);
+    - `AllPairs`: deterministic pairwise cases under a pairwise constraint, with a self-test that
+      every allowed pair is covered.
+  - **PR (a), pure rules over the full product (about 1,100 cases each, under a second):**
+    - `InputPaths.Problem` refuses exactly what `GetFullPath` trims, in every spelling;
+    - `SingleName` and `GetFolderName` give a name Windows keeps;
+    - `AsPakkoWrites` follows the 7-Zip rule;
+    - `IsDevice` never throws.
+    The `InputPaths` mutant turns 108 cases red.
+  - **Found by PR (a), fixed in the owner:** `EntryDiskName.SingleName` left a device name as it
+    was. `nul.zip` extracted with "Extract to folder" failed (`NUL` is the null device on every
+    Windows), and `CON.zip` would have used the console folder on Windows 10 and Server 2022. Now
+    such a name gets `_` in front, as 7-Zip's `Get_Correct_FsFile_Name` does
+    (`ExtractingFilePath.cpp`, `CorrectUnsupportedName`), with `ArchiveEntrySecurity`'s list. `:`
+    and control characters become `_` too. Seen red in `ShellCommandsTests` first.
+  - **PR (b), the disk operations** (`PathMatrixDiskTests`): creation and extraction, ZIP and
+    tar.gz, the path as source, archive or destination, all pairs with marker bytes per place, the
+    twin oracle and nothing outside the case's folder. 109 quick cases in about 5 s; every pair
+    (`PAKKO_FUZZ_ITERATIONS=1000`, `Category=Fuzz`) in about 30 s. Mutants of `TryCreate` turn it red.
+  - **Found by PR (b), fixed in the owner:** a destination `\\.\C:\w\a \f` left an empty `C:\w\a`
+    and failed: .NET passes a `\\.\` path to Win32 as is, which reads each missing folder as a last
+    name. `DestinationFolder.TryCreate` now makes it as the plain path is made (DECISIONS, T-F512).
+  - **Found by PR (c), fixed in the owner (P1, user data):** `pakko a -sdel` with a source typed
+    as `a.txt.` (or `d.\f.txt`, or through `\\.\`) beside a twin `a.txt` archived the twin and
+    deleted it: `CliArchiveSources` made the path full before Core's T-F509 check. It now asks
+    `InputPaths.NameTrimmed` first and gives such a source to Core as typed (DECISIONS, T-F512).
+  - **PR (c), `CLI-056`:** the CLI cases (the quick shapes, as source, `-sdel` source, archive and
+    destination) are exported to `scripts/smoke/PathMatrixCases.json`; `CliCases_TheSmokeListIsTheGeneratorsOwn`
+    fails when the file drifts from the generator (`PAKKO_PATHMATRIX_WRITE=1` rewrites it).
+  - `CLI-056` passed on Windows 11 and PakkoW10 (tar.exe 3.5.2), 109 cases each (2026-11-12). Then
+    fixed cases joined the pairs (every role and engine with a twin, plain spelling; 125 in all): 4
+    fail, all `x -o<dir>\out.` with a twin `out`, which was written into (T-F419 made `-o` a full
+    path). The user chose refusal: fixed in `ResolveExtractDestination` (DECISIONS, T-F512); then all 125 pass on Windows 11 and PakkoW10.
+  - **Next:**
+    - keep `CLI-056` in the release smoke, on Win11 and on PakkoW10 (tar 3.5.2);
+    - key equality of App, CLI and the engines belongs to T-F511's PR 4.
+  - **`KnownFindings`** may hold only a safe outcome (another refusal code, or a refusal where
+    acceptance would be better). Never a throw, a touched twin, another file's bytes or a write
+    outside the destination.
+- **Graduated 2026-11-13:** PR (a) #232, PR (b) and (c) merged with T-F511 PR 4 (`git log --grep T-F512`); `CLI-056` in `docs/SMOKE.md`.
+
+### T-F515 - `-sdel` in a case-sensitive folder deletes the other spelling (P2, from T-F511 PR 4)
+
+- [x] **Status:** done (on T-F511 PR 4's branch). `CliSourceSnapshot` and the completed set key with
+  case (`Ordinal`): Core reports a source in the spelling the CLI gave, so the match is exact, and the
+  matrix row compares the keys with case. The App deleted nothing wrong (each line of its listing
+  carries its path), but `NotFullyProcessed` took A.TXT's result for a.txt and did not report it
+  kept; its snapshot and recycler lists now key with case too (the closing opus review).
+  Found by the closing review of T-F511's PR 4, seen red on Windows 11.
+  - **Cause.** In a folder made case-sensitive (`fsutil file setCaseSensitiveInfo`, as WSL does),
+    `A.TXT` and `a.txt` are two files. `CliSourceSnapshot` keys its listings with
+    `OrdinalIgnoreCase`, so `Take([A.TXT, a.txt])` lists only `A.TXT`, and `DeleteUnchanged([a.txt])`
+    finds that listing and deletes `A.TXT`, a source Core did not report completed.
+  - The App deletes by the path Core reported, so it removes only `a.txt`; its snapshot then judges
+    `a.txt` by `A.TXT`'s listing (a wrong "unchanged", not a loss). Check that too.
+  - **Test:** `CliSourceDeleterTests.Delete_CaseSensitiveFolder_OnlyTheNamedSpellingGoes`, skipped
+    with this task's id; un-skip with the fix. The fix is a design choice: key case-sensitively
+    where the folder is (`GetFileInformationByHandleEx` `FileCaseSensitiveInfo`), or by file
+    identity (`PathIdentity`) wherever the source exists.
+- **Graduated 2026-11-13:** merged with T-F511 PR 4 (`git log --grep T-F515`); `CLI-057` in `docs/SMOKE.md`.

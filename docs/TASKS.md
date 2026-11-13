@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count: done, no conhost per launch, half the processes), T-F506 (AMSI buffer: done, the faults are inherent; large buffers no longer pooled, content zeroed), T-F500 (writer failure paths, the flaky chunk-folder test: done), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: before T-F511's PR 4, which it checks), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -83,13 +83,15 @@ above stays as the record of what each stream holds.
 | 2 | N's leftovers | T-F507, T-F506, T-F500 (with the flaky `ChunkFolderIsHidden` test), T-F508 | one or two commits each on their own branches already: rebased onto one | done on `perf/batch2-n-leftovers`: the quiet suite and `Category=Slow` (28 tests, the litmus paper and the performance ratios among them) green; smoke CLI-001, CLI-004, CLI-026, CLI-033, CLI-058 and SHL-008 on 1.10.0.18; T-F507 was run on PakkoW10 on its own branch |
 | 3 | Texts and names | T-F520, T-F484, T-F477, T-F478 | messages and names: one pass over the glossary and the 37 locales | done on `fix/batch3-texts`: the quiet suite green; smoke CLI-001, CLI-033, PAR-001-PAR-009, PAR-012, SHL-004, SHL-014 on 1.10.0.20; the App and Explorer rows that show these texts (`EXP-003` in uk-UA, `EXP-013`, `APP-006`, a typed name) checked in batch 4's session on 1.10.0.21: the uk-UA PAR2 line "(блоків: 168, блоків відновлення: 9)", the structure-only text in uk-UA, a typed `case4.zip` wrote `case4.zip` |
 | 4 | The App on the device | T-F486, T-F485, T-F482, T-F483 | high contrast, the keyboard, 7z from the App | done on `fix/batch4-app-device`: T-F482 and T-F485 fixed and seen on the device (1.10.0.21/22); T-F486 15 of 15 starts drawn under high contrast, T-F483's sample gone: both stay open for batch 8 |
-| 5 | tar, quarantine, memory | T-F513, T-F473, T-F474, T-F510 | the quarantine and the tar readers | one run on PakkoW10 (both tar builds) |
+| 5a | The quarantine | T-F474, T-F463's leftovers (the walk's reparse-point and cancellation gaps) | one owner (`QuarantineFiles`), the sandbox boundary | a red test with a second sandboxed process, one run on PakkoW10 (both tar builds), an opus reviewer if the user agrees |
+| 5b | Memory | T-F473 (the first global holder), T-F513 | input-sized collections: stream them or give them a stated limit | deterministic counters, one series on both tar builds |
+| 5c | Trimmed names | T-F510 | the source key (T-F511 PR 4) and the twin fixture | the App and the CLI, `-sdel` and the Recycle Bin |
 | 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476 | calibration and the CI image | one series on an idle machine |
 | 7 | Z | T-F493 | crypto: its own gates and its own opus reviewer | as stream Z says |
 | 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the release tier | what needs the device or the user | one batch right before the tag |
 | - | F winget | T-F317's outward step | an external PR | only with the user's OK |
 
-Order: 1, 2, then 3 and 4 (independent), 5 (after T-F506 in batch 2), 6, 7, 8.
+Order: 1, 2, then 3 and 4 (independent), 5a, 5b, 5c, 6, 7, 8. Batch 5 was split by its checks (the agent, 2026-11-13); T-F512 and T-F515 were found merged and only waiting to graduate.
 
 **Findings during a batch.** A P1 or P2 from the batch's own area is fixed in the batch, test first.
 One from another area goes to the batch of that area, or to a new one before batch 8. A P3 is filed
@@ -1675,56 +1677,6 @@ re-measured with T-F346's script before and after.
   - **Not promised:** that any input passes. Promised: Pakko never dies of memory; it streams, or
     it refuses with a reason.
 
-### T-F512 - The path matrix: generated names and paths in combination (P2, user, 2026-11-12)
-
-- [~] **Status:** PR (a) merged (#232); PR (b) and (c) done on their branch (the disk operations,
-  `CLI-056`); the task closes when the PR merges.
-  - **Asked by the user:** "add generation of possible names and addresses to the tests, a
-    combinatorial matrix, to go through as many variants as possible". T-F509, T-F463, T-F475 and
-    T-F511's `a .zip` regression were each found by hand, one shape at a time.
-  - **The generator** (`tests/Archiver.Core.Tests/PathMatrix/`):
-    - `NameShapes`: 45 name shapes, each with why;
-    - `PathForms`: 12 spellings of the same place;
-    - two positions (last part, a folder on the way);
-    - `AllPairs`: deterministic pairwise cases under a pairwise constraint, with a self-test that
-      every allowed pair is covered.
-  - **PR (a), pure rules over the full product (about 1,100 cases each, under a second):**
-    - `InputPaths.Problem` refuses exactly what `GetFullPath` trims, in every spelling;
-    - `SingleName` and `GetFolderName` give a name Windows keeps;
-    - `AsPakkoWrites` follows the 7-Zip rule;
-    - `IsDevice` never throws.
-    The `InputPaths` mutant turns 108 cases red.
-  - **Found by PR (a), fixed in the owner:** `EntryDiskName.SingleName` left a device name as it
-    was. `nul.zip` extracted with "Extract to folder" failed (`NUL` is the null device on every
-    Windows), and `CON.zip` would have used the console folder on Windows 10 and Server 2022. Now
-    such a name gets `_` in front, as 7-Zip's `Get_Correct_FsFile_Name` does
-    (`ExtractingFilePath.cpp`, `CorrectUnsupportedName`), with `ArchiveEntrySecurity`'s list. `:`
-    and control characters become `_` too. Seen red in `ShellCommandsTests` first.
-  - **PR (b), the disk operations** (`PathMatrixDiskTests`): creation and extraction, ZIP and
-    tar.gz, the path as source, archive or destination, all pairs with marker bytes per place, the
-    twin oracle and nothing outside the case's folder. 109 quick cases in about 5 s; every pair
-    (`PAKKO_FUZZ_ITERATIONS=1000`, `Category=Fuzz`) in about 30 s. Mutants of `TryCreate` turn it red.
-  - **Found by PR (b), fixed in the owner:** a destination `\\.\C:\w\a \f` left an empty `C:\w\a`
-    and failed: .NET passes a `\\.\` path to Win32 as is, which reads each missing folder as a last
-    name. `DestinationFolder.TryCreate` now makes it as the plain path is made (DECISIONS, T-F512).
-  - **Found by PR (c), fixed in the owner (P1, user data):** `pakko a -sdel` with a source typed
-    as `a.txt.` (or `d.\f.txt`, or through `\\.\`) beside a twin `a.txt` archived the twin and
-    deleted it: `CliArchiveSources` made the path full before Core's T-F509 check. It now asks
-    `InputPaths.NameTrimmed` first and gives such a source to Core as typed (DECISIONS, T-F512).
-  - **PR (c), `CLI-056`:** the CLI cases (the quick shapes, as source, `-sdel` source, archive and
-    destination) are exported to `scripts/smoke/PathMatrixCases.json`; `CliCases_TheSmokeListIsTheGeneratorsOwn`
-    fails when the file drifts from the generator (`PAKKO_PATHMATRIX_WRITE=1` rewrites it).
-  - `CLI-056` passed on Windows 11 and PakkoW10 (tar.exe 3.5.2), 109 cases each (2026-11-12). Then
-    fixed cases joined the pairs (every role and engine with a twin, plain spelling; 125 in all): 4
-    fail, all `x -o<dir>\out.` with a twin `out`, which was written into (T-F419 made `-o` a full
-    path). The user chose refusal: fixed in `ResolveExtractDestination` (DECISIONS, T-F512); then all 125 pass on Windows 11 and PakkoW10.
-  - **Next:**
-    - keep `CLI-056` in the release smoke, on Win11 and on PakkoW10 (tar 3.5.2);
-    - key equality of App, CLI and the engines belongs to T-F511's PR 4.
-  - **`KnownFindings`** may hold only a safe outcome (another refusal code, or a refusal where
-    acceptance would be better). Never a throw, a touched twin, another file's bytes or a write
-    outside the destination.
-
 ### T-F521 - A damaged encrypted ZIP reads as password-protected (P3, from T-F520's trace)
 
 - [ ] **Status:** open (next wave). Found 2026-11-13: an encrypted ZIP whose central directory puts a
@@ -1780,25 +1732,6 @@ re-measured with T-F346's script before and after.
   row, while alone it took 3 s: the work waited for a pool thread behind the suite's blocking
   tests (the T-F425 lesson). It now runs on its own thread (`TaskCreationOptions.LongRunning`);
   the next full run passed. The code under test is unchanged.
-
-### T-F515 - `-sdel` in a case-sensitive folder deletes the other spelling (P2, from T-F511 PR 4)
-
-- [x] **Status:** done (on T-F511 PR 4's branch). `CliSourceSnapshot` and the completed set key with
-  case (`Ordinal`): Core reports a source in the spelling the CLI gave, so the match is exact, and the
-  matrix row compares the keys with case. The App deleted nothing wrong (each line of its listing
-  carries its path), but `NotFullyProcessed` took A.TXT's result for a.txt and did not report it
-  kept; its snapshot and recycler lists now key with case too (the closing opus review).
-  Found by the closing review of T-F511's PR 4, seen red on Windows 11.
-  - **Cause.** In a folder made case-sensitive (`fsutil file setCaseSensitiveInfo`, as WSL does),
-    `A.TXT` and `a.txt` are two files. `CliSourceSnapshot` keys its listings with
-    `OrdinalIgnoreCase`, so `Take([A.TXT, a.txt])` lists only `A.TXT`, and `DeleteUnchanged([a.txt])`
-    finds that listing and deletes `A.TXT`, a source Core did not report completed.
-  - The App deletes by the path Core reported, so it removes only `a.txt`; its snapshot then judges
-    `a.txt` by `A.TXT`'s listing (a wrong "unchanged", not a loss). Check that too.
-  - **Test:** `CliSourceDeleterTests.Delete_CaseSensitiveFolder_OnlyTheNamedSpellingGoes`, skipped
-    with this task's id; un-skip with the fix. The fix is a design choice: key case-sensitively
-    where the folder is (`GetFileInformationByHandleEx` `FileCaseSensitiveInfo`), or by file
-    identity (`PathIdentity`) wherever the source exists.
 
 ### T-F511 - One owner per job: the code that does an owner's job itself (P2, from T-F509)
 
