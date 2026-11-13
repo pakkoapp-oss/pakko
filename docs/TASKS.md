@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count: done, no conhost per launch, half the processes), T-F506 (AMSI buffer: done, the faults are inherent; large buffers no longer pooled, content zeroed), T-F500 (writer failure paths, the flaky chunk-folder test: done), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F522 (P3, the commit's link check fails open, next wave), T-F523 (P3, a quarantine open to the shared SID while its run lasts, next wave), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F522 (P3, the commit's link check fails open, next wave), T-F523 (P2, one AppContainer for every operation: one reader can open another, batch 5a), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -1979,18 +1979,27 @@ re-measured with T-F346's script before and after.
   longer the 3.5.2 leg).
 - **Reported by:** the agent, 2026-11-09.
 
-### T-F523 - While its run lasts, an operation's quarantine is open to every sandboxed process (P3, from T-F474)
+### T-F523 - Every operation's sandbox is one AppContainer: one reader can open another (P2, from T-F474)
 
-- [ ] **Status:** open. T-F474 seals each quarantine folder once its run ends; during the run `out\`
-  grants the shared SID (`Pakko.TarSandbox`) Modify. A concurrent operation's compromised tar.exe or
-  helper that has the path could write there, and a run without a selection moves what a fresh walk
-  finds. The path is not listable from the sandbox and carries 128 random bits (measured,
-  `docs/DECISIONS.md`, "T-F474"), so the open question is whether one AppContainer process can open
-  another (its working directory, its handles). Next: measure that with a small probe in the
-  AppContainer (`OpenProcess` on a second sandboxed process's PID with each query right); if it can,
-  weigh a SID per operation (an ACE per scope on the shared parent, T-F195; profiles left after a
-  kill) against a DACL on each sandboxed process.
-- **Reported by:** the closing advisor review of T-F474, 2026-11-13.
+- [ ] **Status:** open, in batch 5a (the user, 2026-11-13: "Зроби"). Raised from P3 by a measurement.
+  - **Measured (2026-11-13, Windows 11 26300):** a Native AOT probe in Pakko's AppContainer
+    (`Pakko.TarSandbox`) calls `OpenProcess` on a second process in the same AppContainer and on
+    others:
+
+    | Target | QUERY_LIMITED, QUERY_INFORMATION, VM_READ, DUP_HANDLE, VM_WRITE+VM_OPERATION, CREATE_THREAD, TERMINATE, READ_CONTROL |
+    |---|---|
+    | a process with the same AppContainer SID | every one opened |
+    | Pakko's own process (outside the sandbox) | every one denied (5) |
+    | a process with another AppContainer SID | every one denied (5) |
+
+  - **So:** every tar-family operation since v1.4 runs its tar.exe or helper under one SID. A reader
+    compromised by one archive can read the memory of another operation's reader running at the
+    same time (that archive's plaintext), write into it or start a thread in it, and take its handles.
+    T-F474's seal does not reach this. The quarantine path is not listable from the sandbox, but the
+    other reader's own process gives it away.
+  - **Next:** a SID per operation (measured: another SID is denied every right). Plan in
+    `docs/DECISIONS.md`, "T-F523", once decided.
+- **Reported by:** the closing advisor review of T-F474, then the agent's measurement, 2026-11-13.
 
 ### T-F522 - The commit's link check fails open when a folder's attributes cannot be read (P3, from T-F474)
 
