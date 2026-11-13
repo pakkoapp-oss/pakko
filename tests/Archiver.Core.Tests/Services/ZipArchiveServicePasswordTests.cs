@@ -479,6 +479,27 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         result.Errors.Should().NotBeEmpty();
     }
 
+    // T-F520: RawZipEntryLocator's English texts never reach the user. Traced: extraction and a test
+    // with a password call such an archive password-protected; a plain test reports the local header
+    // mismatch (T-F280). This pins the plain test; docs/DECISIONS.md, "T-F520", has the trace.
+    [Fact]
+    public async Task TestAsync_LocalHeaderPastTheEnd_ShowsNoTextOfPakkosOwnReader()
+    {
+        string path = Path.Combine(_temp.Path, "damaged_local_header.zip");
+        File.Copy(FixtureHelper.Archive("extract_single_root_file.zip"), path);
+        byte[] bytes = await File.ReadAllBytesAsync(path);
+        int central = bytes.AsSpan().IndexOf("PK\u0001\u0002"u8);
+        const int LocalHeaderOffsetField = 42;
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(central + LocalHeaderOffsetField), 0x7FFF_0000u);
+        await File.WriteAllBytesAsync(path, bytes);
+
+        ArchiveResult result = await _sut.TestAsync([path]);
+
+        result.Errors.Should().NotBeEmpty()
+            .And.Contain(e => e.Text!.Code == MessageCode.LocalHeaderMismatch)
+            .And.NotContain(e => e.Message.Contains("past the end"));
+    }
+
     [Theory]
     [InlineData((ushort)200)]
     [InlineData((ushort)2)]
