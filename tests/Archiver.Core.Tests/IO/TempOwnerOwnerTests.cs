@@ -19,6 +19,7 @@ public sealed partial class TempOwnerOwnerTests
         ("Archiver.App.Core/ProcessTempRoot.cs", "Guid.NewGuid", 1, "a scope inside this process's own folder, which carries the owner"),
         ("Archiver.CLI/CliStreamStaging.cs", "GetTempPath", 2, "the -si and -so roots; each run's folder is TempOwner's"),
         ("Archiver.Core/Services/Sandbox/ArchiveintGate.cs", "GetTempPath", 2, "where the probe file is named and swept by TempOwner"),
+        ("Archiver.Core/Services/Sandbox/QuarantineLocation.cs", "GetTempPath", 1, "only its volume is asked, no name (T-F524)"),
         ("Archiver.Core/Services/Sandbox/TarSandboxScope.cs", "GetTempPath", 1, "a fixed root for the sandbox folders"),
         ("Archiver.Core/Services/TarCollisionStaging.cs", "GetTempPath", 1, "where its folders are swept by TempOwner"),
         ("Archiver.Core/Services/TarSandboxedService.cs", "GetTempPath", 1, "where TarCollisionStaging names its folder by TempOwner"),

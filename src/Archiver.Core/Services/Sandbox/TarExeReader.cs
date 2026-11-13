@@ -30,8 +30,8 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     private TarExeReader(TarSandboxScope scope) => _scope = scope;
 
     internal static async Task<ISandboxedArchiveReader> OpenAsync(
-        string archivePath, bool needsOutputDir, Encoding? outputEncoding, CancellationToken cancellationToken) =>
-        new TarExeReader(await TarSandboxScope.CreateAsync(archivePath, needsOutputDir, cancellationToken, outputEncoding)
+        string archivePath, bool needsOutputDir, Encoding? outputEncoding, CancellationToken cancellationToken, string? nearFolder = null) =>
+        new TarExeReader(await TarSandboxScope.CreateAsync(archivePath, needsOutputDir, cancellationToken, outputEncoding, nearFolder: nearFolder)
             .ConfigureAwait(false));
 
     /// <summary>T-F470: a reader on a scope opened for the archive helper, for a format the helper does not read.</summary>

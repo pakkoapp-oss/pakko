@@ -91,6 +91,12 @@ internal sealed partial class TarSandboxScope : IDisposable
     // T-F523: this scope's own AppContainer, deleted with it.
     private readonly AppContainerProfile _profile;
 
+    // T-F524: a quarantine next to the destination keeps the helper's copy under %TEMP% all the
+    // same, in a folder of this scope's own there: it runs from where it ran before, never from a
+    // folder of the user's.
+    private readonly bool _nearDestination;
+    private string? _helperRoot;
+
     internal const string SandboxNamePrefix = "Pakko.Tar.";
 
     /// <summary>
@@ -99,7 +105,13 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// that part, within the 64 characters a profile name may have. The owner tag lets
     /// <see cref="AppContainerProfile.SweepStale"/> tell a killed run's profile.
     /// </summary>
-    internal static string SandboxNameFor(string quarantineRoot) => SandboxNamePrefix + Path.GetFileName(quarantineRoot)[..^24];
+    internal static string SandboxNameFor(string quarantineRoot)
+    {
+        string name = Path.GetFileName(quarantineRoot);
+        if (name.StartsWith(QuarantineLocation.RootPrefix, StringComparison.Ordinal))
+            name = name[QuarantineLocation.RootPrefix.Length..];
+        return SandboxNamePrefix + name[..^24];
+    }
 
     // Once per process, before its first scope: the profiles of runs that were killed.
     private static readonly Lazy<bool> StaleProfilesSwept = new(SweepStaleProfiles);
@@ -130,8 +142,9 @@ internal sealed partial class TarSandboxScope : IDisposable
 
     private TarSandboxScope(
         SafeSidHandle sid, AppContainerProfile profile, string quarantineRoot, FileStream archive, string? outputDirectory,
-        System.Text.Encoding? outputEncoding, string? helperSource)
+        System.Text.Encoding? outputEncoding, string? helperSource, bool nearDestination)
     {
+        _nearDestination = nearDestination;
         _profile = profile;
         _helperSource = helperSource;
         OutputEncoding = outputEncoding ?? TextBoundaries.TarExeOutput(_machine).Lenient;
@@ -141,16 +154,10 @@ internal sealed partial class TarSandboxScope : IDisposable
         OutputDirectory = outputDirectory;
     }
 
-    // Rooted under %TEMP%, not "same disk as destination" as TASKS.md's original flow described —
-    // an AppContainer token has no bypass-traverse-checking privilege, so FILE_TRAVERSE is
-    // enforced on every ancestor directory down to "out\". A fresh directory created as a
-    // sibling of the user's arbitrary destination folder (e.g. inside Desktop/Documents/a network
-    // share) sits under an ancestor chain Pakko doesn't control and can't grant traverse on
-    // without touching folders it doesn't own. %TEMP% itself is already AppContainer-traversable
-    // (confirmed empirically — QuarantineAclTests grants traverse only on its own quarantine root,
-    // one level below %TEMP%, and that already succeeds), so rooting here needs traverse grants
-    // on only the two levels Pakko itself creates. See DECISIONS.md's T-F52 entry for the full
-    // empirical trace (a nested-one-level-deeper test failed until this was found).
+    // Extractions whose destination allows it are rooted next to it instead (T-F524,
+    // QuarantineLocation); everything else here. No folder above a quarantine root needs an entry
+    // for the sandbox: an AppContainer token keeps "Bypass traverse checking" (measured on Windows 11
+    // 26300 and Windows 10 19045, T-F524; T-F52's reading that every ancestor needed one was wrong).
     private static readonly string SandboxParentDirectory = Path.Combine(Path.GetTempPath(), "PakkoTarSandbox");
 
     /// <summary>
@@ -160,10 +167,12 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// profile itself is created once and reused for the lifetime of the install. The final move
     /// from "out\" to the user's destination happens later, at Pakko's normal process identity.
     /// T-F470: a non-null helperSource is the archive helper this scope may run (<see cref="RunHelperAsync"/>).
+    /// T-F524: a non-null <paramref name="nearFolder"/> (<see cref="QuarantineLocation.NearDestination"/>)
+    /// holds the quarantine instead, in a new folder of the user's own.
     /// </summary>
     public static Task<TarSandboxScope> CreateAsync(
         string archivePath, bool needsOutputDir, CancellationToken cancellationToken, System.Text.Encoding? outputEncoding = null,
-        string? helperSource = null)
+        string? helperSource = null, string? nearFolder = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -207,15 +216,24 @@ internal sealed partial class TarSandboxScope : IDisposable
         AppContainerProfile? profile = null;
         try
         {
-            Directory.CreateDirectory(SandboxParentDirectory);
-            QuarantineAcl.EnsureSharedParentTraverseForEveryAppContainer(SandboxParentDirectory);
-
-            // T-F263: a killed run's quarantine holds the archive's plaintext; the next one removes it.
-            // Older quarantines are named by a GUID alone, so only their age can tell.
-            TempOwner.SweepStale(SandboxParentDirectory, "", "", TempScope.LocalTemp(TimeSpan.FromDays(1)));
             _ = StaleProfilesSwept.Value;
-            quarantineRoot = Path.Combine(SandboxParentDirectory, TempOwner.NewName(""));
-            Directory.CreateDirectory(quarantineRoot);
+            if (nearFolder is null)
+            {
+                Directory.CreateDirectory(SandboxParentDirectory);
+                // T-F263: a killed run's quarantine holds the archive's plaintext; the next one removes it.
+                // Older quarantines are named by a GUID alone, so only their age can tell.
+                TempOwner.SweepStale(SandboxParentDirectory, "", "", TempScope.LocalTemp(TimeSpan.FromDays(1)));
+                quarantineRoot = Path.Combine(SandboxParentDirectory, TempOwner.NewName(""));
+                Directory.CreateDirectory(quarantineRoot);
+            }
+            else
+            {
+                TempOwner.SweepStale(nearFolder, QuarantineLocation.RootPrefix, "", TempScope.Destination);
+                string root = Path.Combine(nearFolder, TempOwner.NewName(QuarantineLocation.RootPrefix));
+                QuarantineAcl.CreatePrivateFolder(root);
+                quarantineRoot = root;
+                new DirectoryInfo(root).Attributes |= FileAttributes.Hidden;
+            }
 
             // T-F523: a sandbox of this scope's own; created last, so a failure above leaves no profile.
             var created = new AppContainerProfile(SandboxNameFor(quarantineRoot));
@@ -232,7 +250,7 @@ internal sealed partial class TarSandboxScope : IDisposable
                 QuarantineAcl.GrantModify(outDir, sid);
             }
 
-            return Task.FromResult(new TarSandboxScope(sid, profile, quarantineRoot, archive, outDir, outputEncoding, helperSource));
+            return Task.FromResult(new TarSandboxScope(sid, profile, quarantineRoot, archive, outDir, outputEncoding, helperSource, nearFolder is not null));
         }
         catch (Exception ex)
         {
@@ -630,7 +648,9 @@ internal sealed partial class TarSandboxScope : IDisposable
     private string EnsureHelperCopy()
     {
         string helperSource = _helperSource ?? throw new InvalidOperationException("This scope was created without the archive helper.");
-        string folder = Path.Combine(QuarantineRoot, HelperFolderName);
+        if (_nearDestination)
+            _helperRoot ??= Path.Combine(SandboxParentDirectory, TempOwner.NewName(""));
+        string folder = Path.Combine(_helperRoot ?? QuarantineRoot, HelperFolderName);
         string copy = Path.Combine(folder, HelperFileName);
         if (_helperHash is not null)
             return copy;
@@ -732,6 +752,8 @@ internal sealed partial class TarSandboxScope : IDisposable
         _archive.Dispose();
         _sid.Dispose();
         try { if (Directory.Exists(QuarantineRoot)) Directory.Delete(QuarantineRoot, recursive: true); } catch { /* best-effort cleanup */ }
+        if (_helperRoot is not null)
+            try { if (Directory.Exists(_helperRoot)) Directory.Delete(_helperRoot, recursive: true); } catch { /* best-effort: swept with %TEMP%'s quarantines */ }
         // T-F523: every run of this scope has ended (each waits for its process, and its job kills
         // what is left when it closes), so nothing holds the profile's SID.
         _ = _profile.TryDelete(); // best-effort: the next process's sweep removes one Windows kept

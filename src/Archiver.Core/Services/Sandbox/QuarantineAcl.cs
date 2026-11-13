@@ -31,13 +31,13 @@ internal static partial class QuarantineAcl
     private const int RevokeAccess = 4;
 
     public static void GrantReadExecute(string path, SafeSidHandle sid)
-        => Grant(path, sid, FileGenericReadExecute, SubContainersAndObjectsInherit, sharedParent: false);
+        => Grant(path, sid, FileGenericReadExecute, SubContainersAndObjectsInherit);
 
     public static void GrantModify(string path, SafeSidHandle sid)
-        => Grant(path, sid, FileGenericModify, SubContainersAndObjectsInherit, sharedParent: false);
+        => Grant(path, sid, FileGenericModify, SubContainersAndObjectsInherit);
 
     public static void GrantTraverseOnly(string path, SafeSidHandle sid)
-        => Grant(path, sid, FileTraverse, NoInheritance, sharedParent: false);
+        => Grant(path, sid, FileTraverse, NoInheritance);
 
     /// <summary>
     /// T-F474: takes every entry of <paramref name="sid"/> off <paramref name="path"/>; Windows takes
@@ -45,53 +45,61 @@ internal static partial class QuarantineAcl
     /// that entry: <see cref="HasAppContainerEntry"/> finds it.
     /// </summary>
     public static void Revoke(string path, SafeSidHandle sid)
-        => Grant(path, sid, 0, NoInheritance, sharedParent: false, RevokeAccess);
+        => Grant(path, sid, 0, NoInheritance, RevokeAccess);
 
     /// <summary>T-F196: for a per-scope quarantine root only (it holds nothing but that scope's
     /// own in\ and out\), never a shared or user-owned directory.</summary>
     public static void GrantTraverseListReadAttributes(string path, SafeSidHandle sid)
-        => Grant(path, sid, FileTraverseListReadAttributes, NoInheritance, sharedParent: false);
+        => Grant(path, sid, FileTraverseListReadAttributes, NoInheritance);
 
     /// <summary>
-    /// T-F195: traverse grant for the ONE directory every scope in every Pakko process shares
-    /// (%TEMP%\PakkoTarSandbox). SetNamedSecurityInfoW re-propagates inheritable ACEs to every
-    /// existing child on each call — a read-recompute-write of other live scopes' in\/out\ DACLs
-    /// that races their own grants and was confirmed to drop a live out\ Modify grant
-    /// (QuarantineAclParentRaceTests). Here: no write at all once the ACE is present (the steady
-    /// state), and the one-time first write goes through SetFileSecurityW, which touches only this
-    /// directory's own DACL, never its children.
+    /// T-F524: creates a quarantine root next to a destination: a new folder (an existing name throws
+    /// <see cref="IOException"/>, a folder the user may not write <see cref="UnauthorizedAccessException"/>),
+    /// born with a protected DACL of the user, SYSTEM and Administrators only. Nothing comes from the
+    /// destination's folder: on a drive root that is Authenticated Users Modify, so other accounts, or
+    /// any AppContainer a folder lets in, could otherwise write into the quarantine. Created with its
+    /// DACL in one call, so there is no moment when the folder carries the inherited entries.
     /// </summary>
-    public static void EnsureSharedParentTraverse(string path, SafeSidHandle sid)
-        => Grant(path, sid, FileTraverse, NoInheritance, sharedParent: true);
-
-    /// <summary>
-    /// T-F523: the shared parent's one traverse entry for every scope, each of which has its own
-    /// AppContainer: ALL APPLICATION PACKAGES (S-1-15-2-1), written once (T-F195's way), never an
-    /// entry per scope. Traverse alone: no AppContainer can list the parent; each scope's root grants
-    /// only its own SID.
-    /// </summary>
-    public static void EnsureSharedParentTraverseForEveryAppContainer(string path)
+    public static void CreatePrivateFolder(string path)
     {
-        const byte AppPackageAuthority = 15; // SECURITY_APP_PACKAGE_AUTHORITY
-        const uint AppPackageBaseRid = 2;    // SECURITY_APP_PACKAGE_BASE_RID
-        const uint BuiltinAnyPackageRid = 1; // SECURITY_BUILTIN_PACKAGE_ANY_PACKAGE
-        var authority = new SidIdentifierAuthority { Value5 = AppPackageAuthority };
-        if (!NativeMethods.AllocateAndInitializeSid(ref authority, 2, AppPackageBaseRid, BuiltinAnyPackageRid, 0, 0, 0, 0, 0, 0, out IntPtr raw))
-            throw new InvalidOperationException($"AllocateAndInitializeSid failed (Win32 error {Marshal.GetLastPInvokeError()}).");
-        using var anyPackage = new SafeSidHandle();
-        anyPackage.Attach(raw);
-        Grant(path, anyPackage, FileTraverse, NoInheritance, sharedParent: true);
+        if (!OperatingSystem.IsWindows())
+            throw new PlatformNotSupportedException();
+        string user = System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value
+            ?? throw new InvalidOperationException("The current user's SID cannot be read.");
+        const uint SddlRevision1 = 1;
+        if (!NativeMethods.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                $"D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;{user})", SddlRevision1, out IntPtr securityDescriptor, 0))
+            throw new InvalidOperationException($"ConvertStringSecurityDescriptorToSecurityDescriptorW failed (Win32 error {Marshal.GetLastPInvokeError()}).");
+        try
+        {
+            var attributes = new SecurityAttributes
+            {
+                Length = Marshal.SizeOf<SecurityAttributes>(),
+                SecurityDescriptor = securityDescriptor,
+            };
+            // A root next to a destination is a plain path under MAX_PATH (QuarantineLocation.RootFits).
+            if (!NativeMethods.CreateDirectoryW(path, ref attributes))
+            {
+                const int ErrorAccessDenied = 5;
+                int error = Marshal.GetLastPInvokeError();
+                string message = $"{Marshal.GetPInvokeErrorMessage(error)} : '{path}'";
+                if (error == ErrorAccessDenied)
+                    throw new UnauthorizedAccessException(message);
+                throw new IOException(message, unchecked((int)0x80070000) | error);
+            }
+        }
+        finally
+        {
+            NativeMethods.LocalFree(securityDescriptor);
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct SidIdentifierAuthority
+    private struct SecurityAttributes
     {
-        public byte Value0;
-        public byte Value1;
-        public byte Value2;
-        public byte Value3;
-        public byte Value4;
-        public byte Value5;
+        public int Length;
+        public IntPtr SecurityDescriptor;
+        public int InheritHandle;
     }
 
     /// <summary>
@@ -212,7 +220,7 @@ internal static partial class QuarantineAcl
         }
     }
 
-    private static void Grant(string path, SafeSidHandle sid, uint accessMask, int inheritance, bool sharedParent, int accessMode = GrantAccess)
+    private static void Grant(string path, SafeSidHandle sid, uint accessMask, int inheritance, int accessMode = GrantAccess)
     {
         const int SE_FILE_OBJECT = 1;
         const uint DACL_SECURITY_INFORMATION = 0x00000004;
@@ -263,13 +271,6 @@ internal static partial class QuarantineAcl
 
             try
             {
-                if (sharedParent)
-                {
-                    if (!AclBytesEqual(existingAcl, newAcl))
-                        SetDaclWithoutPropagation(path, newAcl);
-                    return;
-                }
-
                 uint setResult = NativeMethods.SetNamedSecurityInfoW(
                     path, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
                     IntPtr.Zero, IntPtr.Zero, newAcl, IntPtr.Zero);
@@ -284,48 +285,6 @@ internal static partial class QuarantineAcl
         finally
         {
             NativeMethods.LocalFree(securityDescriptor);
-        }
-    }
-
-    // SetEntriesInAclW merges a GRANT into an existing identical ACE, so an unchanged result means
-    // the grant is already there. ACL header: AclSize is the ushort at byte offset 2.
-    private static bool AclBytesEqual(IntPtr a, IntPtr b)
-    {
-        if (a == IntPtr.Zero || b == IntPtr.Zero)
-            return false;
-        int sizeA = (ushort)Marshal.ReadInt16(a, 2);
-        int sizeB = (ushort)Marshal.ReadInt16(b, 2);
-        if (sizeA != sizeB)
-            return false;
-        byte[] bytesA = new byte[sizeA];
-        byte[] bytesB = new byte[sizeB];
-        Marshal.Copy(a, bytesA, 0, sizeA);
-        Marshal.Copy(b, bytesB, 0, sizeB);
-        return bytesA.AsSpan().SequenceEqual(bytesB);
-    }
-
-    private static void SetDaclWithoutPropagation(string path, IntPtr dacl)
-    {
-        const uint SECURITY_DESCRIPTOR_REVISION = 1;
-        const uint DACL_SECURITY_INFORMATION = 0x00000004;
-        const ushort SE_DACL_AUTO_INHERITED = 0x0400;
-        const int SecurityDescriptorMinLength = 40; // sizeof(SECURITY_DESCRIPTOR) on 64-bit
-
-        IntPtr sd = Marshal.AllocHGlobal(SecurityDescriptorMinLength);
-        try
-        {
-            if (!NativeMethods.InitializeSecurityDescriptor(sd, SECURITY_DESCRIPTOR_REVISION)
-                || !NativeMethods.SetSecurityDescriptorDacl(sd, true, dacl, false)
-                || !NativeMethods.SetSecurityDescriptorControl(sd, SE_DACL_AUTO_INHERITED, SE_DACL_AUTO_INHERITED)
-                || !NativeMethods.SetFileSecurityW(path, DACL_SECURITY_INFORMATION, sd))
-            {
-                throw new InvalidOperationException(
-                    $"SetFileSecurityW('{path}') failed (Win32 error {Marshal.GetLastWin32Error()}).");
-            }
-        }
-        finally
-        {
-            Marshal.FreeHGlobal(sd);
         }
     }
 
@@ -387,39 +346,18 @@ internal static partial class QuarantineAcl
         [LibraryImport("kernel32.dll", SetLastError = true)]
         public static partial IntPtr LocalFree(IntPtr hMem);
 
-        [LibraryImport("advapi32.dll", SetLastError = true)]
+        [LibraryImport("advapi32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
-        public static partial bool AllocateAndInitializeSid(
-            ref SidIdentifierAuthority authority, byte subAuthorityCount,
-            uint sub0, uint sub1, uint sub2, uint sub3, uint sub4, uint sub5, uint sub6, uint sub7, out IntPtr sid);
+        public static partial bool ConvertStringSecurityDescriptorToSecurityDescriptorW(
+            string stringSecurityDescriptor, uint stringSDRevision, out IntPtr securityDescriptor, IntPtr securityDescriptorSize);
+
+        [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool CreateDirectoryW(string pathName, ref SecurityAttributes securityAttributes);
 
         [LibraryImport("advapi32.dll", SetLastError = false)]
         public static partial uint GetSecurityInfo(
             Microsoft.Win32.SafeHandles.SafeFileHandle handle, int objectType, uint securityInfo,
             IntPtr ppsidOwner, IntPtr ppsidGroup, out IntPtr ppDacl, IntPtr ppSacl, out IntPtr ppSecurityDescriptor);
-
-        [LibraryImport("advapi32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static partial bool InitializeSecurityDescriptor(IntPtr pSecurityDescriptor, uint dwRevision);
-
-        [LibraryImport("advapi32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static partial bool SetSecurityDescriptorDacl(
-            IntPtr pSecurityDescriptor,
-            [MarshalAs(UnmanagedType.Bool)] bool bDaclPresent,
-            IntPtr pDacl,
-            [MarshalAs(UnmanagedType.Bool)] bool bDaclDefaulted);
-
-        [LibraryImport("advapi32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static partial bool SetSecurityDescriptorControl(
-            IntPtr pSecurityDescriptor, ushort controlBitsOfInterest, ushort controlBitsToSet);
-
-        // Obsolete per its docs in favor of SetNamedSecurityInfoW — deliberately used here for the
-        // one property that makes it the right call: it never propagates to children (T-F195).
-        [LibraryImport("advapi32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static partial bool SetFileSecurityW(
-            string lpFileName, uint securityInformation, IntPtr pSecurityDescriptor);
     }
 }

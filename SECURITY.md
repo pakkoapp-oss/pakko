@@ -534,6 +534,29 @@ archive, running at the same time as another operation, is the attacker consider
   read or change another archive's reader running at the same time. Each operation now gets a new
   AppContainer profile, deleted when it ends; a killed run's is removed by the next run. A reader
   can open no process of another operation, nor reach its quarantine, nor list the quarantine parent.
+- **The quarantine sits next to the destination (T-F524, v1.11).** An extraction's quarantine is a
+  hidden `.pakko-sandbox-<owner>-<random>` folder in the destination's nearest existing folder,
+  when that folder is on another volume than `%TEMP%`, so the files leave it by a rename on one
+  volume and nothing of the archive is written to the system drive first. On the volume of `%TEMP%`
+  it stays in `%TEMP%`, as before: a rename works from there, and the profile's protected and synced
+  folders (Documents, Desktop, OneDrive) never get a hidden quarantine. It is created in one call with its own protected DACL (the user, SYSTEM,
+  Administrators), never with the entries the destination's folder passes down: a drive root gives
+  Authenticated Users Modify, a folder may let ALL APPLICATION PACKAGES in. Only a fixed local volume
+  that keeps permissions qualifies, asked of a handle to that folder (a junction is judged by where
+  it leads); a network folder, FAT or exFAT, a removable drive, or a root too long to be a working
+  folder keep the quarantine in `%TEMP%`. The helper's copy runs from `%TEMP%` either way, and with
+  Controlled Folder Access in block mode the helper's quarantine stays there too: Defender refused
+  the unsigned helper writing into `Documents` (measured), while it let tar.exe through. Block mode
+  is read from the local setting, Group Policy and MDM (each measured); set by another channel,
+  with a protected folder on another volume, the helper's extraction there fails with Defender's
+  notice instead (T-F526). No folder
+  above a quarantine gets an entry for the sandbox: an AppContainer token keeps "Bypass traverse
+  checking" (measured on Windows 11 and 10), and it cannot list or write those folders.
+- **What is left after a crash:** a run killed before its scope ended leaves the quarantine in the
+  destination (until v1.10: in `%TEMP%`), holding the part of the archive it had extracted, readable
+  by the user only. The next extraction into that folder removes it, as it removes staging (T-F263).
+  A destination on another volume that a cloud client syncs sees the quarantine while the run
+  lasts, as it sees staging.
 
 ### Trust Chain
 

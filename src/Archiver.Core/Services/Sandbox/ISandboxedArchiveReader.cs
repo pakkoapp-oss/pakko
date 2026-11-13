@@ -17,16 +17,21 @@ internal interface ISandboxedArchiveReader : IDisposable
     /// Opens the backend this process reads with, on the archive: the archive helper when
     /// <paramref name="helper"/> is given, or <paramref name="gate"/> chose it, and it reads the
     /// archive's format; tar.exe otherwise. The one place the gate's decision is asked for.
+    /// T-F524: an extraction passes its <paramref name="destination"/>, and its quarantine goes next to
+    /// it where <see cref="QuarantineLocation"/> allows.
     /// </summary>
     static async Task<ISandboxedArchiveReader> OpenAsync(
         string archivePath, bool needsOutputDir, Encoding? outputEncoding, CancellationToken cancellationToken,
-        HelperSetup? helper = null, ArchiveintGate? gate = null)
+        HelperSetup? helper = null, ArchiveintGate? gate = null, string? destination = null)
     {
         if (helper is null && gate is not null)
             helper = await gate.HelperAsync(cancellationToken).ConfigureAwait(false);
+        string? nearFolder = destination is null || !OperatingSystem.IsWindows()
+            ? null
+            : QuarantineLocation.NearDestination(destination, byHelper: helper is not null, new Win32RegistryReader(), QuarantineLocation.TempVolume);
         return helper is null
-            ? await TarExeReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, cancellationToken).ConfigureAwait(false)
-            : await HelperReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, helper, cancellationToken).ConfigureAwait(false);
+            ? await TarExeReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, cancellationToken, nearFolder).ConfigureAwait(false)
+            : await HelperReader.OpenAsync(archivePath, needsOutputDir, outputEncoding, helper, cancellationToken, nearFolder).ConfigureAwait(false);
     }
 
     /// <summary>The entries for browsing: an unsafe name or a link lists, as before; only extraction refuses it.</summary>

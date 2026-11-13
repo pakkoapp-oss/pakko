@@ -29,6 +29,8 @@ file sealed class FakeRegistryReader : IRegistryReader
 
     public string[]? GetMultiString(string keyPath, string valueName) =>
         _multiStrings.TryGetValue((keyPath, valueName), out string[]? value) ? value : null;
+
+    public string? GetString(string keyPath, string valueName) => null;
 }
 
 public sealed class GroupPolicyServiceTests

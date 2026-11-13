@@ -60,18 +60,36 @@ public static partial class PathIdentity
         return ReadFinalPath(handle) is { } finalPath ? WithoutLongPathPrefix(finalPath) : null;
     }
 
+    /// <summary>T-F524: the volume <paramref name="folder"/> is on, asked of a handle to it (a junction or
+    /// a mount point answers for where it leads): its file-system flags and its volume GUID root
+    /// (<c>\\?\Volume{...}\</c>). Null when it cannot be opened or has no volume GUID path, as a
+    /// network folder has none.</summary>
+    internal static (uint FileSystemFlags, string VolumeRoot)? VolumeOf(string folder)
+    {
+        using SafeFileHandle handle = CreateFile(folder, 0, FileShareAll, 0, OpenExisting, BackupSemantics, 0);
+        if (handle.IsInvalid || !GetVolumeInformationByHandle(handle, 0, 0, 0, 0, out uint flags, 0, 0))
+            return null;
+        const string Start = @"\\?\Volume{";
+        if (ReadFinalPath(handle, VolumeNameGuid) is not { } guidPath || !guidPath.StartsWith(Start, StringComparison.OrdinalIgnoreCase))
+            return null;
+        int end = guidPath.IndexOf('\\', Start.Length);
+        return (flags, end < 0 ? guidPath + @"\" : guidPath[..(end + 1)]);
+    }
+
+    private const uint VolumeNameGuid = 0x1;
+
     // On the stack for an ordinary path (SmallFileAllocationTests); a longer one is asked for
     // again in a buffer of the size the first call reported.
-    private static string? ReadFinalPath(SafeFileHandle handle)
+    private static string? ReadFinalPath(SafeFileHandle handle, uint flags = 0)
     {
         Span<char> small = stackalloc char[520];
-        uint length = GetFinalPathNameByHandle(handle, ref MemoryMarshal.GetReference(MemoryMarshal.Cast<char, ushort>(small)), (uint)small.Length, 0);
+        uint length = GetFinalPathNameByHandle(handle, ref MemoryMarshal.GetReference(MemoryMarshal.Cast<char, ushort>(small)), (uint)small.Length, flags);
         if (length == 0)
             return null;
         if (length < small.Length)
             return new string(small[..(int)length]);
         char[] large = new char[length];
-        uint written = GetFinalPathNameByHandle(handle, ref MemoryMarshal.GetReference(MemoryMarshal.Cast<char, ushort>(large.AsSpan())), (uint)large.Length, 0);
+        uint written = GetFinalPathNameByHandle(handle, ref MemoryMarshal.GetReference(MemoryMarshal.Cast<char, ushort>(large.AsSpan())), (uint)large.Length, flags);
         return written == 0 || written >= large.Length ? null : new string(large, 0, (int)written);
     }
 
@@ -241,6 +259,12 @@ public static partial class PathIdentity
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool GetFileInformationByHandle(SafeFileHandle file, out ByHandleFileInformation info);
+
+    [LibraryImport("kernel32.dll", EntryPoint = "GetVolumeInformationByHandleW", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetVolumeInformationByHandle(
+        SafeFileHandle file, nint volumeName, uint volumeNameSize, nint serial, nint maxComponentLength,
+        out uint fileSystemFlags, nint fileSystemName, uint fileSystemNameSize);
 
     [LibraryImport("kernel32.dll", EntryPoint = "GetFinalPathNameByHandleW", SetLastError = true)]
     // The buffer as UTF-16 code units: a char is not blittable to the source generator.
