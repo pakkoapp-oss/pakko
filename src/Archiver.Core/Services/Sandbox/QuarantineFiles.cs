@@ -201,10 +201,13 @@ internal static partial class QuarantineFiles
     private static bool TryRenameByHandle(SafeFileHandle handle, string destination, out int error)
     {
         string full = destination.StartsWith(@"\\?\", StringComparison.Ordinal) ? destination : Path.GetFullPath(destination);
-        string ntPath = full.StartsWith(@"\\?\", StringComparison.Ordinal) || full.StartsWith(@"\\.\", StringComparison.Ordinal)
-            ? @"\??\" + full[4..]
-            : full.StartsWith(@"\\", StringComparison.Ordinal) ? @"\??\UNC\" + full[2..]
-            : @"\??\" + full;
+        string ntPath;
+        if (full.StartsWith(@"\\?\", StringComparison.Ordinal) || full.StartsWith(@"\\.\", StringComparison.Ordinal))
+            ntPath = @"\??\" + full[4..];
+        else if (full.StartsWith(@"\\", StringComparison.Ordinal))
+            ntPath = @"\??\UNC\" + full[2..];
+        else
+            ntPath = @"\??\" + full;
         int rootOffset = IntPtr.Size;
         int lengthOffset = rootOffset + IntPtr.Size;
         int nameOffset = lengthOffset + sizeof(uint);

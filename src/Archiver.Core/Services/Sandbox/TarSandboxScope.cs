@@ -136,7 +136,7 @@ internal sealed partial class TarSandboxScope : IDisposable
 
     private uint CommandLinePage => (uint)TextBoundaries.TarExeCommandLine(_machine).CodePage;
 
-    private TarSandboxScope(
+    private TarSandboxScope( // NOSONAR: S107 — private, called once from CreateAsync with what it built; a parameter object would only rename the list
         SafeSidHandle sid, AppContainerProfile profile, string quarantineRoot, FileStream archive, string? outputDirectory,
         System.Text.Encoding? outputEncoding, string? helperSource, bool nearDestination)
     {
