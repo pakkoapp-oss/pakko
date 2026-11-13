@@ -204,6 +204,7 @@ decompression bug would run with the user's rights). bzip2 and xz of one file ar
 | Command-line option injection into tar.exe through a crafted file name ("WorstFit" best-fit mapping, e.g. U+FF02 becoming `"`) | High | Fixed in v1.5.0 (T-F266) — every string passed to tar.exe must convert to the ANSI code page exactly (`WC_NO_BEST_FIT_CHARS`, no default character, exact round trip); a name that does not is refused before tar.exe runs, with a message pointing to ZIP. Archive creation is unsandboxed, so before this fix a selected file named this way could add tar options. |
 | tar.exe reading a selected name that looks like one of its options as an option (versions before v1.6.0) | High | Fixed in v1.6.0 (T-F283) — archive creation gives tar.exe every name as a line of a `-T -` list on its standard input, never as an argument; in that list only an exact `-C` line is special, and a source named exactly `-C` is written as `./-C`. Extracting selected entries puts `--` before the entry names. Before this fix a crafted file or folder name could change what the unsandboxed creation run did, up to starting another program as the user. |
 | A web page, e-mail or document link launching Pakko on an arbitrary (UNC) path through the `pakko://` scheme (versions before v1.5.0) | High | Fixed in v1.5.0 (T-F232) — the scheme is removed; Explorer's commands reach the app through a Launch activation only a process already on the machine can start. See "Advisory: `pakko://` Links in Earlier Versions" below. |
+| A compromised sandboxed reader of one archive changing another operation's quarantine (versions before v1.11) | Medium | Narrowed in v1.11 (T-F474): the sandbox's entry comes off each quarantine folder once its run ends, and each file is checked and moved through one handle. Left (T-F523): the window while that operation's own run lasts. See "The Quarantine After Each Run" below. |
 | Microsoft as trust anchor | Low-Medium | Accepted tradeoff for the target audience; .NET is open source and auditable |
 
 ---
@@ -504,10 +505,33 @@ What does not change, and what is new:
   mtree, which reads local files by the paths it lists, and filters that start an external program.
 - **The helper is treated as compromisable**, like `tar.exe`: everything it prints is parsed as
   untrusted input, and `out\` is read only for the expected file names. Any sandboxed reader's file
-  moves out only with one name and no named stream (a stream would move out with it unseen by the
-  antivirus scan), asked right before the move; its attributes are not asked. The copy
+  moves out only with one name, no named stream (a stream would move out with it unseen by the
+  antivirus scan), no link and no AppContainer entry of its own, asked through the handle that
+  moves it (T-F474, below). The copy
   in `bin\` is held open from its hash until the helper ends; a process of the same user could still
   replace `bin\` itself, which is outside this threat model.
+
+### The Quarantine After Each Run (T-F474, v1.11)
+
+Every operation's `tar.exe` and helper run as one AppContainer SID, so a compromised reader of one
+archive, running at the same time as another operation, is the attacker considered here.
+
+- **The sandbox loses each folder once its run ends.** After the extraction run (`out\`) and the
+  first-copies run (`first\`), Pakko takes the SID's entry off the folder, and Windows takes the
+  inherited entries off everything in it. From then on no sandboxed process can rewrite a file, give
+  it a second name or a named stream, or add a file (measured with a sandboxed `cmd.exe`). The scan
+  and the move run only after this.
+- **Each file is checked and moved through one handle.** The handle shares reading only: it cannot
+  be opened while anything else may write the file, and nothing can open the file for writing while
+  it is held. On that handle the file must be no link, have one name and one stream, and carry no
+  AppContainer entry of its own; then it is renamed, and the checks are asked again. To another
+  volume it is copied by path while that handle stays open, and the path must lead to the same file
+  (volume and file ID) right before and right after the copy; a stream copy from the handle was
+  four times slower there (measured). A file that fails them fails the whole archive.
+- **Residual (T-F523):** while an operation's own run lasts, its `out\` is open to the shared SID. A
+  sandboxed process cannot list the quarantine parent, and each quarantine's name carries 128 random
+  bits, so it needs the path from the other operation's sandboxed process itself. Whether one
+  AppContainer process can open another is not yet measured; a SID per operation would close this.
 
 ### Trust Chain
 

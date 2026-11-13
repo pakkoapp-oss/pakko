@@ -298,7 +298,10 @@ internal sealed partial class TarSandboxScope : IDisposable
             await EnsureSentAsListedAsync(members, cancellationToken).ConfigureAwait(false);
             memberArguments = ["-T", WriteMemberList(members)];
         }
-        return await RunAsync("-x", ["-C", OutputFolderName, .. memberArguments], cancellationToken).ConfigureAwait(false);
+        EnsureNotSealed(OutputDirectory);
+        (int ExitCode, string StdOut, string StdErr) result = await RunAsync("-x", ["-C", OutputFolderName, .. memberArguments], cancellationToken).ConfigureAwait(false);
+        Seal(OutputDirectory);
+        return result;
     }
 
     /// <summary>
@@ -341,6 +344,7 @@ internal sealed partial class TarSandboxScope : IDisposable
             throw new InvalidOperationException("This scope was created without an output folder.");
         await EnsureSentAsListedAsync(members, cancellationToken).ConfigureAwait(false);
         string firstDir = Path.Combine(QuarantineRoot, FirstCopyFolderName);
+        EnsureNotSealed(firstDir);
         Directory.CreateDirectory(firstDir);
         try
         {
@@ -355,8 +359,29 @@ internal sealed partial class TarSandboxScope : IDisposable
         TarExeReader.PreCreateImplicitFolders(members, firstDir);
         (int exitCode, _, string stdErr) = await RunAsync(
             "-x", ["-q", "-C", FirstCopyFolderName, "--", .. members.Select(EscapeMemberPattern)], cancellationToken).ConfigureAwait(false);
+        Seal(firstDir);
         return (firstDir, exitCode, stdErr);
     }
+
+    /// <summary>
+    /// T-F474: once a run that writes into <paramref name="folder"/> ends, the sandbox's entry comes off
+    /// it and off everything in it. The SID is every operation's, so a concurrent operation's tar.exe or
+    /// helper could otherwise rewrite a file, give it a second name or a named stream, or add a file,
+    /// between the checks, the scan and the move. No run writes into a folder after this.
+    /// </summary>
+    private void Seal(string folder)
+    {
+        GrantOrFailSetup(() => QuarantineAcl.Revoke(folder, _sid));
+        _sealed.Add(folder);
+    }
+
+    private void EnsureNotSealed(string folder)
+    {
+        if (_sealed.Contains(folder))
+            throw new InvalidOperationException("The sandbox has already written this folder; it is sealed.");
+    }
+
+    private readonly HashSet<string> _sealed = [];
 
     /// <summary>
     /// T-F465: refuses unless every one of <paramref name="names"/> reaches tar.exe as the very bytes
@@ -489,6 +514,8 @@ internal sealed partial class TarSandboxScope : IDisposable
     {
         if (mode == ArchiveHelperMode.Extract && OutputDirectory is null)
             throw new InvalidOperationException("This scope was created without an output folder.");
+        if (mode == ArchiveHelperMode.Extract)
+            EnsureNotSealed(OutputDirectory!);
         string helper = EnsureHelperCopy();
         string[] selectArguments = [];
         if (selection is not null)
@@ -533,7 +560,10 @@ internal sealed partial class TarSandboxScope : IDisposable
                     .ConfigureAwait(false);
                 return exitCode;
             }
-            return await SettleHelperRunAsync(LaunchAsync(), output, job.ReadLimitHit, CpuTimeLimitFor(_archive.Length)).ConfigureAwait(false);
+            (ArchiveHelperExit Exit, string LimitHit) settled = await SettleHelperRunAsync(LaunchAsync(), output, job.ReadLimitHit, CpuTimeLimitFor(_archive.Length)).ConfigureAwait(false);
+            if (mode == ArchiveHelperMode.Extract)
+                Seal(OutputDirectory!);
+            return settled;
         }
     }
 

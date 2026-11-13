@@ -117,6 +117,7 @@ budgets, `REL` the release's files, `STO` the Store.
 | CLI-058 | quick | script | dev | A killed run's `-si` staging is swept (T-F511): start `pakko t -si` with stdin left open, write 4 KB, wait for its folder under `%TEMP%\Archiver.CLI.Stdin` (named by `TempOwner`, with the run's pid), kill the process; then `pakko l a.zip` | The folder is there after the kill and gone after the next `pakko`, which exits 0 | `cli:-si` T-F511 |
 | CLI-059 | quick | script | dev | An archive search meets a folder it cannot list (T-F511): `arcs\one.zip`, and `arcs\deep` with a Deny ListDirectory rule for the current user; `pakko x -an -air!arcs\*.zip -o<out>` | Exit 2; stderr names `arcs\deep`; nothing in `<out>`. With the rule removed, exit 0 | `cli:x` `cli:-ai` T-F511 |
 | CLI-060 | quick | script | dev | A damaged plain 7z whose entry is named `encrypted_notes.txt` (T-F518): `x` and `t` of `tests\Archiver.Core.IntegrationTests\Fixtures\damaged_data.7z`; `t` of `encrypted.7z` beside it | Exit 2 each; the damaged one's error is no \"password-protected\"; `encrypted.7z` still is | `cli:x` `cli:t` T-F518 |
+| CLI-061 | quick | script | dev | A tar extracted onto another volume than `%TEMP%`, where the quarantine is (T-F474: the file is copied out through the handle that checked it, not renamed): a ustar with `a.txt` (`across`, modified 2020-01-02), `x <tar> -o<folder on another fixed drive>` | Exit 0; `a.txt` holds `across` and keeps its time; skipped on a machine with one fixed drive | `cli:x` T-F474 |
 
 ## SHL - `Archiver.Shell.exe`, started as Explorer starts it
 

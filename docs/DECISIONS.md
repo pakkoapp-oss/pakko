@@ -14983,6 +14983,105 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F474, T-F463's leftovers - batch 5a, the quarantine sealed after each run (2026-11-13)
+
+**Threat assumed:** a process in Pakko's AppContainer that knows a quarantine path: another operation's
+tar.exe or helper, compromised by its own archive, running at the same time. The SID
+(`Pakko.TarSandbox`) is every operation's, and `out\` granted it Modify until the move.
+**How it could know the path, measured:** from inside the sandbox, `dir ..` and `dir ..\*` at a
+quarantine root and `echo x> ..\planted.txt` are all "Access is denied" (the shared parent grants
+traverse only, T-F195), and a root's name carries a random 128-bit part (`TempOwner.NewName`). So a
+guess or a listing does not give it; reading it out of the other operation's own sandboxed process
+(its working directory is the root) would, if one AppContainer process can open another - still not
+measured (T-F523).
+
+**Measured on Windows 11 26300** (a temporary probe test, cmd.exe in a test AppContainer, `out\` with
+the SID's inherited Modify):
+- before the entry comes off: appending to a file, `file:s` (a named stream), `mklink /h` (a second
+  name) all succeed;
+- after `icacls out /remove:g <SID>` (Windows recomputes the inherited entries below): those three, a
+  new file in `out\` and in a subfolder, `dir out`, and `icacls file /grant <SID>:F` from inside the
+  sandbox are all "Access is denied";
+- a file the sandbox creates carries only inherited entries (plus the Low label); `icacls /inheritance:r`
+  from inside the sandbox fails (exit 5).
+
+**What changed:**
+- `TarSandboxScope` takes the SID's entry off `out\` after the extraction run (tar.exe or the helper's
+  `extract`) and off `first\` after the first-copies run (`QuarantineAcl.Revoke`: `SetEntriesInAclW`
+  with `REVOKE_ACCESS`, then `SetNamedSecurityInfoW`, which re-propagates). A second writing run into
+  a sealed folder throws. Scans read only after the seal, so nothing can change what was scanned.
+- `QuarantineFiles.TakeOut` replaces `IsPlainFile` + `MoveOut`: one `CreateFile` (DELETE,
+  READ_CONTROL, READ_ATTRIBUTES; share READ only; `FILE_FLAG_OPEN_REPARSE_POINT`). Sharing no write
+  means the open fails while any handle may write (a writer opened before the seal outlives an ACL
+  change), and no one can open for writing while it is held. On that handle: no link, one name, one
+  stream (`PathIdentity.IsPlainFile(handle)`), and no AppContainer SID or ALL APPLICATION PACKAGES in
+  the DACL (`QuarantineAcl.HasAppContainerEntry`, unreadable counts as present) - an entry the file
+  carries itself is not removed by the propagation. Then a rename by handle (`FILE_RENAME_INFO`,
+  `ReplaceIfExists`, the NT `\??\` path) and the same checks again; a failure there deletes the moved
+  file by handle and fails the archive.
+- **Another volume:** staging is in the destination's folder (T-F263), the quarantine under `%TEMP%`;
+  a rename by handle returns `ERROR_NOT_SAME_DEVICE`. Then the file is copied by `CopyFile`
+  (`File.Copy`) by path, the one step not through the handle: the handle stays open (sharing read
+  only, so the file cannot be written, renamed or deleted meanwhile), and right before and right
+  after the copy the path must lead to the handle's own file (`PathIdentity.LeadsTo`, volume and
+  file ID); otherwise nothing is delivered. The seal is what keeps the sandbox from swapping
+  anything by then. `CopyFile` keeps the write time and the attributes; the creation time is set
+  from the handle. Tested to another fixed drive; `CLI-061` on the device.
+  **Why not a stream copy from the handle** (the first version): measured on 10,000 files extracted
+  by tar.exe onto another drive, 91.6 s against 25.5 s before the batch; the wait was not CPU
+  (pakko's CPU time was the same, 17 s), and a stream copy cost about 5 ms a file against
+  `CopyFile`'s 1.1 ms (2,000 files of distinct content; that Defender treats a `CopyFile` copy as
+  already seen is a guess, not measured). With `CopyFile`: 25.8 s against 25.6 s. `CopyFile` opens
+  the source while the `TakeOut` handle (DELETE access, sharing read) is held: 2,000 of 2,000
+  measured. Uncovered by a test: the cleanup when the path changes during the copy, or when a step
+  after a finished copy throws (`CopyFile` deletes its own unfinished copy); both need a fault in
+  the middle of the copy.
+- **T-F463's leftovers:** the walk reads each item's attributes from the listing itself
+  (`EnumerateFileSystemInfos`), so no second call can fail open; a file that is a link fails the
+  walk; `OpenRead` opens as itself and refuses a link; `Walk` takes a token (the move loop already
+  checks one per file; the synchronous checks after a run have none to pass).
+
+**Cost:** `Revoke` on 2,000 files in one folder 266 ms; on 100,000 in 100 folders 13.7 s (about
+0.13 ms per file; the move itself is about 1.07 ms per file, T-F395). It runs at the end of the
+extraction's part of the bar, which does not move meanwhile; worth folding into the split only if a
+user sees it.
+
+**What the seal does not close (T-F523):** the window while an operation's own tar.exe or helper
+runs. Its `out\` then grants the shared SID Modify, so a concurrent sandboxed process that has the
+path can write there, and a run without a selection moves what a fresh walk finds. Only a SID per
+operation closes that window; it was not taken here: a profile per operation adds an entry per scope
+on the shared `PakkoTarSandbox` parent (T-F195's propagation race) and leaves profiles behind when a
+run is killed. The seal narrows the window from "until the last file has moved" to "while the run
+lasts", and T-F523 decides whether the rest needs one.
+
+**Assumed:** no AppContainer entry, of any rights, reaches a quarantine file from `%TEMP%` (true on
+Windows' default `%TEMP%` ACL, and the whole suite runs with it); a machine whose `%TEMP%` passes one
+down would fail every tar-family extraction with the archive-wide error, not deliver silently.
+
+**Edges of `TakeOut`, from the closing advisor review:** a copy cut short, and a copy of a file
+that breaks the rules, are deleted from staging (the commit takes every file there); the
+destination is normalized as `File.Move` normalized it (`Path.GetFullPath`, a `\\?\` spelling
+taken as it is), so a rename and a copy land on one name; the copied-from file is deleted with
+`FILE_DISPOSITION_FLAG_IGNORE_READONLY_ATTRIBUTE`. Asked whether a read-only file keeps the whole
+quarantine (`Directory.Delete` leaves one): neither tar.exe nor the helper makes a 0444 entry
+read-only (measured on 3.8.9 here and 3.5.2 on PakkoW10), and a test keeps it so.
+
+**Tests, each seen red** (a mutant per guard, restored and touched): a sandboxed cmd.exe cannot
+rewrite, add a stream, link or add a file after `ExtractAsync` (both backends) and after the scan's
+main and first-copies passes; `TakeOut` refuses a stream, a second name, the sandbox's own entry, a
+handle that may write; follows no link in the walk; the walk stops when cancelled. Also: a reader
+that shares everything does not stop the move; a name Windows trims and a file deeper than MAX_PATH
+still land.
+
+**Not touched, filed:** the destination side's `ExtractionStaging.ReachesThroughLink` uses the
+fail-open `ArchiveEntrySecurity.IsReparsePoint` (T-F522).
+
+**Both tar builds:** here (26300, bsdtar 3.8.9) the quiet suite, and smoke on 1.10.0.23: the 21
+`quick` tar, helper and scan rows plus `CLI-061` onto D:. On PakkoW10 (19045, bsdtar 3.5.2; the
+built test assembly, the helper and SDK 11.0.100 copied in by hash): `HelperReaderTests`,
+`QuarantineAcl*`, `TarSandboxScope*`, `TarSandboxedServiceExtract*`, `TrimmedSourceName*`, 217 of 217
+(the VM has one drive, so the other-volume test passes without crossing).
+
 ## T-F482, T-F485 - batch 4, the App on the device (2026-11-13)
 
 **T-F482.** Enter on a row of the main list now does what a double click does: an archive opens to

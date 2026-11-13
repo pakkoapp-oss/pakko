@@ -100,7 +100,7 @@ bypasses" is code that does an owner's job itself; it is listed in T-F511 and go
 | Entry traversal and device names | `Services/ArchiveEntrySecurity` | - | its own tests | - |
 | Default archive name, "name (1)", the folder an archive extracts into (`GetFolderName`) | `Services/ArchiveNaming` | `EntryDiskName.SingleName` for the folder | its own tests; the path matrix (T-F512) | - |
 | Reading tar.exe's formats (list, extract, test, scan) | `Sandbox/ISandboxedArchiveReader` (`TarExeReader`, `HelperReader`) over `TarSandboxScope` | `SandboxedProcessLauncher` (AppContainer, Job Object) | `SandboxedReaderOwnerTests` | - |
-| Names tar.exe wrote in the quarantine | `Sandbox/QuarantineFiles` | literal `\\?\` paths | `QuarantineFilesOwnerTests` | - |
+| Names tar.exe wrote in the quarantine, and the move out (T-F474: one handle checks and moves each file) | `Sandbox/QuarantineFiles` | literal `\\?\` paths | `QuarantineFilesOwnerTests` | - |
 | This machine's code pages | `Text/SystemCodePages`, `MachinePages`, `TextBoundaries` | `GetACP`/`GetOEMCP`: `CultureInfo...TextInfo.ANSICodePage` is the user's locale, not the system page tar.exe uses | its own tests | - |
 | Starting a system executable | `Services/ExplorerLauncher`, absolute paths (S4036) | `Process.Start` | - | - |
 | Services for Shell and CLI | `Services/PakkoServices.Create` | - | `PolicyOwnershipTests` (Group Policy reaches every engine) | - |
@@ -2255,7 +2255,9 @@ regular file is written as `out\<index>` (`CREATE_NEW`, data at the offsets
 one that `FILETIME` can hold; any other time leaves the write time). `archive_write_disk` is never used.
 After a run Pakko accepts `out\` only as exactly the files read, each a plain file of the size read
 (`HelperReader.EnsureOutDirHoldsExactly`); right before each move, for both readers, a file must have
-one link and no named stream (`QuarantineFiles.IsPlainFile`), or the archive fails; the copy in `bin\` is
+one link, no named stream, no link and no AppContainer in its DACL (`QuarantineFiles.TakeOut`, one handle
+shared for reading only, T-F474), or the archive fails; the sandbox's entry comes off `out\` and `first\`
+once each run ends (`TarSandboxScope.Seal`); the copy in `bin\` is
 held open (read-share only) from its hash until the helper ends.
 
 **Command line** (any other shape, a repeated switch or an unknown name is exit 2):

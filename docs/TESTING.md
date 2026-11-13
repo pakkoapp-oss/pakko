@@ -381,8 +381,10 @@ dotnet run --project tests/Archiver.Core.Tests.GenerateFixtures
     the decision is made once, a failure is not retried, a cancelled first caller is not the verdict;
     `DecideAsync` returns while the signature check still runs (T-F490: the checks before the
     probe's first await had held the caller's thread, the App's UI thread; seen red).
-- T-F470 release batch: `HelperReaderTests.IsPlainFile_*` (false with a named stream, a hard link or
-  a gone file; true for an empty one and one another reader holds);
+- T-F470 release batch, T-F474: `HelperReaderTests.TakeOut_*` (refused with a named stream, a hard link,
+  the sandbox's own DACL entry, or a handle that may write; a gone file throws; an empty file, a name
+  Windows trims, a reader sharing all and another volume move); `..._ASandboxedProcessCannotChangeTheQuarantine`
+  (cmd.exe in Pakko's AppContainer after each run, both readers); `Walk_*` (a file link, cancellation);
   `Extract_AStreamPlantedBeforeTheMove_...` (both readers: a stream planted from the progress callback,
   found by its unique content, fails the archive and nothing lands); `Extract_AMarkedArchive_...`
   (both readers: the check does not refuse a downloaded archive); `Extract_AFileAndAFolderOfOneName_...`

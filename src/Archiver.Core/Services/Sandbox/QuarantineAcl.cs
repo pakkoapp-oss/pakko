@@ -27,6 +27,8 @@ internal static partial class QuarantineAcl
 
     private const int SubContainersAndObjectsInherit = 0x3;
     private const int NoInheritance = 0x0;
+    private const int GrantAccess = 1;
+    private const int RevokeAccess = 4;
 
     public static void GrantReadExecute(string path, SafeSidHandle sid)
         => Grant(path, sid, FileGenericReadExecute, SubContainersAndObjectsInherit, sharedParent: false);
@@ -36,6 +38,14 @@ internal static partial class QuarantineAcl
 
     public static void GrantTraverseOnly(string path, SafeSidHandle sid)
         => Grant(path, sid, FileTraverse, NoInheritance, sharedParent: false);
+
+    /// <summary>
+    /// T-F474: takes every entry of <paramref name="sid"/> off <paramref name="path"/>; Windows takes
+    /// the ones its files and folders inherited off them too. A file whose own DACL names the SID keeps
+    /// that entry: <see cref="HasAppContainerEntry"/> finds it.
+    /// </summary>
+    public static void Revoke(string path, SafeSidHandle sid)
+        => Grant(path, sid, 0, NoInheritance, sharedParent: false, RevokeAccess);
 
     /// <summary>T-F196: for a per-scope quarantine root only (it holds nothing but that scope's
     /// own in\ and out\), never a shared or user-owned directory.</summary>
@@ -134,7 +144,45 @@ internal static partial class QuarantineAcl
         }
     }
 
-    private static void Grant(string path, SafeSidHandle sid, uint accessMask, int inheritance, bool sharedParent)
+    /// <summary>
+    /// T-F474: true when the DACL of the file open as <paramref name="file"/> (opened with READ_CONTROL)
+    /// lets any AppContainer in: an AppContainer SID or ALL APPLICATION PACKAGES. True too when the
+    /// DACL cannot be read, so a file that cannot be shown sealed is never taken out.
+    /// </summary>
+    public static bool HasAppContainerEntry(Microsoft.Win32.SafeHandles.SafeFileHandle file)
+    {
+        const int SE_FILE_OBJECT = 1;
+        const uint DACL_SECURITY_INFORMATION = 0x00000004;
+        const uint SDDL_REVISION_1 = 1;
+        const string AppContainerSidPrefix = "S-1-15-2-";
+        const string AllApplicationPackages = ";AC)";
+
+        if (NativeMethods.GetSecurityInfo(file, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
+                IntPtr.Zero, IntPtr.Zero, out _, IntPtr.Zero, out IntPtr securityDescriptor) != 0)
+            return true;
+        try
+        {
+            if (!NativeMethods.ConvertSecurityDescriptorToStringSecurityDescriptorW(
+                    securityDescriptor, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, out IntPtr text, out _))
+                return true;
+            try
+            {
+                string sddl = Marshal.PtrToStringUni(text) ?? string.Empty;
+                return sddl.Contains(AppContainerSidPrefix, StringComparison.Ordinal)
+                    || sddl.Contains(AllApplicationPackages, StringComparison.Ordinal);
+            }
+            finally
+            {
+                NativeMethods.LocalFree(text);
+            }
+        }
+        finally
+        {
+            NativeMethods.LocalFree(securityDescriptor);
+        }
+    }
+
+    private static void Grant(string path, SafeSidHandle sid, uint accessMask, int inheritance, bool sharedParent, int accessMode = GrantAccess)
     {
         const int SE_FILE_OBJECT = 1;
         const uint DACL_SECURITY_INFORMATION = 0x00000004;
@@ -158,7 +206,7 @@ internal static partial class QuarantineAcl
                 var explicitAccess = new EXPLICIT_ACCESS_W
                 {
                     grfAccessPermissions = accessMask,
-                    grfAccessMode = 1, // GRANT_ACCESS
+                    grfAccessMode = accessMode, // GRANT_ACCESS, or REVOKE_ACCESS (T-F474)
                     grfInheritance = (uint)inheritance,
                     Trustee = new TRUSTEE_W
                     {
@@ -308,6 +356,11 @@ internal static partial class QuarantineAcl
 
         [LibraryImport("kernel32.dll", SetLastError = true)]
         public static partial IntPtr LocalFree(IntPtr hMem);
+
+        [LibraryImport("advapi32.dll", SetLastError = false)]
+        public static partial uint GetSecurityInfo(
+            Microsoft.Win32.SafeHandles.SafeFileHandle handle, int objectType, uint securityInfo,
+            IntPtr ppsidOwner, IntPtr ppsidGroup, out IntPtr ppDacl, IntPtr ppSacl, out IntPtr ppSecurityDescriptor);
 
         [LibraryImport("advapi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
