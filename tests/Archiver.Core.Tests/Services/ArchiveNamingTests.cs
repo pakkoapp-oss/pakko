@@ -235,4 +235,25 @@ public sealed class ArchiveNamingTests
             Directory.Delete(parent, recursive: true);
         }
     }
+
+    // T-F477: a name typed in the App that already ends with the format's extension gets it once;
+    // any other extension is part of the name (docs/DECISIONS.md, "T-F477").
+    [Theory]
+    [InlineData("case4", ArchiveContainerFormat.Zip, "case4.zip")]
+    [InlineData("case4.zip", ArchiveContainerFormat.Zip, "case4.zip")]
+    [InlineData("CASE4.ZIP", ArchiveContainerFormat.Zip, "CASE4.zip")]
+    [InlineData("case4.zip.zip", ArchiveContainerFormat.Zip, "case4.zip.zip")]
+    [InlineData("x.tar.gz", ArchiveContainerFormat.TarGz, "x.tar.gz")]
+    [InlineData("x.gz", ArchiveContainerFormat.TarGz, "x.gz.tar.gz")]
+    [InlineData("x.7z", ArchiveContainerFormat.Zip, "x.7z.zip")]
+    [InlineData("x.zip", ArchiveContainerFormat.SevenZip, "x.zip.7z")]
+    [InlineData(".zip", ArchiveContainerFormat.Zip, "archive.zip")]
+    [InlineData("x.zip ", ArchiveContainerFormat.Zip, "x.zip .zip")]
+    public void WithoutFormatExtension_TypedName_TakesTheFormatsExtensionOnce(string typed, ArchiveContainerFormat format, string expected) =>
+        ArchiveNaming.SingleArchiveFileName(new ArchiveOptions
+        {
+            ArchiveName = ArchiveNaming.WithoutFormatExtension(typed, format),
+            Format = format,
+            SourcePaths = [@"C:\w\src"],
+        }).Should().Be(expected);
 }

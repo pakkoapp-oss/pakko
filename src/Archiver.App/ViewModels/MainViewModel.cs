@@ -1023,7 +1023,7 @@ public sealed partial class MainViewModel : ObservableObject
                     : _ => Task.FromResult(new global::Archiver.Core.Models.PasswordDecision { Password = encryptionPassword }),
                 SourcePaths = (string[])[.. FileItems.Select(x => x.FullPath)],
                 DestinationFolder = DestinationPath,
-                ArchiveName = string.IsNullOrWhiteSpace(ArchiveName) ? null : ArchiveName.Trim(),
+                ArchiveName = string.IsNullOrWhiteSpace(ArchiveName) ? null : ArchiveNaming.WithoutFormatExtension(ArchiveName.Trim(), SelectedContainerFormat),
                 Mode = SelectedArchiveMode,
                 OnConflict = OnConflict,
                 OpenDestinationFolder = OpenDestinationFolder,

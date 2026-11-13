@@ -108,6 +108,18 @@ public static class ArchiveNaming
         options.ExactFileName ?? ResolveSingleArchiveName(options.ArchiveName, options.SourcePaths) + GetExtension(options.Format);
 
     /// <summary>
+    /// T-F477: a name typed in the App's Name field, without the chosen format's extension when it
+    /// already ends with it ("case4.zip" with ZIP is "case4"), so the archive gets it once. Any other
+    /// extension is part of the name. Not for the CLI, where -saa adds it to any name (7-Zip's rule),
+    /// nor for a name from the sources (a folder "report.zip").
+    /// </summary>
+    public static string WithoutFormatExtension(string typed, ArchiveContainerFormat format)
+    {
+        string extension = GetExtension(format);
+        return typed.EndsWith(extension, StringComparison.OrdinalIgnoreCase) ? typed[..^extension.Length] : typed;
+    }
+
+    /// <summary>
     /// The item a refusal to create anything at all is about (T-F326): the archive that was to be
     /// written, or the first source when every source would get its own archive. Never the
     /// destination folder - it reads as the thing that failed.
