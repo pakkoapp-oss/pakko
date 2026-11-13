@@ -121,7 +121,7 @@
     <value>Tento formát archívu nie je podporovaný programom tar.exe tohto systému (verzia {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Skontrolovaná bola iba štruktúra archívu: tar.exe nedokáže overiť obsah súborov v tomto formáte.</value>
+    <value>Skontrolovaná bola iba štruktúra archívu: obsah súborov v tomto formáte nemožno overiť.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Tento archív je chránený heslom a nie je možné ho extrahovať.</value>
@@ -325,16 +325,16 @@
     <value>Súbor na obnovenie zo staršej verzie archívu nie je možné odstrániť: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Archív je poškodený ({0} z {1} blokov); jeho údaje na obnovenie ho dokážu opraviť ({2} blokov na obnovenie).</value>
+    <value>Archív je poškodený (poškodené bloky: {0}/{1}); jeho údaje na obnovenie ho dokážu opraviť (bloky na obnovenie: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Archív je poškodený ({0} z {1} blokov) viac, než jeho údaje na obnovenie dokážu opraviť ({2} blokov na obnovenie).</value>
+    <value>Archív je poškodený (poškodené bloky: {0}/{1}) viac, než jeho údaje na obnovenie dokážu opraviť (bloky na obnovenie: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Archív je poškodený ({0} z {1} blokov); opraviť toľko presahuje možnosti programu Pakko.</value>
+    <value>Archív je poškodený (poškodené bloky: {0}/{1}); opraviť toľko presahuje možnosti programu Pakko.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Údaje na obnovenie nezodpovedajú archívu (líši sa {0} z {1} blokov), ale samotný archív testom prešiel: údaje na obnovenie sú pravdepodobne z jeho staršej verzie.</value>
+    <value>Údaje na obnovenie nezodpovedajú archívu (odlišné bloky: {0}/{1}), ale samotný archív testom prešiel: údaje na obnovenie sú pravdepodobne z jeho staršej verzie.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Údaje na obnovenie sú poškodené alebo vo formáte, ktorý Pakko nedokáže prečítať.</value>
@@ -349,13 +349,13 @@
     <value>Údaje na obnovenie boli vytvorené pre súbor s iným názvom; tomuto archívu zodpovedajú obsahom.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Archív zodpovedá svojim údajom na obnovenie ({0} blokov, {1} blokov na obnovenie).</value>
+    <value>Archív zodpovedá svojim údajom na obnovenie (bloky: {0}, bloky na obnovenie: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Vedľa archívu sa nenašli žiadne údaje na obnovenie.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Archív bol opravený ({0} z {1} blokov). Opravená kópia je {2}; pôvodný archív sa nezmenil.</value>
+    <value>Archív bol opravený (opravené bloky: {0}/{1}). Opravená kópia je {2}; pôvodný archív sa nezmenil.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Opravená kópia nezodpovedala údajom na obnovenie a nebola zachovaná.</value>

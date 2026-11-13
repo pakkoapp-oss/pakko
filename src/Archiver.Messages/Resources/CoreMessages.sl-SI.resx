@@ -121,7 +121,7 @@
     <value>Ta oblika arhiva ni podprta v tar.exe tega sistema (različica {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Preverjena je bila samo struktura arhiva: tar.exe ne more preveriti vsebine datotek v tej obliki.</value>
+    <value>Preverjena je bila samo struktura arhiva: vsebine datotek v tej obliki ni mogoče preveriti.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Ta arhiv je zaščiten z geslom in ga ni mogoče razširiti.</value>
@@ -325,16 +325,16 @@
     <value>Datoteke za obnovitev, ki je ostala od prejšnje različice arhiva, ni bilo mogoče izbrisati: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Arhiv je poškodovan ({0} od {1} blokov); njegovi podatki za obnovitev ga lahko popravijo ({2} blokov za obnovitev).</value>
+    <value>Arhiv je poškodovan (poškodovani bloki: {0}/{1}); njegovi podatki za obnovitev ga lahko popravijo (bloki za obnovitev: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Arhiv je poškodovan ({0} od {1} blokov) bolj, kot ga lahko popravijo njegovi podatki za obnovitev ({2} blokov za obnovitev).</value>
+    <value>Arhiv je poškodovan (poškodovani bloki: {0}/{1}) bolj, kot ga lahko popravijo njegovi podatki za obnovitev (bloki za obnovitev: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Arhiv je poškodovan ({0} od {1} blokov); popraviti toliko presega zmožnosti programa Pakko.</value>
+    <value>Arhiv je poškodovan (poškodovani bloki: {0}/{1}); popraviti toliko presega zmožnosti programa Pakko.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Podatki za obnovitev se ne ujemajo z arhivom (razlikuje se {0} od {1} blokov), vendar sam arhiv test prestane: podatki za obnovitev so verjetno iz njegove prejšnje različice.</value>
+    <value>Podatki za obnovitev se ne ujemajo z arhivom (različni bloki: {0}/{1}), vendar sam arhiv test prestane: podatki za obnovitev so verjetno iz njegove prejšnje različice.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Podatki za obnovitev so poškodovani ali v obliki, ki je Pakko ne more prebrati.</value>
@@ -349,13 +349,13 @@
     <value>Podatki za obnovitev so bili ustvarjeni za datoteko z drugim imenom; s tem arhivom se ujemajo po vsebini.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Arhiv se ujema s svojimi podatki za obnovitev ({0} blokov, {1} blokov za obnovitev).</value>
+    <value>Arhiv se ujema s svojimi podatki za obnovitev (bloki: {0}, bloki za obnovitev: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Ob arhivu ni bilo najdenih podatkov za obnovitev.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Arhiv je bil popravljen ({0} od {1} blokov). Popravljena kopija je {2}; izvirnik ni bil spremenjen.</value>
+    <value>Arhiv je bil popravljen (popravljeni bloki: {0}/{1}). Popravljena kopija je {2}; izvirnik ni bil spremenjen.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Popravljena kopija se ni ujemala s podatki za obnovitev in ni bila ohranjena.</value>

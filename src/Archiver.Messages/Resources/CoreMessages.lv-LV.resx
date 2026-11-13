@@ -121,7 +121,7 @@
     <value>Šīs sistēmas tar.exe (versija {0}) neatbalsta šo arhīva formātu.</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Pārbaudīta tikai arhīva struktūra: tar.exe nevar pārbaudīt failu saturu šajā formātā.</value>
+    <value>Pārbaudīta tikai arhīva struktūra: šajā formātā failu saturu nevar pārbaudīt.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Šis arhīvs ir aizsargāts ar paroli, un to nevar izvilkt.</value>
@@ -325,16 +325,16 @@
     <value>Nevarēja izdzēst atkopšanas failu, kas palicis no iepriekšējās arhīva versijas: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Arhīvs ir bojāts ({0} no {1} blokiem); tā atkopšanas dati to var salabot ({2} atkopšanas bloki).</value>
+    <value>Arhīvs ir bojāts (bojātie bloki: {0}/{1}); tā atkopšanas dati to var salabot (atkopšanas bloki: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Arhīvs ir bojāts ({0} no {1} blokiem) vairāk, nekā tā atkopšanas dati var salabot ({2} atkopšanas bloki).</value>
+    <value>Arhīvs ir bojāts (bojātie bloki: {0}/{1}) vairāk, nekā tā atkopšanas dati var salabot (atkopšanas bloki: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Arhīvs ir bojāts ({0} no {1} blokiem); salabot tik daudz Pakko nespēj.</value>
+    <value>Arhīvs ir bojāts (bojātie bloki: {0}/{1}); salabot tik daudz Pakko nespēj.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Atkopšanas dati neatbilst arhīvam (atšķiras {0} no {1} blokiem), taču pats arhīvs testu iztur: atkopšanas dati, visticamāk, ir no tā agrākas versijas.</value>
+    <value>Atkopšanas dati neatbilst arhīvam (atšķirīgie bloki: {0}/{1}), taču pats arhīvs testu iztur: atkopšanas dati, visticamāk, ir no tā agrākas versijas.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Atkopšanas dati ir bojāti vai formātā, ko Pakko nevar nolasīt.</value>
@@ -349,13 +349,13 @@
     <value>Atkopšanas dati ir izveidoti failam ar citu nosaukumu; pēc satura tie atbilst šim arhīvam.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Arhīvs atbilst saviem atkopšanas datiem ({0} bloki, {1} atkopšanas bloki).</value>
+    <value>Arhīvs atbilst saviem atkopšanas datiem (bloki: {0}, atkopšanas bloki: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Blakus arhīvam netika atrasti atkopšanas dati.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Arhīvs ir salabots ({0} no {1} blokiem). Salabotā kopija ir {2}; oriģināls netika mainīts.</value>
+    <value>Arhīvs ir salabots (salabotie bloki: {0}/{1}). Salabotā kopija ir {2}; oriģināls netika mainīts.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Salabotā kopija neatbilda atkopšanas datiem un netika saglabāta.</value>

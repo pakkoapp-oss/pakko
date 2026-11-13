@@ -356,8 +356,8 @@ policy no set is looked for and a `.par2` path is an error.
 
 | What the set says | Output | Exit |
 |---|---|---|
-| intact | stdout `out.zip: recovery data intact (2000 blocks, 100 recovery blocks)`; a tar-family archive is no longer "skipped" | 0 (was 1 for tar-family) |
-| damaged, repairable | `pakko: error: out.zip: The archive is damaged (3 of 2000 blocks); its recovery data can repair it (100 recovery blocks).` | 2 |
+| intact | stdout `out.zip: recovery data intact (blocks: 2000, recovery blocks: 100)`; a tar-family archive is no longer "skipped" | 0 (was 1 for tar-family) |
+| damaged, repairable | `pakko: error: out.zip: The archive is damaged (damaged blocks: 3 of 2000); its recovery data can repair it (recovery blocks: 100).` | 2 |
 | damaged beyond the set, or the repair too large | `pakko: error: ...beyond what its recovery data can repair...` / `...beyond what Pakko can do.` | 2 |
 | a ZIP that tests intact and a set that disagrees | `pakko: warning: out.zip: The recovery data does not match the archive...` — taken to be a set left from an earlier version by another tool (Pakko's own `a -y` without `-rr` removes the old set) | 1 |
 | PAR2 files that cannot be read, or a set for another file | `pakko: warning:` line; the archive is tested as without a set | 1 |
@@ -380,8 +380,8 @@ repairable. `-si`, `-so`, `-p` and every other switch exit 7.
 
 | What `r` finds | Output | Exit |
 |---|---|---|
-| damaged, repairable | stdout `out.zip: repaired (3 of 2000 blocks rebuilt): C:\dir\out.repaired.zip` | 0 |
-| intact | stdout `out.zip: nothing to repair, recovery data intact (2000 blocks, 100 recovery blocks)` | 0 |
+| damaged, repairable | stdout `out.zip: repaired (rebuilt blocks: 3 of 2000): C:\dir\out.repaired.zip` | 0 |
+| intact | stdout `out.zip: nothing to repair, recovery data intact (blocks: 2000, recovery blocks: 100)` | 0 |
 | a ZIP that tests intact and a set that disagrees | the same `pakko: warning:` as `t`; nothing is written | 1 |
 | damaged beyond the set, or the repair too large | the same `pakko: error:` as `t` | 2 |
 | no PAR2 files, PAR2 files that cannot be read, a set for another file | `pakko: error: out.zip: No recovery data was found next to the archive.` or the reason | 2 |

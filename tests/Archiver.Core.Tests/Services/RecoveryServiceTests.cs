@@ -112,7 +112,7 @@ public sealed class RecoveryServiceTests : IDisposable
         check.RepairedPath.Should().Be(repaired);
         check.DamagedBlocks.Should().Be(1);
         check.Text!.Code.Should().Be(MessageCode.RecoveryDataRepaired);
-        check.Text.English.Should().Be($"The archive was repaired (1 of 2000 blocks). The repaired copy is {repairedName}; the original was not changed.");
+        check.Text.English.Should().Be($"The archive was repaired (repaired blocks: 1 of 2000). The repaired copy is {repairedName}; the original was not changed.");
     }
 
     [Theory]

@@ -507,7 +507,7 @@ static async Task<int> RunTestAsync(ParsedCliCommand command, PakkoServices serv
         progress?.Clear();
         await ReportNoFileToProcessAsync(command, result, passed).ConfigureAwait(false);
         foreach (RecoveryCheck check in result.RecoveryChecks.Where(c => c.State == RecoveryState.Intact))
-            await Console.Out.WriteLineAsync($"{report.DisplayName(check.ArchivePath)}: recovery data intact ({check.Blocks} blocks, {check.RecoveryBlocks} recovery blocks)").ConfigureAwait(false);
+            await Console.Out.WriteLineAsync($"{report.DisplayName(check.ArchivePath)}: recovery data intact (blocks: {check.Blocks}, recovery blocks: {check.RecoveryBlocks})").ConfigureAwait(false);
         return WithRefusedArchives(ReportResult(result, report), anyRefused);
     }
     catch (OperationCanceledException) when (cancellation.Token.IsCancellationRequested)
@@ -537,9 +537,9 @@ static async Task<int> RunRepairAsync(ParsedCliCommand command, PakkoServices se
         foreach (RecoveryCheck check in result.RecoveryChecks)
         {
             if (check.State == RecoveryState.Repaired)
-                await Console.Out.WriteLineAsync($"{report.DisplayName(check.ArchivePath)}: repaired ({check.DamagedBlocks} of {check.Blocks} blocks rebuilt): {check.RepairedPath}").ConfigureAwait(false);
+                await Console.Out.WriteLineAsync($"{report.DisplayName(check.ArchivePath)}: repaired (rebuilt blocks: {check.DamagedBlocks} of {check.Blocks}): {check.RepairedPath}").ConfigureAwait(false);
             else if (check.State == RecoveryState.Intact)
-                await Console.Out.WriteLineAsync($"{report.DisplayName(check.ArchivePath)}: nothing to repair, recovery data intact ({check.Blocks} blocks, {check.RecoveryBlocks} recovery blocks)").ConfigureAwait(false);
+                await Console.Out.WriteLineAsync($"{report.DisplayName(check.ArchivePath)}: nothing to repair, recovery data intact (blocks: {check.Blocks}, recovery blocks: {check.RecoveryBlocks})").ConfigureAwait(false);
         }
         return ReportResult(result, report);
     }

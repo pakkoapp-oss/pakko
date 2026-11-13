@@ -121,7 +121,7 @@
     <value>Questo formato di archivio non è supportato dal tar.exe di questo sistema (versione {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>È stata controllata solo la struttura dell’archivio: tar.exe non può verificare il contenuto dei file in questo formato.</value>
+    <value>È stata controllata solo la struttura dell’archivio: il contenuto dei file in questo formato non può essere verificato.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Questo archivio è protetto da password e non può essere estratto.</value>
@@ -325,16 +325,16 @@
     <value>Impossibile eliminare un file di ripristino rimasto da una versione precedente dell’archivio: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>L'archivio è danneggiato ({0} blocchi su {1}); i suoi dati di ripristino possono ripararlo ({2} blocchi di ripristino).</value>
+    <value>L'archivio è danneggiato (blocchi danneggiati: {0}/{1}); i suoi dati di ripristino possono ripararlo (blocchi di ripristino: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>L'archivio è danneggiato ({0} blocchi su {1}) oltre quanto i suoi dati di ripristino possono riparare ({2} blocchi di ripristino).</value>
+    <value>L'archivio è danneggiato (blocchi danneggiati: {0}/{1}) oltre quanto i suoi dati di ripristino possono riparare (blocchi di ripristino: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>L'archivio è danneggiato ({0} blocchi su {1}); riparare così tanto va oltre le capacità di Pakko.</value>
+    <value>L'archivio è danneggiato (blocchi danneggiati: {0}/{1}); riparare così tanto va oltre le capacità di Pakko.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>I dati di ripristino non corrispondono all'archivio ({0} blocchi su {1} sono diversi), ma l'archivio stesso supera il test: i dati di ripristino provengono probabilmente da una sua versione precedente.</value>
+    <value>I dati di ripristino non corrispondono all'archivio (blocchi diversi: {0}/{1}), ma l'archivio stesso supera il test: i dati di ripristino provengono probabilmente da una sua versione precedente.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>I dati di ripristino sono danneggiati o in un formato che Pakko non può leggere.</value>
@@ -349,13 +349,13 @@
     <value>I dati di ripristino sono stati creati per un file con un altro nome; corrispondono a questo archivio per contenuto.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>L'archivio corrisponde ai suoi dati di ripristino ({0} blocchi, {1} blocchi di ripristino).</value>
+    <value>L'archivio corrisponde ai suoi dati di ripristino (blocchi: {0}, blocchi di ripristino: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Non sono stati trovati dati di ripristino accanto all'archivio.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>L'archivio è stato riparato ({0} blocchi su {1}). La copia riparata è {2}; l'originale non è stato modificato.</value>
+    <value>L'archivio è stato riparato (blocchi riparati: {0}/{1}). La copia riparata è {2}; l'originale non è stato modificato.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>La copia riparata non corrispondeva ai dati di ripristino e non è stata conservata.</value>

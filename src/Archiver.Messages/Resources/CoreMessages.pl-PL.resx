@@ -121,7 +121,7 @@
     <value>Ten format archiwum nie jest obsługiwany przez tar.exe w tym systemie (wersja {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Sprawdzono tylko strukturę archiwum: tar.exe nie może zweryfikować zawartości plików w tym formacie.</value>
+    <value>Sprawdzono tylko strukturę archiwum: zawartości plików w tym formacie nie można zweryfikować.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>To archiwum jest chronione hasłem i nie można go wypakować.</value>
@@ -325,16 +325,16 @@
     <value>Nie można usunąć pliku odzyskiwania pozostałego z wcześniejszej wersji archiwum: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Archiwum jest uszkodzone ({0} z {1} bloków); jego dane odzyskiwania mogą je naprawić ({2} bloków odzyskiwania).</value>
+    <value>Archiwum jest uszkodzone (uszkodzone bloki: {0}/{1}); jego dane odzyskiwania mogą je naprawić (bloki odzyskiwania: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Archiwum jest uszkodzone ({0} z {1} bloków) bardziej, niż jego dane odzyskiwania mogą naprawić ({2} bloków odzyskiwania).</value>
+    <value>Archiwum jest uszkodzone (uszkodzone bloki: {0}/{1}) bardziej, niż jego dane odzyskiwania mogą naprawić (bloki odzyskiwania: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Archiwum jest uszkodzone ({0} z {1} bloków); naprawa w takim zakresie przekracza możliwości programu Pakko.</value>
+    <value>Archiwum jest uszkodzone (uszkodzone bloki: {0}/{1}); naprawa w takim zakresie przekracza możliwości programu Pakko.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Dane odzyskiwania nie pasują do archiwum (różni się {0} z {1} bloków), ale samo archiwum przechodzi test: dane odzyskiwania pochodzą zapewne z jego wcześniejszej wersji.</value>
+    <value>Dane odzyskiwania nie pasują do archiwum (różniące się bloki: {0}/{1}), ale samo archiwum przechodzi test: dane odzyskiwania pochodzą zapewne z jego wcześniejszej wersji.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Dane odzyskiwania są uszkodzone lub w formacie, którego Pakko nie potrafi odczytać.</value>
@@ -349,13 +349,13 @@
     <value>Dane odzyskiwania utworzono dla pliku o innej nazwie; pasują do tego archiwum zawartością.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Archiwum zgadza się ze swoimi danymi odzyskiwania ({0} bloków, {1} bloków odzyskiwania).</value>
+    <value>Archiwum zgadza się ze swoimi danymi odzyskiwania (bloki: {0}, bloki odzyskiwania: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Nie znaleziono danych odzyskiwania obok archiwum.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Archiwum zostało naprawione ({0} z {1} bloków). Naprawiona kopia to {2}; oryginał nie został zmieniony.</value>
+    <value>Archiwum zostało naprawione (naprawione bloki: {0}/{1}). Naprawiona kopia to {2}; oryginał nie został zmieniony.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Naprawiona kopia nie zgadzała się z danymi odzyskiwania i nie została zachowana.</value>

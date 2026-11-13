@@ -234,7 +234,7 @@ public sealed class RecoveryPanelTests : IDisposable
 
         result.Outcome.Should().Be(OperationOutcome.Completed);
         panel.Severity.Should().Be(RecoveryPanelSeverity.Success);
-        panel.Text.Should().MatchRegex(@"^<RecoveryDataIntact> The archive matches its recovery data \(\d+ blocks, \d+ recovery blocks\)\.$");
+        panel.Text.Should().MatchRegex(@"^<RecoveryDataIntact> The archive matches its recovery data \(blocks: \d+, recovery blocks: \d+\)\.$");
         RecoveryPanel.MatchLine(archive, result, Render).Should().Be(panel.Text);
     }
 
@@ -457,7 +457,7 @@ public sealed class RecoveryPanelTests : IDisposable
         File.ReadAllBytes(copy).Should().Equal(good);
         panel.Severity.Should().Be(RecoveryPanelSeverity.Success);
         panel.OffersRepair.Should().BeFalse();
-        panel.Text.Should().StartWith("<RecoveryDataRepaired> The archive was repaired (1 of ").And.Contain(repairedName);
+        panel.Text.Should().StartWith("<RecoveryDataRepaired> The archive was repaired (repaired blocks: 1 of ").And.Contain(repairedName);
         RecoveryPanel.NeedsAnotherFolder(archive, result).Should().BeFalse();
         // A repaired check is not "the set matches": the test's dialog and line must not take it.
         RecoveryPanel.MatchLine(archive, result, Render).Should().BeNull();

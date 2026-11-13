@@ -284,7 +284,7 @@ public sealed class CliSubprocessTests
         (int exitCode, string stdOut, string stdErr) = CliProcessRunner.Run("t", CliFixtureFiles.ValidTarGz!);
 
         exitCode.Should().Be(1);
-        stdErr.Trim().Should().Be("pakko: warning: valid.tar.gz: Only the archive's structure was checked: tar.exe cannot verify the contents of files in this format.");
+        stdErr.Trim().Should().Be("pakko: warning: valid.tar.gz: Only the archive's structure was checked: the contents of files in this format cannot be verified.");
         stdOut.Should().NotContain("No errors");
     }
 
@@ -308,7 +308,7 @@ public sealed class CliSubprocessTests
 
         (int testExit, string testOut, string testErr) = CliProcessRunner.Run("t", archivePath);
         testExit.Should().Be(1);
-        testErr.Trim().Should().Be("pakko: warning: out.tar.lzma: Only the archive's structure was checked: tar.exe cannot verify the contents of files in this format.");
+        testErr.Trim().Should().Be("pakko: warning: out.tar.lzma: Only the archive's structure was checked: the contents of files in this format cannot be verified.");
         testOut.Should().NotContain("No errors");
     }
 
@@ -552,7 +552,7 @@ public sealed class CliSubprocessTests
         string repaired = Path.Combine(folder, repairedName);
         exitCode.Should().Be(0, because: stdErr);
         stdErr.Should().BeEmpty();
-        stdOut.Should().Contain($"{name}: repaired (1 of ").And.Contain(repaired);
+        stdOut.Should().Contain($"{name}: repaired (rebuilt blocks: 1 of ").And.Contain(repaired);
         File.ReadAllBytes(repaired).Should().Equal(good);
         File.ReadAllBytes(archivePath).Should().Equal(damaged);
         Directory.GetFiles(folder).Should().BeEquivalentTo([.. before, repaired]);
@@ -856,7 +856,7 @@ public sealed class CliSubprocessTests
         else
         {
             exitCode.Should().Be(1);
-            stdErr.Trim().Should().EndWith("Only the archive's structure was checked: tar.exe cannot verify the contents of files in this format.");
+            stdErr.Trim().Should().EndWith("Only the archive's structure was checked: the contents of files in this format cannot be verified.");
         }
     }
 

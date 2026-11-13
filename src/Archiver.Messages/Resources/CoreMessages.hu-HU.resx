@@ -121,7 +121,7 @@
     <value>A rendszer tar.exe-je ({0} verzió) nem támogatja ezt az archívumformátumot.</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Csak az archívum szerkezete lett ellenőrizve: a tar.exe nem tudja ellenőrizni a fájlok tartalmát ebben a formátumban.</value>
+    <value>Csak az archívum szerkezete lett ellenőrizve: a fájlok tartalma ebben a formátumban nem ellenőrizhető.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Ez az archívum jelszóval védett, ezért nem bontható ki.</value>
@@ -325,16 +325,16 @@
     <value>Az archívum egy korábbi verziójából maradt helyreállítási fájl nem törölhető: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Az archívum sérült ({1} blokkból {0}); a helyreállítási adatai ki tudják javítani ({2} helyreállítási blokk).</value>
+    <value>Az archívum sérült (sérült blokkok: {0}/{1}); a helyreállítási adatai ki tudják javítani (helyreállítási blokkok: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Az archívum jobban sérült ({1} blokkból {0}), mint amit a helyreállítási adatai ki tudnak javítani ({2} helyreállítási blokk).</value>
+    <value>Az archívum jobban sérült (sérült blokkok: {0}/{1}), mint amit a helyreállítási adatai ki tudnak javítani (helyreállítási blokkok: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Az archívum sérült ({1} blokkból {0}); ennyi javítása meghaladja a Pakko képességeit.</value>
+    <value>Az archívum sérült (sérült blokkok: {0}/{1}); ennyi javítása meghaladja a Pakko képességeit.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>A helyreállítási adatok nem egyeznek az archívummal ({1} blokkból {0} eltér), de maga az archívum átmegy a teszten: a helyreállítási adatok valószínűleg egy korábbi verziójából származnak.</value>
+    <value>A helyreállítási adatok nem egyeznek az archívummal (eltérő blokkok: {0}/{1}), de maga az archívum átmegy a teszten: a helyreállítási adatok valószínűleg egy korábbi verziójából származnak.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>A helyreállítási adatok sérültek, vagy olyan formátumúak, amelyet a Pakko nem tud olvasni.</value>
@@ -349,13 +349,13 @@
     <value>A helyreállítási adatok egy más nevű fájlhoz készültek; tartalom alapján egyeznek ezzel az archívummal.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Az archívum egyezik a helyreállítási adataival ({0} blokk, {1} helyreállítási blokk).</value>
+    <value>Az archívum egyezik a helyreállítási adataival (blokkok: {0}, helyreállítási blokkok: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Az archívum mellett nem találhatók helyreállítási adatok.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Az archívum javítása megtörtént ({1} blokkból {0}). A javított másolat: {2}; az eredeti nem változott.</value>
+    <value>Az archívum javítása megtörtént (javított blokkok: {0}/{1}). A javított másolat: {2}; az eredeti nem változott.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>A javított másolat nem egyezett a helyreállítási adatokkal, ezért nem maradt meg.</value>

@@ -121,7 +121,7 @@
     <value>Tämän järjestelmän tar.exe (versio {0}) ei tue tätä arkistomuotoa.</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Vain arkiston rakenne tarkistettiin: tar.exe ei voi tarkistaa tiedostojen sisältöä tässä muodossa.</value>
+    <value>Vain arkiston rakenne tarkistettiin: tiedostojen sisältöä ei voi tarkistaa tässä muodossa.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Tämä arkisto on suojattu salasanalla, eikä sitä voi purkaa.</value>
@@ -325,16 +325,16 @@
     <value>Arkiston aiemmasta versiosta jäänyttä palautustiedostoa ei voitu poistaa: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Arkisto on vahingoittunut ({0}/{1} lohkoa); sen palautustiedot voivat korjata sen ({2} palautuslohkoa).</value>
+    <value>Arkisto on vahingoittunut (vahingoittuneita lohkoja: {0}/{1}); sen palautustiedot voivat korjata sen (palautuslohkoja: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Arkisto on vahingoittunut ({0}/{1} lohkoa) enemmän kuin sen palautustiedot voivat korjata ({2} palautuslohkoa).</value>
+    <value>Arkisto on vahingoittunut (vahingoittuneita lohkoja: {0}/{1}) enemmän kuin sen palautustiedot voivat korjata (palautuslohkoja: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Arkisto on vahingoittunut ({0}/{1} lohkoa); näin suuri korjaus ylittää Pakkon kyvyt.</value>
+    <value>Arkisto on vahingoittunut (vahingoittuneita lohkoja: {0}/{1}); näin suuri korjaus ylittää Pakkon kyvyt.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Palautustiedot eivät vastaa arkistoa ({0}/{1} lohkoa eroaa), mutta itse arkisto läpäisee testin: palautustiedot ovat luultavasti sen aiemmasta versiosta.</value>
+    <value>Palautustiedot eivät vastaa arkistoa (eroavia lohkoja: {0}/{1}), mutta itse arkisto läpäisee testin: palautustiedot ovat luultavasti sen aiemmasta versiosta.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Palautustiedot ovat vahingoittuneet tai muodossa, jota Pakko ei voi lukea.</value>
@@ -349,13 +349,13 @@
     <value>Palautustiedot on tehty toisennimiselle tiedostolle; ne vastaavat tätä arkistoa sisällöltään.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Arkisto vastaa palautustietojaan ({0} lohkoa, {1} palautuslohkoa).</value>
+    <value>Arkisto vastaa palautustietojaan (lohkoja: {0}, palautuslohkoja: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Arkiston vierestä ei löytynyt palautustietoja.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Arkisto korjattiin ({0}/{1} lohkoa). Korjattu kopio on {2}; alkuperäistä ei muutettu.</value>
+    <value>Arkisto korjattiin (korjattuja lohkoja: {0}/{1}). Korjattu kopio on {2}; alkuperäistä ei muutettu.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Korjattu kopio ei vastannut palautustietoja, eikä sitä säilytetty.</value>

@@ -121,7 +121,7 @@
     <value>Dette arkivformatet støttes ikke av tar.exe på dette systemet (versjon {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Bare strukturen i arkivet ble kontrollert: tar.exe kan ikke kontrollere innholdet i filene i dette formatet.</value>
+    <value>Bare strukturen i arkivet ble kontrollert: innholdet i filene i dette formatet kan ikke kontrolleres.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Dette arkivet er passordbeskyttet og kan ikke pakkes ut.</value>
@@ -325,16 +325,16 @@
     <value>En gjenopprettingsfil fra en tidligere versjon av arkivet kunne ikke slettes: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Arkivet er skadet ({0} av {1} blokker); gjenopprettingsdataene kan reparere det ({2} gjenopprettingsblokker).</value>
+    <value>Arkivet er skadet (skadde blokker: {0}/{1}); gjenopprettingsdataene kan reparere det (gjenopprettingsblokker: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Arkivet er skadet ({0} av {1} blokker) mer enn gjenopprettingsdataene kan reparere ({2} gjenopprettingsblokker).</value>
+    <value>Arkivet er skadet (skadde blokker: {0}/{1}) mer enn gjenopprettingsdataene kan reparere (gjenopprettingsblokker: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Arkivet er skadet ({0} av {1} blokker); å reparere så mye er mer enn Pakko kan.</value>
+    <value>Arkivet er skadet (skadde blokker: {0}/{1}); å reparere så mye er mer enn Pakko kan.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Gjenopprettingsdataene samsvarer ikke med arkivet ({0} av {1} blokker er forskjellige), men selve arkivet består testen: gjenopprettingsdataene er sannsynligvis fra en tidligere versjon av det.</value>
+    <value>Gjenopprettingsdataene samsvarer ikke med arkivet (forskjellige blokker: {0}/{1}), men selve arkivet består testen: gjenopprettingsdataene er sannsynligvis fra en tidligere versjon av det.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Gjenopprettingsdataene er skadet eller i et format Pakko ikke kan lese.</value>
@@ -349,13 +349,13 @@
     <value>Gjenopprettingsdataene ble laget for en fil med et annet navn; de samsvarer med dette arkivet etter innhold.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Arkivet samsvarer med gjenopprettingsdataene ({0} blokker, {1} gjenopprettingsblokker).</value>
+    <value>Arkivet samsvarer med gjenopprettingsdataene (blokker: {0}, gjenopprettingsblokker: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Fant ingen gjenopprettingsdata ved siden av arkivet.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Arkivet ble reparert ({0} av {1} blokker). Den reparerte kopien er {2}; originalen ble ikke endret.</value>
+    <value>Arkivet ble reparert (reparerte blokker: {0}/{1}). Den reparerte kopien er {2}; originalen ble ikke endret.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Den reparerte kopien stemte ikke med gjenopprettingsdataene og ble ikke beholdt.</value>

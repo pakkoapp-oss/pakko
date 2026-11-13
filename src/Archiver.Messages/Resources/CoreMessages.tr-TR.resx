@@ -121,7 +121,7 @@
     <value>Bu arşiv biçimi, bu sistemin tar.exe'si (sürüm {0}) tarafından desteklenmiyor.</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Yalnızca arşivin yapısı denetlendi: tar.exe bu biçimdeki dosyaların içeriğini doğrulayamaz.</value>
+    <value>Yalnızca arşivin yapısı denetlendi: bu biçimdeki dosyaların içeriği doğrulanamaz.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Bu arşiv parola korumalı ve ayıklanamıyor.</value>
@@ -325,16 +325,16 @@
     <value>Arşivin önceki bir sürümünden kalan kurtarma dosyası silinemedi: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Arşiv hasarlı ({1} bloğun {0} tanesi); kurtarma verisi onu onarabilir ({2} kurtarma bloğu).</value>
+    <value>Arşiv hasarlı (hasarlı bloklar: {0}/{1}); kurtarma verisi onu onarabilir (kurtarma blokları: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Arşiv, kurtarma verisinin onarabileceğinden fazla hasarlı ({1} bloğun {0} tanesi; {2} kurtarma bloğu).</value>
+    <value>Arşiv, kurtarma verisinin onarabileceğinden fazla hasarlı (hasarlı bloklar: {0}/{1}; kurtarma blokları: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Arşiv hasarlı ({1} bloğun {0} tanesi); bu kadarını onarmak Pakko'nun yapabileceklerinin ötesinde.</value>
+    <value>Arşiv hasarlı (hasarlı bloklar: {0}/{1}); bu kadarını onarmak Pakko'nun yapabileceklerinin ötesinde.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Kurtarma verisi arşivle eşleşmiyor ({1} bloğun {0} tanesi farklı), ancak arşivin kendisi testi geçiyor: kurtarma verisi büyük olasılıkla arşivin önceki bir sürümüne ait.</value>
+    <value>Kurtarma verisi arşivle eşleşmiyor (farklı bloklar: {0}/{1}), ancak arşivin kendisi testi geçiyor: kurtarma verisi büyük olasılıkla arşivin önceki bir sürümüne ait.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Kurtarma verisi hasarlı veya Pakko'nun okuyamadığı bir biçimde.</value>
@@ -349,13 +349,13 @@
     <value>Kurtarma verisi başka adlı bir dosya için oluşturulmuş; içeriğine göre bu arşivle eşleşiyor.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Arşiv kurtarma verisiyle eşleşiyor ({0} blok, {1} kurtarma bloğu).</value>
+    <value>Arşiv kurtarma verisiyle eşleşiyor (bloklar: {0}, kurtarma blokları: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Arşivin yanında kurtarma verisi bulunamadı.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Arşiv onarıldı ({1} bloğun {0} tanesi). Onarılan kopya: {2}; özgün arşiv değiştirilmedi.</value>
+    <value>Arşiv onarıldı (onarılan bloklar: {0}/{1}). Onarılan kopya: {2}; özgün arşiv değiştirilmedi.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Onarılan kopya kurtarma verisiyle eşleşmedi ve saklanmadı.</value>

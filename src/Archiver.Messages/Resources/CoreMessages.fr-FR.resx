@@ -121,7 +121,7 @@
     <value>Ce format d’archive n’est pas pris en charge par le tar.exe de ce système (version {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Seule la structure de l’archive a été vérifiée : tar.exe ne peut pas vérifier le contenu des fichiers dans ce format.</value>
+    <value>Seule la structure de l’archive a été vérifiée : le contenu des fichiers dans ce format ne peut pas être vérifié.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Cette archive est protégée par mot de passe et ne peut pas être extraite.</value>
@@ -325,16 +325,16 @@
     <value>Impossible de supprimer un fichier de récupération laissé par une version antérieure de l’archive : {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>L’archive est endommagée ({0} blocs sur {1}) ; ses données de récupération peuvent la réparer ({2} blocs de récupération).</value>
+    <value>L’archive est endommagée (blocs endommagés : {0}/{1}) ; ses données de récupération peuvent la réparer (blocs de récupération : {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>L’archive est endommagée ({0} blocs sur {1}) au-delà de ce que ses données de récupération peuvent réparer ({2} blocs de récupération).</value>
+    <value>L’archive est endommagée (blocs endommagés : {0}/{1}) au-delà de ce que ses données de récupération peuvent réparer (blocs de récupération : {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>L’archive est endommagée ({0} blocs sur {1}) ; réparer autant dépasse ce que Pakko peut faire.</value>
+    <value>L’archive est endommagée (blocs endommagés : {0}/{1}) ; réparer autant dépasse ce que Pakko peut faire.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Les données de récupération ne correspondent pas à l’archive ({0} blocs sur {1} diffèrent), mais l’archive elle-même réussit le test : les données de récupération proviennent probablement d’une version antérieure.</value>
+    <value>Les données de récupération ne correspondent pas à l’archive (blocs différents : {0}/{1}), mais l’archive elle-même réussit le test : les données de récupération proviennent probablement d’une version antérieure.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Les données de récupération sont endommagées ou dans un format que Pakko ne peut pas lire.</value>
@@ -349,13 +349,13 @@
     <value>Les données de récupération ont été créées pour un fichier portant un autre nom ; elles correspondent à cette archive par leur contenu.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>L’archive correspond à ses données de récupération ({0} blocs, {1} blocs de récupération).</value>
+    <value>L’archive correspond à ses données de récupération (blocs : {0}, blocs de récupération : {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Aucune donnée de récupération n’a été trouvée à côté de l’archive.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>L’archive a été réparée ({0} blocs sur {1}). La copie réparée est {2} ; l’original n’a pas été modifié.</value>
+    <value>L’archive a été réparée (blocs réparés : {0}/{1}). La copie réparée est {2} ; l’original n’a pas été modifié.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>La copie réparée ne correspondait pas aux données de récupération et n’a pas été conservée.</value>

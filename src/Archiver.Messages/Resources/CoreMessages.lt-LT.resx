@@ -121,7 +121,7 @@
     <value>Šios sistemos tar.exe (versija {0}) nepalaiko šio archyvo formato.</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Patikrinta tik archyvo struktūra: tar.exe negali patikrinti šio formato failų turinio.</value>
+    <value>Patikrinta tik archyvo struktūra: šio formato failų turinio patikrinti negalima.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Šis archyvas apsaugotas slaptažodžiu ir jo negalima išskleisti.</value>
@@ -325,16 +325,16 @@
     <value>Nepavyko ištrinti atkūrimo failo, likusio iš ankstesnės archyvo versijos: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Archyvas sugadintas ({0} iš {1} blokų); jo atkūrimo duomenys gali jį pataisyti ({2} atkūrimo blokai).</value>
+    <value>Archyvas sugadintas (sugadinti blokai: {0}/{1}); jo atkūrimo duomenys gali jį pataisyti (atkūrimo blokai: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Archyvas sugadintas ({0} iš {1} blokų) labiau, nei jo atkūrimo duomenys gali pataisyti ({2} atkūrimo blokai).</value>
+    <value>Archyvas sugadintas (sugadinti blokai: {0}/{1}) labiau, nei jo atkūrimo duomenys gali pataisyti (atkūrimo blokai: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Archyvas sugadintas ({0} iš {1} blokų); tiek pataisyti Pakko negali.</value>
+    <value>Archyvas sugadintas (sugadinti blokai: {0}/{1}); tiek pataisyti Pakko negali.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Atkūrimo duomenys neatitinka archyvo (skiriasi {0} iš {1} blokų), tačiau pats archyvas testą praeina: atkūrimo duomenys greičiausiai yra iš ankstesnės jo versijos.</value>
+    <value>Atkūrimo duomenys neatitinka archyvo (skirtingi blokai: {0}/{1}), tačiau pats archyvas testą praeina: atkūrimo duomenys greičiausiai yra iš ankstesnės jo versijos.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Atkūrimo duomenys sugadinti arba tokio formato, kurio Pakko negali perskaityti.</value>
@@ -349,13 +349,13 @@
     <value>Atkūrimo duomenys sukurti kitu pavadinimu pavadintam failui; pagal turinį jie atitinka šį archyvą.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Archyvas atitinka savo atkūrimo duomenis ({0} blokai, {1} atkūrimo blokai).</value>
+    <value>Archyvas atitinka savo atkūrimo duomenis (blokai: {0}, atkūrimo blokai: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Šalia archyvo nerasta atkūrimo duomenų.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Archyvas pataisytas ({0} iš {1} blokų). Pataisyta kopija yra {2}; originalas nepakeistas.</value>
+    <value>Archyvas pataisytas (pataisyti blokai: {0}/{1}). Pataisyta kopija yra {2}; originalas nepakeistas.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Pataisyta kopija neatitiko atkūrimo duomenų ir nebuvo išsaugota.</value>

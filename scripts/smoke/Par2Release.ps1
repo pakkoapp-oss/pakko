@@ -130,7 +130,7 @@ Add-SmokeStep 'PAR-004' {
 
 Add-SmokeStep 'PAR-005' {
     $fresh = Invoke-Pakko @('t', (New-Par2Case 'par005fresh'))
-    Assert-Smoke ($fresh.Text -match '\((\d+) blocks, (\d+) recovery blocks\)') "t on a fresh set: $($fresh.Text)"
+    Assert-Smoke ($fresh.Text -match '\(blocks: (\d+), recovery blocks: (\d+)\)') "t on a fresh set: $($fresh.Text)"
     $recoveryBlocks = [int]$Matches[2]
 
     # A damaged main file: every packet in it is repeated in the volume.
@@ -146,7 +146,7 @@ Add-SmokeStep 'PAR-005' {
     $volume = Get-Par2Volume $zip
     Set-DamagedRange -Path $volume -Offset ([long]((Get-Item -LiteralPath $volume).Length / 2)) -Count 4000
     $verdict = Invoke-Pakko @('t', $zip)
-    Assert-Smoke ($verdict.Text -match '(\d+) recovery blocks' -and [int]$Matches[1] -lt $recoveryBlocks -and [int]$Matches[1] -gt 0) "t with a damaged volume still counts $recoveryBlocks recovery blocks: $($verdict.Text)"
+    Assert-Smoke ($verdict.Text -match 'recovery blocks: (\d+)' -and [int]$Matches[1] -lt $recoveryBlocks -and [int]$Matches[1] -gt 0) "t with a damaged volume still counts $recoveryBlocks recovery blocks: $($verdict.Text)"
     Set-DamagedRange -Path $zip -Offset 5MB -Count 100KB
     $repair = Invoke-Par2Repair $zip
     Assert-Smoke ($repair.ExitCode -eq 0 -and (Get-Sha256 (Join-Path (Split-Path -Parent $zip) 'data.repaired.zip')) -eq $original) "r with a damaged volume: exit $($repair.ExitCode) $($repair.Text)"
@@ -158,7 +158,7 @@ Add-SmokeStep 'PAR-005' {
     $zip = New-Par2Case 'par005half'
     Remove-Item -LiteralPath (Get-Par2Volume $zip)
     Set-DamagedRange -Path $zip -Offset 5MB -Count 100KB
-    $refused['a set without its volume'] = @{ Archive = $zip; Test = 2; Repair = 2; Says = 'beyond what its recovery data can repair \(0 recovery blocks\)' }
+    $refused['a set without its volume'] = @{ Archive = $zip; Test = 2; Repair = 2; Says = 'beyond what its recovery data can repair \(recovery blocks: 0\)' }
 
     # The set of another archive, under this one's name; the archive itself is whole.
     $zip = New-Par2Case 'par005other'
@@ -178,7 +178,7 @@ Add-SmokeStep 'PAR-005' {
     # More damage than the set can repair.
     $zip = New-Par2Case 'par005beyond'
     Set-DamagedRange -Path $zip -Offset 2MB -Count 6MB
-    $refused['damage beyond the set'] = @{ Archive = $zip; Test = 2; Repair = 2; Says = "beyond what its recovery data can repair \($recoveryBlocks recovery blocks\)" }
+    $refused['damage beyond the set'] = @{ Archive = $zip; Test = 2; Repair = 2; Says = "beyond what its recovery data can repair \(recovery blocks: $recoveryBlocks\)" }
 
     foreach ($what in $refused.Keys) {
         $case = $refused[$what]

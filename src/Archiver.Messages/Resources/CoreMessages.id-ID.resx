@@ -121,7 +121,7 @@
     <value>Format arsip ini tidak didukung oleh tar.exe di sistem ini (versi {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Hanya struktur arsip yang diperiksa: tar.exe tidak dapat memverifikasi isi file dalam format ini.</value>
+    <value>Hanya struktur arsip yang diperiksa: isi file dalam format ini tidak dapat diverifikasi.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Arsip ini dilindungi kata sandi dan tidak dapat diekstrak.</value>
@@ -325,16 +325,16 @@
     <value>File pemulihan dari versi arsip sebelumnya tidak dapat dihapus: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Arsip rusak ({0} dari {1} blok); data pemulihannya dapat memperbaikinya ({2} blok pemulihan).</value>
+    <value>Arsip rusak (blok rusak: {0}/{1}); data pemulihannya dapat memperbaikinya (blok pemulihan: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Arsip rusak ({0} dari {1} blok) melebihi yang dapat diperbaiki oleh data pemulihannya ({2} blok pemulihan).</value>
+    <value>Arsip rusak (blok rusak: {0}/{1}) melebihi yang dapat diperbaiki oleh data pemulihannya (blok pemulihan: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Arsip rusak ({0} dari {1} blok); memperbaiki sebanyak ini di luar kemampuan Pakko.</value>
+    <value>Arsip rusak (blok rusak: {0}/{1}); memperbaiki sebanyak ini di luar kemampuan Pakko.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Data pemulihan tidak cocok dengan arsip ({0} dari {1} blok berbeda), tetapi arsip itu sendiri lulus pengujian: data pemulihan kemungkinan berasal dari versi sebelumnya.</value>
+    <value>Data pemulihan tidak cocok dengan arsip (blok berbeda: {0}/{1}), tetapi arsip itu sendiri lulus pengujian: data pemulihan kemungkinan berasal dari versi sebelumnya.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Data pemulihan rusak atau dalam format yang tidak dapat dibaca Pakko.</value>
@@ -349,13 +349,13 @@
     <value>Data pemulihan dibuat untuk file dengan nama lain; data ini cocok dengan arsip ini berdasarkan isinya.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Arsip cocok dengan data pemulihannya ({0} blok, {1} blok pemulihan).</value>
+    <value>Arsip cocok dengan data pemulihannya (blok: {0}, blok pemulihan: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Tidak ditemukan data pemulihan di samping arsip.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Arsip telah diperbaiki ({0} dari {1} blok). Salinan yang diperbaiki adalah {2}; arsip asli tidak diubah.</value>
+    <value>Arsip telah diperbaiki (blok yang diperbaiki: {0}/{1}). Salinan yang diperbaiki adalah {2}; arsip asli tidak diubah.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Salinan yang diperbaiki tidak cocok dengan data pemulihan dan tidak disimpan.</value>

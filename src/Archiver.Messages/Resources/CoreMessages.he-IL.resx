@@ -121,7 +121,7 @@
     <value>פורמט ארכיון זה אינו נתמך על-ידי tar.exe של מערכת זו (גרסה {0}).</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>נבדק רק מבנה הארכיון: tar.exe אינו יכול לאמת את תוכן הקבצים בתבנית זו.</value>
+    <value>נבדק רק מבנה הארכיון: לא ניתן לאמת את תוכן הקבצים בתבנית זו.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>ארכיון זה מוגן בסיסמה ולא ניתן לחלץ אותו.</value>
@@ -325,16 +325,16 @@
     <value>לא ניתן היה למחוק קובץ שחזור שנותר מגרסה קודמת של הארכיון: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>הארכיון פגום ({0} מתוך {1} בלוקים); נתוני השחזור שלו יכולים לתקן אותו ({2} בלוקי שחזור).</value>
+    <value>הארכיון פגום (בלוקים פגומים: {0}/{1}); נתוני השחזור שלו יכולים לתקן אותו (בלוקי שחזור: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>הארכיון פגום ({0} מתוך {1} בלוקים) מעבר למה שנתוני השחזור שלו יכולים לתקן ({2} בלוקי שחזור).</value>
+    <value>הארכיון פגום (בלוקים פגומים: {0}/{1}) מעבר למה שנתוני השחזור שלו יכולים לתקן (בלוקי שחזור: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>הארכיון פגום ({0} מתוך {1} בלוקים); תיקון בהיקף כזה הוא מעבר ליכולת של Pakko.</value>
+    <value>הארכיון פגום (בלוקים פגומים: {0}/{1}); תיקון בהיקף כזה הוא מעבר ליכולת של Pakko.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>נתוני השחזור אינם תואמים לארכיון ({0} מתוך {1} בלוקים שונים), אבל הארכיון עצמו עובר את הבדיקה: נתוני השחזור הם כנראה מגרסה קודמת שלו.</value>
+    <value>נתוני השחזור אינם תואמים לארכיון (בלוקים שונים: {0}/{1}), אבל הארכיון עצמו עובר את הבדיקה: נתוני השחזור הם כנראה מגרסה קודמת שלו.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>נתוני השחזור פגומים או בתבנית ש-Pakko אינו יכול לקרוא.</value>
@@ -349,13 +349,13 @@
     <value>נתוני השחזור נוצרו עבור קובץ בשם אחר; הם תואמים לארכיון זה לפי התוכן שלו.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>הארכיון תואם לנתוני השחזור שלו ({0} בלוקים, {1} בלוקי שחזור).</value>
+    <value>הארכיון תואם לנתוני השחזור שלו (בלוקים: {0}, בלוקי שחזור: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>לא נמצאו נתוני שחזור לצד הארכיון.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>הארכיון תוקן ({0} מתוך {1} בלוקים). העותק המתוקן הוא {2}; המקור לא שונה.</value>
+    <value>הארכיון תוקן (בלוקים שתוקנו: {0}/{1}). העותק המתוקן הוא {2}; המקור לא שונה.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>העותק המתוקן לא תאם את נתוני השחזור ולא נשמר.</value>

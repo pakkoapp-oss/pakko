@@ -121,7 +121,7 @@
     <value>このアーカイブ形式はこのシステムの tar.exe (バージョン {0}) ではサポートされていません。</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>アーカイブの構造のみを確認しました。tar.exe はこの形式のファイルの内容を検証できません。</value>
+    <value>アーカイブの構造のみを確認しました。この形式では、ファイルの内容を検証できません。</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>このアーカイブはパスワードで保護されているため、展開できません。</value>
@@ -325,16 +325,16 @@
     <value>以前のバージョンのアーカイブから残った回復ファイルを削除できませんでした: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>アーカイブが破損しています ({1} ブロック中 {0} ブロック)。回復データで修復できます (回復ブロック {2} 個)。</value>
+    <value>アーカイブが破損しています (破損ブロック: {0}/{1})。回復データで修復できます (回復ブロック: {2})。</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>アーカイブの破損 ({1} ブロック中 {0} ブロック) は、回復データで修復できる範囲を超えています (回復ブロック {2} 個)。</value>
+    <value>アーカイブの破損 (破損ブロック: {0}/{1}) は、回復データで修復できる範囲を超えています (回復ブロック: {2})。</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>アーカイブが破損しています ({1} ブロック中 {0} ブロック)。これほどの修復は Pakko の能力を超えています。</value>
+    <value>アーカイブが破損しています (破損ブロック: {0}/{1})。これほどの修復は Pakko の能力を超えています。</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>回復データがアーカイブと一致しません ({1} ブロック中 {0} ブロックが異なります) が、アーカイブ自体はテストに合格しています。回復データはおそらく以前のバージョンのものです。</value>
+    <value>回復データがアーカイブと一致しません (異なるブロック: {0}/{1}) が、アーカイブ自体はテストに合格しています。回復データはおそらく以前のバージョンのものです。</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>回復データが破損しているか、Pakko が読み取れない形式です。</value>
@@ -349,13 +349,13 @@
     <value>回復データは別の名前のファイル用に作成されていますが、内容によりこのアーカイブと一致します。</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>アーカイブは回復データと一致しています ({0} ブロック、回復ブロック {1} 個)。</value>
+    <value>アーカイブは回復データと一致しています (ブロック: {0}、回復ブロック: {1})。</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>アーカイブの横に回復データが見つかりませんでした。</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>アーカイブを修復しました ({1} ブロック中 {0} ブロック)。修復されたコピーは {2} です。元のアーカイブは変更されていません。</value>
+    <value>アーカイブを修復しました (修復したブロック: {0}/{1})。修復されたコピーは {2} です。元のアーカイブは変更されていません。</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>修復されたコピーが回復データと一致しなかったため、保存されませんでした。</value>

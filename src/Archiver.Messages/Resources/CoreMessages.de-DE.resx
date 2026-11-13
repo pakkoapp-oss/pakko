@@ -121,7 +121,7 @@
     <value>Dieses Archivformat wird von tar.exe dieses Systems (Version {0}) nicht unterstützt.</value>
   </data>
   <data name="TestedStructureOnly" xml:space="preserve">
-    <value>Nur die Struktur des Archivs wurde geprüft: tar.exe kann den Inhalt der Dateien in diesem Format nicht überprüfen.</value>
+    <value>Nur die Struktur des Archivs wurde geprüft: Der Inhalt der Dateien in diesem Format kann nicht überprüft werden.</value>
   </data>
   <data name="PasswordProtectedExtract" xml:space="preserve">
     <value>Dieses Archiv ist passwortgeschützt und kann nicht extrahiert werden.</value>
@@ -325,16 +325,16 @@
     <value>Eine Wiederherstellungsdatei einer früheren Version des Archivs konnte nicht gelöscht werden: {0}</value>
   </data>
   <data name="RecoveryDataDamagedRepairable" xml:space="preserve">
-    <value>Das Archiv ist beschädigt ({0} von {1} Blöcken); seine Wiederherstellungsdaten können es reparieren ({2} Wiederherstellungsblöcke).</value>
+    <value>Das Archiv ist beschädigt (beschädigte Blöcke: {0}/{1}); seine Wiederherstellungsdaten können es reparieren (Wiederherstellungsblöcke: {2}).</value>
   </data>
   <data name="RecoveryDataDamagedNotRepairable" xml:space="preserve">
-    <value>Das Archiv ist stärker beschädigt ({0} von {1} Blöcken), als seine Wiederherstellungsdaten reparieren können ({2} Wiederherstellungsblöcke).</value>
+    <value>Das Archiv ist stärker beschädigt (beschädigte Blöcke: {0}/{1}), als seine Wiederherstellungsdaten reparieren können (Wiederherstellungsblöcke: {2}).</value>
   </data>
   <data name="RecoveryDataRepairTooLarge" xml:space="preserve">
-    <value>Das Archiv ist beschädigt ({0} von {1} Blöcken); so viel zu reparieren übersteigt die Möglichkeiten von Pakko.</value>
+    <value>Das Archiv ist beschädigt (beschädigte Blöcke: {0}/{1}); so viel zu reparieren übersteigt die Möglichkeiten von Pakko.</value>
   </data>
   <data name="RecoveryDataDoesNotMatch" xml:space="preserve">
-    <value>Die Wiederherstellungsdaten passen nicht zum Archiv ({0} von {1} Blöcken weichen ab), aber das Archiv selbst besteht den Test: Die Wiederherstellungsdaten stammen wahrscheinlich von einer früheren Version davon.</value>
+    <value>Die Wiederherstellungsdaten passen nicht zum Archiv (abweichende Blöcke: {0}/{1}), aber das Archiv selbst besteht den Test: Die Wiederherstellungsdaten stammen wahrscheinlich von einer früheren Version davon.</value>
   </data>
   <data name="RecoveryDataUnusable" xml:space="preserve">
     <value>Die Wiederherstellungsdaten sind beschädigt oder in einem Format, das Pakko nicht lesen kann.</value>
@@ -349,13 +349,13 @@
     <value>Die Wiederherstellungsdaten wurden für eine Datei mit einem anderen Namen erstellt; sie passen dem Inhalt nach zu diesem Archiv.</value>
   </data>
   <data name="RecoveryDataIntact" xml:space="preserve">
-    <value>Das Archiv stimmt mit seinen Wiederherstellungsdaten überein ({0} Blöcke, {1} Wiederherstellungsblöcke).</value>
+    <value>Das Archiv stimmt mit seinen Wiederherstellungsdaten überein (Blöcke: {0}, Wiederherstellungsblöcke: {1}).</value>
   </data>
   <data name="RecoveryDataNotFound" xml:space="preserve">
     <value>Neben dem Archiv wurden keine Wiederherstellungsdaten gefunden.</value>
   </data>
   <data name="RecoveryDataRepaired" xml:space="preserve">
-    <value>Das Archiv wurde repariert ({0} von {1} Blöcken). Die reparierte Kopie ist {2}; das Original wurde nicht verändert.</value>
+    <value>Das Archiv wurde repariert (reparierte Blöcke: {0}/{1}). Die reparierte Kopie ist {2}; das Original wurde nicht verändert.</value>
   </data>
   <data name="RecoveryRepairCheckFailed" xml:space="preserve">
     <value>Die reparierte Kopie stimmte nicht mit den Wiederherstellungsdaten überein und wurde nicht behalten.</value>
