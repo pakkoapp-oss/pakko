@@ -23,6 +23,9 @@ internal static class TarBuilder
 
         // T-F298: the header's mtime, in Unix seconds; 0 (1970-01-01) is what every earlier caller got.
         public long ModifiedUnixSeconds { get; init; }
+
+        // The header's mode field, octal (0444 has no write bit).
+        public string Mode { get; init; } = "0000644";
     }
 
     // A pax extended header ('x') carrying "path=<UTF-8>" for the entry that follows it.
@@ -42,7 +45,7 @@ internal static class TarBuilder
         using var fs = new FileStream(path, FileMode.Create, FileAccess.Write);
         foreach (Entry entry in entries)
         {
-            byte[] header = BuildHeader(entry.NameBytes ?? Encoding.ASCII.GetBytes(entry.Name), entry.Content.Length, entry.TypeFlag, entry.LinkName, gnuMagic,
+            byte[] header = BuildHeader(entry.NameBytes ?? Encoding.ASCII.GetBytes(entry.Name), entry.Content.Length, entry.TypeFlag, entry.LinkName, gnuMagic, entry.Mode,
                 entry.ModifiedUnixSeconds);
             fs.Write(header, 0, header.Length);
             if (entry.Content.Length > 0)
@@ -66,12 +69,12 @@ internal static class TarBuilder
         stream.Write(pad, 0, pad.Length);
     }
 
-    private static byte[] BuildHeader(byte[] name, int size, char typeFlag, string linkName, bool gnuMagic, long mtime)
+    private static byte[] BuildHeader(byte[] name, int size, char typeFlag, string linkName, bool gnuMagic, string mode, long mtime)
     {
         byte[] header = new byte[512];
 
         Array.Copy(name, 0, header, 0, Math.Min(100, name.Length));
-        SetField(header, 100, 8, "0000644\0");
+        SetField(header, 100, 8, mode + "\0");
         SetField(header, 108, 8, "0000000\0");
         SetField(header, 116, 8, "0000000\0");
         SetField(header, 124, 12, Convert.ToString(size, 8).PadLeft(11, '0') + "\0");

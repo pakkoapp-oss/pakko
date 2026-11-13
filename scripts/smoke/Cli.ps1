@@ -1065,6 +1065,30 @@ Add-SmokeStep 'CLI-060' {
     'the damaged plain 7z fails with its own error; encrypted.7z still reads as password-protected'
 }
 
+# T-F474: the quarantine is under %TEMP%; a destination on another volume takes the copy branch of
+# QuarantineFiles.TakeOut (a rename by handle cannot cross volumes). Never under D:\Projects, which
+# Controlled Folder Access guards on the dev machine.
+Add-SmokeStep 'CLI-061' {
+    $tempRoot = [System.IO.Path]::GetPathRoot([System.IO.Path]::GetTempPath())
+    $other = @([System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Fixed' -and $_.IsReady -and $_.RootDirectory.FullName -ne $tempRoot })
+    if ($other.Count -eq 0) { Skip-Smoke 'one fixed drive only: nothing to cross' }
+    $tar = Join-Path (Get-StepFolder 'cli061') 'across.tar'
+    $modified = [datetime]::new(2020, 1, 2, 3, 4, 6, [DateTimeKind]::Utc)
+    New-TarFile -Path $tar -Entries @(@{ Name = 'a.txt'; Content = 'across'; Modified = $modified })
+    $o = Join-Path $other[0].RootDirectory.FullName ('pakko-smoke-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $run = Invoke-Pakko @('x', $tar, "-o$o")
+        $file = Join-Path $o 'a.txt'
+        Assert-Smoke ($run.ExitCode -eq 0 -and (Test-Path -LiteralPath $file)) "exit $($run.ExitCode) $($run.Text)"
+        Assert-Smoke ((Get-Content -LiteralPath $file -Raw) -ceq 'across') "a.txt holds '$(Get-Content -LiteralPath $file -Raw)'"
+        Assert-Smoke ((Get-Item -LiteralPath $file).LastWriteTimeUtc -eq $modified) "a.txt's time: $((Get-Item -LiteralPath $file).LastWriteTimeUtc.ToString('o'))"
+    }
+    finally {
+        if (Test-Path -LiteralPath $o) { Remove-Item -LiteralPath $o -Recurse -Force }
+    }
+    "a.txt extracted onto $($other[0].Name) with its content and time"
+}
+
 Add-SmokeStep 'CLI-059' {
     $folder = Get-StepFolder 'cli059'
     $arcs = Join-Path $folder 'arcs'

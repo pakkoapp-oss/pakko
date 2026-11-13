@@ -27,14 +27,26 @@ public static partial class PathIdentity
         using SafeFileHandle handle = CreateFile(path, 0, FileShareAll, 0, OpenExisting, BackupSemantics, 0);
         if (handle.IsInvalid)
             return null;
-        Identity identity;
-        if (GetFileInformationByHandleEx(handle, FileIdInfoClass, out FileIdInfo id, (uint)Marshal.SizeOf<FileIdInfo>()))
-            identity = new Identity(id.VolumeSerialNumber, id.IdLow, id.IdHigh);
-        else if (GetFileInformationByHandle(handle, out ByHandleFileInformation info))
-            identity = new Identity(info.VolumeSerialNumber, ((ulong)info.FileIndexHigh << 32) | info.FileIndexLow, 0);
-        else
+        if (IdentityOf(handle) is not { } identity)
             return null; // neither identity can be read: where it leads is unknown
         return ReadFinalPath(handle) is { } finalPath ? new Resolved(identity, WithoutLongPathPrefix(finalPath)) : null;
+    }
+
+    /// <summary>The identity of what <paramref name="handle"/> has open; null when neither identity can be read.</summary>
+    internal static Identity? IdentityOf(SafeFileHandle handle)
+    {
+        if (GetFileInformationByHandleEx(handle, FileIdInfoClass, out FileIdInfo id, (uint)Marshal.SizeOf<FileIdInfo>()))
+            return new Identity(id.VolumeSerialNumber, id.IdLow, id.IdHigh);
+        if (GetFileInformationByHandle(handle, out ByHandleFileInformation info))
+            return new Identity(info.VolumeSerialNumber, ((ulong)info.FileIndexHigh << 32) | info.FileIndexLow, 0);
+        return null;
+    }
+
+    /// <summary>T-F474: whether <paramref name="path"/>, links followed, is the file <paramref name="identity"/> names.</summary>
+    internal static bool LeadsTo(string path, Identity identity)
+    {
+        using SafeFileHandle handle = CreateFile(path, 0, FileShareAll, 0, OpenExisting, BackupSemantics, 0);
+        return !handle.IsInvalid && IdentityOf(handle) == identity;
     }
 
     /// <summary>T-F511: the final path of the file or folder itself, a link opened as the link (its
@@ -144,17 +156,15 @@ public static partial class PathIdentity
     }
 
     /// <summary>
-    /// T-F470: whether the file at <paramref name="path"/> (a long-path spelling is taken as it is)
-    /// has one name and only its unnamed data stream. Opened for attributes only, sharing all and not
-    /// following a link: no data is read, so no scan-on-open and no conflict with another reader.
-    /// What the calls cannot show - a failed open or call, a second stream, a malformed record - is false.
+    /// T-F470, T-F474: whether the file open as <paramref name="file"/> (with FILE_READ_ATTRIBUTES,
+    /// opened as itself, not through a link) is no link, has one name and only its unnamed data stream.
+    /// No data is read. What the calls cannot show - a failed call, a second stream, a malformed
+    /// record - is false.
     /// </summary>
-    internal static bool HasOneLinkAndOneStream(string path)
+    internal static bool IsPlainFile(SafeFileHandle file)
     {
-        using SafeFileHandle file = CreateFile(path, ReadAttributes, FileShareAll, 0, OpenExisting, OpenReparsePoint, 0);
-        if (file.IsInvalid)
-            return false;
-        if (!GetFileInformationByHandle(file, out ByHandleFileInformation info) || info.NumberOfLinks != 1)
+        if (!GetFileInformationByHandle(file, out ByHandleFileInformation info) || info.NumberOfLinks != 1
+            || (info.FileAttributes & (FileAttributeReparsePoint | FileAttributeDirectory)) != 0)
             return false;
         // FILE_STREAM_INFO (WinBase.h): NextEntryOffset at 0, StreamNameLength at 4, StreamName at 24;
         // its LARGE_INTEGERs want 8-byte alignment, which a long buffer gives.

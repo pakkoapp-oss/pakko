@@ -73,6 +73,7 @@ public sealed partial class QuarantineFilesOwnerTests
         ("Sandbox/TarSandboxScope.cs", "QuarantineAcl.GrantModify(outDir, sid)", 1, "a Pakko-named folder or file at the quarantine root"),
         ("Sandbox/TarSandboxScope.cs", "QuarantineAcl.GrantModify(firstDir, _sid)", 1, "a Pakko-named folder or file at the quarantine root"),
         ("Sandbox/TarSandboxScope.cs", "QuarantineAcl.GrantReadExecute(folder, _sid)", 3, "a Pakko-named folder or file at the quarantine root"),
+        ("Sandbox/TarSandboxScope.cs", "QuarantineAcl.Revoke(folder, _sid)", 1, "a Pakko-named folder at the quarantine root; Windows takes the inherited entry off what is below it (T-F474)"),
         ("Sandbox/TarSandboxScope.cs", "Directory.CreateDirectory(outDir)", 1, "a Pakko-named folder or file at the quarantine root"),
         ("Sandbox/TarSandboxScope.cs", "Directory.Delete(quarantineRoot, recursive: true)", 1, "the quarantine root; .NET deletes names such as \"d \" and \"a.txt.\" below it (measured)"),
         ("Sandbox/TarSandboxScope.cs", "new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read)", 1, "the archive itself"),
@@ -137,7 +138,7 @@ public sealed partial class QuarantineFilesOwnerTests
     {
         // Guards the scan itself: if the owner's own calls stop matching, the tests above pass vacuously.
         Calls(Code(Owner)).Should().Contain(call => call.StartsWith("Directory.", StringComparison.Ordinal));
-        Calls(Code(Owner)).Should().Contain(call => call.StartsWith("File.Move(", StringComparison.Ordinal));
+        Calls(Code(Owner)).Should().Contain(call => call.StartsWith("File.", StringComparison.Ordinal));
         Code(Owner).Should().Contain(@"@""\\?\");
         TopLevelFiles().Should().BeEquivalentTo(["TarSandboxedService.cs", "AntivirusScanService.cs"]);
     }

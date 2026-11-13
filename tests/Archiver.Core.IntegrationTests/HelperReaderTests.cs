@@ -355,43 +355,199 @@ public sealed class HelperReaderTests : IDisposable
     }
 
     // A named stream would move out with its file, unseen by the scan; a hard link would make two
-    // destinations share one file's data.
+    // destinations share one file's data. Refused, and the file stays where it was.
     [Fact]
-    public void IsPlainFile_ANamedStreamOrAHardLink_IsFalse()
+    public void TakeOut_ANamedStreamOrAHardLink_IsFalse_NothingMoves()
     {
         string zero = Path.Combine(_temp.Path, "0");
         string one = Path.Combine(_temp.Path, "1");
+        string dest = Path.Combine(_temp.Path, "dest.txt");
         File.WriteAllText(zero, "a");
         File.WriteAllText(one, "b");
-        QuarantineFiles.IsPlainFile(one).Should().BeTrue();
         File.WriteAllText(one + ":hidden", "payload");
-        QuarantineFiles.IsPlainFile(one).Should().BeFalse("a named stream");
+
+        QuarantineFiles.TakeOut(one, dest).Should().BeFalse("a named stream");
+        File.Exists(dest).Should().BeFalse();
+        File.Exists(one).Should().BeTrue();
 
         File.Delete(one);
         RunCmd("mklink", "/H", one, zero);
         File.ReadAllText(one).Should().Be("a", "the link was made");
-        QuarantineFiles.IsPlainFile(one).Should().BeFalse("a second name");
-        QuarantineFiles.IsPlainFile(zero).Should().BeFalse("a second name");
+        QuarantineFiles.TakeOut(one, dest).Should().BeFalse("a second name");
+        QuarantineFiles.TakeOut(zero, dest).Should().BeFalse("a second name");
+        File.Exists(dest).Should().BeFalse();
     }
 
     [Fact]
-    public void IsPlainFile_AnEmptyFile_IsTrue()
+    public void TakeOut_AnEmptyFile_Moves()
     {
         string empty = Path.Combine(_temp.Path, "0");
+        string dest = Path.Combine(_temp.Path, "dest.txt");
         File.WriteAllBytes(empty, []);
 
-        QuarantineFiles.IsPlainFile(empty).Should().BeTrue();
+        QuarantineFiles.TakeOut(empty, dest).Should().BeTrue();
+
+        File.Exists(empty).Should().BeFalse();
+        File.ReadAllBytes(dest).Should().BeEmpty();
     }
 
-    // Opened for attributes only: a file another process holds (a scanner) is still plain.
+    // As File.Move(overwrite: true) did: what is at the destination is replaced.
     [Fact]
-    public void IsPlainFile_AFileHeldByAnotherReader_IsTrue()
+    public void TakeOut_OverAnExistingFile_ReplacesIt()
     {
-        string zero = Path.Combine(_temp.Path, "0");
-        File.WriteAllText(zero, "a");
-        using var held = new FileStream(zero, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        string file = Path.Combine(_temp.Path, "0");
+        string dest = Path.Combine(_temp.Path, "dest.txt");
+        File.WriteAllText(file, "new");
+        File.WriteAllText(dest, "old");
 
-        QuarantineFiles.IsPlainFile(zero).Should().BeTrue();
+        QuarantineFiles.TakeOut(file, dest).Should().BeTrue();
+
+        File.ReadAllText(dest).Should().Be("new");
+    }
+
+    // tar.exe writes "a.txt." as it is (T-F460); the move takes that file, not a twin "a.txt".
+    [Fact]
+    public void TakeOut_ANameWindowsTrims_TakesThatFile()
+    {
+        string twin = Path.Combine(_temp.Path, "a.txt");
+        string trimmed = twin + ".";
+        string dest = Path.Combine(_temp.Path, "dest.txt");
+        File.WriteAllText(twin, "twin");
+        File.WriteAllText(@"\\?\" + trimmed, "trimmed");
+
+        QuarantineFiles.TakeOut(trimmed, dest).Should().BeTrue();
+
+        File.ReadAllText(dest).Should().Be("trimmed");
+        File.ReadAllText(twin).Should().Be("twin");
+    }
+
+    // A handle that may write, opened before the sandbox lost the folder, would outlive the checks:
+    // the file cannot be opened past it, and is not moved.
+    [Fact]
+    public void TakeOut_AFileAnotherHandleMayWrite_Throws_NothingMoves()
+    {
+        string file = Path.Combine(_temp.Path, "0");
+        string dest = Path.Combine(_temp.Path, "dest.txt");
+        File.WriteAllText(file, "a");
+        using var writer = new FileStream(file, FileMode.Open, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+
+        Action takeOut = () => QuarantineFiles.TakeOut(file, dest);
+
+        takeOut.Should().Throw<IOException>();
+        File.Exists(dest).Should().BeFalse();
+    }
+
+    // A reader that shares everything (an on-access scanner) does not stop the move.
+    [Fact]
+    public void TakeOut_AFileHeldByAReaderSharingAll_Moves()
+    {
+        string file = Path.Combine(_temp.Path, "0");
+        string dest = Path.Combine(_temp.Path, "dest.txt");
+        File.WriteAllText(file, "a");
+        using var reader = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+
+        QuarantineFiles.TakeOut(file, dest).Should().BeTrue();
+
+        File.ReadAllText(dest).Should().Be("a");
+    }
+
+    // The sandbox's entry left on the file itself (its own DACL, not inherited) would let a
+    // concurrent sandboxed process open it again.
+    [Fact]
+    public void TakeOut_AFileThatStillLetsTheSandboxIn_IsFalse_NothingMoves()
+    {
+        var profile = new AppContainerProfile("Pakko.TarSandbox.Test." + Guid.NewGuid());
+        profile.EnsureExists();
+        try
+        {
+            using SafeSidHandle sid = profile.GetSid();
+            string file = Path.Combine(_temp.Path, "0");
+            string dest = Path.Combine(_temp.Path, "dest.txt");
+            File.WriteAllText(file, "a");
+            QuarantineAcl.GrantModify(file, sid);
+
+            QuarantineFiles.TakeOut(file, dest).Should().BeFalse();
+
+            File.Exists(dest).Should().BeFalse();
+            File.Exists(file).Should().BeTrue();
+        }
+        finally
+        {
+            profile.Delete();
+        }
+    }
+
+    // As File.Move did: the destination is normalized, so a rename and a copy land on one name.
+    [Fact]
+    public void TakeOut_ADestinationWindowsWouldTrim_LandsOnTheNormalizedName()
+    {
+        string file = Path.Combine(_temp.Path, "0");
+        File.WriteAllText(file, "a");
+
+        QuarantineFiles.TakeOut(file, Path.Combine(_temp.Path, "dest.txt.")).Should().BeTrue();
+
+        File.ReadAllText(Path.Combine(_temp.Path, "dest.txt")).Should().Be("a");
+        File.Exists(@"\\?\" + Path.Combine(_temp.Path, "dest.txt.")).Should().BeFalse();
+    }
+
+    // T-F474: the copy goes by path (CopyFile); a path that is not the checked handle's file copies nothing.
+    [Fact]
+    public void CopyOut_APathToAnotherFile_CopiesNothing()
+    {
+        string held = Path.Combine(_temp.Path, "held");
+        string other = Path.Combine(_temp.Path, "other");
+        string dest = Path.Combine(_temp.Path, "dest");
+        File.WriteAllText(held, "checked");
+        File.WriteAllText(other, "planted");
+        using Microsoft.Win32.SafeHandles.SafeFileHandle handle = File.OpenHandle(held, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+        QuarantineFiles.CopyOut(handle, other, dest).Should().BeFalse();
+
+        File.Exists(dest).Should().BeFalse();
+        QuarantineFiles.CopyOut(handle, held, dest).Should().BeTrue();
+        File.ReadAllText(dest).Should().Be("checked");
+    }
+
+    // Staging sits in the destination's folder, the quarantine under %TEMP% (T-F263): a rename by
+    // handle cannot cross volumes, so the file is copied (CopyFile, the path checked against the handle), keeping its time.
+    [Fact]
+    public void TakeOut_ToAnotherVolume_CopiesWithItsTime()
+    {
+        string tempRoot = Path.GetPathRoot(Path.GetTempPath())!;
+        string? otherRoot = DriveInfo.GetDrives()
+            .Where(d => d.DriveType == DriveType.Fixed && d.IsReady && !string.Equals(d.RootDirectory.FullName, tempRoot, StringComparison.OrdinalIgnoreCase))
+            .Select(d => d.RootDirectory.FullName).FirstOrDefault();
+        if (otherRoot is null)
+            return; // one volume only: nothing to cross
+        string folder = Path.Combine(otherRoot, "pakko-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            string file = Path.Combine(_temp.Path, "0");
+            string dest = Path.Combine(folder, "dest.txt");
+            File.WriteAllText(file, "across");
+            DateTime written = new(2020, 1, 2, 3, 4, 6, DateTimeKind.Utc);
+            File.SetLastWriteTimeUtc(file, written);
+
+            QuarantineFiles.TakeOut(file, dest).Should().BeTrue();
+
+            File.ReadAllText(dest).Should().Be("across");
+            File.GetLastWriteTimeUtc(dest).Should().Be(written);
+            File.Exists(file).Should().BeFalse();
+
+            // tar.exe makes a 0444 entry read-only: the copied-from file still goes.
+            string readOnly = Path.Combine(_temp.Path, "1");
+            File.WriteAllText(readOnly, "ro");
+            File.SetAttributes(readOnly, FileAttributes.ReadOnly);
+            QuarantineFiles.TakeOut(readOnly, Path.Combine(folder, "ro.txt")).Should().BeTrue();
+            File.Exists(readOnly).Should().BeFalse();
+            File.GetAttributes(Path.Combine(folder, "ro.txt")).Should().HaveFlag(FileAttributes.ReadOnly);
+            File.SetAttributes(Path.Combine(folder, "ro.txt"), FileAttributes.Normal);
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
     }
 
     // Asked right before each move, for both readers: a stream planted in the quarantine after the
@@ -523,9 +679,51 @@ public sealed class HelperReaderTests : IDisposable
         public void Report(ProgressReport value) => onReport(value);
     }
 
+    // T-F463: the pre-scan refuses link entries, so a link in the quarantine means the sandbox broke
+    // its rules; its target is not the archive's. The walk fails, and the scan never reads through it.
     [Fact]
-    public void IsPlainFile_OnAFileThatIsGone_IsFalse_NotAnException()
-        => QuarantineFiles.IsPlainFile(Path.Combine(_temp.Path, "gone")).Should().BeFalse();
+    public void Walk_AFileThatIsALink_FailsTheWalk_AndIsNeverReadThrough()
+    {
+        string target = Path.Combine(_temp.Path, "target.txt");
+        string folder = Path.Combine(_temp.Path, "q");
+        string link = Path.Combine(folder, "link.txt");
+        File.WriteAllText(target, "outside");
+        Directory.CreateDirectory(folder);
+        try
+        {
+            File.CreateSymbolicLink(link, target);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return; // no right to make a link here: nothing to walk
+        }
+
+        Action walk = () => _ = QuarantineFiles.Walk(folder).ToList();
+        Action read = () => QuarantineFiles.OpenRead(link).Dispose();
+
+        walk.Should().Throw<IOException>();
+        read.Should().Throw<IOException>();
+    }
+
+    [Fact]
+    public void Walk_Cancelled_Stops()
+    {
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+
+        Action walk = () => _ = QuarantineFiles.Walk(_temp.Path, cancelled.Token).ToList();
+
+        walk.Should().Throw<OperationCanceledException>();
+    }
+
+    // A file that is gone is that file's error (the per-entry catch), not the archive's.
+    [Fact]
+    public void TakeOut_OnAFileThatIsGone_ThrowsIOException()
+    {
+        Action takeOut = () => QuarantineFiles.TakeOut(Path.Combine(_temp.Path, "gone"), Path.Combine(_temp.Path, "dest.txt"));
+
+        takeOut.Should().Throw<IOException>();
+    }
 
     private static void RunCmd(params string[] arguments)
     {
@@ -715,6 +913,114 @@ public sealed class HelperReaderTests : IDisposable
         (ArchiveResult result, _) = await ExtractAsync(backend, Fixture("damaged_data.7z"));
 
         result.Errors.Should().ContainSingle().Which.Text!.Code.Should().NotBe(MessageCode.PasswordProtectedFormatNotSupported);
+    }
+
+    // --- T-F474: once a run ends, no sandboxed process can change what it wrote ---
+
+    // The sandbox's SID is shared by every operation: another one's tar.exe or helper, running at the
+    // same time, could otherwise rewrite a file, give it a second name or a named stream, or add a
+    // file, between the checks and the move out.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task Extract_AfterTheRun_ASandboxedProcessCannotChangeTheQuarantine(string backend)
+    {
+        string archive = Tar(("a.txt", "A"), ("sub/b.txt", "B"));
+        using ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(
+            archive, true, null, CancellationToken.None, backend == Helper ? Setup.Value : null);
+        await reader.ScanAsync(CancellationToken.None);
+        await reader.SelectForExtractAsync(null, null, CancellationToken.None);
+        IQuarantinedEntries quarantine = await reader.ExtractAsync(null, [], CancellationToken.None);
+
+        string[] files = [.. quarantine.Files().Select(f => f.Path)];
+
+        files.Should().HaveCount(2);
+        foreach (string file in files)
+            await ShouldResistTheSandboxAsync(file);
+    }
+
+    // The sandbox's entry comes off a file deeper than MAX_PATH as well: the move does not refuse it.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task Extract_AFileDeeperThanMaxPath_Lands(string backend)
+    {
+        string deep = string.Join('/', Enumerable.Repeat(new string('d', 60), 5)) + "/a.txt";
+        string archive = Tar((deep, "deep"));
+
+        (ArchiveResult result, string dest) = await ExtractAsync(backend, archive);
+
+        result.Errors.Should().BeEmpty();
+        Tree(dest).Should().BeEquivalentTo(new Dictionary<string, string> { [deep] = "deep" });
+    }
+
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task ExtractForScan_AfterEachRun_ASandboxedProcessCannotChangeTheQuarantine(string backend)
+    {
+        string archive = Path.Combine(_temp.Path, "twice.tar");
+        TarBuilder.WriteTar(archive,
+        [
+            new TarBuilder.Entry { Name = "a.txt", Content = "first"u8.ToArray() },
+            new TarBuilder.Entry { Name = "a.txt", Content = "last"u8.ToArray() },
+        ]);
+        using ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(
+            archive, true, null, CancellationToken.None, backend == Helper ? Setup.Value : null);
+        await reader.ScanAsync(CancellationToken.None);
+
+        ScanQuarantine main = await reader.ExtractForScanAsync(null, CancellationToken.None);
+        FirstCopiesForScan firsts = main.HasFirstCopies ? await reader.ExtractFirstCopiesForScanAsync(CancellationToken.None) : new FirstCopiesForScan([], null, () => 0);
+
+        string[] files = [.. main.Files.Concat(firsts.Files).Select(f => f.Path)];
+        files.Should().NotBeEmpty();
+        foreach (string file in files)
+            await ShouldResistTheSandboxAsync(file);
+    }
+
+    // T-F474's closing review: Directory.Delete leaves a read-only file (and so its folders) behind,
+    // which would keep the archive's plaintext in %TEMP% until the next day's sweep. Neither reader
+    // makes a 0444 entry read-only (measured on bsdtar 3.8.9 and 3.5.2); this keeps it so.
+    [Theory]
+    [MemberData(nameof(Backends))]
+    public async Task ExtractForScan_AReadOnlyEntry_TheQuarantineIsStillDeleted(string backend)
+    {
+        string archive = Path.Combine(_temp.Path, "ro.tar");
+        TarBuilder.WriteTar(archive, [new TarBuilder.Entry { Name = "ro.txt", Content = "r"u8.ToArray(), Mode = "0000444" }]);
+        string root;
+        using (ISandboxedArchiveReader reader = await ISandboxedArchiveReader.OpenAsync(
+            archive, true, null, CancellationToken.None, backend == Helper ? Setup.Value : null))
+        {
+            await reader.ScanAsync(CancellationToken.None);
+            ScanQuarantine main = await reader.ExtractForScanAsync(null, CancellationToken.None);
+            string file = main.Files.Single().Path;
+            root = Path.GetDirectoryName(Path.GetDirectoryName(file))!;
+        }
+
+        Directory.Exists(root).Should().BeFalse("the quarantine holds the archive's plaintext");
+    }
+
+    private static async Task ShouldResistTheSandboxAsync(string file)
+    {
+        string folder = Path.GetDirectoryName(file)!;
+        string name = Path.GetFileName(file);
+        byte[] before = File.ReadAllBytes(file);
+
+        (await SandboxedCmdAsync(folder, "echo ok")).Should().Be(0, "the sandboxed process itself runs");
+        (await SandboxedCmdAsync(folder, $"echo x>> {name}")).Should().NotBe(0, "the data cannot be rewritten");
+        (await SandboxedCmdAsync(folder, $"echo x> {name}:s")).Should().NotBe(0, "no named stream can be added");
+        (await SandboxedCmdAsync(folder, $"mklink /h second.txt {name}")).Should().NotBe(0, "no second name can be made");
+        (await SandboxedCmdAsync(folder, "echo x> added.txt")).Should().NotBe(0, "no file can be added");
+
+        File.ReadAllBytes(file).Should().Equal(before);
+        File.Exists(Path.Combine(folder, "added.txt")).Should().BeFalse();
+    }
+
+    // cmd.exe in Pakko's own AppContainer, as another operation's tar.exe or helper would run, in
+    // the quarantine folder (the launcher quotes an argument with quotes in it, which cmd reads wrong).
+    private static async Task<int> SandboxedCmdAsync(string folder, string command)
+    {
+        using SafeSidHandle sid = new AppContainerProfile(AppContainerProfile.ProductionProfileName).GetSid();
+        (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
+            @"C:\Windows\System32\cmd.exe", ["/d", "/c", command], new ProcessLaunchOptions(AppContainerSid: sid, WorkingDirectory: folder), CancellationToken.None);
+        return exitCode;
     }
 
     // --- Harness ---

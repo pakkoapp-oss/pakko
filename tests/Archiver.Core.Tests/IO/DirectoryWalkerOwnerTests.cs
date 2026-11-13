@@ -29,8 +29,7 @@ public sealed partial class DirectoryWalkerOwnerTests
         ("Archiver.Core/Services/TarSandboxedService.cs", ".EnumerateFiles(", 1, "QuarantineFiles' walk of the quarantine (T-F463)"),
         ("Archiver.Core/Services/TarSandboxedService.cs", ".GetFileSystemInfos(", 1, "a drive root's names for tar.exe, one level (T-F285)"),
         ("Archiver.Core/Services/ZipArchiveService.cs", ".EnumerateFileSystemEntries(", 1, "whether a folder is empty"),
-        ("Archiver.Core/Services/Sandbox/QuarantineFiles.cs", ".EnumerateFiles(", 1, "the quarantine's own walk, by literal paths (T-F463)"),
-        ("Archiver.Core/Services/Sandbox/QuarantineFiles.cs", ".EnumerateDirectories(", 1, "the quarantine's own walk, by literal paths (T-F463)"),
+        ("Archiver.Core/Services/Sandbox/QuarantineFiles.cs", ".EnumerateFileSystemInfos(", 1, "the quarantine's own walk, by literal paths, each item's attributes from the listing (T-F463)"),
         ("Archiver.Core/Services/Sandbox/TarExeReader.cs", ".EnumerateFiles(", 4, "QuarantineFiles' walk of the quarantine (T-F463)"),
     ];
 

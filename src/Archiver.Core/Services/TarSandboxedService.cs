@@ -849,21 +849,20 @@ public sealed class TarSandboxedService : ITarService
         // T-F263: staged under the path it will have in actualDest; the commit moves it there.
         string stagedFilePath = Path.Combine(plan.Staging.Path, Path.GetRelativePath(actualDest, finalFilePath));
 
-        // T-F470: a second name would make two destinations share one file's data; a named stream would
-        // move out with it, unseen by the scan. Neither is a file that cannot be written: the sandbox,
-        // tar.exe or the helper, broke its rules, so the whole archive fails, outside the per-entry
-        // catch. Asked here, the last moment before the move, for both readers.
-        if (!QuarantineFiles.IsPlainFile(file))
-            throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, "the sandbox left a file with a second name or a named stream"));
-
         // T-F170: a file that cannot be written fails only itself - a file of the archive standing
         // where its folder must be too (T-F470, as ZIP). A locked destination file is reported by the
         // commit (ExtractionStaging.CommitInto), the same way as for ZIP. As ZIP's WriteEntryAsync,
         // the message names the destination, never the staging folder that mirrors it.
+        // T-F470, T-F474: a second name would make two destinations share one file's data; a named
+        // stream would move out with it, unseen by the scan; a link or an AppContainer's entry is not
+        // what tar.exe or the helper may leave. None is a file that cannot be written: the sandbox broke
+        // its rules, so the whole archive fails, outside the per-entry catch. Asked through the handle
+        // that moves the file, for both readers.
+        bool tookOut;
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(stagedFilePath)!);
-            QuarantineFiles.MoveOut(file, stagedFilePath);
+            tookOut = QuarantineFiles.TakeOut(file, stagedFilePath);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -872,6 +871,8 @@ public sealed class TarSandboxedService : ITarService
             context.Errors.Add(CoreMessages.Error(archivePath, CoreMessages.Text(MessageCode.CannotExtractEntry, relativePath, detail), ex));
             return (false, relativePath);
         }
+        if (!tookOut)
+            throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, "the sandbox left a file with a second name, a named stream, a link or its own permissions"));
 
         if (!TryTakeDestinationPermissions(stagedFilePath, relativePath, archivePath, context))
             return (false, relativePath);
