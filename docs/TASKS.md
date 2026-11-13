@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count: done, no conhost per launch, half the processes), T-F506 (AMSI buffer: done, the faults are inherent; large buffers no longer pooled, content zeroed), T-F500 (writer failure paths, the flaky chunk-folder test: done), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: before T-F511's PR 4, which it checks), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts shown untranslated), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477, T-F478, T-F484, T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: before T-F511's PR 4, which it checks), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482, T-F485, T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -81,7 +81,7 @@ above stays as the record of what each stream holds.
 |---|---|---|---|---|
 | 1 | Owners | T-F511, T-F516, T-F517, T-F518, T-F519 | done on `refactor/tf511-owners-rest` | an opus review, then the PR |
 | 2 | N's leftovers | T-F507, T-F506, T-F500 (with the flaky `ChunkFolderIsHidden` test), T-F508 | one or two commits each on their own branches already: rebased onto one | done on `perf/batch2-n-leftovers`: the quiet suite and `Category=Slow` (28 tests, the litmus paper and the performance ratios among them) green; smoke CLI-001, CLI-004, CLI-026, CLI-033, CLI-058 and SHL-008 on 1.10.0.18; T-F507 was run on PakkoW10 on its own branch |
-| 3 | Texts and names | T-F520, T-F484, T-F477, T-F478 | messages and names: one pass over the glossary and the 37 locales | `Archiver.Messages.Tests`, CLI and Explorer smoke |
+| 3 | Texts and names | T-F520, T-F484, T-F477, T-F478 | messages and names: one pass over the glossary and the 37 locales | done on `fix/batch3-texts`: the quiet suite green; smoke CLI-001, CLI-033, PAR-001-PAR-009, PAR-012, SHL-004, SHL-014 on 1.10.0.20; the App and Explorer rows that show these texts (`EXP-003` in uk-UA, `EXP-013`, `APP-006`, a typed name) go with batch 4's `windows` MCP session |
 | 4 | The App on the device | T-F486, T-F485, T-F482, T-F483 | high contrast, the keyboard, 7z from the App | one deploy, one `windows` MCP session |
 | 5 | tar, quarantine, memory | T-F513, T-F473, T-F474, T-F510 | the quarantine and the tar readers | one run on PakkoW10 (both tar builds) |
 | 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476 | calibration and the CI image | one series on an idle machine |
@@ -1725,15 +1725,17 @@ re-measured with T-F346's script before and after.
     acceptance would be better). Never a throw, a touched twin, another file's bytes or a write
     outside the destination.
 
-### T-F520 - Core's own English exception texts reach the user untranslated (P3, from T-F511's trace)
+### T-F521 - A damaged encrypted ZIP reads as password-protected (P3, from T-F520's trace)
 
-- [ ] **Status:** open (this wave). `RawZipEntryLocator`'s `InvalidDataException`s (a malformed
-  central directory, Zip64 or WinZip AES field: an encrypted ZIP Pakko reads itself), the
-  defence-in-depth "would extract outside destination directory" in `ZipArchiveService` (`:1877`,
-  `:1904`) and `DirectoryJunction`'s "folder path is too long" are English text that
-  `CoreMessages.Detail` shows as is, in every locale. Give each a `MessageCode` (and its 37
-  translations, the glossary first) and throw `CoreMessages.InvalidData`/`CoreTextIOException`.
-  `ArchiveFormatDetector`'s "Malformed RAR5 vint" is caught inside it and never shown.
+- [ ] **Status:** open (next wave). Found 2026-11-13: an encrypted ZIP whose central directory puts a
+  local header past the end of the file is reported by extraction, and by a test with a password,
+  as "This archive is password-protected and cannot be extracted/tested": the error of Pakko's own
+  reader (`RawZipEntryLocator`) is taken as "cannot read the encryption", so the user is told to
+  look for a password, not that the file is damaged. The ZIP twin of T-F518. A plain test shows
+  .NET's own English "A local file header is corrupt." next to T-F280's mismatch. Next: tell a
+  damaged structure from an unsupported encryption where the locator fails, with the fixture of
+  `TestAsync_LocalHeaderPastTheEnd_ShowsNoTextOfPakkosOwnReader` encrypted.
+- **Reported by:** the agent, 2026-11-13.
 
 ### T-F519 - "Delete after" in the App deleted the twin of a source whose final path Windows trims (P1, from T-F511's trace)
 
@@ -1987,14 +1989,6 @@ re-measured with T-F346's script before and after.
   for `AccentButtonStyle` from the system brushes.
 - **Reported by:** the agent, 2026-11-10.
 
-### T-F484 - uk-UA: the PAR2 messages use one plural form for every count (P3)
-
-- [ ] **Status:** open. Found 2026-11-10 (`EXP-003` in uk-UA): the PAR2 lines put a single noun form
-  after every number, where Ukrainian needs three (1 / 2-4 / 5+). Next: check which PAR2 strings take
-  a count, route them through the plural helper the other counted strings use, and add the
-  case to the localization tests.
-- **Reported by:** the agent, 2026-11-10.
-
 ### T-F483 - A 7z created from a nested folder once lacked the inner folder's entry (P2, unreproduced)
 
 - [ ] **Status:** open. Found 2026-11-10 (`APP-025`, 7z LZMA2 from a folder with a Cyrillic name and
@@ -2039,25 +2033,6 @@ re-measured with T-F346's script before and after.
   follow the new numbers. Next: the same scenarios through older release CLIs (v1.6-v1.9) to find
   the version, then the change.
 - **Reported by:** the agent, 2026-11-10.
-
-### T-F478 - Test's structure-only warning names tar.exe when the archive helper read the archive (P3)
-
-- [ ] **Status:** open. Found 2026-11-09 by the v1.10.0 release smoke (`EXP-013`, `APP-006`):
-  `MessageCode.TestedStructureOnly` says "tar.exe cannot verify the contents of files in this
-  format" in the App, Explorer's window and `pakko t`, also when the helper (T-F470) did the
-  reading. The fact holds (the format has no content checksums); the actor named is wrong. Next:
-  a text without the reader's name, in 37 locales. Not a release blocker: it is not a regression of
-  what the text says, only of whom it names.
-- **Reported by:** the agent, 2026-11-09.
-
-### T-F477 - A typed archive name with the format's extension gets it twice (P3)
-
-- [ ] **Status:** open. Found 2026-11-09 by the v1.10.0 release smoke (`APP-028` setup): the App's
-  Name field shows "archive.zip" as its placeholder, but a typed "case4.zip" writes `case4.zip.zip`,
-  since `ArchiveNaming.SingleArchiveFileName` always appends the format's extension. Since T-F199
-  step 4 (2026-09-28), not a v1.10.0 regression. Next: drop a typed extension that matches the
-  chosen format (and decide what a typed different extension means), with tests.
-- **Reported by:** the agent, 2026-11-09.
 
 ### T-F476 - CI's `windows-2022` image now has a tar.exe 3.8.9 without xz or LZMA (P3)
 

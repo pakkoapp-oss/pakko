@@ -14782,6 +14782,7 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   - **Pool:** entries over 1 MiB no longer go through the shared pool, which kept up to 256 MiB.
   - **Plaintext:** the content scanned is zeroed after the scan.
 
+
 ### T-F500 - The hand-rolled writer's failure paths in one archive per item: a disposal failure and the untested shapes (P3, from T-F497's review)
 
 - [x] **Status:** done 2026-11-12. Found by T-F497's closing review, 2026-11-11.
@@ -14804,3 +14805,65 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
     - unreadable sources on the chunk and in-memory paths, with and without a password;
     - a cancel midway.
   - **Flaky test:** the chunk-folder test looks from inside the run instead of polling.
+
+### T-F477 - A typed archive name with the format's extension gets it twice (P3)
+
+- [x] **Status:** done 2026-11-13. Found 2026-11-09 by the v1.10.0 release smoke (`APP-028` setup): the App's
+  Name field shows "archive.zip" as its placeholder, but a typed "case4.zip" writes `case4.zip.zip`,
+  since `ArchiveNaming.SingleArchiveFileName` always appends the format's extension. Since T-F199
+  step 4 (2026-09-28), not a v1.10.0 regression. Next: drop a typed extension that matches the
+  chosen format (and decide what a typed different extension means), with tests.
+- **Reported by:** the agent, 2026-11-09.
+- **Graduated 2026-11-13** (`docs/DECISIONS.md`, "T-F477"):
+  - **Change:** the App's Name field goes through `ArchiveNaming.WithoutFormatExtension`: a typed
+    name already ending with the chosen format's extension gets it once ("case4.zip" with ZIP is
+    `case4.zip`, "x.tar.gz" with tar.gz is `x.tar.gz`, ".zip" alone is `archive.zip`).
+  - **Kept:** any other extension is part of the name (`x.7z` with ZIP is `x.7z.zip`); the CLI's
+    `-saa` still adds the extension to any name (7-Zip's rule); a name from the sources is untouched.
+  - **Tests:** `ArchiveNamingTests.WithoutFormatExtension_*`, ten rows, seen red on a mutant.
+
+### T-F478 - Test's structure-only warning names tar.exe when the archive helper read the archive (P3)
+
+- [x] **Status:** done 2026-11-13. Found 2026-11-09 by the v1.10.0 release smoke (`EXP-013`, `APP-006`):
+  `MessageCode.TestedStructureOnly` says "tar.exe cannot verify the contents of files in this
+  format" in the App, Explorer's window and `pakko t`, also when the helper (T-F470) did the
+  reading. The fact holds (the format has no content checksums); the actor named is wrong. Next:
+  a text without the reader's name, in 37 locales. Not a release blocker: it is not a regression of
+  what the text says, only of whom it names.
+- **Reported by:** the agent, 2026-11-09.
+- **Graduated 2026-11-13** (`docs/DECISIONS.md`, "T-F478"):
+  - **Text:** "Only the archive's structure was checked: the contents of files in this format cannot
+    be verified." in 37 locales; it names no reader and claims no missing checksum (gzip and RAR carry
+    one that tar.exe does not compare).
+  - **Test:** `CountTemplateTests.StructureOnlyWarning_NamesNoReader` over every locale, seen red.
+
+### T-F484 - uk-UA: the PAR2 messages use one plural form for every count (P3)
+
+- [x] **Status:** done 2026-11-13. Found 2026-11-10 (`EXP-003` in uk-UA): the PAR2 lines put a single noun form
+  after every number, where Ukrainian needs three (1 / 2-4 / 5+). Next: check which PAR2 strings take
+  a count, route them through the plural helper the other counted strings use, and add the
+  case to the localization tests.
+- **Reported by:** the agent, 2026-11-10.
+- **Graduated 2026-11-13** (`docs/DECISIONS.md`, "T-F484"):
+  - **Cause:** not uk-UA alone. The six PAR2 texts put a count before "blocks", which T-F329's rule
+    forbids; its noun list lacked "blocks", so the guard never saw them.
+  - **Change:** label form in every locale ("damaged blocks: {0} of {1}", "recovery blocks: {2}";
+    `{0}/{1}` outside English), and `pakko`'s own three PAR2 lines the same way (`docs/CLI.md`).
+  - **Test:** `CountTemplateTests` knows "blocks"; red on the six English texts first.
+
+### T-F520 - Core's own English exception texts reach the user untranslated (P3, from T-F511's trace)
+
+- [x] **Status:** done 2026-11-13 (this wave). `RawZipEntryLocator`'s `InvalidDataException`s (a malformed
+  central directory, Zip64 or WinZip AES field: an encrypted ZIP Pakko reads itself), the
+  defence-in-depth "would extract outside destination directory" in `ZipArchiveService` (`:1877`,
+  `:1904`) and `DirectoryJunction`'s "folder path is too long" are English text that
+  `CoreMessages.Detail` shows as is, in every locale. Give each a `MessageCode` (and its 37
+  translations, the glossary first) and throw `CoreMessages.InvalidData`/`CoreTextIOException`.
+  `ArchiveFormatDetector`'s "Malformed RAR5 vint" is caught inside it and never shown.
+- **Graduated 2026-11-13** (`docs/DECISIONS.md`, "T-F520"):
+  - **Traced:** `RawZipEntryLocator`'s texts never reach the user (extraction and a test with a
+    password call such an archive password-protected, a plain test reports T-F280's mismatch);
+    `DirectoryJunction`'s is replaced by `TarSourceNameCollisionNotAdded`. No change there.
+  - **Changed:** `ZipArchiveService`'s two containment throws use `UnsafeEntryPath`, translated.
+  - **Test:** `TestAsync_LocalHeaderPastTheEnd_ShowsNoTextOfPakkosOwnReader` pins the plain test.
+  - **Found:** T-F521.
