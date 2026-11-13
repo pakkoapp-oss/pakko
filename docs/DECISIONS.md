@@ -14983,6 +14983,39 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F477, T-F478, T-F484, T-F520 - batch 3, the texts and the names (2026-11-13)
+
+**T-F477.** The App's Name field showed "archive.zip" as its placeholder, and a typed "case4.zip"
+wrote `case4.zip.zip`. The fix belongs to the App's name only: `pakko`'s `-saa` passes the same
+`ArchiveOptions.ArchiveName` and must add the extension to any name (7-Zip's rule, T-F411; the
+first try in `SingleArchiveFileName` broke two subprocess tests), and a name taken from the sources
+must never lose one (a folder `report.zip`). So `ArchiveNaming.WithoutFormatExtension` (Core, the
+naming owner) and one call in `MainViewModel`. Decided: only the chosen format's own extension is
+dropped, once and case-insensitively; another extension is part of the name (`x.7z` with ZIP is
+`x.7z.zip`), as Windows' own "New compressed folder" keeps what it is given; ".zip" alone falls
+back to `archive`.
+
+**T-F478.** The structure-only warning named tar.exe; since T-F470 the helper reads ISO, CAB and
+the rest. "This format has no checksums" would be untrue too: gzip and RAR carry one that tar.exe
+does not compare (`TarTestCoverage`). The text now says what is true for every format that reaches
+it: the contents cannot be verified.
+
+**T-F484.** The report was "uk-UA uses one plural form"; the cause is every inflecting locale, and
+English ("1 blocks"): the six PAR2 texts put a count before "blocks", against T-F329, and
+`CountTemplateTests`' noun list did not have the word. Label form everywhere, `{0}/{1}` outside
+English (no "of" to inflect; Finnish and Vietnamese already wrote it so). `pakko`'s own three PAR2
+lines (`docs/CLI.md`) follow, since PAR-005 reads them.
+
+**T-F520.** Traced each text before giving it a code:
+- `RawZipEntryLocator`: an encrypted ZIP whose local header lies past the end, extracted or tested
+  with a password, is "password-protected" (the locator's failure reads as unreadable encryption,
+  now T-F521); tested without one, it is T-F280's mismatch plus .NET's "A local file header is
+  corrupt.". The locator's own words never show, so it keeps them; a test pins the plain test.
+- `DirectoryJunction`'s "too long for a junction": the only caller (tar's staging) reports
+  `TarSourceNameCollisionNotAdded` for any failure of a folder.
+- `ZipArchiveService`'s two containment throws: defence behind the name checks, not reachable by a
+  test; they now carry `UnsafeEntryPath`, the code the name checks themselves report.
+
 ## T-F511 - the closing review (a fresh opus reviewer, 2026-11-13)
 
 A read-only reviewer was given the branch (PR 2, 3, 5, 6, T-F516 to T-F519) and the rules, not the
