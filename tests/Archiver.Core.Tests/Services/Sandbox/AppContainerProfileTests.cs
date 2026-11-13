@@ -20,6 +20,54 @@ public sealed partial class AppContainerProfileTests : IDisposable
         try { _sut.Delete(); } catch { }
     }
 
+    // T-F523: a scope's profile must be new; an existing one would be a sandbox two operations share.
+    [Fact]
+    public void Create_AnExistingName_Throws()
+    {
+        _sut.Create();
+
+        Action again = () => _sut.Create();
+
+        again.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void TryDelete_RemovesTheProfile()
+    {
+        _sut.Create();
+
+        _sut.TryDelete().Should().BeTrue();
+
+        _sut.IsRegisteredOnWindows().Should().BeFalse();
+    }
+
+    // T-F523: a killed run's profile goes; a running owner's, and a name of another shape, stay.
+    [Fact]
+    public void SweepStale_RemovesOnlyAnEndedOwnersProfiles()
+    {
+        string prefix = "Pakko.SweepTest." + Guid.NewGuid().ToString("N")[..8] + ".";
+        var ended = new AppContainerProfile(prefix + "m0123abcd-111-222-deadbeef");
+        var running = new AppContainerProfile(prefix + "m0123abcd-333-444-feedface");
+        var otherShape = new AppContainerProfile(prefix + "someone-elses-profile");
+        ended.Create();
+        running.Create();
+        otherShape.Create();
+        try
+        {
+            AppContainerProfile.SweepStale(prefix, tag => tag == "m0123abcd-333-444");
+
+            ended.IsRegisteredOnWindows().Should().BeFalse();
+            running.IsRegisteredOnWindows().Should().BeTrue();
+            otherShape.IsRegisteredOnWindows().Should().BeTrue();
+        }
+        finally
+        {
+            _ = ended.TryDelete();
+            _ = running.TryDelete();
+            _ = otherShape.TryDelete();
+        }
+    }
+
     [Fact]
     public void EnsureExists_FirstCall_Succeeds()
     {

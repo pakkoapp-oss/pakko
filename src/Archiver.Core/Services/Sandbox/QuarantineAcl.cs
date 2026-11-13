@@ -65,6 +65,36 @@ internal static partial class QuarantineAcl
         => Grant(path, sid, FileTraverse, NoInheritance, sharedParent: true);
 
     /// <summary>
+    /// T-F523: the shared parent's one traverse entry for every scope, each of which has its own
+    /// AppContainer: ALL APPLICATION PACKAGES (S-1-15-2-1), written once (T-F195's way), never an
+    /// entry per scope. Traverse alone: no AppContainer can list the parent; each scope's root grants
+    /// only its own SID.
+    /// </summary>
+    public static void EnsureSharedParentTraverseForEveryAppContainer(string path)
+    {
+        const byte AppPackageAuthority = 15; // SECURITY_APP_PACKAGE_AUTHORITY
+        const uint AppPackageBaseRid = 2;    // SECURITY_APP_PACKAGE_BASE_RID
+        const uint BuiltinAnyPackageRid = 1; // SECURITY_BUILTIN_PACKAGE_ANY_PACKAGE
+        var authority = new SidIdentifierAuthority { Value5 = AppPackageAuthority };
+        if (!NativeMethods.AllocateAndInitializeSid(ref authority, 2, AppPackageBaseRid, BuiltinAnyPackageRid, 0, 0, 0, 0, 0, 0, out IntPtr raw))
+            throw new InvalidOperationException($"AllocateAndInitializeSid failed (Win32 error {Marshal.GetLastPInvokeError()}).");
+        using var anyPackage = new SafeSidHandle();
+        anyPackage.Attach(raw);
+        Grant(path, anyPackage, FileTraverse, NoInheritance, sharedParent: true);
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct SidIdentifierAuthority
+    {
+        public byte Value0;
+        public byte Value1;
+        public byte Value2;
+        public byte Value3;
+        public byte Value4;
+        public byte Value5;
+    }
+
+    /// <summary>
     /// T-F389: gives a file that tar.exe wrote inside the AppContainer the permissions of the
     /// folder it is in now. Such a file carries the quarantine folder's inherited entries (the
     /// sandbox SID among them) and a Low integrity label, and a rename keeps both. An empty,
@@ -356,6 +386,12 @@ internal static partial class QuarantineAcl
 
         [LibraryImport("kernel32.dll", SetLastError = true)]
         public static partial IntPtr LocalFree(IntPtr hMem);
+
+        [LibraryImport("advapi32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static partial bool AllocateAndInitializeSid(
+            ref SidIdentifierAuthority authority, byte subAuthorityCount,
+            uint sub0, uint sub1, uint sub2, uint sub3, uint sub4, uint sub5, uint sub6, uint sub7, out IntPtr sid);
 
         [LibraryImport("advapi32.dll", SetLastError = false)]
         public static partial uint GetSecurityInfo(

@@ -1013,11 +1013,15 @@ public sealed class HelperReaderTests : IDisposable
         File.Exists(Path.Combine(folder, "added.txt")).Should().BeFalse();
     }
 
-    // cmd.exe in Pakko's own AppContainer, as another operation's tar.exe or helper would run, in
-    // the quarantine folder (the launcher quotes an argument with quotes in it, which cmd reads wrong).
+    // cmd.exe in the operation's own AppContainer (T-F523: each scope has one), as a process of its
+    // run that outlived it would, in the quarantine folder (the launcher quotes an argument with
+    // quotes in it, which cmd reads wrong).
     private static async Task<int> SandboxedCmdAsync(string folder, string command)
     {
-        using SafeSidHandle sid = new AppContainerProfile(AppContainerProfile.ProductionProfileName).GetSid();
+        string root = folder;
+        while (!string.Equals(Path.GetFileName(Path.GetDirectoryName(root)), "PakkoTarSandbox", StringComparison.OrdinalIgnoreCase))
+            root = Path.GetDirectoryName(root)!;
+        using SafeSidHandle sid = new AppContainerProfile(TarSandboxScope.SandboxNameFor(root)).GetSid();
         (int exitCode, _, _) = await SandboxedProcessLauncher.RunAsync(
             @"C:\Windows\System32\cmd.exe", ["/d", "/c", command], new ProcessLaunchOptions(AppContainerSid: sid, WorkingDirectory: folder), CancellationToken.None);
         return exitCode;

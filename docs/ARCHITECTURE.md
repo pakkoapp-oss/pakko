@@ -1577,10 +1577,12 @@ MOTW and the AMSI scan stay in `TarSandboxedService`/`AntivirusScanService`. Fix
 removed `QuarantineStaging.cs` (hardlink staging, T-F233) — see `DECISIONS.md`'s fix-phase-4 entry.
 
 P/Invoke surface:
-- `CreateAppContainerProfile` — created lazily once, reused for the lifetime of the install. An
-  existing profile is detected through its `AppContainer\Mappings\<SID>` registry key first, so
-  concurrent operations never call it (T-F244 item 1: concurrent calls on an existing profile
-  failed)
+- `CreateAppContainerProfile`/`DeleteAppContainerProfile` — T-F523: one profile per scope,
+  `Pakko.Tar.<owner tag>-<8 hex>` (`TarSandboxScope.SandboxNameFor`), created new (an existing name
+  throws) and deleted with the scope; a killed run's profile is swept once per process through the
+  `AppContainer\Mappings\<SID>` `Moniker` values (`AppContainerProfile.SweepStale`, the owner tag
+  read as `TempOwner` reads it). Until v1.10 every scope shared one profile, `Pakko.TarSandbox`
+  (T-F52), and processes in one AppContainer open each other with every right
 - `PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES` + `PROC_THREAD_ATTRIBUTE_HANDLE_LIST`
   (`LaunchAttributeList`, built per launch) — the AppContainer SID with an empty capability list
   (no network), and the exact handles the child may inherit (its stdin and its own two pipe
@@ -1590,7 +1592,8 @@ P/Invoke surface:
   every tar.exe argument must survive the ANSI command-line conversion unchanged (T-F266)
 - `SetEntriesInAclW`/`SetNamedSecurityInfoW` — grants the AppContainer SID access to Pakko's own
   quarantine folders only: `out\` = Modify (`0x1301BF`), the quarantine root = traverse/list/read
-  attributes, the shared parent = traverse-only. Never an ACE on the user's archive
+  attributes, the shared parent = traverse-only, for ALL APPLICATION PACKAGES once (T-F523), never
+  an entry per scope. Never an ACE on the user's archive
 - `ReOpenFile` — each tar.exe run reads the archive from its own synchronous handle to the file
   the scope holds open, inherited as stdin (`-f -`)
 - `CreateJobObject`/`SetInformationJobObject`/`AssignProcessToJobObject` — `ActiveProcessLimit = 1`
