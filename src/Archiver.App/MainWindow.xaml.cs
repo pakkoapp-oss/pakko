@@ -413,12 +413,27 @@ public sealed partial class MainWindow : Window
 
     // T-F308 item 2: Delete removes the focused row (not during an operation) and moves focus to
     // the row that took its place, so a second Delete works.
-    private void PendingList_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    private async void PendingList_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key != Windows.System.VirtualKey.Delete || !ViewModel.ClearCommand.CanExecute(null))
-            return;
         int index = RowIndex(FileListView, e.OriginalSource);
         if (index < 0 || index >= ViewModel.FileItems.Count)
+            return;
+        if (e.Key == Windows.System.VirtualKey.Enter)
+        {
+            // T-F482: Enter opens the focused row like a double-click (an archive opens to browse).
+            e.Handled = true;
+            // T-F406: an async void handler's exception has no caller to reach.
+            try
+            {
+                await ViewModel.OpenPendingRowAsync(ViewModel.FileItems[index]);
+            }
+            catch (Exception ex)
+            {
+                App.ReportUnexpected(ex, nameof(PendingList_PreviewKeyDown));
+            }
+            return;
+        }
+        if (e.Key != Windows.System.VirtualKey.Delete || !ViewModel.ClearCommand.CanExecute(null))
             return;
         e.Handled = true;
         ViewModel.RemovePath(ViewModel.FileItems[index].FullPath);
