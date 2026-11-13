@@ -21,6 +21,17 @@ public sealed class MainWindowLayoutTests
             .Select(Name).Should().BeEmpty();
     }
 
+    // T-F485: under a high-contrast theme WinUI's automatic adjustment drew the accent button's
+    // label on a black backplate inside the theme's highlight colour (seen on the device); the
+    // accent style already takes the theme's colours, so the adjustment is off on such a button.
+    [Fact]
+    public void AccentButtons_TurnOffTheHighContrastBackplate()
+    {
+        List<XElement> accent = [.. Xaml.Descendants().Where(e => ((string?)e.Attribute("Style"))?.Contains("AccentButtonStyle", StringComparison.Ordinal) == true)];
+        accent.Should().NotBeEmpty("the test must read the buttons it is about");
+        accent.Where(e => (string?)e.Attribute("HighContrastAdjustment") != "None").Select(e => (string?)e.Attribute(X + "Uid")).Should().BeEmpty();
+    }
+
     // T-F381: with encryption on, the password block pushed the PAR2 row out of the card's
     // visible part; above the block it stays in view.
     [Fact]

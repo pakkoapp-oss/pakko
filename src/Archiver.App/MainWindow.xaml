@@ -867,6 +867,7 @@
                     MinWidth="120"
                     VerticalAlignment="Center"
                     Style="{StaticResource AccentButtonStyle}"
+                    HighContrastAdjustment="None"
                     Command="{x:Bind ViewModel.ExtractAllFromBrowserCommand, Mode=OneWay}"
                     Visibility="{x:Bind ViewModel.BrowseExtractActionsVisibility, Mode=OneWay}"/>
             </Grid>
