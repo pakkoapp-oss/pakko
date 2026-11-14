@@ -237,7 +237,8 @@ public sealed class ZipArchiveService : IArchiveService
         // appeared since then is another run's, and the commit must not replace it.
         bool replacesExisting = outcome == DestinationConflictOutcome.ProceedReplacingExisting;
         using WorkRoot work = ArchiveTempFile.WorkRootFor(destPath);
-        string tempPath = ArchiveTempFile.NewPath(work);
+        // T-F528: naming it makes the work root, which can fail like any write; the catches below report it.
+        string tempPath = "";
 
         // T-F35 profiling (2026-07-18) found ComputeTotalBytes and the gate's file count used to
         // walk the same directory tree in two separate passes (~193ms combined against a
@@ -264,6 +265,7 @@ public sealed class ZipArchiveService : IArchiveService
 
         try
         {
+            tempPath = ArchiveTempFile.NewPath(work);
             ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, sortedSourcePaths);
             int errorsBeforeWriting = errors.Count;
             if (useParallelPipeline)
@@ -665,7 +667,8 @@ public sealed class ZipArchiveService : IArchiveService
 
         long baseOffset = Interlocked.Read(ref completedBytesBox[0]);
         (string destPath, bool replacesExisting, WorkRoot work) = destination;
-        string separateTempPath = ArchiveTempFile.NewPath(work);
+        // T-F528: naming it makes the work root, which can fail like any write; the catches below report it.
+        string separateTempPath = "";
         CompressionLevel compressionLevel = settings.Level;
         // T-F260: this worker's own issue count — the shared bags are written by every worker at
         // once, so a before/after delta on them would not attribute issues to this source.
@@ -678,6 +681,7 @@ public sealed class ZipArchiveService : IArchiveService
         void AddError(ArchiveError e) { Interlocked.Increment(ref issues); Interlocked.Increment(ref errorCount); sink.Errors.Add(e); }
         try
         {
+            separateTempPath = ArchiveTempFile.NewPath(work);
             ArchiveTempFile.RemoveOldArchiveInsideSources(destPath, [sourcePath]);
             if (TakesHandRolledWriter(settings, sourcePath))
             {

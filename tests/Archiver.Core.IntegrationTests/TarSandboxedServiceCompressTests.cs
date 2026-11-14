@@ -46,6 +46,47 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         return File.ReadAllText(Path.Combine(destDir, relativeEntryPath));
     }
 
+    // T-F528 opus review: naming the temporary archive makes the work root; in a folder where no
+    // folder can be made, that failure escaped CompressAsync instead of becoming the run's error.
+    [Integration]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public async Task CompressAsync_DestinationWhereNoFolderCanBeMade_ReportsTheErrorAndDoesNotThrow()
+    {
+        string sourceDir = Path.Combine(_temp.Path, "src");
+        Directory.CreateDirectory(sourceDir);
+        File.WriteAllText(Path.Combine(sourceDir, "a.txt"), "a");
+        var dest = new DirectoryInfo(Path.Combine(_temp.Path, "dest"));
+        dest.Create();
+        var deny = new System.Security.AccessControl.FileSystemAccessRule(
+            System.Security.Principal.WindowsIdentity.GetCurrent().User!, System.Security.AccessControl.FileSystemRights.CreateDirectories,
+            System.Security.AccessControl.InheritanceFlags.None, System.Security.AccessControl.PropagationFlags.None,
+            System.Security.AccessControl.AccessControlType.Deny);
+        System.Security.AccessControl.DirectorySecurity security = dest.GetAccessControl();
+        security.AddAccessRule(deny);
+        dest.SetAccessControl(security);
+        ArchiveResult result;
+        try
+        {
+            result = await _sut.CompressAsync(new ArchiveOptions
+            {
+                SourcePaths = [sourceDir],
+                DestinationFolder = dest.FullName,
+                ArchiveName = "out",
+                Format = ArchiveContainerFormat.TarGz,
+            });
+        }
+        finally
+        {
+            security = dest.GetAccessControl();
+            security.RemoveAccessRule(deny);
+            dest.SetAccessControl(security);
+        }
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.SourcePath.Should().EndWith("out.tar.gz");
+        dest.GetFileSystemInfos().Should().BeEmpty();
+    }
+
     // T-F169: mirrors ZipArchiveServiceArchiveTests.ArchiveAsync_CancelMidArchive_
     // NoUnhandledException's tolerant shape — CompressAsync is deliberately unsandboxed (see this
     // file's own doc comment), so unlike ExtractAsync's cancel test there's no AppContainer/

@@ -175,6 +175,47 @@ public sealed class WorkRootTests : IDisposable
         Rules(actualDest).Should().Contain(r => r.Contains(everyone.Value, StringComparison.Ordinal));
     }
 
+    // T-F528 opus review: another account can put a junction where the commit renamed the folder,
+    // between the rename and the ACL call. The call opens the name itself and leaves a link alone, so
+    // the folder it points to keeps its own entries.
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public void TakeParentEntries_AJunctionInTheMovedFoldersPlace_LeavesItsTargetAlone()
+    {
+        string parent = Path.Combine(_temp.Path, "parent");
+        Directory.CreateDirectory(parent);
+        var everyone = new SecurityIdentifier(WellKnownSidType.WorldSid, null);
+        var parentInfo = new DirectoryInfo(parent);
+        DirectorySecurity parentSecurity = parentInfo.GetAccessControl();
+        parentSecurity.AddAccessRule(new FileSystemAccessRule(everyone, FileSystemRights.ReadData,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.NoPropagateInherit, AccessControlType.Allow));
+        parentSecurity.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.BuiltinGuestsSid, null), FileSystemRights.ReadData,
+            InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
+        parentInfo.SetAccessControl(parentSecurity);
+        string target = Path.Combine(_temp.Path, "private");
+        Directory.CreateDirectory(target);
+        var targetInfo = new DirectoryInfo(target);
+        DirectorySecurity targetSecurity = targetInfo.GetAccessControl();
+        targetSecurity.SetAccessRuleProtection(isProtected: true, preserveInheritance: true);
+        targetInfo.SetAccessControl(targetSecurity);
+        List<string> before = Rules(target);
+        string inner = Path.Combine(target, "inner");
+        Directory.CreateDirectory(inner);
+        var innerInfo = new DirectoryInfo(inner);
+        DirectorySecurity innerSecurity = innerInfo.GetAccessControl();
+        innerSecurity.AddAccessRule(new FileSystemAccessRule(everyone, FileSystemRights.ReadData, AccessControlType.Allow));
+        innerInfo.SetAccessControl(innerSecurity);
+        List<string> innerBefore = Rules(inner);
+        string moved = Path.Combine(parent, "out");
+        ZipArchiveServiceArchiveTests.TryCreateJunction(moved, target).Should().BeTrue();
+
+        WorkRoot.TakeParentEntries(moved);
+
+        Rules(target).Should().Equal(before);
+        Rules(inner).Should().Equal(innerBefore);
+        new DirectoryInfo(target).GetAccessControl().AreAccessRulesProtected.Should().BeTrue();
+    }
+
     [SupportedOSPlatform("windows")]
     private static List<string> Rules(string folder) =>
         [.. new DirectoryInfo(folder).GetAccessControl().GetAccessRules(true, true, typeof(SecurityIdentifier))
