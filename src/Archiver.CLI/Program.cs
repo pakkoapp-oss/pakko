@@ -171,6 +171,9 @@ static string? StdinPathFor(CliStagingFolder? stdinFolder) =>
 // synthetic per-archive wrapper folder. Without -o the destination is the
 // current directory, as with 7z 'x' (T-F206).
 // -------------------------------------------------------------------------
+static string? StdinStagingNear(ParsedCliCommand command) =>
+    command.WriteToStdout ? null : ResolveExtractDestination(command);
+
 static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices services)
 {
     // T-F160: cancelled by the conflict prompt's (Q)uit / end of input, or by Ctrl+C — either way a
@@ -185,7 +188,7 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
 
         // T-F525: next to where the files go; -so's go to %TEMP% anyway.
         using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(
-            command, cancellation.Token, near: command.WriteToStdout ? null : ResolveExtractDestination(command)).ConfigureAwait(false);
+            command, cancellation.Token, near: StdinStagingNear(command)).ConfigureAwait(false);
         if (RejectEmptyStdin(stdinFolder) is { } emptyStdin)
             return emptyStdin;
         using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
