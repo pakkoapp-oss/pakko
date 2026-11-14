@@ -14995,6 +14995,36 @@ also stops on an archive-search scan error (`CExtractScanConsole::ScanError`) an
 source it cannot read. A search that never enters the folder is unchanged: the walk's filter gives
 `LeftOut` first.
 
+**The identity owner, probed with the twin fixture.** `PathIdentity` opened every path with
+`CreateFileW` as given, so "`a.txt `" answered with its twin `a.txt`'s identity and final path, and
+"`d.`" with `d`'s (`PathIdentityTrimmedNameTests`, red before). The callers were covered by their own
+checks (`SourceKey`, `SourceRecycler`, `QuarantineLocation`, `DestinationFolder`), but a new one
+would have inherited the wrong answer. Its one `CreateFile` now opens nothing for a plain path
+`InputPaths.NameTrimmed` judges trimmed; a `\\?\` path, which Windows never trims, is opened as
+written and answers for the name itself. Every caller already reads "unknown" as the careful case.
+Two callers asked by a spelling Pakko writes through on purpose: `a o.zip. src` writes `o.zip`
+(Windows' own meaning of the name, T-F419) and Core reports the archive as typed. Asked by that
+spelling, `RunSourceFiles` took the output for a source and numbered it, and
+`SourceOutcomeRules.DowngradeSourcesContainingOutputs` held every source (`-sdel` deleted nothing);
+both now ask by the full path, the file the plain path writes (`TrailingDotOrSpaceName_WithY_...`,
+red after the owner's change; `Sdel_OutputNameWindowsTrims_StillDeletesTheSources`). And `-sdel`'s
+refusal read the owner's "unknown" for a source typed "`a.txt.`" as "cannot tell where this source
+leads" (exit 7) before Core could say why (exit 2, "ends in a space or a dot"); such a source is
+refused by Core and has no key, so it is never deleted, and that check now leaves it to Core, while
+the checks by its full path (the current folder, a volume root) stay
+(`Sdel_SourceTypedWithANameWindowsTrims_IsRefusedAndTheTwinKept`, red after the owner's change).
+
+**Reading such an archive, the rest of the probe.** Extract, test, list and recovery of an archive
+"`x.zip `"/"`x.tar `" beside its twin, an output folder "`out.`", hash and the destination were
+covered (`TrimmedSourceNameTests`, `ExtractAdversarialTests`); the scan was not, and it is now (the
+same test: inconclusive, the twin's entries never scanned).
+
+**Archiving these names: not in this wave (the agent's decision).** T-F509's refusal says why, takes
+no twin and deletes nothing. Archiving them needs `DirectoryWalker` to enter a folder through
+`\\?\`, Core to take such a source at its entry (`InputPaths.Problem`), and the progress,
+`SourceResult` and both frontends' deletion keys to carry the spelling - for names Explorer and most
+programs never make, and tar.exe would still refuse them. Moved to T-F531, the next wave.
+
 
 
 The user asked that Pakko never die of memory: it streams, or it refuses with a reason.

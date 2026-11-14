@@ -24,9 +24,12 @@ internal sealed class RunSourceFiles(IReadOnlyList<string> sourcePaths)
         // A source Windows cannot resolve is reported per item by the engine, and is no file here.
         _fullPaths ??= new HashSet<string>(
             sourcePaths.Where(p => InputPaths.Problem(p) is null).Select(Path.GetFullPath), StringComparer.OrdinalIgnoreCase);
-        if (_fullPaths.Contains(Path.GetFullPath(destPath)))
+        string written = Path.GetFullPath(destPath);
+        if (_fullPaths.Contains(written))
             return true;
-        if (PathIdentity.Resolve(destPath) is not { } dest)
+        // T-F510: the file the plain path writes ("o.zip." writes o.zip), asked by that file's own
+        // name: PathIdentity answers for no name Windows trims.
+        if (PathIdentity.Resolve(written) is not { } dest)
             return true;
         // A source whose identity cannot be read is compared by its spelling only, above.
         _identities ??= [.. sourcePaths.Where(File.Exists).Select(PathIdentity.Resolve).OfType<PathIdentity.Resolved>().Select(r => r.Id)];
