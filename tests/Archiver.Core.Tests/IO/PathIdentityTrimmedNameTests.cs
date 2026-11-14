@@ -17,6 +17,8 @@ public sealed class PathIdentityTrimmedNameTests : IDisposable
     {
         File.WriteAllText(Path.Combine(_root, "a.txt"), "twin");
         Directory.CreateDirectory(Path.Combine(_root, "d"));
+        // The twin holds the same name, so a plain path to "d.\inside.txt" reaches a file.
+        File.WriteAllText(Path.Combine(_root, "d", "inside.txt"), "inside d");
         _file = Path.Combine(_root, "a.txt ");
         _folder = Path.Combine(_root, "d.");
         File.WriteAllText(@"\\?\" + _file, "itself");

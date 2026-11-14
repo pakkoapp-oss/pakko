@@ -15034,7 +15034,7 @@ no twin and deletes nothing. Archiving them needs `DirectoryWalker` to enter a f
 `SourceResult` and both frontends' deletion keys to carry the spelling - for names Explorer and most
 programs never make, and tar.exe would still refuse them. Moved to T-F531, the next wave.
 
-
+## T-F513 - memory: the inventory, and one limit on the entries an archive may have (2026-11-14)
 
 The user asked that Pakko never die of memory: it streams, or it refuses with a reason.
 
