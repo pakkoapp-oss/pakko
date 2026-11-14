@@ -777,7 +777,7 @@ public sealed class CliSubprocessTests
             process.StandardInput.Close();
             var clock = System.Diagnostics.Stopwatch.StartNew();
             while (!process.HasExited && clock.Elapsed < TimeSpan.FromSeconds(60)
-                && !Directory.EnumerateFiles(scratchDir, ".pakko-a-*.tmp").Any())
+                && !Directory.EnumerateFiles(scratchDir, "a-*.tmp", SearchOption.AllDirectories).Any())
             {
                 await Task.Delay(2);
             }
@@ -796,7 +796,7 @@ public sealed class CliSubprocessTests
         (int exitCode, _, string stdErr) = CliProcessRunner.Run("r", archivePath);
         exitCode.Should().Be(0, because: stdErr);
         File.ReadAllBytes(Path.Combine(scratchDir, "out.repaired.zip")).Should().Equal(good);
-        Directory.GetFiles(scratchDir, ".pakko-a-*.tmp").Should().BeEmpty();
+        Directory.GetFileSystemEntries(scratchDir, ".pakko-*").Should().BeEmpty();
     }
 
     [Theory]
@@ -890,7 +890,7 @@ public sealed class CliSubprocessTests
             var clock = System.Diagnostics.Stopwatch.StartNew();
             while (!process.HasExited && clock.Elapsed < TimeSpan.FromSeconds(60)
                 && !(new FileInfo(archivePath) is { Exists: true } info && info.Length > earlierLength
-                    && Directory.EnumerateFiles(folder, ".pakko-a-*.tmp").Any()))
+                    && Directory.EnumerateFiles(folder, "a-*.tmp", SearchOption.AllDirectories).Any()))
             {
                 await Task.Delay(2);
             }
@@ -907,7 +907,7 @@ public sealed class CliSubprocessTests
 
         (int again, _, string againErr) = CliProcessRunner.Run("a", "-y", "-rr10", "-mx=0", "-tzip", archivePath, big);
         again.Should().Be(0, because: againErr);
-        Directory.GetFiles(folder, ".pakko-a-*.tmp").Should().BeEmpty();
+        Directory.GetFileSystemEntries(folder, ".pakko-*").Should().BeEmpty();
         Directory.GetFiles(folder, "*.par2").Should().HaveCount(2);
         (int verified, string verifiedOut, string verifiedErr) = CliProcessRunner.Run("t", archivePath);
         verified.Should().Be(0, because: verifiedErr);

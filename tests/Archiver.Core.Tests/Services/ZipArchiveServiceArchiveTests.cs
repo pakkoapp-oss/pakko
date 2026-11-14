@@ -1005,7 +1005,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         result.CreatedFiles.Should().Equal(destPath);
         File.Exists(olderTempPath).Should().BeTrue();
         (File.GetAttributes(destPath) & FileAttributes.Hidden).Should().Be((FileAttributes)0);
-        Directory.GetFiles(_temp.Path, ".pakko-a-*").Should().BeEmpty();
+        Directory.GetFileSystemEntries(_temp.Path, ".pakko-*").Should().BeEmpty();
     }
 
     [Fact]
@@ -1253,7 +1253,7 @@ public sealed class ZipArchiveServiceArchiveTests : IDisposable
         result.Success.Should().BeTrue();
         result.CreatedFiles.Should().Equal(destPath);
         File.Exists(olderTempPath).Should().BeTrue();
-        Directory.GetFiles(_temp.Path, ".pakko-a-*").Should().BeEmpty();
+        Directory.GetFileSystemEntries(_temp.Path, ".pakko-*").Should().BeEmpty();
     }
 
     [Fact]

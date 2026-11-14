@@ -121,7 +121,7 @@ public sealed class ZipArchiveServiceSeparateLeftoversTests : IDisposable
         var swept = new List<string>();
         var service = new ZipArchiveService(new GroupPolicyOptions())
         {
-            SweepTemporaries = folder => { lock (swept) swept.Add(folder); ArchiveTempFile.Sweep(folder); },
+            WorkRootFor = folder => { lock (swept) swept.Add(folder); return Archiver.Core.IO.WorkRoot.Near(folder); },
         };
 
         ArchiveResult result = await service.ArchiveAsync(new ArchiveOptions

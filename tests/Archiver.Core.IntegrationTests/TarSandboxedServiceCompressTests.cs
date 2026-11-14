@@ -146,7 +146,7 @@ public sealed class TarSandboxedServiceCompressTests : IDisposable
         result.CreatedFiles.Should().Equal(destPath);
         File.Exists(olderTempPath).Should().BeTrue();
         (File.GetAttributes(destPath) & FileAttributes.Hidden).Should().Be((FileAttributes)0);
-        Directory.GetFiles(_temp.Path, ".pakko-a-*").Should().BeEmpty();
+        Directory.GetFileSystemEntries(_temp.Path, ".pakko-*").Should().BeEmpty();
         (await ExtractAndReadAsync(destPath, "a.txt")).Should().Be("content");
     }
 

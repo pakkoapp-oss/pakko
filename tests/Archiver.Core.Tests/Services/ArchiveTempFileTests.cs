@@ -17,32 +17,41 @@ public sealed class ArchiveTempFileTests : IDisposable
 
     public void Dispose() => _temp.Dispose();
 
+    // T-F528: in the work root next to the archive, which goes with it.
     [Fact]
-    public void Create_NamesAFreshOwnedFileNextToTheArchive_WithoutCreatingIt()
+    public void NewPath_NamesAFileInTheWorkRootNextToTheArchive_WithoutCreatingIt()
     {
         string dest = Path.Combine(_temp.Path, "big3.zip");
 
-        string temp = ArchiveTempFile.Create(dest);
+        string temp;
+        using (WorkRoot work = ArchiveTempFile.WorkRootFor(dest))
+        {
+            temp = ArchiveTempFile.NewPath(work);
 
-        Path.GetDirectoryName(temp).Should().Be(_temp.Path);
-        Path.GetFileName(temp).Should().StartWith(".pakko-a-" + TempOwner.CurrentTag + "-").And.EndWith(".tmp");
-        File.Exists(temp).Should().BeFalse();
+            string root = Path.GetDirectoryName(temp)!;
+            Path.GetDirectoryName(root).Should().Be(_temp.Path);
+            Path.GetFileName(root).Should().StartWith(WorkRoot.Prefix + TempOwner.CurrentTag + "-");
+            Path.GetFileName(temp).Should().MatchRegex("^a-[0-9a-f]{32}\\.tmp$");
+            File.Exists(temp).Should().BeFalse();
+        }
+        Directory.GetFileSystemEntries(_temp.Path).Should().BeEmpty();
     }
 
     [Fact]
-    public void Create_SweepsALeftoverOfADeadRunOnThisMachine()
+    public void NewPath_SweepsALeftoverOfADeadRunOnThisMachine()
     {
         string machine = TempOwner.CurrentTag.Split('-')[0];
         string leftover = _temp.CreateFile($".pakko-a-{machine}-{Environment.ProcessId}-1-0123456789abcdef0123456789abcdef.tmp");
 
-        ArchiveTempFile.Create(Path.Combine(_temp.Path, "big3.zip"));
+        using WorkRoot work = ArchiveTempFile.WorkRootFor(Path.Combine(_temp.Path, "big3.zip"));
+        ArchiveTempFile.NewPath(work);
 
         File.Exists(leftover).Should().BeFalse("a process id with another start time is a reused id: its owner is gone");
     }
 
     // T-F379: a killed run's chunk folder was removed only by a later run large enough to make one.
     [Fact]
-    public void Create_SweepsTheChunkFolderOfADeadRun_AndKeepsALiveRuns()
+    public void NewPath_SweepsTheChunkFolderOfADeadRun_AndKeepsALiveRuns()
     {
         string machine = TempOwner.CurrentTag.Split('-')[0];
         string dead = Path.Combine(_temp.Path, $".pakko-tmp-{machine}-{Environment.ProcessId}-1-0123456789abcdef0123456789abcdef");
@@ -52,13 +61,14 @@ public sealed class ArchiveTempFileTests : IDisposable
         string live = Path.Combine(_temp.Path, TempOwner.NewName(".pakko-tmp-"));
         Directory.CreateDirectory(live);
 
-        ArchiveTempFile.Create(Path.Combine(_temp.Path, "small.zip"));
+        using WorkRoot work = ArchiveTempFile.WorkRootFor(Path.Combine(_temp.Path, "small.zip"));
+        ArchiveTempFile.NewPath(work);
 
         Directory.Exists(dead).Should().BeFalse();
         Directory.Exists(live).Should().BeTrue("its owner is this process");
     }
 
-    // T-F497: the parallel writer no longer sweeps by itself; ArchiveTempFile.Create does it for it.
+    // T-F497: the parallel writer no longer sweeps by itself; the work root of its temporary file does.
     [Fact]
     public async Task ArchiveAsync_ParallelWriterRun_RemovesTheChunkFolderOfADeadRun()
     {

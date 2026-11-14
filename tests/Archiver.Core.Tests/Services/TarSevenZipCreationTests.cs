@@ -399,25 +399,28 @@ public sealed class TarSevenZipCreationTests : IDisposable
 
     // --- Recovery: what a killed run leaves is swept by the next creation in that folder ---
 
+    // An older version's 7z writer folder; this version's lies in the work root (T-F528).
     [Fact]
-    public void ArchiveTempFileCreate_WriterFolderOfADeadRun_IsRemoved()
+    public void WorkRoot_WriterFolderOfADeadRun_IsRemoved()
     {
-        string stale = Path.Combine(_temp.Path, DeadOwner.Name(ArchiveTempFile.WriterFolderPrefix));
+        string stale = Path.Combine(_temp.Path, DeadOwner.Name(".pakko-7z-"));
         Directory.CreateDirectory(stale);
         File.WriteAllText(Path.Combine(stale, "libarchive_0000000000"), "left by a killed tar.exe");
 
-        ArchiveTempFile.Create(Path.Combine(_temp.Path, "new.7z"));
+        using Archiver.Core.IO.WorkRoot work = ArchiveTempFile.WorkRootFor(Path.Combine(_temp.Path, "new.7z"));
+        ArchiveTempFile.NewPath(work);
 
         Directory.Exists(stale).Should().BeFalse();
     }
 
     [Fact]
-    public void ArchiveTempFileCreate_WriterFolderOfThisProcess_IsKept()
+    public void WorkRoot_WriterFolderOfThisProcess_IsKept()
     {
-        string own = ArchiveTempFile.NewWriterFolder(Path.Combine(_temp.Path, "x.tmp"));
+        string own = Path.Combine(_temp.Path, Archiver.Core.IO.TempOwner.NewName(".pakko-7z-"));
         Directory.CreateDirectory(own);
 
-        ArchiveTempFile.Create(Path.Combine(_temp.Path, "new.7z"));
+        using Archiver.Core.IO.WorkRoot work = ArchiveTempFile.WorkRootFor(Path.Combine(_temp.Path, "new.7z"));
+        ArchiveTempFile.NewPath(work);
 
         Directory.Exists(own).Should().BeTrue();
     }
