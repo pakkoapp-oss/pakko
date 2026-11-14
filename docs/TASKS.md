@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count: done, no conhost per launch, half the processes), T-F506 (AMSI buffer: done, the faults are inherent; large buffers no longer pooled, content zeroed), T-F500 (writer failure paths, the flaky chunk-folder test: done), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F522 (P3, the commit's link check fails open, next wave), T-F523 (P2, one AppContainer for every operation: one reader can open another: code done, batch 5a), T-F524 (P2, the quarantine next to the destination: code done, batch 5a), T-F525 (P3, `-si` staged in `%TEMP%`, next wave), T-F526 (P3, the helper refused by CFA through an unread channel, next wave), T-F527 (P3, an entry its owner cannot delete, next wave), T-F528 (P2, one owner of work folders, batch 5d), T-F529 (P2, reading in batches, batch 5e), T-F530 (P3, a large encrypted file written once, batch 6), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, the archive search and the identity owner: done; archiving such names is T-F531, next wave), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F522 (P3, the commit's link check fails open, next wave), T-F523 (P2, one AppContainer for every operation: one reader can open another: code done, batch 5a), T-F524 (P2, the quarantine next to the destination: code done, batch 5a), T-F525 (P3, `-si` staged in `%TEMP%`, next wave), T-F526 (P3, the helper refused by CFA through an unread channel, next wave), T-F527 (P3, an entry its owner cannot delete, next wave), T-F528 (P2, one owner of work folders, batch 5d), T-F529 (P2, reading in batches, batch 5e), T-F530 (P3, a large encrypted file written once, batch 6), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -85,7 +85,7 @@ above stays as the record of what each stream holds.
 | 4 | The App on the device | T-F486, T-F485, T-F482, T-F483 | high contrast, the keyboard, 7z from the App | done on `fix/batch4-app-device`: T-F482 and T-F485 fixed and seen on the device (1.10.0.21/22); T-F486 15 of 15 starts drawn under high contrast, T-F483's sample gone: both stay open for batch 8 |
 | 5a | The quarantine | T-F474, T-F463's leftovers (the walk's reparse-point and cancellation gaps) | one owner (`QuarantineFiles`), the sandbox boundary | a red test with a second sandboxed process, one run on PakkoW10 (both tar builds), an opus reviewer if the user agrees |
 | 5b | Memory | T-F473 (the first global holder), T-F513 | input-sized collections: stream them or give them a stated limit | deterministic counters, one series on both tar builds |
-| 5c | Trimmed names | T-F510 | the source key (T-F511 PR 4) and the twin fixture | the App and the CLI, `-sdel` and the Recycle Bin |
+| 5c | Trimmed names | T-F510 | the source key (T-F511 PR 4) and the twin fixture | done on `fix/batch5c-trimmed-names`: the archive search stops at such a folder (`CLI-063`), `PathIdentity` answers for no twin; archiving them split off as T-F531 (next wave) |
 | 5d | Work folders | T-F528 | one owner for every folder Pakko writes before the result: where, how it is born, its sweep | plan mode and advisor first; the owner test; smoke of every extraction and archiving path |
 | 5e | Reading in batches | T-F529 | the ZIP central directory read as a stream, entries opened by their local header; only a compact name set kept | plan mode, advisor and an opus reviewer (an untrusted-input parser); memory measured in every mode before and after |
 | 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530 | calibration and the CI image | one series on an idle machine |
@@ -1872,18 +1872,6 @@ re-measured with T-F346's script before and after.
     Begin with a test seen red for each confirmed bypass.
 - **Reported by:** the user's question and the agent's sweep, 2026-11-12.
 
-### T-F510 - Archive a name Windows trims properly, and the rest of its operations (P3, from T-F509)
-
-- [ ] **Status:** open. Also: the CLI's archive-name search (`x`/`l`/`t` with `-r` or a mask)
-  passes a folder Windows trims by in silence (T-F511's closing review). T-F509 refuses such names: no twin's bytes, nothing deleted. Left:
-  - **ZIP could archive them.** It can read `\\?\...\a.txt ` (probed 2026-11-12); the walk would
-    open each file through `\\?\` and name the entry from the file's own name. Before that, every
-    key built from a source path must match: `SourceResult`, the App's and the CLI's deletion
-    snapshots, `ResolveFinalPath`. tar.exe cannot read such a top-level name; tar keeps refusing it.
-  - **`PathIdentity` and the extraction side** were not probed with the twin fixture. The `Hostile`
-    oracle covers every public operation for writes, not for reads.
-- **Reported by:** the agent, 2026-11-12.
-
 ### T-F508 - The litmus paper that stays, and the device-side candidates (P3, from T-F498)
 
 - [~] **Status:** step 1 done 2026-11-12 (`LitmusPaperTests`, Slow, in the canary; `docs/DECISIONS.md`, "T-F508 step 1"). Left: five canary nights, then a gate; the two device checks, batched with stream E's on-device checks (one Deploy.ps1 for both, the agent's decision 2026-11-12).
@@ -2000,6 +1988,17 @@ re-measured with T-F346's script before and after.
   before extraction reads it: a large archive needs that much room on the system drive even when
   `-o` is elsewhere. Staging it next to `-o` (as T-F524 does for the quarantine) would need the same
   volume and permission rules. Input, not output, so not part of T-F524.
+
+### T-F531 - Archive a name Windows trims, in ZIP, through `\\?\` (P3, split from T-F510)
+
+- [ ] **Status:** open, next wave (the agent's decision, 2026-11-14, `docs/DECISIONS.md`, "T-F510").
+  T-F509 refuses a source named "`a.txt `" or "`d.`" (its plain path opens the twin). ZIP can read
+  `\\?\...\a.txt ` (probed 2026-11-12): the walk would enter such a folder and open each file
+  through `\\?\`, naming the entry from the file's own name. Before that, every key built from a
+  source path must carry the spelling: `InputPaths.Problem` at Core's entry, `SourceResult`, the
+  App's and the CLI's deletion snapshots, `ResolveFinalPath` (`PathIdentity` already answers for the
+  `\\?\` spelling). tar.exe cannot read such a top-level name; tar keeps refusing it.
+- **Reported by:** the agent (T-F510), 2026-11-14.
 
 ### T-F530 - A large file written once with a password or Fastest, not through a chunk and a copy (P3, the user's question, 2026-11-14)
 

@@ -82,8 +82,10 @@ internal static class SourceOutcomeRules
         // Ordinal: the keys are final paths in their canonical case; a case-sensitive folder may hold two.
         var folders = new Dictionary<string, PathIdentity.Identity?>(StringComparer.Ordinal);
         var holders = new Holders();
+        // T-F510: by its full path, the file written: "o.zip." is reported as typed and written as
+        // o.zip, and PathIdentity answers for no name Windows trims.
         foreach (string created in createdFiles.Where(File.Exists))
-            holders.Add(selfAndAncestors(created, folders));
+            holders.Add(selfAndAncestors(Path.GetFullPath(created), folders));
         HashSet<string> createdAndTheirFolders = SelfAndAncestorPaths(createdFiles);
         return [.. sources.Select(Downgrade)];
 

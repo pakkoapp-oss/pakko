@@ -244,8 +244,16 @@ public static partial class PathIdentity
         public uint FileIndexLow;
     }
 
-    [LibraryImport("kernel32.dll", EntryPoint = "CreateFileW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
-    private static partial SafeFileHandle CreateFile(string fileName, uint access, uint share, nint security, uint disposition, uint flags, nint template);
+    // T-F510: by a plain path Windows opens "a.txt " as its twin "a.txt" (and "d." as "d"), so what
+    // it opened would answer for another file; such a path opens nothing here. Through \\?\ Windows
+    // trims nothing, and the name itself is opened.
+    private static SafeFileHandle CreateFile(string fileName, uint access, uint share, nint security, uint disposition, uint flags, nint template) =>
+        !fileName.StartsWith(@"\\?\", StringComparison.Ordinal) && Services.InputPaths.NameTrimmed(fileName)
+            ? new SafeFileHandle()
+            : CreateFileW(fileName, access, share, security, disposition, flags, template);
+
+    [LibraryImport("kernel32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    private static partial SafeFileHandle CreateFileW(string fileName, uint access, uint share, nint security, uint disposition, uint flags, nint template);
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

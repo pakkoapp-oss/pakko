@@ -64,6 +64,20 @@ public sealed class SdelAdversarialTests : IDisposable
         Directory.Exists(_scratch.Inside("src")).Should().BeFalse("CLI.md: the folders go too, deepest first, once empty");
     }
 
+    // T-F510: "o.zip." is written as o.zip, and Core reports it as typed. Asked of PathIdentity by
+    // that spelling, the output was unresolved, which keeps every source: -sdel deleted nothing.
+    [Theory]
+    [InlineData("o.zip.")]
+    [InlineData("o.zip ")]
+    public void Sdel_OutputNameWindowsTrims_StillDeletesTheSources(string output)
+    {
+        (int exitCode, _, string stdErr) = _scratch.Pakko("a", "-sdel", output, "src");
+
+        exitCode.Should().Be(0, stdErr);
+        ZipFiles(_scratch.Inside("o.zip")).Should().Equal("a.txt=A", "b.txt=B", "c.dat=C", "s.txt=S");
+        Directory.Exists(_scratch.Inside("src")).Should().BeFalse(stdErr);
+    }
+
     // T-F509: "a.txt " beside "a.txt" in the folder. Its plain path opened the twin, so the archive
     // held the twin's bytes twice and -sdel then deleted the folder with the spaced file's bytes in
     // no archive. The file is refused, so the folder is not fully archived and nothing is deleted.

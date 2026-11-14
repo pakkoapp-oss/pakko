@@ -4,6 +4,7 @@ using System.Runtime.Versioning;
 using Archiver.Core.Interfaces;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
+using Archiver.Core.Services.Antivirus;
 using FluentAssertions;
 
 namespace Archiver.Core.IntegrationTests;
@@ -216,6 +217,14 @@ public sealed class TrimmedSourceNameTests : IDisposable
         listed.Success.Should().BeFalse();
         listed.ErrorText!.Code.Should().Be(MessageCode.SourceNameTrimmed);
         Directory.Exists(destination).Should().BeFalse("nothing is extracted");
+
+        // T-F510's probe: the scan too, never the twin's entries.
+        var scanner = new FakeAmsiScanner();
+        ThreatScanResult scanned = await new AntivirusScanService(new TarCapabilities(), groupPolicyOptions: new GroupPolicyOptions(), () => scanner,
+            providerState: () => AmsiProviderState.Usable).ScanAsync(new AntivirusScanOptions { ArchivePaths = [archive] });
+        scanned.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        scanned.Findings.Should().ContainSingle().Which.Reason.Should().Contain("ends in a space or a dot");
+        scanner.ScannedContentNames.Should().BeEmpty("the twin's entries are never read");
     }
 
     // Repair writes: "x.zip " opened its twin "x.zip", whose set is beside it. Refused, the twin untouched.

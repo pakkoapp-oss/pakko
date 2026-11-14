@@ -14966,3 +14966,19 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
     where the folder is (`GetFileInformationByHandleEx` `FileCaseSensitiveInfo`), or by file
     identity (`PathIdentity`) wherever the source exists.
 - **Graduated 2026-11-13:** merged with T-F511 PR 4 (`git log --grep T-F515`); `CLI-057` in `docs/SMOKE.md`.
+
+### T-F510 - Archive a name Windows trims properly, and the rest of its operations (P3, from T-F509)
+
+- [x] **Status:** done 2026-11-14 (batch 5c). Also: the CLI's archive-name search (`x`/`l`/`t` with `-r` or a mask)
+  passes a folder Windows trims by in silence (T-F511's closing review). T-F509 refuses such names: no twin's bytes, nothing deleted. Left:
+  - **ZIP could archive them.** It can read `\\?\...\a.txt ` (probed 2026-11-12); the walk would
+    open each file through `\\?\` and name the entry from the file's own name. Before that, every
+    key built from a source path must match: `SourceResult`, the App's and the CLI's deletion
+    snapshots, `ResolveFinalPath`. tar.exe cannot read such a top-level name; tar keeps refusing it.
+  - **`PathIdentity` and the extraction side** were not probed with the twin fixture. The `Hostile`
+    oracle covers every public operation for writes, not for reads.
+- **Reported by:** the agent, 2026-11-12.
+- **Graduated 2026-11-14:** the archive search stops at a folder Windows trims (`CLI-063`); `PathIdentity`
+  answers for no twin, and the two callers that asked by a spelling Pakko writes through ask by the
+  file written; the scan joined the probe of reading such an archive. Archiving them is T-F531
+  (`docs/DECISIONS.md`, "T-F510"; `git log --grep T-F510`).
