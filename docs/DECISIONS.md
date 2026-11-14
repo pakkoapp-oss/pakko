@@ -15039,6 +15039,25 @@ entries of the staging's folder, not of their own folder in the destination, whe
 `SevenZipCreationCompatibilityTests` failed at Lzma2/SmallestSize with tar.exe's stderr empty during a
 full-suite run; it passed alone and in the next full run.
 
+**Closing review (advisor, then a fresh opus reviewer at the user's yes).**
+- Making a root listed its folder five times, once per swept name; `TempOwner.SweepStale` now takes
+  every name and lists once.
+- Naming the temporary archive makes the root, and that ran before the creation's `try`: in a folder
+  where no folder can be made (a deny on "create folders", a share without it) `ArchiveAsync` and
+  `CompressAsync` threw instead of reporting the error, and in separate mode one source's throw
+  stopped the rest. Now inside the catches (ZIP single and separate) and in its own catch (tar);
+  `DestinationWhereNoFolderCanBeMade` tests, seen red. Such a folder now refuses the archive, where a
+  temporary file beside it used to be allowed: accepted, the case is rare and the error says so.
+- The reviewer's claim that `InheritOnly` writes through a junction put in the moved folder's place
+  was measured false: `SetNamedSecurityInfoW` on a junction's path sets the junction's own DACL, its
+  target and the target's subfolder keep theirs.
+  `TakeParentEntries_AJunctionInTheMovedFoldersPlace_LeavesItsTargetAlone` holds that, and fails on a
+  mutant that resolves the link first.
+- Paths inside the root are about 35 characters longer: 7z, tar.gz and ZIP creation and a tar.gz
+  extraction into a 200-character destination work on 1.10.0.28.
+- Filed for the next wave: T-F533 (a root under a `\\?\` destination Windows trims is not removed)
+  and T-F534 (the fast path's re-inheritance has no cancel).
+
 ## T-F510 - names Windows trims: the archive search, the identity owner, archiving them later (2026-11-14)
 
 **The archive search (`x`/`l`/`t`).** `CliNameSelection.Candidates` passed a folder Windows trims

@@ -72,6 +72,34 @@ public sealed class ZipArchiveServiceSeparateLeftoversTests : IDisposable
         Directory.GetFiles(_dir, "*.zip").Should().BeEmpty();
     }
 
+    // T-F528 opus review: the work root is made when the temporary archive is named; in a folder
+    // where no folder can be made that was outside every catch and escaped ArchiveAsync.
+    [Theory]
+    [InlineData(ArchiveMode.SingleArchive)]
+    [InlineData(ArchiveMode.SeparateArchives)]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public async Task ArchiveAsync_DestinationWhereNoFolderCanBeMade_ReportsAccessDeniedAndDoesNotThrow(ArchiveMode mode)
+    {
+        string[] sources = Sources(2);
+        string dest = Path.Combine(_dir, "dest");
+        Directory.CreateDirectory(dest);
+        ArchiveResult result;
+        using (new NoCreateFolder(dest, System.Security.AccessControl.FileSystemRights.CreateDirectories))
+        {
+            result = await new ZipArchiveService(new GroupPolicyOptions()).ArchiveAsync(new ArchiveOptions
+            {
+                SourcePaths = sources,
+                DestinationFolder = dest,
+                ArchiveName = "out",
+                Mode = mode,
+            });
+        }
+
+        result.Success.Should().BeFalse();
+        result.Errors.Should().NotBeEmpty();
+        Directory.GetFileSystemEntries(dest).Should().BeEmpty();
+    }
+
     [Theory]
     [InlineData(CompressionLevel.Optimal, false)]
     [InlineData(CompressionLevel.Fastest, false)]

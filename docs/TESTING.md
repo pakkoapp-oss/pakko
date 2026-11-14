@@ -552,7 +552,10 @@ fixtures are built in the test by patching CRC/size fields of a fresh archive, n
 **T-F528 (the work root):** `IO/WorkRootTests` (one hidden root in the nearest existing folder, a
 new folder per role, a name already taken or a planted junction refused, dead roots and older
 versions' names swept, a link inside removed without its target, a `\\.\` or `\\?\` destination,
-a one-level ACE of the destination's folder on a folder renamed into place); `IO/WorkRootOwnerTests`
+a one-level ACE of the destination's folder on a folder renamed into place, a junction in its place
+left alone); `TempOwnerTests.Sweep_SeveralNames_EachJudgedByItsOwn`; `DestinationWhereNoFolderCanBeMade`
+in `ZipArchiveServiceSeparateLeftoversTests` and `TarSandboxedServiceCompressTests` (reported, never
+thrown); `IO/WorkRootOwnerTests`
 (every other `TempOwner.NewName` in `src`, with why); `TarSandboxedServiceSevenZipTests.
 CompressAsync_WhileTarRuns_TheDestinationHoldsOneHiddenWorkRoot`; `CliStreamStagingTests`' `-si`
 next to a destination and its %TEMP% fallback.

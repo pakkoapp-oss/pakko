@@ -1461,9 +1461,24 @@ public sealed class TarSandboxedService : ITarService
         (string destPath, bool replacesExisting) = destination;
         // T-F528: the temporary archive, the exclusion list and the 7z writer's folder share one root.
         using WorkRoot work = ArchiveTempFile.WorkRootFor(destPath);
-        string tempPath = ArchiveTempFile.NewPath(work);
+        string tempPath;
+        string excludeListPath;
+        try
+        {
+            tempPath = ArchiveTempFile.NewPath(work);
+            excludeListPath = work.NewFile("list", ".tmp");
+        }
+        catch (IOException ex)
+        {
+            errors.Add(CoreMessages.Error(destPath, CoreMessages.Wrap(MessageCode.CannotCreateArchive, ex), ex));
+            return;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            errors.Add(CoreMessages.Error(destPath, CoreMessages.Text(MessageCode.AccessDeniedCreatingArchive, CoreMessages.Detail(ex)), ex));
+            return;
+        }
         string workRoot = Path.GetDirectoryName(tempPath)!;
-        string excludeListPath = work.NewFile("list", ".tmp");
         // T-F342: libarchive's 7z writer keeps the whole compressed stream in a temporary file
         // and copies it into the archive at the end. Left in %TEMP%, that is a copy of the user's
         // data on the system drive; here it stays in the destination, in a folder of Pakko's own.
