@@ -14983,7 +14983,19 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
-## T-F513 - memory: the inventory, and one limit on the entries an archive may have (2026-11-14)
+## T-F510 - names Windows trims: the archive search, the identity owner, archiving them later (2026-11-14)
+
+**The archive search (`x`/`l`/`t`).** `CliNameSelection.Candidates` passed a folder Windows trims
+("`d.`") with `break`: `DirectoryWalker` never enters it, so a recursive search skipped its
+archives and the run ended 0 (T-F511's closing review). It now stops there as at a folder it cannot
+list (T-F511 PR 3): `pakko: error: <folder>: Windows reads this folder's name as another one, so it
+cannot be searched`, exit 2, before any archive opens; a twin "`d`" beside it changes nothing.
+`a` keeps its own rule, a warning and the rest archived (`CliArchiveSources.NameTrimmed`): 7-Zip
+also stops on an archive-search scan error (`CExtractScanConsole::ScanError`) and only warns about a
+source it cannot read. A search that never enters the folder is unchanged: the walk's filter gives
+`LeftOut` first.
+
+
 
 The user asked that Pakko never die of memory: it streams, or it refuses with a reason.
 

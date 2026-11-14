@@ -371,6 +371,30 @@ public sealed class ExtractAdversarialTests : IDisposable
         File.Delete(@"\\?\" + twin + ".");
     }
 
+    // T-F510: a recursive archive search over a folder Windows trims ("d.") skipped its archives in
+    // silence and exited 0; it now stops there as at a folder it cannot list, before any archive opens.
+    [Fact]
+    public void Zip_RecursiveSearchOverAFolderWindowsTrims_StopsWithExit2AndExtractsNothing()
+    {
+        string archive = _scratch.Zip("one.zip", ("a.txt", "A"));
+        string dotted = Path.Combine(_scratch.Root, "d.");
+        Directory.CreateDirectory(@"\\?\" + dotted);
+        File.Copy(archive, @"\\?\" + Path.Combine(dotted, "inside.zip"));
+        try
+        {
+            (int exitCode, _, string stdErr) = _scratch.Pakko("x", "-an", "-air!" + Path.Combine(_scratch.Root, "*.zip"), "-o" + _scratch.Inside("out"));
+
+            exitCode.Should().Be(2, stdErr);
+            stdErr.Should().Contain("pakko: error: " + dotted + ": " + CliNameSelection.FolderNameTrimmed);
+            Directory.Exists(_scratch.Inside("out")).Should().BeFalse("the run stops before any archive opens");
+        }
+        finally
+        {
+            File.Delete(@"\\?\" + Path.Combine(dotted, "inside.zip"));
+            Directory.Delete(@"\\?\" + dotted);
+        }
+    }
+
     // T-F512 (c), found by CLI-056: -o"<dir>\out." beside a folder "out" overwrote out's files (-aoa).
     [Theory]
     [InlineData("out.")]

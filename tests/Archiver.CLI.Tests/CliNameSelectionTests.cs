@@ -234,6 +234,55 @@ public sealed class CliNameSelectionTests
         }
     }
 
+    // T-F510: a folder Windows trims ("d.") cannot be listed under its own name (DirectoryWalker
+    // never enters it), so a search that has to look inside it stops, as for a folder it cannot
+    // list; before, its archives were skipped in silence and the run ended 0. With its twin "d"
+    // beside it the search stops all the same: "d." is not "d".
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ResolveArchives_RecursiveSearchMeetsAFolderWindowsTrims_StopsWithItsReason(bool twin)
+    {
+        Archives();
+        string dotted = Path.Combine(_dir, "arcs", "d.");
+        if (twin)
+            File.WriteAllText(Path.Combine(Directory.CreateDirectory(Path.Combine(_dir, "arcs", "d")).FullName, "twin.zip"), "x");
+        Directory.CreateDirectory(@"\\?\" + dotted);
+        File.WriteAllText(@"\\?\" + Path.Combine(dotted, "inside.zip"), "x");
+        try
+        {
+            (IReadOnlyList<string> paths, string? error, bool cannotList) = Resolve("x", "-an", @"-air!arcs\*.zip");
+
+            paths.Should().BeEmpty();
+            error.Should().Be(dotted + ": " + CliNameSelection.FolderNameTrimmed);
+            cannotList.Should().BeTrue();
+        }
+        finally
+        {
+            File.Delete(@"\\?\" + Path.Combine(dotted, "inside.zip"));
+            Directory.Delete(@"\\?\" + dotted);
+        }
+    }
+
+    [Fact]
+    public void ResolveArchives_SearchThatDoesNotEnterAFolderWindowsTrims_FindsAsBefore()
+    {
+        Archives();
+        string dotted = Path.Combine(_dir, "arcs", "d.");
+        Directory.CreateDirectory(@"\\?\" + dotted);
+        try
+        {
+            (IReadOnlyList<string> paths, string? error, _) = Resolve("x", @"arcs\*.zip");
+
+            error.Should().BeNull();
+            paths.Select(Path.GetFileName).Should().Equal("one.zip", "two.zip");
+        }
+        finally
+        {
+            Directory.Delete(@"\\?\" + dotted);
+        }
+    }
+
     private void Archives()
     {
         Directory.CreateDirectory(Path.Combine(_dir, "arcs", "deep"));
