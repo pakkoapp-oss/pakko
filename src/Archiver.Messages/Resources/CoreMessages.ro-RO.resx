@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>„{0}” se termină cu un spațiu sau un punct, pe care Windows îl elimină la deschiderea numelui; nu a fost folosit.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Această arhivă conține prea multe elemente pentru ca Pakko să o deschidă. Limită: {0}.</value>
+  </data>
 </root>

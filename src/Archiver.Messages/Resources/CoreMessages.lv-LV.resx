@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>“{0}” beidzas ar atstarpi vai punktu, ko Windows, atverot nosaukumu, atmet; tas netika izmantots.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Šajā arhīvā ir pārāk daudz vienumu, lai Pakko to atvērtu. Ierobežojums: {0}.</value>
+  </data>
 </root>

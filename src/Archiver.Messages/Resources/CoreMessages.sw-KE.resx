@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>"{0}" inaishia kwa nafasi au nukta, ambayo Windows huiondoa inapofungua jina; haikutumika.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Kumbukumbu hii ina vipengee vingi mno kwa Pakko kuifungua. Kikomo: {0}.</value>
+  </data>
 </root>

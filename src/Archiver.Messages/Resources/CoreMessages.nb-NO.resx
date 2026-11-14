@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>«{0}» slutter med et mellomrom eller et punktum, som Windows fjerner når navnet åpnes; det ble ikke brukt.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Dette arkivet inneholder for mange oppføringer til at Pakko åpner det. Grense: {0}.</value>
+  </data>
 </root>

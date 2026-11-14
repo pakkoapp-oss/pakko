@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>„{0}“ baigiasi tarpu arba tašku, kurį Windows atidarydama pavadinimą pašalina; nebuvo naudojama.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Šiame archyve per daug elementų, kad Pakko jį atvertų. Riba: {0}.</value>
+  </data>
 </root>

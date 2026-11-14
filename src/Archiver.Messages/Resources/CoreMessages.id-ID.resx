@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>"{0}" diakhiri spasi atau titik, yang dihapus Windows saat membuka nama tersebut; tidak digunakan.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Arsip ini berisi terlalu banyak entri untuk dibuka oleh Pakko. Batas: {0}.</value>
+  </data>
 </root>

@@ -14983,6 +14983,75 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F513 - memory: the inventory, and one limit on the entries an archive may have (2026-11-14)
+
+The user asked that Pakko never die of memory: it streams, or it refuses with a reason.
+
+**Measured** (a process of its own per run, Release, peak private bytes; empty entries named
+`dNNNNN/fNNNNNNNN.txt`):
+
+| operation | 100,000 entries | 1,000,000 entries | per entry |
+|---|---|---|---|
+| ZIP list / test | 142 / 133 MiB | 1,038 / 1,010 MiB | about 1 KB |
+| ZIP extract | 141 MiB | - | about 1.4 KB |
+| .NET's `ZipArchive` alone (open, `Entries`) | - | 546 MiB (434 live) | about 455 B |
+| `RawZipEntryLocator.LocateAll` alone | - | 245 MiB (68 live) | |
+| tar.gz list / test (tar.exe) | 98 / 98 MiB | 659 / 653 MiB | about 600 B |
+| tar.gz extract | 99 MiB | - | |
+| ZIP creation, 10,000 -> 100,000 files | 24 -> 92 MiB | - | about 750 B |
+
+T-F498 had already shown the window bounded: ten times the files gives 1.3-3 times the peak. What
+grows with the input is the catalog of an archive's entries, and nothing bounded it: a ZIP declaring
+10 million empty entries (a 1.1 GB file) would take about 10 GiB; tar.exe's listing was read whole,
+uncapped; only the archive helper stopped at 4,000,000 entries, and said so as a broken protocol.
+
+**The inventory** (a script over `src` without App and OperationUi, not a model: 499 matches of
+`ToList`/`ToArray`/collection expressions/`new List|HashSet|Dictionary|...`/`ReadAll*`/`ReadToEnd`/
+`new byte[]`/`ArrayPool`; the 301 that hold entries, files, sources, names or lines, by family):
+
+| family | matches | what grows with the input | verdict |
+|---|---|---|---|
+| an archive's catalog (`ZipArchiveReader`, `RawZipEntryLocator`, `TarNames`, `TarExeReader`, `HelperReader`, `EntryDiskName`, `TarHardLinkPairs`, the scan's entry lists, the App's `ArchiveTreeIndex`) | 75 | entries of an untrusted archive | **global by nature** (case collisions, duplicates, hard-link pairs, 8.3 aliases need every name; .NET's reader holds every entry): now bounded by `ArchiveLimits.MaxEntries`; T-F529 reads in batches and keeps a name set only |
+| results (`ArchiveResult` lists, `ExtractionRouter`/`ShellCommands` merges, `SourceOutcomeRules`, `SourceRecycler`, `CliSourceDeleter`, the recovery writers) | 99 | sources, and one item per entry an operation reports | bounded: sources by the caller's list, reported entries by the limit |
+| creation (`ZipEntryWriter`'s central directory records, claimed names, `SourceEntryNames`, the tar name list) | 36 | the files archived | global by nature (the directory is written at the end); the user's own files, about 750 B a file, recorded |
+| folder walks (`SourceTree`, `FileHashService`, `ExtractionStaging`, `TempOwner.Remove`, `PathIdentity.FilesIn`) | 24 | files under a folder | global where the job needs the whole set (the `-sdel` snapshot, the hash's names sum, a staging commit); the walk itself streams (`DirectoryWalker`) |
+| arguments and small fixed sets (CLI switches and masks, message keys, environment blocks) | 48 | the command line | bounded by it |
+| byte buffers (`ArrayPool` rents, PAR2 packets and matrices, tar.exe's capability snapshot, the helper copy) | 19 | - | bounded by design (`Par2Limits`, the pool's fixed sizes, Pakko's own files) |
+
+**The limit: 2,000,000 entries** (the user's choice, 2026-11-14, of 1, 2 and 4 million; about 2 GB
+for a ZIP and 1.2 GB for a tar at the limit today, less after T-F529), owned by `ArchiveLimits`:
+
+- **ZIP, before any record is read.** .NET's reader (`dotnet/runtime` `v11.0.0`, `ZipArchive.cs`):
+  `ReadEndOfCentralDirectoryInnerWork` sets `_expectedNumberOfEntries = eocd.NumberOfEntriesInTheCentralDirectory`;
+  `TryReadZip64EndOfCentralDirectory`, only when the classic record holds a `0xFFFF`/`0xFFFFFFFF`
+  marker and the Zip64 locator stands right before it, sets it to `record.NumberOfEntriesTotal`; and
+  `ReadCentralDirectoryEndOfInnerLoopWork` throws `if (numberOfEntries > _expectedNumberOfEntries)`.
+  So .NET never builds more entries than the count it expects. `RawZipEntryLocator.FindCentralDirectory`
+  (the same end record, found the same way: the last signature from the end) refuses the larger of
+  the classic count and, wherever the locator stands, the Zip64 total: never looser than .NET.
+  `ZipArchiveReader.Open` reads the names (this pass) before `ZipFile.OpenRead`; a device, which
+  .NET read as damaged data, is still refused as such.
+- **ZIP, the records really there.** Pakko's own pass is bounded by the directory's extent, which a
+  crafted archive can fill with more records than it declares (46 bytes each): it stops at the
+  limit too.
+- **tar.exe**: the `-t` and `-tv` runs count stdout as it arrives (`StdOutLimit`, one line an entry,
+  and 1 GiB in all, the helper's cap); past it tar.exe is killed first (left running it would
+  block on a full pipe while stderr's reader waits for it) and the run fails. Extraction and test
+  runs are not counted: the listing comes first.
+- **The archive helper**: the entry past the limit fails the run with the same message, not as a
+  broken protocol; the protocol's own bound (4,000,000, the C helper's `MAX_SELECTED`) is unchanged.
+- **The message** (`MessageCode.TooManyEntries`, 37 locales): "This archive has too many entries
+  for Pakko to open. Limit: {0}." A list shows it as is; a test or an extraction wraps it as its
+  "could not read/extract" error.
+
+**Tests:** `ArchiveLimitsTests` (the declared count, the records past it, a Zip64 end record
+declaring a billion entries in 128 bytes through all four passes, the helper), `EntryLimitTests`
+(a ZIP list, test and extraction; tar.exe's `-t` and `-tv` at the limit and one past it;
+`Category=Slow`: 2,000,000 and 2,000,001 empty entries through tar.exe and the helper),
+`ZipReadOwnerTests` (a ZIP is read only through `ZipArchiveReader.Open`). Each check removed in
+turn turned its tests red (the declared count alone: the Zip64 test and the service test; the
+record count: the more-than-declared test; the listing limit: both tar tests; the helper's: its test).
+
 ## T-F524 - the quarantine next to the destination (2026-11-13)
 
 The user, after the T-F474 bench: "Чому ми тягаємо файли між дисками? Чому темп не створювати там

@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>"{0}" מסתיים ברווח או בנקודה, ש-Windows משמיט בעת פתיחת השם; לא נעשה בו שימוש.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>בארכיון זה יש יותר מדי פריטים כדי ש-Pakko יפתח אותו. מגבלה: {0}.</value>
+  </data>
 </root>

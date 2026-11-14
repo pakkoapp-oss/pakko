@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>"{0}" ลงท้ายด้วยช่องว่างหรือจุด ซึ่ง Windows จะตัดออกเมื่อเปิดชื่อนี้ จึงไม่ได้ใช้</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>ไฟล์บีบอัดนี้มีรายการมากเกินกว่าที่ Pakko จะเปิดได้ ขีดจำกัด: {0}</value>
+  </data>
 </root>

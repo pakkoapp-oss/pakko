@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>«{0}» termina con uno spazio o un punto, che Windows rimuove quando apre il nome; non è stato usato.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Questo archivio contiene troppe voci perché Pakko lo apra. Limite: {0}.</value>
+  </data>
 </root>

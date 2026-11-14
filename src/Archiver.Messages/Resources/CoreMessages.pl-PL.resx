@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>„{0}” kończy się spacją lub kropką, które system Windows pomija przy otwieraniu nazwy; nie zostało użyte.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>To archiwum zawiera zbyt wiele elementów, aby Pakko je otworzył. Limit: {0}.</value>
+  </data>
 </root>

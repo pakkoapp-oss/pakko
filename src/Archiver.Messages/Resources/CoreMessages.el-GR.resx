@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>Το «{0}» τελειώνει σε κενό ή τελεία, που τα Windows αφαιρούν όταν ανοίγουν το όνομα· δεν χρησιμοποιήθηκε.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Αυτό το αρχείο συμπίεσης περιέχει πάρα πολλές καταχωρήσεις για να το ανοίξει το Pakko. Όριο: {0}.</value>
+  </data>
 </root>

@@ -417,4 +417,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>'{0}' ends in a space or a dot, which Windows drops when it opens the name; it was not used.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>This archive has too many entries for Pakko to open. Limit: {0}.</value>
+  </data>
 </root>

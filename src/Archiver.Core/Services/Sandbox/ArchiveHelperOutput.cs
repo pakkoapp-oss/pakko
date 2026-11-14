@@ -74,6 +74,7 @@ internal sealed class ArchiveHelperOutput
         ["tar", "cpio", "7zip", "rar", "rar5", "cab", "gzip", "bzip2", "compress", "xz", "lzma", "lzip", "zstd"];
 
     private readonly ArchiveHelperMode _mode;
+    private readonly int _entryLimit;
     private readonly List<ArchiveHelperEntry> _entries = [];
     private readonly HashSet<long> _warned = [];
     private readonly List<string> _missingExports = [];
@@ -91,8 +92,12 @@ internal sealed class ArchiveHelperOutput
     /// <param name="mode">The mode the helper ran in.</param>
     /// <param name="onRead">Called for each "K" line with the entry's index and its bytes, as it arrives.</param>
     /// <param name="onReading">Test: called for each "P" line with the entry's index and how far its read got.</param>
-    public ArchiveHelperOutput(ArchiveHelperMode mode, Action<long, long>? onRead = null, Action<long, long>? onReading = null)
+    /// <param name="entryLimit">T-F513: the most entries Pakko takes; the next one fails the run with
+    /// <see cref="ArchiveLimits.TooManyEntries"/>, never as a broken protocol. Lowered only by tests.</param>
+    public ArchiveHelperOutput(ArchiveHelperMode mode, Action<long, long>? onRead = null, Action<long, long>? onReading = null,
+        int entryLimit = ArchiveLimits.MaxEntries)
     {
+        _entryLimit = entryLimit;
         _onReading = onReading;
         _mode = mode;
         _onRead = onRead;
@@ -238,6 +243,8 @@ internal sealed class ArchiveHelperOutput
         long index = Unsigned(f[1], MaxEntries - 1);
         if (index != _entries.Count)
             throw Broken("an entry index out of sequence");
+        if (_entries.Count >= _entryLimit)
+            throw ArchiveLimits.TooManyEntries(_entryLimit);
         int fileType = (int)Unsigned(f[2], ushort.MaxValue);
         long? size = f[3] == "-" ? null : Unsigned(f[3], MaxEntrySize);
         long? mtime = f[4] == "-" ? null : Signed(f[4], long.MinValue + 1, long.MaxValue);

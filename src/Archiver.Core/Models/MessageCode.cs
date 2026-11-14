@@ -186,4 +186,7 @@ public enum MessageCode
 
     // A path whose name Windows trims ("a.txt ", "d.") opens its twin by that path (T-F509)
     SourceNameTrimmed,
+
+    // An archive with more entries than Pakko holds at once (T-F513)
+    TooManyEntries,
 }

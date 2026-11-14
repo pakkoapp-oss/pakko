@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>“{0}” bir boşluk veya noktayla bitiyor; Windows adı açarken bunu atar. Kullanılmadı.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Bu arşivde Pakko'nun açamayacağı kadar çok öğe var. Sınır: {0}.</value>
+  </data>
 </root>

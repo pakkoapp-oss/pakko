@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>”{0}” päättyy välilyöntiin tai pisteeseen, jonka Windows poistaa nimeä avatessaan; sitä ei käytetty.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Tässä arkistossa on liian monta kohdetta, jotta Pakko avaisi sen. Raja: {0}.</value>
+  </data>
 </root>

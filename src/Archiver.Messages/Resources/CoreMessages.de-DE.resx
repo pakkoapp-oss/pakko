@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>„{0}“ endet mit einem Leerzeichen oder Punkt, den Windows beim Öffnen des Namens entfernt; es wurde nicht verwendet.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Dieses Archiv enthält zu viele Einträge, um es in Pakko zu öffnen. Grenze: {0}.</value>
+  </data>
 </root>

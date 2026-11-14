@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>»{0}« se konča s presledkom ali piko, ki ju Windows pri odpiranju imena izpusti; ni bilo uporabljeno.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Ta arhiv vsebuje preveč vnosov, da bi ga Pakko odprl. Omejitev: {0}.</value>
+  </data>
 </root>
