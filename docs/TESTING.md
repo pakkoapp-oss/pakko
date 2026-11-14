@@ -847,7 +847,8 @@ ignored, `Dispose` not cancelling. The queued CRC-32 read's cancel is enforced b
     positions.
   - `PathMatrixPureTests.SourceKey_OfTheSpellingGiven_IsTheKeyOfWhatCoreReports` (T-F511 PR 4): in every
     shape, form and position the key App and CLI match a source by is the key of Core's form of it.
-    `PathIdentityOwnerTests` fails on a final-path resolver outside `PathIdentity`;
+    `PathIdentityOwnerTests` fails on a final-path resolver outside `PathIdentity`, and
+    `PathIdentityTrimmedNameTests` (T-F510) when it answers for a plain name Windows trims (the twin's);
     `TempOwnerOwnerTests` on a temporary name made outside `TempOwner` (T-F511 PR 2); `InputPathsOwnerTests` on a `TrimEnd` of dots or spaces
     outside `EntryDiskName` and `InputPaths`, `SourceOutcomeOwnerTests` on `Completed` or `Partial` given
     outside `SourceOutcomeRules` (T-F511 PR 5); `ErrorClassificationOwnerTests` on `.HResult` outside

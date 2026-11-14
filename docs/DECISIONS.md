@@ -15014,6 +15014,15 @@ refused by Core and has no key, so it is never deleted, and that check now leave
 the checks by its full path (the current folder, a volume root) stay
 (`Sdel_SourceTypedWithANameWindowsTrims_IsRefusedAndTheTwinKept`, red after the owner's change).
 
+**Checked and left (the closing advisor review).** `RunSourceFiles`' source side no longer gets
+the twin's identity for a source typed "`a.txt.`". `a -y a.txt a.txt. b.txt` replaces the existing
+`a.txt` with the archive, both on `0aa3d743` and after this change (a red-first test, run in a
+worktree of that commit, failed on both). That file is not a source of the run: Core refuses the
+spelling "`a.txt.`". `-y` asks for the replacement, so nothing changes. An `a` search's
+duplicate check (`CliArchiveSources.TakenSources`) asks identities only of spellings that differ in
+case, so "`a.txt `" beside "`a.txt`" never reaches it. On 1.10.0.27, `CLI-054`, `CLI-056` (the path
+matrix, 125 cases), `CLI-057` and `CLI-063` all passed.
+
 **Reading such an archive, the rest of the probe.** Extract, test, list and recovery of an archive
 "`x.zip `"/"`x.tar `" beside its twin, an output folder "`out.`", hash and the destination were
 covered (`TrimmedSourceNameTests`, `ExtractAdversarialTests`); the scan was not, and it is now (the
