@@ -51,7 +51,9 @@ public static class CliSourceDeleter
             return $"-sdel cannot tell where this source leads: {source}";
         // Resolved first: Directory.Exists says no to the volume root \\?\GLOBALROOT\Device\HarddiskVolumeN\.
         PathIdentity.Resolved? opened = PathIdentity.Resolve(source);
-        if (opened is null && (File.Exists(source) || Directory.Exists(source)))
+        // T-F510: PathIdentity answers for no name Windows trims; Core refuses such a source with its
+        // reason (T-F509) and it has no key, so it is never deleted. The checks by its full path stay.
+        if (opened is null && !InputPaths.NameTrimmed(source) && (File.Exists(source) || Directory.Exists(source)))
             return $"-sdel cannot tell where this source leads: {source}";
         if (IsVolumeRoot(full) || (opened is not null && IsVolumeRoot(Normalize(opened.FinalPath))))
             return $"-sdel would delete a volume root: {source}";
