@@ -1656,8 +1656,9 @@ re-measured with T-F346's script before and after.
 - [~] **Status:** batch 5b, 2026-11-14 (`docs/DECISIONS.md`, "T-F513"): steps 1 and 4 done - the
   inventory with its verdicts, and one limit (`ArchiveLimits.MaxEntries`, 2,000,000, the user's
   choice) on every reader: a ZIP by its declared count and its records, tar.exe's listing by its
-  lines, the helper by its entries; `TooManyEntries` in 37 locales; smoke `CLI-062`. Left: step 2's
-  memory budget test and step 3 with T-F473's leaner catalog; T-F529 (batch 5e) reads in batches.
+  lines, the helper by its entries; `TooManyEntries` in 37 locales; smoke `CLI-062`. Step 2 is
+  `CatalogMemoryBudgetTests` (live bytes per entry). Step 3 (batches) is T-F529 (batch 5e), with
+  T-F473's leaner catalog folded in; this task graduates with it.
   - **Asked by the user:** "can most places where a pipeline processes large arrays move to
     batches of a small fixed size, and so remove memory overflow altogether?"
   - **Where it stands.** T-F498 measured the data side (`docs/DECISIONS.md`, "T-F498 measured"):
@@ -2013,6 +2014,8 @@ re-measured with T-F346's script before and after.
   compact set of names for the global checks; the same for tar's listing. Every check of today stays
   (AES/ZipCrypto, Zip64, T-F280's local/central agreement, MOTW, the entry checks): an untrusted-input
   parser, so plan mode, advisor and a fresh opus reviewer.
+- **T-F473 is folded in** (its leaner catalog is this reader's), and `CatalogMemoryBudgetTests`'
+  budgets (live bytes per entry, T-F513) are lowered to what this measures.
 - **Then:** raise T-F513's entry limit (2,000,000) as far as the measured memory allows (the user left
   the value to the agent), and measure the memory of every mode (list, test, extract, scan, preview,
   the App's browser) before and after, as a table for the user.
@@ -2105,7 +2108,9 @@ re-measured with T-F346's script before and after.
 
 ### T-F473 - A listing of millions of entries costs over 2 GiB in the Pakko process (P3)
 
-- [ ] **Status:** open. Measured 2026-11-08 (T-F470's release batch, `docs/DECISIONS.md`): `TestAsync`
+- [ ] **Status:** folded into T-F529 (2026-11-14, `docs/DECISIONS.md`, "T-F513": .NET's `ZipArchive` holds
+  434 of a ZIP's 1,040 MiB peak per million entries, and only reading without it removes that; the
+  limit of 2,000,000 entries now bounds both backends). Measured 2026-11-08 (T-F470's release batch, `docs/DECISIONS.md`): `TestAsync`
   on 1,000,000 empty tar entries peaks at 557 MiB private bytes through the helper and 620 MiB through
   tar.exe, so about 2.2 GiB at the 4,000,000-entry limit; the memory sits in the App, Shell or `pakko`,
   outside the sandbox's job limit. Next: decide a lower entry limit, or a leaner catalog (one copy of

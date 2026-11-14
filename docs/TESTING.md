@@ -992,7 +992,10 @@ protected DACL. `EntryLimitTests` (T-F513) refuses an archive over `ArchiveLimit
 with the scope's `EntryLimit` lowered to 2; and, `Category=Slow` (about 1.5 minutes), tar.gz files
 of 2,000,000 and 2,000,001 empty entries through tar.exe and the helper. `ArchiveLimitsTests`
 (Core.Tests) covers the ZIP passes and the helper's protocol with small limits; `ZipReadOwnerTests`
-fails on a ZIP read outside `ZipArchiveReader.Open`. T-F196 added
+fails on a ZIP read outside `ZipArchiveReader.Open`. In the performance project,
+`CatalogMemoryBudgetTests` (`Category=Slow`, its own non-parallel collection) asserts the live bytes
+an archive's catalog holds per entry (200,000 empty entries: the ZIP reader, a ZIP list, a tar.exe
+list). T-F196 added
 `ExternalTarFixtureBuilder.CreateCompressedTarOfDotRoot` (the everyday `tar -C dir .` shape) and
 three `ExtractAsync_DotRoot*_MatchesPlainArchiveTree` parity tests.
 
