@@ -23,6 +23,7 @@ public sealed partial class TempOwnerOwnerTests
         ("Archiver.Core/Services/Sandbox/TarSandboxScope.cs", "GetTempPath", 1, "a fixed root for the sandbox folders"),
         ("Archiver.Core/Services/TarCollisionStaging.cs", "GetTempPath", 1, "where its folders are swept by TempOwner"),
         ("Archiver.Core/Services/TarSandboxedService.cs", "GetTempPath", 1, "where TarCollisionStaging names its folder by TempOwner"),
+        ("Archiver.Core/IO/WorkRoot.cs", "Guid.NewGuid", 1, "a role folder inside the work root TempOwner named (T-F528)"),
         ("Archiver.Core/Services/Zip/ParallelSingleArchiveWriter.cs", "Guid.NewGuid", 1, "a chunk file inside the chunk folder TempOwner named"),
     ];
 

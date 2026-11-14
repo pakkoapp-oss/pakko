@@ -140,6 +140,87 @@ internal static partial class QuarantineAcl
     }
 
     /// <summary>
+    /// T-F528: true when <paramref name="folder"/>'s DACL has an entry it passes to its children only
+    /// (NO_PROPAGATE). False when the DACL cannot be read: a volume without permissions has none.
+    /// </summary>
+    public static bool GivesChildrenOnly(string folder)
+    {
+        const int SE_FILE_OBJECT = 1;
+        const uint DACL_SECURITY_INFORMATION = 0x00000004;
+        const uint SDDL_REVISION_1 = 1;
+
+        if (!OperatingSystem.IsWindows()
+            || NativeMethods.GetNamedSecurityInfoW(folder, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
+                IntPtr.Zero, IntPtr.Zero, out _, IntPtr.Zero, out IntPtr securityDescriptor) != 0)
+            return false;
+        try
+        {
+            if (!NativeMethods.ConvertSecurityDescriptorToStringSecurityDescriptorW(
+                    securityDescriptor, SDDL_REVISION_1, DACL_SECURITY_INFORMATION, out IntPtr text, out _))
+                return false;
+            try
+            {
+                return HasNoPropagateEntry(Marshal.PtrToStringUni(text) ?? string.Empty);
+            }
+            finally
+            {
+                NativeMethods.LocalFree(text);
+            }
+        }
+        finally
+        {
+            NativeMethods.LocalFree(securityDescriptor);
+        }
+    }
+
+    // "D:(A;OICINP;FR;;;WD)...": an entry's flags are its second field, two letters each.
+    internal static bool HasNoPropagateEntry(string sddl)
+    {
+        foreach (string entry in sddl.Split('(', StringSplitOptions.RemoveEmptyEntries).Skip(1))
+        {
+            string[] fields = entry.Split(';');
+            if (fields.Length < 2)
+                continue;
+            string flags = fields[1];
+            for (int i = 0; i + 1 < flags.Length; i += 2)
+                if (flags[i] == 'N' && flags[i + 1] == 'P')
+                    return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// T-F528: drops <paramref name="folder"/>'s own entries and has it inherit from its parent again;
+    /// Windows writes the inheritance of everything below it too. Only for a folder Pakko made, whose
+    /// entries are all inherited. Throws <see cref="IOException"/> when the DACL cannot be written.
+    /// </summary>
+    public static void InheritOnly(string folder)
+    {
+        const int SE_FILE_OBJECT = 1;
+        const uint DACL_SECURITY_INFORMATION = 0x00000004;
+        const uint UNPROTECTED_DACL_SECURITY_INFORMATION = 0x20000000;
+        const int AclHeaderLength = 8;
+        const byte AclRevision = 2;
+
+        IntPtr emptyAcl = Marshal.AllocHGlobal(AclHeaderLength);
+        try
+        {
+            Marshal.WriteInt64(emptyAcl, 0);
+            Marshal.WriteByte(emptyAcl, 0, AclRevision);
+            Marshal.WriteInt16(emptyAcl, 2, AclHeaderLength);
+            uint result = NativeMethods.SetNamedSecurityInfoW(
+                folder, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION | UNPROTECTED_DACL_SECURITY_INFORMATION,
+                IntPtr.Zero, IntPtr.Zero, emptyAcl, IntPtr.Zero);
+            if (result != 0)
+                throw new IOException($"SetNamedSecurityInfoW('{folder}') failed (Win32 error {result}).");
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(emptyAcl);
+        }
+    }
+
+    /// <summary>
     /// T-F389: true when <paramref name="filePath"/> has an entry for an AppContainer SID or an
     /// integrity label - what a file created by the sandboxed tar.exe carries. False when the file's
     /// security cannot be read: a volume without permissions (FAT, exFAT) has none to carry, and a

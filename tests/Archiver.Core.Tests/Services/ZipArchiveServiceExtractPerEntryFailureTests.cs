@@ -54,7 +54,7 @@ public sealed class ZipArchiveServiceExtractPerEntryFailureTests : IDisposable
         ArchiveError error = result.Errors.Should().ContainSingle().Subject;
         error.Message.Should().Contain(badName).And.NotContain(".pakko-x");
         result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.Partial);
-        Directory.GetDirectories(dest, ".pakko-x-*").Should().BeEmpty();
+        Directory.GetDirectories(dest, ".pakko-*").Should().BeEmpty();
     }
 
     // T-F297: the OS text stays English in every UI language; its Windows code goes with it.

@@ -19,7 +19,7 @@ public sealed partial class DestinationFolderOwnerTests
         ("Archiver.App/Services/LogService.cs", "Directory.CreateDirectory(dir)", 1, "Pakko's log folder"),
         ("Archiver.CLI/CliStagingFolder.cs", "Directory.CreateDirectory(path)", 1, "the CLI's %TEMP% staging, Pakko's name"),
         ("Archiver.Core/Services/DirectoryJunction.cs", "Directory.CreateDirectory(junctionPath)", 1, "a junction Pakko names in its own staging"),
-        ("Archiver.Core/Services/ExtractionStaging.cs", "Directory.CreateDirectory(path)", 1, "the staging folder, TempOwner's name"),
+        ("Archiver.Core/Services/ExtractionStaging.cs", "Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(actualDest))!)", 1, "the folder above the destination, before the staging is renamed into it (T-F528)"),
         ("Archiver.Core/Services/ExtractionStaging.cs", "Directory.CreateDirectory(actualDest)", 1, "the destination after TryCreate, or its subfolder named by ArchiveNaming.GetFolderName"),
         ("Archiver.Core/Services/ExtractionStaging.cs", "Directory.CreateDirectory(finalFolder)", 1, "an entry's folder below the destination, named by EntryDiskName"),
         ("Archiver.Core/Services/ExtractionStaging.cs", "Directory.CreateDirectory(System.IO.Path.GetDirectoryName(finalFile)!)", 1, "an entry's folder below the destination, named by EntryDiskName"),

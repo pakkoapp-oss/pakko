@@ -85,7 +85,7 @@ public sealed class ZipArchiveServiceExtractIntegrityTests : IDisposable
         File.Exists(Path.Combine(dest, "doc.txt")).Should().BeFalse("a corrupted entry must never reach the destination");
         File.ReadAllText(Path.Combine(dest, "ok.txt")).Should().Be("fine");
         result.Sources.Should().ContainSingle().Which.Outcome.Should().Be(SourceOutcome.Partial);
-        Directory.GetDirectories(dest, ".pakko-x-*").Should().BeEmpty();
+        Directory.GetDirectories(dest, ".pakko-*").Should().BeEmpty();
     }
 
     [Fact]

@@ -5,14 +5,16 @@ namespace Archiver.Core.Services;
 /// <summary>
 /// A staging folder owned by one extraction run (T-F263, T-F227): created fresh under a unique
 /// name, never reused, and on <see cref="Dispose"/> removes only itself. The old fixed
-/// "&lt;dest&gt;_tmp" name reused — and then deleted — a user's own folder of that name.
+/// "&lt;dest&gt;_tmp" name reused — and then deleted — a user's own folder of that name. T-F528: it is
+/// a role of the run's <see cref="WorkRoot"/>, which goes with it.
 /// </summary>
 internal sealed class ExtractionStaging : IDisposable
 {
-    private const string NamePrefix = ".pakko-x-";
+    private readonly WorkRoot _work;
 
-    private ExtractionStaging(string path)
+    private ExtractionStaging(WorkRoot work, string path)
     {
+        _work = work;
         Path = path;
         FullPathWithSeparator = System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(path))
             + System.IO.Path.DirectorySeparatorChar;
@@ -69,21 +71,20 @@ internal sealed class ExtractionStaging : IDisposable
     /// the commit created — a folder the user already had keeps its own time.</summary>
     public void RecordFolderTime(string relativePath, DateTime utc) => _folderTimes[relativePath] = utc;
 
-    /// <summary>Creates a new staging folder inside <paramref name="stagingRoot"/>, which must be
-    /// on the same volume as the destination so the commit can rename instead of copy. Staging
-    /// folders a killed run left there go first (T-F263).</summary>
-    public static ExtractionStaging Create(string stagingRoot)
+    /// <summary>Creates a new staging folder in the work root next to <paramref name="destination"/>
+    /// (<see cref="WorkRoot.Near"/>), on its volume, so the commit renames instead of copying.</summary>
+    public static ExtractionStaging Create(string destination)
     {
-        TempOwner.SweepStale(stagingRoot, NamePrefix, "", TempScope.Destination);
-        string path;
-        do
+        var work = WorkRoot.Near(destination);
+        try
         {
-            path = System.IO.Path.Combine(stagingRoot, TempOwner.NewName(NamePrefix));
-        } while (Directory.Exists(path) || File.Exists(path));
-
-        DirectoryInfo info = Directory.CreateDirectory(path);
-        info.Attributes |= FileAttributes.Hidden;
-        return new ExtractionStaging(path);
+            return new ExtractionStaging(work, work.Folder("x"));
+        }
+        catch
+        {
+            work.Dispose();
+            throw;
+        }
     }
 
     // T-F161: fast-path atomic rename if actualDest doesn't exist yet, otherwise a per-file merge
@@ -122,12 +123,12 @@ internal sealed class ExtractionStaging : IDisposable
         // fast path's whole-folder rename from ever skipping one.
         if (!Directory.Exists(actualDest) && _renameExisting.Count == 0)
         {
-            // The rename carries the folder's attributes with it.
-            var info = new DirectoryInfo(Path);
-            info.Attributes &= ~FileAttributes.Hidden;
             try
             {
+                // The work root may be above the destination's folder (T-F528): none of it exists yet.
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(actualDest))!);
                 (moveOverride ?? Directory.Move)(Path, actualDest);
+                WorkRoot.TakeParentEntries(actualDest);
                 ApplyFolderTimes(newFolderTimes);
                 // Named only once the move succeeded: a failed one goes on to the merge below, which names them.
                 if (committed is not null && folders is not null && files is not null)
@@ -331,9 +332,6 @@ internal sealed class ExtractionStaging : IDisposable
             FileTimes.TrySetDirectory(folder, utc);
     }
 
-    /// <summary>Removes the staging folder (best-effort).</summary>
-    public void Dispose()
-    {
-        try { if (Directory.Exists(Path)) Directory.Delete(Path, recursive: true); } catch { /* best-effort */ }
-    }
+    /// <summary>Removes the staging folder with its work root (best-effort).</summary>
+    public void Dispose() => _work.Dispose();
 }

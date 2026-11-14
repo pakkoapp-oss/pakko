@@ -86,7 +86,7 @@ public sealed class ZipArchiveServiceExtractTempDestResilienceTests : IDisposabl
         // as "appears corrupted") — the point of this test is the staging folder below.
         result.Errors.Should().ContainSingle(e => e.Message.Contains("unsafe path"));
 
-        Directory.GetDirectories(_temp.Path, ".pakko-x-*").Should().BeEmpty("a failed extraction must not leave a staging folder behind");
+        Directory.GetDirectories(_temp.Path, ".pakko-*").Should().BeEmpty("a failed extraction must not leave a staging folder behind");
     }
 
     // Exercises ExtractionStaging.CommitInto directly (internal, via
