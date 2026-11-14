@@ -18,6 +18,10 @@ public static class CliNameSelection
     private static readonly char[] PathSeparators = ['\\', '/'];
     private static readonly char[] LineBreaks = ['\n', '\r'];
 
+    /// <summary>T-F510: why a search stops at a folder Windows trims ("d."): by its plain path
+    /// Windows lists another folder ("d") or none.</summary>
+    public const string FolderNameTrimmed = "Windows reads this folder's name as another one, so it cannot be searched";
+
     /// <summary>The entry filter for x and l, or null when nothing filters (every entry).</summary>
     public static (CliNameFilter? Filter, string? Error) BuildEntryFilter(ParsedCliCommand command)
     {
@@ -206,6 +210,10 @@ public static class CliNameSelection
                 case WalkEntryKind.UnreadableDirectory:
                     unreadable = entry.Info.FullName + ": " + entry.Error?.Message;
                     return null;
+                case WalkEntryKind.TrimmedName when entry.Info is DirectoryInfo:
+                    // T-F510: the walk never enters it, so its archives would be skipped in silence.
+                    unreadable = entry.Info.FullName + ": " + FolderNameTrimmed;
+                    return null;
                 case WalkEntryKind.File:
                 case WalkEntryKind.ReparsePoint when entry.Info is FileInfo:
                 case WalkEntryKind.TrimmedName when entry.Info is FileInfo:
@@ -215,7 +223,6 @@ public static class CliNameSelection
                 case WalkEntryKind.Directory:
                 case WalkEntryKind.LeftOut:
                 case WalkEntryKind.ReparsePoint:
-                case WalkEntryKind.TrimmedName:
                     break;
             }
         }

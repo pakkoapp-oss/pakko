@@ -1091,6 +1091,31 @@ Add-SmokeStep 'CLI-062' {
     'l, t and x refuse the archive, naming the limit'
 }
 
+# T-F510: a recursive archive search stops at a folder Windows trims, as at one it cannot list.
+Add-SmokeStep 'CLI-063' {
+    $folder = Get-StepFolder 'cli063'
+    $src = Join-Path $folder 'src.txt'
+    Set-Content -LiteralPath $src -Value 'A'
+    $zip = Join-Path $folder 'one.zip'
+    $made = Invoke-Pakko @('a', $zip, $src)
+    Assert-Smoke ($made.ExitCode -eq 0) "one.zip: exit $($made.ExitCode) $($made.Text)"
+    $dotted = Join-Path $folder 'd.'
+    [System.IO.Directory]::CreateDirectory('\\?\' + $dotted) | Out-Null
+    [System.IO.File]::Copy($zip, '\\?\' + (Join-Path $dotted 'inside.zip'))
+    try {
+        $out = Join-Path $folder 'out'
+        $run = Invoke-Pakko @('x', '-an', "-air!$(Join-Path $folder '*.zip')", "-o$out")
+        Assert-Smoke ($run.ExitCode -eq 2) "exit $($run.ExitCode) $($run.Text)"
+        Assert-Smoke ($run.Text.Contains("$($dotted): Windows reads this folder's name as another one")) $run.Text
+        Assert-Smoke (-not (Test-Path -LiteralPath $out)) 'an archive was extracted'
+    }
+    finally {
+        [System.IO.File]::Delete('\\?\' + (Join-Path $dotted 'inside.zip'))
+        [System.IO.Directory]::Delete('\\?\' + $dotted)
+    }
+    'the search stops at d. with its reason, exit 2'
+}
+
 # T-F474: the quarantine is under %TEMP%; a destination on another volume takes the copy branch of
 # QuarantineFiles.TakeOut (a rename by handle cannot cross volumes). Never under D:\Projects, which
 # Controlled Folder Access guards on the dev machine.
