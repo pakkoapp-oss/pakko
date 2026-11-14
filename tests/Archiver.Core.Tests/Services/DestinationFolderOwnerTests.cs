@@ -35,7 +35,6 @@ public sealed partial class DestinationFolderOwnerTests
         ("Archiver.Core/Services/TarCapabilitySnapshot.cs", "Directory.CreateDirectory(folder)", 1, "Pakko's LocalAppData folder"),
         ("Archiver.Core/Services/TarSandboxedService.cs", "Directory.CreateDirectory(destDir)", 1, "the destination after TryCreate, or its subfolder named by ArchiveNaming.GetFolderName"),
         ("Archiver.Core/Services/TarSandboxedService.cs", "Directory.CreateDirectory(Path.GetDirectoryName(stagedFilePath)!)", 1, "the staging folder, entry names by EntryDiskName"),
-        ("Archiver.Core/Services/TarSandboxedService.cs", "Directory.CreateDirectory(writerTempDir)", 1, "creation's temp folder, Pakko's name"),
         ("Archiver.Core/Services/TarSandboxedService.cs", "Directory.CreateDirectory(Path.GetDirectoryName(stagedPath)!)", 1, "creation's staging folder, Pakko's name"),
         ("Archiver.Core/Services/Zip/ParallelSingleArchiveWriter.cs", "Directory.CreateDirectory(path)", 1, "the chunk folder, TempOwner's name"),
         ("Archiver.Core/Services/ZipArchiveService.cs", "Directory.CreateDirectory(destDir)", 1, "the destination after TryCreate, or its subfolder named by ArchiveNaming.GetFolderName"),

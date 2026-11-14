@@ -22,8 +22,10 @@ internal sealed partial class WorkRoot : IDisposable
     /// <summary>The prefix of a root's name.</summary>
     internal const string Prefix = ".pakko-w-";
 
-    // What older versions left next to a destination, swept with the roots (T-F263's staging).
-    private static readonly string[] OlderPrefixes = [".pakko-x-"];
+    // What older versions left next to a destination, swept with the roots: extraction staging,
+    // creation's temporary file, chunk folder and 7z writer folder (T-F263, T-F312, T-F342).
+    private static readonly (string Prefix, string Suffix)[] OlderNames =
+        [(".pakko-x-", ""), (".pakko-a-", ".tmp"), (".pakko-tmp-", ""), (".pakko-7z-", "")];
 
     private readonly string _destination;
     private readonly Lock _gate = new();
@@ -44,6 +46,11 @@ internal sealed partial class WorkRoot : IDisposable
         return path;
     }
 
+    /// <summary>A new file path for <paramref name="role"/> in the root; the file itself is not
+    /// created. Thread-safe.</summary>
+    public string NewFile(string role, string suffix) =>
+        Path.Combine(EnsureRoot(), $"{role}-{Guid.NewGuid():N}{suffix}");
+
     private string EnsureRoot()
     {
         lock (_gate)
@@ -53,8 +60,8 @@ internal sealed partial class WorkRoot : IDisposable
             string parent = NearestExisting(_destination)
                 ?? throw new DirectoryNotFoundException($"No folder of '{_destination}' exists.");
             TempOwner.SweepStale(parent, Prefix, "", TempScope.Destination);
-            foreach (string older in OlderPrefixes)
-                TempOwner.SweepStale(parent, older, "", TempScope.Destination);
+            foreach ((string prefix, string suffix) in OlderNames)
+                TempOwner.SweepStale(parent, prefix, suffix, TempScope.Destination);
             string root = Path.Combine(parent, TempOwner.NewName(Prefix));
             CreateNewFolder(root);
             _root = root;
@@ -94,19 +101,19 @@ internal sealed partial class WorkRoot : IDisposable
     }
 
     /// <summary>
-    /// After a folder made in the root was renamed into place as <paramref name="movedFolder"/>: gives it
-    /// what a folder made there gets. A rename keeps a folder's permissions, and an entry its new parent
-    /// gives its children only (NO_PROPAGATE) never reached a folder made one level deeper (measured,
-    /// T-F528). Only then is the folder's inheritance written again, which walks its whole tree (0.9 s for
-    /// 20,000 files). Best-effort: without it the folder keeps the rest of what the destination grants.
+    /// After a file or folder made in the root was renamed into place as <paramref name="moved"/>: gives
+    /// it what one made there gets. A rename keeps permissions, and an entry its new parent gives its
+    /// children only (NO_PROPAGATE) never reached one made a level deeper (measured, T-F528). Only then is
+    /// the inheritance written again, which for a folder walks its whole tree (0.9 s for 20,000 files).
+    /// Best-effort: without it, it keeps the rest of what the destination grants.
     /// </summary>
-    public static void TakeParentEntries(string movedFolder)
+    public static void TakeParentEntries(string moved)
     {
-        string? parent = Path.GetDirectoryName(Path.GetFullPath(movedFolder));
+        string? parent = Path.GetDirectoryName(Path.GetFullPath(moved));
         try
         {
             if (parent is not null && QuarantineAcl.GivesChildrenOnly(parent))
-                QuarantineAcl.InheritOnly(movedFolder);
+                QuarantineAcl.InheritOnly(moved);
         }
         catch (IOException)
         {

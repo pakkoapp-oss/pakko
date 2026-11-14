@@ -190,11 +190,12 @@ internal static partial class QuarantineAcl
     }
 
     /// <summary>
-    /// T-F528: drops <paramref name="folder"/>'s own entries and has it inherit from its parent again;
-    /// Windows writes the inheritance of everything below it too. Only for a folder Pakko made, whose
-    /// entries are all inherited. Throws <see cref="IOException"/> when the DACL cannot be written.
+    /// T-F528: drops <paramref name="path"/>'s own entries and has it inherit from its parent again;
+    /// for a folder, Windows writes the inheritance of everything below it too. Only for a file or
+    /// folder Pakko made, whose entries are all inherited. Throws <see cref="IOException"/> when the
+    /// DACL cannot be written.
     /// </summary>
-    public static void InheritOnly(string folder)
+    public static void InheritOnly(string path)
     {
         const int SE_FILE_OBJECT = 1;
         const uint DACL_SECURITY_INFORMATION = 0x00000004;
@@ -209,10 +210,10 @@ internal static partial class QuarantineAcl
             Marshal.WriteByte(emptyAcl, 0, AclRevision);
             Marshal.WriteInt16(emptyAcl, 2, AclHeaderLength);
             uint result = NativeMethods.SetNamedSecurityInfoW(
-                folder, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION | UNPROTECTED_DACL_SECURITY_INFORMATION,
+                path, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION | UNPROTECTED_DACL_SECURITY_INFORMATION,
                 IntPtr.Zero, IntPtr.Zero, emptyAcl, IntPtr.Zero);
             if (result != 0)
-                throw new IOException($"SetNamedSecurityInfoW('{folder}') failed (Win32 error {result}).");
+                throw new IOException($"SetNamedSecurityInfoW('{path}') failed (Win32 error {result}).");
         }
         finally
         {

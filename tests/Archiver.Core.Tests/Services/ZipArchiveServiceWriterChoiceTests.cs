@@ -109,7 +109,7 @@ public sealed class ZipArchiveServiceWriterChoiceTests : IDisposable
         zip.Entries.Should().OnlyContain(e => e.CompressedLength == e.Length, "the parallel writer stores what Deflate did not shrink");
         foreach (string source in sources)
             ReadEntry(zip, Path.GetFileName(source)).Should().Equal(File.ReadAllBytes(source));
-        Directory.GetDirectories(_temp.Path, ".pakko-tmp-*").Should().BeEmpty();
+        Directory.GetFileSystemEntries(_temp.Path, ".pakko-*").Should().BeEmpty();
     }
 
     [Fact]

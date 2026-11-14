@@ -187,7 +187,7 @@ public sealed class ZipArchiveServiceIncompressibleTests : IDisposable
             File.ReadAllBytes(Path.Combine(destDir, Path.GetFileName(source))).Should().Equal(File.ReadAllBytes(source));
             File.Delete(source);
         }
-        Directory.GetDirectories(outDir, ".pakko-tmp-*").Should().BeEmpty();
+        Directory.GetFileSystemEntries(outDir, ".pakko-*").Should().BeEmpty();
     }
 
     [Theory]

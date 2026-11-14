@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
+using Archiver.Core.IO;
 using Archiver.Core.Services;
 using Microsoft.Win32.SafeHandles;
 
@@ -60,7 +61,8 @@ internal static class Par2Repairer
         double work = 2.0 * set.FileLength + (double)set.Slices.Length * set.SliceSize * missingCount;
         var tracker = new Par2Progress(progress, work);
 
-        string temp = ArchiveTempFile.Create(outputPath);
+        using WorkRoot workRoot = ArchiveTempFile.WorkRootFor(outputPath);
+        string temp = ArchiveTempFile.NewPath(workRoot);
         try
         {
             bool matches;

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Archiver.Core.IO;
 using Archiver.Core.Models;
 
 namespace Archiver.Core.Services;
@@ -101,7 +102,8 @@ internal sealed class BareGzipEngine(GroupPolicyOptions policy)
                 return null;
             }
 
-            tempPath = ArchiveTempFile.Create(plan.FinalPath);
+            using WorkRoot work = ArchiveTempFile.WorkRootFor(plan.FinalPath);
+            tempPath = ArchiveTempFile.NewPath(work);
             BareGzip.ReadResult written = await Task.Run(() => WriteTemp(archivePath, tempPath, measured.Length, cancellationToken), cancellationToken).ConfigureAwait(false);
             if (written.Damaged || written.Length != measured.Length)
             {

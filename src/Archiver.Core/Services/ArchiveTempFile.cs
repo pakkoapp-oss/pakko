@@ -7,58 +7,31 @@ namespace Archiver.Core.Services;
 /// tar creation alike. Its name is unique to the run (a fixed "&lt;archive&gt;.tmp" left by a killed
 /// run, or held by a sync client, failed every later run), carries no part of the archive's name (a
 /// long archive name would hit the 255-character limit), and is not hidden (the rename would carry
-/// the attribute to the archive, and tar.exe cannot overwrite a hidden file).
+/// the attribute to the archive, and tar.exe cannot overwrite a hidden file). T-F528: it lies in the
+/// operation's <see cref="WorkRoot"/>, which is hidden, with whatever else the writer needs (the
+/// parallel writer's chunk folder, tar.exe's exclusion list and 7z writer folder): one entry next to
+/// the archive while it is written, none after.
 /// </summary>
 internal static class ArchiveTempFile
 {
-    private const string Prefix = ".pakko-a-";
-    private const string Suffix = ".tmp";
-    /// <summary>The folder the parallel ZIP writer keeps its compressed chunks in.</summary>
+    /// <summary>The folder the parallel ZIP writer keeps its compressed chunks in, beside the temporary file.</summary>
     internal const string ChunkFolderPrefix = ".pakko-tmp-";
-    /// <summary>The folder tar.exe's 7z writer keeps its temporary file in (T-F342).</summary>
-    internal const string WriterFolderPrefix = ".pakko-7z-";
     // Each attempt takes the next free "name (N)"; another run would have to claim every one first.
     private const int MaxFreeNameAttempts = 10;
 
     // About 1.5 s in all: long enough for a scanner or sync client that opened the file for a moment.
     private static readonly int[] RetryDelaysMs = [100, 200, 400, 800];
 
-    /// <summary>Sweeps the archive's folder for temporary files and chunk folders of runs that no
-    /// longer run (T-F379: every creation passes here, a small one too), and returns a new temporary
-    /// path there. The file itself is not created.</summary>
-    public static string Create(string destPath)
-    {
-        Sweep(FolderOf(destPath));
-        return NewPath(destPath);
-    }
+    /// <summary>The work root of an archive written to <paramref name="destPath"/>: next to it. Every
+    /// creation makes one (T-F379: a small one too), and its first role sweeps what killed runs left
+    /// there; one archive per item makes one per destination folder for the whole run (T-F497: a
+    /// sweep per archive listed a folder of thousands of entries thousands of times).</summary>
+    public static WorkRoot WorkRootFor(string destPath) => WorkRoot.Near(FolderOf(destPath));
 
-    /// <summary>T-F497: removes what runs that no longer run left in <paramref name="folder"/>: their
-    /// temporary files, chunk folders and 7z writer folders. One archive per item calls it once per
-    /// destination folder at the start of the run, then names each archive's file with
-    /// <see cref="NewPath"/> - a sweep per archive listed a folder of thousands of entries thousands
-    /// of times.</summary>
-    public static void Sweep(string folder)
-    {
-        TempOwner.SweepStale(folder, Prefix, Suffix, TempScope.Destination);
-        TempOwner.SweepStale(folder, ChunkFolderPrefix, "", TempScope.Destination);
-        TempOwner.SweepStale(folder, WriterFolderPrefix, "", TempScope.Destination);
-    }
-
-    /// <summary>A new temporary path in <paramref name="destPath"/>'s folder, without a sweep: only
-    /// after <see cref="Sweep"/> ran for that folder in this run.</summary>
-    public static string NewPath(string destPath) => Path.Combine(FolderOf(destPath), TempOwner.NewName(Prefix, Suffix));
+    /// <summary>A new temporary path in <paramref name="work"/>; the file itself is not created.</summary>
+    public static string NewPath(WorkRoot work) => work.NewFile("a", ".tmp");
 
     internal static string FolderOf(string destPath) => Path.GetDirectoryName(Path.GetFullPath(destPath))!;
-
-    /// <summary>Another temporary path in <paramref name="tempPath"/>'s folder, swept like it
-    /// (T-F391: the list of names tar.exe leaves out).</summary>
-    public static string NewSibling(string tempPath) =>
-        Path.Combine(Path.GetDirectoryName(tempPath)!, TempOwner.NewName(Prefix, Suffix));
-
-    /// <summary>A folder path in <paramref name="tempPath"/>'s folder for tar.exe's 7z writer
-    /// (T-F342), swept like the temporary file. The folder itself is not created.</summary>
-    public static string NewWriterFolder(string tempPath) =>
-        Path.Combine(Path.GetDirectoryName(tempPath)!, TempOwner.NewName(WriterFolderPrefix));
 
     /// <summary>
     /// Overwrite keeps the old archive until the commit replaces it — except when the archive lies
@@ -97,14 +70,21 @@ internal static class ArchiveTempFile
         {
             try
             {
-                return Move(tempPath, destPath, replaceExisting);
+                return Landed(Move(tempPath, destPath, replaceExisting));
             }
             catch (Exception ex) when (IsHeld(ex, destPath))
             {
                 await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
             }
         }
-        return Move(tempPath, destPath, replaceExisting);
+        return Landed(Move(tempPath, destPath, replaceExisting));
+    }
+
+    // Written a level deeper, in the work root (T-F528).
+    private static string Landed(string archive)
+    {
+        WorkRoot.TakeParentEntries(archive);
+        return archive;
     }
 
     private static string Move(string tempPath, string destPath, bool replaceExisting)

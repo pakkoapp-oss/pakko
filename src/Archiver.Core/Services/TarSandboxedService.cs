@@ -1459,13 +1459,15 @@ public sealed class TarSandboxedService : ITarService
         // T-F321: from the conflict decision, not a second look at the disk - an archive that
         // appeared since then is another run's, and the commit must not replace it.
         (string destPath, bool replacesExisting) = destination;
-        string tempPath = ArchiveTempFile.Create(destPath);
-        string excludeListPath = ArchiveTempFile.NewSibling(tempPath);
+        // T-F528: the temporary archive, the exclusion list and the 7z writer's folder share one root.
+        using WorkRoot work = ArchiveTempFile.WorkRootFor(destPath);
+        string tempPath = ArchiveTempFile.NewPath(work);
+        string workRoot = Path.GetDirectoryName(tempPath)!;
+        string excludeListPath = work.NewFile("list", ".tmp");
         // T-F342: libarchive's 7z writer keeps the whole compressed stream in a temporary file
         // and copies it into the archive at the end. Left in %TEMP%, that is a copy of the user's
         // data on the system drive; here it stays in the destination, in a folder of Pakko's own.
         bool sevenZip = options.Format == ArchiveContainerFormat.SevenZip;
-        string writerTempDir = ArchiveTempFile.NewWriterFolder(tempPath);
         // T-F171: decided here, created only on the first collision, so the finally below cleans it
         // up even when staging stops partway through.
         TarCollisionStaging.SweepStale();
@@ -1474,11 +1476,11 @@ public sealed class TarSandboxedService : ITarService
 
         try
         {
-            List<string> tarArgs = BuildCreationArgs(options, tempPath, writerTempDir);
+            List<string> tarArgs = BuildCreationArgs(options, tempPath);
 
             var sortedSourcePaths = options.SourcePaths.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
             var nameList = new List<ListedSource>();
-            var scope = new NameListScope([tempPath, destPath, excludeListPath, writerTempDir], PackedFileList(options.Format));
+            var scope = new NameListScope([workRoot, destPath], PackedFileList(options.Format));
             (int entryCount, long totalEntriesForProgress, long totalBytesForProgress) =
                 AppendSourcesToNameList(nameList, sortedSourcePaths, names, new ArchiveResultLists(errors, skippedFiles), collisionStagingDir, stagedJunctions, scope);
 
@@ -1511,7 +1513,7 @@ public sealed class TarSandboxedService : ITarService
                 WriteExcludeList(nameList, excludeListPath, tarArgs);
                 byte[] nameListBytes = TarCommandLineEncoding.EncodeLines(nameList.SelectMany(source => source.Lines));
                 _beforeCreationLaunch?.Invoke();
-                Dictionary<string, string>? environment = sevenZip ? CreateWriterFolder(writerTempDir) : null;
+                Dictionary<string, string>? environment = sevenZip ? WriterEnvironment(work.Folder("7z")) : null;
                 (int exitCode, _, string? stdErr) = await RunUnsandboxedTarAsync(tarArgs, nameListBytes, OnVerboseLine, environment, cancellationToken).ConfigureAwait(false);
 
                 if (exitCode != 0 || !File.Exists(tempPath))
@@ -1542,33 +1544,25 @@ public sealed class TarSandboxedService : ITarService
         }
         finally
         {
-            TryDeleteBestEffort(excludeListPath);
-            // tar.exe has exited by now, also after a cancel, so its temporary file is closed.
-            try { if (Directory.Exists(writerTempDir)) Directory.Delete(writerTempDir, recursive: true); } catch { /* best-effort; the next creation here sweeps it */ }
+            // tar.exe has exited by now, also after a cancel, so its files in the work root are
+            // closed; the root goes with them.
             if (Directory.Exists(collisionStagingDir))
                 DeleteStagingDirectory(collisionStagingDir, stagedJunctions);
         }
     }
 
-    private static List<string> BuildCreationArgs(ArchiveOptions options, string tempPath, string writerTempDir)
+    private static List<string> BuildCreationArgs(ArchiveOptions options, string tempPath)
     {
         var tarArgs = new List<string>();
         if (options.Format == ArchiveContainerFormat.SevenZip)
-        {
             AppendSevenZipArgs(tarArgs, options.SevenZipMethod, options.CompressionLevel);
-            // Like the temporary file below: the destination may lie inside a source (T-F316).
-            tarArgs.Add("--exclude");
-            tarArgs.Add(Path.GetFileName(writerTempDir));
-        }
         else
-        {
             AppendCompressionFilterArgs(tarArgs, options.Format, options.CompressionLevel);
-        }
         // T-F316: tar.exe walks a source folder itself, and when the destination lies inside
-        // one it would pack this run's own temporary file. The name is Pakko's own (ASCII, no
-        // pattern characters), and tar.exe matches it at any depth.
+        // one it would pack this run's own files. They are all in the work root (T-F528), whose
+        // name is Pakko's own (ASCII, no pattern characters); tar.exe matches it at any depth.
         tarArgs.Add("--exclude");
-        tarArgs.Add(Path.GetFileName(tempPath));
+        tarArgs.Add(Path.GetFileName(Path.GetDirectoryName(tempPath)!));
         tarArgs.Add("-v");
         tarArgs.Add("-cf");
         tarArgs.Add(tempPath);
@@ -1581,8 +1575,7 @@ public sealed class TarSandboxedService : ITarService
     }
 
     // T-F391: many links make many patterns, so they go in a file ("-X"), not on the command
-    // line. The file is next to the archive and is excluded by name, as the archive's own
-    // temporary file is (T-F316).
+    // line. The file is in the work root, which tar.exe leaves out (T-F316).
     // T-F392: 7z stores a file's second name as a file of its own; tar.exe's tar formats store a
     // link, so only they collect the files to check. Null: nothing to check.
     private static List<string>? PackedFileList(ArchiveContainerFormat format) =>
@@ -1608,16 +1601,13 @@ public sealed class TarSandboxedService : ITarService
         if (excludePatterns.Length == 0)
             return;
         File.WriteAllBytes(excludeListPath, TarCommandLineEncoding.EncodeLines(excludePatterns));
-        tarArgs.InsertRange(0, ["-X", excludeListPath, "--exclude", Path.GetFileName(excludeListPath)]);
+        tarArgs.InsertRange(0, ["-X", excludeListPath]);
     }
 
     // T-F342: both names, because libarchive asks GetTempPathW, which takes TMP and falls back to
     // TEMP only when TMP is not set (measured: a TMP that names no folder fails).
-    private static Dictionary<string, string> CreateWriterFolder(string writerTempDir)
-    {
-        Directory.CreateDirectory(writerTempDir);
-        return new() { ["TMP"] = writerTempDir, ["TEMP"] = writerTempDir };
-    }
+    private static Dictionary<string, string> WriterEnvironment(string writerTempDir) =>
+        new() { ["TMP"] = writerTempDir, ["TEMP"] = writerTempDir };
 
     // T-F390: the "Couldn't visit directory" line is never shown (DescribeCreationFailure); Pakko
     // names what is gone, or says a source could not be read when every listed one is still there.

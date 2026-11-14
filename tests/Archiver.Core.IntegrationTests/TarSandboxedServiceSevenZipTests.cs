@@ -237,6 +237,31 @@ public sealed class TarSandboxedServiceSevenZipTests : IDisposable
         Directory.GetFileSystemEntries(Out).Should().BeEmpty();
     }
 
+    // T-F528: the temporary archive and the writer's folder were two entries next to the archive
+    // while tar.exe ran; now one hidden work root holds them, and it goes with the run.
+    [SevenZipWriterFact]
+    public async Task CompressAsync_WhileTarRuns_TheDestinationHoldsOneHiddenWorkRoot()
+    {
+        string[] whileRunning = [];
+        bool hidden = false;
+        var sut = new TarSandboxedService(
+            new GroupPolicyOptions(),
+            () => Task.FromResult(new TarCapabilities { Supports7z = true }),
+            beforeCreationLaunch: () =>
+            {
+                whileRunning = Directory.GetFileSystemEntries(Out);
+                hidden = whileRunning.All(entry => new DirectoryInfo(entry).Attributes.HasFlag(FileAttributes.Hidden));
+            });
+
+        ArchiveResult result = await sut.CompressAsync(Options(BuildTree()));
+
+        result.Success.Should().BeTrue(because: string.Join("; ", result.Errors.Select(e => e.Message)));
+        string root = whileRunning.Should().ContainSingle().Subject;
+        Path.GetFileName(root).Should().StartWith(Archiver.Core.IO.WorkRoot.Prefix);
+        hidden.Should().BeTrue();
+        Directory.GetFileSystemEntries(Out).Select(Path.GetFileName).Should().Equal("out.7z");
+    }
+
     [SevenZipWriterFact]
     public async Task CompressAsync_CancelledWhileTarRuns_ThrowsAndLeavesNothing()
     {

@@ -761,8 +761,8 @@ public sealed class ParallelSingleArchiveWriterTests : IDisposable
         Path.GetFileName(chunkDir).Should().StartWith(".pakko-tmp-" + Archiver.Core.IO.TempOwner.CurrentTag + "-");
     }
 
-    // T-F263's sweep of a killed run's chunk folder is the callers' (ArchiveTempFile.Create, or
-    // ArchiveTempFile.Sweep once per run for one archive per item; ArchiveTempFileTests and
+    // T-F263's sweep of a killed run's chunk folder is the callers' (the work root of the temporary
+    // file, once per destination folder per run, T-F528; ArchiveTempFileTests and
     // ZipArchiveServiceSeparateLeftoversTests). T-F497: the writer no longer lists the folder per
     // archive, and makes no chunk folder of its own for files compressed in memory.
     [Fact]

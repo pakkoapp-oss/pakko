@@ -62,8 +62,9 @@ public sealed class ZipArchiveService : IArchiveService
     // a share or a disk that does not answer is neither.
     internal Func<string, bool> HasSeekPenalty { get; init; } = DiskSeekPenalty.IsKnownPresent;
 
-    // T-F497: one archive per item sweeps each destination folder once per run. Tests count the calls.
-    internal Action<string> SweepTemporaries { get; init; } = ArchiveTempFile.Sweep;
+    // T-F497/T-F528: one archive per item makes one work root per destination folder for the run
+    // (its first archive sweeps the folder). Tests count the calls.
+    internal Func<string, WorkRoot> WorkRootFor { get; init; } = WorkRoot.Near;
 
     /// <inheritdoc/>
     public async Task<ArchiveResult> ArchiveAsync(
@@ -123,7 +124,7 @@ public sealed class ZipArchiveService : IArchiveService
         }
         var run = new ArchiveRunContext(conflictResolver, password, HasNoSeekPenalty, HasSeekPenalty, names, new RunSourceFiles(options.SourcePaths))
         {
-            SweepTemporaries = SweepTemporaries,
+            WorkRootFor = WorkRootFor,
         };
         IEnumerable<SourceResult> sources;
 
@@ -169,7 +170,7 @@ public sealed class ZipArchiveService : IArchiveService
         ConflictResolver ConflictResolver, string? Password, Func<string, bool> HasNoSeekPenalty, Func<string, bool> HasSeekPenalty,
         SourceEntryNames Names, RunSourceFiles Sources)
     {
-        public Action<string> SweepTemporaries { get; init; } = ArchiveTempFile.Sweep;
+        public Func<string, WorkRoot> WorkRootFor { get; init; } = WorkRoot.Near;
     }
 
     // T-F193: one prompt per ArchiveAsync call, never retried — there is nothing to verify a new
@@ -235,7 +236,8 @@ public sealed class ZipArchiveService : IArchiveService
         // T-F321: from the conflict decision, not a second look at the disk - an archive that
         // appeared since then is another run's, and the commit must not replace it.
         bool replacesExisting = outcome == DestinationConflictOutcome.ProceedReplacingExisting;
-        string tempPath = ArchiveTempFile.Create(destPath);
+        using WorkRoot work = ArchiveTempFile.WorkRootFor(destPath);
+        string tempPath = ArchiveTempFile.NewPath(work);
 
         // T-F35 profiling (2026-07-18) found ComputeTotalBytes and the gate's file count used to
         // walk the same directory tree in two separate passes (~193ms combined against a
@@ -455,11 +457,11 @@ public sealed class ZipArchiveService : IArchiveService
         List<(string SourcePath, string? DestPath, bool ReplacesExisting)> plans = await ResolveSeparateArchivePlansAsync(
             sortedSourcePaths, options.DestinationFolder, run, errors, skippedFiles).ConfigureAwait(false);
 
-        // T-F497: before any archive of this run is written; ArchiveSingleSeparatePathAsync then
-        // only names its temporary file. A killed run's leftovers go here, as before.
-        foreach (string folder in plans.Where(p => p.DestPath is not null)
-                     .Select(p => ArchiveTempFile.FolderOf(p.DestPath!)).Distinct(StringComparer.OrdinalIgnoreCase))
-            run.SweepTemporaries(folder);
+        // T-F497/T-F528: one work root per destination folder for the whole run, made by its first
+        // archive, which sweeps what a killed run left there; each archive then only names its file.
+        var workRoots = plans.Where(p => p.DestPath is not null)
+            .Select(p => ArchiveTempFile.FolderOf(p.DestPath!)).Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(folder => folder, run.WorkRootFor, StringComparer.OrdinalIgnoreCase);
 
         var concurrentSink = new ArchiveResultSink([], [], [], []);
         var progressContext = new SeparateArchiveProgressContext(totalSourceBytes, [0], progress);
@@ -506,13 +508,21 @@ public sealed class ZipArchiveService : IArchiveService
         Zip.ParallelSingleArchiveWriter.CompressionSettings SettingsFor(string source) =>
             SeparateArchiveSettings(settings, workersPerFolder, Directory.Exists(source));
 
-        await Parallel.ForEachAsync(
-            plans.Where(p => p.DestPath is not null),
-            new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism, CancellationToken = cancellationToken },
-            async (plan, token) => await ArchiveSingleSeparatePathAsync(
-                plan.SourcePath, plan.DestPath!, plan.ReplacesExisting,
-                SettingsFor(plan.SourcePath), concurrentSink, progressContext, token).ConfigureAwait(false)
-        ).ConfigureAwait(false);
+        try
+        {
+            await Parallel.ForEachAsync(
+                plans.Where(p => p.DestPath is not null),
+                new ParallelOptions { MaxDegreeOfParallelism = degreeOfParallelism, CancellationToken = cancellationToken },
+                async (plan, token) => await ArchiveSingleSeparatePathAsync(
+                    plan.SourcePath, (plan.DestPath!, plan.ReplacesExisting, workRoots[ArchiveTempFile.FolderOf(plan.DestPath!)]),
+                    SettingsFor(plan.SourcePath), concurrentSink, progressContext, token).ConfigureAwait(false)
+            ).ConfigureAwait(false);
+        }
+        finally
+        {
+            foreach (WorkRoot work in workRoots.Values)
+                work.Dispose();
+        }
 
         foreach (ArchiveError e in concurrentSink.Errors) errors.Add(e);
         foreach (string c in concurrentSink.CreatedFiles) createdFiles.Add(c);
@@ -641,8 +651,7 @@ public sealed class ZipArchiveService : IArchiveService
 
     private static async Task ArchiveSingleSeparatePathAsync(
         string sourcePath,
-        string destPath,
-        bool replacesExisting,
+        (string Path, bool ReplacesExisting, WorkRoot Work) destination,
         Zip.ParallelSingleArchiveWriter.CompressionSettings settings,
         ArchiveResultSink sink,
         SeparateArchiveProgressContext progressContext,
@@ -655,7 +664,8 @@ public sealed class ZipArchiveService : IArchiveService
         long pathSize = ComputeSourceBytesBestEffort(sourcePath);
 
         long baseOffset = Interlocked.Read(ref completedBytesBox[0]);
-        string separateTempPath = ArchiveTempFile.NewPath(destPath);
+        (string destPath, bool replacesExisting, WorkRoot work) = destination;
+        string separateTempPath = ArchiveTempFile.NewPath(work);
         CompressionLevel compressionLevel = settings.Level;
         // T-F260: this worker's own issue count — the shared bags are written by every worker at
         // once, so a before/after delta on them would not attribute issues to this source.

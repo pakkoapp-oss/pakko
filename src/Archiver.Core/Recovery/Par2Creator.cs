@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Globalization;
 using System.Text;
+using Archiver.Core.IO;
 using Archiver.Core.Services;
 using Microsoft.Win32.SafeHandles;
 using Archiver.Core.Text;
@@ -62,8 +63,9 @@ internal static class Par2Creator
 
         string indexPath = IndexPath(filePath);
         string volumePath = VolumePath(filePath, parameters.RecoveryCount);
-        string volumeTemp = ArchiveTempFile.Create(volumePath);
-        string indexTemp = ArchiveTempFile.Create(indexPath);
+        using WorkRoot work = ArchiveTempFile.WorkRootFor(volumePath);
+        string volumeTemp = ArchiveTempFile.NewPath(work);
+        string indexTemp = ArchiveTempFile.NewPath(work);
         try
         {
             using (SafeFileHandle source = File.OpenHandle(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
