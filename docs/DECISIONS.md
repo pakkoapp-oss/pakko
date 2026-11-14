@@ -15048,9 +15048,22 @@ for a ZIP and 1.2 GB for a tar at the limit today, less after T-F529), owned by 
 declaring a billion entries in 128 bytes through all four passes, the helper), `EntryLimitTests`
 (a ZIP list, test and extraction; tar.exe's `-t` and `-tv` at the limit and one past it;
 `Category=Slow`: 2,000,000 and 2,000,001 empty entries through tar.exe and the helper),
-`ZipReadOwnerTests` (a ZIP is read only through `ZipArchiveReader.Open`). Each check removed in
+`ZipReadOwnerTests` (a ZIP is read only through `ZipArchiveReader.Open`); `CatalogMemoryBudgetTests`
+below. Each check removed in
 turn turned its tests red (the declared count alone: the Zip64 test and the service test; the
 record count: the more-than-declared test; the listing limit: both tar tests; the helper's: its test).
+
+**Where a ZIP's memory goes, and T-F473.** Live bytes after a full collection, 1,000,000 entries:
+.NET's `ZipArchive` 434 MiB; Pakko's names and their pairing in `ZipArchiveReader` about 120 MiB;
+the list result (`ArchiveEntryInfo`) 160 MiB; the rest of the 1,040 MiB peak is the passes'
+garbage (`RawZipEntryLocator` builds every record with its name and extra bytes before projecting
+it). The largest part is .NET's own, and only reading without `ZipArchive` removes it: that is
+T-F529, which replaces `ZipArchiveReader`'s pairing and tar's listing copies too. Trimming them now
+would rewrite code T-F529 replaces, so T-F473's leaner catalog is folded into T-F529 (the agent's
+decision). What stays here is the budget: `CatalogMemoryBudgetTests` (`Category=Slow`, alone in its
+collection) holds 200,000 empty entries and asserts the live bytes per entry, measured 2026-11-14
+plus about a quarter - `ZipArchiveReader` 592 B (budget 740), a ZIP list 168 B (210), a tar.exe
+list 210 B (260), the same in repeated runs. T-F529 lowers them.
 
 ## T-F524 - the quarantine next to the destination (2026-11-13)
 
