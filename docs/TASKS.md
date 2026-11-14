@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count: done, no conhost per launch, half the processes), T-F506 (AMSI buffer: done, the faults are inherent; large buffers no longer pooled, content zeroed), T-F500 (writer failure paths, the flaky chunk-folder test: done), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F522 (P3, the commit's link check fails open, next wave), T-F523 (P2, one AppContainer for every operation: one reader can open another: code done, batch 5a), T-F524 (P2, the quarantine next to the destination: code done, batch 5a), T-F525 (P3, `-si` staged in `%TEMP%`, next wave), T-F526 (P3, the helper refused by CFA through an unread channel, next wave), T-F527 (P3, an entry its owner cannot delete, next wave), T-F528 (P2, one owner of work folders, batch 5d), T-F529 (P2, reading in batches, batch 5e), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, archive such names properly), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F522 (P3, the commit's link check fails open, next wave), T-F523 (P2, one AppContainer for every operation: one reader can open another: code done, batch 5a), T-F524 (P2, the quarantine next to the destination: code done, batch 5a), T-F525 (P3, `-si` staged in `%TEMP%`, next wave), T-F526 (P3, the helper refused by CFA through an unread channel, next wave), T-F527 (P3, an entry its owner cannot delete, next wave), T-F528 (P2, one owner of work folders, batch 5d), T-F529 (P2, reading in batches, batch 5e), T-F530 (P3, a large encrypted file written once, batch 6), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -88,7 +88,7 @@ above stays as the record of what each stream holds.
 | 5c | Trimmed names | T-F510 | the source key (T-F511 PR 4) and the twin fixture | the App and the CLI, `-sdel` and the Recycle Bin |
 | 5d | Work folders | T-F528 | one owner for every folder Pakko writes before the result: where, how it is born, its sweep | plan mode and advisor first; the owner test; smoke of every extraction and archiving path |
 | 5e | Reading in batches | T-F529 | the ZIP central directory read as a stream, entries opened by their local header; only a compact name set kept | plan mode, advisor and an opus reviewer (an untrusted-input parser); memory measured in every mode before and after |
-| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476 | calibration and the CI image | one series on an idle machine |
+| 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530 | calibration and the CI image | one series on an idle machine |
 | 7 | Z | T-F493 | crypto: its own gates and its own opus reviewer | as stream Z says |
 | 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the release tier | what needs the device or the user | one batch right before the tag |
 | - | F winget | T-F317's outward step | an external PR | only with the user's OK |
@@ -1658,7 +1658,8 @@ re-measured with T-F346's script before and after.
   choice) on every reader: a ZIP by its declared count and its records, tar.exe's listing by its
   lines, the helper by its entries; `TooManyEntries` in 37 locales; smoke `CLI-062`. Step 2 is
   `CatalogMemoryBudgetTests` (live bytes per entry). Step 3 (batches) is T-F529 (batch 5e), with
-  T-F473's leaner catalog folded in; this task graduates with it.
+  T-F473's leaner catalog folded in; this task graduates with it. **For the CHANGELOG:** an archive
+  over 2,000,000 entries is refused with its own message (the helper accepted up to 4,000,000).
   - **Asked by the user:** "can most places where a pipeline processes large arrays move to
     batches of a small fixed size, and so remove memory overflow altogether?"
   - **Where it stands.** T-F498 measured the data side (`docs/DECISIONS.md`, "T-F498 measured"):
@@ -2000,6 +2001,18 @@ re-measured with T-F346's script before and after.
   `-o` is elsewhere. Staging it next to `-o` (as T-F524 does for the quarantine) would need the same
   volume and permission rules. Input, not output, so not part of T-F524.
 
+### T-F530 - A large file written once with a password or Fastest, not through a chunk and a copy (P3, the user's question, 2026-11-14)
+
+- [ ] **Status:** open, batch 6 (measure first). `RequiresHandRolledWriter` (a password, or Fastest)
+  sends every archive through `ParallelSingleArchiveWriter`, and each file over 1 MiB
+  (`InMemoryCompressByteThreshold`) is compressed (and encrypted) into a chunk file, then copied into
+  the archive (`WriteCompressedEntryFromStreamAsync`): every such byte is written twice and needs
+  its size free twice. Memory is not the reason (the chunk is on disk); the local header carries
+  the sizes before the data. Where a large file is written alone (one file, or a disk with a seek
+  penalty, T-F359), it can go straight into the temp archive - Pakko's own file, so the header's
+  sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
+  first (one 4 GiB file with a password: time, bytes written, free space needed).
+
 ### T-F529 - Read archives in batches: hold a compact name set, not every entry (P2, the user, 2026-11-14)
 
 - [ ] **Status:** open, batch 5e. The user asked whether every entry must be held at once. Measured
@@ -2014,6 +2027,9 @@ re-measured with T-F346's script before and after.
   compact set of names for the global checks; the same for tar's listing. Every check of today stays
   (AES/ZipCrypto, Zip64, T-F280's local/central agreement, MOTW, the entry checks): an untrusted-input
   parser, so plan mode, advisor and a fresh opus reviewer.
+- **The catalog's bytes, not only its entries** (T-F513's closing review): long names stay under the
+  entry count and are held several times over; tar.exe's 1 GiB listing becomes several GiB once
+  copied and decoded. Bound the catalog by its bytes too, with a message that says so.
 - **T-F473 is folded in** (its leaner catalog is this reader's), and `CatalogMemoryBudgetTests`'
   budgets (live bytes per entry, T-F513) are lowered to what this measures.
 - **Then:** raise T-F513's entry limit (2,000,000) as far as the measured memory allows (the user left
@@ -2038,6 +2054,11 @@ re-measured with T-F346's script before and after.
   test refuses `Directory.CreateDirectory` on a temp name outside the owner; a row in
   `docs/ARCHITECTURE.md`'s "Single Owners". `QuarantineFiles` (checking and moving untrusted files)
   stays its own owner. Closes T-F525.
+- **One root per operation** (the user, 2026-11-14: chunks in one folder, never spread out): today an
+  archiving run leaves up to three things in the destination folder side by side - the archive's temp
+  file, the hidden chunk folder (`.pakko-chunks-`), 7z's writer folder. The owner gives each operation
+  one hidden root on the volume, with a subfolder per role (temp archive, chunks, staging, and the
+  quarantine with its own protected DACL inside it), removed and swept as one.
 
 ### T-F527 - A run can leave an entry its owner cannot delete, now next to the destination (P3, from T-F524's review)
 

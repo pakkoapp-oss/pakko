@@ -15053,6 +15053,15 @@ below. Each check removed in
 turn turned its tests red (the declared count alone: the Zip64 test and the service test; the
 record count: the more-than-declared test; the listing limit: both tar tests; the helper's: its test).
 
+**What the limit does not bound (the closing review).** It counts entries, not bytes. A ZIP's
+directory is bounded only by the file's length, and a name may have 64 KB; each name is held as
+.NET's bytes, Pakko's record bytes and extra bytes, the decoded text and the result's path. tar.exe's
+1 GiB of listing is read into a growing buffer, copied, decoded to UTF-16 and split: several GiB at
+the cap, not one. A few thousand entries with long names stay under the count and can still take
+gigabytes. The byte budget of the catalog belongs to T-F529, which holds a compact name set; the
+1 GiB cap's refusal says "too many entries", which is right for its common cause (millions of
+lines) and imprecise for the rare one (huge names).
+
 **Where a ZIP's memory goes, and T-F473.** Live bytes after a full collection, 1,000,000 entries:
 .NET's `ZipArchive` 434 MiB; Pakko's names and their pairing in `ZipArchiveReader` about 120 MiB;
 the list result (`ArchiveEntryInfo`) 160 MiB; the rest of the 1,040 MiB peak is the passes'
