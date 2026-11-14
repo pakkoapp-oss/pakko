@@ -15,12 +15,12 @@ namespace Archiver.Core.IO;
 /// sweeps the roots, and the staging folders of older versions, that killed runs left there.
 /// The quarantine of a sandboxed extraction is not a role: it stays a folder of its own with a
 /// protected DACL (<see cref="QuarantineLocation"/>), since this root inherits the destination's, and
-/// whoever may change that folder could rename the root.
+/// whoever may change that folder could rename the root. Public for the CLI's <c>-si</c> (T-F525).
 /// </summary>
-internal sealed partial class WorkRoot : IDisposable
+public sealed partial class WorkRoot : IDisposable
 {
     /// <summary>The prefix of a root's name.</summary>
-    internal const string Prefix = ".pakko-w-";
+    public const string Prefix = ".pakko-w-";
 
     // What older versions left next to a destination, swept with the roots: extraction staging,
     // creation's temporary file, chunk folder and 7z writer folder (T-F263, T-F312, T-F342).
@@ -107,7 +107,7 @@ internal sealed partial class WorkRoot : IDisposable
     /// the inheritance written again, which for a folder walks its whole tree (0.9 s for 20,000 files).
     /// Best-effort: without it, it keeps the rest of what the destination grants.
     /// </summary>
-    public static void TakeParentEntries(string moved)
+    internal static void TakeParentEntries(string moved)
     {
         string? parent = Path.GetDirectoryName(Path.GetFullPath(moved));
         try

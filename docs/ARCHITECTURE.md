@@ -92,7 +92,7 @@ bypasses" is code that does an owner's job itself; it is listed in T-F511 and go
 | What "delete the sources afterwards" works from | `IO/SourceTree` | `DirectoryWalker` | none yet | - |
 | Whether two paths are one file, and where a path leads | `IO/PathIdentity` (`Resolve`; `FinalPathOfItself`, a link opened as the link, which "Delete after" deletes, T-F511) | `GetFileInformationByHandleEx` (file ID) and `GetFinalPathNameByHandle`: the BCL has no file identity, and `ResolveLinkTarget` resolves no SUBST drive or `\\?\` spelling. A plain path Windows trims ("`a.txt `") opens nothing: it would answer for its twin (T-F510, `PathIdentityTrimmedNameTests`); its `\\?\` spelling answers for the name | `PathIdentityOwnerTests` (every other resolver in `src`, with why) | string compares in `CLI/CliArchiveSources` and `CLI/CliCreatedName`; `CLI/CliSourceDeleter.RealPath` stays, listed: it answers for a path that does not exist (T-F511 PR 4) |
 | Pakko's temp names and their sweep | `IO/TempOwner` | `Path.GetTempPath`. `Directory.CreateTempSubdirectory` does not carry the owner's PID, which the sweep of abandoned folders needs. | `TempOwnerOwnerTests` (T-F511 PR 2: every `Guid.NewGuid`, `GetTempPath`, `GetTempFileName`, `GetRandomFileName` and `CreateTempSubdirectory` outside it is listed with why). `TryRemove` and `SweepStaleInTemp` serve the CLI and the App | none (PR 2: the probe file, the verdict's temp file and the CLI's staging are named and swept by it; `ProcessTempRoot` keeps its per-process folders and removes through `TryRemove`) |
-| Where an operation's work folders go, and how they are made | `IO/WorkRoot` (T-F528) | `CreateDirectoryW` without a security descriptor, so a name already there fails (a link included), and `TempOwner`'s names and sweep. Adds one hidden root per operation (`.pakko-w-<tag>-<guid>`) in the nearest folder of the destination that exists, made on the first role; roles as new `<role>-<guid>` folders; removal through `TempOwner.TryRemove`; the sweep of older versions' `.pakko-x-`; `TakeParentEntries` after a rename into place. The quarantine is not a role: it keeps its own protected root (`QuarantineLocation`) | `WorkRootTests`; `TempOwnerOwnerTests` and `DestinationFolderOwnerTests` list its calls | creation's temp file, chunk and 7z writer folders, the CLI's `-si` (T-F528, commits 2 and 3) |
+| Where an operation's work folders go, and how they are made | `IO/WorkRoot` (T-F528) | `CreateDirectoryW` without a security descriptor, so a name already there fails (a link included), and `TempOwner`'s names and sweep. Adds one hidden root per operation (`.pakko-w-<tag>-<guid>`) in the nearest folder of the destination that exists, made on the first role; roles as new `<role>-<guid>` folders; removal through `TempOwner.TryRemove`; the sweep of older versions' `.pakko-x-`; `TakeParentEntries` after a rename into place. The quarantine is not a role: it keeps its own protected root (`QuarantineLocation`) | `WorkRootTests`; `WorkRootOwnerTests` (every other `TempOwner.NewName`, with why: the quarantine, %TEMP% and LocalAppData files); `TempOwnerOwnerTests` and `DestinationFolderOwnerTests` list its calls | none (extraction staging, creation's temporary archive, chunk folder, exclusion list and 7z writer folder, and `x`/`e -si` are its roles; `TarCollisionStaging`'s junctions stay in %TEMP%, which FAT, exFAT and a share need) |
 | A source's outcome (Completed, Partial, ...) | `Services/SourceOutcomeRules` | - | `SourceOutcomeTests`, `SharedArchiveSourceOutcomeTests`; `SourceOutcomeOwnerTests` (only it gives `Completed` or `Partial`) | none (T-F511 PR 5: `RecoveryDataWriter` asks `DowngradeAfterLaterError`) |
 | User-visible message text | `Services/CoreMessages` (factories), `MessageTemplates` (English), `Archiver.Messages` resx | `ResourceManager` | `CoreMessageSourceGuardTests` | - |
 | What kind of error an exception is (T-F511 PR 6) | `Services/CoreMessages` (`IsDiskFull`, `IsSharingViolation`, `IsAlreadyExists`; the Windows code a message shows) | the exception's `HResult` as `HRESULT_FROM_WIN32`, asked of the exception itself | `CoreMessagesClassifierTests`; `ErrorClassificationOwnerTests` (no `.HResult` outside it, a decision on an exception's text only as listed, a catch of everything in Core says why or rethrows, every `ArgumentException` catch in Core listed with why) | none (PR 6: `ArchiveTempFile`, `RecoveryService`, `TarSandboxScope`, `ZipArchiveService` ask it) |
@@ -157,14 +157,14 @@ src/
 │   │   ├── ExtractionDestinationPlanner.cs ← T-F157: shared actualDest/StripRootPrefix decision,
 │   │   │                                  was hand-kept-in-sync between ZipArchiveService and
 │   │   │                                  TarSandboxedService (T-F118)
-│   │   ├── ExtractionStaging.cs        ← T-F227/T-F263: fresh owned hidden .pakko-x-<owner>-<guid>
-│   │   │                                  staging folder (dead runs' ones swept first) + the
+│   │   ├── ExtractionStaging.cs        ← T-F227/T-F263: a fresh staging folder, the "x" role of
+│   │   │                                  the run's WorkRoot (T-F528), + the
 │   │   │                                  T-F161/T-F170 commit (CommitInto); ZIP and tar
 │   │   ├── ArchiveTempFile.cs          ← T-F312: the temp file a new archive is written to
-│   │   │                                  (.pakko-a-<owner>-<guid>.tmp, not hidden) and its commit,
-│   │   │                                  retried ~1.5 s while either file is held; ZIP and tar.
-│   │   │                                  Create = Sweep(folder) + NewPath; one archive per item
-│   │   │                                  sweeps each destination folder once per run (T-F497)
+│   │   │                                  (a-<guid>.tmp in the run's hidden WorkRoot, T-F528) and
+│   │   │                                  its commit, retried ~1.5 s while either file is held; ZIP
+│   │   │                                  and tar. One archive per item makes one root per
+│   │   │                                  destination folder for the run (T-F497)
 │   │   ├── DestinationConflictResolver.cs ← T-F158: archive-creation-side analogue of T-F157 —
 │   │   │                                  shared Skip/Overwrite/Rename decision for a candidate
 │   │   │                                  archive destination path
@@ -1146,7 +1146,8 @@ hashed in the same single read pass as compression instead of a second full file
 entry above the in-memory threshold only, and a dead run's folder is swept by the run, not by each
 `WriteAsync`):** `WriteAsync` creates a per-operation,
 uniquely-named, **hidden** subfolder next to the destination archive —
-`{destinationDir}\.pakko-tmp-{Guid}\` — not loose files scattered in that folder (on-device
+`{destinationDir}\.pakko-tmp-{Guid}\` (T-F528: beside the temporary archive, inside the run's
+hidden work root, `{destinationDir}\.pakko-w-{owner}-{guid}\`) — not loose files scattered in that folder (on-device
 verification showed those visibly flickering in Explorer mid-operation) and not a shared
 `%TEMP%` location either (considered and rejected in turn: a different, possibly smaller/fuller
 volume than the destination, which matters now that there's no per-file size ceiling). Same-
@@ -2212,7 +2213,9 @@ documented in `scripts/README.md`.
 `WriteToStdout` bools. `-si` (valid on `x`/`t`/`l`) and `-so` (valid on `x`/`a`) are implemented
 entirely inside `Archiver.CLI/CliStreamStaging.cs` — **zero `Archiver.Core` changes**. `-si` copies
 `Console.OpenStandardInput()` into a private `%TEMP%\Archiver.CLI.Stdin\<pid>-<guid>\stdin.bin` file
-before the command runs, then proceeds exactly as if that path had been typed; `-so` runs the
+before the command runs, then proceeds exactly as if that path had been typed (T-F525: `x`/`e`
+stage it in the hidden work root next to `-o`, `CliStagingFolder.Near`, and in %TEMP% when none can
+be made there); `-so` runs the
 operation into a private `%TEMP%\Archiver.CLI.Stdout\<pid>-<guid>\` folder instead of the real
 destination, then streams the single resulting file to `Console.OpenStandardOutput()`
 (`CliStreamStaging.StreamSingleFileAsync` takes the destination `Stream` as a parameter

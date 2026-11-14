@@ -14983,6 +14983,62 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F528 - one owner of the folders Pakko works in, one root per operation (2026-11-14)
+
+**What changed.** `IO/WorkRoot` owns where an operation's work folders go and how they are made. An
+operation gets one hidden root, `.pakko-w-<owner tag>-<guid>`, in the nearest folder of its
+destination that exists, made on the first role asked of it; each role is a new `<role>-<guid>`
+folder or file in it. Extraction's staging is the role `x` (it was `.pakko-x-` beside the
+destination); creation's temporary archive (`a-<guid>.tmp`), the parallel writer's chunk folder,
+tar.exe's exclusion list and its 7z writer folder share the root (an archiving run left up to three
+entries side by side). One archive per item makes one root per destination folder for the run, so
+T-F497's one sweep per folder holds. `x`/`e -si` stage stdin in a root next to `-o` (T-F525).
+Making a root sweeps dead runs' roots and the names older versions left (`.pakko-x-`,
+`.pakko-a-*.tmp`, `.pakko-tmp-`, `.pakko-7z-`); the root goes through `TempOwner.TryRemove`, each link
+in it on its own.
+
+- **A role is new or nothing.** Roots and role folders are made by `CreateDirectoryW` without a
+  security descriptor, which fails on any name already there, a planted junction included
+  (`WorkRootTests.CreateNewFolder_ATakenName_Throws`); the names are unguessable besides. A `\\.\`
+  destination (T-F512's matrix) is turned into `\\?\` for that call, not into a UNC path (found red
+  by `TrimmedSourceNameTests`, then pinned by `WorkRootTests`).
+- **tar.exe leaves the whole root out** by its name (`--exclude`, matched at any depth, T-F316), and a
+  drive-root walk leaves it out as an own path; without that the root would be packed as an empty
+  folder (seen red: the three "destination inside the source" tests).
+- **Step 0, measured on D: (NTFS).** An ACE the destination's folder gives its children only
+  (`NO_PROPAGATE`, "only apply to objects within this container"): a file made in the folder has it; a
+  file or folder renamed in from a deeper folder does not (a rename keeps the security descriptor);
+  writing the folder's inheritance again (an empty, unprotected DACL) gives it back. So after a rename
+  into place `WorkRoot.TakeParentEntries` does that, but only when the new parent has such an entry: it
+  walks the whole tree, 0.9 s for 20,000 files, otherwise spent on every fast-path commit. Every other
+  inheritable entry reaches any depth, so nothing else differs.
+
+**Where it departs from the agreed shape.** The plan put the sandbox quarantine in the same root, a
+private subfolder of it. The root inherits the destination's DACL; on a drive root that is
+Authenticated Users Modify, which holds DELETE on the root itself. Another account could rename the
+root away and put a junction under its old name to a folder of its own with a `q-<guid>` in it; Pakko
+addresses the quarantine by path, so what it took out could come from there. Today's `.pakko-sandbox-`
+root has a protected DACL, so no other account holds DELETE on it. The quarantine therefore keeps its
+own protected root (`QuarantineLocation`, T-F524), and `WorkRoot` holds Pakko's own bytes only (the
+agent's decision, from the opening advisor review; the user's question was one owner, which the
+quarantine's owner stays). Staging in a root that inherits the destination's DACL is what
+`.pakko-x-` always had: tampering before the commit equals tampering after it.
+
+**Left where they were, listed in `WorkRootOwnerTests` with why:** the probe's empty archive
+(`ArchiveintGate`) and the verdict's temporary file (`TarCapabilitySnapshot`), one file each in
+%TEMP% or LocalAppData, not work folders next to a destination; `TarCollisionStaging`'s junctions,
+in %TEMP%, since FAT, exFAT and a share make none; `-so`'s folder and `t`/`l -si` in %TEMP%
+(`-so`'s output goes to stdout; a test or a listing has no destination). `-si` for `x`/`e` falls back
+to %TEMP% when no root can be made near `-o`: a drive that is not there, a folder that may not be
+written, Controlled Folder Access, a name Windows trims. `ProcessTempRoot` (App.Core: the browser's
+preview and nested-archive cache) is a cache of the window, not an operation, and stays its own.
+
+**Found and filed.** Merging into a folder that already exists, the files take the inheritable
+entries of the staging's folder, not of their own folder in the destination, when the two differ
+(the same before T-F528: a rename keeps the descriptor): T-F532, next wave. **Seen once:**
+`SevenZipCreationCompatibilityTests` failed at Lzma2/SmallestSize with tar.exe's stderr empty during a
+full-suite run; it passed alone and in the next full run.
+
 ## T-F510 - names Windows trims: the archive search, the identity owner, archiving them later (2026-11-14)
 
 **The archive search (`x`/`l`/`t`).** `CliNameSelection.Candidates` passed a folder Windows trims

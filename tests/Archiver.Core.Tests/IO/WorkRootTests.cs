@@ -136,6 +136,16 @@ public sealed class WorkRootTests : IDisposable
         Directory.Exists(path).Should().BeTrue();
     }
 
+    // An entry's flags are two letters each; NP inside a SID or a right is not the flag.
+    [Theory]
+    [InlineData("D:(A;OICINP;FR;;;WD)", true)]
+    [InlineData("D:PAI(A;OICIIDNP;0x1200a9;;;S-1-5-21-1)(A;OICI;FA;;;SY)", true)]
+    [InlineData("D:(A;OICI;FA;;;SY)(A;;FR;;;S-1-5-21-1NP)", false)]
+    [InlineData("D:(A;CIONP;FA;;;SY)", false)]
+    [InlineData("D:", false)]
+    public void HasNoPropagateEntry_ReadsTheFlagsField(string sddl, bool expected) =>
+        Archiver.Core.Services.Sandbox.QuarantineAcl.HasNoPropagateEntry(sddl).Should().Be(expected);
+
     // Step 0 of T-F528 (measured): an entry the destination's folder gives its children only
     // (NO_PROPAGATE) does not reach a folder made one level deeper, and a rename keeps what a folder
     // has. A folder the commit renamed into place gets it as a folder made there would.

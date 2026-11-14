@@ -384,7 +384,7 @@ flowchart TD
     A3B --> A4["Compression-bomb check sums allFileEntries (whole archive),<br/>never the filtered subset — T-F05/T-F94"]
     A4 -- "InsufficientDiskSpace" --> A4S["SkippedFiles += free space vs declared size, return (destDir, false)"]
     A4 -- "UserDeclined (no callback: declined)" --> A4D["SkippedFiles += ZipBombDeclined with the ratio, return (destDir, false)"]
-    A4 -- "NotABomb, or UserConfirmed" --> ST["using staging = ExtractionStaging.Create(DestinationFolder)<br/>sweeps .pakko-x-* of dead runs (T-F263), fresh hidden .pakko-x-owner-guid,<br/>never reused, disposed on every exit (T-F227)"]
+    A4 -- "NotABomb, or UserConfirmed" --> ST["using staging = ExtractionStaging.Create(DestinationFolder)<br/>the x role of a hidden WorkRoot in the nearest existing folder (T-F528),<br/>which sweeps dead runs' roots and .pakko-x-* (T-F263), never reused, disposed on every exit (T-F227)"]
     ST --> A["For each entry in entries"] --> CL{"CollidesAfterDecoding: other raw bytes,<br/>same decoded name as an earlier entry? (T-F234)"}
     CL -- yes --> E0["Errors += same name once decoded, entry not extracted"]
     CL -- no --> U{"HasUnsafePath: a .. segment (either separator)<br/>or a rooted / drive-relative name? (T-F228)"}
@@ -1254,7 +1254,7 @@ flowchart TD
 
     ZM -- SingleArchive --> S1["DestinationConflictResolver on name.zip<br/>a source by that name, by any spelling (file identity), is a same-run clash:<br/>never replaced, numbered under Overwrite and Rename, skipped under Skip (T-F421)<br/>(Ask → the frontend's conflict prompt, T-F158)"]
     S1 -- Skip --> S1S["return: every source SkippedFiles (ArchiveAlreadyExists)"]
-    S1 -- "Overwrite / Rename" --> S2["temp = ArchiveTempFile.Create: sweep .pakko-a-* of dead runs,<br/>new .pakko-a-owner-guid.tmp — not hidden, the old archive stays (T-F312) unless it lies inside a source folder:<br/>then it is deleted first, so the walk does not pack it (RemoveOldArchiveInsideSources)<br/>one walk: total bytes, file count, largest file (T-F35, T-F352)"]
+    S1 -- "Overwrite / Rename" --> S2["temp = ArchiveTempFile.NewPath(work): a-guid.tmp in the run's hidden WorkRoot (T-F528),<br/>which sweeps dead runs' roots and .pakko-a-* — the file not hidden, the old archive stays (T-F312) unless it lies inside a source folder:<br/>then it is deleted first, so the walk does not pack it (RemoveOldArchiveInsideSources)<br/>one walk: total bytes, file count, largest file (T-F35, T-F352)"]
     S2 --> S3{"password set, OR level Fastest, OR file count over 64,<br/>OR a few large files: level not NoCompression, at least 8 MiB beside the<br/>largest file and at least a quarter of it, free space for twice the sources,<br/>source and destination disks known to have no seek penalty?<br/>(UsesParallelWriter, T-F299/T-F352)"}
     S3 -- yes --> S4["ParallelSingleArchiveWriter — hand-rolled writer,<br/>the only one that encrypts (AES-256 AE-2), T-F35/T-F193,<br/>and stores an entry Deflate did not shrink (T-F299).<br/>Window min(MaxThreads, 16), or the core count clamped 2-16 (T-F411)"]
     S3 -- no --> S5["sequential ZipArchive writer"]

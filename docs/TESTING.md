@@ -546,7 +546,16 @@ fixtures are built in the test by patching CRC/size fields of a fresh archive, n
 `IO/VerifyingReadStreamTests`, `ZipArchiveServiceExtractRootFolderTests` +
 `TarSandboxedServiceRootFolderTests` (T-F205), `ZipArchiveServiceExtractEmptyFolderTests` +
 `TarSandboxedServiceEmptyFolderTests` (T-F197). Staging-leftover assertions look for
-`.pakko-x-*`; an assertion on the old `*_tmp` name would now pass vacuously.
+`.pakko-*` (T-F528: the staging is a role of a `.pakko-w-*` work root); an assertion on an old name
+(`*_tmp`, `.pakko-x-*`) would now pass vacuously.
+
+**T-F528 (the work root):** `IO/WorkRootTests` (one hidden root in the nearest existing folder, a
+new folder per role, a name already taken or a planted junction refused, dead roots and older
+versions' names swept, a link inside removed without its target, a `\\.\` or `\\?\` destination,
+a one-level ACE of the destination's folder on a folder renamed into place); `IO/WorkRootOwnerTests`
+(every other `TempOwner.NewName` in `src`, with why); `TarSandboxedServiceSevenZipTests.
+CompressAsync_WhileTarRuns_TheDestinationHoldsOneHiddenWorkRoot`; `CliStreamStagingTests`' `-si`
+next to a destination and its %TEMP% fallback.
 
 ### ZIP Names and Reader Hardening (fix phase 3, 2026-09-25)
 

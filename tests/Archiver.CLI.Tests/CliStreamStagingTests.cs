@@ -78,6 +78,43 @@ public sealed class CliStreamStagingTests
         Directory.GetFileSystemEntries(root).Should().BeEmpty("disposing the folder removes it");
     }
 
+    // T-F525/T-F528: x and e stage stdin next to where they extract, in the hidden work root, not on
+    // the system drive; a destination not there yet is staged in the nearest folder of it that is.
+    [Fact]
+    public async Task StageStdinAsync_NearADestination_StagesInItsWorkRoot()
+    {
+        string temp = CreateScratchDir();
+        string near = CreateScratchDir();
+        string destination = Path.Combine(near, "out", "deeper");
+
+        using (CliStagingFolder folder = await CliStreamStaging.StageStdinAsync(temp, new MemoryStream([7, 8, 9]), CancellationToken.None, near: destination))
+        {
+            string root = Path.GetDirectoryName(folder.Path)!;
+            Path.GetDirectoryName(root).Should().Be(near);
+            Path.GetFileName(root).Should().StartWith(WorkRoot.Prefix);
+            File.ReadAllBytes(Path.Combine(folder.Path, CliStreamStaging.StdinFileName)).Should().Equal(7, 8, 9);
+            Directory.GetFileSystemEntries(temp).Should().BeEmpty();
+        }
+
+        Directory.GetFileSystemEntries(near).Should().BeEmpty("disposing the folder removes its work root");
+    }
+
+    // A destination where no root can be made (a drive that is not there, a name Windows trims) is
+    // staged in %TEMP%, as before.
+    [Theory]
+    [InlineData(@"Q:\pakko-no-such-drive\out")]
+    [InlineData("trimmed. ")]
+    public async Task StageStdinAsync_NoRootNearTheDestination_StagesInTemp(string destination)
+    {
+        string temp = CreateScratchDir();
+        if (!Path.IsPathRooted(destination))
+            destination = Path.Combine(CreateScratchDir(), destination);
+
+        using CliStagingFolder folder = await CliStreamStaging.StageStdinAsync(temp, new MemoryStream([1]), CancellationToken.None, near: destination);
+
+        Path.GetDirectoryName(folder.Path).Should().Be(temp);
+    }
+
     // The staging path used to be known to the caller only after the copy finished, so a failure
     // mid-copy (disk full, broken pipe) leaked the folder with a partial archive in it.
     [Fact]

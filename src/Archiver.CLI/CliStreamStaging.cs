@@ -24,10 +24,13 @@ public static partial class CliStreamStaging
     public static string StdoutRoot { get; } = Path.Combine(Path.GetTempPath(), "Archiver.CLI.Stdout");
 
     /// <summary>Copies <paramref name="source"/> into a new folder under <paramref name="root"/>
-    /// as <see cref="StdinFileName"/>. The caller owns (and disposes) the returned folder.</summary>
-    public static async Task<CliStagingFolder> StageStdinAsync(string root, Stream source, CancellationToken cancellationToken)
+    /// as <see cref="StdinFileName"/>. The caller owns (and disposes) the returned folder. T-F525: with
+    /// <paramref name="near"/> (an extraction's destination), into its work root instead, so a large
+    /// archive does not need that room on the system drive; under <paramref name="root"/> when no
+    /// root can be made there.</summary>
+    public static async Task<CliStagingFolder> StageStdinAsync(string root, Stream source, CancellationToken cancellationToken, string? near = null)
     {
-        var folder = CliStagingFolder.Create(root);
+        CliStagingFolder folder = (near is null ? null : TryNear(near)) ?? CliStagingFolder.Create(root);
         try
         {
             string filePath = Path.Combine(folder.Path, StdinFileName);
@@ -41,6 +44,22 @@ public static partial class CliStreamStaging
         {
             folder.Dispose();
             throw;
+        }
+    }
+
+    // A name Windows trims would put the root next to its twin; a path that does not parse, a drive
+    // that is not there, a folder that may not be written, or Controlled Folder Access: %TEMP%.
+    private static CliStagingFolder? TryNear(string destination)
+    {
+        if (Archiver.Core.Services.InputPaths.NameTrimmed(destination))
+            return null;
+        try
+        {
+            return CliStagingFolder.Near(destination);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return null;
         }
     }
 

@@ -208,7 +208,10 @@ seekable file to read its central directory, and `TarSandboxedService`'s whole-a
 mid-stream.
 
 **Staging folders (T-F244 item 4 / T-F263).** Each `-si`/`-so` run stages into its own folder,
-`%TEMP%\Archiver.CLI.Stdin\<pid>-<guid>` or `%TEMP%\Archiver.CLI.Stdout\<pid>-<guid>`, owned from
+`%TEMP%\Archiver.CLI.Stdin\<pid>-<guid>` or `%TEMP%\Archiver.CLI.Stdout\<pid>-<guid>` (T-F525: `x` and
+`e` with `-si` stage in a hidden `.pakko-w-*` folder in the nearest folder of `-o` that exists, so
+a large archive needs no room on the system drive; `%TEMP%` when no folder can be made there, for
+`t`, `l` and `-so`), owned from
 the moment it exists: a failed or cancelled copy (disk full, broken pipe, Ctrl+C) removes it, as
 does the end of the command. Ctrl+C in `x`/`t`/`l`/`a` cancels cleanly with exit code **255**; a
 read blocked on a stalled stdin pipe does not see that cancellation, so a **second** Ctrl+C ends
@@ -390,7 +393,7 @@ repairable. `-si`, `-so`, `-p` and every other switch exit 7.
 | `DisableRecoveryData` policy | `pakko: error: ...Recovery data is disabled by Group Policy.` for every path | 2 |
 
 Ctrl+C stops with exit 255 and leaves no copy. A `pakko r` that was killed leaves only a
-`.pakko-a-*.tmp` file, which the next run in that folder removes. A tar-family archive, or an
+hidden `.pakko-w-*` folder, which the next run in that folder removes. A tar-family archive, or an
 encrypted ZIP, that another tool rewrote beside its old set reads as damaged (there is no test to
 say otherwise), and `r` writes the earlier bytes as the `.repaired` copy; the archive itself stays.
 

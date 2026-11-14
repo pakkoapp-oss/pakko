@@ -1050,6 +1050,53 @@ Add-SmokeStep 'CLI-058' {
     'the killed -si run left its folder; the next pakko swept it'
 }
 
+# T-F525/T-F528: x -si stages stdin in the work root next to -o (in its nearest folder that exists),
+# not under %TEMP%; nothing of Pakko's is left after.
+Add-SmokeStep 'CLI-064' {
+    $folder = Get-StepFolder 'cli064'
+    $source = Join-Path $folder 'a.txt'
+    [System.IO.File]::WriteAllText($source, 'near')
+    $zip = Join-Path $folder 'a.zip'
+    $made = Invoke-Pakko @('a', $zip, $source)
+    Assert-Smoke ($made.ExitCode -eq 0) "pakko a: exit $($made.ExitCode) $($made.Text)"
+    $out = Join-Path $folder 'out'
+    $stdinRoot = Join-Path ([System.IO.Path]::GetTempPath()) 'Archiver.CLI.Stdin'
+    $info = New-Object System.Diagnostics.ProcessStartInfo
+    $info.FileName = $Smoke.Pakko
+    $info.Arguments = "x -si `"-o$out`""
+    $info.UseShellExecute = $false
+    $info.RedirectStandardInput = $true
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $run = [System.Diagnostics.Process]::Start($info)
+    try {
+        $bytes = [System.IO.File]::ReadAllBytes($zip)
+        $run.StandardInput.BaseStream.Write($bytes, 0, $bytes.Length)
+        $run.StandardInput.BaseStream.Flush()
+        $staged = $null
+        for ($i = 0; $i -lt 100 -and -not $staged; $i++) {
+            $staged = Get-ChildItem -LiteralPath $folder -Force -Directory -Filter '.pakko-w-*' |
+                ForEach-Object { Get-ChildItem -LiteralPath $_.FullName -Recurse -File -Filter 'stdin.bin' } | Select-Object -First 1
+            if (-not $staged) { [System.Threading.Thread]::Sleep(100) }
+        }
+        Assert-Smoke ($null -ne $staged) "no -si staging in a .pakko-w-* folder of $folder"
+        $marker = "-$($run.Id)-"
+        $inTemp = @(if ([System.IO.Directory]::Exists($stdinRoot)) { [System.IO.Directory]::GetDirectories($stdinRoot) | Where-Object { (Split-Path $_ -Leaf).Contains($marker) } })
+        Assert-Smoke ($inTemp.Count -eq 0) "-si was staged in %TEMP% too: $($inTemp -join ', ')"
+        $run.StandardInput.Close()
+        Assert-Smoke ($run.WaitForExit(30000)) 'pakko x -si did not end within 30 s'
+        Assert-Smoke ($run.ExitCode -eq 0) "pakko x -si: exit $($run.ExitCode) $($run.StandardError.ReadToEnd())"
+    }
+    finally {
+        if (-not $run.HasExited) { $run.Kill() }
+        $run.Dispose()
+    }
+    Assert-Smoke ((Get-Content -LiteralPath (Join-Path $out 'a.txt') -Raw) -ceq 'near') 'a.txt was not extracted'
+    $left = @(Get-ChildItem -LiteralPath $folder, $out -Force -Name | Where-Object { $_ -like '.pakko-*' })
+    Assert-Smoke ($left.Count -eq 0) "left behind: $($left -join ', ')"
+    'stdin staged next to -o, extracted, nothing left'
+}
+
 Add-SmokeStep 'CLI-060' {
     $fixtures = Join-Path $PSScriptRoot '..\..\tests\Archiver.Core.IntegrationTests\Fixtures'
     $damaged = Join-Path $fixtures 'damaged_data.7z'

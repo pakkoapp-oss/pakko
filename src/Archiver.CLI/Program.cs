@@ -183,7 +183,9 @@ static async Task<int> RunExtractAsync(ParsedCliCommand command, PakkoServices s
         if (CliDownloadMark.PolicyOverrideWarning(command.ApplyDownloadMark, services.Policy) is { } markWarning)
             await Console.Error.WriteLineAsync(markWarning).ConfigureAwait(false);
 
-        using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(command, cancellation.Token).ConfigureAwait(false);
+        // T-F525: next to where the files go; -so's go to %TEMP% anyway.
+        using CliStagingFolder? stdinFolder = await StageStdinIfRequestedAsync(
+            command, cancellation.Token, near: command.WriteToStdout ? null : ResolveExtractDestination(command)).ConfigureAwait(false);
         if (RejectEmptyStdin(stdinFolder) is { } emptyStdin)
             return emptyStdin;
         using CliStagingFolder? stdoutFolder = command.WriteToStdout ? CliStagingFolder.Create(CliStreamStaging.StdoutRoot) : null;
@@ -242,13 +244,14 @@ static async Task<bool> ReportNoFileToProcessAsync(ParsedCliCommand command, Arc
 }
 
 // T-F244 item 4: -si stages into a folder this run owns from the moment it exists, so a failed
-// or cancelled copy leaves nothing in %TEMP%. Null when the archive is a path argument.
-static async Task<CliStagingFolder?> StageStdinIfRequestedAsync(ParsedCliCommand command, CancellationToken cancellationToken)
+// or cancelled copy leaves nothing in %TEMP%. Null when the archive is a path argument. T-F525: near
+// an extraction's destination when given.
+static async Task<CliStagingFolder?> StageStdinIfRequestedAsync(ParsedCliCommand command, CancellationToken cancellationToken, string? near = null)
 {
     if (!command.ReadFromStdin)
         return null;
     await using Stream stdin = Console.OpenStandardInput();
-    return await CliStreamStaging.StageStdinAsync(CliStreamStaging.StdinRoot, stdin, cancellationToken).ConfigureAwait(false);
+    return await CliStreamStaging.StageStdinAsync(CliStreamStaging.StdinRoot, stdin, cancellationToken, near).ConfigureAwait(false);
 }
 
 static IReadOnlyList<string> ArchivePathsFor(ParsedCliCommand command, CliStagingFolder? stdinFolder) =>
