@@ -148,7 +148,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         // T-F230: a run that produced nothing removes the destination folder it created, and no
         // staging leftover survives a rejected archive.
         Directory.Exists(destDir).Should().BeFalse();
-        Directory.EnumerateFileSystemEntries(_temp.Path).Should().NotContain(p => Path.GetFileName(p).StartsWith(".pakko-x-"));
+        Directory.EnumerateFileSystemEntries(_temp.Path).Should().NotContain(p => Path.GetFileName(p).StartsWith(".pakko-"));
     }
 
     // T-F301: a password remembered from an earlier archive ("apply to remaining") that does not
@@ -245,7 +245,7 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
         // failure (same as any other traversal fixture in this suite), not a per-entry skip.
         result.Success.Should().BeFalse();
         File.Exists(Path.Combine(_temp.Path, "evil_trav.txt")).Should().BeFalse();
-        Directory.EnumerateFileSystemEntries(_temp.Path).Should().NotContain(p => Path.GetFileName(p).StartsWith(".pakko-x-"));
+        Directory.EnumerateFileSystemEntries(_temp.Path).Should().NotContain(p => Path.GetFileName(p).StartsWith(".pakko-"));
     }
 
     [Fact]

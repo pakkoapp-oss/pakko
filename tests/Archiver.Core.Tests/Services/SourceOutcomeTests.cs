@@ -158,7 +158,7 @@ public sealed class SourceOutcomeTests : IDisposable
         await act.Should().ThrowAsync<OperationCanceledException>();
         File.Exists(Path.Combine(dest, "0.txt")).Should().BeFalse();
         File.ReadAllText(Path.Combine(dest, "a.txt")).Should().Be("old");
-        Directory.GetDirectories(dest, ".pakko-x-*").Should().BeEmpty();
+        Directory.GetDirectories(dest, ".pakko-*").Should().BeEmpty();
     }
 
     [Fact]

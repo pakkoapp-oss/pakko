@@ -37,7 +37,7 @@ public sealed class ZipArchiveServiceExtractStagingTests : IDisposable
     }
 
     private static void AssertNoStagingLeftIn(string folder) =>
-        Directory.GetDirectories(folder, ".pakko-x-*").Should().BeEmpty("the staging folder must be removed");
+        Directory.GetDirectories(folder, ".pakko-*").Should().BeEmpty("the staging folder must be removed");
 
     [Fact]
     public async Task ExtractAsync_SeparateFolders_ExistingSiblingTmpFolder_IsLeftUntouched()

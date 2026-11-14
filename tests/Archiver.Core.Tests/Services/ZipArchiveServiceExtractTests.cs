@@ -924,7 +924,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         try { await _sut.ExtractAsync(options, cancellationToken: cts.Token); }
         catch (OperationCanceledException) { }
 
-        Directory.GetDirectories(_temp.Path, ".pakko-x-*").Should().BeEmpty();
+        Directory.GetDirectories(_temp.Path, ".pakko-*").Should().BeEmpty();
     }
 
     // System.Progress<T> posts its callback via SynchronizationContext/ThreadPool, which would
@@ -965,7 +965,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         Func<Task<ArchiveResult>> act = async () => await _sut.ExtractAsync(options, progress, cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        Directory.GetDirectories(destDir.Path, ".pakko-x-*").Should().BeEmpty();
+        Directory.GetDirectories(destDir.Path, ".pakko-*").Should().BeEmpty();
     }
 
     [Fact]
