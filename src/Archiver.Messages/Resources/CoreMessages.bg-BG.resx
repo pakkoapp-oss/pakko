@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>„{0}“ завършва с интервал или точка, които Windows премахва при отваряне на името; не е използвано.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Този архив съдържа твърде много елементи, за да го отвори Pakko. Ограничение: {0}.</value>
+  </data>
 </root>

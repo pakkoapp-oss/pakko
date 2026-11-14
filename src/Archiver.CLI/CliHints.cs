@@ -86,7 +86,7 @@ public static class CliHints
         MessageCode.RecoveryDataIntact, MessageCode.RecoveryDataNotFound, MessageCode.RecoveryDataRepaired, MessageCode.RecoveryRepairCheckFailed,
         MessageCode.TestedStructureOnly, MessageCode.SingleFileFormatNeedsOneFile, MessageCode.TarHardLinkPair, MessageCode.ScanEntryBlockedByPolicy, MessageCode.ScanProviderDoesNotReport, MessageCode.TarGaveNoVersion,
         MessageCode.ScanFilesMissing, MessageCode.TarFilesMissing, MessageCode.TarListedNameUntrusted,
-        MessageCode.SourceNameTrimmed,
+        MessageCode.SourceNameTrimmed, MessageCode.TooManyEntries,
     ];
 
     /// <summary>Every code and its hint; <see cref="CliHint.None"/> is a decision too.</summary>

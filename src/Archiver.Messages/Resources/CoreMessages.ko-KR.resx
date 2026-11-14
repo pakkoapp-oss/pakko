@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>"{0}"은(는) 공백이나 마침표로 끝나며, Windows는 이름을 열 때 이를 제거합니다. 사용되지 않았습니다.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>이 압축 파일은 항목이 너무 많아 Pakko에서 열 수 없습니다. 한도: {0}.</value>
+  </data>
 </root>

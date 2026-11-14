@@ -40,15 +40,22 @@ internal sealed class ZipArchiveReader : IDisposable
         Entries = entries;
     }
 
+    // T-F513: the names are read first - their pass refuses an archive over ArchiveLimits.MaxEntries
+    // before .NET's reader builds an object for every entry.
     public static ZipArchiveReader Open(string path, ZipNameCodePages codePages)
     {
+        List<(byte[] RawName, string Name, DateTime? ExtendedModifiedUtc)> names;
+        using (FileStream raw = File.OpenRead(path))
+        {
+            // A device (NUL, a pipe) is no ZIP: .NET's reader said so too, as damaged data.
+            if (!raw.CanSeek)
+                throw new InvalidDataException("A ZIP archive is read from a file, not a device.");
+            names = RawZipEntryLocator.ReadEntryNames(raw, codePages);
+        }
+
         ZipArchive archive = ZipFile.OpenRead(path);
         try
         {
-            List<(byte[] RawName, string Name, DateTime? ExtendedModifiedUtc)> names;
-            using (FileStream raw = File.OpenRead(path))
-                names = RawZipEntryLocator.ReadEntryNames(raw, codePages);
-
             if (names.Count != archive.Entries.Count)
                 throw new InvalidDataException("ZIP central directory entry count mismatch while reading entry names.");
 

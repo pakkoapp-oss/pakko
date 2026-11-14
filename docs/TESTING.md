@@ -987,7 +987,12 @@ product race on the shared `%TEMP%\PakkoTarSandbox` parent's ACL, then fixed and
 `QuarantineAclParentRaceTests` (in-process reproduction, 300 scopes x 4 threads). T-F524 removed
 the parent's entry altogether (no folder above a quarantine needs one), and those tests with it.
 `QuarantineLocationTests` (T-F524) covers where an extraction's quarantine goes and its root's
-protected DACL. T-F196 added
+protected DACL. `EntryLimitTests` (T-F513) refuses an archive over `ArchiveLimits.MaxEntries`: a
+128-byte ZIP declaring a billion entries through list, test and extraction; tar.exe's `-t`/`-tv`
+with the scope's `EntryLimit` lowered to 2; and, `Category=Slow` (about 1.5 minutes), tar.gz files
+of 2,000,000 and 2,000,001 empty entries through tar.exe and the helper. `ArchiveLimitsTests`
+(Core.Tests) covers the ZIP passes and the helper's protocol with small limits; `ZipReadOwnerTests`
+fails on a ZIP read outside `ZipArchiveReader.Open`. T-F196 added
 `ExternalTarFixtureBuilder.CreateCompressedTarOfDotRoot` (the everyday `tar -C dir .` shape) and
 three `ExtractAsync_DotRoot*_MatchesPlainArchiveTree` parity tests.
 

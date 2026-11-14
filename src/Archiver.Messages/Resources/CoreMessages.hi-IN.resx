@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>"{0}" के अंत में स्पेस या बिंदु है, जिसे Windows नाम खोलते समय हटा देता है; इसका उपयोग नहीं किया गया।</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>इस संग्रह में इतनी अधिक प्रविष्टियाँ हैं कि Pakko इसे नहीं खोलता। सीमा: {0}।</value>
+  </data>
 </root>

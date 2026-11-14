@@ -210,7 +210,10 @@ internal static partial class SandboxedProcessLauncher
 
         Task stdInTask = stdInWrite is null ? Task.CompletedTask : WriteStdIn(stdInWrite, options.StdInData!);
 
-        using var stdOutStream = new FileStream(stdOutRead, FileAccess.Read);
+        using var stdOutFile = new FileStream(stdOutRead, FileAccess.Read);
+        using Stream stdOutStream = options.StdOutLimit is { } limit
+            ? new LimitedStdOut(stdOutFile, limit, () => _ = NativeMethods.TerminateProcess(processHandle, 1))
+            : stdOutFile;
         using var stdErrStream = new FileStream(stdErrRead, FileAccess.Read);
         Encoding outputEncoding = options.OutputEncoding ?? Encoding.UTF8;
         using var stdOutReader = new StreamReader(stdOutStream, outputEncoding);
@@ -264,7 +267,7 @@ internal static partial class SandboxedProcessLauncher
 
     // T-F397: "tar -x -O" writes every file's content to stdout. Read, so tar.exe never waits on a
     // full pipe, and dropped, so an archive's whole content is never held in memory.
-    private static async Task<string> DiscardAsync(FileStream stream, Action<int> onDiscarded, CancellationToken cancellationToken)
+    private static async Task<string> DiscardAsync(Stream stream, Action<int> onDiscarded, CancellationToken cancellationToken)
     {
         byte[] buffer = ArrayPool<byte>.Shared.Rent(DiscardBufferBytes);
         try
@@ -284,7 +287,7 @@ internal static partial class SandboxedProcessLauncher
     // running, it would block on a full stdout pipe, and stderr - read until the child exits - would
     // never end.
     private static async Task<string> ReadStdOutLinesAsync(
-        FileStream stream, StdOutLines lines, SafeProcessOrThreadHandle processHandle, CancellationToken cancellationToken)
+        Stream stream, StdOutLines lines, SafeProcessOrThreadHandle processHandle, CancellationToken cancellationToken)
     {
         try
         {
@@ -341,13 +344,62 @@ internal static partial class SandboxedProcessLauncher
     }
 
     // T-F465: the bytes first, then the text decoded from exactly those bytes.
-    private static async Task<string> ReadBytesAsync(FileStream stream, Encoding encoding, Action<byte[]> onBytes, CancellationToken cancellationToken)
+    private static async Task<string> ReadBytesAsync(Stream stream, Encoding encoding, Action<byte[]> onBytes, CancellationToken cancellationToken)
     {
         using var buffer = new MemoryStream();
         await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
         byte[] bytes = buffer.ToArray();
         onBytes(bytes);
         return encoding.GetString(bytes);
+    }
+
+    // T-F513: stdout counted as it is read. Past the limit the child is killed first - left running
+    // it would block on a full pipe while stderr's reader waits for it to exit - then the read fails.
+    private sealed class LimitedStdOut(Stream inner, StdOutLimit limit, Action kill) : Stream
+    {
+        private long _lines;
+        private long _bytes;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count) => Count(buffer.AsSpan(offset, inner.Read(buffer, offset, count)));
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            int read = await inner.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            return Count(buffer.Span[..read]);
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        private int Count(ReadOnlySpan<byte> read)
+        {
+            _bytes += read.Length;
+            _lines += read.Count((byte)'\n');
+            if (_lines > limit.MaxLines || _bytes > limit.MaxBytes)
+            {
+                kill();
+                throw limit.Exceeded();
+            }
+            return read.Length;
+        }
+
+        public override void Flush() { /* read-only */ }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                inner.Dispose();
+            base.Dispose(disposing);
+        }
     }
 
     // tar.exe's "-v" writes one "a <name>" line per entry to stderr during creation — streamed so

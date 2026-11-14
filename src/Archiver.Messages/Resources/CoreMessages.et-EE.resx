@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>„{0}” lõpeb tühiku või punktiga, mille Windows nime avamisel ära jätab; seda ei kasutatud.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Selles arhiivis on liiga palju kirjeid, et Pakko seda avaks. Piirang: {0}.</value>
+  </data>
 </root>

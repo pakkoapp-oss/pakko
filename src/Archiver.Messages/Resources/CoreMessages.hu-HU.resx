@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>A(z) „{0}” szóközre vagy pontra végződik, amelyet a Windows a név megnyitásakor elhagy; nem lett felhasználva.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Ez az archívum túl sok elemet tartalmaz ahhoz, hogy a Pakko megnyissa. Korlát: {0}.</value>
+  </data>
 </root>

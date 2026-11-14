@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>”{0}” slutar med ett blanksteg eller en punkt, som Windows tar bort när namnet öppnas; det användes inte.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Det här arkivet innehåller för många poster för att Pakko ska öppna det. Gräns: {0}.</value>
+  </data>
 </root>

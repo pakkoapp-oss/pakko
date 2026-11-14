@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>“{0}”以空格或句点结尾，Windows 打开该名称时会将其去掉；未使用。</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>此压缩包的条目过多，Pakko 无法打开。上限：{0}。</value>
+  </data>
 </root>

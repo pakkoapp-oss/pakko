@@ -417,4 +417,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>«{0}» закінчується пробілом або крапкою, які Windows відкидає, відкриваючи ім’я; його не використано.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>У цьому архіві забагато елементів, щоб Pakko його відкрив. Ліміт: {0}.</value>
+  </data>
 </root>

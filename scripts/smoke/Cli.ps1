@@ -1065,6 +1065,32 @@ Add-SmokeStep 'CLI-060' {
     'the damaged plain 7z fails with its own error; encrypted.7z still reads as password-protected'
 }
 
+# T-F513: an archive declaring a billion entries is refused before its catalog is read.
+Add-SmokeStep 'CLI-062' {
+    $folder = Get-StepFolder 'cli062'
+    $zip = Join-Path $folder 'billion.zip'
+    $stream = [System.IO.File]::Create($zip)
+    try {
+        $w = [System.IO.BinaryWriter]::new($stream)
+        $w.Write([uint32]0x04034b50); $w.Write([byte[]]::new(26))
+        $w.Write([uint32]0x06064b50); $w.Write([uint64]44); $w.Write([uint16]45); $w.Write([uint16]45)
+        $w.Write([uint32]0); $w.Write([uint32]0); $w.Write([uint64]1000000000); $w.Write([uint64]1000000000); $w.Write([uint64]0); $w.Write([uint64]0)
+        $w.Write([uint32]0x07064b50); $w.Write([uint32]0); $w.Write([uint64]30); $w.Write([uint32]1)
+        $w.Write([uint32]0x06054b50); $w.Write([uint16]0); $w.Write([uint16]0); $w.Write([uint16]65535); $w.Write([uint16]65535)
+        $w.Write([uint32]::MaxValue); $w.Write([uint32]::MaxValue); $w.Write([uint16]0)
+        $w.Flush()
+    }
+    finally { $stream.Dispose() }
+    $out = Join-Path $folder 'out'
+    foreach ($arguments in @(@('l', $zip), @('t', $zip), @('x', $zip, "-o$out"))) {
+        $run = Invoke-Pakko $arguments
+        Assert-Smoke ($run.ExitCode -eq 2) "$($arguments[0]): exit $($run.ExitCode) $($run.Text)"
+        Assert-Smoke ($run.Text.Contains('too many entries') -and $run.Text -match '2.000.000') "$($arguments[0]): $($run.Text)"
+    }
+    Assert-Smoke (-not (Test-Path -LiteralPath $out) -or @(Get-ChildItem -LiteralPath $out -Recurse -File).Count -eq 0) 'files were extracted'
+    'l, t and x refuse the archive, naming the limit'
+}
+
 # T-F474: the quarantine is under %TEMP%; a destination on another volume takes the copy branch of
 # QuarantineFiles.TakeOut (a rename by handle cannot cross volumes). Never under D:\Projects, which
 # Controlled Folder Access guards on the dev machine.

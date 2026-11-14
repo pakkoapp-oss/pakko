@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>‘{0}’ eindigt op een spatie of een punt, die Windows weglaat bij het openen van de naam; het is niet gebruikt.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Dit archief bevat te veel items om in Pakko te openen. Limiet: {0}.</value>
+  </data>
 </root>

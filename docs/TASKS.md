@@ -1653,7 +1653,11 @@ re-measured with T-F346's script before and after.
 
 ### T-F513 - Memory bounded everywhere: batches where the work allows, a stated limit where it does not (P2, user, 2026-11-12)
 
-- [ ] **Status:** open.
+- [~] **Status:** batch 5b, 2026-11-14 (`docs/DECISIONS.md`, "T-F513"): steps 1 and 4 done - the
+  inventory with its verdicts, and one limit (`ArchiveLimits.MaxEntries`, 2,000,000, the user's
+  choice) on every reader: a ZIP by its declared count and its records, tar.exe's listing by its
+  lines, the helper by its entries; `TooManyEntries` in 37 locales; smoke `CLI-062`. Left: step 2's
+  memory budget test and step 3 with T-F473's leaner catalog; T-F529 (batch 5e) reads in batches.
   - **Asked by the user:** "can most places where a pipeline processes large arrays move to
     batches of a small fixed size, and so remove memory overflow altogether?"
   - **Where it stands.** T-F498 measured the data side (`docs/DECISIONS.md`, "T-F498 measured"):

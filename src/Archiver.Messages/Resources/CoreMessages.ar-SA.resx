@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>"{0}" ينتهي بمسافة أو نقطة يحذفها Windows عند فتح الاسم؛ لم يُستخدم.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>يحتوي هذا الأرشيف على عناصر أكثر مما يفتحه Pakko. الحد: {0}.</value>
+  </data>
 </root>

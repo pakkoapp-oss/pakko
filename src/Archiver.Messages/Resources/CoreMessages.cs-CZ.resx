@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>„{0}“ končí mezerou nebo tečkou, kterou Windows při otevírání názvu vynechá; nebylo použito.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Tento archiv obsahuje příliš mnoho položek, než aby ho Pakko otevřel. Limit: {0}.</value>
+  </data>
 </root>

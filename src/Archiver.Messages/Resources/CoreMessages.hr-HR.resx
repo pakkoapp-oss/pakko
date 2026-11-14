@@ -390,4 +390,7 @@
   <data name="SourceNameTrimmed" xml:space="preserve">
     <value>„{0}” završava razmakom ili točkom, koje Windows uklanja pri otvaranju naziva; nije korišteno.</value>
   </data>
+  <data name="TooManyEntries" xml:space="preserve">
+    <value>Ova arhiva sadrži previše stavki da bi je Pakko otvorio. Ograničenje: {0}.</value>
+  </data>
 </root>

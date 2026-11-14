@@ -16,6 +16,7 @@ namespace Archiver.Core.Services.Sandbox;
 /// <param name="OnStdOutBytes">Non-null: called with stdout's bytes as the child wrote them, before decoding (T-F465: the names tar.exe printed, which a name sent back to it must equal).</param>
 /// <param name="StdOutLines">Non-null: stdout is read line by line, each line given to it as it arrives and never kept, within its limits; the returned stdout is then empty (T-F470: the archive helper's protocol).</param>
 /// <param name="DiscardStdErr">True: stderr is read and thrown away, never kept; the returned stderr is then empty (T-F470: a child Pakko does not trust).</param>
+/// <param name="StdOutLimit">Non-null: stdout is counted as it arrives; past its lines or bytes the child is killed and the run fails with the limit's exception (T-F513: one tar.exe listing line per entry).</param>
 /// <param name="EnvironmentOverrides">Variables the child gets with these values, on top of this process's whole environment (T-F342: TMP/TEMP for libarchive's 7z writer); null hands the environment over unchanged.</param>
 internal sealed record ProcessLaunchOptions(
     SafeSidHandle? AppContainerSid = null,
@@ -30,7 +31,8 @@ internal sealed record ProcessLaunchOptions(
     Action<int>? OnStdOutDiscarded = null,
     Action<byte[]>? OnStdOutBytes = null,
     StdOutLines? StdOutLines = null,
-    bool DiscardStdErr = false);
+    bool DiscardStdErr = false,
+    StdOutLimit? StdOutLimit = null);
 
 /// <summary>Takes one stdout line, without its '\n'.</summary>
 internal delegate void StdOutLineHandler(ReadOnlySpan<byte> line);
@@ -41,3 +43,9 @@ internal delegate void StdOutLineHandler(ReadOnlySpan<byte> line);
 /// inside a line, or an exception from <paramref name="OnLine"/> kills the child and fails the run.
 /// </summary>
 internal sealed record StdOutLines(StdOutLineHandler OnLine, int MaxLineBytes, long MaxTotalBytes);
+
+/// <summary>
+/// T-F513: the most '\n' bytes and bytes in all a child may write to stdout; past either the child
+/// is killed and the run fails with <paramref name="Exceeded"/>'s exception.
+/// </summary>
+internal sealed record StdOutLimit(long MaxLines, long MaxBytes, Func<Exception> Exceeded);

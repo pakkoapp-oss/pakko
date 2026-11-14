@@ -290,6 +290,12 @@ internal sealed partial class TarSandboxScope : IDisposable
         }
     }
 
+    /// <summary>
+    /// T-F513: the most entries a listing may name (one line each); more fails the run with
+    /// <see cref="ArchiveLimits.TooManyEntries"/>. Lowered only by tests.
+    /// </summary>
+    internal int EntryLimit { get; set; } = ArchiveLimits.MaxEntries;
+
     /// <summary>Lists the archive ("-t", or "-tv" when <paramref name="verbose"/>).</summary>
     public async Task<(int ExitCode, string StdOut, string StdErr)> ListAsync(bool verbose, CancellationToken cancellationToken)
     {
@@ -507,6 +513,10 @@ internal sealed partial class TarSandboxScope : IDisposable
     {
         string[] headerCharset = _utf8Headers == true ? ["--options", Utf8HeaderOption] : [];
         bool plainListing = mode == "-t";
+        int entryLimit = EntryLimit;
+        StdOutLimit? listingLimit = mode is "-t" or "-tv"
+            ? new StdOutLimit(entryLimit, ArchiveLimits.MaxListingBytes, () => ArchiveLimits.TooManyEntries(entryLimit))
+            : null;
         byte[]? listing = null;
         SandboxJobObject job;
         try
@@ -526,7 +536,7 @@ internal sealed partial class TarSandboxScope : IDisposable
                 [mode, "-f", "-", .. headerCharset, .. arguments],
                 new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: QuarantineRoot,
                     OutputEncoding: OutputEncoding, OnStdOutDiscarded: onStdOutDiscarded,
-                    OnStdOutBytes: plainListing ? bytes => listing = bytes : null),
+                    OnStdOutBytes: plainListing ? bytes => listing = bytes : null, StdOutLimit: listingLimit),
                 cancellationToken)
                 .ConfigureAwait(false);
             if (plainListing)
