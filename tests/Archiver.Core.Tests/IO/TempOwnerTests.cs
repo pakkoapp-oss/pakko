@@ -179,6 +179,25 @@ public sealed class TempOwnerTests : IDisposable
         File.Exists(olderFixedName).Should().BeTrue();
     }
 
+    // T-F528: one listing for several names; each entry is judged by the name it matched, suffix too.
+    [Fact]
+    public void Sweep_SeveralNames_EachJudgedByItsOwn()
+    {
+        string deadRoot = Dir($".pakko-w-{Here}-{DeadPid}-{LiveTicks}-{Guid32}");
+        string liveRoot = Dir($".pakko-w-{Here}-{LivePid}-{LiveTicks}-{Guid32}");
+        string deadTemp = FileIn($".pakko-a-{Here}-{DeadPid}-{LiveTicks}-{Guid32}.tmp");
+        string deadStaging = Dir($".pakko-x-{Here}-{DeadPid}-{LiveTicks}-{Guid32}");
+        string unlisted = Dir($".pakko-q-{Here}-{DeadPid}-{LiveTicks}-{Guid32}");
+
+        TempOwner.SweepStale(_temp.Path, [(".pakko-w-", ""), (".pakko-x-", ""), (".pakko-a-", ".tmp")], TempScope.Destination, Probe(_now));
+
+        Directory.Exists(deadRoot).Should().BeFalse();
+        Directory.Exists(liveRoot).Should().BeTrue();
+        File.Exists(deadTemp).Should().BeFalse();
+        Directory.Exists(deadStaging).Should().BeFalse();
+        Directory.Exists(unlisted).Should().BeTrue("no name of the sweep matches it");
+    }
+
     [Fact]
     public void Sweep_FolderWithJunctionDeepInside_RemovesLinkNotItsTarget()
     {

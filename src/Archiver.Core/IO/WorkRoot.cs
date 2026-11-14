@@ -22,10 +22,10 @@ public sealed partial class WorkRoot : IDisposable
     /// <summary>The prefix of a root's name.</summary>
     public const string Prefix = ".pakko-w-";
 
-    // What older versions left next to a destination, swept with the roots: extraction staging,
-    // creation's temporary file, chunk folder and 7z writer folder (T-F263, T-F312, T-F342).
-    private static readonly (string Prefix, string Suffix)[] OlderNames =
-        [(".pakko-x-", ""), (".pakko-a-", ".tmp"), (".pakko-tmp-", ""), (".pakko-7z-", "")];
+    // The roots, and what older versions left next to a destination: extraction staging, creation's
+    // temporary file, chunk folder and 7z writer folder (T-F263, T-F312, T-F342). One listing for all.
+    private static readonly (string Prefix, string Suffix)[] SweptNames =
+        [(Prefix, ""), (".pakko-x-", ""), (".pakko-a-", ".tmp"), (".pakko-tmp-", ""), (".pakko-7z-", "")];
 
     private readonly string _destination;
     private readonly Lock _gate = new();
@@ -59,9 +59,7 @@ public sealed partial class WorkRoot : IDisposable
                 return _root;
             string parent = NearestExisting(_destination)
                 ?? throw new DirectoryNotFoundException($"No folder of '{_destination}' exists.");
-            TempOwner.SweepStale(parent, Prefix, "", TempScope.Destination);
-            foreach ((string prefix, string suffix) in OlderNames)
-                TempOwner.SweepStale(parent, prefix, suffix, TempScope.Destination);
+            TempOwner.SweepStale(parent, SweptNames, TempScope.Destination);
             string root = Path.Combine(parent, TempOwner.NewName(Prefix));
             CreateNewFolder(root);
             _root = root;
