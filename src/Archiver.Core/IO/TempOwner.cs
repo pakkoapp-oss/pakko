@@ -131,23 +131,33 @@ public static class TempOwner
     }
 
     internal static void SweepStale(string directory, string prefix, string suffix, TempScope scope) =>
-        SweepStale(directory, prefix, suffix, scope, new TempOwnerProbe(MachineHash, IsProcessAlive, DateTime.UtcNow));
+        SweepStale(directory, [(prefix, suffix)], scope);
+
+    /// <summary>T-F528: one listing of <paramref name="directory"/> for several names: a folder of
+    /// thousands of entries is listed once per sweep, not once per name.</summary>
+    internal static void SweepStale(string directory, IReadOnlyList<(string Prefix, string Suffix)> names, TempScope scope) =>
+        SweepStale(directory, names, scope, new TempOwnerProbe(MachineHash, IsProcessAlive, DateTime.UtcNow));
+
+    internal static void SweepStale(string directory, string prefix, string suffix, TempScope scope, TempOwnerProbe probe) =>
+        SweepStale(directory, [(prefix, suffix)], scope, probe);
 
     /// <summary>Best-effort: an entry that cannot be listed, checked or removed stays for the next sweep.</summary>
-    internal static void SweepStale(string directory, string prefix, string suffix, TempScope scope, TempOwnerProbe probe)
+    internal static void SweepStale(string directory, IReadOnlyList<(string Prefix, string Suffix)> names, TempScope scope, TempOwnerProbe probe)
     {
-        List<FileSystemInfo> entries;
+        List<(FileSystemInfo Entry, string Prefix, string Suffix)> entries;
         try
         {
             entries = [.. new DirectoryInfo(directory).EnumerateFileSystemInfos()
-                .Where(e => e.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))];
+                .Select(e => (Entry: e, Name: names.FirstOrDefault(n => e.Name.StartsWith(n.Prefix, StringComparison.OrdinalIgnoreCase))))
+                .Where(m => m.Name.Prefix is not null)
+                .Select(m => (m.Entry, m.Name.Prefix, m.Name.Suffix))];
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return; // best-effort: nothing to sweep in a folder that cannot be listed
         }
 
-        foreach (FileSystemInfo entry in entries)
+        foreach ((FileSystemInfo entry, string prefix, string suffix) in entries)
         {
             try
             {

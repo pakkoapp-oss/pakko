@@ -406,9 +406,9 @@ user selected. What differs from the tar family:
 
 - **The writer's temporary file stays next to the archive.** libarchive's 7z writer buffers the
   compressed data in a temporary file and takes its folder from TMP/TEMP. Pakko starts tar.exe
-  with both set to a folder of its own beside the archive (`.pakko-7z-<owner>-<id>`), excluded from
-  the archive by name, removed when the run ends and swept by the next creation in that folder if
-  the process was killed. Without this a full copy of the user's data would sit in `%TEMP%` on the
+  with both set to a folder of its own inside the operation's hidden work root beside the archive
+  (`.pakko-w-<owner>-<id>z-<id>`, T-F528), the root excluded from the archive by name, removed
+  when the run ends and swept by the next operation in that folder if the process was killed. Without this a full copy of the user's data would sit in `%TEMP%` on the
   system drive while the archive is written.
 - **No password.** The writer has no encryption and libarchive ignores `--passphrase` without a
   word, so a 7z with a password would come out unencrypted. Pakko refuses a password for 7z
