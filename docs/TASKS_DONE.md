@@ -14982,3 +14982,40 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   answers for no twin, and the two callers that asked by a spelling Pakko writes through ask by the
   file written; the scan joined the probe of reading such an archive. Archiving them is T-F531
   (`docs/DECISIONS.md`, "T-F510"; `git log --grep T-F510`).
+
+### T-F528 - One owner for the folders Pakko works in on disk (P2, the user, 2026-11-14)
+
+- [x] **Status:** done 2026-11-14 (batch 5d). Asked by the user ("У записі на диск темпу та карантину мабуть має
+  бути один власник щоб все було однаково і стандартизовано для всіх?"; agreed to the proposal).
+  `TempOwner` already owns names, owner tags and the sweep; where a work folder goes, how it is born
+  (hidden, the call, its DACL) and who removes it are decided at eight places: `ExtractionStaging`,
+  `ArchiveTempFile`, `ParallelSingleArchiveWriter`'s chunk folder, `TarCollisionStaging`,
+  `CliStagingFolder`, both branches of `TarSandboxScope`, `ArchiveintGate`'s probe,
+  `TarCapabilitySnapshot`. T-F524's location rules (`QuarantineLocation`: volume, network, FAT,
+  length, Controlled Folder Access) serve the quarantine alone, so `-si` stayed in `%TEMP%` (T-F525).
+- **The shape agreed:** one owner with two explicit modes. **Trusted** (Pakko's own checked bytes:
+  staging, the archive's temp file, chunks, `-si`/`-so`): inherits the destination's permissions,
+  since the result must take them and tampering before the commit equals tampering after it.
+  **Untrusted** (what a sandboxed reader writes: the quarantine): the protected DACL and the seal.
+  Both share the location rules, the hidden attribute, the name, the sweep and the delete. A guard
+  test refuses `Directory.CreateDirectory` on a temp name outside the owner; a row in
+  `docs/ARCHITECTURE.md`'s "Single Owners". `QuarantineFiles` (checking and moving untrusted files)
+  stays its own owner. Closes T-F525.
+- **One root per operation** (the user, 2026-11-14: chunks in one folder, never spread out): today an
+  archiving run leaves up to three things in the destination folder side by side - the archive's temp
+  file, the hidden chunk folder (`.pakko-chunks-`), 7z's writer folder. The owner gives each operation
+  one hidden root on the volume, with a subfolder per role (temp archive, chunks, staging, and the
+  quarantine with its own protected DACL inside it), removed and swept as one.
+- **Graduated 2026-11-14:** `IO/WorkRoot`, one hidden root per operation in the nearest existing folder of
+  its destination: staging, the temporary archive, chunks, the exclusion list, the 7z writer folder and
+  `x`/`e -si`. The quarantine keeps its own protected root (`docs/DECISIONS.md`, "T-F528": a root that
+  inherits the destination's DACL can be renamed by another account). `CLI-064`; `git log --grep T-F528`.
+
+### T-F525 - `pakko -si` stages the whole archive in `%TEMP%` (P3, from T-F524)
+
+- [x] **Status:** done 2026-11-14 (batch 5d, with T-F528). `CliStreamStaging` writes stdin to `%TEMP%\Archiver.CLI.Stdin`
+  before extraction reads it: a large archive needs that much room on the system drive even when
+  `-o` is elsewhere. Staging it next to `-o` (as T-F524 does for the quarantine) would need the same
+  volume and permission rules. Input, not output, so not part of T-F524.
+- **Graduated 2026-11-14:** `x`/`e -si` stage in the work root next to `-o`, %TEMP% when none can be made
+  there (`CliStagingFolder.Near`, `CLI-064`; `docs/DECISIONS.md`, "T-F528").

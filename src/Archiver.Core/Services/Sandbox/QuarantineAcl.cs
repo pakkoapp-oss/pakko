@@ -174,17 +174,15 @@ internal static partial class QuarantineAcl
     }
 
     // "D:(A;OICINP;FR;;;WD)...": an entry's flags are its second field, two letters each.
-    internal static bool HasNoPropagateEntry(string sddl)
+    internal static bool HasNoPropagateEntry(string sddl) =>
+        sddl.Split('(').Skip(1).Select(entry => entry.Split(';')).Any(fields => fields.Length >= 2 && HasFlag(fields[1], "NP"));
+
+    private static bool HasFlag(string flags, string flag)
     {
-        foreach (string entry in sddl.Split('(', StringSplitOptions.RemoveEmptyEntries).Skip(1))
+        for (int i = 0; i + flag.Length <= flags.Length; i += 2)
         {
-            string[] fields = entry.Split(';');
-            if (fields.Length < 2)
-                continue;
-            string flags = fields[1];
-            for (int i = 0; i + 1 < flags.Length; i += 2)
-                if (flags[i] == 'N' && flags[i + 1] == 'P')
-                    return true;
+            if (string.CompareOrdinal(flags, i, flag, 0, flag.Length) == 0)
+                return true;
         }
         return false;
     }
