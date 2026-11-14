@@ -1,6 +1,7 @@
 using System.Text;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
+using Archiver.Core.Services.Antivirus;
 using Archiver.Core.Services.Sandbox;
 using FluentAssertions;
 
@@ -36,6 +37,21 @@ public sealed class EntryLimitTests : IDisposable
         tested.Errors.Should().ContainSingle().Which.Message.Should().Contain("too many entries");
         extracted.Errors.Should().ContainSingle().Which.Message.Should().Contain("too many entries");
         extracted.CreatedFiles.Should().BeEmpty();
+    }
+
+    // The scan never says Clean of an archive it refused to read.
+    [Fact]
+    public async Task Zip_DeclaringABillionEntries_ScanIsNeverClean()
+    {
+        string zip = Zip64Declaring(1_000_000_000);
+        var scanner = new FakeAmsiScanner();
+        var sut = new AntivirusScanService(new TarCapabilities(), groupPolicyOptions: new GroupPolicyOptions(), () => scanner,
+            providerState: () => AmsiProviderState.Usable);
+
+        ThreatScanResult result = await sut.ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        result.Findings.Should().ContainSingle().Which.Reason.Should().Contain("too many entries");
     }
 
     // --- Security & Boundary: tar.exe's listing, one line an entry ---
