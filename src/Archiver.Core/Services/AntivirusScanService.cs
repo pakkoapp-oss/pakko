@@ -301,11 +301,29 @@ public sealed class AntivirusScanService : IAntivirusScanService
         CancellationToken cancellationToken)
     {
         (PasswordResolver passwordResolver, ZipNameCodePages codePages) = settings;
-        List<NamedZipEntry> fileEntries;
-        ZipArchiveReader reader;
+        ZipCatalog catalog;
+        // Same subset-membership logic ZipArchiveService.ExtractWithSmartFolderingAsync
+        // already has — small enough to duplicate rather than share (CLAUDE.md: three similar
+        // lines beats a premature abstraction for a genuinely different concern, reading for
+        // scan vs. reading for extraction).
+        HashSet<string>? selectedSet = selectedEntryPaths is { Count: > 0 } ? [.. selectedEntryPaths] : null; // ordinal: the default for string
+        bool Scanned(NamedZipEntry e) => !e.FullName.EndsWith('/')
+            && (selectedSet is null
+                || selectedSet.Contains(e.FullName)
+                || selectedSet.Any(s => e.FullName.StartsWith(s + "/", StringComparison.Ordinal)));
+        int fileCount;
+        ZipLocate locate = ZipArchiveService.IsEncryptedZip(archivePath) ? ZipLocate.BestEffort : ZipLocate.None;
         try
         {
-            reader = ZipArchiveReader.Open(archivePath, codePages);
+            catalog = ZipCatalog.Open(archivePath, codePages);
+            // T-F529: one walk counts the entries for the progress bar - and makes every check of
+            // the whole archive before any entry is scanned.
+            fileCount = 0;
+            foreach (NamedZipEntry e in catalog.Entries(locate: locate))
+            {
+                if (Scanned(e))
+                    fileCount++;
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
@@ -313,36 +331,22 @@ public sealed class AntivirusScanService : IAntivirusScanService
             return;
         }
 
-        using (reader)
+        using (catalog)
         {
-            ZipArchive archive = reader.Archive;
             // T-F194: an encrypted entry used to reach entry.Open() and fail as "Could not read
             // entry" — never scanned at all, which is exactly how password-protected malware
             // delivery evades AV. Now its decrypted plaintext is scanned when a password resolves.
-            using Stream? rawArchiveStream = TryMapEncryptedEntries(archivePath, archive, out Dictionary<ZipArchiveEntry, LocatedZipEntry>? encryptedEntryMap);
-            ZipArchiveService.ResolvedZipPassword? password = encryptedEntryMap is null
+            // A batch whose local headers cannot be read falls back to that "Could not read entry".
+            using Stream? rawArchiveStream = locate == ZipLocate.BestEffort ? File.OpenRead(archivePath) : null;
+            ZipArchiveService.ResolvedZipPassword? password = rawArchiveStream is null
                 ? null
                 : await ZipArchiveService.ResolveArchivePasswordAsync(archivePath, passwordResolver, codePages).ConfigureAwait(false);
 
-            var allFileEntries = reader.Entries.Where(e => !e.FullName.EndsWith('/')).ToList();
-
-            // Same subset-membership logic ZipArchiveService.ExtractWithSmartFolderingAsync
-            // already has — small enough to duplicate rather than share (CLAUDE.md: three similar
-            // lines beats a premature abstraction for a genuinely different concern, reading for
-            // scan vs. reading for extraction).
-            fileEntries = allFileEntries;
-            if (selectedEntryPaths is { Count: > 0 })
-            {
-                var selectedSet = new HashSet<string>(selectedEntryPaths, StringComparer.Ordinal);
-                fileEntries = allFileEntries
-                    .Where(e => selectedSet.Contains(e.FullName)
-                             || selectedSet.Any(s => e.FullName.StartsWith(s + "/", StringComparison.Ordinal)))
-                    .ToList();
-            }
-
             int entriesDone = 0;
-            foreach (NamedZipEntry named in fileEntries)
+            foreach (NamedZipEntry named in catalog.Entries(locate: locate))
             {
+                if (!Scanned(named))
+                    continue;
                 ZipArchiveEntry entry = named.Entry;
                 cancellationToken.ThrowIfCancellationRequested();
                 // T-F151: reported BEFORE scanning starts, not just after — AmsiScanBuffer is one
@@ -351,12 +355,10 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 // percentage for the whole duration of its own scan. This at least advances the
                 // bar (and CurrentFile) to this entry's own starting position immediately, instead
                 // of only at the end of a potentially multi-second single scan.
-                reportProgress(named.FullName, entriesDone, fileEntries.Count);
+                reportProgress(named.FullName, entriesDone, fileCount);
                 try
                 {
-                    ThreatFinding finding = encryptedEntryMap is { } map
-                                            && map.TryGetValue(entry, out LocatedZipEntry? located)
-                                            && located.GeneralPurposeEncryptedBit
+                    ThreatFinding finding = named.Located is { GeneralPurposeEncryptedBit: true } located
                         ? await ScanEncryptedEntryAsync(
                             archivePath, named, located, rawArchiveStream!, password, scanner, cancellationToken)
                             .ConfigureAwait(false)
@@ -371,7 +373,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 }
                 finally
                 {
-                    reportProgress(named.FullName, ++entriesDone, fileEntries.Count);
+                    reportProgress(named.FullName, ++entriesDone, fileCount);
                 }
             }
         }
@@ -469,41 +471,6 @@ public sealed class AntivirusScanService : IAntivirusScanService
         catch (InvalidDataException)
         {
             return false;
-        }
-    }
-
-    // T-F194: positional pairing of archive.Entries with RawZipEntryLocator.LocateAll, the same way
-    // ZipArchiveService.TestArchiveEntries does it. Returns null (and no map) for a plain archive —
-    // zero extra parsing — or when the raw layout can't be read (Zip64/odd structure), in which
-    // case encrypted entries fall back to the pre-T-F194 "Could not read entry" Inconclusive.
-    private static FileStream? TryMapEncryptedEntries(
-        string archivePath, ZipArchive archive, out Dictionary<ZipArchiveEntry, LocatedZipEntry>? map)
-    {
-        map = null;
-        if (!ZipArchiveService.IsEncryptedZip(archivePath))
-            return null;
-
-        FileStream? raw = null;
-        try
-        {
-            raw = File.OpenRead(archivePath);
-            List<LocatedZipEntry> located = RawZipEntryLocator.LocateAll(raw);
-            if (located.Count != archive.Entries.Count)
-            {
-                raw.Dispose();
-                return null;
-            }
-
-            map = [with(archive.Entries.Count)];
-            for (int i = 0; i < archive.Entries.Count; i++)
-                map[archive.Entries[i]] = located[i];
-            return raw;
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
-        {
-            raw?.Dispose();
-            map = null;
-            return null;
         }
     }
 

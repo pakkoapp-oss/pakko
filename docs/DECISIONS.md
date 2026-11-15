@@ -14983,6 +14983,72 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## T-F529 - reading a ZIP in batches (2026-11-15)
+
+The user asked whether every entry of an archive must be held at once. For a ZIP it was: .NET's
+`ZipArchive` builds an object for every record of the central directory when it is opened (it has no
+streaming read mode), and Pakko's `ZipArchiveReader` paired each with a decoded name in a list.
+
+**Why not a reader of Pakko's own.** The task's first shape was to open each entry through its local
+header with `DeflateStream`. .NET's reader decodes more than that (`dotnet/runtime` `v11.0.0`,
+`ZipArchiveEntry.GetDataDecompressor`): `case ZipCompressionMethod.Deflate64: uncompressedStream = new
+DeflateManagedStream(compressedStreamToRead, ZipCompressionMethod.Deflate64, _uncompressedSize);` -
+an internal type, with no public Deflate64 decoder in the BCL; and `OpenInReadMode` ends in `new
+CrcValidatingReadStream(decompressedStream, _crc32, _uncompressedSize)`, sizes taken from the central
+directory. Deflate64 archives exist (7-Zip writes them on request) and Pakko reads them today; a
+reader of Pakko's own would have dropped them, and the checks .NET makes of each entry with them.
+
+**What was done: .NET's reader, one batch at a time** (`Zip/ZipCatalog.cs`, which replaced
+`ZipArchiveReader`). Pakko walks the central directory as a stream (`RawZipEntryLocator.
+WalkCentralDirectory`, one record at a time, nothing held). Records are cut into batches of up to
+4,096 records or 1 MiB. Each batch is read by a `ZipArchive` over a `CentralDirectoryOverlayStream`:
+the file's own bytes, then the batch's records copied as they stand, then an end record declaring just
+them (Zip64 end records when the file is 4 GiB or more). The records' local-header offsets point into
+the file, so .NET opens, decompresses and checks each entry's data as it did from the file. Once .NET
+has read the records, the overlay hides its tail, so every check .NET makes of the archive's length
+when an entry is opened (`IsOpenableInitialVerifications`, `IsOpenableFinalVerifications`) sees the
+file's own length. A batch's `ZipArchive` is disposed when the walk moves on.
+
+**What .NET's reader checked of the whole archive, now made by the walk.** A batch shows .NET its own
+records only, so these move to `RawZipEntryLocator`, with .NET's texts:
+- where the directory is (`ZipArchive.ReadEndOfCentralDirectory` and `TryReadZip64EndOfCentralDirectory`):
+  the classic end record's values, or the Zip64 record's only when the classic one holds a
+  `0xFFFF`/`0xFFFFFFFF` marker and the locator stands right before it;
+- `if (eocd.NumberOfThisDisk != eocd.NumberOfTheDiskWithTheStartOfTheCentralDirectory)` and the two
+  counts: "Split or spanned archives are not supported.";
+- an end record whose comment runs past the file is none (`TryReadBlockInitialize`: `if
+  (stream.Position + commentLength > stream.Length) return false;`): "End of Central Directory record
+  could not be found.";
+- the count (`ReadCentralDirectoryEndOfInnerLoopWork`: `if (numberOfEntries > _expectedNumberOfEntries)
+  throw new InvalidDataException(SR.NumEntriesWrong)`, and the same after the last record): .NET reads
+  records until a signature that is not one, so a record right after the directory's extent counts too.
+- The disk number .NET reads each entry against is the overlay's, set to the archive's.
+
+These refusals come after Pakko's own checks of the records, as before T-F529, when Pakko's name pass
+ran first and .NET's reader after it: the messages a damaged archive gets are unchanged.
+
+**Two walks where a caller acts on entries.** The count is known only when a walk ends, so a test, an
+extraction and a scan walk once without acting (`ZipCatalog.Check`, or the walk that measures what
+they need) and then once to act; a list keeps its result only once its walk has ended. The first
+walk of an extraction (`MeasureArchive`) gathers what used to come from a list of every entry: the
+declared size of every file (T-F94, saturating), the root shape (T-F157), T-F411's named root, and
+which entries the selection and filter let through (a bit an entry, so the filter is asked once).
+T-F234's collision check keeps its one global thing, each distinct name with its first raw bytes.
+
+**Found on the way: T-F538.** `ZipArchiveReader` took names from Pakko's pass and data from .NET's,
+paired by position, and the two found the directory differently: Pakko took the Zip64 record whenever
+a locator stood before the end record. An archive with two directories of the same count was listed
+with the names of one and the data of the other (measured on main: "z.txt", "y.txt" for "a.txt",
+"b.txt"). One walk reads one directory now.
+
+**The oracle.** `ZipReaderOracleTests` reads every fixture archive and 40 mutations of each (1,476
+archives) with the old reader (`Legacy/`, a frozen copy of main at `689c9759`) and with `ZipCatalog`:
+verdict, names, collisions, sizes, CRCs, and each entry's bytes or error must be equal. The first run
+found that the new end-record checks refused with other texts than before (69 archives) and one
+archive .NET had refused as having no end record that the new reader read: both fixed by the order
+above and by taking the comment rule from .NET. A Deflate64 entry made by the vendored 7-Zip is read
+(`ZipCatalogTests`).
+
 ## T-F528 - one owner of the folders Pakko works in, one root per operation (2026-11-14)
 
 **What changed.** `IO/WorkRoot` owns where an operation's work folders go and how they are made. An

@@ -46,15 +46,17 @@ public sealed class ArchiveLimitsTests
         Refused(() => RawZipEntryLocator.ReadEntryNames(zip, Us, maxEntries: 2), 2);
     }
 
-    // A directory holding more records than its end record declares: .NET's reader stops at the
-    // declared count, Pakko's own pass must not read past the limit either.
+    // A directory holding more records than its end record declares: .NET's reader throws on the
+    // record past the declared count, and since T-F529 Pakko's own walk does too - before the limit,
+    // which the declared count is already within.
     [Fact]
-    public void ZipNames_MoreRecordsThanDeclared_AreRefusedAtTheLimit()
+    public void ZipNames_MoreRecordsThanDeclared_AreRefusedAtTheDeclaredCount()
     {
         using MemoryStream zip = ZipOf(3);
         DeclareEntries(zip, 1);
 
-        Refused(() => RawZipEntryLocator.ReadEntryNames(zip, Us, maxEntries: 2), 2);
+        FluentActions.Invoking(() => RawZipEntryLocator.ReadEntryNames(zip, Us, maxEntries: 2))
+            .Should().Throw<InvalidDataException>().WithMessage(RawZipEntryLocator.NumEntriesWrongText);
     }
 
     [Fact]
