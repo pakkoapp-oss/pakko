@@ -63,7 +63,7 @@ PR; TASKS, TASKS_DONE, CHANGELOG, SPEC and CLAUDE.md edited by the integrating s
 | H housekeeping | T-F495 (`System.Security.Permissions` out, CI tools pinned, one CRC table, DI package current) | `.csproj`, `build.yml`, `ZipCryptoStream` | build plus AOT publish green |
 | N .NET 11 | T-F492 (retarget spike, then the move: SDK 11.0.100, `net11.0*`, C# 15, the .NET 11 behaviour changes with tests), then **T-F318** (one `DeflateEncoder` per parallel-writer worker, `Reset()` between entries; required in this wave, the user, 2026-11-11), then T-F497 (one archive per item for many small files; done, 16-58 s -> 4 s for 2,000 files), then **T-F501** (the parallel writer's memory grew with every small entry: done, 2.5 GB -> 165 MiB), then T-F498 (the litmus run and the complexity pass: done), then T-F502 (one archive per item was quadratic: done, 9 s -> 1 s for 20,000 x 20,000 paths), then T-F503-T-F508 and T-F500 (every finding of T-F497/T-F498, the user, 2026-11-11): T-F503 (Optimal separate storm: done, 49k -> 4.7k faults for 2,000 archives), T-F504 (password allocations: done, 424 -> 69 MiB creating 2,000 entries), T-F505 (extraction per file: done, 1.76 GB -> 207 MiB allocated for 20,000 files; time is the file system's), T-F507 (tar process count: done, no conhost per launch, half the processes), T-F506 (AMSI buffer: done, the faults are inherent; large buffers no longer pooled, content zeroed), T-F500 (writer failure paths, the flaky chunk-folder test: done), T-F508 (the Slow paper, device checks) | every project, CI, scripts, `ZipEntryCompressor`, `ParallelSingleArchiveWriter` | plan mode + advisor at both ends; if WinUI/CsWinRT/AOT blocks after three approaches, the wave ships on .NET 10 |
 | Z ZIP encryption | T-F493 (compatibility matrix first, gate, then one owner and the BCL backend per half) | `Services/Zip/Decryption`, `WinZipAesEncryptStream`, `ZipArchiveService`, `AntivirusScanService` | after N; plan mode + advisor at both ends + a fresh opus reviewer (crypto, untrusted input) |
-| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, the archive search and the identity owner: done; archiving such names is T-F531, next wave), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F522 (P3, the commit's link check fails open, next wave), T-F523 (P2, one AppContainer for every operation: one reader can open another: code done, batch 5a), T-F524 (P2, the quarantine next to the destination: code done, batch 5a), T-F525 (P3, `-si` staged in `%TEMP%`: done, batch 5d), T-F526 (P3, the helper refused by CFA through an unread channel, next wave), T-F527 (P3, an entry its owner cannot delete, next wave), T-F528 (P2, one owner of work folders: done, batch 5d), T-F532 (P3, a merge takes the staging's inheritable entries, next wave), T-F533 (P3, a root left under a `\\?\` name Windows trims, next wave), T-F534 (P3, the fast path's re-inheritance has no cancel, next wave), T-F529 (P2, reading in batches, batch 5e), T-F530 (P3, a large encrypted file written once, batch 6), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
+| B bugs from v1.10.0 | T-F509 (P1, a trimmed source name archives and deletes its twin: code done, `SHL-019` left), T-F510 (P3, the archive search and the identity owner: done; archiving such names is T-F531, next wave), T-F511 (P2, one owner per job: done), T-F512 (P2, the path matrix: done), T-F513 (P2, memory bounded by batches or by a stated limit, after T-F506), T-F515 (P2, `-sdel` in a case-sensitive folder: done), T-F516 (P3, a test timed out under load: done), T-F517 (P2, `a` dropped one of two names differing in case: done), T-F518 (P3, a damaged 7z read as password-protected by an entry's name: done), T-F519 (P1, the App's "Delete after" deleted a twin through a final path Windows trims: code done, `APP-038` left), T-F520 (P3, Core's English exception texts: done, traced), T-F521 (P3, a damaged encrypted ZIP reads as password-protected, next wave), T-F522 (P3, the commit's link check fails open, next wave), T-F523 (P2, one AppContainer for every operation: one reader can open another: code done, batch 5a), T-F524 (P2, the quarantine next to the destination: code done, batch 5a), T-F525 (P3, `-si` staged in `%TEMP%`: done, batch 5d), T-F526 (P3, the helper refused by CFA through an unread channel, next wave), T-F527 (P3, an entry its owner cannot delete, next wave), T-F528 (P2, one owner of work folders: done, batch 5d), T-F532 (P3, a merge takes the staging's inheritable entries, next wave), T-F533 (P3, a root left under a `\\?\` name Windows trims, next wave), T-F534 (P3, the fast path's re-inheritance has no cancel, next wave), T-F529 (P2, reading in batches, batch 5e), T-F535 (P2, the App's browser holds a tree of every entry, batch 5f), T-F536 (P2, a scan of many small entries, batch 5f), T-F537 (P3, the tar budget test measures less than a list holds, batch 5e), T-F538 (P2, names and data from two directories, batch 5e), T-F530 (P3, a large encrypted file written once, batch 6), T-F475 (P2, a Core throw: done), T-F483, T-F486, T-F463's leftovers, T-F476, T-F477 (done), T-F478 (done), T-F484 (done), T-F482 (done), T-F485 (done), T-F481, T-F480, T-F491, T-F473, T-F474 | as each task says | each fix test first, seen red |
 | D not walked at the release | T-F494 (the Explorer menu on PakkoW10, `PKG-010`'s classic menu, the ARM64 helper, `REL-001` without the locked-bin detour) | VM, canary, smoke | - |
 | F winget | T-F317's outward step with the v1.10.0 CLI zips | `scripts/New-WingetManifest.ps1`, winget-pkgs | the user's OK before the external PR |
 | E on device, release | the release tier, PakkoW10 with both tar builds, the Store | `docs/SMOKE.md` | after H, N, Z, B, D |
@@ -87,13 +87,14 @@ above stays as the record of what each stream holds.
 | 5b | Memory | T-F473 (the first global holder), T-F513 | input-sized collections: stream them or give them a stated limit | deterministic counters, one series on both tar builds |
 | 5c | Trimmed names | T-F510 | the source key (T-F511 PR 4) and the twin fixture | done on `fix/batch5c-trimmed-names`: the archive search stops at such a folder (`CLI-063`), `PathIdentity` answers for no twin; archiving them split off as T-F531 (next wave) |
 | 5d | Work folders | T-F528 | one owner for every folder Pakko writes before the result: where, how it is born, its sweep | plan mode and advisor first; the owner test; smoke of every extraction and archiving path |
-| 5e | Reading in batches | T-F529 | the ZIP central directory read as a stream, entries opened by their local header; only a compact name set kept | plan mode, advisor and an opus reviewer (an untrusted-input parser); memory measured in every mode before and after |
+| 5e | Reading in batches | T-F529, T-F537, T-F538 | the ZIP central directory walked as a stream, .NET's reader given one batch at a time (`ZipCatalog`); only a compact name set kept | plan mode, advisor and an opus reviewer (an untrusted-input parser, and 5b's `RawZipEntryLocator` and listing kill); memory measured in every mode before and after |
+| 5f | The catalog's consumers and pulled-in P3s | T-F535, T-F536, T-F521, T-F522, T-F533 | what holds or walks a whole archive after 5e (the App's browser, the scan), and three P3s of the same code the agent pulled into this wave (2026-11-16) | memory and time at 1,000,000 entries before and after; the App browser on the device |
 | 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530 | calibration and the CI image | one series on an idle machine |
 | 7 | Z | T-F493 | crypto: its own gates and its own opus reviewer | as stream Z says |
 | 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the release tier | what needs the device or the user | one batch right before the tag |
 | - | F winget | T-F317's outward step | an external PR | only with the user's OK |
 
-Order: 1, 2, then 3 and 4 (independent), 5a, 5b, 5c, 6, 7, 8. Batch 5 was split by its checks (the agent, 2026-11-13); T-F512 and T-F515 were found merged and only waiting to graduate.
+Order: 1, 2, then 3 and 4 (independent), 5a, 5b, 5c, 5d, 5e, 5f, 6, 7, 8. Batch 5 was split by its checks (the agent, 2026-11-13); T-F512 and T-F515 were found merged and only waiting to graduate.
 
 **Findings during a batch.** A P1 or P2 from the batch's own area is fixed in the batch, test first.
 One from another area goes to the batch of that area, or to a new one before batch 8. A P3 is filed
@@ -1690,7 +1691,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F521 - A damaged encrypted ZIP reads as password-protected (P3, from T-F520's trace)
 
-- [ ] **Status:** open (next wave). Found 2026-11-13: an encrypted ZIP whose central directory puts a
+- [ ] **Status:** open, pulled into this wave (batch 5f, the agent, 2026-11-16: 5e rewrites the code that reads it). Found 2026-11-13: an encrypted ZIP whose central directory puts a
   local header past the end of the file is reported by extraction, and by a test with a password,
   as "This archive is password-protected and cannot be extracted/tested": the error of Pakko's own
   reader (`RawZipEntryLocator`) is taken as "cannot read the encryption", so the user is told to
@@ -1993,7 +1994,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F533 - A work root under a `\\?\` destination Windows trims is left behind (P3, from T-F528)
 
-- [ ] **Status:** open, next wave. `DestinationFolder.TryCreate` accepts `\\?\C:\w\out.` as typed, but
+- [ ] **Status:** open, pulled into this wave (batch 5f, the agent, 2026-11-16). `DestinationFolder.TryCreate` accepts `\\?\C:\w\out.` as typed, but
   `TempOwner.TryRemove` refuses any path `InputPaths.Problem` names, and `NameTrimmed` does not skip a
   `\\?\` path: the root of every creation or extraction there stays until the next run in that folder
   sweeps it (with a locked file's staged copy, for an extraction). Found by T-F528's opus review.
@@ -2027,6 +2028,48 @@ re-measured with T-F346's script before and after.
   penalty, T-F359), it can go straight into the temp archive - Pakko's own file, so the header's
   sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
   first (one 4 GiB file with a password: time, bytes written, free space needed).
+
+### T-F538 - A ZIP's names and its data could come from two different central directories (P2, from T-F529)
+
+- [ ] **Status:** open, batch 5e (fixed by `ZipCatalog`; left: a fixture and a test, seen red on main).
+  Found 2026-11-15 reading .NET's reader for T-F529. Up to 5d, `ZipArchiveReader` took names from
+  `RawZipEntryLocator` and data from .NET's `ZipArchive`, paired by position. The two found the
+  directory differently: Pakko took the Zip64 record's offset whenever a Zip64 locator stood before
+  the end record; .NET takes it only when the classic record holds a 0xFFFF/0xFFFFFFFF marker
+  (`ZipArchive.TryReadZip64EndOfCentralDirectory`, v11.0.0). A crafted archive with two directories
+  of the same count, an unmasked classic record pointing at one and a locator at the other, was
+  listed and extracted with the names of one and the data, sizes and CRCs of the other: each file
+  got another entry's content, and the archive showed other tools something else again. `ZipCatalog` reads one directory, found by .NET's
+  rule, and shows .NET only its records.
+- **Test:** that archive: names and data from one directory on 5e, two on main.
+
+### T-F537 - The tar catalog budget test measures less than a list holds (P3, from T-F529)
+
+- [ ] **Status:** open, batch 5e. `CatalogMemoryBudgetTests.TarListing_HoldsAtMostItsBudgetPerEntry`
+  measured 210 B an entry (T-F513); a probe holding the same `ListEntriesAsync` result measured about
+  530 B (2026-11-15: 507 MiB live for 1,000,000 entries, through tar.exe and through the helper alike;
+  `docs/DECISIONS.md`, "T-F529"). Find what the test leaves out (the entry names' length, a cache
+  released early, `GetTotalMemory` before a background thread finishes) and make it measure what a
+  caller holds, before 5e lowers the budgets.
+
+### T-F536 - A scan of many small entries makes one AMSI call each and holds the listing (P2, from T-F529)
+
+- [ ] **Status:** open, batch 5f. Measured 2026-11-15 (before 5e): scanning a tar of 1,000,000 empty
+  entries took 1,250 s and held 594 MiB live, through tar.exe and through the helper; 200,000 took
+  240-300 s. Each file is a separate `AmsiScanBuffer` call after it is copied out of the quarantine.
+  Next: measure where the time goes (the quarantine copy, the call, Defender's own work), then scan
+  small files in fewer calls where AMSI allows it (one session, `AmsiScanBuffer` per file but no
+  per-file open/close around it, or a content-only call for empty files), and walk the quarantine
+  instead of holding the listing. A detection must still name its entry.
+
+### T-F535 - The App's archive browser holds a tree of every entry (P2, from T-F529)
+
+- [ ] **Status:** open, batch 5f. Measured 2026-11-15: listing a ZIP of 1,000,000 entries holds 160 MiB
+  of `ArchiveEntryInfo`, and `ArchiveTreeIndex` adds 150 MiB more (311 MiB live, peak 1.15 GB before 5e);
+  a tar of the same holds 658 MiB. The browser shows one folder at a time. Next: a compact index
+  (names as one string pool, rows built only for the open folder, `ArchiveEntryInfo` not kept for
+  every entry), with the App's sort, search and selection unchanged; budget test in
+  `Archiver.App.Core.Tests`, device check of browsing a 1,000,000-entry archive.
 
 ### T-F529 - Read archives in batches: hold a compact name set, not every entry (P2, the user, 2026-11-14)
 
@@ -2094,7 +2137,7 @@ re-measured with T-F346's script before and after.
 
 ### T-F522 - The commit's link check fails open when a folder's attributes cannot be read (P3, from T-F474)
 
-- [ ] **Status:** open. `ExtractionStaging.ReachesThroughLink` (T-F419) asks
+- [ ] **Status:** open, pulled into this wave (batch 5f, the agent, 2026-11-16: a security check that fails open). `ExtractionStaging.ReachesThroughLink` (T-F419) asks
   `ArchiveEntrySecurity.IsReparsePoint` for each folder between the destination and a staged item;
   that returns false on any exception. A folder that does not exist yet must stay false (the commit
   creates it), but one whose attributes cannot be read (access denied) is then committed into as if
