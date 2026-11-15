@@ -376,7 +376,7 @@ flowchart TD
     PW -- yes --> PW1["ResolveArchivePasswordAsync, once per archive, before staging:<br/>options.ResolvePasswordAsync, up to 3 attempts, each checked against<br/>the smallest encrypted entry that passes (T-F189/T-F243/T-F417)"]
     PW1 -- "no password (none wired, cancelled, attempts used up)" --> PW2["Errors += PasswordProtectedExtract, or RememberedPasswordDoesNotFit<br/>when the remembered one was refused - archive not opened"]
     PW1 -- "resolved" --> A0
-    PW -- no --> A0["ZipArchiveReader.Open: allEntries = every ZIP entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty, or T-F410:<br/>options.EntryFilter set?"}
+    PW -- no --> A0["ZipCatalog.Open, then a first walk of every entry, files AND folder entries (T-F197),<br/>each with its name decoded by 7-Zip's rule, never ZipArchiveEntry.FullName (T-F234):<br/>the whole archive's checks, the declared sizes, the root shape and which entries pass (T-F529)"] --> A1{"T-F05: options.SelectedEntryPaths<br/>set and non-empty, or T-F410:<br/>options.EntryFilter set?"}
     A1 -- no --> A2["entries = allEntries.<br/>isSingleRootFolder/isSingleRootFile computed over files AND folders<br/>(a.txt + empty/ is MultiRoot), then<br/>ExtractionDestinationPlanner.Classify → RootShape (T-F157)"]
     A1 -- yes --> A3["entries = allEntries filtered to the selected paths<br/>+ anything nested under a selected folder path,<br/>then T-F410: each entry asked of EntryFilter on its own<br/>(none passes: return (destDir, false), nothing created).<br/>No entry left (an empty archive, or a selection that matches none): create destDir, return (destDir, true)<br/>→ RootShape.SelectedSubset"]
     A2 --> A3B["ExtractionDestinationPlanner.Resolve(alreadyIsolated, shape, destDir,<br/>unisolatedDestDir, rootDuplicatesArchiveName)<br/>→ (actualDest, stripRootPrefix). T-F205: SingleFolder keeps the root<br/>unless EliminateDuplicateRootFolder is set and the root is named like the archive"]
@@ -451,7 +451,7 @@ finding as an error.
 only because the user answered Skip, no whole-archive warning is added (NU/N4, T-F216); the source
 still never counts as fully processed.
 
-**Fix phase 3 (2026-09-25).** Names come from `ZipArchiveReader` (T-F234), so every gate below
+**Fix phase 3 (2026-09-25).** Names come from `ZipArchiveReader` (T-F234; `ZipCatalog` since T-F529, which walks the archive twice instead of holding it), so every gate below
 sees the decoded, `/`-normalized name; a post-decoding collision is a per-entry `ArchiveError`,
 checked before anything else; the reserved-name gate checks every segment (T-F243).
 
@@ -1026,10 +1026,10 @@ sequenceDiagram
         Service->>Service: new PasswordResolver(options.ResolvePasswordAsync, maxAttempts: 3)<br/>— one for every archive of the call (T-F194)
 
         loop each ZIP archive (strictly sequential)
-            alt ZipArchiveReader.Open throws IOException / UnauthorizedAccess / InvalidData
+            alt ZipCatalog.Open or its first walk throws IOException / UnauthorizedAccess / InvalidData
                 Service-->>Service: archive Inconclusive (ScanCannotReadArchive)
             else opened
-                opt the archive has an encrypted entry (TryMapEncryptedEntries)
+                opt the archive has an encrypted entry (IsEncryptedZip — each batch locates its entries, T-F529)
                     Service->>Service: ResolveArchivePasswordAsync — the frontend's prompt
                 end
                 loop each file entry (the selected subset, if any)

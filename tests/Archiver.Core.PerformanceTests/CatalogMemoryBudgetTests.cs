@@ -24,15 +24,54 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
 
     public void Dispose() => Directory.Delete(_folder, recursive: true);
 
+    // T-F529: what a test or an extraction holds while it walks the archive, measured from the
+    // entry filter halfway through (the filter runs inside the walk). Before T-F529 every entry was
+    // held from the open on: 592 B an entry, .NET's ZipArchive about 455 of them.
     [Fact]
-    public void ZipReader_HoldsAtMostItsBudgetPerEntry()
+    public async Task ZipTest_WhileItWalks_HoldsAtMostItsBudgetPerEntry()
     {
         string zip = ZipOfEmptyEntries();
-        var codePages = ZipNameCodePages.FromCodePages(437, 1252);
+        var service = new ZipArchiveService(new GroupPolicyOptions());
+        var probe = new HalfwayProbe(Entries);
 
-        long perEntry = LivePerEntry(() => ZipArchiveReader.Open(zip, codePages), reader => reader.Dispose());
+        ArchiveResult result = await service.TestAsync([zip], entryFilter: probe.Filter);
 
-        perEntry.Should().BeLessThanOrEqualTo(740, "measured 592 B (.NET's ZipArchive about 455 of them)");
+        result.Errors.Should().BeEmpty();
+        Report(probe.Before, probe.Halfway).Should().BeLessThanOrEqualTo(120, "measured 93 B: the name set T-F234's collision check keeps, and one batch");
+    }
+
+    [Fact]
+    public async Task ZipExtraction_WhileItWalks_HoldsAtMostItsBudgetPerEntry()
+    {
+        string zip = ZipOfEmptyEntries();
+        var service = new ZipArchiveService(new GroupPolicyOptions());
+        var probe = new HalfwayProbe(Entries, pass: false);
+
+        await service.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [zip],
+            DestinationFolder = Path.Combine(_folder, "out"),
+            EntryFilter = probe.Filter,
+        });
+
+        probe.Halfway.Should().BeGreaterThan(0, "the filter saw the walk's middle");
+        Report(probe.Before, probe.Halfway).Should().BeLessThanOrEqualTo(30, "measured 15 B in the first walk: one batch, no entry list");
+    }
+
+    // The live bytes before the operation starts and at the filter's call in the middle of the walk.
+    private sealed class HalfwayProbe(int entries, bool pass = true)
+    {
+        private int _calls;
+        public long Before { get; } = GC.GetTotalMemory(forceFullCollection: true);
+        public long Halfway { get; private set; }
+
+        public bool Filter(string name, bool isFolder)
+        {
+            int call = ++_calls;
+            if (call == entries / 2)
+                Halfway = GC.GetTotalMemory(forceFullCollection: true);
+            return pass;
+        }
     }
 
     [Fact]

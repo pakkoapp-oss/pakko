@@ -78,11 +78,16 @@ internal static class ExtractionDestinationPlanner
         bool any = false;
         foreach (string name in entryNames)
         {
-            if (name.Length <= rootName.Length || name[rootName.Length] != '/'
-                || !name.StartsWith(rootName, StringComparison.OrdinalIgnoreCase))
+            if (!IsUnderRoot(name, rootName))
                 return false;
             any = true;
         }
         return any;
     }
+
+    /// <summary>T-F529: one entry of <see cref="AllEntriesUnderRoot"/>, for a caller that walks the
+    /// archive once.</summary>
+    public static bool IsUnderRoot(string name, string rootName) =>
+        name.Length > rootName.Length && name[rootName.Length] == '/'
+        && name.StartsWith(rootName, StringComparison.OrdinalIgnoreCase);
 }

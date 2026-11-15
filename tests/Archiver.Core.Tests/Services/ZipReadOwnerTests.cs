@@ -3,13 +3,13 @@ using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
 
-// T-F513: a ZIP is opened for reading only by ZipArchiveReader.Open, whose name pass refuses an
-// archive over ArchiveLimits.MaxEntries before .NET's reader holds an object for every entry. One
-// other reader stays, listed with why: a new one fails here.
+// T-F513: a ZIP is opened for reading only by its owner, which refuses an archive over
+// ArchiveLimits.MaxEntries before any entry is read; T-F529: the owner is ZipCatalog, which gives
+// .NET's reader one batch at a time. One other reader stays, listed with why: a new one fails here.
 public sealed partial class ZipReadOwnerTests
 {
     private static readonly string SrcRoot = Path.Combine(FindRepoRoot(), "src");
-    private const string Owner = "Archiver.Core/Services/Zip/ZipArchiveReader.cs";
+    private const string Owner = "Archiver.Core/Services/Zip/ZipCatalog.cs";
 
     private static readonly (string File, string Call, int Count, string Why)[] Allowed =
     [
@@ -29,7 +29,7 @@ public sealed partial class ZipReadOwnerTests
         string[] unlisted = [.. found.Where(f => f.Value > allowed.GetValueOrDefault(f.Key)).Select(f => $"{f.Key.File}: {f.Key.Call} x{f.Value}")];
         string[] stale = [.. allowed.Where(a => a.Value > found.GetValueOrDefault(a.Key)).Select(a => $"{a.Key.File}: {a.Key.Call} x{a.Value}")];
 
-        string.Join(Environment.NewLine, unlisted).Should().BeEmpty("a ZIP is read through ZipArchiveReader.Open (T-F513); any other reader is listed here with why");
+        string.Join(Environment.NewLine, unlisted).Should().BeEmpty("a ZIP is read through ZipCatalog (T-F513, T-F529); any other reader is listed here with why");
         string.Join(Environment.NewLine, stale).Should().BeEmpty("a listed call that is gone leaves room for a new one");
     }
 
@@ -37,7 +37,7 @@ public sealed partial class ZipReadOwnerTests
     public void Scan_SeesTheOwner()
     {
         // Guards the scan itself: if the owner's own call stops matching, the test above passes vacuously.
-        Reader().Matches(Code(Owner)).Select(m => m.Value).Should().Contain("ZipFile.OpenRead(");
+        Reader().Matches(Code(Owner)).Select(m => m.Value).Should().ContainSingle(m => m.StartsWith("new ZipArchive("));
         Reader().Matches("new ZipArchive(s, ZipArchiveMode.Read); ZipFile.Open(p, ZipArchiveMode.Read); new ZipArchive(s)")
             .Select(m => m.Value).Should().HaveCount(3);
     }

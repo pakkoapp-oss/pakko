@@ -58,7 +58,7 @@ internal static class EncryptedZipEntryReader
     /// <paramref name="zipPath"/> before delegating. Used directly by tests and by any caller that
     /// hasn't already resolved a <see cref="LocatedZipEntry"/> some other way. Production
     /// extraction code (ZipArchiveService) prefers the <see cref="LocatedZipEntry"/> overload
-    /// below instead, paired positionally via <see cref="RawZipEntryLocator.LocateAll"/> — see
+    /// below instead, paired positionally via <see cref="RawZipEntryLocator.LocateAll(Stream)"/> — see
     /// that method's own doc comment for why name-based lookup is avoided there. The returned
     /// stream owns the file it opened.</summary>
     public static (EncryptedZipReadResult Result, Stream? Content) TryOpen(

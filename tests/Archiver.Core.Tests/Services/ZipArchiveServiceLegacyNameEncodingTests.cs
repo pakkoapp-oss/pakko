@@ -367,8 +367,8 @@ public sealed class ZipArchiveServiceLegacyNameEncodingTests : IDisposable
                 continue;
             }
 
-            using var reader = ZipArchiveReader.Open(path, Ru);
-            reader.Entries.Should().HaveCount(expected, Path.GetFileName(path));
+            using var catalog = ZipCatalog.Open(path, Ru);
+            catalog.Entries().Should().HaveCount(expected, Path.GetFileName(path));
         }
     }
 }

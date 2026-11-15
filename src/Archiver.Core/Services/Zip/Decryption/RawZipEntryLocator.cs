@@ -72,6 +72,16 @@ internal static class RawZipEntryLocator
         return BuildFromLocalHeader(zipStream, record);
     }
 
+    /// <summary>T-F529: <see cref="LocateAll(Stream)"/> for some records only - one batch of a
+    /// <see cref="ZipCatalog"/>, read from <paramref name="zipStream"/>, which it seeks.</summary>
+    internal static List<LocatedZipEntry> LocateAll(Stream zipStream, IReadOnlyList<CentralDirectoryRecord> records)
+    {
+        var result = new List<LocatedZipEntry>(records.Count);
+        foreach (CentralDirectoryRecord record in records)
+            result.Add(BuildFromLocalHeader(zipStream, record));
+        return result;
+    }
+
     /// <summary>
     /// Walks the whole central directory once and returns every entry's <see cref="LocatedZipEntry"/>
     /// in central-directory order — the same order <see cref="System.IO.Compression.ZipArchive.Entries"/>
@@ -86,14 +96,8 @@ internal static class RawZipEntryLocator
     /// position for every entry after the first.
     /// </para>
     /// </summary>
-    public static List<LocatedZipEntry> LocateAll(Stream zipStream)
-    {
-        List<CentralDirectoryRecord> records = ReadCentralDirectory(zipStream);
-        var result = new List<LocatedZipEntry>(records.Count);
-        foreach (CentralDirectoryRecord record in records)
-            result.Add(BuildFromLocalHeader(zipStream, record));
-        return result;
-    }
+    public static List<LocatedZipEntry> LocateAll(Stream zipStream) =>
+        LocateAll(zipStream, [.. ReadCentralDirectory(zipStream)]);
 
     /// <summary>
     /// T-F189: cheap "does this archive need a password prompt at all" gate — reads only the
@@ -130,16 +134,20 @@ internal static class RawZipEntryLocator
     /// 7-Zip's Test calls this "Headers Error". A local header that cannot be read is itself a
     /// mismatch, never an exception; a Zip64 field that cannot be resolved is not compared.
     /// </summary>
-    public static List<int> FindLocalHeaderMismatches(Stream zipStream)
+    /// T-F529: how many, and the first; the walk reads one record at a time.
+    public static (int Count, int First) FindLocalHeaderMismatches(Stream zipStream)
     {
-        List<CentralDirectoryRecord> records = ReadCentralDirectory(zipStream, resolveZip64: false);
-        var mismatched = new List<int>();
-        for (int i = 0; i < records.Count; i++)
+        int count = 0, first = -1, index = 0;
+        foreach (CentralDirectoryRecord record in ReadCentralDirectory(zipStream, resolveZip64: false))
         {
-            if (!LocalHeaderMatches(zipStream, records[i]))
-                mismatched.Add(i);
+            if (!LocalHeaderMatches(zipStream, record))
+            {
+                if (count++ == 0)
+                    first = index;
+            }
+            index++;
         }
-        return mismatched;
+        return (count, first);
     }
 
     private const int LocalHeaderFixedLength = 30;
@@ -184,7 +192,7 @@ internal static class RawZipEntryLocator
 
     // The central record's Zip64 fields, in spec order, holding only the fields that are
     // sentinels. Null for a sentinel whose value cannot be read.
-    private static (long? Uncompressed, long? Compressed, long? Offset) TryResolveCentralZip64(
+    internal static (long? Uncompressed, long? Compressed, long? Offset) TryResolveCentralZip64(
         byte[] extra, long uncompressed, long compressed, long offset)
     {
         byte[]? record = TryFindExtraRecord(extra, Zip64ExtraId);
@@ -229,34 +237,50 @@ internal static class RawZipEntryLocator
         }
     }
 
-    private sealed record CentralDirectoryRecord(
+    /// <summary>One central-directory record; <see cref="RecordStart"/> and <see cref="RecordEnd"/>
+    /// bound its raw bytes in the archive (T-F529: a <see cref="ZipCatalog"/> batch copies them).</summary>
+    internal sealed record CentralDirectoryRecord(
         byte[] NameBytes, long LocalHeaderOffset, uint Crc32, long CompressedSize, long UncompressedSize,
-        ushort GeneralPurposeFlag, byte HostOs, byte[] Extra);
+        ushort GeneralPurposeFlag, byte HostOs, byte[] Extra, long RecordStart, long RecordEnd);
 
-    // resolveZip64: false for the name pass — names need no sizes or offsets, and a size sentinel
-    // without a Zip64 extra (which .NET's own reader tolerates) must not make an archive unreadable.
-    // T-F513: refuses more than maxEntries entries twice - by the count the end records declare,
-    // before a record is read, and by the records the directory's extent really holds, which a
-    // crafted archive can make more than it declares (46 bytes each at least).
-    private static List<CentralDirectoryRecord> ReadCentralDirectory(
-        Stream zipStream, bool resolveZip64 = true, int maxEntries = ArchiveLimits.MaxEntries)
+    private static IEnumerable<CentralDirectoryRecord> ReadCentralDirectory(
+        Stream zipStream, bool resolveZip64 = true, int maxEntries = ArchiveLimits.MaxEntries) =>
+        WalkCentralDirectory(zipStream, FindCentralDirectory(zipStream, maxEntries), resolveZip64, maxEntries);
+
+    /// <summary>
+    /// The records of the directory <paramref name="extent"/> bounds, one at a time (T-F529: nothing
+    /// is held). The walk keeps its own position, so a caller may seek <paramref name="zipStream"/>
+    /// between two records. After the last one it checks what .NET's reader checks of the whole
+    /// directory (<c>ZipArchive.ReadCentralDirectory</c>, v11.0.0, which reads records until a
+    /// signature that is not one and then wants exactly the count the end record declares): the
+    /// count, and no record right after the extent.
+    /// </summary>
+    /// resolveZip64: false for the name pass — names need no sizes or offsets, and a size sentinel
+    /// without a Zip64 extra (which .NET's own reader tolerates) must not make an archive unreadable.
+    /// T-F513: refuses more than maxEntries entries twice - by the count the end records declare,
+    /// before a record is read, and by the records the directory's extent really holds, which a
+    /// crafted archive can make more than it declares (46 bytes each at least).
+    internal static IEnumerable<CentralDirectoryRecord> WalkCentralDirectory(
+        Stream zipStream, CentralDirectoryExtent extent, bool resolveZip64 = true, int maxEntries = ArchiveLimits.MaxEntries)
     {
-        var records = new List<CentralDirectoryRecord>();
-
         // T-F193 Phase 0: bounded by the directory's own declared extent, not "up to the classic
         // EOCD" — in a Zip64 archive the Zip64 EOCD record and locator sit between the two, and
         // used to be misread as a malformed directory entry.
-        (long centralDirOffset, long centralDirSize) = FindCentralDirectory(zipStream, maxEntries);
-        long centralDirEnd = centralDirOffset + centralDirSize;
-
-        zipStream.Seek(centralDirOffset, SeekOrigin.Begin);
-        while (zipStream.Position < centralDirEnd)
+        long centralDirEnd = extent.Offset + extent.Size;
+        long position = extent.Offset;
+        long count = 0;
+        while (position < centralDirEnd)
         {
+            zipStream.Seek(position, SeekOrigin.Begin);
             uint signature = ReadUInt32(zipStream);
             if (signature != CentralDirectorySignature)
                 throw new InvalidDataException("Malformed ZIP central directory (bad entry signature).");
-            if (records.Count >= maxEntries)
+            if (count >= maxEntries)
                 throw ArchiveLimits.TooManyEntries(maxEntries);
+            // As .NET's reader, which throws on the record past the count it expects: a caller may
+            // keep something per index up to the declared count (T-F529).
+            if (count >= extent.ExpectedEntries)
+                throw new InvalidDataException(extent.DotNetRefusal ?? NumEntriesWrongText);
 
             ushort versionMadeBy = ReadUInt16(zipStream);
             ReadUInt16(zipStream); // version needed
@@ -276,23 +300,43 @@ internal static class RawZipEntryLocator
             uint localHeaderOffset = ReadUInt32(zipStream);
             byte[] nameBytes = ReadBytes(zipStream, nameLength);
             byte[] extra = ReadBytes(zipStream, extraLength);
-            ReadBytes(zipStream, commentLength);
+            if (commentLength > zipStream.Length - zipStream.Position)
+                throw new EndOfStreamException();
+            long recordEnd = zipStream.Position + commentLength;
 
             (long realUncompressedSize, long realCompressedSize, long realLocalHeaderOffset) = resolveZip64
                 ? ResolveZip64Fields(extra, uncompressedSize, compressedSize, localHeaderOffset)
                 : (uncompressedSize, compressedSize, localHeaderOffset);
-            records.Add(new CentralDirectoryRecord(
+            count++;
+            yield return new CentralDirectoryRecord(
                 nameBytes, realLocalHeaderOffset, crc32, realCompressedSize, realUncompressedSize, generalPurposeFlag,
-                (byte)(versionMadeBy >> 8), extra));
+                (byte)(versionMadeBy >> 8), extra, position, recordEnd);
+            position = recordEnd;
         }
 
-        return records;
+        if (extent.DotNetRefusal is { } refusal)
+            throw new InvalidDataException(refusal);
+        if (count != extent.ExpectedEntries || StartsWithRecord(zipStream, position))
+            throw new InvalidDataException(NumEntriesWrongText);
+    }
+
+    // System.IO.Compression's SR.NumEntriesWrong (v11.0.0): the text .NET's reader gave for this.
+    internal const string NumEntriesWrongText =
+        "Number of entries expected in End Of Central Directory does not correspond to number of entries in Central Directory.";
+
+    // .NET tries a record only where its 46-byte fixed part fits.
+    private static bool StartsWithRecord(Stream zipStream, long position)
+    {
+        if (position > zipStream.Length - 46)
+            return false;
+        zipStream.Seek(position, SeekOrigin.Begin);
+        return ReadUInt32(zipStream) == CentralDirectorySignature;
     }
 
     // T-F193 Phase 0: a central record whose 32-bit size/offset field holds the 0xFFFFFFFF sentinel
     // carries the real value in its Zip64 (0x0001) extra field — in spec order (uncompressed,
     // compressed, local-header offset), containing only the fields that were sentinels.
-    private static (long UncompressedSize, long CompressedSize, long LocalHeaderOffset) ResolveZip64Fields(
+    internal static (long UncompressedSize, long CompressedSize, long LocalHeaderOffset) ResolveZip64Fields(
         byte[] extra, uint uncompressedSize, uint compressedSize, uint localHeaderOffset)
     {
         bool needUncompressed = uncompressedSize == Zip32Sentinel;
@@ -428,23 +472,48 @@ internal static class RawZipEntryLocator
         return null;
     }
 
-    // Returns the central directory's offset and size — from the Zip64 end-of-central-directory
-    // record when a Zip64 locator immediately precedes the classic EOCD, otherwise from the classic
-    // EOCD itself. Both are checked against the stream's real length before use.
-    // T-F513: and refuses an entry count over maxEntries in either record. .NET's ZipArchive (v11.0.0,
-    // ZipArchive.ReadEndOfCentralDirectoryInnerWork / TryReadZip64EndOfCentralDirectoryInnerFinalWork)
-    // expects the classic count, or the Zip64 total when the classic record holds a 0xFFFF/0xFFFFFFFF
-    // marker and the locator stands right before it, and throws past the count it expects; this
-    // takes the larger of the two wherever the locator stands, so it is never looser than .NET.
-    private static (long Offset, long Size) FindCentralDirectory(Stream zipStream, int maxEntries = ArchiveLimits.MaxEntries)
+    /// <summary>T-F529: where the central directory is, how many records .NET's reader expects there
+    /// and the disk number it reads entries against - one parse for every pass and batch.</summary>
+    /// <param name="Offset">Where the directory starts.</param>
+    /// <param name="Size">How long the end record says it is.</param>
+    /// <param name="ExpectedEntries">How many records .NET's reader wants in it.</param>
+    /// <param name="DiskNumber">The disk .NET's reader reads entries against.</param>
+    /// <param name="DotNetRefusal">What .NET's reader refused the end records for, in its own words;
+    /// thrown by a walk once Pakko's own checks of the records passed, as before T-F529, when Pakko's
+    /// pass ran first and .NET's reader after it.</param>
+    internal readonly record struct CentralDirectoryExtent(
+        long Offset, long Size, long ExpectedEntries, uint DiskNumber, string? DotNetRefusal = null);
+
+    // T-F529: the end records as .NET's reader takes them (dotnet/runtime v11.0.0, ZipArchive.
+    // ReadEndOfCentralDirectory, ReadEndOfCentralDirectoryInnerWork, TryReadZip64EndOfCentralDirectory
+    // and its two Inner*Work, quoted in docs/DECISIONS.md "T-F529"): the classic record's values, or the
+    // Zip64 record's when the classic one holds a 0xFFFF/0xFFFFFFFF marker and the locator stands right
+    // before it; a split or spanned archive refused, with .NET's own texts. A ZipCatalog batch shows
+    // .NET only its own records, so these checks of the whole archive are made here.
+    // T-F513: and refuses an entry count over maxEntries in either record, wherever the locator stands,
+    // so it is never looser than .NET. Pakko's own checks, which ran before .NET's reader did, keep
+    // their order and texts: the Zip64 record's offset and signature, the directory's extent.
+    internal static CentralDirectoryExtent FindCentralDirectory(Stream zipStream, int maxEntries = ArchiveLimits.MaxEntries)
     {
         long eocdOffset = FindEndOfCentralDirectory(zipStream);
-        zipStream.Seek(eocdOffset + 10, SeekOrigin.Begin);
-        if (ReadUInt16(zipStream) > maxEntries)
+        zipStream.Seek(eocdOffset + 4, SeekOrigin.Begin);
+        ushort thisDisk = ReadUInt16(zipStream);
+        ushort directoryDisk = ReadUInt16(zipStream);
+        ushort countOnThisDisk = ReadUInt16(zipStream);
+        ushort count = ReadUInt16(zipStream);
+        if (count > maxEntries)
             throw ArchiveLimits.TooManyEntries(maxEntries);
-        long size = ReadUInt32(zipStream);
-        long offset = ReadUInt32(zipStream);
+        uint size32 = ReadUInt32(zipStream);
+        uint offset32 = ReadUInt32(zipStream);
+        ushort commentLength = ReadUInt16(zipStream);
+        // .NET's ZipEndOfCentralDirectoryBlock.TryReadBlockInitialize: a comment past the end is no
+        // end record, and none is searched for further.
+        string? refusal = commentLength > zipStream.Length - zipStream.Position ? EndRecordNotFoundText
+            : thisDisk != directoryDisk || count != countOnThisDisk ? SplitSpannedText
+            : null;
 
+        var extent = new CentralDirectoryExtent(offset32, size32, count, thisDisk, refusal);
+        bool wantsZip64 = thisDisk == ushort.MaxValue || offset32 == Zip32Sentinel || count == ushort.MaxValue;
         if (eocdOffset >= Zip64LocatorLength)
         {
             zipStream.Seek(eocdOffset - Zip64LocatorLength, SeekOrigin.Begin);
@@ -458,18 +527,36 @@ internal static class RawZipEntryLocator
                 zipStream.Seek(zip64EocdOffset, SeekOrigin.Begin);
                 if (ReadUInt32(zipStream) != Zip64EndOfCentralDirectorySignature)
                     throw new InvalidDataException("Malformed Zip64 end-of-central-directory record.");
-                zipStream.Seek(zip64EocdOffset + 32, SeekOrigin.Begin);
-                if (ReadUInt64(zipStream) > (ulong)maxEntries)
+                zipStream.Seek(zip64EocdOffset + 16, SeekOrigin.Begin);
+                uint zip64ThisDisk = ReadUInt32(zipStream);
+                ReadUInt32(zipStream); // disk with the directory
+                ulong zip64CountOnThisDisk = ReadUInt64(zipStream);
+                ulong zip64Count = ReadUInt64(zipStream);
+                if (zip64Count > (ulong)maxEntries)
                     throw ArchiveLimits.TooManyEntries(maxEntries);
-                size = ReadInt64Checked(zipStream);
-                offset = ReadInt64Checked(zipStream);
+                long zip64Size = ReadInt64Checked(zipStream);
+                long zip64Offset = ReadInt64Checked(zipStream);
+                if (wantsZip64 && refusal is null)
+                {
+                    extent = new CentralDirectoryExtent(zip64Offset, zip64Size, (long)zip64Count, zip64ThisDisk,
+                        zip64Count != zip64CountOnThisDisk ? SplitSpannedText : null);
+                }
             }
         }
+        else if (wantsZip64 && refusal is null)
+        {
+            extent = extent with { DotNetRefusal = Zip64RecordNotWhereExpectedText };
+        }
 
-        if (offset > zipStream.Length || size > zipStream.Length - offset)
+        if (extent.Offset > zipStream.Length || extent.Size > zipStream.Length - extent.Offset)
             throw new InvalidDataException("ZIP central directory extends outside the archive.");
-        return (offset, size);
+        return extent;
     }
+
+    // System.IO.Compression's own texts (v11.0.0 Strings.resx: EOCDNotFound, SplitSpanned, Zip64EOCDNotWhereExpected).
+    private const string EndRecordNotFoundText = "End of Central Directory record could not be found.";
+    private const string SplitSpannedText = "Split or spanned archives are not supported.";
+    private const string Zip64RecordNotWhereExpectedText = "Zip 64 End of Central Directory Record not where indicated.";
 
     private static long ReadInt64Checked(Stream stream)
     {

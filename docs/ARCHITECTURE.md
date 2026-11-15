@@ -102,7 +102,7 @@ bypasses" is code that does an owner's job itself; it is listed in T-F511 and go
 | Default archive name, "name (1)", the folder an archive extracts into (`GetFolderName`) | `Services/ArchiveNaming` | `EntryDiskName.SingleName` for the folder | its own tests; the path matrix (T-F512) | - |
 | Reading tar.exe's formats (list, extract, test, scan) | `Sandbox/ISandboxedArchiveReader` (`TarExeReader`, `HelperReader`) over `TarSandboxScope` | `SandboxedProcessLauncher` (AppContainer, Job Object) | `SandboxedReaderOwnerTests` | - |
 | Names tar.exe wrote in the quarantine, and the move out (T-F474: one handle checks and moves each file) | `Sandbox/QuarantineFiles` | literal `\\?\` paths | `QuarantineFilesOwnerTests` | - |
-| How many entries an archive may have (T-F513) | `ArchiveLimits`; a ZIP is read only through `Zip/ZipArchiveReader.Open` | `ZipArchive` builds every entry it expects; adds a refusal before that, by the declared count and the records there, and the same limit on tar.exe's listing (`StdOutLimit`) and the helper's | `ZipReadOwnerTests`, `ArchiveLimitsTests` | - |
+| How many entries an archive may have (T-F513) | `ArchiveLimits`; a ZIP is read only through `Zip/ZipCatalog` (T-F529) | `ZipArchive` builds every entry it expects; adds a refusal before that, by the declared count and the records there, and the same limit on tar.exe's listing (`StdOutLimit`) and the helper's | `ZipReadOwnerTests`, `ArchiveLimitsTests` | - |
 | Where an extraction's quarantine goes: next to its destination on another volume than `%TEMP%`, or `%TEMP%` (T-F524) | `Sandbox/QuarantineLocation` | `GetVolumeInformationByHandleW`, `GetFinalPathNameByHandleW` | `QuarantineLocationTests`, `QuarantineFilesOwnerTests` | - |
 | This machine's code pages | `Text/SystemCodePages`, `MachinePages`, `TextBoundaries` | `GetACP`/`GetOEMCP`: `CultureInfo...TextInfo.ANSICodePage` is the user's locale, not the system page tar.exe uses | its own tests | - |
 | Starting a system executable | `Services/ExplorerLauncher`, absolute paths (S4036) | `Process.Start` | - | - |
@@ -187,9 +187,11 @@ src/
 │   │       ├── WorkItemEnumerator.cs / FileWorkItem.cs / WorkResult.cs
 │   │       ├── ParallelSingleArchiveWriter.cs
 │   │       ├── ZipEntryWriter.cs / ZipEntryCompressor.cs / DeflateEncoderPool.cs / DosDateTime.cs
-│   │       ├── ZipArchiveReader.cs      ← T-F234: the one ZIP read path (list/test/extract/scan) —
-│   │       │                                  ZipArchive.Entries paired with decoded names (NamedZipEntry,
-│   │       │                                  incl. the post-decoding collision flag)
+│   │       ├── ZipCatalog.cs            ← T-F529: the one ZIP read path (list/test/extract/scan) — the
+│   │       │                                  central directory walked as a stream, .NET's ZipArchive given
+│   │       │                                  one batch at a time; NamedZipEntry (T-F234's decoded name and
+│   │       │                                  collision flag)
+│   │       ├── CentralDirectoryOverlayStream.cs ← T-F529: the file plus one batch's records and an end record
 │   │       ├── ZipEntryNameDecoder.cs   ← T-F234: 7-Zip's name rule (bit 11 / 0x7075 / host OS)
 │   │       ├── ZipNameCodePages.cs      ← T-F234: OEM/ANSI pages for legacy names, from TextBoundaries
 │   │       └── Decryption/              ← T-F188/T-F189: RawZipEntryLocator (central directory +

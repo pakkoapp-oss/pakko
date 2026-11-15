@@ -1005,10 +1005,16 @@ protected DACL. `EntryLimitTests` (T-F513) refuses an archive over `ArchiveLimit
 with the scope's `EntryLimit` lowered to 2; and, `Category=Slow` (about 1.5 minutes), tar.gz files
 of 2,000,000 and 2,000,001 empty entries through tar.exe and the helper. `ArchiveLimitsTests`
 (Core.Tests) covers the ZIP passes and the helper's protocol with small limits; `ZipReadOwnerTests`
-fails on a ZIP read outside `ZipArchiveReader.Open`. In the performance project,
-`CatalogMemoryBudgetTests` (`Category=Slow`, its own non-parallel collection) asserts the live bytes
-an archive's catalog holds per entry (200,000 empty entries: the ZIP reader, a ZIP list, a tar.exe
-list). T-F196 added
+fails on a ZIP read outside `ZipCatalog` (T-F529). `ZipCatalogTests` checks the batched reader against
+.NET's reader of the whole file (batches of 1 to 4,096, Zip64 end records forced), a Deflate64 entry made
+by the vendored 7-Zip, a batch disposed once the walk moves on, a collision across a batch boundary,
+.NET's end-record refusals and T-F538's two directories. `ZipReaderOracleTests` is the differential
+oracle: every fixture ZIP and 40 mutations of each read by `ZipCatalog` and by a frozen copy of the
+reader it replaced (`Services/Zip/Legacy/`) must agree on verdict, names, sizes, CRCs and each entry's
+bytes or error. In the performance project, `CatalogMemoryBudgetTests` (`Category=Slow`, its own
+non-parallel collection) asserts the live bytes an archive's catalog holds per entry (200,000 empty
+entries: a ZIP list, a tar.exe list, and a ZIP test and extraction measured halfway through their
+walk, from the entry filter: 592 and 618 B before T-F529, 93 and 15 B after). T-F196 added
 `ExternalTarFixtureBuilder.CreateCompressedTarOfDotRoot` (the everyday `tar -C dir .` shape) and
 three `ExtractAsync_DotRoot*_MatchesPlainArchiveTree` parity tests.
 
