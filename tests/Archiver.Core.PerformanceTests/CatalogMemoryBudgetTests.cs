@@ -96,6 +96,28 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
         perEntry.Should().BeLessThanOrEqualTo(260, "measured 210 B");
     }
 
+    // T-F537: a caller with no synchronization context (pakko's console) resumes on the thread that
+    // finished the listing, on top of its frames. Measured 540 B an entry there before the fix, the
+    // frames below still holding tar.exe's output and both listings while the caller used the result.
+    [Fact]
+    public async Task TarListing_ToACallerWithoutAContext_HoldsAtMostItsBudgetPerEntry()
+    {
+        string tar = TarGzOfEmptyEntries();
+        var service = new TarSandboxedService(new GroupPolicyOptions());
+
+        long perEntry = await Task.Run(async () =>
+        {
+            long before = GC.GetTotalMemory(forceFullCollection: true);
+            ArchiveListResult held = await service.ListEntriesAsync(tar).ConfigureAwait(false);
+            long after = GC.GetTotalMemory(forceFullCollection: true);
+            held.Entries.Should().HaveCount(Entries, held.ErrorMessage);
+            GC.KeepAlive(held);
+            return Report(before, after);
+        });
+
+        perEntry.Should().BeLessThanOrEqualTo(260, "the same as a caller with a context: 210 B");
+    }
+
     private long LivePerEntry<T>(Func<T> hold, Action<T> release)
     {
         long before = GC.GetTotalMemory(forceFullCollection: true);
