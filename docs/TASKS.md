@@ -89,7 +89,7 @@ above stays as the record of what each stream holds.
 | 5d | Work folders | T-F528 | one owner for every folder Pakko writes before the result: where, how it is born, its sweep | plan mode and advisor first; the owner test; smoke of every extraction and archiving path |
 | 5e | Reading in batches | T-F529, T-F537, T-F538 | the ZIP central directory walked as a stream, .NET's reader given one batch at a time (`ZipCatalog`); only a compact name set kept | done on `perf/batch5e-batch-reading`: oracle of 1,476 archives against the old reader, counter tests red before, smoke CLI quick 41/41 on 1.10.0.29, tar.exe 33/33 on 3.8.9 and 3.5.2; memory table in `docs/DECISIONS.md`, "T-F529" |
 | 5f | Everything in batches | T-F540, T-F541, T-F542, T-F539, T-F535, T-F536, T-F544 | done on `perf/batch5f-everything-in-batches`: a list streamed to its caller, one copy of each name in tar.exe's and the helper's readers, the quarantine walked, the App's index compact; counter test per holder red before; before/after table in `docs/DECISIONS.md`, "Batch 5f"; smoke quick 66/66 and `CLI-066` on 1.10.0.30, tar.exe 36/36 on 3.8.9 and 3.5.2, the App browsing 1,000,000 entries; T-F544 (a scan's result) found and fixed in the batch | plan mode and advisor first; an opus reviewer |
-| 5g | Pulled-in P3s | T-F521, T-F522, T-F533, T-F543 | three P3s of the same code the agent pulled into this wave (2026-11-16) | each its red test |
+| 5g | Pulled-in P3s | T-F521, T-F522, T-F533, T-F543 (done, 2026-11-16) | three P3s of the same code the agent pulled into this wave (2026-11-16) | each its red test |
 | 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530 | calibration and the CI image | one series on an idle machine |
 | 7 | Z | T-F493 | crypto: its own gates and its own opus reviewer | as stream Z says |
 | 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the release tier | what needs the device or the user | one batch right before the tag |
@@ -2011,29 +2011,6 @@ re-measured with T-F346's script before and after.
   sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
   first (one 4 GiB file with a password: time, bytes written, free space needed).
 
-### T-F543 - Batch 5e's reviewer's P3s: tar's -tv cap, the first walks' cancel, readers left without a budget (P3, 2026-11-16)
-
-- [ ] **Status:** open, batch 5g. The fresh reviewer of batch 5e (2026-11-16) found, beside what 5e
-  fixed:
-  - `-tv` byte cap (`TarSandboxScope.RunAsync`, `nameCharLimit + entryLimit * 256`): bsdtar widens its
-    uname/gname columns for good, so one entry with a long pax `uname` pads every later line. A list can
-    then be refused as `CatalogTooLarge` while `-t` passes, and a uname over 1 MiB fails
-    `MaxVerboseLineBytes` with an unlocalized `IOException` (it listed before 5e). Measure with a
-    crafted pax archive, then cap per line actually read or take the columns from the end.
-  - The tar byte caps are totals over the entry limit, not per entry listed. If tar.exe writes
-    non-ASCII as `\ooo` in `-t`, a CJK-named archive meets the limit at a twelfth: measure when it
-    escapes.
-  - The first walks (`MeasureArchive`, test's `Check`, scan's count, `Located()` in
-    `SmallestEncryptedEntryThatPasses`) never look at the cancellation token: at 4,000,000 entries each
-    takes seconds.
-  - `RawZipEntryLocator.ReadEntryNames`, `Locate(Stream, string)` and
-    `EncryptedZipEntryReader.TryOpen(string, string, ...)` have no caller in `src` and no name budget:
-    delete them or give them `ZipCatalog`'s.
-  - `LastLineMayBeOpen` with `StdOutLimit` counting `\n` lets `MaxLines` + 1 lines through (harmless:
-    `-tv`'s count must still match `-t`'s).
-  - Scan's second walk now reports a batch that fails to read again as unreadable, without a test: no
-    seam fails a read the first walk passed.
-
 ### T-F547 - TempOwner.TryRemove stops at a read-only file under a name Windows trims (P3, 2026-11-16)
 
 - [ ] **Status:** open, next wave. Found by T-F546: `TempOwner.Remove` clears a read-only file's flag
@@ -2054,6 +2031,7 @@ re-measured with T-F346's script before and after.
     App drops its index on failure. Pair each row by its own line's evidence, or check the counts first.
   - `ZipCatalog.Check` before a streamed ZIP list does not look at the token (`ZipArchiveService`'s
     `ListEntriesAsync`): a cancel waits out the whole directory walk. Same class as T-F543's first walks.
+    Done with T-F543 (batch 5g): `Check` takes the list's token.
   - `pakko l -slt` reads the archive's length before listing: a missing or locked archive now shows
     .NET's message, not Core's localized listing error; the comment "Gone or locked since it was named"
     no longer describes it.

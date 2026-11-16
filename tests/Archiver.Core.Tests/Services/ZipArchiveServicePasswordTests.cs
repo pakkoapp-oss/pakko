@@ -2,6 +2,7 @@ using System.IO.Compression;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Core.Tests.Helpers;
+using Archiver.Core.Services.Zip;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services;
@@ -531,6 +532,20 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
 
         result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.ZipCorrupted);
         result.Errors.Should().NotContain(e => e.Message.Contains("past the end"));
+    }
+
+    // T-F543: the walk for the smallest encrypted entry looked at no token; a cancel asks for nothing.
+    [Fact]
+    public async Task ResolveArchivePassword_ACancel_StopsBeforeAskingForAPassword()
+    {
+        int asked = 0;
+        var resolver = new PasswordResolver(_ => { asked++; return Task.FromResult(new PasswordDecision { Password = RealPassword }); }, 3);
+
+        Func<Task> resolve = () => ZipArchiveService.ResolveArchivePasswordAsync(
+            FixtureHelper.Archive("encrypted_aes256.zip"), resolver, ZipNameCodePages.Current(), cancellationToken: new CancellationToken(true));
+
+        await resolve.Should().ThrowAsync<OperationCanceledException>();
+        asked.Should().Be(0);
     }
 
     private string EncryptedWithLocalHeaderPastTheEnd()

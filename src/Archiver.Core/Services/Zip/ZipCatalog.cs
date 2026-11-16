@@ -179,13 +179,12 @@ internal sealed class ZipCatalog : IDisposable
     }
 
     /// <summary>Walks every entry without acting: what <see cref="Entries"/> would throw, thrown before
-    /// a caller acts on any entry (T-F529: as .NET's reader threw on open, when it held them all).</summary>
-    public void Check(ZipLocate locate = ZipLocate.None)
+    /// a caller acts on any entry (T-F529: as .NET's reader threw on open, when it held them all).
+    /// T-F543: it takes seconds at millions of entries, so it stops at a cancel.</summary>
+    public void Check(ZipLocate locate = ZipLocate.None, CancellationToken cancellationToken = default)
     {
         foreach (NamedZipEntry _ in Entries(locate: locate))
-        {
-            /* walked for its checks only */
-        }
+            cancellationToken.ThrowIfCancellationRequested();
     }
 
     // The batch's records are contiguous in the directory: one read copies them for the overlay.

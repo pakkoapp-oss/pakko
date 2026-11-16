@@ -15015,6 +15015,35 @@ header with no central directory (T-F189's fixture) is now reported as damaged t
 opens it. The exception goes to `ArchiveError.Exception`, never into the message, so the reader's
 English texts stay out of what the user reads (T-F520).
 
+**T-F543: tar's listing caps, measured** (tar.exe run directly on pax archives Python's `tarfile`
+wrote; bsdtar 3.8.9 on the host, 3.5.2 on the Win10 VM):
+
+| Archive | 3.8.9 | 3.5.2 |
+|---|---|---|
+| first entry's owner 1,000 chars, then 1,999 entries | `-tv` 2,108,000 bytes, every line 1,053; `-t` 24,000 | the same |
+| owner 64 KiB | lists, line 65,589 | lists |
+| owner 256 KiB | refused: `(null)`, exit 1 | lists, line 262,197 |
+| owner 900 KiB | refused | lists, line 921,653 |
+| owner 1.1 MiB, or a 2 MiB path | refused | `Special header too large`, exit 1 |
+| a name of `a` and 300 KiB of U+0001 | `-t` one line of 1,228,802 bytes (`\001` each), `-tv` 1,228,850 | the same |
+
+- bsdtar widens its owner and group columns for good, so one long owner pads every later line. With
+  the default limits a `-tv` can then be refused as `CatalogTooLarge` while `-t` passes; it is
+  refused, localized, and only for an owner thousands of characters long (a real one is at most 32).
+  Kept.
+- A listing line over `MaxVerboseLineBytes` (1 MiB) is reachable on both builds: a control
+  character is escaped as `\ooo`, 4 bytes for one. The line reader threw an unlocalized
+  `IOException`; `StdOutLines.LineTooLong` now lets the listing fail with `CatalogTooLarge`
+  (`EntryLimitTests.TarListing_ALineOverTheLineLimit_IsRefused_AsTooLarge`, `-t` and `-tv`).
+- Non-ASCII names: which characters tar.exe escapes on each build is T-F467's measurement
+  (`safe_fprintf` above, 63,446 names on both builds): a printable character in the listing's page is
+  written as its bytes, so the byte cap (names counted in bytes, at most 3 per UTF-16 unit) refuses
+  a catalog of such names below `MaxCatalogNameChars` characters at worst: kept. A CJK fixture Python
+  wrote was skipped by 3.8.9 as "unreadable filename" (OEM page 437), so it measured nothing new.
+- Scan's second walk failing where the first passed has no test: the scan holds the archive open
+  with `FileShare.Read`, so nothing can change it between the walks; listed in
+  `.claude/rules/tests.md`.
+
 ## T-F546 - the helper's copy out of the quarantine (2026-11-16)
 
 T-F474's closing review added a test that a quarantine is deleted with a 0444 entry in it. On the

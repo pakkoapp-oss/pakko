@@ -73,6 +73,9 @@ Moved out of the root `CLAUDE.md` (T-F369); loads when a file matching the paths
   budget (T-F66 already makes plain empty folders write a placeholder entry, so what else still
   reaches it is unclear). See `docs/TASKS_DONE.md`'s T-F143 entry for the full triage and the 40 tests
   that *were* added to close the actual gate-blocking gaps.
+- **T-F543:** scan's second walk failing to read a batch the first walk read (`AntivirusScanService`,
+  the ZIP branch) has no test: the scan holds the archive with `FileShare.Read`, so no test can change
+  it between the walks, and a seam only for that would be speculative.
 - **The vendored `7za.exe` test dependency (T-F114, `tests/Archiver.Core.PerformanceTests/Tools/7-Zip/`)
   never enters this pipeline.** `Deploy.ps1` only publishes `src/Archiver.App`; nothing under
   `tests/` is packaged, signed, or installed. See `SECURITY.md`'s "Vendored 7-Zip" section if this

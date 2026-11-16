@@ -874,7 +874,7 @@ public sealed class ZipArchiveService : IArchiveService
             names.CurrentArchive = archivePath;
 
             (bool rejected, ResolvedZipPassword? password) = await TryRejectUnsupportedOrEncryptedZipAsync(
-                archivePath, errors, skippedFiles, passwordResolver, options.SelectedEntryPaths, options.EntryFilter).ConfigureAwait(false);
+                archivePath, errors, skippedFiles, passwordResolver, options.SelectedEntryPaths, options.EntryFilter, cancellationToken).ConfigureAwait(false);
             if (!rejected)
             {
                 IProgress<ProgressReport>? archiveProgress = singleArchive ? progress : null;
@@ -923,7 +923,8 @@ public sealed class ZipArchiveService : IArchiveService
     // contains at least one encrypted entry AND passwordResolver successfully resolved it (T-F189).
     private async Task<(bool Rejected, ResolvedZipPassword? Password)> TryRejectUnsupportedOrEncryptedZipAsync(
         string archivePath, List<ArchiveError> errors, List<SkippedFile> skippedFiles,
-        PasswordResolver passwordResolver, IReadOnlyList<string>? selectedEntryPaths, Func<string, bool, bool>? entryFilter)
+        PasswordResolver passwordResolver, IReadOnlyList<string>? selectedEntryPaths, Func<string, bool, bool>? entryFilter,
+        CancellationToken cancellationToken)
     {
         // T-F509: "x.zip " opens a twin "x.zip"; extracting it, then recycling the archive, took the twin.
         if (InputPaths.ArchiveProblem(archivePath) is { } pathProblem)
@@ -949,9 +950,9 @@ public sealed class ZipArchiveService : IArchiveService
         }
 
         Func<string, bool>? passes = ExtractionPasses(selectedEntryPaths, entryFilter);
-        if (NeedsPassword(archivePath, NameCodePages, passes))
+        if (NeedsPassword(archivePath, NameCodePages, passes, cancellationToken))
         {
-            ZipPasswordResolution resolution = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages, passes).ConfigureAwait(false);
+            ZipPasswordResolution resolution = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages, passes, cancellationToken).ConfigureAwait(false);
             if (resolution.Password is not null)
                 return (false, resolution.Password);
 
@@ -976,13 +977,14 @@ public sealed class ZipArchiveService : IArchiveService
     // T-F521: the archive's structure is read before the password is asked for, outside the catch
     // below - a structure that cannot be read is damaged, and no password opens it.
     internal static async Task<ZipPasswordResolution> ResolveArchivePasswordAsync(
-        string archivePath, PasswordResolver passwordResolver, ZipNameCodePages codePages, Func<string, bool>? passes = null)
+        string archivePath, PasswordResolver passwordResolver, ZipNameCodePages codePages, Func<string, bool>? passes = null,
+        CancellationToken cancellationToken = default)
     {
         LocatedZipEntry? probe;
         try
         {
             // T-F243: the smallest encrypted entry, so the full check below stays cheap.
-            probe = SmallestEncryptedEntryThatPasses(archivePath, codePages, passes);
+            probe = SmallestEncryptedEntryThatPasses(archivePath, codePages, passes, cancellationToken);
         }
         catch (Exception ex) when (ex is InvalidDataException or EndOfStreamException)
         {
@@ -1033,12 +1035,13 @@ public sealed class ZipArchiveService : IArchiveService
     // (measured, DECISIONS.md). T-F243: the smallest, so the full check stays cheap. T-F529: one
     // walk, nothing held. Throws what a local header that cannot be read throws; callers decide.
     private static LocatedZipEntry? SmallestEncryptedEntryThatPasses(
-        string archivePath, ZipNameCodePages codePages, Func<string, bool>? passes)
+        string archivePath, ZipNameCodePages codePages, Func<string, bool>? passes, CancellationToken cancellationToken)
     {
         using var catalog = ZipCatalog.Open(archivePath, codePages);
         LocatedZipEntry? smallest = null;
         foreach ((string name, LocatedZipEntry located) in catalog.Located())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (located.GeneralPurposeEncryptedBit && (passes is null || passes(name))
                 && (smallest is null || located.CompressedSize < smallest.CompressedSize))
                 smallest = located;
@@ -1048,7 +1051,7 @@ public sealed class ZipArchiveService : IArchiveService
 
     // T-F417: whether the archive's password must be asked for at all. An archive this cannot read
     // is asked about as before; the reading that follows reports what is wrong with it.
-    private static bool NeedsPassword(string archivePath, ZipNameCodePages codePages, Func<string, bool>? passes)
+    private static bool NeedsPassword(string archivePath, ZipNameCodePages codePages, Func<string, bool>? passes, CancellationToken cancellationToken)
     {
         if (!IsEncryptedZip(archivePath))
             return false;
@@ -1056,7 +1059,7 @@ public sealed class ZipArchiveService : IArchiveService
             return true;
         try
         {
-            return SmallestEncryptedEntryThatPasses(archivePath, codePages, passes) is not null;
+            return SmallestEncryptedEntryThatPasses(archivePath, codePages, passes, cancellationToken) is not null;
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or EndOfStreamException or UnauthorizedAccessException)
         {
@@ -1233,9 +1236,9 @@ public sealed class ZipArchiveService : IArchiveService
 
         ResolvedZipPassword? password = null;
         Func<string, bool>? passes = entryFilter is null ? null : name => entryFilter(name, name.EndsWith('/'));
-        if (NeedsPassword(archivePath, NameCodePages, passes))
+        if (NeedsPassword(archivePath, NameCodePages, passes, cancellationToken))
         {
-            ZipPasswordResolution resolution = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages, passes).ConfigureAwait(false);
+            ZipPasswordResolution resolution = await ResolveArchivePasswordAsync(archivePath, passwordResolver, NameCodePages, passes, cancellationToken).ConfigureAwait(false);
             password = resolution.Password;
             if (password is null)
             {
@@ -1301,7 +1304,7 @@ public sealed class ZipArchiveService : IArchiveService
                 ZipLocate locate = IsEncryptedZip(archivePath) ? ZipLocate.BestEffort : ZipLocate.None;
                 // T-F540: what the walk would refuse, refused before the first entry is passed on;
                 // then each entry goes to the caller as the walk reads it, never kept.
-                catalog.Check(locate);
+                catalog.Check(locate, cancellationToken);
                 long count = 0;
                 foreach (NamedZipEntry named in catalog.Entries(locate: locate))
                 {
@@ -1400,7 +1403,7 @@ public sealed class ZipArchiveService : IArchiveService
         using var catalog = ZipCatalog.Open(archivePath, codePages);
         // T-F529: the whole archive's checks, before any entry is reported.
         ZipLocate locate = password is not null ? ZipLocate.Required : ZipLocate.None;
-        catalog.Check(locate);
+        catalog.Check(locate, cancellationToken);
 
         // T-F280: as 7-Zip's Test reports "Headers Error".
         if (DescribeLocalHeaderMismatch(catalog) is { } mismatch)
@@ -1585,7 +1588,7 @@ public sealed class ZipArchiveService : IArchiveService
         // the selection and the filter once per entry and keeps the answer (a bit an entry), so the
         // second walk, which writes, asks nothing again.
         var passing = new System.Collections.BitArray(checked((int)catalog.DeclaredEntries));
-        ArchiveShape shape = MeasureArchive(catalog, locate, Passes, passing, context.DuplicateRootName);
+        ArchiveShape shape = MeasureArchive(catalog, locate, Passes, passing, context.DuplicateRootName, cancellationToken);
 
         // T-F410: none passes: 7-Zip's "No files to process", which creates no folder either.
         if (context.EntryFilter is not null && shape.Passing == 0)
@@ -1734,11 +1737,12 @@ public sealed class ZipArchiveService : IArchiveService
     // let through; FirstPassing: the first of them; AllUnderOneRoot: every passing entry has a '/'
     // and all share one first segment (OrdinalIgnoreCase); AllUnderNamedRoot: T-F411's -spe root
     // holds every entry, not only the passing ones; DeclaredFileBytes: T-F94's sum over every file.
-    private sealed record ArchiveShape(
+    internal sealed record ArchiveShape(
         int Passing, string? FirstPassing, bool AllUnderOneRoot, bool AllUnderNamedRoot, long DeclaredFileBytes);
 
-    private static ArchiveShape MeasureArchive(
-        ZipCatalog catalog, ZipLocate locate, Func<string, bool> passes, System.Collections.BitArray passing, string? namedRoot)
+    internal static ArchiveShape MeasureArchive(
+        ZipCatalog catalog, ZipLocate locate, Func<string, bool> passes, System.Collections.BitArray passing, string? namedRoot,
+        CancellationToken cancellationToken)
     {
         int passingCount = 0;
         string? firstPassing = null, firstRoot = null;
@@ -1746,6 +1750,7 @@ public sealed class ZipArchiveService : IArchiveService
         long declaredFileBytes = 0;
         foreach (NamedZipEntry entry in catalog.Entries(locate: locate))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string name = entry.FullName;
             anyEntry = true;
             declaredFileBytes = AddDeclaredFileBytes(declaredFileBytes, entry);
