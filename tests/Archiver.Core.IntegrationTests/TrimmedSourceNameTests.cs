@@ -422,6 +422,33 @@ public sealed class TrimmedSourceNameTests : IDisposable
         Directory.Exists(Path.Combine(_temp.Path, "dst", "out")).Should().BeFalse("nothing is written through the trimmed name");
     }
 
+    // T-F533: a literal destination Windows would trim is taken as typed; the run's work root in it
+    // stayed behind, refused by TempOwner.TryRemove, until the next run there swept it.
+    [Theory]
+    [InlineData(".zip")]
+    [InlineData(".tar")]
+    public async Task Extract_LiteralDestinationWindowsWouldTrim_LeavesNoWorkRoot(string extension)
+    {
+        string content = Folder("lit-content" + extension);
+        File.WriteAllText(Path.Combine(content, "inner.txt"), "inner");
+        string archive = Path.Combine(_temp.Path, "lit" + extension);
+        if (extension == ".zip")
+            ZipFile.CreateFromDirectory(content, archive);
+        else
+            TarFile.CreateFromDirectory(content, archive, includeBaseDirectory: false);
+        string destination = Literal + Path.Combine(_temp.Path, "lit-dst" + extension, "out.");
+        IExtractionRouter extraction = await _services.CreateExtractionRouterAsync();
+
+        ArchiveResult extracted = await extraction.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [archive], DestinationFolder = destination, Mode = ExtractMode.SingleFolder,
+        });
+
+        extracted.Errors.Should().BeEmpty();
+        Directory.GetFileSystemEntries(destination, "*", SearchOption.AllDirectories)
+            .Select(e => Path.GetRelativePath(destination, e)).Should().BeEquivalentTo(["inner.txt"]);
+    }
+
     // A refused source still counts for what the run was asked: two sources name the archive after
     // their folder, and a single-file format still refuses two.
     [Fact]
