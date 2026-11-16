@@ -1693,6 +1693,8 @@ public sealed class ZipArchiveService : IArchiveService
         }
         foreach (string relativePath in staging.LeftOutThroughLink)
             skippedFiles.Add(CoreMessages.Skip(relativePath, CoreMessages.Text(MessageCode.EntryThroughReparsePoint)));
+        foreach (string relativePath in staging.LeftOutUnreadable)
+            skippedFiles.Add(CoreMessages.Skip(relativePath, CoreMessages.Text(MessageCode.AccessDenied, relativePath)));
         foreach (string relativePath in staging.BlockedByFolder)
             context.Errors.Add(CoreMessages.Error(archivePath, MessageCode.DestinationIsAFolder, relativePath));
 

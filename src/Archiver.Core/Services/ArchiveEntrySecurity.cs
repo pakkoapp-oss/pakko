@@ -102,6 +102,24 @@ internal static partial class ArchiveEntrySecurity
         }
     }
 
+    // T-F522: IsReparsePoint for a check that must not pass what it cannot see. A path that does not
+    // exist is no link (the commit creates it); one whose attributes cannot be read is null: unknown.
+    internal static bool? IsReparsePointOrUnknown(string path)
+    {
+        try
+        {
+            return File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
     // T-F37: Check whether any directory component of destFilePath (within rootPath) is a reparse point
     // (T-F166 covers it with a real junction.)
     public static bool PathContainsReparsePoint(string destFilePath, string rootPath)
