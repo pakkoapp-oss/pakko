@@ -15206,3 +15206,26 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   test of each, and the same split for the creation side's `IsReparsePoint` callers if they share it.
 - **Reported by:** the agent, 2026-11-13 (T-F474's plan, the advisor's review).
 - **Graduated 2026-11-16:** batch 5g.
+
+### T-F521 - A damaged encrypted ZIP reads as password-protected (P3, from T-F520's trace)
+
+- [x] **Status:** done 2026-11-16 (batch 5g). `ZipArchiveService.ResolveArchivePasswordAsync` reads
+  the structure before it asks for a password, outside the catch around the prompt, and returns why
+  it could not (`ZipPasswordResolution`): extraction and test report `ZipCorrupted` (or
+  `CannotReadArchive` for a file that cannot be read), the scan `ScanCannotReadArchive`, and no
+  password is asked for. A failure while a candidate password is checked keeps its old meaning.
+  T-F189's bare encrypted local header with no central directory is now damaged too
+  (`ExtractAsync_BareEncryptedLocalHeaderNoDirectory_ReportsDamaged`). Tests:
+  `ExtractAsync_`/`TestAsync_EncryptedLocalHeaderPastTheEnd_ReportsDamagedNotPasswordProtected`,
+  `ScanAsync_EncryptedLocalHeaderPastTheEnd_ReportsUnreadableWithoutAskingForAPassword`, each red
+  first; smoke `CLI-067`.
+  Was: open, pulled into this wave (batch 5g, the agent, 2026-11-16: 5e rewrites the code that reads it). Found 2026-11-13: an encrypted ZIP whose central directory puts a
+  local header past the end of the file is reported by extraction, and by a test with a password,
+  as "This archive is password-protected and cannot be extracted/tested": the error of Pakko's own
+  reader (`RawZipEntryLocator`) is taken as "cannot read the encryption", so the user is told to
+  look for a password, not that the file is damaged. The ZIP twin of T-F518. A plain test shows
+  .NET's own English "A local file header is corrupt." next to T-F280's mismatch. Next: tell a
+  damaged structure from an unsupported encryption where the locator fails, with the fixture of
+  `TestAsync_LocalHeaderPastTheEnd_ShowsNoTextOfPakkosOwnReader` encrypted.
+- **Reported by:** the agent, 2026-11-13.
+- **Graduated 2026-11-16:** batch 5g.

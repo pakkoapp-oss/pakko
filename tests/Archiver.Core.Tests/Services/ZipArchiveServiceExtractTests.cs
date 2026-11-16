@@ -856,8 +856,10 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
         asked.IncomingModified.Should().Be(entryTime);
     }
 
+    // T-F521: a bare encrypted local header with no central directory was reported as password-
+    // protected; no password opens it, so it is reported as damaged.
     [Fact]
-    public async Task ExtractAsync_PasswordProtectedZip_ReturnsArchiveErrorWithClearMessage()
+    public async Task ExtractAsync_BareEncryptedLocalHeaderNoDirectory_ReportsDamaged()
     {
         string encryptedPath = Path.Combine(_temp.Path, "encrypted.zip");
         // Local file header with encryption bit (bit 0) set in general purpose bit flag (offset 6)
@@ -875,7 +877,7 @@ public sealed class ZipArchiveServiceExtractTests : IDisposable
 
         result.Success.Should().BeFalse();
         result.Errors.Should().HaveCount(1);
-        result.Errors[0].Message.Should().Be("This archive is password-protected and cannot be extracted.");
+        result.Errors[0].Text!.Code.Should().Be(MessageCode.ZipCorrupted);
     }
 
     [Fact]

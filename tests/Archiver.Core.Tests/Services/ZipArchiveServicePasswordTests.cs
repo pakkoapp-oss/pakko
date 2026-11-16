@@ -500,6 +500,50 @@ public sealed class ZipArchiveServicePasswordTests : IDisposable
             .And.NotContain(e => e.Message.Contains("past the end"));
     }
 
+    // T-F521: the encrypted twin of T-F520's fixture. Pakko's reader failing on the structure was taken
+    // as "cannot read the encryption", and the user was told to look for a password: no password
+    // opens it, it is damaged. The password is never asked for.
+    [Fact]
+    public async Task ExtractAsync_EncryptedLocalHeaderPastTheEnd_ReportsDamagedNotPasswordProtected()
+    {
+        string path = EncryptedWithLocalHeaderPastTheEnd();
+        int asked = 0;
+
+        ArchiveResult result = await _sut.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [path],
+            DestinationFolder = Path.Combine(_temp.Path, "out"),
+            Mode = ExtractMode.SingleFolder,
+            ResolvePasswordAsync = _ => { asked++; return Task.FromResult(new PasswordDecision { Password = RealPassword }); },
+        });
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.ZipCorrupted);
+        result.Errors.Should().NotContain(e => e.Message.Contains("past the end"));
+        asked.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task TestAsync_EncryptedLocalHeaderPastTheEnd_ReportsDamagedNotPasswordProtected()
+    {
+        string path = EncryptedWithLocalHeaderPastTheEnd();
+
+        ArchiveResult result = await _sut.TestAsync([path], resolvePasswordAsync: FixedPassword(RealPassword));
+
+        result.Errors.Should().ContainSingle().Which.Text!.Code.Should().Be(MessageCode.ZipCorrupted);
+        result.Errors.Should().NotContain(e => e.Message.Contains("past the end"));
+    }
+
+    private string EncryptedWithLocalHeaderPastTheEnd()
+    {
+        string path = Path.Combine(_temp.Path, "damaged_encrypted.zip");
+        byte[] bytes = File.ReadAllBytes(FixtureHelper.Archive("encrypted_aes256.zip"));
+        int central = bytes.AsSpan().IndexOf("PK\u0001\u0002"u8);
+        const int LocalHeaderOffsetField = 42;
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(central + LocalHeaderOffsetField), 0x7FFF_0000u);
+        File.WriteAllBytes(path, bytes);
+        return path;
+    }
+
     [Theory]
     [InlineData((ushort)200)]
     [InlineData((ushort)2)]

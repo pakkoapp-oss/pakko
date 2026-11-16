@@ -15003,6 +15003,18 @@ sources a user chose for creation: their open reports the failure). Accepted wit
 T-F37's `PathContainsReparsePoint` also reads "cannot read" as "no link", but it walks Pakko's own
 staging folder, made with its own ACL, where an access denied does not arise.
 
+**T-F521: where "damaged" ends and "password-protected" begins.** `ResolveArchivePasswordAsync`
+reads the archive's structure (the smallest encrypted entry that passes, through `ZipCatalog`) before
+it asks for a password and outside the catch around the prompt. A structure that cannot be read
+(`InvalidDataException`, `EndOfStreamException`) is `ZipCorrupted`; a file that cannot be read at all
+is `CannotReadArchive`; the scan reports either as `ScanCannotReadArchive`. The password is then
+never asked for. What fails after the prompt, in `EncryptedZipEntryReader.TryOpen` while a
+candidate is checked, keeps its old meaning (password-protected): a wrong password and an entry
+damaged inside its encrypted data cannot be told apart there. The bare 20-byte encrypted local
+header with no central directory (T-F189's fixture) is now reported as damaged too: no password
+opens it. The exception goes to `ArchiveError.Exception`, never into the message, so the reader's
+English texts stay out of what the user reads (T-F520).
+
 ## T-F546 - the helper's copy out of the quarantine (2026-11-16)
 
 T-F474's closing review added a test that a quarantine is deleted with a 0444 entry in it. On the

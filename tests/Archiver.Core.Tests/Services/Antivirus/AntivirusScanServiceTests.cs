@@ -587,6 +587,31 @@ public sealed class AntivirusScanServiceTests : IDisposable
         scanner.Calls.Should().BeEmpty();
     }
 
+    // T-F521: a damaged encrypted ZIP is unreadable, not a reason to ask for a password.
+    [Fact]
+    public async Task ScanAsync_EncryptedLocalHeaderPastTheEnd_ReportsUnreadableWithoutAskingForAPassword()
+    {
+        string path = Path.Combine(_temp.Path, "damaged_encrypted.zip");
+        byte[] bytes = File.ReadAllBytes(FixtureHelper.Archive("encrypted_aes256.zip"));
+        int central = bytes.AsSpan().IndexOf("PK\u0001\u0002"u8);
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(central + 42), 0x7FFF_0000u);
+        File.WriteAllBytes(path, bytes);
+        int asked = 0;
+        var scanner = new FakeAmsiScanner();
+        AntivirusScanService service = CreateService(scanner);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [path],
+            ResolvePasswordAsync = _ => { asked++; return Task.FromResult(new PasswordDecision { Password = RealPassword }); },
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        result.Findings.Should().ContainSingle().Which.ReasonText!.Code.Should().Be(MessageCode.ScanCannotReadArchive);
+        asked.Should().Be(0);
+        scanner.Calls.Should().BeEmpty();
+    }
+
     [Theory]
     [InlineData("encrypted_aes256.zip")]
     [InlineData("encrypted_aes128.zip")]

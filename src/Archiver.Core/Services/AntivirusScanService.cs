@@ -363,9 +363,16 @@ public sealed class AntivirusScanService : IAntivirusScanService
             // delivery evades AV. Now its decrypted plaintext is scanned when a password resolves.
             // A batch whose local headers cannot be read falls back to that "Could not read entry".
             using Stream? rawArchiveStream = locate == ZipLocate.BestEffort ? File.OpenRead(archivePath) : null;
-            ZipArchiveService.ResolvedZipPassword? password = rawArchiveStream is null
+            ZipArchiveService.ZipPasswordResolution? resolution = rawArchiveStream is null
                 ? null
                 : await ZipArchiveService.ResolveArchivePasswordAsync(archivePath, passwordResolver, codePages).ConfigureAwait(false);
+            // T-F521: a structure that cannot be read is no reason to ask for a password.
+            if (resolution?.Cause is { } unreadable)
+            {
+                findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Wrap(MessageCode.ScanCannotReadArchive, unreadable)));
+                return;
+            }
+            ZipArchiveService.ResolvedZipPassword? password = resolution?.Password;
 
             int entriesDone = 0;
             // A batch the counting walk read can still fail to read again (a share that went
