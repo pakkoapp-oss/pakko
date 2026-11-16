@@ -371,12 +371,11 @@ public sealed class AntivirusScanService : IAntivirusScanService
             ZipArchiveService.ZipPasswordResolution? resolution = rawArchiveStream is null
                 ? null
                 : await ZipArchiveService.ResolveArchivePasswordAsync(archivePath, passwordResolver, codePages, cancellationToken: cancellationToken).ConfigureAwait(false);
-            // T-F521: a structure that cannot be read is no reason to ask for a password.
-            if (resolution?.Cause is { } unreadable)
-            {
-                findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Wrap(MessageCode.ScanCannotReadArchive, unreadable)));
-                return;
-            }
+            // T-F521: a structure that cannot be read is no reason to ask for a password, nor to leave
+            // unscanned the entries that can be read: a damaged encrypted record beside them would
+            // otherwise turn a detection into "could not scan".
+            if (resolution?.Unreadable is { } unreadable)
+                findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Text(MessageCode.ScanCannotReadArchive, unreadable)));
             ZipArchiveService.ResolvedZipPassword? password = resolution?.Password;
 
             int entriesDone = 0;

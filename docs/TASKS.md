@@ -2011,6 +2011,23 @@ re-measured with T-F346's script before and after.
   sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
   first (one 4 GiB file with a password: time, bytes written, free space needed).
 
+### T-F549 - Batch 5g's reviewer's P3s: a literal root's walk, a NUL, the line limit's text, tar's left-out folders (P3, 2026-11-16)
+
+- [ ] **Status:** open, next wave. The fresh reviewer of batch 5g (2026-11-16) found one P2, fixed in
+  the batch (the scan stopped at a damaged encrypted record and left the plain entries unscanned),
+  and these:
+  - `TempOwner.TryRemove` takes a `\\?\` path as spelled (T-F533), but `Remove` walks it with
+    `DirectoryWalker.Walk`, which returns nothing for a root `InputPaths.Problem` flags ("out." mid-path):
+    the links-first step and the read-only clearing are skipped for such a root. Same fix as T-F547.
+  - A literal path holding a NUL reaches `new FileInfo` in `TryRemove` and throws `ArgumentException`
+    out of a Core method (callers pass generated names only today); refuse it before, and add a literal
+    hostile kind to `CoreNeverThrowsContractTests.TempOwner_Path`.
+  - A tar listing line over the 1 MiB line limit is refused as `CatalogTooLarge`, whose text names the
+    total-name limit (T-F543); give it a text of its own. The ArchiveHelper listing's over-long line
+    (`TarSandboxScope`, `ArchiveHelperOutput.MaxLineBytes`) still throws an unlocalized `IOException`.
+  - `TarSandboxedService`'s report of `ExtractionStaging.LeftOutUnreadable` (T-F522) has no test: the
+    ZIP engine's has one.
+
 ### T-F547 - TempOwner.TryRemove stops at a read-only file under a name Windows trims (P3, 2026-11-16)
 
 - [ ] **Status:** open, next wave. Found by T-F546: `TempOwner.Remove` clears a read-only file's flag
