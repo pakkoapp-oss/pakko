@@ -69,22 +69,18 @@ internal sealed class ZipCatalog : IDisposable
     private readonly FileStream _data;
     private readonly ZipNameCodePages _codePages;
     private readonly CentralDirectoryExtent _extent;
-    private readonly int _maxEntries;
-    private readonly int _maxNameChars;
-    private readonly int _batchEntries;
-    private readonly bool _forceZip64Overlay;
+    private readonly Settings _settings;
 
-    private ZipCatalog(FileStream directory, FileStream data, ZipNameCodePages codePages, CentralDirectoryExtent extent,
-        int maxEntries, int maxNameChars, int batchEntries, bool forceZip64Overlay)
+    // The limits, the batch and the overlay's end records, as Open was given them.
+    private sealed record Settings(int MaxEntries, int MaxNameChars, int BatchEntries, bool ForceZip64Overlay);
+
+    private ZipCatalog(FileStream directory, FileStream data, ZipNameCodePages codePages, CentralDirectoryExtent extent, Settings settings)
     {
-        _maxNameChars = maxNameChars;
         _directory = directory;
         _data = data;
         _codePages = codePages;
         _extent = extent;
-        _maxEntries = maxEntries;
-        _batchEntries = batchEntries;
-        _forceZip64Overlay = forceZip64Overlay;
+        _settings = settings;
     }
 
     /// <summary>The path, as opened.</summary>
@@ -94,8 +90,8 @@ internal sealed class ZipCatalog : IDisposable
     /// reader (T-F189's password check). Throws what a local header that cannot be read throws.</summary>
     public IEnumerable<(string FullName, LocatedZipEntry Located)> Located()
     {
-        var names = new NameBudget(_maxNameChars);
-        foreach (CentralDirectoryRecord record in WalkCentralDirectory(_directory, _extent, resolveZip64: true, _maxEntries))
+        var names = new NameBudget(_settings.MaxNameChars);
+        foreach (CentralDirectoryRecord record in WalkCentralDirectory(_directory, _extent, resolveZip64: true, _settings.MaxEntries))
         {
             string name = Decode(record, names);
             yield return (name, LocateAll(_data, [record])[0]);
@@ -123,7 +119,7 @@ internal sealed class ZipCatalog : IDisposable
                 throw new InvalidDataException("A ZIP archive is read from a file, not a device.");
             CentralDirectoryExtent extent = FindCentralDirectory(directory, maxEntries);
             data = File.OpenRead(path);
-            return new ZipCatalog(directory, data, codePages, extent, maxEntries, maxNameChars, batchEntries, forceZip64Overlay);
+            return new ZipCatalog(directory, data, codePages, extent, new Settings(maxEntries, maxNameChars, batchEntries, forceZip64Overlay));
         }
         catch
         {
@@ -139,8 +135,8 @@ internal sealed class ZipCatalog : IDisposable
     public IEnumerable<ZipCatalogName> Names()
     {
         int index = 0;
-        var names = new NameBudget(_maxNameChars);
-        foreach (CentralDirectoryRecord record in WalkCentralDirectory(_directory, _extent, resolveZip64: false, _maxEntries))
+        var names = new NameBudget(_settings.MaxNameChars);
+        foreach (CentralDirectoryRecord record in WalkCentralDirectory(_directory, _extent, resolveZip64: false, _settings.MaxEntries))
         {
             string name = Decode(record, names);
             yield return new ZipCatalogName(index++, name, DeclaredLength(record));
@@ -159,15 +155,15 @@ internal sealed class ZipCatalog : IDisposable
     public IEnumerable<NamedZipEntry> Entries(bool collisions = false, ZipLocate locate = ZipLocate.None)
     {
         Dictionary<string, RawName>? firstRawByName = collisions ? new(StringComparer.Ordinal) : null;
-        var names = new NameBudget(_maxNameChars);
-        var batch = new List<CentralDirectoryRecord>(_batchEntries);
+        var names = new NameBudget(_settings.MaxNameChars);
+        var batch = new List<CentralDirectoryRecord>(_settings.BatchEntries);
         long batchBytes = 0;
         int firstIndex = 0;
-        foreach (CentralDirectoryRecord record in WalkCentralDirectory(_directory, _extent, resolveZip64: false, _maxEntries))
+        foreach (CentralDirectoryRecord record in WalkCentralDirectory(_directory, _extent, resolveZip64: false, _settings.MaxEntries))
         {
             batch.Add(record);
             batchBytes += record.RecordEnd - record.RecordStart;
-            if (batch.Count < _batchEntries && batchBytes < BatchBytes)
+            if (batch.Count < _settings.BatchEntries && batchBytes < BatchBytes)
                 continue;
             foreach (NamedZipEntry entry in ReadBatch(batch, firstIndex, names, firstRawByName, locate))
                 yield return entry;
@@ -207,7 +203,7 @@ internal sealed class ZipCatalog : IDisposable
             ZipLocate.BestEffort => TryLocate(records),
             _ => null,
         };
-        using var overlay = new CentralDirectoryOverlayStream(_data, raw, records.Count, _extent.DiskNumber, _forceZip64Overlay);
+        using var overlay = new CentralDirectoryOverlayStream(_data, raw, records.Count, _extent.DiskNumber, _settings.ForceZip64Overlay);
         using var archive = new ZipArchive(overlay, ZipArchiveMode.Read, leaveOpen: true);
         System.Collections.ObjectModel.ReadOnlyCollection<ZipArchiveEntry> entries = archive.Entries;
         overlay.HideTail();

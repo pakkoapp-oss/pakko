@@ -329,12 +329,7 @@ public sealed class AntivirusScanService : IAntivirusScanService
             {
                 // T-F529: one walk counts the entries for the progress bar - and makes every check of
                 // the whole archive before any entry is scanned.
-                fileCount = 0;
-                foreach (NamedZipEntry e in catalog.Entries(locate: locate))
-                {
-                    if (Scanned(e))
-                        fileCount++;
-                }
+                fileCount = catalog.Entries(locate: locate).Count(Scanned);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
             {
@@ -360,7 +355,6 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 {
                     if (!Scanned(named))
                         continue;
-                    ZipArchiveEntry entry = named.Entry;
                     cancellationToken.ThrowIfCancellationRequested();
                     // T-F151: reported BEFORE scanning starts, not just after — AmsiScanBuffer is one
                     // atomic call with no mid-call progress callback, so a large entry (up to the new
@@ -371,18 +365,8 @@ public sealed class AntivirusScanService : IAntivirusScanService
                     reportProgress(named.FullName, entriesDone, fileCount);
                     try
                     {
-                        ThreatFinding finding = named.Located is { GeneralPurposeEncryptedBit: true } located
-                            ? await ScanEncryptedEntryAsync(
-                                archivePath, named, located, rawArchiveStream!, password, scanner, cancellationToken)
-                                .ConfigureAwait(false)
-                            : await ScanOneEntryAsync(
-                                archivePath, named.FullName, entry.Length, () => VerifyingReadStream.OpenEntry(entry), scanner, cancellationToken)
-                                .ConfigureAwait(false);
-                        findings.Add(finding);
-                    }
-                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
-                    {
-                        findings.Add(CoreMessages.Inconclusive(archivePath, named.FullName, CoreMessages.Wrap(MessageCode.ScanCannotReadEntry, ex)));
+                        findings.Add(await ScanZipEntryAsync(archivePath, named, rawArchiveStream, password, scanner, cancellationToken)
+                            .ConfigureAwait(false));
                     }
                     finally
                     {
@@ -394,6 +378,26 @@ public sealed class AntivirusScanService : IAntivirusScanService
             {
                 findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Wrap(MessageCode.ScanCannotReadArchive, ex)));
             }
+        }
+    }
+
+    private static async Task<ThreatFinding> ScanZipEntryAsync(string archivePath, NamedZipEntry named, Stream? rawArchiveStream,
+        ZipArchiveService.ResolvedZipPassword? password, IAmsiScanner scanner, CancellationToken cancellationToken)
+    {
+        ZipArchiveEntry entry = named.Entry;
+        try
+        {
+            return named.Located is { GeneralPurposeEncryptedBit: true } located
+                ? await ScanEncryptedEntryAsync(
+                    archivePath, named, located, rawArchiveStream!, password, scanner, cancellationToken)
+                    .ConfigureAwait(false)
+                : await ScanOneEntryAsync(
+                    archivePath, named.FullName, entry.Length, () => VerifyingReadStream.OpenEntry(entry), scanner, cancellationToken)
+                    .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return CoreMessages.Inconclusive(archivePath, named.FullName, CoreMessages.Wrap(MessageCode.ScanCannotReadEntry, ex));
         }
     }
 
