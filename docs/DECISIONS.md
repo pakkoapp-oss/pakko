@@ -15044,6 +15044,12 @@ wrote; bsdtar 3.8.9 on the host, 3.5.2 on the Win10 VM):
   with `FileShare.Read`, so nothing can change it between the walks; listed in
   `.claude/rules/tests.md`.
 
+**T-F548: the Shell's satellites.** T-F492's `PakkoAotProjectSatellites` target was put into
+`Archiver.App.csproj` only, so `Archiver.Shell.exe` lost its 36 translations of Core's messages with
+.NET 11. Copied into `Archiver.Shell.csproj` rather than moved to `Directory.Build.targets`: only
+the two exes that reference `Archiver.Messages` need it, and `AotSatelliteTests` fails for a third
+that adds the reference without the target.
+
 ## T-F546 - the helper's copy out of the quarantine (2026-11-16)
 
 T-F474's closing review added a test that a quarantine is deleted with a 0444 entry in it. On the

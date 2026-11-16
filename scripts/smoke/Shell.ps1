@@ -302,3 +302,28 @@ Add-SmokeStep 'SHL-020' {
     Assert-Smoke (Test-Path -LiteralPath (Join-Path $folder '_nul\two.txt')) "--extract-folder did not make the folder '_nul'"
     "the folders 'a', 'a (1)' and '_nul'"
 }
+
+# T-F521: a damaged encrypted ZIP fails as damaged, with no password asked; T-F548: in the
+# user's language - the Shell's Native AOT exe had Core's messages in English only.
+Add-SmokeStep 'SHL-021' {
+    $folder = Get-StepFolder 'shl021'
+    $zip = Join-Path $folder 'damaged_encrypted.zip'
+    $bytes = [System.IO.File]::ReadAllBytes((Join-Path $PSScriptRoot '..\..\tests\Archiver.Core.Tests\Fixtures\archives\encrypted_aes256.zip'))
+    $central = -1
+    for ($i = 0; $i -le $bytes.Length - 4; $i++) {
+        if ($bytes[$i] -eq 0x50 -and $bytes[$i + 1] -eq 0x4B -and $bytes[$i + 2] -eq 1 -and $bytes[$i + 3] -eq 2) { $central = $i; break }
+    }
+    Assert-Smoke ($central -ge 0) 'no central directory record in encrypted_aes256.zip'
+    [System.BitConverter]::GetBytes([uint32]0x7FFF0000).CopyTo($bytes, $central + 42)
+    [System.IO.File]::WriteAllBytes($zip, $bytes)
+    $run = Invoke-Shell -Arguments @('--extract-here', $zip) -Until 'damaged_encrypted\.zip: \S' -TimeoutSeconds 30
+    Assert-Smoke $run.Matched "no result line for the damaged encrypted ZIP (a password prompt?): $($run.Text)"
+    $english = $run.Text.Contains('File has ZIP signature but appears corrupted')
+    if ((Get-UICulture).Name -like 'en*') {
+        Assert-Smoke $english "the damaged encrypted ZIP is not reported as damaged: $($run.Text)"
+    }
+    else {
+        Assert-Smoke (-not $english) "the Core message is in English on a $((Get-UICulture).Name) machine: $($run.Text)"
+    }
+    'reported as damaged, no password asked, in the UI language ({0})' -f (Get-UICulture).Name
+}

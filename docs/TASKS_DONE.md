@@ -15270,3 +15270,16 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   - Scan's second walk now reports a batch that fails to read again as unreadable, without a test: no
     seam fails a read the first walk passed.
 - **Graduated 2026-11-16:** batch 5g.
+
+### T-F548 - The Explorer commands' Core messages in the user's language again (P2, 2026-11-16)
+
+- [x] **Status:** done 2026-11-16 (batch 5g). Found on device during T-F521's check: on a uk-UA
+  machine `Archiver.Shell.exe --extract-here` on a damaged ZIP showed "File has ZIP signature but
+  appears corrupted or incomplete." in English, under a Ukrainian title. Cause: since T-F492
+  (ILCompiler 11) a ProjectReference's satellites reach a Native AOT exe only through the
+  `PakkoAotProjectSatellites` target, and only `Archiver.App.csproj` had it; every Explorer
+  command's Core message has been English since v1.10.0. `Archiver.Shell.csproj` got the same
+  target; `pakko` and OperationUi render no Core message text. Guard:
+  `AotSatelliteTests.EveryAotExeThatRendersMessages_CompilesTheirSatellitesIn` (red without the
+  target). On device: 1.10.0.31 English, 1.10.0.32 Ukrainian; smoke row SHL-021.
+- **Graduated 2026-11-16:** batch 5g.
