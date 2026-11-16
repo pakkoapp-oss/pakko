@@ -1280,7 +1280,7 @@ public sealed partial class MainViewModel : ObservableObject
         // T-F275 step 3c: only that PAR2 files are there (a folder listing, off the UI thread);
         // whether they are usable is the test's to say.
         Task<bool> recoveryFilesFound = Task.Run(() => _recoveryService.HasFilesFor(archivePath));
-        ArchiveListResult? result = await ListArchiveWithProgressAsync(archivePath);
+        ListedArchive? result = await ListArchiveWithProgressAsync(archivePath);
         if (result is null)
         {
             LeaveFailedListing(onListFailure, priorFolderPath);
@@ -1288,14 +1288,15 @@ public sealed partial class MainViewModel : ObservableObject
         }
 
         bool hasRecoveryFiles = await recoveryFilesFound && BrowsedArchivePath == archivePath;
-        if (!result.Success)
+        if (result.Index is null)
         {
-            string listingError = CoreMessageText.Of(result.ErrorText, result.ErrorMessage ?? "Failed to read archive.");
-            if (BrowseNavigation.KeepsOpenUnlisted(hasRecoveryFiles, result.ErrorText?.Code))
+            ArchiveListSummary failed = result.Summary;
+            string listingError = CoreMessageText.Of(failed.ErrorText, failed.ErrorMessage ?? "Failed to read archive.");
+            if (BrowseNavigation.KeepsOpenUnlisted(hasRecoveryFiles, failed.ErrorText?.Code))
             {
                 // An archive that does not open is what recovery data is for: it stays open with
                 // nothing listed, the reason in the PAR2 line, and Test to check it by its set.
-                _logService.Warn($"Archive did not list, kept open for its PAR2 files: {archivePath}: {result.ErrorMessage}");
+                _logService.Warn($"Archive did not list, kept open for its PAR2 files: {archivePath}: {failed.ErrorMessage}");
                 _archiveIndex = ArchiveTreeIndex.Build([]);
                 SetBrowseLevel(null);
                 SetRecoveryPanel(RecoveryPanel.Found(_res.GetString("BrowseRecoveryFound"), listingError), unlisted: true);
@@ -1320,8 +1321,8 @@ public sealed partial class MainViewModel : ObservableObject
         if (FileItems.Count == 0)
             DestinationPath = Path.GetDirectoryName(archivePath) ?? DestinationPath;
 
-        _archiveIndex = ArchiveTreeIndex.Build(result.Entries);
-        SetBrowseLevel(EncryptionSummary.Of(result.Entries));
+        _archiveIndex = result.Index;
+        SetBrowseLevel(result.Encryption);
         if (hasRecoveryFiles)
             SetRecoveryPanel(RecoveryPanel.Found(_res.GetString("BrowseRecoveryFound")), unlisted: false);
         RefreshCurrentFolder();
@@ -1343,13 +1344,19 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
 
+    // T-F535: a listing as the browser keeps it - the compact index, its encryption summary, and
+    // how the listing ended. Index is null when it failed: whatever entries came are discarded.
+    private sealed record ListedArchive(ArchiveListSummary Summary, ArchiveTree? Index, EncryptionSummary? Encryption);
+
     // T-F98: shared by EnterBrowseModeAsync (a real, on-disk archive) and
     // NavigateIntoNestedArchiveAsync (a temp-extracted nested one) — tar-family listing shells
     // out to tar.exe per T-F49/T-F48's model, ZIP listing is fast in-memory (ZipFile.OpenRead);
     // only show the async-load indeterminate state for the former, matching T-F58's existing
     // "Finalizing..." pattern rather than a blocking modal. Returns null (already reported to the
-    // user) on any exception — never throws to its caller.
-    private async Task<ArchiveListResult?> ListArchiveWithProgressAsync(string archivePath)
+    // user) on any exception — never throws to its caller. T-F535: the entries go into the
+    // index as the listing reads them (on its thread, one at a time), and the index is sorted off
+    // the UI thread.
+    private async Task<ListedArchive?> ListArchiveWithProgressAsync(string archivePath)
     {
         bool isZip = ArchiveFormatDetector.Detect(archivePath) is ArchiveFormat.Zip or ArchiveFormat.Unknown;
         if (!isZip)
@@ -1360,7 +1367,12 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            return await _archiveListingRouter.ListEntriesAsync(archivePath);
+            var builder = new ArchiveTreeIndex.Builder();
+            ArchiveListSummary summary = await _archiveListingRouter.ListEntriesAsync(archivePath, builder.Add);
+            if (!summary.Success)
+                return new ListedArchive(summary, null, null);
+            ArchiveTree index = await Task.Run(builder.Build);
+            return new ListedArchive(summary, index, builder.Encryption);
         }
         catch (Exception ex)
         {
@@ -1453,12 +1465,12 @@ public sealed partial class MainViewModel : ObservableObject
             return;
         }
 
-        ArchiveListResult? listResult = await ListArchiveWithProgressAsync(extractedPath);
-        if (listResult is null || !listResult.Success)
+        ListedArchive? listResult = await ListArchiveWithProgressAsync(extractedPath);
+        if (listResult?.Index is not { } nestedIndex)
         {
             NestedArchiveCache.DeleteScope(scopeDir);
             if (listResult is not null)
-                await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), CoreMessageText.Of(listResult.ErrorText, listResult.ErrorMessage ?? "Failed to read archive."));
+                await _dialogService.ShowErrorAsync(_res.GetString("DialogErrorTitle"), CoreMessageText.Of(listResult.Summary.ErrorText, listResult.Summary.ErrorMessage ?? "Failed to read archive."));
             return;
         }
 
@@ -1479,8 +1491,8 @@ public sealed partial class MainViewModel : ObservableObject
         _currentNestedScopeDir = scopeDir;
         BrowsedArchivePath = extractedPath;
         CurrentFolderPath = string.Empty;
-        _archiveIndex = ArchiveTreeIndex.Build(listResult.Entries);
-        SetBrowseLevel(EncryptionSummary.Of(listResult.Entries));
+        _archiveIndex = nestedIndex;
+        SetBrowseLevel(listResult.Encryption);
         RefreshCurrentFolder();
     }
 

@@ -44,11 +44,39 @@ public sealed record EncryptionSummary(int EncryptedFiles, int TotalFiles, Entry
     /// <summary>Summarizes a listing.</summary>
     public static EncryptionSummary Of(IReadOnlyList<ArchiveEntryInfo> entries)
     {
-        ArchiveEntryInfo[] files = [.. entries.Where(e => !e.IsDirectory)];
-        ArchiveEntryInfo[] encrypted = [.. files.Where(e => e.Encryption is { } kind && kind != EntryEncryption.None)];
-        EntryEncryption? badge = encrypted.Length == 0 ? null : encrypted.Select(e => e.Encryption!.Value).MinBy(Strength);
-        return new EncryptionSummary(encrypted.Length, files.Length, badge,
-            encrypted.Any(e => e.AesVersion == 2), encrypted.Any(e => e.Encryption == EntryEncryption.ZipCrypto));
+        var tally = new Tally();
+        foreach (ArchiveEntryInfo entry in entries)
+            tally.Add(entry);
+        return tally.Summary();
+    }
+
+    /// <summary>T-F535: the summary counted as a streamed listing's entries arrive, none of them kept.</summary>
+    public sealed class Tally
+    {
+        private int _files;
+        private int _encrypted;
+        private EntryEncryption? _badge;
+        private bool _hasAe2;
+        private bool _hasZipCrypto;
+
+        /// <summary>Counts one entry of the listing.</summary>
+        public void Add(ArchiveEntryInfo entry)
+        {
+            ArgumentNullException.ThrowIfNull(entry);
+            if (entry.IsDirectory)
+                return;
+            _files++;
+            if (entry.Encryption is not { } kind || kind == EntryEncryption.None)
+                return;
+            _encrypted++;
+            if (_badge is not { } weakest || Strength(kind) < Strength(weakest))
+                _badge = kind;
+            _hasAe2 |= entry.AesVersion == 2;
+            _hasZipCrypto |= kind == EntryEncryption.ZipCrypto;
+        }
+
+        /// <summary>The summary of the entries counted so far.</summary>
+        public EncryptionSummary Summary() => new(_encrypted, _files, _badge, _hasAe2, _hasZipCrypto);
     }
 
     // A mixed archive is only as strong as its weakest entry; an unnamed method ranks lowest.
