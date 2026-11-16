@@ -189,4 +189,7 @@ public enum MessageCode
 
     // An archive with more entries than Pakko holds at once (T-F513)
     TooManyEntries,
+
+    // An archive whose names together are longer than Pakko holds at once (T-F529)
+    CatalogTooLarge,
 }

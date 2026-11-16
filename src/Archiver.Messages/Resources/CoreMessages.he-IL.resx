@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>בארכיון זה יש יותר מדי פריטים כדי ש-Pakko יפתח אותו. מגבלה: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>השמות בארכיון זה ארוכים מדי בסך הכול כדי ש-Pakko יפתח אותו. מגבלה: {0} תווים.</value>
+  </data>
 </root>

@@ -85,6 +85,39 @@ public sealed class EntryLimitTests : IDisposable
         stdOut.Should().Contain("a.txt").And.Contain("b.txt");
     }
 
+    // --- T-F529: the names' characters together, counted in tar.exe's bytes ---
+
+    [Fact]
+    public async Task TarListing_NamesOverTheNameLimit_AreRefused_AsTooLong_NotAsTooMany()
+    {
+        string archivePath = Path.Combine(_temp.Path, "names.tar");
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "a"), ("b.txt", "b"), ("c.txt", "c")]);
+        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
+        scope.EntryLimit = 3;
+        scope.NameCharLimit = 8;
+
+        Func<Task> list = () => scope.ListAsync(verbose: false, CancellationToken.None);
+
+        (await list.Should().ThrowAsync<CoreTextIOException>()).Which.Text.Code.Should().Be(MessageCode.CatalogTooLarge);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TarListing_NamesAtTheNameLimit_AreRead(bool verbose)
+    {
+        string archivePath = Path.Combine(_temp.Path, "names.tar");
+        ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "a"), ("b.txt", "b"), ("c.txt", "c")]);
+        using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
+        scope.EntryLimit = 3;
+        scope.NameCharLimit = 15;
+
+        (int exit, string stdOut, string stdErr) = await scope.ListAsync(verbose, CancellationToken.None);
+
+        exit.Should().Be(0, because: stdErr);
+        stdOut.Should().Contain("c.txt");
+    }
+
     // --- The real limit, both tar backends: 2,000,001 empty entries (a 1 GB tar, about 20 MB gzipped) ---
 
     [Fact]

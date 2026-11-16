@@ -1138,6 +1138,40 @@ Add-SmokeStep 'CLI-062' {
     'l, t and x refuse the archive, naming the limit'
 }
 
+# T-F529: an archive whose names together pass the name limit (134,217,728 characters) is refused
+# before its catalog is held: 2,049 central directory records of 65,535-byte names, one local header.
+Add-SmokeStep 'CLI-065' {
+    $folder = Get-StepFolder 'cli065'
+    $zip = Join-Path $folder 'names.zip'
+    $count = 2049
+    $name = [byte[]]::new(65535)
+    [System.Array]::Fill($name, [byte][char]'n')
+    $stream = [System.IO.File]::Create($zip)
+    try {
+        $w = [System.IO.BinaryWriter]::new($stream)
+        $w.Write([uint32]0x04034b50); $w.Write([uint16]20); $w.Write([byte[]]::new(20)); $w.Write([uint16]1); $w.Write([uint16]0); $w.Write([byte][char]'n')
+        $directoryStart = $stream.Position
+        for ($i = 0; $i -lt $count; $i++) {
+            $w.Write([uint32]0x02014b50); $w.Write([uint16]20); $w.Write([uint16]20); $w.Write([byte[]]::new(20))
+            $w.Write([uint16]65535); $w.Write([byte[]]::new(12)); $w.Write([uint32]0)
+            $w.Write($name)
+        }
+        $directorySize = $stream.Position - $directoryStart
+        $w.Write([uint32]0x06054b50); $w.Write([uint16]0); $w.Write([uint16]0); $w.Write([uint16]$count); $w.Write([uint16]$count)
+        $w.Write([uint32]$directorySize); $w.Write([uint32]$directoryStart); $w.Write([uint16]0)
+        $w.Flush()
+    }
+    finally { $stream.Dispose() }
+    $out = Join-Path $folder 'out'
+    foreach ($arguments in @(@('l', $zip), @('t', $zip), @('x', $zip, "-o$out"))) {
+        $run = Invoke-Pakko $arguments
+        Assert-Smoke ($run.ExitCode -eq 2) "$($arguments[0]): exit $($run.ExitCode) $($run.Text)"
+        Assert-Smoke ($run.Text.Contains('too long in total') -and $run.Text -match '134.217.728') "$($arguments[0]): $($run.Text)"
+    }
+    Assert-Smoke (-not (Test-Path -LiteralPath $out) -or @(Get-ChildItem -LiteralPath $out -Recurse -File).Count -eq 0) 'files were extracted'
+    'l, t and x refuse the archive, naming the limit'
+}
+
 # T-F510: a recursive archive search stops at a folder Windows trims, as at one it cannot list.
 Add-SmokeStep 'CLI-063' {
     $folder = Get-StepFolder 'cli063'

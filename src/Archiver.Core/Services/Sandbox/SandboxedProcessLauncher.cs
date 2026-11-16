@@ -383,10 +383,15 @@ internal static partial class SandboxedProcessLauncher
         {
             _bytes += read.Length;
             _lines += read.Count((byte)'\n');
-            if (_lines > limit.MaxLines || _bytes > limit.MaxBytes)
+            if (_lines > limit.MaxLines)
             {
                 kill();
-                throw limit.Exceeded();
+                throw limit.TooManyLines();
+            }
+            if (_bytes > limit.MaxBytes)
+            {
+                kill();
+                throw limit.TooManyBytes();
             }
             return read.Length;
         }

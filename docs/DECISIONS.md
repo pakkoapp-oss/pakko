@@ -15061,6 +15061,19 @@ entry (`CatalogMemoryBudgetTests.TarListing_AllocatesAtMostItsBudgetPerEntry`). 
 1 MiB: the longest name Windows can write, escaped byte by byte, is 393,204 bytes. The `-t` names stay
 one array (T-F418 judges them as a whole); the helper already reads its output a line at a time.
 
+**A limit on the names' characters (`ArchiveLimits.MaxCatalogNameChars`, 134,217,728).** T-F513 bounded
+the entries, not their names: a list, a test or a scan holds every name (as text, or as T-F234's
+collision set), and a ZIP name may be 65,535 bytes, so names alone could fill any memory within the
+entry limit (SECURITY.md left this to T-F529). Measured at 4,096 names of 32,000 characters (131
+million): a ZIP list peaks at 413 MiB, a test at 570; a tar list through tar.exe at 1,140 (T-F539).
+128 Mi characters leave 2,000,000 entries 64 characters each. Counted where the names are made:
+`ZipCatalog` counts each decoded name in every walk (decoded, since a one-byte raw name can carry a
+long Unicode Path extra); the helper's output counts names and link targets; tar.exe's listing is
+counted in bytes (`StdOutLimit`, never fewer than the characters: multi-byte names are refused
+earlier, up to three times). Past it, `MessageCode.CatalogTooLarge`. `StdOutLimit` now tells its two
+refusals apart: too many lines is `TooManyEntries`, too many bytes `CatalogTooLarge` - before, the
+bytes cap (1 GiB) also said "too many entries".
+
 ## T-F528 - one owner of the folders Pakko works in, one root per operation (2026-11-14)
 
 **What changed.** `IO/WorkRoot` owns where an operation's work folders go and how they are made. An

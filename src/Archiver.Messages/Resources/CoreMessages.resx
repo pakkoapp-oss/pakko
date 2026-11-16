@@ -420,4 +420,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>This archive has too many entries for Pakko to open. Limit: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>The names in this archive are too long in total for Pakko to open. Limit: {0} characters.</value>
+  </data>
 </root>

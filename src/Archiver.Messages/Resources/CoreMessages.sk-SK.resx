@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Tento archív obsahuje príliš veľa položiek na to, aby ho Pakko otvoril. Limit: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Názvy v tomto archíve sú spolu príliš dlhé na to, aby ho Pakko otvoril. Limit: {0} znakov.</value>
+  </data>
 </root>

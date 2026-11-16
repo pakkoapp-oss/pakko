@@ -2029,6 +2029,16 @@ re-measured with T-F346's script before and after.
   sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
   first (one 4 GiB file with a password: time, bytes written, free space needed).
 
+### T-F539 - tar.exe's "-t" names are held three times while a listing reads them (P3, from T-F529, next wave)
+
+- [ ] **Status:** open, next wave. Measured 2026-11-16 at 4,096 names of 32,000 characters (131
+  million, under T-F529's name limit): a tar list through tar.exe peaks at 1,140 MiB against 413 for
+  the same ZIP. The "-t" output is held as bytes (`_listingBytes`, for "-T"), the `MemoryStream` that
+  gathered them, a decoded text and the names split from it (`ReadBytesAsync`,
+  `TarNames.ReadListing`). Next: read "-t" a line at a time as "-tv" is since T-F529 (names and their
+  bytes kept once), with T-F418's whole-listing judgement unchanged; budget test in
+  `CatalogMemoryBudgetTests` at long names.
+
 ### T-F538 - A ZIP's names and its data could come from two different central directories (P2, from T-F529)
 
 - [ ] **Status:** open, batch 5e (fixed by `ZipCatalog`; left: a fixture and a test, seen red on main).

@@ -61,6 +61,11 @@ internal sealed partial class TarSandboxScope : IDisposable
     // A listing of 4,000,000 entries with long names stays far below this; it bounds what a
     // compromised helper can make Pakko read.
     private const long MaxHelperStdOutBytes = 1L << 30;
+    // T-F529: what a "-t" line holds besides its name ("\r\n"), and a "-tv" line besides its name
+    // (type and mode, links, owner, group, size, date: about 45 bytes measured; an archive's own
+    // owner names count here, so 256 are allowed).
+    private const int PlainLineExtraBytes = 2;
+    private const int VerboseLineExtraBytes = 256;
     // T-F529: one "-tv" line - a name Windows can write is at most 32,767 UTF-16 units: 3 UTF-8 bytes
     // each, 12 once tar.exe escapes every byte as \ooo, plus the columns before it.
     private const int MaxVerboseLineBytes = 1 << 20;
@@ -299,6 +304,12 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// </summary>
     internal int EntryLimit { get; set; } = ArchiveLimits.MaxEntries;
 
+    /// <summary>
+    /// T-F529: the most characters a listing's names may have together; more fails the run with
+    /// <see cref="ArchiveLimits.CatalogTooLarge"/>. Lowered only by tests.
+    /// </summary>
+    internal int NameCharLimit { get; set; } = ArchiveLimits.MaxCatalogNameChars;
+
     /// <summary>Lists the archive ("-t", or "-tv" when <paramref name="verbose"/>).</summary>
     public async Task<(int ExitCode, string StdOut, string StdErr)> ListAsync(bool verbose, CancellationToken cancellationToken)
     {
@@ -342,7 +353,8 @@ internal sealed partial class TarSandboxScope : IDisposable
     {
         if (_utf8Headers is null)
             await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
-        var lines = new StdOutLines(onLine, MaxVerboseLineBytes, ArchiveLimits.MaxListingBytes, LastLineMayBeOpen: true);
+        // The run's StdOutLimit counts every byte first; this reader's own total never comes into play.
+        var lines = new StdOutLines(onLine, MaxVerboseLineBytes, long.MaxValue, LastLineMayBeOpen: true);
         (int exitCode, _, string stdErr) = await RunAsync("-tv", [], cancellationToken, stdOutLines: lines).ConfigureAwait(false);
         return (exitCode, stdErr);
     }
@@ -532,8 +544,11 @@ internal sealed partial class TarSandboxScope : IDisposable
         string[] headerCharset = _utf8Headers == true ? ["--options", Utf8HeaderOption] : [];
         bool plainListing = mode == "-t";
         int entryLimit = EntryLimit;
+        int nameCharLimit = NameCharLimit;
+        // T-F529: the names counted in bytes, never fewer than their characters.
         StdOutLimit? listingLimit = mode is "-t" or "-tv"
-            ? new StdOutLimit(entryLimit, ArchiveLimits.MaxListingBytes, () => ArchiveLimits.TooManyEntries(entryLimit))
+            ? new StdOutLimit(entryLimit, nameCharLimit + (long)entryLimit * (plainListing ? PlainLineExtraBytes : VerboseLineExtraBytes),
+                () => ArchiveLimits.TooManyEntries(entryLimit), () => ArchiveLimits.CatalogTooLarge(nameCharLimit))
             : null;
         byte[]? listing = null;
         SandboxJobObject job;

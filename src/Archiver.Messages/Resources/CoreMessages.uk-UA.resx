@@ -420,4 +420,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>У цьому архіві забагато елементів, щоб Pakko його відкрив. Ліміт: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Імена в цьому архіві разом задовгі, щоб Pakko його відкрив. Ліміт: {0} символів.</value>
+  </data>
 </root>

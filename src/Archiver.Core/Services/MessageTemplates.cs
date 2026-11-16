@@ -126,6 +126,7 @@ public static class MessageTemplates
             "A selected item could not be read. It may have been moved or deleted after it was selected.",
         [MessageCode.ListingInconsistent] = "Archive listing is inconsistent.",
         [MessageCode.TooManyEntries] = "This archive has too many entries for Pakko to open. Limit: {0}.",
+        [MessageCode.CatalogTooLarge] = "The names in this archive are too long in total for Pakko to open. Limit: {0} characters.",
         [MessageCode.TarUnreadableNames] =
             "The archive contains file names tar.exe cannot represent on this system (code page {0}), " +
             "so it cannot be read with tar.exe here. Details: {1}",

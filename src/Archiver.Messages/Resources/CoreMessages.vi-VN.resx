@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Tệp nén này có quá nhiều mục để Pakko mở. Giới hạn: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Tổng độ dài các tên trong tệp nén này quá lớn để Pakko mở. Giới hạn: {0} ký tự.</value>
+  </data>
 </root>

@@ -393,4 +393,7 @@
   <data name="TooManyEntries" xml:space="preserve">
     <value>Ez az archívum túl sok elemet tartalmaz ahhoz, hogy a Pakko megnyissa. Korlát: {0}.</value>
   </data>
+  <data name="CatalogTooLarge" xml:space="preserve">
+    <value>Az archívumban lévő nevek együttesen túl hosszúak ahhoz, hogy a Pakko megnyissa. Korlát: {0} karakter.</value>
+  </data>
 </root>
