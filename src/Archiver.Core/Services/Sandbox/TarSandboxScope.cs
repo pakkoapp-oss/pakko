@@ -310,10 +310,10 @@ internal sealed partial class TarSandboxScope : IDisposable
     /// </summary>
     internal int NameCharLimit { get; set; } = ArchiveLimits.MaxCatalogNameChars;
 
-    /// <summary>Lists the archive ("-t", or "-tv" when <paramref name="verbose"/>).</summary>
-    public async Task<(int ExitCode, string StdOut, string StdErr)> ListAsync(bool verbose, CancellationToken cancellationToken)
+    /// <summary>Lists the archive's names ("-t"); its "-tv" lines come through <see cref="ListVerboseAsync"/>.</summary>
+    public async Task<(int ExitCode, string StdOut, string StdErr)> ListAsync(CancellationToken cancellationToken)
     {
-        string mode = verbose ? "-tv" : "-t";
+        const string mode = "-t";
         if (_utf8Headers is not null)
             return await RunAsync(mode, [], cancellationToken).ConfigureAwait(false);
 
@@ -352,7 +352,7 @@ internal sealed partial class TarSandboxScope : IDisposable
     public async Task<(int ExitCode, string StdErr)> ListVerboseAsync(StdOutLineHandler onLine, CancellationToken cancellationToken)
     {
         if (_utf8Headers is null)
-            await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
+            await ListAsync(cancellationToken).ConfigureAwait(false);
         // The run's StdOutLimit counts every byte first; this reader's own total never comes into play.
         var lines = new StdOutLines(onLine, MaxVerboseLineBytes, long.MaxValue, LastLineMayBeOpen: true);
         (int exitCode, _, string stdErr) = await RunAsync("-tv", [], cancellationToken, stdOutLines: lines).ConfigureAwait(false);
@@ -366,7 +366,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         if (OutputDirectory is null)
             throw new InvalidOperationException("This scope was created without an output folder.");
         if (_utf8Headers is null)
-            await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
+            await ListAsync(cancellationToken).ConfigureAwait(false);
         // T-F410: the names go in a file. Thousands of them would overflow the command line, and
         // "-T -" cannot carry them: stdin is the archive. No "-n": bsdtar 3.3.2 (Windows 10) takes it
         // only in c/r/u mode, and ExpandSelection lists every descendant of a folder anyway.
@@ -393,7 +393,7 @@ internal sealed partial class TarSandboxScope : IDisposable
         Action<int> onContentBytes, IReadOnlyList<string>? members, IReadOnlyList<string>? excludedFiles, CancellationToken cancellationToken)
     {
         if (_utf8Headers is null)
-            await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
+            await ListAsync(cancellationToken).ConfigureAwait(false);
         string[] subsetArguments = [];
         if (members is { Count: > 0 })
         {
@@ -474,7 +474,7 @@ internal sealed partial class TarSandboxScope : IDisposable
     private async Task EnsureSentAsListedAsync(IEnumerable<string> names, CancellationToken cancellationToken)
     {
         if (_listingBytes is null)
-            await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
+            await ListAsync(cancellationToken).ConfigureAwait(false);
         Dictionary<string, byte[]?> listed = _listedNameBytes ??= TarNames.ReadListedNameBytes(_listingBytes ?? [], OutputEncoding);
         Dictionary<string, byte[]?> byText = _listedByText ??= TarNames.IndexByText(listed, CommandLinePage);
         foreach (string name in names)
@@ -546,8 +546,10 @@ internal sealed partial class TarSandboxScope : IDisposable
         int entryLimit = EntryLimit;
         int nameCharLimit = NameCharLimit;
         // T-F529: the names counted in bytes, never fewer than their characters.
+        int lineExtraBytes = plainListing ? PlainLineExtraBytes : VerboseLineExtraBytes;
+        long listingBytes = nameCharLimit + (long)entryLimit * lineExtraBytes;
         StdOutLimit? listingLimit = mode is "-t" or "-tv"
-            ? new StdOutLimit(entryLimit, nameCharLimit + (long)entryLimit * (plainListing ? PlainLineExtraBytes : VerboseLineExtraBytes),
+            ? new StdOutLimit(entryLimit, listingBytes,
                 () => ArchiveLimits.TooManyEntries(entryLimit), () => ArchiveLimits.CatalogTooLarge(nameCharLimit))
             : null;
         byte[]? listing = null;

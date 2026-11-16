@@ -508,9 +508,11 @@ internal static class RawZipEntryLocator
         ushort commentLength = ReadUInt16(zipStream);
         // .NET's ZipEndOfCentralDirectoryBlock.TryReadBlockInitialize: a comment past the end is no
         // end record, and none is searched for further.
-        string? refusal = commentLength > zipStream.Length - zipStream.Position ? EndRecordNotFoundText
-            : thisDisk != directoryDisk || count != countOnThisDisk ? SplitSpannedText
-            : null;
+        string? refusal = null;
+        if (commentLength > zipStream.Length - zipStream.Position)
+            refusal = EndRecordNotFoundText;
+        else if (thisDisk != directoryDisk || count != countOnThisDisk)
+            refusal = SplitSpannedText;
 
         var extent = new CentralDirectoryExtent(offset32, size32, count, thisDisk, refusal);
         bool wantsZip64 = thisDisk == ushort.MaxValue || offset32 == Zip32Sentinel || count == ushort.MaxValue;
