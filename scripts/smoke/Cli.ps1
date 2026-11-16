@@ -1116,14 +1116,7 @@ Add-SmokeStep 'CLI-060' {
 Add-SmokeStep 'CLI-067' {
     $folder = Get-StepFolder 'cli067'
     $zip = Join-Path $folder 'damaged_encrypted.zip'
-    $bytes = [System.IO.File]::ReadAllBytes((Join-Path $PSScriptRoot '..\..\tests\Archiver.Core.Tests\Fixtures\archives\encrypted_aes256.zip'))
-    $central = -1
-    for ($i = 0; $i -le $bytes.Length - 4; $i++) {
-        if ($bytes[$i] -eq 0x50 -and $bytes[$i + 1] -eq 0x4B -and $bytes[$i + 2] -eq 1 -and $bytes[$i + 3] -eq 2) { $central = $i; break }
-    }
-    Assert-Smoke ($central -ge 0) 'no central directory record in encrypted_aes256.zip'
-    [System.BitConverter]::GetBytes([uint32]0x7FFF0000).CopyTo($bytes, $central + 42)
-    [System.IO.File]::WriteAllBytes($zip, $bytes)
+    Write-DamagedEncryptedZip -Path $zip
     $extract = Invoke-Pakko @('x', $zip, '-ptestpassword', "-o$(Join-Path $folder 'out')")
     $test = Invoke-Pakko @('t', $zip, '-ptestpassword')
     foreach ($run in $extract, $test) {

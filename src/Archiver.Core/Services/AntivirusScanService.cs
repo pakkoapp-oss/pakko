@@ -332,7 +332,6 @@ public sealed class AntivirusScanService : IAntivirusScanService
             && (selectedSet is null
                 || selectedSet.Contains(e.FullName)
                 || selectedSet.Any(s => e.FullName.StartsWith(s + "/", StringComparison.Ordinal)));
-        int fileCount = 0;
         ZipLocate locate = ZipArchiveService.IsEncryptedZip(archivePath) ? ZipLocate.BestEffort : ZipLocate.None;
         try
         {
@@ -346,20 +345,12 @@ public sealed class AntivirusScanService : IAntivirusScanService
 
         using (catalog)
         {
-            try
+            // T-F529: one walk counts the entries for the progress bar - and makes every check of
+            // the whole archive before any entry is scanned.
+            (int fileCount, Exception? unreadableCatalog) = CountScanned(catalog, locate, Scanned, cancellationToken);
+            if (unreadableCatalog is not null)
             {
-                // T-F529: one walk counts the entries for the progress bar - and makes every check of
-                // the whole archive before any entry is scanned.
-                foreach (NamedZipEntry named in catalog.Entries(locate: locate))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (Scanned(named))
-                        fileCount++;
-                }
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
-            {
-                findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Wrap(MessageCode.ScanCannotReadArchive, ex)));
+                findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Wrap(MessageCode.ScanCannotReadArchive, unreadableCatalog)));
                 return;
             }
 
@@ -411,6 +402,27 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Wrap(MessageCode.ScanCannotReadArchive, ex)));
             }
         }
+    }
+
+    // The entries the scan will read, counted in one walk; the walk's failure when the catalog cannot be read.
+    private static (int Count, Exception? Failure) CountScanned(ZipCatalog catalog, ZipLocate locate, Func<NamedZipEntry, bool> scanned,
+        CancellationToken cancellationToken)
+    {
+        int count = 0;
+        try
+        {
+            foreach (NamedZipEntry named in catalog.Entries(locate: locate))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (scanned(named))
+                    count++;
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return (count, ex);
+        }
+        return (count, null);
     }
 
     private static async Task<ThreatFinding> ScanZipEntryAsync(string archivePath, NamedZipEntry named, Stream? rawArchiveStream,

@@ -22,6 +22,20 @@ function Get-StepFolder {
     $path
 }
 
+# T-F521: encrypted_aes256.zip with its central record's local-header offset past the end - damaged,
+# not password-protected (CLI-067, SHL-021).
+function Write-DamagedEncryptedZip {
+    param([Parameter(Mandatory)][string]$Path)
+    $bytes = [System.IO.File]::ReadAllBytes((Join-Path $PSScriptRoot '..\..\tests\Archiver.Core.Tests\Fixtures\archives\encrypted_aes256.zip'))
+    $central = -1
+    for ($i = 0; $i -le $bytes.Length - 4; $i++) {
+        if ($bytes[$i] -eq 0x50 -and $bytes[$i + 1] -eq 0x4B -and $bytes[$i + 2] -eq 1 -and $bytes[$i + 3] -eq 2) { $central = $i; break }
+    }
+    Assert-Smoke ($central -ge 0) 'no central directory record in encrypted_aes256.zip'
+    [System.BitConverter]::GetBytes([uint32]0x7FFF0000).CopyTo($bytes, $central + 42)
+    [System.IO.File]::WriteAllBytes($Path, $bytes)
+}
+
 function Invoke-Tool {
     # -CommandLine: the arguments as one string, for a program that parses its own (cmd.exe).
     # A program still running after -TimeoutSeconds is killed with its children, and the step fails.
