@@ -607,9 +607,41 @@ public sealed class AntivirusScanServiceTests : IDisposable
         });
 
         result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
-        result.Findings.Should().ContainSingle().Which.ReasonText!.Code.Should().Be(MessageCode.ScanCannotReadArchive);
+        result.Findings.Select(f => f.ReasonText!.Code).Should().Equal(MessageCode.ScanCannotReadArchive, MessageCode.ScanCannotReadEntry);
+        result.Findings[0].ReasonText!.English.Should().NotContain("past the end");
         asked.Should().Be(0);
         scanner.Calls.Should().BeEmpty();
+    }
+
+    // The reviewer of batch 5g: a damaged encrypted record must not hide what the plain entries hold.
+    [Fact]
+    public async Task ScanAsync_DamagedEncryptedRecordBesidePlainEntries_StillScansThePlainOnes()
+    {
+        string path = Path.Combine(_temp.Path, "damaged_mixed.zip");
+        byte[] bytes = File.ReadAllBytes(FixtureHelper.Archive("mixed_encrypted_and_plain.zip"));
+        int central = bytes.AsSpan().IndexOf("PK\u0001\u0002"u8);
+        while ((System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(central + 8)) & 1) == 0)
+            central += 46 + System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(central + 28))
+                + System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(central + 30))
+                + System.Buffers.Binary.BinaryPrimitives.ReadUInt16LittleEndian(bytes.AsSpan(central + 32));
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(central + 42), 0x7FFF_0000u);
+        File.WriteAllBytes(path, bytes);
+        int asked = 0;
+        var scanner = new FakeAmsiScanner();
+        scanner.DetectedContentNames.Add("readme.txt");
+        AntivirusScanService service = CreateService(scanner);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions
+        {
+            ArchivePaths = [path],
+            ResolvePasswordAsync = _ => { asked++; return Task.FromResult(new PasswordDecision { Password = RealPassword }); },
+        });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.ThreatDetected);
+        scanner.Calls.Select(c => c.ContentName).Should().Contain("readme.txt");
+        asked.Should().Be(0);
+        result.Findings.Should().Contain(f => f.ReasonText != null && f.ReasonText.Code == MessageCode.ScanCannotReadArchive);
+        result.Findings.Select(f => f.ReasonText == null ? "" : f.ReasonText.English).Should().NotContain(r => r.Contains("past the end"));
     }
 
     [Theory]

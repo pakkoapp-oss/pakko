@@ -15007,8 +15007,9 @@ staging folder, made with its own ACL, where an access denied does not arise.
 reads the archive's structure (the smallest encrypted entry that passes, through `ZipCatalog`) before
 it asks for a password and outside the catch around the prompt. A structure that cannot be read
 (`InvalidDataException`, `EndOfStreamException`) is `ZipCorrupted`; a file that cannot be read at all
-is `CannotReadArchive`; the scan reports either as `ScanCannotReadArchive`. The password is then
-never asked for. What fails after the prompt, in `EncryptedZipEntryReader.TryOpen` while a
+is `CannotReadArchive`; the scan reports either as `ScanCannotReadArchive` and still scans every
+entry it can read (the batch-5g reviewer: returning there let a damaged encrypted record beside a
+plain entry turn a detection into "could not scan"). The password is then never asked for. What fails after the prompt, in `EncryptedZipEntryReader.TryOpen` while a
 candidate is checked, keeps its old meaning (password-protected): a wrong password and an entry
 damaged inside its encrypted data cannot be told apart there. The bare 20-byte encrypted local
 header with no central directory (T-F189's fixture) is now reported as damaged too: no password
