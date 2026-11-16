@@ -107,6 +107,31 @@ public sealed class ExtractedItemReportTests : IDisposable
         }
     }
 
+    // T-F522: a folder in the destination whose attributes cannot be read was taken for no link and
+    // committed into. It may be one (a junction out of the destination), so what goes through it stays
+    // out; a folder that does not exist yet is still created (loose1.txt beside it, Sub2 new).
+    [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public void CommitInto_FolderWhoseAttributesCannotBeRead_IsLeftOut()
+    {
+        using ExtractionStaging staging = StagingWithSubFolder();
+        Directory.CreateDirectory(Path.Combine(staging.Path, "Sub2"));
+        File.WriteAllText(Path.Combine(staging.Path, "Sub2", "nested2.txt"), "nested2");
+        string actualDest = Path.Combine(_temp.Path, "out");
+        string sub = Path.Combine(actualDest, "Sub");
+        Directory.CreateDirectory(sub);
+        using (UnreadableAttributes.Of(sub))
+        {
+            staging.CommitInto(actualDest).Should().BeEmpty();
+
+            File.Exists(Path.Combine(sub, "nested1.txt")).Should().BeFalse("nothing goes through a folder that may be a link");
+        }
+        staging.LeftOutUnreadable.Should().BeEquivalentTo("Sub" + Sep, Path.Combine("Sub", "nested1.txt"));
+        staging.LeftOutThroughLink.Should().BeEmpty();
+        File.ReadAllText(Path.Combine(actualDest, "loose1.txt")).Should().Be("loose1");
+        File.ReadAllText(Path.Combine(actualDest, "Sub2", "nested2.txt")).Should().Be("nested2");
+    }
+
     [Fact]
     public void CommitInto_DestinationIsAJunction_IsWrittenThrough()
     {
@@ -157,6 +182,32 @@ public sealed class ExtractedItemReportTests : IDisposable
 
         result.Success.Should().BeTrue(string.Join("; ", result.Errors.Select(e => e.Message)));
         named.Should().OnlyHaveUniqueItems().And.BeEquivalentTo(OnDisk(dest));
+    }
+
+    // T-F522: what the commit left out is reported, as access denied - not as a link it may not be.
+    [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public async Task ExtractAsync_FolderWhoseAttributesCannotBeRead_SkipsWhatGoesThroughIt()
+    {
+        string zip = Zip("pkg.zip", "a.txt", "sub/b.txt");
+        string dest = NewDestination();
+        string sub = Path.Combine(dest, "sub");
+        Directory.CreateDirectory(sub);
+        ArchiveResult result;
+
+        using (UnreadableAttributes.Of(sub))
+        {
+            result = await _sut.ExtractAsync(new ExtractOptions
+            {
+                ArchivePaths = [zip], DestinationFolder = dest, Mode = ExtractMode.SingleFolder,
+            });
+
+            File.Exists(Path.Combine(sub, "b.txt")).Should().BeFalse();
+        }
+
+        result.SkippedFiles.Should().ContainSingle(s => s.Path == Path.Combine("sub", "b.txt"))
+            .Which.Text!.Code.Should().Be(MessageCode.AccessDenied);
+        File.ReadAllText(Path.Combine(dest, "a.txt")).Should().NotBeEmpty();
     }
 
     [Fact]

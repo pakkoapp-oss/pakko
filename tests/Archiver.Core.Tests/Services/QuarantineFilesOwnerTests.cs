@@ -203,7 +203,7 @@ public sealed partial class QuarantineFilesOwnerTests
     // construction of a FileInfo, DirectoryInfo or FileStream; every target-typed construction with
     // arguments, since its type is not in the text (as a ternary branch, a lambda body, an argument);
     // Path's normalizing calls; the Core helpers that touch a path on disk themselves (T-F463 review: a quarantine path handed to one is as unguarded as a direct call).
-    [GeneratedRegex(@"\b(?:Directory|File)\.\w+\(|\b(?:Directory|File)\.(?>\w+)(?!\s*\()|\bnew\s+(?:FileInfo|DirectoryInfo|FileStream)\(|\bnew\s*\((?!\s*\))|\bPath\.(?:GetRelativePath|GetFullPath|Exists)\(|\bArchiveEntrySecurity\.(?:IsReparsePoint|TryPropagateMotw)\(|\bQuarantineAcl\.\w+\(")]
+    [GeneratedRegex(@"\b(?:Directory|File)\.\w+\(|\b(?:Directory|File)\.(?>\w+)(?!\s*\()|\bnew\s+(?:FileInfo|DirectoryInfo|FileStream)\(|\bnew\s*\((?!\s*\))|\bPath\.(?:GetRelativePath|GetFullPath|Exists)\(|\bArchiveEntrySecurity\.(?:IsReparsePoint(?:OrUnknown)?|TryPropagateMotw)\(|\bQuarantineAcl\.\w+\(")]
     private static partial Regex DiskCall();
 
     // The prefix as a verbatim string, interpolated or not: @"\\?\", @$"\\?\", $@"\\?\".

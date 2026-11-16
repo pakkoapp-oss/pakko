@@ -14983,6 +14983,26 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## Batch 5g - the P3s pulled into this wave (T-F533, T-F522, T-F521, T-F543; 2026-11-16)
+
+**T-F533: the fix is in `TempOwner.TryRemove`, not in `InputPaths.NameTrimmed`.** A `\\?\` path is
+opened as spelled, so `\\?\C:\w\out.` has no twin. Exempting it in `NameTrimmed` would also change
+the entry check of every public operation and start accepting literal sources and archives with such
+names, which the code downstream would then have to keep literal all the way to tar.exe and the
+helper. `TryRemove` removes only names Pakko made, so its guard is the narrow place.
+
+**T-F522: a folder whose attributes cannot be read is not a link and not "no link".**
+`ArchiveEntrySecurity.IsReparsePointOrUnknown` returns false for a path that does not exist (the
+commit creates it) and null for any other failure; `ExtractionStaging` leaves out what would go
+through such a folder (`LeftOutUnreadable`) and both engines report it as `AccessDenied` with its
+path, not as `EntryThroughReparsePoint`: the folder may be no link at all. Measured for the test:
+a Deny ACE for ReadAttributes on the folder alone does not fail `File.GetAttributes` (Windows reads
+them from the parent's listing); with ListDirectory denied on the parent too it fails with
+`UnauthorizedAccessException`. `IsReparsePoint` keeps its old contract for its other callers (the
+sources a user chose for creation: their open reports the failure). Accepted without a change:
+T-F37's `PathContainsReparsePoint` also reads "cannot read" as "no link", but it walks Pakko's own
+staging folder, made with its own ACL, where an access denied does not arise.
+
 ## T-F546 - the helper's copy out of the quarantine (2026-11-16)
 
 T-F474's closing review added a test that a quarantine is deleted with a 0444 entry in it. On the

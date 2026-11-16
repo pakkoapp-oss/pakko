@@ -15185,3 +15185,24 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
   `\\?\` path: the root of every creation or extraction there stays until the next run in that folder
   sweeps it (with a locked file's staged copy, for an extraction). Found by T-F528's opus review.
 - **Graduated 2026-11-16:** batch 5g.
+
+### T-F522 - The commit's link check fails open when a folder's attributes cannot be read (P3, from T-F474)
+
+- [x] **Status:** done 2026-11-16 (batch 5g). `ArchiveEntrySecurity.IsReparsePointOrUnknown`: false
+  for a folder that does not exist (the commit creates it), null for any other failure;
+  `ExtractionStaging.ReachesThroughLink` leaves out what goes through an unknown folder
+  (`LeftOutUnreadable`), and the ZIP and tar engines report it as `AccessDenied` with its path, not
+  as a link. `IsReparsePoint` keeps its contract for the creation side; T-F37's staging walk is
+  accepted as is (docs/DECISIONS.md, "Batch 5g"). Tests:
+  `ExtractedItemReportTests.CommitInto_FolderWhoseAttributesCannotBeRead_IsLeftOut` and
+  `ExtractAsync_FolderWhoseAttributesCannotBeRead_SkipsWhatGoesThroughIt` (helper
+  `UnreadableAttributes`: ReadAttributes denied on the folder, ListDirectory on its parent), both
+  red against the old fail-open.
+  Was: open, pulled into this wave (batch 5g, the agent, 2026-11-16: a security check that fails open). `ExtractionStaging.ReachesThroughLink` (T-F419) asks
+  `ArchiveEntrySecurity.IsReparsePoint` for each folder between the destination and a staged item;
+  that returns false on any exception. A folder that does not exist yet must stay false (the commit
+  creates it), but one whose attributes cannot be read (access denied) is then committed into as if
+  it were no link. Next: tell "not found" (false) from any other failure (refuse that item), with a
+  test of each, and the same split for the creation side's `IsReparsePoint` callers if they share it.
+- **Reported by:** the agent, 2026-11-13 (T-F474's plan, the advisor's review).
+- **Graduated 2026-11-16:** batch 5g.

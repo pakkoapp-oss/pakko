@@ -36,6 +36,13 @@ internal sealed class ExtractionStaging : IDisposable
     /// passes through a link already there, relative to the destination (a folder ends with a separator).</summary>
     public IReadOnlyList<string> LeftOutThroughLink => _leftOutThroughLink;
 
+    private readonly List<string> _leftOutUnreadable = [];
+
+    /// <summary>T-F522: what <see cref="CommitInto"/> left out because a folder on its path in the
+    /// destination could not be told from a link (its attributes could not be read), as
+    /// <see cref="LeftOutThroughLink"/> names it.</summary>
+    public IReadOnlyList<string> LeftOutUnreadable => _leftOutUnreadable;
+
     private readonly List<string> _blockedByFolder = [];
 
     /// <summary>T-F419: files <see cref="CommitInto"/> could not move because a folder of that
@@ -146,11 +153,8 @@ internal sealed class ExtractionStaging : IDisposable
         foreach (string folder in folders ?? StagedFolders())
         {
             string finalFolder = Destination(actualDest, folder);
-            if (ReachesThroughLink(finalFolder, actualDest))
-            {
-                _leftOutThroughLink.Add(FolderName(System.IO.Path.GetRelativePath(Path, folder)));
+            if (LeftOut(finalFolder, actualDest, FolderName(System.IO.Path.GetRelativePath(Path, folder))))
                 continue;
-            }
             Directory.CreateDirectory(finalFolder);
             committed?.Invoke(FolderName(finalFolder));
         }
@@ -180,11 +184,8 @@ internal sealed class ExtractionStaging : IDisposable
         {
             string relative = System.IO.Path.GetRelativePath(Path, file);
             string finalFile = System.IO.Path.Combine(actualDest, relative);
-            if (ReachesThroughLink(System.IO.Path.GetDirectoryName(finalFile)!, actualDest))
-            {
-                _leftOutThroughLink.Add(relative);
+            if (LeftOut(System.IO.Path.GetDirectoryName(finalFile)!, actualDest, relative))
                 continue;
-            }
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(finalFile)!);
             if (_renameExisting.Contains(System.IO.Path.GetFullPath(finalFile)))
             {
@@ -298,18 +299,29 @@ internal sealed class ExtractionStaging : IDisposable
         return System.IO.Path.Combine(folder, name);
     }
 
+    // Whether an item whose folder in the destination is folder stays out, and on which list.
+    private bool LeftOut(string folder, string actualDest, string relative)
+    {
+        bool? link = ReachesThroughLink(folder, actualDest);
+        if (link == false)
+            return false;
+        (link == true ? _leftOutThroughLink : _leftOutUnreadable).Add(relative);
+        return true;
+    }
+
     // T-F419: T-F37's check covers the staging folder only; a junction or symlink already inside
     // the destination would carry the commit outside it (7-Zip follows one too). The destination
-    // itself may be a link: the user chose it.
-    private static bool ReachesThroughLink(string folder, string actualDest)
+    // itself may be a link: the user chose it. T-F522: null when a folder on the way may be one.
+    private static bool? ReachesThroughLink(string folder, string actualDest)
     {
         int rootLength = System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(actualDest)).Length;
         for (string? current = System.IO.Path.GetFullPath(folder);
              current is not null && current.Length > rootLength;
              current = System.IO.Path.GetDirectoryName(current))
         {
-            if (ArchiveEntrySecurity.IsReparsePoint(current))
-                return true;
+            bool? link = ArchiveEntrySecurity.IsReparsePointOrUnknown(current);
+            if (link != false)
+                return link;
         }
         return false;
     }
