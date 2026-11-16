@@ -333,8 +333,10 @@ internal static partial class SandboxedProcessLauncher
                     }
                 }
             }
-            if (lineLength > 0)
+            if (lineLength > 0 && !lines.LastLineMayBeOpen)
                 throw new IOException("The child's stdout ended inside a line.");
+            if (lineLength > 0)
+                lines.OnLine(line.AsSpan(0, lineLength));
         }
         finally
         {
