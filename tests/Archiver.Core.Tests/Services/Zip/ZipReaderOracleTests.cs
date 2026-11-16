@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
+using Archiver.Core.Services;
 using Archiver.Core.Services.Zip;
 using Archiver.Core.Tests.Fuzz;
 using Archiver.Core.Tests.Helpers;
@@ -21,8 +22,13 @@ public sealed class ZipReaderOracleTests : IDisposable
 
     public void Dispose() => Directory.Delete(_folder, recursive: true);
 
-    [Fact]
-    public void EveryFixtureAndItsMutations_ReadAsTheOldReaderReadThem()
+    // T-F529 review: also one entry a batch (indices, collisions and the end checks across batches)
+    // and with the overlay's Zip64 end records forced.
+    [Theory]
+    [InlineData(ZipCatalog.DefaultBatchEntries, false)]
+    [InlineData(1, false)]
+    [InlineData(1, true)]
+    public void EveryFixtureAndItsMutations_ReadAsTheOldReaderReadThem(int batchEntries, bool forceZip64Overlay)
     {
         var differences = new List<string>();
         int compared = 0;
@@ -38,7 +44,7 @@ public sealed class ZipReaderOracleTests : IDisposable
                 File.WriteAllBytes(path, input);
                 compared++;
                 string old = Read(OldReader, path);
-                string now = Read(NewReader, path);
+                string now = Read(p => NewReader(p, batchEntries, forceZip64Overlay), path);
                 if (old != now)
                     differences.Add($"{Path.GetFileName(seed)} #{i}:\n  old: {old}\n  new: {now}");
             }
@@ -66,9 +72,9 @@ public sealed class ZipReaderOracleTests : IDisposable
         return [.. reader.Entries.Select(e => Describe(e.FullName, e.CollidesAfterDecoding, e.Entry))];
     }
 
-    private static IEnumerable<string> NewReader(string path)
+    private static IEnumerable<string> NewReader(string path, int batchEntries, bool forceZip64Overlay)
     {
-        using var catalog = ZipCatalog.Open(path, Us);
+        using var catalog = ZipCatalog.Open(path, Us, ArchiveLimits.MaxEntries, batchEntries, forceZip64Overlay);
         catalog.Check();
         return [.. catalog.Entries(collisions: true).Select(e => Describe(e.FullName, e.CollidesAfterDecoding, e.Entry))];
     }

@@ -453,6 +453,23 @@ public sealed class AntivirusScanServiceTests : IDisposable
         scanner.Calls.Should().ContainSingle(c => c.ContentName == "a.txt");
     }
 
+    // T-F529 review: an archive refused by the counting walk was left open until the GC ran - the
+    // user, told it cannot be read, could not delete it.
+    [Fact]
+    public async Task ScanAsync_ArchiveRefusedWhileCounted_IsClosedBeforeTheResult()
+    {
+        string zip = CreateZip("short.zip", ("a.txt", "hello"), ("b.txt", "world"));
+        byte[] bytes = File.ReadAllBytes(zip);
+        bytes[^14] = 3;
+        bytes[^12] = 3;
+        File.WriteAllBytes(zip, bytes);
+
+        ThreatScanResult result = await CreateService(new FakeAmsiScanner()).ScanAsync(new AntivirusScanOptions { ArchivePaths = [zip] });
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Inconclusive);
+        FluentActions.Invoking(() => File.Delete(zip)).Should().NotThrow();
+    }
+
     [Fact]
     public async Task ScanAsync_BlockedFormatPolicy_ReturnsInconclusiveWithGroupPolicyReason()
     {

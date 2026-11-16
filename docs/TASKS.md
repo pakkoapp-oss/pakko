@@ -89,7 +89,7 @@ above stays as the record of what each stream holds.
 | 5d | Work folders | T-F528 | one owner for every folder Pakko writes before the result: where, how it is born, its sweep | plan mode and advisor first; the owner test; smoke of every extraction and archiving path |
 | 5e | Reading in batches | T-F529, T-F537, T-F538 | the ZIP central directory walked as a stream, .NET's reader given one batch at a time (`ZipCatalog`); only a compact name set kept | done on `perf/batch5e-batch-reading`: oracle of 1,476 archives against the old reader, counter tests red before, smoke CLI quick 41/41 on 1.10.0.29, tar.exe 33/33 on 3.8.9 and 3.5.2; memory table in `docs/DECISIONS.md`, "T-F529" |
 | 5f | Everything in batches | T-F540, T-F541, T-F542, T-F539, T-F535, T-F536 | the user, 2026-11-16: "as chunked as possible wherever possible, no bloated collections". No collection the size of the archive except the one set of names the global checks need (collisions, duplicates, 8.3 aliases, hard-link pairs), held once, as indices elsewhere: a list streamed to its caller, tar.exe's and the helper's readers on one copy of each name, the quarantine walked instead of listed, the App's browser and the scan on that | plan mode and advisor first; a counter test per holder (live bytes per entry, red before); memory and time of every mode at 1,000,000 and 4,000,000 entries before and after; PakkoW10 on both tar builds; the App browser on the device; an opus reviewer |
-| 5g | Pulled-in P3s | T-F521, T-F522, T-F533 | three P3s of the same code the agent pulled into this wave (2026-11-16) | each its red test |
+| 5g | Pulled-in P3s | T-F521, T-F522, T-F533, T-F543 | three P3s of the same code the agent pulled into this wave (2026-11-16) | each its red test |
 | 6 | Measurements and CI | T-F480, T-F481, T-F491, T-F476, T-F530 | calibration and the CI image | one series on an idle machine |
 | 7 | Z | T-F493 | crypto: its own gates and its own opus reviewer | as stream Z says |
 | 8 | D and E, the release | T-F494, `SHL-019` (T-F509), `APP-027`, `APP-038` (T-F519), the release tier | what needs the device or the user | one batch right before the tag |
@@ -2029,6 +2029,29 @@ re-measured with T-F346's script before and after.
   penalty, T-F359), it can go straight into the temp archive - Pakko's own file, so the header's
   sizes can be written after the data, as `ZipArchive` does - without a format change. Measure
   first (one 4 GiB file with a password: time, bytes written, free space needed).
+
+### T-F543 - Batch 5e's reviewer's P3s: tar's -tv cap, the first walks' cancel, readers left without a budget (P3, 2026-11-16)
+
+- [ ] **Status:** open, batch 5g. The fresh reviewer of batch 5e (2026-11-16) found, beside what 5e
+  fixed:
+  - `-tv` byte cap (`TarSandboxScope.RunAsync`, `nameCharLimit + entryLimit * 256`): bsdtar widens its
+    uname/gname columns for good, so one entry with a long pax `uname` pads every later line. A list can
+    then be refused as `CatalogTooLarge` while `-t` passes, and a uname over 1 MiB fails
+    `MaxVerboseLineBytes` with an unlocalized `IOException` (it listed before 5e). Measure with a
+    crafted pax archive, then cap per line actually read or take the columns from the end.
+  - The tar byte caps are totals over the entry limit, not per entry listed. If tar.exe writes
+    non-ASCII as `\ooo` in `-t`, a CJK-named archive meets the limit at a twelfth: measure when it
+    escapes.
+  - The first walks (`MeasureArchive`, test's `Check`, scan's count, `Located()` in
+    `SmallestEncryptedEntryThatPasses`) never look at the cancellation token: at 4,000,000 entries each
+    takes seconds.
+  - `RawZipEntryLocator.ReadEntryNames`, `Locate(Stream, string)` and
+    `EncryptedZipEntryReader.TryOpen(string, string, ...)` have no caller in `src` and no name budget:
+    delete them or give them `ZipCatalog`'s.
+  - `LastLineMayBeOpen` with `StdOutLimit` counting `\n` lets `MaxLines` + 1 lines through (harmless:
+    `-tv`'s count must still match `-t`'s).
+  - Scan's second walk now reports a batch that fails to read again as unreadable, without a test: no
+    seam fails a read the first walk passed.
 
 ### T-F542 - The helper's reader holds its entries twice and copies them at every step (P2, the user, 2026-11-16)
 
