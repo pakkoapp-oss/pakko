@@ -122,7 +122,7 @@ internal interface IQuarantinedEntries
 /// <param name="TotalEntries">Files to scan, first copies included, for progress.</param>
 /// <param name="ExpectedFiles">Files the scan must account for (T-F462).</param>
 /// <param name="HasFirstCopies">Same-named copies wait for <see cref="ISandboxedArchiveReader.ExtractFirstCopiesForScanAsync"/>.</param>
-internal sealed record ScanQuarantine(CoreText? Failure, IReadOnlyList<ScanFile> Files, int TotalEntries, int ExpectedFiles, bool HasFirstCopies);
+internal sealed record ScanQuarantine(CoreText? Failure, IEnumerable<ScanFile> Files, int TotalEntries, int ExpectedFiles, bool HasFirstCopies);
 
 /// <summary>A quarantined file for the antivirus scan, and the entry name a finding names (T-F470: not the file's own name).</summary>
 internal sealed record ScanFile(string Path, string Name);
@@ -131,7 +131,7 @@ internal sealed record ScanFile(string Path, string Name);
 /// <param name="Files">Its files and the entry names they are scanned under.</param>
 /// <param name="Failure">Why it failed, or null.</param>
 /// <param name="CreditedCopies">After the scan: the first copies that may count beside the main pass's files (T-F462).</param>
-internal sealed record FirstCopiesForScan(IReadOnlyList<ScanFile> Files, CoreText? Failure, Func<int> CreditedCopies);
+internal sealed record FirstCopiesForScan(IEnumerable<ScanFile> Files, CoreText? Failure, Func<int> CreditedCopies);
 
 /// <summary>A test's result: why it failed, or null; the bytes read; whether the filter passed nothing (T-F410).</summary>
 internal sealed record TestOutcome(CoreText? Failure, long DeclaredSize, bool NothingRead);
