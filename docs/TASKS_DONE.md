@@ -15070,7 +15070,7 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
 - **Then:** raise T-F513's entry limit (2,000,000) as far as the measured memory allows (the user left
   the value to the agent), and measure the memory of every mode (list, test, extract, scan, preview,
   the App's browser) before and after, as a table for the user.
-- **Graduated 2026-11-16:** a ZIP read in batches (`ZipCatalog`, the oracle against the old reader), tar.exe's "-tv" a line at a time, a limit on the names' characters (134,217,728, `CatalogTooLarge`, `CLI-065`), the entry limit 4,000,000; memory before and after every mode in `docs/DECISIONS.md`, "T-F529". Smoke CLI quick 41/41 on 1.10.0.29; tar.exe checks 33/33 on bsdtar 3.8.9 and 3.5.2 (PakkoW10). Left to batch 5f: the list's result, tar.exe's and the helper's readers, the App's browser, the scan (T-F535, T-F536, T-F539-T-F542).
+- **Graduated 2026-11-16:** a ZIP read in batches (`ZipCatalog`, the oracle against the old reader), tar.exe's "-tv" a line at a time, a limit on the names' characters (134,217,728, `CatalogTooLarge`, `CLI-065`), the entry limit 4,000,000; memory before and after every mode in `docs/DECISIONS.md`, "T-F529". Smoke quick 66/66 on 1.10.0.29 (CLI-065 new); the App browsed a ZIP and a tar.gz of 200,000 entries into a folder, the Shell extracted the ZIP (200,000 files) and an AES ZIP with its password; tar.exe checks 33/33 on bsdtar 3.8.9 and 3.5.2 (PakkoW10). Left to batch 5f: the list's result, tar.exe's and the helper's readers, the App's browser, the scan (T-F535, T-F536, T-F539-T-F542).
 
 ### T-F473 - A listing of millions of entries costs over 2 GiB in the Pakko process (P3)
 
