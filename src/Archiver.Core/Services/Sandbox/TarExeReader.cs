@@ -465,12 +465,12 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     internal static async Task<(long TotalDeclaredSize, string[] Names, Dictionary<string, long> SizeByName, List<(string Name, long Size)> FileEntries)> ScanForUnsafeEntriesAsync(
         TarSandboxScope scope, CancellationToken cancellationToken)
     {
-        (int nameExitCode, string? nameStdOut, string? nameStdErr) = await scope.ListAsync(cancellationToken).ConfigureAwait(false);
+        (int nameExitCode, string[]? listedNames, string nameStdErr) = await scope.ListNamesAsync(cancellationToken).ConfigureAwait(false);
         if (nameExitCode != 0)
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(nameStdErr)));
 
         // T-F418: the real names, so a control character is seen (T-F39) and a "-T" line names it.
-        string[] names = TarNames.ReadListing(nameStdOut, scope.OutputEncoding)
+        string[] names = listedNames
             ?? throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
 
         // T-F420 review: an entry named as another's 8.3 alias - tar.exe would write it through that
@@ -573,12 +573,12 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
     private static async Task<(string[] Names, ArchiveListResult? Error)> RunNameListingAsync(
         TarSandboxScope scope, CancellationToken cancellationToken)
     {
-        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(cancellationToken).ConfigureAwait(false);
+        (int exitCode, string[]? listed, string stdErr) = await scope.ListNamesAsync(cancellationToken).ConfigureAwait(false);
         if (exitCode != 0)
             return ([], ListFailure(stdErr));
 
         // T-F418: the "-t" names as the entries have them; the "-tv" lines are read by column only.
-        return TarNames.ReadListing(stdOut, scope.OutputEncoding) is { } names
+        return listed is { } names
             ? (names, null)
             : ([], CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent)));
     }

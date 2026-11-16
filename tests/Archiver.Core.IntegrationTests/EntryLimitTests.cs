@@ -65,7 +65,7 @@ public sealed class EntryLimitTests : IDisposable
         ExternalTarFixtureBuilder.CreateCompressedTar(archivePath, "-cf", [("a.txt", "a"), ("b.txt", "b"), ("c.txt", "c")]);
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
         if (verbose)
-            (await scope.ListAsync(CancellationToken.None)).ExitCode.Should().Be(0, "the plain listing first, under the limit");
+            (await scope.ListNamesAsync(CancellationToken.None)).ExitCode.Should().Be(0, "the plain listing first, under the limit");
         scope.EntryLimit = 2;
 
         Func<Task> list = () => List(scope, verbose);
@@ -81,10 +81,10 @@ public sealed class EntryLimitTests : IDisposable
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
         scope.EntryLimit = 2;
 
-        (int exit, string stdOut, string stdErr) = await scope.ListAsync(CancellationToken.None);
+        (int exit, string[]? names, string stdErr) = await scope.ListNamesAsync(CancellationToken.None);
 
         exit.Should().Be(0, because: stdErr);
-        stdOut.Should().Contain("a.txt").And.Contain("b.txt");
+        names.Should().Equal("a.txt", "b.txt");
     }
 
     // --- T-F529: the names' characters together, counted in tar.exe's bytes ---
@@ -98,7 +98,7 @@ public sealed class EntryLimitTests : IDisposable
         scope.EntryLimit = 3;
         scope.NameCharLimit = 8;
 
-        Func<Task> list = () => scope.ListAsync(CancellationToken.None);
+        Func<Task> list = () => scope.ListNamesAsync(CancellationToken.None);
 
         (await list.Should().ThrowAsync<CoreTextIOException>()).Which.Text.Code.Should().Be(MessageCode.CatalogTooLarge);
     }
@@ -124,7 +124,10 @@ public sealed class EntryLimitTests : IDisposable
     private static async Task<(int Exit, string Text, string StdErr)> List(TarSandboxScope scope, bool verbose)
     {
         if (!verbose)
-            return await scope.ListAsync(CancellationToken.None);
+        {
+            (int names, string[]? listed, string error) = await scope.ListNamesAsync(CancellationToken.None);
+            return (names, string.Join("\n", listed ?? []), error);
+        }
         var lines = new StringBuilder();
         (int exit, string stdErr) = await scope.ListVerboseAsync(
             (ReadOnlySpan<byte> line) => lines.AppendLine(Encoding.UTF8.GetString(line)), CancellationToken.None);

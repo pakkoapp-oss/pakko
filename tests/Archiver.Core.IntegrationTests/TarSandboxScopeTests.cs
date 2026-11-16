@@ -29,9 +29,9 @@ public sealed partial class TarSandboxScopeTests : IDisposable
 
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None);
 
-        (int preScanExit, string? preScanStdOut, string? preScanStdErr) = await scope.ListAsync(CancellationToken.None);
+        (int preScanExit, string[]? preScanNames, string preScanStdErr) = await scope.ListNamesAsync(CancellationToken.None);
         preScanExit.Should().Be(0, because: preScanStdErr);
-        preScanStdOut.Should().Contain("a.txt");
+        preScanNames.Should().Contain("a.txt");
 
         (int extractExit, _, string? extractStdErr) = await scope.ExtractAsync(null, CancellationToken.None);
         extractExit.Should().Be(0, because: extractStdErr);
@@ -103,9 +103,9 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         scope.OutputDirectory.Should().BeNull();
         Directory.Exists(Path.Combine(scope.QuarantineRoot, "out")).Should().BeFalse();
 
-        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(CancellationToken.None);
+        (int exitCode, string[]? names, string stdErr) = await scope.ListNamesAsync(CancellationToken.None);
         exitCode.Should().Be(0, because: stdErr);
-        stdOut.Should().Contain("a.txt");
+        names.Should().Contain("a.txt");
     }
 
     // T-F523: each scope has its own AppContainer profile, gone with the scope.
@@ -245,7 +245,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
 
         using (TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None))
         {
-            (int listExit, _, string? listErr) = await scope.ListAsync(CancellationToken.None);
+            (int listExit, _, string listErr) = await scope.ListNamesAsync(CancellationToken.None);
             listExit.Should().Be(0, because: listErr);
             (int extractExit, _, string? extractErr) = await scope.ExtractAsync(null, CancellationToken.None);
             extractExit.Should().Be(0, because: extractErr);
@@ -271,10 +271,10 @@ public sealed partial class TarSandboxScopeTests : IDisposable
         new FileInfo(archivePath).SetAccessControl(security);
 
         using TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: false, CancellationToken.None);
-        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(CancellationToken.None);
+        (int exitCode, string[]? names, string stdErr) = await scope.ListNamesAsync(CancellationToken.None);
 
         exitCode.Should().Be(0, because: stdErr);
-        stdOut.Should().Contain("a.txt");
+        names.Should().Contain("a.txt");
     }
 
     // T-F248: a read-only archive's hardlink could not be deleted by the recursive cleanup, so
@@ -291,7 +291,7 @@ public sealed partial class TarSandboxScopeTests : IDisposable
             using (TarSandboxScope scope = await TarSandboxScope.CreateAsync(archivePath, needsOutputDir: true, CancellationToken.None))
             {
                 quarantineRoot = scope.QuarantineRoot;
-                (int exitCode, _, string? stdErr) = await scope.ListAsync(CancellationToken.None);
+                (int exitCode, _, string stdErr) = await scope.ListNamesAsync(CancellationToken.None);
                 exitCode.Should().Be(0, because: stdErr);
             }
 
