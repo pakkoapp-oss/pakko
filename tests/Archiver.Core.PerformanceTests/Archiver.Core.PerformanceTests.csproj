@@ -25,6 +25,8 @@
     <ProjectReference Include="..\..\src\Archiver.Core\Archiver.Core.csproj" />
     <!-- T-F508: the litmus tool is copied beside the tests; LitmusPaperTests runs it. -->
     <ProjectReference Include="..\Archiver.Core.Litmus\Archiver.Core.Litmus.csproj" />
+    <!-- T-F529: raw names that differ from their decoded ones (CatalogMemoryBudgetTests). -->
+    <Compile Include="..\Archiver.Core.Tests\Helpers\LegacyZipBuilder.cs" Link="Helpers\LegacyZipBuilder.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -5,6 +5,7 @@ using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Core.Services.Zip;
 using Archiver.Core.Services.Zip.Decryption;
+using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
 
 namespace Archiver.Core.Tests.Services.Zip;
@@ -95,6 +96,24 @@ public sealed class ZipCatalogTests : IDisposable
 
         catalog.Entries(collisions: true).Select(e => (e.FullName, e.CollidesAfterDecoding))
             .Should().Equal(("é.txt", false), ("é.txt", true));
+    }
+
+    // T-F529 review: a long raw name is compared by its digest, not held; what collides still does.
+    [Theory]
+    [InlineData(32)]
+    [InlineData(33)]
+    [InlineData(60_000)]
+    public void Collision_OfLongRawNames_IsFound_AndTheSameRawNameIsNot(int rawLength)
+    {
+        byte[] Raw(char c) => Encoding.ASCII.GetBytes(new string(c, rawLength));
+        LegacyZipBuilder.Entry Named(byte[] raw) =>
+            new(raw, [], CentralExtra: LegacyZipBuilder.UnicodePathExtra(raw, "same.txt"u8.ToArray()));
+        string zip = LegacyZipBuilder.Write(Path.Combine(_folder, $"long{rawLength}.zip"),
+            Named(Raw('a')), Named(Raw('a')), Named(Raw('b')));
+
+        using var catalog = ZipCatalog.Open(zip, Us, ArchiveLimits.MaxEntries, batchEntries: 1, forceZip64Overlay: false);
+
+        catalog.Entries(collisions: true).Select(e => e.CollidesAfterDecoding).Should().Equal(false, false, true);
     }
 
     [Fact]

@@ -158,7 +158,7 @@ internal sealed class ZipCatalog : IDisposable
     /// </summary>
     public IEnumerable<NamedZipEntry> Entries(bool collisions = false, ZipLocate locate = ZipLocate.None)
     {
-        Dictionary<string, byte[]>? firstRawByName = collisions ? new(StringComparer.Ordinal) : null;
+        Dictionary<string, RawName>? firstRawByName = collisions ? new(StringComparer.Ordinal) : null;
         var names = new NameBudget(_maxNameChars);
         var batch = new List<CentralDirectoryRecord>(_batchEntries);
         long batchBytes = 0;
@@ -194,7 +194,7 @@ internal sealed class ZipCatalog : IDisposable
 
     // The batch's records are contiguous in the directory: one read copies them for the overlay.
     private IEnumerable<NamedZipEntry> ReadBatch(
-        List<CentralDirectoryRecord> records, int firstIndex, NameBudget names, Dictionary<string, byte[]>? firstRawByName, ZipLocate locate)
+        List<CentralDirectoryRecord> records, int firstIndex, NameBudget names, Dictionary<string, RawName>? firstRawByName, ZipLocate locate)
     {
         long start = records[0].RecordStart;
         byte[] raw = new byte[records[^1].RecordEnd - start];
@@ -240,14 +240,25 @@ internal sealed class ZipCatalog : IDisposable
         public void Take(int nameChars) => _chars = ArchiveLimits.CountName(_chars, nameChars, limit);
     }
 
-    private static bool Collides(Dictionary<string, byte[]>? firstRawByName, string name, byte[] rawName)
+    private static bool Collides(Dictionary<string, RawName>? firstRawByName, string name, byte[] rawName)
     {
         if (firstRawByName is null || name.EndsWith('/'))
             return false;
-        if (firstRawByName.TryGetValue(name, out byte[]? firstRaw))
-            return !firstRaw.AsSpan().SequenceEqual(rawName);
-        firstRawByName[name] = rawName;
+        if (firstRawByName.TryGetValue(name, out RawName first))
+            return first.Length != rawName.Length || !first.Bytes.AsSpan().SequenceEqual(RawName.Of(rawName).Bytes);
+        firstRawByName[name] = RawName.Of(rawName);
         return false;
+    }
+
+    // T-F529 review: a 0x7075 extra field can put a 64 KiB raw name behind a short decoded one, and
+    // the name limit counts the decoded names - so a raw name longer than its digest is kept as its
+    // SHA-256 (collision-resistant, as a crafted archive needs), never as itself.
+    private readonly record struct RawName(int Length, byte[] Bytes)
+    {
+        private const int KeptWhole = 32;
+
+        public static RawName Of(byte[] raw) =>
+            new(raw.Length, raw.Length <= KeptWhole ? raw : System.Security.Cryptography.SHA256.HashData(raw));
     }
 
     // T-F189: a local header that cannot be read leaves the batch without raw facts, not the read

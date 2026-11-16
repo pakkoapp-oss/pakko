@@ -15074,6 +15074,16 @@ earlier, up to three times). Past it, `MessageCode.CatalogTooLarge`. `StdOutLimi
 refusals apart: too many lines is `TooManyEntries`, too many bytes `CatalogTooLarge` - before, the
 bytes cap (1 GiB) also said "too many entries".
 
+**The fresh reviewer (2026-11-16) found one gap in that limit.** The collision set kept each name's
+first raw bytes, and a 0x7075 extra puts a 64 KiB raw name behind a short decoded one the limit
+counts: 600 such names were 37 MB live near a walk's end (`ZipCollisionCheck_RawNamesBehindShortOnes`,
+red before). A raw name over 32 bytes is now kept as its SHA-256 with its length (collision-resistant,
+as a crafted archive needs; a digest of a non-cryptographic hash could be forged to hide a collision).
+The scan closed a catalog refused by its counting walk only when the GC ran (the archive could not be
+deleted), and its second walk now reports a batch that fails to read again as unreadable instead of
+throwing. The oracle also runs one entry a batch and with the overlay's Zip64 records forced. The
+reviewer's P3s are T-F543.
+
 **Memory before and after (peak private bytes of the process, `pakko`'s own path through Core; empty
 entries named `d00000/f00000000.txt`; 2026-11-15 on main, 2026-11-16 on the branch).**
 

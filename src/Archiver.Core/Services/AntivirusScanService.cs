@@ -316,14 +316,6 @@ public sealed class AntivirusScanService : IAntivirusScanService
         try
         {
             catalog = ZipCatalog.Open(archivePath, codePages);
-            // T-F529: one walk counts the entries for the progress bar - and makes every check of
-            // the whole archive before any entry is scanned.
-            fileCount = 0;
-            foreach (NamedZipEntry e in catalog.Entries(locate: locate))
-            {
-                if (Scanned(e))
-                    fileCount++;
-            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
         {
@@ -333,6 +325,23 @@ public sealed class AntivirusScanService : IAntivirusScanService
 
         using (catalog)
         {
+            try
+            {
+                // T-F529: one walk counts the entries for the progress bar - and makes every check of
+                // the whole archive before any entry is scanned.
+                fileCount = 0;
+                foreach (NamedZipEntry e in catalog.Entries(locate: locate))
+                {
+                    if (Scanned(e))
+                        fileCount++;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Wrap(MessageCode.ScanCannotReadArchive, ex)));
+                return;
+            }
+
             // T-F194: an encrypted entry used to reach entry.Open() and fail as "Could not read
             // entry" — never scanned at all, which is exactly how password-protected malware
             // delivery evades AV. Now its decrypted plaintext is scanned when a password resolves.
@@ -343,38 +352,47 @@ public sealed class AntivirusScanService : IAntivirusScanService
                 : await ZipArchiveService.ResolveArchivePasswordAsync(archivePath, passwordResolver, codePages).ConfigureAwait(false);
 
             int entriesDone = 0;
-            foreach (NamedZipEntry named in catalog.Entries(locate: locate))
+            // A batch the counting walk read can still fail to read again (a share that went
+            // away): the archive is then unreadable, as when the first walk fails.
+            try
             {
-                if (!Scanned(named))
-                    continue;
-                ZipArchiveEntry entry = named.Entry;
-                cancellationToken.ThrowIfCancellationRequested();
-                // T-F151: reported BEFORE scanning starts, not just after — AmsiScanBuffer is one
-                // atomic call with no mid-call progress callback, so a large entry (up to the new
-                // 256 MiB cap) would otherwise leave the bar sitting on the PRIOR entry's
-                // percentage for the whole duration of its own scan. This at least advances the
-                // bar (and CurrentFile) to this entry's own starting position immediately, instead
-                // of only at the end of a potentially multi-second single scan.
-                reportProgress(named.FullName, entriesDone, fileCount);
-                try
+                foreach (NamedZipEntry named in catalog.Entries(locate: locate))
                 {
-                    ThreatFinding finding = named.Located is { GeneralPurposeEncryptedBit: true } located
-                        ? await ScanEncryptedEntryAsync(
-                            archivePath, named, located, rawArchiveStream!, password, scanner, cancellationToken)
-                            .ConfigureAwait(false)
-                        : await ScanOneEntryAsync(
-                            archivePath, named.FullName, entry.Length, () => VerifyingReadStream.OpenEntry(entry), scanner, cancellationToken)
-                            .ConfigureAwait(false);
-                    findings.Add(finding);
+                    if (!Scanned(named))
+                        continue;
+                    ZipArchiveEntry entry = named.Entry;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    // T-F151: reported BEFORE scanning starts, not just after — AmsiScanBuffer is one
+                    // atomic call with no mid-call progress callback, so a large entry (up to the new
+                    // 256 MiB cap) would otherwise leave the bar sitting on the PRIOR entry's
+                    // percentage for the whole duration of its own scan. This at least advances the
+                    // bar (and CurrentFile) to this entry's own starting position immediately, instead
+                    // of only at the end of a potentially multi-second single scan.
+                    reportProgress(named.FullName, entriesDone, fileCount);
+                    try
+                    {
+                        ThreatFinding finding = named.Located is { GeneralPurposeEncryptedBit: true } located
+                            ? await ScanEncryptedEntryAsync(
+                                archivePath, named, located, rawArchiveStream!, password, scanner, cancellationToken)
+                                .ConfigureAwait(false)
+                            : await ScanOneEntryAsync(
+                                archivePath, named.FullName, entry.Length, () => VerifyingReadStream.OpenEntry(entry), scanner, cancellationToken)
+                                .ConfigureAwait(false);
+                        findings.Add(finding);
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+                    {
+                        findings.Add(CoreMessages.Inconclusive(archivePath, named.FullName, CoreMessages.Wrap(MessageCode.ScanCannotReadEntry, ex)));
+                    }
+                    finally
+                    {
+                        reportProgress(named.FullName, ++entriesDone, fileCount);
+                    }
                 }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
-                {
-                    findings.Add(CoreMessages.Inconclusive(archivePath, named.FullName, CoreMessages.Wrap(MessageCode.ScanCannotReadEntry, ex)));
-                }
-                finally
-                {
-                    reportProgress(named.FullName, ++entriesDone, fileCount);
-                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                findings.Add(CoreMessages.Inconclusive(archivePath, null, CoreMessages.Wrap(MessageCode.ScanCannotReadArchive, ex)));
             }
         }
     }

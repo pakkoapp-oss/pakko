@@ -3,6 +3,7 @@ using System.Text;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Core.Services.Zip;
+using Archiver.Core.Tests.Helpers;
 using FluentAssertions;
 using Xunit.Abstractions;
 
@@ -56,6 +57,37 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
 
         probe.Halfway.Should().BeGreaterThan(0, "the filter saw the walk's middle");
         Report(probe.Before, probe.Halfway).Should().BeLessThanOrEqualTo(30, "measured 15 B in the first walk: one batch, no entry list");
+    }
+
+    // T-F529 review: the collision check keeps each name's first raw bytes, which a 0x7075 extra
+    // can make 64 KiB behind a short decoded name the name limit counts. Held raw, 600 such names
+    // were 36 MB live halfway through the walk.
+    [Fact]
+    public void ZipCollisionCheck_RawNamesBehindShortOnes_AreNotHeld()
+    {
+        const int count = 600;
+        var entries = new LegacyZipBuilder.Entry[count];
+        for (int i = 0; i < count; i++)
+        {
+            byte[] raw = Encoding.ASCII.GetBytes($"{i:D8}".PadRight(60_000, 'r'));
+            entries[i] = new LegacyZipBuilder.Entry(raw, [], CentralExtra: LegacyZipBuilder.UnicodePathExtra(raw, Encoding.UTF8.GetBytes($"f{i}.txt")));
+        }
+        string zip = LegacyZipBuilder.Write(Path.Combine(_folder, "raw.zip"), entries);
+        using var catalog = ZipCatalog.Open(zip, ZipNameCodePages.FromCodePages(437, 1252));
+        long before = GC.GetTotalMemory(forceFullCollection: true);
+        long halfway = 0;
+        int seen = 0;
+
+        foreach (NamedZipEntry entry in catalog.Entries(collisions: true))
+        {
+            entry.CollidesAfterDecoding.Should().BeFalse();
+            if (++seen == count - 1)
+                halfway = GC.GetTotalMemory(forceFullCollection: true);
+        }
+
+        long held = halfway - before;
+        output.WriteLine($"{count} raw names of 60,000 bytes: {held >> 10} KiB live near the walk's end");
+        held.Should().BeLessThan(6 << 20, "one batch (1 MiB of records) and a digest a name, not 36 MB of raw names");
     }
 
     // The live bytes before the operation starts and at the filter's call in the middle of the walk.
