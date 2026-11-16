@@ -115,7 +115,7 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
 
     // T-F542: the archive helper's extraction, measured as tar.exe's: one compact entry each, not the
     // helper's own listing beside it and a copy at every step.
-    [Fact]
+    [NativeX64Fact]
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public async Task HelperExtraction_WhileItSelects_HoldsAtMostItsBudgetPerEntry()
     {
