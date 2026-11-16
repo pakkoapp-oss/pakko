@@ -15084,3 +15084,65 @@ stream G (2026-10-31): the VM and the `windows` MCP replace the user's machine a
 - **Reported by:** the agent, 2026-11-08.
 - **Graduated 2026-11-16:** with T-F529: a test of 1,000,000 tar entries peaks at about 360 MiB (620 before), 4,000,000 at 1.4 GB.
 
+### T-F542 - The helper's reader holds its entries twice and copies them at every step (P2, the user, 2026-11-16)
+
+- [x] **Status:** done 2026-11-16 (batch 5f). One compact `Entry` an entry, built from the protocol's callback; steps as `int[]` positions; a later run's listing checked by a digest and its count. Halfway through an extraction: 294 -> 120 B an entry (`CatalogMemoryBudgetTests.HelperExtraction_WhileItSelects`). `HelperReader` keeps the helper's output (`_listed`, an
+  `ArchiveHelperEntry` per entry) and its own `Entry` list beside it, and each step makes a whole
+  copy more (`[.. entries.Where(...)]` for files, candidates, the selection, the scan's files, the
+  read's indices). Next: one array of compact entries (a name, its facts, flags), steps that walk it
+  or keep indices; `ArchiveHelperEntry` only as one line's parse. Counter test per step.
+- **Graduated 2026-11-16:** with batch 5f.
+
+### T-F541 - tar.exe's reader keeps names in several collections, and lists the quarantine whole (P2, the user, 2026-11-16)
+
+- [x] **Status:** done 2026-11-16 (batch 5f). `TarCatalog` (names, sizes by index); selection, filter, duplicates and the test's subset over indices; the quarantine walked into each check. Halfway through an extraction: 239 -> 92 B an entry (`CatalogMemoryBudgetTests`). After 5e, a scan before extraction keeps `names` and, keyed by the
+  same names again, `sizeByName` and `fileEntries`; a selection, the duplicates and the folders to
+  create build further sets of names (`ExpandSelection`, `DuplicateGroups`, `preCreated`), and the
+  quarantine is listed into arrays before it is moved or scanned. Next: one array of names (T-F539),
+  sizes and kinds by index; the sets the global checks need over indices; the quarantine walked a file
+  at a time into the move and the scan. Counter test: live bytes per entry of a tar extraction halfway,
+  as `ZipExtraction_WhileItWalks` measures a ZIP's.
+- **Graduated 2026-11-16:** with batch 5f.
+
+### T-F540 - A list hands every entry to its caller at once (P2, the user, 2026-11-16)
+
+- [x] **Status:** done 2026-11-16 (batch 5f). `ListEntriesAsync(path, onEntry, ct)` returning `ArchiveListSummary` on the router and both engines; the list form collects it; `pakko l` prints as it reads (`docs/CLI.md`, `CLI-066`). Streamed: ZIP 15, tar.exe 72, helper 2 B an entry (170-179 kept); `pakko l` of 1,000,000 ZIP entries peaks at 29 MiB on the device (1.10.0.30). `ListEntriesAsync` returns `ArchiveListResult` with a
+  `List<ArchiveEntryInfo>` of every entry (about 160 B a ZIP entry, 200 a tar one: 640 MiB live at
+  4,000,000), though `pakko l` prints them one by one and the App's browser shows one folder.
+  Next: a list that streams its entries to the caller (an `IAsyncEnumerable` or a callback, a batch at
+  a time; its errors still the result's), `pakko l` printing as it reads, the App building its compact
+  index from the stream (T-F535); `ArchiveListResult` kept for the callers that want every entry,
+  built on the stream. Contract change: rows in `CoreNeverThrowsContractTests`, Shell/CLI tests.
+- **Graduated 2026-11-16:** with batch 5f.
+
+### T-F539 - tar.exe's "-t" names are held three times while a listing reads them (P3, from T-F529)
+
+- [x] **Status:** done 2026-11-16 (batch 5f). `-t` read a line at a time, only the names kept; the printed bytes read again where names are sent back to tar.exe. Measured 2026-11-16 at 4,096 names of 32,000 characters (131
+  million, under T-F529's name limit): a tar list through tar.exe peaks at 1,140 MiB against 413 for
+  the same ZIP. The "-t" output is held as bytes (`_listingBytes`, for "-T"), the `MemoryStream` that
+  gathered them, a decoded text and the names split from it (`ReadBytesAsync`,
+  `TarNames.ReadListing`). Next: read "-t" a line at a time as "-tv" is since T-F529 (names and their
+  bytes kept once), with T-F418's whole-listing judgement unchanged; budget test in
+  `CatalogMemoryBudgetTests` at long names.
+- **Graduated 2026-11-16:** with batch 5f.
+
+### T-F536 - A scan of many small entries makes one AMSI call each and holds the listing (P2, from T-F529)
+
+- [x] **Status:** done 2026-11-16 (batch 5f). Measured by phase: tar.exe writing the quarantine is most of the time; AMSI is never called for an empty file, so no AMSI change. The quarantine walked as the scan reads it, each file opened once. Halfway: 660 -> 287 B an entry; a scan of 1,000,000 peaks at 281 MiB (700 before). The findings it still holds: T-F544. Measured 2026-11-15 (before 5e): scanning a tar of 1,000,000 empty
+  entries took 1,250 s and held 594 MiB live, through tar.exe and through the helper; 200,000 took
+  240-300 s. Each file is a separate `AmsiScanBuffer` call after it is copied out of the quarantine.
+  Next: measure where the time goes (the quarantine copy, the call, Defender's own work), then scan
+  small files in fewer calls where AMSI allows it (one session, `AmsiScanBuffer` per file but no
+  per-file open/close around it, or a content-only call for empty files), and walk the quarantine
+  instead of holding the listing. A detection must still name its entry.
+- **Graduated 2026-11-16:** with batch 5f.
+
+### T-F535 - The App's archive browser holds a tree of every entry (P2, from T-F529)
+
+- [x] **Status:** done 2026-11-16 (batch 5f). `ArchiveTreeIndex.Builder` from the streamed listing, one 48-byte row and one sorted position an entry; oracle against the old tree. 318 -> 116 B an entry; browsing 1,000,000-entry ZIP and tar.gz on the device (1.10.0.30): folders open, the right rows. Measured 2026-11-15: listing a ZIP of 1,000,000 entries holds 160 MiB
+  of `ArchiveEntryInfo`, and `ArchiveTreeIndex` adds 150 MiB more (311 MiB live, peak 1.15 GB before 5e);
+  a tar of the same holds 658 MiB. The browser shows one folder at a time. Next: a compact index
+  (names as one string pool, rows built only for the open folder, `ArchiveEntryInfo` not kept for
+  every entry), with the App's sort, search and selection unchanged; budget test in
+  `Archiver.App.Core.Tests`, device check of browsing a 1,000,000-entry archive.
+- **Graduated 2026-11-16:** with batch 5f.

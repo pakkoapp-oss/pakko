@@ -100,7 +100,8 @@ bypasses" is code that does an owner's job itself; it is listed in T-F511 and go
 | An archive entry's name on disk; one name Pakko writes (`SingleName`) | `Services/EntryDiskName` | 7-Zip's `Correct_FsPath`/`Get_Correct_FsFile_Name`; the device list of `ArchiveEntrySecurity` (judges every part strictly: Pakko writes every part trimmed, as 7-Zip; `InputPaths` judges the user's path by what Windows opens, where a folder in the middle keeps its spaces - DECISIONS, T-F511 PR 5) | its own tests; the path matrix (T-F512); `InputPathsOwnerTests` | - |
 | Entry traversal and device names | `Services/ArchiveEntrySecurity` | - | its own tests | - |
 | Default archive name, "name (1)", the folder an archive extracts into (`GetFolderName`) | `Services/ArchiveNaming` | `EntryDiskName.SingleName` for the folder | its own tests; the path matrix (T-F512) | - |
-| Reading tar.exe's formats (list, extract, test, scan) | `Sandbox/ISandboxedArchiveReader` (`TarExeReader`, `HelperReader`) over `TarSandboxScope` | `SandboxedProcessLauncher` (AppContainer, Job Object) | `SandboxedReaderOwnerTests` | - |
+| Reading tar.exe's formats (list, extract, test, scan) | `Sandbox/ISandboxedArchiveReader` (`TarExeReader`, `HelperReader`) over `TarSandboxScope` | `SandboxedProcessLauncher` (AppContainer, Job Object). T-F541/T-F542: each reader keeps one copy of each name (`TarCatalog`: names and sizes by index; the helper's `Entry[]`), every step as indices, the quarantine walked, never listed | `SandboxedReaderOwnerTests`, `CatalogMemoryBudgetTests` | - |
+| Handing a listing to its caller (T-F540) | `Services/ListingCallback` (`RunAsync`, `CollectAsync`) | - | `CoreNeverThrowsContractTests` (the streamed rows), `CatalogMemoryBudgetTests` | - |
 | Names tar.exe wrote in the quarantine, and the move out (T-F474: one handle checks and moves each file) | `Sandbox/QuarantineFiles` | literal `\\?\` paths | `QuarantineFilesOwnerTests` | - |
 | How many entries an archive may have (T-F513), and how many characters its names together (T-F529) | `ArchiveLimits`; a ZIP is read only through `Zip/ZipCatalog` (T-F529), which counts each name it decodes | `ZipArchive` builds every entry it expects; adds a refusal before that, by the declared count and the records there, and the same limits on tar.exe's listing (`StdOutLimit`: lines, then bytes) and the helper's | `ZipReadOwnerTests`, `ArchiveLimitsTests`, `EntryLimitTests` | - |
 | Where an extraction's quarantine goes: next to its destination on another volume than `%TEMP%`, or `%TEMP%` (T-F524) | `Sandbox/QuarantineLocation` | `GetVolumeInformationByHandleW`, `GetFinalPathNameByHandleW` | `QuarantineLocationTests`, `QuarantineFilesOwnerTests` | - |
@@ -868,6 +869,14 @@ public interface IArchiveService
     // failure is reported via ArchiveListResult.Success/ErrorMessage.
     Task<ArchiveListResult> ListEntriesAsync(
         string archivePath,
+        CancellationToken cancellationToken = default);
+
+    // T-F540: the same listing streamed - each entry to onEntry as it is read, in archive order,
+    // never kept. Success false: discard every entry passed. Throws only what onEntry threw, as
+    // it was thrown, and OperationCanceledException.
+    Task<ArchiveListSummary> ListEntriesAsync(
+        string archivePath,
+        Action<ArchiveEntryInfo> onEntry,
         CancellationToken cancellationToken = default);
 }
 ```
@@ -1680,6 +1689,16 @@ public sealed record ArchiveListResult
     public IReadOnlyList<ArchiveEntryInfo> Entries { get; init; } = [];
     public string? ErrorMessage { get; init; }
 }
+
+// Models/ArchiveListSummary.cs (T-F540): how a streamed listing ended; the entries went to the callback
+public sealed record ArchiveListSummary
+{
+    public bool Success { get; init; }
+    public long Count { get; init; }
+    public string? ErrorMessage { get; init; }
+    public CoreText? ErrorText { get; init; }
+    public static ArchiveListSummary Replay(ArchiveListResult listed, Action<ArchiveEntryInfo> onEntry);
+}
 ```
 
 `IArchiveService`/`ITarService` each gain:
@@ -1699,8 +1718,16 @@ GroupPolicyOptions)`):
 public interface IArchiveListingRouter
 {
     Task<ArchiveListResult> ListEntriesAsync(string archivePath, CancellationToken cancellationToken = default);
+    Task<ArchiveListSummary> ListEntriesAsync(string archivePath, Action<ArchiveEntryInfo> onEntry, CancellationToken cancellationToken = default); // T-F540
 }
 ```
+
+T-F540: the streamed form is the one each engine implements; the list form collects it
+(`ListingCallback.CollectAsync`). `IArchiveService` and `ITarService` have both forms too. ZIP
+checks its directory (`ZipCatalog.Check`) before the first entry; tar.exe pairs each `-tv` line
+with `-t`'s name at its position; the helper settles the names' code page by listings that pass
+nothing on, then passes one. `ListingCallback.RunAsync` carries what the callback throws past
+every reader catch and rethrows it unchanged.
 
 Implementation: `ArchiveListingRouter` in `Archiver.Core/Services/`. `TarSandboxedService.ListEntriesAsync`
 is built on the existing `RunTarAsync` primitive (`-tf` + `-tvf`), deliberately **not** reusing
@@ -1759,6 +1786,13 @@ public sealed record ArchiveEntryViewModel
 public static class ArchiveTreeIndex
 {
     public static ArchiveTree Build(IReadOnlyList<ArchiveEntryInfo> flatEntries);
+
+    public sealed class Builder // T-F535: fed by the streamed listing
+    {
+        public void Add(ArchiveEntryInfo entry);
+        public EncryptionSummary Encryption { get; }
+        public ArchiveTree Build(); // sorts: N log N, off the UI thread
+    }
 }
 
 public sealed class ArchiveTree
@@ -1767,12 +1801,12 @@ public sealed class ArchiveTree
 }
 ```
 
-`Build` synthesizes implied folder nodes from `/`-split paths (ZIP archives commonly have no
-explicit directory entries) and runs once per archive open, linear in the total path length —
-folder navigation afterward walks the path's segments, never a re-scan of the flat list, which
-matters at the 65,000+-entry scale this app's archives can reach (T-F20). A folder's rows (and
-their full-path strings) are made on its first visit only (T-F237: one string per ancestor was
-O(depth^2)).
+T-F535: the tree keeps one 48-byte row and one sorted position an entry (the entry's own path
+string, no node or dictionary per folder). Positions are sorted by the path (a leading '/' left
+out), then archive order, so a folder's subtree is one range found by binary search; implied
+folders (ZIP archives commonly have no directory entries) are made from the first entry below
+them. A folder's rows are made on its first visit only, and cached (T-F237). `MainViewModel`
+streams the listing into a `Builder` and drops it if the listing fails.
 
 `MainViewModel` (`Archiver.App`) gains an `IArchiveListingRouter` constructor dependency plus
 browser state (`IsBrowsingArchive`, `BrowsedArchivePath`, `CurrentFolderPath`,

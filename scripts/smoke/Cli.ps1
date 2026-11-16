@@ -1172,6 +1172,40 @@ Add-SmokeStep 'CLI-065' {
     'l, t and x refuse the archive, naming the limit'
 }
 
+# T-F540: pakko l prints each row as it is read; a list of 1,000,000 entries is never held.
+Add-SmokeStep 'CLI-066' {
+    $folder = Get-StepFolder 'cli066'
+    $zip = Join-Path $folder 'many.zip'
+    $count = 1000000
+    $stream = [System.IO.File]::Create($zip)
+    try {
+        $archive = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Create)
+        try {
+            for ($i = 0; $i -lt $count; $i++) {
+                $null = $archive.CreateEntry(('d{0:D5}/f{1:D8}.txt' -f [int][Math]::Floor($i / 1000), $i), [System.IO.Compression.CompressionLevel]::NoCompression)
+            }
+        }
+        finally { $archive.Dispose() }
+    }
+    finally { $stream.Dispose() }
+    $out = Join-Path $folder 'rows.txt'
+    $process = Start-Process -FilePath $Smoke.Pakko -ArgumentList @('l', "`"$zip`"") -RedirectStandardOutput $out -PassThru -NoNewWindow
+    $peak = 0
+    $rowsBeforeEnd = $false
+    while (-not $process.HasExited) {
+        try { $process.Refresh(); $peak = [Math]::Max($peak, $process.PrivateMemorySize64) } catch { <# exited between the check and the read #> }
+        if (-not $rowsBeforeEnd -and (Test-Path -LiteralPath $out) -and (Get-Item -LiteralPath $out).Length -gt 65536 -and -not $process.HasExited) { $rowsBeforeEnd = $true }
+        Start-Sleep -Milliseconds 100
+    }
+    $process.WaitForExit()
+    Assert-Smoke ($process.ExitCode -eq 0) "exit $($process.ExitCode)"
+    $rows = @(Select-String -LiteralPath $out -Pattern '	f	.*f\d{8}\.txt$').Count
+    Assert-Smoke ($rows -eq $count) "$rows rows of $count"
+    Assert-Smoke $rowsBeforeEnd 'no row was printed before the listing ended'
+    Assert-Smoke ($peak -lt 120MB) "peak private bytes $([int]($peak / 1MB)) MiB"
+    "$rows rows, printed as read; peak private $([int]($peak / 1MB)) MiB"
+}
+
 # T-F510: a recursive archive search stops at a folder Windows trims, as at one it cannot list.
 Add-SmokeStep 'CLI-063' {
     $folder = Get-StepFolder 'cli063'

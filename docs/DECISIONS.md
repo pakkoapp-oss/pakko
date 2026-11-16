@@ -14983,6 +14983,93 @@ A haiku sweep of 14 owners found seven more bypasses and no owner for error clas
 - **The `Hostile` "a trimmed name" kind** checks every public operation against a twin. A new
   operation inherits the check.
 
+## Batch 5f - everything in batches (T-F539, T-F541, T-F542, T-F540, T-F535, T-F536; 2026-11-16)
+
+The user (2026-11-16): "as chunked as possible wherever possible, no bloated collections". After
+T-F529 a ZIP was read in batches, but a list still handed every entry over at once, and tar.exe's and
+the helper's readers, the App's browser and the scan each kept their own copies. The rule of the
+batch: no collection the size of the archive except the one set of names the global checks need
+(T-F418/T-F441/T-F465, collisions, duplicates, 8.3 aliases, hard-link pairs), held once; everything
+else refers to it by index or streams. Every check and every error text is unchanged.
+
+**tar.exe's `-t` a line at a time (T-F539).** Each line is unescaped into its name as it arrives; the
+listing's text, its `MemoryStream` and its array of lines are gone. The printed bytes T-F465 compares
+are not kept: they are needed only where names are sent back to tar.exe (a selection), and there
+`-t` is read again (`EnsureSentAsListedAsync` already did when it had none). Chosen over keeping them
+in byte chunks: the second read costs one more `-t` on that path only, keeping them cost every list.
+
+**One copy of each name in the readers (T-F541, T-F542).** tar.exe's reader keeps `TarCatalog` (the
+names, each entry's size by index, -1 for a folder) and works on indices: the selection, the filter,
+duplicates, the files in scope, the test's subset. The quarantine is walked as each check reads it,
+never listed (`TarNames.JudgeExtracted` judges files and folders in one walk). The helper's reader
+keeps one compact `Entry` an entry, built as the protocol hands entries over, and its steps are
+`int[]` positions; a later run's listing is checked against the first by a digest chained over its
+"E" lines (`state = SHA256(state || SHA256(line))`) and the count, not by a second list.
+
+**A list streams (T-F540).** `ListEntriesAsync(path, onEntry, ct)` on the router and both engines
+returns an `ArchiveListSummary`; the list form collects it. Three choices:
+- ZIP checks its directory first (`ZipCatalog.Check`, a walk without .NET) and only then walks again
+  passing entries on, so the refusals of the walk come before the first row. A list walks twice;
+  at 1,000,000 entries the streamed list took 6.1 s and the list kept whole 6.3 s.
+- The helper's names may be decoded by a code page only the whole listing settles (T-F441). A row
+  printed cannot be taken back, so the helper first lists without passing anything on until the page
+  is settled, then lists once more in that page passing each entry: one more helper run where the
+  names are not UTF-8.
+- What the callback throws (a closed pipe under `pakko l | more`) reaches the caller as thrown, never
+  as the archive's error: `ListingCallback` wraps it in a private type that no reader catches and
+  unwraps it at the boundary. It is the only exception a listing throws besides cancellation.
+`pakko l` prints the header with the first row and an error after the rows already printed (exit 2,
+as 7-Zip), `# total` counting what was printed (`docs/CLI.md`).
+
+**The App's browser (T-F535).** `ArchiveTreeIndex.Builder` takes the streamed entries: the path
+(the same string) and a 48-byte row (optional fields as values beside one byte of flags, not a
+`Nullable` each: 72 bytes before), never the entry. `Build` sorts positions by path, a leading '/'
+left out, then archive order: a folder's subtree is one range found by binary search, and no node or
+dictionary is made per folder. The trap of ordinal order: ' ' sorts before '/', so "a/b c" stands
+between "a/b" and "a/b/x" - a segment's own entries and its subtree are two ranges, and "the first
+entry at a path wins" is the lower archive index of the two. The old tree is the oracle
+(`ArchiveTreeOracleTests`, fixed shapes and seeded random paths over every folder).
+
+**The tar scan (T-F536), measured first.** 200,000 empty entries, by phase: tar.exe writing the
+quarantine 159 s, asking each file's length 20 s, opening each 24 s; AMSI is never called for an
+empty file (T-F247), so no AMSI change was made and nothing needs `SECURITY.md`. The quarantine is
+walked as the scan reads it, and each file is opened once, its length read from the handle.
+
+**Live bytes an entry, halfway or once built (`CatalogMemoryBudgetTests`, `ArchiveTreeMemoryTests`;
+200,000 empty entries, 20,000 for the scan).**
+
+| Holder | Before | After |
+|---|---|---|
+| tar.exe extraction, halfway (T-F541) | 239 | 92 |
+| helper extraction, halfway (T-F542) | 294 | 120 |
+| streamed list, ZIP / tar.exe / helper (T-F540) | 170-179 (the list) | 15 / 72 / 2 |
+| the App's tree, its listing gone (T-F535) | 318 | 116 |
+| tar scan, halfway (T-F536) | 660 | 287 |
+
+**Peak private bytes of the process (`pakko`'s path through Core; empty entries named
+`d00000/f00000000.txt`).**
+
+| Mode | Archive | Before (T-F529's table) | After |
+|---|---|---|---|
+| list, streamed (`pakko l`) | ZIP, 1,000,000 | 279 MiB | 40 MiB (6.1 s) |
+| list, streamed | tar.gz, 1,000,000 | about 375 MiB | 99 MiB (20.4 s) |
+| list, streamed | ZIP, 4,000,000 | 1,036 MiB | 40 MiB |
+| list, streamed | tar.gz, 4,000,000 | 1,358 MiB | 351 MiB |
+| list kept whole | tar.gz, 1,000,000 | about 375 MiB | 198 MiB |
+| the App's tree | ZIP, 1,000,000 | 368 MiB | 237 MiB |
+| the App's tree | tar.gz, 1,000,000 | 506 MiB | 233 MiB |
+| the App's tree | ZIP, 4,000,000 | 1,385 MiB | 858 MiB |
+| the App's tree | tar.gz, 4,000,000 | - | 880 MiB |
+| test | tar.gz, 1,000,000 | about 360 MiB | 227 MiB |
+| scan | tar.gz, 1,000,000 | 700 MiB (1,255 s) | 281 MiB (1,307 s) |
+
+The scan's time is tar.exe writing the quarantine, as measured above. What it still holds at the end
+is its result: a `ThreatFinding` for every entry, clean ones included (206 MiB live at 1,000,000) -
+the public result's shape, left to T-F544.
+
+`pakko l` itself (the Debug build, stdout to a file): the first rows after 6 s of a 1,000,000-entry
+ZIP, 38 MiB peak (`CLI-066`).
+
 ## T-F529 - reading a ZIP in batches (2026-11-15)
 
 The user asked whether every entry of an archive must be held at once. For a ZIP it was: .NET's

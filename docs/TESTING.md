@@ -1014,7 +1014,12 @@ reader it replaced (`Services/Zip/Legacy/`) must agree on verdict, names, sizes,
 bytes or error. In the performance project, `CatalogMemoryBudgetTests` (`Category=Slow`, its own
 non-parallel collection) asserts the live bytes an archive's catalog holds per entry (200,000 empty
 entries: a ZIP list, a tar.exe list, and a ZIP test and extraction measured halfway through their
-walk, from the entry filter: 592 and 618 B before T-F529, 93 and 15 B after). T-F196 added
+walk, from the entry filter: 592 and 618 B before T-F529, 93 and 15 B after). Batch 5f adds a tar.exe
+and a helper extraction halfway (T-F541, T-F542), a streamed list of each reader (T-F540) and a tar
+scan halfway, from its progress (T-F536); `Archiver.App.Core.Tests`' `ArchiveTreeMemoryTests` (its
+own non-parallel collection) bounds the browser's index once its listing is gone, and
+`ArchiveTreeOracleTests` checks that index against a frozen copy of the tree it replaced
+(`LegacyArchiveTree`), every folder of fixed shapes and seeded random path sets (T-F535). T-F196 added
 `ExternalTarFixtureBuilder.CreateCompressedTarOfDotRoot` (the everyday `tar -C dir .` shape) and
 three `ExtractAsync_DotRoot*_MatchesPlainArchiveTree` parity tests.
 
