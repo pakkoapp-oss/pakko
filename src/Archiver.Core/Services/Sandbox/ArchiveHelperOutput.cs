@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using Archiver.Core.Models;
 
@@ -78,6 +79,8 @@ internal sealed class ArchiveHelperOutput
     private readonly int _nameCharLimit;
     private long _nameChars;
     private readonly List<ArchiveHelperEntry> _entries = [];
+    private readonly Action<ArchiveHelperEntry>? _onEntry;
+    private readonly byte[] _digest = new byte[32];
     private readonly HashSet<long> _warned = [];
     private readonly List<string> _missingExports = [];
     private readonly Dictionary<string, int?> _capabilities = new(StringComparer.Ordinal);
@@ -92,6 +95,8 @@ internal sealed class ArchiveHelperOutput
     private bool _ended;
 
     /// <param name="mode">The mode the helper ran in.</param>
+    /// <param name="onEntry">T-F542: called for each entry as it arrives, which is then not kept in
+    /// <see cref="Entries"/>; its count and <see cref="ListingDigest"/> still are.</param>
     /// <param name="onRead">Called for each "K" line with the entry's index and its bytes, as it arrives.</param>
     /// <param name="onReading">Test: called for each "P" line with the entry's index and how far its read got.</param>
     /// <param name="entryLimit">T-F513: the most entries Pakko takes; the next one fails the run with
@@ -99,8 +104,10 @@ internal sealed class ArchiveHelperOutput
     /// <param name="nameCharLimit">T-F529: the most characters the entries' names and link targets may
     /// have together; past it, <see cref="ArchiveLimits.CatalogTooLarge"/>. Lowered only by tests.</param>
     public ArchiveHelperOutput(ArchiveHelperMode mode, Action<long, long>? onRead = null, Action<long, long>? onReading = null,
-        int entryLimit = ArchiveLimits.MaxEntries, int nameCharLimit = ArchiveLimits.MaxCatalogNameChars)
+        int entryLimit = ArchiveLimits.MaxEntries, int nameCharLimit = ArchiveLimits.MaxCatalogNameChars,
+        Action<ArchiveHelperEntry>? onEntry = null)
     {
+        _onEntry = onEntry;
         _entryLimit = entryLimit;
         _nameCharLimit = nameCharLimit;
         _onReading = onReading;
@@ -117,8 +124,18 @@ internal sealed class ArchiveHelperOutput
     /// <summary>Probe: each support_* call's return, null where the DLL lacks the export.</summary>
     public IReadOnlyDictionary<string, int?> Capabilities => _capabilities;
 
-    /// <summary>The entries in archive order; an entry's index is its position.</summary>
+    /// <summary>The entries in archive order; an entry's index is its position. Empty for a run given an onEntry.</summary>
     public IReadOnlyList<ArchiveHelperEntry> Entries => _entries;
+
+    /// <summary>T-F542: the entries listed, kept or not.</summary>
+    public long EntryCount { get; private set; }
+
+    /// <summary>
+    /// T-F542: SHA-256 chained over the "E" lines as they came, each line's own hash after the hash so
+    /// far: two runs listed the same entries, field for field and in order, exactly when their
+    /// digests and counts agree - without either run's entries held to compare.
+    /// </summary>
+    public ReadOnlySpan<byte> ListingDigest => _digest;
 
     /// <summary>Indices whose header came with ARCHIVE_WARN.</summary>
     public IReadOnlySet<long> Warned => _warned;
@@ -149,6 +166,16 @@ internal sealed class ArchiveHelperOutput
             throw Broken("no version line first");
         _pastPreamble = true;
         TakeBody(fields);
+        if (fields[0] == "E")
+            ChainDigest(line);
+    }
+
+    private void ChainDigest(ReadOnlySpan<byte> line)
+    {
+        Span<byte> pair = stackalloc byte[64];
+        _digest.CopyTo(pair);
+        SHA256.HashData(line, pair[32..]);
+        SHA256.HashData(pair, _digest);
     }
 
     // "V" first, then any "X": true when the line was one of them.
@@ -237,7 +264,7 @@ internal sealed class ArchiveHelperOutput
     private void TakeWarning(string[] fields)
     {
         long index = Unsigned(fields[1], MaxEntries - 1);
-        if (index != _entries.Count || !_warned.Add(index))
+        if (index != EntryCount || !_warned.Add(index))
             throw Broken("a warning not for the next entry");
         _ = Signed(fields[2], int.MinValue, int.MaxValue);
         _ = Hex8(fields[3], MaxMessageBytes);
@@ -247,10 +274,10 @@ internal sealed class ArchiveHelperOutput
     {
         // The limit first: at ArchiveLimits.MaxEntries = MaxEntries, the entry past it has an index
         // the protocol does not allow, and must read as too many entries, not a broken helper.
-        if (_entries.Count >= _entryLimit)
+        if (EntryCount >= _entryLimit)
             throw ArchiveLimits.TooManyEntries(_entryLimit);
         long index = Unsigned(f[1], MaxEntries - 1);
-        if (index != _entries.Count)
+        if (index != EntryCount)
             throw Broken("an entry index out of sequence");
         int fileType = (int)Unsigned(f[2], ushort.MaxValue);
         long? size = f[3] == "-" ? null : Unsigned(f[3], MaxEntrySize);
@@ -269,13 +296,18 @@ internal sealed class ArchiveHelperOutput
         string? name = Hex16(f[8]);
         string? link = Hex16(f[9]);
         _nameChars = ArchiveLimits.CountName(_nameChars, (name?.Length ?? 0) + (link?.Length ?? 0), _nameCharLimit);
-        _entries.Add(new ArchiveHelperEntry(index, fileType, size, mtime, nanoseconds, encrypted, sparse, name, link));
+        var entry = new ArchiveHelperEntry(index, fileType, size, mtime, nanoseconds, encrypted, sparse, name, link);
+        EntryCount++;
+        if (_onEntry is { } onEntry)
+            onEntry(entry);
+        else
+            _entries.Add(entry);
     }
 
     private void TakeRead(string[] fields)
     {
         long index = Unsigned(fields[1], MaxEntries - 1);
-        if (index >= _entries.Count || index <= _lastRead)
+        if (index >= EntryCount || index <= _lastRead)
             throw Broken("a read entry not listed or out of order");
         long bytes = Unsigned(fields[2], MaxEntrySize);
         if (_readingIndex >= 0 && (index != _readingIndex || bytes < _readingBytes))
@@ -291,7 +323,7 @@ internal sealed class ArchiveHelperOutput
     private void TakeReading(string[] fields)
     {
         long index = Unsigned(fields[1], MaxEntries - 1);
-        if (index >= _entries.Count || index <= _lastRead || (_readingIndex >= 0 && index != _readingIndex))
+        if (index >= EntryCount || index <= _lastRead || (_readingIndex >= 0 && index != _readingIndex))
             throw Broken("progress of an entry not listed, already read, or not the one being read");
         long bytes = Unsigned(fields[2], MaxEntrySize);
         if (bytes <= (_readingIndex == index ? _readingBytes : 0))
@@ -342,7 +374,7 @@ internal sealed class ArchiveHelperOutput
     }
 
     // "-" null, "." empty, else uppercase hex, four digits per UTF-16 code unit. A lone surrogate is
-    // kept as it is: the reader refuses such a name (HelperReader.FirstUnsafeName), the parser only reads it.
+    // kept as it is: the reader's scan refuses such a name (HelperReader), the parser only reads it.
     private static string? Hex16(string s)
     {
         if (s == "-")

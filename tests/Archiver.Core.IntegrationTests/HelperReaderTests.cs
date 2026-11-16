@@ -315,16 +315,21 @@ public sealed class HelperReaderTests : IDisposable
     {
         ArchiveHelperOutput first = Listed("E 0 32768 3 - 0 0 0 0061 -", "E 1 32768 2 - 0 0 0 0062 -");
         (long, long, bool)[] both = [(0, 3, false), (1, 2, false)];
+        byte[] digest = first.ListingDigest.ToArray();
 
-        HelperReader.EnsureListingAndReadsAgree(first.Entries, both, Run("E 0 32768 3 - 0 0 0 0061 -", "K 0 3", "E 1 32768 2 - 0 0 0 0062 -", "K 1 2"));
+        HelperReader.EnsureListingAndReadsAgree(digest, first.EntryCount, both, Run("E 0 32768 3 - 0 0 0 0061 -", "K 0 3", "E 1 32768 2 - 0 0 0 0062 -", "K 1 2"));
 
-        Action renamed = () => HelperReader.EnsureListingAndReadsAgree(first.Entries, both,
+        Action renamed = () => HelperReader.EnsureListingAndReadsAgree(digest, first.EntryCount, both,
             Run("E 0 32768 3 - 0 0 0 0063 -", "K 0 3", "E 1 32768 2 - 0 0 0 0062 -", "K 1 2"));
-        Action oneMissing = () => HelperReader.EnsureListingAndReadsAgree(first.Entries, both,
+        // T-F542: the digest stands for the listing; one entry more past the first's is a different listing.
+        Action oneMore = () => HelperReader.EnsureListingAndReadsAgree(digest, first.EntryCount, both,
+            Run("E 0 32768 3 - 0 0 0 0061 -", "K 0 3", "E 1 32768 2 - 0 0 0 0062 -", "K 1 2", "E 2 32768 1 - 0 0 0 0063 -"));
+        Action oneMissing = () => HelperReader.EnsureListingAndReadsAgree(digest, first.EntryCount, both,
             Run("E 0 32768 3 - 0 0 0 0061 -", "K 0 3", "E 1 32768 2 - 0 0 0 0062 -"));
-        Action shortRead = () => HelperReader.EnsureListingAndReadsAgree(first.Entries, both,
+        Action shortRead = () => HelperReader.EnsureListingAndReadsAgree(digest, first.EntryCount, both,
             Run("E 0 32768 3 - 0 0 0 0061 -", "K 0 2", "E 1 32768 2 - 0 0 0 0062 -", "K 1 2"));
         renamed.Should().Throw<ArchiveHelperProtocolException>().WithMessage("*second listing*");
+        oneMore.Should().Throw<ArchiveHelperProtocolException>().WithMessage("*second listing*");
         oneMissing.Should().Throw<ArchiveHelperProtocolException>().WithMessage("*not the selection*");
         shortRead.Should().Throw<ArchiveHelperProtocolException>().WithMessage("*declared size*");
     }

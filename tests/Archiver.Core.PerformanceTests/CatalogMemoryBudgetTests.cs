@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Text;
+using Archiver.Core.IntegrationTests;
 using Archiver.Core.Models;
 using Archiver.Core.Services;
 using Archiver.Core.Services.Sandbox;
@@ -110,6 +111,37 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
 
         probe.Halfway.Should().BeGreaterThan(0, "the filter saw the names' middle");
         Report(probe.Before, probe.Halfway).Should().BeLessThanOrEqualTo(100, "the names (about 64 B each), their array and their sizes");
+    }
+
+    // T-F542: the archive helper's extraction, measured as tar.exe's: one compact entry each, not the
+    // helper's own listing beside it and a copy at every step.
+    [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    public async Task HelperExtraction_WhileItSelects_HoldsAtMostItsBudgetPerEntry()
+    {
+        string tar = TarGzOfEmptyEntries();
+        var service = new TarSandboxedService(new GroupPolicyOptions()) { Helper = HelperSetupFor(tar) };
+        var probe = new HalfwayProbe(Entries, pass: false);
+
+        await service.ExtractAsync(new ExtractOptions
+        {
+            ArchivePaths = [tar],
+            DestinationFolder = Path.Combine(_folder, "out"),
+            EntryFilter = probe.Filter,
+        });
+
+        probe.Halfway.Should().BeGreaterThan(0, "the filter saw the names' middle");
+        Report(probe.Before, probe.Halfway).Should().BeLessThanOrEqualTo(140, "a name (about 64 B) and its entry");
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static HelperSetup HelperSetupFor(string archive)
+    {
+        using TarSandboxScope scope = TarSandboxScope.CreateAsync(archive, false, CancellationToken.None, helperSource: ArchiveHelperBuild.ExePath)
+            .GetAwaiter().GetResult();
+        var output = new ArchiveHelperOutput(ArchiveHelperMode.Probe);
+        scope.RunHelperAsync(ArchiveHelperMode.Probe, [], null, output, CancellationToken.None).GetAwaiter().GetResult();
+        return new HelperSetup(ArchiveHelperBuild.ExePath, output.Capabilities);
     }
 
     // The live bytes before the operation starts and at the filter's call in the middle of the walk.
