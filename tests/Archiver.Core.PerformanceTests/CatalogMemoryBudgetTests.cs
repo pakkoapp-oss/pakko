@@ -118,6 +118,25 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
         perEntry.Should().BeLessThanOrEqualTo(260, "the same as a caller with a context: 210 B");
     }
 
+    // T-F529: what a tar list allocates on the way, its passing copies (tar.exe's output as text,
+    // its lines) - a deterministic stand-in for the peak, which the process measures only once.
+    [Fact]
+    public async Task TarListing_AllocatesAtMostItsBudgetPerEntry()
+    {
+        string tar = TarGzOfEmptyEntries();
+        var service = new TarSandboxedService(new GroupPolicyOptions());
+        (await service.ListEntriesAsync(tar)).Success.Should().BeTrue("a first list pays the one-time costs");
+
+        long before = GC.GetTotalAllocatedBytes(precise: true);
+        ArchiveListResult listed = await service.ListEntriesAsync(tar);
+        long allocated = GC.GetTotalAllocatedBytes(precise: true) - before;
+
+        listed.Entries.Should().HaveCount(Entries, listed.ErrorMessage);
+        long perEntry = allocated / Entries;
+        output.WriteLine($"{Entries} entries: {allocated >> 20} MiB allocated, {perEntry} B an entry");
+        perEntry.Should().BeLessThanOrEqualTo(2_400, "measured 1,950 B; 3,202 with -tv read as one text and its lines");
+    }
+
     private long LivePerEntry<T>(Func<T> hold, Action<T> release)
     {
         long before = GC.GetTotalMemory(forceFullCollection: true);

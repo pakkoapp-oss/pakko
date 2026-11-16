@@ -28,12 +28,20 @@ internal static partial class TarListingDate
     /// <summary>The user locale's twelve month abbreviations, or none when Windows cannot say.</summary>
     public static IReadOnlyList<string> UserMonthNames { get; } = ReadUserMonthNames();
 
-    public static TarListedDate? Parse(string line, IReadOnlyList<string> monthNames, DateTime now)
+    public static TarListedDate? Parse(string line, IReadOnlyList<string> monthNames, DateTime now) =>
+        Parse(Fields(line), MonthFields(monthNames), now);
+
+    /// <summary>A "-tv" line's columns, split at white space.</summary>
+    internal static string[] Fields(string line) => line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+
+    /// <summary>T-F529: each month name's words, split once for a whole listing rather than once a line.</summary>
+    internal static string[][] MonthFields(IReadOnlyList<string> monthNames) => [.. monthNames.Select(Fields)];
+
+    internal static TarListedDate? Parse(string[] fields, string[][] months, DateTime now)
     {
-        string[] fields = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-        for (int month = 1; month <= monthNames.Count; month++)
+        for (int month = 1; month <= months.Length; month++)
         {
-            string[] monthFields = monthNames[month - 1].Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            string[] monthFields = months[month - 1];
             int dayColumn = DateColumn + monthFields.Length;
             if (monthFields.Length == 0 || fields.Length <= dayColumn + 1)
                 continue;

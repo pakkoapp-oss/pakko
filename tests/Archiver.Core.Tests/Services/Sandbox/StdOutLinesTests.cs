@@ -69,6 +69,19 @@ public sealed class StdOutLinesTests
         (await run.Should().ThrowAsync<IOException>()).WithMessage("*longer than 8*");
     }
 
+    // T-F529: tar.exe's "-tv", read before as one text, needed no '\n' after its last line.
+    [Fact]
+    public async Task AnOpenLastLine_IsGiven_WhenTheCallerAllowsIt()
+    {
+        var lines = new List<string>();
+        using var stream = new MemoryStream(Encoding.ASCII.GetBytes("a\nb"));
+
+        await SandboxedProcessLauncher.ReadLinesWithinAsync(stream,
+            new StdOutLines(l => lines.Add(Encoding.ASCII.GetString(l)), 16, 100, LastLineMayBeOpen: true), CancellationToken.None);
+
+        lines.Should().Equal("a", "b");
+    }
+
     private static async Task Read(string text, int maxLine, long maxTotal)
     {
         using var stream = new MemoryStream(Encoding.ASCII.GetBytes(text));

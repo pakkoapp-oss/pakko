@@ -41,18 +41,19 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 
     public async Task<ArchiveListResult> ListAsync(CancellationToken cancellationToken)
     {
-        (string[]? names, ArchiveListResult? nameError) = await RunListingCommandAsync(_scope, verbose: false, cancellationToken).ConfigureAwait(false);
+        (string[]? names, ArchiveListResult? nameError) = await RunNameListingAsync(_scope, cancellationToken).ConfigureAwait(false);
         if (nameError is not null)
             return nameError;
 
-        (string[]? typeLines, ArchiveListResult? typeError) = await RunListingCommandAsync(_scope, verbose: true, cancellationToken).ConfigureAwait(false);
-        if (typeError is not null)
-            return typeError;
+        var listing = new VerboseListing(_scope.OutputEncoding, withDates: true);
+        (int exitCode, string stdErr) = await _scope.ListVerboseAsync(listing.OnLine, cancellationToken).ConfigureAwait(false);
+        if (exitCode != 0)
+            return ListFailure(stdErr);
 
-        if (typeLines.Length != names.Length)
+        if (listing.Count != names.Length)
             return CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent));
 
-        return new ArchiveListResult { Success = true, Entries = BuildEntryList(names, typeLines) };
+        return new ArchiveListResult { Success = true, Entries = BuildEntryList(names, listing) };
     }
 
     public async Task<ReaderCatalog> ScanAsync(CancellationToken cancellationToken)
@@ -478,12 +479,12 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         if (unsafeName != null)
             throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarUnsafeEntryPath, unsafeName));
 
-        (int typeExitCode, string? typeStdOut, string? typeStdErr) = await scope.ListAsync(verbose: true, cancellationToken).ConfigureAwait(false);
+        var listing = new VerboseListing(scope.OutputEncoding, withDates: false);
+        (int typeExitCode, string typeStdErr) = await scope.ListVerboseAsync(listing.OnLine, cancellationToken).ConfigureAwait(false);
         if (typeExitCode != 0)
             throw new CoreTextIOException(CoreMessages.Text(MessageCode.CannotReadArchive, DescribeFailure(typeStdErr)));
 
-        string[] typeLines = SplitLines(typeStdOut);
-        if (typeLines.Length != names.Length)
+        if (listing.Count != names.Length)
             throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarListingInconsistent));
 
         // T-F90: column 4 (size) is accumulated alongside the existing column-0 (type) check in
@@ -501,10 +502,9 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         // same-named entries each need their own.
         var fileEntries = new List<(string Name, long Size)>();
 
-        for (int i = 0; i < typeLines.Length; i++)
+        for (int i = 0; i < listing.Count; i++)
         {
-            string line = typeLines[i];
-            char typeChar = line.Length > 0 ? line[0] : '?';
+            char typeChar = listing.Types[i];
             if (typeChar != '-' && typeChar != 'd')
                 throw new TarArchiveRejectedException(CoreMessages.Text(MessageCode.TarSpecialEntry));
 
@@ -515,7 +515,7 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
 
             if (typeChar == '-')
             {
-                long size = ParseTarListingSize(line);
+                long size = listing.Sizes[i];
                 totalDeclaredSize += size;
                 sizeByName[names[i]] = size;
                 fileEntries.Add((names[i], size));
@@ -569,31 +569,52 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         return allNames.Contains(dotted) || allNames.Contains(dotted + "/") ? dotted : requested;
     }
 
-    // Runs one of ListEntriesAsync's two tar.exe listing calls ("-tf" for names, "-tvf" for
-    // type/size lines) and maps a nonzero exit code to an ArchiveListResult the same way both
-    // calls already did identically. Error is non-null exactly when the call failed.
-    private static async Task<(string[] Lines, ArchiveListResult? Error)> RunListingCommandAsync(
-        TarSandboxScope scope, bool verbose, CancellationToken cancellationToken)
+    // ListEntriesAsync's "-tf" call; Error is non-null exactly when it failed.
+    private static async Task<(string[] Names, ArchiveListResult? Error)> RunNameListingAsync(
+        TarSandboxScope scope, CancellationToken cancellationToken)
     {
-        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(verbose, cancellationToken).ConfigureAwait(false);
+        (int exitCode, string? stdOut, string? stdErr) = await scope.ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
         if (exitCode != 0)
-        {
-            return ([], CoreMessages.ListFailure(IsLikelyEncryptionFailure(stdErr)
-                ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
-                : DescribeFailure(stdErr)));
-        }
+            return ([], ListFailure(stdErr));
 
-        if (verbose)
-            return (SplitLines(stdOut), null);
         // T-F418: the "-t" names as the entries have them; the "-tv" lines are read by column only.
         return TarNames.ReadListing(stdOut, scope.OutputEncoding) is { } names
             ? (names, null)
             : ([], CoreMessages.ListFailure(CoreMessages.Text(MessageCode.ListingInconsistent)));
     }
 
-    private static List<ArchiveEntryInfo> BuildEntryList(string[] names, string[] typeLines)
+    private static ArchiveListResult ListFailure(string stdErr) =>
+        CoreMessages.ListFailure(IsLikelyEncryptionFailure(stdErr)
+            ? CoreMessages.Text(MessageCode.PasswordProtectedFormatNotSupported)
+            : DescribeFailure(stdErr));
+
+    // T-F529: the columns of each "-tv" line as it arrives - its type, its size and, for a list, its
+    // date - never the lines themselves. A line is the text between two '\n', its '\r' dropped; an
+    // empty one is no entry (T-F419: the name's own spaces stay).
+    private sealed class VerboseListing(Encoding encoding, bool withDates)
     {
-        DateTime now = DateTime.Now;
+        private readonly DateTime _now = DateTime.Now;
+        private readonly string[][] _months = TarListingDate.MonthFields(TarListingDate.UserMonthNames);
+        public List<char> Types { get; } = [];
+        public List<long> Sizes { get; } = [];
+        public List<TarListedDate?> Dates { get; } = [];
+        public int Count => Types.Count;
+
+        public void OnLine(ReadOnlySpan<byte> bytes)
+        {
+            string line = encoding.GetString(bytes.TrimEnd((byte)'\r'));
+            if (line.Length == 0)
+                return;
+            string[] fields = TarListingDate.Fields(line);
+            Types.Add(line[0]);
+            Sizes.Add(line[0] == '-' ? ParseTarListingSize(fields) : 0);
+            if (withDates)
+                Dates.Add(TarListingDate.Parse(fields, _months, _now));
+        }
+    }
+
+    private static List<ArchiveEntryInfo> BuildEntryList(string[] names, VerboseListing listing)
+    {
         var entries = new List<ArchiveEntryInfo>(names.Length);
         for (int i = 0; i < names.Length; i++)
         {
@@ -604,12 +625,12 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
             if (path.Length == 0)
                 continue;
 
-            char typeChar = typeLines[i].Length > 0 ? typeLines[i][0] : '?';
-            TarListedDate? modified = TarListingDate.Parse(typeLines[i], TarListingDate.UserMonthNames, now);
+            char typeChar = listing.Types[i];
+            TarListedDate? modified = listing.Dates[i];
             entries.Add(new ArchiveEntryInfo
             {
                 Path = path,
-                Size = typeChar == '-' ? ParseTarListingSize(typeLines[i]) : 0,
+                Size = listing.Sizes[i],
                 Modified = modified?.Value,
                 ModifiedHasTime = modified?.HasTime ?? true,
                 IsDirectory = typeChar == 'd',

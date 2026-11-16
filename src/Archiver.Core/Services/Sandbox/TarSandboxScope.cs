@@ -61,6 +61,9 @@ internal sealed partial class TarSandboxScope : IDisposable
     // A listing of 4,000,000 entries with long names stays far below this; it bounds what a
     // compromised helper can make Pakko read.
     private const long MaxHelperStdOutBytes = 1L << 30;
+    // T-F529: one "-tv" line - a name Windows can write is at most 32,767 UTF-16 units: 3 UTF-8 bytes
+    // each, 12 once tar.exe escapes every byte as \ooo, plus the columns before it.
+    private const int MaxVerboseLineBytes = 1 << 20;
 
     private const uint GenericRead = 0x80000000;
     private const uint FileShareRead = 0x00000001;
@@ -330,6 +333,20 @@ internal sealed partial class TarSandboxScope : IDisposable
         return await RunAsync(mode, [], cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// T-F529: "-tv" handed over a line at a time (without its '\n'), never held as one text: at
+    /// 1,000,000 entries the text and its lines were 300 MB of a list's peak. The header charset is
+    /// the plain listing's, run first when nothing ran yet.
+    /// </summary>
+    public async Task<(int ExitCode, string StdErr)> ListVerboseAsync(StdOutLineHandler onLine, CancellationToken cancellationToken)
+    {
+        if (_utf8Headers is null)
+            await ListAsync(verbose: false, cancellationToken).ConfigureAwait(false);
+        var lines = new StdOutLines(onLine, MaxVerboseLineBytes, ArchiveLimits.MaxListingBytes, LastLineMayBeOpen: true);
+        (int exitCode, _, string stdErr) = await RunAsync("-tv", [], cancellationToken, stdOutLines: lines).ConfigureAwait(false);
+        return (exitCode, stdErr);
+    }
+
     /// <summary>Extracts the archive, or only <paramref name="members"/>, into <see cref="OutputDirectory"/>.</summary>
     public async Task<(int ExitCode, string StdOut, string StdErr)> ExtractAsync(
         IReadOnlyList<string>? members, CancellationToken cancellationToken)
@@ -509,7 +526,8 @@ internal sealed partial class TarSandboxScope : IDisposable
     // One tar.exe run inside this scope's AppContainer, under a fresh Job Object (ActiveProcessLimit
     // = 1, RAM/CPU limits), reading the archive from its own handle with its own file position.
     private async Task<(int ExitCode, string StdOut, string StdErr)> RunAsync(
-        string mode, IReadOnlyList<string> arguments, CancellationToken cancellationToken, Action<int>? onStdOutDiscarded = null)
+        string mode, IReadOnlyList<string> arguments, CancellationToken cancellationToken, Action<int>? onStdOutDiscarded = null,
+        StdOutLines? stdOutLines = null)
     {
         string[] headerCharset = _utf8Headers == true ? ["--options", Utf8HeaderOption] : [];
         bool plainListing = mode == "-t";
@@ -536,7 +554,8 @@ internal sealed partial class TarSandboxScope : IDisposable
                 [mode, "-f", "-", .. headerCharset, .. arguments],
                 new ProcessLaunchOptions(AppContainerSid: _sid, Job: job.Handle, StdIn: stdIn, WorkingDirectory: QuarantineRoot,
                     OutputEncoding: OutputEncoding, OnStdOutDiscarded: onStdOutDiscarded,
-                    OnStdOutBytes: plainListing ? bytes => listing = bytes : null, StdOutLimit: listingLimit),
+                    OnStdOutBytes: plainListing ? bytes => listing = bytes : null, StdOutLimit: listingLimit,
+                    StdOutLines: stdOutLines),
                 cancellationToken)
                 .ConfigureAwait(false);
             if (plainListing)

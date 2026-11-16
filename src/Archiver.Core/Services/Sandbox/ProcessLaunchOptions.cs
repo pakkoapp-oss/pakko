@@ -41,8 +41,10 @@ internal delegate void StdOutLineHandler(ReadOnlySpan<byte> line);
 /// T-F470: stdout as lines, for a child Pakko does not trust. A line longer than
 /// <paramref name="MaxLineBytes"/>, more than <paramref name="MaxTotalBytes"/> in all, output that ends
 /// inside a line, or an exception from <paramref name="OnLine"/> kills the child and fails the run.
+/// With <paramref name="LastLineMayBeOpen"/>, output ending inside a line gives that line instead
+/// (T-F529: tar.exe's listing, read before as one text that needed no last '\n').
 /// </summary>
-internal sealed record StdOutLines(StdOutLineHandler OnLine, int MaxLineBytes, long MaxTotalBytes);
+internal sealed record StdOutLines(StdOutLineHandler OnLine, int MaxLineBytes, long MaxTotalBytes, bool LastLineMayBeOpen = false);
 
 /// <summary>
 /// T-F513: the most '\n' bytes and bytes in all a child may write to stdout; past either the child

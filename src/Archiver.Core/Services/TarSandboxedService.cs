@@ -2172,11 +2172,10 @@ public sealed class TarSandboxedService : ITarService
     // Column 4 (0-based) of "tar -tvf" output: mode, link-count, owner, group, size, month, day,
     // time, name. Locale-independent (plain ASCII decimal), unlike the date columns — see
     // DECISIONS.md's T-F90 entry.
-    internal static long ParseTarListingSize(string line)
-    {
-        string[] fields = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-        return fields.Length > 4 && long.TryParse(fields[4], out long size) ? size : 0;
-    }
+    internal static long ParseTarListingSize(string line) => ParseTarListingSize(TarListingDate.Fields(line));
+
+    internal static long ParseTarListingSize(string[] fields) =>
+        fields.Length > 4 && long.TryParse(fields[4], out long size) ? size : 0;
 
     // T-F419: only the line end is dropped - "a.txt " is an entry of its own, not "a.txt".
     internal static string[] SplitLines(string text)

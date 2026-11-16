@@ -15049,6 +15049,18 @@ archive .NET had refused as having no end record that the new reader read: both 
 above and by taking the comment rule from .NET. A Deflate64 entry made by the vendored 7-Zip is read
 (`ZipCatalogTests`).
 
+**tar: `-tv` a line at a time.** A tar list or scan read tar.exe's `-tv` output as one text, then as
+an array of its lines, to take three columns of each (type, size, date): at 1,000,000 entries the
+text and the lines were about 300 MB of a list's 716 MiB peak. `TarSandboxScope.ListVerboseAsync`
+hands each line over as it arrives (`StdOutLines`, with the last line allowed to end without '
+' as
+the text allowed), and `TarExeReader` keeps the three columns. A line is split at white space once,
+and the month names once a listing, not once a line. Peak private bytes at 1,000,000 entries: list
+716 -> about 375 MiB, test 677 -> about 360. What a list allocates on the way: 3,202 -> 1,950 B an
+entry (`CatalogMemoryBudgetTests.TarListing_AllocatesAtMostItsBudgetPerEntry`). A line is at most
+1 MiB: the longest name Windows can write, escaped byte by byte, is 393,204 bytes. The `-t` names stay
+one array (T-F418 judges them as a whole); the helper already reads its output a line at a time.
+
 ## T-F528 - one owner of the folders Pakko works in, one root per operation (2026-11-14)
 
 **What changed.** `IO/WorkRoot` owns where an operation's work folders go and how they are made. An
