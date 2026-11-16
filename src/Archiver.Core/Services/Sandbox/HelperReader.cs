@@ -174,7 +174,7 @@ internal sealed class HelperReader : ISandboxedArchiveReader
         }
         EnsureOutDirHoldsExactly(entries, files, output);
         string outDir = _scope.OutputDirectory!;
-        return new ScanQuarantine(null, [.. files.Select(i => new ScanFile(Path.Combine(outDir, IndexName(entries[i].Index)), entries[i].Name))],
+        return new ScanQuarantine(null, files.Select(i => new ScanFile(Path.Combine(outDir, IndexName(entries[i].Index)), entries[i].Name)),
             files.Length, files.Length, false);
     }
 

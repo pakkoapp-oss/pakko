@@ -260,9 +260,10 @@ internal sealed class TarExeReader : ISandboxedArchiveReader
         });
     }
 
-    // A pass's files for the scan, each under its name below the pass's folder, '/' between parts.
-    private static ScanFile[] ScanFilesBelow(string directory) =>
-        [.. QuarantineFiles.EnumerateFiles(directory).Select(f => new ScanFile(f, QuarantineFiles.Relative(directory, f).Replace('\\', '/')))];
+    // A pass's files for the scan, each under its name below the pass's folder, '/' between parts;
+    // T-F536: walked as the scan reads them, never listed whole.
+    private static IEnumerable<ScanFile> ScanFilesBelow(string directory) =>
+        QuarantineFiles.EnumerateFiles(directory).Select(f => new ScanFile(f, QuarantineFiles.Relative(directory, f).Replace('\\', '/')));
 
     // A quarantine folder's files, relative to it, '/' between parts, walked as they are read (T-F541).
     private static IEnumerable<string> FilesBelow(string directory) =>

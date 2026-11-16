@@ -144,6 +144,52 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
         return new HelperSetup(ArchiveHelperBuild.ExePath, output.Capabilities);
     }
 
+    // T-F536: what a tar scan holds halfway through its files - the findings it reports, not a list
+    // of every quarantined file's path beside them. Fewer entries: tar.exe writes about 1,250 files
+    // a second into the quarantine.
+    [Fact]
+    public async Task TarScan_WhileItScans_HoldsAtMostItsBudgetPerEntry()
+    {
+        const int count = 20_000;
+        string tar = TarGzOfEmptyEntries(count);
+        var service = new Archiver.Core.Services.AntivirusScanService(
+            new TarCapabilities(), new GroupPolicyOptions(), () => new CleanScanner(), () => Archiver.Core.Services.Antivirus.AmsiProviderState.Usable);
+        var progress = new HalfwayProgress(count);
+
+        ThreatScanResult result = await service.ScanAsync(new AntivirusScanOptions { ArchivePaths = [tar] }, progress);
+
+        result.OverallVerdict.Should().Be(ThreatVerdict.Clean);
+        progress.Halfway.Should().BeGreaterThan(0, "the scan reported its middle");
+        long perEntry = (progress.Halfway - progress.Before) / count;
+        output.WriteLine($"{count} entries: {(progress.Halfway - progress.Before) >> 10} KiB live halfway, {perEntry} B an entry");
+        // Measured 287 B (660 with the quarantine's files listed whole): about 100 of them the scan's
+        // fixed buffers at this count, the rest the names, their catalog and each finding so far.
+        perEntry.Should().BeLessThanOrEqualTo(360, "no list of the quarantine's files beside the findings");
+    }
+
+    // Synchronous (T-F162): the live bytes when the scan reports the middle entry done.
+    private sealed class HalfwayProgress(int entries) : IProgress<ProgressReport>
+    {
+        public long Before { get; } = GC.GetTotalMemory(forceFullCollection: true);
+        public long Halfway { get; private set; }
+
+        public void Report(ProgressReport value)
+        {
+            if (Halfway == 0 && value.Percent >= 50 && value.Percent < 100 && entries > 0)
+                Halfway = GC.GetTotalMemory(forceFullCollection: true);
+        }
+    }
+
+    private sealed class CleanScanner : Archiver.Core.Services.Antivirus.IAmsiScanner
+    {
+        public (ThreatVerdict Verdict, string? ThreatName) ScanBuffer(byte[] buffer, int length, string contentName) => (ThreatVerdict.Clean, null);
+
+        public void Dispose()
+        {
+            // nothing held
+        }
+    }
+
     // The live bytes before the operation starts and at the filter's call in the middle of the walk.
     private sealed class HalfwayProbe(int entries, bool pass = true)
     {
@@ -357,12 +403,12 @@ public sealed class CatalogMemoryBudgetTests(ITestOutputHelper output) : IDispos
         return path;
     }
 
-    private string TarGzOfEmptyEntries()
+    private string TarGzOfEmptyEntries(int count = Entries)
     {
-        string path = Path.Combine(_folder, "entries.tar.gz");
+        string path = Path.Combine(_folder, "entries" + count.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".tar.gz");
         using var gz = new GZipStream(File.Create(path), CompressionLevel.Fastest);
         byte[] header = new byte[512];
-        for (int i = 0; i < Entries; i++)
+        for (int i = 0; i < count; i++)
         {
             Array.Clear(header);
             Encoding.ASCII.GetBytes(Name(i)).CopyTo(header, 0);
