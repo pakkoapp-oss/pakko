@@ -150,6 +150,33 @@ internal static class TarNames
             && TarCommandLineEncoding.Decode(printed, (uint)encoding.CodePage) == name
                 ? printed
                 : null;
+
+        // The line with tar.exe's escapes resolved and every other byte kept as printed: re-encoding the
+        // text would turn a raw NEC-selected 0xED 0x40 into the page's 0xFA 0x5C, and two forms of one
+        // name would look alike. A '' that is a double-byte character's second byte is not an escape.
+        private static byte[]? UnescapePrinted(byte[] line, System.Text.Encoding encoding)
+        {
+            var bytes = new List<byte>(line.Length);
+            uint codePage = (uint)encoding.CodePage;
+            int i = 0;
+            while (i < line.Length)
+            {
+                if (line[i] != (byte)'\\')
+                {
+                    int width = TarCommandLineEncoding.IsLeadByte(codePage, line[i]) && i + 1 < line.Length ? 2 : 1;
+                    bytes.AddRange(line.AsSpan(i, width));
+                    i += width;
+                    continue;
+                }
+                int length = i + 3 < line.Length && IsOctalDigit(line[i + 1]) && IsOctalDigit(line[i + 2]) && IsOctalDigit(line[i + 3]) ? 4 : 2;
+                if (i + length > line.Length
+                    || TarListingName.UnescapeBytes(System.Text.Encoding.ASCII.GetString(line, i, length), encoding) is not { Length: 1 } escaped)
+                    return null;
+                bytes.Add(escaped[0]);
+                i += length;
+            }
+            return [.. bytes];
+        }
     }
 
     /// <summary>
@@ -203,33 +230,6 @@ internal static class TarNames
             if (line.Length > 0)
                 yield return line;
         }
-    }
-
-    // The line with tar.exe's escapes resolved and every other byte kept as printed: re-encoding the
-    // text would turn a raw NEC-selected 0xED 0x40 into the page's 0xFA 0x5C, and two forms of one
-    // name would look alike. A '' that is a double-byte character's second byte is not an escape.
-    private static byte[]? UnescapePrinted(byte[] line, System.Text.Encoding encoding)
-    {
-        var bytes = new List<byte>(line.Length);
-        uint codePage = (uint)encoding.CodePage;
-        int i = 0;
-        while (i < line.Length)
-        {
-            if (line[i] != (byte)'\\')
-            {
-                int width = TarCommandLineEncoding.IsLeadByte(codePage, line[i]) && i + 1 < line.Length ? 2 : 1;
-                bytes.AddRange(line.AsSpan(i, width));
-                i += width;
-                continue;
-            }
-            int length = i + 3 < line.Length && IsOctalDigit(line[i + 1]) && IsOctalDigit(line[i + 2]) && IsOctalDigit(line[i + 3]) ? 4 : 2;
-            if (i + length > line.Length
-                || TarListingName.UnescapeBytes(System.Text.Encoding.ASCII.GetString(line, i, length), encoding) is not { Length: 1 } escaped)
-                return null;
-            bytes.Add(escaped[0]);
-            i += length;
-        }
-        return [.. bytes];
     }
 
     private static bool IsOctalDigit(byte value) => value is >= (byte)'0' and <= (byte)'7';
